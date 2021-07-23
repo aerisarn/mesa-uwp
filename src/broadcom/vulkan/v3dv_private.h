@@ -274,6 +274,7 @@ struct v3dv_pipeline_key {
    } color_fmt[V3D_MAX_DRAW_BUFFERS];
    uint8_t f32_color_rb;
    uint32_t va_swap_rb_mask;
+   bool has_multiview;
 };
 
 struct v3dv_pipeline_cache_stats {

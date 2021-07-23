@@ -34,6 +34,7 @@
 #include "nir/nir_serialize.h"
 
 #include "util/u_atomic.h"
+#include "util/u_prim.h"
 
 #include "vulkan/util/vk_format.h"
 
@@ -2060,6 +2061,8 @@ pipeline_populate_graphics_key(struct v3dv_pipeline *pipeline,
          key->va_swap_rb_mask |= 1 << (VERT_ATTRIB_GENERIC0 + desc->location);
    }
 
+   assert(pipeline->subpass);
+   key->has_multiview = pipeline->subpass->view_mask != 0;
 }
 
 static void
@@ -2107,8 +2110,11 @@ v3dv_pipeline_shared_data_new_empty(const unsigned char sha1_key[20],
          continue;
       }
 
-      if (stage == BROADCOM_SHADER_GEOMETRY && !pipeline->gs)
-         continue;
+      if (stage == BROADCOM_SHADER_GEOMETRY && !pipeline->gs) {
+         /* We always inject a custom GS if we have multiview */
+         if (!pipeline->subpass->view_mask)
+            continue;
+      }
 
       struct v3dv_descriptor_maps *new_maps =
          vk_zalloc2(&pipeline->device->vk.alloc, NULL,
@@ -2143,6 +2149,165 @@ fail:
    vk_free(&pipeline->device->vk.alloc, new_entry);
 
    return NULL;
+}
+
+static uint32_t
+multiview_gs_input_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
+{
+   switch (pipeline->topology) {
+   case PIPE_PRIM_POINTS:
+      return GL_POINTS;
+   case PIPE_PRIM_LINES:
+   case PIPE_PRIM_LINE_STRIP:
+      return GL_LINES;
+   case PIPE_PRIM_TRIANGLES:
+   case PIPE_PRIM_TRIANGLE_STRIP:
+   case PIPE_PRIM_TRIANGLE_FAN:
+      return GL_TRIANGLES;
+   default:
+      /* Since we don't allow GS with multiview, we can only see non-adjacency
+       * primitives.
+       */
+      unreachable("Unexpected pipeline primitive type");
+   }
+}
+
+static uint32_t
+multiview_gs_output_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
+{
+   switch (pipeline->topology) {
+   case PIPE_PRIM_POINTS:
+      return GL_POINTS;
+   case PIPE_PRIM_LINES:
+   case PIPE_PRIM_LINE_STRIP:
+      return GL_LINE_STRIP;
+   case PIPE_PRIM_TRIANGLES:
+   case PIPE_PRIM_TRIANGLE_STRIP:
+   case PIPE_PRIM_TRIANGLE_FAN:
+      return GL_TRIANGLE_STRIP;
+   default:
+      /* Since we don't allow GS with multiview, we can only see non-adjacency
+       * primitives.
+       */
+      unreachable("Unexpected pipeline primitive type");
+   }
+}
+
+static bool
+pipeline_add_multiview_gs(struct v3dv_pipeline *pipeline,
+                          struct v3dv_pipeline_cache *cache,
+                          const VkAllocationCallbacks *pAllocator)
+{
+   /* Create the passthrough GS from the VS output interface */
+   pipeline->vs->nir = pipeline_stage_get_nir(pipeline->vs, pipeline, cache);
+   nir_shader *vs_nir = pipeline->vs->nir;
+
+   const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY, options,
+                                                  "multiview broadcast gs");
+   nir_shader *nir = b.shader;
+   nir->info.inputs_read = vs_nir->info.outputs_written;
+   nir->info.outputs_written = vs_nir->info.outputs_written |
+                               (1ull << VARYING_SLOT_LAYER);
+
+   uint32_t vertex_count = u_vertices_per_prim(pipeline->topology);
+   nir->info.gs.input_primitive =
+      multiview_gs_input_primitive_from_pipeline(pipeline);
+   nir->info.gs.output_primitive =
+      multiview_gs_output_primitive_from_pipeline(pipeline);
+   nir->info.gs.vertices_in = vertex_count;
+   nir->info.gs.vertices_out = nir->info.gs.vertices_in;
+   nir->info.gs.invocations = 1;
+   nir->info.gs.active_stream_mask = 0x1;
+
+   /* Make a list of GS input/output variables from the VS outputs */
+   nir_variable *in_vars[100];
+   nir_variable *out_vars[100];
+   uint32_t var_count = 0;
+   nir_foreach_shader_out_variable(out_vs_var, vs_nir) {
+      char name[8];
+      snprintf(name, ARRAY_SIZE(name), "in_%d", var_count);
+
+      in_vars[var_count] =
+         nir_variable_create(nir, nir_var_shader_in,
+                             glsl_array_type(out_vs_var->type, vertex_count, 0),
+                             name);
+      in_vars[var_count]->data.location = out_vs_var->data.location;
+      in_vars[var_count]->data.location_frac = out_vs_var->data.location_frac;
+      in_vars[var_count]->data.interpolation = out_vs_var->data.interpolation;
+
+      snprintf(name, ARRAY_SIZE(name), "out_%d", var_count);
+      out_vars[var_count] =
+         nir_variable_create(nir, nir_var_shader_out, out_vs_var->type, name);
+      out_vars[var_count]->data.location = out_vs_var->data.location;
+      out_vars[var_count]->data.interpolation = out_vs_var->data.interpolation;
+
+      var_count++;
+   }
+
+   /* Add the gl_Layer output variable */
+   nir_variable *out_layer =
+      nir_variable_create(nir, nir_var_shader_out, glsl_int_type(),
+                          "out_Layer");
+   out_layer->data.location = VARYING_SLOT_LAYER;
+
+   /* Get the view index value that we will write to gl_Layer */
+   nir_ssa_def *layer =
+      nir_load_system_value(&b, nir_intrinsic_load_view_index, 0, 1, 32);
+
+   /* Emit all output vertices */
+   for (uint32_t vi = 0; vi < vertex_count; vi++) {
+      /* Emit all output varyings */
+      for (uint32_t i = 0; i < var_count; i++) {
+         nir_deref_instr *in_value =
+            nir_build_deref_array_imm(&b, nir_build_deref_var(&b, in_vars[i]), vi);
+         nir_copy_deref(&b, nir_build_deref_var(&b, out_vars[i]), in_value);
+      }
+
+      /* Emit gl_Layer write */
+      nir_store_var(&b, out_layer, layer, 0x1);
+
+      nir_emit_vertex(&b, 0);
+   }
+   nir_end_primitive(&b, 0);
+
+   /* Make sure we run our pre-process NIR passes so we produce NIR compatible
+    * with what we expect from SPIR-V modules.
+    */
+   preprocess_nir(nir);
+
+   /* Attach the geometry shader to the  pipeline */
+   struct v3dv_device *device = pipeline->device;
+   struct v3dv_physical_device *physical_device =
+      &device->instance->physicalDevice;
+
+   struct v3dv_pipeline_stage *p_stage =
+      vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*p_stage), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   if (p_stage == NULL) {
+      ralloc_free(nir);
+      return false;
+   }
+
+   p_stage->pipeline = pipeline;
+   p_stage->stage = BROADCOM_SHADER_GEOMETRY;
+   p_stage->entrypoint = "main";
+   p_stage->module = 0;
+   p_stage->nir = nir;
+   pipeline_compute_sha1_from_nir(p_stage->nir, p_stage->shader_sha1);
+   p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
+
+   pipeline->has_gs = true;
+   pipeline->gs = p_stage;
+   pipeline->active_stages |= MESA_SHADER_GEOMETRY;
+
+   pipeline->gs_bin =
+      pipeline_stage_create_binning(pipeline->gs, pAllocator);
+      if (pipeline->gs_bin == NULL)
+         return false;
+
+   return true;
 }
 
 /*
@@ -2258,6 +2423,15 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
       pipeline->fs = p_stage;
       pipeline->active_stages |= MESA_SHADER_FRAGMENT;
+   }
+
+   /* If multiview is enabled, we inject a custom passthrough geometry shader
+    * to broadcast draw calls to the appropriate views.
+    */
+   assert(!pipeline->subpass->view_mask || (!pipeline->has_gs && !pipeline->gs));
+   if (pipeline->subpass->view_mask) {
+      if (!pipeline_add_multiview_gs(pipeline, cache, pAllocator))
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
    /* First we try to get the variants from the pipeline cache */
