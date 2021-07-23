@@ -218,9 +218,33 @@ ir3_reg_interval_remove(struct ir3_reg_ctx *ctx,
    interval->inserted = false;
 }
 
+static void
+_mark_free(struct ir3_reg_interval *interval)
+{
+   interval->inserted = false;
+   rb_tree_foreach (struct ir3_reg_interval, child, &interval->children, node) {
+      _mark_free(child);
+   }
+}
+
+/* Remove an interval and all its children from the tree. */
 void
 ir3_reg_interval_remove_all(struct ir3_reg_ctx *ctx,
                             struct ir3_reg_interval *interval)
+{
+   assert(!interval->parent);
+
+   ctx->interval_delete(ctx, interval);
+   rb_tree_remove(&ctx->intervals, &interval->node);
+   _mark_free(interval);
+}
+
+/* Used when popping an interval to be shuffled around. Don't disturb children
+ * so that it can be later reinserted.
+ */
+static void
+ir3_reg_interval_remove_temp(struct ir3_reg_ctx *ctx,
+                             struct ir3_reg_interval *interval)
 {
    assert(!interval->parent);
 
@@ -675,7 +699,7 @@ ra_pop_interval(struct ra_ctx *ctx, struct ra_file *file,
                    });
    }
 
-   ir3_reg_interval_remove_all(&file->reg_ctx, &interval->interval);
+   ir3_reg_interval_remove_temp(&file->reg_ctx, &interval->interval);
 
    return (struct ra_removed_interval){
       .interval = interval,
