@@ -47,6 +47,7 @@ libpanfrost_bifrost_files = files(
   'bifrost_compile.c',
   'valhall/va_optimize.c',
   'valhall/va_pack.c',
+  'valhall/va_validate.c',
 )
 
 bifrost_gen_disasm_c = custom_target(
@@ -161,6 +162,7 @@ if with_tests
 	'test/test-packing.cpp',
 	'test/test-scheduler-predicates.cpp',
         'valhall/test/test-add-imm.cpp',
+        'valhall/test/test-validate-fau.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
