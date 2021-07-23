@@ -4688,10 +4688,13 @@ bi_compile_variant_nir(nir_shader *nir,
         if (ctx->arch <= 8) {
                 bi_schedule(ctx);
                 bi_assign_scoreboard(ctx);
-        }
 
-        /* Analyze after scheduling since we depend on instruction order. */
-        bi_analyze_helper_terminate(ctx);
+                /* Analyze after scheduling since we depend on instruction
+                 * order. This routine assumes the IR is using clauses, so it is
+                 * Bifrost only.
+                 */
+                bi_analyze_helper_terminate(ctx);
+        }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
