@@ -114,6 +114,7 @@ struct ir3_context {
    unsigned stack, max_stack;
 
    unsigned loop_id;
+   unsigned loop_depth;
 
    /* a common pattern for indirect addressing is to request the
     * same address register multiple times.  To avoid generating

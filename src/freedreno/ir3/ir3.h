@@ -588,6 +588,7 @@ struct ir3_block {
    uint32_t dom_post_index;
 
    uint32_t loop_id;
+   uint32_t loop_depth;
 
 #ifdef DEBUG
    uint32_t serialno;
