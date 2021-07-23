@@ -1986,7 +1986,7 @@
     <src start="0" mask="0xfb"/>
   </ins>
 
-  <ins name="*NOP.i32" mask="0x7fffff" exact="0x701963"/>
+  <ins name="*NOP" mask="0x7fffff" exact="0x701963"/>
 
   <ins name="*POPCOUNT.i32" mask="0x7ffff8" exact="0x73c6d8">
     <src start="0" mask="0xfb"/>
@@ -7395,7 +7395,7 @@
     </mod>
   </ins>
 
-  <ins name="+NOP.i32" mask="0xfffff" exact="0x3d964"/>
+  <ins name="+NOP" mask="0xfffff" exact="0x3d964"/>
 
   <ins name="+QUIET.f32" mask="0xffff8" exact="0x3d970">
     <src start="0"/>
