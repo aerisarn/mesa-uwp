@@ -30,18 +30,6 @@
  * TODO: Handle phi nodes.
  */
 
-/** Returns number of registers read by an instruction. TODO: 16-bit */
-static unsigned
-agx_read_registers(agx_instr *I, unsigned s)
-{
-   unsigned size = I->src[s].size == AGX_SIZE_32 ? 2 : 1;
-
-   switch (I->op) {
-   default:
-      return size;
-   }
-}
-
 /** Returns number of registers written by an instruction */
 static unsigned
 agx_write_registers(agx_instr *I, unsigned d)
@@ -103,7 +91,7 @@ agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned
 /** Assign registers to SSA values in a block. */
 
 static void
-agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, unsigned max_reg)
+agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsigned max_reg)
 {
    BITSET_DECLARE(used_regs, AGX_NUM_REGS) = { 0 };
 
@@ -121,7 +109,7 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, unsigned max_reg)
       agx_foreach_src(I, s) {
          if (I->src[s].type == AGX_INDEX_NORMAL && I->src[s].kill) {
             unsigned reg = ssa_to_reg[I->src[s].value];
-            unsigned count = agx_read_registers(I, s);
+            unsigned count = ncomps[I->src[s].value];
 
             for (unsigned i = 0; i < count; ++i)
                BITSET_CLEAR(used_regs, reg + i);
@@ -151,8 +139,20 @@ agx_ra(agx_context *ctx)
 
    agx_compute_liveness(ctx);
    uint8_t *ssa_to_reg = calloc(ctx->alloc, sizeof(uint8_t));
+   uint8_t *ncomps = calloc(ctx->alloc, sizeof(uint8_t));
+
+   agx_foreach_instr_global(ctx, I) {
+      agx_foreach_dest(I, d) {
+         if (I->dest[d].type != AGX_INDEX_NORMAL) continue;
+
+         unsigned v = I->dest[d].value;
+         assert(ncomps[v] == 0 && "broken SSA");
+         ncomps[v] = agx_write_registers(I, d);
+      }
+   }
+
    agx_foreach_block(ctx, block)
-      agx_ra_assign_local(block, ssa_to_reg, ctx->max_register);
+      agx_ra_assign_local(block, ssa_to_reg, ncomps, ctx->max_register);
 
    /* TODO: Coalesce combines */
 
@@ -236,5 +236,6 @@ agx_ra(agx_context *ctx)
       }
    }
 
+   free(ncomps);
    free(alloc);
 }
