@@ -386,7 +386,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
      return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
 
   case nir_intrinsic_load_vertex_id:
-     return agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32))); /* TODO: RA */
+     return agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32)));
 
   case nir_intrinsic_load_blend_const_color_r_float: return agx_blend_const(b, dst, 0);
   case nir_intrinsic_load_blend_const_color_g_float: return agx_blend_const(b, dst, 1);
