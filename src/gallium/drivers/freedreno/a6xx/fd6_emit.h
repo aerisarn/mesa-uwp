@@ -170,6 +170,8 @@ fd6_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
 static inline void
 fd6_cache_inv(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
+   fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
+   fd6_event_write(batch, ring, PC_CCU_INVALIDATE_DEPTH, false);
    fd6_event_write(batch, ring, CACHE_INVALIDATE, false);
 }
 
