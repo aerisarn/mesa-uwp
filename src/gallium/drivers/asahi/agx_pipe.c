@@ -319,12 +319,14 @@ agx_transfer_map(struct pipe_context *pctx,
       assert(box->depth == 1);
 
       if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
-         agx_detile(
-            ((uint8_t *) bo->ptr.cpu) + rsrc->slices[level].offset,
-            transfer->map,
-            u_minify(resource->width0, level), bytes_per_pixel * 8,
-            transfer->base.stride / bytes_per_pixel,
-            box->x, box->y, box->x + box->width, box->y + box->height);
+         for (unsigned z = 0; z < box->depth; ++z) {
+            uint8_t *map = agx_rsrc_offset(rsrc, level, box->z + z);
+
+            agx_detile(map, transfer->map,
+               u_minify(resource->width0, level), bytes_per_pixel * 8,
+               transfer->base.stride / bytes_per_pixel,
+               box->x, box->y, box->x + box->width, box->y + box->height);
+         }
       }
 
       return transfer->map;
@@ -364,19 +366,20 @@ agx_transfer_unmap(struct pipe_context *pctx,
    /* Tiling will occur in software from a staging cpu buffer */
    if ((transfer->usage & PIPE_MAP_WRITE) &&
          rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
-      struct agx_bo *bo = rsrc->bo;
       assert(trans->map != NULL);
-      assert(transfer->box.depth == 1);
 
-      agx_tile(
-         ((uint8_t *) bo->ptr.cpu) + rsrc->slices[transfer->level].offset,
-         trans->map,
-         u_minify(transfer->resource->width0, transfer->level),
-         bytes_per_pixel * 8,
-         transfer->stride / bytes_per_pixel,
-         transfer->box.x, transfer->box.y,
-         transfer->box.x + transfer->box.width,
-         transfer->box.y + transfer->box.height);
+      for (unsigned z = 0; z < transfer->box.depth; ++z) {
+         uint8_t *map = agx_rsrc_offset(rsrc, transfer->level,
+               transfer->box.z + z);
+
+         agx_tile(map, trans->map,
+            u_minify(transfer->resource->width0, transfer->level),
+            bytes_per_pixel * 8,
+            transfer->stride / bytes_per_pixel,
+            transfer->box.x, transfer->box.y,
+            transfer->box.x + transfer->box.width,
+            transfer->box.y + transfer->box.height);
+      }
    }
 
    /* Free the transfer */
