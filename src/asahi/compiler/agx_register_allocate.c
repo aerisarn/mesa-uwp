@@ -103,6 +103,8 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsi
    BITSET_SET(used_regs, 0); // control flow writes r0l
    BITSET_SET(used_regs, 5*2); // TODO: precolouring, don't overwrite vertex ID
    BITSET_SET(used_regs, (5*2 + 1));
+   BITSET_SET(used_regs, (6*2 + 0));
+   BITSET_SET(used_regs, (6*2 + 1));
 
    agx_foreach_instr_in_block(block, I) {
       /* First, free killed sources */
