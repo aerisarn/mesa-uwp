@@ -177,9 +177,14 @@
     </field>
   </struct>
 
+  <enum name="Texture dimension">
+    <value name="2D" value="2"/>
+    <value name="Cube" value="6"/>
+  </enum>
+
   <!-- Payloads follow, right-shifted by 4 because of course -->
   <struct name="Texture" size="16">
-    <field name="Unknown" size="4" start="0" type="hex" default="0x2"/>
+    <field name="Dimension" size="4" start="0" type="Texture dimension" default="2D"/>
     <field name="Layout" size="2" start="4" type="Layout"/>
     <field name="Format" size="10" start="6" type="Pixel Format"/>
     <field name="Swizzle R" size="3" start="16" type="Channel" default="R"/>
