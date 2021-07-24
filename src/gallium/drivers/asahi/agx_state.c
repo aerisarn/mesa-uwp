@@ -952,8 +952,7 @@ agx_update_vs(struct agx_context *ctx)
           sizeof(key.attributes[0]) * AGX_MAX_ATTRIBS);
 
    u_foreach_bit(i, ctx->vb_mask) {
-      assert((ctx->vertex_buffers[i].stride & 0x3) == 0);
-      key.vbuf_strides[i] = ctx->vertex_buffers[i].stride / 4;
+      key.vbuf_strides[i] = ctx->vertex_buffers[i].stride;
    }
 
    struct asahi_shader_key akey = {

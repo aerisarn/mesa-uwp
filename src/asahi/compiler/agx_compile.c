@@ -146,7 +146,10 @@ agx_emit_load_attr(agx_builder *b, nir_intrinsic_instr *instr)
 
    /* address = base + (stride * vertex_id) + src_offset */
    unsigned buf = attrib.buf;
-   agx_index stride = agx_mov_imm(b, 32, key->vs.vbuf_strides[buf]);
+   unsigned stride = key->vs.vbuf_strides[buf];
+   unsigned shift = agx_format_shift(attrib.format);
+
+   agx_index shifted_stride = agx_mov_imm(b, 32, stride >> shift);
    agx_index src_offset = agx_mov_imm(b, 32, attrib.src_offset);
 
    agx_index vertex_id = agx_register(10, AGX_SIZE_32);
@@ -157,7 +160,7 @@ agx_emit_load_attr(agx_builder *b, nir_intrinsic_instr *instr)
    agx_index element_id = (attrib.divisor == 0) ? vertex_id :
                           agx_udiv_const(b, instance_id, attrib.divisor);
 
-   agx_index offset = agx_imad(b, element_id, stride, src_offset, 0);
+   agx_index offset = agx_imad(b, element_id, shifted_stride, src_offset, 0);
 
    /* Each VBO has a 64-bit = 4 x 16-bit address, lookup the base address as a sysval */
    unsigned num_vbos = key->vs.num_vbufs;
