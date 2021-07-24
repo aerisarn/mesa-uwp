@@ -1,5 +1,7 @@
 /*
  * Copyright 2010 Red Hat Inc.
+ * Copyright © 2014-2017 Broadcom
+ * Copyright (C) 2019-2020 Collabora, Ltd.
  * Copyright 2006 VMware, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -193,6 +195,10 @@ agx_resource_create(struct pipe_screen *screen,
       offset += ALIGN_POT(nresource->slices[l].line_stride * height, 0x80);
    }
 
+   /* Arrays and cubemaps have the entire miptree duplicated */
+   nresource->array_stride = ALIGN_POT(offset, 64);
+   unsigned size = ALIGN_POT(nresource->array_stride * templ->array_size, 4096);
+
    pipe_reference_init(&nresource->base.reference, 1);
 
    struct sw_winsys *winsys = ((struct agx_screen *) screen)->winsys;
@@ -227,7 +233,6 @@ agx_resource_create(struct pipe_screen *screen,
       }
    }
 
-   unsigned size = ALIGN_POT(offset, 4096);
    nresource->bo = agx_bo_create(dev, size, AGX_MEMORY_TYPE_FRAMEBUFFER);
 
    if (!nresource->bo) {
