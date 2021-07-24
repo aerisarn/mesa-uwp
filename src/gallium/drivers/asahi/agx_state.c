@@ -419,6 +419,16 @@ agx_translate_layout(uint64_t modifier)
    }
 }
 
+static enum agx_texture_dimension
+agx_translate_texture_dimension(enum pipe_texture_target dim)
+{
+   switch (dim) {
+   case PIPE_TEXTURE_2D: return AGX_TEXTURE_DIMENSION_2D;
+   case PIPE_TEXTURE_CUBE: return AGX_TEXTURE_DIMENSION_CUBE;
+   default: unreachable("Unsupported texture dimension");
+   }
+}
+
 static struct pipe_sampler_view *
 agx_create_sampler_view(struct pipe_context *pctx,
                         struct pipe_resource *texture,
@@ -452,6 +462,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
 
    /* Pack the descriptor into GPU memory */
    agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
+      cfg.dimension = agx_translate_texture_dimension(state->target);
       cfg.layout = agx_translate_layout(rsrc->modifier);
       cfg.format = agx_pixel_format[state->format].hw;
       cfg.swizzle_r = agx_channel_from_pipe(out_swizzle[0]);
