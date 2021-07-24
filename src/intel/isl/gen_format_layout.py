@@ -63,7 +63,7 @@ TEMPLATE = template.Template(future_imports=['division'],
 
 const uint16_t isl_format_name_offsets[] = { <% offset = 0 %>
 % for format in formats:
-    ${offset}, <% offset += 11 + len(format.name) + 1 %>
+    [ISL_FORMAT_${format.name}] = ${offset}, <% offset += 11 + len(format.name) + 1 %>
 % endfor
 };
 
