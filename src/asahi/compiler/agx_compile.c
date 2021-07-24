@@ -288,10 +288,12 @@ agx_emit_load_ubo(agx_builder *b, nir_intrinsic_instr *instr)
    /* Each UBO has a 64-bit = 4 x 16-bit address */
    unsigned num_ubos = b->shader->nir->info.num_ubos;
    unsigned base_length = (num_ubos * 4);
+   unsigned index = block * 4; /* 16 bit units */
 
    /* Lookup the base address (TODO: indirection) */
    agx_index base = agx_indexed_sysval(b->shader,
-                                       AGX_PUSH_UBO_BASES, AGX_SIZE_64, block, base_length);
+                                       AGX_PUSH_UBO_BASES, AGX_SIZE_64,
+                                       index, base_length);
 
    /* Load the data */
    assert(instr->num_components <= 4);
