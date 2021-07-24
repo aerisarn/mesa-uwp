@@ -130,6 +130,7 @@ agx_is_2d(const struct agx_resource *pres)
    switch (pres->base.target) {
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_CUBE:
       return true;
    default:
       return false;
