@@ -1533,8 +1533,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    if (info->index_size && draws->index_bias)
       unreachable("todo: index bias");
-   if (info->instance_count != 1)
-      unreachable("todo: instancing");
 
    struct agx_context *ctx = agx_context(pctx);
    struct agx_batch *batch = ctx->batch;
