@@ -200,8 +200,8 @@ agx_ra(agx_context *ctx)
          agx_remove_instruction(ins);
          continue;
       } else if (ins->op == AGX_OPCODE_P_EXTRACT) {
+         /* Uses the destination size */
          assert(ins->dest[0].type == AGX_INDEX_NORMAL);
-         assert(ins->dest[0].size == ins->src[0].size);
          unsigned base = ins->src[0].value;
 
          if (ins->src[0].type != AGX_INDEX_REGISTER) {
@@ -209,7 +209,7 @@ agx_ra(agx_context *ctx)
             base = alloc[base];
          }
 
-         unsigned size = ins->dest[0].size == AGX_SIZE_32 ? 2 : 1;
+         unsigned size = ins->dest[0].size == AGX_SIZE_64 ? 4 : ins->dest[0].size == AGX_SIZE_32 ? 2 : 1;
          unsigned left = ssa_to_reg[ins->dest[0].value];
          unsigned right = ssa_to_reg[ins->src[0].value] + (size * ins->imm);
 
