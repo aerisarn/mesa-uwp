@@ -89,6 +89,14 @@ agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned
       }
    }
 
+   /* Couldn't find a free register, dump the state of the register file */
+   fprintf(stderr, "Failed to find register of size %u aligned %u max %u.\n",
+           count, align, max);
+
+   fprintf(stderr, "Register file:\n");
+   for (unsigned i = 0; i < BITSET_WORDS(max); ++i)
+      fprintf(stderr, "    %08X\n", used_regs[i]);
+
    unreachable("Could not find a free register");
 }
 
