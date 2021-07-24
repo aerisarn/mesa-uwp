@@ -805,6 +805,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_ubo:
                case nir_intrinsic_load_ssbo:
                case nir_intrinsic_load_global:
+               case nir_intrinsic_load_global_constant:
                case nir_intrinsic_vulkan_resource_index:
                case nir_intrinsic_get_ssbo_size:
                   type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;

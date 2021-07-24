@@ -516,6 +516,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
          .phys_ssbo_addr_format = nir_address_format_64bit_global,
          .push_const_addr_format = nir_address_format_logical,
          .shared_addr_format = nir_address_format_32bit_offset,
+         .constant_addr_format = nir_address_format_64bit_global,
          .frag_coord_is_sysval = true,
          .use_deref_buffer_array_length = true,
          .debug =
@@ -719,7 +720,8 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
       }
    }
 
-   nir_lower_explicit_io(nir, nir_var_mem_global, nir_address_format_64bit_global);
+   nir_lower_explicit_io(nir, nir_var_mem_global | nir_var_mem_constant,
+                         nir_address_format_64bit_global);
 
    /* Lower large variables that are always constant with load_constant
     * intrinsics, which get turned into PC-relative loads from a data
