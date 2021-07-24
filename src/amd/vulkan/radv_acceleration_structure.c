@@ -721,6 +721,7 @@ struct build_primitive_constants {
       };
       struct {
          uint64_t instance_data;
+         uint32_t array_of_pointers;
       };
       struct {
          uint64_t aabb_addr;
@@ -918,9 +919,25 @@ build_leaf_shader(struct radv_device *dev)
    nir_push_else(&b, NULL);
    { /* Instances */
 
-      nir_ssa_def *instance_addr =
-         nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 3)),
-                  nir_u2u64(&b, nir_imul(&b, global_id, nir_imm_int(&b, 64))));
+      nir_variable *instance_addr_var =
+         nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint64_t_type(), "instance_addr");
+      nir_push_if(&b, nir_ine(&b, nir_channel(&b, pconst2, 2), nir_imm_int(&b, 0)));
+      {
+         nir_ssa_def *ptr = nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 3)),
+                                     nir_u2u64(&b, nir_imul(&b, global_id, nir_imm_int(&b, 8))));
+         nir_ssa_def *addr = nir_pack_64_2x32(
+            &b, nir_build_load_global(&b, 2, 32, ptr, .align_mul = 8, .align_offset = 0));
+         nir_store_var(&b, instance_addr_var, addr, 1);
+      }
+      nir_push_else(&b, NULL);
+      {
+         nir_ssa_def *addr = nir_iadd(&b, nir_pack_64_2x32(&b, nir_channels(&b, pconst2, 3)),
+                                      nir_u2u64(&b, nir_imul(&b, global_id, nir_imm_int(&b, 64))));
+         nir_store_var(&b, instance_addr_var, addr, 1);
+      }
+      nir_pop_if(&b, NULL);
+      nir_ssa_def *instance_addr = nir_load_var(&b, instance_addr_var);
+
       nir_ssa_def *inst_transform[] = {
          nir_build_load_global(&b, 4, 32, nir_iadd(&b, instance_addr, nir_imm_int64(&b, 0)),
                                .align_mul = 4, .align_offset = 0),
@@ -1353,6 +1370,7 @@ radv_CmdBuildAccelerationStructuresKHR(
             break;
          case VK_GEOMETRY_TYPE_INSTANCES_KHR:
             prim_consts.instance_data = geom->geometry.instances.data.deviceAddress;
+            prim_consts.array_of_pointers = geom->geometry.instances.arrayOfPointers ? 1 : 0;
             prim_size = 128;
             break;
          default:
