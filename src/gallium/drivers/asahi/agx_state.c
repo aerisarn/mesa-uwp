@@ -462,7 +462,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.height = u_minify(texture->height0, level);
       cfg.levels = state->u.tex.last_level - level + 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.unk_1 = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
+      cfg.address = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
       cfg.unk_2 = false;
 
       cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
@@ -1189,7 +1189,7 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.height = surf->height;
       cfg.levels = 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.unk_1 = rsrc->bo->ptr.gpu;
+      cfg.address = rsrc->bo->ptr.gpu;
       cfg.unk_2 = false;
 
       cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
