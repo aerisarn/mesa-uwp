@@ -802,12 +802,15 @@ agx_create_vertex_elements(struct pipe_context *ctx,
       const struct util_format_description *desc =
          util_format_description(ve.src_format);
 
+      unsigned chan_size = desc->channel[0].size / 8;
+
+      assert(chan_size == 1 || chan_size == 2 || chan_size == 4);
       assert(desc->nr_channels >= 1 && desc->nr_channels <= 4);
-      assert((ve.src_offset & 0x3) == 0);
+      assert((ve.src_offset & (chan_size - 1)) == 0);
 
       attribs[i] = (struct agx_attribute) {
          .buf = ve.vertex_buffer_index,
-         .src_offset = ve.src_offset / 4,
+         .src_offset = ve.src_offset / chan_size,
          .nr_comps_minus_1 = desc->nr_channels - 1,
          .format = agx_vertex_format[ve.src_format],
          .divisor = ve.instance_divisor
