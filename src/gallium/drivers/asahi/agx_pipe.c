@@ -293,7 +293,6 @@ agx_transfer_map(struct pipe_context *pctx,
    struct agx_context *ctx = agx_context(pctx);
    struct agx_resource *rsrc = agx_resource(resource);
    unsigned bytes_per_pixel = util_format_get_blocksize(resource->format);
-   struct agx_bo *bo = rsrc->bo;
 
    /* Can't map tiled/compressed directly */
    if ((usage & PIPE_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
@@ -334,16 +333,14 @@ agx_transfer_map(struct pipe_context *pctx,
       assert (rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
 
       transfer->base.stride = rsrc->slices[level].line_stride;
-      transfer->base.layer_stride = 0; // TODO
+      transfer->base.layer_stride = rsrc->array_stride;
 
       /* Be conservative for direct writes */
 
       if ((usage & PIPE_MAP_WRITE) && (usage & PIPE_MAP_DIRECTLY))
          BITSET_SET(rsrc->data_valid, level);
 
-      return ((uint8_t *) bo->ptr.cpu)
-             + rsrc->slices[level].offset
-             + transfer->base.box.z * transfer->base.layer_stride
+      return agx_rsrc_offset(rsrc, level, box->z)
              + transfer->base.box.y * rsrc->slices[level].line_stride
              + transfer->base.box.x * bytes_per_pixel;
    }
