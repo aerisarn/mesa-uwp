@@ -138,6 +138,21 @@ agx_is_2d(const struct agx_resource *pres)
 }
 
 static bool
+agx_must_tile(const struct agx_resource *pres)
+{
+   switch (pres->base.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_3D:
+      /* We don't know how to do linear for these */
+      return true;
+   default:
+      break;
+   }
+
+   return false;
+}
+
+static bool
 agx_should_tile(const struct agx_resource *pres)
 {
    const unsigned valid_binding =
@@ -155,7 +170,11 @@ agx_should_tile(const struct agx_resource *pres)
       && (bpp == 32)
       && ((pres->base.bind & ~valid_binding) == 0);
 
-   return can_tile && (pres->base.usage != PIPE_USAGE_STREAM);
+   bool should_tile = (pres->base.usage != PIPE_USAGE_STREAM);
+   bool must_tile = agx_must_tile(pres);
+
+   assert(!(must_tile && !can_tile));
+   return must_tile || (can_tile && should_tile);
 }
 
 static struct pipe_resource *
