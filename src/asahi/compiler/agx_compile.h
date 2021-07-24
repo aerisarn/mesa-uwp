@@ -119,10 +119,13 @@ enum agx_format {
 };
 
 struct agx_attribute {
+   uint32_t divisor;
+
    unsigned buf : 5;
    unsigned src_offset : 16;
    unsigned nr_comps_minus_1 : 2;
    enum agx_format format : 4;
+   unsigned padding : 5;
 };
 
 struct agx_vs_shader_key {
