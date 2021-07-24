@@ -243,6 +243,16 @@ agx_resource_create(struct pipe_screen *screen,
    return &nresource->base;
 }
 
+static uint8_t *
+agx_rsrc_offset(struct agx_resource *rsrc, unsigned level, unsigned z)
+{
+   struct agx_bo *bo = rsrc->bo;
+   uint8_t *map = ((uint8_t *) bo->ptr.cpu) + rsrc->slices[level].offset;
+   map += z * rsrc->array_stride;
+
+   return map;
+}
+
 static void
 agx_resource_destroy(struct pipe_screen *screen,
                      struct pipe_resource *prsrc)
