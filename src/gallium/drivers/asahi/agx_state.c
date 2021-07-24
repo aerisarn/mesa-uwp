@@ -798,7 +798,6 @@ agx_create_vertex_elements(struct pipe_context *ctx,
    struct agx_attribute *attribs = calloc(sizeof(*attribs), AGX_MAX_ATTRIBS);
    for (unsigned i = 0; i < count; ++i) {
       const struct pipe_vertex_element ve = state[i];
-      assert(ve.instance_divisor == 0 && "no instancing");
 
       const struct util_format_description *desc =
          util_format_description(ve.src_format);
@@ -811,6 +810,7 @@ agx_create_vertex_elements(struct pipe_context *ctx,
          .src_offset = ve.src_offset / 4,
          .nr_comps_minus_1 = desc->nr_channels - 1,
          .format = agx_vertex_format[ve.src_format],
+         .divisor = ve.instance_divisor
       };
    }
 
