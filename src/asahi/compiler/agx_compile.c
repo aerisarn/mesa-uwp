@@ -27,6 +27,7 @@
 #include "compiler/nir_types.h"
 #include "compiler/nir/nir_builder.h"
 #include "util/u_debug.h"
+#include "util/fast_idiv_by_const.h"
 #include "agx_compile.h"
 #include "agx_compiler.h"
 #include "agx_builder.h"
@@ -86,6 +87,49 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
    agx_mov_imm_to(b,
                   agx_get_index(instr->def.index, agx_size_for_bits(bit_size)),
                   nir_const_value_as_uint(instr->value[0], bit_size));
+}
+
+/* Emit code dividing P by Q */
+static agx_index
+agx_udiv_const(agx_builder *b, agx_index P, uint32_t Q)
+{
+   /* P / 1 = P */
+   if (Q == 1) {
+      return P;
+   }
+
+   /* P / UINT32_MAX = 0, unless P = UINT32_MAX when it's one */
+   if (Q == UINT32_MAX) {
+      agx_index max = agx_mov_imm(b, 32, UINT32_MAX);
+      agx_index one = agx_mov_imm(b, 32, 1);
+      return agx_icmpsel(b, P, max, one, agx_zero(), AGX_ICOND_UEQ);
+   }
+
+   /* P / 2^N = P >> N */
+   if (util_is_power_of_two_or_zero(Q)) {
+      return agx_ushr(b, P, agx_mov_imm(b, 32, util_logbase2(Q)));
+   }
+
+   /* Fall back on multiplication by a magic number */
+   struct util_fast_udiv_info info = util_compute_fast_udiv_info(Q, 32, 32);
+   agx_index preshift = agx_mov_imm(b, 32, info.pre_shift);
+   agx_index increment = agx_mov_imm(b, 32, info.increment);
+   agx_index postshift = agx_mov_imm(b, 32, info.post_shift);
+   agx_index multiplier = agx_mov_imm(b, 32, info.multiplier);
+   agx_index multiplied = agx_temp(b->shader, AGX_SIZE_64);
+   agx_index n = P;
+
+   if (info.pre_shift != 0) n = agx_ushr(b, n, preshift);
+   if (info.increment != 0) n = agx_iadd(b, n, increment, 0);
+
+   /* 64-bit multiplication, zero extending 32-bit x 32-bit, get the top word */
+   agx_imad_to(b, multiplied, agx_abs(n), agx_abs(multiplier), agx_zero(), 0);
+   n = agx_temp(b->shader, AGX_SIZE_32);
+   agx_p_extract_to(b, n, multiplied, 1);
+
+   if (info.post_shift != 0) n = agx_ushr(b, n, postshift);
+
+   return n;
 }
 
 /* AGX appears to lack support for vertex attributes. Lower to global loads. */
