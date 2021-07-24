@@ -138,8 +138,7 @@ agx_is_2d(const struct agx_resource *pres)
 }
 
 static bool
-agx_should_tile(struct agx_device *dev,
-                const struct agx_resource *pres)
+agx_should_tile(const struct agx_resource *pres)
 {
    const unsigned valid_binding =
       PIPE_BIND_DEPTH_STENCIL |
@@ -173,10 +172,8 @@ agx_resource_create(struct pipe_screen *screen,
    nresource->base = *templ;
    nresource->base.screen = screen;
 
-   nresource->modifier =
-      agx_should_tile(dev, nresource) ?
-      DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER :
-      DRM_FORMAT_MOD_LINEAR;
+   nresource->modifier = agx_should_tile(nresource) ?
+      DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER : DRM_FORMAT_MOD_LINEAR;
 
    unsigned offset = 0;
 
