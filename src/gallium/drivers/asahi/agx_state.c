@@ -459,6 +459,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
    util_format_compose_swizzles(desc->swizzle, view_swizzle, out_swizzle);
 
    unsigned level = state->u.tex.first_level;
+   assert(state->u.tex.first_layer == 0);
 
    /* Pack the descriptor into GPU memory */
    agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
