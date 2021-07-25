@@ -962,6 +962,8 @@ static void compute_swapchain_display(struct swapchain_data *data)
 
    for (uint32_t s = 0; s < OVERLAY_PARAM_ENABLED_MAX; s++) {
       if (!instance_data->params.enabled[s] ||
+          s == OVERLAY_PARAM_ENABLED_device ||
+          s == OVERLAY_PARAM_ENABLED_format ||
           s == OVERLAY_PARAM_ENABLED_fps ||
           s == OVERLAY_PARAM_ENABLED_frame)
          continue;
