@@ -32,24 +32,6 @@
  * manipulating clause layouts.
  */
 
-/* Helper to see if a tuple can be inserted. We must satisfy the invariant:
- *
- *      constant_count + tuple_count <= 13
- *
- * ...which is equivalent to the clause ending up with 8 or fewer quardwords.
- * Inserting a tuple increases tuple_count by one, and if it reads a unique
- * constant, it increases constant_count by one.
- */
-
-bool
-bi_can_insert_tuple(bi_clause *clause, bool constant)
-{
-        unsigned constant_count = clause->constant_count + (constant ? 1 : 0);
-        unsigned tuple_count = clause->tuple_count + 1;
-
-        return (constant_count + tuple_count) <= 13;
-}
-
 /* Is embedded constant 0 packed for free in a clause with this many tuples? */
 
 bool
@@ -87,7 +69,7 @@ bi_ec0_packed(unsigned tuple_count)
  * constants are packed two-by-two as constant quadwords.
  */
 
-unsigned
+static unsigned
 bi_clause_quadwords(bi_clause *clause)
 {
         unsigned X = clause->tuple_count;
