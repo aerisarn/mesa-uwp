@@ -82,9 +82,15 @@ get_demand_before(RegisterDemand demand, aco_ptr<Instruction>& instr,
 }
 
 namespace {
+struct PhiInfo {
+   uint16_t logical_phi_sgpr_ops = 0;
+   uint16_t linear_phi_ops = 0;
+   uint16_t linear_phi_defs = 0;
+};
+
 void
-process_live_temps_per_block(Program* program, live& lives, Block* block,
-                             unsigned& worklist, std::vector<uint16_t>& phi_sgpr_ops)
+process_live_temps_per_block(Program* program, live& lives, Block* block, unsigned& worklist,
+                             std::vector<PhiInfo>& phi_info)
 {
    std::vector<RegisterDemand>& register_demand = lives.register_demand[block->index];
    RegisterDemand new_demand;
@@ -96,7 +102,7 @@ process_live_temps_per_block(Program* program, live& lives, Block* block,
    /* initialize register demand */
    for (unsigned t : live)
       new_demand += Temp(t, program->temp_rc[t]);
-   new_demand.sgpr -= phi_sgpr_ops[block->index];
+   new_demand.sgpr -= phi_info[block->index].logical_phi_sgpr_ops;
 
    /* traverse the instructions backwards */
    int idx;
@@ -129,7 +135,7 @@ process_live_temps_per_block(Program* program, live& lives, Block* block,
 
       /* GEN */
       if (insn->opcode == aco_opcode::p_logical_end) {
-         new_demand.sgpr += phi_sgpr_ops[block->index];
+         new_demand.sgpr += phi_info[block->index].logical_phi_sgpr_ops;
       } else {
          /* we need to do this in a separate loop because the next one can
           * setKill() for several operands at once and we don't want to
@@ -170,6 +176,7 @@ process_live_temps_per_block(Program* program, live& lives, Block* block,
       block->register_demand = block_register_demand;
 
    /* handle phi definitions */
+   uint16_t linear_phi_defs = 0;
    int phi_idx = idx;
    while (phi_idx >= 0) {
       register_demand[phi_idx] = new_demand;
@@ -192,8 +199,16 @@ process_live_temps_per_block(Program* program, live& lives, Block* block,
       else
          definition.setKill(true);
 
+      if (insn->opcode == aco_opcode::p_linear_phi) {
+         assert(definition.getTemp().type() == RegType::sgpr);
+         linear_phi_defs += definition.size();
+      }
+
       phi_idx--;
    }
+
+   for (unsigned pred_idx : block->linear_preds)
+      phi_info[pred_idx].linear_phi_defs = linear_phi_defs;
 
    /* now, we need to merge the live-ins into the live-out sets */
    for (unsigned t : live) {
@@ -231,8 +246,12 @@ process_live_temps_per_block(Program* program, live& lives, Block* block,
          const bool inserted = lives.live_out[preds[i]].insert(operand.tempId()).second;
          if (inserted) {
             worklist = std::max(worklist, preds[i] + 1);
-            if (insn->opcode == aco_opcode::p_phi && operand.getTemp().type() == RegType::sgpr)
-               phi_sgpr_ops[preds[i]] += operand.size();
+            if (insn->opcode == aco_opcode::p_phi && operand.getTemp().type() == RegType::sgpr) {
+               phi_info[preds[i]].logical_phi_sgpr_ops += operand.size();
+            } else if (insn->opcode == aco_opcode::p_linear_phi) {
+               assert(operand.getTemp().type() == RegType::sgpr);
+               phi_info[preds[i]].linear_phi_ops += operand.size();
+            }
          }
 
          /* set if the operand is killed by this (or another) phi instruction */
@@ -386,7 +405,7 @@ live_var_analysis(Program* program)
    result.live_out.resize(program->blocks.size());
    result.register_demand.resize(program->blocks.size());
    unsigned worklist = program->blocks.size();
-   std::vector<uint16_t> phi_sgpr_ops(program->blocks.size());
+   std::vector<PhiInfo> phi_info(program->blocks.size());
    RegisterDemand new_demand;
 
    program->needs_vcc = false;
@@ -396,8 +415,14 @@ live_var_analysis(Program* program)
    while (worklist) {
       unsigned block_idx = --worklist;
       process_live_temps_per_block(program, result, &program->blocks[block_idx], worklist,
-                                   phi_sgpr_ops);
+                                   phi_info);
       new_demand.update(program->blocks[block_idx].register_demand);
+   }
+
+   /* Handle branches: we will insert copies created for linear phis just before the branch. */
+   for (Block& block : program->blocks) {
+      result.register_demand[block.index].back().sgpr += phi_info[block.index].linear_phi_defs;
+      result.register_demand[block.index].back().sgpr -= phi_info[block.index].linear_phi_ops;
    }
 
    /* calculate the program's register demand and number of waves */
