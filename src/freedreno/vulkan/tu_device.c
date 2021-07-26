@@ -156,6 +156,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_vulkan_memory_model = true,
       .KHR_driver_properties = true,
       .KHR_separate_depth_stencil_layouts = true,
+      .KHR_buffer_device_address = true,
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
@@ -560,7 +561,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->separateDepthStencilLayouts         = true;
    features->hostQueryReset                      = true;
    features->timelineSemaphore                   = true;
-   features->bufferDeviceAddress                 = false;
+   features->bufferDeviceAddress                 = true;
    features->bufferDeviceAddressCaptureReplay    = false;
    features->bufferDeviceAddressMultiDevice      = false;
    features->vulkanMemoryModel                   = true;
@@ -2574,8 +2575,9 @@ VkDeviceAddress
 tu_GetBufferDeviceAddress(VkDevice _device,
                           const VkBufferDeviceAddressInfoKHR* pInfo)
 {
-   tu_stub();
-   return 0;
+   TU_FROM_HANDLE(tu_buffer, buffer, pInfo->buffer);
+
+   return tu_buffer_iova(buffer);
 }
 
 uint64_t tu_GetBufferOpaqueCaptureAddress(
