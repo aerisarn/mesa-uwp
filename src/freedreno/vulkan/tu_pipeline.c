@@ -1439,10 +1439,9 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
    for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++) {
-      // TODO we could have a mix of half and full precision outputs,
-      // we really need to figure out half-precision from IR3_REG_HALF
       tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_REG_REGID(fragdata_regid[i]) |
-                        (false ? A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION : 0));
+                     (COND(fragdata_regid[i] & HALF_REG_ID,
+                           A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION)));
 
       if (VALIDREG(fragdata_regid[i])) {
          fs_render_components |= 0xf << (i * 4);
