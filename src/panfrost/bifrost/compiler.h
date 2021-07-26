@@ -65,6 +65,40 @@ enum bi_swizzle {
         BI_SWIZZLE_B0022 = 12, /* for b02 lanes */
 };
 
+/* Given a packed i16vec2/i8vec4 constant, apply a swizzle. Useful for constant
+ * folding and Valhall constant optimization. */
+
+static inline uint32_t
+bi_apply_swizzle(uint32_t value, enum bi_swizzle swz)
+{
+   const uint16_t *h = (const uint16_t *) &value;
+   const uint8_t  *b = (const uint8_t *) &value;
+
+#define H(h0, h1) (h[h0] | (h[h1] << 16))
+#define B(b0, b1, b2, b3) (b[b0] | (b[b1] << 8) | (b[b2] << 16) | (b[b3] << 24))
+
+   switch (swz) {
+   case BI_SWIZZLE_H00: return H(0, 0);
+   case BI_SWIZZLE_H01: return H(0, 1);
+   case BI_SWIZZLE_H10: return H(1, 0);
+   case BI_SWIZZLE_H11: return H(1, 1);
+   case BI_SWIZZLE_B0000: return B(0, 0, 0, 0);
+   case BI_SWIZZLE_B1111: return B(1, 1, 1, 1);
+   case BI_SWIZZLE_B2222: return B(2, 2, 2, 2);
+   case BI_SWIZZLE_B3333: return B(3, 3, 3, 3);
+   case BI_SWIZZLE_B0011: return B(0, 0, 1, 1);
+   case BI_SWIZZLE_B2233: return B(2, 2, 3, 3);
+   case BI_SWIZZLE_B1032: return B(1, 0, 3, 2);
+   case BI_SWIZZLE_B3210: return B(3, 2, 1, 0);
+   case BI_SWIZZLE_B0022: return B(0, 0, 2, 2);
+   }
+
+#undef H
+#undef B
+
+   unreachable("Invalid swizzle");
+}
+
 enum bi_index_type {
         BI_INDEX_NULL = 0,
         BI_INDEX_NORMAL = 1,
