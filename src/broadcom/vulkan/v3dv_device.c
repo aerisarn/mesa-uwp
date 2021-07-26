@@ -2240,8 +2240,8 @@ v3dv_GetImageMemoryRequirements2(VkDevice device,
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
          VkMemoryDedicatedRequirements *req =
             (VkMemoryDedicatedRequirements *) ext;
-         req->requiresDedicatedAllocation = image->external;
-         req->prefersDedicatedAllocation = image->external;
+         req->requiresDedicatedAllocation = image->vk.external_handle_types != 0;
+         req->prefersDedicatedAllocation = image->vk.external_handle_types != 0;
          break;
       }
       default:

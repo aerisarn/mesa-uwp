@@ -1027,7 +1027,7 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
             dst_iview->last_layer - dst_iview->first_layer + 1,
          },
          .dstOffset = { 0, 0, 0 },
-         .extent = src_iview->image->extent,
+         .extent = src_iview->image->vk.extent,
       };
 
       VkResolveImageInfo2KHR resolve_info = {

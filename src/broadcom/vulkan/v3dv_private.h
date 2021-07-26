@@ -38,6 +38,7 @@
 
 #include "vk_device.h"
 #include "vk_instance.h"
+#include "vk_image.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_util.h"
@@ -518,35 +519,19 @@ struct v3d_resource_slice {
 };
 
 struct v3dv_image {
-   struct vk_object_base base;
+   struct vk_image vk;
 
-   VkImageType type;
-   VkImageAspectFlags aspects;
-
-   VkExtent3D extent;
-   uint32_t levels;
-   uint32_t array_size;
-   uint32_t samples;
-   VkImageUsageFlags usage;
-   VkImageCreateFlags flags;
-   VkImageTiling tiling;
-
-   VkFormat vk_format;
    const struct v3dv_format *format;
-
    uint32_t cpp;
-
-   uint64_t drm_format_mod;
    bool tiled;
-   bool external;
 
    struct v3d_resource_slice slices[V3D_MAX_MIP_LEVELS];
    uint64_t size; /* Total size in bytes */
    uint32_t cube_map_stride;
-   uint32_t alignment;
 
    struct v3dv_device_memory *mem;
    VkDeviceSize mem_offset;
+   uint32_t alignment;
 };
 
 VkImageViewType v3dv_image_type_to_view_type(VkImageType type);
@@ -2111,17 +2096,6 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_query_pool, VkQueryPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_sampler, VkSampler)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_semaphore, VkSemaphore)
-
-/* This is defined as a macro so that it works for both
- * VkImageSubresourceRange and VkImageSubresourceLayers
- */
-#define v3dv_layer_count(_image, _range) \
-   ((_range)->layerCount == VK_REMAINING_ARRAY_LAYERS ? \
-    (_image)->array_size - (_range)->baseArrayLayer : (_range)->layerCount)
-
-#define v3dv_level_count(_image, _range) \
-   ((_range)->levelCount == VK_REMAINING_MIP_LEVELS ? \
-    (_image)->levels - (_range)->baseMipLevel : (_range)->levelCount)
 
 static inline int
 v3dv_ioctl(int fd, unsigned long request, void *arg)

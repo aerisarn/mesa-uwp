@@ -331,7 +331,7 @@ get_texture_size_from_image_view(struct v3dv_image_view *image_view,
       return image_view->max_level - image_view->base_level + 1;
    case QUNIFORM_TEXTURE_SAMPLES:
       assert(image_view->image);
-      return image_view->image->samples;
+      return image_view->image->vk.samples;
    default:
       unreachable("Bad texture size field");
    }

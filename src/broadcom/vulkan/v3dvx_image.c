@@ -67,9 +67,9 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
    assert(image_view->image);
    const struct v3dv_image *image = image_view->image;
 
-   assert(image->samples == VK_SAMPLE_COUNT_1_BIT ||
-          image->samples == VK_SAMPLE_COUNT_4_BIT);
-   const uint32_t msaa_scale = image->samples == VK_SAMPLE_COUNT_1_BIT ? 1 : 2;
+   assert(image->vk.samples == VK_SAMPLE_COUNT_1_BIT ||
+          image->vk.samples == VK_SAMPLE_COUNT_4_BIT);
+   const uint32_t msaa_scale = image->vk.samples == VK_SAMPLE_COUNT_1_BIT ? 1 : 2;
 
    v3dvx_pack(image_view->texture_shader_state[index], TEXTURE_SHADER_STATE, tex) {
 
@@ -101,8 +101,8 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
 
       tex.texture_type = image_view->format->tex_type;
 
-      if (image->type == VK_IMAGE_TYPE_3D) {
-         tex.image_depth = image->extent.depth;
+      if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
+         tex.image_depth = image->vk.extent.depth;
       } else {
          tex.image_depth = (image_view->last_layer - image_view->first_layer) + 1;
       }
@@ -117,13 +117,13 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
          tex.image_depth /= 6;
       }
 
-      tex.image_height = image->extent.height * msaa_scale;
-      tex.image_width = image->extent.width * msaa_scale;
+      tex.image_height = image->vk.extent.height * msaa_scale;
+      tex.image_width = image->vk.extent.width * msaa_scale;
 
       /* On 4.x, the height of a 1D texture is redefined to be the
        * upper 14 bits of the width (which is only usable with txf).
        */
-      if (image->type == VK_IMAGE_TYPE_1D) {
+      if (image->vk.image_type == VK_IMAGE_TYPE_1D) {
          tex.image_height = tex.image_width >> 14;
       }
       tex.image_width &= (1 << 14) - 1;

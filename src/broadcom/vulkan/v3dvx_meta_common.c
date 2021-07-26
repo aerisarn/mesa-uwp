@@ -387,7 +387,7 @@ emit_image_load(struct v3dv_device *device,
          load.height_in_ub_or_stride = slice->stride;
       }
 
-      if (image->samples > VK_SAMPLE_COUNT_1_BIT)
+      if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
          load.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
       else
          load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
@@ -448,7 +448,7 @@ emit_image_store(struct v3dv_device *device,
          store.height_in_ub_or_stride = slice->stride;
       }
 
-      if (image->samples > VK_SAMPLE_COUNT_1_BIT)
+      if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
          store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
       else if (is_multisample_resolve)
          store.decimate_mode = V3D_DECIMATE_MODE_4X;
@@ -474,11 +474,11 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
    /* Load image to TLB */
-   assert((image->type != VK_IMAGE_TYPE_3D &&
+   assert((image->vk.image_type != VK_IMAGE_TYPE_3D &&
            layer_offset < region->imageSubresource.layerCount) ||
-          layer_offset < image->extent.depth);
+          layer_offset < image->vk.extent.depth);
 
-   const uint32_t image_layer = image->type != VK_IMAGE_TYPE_3D ?
+   const uint32_t image_layer = image->vk.image_type != VK_IMAGE_TYPE_3D ?
       region->imageSubresource.baseArrayLayer + layer_offset :
       region->imageOffset.z + layer_offset;
 
@@ -505,8 +505,8 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
       height = region->bufferImageHeight;
 
    /* Handle copy from compressed format */
-   width = DIV_ROUND_UP(width, vk_format_get_blockwidth(image->vk_format));
-   height = DIV_ROUND_UP(height, vk_format_get_blockheight(image->vk_format));
+   width = DIV_ROUND_UP(width, vk_format_get_blockwidth(image->vk.format));
+   height = DIV_ROUND_UP(height, vk_format_get_blockheight(image->vk.format));
 
    /* If we are storing stencil from a combined depth/stencil format the
     * Vulkan spec states that the output buffer must have packed stencil
@@ -522,7 +522,7 @@ emit_copy_layer_to_buffer_per_tile_list(struct v3dv_job *job,
    uint32_t format = choose_tlb_format(framebuffer,
                                        region->imageSubresource.aspectMask,
                                        true, true, false);
-   bool msaa = image->samples > VK_SAMPLE_COUNT_1_BIT;
+   bool msaa = image->vk.samples > VK_SAMPLE_COUNT_1_BIT;
 
    emit_linear_store(cl, RENDER_TARGET_0, buffer->mem->bo,
                      buffer_offset, buffer_stride, msaa, format);
@@ -582,11 +582,11 @@ emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
-   assert((src->type != VK_IMAGE_TYPE_3D &&
+   assert((src->vk.image_type != VK_IMAGE_TYPE_3D &&
            layer_offset < region->srcSubresource.layerCount) ||
-          layer_offset < src->extent.depth);
+          layer_offset < src->vk.extent.depth);
 
-   const uint32_t src_layer = src->type != VK_IMAGE_TYPE_3D ?
+   const uint32_t src_layer = src->vk.image_type != VK_IMAGE_TYPE_3D ?
       region->srcSubresource.baseArrayLayer + layer_offset :
       region->srcOffset.z + layer_offset;
 
@@ -600,11 +600,11 @@ emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   assert((dst->type != VK_IMAGE_TYPE_3D &&
+   assert((dst->vk.image_type != VK_IMAGE_TYPE_3D &&
            layer_offset < region->dstSubresource.layerCount) ||
-          layer_offset < dst->extent.depth);
+          layer_offset < dst->vk.extent.depth);
 
-   const uint32_t dst_layer = dst->type != VK_IMAGE_TYPE_3D ?
+   const uint32_t dst_layer = dst->vk.image_type != VK_IMAGE_TYPE_3D ?
       region->dstSubresource.baseArrayLayer + layer_offset :
       region->dstOffset.z + layer_offset;
 
@@ -743,11 +743,11 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
-   assert((src->type != VK_IMAGE_TYPE_3D &&
+   assert((src->vk.image_type != VK_IMAGE_TYPE_3D &&
            layer_offset < region->srcSubresource.layerCount) ||
-          layer_offset < src->extent.depth);
+          layer_offset < src->vk.extent.depth);
 
-   const uint32_t src_layer = src->type != VK_IMAGE_TYPE_3D ?
+   const uint32_t src_layer = src->vk.image_type != VK_IMAGE_TYPE_3D ?
       region->srcSubresource.baseArrayLayer + layer_offset :
       region->srcOffset.z + layer_offset;
 
@@ -761,11 +761,11 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   assert((dst->type != VK_IMAGE_TYPE_3D &&
+   assert((dst->vk.image_type != VK_IMAGE_TYPE_3D &&
            layer_offset < region->dstSubresource.layerCount) ||
-          layer_offset < dst->extent.depth);
+          layer_offset < dst->vk.extent.depth);
 
-   const uint32_t dst_layer = dst->type != VK_IMAGE_TYPE_3D ?
+   const uint32_t dst_layer = dst->vk.image_type != VK_IMAGE_TYPE_3D ?
       region->dstSubresource.baseArrayLayer + layer_offset :
       region->dstOffset.z + layer_offset;
 
@@ -1053,8 +1053,8 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
 
    const VkImageSubresourceLayers *imgrsc = &region->imageSubresource;
-   assert((image->type != VK_IMAGE_TYPE_3D && layer < imgrsc->layerCount) ||
-          layer < image->extent.depth);
+   assert((image->vk.image_type != VK_IMAGE_TYPE_3D && layer < imgrsc->layerCount) ||
+          layer < image->vk.extent.depth);
 
    /* Load TLB from buffer */
    uint32_t width, height;
@@ -1069,8 +1069,8 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
       height = region->bufferImageHeight;
 
    /* Handle copy to compressed format using a compatible format */
-   width = DIV_ROUND_UP(width, vk_format_get_blockwidth(image->vk_format));
-   height = DIV_ROUND_UP(height, vk_format_get_blockheight(image->vk_format));
+   width = DIV_ROUND_UP(width, vk_format_get_blockwidth(image->vk.format));
+   height = DIV_ROUND_UP(height, vk_format_get_blockheight(image->vk.format));
 
    uint32_t cpp = imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT ?
                   1 : image->cpp;

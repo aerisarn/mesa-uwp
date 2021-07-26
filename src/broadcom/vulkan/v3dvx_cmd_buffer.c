@@ -127,7 +127,7 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
          load.height_in_ub_or_stride = slice->stride;
       }
 
-      if (image->samples > VK_SAMPLE_COUNT_1_BIT)
+      if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
          load.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
       else
          load.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
@@ -140,7 +140,7 @@ check_needs_load(const struct v3dv_cmd_buffer_state *state,
                  uint32_t first_subpass_idx,
                  VkAttachmentLoadOp load_op)
 {
-   /* We call this with image->aspects & aspect, so 0 means the aspect we are
+   /* We call this with image->vk.aspects & aspect, so 0 means the aspect we are
     * testing does not exist in the image.
     */
    if (!aspect)
@@ -313,7 +313,7 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
          store.height_in_ub_or_stride = slice->stride;
       }
 
-      if (image->samples > VK_SAMPLE_COUNT_1_BIT)
+      if (image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
          store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
       else if (is_multisample_resolve)
          store.decimate_mode = V3D_DECIMATE_MODE_4X;
@@ -329,7 +329,7 @@ check_needs_clear(const struct v3dv_cmd_buffer_state *state,
                   VkAttachmentLoadOp load_op,
                   bool do_clear_with_draw)
 {
-   /* We call this with image->aspects & aspect, so 0 means the aspect we are
+   /* We call this with image->vk.aspects & aspect, so 0 means the aspect we are
     * testing does not exist in the image.
     */
    if (!aspect)
@@ -370,7 +370,7 @@ check_needs_store(const struct v3dv_cmd_buffer_state *state,
                   uint32_t last_subpass_idx,
                   VkAttachmentStoreOp store_op)
 {
-   /* We call this with image->aspects & aspect, so 0 means the aspect we are
+   /* We call this with image->vk.aspects & aspect, so 0 means the aspect we are
     * testing does not exist in the image.
     */
    if (!aspect)

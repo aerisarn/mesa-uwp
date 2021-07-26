@@ -258,7 +258,7 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
          if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
             *max_bpp = MAX2(*max_bpp, att->internal_bpp);
 
-         if (att->image->samples > VK_SAMPLE_COUNT_1_BIT)
+         if (att->image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
             *msaa = true;
       }
 
@@ -267,7 +267,7 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
             framebuffer->attachments[subpass->ds_attachment.attachment];
          assert(att);
 
-         if (att->image->samples > VK_SAMPLE_COUNT_1_BIT)
+         if (att->image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
             *msaa = true;
       }
 
@@ -282,7 +282,7 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
       if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
          *max_bpp = MAX2(*max_bpp, att->internal_bpp);
 
-      if (att->image->samples > VK_SAMPLE_COUNT_1_BIT)
+      if (att->image->vk.samples > VK_SAMPLE_COUNT_1_BIT)
          *msaa = true;
    }
 
