@@ -5330,7 +5330,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       unsigned vgt_tess_distribution;
 
       vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(32) | S_028B50_ACCUM_TRI(11) |
-                              S_028B50_ACCUM_QUAD(11) | S_028B50_DONUT_SPLIT(16);
+                              S_028B50_ACCUM_QUAD(11) | S_028B50_DONUT_SPLIT_GFX81(16);
 
       /* Testing with Unigine Heaven extreme tesselation yielded best results
        * with TRAP_SPLIT = 3.
@@ -5361,7 +5361,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
       si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION,
                      S_028B50_ACCUM_ISOLINE(40) | S_028B50_ACCUM_TRI(30) | S_028B50_ACCUM_QUAD(24) |
-                     S_028B50_DONUT_SPLIT(24) | S_028B50_TRAP_SPLIT(6));
+                     S_028B50_DONUT_SPLIT_GFX9(24) | S_028B50_TRAP_SPLIT(6));
       si_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1,
                      S_028C48_MAX_ALLOC_COUNT(sscreen->info.pbb_max_alloc_count - 1) |
                      S_028C48_MAX_PRIM_PER_BATCH(1023));
