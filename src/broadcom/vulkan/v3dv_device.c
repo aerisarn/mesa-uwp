@@ -2434,7 +2434,7 @@ v3dv_CreateFramebuffer(VkDevice _device,
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
       framebuffer->attachments[i] =
          v3dv_image_view_from_handle(pCreateInfo->pAttachments[i]);
-      if (framebuffer->attachments[i]->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
+      if (framebuffer->attachments[i]->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)
          framebuffer->color_attachment_count++;
    }
 

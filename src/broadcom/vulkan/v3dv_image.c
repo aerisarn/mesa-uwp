@@ -452,11 +452,9 @@ v3dv_image_type_to_view_type(VkImageType type)
 }
 
 static enum pipe_swizzle
-vk_component_mapping_to_pipe_swizzle(VkComponentSwizzle comp,
-                                     VkComponentSwizzle swz)
+vk_component_mapping_to_pipe_swizzle(VkComponentSwizzle swz)
 {
-   if (swz == VK_COMPONENT_SWIZZLE_IDENTITY)
-      swz = comp;
+   assert(swz != VK_COMPONENT_SWIZZLE_IDENTITY);
 
    switch (swz) {
    case VK_COMPONENT_SWIZZLE_ZERO:
@@ -486,59 +484,15 @@ v3dv_CreateImageView(VkDevice _device,
    V3DV_FROM_HANDLE(v3dv_image, image, pCreateInfo->image);
    struct v3dv_image_view *iview;
 
-   iview = vk_object_zalloc(&device->vk, pAllocator, sizeof(*iview),
-                            VK_OBJECT_TYPE_IMAGE_VIEW);
+   iview = vk_image_view_create(&device->vk, pCreateInfo, pAllocator,
+                                sizeof(*iview));
    if (iview == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
 
-   assert(range->layerCount > 0);
-   assert(range->baseMipLevel < image->vk.mip_levels);
-
-#ifdef DEBUG
-   switch (image->vk.image_type) {
-   case VK_IMAGE_TYPE_1D:
-   case VK_IMAGE_TYPE_2D:
-      assert(range->baseArrayLayer +
-             vk_image_subresource_layer_count(&image->vk, range) - 1 <=
-             image->vk.array_layers);
-      break;
-   case VK_IMAGE_TYPE_3D:
-      assert(range->baseArrayLayer +
-             vk_image_subresource_layer_count(&image->vk, range) - 1
-             <= u_minify(image->vk.extent.depth, range->baseMipLevel));
-      /* VK_KHR_maintenance1 */
-      assert(pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_2D ||
-             ((image->vk.create_flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) &&
-              range->levelCount == 1 && range->layerCount == 1));
-      assert(pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_2D_ARRAY ||
-             ((image->vk.create_flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) &&
-              range->levelCount == 1));
-      break;
-   default:
-      unreachable("bad VkImageType");
-   }
-#endif
-
-   iview->image = image;
-   iview->aspects = range->aspectMask;
-   iview->type = pCreateInfo->viewType;
-
-   iview->base_level = range->baseMipLevel;
-   iview->max_level = iview->base_level +
-                      vk_image_subresource_level_count(&image->vk, range) - 1;
-   iview->extent = (VkExtent3D) {
-      .width  = u_minify(image->vk.extent.width , iview->base_level),
-      .height = u_minify(image->vk.extent.height, iview->base_level),
-      .depth  = u_minify(image->vk.extent.depth , iview->base_level),
-   };
-
-   iview->first_layer = range->baseArrayLayer;
-   iview->last_layer = range->baseArrayLayer +
-                       vk_image_subresource_layer_count(&image->vk, range) - 1;
-   iview->offset =
-      v3dv_layer_offset(image, iview->base_level, iview->first_layer);
+   iview->offset = v3dv_layer_offset(image, iview->vk.base_mip_level,
+                                     iview->vk.base_array_layer);
 
    /* If we have D24S8 format but the view only selects the stencil aspect
     * we want to re-interpret the format as RGBA8_UINT, then map our stencil
@@ -562,25 +516,22 @@ v3dv_CreateImageView(VkDevice _device,
        * better to reimplement the latter using vk component
        */
       image_view_swizzle[0] =
-         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_R,
-                                              pCreateInfo->components.r);
+         vk_component_mapping_to_pipe_swizzle(iview->vk.swizzle.r);
       image_view_swizzle[1] =
-         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_G,
-                                              pCreateInfo->components.g);
+         vk_component_mapping_to_pipe_swizzle(iview->vk.swizzle.g);
       image_view_swizzle[2] =
-         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_B,
-                                              pCreateInfo->components.b);
+         vk_component_mapping_to_pipe_swizzle(iview->vk.swizzle.b);
       image_view_swizzle[3] =
-         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_A,
-                                              pCreateInfo->components.a);
+         vk_component_mapping_to_pipe_swizzle(iview->vk.swizzle.a);
    }
 
-   iview->vk_format = format;
+   iview->vk.format = format;
    iview->format = v3dv_X(device, get_format)(format);
    assert(iview->format && iview->format->supported);
 
-   if (vk_format_is_depth_or_stencil(iview->vk_format)) {
-      iview->internal_type = v3dv_X(device, get_internal_depth_type)(iview->vk_format);
+   if (vk_format_is_depth_or_stencil(iview->vk.format)) {
+      iview->internal_type =
+         v3dv_X(device, get_internal_depth_type)(iview->vk.format);
    } else {
       v3dv_X(device, get_internal_type_bpp_for_output_format)
          (iview->format->rt_type, &iview->internal_type, &iview->internal_bpp);
@@ -609,7 +560,7 @@ v3dv_DestroyImageView(VkDevice _device,
    if (image_view == NULL)
       return;
 
-   vk_object_free(&device->vk, pAllocator, image_view);
+   vk_image_view_destroy(&device->vk, pAllocator, &image_view->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

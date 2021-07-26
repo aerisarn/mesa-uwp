@@ -240,7 +240,7 @@ v3dv_descriptor_map_get_texture_format(struct v3dv_descriptor_state *descriptor_
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       assert(descriptor->image_view);
-      *out_vk_format = descriptor->image_view->vk_format;
+      *out_vk_format = descriptor->image_view->vk.format;
       return descriptor->image_view->format;
    default:
       unreachable("descriptor type doesn't has a texture format");
@@ -266,9 +266,12 @@ v3dv_descriptor_map_get_texture_bo(struct v3dv_descriptor_state *descriptor_stat
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
       assert(descriptor->image_view);
-      return descriptor->image_view->image->mem->bo;
+      struct v3dv_image *image =
+         (struct v3dv_image *) descriptor->image_view->vk.image;
+      return image->mem->bo;
+   }
    default:
       unreachable("descriptor type doesn't has a texture bo");
    }
@@ -918,7 +921,7 @@ write_image_descriptor(struct v3dv_device *device,
 
    if (iview) {
       const uint32_t tex_state_index =
-         iview->type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY ||
+         iview->vk.view_type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY ||
          desc_type != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ? 0 : 1;
       memcpy(desc_map,
              iview->texture_shader_state[tex_state_index],

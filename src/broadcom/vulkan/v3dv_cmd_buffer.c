@@ -1015,26 +1015,28 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
          .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR,
          .srcSubresource = {
             VK_IMAGE_ASPECT_COLOR_BIT,
-            src_iview->base_level,
-            src_iview->first_layer,
-            src_iview->last_layer - src_iview->first_layer + 1,
+            src_iview->vk.base_mip_level,
+            src_iview->vk.base_array_layer,
+            src_iview->vk.layer_count,
          },
          .srcOffset = { 0, 0, 0 },
          .dstSubresource =  {
             VK_IMAGE_ASPECT_COLOR_BIT,
-            dst_iview->base_level,
-            dst_iview->first_layer,
-            dst_iview->last_layer - dst_iview->first_layer + 1,
+            dst_iview->vk.base_mip_level,
+            dst_iview->vk.base_array_layer,
+            dst_iview->vk.layer_count,
          },
          .dstOffset = { 0, 0, 0 },
-         .extent = src_iview->image->vk.extent,
+         .extent = src_iview->vk.image->extent,
       };
 
+      struct v3dv_image *src_image = (struct v3dv_image *) src_iview->vk.image;
+      struct v3dv_image *dst_image = (struct v3dv_image *) dst_iview->vk.image;
       VkResolveImageInfo2KHR resolve_info = {
          .sType = VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2_KHR,
-         .srcImage = v3dv_image_to_handle(src_iview->image),
+         .srcImage = v3dv_image_to_handle(src_image),
          .srcImageLayout = VK_IMAGE_LAYOUT_GENERAL,
-         .dstImage = v3dv_image_to_handle(dst_iview->image),
+         .dstImage = v3dv_image_to_handle(dst_image),
          .dstImageLayout = VK_IMAGE_LAYOUT_GENERAL,
          .regionCount = 1,
          .pRegions = &region,

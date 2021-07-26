@@ -550,23 +550,12 @@ VkImageViewType v3dv_image_type_to_view_type(VkImageType type);
 #define V3DV_STENCIL_CFG_LENGTH 6
 
 struct v3dv_image_view {
-   struct vk_object_base base;
+   struct vk_image_view vk;
 
-   struct v3dv_image *image;
-   VkImageAspectFlags aspects;
-   VkExtent3D extent;
-   VkImageViewType type;
-
-   VkFormat vk_format;
    const struct v3dv_format *format;
    bool swap_rb;
    uint32_t internal_bpp;
    uint32_t internal_type;
-
-   uint32_t base_level;
-   uint32_t max_level;
-   uint32_t first_layer;
-   uint32_t last_layer;
    uint32_t offset;
 
    /* Precomputed (composed from createinfo->components and formar swizzle)

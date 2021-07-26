@@ -312,26 +312,26 @@ get_texture_size_from_image_view(struct v3dv_image_view *image_view,
       /* We don't u_minify the values, as we are using the image_view
        * extents
        */
-      return image_view->extent.width;
+      return image_view->vk.extent.width;
    case QUNIFORM_IMAGE_HEIGHT:
    case QUNIFORM_TEXTURE_HEIGHT:
-      return image_view->extent.height;
+      return image_view->vk.extent.height;
    case QUNIFORM_IMAGE_DEPTH:
    case QUNIFORM_TEXTURE_DEPTH:
-      return image_view->extent.depth;
+      return image_view->vk.extent.depth;
    case QUNIFORM_IMAGE_ARRAY_SIZE:
    case QUNIFORM_TEXTURE_ARRAY_SIZE:
-      if (image_view->type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
-         return image_view->last_layer - image_view->first_layer + 1;
+      if (image_view->vk.view_type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+         return image_view->vk.layer_count;
       } else {
-         assert((image_view->last_layer - image_view->first_layer + 1) % 6 == 0);
-         return (image_view->last_layer - image_view->first_layer + 1) / 6;
+         assert(image_view->vk.layer_count % 6 == 0);
+         return image_view->vk.layer_count / 6;
       }
    case QUNIFORM_TEXTURE_LEVELS:
-      return image_view->max_level - image_view->base_level + 1;
+      return image_view->vk.level_count;
    case QUNIFORM_TEXTURE_SAMPLES:
-      assert(image_view->image);
-      return image_view->image->vk.samples;
+      assert(image_view->vk.image);
+      return image_view->vk.image->samples;
    default:
       unreachable("Bad texture size field");
    }
