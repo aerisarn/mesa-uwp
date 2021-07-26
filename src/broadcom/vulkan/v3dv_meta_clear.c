@@ -88,9 +88,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       hw_clear_value.s = clear_value->depthStencil.stencil;
    }
 
-   uint32_t level_count = range->levelCount == VK_REMAINING_MIP_LEVELS ?
-                          image->vk.mip_levels - range->baseMipLevel :
-                          range->levelCount;
+   uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
    uint32_t min_level = range->baseMipLevel;
    uint32_t max_level = range->baseMipLevel + level_count;
 
@@ -101,11 +99,9 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t min_layer;
    uint32_t max_layer;
    if (image->vk.image_type != VK_IMAGE_TYPE_3D) {
-      uint32_t layer_count = range->layerCount == VK_REMAINING_ARRAY_LAYERS ?
-                             image->vk.array_layers - range->baseArrayLayer :
-                             range->layerCount;
       min_layer = range->baseArrayLayer;
-      max_layer = range->baseArrayLayer + layer_count;
+      max_layer = range->baseArrayLayer +
+                  vk_image_subresource_layer_count(&image->vk, range);
    } else {
       min_layer = 0;
       max_layer = 0;
