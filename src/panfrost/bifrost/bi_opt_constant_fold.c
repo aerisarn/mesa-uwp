@@ -31,33 +31,15 @@
 static uint32_t
 bi_fold_constant(bi_instr *I, bool *unsupported)
 {
-        uint32_t a = I->src[0].value;
-        uint32_t b = I->src[1].value;
+        uint32_t a = bi_apply_swizzle(I->src[0].value, I->src[0].swizzle);
+        uint32_t b = bi_apply_swizzle(I->src[1].value, I->src[1].swizzle);
 
         switch (I->op) {
         case BI_OPCODE_SWZ_V2I16:
-        {
-                uint16_t lo = (a & 0xFFFF);
-                uint16_t hi = (a >> 16);
-
-                enum bi_swizzle swz = I->src[0].swizzle;
-                assert(swz < BI_SWIZZLE_H11);
-
-                /* Note order is H00, H01, H10, H11 */
-                return (((swz & (1 << 1)) ? hi : lo) << 0) |
-                        (((swz & (1 << 0)) ? hi : lo) << 16);
-        }
+                return a;
 
         case BI_OPCODE_MKVEC_V2I16:
-        {
-                bool hi_a = I->src[0].swizzle & BI_SWIZZLE_H11;
-                bool hi_b = I->src[1].swizzle & BI_SWIZZLE_H11;
-
-                uint16_t lo = (hi_a ? (a >> 16) : (a & 0xFFFF));
-                uint16_t hi = (hi_b ? (b >> 16) : (b & 0xFFFF));
-
-                return (hi << 16) | lo;
-        }
+                return (b << 16) | (a & 0xFFFF);
 
         default:
                 *unsupported = true;
