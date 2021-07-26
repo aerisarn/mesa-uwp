@@ -1577,6 +1577,7 @@ crocus_transfer_map(struct pipe_context *ctx,
    struct crocus_context *ice = (struct crocus_context *)ctx;
    struct crocus_resource *res = (struct crocus_resource *)resource;
    struct isl_surf *surf = &res->surf;
+   struct crocus_screen *screen = (struct crocus_screen *)ctx->screen;
 
    if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       /* Replace the backing storage with a fresh buffer for non-async maps */
@@ -1690,7 +1691,7 @@ crocus_transfer_map(struct pipe_context *ctx,
       if (surf->tiling == ISL_TILING_W) {
          /* TODO: Teach crocus_map_tiled_memcpy about W-tiling... */
          crocus_map_s8(map);
-      } else if (surf->tiling != ISL_TILING_LINEAR) {
+      } else if (surf->tiling != ISL_TILING_LINEAR && screen->devinfo.ver > 4) {
          crocus_map_tiled_memcpy(map);
       } else {
          crocus_map_direct(map);
