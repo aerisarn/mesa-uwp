@@ -177,3 +177,30 @@ bi_side_effects(enum bi_opcode op)
 
         unreachable("Invalid message type");
 }
+
+/* Branch reconvergence is required when the execution mask may change
+ * between adjacent instructions (clauses). This occurs for conditional
+ * branches and for the last instruction (clause) in a block whose
+ * fallthrough successor has multiple predecessors.
+ */
+
+bool
+bi_reconverge_branches(bi_block *block)
+{
+        /* Last block of a program */
+        if (!block->successors[0]) {
+                assert(!block->successors[1]);
+                return true;
+        }
+
+        /* Multiple successors? We're branching */
+        if (block->successors[1])
+                return true;
+
+        struct bi_block *succ = block->successors[0];
+        assert(succ->predecessors);
+        unsigned count = succ->predecessors->entries;
+
+        /* Reconverge if there are multiple predecessors */
+        return (count != 1);
+}
