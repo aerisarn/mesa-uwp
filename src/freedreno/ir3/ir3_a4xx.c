@@ -355,6 +355,12 @@ emit_intrinsic_atomic_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    return atomic;
 }
 
+static struct ir3_instruction *
+emit_intrinsic_atomic_global(struct ir3_context *ctx, nir_intrinsic_instr *intr)
+{
+   unreachable("Global atomic are unimplemented on A5xx");
+}
+
 const struct ir3_context_funcs ir3_a4xx_funcs = {
    .emit_intrinsic_load_ssbo = emit_intrinsic_load_ssbo,
    .emit_intrinsic_store_ssbo = emit_intrinsic_store_ssbo,
@@ -365,4 +371,5 @@ const struct ir3_context_funcs ir3_a4xx_funcs = {
    .emit_intrinsic_image_size = emit_intrinsic_image_size_tex,
    .emit_intrinsic_load_global_ir3 = NULL,
    .emit_intrinsic_store_global_ir3 = NULL,
+   .emit_intrinsic_atomic_global = emit_intrinsic_atomic_global,
 };

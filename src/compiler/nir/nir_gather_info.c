@@ -344,6 +344,16 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    case nir_intrinsic_global_atomic_umax:
    case nir_intrinsic_global_atomic_umin:
    case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_global_atomic_add_ir3:
+   case nir_intrinsic_global_atomic_and_ir3:
+   case nir_intrinsic_global_atomic_comp_swap_ir3:
+   case nir_intrinsic_global_atomic_exchange_ir3:
+   case nir_intrinsic_global_atomic_imax_ir3:
+   case nir_intrinsic_global_atomic_imin_ir3:
+   case nir_intrinsic_global_atomic_or_ir3:
+   case nir_intrinsic_global_atomic_umax_ir3:
+   case nir_intrinsic_global_atomic_umin_ir3:
+   case nir_intrinsic_global_atomic_xor_ir3:
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_atomic_comp_swap:
