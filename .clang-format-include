@@ -5,3 +5,4 @@ src/gallium/drivers/i915
 src/amd/vulkan/**/*
 src/amd/compiler/**/*
 src/egl/**/*
+src/etnaviv/isa/**/*

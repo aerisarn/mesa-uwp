@@ -13,6 +13,7 @@
         - src/etnaviv/ci/$GPU_VERSION-skips.txt
         - src/etnaviv/drm/**/*
         - src/etnaviv/drm-shim/**/*
+        - src/etnaviv/isa/**/*
         - src/gallium/drivers/etnaviv/**/*
         - src/gallium/winsys/etnaviv/**/*
         - src/gallium/auxiliary/renderonly/**/*

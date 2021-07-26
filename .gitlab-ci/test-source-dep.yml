@@ -253,6 +253,7 @@
         - src/egl/**/*
         - src/amd/vulkan/**/*
         - src/amd/compiler/**/*
+        - src/etnaviv/isa/**/*
       when: on_success
       allow_failure: false
     # in other pipelines, formatting checks are allowed to fail
