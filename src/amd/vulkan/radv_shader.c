@@ -294,8 +294,8 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
             if (nir_intrinsic_desc_type(intrin) == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
                nir_ssa_def *addr =
                   convert_pointer_to_64(&b, pdev,
-                                        nir_iadd(&b, nir_channels(&b, intrin->src[0].ssa, 1),
-                                                 nir_channels(&b, intrin->src[0].ssa, 2)));
+                                        nir_iadd(&b, nir_channel(&b, intrin->src[0].ssa, 0),
+                                                 nir_channel(&b, intrin->src[0].ssa, 1)));
 
                def = nir_build_load_global(&b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE,
                                            .align_mul = 8, .align_offset = 0);
