@@ -558,6 +558,13 @@ surface_dmabuf_feedback_done(void *data,
 {
    struct dri2_egl_surface *dri2_surf = data;
 
+   /* The dma-buf feedback protocol states that surface dma-buf feedback should
+    * be sent by the compositor only if its buffers are using a suboptimal pair
+    * of format and modifier. We can't change the buffer format, but we can
+    * reallocate with another modifier. So we raise this flag in order to force
+    * buffer reallocation based on the dma-buf feedback sent. */
+   dri2_surf->received_dmabuf_feedback = true;
+
    dmabuf_feedback_fini(&dri2_surf->dmabuf_feedback);
    dri2_surf->dmabuf_feedback = dri2_surf->pending_dmabuf_feedback;
    dmabuf_feedback_init(&dri2_surf->pending_dmabuf_feedback);
@@ -879,6 +886,68 @@ create_dri_image_diff_gpu(struct dri2_egl_surface *dri2_surf,
 }
 
 static void
+create_dri_image_from_dmabuf_feedback(struct dri2_egl_surface *dri2_surf,
+                                      unsigned int dri_image_format, uint32_t use_flags)
+{
+   struct dri2_egl_display *dri2_dpy =
+      dri2_egl_display(dri2_surf->base.Resource.Display);
+   int visual_idx;
+   uint64_t *modifiers;
+   unsigned int num_modifiers;
+   uint32_t flags;
+
+   /* We don't have valid dma-buf feedback, so return */
+   if (dri2_surf->dmabuf_feedback.main_device == 0)
+      return;
+
+   visual_idx = dri2_wl_visual_idx_from_fourcc(dri2_surf->format);
+   assert(visual_idx != -1);
+
+   /* Iterates through the dma-buf feedback to pick a new set of modifiers. The
+    * tranches are sent in descending order of preference by the compositor, so
+    * the first set that we can pick is the best one. For now we still can't
+    * specify the target device in order to make the render device try its best
+    * to allocate memory that can be directly scanned out by the KMS device. But
+    * in the future this may change (newer versions of
+    * createImageWithModifiers). Also, we are safe to pick modifiers from
+    * tranches whose target device differs from the main device, as compositors
+    * do not expose (in dma-buf feedback tranches) formats/modifiers that are
+    * incompatible with the main device. */
+   util_dynarray_foreach(&dri2_surf->dmabuf_feedback.tranches,
+                         struct dmabuf_feedback_tranche, tranche) {
+      /* Ignore tranches that do not contain dri2_surf->format */
+      if (!BITSET_TEST(tranche->formats.formats_bitmap, visual_idx))
+         continue;
+      modifiers = util_dynarray_begin(&tranche->formats.modifiers[visual_idx]);
+      num_modifiers = util_dynarray_num_elements(&tranche->formats.modifiers[visual_idx],
+                                                 uint64_t);
+
+      /* For the purposes of this function, an INVALID modifier on
+       * its own means the modifiers aren't supported. */
+      if (num_modifiers == 0 ||
+          (num_modifiers == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID)) {
+         num_modifiers = 0;
+         modifiers = NULL;
+      }
+
+      flags = use_flags;
+      if (tranche->flags & ZWP_LINUX_DMABUF_FEEDBACK_V1_TRANCHE_FLAGS_SCANOUT)
+         flags |= __DRI_IMAGE_USE_SCANOUT;
+
+      dri2_surf->back->dri_image =
+         loader_dri_create_image(dri2_dpy->dri_screen, dri2_dpy->image,
+                                 dri2_surf->base.Width,
+                                 dri2_surf->base.Height,
+                                 dri_image_format,
+                                 dri2_dpy->is_different_gpu ? 0 : flags,
+                                 modifiers, num_modifiers, NULL);
+
+      if (dri2_surf->back->dri_image)
+         return;
+   }
+}
+
+static void
 create_dri_image(struct dri2_egl_surface *dri2_surf,
                  unsigned int dri_image_format, uint32_t use_flags)
 {
@@ -987,7 +1056,10 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
    }
 
    if (dri2_surf->back->dri_image == NULL) {
-      create_dri_image(dri2_surf, dri_image_format, use_flags);
+      if (dri2_surf->wl_dmabuf_feedback)
+         create_dri_image_from_dmabuf_feedback(dri2_surf, dri_image_format, use_flags);
+      if (dri2_surf->back->dri_image == NULL)
+         create_dri_image(dri2_surf, dri_image_format, use_flags);
       dri2_surf->back->age = 0;
    }
 
@@ -1036,9 +1108,10 @@ update_buffers(struct dri2_egl_surface *dri2_surf)
       dri2_surf->dy = dri2_surf->wl_win->dy;
    }
 
-   if (dri2_surf->resized) {
-       dri2_wl_release_buffers(dri2_surf);
-       dri2_surf->resized = false;
+   if (dri2_surf->resized || dri2_surf->received_dmabuf_feedback) {
+      dri2_wl_release_buffers(dri2_surf);
+      dri2_surf->resized = false;
+      dri2_surf->received_dmabuf_feedback = false;
    }
 
    if (get_back_bo(dri2_surf) < 0) {

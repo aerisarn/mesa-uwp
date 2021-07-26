@@ -332,6 +332,7 @@ struct dri2_egl_surface
    bool compositor_using_another_device;
    int format;
    bool resized;
+   bool received_dmabuf_feedback;
 #endif
 
 #ifdef HAVE_DRM_PLATFORM
