@@ -831,6 +831,77 @@ va_pack_flow(bi_block *block, bi_instr *I)
    return VA_FLOW_NONE;
 }
 
+static unsigned
+va_instructions_in_block(bi_block *block)
+{
+   unsigned offset = 0;
+
+   bi_foreach_instr_in_block(block, _) {
+      offset++;
+   }
+
+   return offset;
+}
+
+/* Calculate branch_offset from a branch_target for a direct relative branch */
+
+static void
+va_lower_branch_target(bi_context *ctx, bi_block *start, bi_instr *I)
+{
+   /* Precondition: unlowered relative branch */
+   bi_block *target = I->branch_target;
+   assert(target != NULL);
+
+   /* Signed since we might jump backwards */
+   signed offset = 0;
+
+   /* Determine if the target block is strictly greater in source order */
+   bool forwards = target->name > start->name;
+
+   if (forwards) {
+      /* We have to jump through this block */
+      bi_foreach_instr_in_block_from(start, _, I) {
+         offset++;
+      }
+
+      /* We then need to jump over every following block until the target */
+      bi_foreach_block_from(ctx, start, blk) {
+         /* End just before the target */
+         if (blk == target)
+            break;
+
+         /* Count other blocks */
+         if (blk != start)
+            offset += va_instructions_in_block(blk);
+      }
+   } else {
+      /* Jump through the beginning of this block */
+      bi_foreach_instr_in_block_from_rev(start, ins, I) {
+         if (ins != I)
+            offset--;
+      }
+
+      /* Jump over preceding blocks up to and including the target to get to
+       * the beginning of the target */
+      bi_foreach_block_from_rev(ctx, start, blk) {
+         if (blk == start)
+            continue;
+
+         offset -= va_instructions_in_block(blk);
+
+         /* End just after the target */
+         if (blk == target)
+            break;
+      }
+   }
+
+   /* Offset is relative to the next instruction, so bias */
+   offset--;
+
+   /* Update the instruction */
+   I->branch_offset = offset;
+}
+
 void
 bi_pack_valhall(bi_context *ctx, struct util_dynarray *emission)
 {
@@ -840,6 +911,9 @@ bi_pack_valhall(bi_context *ctx, struct util_dynarray *emission)
 
    bi_foreach_block(ctx, block) {
       bi_foreach_instr_in_block(block, I) {
+         if (I->op == BI_OPCODE_BRANCHZ_I16)
+            va_lower_branch_target(ctx, block, I);
+
          unsigned flow = va_pack_flow(block, I);
          uint64_t hex = va_pack_instr(I, flow);
          util_dynarray_append(emission, uint64_t, hex);
