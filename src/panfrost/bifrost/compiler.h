@@ -889,12 +889,14 @@ void bi_opt_mod_prop_backward(bi_context *ctx);
 void bi_opt_dead_code_eliminate(bi_context *ctx);
 void bi_opt_dce_post_ra(bi_context *ctx);
 void bi_opt_push_ubo(bi_context *ctx);
-void bi_opt_constant_fold(bi_context *ctx);
 void bi_lower_swizzle(bi_context *ctx);
 void bi_lower_fau(bi_context *ctx);
 void bi_schedule(bi_context *ctx);
 void bi_assign_scoreboard(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
+
+uint32_t bi_fold_constant(bi_instr *I, bool *unsupported);
+void bi_opt_constant_fold(bi_context *ctx);
 
 /* Test suite */
 int bi_test_scheduler(void);
