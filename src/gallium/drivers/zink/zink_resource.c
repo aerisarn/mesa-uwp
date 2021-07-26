@@ -1035,16 +1035,10 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
       return false;
 
    struct zink_resource_object *old_obj = res->obj;
-   bool has_usage = zink_resource_has_usage(res);
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, NULL, NULL, 0);
    if (!new_obj) {
       debug_printf("new backing resource alloc failed!");
       return false;
-   }
-   bool needs_unref = true;
-   if (has_usage) {
-      zink_batch_reference_resource_move(&ctx->batch, res);
-      needs_unref = false;
    }
    res->obj = new_obj;
    res->access_stage = 0;
@@ -1052,8 +1046,7 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    res->unordered_barrier = false;
    zink_resource_rebind(ctx, res);
    zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
-   if (needs_unref)
-      zink_resource_object_reference(screen, &old_obj, NULL);
+   zink_batch_reference_resource_move(&ctx->batch, res);
    return true;
 }
 
