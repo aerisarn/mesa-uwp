@@ -1219,7 +1219,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          }
 #endif
 #if V3D_VERSION >= 71
-         unreachable("HW generation 71 not supported yet.");
+         cl_emit(rcl, CLEAR_RENDER_TARGETS, clear_rt);
 #endif
       }
       cl_emit(rcl, END_OF_TILE_MARKER, end);
