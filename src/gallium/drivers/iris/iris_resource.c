@@ -940,9 +940,7 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
       iris_bo_reference(r[2]->aux.clear_color_bo);
       r[0]->aux.clear_color_bo = r[2]->aux.clear_color_bo;
       r[0]->aux.clear_color_offset = r[2]->aux.clear_color_offset;
-      memcpy(res->aux.clear_color.f32,
-             iris_bo_map(NULL, res->aux.clear_color_bo, MAP_READ|MAP_RAW) +
-             res->aux.clear_color_offset, sizeof(res->aux.clear_color.f32));
+      r[0]->aux.clear_color_unknown = true;
    } else if (num_main_planes == 2 && num_planes == 4) {
       import_aux_info(r[0], r[2]);
       import_aux_info(r[1], r[3]);
@@ -2373,8 +2371,10 @@ iris_resource_set_clear_color(struct iris_context *ice,
                               struct iris_resource *res,
                               union isl_color_value color)
 {
-   if (memcmp(&res->aux.clear_color, &color, sizeof(color)) != 0) {
+   if (res->aux.clear_color_unknown ||
+       memcmp(&res->aux.clear_color, &color, sizeof(color)) != 0) {
       res->aux.clear_color = color;
+      res->aux.clear_color_unknown = false;
       return true;
    }
 

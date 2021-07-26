@@ -957,13 +957,15 @@ iris_resource_prepare_texture(struct iris_context *ice,
  */
 bool
 iris_render_formats_color_compatible(enum isl_format a, enum isl_format b,
-                                     union isl_color_value color)
+                                     union isl_color_value color,
+                                     bool clear_color_unknown)
 {
    if (a == b)
       return true;
 
    /* A difference in color space doesn't matter for 0/1 values. */
-   if (isl_format_srgb_to_linear(a) == isl_format_srgb_to_linear(b) &&
+   if (!clear_color_unknown &&
+       isl_format_srgb_to_linear(a) == isl_format_srgb_to_linear(b) &&
        isl_color_value_is_zero_one(color, a)) {
       return true;
    }
@@ -1014,7 +1016,8 @@ iris_resource_render_aux_usage(struct iris_context *ice,
        */
       if (!iris_render_formats_color_compatible(render_format,
                                                 res->surf.format,
-                                                res->aux.clear_color)) {
+                                                res->aux.clear_color,
+                                                res->aux.clear_color_unknown)) {
          return ISL_AUX_USAGE_NONE;
       }
 

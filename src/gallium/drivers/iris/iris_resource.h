@@ -114,8 +114,16 @@ struct iris_resource {
       } extra_aux;
 
       /**
+       * When importing resources with a clear color, we may not know the
+       * clear color on the CPU at first.
+       */
+      bool clear_color_unknown;
+
+      /**
        * Fast clear color for this surface.  For depth surfaces, the clear
        * value is stored as a float32 in the red component.
+       *
+       * Do not rely on this value if clear_color_unknown is set.
        */
       union isl_color_value clear_color;
 
@@ -516,7 +524,8 @@ bool iris_has_color_unresolved(const struct iris_resource *res,
 
 bool iris_render_formats_color_compatible(enum isl_format a,
                                           enum isl_format b,
-                                          union isl_color_value color);
+                                          union isl_color_value color,
+                                          bool clear_color_unknown);
 enum isl_aux_usage iris_resource_render_aux_usage(struct iris_context *ice,
                                                   struct iris_resource *res,
                                                   uint32_t level,
