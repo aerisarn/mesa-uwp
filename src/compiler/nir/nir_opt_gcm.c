@@ -37,9 +37,22 @@
  * verify correcness.
  */
 
+/* This is used to stop GCM moving instruction out of a loop if the loop
+ * contains too many instructions and moving them would create excess spilling.
+ *
+ * TODO: Figure out a better way to decide if we should remove instructions from
+ * a loop.
+ */
+#define MAX_LOOP_INSTRUCTIONS 100
+
 struct gcm_block_info {
    /* Number of loops this block is inside */
    unsigned loop_depth;
+
+   unsigned loop_instr_count;
+
+   /* The loop the block is nested inside or NULL */
+   nir_loop *loop;
 
    /* The last instruction inserted into this block.  This is used as we
     * traverse the instructions and insert them back into the program to
@@ -80,27 +93,63 @@ struct gcm_state {
    struct gcm_instr_info *instr_infos;
 };
 
+static unsigned
+get_loop_instr_count(struct exec_list *cf_list)
+{
+   unsigned loop_instr_count = 0;
+   foreach_list_typed(nir_cf_node, node, node, cf_list) {
+      switch (node->type) {
+      case nir_cf_node_block: {
+         nir_block *block = nir_cf_node_as_block(node);
+         nir_foreach_instr(instr, block) {
+            loop_instr_count++;
+         }
+         break;
+      }
+      case nir_cf_node_if: {
+         nir_if *if_stmt = nir_cf_node_as_if(node);
+         loop_instr_count += get_loop_instr_count(&if_stmt->then_list);
+         loop_instr_count += get_loop_instr_count(&if_stmt->else_list);
+         break;
+      }
+      case nir_cf_node_loop: {
+         nir_loop *loop = nir_cf_node_as_loop(node);
+         loop_instr_count += get_loop_instr_count(&loop->body);
+         break;
+      }
+      default:
+         unreachable("Invalid CF node type");
+      }
+   }
+
+   return loop_instr_count;
+}
+
 /* Recursively walks the CFG and builds the block_info structure */
 static void
 gcm_build_block_info(struct exec_list *cf_list, struct gcm_state *state,
-                     unsigned loop_depth)
+                     nir_loop *loop, unsigned loop_depth,
+                     unsigned loop_instr_count)
 {
    foreach_list_typed(nir_cf_node, node, node, cf_list) {
       switch (node->type) {
       case nir_cf_node_block: {
          nir_block *block = nir_cf_node_as_block(node);
          state->blocks[block->index].loop_depth = loop_depth;
+         state->blocks[block->index].loop_instr_count = loop_instr_count;
+         state->blocks[block->index].loop = loop;
          break;
       }
       case nir_cf_node_if: {
          nir_if *if_stmt = nir_cf_node_as_if(node);
-         gcm_build_block_info(&if_stmt->then_list, state, loop_depth);
-         gcm_build_block_info(&if_stmt->else_list, state, loop_depth);
+         gcm_build_block_info(&if_stmt->then_list, state, loop, loop_depth, ~0u);
+         gcm_build_block_info(&if_stmt->else_list, state, loop, loop_depth, ~0u);
          break;
       }
       case nir_cf_node_loop: {
          nir_loop *loop = nir_cf_node_as_loop(node);
-         gcm_build_block_info(&loop->body, state, loop_depth + 1);
+         gcm_build_block_info(&loop->body, state, loop, loop_depth + 1,
+                              get_loop_instr_count(&loop->body));
          break;
       }
       default:
@@ -342,6 +391,46 @@ gcm_schedule_early_instr(nir_instr *instr, struct gcm_state *state)
    nir_foreach_src(instr, gcm_schedule_early_src, state);
 }
 
+static bool
+set_block_for_loop_instr(struct gcm_state *state, nir_instr *instr,
+                         nir_block *block)
+{
+   if (nir_block_dominates(instr->block, block))
+      return true;
+
+   /* If the loop only executes a single time i.e its wrapped in a:
+    *    do{ ... break; } while(true)
+    * Don't move the instruction as it will not help anything.
+    */
+   nir_loop *loop = state->blocks[instr->block->index].loop;
+   if (loop->info->limiting_terminator == NULL && !loop->info->complex_loop &&
+       nir_block_ends_in_break(nir_loop_last_block(loop)))
+      return false;
+
+   /* Being too aggressive with how we pull instructions out of loops can
+    * result in extra register pressure and spilling. For example its fairly
+    * common for loops in compute shaders to calculate SSBO offsets using
+    * the workgroup id, subgroup id and subgroup invocation, pulling all
+    * these calculations outside the loop causes register pressure.
+    *
+    * To work around these issues for now we only allow constant and texture
+    * instructions to be moved outside their original loops, or instructions
+    * where the total loop instruction count is less than
+    * MAX_LOOP_INSTRUCTIONS.
+    *
+    * TODO: figure out some more heuristics to allow more to be moved out of
+    * loops.
+    */
+   if (state->blocks[instr->block->index].loop_instr_count < MAX_LOOP_INSTRUCTIONS)
+      return true;
+
+   if (instr->type == nir_instr_type_load_const ||
+       instr->type == nir_instr_type_tex)
+      return true;
+
+   return false;
+}
+
 static nir_block *
 gcm_choose_block_for_instr(nir_instr *instr, nir_block *early_block,
                            nir_block *late_block, struct gcm_state *state)
@@ -350,22 +439,9 @@ gcm_choose_block_for_instr(nir_instr *instr, nir_block *early_block,
 
    nir_block *best = late_block;
    for (nir_block *block = late_block; block != NULL; block = block->imm_dom) {
-      /* Being too aggressive with how we pull instructions out of loops can
-       * result in extra register pressure and spilling. For example its fairly
-       * common for loops in compute shaders to calculate SSBO offsets using
-       * the workgroup id, subgroup id and subgroup invocation, pulling all
-       * these calculations outside the loop causes register pressure.
-       *
-       * To work around these issues for now we only allow constant and texture
-       * instructions to be moved outside their original loops.
-       *
-       * TODO: figure out some heuristics to allow more to be moved out of loops.
-       */
       if (state->blocks[block->index].loop_depth <
           state->blocks[best->index].loop_depth &&
-          (nir_block_dominates(instr->block, block) ||
-           instr->type == nir_instr_type_load_const ||
-           instr->type == nir_instr_type_tex))
+          set_block_for_loop_instr(state, instr, block))
          best = block;
       else if (block == instr->block)
          best = block;
@@ -557,10 +633,12 @@ gcm_place_instr(nir_instr *instr, struct gcm_state *state)
 }
 
 static bool
-opt_gcm_impl(nir_function_impl *impl, bool value_number)
+opt_gcm_impl(nir_shader *shader, nir_function_impl *impl, bool value_number)
 {
    nir_metadata_require(impl, nir_metadata_block_index |
                               nir_metadata_dominance);
+   nir_metadata_require(impl, nir_metadata_loop_analysis,
+                        shader->options->force_indirect_unrolling);
 
    /* A previous pass may have left pass_flags dirty, so clear it all out. */
    nir_foreach_block(block, impl)
@@ -575,7 +653,7 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
    exec_list_make_empty(&state.instrs);
    state.blocks = rzalloc_array(NULL, struct gcm_block_info, impl->num_blocks);
 
-   gcm_build_block_info(&impl->body, &state, 0);
+   gcm_build_block_info(&impl->body, &state, NULL, 0, ~0u);
 
    gcm_pin_instructions(impl, &state);
 
@@ -610,7 +688,8 @@ opt_gcm_impl(nir_function_impl *impl, bool value_number)
    ralloc_free(state.instr_infos);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
+                               nir_metadata_dominance |
+                               nir_metadata_loop_analysis);
 
    return state.progress;
 }
@@ -622,7 +701,7 @@ nir_opt_gcm(nir_shader *shader, bool value_number)
 
    nir_foreach_function(function, shader) {
       if (function->impl)
-         progress |= opt_gcm_impl(function->impl, value_number);
+         progress |= opt_gcm_impl(shader, function->impl, value_number);
    }
 
    return progress;
