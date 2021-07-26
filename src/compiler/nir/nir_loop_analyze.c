@@ -416,6 +416,10 @@ compute_induction_information(loop_info_state *state)
             alu_src_var = src_var;
             nir_alu_instr *alu = nir_instr_as_alu(src_var->def->parent_instr);
 
+            /* Check for unsupported alu operations */
+            if (alu->op != nir_op_iadd && alu->op != nir_op_fadd)
+               break;
+
             if (nir_op_infos[alu->op].num_inputs == 2) {
                for (unsigned i = 0; i < 2; i++) {
                   /* Is one of the operands const or uniform, and the other the phi.
@@ -857,9 +861,8 @@ calculate_iterations(nir_const_value initial, nir_const_value step,
              induction_base_type);
    }
 
-   /* Check for nsupported alu operations */
-   if (alu->op != nir_op_iadd && alu->op != nir_op_fadd)
-      return -1;
+   /* Only variable with these update ops were marked as induction. */
+   assert(alu->op == nir_op_iadd || alu->op == nir_op_fadd);
 
    /* do-while loops can increment the starting value before the condition is
     * checked. e.g.
