@@ -485,6 +485,24 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
             case 1:
                memcpy(&spec_entries[i].value.u8, data, sizeof(uint8_t));
                break;
+            case 0:
+               /* The Vulkan spec says:
+                *
+                *    "For a constantID specialization constant declared in a shader, size must match
+                *    the byte size of the constantID. If the specialization constant is of type
+                *    boolean, size must be the byte size of VkBool32."
+                *
+                * Therefore, since only scalars can be decorated as specialization constants, we can
+                * assume that if it doesn't have a size of 1, 2, 4, or 8, any use in a shader would
+                * be invalid usage.  The spec further says:
+                *
+                *    "If a constantID value is not a specialization constant ID used in the shader,
+                *    that map entry does not affect the behavior of the pipeline."
+                *
+                * so we should ignore any invalid specialization constants rather than crash or
+                * error out when we see one.
+                */
+               break;
             default:
                assert(!"Invalid spec constant size");
                break;
