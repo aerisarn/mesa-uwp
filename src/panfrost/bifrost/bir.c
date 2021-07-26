@@ -197,10 +197,10 @@ bi_reconverge_branches(bi_block *block)
         if (block->successors[1])
                 return true;
 
+        /* Must have at least one successor */
         struct bi_block *succ = block->successors[0];
         assert(succ->predecessors);
-        unsigned count = succ->predecessors->entries;
 
-        /* Reconverge if there are multiple predecessors */
-        return (count != 1);
+        /* Reconverge if the successor has multiple predecessors */
+        return (succ->predecessors->entries > 1);
 }
