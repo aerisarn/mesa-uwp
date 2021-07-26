@@ -7105,7 +7105,7 @@ translate_nir_scope(nir_scope scope)
    case NIR_SCOPE_WORKGROUP: return scope_workgroup;
    case NIR_SCOPE_QUEUE_FAMILY: return scope_queuefamily;
    case NIR_SCOPE_DEVICE: return scope_device;
-   case NIR_SCOPE_SHADER_CALL: unreachable("unsupported scope");
+   case NIR_SCOPE_SHADER_CALL: return scope_invocation;
    }
    unreachable("invalid scope");
 }
