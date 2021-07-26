@@ -92,4 +92,15 @@ nir_is_trivial_loop_if(nir_if *nif, nir_block *break_block)
    return true;
 }
 
+static inline bool
+nir_is_supported_terminator_condition(nir_ssa_scalar cond)
+{
+   if (!nir_ssa_scalar_is_alu(cond))
+      return false;
+
+   nir_alu_instr *alu = nir_instr_as_alu(cond.def->parent_instr);
+   return nir_alu_instr_is_comparison(alu) &&
+          nir_op_infos[alu->op].num_inputs == 2;
+}
+
 #endif /* NIR_LOOP_ANALYZE_H */

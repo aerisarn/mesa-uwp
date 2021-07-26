@@ -857,17 +857,6 @@ inverse_comparison(nir_op alu_op)
 }
 
 static bool
-is_supported_terminator_condition(nir_ssa_scalar cond)
-{
-   if (!nir_ssa_scalar_is_alu(cond))
-      return false;
-
-   nir_alu_instr *alu = nir_instr_as_alu(cond.def->parent_instr);
-   return nir_alu_instr_is_comparison(alu) &&
-          nir_op_infos[alu->op].num_inputs == 2;
-}
-
-static bool
 get_induction_and_limit_vars(nir_ssa_scalar cond,
                              nir_ssa_scalar *ind,
                              nir_ssa_scalar *limit,
@@ -936,7 +925,7 @@ try_find_trip_count_vars_in_iand(nir_ssa_scalar *cond,
    bool found_induction_var = false;
    for (unsigned i = 0; i < 2; i++) {
       nir_ssa_scalar src = nir_ssa_scalar_chase_alu_src(iand, i);
-      if (is_supported_terminator_condition(src) &&
+      if (nir_is_supported_terminator_condition(src) &&
           get_induction_and_limit_vars(src, ind, limit, limit_rhs, state)) {
          *cond = src;
          found_induction_var = true;
@@ -997,7 +986,7 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
       }
 
       if (!basic_ind.def) {
-         if (is_supported_terminator_condition(cond)) {
+         if (nir_is_supported_terminator_condition(cond)) {
             get_induction_and_limit_vars(cond, &basic_ind,
                                          &limit, &limit_rhs, state);
          }
