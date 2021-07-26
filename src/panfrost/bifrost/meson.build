@@ -140,3 +140,19 @@ libpanfrost_bifrost = static_library(
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )
+
+if with_tests
+  test(
+    'bifrost_constant_fold',
+    executable(
+      'bifrost_constant_fold_test',
+      files('test/test-constant-fold.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src, inc_mesa],
+      dependencies: [idep_nir, idep_bi_opcodes_h, idep_bi_builder_h],
+      link_with : [libpanfrost_bifrost],
+    ),
+    suite : ['panfrost'],
+  )
+endif
