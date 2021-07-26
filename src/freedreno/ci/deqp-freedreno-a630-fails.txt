@@ -61,11 +61,14 @@ dEQP-VK.glsl.atomic_operations.xor_unsigned_geometry,Fail
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4462
 dEQP-VK.pipeline.framebuffer_attachment.diff_attachments_2d_19x27_32x32_ms,Fail
 
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3019
+# should be fixed by https://gerrit.khronos.org/c/vk-gl-cts/+/7745
 dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.7,Fail
-dEQP-VK.renderpass.suballocation.subpass_dependencies.implicit_dependencies.render_passes_5,Fail
 dEQP-VK.renderpass2.dedicated_allocation.attachment_allocation.input_output.7,Fail
 dEQP-VK.renderpass2.suballocation.attachment_allocation.input_output.7,Fail
+
+dEQP-VK.renderpass.suballocation.subpass_dependencies.implicit_dependencies.render_passes_5,Fail
 
 # "MESA: error: ir3_ra() failed!
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/33
