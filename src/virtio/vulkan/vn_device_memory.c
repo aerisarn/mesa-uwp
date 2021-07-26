@@ -128,12 +128,11 @@ vn_device_memory_pool_alloc(struct vn_device *dev,
                             struct vn_renderer_bo **base_bo,
                             VkDeviceSize *base_offset)
 {
-   /* We should not support suballocations because apps can do better and we
-    * also don't know the alignment requirements.  But each BO takes up a
-    * precious KVM memslot currently and some CTS tests exhausts them...
-    */
    const VkDeviceSize pool_size = 16 * 1024 * 1024;
-   const VkDeviceSize pool_align = 4096; /* XXX */
+   /* XXX We don't know the alignment requirement.  We should probably use 64K
+    * because some GPUs have 64K pages.
+    */
+   const VkDeviceSize pool_align = 4096;
    struct vn_device_memory_pool *pool = &dev->memory_pools[mem_type_index];
 
    assert(size <= pool_size);
@@ -169,6 +168,31 @@ vn_device_memory_pool_free(struct vn_device *dev,
    /* we use base_bo to keep base_mem alive */
    if (vn_renderer_bo_unref(dev->renderer, base_bo))
       vn_device_memory_simple_free(dev, base_mem);
+}
+
+static bool
+vn_device_memory_should_suballocate(const VkMemoryAllocateInfo *alloc_info,
+                                    const VkMemoryType *mem_type)
+{
+   /* We should not support suballocations because apps can do better.  But
+    * each BO takes up a KVM memslot currently and some CTS tests exhausts
+    * them.  This might not be needed on newer (host) kernels where there are
+    * many more KVM memslots.
+    */
+
+   /* consider host-visible memory only */
+   if (!(mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+      return false;
+
+   /* reject larger allocations */
+   if (alloc_info->allocationSize > 64 * 1024)
+      return false;
+
+   /* reject if there is any pnext struct */
+   if (alloc_info->pNext)
+      return false;
+
+   return true;
 }
 
 VkResult
@@ -266,12 +290,16 @@ vn_AllocateMemory(VkDevice device,
    const VkExportMemoryAllocateInfo *export_info = NULL;
    const VkImportAndroidHardwareBufferInfoANDROID *import_ahb_info = NULL;
    const VkImportMemoryFdInfoKHR *import_fd_info = NULL;
+   bool export_ahb = false;
 
    vk_foreach_struct_const(pnext, pAllocateInfo->pNext) {
       switch (pnext->sType) {
       case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
          export_info = (void *)pnext;
-         if (!export_info->handleTypes)
+         if (export_info->handleTypes &
+             VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
+            export_ahb = true;
+         else if (!export_info->handleTypes)
             export_info = NULL;
          break;
       case VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID:
@@ -284,18 +312,6 @@ vn_AllocateMemory(VkDevice device,
          break;
       }
    }
-
-   const bool export_ahb =
-      export_info &&
-      (export_info->handleTypes &
-       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
-   const bool need_bo =
-      (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ||
-      export_info || import_ahb_info || import_fd_info;
-   const bool suballocate =
-      need_bo && !pAllocateInfo->pNext &&
-      !(mem_type->propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) &&
-      pAllocateInfo->allocationSize <= 64 * 1024;
 
    struct vn_device_memory *mem =
       vk_zalloc(alloc, sizeof(*mem), VN_DEFAULT_ALIGN,
@@ -316,22 +332,24 @@ vn_AllocateMemory(VkDevice device,
    } else if (import_fd_info) {
       result = vn_device_memory_import_dma_buf(dev, mem, pAllocateInfo,
                                                import_fd_info->fd);
-   } else if (suballocate) {
+   } else if (export_info) {
+      result = vn_device_memory_alloc(dev, mem, pAllocateInfo, true,
+                                      mem_type->propertyFlags,
+                                      export_info->handleTypes);
+   } else if (vn_device_memory_should_suballocate(pAllocateInfo, mem_type)) {
       result = vn_device_memory_pool_alloc(
          dev, pAllocateInfo->memoryTypeIndex, mem->size, &mem->base_memory,
          &mem->base_bo, &mem->base_offset);
    } else {
-      result = vn_device_memory_alloc(
-         dev, mem, pAllocateInfo, need_bo, mem_type->propertyFlags,
-         export_info ? export_info->handleTypes : 0);
+      const bool need_bo =
+         mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+      result = vn_device_memory_alloc(dev, mem, pAllocateInfo, need_bo,
+                                      mem_type->propertyFlags, 0);
    }
    if (result != VK_SUCCESS) {
       vk_free(alloc, mem);
       return vn_error(dev->instance, result);
    }
-
-   if (need_bo)
-      assert(mem->base_bo);
 
    *pMemory = mem_handle;
 
