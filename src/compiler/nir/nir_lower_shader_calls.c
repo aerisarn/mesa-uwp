@@ -459,6 +459,7 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
 
          nir_builder *b = &before;
 
+         offset = ALIGN(offset, stack_alignment);
          max_scratch_size = MAX2(max_scratch_size, offset);
 
          /* First thing on the called shader's stack is the resume address
