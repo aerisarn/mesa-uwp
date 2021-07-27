@@ -604,6 +604,16 @@ zink_batch_descriptor_init_lazy(struct zink_screen *screen, struct zink_batch_st
    return true;
 }
 
+static void
+init_push_template_entry(VkDescriptorUpdateTemplateEntry *entry, unsigned i)
+{
+   entry->dstBinding = tgsi_processor_to_shader_stage(i);
+   entry->descriptorCount = 1;
+   entry->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+   entry->offset = offsetof(struct zink_context, di.ubos[i][0]);
+   entry->stride = sizeof(VkDescriptorBufferInfo);
+}
+
 bool
 zink_descriptors_init_lazy(struct zink_context *ctx)
 {
@@ -617,11 +627,7 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
    else if (screen->info.have_KHR_descriptor_update_template) {
       for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
          VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[i];
-         entry->dstBinding = tgsi_processor_to_shader_stage(i);
-         entry->descriptorCount = 1;
-         entry->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-         entry->offset = offsetof(struct zink_context, di.ubos[i][0]);
-         entry->stride = sizeof(VkDescriptorBufferInfo);
+         init_push_template_entry(entry, i);
       }
       if (screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY)
          printf("ZINK: USING LAZY DESCRIPTORS\n");
