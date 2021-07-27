@@ -673,6 +673,8 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
    case GLSL_SAMPLER_DIM_MS:
       *is_ms = true;
       return SpvDim2D;
+   case GLSL_SAMPLER_DIM_SUBPASS:
+      return SpvDimSubpassData;
    default:
       fprintf(stderr, "unknown sampler type %d\n", gdim);
       break;
@@ -805,7 +807,9 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
    bool is_ms;
    bool is_sampler = glsl_type_is_sampler(type);
 
-   if (!is_sampler && !var->data.image.format) {
+   if (var->data.fb_fetch_output) {
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityInputAttachment);
+   } else if (!is_sampler && !var->data.image.format) {
       if (!(var->data.access & ACCESS_NON_WRITEABLE))
          spirv_builder_emit_cap(&ctx->builder, SpvCapabilityStorageImageWriteWithoutFormat);
       if (!(var->data.access & ACCESS_NON_READABLE))
@@ -846,6 +850,9 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
 
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+
+   if (var->data.fb_fetch_output)
+      spirv_builder_emit_input_attachment_index(&ctx->builder, var_id, var->data.index);
 
    if (is_sampler) {
       ctx->sampler_types[index] = image_type;
