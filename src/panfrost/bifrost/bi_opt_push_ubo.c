@@ -79,8 +79,12 @@ bi_analyze_ranges(bi_context *ctx)
                 assert(ubo < res.nr_blocks);
                 assert(channels > 0 && channels <= 4);
 
-                if (word < MAX_UBO_WORDS)
-                        res.blocks[ubo].range[word] = channels;
+                if (word >= MAX_UBO_WORDS) continue;
+
+                /* Must use max if the same base is read with different channel
+                 * counts, which is possible with nir_opt_shrink_vectors */
+                uint8_t *range = res.blocks[ubo].range;
+                range[word] = MAX2(range[word], channels);
         }
 
         return res;
