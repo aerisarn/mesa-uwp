@@ -1519,6 +1519,9 @@ get_render_pass(struct zink_context *ctx)
    uint32_t clears = 0;
    state.swapchain_init = ctx->new_swapchain;
 
+   u_foreach_bit(i, ctx->fbfetch_outputs)
+      state.rts[i].fbfetch = true;
+
    for (int i = 0; i < fb->nr_cbufs; i++) {
       struct pipe_surface *surf = fb->cbufs[i];
       if (surf) {

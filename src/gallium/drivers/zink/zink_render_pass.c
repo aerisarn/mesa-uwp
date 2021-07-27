@@ -33,9 +33,11 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
 {
 
    VkAttachmentReference color_refs[PIPE_MAX_COLOR_BUFS], zs_ref;
+   VkAttachmentReference input_attachments[PIPE_MAX_COLOR_BUFS];
    VkAttachmentDescription attachments[PIPE_MAX_COLOR_BUFS + 1];
    VkPipelineStageFlags dep_pipeline = 0;
    VkAccessFlags dep_access = 0;
+   unsigned input_count = 0;
 
    for (int i = 0; i < state->num_cbufs; i++) {
       struct zink_rt_attrib *rt = state->rts + i;
@@ -50,11 +52,14 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
       /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
-      attachments[i].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      attachments[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      VkImageLayout layout = rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      attachments[i].initialLayout = layout;
+      attachments[i].finalLayout = layout;
       color_refs[i].attachment = i;
-      color_refs[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      color_refs[i].layout = layout;
       dep_pipeline |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      if (rt->fbfetch)
+         memcpy(&input_attachments[input_count++], &color_refs[i], sizeof(VkAttachmentReference));
       dep_access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       if (attachments[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
          dep_access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
@@ -64,7 +69,8 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
    if (state->have_zsbuf)  {
       struct zink_rt_attrib *rt = state->rts + state->num_cbufs;
       bool has_clear = rt->clear_color || rt->clear_stencil;
-      VkImageLayout layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      VkImageLayout write_layout = rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      VkImageLayout layout = rt->needs_write || has_clear ? write_layout : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
       attachments[num_attachments].flags = 0;
       attachments[num_attachments].format = rt->format;
       attachments[num_attachments].samples = rt->samples;
@@ -97,6 +103,8 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
    subpass.colorAttachmentCount = state->num_cbufs;
    subpass.pColorAttachments = color_refs;
    subpass.pDepthStencilAttachment = state->have_zsbuf ? &zs_ref : NULL;
+   subpass.inputAttachmentCount = input_count;
+   subpass.pInputAttachments = input_attachments;
 
    VkRenderPassCreateInfo rpci = {0};
    rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -156,7 +164,7 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, 
       *access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       if (!rt->clear_color && (!rp->state.swapchain_init || !rt->swapchain))
          *access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      return rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
    }
 
    assert(rp->state.have_zsbuf);
@@ -166,5 +174,5 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, 
    if (!rp->state.rts[idx].clear_color && !rp->state.rts[idx].clear_stencil && !rp->state.rts[idx].needs_write)
       return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
    *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-   return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+   return rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 }

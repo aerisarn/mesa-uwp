@@ -36,6 +36,7 @@ struct zink_rt_attrib {
   VkSampleCountFlagBits samples;
   bool clear_color;
   bool clear_stencil;
+  bool fbfetch;
   union {
      bool swapchain;
      bool needs_write;
