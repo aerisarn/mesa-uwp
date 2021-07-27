@@ -668,11 +668,10 @@ zink_descriptors_deinit_lazy(struct zink_context *ctx)
       struct zink_screen *screen = zink_screen(ctx->base.screen);
       if (ctx->dd->dummy_pool)
          vkDestroyDescriptorPool(screen->dev, ctx->dd->dummy_pool, NULL);
-      if (screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
-          screen->info.have_KHR_push_descriptor) {
+      if (ctx->dd->push_dsl[0])
          vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[0]->layout, NULL);
+      if (ctx->dd->push_dsl[1])
          vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[1]->layout, NULL);
-      }
    }
    ralloc_free(ctx->dd);
 }
