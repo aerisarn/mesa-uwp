@@ -2125,7 +2125,7 @@ static bool si_is_sampler_format_supported(struct pipe_screen *screen, enum pipe
       return false;
 
    if (sscreen->info.chip_class >= GFX10) {
-      const struct gfx10_format *fmt = &gfx10_format_table[format];
+      const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&sscreen->info)[format];
       if (!fmt->img_format || fmt->buffers_only)
          return false;
       return true;
@@ -2281,7 +2281,7 @@ static unsigned si_is_vertex_format_supported(struct pipe_screen *screen, enum p
    }
 
    if (sscreen->info.chip_class >= GFX10) {
-      const struct gfx10_format *fmt = &gfx10_format_table[format];
+      const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&sscreen->info)[format];
       if (!fmt->img_format || fmt->img_format >= 128)
          return 0;
       return usage;
@@ -3806,7 +3806,7 @@ void si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf
               S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3]));
 
    if (screen->info.chip_class >= GFX10) {
-      const struct gfx10_format *fmt = &gfx10_format_table[format];
+      const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&screen->info)[format];
 
       /* OOB_SELECT chooses the out-of-bounds check:
        *  - 0: (index >= NUM_RECORDS) || (offset >= STRIDE)
@@ -3876,7 +3876,7 @@ static void gfx10_make_texture_descriptor(
    uint64_t va;
 
    desc = util_format_description(pipe_format);
-   img_format = gfx10_format_table[pipe_format].img_format;
+   img_format = ac_get_gfx10_format_table(&screen->info)[pipe_format].img_format;
 
    if (desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS) {
       const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
@@ -4898,7 +4898,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
                          S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3]));
 
       if (sscreen->info.chip_class >= GFX10) {
-         const struct gfx10_format *fmt = &gfx10_format_table[elements[i].src_format];
+         const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&sscreen->info)[elements[i].src_format];
          assert(fmt->img_format != 0 && fmt->img_format < 128);
          v->rsrc_word3[i] |= S_008F0C_FORMAT(fmt->img_format) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
