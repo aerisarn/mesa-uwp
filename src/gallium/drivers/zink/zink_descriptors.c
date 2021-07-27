@@ -467,26 +467,43 @@ init_push_binding(VkDescriptorSetLayoutBinding *binding, unsigned i, VkDescripto
    binding->pImmutableSamplers = NULL;
 }
 
+static VkDescriptorType
+get_push_types(struct zink_screen *screen, enum zink_descriptor_type *dsl_type)
+{
+   *dsl_type = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
+               screen->info.have_KHR_push_descriptor ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
+   return screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ?
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+}
+
+static struct zink_descriptor_layout *
+create_gfx_layout(struct zink_context *ctx, struct zink_descriptor_layout_key **layout_key, bool fbfetch)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES];
+   enum zink_descriptor_type dsl_type;
+   VkDescriptorType vktype = get_push_types(screen, &dsl_type);
+   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
+      init_push_binding(&bindings[i], i, vktype);
+   if (fbfetch) {
+      bindings[ZINK_SHADER_COUNT].binding = ZINK_FBFETCH_BINDING;
+      bindings[ZINK_SHADER_COUNT].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+      bindings[ZINK_SHADER_COUNT].descriptorCount = 1;
+      bindings[ZINK_SHADER_COUNT].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+      bindings[ZINK_SHADER_COUNT].pImmutableSamplers = NULL;
+   }
+   return create_layout(ctx, dsl_type, bindings, fbfetch ? ARRAY_SIZE(bindings) : ARRAY_SIZE(bindings) - 1, layout_key);
+}
+
 bool
 zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_descriptor_layout **dsls, struct zink_descriptor_layout_key **layout_keys)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES];
    VkDescriptorSetLayoutBinding compute_binding;
-   VkDescriptorType vktype = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ?
-                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
-      init_push_binding(&bindings[i], i, vktype);
+   enum zink_descriptor_type dsl_type;
+   VkDescriptorType vktype = get_push_types(screen, &dsl_type);
    init_push_binding(&compute_binding, PIPE_SHADER_COMPUTE, vktype);
-   /* fbfetch */
-   bindings[ZINK_SHADER_COUNT].binding = ZINK_FBFETCH_BINDING;
-   bindings[ZINK_SHADER_COUNT].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-   bindings[ZINK_SHADER_COUNT].descriptorCount = 1;
-   bindings[ZINK_SHADER_COUNT].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-   bindings[ZINK_SHADER_COUNT].pImmutableSamplers = NULL;
-   enum zink_descriptor_type dsl_type = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
-                                        screen->info.have_KHR_push_descriptor ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
-   dsls[0] = create_layout(ctx, dsl_type, bindings, ARRAY_SIZE(bindings), &layout_keys[0]);
+   dsls[0] = create_gfx_layout(ctx, &layout_keys[0], false);
    dsls[1] = create_layout(ctx, dsl_type, &compute_binding, 1, &layout_keys[1]);
    return dsls[0] && dsls[1];
 }
@@ -1097,7 +1114,7 @@ zink_descriptor_pool_init(struct zink_context *ctx)
    sizes[0].descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
    sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
    sizes[1].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
-   ctx->dd->push_pool[0] = descriptor_pool_get(ctx, 0, ctx->dd->push_layout_keys[0], sizes, 2);
+   ctx->dd->push_pool[0] = descriptor_pool_get(ctx, 0, ctx->dd->push_layout_keys[0], sizes, ctx->dd->has_fbfetch ? 2 : 1);
    sizes[0].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
    ctx->dd->push_pool[1] = descriptor_pool_get(ctx, 0, ctx->dd->push_layout_keys[1], sizes, 1);
    return ctx->dd->push_pool[0] && ctx->dd->push_pool[1];
@@ -1710,4 +1727,21 @@ zink_descriptor_layouts_deinit(struct zink_context *ctx)
          _mesa_hash_table_remove(&ctx->desc_set_layouts[i], he);
       }
    }
+}
+
+
+void
+zink_descriptor_util_init_fbfetch(struct zink_context *ctx)
+{
+   if (ctx->dd->has_fbfetch)
+      return;
+
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[0]->layout, NULL);
+   ralloc_free(ctx->dd->push_dsl[0]);
+   ralloc_free(ctx->dd->push_layout_keys[0]);
+   ctx->dd->push_dsl[0] = create_gfx_layout(ctx, &ctx->dd->push_layout_keys[0], true);
+   ctx->dd->has_fbfetch = true;
+   if (screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_LAZY)
+      zink_descriptor_pool_init(ctx);
 }

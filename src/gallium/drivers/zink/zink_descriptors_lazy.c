@@ -57,6 +57,7 @@ struct zink_batch_descriptor_data_lazy {
    struct zink_program *pg[2]; //gfx, compute
    VkDescriptorSetLayout dsl[2][ZINK_DESCRIPTOR_TYPES];
    unsigned push_usage[2];
+   bool has_fbfetch;
 };
 
 ALWAYS_INLINE static struct zink_descriptor_data_lazy *
@@ -137,8 +138,10 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       stages = &((struct zink_compute_program*)pg)->shader;
    else {
       stages = ((struct zink_gfx_program*)pg)->shaders;
-      if (stages[PIPE_SHADER_FRAGMENT]->nir->info.fs.uses_fbfetch_output)
+      if (stages[PIPE_SHADER_FRAGMENT]->nir->info.fs.uses_fbfetch_output) {
+         zink_descriptor_util_init_fbfetch(ctx);
          push_count = 1;
+      }
    }
 
    if (!pg->dd)
@@ -242,7 +245,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    /* number of descriptors in template */
    unsigned wd_count[ZINK_DESCRIPTOR_TYPES + 1];
    if (push_count)
-      wd_count[0] = pg->is_compute ? 1 : (ZINK_SHADER_COUNT + 1);
+      wd_count[0] = pg->is_compute ? 1 : (ZINK_SHADER_COUNT + !!ctx->dd->has_fbfetch);
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
       wd_count[i + 1] = pg->dd->layout_key[i] ? pg->dd->layout_key[i]->num_descriptors : 0;
 
@@ -335,7 +338,7 @@ check_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *pool, st
 }
 
 static struct zink_descriptor_pool *
-create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute)
+create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute, bool has_fbfetch)
 {
    struct zink_descriptor_pool *pool = rzalloc(bdd, struct zink_descriptor_pool);
    VkDescriptorPoolSize sizes[2];
@@ -347,7 +350,7 @@ create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data_l
       sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
       sizes[1].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
    }
-   pool->pool = create_pool(screen, 1 + !is_compute, sizes, 0);
+   pool->pool = create_pool(screen, !is_compute && has_fbfetch ? 2 : 1, sizes, 0);
    return pool;
 }
 
@@ -356,12 +359,12 @@ check_push_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *poo
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* allocate up to $current * 10, e.g., 10 -> 100 or 100 -> 1000 */
-   if (pool->set_idx == pool->sets_alloc) {
+   if (pool->set_idx == pool->sets_alloc || unlikely(ctx->dd->has_fbfetch != bdd->has_fbfetch)) {
       unsigned sets_to_alloc = MIN2(MAX2(pool->sets_alloc * 10, 10), ZINK_DEFAULT_MAX_DESCS) - pool->sets_alloc;
-      if (!sets_to_alloc) {
+      if (!sets_to_alloc || unlikely(ctx->dd->has_fbfetch != bdd->has_fbfetch)) {
          /* overflowed pool: queue for deletion on next reset */
          util_dynarray_append(&bdd->overflowed_pools, struct zink_descriptor_pool*, pool);
-         bdd->push_pool[is_compute] = create_push_pool(screen, bdd, is_compute);
+         bdd->push_pool[is_compute] = create_push_pool(screen, bdd, is_compute, ctx->dd->has_fbfetch);
          ctx->oom_flush = true;
          return check_push_pool_alloc(ctx, bdd->push_pool[is_compute], bdd, is_compute);
       }
@@ -605,8 +608,8 @@ zink_batch_descriptor_init_lazy(struct zink_screen *screen, struct zink_batch_st
    }
    util_dynarray_init(&bdd->overflowed_pools, bs->dd);
    if (!screen->info.have_KHR_push_descriptor) {
-      bdd->push_pool[0] = create_push_pool(screen, bdd, false);
-      bdd->push_pool[1] = create_push_pool(screen, bdd, true);
+      bdd->push_pool[0] = create_push_pool(screen, bdd, false, false);
+      bdd->push_pool[1] = create_push_pool(screen, bdd, true, false);
    }
    return true;
 }

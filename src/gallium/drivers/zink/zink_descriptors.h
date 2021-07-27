@@ -130,6 +130,7 @@ struct zink_descriptor_data {
    VkDescriptorSet dummy_set;
 
    bool changed[2][ZINK_DESCRIPTOR_TYPES + 1];
+   bool has_fbfetch;
    struct zink_program *pg[2]; //gfx, compute
 };
 
@@ -202,6 +203,8 @@ struct zink_descriptor_layout *
 zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_type type,
                       VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings,
                       struct zink_descriptor_layout_key **layout_key);
+void
+zink_descriptor_util_init_fbfetch(struct zink_context *ctx);
 bool
 zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_descriptor_layout **dsls, struct zink_descriptor_layout_key **layout_keys);
 void
