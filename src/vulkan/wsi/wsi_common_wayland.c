@@ -38,7 +38,6 @@
 #include "vk_util.h"
 #include "wsi_common_private.h"
 #include "wsi_common_wayland.h"
-#include "wayland-drm-client-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
 
 #include <util/compiler.h>
@@ -52,12 +51,6 @@ struct wsi_wayland;
 struct wsi_wl_display_swrast {
    struct wl_shm *                              wl_shm;
    struct u_vector                              formats;
-};
-
-struct wsi_wl_display_drm {
-   struct wl_drm *                              wl_drm;
-   struct u_vector                              formats;
-   uint32_t                                     capabilities;
 };
 
 struct wsi_wl_display_dmabuf {
@@ -77,7 +70,6 @@ struct wsi_wl_display {
    struct wl_event_queue *                      queue;
 
    struct wsi_wl_display_swrast                 swrast;
-   struct wsi_wl_display_drm                    drm;
    struct wsi_wl_display_dmabuf                 dmabuf;
 
    struct wsi_wayland *wsi_wl;
@@ -261,12 +253,6 @@ wsi_wl_display_add_wl_shm_format(struct wsi_wl_display *display,
    }
 }
 
-
-static void
-drm_handle_device(void *data, struct wl_drm *drm, const char *name)
-{
-}
-
 static uint32_t
 wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
 {
@@ -332,36 +318,6 @@ wl_shm_format_for_vk_format(VkFormat vk_format, bool alpha)
       return 0;
    }
 }
-
-static void
-drm_handle_format(void *data, struct wl_drm *drm, uint32_t format)
-{
-   struct wsi_wl_display *display = data;
-   if (display->drm.formats.element_size == 0)
-      return;
-
-   wsi_wl_display_add_drm_format(display, &display->drm.formats, format);
-}
-
-static void
-drm_handle_authenticated(void *data, struct wl_drm *drm)
-{
-}
-
-static void
-drm_handle_capabilities(void *data, struct wl_drm *drm, uint32_t capabilities)
-{
-   struct wsi_wl_display *display = data;
-
-   display->drm.capabilities = capabilities;
-}
-
-static const struct wl_drm_listener drm_listener = {
-   drm_handle_device,
-   drm_handle_format,
-   drm_handle_authenticated,
-   drm_handle_capabilities,
-};
 
 static void
 dmabuf_handle_format(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
@@ -442,14 +398,7 @@ registry_handle_global(void *data, struct wl_registry *registry,
       return;
    }
 
-   if (strcmp(interface, "wl_drm") == 0) {
-      assert(display->drm.wl_drm == NULL);
-
-      assert(version >= 2);
-      display->drm.wl_drm =
-         wl_registry_bind(registry, name, &wl_drm_interface, 2);
-      wl_drm_add_listener(display->drm.wl_drm, &drm_listener, display);
-   } else if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0 && version >= 3) {
+   if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0 && version >= 3) {
       display->dmabuf.wl_dmabuf =
          wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface, 3);
       zwp_linux_dmabuf_v1_add_listener(display->dmabuf.wl_dmabuf,
@@ -473,14 +422,11 @@ wsi_wl_display_finish(struct wsi_wl_display *display)
    assert(display->refcount == 0);
 
    u_vector_finish(&display->swrast.formats);
-   u_vector_finish(&display->drm.formats);
    u_vector_finish(&display->dmabuf.formats);
    u_vector_finish(&display->dmabuf.modifiers.argb8888);
    u_vector_finish(&display->dmabuf.modifiers.xrgb8888);
    if (display->swrast.wl_shm)
       wl_shm_destroy(display->swrast.wl_shm);
-   if (display->drm.wl_drm)
-      wl_drm_destroy(display->drm.wl_drm);
    if (display->dmabuf.wl_dmabuf)
       zwp_linux_dmabuf_v1_destroy(display->dmabuf.wl_dmabuf);
    if (display->wl_display_wrapper)
@@ -504,7 +450,6 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
 
    if (get_format_list) {
       if (!u_vector_init(&display->swrast.formats, sizeof(VkFormat), 8) ||
-          !u_vector_init(&display->drm.formats, sizeof(VkFormat), 8) ||
           !u_vector_init(&display->dmabuf.formats, sizeof(VkFormat), 8) ||
           !u_vector_init(&display->dmabuf.modifiers.argb8888,
                          sizeof(uint64_t), 32) ||
@@ -539,11 +484,11 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
 
    wl_registry_add_listener(registry, &registry_listener, display);
 
-   /* Round-trip to get wl_drms and zwp_linux_dmabuf_v1 globals */
+   /* Round-trip to get wl_shm and zwp_linux_dmabuf_v1 globals */
    wl_display_roundtrip_queue(display->wl_display, display->queue);
 
-   /* Round-trip again to get formats, modifiers and capabilities */
-   if (display->drm.wl_drm || display->dmabuf.wl_dmabuf || display->swrast.wl_shm)
+   /* Round-trip again to get formats and modifiers */
+   if (display->dmabuf.wl_dmabuf || display->swrast.wl_shm)
       wl_display_roundtrip_queue(display->wl_display, display->queue);
 
    if (wsi_wl->wsi->force_bgra8_unorm_first) {
@@ -561,16 +506,10 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
       }
    }
 
-   /* Prefer the linux-dmabuf protocol if available */
    if (display->sw)
       display->formats = &display->swrast.formats;
-   else if (display->dmabuf.wl_dmabuf) {
+   else if (display->dmabuf.wl_dmabuf)
       display->formats = &display->dmabuf.formats;
-   } else if (display->drm.wl_drm &&
-       (display->drm.capabilities & WL_DRM_CAPABILITY_PRIME)) {
-      /* We need prime support for wl_drm */
-      display->formats = &display->drm.formats;
-   }
 
    if (!display->formats) {
       result = VK_ERROR_SURFACE_LOST_KHR;
@@ -1103,7 +1042,9 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                                                 chain->shm_format);
       wl_shm_pool_destroy(pool);
       close(fd);
-   } else if (display->dmabuf.wl_dmabuf) {
+   } else {
+      assert(display->dmabuf.wl_dmabuf);
+
       struct zwp_linux_buffer_params_v1 *params =
          zwp_linux_dmabuf_v1_create_params(display->dmabuf.wl_dmabuf);
       if (!params)
@@ -1127,21 +1068,6 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
                                                  chain->drm_format,
                                                  0);
       zwp_linux_buffer_params_v1_destroy(params);
-   } else {
-      /* Without passing modifiers, we can't have multi-plane RGB images. */
-      assert(image->base.num_planes == 1);
-      assert(image->base.drm_modifier == DRM_FORMAT_MOD_INVALID);
-
-      image->buffer =
-         wl_drm_create_prime_buffer(display->drm.wl_drm,
-                                    image->base.fds[0], /* name */
-                                    chain->extent.width,
-                                    chain->extent.height,
-                                    chain->drm_format,
-                                    image->base.offsets[0],
-                                    image->base.row_pitches[0],
-                                    0, 0, 0, 0 /* unused */);
-      close(image->base.fds[0]);
    }
 
    if (!image->buffer)
