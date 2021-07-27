@@ -36,7 +36,8 @@
 
 struct zink_descriptor_data_lazy {
    struct zink_descriptor_data base;
-   VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES];
+   VkDescriptorUpdateTemplateEntry push_entries[PIPE_SHADER_TYPES]; //gfx+fbfetch
+   VkDescriptorUpdateTemplateEntry compute_push_entry;
    bool push_state_changed[2]; //gfx, compute
    uint8_t state_changed[2]; //gfx, compute
 };
@@ -129,19 +130,22 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    VkDescriptorUpdateTemplateEntry entries[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES * 32];
    unsigned num_bindings[ZINK_DESCRIPTOR_TYPES] = {0};
    uint8_t has_bindings = 0;
+   unsigned push_count = 0;
 
    struct zink_shader **stages;
    if (pg->is_compute)
       stages = &((struct zink_compute_program*)pg)->shader;
-   else
+   else {
       stages = ((struct zink_gfx_program*)pg)->shaders;
+      if (stages[PIPE_SHADER_FRAGMENT]->nir->info.fs.uses_fbfetch_output)
+         push_count = 1;
+   }
 
    if (!pg->dd)
       pg->dd = (void*)rzalloc(pg, struct zink_program_descriptor_data);
    if (!pg->dd)
       return false;
 
-   unsigned push_count = 0;
    unsigned entry_idx[ZINK_DESCRIPTOR_TYPES] = {0};
 
    unsigned num_shaders = pg->is_compute ? 1 : ZINK_SHADER_COUNT;
@@ -238,13 +242,13 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    /* number of descriptors in template */
    unsigned wd_count[ZINK_DESCRIPTOR_TYPES + 1];
    if (push_count)
-      wd_count[0] = pg->is_compute ? 1 : ZINK_SHADER_COUNT;
+      wd_count[0] = pg->is_compute ? 1 : (ZINK_SHADER_COUNT + 1);
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
       wd_count[i + 1] = pg->dd->layout_key[i] ? pg->dd->layout_key[i]->num_descriptors : 0;
 
    VkDescriptorUpdateTemplateEntry *push_entries[2] = {
       dd_lazy(ctx)->push_entries,
-      &dd_lazy(ctx)->push_entries[PIPE_SHADER_COMPUTE],
+      &dd_lazy(ctx)->compute_push_entry,
    };
    for (unsigned i = 0; i < pg->num_dsl; i++) {
       bool is_push = i == 0;
@@ -334,13 +338,16 @@ static struct zink_descriptor_pool *
 create_push_pool(struct zink_screen *screen, struct zink_batch_descriptor_data_lazy *bdd, bool is_compute)
 {
    struct zink_descriptor_pool *pool = rzalloc(bdd, struct zink_descriptor_pool);
-   VkDescriptorPoolSize sizes;
-   sizes.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+   VkDescriptorPoolSize sizes[2];
+   sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
    if (is_compute)
-      sizes.descriptorCount = ZINK_DEFAULT_MAX_DESCS;
-   else
-      sizes.descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
-   pool->pool = create_pool(screen, 1, &sizes, 0);
+      sizes[0].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
+   else {
+      sizes[0].descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
+      sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+      sizes[1].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
+   }
+   pool->pool = create_pool(screen, 1 + !is_compute, sizes, 0);
    return pool;
 }
 
@@ -625,10 +632,17 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
    if (screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
       printf("ZINK: CACHED/NOTEMPLATES DESCRIPTORS\n");
    else if (screen->info.have_KHR_descriptor_update_template) {
-      for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
+      for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
          VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[i];
          init_push_template_entry(entry, i);
       }
+      init_push_template_entry(&dd_lazy(ctx)->compute_push_entry, PIPE_SHADER_COMPUTE);
+      VkDescriptorUpdateTemplateEntry *entry = &dd_lazy(ctx)->push_entries[ZINK_SHADER_COUNT]; //fbfetch
+      entry->dstBinding = ZINK_FBFETCH_BINDING;
+      entry->descriptorCount = 1;
+      entry->descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+      entry->offset = offsetof(struct zink_context, di.fbfetch);
+      entry->stride = sizeof(VkDescriptorImageInfo);
       if (screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY)
          printf("ZINK: USING LAZY DESCRIPTORS\n");
    }

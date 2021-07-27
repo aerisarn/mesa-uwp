@@ -478,6 +478,12 @@ zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_desc
    for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++)
       init_push_binding(&bindings[i], i, vktype);
    init_push_binding(&compute_binding, PIPE_SHADER_COMPUTE, vktype);
+   /* fbfetch */
+   bindings[ZINK_SHADER_COUNT].binding = ZINK_FBFETCH_BINDING;
+   bindings[ZINK_SHADER_COUNT].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+   bindings[ZINK_SHADER_COUNT].descriptorCount = 1;
+   bindings[ZINK_SHADER_COUNT].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+   bindings[ZINK_SHADER_COUNT].pImmutableSamplers = NULL;
    enum zink_descriptor_type dsl_type = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY &&
                                         screen->info.have_KHR_push_descriptor ? ZINK_DESCRIPTOR_TYPES : ZINK_DESCRIPTOR_TYPE_UBO;
    dsls[0] = create_layout(ctx, dsl_type, bindings, ARRAY_SIZE(bindings), &layout_keys[0]);
@@ -1086,12 +1092,14 @@ zink_descriptor_pool_init(struct zink_context *ctx)
          return false;
    }
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkDescriptorPoolSize sizes;
-   sizes.type = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-   sizes.descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
-   ctx->dd->push_pool[0] = descriptor_pool_get(ctx, 0, ctx->dd->push_layout_keys[0], &sizes, 1);
-   sizes.descriptorCount = ZINK_DEFAULT_MAX_DESCS;
-   ctx->dd->push_pool[1] = descriptor_pool_get(ctx, 0, ctx->dd->push_layout_keys[1], &sizes, 1);
+   VkDescriptorPoolSize sizes[2];
+   sizes[0].type = screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+   sizes[0].descriptorCount = ZINK_SHADER_COUNT * ZINK_DEFAULT_MAX_DESCS;
+   sizes[1].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+   sizes[1].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
+   ctx->dd->push_pool[0] = descriptor_pool_get(ctx, 0, ctx->dd->push_layout_keys[0], sizes, 2);
+   sizes[0].descriptorCount = ZINK_DEFAULT_MAX_DESCS;
+   ctx->dd->push_pool[1] = descriptor_pool_get(ctx, 0, ctx->dd->push_layout_keys[1], sizes, 1);
    return ctx->dd->push_pool[0] && ctx->dd->push_pool[1];
 }
 
@@ -1174,7 +1182,8 @@ init_write_descriptor(struct zink_shader *shader, struct zink_descriptor_set *zd
     wd->dstBinding = shader ? shader->bindings[type][idx].binding : idx;
     wd->dstArrayElement = 0;
     wd->descriptorCount = shader ? shader->bindings[type][idx].size : 1;
-    wd->descriptorType = shader ? shader->bindings[type][idx].type : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    wd->descriptorType = shader ? shader->bindings[type][idx].type :
+                                  idx == ZINK_FBFETCH_BINDING ? VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     wd->dstSet = zds->desc_set;
     return num_wds + 1;
 }
@@ -1184,9 +1193,10 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
                             bool is_compute, bool cache_hit, uint32_t *dynamic_offsets)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkWriteDescriptorSet wds[ZINK_SHADER_COUNT];
+   VkWriteDescriptorSet wds[ZINK_SHADER_COUNT + 1];
    VkDescriptorBufferInfo buffer_infos[ZINK_SHADER_COUNT];
    struct zink_shader **stages;
+   bool fbfetch = false;
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
@@ -1230,9 +1240,16 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
          wds[i].pBufferInfo = &buffer_infos[i];
       }
    }
+   if (unlikely(!cache_hit && !is_compute && ctx->fbfetch_outputs)) {
+      struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[0]->texture);
+      init_write_descriptor(NULL, zds, 0, MESA_SHADER_STAGES, &wds[ZINK_SHADER_COUNT], 0);
+      desc_set_res_add(zds, res, ZINK_SHADER_COUNT, cache_hit);
+      wds[ZINK_SHADER_COUNT].pImageInfo = &ctx->di.fbfetch;
+      fbfetch = true;
+   }
 
    if (!cache_hit)
-      vkUpdateDescriptorSets(screen->dev, num_stages, wds, 0, NULL);
+      vkUpdateDescriptorSets(screen->dev, num_stages + !!fbfetch, wds, 0, NULL);
    return num_stages;
 }
 
