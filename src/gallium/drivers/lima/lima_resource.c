@@ -416,9 +416,8 @@ lima_resource_get_handle(struct pipe_screen *pscreen,
 
    res->modifier_constant = true;
 
-   if (handle->type == WINSYS_HANDLE_TYPE_KMS && screen->ro &&
-       renderonly_get_handle(res->scanout, handle))
-      return true;
+   if (handle->type == WINSYS_HANDLE_TYPE_KMS && screen->ro)
+      return renderonly_get_handle(res->scanout, handle);
 
    if (!lima_bo_export(res->bo, handle))
       return false;
