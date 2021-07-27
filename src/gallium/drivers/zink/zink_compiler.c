@@ -448,6 +448,56 @@ optimize_nir(struct nir_shader *s)
    } while (progress);
 }
 
+/* - copy the lowered fbfetch variable
+ * - set the new one up as an input attachment for descriptor 0.6
+ * - load it as an image
+ * - overwrite the previous load
+ */
+static bool
+lower_fbfetch_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_deref)
+      return false;
+   nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+   if (var != data)
+      return false;
+   b->cursor = nir_after_instr(instr);
+   nir_variable *fbfetch = nir_variable_clone(data, b->shader);
+   /* If Dim is SubpassData, ... Image Format must be Unknown
+    * - SPIRV OpTypeImage specification
+    */
+   fbfetch->data.image.format = 0;
+   fbfetch->data.index = 0; /* fix this if more than 1 fbfetch target is supported */
+   fbfetch->data.mode = nir_var_uniform;
+   fbfetch->data.binding = ZINK_FBFETCH_BINDING;
+   fbfetch->type = glsl_image_type(GLSL_SAMPLER_DIM_SUBPASS, false, GLSL_TYPE_FLOAT);
+   nir_shader_add_variable(b->shader, fbfetch);
+   nir_ssa_def *deref = &nir_build_deref_var(b, fbfetch)->dest.ssa;
+   nir_ssa_def *load = nir_image_deref_load(b, 4, 32, deref, nir_imm_vec4(b, 0, 0, 0, 1), nir_ssa_undef(b, 1, 32), nir_imm_int(b, 0));
+   unsigned swiz[4] = {2, 1, 0, 3};
+   nir_ssa_def *swizzle = nir_swizzle(b, load, swiz, 4);
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, swizzle);
+   return true;
+}
+
+static bool
+lower_fbfetch(nir_shader *shader, nir_variable **fbfetch)
+{
+   nir_foreach_shader_out_variable(var, shader) {
+      if (var->data.fb_fetch_output) {
+         *fbfetch = var;
+         break;
+      }
+   }
+   assert(*fbfetch);
+   if (!*fbfetch)
+      return false;
+   return nir_shader_instructions_pass(shader, lower_fbfetch_instr, nir_metadata_dominance, *fbfetch);
+}
+
 /* check for a genuine gl_PointSize output vs one from nir_lower_point_size_mov */
 static bool
 check_psiz(struct nir_shader *s)
@@ -714,6 +764,15 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
          if (zink_fs_key(key)->coord_replace_bits) {
             NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
                      false, zink_fs_key(key)->coord_replace_yinvert);
+         }
+         if (nir->info.fs.uses_fbfetch_output) {
+            nir_variable *fbfetch = NULL;
+            NIR_PASS_V(nir, lower_fbfetch, &fbfetch);
+            /* old variable must be deleted to avoid spirv errors */
+            fbfetch->data.mode = nir_var_shader_temp;
+            nir_fixup_deref_modes(nir);
+            NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+            optimize_nir(nir);
          }
          break;
       default: break;
