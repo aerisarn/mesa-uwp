@@ -1203,6 +1203,11 @@ static void test_surface_st_expectu(void *p, int s, int x, int y)
         util_format_pack_rgba(surface_fmts[i], p, v, 1);
 }
 
+static unsigned absdiff(uint32_t a, uint32_t b)
+{
+        return (a > b) ? (a - b) : (b - a);
+}
+
 static bool test_surface_st_check(void *x, void *y, int sz)
 {
         int i = 0, j;
@@ -1212,8 +1217,8 @@ static bool test_surface_st_check(void *x, void *y, int sz)
 
         } else if ((sz % 4) == 0) {
                 for (j = 0; j < sz / 4; j++)
-                        if (abs(((uint32_t *)x)[j] -
-                                ((uint32_t *)y)[j]) > 1)
+                        if (absdiff(((uint32_t *)x)[j],
+                                    ((uint32_t *)y)[j]) > 1)
                                 return false;
                 return true;
         } else {
