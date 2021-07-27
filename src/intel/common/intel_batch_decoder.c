@@ -1030,6 +1030,22 @@ decode_vs_state(struct intel_batch_decode_ctx *ctx, uint32_t offset)
    }
 
    ctx_print_group(ctx, strct, offset, bind_bo.map);
+
+   uint64_t ksp = 0;
+   bool is_enabled = true;
+   struct intel_field_iterator iter;
+   intel_field_iterator_init(&iter, strct, bind_bo.map, 0, false);
+   while (intel_field_iterator_next(&iter)) {
+      if (strcmp(iter.name, "Kernel Start Pointer") == 0) {
+         ksp = iter.raw_value;
+      } else if (strcmp(iter.name, "Enable") == 0) {
+	is_enabled = iter.raw_value;
+      }
+   }
+   if (is_enabled) {
+      ctx_disassemble_program(ctx, ksp, "vertex shader");
+      fprintf(ctx->fp, "\n");
+   }
 }
 
 static void
