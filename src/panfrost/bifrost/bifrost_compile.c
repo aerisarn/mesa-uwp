@@ -45,6 +45,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"internal",  BIFROST_DBG_INTERNAL,	"Dump even internal shaders"},
         {"nosched",   BIFROST_DBG_NOSCHED, 	"Force trivial bundling"},
         {"inorder",   BIFROST_DBG_INORDER, 	"Force in-order bundling"},
+        {"novalidate",BIFROST_DBG_NOVALIDATE,   "Skip IR validation"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -3659,6 +3660,8 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 block->name = block_source_count++;
         }
 
+        bi_validate(ctx, "NIR -> BIR");
+
         /* If the shader doesn't write any colour or depth outputs, it may
          * still need an ATEST at the very end! */
         bool need_dummy_atest =
@@ -3674,6 +3677,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
         /* Runs before constant folding */
         bi_lower_swizzle(ctx);
+        bi_validate(ctx, "Early lowering");
 
         /* Runs before copy prop */
         bi_opt_push_ubo(ctx);
@@ -3685,6 +3689,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
         bi_opt_dead_code_eliminate(ctx);
         bi_opt_cse(ctx);
         bi_opt_dead_code_eliminate(ctx);
+        bi_validate(ctx, "Optimization passes");
 
         bi_foreach_block(ctx, block) {
                 bi_lower_branch(block);
@@ -3698,6 +3703,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
          * skip bit is a function of only the data flow graph and is invariant
          * under valid scheduling. */
         bi_analyze_helper_requirements(ctx);
+        bi_validate(ctx, "Late lowering");
 
         bi_register_allocate(ctx);
         bi_opt_post_ra(ctx);

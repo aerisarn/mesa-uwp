@@ -910,6 +910,14 @@ bool bi_reads_zero(bi_instr *ins);
 bool bi_reads_temps(bi_instr *ins, unsigned src);
 bool bi_reads_t(bi_instr *ins, unsigned src);
 
+#ifndef NDEBUG
+bool bi_validate_initialization(bi_context *ctx);
+void bi_validate(bi_context *ctx, const char *after_str);
+#else
+static inline bool bi_validate_initialization(UNUSED bi_context *ctx) { return true; }
+static inline void bi_validate(UNUSED bi_context *ctx, UNUSED const char *after_str) { return; }
+#endif
+
 uint32_t bi_fold_constant(bi_instr *I, bool *unsupported);
 void bi_opt_constant_fold(bi_context *ctx);
 
