@@ -1236,9 +1236,15 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 
    if (NGG) {
       if (HAS_TESS) {
-         ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(num_patches) |
-                   S_03096C_VERT_GRP_SIZE(0) |
-                   S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
+         if (GFX_VERSION >= GFX11)
+            ge_cntl = S_03096C_PRIMS_PER_SUBGRP(num_patches) |
+                      S_03096C_VERTS_PER_SUBGRP(0) |
+                      S_03096C_BREAK_PRIMGRP_AT_EOI(key.u.tess_uses_prim_id) |
+                      S_03096C_PRIM_GRP_SIZE_GFX11(256);
+         else
+            ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(num_patches) |
+                      S_03096C_VERT_GRP_SIZE(0) |
+                      S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
       } else {
          ge_cntl = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ge_cntl;
       }
@@ -1313,11 +1319,12 @@ static void si_emit_draw_registers(struct si_context *sctx,
 
    /* Primitive restart. */
    if (primitive_restart != sctx->last_primitive_restart_en) {
-      if (GFX_VERSION >= GFX9)
+      if (GFX_VERSION >= GFX11)
+         radeon_set_uconfig_reg(R_03092C_GE_MULTI_PRIM_IB_RESET_EN, primitive_restart);
+      else if (GFX_VERSION >= GFX9)
          radeon_set_uconfig_reg(R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
       else
          radeon_set_context_reg(R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
-
       sctx->last_primitive_restart_en = primitive_restart;
    }
    if (si_prim_restart_index_changed(sctx, primitive_restart, restart_index)) {

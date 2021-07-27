@@ -144,13 +144,15 @@ static void si_emit_cb_render_state(struct si_context *sctx)
             continue;
          }
 
-         format = G_028C70_FORMAT_GFX6(surf->cb_color_info);
+         format = sctx->chip_class >= GFX11 ? G_028C70_FORMAT_GFX11(surf->cb_color_info):
+                                              G_028C70_FORMAT_GFX6(surf->cb_color_info);
          swap = G_028C70_COMP_SWAP(surf->cb_color_info);
          spi_format = (spi_shader_col_format >> (i * 4)) & 0xf;
          colormask = (cb_target_mask >> (i * 4)) & 0xf;
 
          /* Set if RGB and A are present. */
-         has_alpha = !G_028C74_FORCE_DST_ALPHA_1_GFX6(surf->cb_color_attrib);
+         has_alpha = !(sctx->chip_class >= GFX11 ? G_028C74_FORCE_DST_ALPHA_1_GFX11(surf->cb_color_attrib):
+                                                   G_028C74_FORCE_DST_ALPHA_1_GFX6(surf->cb_color_attrib));
 
          if (format == V_028C70_COLOR_8 || format == V_028C70_COLOR_16 ||
              format == V_028C70_COLOR_32)
@@ -289,7 +291,7 @@ static uint32_t si_translate_blend_function(int blend_func)
    return 0;
 }
 
-static uint32_t si_translate_blend_factor(int blend_fact)
+static uint32_t si_translate_blend_factor(enum chip_class chip_class, int blend_fact)
 {
    switch (blend_fact) {
    case PIPE_BLENDFACTOR_ONE:
@@ -305,9 +307,11 @@ static uint32_t si_translate_blend_factor(int blend_fact)
    case PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE:
       return V_028780_BLEND_SRC_ALPHA_SATURATE;
    case PIPE_BLENDFACTOR_CONST_COLOR:
-      return V_028780_BLEND_CONSTANT_COLOR_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_CONSTANT_COLOR_GFX11:
+                                   V_028780_BLEND_CONSTANT_COLOR_GFX6;
    case PIPE_BLENDFACTOR_CONST_ALPHA:
-      return V_028780_BLEND_CONSTANT_ALPHA_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_CONSTANT_ALPHA_GFX11 :
+                                   V_028780_BLEND_CONSTANT_ALPHA_GFX6;
    case PIPE_BLENDFACTOR_ZERO:
       return V_028780_BLEND_ZERO;
    case PIPE_BLENDFACTOR_INV_SRC_COLOR:
@@ -319,17 +323,23 @@ static uint32_t si_translate_blend_factor(int blend_fact)
    case PIPE_BLENDFACTOR_INV_DST_COLOR:
       return V_028780_BLEND_ONE_MINUS_DST_COLOR;
    case PIPE_BLENDFACTOR_INV_CONST_COLOR:
-      return V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX11:
+                                   V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6;
    case PIPE_BLENDFACTOR_INV_CONST_ALPHA:
-      return V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX11:
+                                   V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX6;
    case PIPE_BLENDFACTOR_SRC1_COLOR:
-      return V_028780_BLEND_SRC1_COLOR_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_SRC1_COLOR_GFX11:
+                                   V_028780_BLEND_SRC1_COLOR_GFX6;
    case PIPE_BLENDFACTOR_SRC1_ALPHA:
-      return V_028780_BLEND_SRC1_ALPHA_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_SRC1_ALPHA_GFX11:
+                                   V_028780_BLEND_SRC1_ALPHA_GFX6;
    case PIPE_BLENDFACTOR_INV_SRC1_COLOR:
-      return V_028780_BLEND_INV_SRC1_COLOR_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_INV_SRC1_COLOR_GFX11:
+                                   V_028780_BLEND_INV_SRC1_COLOR_GFX6;
    case PIPE_BLENDFACTOR_INV_SRC1_ALPHA:
-      return V_028780_BLEND_INV_SRC1_ALPHA_GFX6;
+      return chip_class >= GFX11 ? V_028780_BLEND_INV_SRC1_ALPHA_GFX11:
+                                   V_028780_BLEND_INV_SRC1_ALPHA_GFX6;
    default:
       PRINT_ERR("Bad blend factor %d not supported!\n", blend_fact);
       assert(0);
@@ -566,14 +576,14 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
       /* Set blend state. */
       blend_cntl |= S_028780_ENABLE(1);
       blend_cntl |= S_028780_COLOR_COMB_FCN(si_translate_blend_function(eqRGB));
-      blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(srcRGB));
-      blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(dstRGB));
+      blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(sctx->chip_class, srcRGB));
+      blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(sctx->chip_class, dstRGB));
 
       if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
          blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
          blend_cntl |= S_028780_ALPHA_COMB_FCN(si_translate_blend_function(eqA));
-         blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(srcA));
-         blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(dstA));
+         blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(sctx->chip_class, srcA));
+         blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(sctx->chip_class, dstA));
       }
       si_pm4_set_reg(pm4, R_028780_CB_BLEND0_CONTROL + i * 4, blend_cntl);
 
@@ -1543,7 +1553,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
    radeon_opt_set_context_reg(sctx, R_02880C_DB_SHADER_CONTROL, SI_TRACKED_DB_SHADER_CONTROL,
                               db_shader_control);
 
-   if (sctx->chip_class >= GFX10_3) {
+   if (sctx->chip_class == GFX10_3) {
       if (sctx->allow_flat_shading) {
          radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
                                     SI_TRACKED_DB_VRS_OVERRIDE_CNTL,
@@ -2492,22 +2502,33 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
    }
 
    color_info =
-      S_028C70_FORMAT_GFX6(format) | S_028C70_COMP_SWAP(swap) | S_028C70_BLEND_CLAMP(blend_clamp) |
+      S_028C70_COMP_SWAP(swap) | S_028C70_BLEND_CLAMP(blend_clamp) |
       S_028C70_BLEND_BYPASS(blend_bypass) | S_028C70_SIMPLE_FLOAT(1) |
       S_028C70_ROUND_MODE(ntype != V_028C70_NUMBER_UNORM && ntype != V_028C70_NUMBER_SNORM &&
                           ntype != V_028C70_NUMBER_SRGB && format != V_028C70_COLOR_8_24 &&
                           format != V_028C70_COLOR_24_8) |
-      S_028C70_NUMBER_TYPE(ntype) | S_028C70_ENDIAN(endian);
+      S_028C70_NUMBER_TYPE(ntype);
+
+   if (sctx->chip_class >= GFX11) {
+      assert(!SI_BIG_ENDIAN);
+      color_info |= S_028C70_FORMAT_GFX11(format);
+   } else {
+      color_info |= S_028C70_FORMAT_GFX6(format) | S_028C70_ENDIAN(endian);
+   }
 
    /* Intensity is implemented as Red, so treat it that way. */
-   color_attrib = S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1 ||
-                                                  util_format_is_intensity(surf->base.format));
+   color_attrib = sctx->chip_class >= GFX11 ?
+      S_028C74_FORCE_DST_ALPHA_1_GFX11(desc->swizzle[3] == PIPE_SWIZZLE_1 || util_format_is_intensity(surf->base.format)):
+      S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1 || util_format_is_intensity(surf->base.format));
 
    if (tex->buffer.b.b.nr_samples > 1) {
       unsigned log_samples = util_logbase2(tex->buffer.b.b.nr_samples);
       unsigned log_fragments = util_logbase2(tex->buffer.b.b.nr_storage_samples);
 
-      color_attrib |= S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS_GFX6(log_fragments);
+      if (sctx->chip_class >= GFX11)
+         color_attrib |= S_028C74_NUM_FRAGMENTS_GFX11(log_fragments);
+      else
+         color_attrib |= S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS_GFX6(log_fragments);
 
       if (tex->surface.fmask_offset) {
          color_info |= S_028C70_COMPRESSION(1);
@@ -2532,8 +2553,11 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
       surf->cb_dcc_control = S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
                              S_028C78_MAX_COMPRESSED_BLOCK_SIZE(tex->surface.u.gfx9.color.dcc.max_compressed_block_size) |
                              S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
-                             S_028C78_INDEPENDENT_64B_BLOCKS(tex->surface.u.gfx9.color.dcc.independent_64B_blocks) |
-                             S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(tex->surface.u.gfx9.color.dcc.independent_128B_blocks);
+                             S_028C78_INDEPENDENT_64B_BLOCKS(tex->surface.u.gfx9.color.dcc.independent_64B_blocks);
+      if (sctx->chip_class >= GFX11)
+         surf->cb_dcc_control |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX11(tex->surface.u.gfx9.color.dcc.independent_128B_blocks);
+      else
+         surf->cb_dcc_control |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(tex->surface.u.gfx9.color.dcc.independent_128B_blocks);
    } else if (sctx->chip_class >= GFX8) {
       unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
 
@@ -2565,7 +2589,7 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
 
       surf->cb_color_attrib3 = S_028EE0_MIP0_DEPTH(mip0_depth) |
                                S_028EE0_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type) |
-                               S_028EE0_RESOURCE_LEVEL(1);
+                               S_028EE0_RESOURCE_LEVEL(sctx->chip_class >= GFX11 ? 0 : 1);
    } else if (sctx->chip_class == GFX9) {
       color_view |= S_028C6C_MIP_LEVEL_GFX9(surf->base.u.tex.level);
       color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
@@ -3168,7 +3192,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                                     state->cbufs[1] == &cb->base &&
                                     state->cbufs[1]->texture->nr_samples <= 1;
 
-         if (!is_msaa_resolve_dst)
+         if (!is_msaa_resolve_dst && sctx->chip_class < GFX11)
             cb_color_info |= S_028C70_DCC_ENABLE(1);
 
          cb_dcc_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
@@ -5276,7 +5300,10 @@ void si_init_state_functions(struct si_context *sctx)
    sctx->custom_blend_fmask_decompress = si_create_blend_custom(sctx, V_028808_CB_FMASK_DECOMPRESS);
    sctx->custom_blend_eliminate_fastclear =
       si_create_blend_custom(sctx, V_028808_CB_ELIMINATE_FAST_CLEAR);
-   sctx->custom_blend_dcc_decompress = si_create_blend_custom(sctx, V_028808_CB_DCC_DECOMPRESS_GFX8);
+   sctx->custom_blend_dcc_decompress =
+      si_create_blend_custom(sctx, sctx->chip_class >= GFX11 ?
+                                       V_028808_CB_DCC_DECOMPRESS_GFX11 :
+                                       V_028808_CB_DCC_DECOMPRESS_GFX8);
 
    sctx->b.set_clip_state = si_set_clip_state;
    sctx->b.set_stencil_ref = si_set_stencil_ref;
@@ -5462,7 +5489,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                      S_028034_BR_X(16384) | S_028034_BR_Y(16384));
    }
 
-   if (sctx->chip_class >= GFX10) {
+   if (sctx->chip_class >= GFX10 && sctx->chip_class < GFX11) {
       si_pm4_set_reg(pm4, R_028038_DB_DFSM_CONTROL,
                      S_028038_PUNCHOUT_MODE(V_028038_FORCE_OFF) |
                      S_028038_POPS_DRAIN_PS_ON_OVERLAP(1));
@@ -5605,12 +5632,14 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
       /* Enable CMASK/HTILE/DCC caching in L2 for small chips. */
       unsigned meta_write_policy, meta_read_policy;
+      unsigned no_alloc = sctx->chip_class >= GFX11 ? V_02807C_CACHE_NOA_GFX11:
+                                                      V_02807C_CACHE_NOA_GFX10;
       if (sscreen->info.max_render_backends <= 4) {
          meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
          meta_read_policy = V_02807C_CACHE_LRU_RD;  /* cache reads */
       } else {
          meta_write_policy = V_02807C_CACHE_STREAM; /* write combine */
-         meta_read_policy = V_02807C_CACHE_NOA_GFX10; /* don't cache reads */
+         meta_read_policy = no_alloc; /* don't cache reads that miss */
       }
 
       si_pm4_set_reg(pm4, R_02807C_DB_RMI_L2_CACHE_CONTROL,
@@ -5618,18 +5647,27 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                      S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM) |
                      S_02807C_HTILE_WR_POLICY(meta_write_policy) |
                      S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM) |
-                     S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_GFX10) |
-                     S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_GFX10) |
+                     S_02807C_Z_RD_POLICY(no_alloc) |
+                     S_02807C_S_RD_POLICY(no_alloc) |
                      S_02807C_HTILE_RD_POLICY(meta_read_policy));
+
+      unsigned gl2_cc;
+      if (sctx->chip_class >= GFX11)
+         gl2_cc = S_028410_DCC_WR_POLICY_GFX11(meta_write_policy) |
+                  S_028410_COLOR_WR_POLICY_GFX11(V_028410_CACHE_STREAM) |
+                  S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX11);
+      else
+         gl2_cc = S_028410_CMASK_WR_POLICY(meta_write_policy) |
+                  S_028410_FMASK_WR_POLICY(V_028410_CACHE_STREAM) |
+                  S_028410_DCC_WR_POLICY_GFX10(meta_write_policy) |
+                  S_028410_COLOR_WR_POLICY_GFX10(V_028410_CACHE_STREAM) |
+                  S_028410_CMASK_RD_POLICY(meta_read_policy) |
+                  S_028410_FMASK_RD_POLICY(V_028410_CACHE_NOA_GFX10) |
+                  S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX10);
+
       si_pm4_set_reg(pm4, R_028410_CB_RMI_GL2_CACHE_CONTROL,
-                     S_028410_CMASK_WR_POLICY(meta_write_policy) |
-                     S_028410_FMASK_WR_POLICY(V_028410_CACHE_STREAM) |
-                     S_028410_DCC_WR_POLICY_GFX10(meta_write_policy) |
-                     S_028410_COLOR_WR_POLICY_GFX10(V_028410_CACHE_STREAM) |
-                     S_028410_CMASK_RD_POLICY(meta_read_policy) |
-                     S_028410_FMASK_RD_POLICY(V_028410_CACHE_NOA_GFX10) |
-                     S_028410_DCC_RD_POLICY(meta_read_policy) |
-                     S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX10));
+                     gl2_cc |
+                     S_028410_DCC_RD_POLICY(meta_read_policy));
 
       si_pm4_set_reg(pm4, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
       si_pm4_set_reg(pm4, R_028A98_VGT_DRAW_PAYLOAD_CNTL, 0);

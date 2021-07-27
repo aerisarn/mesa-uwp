@@ -1121,7 +1121,8 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs = S_00B21C_CU_EN(0xffff) |
                                                    S_00B21C_WAVE_LIMIT(0x3F);
       shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs =
-         S_00B204_CU_EN_GFX10(0xffff) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0);
+         (sscreen->info.chip_class >= GFX11 ? S_00B204_CU_EN_GFX11(1) : S_00B204_CU_EN_GFX10(0xffff)) |
+         S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0);
 
       shader->ctx_reg.gs.vgt_gs_onchip_cntl =
          S_028A44_ES_VERTS_PER_SUBGRP(shader->gs_info.es_verts_per_subgroup) |
@@ -1506,9 +1507,16 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) |
                                      S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
-   shader->ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(shader->ngg.max_gsprims) |
-                     S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
-                     S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+   if (sscreen->info.chip_class >= GFX11) {
+      shader->ge_cntl = S_03096C_PRIMS_PER_SUBGRP(shader->ngg.max_gsprims) |
+                        S_03096C_VERTS_PER_SUBGRP(shader->ngg.hw_max_esverts) |
+                        S_03096C_BREAK_PRIMGRP_AT_EOI(break_wave_at_eoi) |
+                        S_03096C_PRIM_GRP_SIZE_GFX11(256);
+   } else {
+      shader->ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(shader->ngg.max_gsprims) |
+                        S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
+                        S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+   }
 
    /* On gfx10, the GE only checks against the maximum number of ES verts after
     * allocating a full GS primitive. So we need to ensure that whenever

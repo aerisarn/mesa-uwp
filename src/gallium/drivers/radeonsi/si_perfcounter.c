@@ -268,6 +268,9 @@ static void si_pc_query_destroy(struct si_context *sctx, struct si_query *squery
 
 void si_inhibit_clockgating(struct si_context *sctx, struct radeon_cmdbuf *cs, bool inhibit)
 {
+   if (sctx->chip_class >= GFX11)
+      return;
+
    radeon_begin(&sctx->gfx_cs);
 
    if (sctx->chip_class >= GFX10) {
