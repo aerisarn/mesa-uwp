@@ -1783,17 +1783,14 @@ v3dX(cmd_buffer_emit_configuration_bits)(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(CFG_BITS));
    v3dv_return_if_oom(cmd_buffer, NULL);
 
-#if V3D_VERSION == 42
-   bool enable_ez = job_update_ez_state(job, pipeline, cmd_buffer);
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
+#if V3D_VERSION == 42
+      bool enable_ez = job_update_ez_state(job, pipeline, cmd_buffer);
       config.early_z_enable = enable_ez;
       config.early_z_updates_enable = config.early_z_enable &&
          pipeline->z_updates_enable;
+#endif
    }
-#endif
-#if V3D_VERSION >= 71
-   unreachable("HW generation 71 not supported yet.");
-#endif
 }
 
 void
