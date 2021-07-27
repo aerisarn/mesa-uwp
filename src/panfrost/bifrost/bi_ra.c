@@ -178,7 +178,12 @@ lcra_count_constraints(struct lcra_state *l, unsigned i)
  * that union is the desired clobber set. That may be written equivalently as
  * the union over i < n of (B - i), where subtraction is defined elementwise
  * and corresponds to a shift of the entire bitset.
+ *
+ * EVEN_BITS_MASK is an affinity mask for aligned register pairs. Interpreted
+ * as a bit set, it is { x : 0 <= x < 64 if x is even }
  */
+
+#define EVEN_BITS_MASK (0x5555555555555555ull)
 
 static uint64_t
 bi_make_affinity(uint64_t clobber, unsigned count, bool split_file)
@@ -207,7 +212,7 @@ bi_make_affinity(uint64_t clobber, unsigned count, bool split_file)
 }
 
 static void
-bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint64_t preload_live, unsigned node_count, bool is_blend, bool split_file)
+bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint64_t preload_live, unsigned node_count, bool is_blend, bool split_file, bool aligned_sr)
 {
         bi_foreach_instr_in_block_rev(block, ins) {
                 /* Mark all registers live after the instruction as
@@ -228,6 +233,11 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                         unsigned count = bi_count_write_registers(ins, d);
                         unsigned offset = ins->dest[d].offset;
                         uint64_t affinity = bi_make_affinity(preload_live, count, split_file);
+
+                        /* Valhall needs >= 64-bit staging writes to be pair-aligned */
+                        if (aligned_sr && count >= 2)
+                                affinity &= EVEN_BITS_MASK;
+
                         l->affinity[node] &= (affinity >> offset);
 
                         for (unsigned i = 0; i < node_count; ++i) {
@@ -236,6 +246,14 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                                                         bi_writemask(ins, d), i, live[i]);
                                 }
                         }
+                }
+
+                /* Valhall needs >= 64-bit staging reads to be pair-aligned */
+                if (aligned_sr && bi_count_read_registers(ins, 0) >= 2) {
+                        unsigned node = bi_get_node(ins->src[0]);
+
+                        if (node < node_count)
+                                l->affinity[node] &= EVEN_BITS_MASK;
                 }
 
                 if (!is_blend && ins->op == BI_OPCODE_BLEND) {
@@ -268,7 +286,8 @@ bi_compute_interference(bi_context *ctx, struct lcra_state *l, bool full_regs)
                 uint8_t *live = mem_dup(blk->live_out, node_count);
 
                 bi_mark_interference(blk, l, live, blk->reg_live_out,
-                                node_count, ctx->inputs->is_blend, !full_regs);
+                                node_count, ctx->inputs->is_blend, !full_regs,
+                                ctx->arch >= 9);
 
                 free(live);
         }
