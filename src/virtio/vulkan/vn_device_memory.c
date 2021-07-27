@@ -14,7 +14,9 @@
 #include "venus-protocol/vn_protocol_driver_transport.h"
 
 #include "vn_android.h"
+#include "vn_buffer.h"
 #include "vn_device.h"
+#include "vn_image.h"
 
 /* device memory commands */
 
@@ -188,9 +190,29 @@ vn_device_memory_should_suballocate(const VkMemoryAllocateInfo *alloc_info,
    if (alloc_info->allocationSize > 64 * 1024)
       return false;
 
-   /* reject if there is any pnext struct */
-   if (alloc_info->pNext)
-      return false;
+   /* reject if there is any pnext struct other than
+    * VkMemoryDedicatedAllocateInfo, or if dedicated allocation is required
+    */
+   if (alloc_info->pNext) {
+      const VkMemoryDedicatedAllocateInfo *dedicated = alloc_info->pNext;
+      if (dedicated->sType !=
+             VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO ||
+          dedicated->pNext)
+         return false;
+
+      const struct vn_image *img = vn_image_from_handle(dedicated->image);
+      if (img) {
+         for (uint32_t i = 0; i < ARRAY_SIZE(img->dedicated_requirements);
+              i++) {
+            if (img->dedicated_requirements[i].requiresDedicatedAllocation)
+               return false;
+         }
+      }
+
+      const struct vn_buffer *buf = vn_buffer_from_handle(dedicated->buffer);
+      if (buf && buf->dedicated_requirements.requiresDedicatedAllocation)
+         return false;
+   }
 
    return true;
 }
