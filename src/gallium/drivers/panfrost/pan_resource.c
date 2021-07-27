@@ -144,13 +144,14 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
                 return false;
         } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
-                if (renderonly_get_handle(scanout, handle))
+                if (dev->ro) {
+                        return renderonly_get_handle(scanout, handle);
+                } else {
+                        handle->handle = rsrc->image.data.bo->gem_handle;
+                        handle->stride = rsrc->image.layout.slices[0].line_stride;
+                        handle->offset = rsrc->image.layout.slices[0].offset;
                         return true;
-
-                handle->handle = rsrc->image.data.bo->gem_handle;
-                handle->stride = rsrc->image.layout.slices[0].line_stride;
-                handle->offset = rsrc->image.layout.slices[0].offset;
-                return TRUE;
+                }
         } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
                 if (scanout) {
                         struct drm_prime_handle args = {
