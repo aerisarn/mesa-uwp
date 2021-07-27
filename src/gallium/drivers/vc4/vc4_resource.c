@@ -320,7 +320,6 @@ vc4_resource_get_handle(struct pipe_screen *pscreen,
                 return vc4_bo_flink(rsc->bo, &whandle->handle);
         case WINSYS_HANDLE_TYPE_KMS:
                 if (screen->ro) {
-                        assert(rsc->scanout);
                         return renderonly_get_handle(rsc->scanout, whandle);
                 }
                 whandle->handle = rsc->bo->handle;
@@ -689,8 +688,6 @@ vc4_resource_from_handle(struct pipe_screen *pscreen,
                         renderonly_create_gpu_import_for_resource(prsc,
                                                                   screen->ro,
                                                                   NULL);
-                if (!rsc->scanout)
-                        goto fail;
         }
 
         if (rsc->tiled && whandle->stride != slice->stride) {

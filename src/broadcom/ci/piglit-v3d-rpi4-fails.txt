@@ -208,7 +208,7 @@ spec@ext_framebuffer_object@fbo-blending-formats,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB10,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Crash
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail

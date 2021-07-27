@@ -432,10 +432,11 @@ v3d_resource_get_handle(struct pipe_screen *pscreen,
                 return v3d_bo_flink(bo, &whandle->handle);
         case WINSYS_HANDLE_TYPE_KMS:
                 if (screen->ro) {
-                        assert(rsc->scanout);
-                        bool ok = renderonly_get_handle(rsc->scanout, whandle);
-                        whandle->stride = rsc->slices[0].stride;
-                        return ok;
+                        if (renderonly_get_handle(rsc->scanout, whandle)) {
+                                whandle->stride = rsc->slices[0].stride;
+                                return true;
+                        }
+                        return false;
                 }
                 whandle->handle = bo->handle;
                 return true;
@@ -928,10 +929,6 @@ v3d_resource_from_handle(struct pipe_screen *pscreen,
                         renderonly_create_gpu_import_for_resource(prsc,
                                                                   screen->ro,
                                                                   NULL);
-                if (!rsc->scanout) {
-                        fprintf(stderr, "Failed to create scanout resource.\n");
-                        goto fail;
-                }
         }
 
         if (rsc->tiled && whandle->stride != slice->stride) {
