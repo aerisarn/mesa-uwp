@@ -8,10 +8,6 @@ KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test,Crash
 KHR-GL33.transform_feedback.query_vertex_interleaved_test,Fail
 KHR-GL33.transform_feedback.query_vertex_separate_test,Fail
 
-# "Intermediate verification failed for coordinates (0, 0) sample 2 (Fail)"
-dEQP-VK.api.copy_and_blit.core.resolve_image.whole_array_image_one_region.4_bit,Fail
-dEQP-VK.api.copy_and_blit.core.resolve_image.whole_copy_before_resolving.4_bit,Fail
-
 # "Fail (createInstance returned VK_ERROR_INITIALIZATION_FAILED)"
 # happens inside the loader on anholt's debian system, and there are various
 # likely-looking fixes in later versions of the loader.
