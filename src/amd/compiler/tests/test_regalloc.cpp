@@ -286,3 +286,57 @@ BEGIN_TEST(regalloc.linear_vgpr.live_range_split.get_reg_create_vector)
 
    finish_ra_test(ra_test_policy());
 END_TEST
+
+BEGIN_TEST(regalloc.branch_def_phis_at_merge_block)
+   //>> p_startpgm
+   if (!setup_cs("", GFX10))
+      return;
+
+   //! s2: %_:s[2-3] = p_branch
+   bld.branch(aco_opcode::p_branch, bld.def(s2));
+
+   //! BB1
+   //! /* logical preds: / linear preds: BB0, / kind: uniform, */
+   bld.reset(program->create_and_insert_block());
+   program->blocks[1].linear_preds.push_back(0);
+
+   //! s2: %tmp:s[0-1] = p_linear_phi 0
+   Temp tmp = bld.pseudo(aco_opcode::p_linear_phi, bld.def(s2), Operand::c64(0u));
+
+   //! p_unit_test %tmp:s[0-1]
+   bld.pseudo(aco_opcode::p_unit_test, tmp);
+
+   finish_ra_test(ra_test_policy());
+END_TEST
+
+BEGIN_TEST(regalloc.branch_def_phis_at_branch_block)
+   //>> p_startpgm
+   if (!setup_cs("", GFX10))
+      return;
+
+   //! s2: %tmp:s[0-1] = p_unit_test
+   Temp tmp = bld.pseudo(aco_opcode::p_unit_test, bld.def(s2));
+
+   //! s2: %_:s[2-3] = p_cbranch_z %0:scc
+   bld.branch(aco_opcode::p_cbranch_z, bld.def(s2), Operand(scc, s1));
+
+   //! BB1
+   //! /* logical preds: / linear preds: BB0, / kind: */
+   bld.reset(program->create_and_insert_block());
+   program->blocks[1].linear_preds.push_back(0);
+
+   //! p_unit_test %tmp:s[0-1]
+   bld.pseudo(aco_opcode::p_unit_test, tmp);
+   bld.branch(aco_opcode::p_branch, bld.def(s2));
+
+   bld.reset(program->create_and_insert_block());
+   program->blocks[2].linear_preds.push_back(0);
+
+   bld.branch(aco_opcode::p_branch, bld.def(s2));
+
+   bld.reset(program->create_and_insert_block());
+   program->blocks[3].linear_preds.push_back(1);
+   program->blocks[3].linear_preds.push_back(2);
+
+   finish_ra_test(ra_test_policy());
+END_TEST
