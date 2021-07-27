@@ -11,10 +11,13 @@
 #include "tu_cs.h"
 #include "vk_format.h"
 
+#include "ir3/ir3_nir.h"
+
 #include "util/format_r11g11b10f.h"
 #include "util/format_rgb9e5.h"
 #include "util/format_srgb.h"
 #include "util/half_float.h"
+#include "compiler/nir/nir_builder.h"
 
 static uint32_t
 tu_pack_float32_for_unorm(float val, int bits)
@@ -315,146 +318,235 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
 /* r3d_ = shader path operations */
 
-void
-tu_init_clear_blit_shaders(struct tu6_global *global)
+static nir_ssa_def *
+load_const(nir_builder *b, unsigned base, unsigned components)
 {
-#define MOV(args...) { .cat1 = { .opc_cat = 1, .src_type = TYPE_S32, .dst_type = TYPE_S32, args } }
-#define CAT2(op, args...) { .cat2 = { .opc_cat = 2, .opc = (op) & 63, .full = 1, args } }
-#define CAT3(op, args...) { .cat3 = { .opc_cat = 3, .opc = (op) & 63, args } }
+   return nir_load_uniform(b, components, 32, nir_imm_int(b, 0),
+                           .base = base);
+}
 
-   static const instr_t vs_code[] = {
-      /* r0.xyz = r0.w ? c1.xyz : c0.xyz
-       * r1.xy = r0.w ? c1.zw : c0.zw
-       * r1.z = c2.x (for z_scale path)
-       * r0.w = 1.0f
-       */
-      CAT3(OPC_SEL_B32, .repeat = 2, .dst = 0,
-         .c1 = {.src1_c = 1, .src1 = 4}, .src1_r = 1,
-         .src2 = 3,
-         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0}),
-      CAT3(OPC_SEL_B32, .repeat = 1, .dst = 4,
-         .c1 = {.src1_c = 1, .src1 = 6}, .src1_r = 1,
-         .src2 = 3,
-         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 2}),
-      MOV(.dst = 6, .src_c = 1, .src = 8 ),
-      MOV(.dst = 3, .src_im = 1, .fim_val = 1.0f ),
-      { .cat0 = { .opc = OPC_END } },
-   };
+static nir_shader *
+build_blit_vs_shader(void)
+{
+   nir_builder _b =
+      nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL, "blit vs");
+   nir_builder *b = &_b;
 
-   static const instr_t fs_blit[] = {
-      /* " bary.f (ei)r63.x, 0, r0.x" note the blob doesn't have this in its
-       * blit path (its not clear what allows it to not have it)
-       */
-      CAT2(OPC_BARY_F, .ei = 1, .full = 1, .dst = 63 * 4, .src1_im = 1),
-      { .cat0 = { .opc = OPC_END } },
-   };
+   nir_variable *out_pos =
+      nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
+                          "gl_Position");
+   out_pos->data.location = VARYING_SLOT_POS;
 
-   static const instr_t fs_blit_zscale[] = {
-      /* (rpt2)bary.f (ei)r0.x, (r)0, r0.x
-       * (rpt5)nop
-       * sam.3d (s32)(xyzw)r0.x, r0.x, s#0, t#0
-       */
-      CAT2(OPC_BARY_F, .ei = 1, .full = 1, .dst = 0, .src1_im = 1, .src1 = 0, .repeat = 2, .src1_r = 1),
-      { .cat0 = { .repeat = 5 } },
-      { .cat5 = { .opc_cat = 5, .opc = OPC_SAM & 31, .dst = 0, .wrmask = 0xf, .type = TYPE_S32,
-         .is_3d = 1, .norm = { .full = 1, .src1 = 0 } } },
-      { .cat0 = { .opc = OPC_END } },
-   };
+   nir_ssa_def *vert0_pos = load_const(b, 0, 2);
+   nir_ssa_def *vert1_pos = load_const(b, 4, 2);
+   nir_ssa_def *vertex = nir_load_vertex_id(b);
 
-   memcpy(&global->shaders[GLOBAL_SH_VS], vs_code, sizeof(vs_code));
-   memcpy(&global->shaders[GLOBAL_SH_FS_BLIT], fs_blit, sizeof(fs_blit));
-   memcpy(&global->shaders[GLOBAL_SH_FS_BLIT_ZSCALE], fs_blit_zscale, sizeof(fs_blit_zscale));
+   nir_ssa_def *pos = nir_bcsel(b, nir_i2b1(b, vertex), vert1_pos, vert0_pos);
+   pos = nir_vec4(b, nir_channel(b, pos, 0),
+                     nir_channel(b, pos, 1),
+                     nir_imm_float(b, 0.0),
+                     nir_imm_float(b, 1.0));
+
+   nir_store_var(b, out_pos, pos, 0xf);
+
+   nir_variable *out_coords =
+      nir_variable_create(b->shader, nir_var_shader_out, glsl_vec_type(3),
+                          "coords");
+   out_coords->data.location = VARYING_SLOT_VAR0;
+
+   nir_ssa_def *vert0_coords = load_const(b, 2, 2);
+   nir_ssa_def *vert1_coords = load_const(b, 6, 2);
+
+   /* Only used with "z scale" blit path which uses a 3d texture */
+   nir_ssa_def *z_coord = load_const(b, 8, 1);
+
+   nir_ssa_def *coords = nir_bcsel(b, nir_i2b1(b, vertex), vert1_coords, vert0_coords);
+   coords = nir_vec3(b, nir_channel(b, coords, 0), nir_channel(b, coords, 1),
+                     z_coord);
+
+   nir_store_var(b, out_coords, coords, 0x7);
+
+   return b->shader;
+}
+
+static nir_shader *
+build_clear_vs_shader(void)
+{
+   nir_builder _b =
+      nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL, "blit vs");
+   nir_builder *b = &_b;
+
+   nir_variable *out_pos =
+      nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
+                          "gl_Position");
+   out_pos->data.location = VARYING_SLOT_POS;
+
+   nir_ssa_def *vert0_pos = load_const(b, 0, 2);
+   nir_ssa_def *vert1_pos = load_const(b, 4, 2);
+   /* c0.z is used to clear depth */
+   nir_ssa_def *depth = load_const(b, 2, 1);
+   nir_ssa_def *vertex = nir_load_vertex_id(b);
+
+   nir_ssa_def *pos = nir_bcsel(b, nir_i2b1(b, vertex), vert1_pos, vert0_pos);
+   pos = nir_vec4(b, nir_channel(b, pos, 0),
+                     nir_channel(b, pos, 1),
+                     depth, nir_imm_float(b, 1.0));
+
+   nir_store_var(b, out_pos, pos, 0xf);
+
+   nir_variable *out_layer =
+      nir_variable_create(b->shader, nir_var_shader_out, glsl_uint_type(),
+                          "gl_Layer");
+   out_layer->data.location = VARYING_SLOT_LAYER;
+   nir_ssa_def *layer = load_const(b, 3, 1);
+   nir_store_var(b, out_layer, layer, 1);
+
+   return b->shader;
+}
+
+static nir_shader *
+build_blit_fs_shader(bool zscale)
+{
+   nir_builder _b =
+      nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                     zscale ? "zscale blit fs" : "blit fs");
+   nir_builder *b = &_b;
+
+   nir_variable *out_color =
+      nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
+                          "color0");
+   out_color->data.location = FRAG_RESULT_DATA0;
+
+   unsigned coord_components = zscale ? 3 : 2;
+   nir_variable *in_coords =
+      nir_variable_create(b->shader, nir_var_shader_in,
+                          glsl_vec_type(coord_components),
+                          "coords");
+   in_coords->data.location = VARYING_SLOT_VAR0;
+
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 1);
+   /* Note: since we're just copying data, we rely on the HW ignoring the
+    * dest_type.
+    */
+   tex->dest_type = nir_type_int32;
+   tex->is_array = false;
+   tex->is_shadow = false;
+   tex->sampler_dim = zscale ? GLSL_SAMPLER_DIM_3D : GLSL_SAMPLER_DIM_2D;
+
+   tex->texture_index = 0;
+   tex->sampler_index = 0;
+
+   b->shader->info.num_textures = 1;
+   BITSET_SET(b->shader->info.textures_used, 0);
+
+   tex->src[0].src_type = nir_tex_src_coord;
+   tex->src[0].src = nir_src_for_ssa(nir_load_var(b, in_coords));
+   tex->coord_components = coord_components;
+
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+   nir_builder_instr_insert(b, &tex->instr);
+
+   nir_store_var(b, out_color, &tex->dest.ssa, 0xf);
+
+   return b->shader;
+}
+
+static nir_shader *
+build_clear_fs_shader(unsigned mrts)
+{
+   nir_builder _b =
+      nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                     "mrt%u clear fs", mrts);
+   nir_builder *b = &_b;
+
+   for (unsigned i = 0; i < mrts; i++) {
+      nir_variable *out_color =
+         nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
+                             "color");
+      out_color->data.location = FRAG_RESULT_DATA0 + i;
+
+      nir_ssa_def *color = load_const(b, 4 * i, 4);
+      nir_store_var(b, out_color, color, 0xf);
+   }
+
+   return b->shader;
+}
+
+static void
+compile_shader(struct tu_device *dev, struct nir_shader *nir,
+               unsigned consts, unsigned *offset, enum global_shader idx)
+{
+   nir->options = ir3_get_compiler_options(dev->compiler);
+
+   nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, nir->info.stage);
+   nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs, nir->info.stage);
+
+   ir3_finalize_nir(dev->compiler, nir);
+
+   struct ir3_shader *sh = ir3_shader_from_nir(dev->compiler, nir,
+                                               align(consts, 4), NULL);
+
+   struct ir3_shader_key key = {};
+   bool created;
+   struct ir3_shader_variant *so =
+      ir3_shader_get_variant(sh, &key, false, false, &created);
+
+   struct tu6_global *global = dev->global_bo.map;
+
+   assert(*offset + so->info.sizedwords <= ARRAY_SIZE(global->shaders));
+   dev->global_shaders[idx] = so;
+   memcpy(&global->shaders[*offset], so->bin,
+          sizeof(uint32_t) * so->info.sizedwords);
+   dev->global_shader_va[idx] = dev->global_bo.iova +
+      gb_offset(shaders[*offset]);
+   *offset += align(so->info.sizedwords, 32);
+}
+
+void
+tu_init_clear_blit_shaders(struct tu_device *dev)
+{
+   unsigned offset = 0;
+   compile_shader(dev, build_blit_vs_shader(), 3, &offset, GLOBAL_SH_VS_BLIT);
+   compile_shader(dev, build_clear_vs_shader(), 2, &offset, GLOBAL_SH_VS_CLEAR);
+   compile_shader(dev, build_blit_fs_shader(false), 0, &offset, GLOBAL_SH_FS_BLIT);
+   compile_shader(dev, build_blit_fs_shader(true), 0, &offset, GLOBAL_SH_FS_BLIT_ZSCALE);
 
    for (uint32_t num_rts = 0; num_rts <= MAX_RTS; num_rts++) {
-      instr_t *code = global->shaders[GLOBAL_SH_FS_CLEAR0 + num_rts];
-      for (uint32_t i = 0; i < num_rts; i++) {
-         /* (rpt3)mov.s32s32 r0.x, (r)c[i].x */
-         *code++ = (instr_t) MOV(.repeat = 3, .dst = i * 4, .src_c = 1, .src_r = 1, .src = i * 4);
-      }
-      *code++ = (instr_t) { .cat0 = { .opc = OPC_END } };
+      compile_shader(dev, build_clear_fs_shader(num_rts), num_rts, &offset,
+                     GLOBAL_SH_FS_CLEAR0 + num_rts);
+   }
+}
+
+void
+tu_destroy_clear_blit_shaders(struct tu_device *dev)
+{
+   for (unsigned i = 0; i < GLOBAL_SH_COUNT; i++) {
+      if (dev->global_shaders[i])
+         ir3_shader_destroy(dev->global_shaders[i]->shader);
    }
 }
 
 static void
-r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts,
-           bool layered_clear, bool z_scale)
+r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
+           uint32_t rts_mask, bool z_scale)
 {
-   struct ir3_const_state dummy_const_state = {};
-   struct ir3_shader dummy_shader = {
-      .compiler = cmd->device->compiler,
-   };
+   enum global_shader vs_id =
+      blit ? GLOBAL_SH_VS_BLIT : GLOBAL_SH_VS_CLEAR;
 
-   struct ir3_shader_variant vs = {
-      .type = MESA_SHADER_VERTEX,
-      .instrlen = 1,
-      .constlen = 4,
-      .info.max_reg = 1,
-      .inputs_count = 1,
-      .inputs[0] = {
-         .slot = SYSTEM_VALUE_VERTEX_ID,
-         .regid = regid(0, 3),
-         .sysval = true,
-      },
-      .outputs_count = blit ? 2 : 1,
-      .outputs[0] = {
-         .slot = VARYING_SLOT_POS,
-         .regid = regid(0, 0),
-      },
-      .outputs[1] = {
-         .slot = VARYING_SLOT_VAR0,
-         .regid = regid(1, 0),
-      },
-      .shader = &dummy_shader,
-      .const_state = &dummy_const_state,
-   };
-   if (layered_clear) {
-      vs.outputs[1].slot = VARYING_SLOT_LAYER;
-      vs.outputs[1].regid = regid(1, 1);
-      vs.outputs_count = 2;
-   }
-
-   struct ir3_shader_variant fs = {
-      .type = MESA_SHADER_FRAGMENT,
-      .instrlen = 1, /* max of 9 instructions with num_rts = 8 */
-      .constlen = align(num_rts, 4),
-      .info.max_reg = MAX2(num_rts, 1) - 1,
-      .total_in = blit ? 2 : 0,
-      .num_samp = blit ? 1 : 0,
-      .inputs_count = blit ? 2 : 0,
-      .inputs[0] = {
-         .slot = VARYING_SLOT_VAR0,
-         .inloc = 0,
-         .compmask = 3,
-         .bary = true,
-      },
-      .inputs[1] = {
-         .slot = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL,
-         .regid = regid(0, 0),
-         .sysval = 1,
-      },
-      .num_sampler_prefetch = blit ? 1 : 0,
-      .sampler_prefetch[0] = {
-         .src = 0,
-         .wrmask = 0xf,
-         .cmd = 4,
-      },
-      .shader = &dummy_shader,
-      .const_state = &dummy_const_state,
-   };
+   struct ir3_shader_variant *vs = cmd->device->global_shaders[vs_id];
+   uint64_t vs_iova = cmd->device->global_shader_va[vs_id];
 
    enum global_shader fs_id = GLOBAL_SH_FS_BLIT;
 
+   if (z_scale)
+      fs_id = GLOBAL_SH_FS_BLIT_ZSCALE;
+
+   unsigned num_rts = util_bitcount(rts_mask);
    if (!blit)
       fs_id = GLOBAL_SH_FS_CLEAR0 + num_rts;
 
-   /* z_scale blit path has an extra varying and doesn't use prefetch */
-   if (z_scale) {
-      assert(blit);
-      fs.total_in = 3;
-      fs.num_sampler_prefetch = 0;
-      fs.inputs[0].compmask = 7;
-      fs_id = GLOBAL_SH_FS_BLIT_ZSCALE;
-   }
+   struct ir3_shader_variant *fs = cmd->device->global_shaders[fs_id];
+   uint64_t fs_iova = cmd->device->global_shader_va[fs_id];
 
    tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
          .vs_state = true,
@@ -469,15 +561,15 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
          .gfx_bindless = 0x1f,
          .cs_bindless = 0x1f));
 
-   tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs);
+   tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, vs);
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL);
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_EVAL, NULL);
    tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, NULL);
-   tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, &fs);
+   tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, fs);
 
    struct tu_pvtmem_config pvtmem = {};
-   tu6_emit_xs(cs, MESA_SHADER_VERTEX, &vs, &pvtmem, global_iova(cmd, shaders[GLOBAL_SH_VS]));
-   tu6_emit_xs(cs, MESA_SHADER_FRAGMENT, &fs, &pvtmem, global_iova(cmd, shaders[fs_id]));
+   tu6_emit_xs(cs, MESA_SHADER_VERTEX, vs, &pvtmem, vs_iova);
+   tu6_emit_xs(cs, MESA_SHADER_FRAGMENT, fs, &pvtmem, fs_iova);
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
    tu_cs_emit_regs(cs, A6XX_VFD_CONTROL_0());
@@ -496,13 +588,13 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
    }
    tu_cs_emit_regs(cs, A6XX_VFD_MULTIVIEW_CNTL());
 
-   tu6_emit_vpc(cs, &vs, NULL, NULL, NULL, &fs, 0);
+   tu6_emit_vpc(cs, vs, NULL, NULL, NULL, fs, 0);
 
    /* REPL_MODE for varying with RECTLIST (2 vertices only) */
    tu_cs_emit_regs(cs, A6XX_VPC_VARYING_INTERP_MODE(0, 0));
    tu_cs_emit_regs(cs, A6XX_VPC_VARYING_PS_REPL_MODE(0, 2 << 2 | 1 << 0));
 
-   tu6_emit_fs_inputs(cs, &fs);
+   tu6_emit_fs_inputs(cs, fs);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_CL_CNTL(
@@ -525,6 +617,18 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
    tu_cs_emit_regs(cs,
                    A6XX_VFD_INDEX_OFFSET(),
                    A6XX_VFD_INSTANCE_START_OFFSET());
+
+   if (rts_mask) {
+      unsigned rts_count = util_last_bit(rts_mask);
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), rts_count);
+      unsigned rt = 0;
+      for (unsigned i = 0; i < rts_count; i++) {
+         unsigned regid = 0;
+         if (rts_mask & (1u << i))
+            regid = ir3_find_output_regid(fs, FRAG_RESULT_DATA0 + rt++);
+         tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_REG_REGID(regid));
+      }
+   }
 }
 
 static void
@@ -811,16 +915,13 @@ r3d_setup(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.dword = 0xc00000));
    tu_cs_emit_regs(cs, A6XX_RB_BIN_CONTROL(.dword = 0xc00000));
 
-   r3d_common(cmd, cs, !clear, clear ? 1 : 0, false, blit_param);
+   r3d_common(cmd, cs, !clear, 1, blit_param);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(0xfc) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(0xfc) |
                   0xfc000000);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(1));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), 1);
-   tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_REG_REGID(0));
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_FS_OUTPUT_CNTL0(),
@@ -1974,10 +2075,9 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    uint32_t clear_value[MAX_RTS][4];
    float z_clear_val = 0.0f;
    uint8_t s_clear_val = 0;
-   uint32_t clear_rts = 0, clear_components = 0, num_rts = 0;
+   uint32_t clear_rts = 0, clear_components = 0;
    bool z_clear = false;
    bool s_clear = false;
-   bool layered_clear = false;
    uint32_t max_samples = 1;
 
    for (uint32_t i = 0; i < attachment_count; i++) {
@@ -2033,29 +2133,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
                   0xfc000000);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), mrt_count);
-   for (uint32_t i = 0; i < mrt_count; i++) {
-      if (clear_rts & (1 << i))
-         tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_REG_REGID(num_rts++ * 4));
-      else
-         tu_cs_emit(cs, 0);
-   }
-
-   for (uint32_t i = 0; i < rect_count; i++) {
-      if (rects[i].baseArrayLayer || rects[i].layerCount > 1)
-         layered_clear = true;
-   }
-
-   /* a630 doesn't support multiview masks, which means that we can't use the
-    * normal multiview path without potentially recompiling a shader on-demand
-    * or using a more complicated variant that takes the mask as a const. Just
-    * use the layered path instead, since it shouldn't be much worse.
-    */
-   if (subpass->multiview_mask) {
-      layered_clear = true;
-   }
-
-   r3d_common(cmd, cs, false, num_rts, layered_clear, false);
+   r3d_common(cmd, cs, false, clear_rts, false);
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_FS_RENDER_COMPONENTS(.dword = clear_components));
@@ -2090,6 +2168,7 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_RB_STENCILWRMASK(.wrmask = 0xff));
    tu_cs_emit_regs(cs, A6XX_RB_STENCILREF(.ref = s_clear_val));
 
+   unsigned num_rts = util_bitcount(clear_rts);
    tu_cs_emit_pkt7(cs, CP_LOAD_STATE6_FRAG, 3 + 4 * num_rts);
    tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
                   CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
@@ -2110,6 +2189,12 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
        */
       assert(!subpass->multiview_mask || rects[i].baseArrayLayer == 0);
 
+      /* a630 doesn't support multiview masks, which means that we can't use
+       * the normal multiview path without potentially recompiling a shader
+       * on-demand or using a more complicated variant that takes the mask as
+       * a const. Just use the layered path instead, since it shouldn't be
+       * much worse.
+       */
       for_each_layer(layer, subpass->multiview_mask, rects[i].layerCount) {
          r3d_coords_raw(cs, (float[]) {
             rects[i].rect.offset.x, rects[i].rect.offset.y,

@@ -1346,7 +1346,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       global_size += TU_BORDER_COLOR_COUNT * sizeof(struct bcolor_entry);
 
    result = tu_bo_init_new(device, &device->global_bo, global_size,
-                           TU_BO_ALLOC_NO_FLAGS);
+                           TU_BO_ALLOC_ALLOW_DUMP);
    if (result != VK_SUCCESS) {
       vk_startup_errorf(device->instance, result, "BO init");
       goto fail_global_bo;
@@ -1359,7 +1359,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    }
 
    struct tu6_global *global = device->global_bo.map;
-   tu_init_clear_blit_shaders(device->global_bo.map);
+   tu_init_clear_blit_shaders(device);
    global->predicate = 0;
    tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK],
                          &(VkClearColorValue) {}, false);
@@ -1474,6 +1474,7 @@ fail_perfcntrs_pass_entries_alloc:
 fail_perfcntrs_pass_alloc:
    tu_DestroyPipelineCache(tu_device_to_handle(device), pc, NULL);
 fail_pipeline_cache:
+   tu_destroy_clear_blit_shaders(device);
 fail_global_bo_map:
    tu_bo_finish(device, &device->global_bo);
 
@@ -1512,6 +1513,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       if (device->scratch_bos[i].initialized)
          tu_bo_finish(device, &device->scratch_bos[i].bo);
    }
+
+   tu_destroy_clear_blit_shaders(device);
 
    ir3_compiler_destroy(device->compiler);
 

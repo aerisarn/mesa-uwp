@@ -315,7 +315,8 @@ struct tu_bo
 };
 
 enum global_shader {
-   GLOBAL_SH_VS,
+   GLOBAL_SH_VS_BLIT,
+   GLOBAL_SH_VS_CLEAR,
    GLOBAL_SH_FS_BLIT,
    GLOBAL_SH_FS_BLIT_ZSCALE,
    GLOBAL_SH_FS_CLEAR0,
@@ -326,11 +327,13 @@ enum global_shader {
 #define TU_BORDER_COLOR_COUNT 4096
 #define TU_BORDER_COLOR_BUILTIN 6
 
+#define TU_BLIT_SHADER_SIZE 1024
+
 /* This struct defines the layout of the global_bo */
 struct tu6_global
 {
-   /* clear/blit shaders, all <= 16 instrs (16 instr = 1 instrlen unit) */
-   instr_t shaders[GLOBAL_SH_COUNT][16];
+   /* clear/blit shaders */
+   uint32_t shaders[TU_BLIT_SHADER_SIZE];
 
    uint32_t seqno_dummy;          /* dummy seqno for CP_EVENT_WRITE */
    uint32_t _pad0;
@@ -353,8 +356,6 @@ struct tu6_global
 };
 #define gb_offset(member) offsetof(struct tu6_global, member)
 #define global_iova(cmd, member) ((cmd)->device->global_bo.iova + gb_offset(member))
-
-void tu_init_clear_blit_shaders(struct tu6_global *global);
 
 /* extra space in vsc draw/prim streams */
 #define VSC_PAD 0x40
@@ -389,6 +390,9 @@ struct tu_device
 
    struct tu_bo global_bo;
 
+   struct ir3_shader_variant *global_shaders[GLOBAL_SH_COUNT];
+   uint64_t global_shader_va[GLOBAL_SH_COUNT];
+
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;
    BITSET_DECLARE(custom_border_color, TU_BORDER_COLOR_COUNT);
@@ -419,6 +423,10 @@ struct tu_device
    } gralloc_type;
 #endif
 };
+
+void tu_init_clear_blit_shaders(struct tu_device *dev);
+
+void tu_destroy_clear_blit_shaders(struct tu_device *dev);
 
 VkResult _tu_device_set_lost(struct tu_device *device,
                              const char *msg, ...) PRINTFLIKE(2, 3);
