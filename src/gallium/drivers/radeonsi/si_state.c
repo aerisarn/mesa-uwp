@@ -3841,7 +3841,7 @@ void si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf
        */
       state[7] |= S_008F0C_FORMAT(fmt->img_format) |
                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET) |
-                  S_008F0C_RESOURCE_LEVEL(1);
+                  S_008F0C_RESOURCE_LEVEL(screen->info.chip_class < GFX11);
    } else {
       int first_non_void;
       unsigned num_format, data_format;
@@ -3930,8 +3930,13 @@ static void gfx10_make_texture_descriptor(
       }
 
       if (tex->upgraded_depth && !is_stencil) {
-         assert(img_format == V_008F0C_GFX10_FORMAT_32_FLOAT);
-         img_format = V_008F0C_GFX10_FORMAT_32_FLOAT_CLAMP;
+         if (screen->info.chip_class >= GFX11) {
+            assert(img_format == V_008F0C_GFX11_FORMAT_32_FLOAT);
+            img_format = V_008F0C_GFX11_FORMAT_32_FLOAT_CLAMP;
+         } else {
+            assert(img_format == V_008F0C_GFX10_FORMAT_32_FLOAT);
+            img_format = V_008F0C_GFX10_FORMAT_32_FLOAT_CLAMP;
+         }
       }
    } else {
       util_format_compose_swizzles(desc->swizzle, state_swizzle, swizzle);
@@ -3958,7 +3963,8 @@ static void gfx10_make_texture_descriptor(
    state[0] = 0;
    state[1] = S_00A004_FORMAT(img_format) | S_00A004_WIDTH_LO(width - 1);
    state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) | S_00A008_HEIGHT(height - 1) |
-              S_00A008_RESOURCE_LEVEL(1);
+              S_00A008_RESOURCE_LEVEL(screen->info.chip_class < GFX11);
+
    state[3] =
       S_00A00C_DST_SEL_X(si_map_swizzle(swizzle[0])) |
       S_00A00C_DST_SEL_Y(si_map_swizzle(swizzle[1])) |
@@ -3974,9 +3980,16 @@ static void gfx10_make_texture_descriptor(
       S_00A010_DEPTH((type == V_008F1C_SQ_RSRC_IMG_3D && sampler) ? depth - 1 : last_layer) |
       S_00A010_BASE_ARRAY(first_layer);
    state[5] = S_00A014_ARRAY_PITCH(!!(type == V_008F1C_SQ_RSRC_IMG_3D && !sampler)) |
-              S_00A014_MAX_MIP(res->nr_samples > 1 ? util_logbase2(res->nr_samples)
-                                                   : tex->buffer.b.b.last_level) |
               S_00A014_PERF_MOD(4);
+
+   unsigned max_mip = res->nr_samples > 1 ? util_logbase2(res->nr_samples) :
+                                            tex->buffer.b.b.last_level;
+
+   if (screen->info.chip_class >= GFX11) {
+      state[1] |= S_00A004_MAX_MIP(max_mip);
+   } else {
+      state[5] |= S_00A014_MAX_MIP(max_mip);
+   }
    state[6] = 0;
    state[7] = 0;
 
@@ -4567,7 +4580,8 @@ static uint32_t si_translate_border_color(struct si_context *sctx,
       sctx->border_color_count++;
    }
 
-   return S_008F3C_BORDER_COLOR_PTR_GFX6(i) |
+   return (sctx->screen->info.chip_class >= GFX11 ? S_008F3C_BORDER_COLOR_PTR_GFX11(i):
+                                                    S_008F3C_BORDER_COLOR_PTR_GFX6(i)) |
           S_008F3C_BORDER_COLOR_TYPE(V_008F3C_SQ_TEX_BORDER_COLOR_REGISTER);
 }
 
@@ -4645,8 +4659,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
    rstate->val[2] = (S_008F38_LOD_BIAS(S_FIXED(CLAMP(state->lod_bias, -16, 16), 8)) |
                      S_008F38_XY_MAG_FILTER(si_tex_filter(state->mag_img_filter, max_aniso)) |
                      S_008F38_XY_MIN_FILTER(si_tex_filter(state->min_img_filter, max_aniso)) |
-                     S_008F38_MIP_FILTER(si_tex_mipfilter(state->min_mip_filter)) |
-                     S_008F38_MIP_POINT_PRECLAMP(0));
+                     S_008F38_MIP_FILTER(si_tex_mipfilter(state->min_mip_filter)));
    rstate->val[3] = si_translate_border_color(sctx, state, &state->border_color,
                                               state->border_color_is_integer);
 
