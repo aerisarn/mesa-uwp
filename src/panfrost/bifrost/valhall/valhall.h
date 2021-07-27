@@ -105,6 +105,46 @@ struct va_opcode_info {
 extern const struct va_opcode_info
 valhall_opcodes[BI_NUM_OPCODES];
 
+/* Bifrost specifies the source of bitwise operations as (A, B, shift), but
+ * Valhall specifies (A, shift, B). We follow Bifrost conventions in the
+ * compiler, so normalize.
+ */
+
+static inline bool
+va_swap_12(enum bi_opcode op)
+{
+   switch (op) {
+   case BI_OPCODE_LSHIFT_AND_I32:
+   case BI_OPCODE_LSHIFT_AND_V2I16:
+   case BI_OPCODE_LSHIFT_AND_V4I8:
+   case BI_OPCODE_LSHIFT_OR_I32:
+   case BI_OPCODE_LSHIFT_OR_V2I16:
+   case BI_OPCODE_LSHIFT_OR_V4I8:
+   case BI_OPCODE_LSHIFT_XOR_I32:
+   case BI_OPCODE_LSHIFT_XOR_V2I16:
+   case BI_OPCODE_LSHIFT_XOR_V4I8:
+   case BI_OPCODE_RSHIFT_AND_I32:
+   case BI_OPCODE_RSHIFT_AND_V2I16:
+   case BI_OPCODE_RSHIFT_AND_V4I8:
+   case BI_OPCODE_RSHIFT_OR_I32:
+   case BI_OPCODE_RSHIFT_OR_V2I16:
+   case BI_OPCODE_RSHIFT_OR_V4I8:
+   case BI_OPCODE_RSHIFT_XOR_I32:
+   case BI_OPCODE_RSHIFT_XOR_V2I16:
+   case BI_OPCODE_RSHIFT_XOR_V4I8:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline struct va_src_info
+va_src_info(enum bi_opcode op, unsigned src)
+{
+   unsigned idx = (va_swap_12(op) && (src == 1 || src == 2)) ? (3 - src) : src;
+   return valhall_opcodes[op].srcs[idx];
+}
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
