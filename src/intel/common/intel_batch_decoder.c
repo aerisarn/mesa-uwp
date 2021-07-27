@@ -762,6 +762,39 @@ decode_3dstate_constant(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 }
 
 static void
+decode_gfx4_constant_buffer(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
+{
+   struct intel_group *inst = intel_ctx_find_instruction(ctx, p);
+   uint64_t read_length = 0, read_addr = 0, valid = 0;
+   struct intel_field_iterator iter;
+   intel_field_iterator_init(&iter, inst, p, 0, false);
+
+   while (intel_field_iterator_next(&iter)) {
+      if (!strcmp(iter.name, "Buffer Length")) {
+         read_length = iter.raw_value;
+      } else if (!strcmp(iter.name, "Valid")) {
+         valid = iter.raw_value;
+      } else if (!strcmp(iter.name, "Buffer Starting Address")) {
+         read_addr = iter.raw_value;
+      }
+   }
+
+   if (!valid)
+      return;
+
+   struct intel_batch_decode_bo buffer = ctx_get_bo(ctx, true, read_addr);
+   if (!buffer.map) {
+      fprintf(ctx->fp, "constant buffer unavailable\n");
+      return;
+   }
+   unsigned size = (read_length + 1) * 16 * sizeof(float);
+   fprintf(ctx->fp, "constant buffer size %u\n", size);
+
+   ctx_print_buffer(ctx, buffer, size, 0, -1);
+}
+
+
+static void
 decode_gfx4_3dstate_binding_table_pointers(struct intel_batch_decode_ctx *ctx,
                                            const uint32_t *p)
 {
@@ -1223,6 +1256,7 @@ struct custom_decoder {
    { "MI_LOAD_REGISTER_IMM", decode_load_register_imm },
    { "3DSTATE_PIPELINED_POINTERS", decode_pipelined_pointers },
    { "3DSTATE_CPS_POINTERS", decode_cps_pointers },
+   { "CONSTANT_BUFFER", decode_gfx4_constant_buffer },
 };
 
 void
