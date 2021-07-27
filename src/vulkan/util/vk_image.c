@@ -296,39 +296,54 @@ vk_image_view_init(struct vk_device *device,
 
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
 
-   image_view->aspects = vk_image_expand_aspect_mask(image, range->aspectMask);
-
-   /* From the Vulkan 1.2.184 spec:
-    *
-    *    "If the image has a multi-planar format and
-    *    subresourceRange.aspectMask is VK_IMAGE_ASPECT_COLOR_BIT, and image
-    *    has been created with a usage value not containing any of the
-    *    VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR,
-    *    VK_IMAGE_USAGE_VIDEO_DECODE_SRC_BIT_KHR,
-    *    VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR,
-    *    VK_IMAGE_USAGE_VIDEO_ENCODE_DST_BIT_KHR,
-    *    VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR, and
-    *    VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR flags, then the format must
-    *    be identical to the image format, and the sampler to be used with the
-    *    image view must enable sampler Y′CBCR conversion."
-    *
-    * Since no one implements video yet, we can ignore the bits about video
-    * create flags and assume YCbCr formats match.
+   /* Some drivers may want to create color views of depth/stencil images
+    * to implement certain operations, which is not strictly allowed by the
+    * Vulkan spec, so handle this case separately.
     */
-   if ((image->aspects & VK_IMAGE_ASPECT_PLANE_1_BIT) &&
-       (range->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT))
-      assert(pCreateInfo->format == image->format);
+   bool is_color_view_of_depth_stencil =
+      vk_format_is_depth_or_stencil(image->format) &&
+      vk_format_is_color(pCreateInfo->format);
+   if (is_color_view_of_depth_stencil) {
+      assert(range->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
+      assert(util_format_get_blocksize(vk_format_to_pipe_format(image->format)) ==
+             util_format_get_blocksize(vk_format_to_pipe_format(pCreateInfo->format)));
+      image_view->aspects = range->aspectMask;
+   } else {
+      image_view->aspects =
+         vk_image_expand_aspect_mask(image, range->aspectMask);
 
-   /* From the Vulkan 1.2.184 spec:
-    *
-    *    "Each depth/stencil format is only compatible with itself."
-    */
-   if (image_view->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                              VK_IMAGE_ASPECT_STENCIL_BIT))
-      assert(pCreateInfo->format == image->format);
+      /* From the Vulkan 1.2.184 spec:
+       *
+       *    "If the image has a multi-planar format and
+       *    subresourceRange.aspectMask is VK_IMAGE_ASPECT_COLOR_BIT, and image
+       *    has been created with a usage value not containing any of the
+       *    VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR,
+       *    VK_IMAGE_USAGE_VIDEO_DECODE_SRC_BIT_KHR,
+       *    VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR,
+       *    VK_IMAGE_USAGE_VIDEO_ENCODE_DST_BIT_KHR,
+       *    VK_IMAGE_USAGE_VIDEO_ENCODE_SRC_BIT_KHR, and
+       *    VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR flags, then the format must
+       *    be identical to the image format, and the sampler to be used with the
+       *    image view must enable sampler Y′CBCR conversion."
+       *
+       * Since no one implements video yet, we can ignore the bits about video
+       * create flags and assume YCbCr formats match.
+       */
+      if ((image->aspects & VK_IMAGE_ASPECT_PLANE_1_BIT) &&
+          (range->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT))
+         assert(pCreateInfo->format == image->format);
 
-   if (!(image->create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
-      assert(pCreateInfo->format == image->format);
+      /* From the Vulkan 1.2.184 spec:
+       *
+       *    "Each depth/stencil format is only compatible with itself."
+       */
+      if (image_view->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                                 VK_IMAGE_ASPECT_STENCIL_BIT))
+         assert(pCreateInfo->format == image->format);
+
+      if (!(image->create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
+         assert(pCreateInfo->format == image->format);
+   }
 
    /* Restrict the format to only the planes chosen.
     *
@@ -392,7 +407,11 @@ vk_image_view_init(struct vk_device *device,
       break;
    }
 
-   const VkImageUsageFlags image_usage =
+   /* If we are creating a color view from a depth/stencil image we compute
+    * usage from the underlying depth/stencil aspects.
+    */
+   const VkImageUsageFlags image_usage = is_color_view_of_depth_stencil ?
+      vk_image_usage(image, image->aspects) :
       vk_image_usage(image, image_view->aspects);
    const VkImageViewUsageCreateInfo *usage_info =
       vk_find_struct_const(pCreateInfo, IMAGE_VIEW_USAGE_CREATE_INFO);
