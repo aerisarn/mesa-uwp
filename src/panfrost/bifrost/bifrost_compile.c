@@ -3795,12 +3795,23 @@ bifrost_nir_lower_store_component(struct nir_builder *b,
 
 /* Dead code elimination for branches at the end of a block - only one branch
  * per block is legal semantically, but unreachable jumps can be generated.
- * Likewise we can generate jumps to the terminal block which need to be
- * lowered away to a jump to #0x0, which induces successful termination. */
+ * Likewise on Bifrost we can generate jumps to the terminal block which need
+ * to be lowered away to a jump to #0x0, which induces successful termination.
+ * That trick doesn't work on Valhall, which needs a NOP inserted in the
+ * terminal block instead.
+ */
 
 static void
-bi_lower_branch(bi_block *block)
+bi_lower_terminal_block(bi_context *ctx, bi_block *block)
 {
+        bi_builder b = bi_init_builder(ctx, bi_after_block(block));
+        bi_nop(&b);
+}
+
+static void
+bi_lower_branch(bi_context *ctx, bi_block *block)
+{
+        bool cull_terminal = (ctx->arch <= 8);
         bool branched = false;
         ASSERTED bool was_jump = false;
 
@@ -3816,8 +3827,13 @@ bi_lower_branch(bi_block *block)
                 branched = true;
                 was_jump = ins->op == BI_OPCODE_JUMP;
 
-                if (bi_is_terminal_block(ins->branch_target))
+                if (!bi_is_terminal_block(ins->branch_target))
+                        continue;
+
+                if (cull_terminal)
                         ins->branch_target = NULL;
+                else if (ins->branch_target)
+                        bi_lower_terminal_block(ctx, ins->branch_target);
         }
 }
 
@@ -4038,7 +4054,7 @@ bi_compile_variant_nir(nir_shader *nir,
         }
 
         bi_foreach_block(ctx, block) {
-                bi_lower_branch(block);
+                bi_lower_branch(ctx, block);
         }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
