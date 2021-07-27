@@ -73,7 +73,7 @@ traces:
   - path: bgfx/07-callback.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 77381f3eb028306e028ab54267a1926a
+        checksum: 488d471efb84824f2d4be1c75e455881
   - path: bgfx/09-hdr.rdc
     expectations:
       - device: gl-vmware-llvmpipe
