@@ -139,6 +139,17 @@ brw_set_background_context(struct gl_context *ctx,
    backgroundCallable->setBackgroundContext(driContext->loaderPrivate);
 }
 
+static struct gl_memory_object *
+brw_new_memoryobj(struct gl_context *ctx, GLuint name)
+{
+   struct brw_memory_object *memory_object = CALLOC_STRUCT(brw_memory_object);
+   if (!memory_object)
+      return NULL;
+
+   _mesa_initialize_memory_object(ctx, &memory_object->Base, name);
+   return &memory_object->Base;
+}
+
 static void
 brw_delete_memoryobj(struct gl_context *ctx, struct gl_memory_object *memObj)
 {
@@ -441,6 +452,7 @@ brw_init_driver_functions(struct brw_context *brw,
 
    functions->SetBackgroundContext = brw_set_background_context;
 
+   functions->NewMemoryObject = brw_new_memoryobj;
    functions->DeleteMemoryObject = brw_delete_memoryobj;
    functions->ImportMemoryObjectFd = brw_import_memoryobj_fd;
    functions->GetDeviceUuid = brw_get_device_uuid;
