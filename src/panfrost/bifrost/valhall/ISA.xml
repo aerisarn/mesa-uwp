@@ -882,7 +882,7 @@
     </desc>
     <sr write="true">Updated coverage mask</sr>
     <src>Input coverage mask</src>
-    <src>Alpha value (render target 0)</src>
+    <src swizzle="true">Alpha value (render target 0)</src>
     <src/>
     <sr_count/>
   </ins>
