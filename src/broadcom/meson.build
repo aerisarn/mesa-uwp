@@ -65,7 +65,7 @@ libv3d_neon = static_library(
   ],
   c_args : [v3d_args, v3d_neon_c_args],
   gnu_symbol_visibility : 'hidden',
-  dependencies : [dep_v3dv3, dep_libdrm, dep_valgrind, idep_nir_headers],
+  dependencies : [dep_libdrm, dep_valgrind, idep_nir_headers],
 )
 
 libbroadcom_v3d = static_library(
