@@ -235,6 +235,7 @@ struct zink_context {
    struct zink_framebuffer_clear fb_clears[PIPE_MAX_COLOR_BUFS + 1];
    uint16_t clears_enabled;
    uint16_t rp_clears_enabled;
+   uint16_t fbfetch_outputs;
 
    VkBuffer vbufs[PIPE_MAX_ATTRIBS];
    unsigned vbuf_offsets[PIPE_MAX_ATTRIBS];
@@ -299,6 +300,8 @@ struct zink_context {
       VkBufferView texel_images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
       uint8_t num_images[PIPE_SHADER_TYPES];
 
+      VkDescriptorImageInfo fbfetch;
+
       struct zink_resource *descriptor_res[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       struct zink_descriptor_surface sampler_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       struct zink_descriptor_surface image_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
@@ -351,7 +354,8 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id, bool ha
 
 void
 zink_flush_queue(struct zink_context *ctx);
-
+void
+zink_update_fbfetch(struct zink_context *ctx);
 bool
 zink_resource_access_is_write(VkAccessFlags flags);
 

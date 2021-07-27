@@ -1467,6 +1467,28 @@ zink_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
    ctx->gfx_pipeline_state.patch_vertices = patch_vertices;
 }
 
+void
+zink_update_fbfetch(struct zink_context *ctx)
+{
+   const bool had_fbfetch = ctx->di.fbfetch.imageLayout == VK_IMAGE_LAYOUT_GENERAL;
+   if (!ctx->gfx_stages[PIPE_SHADER_FRAGMENT] ||
+       !ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir->info.fs.uses_fbfetch_output) {
+      if (!had_fbfetch)
+         return;
+      ctx->di.fbfetch.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      ctx->di.fbfetch.imageView = zink_screen(ctx->base.screen)->info.rb2_feats.nullDescriptor ?
+                                  VK_NULL_HANDLE :
+                                  zink_surface(ctx->dummy_surface)->image_view;
+      return;
+   }
+
+   if (ctx->fb_state.cbufs[0]) {
+      VkImageView fbfetch = zink_surface(ctx->fb_state.cbufs[0])->image_view;
+      ctx->di.fbfetch.imageView = zink_surface(ctx->fb_state.cbufs[0])->image_view;
+   }
+   ctx->di.fbfetch.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+}
+
 static uint32_t
 hash_render_pass_state(const void *key)
 {
@@ -1975,6 +1997,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    unsigned h = ctx->fb_state.height;
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
+   zink_update_fbfetch(ctx);
    unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
    ctx->gfx_pipeline_state.void_alpha_attachments = 0;
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
@@ -3577,6 +3600,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          update_descriptor_state_image(ctx, i, j);
       }
    }
+   if (!screen->info.rb2_feats.nullDescriptor)
+      ctx->di.fbfetch.imageView = zink_surface(ctx->dummy_surface)->image_view;
    p_atomic_inc(&screen->base.num_contexts);
 
    zink_select_draw_vbo(ctx);

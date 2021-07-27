@@ -945,7 +945,19 @@ static void
 zink_bind_fs_state(struct pipe_context *pctx,
                    void *cso)
 {
-   bind_stage(zink_context(pctx), PIPE_SHADER_FRAGMENT, cso);
+   struct zink_context *ctx = zink_context(pctx);
+   bind_stage(ctx, PIPE_SHADER_FRAGMENT, cso);
+   ctx->fbfetch_outputs = 0;
+   if (cso) {
+      nir_shader *nir = ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir;
+      if (nir->info.fs.uses_fbfetch_output) {
+         nir_foreach_shader_out_variable(var, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir) {
+            if (var->data.fb_fetch_output)
+               ctx->fbfetch_outputs |= BITFIELD_BIT(var->data.location - FRAG_RESULT_DATA0);
+         }
+      }
+   }
+   zink_update_fbfetch(ctx);
 }
 
 static void
