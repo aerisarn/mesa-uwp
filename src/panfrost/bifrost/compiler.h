@@ -862,6 +862,12 @@ bi_next_block(bi_block *block)
         return list_first_entry(&(block->link), bi_block, link);
 }
 
+static inline bi_block *
+bi_entry_block(bi_context *ctx)
+{
+        return list_first_entry(&ctx->blocks, bi_block, link);
+}
+
 /* BIR manipulation */
 
 bool bi_has_arg(const bi_instr *ins, bi_index arg);
