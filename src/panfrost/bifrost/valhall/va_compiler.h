@@ -38,6 +38,7 @@ bool va_validate_fau(bi_instr *I);
 void va_validate(FILE *fp, bi_context *ctx);
 void va_repair_fau(bi_builder *b, bi_instr *I);
 void va_fuse_add_imm(bi_instr *I);
+void va_lower_constants(bi_context *ctx, bi_instr *I);
 uint64_t va_pack_instr(const bi_instr *I, unsigned flow);
 
 static inline unsigned
@@ -78,6 +79,15 @@ va_select_fau_page(const bi_instr *I)
 
    return 0;
 }
+
+/** Cycle model for Valhall. Results need to be normalized */
+struct va_stats {
+   /** Counts per pipe */
+   unsigned fma, cvt, sfu, v, ls, t;
+};
+
+void
+va_count_instr_stats(bi_instr *I, struct va_stats *stats);
 
 #ifdef __cplusplus
 } /* extern C */
