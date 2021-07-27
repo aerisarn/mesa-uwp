@@ -28,8 +28,5 @@ dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixed_fragme
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadow_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadow_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.usampler1darray_fragment,Fail
-dEQP-VK.image.mismatched_formats.image_write.a8b8g8r8_srgb_pack32_with_rgb10a2,Crash
-dEQP-VK.image.mismatched_formats.image_write.b8g8r8a8_srgb_with_rgba8,Crash
-dEQP-VK.image.mismatched_formats.image_write.r8g8b8a8_srgb_with_rgb10a2,Crash
 dEQP-VK.rasterization.primitives.static_stipple.rectangular_line_strip_wide,Fail
 dEQP-VK.rasterization.primitives_multisample_4_bit.dynamic_stipple.line_strip_wide,Fail
