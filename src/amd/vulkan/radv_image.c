@@ -2068,8 +2068,14 @@ radv_layout_can_fast_clear(const struct radv_device *device, const struct radv_i
    if (!(image->usage & RADV_IMAGE_USAGE_WRITE_BITS))
       return false;
 
-   return layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
-          queue_mask == (1u << RADV_QUEUE_GENERAL);
+   if (layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+      return false;
+
+   /* Exclusive images with CMASK or DCC can always be fast-cleared on the gfx queue. Concurrent
+    * images can only be fast-cleared if comp-to-single is supported because we don't yet support
+    * FCE on the compute queue.
+    */
+   return queue_mask == (1u << RADV_QUEUE_GENERAL) || radv_image_use_comp_to_single(device, image);
 }
 
 bool
