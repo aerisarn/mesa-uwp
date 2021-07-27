@@ -626,6 +626,7 @@ struct tu_descriptor_pool
    uint8_t *host_memory_base;
    uint8_t *host_memory_ptr;
    uint8_t *host_memory_end;
+   uint8_t *host_bo;
 
    uint32_t entry_count;
    uint32_t max_entry_count;

@@ -563,6 +563,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_IMG_filter_cubic                                   DONE (tu/a650)
   VK_NV_compute_shader_derivatives                      DONE (anv, radv)
   VK_EXT_acquire_drm_display                            DONE (radv, anv)
+  VK_VALVE_mutable_descriptor_type                      DONE (radv, tu)
 
 
 OpenCL 1.0 -- all DONE:

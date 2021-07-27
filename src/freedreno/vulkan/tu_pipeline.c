@@ -113,6 +113,7 @@ tu6_load_state_size(struct tu_pipeline *pipeline, bool compute)
             count = stage_count * binding->array_size * 2;
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
             break;
          default:
             unreachable("bad descriptor type");
@@ -189,6 +190,7 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
             }
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
             /* nothing - input attachment doesn't use bindless */
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:

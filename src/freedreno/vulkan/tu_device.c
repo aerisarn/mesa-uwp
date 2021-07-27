@@ -183,6 +183,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .ANDROID_native_buffer = true,
 #endif
       .IMG_filter_cubic = device->info->a6xx.has_tex_filter_cubic,
+      .VALVE_mutable_descriptor_type = true,
    };
 }
 
@@ -737,6 +738,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceProvokingVertexFeaturesEXT *)ext;
          features->provokingVertexLast = true;
          features->transformFeedbackPreservesProvokingVertex = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
+         VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *features =
+            (VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *)ext;
+         features->mutableDescriptorType = true;
          break;
       }
 
