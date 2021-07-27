@@ -1619,6 +1619,8 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
                           info->base.vs.window_space_position : 0;
    bool enable_prim_id = shader->key.ge.mono.u.vs_export_prim_id || info->uses_primid;
 
+   assert(sscreen->info.chip_class < GFX11);
+
    pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
       return;
@@ -3676,6 +3678,8 @@ static void si_emit_vgt_flush(struct radeon_cmdbuf *cs)
 /* Initialize state related to ESGS / GSVS ring buffers */
 bool si_update_gs_ring_buffers(struct si_context *sctx)
 {
+   assert(sctx->chip_class < GFX11);
+
    struct si_shader_selector *es =
       sctx->shader.tes.cso ? sctx->shader.tes.cso : sctx->shader.vs.cso;
    struct si_shader_selector *gs = sctx->shader.gs.cso;

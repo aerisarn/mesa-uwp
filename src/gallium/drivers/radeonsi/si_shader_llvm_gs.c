@@ -356,6 +356,9 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
 
 void si_preload_gs_rings(struct si_shader_context *ctx)
 {
+   if (ctx->ac.chip_class >= GFX11)
+      return;
+
    const struct si_shader_selector *sel = ctx->shader->selector;
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_RING_GSVS, 0);

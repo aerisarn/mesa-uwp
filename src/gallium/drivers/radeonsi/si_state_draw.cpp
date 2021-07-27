@@ -1245,6 +1245,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
    } else {
       unsigned primgroup_size;
       unsigned vertgroup_size;
+      assert(GFX_VERSION < GFX11);
 
       if (HAS_TESS) {
          primgroup_size = num_patches; /* must be a multiple of NUM_PATCHES */

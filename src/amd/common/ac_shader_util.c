@@ -89,6 +89,8 @@ uint32_t ac_vgt_gs_mode(unsigned gs_max_vert_out, enum chip_class chip_class)
 {
    unsigned cut_mode;
 
+   assert (chip_class < GFX11);
+
    if (gs_max_vert_out <= 128) {
       cut_mode = V_028A40_GS_CUT_128;
    } else if (gs_max_vert_out <= 256) {
