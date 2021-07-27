@@ -580,6 +580,7 @@ etna_resource_get_handle(struct pipe_screen *pscreen,
                          struct pipe_resource *prsc,
                          struct winsys_handle *handle, unsigned usage)
 {
+   struct etna_screen *screen = etna_screen(pscreen);
    struct etna_resource *rsc = etna_resource(prsc);
    struct renderonly_scanout *scanout;
 
@@ -607,8 +608,8 @@ etna_resource_get_handle(struct pipe_screen *pscreen,
    if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
       return etna_bo_get_name(rsc->bo, &handle->handle) == 0;
    } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
-      if (renderonly_get_handle(scanout, handle)) {
-         return true;
+      if (screen->ro) {
+         return renderonly_get_handle(scanout, handle);
       } else {
          handle->handle = etna_bo_handle(rsc->bo);
          return true;
