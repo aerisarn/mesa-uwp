@@ -20,7 +20,7 @@
     DEQP_EXPECTED_RENDERER: "zink.*llvmpipe"
     DEQP_RUNNER_OPTIONS: "--timeout 180"
 
-zink-piglit-quick_gl:
+.zink-piglit-quick_gl:
   extends:
     - .test-gl
     - .zink-lvp-test
@@ -28,8 +28,18 @@ zink-piglit-quick_gl:
     PIGLIT_PROFILES: quick_gl
     PIGLIT_NO_WINDOW: 1
     PIGLIT_RUNNER_OPTIONS: "--timeout 180"
+
+zink-piglit-timelines:
+  extends:
+    - .zink-piglit-quick_gl
   script:
     - xvfb-run --server-args='-noreset' sh -c "GALLIUM_DRIVER=zink VK_DRIVER=lvp install/piglit/piglit-runner.sh"
+
+zink-piglit-no_timelines:
+  extends:
+    - .zink-piglit-quick_gl
+  script:
+    - xvfb-run --server-args='-noreset' sh -c "ZINK_NO_TIMELINES=1 GALLIUM_DRIVER=zink VK_DRIVER=lvp install/piglit/piglit-runner.sh"
 
 zink-lvp-gles2:
   extends:
