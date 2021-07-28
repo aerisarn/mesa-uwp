@@ -479,7 +479,7 @@ bi_can_iaddc(bi_instr *ins)
                 ins->src[1].swizzle == BI_SWIZZLE_H01);
 }
 
-ASSERTED static bool
+static bool
 bi_can_fma(bi_instr *ins)
 {
         /* Errata: *V2F32_TO_V2F16 with distinct sources raises
@@ -507,7 +507,7 @@ bi_impacted_fadd_widens(bi_instr *I)
                 (swz0 == BI_SWIZZLE_H11 && swz1 == BI_SWIZZLE_H00);
 }
 
-ASSERTED static bool
+static bool
 bi_can_add(bi_instr *ins)
 {
         /* +FADD.v2f16 lacks clamp modifier, use *FADD.v2f16 instead */
@@ -544,7 +544,7 @@ bi_must_not_last(bi_instr *ins)
  * be raised for unknown reasons (possibly an errata).
  */
 
-ASSERTED static bool
+static bool
 bi_must_message(bi_instr *ins)
 {
         return (bi_opcode_props[ins->op].message != BIFROST_MESSAGE_NONE) ||
@@ -572,7 +572,7 @@ bi_fma_atomic(enum bi_opcode op)
         }
 }
 
-ASSERTED static bool
+static bool
 bi_reads_zero(bi_instr *ins)
 {
         return !(bi_fma_atomic(ins->op) || ins->op == BI_OPCODE_IMULD);
@@ -593,7 +593,7 @@ bi_reads_temps(bi_instr *ins, unsigned src)
         }
 }
 
-ASSERTED static bool
+static bool
 bi_reads_t(bi_instr *ins, unsigned src)
 {
         /* Branch offset cannot come from passthrough */
