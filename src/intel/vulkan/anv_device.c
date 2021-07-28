@@ -200,6 +200,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_maintenance1                      = true,
       .KHR_maintenance2                      = true,
       .KHR_maintenance3                      = true,
+      .KHR_maintenance4                      = true,
       .KHR_multiview                         = true,
       .KHR_performance_query =
          device->use_softpin && device->perf &&
@@ -1547,6 +1548,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR: {
+         VkPhysicalDeviceMaintenance4FeaturesKHR *features =
+            (VkPhysicalDeviceMaintenance4FeaturesKHR *)ext;
+         features->maintenance4 = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
          VkPhysicalDevicePerformanceQueryFeaturesKHR *feature =
             (VkPhysicalDevicePerformanceQueryFeaturesKHR *)ext;
@@ -2261,6 +2269,13 @@ void anv_GetPhysicalDeviceProperties2(
           * types.
           */
          props->lineSubPixelPrecisionBits = 4;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR: {
+         VkPhysicalDeviceMaintenance4PropertiesKHR *properties =
+            (VkPhysicalDeviceMaintenance4PropertiesKHR *)ext;
+         properties->maxBufferSize = pdevice->isl_dev.max_buffer_size;
          break;
       }
 
