@@ -71,6 +71,7 @@ struct ra_ctx {
    std::unordered_map<unsigned, Instruction*> vectors;
    std::unordered_map<unsigned, Instruction*> split_vectors;
    aco_ptr<Instruction> pseudo_dummy;
+   aco_ptr<Instruction> phi_dummy;
    uint16_t max_used_sgpr = 0;
    uint16_t max_used_vgpr = 0;
    uint16_t sgpr_limit;
@@ -86,6 +87,8 @@ struct ra_ctx {
    {
       pseudo_dummy.reset(
          create_instruction<Instruction>(aco_opcode::p_parallelcopy, Format::PSEUDO, 0, 0));
+      phi_dummy.reset(
+         create_instruction<Instruction>(aco_opcode::p_linear_phi, Format::PSEUDO, 0, 0));
       sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
       vgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
    }
@@ -2507,6 +2510,27 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
       /* this is a slight adjustment from the paper as we already have phi nodes:
        * We consider them incomplete phis and only handle the definition. */
       get_regs_for_phis(ctx, block, register_file, instructions, live_out_per_block[block.index]);
+
+      /* If this is a merge block, the state of the register file at the branch instruction of the
+       * predecessors corresponds to the state after phis at the merge block. So, we allocate a
+       * register for the predecessor's branch definitions as if there was a phi.
+       */
+      if (!block.linear_preds.empty() &&
+          (block.linear_preds.size() != 1 ||
+           program->blocks[block.linear_preds[0]].linear_succs.size() == 1)) {
+         PhysReg br_reg = get_reg_phi(ctx, live_out_per_block[block.index], register_file,
+                                      instructions, block, ctx.phi_dummy, Temp(0, s2));
+         for (unsigned pred : block.linear_preds) {
+            aco_ptr<Instruction>& br = program->blocks[pred].instructions.back();
+            if (br->definitions.empty())
+               continue;
+
+            assert(br->definitions.size() == 1 && br->definitions[0].regClass() == s2 &&
+                   br->definitions[0].isKill());
+
+            br->definitions[0].setFixed(br_reg);
+         }
+      }
 
       /* fill in sgpr_live_in */
       for (unsigned i = 0; i <= ctx.max_used_sgpr; i++)
