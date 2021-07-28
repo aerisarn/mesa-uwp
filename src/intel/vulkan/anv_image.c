@@ -53,8 +53,8 @@ memory_range_end(struct anv_image_memory_range memory_range)
 }
 
 /**
- * Get binding for VkImagePlaneMemoryRequirementsInfo and
- * VkBindImagePlaneMemoryInfo.
+ * Get binding for VkImagePlaneMemoryRequirementsInfo,
+ * VkBindImagePlaneMemoryInfo and VkDeviceImageMemoryRequirementsKHR.
  */
 static struct anv_image_binding *
 image_aspect_to_binding(struct anv_image *image, VkImageAspectFlags aspect)
@@ -1684,6 +1684,25 @@ void anv_GetImageMemoryRequirements2(
    }
 
    anv_image_get_memory_requirements(device, image, aspects,
+                                     pMemoryRequirements);
+}
+
+void anv_GetDeviceImageMemoryRequirementsKHR(
+    VkDevice                                    _device,
+    const VkDeviceImageMemoryRequirementsKHR*   pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   struct anv_image image = { 0 };
+
+   ASSERTED VkResult result =
+      anv_image_init_from_create_info(device, &image, pInfo->pCreateInfo);
+   assert(result == VK_SUCCESS);
+
+   VkImageAspectFlags aspects =
+      image.disjoint ? pInfo->planeAspect : image.vk.aspects;
+
+   anv_image_get_memory_requirements(device, &image, aspects,
                                      pMemoryRequirements);
 }
 
