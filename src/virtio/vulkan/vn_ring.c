@@ -100,7 +100,7 @@ vn_ring_wait_seqno(const struct vn_ring *ring, uint32_t seqno)
       const uint32_t head = vn_ring_load_head(ring);
       if (vn_ring_ge_seqno(ring, head, seqno))
          return head;
-      vn_relax(&iter);
+      vn_relax(&iter, "ring seqno");
    } while (true);
 }
 
@@ -115,7 +115,7 @@ vn_ring_wait_space(const struct vn_ring *ring, uint32_t size)
       const uint32_t head = vn_ring_load_head(ring);
       if (ring->cur + size - head <= VN_RING_BUFFER_SIZE)
          return head;
-      vn_relax(&iter);
+      vn_relax(&iter, "ring space");
    } while (true);
 }
 

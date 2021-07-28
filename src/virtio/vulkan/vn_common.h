@@ -133,7 +133,7 @@ vn_log_result(struct vn_instance *instance,
               const char *where);
 
 void
-vn_relax(uint32_t *iter);
+vn_relax(uint32_t *iter, const char *reason);
 
 static_assert(sizeof(vn_object_id) >= sizeof(uintptr_t), "");
 
