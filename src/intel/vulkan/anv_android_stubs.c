@@ -62,13 +62,3 @@ anv_create_ahw_memory(VkDevice device_h,
 {
    return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
-
-VkResult
-anv_image_from_external(VkDevice device_h,
-                        const VkImageCreateInfo *base_info,
-                        const VkExternalMemoryImageCreateInfo *create_info,
-                        const VkAllocationCallbacks *alloc,
-                        VkImage *out_image_h)
-{
-   return VK_ERROR_EXTENSION_NOT_PRESENT;
-}
