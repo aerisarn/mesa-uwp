@@ -1239,6 +1239,8 @@ void tu6_emit_window_scissor(struct tu_cs *cs, uint32_t x1, uint32_t y1, uint32_
 
 void tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1);
 
+void tu_disable_draw_states(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
+
 struct tu_pvtmem_config {
    uint64_t iova;
    uint32_t per_fiber_size;

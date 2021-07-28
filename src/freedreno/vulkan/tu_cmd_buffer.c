@@ -684,7 +684,7 @@ tu6_emit_tile_store(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    }
 }
 
-static void
+void
 tu_disable_draw_states(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
@@ -2913,8 +2913,6 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    cmd->state.framebuffer = fb;
    cmd->state.render_area = pRenderPassBegin->renderArea;
 
-   tu6_emit_tile_store(cmd, &cmd->tile_store_cs);
-
    /* Note: because this is external, any flushes will happen before draw_cs
     * gets called. However deferred flushes could have to happen later as part
     * of the subpass.
@@ -4349,6 +4347,8 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
+   tu6_emit_tile_store(cmd_buffer, &cmd_buffer->tile_store_cs);
+
    tu_cs_end(&cmd_buffer->draw_cs);
    tu_cs_end(&cmd_buffer->tile_store_cs);
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
@@ -4358,10 +4358,9 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    else
       tu_cmd_render_tiles(cmd_buffer);
 
-   /* outside of renderpasses we assume all draw states are disabled
-    * we can do this in the main cs because no resolve/store commands
-    * should use a draw command (TODO: this will change if unaligned
-    * GMEM stores are supported)
+   /* Outside of renderpasses we assume all draw states are disabled. We do
+    * this outside the draw CS for the normal case where 3d gmem stores aren't
+    * used.
     */
    tu_disable_draw_states(cmd_buffer, &cmd_buffer->cs);
 

@@ -895,6 +895,36 @@ r3d_src_buffer(struct tu_cmd_buffer *cmd,
 }
 
 static void
+r3d_src_gmem(struct tu_cmd_buffer *cmd,
+             struct tu_cs *cs,
+             const struct tu_image_view *iview,
+             VkFormat format,
+             uint32_t gmem_offset,
+             uint32_t cpp)
+{
+   uint32_t desc[A6XX_TEX_CONST_DWORDS];
+   memcpy(desc, iview->descriptor, sizeof(desc));
+
+   /* patch the format so that depth/stencil get the right format */
+   desc[0] &= ~A6XX_TEX_CONST_0_FMT__MASK;
+   desc[0] |= A6XX_TEX_CONST_0_FMT(tu6_format_texture(format, TILE6_2).fmt);
+
+   /* patched for gmem */
+   desc[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
+   desc[0] |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
+   desc[2] =
+      A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
+      A6XX_TEX_CONST_2_PITCH(cmd->state.framebuffer->tile0.width * cpp);
+   desc[3] = 0;
+   desc[4] = cmd->device->physical_device->gmem_base + gmem_offset;
+   desc[5] = A6XX_TEX_CONST_5_DEPTH(1);
+   for (unsigned i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
+      desc[i] = 0;
+
+   r3d_src_common(cmd, cs, desc, 0, 0, VK_FILTER_NEAREST);
+}
+
+static void
 r3d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(0), 6);
@@ -2733,6 +2763,42 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
    tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
 }
 
+static void
+store_3d_blit(struct tu_cmd_buffer *cmd,
+              struct tu_cs *cs,
+              const struct tu_image_view *iview,
+              uint32_t dst_samples,
+              bool separate_stencil,
+              VkFormat format,
+              const VkRect2D *render_area,
+              uint32_t gmem_offset,
+              uint32_t cpp)
+{
+   r3d_setup(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false,
+             iview->ubwc_enabled, dst_samples);
+
+   r3d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
+
+   if (separate_stencil)
+      r3d_dst_stencil(cs, iview, 0);
+   else
+      r3d_dst(cs, iview, 0);
+
+   r3d_src_gmem(cmd, cs, iview, format, gmem_offset, cpp);
+
+   /* sync GMEM writes with CACHE. */
+   tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
+
+   r3d_run(cmd, cs);
+
+   /* Draws write to the CCU, unlike CP_EVENT_WRITE::BLIT which writes to
+    * sysmem, and we generally assume that GMEM renderpasses leave their
+    * results in sysmem, so we need to flush manually here. The 3d blit path
+    * writes to depth images as a color RT, so there's no need to flush depth.
+    */
+   tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
+}
+
 void
 tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          struct tu_cs *cs,
@@ -2782,26 +2848,39 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       return;
    }
 
-   if (dst->samples > 1) {
-      /* I guess we need to use shader path in this case?
-       * need a testcase which fails because of this
-       */
-      tu_finishme("unaligned store of msaa attachment\n");
-      return;
-   }
-
-   r2d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
-
    VkFormat format = src->format;
    if (format == VK_FORMAT_D32_SFLOAT_S8_UINT)
       format = VK_FORMAT_D32_SFLOAT;
 
-   if (dst->store) {
-      store_cp_blit(cmd, cs, iview, src->samples, resolve_d32s8_s8, format,
-                    src->gmem_offset, src->cpp);
-   }
-   if (dst->store_stencil) {
-      store_cp_blit(cmd, cs, iview, src->samples, true, VK_FORMAT_S8_UINT,
-                    src->gmem_offset_stencil, src->samples);
+   if (dst->samples > 1) {
+      /* If we hit this path, we have to disable draw states after every tile
+       * instead of once at the end of the renderpass, so that they aren't
+       * executed when calling CP_DRAW.
+       *
+       * TODO: store a flag somewhere so we don't do this more than once and
+       * don't do it after the renderpass when this happens.
+       */
+      if (dst->store || dst->store_stencil)
+         tu_disable_draw_states(cmd, cs);
+
+      if (dst->store) {
+         store_3d_blit(cmd, cs, iview, dst->samples, resolve_d32s8_s8, format,
+                       render_area, src->gmem_offset, src->cpp);
+      }
+      if (dst->store_stencil) {
+         store_3d_blit(cmd, cs, iview, dst->samples, true, VK_FORMAT_S8_UINT,
+                       render_area, src->gmem_offset, src->samples);
+      }
+   } else {
+      r2d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
+
+      if (dst->store) {
+         store_cp_blit(cmd, cs, iview, src->samples, resolve_d32s8_s8, format,
+                       src->gmem_offset, src->cpp);
+      }
+      if (dst->store_stencil) {
+         store_cp_blit(cmd, cs, iview, src->samples, true, VK_FORMAT_S8_UINT,
+                       src->gmem_offset_stencil, src->samples);
+      }
    }
 }
