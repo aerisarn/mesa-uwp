@@ -1,5 +1,0 @@
-dEQP-GLES31.functional.blend_equation_advanced.msaa.colordodge,Fail
-dEQP-GLES31.functional.blend_equation_advanced.msaa.exclusion,Fail
-dEQP-GLES31.functional.blend_equation_advanced.msaa.hardlight,Fail
-dEQP-GLES31.functional.blend_equation_advanced.msaa.multiply,Fail
-dEQP-GLES31.functional.blend_equation_advanced.msaa.overlay,Fail

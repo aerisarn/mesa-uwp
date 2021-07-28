@@ -11,6 +11,89 @@ KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test,Crash
 KHR-GL33.transform_feedback.query_vertex_interleaved_test,Fail
 KHR-GL33.transform_feedback.query_vertex_separate_test,Fail
 
+# "*** Color comparison failed"
+KHR-GLES3.packed_depth_stencil.verify_read_pixels.depth24_stencil8,Fail
+
+# "MESA: error: ir3_ra() failed!"
+KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2,Fail
+KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing5,Fail
+KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing6,Fail
+
+# "The values of resultStd[i] & 0xFFFFFFFE and resultFma[i] & 0xFFFFFFFE and resultCPU[i] & 0xFFFFFFFE are not bitwise equal for i = 0..99 "
+KHR-GLES31.core.gpu_shader5.fma_precision_float,Fail
+KHR-GLES31.core.gpu_shader5.fma_precision_vec2,Fail
+KHR-GLES31.core.gpu_shader5.fma_precision_vec3,Fail
+KHR-GLES31.core.gpu_shader5.fma_precision_vec4,Fail
+
+# "Array 0 length is 60829990 should be 7
+#  Array 1 length is 60829990 should be 5
+#  Array 2 length is 60829990 should be 3
+#  Array 3 length is 60829990 should be 4
+#  Array 4 length is 132120576 should be 23
+#  Array 5 length is 132120576 should be 123
+#  Array 6 length is 66060288 should be 419"
+KHR-GLES31.core.shader_storage_buffer_object.advanced-unsizedArrayLength-fs-std430-vec,Fail
+
+# "Array 0 length is 266338304 should be 7
+#  Array 1 length is 266338304 should be 3
+#  Array 2 length is 266338304 should be 4
+#  Array 3 length is 266338303 should be 4"
+KHR-GLES31.core.shader_storage_buffer_object.advanced-unsizedArrayLength-fs-int,Fail
+
+# "gl_NumWorkGroups: Invalid data at index 2"
+KHR-GLES31.core.compute_shader.built-in-variables,Fail
+
+# "Got red: 1, expected 0.00392157, at (1, 0)"
+KHR-GLES31.core.compute_shader.resource-image,Fail
+
+# "(x,y)= (0,0). Color RGBA(0,0,0,1) is different than expected RGBA(0.1,0.2,0.3,1)"
+KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-arrays,Fail
+KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-elements,Fail
+
+# Lots of errors like "[279] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
+KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support,Fail
+
+KHR-GLES31.core.geometry_shader.layered_framebuffer.stencil_support,Fail
+
+# " [31] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
+KHR-GLES31.core.shader_image_load_store.basic-glsl-misc-fs,Fail
+
+# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[32][32][18] but should be [32][32][3].
+# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[64][64][6] but should be [64][64][1].
+# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[128][128][12] but should be [128][128][2].
+# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[256][256][12] but should be [256][256][2].
+KHR-GLES31.core.texture_cube_map_array.texture_size_compute_sh,Fail
+
+# " Pixel data comparison failed; expected: (0.1, 0.2, 0.3, 0.4) rendered: (0, 0, 0, 0) epsilon: 0.00392157
+#   Pixel data comparison failed at esextcTessellationShaderPoints.cpp:597"
+KHR-GLES31.core.tessellation_shader.tessellation_shader_point_mode.point_rendering,Fail
+
+# "Invalid value returned: expected:[1, 1, 1, 1] retrieved: [0, 0, 0, 0
+#  Invalid rendering result at esextcTessellationShaderBarrier.cpp:504"
+KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guarded_read_calls,Fail
+
+# no debug info in the qpa
+KHR-GLES31.core.texture_cube_map_array.color_depth_attachments,Fail
+# failures in GS,TCS,TES texturing
+KHR-GLES31.core.texture_cube_map_array.sampling,Fail
+
+# rendering errors in ~4x4 blocks around the bottom side of the diagonal for the quad
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.colorburn,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.colordodge,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.darken,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.difference,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.exclusion,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.hardlight,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.hsl_color,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.hsl_hue,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.hsl_luminosity,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.hsl_saturation,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.lighten,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.multiply,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.overlay,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.screen,Fail
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.softlight,Fail
+
 # "Fail (createInstance returned VK_ERROR_INITIALIZATION_FAILED)"
 # happens inside the loader on anholt's debian system, and there are various
 # likely-looking fixes in later versions of the loader.
@@ -281,3 +364,9 @@ dEQP-VK.ssbo.layout.random.all_shared_buffer.5,Fail
 dEQP-VK.ssbo.layout.random.nested_structs_arrays.0,Fail
 dEQP-VK.ssbo.layout.random.nested_structs_arrays.17,Fail
 dEQP-VK.ssbo.layout.random.scalar.19,Fail
+
+bypass-dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.input_output.7,Fail
+bypass-dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.7,Fail
+bypass-dEQP-VK.renderpass2.dedicated_allocation.attachment_allocation.input_output.7,Fail
+bypass-dEQP-VK.renderpass2.suballocation.attachment_allocation.input_output.7,Fail
+bypass-dEQP-VK.renderpass.suballocation.subpass_dependencies.separate_channels.r8g8b8a8_unorm,Fail

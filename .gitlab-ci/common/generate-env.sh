@@ -29,6 +29,7 @@ for var in \
     DEQP_PARALLEL \
     DEQP_RESULTS_DIR \
     DEQP_RUNNER_OPTIONS \
+    DEQP_SUITE \
     DEQP_VARIANT \
     DEQP_VER \
     DEQP_WIDTH \

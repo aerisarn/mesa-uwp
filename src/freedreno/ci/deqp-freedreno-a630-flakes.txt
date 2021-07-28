@@ -95,3 +95,11 @@ dEQP-VK.wsi.display_control.register_display_event
 
 # First noticed Jun 1 2020 on an innocent branch.
 KHR-GL33.packed_depth_stencil.verify_copy_tex_image.depth32f_stencil8
+
+# Flaky with introduction of testing
+KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2
+KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support
+KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guarded_read_calls
+
+# looks like a cache flushing issue, and it does sometimes pass.
+bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.*

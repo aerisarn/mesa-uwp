@@ -14,3 +14,6 @@ dEQP-GLES31.functional.shaders.builtin_functions.precision.distance.lowp_compute
 dEQP-GLES31.functional.shaders.builtin_functions.precision.pow.highp_compute.vec3
 dEQP-GLES31.functional.shaders.builtin_functions.precision.sqrt.highp_compute.vec3
 dEQP-GLES31.functional.shaders.builtin_functions.precision.tanh.lowp_compute.vec3
+
+# Takes more than a few minutes, time is spent in batch_draw_tracking().
+KHR-GLES31.core.shader_image_load_store.basic-allFormats-store-fs
