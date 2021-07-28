@@ -275,18 +275,28 @@ create_image(struct v3dv_device *device,
       const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
          vk_find_struct_const(pCreateInfo->pNext,
                               IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT);
-      assert(mod_info);
-      for (uint32_t i = 0; i < mod_info->drmFormatModifierCount; i++) {
-         switch (mod_info->pDrmFormatModifiers[i]) {
-         case DRM_FORMAT_MOD_LINEAR:
-            if (modifier == DRM_FORMAT_MOD_INVALID)
-               modifier = DRM_FORMAT_MOD_LINEAR;
-            break;
-         case DRM_FORMAT_MOD_BROADCOM_UIF:
-            modifier = DRM_FORMAT_MOD_BROADCOM_UIF;
-            break;
+      const VkImageDrmFormatModifierExplicitCreateInfoEXT *explicit_mod_info =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT);
+      assert(mod_info || explicit_mod_info);
+
+      if (mod_info) {
+         for (uint32_t i = 0; i < mod_info->drmFormatModifierCount; i++) {
+            switch (mod_info->pDrmFormatModifiers[i]) {
+            case DRM_FORMAT_MOD_LINEAR:
+               if (modifier == DRM_FORMAT_MOD_INVALID)
+                  modifier = DRM_FORMAT_MOD_LINEAR;
+               break;
+            case DRM_FORMAT_MOD_BROADCOM_UIF:
+               modifier = DRM_FORMAT_MOD_BROADCOM_UIF;
+               break;
+            }
          }
+      } else {
+         modifier = explicit_mod_info->drmFormatModifier;
       }
+      assert(modifier == DRM_FORMAT_MOD_LINEAR ||
+             modifier == DRM_FORMAT_MOD_BROADCOM_UIF);
    } else {
       const struct wsi_image_create_info *wsi_info =
          vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
