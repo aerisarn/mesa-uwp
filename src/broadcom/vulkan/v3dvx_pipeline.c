@@ -360,7 +360,7 @@ v3dX(pipeline_pack_state)(struct v3dv_pipeline *pipeline,
 static void
 pack_shader_state_record(struct v3dv_pipeline *pipeline)
 {
-   assert(sizeof(pipeline->shader_state_record) ==
+   assert(sizeof(pipeline->shader_state_record) >=
           cl_packet_length(GL_SHADER_STATE_RECORD));
 
    struct v3d_fs_prog_data *prog_data_fs =
@@ -452,9 +452,6 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
          prog_data_vs_bin->separate_segments;
       shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
          prog_data_vs->separate_segments;
-#endif
-#if V3D_VERSION >= 71
-      unreachable("HW generation 71 not supported yet.");
 #endif
 
       shader.coordinate_shader_input_vpm_segment_size =
