@@ -891,6 +891,10 @@ crocus_resource_from_memobj(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
+   /* Disable Depth, and combined Depth+Stencil for now. */
+   if (util_format_has_depth(util_format_description(templ->format)))
+      return NULL;
+
    if (templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY) {
       UNUSED const bool isl_surf_created_successfully =
          crocus_resource_configure_main(screen, res, templ, DRM_FORMAT_MOD_INVALID, 0);
