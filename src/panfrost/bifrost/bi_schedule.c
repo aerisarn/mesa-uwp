@@ -526,12 +526,6 @@ bi_can_add(bi_instr *ins)
         return bi_opcode_props[ins->op].add;
 }
 
-ASSERTED static bool
-bi_must_last(bi_instr *ins)
-{
-        return bi_opcode_props[ins->op].last;
-}
-
 /* Architecturally, no single instruction has a "not last" constraint. However,
  * pseudoinstructions writing multiple destinations (expanding to multiple
  * paired instructions) can run afoul of the "no two writes on the last clause"
@@ -903,7 +897,7 @@ bi_instr_schedulable(bi_instr *instr,
                 return false;
 
         /* Some instructions have placement requirements */
-        if (bi_must_last(instr) && !tuple->last)
+        if (bi_opcode_props[instr->op].last && !tuple->last)
                 return false;
 
         if (bi_must_not_last(instr) && tuple->last)
@@ -1012,7 +1006,7 @@ bi_instr_cost(bi_instr *instr, struct bi_tuple_state *tuple)
                 cost--;
 
         /* Last instructions are big constraints (XXX: no effect on shader-db) */
-        if (bi_must_last(instr))
+        if (bi_opcode_props[instr->op].last)
                 cost -= 2;
 
         return cost;
@@ -1921,7 +1915,6 @@ bi_test_units(bi_builder *b)
         bi_instr *mov = bi_mov_i32_to(b, TMP(), TMP());
         assert(bi_can_fma(mov));
         assert(bi_can_add(mov));
-        assert(!bi_must_last(mov));
         assert(!bi_must_message(mov));
         assert(bi_reads_zero(mov));
         assert(bi_reads_temps(mov, 0));
@@ -1930,7 +1923,6 @@ bi_test_units(bi_builder *b)
         bi_instr *fma = bi_fma_f32_to(b, TMP(), TMP(), TMP(), bi_zero(), BI_ROUND_NONE);
         assert(bi_can_fma(fma));
         assert(!bi_can_add(fma));
-        assert(!bi_must_last(fma));
         assert(!bi_must_message(fma));
         assert(bi_reads_zero(fma));
         for (unsigned i = 0; i < 3; ++i) {
@@ -1941,7 +1933,6 @@ bi_test_units(bi_builder *b)
         bi_instr *load = bi_load_i128_to(b, TMP(), TMP(), TMP(), BI_SEG_UBO);
         assert(!bi_can_fma(load));
         assert(bi_can_add(load));
-        assert(!bi_must_last(load));
         assert(bi_must_message(load));
         for (unsigned i = 0; i < 2; ++i) {
                 assert(bi_reads_temps(load, i));
@@ -1951,7 +1942,6 @@ bi_test_units(bi_builder *b)
         bi_instr *blend = bi_blend_to(b, TMP(), TMP(), TMP(), TMP(), TMP(), 4);
         assert(!bi_can_fma(load));
         assert(bi_can_add(load));
-        assert(bi_must_last(blend));
         assert(bi_must_message(blend));
         for (unsigned i = 0; i < 4; ++i)
                 assert(bi_reads_temps(blend, i));
