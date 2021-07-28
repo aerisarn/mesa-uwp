@@ -94,6 +94,9 @@ enum gbm_bo_format {
 /* 8 bpp Red */
 #define GBM_FORMAT_R8		__gbm_fourcc_code('R', '8', ' ', ' ') /* [7:0] R */
 
+/* 16 bpp Red */
+#define GBM_FORMAT_R16          __gbm_fourcc_code('R', '1', '6', ' ') /* [15:0] R little endian */
+
 /* 16 bpp RG */
 #define GBM_FORMAT_GR88		__gbm_fourcc_code('G', 'R', '8', '8') /* [15:0] G:R 8:8 little endian */
 
