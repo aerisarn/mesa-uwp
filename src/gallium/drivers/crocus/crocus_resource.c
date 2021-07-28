@@ -901,6 +901,8 @@ crocus_resource_from_memobj(struct pipe_screen *pscreen,
    res->offset = offset;
    res->external_format = memobj->format;
 
+   crocus_bo_reference(memobj->bo);
+
    return &res->base.b;
 }
 
@@ -1948,8 +1950,6 @@ crocus_memobj_create_from_handle(struct pipe_screen *pscreen,
    memobj->bo = bo;
    memobj->format = whandle->format;
    memobj->stride = whandle->stride;
-
-   crocus_bo_reference(memobj->bo);
 
    return &memobj->b;
 }
