@@ -143,11 +143,7 @@ panfrost_create_sampler_state(
 
         bool using_nearest = cso->min_img_filter == PIPE_TEX_MIPFILTER_NEAREST;
 
-#if PAN_ARCH <= 5
-        pan_pack(&so->hw, MIDGARD_SAMPLER, cfg) {
-#else
-        pan_pack(&so->hw, BIFROST_SAMPLER, cfg) {
-#endif
+        pan_pack(&so->hw, SAMPLER, cfg) {
                 cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
                 cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
 
