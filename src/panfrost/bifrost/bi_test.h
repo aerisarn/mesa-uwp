@@ -84,4 +84,13 @@ bit_instr_equal(bi_instr *A, bi_instr *B)
    } \
 } while(0)
 
+#define BIT_ASSERT(condition) do { \
+   if (condition) { \
+      nr_pass++; \
+   } else { \
+      fprintf(stderr, "Assertion failed: %s\n", #condition); \
+      nr_fail++; \
+   } \
+} while(0)
+
 #endif
