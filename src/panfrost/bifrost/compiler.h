@@ -893,9 +893,16 @@ void bi_opt_dce_post_ra(bi_context *ctx);
 void bi_opt_push_ubo(bi_context *ctx);
 void bi_lower_swizzle(bi_context *ctx);
 void bi_lower_fau(bi_context *ctx);
-void bi_schedule(bi_context *ctx);
 void bi_assign_scoreboard(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
+
+void bi_schedule(bi_context *ctx);
+bool bi_can_fma(bi_instr *ins);
+bool bi_can_add(bi_instr *ins);
+bool bi_must_message(bi_instr *ins);
+bool bi_reads_zero(bi_instr *ins);
+bool bi_reads_temps(bi_instr *ins, unsigned src);
+bool bi_reads_t(bi_instr *ins, unsigned src);
 
 uint32_t bi_fold_constant(bi_instr *I, bool *unsupported);
 void bi_opt_constant_fold(bi_context *ctx);
