@@ -1299,6 +1299,79 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
    }
 }
 
+/* Determine if the image is affected by the pipe misaligned metadata issue
+ * which requires to invalidate L2.
+ */
+static bool
+radv_image_is_pipe_misaligned(const struct radv_device *device, const struct radv_image *image)
+{
+   struct radeon_info *rad_info = &device->physical_device->rad_info;
+   unsigned log2_samples = util_logbase2(image->info.samples);
+
+   assert(rad_info->chip_class >= GFX10);
+
+   for (unsigned i = 0; i < image->plane_count; ++i) {
+      VkFormat fmt = vk_format_get_plane_format(image->vk_format, i);
+      unsigned log2_bpp = util_logbase2(vk_format_get_blocksize(fmt));
+      unsigned log2_bpp_and_samples;
+
+      if (rad_info->chip_class >= GFX10_3) {
+         log2_bpp_and_samples = log2_bpp + log2_samples;
+      } else {
+         if (vk_format_has_depth(image->vk_format) && image->info.array_size >= 8) {
+            log2_bpp = 2;
+         }
+
+         log2_bpp_and_samples = MIN2(6, log2_bpp + log2_samples);
+      }
+
+      unsigned num_pipes = G_0098F8_NUM_PIPES(rad_info->gb_addr_config);
+      int overlap = MAX2(0, log2_bpp_and_samples + num_pipes - 8);
+
+      if (vk_format_has_depth(image->vk_format)) {
+         if (radv_image_is_tc_compat_htile(image) && overlap) {
+            return true;
+         }
+      } else {
+         unsigned max_compressed_frags = G_0098F8_MAX_COMPRESSED_FRAGS(rad_info->gb_addr_config);
+         int log2_samples_frag_diff = MAX2(0, log2_samples - max_compressed_frags);
+         int samples_overlap = MIN2(log2_samples, overlap);
+
+         /* TODO: It shouldn't be necessary if the image has DCC but
+          * not readable by shader.
+          */
+         if ((radv_image_has_dcc(image) || radv_image_is_tc_compat_cmask(image)) &&
+             (samples_overlap > log2_samples_frag_diff)) {
+            return true;
+         }
+      }
+   }
+
+   return false;
+}
+
+static bool
+radv_image_is_l2_coherent(const struct radv_device *device, const struct radv_image *image)
+{
+   if (device->physical_device->rad_info.chip_class >= GFX10) {
+      return !device->physical_device->rad_info.tcc_rb_non_coherent &&
+             !radv_image_is_pipe_misaligned(device, image);
+   } else if (device->physical_device->rad_info.chip_class == GFX9) {
+      if (image->info.samples == 1 &&
+          (image->usage &
+           (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
+          !vk_format_has_stencil(image->vk_format)) {
+         /* Single-sample color and single-sample depth
+          * (not stencil) are coherent with shaders on
+          * GFX9.
+          */
+         return true;
+      }
+   }
+
+   return false;
+}
+
 static void
 radv_image_reset_layout(struct radv_image *image)
 {
@@ -1412,6 +1485,8 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
 
    image->tc_compatible_cmask =
       radv_image_has_cmask(image) && radv_use_tc_compat_cmask_for_image(device, image);
+
+   image->l2_coherent = radv_image_is_l2_coherent(device, image);
 
    radv_image_alloc_values(device, image);
 
@@ -1527,79 +1602,6 @@ radv_select_modifier(const struct radv_device *dev, VkFormat format,
    unreachable("App specified an invalid modifier");
 }
 
-/* Determine if the image is affected by the pipe misaligned metadata issue
- * which requires to invalidate L2.
- */
-static bool
-radv_image_is_pipe_misaligned(const struct radv_device *device, const struct radv_image *image)
-{
-   struct radeon_info *rad_info = &device->physical_device->rad_info;
-   unsigned log2_samples = util_logbase2(image->info.samples);
-
-   assert(rad_info->chip_class >= GFX10);
-
-   for (unsigned i = 0; i < image->plane_count; ++i) {
-      VkFormat fmt = vk_format_get_plane_format(image->vk_format, i);
-      unsigned log2_bpp = util_logbase2(vk_format_get_blocksize(fmt));
-      unsigned log2_bpp_and_samples;
-
-      if (rad_info->chip_class >= GFX10_3) {
-         log2_bpp_and_samples = log2_bpp + log2_samples;
-      } else {
-         if (vk_format_has_depth(image->vk_format) && image->info.array_size >= 8) {
-            log2_bpp = 2;
-         }
-
-         log2_bpp_and_samples = MIN2(6, log2_bpp + log2_samples);
-      }
-
-      unsigned num_pipes = G_0098F8_NUM_PIPES(rad_info->gb_addr_config);
-      int overlap = MAX2(0, log2_bpp_and_samples + num_pipes - 8);
-
-      if (vk_format_has_depth(image->vk_format)) {
-         if (radv_image_is_tc_compat_htile(image) && overlap) {
-            return true;
-         }
-      } else {
-         unsigned max_compressed_frags = G_0098F8_MAX_COMPRESSED_FRAGS(rad_info->gb_addr_config);
-         int log2_samples_frag_diff = MAX2(0, log2_samples - max_compressed_frags);
-         int samples_overlap = MIN2(log2_samples, overlap);
-
-         /* TODO: It shouldn't be necessary if the image has DCC but
-          * not readable by shader.
-          */
-         if ((radv_image_has_dcc(image) || radv_image_is_tc_compat_cmask(image)) &&
-             (samples_overlap > log2_samples_frag_diff)) {
-            return true;
-         }
-      }
-   }
-
-   return false;
-}
-
-static bool
-radv_image_is_l2_coherent(const struct radv_device *device, const struct radv_image *image)
-{
-   if (device->physical_device->rad_info.chip_class >= GFX10) {
-      return !device->physical_device->rad_info.tcc_rb_non_coherent &&
-             !radv_image_is_pipe_misaligned(device, image);
-   } else if (device->physical_device->rad_info.chip_class == GFX9) {
-      if (image->info.samples == 1 &&
-          (image->usage &
-           (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-          !vk_format_has_stencil(image->vk_format)) {
-         /* Single-sample color and single-sample depth
-          * (not stencil) are coherent with shaders on
-          * GFX9.
-          */
-         return true;
-      }
-   }
-
-   return false;
-}
-
 VkResult
 radv_image_create(VkDevice _device, const struct radv_image_create_info *create_info,
                   const VkAllocationCallbacks *alloc, VkImage *pImage)
@@ -1708,7 +1710,6 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
          return vk_error(device->instance, result);
       }
    }
-   image->l2_coherent = radv_image_is_l2_coherent(device, image);
 
    if (device->instance->debug_flags & RADV_DEBUG_IMG) {
       radv_image_print_info(device, image);
