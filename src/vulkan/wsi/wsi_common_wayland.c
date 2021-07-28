@@ -336,10 +336,6 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
    struct u_vector *modifiers;
    uint64_t *mod = NULL;
 
-   /* If we're not fetching formats, don't fetch modifiers either. */
-   if (display->dmabuf.formats.element_size == 0)
-      return;
-
    switch (format) {
    case DRM_FORMAT_ARGB8888:
       modifiers = &display->dmabuf.modifiers.argb8888;
@@ -374,8 +370,6 @@ static void
 shm_handle_format(void *data, struct wl_shm *shm, uint32_t format)
 {
    struct wsi_wl_display *display = data;
-   if (display->swrast.formats.element_size == 0)
-      return;
 
    wsi_wl_display_add_wl_shm_format(display, &display->swrast.formats, format);
 }
@@ -491,6 +485,10 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
       goto fail_registry;
    }
 
+   /* Caller doesn't expect us to query formats/modifiers, so return */
+   if (!get_format_list)
+      goto out;
+
    /* Round-trip again to get formats and modifiers */
    wl_display_roundtrip_queue(display->wl_display, display->queue);
 
@@ -514,6 +512,7 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
    else if (display->dmabuf.wl_dmabuf)
       display->formats = &display->dmabuf.formats;
 
+out:
    /* We don't need this anymore */
    wl_registry_destroy(registry);
 
