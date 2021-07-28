@@ -373,54 +373,6 @@ panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
         return bo;
 }
 
-/* Returns the polygon list's GPU address if available, or otherwise allocates
- * the polygon list.  It's perfectly fast to use allocate/free BO directly,
- * since we'll hit the BO cache and this is one-per-batch anyway. */
-
-static mali_ptr
-panfrost_batch_get_polygon_list(struct panfrost_batch *batch)
-{
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
-        assert(!pan_is_bifrost(dev));
-
-        if (!batch->tiler_ctx.midgard.polygon_list) {
-                bool has_draws = batch->scoreboard.first_tiler != NULL;
-                unsigned size =
-                        panfrost_tiler_get_polygon_list_size(dev,
-                                                             batch->key.width,
-                                                             batch->key.height,
-                                                             has_draws);
-                size = util_next_power_of_two(size);
-
-                /* Create the BO as invisible if we can. In the non-hierarchical tiler case,
-                 * we need to write the polygon list manually because there's not WRITE_VALUE
-                 * job in the chain (maybe we should add one...). */
-                bool init_polygon_list = !has_draws && (dev->quirks & MIDGARD_NO_HIER_TILING);
-                batch->tiler_ctx.midgard.polygon_list =
-                        panfrost_batch_create_bo(batch, size,
-                                                 init_polygon_list ? 0 : PAN_BO_INVISIBLE,
-                                                 PIPE_SHADER_VERTEX,
-                                                 "Polygon list");
-                panfrost_batch_add_bo(batch, batch->tiler_ctx.midgard.polygon_list,
-                                PIPE_SHADER_FRAGMENT);
-
-                if (init_polygon_list) {
-                        assert(batch->tiler_ctx.midgard.polygon_list->ptr.cpu);
-                        uint32_t *polygon_list_body =
-                                batch->tiler_ctx.midgard.polygon_list->ptr.cpu +
-                                MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE;
-
-                        /* Magic for Mali T720 */
-                        polygon_list_body[0] = 0xa0000000;
-                }
-
-                batch->tiler_ctx.midgard.disable = !has_draws;
-        }
-
-        return batch->tiler_ctx.midgard.polygon_list->ptr.gpu;
-}
-
 struct panfrost_bo *
 panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
                 unsigned size_per_thread,
@@ -781,7 +733,6 @@ panfrost_batch_submit(struct panfrost_context *ctx,
 {
         struct pipe_screen *pscreen = ctx->base.screen;
         struct panfrost_screen *screen = pan_screen(pscreen);
-        struct panfrost_device *dev = pan_device(pscreen);
         int ret;
 
         /* Nothing to do! */
@@ -794,14 +745,7 @@ panfrost_batch_submit(struct panfrost_context *ctx,
         panfrost_batch_to_fb_info(batch, &fb, rts, &zs, &s, false);
 
         screen->vtbl.preload(batch, &fb);
-
-        if (!pan_is_bifrost(dev)) {
-                mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch);
-
-                panfrost_scoreboard_initialize_tiler(&batch->pool.base,
-                                                     &batch->scoreboard,
-                                                     polygon_list);
-        }
+        screen->vtbl.init_polygon_list(batch);
 
         /* Now that all draws are in, we can finally prepare the
          * FBD for the batch (if there is one). */
