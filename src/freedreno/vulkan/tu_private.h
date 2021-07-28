@@ -974,8 +974,6 @@ struct tu_cmd_state
    const struct tu_framebuffer *framebuffer;
    VkRect2D render_area;
 
-   struct tu_cs_entry tile_store_ib;
-
    bool xfb_used;
    bool has_tess;
    bool has_subpass_predication;
@@ -1034,6 +1032,7 @@ struct tu_cmd_buffer
 
    struct tu_cs cs;
    struct tu_cs draw_cs;
+   struct tu_cs tile_store_cs;
    struct tu_cs draw_epilogue_cs;
    struct tu_cs sub_cs;
 
