@@ -908,7 +908,6 @@ uint32_t bi_fold_constant(bi_instr *I, bool *unsupported);
 void bi_opt_constant_fold(bi_context *ctx);
 
 /* Test suite */
-int bi_test_packing(void);
 int bi_test_packing_formats(void);
 
 /* Liveness */
@@ -946,6 +945,26 @@ struct bi_packed_tuple {
         uint64_t lo;
         uint64_t hi;
 };
+
+uint8_t bi_pack_literal(enum bi_clause_subword literal);
+
+uint8_t
+bi_pack_upper(enum bi_clause_subword upper,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count);
+uint64_t
+bi_pack_tuple_bits(enum bi_clause_subword idx,
+                struct bi_packed_tuple *tuples,
+                ASSERTED unsigned tuple_count,
+                unsigned offset, unsigned nbits);
+
+uint8_t
+bi_pack_sync(enum bi_clause_subword t1,
+             enum bi_clause_subword t2,
+             enum bi_clause_subword t3,
+             struct bi_packed_tuple *tuples,
+             ASSERTED unsigned tuple_count,
+             bool z);
 
 void
 bi_pack_format(struct util_dynarray *emission,

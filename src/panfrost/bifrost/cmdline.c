@@ -248,7 +248,6 @@ static int
 bi_tests()
 {
 #ifndef NDEBUG
-        bi_test_packing();
         bi_test_packing_formats();
         printf("Pass.\n");
         return 0;
