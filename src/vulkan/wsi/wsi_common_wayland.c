@@ -486,10 +486,13 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
 
    /* Round-trip to get wl_shm and zwp_linux_dmabuf_v1 globals */
    wl_display_roundtrip_queue(display->wl_display, display->queue);
+   if (!display->dmabuf.wl_dmabuf && !display->swrast.wl_shm) {
+      result = VK_ERROR_SURFACE_LOST_KHR;
+      goto fail_registry;
+   }
 
    /* Round-trip again to get formats and modifiers */
-   if (display->dmabuf.wl_dmabuf || display->swrast.wl_shm)
-      wl_display_roundtrip_queue(display->wl_display, display->queue);
+   wl_display_roundtrip_queue(display->wl_display, display->queue);
 
    if (wsi_wl->wsi->force_bgra8_unorm_first) {
       /* Find BGRA8_UNORM in the list and swap it to the first position if we
@@ -510,11 +513,6 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
       display->formats = &display->swrast.formats;
    else if (display->dmabuf.wl_dmabuf)
       display->formats = &display->dmabuf.formats;
-
-   if (!display->formats) {
-      result = VK_ERROR_SURFACE_LOST_KHR;
-      goto fail_registry;
-   }
 
    /* We don't need this anymore */
    wl_registry_destroy(registry);
