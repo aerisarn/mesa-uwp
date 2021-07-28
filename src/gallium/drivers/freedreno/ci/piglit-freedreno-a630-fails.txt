@@ -1,4 +1,5 @@
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
+glx@glx_arb_create_context_no_error@no error,Fail
 glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail
 glx@glx_ext_import_context@free context,Fail
 glx@glx_ext_import_context@get context id,Fail
@@ -206,8 +207,6 @@ spec@egl_chromium_sync_control@conformance,Fail
 spec@egl_ext_protected_content@conformance,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
-spec@ext_direct_state_access@vao@VertexArrayVertexOffsetEXT,Fail
-spec@ext_external_objects@semaphore-api-errors@gen-semaphores-bad-value,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 spec@ext_framebuffer_multisample@accuracy 2 depth_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy 2 depth_resolve small depthstencil,Fail

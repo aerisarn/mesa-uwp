@@ -28,6 +28,7 @@ glx/glx-visuals-stencil: fail
 glx/glx-visuals-stencil -pixmap: fail
 glx/glx_arb_create_context/invalid flag: fail
 glx/glx_arb_create_context_es2_profile/invalid opengl es version: fail
+glx/glx_arb_create_context_no_error/no error: fail
 glx/glx_arb_create_context_robustness/invalid reset notification strategy: skip
 glx/glx_arb_create_context_robustness/require gl_arb_robustness: skip
 glx/glx_arb_sync_control/glxgetmscrateoml: skip
@@ -815,6 +816,7 @@ spec/ext_external_objects/semaphore-api-errors: skip
 spec/ext_external_objects/vk-buf-exchange: skip
 spec/ext_external_objects/vk-depth-display: skip
 spec/ext_external_objects/vk-image-display: skip
+spec/ext_external_objects/vk-image-display-muliple-textures: skip
 spec/ext_external_objects/vk-image-display-overwrite: skip
 spec/ext_external_objects/vk-image-overwrite: skip
 spec/ext_external_objects/vk-pix-buf-update-errors: skip
@@ -1288,6 +1290,107 @@ spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=6: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=6 with gl_texture_2d_multisample_array: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8: skip
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8 with gl_texture_2d_multisample_array: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() cubeshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) cubeshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad cube: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad cubearray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad cubeshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelod 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelod 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelod 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2drect_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2drect_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2drect_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 3d: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export-tex: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-intel_external_sampler_only: skip

@@ -166,11 +166,6 @@ spec@arb_shader_image_load_store@early-z@occlusion query test/early-z pass,Fail
 
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 
-# duplicated subtest, will be fixed on piglit uprev.
-spec@ext_direct_state_access@vao@VertexArrayVertexOffsetEXT,Fail
-
-spec@ext_external_objects@semaphore-api-errors@gen-semaphores-bad-value,Fail
-
 # error: main:90: eglChooseConfig() returned no configs
 spec@egl 1.4@eglterminate then unbind context,Fail
 

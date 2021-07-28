@@ -6,6 +6,7 @@ glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
+glx@glx_arb_create_context_no_error@no error,Fail
 glx@glx_ext_import_context@free context,Fail
 glx@glx_ext_import_context@get context id,Fail
 glx@glx_ext_import_context@get current display,Fail
@@ -208,6 +209,33 @@ spec@ext_framebuffer_object@fbo-blending-formats,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB10,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
+spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-isampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-sampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-usampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-isampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-sampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-usampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-isampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-sampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-usampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-isampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-sampler1darray,Fail
+spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-usampler1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture() 1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture() 1darrayshadow,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture(bias) 1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture(bias) 1darrayshadow,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texture() cubeshadow,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturegrad 1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturegrad 1darrayshadow,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturegradoffset 1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturegradoffset 1darrayshadow,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturelod 1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturelod 1darrayshadow,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturelodoffset 1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4texturelodoffset 1darrayshadow,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4textureoffset 1darray,Fail
+spec@ext_gpu_shader4@tex-miplevel-selection gpu4textureoffset 1darrayshadow,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail

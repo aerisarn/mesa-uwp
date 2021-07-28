@@ -29,6 +29,7 @@ glx/glx-visuals-depth -pixmap: fail
 glx/glx-visuals-stencil: fail
 glx/glx-visuals-stencil -pixmap: fail
 glx/glx_arb_create_context_es2_profile/invalid opengl es version: fail
+glx/glx_arb_create_context_no_error/no error: fail
 glx/glx_arb_create_context_robustness/invalid reset notification strategy: skip
 glx/glx_arb_create_context_robustness/require gl_arb_robustness: skip
 glx/glx_arb_sync_control/glxgetmscrateoml: skip
@@ -1857,6 +1858,7 @@ spec/ext_external_objects/semaphore-api-errors: skip
 spec/ext_external_objects/vk-buf-exchange: skip
 spec/ext_external_objects/vk-depth-display: skip
 spec/ext_external_objects/vk-image-display: skip
+spec/ext_external_objects/vk-image-display-muliple-textures: skip
 spec/ext_external_objects/vk-image-display-overwrite: skip
 spec/ext_external_objects/vk-image-overwrite: skip
 spec/ext_external_objects/vk-pix-buf-update-errors: skip
