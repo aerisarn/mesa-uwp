@@ -542,11 +542,11 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
    }
 
    unsigned tmp = (unsigned)(1.0 * 8.0);
-   radeon_set_context_reg_seq(cs, R_028A00_PA_SU_POINT_SIZE, 1);
-   radeon_emit(cs, S_028A00_HEIGHT(tmp) | S_028A00_WIDTH(tmp));
-   radeon_set_context_reg_seq(cs, R_028A04_PA_SU_POINT_MINMAX, 1);
-   radeon_emit(cs, S_028A04_MIN_SIZE(radv_pack_float_12p4(0)) |
-                      S_028A04_MAX_SIZE(radv_pack_float_12p4(8191.875 / 2)));
+   radeon_set_context_reg(cs, R_028A00_PA_SU_POINT_SIZE,
+                              S_028A00_HEIGHT(tmp) | S_028A00_WIDTH(tmp));
+   radeon_set_context_reg(cs, R_028A04_PA_SU_POINT_MINMAX,
+                              S_028A04_MIN_SIZE(radv_pack_float_12p4(0)) |
+                              S_028A04_MAX_SIZE(radv_pack_float_12p4(8191.875 / 2)));
 
    if (!has_clear_state) {
       radeon_set_context_reg(cs, R_028004_DB_COUNT_CONTROL, S_028004_ZPASS_INCREMENT_DISABLE(1));
