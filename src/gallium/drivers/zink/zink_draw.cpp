@@ -170,7 +170,6 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
                                       elems->hw_state.num_bindings, elems->hw_state.dynbindings,
                                       elems->hw_state.num_attribs, elems->hw_state.dynattribs);
 
-   ctx->vertex_state_changed = false;
    ctx->vertex_buffers_dirty = false;
 }
 
