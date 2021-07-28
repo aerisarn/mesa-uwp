@@ -48,6 +48,11 @@
 
 struct wsi_wayland;
 
+struct wsi_wl_format {
+   VkFormat vk_format;
+   struct u_vector modifiers;
+};
+
 struct wsi_wl_display {
    /* The real wl_display */
    struct wl_display *                          wl_display;
@@ -62,10 +67,6 @@ struct wsi_wl_display {
 
    /* Formats populated by zwp_linux_dmabuf_v1 or wl_shm interfaces */
    struct u_vector                              formats;
-   struct {
-      struct u_vector                           argb8888;
-      struct u_vector                           xrgb8888;
-   } modifiers;
 
    /* Only used for displays created by wsi_wl_display_create */
    uint32_t                                     refcount;
@@ -82,15 +83,15 @@ struct wsi_wayland {
    VkPhysicalDevice physical_device;
 };
 
-static void
+static struct wsi_wl_format *
 wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
                              struct u_vector *formats, VkFormat format)
 {
    /* Don't add a format that's already in the list */
-   VkFormat *f;
+   struct wsi_wl_format *f;
    u_vector_foreach(f, formats)
-      if (*f == format)
-         return;
+      if (f->vk_format == format)
+         return f;
 
    /* Don't add formats that aren't renderable. */
    VkFormatProperties props;
@@ -98,30 +99,61 @@ wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
    display->wsi_wl->wsi->GetPhysicalDeviceFormatProperties(display->wsi_wl->physical_device,
                                                            format, &props);
    if (!(props.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
-      return;
+      return NULL;
+
+   struct u_vector modifiers;
+   if (!u_vector_init(&modifiers, sizeof(uint64_t), 32))
+      return NULL;
 
    f = u_vector_add(formats);
-   if (f)
-      *f = format;
+   if (!f) {
+      u_vector_finish(&modifiers);
+      return NULL;
+   }
+
+   f->vk_format = format;
+   f->modifiers = modifiers;
+
+   return f;
 }
 
 static void
-wsi_wl_display_add_drm_format(struct wsi_wl_display *display,
-                              struct u_vector *formats, uint32_t drm_format)
+wsi_wl_format_add_modifier(struct wsi_wl_format *format, uint64_t modifier)
 {
+   uint64_t *mod;
+
+   if (modifier == DRM_FORMAT_MOD_INVALID)
+      return;
+
+   u_vector_foreach(mod, &format->modifiers)
+      if (*mod == modifier)
+         return;
+
+   mod = u_vector_add(&format->modifiers);
+   if (mod)
+      *mod = modifier;
+}
+
+static void
+wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
+                                       struct u_vector *formats,
+                                       uint32_t drm_format, uint64_t modifier)
+{
+   struct wsi_wl_format *format = NULL, *srgb_format = NULL;
+
    switch (drm_format) {
 #if 0
    /* TODO: These are only available when VK_EXT_4444_formats is enabled, so
     * we probably need to make their use conditional on this extension. */
    case DRM_FORMAT_ARGB4444:
    case DRM_FORMAT_XRGB4444:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT);
       break;
    case DRM_FORMAT_ABGR4444:
    case DRM_FORMAT_XBGR4444:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT);
       break;
 #endif
 
@@ -130,46 +162,46 @@ wsi_wl_display_add_drm_format(struct wsi_wl_display *display,
 #if MESA_LITTLE_ENDIAN
    case DRM_FORMAT_RGBA4444:
    case DRM_FORMAT_RGBX4444:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_R4G4B4A4_UNORM_PACK16);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_R4G4B4A4_UNORM_PACK16);
       break;
    case DRM_FORMAT_BGRA4444:
    case DRM_FORMAT_BGRX4444:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_B4G4R4A4_UNORM_PACK16);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_B4G4R4A4_UNORM_PACK16);
       break;
    case DRM_FORMAT_RGB565:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_R5G6B5_UNORM_PACK16);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_R5G6B5_UNORM_PACK16);
       break;
    case DRM_FORMAT_BGR565:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_B5G6R5_UNORM_PACK16);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_B5G6R5_UNORM_PACK16);
       break;
    case DRM_FORMAT_ARGB1555:
    case DRM_FORMAT_XRGB1555:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_A1R5G5B5_UNORM_PACK16);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_A1R5G5B5_UNORM_PACK16);
       break;
    case DRM_FORMAT_RGBA5551:
    case DRM_FORMAT_RGBX5551:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_R5G5B5A1_UNORM_PACK16);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_R5G5B5A1_UNORM_PACK16);
       break;
    case DRM_FORMAT_BGRA5551:
    case DRM_FORMAT_BGRX5551:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_B5G5R5A1_UNORM_PACK16);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_B5G5R5A1_UNORM_PACK16);
       break;
    case DRM_FORMAT_ARGB2101010:
    case DRM_FORMAT_XRGB2101010:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_A2R10G10B10_UNORM_PACK32);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_A2R10G10B10_UNORM_PACK32);
       break;
    case DRM_FORMAT_ABGR2101010:
    case DRM_FORMAT_XBGR2101010:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_A2B10G10R10_UNORM_PACK32);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_A2B10G10R10_UNORM_PACK32);
       break;
 #endif
 
@@ -184,30 +216,35 @@ wsi_wl_display_add_drm_format(struct wsi_wl_display *display,
     * From Wayland's perspective nothing changes, the difference is just how
     * Vulkan interprets the pixel data. */
    case DRM_FORMAT_XBGR8888:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_R8G8B8_SRGB);
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_R8G8B8_UNORM);
+      srgb_format = wsi_wl_display_add_vk_format(display, formats,
+                                                 VK_FORMAT_R8G8B8_SRGB);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_R8G8B8_UNORM);
       FALLTHROUGH;
    case DRM_FORMAT_ABGR8888:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_R8G8B8A8_SRGB);
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_R8G8B8A8_UNORM);
+      srgb_format = wsi_wl_display_add_vk_format(display, formats,
+                                                 VK_FORMAT_R8G8B8A8_SRGB);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_R8G8B8A8_UNORM);
       break;
    case DRM_FORMAT_XRGB8888:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_B8G8R8_SRGB);
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_B8G8R8_UNORM);
+      srgb_format = wsi_wl_display_add_vk_format(display, formats,
+                                                 VK_FORMAT_B8G8R8_SRGB);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_B8G8R8_UNORM);
       FALLTHROUGH;
    case DRM_FORMAT_ARGB8888:
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_B8G8R8A8_SRGB);
-      wsi_wl_display_add_vk_format(display, formats,
-                                   VK_FORMAT_B8G8R8A8_UNORM);
+      srgb_format = wsi_wl_display_add_vk_format(display, formats,
+                                                 VK_FORMAT_B8G8R8A8_SRGB);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_B8G8R8A8_UNORM);
       break;
    }
+
+   if (format)
+      wsi_wl_format_add_modifier(format, modifier);
+   if (srgb_format)
+      wsi_wl_format_add_modifier(srgb_format, modifier);
 }
 
 static void
@@ -323,32 +360,11 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
                        uint32_t modifier_lo)
 {
    struct wsi_wl_display *display = data;
-   struct u_vector *modifiers;
-   uint64_t *mod = NULL;
+   uint64_t modifier;
 
-   switch (format) {
-   case DRM_FORMAT_ARGB8888:
-      modifiers = &display->modifiers.argb8888;
-      break;
-   case DRM_FORMAT_XRGB8888:
-      modifiers = &display->modifiers.xrgb8888;
-      break;
-   default:
-      return; /* Unsupported format */
-   }
-
-   wsi_wl_display_add_drm_format(display, &display->formats, format);
-
-   if (modifier_hi == (DRM_FORMAT_MOD_INVALID >> 32) &&
-       modifier_lo == (DRM_FORMAT_MOD_INVALID & 0xffffffff))
-      return;
-
-   mod = u_vector_add(modifiers);
-   if (!mod)
-      return;
-
-   *mod = (uint64_t) modifier_hi << 32;
-   *mod |= (uint64_t) (modifier_lo & 0xffffffff);
+   modifier = ((uint64_t) modifier_hi << 32) | modifier_lo;
+   wsi_wl_display_add_drm_format_modifier(display, &display->formats,
+                                          format, modifier);
 }
 
 static const struct zwp_linux_dmabuf_v1_listener dmabuf_listener = {
@@ -405,9 +421,10 @@ wsi_wl_display_finish(struct wsi_wl_display *display)
 {
    assert(display->refcount == 0);
 
+   struct wsi_wl_format *f;
+   u_vector_foreach(f, &display->formats)
+      u_vector_finish(&f->modifiers);
    u_vector_finish(&display->formats);
-   u_vector_finish(&display->modifiers.argb8888);
-   u_vector_finish(&display->modifiers.xrgb8888);
    if (display->wl_shm)
       wl_shm_destroy(display->wl_shm);
    if (display->wl_dmabuf)
@@ -432,9 +449,8 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
    display->sw = sw;
 
    if (get_format_list) {
-      if (!u_vector_init(&display->formats, sizeof(VkFormat), 8) ||
-         !u_vector_init(&display->modifiers.argb8888, sizeof(uint64_t), 32) ||
-         !u_vector_init(&display->modifiers.xrgb8888, sizeof(uint64_t), 32)) {
+      if (!u_vector_init(&display->formats, sizeof(struct wsi_wl_format),
+                         8 * sizeof(struct wsi_wl_format))) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
       }
@@ -482,12 +498,13 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
       /* Find BGRA8_UNORM in the list and swap it to the first position if we
        * can find it.  Some apps get confused if SRGB is first in the list.
        */
-      VkFormat *first_fmt = u_vector_head(&display->formats);
-      VkFormat *iter_fmt;
+      struct wsi_wl_format *first_fmt = u_vector_head(&display->formats);
+      struct wsi_wl_format *iter_fmt, tmp_fmt;
       u_vector_foreach(iter_fmt, &display->formats) {
-         if (*iter_fmt == VK_FORMAT_B8G8R8A8_UNORM) {
+         if (iter_fmt->vk_format == VK_FORMAT_B8G8R8A8_UNORM) {
+            tmp_fmt = *iter_fmt;
             *iter_fmt = *first_fmt;
-            *first_fmt = VK_FORMAT_B8G8R8A8_UNORM;
+            *first_fmt = tmp_fmt;
             break;
          }
       }
@@ -670,10 +687,10 @@ wsi_wl_surface_get_formats(VkIcdSurfaceBase *icd_surface,
 
    VK_OUTARRAY_MAKE(out, pSurfaceFormats, pSurfaceFormatCount);
 
-   VkFormat *disp_fmt;
+   struct wsi_wl_format *disp_fmt;
    u_vector_foreach(disp_fmt, &display.formats) {
       vk_outarray_append(&out, out_fmt) {
-         out_fmt->format = *disp_fmt;
+         out_fmt->format = disp_fmt->vk_format;
          out_fmt->colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
       }
    }
@@ -701,10 +718,10 @@ wsi_wl_surface_get_formats2(VkIcdSurfaceBase *icd_surface,
 
    VK_OUTARRAY_MAKE(out, pSurfaceFormats, pSurfaceFormatCount);
 
-   VkFormat *disp_fmt;
+   struct wsi_wl_format *disp_fmt;
    u_vector_foreach(disp_fmt, &display.formats) {
       vk_outarray_append(&out, out_fmt) {
-         out_fmt->surfaceFormat.format = *disp_fmt;
+         out_fmt->surfaceFormat.format = disp_fmt->vk_format;
          out_fmt->surfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
       }
    }
@@ -1177,22 +1194,17 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
     * support them.
     */
    if (chain->display->wl_dmabuf && chain->base.wsi->supports_modifiers) {
-      struct u_vector *modifiers;
-      switch (chain->drm_format) {
-      case DRM_FORMAT_ARGB8888:
-         modifiers = &chain->display->modifiers.argb8888;
-         break;
-      case DRM_FORMAT_XRGB8888:
-         modifiers = &chain->display->modifiers.xrgb8888;
-         break;
-      default:
-         modifiers = NULL;
-         break;
+      struct wsi_wl_format *f;
+      bool found = false;
+      u_vector_foreach(f, &chain->display->formats) {
+         if (f->vk_format == chain->vk_format) {
+            found = true;
+            break;
+         }
       }
-
-      if (modifiers) {
-         chain->drm_modifiers = u_vector_tail(modifiers);
-         chain->num_drm_modifiers = u_vector_length(modifiers);
+      if (found) {
+         chain->drm_modifiers = u_vector_tail(&f->modifiers);
+         chain->num_drm_modifiers = u_vector_length(&f->modifiers);
       }
    }
 
