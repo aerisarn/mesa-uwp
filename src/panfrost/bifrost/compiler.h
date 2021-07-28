@@ -907,9 +907,6 @@ bool bi_reads_t(bi_instr *ins, unsigned src);
 uint32_t bi_fold_constant(bi_instr *I, bool *unsupported);
 void bi_opt_constant_fold(bi_context *ctx);
 
-/* Test suite */
-int bi_test_packing_formats(void);
-
 /* Liveness */
 
 void bi_compute_liveness(bi_context *ctx);
