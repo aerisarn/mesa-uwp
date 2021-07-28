@@ -2,3 +2,4 @@ VK_EXT_color_write_enable on lavapipe
 GL_ARB_texture_filter_anisotropic in llvmpipe
 Anisotropic texture filtering in lavapipe
 VK_EXT_shader_atomic_float2 on Intel and RADV.
+VK_KHR_timeline_semaphore on lavapipe
