@@ -482,12 +482,6 @@ bi_can_iaddc(bi_instr *ins)
 bool
 bi_can_fma(bi_instr *ins)
 {
-        /* Errata: *V2F32_TO_V2F16 with distinct sources raises
-         * INSTR_INVALID_ENC under certain conditions */
-        if (ins->op == BI_OPCODE_V2F32_TO_V2F16 &&
-                        !bi_is_word_equiv(ins->src[0], ins->src[1]))
-                return false;
-
         /* +IADD.i32 -> *IADDC.i32 */
         if (bi_can_iaddc(ins))
                 return true;
