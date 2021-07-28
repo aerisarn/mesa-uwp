@@ -391,7 +391,7 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
                         pan_pack(payload, SURFACE, cfg) {
                                 cfg.pointer = pointer;
                         }
-                        payload += MALI_SURFACE_LENGTH;
+                        payload += pan_size(SURFACE);
                 } else {
                         pan_pack(payload, SURFACE_WITH_STRIDE, cfg) {
                                 cfg.pointer = pointer;
@@ -399,7 +399,7 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
                                                              &cfg.row_stride,
                                                              &cfg.surface_stride);
                         }
-                        payload += MALI_SURFACE_WITH_STRIDE_LENGTH;
+                        payload += pan_size(SURFACE_WITH_STRIDE);
                 }
         }
 }

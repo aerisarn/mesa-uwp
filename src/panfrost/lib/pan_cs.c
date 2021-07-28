@@ -674,7 +674,7 @@ pan_emit_mfbd(const struct panfrost_device *dev,
 {
         unsigned tags = MALI_FBD_TAG_IS_MFBD;
         void *fbd = out;
-        void *rtd = out + MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
+        void *rtd = out + pan_size(MULTI_TARGET_FRAMEBUFFER);
 
         if (pan_is_bifrost(dev)) {
                 pan_emit_bifrost_mfbd_params(dev, fb, fbd);
@@ -738,8 +738,8 @@ pan_emit_mfbd(const struct panfrost_device *dev,
 
         if (has_zs_crc_ext) {
                 pan_emit_zs_crc_ext(dev, fb, crc_rt,
-                                    out + MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH);
-                rtd += MALI_ZS_CRC_EXTENSION_LENGTH;
+                                    out + pan_size(MULTI_TARGET_FRAMEBUFFER));
+                rtd += pan_size(ZS_CRC_EXTENSION);
                 tags |= MALI_FBD_TAG_HAS_ZS_RT;
         }
 
@@ -747,7 +747,7 @@ pan_emit_mfbd(const struct panfrost_device *dev,
         unsigned cbuf_offset = 0;
         for (unsigned i = 0; i < rt_count; i++) {
                 pan_emit_rt(dev, fb, i, cbuf_offset, rtd);
-                rtd += MALI_RENDER_TARGET_LENGTH;
+                rtd += pan_size(RENDER_TARGET);
                 if (!fb->rts[i].view)
                         continue;
 

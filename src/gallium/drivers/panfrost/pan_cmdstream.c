@@ -239,11 +239,11 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
 
         /* Always have at least one render target for depth-only passes */
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
-                struct mali_blend_packed *packed = rts + (i * MALI_BLEND_LENGTH);
+                struct mali_blend_packed *packed = rts + (i * pan_size(BLEND));
 
                 /* Disable blending for unbacked render targets */
                 if (rt_count == 0 || !batch->key.cbufs[i] || so->info[i].no_colour) {
-                        pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
+                        pan_pack(rts + i * pan_size(BLEND), BLEND, cfg) {
                                 cfg.enable = false;
 #if PAN_ARCH >= 6
                                 cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OFF;
@@ -278,7 +278,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
 
                 if (!blend_shaders[i]) {
                         /* Word 1: Blend Equation */
-                        STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
+                        STATIC_ASSERT(pan_size(BLEND_EQUATION) == 4);
                         packed->opaque[PAN_ARCH >= 6 ? 1 : 2] = so->equation[i];
                 }
 
@@ -499,7 +499,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 #if PAN_ARCH == 4
         if (ctx->pipe_framebuffer.nr_cbufs > 0 && !blend_shaders[0]) {
                 /* Word 14: SFBD Blend Equation */
-                STATIC_ASSERT(MALI_BLEND_EQUATION_LENGTH == 4);
+                STATIC_ASSERT(pan_size(BLEND_EQUATION) == 4);
                 rsd.opaque[14] = ctx->blend->equation[0];
         }
 #endif
@@ -569,7 +569,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         panfrost_emit_frag_shader(ctx, (struct mali_renderer_state_packed *) xfer.cpu, blend_shaders);
 
 #if PAN_ARCH >= 5
-        panfrost_emit_blend(batch, xfer.cpu + MALI_RENDERER_STATE_LENGTH, blend_shaders);
+        panfrost_emit_blend(batch, xfer.cpu + pan_size(RENDERER_STATE), blend_shaders);
 #else
         batch->draws |= PIPE_CLEAR_COLOR0;
         batch->resolve |= PIPE_CLEAR_COLOR0;
@@ -1276,7 +1276,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         };
 
         unsigned size =
-                (PAN_ARCH <= 5 ? MALI_MIDGARD_TEXTURE_LENGTH : 0) +
+                (PAN_ARCH <= 5 ? pan_size(MIDGARD_TEXTURE) : 0) +
                 panfrost_estimate_texture_payload_size(device, &iview);
 
         struct panfrost_ptr payload = pan_pool_alloc_aligned(&ctx->descs.base, size, 64);
@@ -1285,8 +1285,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         void *tex = (PAN_ARCH >= 6) ? &so->bifrost_descriptor : payload.cpu;
 
         if (PAN_ARCH <= 5) {
-                payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
-                payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
+                payload.cpu += pan_size(MIDGARD_TEXTURE);
+                payload.gpu += pan_size(MIDGARD_TEXTURE);
         }
 
         panfrost_new_texture(device, &iview, tex, &payload);
@@ -1361,8 +1361,8 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
         if (!ctx->sampler_count[stage])
                 return 0;
 
-        assert(MALI_BIFROST_SAMPLER_LENGTH == MALI_MIDGARD_SAMPLER_LENGTH);
-        assert(MALI_BIFROST_SAMPLER_ALIGN == MALI_MIDGARD_SAMPLER_ALIGN);
+        assert(pan_size(BIFROST_SAMPLER) == pan_size(MIDGARD_SAMPLER));
+        assert(pan_alignment(BIFROST_SAMPLER) == pan_alignment(MIDGARD_SAMPLER));
 
         struct panfrost_ptr T =
                 pan_pool_alloc_desc_array(&batch->pool.base,
@@ -1524,7 +1524,7 @@ panfrost_emit_image_attribs(struct panfrost_batch *batch,
 
         /* We need an empty attrib buf to stop the prefetching on Bifrost */
 #if PAN_ARCH >= 6
-        pan_pack(bufs.cpu + ((buf_count - 1) * MALI_ATTRIBUTE_BUFFER_LENGTH),
+        pan_pack(bufs.cpu + ((buf_count - 1) * pan_size(ATTRIBUTE_BUFFER)),
                  ATTRIBUTE_BUFFER, cfg);
 #endif
 
@@ -2083,7 +2083,7 @@ panfrost_emit_varying_descs(
         struct mali_attribute_packed *descs = T.cpu;
         out->producer = producer_count ? T.gpu : 0;
         out->consumer = consumer_count ? T.gpu +
-                (MALI_ATTRIBUTE_LENGTH * producer_count) : 0;
+                (pan_size(ATTRIBUTE) * producer_count) : 0;
 
         /* Lay out the varyings. Must use producer to lay out, in order to
          * respect transform feedback precisions. */
@@ -2481,7 +2481,7 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
 {
         void *section =
                 pan_section_ptr(job, COMPUTE_JOB, INVOCATION);
-        memcpy(section, invocation_template, MALI_INVOCATION_LENGTH);
+        memcpy(section, invocation_template, pan_size(INVOCATION));
 
         pan_section_pack(job, COMPUTE_JOB, PARAMETERS, cfg) {
                 cfg.job_task_split = 5;
@@ -2642,7 +2642,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
         void *section = pan_section_ptr(job, TILER_JOB, INVOCATION);
-        memcpy(section, invocation_template, MALI_INVOCATION_LENGTH);
+        memcpy(section, invocation_template, pan_size(INVOCATION));
 
         section = pan_section_ptr(job, TILER_JOB, PRIMITIVE);
         pan_pack(section, PRIMITIVE, cfg) {

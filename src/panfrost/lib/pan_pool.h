@@ -93,8 +93,8 @@ struct pan_desc_alloc_info {
 
 #define PAN_DESC_ARRAY(count, name) \
         { \
-                .size = MALI_ ## name ## _LENGTH, \
-                .align = MALI_ ## name ## _ALIGN, \
+                .size = pan_size(name), \
+                .align = pan_alignment(name), \
                 .nelems = count, \
         }
 

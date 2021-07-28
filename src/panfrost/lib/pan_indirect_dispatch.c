@@ -70,7 +70,7 @@ static mali_ptr
 get_tls(const struct panfrost_device *dev)
 {
         return dev->indirect_dispatch.descs->ptr.gpu +
-               MALI_RENDERER_STATE_LENGTH;
+               pan_size(RENDERER_STATE);
 }
 
 static mali_ptr
@@ -244,8 +244,8 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
         dev->indirect_dispatch.push = shader_info.push;
         dev->indirect_dispatch.descs =
                 panfrost_bo_create(dev,
-                                   MALI_RENDERER_STATE_LENGTH +
-                                   MALI_LOCAL_STORAGE_LENGTH,
+                                   pan_size(RENDERER_STATE) +
+                                   pan_size(LOCAL_STORAGE),
                                    0, "Indirect dispatch descriptors");
 
         mali_ptr address = dev->indirect_dispatch.bin->ptr.gpu;
@@ -258,7 +258,7 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
         }
 
         void *tsd = dev->indirect_dispatch.descs->ptr.cpu +
-                    MALI_RENDERER_STATE_LENGTH;
+                    pan_size(RENDERER_STATE);
         pan_pack(tsd, LOCAL_STORAGE, ls) {
                 ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
         };

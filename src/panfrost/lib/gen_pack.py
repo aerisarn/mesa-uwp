@@ -153,6 +153,9 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define pan_print(fp, T, var, indent)                   \\
         PREFIX2(T, print)(fp, &(var), indent)
 
+#define pan_size(T) PREFIX2(T, LENGTH)
+#define pan_alignment(T) PREFIX2(T, ALIGN)
+
 #define pan_section_offset(A, S) \\
         PREFIX4(A, SECTION, S, OFFSET)
 

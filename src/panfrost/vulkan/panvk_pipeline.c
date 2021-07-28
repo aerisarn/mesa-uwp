@@ -203,18 +203,18 @@ panvk_pipeline_builder_alloc_static_state_bo(struct panvk_pipeline_builder *buil
       if (pipeline->fs.dynamic_rsd && i == MESA_SHADER_FRAGMENT)
          continue;
 
-      bo_size = ALIGN_POT(bo_size, MALI_RENDERER_STATE_ALIGN);
+      bo_size = ALIGN_POT(bo_size, pan_alignment(RENDERER_STATE));
       builder->stages[i].rsd_offset = bo_size;
-      bo_size += MALI_RENDERER_STATE_LENGTH;
+      bo_size += pan_size(RENDERER_STATE);
       if (i == MESA_SHADER_FRAGMENT)
-         bo_size += MALI_BLEND_LENGTH * pipeline->blend.state.rt_count;
+         bo_size += pan_size(BLEND) * pipeline->blend.state.rt_count;
    }
 
    if (panvk_pipeline_static_state(pipeline, VK_DYNAMIC_STATE_VIEWPORT) &&
        panvk_pipeline_static_state(pipeline, VK_DYNAMIC_STATE_SCISSOR)) {
-      bo_size = ALIGN_POT(bo_size, MALI_VIEWPORT_ALIGN);
+      bo_size = ALIGN_POT(bo_size, pan_alignment(VIEWPORT));
       builder->vpd_offset = bo_size;
-      bo_size += MALI_VIEWPORT_LENGTH;
+      bo_size += pan_size(VIEWPORT);
    }
 
    for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
@@ -325,12 +325,12 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
       if (i != MESA_SHADER_FRAGMENT) {
          panvk_emit_non_fs_rsd(builder->device, &shader->info, shader_ptr, rsd);
       } else if (!pipeline->fs.dynamic_rsd) {
-         void *bd = rsd + MALI_RENDERER_STATE_LENGTH;
+         void *bd = rsd + pan_size(RENDERER_STATE);
 
          panvk_emit_base_fs_rsd(builder->device, pipeline, rsd);
          for (unsigned rt = 0; rt < MAX2(pipeline->blend.state.rt_count, 1); rt++) {
             panvk_emit_blend(builder->device, pipeline, rt, bd);
-            bd += MALI_BLEND_LENGTH;
+            bd += pan_size(BLEND);
          }
       } else {
          gpu_rsd = 0;

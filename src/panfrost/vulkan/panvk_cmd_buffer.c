@@ -1035,7 +1035,7 @@ panvk_draw_prepare_fs_rsd(struct panvk_cmd_buffer *cmdbuf,
       pan_merge(rsd_dyn, pipeline->fs.rsd_template, RENDERER_STATE);
       memcpy(rsd.cpu, &rsd_dyn, sizeof(rsd_dyn));
 
-      void *bd = rsd.cpu + MALI_RENDERER_STATE_LENGTH;
+      void *bd = rsd.cpu + pan_size(RENDERER_STATE);
       for (unsigned i = 0; i < pipeline->blend.state.rt_count; i++) {
          if (pipeline->blend.constant[i].index != ~0) {
             struct mali_blend_packed bd_dyn;
@@ -1046,7 +1046,7 @@ panvk_draw_prepare_fs_rsd(struct panvk_cmd_buffer *cmdbuf,
             pan_merge(bd_dyn, pipeline->blend.bd_template[i], BLEND);
             memcpy(bd, &bd_dyn, sizeof(bd_dyn));
          }
-         bd += MALI_BLEND_LENGTH;
+         bd += pan_size(BLEND);
       }
 
       cmdbuf->state.fs_rsd = rsd.gpu;

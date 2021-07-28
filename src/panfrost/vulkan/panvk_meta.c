@@ -258,7 +258,7 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
       }
    }
 
-   pan_pack(rsd_ptr.cpu + MALI_RENDERER_STATE_LENGTH, BLEND, cfg) {
+   pan_pack(rsd_ptr.cpu + pan_size(RENDERER_STATE), BLEND, cfg) {
       cfg.round_to_fb_precision = true;
       cfg.load_destination = false;
       if (pan_is_bifrost(pdev)) {

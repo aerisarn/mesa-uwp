@@ -372,8 +372,8 @@ panvk_CreateImageView(VkDevice _device,
 
    unsigned surf_descs_offset = 0;
    if (!pan_is_bifrost(pdev)) {
-      bo_size += MALI_MIDGARD_TEXTURE_LENGTH;
-      surf_descs_offset = MALI_MIDGARD_TEXTURE_LENGTH;
+      bo_size += pan_size(MIDGARD_TEXTURE);
+      surf_descs_offset = pan_size(MIDGARD_TEXTURE);
    }
 
    view->bo = panfrost_bo_create(pdev, bo_size, 0, "Texture descriptor");

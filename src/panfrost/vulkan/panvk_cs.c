@@ -282,7 +282,7 @@ panvk_emit_vertex_job(const struct panvk_device *dev,
    const struct panfrost_device *pdev = &dev->physical_device->pdev;
    void *section = pan_section_ptr(job, COMPUTE_JOB, INVOCATION);
 
-   memcpy(section, &draw->invocation, MALI_INVOCATION_LENGTH);
+   memcpy(section, &draw->invocation, pan_size(INVOCATION));
 
    pan_section_pack(job, COMPUTE_JOB, PARAMETERS, cfg) {
       cfg.job_task_split = 5;
@@ -321,7 +321,7 @@ panvk_emit_tiler_job(const struct panvk_device *dev,
                    pan_section_ptr(job, BIFROST_TILER_JOB, INVOCATION) :
                    pan_section_ptr(job, MIDGARD_TILER_JOB, INVOCATION);
 
-   memcpy(section, &draw->invocation, MALI_INVOCATION_LENGTH);
+   memcpy(section, &draw->invocation, pan_size(INVOCATION));
 
    section = pan_is_bifrost(pdev) ?
              pan_section_ptr(job, BIFROST_TILER_JOB, PRIMITIVE) :
@@ -770,7 +770,7 @@ panvk_emit_bifrost_tiler_context(const struct panvk_device *dev,
 {
    const struct panfrost_device *pdev = &dev->physical_device->pdev;
 
-   pan_pack(descs->cpu + MALI_BIFROST_TILER_LENGTH, BIFROST_TILER_HEAP, cfg) {
+   pan_pack(descs->cpu + pan_size(BIFROST_TILER), BIFROST_TILER_HEAP, cfg) {
       cfg.size = pdev->tiler_heap->size;
       cfg.base = pdev->tiler_heap->ptr.gpu;
       cfg.bottom = pdev->tiler_heap->ptr.gpu;
@@ -781,7 +781,7 @@ panvk_emit_bifrost_tiler_context(const struct panvk_device *dev,
       cfg.hierarchy_mask = 0x28;
       cfg.fb_width = width;
       cfg.fb_height = height;
-      cfg.heap = descs->gpu + MALI_BIFROST_TILER_LENGTH;
+      cfg.heap = descs->gpu + pan_size(BIFROST_TILER);
    }
 }
 

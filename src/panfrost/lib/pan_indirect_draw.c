@@ -598,11 +598,11 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                 nir_ssa_def *attrib_buf_ptr =
                          get_address(b, builder->attribs.attrib_bufs,
                                      nir_imul_imm(b, attrib_idx,
-                                                  2 * MALI_ATTRIBUTE_BUFFER_LENGTH));
+                                                  2 * pan_size(ATTRIBUTE_BUFFER)));
                 nir_ssa_def *attrib_ptr =
                          get_address(b, builder->attribs.attribs,
                                      nir_imul_imm(b, attrib_idx,
-                                                  MALI_ATTRIBUTE_LENGTH));
+                                                  pan_size(ATTRIBUTE)));
 
                 nir_ssa_def *r_e, *d;
 
@@ -723,19 +723,19 @@ update_varyings(struct indirect_draw_shader_builder *builder)
         nir_ssa_def *buf_ptr =
                 get_address_imm(b, builder->varyings.varying_bufs,
                                 PAN_VARY_GENERAL *
-                                MALI_ATTRIBUTE_BUFFER_LENGTH);
+                                pan_size(ATTRIBUTE_BUFFER));
         update_varying_buf(builder, buf_ptr, vertex_count);
 
         buf_ptr = get_address_imm(b, builder->varyings.varying_bufs,
                                   PAN_VARY_POSITION *
-                                  MALI_ATTRIBUTE_BUFFER_LENGTH);
+                                  pan_size(ATTRIBUTE_BUFFER));
         builder->varyings.pos_ptr =
                 update_varying_buf(builder, buf_ptr, vertex_count);
 
         if (builder->flags & PAN_INDIRECT_DRAW_HAS_PSIZ) {
                 buf_ptr = get_address_imm(b, builder->varyings.varying_bufs,
                                           PAN_VARY_PSIZ *
-                                          MALI_ATTRIBUTE_BUFFER_LENGTH);
+                                          pan_size(ATTRIBUTE_BUFFER));
                 builder->varyings.psiz_ptr =
                         update_varying_buf(builder, buf_ptr, vertex_count);
         }
@@ -1091,7 +1091,7 @@ create_indirect_draw_shader(struct panfrost_device *dev,
         struct pan_indirect_draw_shader *draw_shader =
                 &dev->indirect_draw_shaders.shaders[shader_id];
         void *state = dev->indirect_draw_shaders.states->ptr.cpu +
-                      (shader_id * MALI_RENDERER_STATE_LENGTH);
+                      (shader_id * pan_size(RENDERER_STATE));
 
         pthread_mutex_lock(&dev->indirect_draw_shaders.lock);
         if (!draw_shader->rsd) {
@@ -1111,7 +1111,7 @@ create_indirect_draw_shader(struct panfrost_device *dev,
 
                 draw_shader->push = shader_info.push;
                 draw_shader->rsd = dev->indirect_draw_shaders.states->ptr.gpu +
-                                   (shader_id * MALI_RENDERER_STATE_LENGTH);
+                                   (shader_id * pan_size(RENDERER_STATE));
         }
         pthread_mutex_unlock(&dev->indirect_draw_shaders.lock);
 
@@ -1139,7 +1139,7 @@ static mali_ptr
 get_tls(const struct panfrost_device *dev)
 {
         return dev->indirect_draw_shaders.states->ptr.gpu +
-               (PAN_INDIRECT_DRAW_NUM_SHADERS * MALI_RENDERER_STATE_LENGTH);
+               (PAN_INDIRECT_DRAW_NUM_SHADERS * pan_size(RENDERER_STATE));
 }
 
 static mali_ptr
@@ -1189,15 +1189,15 @@ panfrost_indirect_draw_alloc_deps(struct panfrost_device *dev)
                 goto out;
 
         unsigned state_bo_size = (PAN_INDIRECT_DRAW_NUM_SHADERS *
-                                  MALI_RENDERER_STATE_LENGTH) +
-                                 MALI_LOCAL_STORAGE_LENGTH;
+                                  pan_size(RENDERER_STATE)) +
+                                 pan_size(LOCAL_STORAGE);
 
         dev->indirect_draw_shaders.states =
                 panfrost_bo_create(dev, state_bo_size, 0, "Indirect draw states");
 
         /* Prepare the thread storage descriptor now since it's invariant. */
         void *tsd = dev->indirect_draw_shaders.states->ptr.cpu +
-                    (PAN_INDIRECT_DRAW_NUM_SHADERS * MALI_RENDERER_STATE_LENGTH);
+                    (PAN_INDIRECT_DRAW_NUM_SHADERS * pan_size(RENDERER_STATE));
         pan_pack(tsd, LOCAL_STORAGE, ls) {
                 ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
         };
