@@ -4076,60 +4076,6 @@ VkResult anv_InvalidateMappedMemoryRanges(
    return VK_SUCCESS;
 }
 
-void anv_GetBufferMemoryRequirements2(
-    VkDevice                                    _device,
-    const VkBufferMemoryRequirementsInfo2*      pInfo,
-    VkMemoryRequirements2*                      pMemoryRequirements)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
-
-   /* The Vulkan spec (git aaed022) says:
-    *
-    *    memoryTypeBits is a bitfield and contains one bit set for every
-    *    supported memory type for the resource. The bit `1<<i` is set if and
-    *    only if the memory type `i` in the VkPhysicalDeviceMemoryProperties
-    *    structure for the physical device is supported.
-    */
-   uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
-
-   /* Base alignment requirement of a cache line */
-   uint32_t alignment = 16;
-
-   if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-      alignment = MAX2(alignment, ANV_UBO_ALIGNMENT);
-
-   pMemoryRequirements->memoryRequirements.size = buffer->size;
-   pMemoryRequirements->memoryRequirements.alignment = alignment;
-
-   /* Storage and Uniform buffers should have their size aligned to
-    * 32-bits to avoid boundary checks when last DWord is not complete.
-    * This would ensure that not internal padding would be needed for
-    * 16-bit types.
-    */
-   if (device->robust_buffer_access &&
-       (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ||
-        buffer->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
-      pMemoryRequirements->memoryRequirements.size = align_u64(buffer->size, 4);
-
-   pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
-
-   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
-         VkMemoryDedicatedRequirements *requirements = (void *)ext;
-         requirements->prefersDedicatedAllocation = false;
-         requirements->requiresDedicatedAllocation = false;
-         break;
-      }
-
-      default:
-         anv_debug_ignored_stype(ext->sType);
-         break;
-      }
-   }
-}
-
 void anv_GetDeviceMemoryCommitment(
     VkDevice                                    device,
     VkDeviceMemory                              memory,
@@ -4261,6 +4207,60 @@ VkResult anv_ResetEvent(
 }
 
 // Buffer functions
+
+void anv_GetBufferMemoryRequirements2(
+    VkDevice                                    _device,
+    const VkBufferMemoryRequirementsInfo2*      pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
+
+   /* The Vulkan spec (git aaed022) says:
+    *
+    *    memoryTypeBits is a bitfield and contains one bit set for every
+    *    supported memory type for the resource. The bit `1<<i` is set if and
+    *    only if the memory type `i` in the VkPhysicalDeviceMemoryProperties
+    *    structure for the physical device is supported.
+    */
+   uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
+
+   /* Base alignment requirement of a cache line */
+   uint32_t alignment = 16;
+
+   if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+      alignment = MAX2(alignment, ANV_UBO_ALIGNMENT);
+
+   pMemoryRequirements->memoryRequirements.size = buffer->size;
+   pMemoryRequirements->memoryRequirements.alignment = alignment;
+
+   /* Storage and Uniform buffers should have their size aligned to
+    * 32-bits to avoid boundary checks when last DWord is not complete.
+    * This would ensure that not internal padding would be needed for
+    * 16-bit types.
+    */
+   if (device->robust_buffer_access &&
+       (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ||
+        buffer->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+      pMemoryRequirements->memoryRequirements.size = align_u64(buffer->size, 4);
+
+   pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
+
+   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+         VkMemoryDedicatedRequirements *requirements = (void *)ext;
+         requirements->prefersDedicatedAllocation = false;
+         requirements->requiresDedicatedAllocation = false;
+         break;
+      }
+
+      default:
+         anv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+}
 
 VkResult anv_CreateBuffer(
     VkDevice                                    _device,
