@@ -4204,8 +4204,10 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
    }
 
    radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, db_render_control);
-   radeon_set_context_reg(ctx_cs, R_02800C_DB_RENDER_OVERRIDE, db_render_override);
-   radeon_set_context_reg(ctx_cs, R_028010_DB_RENDER_OVERRIDE2, db_render_override2);
+
+   radeon_set_context_reg_seq(ctx_cs, R_02800C_DB_RENDER_OVERRIDE, 2);
+   radeon_emit(ctx_cs, db_render_override);
+   radeon_emit(ctx_cs, db_render_override2);
 }
 
 static void
@@ -4275,9 +4277,11 @@ radv_pipeline_generate_multisample_state(struct radeon_cmdbuf *ctx_cs,
    radeon_emit(ctx_cs, ms->pa_sc_aa_mask[1]);
 
    radeon_set_context_reg(ctx_cs, R_028804_DB_EQAA, ms->db_eqaa);
-   radeon_set_context_reg(ctx_cs, R_028A48_PA_SC_MODE_CNTL_0, ms->pa_sc_mode_cntl_0);
-   radeon_set_context_reg(ctx_cs, R_028A4C_PA_SC_MODE_CNTL_1, ms->pa_sc_mode_cntl_1);
    radeon_set_context_reg(ctx_cs, R_028BE0_PA_SC_AA_CONFIG, ms->pa_sc_aa_config);
+
+   radeon_set_context_reg_seq(ctx_cs, R_028A48_PA_SC_MODE_CNTL_0, 2);
+   radeon_emit(ctx_cs, ms->pa_sc_mode_cntl_0);
+   radeon_emit(ctx_cs, ms->pa_sc_mode_cntl_1);
 
    /* The exclusion bits can be set to improve rasterization efficiency
     * if no sample lies on the pixel boundary (-8 sample offset). It's
@@ -4974,9 +4978,9 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct rade
    radeon_set_context_reg(ctx_cs, R_02880C_DB_SHADER_CONTROL,
                           radv_compute_db_shader_control(pipeline->device, pipeline, ps));
 
-   radeon_set_context_reg(ctx_cs, R_0286CC_SPI_PS_INPUT_ENA, ps->config.spi_ps_input_ena);
-
-   radeon_set_context_reg(ctx_cs, R_0286D0_SPI_PS_INPUT_ADDR, ps->config.spi_ps_input_addr);
+   radeon_set_context_reg_seq(ctx_cs, R_0286CC_SPI_PS_INPUT_ENA, 2);
+   radeon_emit(ctx_cs, ps->config.spi_ps_input_ena);
+   radeon_emit(ctx_cs, ps->config.spi_ps_input_addr);
 
    radeon_set_context_reg(
       ctx_cs, R_0286D8_SPI_PS_IN_CONTROL,
