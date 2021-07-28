@@ -1020,10 +1020,16 @@ add_all_surfaces_implicit_layout(
    const VkImageFormatListCreateInfo *format_list_info,
    uint32_t stride,
    isl_tiling_flags_t isl_tiling_flags,
-   isl_surf_usage_flags_t isl_extra_usage_flags)
+   const struct anv_image_create_info *create_info)
 {
    const struct intel_device_info *devinfo = &device->info;
+   isl_surf_usage_flags_t isl_extra_usage_flags =
+      create_info->isl_extra_usage_flags;
    VkResult result;
+
+   const VkExternalMemoryImageCreateInfo *ext_mem_info =
+      vk_find_struct_const(create_info->vk_info->pNext,
+                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
 
    u_foreach_bit(b, image->aspects) {
       VkImageAspectFlagBits aspect = 1 << b;
@@ -1060,6 +1066,11 @@ add_all_surfaces_implicit_layout(
          if (result != VK_SUCCESS)
             return result;
       }
+
+      /* Disable aux if image supports export without modifiers. */
+      if (ext_mem_info && ext_mem_info->handleTypes != 0 &&
+          image->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+         continue;
 
       result = add_aux_surface_if_supported(device, image, plane, plane_format,
                                             format_list_info,
@@ -1371,7 +1382,7 @@ anv_image_create(VkDevice _device,
    } else {
       r = add_all_surfaces_implicit_layout(device, image, fmt_list, 0,
                                            isl_tiling_flags,
-                                           create_info->isl_extra_usage_flags);
+                                           create_info);
    }
 
    if (r != VK_SUCCESS)
