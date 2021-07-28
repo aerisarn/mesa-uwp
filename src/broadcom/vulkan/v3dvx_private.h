@@ -130,7 +130,8 @@ v3dX(cmd_buffer_render_pass_setup_render_target)(struct v3dv_cmd_buffer *cmd_buf
 
 void
 v3dX(pack_sampler_state)(struct v3dv_sampler *sampler,
-                         const VkSamplerCreateInfo *pCreateInfo);
+                         const VkSamplerCreateInfo *pCreateInfo,
+                         const VkSamplerCustomBorderColorCreateInfoEXT *bc_info);
 
 void
 v3dX(framebuffer_compute_internal_bpp_msaa)(const struct v3dv_framebuffer *framebuffer,
