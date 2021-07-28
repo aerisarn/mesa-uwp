@@ -4208,14 +4208,12 @@ VkResult anv_ResetEvent(
 
 // Buffer functions
 
-void anv_GetBufferMemoryRequirements2(
-    VkDevice                                    _device,
-    const VkBufferMemoryRequirementsInfo2*      pInfo,
-    VkMemoryRequirements2*                      pMemoryRequirements)
+static void
+anv_get_buffer_memory_requirements(struct anv_device *device,
+                                   VkDeviceSize size,
+                                   VkBufferUsageFlags usage,
+                                   VkMemoryRequirements2* pMemoryRequirements)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
-
    /* The Vulkan spec (git aaed022) says:
     *
     *    memoryTypeBits is a bitfield and contains one bit set for every
@@ -4228,10 +4226,10 @@ void anv_GetBufferMemoryRequirements2(
    /* Base alignment requirement of a cache line */
    uint32_t alignment = 16;
 
-   if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+   if (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
       alignment = MAX2(alignment, ANV_UBO_ALIGNMENT);
 
-   pMemoryRequirements->memoryRequirements.size = buffer->size;
+   pMemoryRequirements->memoryRequirements.size = size;
    pMemoryRequirements->memoryRequirements.alignment = alignment;
 
    /* Storage and Uniform buffers should have their size aligned to
@@ -4240,9 +4238,9 @@ void anv_GetBufferMemoryRequirements2(
     * 16-bit types.
     */
    if (device->robust_buffer_access &&
-       (buffer->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ||
-        buffer->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
-      pMemoryRequirements->memoryRequirements.size = align_u64(buffer->size, 4);
+       (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ||
+        usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+      pMemoryRequirements->memoryRequirements.size = align_u64(size, 4);
 
    pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
 
@@ -4260,6 +4258,33 @@ void anv_GetBufferMemoryRequirements2(
          break;
       }
    }
+}
+
+void anv_GetBufferMemoryRequirements2(
+    VkDevice                                    _device,
+    const VkBufferMemoryRequirementsInfo2*      pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
+
+   anv_get_buffer_memory_requirements(device,
+                                      buffer->size,
+                                      buffer->usage,
+                                      pMemoryRequirements);
+}
+
+void anv_GetDeviceBufferMemoryRequirementsKHR(
+    VkDevice                                    _device,
+    const VkDeviceBufferMemoryRequirementsKHR* pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+
+   anv_get_buffer_memory_requirements(device,
+                                      pInfo->pCreateInfo->size,
+                                      pInfo->pCreateInfo->usage,
+                                      pMemoryRequirements);
 }
 
 VkResult anv_CreateBuffer(
