@@ -56,6 +56,12 @@
 #  error "The PAN_ARCH macro must be defined"
 #endif
 
+#if PAN_ARCH >= 6
+#define TILER_JOB BIFROST_TILER_JOB
+#else
+#define TILER_JOB MIDGARD_TILER_JOB
+#endif
+
 /* Suffixing macros */
 #if (PAN_ARCH == 4)
 #  define GENX(X) X##_v4

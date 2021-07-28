@@ -2624,12 +2624,6 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
 }
 #endif
 
-#if PAN_ARCH >= 6
-#define TILER_JOB BIFROST_TILER_JOB
-#else
-#define TILER_JOB MIDGARD_TILER_JOB
-#endif
-
 static void
 panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                          const struct pipe_draw_info *info,
