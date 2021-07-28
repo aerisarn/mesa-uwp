@@ -492,6 +492,11 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
    /* Round-trip again to get formats and modifiers */
    wl_display_roundtrip_queue(display->wl_display, display->queue);
 
+   if (display->sw)
+      display->formats = &display->swrast.formats;
+   else if (display->dmabuf.wl_dmabuf)
+      display->formats = &display->dmabuf.formats;
+
    if (wsi_wl->wsi->force_bgra8_unorm_first) {
       /* Find BGRA8_UNORM in the list and swap it to the first position if we
        * can find it.  Some apps get confused if SRGB is first in the list.
@@ -506,11 +511,6 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
          }
       }
    }
-
-   if (display->sw)
-      display->formats = &display->swrast.formats;
-   else if (display->dmabuf.wl_dmabuf)
-      display->formats = &display->dmabuf.formats;
 
 out:
    /* We don't need this anymore */
