@@ -35,11 +35,10 @@ struct anv_device_memory;
 struct anv_device;
 struct anv_image;
 
-VkResult anv_image_from_gralloc(VkDevice device_h,
-                                const VkImageCreateInfo *base_info,
-                                const VkNativeBufferANDROID *gralloc_info,
-                                const VkAllocationCallbacks *alloc,
-                                VkImage *pImage);
+VkResult anv_image_init_from_gralloc(struct anv_device *device,
+                                     struct anv_image *image,
+                                     const VkImageCreateInfo *base_info,
+                                     const VkNativeBufferANDROID *gralloc_info);
 
 VkResult anv_image_bind_from_gralloc(struct anv_device *device,
                                      struct anv_image *image,

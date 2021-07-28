@@ -4415,10 +4415,10 @@ struct anv_image_create_info {
    isl_surf_usage_flags_t isl_extra_usage_flags;
 };
 
-VkResult anv_image_create(VkDevice _device,
-                          const struct anv_image_create_info *info,
-                          const VkAllocationCallbacks* alloc,
-                          VkImage *pImage);
+VkResult anv_image_init(struct anv_device *device, struct anv_image *image,
+                        const struct anv_image_create_info *create_info);
+
+void anv_image_finish(struct anv_image *image);
 
 void anv_image_get_memory_requirements(struct anv_device *device,
                                        struct anv_image *image,

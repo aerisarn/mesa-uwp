@@ -451,16 +451,11 @@ anv_create_ahw_memory(VkDevice device_h,
 }
 
 VkResult
-anv_image_from_gralloc(VkDevice device_h,
-                       const VkImageCreateInfo *base_info,
-                       const VkNativeBufferANDROID *gralloc_info,
-                       const VkAllocationCallbacks *alloc,
-                       VkImage *out_image_h)
-
+anv_image_init_from_gralloc(struct anv_device *device,
+                            struct anv_image *image,
+                            const VkImageCreateInfo *base_info,
+                            const VkNativeBufferANDROID *gralloc_info)
 {
-   ANV_FROM_HANDLE(anv_device, device, device_h);
-   VkImage image_h = VK_NULL_HANDLE;
-   struct anv_image *image = NULL;
    struct anv_bo *bo = NULL;
    VkResult result;
 
@@ -532,10 +527,9 @@ anv_image_from_gralloc(VkDevice device_h,
                                                base_info->tiling);
    assert(format != ISL_FORMAT_UNSUPPORTED);
 
-   result = anv_image_create(device_h, &anv_info, alloc, &image_h);
-   image = anv_image_from_handle(image_h);
+   result = anv_image_init(device, image, &anv_info);
    if (result != VK_SUCCESS)
-      goto fail_create;
+      goto fail_init;
 
    VkMemoryRequirements2 mem_reqs = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
@@ -566,14 +560,11 @@ anv_image_from_gralloc(VkDevice device_h,
    image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo = bo;
    image->from_gralloc = true;
 
-   /* Don't clobber the out-parameter until success is certain. */
-   *out_image_h = image_h;
-
    return VK_SUCCESS;
 
  fail_size:
-   anv_DestroyImage(device_h, image_h, alloc);
- fail_create:
+   anv_image_finish(image);
+ fail_init:
  fail_tiling:
    anv_device_release_bo(device, bo);
 

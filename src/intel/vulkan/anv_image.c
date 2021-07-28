@@ -1255,21 +1255,15 @@ alloc_private_binding(struct anv_device *device,
 }
 
 VkResult
-anv_image_create(VkDevice _device,
-                 const struct anv_image_create_info *create_info,
-                 const VkAllocationCallbacks* alloc,
-                 VkImage *pImage)
+anv_image_init(struct anv_device *device, struct anv_image *image,
+               const struct anv_image_create_info *create_info)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
    const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
    const struct VkImageDrmFormatModifierExplicitCreateInfoEXT *mod_explicit_info = NULL;
    const struct isl_drm_modifier_info *isl_mod_info = NULL;
-   struct anv_image *image = NULL;
    VkResult r;
 
-   image = vk_image_create(&device->vk, pCreateInfo, alloc, sizeof(*image));
-   if (image == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+   vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
    image->vk.usage = anv_image_create_usage(pCreateInfo, image->vk.usage);
    image->vk.stencil_usage =
@@ -1306,7 +1300,6 @@ anv_image_create(VkDevice _device,
    if (image->vk.external_handle_types &
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
       image->from_ahb = true;
-      *pImage = anv_image_to_handle(image);
       return VK_SUCCESS;
    }
 
@@ -1351,13 +1344,33 @@ anv_image_create(VkDevice _device,
    if (r != VK_SUCCESS)
       goto fail;
 
-   *pImage = anv_image_to_handle(image);
-
    return VK_SUCCESS;
 
 fail:
-   vk_image_destroy(&device->vk, alloc, &image->vk);
+   vk_image_finish(&image->vk);
    return r;
+}
+
+void
+anv_image_finish(struct anv_image *image)
+{
+   struct anv_device *device =
+      container_of(image->vk.base.device, struct anv_device, vk);
+
+   if (image->from_gralloc) {
+      assert(!image->disjoint);
+      assert(image->n_planes == 1);
+      assert(image->planes[0].primary_surface.memory_range.binding ==
+             ANV_IMAGE_MEMORY_BINDING_MAIN);
+      assert(image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo != NULL);
+      anv_device_release_bo(device, image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo);
+   }
+
+   struct anv_bo *private_bo = image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].address.bo;
+   if (private_bo)
+      anv_device_release_bo(device, private_bo);
+
+   vk_image_finish(&image->vk);
 }
 
 static struct anv_image *
@@ -1380,11 +1393,10 @@ anv_swapchain_get_image(VkSwapchainKHR swapchain,
 }
 
 static VkResult
-anv_image_from_swapchain(VkDevice device,
-                         const VkImageCreateInfo *pCreateInfo,
-                         const VkImageSwapchainCreateInfoKHR *swapchain_info,
-                         const VkAllocationCallbacks *pAllocator,
-                         VkImage *pImage)
+anv_image_init_from_swapchain(struct anv_device *device,
+                              struct anv_image *image,
+                              const VkImageCreateInfo *pCreateInfo,
+                              const VkImageSwapchainCreateInfoKHR *swapchain_info)
 {
    struct anv_image *swapchain_image = anv_swapchain_get_image(swapchain_info->swapchain, 0);
    assert(swapchain_image);
@@ -1421,25 +1433,22 @@ anv_image_from_swapchain(VkDevice device,
    assert(swapchain_image->vk.tiling == local_create_info.tiling);
    assert(swapchain_image->vk.usage == local_create_info.usage);
 
-   return anv_image_create(device,
+   return anv_image_init(device, image,
       &(struct anv_image_create_info) {
          .vk_info = &local_create_info,
-      },
-      pAllocator,
-      pImage);
+      });
 }
 
-VkResult
-anv_CreateImage(VkDevice device,
-                const VkImageCreateInfo *pCreateInfo,
-                const VkAllocationCallbacks *pAllocator,
-                VkImage *pImage)
+static VkResult
+anv_image_init_from_create_info(struct anv_device *device,
+                                struct anv_image *image,
+                                const VkImageCreateInfo *pCreateInfo)
 {
    const VkNativeBufferANDROID *gralloc_info =
       vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
    if (gralloc_info)
-      return anv_image_from_gralloc(device, pCreateInfo, gralloc_info,
-                                    pAllocator, pImage);
+      return anv_image_init_from_gralloc(device, image, pCreateInfo,
+                                         gralloc_info);
 
 #ifndef VK_USE_PLATFORM_ANDROID_KHR
    /* Ignore swapchain creation info on Android. Since we don't have an
@@ -1448,17 +1457,42 @@ anv_CreateImage(VkDevice device,
     */
    const VkImageSwapchainCreateInfoKHR *swapchain_info =
       vk_find_struct_const(pCreateInfo->pNext, IMAGE_SWAPCHAIN_CREATE_INFO_KHR);
-   if (swapchain_info && swapchain_info->swapchain != VK_NULL_HANDLE)
-      return anv_image_from_swapchain(device, pCreateInfo, swapchain_info,
-                                      pAllocator, pImage);
+   if (swapchain_info && swapchain_info->swapchain != VK_NULL_HANDLE) {
+      return anv_image_init_from_swapchain(device, image, pCreateInfo,
+                                           swapchain_info);
+   }
 #endif
 
-   return anv_image_create(device,
-      &(struct anv_image_create_info) {
-         .vk_info = pCreateInfo,
-      },
-      pAllocator,
-      pImage);
+   return anv_image_init(device, image,
+                         &(struct anv_image_create_info) {
+                            .vk_info = pCreateInfo,
+                         });
+}
+
+VkResult anv_CreateImage(
+    VkDevice                                    _device,
+    const VkImageCreateInfo*                    pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkImage*                                    pImage)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+
+   struct anv_image *image =
+      vk_object_zalloc(&device->vk, pAllocator, sizeof(*image),
+                       VK_OBJECT_TYPE_IMAGE);
+   if (!image)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   VkResult result = anv_image_init_from_create_info(device, image,
+                                                     pCreateInfo);
+   if (result != VK_SUCCESS) {
+      vk_object_free(&device->vk, pAllocator, image);
+      return result;
+   }
+
+   *pImage = anv_image_to_handle(image);
+
+   return result;
 }
 
 void
@@ -1471,20 +1505,10 @@ anv_DestroyImage(VkDevice _device, VkImage _image,
    if (!image)
       return;
 
-   if (image->from_gralloc) {
-      assert(!image->disjoint);
-      assert(image->n_planes == 1);
-      assert(image->planes[0].primary_surface.memory_range.binding ==
-             ANV_IMAGE_MEMORY_BINDING_MAIN);
-      assert(image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo != NULL);
-      anv_device_release_bo(device, image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo);
-   }
+   assert(&device->vk == image->vk.base.device);
+   anv_image_finish(image);
 
-   struct anv_bo *private_bo = image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].address.bo;
-   if (private_bo)
-      anv_device_release_bo(device, private_bo);
-
-   vk_image_destroy(&device->vk, pAllocator, &image->vk);
+   vk_free2(&device->vk.alloc, pAllocator, image);
 }
 
 /* We are binding AHardwareBuffer. Get a description, resolve the
