@@ -68,6 +68,7 @@ foreach arch : ['5', '6', '7']
       'panvk_vX_device.c',
       'panvk_vX_image.c',
       'panvk_vX_meta.c',
+      'panvk_vX_meta_clear.c',
       'panvk_vX_pipeline.c',
       'panvk_vX_shader.c',
     ],
