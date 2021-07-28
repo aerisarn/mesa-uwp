@@ -147,7 +147,7 @@ ir3_shader_assemble(struct ir3_shader_variant *v)
    /* Pad out the size so that when turnip uploads the shaders in
     * sequence, the starting offset of the next one is properly aligned.
     */
-   info->size = align(info->size, compiler->instr_align * sizeof(instr_t));
+   info->size = align(info->size, compiler->instr_align * sizeof(uint64_t));
 
    bin = isa_assemble(v);
    if (!bin)
