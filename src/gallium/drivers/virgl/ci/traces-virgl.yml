@@ -142,11 +142,10 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: c3b1a34d324c2c1fb03dbfa78a447d9f
-# Crash
-#  - path: glmark2/texture-texture-filter=linear.rdc
-#    expectations:
-#      - device: gl-virgl
-#        checksum: 7705bcf747ce1431db32f299fb81df63
+  - path: glmark2/texture-texture-filter=linear.rdc
+    expectations:
+      - device: gl-virgl
+        checksum: 7705bcf747ce1431db32f299fb81df63
   - path: glmark2/texture-texture-filter=mipmap.rdc
     expectations:
       - device: gl-virgl
