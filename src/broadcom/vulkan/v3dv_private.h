@@ -587,6 +587,9 @@ struct v3dv_device {
     * being float being float, allowing us to reuse the same BO for all
     * pipelines matching this requirement. Pipelines that need integer
     * attributes will create their own BO.
+    *
+    * Note that since v71 the default attribute values are not needed, so this
+    * can be NULL.
     */
    struct v3dv_bo *default_attribute_float;
 
@@ -2267,7 +2270,8 @@ struct v3dv_pipeline {
    unsigned char sha1[20];
 
    /* In general we can reuse v3dv_device->default_attribute_float, so note
-    * that the following can be NULL.
+    * that the following can be NULL. In 7.x this is not used, so it will be
+    * always NULL.
     *
     * FIXME: the content of this BO will be small, so it could be improved to
     * be uploaded to a common BO. But as in most cases it will be NULL, it is

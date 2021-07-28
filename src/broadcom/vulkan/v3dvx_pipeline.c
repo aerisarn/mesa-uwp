@@ -665,6 +665,7 @@ v3dX(pipeline_pack_compile_state)(struct v3dv_pipeline *pipeline,
    }
 }
 
+#if V3D_VERSION == 42
 static bool
 pipeline_has_integer_vertex_attrib(struct v3dv_pipeline *pipeline)
 {
@@ -674,11 +675,16 @@ pipeline_has_integer_vertex_attrib(struct v3dv_pipeline *pipeline)
    }
    return false;
 }
+#endif
 
 bool
 v3dX(pipeline_needs_default_attribute_values)(struct v3dv_pipeline *pipeline)
 {
+#if V3D_VERSION == 42
    return pipeline_has_integer_vertex_attrib(pipeline);
+#endif
+
+   return false;
 }
 
 /* @pipeline can be NULL. In that case we assume the most common case. For
@@ -691,6 +697,10 @@ struct v3dv_bo *
 v3dX(create_default_attribute_values)(struct v3dv_device *device,
                                       struct v3dv_pipeline *pipeline)
 {
+#if V3D_VERSION >= 71
+   return NULL;
+#endif
+
    uint32_t size = MAX_VERTEX_ATTRIBS * sizeof(float) * 4;
    struct v3dv_bo *bo;
 
