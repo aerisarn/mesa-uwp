@@ -49,12 +49,13 @@
  * possible.
  */
 
-/* Base macro defined on the command line.  If we don't have this, we can't
- * do anything.
- */
+/* Base macro defined on the command line. */
 #ifndef PAN_ARCH
-#  error "The PAN_ARCH macro must be defined"
-#endif
+/* This will be replaced by a minimal definition header as soon as the
+ * per-gen transition is complete.
+ */
+#  include "midgard_pack.h"
+#else
 
 #if PAN_ARCH >= 6
 #define TILER_JOB BIFROST_TILER_JOB
@@ -69,14 +70,19 @@
 /* Suffixing macros */
 #if (PAN_ARCH == 4)
 #  define GENX(X) X##_v4
+#  include "midgard_pack.h"
 #elif (PAN_ARCH == 5)
 #  define GENX(X) X##_v5
+#  include "midgard_pack.h"
 #elif (PAN_ARCH == 6)
 #  define GENX(X) X##_v6
+#  include "midgard_pack.h"
 #elif (PAN_ARCH == 7)
 #  define GENX(X) X##_v7
+#  include "midgard_pack.h"
 #else
 #  error "Need to add suffixing macro for this architecture"
 #endif
 
+#endif /* PAN_ARCH */
 #endif /* GEN_MACROS_H */
