@@ -68,7 +68,10 @@ struct radv_bvh_instance_node {
    float wto_matrix[12];
    float aabb[2][3];
    uint32_t instance_id;
-   uint32_t reserved[9];
+
+   /* Object to world matrix transposed from the initial transform. Translate part is store in the
+    * wto_matrix. */
+   float otw_matrix[9];
 };
 
 struct radv_bvh_box16_node {
@@ -347,6 +350,10 @@ build_instances(struct radv_device *device, struct radv_bvh_build_ctx *ctx,
       node->sbt_offset_and_flags =
          instance->instanceShaderBindingTableRecordOffset | (instance->flags << 24);
       node->instance_id = p;
+
+      for (unsigned i = 0; i < 3; ++i)
+         for (unsigned j = 0; j < 3; ++j)
+            node->otw_matrix[i * 3 + j] = instance->transform.matrix[j][i];
 
       RADV_FROM_HANDLE(radv_acceleration_structure, src_accel_struct,
                        (VkAccelerationStructureKHR)instance->accelerationStructureReference);
@@ -993,6 +1000,17 @@ build_leaf_shader(struct radv_device *dev)
 
       nir_store_var(&b, bounds[0], nir_vec(&b, bound_defs[0], 3), 7);
       nir_store_var(&b, bounds[1], nir_vec(&b, bound_defs[1], 3), 7);
+
+      /* Store object to world matrix */
+      for (unsigned i = 0; i < 3; ++i) {
+         nir_ssa_def *vals[3];
+         for (unsigned j = 0; j < 3; ++j)
+            vals[j] = nir_channel(&b, inst_transform[j], i);
+
+         nir_build_store_global(&b, nir_vec(&b, vals, 3),
+                                nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 92 + 12 * i)),
+                                .write_mask = 0x7, .align_mul = 4, .align_offset = 0);
+      }
 
       nir_ssa_def *m_in[3][3], *m_out[3][3], *m_vec[3][4];
       for (unsigned i = 0; i < 3; ++i)
