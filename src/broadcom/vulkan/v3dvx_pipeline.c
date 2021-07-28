@@ -664,3 +664,66 @@ v3dX(pipeline_pack_compile_state)(struct v3dv_pipeline *pipeline,
       }
    }
 }
+
+static bool
+pipeline_has_integer_vertex_attrib(struct v3dv_pipeline *pipeline)
+{
+   for (uint8_t i = 0; i < pipeline->va_count; i++) {
+      if (vk_format_is_int(pipeline->va[i].vk_format))
+         return true;
+   }
+   return false;
+}
+
+bool
+v3dX(pipeline_needs_default_attribute_values)(struct v3dv_pipeline *pipeline)
+{
+   return pipeline_has_integer_vertex_attrib(pipeline);
+}
+
+/* @pipeline can be NULL. In that case we assume the most common case. For
+ * example, for v42 we assume in that case that all the attributes have a
+ * float format (we only create an all-float BO once and we reuse it with all
+ * float pipelines), otherwise we look at the actual type of each attribute
+ * used with the specific pipeline passed in.
+ */
+struct v3dv_bo *
+v3dX(create_default_attribute_values)(struct v3dv_device *device,
+                                      struct v3dv_pipeline *pipeline)
+{
+   uint32_t size = MAX_VERTEX_ATTRIBS * sizeof(float) * 4;
+   struct v3dv_bo *bo;
+
+   bo = v3dv_bo_alloc(device, size, "default_vi_attributes", true);
+
+   if (!bo) {
+      fprintf(stderr, "failed to allocate memory for the default "
+              "attribute values\n");
+      return NULL;
+   }
+
+   bool ok = v3dv_bo_map(device, bo, size);
+   if (!ok) {
+      fprintf(stderr, "failed to map default attribute values buffer\n");
+      return NULL;
+   }
+
+   uint32_t *attrs = bo->map;
+   uint8_t va_count = pipeline != NULL ? pipeline->va_count : 0;
+   for (int i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
+      attrs[i * 4 + 0] = 0;
+      attrs[i * 4 + 1] = 0;
+      attrs[i * 4 + 2] = 0;
+      VkFormat attr_format =
+         pipeline != NULL ? pipeline->va[i].vk_format : VK_FORMAT_UNDEFINED;
+      if (i < va_count && vk_format_is_int(attr_format)) {
+         attrs[i * 4 + 3] = 1;
+      } else {
+         attrs[i * 4 + 3] = fui(1.0);
+      }
+   }
+
+   v3dv_bo_unmap(device, bo);
+
+   return bo;
+}
