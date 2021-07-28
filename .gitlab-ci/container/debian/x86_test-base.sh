@@ -71,6 +71,14 @@ pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@34f4ade9
 . .gitlab-ci/container/build-deqp-runner.sh
 rm -rf ~/.cargo
 
+############### Build libdrm
+
+. .gitlab-ci/container/build-libdrm.sh
+
+############### Build Wayland
+
+. .gitlab-ci/container/build-wayland.sh
+
 apt-get purge -y $STABLE_EPHEMERAL
 
 apt-get autoremove -y --purge

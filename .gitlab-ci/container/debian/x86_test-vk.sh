@@ -150,14 +150,6 @@ wine \
 
 . .gitlab-ci/container/container_pre_build.sh
 
-############### Build libdrm
-
-. .gitlab-ci/container/build-libdrm.sh
-
-############### Build Wayland
-
-. .gitlab-ci/container/build-wayland.sh
-
 ############### Build parallel-deqp-runner's hang-detection tool
 
 . .gitlab-ci/container/build-hang-detection.sh

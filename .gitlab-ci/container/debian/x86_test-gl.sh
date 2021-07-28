@@ -24,7 +24,6 @@ STABLE_EPHEMERAL=" \
       libclang-cpp13-dev \
       libclang-cpp11-dev \
       libelf-dev \
-      libexpat1-dev \
       libfdt-dev \
       libgbm-dev \
       libgles2-mesa-dev \
@@ -78,14 +77,6 @@ apt-get install -y --no-remove \
 
 
 . .gitlab-ci/container/container_pre_build.sh
-
-############### Build libdrm
-
-. .gitlab-ci/container/build-libdrm.sh
-
-############### Build Wayland
-
-. .gitlab-ci/container/build-wayland.sh
 
 ############### Build Crosvm
 
