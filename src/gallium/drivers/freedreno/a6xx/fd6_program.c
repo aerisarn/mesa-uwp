@@ -320,8 +320,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    uint32_t stencilref_regid;
    uint32_t vertex_regid, instance_regid, layer_regid, primitive_regid;
    uint32_t hs_invocation_regid;
-   uint32_t tess_coord_x_regid, tess_coord_y_regid, hs_patch_regid,
-      ds_patch_regid;
+   uint32_t tess_coord_x_regid, tess_coord_y_regid, hs_rel_patch_regid,
+      ds_rel_patch_regid;
    uint32_t ij_regid[IJ_COUNT];
    uint32_t gs_header_regid;
    enum a6xx_threadsize fssz;
@@ -357,8 +357,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    if (hs) {
       tess_coord_x_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD);
       tess_coord_y_regid = next_regid(tess_coord_x_regid, 1);
-      hs_patch_regid = ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID);
-      ds_patch_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID);
+      hs_rel_patch_regid = ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID);
+      ds_rel_patch_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID);
       hs_invocation_regid =
          ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3);
 
@@ -369,8 +369,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    } else {
       tess_coord_x_regid = regid(63, 0);
       tess_coord_y_regid = regid(63, 0);
-      hs_patch_regid = regid(63, 0);
-      ds_patch_regid = regid(63, 0);
+      hs_rel_patch_regid = regid(63, 0);
+      ds_rel_patch_regid = regid(63, 0);
       hs_invocation_regid = regid(63, 0);
    }
 
@@ -976,9 +976,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
                      A6XX_VFD_CONTROL_1_REGID4PRIMID(primitive_regid) |
                      0xfc000000);
    OUT_RING(ring,
-            A6XX_VFD_CONTROL_2_REGID_HSPATCHID(hs_patch_regid) |
+            A6XX_VFD_CONTROL_2_REGID_HSRELPATCHID(hs_rel_patch_regid) |
                A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(hs_invocation_regid));
-   OUT_RING(ring, A6XX_VFD_CONTROL_3_REGID_DSPATCHID(ds_patch_regid) |
+   OUT_RING(ring, A6XX_VFD_CONTROL_3_REGID_DSRELPATCHID(ds_rel_patch_regid) |
                      A6XX_VFD_CONTROL_3_REGID_TESSX(tess_coord_x_regid) |
                      A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) | 0xfc);
    OUT_RING(ring, 0x000000fc); /* VFD_CONTROL_4 */

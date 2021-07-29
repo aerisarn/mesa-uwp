@@ -645,10 +645,10 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
    const uint32_t tess_coord_y_regid = VALIDREG(tess_coord_x_regid) ?
          tess_coord_x_regid + 1 :
          regid(63, 0);
-   const uint32_t hs_patch_regid = hs ?
+   const uint32_t hs_rel_patch_regid = hs ?
          ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID) :
          regid(63, 0);
-   const uint32_t ds_patch_regid = hs ?
+   const uint32_t ds_rel_patch_regid = hs ?
          ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
          regid(63, 0);
    const uint32_t hs_invocation_regid = hs ?
@@ -673,9 +673,9 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
                   A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
                   A6XX_VFD_CONTROL_1_REGID4PRIMID(primitiveid_regid) |
                   A6XX_VFD_CONTROL_1_REGID4VIEWID(viewid_regid));
-   tu_cs_emit(cs, A6XX_VFD_CONTROL_2_REGID_HSPATCHID(hs_patch_regid) |
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_2_REGID_HSRELPATCHID(hs_rel_patch_regid) |
                   A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(hs_invocation_regid));
-   tu_cs_emit(cs, A6XX_VFD_CONTROL_3_REGID_DSPATCHID(ds_patch_regid) |
+   tu_cs_emit(cs, A6XX_VFD_CONTROL_3_REGID_DSRELPATCHID(ds_rel_patch_regid) |
                   A6XX_VFD_CONTROL_3_REGID_TESSX(tess_coord_x_regid) |
                   A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) |
                   0xfc);

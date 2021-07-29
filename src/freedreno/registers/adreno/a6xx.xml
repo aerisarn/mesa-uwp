@@ -2632,12 +2632,21 @@ to upconvert to 32b float internally?
 		<bitfield name="REGID4VIEWID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0xa002" name="VFD_CONTROL_2">
-		<bitfield name="REGID_HSPATCHID" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="REGID_HSRELPATCHID" low="0" high="7" type="a3xx_regid">
+			<doc>
+                                This is the ID of the current patch within the
+                                subdraw, used to calculate the offset of the
+                                patch within the HS->DS buffers. When a draw is
+                                split into multiple subdraws then this differs
+                                from gl_PrimitiveID on the second, third, etc.
+                                subdraws.
+			</doc>
+		</bitfield>
 		<bitfield name="REGID_INVOCATIONID" low="8" high="15" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0xa003" name="VFD_CONTROL_3">
-		<bitfield name="UNK0" low="0" high="7" type="a3xx_regid"/>
-		<bitfield name="REGID_DSPATCHID" low="8" high="15" type="a3xx_regid"/>
+		<bitfield name="REGID_DSPRIMID" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="REGID_DSRELPATCHID" low="8" high="15" type="a3xx_regid"/>
 		<bitfield name="REGID_TESSX" low="16" high="23" type="a3xx_regid"/>
 		<bitfield name="REGID_TESSY" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
