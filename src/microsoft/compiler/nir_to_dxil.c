@@ -3029,12 +3029,15 @@ static bool
 emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *handle;
+   bool is_array = false;
    if (ctx->opts->vulkan_environment) {
       assert(intr->intrinsic == nir_intrinsic_image_deref_store);
       handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
+      is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
    } else {
       assert(intr->intrinsic == nir_intrinsic_image_store);
       int binding = nir_src_as_int(intr->src[0]);
+      is_array = nir_intrinsic_image_array(intr);
       handle = ctx->uav_handles[binding];
    }
    if (!handle)
@@ -3049,6 +3052,9 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       nir_intrinsic_image_dim(intr) :
       glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type);
    unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
+   if (is_array)
+      ++num_coords;
+
    assert(num_coords <= nir_src_num_components(intr->src[1]));
    for (unsigned i = 0; i < num_coords; ++i) {
       coord[i] = get_src(ctx, &intr->src[1], i, nir_type_uint);
