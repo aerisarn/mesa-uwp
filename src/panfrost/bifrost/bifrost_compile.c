@@ -517,6 +517,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
         unsigned sr_count_2 = (size_2 <= 16) ? 2 : 4;
         const struct panfrost_compile_inputs *inputs = b->shader->inputs;
         uint64_t blend_desc = inputs->blend.bifrost_blend_desc;
+        enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
 
         if (inputs->is_blend && inputs->blend.nr_samples > 1) {
                 /* Conversion descriptor comes from the compile inputs, pixel
@@ -530,7 +531,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
                                 bi_register(60),
                                 bi_imm_u32(blend_desc & 0xffffffff),
                                 bi_imm_u32(blend_desc >> 32),
-                                bi_null(), sr_count, 0);
+                                bi_null(), regfmt, sr_count, 0);
         } else {
                 /* Blend descriptor comes from the FAU RAM. By convention, the
                  * return address is stored in r48 and will be used by the
@@ -539,7 +540,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
                                 bi_register(60),
                                 bi_fau(BIR_FAU_BLEND_0 + rt, false),
                                 bi_fau(BIR_FAU_BLEND_0 + rt, true),
-                                rgba2, sr_count, sr_count_2);
+                                rgba2, regfmt, sr_count, sr_count_2);
         }
 
         assert(rt < 8);
