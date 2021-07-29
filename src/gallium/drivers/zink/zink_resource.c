@@ -1058,11 +1058,14 @@ map_resource(struct zink_screen *screen, struct zink_resource *res)
 static void
 unmap_resource(struct zink_screen *screen, struct zink_resource *res)
 {
-   res->obj->map = NULL;
    if (!res->obj->dedicated)
       zink_bo_unmap(screen, res->obj->bo);
-   else
+   else {
+      if (!p_atomic_dec_zero(&res->obj->map_count))
+         return;
       vkUnmapMemory(screen->dev, res->obj->mem);
+   }
+   res->obj->map = NULL;
 }
 
 static void *
@@ -1323,6 +1326,8 @@ zink_transfer_map(struct pipe_context *pctx,
       }
       if (sizeof(void*) == 4)
          trans->base.b.usage |= ZINK_MAP_TEMPORARY;
+      if (res->obj->dedicated)
+         p_atomic_inc(&res->obj->map_count);
    }
    if ((usage & PIPE_MAP_PERSISTENT) && !(usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps++;
