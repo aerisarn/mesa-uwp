@@ -1903,6 +1903,8 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->cmask_size = cout.cmaskBytes;
          surf->cmask_alignment_log2 = util_logbase2(cout.baseAlign);
          surf->cmask_slice_size = cout.sliceSize;
+         surf->cmask_pitch = cout.pitch;
+         surf->cmask_height = cout.height;
          surf->u.gfx9.color.cmask_level0.offset = meta_mip_info[0].offset;
          surf->u.gfx9.color.cmask_level0.size = meta_mip_info[0].sliceSize;
       }

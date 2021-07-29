@@ -368,6 +368,8 @@ struct radeon_surf {
 
    uint32_t cmask_size;
    uint32_t cmask_slice_size;
+   uint16_t cmask_pitch; /* GFX9+ */
+   uint16_t cmask_height; /* GFX9+ */
 
    /* All buffers combined. */
    uint64_t meta_offset; /* DCC or HTILE */
