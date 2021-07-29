@@ -68,9 +68,6 @@ zink_transfer_map(struct pipe_context *pctx,
                   unsigned usage,
                   const struct pipe_box *box,
                   struct pipe_transfer **transfer);
-static void
-zink_transfer_unmap(struct pipe_context *pctx,
-                    struct pipe_transfer *ptrans);
 
 void
 debug_describe_zink_resource_object(char *buf, const struct zink_resource_object *ptr)
@@ -1378,8 +1375,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
 }
 
 static void
-zink_transfer_unmap(struct pipe_context *pctx,
-                    struct pipe_transfer *ptrans)
+transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
@@ -1411,6 +1407,18 @@ zink_transfer_unmap(struct pipe_context *pctx,
 }
 
 static void
+zink_buffer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
+{
+   transfer_unmap(pctx, ptrans);
+}
+
+static void
+zink_image_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
+{
+   transfer_unmap(pctx, ptrans);
+}
+
+static void
 zink_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *buffer,
                     unsigned usage, unsigned offset, unsigned size, const void *data)
 {
@@ -1429,7 +1437,7 @@ zink_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *buffer,
       return;
 
    memcpy(map, data, size);
-   zink_transfer_unmap(ctx, transfer);
+   zink_buffer_unmap(ctx, transfer);
 }
 
 static struct pipe_resource *
@@ -1596,7 +1604,7 @@ static const struct u_transfer_vtbl transfer_vtbl = {
    .resource_create       = zink_resource_create,
    .resource_destroy      = zink_resource_destroy,
    .transfer_map          = zink_transfer_map,
-   .transfer_unmap        = zink_transfer_unmap,
+   .transfer_unmap        = zink_image_unmap,
    .transfer_flush_region = zink_transfer_flush_region,
    .get_internal_format   = zink_resource_get_internal_format,
    .set_stencil           = zink_resource_set_separate_stencil,
@@ -1623,8 +1631,8 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
 void
 zink_context_resource_init(struct pipe_context *pctx)
 {
-   pctx->buffer_map = u_transfer_helper_deinterleave_transfer_map;
-   pctx->buffer_unmap = u_transfer_helper_deinterleave_transfer_unmap;
+   pctx->buffer_map = zink_transfer_map;
+   pctx->buffer_unmap = zink_buffer_unmap;
    pctx->texture_map = u_transfer_helper_deinterleave_transfer_map;
    pctx->texture_unmap = u_transfer_helper_deinterleave_transfer_unmap;
 
