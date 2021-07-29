@@ -1491,6 +1491,28 @@ static void ac_copy_dcc_equation(const struct radeon_info *info,
    }
 }
 
+static void ac_copy_cmask_equation(const struct radeon_info *info,
+                                   ADDR2_COMPUTE_CMASK_INFO_OUTPUT *cmask,
+                                   struct gfx9_meta_equation *equation)
+{
+   equation->meta_block_width = cmask->metaBlkWidth;
+   equation->meta_block_height = cmask->metaBlkHeight;
+   equation->meta_block_depth = 1;
+
+   if (info->chip_class == GFX9) {
+      assert(cmask->equation.gfx9.num_bits <= ARRAY_SIZE(equation->u.gfx9.bit));
+
+      equation->u.gfx9.num_bits = cmask->equation.gfx9.num_bits;
+      equation->u.gfx9.num_pipe_bits = cmask->equation.gfx9.numPipeBits;
+      for (unsigned b = 0; b < ARRAY_SIZE(equation->u.gfx9.bit); b++) {
+         for (unsigned c = 0; c < ARRAY_SIZE(equation->u.gfx9.bit[b].coord); c++) {
+            equation->u.gfx9.bit[b].coord[c].dim = cmask->equation.gfx9.bit[b].coord[c].dim;
+            equation->u.gfx9.bit[b].coord[c].ord = cmask->equation.gfx9.bit[b].coord[c].ord;
+         }
+      }
+   }
+}
+
 static void ac_copy_htile_equation(const struct radeon_info *info,
                                    ADDR2_COMPUTE_HTILE_INFO_OUTPUT *htile,
                                    struct gfx9_meta_equation *equation)
@@ -1907,6 +1929,8 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->cmask_height = cout.height;
          surf->u.gfx9.color.cmask_level0.offset = meta_mip_info[0].offset;
          surf->u.gfx9.color.cmask_level0.size = meta_mip_info[0].sliceSize;
+
+         ac_copy_cmask_equation(info, &cout, &surf->u.gfx9.color.cmask_equation);
       }
    }
 

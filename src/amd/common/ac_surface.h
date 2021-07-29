@@ -287,6 +287,9 @@ struct gfx9_surf_layout {
          /* For DCC retiling. */
          struct gfx9_meta_equation dcc_equation; /* 2D only */
          struct gfx9_meta_equation display_dcc_equation;
+
+         /* For FCE compute. */
+         struct gfx9_meta_equation cmask_equation; /* 2D only */
       } color;
 
       /* Z/S */
