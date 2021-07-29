@@ -71,6 +71,19 @@ int main(int argc, char **argv)
    BIT_ASSERT(!bi_reads_t(blend, 2));
    BIT_ASSERT(!bi_reads_t(blend, 3));
 
+   /* Test restrictions on modifiers of same cycle temporaries */
+   bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP(), BI_ROUND_NONE);
+   BIT_ASSERT(bi_reads_t(fadd, 0));
+
+   for (unsigned i = 0; i < 2; ++i) {
+      for (unsigned j = 0; j < 2; ++j) {
+         bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP(), BI_ROUND_NONE);
+         fadd->src[i] = bi_swz_16(TMP(), j, j);
+         BIT_ASSERT(bi_reads_t(fadd, 1 - i));
+         BIT_ASSERT(!bi_reads_t(fadd, i));
+      }
+   }
+
    ralloc_free(ralloc_ctx);
    TEST_END(nr_pass, nr_fail);
 }
