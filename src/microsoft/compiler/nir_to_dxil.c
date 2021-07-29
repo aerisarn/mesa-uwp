@@ -4396,6 +4396,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
          return false;
    } else {
       /* Handle read/write SSBOs as UAVs */
+      int uav_count = 0;
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
          if ((var->data.access & ACCESS_NON_WRITEABLE) == 0) {
             unsigned count = 1;
@@ -4405,8 +4406,12 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
                         count, DXIL_COMP_TYPE_INVALID,
                         DXIL_RESOURCE_KIND_RAW_BUFFER, var->name))
                return false;
+            
+            ++uav_count;
          }
       }
+      if (uav_count > 0)
+         ctx->mod.raw_and_structured_buffers = true;
    }
 
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
