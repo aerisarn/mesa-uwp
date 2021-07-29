@@ -1576,6 +1576,9 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
           (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || no_earlyz || fs->writes_smask)) {
          pipeline->lrz.force_late_z = true;
       }
+
+      pipeline->drawcall_base_cost +=
+         util_bitcount(fs_render_components) / util_bitcount(0xf);
    }
 }
 
@@ -3120,6 +3123,10 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
           */
          if (blendAttachment.blendEnable || blendAttachment.colorWriteMask != 0xf) {
             pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
+         }
+
+         if (blendAttachment.blendEnable) {
+            pipeline->drawcall_base_cost++;
          }
       }
    }

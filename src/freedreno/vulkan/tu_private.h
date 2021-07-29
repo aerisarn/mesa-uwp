@@ -77,6 +77,7 @@
 #include "perfcntrs/freedreno_perfcntr.h"
 
 #include "tu_descriptor_set.h"
+#include "tu_autotune.h"
 #include "tu_util.h"
 #include "tu_perfetto.h"
 
@@ -461,6 +462,8 @@ struct tu_device
     * new submit is executed. */
    pthread_cond_t timeline_cond;
    pthread_mutex_t submit_mutex;
+
+   struct tu_autotune autotune;
 
 #ifdef ANDROID
    const void *gralloc;
@@ -1063,6 +1066,35 @@ struct tu_cmd_state
    bool disable_gmem;
    enum a5xx_line_mode line_mode;
 
+   uint32_t drawcall_count;
+
+   /* A calculated "draw cost" value for renderpass, which tries to
+    * estimate the bandwidth-per-sample of all the draws according
+    * to:
+    *
+    *    foreach_draw (...) {
+    *      cost += num_frag_outputs;
+    *      if (blend_enabled)
+    *        cost += num_blend_enabled;
+    *      if (depth_test_enabled)
+    *        cost++;
+    *      if (depth_write_enabled)
+    *        cost++;
+    *    }
+    *
+    * The idea is that each sample-passed minimally does one write
+    * per MRT.  If blend is enabled, the hw will additionally do
+    * a framebuffer read per sample-passed (for each MRT with blend
+    * enabled).  If depth-test is enabled, the hw will additionally
+    * a depth buffer read.  If depth-write is enable, the hw will
+    * additionally do a depth buffer write.
+    *
+    * This does ignore depth buffer traffic for samples which do not
+    * pass do to depth-test fail, and some other details.  But it is
+    * just intended to be a rough estimate that is easy to calculate.
+    */
+   uint32_t total_drawcalls_cost;
+
    struct tu_lrz_state lrz;
 
    struct tu_draw_state depth_plane_state;
@@ -1101,6 +1133,8 @@ struct tu_cmd_buffer
    struct u_trace trace;
    struct u_trace_iterator trace_renderpass_start;
    struct u_trace_iterator trace_renderpass_end;
+
+   struct list_head renderpass_autotune_results;
 
    VkCommandBufferUsageFlags usage_flags;
    VkCommandBufferLevel level;
@@ -1299,6 +1333,9 @@ struct tu_pipeline
    bool provoking_vertex_last;
 
    struct tu_lrz_pipeline lrz;
+
+   /* Base drawcall cost for sysmem vs gmem autotuner */
+   uint8_t drawcall_base_cost;
 
    void *executables_mem_ctx;
    /* tu_pipeline_executable */

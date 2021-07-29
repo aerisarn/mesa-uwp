@@ -31,6 +31,7 @@ tu_entrypoints = custom_target(
 
 
 libtu_files = files(
+  'tu_autotune.c',
   'tu_clear_blit.c',
   'tu_cmd_buffer.c',
   'tu_cs.c',
