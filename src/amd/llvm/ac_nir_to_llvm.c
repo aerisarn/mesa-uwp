@@ -1662,19 +1662,15 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
       offset += LLVMConstIntGetZExtValue(src0);
       offset /= 4;
 
-      offset -= ctx->args->base_inline_push_consts;
-
-      unsigned num_inline_push_consts = 0;
-      for (unsigned i = 0; i < ARRAY_SIZE(ctx->args->inline_push_consts); i++) {
-         if (ctx->args->inline_push_consts[i].used)
-            num_inline_push_consts++;
-      }
-
-      if (offset + count <= num_inline_push_consts) {
-         LLVMValueRef *const push_constants = alloca(num_inline_push_consts * sizeof(LLVMValueRef));
-         for (unsigned i = 0; i < num_inline_push_consts; i++)
-            push_constants[i] = ac_get_arg(&ctx->ac, ctx->args->inline_push_consts[i]);
-         return ac_build_gather_values(&ctx->ac, push_constants + offset, count);
+      uint64_t mask = BITFIELD64_MASK(count) << offset;
+      if ((ctx->args->inline_push_const_mask | mask) == ctx->args->inline_push_const_mask &&
+          offset + count <= (sizeof(ctx->args->inline_push_const_mask) * 8u)) {
+         LLVMValueRef *const push_constants = alloca(count * sizeof(LLVMValueRef));
+         unsigned arg_index =
+            util_bitcount64(ctx->args->inline_push_const_mask & BITFIELD64_MASK(offset));
+         for (unsigned i = 0; i < count; i++)
+            push_constants[i] = ac_get_arg(&ctx->ac, ctx->args->inline_push_consts[arg_index++]);
+         return ac_build_gather_values(&ctx->ac, push_constants, count);
       }
    }
 

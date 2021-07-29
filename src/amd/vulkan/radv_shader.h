@@ -229,12 +229,10 @@ struct gfx10_ngg_info {
 };
 
 struct radv_shader_info {
+   uint64_t inline_push_constant_mask;
+   bool can_inline_all_push_constants;
    bool loads_push_constants;
    bool loads_dynamic_offsets;
-   uint16_t min_push_constant_used;
-   uint16_t max_push_constant_used;
-   bool has_only_32bit_push_constants;
-   bool has_indirect_push_constants;
    uint32_t desc_set_used_mask;
    bool uses_view_index;
    bool uses_invocation_id;

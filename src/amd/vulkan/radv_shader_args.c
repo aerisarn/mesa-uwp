@@ -68,10 +68,10 @@ set_loc_desc(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx)
 }
 
 struct user_sgpr_info {
+   uint64_t inline_push_constant_mask;
+   bool inlined_all_push_consts;
    bool indirect_all_descriptor_sets;
    uint8_t remaining_sgprs;
-   unsigned num_inline_push_consts;
-   bool inlined_all_push_consts;
 };
 
 static uint8_t
@@ -119,32 +119,29 @@ allocate_inline_push_consts(const struct radv_shader_info *info,
 {
    uint8_t remaining_sgprs = user_sgpr_info->remaining_sgprs;
 
-   /* Only supported if shaders use push constants. */
-   if (info->min_push_constant_used == UINT16_MAX)
+   if (!info->inline_push_constant_mask)
       return;
 
-   uint8_t num_push_consts =
-      (info->max_push_constant_used - info->min_push_constant_used) / 4;
+   uint64_t mask = info->inline_push_constant_mask;
+   uint8_t num_push_consts = util_bitcount64(mask);
 
-   /* Check if the number of user SGPRs is large enough. */
-   if (num_push_consts < remaining_sgprs) {
-      user_sgpr_info->num_inline_push_consts = num_push_consts;
-   } else {
-      user_sgpr_info->num_inline_push_consts = remaining_sgprs;
-   }
-
-   /* Clamp to the maximum number of allowed inlined push constants. */
-   if (user_sgpr_info->num_inline_push_consts > AC_MAX_INLINE_PUSH_CONSTS)
-      user_sgpr_info->num_inline_push_consts = AC_MAX_INLINE_PUSH_CONSTS;
-
-   if (user_sgpr_info->num_inline_push_consts == num_push_consts &&
-       info->has_only_32bit_push_constants && !info->has_indirect_push_constants &&
-       !info->loads_dynamic_offsets) {
-      /* Disable the default push constants path if all constants are
-       * inlined and if shaders don't use dynamic descriptors.
-       */
+   /* Disable the default push constants path if all constants can be inlined and if shaders don't
+    * use dynamic descriptors.
+    */
+   if (num_push_consts <= MIN2(remaining_sgprs + 1, AC_MAX_INLINE_PUSH_CONSTS) &&
+       info->can_inline_all_push_constants && !info->loads_dynamic_offsets) {
       user_sgpr_info->inlined_all_push_consts = true;
+      remaining_sgprs++;
+   } else {
+      /* Clamp to the maximum number of allowed inlined push constants. */
+      while (num_push_consts > MIN2(remaining_sgprs, AC_MAX_INLINE_PUSH_CONSTS)) {
+         num_push_consts--;
+         mask &= ~BITFIELD64_BIT(util_last_bit64(mask) - 1);
+      }
    }
+
+   user_sgpr_info->remaining_sgprs = remaining_sgprs - util_bitcount64(mask);
+   user_sgpr_info->inline_push_constant_mask = mask;
 }
 
 static void
@@ -252,10 +249,10 @@ declare_global_input_sgprs(const struct radv_shader_info *info,
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->ac.push_constants);
    }
 
-   for (unsigned i = 0; i < user_sgpr_info->num_inline_push_consts; i++) {
+   for (unsigned i = 0; i < util_bitcount64(user_sgpr_info->inline_push_constant_mask); i++) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.inline_push_consts[i]);
    }
-   args->ac.base_inline_push_consts = info->min_push_constant_used / 4;
+   args->ac.inline_push_const_mask = user_sgpr_info->inline_push_constant_mask;
 
    if (info->so.num_outputs) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->streamout_buffers);
@@ -451,8 +448,6 @@ static void
 set_global_input_locs(struct radv_shader_args *args, const struct user_sgpr_info *user_sgpr_info,
                       uint8_t *user_sgpr_idx)
 {
-   unsigned num_inline_push_consts = 0;
-
    if (!user_sgpr_info->indirect_all_descriptor_sets) {
       for (unsigned i = 0; i < ARRAY_SIZE(args->descriptor_sets); i++) {
          if (args->descriptor_sets[i].used)
@@ -466,13 +461,9 @@ set_global_input_locs(struct radv_shader_args *args, const struct user_sgpr_info
       set_loc_shader_ptr(args, AC_UD_PUSH_CONSTANTS, user_sgpr_idx);
    }
 
-   for (unsigned i = 0; i < ARRAY_SIZE(args->ac.inline_push_consts); i++) {
-      if (args->ac.inline_push_consts[i].used)
-         num_inline_push_consts++;
-   }
-
-   if (num_inline_push_consts) {
-      set_loc_shader(args, AC_UD_INLINE_PUSH_CONSTANTS, user_sgpr_idx, num_inline_push_consts);
+   if (user_sgpr_info->inline_push_constant_mask) {
+      set_loc_shader(args, AC_UD_INLINE_PUSH_CONSTANTS, user_sgpr_idx,
+                     util_bitcount64(user_sgpr_info->inline_push_constant_mask));
    }
 
    if (args->streamout_buffers.used) {

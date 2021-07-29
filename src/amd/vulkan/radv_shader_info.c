@@ -96,22 +96,19 @@ static void
 gather_push_constant_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
                           struct radv_shader_info *info)
 {
-   int base = nir_intrinsic_base(instr);
+   info->loads_push_constants = true;
 
-   if (!nir_src_is_const(instr->src[0])) {
-      info->has_indirect_push_constants = true;
-   } else {
-      uint32_t min = base + nir_src_as_uint(instr->src[0]);
-      uint32_t max = min + instr->num_components * 4;
+   if (nir_src_is_const(instr->src[0]) && instr->dest.ssa.bit_size == 32) {
+      uint32_t start = (nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[0])) / 4u;
+      uint32_t size = instr->num_components * (instr->dest.ssa.bit_size / 32u);
 
-      info->max_push_constant_used = MAX2(max, info->max_push_constant_used);
-      info->min_push_constant_used = MIN2(min, info->min_push_constant_used);
+      if (start + size <= (MAX_PUSH_CONSTANTS_SIZE / 4u)) {
+         info->inline_push_constant_mask |= u_bit_consecutive64(start, size);
+         return;
+      }
    }
 
-   if (instr->dest.ssa.bit_size != 32)
-      info->has_only_32bit_push_constants = false;
-
-   info->loads_push_constants = true;
+   info->can_inline_all_push_constants = false;
 }
 
 static void
@@ -621,9 +618,8 @@ assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
 void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
-   /* Assume that shaders only have 32-bit push constants by default. */
-   info->min_push_constant_used = UINT16_MAX;
-   info->has_only_32bit_push_constants = true;
+   /* Assume that shaders can inline all push constants by default. */
+   info->can_inline_all_push_constants = true;
 }
 
 void

@@ -3408,6 +3408,8 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
                                MESA_SHADER_TESS_CTRL, true, MESA_SHADER_VERTEX,
                                &stages[MESA_SHADER_TESS_CTRL].args);
       stages[MESA_SHADER_TESS_CTRL].info.user_sgprs_locs = stages[MESA_SHADER_TESS_CTRL].args.user_sgprs_locs;
+      stages[MESA_SHADER_TESS_CTRL].info.inline_push_constant_mask =
+         stages[MESA_SHADER_TESS_CTRL].args.ac.inline_push_const_mask;
 
       stages[MESA_SHADER_VERTEX].args = stages[MESA_SHADER_TESS_CTRL].args;
       active_stages &= ~(1 << MESA_SHADER_VERTEX);
@@ -3420,6 +3422,8 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
       radv_declare_shader_args(chip_class, pipeline_key, &stages[MESA_SHADER_GEOMETRY].info,
                                MESA_SHADER_GEOMETRY, true, pre_stage, &stages[MESA_SHADER_GEOMETRY].args);
       stages[MESA_SHADER_GEOMETRY].info.user_sgprs_locs = stages[MESA_SHADER_GEOMETRY].args.user_sgprs_locs;
+      stages[MESA_SHADER_GEOMETRY].info.inline_push_constant_mask =
+         stages[MESA_SHADER_GEOMETRY].args.ac.inline_push_const_mask;
 
       stages[pre_stage].args = stages[MESA_SHADER_GEOMETRY].args;
       active_stages &= ~(1 << pre_stage);
@@ -3430,6 +3434,7 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
       radv_declare_shader_args(chip_class, pipeline_key, &stages[i].info, i, false, MESA_SHADER_VERTEX,
                                &stages[i].args);
       stages[i].info.user_sgprs_locs = stages[i].args.user_sgprs_locs;
+      stages[i].info.inline_push_constant_mask = stages[i].args.ac.inline_push_const_mask;
    }
 }
 
@@ -4474,6 +4479,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       radv_declare_shader_args(device->physical_device->rad_info.chip_class, pipeline_key, &info,
                                MESA_SHADER_VERTEX, false, MESA_SHADER_VERTEX, &gs_copy_args);
       info.user_sgprs_locs = gs_copy_args.user_sgprs_locs;
+      info.inline_push_constant_mask = gs_copy_args.ac.inline_push_const_mask;
 
       pipeline->gs_copy_shader = radv_create_gs_copy_shader(
          device, stages[MESA_SHADER_GEOMETRY].nir, &info, &gs_copy_args, &gs_copy_binary,
