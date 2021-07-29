@@ -240,6 +240,7 @@ struct st_config_options
    bool transcode_etc;
    bool transcode_astc;
    char *force_gl_vendor;
+   char *force_gl_renderer;
    unsigned char config_options_sha1[20];
 };
 

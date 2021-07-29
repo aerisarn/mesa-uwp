@@ -4301,6 +4301,7 @@ struct gl_constants
    struct spirv_supported_extensions *SpirVExtensions;
 
    char *VendorOverride;
+   char *RendererOverride;
 
    /** Buffer size used to upload vertices from glBegin/glEnd. */
    unsigned glBeginEndBufferSize;

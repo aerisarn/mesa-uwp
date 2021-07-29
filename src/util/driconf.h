@@ -223,6 +223,9 @@
 #define DRI_CONF_FORCE_GL_VENDOR() \
    DRI_CONF_OPT_S_NODEF(force_gl_vendor, "Override GPU vendor string.")
 
+#define DRI_CONF_FORCE_GL_RENDERER() \
+   DRI_CONF_OPT_S_NODEF(force_gl_renderer, "Override GPU renderer string.")
+
 #define DRI_CONF_FORCE_COMPAT_PROFILE(def) \
    DRI_CONF_OPT_B(force_compat_profile, def, \
                   "Force an OpenGL compatibility context")

@@ -1283,6 +1283,7 @@ void st_init_extensions(struct pipe_screen *screen,
    consts->ForceIntegerTexNearest = options->force_integer_tex_nearest;
 
    consts->VendorOverride = options->force_gl_vendor;
+   consts->RendererOverride = options->force_gl_renderer;
 
    consts->UniformBooleanTrue = consts->NativeIntegers ? ~0U : fui(1.0f);
 
