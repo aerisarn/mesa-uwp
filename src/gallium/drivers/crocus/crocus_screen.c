@@ -766,7 +766,7 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
       screen->no_hw = true;
 
    driParseConfigFiles(config->options, config->options_info, 0, "crocus",
-                       NULL, NULL, 0, NULL, 0);
+                       NULL, NULL, NULL, 0, NULL, 0);
 
    bool bo_reuse = false;
    int bo_reuse_mode = driQueryOptioni(config->options, "bo_reuse");

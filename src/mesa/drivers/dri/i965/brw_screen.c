@@ -2543,7 +2543,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
 
    driParseOptionInfo(&options, brw_driconf, ARRAY_SIZE(brw_driconf));
    driParseConfigFiles(&screen->optionCache, &options, dri_screen->myNum,
-                       "i965", NULL, NULL, 0, NULL, 0);
+                       "i965", NULL, NULL, NULL, 0, NULL, 0);
    driDestroyOptionCache(&options);
 
    screen->driScrnPriv = dri_screen;

@@ -143,7 +143,7 @@ TEST_F(xmlconfig_test, copy_cache)
     * user's homedir/environment that would override us.
     */
    driParseConfigFiles(&cache, &options,
-                       0, "driver", "drm",
+                       0, "driver", "drm", NULL,
                        NULL, 0,
                        NULL, 0);
 
@@ -184,7 +184,7 @@ xmlconfig_test::drirc_init(const char *driver, const char *drm,
     * based on the setting of $HOME by meson.build.
     */
    driParseConfigFiles(&cache, &options,
-                       0, driver, drm,
+                       0, driver, drm, NULL,
                        app, appver,
                        engine, enginever);
 

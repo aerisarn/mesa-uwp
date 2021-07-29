@@ -726,7 +726,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    driParseOptionInfo(&instance->available_dri_options, vn_dri_options,
                       ARRAY_SIZE(vn_dri_options));
    driParseConfigFiles(&instance->dri_options,
-                       &instance->available_dri_options, 0, "venus", NULL,
+                       &instance->available_dri_options, 0, "venus", NULL, NULL,
                        instance->base.base.app_info.app_name,
                        instance->base.base.app_info.app_version,
                        instance->base.base.app_info.engine_name,

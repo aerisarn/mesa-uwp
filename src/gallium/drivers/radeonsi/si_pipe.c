@@ -1400,7 +1400,7 @@ struct pipe_screen *radeonsi_screen_create(int fd, const struct pipe_screen_conf
    struct radeon_winsys *rw = NULL;
 
    driParseConfigFiles(config->options, config->options_info, 0, "radeonsi",
-                       NULL, NULL, 0, NULL, 0);
+                       NULL, NULL, NULL, 0, NULL, 0);
 
    switch (version->version_major) {
    case 2:
