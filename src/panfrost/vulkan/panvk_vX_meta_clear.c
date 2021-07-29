@@ -115,16 +115,16 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
       cfg.stencil_back = cfg.stencil_front;
 
 #if PAN_ARCH >= 6
-      cfg.properties.bifrost.allow_forward_pixel_to_be_killed = true;
-      cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
-      cfg.properties.bifrost.zs_update_operation =
+      cfg.properties.allow_forward_pixel_to_be_killed = true;
+      cfg.properties.allow_forward_pixel_to_kill = true;
+      cfg.properties.zs_update_operation =
          MALI_PIXEL_KILL_STRONG_EARLY;
-      cfg.properties.bifrost.pixel_kill_operation =
+      cfg.properties.pixel_kill_operation =
          MALI_PIXEL_KILL_FORCE_EARLY;
 #else
-      cfg.properties.midgard.shader_reads_tilebuffer = false;
-      cfg.properties.midgard.work_register_count = shader_info->work_reg_count;
-      cfg.properties.midgard.force_early_z = true;
+      cfg.properties.shader_reads_tilebuffer = false;
+      cfg.properties.work_register_count = shader_info->work_reg_count;
+      cfg.properties.force_early_z = true;
       cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
 #endif
    }
@@ -132,28 +132,22 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
    pan_pack(rsd_ptr.cpu + pan_size(RENDERER_STATE), BLEND, cfg) {
       cfg.round_to_fb_precision = true;
       cfg.load_destination = false;
+      cfg.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
 #if PAN_ARCH >= 6
-      cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
-      cfg.bifrost.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.bifrost.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.bifrost.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.bifrost.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.bifrost.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.bifrost.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.bifrost.equation.color_mask = 0xf;
-      cfg.bifrost.internal.fixed_function.num_comps = 4;
-      cfg.bifrost.internal.fixed_function.conversion.memory_format =
+      cfg.internal.mode = MALI_BLEND_MODE_OPAQUE;
+      cfg.equation.color_mask = 0xf;
+      cfg.internal.fixed_function.num_comps = 4;
+      cfg.internal.fixed_function.conversion.memory_format =
          panfrost_format_to_bifrost_blend(pdev, format, false);
-      cfg.bifrost.internal.fixed_function.conversion.register_format =
+      cfg.internal.fixed_function.conversion.register_format =
          shader_info->bifrost.blend[rt].format;
 #else
-      cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.midgard.equation.color_mask =
+      cfg.equation.color_mask =
          (1 << util_format_get_nr_components(format)) - 1;
 #endif
    }
@@ -214,7 +208,6 @@ panvk_meta_clear_attachment_emit_dcd(struct pan_pool *pool,
       cfg.push_uniforms = push_constants;
       cfg.position = coords;
       cfg.viewport = vpd;
-      cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
    }
 }
 

@@ -233,6 +233,7 @@ panfrost_pack_work_groups_compute(
         }
 }
 
+#if PAN_ARCH >= 5
 /* Format conversion */
 static inline enum mali_z_internal_format
 panfrost_get_z_internal_format(enum pipe_format fmt)
@@ -251,6 +252,7 @@ panfrost_get_z_internal_format(enum pipe_format fmt)
                 unreachable("Unsupported depth/stencil format.");
          }
 }
+#endif
 
 #endif /* PAN_ARCH */
 

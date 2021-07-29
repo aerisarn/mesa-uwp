@@ -38,14 +38,14 @@ mod_to_block_fmt(uint64_t mod)
 {
         switch (mod) {
         case DRM_FORMAT_MOD_LINEAR:
-                return PAN_ARCH >= 7 ?
-                       MALI_BLOCK_FORMAT_V7_LINEAR : MALI_BLOCK_FORMAT_LINEAR;
+                return MALI_BLOCK_FORMAT_LINEAR;
 	case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
-                return PAN_ARCH >= 7 ?
-                       MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED : MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
+                return MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
         default:
+#if PAN_ARCH >= 5
                 if (drm_is_afbc(mod))
-                        return PAN_ARCH >= 7 ? MALI_BLOCK_FORMAT_V7_AFBC : MALI_BLOCK_FORMAT_AFBC;
+                        return MALI_BLOCK_FORMAT_AFBC;
+#endif
 
                 unreachable("Unsupported modifer");
         }
@@ -164,11 +164,7 @@ pan_prepare_s(const struct pan_fb_info *fb,
 
         unsigned level = s->first_level;
 
-#if PAN_ARCH <= 6
         ext->s_msaa = mali_sampling_mode(s);
-#else
-        ext->s_msaa_v7 = mali_sampling_mode(s);
-#endif
 
         struct pan_surface surf;
         pan_iview_get_surface(s, 0, 0, 0, &surf);
@@ -180,13 +176,7 @@ pan_prepare_s(const struct pan_fb_info *fb,
         ext->s_writeback_surface_stride =
                 (s->image->layout.nr_samples > 1) ?
                 s->image->layout.slices[level].surface_stride : 0;
-
-#if PAN_ARCH <= 6
         ext->s_block_format = mod_to_block_fmt(s->image->layout.modifier);
-#else
-        ext->s_block_format_v7 = mod_to_block_fmt(s->image->layout.modifier);
-#endif
-
         ext->s_write_format = translate_s_format(s->format);
 }
 
@@ -201,11 +191,7 @@ pan_prepare_zs(const struct pan_fb_info *fb,
 
         unsigned level = zs->first_level;
 
-#if PAN_ARCH <= 6
         ext->zs_msaa = mali_sampling_mode(zs);
-#else
-        ext->zs_msaa_v7 = mali_sampling_mode(zs);
-#endif
 
         struct pan_surface surf;
         pan_iview_get_surface(zs, 0, 0, 0, &surf);
@@ -239,12 +225,7 @@ pan_prepare_zs(const struct pan_fb_info *fb,
                         zs->image->layout.slices[level].surface_stride : 0;
         }
 
-#if PAN_ARCH <= 6
         ext->zs_block_format = mod_to_block_fmt(zs->image->layout.modifier);
-#else
-        ext->zs_block_format_v7 = mod_to_block_fmt(zs->image->layout.modifier);
-#endif
-
         ext->zs_write_format = translate_zs_format(zs->format);
         if (ext->zs_write_format == MALI_ZS_FORMAT_D24S8)
                 ext->s_writeback_base = ext->zs_writeback_base;
@@ -269,13 +250,13 @@ pan_prepare_crc(const struct pan_fb_info *fb, int rt_crc,
 
 #if PAN_ARCH >= 7
         ext->crc_render_target = rt_crc;
-#endif
 
         if (fb->rts[rt_crc].clear) {
                 uint32_t clear_val = fb->rts[rt_crc].clear_value[0];
                 ext->crc_clear_color = clear_val | 0xc000000000000000 |
                                        (((uint64_t)clear_val & 0xffff) << 32);
         }
+#endif
 }
 
 static void
@@ -338,26 +319,26 @@ pan_internal_cbuf_size(const struct pan_fb_info *fb,
         return total_size;
 }
 
-static enum mali_mfbd_color_format
+static enum mali_color_format
 pan_mfbd_raw_format(unsigned bits)
 {
         switch (bits) {
-        case    8: return MALI_MFBD_COLOR_FORMAT_RAW8;
-        case   16: return MALI_MFBD_COLOR_FORMAT_RAW16;
-        case   24: return MALI_MFBD_COLOR_FORMAT_RAW24;
-        case   32: return MALI_MFBD_COLOR_FORMAT_RAW32;
-        case   48: return MALI_MFBD_COLOR_FORMAT_RAW48;
-        case   64: return MALI_MFBD_COLOR_FORMAT_RAW64;
-        case   96: return MALI_MFBD_COLOR_FORMAT_RAW96;
-        case  128: return MALI_MFBD_COLOR_FORMAT_RAW128;
-        case  192: return MALI_MFBD_COLOR_FORMAT_RAW192;
-        case  256: return MALI_MFBD_COLOR_FORMAT_RAW256;
-        case  384: return MALI_MFBD_COLOR_FORMAT_RAW384;
-        case  512: return MALI_MFBD_COLOR_FORMAT_RAW512;
-        case  768: return MALI_MFBD_COLOR_FORMAT_RAW768;
-        case 1024: return MALI_MFBD_COLOR_FORMAT_RAW1024;
-        case 1536: return MALI_MFBD_COLOR_FORMAT_RAW1536;
-        case 2048: return MALI_MFBD_COLOR_FORMAT_RAW2048;
+        case    8: return MALI_COLOR_FORMAT_RAW8;
+        case   16: return MALI_COLOR_FORMAT_RAW16;
+        case   24: return MALI_COLOR_FORMAT_RAW24;
+        case   32: return MALI_COLOR_FORMAT_RAW32;
+        case   48: return MALI_COLOR_FORMAT_RAW48;
+        case   64: return MALI_COLOR_FORMAT_RAW64;
+        case   96: return MALI_COLOR_FORMAT_RAW96;
+        case  128: return MALI_COLOR_FORMAT_RAW128;
+        case  192: return MALI_COLOR_FORMAT_RAW192;
+        case  256: return MALI_COLOR_FORMAT_RAW256;
+        case  384: return MALI_COLOR_FORMAT_RAW384;
+        case  512: return MALI_COLOR_FORMAT_RAW512;
+        case  768: return MALI_COLOR_FORMAT_RAW768;
+        case 1024: return MALI_COLOR_FORMAT_RAW1024;
+        case 1536: return MALI_COLOR_FORMAT_RAW1536;
+        case 2048: return MALI_COLOR_FORMAT_RAW2048;
         default: unreachable("invalid raw bpp");
         }
 }
@@ -425,7 +406,7 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
                 cfg->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8;
                 cfg->internal_buffer_offset = cbuf_offset;
 #if PAN_ARCH >= 7
-                cfg->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
+                cfg->writeback_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
                 cfg->dithering_enable = true;
 #endif
                 return;
@@ -450,10 +431,10 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
 
         pan_rt_init_format(rt, cfg);
 
-#if PAN_ARCH <= 6
-        cfg->midgard.writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
+#if PAN_ARCH <= 5
+        cfg->writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
 #else
-        cfg->bifrost_v7.writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
+        cfg->writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
 #endif
 
         struct pan_surface surf;
@@ -465,11 +446,11 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
 #if PAN_ARCH >= 6
                 cfg->afbc.row_stride = slice->afbc.row_stride /
                                        AFBC_HEADER_BYTES_PER_TILE;
-                cfg->bifrost_afbc.afbc_wide_block_enable =
+                cfg->afbc.afbc_wide_block_enable =
                         panfrost_block_dim(rt->image->layout.modifier, true, 0) > 16;
 #else
                 cfg->afbc.chunk_size = 9;
-                cfg->midgard_afbc.sparse = true;
+                cfg->afbc.sparse = true;
                 cfg->afbc.body_size = slice->afbc.body_size;
 #endif
 
@@ -525,7 +506,7 @@ pan_emit_midgard_tiler(const struct panfrost_device *dev,
 
         assert(tiler_ctx->midgard.polygon_list->ptr.gpu);
 
-        pan_pack(out, MIDGARD_TILER, cfg) {
+        pan_pack(out, TILER_CONTEXT, cfg) {
                 unsigned header_size;
 
                 if (tiler_ctx->midgard.disable) {
@@ -579,21 +560,11 @@ pan_emit_mfbd(const struct panfrost_device *dev,
 {
         unsigned tags = MALI_FBD_TAG_IS_MFBD;
         void *fbd = out;
-        void *rtd = out + pan_size(MULTI_TARGET_FRAMEBUFFER);
+        void *rtd = out + pan_size(FRAMEBUFFER);
 
-#if PAN_ARCH >= 6
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, params) {
-                params.sample_locations =
-                        panfrost_sample_positions(dev, pan_sample_pattern(fb->nr_samples));
-                params.pre_frame_0 = fb->bifrost.pre_post.modes[0];
-                params.pre_frame_1 = fb->bifrost.pre_post.modes[1];
-                params.post_frame = fb->bifrost.pre_post.modes[2];
-                params.frame_shader_dcds = fb->bifrost.pre_post.dcds.gpu;
-        }
-#else
+#if PAN_ARCH <= 5
         GENX(pan_emit_tls)(tls,
-                           pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER,
-                                           LOCAL_STORAGE));
+                           pan_section_ptr(fbd, FRAMEBUFFER, LOCAL_STORAGE));
 #endif
 
         unsigned tile_size;
@@ -601,7 +572,16 @@ pan_emit_mfbd(const struct panfrost_device *dev,
         int crc_rt = GENX(pan_select_crc_rt)(fb);
         bool has_zs_crc_ext = pan_fbd_has_zs_crc_ext(fb);
 
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, PARAMETERS, cfg) {
+        pan_section_pack(fbd, FRAMEBUFFER, PARAMETERS, cfg) {
+#if PAN_ARCH >= 6
+                cfg.sample_locations =
+                        panfrost_sample_positions(dev, pan_sample_pattern(fb->nr_samples));
+                cfg.pre_frame_0 = fb->bifrost.pre_post.modes[0];
+                cfg.pre_frame_1 = fb->bifrost.pre_post.modes[1];
+                cfg.post_frame = fb->bifrost.pre_post.modes[2];
+                cfg.frame_shader_dcds = fb->bifrost.pre_post.dcds.gpu;
+                cfg.tiler = tiler_ctx->bifrost;
+#endif
                 cfg.width = fb->width;
                 cfg.height = fb->height;
                 cfg.bound_max_x = fb->width - 1;
@@ -644,21 +624,18 @@ pan_emit_mfbd(const struct panfrost_device *dev,
         }
 
 #if PAN_ARCH >= 6
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_TILER_POINTER, cfg) {
-                cfg.address = tiler_ctx->bifrost;
-        }
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_PADDING, padding);
+        pan_section_pack(fbd, FRAMEBUFFER, PADDING, padding);
 #else
         pan_emit_midgard_tiler(dev, fb, tiler_ctx,
-                               pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER, TILER));
+                               pan_section_ptr(fbd, FRAMEBUFFER, TILER));
 
         /* All weights set to 0, nothing to do here */
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
+        pan_section_pack(fbd, FRAMEBUFFER, TILER_WEIGHTS, w);
 #endif
 
         if (has_zs_crc_ext) {
                 pan_emit_zs_crc_ext(fb, crc_rt,
-                                    out + pan_size(MULTI_TARGET_FRAMEBUFFER));
+                                    out + pan_size(FRAMEBUFFER));
                 rtd += pan_size(ZS_CRC_EXTENSION);
                 tags |= MALI_FBD_TAG_HAS_ZS_RT;
         }
@@ -689,11 +666,11 @@ pan_emit_sfbd_tiler(const struct panfrost_device *dev,
                     void *fbd)
 {
        pan_emit_midgard_tiler(dev, fb, ctx,
-                              pan_section_ptr(fbd, SINGLE_TARGET_FRAMEBUFFER, TILER));
+                              pan_section_ptr(fbd, FRAMEBUFFER, TILER));
 
         /* All weights set to 0, nothing to do here */
-        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, PADDING_1, padding);
-        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
+        pan_section_pack(fbd, FRAMEBUFFER, PADDING_1, padding);
+        pan_section_pack(fbd, FRAMEBUFFER, TILER_WEIGHTS, w);
 }
 
 static void
@@ -704,9 +681,9 @@ pan_emit_sfbd(const struct panfrost_device *dev,
               void *fbd)
 {
         GENX(pan_emit_tls)(tls,
-                           pan_section_ptr(fbd, SINGLE_TARGET_FRAMEBUFFER,
+                           pan_section_ptr(fbd, FRAMEBUFFER,
                                            LOCAL_STORAGE));
-        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, PARAMETERS, cfg) {
+        pan_section_pack(fbd, FRAMEBUFFER, PARAMETERS, cfg) {
                 cfg.bound_max_x = fb->width - 1;
                 cfg.bound_max_y = fb->height - 1;
                 cfg.dithering_enable = true;
@@ -799,7 +776,7 @@ pan_emit_sfbd(const struct panfrost_device *dev,
                         cfg.msaa = mali_sampling_mode(fb->rts[0].view);
         }
         pan_emit_sfbd_tiler(dev, fb, tiler_ctx, fbd);
-        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, PADDING_2, padding);
+        pan_section_pack(fbd, FRAMEBUFFER, PADDING_2, padding);
 }
 #endif
 
@@ -824,7 +801,7 @@ void
 GENX(pan_emit_tiler_heap)(const struct panfrost_device *dev,
                           void *out)
 {
-        pan_pack(out, BIFROST_TILER_HEAP, heap) {
+        pan_pack(out, TILER_HEAP, heap) {
                 heap.size = dev->tiler_heap->size;
                 heap.base = dev->tiler_heap->ptr.gpu;
                 heap.bottom = dev->tiler_heap->ptr.gpu;
@@ -842,7 +819,7 @@ GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev,
         unsigned max_levels = dev->tiler_features.max_levels;
         assert(max_levels >= 2);
 
-        pan_pack(out, BIFROST_TILER, tiler) {
+        pan_pack(out, TILER_CONTEXT, tiler) {
                 /* TODO: Select hierarchy mask more effectively */
                 tiler.hierarchy_mask = (max_levels >= 8) ? 0xFF : 0x28;
                 tiler.fb_width = fb_width;
@@ -870,10 +847,12 @@ GENX(pan_emit_fragment_job)(const struct pan_fb_info *fb,
                 payload.bound_max_y = fb->extent.maxy >> MALI_TILE_SHIFT;
                 payload.framebuffer = fbd;
 
+#if PAN_ARCH >= 5
                 if (fb->tile_map.base) {
                         payload.has_tile_enable_map = true;
                         payload.tile_enable_map = fb->tile_map.base;
                         payload.tile_enable_map_row_stride = fb->tile_map.stride;
                 }
+#endif
         }
 }

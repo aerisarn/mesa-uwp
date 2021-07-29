@@ -182,7 +182,17 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
                         (packed1).opaque[i] |= (packed2).opaque[i]; \
         } while(0)
 
-#define mali_pixel_format_print_v6(fp, format) \\
+/* From presentations, 16x16 tiles externally. Use shift for fast computation
+ * of tile numbers. */
+
+#define MALI_TILE_SHIFT 4
+#define MALI_TILE_LENGTH (1 << MALI_TILE_SHIFT)
+
+"""
+
+v6_format_printer = """
+
+#define mali_pixel_format_print(fp, format) \\
     fprintf(fp, "%*sFormat (v6): %s%s%s %s%s%s%s\\n", indent, "", \\
         mali_format_as_str((enum mali_format)((format >> 12) & 0xFF)), \\
         (format & (1 << 20)) ? " sRGB" : "", \\
@@ -192,19 +202,16 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
         mali_channel_as_str((enum mali_channel)((format >> 6) & 0x7)), \\
         mali_channel_as_str((enum mali_channel)((format >> 9) & 0x7)));
 
-#define mali_pixel_format_print_v7(fp, format) \\
+"""
+
+v7_format_printer = """
+
+#define mali_pixel_format_print(fp, format) \\
     fprintf(fp, "%*sFormat (v7): %s%s %s%s\\n", indent, "", \\
         mali_format_as_str((enum mali_format)((format >> 12) & 0xFF)), \\
         (format & (1 << 20)) ? " sRGB" : "", \\
         mali_rgb_component_order_as_str((enum mali_rgb_component_order)(format & ((1 << 12) - 1))), \\
         (format & (1 << 21)) ? " XXX BAD BIT" : "");
-
-
-/* From presentations, 16x16 tiles externally. Use shift for fast computation
- * of tile numbers. */
-
-#define MALI_TILE_SHIFT 4
-#define MALI_TILE_LENGTH (1 << MALI_TILE_SHIFT)
 
 """
 
@@ -654,8 +661,7 @@ class Group(object):
             elif field.type == "uint/float":
                 print('   fprintf(fp, "%*s{}: 0x%X (%f)\\n", indent, "", {}, uif({}));'.format(name, val, val))
             elif field.type == "Pixel Format":
-                print('   mali_pixel_format_print_v6(fp, {});'.format(val))
-                print('   mali_pixel_format_print_v7(fp, {});'.format(val))
+                print('   mali_pixel_format_print(fp, {});'.format(val))
             else:
                 print('   fprintf(fp, "%*s{}: %u\\n", indent, "", {});'.format(name, val))
 
@@ -683,6 +689,12 @@ class Parser(object):
     def start_element(self, name, attrs):
         if name == "panxml":
             print(pack_header)
+            if "arch" in attrs:
+                arch = int(attrs["arch"])
+                if arch <= 6:
+                    print(v6_format_printer)
+                else:
+                    print(v7_format_printer)
         elif name == "struct":
             name = attrs["name"]
             self.no_direct_packing = attrs.get("no-direct-packing", False)

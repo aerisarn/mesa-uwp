@@ -50,20 +50,20 @@ pan_shader_prepare_midgard_rsd(const struct pan_shader_info *info,
 {
         assert((info->push.count & 3) == 0);
 
-        rsd->properties.midgard.uniform_count = info->push.count / 4;
-        rsd->properties.midgard.shader_has_side_effects = info->writes_global;
-        rsd->properties.midgard.fp_mode = MALI_FP_MODE_GL_INF_NAN_ALLOWED;
+        rsd->properties.uniform_count = info->push.count / 4;
+        rsd->properties.shader_has_side_effects = info->writes_global;
+        rsd->properties.fp_mode = MALI_FP_MODE_GL_INF_NAN_ALLOWED;
 
         /* For fragment shaders, work register count, early-z, reads at draw-time */
 
         if (info->stage != MESA_SHADER_FRAGMENT) {
-                rsd->properties.midgard.work_register_count = info->work_reg_count;
+                rsd->properties.work_register_count = info->work_reg_count;
         } else {
-                rsd->properties.midgard.shader_reads_tilebuffer =
+                rsd->properties.shader_reads_tilebuffer =
                         info->fs.outputs_read;
 
                 /* However, forcing early-z in the shader overrides draw-time */
-                rsd->properties.midgard.force_early_z =
+                rsd->properties.force_early_z =
                         info->fs.early_fragment_tests;
         }
 }
@@ -84,8 +84,8 @@ pan_shader_prepare_midgard_rsd(const struct pan_shader_info *info,
  * */
 
 #define SET_PIXEL_KILL(kill, update) do { \
-        rsd->properties.bifrost.pixel_kill_operation = MALI_PIXEL_KILL_## kill; \
-        rsd->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_## update; \
+        rsd->properties.pixel_kill_operation = MALI_PIXEL_KILL_## kill; \
+        rsd->properties.zs_update_operation = MALI_PIXEL_KILL_## update; \
 } while(0)
 
 static inline void
@@ -98,7 +98,7 @@ pan_shader_classify_pixel_kill_coverage(const struct pan_shader_info *info,
         bool depth = info->fs.writes_depth;
         bool stencil = info->fs.writes_stencil;
 
-        rsd->properties.bifrost.shader_modifies_coverage = coverage;
+        rsd->properties.shader_modifies_coverage = coverage;
 
         if (force_early)
                 SET_PIXEL_KILL(FORCE_EARLY, STRONG_EARLY);
@@ -122,7 +122,7 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
         rsd->preload.uniform_count = fau_count;
 
 #if PAN_ARCH >= 7
-        rsd->properties.bifrost.shader_register_allocation =
+        rsd->properties.shader_register_allocation =
                 (info->work_reg_count <= 32) ?
                 MALI_SHADER_REGISTER_ALLOCATION_32_PER_THREAD :
                 MALI_SHADER_REGISTER_ALLOCATION_64_PER_THREAD;
@@ -138,11 +138,11 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 pan_shader_classify_pixel_kill_coverage(info, rsd);
 
 #if PAN_ARCH >= 7
-                rsd->properties.bifrost.shader_wait_dependency_6 = info->bifrost.wait_6;
-                rsd->properties.bifrost.shader_wait_dependency_7 = info->bifrost.wait_7;
+                rsd->properties.shader_wait_dependency_6 = info->bifrost.wait_6;
+                rsd->properties.shader_wait_dependency_7 = info->bifrost.wait_7;
 #endif
 
-                rsd->properties.bifrost.allow_forward_pixel_to_be_killed =
+                rsd->properties.allow_forward_pixel_to_be_killed =
                         !info->fs.sidefx;
 
                 rsd->preload.fragment.fragment_position = info->fs.reads_frag_coord;
@@ -159,8 +159,10 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                         info->fs.reads_helper_invocation |
                         info->fs.sample_shading;
 
+#if PAN_ARCH >= 7
                 rsd->message_preload_1 = info->bifrost.messages[0];
                 rsd->message_preload_2 = info->bifrost.messages[1];
+#endif
                 break;
 
         case MESA_SHADER_COMPUTE:

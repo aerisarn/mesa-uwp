@@ -141,7 +141,6 @@ panvk_meta_copy_emit_dcd(struct pan_pool *pool,
                                            &cfg.varyings);
       }
       cfg.viewport = vpd;
-      cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
       cfg.textures = texture;
       cfg.samplers = sampler;
    }
@@ -218,8 +217,6 @@ panvk_meta_copy_emit_compute_job(struct pan_pool *desc_pool,
                             0, tsd, rsd, ubo, push_constants,
                             pan_section_ptr(job.cpu, COMPUTE_JOB, DRAW));
 
-   pan_section_pack(job.cpu, COMPUTE_JOB, DRAW_PADDING, cfg);
-
    panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_COMPUTE,
                     false, false, 0, 0, &job, false);
    return job;
@@ -278,17 +275,17 @@ panvk_meta_copy_to_img_emit_rsd(struct panfrost_device *pdev,
       cfg.stencil_back = cfg.stencil_front;
 
 #if PAN_ARCH >= 6
-      cfg.properties.bifrost.allow_forward_pixel_to_be_killed = true;
-      cfg.properties.bifrost.allow_forward_pixel_to_kill =
+      cfg.properties.allow_forward_pixel_to_be_killed = true;
+      cfg.properties.allow_forward_pixel_to_kill =
          !partialwrite && !readstb;
-      cfg.properties.bifrost.zs_update_operation =
+      cfg.properties.zs_update_operation =
          MALI_PIXEL_KILL_STRONG_EARLY;
-      cfg.properties.bifrost.pixel_kill_operation =
+      cfg.properties.pixel_kill_operation =
          MALI_PIXEL_KILL_FORCE_EARLY;
 #else
-      cfg.properties.midgard.shader_reads_tilebuffer = readstb;
-      cfg.properties.midgard.work_register_count = shader_info->work_reg_count;
-      cfg.properties.midgard.force_early_z = true;
+      cfg.properties.shader_reads_tilebuffer = readstb;
+      cfg.properties.work_register_count = shader_info->work_reg_count;
+      cfg.properties.force_early_z = true;
       cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
 #endif
    }
@@ -296,42 +293,36 @@ panvk_meta_copy_to_img_emit_rsd(struct panfrost_device *pdev,
    pan_pack(rsd_ptr.cpu + pan_size(RENDERER_STATE), BLEND, cfg) {
       cfg.round_to_fb_precision = true;
       cfg.load_destination = partialwrite;
+      cfg.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+      cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+      cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+      cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
 #if PAN_ARCH >= 6
-      cfg.bifrost.internal.mode =
+      cfg.internal.mode =
          partialwrite ?
-         MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION :
-         MALI_BIFROST_BLEND_MODE_OPAQUE;
-      cfg.bifrost.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.bifrost.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.bifrost.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.bifrost.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.bifrost.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.bifrost.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.bifrost.equation.color_mask = partialwrite ? wrmask : 0xf;
-      cfg.bifrost.internal.fixed_function.num_comps = 4;
+         MALI_BLEND_MODE_FIXED_FUNCTION :
+         MALI_BLEND_MODE_OPAQUE;
+      cfg.equation.color_mask = partialwrite ? wrmask : 0xf;
+      cfg.internal.fixed_function.num_comps = 4;
       if (!raw) {
-         cfg.bifrost.internal.fixed_function.conversion.memory_format =
+         cfg.internal.fixed_function.conversion.memory_format =
             panfrost_format_to_bifrost_blend(pdev, fmt, false);
-         cfg.bifrost.internal.fixed_function.conversion.register_format =
-            MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
+         cfg.internal.fixed_function.conversion.register_format =
+            MALI_REGISTER_FILE_FORMAT_F32;
       } else {
          unsigned imgtexelsz = util_format_get_blocksize(fmt);
 
-         cfg.bifrost.internal.fixed_function.conversion.memory_format =
+         cfg.internal.fixed_function.conversion.memory_format =
             panvk_meta_copy_img_bifrost_raw_format(imgtexelsz);
-         cfg.bifrost.internal.fixed_function.conversion.register_format =
+         cfg.internal.fixed_function.conversion.register_format =
             (imgtexelsz & 2) ?
-            MALI_BIFROST_REGISTER_FILE_FORMAT_U16 :
-            MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+            MALI_REGISTER_FILE_FORMAT_U16 :
+            MALI_REGISTER_FILE_FORMAT_U32;
       }
 #else
-      cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-      cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-      cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-      cfg.midgard.equation.color_mask = wrmask;
+      cfg.equation.color_mask = wrmask;
 #endif
    }
 
@@ -540,11 +531,11 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
    };
 
 #if PAN_ARCH >= 6
-   pan_pack(&inputs.bifrost.rt_conv[0], BIFROST_INTERNAL_CONVERSION, cfg) {
+   pan_pack(&inputs.bifrost.rt_conv[0], INTERNAL_CONVERSION, cfg) {
       cfg.memory_format = (dstcompsz == 2 ? MALI_RG16UI : MALI_RG32UI) << 12;
       cfg.register_format = dstcompsz == 2 ?
-                            MALI_BIFROST_REGISTER_FILE_FORMAT_U16 :
-                            MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+                            MALI_REGISTER_FILE_FORMAT_U16 :
+                            MALI_REGISTER_FILE_FORMAT_U32;
    }
    inputs.bifrost.static_rt_conv = true;
 #endif
@@ -1093,11 +1084,11 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
    };
 
 #if PAN_ARCH >= 6
-   pan_pack(&inputs.bifrost.rt_conv[0], BIFROST_INTERNAL_CONVERSION, cfg) {
+   pan_pack(&inputs.bifrost.rt_conv[0], INTERNAL_CONVERSION, cfg) {
       cfg.memory_format = (imgcompsz == 2 ? MALI_RG16UI : MALI_RG32UI) << 12;
       cfg.register_format = imgcompsz == 2 ?
-                            MALI_BIFROST_REGISTER_FILE_FORMAT_U16 :
-                            MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+                            MALI_REGISTER_FILE_FORMAT_U16 :
+                            MALI_REGISTER_FILE_FORMAT_U32;
    }
    inputs.bifrost.static_rt_conv = true;
 #endif

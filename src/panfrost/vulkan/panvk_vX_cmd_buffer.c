@@ -97,7 +97,7 @@ panvk_copy_fb_desc(struct panvk_cmd_buffer *cmdbuf, void *src)
 {
    const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
    struct panvk_batch *batch = cmdbuf->state.batch;
-   uint32_t size = pan_size(MULTI_TARGET_FRAMEBUFFER);
+   uint32_t size = pan_size(FRAMEBUFFER);
 
    if (fbinfo->zs.view.zs || fbinfo->zs.view.s)
       size += pan_size(ZS_CRC_EXTENSION);
@@ -118,7 +118,7 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 
    const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
 #if PAN_ARCH <= 5
-   uint32_t tmp_fbd[(pan_size(MULTI_TARGET_FRAMEBUFFER) +
+   uint32_t tmp_fbd[(pan_size(FRAMEBUFFER) +
                      pan_size(ZS_CRC_EXTENSION) +
                      (MAX_RTS * pan_size(RENDER_TARGET))) / 4];
 #endif
@@ -209,7 +209,7 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 #if PAN_ARCH <= 5
       panvk_copy_fb_desc(cmdbuf, tmp_fbd);
       memcpy(batch->tiler.templ,
-             pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER, TILER),
+             pan_section_ptr(fbd, FRAMEBUFFER, TILER),
              pan_size(TILER_CONTEXT));
 #endif
 
@@ -262,7 +262,7 @@ panvk_per_arch(cmd_alloc_fb_desc)(struct panvk_cmd_buffer *cmdbuf)
    batch->fb.info = cmdbuf->state.framebuffer;
    batch->fb.desc =
       pan_pool_alloc_desc_aggregate(&cmdbuf->desc_pool.base,
-                                    PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
+                                    PAN_DESC(FRAMEBUFFER),
                                     PAN_DESC_ARRAY(has_zs_ext ? 1 : 0, ZS_CRC_EXTENSION),
                                     PAN_DESC_ARRAY(MAX2(fbinfo->rt_count, 1), RENDER_TARGET));
 

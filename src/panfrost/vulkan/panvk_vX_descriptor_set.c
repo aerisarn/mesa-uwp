@@ -201,8 +201,8 @@ panvk_per_arch(set_texture_desc)(struct panvk_descriptor_set *set,
 {
    VK_FROM_HANDLE(panvk_image_view, view, pImageInfo->imageView);
 
-#if PAN_ARCH > 5
-   memcpy(&((struct mali_bifrost_texture_packed *)set->textures)[idx],
+#if PAN_ARCH >= 6
+   memcpy(&((struct mali_texture_packed *)set->textures)[idx],
           view->descs.tex, pan_size(TEXTURE));
 #else
    ((mali_ptr *)set->textures)[idx] = view->bo->ptr.gpu;
@@ -218,7 +218,7 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
    unsigned dest_offset = pDescriptorWrite->dstArrayElement;
    unsigned binding = pDescriptorWrite->dstBinding;
    struct mali_uniform_buffer_packed *ubos = set->ubos;
-   struct mali_midgard_sampler_packed *samplers = set->samplers;
+   struct mali_sampler_packed *samplers = set->samplers;
    unsigned src_offset = 0;
 
    while (src_offset < pDescriptorWrite->descriptorCount &&

@@ -74,38 +74,22 @@ pan_arch(unsigned gpu_id)
 
 /* Base macro defined on the command line. */
 #ifndef PAN_ARCH
-/* This will be replaced by a minimal definition header as soon as the
- * per-gen transition is complete.
- */
-#  include "midgard_pack.h"
+#  include "common_pack.h"
 #else
-
-#if PAN_ARCH >= 6
-#define TILER_JOB BIFROST_TILER_JOB
-#define TEXTURE BIFROST_TEXTURE
-#define SAMPLER BIFROST_SAMPLER
-#define TILER_HEAP BIFROST_TILER_HEAP
-#define TILER_CONTEXT BIFROST_TILER
-#else
-#define TILER_JOB MIDGARD_TILER_JOB
-#define TEXTURE MIDGARD_TEXTURE
-#define SAMPLER MIDGARD_SAMPLER
-#define TILER_CONTEXT MIDGARD_TILER
-#endif
 
 /* Suffixing macros */
 #if (PAN_ARCH == 4)
 #  define GENX(X) X##_v4
-#  include "midgard_pack.h"
+#  include "v4_pack.h"
 #elif (PAN_ARCH == 5)
 #  define GENX(X) X##_v5
-#  include "midgard_pack.h"
+#  include "v5_pack.h"
 #elif (PAN_ARCH == 6)
 #  define GENX(X) X##_v6
-#  include "midgard_pack.h"
+#  include "v6_pack.h"
 #elif (PAN_ARCH == 7)
 #  define GENX(X) X##_v7
-#  include "midgard_pack.h"
+#  include "v7_pack.h"
 #else
 #  error "Need to add suffixing macro for this architecture"
 #endif

@@ -141,14 +141,11 @@ GENX(pan_indirect_dispatch_emit)(struct pan_pool *pool,
 
         pan_section_pack(job.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
                 cfg.state = get_rsd(dev);
                 cfg.thread_storage = get_tls(pool->dev);
                 cfg.uniform_buffers = get_ubos(pool, &inputs);
                 cfg.push_uniforms = get_push_uniforms(pool, &inputs);
         }
-
-        pan_section_pack(job.cpu, COMPUTE_JOB, DRAW_PADDING, cfg);
 
         return panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_COMPUTE,
                                 false, true, 0, 0, &job, false);

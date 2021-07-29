@@ -1277,14 +1277,11 @@ panfrost_emit_index_min_max_search(struct pan_pool *pool,
 
         pan_section_pack(job.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
                 cfg.state = rsd;
                 cfg.thread_storage = get_tls(pool->dev);
                 cfg.uniform_buffers = ubos;
                 cfg.push_uniforms = get_push_uniforms(pool, shader, inputs);
         }
-
-        pan_section_pack(job.cpu, COMPUTE_JOB, DRAW_PADDING, cfg);
 
         return panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_COMPUTE,
                                 false, false, 0, 0, &job, false);
@@ -1369,14 +1366,11 @@ GENX(panfrost_emit_indirect_draw)(struct pan_pool *pool,
 
         pan_section_pack(job.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
                 cfg.state = rsd;
                 cfg.thread_storage = get_tls(pool->dev);
                 cfg.uniform_buffers = ubos;
                 cfg.push_uniforms = get_push_uniforms(pool, shader, &inputs);
         }
-
-        pan_section_pack(job.cpu, COMPUTE_JOB, DRAW_PADDING, cfg);
 
         unsigned global_dep = draw_info->last_indirect_draw;
         unsigned local_dep =

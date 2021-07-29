@@ -23,7 +23,11 @@
  */
 
 #include "pan_blend.h"
+
+#ifdef PAN_ARCH
 #include "pan_shader.h"
+#endif
+
 #include "pan_texture.h"
 #include "panfrost/util/pan_lower_framebuffer.h"
 #include "util/format/u_format.h"
@@ -623,8 +627,8 @@ GENX(pan_blend_get_internal_desc)(const struct panfrost_device *dev,
         const struct util_format_description *desc = util_format_description(fmt);
         uint64_t res;
 
-        pan_pack(&res, BIFROST_INTERNAL_BLEND, cfg) {
-                cfg.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
+        pan_pack(&res, INTERNAL_BLEND, cfg) {
+                cfg.mode = MALI_BLEND_MODE_OPAQUE;
                 cfg.fixed_function.num_comps = desc->nr_channels;
                 cfg.fixed_function.rt = rt;
 
@@ -636,29 +640,29 @@ GENX(pan_blend_get_internal_desc)(const struct panfrost_device *dev,
                 switch (T) {
                 case nir_type_float16:
                         cfg.fixed_function.conversion.register_format =
-                                MALI_BIFROST_REGISTER_FILE_FORMAT_F16;
+                                MALI_REGISTER_FILE_FORMAT_F16;
                         break;
                 case nir_type_float32:
                         cfg.fixed_function.conversion.register_format =
-                                MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
+                                MALI_REGISTER_FILE_FORMAT_F32;
                         break;
                 case nir_type_int8:
                 case nir_type_int16:
                         cfg.fixed_function.conversion.register_format =
-                                MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
+                                MALI_REGISTER_FILE_FORMAT_I16;
                         break;
                 case nir_type_int32:
                         cfg.fixed_function.conversion.register_format =
-                                MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
+                                MALI_REGISTER_FILE_FORMAT_I32;
                         break;
                 case nir_type_uint8:
                 case nir_type_uint16:
                         cfg.fixed_function.conversion.register_format =
-                                MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
+                                MALI_REGISTER_FILE_FORMAT_U16;
                         break;
                 case nir_type_uint32:
                         cfg.fixed_function.conversion.register_format =
-                                MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+                                MALI_REGISTER_FILE_FORMAT_U32;
                         break;
                 default:
                         unreachable("Invalid format");

@@ -20,7 +20,7 @@
 # SOFTWARE.
 
 pan_packers = []
-foreach packer : ['common', 'midgard']
+foreach packer : ['common', 'v4', 'v5', 'v6', 'v7']
   pan_packers += custom_target(
     packer + '_pack.h',
     input : ['gen_pack.py', packer + '.xml'],

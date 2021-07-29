@@ -58,10 +58,10 @@ panvk_queue_submit_batch(struct panvk_queue *queue,
       }
 #else
       if (batch->fb.desc.cpu) {
-         void *tiler = pan_section_ptr(batch->fb.desc.cpu, MULTI_TARGET_FRAMEBUFFER, TILER);
+         void *tiler = pan_section_ptr(batch->fb.desc.cpu, FRAMEBUFFER, TILER);
          memcpy(tiler, batch->tiler.templ, pan_size(TILER_CONTEXT));
          /* All weights set to 0, nothing to do here */
-         pan_section_pack(batch->fb.desc.cpu, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
+         pan_section_pack(batch->fb.desc.cpu, FRAMEBUFFER, TILER_WEIGHTS, w);
       }
 #endif
    }
