@@ -33,8 +33,6 @@
 
 #define AC_LLVM_MAX_OUTPUTS (VARYING_SLOT_VAR31 + 1)
 
-#define AC_MAX_INLINE_PUSH_CONSTS 8
-
 /* Document the shader ABI during compilation. This is what allows radeonsi and
  * radv to share a compiler backend.
  */

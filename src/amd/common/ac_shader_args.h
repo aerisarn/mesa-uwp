@@ -27,7 +27,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define AC_MAX_INLINE_PUSH_CONSTS 8
+/* Maximum dwords of inline push constants when the indirect path is still used */
+#define AC_MAX_INLINE_PUSH_CONSTS_WITH_INDIRECT 8
+/* Maximum dwords of inline push constants when the indirect path is not used */
+#define AC_MAX_INLINE_PUSH_CONSTS 32
 
 enum ac_arg_regfile
 {

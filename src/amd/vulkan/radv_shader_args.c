@@ -134,7 +134,7 @@ allocate_inline_push_consts(const struct radv_shader_info *info,
       remaining_sgprs++;
    } else {
       /* Clamp to the maximum number of allowed inlined push constants. */
-      while (num_push_consts > MIN2(remaining_sgprs, AC_MAX_INLINE_PUSH_CONSTS)) {
+      while (num_push_consts > MIN2(remaining_sgprs, AC_MAX_INLINE_PUSH_CONSTS_WITH_INDIRECT)) {
          num_push_consts--;
          mask &= ~BITFIELD64_BIT(util_last_bit64(mask) - 1);
       }
