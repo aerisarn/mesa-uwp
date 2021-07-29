@@ -880,10 +880,6 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
 void
 check_sdwa_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
-   /* only VALU can use SDWA */
-   if (!instr->isVALU())
-      return;
-
    for (unsigned i = 0; i < instr->operands.size(); i++) {
       Operand op = instr->operands[i];
       if (!op.isTemp())
