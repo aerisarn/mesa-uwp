@@ -39,30 +39,38 @@ __gen_combine_address(__attribute__((unused)) void *data,
 
 #include "isl_priv.h"
 
+#if GFX_VER >= 7
+static const uint8_t isl_encode_halign(uint8_t halign)
+{
+   switch (halign) {
 #if GFX_VER >= 8
-static const uint8_t isl_encode_halign[] = {
-    [4] = HALIGN4,
-    [8] = HALIGN8,
-    [16] = HALIGN16,
-};
-#elif GFX_VER >= 7
-static const uint8_t isl_encode_halign[] = {
-    [4] = HALIGN_4,
-    [8] = HALIGN_8,
-};
+   case   4: return HALIGN4;
+   case   8: return HALIGN8;
+   case  16: return HALIGN16;
+#else
+   case   4: return HALIGN_4;
+   case   8: return HALIGN_8;
+#endif
+   default: unreachable("Invalid halign");
+   }
+}
 #endif
 
+#if GFX_VER >= 6
+static const uint8_t isl_encode_valign(uint8_t valign)
+{
+   switch (valign) {
 #if GFX_VER >= 8
-static const uint8_t isl_encode_valign[] = {
-    [4] = VALIGN4,
-    [8] = VALIGN8,
-    [16] = VALIGN16,
-};
-#elif GFX_VER >= 6
-static const uint8_t isl_encode_valign[] = {
-    [2] = VALIGN_2,
-    [4] = VALIGN_4,
-};
+   case   4: return VALIGN4;
+   case   8: return VALIGN8;
+   case  16: return VALIGN16;
+#else
+   case   2: return VALIGN_2;
+   case   4: return VALIGN_4;
+#endif
+   default: unreachable("Invalid valign");
+   }
+}
 #endif
 
 #if GFX_VER >= 8
@@ -476,9 +484,9 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
 #if GFX_VER >= 6
    const struct isl_extent3d image_align = get_image_alignment(info->surf);
-   s.SurfaceVerticalAlignment = isl_encode_valign[image_align.height];
+   s.SurfaceVerticalAlignment = isl_encode_valign(image_align.height);
 #if GFX_VER >= 7
-   s.SurfaceHorizontalAlignment = isl_encode_halign[image_align.width];
+   s.SurfaceHorizontalAlignment = isl_encode_halign(image_align.width);
 #endif
 #endif
 
@@ -884,9 +892,9 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
    s.SurfacePitch = info->stride_B - 1;
 
 #if GFX_VER >= 6
-   s.SurfaceVerticalAlignment = isl_encode_valign[4];
+   s.SurfaceVerticalAlignment = isl_encode_valign(4);
 #if GFX_VER >= 7
-   s.SurfaceHorizontalAlignment = isl_encode_halign[4];
+   s.SurfaceHorizontalAlignment = isl_encode_halign(4);
    s.SurfaceArray = false;
 #endif
 #endif
