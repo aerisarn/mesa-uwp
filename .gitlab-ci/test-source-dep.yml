@@ -161,13 +161,37 @@
     - changes:
         *vulkan_file_list
       when: on_success
-    - changes:
+    - changes: &freedreno_file_list
       # Note: when https://gitlab.com/gitlab-org/gitlab/-/issues/198688
       # is supported, we can change the src/freedreno/ rule to explicitly
       # exclude tools
       - src/freedreno/**/*
       - src/gallium/drivers/freedreno/**/*
       - src/gallium/winsys/freedreno/**/*
+      when: on_success
+    - when: never
+
+# Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
+# rules duplication manually
+.freedreno-rules-restricted:
+  stage: freedreno
+  rules:
+    # If the triggerer has access to the restricted traces and if it is pre-merge
+    - if: '($GITLAB_USER_LOGIN !~ "/^(robclark|anholt|flto|cwabbott0|Danil|tomeu)$/") &&
+           ($GITLAB_USER_LOGIN != "marge-bot" || $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME)'
+      when: never
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+        *vulkan_file_list
+      when: on_success
+    - changes:
+        *freedreno_file_list
       when: on_success
     - when: never
 
