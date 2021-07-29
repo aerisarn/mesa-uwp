@@ -85,7 +85,7 @@ static const driOptionDescription anv_dri_options[] = {
 #endif
 
 static void
-compiler_debug_log(void *data, const char *fmt, ...)
+compiler_debug_log(void *data, UNUSED unsigned *id, const char *fmt, ...)
 {
    char str[MAX_DEBUG_MESSAGE_LENGTH];
    struct anv_device *device = (struct anv_device *)data;

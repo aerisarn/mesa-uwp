@@ -2472,14 +2472,13 @@ set_max_gl_versions(struct brw_screen *screen)
 }
 
 static void
-shader_debug_log_mesa(void *data, const char *fmt, ...)
+shader_debug_log_mesa(void *data, unsigned *msg_id, const char *fmt, ...)
 {
    struct brw_context *brw = (struct brw_context *)data;
    va_list args;
 
    va_start(args, fmt);
-   GLuint msg_id = 0;
-   _mesa_gl_vdebugf(&brw->ctx, &msg_id,
+   _mesa_gl_vdebugf(&brw->ctx, msg_id,
                     MESA_DEBUG_SOURCE_SHADER_COMPILER,
                     MESA_DEBUG_TYPE_OTHER,
                     MESA_DEBUG_SEVERITY_NOTIFICATION, fmt, args);

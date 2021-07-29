@@ -2794,19 +2794,19 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 #endif
    assert(validated);
 
-   compiler->shader_debug_log(log_data,
-                              "%s SIMD%d shader: %d inst, %d loops, %u cycles, "
-                              "%d:%d spills:fills, %u sends, "
-                              "scheduled with mode %s, "
-                              "Promoted %u constants, "
-                              "compacted %d to %d bytes.",
-                              _mesa_shader_stage_to_abbrev(stage),
-                              dispatch_width, before_size / 16 - nop_count,
-                              loop_count, perf.latency,
-                              spill_count, fill_count, send_count,
-                              shader_stats.scheduler_mode,
-                              shader_stats.promoted_constants,
-                              before_size, after_size);
+   brw_shader_debug_log(compiler, log_data,
+                        "%s SIMD%d shader: %d inst, %d loops, %u cycles, "
+                        "%d:%d spills:fills, %u sends, "
+                        "scheduled with mode %s, "
+                        "Promoted %u constants, "
+                        "compacted %d to %d bytes.",
+                        _mesa_shader_stage_to_abbrev(stage),
+                        dispatch_width, before_size / 16 - nop_count,
+                        loop_count, perf.latency,
+                        spill_count, fill_count, send_count,
+                        shader_stats.scheduler_mode,
+                        shader_stats.promoted_constants,
+                        before_size, after_size);
    if (stats) {
       stats->dispatch_width = dispatch_width;
       stats->instructions = before_size / 16 - nop_count;

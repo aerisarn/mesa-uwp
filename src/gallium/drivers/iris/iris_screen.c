@@ -717,17 +717,16 @@ iris_get_default_l3_config(const struct intel_device_info *devinfo,
 }
 
 static void
-iris_shader_debug_log(void *data, const char *fmt, ...)
+iris_shader_debug_log(void *data, unsigned *id, const char *fmt, ...)
 {
    struct pipe_debug_callback *dbg = data;
-   unsigned id = 0;
    va_list args;
 
    if (!dbg->debug_message)
       return;
 
    va_start(args, fmt);
-   dbg->debug_message(dbg->data, &id, PIPE_DEBUG_TYPE_SHADER_INFO, fmt, args);
+   dbg->debug_message(dbg->data, id, PIPE_DEBUG_TYPE_SHADER_INFO, fmt, args);
    va_end(args);
 }
 
