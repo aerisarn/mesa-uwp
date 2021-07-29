@@ -35,7 +35,11 @@
 
 #include "context.h"
 #include "debug_output.h"
+#include "detect_os.h"
 
+#if DETECT_OS_ANDROID
+#  include <log/log.h>
+#endif
 
 static FILE *LogFile = NULL;
 
@@ -92,6 +96,10 @@ output_if_debug(const char *prefixString, const char *outputString,
             snprintf(buf, sizeof(buf), "%s%s", outputString, newline ? "\n" : "");
          OutputDebugStringA(buf);
       }
+#endif
+
+#if DETECT_OS_ANDROID
+      LOG_PRI(ANDROID_LOG_ERROR, prefixString ? prefixString : "MESA", "%s%s", outputString, newline ? "\n" : "");
 #endif
    }
 }
