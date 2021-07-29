@@ -688,10 +688,9 @@ crocus_shader_debug_log(void *data, unsigned *id, const char *fmt, ...)
 }
 
 static void
-crocus_shader_perf_log(void *data, const char *fmt, ...)
+crocus_shader_perf_log(void *data, unsigned *id, const char *fmt, ...)
 {
    struct pipe_debug_callback *dbg = data;
-   unsigned id = 0;
    va_list args;
    va_start(args, fmt);
 
@@ -703,7 +702,7 @@ crocus_shader_perf_log(void *data, const char *fmt, ...)
    }
 
    if (dbg->debug_message) {
-      dbg->debug_message(dbg->data, &id, PIPE_DEBUG_TYPE_PERF_INFO, fmt, args);
+      dbg->debug_message(dbg->data, id, PIPE_DEBUG_TYPE_PERF_INFO, fmt, args);
    }
 
    va_end(args);

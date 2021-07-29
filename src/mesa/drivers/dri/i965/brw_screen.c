@@ -2486,7 +2486,7 @@ shader_debug_log_mesa(void *data, unsigned *msg_id, const char *fmt, ...)
 }
 
 static void
-shader_perf_log_mesa(void *data, const char *fmt, ...)
+shader_perf_log_mesa(void *data, unsigned *msg_id, const char *fmt, ...)
 {
    struct brw_context *brw = (struct brw_context *)data;
 
@@ -2501,8 +2501,7 @@ shader_perf_log_mesa(void *data, const char *fmt, ...)
    }
 
    if (brw->perf_debug) {
-      GLuint msg_id = 0;
-      _mesa_gl_vdebugf(&brw->ctx, &msg_id,
+      _mesa_gl_vdebugf(&brw->ctx, msg_id,
                        MESA_DEBUG_SOURCE_SHADER_COMPILER,
                        MESA_DEBUG_TYPE_PERFORMANCE,
                        MESA_DEBUG_SEVERITY_MEDIUM, fmt, args);

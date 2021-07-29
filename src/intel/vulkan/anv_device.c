@@ -105,7 +105,7 @@ compiler_debug_log(void *data, UNUSED unsigned *id, const char *fmt, ...)
 }
 
 static void
-compiler_perf_log(void *data, const char *fmt, ...)
+compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
 {
    va_list args;
    va_start(args, fmt);

@@ -1074,10 +1074,10 @@ crocus_debug_recompile(struct crocus_context *ice,
    if (!info)
       return;
 
-   c->shader_perf_log(&ice->dbg, "Recompiling %s shader for program %s: %s\n",
-                      _mesa_shader_stage_to_string(info->stage),
-                      info->name ? info->name : "(no identifier)",
-                      info->label ? info->label : "");
+   brw_shader_perf_log(c, &ice->dbg, "Recompiling %s shader for program %s: %s\n",
+                       _mesa_shader_stage_to_string(info->stage),
+                       info->name ? info->name : "(no identifier)",
+                       info->label ? info->label : "");
 
    const void *old_key =
       crocus_find_previous_compile(ice, info->stage, key->program_string_id);

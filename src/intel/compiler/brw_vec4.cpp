@@ -2848,11 +2848,11 @@ vec4_visitor::run()
    bool allocated_without_spills = reg_allocate();
 
    if (!allocated_without_spills) {
-      compiler->shader_perf_log(log_data,
-                                "%s shader triggered register spilling.  "
-                                "Try reducing the number of live vec4 values "
-                                "to improve performance.\n",
-                                stage_name);
+      brw_shader_perf_log(compiler, log_data,
+                          "%s shader triggered register spilling.  "
+                          "Try reducing the number of live vec4 values "
+                          "to improve performance.\n",
+                          stage_name);
 
       while (!reg_allocate()) {
          if (failed)

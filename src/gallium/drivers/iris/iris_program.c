@@ -1069,10 +1069,10 @@ iris_debug_recompile(struct iris_screen *screen,
    const struct brw_compiler *c = screen->compiler;
    const struct shader_info *info = &ish->nir->info;
 
-   c->shader_perf_log(dbg, "Recompiling %s shader for program %s: %s\n",
-                      _mesa_shader_stage_to_string(info->stage),
-                      info->name ? info->name : "(no identifier)",
-                      info->label ? info->label : "");
+   brw_shader_perf_log(c, dbg, "Recompiling %s shader for program %s: %s\n",
+                       _mesa_shader_stage_to_string(info->stage),
+                       info->name ? info->name : "(no identifier)",
+                       info->label ? info->label : "");
 
    struct iris_compiled_shader *shader =
       list_first_entry(&ish->variants, struct iris_compiled_shader, link);
