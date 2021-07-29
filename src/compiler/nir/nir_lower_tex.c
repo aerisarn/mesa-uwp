@@ -1373,13 +1373,8 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
        * derivatives.  Lower those opcodes which use implicit derivatives to
        * use an explicit LOD of 0.
        */
-      bool shader_supports_implicit_lod =
-         b->shader->info.stage == MESA_SHADER_FRAGMENT ||
-         (b->shader->info.stage == MESA_SHADER_COMPUTE &&
-          b->shader->info.cs.derivative_group != DERIVATIVE_GROUP_NONE);
-
       if (nir_tex_instr_has_implicit_derivative(tex) &&
-          !shader_supports_implicit_lod) {
+          !nir_shader_supports_implicit_lod(b->shader)) {
          lower_zero_lod(b, tex);
          progress = true;
       }

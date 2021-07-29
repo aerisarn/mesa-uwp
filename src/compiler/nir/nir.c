@@ -2236,6 +2236,17 @@ nir_shader_lower_instructions(nir_shader *shader,
    return progress;
 }
 
+/**
+ * Returns true if the shader supports quad-based implicit derivatives on
+ * texture sampling.
+ */
+bool nir_shader_supports_implicit_lod(nir_shader *shader)
+{
+   return (shader->info.stage == MESA_SHADER_FRAGMENT ||
+           (shader->info.stage == MESA_SHADER_COMPUTE &&
+            shader->info.cs.derivative_group != DERIVATIVE_GROUP_NONE));
+}
+
 nir_intrinsic_op
 nir_intrinsic_from_system_value(gl_system_value val)
 {

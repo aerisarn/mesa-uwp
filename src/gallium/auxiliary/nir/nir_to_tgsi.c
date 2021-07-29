@@ -2776,6 +2776,20 @@ nir_to_tgsi_lower_tex_instr(nir_builder *b, nir_instr *instr, void *data)
    if (nir_tex_instr_src_index(tex, nir_tex_src_coord) < 0)
       return false;
 
+   /* NIR after lower_tex will have LOD set to 0 for tex ops that wanted
+    * implicit lod in shader stages that don't have quad-based derivatives.
+    * TGSI doesn't want that, it requires that the backend do implict LOD 0 for
+    * those stages.
+    */
+   if (!nir_shader_supports_implicit_lod(b->shader) && tex->op == nir_texop_txl) {
+      int lod_index = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+      nir_src *lod_src = &tex->src[lod_index].src;
+      if (nir_src_is_const(*lod_src) && nir_src_as_uint(*lod_src) == 0) {
+         nir_tex_instr_remove_src(tex, lod_index);
+         tex->op = nir_texop_tex;
+      }
+   }
+
    b->cursor = nir_before_instr(instr);
 
    struct ntt_lower_tex_state s = {0};
