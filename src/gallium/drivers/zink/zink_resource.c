@@ -1320,15 +1320,12 @@ zink_transfer_map(struct pipe_context *pctx,
             vkFlushMappedMemoryRanges(screen->dev, 1, &range);
          }
          ptr = ((uint8_t *)base) + offset;
-         if (sizeof(void*) == 4)
-            trans->base.b.usage |= ZINK_MAP_TEMPORARY;
       }
+      if (sizeof(void*) == 4)
+         trans->base.b.usage |= ZINK_MAP_TEMPORARY;
    }
    if ((usage & PIPE_MAP_PERSISTENT) && !(usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps++;
-
-   if (trans->base.b.usage & (PIPE_MAP_ONCE | ZINK_MAP_TEMPORARY))
-      p_atomic_inc(&res->obj->map_count);
 
    *transfer = &trans->base.b;
    return ptr;
@@ -1378,7 +1375,6 @@ static void
 transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
 {
    struct zink_context *ctx = zink_context(pctx);
-   struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(ptrans->resource);
    struct zink_transfer *trans = (struct zink_transfer *)ptrans;
 
@@ -1386,9 +1382,6 @@ transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
       zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
    }
 
-   if ((trans->base.b.usage & PIPE_MAP_ONCE && !trans->staging_res && !screen->threaded) ||
-       (trans->base.b.usage & ZINK_MAP_TEMPORARY && !p_atomic_dec_return(&res->obj->map_count)))
-      unmap_resource(screen, res);
    if ((trans->base.b.usage & PIPE_MAP_PERSISTENT) && !(trans->base.b.usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps--;
 
@@ -1407,14 +1400,31 @@ transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
 }
 
 static void
+do_transfer_unmap(struct zink_screen *screen, struct zink_transfer *trans)
+{
+   struct zink_resource *res = zink_resource(trans->staging_res);
+   if (!res)
+      res = zink_resource(trans->base.b.resource);
+   unmap_resource(screen, res);
+}
+
+static void
 zink_buffer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
 {
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_transfer *trans = (struct zink_transfer *)ptrans;
+   if (trans->base.b.usage & PIPE_MAP_ONCE && !trans->staging_res)
+      do_transfer_unmap(screen, trans);
    transfer_unmap(pctx, ptrans);
 }
 
 static void
 zink_image_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
 {
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_transfer *trans = (struct zink_transfer *)ptrans;
+   if (sizeof(void*) == 4)
+      do_transfer_unmap(screen, trans);
    transfer_unmap(pctx, ptrans);
 }
 

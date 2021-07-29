@@ -61,7 +61,6 @@ struct zink_resource_object {
    struct zink_batch_usage *reads;
    struct zink_batch_usage *writes;
    void *map;
-   unsigned map_count;
 
    struct util_dynarray tmp;
 
