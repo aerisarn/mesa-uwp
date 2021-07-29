@@ -2723,7 +2723,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             assert(shader->stage == MESA_SHADER_FRAGMENT);
             assert(desc->image_view != NULL);
-            if ((desc->image_view->aspect_mask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0) {
+            if ((desc->image_view->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0) {
                /* For depth and stencil input attachments, we treat it like any
                 * old texture that a user may have bound.
                 */
@@ -6342,7 +6342,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
           * with depth.
           */
          const struct isl_view *ds_view = &iview->planes[0].isl;
-         if (iview->aspect_mask & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         if (iview->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
             genX(cmd_buffer_mark_image_written)(cmd_buffer, iview->image,
                                                 VK_IMAGE_ASPECT_DEPTH_BIT,
                                                 att_state->aux_usage,
@@ -6350,7 +6350,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                                 ds_view->base_array_layer,
                                                 fb->layers);
          }
-         if (iview->aspect_mask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         if (iview->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
             /* Even though stencil may be plane 1, it always shares a
              * base_level with depth.
              */
@@ -6405,8 +6405,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          enum isl_aux_usage dst_aux_usage =
             cmd_buffer->state.attachments[dst_att].aux_usage;
 
-         assert(src_iview->aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT &&
-                dst_iview->aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT);
+         assert(src_iview->aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
+                dst_iview->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
 
          anv_image_msaa_resolve(cmd_buffer,
                                 src_iview->image, src_aux_usage,

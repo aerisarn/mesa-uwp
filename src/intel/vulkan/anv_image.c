@@ -2641,22 +2641,6 @@ anv_image_fill_surface_state(struct anv_device *device,
    }
 }
 
-static VkImageAspectFlags
-remap_aspect_flags(VkImageAspectFlags view_aspects)
-{
-   if (view_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
-      if (util_bitcount(view_aspects) == 1)
-         return VK_IMAGE_ASPECT_COLOR_BIT;
-
-      VkImageAspectFlags color_aspects = 0;
-      for (uint32_t i = 0; i < util_bitcount(view_aspects); i++)
-         color_aspects |= VK_IMAGE_ASPECT_PLANE_0_BIT << i;
-      return color_aspects;
-   }
-   /* No special remapping needed for depth & stencil aspects. */
-   return view_aspects;
-}
-
 static uint32_t
 anv_image_aspect_get_planes(VkImageAspectFlags aspect_mask)
 {
@@ -2773,24 +2757,16 @@ anv_CreateImageView(VkDevice _device,
       break;
    }
 
+   iview->image = image;
+
    /* First expand aspects to the image's ones (for example
     * VK_IMAGE_ASPECT_COLOR_BIT will be converted to
     * VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT |
     * VK_IMAGE_ASPECT_PLANE_2_BIT for an image of format
     * VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM.
     */
-   VkImageAspectFlags expanded_aspects =
-      anv_image_expand_aspects(image, range->aspectMask);
-
-   iview->image = image;
-
-   /* Remap the expanded aspects for the image view. For example if only
-    * VK_IMAGE_ASPECT_PLANE_1_BIT was given in range->aspectMask, we will
-    * convert it to VK_IMAGE_ASPECT_COLOR_BIT since from the point of view of
-    * the image view, it only has a single plane.
-    */
-   iview->aspect_mask = remap_aspect_flags(expanded_aspects);
-   iview->n_planes = anv_image_aspect_get_planes(iview->aspect_mask);
+   iview->aspects = anv_image_expand_aspects(image, range->aspectMask);
+   iview->n_planes = anv_image_aspect_get_planes(iview->aspects);
    iview->vk_format = pCreateInfo->format;
 
    /* "If image has an external format, format must be VK_FORMAT_UNDEFINED." */
@@ -2809,14 +2785,14 @@ anv_CreateImageView(VkDevice _device,
       .depth  = anv_minify(image->extent.depth , range->baseMipLevel),
    };
 
-   /* Now go through the underlying image selected planes (computed in
-    * expanded_aspects) and map them to planes in the image view.
+   /* Now go through the underlying image selected planes and map them to
+    * planes in the image view.
     */
-   anv_foreach_image_aspect_bit(iaspect_bit, image, expanded_aspects) {
+   anv_foreach_image_aspect_bit(iaspect_bit, image, iview->aspects) {
       const uint32_t iplane =
          anv_image_aspect_to_plane(image->aspects, 1UL << iaspect_bit);
       const uint32_t vplane =
-         anv_image_aspect_to_plane(expanded_aspects, 1UL << iaspect_bit);
+         anv_image_aspect_to_plane(iview->aspects, 1UL << iaspect_bit);
       struct anv_format_plane format;
       if (image->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
                             VK_IMAGE_ASPECT_STENCIL_BIT)) {
@@ -2883,7 +2859,7 @@ anv_CreateImageView(VkDevice _device,
 
       if (view_usage & VK_IMAGE_USAGE_SAMPLED_BIT ||
           (view_usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT &&
-           !(iview->aspect_mask & VK_IMAGE_ASPECT_COLOR_BIT))) {
+           !(iview->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV))) {
          iview->planes[vplane].optimal_sampler_surface_state.state = alloc_surface_state(device);
          iview->planes[vplane].general_sampler_surface_state.state = alloc_surface_state(device);
 
