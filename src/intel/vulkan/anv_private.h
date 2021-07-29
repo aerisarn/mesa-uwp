@@ -3780,6 +3780,29 @@ struct anv_format {
    bool can_ycbcr;
 };
 
+static inline void
+anv_assert_valid_aspect_set(VkImageAspectFlags aspects)
+{
+   if (util_bitcount(aspects) == 1) {
+      assert(aspects & (VK_IMAGE_ASPECT_COLOR_BIT |
+                        VK_IMAGE_ASPECT_DEPTH_BIT |
+                        VK_IMAGE_ASPECT_STENCIL_BIT |
+                        VK_IMAGE_ASPECT_PLANE_0_BIT |
+                        VK_IMAGE_ASPECT_PLANE_1_BIT |
+                        VK_IMAGE_ASPECT_PLANE_2_BIT));
+   } else if (aspects & VK_IMAGE_ASPECT_PLANES_BITS_ANV) {
+      assert(aspects == VK_IMAGE_ASPECT_PLANE_0_BIT ||
+             aspects == (VK_IMAGE_ASPECT_PLANE_0_BIT |
+                         VK_IMAGE_ASPECT_PLANE_1_BIT) ||
+             aspects == (VK_IMAGE_ASPECT_PLANE_0_BIT |
+                         VK_IMAGE_ASPECT_PLANE_1_BIT |
+                         VK_IMAGE_ASPECT_PLANE_2_BIT));
+   } else {
+      assert(aspects == (VK_IMAGE_ASPECT_DEPTH_BIT |
+                         VK_IMAGE_ASPECT_STENCIL_BIT));
+   }
+}
+
 /**
  * Return the aspect's plane relative to all_aspects.  For an image, for
  * instance, all_aspects would be the set of aspects in the image.  For
@@ -3795,27 +3818,14 @@ static inline uint32_t
 anv_image_aspect_to_plane(VkImageAspectFlags all_aspects,
                           VkImageAspectFlagBits aspect)
 {
+   anv_assert_valid_aspect_set(all_aspects);
    assert(util_bitcount(aspect) == 1);
-   if (util_bitcount(all_aspects) == 1)
-      return 0;
+   assert(!(aspect & ~all_aspects));
 
-   switch (aspect) {
-   case VK_IMAGE_ASPECT_COLOR_BIT:
-   case VK_IMAGE_ASPECT_DEPTH_BIT:
-   case VK_IMAGE_ASPECT_PLANE_0_BIT:
-      return 0;
-   case VK_IMAGE_ASPECT_STENCIL_BIT:
-      if ((all_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) == 0)
-         return 0;
-      FALLTHROUGH;
-   case VK_IMAGE_ASPECT_PLANE_1_BIT:
-      return 1;
-   case VK_IMAGE_ASPECT_PLANE_2_BIT:
-      return 2;
-   default:
-      /* Purposefully assert with depth/stencil aspects. */
-      unreachable("invalid image aspect");
-   }
+   /* Because we always put image and view planes in aspect-bit-order, the
+    * plane index is the number of bits in all_aspects before aspect.
+    */
+   return util_bitcount(all_aspects & (aspect - 1));
 }
 
 #define anv_foreach_image_aspect_bit(b, image, aspects) \
