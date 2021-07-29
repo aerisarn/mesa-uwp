@@ -520,63 +520,10 @@ brw_nir_lower_fs_outputs(nir_shader *nir)
    this_progress;                                          \
 })
 
-static nir_variable_mode
-brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
-                         gl_shader_stage stage)
-{
-   const struct intel_device_info *devinfo = compiler->devinfo;
-   const bool is_scalar = compiler->scalar_stage[stage];
-   nir_variable_mode indirect_mask = 0;
-
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_FRAGMENT:
-      indirect_mask |= nir_var_shader_in;
-      break;
-
-   case MESA_SHADER_GEOMETRY:
-      if (!is_scalar)
-         indirect_mask |= nir_var_shader_in;
-      break;
-
-   default:
-      /* Everything else can handle indirect inputs */
-      break;
-   }
-
-   if (is_scalar && stage != MESA_SHADER_TESS_CTRL)
-      indirect_mask |= nir_var_shader_out;
-
-   /* On HSW+, we allow indirects in scalar shaders.  They get implemented
-    * using nir_lower_vars_to_explicit_types and nir_lower_explicit_io in
-    * brw_postprocess_nir.
-    *
-    * We haven't plumbed through the indirect scratch messages on gfx6 or
-    * earlier so doing indirects via scratch doesn't work there. On gfx7 and
-    * earlier the scratch space size is limited to 12kB.  If we allowed
-    * indirects as scratch all the time, we may easily exceed this limit
-    * without having any fallback.
-    */
-   if (is_scalar && devinfo->verx10 <= 70)
-      indirect_mask |= nir_var_function_temp;
-
-   return indirect_mask;
-}
-
 void
 brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
                  bool is_scalar, bool allow_copies)
 {
-   nir_variable_mode loop_indirect_mask =
-      brw_nir_no_indirect_mask(compiler, nir->info.stage);
-
-   /* We can handle indirects via scratch messages.  However, they are
-    * expensive so we'd rather not if we can avoid it.  Have loop unrolling
-    * try to get rid of them.
-    */
-   if (is_scalar)
-      loop_indirect_mask |= nir_var_function_temp;
-
    bool progress;
    unsigned lower_flrp =
       (nir->options->lower_flrp16 ? 16 : 0) |
@@ -671,7 +618,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_opt_if, false);
       OPT(nir_opt_conditional_discard);
       if (nir->options->max_unroll_iterations != 0) {
-         OPT(nir_opt_loop_unroll, loop_indirect_mask);
+         OPT(nir_opt_loop_unroll);
       }
       OPT(nir_opt_remove_phis);
       OPT(nir_opt_gcm, false);

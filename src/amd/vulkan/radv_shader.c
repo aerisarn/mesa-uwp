@@ -181,7 +181,7 @@ radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
       NIR_PASS(progress, shader, nir_opt_shrink_vectors,
                !device->instance->disable_shrink_image_store);
       if (shader->options->max_unroll_iterations) {
-         NIR_PASS(progress, shader, nir_opt_loop_unroll, 0);
+         NIR_PASS(progress, shader, nir_opt_loop_unroll);
       }
    } while (progress && !optimize_conservatively);
 

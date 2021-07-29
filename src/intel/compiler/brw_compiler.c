@@ -68,7 +68,8 @@
    .lower_usub_sat64 = true,                                                  \
    .lower_hadd64 = true,                                                      \
    .lower_bfe_with_two_constants = true,                                      \
-   .max_unroll_iterations = 32
+   .max_unroll_iterations = 32,                                               \
+   .force_indirect_unrolling = nir_var_function_temp
 
 static const struct nir_shader_compiler_options scalar_nir_options = {
    COMMON_OPTIONS,
@@ -195,6 +196,9 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
       nir_options->support_8bit_alu = devinfo->ver < 11;
 
       nir_options->unify_interfaces = i < MESA_SHADER_FRAGMENT;
+
+      nir_options->force_indirect_unrolling |=
+         brw_nir_no_indirect_mask(compiler, i);
 
       compiler->glsl_compiler_options[i].NirOptions = nir_options;
 

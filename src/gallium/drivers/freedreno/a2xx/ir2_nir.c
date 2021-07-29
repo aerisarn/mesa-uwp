@@ -49,6 +49,7 @@ static const nir_shader_compiler_options options = {
    .has_isub = true,
    .lower_insert_byte = true,
    .lower_insert_word = true,
+   .force_indirect_unrolling = nir_var_all,
 };
 
 const nir_shader_compiler_options *
@@ -92,7 +93,7 @@ ir2_optimize_loop(nir_shader *s)
          OPT(s, nir_copy_prop);
          OPT(s, nir_opt_dce);
       }
-      progress |= OPT(s, nir_opt_loop_unroll, nir_var_all);
+      progress |= OPT(s, nir_opt_loop_unroll);
       progress |= OPT(s, nir_opt_if, false);
       progress |= OPT(s, nir_opt_remove_phis);
       progress |= OPT(s, nir_opt_undef);

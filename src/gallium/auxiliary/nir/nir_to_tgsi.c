@@ -2458,7 +2458,6 @@ static void
 ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
 {
    bool progress;
-   nir_variable_mode no_indirects_mask = ntt_no_indirects_mask(s, screen);
    unsigned pipe_stage = pipe_shader_type_from_mesa(s->info.stage);
    unsigned control_flow_depth =
       screen->get_shader_param(screen, pipe_stage,
@@ -2492,7 +2491,7 @@ ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
       NIR_PASS(progress, s, nir_opt_trivial_continues);
       NIR_PASS(progress, s, nir_opt_vectorize, ntt_should_vectorize_instr, NULL);
       NIR_PASS(progress, s, nir_opt_undef);
-      NIR_PASS(progress, s, nir_opt_loop_unroll, no_indirects_mask);
+      NIR_PASS(progress, s, nir_opt_loop_unroll);
 
    } while (progress);
 }
@@ -2802,6 +2801,8 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
       !screen->get_shader_param(screen, pipe_shader_type_from_mesa(s->info.stage),
                                 PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED);
 
+   nir_variable_mode no_indirects_mask = ntt_no_indirects_mask(s, screen);
+
    if (!options->lower_extract_byte ||
        !options->lower_extract_word ||
        !options->lower_insert_byte ||
@@ -2812,7 +2813,8 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
        !options->lower_rotate ||
        !options->lower_uniforms_to_ubo ||
        !options->lower_vector_cmp ||
-       options->lower_fsqrt != lower_fsqrt) {
+       options->lower_fsqrt != lower_fsqrt ||
+       options->force_indirect_unrolling != no_indirects_mask) {
       nir_shader_compiler_options *new_options = ralloc(s, nir_shader_compiler_options);
       *new_options = *s->options;
 
@@ -2827,6 +2829,7 @@ ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
       new_options->lower_uniforms_to_ubo = true,
       new_options->lower_vector_cmp = true;
       new_options->lower_fsqrt = lower_fsqrt;
+      new_options->force_indirect_unrolling = no_indirects_mask;
 
       s->options = new_options;
    }

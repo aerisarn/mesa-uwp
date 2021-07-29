@@ -2444,7 +2444,7 @@ ttn_optimize_nir(nir_shader *nir)
       NIR_PASS(progress, nir, nir_opt_conditional_discard);
 
       if (nir->options->max_unroll_iterations) {
-         NIR_PASS(progress, nir, nir_opt_loop_unroll, (nir_variable_mode)0);
+         NIR_PASS(progress, nir, nir_opt_loop_unroll);
       }
 
    } while (progress);

@@ -596,7 +596,7 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
       NIR_PASS(progress, nir, nir_opt_undef);
       NIR_PASS(progress, nir, nir_opt_conditional_discard);
       if (nir->options->max_unroll_iterations) {
-         NIR_PASS(progress, nir, nir_opt_loop_unroll, 0);
+         NIR_PASS(progress, nir, nir_opt_loop_unroll);
       }
 
       if (nir->info.stage == MESA_SHADER_FRAGMENT)

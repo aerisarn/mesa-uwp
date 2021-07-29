@@ -369,10 +369,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
                 NIR_PASS(progress, nir, nir_opt_undef);
                 NIR_PASS(progress, nir, nir_lower_undef_to_zero);
 
-                NIR_PASS(progress, nir, nir_opt_loop_unroll,
-                         nir_var_shader_in |
-                         nir_var_shader_out |
-                         nir_var_function_temp);
+                NIR_PASS(progress, nir, nir_opt_loop_unroll);
 
                 NIR_PASS(progress, nir, nir_opt_vectorize,
                          midgard_vectorize_filter, NULL);

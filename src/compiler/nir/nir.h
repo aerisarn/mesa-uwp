@@ -3690,6 +3690,12 @@ typedef struct nir_shader_compiler_options {
     * vectorized IO can pack more varyings when linking. */
    bool linker_ignore_precision;
 
+   /**
+    * Specifies which type of indirectly accessed variables should force
+    * loop unrolling.
+    */
+   nir_variable_mode force_indirect_unrolling;
+
    nir_lower_int64_options lower_int64_options;
    nir_lower_doubles_options lower_doubles_options;
    nir_divergence_options divergence_analysis_options;
@@ -5436,7 +5442,7 @@ bool nir_opt_large_constants(nir_shader *shader,
                              glsl_type_size_align_func size_align,
                              unsigned threshold);
 
-bool nir_opt_loop_unroll(nir_shader *shader, nir_variable_mode indirect_mask);
+bool nir_opt_loop_unroll(nir_shader *shader);
 
 typedef enum {
     nir_move_const_undef = (1 << 0),

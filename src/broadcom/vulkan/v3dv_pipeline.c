@@ -248,6 +248,7 @@ const nir_shader_compiler_options v3dv_nir_options = {
                                    * needs to be supported */
    .lower_interpolate_at = true,
    .max_unroll_iterations = 16,
+   .force_indirect_unrolling = (nir_var_shader_in | nir_var_function_temp),
    .divergence_analysis_options =
       nir_divergence_multiple_workgroup_per_compute_subgroup
 };
