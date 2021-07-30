@@ -93,6 +93,7 @@ build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *sur
    dcc_val->src[2] = nir_src_for_ssa(nir_ssa_undef(&b, 1, 32));
    dcc_val->src[3] = nir_src_for_ssa(nir_imm_int(&b, 0));
    nir_ssa_dest_init(&dcc_val->instr, &dcc_val->dest, 1, 32, "dcc_val");
+   nir_intrinsic_set_image_dim(dcc_val, GLSL_SAMPLER_DIM_BUF);
    nir_builder_instr_insert(&b, &dcc_val->instr);
 
    nir_intrinsic_instr *store =
@@ -103,6 +104,7 @@ build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *sur
    store->src[2] = nir_src_for_ssa(nir_ssa_undef(&b, 1, 32));
    store->src[3] = nir_src_for_ssa(&dcc_val->dest.ssa);
    store->src[4] = nir_src_for_ssa(nir_imm_int(&b, 0));
+   nir_intrinsic_set_image_dim(store, GLSL_SAMPLER_DIM_BUF);
 
    nir_builder_instr_insert(&b, &store->instr);
    return b.shader;

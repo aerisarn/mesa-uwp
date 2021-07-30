@@ -92,7 +92,7 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
       nir_ssa_def *outval = &tex_instr[i]->dest.ssa;
 
       nir_image_deref_store(&b, output_img_deref, img_coord, nir_imm_int(&b, i), outval,
-                            nir_imm_int(&b, 0));
+                            nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_MS, .image_array = true);
    }
 
    return b.shader;
