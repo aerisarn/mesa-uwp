@@ -793,7 +793,8 @@ ComputeTest::compile(const std::vector<const char *> &sources,
                      const std::vector<const char *> &compile_args,
                      bool create_library)
 {
-   struct clc_compile_args args = { 0 };
+   struct clc_compile_args args = {
+   };
    args.args = compile_args.data();
    args.num_args = (unsigned)compile_args.size();
    ComputeTest::Shader shader;

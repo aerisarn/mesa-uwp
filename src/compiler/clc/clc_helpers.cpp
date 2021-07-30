@@ -858,12 +858,29 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
 static int
 llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
                   std::unique_ptr<LLVMContext> context,
+                  const struct clc_compile_args *args,
                   const struct clc_logger *logger,
                   struct clc_binary *out_spirv)
 {
    std::string log;
+
+   SPIRV::TranslatorOpts spirv_opts;
+   if (!args || !args->allowed_spirv_extensions) {
+      spirv_opts.enableAllExtensions();
+   } else {
+      SPIRV::TranslatorOpts::ExtensionsStatusMap ext_map;
+      for (int i = 0; args->allowed_spirv_extensions[i]; i++) {
+#define EXT(X) \
+         if (strcmp(#X, args->allowed_spirv_extensions[i]) == 0) \
+            ext_map.insert(std::make_pair(SPIRV::ExtensionID::X, true));
+#include "LLVMSPIRVLib/LLVMSPIRVExtensions.inc"
+#undef EXT
+      }
+      spirv_opts = SPIRV::TranslatorOpts(SPIRV::VersionNumber::MaximumVersion, ext_map);
+   }
+
    std::ostringstream spv_stream;
-   if (!::llvm::writeSpirv(mod.get(), spv_stream, log)) {
+   if (!::llvm::writeSpirv(mod.get(), spirv_opts, spv_stream, log)) {
       clc_error(logger, "%sTranslation from LLVM IR to SPIR-V failed.\n",
                 log.c_str());
       return -1;
@@ -905,7 +922,7 @@ clc_c_to_spirv(const struct clc_compile_args *args,
    auto pair = clc_compile_to_llvm_module(args, logger);
    if (!pair.first)
       return -1;
-   return llvm_mod_to_spirv(std::move(pair.first), std::move(pair.second), logger, out_spirv);
+   return llvm_mod_to_spirv(std::move(pair.first), std::move(pair.second), args, logger, out_spirv);
 }
 
 int
@@ -924,7 +941,7 @@ clc_spir_to_spirv(const struct clc_binary *in_spir,
    if (!mod)
       return -1;
 
-   return llvm_mod_to_spirv(std::move(mod.get()), std::move(llvm_ctx), logger, out_spirv);
+   return llvm_mod_to_spirv(std::move(mod.get()), std::move(llvm_ctx), NULL, logger, out_spirv);
 }
 
 class SPIRVMessageConsumer {

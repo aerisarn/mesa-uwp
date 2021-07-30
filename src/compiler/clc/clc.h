@@ -46,6 +46,12 @@ struct clc_compile_args {
    struct clc_named_value source;
    const char * const *args;
    unsigned num_args;
+
+   /* Allowed extensions SPIRV extensions the OpenCL->SPIRV translation can
+    * enable. A pointer to a NULL terminated array of strings, allow any
+    * extension if NULL.
+    */
+   const char * const *allowed_spirv_extensions;
 };
 
 struct clc_binary {
