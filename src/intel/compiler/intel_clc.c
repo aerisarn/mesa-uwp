@@ -385,6 +385,14 @@ int main(int argc, char **argv)
          return 1;
       }
 
+      const char *allowed_spirv_extensions[] = {
+         "SPV_EXT_shader_atomic_float_add",
+         "SPV_EXT_shader_atomic_float_min_max",
+         "SPV_KHR_float_controls",
+         "SPV_INTEL_subgroups",
+         NULL,
+      };
+
       struct clc_compile_args clc_args = {
          .source = {
             .name = *infile,
@@ -392,6 +400,7 @@ int main(int argc, char **argv)
          },
          .args = util_dynarray_begin(&clang_args),
          .num_args = util_dynarray_num_elements(&clang_args, char *),
+         .allowed_spirv_extensions = allowed_spirv_extensions,
       };
 
       struct clc_binary *spirv_out =
