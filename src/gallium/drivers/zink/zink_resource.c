@@ -1221,7 +1221,7 @@ zink_image_map(struct pipe_context *pctx,
 
    trans->base.b.level = level;
 
-   void *ptr, *base;
+   void *ptr;
    if (usage & PIPE_MAP_WRITE && !(usage & PIPE_MAP_READ))
       /* this is like a blit, so we can potentially dump some clears or maybe we have to  */
       zink_fb_clears_apply_or_discard(ctx, pres, zink_rect_from_box(box), false);
@@ -1265,13 +1265,13 @@ zink_image_map(struct pipe_context *pctx,
          zink_fence_wait(pctx);
       }
 
-      ptr = base = map_resource(screen, staging_res);
-      if (!base)
+      ptr = map_resource(screen, staging_res);
+      if (!ptr)
          return NULL;
    } else {
       assert(!res->optimal_tiling);
-      base = map_resource(screen, res);
-      if (!base)
+      ptr = map_resource(screen, res);
+      if (!ptr)
          return NULL;
       if (zink_resource_has_usage(res)) {
          if (usage & PIPE_MAP_WRITE)
@@ -1303,7 +1303,7 @@ zink_image_map(struct pipe_context *pctx,
          VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, res->obj->offset + offset, size);
          vkFlushMappedMemoryRanges(screen->dev, 1, &range);
       }
-      ptr = ((uint8_t *)base) + offset;
+      ptr = ((uint8_t *)ptr) + offset;
    }
    if (sizeof(void*) == 4)
       trans->base.b.usage |= ZINK_MAP_TEMPORARY;
