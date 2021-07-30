@@ -5,9 +5,6 @@
 # Timeouts, passes otherwise
 KHR-GL33.texture_swizzle.smoke
 
-# Timeout, stuck on live_effect()
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_tesse
-
 # Timeout, passes otherwise
 dEQP-VK.tessellation.invariance.outer_edge_division.quads_fractional_odd_spacing
 
@@ -22,6 +19,5 @@ dEQP-VK.synchronization.cross_instance.*binary_semaphore_fence_fd
 dEQP-VK.tessellation.invariance.outer_triangle_set.quads_fractional_odd_spacing
 dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_even_spacing
 
-dEQP-VK.spirv_assembly.instruction.compute.spirv_ids_abuse.lots_ids
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_geom
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_tessc
+# Crashes in RA, but slow enough to get there that CI times out sometimes
+dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*
