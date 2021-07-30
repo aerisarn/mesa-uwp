@@ -229,6 +229,13 @@ a630_vk:
     # dEQP-VK.binding_model.*.geometry and dEQP-VK.glsl.*_vertex.
     TU_DEBUG: forcebin
 
+a630_vk_full:
+  extends:
+    - a630_vk
+    - .test-manual-mr
+  variables:
+    DEQP_FRACTION: 1
+
 # Disabled by default until we can sort out what looks like timeouts before
 # getting to the first test (or is it at cleanup after tests completed?).
 # Clicking play can show you some useful areas for fixing turnip, though.
