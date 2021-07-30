@@ -1036,6 +1036,28 @@ unmap_resource(struct zink_screen *screen, struct zink_resource *res)
    zink_bo_unmap(screen, res->obj->bo);
 }
 
+static struct zink_transfer *
+create_transfer(struct zink_context *ctx, struct pipe_resource *pres, unsigned usage, const struct pipe_box *box)
+{
+   struct zink_transfer *trans;
+
+   if (usage & PIPE_MAP_THREAD_SAFE)
+      trans = malloc(sizeof(*trans));
+   else if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
+      trans = slab_alloc(&ctx->transfer_pool_unsync);
+   else
+      trans = slab_alloc(&ctx->transfer_pool);
+   if (!trans)
+      return NULL;
+
+   memset(trans, 0, sizeof(*trans));
+   pipe_resource_reference(&trans->base.b.resource, pres);
+
+   trans->base.b.usage = usage;
+   trans->base.b.box = *box;
+   return trans;
+}
+
 static void *
 buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigned usage,
                     const struct pipe_box *box, struct zink_transfer *trans)
@@ -1186,24 +1208,11 @@ zink_transfer_map(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
 
-   struct zink_transfer *trans;
-
-   if (usage & PIPE_MAP_THREAD_SAFE)
-      trans = malloc(sizeof(*trans));
-   else if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
-      trans = slab_alloc(&ctx->transfer_pool_unsync);
-   else
-      trans = slab_alloc(&ctx->transfer_pool);
+   struct zink_transfer *trans = create_transfer(ctx, pres, usage, box);
    if (!trans)
       return NULL;
 
-   memset(trans, 0, sizeof(*trans));
-   pipe_resource_reference(&trans->base.b.resource, pres);
-
-   trans->base.b.resource = pres;
    trans->base.b.level = level;
-   trans->base.b.usage = usage;
-   trans->base.b.box = *box;
 
    void *ptr, *base;
    if (pres->target == PIPE_BUFFER) {
