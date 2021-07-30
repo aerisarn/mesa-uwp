@@ -1051,6 +1051,19 @@ create_transfer(struct zink_context *ctx, struct pipe_resource *pres, unsigned u
    return trans;
 }
 
+static void
+destroy_transfer(struct zink_context *ctx, struct zink_transfer *trans)
+{
+   if (trans->base.b.usage & PIPE_MAP_THREAD_SAFE) {
+      free(trans);
+   } else {
+      /* Don't use pool_transfers_unsync. We are always in the driver
+       * thread. Freeing an object into a different pool is allowed.
+       */
+      slab_free(&ctx->transfer_pool, trans);
+   }
+}
+
 static void *
 zink_buffer_map(struct pipe_context *pctx,
                     struct pipe_resource *pres,
@@ -1372,14 +1385,7 @@ transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *ptrans)
       pipe_resource_reference(&trans->staging_res, NULL);
    pipe_resource_reference(&trans->base.b.resource, NULL);
 
-   if (trans->base.b.usage & PIPE_MAP_THREAD_SAFE) {
-      free(trans);
-   } else {
-      /* Don't use pool_transfers_unsync. We are always in the driver
-       * thread. Freeing an object into a different pool is allowed.
-       */
-      slab_free(&ctx->transfer_pool, ptrans);
-   }
+   destroy_transfer(ctx, trans);
 }
 
 static void
