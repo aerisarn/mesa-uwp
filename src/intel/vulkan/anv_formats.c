@@ -488,15 +488,8 @@ anv_get_format_aspect(const struct intel_device_info *devinfo,
    if (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
       return plane_format;
 
-   if (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      assert(vk_format_aspects(vk_format) &
-             (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
-
-      /* There's no reason why we strictly can't support depth or stencil with
-       * modifiers but there's also no reason why we should.
-       */
+   if (vk_format_is_depth_or_stencil(vk_format))
       return plane_format;
-   }
 
    assert((aspect & ~VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0);
 
