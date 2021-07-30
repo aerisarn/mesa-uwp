@@ -992,10 +992,14 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
                              uint num_values, uint32_t *values)
 {
    struct zink_context *ctx = (struct zink_context *)pctx;
+   const uint32_t bit = BITFIELD_BIT(shader);
 
-   memcpy(ctx->inlinable_uniforms[shader], values, num_values * 4);
-   ctx->dirty_shader_stages |= 1 << shader;
-   ctx->inlinable_uniforms_valid_mask |= 1 << shader;
+   if (!(ctx->inlinable_uniforms_valid_mask & bit) ||
+       memcmp(ctx->inlinable_uniforms[shader], values, num_values * 4)) {
+      memcpy(ctx->inlinable_uniforms[shader], values, num_values * 4);
+      ctx->dirty_shader_stages |= bit;
+      ctx->inlinable_uniforms_valid_mask |= bit;
+   }
 }
 
 ALWAYS_INLINE static void
