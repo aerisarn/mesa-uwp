@@ -1389,6 +1389,8 @@ radv_image_reset_layout(struct radv_image *image)
 
    for (unsigned i = 0; i < image->plane_count; ++i) {
       VkFormat format = vk_format_get_plane_format(image->vk_format, i);
+      if (vk_format_has_depth(format))
+         format = vk_format_depth_only(format);
 
       uint64_t flags = image->planes[i].surface.flags;
       uint64_t modifier = image->planes[i].surface.modifier;
@@ -1398,7 +1400,7 @@ radv_image_reset_layout(struct radv_image *image)
       image->planes[i].surface.modifier = modifier;
       image->planes[i].surface.blk_w = vk_format_get_blockwidth(format);
       image->planes[i].surface.blk_h = vk_format_get_blockheight(format);
-      image->planes[i].surface.bpe = vk_format_get_blocksize(vk_format_depth_only(format));
+      image->planes[i].surface.bpe = vk_format_get_blocksize(format);
 
       /* align byte per element on dword */
       if (image->planes[i].surface.bpe == 3) {

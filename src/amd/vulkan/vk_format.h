@@ -124,6 +124,7 @@ vk_format_is_subsampled(VkFormat format)
 static inline VkFormat
 vk_format_depth_only(VkFormat format)
 {
+   assert(vk_format_has_depth(format));
    switch (format) {
    case VK_FORMAT_D16_UNORM_S8_UINT:
       return VK_FORMAT_D16_UNORM;
@@ -209,6 +210,7 @@ vk_format_no_srgb(VkFormat format)
 static inline VkFormat
 vk_format_stencil_only(VkFormat format)
 {
+   assert(vk_format_has_stencil(format));
    return VK_FORMAT_S8_UINT;
 }
 
