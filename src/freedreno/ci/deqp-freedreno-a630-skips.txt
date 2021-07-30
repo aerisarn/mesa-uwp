@@ -21,3 +21,7 @@ dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spac
 
 # Crashes in RA, but slow enough to get there that CI times out sometimes
 dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*
+
+# timeout, spending all its time in nir_compare_deref_paths()
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/5152
+dEQP-VK.ubo.random.all_shared_buffer.48
