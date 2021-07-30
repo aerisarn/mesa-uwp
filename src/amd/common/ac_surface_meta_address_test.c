@@ -56,7 +56,7 @@ static unsigned gfx9_dcc_addr_from_coord(const struct radeon_info *info,
                                          /* Shader key inputs: */
                                          /* equation varies with resource_type, swizzle_mode,
                                           * bpp, number of fragments, pipe_aligned, rb_aligned */
-                                         ADDR2_COMPUTE_DCCINFO_OUTPUT *eq,
+                                         const struct gfx9_addr_meta_equation *eq,
                                          unsigned meta_block_width, unsigned meta_block_height,
                                          unsigned meta_block_depth,
                                          /* Shader inputs: */
@@ -70,7 +70,7 @@ static unsigned gfx9_dcc_addr_from_coord(const struct radeon_info *info,
    unsigned meta_block_depth_log2 = util_logbase2(meta_block_depth);
 
    unsigned m_pipeInterleaveLog2 = 8 + G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config);
-   unsigned numPipeBits = eq->equation.gfx9.numPipeBits;
+   unsigned numPipeBits = eq->numPipeBits;
    unsigned pitchInBlock = dcc_pitch >> meta_block_width_log2;
    unsigned sliceSizeInBlock = (dcc_height >> meta_block_height_log2) * pitchInBlock;
 
@@ -82,19 +82,19 @@ static unsigned gfx9_dcc_addr_from_coord(const struct radeon_info *info,
    unsigned coords[] = {x, y, z, sample, blockIndex};
 
    unsigned address = 0;
-   unsigned num_bits = eq->equation.gfx9.num_bits;
+   unsigned num_bits = eq->num_bits;
    assert(num_bits <= 32);
 
    /* Compute the address up until the last bit that doesn't use the block index. */
    for (unsigned b = 0; b < num_bits - 1; b++) {
       unsigned xor = 0;
       for (unsigned c = 0; c < 5; c++) {
-         if (eq->equation.gfx9.bit[b].coord[c].dim >= 5)
+         if (eq->bit[b].coord[c].dim >= 5)
             continue;
 
-         assert(eq->equation.gfx9.bit[b].coord[c].ord < 32);
-         unsigned ison = (coords[eq->equation.gfx9.bit[b].coord[c].dim] >>
-                                 eq->equation.gfx9.bit[b].coord[c].ord) & 0x1;
+         assert(eq->bit[b].coord[c].ord < 32);
+         unsigned ison = (coords[eq->bit[b].coord[c].dim] >>
+                                 eq->bit[b].coord[c].ord) & 0x1;
 
          xor ^= ison;
       }
@@ -103,7 +103,7 @@ static unsigned gfx9_dcc_addr_from_coord(const struct radeon_info *info,
 
    /* Fill the remaining bits with the block index. */
    unsigned last = num_bits - 1;
-   address |= (blockIndex >> eq->equation.gfx9.bit[last].coord[0].ord) << last;
+   address |= (blockIndex >> eq->bit[last].coord[0].ord) << last;
 
    unsigned pipeXor = pipe_xor & ((1 << numPipeBits) - 1);
    return (address >> 1) ^ (pipeXor << m_pipeInterleaveLog2);
@@ -273,13 +273,13 @@ static bool one_dcc_address_test(const char *name, const char *test, ADDR_HANDLE
 
                unsigned addr;
                if (info->chip_class == GFX9) {
-                  addr = gfx9_dcc_addr_from_coord(info, &dout, dout.metaBlkWidth, dout.metaBlkHeight,
+                  addr = gfx9_dcc_addr_from_coord(info, &dout.equation.gfx9, dout.metaBlkWidth, dout.metaBlkHeight,
                                                   dout.metaBlkDepth, dout.pitch, dout.height,
                                                   in.x, in.y, in.slice, in.sample, in.pipeXor);
                   if (in.sample == 1) {
                      /* Sample 0 should be one byte before sample 1. The DCC MSAA clear relies on it. */
                      assert(addr - 1 ==
-                            gfx9_dcc_addr_from_coord(info, &dout, dout.metaBlkWidth, dout.metaBlkHeight,
+                            gfx9_dcc_addr_from_coord(info, &dout.equation.gfx9, dout.metaBlkWidth, dout.metaBlkHeight,
                                                      dout.metaBlkDepth, dout.pitch, dout.height,
                                                      in.x, in.y, in.slice, 0, in.pipeXor));
                   }
