@@ -14,6 +14,8 @@
 
 #include "vn_device.h"
 #include "vn_image.h"
+#include "vn_instance.h"
+#include "vn_physical_device.h"
 #include "vn_queue.h"
 
 /* The common WSI support makes some assumptions about the driver.

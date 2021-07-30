@@ -17,6 +17,7 @@
 #include "vn_buffer.h"
 #include "vn_device.h"
 #include "vn_image.h"
+#include "vn_physical_device.h"
 
 /* device memory commands */
 

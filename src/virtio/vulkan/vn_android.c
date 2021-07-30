@@ -24,6 +24,8 @@
 #include "vn_device.h"
 #include "vn_device_memory.h"
 #include "vn_image.h"
+#include "vn_instance.h"
+#include "vn_physical_device.h"
 #include "vn_queue.h"
 
 static int
@@ -208,8 +210,8 @@ vn_GetSwapchainGrallocUsage2ANDROID(
 
 struct cros_gralloc0_buffer_info {
    uint32_t drm_fourcc;
-   int num_fds;         /* ignored */
-   int fds[4];          /* ignored */
+   int num_fds; /* ignored */
+   int fds[4];  /* ignored */
    uint64_t modifier;
    uint32_t offset[4];
    uint32_t stride[4];

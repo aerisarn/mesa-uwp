@@ -23,6 +23,8 @@
 #include "vn_android.h"
 #include "vn_device_memory.h"
 #include "vn_icd.h"
+#include "vn_instance.h"
+#include "vn_physical_device.h"
 #include "vn_queue.h"
 #include "vn_renderer.h"
 

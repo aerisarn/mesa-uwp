@@ -18,6 +18,7 @@
 #include "vn_android.h"
 #include "vn_device.h"
 #include "vn_device_memory.h"
+#include "vn_wsi.h"
 
 static void
 vn_image_init_memory_requirements(struct vn_image *img,

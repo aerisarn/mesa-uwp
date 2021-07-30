@@ -16,6 +16,7 @@
 #include "venus-protocol/vn_protocol_driver_shader_module.h"
 
 #include "vn_device.h"
+#include "vn_physical_device.h"
 
 /* shader module commands */
 

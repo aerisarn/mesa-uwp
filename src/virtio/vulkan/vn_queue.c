@@ -19,6 +19,7 @@
 #include "vn_device.h"
 #include "vn_device_memory.h"
 #include "vn_renderer.h"
+#include "vn_wsi.h"
 
 /* queue commands */
 
