@@ -955,12 +955,12 @@ public:
       case SPV_MSG_FATAL:
       case SPV_MSG_INTERNAL_ERROR:
       case SPV_MSG_ERROR:
-         clc_error(logger, "(file=%s,line=%ld,column=%ld,index=%ld): %s",
+         clc_error(logger, "(file=%s,line=%ld,column=%ld,index=%ld): %s\n",
                    src, pos.line, pos.column, pos.index, msg);
          break;
 
       case SPV_MSG_WARNING:
-         clc_warning(logger, "(file=%s,line=%ld,column=%ld,index=%ld): %s",
+         clc_warning(logger, "(file=%s,line=%ld,column=%ld,index=%ld): %s\n",
                      src, pos.line, pos.column, pos.index, msg);
          break;
 
