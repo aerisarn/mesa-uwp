@@ -19,6 +19,17 @@
 #include "vn_renderer.h"
 #include "vn_ring.h"
 
+/* require and request at least Vulkan 1.1 at both instance and device levels
+ */
+#define VN_MIN_RENDERER_VERSION VK_API_VERSION_1_1
+
+/* max advertised version at both instance and device levels */
+#ifdef ANDROID
+#define VN_MAX_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#else
+#define VN_MAX_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
+#endif
+
 struct vn_instance {
    struct vn_instance_base base;
 

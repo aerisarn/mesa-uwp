@@ -69,4 +69,7 @@ VK_DEFINE_HANDLE_CASTS(vn_physical_device,
                        VkPhysicalDevice,
                        VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 
+void
+vn_physical_device_fini(struct vn_physical_device *physical_dev);
+
 #endif /* VN_PHYSICAL_DEVICE_H */
