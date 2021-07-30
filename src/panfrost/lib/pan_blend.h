@@ -134,6 +134,9 @@ void
 pan_blend_to_fixed_function_equation(const struct pan_blend_equation eq,
                                      struct MALI_BLEND_EQUATION *equation);
 
+uint32_t
+pan_pack_blend(const struct pan_blend_equation equation);
+
 nir_shader *
 pan_blend_create_shader(const struct panfrost_device *dev,
                         const struct pan_blend_state *state,

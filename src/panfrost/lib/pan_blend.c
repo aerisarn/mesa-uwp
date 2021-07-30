@@ -312,6 +312,20 @@ pan_blend_to_fixed_function_equation(const struct pan_blend_equation equation,
         out->color_mask = equation.color_mask;
 }
 
+uint32_t
+pan_pack_blend(const struct pan_blend_equation equation)
+{
+        STATIC_ASSERT(sizeof(uint32_t) == MALI_BLEND_EQUATION_LENGTH);
+
+        uint32_t out = 0;
+
+        pan_pack(&out, BLEND_EQUATION, cfg) {
+                pan_blend_to_fixed_function_equation(equation, &cfg);
+        }
+
+        return out;
+}
+
 static const char *
 logicop_str(enum pipe_logicop logicop)
 {
