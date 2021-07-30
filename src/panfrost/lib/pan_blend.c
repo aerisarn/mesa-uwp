@@ -237,6 +237,16 @@ to_panfrost_function(enum blend_func blend_func,
 bool
 pan_blend_is_opaque(const struct pan_blend_equation equation)
 {
+        /* If a channel is masked out, we can't use opaque mode even if
+         * blending is disabled, since we need a tilebuffer read in there */
+        if (equation.color_mask != 0xF)
+                return false;
+
+        /* With nothing masked out, disabled bledning is opaque */
+        if (!equation.blend_enable)
+                return true;
+
+        /* Also detect open-coded opaque blending */
         return equation.rgb_src_factor == BLEND_FACTOR_ZERO &&
                equation.rgb_invert_src_factor &&
                equation.rgb_dst_factor == BLEND_FACTOR_ZERO &&
@@ -248,8 +258,7 @@ pan_blend_is_opaque(const struct pan_blend_equation equation)
                equation.alpha_dst_factor == BLEND_FACTOR_ZERO &&
                !equation.alpha_invert_dst_factor &&
                (equation.alpha_func == BLEND_FUNC_ADD ||
-                equation.alpha_func == BLEND_FUNC_SUBTRACT) &&
-               equation.color_mask == 0xf;
+                equation.alpha_func == BLEND_FUNC_SUBTRACT);
 }
 
 static bool
