@@ -10744,8 +10744,8 @@ static inline size_t vn_sizeof_vkEnumeratePhysicalDevices(VkInstance instance, u
     if (pPhysicalDeviceCount)
         cmd_size += vn_sizeof_uint32_t(pPhysicalDeviceCount);
     if (pPhysicalDevices) {
-        cmd_size += vn_sizeof_array_size(*pPhysicalDeviceCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceCount; i++)
+        cmd_size += vn_sizeof_array_size((pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0); i++)
             cmd_size += vn_sizeof_VkPhysicalDevice(&pPhysicalDevices[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -10765,8 +10765,8 @@ static inline void vn_encode_vkEnumeratePhysicalDevices(struct vn_cs_encoder *en
     if (vn_encode_simple_pointer(enc, pPhysicalDeviceCount))
         vn_encode_uint32_t(enc, pPhysicalDeviceCount);
     if (pPhysicalDevices) {
-        vn_encode_array_size(enc, *pPhysicalDeviceCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceCount; i++)
+        vn_encode_array_size(enc, (pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0); i++)
             vn_encode_VkPhysicalDevice(enc, &pPhysicalDevices[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -10785,8 +10785,8 @@ static inline size_t vn_sizeof_vkEnumeratePhysicalDevices_reply(VkInstance insta
     if (pPhysicalDeviceCount)
         cmd_size += vn_sizeof_uint32_t(pPhysicalDeviceCount);
     if (pPhysicalDevices) {
-        cmd_size += vn_sizeof_array_size(*pPhysicalDeviceCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceCount; i++)
+        cmd_size += vn_sizeof_array_size((pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0); i++)
             cmd_size += vn_sizeof_VkPhysicalDevice(&pPhysicalDevices[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -10810,8 +10810,8 @@ static inline VkResult vn_decode_vkEnumeratePhysicalDevices_reply(struct vn_cs_d
         pPhysicalDeviceCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pPhysicalDeviceCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceCount; i++)
+        vn_decode_array_size(dec, (pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceCount ? *pPhysicalDeviceCount : 0); i++)
             vn_decode_VkPhysicalDevice(dec, &pPhysicalDevices[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -10885,8 +10885,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceQueueFamilyProperties(VkPhysic
     if (pQueueFamilyPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pQueueFamilyPropertyCount);
     if (pQueueFamilyProperties) {
-        cmd_size += vn_sizeof_array_size(*pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkQueueFamilyProperties_partial(&pQueueFamilyProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -10906,8 +10906,8 @@ static inline void vn_encode_vkGetPhysicalDeviceQueueFamilyProperties(struct vn_
     if (vn_encode_simple_pointer(enc, pQueueFamilyPropertyCount))
         vn_encode_uint32_t(enc, pQueueFamilyPropertyCount);
     if (pQueueFamilyProperties) {
-        vn_encode_array_size(enc, *pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        vn_encode_array_size(enc, (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             vn_encode_VkQueueFamilyProperties_partial(enc, &pQueueFamilyProperties[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -10924,8 +10924,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceQueueFamilyProperties_reply(Vk
     if (pQueueFamilyPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pQueueFamilyPropertyCount);
     if (pQueueFamilyProperties) {
-        cmd_size += vn_sizeof_array_size(*pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkQueueFamilyProperties(&pQueueFamilyProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -10947,8 +10947,8 @@ static inline void vn_decode_vkGetPhysicalDeviceQueueFamilyProperties_reply(stru
         pQueueFamilyPropertyCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        vn_decode_array_size(dec, (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             vn_decode_VkQueueFamilyProperties(dec, &pQueueFamilyProperties[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -11329,8 +11329,8 @@ static inline size_t vn_sizeof_vkEnumerateDeviceLayerProperties(VkPhysicalDevice
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkLayerProperties_partial(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -11350,8 +11350,8 @@ static inline void vn_encode_vkEnumerateDeviceLayerProperties(struct vn_cs_encod
     if (vn_encode_simple_pointer(enc, pPropertyCount))
         vn_encode_uint32_t(enc, pPropertyCount);
     if (pProperties) {
-        vn_encode_array_size(enc, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_encode_array_size(enc, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_encode_VkLayerProperties_partial(enc, &pProperties[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -11370,8 +11370,8 @@ static inline size_t vn_sizeof_vkEnumerateDeviceLayerProperties_reply(VkPhysical
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkLayerProperties(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -11395,8 +11395,8 @@ static inline VkResult vn_decode_vkEnumerateDeviceLayerProperties_reply(struct v
         pPropertyCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_decode_array_size(dec, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_decode_VkLayerProperties(dec, &pProperties[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -11424,8 +11424,8 @@ static inline size_t vn_sizeof_vkEnumerateDeviceExtensionProperties(VkPhysicalDe
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkExtensionProperties_partial(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -11452,8 +11452,8 @@ static inline void vn_encode_vkEnumerateDeviceExtensionProperties(struct vn_cs_e
     if (vn_encode_simple_pointer(enc, pPropertyCount))
         vn_encode_uint32_t(enc, pPropertyCount);
     if (pProperties) {
-        vn_encode_array_size(enc, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_encode_array_size(enc, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_encode_VkExtensionProperties_partial(enc, &pProperties[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -11473,8 +11473,8 @@ static inline size_t vn_sizeof_vkEnumerateDeviceExtensionProperties_reply(VkPhys
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkExtensionProperties(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -11499,8 +11499,8 @@ static inline VkResult vn_decode_vkEnumerateDeviceExtensionProperties_reply(stru
         pPropertyCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_decode_array_size(dec, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_decode_VkExtensionProperties(dec, &pProperties[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -11633,8 +11633,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceSparseImageFormatProperties(Vk
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageFormatProperties_partial(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -11659,8 +11659,8 @@ static inline void vn_encode_vkGetPhysicalDeviceSparseImageFormatProperties(stru
     if (vn_encode_simple_pointer(enc, pPropertyCount))
         vn_encode_uint32_t(enc, pPropertyCount);
     if (pProperties) {
-        vn_encode_array_size(enc, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_encode_array_size(enc, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_encode_VkSparseImageFormatProperties_partial(enc, &pProperties[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -11682,8 +11682,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceSparseImageFormatProperties_re
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageFormatProperties(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -11710,8 +11710,8 @@ static inline void vn_decode_vkGetPhysicalDeviceSparseImageFormatProperties_repl
         pPropertyCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_decode_array_size(dec, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_decode_VkSparseImageFormatProperties(dec, &pProperties[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -11959,8 +11959,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceQueueFamilyProperties2(VkPhysi
     if (pQueueFamilyPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pQueueFamilyPropertyCount);
     if (pQueueFamilyProperties) {
-        cmd_size += vn_sizeof_array_size(*pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkQueueFamilyProperties2_partial(&pQueueFamilyProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -11980,8 +11980,8 @@ static inline void vn_encode_vkGetPhysicalDeviceQueueFamilyProperties2(struct vn
     if (vn_encode_simple_pointer(enc, pQueueFamilyPropertyCount))
         vn_encode_uint32_t(enc, pQueueFamilyPropertyCount);
     if (pQueueFamilyProperties) {
-        vn_encode_array_size(enc, *pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        vn_encode_array_size(enc, (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             vn_encode_VkQueueFamilyProperties2_partial(enc, &pQueueFamilyProperties[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -11998,8 +11998,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceQueueFamilyProperties2_reply(V
     if (pQueueFamilyPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pQueueFamilyPropertyCount);
     if (pQueueFamilyProperties) {
-        cmd_size += vn_sizeof_array_size(*pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkQueueFamilyProperties2(&pQueueFamilyProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -12021,8 +12021,8 @@ static inline void vn_decode_vkGetPhysicalDeviceQueueFamilyProperties2_reply(str
         pQueueFamilyPropertyCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pQueueFamilyPropertyCount);
-        for (uint32_t i = 0; i < *pQueueFamilyPropertyCount; i++)
+        vn_decode_array_size(dec, (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0));
+        for (uint32_t i = 0; i < (pQueueFamilyPropertyCount ? *pQueueFamilyPropertyCount : 0); i++)
             vn_decode_VkQueueFamilyProperties2(dec, &pQueueFamilyProperties[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -12097,8 +12097,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceSparseImageFormatProperties2(V
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageFormatProperties2_partial(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -12120,8 +12120,8 @@ static inline void vn_encode_vkGetPhysicalDeviceSparseImageFormatProperties2(str
     if (vn_encode_simple_pointer(enc, pPropertyCount))
         vn_encode_uint32_t(enc, pPropertyCount);
     if (pProperties) {
-        vn_encode_array_size(enc, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_encode_array_size(enc, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_encode_VkSparseImageFormatProperties2_partial(enc, &pProperties[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -12139,8 +12139,8 @@ static inline size_t vn_sizeof_vkGetPhysicalDeviceSparseImageFormatProperties2_r
     if (pPropertyCount)
         cmd_size += vn_sizeof_uint32_t(pPropertyCount);
     if (pProperties) {
-        cmd_size += vn_sizeof_array_size(*pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        cmd_size += vn_sizeof_array_size((pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageFormatProperties2(&pProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -12163,8 +12163,8 @@ static inline void vn_decode_vkGetPhysicalDeviceSparseImageFormatProperties2_rep
         pPropertyCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pPropertyCount);
-        for (uint32_t i = 0; i < *pPropertyCount; i++)
+        vn_decode_array_size(dec, (pPropertyCount ? *pPropertyCount : 0));
+        for (uint32_t i = 0; i < (pPropertyCount ? *pPropertyCount : 0); i++)
             vn_decode_VkSparseImageFormatProperties2(dec, &pProperties[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -12363,8 +12363,8 @@ static inline size_t vn_sizeof_vkEnumeratePhysicalDeviceGroups(VkInstance instan
     if (pPhysicalDeviceGroupCount)
         cmd_size += vn_sizeof_uint32_t(pPhysicalDeviceGroupCount);
     if (pPhysicalDeviceGroupProperties) {
-        cmd_size += vn_sizeof_array_size(*pPhysicalDeviceGroupCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceGroupCount; i++)
+        cmd_size += vn_sizeof_array_size((pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0); i++)
             cmd_size += vn_sizeof_VkPhysicalDeviceGroupProperties_partial(&pPhysicalDeviceGroupProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -12384,8 +12384,8 @@ static inline void vn_encode_vkEnumeratePhysicalDeviceGroups(struct vn_cs_encode
     if (vn_encode_simple_pointer(enc, pPhysicalDeviceGroupCount))
         vn_encode_uint32_t(enc, pPhysicalDeviceGroupCount);
     if (pPhysicalDeviceGroupProperties) {
-        vn_encode_array_size(enc, *pPhysicalDeviceGroupCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceGroupCount; i++)
+        vn_encode_array_size(enc, (pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0); i++)
             vn_encode_VkPhysicalDeviceGroupProperties_partial(enc, &pPhysicalDeviceGroupProperties[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -12404,8 +12404,8 @@ static inline size_t vn_sizeof_vkEnumeratePhysicalDeviceGroups_reply(VkInstance 
     if (pPhysicalDeviceGroupCount)
         cmd_size += vn_sizeof_uint32_t(pPhysicalDeviceGroupCount);
     if (pPhysicalDeviceGroupProperties) {
-        cmd_size += vn_sizeof_array_size(*pPhysicalDeviceGroupCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceGroupCount; i++)
+        cmd_size += vn_sizeof_array_size((pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0); i++)
             cmd_size += vn_sizeof_VkPhysicalDeviceGroupProperties(&pPhysicalDeviceGroupProperties[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -12429,8 +12429,8 @@ static inline VkResult vn_decode_vkEnumeratePhysicalDeviceGroups_reply(struct vn
         pPhysicalDeviceGroupCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pPhysicalDeviceGroupCount);
-        for (uint32_t i = 0; i < *pPhysicalDeviceGroupCount; i++)
+        vn_decode_array_size(dec, (pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0));
+        for (uint32_t i = 0; i < (pPhysicalDeviceGroupCount ? *pPhysicalDeviceGroupCount : 0); i++)
             vn_decode_VkPhysicalDeviceGroupProperties(dec, &pPhysicalDeviceGroupProperties[i]);
     } else {
         vn_decode_array_size(dec, 0);

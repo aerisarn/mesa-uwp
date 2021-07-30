@@ -125,6 +125,14 @@ vn_sizeof_VkExtensionProperties(const VkExtensionProperties *val)
 }
 
 static inline void
+vn_encode_VkExtensionProperties(struct vn_cs_encoder *enc, const VkExtensionProperties *val)
+{
+    vn_encode_array_size(enc, VK_MAX_EXTENSION_NAME_SIZE);
+    vn_encode_blob_array(enc, val->extensionName, VK_MAX_EXTENSION_NAME_SIZE);
+    vn_encode_uint32_t(enc, &val->specVersion);
+}
+
+static inline void
 vn_decode_VkExtensionProperties(struct vn_cs_decoder *dec, VkExtensionProperties *val)
 {
     {
@@ -591,6 +599,17 @@ vn_encode_VkViewport(struct vn_cs_encoder *enc, const VkViewport *val)
     vn_encode_float(enc, &val->height);
     vn_encode_float(enc, &val->minDepth);
     vn_encode_float(enc, &val->maxDepth);
+}
+
+static inline void
+vn_decode_VkViewport(struct vn_cs_decoder *dec, VkViewport *val)
+{
+    vn_decode_float(dec, &val->x);
+    vn_decode_float(dec, &val->y);
+    vn_decode_float(dec, &val->width);
+    vn_decode_float(dec, &val->height);
+    vn_decode_float(dec, &val->minDepth);
+    vn_decode_float(dec, &val->maxDepth);
 }
 
 /* struct VkOffset2D */

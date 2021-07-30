@@ -862,7 +862,7 @@ static inline void vn_encode_vkGetVenusExperimentalFeatureData100000MESA(struct 
 
     if (vn_encode_simple_pointer(enc, pDataSize))
         vn_encode_size_t(enc, pDataSize);
-    vn_encode_array_size(enc, pData ? *pDataSize : 0); /* out */
+    vn_encode_array_size(enc, pData ? (pDataSize ? *pDataSize : 0) : 0); /* out */
 }
 
 static inline size_t vn_sizeof_vkGetVenusExperimentalFeatureData100000MESA_reply(size_t* pDataSize, void* pData)
@@ -874,8 +874,8 @@ static inline size_t vn_sizeof_vkGetVenusExperimentalFeatureData100000MESA_reply
     if (pDataSize)
         cmd_size += vn_sizeof_size_t(pDataSize);
     if (pData) {
-        cmd_size += vn_sizeof_array_size(*pDataSize);
-        cmd_size += vn_sizeof_blob_array(pData, *pDataSize);
+        cmd_size += vn_sizeof_array_size((pDataSize ? *pDataSize : 0));
+        cmd_size += vn_sizeof_blob_array(pData, (pDataSize ? *pDataSize : 0));
     } else {
         cmd_size += vn_sizeof_array_size(0);
     }
@@ -895,7 +895,7 @@ static inline void vn_decode_vkGetVenusExperimentalFeatureData100000MESA_reply(s
         pDataSize = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        const size_t array_size = vn_decode_array_size(dec, *pDataSize);
+        const size_t array_size = vn_decode_array_size(dec, (pDataSize ? *pDataSize : 0));
         vn_decode_blob_array(dec, pData, array_size);
     } else {
         vn_decode_array_size(dec, 0);

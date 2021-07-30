@@ -1361,8 +1361,8 @@ static inline size_t vn_sizeof_vkGetImageSparseMemoryRequirements(VkDevice devic
     if (pSparseMemoryRequirementCount)
         cmd_size += vn_sizeof_uint32_t(pSparseMemoryRequirementCount);
     if (pSparseMemoryRequirements) {
-        cmd_size += vn_sizeof_array_size(*pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        cmd_size += vn_sizeof_array_size((pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageMemoryRequirements_partial(&pSparseMemoryRequirements[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -1383,8 +1383,8 @@ static inline void vn_encode_vkGetImageSparseMemoryRequirements(struct vn_cs_enc
     if (vn_encode_simple_pointer(enc, pSparseMemoryRequirementCount))
         vn_encode_uint32_t(enc, pSparseMemoryRequirementCount);
     if (pSparseMemoryRequirements) {
-        vn_encode_array_size(enc, *pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        vn_encode_array_size(enc, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             vn_encode_VkSparseImageMemoryRequirements_partial(enc, &pSparseMemoryRequirements[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -1402,8 +1402,8 @@ static inline size_t vn_sizeof_vkGetImageSparseMemoryRequirements_reply(VkDevice
     if (pSparseMemoryRequirementCount)
         cmd_size += vn_sizeof_uint32_t(pSparseMemoryRequirementCount);
     if (pSparseMemoryRequirements) {
-        cmd_size += vn_sizeof_array_size(*pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        cmd_size += vn_sizeof_array_size((pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageMemoryRequirements(&pSparseMemoryRequirements[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -1426,8 +1426,8 @@ static inline void vn_decode_vkGetImageSparseMemoryRequirements_reply(struct vn_
         pSparseMemoryRequirementCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        vn_decode_array_size(dec, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             vn_decode_VkSparseImageMemoryRequirements(dec, &pSparseMemoryRequirements[i]);
     } else {
         vn_decode_array_size(dec, 0);
@@ -1763,8 +1763,8 @@ static inline size_t vn_sizeof_vkGetImageSparseMemoryRequirements2(VkDevice devi
     if (pSparseMemoryRequirementCount)
         cmd_size += vn_sizeof_uint32_t(pSparseMemoryRequirementCount);
     if (pSparseMemoryRequirements) {
-        cmd_size += vn_sizeof_array_size(*pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        cmd_size += vn_sizeof_array_size((pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageMemoryRequirements2_partial(&pSparseMemoryRequirements[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -1786,8 +1786,8 @@ static inline void vn_encode_vkGetImageSparseMemoryRequirements2(struct vn_cs_en
     if (vn_encode_simple_pointer(enc, pSparseMemoryRequirementCount))
         vn_encode_uint32_t(enc, pSparseMemoryRequirementCount);
     if (pSparseMemoryRequirements) {
-        vn_encode_array_size(enc, *pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        vn_encode_array_size(enc, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             vn_encode_VkSparseImageMemoryRequirements2_partial(enc, &pSparseMemoryRequirements[i]);
     } else {
         vn_encode_array_size(enc, 0);
@@ -1805,8 +1805,8 @@ static inline size_t vn_sizeof_vkGetImageSparseMemoryRequirements2_reply(VkDevic
     if (pSparseMemoryRequirementCount)
         cmd_size += vn_sizeof_uint32_t(pSparseMemoryRequirementCount);
     if (pSparseMemoryRequirements) {
-        cmd_size += vn_sizeof_array_size(*pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        cmd_size += vn_sizeof_array_size((pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             cmd_size += vn_sizeof_VkSparseImageMemoryRequirements2(&pSparseMemoryRequirements[i]);
     } else {
         cmd_size += vn_sizeof_array_size(0);
@@ -1829,8 +1829,8 @@ static inline void vn_decode_vkGetImageSparseMemoryRequirements2_reply(struct vn
         pSparseMemoryRequirementCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, *pSparseMemoryRequirementCount);
-        for (uint32_t i = 0; i < *pSparseMemoryRequirementCount; i++)
+        vn_decode_array_size(dec, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
             vn_decode_VkSparseImageMemoryRequirements2(dec, &pSparseMemoryRequirements[i]);
     } else {
         vn_decode_array_size(dec, 0);
