@@ -2812,10 +2812,11 @@ anv_CreateImageView(VkDevice _device,
    /* Now go through the underlying image selected planes (computed in
     * expanded_aspects) and map them to planes in the image view.
     */
-   uint32_t vplane = 0;
    anv_foreach_image_aspect_bit(iaspect_bit, image, expanded_aspects) {
-      uint32_t iplane =
+      const uint32_t iplane =
          anv_image_aspect_to_plane(image->aspects, 1UL << iaspect_bit);
+      const uint32_t vplane =
+         anv_image_aspect_to_plane(expanded_aspects, 1UL << iaspect_bit);
       struct anv_format_plane format;
       if (image->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
                             VK_IMAGE_ASPECT_STENCIL_BIT)) {
@@ -2946,8 +2947,6 @@ anv_CreateImageView(VkDevice _device,
                                       &iview->planes[vplane].writeonly_storage_surface_state,
                                       NULL);
       }
-
-      vplane++;
    }
 
    *pView = anv_image_view_to_handle(iview);
