@@ -98,7 +98,7 @@ gather_push_constant_info(const nir_shader *nir, const nir_intrinsic_instr *inst
 {
    info->loads_push_constants = true;
 
-   if (nir_src_is_const(instr->src[0]) && instr->dest.ssa.bit_size == 32) {
+   if (nir_src_is_const(instr->src[0]) && instr->dest.ssa.bit_size >= 32) {
       uint32_t start = (nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[0])) / 4u;
       uint32_t size = instr->num_components * (instr->dest.ssa.bit_size / 32u);
 

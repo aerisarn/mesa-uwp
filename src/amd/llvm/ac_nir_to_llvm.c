@@ -1655,9 +1655,12 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
    /* Load constant values from user SGPRS when possible, otherwise
     * fallback to the default path that loads directly from memory.
     */
-   if (LLVMIsConstant(src0) && instr->dest.ssa.bit_size == 32) {
+   if (LLVMIsConstant(src0) && instr->dest.ssa.bit_size >= 32) {
       unsigned count = instr->dest.ssa.num_components;
       unsigned offset = index;
+
+      if (instr->dest.ssa.bit_size == 64)
+         count *= 2;
 
       offset += LLVMConstIntGetZExtValue(src0);
       offset /= 4;
@@ -1670,7 +1673,10 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
             util_bitcount64(ctx->args->inline_push_const_mask & BITFIELD64_MASK(offset));
          for (unsigned i = 0; i < count; i++)
             push_constants[i] = ac_get_arg(&ctx->ac, ctx->args->inline_push_consts[arg_index++]);
-         return ac_build_gather_values(&ctx->ac, push_constants, count);
+         LLVMValueRef res = ac_build_gather_values(&ctx->ac, push_constants, count);
+         return instr->dest.ssa.bit_size == 64
+                   ? LLVMBuildBitCast(ctx->ac.builder, res, get_def_type(ctx, &instr->dest.ssa), "")
+                   : res;
       }
    }
 

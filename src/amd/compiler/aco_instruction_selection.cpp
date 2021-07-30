@@ -5500,7 +5500,10 @@ visit_load_push_constant(isel_context* ctx, nir_intrinsic_instr* instr)
    unsigned count = instr->dest.ssa.num_components;
    nir_const_value* index_cv = nir_src_as_const_value(instr->src[0]);
 
-   if (index_cv && instr->dest.ssa.bit_size == 32) {
+   if (instr->dest.ssa.bit_size == 64)
+      count *= 2;
+
+   if (index_cv && instr->dest.ssa.bit_size >= 32) {
       unsigned start = (offset + index_cv->u32) / 4u;
       uint64_t mask = BITFIELD64_MASK(count) << start;
       if ((ctx->args->ac.inline_push_const_mask | mask) == ctx->args->ac.inline_push_const_mask &&
