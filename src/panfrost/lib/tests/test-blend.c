@@ -182,7 +182,85 @@ static const struct test blend_tests[] = {
       .fixed_function = true,
       .hardware = 0xA0231231 /* equivalently 0xA0321321 */
    },
+   {
+      "src*dst + dst*src",
+      {
+         .blend_enable = true,
+         .color_mask = 0xF,
 
+         RGBA(func, BLEND_FUNC_ADD),
+         RGBA(src_factor, BLEND_FACTOR_DST_COLOR),
+         RGBA(dst_factor, BLEND_FACTOR_SRC_COLOR),
+      },
+      .constant_mask = 0x0,
+      .reads_dest = true,
+      .opaque = false,
+      .fixed_function = true,
+      .hardware = 0xF0431431 /* 0 + dest * (2*src) */
+   },
+   {
+      "Mixed src*dst + dst*src masked I",
+      {
+         .blend_enable = true,
+         .color_mask = 0xC,
+
+         .rgb_func = BLEND_FUNC_ADD,
+         .rgb_src_factor = BLEND_FACTOR_ZERO,
+         .rgb_invert_src_factor = true,
+         .rgb_dst_factor= BLEND_FACTOR_ZERO,
+
+         .alpha_func = BLEND_FUNC_ADD,
+         .alpha_src_factor = BLEND_FACTOR_DST_COLOR,
+         .alpha_dst_factor= BLEND_FACTOR_SRC_COLOR,
+      },
+      .constant_mask = 0x0,
+      .reads_dest = true,
+      .opaque = false,
+      .fixed_function = true,
+      .hardware = 0xC0431132 /* 0 + dest * (2*src); equivalent 0xC0431122 */
+   },
+   {
+      "Mixed src*dst + dst*src masked II",
+      {
+         .blend_enable = true,
+         .color_mask = 0xC,
+
+         .rgb_func = BLEND_FUNC_ADD,
+         .rgb_src_factor = BLEND_FACTOR_ZERO,
+         .rgb_invert_src_factor = true,
+         .rgb_dst_factor= BLEND_FACTOR_ZERO,
+
+         .alpha_func = BLEND_FUNC_ADD,
+         .alpha_src_factor = BLEND_FACTOR_DST_ALPHA,
+         .alpha_dst_factor= BLEND_FACTOR_SRC_COLOR,
+      },
+      .constant_mask = 0x0,
+      .reads_dest = true,
+      .opaque = false,
+      .fixed_function = true,
+      .hardware = 0xC0431132 /* 0 + dest * (2*src); equivalent 0xC0431122 */
+   },
+   {
+      "Mixed src*dst + dst*src masked III",
+      {
+         .blend_enable = true,
+         .color_mask = 0xC,
+
+         .rgb_func = BLEND_FUNC_ADD,
+         .rgb_src_factor = BLEND_FACTOR_ZERO,
+         .rgb_invert_src_factor = true,
+         .rgb_dst_factor= BLEND_FACTOR_ZERO,
+
+         .alpha_func = BLEND_FUNC_ADD,
+         .alpha_src_factor = BLEND_FACTOR_DST_ALPHA,
+         .alpha_dst_factor= BLEND_FACTOR_SRC_ALPHA,
+      },
+      .constant_mask = 0x0,
+      .reads_dest = true,
+      .opaque = false,
+      .fixed_function = true,
+      .hardware = 0xC0431132 /* 0 + dest * (2*src); equivalent 0xC0431122 */
+   }
 };
 
 #define ASSERT_EQ(x, y) do { \
