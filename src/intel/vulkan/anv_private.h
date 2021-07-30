@@ -3808,15 +3808,10 @@ anv_assert_valid_aspect_set(VkImageAspectFlags aspects)
  * instance, all_aspects would be the set of aspects in the image.  For
  * an image view, all_aspects would be the subset of aspects represented
  * by that particular view.
- *
- * Return the aspect's _format_ plane, not its _memory_ plane (using the
- * vocabulary of VK_EXT_image_drm_format_modifier). As a consequence, \a
- * aspect_mask may contain VK_IMAGE_ASPECT_PLANE_*, but must not contain
- * VK_IMAGE_ASPECT_MEMORY_PLANE_* .
  */
 static inline uint32_t
-anv_image_aspect_to_plane(VkImageAspectFlags all_aspects,
-                          VkImageAspectFlagBits aspect)
+anv_aspect_to_plane(VkImageAspectFlags all_aspects,
+                    VkImageAspectFlagBits aspect)
 {
    anv_assert_valid_aspect_set(all_aspects);
    assert(util_bitcount(aspect) == 1);
@@ -4075,12 +4070,25 @@ enum anv_fast_clear_type {
    ANV_FAST_CLEAR_ANY = 2,
 };
 
+/**
+ * Return the aspect's _format_ plane, not its _memory_ plane (using the
+ * vocabulary of VK_EXT_image_drm_format_modifier). As a consequence, \a
+ * aspect_mask may contain VK_IMAGE_ASPECT_PLANE_*, but must not contain
+ * VK_IMAGE_ASPECT_MEMORY_PLANE_* .
+ */
+static inline uint32_t
+anv_image_aspect_to_plane(const struct anv_image *image,
+                          VkImageAspectFlagBits aspect)
+{
+   return anv_aspect_to_plane(image->aspects, aspect);
+}
+
 /* Returns the number of auxiliary buffer levels attached to an image. */
 static inline uint8_t
 anv_image_aux_levels(const struct anv_image * const image,
                      VkImageAspectFlagBits aspect)
 {
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   uint32_t plane = anv_image_aspect_to_plane(image, aspect);
    if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
       return 0;
 
@@ -4129,7 +4137,7 @@ anv_image_get_clear_color_addr(UNUSED const struct anv_device *device,
    assert(image->aspects & (VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV |
                             VK_IMAGE_ASPECT_DEPTH_BIT));
 
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   uint32_t plane = anv_image_aspect_to_plane(image, aspect);
    const struct anv_image_memory_range *mem_range =
       &image->planes[plane].fast_clear_memory_range;
 
@@ -4158,7 +4166,7 @@ anv_image_get_compression_state_addr(const struct anv_device *device,
 {
    assert(level < anv_image_aux_levels(image, aspect));
    assert(array_layer < anv_image_aux_layers(image, aspect, level));
-   UNUSED uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   UNUSED uint32_t plane = anv_image_aspect_to_plane(image, aspect);
    assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E);
 
    /* Relative to start of the plane's fast clear memory range */
@@ -4219,7 +4227,7 @@ anv_can_sample_mcs_with_clear(const struct intel_device_info * const devinfo,
 {
    assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
    const uint32_t plane =
-      anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_COLOR_BIT);
+      anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_COLOR_BIT);
 
    assert(isl_aux_usage_has_mcs(image->planes[plane].aux_usage));
 

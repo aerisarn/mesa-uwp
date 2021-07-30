@@ -494,7 +494,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
                       uint32_t base_level, uint32_t level_count,
                       uint32_t base_layer, uint32_t layer_count)
 {
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
    const struct anv_surface *surface = &image->planes[plane].primary_surface;
    uint64_t base_address =
@@ -599,8 +599,8 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
                         VkImageLayout final_layout,
                         bool will_full_fast_clear)
 {
-   uint32_t depth_plane =
-      anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_DEPTH_BIT);
+   const uint32_t depth_plane =
+      anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_DEPTH_BIT);
    if (image->planes[depth_plane].aux_usage == ISL_AUX_USAGE_NONE)
       return;
 
@@ -686,8 +686,8 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
                           bool will_full_fast_clear)
 {
 #if GFX_VER == 7
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects,
-                                              VK_IMAGE_ASPECT_STENCIL_BIT);
+   const uint32_t plane =
+      anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_STENCIL_BIT);
 
    /* On gfx7, we have to store a texturable version of the stencil buffer in
     * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
@@ -714,8 +714,8 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
                                base_layer, layer_count);
    }
 #elif GFX_VER == 12
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects,
-                                              VK_IMAGE_ASPECT_STENCIL_BIT);
+   const uint32_t plane =
+      anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_STENCIL_BIT);
    if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
       return;
 
@@ -772,7 +772,7 @@ set_image_compressed_bit(struct anv_cmd_buffer *cmd_buffer,
                          uint32_t base_layer, uint32_t layer_count,
                          bool compressed)
 {
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
    /* We only have compression tracking for CCS_E */
    if (image->planes[plane].aux_usage != ISL_AUX_USAGE_CCS_E)
@@ -947,7 +947,7 @@ anv_cmd_predicated_ccs_resolve(struct anv_cmd_buffer *cmd_buffer,
                                enum isl_aux_op resolve_op,
                                enum anv_fast_clear_type fast_clear_supported)
 {
-   const uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
 #if GFX_VER >= 9
    anv_cmd_compute_resolve_predicate(cmd_buffer, image,
@@ -1216,7 +1216,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
        return;
    }
 
-   uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
    if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
        final_layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
@@ -5757,8 +5757,8 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       info.view = &iview->planes[0].isl;
 
    if (image && (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
-      uint32_t depth_plane =
-         anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_DEPTH_BIT);
+      const uint32_t depth_plane =
+         anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_DEPTH_BIT);
       const struct anv_surface *depth_surface =
          &image->planes[depth_plane].primary_surface;
       const struct anv_address depth_address =
@@ -5796,8 +5796,8 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    }
 
    if (image && (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      uint32_t stencil_plane =
-         anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_STENCIL_BIT);
+      const uint32_t stencil_plane =
+         anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_STENCIL_BIT);
       const struct anv_surface *stencil_surface =
          &image->planes[stencil_plane].primary_surface;
       const struct anv_address stencil_address =
@@ -6534,8 +6534,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          dst_state->current_stencil_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
          enum isl_aux_usage src_aux_usage = ISL_AUX_USAGE_NONE;
-         uint32_t plane = anv_image_aspect_to_plane(dst_iview->image->aspects,
-                                                    VK_IMAGE_ASPECT_STENCIL_BIT);
+         const uint32_t plane =
+            anv_image_aspect_to_plane(dst_iview->image, VK_IMAGE_ASPECT_STENCIL_BIT);
          enum isl_aux_usage dst_aux_usage =
             dst_iview->image->planes[plane].aux_usage;
 
@@ -6584,8 +6584,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       const struct anv_image *image = iview->image;
 
       if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-         uint32_t plane = anv_image_aspect_to_plane(image->aspects,
-                                                    VK_IMAGE_ASPECT_STENCIL_BIT);
+         const uint32_t plane =
+            anv_image_aspect_to_plane(image, VK_IMAGE_ASPECT_STENCIL_BIT);
 
          if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
              att_state->current_stencil_layout == VK_IMAGE_LAYOUT_GENERAL) {

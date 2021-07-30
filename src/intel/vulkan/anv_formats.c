@@ -537,7 +537,7 @@ anv_get_format_aspect(const struct intel_device_info *devinfo,
                       VkImageAspectFlagBits aspect, VkImageTiling tiling)
 {
    const uint32_t plane =
-      anv_image_aspect_to_plane(vk_format_aspects(vk_format), aspect);
+      anv_aspect_to_plane(vk_format_aspects(vk_format), aspect);
    return anv_get_format_plane(devinfo, vk_format, plane, tiling);
 }
 
