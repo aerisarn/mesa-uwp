@@ -2112,7 +2112,9 @@ pkg = import('pkgconfig')
 if host_machine.system() == 'windows'
   prog_dumpbin = find_program('dumpbin', required : false)
   with_symbols_check = prog_dumpbin.found() and with_tests
-  symbols_check_args = ['--dumpbin', prog_dumpbin.path()]
+  if with_symbols_check
+    symbols_check_args = ['--dumpbin', prog_dumpbin.path()]
+  endif
 else
   prog_nm = find_program('nm')
   with_symbols_check = with_tests
