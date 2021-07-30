@@ -109,6 +109,7 @@ struct zink_screen {
       uint32_t next_bo_unique_id;
    } pb;
    uint8_t heap_map[VK_MAX_MEMORY_TYPES];
+   bool resizable_bar;
 
    uint64_t total_video_mem;
    uint64_t clamp_video_mem;

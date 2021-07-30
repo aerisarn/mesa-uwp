@@ -1907,6 +1907,14 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
          screen->heap_map[i] = screen->heap_map[ZINK_HEAP_HOST_VISIBLE_ANY];
       }
    }
+   {
+      unsigned vis_vram = screen->heap_map[ZINK_HEAP_DEVICE_LOCAL_VISIBLE];
+      unsigned vram = screen->heap_map[ZINK_HEAP_DEVICE_LOCAL];
+      /* determine if vis vram is roughly equal to total vram */
+      if (screen->info.mem_props.memoryHeaps[screen->info.mem_props.memoryTypes[vis_vram].heapIndex].size >
+          screen->info.mem_props.memoryHeaps[screen->info.mem_props.memoryTypes[vram].heapIndex].size * 0.9)
+         screen->resizable_bar = true;
+   }
 
    simple_mtx_init(&screen->surface_mtx, mtx_plain);
    simple_mtx_init(&screen->bufferview_mtx, mtx_plain);
