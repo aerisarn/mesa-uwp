@@ -3435,6 +3435,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
                 /* Determine some common properties */
                 unsigned constant_mask = pan_blend_constant_mask(equation);
+                const bool supports_2src = pan_blend_supports_2src(PAN_ARCH);
                 so->info[c] = (struct pan_blend_info) {
                         .no_colour = (equation.color_mask == 0),
                         .opaque = pan_blend_is_opaque(equation),
@@ -3446,7 +3447,8 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
                         /* Could this possibly be fixed-function? */
                         .fixed_function = !blend->logicop_enable &&
-                                pan_blend_can_fixed_function(equation) &&
+                                pan_blend_can_fixed_function(equation,
+                                                             supports_2src) &&
                                 (!constant_mask ||
                                  pan_blend_supports_constant(PAN_ARCH, c))
                 };

@@ -47,11 +47,42 @@ factor_is_supported(enum blend_factor factor)
                factor != BLEND_FACTOR_SRC1_ALPHA;
 }
 
+/* OpenGL allows encoding (src*dest + dest*src) which is incompatiblle with
+ * Midgard style blending since there are two multiplies. However, it may be
+ * factored as 2*src*dest = dest*(2*src), which can be encoded on Bifrost as 0
+ * + dest * (2*src) wih the new source_2 value of C. Detect this case. */
+
+static bool
+is_2srcdest(enum blend_func blend_func,
+            enum blend_factor src_factor,
+            bool invert_src,
+            enum blend_factor dest_factor,
+            bool invert_dest,
+            bool is_alpha)
+{
+        return (blend_func == BLEND_FUNC_ADD) &&
+               ((src_factor == BLEND_FACTOR_DST_COLOR) ||
+                ((src_factor == BLEND_FACTOR_DST_ALPHA) && is_alpha)) &&
+               ((dest_factor == BLEND_FACTOR_SRC_COLOR) ||
+                ((dest_factor == BLEND_FACTOR_SRC_ALPHA) && is_alpha)) &&
+               !invert_src && !invert_dest;
+}
+
 static bool
 can_fixed_function_equation(enum blend_func blend_func,
                             enum blend_factor src_factor,
-                            enum blend_factor dest_factor)
+                            bool invert_src,
+                            enum blend_factor dest_factor,
+                            bool invert_dest,
+                            bool is_alpha,
+                            bool supports_2src)
 {
+        if (is_2srcdest(blend_func, src_factor, invert_src,
+                       dest_factor, invert_dest, is_alpha)) {
+
+                return supports_2src;
+        }
+
         if (blend_func != BLEND_FUNC_ADD &&
             blend_func != BLEND_FUNC_SUBTRACT &&
             blend_func != BLEND_FUNC_REVERSE_SUBTRACT)
@@ -108,15 +139,22 @@ pan_blend_is_homogenous_constant(unsigned mask, const float *constants)
 /* Determines if an equation can run in fixed function */
 
 bool
-pan_blend_can_fixed_function(const struct pan_blend_equation equation)
+pan_blend_can_fixed_function(const struct pan_blend_equation equation,
+                             bool supports_2src)
 {
         return !equation.blend_enable ||
                (can_fixed_function_equation(equation.rgb_func,
                                             equation.rgb_src_factor,
-                                            equation.rgb_dst_factor) &&
+                                            equation.rgb_invert_src_factor,
+                                            equation.rgb_dst_factor,
+                                            equation.rgb_invert_dst_factor,
+                                            false, supports_2src) &&
                 can_fixed_function_equation(equation.alpha_func,
                                             equation.alpha_src_factor,
-                                            equation.alpha_dst_factor));
+                                            equation.alpha_invert_src_factor,
+                                            equation.alpha_dst_factor,
+                                            equation.alpha_invert_dst_factor,
+                                            true, supports_2src));
 }
 
 static enum mali_blend_operand_c
@@ -153,9 +191,11 @@ to_panfrost_function(enum blend_func blend_func,
                      bool invert_src,
                      enum blend_factor dest_factor,
                      bool invert_dest,
+                     bool is_alpha,
                      struct MALI_BLEND_FUNCTION *function)
 {
-        assert(can_fixed_function_equation(blend_func, src_factor, dest_factor));
+        assert(can_fixed_function_equation(blend_func, src_factor, invert_src,
+                                           dest_factor, invert_dest, is_alpha, true));
 
         if (src_factor == BLEND_FACTOR_ZERO && !invert_src) {
                 function->a = MALI_BLEND_OPERAND_A_ZERO;
@@ -207,6 +247,12 @@ to_panfrost_function(enum blend_func blend_func,
                 default:
                         unreachable("Invalid blend function");
                 }
+        } else if (is_2srcdest(blend_func, src_factor, invert_src, dest_factor,
+                                invert_dest, is_alpha)) {
+                /* src*dest + dest*src = 2*src*dest = 0 + dest*(2*src) */
+                function->a = MALI_BLEND_OPERAND_A_ZERO;
+                function->b = MALI_BLEND_OPERAND_B_DEST;
+                function->c = MALI_BLEND_OPERAND_C_SRC_X_2;
         } else {
                 assert(src_factor == dest_factor && invert_src != invert_dest);
 
@@ -308,14 +354,14 @@ pan_blend_to_fixed_function_equation(const struct pan_blend_equation equation,
                              equation.rgb_invert_src_factor,
                              equation.rgb_dst_factor,
                              equation.rgb_invert_dst_factor,
-                             &out->rgb);
+                             false, &out->rgb);
 
         to_panfrost_function(equation.alpha_func,
                              equation.alpha_src_factor,
                              equation.alpha_invert_src_factor,
                              equation.alpha_dst_factor,
                              equation.alpha_invert_dst_factor,
-                             &out->alpha);
+                             true, &out->alpha);
         out->color_mask = equation.color_mask;
 }
 

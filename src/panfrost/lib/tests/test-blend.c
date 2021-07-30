@@ -204,9 +204,9 @@ int main(int argc, const char **argv)
       ASSERT_EQ(T.constant_mask, pan_blend_constant_mask(T.eq));
       ASSERT_EQ(T.reads_dest, pan_blend_reads_dest(T.eq));
       ASSERT_EQ(T.opaque, pan_blend_is_opaque(T.eq));
-      ASSERT_EQ(T.fixed_function, pan_blend_can_fixed_function(T.eq));
+      ASSERT_EQ(T.fixed_function, pan_blend_can_fixed_function(T.eq, true));
 
-      if (pan_blend_can_fixed_function(T.eq)) {
+      if (pan_blend_can_fixed_function(T.eq, true)) {
          ASSERT_EQ(T.hardware, pan_pack_blend(T.eq));
       }
    }

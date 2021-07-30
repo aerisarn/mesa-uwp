@@ -99,7 +99,8 @@ bool
 pan_blend_reads_dest(const struct pan_blend_equation eq);
 
 bool
-pan_blend_can_fixed_function(const struct pan_blend_equation equation);
+pan_blend_can_fixed_function(const struct pan_blend_equation equation,
+                             bool supports_2src);
 
 bool
 pan_blend_is_opaque(const struct pan_blend_equation eq);
@@ -125,6 +126,14 @@ static inline bool
 pan_blend_supports_constant(unsigned arch, unsigned rt)
 {
         return !((arch == 6) || (arch == 7 && rt > 0));
+}
+
+/* The SOURCE_2 value is new in Bifrost */
+
+static inline bool
+pan_blend_supports_2src(unsigned arch)
+{
+        return (arch >= 6);
 }
 
 bool

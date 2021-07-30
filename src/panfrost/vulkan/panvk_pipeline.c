@@ -565,7 +565,8 @@ panvk_blend_needs_lowering(const struct panfrost_device *dev,
    if (!pan_blend_is_homogenous_constant(constant_mask, state->constants))
       return true;
 
-   return !pan_blend_can_fixed_function(state->rts[rt].equation);
+   bool supports_2src = pan_blend_supports_2src(dev->arch);
+   return !pan_blend_can_fixed_function(state->rts[rt].equation, supports_2src);
 }
 
 static void
