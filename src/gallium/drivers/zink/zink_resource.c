@@ -88,10 +88,7 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
 
    util_dynarray_fini(&obj->tmp);
    zink_descriptor_set_refs_clear(&obj->desc_set_refs, obj);
-   if (obj->dedicated)
-      vkFreeMemory(screen->dev, obj->mem, NULL);
-   else
-      zink_bo_unref(screen, obj->bo);
+   zink_bo_unref(screen, obj->bo);
    FREE(obj);
 }
 
@@ -645,31 +642,19 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       mai.pNext = &memory_wsi_info;
    }
 
-   if (!mai.pNext) {
-      unsigned alignment = MAX2(reqs.alignment, 256);
-      if (templ->usage == PIPE_USAGE_STAGING && obj->is_buffer)
-         alignment = MAX2(alignment, screen->info.props.limits.minMemoryMapAlignment);
-      obj->alignment = alignment;
-      obj->bo = zink_bo(zink_bo_create(screen, reqs.size, alignment, heap, 0));
-      if (!obj->bo)
-         goto fail2;
-      if (aflags == ZINK_ALLOC_SPARSE) {
-         obj->size = templ->width0;
-      } else {
-         obj->offset = zink_bo_get_offset(obj->bo);
-         obj->mem = zink_bo_get_mem(obj->bo);
-         obj->size = zink_bo_get_size(obj->bo);
-      }
+   unsigned alignment = MAX2(reqs.alignment, 256);
+   if (templ->usage == PIPE_USAGE_STAGING && obj->is_buffer)
+      alignment = MAX2(alignment, screen->info.props.limits.minMemoryMapAlignment);
+   obj->alignment = alignment;
+   obj->bo = zink_bo(zink_bo_create(screen, reqs.size, alignment, heap, mai.pNext ? ZINK_ALLOC_NO_SUBALLOC : 0, mai.pNext));
+   if (!obj->bo)
+     goto fail2;
+   if (aflags == ZINK_ALLOC_SPARSE) {
+      obj->size = templ->width0;
    } else {
-      obj->dedicated = true;
-      obj->offset = 0;
-      obj->size = reqs.size;
-   }
-
-   /* TODO: sparse buffers should probably allocate multiple regions of memory instead of giant blobs? */
-   if (obj->dedicated && vkAllocateMemory(screen->dev, &mai, NULL, &obj->mem) != VK_SUCCESS) {
-      debug_printf("vkAllocateMemory failed\n");
-      goto fail2;
+      obj->offset = zink_bo_get_offset(obj->bo);
+      obj->mem = zink_bo_get_mem(obj->bo);
+      obj->size = zink_bo_get_size(obj->bo);
    }
 
    if (templ->target == PIPE_BUFFER) {
@@ -683,7 +668,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    return obj;
 
 fail3:
-   vkFreeMemory(screen->dev, obj->mem, NULL);
+   zink_bo_unref(screen, obj->bo);
 
 fail2:
    if (templ->target == PIPE_BUFFER)
@@ -1042,30 +1027,14 @@ zink_resource_init_mem_range(struct zink_screen *screen, struct zink_resource_ob
 static void *
 map_resource(struct zink_screen *screen, struct zink_resource *res)
 {
-   VkResult result = VK_SUCCESS;
-   if (res->obj->map)
-      return res->obj->map;
    assert(res->obj->host_visible);
-   if (!res->obj->dedicated)
-      return zink_bo_map(screen, res->obj->bo);
-   result = vkMapMemory(screen->dev, res->obj->mem, res->obj->offset,
-                        res->obj->size, 0, &res->obj->map);
-   if (zink_screen_handle_vkresult(screen, result))
-      return res->obj->map;
-   return NULL;
+   return zink_bo_map(screen, res->obj->bo);
 }
 
 static void
 unmap_resource(struct zink_screen *screen, struct zink_resource *res)
 {
-   if (!res->obj->dedicated)
-      zink_bo_unmap(screen, res->obj->bo);
-   else {
-      if (!p_atomic_dec_zero(&res->obj->map_count))
-         return;
-      vkUnmapMemory(screen->dev, res->obj->mem);
-   }
-   res->obj->map = NULL;
+   zink_bo_unmap(screen, res->obj->bo);
 }
 
 static void *
@@ -1196,7 +1165,7 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
       VkDeviceSize offset = res->obj->offset + trans->offset;
       VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, offset, size);
       if (vkInvalidateMappedMemoryRanges(screen->dev, 1, &range) != VK_SUCCESS) {
-         vkUnmapMemory(screen->dev, res->obj->mem);
+         zink_bo_unmap(screen, res->obj->bo);
          return NULL;
       }
    }
@@ -1326,8 +1295,6 @@ zink_transfer_map(struct pipe_context *pctx,
       }
       if (sizeof(void*) == 4)
          trans->base.b.usage |= ZINK_MAP_TEMPORARY;
-      if (res->obj->dedicated)
-         p_atomic_inc(&res->obj->map_count);
    }
    if ((usage & PIPE_MAP_PERSISTENT) && !(usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps++;

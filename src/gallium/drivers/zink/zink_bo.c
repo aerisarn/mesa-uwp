@@ -231,7 +231,8 @@ bo_create_internal(struct zink_screen *screen,
                    uint64_t size,
                    unsigned alignment,
                    enum zink_heap heap,
-                   unsigned flags)
+                   unsigned flags,
+                   const void *pNext)
 {
    struct zink_bo *bo;
    bool init_pb_cache;
@@ -255,8 +256,9 @@ bo_create_internal(struct zink_screen *screen,
       pb_cache_init_entry(&screen->pb.bo_cache, bo->cache_entry, &bo->base, heap);
    }
 
-   VkMemoryAllocateInfo mai = {0};
+   VkMemoryAllocateInfo mai;
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+   mai.pNext = pNext;
    mai.allocationSize = size;
    mai.memoryTypeIndex = screen->heap_map[heap];
    if (screen->info.mem_props.memoryTypes[mai.memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
@@ -339,7 +341,7 @@ sparse_backing_alloc(struct zink_screen *screen, struct zink_bo *bo,
       size = MAX2(size, ZINK_SPARSE_BUFFER_PAGE_SIZE);
 
       buf = zink_bo_create(screen, size, ZINK_SPARSE_BUFFER_PAGE_SIZE,
-                           bo->base.placement, ZINK_ALLOC_NO_SUBALLOC);
+                           bo->base.placement, ZINK_ALLOC_NO_SUBALLOC, NULL);
       if (!buf) {
          FREE(best_backing->chunks);
          FREE(best_backing);
@@ -517,7 +519,7 @@ error_alloc_commitments:
 }
 
 struct pb_buffer *
-zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, enum zink_heap heap, enum zink_alloc_flag flags)
+zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, enum zink_heap heap, enum zink_alloc_flag flags, const void *pNext)
 {
    struct zink_bo *bo;
    /* pull in sparse flag */
@@ -606,12 +608,12 @@ no_slab:
    }
 
    /* Create a new one. */
-   bo = bo_create_internal(screen, size, alignment, heap, flags);
+   bo = bo_create_internal(screen, size, alignment, heap, flags, pNext);
    if (!bo) {
       /* Clean up buffer managers and try again. */
       clean_up_buffer_managers(screen);
 
-      bo = bo_create_internal(screen, size, alignment, heap, flags);
+      bo = bo_create_internal(screen, size, alignment, heap, flags, pNext);
       if (!bo)
          return NULL;
    }
@@ -896,7 +898,7 @@ bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_ind
    }
    assert(slab_size != 0);
 
-   slab->buffer = zink_bo(zink_bo_create(screen, slab_size, slab_size, heap, 0));
+   slab->buffer = zink_bo(zink_bo_create(screen, slab_size, slab_size, heap, 0, NULL));
    if (!slab->buffer)
       goto fail;
 
