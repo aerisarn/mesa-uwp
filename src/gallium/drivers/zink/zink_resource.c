@@ -1136,6 +1136,13 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          /* At this point, the buffer is always idle (we checked it above). */
          usage |= PIPE_MAP_UNSYNCHRONIZED;
       }
+   } else if (usage & PIPE_MAP_DONTBLOCK) {
+      /* sparse/device-local will always need to wait since it has to copy */
+      if (!res->obj->host_visible)
+         return NULL;
+      if (!zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_WRITE))
+         return NULL;
+      usage |= PIPE_MAP_UNSYNCHRONIZED;
    } else if (!(usage & PIPE_MAP_UNSYNCHRONIZED) &&
               (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) && res->base.b.usage != PIPE_USAGE_STAGING) || !res->obj->host_visible)) {
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
@@ -1151,13 +1158,6 @@ buffer_transfer_map(struct zink_context *ctx, struct zink_resource *res, unsigne
          ptr = map_resource(screen, res);
          ptr = ((uint8_t *)ptr) + trans->offset;
       }
-   } else if (usage & PIPE_MAP_DONTBLOCK) {
-      /* sparse/device-local will always need to wait since it has to copy */
-      if (!res->obj->host_visible)
-         return NULL;
-      if (!zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_WRITE))
-         return NULL;
-      usage |= PIPE_MAP_UNSYNCHRONIZED;
    }
 
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
