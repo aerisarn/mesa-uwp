@@ -2499,7 +2499,7 @@ LLVMValueRef ac_build_fsat(struct ac_llvm_context *ctx, LLVMValueRef src,
    LLVMValueRef one = LLVMConstReal(type, 1.0);
    LLVMValueRef result;
 
-   if (bitsize == 64 || (bitsize == 16 && ctx->chip_class <= GFX8)) {
+   if (bitsize == 64 || (bitsize == 16 && ctx->chip_class <= GFX8) || type == ctx->v2f16) {
       /* Use fmin/fmax for 64-bit fsat or 16-bit on GFX6-GFX8 because LLVM
        * doesn't expose an intrinsic.
        */
