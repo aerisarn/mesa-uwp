@@ -2330,9 +2330,8 @@ dri2_init_screen(__DRIscreen * sPriv)
    sPriv->driverPrivate = (void *)screen;
 
    if (pipe_loader_drm_probe_fd(&screen->dev, screen->fd)) {
-      dri_init_options(screen);
-
       pscreen = pipe_loader_create_screen(screen->dev);
+      dri_init_options(screen);
    }
 
    if (!pscreen)
@@ -2387,8 +2386,8 @@ dri_kms_init_screen(__DRIscreen * sPriv)
    sPriv->driverPrivate = (void *)screen;
 
    if (pipe_loader_sw_probe_kms(&screen->dev, screen->fd)) {
-      dri_init_options(screen);
       pscreen = pipe_loader_create_screen(screen->dev);
+      dri_init_options(screen);
    }
 
    if (!pscreen)

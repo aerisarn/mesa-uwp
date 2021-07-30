@@ -56,8 +56,8 @@ const __DRIconfigOptionsExtension gallium_config_options = {
 
 #define false 0
 
-static void
-dri_fill_st_options(struct dri_screen *screen)
+void
+dri_init_options(struct dri_screen *screen)
 {
    struct st_config_options *options = &screen->options;
    const struct driOptionCache *optionCache = &screen->dev->option_cache;
@@ -581,14 +581,6 @@ dri_set_background_context(struct st_context_iface *st,
 
    if (ctx->hud)
       hud_add_queue_for_monitoring(ctx->hud, queue_info);
-}
-
-void
-dri_init_options(struct dri_screen *screen)
-{
-   pipe_loader_load_options(screen->dev);
-
-   dri_fill_st_options(screen);
 }
 
 const __DRIconfig **

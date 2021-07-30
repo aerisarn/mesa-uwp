@@ -105,7 +105,14 @@ merge_driconf(const driOptionDescription *driver_driconf, unsigned driver_count,
    return merged;
 }
 
-void
+/**
+ * Ensure that dev->option_cache is initialized appropriately for the driver.
+ *
+ * This function can be called multiple times.
+ *
+ * \param dev Device for which options should be loaded.
+ */
+static void
 pipe_loader_load_options(struct pipe_loader_device *dev)
 {
    if (dev->option_info.info)
