@@ -581,18 +581,17 @@ anv_get_image_format_features(const struct intel_device_info *devinfo,
       return flags;
    }
 
+   assert(aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
    const struct anv_format_plane plane_format =
-      anv_get_format_aspect(devinfo, vk_format, VK_IMAGE_ASPECT_COLOR_BIT,
-                            vk_tiling);
+      anv_get_format_plane(devinfo, vk_format, 0, vk_tiling);
 
    if (plane_format.isl_format == ISL_FORMAT_UNSUPPORTED)
       return 0;
 
    struct anv_format_plane base_plane_format = plane_format;
    if (vk_tiling != VK_IMAGE_TILING_LINEAR) {
-      base_plane_format = anv_get_format_aspect(devinfo, vk_format,
-                                                VK_IMAGE_ASPECT_COLOR_BIT,
-                                                VK_IMAGE_TILING_LINEAR);
+      base_plane_format = anv_get_format_plane(devinfo, vk_format, 0,
+                                               VK_IMAGE_TILING_LINEAR);
    }
 
    enum isl_format base_isl_format = base_plane_format.isl_format;
