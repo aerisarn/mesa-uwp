@@ -710,6 +710,16 @@ resource_create(struct pipe_screen *pscreen,
    res->internal_format = templ->format;
    if (templ->target == PIPE_BUFFER) {
       util_range_init(&res->valid_buffer_range);
+      if (!screen->resizable_bar && templ->width0 >= 8196) {
+         /* We don't want to evict buffers from VRAM by mapping them for CPU access,
+          * because they might never be moved back again. If a buffer is large enough,
+          * upload data by copying from a temporary GTT buffer. 8K might not seem much,
+          * but there can be 100000 buffers.
+          *
+          * This tweak improves performance for viewperf.
+          */
+         res->base.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
+      }
    } else {
       res->format = zink_get_format(screen, templ->format);
       res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1100,6 +1110,18 @@ zink_buffer_map(struct pipe_context *pctx,
       usage |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
    }
 
+   /* If a buffer in VRAM is too large and the range is discarded, don't
+    * map it directly. This makes sure that the buffer stays in VRAM.
+    */
+   bool force_discard_range = false;
+   if (usage & (PIPE_MAP_DISCARD_WHOLE_RESOURCE | PIPE_MAP_DISCARD_RANGE) &&
+       !(usage & PIPE_MAP_PERSISTENT) &&
+       res->base.b.flags & PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY) {
+      usage &= ~(PIPE_MAP_DISCARD_WHOLE_RESOURCE | PIPE_MAP_UNSYNCHRONIZED);
+      usage |= PIPE_MAP_DISCARD_RANGE;
+      force_discard_range = true;
+   }
+
    if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE &&
        !(usage & (PIPE_MAP_UNSYNCHRONIZED | TC_TRANSFER_MAP_NO_INVALIDATE))) {
       assert(usage & PIPE_MAP_WRITE);
@@ -1120,7 +1142,7 @@ zink_buffer_map(struct pipe_context *pctx,
       /* Check if mapping this buffer would cause waiting for the GPU.
        */
 
-      if (!res->obj->host_visible ||
+      if (!res->obj->host_visible || force_discard_range ||
           !zink_resource_usage_check_completion(screen, res, ZINK_RESOURCE_ACCESS_RW)) {
          /* Do a wait-free write-only transfer using a temporary buffer. */
          unsigned offset;
