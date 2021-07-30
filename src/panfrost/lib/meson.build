@@ -100,3 +100,18 @@ libpanfrost_dep = declare_dependency(
   include_directories: [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw, inc_panfrost],
   dependencies: [dep_libdrm, idep_nir, idep_midgard_pack],
 )
+
+if with_tests
+  test(
+    'panfrost_blend',
+    executable(
+      'panfrost_blend_test',
+      files('tests/test-blend.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src, inc_mesa],
+      dependencies: [libpanfrost_dep],
+    ),
+    suite : ['panfrost'],
+  )
+endif
