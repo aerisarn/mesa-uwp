@@ -197,9 +197,21 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
    assert(ISL_DEV_USE_SEPARATE_STENCIL(dev));
 
    /* Clear flags unsupported on this hardware */
-   if (ISL_GFX_VER(dev) < 9) {
-      *flags &= ~ISL_TILING_Yf_BIT;
-      *flags &= ~ISL_TILING_Ys_BIT;
+   assert(ISL_GFX_VERX10(dev) < 125);
+   if (ISL_GFX_VER(dev) >= 12) {
+      *flags &= ISL_TILING_LINEAR_BIT |
+                ISL_TILING_X_BIT |
+                ISL_TILING_ANY_Y_MASK;
+   } else if (ISL_GFX_VER(dev) >= 9) {
+      *flags &= ISL_TILING_LINEAR_BIT |
+                ISL_TILING_X_BIT |
+                ISL_TILING_W_BIT |
+                ISL_TILING_ANY_Y_MASK;
+   } else {
+      *flags &= ISL_TILING_LINEAR_BIT |
+                ISL_TILING_X_BIT |
+                ISL_TILING_W_BIT |
+                ISL_TILING_Y0_BIT;
    }
 
    /* And... clear the Yf and Ys bits anyway because Anvil doesn't support
