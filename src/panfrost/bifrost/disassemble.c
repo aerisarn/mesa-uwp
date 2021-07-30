@@ -241,7 +241,7 @@ static void dump_const_imm(FILE *fp, uint32_t imm)
 }
 
 static void
-dump_pc_imm(FILE *fp, uint64_t imm, enum bi_constmod mod, bool high32)
+dump_pc_imm(FILE *fp, uint64_t imm, unsigned branch_offset, enum bi_constmod mod, bool high32)
 {
         if (mod == BI_CONSTMOD_PC_HI && !high32) {
                 dump_const_imm(fp, imm);
@@ -276,7 +276,8 @@ dump_pc_imm(FILE *fp, uint64_t imm, enum bi_constmod mod, bool high32)
                 unreachable("Invalid PC modifier");
         }
 
-        fprintf(fp, "(pc + %" PRId64 ")", offs);
+        assert((offs & 15) == 0);
+        fprintf(fp, "clause_%" PRId64, branch_offset + (offs / 16));
 
         if (mod == BI_CONSTMOD_PC_LO && high32)
                 fprintf(fp, " >> 32");
@@ -301,7 +302,7 @@ const_fau_to_idx(unsigned fau_value)
         return map[fau_value];
 }
 
-static void dump_fau_src(FILE *fp, struct bifrost_regs srcs, struct bi_constants *consts, bool high32)
+static void dump_fau_src(FILE *fp, struct bifrost_regs srcs, unsigned branch_offset, struct bi_constants *consts, bool high32)
 {
         if (srcs.fau_idx & 0x80) {
                 unsigned uniform = (srcs.fau_idx & 0x7f);
@@ -311,7 +312,7 @@ static void dump_fau_src(FILE *fp, struct bifrost_regs srcs, struct bi_constants
                 uint64_t imm = consts->raw[idx];
                 imm |= (srcs.fau_idx & 0xf);
                 if (consts->mods[idx] != BI_CONSTMOD_NONE)
-                        dump_pc_imm(fp, imm, consts->mods[idx], high32);
+                        dump_pc_imm(fp, imm, branch_offset, consts->mods[idx], high32);
                 else if (high32)
                         dump_const_imm(fp, imm >> 32);
                 else
@@ -362,7 +363,7 @@ static void dump_fau_src(FILE *fp, struct bifrost_regs srcs, struct bi_constants
 }
 
 void
-dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, struct bi_constants *consts, bool isFMA)
+dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, unsigned branch_offset, struct bi_constants *consts, bool isFMA)
 {
         switch (src) {
         case 0:
@@ -381,10 +382,10 @@ dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, struct bi_constants *
                         fprintf(fp, "t"); // i.e. the output of FMA this cycle
                 break;
         case 4:
-                dump_fau_src(fp, srcs, consts, false);
+                dump_fau_src(fp, srcs, branch_offset, consts, false);
                 break;
         case 5:
-                dump_fau_src(fp, srcs, consts, true);
+                dump_fau_src(fp, srcs, branch_offset, consts, true);
                 break;
         case 6:
                 fprintf(fp, "t0");
