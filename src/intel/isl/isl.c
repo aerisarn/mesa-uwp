@@ -2949,7 +2949,6 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
    /* If we ever enable 3D block formats, we'll need to re-think this */
    assert(fmtl->bd == 1);
 
-   uint32_t x_offset_sa = 0, y_offset_sa = 0;
    if (view->array_len > 1) {
       /* The Skylake PRM Vol. 2d, "RENDER_SURFACE_STATE::X Offset" says:
        *
@@ -2982,9 +2981,21 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
 
       *ucompr_surf = *surf;
       ucompr_surf->levels = 1;
+      ucompr_surf->format = view_format;
+
+      /* We're making an uncompressed view here.  The image dimensions
+       * need to be scaled down by the block size.
+       */
+      assert(ucompr_surf->logical_level0_px.width == view_width_px);
+      assert(ucompr_surf->logical_level0_px.height == view_height_px);
+      ucompr_surf->logical_level0_px.width = view_width_el;
+      ucompr_surf->logical_level0_px.height = view_height_el;
+      ucompr_surf->phys_level0_sa = isl_surf_get_phys_level0_el(surf);
 
       /* The surface mostly stays as-is; there is no offset */
       *offset_B = 0;
+      *x_offset_el = 0;
+      *y_offset_el = 0;
 
       /* The view remains the same */
       *ucompr_view = *view;
@@ -2994,14 +3005,36 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
        * prepared for this and everyone who calls this function should be
        * prepared to handle an X/Y offset.
        */
-      isl_surf_get_image_surf(dev, surf,
-                              view->base_level,
-                              surf->dim == ISL_SURF_DIM_3D ?
-                                 0 : view->base_array_layer,
-                              surf->dim == ISL_SURF_DIM_3D ?
-                                 view->base_array_layer : 0,
-                              ucompr_surf,
-                              offset_B, &x_offset_sa, &y_offset_sa);
+      isl_surf_get_image_offset_B_tile_el(surf,
+                                          view->base_level,
+                                          surf->dim == ISL_SURF_DIM_3D ?
+                                             0 : view->base_array_layer,
+                                          surf->dim == ISL_SURF_DIM_3D ?
+                                             view->base_array_layer : 0,
+                                          offset_B,
+                                          x_offset_el,
+                                          y_offset_el);
+
+      /* Even for cube maps there will be only single face, therefore drop the
+       * corresponding flag if present.
+       */
+      const isl_surf_usage_flags_t usage =
+         surf->usage & (~ISL_SURF_USAGE_CUBE_BIT);
+
+      bool ok UNUSED;
+      ok = isl_surf_init(dev, ucompr_surf,
+                         .dim = ISL_SURF_DIM_2D,
+                         .format = view_format,
+                         .width = view_width_el,
+                         .height = view_height_el,
+                         .depth = 1,
+                         .levels = 1,
+                         .array_len = 1,
+                         .samples = 1,
+                         .row_pitch_B = surf->row_pitch_B,
+                         .usage = usage,
+                         .tiling_flags = (1 << surf->tiling));
+      assert(ok);
 
       /* The newly created image represents the one subimage we're
        * referencing with this view so it only has one array slice and
@@ -3011,20 +3044,6 @@ isl_surf_get_uncompressed_surf(const struct isl_device *dev,
       ucompr_view->base_array_layer = 0;
       ucompr_view->base_level = 0;
    }
-
-   ucompr_surf->format = view_format;
-
-   /* We're making an uncompressed view here.  The image dimensions
-    * need to be scaled down by the block size.
-    */
-   assert(ucompr_surf->logical_level0_px.width == view_width_px);
-   assert(ucompr_surf->logical_level0_px.height == view_height_px);
-   ucompr_surf->logical_level0_px.width = view_width_el;
-   ucompr_surf->logical_level0_px.height = view_height_el;
-   ucompr_surf->phys_level0_sa = isl_surf_get_phys_level0_el(surf);
-
-   *x_offset_el = isl_assert_div(x_offset_sa, fmtl->bw);
-   *y_offset_el = isl_assert_div(y_offset_sa, fmtl->bh);
 
    return true;
 }
