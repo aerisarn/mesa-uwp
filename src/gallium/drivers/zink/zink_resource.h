@@ -77,7 +77,6 @@ struct zink_resource_object {
    VkImageAspectFlags modifier_aspect;
 
    struct zink_bo *bo;
-   VkDeviceMemory mem;
    VkDeviceSize offset, size, alignment;
 
    bool host_visible;

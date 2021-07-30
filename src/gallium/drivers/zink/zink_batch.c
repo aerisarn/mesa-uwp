@@ -368,7 +368,7 @@ submit_queue(void *data, void *gdata, int thread_index)
 
    if (bs->flush_res && screen->needs_mesa_flush_wsi) {
       struct zink_resource *flush_res = zink_resource(bs->flush_res);
-      mem_signal.memory = flush_res->scanout_obj ? flush_res->scanout_obj->mem : flush_res->obj->mem;
+      mem_signal.memory = zink_bo_get_mem(flush_res->scanout_obj ? flush_res->scanout_obj->bo : flush_res->obj->bo);
       si.pNext = &mem_signal;
    }
 

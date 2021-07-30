@@ -653,16 +653,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->size = templ->width0;
    } else {
       obj->offset = zink_bo_get_offset(obj->bo);
-      obj->mem = zink_bo_get_mem(obj->bo);
       obj->size = zink_bo_get_size(obj->bo);
    }
 
    if (templ->target == PIPE_BUFFER) {
       if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
-         if (vkBindBufferMemory(screen->dev, obj->buffer, obj->mem, obj->offset) != VK_SUCCESS)
+         if (vkBindBufferMemory(screen->dev, obj->buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
             goto fail3;
    } else {
-      if (vkBindImageMemory(screen->dev, obj->image, obj->mem, obj->offset) != VK_SUCCESS)
+      if (vkBindImageMemory(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
          goto fail3;
    }
    return obj;
@@ -873,7 +872,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       int fd;
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
       //TODO: remove for wsi
-      fd_info.memory = obj->mem;
+      fd_info.memory = zink_bo_get_mem(obj->bo);
       fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       VkResult result = (*screen->vk.GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
       if (result != VK_SUCCESS)
@@ -1016,7 +1015,7 @@ zink_resource_init_mem_range(struct zink_screen *screen, struct zink_resource_ob
    VkMappedMemoryRange range = {
       VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
       NULL,
-      obj->mem,
+      zink_bo_get_mem(obj->bo),
       offset,
       size
    };
@@ -1451,7 +1450,7 @@ zink_resource_tmp_buffer(struct zink_screen *screen, struct zink_resource *res, 
    VkBuffer buffer;
    if (vkCreateBuffer(screen->dev, &bci, NULL, &buffer) != VK_SUCCESS)
       return VK_NULL_HANDLE;
-   vkBindBufferMemory(screen->dev, buffer, res->obj->mem, res->obj->offset + offset);
+   vkBindBufferMemory(screen->dev, buffer, zink_bo_get_mem(res->obj->bo), res->obj->offset + offset);
    if (offset_out)
       *offset_out = offset_add - offset;
    return buffer;
