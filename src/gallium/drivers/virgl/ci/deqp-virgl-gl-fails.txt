@@ -40,7 +40,6 @@ dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.8,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.4,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.9,Fail
 dEQP-GLES31.functional.primitive_bounding_box.wide_points.global_state.vertex_tessellation_fragment.default_framebuffer_bbox_equal,Fail
@@ -91,7 +90,6 @@ dEQP-GLES31.functional.shaders.builtin_constants.geometry_shader.max_geometry_un
 dEQP-GLES31.functional.shaders.builtin_constants.sample_variables.max_samples,Fail
 dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_patch_vertices,Fail
 dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_tess_control_atomic_counter_buffers,Fail
-dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_tess_control_atomic_counters,Fail
 dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_tess_control_input_components,Fail
 dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_tess_control_output_components,Fail
 dEQP-GLES31.functional.shaders.builtin_constants.tessellation_shader.max_tess_control_texture_image_units,Fail
@@ -167,10 +165,6 @@ dEQP-GLES31.functional.shaders.sample_variables.sample_mask_in.bit_count_per_two
 dEQP-GLES31.functional.shaders.sample_variables.sample_mask_in.bit_count_per_two_samples.multisample_texture_1,Fail
 dEQP-GLES31.functional.shaders.sample_variables.sample_mask_in.bit_count_per_two_samples.multisample_texture_2,Fail
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2892
-KHR-GL30.shaders30.glsl_constructors.bvec4_from_bool_mat2_vs,Crash
-KHR-GL30.shaders30.glsl_constructors.bvec4_from_bool_mat3_vs,Crash
-KHR-GL30.shaders30.glsl_constructors.bvec4_from_bool_mat4x2_vs,Crash
-KHR-GL30.shaders30.glsl_constructors.bvec4_from_bool_mat4x3_fs,Crash
 KHR-GL30.shaders30.glsl_constructors.bvec4_from_mat4x2_vs,Crash
 KHR-GL30.transform_feedback.api_errors_test,Fail
 KHR-GL30.transform_feedback.capture_vertex_interleaved_test,Fail

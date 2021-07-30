@@ -378,6 +378,11 @@ dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_r8_linear_mipmap_linear,
 dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_r8_linear_mipmap_nearest,Fail
 dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_r8_nearest_mipmap_linear,Fail
 dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_r8_nearest_mipmap_nearest,Fail
+dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_rg8_linear,Fail
+dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_rg8_linear_mipmap_linear,Fail
+dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_rg8_linear_mipmap_nearest,Fail
+dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_rg8_nearest_mipmap_linear,Fail
+dEQP-GLES3.functional.texture.filtering.3d.formats.srgb_rg8_nearest_mipmap_nearest,Fail
 dEQP-GLES3.functional.texture.filtering.3d.sizes.128x32x64_linear,Fail
 dEQP-GLES3.functional.texture.filtering.3d.sizes.128x32x64_linear_mipmap_linear,Fail
 dEQP-GLES3.functional.texture.filtering.3d.sizes.128x32x64_linear_mipmap_nearest,Fail
@@ -554,6 +559,9 @@ dEQP-GLES31.functional.texture.filtering.cube_array.formats.rgba8_nearest_mipmap
 dEQP-GLES31.functional.texture.filtering.cube_array.formats.rgba8_snorm_nearest,Fail
 dEQP-GLES31.functional.texture.filtering.cube_array.formats.rgba8_snorm_nearest_mipmap_nearest,Fail
 dEQP-GLES31.functional.texture.filtering.cube_array.formats.sr8_nearest_mipmap_nearest,Fail
+dEQP-GLES31.functional.texture.filtering.cube_array.formats.srg8_nearest,Fail
+dEQP-GLES31.functional.texture.filtering.cube_array.formats.srg8_nearest_mipmap_linear,Fail
+dEQP-GLES31.functional.texture.filtering.cube_array.formats.srg8_nearest_mipmap_nearest,Fail
 dEQP-GLES31.functional.texture.filtering.cube_array.formats.srgb8_alpha8_nearest,Fail
 dEQP-GLES31.functional.texture.filtering.cube_array.formats.srgb8_alpha8_nearest_mipmap_linear,Fail
 dEQP-GLES31.functional.texture.filtering.cube_array.sizes.128x128x12_linear,Fail
@@ -777,9 +785,12 @@ dEQP-GLES31.functional.texture.multisample.samples_1.sample_mask_non_effective_b
 dEQP-GLES31.functional.texture.multisample.samples_1.sample_mask_only,Fail
 KHR-GL33.CommonBugs.CommonBug_ParenthesisInLayoutQualifierIntegerValue,Fail
 KHR-GL33.clip_distance.functional,Fail
+KHR-GL33.cull_distance.coverage,Fail
 KHR-GL33.cull_distance.functional,Fail
+KHR-GL33.pipeline_statistics_query_tests_ARB.functional_compute_shader_invocations,Fail
 KHR-GL33.pipeline_statistics_query_tests_ARB.functional_fragment_shader_invocations,Fail
 KHR-GL33.pipeline_statistics_query_tests_ARB.functional_primitives_vertices_submitted_and_clipping_input_output_primitives,Fail
+KHR-GL33.shaders.indexing.tmp_array.vertexid,Fail
 KHR-GL33.texture_size_promotion.functional,Fail
 KHR-GL33.transform_feedback.capture_geometry_interleaved_test,Fail
 KHR-GL33.transform_feedback.capture_geometry_separate_test,Fail
@@ -870,6 +881,7 @@ KHR-GLES2.texture_3d.filtering.sizes.63x63x63_nearest_mipmap_linear,Fail
 KHR-GLES2.texture_3d.filtering.sizes.63x63x63_nearest_mipmap_nearest,Fail
 KHR-GLES3.framebuffer_completeness.all_rbos_expect_same_numsamples,Fail
 KHR-GLES3.framebuffer_completeness.rbo_and_texture_expect_zero_numsamples,Fail
+KHR-GLES3.shaders.indexing.tmp_array.vertexid,Fail
 KHR-GLES31.core.draw_buffers_indexed.blending,Fail
 KHR-GLES31.core.draw_buffers_indexed.color_masks,Fail
 KHR-GLES31.core.framebuffer_completeness.all_rbos_expect_same_numsamples,Fail
