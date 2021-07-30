@@ -2994,6 +2994,18 @@ typedef struct _ADDR2_COMPUTE_CMASK_INFO_OUTPUT
     UINT_32    metaBlkNumPerSlice;  ///< Number of metablock within one slice
 
     ADDR2_META_MIP_INFO* pMipInfo;  ///< CMASK mip information
+
+    /* The equation for doing CMASK address computations in shaders. */
+    union {
+       /* This is chip-specific, and it varies with:
+        * - resource type
+        * - swizzle_mode
+        * - bpp
+        * - pipe_aligned
+        * - rb_aligned
+        */
+       struct gfx9_addr_meta_equation gfx9;
+    } equation;
 } ADDR2_COMPUTE_CMASK_INFO_OUTPUT;
 
 /**
