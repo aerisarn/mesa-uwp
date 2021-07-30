@@ -3839,6 +3839,11 @@ anv_get_format_planes(VkFormat vk_format)
 }
 
 struct anv_format_plane
+anv_get_format_plane(const struct intel_device_info *devinfo,
+                     VkFormat vk_format, uint32_t plane,
+                     VkImageTiling tiling);
+
+struct anv_format_plane
 anv_get_format_aspect(const struct intel_device_info *devinfo,
                       VkFormat vk_format,
                       VkImageAspectFlagBits aspect, VkImageTiling tiling);

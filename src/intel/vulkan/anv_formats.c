@@ -468,9 +468,9 @@ anv_format_has_npot_plane(const struct anv_format *anv_format) {
  * _cannot_ check for compatibility).
  */
 struct anv_format_plane
-anv_get_format_aspect(const struct intel_device_info *devinfo,
-                      VkFormat vk_format,
-                      VkImageAspectFlagBits aspect, VkImageTiling tiling)
+anv_get_format_plane(const struct intel_device_info *devinfo,
+                     VkFormat vk_format, uint32_t plane,
+                     VkImageTiling tiling)
 {
    const struct anv_format *format = anv_get_format(vk_format);
    const struct anv_format_plane unsupported = {
@@ -480,7 +480,7 @@ anv_get_format_aspect(const struct intel_device_info *devinfo,
    if (format == NULL)
       return unsupported;
 
-   uint32_t plane = anv_image_aspect_to_plane(vk_format_aspects(vk_format), aspect);
+   assert(plane < format->n_planes);
    struct anv_format_plane plane_format = format->planes[plane];
    if (plane_format.isl_format == ISL_FORMAT_UNSUPPORTED)
       return unsupported;
@@ -490,8 +490,6 @@ anv_get_format_aspect(const struct intel_device_info *devinfo,
 
    if (vk_format_is_depth_or_stencil(vk_format))
       return plane_format;
-
-   assert((aspect & ~VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0);
 
    const struct isl_format_layout *isl_layout =
       isl_format_get_layout(plane_format.isl_format);
@@ -531,6 +529,16 @@ anv_get_format_aspect(const struct intel_device_info *devinfo,
    }
 
    return plane_format;
+}
+
+struct anv_format_plane
+anv_get_format_aspect(const struct intel_device_info *devinfo,
+                      VkFormat vk_format,
+                      VkImageAspectFlagBits aspect, VkImageTiling tiling)
+{
+   const uint32_t plane =
+      anv_image_aspect_to_plane(vk_format_aspects(vk_format), aspect);
+   return anv_get_format_plane(devinfo, vk_format, plane, tiling);
 }
 
 // Format capabilities
