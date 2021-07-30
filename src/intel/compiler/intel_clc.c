@@ -356,6 +356,11 @@ int main(int argc, char **argv)
       return -1;
    }
 
+   if (devinfo->verx10 < 125) {
+      fprintf(stderr, "Platform currently not supported.\n");
+      return -1;
+   }
+
    if (entry_point == NULL) {
       fprintf(stderr, "No entry-point name specified.\n");
       print_usage(argv[0], stderr);
