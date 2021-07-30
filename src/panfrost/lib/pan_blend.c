@@ -72,14 +72,12 @@ can_fixed_function_equation(enum blend_func blend_func,
 static unsigned
 blend_factor_constant_mask(enum blend_factor factor)
 {
-        unsigned mask = 0;
-
         if (factor == BLEND_FACTOR_CONSTANT_COLOR)
-                mask |= 0b0111; /* RGB */
+                return 0b0111; /* RGB */
         else if (factor == BLEND_FACTOR_CONSTANT_ALPHA)
-                mask |= 0b1000; /* A */
-
-        return mask;
+                return 0b1000; /* A */
+        else
+                return 0b0000; /* - */
 }
 
 unsigned
