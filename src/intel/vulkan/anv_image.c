@@ -2816,11 +2816,37 @@ anv_CreateImageView(VkDevice _device,
    anv_foreach_image_aspect_bit(iaspect_bit, image, expanded_aspects) {
       uint32_t iplane =
          anv_image_aspect_to_plane(image->aspects, 1UL << iaspect_bit);
-      VkImageAspectFlags vplane_aspect =
-         anv_plane_to_aspect(iview->aspect_mask, vplane);
-      struct anv_format_plane format =
-         anv_get_format_aspect(&device->info, iview->vk_format,
-                               vplane_aspect, image->tiling);
+      struct anv_format_plane format;
+      if (image->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                            VK_IMAGE_ASPECT_STENCIL_BIT)) {
+         /* With depth/stencil images, we're always given the full
+          * depth/stencil format even if we're only taking one aspect.
+          */
+         assert(iview->vk_format == image->vk_format);
+         format = anv_get_format_aspect(&device->info, iview->vk_format,
+                                        1u << iaspect_bit, image->tiling);
+      } else {
+         /* With color images, we have three cases:
+          *
+          *  1. It's a single-plane image in which case vplane=0.
+          *
+          *  2. It's a YCbCr view of a multi-plane image in which case the
+          *     client will have asked for VK_IMAGE_ASPECT_COLOR_BIT and the
+          *     format provided will be the full planar format.  In this case,
+          *     we want all the planes.
+          *
+          *  3. It's a single-plane view of a multi-plane image in which case
+          *     the client will have asked for VK_IMAGE_ASPECT_PLANE_N_BIT and
+          *     will have provided a format compatible with that specific
+          *     plane of the multi-planar format.
+          *
+          * In all three cases, the format provided by the client corresponds
+          * to exactly the planes we have in the view so we can just grab the
+          * format plane based on vplane.
+          */
+         format = anv_get_format_plane(&device->info, iview->vk_format,
+                                       vplane, image->tiling);
+      }
 
       iview->planes[vplane].image_plane = iplane;
 

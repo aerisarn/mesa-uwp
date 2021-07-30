@@ -3809,21 +3809,6 @@ anv_image_aspect_to_plane(VkImageAspectFlags image_aspects,
    }
 }
 
-static inline VkImageAspectFlags
-anv_plane_to_aspect(VkImageAspectFlags image_aspects,
-                    uint32_t plane)
-{
-   if (image_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
-      if (util_bitcount(image_aspects) > 1)
-         return VK_IMAGE_ASPECT_PLANE_0_BIT << plane;
-      return VK_IMAGE_ASPECT_COLOR_BIT;
-   }
-   if (image_aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-      return VK_IMAGE_ASPECT_DEPTH_BIT << plane;
-   assert(image_aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
-   return VK_IMAGE_ASPECT_STENCIL_BIT;
-}
-
 #define anv_foreach_image_aspect_bit(b, image, aspects) \
    u_foreach_bit(b, anv_image_expand_aspects(image, aspects))
 
