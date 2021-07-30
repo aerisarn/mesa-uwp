@@ -1035,7 +1035,7 @@ add_all_surfaces_implicit_layout(
       VkImageAspectFlagBits aspect = 1 << b;
       uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
       const  struct anv_format_plane plane_format =
-         anv_get_format_plane(devinfo, image->vk_format, aspect, image->tiling);
+         anv_get_format_aspect(devinfo, image->vk_format, aspect, image->tiling);
 
       VkImageUsageFlags vk_usage = image->usage;
       if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT)
@@ -1156,7 +1156,7 @@ add_all_surfaces_explicit_layout(
       const VkImageAspectFlagBits aspect = 1 << b;
       const uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
       const struct anv_format_plane format_plane =
-         anv_get_format_plane(devinfo, image->vk_format, aspect, image->tiling);
+         anv_get_format_aspect(devinfo, image->vk_format, aspect, image->tiling);
       const VkSubresourceLayout *primary_layout = &drm_info->pPlaneLayouts[plane];
 
       result = add_primary_surface(device, image, plane,
@@ -2819,8 +2819,8 @@ anv_CreateImageView(VkDevice _device,
       VkImageAspectFlags vplane_aspect =
          anv_plane_to_aspect(iview->aspect_mask, vplane);
       struct anv_format_plane format =
-         anv_get_format_plane(&device->info, iview->vk_format,
-                              vplane_aspect, image->tiling);
+         anv_get_format_aspect(&device->info, iview->vk_format,
+                               vplane_aspect, image->tiling);
 
       iview->planes[vplane].image_plane = iplane;
 

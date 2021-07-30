@@ -3839,15 +3839,15 @@ anv_get_format_planes(VkFormat vk_format)
 }
 
 struct anv_format_plane
-anv_get_format_plane(const struct intel_device_info *devinfo,
-                     VkFormat vk_format,
-                     VkImageAspectFlagBits aspect, VkImageTiling tiling);
+anv_get_format_aspect(const struct intel_device_info *devinfo,
+                      VkFormat vk_format,
+                      VkImageAspectFlagBits aspect, VkImageTiling tiling);
 
 static inline enum isl_format
 anv_get_isl_format(const struct intel_device_info *devinfo, VkFormat vk_format,
                    VkImageAspectFlags aspect, VkImageTiling tiling)
 {
-   return anv_get_format_plane(devinfo, vk_format, aspect, tiling).isl_format;
+   return anv_get_format_aspect(devinfo, vk_format, aspect, tiling).isl_format;
 }
 
 bool anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,

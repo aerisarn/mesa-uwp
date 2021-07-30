@@ -689,11 +689,11 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
                                    dst_image_layout, ISL_AUX_USAGE_NONE, &dst);
 
       struct anv_format_plane src_format =
-         anv_get_format_plane(&cmd_buffer->device->info, src_image->vk_format,
-                              1U << aspect_bit, src_image->tiling);
+         anv_get_format_aspect(&cmd_buffer->device->info, src_image->vk_format,
+                               1U << aspect_bit, src_image->tiling);
       struct anv_format_plane dst_format =
-         anv_get_format_plane(&cmd_buffer->device->info, dst_image->vk_format,
-                              1U << aspect_bit, dst_image->tiling);
+         anv_get_format_aspect(&cmd_buffer->device->info, dst_image->vk_format,
+                               1U << aspect_bit, dst_image->tiling);
 
       unsigned dst_start, dst_end;
       if (dst_image->type == VK_IMAGE_TYPE_3D) {
@@ -1031,8 +1031,8 @@ void anv_CmdClearColorImage(
                                    imageLayout, ISL_AUX_USAGE_NONE, &surf);
 
       struct anv_format_plane src_format =
-         anv_get_format_plane(&cmd_buffer->device->info, image->vk_format,
-                              VK_IMAGE_ASPECT_COLOR_BIT, image->tiling);
+         anv_get_format_aspect(&cmd_buffer->device->info, image->vk_format,
+                               VK_IMAGE_ASPECT_COLOR_BIT, image->tiling);
 
       unsigned base_layer = pRanges[r].baseArrayLayer;
       unsigned layer_count = anv_get_layerCount(image, &pRanges[r]);

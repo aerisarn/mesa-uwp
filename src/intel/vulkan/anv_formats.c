@@ -468,9 +468,9 @@ anv_format_has_npot_plane(const struct anv_format *anv_format) {
  * _cannot_ check for compatibility).
  */
 struct anv_format_plane
-anv_get_format_plane(const struct intel_device_info *devinfo,
-                     VkFormat vk_format,
-                     VkImageAspectFlagBits aspect, VkImageTiling tiling)
+anv_get_format_aspect(const struct intel_device_info *devinfo,
+                      VkFormat vk_format,
+                      VkImageAspectFlagBits aspect, VkImageTiling tiling)
 {
    const struct anv_format *format = anv_get_format(vk_format);
    const struct anv_format_plane unsupported = {
@@ -581,17 +581,17 @@ anv_get_image_format_features(const struct intel_device_info *devinfo,
    }
 
    const struct anv_format_plane plane_format =
-      anv_get_format_plane(devinfo, vk_format, VK_IMAGE_ASPECT_COLOR_BIT,
-                           vk_tiling);
+      anv_get_format_aspect(devinfo, vk_format, VK_IMAGE_ASPECT_COLOR_BIT,
+                            vk_tiling);
 
    if (plane_format.isl_format == ISL_FORMAT_UNSUPPORTED)
       return 0;
 
    struct anv_format_plane base_plane_format = plane_format;
    if (vk_tiling != VK_IMAGE_TILING_LINEAR) {
-      base_plane_format = anv_get_format_plane(devinfo, vk_format,
-                                               VK_IMAGE_ASPECT_COLOR_BIT,
-                                               VK_IMAGE_TILING_LINEAR);
+      base_plane_format = anv_get_format_aspect(devinfo, vk_format,
+                                                VK_IMAGE_ASPECT_COLOR_BIT,
+                                                VK_IMAGE_TILING_LINEAR);
    }
 
    enum isl_format base_isl_format = base_plane_format.isl_format;
