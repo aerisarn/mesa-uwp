@@ -328,7 +328,7 @@ tu_GetDescriptorSetLayoutSupport(
             if (list->pDescriptorTypes[j] == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
                 list->pDescriptorTypes[j] == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
                supported = false;
-               break;
+               goto out;
             }
          }
 
@@ -362,6 +362,7 @@ tu_GetDescriptorSetLayoutSupport(
       size += binding->descriptorCount * descriptor_sz;
    }
 
+out:
    free(bindings);
 
    pSupport->supported = supported;
