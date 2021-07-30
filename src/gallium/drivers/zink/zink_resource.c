@@ -1156,7 +1156,7 @@ zink_buffer_map(struct pipe_context *pctx,
          trans->offset = box->x % screen->info.props.limits.minMemoryMapAlignment;
          trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->width + trans->offset);
          if (!trans->staging_res)
-            return NULL;
+            goto fail;
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
          zink_copy_buffer(ctx, NULL, staging_res, res, trans->offset, box->x, box->width);
          res = staging_res;
@@ -1184,7 +1184,7 @@ zink_buffer_map(struct pipe_context *pctx,
       }
       ptr = map_resource(screen, res);
       if (!ptr)
-         return NULL;
+         goto fail;
       ptr = ((uint8_t *)ptr) + box->x;
    }
 
@@ -1203,7 +1203,7 @@ zink_buffer_map(struct pipe_context *pctx,
       VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, offset, size);
       if (vkInvalidateMappedMemoryRanges(screen->dev, 1, &range) != VK_SUCCESS) {
          zink_bo_unmap(screen, res->obj->bo);
-         return NULL;
+         goto fail;
       }
    }
    trans->base.b.usage = usage;
@@ -1215,6 +1215,10 @@ zink_buffer_map(struct pipe_context *pctx,
 success:
    *transfer = &trans->base.b;
    return ptr;
+
+fail:
+   destroy_transfer(ctx, trans);
+   return NULL;
 }
 
 static void *
@@ -1265,7 +1269,7 @@ zink_image_map(struct pipe_context *pctx,
 
       trans->staging_res = zink_resource_create(pctx->screen, &templ);
       if (!trans->staging_res)
-         return NULL;
+         goto fail;
 
       struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
@@ -1279,13 +1283,11 @@ zink_image_map(struct pipe_context *pctx,
       }
 
       ptr = map_resource(screen, staging_res);
-      if (!ptr)
-         return NULL;
    } else {
       assert(!res->optimal_tiling);
       ptr = map_resource(screen, res);
       if (!ptr)
-         return NULL;
+         goto fail;
       if (zink_resource_has_usage(res)) {
          if (usage & PIPE_MAP_WRITE)
             zink_fence_wait(pctx);
@@ -1318,6 +1320,9 @@ zink_image_map(struct pipe_context *pctx,
       }
       ptr = ((uint8_t *)ptr) + offset;
    }
+   if (!ptr)
+      goto fail;
+
    if (sizeof(void*) == 4)
       trans->base.b.usage |= ZINK_MAP_TEMPORARY;
    if ((usage & PIPE_MAP_PERSISTENT) && !(usage & PIPE_MAP_COHERENT))
@@ -1325,6 +1330,10 @@ zink_image_map(struct pipe_context *pctx,
 
    *transfer = &trans->base.b;
    return ptr;
+
+fail:
+   destroy_transfer(ctx, trans);
+   return NULL;
 }
 
 static void
