@@ -611,7 +611,8 @@ struct pipe_screen {
  * Global configuration options for screen creation.
  */
 struct pipe_screen_config {
-   const struct driOptionCache *options;
+   struct driOptionCache *options;
+   const struct driOptionCache *options_info;
 };
 
 

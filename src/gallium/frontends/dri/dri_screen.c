@@ -59,6 +59,8 @@ const __DRIconfigOptionsExtension gallium_config_options = {
 void
 dri_init_options(struct dri_screen *screen)
 {
+   pipe_loader_config_options(screen->dev);
+
    struct st_config_options *options = &screen->options;
    const struct driOptionCache *optionCache = &screen->dev->option_cache;
 

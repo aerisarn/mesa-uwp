@@ -1399,6 +1399,9 @@ struct pipe_screen *radeonsi_screen_create(int fd, const struct pipe_screen_conf
    drmVersionPtr version = drmGetVersion(fd);
    struct radeon_winsys *rw = NULL;
 
+   driParseConfigFiles(config->options, config->options_info, 0, "radeonsi",
+                       NULL, NULL, 0, NULL, 0);
+
    switch (version->version_major) {
    case 2:
       rw = radeon_drm_winsys_create(fd, config, radeonsi_screen_create_impl);

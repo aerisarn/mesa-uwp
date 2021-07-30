@@ -793,6 +793,9 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
         if (!v3d_get_device_info(screen->fd, &screen->devinfo, &v3d_ioctl))
                 goto fail;
 
+        driParseConfigFiles(config->options, config->options_info, 0, "v3d",
+                            NULL, NULL, 0, NULL, 0);
+
         /* We have to driCheckOption for the simulator mode to not assertion
          * fail on not having our XML config.
          */
