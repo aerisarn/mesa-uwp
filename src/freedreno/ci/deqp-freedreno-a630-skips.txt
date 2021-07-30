@@ -5,19 +5,19 @@
 # Timeouts, passes otherwise
 KHR-GL33.texture_swizzle.smoke
 
-# Timeout, passes otherwise
-dEQP-VK.tessellation.invariance.outer_edge_division.quads_fractional_odd_spacing
-
-# Timeout (VK-GL-CTS 1.2.7.0)
-dEQP-VK.tessellation.invariance.outer_edge_division.quads_fractional_even_spacing
-dEQP-VK.tessellation.invariance.outer_triangle_set.quads_equal_spacing
-
 # Crashes likely caused by https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2701
 dEQP-VK.synchronization.cross_instance.*binary_semaphore_fence_fd
 
 # Timeouts, passes otherwise
+dEQP-VK.tessellation.invariance.outer_edge_division.quads_equal_spacing
+dEQP-VK.tessellation.invariance.outer_edge_division.quads_fractional_even_spacing
+dEQP-VK.tessellation.invariance.outer_edge_division.quads_fractional_odd_spacing
+dEQP-VK.tessellation.invariance.outer_triangle_set.quads_equal_spacing
+dEQP-VK.tessellation.invariance.outer_triangle_set.quads_fractional_even_spacing
 dEQP-VK.tessellation.invariance.outer_triangle_set.quads_fractional_odd_spacing
+dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_equal_spacing
 dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_even_spacing
+dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing
 
 # Crashes in RA, but slow enough to get there that CI times out sometimes
 dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*
