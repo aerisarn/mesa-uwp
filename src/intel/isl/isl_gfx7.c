@@ -235,21 +235,6 @@ isl_gfx6_filter_tiling(const struct isl_device *dev,
    if (isl_format_get_layout(info->format)->txc == ISL_TXC_MCS)
       *flags &= ISL_TILING_Y0_BIT;
 
-   if (info->usage & (ISL_SURF_USAGE_DISPLAY_ROTATE_90_BIT |
-                      ISL_SURF_USAGE_DISPLAY_ROTATE_180_BIT |
-                      ISL_SURF_USAGE_DISPLAY_ROTATE_270_BIT)) {
-      assert(*flags & ISL_SURF_USAGE_DISPLAY_BIT);
-      isl_finishme("%s:%s: handle rotated display surfaces",
-                   __FILE__, __func__);
-   }
-
-   if (info->usage & (ISL_SURF_USAGE_DISPLAY_FLIP_X_BIT |
-                      ISL_SURF_USAGE_DISPLAY_FLIP_Y_BIT)) {
-      assert(*flags & ISL_SURF_USAGE_DISPLAY_BIT);
-      isl_finishme("%s:%s: handle flipped display surfaces",
-                   __FILE__, __func__);
-   }
-
    if (info->usage & ISL_SURF_USAGE_DISPLAY_BIT) {
       if (ISL_GFX_VER(dev) >= 12) {
          *flags &= (ISL_TILING_LINEAR_BIT | ISL_TILING_X_BIT |
