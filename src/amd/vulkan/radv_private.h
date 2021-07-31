@@ -1729,8 +1729,15 @@ struct radv_binning_state {
 
 #define SI_GS_PER_ES 128
 
+enum radv_pipeline_type {
+   RADV_PIPELINE_GRAPHICS,
+   RADV_PIPELINE_COMPUTE,
+};
+
 struct radv_pipeline {
    struct vk_object_base base;
+   enum radv_pipeline_type type;
+
    struct radv_device *device;
    struct radv_dynamic_state dynamic_state;
 
