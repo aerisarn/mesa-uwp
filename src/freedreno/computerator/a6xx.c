@@ -484,7 +484,7 @@ a6xx_read_perfcntrs(struct backend *b, uint64_t *results)
 }
 
 struct backend *
-a6xx_init(struct fd_device *dev, uint32_t gpu_id)
+a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
 {
    struct a6xx_backend *a6xx_backend = calloc(1, sizeof(*a6xx_backend));
 
@@ -496,7 +496,7 @@ a6xx_init(struct fd_device *dev, uint32_t gpu_id)
       .read_perfcntrs = a6xx_read_perfcntrs,
    };
 
-   a6xx_backend->compiler = ir3_compiler_create(dev, gpu_id, false);
+   a6xx_backend->compiler = ir3_compiler_create(dev, dev_id, false);
    a6xx_backend->dev = dev;
 
    a6xx_backend->control_mem =

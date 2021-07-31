@@ -69,7 +69,7 @@ ir3_compiler_destroy(struct ir3_compiler *compiler)
 }
 
 struct ir3_compiler *
-ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id,
+ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
                     bool robust_ubo_access)
 {
    struct ir3_compiler *compiler = rzalloc(NULL, struct ir3_compiler);
@@ -83,8 +83,8 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id,
    }
 
    compiler->dev = dev;
-   compiler->gpu_id = gpu_id;
-   compiler->gen = gpu_id / 100;
+   compiler->dev_id = dev_id;
+   compiler->gen = fd_dev_gen(dev_id);
    compiler->robust_ubo_access = robust_ubo_access;
 
    /* All known GPU's have 32k local memory (aka shared) */
@@ -124,7 +124,7 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id,
       compiler->has_pvtmem = true;
 
       compiler->tess_use_shared =
-            fd_dev_info(compiler->gpu_id)->a6xx.tess_use_shared;
+            fd_dev_info(compiler->dev_id)->a6xx.tess_use_shared;
    } else {
       compiler->max_const_pipeline = 512;
       compiler->max_const_geom = 512;
@@ -139,7 +139,7 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id,
 
    if (compiler->gen >= 6) {
       compiler->reg_size_vec4 =
-            fd_dev_info(compiler->gpu_id)->a6xx.reg_size_vec4;
+            fd_dev_info(compiler->dev_id)->a6xx.reg_size_vec4;
    } else if (compiler->gen >= 4) {
       /* On a4xx-a5xx, using r24.x and above requires using the smallest
        * threadsize.

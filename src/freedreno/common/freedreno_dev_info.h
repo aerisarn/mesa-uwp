@@ -105,6 +105,28 @@ struct fd_dev_info {
    };
 };
 
+struct fd_dev_id {
+   uint32_t gpu_id;
+};
+
+static inline uint32_t
+fd_dev_gpu_id(const struct fd_dev_id *id)
+{
+   return id->gpu_id;
+}
+
+static uint8_t
+fd_dev_gen(const struct fd_dev_id *id)
+{
+   return fd_dev_gpu_id(id) / 100;
+}
+
+static inline bool
+fd_dev_64b(const struct fd_dev_id *id)
+{
+   return fd_dev_gen(id) >= 5;
+}
+
 /* per CCU GMEM amount reserved for depth cache for direct rendering */
 #define A6XX_CCU_DEPTH_SIZE (64 * 1024)
 /* per CCU GMEM amount reserved for color cache used by GMEM resolves
@@ -116,8 +138,8 @@ struct fd_dev_info {
  */
 #define A6XX_CCU_GMEM_COLOR_SIZE (16 * 1024)
 
-const struct fd_dev_info * fd_dev_info(uint32_t gpu_id);
-const char * fd_dev_name(uint32_t gpu_id);
+const struct fd_dev_info * fd_dev_info(const struct fd_dev_id *id);
+const char * fd_dev_name(const struct fd_dev_id *id);
 
 #ifdef __cplusplus
 } /* end of extern "C" */

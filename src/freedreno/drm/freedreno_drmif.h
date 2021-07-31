@@ -143,6 +143,7 @@ struct fd_pipe *fd_pipe_ref(struct fd_pipe *pipe);
 struct fd_pipe *fd_pipe_ref_locked(struct fd_pipe *pipe);
 void fd_pipe_del(struct fd_pipe *pipe);
 void fd_pipe_purge(struct fd_pipe *pipe);
+const struct fd_dev_id * fd_pipe_dev_id(struct fd_pipe *pipe);
 int fd_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param,
                       uint64_t *value);
 int fd_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence);

@@ -376,6 +376,7 @@ main(int argc, char **argv)
    }
 
    struct ir3_compiler *compilers[10] = {};
+   struct fd_dev_id dev_ids[ARRAY_SIZE(compilers)];
 
    for (int i = 0; i < ARRAY_SIZE(tests); i++) {
       const struct test *test = &tests[i];
@@ -417,7 +418,8 @@ main(int argc, char **argv)
 
       unsigned gen = test->gpu_id / 100;
       if (!compilers[gen]) {
-         compilers[gen] = ir3_compiler_create(NULL, test->gpu_id, false);
+         dev_ids[gen].gpu_id = test->gpu_id;
+         compilers[gen] = ir3_compiler_create(NULL, &dev_ids[gen], false);
       }
 
       FILE *fasm =

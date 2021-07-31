@@ -29,18 +29,24 @@
  * Table entry for a single GPU version
  */
 struct fd_dev_rec {
-   uint32_t gpu_id;
+   struct fd_dev_id id;
    const char *name;
    const struct fd_dev_info *info;
 };
 
 #include "freedreno_devices.h"
 
+static bool
+dev_id_compare(const struct fd_dev_id *a, const struct fd_dev_id *b)
+{
+   return a->gpu_id == b->gpu_id;
+}
+
 const struct fd_dev_info *
-fd_dev_info(uint32_t gpu_id)
+fd_dev_info(const struct fd_dev_id *id)
 {
    for (int i = 0; i < ARRAY_SIZE(fd_dev_recs); i++) {
-      if (gpu_id == fd_dev_recs[i].gpu_id) {
+      if (dev_id_compare(&fd_dev_recs[i].id, id)) {
          return fd_dev_recs[i].info;
       }
    }
@@ -48,10 +54,10 @@ fd_dev_info(uint32_t gpu_id)
 }
 
 const char *
-fd_dev_name(uint32_t gpu_id)
+fd_dev_name(const struct fd_dev_id *id)
 {
    for (int i = 0; i < ARRAY_SIZE(fd_dev_recs); i++) {
-      if (gpu_id == fd_dev_recs[i].gpu_id) {
+      if (dev_id_compare(&fd_dev_recs[i].id, id)) {
          return fd_dev_recs[i].name;
       }
    }

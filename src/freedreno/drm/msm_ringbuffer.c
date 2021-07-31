@@ -512,7 +512,7 @@ msm_ringbuffer_emit_reloc(struct fd_ringbuffer *ring,
 
    ring->cur++;
 
-   if (pipe->gpu_id >= 500) {
+   if (fd_dev_64b(&pipe->dev_id)) {
       APPEND(msm_ring->cmd, relocs,
              (struct drm_msm_gem_submit_reloc){
                 .reloc_idx = reloc_idx,

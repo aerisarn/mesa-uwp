@@ -445,7 +445,7 @@ tu_drm_device_init(struct tu_physical_device *device,
    device->master_fd = master_fd;
    device->local_fd = fd;
 
-   if (tu_drm_get_gpu_id(device, &device->gpu_id)) {
+   if (tu_drm_get_gpu_id(device, &device->dev_id.gpu_id)) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "could not get GPU ID");
       goto fail;

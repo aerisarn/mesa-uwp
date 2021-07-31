@@ -108,7 +108,7 @@ bool fd_binning_enabled = true;
 static const char *
 fd_screen_get_name(struct pipe_screen *pscreen)
 {
-   return fd_dev_name(fd_screen(pscreen)->gpu_id);
+   return fd_dev_name(fd_screen(pscreen)->dev_id);
 }
 
 static const char *
@@ -914,7 +914,7 @@ fd_screen_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
 {
    struct fd_screen *screen = fd_screen(pscreen);
 
-   fd_get_device_uuid(uuid, screen->gpu_id);
+   fd_get_device_uuid(uuid, screen->dev_id);
 }
 
 static void
@@ -978,6 +978,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
          screen->has_timestamp = true;
    }
 
+   screen->dev_id = fd_pipe_dev_id(screen->pipe);
+
    if (fd_pipe_get_param(screen->pipe, FD_GPU_ID, &val)) {
       DBG("could not get gpu-id");
       goto fail;
@@ -995,7 +997,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
             ((core & 0xff) << 24);
    }
    screen->chip_id = val;
-   screen->gen = screen->chip_id >> 24;
+   screen->gen = fd_dev_gen(screen->dev_id);
 
    if (fd_pipe_get_param(screen->pipe, FD_NR_RINGS, &val)) {
       DBG("could not get # of rings");
@@ -1012,18 +1014,18 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
 
    /* parse driconf configuration now for device specific overrides: */
    driParseConfigFiles(config->options, config->options_info, 0, "msm",
-                       NULL, fd_dev_name(screen->gpu_id), NULL, 0, NULL, 0);
+                       NULL, fd_dev_name(screen->dev_id), NULL, 0, NULL, 0);
 
    struct sysinfo si;
    sysinfo(&si);
    screen->ram_size = si.totalram;
 
    DBG("Pipe Info:");
-   DBG(" GPU-id:          %d", screen->gpu_id);
+   DBG(" GPU-id:          %s", fd_dev_name(screen->dev_id));
    DBG(" Chip-id:         0x%08x", screen->chip_id);
    DBG(" GMEM size:       0x%08x", screen->gmemsize_bytes);
 
-   const struct fd_dev_info *info = fd_dev_info(screen->gpu_id);
+   const struct fd_dev_info *info = fd_dev_info(screen->dev_id);
    if (!info) {
       mesa_loge("unsupported GPU: a%03d", screen->gpu_id);
       goto fail;
@@ -1071,7 +1073,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
 
    if (FD_DBG(PERFC)) {
       screen->perfcntr_groups =
-         fd_perfcntrs(screen->gpu_id, &screen->num_perfcntr_groups);
+         fd_perfcntrs(screen->dev_id, &screen->num_perfcntr_groups);
    }
 
    /* NOTE: don't enable if we have too old of a kernel to support

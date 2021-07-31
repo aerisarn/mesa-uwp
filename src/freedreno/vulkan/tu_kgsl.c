@@ -239,7 +239,7 @@ tu_enumerate_devices(struct tu_instance *instance)
    device->master_fd = -1;
    device->local_fd = fd;
 
-   device->gpu_id =
+   device->dev_id.gpu_id =
       ((info.chip_id >> 24) & 0xff) * 100 +
       ((info.chip_id >> 16) & 0xff) * 10 +
       ((info.chip_id >>  8) & 0xff);

@@ -46,6 +46,7 @@
 #include "util/u_debug.h"
 #include "util/u_math.h"
 
+#include "freedreno_dev_info.h"
 #include "freedreno_drmif.h"
 #include "freedreno_ringbuffer.h"
 
@@ -192,7 +193,7 @@ struct fd_pipe_control {
 struct fd_pipe {
    struct fd_device *dev;
    enum fd_pipe_id id;
-   uint32_t gpu_id;
+   struct fd_dev_id dev_id;
 
    /**
     * Note refcnt is *not* atomic, but protected by table_lock, since the

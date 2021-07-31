@@ -204,12 +204,12 @@ struct tu_physical_device
    int local_fd;
    int master_fd;
 
-   unsigned gpu_id;
    uint32_t gmem_size;
    uint64_t gmem_base;
    uint32_t ccu_offset_gmem;
    uint32_t ccu_offset_bypass;
 
+   struct fd_dev_id dev_id;
    const struct fd_dev_info *info;
 
    int msm_major_version;

@@ -697,7 +697,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 
    isa_decode(bin, so->info.sizedwords * 4, out,
               &(struct isa_decode_options){
-                 .gpu_id = ir->compiler->gpu_id,
+                 .gpu_id = fd_dev_gpu_id(ir->compiler->dev_id),
                  .show_errors = true,
                  .branch_labels = true,
               });
