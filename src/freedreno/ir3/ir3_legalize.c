@@ -273,7 +273,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
             regmask_set(&state->needs_sy, n->dsts[0]);
       } else if (is_atomic(n->opc)) {
          if (n->flags & IR3_INSTR_G) {
-            if (ctx->compiler->gpu_id >= 600) {
+            if (ctx->compiler->gen >= 6) {
                /* New encoding, returns  result via second src: */
                regmask_set(&state->needs_sy, n->srcs[2]);
             } else {
@@ -801,7 +801,7 @@ nop_sched(struct ir3 *ir, struct ir3_shader_variant *so)
           * a6xx.
           */
 
-         if ((delay > 0) && (ir->compiler->gpu_id >= 600) && last &&
+         if ((delay > 0) && (ir->compiler->gen >= 6) && last &&
              ((opc_cat(last->opc) == 2) || (opc_cat(last->opc) == 3)) &&
              (last->repeat == 0)) {
             /* the previous cat2/cat3 instruction can encode at most 3 nop's: */
@@ -870,7 +870,7 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
       }
    }
 
-   assert(ctx->early_input_release || ctx->compiler->gpu_id > 500);
+   assert(ctx->early_input_release || ctx->compiler->gen >= 5);
 
    /* process each block: */
    do {

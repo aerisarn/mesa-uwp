@@ -175,14 +175,14 @@ ir3_shader_assemble(struct ir3_shader_variant *v)
     * uploads are in units of 4 dwords. Round it up here to make calculations
     * regarding the shared constlen simpler.
     */
-   if (compiler->gpu_id >= 400)
+   if (compiler->gen >= 4)
       v->constlen = align(v->constlen, 4);
 
    /* Use the per-wave layout by default on a6xx for compute shaders. It
     * should result in better performance when loads/stores are to a uniform
     * index.
     */
-   v->pvtmem_per_wave = compiler->gpu_id >= 600 && !info->multi_dword_ldp_stp &&
+   v->pvtmem_per_wave = compiler->gen >= 6 && !info->multi_dword_ldp_stp &&
                         v->type == MESA_SHADER_COMPUTE;
 
    fixup_regfootprint(v);
@@ -332,7 +332,7 @@ alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
    v->nonbinning = nonbinning;
    v->key = *key;
    v->type = shader->type;
-   v->mergedregs = shader->compiler->gpu_id >= 600;
+   v->mergedregs = shader->compiler->gen >= 6;
 
    if (!v->binning_pass)
       v->const_state = rzalloc_size(v, sizeof(*v->const_state));
@@ -494,7 +494,7 @@ ir3_setup_used_key(struct ir3_shader *shader)
        * on older HW.
        */
       key->msaa = info->fs.uses_sample_qualifier ||
-                  (shader->compiler->gpu_id < 600 &&
+                  (shader->compiler->gen < 6 &&
                    (BITSET_TEST(info->system_values_read,
                                 SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID) ||
                     BITSET_TEST(info->system_values_read,
@@ -568,7 +568,7 @@ ir3_trim_constlen(struct ir3_shader_variant **variants,
     * a6xx and the total limit. The frag limit on a6xx only matters for a
     * single stage, so it's always satisfied with the first variant.
     */
-   if (compiler->gpu_id >= 600) {
+   if (compiler->gen >= 6) {
       trimmed |=
          trim_constlens(constlens, MESA_SHADER_VERTEX, MESA_SHADER_GEOMETRY,
                         compiler->max_const_geom, compiler->max_const_safe);

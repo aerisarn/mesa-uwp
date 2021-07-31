@@ -135,7 +135,7 @@ ir3_should_double_threadsize(struct ir3_shader_variant *v, unsigned regs_count)
        * fit. For smaller workgroup sizes, we follow the blob and use the
        * smaller threadsize.
        */
-      if (compiler->gpu_id < 600) {
+      if (compiler->gen < 6) {
          return v->local_size_variable ||
                 threads_per_wg >
                    compiler->threadsize_base * compiler->max_waves;
@@ -317,7 +317,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
     */
    unsigned regs_count =
       info->max_reg + 1 +
-      (compiler->gpu_id >= 600 ? ((info->max_half_reg + 2) / 2) : 0);
+      (compiler->gen >= 6 ? ((info->max_half_reg + 2) / 2) : 0);
 
    info->double_threadsize = ir3_should_double_threadsize(v, regs_count);
    unsigned reg_independent_max_waves =
@@ -781,7 +781,7 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n, unsigned flags)
        * same block (since we can't propagate address register values
        * across blocks currently)
        */
-      if (compiler->gpu_id < 600)
+      if (compiler->gen < 6)
          return false;
 
       /* NOTE in the special try_swap_mad_two_srcs() case we can be

@@ -1034,7 +1034,7 @@ ir3_shader_branchstack_hw(const struct ir3_shader_variant *v)
    if (!v->shader)
       return 0;
 
-   if (v->shader->compiler->gpu_id < 500)
+   if (v->shader->compiler->gen < 5)
       return v->branchstack;
 
    if (v->branchstack > 0) {

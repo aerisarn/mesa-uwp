@@ -38,6 +38,7 @@ struct ir3_shader;
 struct ir3_compiler {
    struct fd_device *dev;
    uint32_t gpu_id;
+   uint8_t gen;
    uint32_t shader_count;
 
    struct disk_cache *disk_cache;

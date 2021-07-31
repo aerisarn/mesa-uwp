@@ -1312,7 +1312,7 @@ emit_control_barrier(struct ir3_context *ctx)
    struct ir3_block *b = ctx->block;
    struct ir3_instruction *barrier = ir3_BAR(b);
    barrier->cat7.g = true;
-   if (ctx->compiler->gpu_id < 600)
+   if (ctx->compiler->gen < 6)
       barrier->cat7.l = true;
    barrier->flags = IR3_INSTR_SS | IR3_INSTR_SY;
    barrier->barrier_class = IR3_BARRIER_EVERYTHING;
@@ -1361,7 +1361,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
             barrier->cat7.g = true;
          }
 
-         if (ctx->compiler->gpu_id > 600) {
+         if (ctx->compiler->gen >= 6) {
             if (modes & nir_var_mem_ssbo) {
                barrier->cat7.l = true;
             }
@@ -1407,7 +1407,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_memory_barrier_buffer:
       barrier = ir3_FENCE(b);
       barrier->cat7.g = true;
-      if (ctx->compiler->gpu_id > 600)
+      if (ctx->compiler->gen >= 6)
          barrier->cat7.l = true;
       barrier->cat7.r = true;
       barrier->cat7.w = true;
@@ -1425,7 +1425,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       break;
    case nir_intrinsic_memory_barrier_shared:
       barrier = ir3_FENCE(b);
-      if (ctx->compiler->gpu_id < 600)
+      if (ctx->compiler->gen < 6)
          barrier->cat7.l = true;
       barrier->cat7.r = true;
       barrier->cat7.w = true;
@@ -1564,14 +1564,14 @@ emit_intrinsic_barycentric(struct ir3_context *ctx, nir_intrinsic_instr *intr,
          sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
          break;
       case SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID:
-         if (ctx->compiler->gpu_id < 600)
+         if (ctx->compiler->gen < 6)
             sysval = SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL;
          break;
       case SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE:
          sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL;
          break;
       case SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID:
-         if (ctx->compiler->gpu_id < 600)
+         if (ctx->compiler->gen < 6)
             sysval = SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL;
          break;
       default:
@@ -3289,7 +3289,7 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
     * out, we guarantee that all exit paths flow into the stream-
     * out instructions.
     */
-   if ((ctx->compiler->gpu_id < 500) &&
+   if ((ctx->compiler->gen < 5) &&
        (ctx->so->shader->stream_output.num_outputs > 0) &&
        !ctx->so->binning_pass) {
       debug_assert(ctx->so->type == MESA_SHADER_VERTEX);
@@ -4103,7 +4103,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
        * need to make sure not to remove any inputs that are used by
        * the nonbinning VS.
        */
-      if (ctx->compiler->gpu_id >= 600 && so->binning_pass &&
+      if (ctx->compiler->gen >= 6 && so->binning_pass &&
           so->type == MESA_SHADER_VERTEX) {
          for (int i = 0; i < ctx->ninputs; i++) {
             struct ir3_instruction *in = ctx->inputs[i];
@@ -4140,7 +4140,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
       array_insert(ctx->block, ctx->block->keeps, end);
 
       /* at this point, for binning pass, throw away unneeded outputs: */
-      if (so->binning_pass && (ctx->compiler->gpu_id < 600))
+      if (so->binning_pass && (ctx->compiler->gen < 6))
          fixup_binning_pass(ctx, end);
    }
 
@@ -4163,7 +4163,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
     * that the uniform/constant layout for BS and VS matches, so that
     * we can re-use same VS_CONST state group.
     */
-   if (so->binning_pass && (ctx->compiler->gpu_id >= 600)) {
+   if (so->binning_pass && (ctx->compiler->gen >= 6)) {
       fixup_binning_pass(ctx, find_end(ctx->so->ir));
       /* cleanup the result of removing unneeded outputs: */
       while (IR3_PASS(ir, ir3_dce, so)) {
@@ -4195,7 +4195,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
     *
     * Note that VS inputs are expected to be full precision.
     */
-   bool pre_assign_inputs = (ir->compiler->gpu_id >= 600) &&
+   bool pre_assign_inputs = (ir->compiler->gen >= 6) &&
                             (ir->type == MESA_SHADER_VERTEX) &&
                             so->binning_pass;
 

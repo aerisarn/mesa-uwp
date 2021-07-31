@@ -149,7 +149,7 @@ static const nir_shader_compiler_options options_a6xx = {
 const nir_shader_compiler_options *
 ir3_get_compiler_options(struct ir3_compiler *compiler)
 {
-   if (compiler->gpu_id >= 600)
+   if (compiler->gen >= 6)
       return &options_a6xx;
    return &options;
 }
@@ -352,7 +352,7 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
       .lower_tg4_offsets = true,
    };
 
-   if (compiler->gpu_id >= 400) {
+   if (compiler->gen >= 4) {
       /* a4xx seems to have *no* sam.p */
       tex_options.lower_txp = ~0; /* lower all txp */
    } else {
@@ -376,7 +376,7 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 
    OPT_V(s, nir_lower_tex, &tex_options);
    OPT_V(s, nir_lower_load_const_to_scalar);
-   if (compiler->gpu_id < 500)
+   if (compiler->gen < 5)
       OPT_V(s, ir3_nir_lower_tg4_to_tex);
 
    ir3_optimize_loop(compiler, s);
@@ -491,7 +491,7 @@ ir3_nir_post_finalize(struct ir3_compiler *compiler, nir_shader *s)
       NIR_PASS_V(s, nir_lower_fb_read);
    }
 
-   if (compiler->gpu_id >= 600 && s->info.stage == MESA_SHADER_FRAGMENT &&
+   if (compiler->gen >= 6 && s->info.stage == MESA_SHADER_FRAGMENT &&
        !(ir3_shader_debug & IR3_DBG_NOFP16)) {
       NIR_PASS_V(s, nir_lower_mediump_io, nir_var_shader_out, 0, false);
    }
@@ -671,7 +671,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    /* UBO offset lowering has to come after we've decided what will
     * be left as load_ubo
     */
-   if (so->shader->compiler->gpu_id >= 600)
+   if (so->shader->compiler->gen >= 6)
       progress |= OPT(s, nir_lower_ubo_vec4);
 
    OPT_V(s, ir3_nir_lower_io_offsets, so->shader->compiler->gpu_id);
@@ -820,7 +820,7 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 
    ir3_nir_scan_driver_consts(nir, const_state);
 
-   if ((compiler->gpu_id < 500) && (v->shader->stream_output.num_outputs > 0)) {
+   if ((compiler->gen < 5) && (v->shader->stream_output.num_outputs > 0)) {
       const_state->num_driver_params =
          MAX2(const_state->num_driver_params, IR3_DP_VTXCNT_MAX + 1);
    }
@@ -853,13 +853,13 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 
    if (const_state->num_driver_params > 0) {
       /* offset cannot be 0 for vs params loaded by CP_DRAW_INDIRECT_MULTI */
-      if (v->type == MESA_SHADER_VERTEX && compiler->gpu_id >= 600)
+      if (v->type == MESA_SHADER_VERTEX && compiler->gen >= 6)
          constoff = MAX2(constoff, 1);
       const_state->offsets.driver_param = constoff;
    }
    constoff += const_state->num_driver_params / 4;
 
-   if ((v->type == MESA_SHADER_VERTEX) && (compiler->gpu_id < 500) &&
+   if ((v->type == MESA_SHADER_VERTEX) && (compiler->gen < 5) &&
        v->shader->stream_output.num_outputs > 0) {
       const_state->offsets.tfbo = constoff;
       constoff += align(IR3_MAX_SO_BUFFERS * ptrsz, 4) / 4;
