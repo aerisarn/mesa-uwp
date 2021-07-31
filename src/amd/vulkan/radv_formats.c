@@ -779,10 +779,14 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
    }
 
    switch (format) {
+   case VK_FORMAT_R32G32_SFLOAT:
    case VK_FORMAT_R32G32B32_SFLOAT:
    case VK_FORMAT_R32G32B32A32_SFLOAT:
+   case VK_FORMAT_R16G16_SFLOAT:
    case VK_FORMAT_R16G16B16_SFLOAT:
    case VK_FORMAT_R16G16B16A16_SFLOAT:
+   case VK_FORMAT_R16G16_SNORM:
+   case VK_FORMAT_R16G16B16A16_SNORM:
       buffer |= VK_FORMAT_FEATURE_ACCELERATION_STRUCTURE_VERTEX_BUFFER_BIT_KHR;
       break;
    default:

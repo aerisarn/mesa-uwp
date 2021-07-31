@@ -22,6 +22,7 @@
  */
 #include "radv_private.h"
 
+#include "util/format/format_utils.h"
 #include "util/half_float.h"
 #include "nir_builder.h"
 #include "radv_cs.h"
@@ -271,6 +272,12 @@ build_triangles(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeo
          const char *v_data = (const char *)tri_data->vertexData.hostAddress + v_index * tri_data->vertexStride;
          float coords[4];
          switch (tri_data->vertexFormat) {
+         case VK_FORMAT_R32G32_SFLOAT:
+            coords[0] = *(const float *)(v_data + 0);
+            coords[1] = *(const float *)(v_data + 4);
+            coords[2] = 0.0f;
+            coords[3] = 1.0f;
+            break;
          case VK_FORMAT_R32G32B32_SFLOAT:
             coords[0] = *(const float *)(v_data + 0);
             coords[1] = *(const float *)(v_data + 4);
@@ -283,6 +290,12 @@ build_triangles(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeo
             coords[2] = *(const float *)(v_data + 8);
             coords[3] = *(const float *)(v_data + 12);
             break;
+         case VK_FORMAT_R16G16_SFLOAT:
+            coords[0] = _mesa_half_to_float(*(const uint16_t *)(v_data + 0));
+            coords[1] = _mesa_half_to_float(*(const uint16_t *)(v_data + 2));
+            coords[2] = 0.0f;
+            coords[3] = 1.0f;
+            break;
          case VK_FORMAT_R16G16B16_SFLOAT:
             coords[0] = _mesa_half_to_float(*(const uint16_t *)(v_data + 0));
             coords[1] = _mesa_half_to_float(*(const uint16_t *)(v_data + 2));
@@ -294,6 +307,18 @@ build_triangles(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeo
             coords[1] = _mesa_half_to_float(*(const uint16_t *)(v_data + 2));
             coords[2] = _mesa_half_to_float(*(const uint16_t *)(v_data + 4));
             coords[3] = _mesa_half_to_float(*(const uint16_t *)(v_data + 6));
+            break;
+         case VK_FORMAT_R16G16_SNORM:
+            coords[0] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 0), 16);
+            coords[1] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 2), 16);
+            coords[2] = 0.0f;
+            coords[3] = 1.0f;
+            break;
+         case VK_FORMAT_R16G16B16A16_SNORM:
+            coords[0] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 0), 16);
+            coords[1] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 2), 16);
+            coords[2] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 4), 16);
+            coords[3] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 6), 16);
             break;
          default:
             unreachable("Unhandled vertex format in BVH build");
@@ -664,10 +689,9 @@ get_vertices(nir_builder *b, nir_ssa_def *addresses, nir_ssa_def *format, nir_ss
       nir_variable_create(b->shader, nir_var_shader_temp, vec3_type, "vertex2")};
 
    VkFormat formats[] = {
-      VK_FORMAT_R32G32B32_SFLOAT,
-      VK_FORMAT_R32G32B32A32_SFLOAT,
-      VK_FORMAT_R16G16B16_SFLOAT,
-      VK_FORMAT_R16G16B16A16_SFLOAT,
+      VK_FORMAT_R32G32B32_SFLOAT,    VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R16G16B16_SFLOAT,
+      VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R16G16_SFLOAT,       VK_FORMAT_R32G32_SFLOAT,
+      VK_FORMAT_R16G16_SNORM,        VK_FORMAT_R16G16B16A16_SNORM,
    };
 
    for (unsigned f = 0; f < ARRAY_SIZE(formats); ++f) {
@@ -683,15 +707,39 @@ get_vertices(nir_builder *b, nir_ssa_def *addresses, nir_ssa_def *format, nir_ss
                                                 .align_mul = 4, .align_offset = 0),
                           7);
             break;
+         case VK_FORMAT_R32G32_SFLOAT:
+         case VK_FORMAT_R16G16_SFLOAT:
          case VK_FORMAT_R16G16B16_SFLOAT:
-         case VK_FORMAT_R16G16B16A16_SFLOAT: {
+         case VK_FORMAT_R16G16B16A16_SFLOAT:
+         case VK_FORMAT_R16G16_SNORM:
+         case VK_FORMAT_R16G16B16A16_SNORM: {
+            unsigned components = MIN2(3, vk_format_get_nr_components(formats[f]));
+            unsigned comp_bits =
+               vk_format_get_blocksizebits(formats[f]) / vk_format_get_nr_components(formats[f]);
+            unsigned comp_bytes = comp_bits / 8;
             nir_ssa_def *values[3];
             nir_ssa_def *addr = nir_channel(b, addresses, i);
-            for (unsigned j = 0; j < 3; ++j)
-               values[j] =
-                  nir_build_load_global(b, 1, 16, nir_iadd(b, addr, nir_imm_int64(b, j * 2)),
-                                        .align_mul = 2, .align_offset = 0);
-            nir_store_var(b, results[i], nir_f2f32(b, nir_vec(b, values, 3)), 7);
+            for (unsigned j = 0; j < components; ++j)
+               values[j] = nir_build_load_global(
+                  b, 1, comp_bits, nir_iadd(b, addr, nir_imm_int64(b, j * comp_bytes)),
+                  .align_mul = comp_bytes, .align_offset = 0);
+
+            for (unsigned j = components; j < 3; ++j)
+               values[j] = nir_imm_intN_t(b, 0, comp_bits);
+
+            nir_ssa_def *vec;
+            if (util_format_is_snorm(vk_format_to_pipe_format(formats[f]))) {
+               for (unsigned j = 0; j < 3; ++j) {
+                  values[j] = nir_fdiv(b, nir_i2f32(b, values[j]),
+                                       nir_imm_float(b, (1u << (comp_bits - 1)) - 1));
+                  values[j] = nir_fmax(b, values[j], nir_imm_float(b, -1.0));
+               }
+               vec = nir_vec(b, values, 3);
+            } else if (comp_bits == 16)
+               vec = nir_f2f32(b, nir_vec(b, values, 3));
+            else
+               vec = nir_vec(b, values, 3);
+            nir_store_var(b, results[i], vec, 7);
             break;
          }
          default:
