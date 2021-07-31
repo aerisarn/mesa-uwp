@@ -80,7 +80,7 @@ struct fd_screen {
 
    uint64_t gmem_base;
    uint32_t gmemsize_bytes;
-   uint32_t device_id;
+
    uint32_t gpu_id;  /* 220, 305, etc */
    uint32_t chip_id; /* coreid:8 majorrev:8 minorrev:8 patch:8 */
    uint32_t max_freq;
