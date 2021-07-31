@@ -326,12 +326,11 @@ template = """\
 static const struct fd_dev_info __info${s.info_index(info)} = ${str(info)};
 %endfor
 
-const struct fd_dev_id fd_dev_ids[] = {
+static const struct fd_dev_rec fd_dev_recs[] = {
 %for id, info in s.gpus.items():
    { ${id.gpu_id}, "${id.name}", &__info${s.info_index(info)} },
 %endfor
 };
-const unsigned fd_dev_ids_count = ${len(s.gpus)};
 """
 
 print(Template(template).render(s=s))

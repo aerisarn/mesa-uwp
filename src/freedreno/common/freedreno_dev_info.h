@@ -105,12 +105,6 @@ struct fd_dev_info {
    };
 };
 
-struct fd_dev_id {
-   uint32_t gpu_id;
-   const char *name;
-   const struct fd_dev_info *info;
-};
-
 /* per CCU GMEM amount reserved for depth cache for direct rendering */
 #define A6XX_CCU_DEPTH_SIZE (64 * 1024)
 /* per CCU GMEM amount reserved for color cache used by GMEM resolves

@@ -25,15 +25,23 @@
 #include "freedreno_dev_info.h"
 #include "util/macros.h"
 
-extern const struct fd_dev_id fd_dev_ids[];
-extern const unsigned fd_dev_ids_count;
+/**
+ * Table entry for a single GPU version
+ */
+struct fd_dev_rec {
+   uint32_t gpu_id;
+   const char *name;
+   const struct fd_dev_info *info;
+};
+
+#include "freedreno_devices.h"
 
 const struct fd_dev_info *
 fd_dev_info(uint32_t gpu_id)
 {
-   for (int i = 0; i < fd_dev_ids_count; i++) {
-      if (gpu_id == fd_dev_ids[i].gpu_id) {
-         return fd_dev_ids[i].info;
+   for (int i = 0; i < ARRAY_SIZE(fd_dev_recs); i++) {
+      if (gpu_id == fd_dev_recs[i].gpu_id) {
+         return fd_dev_recs[i].info;
       }
    }
    return NULL;
@@ -42,9 +50,9 @@ fd_dev_info(uint32_t gpu_id)
 const char *
 fd_dev_name(uint32_t gpu_id)
 {
-   for (int i = 0; i < fd_dev_ids_count; i++) {
-      if (gpu_id == fd_dev_ids[i].gpu_id) {
-         return fd_dev_ids[i].name;
+   for (int i = 0; i < ARRAY_SIZE(fd_dev_recs); i++) {
+      if (gpu_id == fd_dev_recs[i].gpu_id) {
+         return fd_dev_recs[i].name;
       }
    }
    return NULL;
