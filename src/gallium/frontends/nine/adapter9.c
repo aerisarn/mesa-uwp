@@ -828,7 +828,6 @@ NineAdapter9_GetDeviceCaps( struct NineAdapter9 *This,
                            D3DTEXOPCAPS_LERP;
 
     pCaps->MaxTextureBlendStages = 8; /* XXX wine */
-        (DWORD)screen->get_param(screen, PIPE_CAP_BLEND_EQUATION_SEPARATE);
     pCaps->MaxSimultaneousTextures = 8;
 
     pCaps->VertexProcessingCaps = D3DVTXPCAPS_TEXGEN |
