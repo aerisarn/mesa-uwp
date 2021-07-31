@@ -252,7 +252,7 @@ disassemble(const char *filename)
 int
 main(int argc, char **argv)
 {
-        char c;
+        int c;
 
         if (argc < 2) {
                 printf("Pass a command\n");
