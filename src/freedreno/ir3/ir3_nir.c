@@ -674,7 +674,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    if (so->shader->compiler->gen >= 6)
       progress |= OPT(s, nir_lower_ubo_vec4);
 
-   OPT_V(s, ir3_nir_lower_io_offsets, so->shader->compiler->gpu_id);
+   OPT_V(s, ir3_nir_lower_io_offsets);
 
    if (progress)
       ir3_optimize_loop(so->shader->compiler, s);
