@@ -580,7 +580,7 @@ fd_alloc_staging(struct fd_context *ctx, struct fd_resource *rsc,
    /* We cannot currently do stencil export on earlier gens, and
     * u_blitter cannot do blits involving stencil otherwise:
     */
-   if ((ctx->screen->gpu_id < 600) && !ctx->blit &&
+   if ((ctx->screen->gen < 6) && !ctx->blit &&
        (util_format_get_mask(tmpl.format) & PIPE_MASK_S))
       return NULL;
 
@@ -1565,7 +1565,7 @@ void
 fd_resource_screen_init(struct pipe_screen *pscreen)
 {
    struct fd_screen *screen = fd_screen(pscreen);
-   bool fake_rgtc = screen->gpu_id < 400;
+   bool fake_rgtc = screen->gen < 4;
 
    pscreen->resource_create = u_transfer_helper_resource_create;
    /* NOTE: u_transfer_helper does not yet support the _with_modifiers()

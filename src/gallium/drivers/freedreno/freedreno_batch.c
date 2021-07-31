@@ -71,7 +71,7 @@ batch_init(struct fd_batch *batch)
       batch->draw = alloc_ring(batch, 0x100000, 0);
 
       /* a6xx+ re-uses draw rb for both draw and binning pass: */
-      if (ctx->screen->gpu_id < 600) {
+      if (ctx->screen->gen < 6) {
          batch->binning = alloc_ring(batch, 0x100000, 0);
       }
    }
@@ -83,7 +83,7 @@ batch_init(struct fd_batch *batch)
     * by always creating a fence to request that the submit is flushed
     * immediately:
     */
-   if (ctx->screen->gpu_id < 600)
+   if (ctx->screen->gen < 6)
       batch->fence = fd_fence_create(batch);
 
    batch->cleared = 0;
@@ -551,7 +551,7 @@ void
 fd_wfi(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
    if (batch->needs_wfi) {
-      if (batch->ctx->screen->gpu_id >= 500)
+      if (batch->ctx->screen->gen >= 5)
          OUT_WFI5(ring);
       else
          OUT_WFI(ring);

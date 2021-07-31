@@ -995,6 +995,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
             ((core & 0xff) << 24);
    }
    screen->chip_id = val;
+   screen->gen = screen->chip_id >> 24;
 
    if (fd_pipe_get_param(screen->pipe, FD_NR_RINGS, &val)) {
       DBG("could not get # of rings");
@@ -1039,7 +1040,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
     * of the cases below and see what happens.  And if it works, please
     * send a patch ;-)
     */
-   switch (screen->gpu_id / 100) {
+   switch (screen->gen) {
    case 2:
       fd2_screen_init(pscreen);
       break;
@@ -1056,7 +1057,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
       fd6_screen_init(pscreen);
       break;
    default:
-      mesa_loge("unsupported GPU: a%03d", screen->gpu_id);
+      mesa_loge("unsupported GPU generation: a%uxx", screen->gen);
       goto fail;
    }
 

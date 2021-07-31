@@ -210,7 +210,7 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
    /* a6xx+ uses UBO state and ldc instead of pointers emitted in
     * const state and ldg:
     */
-   if (ctx->screen->gpu_id >= 600)
+   if (ctx->screen->gen >= 6)
       return;
 
    if (v->constlen > offset) {

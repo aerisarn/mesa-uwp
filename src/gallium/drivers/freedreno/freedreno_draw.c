@@ -231,7 +231,7 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
 {
    ctx->stats.draw_calls++;
 
-   if (ctx->screen->gpu_id < 600) {
+   if (ctx->screen->gen < 6) {
       /* Counting prims in sw doesn't work for GS and tesselation. For older
        * gens we don't have those stages and don't have the hw counters enabled,
        * so keep the count accurate for non-patch geometry.

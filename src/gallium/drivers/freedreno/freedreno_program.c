@@ -198,18 +198,18 @@ fd_prog_init(struct pipe_context *pctx)
    ctx->solid_prog.fs = assemble_tgsi(pctx, solid_fs, true);
    ctx->solid_prog.vs = assemble_tgsi(pctx, solid_vs, false);
 
-   if (ctx->screen->gpu_id >= 600) {
+   if (ctx->screen->gen >= 6) {
       ctx->solid_layered_prog.fs = assemble_tgsi(pctx, solid_fs, true);
       ctx->solid_layered_prog.vs = util_make_layered_clear_vertex_shader(pctx);
    }
 
-   if (ctx->screen->gpu_id >= 500)
+   if (ctx->screen->gen >= 5)
       return;
 
    ctx->blit_prog[0].vs = fd_prog_blit_vs(pctx);
    ctx->blit_prog[0].fs = fd_prog_blit_fs(pctx, 1, false);
 
-   if (ctx->screen->gpu_id < 300)
+   if (ctx->screen->gen < 3)
       return;
 
    for (i = 1; i < ctx->screen->max_rts; i++) {
@@ -232,18 +232,18 @@ fd_prog_fini(struct pipe_context *pctx)
    pctx->delete_vs_state(pctx, ctx->solid_prog.vs);
    pctx->delete_fs_state(pctx, ctx->solid_prog.fs);
 
-   if (ctx->screen->gpu_id >= 600) {
+   if (ctx->screen->gen >= 6) {
       pctx->delete_vs_state(pctx, ctx->solid_layered_prog.vs);
       pctx->delete_fs_state(pctx, ctx->solid_layered_prog.fs);
    }
 
-   if (ctx->screen->gpu_id >= 500)
+   if (ctx->screen->gen >= 5)
       return;
 
    pctx->delete_vs_state(pctx, ctx->blit_prog[0].vs);
    pctx->delete_fs_state(pctx, ctx->blit_prog[0].fs);
 
-   if (ctx->screen->gpu_id < 300)
+   if (ctx->screen->gen < 3)
       return;
 
    for (i = 1; i < ctx->screen->max_rts; i++)

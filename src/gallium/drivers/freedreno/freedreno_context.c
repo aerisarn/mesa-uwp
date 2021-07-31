@@ -244,7 +244,7 @@ fd_emit_string_marker(struct pipe_context *pctx, const char *string,
 
    fd_batch_needs_flush(batch);
 
-   if (ctx->screen->gpu_id >= 500) {
+   if (ctx->screen->gen >= 5) {
       fd_emit_string5(batch->draw, string, len);
    } else {
       fd_emit_string(batch->draw, string, len);
