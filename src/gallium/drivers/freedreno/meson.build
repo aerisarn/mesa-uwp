@@ -286,7 +286,10 @@ driver_freedreno = declare_dependency(
     libfreedreno_layout,
     libfreedreno_perfcntrs
   ],
-  dependencies : idep_nir,
+  dependencies : [
+    idep_nir,
+    idep_xmlconfig,
+  ],
 )
 
 ir3_compiler = executable(
@@ -320,6 +323,7 @@ gmemtool = executable(
     idep_nir,
     idep_mesautil,
     idep_u_tracepoints,
+    idep_xmlconfig,
   ],
   link_with : [
     libfreedreno,

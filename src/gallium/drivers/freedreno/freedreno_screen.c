@@ -35,6 +35,7 @@
 #include "util/u_memory.h"
 #include "util/u_screen.h"
 #include "util/u_string.h"
+#include "util/xmlconfig.h"
 
 #include "util/os_time.h"
 
@@ -923,7 +924,8 @@ fd_screen_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
 }
 
 struct pipe_screen *
-fd_screen_create(struct fd_device *dev, struct renderonly *ro)
+fd_screen_create(struct fd_device *dev, struct renderonly *ro,
+                 const struct pipe_screen_config *config)
 {
    struct fd_screen *screen = CALLOC_STRUCT(fd_screen);
    struct pipe_screen *pscreen;
@@ -1012,6 +1014,10 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
       screen->has_robustness = true;
 
    screen->has_syncobj = fd_has_syncobj(screen->dev);
+
+   /* parse driconf configuration now for device specific overrides: */
+   driParseConfigFiles(config->options, config->options_info, 0, "msm",
+                       NULL, fd_dev_name(screen->gpu_id), NULL, 0, NULL, 0);
 
    struct sysinfo si;
    sysinfo(&si);
