@@ -439,7 +439,7 @@ decode_M(enum bi_constmod *mod, unsigned M1, unsigned M2, bool single)
         }
 }
 
-static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offset, bool verbose)
+static void dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offset, bool verbose)
 {
         // State for a decoded clause
         struct bifrost_alu_inst instrs[8] = {};
@@ -447,7 +447,6 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
         unsigned num_instrs = 0;
         unsigned num_consts = 0;
         uint64_t header_bits = 0;
-        bool stopbit = false;
 
         unsigned i;
         for (i = 0; ; i++, words += 4) {
@@ -648,8 +647,6 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
         struct bifrost_header header;
         memcpy((char *) &header, (char *) &header_bits, sizeof(struct bifrost_header));
         dump_header(fp, header, verbose);
-        if (header.flow_control == BIFROST_FLOW_END)
-                stopbit = true;
 
         fprintf(fp, "{\n");
         for (i = 0; i < num_instrs; i++) {
@@ -687,7 +684,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
         }
 
         fprintf(fp, "\n");
-        return stopbit;
+        return;
 }
 
 void disassemble_bifrost(FILE *fp, uint8_t *code, size_t size, bool verbose)
@@ -697,11 +694,15 @@ void disassemble_bifrost(FILE *fp, uint8_t *code, size_t size, bool verbose)
         // used for displaying branch targets
         unsigned offset = 0;
         while (words != words_end) {
-                fprintf(fp, "clause_%d:\n", offset);
-                unsigned size;
-
-                if (dump_clause(fp, words, &size, offset, verbose))
+                /* Shaders have zero bytes at the end for padding; stop
+                 * disassembling when we hit them. */
+                if (*words == 0)
                         break;
+
+                fprintf(fp, "clause_%d:\n", offset);
+
+                unsigned size;
+                dump_clause(fp, words, &size, offset, verbose);
 
                 words += size * 4;
                 offset += size;
