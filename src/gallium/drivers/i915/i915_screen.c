@@ -118,6 +118,7 @@ static const nir_shader_compiler_options i915_compiler_options = {
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
    .use_interpolated_input_intrinsics = true,
+   .force_indirect_unrolling = ~0,
 };
 
 static const struct nir_shader_compiler_options gallivm_nir_options = {
@@ -173,6 +174,69 @@ i915_get_compiler_options(struct pipe_screen *pscreen, enum pipe_shader_ir ir,
       return &i915_compiler_options;
    else
       return &gallivm_nir_options;
+}
+
+static void
+i915_optimize_nir(struct nir_shader *s)
+{
+   bool progress;
+
+   do {
+      progress = false;
+
+      NIR_PASS_V(s, nir_lower_vars_to_ssa);
+
+      NIR_PASS(progress, s, nir_copy_prop);
+      NIR_PASS(progress, s, nir_opt_algebraic);
+      NIR_PASS(progress, s, nir_opt_constant_folding);
+      NIR_PASS(progress, s, nir_opt_remove_phis);
+      NIR_PASS(progress, s, nir_opt_conditional_discard);
+      NIR_PASS(progress, s, nir_opt_dce);
+      NIR_PASS(progress, s, nir_opt_dead_cf);
+      NIR_PASS(progress, s, nir_opt_cse);
+      NIR_PASS(progress, s, nir_opt_find_array_copies);
+      NIR_PASS(progress, s, nir_opt_if, true);
+      NIR_PASS(progress, s, nir_opt_peephole_select, ~0 /* flatten all IFs. */,
+               true, true);
+      NIR_PASS(progress, s, nir_opt_algebraic);
+      NIR_PASS(progress, s, nir_opt_constant_folding);
+      NIR_PASS(progress, s, nir_opt_shrink_vectors, true);
+      NIR_PASS(progress, s, nir_opt_trivial_continues);
+      NIR_PASS(progress, s, nir_opt_undef);
+      NIR_PASS(progress, s, nir_opt_loop_unroll);
+
+   } while (progress);
+
+   NIR_PASS(progress, s, nir_remove_dead_variables, nir_var_function_temp,
+            NULL);
+}
+
+static void
+i915_finalize_nir(struct pipe_screen *pscreen, void *nir)
+{
+   nir_shader *s = nir;
+
+   if (s->info.stage == MESA_SHADER_FRAGMENT)
+      i915_optimize_nir(s);
+
+   /* st_program.c's parameter list optimization requires that future nir
+    * variants don't reallocate the uniform storage, so we have to remove
+    * uniforms that occupy storage.  But we don't want to remove samplers,
+    * because they're needed for YUV variant lowering.
+    */
+   nir_remove_dead_derefs(s);
+   nir_foreach_uniform_variable_safe(var, s)
+   {
+      if (var->data.mode == nir_var_uniform &&
+          (glsl_type_get_image_count(var->type) ||
+           glsl_type_get_sampler_count(var->type)))
+         continue;
+
+      exec_node_remove(&var->node);
+   }
+   nir_validate_shader(s, "after uniform var removal");
+
+   nir_sweep(s);
 }
 
 static int
@@ -599,6 +663,7 @@ i915_screen_create(struct i915_winsys *iws)
    is->base.get_shader_param = i915_get_shader_param;
    is->base.get_paramf = i915_get_paramf;
    is->base.get_compiler_options = i915_get_compiler_options;
+   is->base.finalize_nir = i915_finalize_nir;
    is->base.is_format_supported = i915_is_format_supported;
 
    is->base.context_create = i915_create_context;
