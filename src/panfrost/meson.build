@@ -74,3 +74,7 @@ endif
 if with_perfetto and (with_datasources.contains('panfrost') or with_datasources.contains('auto'))
   subdir('ds')
 endif
+
+if with_tools.contains('drm-shim')
+  subdir('drm-shim')
+endif
