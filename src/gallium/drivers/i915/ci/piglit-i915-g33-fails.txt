@@ -22,9 +22,13 @@ shaders@glsl-fwidth,Fail
 shaders@glsl-max-varyings,Fail
 
 shaders@glsl-max-varyings >max_varying_components,Fail
+
+# Failed to link: error: looping not supported i915 fragment shaders, all loops must be statically unrollable.
+# and then the test assertion fails setting up its uniforms (if piglit is built with assertions, which CI doesn't).
 shaders@glsl-uniform-interstage-limits@520 vs- 1 fs,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Fail
+
 shaders@ssa@fs-if-def-else-break,Fail
 shaders@ssa@fs-lost-copy-problem,Fail
 shaders@ssa@fs-swap-problem,Fail
@@ -362,6 +366,10 @@ spec@arb_texture_rectangle@texwrap rect proj bordercolor@GL_RGBA8- projected- bo
 spec@arb_texture_storage@texture-storage,Fail
 spec@arb_texture_storage@texture-storage@2D mipmap rendering ,Fail
 
+# test checks for required ext (which we don't have) after compiling the shader
+# that uses dynamic loops
+spec@arb_timer_query@query gl_timestamp,Fail
+
 # "Probe color at (68,68)
 #   Left: 0.784314 1.000000 1.000000 1.000000
 #   Right: 0.800000 1.000000 1.000000 1.000000
@@ -587,6 +595,10 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
+
+# test checks for required ext (which we don't have) after compiling the shader
+# that uses dynamic loops
+spec@ext_timer_query@time-elapsed,Fail
 
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4-vec4,Fail
@@ -815,6 +827,12 @@ spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontsecondarycolor
 spec@glsl-1.10@execution@loops@glsl-fs-continue-inside-do-while,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-300,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-break,Fail
+
+# error: looping not supported i915 fragment shaders, all loops must be statically unrollable.
+# but it's a static 0-10 loop and should unroll.
+spec@glsl-1.10@execution@loops@glsl-fs-loop-const-decr,Fail
+spec@glsl-1.10@execution@loops@glsl-fs-loop-const-incr,Fail
+
 spec@glsl-1.10@execution@loops@glsl-fs-loop-continue,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-ge,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-gt,Fail
@@ -904,6 +922,11 @@ spec@glsl-1.10@execution@varying-packing@simple vec3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 separate,Fail
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
+
+# error: looping not supported i915 fragment shaders, all loops must be statically unrollable.
+# but it's a static 0-4 loop and should unroll.
+spec@glsl-1.10@linker@fs-loop-unrolled-divide-by-zero,Fail
+
 spec@glsl-1.20@execution@built-in-functions@fs-matrixcompmult-mat2x3-mat2x3,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-matrixcompmult-mat2x4-mat2x4,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-matrixcompmult-mat3x2-mat3x2,Fail

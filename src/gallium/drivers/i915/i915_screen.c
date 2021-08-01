@@ -211,6 +211,28 @@ i915_optimize_nir(struct nir_shader *s)
             NULL);
 }
 
+static char *i915_check_control_flow(nir_shader *s)
+{
+   if (s->info.stage == MESA_SHADER_FRAGMENT) {
+      nir_function_impl *impl = nir_shader_get_entrypoint(s);
+      nir_block *first = nir_start_block(impl);
+      nir_cf_node *next = nir_cf_node_next(&first->cf_node);
+
+      if (next) {
+         switch (next->type) {
+         case nir_cf_node_if:
+            return "if/then statements not supported by i915 fragment shaders, should have been flattened by peephole_select.";
+         case nir_cf_node_loop:
+            return "looping not supported i915 fragment shaders, all loops must be statically unrollable.";
+         default:
+            return "Unknown control flow type";
+         }
+      }
+   }
+
+   return NULL;
+}
+
 static char *
 i915_finalize_nir(struct pipe_screen *pscreen, void *nir)
 {
@@ -237,6 +259,10 @@ i915_finalize_nir(struct pipe_screen *pscreen, void *nir)
    nir_validate_shader(s, "after uniform var removal");
 
    nir_sweep(s);
+
+   char *msg = i915_check_control_flow(s);
+   if (msg)
+      return strdup(msg);
 
    return NULL;
 }
