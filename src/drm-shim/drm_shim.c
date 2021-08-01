@@ -70,6 +70,7 @@ REAL_FUNCTION_POINTER(fcntl);
 REAL_FUNCTION_POINTER(fopen);
 REAL_FUNCTION_POINTER(ioctl);
 REAL_FUNCTION_POINTER(mmap);
+REAL_FUNCTION_POINTER(mmap64);
 REAL_FUNCTION_POINTER(open);
 REAL_FUNCTION_POINTER(opendir);
 REAL_FUNCTION_POINTER(readdir);
@@ -209,6 +210,7 @@ init_shim(void)
    GET_FUNCTION_POINTER(fopen);
    GET_FUNCTION_POINTER(ioctl);
    GET_FUNCTION_POINTER(mmap);
+   GET_FUNCTION_POINTER(mmap64);
    GET_FUNCTION_POINTER(open);
    GET_FUNCTION_POINTER(opendir);
    GET_FUNCTION_POINTER(readdir);
@@ -705,5 +707,15 @@ mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 
    return real_mmap(addr, length, prot, flags, fd, offset);
 }
-PUBLIC void *mmap64(void*, size_t, int, int, int, off_t)
-   __attribute__((alias("mmap")));
+
+PUBLIC void *
+mmap64(void* addr, size_t length, int prot, int flags, int fd, off64_t offset)
+{
+   init_shim();
+
+   struct shim_fd *shim_fd = drm_shim_fd_lookup(fd);
+   if (shim_fd)
+      return drm_shim_mmap(shim_fd, length, prot, flags, fd, offset);
+
+   return real_mmap64(addr, length, prot, flags, fd, offset);
+}
