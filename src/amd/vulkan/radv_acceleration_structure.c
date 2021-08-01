@@ -493,6 +493,77 @@ compute_bounds(const char *base_ptr, uint32_t node_id, float *bounds)
    }
 }
 
+struct bvh_opt_entry {
+   uint64_t key;
+   uint32_t node_id;
+};
+
+static int
+bvh_opt_compare(const void *_a, const void *_b)
+{
+   const struct bvh_opt_entry *a = _a;
+   const struct bvh_opt_entry *b = _b;
+
+   if (a->key < b->key)
+      return -1;
+   if (a->key > b->key)
+      return 1;
+   if (a->node_id < b->node_id)
+      return -1;
+   if (a->node_id > b->node_id)
+      return 1;
+   return 0;
+}
+
+static void
+optimize_bvh(const char *base_ptr, uint32_t *node_ids, uint32_t node_count)
+{
+   float bounds[6];
+   for (unsigned i = 0; i < 3; ++i)
+      bounds[i] = INFINITY;
+   for (unsigned i = 0; i < 3; ++i)
+      bounds[3 + i] = -INFINITY;
+
+   for (uint32_t i = 0; i < node_count; ++i) {
+      float node_bounds[6];
+      compute_bounds(base_ptr, node_ids[i], node_bounds);
+      for (unsigned j = 0; j < 3; ++j)
+         bounds[j] = MIN2(bounds[j], node_bounds[j]);
+      for (unsigned j = 0; j < 3; ++j)
+         bounds[3 + j] = MAX2(bounds[3 + j], node_bounds[3 + j]);
+   }
+
+   struct bvh_opt_entry *entries = calloc(node_count, sizeof(struct bvh_opt_entry));
+   if (!entries)
+      return;
+
+   for (uint32_t i = 0; i < node_count; ++i) {
+      float node_bounds[6];
+      compute_bounds(base_ptr, node_ids[i], node_bounds);
+      float node_coords[3];
+      for (unsigned j = 0; j < 3; ++j)
+         node_coords[j] = (node_bounds[j] + node_bounds[3 + j]) * 0.5;
+      int32_t coords[3];
+      for (unsigned j = 0; j < 3; ++j)
+         coords[j] = MAX2(
+            MIN2((int32_t)((node_coords[j] - bounds[j]) / (bounds[3 + j] - bounds[j]) * (1 << 21)),
+                 (1 << 21) - 1),
+            0);
+      uint64_t key = 0;
+      for (unsigned j = 0; j < 21; ++j)
+         for (unsigned k = 0; k < 3; ++k)
+            key |= (uint64_t)((coords[k] >> j) & 1) << (j * 3 + k);
+      entries[i].key = key;
+      entries[i].node_id = node_ids[i];
+   }
+
+   qsort(entries, node_count, sizeof(entries[0]), bvh_opt_compare);
+   for (unsigned i = 0; i < node_count; ++i)
+      node_ids[i] = entries[i].node_id;
+
+   free(entries);
+}
+
 static VkResult
 build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometryInfoKHR *info,
           const VkAccelerationStructureBuildRangeInfoKHR *ranges)
@@ -540,6 +611,7 @@ build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometry
    }
 
    uint32_t node_counts[2] = {ctx.write_scratch - scratch[0], 0};
+   optimize_bvh(base_ptr, scratch[0], node_counts[0]);
    unsigned d;
 
    /*
