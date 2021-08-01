@@ -80,6 +80,8 @@ static boolean use_d3d12 = FALSE;
 static boolean use_zink = FALSE;
 #endif
 
+static const char *created_driver_name = NULL;
+
 static struct pipe_screen *
 gdi_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
 {
@@ -153,8 +155,10 @@ gdi_screen_create(HDC hDC)
     */
    for (unsigned i = 0; i < ARRAY_SIZE(drivers); ++i) {
       struct pipe_screen* screen = gdi_screen_create_by_name(hDC, drivers[i], winsys);
-      if (screen)
+      if (screen) {
+         created_driver_name = drivers[i];
          return screen;
+      }
       if (i == 0 && drivers[i][0] != '\0')
          break;
    }
@@ -259,6 +263,12 @@ gdi_create_framebuffer(struct pipe_screen *screen,
    return NULL;
 }
 
+static const char *
+gdi_get_name(void)
+{
+   return created_driver_name;
+}
+
 
 static const struct stw_winsys stw_winsys = {
    &gdi_screen_create,
@@ -273,6 +283,7 @@ static const struct stw_winsys stw_winsys = {
    NULL, /* compose */
    &gdi_get_pfd_flags,
    &gdi_create_framebuffer,
+   &gdi_get_name,
 };
 
 
