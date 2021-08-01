@@ -52,9 +52,22 @@ def add_gpus(ids, info):
         s.gpus[id] = info
 
 class GPUId(object):
-    def __init__(self, gpu_id, name=None):
+    def __init__(self, gpu_id = None, chip_id = None, name=None):
+        if chip_id == None:
+            assert(gpu_id != None)
+            val = gpu_id
+            core = int(val / 100)
+            val -= (core * 100);
+            major = int(val / 10);
+            val -= (major * 10)
+            minor = val
+            chip_id = (core << 24) | (major << 16) | (minor << 8) | 0xff
+        self.chip_id = chip_id
+        if gpu_id == None:
+            gpu_id = 0
         self.gpu_id = gpu_id
         if name == None:
+            assert(gpu_id != 0)
             name = "FD%d" % gpu_id
         self.name = name
 
@@ -272,7 +285,7 @@ add_gpus([
     ))
 
 add_gpus([
-        GPUId(635, "Adreno 7c Gen 3"),
+        GPUId(chip_id=0x06030500, name="Adreno 7c Gen 3"),
     ], A6xxGPUInfo(
         a6xx_gen4,
         num_sp_cores = 2,
@@ -328,7 +341,7 @@ static const struct fd_dev_info __info${s.info_index(info)} = ${str(info)};
 
 static const struct fd_dev_rec fd_dev_recs[] = {
 %for id, info in s.gpus.items():
-   { {${id.gpu_id}}, "${id.name}", &__info${s.info_index(info)} },
+   { {${id.gpu_id}, ${hex(id.chip_id)}}, "${id.name}", &__info${s.info_index(info)} },
 %endfor
 };
 """

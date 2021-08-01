@@ -60,6 +60,9 @@ fd_pipe_new2(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
    fd_pipe_get_param(pipe, FD_GPU_ID, &val);
    pipe->dev_id.gpu_id = val;
 
+   fd_pipe_get_param(pipe, FD_CHIP_ID, &val);
+   pipe->dev_id.chip_id = val;
+
    pipe->control_mem = fd_bo_new(dev, sizeof(*pipe->control),
                                  0, "pipe-control");
    pipe->control = fd_bo_map(pipe->control_mem);

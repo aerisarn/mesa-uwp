@@ -451,6 +451,12 @@ tu_drm_device_init(struct tu_physical_device *device,
       goto fail;
    }
 
+   if (tu_drm_get_param(device, MSM_PARAM_CHIP_ID, &device->dev_id.chip_id)) {
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "could not get CHIP ID");
+      goto fail;
+   }
+
    if (tu_drm_get_gmem_size(device, &device->gmem_size)) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                 "could not get GMEM size");

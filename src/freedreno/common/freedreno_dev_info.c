@@ -39,7 +39,20 @@ struct fd_dev_rec {
 static bool
 dev_id_compare(const struct fd_dev_id *a, const struct fd_dev_id *b)
 {
-   return a->gpu_id == b->gpu_id;
+   if (a->gpu_id && b->gpu_id) {
+      return a->gpu_id == b->gpu_id;
+   } else {
+      assert(a->chip_id && b->chip_id);
+      /* Match on either:
+       * (a) exact match
+       * (b) device table entry has 0xff wildcard patch_id and core/
+       *     major/minor match
+       */
+      return (a->chip_id == b->chip_id) ||
+             (((a->chip_id & 0xff) == 0xff) &&
+              ((a->chip_id & UINT64_C(0xffffff00)) ==
+               (b->chip_id & UINT64_C(0xffffff00))));
+   }
 }
 
 const struct fd_dev_info *

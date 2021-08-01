@@ -25,6 +25,7 @@
 #ifndef FREEDRENO_DEVICE_INFO_H
 #define FREEDRENO_DEVICE_INFO_H
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -107,11 +108,25 @@ struct fd_dev_info {
 
 struct fd_dev_id {
    uint32_t gpu_id;
+   uint64_t chip_id;
 };
 
+/**
+ * Note that gpu-id should be considered deprecated.  For newer a6xx, if
+ * there is no gpu-id, this attempts to generate one from the chip-id.
+ * But that may not work forever, so avoid depending on this for newer
+ * gens
+ */
 static inline uint32_t
 fd_dev_gpu_id(const struct fd_dev_id *id)
 {
+   assert(id->gpu_id || id->chip_id);
+   if (!id->gpu_id) {
+      return ((id->chip_id >> 24) & 0xff) * 100 +
+             ((id->chip_id >> 16) & 0xff) * 10 +
+             ((id->chip_id >>  8) & 0xff);
+
+   }
    return id->gpu_id;
 }
 

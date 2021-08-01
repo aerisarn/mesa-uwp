@@ -245,7 +245,7 @@ msm_pipe_new(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
    if (fd_device_version(pipe->dev) >= FD_VERSION_GMEM_BASE)
       msm_pipe->gmem_base = get_param(pipe, MSM_PARAM_GMEM_BASE);
 
-   if (!msm_pipe->gpu_id)
+   if (!(msm_pipe->gpu_id || msm_pipe->chip_id))
       goto fail;
 
    INFO_MSG("Pipe Info:");

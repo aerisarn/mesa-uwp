@@ -243,6 +243,7 @@ tu_enumerate_devices(struct tu_instance *instance)
       ((info.chip_id >> 24) & 0xff) * 100 +
       ((info.chip_id >> 16) & 0xff) * 10 +
       ((info.chip_id >>  8) & 0xff);
+   device->dev_id.chip_id = info.chip_id;
    device->gmem_size = info.gmem_sizebytes;
    device->gmem_base = gmem_iova;
 
