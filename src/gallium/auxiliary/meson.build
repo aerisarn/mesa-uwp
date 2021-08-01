@@ -254,6 +254,8 @@ files_libgallium = files(
   'util/u_draw.h',
   'util/u_draw_quad.c',
   'util/u_draw_quad.h',
+  'util/u_driconf.c',
+  'util/u_driconf.h',
   'util/u_dual_blend.h',
   'util/u_dump_defines.c',
   'util/u_dump.h',
