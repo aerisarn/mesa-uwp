@@ -31,6 +31,69 @@
 
 #if GFX_VER <= 5
 
+static uint32_t
+color_depth_for_cpp(int cpp)
+{
+   switch (cpp) {
+   case 4: return COLOR_DEPTH__32bit;
+   case 2: return COLOR_DEPTH__565;
+   case 1: return COLOR_DEPTH__8bit;
+   default:
+      unreachable("not reached");
+   }
+}
+
+static void
+blt_set_alpha_to_one(struct crocus_batch *batch,
+		     struct crocus_resource *dst,
+		     int x, int y, int width, int height)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(dst->surf.format);
+   unsigned cpp = fmtl->bpb / 8;
+   uint32_t pitch = dst->surf.row_pitch_B;
+
+   if (dst->surf.tiling != ISL_TILING_LINEAR)
+      pitch /= 4;
+   /* We need to split the blit into chunks that each fit within the blitter's
+    * restrictions.  We can't use a chunk size of 32768 because we need to
+    * ensure that src_tile_x + chunk_size fits.  We choose 16384 because it's
+    * a nice round power of two, big enough that performance won't suffer, and
+    * small enough to guarantee everything fits.
+    */
+   const uint32_t max_chunk_size = 16384;
+
+   for (uint32_t chunk_x = 0; chunk_x < width; chunk_x += max_chunk_size) {
+      for (uint32_t chunk_y = 0; chunk_y < height; chunk_y += max_chunk_size) {
+         const uint32_t chunk_w = MIN2(max_chunk_size, width - chunk_x);
+         const uint32_t chunk_h = MIN2(max_chunk_size, height - chunk_y);
+         uint32_t tile_x, tile_y, offset;
+         ASSERTED uint32_t z_offset_el, array_offset;
+         isl_tiling_get_intratile_offset_el(dst->surf.tiling,
+                                            cpp * 8, dst->surf.row_pitch_B,
+                                            dst->surf.array_pitch_el_rows,
+                                            chunk_x, chunk_y, 0, 0,
+                                            &offset,
+                                            &tile_x, &tile_y,
+                                            &z_offset_el, &array_offset);
+         assert(z_offset_el == 0);
+         assert(array_offset == 0);
+	 crocus_emit_cmd(batch, GENX(XY_COLOR_BLT), xyblt) {
+            xyblt.TilingEnable = dst->surf.tiling != ISL_TILING_LINEAR;
+            xyblt.ColorDepth = color_depth_for_cpp(cpp);
+            xyblt.RasterOperation = 0xF0;
+            xyblt.DestinationPitch = pitch;
+            xyblt._32bppByteMask = 2;
+            xyblt.DestinationBaseAddress = rw_bo(dst->bo, offset);
+            xyblt.DestinationX1Coordinate = tile_x;
+            xyblt.DestinationY1Coordinate = tile_y;
+            xyblt.DestinationX2Coordinate = tile_x + chunk_w;
+            xyblt.DestinationY2Coordinate = tile_y + chunk_h;
+            xyblt.SolidPatternColor = 0xffffffff;
+	 }
+      }
+   }
+}
+
 static bool validate_blit_for_blt(struct crocus_batch *batch,
                                   const struct pipe_blit_info *info)
 {
@@ -51,6 +114,17 @@ static bool validate_blit_for_blt(struct crocus_batch *batch,
    if (info->dst.box.depth > 1 || info->src.box.depth > 1)
       return false;
 
+   const struct util_format_description *desc =
+      util_format_description(info->src.format);
+   int i = util_format_get_first_non_void_channel(info->src.format);
+   if (i == -1)
+      return false;
+
+   /* can't do the alpha to 1 setting for these. */
+   if ((util_format_has_alpha1(info->src.format) &&
+        util_format_has_alpha(info->dst.format) &&
+        desc->channel[i].size > 8))
+      return false;
    return true;
 }
 
@@ -62,17 +136,6 @@ static inline int crocus_resource_blt_pitch(struct crocus_resource *res)
    return pitch;
 }
 
-static uint32_t
-color_depth_for_cpp(int cpp)
-{
-   switch (cpp) {
-   case 4: return COLOR_DEPTH__32bit;
-   case 2: return COLOR_DEPTH__565;
-   case 1: return COLOR_DEPTH__8bit;
-   default:
-      unreachable("not reached");
-   }
-}
 
 static bool emit_copy_blt(struct crocus_batch *batch,
                           struct crocus_resource *src,
@@ -283,6 +346,10 @@ static bool crocus_emit_blt(struct crocus_batch *batch,
          }
       }
    }
+
+   if (util_format_has_alpha1(src->base.b.format) &&
+       util_format_has_alpha(dst->base.b.format))
+      blt_set_alpha_to_one(batch, dst, 0, 0, src_width, src_height);
    return true;
 }
 
