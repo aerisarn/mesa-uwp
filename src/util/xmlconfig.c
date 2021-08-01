@@ -48,9 +48,9 @@ typedef int regex_t;
 #define REG_EXTENDED 0
 #define REG_NOSUB 0
 #define REG_NOMATCH 1
-inline int regcomp(regex_t *r, const char *s, int f) { return 0; }
-inline int regexec(regex_t *r, const char *s, int n, void *p, int f) { return REG_NOMATCH; }
-inline void regfree(regex_t* r) {}
+static inline int regcomp(regex_t *r, const char *s, int f) { return 0; }
+static inline int regexec(regex_t *r, const char *s, int n, void *p, int f) { return REG_NOMATCH; }
+static inline void regfree(regex_t* r) {}
 #else
 #include <regex.h>
 #endif
