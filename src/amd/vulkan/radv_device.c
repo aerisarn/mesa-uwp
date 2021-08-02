@@ -437,6 +437,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_shader_draw_parameters = true,
       .KHR_shader_float16_int8 = true,
       .KHR_shader_float_controls = true,
+      .KHR_shader_integer_dot_product = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_shader_subgroup_extended_types = true,
       .KHR_shader_subgroup_uniform_control_flow = true,
@@ -1706,6 +1707,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->primitiveTopologyPatchListRestart = false;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES_KHR: {
+         VkPhysicalDeviceShaderIntegerDotProductFeaturesKHR *features =
+            (VkPhysicalDeviceShaderIntegerDotProductFeaturesKHR *)ext;
+         features->shaderIntegerDotProduct = true;
+         break;
+      }
       default:
          break;
       }
@@ -2416,6 +2423,45 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
          VkPhysicalDeviceMultiDrawPropertiesEXT *props = (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
          props->maxMultiDrawCount = 2048;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES_KHR: {
+         VkPhysicalDeviceShaderIntegerDotProductPropertiesKHR *props =
+            (VkPhysicalDeviceShaderIntegerDotProductPropertiesKHR *)ext;
+
+         bool accel = pdevice->rad_info.has_accelerated_dot_product;
+
+         props->integerDotProduct8BitUnsignedAccelerated = accel;
+         props->integerDotProduct8BitSignedAccelerated = accel;
+         props->integerDotProduct8BitMixedSignednessAccelerated = false;
+         props->integerDotProduct4x8BitPackedUnsignedAccelerated = accel;
+         props->integerDotProduct4x8BitPackedSignedAccelerated = accel;
+         props->integerDotProduct4x8BitPackedMixedSignednessAccelerated = false;
+         props->integerDotProduct16BitUnsignedAccelerated = accel;
+         props->integerDotProduct16BitSignedAccelerated = accel;
+         props->integerDotProduct16BitMixedSignednessAccelerated = false;
+         props->integerDotProduct32BitUnsignedAccelerated = false;
+         props->integerDotProduct32BitSignedAccelerated = false;
+         props->integerDotProduct32BitMixedSignednessAccelerated = false;
+         props->integerDotProduct64BitUnsignedAccelerated = false;
+         props->integerDotProduct64BitSignedAccelerated = false;
+         props->integerDotProduct64BitMixedSignednessAccelerated = false;
+         props->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = accel;
+         props->integerDotProductAccumulatingSaturating8BitSignedAccelerated = accel;
+         props->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
+         props->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated = accel;
+         props->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = accel;
+         props->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated =
+            false;
+         props->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = accel;
+         props->integerDotProductAccumulatingSaturating16BitSignedAccelerated = accel;
+         props->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
+         props->integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = false;
+         props->integerDotProductAccumulatingSaturating32BitSignedAccelerated = false;
+         props->integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated = false;
+         props->integerDotProductAccumulatingSaturating64BitUnsignedAccelerated = false;
+         props->integerDotProductAccumulatingSaturating64BitSignedAccelerated = false;
+         props->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
          break;
       }
       default:

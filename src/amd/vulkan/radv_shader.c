@@ -84,6 +84,8 @@ radv_get_nir_options(struct radv_physical_device *device)
       .lower_iadd_sat = device->rad_info.chip_class <= GFX8,
       .has_fsub = true,
       .has_isub = true,
+      .has_dot_4x8 = device->rad_info.has_accelerated_dot_product,
+      .has_dot_2x16 = device->rad_info.has_accelerated_dot_product,
       .use_scoped_barrier = true,
       .max_unroll_iterations = 32,
       .max_unroll_iterations_aggressive = 128,
