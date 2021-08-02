@@ -81,6 +81,7 @@ radv_get_nir_options(struct radv_physical_device *device)
       .lower_fpow = true,
       .lower_mul_2x32_64 = true,
       .lower_rotate = true,
+      .lower_iadd_sat = device->rad_info.chip_class <= GFX8,
       .has_fsub = true,
       .has_isub = true,
       .use_scoped_barrier = true,

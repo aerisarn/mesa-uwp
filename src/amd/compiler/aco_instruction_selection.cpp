@@ -1809,6 +1809,22 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       }
       break;
    }
+   case nir_op_iadd_sat: {
+      Temp src0 = get_alu_src(ctx, instr->src[0]);
+      Temp src1 = as_vgpr(ctx, get_alu_src(ctx, instr->src[1]));
+      if (dst.regClass() == v2b) {
+         Instruction* add_instr =
+            bld.vop3(aco_opcode::v_add_i16, Definition(dst), src0, src1).instr;
+         add_instr->vop3().clamp = 1;
+      } else if (dst.regClass() == v1) {
+         Instruction* add_instr =
+            bld.vop3(aco_opcode::v_add_i32, Definition(dst), src0, src1).instr;
+         add_instr->vop3().clamp = 1;
+      } else {
+         isel_err(&instr->instr, "Unimplemented NIR instr bit size");
+      }
+      break;
+   }
    case nir_op_uadd_carry: {
       Temp src0 = get_alu_src(ctx, instr->src[0]);
       Temp src1 = get_alu_src(ctx, instr->src[1]);
