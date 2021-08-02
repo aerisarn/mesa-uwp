@@ -56,12 +56,11 @@ unsigned gallivm_perf = 0;
 
 static const struct debug_named_value lp_bld_perf_flags[] = {
    { "brilinear", GALLIVM_PERF_BRILINEAR, "enable brilinear optimization" },
-   { "no_rho_approx", GALLIVM_PERF_NO_RHO_APPROX, "disable rho_approx optimization" },
+   { "rho_approx", GALLIVM_PERF_RHO_APPROX, "enable rho_approx optimization" },
    { "no_quad_lod", GALLIVM_PERF_NO_QUAD_LOD, "disable quad_lod optimization" },
    { "no_aos_sampling", GALLIVM_PERF_NO_AOS_SAMPLING, "disable aos sampling optimization" },
    { "nopt",   GALLIVM_PERF_NO_OPT, "disable optimization passes to speed up shader compilation" },
-   { "no_filter_hacks", GALLIVM_PERF_NO_RHO_APPROX |
-     GALLIVM_PERF_NO_QUAD_LOD, "disable filter optimization hacks" },
+   { "no_filter_hacks", GALLIVM_PERF_NO_QUAD_LOD, "disable filter optimization hacks" },
    DEBUG_NAMED_VALUE_END
 };
 
