@@ -589,13 +589,15 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
    memset(q->have_xfb, 0, sizeof(q->have_xfb));
    q->last_start = q->curr_query = 0;
    q->needs_reset = false;
-   /* create new qbo for non-timestamp queries */
-   if (q->type != PIPE_QUERY_TIMESTAMP) {
-      if (qbo_append(ctx->base.screen, q))
-         reset_qbo(q);
-      else
-         debug_printf("zink: qbo alloc failed on reset!");
-   }
+   /* create new qbo for non-timestamp queries:
+    * timestamp queries should never need more than 2 entries in the qbo
+    */
+   if (q->type == PIPE_QUERY_TIMESTAMP)
+      return;
+   if (qbo_append(ctx->base.screen, q))
+      reset_qbo(q);
+   else
+      debug_printf("zink: qbo alloc failed on reset!");
    if (id_offset)
       qbo_sync_from_prev(ctx, q, id_offset, last_start);
 }
