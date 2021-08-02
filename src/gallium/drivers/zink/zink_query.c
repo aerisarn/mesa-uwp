@@ -715,20 +715,29 @@ zink_begin_query(struct pipe_context *pctx,
 }
 
 static void
+update_query_id(struct zink_context *ctx, struct zink_query *q)
+{
+   if (++q->curr_query == NUM_QUERIES) {
+      /* always reset on start; this ensures we can actually submit the batch that the current query is on */
+      q->needs_reset = true;
+   }
+   ctx->batch.has_work = true;
+
+   if (ctx->batch.in_rp)
+      q->needs_update = true;
+   else
+      update_qbo(ctx, q);
+}
+
+static void
 end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    ASSERTED struct zink_query_buffer *qbo = q->curr_qbo;
    assert(qbo);
-   batch->has_work = true;
-   q->active = q->type == PIPE_QUERY_TIMESTAMP;
-   if (is_time_query(q)) {
-      if (q->needs_reset)
-         reset_pool(ctx, batch, q);
-      vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                          q->query_pool, q->curr_query);
-      zink_batch_usage_set(&q->batch_id, batch->state);
-   } else if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
+   assert(!is_time_query(q));
+   q->active = false;
+   if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
             q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
             q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
       screen->vk.CmdEndQueryIndexedEXT(batch->state->cmdbuf, q->xfb_query_pool[0] ? q->xfb_query_pool[0] :
@@ -747,15 +756,8 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
 
    if (needs_stats_list(q))
       list_delinit(&q->stats_list);
-   if (++q->curr_query == NUM_QUERIES) {
-      /* always reset on start; this ensures we can actually submit the batch that the current query is on */
-      q->needs_reset = true;
-   }
 
-   if (batch->in_rp)
-      q->needs_update = true;
-   else
-      update_qbo(ctx, q);
+   update_query_id(ctx, q);
 }
 
 static bool
@@ -776,7 +778,14 @@ zink_end_query(struct pipe_context *pctx,
 
    if (needs_stats_list(query))
       list_delinit(&query->stats_list);
-   if (query->active)
+   if (is_time_query(query)) {
+      if (query->needs_reset)
+         reset_pool(ctx, batch, query);
+      vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                          query->query_pool, query->curr_query);
+      zink_batch_usage_set(&query->batch_id, batch->state);
+      update_query_id(ctx, query);
+   } else if (query->active)
       end_query(ctx, batch, query);
 
    return true;
@@ -821,7 +830,7 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
    set_foreach(batch->state->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
       /* if a query isn't active here then we don't need to reactivate it on the next batch */
-      if (query->active) {
+      if (query->active && !is_time_query(query)) {
          end_query(ctx, batch, query);
          /* the fence is going to steal the set off the batch, so we have to copy
           * the active queries onto a list
