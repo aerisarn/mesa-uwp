@@ -145,6 +145,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_index_type_uint8                = true,
       .EXT_physical_device_drm             = true,
       .EXT_pipeline_creation_cache_control = true,
+      .EXT_pipeline_creation_feedback      = true,
       .EXT_private_data                    = true,
       .EXT_provoking_vertex                = true,
    };

@@ -247,7 +247,8 @@ v3dv_pipeline_shared_data_write_to_blob(const struct v3dv_pipeline_shared_data *
  */
 struct v3dv_pipeline_shared_data *
 v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
-                                        unsigned char sha1_key[20])
+                                        unsigned char sha1_key[20],
+                                        bool *cache_hit)
 {
    if (!cache || !cache->cache)
       return NULL;
@@ -270,6 +271,7 @@ v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
       assert(cache_entry);
 
       cache->stats.hit++;
+      *cache_hit = true;
       if (debug_cache) {
          fprintf(stderr, "\tcache hit: %p\n", cache_entry);
          if (dump_stats)

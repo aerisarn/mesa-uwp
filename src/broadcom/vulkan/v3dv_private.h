@@ -1487,6 +1487,8 @@ struct v3dv_pipeline_stage {
 
    /** A name for this program, so you can track it in shader-db output. */
    uint32_t program_id;
+
+   VkPipelineCreationFeedbackEXT feedback;
 };
 
 /* We are using the descriptor pool entry for two things:
@@ -2037,7 +2039,8 @@ nir_shader* v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
 
 struct v3dv_pipeline_shared_data *
 v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
-                                        unsigned char sha1_key[20]);
+                                        unsigned char sha1_key[20],
+                                        bool *cache_hit);
 
 void
 v3dv_pipeline_cache_upload_pipeline(struct v3dv_pipeline *pipeline,
