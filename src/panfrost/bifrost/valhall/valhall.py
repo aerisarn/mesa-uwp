@@ -170,7 +170,7 @@ class Immediate:
         self.signed = signed
 
 class Instruction:
-    def __init__(self, name, opcode, opcode2, srcs = [], dests = [], immediates = [], modifiers = [], staging = None):
+    def __init__(self, name, opcode, opcode2, srcs = [], dests = [], immediates = [], modifiers = [], staging = None, unit = None):
         self.name = name
         self.srcs = srcs
         self.dests = dests
@@ -179,6 +179,7 @@ class Instruction:
         self.immediates = immediates
         self.modifiers = modifiers
         self.staging = staging
+        self.unit = unit
 
         self.secondary_shift = max(len(self.srcs) * 8, 16)
         self.secondary_mask = 0xF if opcode2 is not None else 0x0
@@ -244,6 +245,7 @@ def build_instr(el, overrides = {}):
     name = overrides.get('name') or el.attrib.get('name')
     opcode = overrides.get('opcode') or el.attrib.get('opcode')
     opcode2 = overrides.get('opcode2') or el.attrib.get('opcode2')
+    unit = overrides.get('unit') or el.attrib.get('unit')
     opcode = int(opcode, base=0)
     opcode2 = int(opcode2, base=0) if opcode2 else None
 
@@ -269,7 +271,7 @@ def build_instr(el, overrides = {}):
         elif mod.tag =='mod':
             modifiers.append(build_modifier(mod))
 
-    instr = Instruction(name, opcode, opcode2, srcs = sources, dests = dests, immediates = imms, modifiers = modifiers, staging = staging)
+    instr = Instruction(name, opcode, opcode2, srcs = sources, dests = dests, immediates = imms, modifiers = modifiers, staging = staging, unit = unit)
 
     instructions.append(instr)
 
@@ -281,6 +283,7 @@ def build_group(el):
             'name': ins.attrib['name'],
             'opcode': ins.attrib.get('opcode'),
             'opcode2': ins.attrib.get('opcode2'),
+            'unit': ins.attrib.get('unit'),
         })
 
 def to_alphanum(name):
