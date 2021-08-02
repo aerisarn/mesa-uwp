@@ -1128,10 +1128,7 @@ vn_android_fix_buffer_create_info(
 }
 
 VkResult
-vn_android_buffer_from_ahb(struct vn_device *dev,
-                           const VkBufferCreateInfo *create_info,
-                           const VkAllocationCallbacks *alloc,
-                           struct vn_buffer **out_buf)
+vn_android_init_ahb_buffer_memory_type_bits(struct vn_device *dev)
 {
    const uint32_t format = AHARDWAREBUFFER_FORMAT_BLOB;
    /* ensure dma_buf_memory_type_bits covers host visible usage */
@@ -1142,7 +1139,6 @@ vn_android_buffer_from_ahb(struct vn_device *dev,
    int dma_buf_fd = -1;
    uint64_t alloc_size = 0;
    uint32_t mem_type_bits = 0;
-   struct vn_android_buffer_create_info local_info;
    VkResult result;
 
    ahb = vn_android_ahb_allocate(4096, 1, 1, format, usage);
@@ -1164,6 +1160,20 @@ vn_android_buffer_from_ahb(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
+   dev->ahb_buffer_memory_type_bits = mem_type_bits;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+vn_android_buffer_from_ahb(struct vn_device *dev,
+                           const VkBufferCreateInfo *create_info,
+                           const VkAllocationCallbacks *alloc,
+                           struct vn_buffer **out_buf)
+{
+   struct vn_android_buffer_create_info local_info;
+   VkResult result;
+
    create_info = vn_android_fix_buffer_create_info(create_info, &local_info);
    result = vn_buffer_create(dev, create_info, alloc, out_buf);
    if (result != VK_SUCCESS)
@@ -1174,7 +1184,7 @@ vn_android_buffer_from_ahb(struct vn_device *dev,
     * properties.
     */
    (*out_buf)->memory_requirements.memoryRequirements.memoryTypeBits &=
-      mem_type_bits;
+      dev->ahb_buffer_memory_type_bits;
 
    assert((*out_buf)->memory_requirements.memoryRequirements.memoryTypeBits);
 

@@ -3386,6 +3386,15 @@ vn_CreateDevice(VkPhysicalDevice physicalDevice,
       mtx_init(&pool->mutex, mtx_plain);
    }
 
+   if (dev->base.base.enabled_extensions
+          .ANDROID_external_memory_android_hardware_buffer) {
+      result = vn_android_init_ahb_buffer_memory_type_bits(dev);
+      if (result != VK_SUCCESS) {
+         vn_call_vkDestroyDevice(instance, dev_handle, NULL);
+         goto fail;
+      }
+   }
+
    *pDevice = dev_handle;
 
    if (pCreateInfo == &local_create_info)

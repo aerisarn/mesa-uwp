@@ -75,6 +75,9 @@ vn_android_buffer_from_ahb(struct vn_device *dev,
                            const VkAllocationCallbacks *alloc,
                            struct vn_buffer **out_buf);
 
+VkResult
+vn_android_init_ahb_buffer_memory_type_bits(struct vn_device *dev);
+
 #else
 
 static inline const VkNativeBufferANDROID *
@@ -155,6 +158,12 @@ vn_android_buffer_from_ahb(UNUSED struct vn_device *dev,
                            UNUSED struct vn_buffer **out_buf)
 {
    return VK_ERROR_OUT_OF_HOST_MEMORY;
+}
+
+static inline VkResult
+vn_android_init_ahb_buffer_memory_type_bits(UNUSED struct vn_device *dev)
+{
+   return VK_ERROR_FEATURE_NOT_PRESENT;
 }
 
 #endif /* ANDROID */
