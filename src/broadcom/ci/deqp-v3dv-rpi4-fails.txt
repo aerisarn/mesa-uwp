@@ -1,9 +1,8 @@
 # This seems to fail due to the test error threshold being insufficient
 dEQP-VK.geometry.input.basic_primitive.line_strip_adjacency,Fail
 
-# Not analyzed
+# CTS bug; fix submitted
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
-dEQP-VK.graphicsfuzz.cov-sample-texture-hundred-iterations,Crash
 
 # Triagged
 dEQP-VK.spirv_assembly.instruction.graphics.early_fragment.depth_greater,Fail
