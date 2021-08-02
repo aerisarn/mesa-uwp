@@ -281,10 +281,9 @@ iris_use_pinned_bo(struct iris_batch *batch,
     * would introduce data dependencies between multiple batches which share
     * the buffer.
     */
-   if (bo == batch->screen->workaround_bo)
+   if (bo == batch->screen->workaround_bo) {
       writable = false;
-
-   if (access < NUM_IRIS_DOMAINS) {
+   } else if (access < NUM_IRIS_DOMAINS) {
       assert(batch->sync_region_depth);
       iris_bo_bump_seqno(bo, batch->next_seqno, access);
    }
