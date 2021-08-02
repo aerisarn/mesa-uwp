@@ -205,7 +205,7 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
    if (!qbo)
       return false;
    qbo->buffer = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
-                                  PIPE_USAGE_STREAM,
+                                  PIPE_USAGE_STAGING,
                                   /* this is the maximum possible size of the results in a given buffer */
                                   NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
    if (!qbo->buffer)
@@ -213,7 +213,7 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
    if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       /* need separate xfb buffer */
       qbo->xfb_buffers[0] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
-                                     PIPE_USAGE_STREAM,
+                                     PIPE_USAGE_STAGING,
                                      /* this is the maximum possible size of the results in a given buffer */
                                      NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
       if (!qbo->xfb_buffers[0])
@@ -223,7 +223,7 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
       for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers); i++) {
          /* need separate xfb buffer */
          qbo->xfb_buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
-                                        PIPE_USAGE_STREAM,
+                                        PIPE_USAGE_STAGING,
                                         /* this is the maximum possible size of the results in a given buffer */
                                         NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
          if (!qbo->xfb_buffers[i])
@@ -441,7 +441,7 @@ get_query_result(struct pipe_context *pctx,
       flags |= PIPE_MAP_DONTBLOCK;
    if (query->base.flushed)
       /* this is not a context-safe operation; ensure map doesn't use slab alloc */
-      flags |= PIPE_MAP_THREAD_SAFE | PIPE_MAP_UNSYNCHRONIZED;
+      flags |= PIPE_MAP_THREAD_SAFE;
 
    util_query_clear_result(result, query->type);
 
