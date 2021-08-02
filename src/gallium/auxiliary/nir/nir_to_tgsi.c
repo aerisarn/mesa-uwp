@@ -1307,6 +1307,7 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    struct ureg_src src[4];
    int num_src = 0;
    int nir_src;
+   struct ureg_dst addr_temp = ureg_dst_undef();
 
    struct ureg_src memory;
    switch (mode) {
@@ -1320,9 +1321,16 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
       nir_src = 0;
       break;
    case nir_var_uniform: { /* HW atomic buffers */
-      uint32_t offset = nir_src_as_uint(instr->src[0]);
-      memory = ureg_src_dimension(ureg_src_register(TGSI_FILE_HW_ATOMIC, offset / 4),
-                                  nir_intrinsic_base(instr));
+      memory = ureg_src_register(TGSI_FILE_HW_ATOMIC, 0);
+      /* ntt_ureg_src_indirect, except dividing by 4 */
+      if (nir_src_is_const(instr->src[0])) {
+         memory.Index += nir_src_as_uint(instr->src[0]) / 4;
+      } else {
+         addr_temp = ureg_DECL_temporary(c->ureg);
+         ureg_USHR(c->ureg, addr_temp, ntt_get_src(c, instr->src[0]), ureg_imm1i(c->ureg, 2));
+         memory = ureg_src_indirect(memory, ntt_reladdr(c, ureg_src(addr_temp)));
+      }
+      memory = ureg_src_dimension(memory, nir_intrinsic_base(instr));
       nir_src = 0;
       break;
    }
@@ -1450,6 +1458,8 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
                     qualifier,
                     TGSI_TEXTURE_BUFFER,
                     0 /* format: unused */);
+
+   ureg_release_temporary(c->ureg, addr_temp);
 }
 
 static void
