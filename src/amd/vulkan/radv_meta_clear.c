@@ -1389,10 +1389,10 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
 
          if (htile_mask == UINT_MAX) {
             /* Clear the whole HTILE buffer. */
-            flush_bits = radv_fill_buffer(cmd_buffer, image, image->bo, offset, size, value);
+            flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo, offset, size, value);
          } else {
             /* Only clear depth or stencil bytes in the HTILE buffer. */
-            flush_bits =
+            flush_bits |=
                clear_htile_mask(cmd_buffer, image, image->bo, offset, size, value, htile_mask);
          }
       }
