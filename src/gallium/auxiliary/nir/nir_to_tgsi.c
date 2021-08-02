@@ -407,9 +407,6 @@ tgsi_target_from_sampler_dim(enum glsl_sampler_dim dim, bool is_array)
 static void
 ntt_setup_uniforms(struct ntt_compile *c)
 {
-   struct pipe_screen *screen = c->screen;
-   bool packed = screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS);
-
    nir_foreach_uniform_variable(var, c->s) {
       if (glsl_type_is_image(var->type)) {
          enum tgsi_texture_type tex_type =
@@ -426,22 +423,38 @@ ntt_setup_uniforms(struct ntt_compile *c)
          uint32_t offset = var->data.offset / 4;
          uint32_t size = glsl_atomic_size(var->type) / 4;
          ureg_DECL_hw_atomic(c->ureg, offset, offset + size - 1, var->data.binding, 0);
-      } else {
-         unsigned size;
-         if (packed) {
-            size = DIV_ROUND_UP(glsl_count_dword_slots(var->type,
-                                                       var->data.bindless), 4);
-         } else {
-            size = glsl_count_vec4_slots(var->type, false, var->data.bindless);
-         }
+      }
 
-         for (unsigned i = 0; i < size; i++)
-            ureg_DECL_constant(c->ureg, var->data.driver_location + i);
+      /* lower_uniforms_to_ubo lowered non-sampler uniforms to UBOs, so CB0
+       * size declaration happens with other UBOs below.
+       */
+   }
+
+   unsigned ubo_sizes[PIPE_MAX_CONSTANT_BUFFERS] = {0};
+   nir_foreach_variable_with_modes(var, c->s, nir_var_mem_ubo) {
+      int ubo = var->data.driver_location;
+      if (ubo == -1)
+         continue;
+
+      unsigned size = glsl_get_explicit_size(var->interface_type, false);
+
+      int array_size = 1;
+      if (glsl_type_is_interface(glsl_without_array(var->type)))
+         array_size = MAX2(1, glsl_array_size(var->type));
+      for (int i = 0; i < array_size; i++) {
+         /* Even if multiple NIR variables are in the same uniform block, their
+          * explicit size is the size of the block.
+          */
+         if (ubo_sizes[ubo + i])
+            assert(ubo_sizes[ubo + i] == size);
+
+         ubo_sizes[ubo + i] = size;
       }
    }
 
-   nir_foreach_variable_with_modes(var, c->s, nir_var_mem_ubo) {
-      ureg_DECL_constant2D(c->ureg, 0, 0, var->data.driver_location);
+   for (int i = 0; i < ARRAY_SIZE(ubo_sizes); i++) {
+      if (ubo_sizes[i])
+         ureg_DECL_constant2D(c->ureg, 0, DIV_ROUND_UP(ubo_sizes[i], 16) - 1, i);
    }
 
    for (int i = 0; i < c->s->info.num_ssbos; i++) {
