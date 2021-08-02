@@ -425,7 +425,7 @@ debian/x86_test-gl:
   variables:
     FDO_DISTRIBUTION_EXEC: 'env KERNEL_URL=${KERNEL_URL} FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     KERNEL_URL: &kernel-rootfs-url "https://gitlab.freedesktop.org/gfx-ci/linux/-/archive/v5.13-rc5-for-mesa-ci-27df41f1e0cf/linux-v5.13-rc5-for-mesa-ci-27df41f1e0cf.tar.bz2"
-    MESA_IMAGE_TAG: &debian-x86_test-gl "2021-08-03-piglit"
+    MESA_IMAGE_TAG: &debian-x86_test-gl "2021-08-04-latest-virglrenderer"
 
 # Debian 11 based x86 test image for VK
 debian/x86_test-vk:
