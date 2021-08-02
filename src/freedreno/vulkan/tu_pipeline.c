@@ -881,6 +881,17 @@ tu6_emit_vpc(struct tu_cs *cs,
          REG_A6XX_VPC_VS_LAYER_CNTL,
          REG_A6XX_GRAS_VS_LAYER_CNTL
       },
+      [MESA_SHADER_TESS_CTRL] = {
+         0,
+         0,
+         0,
+         0,
+         0,
+         REG_A6XX_PC_HS_OUT_CNTL,
+         0,
+         0,
+         0
+      },
       [MESA_SHADER_TESS_EVAL] = {
          REG_A6XX_SP_DS_OUT_REG(0),
          REG_A6XX_SP_DS_VPC_DST_REG(0),
@@ -950,8 +961,6 @@ tu6_emit_vpc(struct tu_cs *cs,
       ir3_find_output_regid(last_shader, VARYING_SLOT_CLIP_DIST0);
    const uint32_t clip1_regid =
       ir3_find_output_regid(last_shader, VARYING_SLOT_CLIP_DIST1);
-   uint32_t primitive_regid = gs ?
-      ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) : regid(63, 0);
    uint32_t flags_regid = gs ?
       ir3_find_output_regid(gs, VARYING_SLOT_GS_VERTEX_FLAGS_IR3) : 0;
 
@@ -1044,13 +1053,28 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_GRAS_VS_CL_CNTL_CLIP_MASK(last_shader->clip_mask) |
                   A6XX_GRAS_VS_CL_CNTL_CULL_MASK(last_shader->cull_mask));
 
-   tu_cs_emit_pkt4(cs, cfg->reg_pc_xs_out_cntl, 1);
-   tu_cs_emit(cs, A6XX_PC_VS_OUT_CNTL_STRIDE_IN_VPC(linkage.max_loc) |
-                  CONDREG(pointsize_regid, A6XX_PC_VS_OUT_CNTL_PSIZE) |
-                  CONDREG(layer_regid, A6XX_PC_VS_OUT_CNTL_LAYER) |
-                  CONDREG(view_regid, A6XX_PC_VS_OUT_CNTL_VIEW) |
-                  CONDREG(primitive_regid, A6XX_PC_VS_OUT_CNTL_PRIMITIVE_ID) |
-                  A6XX_PC_VS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
+   const struct ir3_shader_variant *geom_shaders[] = { vs, hs, ds, gs };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(geom_shaders); i++) {
+      const struct ir3_shader_variant *shader = geom_shaders[i];
+      if (!shader)
+         continue;
+
+      bool primid = shader->type != MESA_SHADER_VERTEX &&
+         VALIDREG(ir3_find_sysval_regid(shader, SYSTEM_VALUE_PRIMITIVE_ID));
+
+      tu_cs_emit_pkt4(cs, reg_config[shader->type].reg_pc_xs_out_cntl, 1);
+      if (shader == last_shader) {
+         tu_cs_emit(cs, A6XX_PC_VS_OUT_CNTL_STRIDE_IN_VPC(linkage.max_loc) |
+                        CONDREG(pointsize_regid, A6XX_PC_VS_OUT_CNTL_PSIZE) |
+                        CONDREG(layer_regid, A6XX_PC_VS_OUT_CNTL_LAYER) |
+                        CONDREG(view_regid, A6XX_PC_VS_OUT_CNTL_VIEW) |
+                        COND(primid, A6XX_PC_VS_OUT_CNTL_PRIMITIVE_ID) |
+                        A6XX_PC_VS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
+      } else {
+         tu_cs_emit(cs, COND(primid, A6XX_PC_VS_OUT_CNTL_PRIMITIVE_ID));
+      }
+   }
 
    tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_primitive_cntl, 1);
    tu_cs_emit(cs, A6XX_SP_VS_PRIMITIVE_CNTL_OUT(linkage.cnt) |
@@ -1169,9 +1193,6 @@ tu6_emit_vpc(struct tu_cs *cs,
             A6XX_PC_PRIMITIVE_CNTL_5_GS_VERTICES_OUT(vertices_out) |
             A6XX_PC_PRIMITIVE_CNTL_5_GS_OUTPUT(output) |
             A6XX_PC_PRIMITIVE_CNTL_5_GS_INVOCATIONS(invocations));
-
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_3, 1);
-      tu_cs_emit(cs, 0);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9100, 1);
       tu_cs_emit(cs, 0xff);

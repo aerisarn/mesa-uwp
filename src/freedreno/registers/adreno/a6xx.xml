@@ -2539,7 +2539,8 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9b01" name="PC_VS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
 	<reg32 offset="0x9b02" name="PC_GS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
-	<reg32 offset="0x9b03" name="PC_PRIMITIVE_CNTL_3" pos="11"/>
+	<!-- since HS can't output anything, only PRIMITIVE_ID is valid -->
+	<reg32 offset="0x9b03" name="PC_HS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
 	<reg32 offset="0x9b04" name="PC_DS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
 
 	<reg32 offset="0x9b05" name="PC_PRIMITIVE_CNTL_5">

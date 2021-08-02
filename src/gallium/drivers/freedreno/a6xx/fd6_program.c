@@ -360,9 +360,12 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    else
       vs_primitive_regid = regid(63, 0);
 
+   bool hs_reads_primid = false, ds_reads_primid = false;
    if (hs) {
       tess_coord_x_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD);
       tess_coord_y_regid = next_regid(tess_coord_x_regid, 1);
+      hs_reads_primid = VALIDREG(ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID));
+      ds_reads_primid = VALIDREG(ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID));
       hs_rel_patch_regid = ir3_find_sysval_regid(hs, SYSTEM_VALUE_REL_PATCH_ID_IR3);
       ds_rel_patch_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_REL_PATCH_ID_IR3);
       ds_primitive_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID);
@@ -696,8 +699,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
       OUT_PKT4(ring, REG_A6XX_PC_DS_OUT_CNTL, 1);
       OUT_RING(ring, A6XX_PC_DS_OUT_CNTL_STRIDE_IN_VPC(l.max_loc) |
                         CONDREG(psize_regid, A6XX_PC_DS_OUT_CNTL_PSIZE) |
+                        COND(ds_reads_primid, A6XX_PC_DS_OUT_CNTL_PRIMITIVE_ID) |
                         A6XX_PC_DS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
+      OUT_PKT4(ring, REG_A6XX_PC_HS_OUT_CNTL, 1);
+      OUT_RING(ring, COND(hs_reads_primid, A6XX_PC_HS_OUT_CNTL_PRIMITIVE_ID));
    } else {
       OUT_PKT4(ring, REG_A6XX_SP_HS_WAVE_INPUT_SIZE, 1);
       OUT_RING(ring, 0);
@@ -719,9 +725,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
                      CONDREG(psize_regid, A6XX_PC_VS_OUT_CNTL_PSIZE) |
                      CONDREG(layer_regid, A6XX_PC_VS_OUT_CNTL_LAYER) |
                      A6XX_PC_VS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
-
-   OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_3, 1);
-   OUT_RING(ring, 0);
 
    OUT_PKT4(ring, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
    OUT_RING(ring, 0x7); /* XXX */
