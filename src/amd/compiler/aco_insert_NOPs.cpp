@@ -202,10 +202,10 @@ int
 handle_raw_hazard_internal(Program* program, Block* block, int nops_needed, PhysReg reg,
                            uint32_t mask)
 {
-   unsigned mask_size = util_last_bit(mask);
    for (int pred_idx = block->instructions.size() - 1; pred_idx >= 0; pred_idx--) {
       aco_ptr<Instruction>& pred = block->instructions[pred_idx];
 
+      unsigned mask_size = util_last_bit(mask);
       uint32_t writemask = 0;
       for (Definition& def : pred->definitions) {
          if (regs_intersect(reg, mask_size, def.physReg(), def.size())) {
