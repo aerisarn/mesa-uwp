@@ -645,6 +645,9 @@ compact_vertices_after_culling(nir_builder *b,
                                nir_variable **gs_vtxaddr_vars,
                                nir_ssa_def *invocation_index,
                                nir_ssa_def *es_vertex_lds_addr,
+                               nir_ssa_def *es_exporter_tid,
+                               nir_ssa_def *num_live_vertices_in_workgroup,
+                               nir_ssa_def *fully_culled,
                                unsigned ngg_scratch_lds_base_addr,
                                unsigned pervertex_lds_bytes,
                                unsigned max_exported_args)
@@ -654,15 +657,7 @@ compact_vertices_after_culling(nir_builder *b,
    nir_variable *position_value_var = nogs_state->position_value_var;
    nir_variable *prim_exp_arg_var = nogs_state->prim_exp_arg_var;
 
-   nir_ssa_def *es_accepted = nir_load_var(b, es_accepted_var);
-
-   /* Repack the vertices that survived the culling. */
-   wg_repack_result rep = repack_invocations_in_workgroup(b, es_accepted, ngg_scratch_lds_base_addr,
-                                                          nogs_state->max_num_waves, nogs_state->wave_size);
-   nir_ssa_def *num_live_vertices_in_workgroup = rep.num_repacked_invocations;
-   nir_ssa_def *es_exporter_tid = rep.repacked_invocation_index;
-
-   nir_if *if_es_accepted = nir_push_if(b, es_accepted);
+   nir_if *if_es_accepted = nir_push_if(b, nir_load_var(b, es_accepted_var));
    {
       nir_ssa_def *exporter_addr = pervertex_lds_addr(b, es_exporter_tid, pervertex_lds_bytes);
 
@@ -682,20 +677,6 @@ compact_vertices_after_culling(nir_builder *b,
       }
    }
    nir_pop_if(b, if_es_accepted);
-
-   /* If all vertices are culled, set primitive count to 0 as well. */
-   nir_ssa_def *num_exported_prims = nir_build_load_workgroup_num_input_primitives_amd(b);
-   nir_ssa_def *fully_culled = nir_ieq_imm(b, num_live_vertices_in_workgroup, 0u);
-   num_exported_prims = nir_bcsel(b, fully_culled, nir_imm_int(b, 0u), num_exported_prims);
-
-   nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_build_load_subgroup_id(b), nir_imm_int(b, 0)));
-   {
-      /* Tell the final vertex and primitive count to the HW.
-       * We do this here to mask some of the latency of the LDS.
-       */
-      nir_build_alloc_vertices_and_primitives_amd(b, num_live_vertices_in_workgroup, num_exported_prims);
-   }
-   nir_pop_if(b, if_wave_0);
 
    /* TODO: Consider adding a shortcut exit.
     * Waves that have no vertices and primitives left can s_endpgm right here.
@@ -1143,10 +1124,31 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       }
       nir_pop_if(b, if_es_thread);
 
+      nir_ssa_def *es_accepted = nir_load_var(b, es_accepted_var);
+
+      /* Repack the vertices that survived the culling. */
+      wg_repack_result rep = repack_invocations_in_workgroup(b, es_accepted, ngg_scratch_lds_base_addr,
+                                                            nogs_state->max_num_waves, nogs_state->wave_size);
+      nir_ssa_def *num_live_vertices_in_workgroup = rep.num_repacked_invocations;
+      nir_ssa_def *es_exporter_tid = rep.repacked_invocation_index;
+
+      /* If all vertices are culled, set primitive count to 0 as well. */
+      nir_ssa_def *num_exported_prims = nir_build_load_workgroup_num_input_primitives_amd(b);
+      nir_ssa_def *fully_culled = nir_ieq_imm(b, num_live_vertices_in_workgroup, 0u);
+      num_exported_prims = nir_bcsel(b, fully_culled, nir_imm_int(b, 0u), num_exported_prims);
+
+      nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_build_load_subgroup_id(b), nir_imm_int(b, 0)));
+      {
+         /* Tell the final vertex and primitive count to the HW. */
+         nir_build_alloc_vertices_and_primitives_amd(b, num_live_vertices_in_workgroup, num_exported_prims);
+      }
+      nir_pop_if(b, if_wave_0);
+
       /* Vertex compaction. */
       compact_vertices_after_culling(b, nogs_state,
                                      repacked_arg_vars, gs_vtxaddr_vars,
                                      invocation_index, es_vertex_lds_addr,
+                                     es_exporter_tid, num_live_vertices_in_workgroup, fully_culled,
                                      ngg_scratch_lds_base_addr, pervertex_lds_bytes, max_exported_args);
    }
    nir_push_else(b, if_cull_en);
