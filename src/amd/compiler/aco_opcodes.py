@@ -680,6 +680,7 @@ VOP2 = {
    (0x0a, 0x0a, 0x07, 0x07, 0x0a, "v_mul_hi_i32_i24", False),
    (0x0b, 0x0b, 0x08, 0x08, 0x0b, "v_mul_u32_u24", False),
    (0x0c, 0x0c, 0x09, 0x09, 0x0c, "v_mul_hi_u32_u24", False),
+   (  -1,   -1,   -1, 0x39, 0x0d, "v_dot4c_i32_i8", False),
    (0x0d, 0x0d,   -1,   -1,   -1, "v_min_legacy_f32", True),
    (0x0e, 0x0e,   -1,   -1,   -1, "v_max_legacy_f32", True),
    (0x0f, 0x0f, 0x0a, 0x0a, 0x0f, "v_min_f32", True),
@@ -963,6 +964,10 @@ VOPP = {
 # (gfx6, gfx7, gfx8, gfx9, gfx10, name) = (-1, -1, -1, code, code, name)
 for (code, name, modifiers) in VOPP:
    opcode(name, -1, code, code, Format.VOP3P, InstrClass.Valu32, modifiers, modifiers)
+opcode("v_dot2_i32_i16", -1, 0x26, 0x14, Format.VOP3P, InstrClass.Valu32)
+opcode("v_dot2_u32_u16", -1, 0x27, 0x15, Format.VOP3P, InstrClass.Valu32)
+opcode("v_dot4_i32_i8", -1, 0x28, 0x16, Format.VOP3P, InstrClass.Valu32)
+opcode("v_dot4_u32_u8", -1, 0x29, 0x17, Format.VOP3P, InstrClass.Valu32)
 
 
 # VINTERP instructions: 

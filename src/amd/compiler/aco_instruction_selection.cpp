@@ -961,6 +961,24 @@ emit_vop3p_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, T
 }
 
 void
+emit_idot_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Temp dst, bool clamp)
+{
+   Temp src[3] = {Temp(0, v1), Temp(0, v1), Temp(0, v1)};
+   bool has_sgpr = false;
+   for (unsigned i = 0; i < 3; i++) {
+      src[i] = get_alu_src(ctx, instr->src[i]);
+      if (has_sgpr)
+         src[i] = as_vgpr(ctx, src[i]);
+      else
+         has_sgpr = src[i].type() == RegType::sgpr;
+   }
+
+   Builder bld(ctx->program, ctx->block);
+   bld.is_precise = instr->exact;
+   bld.vop3p(op, Definition(dst), src[0], src[1], src[2], 0x0, 0x7).instr->vop3p().clamp = clamp;
+}
+
+void
 emit_vop1_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Temp dst)
 {
    Builder bld(ctx->program, ctx->block);
@@ -2110,6 +2128,38 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
+      break;
+   }
+   case nir_op_sdot_4x8_iadd: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_i8, dst, false);
+      break;
+   }
+   case nir_op_sdot_4x8_iadd_sat: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_i32_i8, dst, true);
+      break;
+   }
+   case nir_op_udot_4x8_uadd: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_u32_u8, dst, false);
+      break;
+   }
+   case nir_op_udot_4x8_uadd_sat: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot4_u32_u8, dst, true);
+      break;
+   }
+   case nir_op_sdot_2x16_iadd: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot2_i32_i16, dst, false);
+      break;
+   }
+   case nir_op_sdot_2x16_iadd_sat: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot2_i32_i16, dst, true);
+      break;
+   }
+   case nir_op_udot_2x16_uadd: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot2_u32_u16, dst, false);
+      break;
+   }
+   case nir_op_udot_2x16_uadd_sat: {
+      emit_idot_instruction(ctx, instr, aco_opcode::v_dot2_u32_u16, dst, true);
       break;
    }
    case nir_op_cube_face_coord_amd: {

@@ -594,7 +594,15 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_op_cube_face_index_amd:
                case nir_op_cube_face_coord_amd:
                case nir_op_sad_u8x4:
-               case nir_op_iadd_sat: type = RegType::vgpr; break;
+               case nir_op_iadd_sat:
+               case nir_op_udot_4x8_uadd:
+               case nir_op_sdot_4x8_iadd:
+               case nir_op_udot_4x8_uadd_sat:
+               case nir_op_sdot_4x8_iadd_sat:
+               case nir_op_udot_2x16_uadd:
+               case nir_op_sdot_2x16_iadd:
+               case nir_op_udot_2x16_uadd_sat:
+               case nir_op_sdot_2x16_iadd_sat: type = RegType::vgpr; break;
                case nir_op_f2i16:
                case nir_op_f2u16:
                case nir_op_f2i32:
