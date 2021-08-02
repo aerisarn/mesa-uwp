@@ -1372,9 +1372,9 @@ iris_update_compiled_vs(struct iris_context *ice)
                                 IRIS_STAGE_DIRTY_CONSTANTS_VS;
       shs->sysvals_need_upload = true;
 
-      const struct brw_vue_prog_data *vue_prog_data =
-         (void *) shader->prog_data;
-      check_urb_size(ice, vue_prog_data->urb_entry_size, MESA_SHADER_VERTEX);
+      unsigned urb_entry_size = shader ?
+         ((struct brw_vue_prog_data *) shader->prog_data)->urb_entry_size : 0;
+      check_urb_size(ice, urb_entry_size, MESA_SHADER_VERTEX);
    }
 }
 
@@ -1604,8 +1604,9 @@ iris_update_compiled_tcs(struct iris_context *ice)
                                 IRIS_STAGE_DIRTY_CONSTANTS_TCS;
       shs->sysvals_need_upload = true;
 
-      const struct brw_vue_prog_data *prog_data = (void *) shader->prog_data;
-      check_urb_size(ice, prog_data->urb_entry_size, MESA_SHADER_TESS_CTRL);
+      unsigned urb_entry_size = shader ?
+         ((struct brw_vue_prog_data *) shader->prog_data)->urb_entry_size : 0;
+      check_urb_size(ice, urb_entry_size, MESA_SHADER_TESS_CTRL);
    }
 }
 
@@ -1730,8 +1731,9 @@ iris_update_compiled_tes(struct iris_context *ice)
                                 IRIS_STAGE_DIRTY_CONSTANTS_TES;
       shs->sysvals_need_upload = true;
 
-      const struct brw_vue_prog_data *prog_data = (void *) shader->prog_data;
-      check_urb_size(ice, prog_data->urb_entry_size, MESA_SHADER_TESS_EVAL);
+      unsigned urb_entry_size = shader ?
+         ((struct brw_vue_prog_data *) shader->prog_data)->urb_entry_size : 0;
+      check_urb_size(ice, urb_entry_size, MESA_SHADER_TESS_EVAL);
    }
 
    /* TODO: Could compare and avoid flagging this. */
