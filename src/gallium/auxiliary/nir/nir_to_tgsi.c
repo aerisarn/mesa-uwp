@@ -2157,7 +2157,13 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
    ntt_push_tex_arg(c, instr, nir_tex_src_backend2, &s);
 
    /* non-coord arg for TXQ */
-   ntt_push_tex_arg(c, instr, nir_tex_src_lod, &s);
+   if (tex_opcode == TGSI_OPCODE_TXQ) {
+      ntt_push_tex_arg(c, instr, nir_tex_src_lod, &s);
+      /* virglrenderer mistakenly looks at .w instead of .x, so make sure it's
+       * scalar
+       */
+      s.srcs[s.i - 1] = ureg_scalar(s.srcs[s.i - 1], 0);
+   }
 
    if (s.i > 1) {
       if (tex_opcode == TGSI_OPCODE_TEX)
