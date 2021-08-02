@@ -378,7 +378,9 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device, struct radv_image
    if (device->instance->debug_flags & RADV_DEBUG_NO_TC_COMPAT_CMASK)
       return false;
 
-   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT)
+   /* TC-compat CMASK with storage images is supported on GFX10+. */
+   if ((image->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+       device->physical_device->rad_info.chip_class < GFX10)
       return false;
 
    /* Do not enable TC-compatible if the image isn't readable by a shader
