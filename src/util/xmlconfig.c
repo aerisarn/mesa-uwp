@@ -272,7 +272,7 @@ findOption(const driOptionCache *cache, const char *name)
    /* this is just the starting point of the linear search for the option */
    for (i = 0; i < size; ++i, hash = (hash+1) & mask) {
       /* if we hit an empty entry then the option is not defined (yet) */
-      if (cache->info[hash].name == 0)
+      if (cache->info[hash].name == NULL)
          break;
       else if (!strcmp(name, cache->info[hash].name))
          break;

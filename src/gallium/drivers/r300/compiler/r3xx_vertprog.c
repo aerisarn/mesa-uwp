@@ -865,7 +865,7 @@ static void rc_emulate_negative_addressing(struct radeon_compiler *compiler, voi
 
 const struct rc_swizzle_caps r300_vertprog_swizzle_caps = {
 	.IsNative = &swizzle_is_native,
-	.Split = 0 /* should never be called */
+	.Split = NULL /* should never be called */
 };
 
 void r3xx_compile_vertex_program(struct r300_vertex_program_compiler *c)
@@ -875,15 +875,15 @@ void r3xx_compile_vertex_program(struct r300_vertex_program_compiler *c)
 
 	/* Lists of instruction transformations. */
 	struct radeon_program_transformation alu_rewrite_r500[] = {
-		{ &r300_transform_vertex_alu, 0 },
-		{ &r300_transform_trig_scale_vertex, 0 },
-		{ 0, 0 }
+		{ &r300_transform_vertex_alu, NULL },
+		{ &r300_transform_trig_scale_vertex, NULL },
+		{ NULL, NULL }
 	};
 
 	struct radeon_program_transformation alu_rewrite_r300[] = {
-		{ &r300_transform_vertex_alu, 0 },
-		{ &r300_transform_trig_simple, 0 },
-		{ 0, 0 }
+		{ &r300_transform_vertex_alu, NULL },
+		{ &r300_transform_trig_simple, NULL },
+		{ NULL, NULL }
 	};
 
 	/* Note: These passes have to be done seperately from ALU rewrite,
@@ -891,13 +891,13 @@ void r3xx_compile_vertex_program(struct r300_vertex_program_compiler *c)
 	 * or non-native modifiers will not be treated properly.
 	 */
 	struct radeon_program_transformation emulate_modifiers[] = {
-		{ &transform_nonnative_modifiers, 0 },
-		{ 0, 0 }
+		{ &transform_nonnative_modifiers, NULL },
+		{ NULL, NULL }
 	};
 
 	struct radeon_program_transformation resolve_src_conflicts[] = {
-		{ &transform_source_conflicts, 0 },
-		{ 0, 0 }
+		{ &transform_source_conflicts, NULL },
+		{ NULL, NULL }
 	};
 
 	/* List of compiler passes. */

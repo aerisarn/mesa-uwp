@@ -881,7 +881,7 @@ static void r300_merge_textures_and_samplers(struct r300_context* r300)
                                                   view->swizzle, FALSE);
                 } else {
                     texstate->format.format1 |=
-                        r300_get_swizzle_combined(depth_swizzle, 0, FALSE);
+                        r300_get_swizzle_combined(depth_swizzle, NULL, FALSE);
                 }
             }
 

@@ -1000,7 +1000,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
         !is_index_type_valid(type) ||
         (!user_buffer_mask && !has_user_indices))) {
       multi_draw_elements_async(ctx, mode, count, type, indices, draw_count,
-                                basevertex, 0, 0, NULL);
+                                basevertex, NULL, 0, NULL);
       return;
    }
 
@@ -1034,7 +1034,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
          if (vertex_count < 0) {
             /* Just call the driver to set the error. */
             multi_draw_elements_async(ctx, mode, count, type, indices, draw_count,
-                                      basevertex, 0, 0, NULL);
+                                      basevertex, NULL, 0, NULL);
             return;
          }
          if (vertex_count == 0)
@@ -1059,7 +1059,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
       if (total_count == 0 || num_vertices == 0) {
          /* Nothing to do, but call the driver to set possible GL errors. */
          multi_draw_elements_async(ctx, mode, count, type, indices, draw_count,
-                                   basevertex, 0, 0, NULL);
+                                   basevertex, NULL, 0, NULL);
          return;
       }
 
@@ -1075,7 +1075,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
          if (vertex_count < 0) {
             /* Just call the driver to set the error. */
             multi_draw_elements_async(ctx, mode, count, type, indices, draw_count,
-                                      basevertex, 0, 0, NULL);
+                                      basevertex, NULL, 0, NULL);
             return;
          }
          if (vertex_count == 0)
@@ -1087,7 +1087,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
       if (total_count == 0) {
          /* Nothing to do, but call the driver to set possible GL errors. */
          multi_draw_elements_async(ctx, mode, count, type, indices, draw_count,
-                                   basevertex, 0, 0, NULL);
+                                   basevertex, NULL, 0, NULL);
          return;
       }
    }

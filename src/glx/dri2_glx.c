@@ -710,7 +710,7 @@ static void show_fps(struct dri2_drawable *draw)
    struct timeval tv;
    uint64_t current_time;
 
-   gettimeofday(&tv, 0);
+   gettimeofday(&tv, NULL);
    current_time = (uint64_t)tv.tv_sec*1000000 + (uint64_t)tv.tv_usec;
 
    draw->frames++;

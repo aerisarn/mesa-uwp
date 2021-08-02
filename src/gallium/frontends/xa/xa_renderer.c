@@ -335,7 +335,7 @@ renderer_bind_destination(struct xa_context *r,
     fb.height = surface->height;
     fb.nr_cbufs = 1;
     fb.cbufs[0] = surface;
-    fb.zsbuf = 0;
+    fb.zsbuf = NULL;
 
     /* Viewport just touches the bit we're interested in:
      */

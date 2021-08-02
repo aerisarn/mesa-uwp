@@ -707,7 +707,7 @@ st_UnmapTextureImage(struct gl_context *ctx,
 
       itransfer->temp_data = NULL;
       itransfer->temp_stride = 0;
-      itransfer->map = 0;
+      itransfer->map = NULL;
    }
 
    st_texture_image_unmap(st, stImage, slice);

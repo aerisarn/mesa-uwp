@@ -360,7 +360,7 @@ GLubyte*
 _mesa_make_extension_string(struct gl_context *ctx)
 {
    /* The extension string. */
-   char *exts = 0;
+   char *exts = NULL;
    /* Length of extension string. */
    size_t length = 0;
    /* Number of extensions */

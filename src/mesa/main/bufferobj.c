@@ -2369,7 +2369,7 @@ void GLAPIENTRY
 _mesa_NamedBufferStorageMemEXT(GLuint buffer, GLsizeiptr size,
                                GLuint memory, GLuint64 offset)
 {
-   inlined_buffer_storage(GL_NONE, buffer, size, GL_NONE, 0, memory, offset,
+   inlined_buffer_storage(GL_NONE, buffer, size, NULL, 0, memory, offset,
                           true, true, false, "glNamedBufferStorageMemEXT");
 }
 
@@ -2378,7 +2378,7 @@ void GLAPIENTRY
 _mesa_NamedBufferStorageMemEXT_no_error(GLuint buffer, GLsizeiptr size,
                                         GLuint memory, GLuint64 offset)
 {
-   inlined_buffer_storage(GL_NONE, buffer, size, GL_NONE, 0, memory, offset,
+   inlined_buffer_storage(GL_NONE, buffer, size, NULL, 0, memory, offset,
                           true, true, true, "glNamedBufferStorageMemEXT");
 }
 
