@@ -318,10 +318,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
    uint32_t smask_in_regid, smask_regid;
    uint32_t stencilref_regid;
-   uint32_t vertex_regid, instance_regid, layer_regid, primitive_regid;
+   uint32_t vertex_regid, instance_regid, layer_regid, vs_primitive_regid;
    uint32_t hs_invocation_regid;
    uint32_t tess_coord_x_regid, tess_coord_y_regid, hs_rel_patch_regid,
-      ds_rel_patch_regid;
+      ds_rel_patch_regid, ds_primitive_regid;
    uint32_t ij_regid[IJ_COUNT];
    uint32_t gs_header_regid;
    enum a6xx_threadsize fssz;
@@ -353,12 +353,19 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    layer_regid = ir3_find_output_regid(vs, VARYING_SLOT_LAYER);
    vertex_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
    instance_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
+   if (gs)
+      vs_primitive_regid = ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID);
+   else if (hs)
+      vs_primitive_regid = ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID);
+   else
+      vs_primitive_regid = regid(63, 0);
 
    if (hs) {
       tess_coord_x_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_TESS_COORD);
       tess_coord_y_regid = next_regid(tess_coord_x_regid, 1);
-      hs_rel_patch_regid = ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID);
-      ds_rel_patch_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID);
+      hs_rel_patch_regid = ir3_find_sysval_regid(hs, SYSTEM_VALUE_REL_PATCH_ID_IR3);
+      ds_rel_patch_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_REL_PATCH_ID_IR3);
+      ds_primitive_regid = ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID);
       hs_invocation_regid =
          ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3);
 
@@ -371,12 +378,14 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
       tess_coord_y_regid = regid(63, 0);
       hs_rel_patch_regid = regid(63, 0);
       ds_rel_patch_regid = regid(63, 0);
+      ds_primitive_regid = regid(63, 0);
       hs_invocation_regid = regid(63, 0);
    }
 
+   bool gs_reads_primid = false;
    if (gs) {
       gs_header_regid = ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3);
-      primitive_regid = ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID);
+      gs_reads_primid = VALIDREG(ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID));
       pos_regid = ir3_find_output_regid(gs, VARYING_SLOT_POS);
       psize_regid = ir3_find_output_regid(gs, VARYING_SLOT_PSIZ);
       clip0_regid = ir3_find_output_regid(gs, VARYING_SLOT_CLIP_DIST0);
@@ -384,7 +393,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
       layer_regid = ir3_find_output_regid(gs, VARYING_SLOT_LAYER);
    } else {
       gs_header_regid = regid(63, 0);
-      primitive_regid = regid(63, 0);
    }
 
    if (fs->color0_mrt) {
@@ -871,7 +879,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
                A6XX_PC_GS_OUT_CNTL_STRIDE_IN_VPC(l.max_loc) |
                   CONDREG(psize_regid, A6XX_PC_GS_OUT_CNTL_PSIZE) |
                   CONDREG(layer_regid, A6XX_PC_GS_OUT_CNTL_LAYER) |
-                  CONDREG(primitive_regid, A6XX_PC_GS_OUT_CNTL_PRIMITIVE_ID) |
+                  COND(gs_reads_primid, A6XX_PC_GS_OUT_CNTL_PRIMITIVE_ID) |
                   A6XX_PC_GS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
       uint32_t output;
@@ -973,14 +981,15 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_1, 6);
    OUT_RING(ring, A6XX_VFD_CONTROL_1_REGID4VTX(vertex_regid) |
                      A6XX_VFD_CONTROL_1_REGID4INST(instance_regid) |
-                     A6XX_VFD_CONTROL_1_REGID4PRIMID(primitive_regid) |
+                     A6XX_VFD_CONTROL_1_REGID4PRIMID(vs_primitive_regid) |
                      0xfc000000);
    OUT_RING(ring,
             A6XX_VFD_CONTROL_2_REGID_HSRELPATCHID(hs_rel_patch_regid) |
                A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(hs_invocation_regid));
    OUT_RING(ring, A6XX_VFD_CONTROL_3_REGID_DSRELPATCHID(ds_rel_patch_regid) |
                      A6XX_VFD_CONTROL_3_REGID_TESSX(tess_coord_x_regid) |
-                     A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) | 0xfc);
+                     A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) |
+                     A6XX_VFD_CONTROL_3_REGID_DSPRIMID(ds_primitive_regid));
    OUT_RING(ring, 0x000000fc); /* VFD_CONTROL_4 */
    OUT_RING(ring, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gs_header_regid) |
                      0xfc00); /* VFD_CONTROL_5 */

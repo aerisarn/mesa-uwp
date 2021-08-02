@@ -779,6 +779,11 @@ typedef enum
    SYSTEM_VALUE_GS_HEADER_IR3,
    SYSTEM_VALUE_TCS_HEADER_IR3,
 
+   /* IR3 specific system value that contains the patch id for the current
+    * subdraw.
+    */
+   SYSTEM_VALUE_REL_PATCH_ID_IR3,
+
    /**
     * Fragment shading rate used for KHR_fragment_shading_rate (Vulkan).
     */

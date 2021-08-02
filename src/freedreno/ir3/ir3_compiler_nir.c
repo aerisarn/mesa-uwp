@@ -1703,7 +1703,15 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       dst[0] = ctx->tcs_header;
       break;
 
+   case nir_intrinsic_load_rel_patch_id_ir3:
+      dst[0] = ctx->rel_patch_id;
+      break;
+
    case nir_intrinsic_load_primitive_id:
+      if (!ctx->primitive_id) {
+         ctx->primitive_id =
+            create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+      }
       dst[0] = ctx->primitive_id;
       break;
 
@@ -3734,6 +3742,8 @@ emit_instructions(struct ir3_context *ctx)
       if (has_tess) {
          ctx->tcs_header =
             create_sysval_input(ctx, SYSTEM_VALUE_TCS_HEADER_IR3, 0x1);
+         ctx->rel_patch_id =
+            create_sysval_input(ctx, SYSTEM_VALUE_REL_PATCH_ID_IR3, 0x1);
          ctx->primitive_id =
             create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
       } else if (has_gs) {
@@ -3746,21 +3756,22 @@ emit_instructions(struct ir3_context *ctx)
    case MESA_SHADER_TESS_CTRL:
       ctx->tcs_header =
          create_sysval_input(ctx, SYSTEM_VALUE_TCS_HEADER_IR3, 0x1);
-      ctx->primitive_id =
-         create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+      ctx->rel_patch_id =
+         create_sysval_input(ctx, SYSTEM_VALUE_REL_PATCH_ID_IR3, 0x1);
       break;
    case MESA_SHADER_TESS_EVAL:
-      if (has_gs)
+      if (has_gs) {
          ctx->gs_header =
             create_sysval_input(ctx, SYSTEM_VALUE_GS_HEADER_IR3, 0x1);
-      ctx->primitive_id =
-         create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+         ctx->primitive_id =
+            create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
+      }
+      ctx->rel_patch_id =
+         create_sysval_input(ctx, SYSTEM_VALUE_REL_PATCH_ID_IR3, 0x1);
       break;
    case MESA_SHADER_GEOMETRY:
       ctx->gs_header =
          create_sysval_input(ctx, SYSTEM_VALUE_GS_HEADER_IR3, 0x1);
-      ctx->primitive_id =
-         create_sysval_input(ctx, SYSTEM_VALUE_PRIMITIVE_ID, 0x1);
       break;
    default:
       break;
@@ -3986,6 +3997,19 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
          struct ir3_instruction *out = ir3_collect(ctx, ctx->primitive_id);
          outputs[outputs_count] = out;
          outidxs[outputs_count] = n;
+         if (so->type == MESA_SHADER_VERTEX && ctx->rel_patch_id)
+            regids[outputs_count] = regid(0, 2);
+         else
+            regids[outputs_count] = regid(0, 1);
+         outputs_count++;
+      }
+
+      if (so->type == MESA_SHADER_VERTEX && ctx->rel_patch_id) {
+         unsigned n = so->outputs_count++;
+         so->outputs[n].slot = VARYING_SLOT_REL_PATCH_ID_IR3;
+         struct ir3_instruction *out = ir3_collect(ctx, ctx->rel_patch_id);
+         outputs[outputs_count] = out;
+         outidxs[outputs_count] = n;
          regids[outputs_count] = regid(0, 1);
          outputs_count++;
       }
@@ -4188,7 +4212,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
        */
 
       ctx->tcs_header->dsts[0]->num = regid(0, 0);
-      ctx->primitive_id->dsts[0]->num = regid(0, 1);
+      ctx->rel_patch_id->dsts[0]->num = regid(0, 1);
+      if (ctx->primitive_id)
+         ctx->primitive_id->dsts[0]->num = regid(0, 2);
    } else if (ctx->gs_header) {
       /* We need to have these values in the same registers between producer
        * (VS or DS) and GS since the producer chains to GS and doesn't get
@@ -4196,7 +4222,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
        */
 
       ctx->gs_header->dsts[0]->num = regid(0, 0);
-      ctx->primitive_id->dsts[0]->num = regid(0, 1);
+      if (ctx->primitive_id)
+         ctx->primitive_id->dsts[0]->num = regid(0, 1);
    } else if (so->num_sampler_prefetch) {
       assert(so->type == MESA_SHADER_FRAGMENT);
       int idx = 0;

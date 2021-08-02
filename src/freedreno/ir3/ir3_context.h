@@ -98,6 +98,7 @@ struct ir3_context {
    struct ir3_instruction *patch_vertices_in;
    struct ir3_instruction *tcs_header;
    struct ir3_instruction *tess_coord;
+   struct ir3_instruction *rel_patch_id;
 
    /* Compute shader inputs: */
    struct ir3_instruction *local_invocation_id, *work_group_id;

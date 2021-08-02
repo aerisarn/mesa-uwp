@@ -507,6 +507,9 @@ ir3_setup_used_key(struct ir3_shader *shader)
          key->vastc_srgb = ~0;
          key->vsamples = ~0;
       }
+
+      if (info->stage == MESA_SHADER_TESS_CTRL)
+         key->tcs_store_primid = true;
    }
 }
 

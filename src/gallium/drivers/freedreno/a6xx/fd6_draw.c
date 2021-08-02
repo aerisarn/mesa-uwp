@@ -176,6 +176,12 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       struct shader_info *ds_info = ir3_get_shader_info(emit.key.ds);
       emit.key.key.tessellation = ir3_tess_mode(ds_info->tess.primitive_mode);
       ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
+
+      struct shader_info *fs_info = ir3_get_shader_info(emit.key.fs);
+      emit.key.key.tcs_store_primid =
+         BITSET_TEST(ds_info->system_values_read, SYSTEM_VALUE_PRIMITIVE_ID) ||
+         (gs_info && BITSET_TEST(gs_info->system_values_read, SYSTEM_VALUE_PRIMITIVE_ID)) ||
+         (fs_info && (fs_info->inputs_read & (1ull << VARYING_SLOT_PRIMITIVE_ID)));
    }
 
    if (emit.key.gs) {

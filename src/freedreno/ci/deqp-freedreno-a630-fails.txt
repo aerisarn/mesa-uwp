@@ -50,7 +50,6 @@ dEQP-VK.api.info.format_properties.g8_b8_r8_3plane_420_unorm,Fail
 dEQP-VK.api.info.image_format_properties.2d.optimal.g8_b8_r8_3plane_420_unorm,Fail
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite,Fail
 dEQP-VK.graphicsfuzz.spv-stable-pillars-volatile-nontemporal-store,Fail
-dEQP-VK.pipeline.misc.primitive_id_from_tess,Fail
 dEQP-VK.spirv_assembly.instruction.spirv1p4.opcopylogical.nested_arrays_different_strides,Fail
 dEQP-VK.ssbo.layout.2_level_array.scalar.row_major_mat4_store_cols,Fail
 dEQP-VK.ssbo.layout.2_level_array.std140.row_major_mat4_comp_access_store_cols,Fail

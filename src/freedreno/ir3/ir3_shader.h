@@ -314,6 +314,11 @@ struct ir3_shader_key {
 
          unsigned has_gs : 1;
 
+         /* Whether stages after TCS read gl_PrimitiveID, used to determine
+          * whether the TCS has to store it in the tess factor BO.
+          */
+         unsigned tcs_store_primid : 1;
+
          /* Whether this variant sticks to the "safe" maximum constlen,
           * which guarantees that the combined stages will never go over
           * the limit:
@@ -991,6 +996,7 @@ void ir3_link_stream_out(struct ir3_shader_linkage *l,
 #define VARYING_SLOT_GS_HEADER_IR3       (VARYING_SLOT_MAX + 0)
 #define VARYING_SLOT_GS_VERTEX_FLAGS_IR3 (VARYING_SLOT_MAX + 1)
 #define VARYING_SLOT_TCS_HEADER_IR3      (VARYING_SLOT_MAX + 2)
+#define VARYING_SLOT_REL_PATCH_ID_IR3    (VARYING_SLOT_MAX + 3)
 
 static inline uint32_t
 ir3_find_sysval_regid(const struct ir3_shader_variant *so, unsigned slot)

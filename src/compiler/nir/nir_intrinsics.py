@@ -1021,6 +1021,7 @@ system_value("hs_patch_stride_ir3", 1)
 system_value("tess_factor_base_ir3", 2)
 system_value("tess_param_base_ir3", 2)
 system_value("tcs_header_ir3", 1)
+system_value("rel_patch_id_ir3", 1)
 
 # System values for freedreno compute shaders.
 system_value("subgroup_id_shift_ir3", 1)

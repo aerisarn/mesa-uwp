@@ -646,16 +646,24 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
          tess_coord_x_regid + 1 :
          regid(63, 0);
    const uint32_t hs_rel_patch_regid = hs ?
-         ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID) :
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
          regid(63, 0);
    const uint32_t ds_rel_patch_regid = hs ?
-         ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_REL_PATCH_ID_IR3) :
          regid(63, 0);
    const uint32_t hs_invocation_regid = hs ?
          ir3_find_sysval_regid(hs, SYSTEM_VALUE_TCS_HEADER_IR3) :
          regid(63, 0);
-   const uint32_t primitiveid_regid = gs ?
+   const uint32_t gs_primitiveid_regid = gs ?
          ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) :
+         regid(63, 0);
+   const uint32_t hs_primitiveid_regid = hs ?
+         ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID) :
+         regid(63, 0);
+   const uint32_t vs_primitiveid_regid = gs ? gs_primitiveid_regid :
+      hs_primitiveid_regid;
+   const uint32_t ds_primitiveid_regid = ds ?
+         ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
          regid(63, 0);
    const uint32_t gsheader_regid = gs ?
          ir3_find_sysval_regid(gs, SYSTEM_VALUE_GS_HEADER_IR3) :
@@ -671,14 +679,14 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_VFD_CONTROL_1, 6);
    tu_cs_emit(cs, A6XX_VFD_CONTROL_1_REGID4VTX(vertexid_regid) |
                   A6XX_VFD_CONTROL_1_REGID4INST(instanceid_regid) |
-                  A6XX_VFD_CONTROL_1_REGID4PRIMID(primitiveid_regid) |
+                  A6XX_VFD_CONTROL_1_REGID4PRIMID(vs_primitiveid_regid) |
                   A6XX_VFD_CONTROL_1_REGID4VIEWID(viewid_regid));
    tu_cs_emit(cs, A6XX_VFD_CONTROL_2_REGID_HSRELPATCHID(hs_rel_patch_regid) |
                   A6XX_VFD_CONTROL_2_REGID_INVOCATIONID(hs_invocation_regid));
    tu_cs_emit(cs, A6XX_VFD_CONTROL_3_REGID_DSRELPATCHID(ds_rel_patch_regid) |
                   A6XX_VFD_CONTROL_3_REGID_TESSX(tess_coord_x_regid) |
                   A6XX_VFD_CONTROL_3_REGID_TESSY(tess_coord_y_regid) |
-                  0xfc);
+                  A6XX_VFD_CONTROL_3_REGID_DSPRIMID(ds_primitiveid_regid));
    tu_cs_emit(cs, 0x000000fc); /* VFD_CONTROL_4 */
    tu_cs_emit(cs, A6XX_VFD_CONTROL_5_REGID_GSHEADER(gsheader_regid) |
                   0xfc00); /* VFD_CONTROL_5 */
@@ -2303,6 +2311,16 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       if ((stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_TESS_CTRL) &&
           key.tessellation == IR3_TESS_NONE) {
          key.tessellation = tu6_get_tessmode(shader);
+      }
+
+      if (stage > MESA_SHADER_TESS_CTRL) {
+         if (stage == MESA_SHADER_FRAGMENT) {
+            key.tcs_store_primid = key.tcs_store_primid ||
+               (nir[stage]->info.inputs_read & (1ull << VARYING_SLOT_PRIMITIVE_ID));
+         } else {
+            key.tcs_store_primid = key.tcs_store_primid ||
+               BITSET_TEST(nir[stage]->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
+         }
       }
 
       /* Keep track of the status of each shader's active descriptor sets,
