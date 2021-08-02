@@ -198,33 +198,43 @@ regs_intersect(PhysReg a_reg, unsigned a_size, PhysReg b_reg, unsigned b_size)
 }
 
 template <bool Valu, bool Vintrp, bool Salu>
+bool
+handle_raw_hazard_instr(aco_ptr<Instruction>& pred, PhysReg reg, int* nops_needed, uint32_t* mask)
+{
+   unsigned mask_size = util_last_bit(*mask);
+
+   uint32_t writemask = 0;
+   for (Definition& def : pred->definitions) {
+      if (regs_intersect(reg, mask_size, def.physReg(), def.size())) {
+         unsigned start = def.physReg() > reg ? def.physReg() - reg : 0;
+         unsigned end = MIN2(mask_size, start + def.size());
+         writemask |= u_bit_consecutive(start, end - start);
+      }
+   }
+
+   bool is_hazard = writemask != 0 && ((pred->isVALU() && Valu) || (pred->isVINTRP() && Vintrp) ||
+                                       (pred->isSALU() && Salu));
+   if (is_hazard)
+      return true;
+
+   *mask &= ~writemask;
+   *nops_needed = MAX2(*nops_needed - get_wait_states(pred), 0);
+
+   if (*mask == 0)
+      *nops_needed = 0;
+
+   return *nops_needed == 0;
+}
+
+template <bool Valu, bool Vintrp, bool Salu>
 int
 handle_raw_hazard_internal(Program* program, Block* block, int nops_needed, PhysReg reg,
                            uint32_t mask)
 {
    for (int pred_idx = block->instructions.size() - 1; pred_idx >= 0; pred_idx--) {
-      aco_ptr<Instruction>& pred = block->instructions[pred_idx];
-
-      unsigned mask_size = util_last_bit(mask);
-      uint32_t writemask = 0;
-      for (Definition& def : pred->definitions) {
-         if (regs_intersect(reg, mask_size, def.physReg(), def.size())) {
-            unsigned start = def.physReg() > reg ? def.physReg() - reg : 0;
-            unsigned end = MIN2(mask_size, start + def.size());
-            writemask |= u_bit_consecutive(start, end - start);
-         }
-      }
-
-      bool is_hazard = writemask != 0 && ((pred->isVALU() && Valu) ||
-                                          (pred->isVINTRP() && Vintrp) || (pred->isSALU() && Salu));
-      if (is_hazard)
+      if (handle_raw_hazard_instr<Valu, Vintrp, Salu>(block->instructions[pred_idx], reg,
+                                                      &nops_needed, &mask))
          return nops_needed;
-
-      mask &= ~writemask;
-      nops_needed -= get_wait_states(pred);
-
-      if (nops_needed <= 0 || mask == 0)
-         return 0;
    }
 
    int res = 0;
