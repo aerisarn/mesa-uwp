@@ -30,6 +30,7 @@
 #include "util/u_debug.h"
 
 #include "disassemble.h"
+#include "valhall/va_compiler.h"
 #include "valhall/disassemble.h"
 #include "bifrost_compile.h"
 #include "compiler.h"
@@ -3425,6 +3426,56 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
         ralloc_free(str);
 }
 
+static void
+va_print_stats(bi_context *ctx, unsigned size, FILE *fp)
+{
+        unsigned nr_ins = 0;
+        struct va_stats stats = { 0 };
+
+        /* Count instructions */
+        bi_foreach_instr_global(ctx, I) {
+                nr_ins++;
+                va_count_instr_stats(I, &stats);
+        }
+
+        /* Mali G78 peak performance:
+         *
+         * 64 FMA instructions per cycle
+         * 64 CVT instructions per cycle
+         * 16 SFU instructions per cycle
+         * 8 x 32-bit varying channels interpolated per cycle
+         * 4 texture instructions per cycle
+         * 1 load/store operation per cycle
+         */
+
+        float cycles_fma = ((float) stats.fma) / 64.0;
+        float cycles_cvt = ((float) stats.cvt) / 64.0;
+        float cycles_sfu = ((float) stats.sfu) / 16.0;
+        float cycles_v = ((float) stats.v) / 16.0;
+        float cycles_t = ((float) stats.t) / 4.0;
+        float cycles_ls = ((float) stats.ls) / 1.0;
+
+        /* Calculate the bound */
+        float cycles = MAX2(
+                        MAX3(cycles_fma, cycles_cvt, cycles_sfu),
+                        MAX3(cycles_v,   cycles_t,   cycles_ls));
+
+
+        /* Thread count and register pressure are traded off */
+        unsigned nr_threads = (ctx->info.work_reg_count <= 32) ? 2 : 1;
+
+        /* Dump stats */
+        fprintf(stderr, "%s - %s shader: "
+                        "%u inst, %f cycles, %f fma, %f cvt, %f sfu, %f v, "
+                        "%f t, %f ls, %u quadwords, %u threads, %u loops, "
+                        "%u:%u spills:fills\n",
+                        ctx->nir->info.label ?: "",
+                        bi_shader_stage_name(ctx),
+                        nr_ins, cycles, cycles_fma, cycles_cvt, cycles_sfu,
+                        cycles_v, cycles_t, cycles_ls, size / 16, nr_threads,
+                        ctx->loop_count, ctx->spills, ctx->fills);
+}
+
 static int
 glsl_type_size(const struct glsl_type *type, bool bindless)
 {
@@ -4198,7 +4249,11 @@ bi_compile_variant_nir(nir_shader *nir,
 
         if ((bifrost_debug & BIFROST_DBG_SHADERDB || inputs->shaderdb) &&
             !skip_internal) {
-                bi_print_stats(ctx, binary->size - offset, stderr);
+                if (ctx->arch >= 9) {
+                        va_print_stats(ctx, binary->size - offset, stderr);
+                } else {
+                        bi_print_stats(ctx, binary->size - offset, stderr);
+                }
         }
 
         return ctx;
