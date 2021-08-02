@@ -300,11 +300,13 @@ iris_use_pinned_bo(struct iris_batch *batch,
    /* Never mark the workaround BO with EXEC_OBJECT_WRITE.  We don't care
     * about the order of any writes to that buffer, and marking it writable
     * would introduce data dependencies between multiple batches which share
-    * the buffer.
+    * the buffer. It is added directly to the batch using add_bo_to_batch()
+    * during batch reset time.
     */
-   if (bo == batch->screen->workaround_bo) {
-      writable = false;
-   } else if (access < NUM_IRIS_DOMAINS) {
+   if (bo == batch->screen->workaround_bo)
+      return;
+
+   if (access < NUM_IRIS_DOMAINS) {
       assert(batch->sync_region_depth);
       iris_bo_bump_seqno(bo, batch->next_seqno, access);
    }
@@ -417,7 +419,7 @@ iris_batch_reset(struct iris_batch *batch)
    /* Always add the workaround BO, it contains a driver identifier at the
     * beginning quite helpful to debug error states.
     */
-   iris_use_pinned_bo(batch, screen->workaround_bo, false, IRIS_DOMAIN_NONE);
+   add_bo_to_batch(batch, screen->workaround_bo, false);
 
    iris_batch_maybe_noop(batch);
 }
