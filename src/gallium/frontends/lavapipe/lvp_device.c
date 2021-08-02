@@ -2200,7 +2200,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySemaphore(
    vk_free2(&device->vk.alloc, pAllocator, sema);
 }
 
-VKAPI_ATTR VkResult lvp_WaitSemaphores(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitSemaphores(
     VkDevice                                    _device,
     const VkSemaphoreWaitInfo*                  pWaitInfo,
     uint64_t                                    timeout)
@@ -2210,7 +2210,7 @@ VKAPI_ATTR VkResult lvp_WaitSemaphores(
    return wait_semaphores(device, pWaitInfo, timeout);
 }
 
-VKAPI_ATTR VkResult lvp_GetSemaphoreCounterValue(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_GetSemaphoreCounterValue(
     VkDevice                                    _device,
     VkSemaphore                                 _semaphore,
     uint64_t*                                   pValue)
@@ -2224,7 +2224,7 @@ VKAPI_ATTR VkResult lvp_GetSemaphoreCounterValue(
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult lvp_SignalSemaphore(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_SignalSemaphore(
     VkDevice                                    _device,
     const VkSemaphoreSignalInfo*                pSignalInfo)
 {
