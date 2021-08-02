@@ -296,6 +296,7 @@ iris_use_pinned_bo(struct iris_batch *batch,
                    bool writable, enum iris_domain access)
 {
    assert(bo->kflags & EXEC_OBJECT_PINNED);
+   assert(bo != batch->bo);
 
    /* Never mark the workaround BO with EXEC_OBJECT_WRITE.  We don't care
     * about the order of any writes to that buffer, and marking it writable
@@ -322,8 +323,7 @@ iris_use_pinned_bo(struct iris_batch *batch,
       return;
    }
 
-   if (bo != batch->bo &&
-       (!batch->measure || bo != batch->measure->bo)) {
+   if (!batch->measure || bo != batch->measure->bo) {
       /* This is the first time our batch has seen this BO.  Before we use it,
        * we may need to flush and synchronize with other batches.
        */
@@ -372,7 +372,8 @@ create_batch(struct iris_batch *batch)
    batch->map = iris_bo_map(NULL, batch->bo, MAP_READ | MAP_WRITE);
    batch->map_next = batch->map;
 
-   iris_use_pinned_bo(batch, batch->bo, false, IRIS_DOMAIN_NONE);
+   ensure_exec_obj_space(batch, 1);
+   add_bo_to_batch(batch, batch->bo, false);
 }
 
 static void
