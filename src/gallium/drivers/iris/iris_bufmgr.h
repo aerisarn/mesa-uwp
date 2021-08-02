@@ -36,6 +36,7 @@
 #include "util/simple_mtx.h"
 #include "pipe/p_defines.h"
 #include "pipebuffer/pb_slab.h"
+#include "intel/dev/intel_device_info.h"
 
 struct intel_device_info;
 struct util_debug_callback;
@@ -115,7 +116,7 @@ enum iris_domain {
    IRIS_DOMAIN_SAMPLER_READ,
    /** Pull-style shader constant loads. */
    IRIS_DOMAIN_PULL_CONSTANT_READ,
-   /** Any other read-only cache. */
+   /** Any other read-only cache, including reads from non-L3 clients. */
    IRIS_DOMAIN_OTHER_READ,
    /** Number of caching domains. */
    NUM_IRIS_DOMAINS,
@@ -131,6 +132,20 @@ iris_domain_is_read_only(enum iris_domain access)
 {
    return access >= IRIS_DOMAIN_VF_READ &&
           access <= IRIS_DOMAIN_OTHER_READ;
+}
+
+static inline bool
+iris_domain_is_l3_coherent(const struct intel_device_info *devinfo,
+                           enum iris_domain access)
+{
+   /* VF reads are coherent with the L3 on Tigerlake+ because we set
+    * the "L3 Bypass Disable" bit in the vertex/index buffer packets.
+    */
+   if (access == IRIS_DOMAIN_VF_READ)
+      return devinfo->ver >= 12;
+
+   return access != IRIS_DOMAIN_OTHER_WRITE &&
+          access != IRIS_DOMAIN_OTHER_READ;
 }
 
 enum iris_mmap_mode {
