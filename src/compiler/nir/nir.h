@@ -567,7 +567,8 @@ typedef struct nir_variable {
 
       /**
        * The actual location of the variable in the IR. Only valid for inputs,
-       * outputs, and uniforms (including samplers and images).
+       * outputs, uniforms (including samplers and images), and for UBO and SSBO
+       * variables in GLSL.
        */
       unsigned driver_location;
 
