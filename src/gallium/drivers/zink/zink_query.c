@@ -39,7 +39,6 @@ struct zink_query {
    bool dead; /* query should be destroyed when its fence finishes */
    bool needs_update; /* query needs to update its qbos */
 
-   unsigned fences;
    struct list_head active_list;
 
    struct list_head stats_list; /* when active, statistics queries are added to ctx->primitives_generated_queries */
@@ -244,7 +243,7 @@ fail:
 static void
 destroy_query(struct zink_screen *screen, struct zink_query *query)
 {
-   assert(!p_atomic_read(&query->fences));
+   assert(zink_screen_usage_check_completion(screen, query->batch_id));
    if (query->query_pool)
       vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
    struct zink_query_buffer *qbo, *next;
@@ -345,10 +344,11 @@ zink_destroy_query(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_query *query = (struct zink_query *)q;
 
-   p_atomic_set(&query->dead, true);
-   if (p_atomic_read(&query->fences)) {
-      if (query->xfb_running)
-        zink_fence_wait(pctx);
+   /* only destroy if this query isn't active on any batches,
+    * otherwise just mark dead and wait
+    */
+   if (query->batch_id) {
+      p_atomic_set(&query->dead, true);
       return;
    }
 
@@ -356,12 +356,13 @@ zink_destroy_query(struct pipe_context *pctx,
 }
 
 void
-zink_prune_query(struct zink_screen *screen, struct zink_query *query)
+zink_prune_query(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_query *query)
 {
-   if (!p_atomic_dec_return(&query->fences)) {
-      if (p_atomic_read(&query->dead))
-         destroy_query(screen, query);
-   }
+   if (!zink_batch_usage_matches(query->batch_id, bs))
+      return;
+   query->batch_id = NULL;
+   if (p_atomic_read(&query->dead))
+      destroy_query(screen, query);
 }
 
 static void
@@ -661,6 +662,8 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, q->query_pool, q->curr_query);
       q->curr_query++;
       update_qbo(ctx, q);
+      zink_batch_usage_set(&q->batch_id, batch->state);
+      _mesa_set_add(batch->state->active_queries, q);
    }
    /* ignore the rest of begin_query for timestamps */
    if (is_time_query(q))
@@ -694,7 +697,6 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       vkCmdBeginQuery(batch->state->cmdbuf, q->query_pool, q->curr_query, flags);
    if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
-   p_atomic_inc(&q->fences);
    zink_batch_usage_set(&q->batch_id, batch->state);
    _mesa_set_add(batch->state->active_queries, q);
 }
@@ -786,6 +788,7 @@ zink_end_query(struct pipe_context *pctx,
       vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           query->query_pool, query->curr_query);
       zink_batch_usage_set(&query->batch_id, batch->state);
+      _mesa_set_add(batch->state->active_queries, query);
       update_query_id(ctx, query);
    } else if (query->active)
       end_query(ctx, batch, query);
@@ -979,7 +982,6 @@ zink_get_query_result_resource(struct pipe_context *pctx,
    VkQueryResultFlagBits size_flags = result_type <= PIPE_QUERY_TYPE_U32 ? 0 : VK_QUERY_RESULT_64_BIT;
    unsigned num_queries = query->curr_query - query->last_start;
    unsigned query_id = query->last_start;
-   unsigned fences = p_atomic_read(&query->fences);
 
    if (index == -1) {
       /* VK_QUERY_RESULT_WITH_AVAILABILITY_BIT will ALWAYS write some kind of result data
@@ -991,7 +993,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
        */
 
       VkQueryResultFlags flag = is_time_query(query) ? 0 : VK_QUERY_RESULT_PARTIAL_BIT;
-      if (!fences) {
+      if (zink_batch_usage_check_completion(ctx, query->batch_id)) {
          uint64_t u64[2] = {0};
          if (vkGetQueryPoolResults(screen->dev, query->query_pool, query_id, 1, 2 * result_size, u64,
                                    0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag) == VK_SUCCESS) {

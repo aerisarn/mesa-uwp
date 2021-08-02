@@ -42,7 +42,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    set_foreach_remove(bs->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
-      zink_prune_query(screen, query);
+      zink_prune_query(screen, bs, query);
    }
 
    set_foreach_remove(bs->surfaces, entry) {
