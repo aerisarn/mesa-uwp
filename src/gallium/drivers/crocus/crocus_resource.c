@@ -1542,12 +1542,17 @@ crocus_map_direct(struct crocus_transfer *map)
       const unsigned cpp = fmtl->bpb / 8;
       unsigned x0_el, y0_el;
 
+      assert(box->x % fmtl->bw == 0);
+      assert(box->y % fmtl->bh == 0);
       get_image_offset_el(surf, xfer->level, box->z, &x0_el, &y0_el);
+
+      x0_el += box->x / fmtl->bw;
+      y0_el += box->y / fmtl->bh;
 
       xfer->stride = isl_surf_get_row_pitch_B(surf);
       xfer->layer_stride = isl_surf_get_array_pitch(surf);
 
-      map->ptr = ptr + (y0_el + box->y) * xfer->stride + (x0_el + box->x) * cpp;
+      map->ptr = ptr + y0_el * xfer->stride + x0_el * cpp;
    }
 }
 
