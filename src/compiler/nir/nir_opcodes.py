@@ -633,7 +633,7 @@ binop("iadd_sat", tint, _2src_commutative, """
          (src0 < src0 + src1 ? (1ull << (bit_size - 1))     : src0 + src1)
 """)
 binop("uadd_sat", tuint, _2src_commutative,
-      "(src0 + src1) < src0 ? MAX_UINT_FOR_SIZE(sizeof(src0) * 8) : (src0 + src1)")
+      "(src0 + src1) < src0 ? u_uintN_max(sizeof(src0) * 8) : (src0 + src1)")
 binop("isub_sat", tint, "", """
       src1 < 0 ?
          (src0 - src1 < src0 ? (1ull << (bit_size - 1)) - 1 : src0 - src1) :
