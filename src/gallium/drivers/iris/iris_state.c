@@ -7592,6 +7592,8 @@ iris_rebind_buffer(struct iris_context *ice,
 static void
 batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
 {
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
+
    iris_batch_sync_boundary(batch);
 
    if ((flags & PIPE_CONTROL_CS_STALL)) {
@@ -7601,8 +7603,24 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
       if ((flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH))
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_DEPTH_WRITE);
 
-      if ((flags & PIPE_CONTROL_DATA_CACHE_FLUSH))
+      if ((flags & PIPE_CONTROL_TILE_CACHE_FLUSH)) {
+         /* A tile cache flush makes any C/Z data in L3 visible to memory. */
+         const unsigned c = IRIS_DOMAIN_RENDER_WRITE;
+         const unsigned z = IRIS_DOMAIN_DEPTH_WRITE;
+         batch->coherent_seqnos[c][c] = batch->l3_coherent_seqnos[c];
+         batch->coherent_seqnos[z][z] = batch->l3_coherent_seqnos[z];
+      }
+
+      if (flags & (PIPE_CONTROL_FLUSH_HDC | PIPE_CONTROL_DATA_CACHE_FLUSH)) {
+         /* HDC and DC flushes both flush the data cache out to L3 */
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_DATA_WRITE);
+      }
+
+      if ((flags & PIPE_CONTROL_DATA_CACHE_FLUSH)) {
+         /* A DC flush also flushes L3 data cache lines out to memory. */
+         const unsigned i = IRIS_DOMAIN_DATA_WRITE;
+         batch->coherent_seqnos[i][i] = batch->l3_coherent_seqnos[i];
+      }
 
       if ((flags & PIPE_CONTROL_FLUSH_ENABLE))
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_OTHER_WRITE);
@@ -7652,6 +7670,16 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
       iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_PULL_CONSTANT_READ);
 
    /* IRIS_DOMAIN_OTHER_READ no longer uses any caches. */
+
+   if ((flags & PIPE_CONTROL_L3_RO_INVALIDATE_BITS) == PIPE_CONTROL_L3_RO_INVALIDATE_BITS) {
+      /* If we just invalidated the read-only lines of L3, then writes from non-L3-coherent
+       * domains will now be visible to those L3 clients.
+       */
+      for (unsigned i = 0; i < NUM_IRIS_DOMAINS; i++) {
+         if (!iris_domain_is_l3_coherent(devinfo, i))
+            batch->l3_coherent_seqnos[i] = batch->coherent_seqnos[i][i];
+      }
+   }
 }
 
 static unsigned

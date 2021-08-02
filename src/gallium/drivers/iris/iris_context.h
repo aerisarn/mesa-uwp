@@ -358,6 +358,10 @@ enum pipe_control_flags
     PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE | \
     PIPE_CONTROL_INSTRUCTION_INVALIDATE)
 
+#define PIPE_CONTROL_L3_RO_INVALIDATE_BITS       \
+   (PIPE_CONTROL_L3_READ_ONLY_CACHE_INVALIDATE | \
+    PIPE_CONTROL_CONST_CACHE_INVALIDATE)
+
 enum iris_predicate_state {
    /* The first two states are used if we can determine whether to draw
     * without having to look at the values in the query object buffer. This
