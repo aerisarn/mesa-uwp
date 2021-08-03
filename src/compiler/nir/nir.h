@@ -3100,7 +3100,8 @@ typedef enum {
     *   - nir_block::live_out
     *
     * A pass can preserve this metadata type if it never adds or removes any
-    * SSA defs (most passes shouldn't preserve this metadata type).
+    * SSA defs or uses of SSA defs (most passes shouldn't preserve this
+    * metadata type).
     */
    nir_metadata_live_ssa_defs = 0x4,
 
