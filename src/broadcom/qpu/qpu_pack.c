@@ -112,12 +112,15 @@
 #define LDTMU .ldtmu = true
 #define LDVARY .ldvary = true
 #define LDVPM .ldvpm = true
-#define SMIMM_B .small_imm_b = true
 #define LDTLB .ldtlb = true
 #define LDTLBU .ldtlbu = true
 #define UCB .ucb = true
 #define ROT .rotate = true
 #define WRTMUC .wrtmuc = true
+#define SMIMM_A .small_imm_a = true
+#define SMIMM_B .small_imm_b = true
+#define SMIMM_C .small_imm_c = true
+#define SMIMM_D .small_imm_d = true
 
 static const struct v3d_qpu_sig v33_sig_map[] = {
         /*      MISC   R3       R4      R5 */
@@ -213,6 +216,40 @@ static const struct v3d_qpu_sig v41_sig_map[] = {
         [31] = { SMIMM_B,          LDTMU, },
 };
 
+
+static const struct v3d_qpu_sig v71_sig_map[] = {
+        /*      MISC       phys    RF0 */
+        [0]  = {                          },
+        [1]  = { THRSW,                   },
+        [2]  = {                   LDUNIF },
+        [3]  = { THRSW,            LDUNIF },
+        [4]  = {           LDTMU,         },
+        [5]  = { THRSW,    LDTMU,         },
+        [6]  = {           LDTMU,  LDUNIF },
+        [7]  = { THRSW,    LDTMU,  LDUNIF },
+        [8]  = {           LDVARY,        },
+        [9]  = { THRSW,    LDVARY,        },
+        [10] = {           LDVARY, LDUNIF },
+        [11] = { THRSW,    LDVARY, LDUNIF },
+        [12] = { LDUNIFRF                 },
+        [13] = { THRSW,    LDUNIFRF       },
+        [14] = { SMIMM_A,                 },
+        [15] = { SMIMM_B,                 },
+        [16] = {           LDTLB,         },
+        [17] = {           LDTLBU,        },
+        [18] = {                          WRTMUC },
+        [19] = { THRSW,                   WRTMUC },
+        [20] = {           LDVARY,        WRTMUC },
+        [21] = { THRSW,    LDVARY,        WRTMUC },
+        [22] = { UCB,                     },
+        /* 23 reserved */
+        [24] = {                   LDUNIFA},
+        [25] = { LDUNIFARF                },
+        /* 26-29 reserved */
+        [30] = { SMIMM_C,                 },
+        [31] = { SMIMM_D,                 },
+};
+
 bool
 v3d_qpu_sig_unpack(const struct v3d_device_info *devinfo,
                    uint32_t packed_sig,
@@ -221,7 +258,9 @@ v3d_qpu_sig_unpack(const struct v3d_device_info *devinfo,
         if (packed_sig >= ARRAY_SIZE(v33_sig_map))
                 return false;
 
-        if (devinfo->ver >= 41)
+        if (devinfo->ver >= 71)
+                *sig = v71_sig_map[packed_sig];
+        else if (devinfo->ver >= 41)
                 *sig = v41_sig_map[packed_sig];
         else if (devinfo->ver == 40)
                 *sig = v40_sig_map[packed_sig];
@@ -240,7 +279,9 @@ v3d_qpu_sig_pack(const struct v3d_device_info *devinfo,
 {
         static const struct v3d_qpu_sig *map;
 
-        if (devinfo->ver >= 41)
+        if (devinfo->ver >= 71)
+                map = v71_sig_map;
+        else if (devinfo->ver >= 41)
                 map = v41_sig_map;
         else if (devinfo->ver == 40)
                 map = v40_sig_map;
