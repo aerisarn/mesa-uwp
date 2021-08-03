@@ -1233,7 +1233,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_discard_if: {
                 bi_index src = bi_src_index(&instr->src[0]);
                 assert(nir_src_bit_size(instr->src[0]) == 1);
-                bi_discard_f32(b, bi_half(src, false), bi_imm_u16(0), BI_CMPF_NE);
+                bi_discard_b32(b, bi_half(src, false));
                 break;
         }
 

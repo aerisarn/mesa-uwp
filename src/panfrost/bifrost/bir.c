@@ -154,8 +154,16 @@ bi_next_clause(bi_context *ctx, bi_block *block, bi_clause *clause)
 bool
 bi_side_effects(enum bi_opcode op)
 {
-        if (bi_opcode_props[op].last || op == BI_OPCODE_DISCARD_F32)
+        if (bi_opcode_props[op].last)
                 return true;
+
+        switch (op) {
+        case BI_OPCODE_DISCARD_F32:
+        case BI_OPCODE_DISCARD_B32:
+                return true;
+        default:
+                break;
+        }
 
         switch (bi_opcode_props[op].message) {
         case BIFROST_MESSAGE_NONE:

@@ -8333,4 +8333,13 @@
     </mod>
   </ins>
 
+  <ins name="+DISCARD.b32" pseudo="true" dests="0">
+    <src start="0"/>
+    <mod name="widen0" size="2">
+      <opt>none</opt>
+      <opt>h0</opt>
+      <opt>h1</opt>
+    </mod>
+  </ins>
+
 </bifrost>
