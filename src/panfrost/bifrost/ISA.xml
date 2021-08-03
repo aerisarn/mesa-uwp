@@ -8290,4 +8290,27 @@
     <mod name="abs1" start="15" size="1" opt="abs"/>
   </ins>
 
+  <ins name="*FABSNEG.f32" pseudo="true">
+    <src start="0" mask="0xfb"/>
+    <mod name="neg0" start="7" size="1" opt="neg"/>
+    <mod name="abs0" start="12" size="1" opt="abs"/>
+    <mod name="widen0" size="2">
+      <opt>none</opt>
+      <opt>h0</opt>
+      <opt>h1</opt>
+    </mod>
+  </ins>
+
+  <ins name="*FABSNEG.v2f16" pseudo="true">
+    <src start="0" mask="0xfb"/>
+    <mod name="abs0" size="1" opt="abs"/>
+    <mod name="neg0" start="7" size="1" opt="neg"/>
+    <mod name="swz0" start="9" size="2" default="h01">
+      <opt>h00</opt>
+      <opt>h10</opt>
+      <opt>h01</opt>
+      <opt>h11</opt>
+    </mod>
+  </ins>
+
 </bifrost>

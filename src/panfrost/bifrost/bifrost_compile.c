@@ -1880,11 +1880,11 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         }
 
         case nir_op_fneg:
-                bi_fadd_to(b, sz, dst, bi_neg(s0), bi_negzero(), BI_ROUND_NONE);
+                bi_fabsneg_to(b, sz, dst, bi_neg(s0));
                 break;
 
         case nir_op_fabs:
-                bi_fadd_to(b, sz, dst, bi_abs(s0), bi_negzero(), BI_ROUND_NONE);
+                bi_fabsneg_to(b, sz, dst, bi_abs(s0));
                 break;
 
         case nir_op_fsin:
@@ -3706,6 +3706,10 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_opt_cse(ctx);
                 bi_opt_dead_code_eliminate(ctx);
                 bi_validate(ctx, "Optimization passes");
+        }
+
+        bi_foreach_instr_global(ctx, I) {
+                bi_lower_opt_instruction(I);
         }
 
         bi_foreach_block(ctx, block) {

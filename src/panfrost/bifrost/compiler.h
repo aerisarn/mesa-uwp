@@ -902,6 +902,8 @@ void bi_lower_fau(bi_context *ctx);
 void bi_assign_scoreboard(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
 
+void bi_lower_opt_instruction(bi_instr *I);
+
 void bi_schedule(bi_context *ctx);
 bool bi_can_fma(bi_instr *ins);
 bool bi_can_add(bi_instr *ins);

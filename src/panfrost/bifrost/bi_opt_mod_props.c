@@ -66,11 +66,10 @@ bi_takes_fneg(unsigned arch, bi_instr *I, unsigned s)
 }
 
 static bool
-bi_is_fabsneg(bi_instr *I)
+bi_is_fabsneg(enum bi_opcode op, enum bi_size size)
 {
-        return (I->op == BI_OPCODE_FADD_F32 || I->op == BI_OPCODE_FADD_V2F16) &&
-                (I->src[1].type == BI_INDEX_CONSTANT && I->src[1].value == 0) &&
-                (I->clamp == BI_CLAMP_NONE);
+        return (size == BI_SIZE_32 && op == BI_OPCODE_FABSNEG_F32) ||
+               (size == BI_SIZE_16 && op == BI_OPCODE_FABSNEG_V2F16);
 }
 
 static enum bi_swizzle
@@ -124,10 +123,9 @@ bi_opt_mod_prop_forward(bi_context *ctx)
                         if (!mod)
                                 continue;
 
-                        if (bi_opcode_props[mod->op].size != bi_opcode_props[I->op].size)
-                                continue;
+                        unsigned size = bi_opcode_props[I->op].size;
 
-                        if (bi_is_fabsneg(mod)) {
+                        if (bi_is_fabsneg(mod->op, size)) {
                                 if (mod->src[0].abs && !bi_takes_fabs(ctx->arch, I, mod->src[0], s))
                                         continue;
 
@@ -252,4 +250,24 @@ bi_opt_mod_prop_backward(bi_context *ctx)
 
         free(uses);
         free(multiple);
+}
+
+/** Lower pseudo instructions that exist to simplify the optimizer */
+
+void
+bi_lower_opt_instruction(bi_instr *I)
+{
+        switch (I->op) {
+        case BI_OPCODE_FABSNEG_F32:
+        case BI_OPCODE_FABSNEG_V2F16:
+                I->op = (bi_opcode_props[I->op].size == BI_SIZE_32) ?
+                        BI_OPCODE_FADD_F32 : BI_OPCODE_FADD_V2F16;
+
+                I->round = BI_ROUND_NONE;
+                I->src[1] = bi_negzero();
+                break;
+
+        default:
+                break;
+        }
 }
