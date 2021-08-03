@@ -69,6 +69,7 @@ static const struct {
    { "dg1", 0x4905 },
    { "adl", 0x4680 },
    { "sg1", 0x4907 },
+   { "rpl", 0xa780 },
 };
 
 /**
@@ -1020,6 +1021,12 @@ static const struct intel_device_info intel_device_info_adl_gt2 = {
    GFX12_GT_FEATURES(2),
    .platform = INTEL_PLATFORM_ADL,
    .display_ver = 13,
+};
+
+static const struct intel_device_info intel_device_info_rpl = {
+   GFX12_FEATURES(1, 1, 4),
+   .num_subslices = dual_subslices(2),
+   .platform = INTEL_PLATFORM_RPL,
 };
 
 #define GFX12_DG1_SG1_FEATURES                  \
