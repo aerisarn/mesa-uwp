@@ -116,7 +116,7 @@ static unsigned gfx9_meta_addr_from_coord(const struct radeon_info *info,
    return (address >> 1) ^ (pipeXor << m_pipeInterleaveLog2);
 }
 
-/* DCC/HTILE address computation for GFX10. */
+/* DCC/CMASK/HTILE address computation for GFX10. */
 static unsigned gfx10_meta_addr_from_coord(const struct radeon_info *info,
                                            /* Shader key inputs: */
                                            const uint16_t *equation,
@@ -125,7 +125,9 @@ static unsigned gfx10_meta_addr_from_coord(const struct radeon_info *info,
                                            /* Shader inputs: */
                                            unsigned meta_pitch, unsigned meta_slice_size,
                                            unsigned x, unsigned y, unsigned z,
-                                           unsigned pipe_xor)
+                                           unsigned pipe_xor,
+                                           /* Shader outputs: (CMASK only) */
+                                           unsigned *bit_position)
 {
    /* The compiled shader shouldn't be complicated considering there are a lot of constants here. */
    unsigned meta_block_width_log2 = util_logbase2(meta_block_width);
@@ -159,6 +161,9 @@ static unsigned gfx10_meta_addr_from_coord(const struct radeon_info *info,
    unsigned blkIndex = (yb * pb) + xb;
    unsigned pipeXor = ((pipe_xor & pipeMask) << m_pipeInterleaveLog2) & blkMask;
 
+   if (bit_position)
+      *bit_position = (address & 1) << 2;
+
    return (meta_slice_size * z) +
           (blkIndex * (1 << blkSizeLog2)) +
           ((address >> 1) ^ pipeXor);
@@ -184,7 +189,7 @@ static unsigned gfx10_dcc_addr_from_coord(const struct radeon_info *info,
                                      meta_block_width, meta_block_height,
                                      blkSizeLog2,
                                      dcc_pitch, dcc_slice_size,
-                                     x, y, z, pipe_xor);
+                                     x, y, z, pipe_xor, NULL);
 }
 
 static bool one_dcc_address_test(const char *name, const char *test, ADDR_HANDLE addrlib,
@@ -391,7 +396,7 @@ static unsigned gfx10_htile_addr_from_coord(const struct radeon_info *info,
                                      meta_block_width, meta_block_height,
                                      blkSizeLog2,
                                      htile_pitch, htile_slice_size,
-                                     x, y, z, pipe_xor);
+                                     x, y, z, pipe_xor, NULL);
 }
 
 static bool one_htile_address_test(const char *name, const char *test, ADDR_HANDLE addrlib,
@@ -508,6 +513,31 @@ static void run_htile_address_test(const char *name, const struct radeon_info *i
    printf("%16s total: %u, fail: %u\n", name, total, fails);
 }
 
+/* CMASK address computation without mipmapping and MSAA. */
+static unsigned gfx10_cmask_addr_from_coord(const struct radeon_info *info,
+                                            /* Shader key inputs: */
+                                            /* equation varies with bpp and pipe_aligned */
+                                            const uint16_t *equation, unsigned bpp,
+                                            unsigned meta_block_width, unsigned meta_block_height,
+                                            /* Shader inputs: */
+                                            unsigned cmask_pitch, unsigned cmask_slice_size,
+                                            unsigned x, unsigned y, unsigned z,
+                                            unsigned pipe_xor,
+                                            /* Shader outputs: */
+                                            unsigned *bit_position)
+
+{
+   unsigned meta_block_width_log2 = util_logbase2(meta_block_width);
+   unsigned meta_block_height_log2 = util_logbase2(meta_block_height);
+   unsigned blkSizeLog2 = meta_block_width_log2 + meta_block_height_log2 - 7;
+
+   return gfx10_meta_addr_from_coord(info, equation,
+                                     meta_block_width, meta_block_height,
+                                     blkSizeLog2,
+                                     cmask_pitch, cmask_slice_size,
+                                     x, y, z, pipe_xor, bit_position);
+}
+
 static bool one_cmask_address_test(const char *name, const char *test, ADDR_HANDLE addrlib,
                                    const struct radeon_info *info,
                                    unsigned width, unsigned height, unsigned depth,
@@ -573,11 +603,21 @@ static bool one_cmask_address_test(const char *name, const char *test, ADDR_HAND
 
             unsigned addr, bit_position;
 
-            addr = gfx9_meta_addr_from_coord(info, &cout.equation.gfx9,
-                                             cout.metaBlkWidth, cout.metaBlkHeight, 1,
-                                             cout.pitch, cout.height,
-                                             in.x, in.y, in.slice, 0, in.pipeXor,
-                                              &bit_position);
+            if (info->chip_class == GFX9) {
+               addr = gfx9_meta_addr_from_coord(info, &cout.equation.gfx9,
+                                                cout.metaBlkWidth, cout.metaBlkHeight, 1,
+                                                cout.pitch, cout.height,
+                                                in.x, in.y, in.slice, 0, in.pipeXor,
+                                                &bit_position);
+            } else {
+               addr = gfx10_cmask_addr_from_coord(info, cout.equation.gfx10_bits,
+                                                  bpp, cout.metaBlkWidth,
+                                                  cout.metaBlkHeight,
+                                                  cout.pitch, cout.sliceSize,
+                                                  in.x, in.y, in.slice,
+                                                  in.pipeXor,
+                                                  &bit_position);
+            }
 
             if (out.addr != addr || out.bitPosition != bit_position) {
                printf("%s fail (%s) at %ux%ux%u: expected (addr) = %llu, got = %u, "
@@ -597,6 +637,7 @@ static void run_cmask_address_test(const char *name, const struct radeon_info *i
 {
    unsigned total = 0;
    unsigned fails = 0;
+   unsigned swizzle_mode = info->chip_class == GFX9 ? ADDR_SW_64KB_S_X : ADDR_SW_64KB_Z_X;
    unsigned first_size = 0, last_size = 6*6 - 1, max_bpp = 32;
 
    /* The test coverage is reduced for Gitlab CI because it timeouts. */
@@ -620,7 +661,7 @@ static void run_cmask_address_test(const char *name, const struct radeon_info *i
                for (int pipe_aligned = true; pipe_aligned >= true; pipe_aligned--) {
                   if (one_cmask_address_test(name, name, addrlib, info,
                                              width, height, depth, bpp,
-                                             ADDR_SW_64KB_S_X,
+                                             swizzle_mode,
                                              pipe_aligned, rb_aligned,
                                              0, 0, 0, 0)) {
                   } else {
@@ -667,10 +708,6 @@ int main(int argc, char **argv)
    puts("CMASK:");
    for (unsigned i = 0; i < ARRAY_SIZE(testcases); ++i) {
       struct radeon_info info = get_radeon_info(&testcases[i]);
-
-      /* Only GFX9 is currently supported. */
-      if (info.chip_class != GFX9)
-         continue;
 
       run_cmask_address_test(testcases[i].name, &info, full);
    }
