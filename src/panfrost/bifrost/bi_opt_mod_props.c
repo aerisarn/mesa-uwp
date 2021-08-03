@@ -26,14 +26,15 @@
 #include "bi_builder.h"
 
 static bool
-bi_takes_fabs(bi_instr *I, bi_index repl, unsigned s)
+bi_takes_fabs(unsigned arch, bi_instr *I, bi_index repl, unsigned s)
 {
         switch (I->op) {
         case BI_OPCODE_FCMP_V2F16:
         case BI_OPCODE_FMAX_V2F16:
         case BI_OPCODE_FMIN_V2F16:
-                /* Encoding restriction: can't have both abs if equal sources */
-                return !(I->src[1 - s].abs && bi_is_word_equiv(I->src[1 - s], repl));
+                /* Bifrost encoding restriction: can't have both abs if equal sources */
+                return !(arch <= 8 && I->src[1 - s].abs
+                                   && bi_is_word_equiv(I->src[1 - s], repl));
         case BI_OPCODE_V2F32_TO_V2F16:
                 /* TODO: Needs both match or lower */
                 return false;
@@ -46,14 +47,14 @@ bi_takes_fabs(bi_instr *I, bi_index repl, unsigned s)
 }
 
 static bool
-bi_takes_fneg(bi_instr *I, unsigned s)
+bi_takes_fneg(unsigned arch, bi_instr *I, unsigned s)
 {
         switch (I->op) {
         case BI_OPCODE_CUBE_SSEL:
         case BI_OPCODE_CUBE_TSEL:
         case BI_OPCODE_CUBEFACE:
-                /* TODO: Needs match or lower */
-                return false;
+                /* TODO: Bifrost encoding restriction: need to match or lower */
+                return arch >= 9;
         case BI_OPCODE_FREXPE_F32:
         case BI_OPCODE_FREXPE_V2F16:
         case BI_OPCODE_FLOG_TABLE_F32:
@@ -127,10 +128,10 @@ bi_opt_mod_prop_forward(bi_context *ctx)
                                 continue;
 
                         if (bi_is_fabsneg(mod)) {
-                                if (mod->src[0].abs && !bi_takes_fabs(I, mod->src[0], s))
+                                if (mod->src[0].abs && !bi_takes_fabs(ctx->arch, I, mod->src[0], s))
                                         continue;
 
-                                if (mod->src[0].neg && !bi_takes_fneg(I, s))
+                                if (mod->src[0].neg && !bi_takes_fneg(ctx->arch, I, s))
                                         continue;
 
                                 I->src[s] = bi_compose_float_index(I->src[s], mod->src[0]);
