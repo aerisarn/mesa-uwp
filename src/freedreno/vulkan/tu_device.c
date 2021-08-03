@@ -1028,9 +1028,9 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->maxPerStageUpdateAfterBindResources = max_descriptor_set_size;
          props->maxDescriptorSetUpdateAfterBindSamplers = max_descriptor_set_size;
          props->maxDescriptorSetUpdateAfterBindUniformBuffers = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DYNAMIC_BUFFERS / 2;
+         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DYNAMIC_UNIFORM_BUFFERS;
          props->maxDescriptorSetUpdateAfterBindStorageBuffers = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DYNAMIC_BUFFERS / 2;
+         props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DYNAMIC_STORAGE_BUFFERS;
          props->maxDescriptorSetUpdateAfterBindSampledImages = max_descriptor_set_size;
          props->maxDescriptorSetUpdateAfterBindStorageImages = max_descriptor_set_size;
          props->maxDescriptorSetUpdateAfterBindInputAttachments = max_descriptor_set_size;
