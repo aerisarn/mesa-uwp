@@ -1191,8 +1191,8 @@ pack_channel(const union isl_color_value *value, unsigned i,
       packed = MIN(value->u32[i], u_uintN_max(layout->bits));
       break;
    case ISL_SINT:
-      packed = MIN(MAX(value->u32[i], u_intN_min(layout->bits)),
-                   u_intN_max(layout->bits));
+      packed = CLAMP(value->u32[i], u_intN_min(layout->bits),
+                     u_intN_max(layout->bits));
       break;
 
    default:
