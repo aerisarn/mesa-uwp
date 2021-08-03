@@ -269,7 +269,7 @@ iris_batch_reference_signal_syncobj(struct iris_batch *batch,
                                    struct iris_syncobj **out_syncobj)
 {
    struct iris_syncobj *syncobj = iris_batch_get_signal_syncobj(batch);
-   iris_syncobj_reference(batch->screen, out_syncobj, syncobj);
+   iris_syncobj_reference(batch->screen->bufmgr, out_syncobj, syncobj);
 }
 
 /**
