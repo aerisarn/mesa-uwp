@@ -97,11 +97,6 @@ typedef struct {
    nir_variable *pos_value_replacement;
 } remove_extra_position_output_state;
 
-typedef struct {
-   nir_ssa_def *reduction_result;
-   nir_ssa_def *excl_scan_result;
-} wg_scan_result;
-
 /* Per-vertex LDS layout of culling shaders */
 enum {
    /* Position of the ES vertex (at the beginning for alignment reasons) */
