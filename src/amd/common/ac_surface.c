@@ -2910,7 +2910,8 @@ static nir_ssa_def *gfx10_nir_meta_addr_from_coord(nir_builder *b, const struct 
                                                    int blkSizeBias, unsigned blkStart,
                                                    nir_ssa_def *meta_pitch, nir_ssa_def *meta_slice_size,
                                                    nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,
-                                                   nir_ssa_def *pipe_xor)
+                                                   nir_ssa_def *pipe_xor,
+                                                   nir_ssa_def **bit_position)
 {
    nir_ssa_def *zero = nir_imm_int(b, 0);
    nir_ssa_def *one = nir_imm_int(b, 1);
@@ -2950,6 +2951,10 @@ static nir_ssa_def *gfx10_nir_meta_addr_from_coord(nir_builder *b, const struct 
    nir_ssa_def *blkIndex = nir_iadd(b, nir_imul(b, yb, pb), xb);
    nir_ssa_def *pipeXor = nir_iand_imm(b, nir_ishl(b, nir_iand_imm(b, pipe_xor, pipeMask),
                                                    nir_imm_int(b, m_pipeInterleaveLog2)), blkMask);
+
+   if (bit_position)
+      *bit_position = nir_ishl(b, nir_iand(b, address, nir_imm_int(b, 1)),
+                                  nir_imm_int(b, 2));
 
    return nir_iadd(b, nir_iadd(b, nir_imul(b, meta_slice_size, z),
                                nir_imul(b, blkIndex, nir_ishl(b, one, nir_imm_int(b, blkSizeLog2)))),
@@ -3036,7 +3041,7 @@ nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info
 
       return gfx10_nir_meta_addr_from_coord(b, info, equation, bpp_log2 - 8, 1,
                                             dcc_pitch, dcc_slice_size,
-                                            x, y, z, pipe_xor);
+                                            x, y, z, pipe_xor, NULL);
    } else {
       return gfx9_nir_meta_addr_from_coord(b, info, equation, dcc_pitch,
                                            dcc_height, x, y, z,
@@ -3047,17 +3052,22 @@ nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info
 nir_ssa_def *ac_nir_cmask_addr_from_coord(nir_builder *b, const struct radeon_info *info,
                                         struct gfx9_meta_equation *equation,
                                         nir_ssa_def *cmask_pitch, nir_ssa_def *cmask_height,
+                                        nir_ssa_def *cmask_slice_size,
                                         nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,
                                         nir_ssa_def *pipe_xor,
                                         nir_ssa_def **bit_position)
 {
    nir_ssa_def *zero = nir_imm_int(b, 0);
 
-   assert(info->chip_class == GFX9);
-
-   return gfx9_nir_meta_addr_from_coord(b, info, equation, cmask_pitch,
-                                        cmask_height, x, y, z, zero,
-                                        pipe_xor, bit_position);
+   if (info->chip_class >= GFX10) {
+      return gfx10_nir_meta_addr_from_coord(b, info, equation, -7, 1,
+                                            cmask_pitch, cmask_slice_size,
+                                            x, y, z, pipe_xor, bit_position);
+   } else {
+      return gfx9_nir_meta_addr_from_coord(b, info, equation, cmask_pitch,
+                                           cmask_height, x, y, z, zero,
+                                           pipe_xor, bit_position);
+   }
 }
 
 nir_ssa_def *ac_nir_htile_addr_from_coord(nir_builder *b, const struct radeon_info *info,
@@ -3069,5 +3079,5 @@ nir_ssa_def *ac_nir_htile_addr_from_coord(nir_builder *b, const struct radeon_in
 {
    return gfx10_nir_meta_addr_from_coord(b, info, equation, -4, 2,
                                             htile_pitch, htile_slice_size,
-                                            x, y, z, pipe_xor);
+                                            x, y, z, pipe_xor, NULL);
 }
