@@ -207,9 +207,9 @@ static const struct v3d_qpu_sig v41_sig_map[] = {
         [21] = { THRSW,    LDVARY,        WRTMUC },
         [22] = { UCB,                     },
         [23] = { ROT,                     },
-        /* 24-30 reserved */
         [24] = {                   LDUNIFA},
         [25] = { LDUNIFARF                },
+        /* 26-30 reserved */
         [31] = { SMIMM,            LDTMU, },
 };
 
