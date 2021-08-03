@@ -68,6 +68,36 @@ bit_instr_equal(bi_instr *A, bi_instr *B)
                  sizeof(bi_instr) - sizeof(struct list_head)) == 0;
 }
 
+static inline bool
+bit_block_equal(bi_block *A, bi_block *B)
+{
+   if (list_length(&A->instructions) != list_length(&B->instructions))
+      return false;
+
+   list_pair_for_each_entry(bi_instr, insA, insB,
+                            &A->instructions, &B->instructions, link) {
+      if (!bit_instr_equal(insA, insB))
+         return false;
+   }
+
+   return true;
+}
+
+static inline bool
+bit_shader_equal(bi_context *A, bi_context *B)
+{
+   if (list_length(&A->blocks) != list_length(&B->blocks))
+      return false;
+
+   list_pair_for_each_entry(bi_block, blockA, blockB,
+                            &A->blocks, &B->blocks, link) {
+      if (!bit_block_equal(blockA, blockB))
+         return false;
+   }
+
+   return true;
+}
+
 #define INSTRUCTION_CASE(instr, expected, CB) do { \
    bi_instr *left = instr; \
    bi_instr *right = expected; \
