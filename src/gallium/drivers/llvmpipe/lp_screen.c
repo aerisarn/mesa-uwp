@@ -601,12 +601,13 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
    .lower_fisnormal = true,
 };
 
-static void
+static char *
 llvmpipe_finalize_nir(struct pipe_screen *screen,
                       void *nirptr)
 {
    struct nir_shader *nir = (struct nir_shader *)nirptr;
    lp_build_opt_nir(nir);
+   return NULL;
 }
 
 static inline const void *

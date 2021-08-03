@@ -50,6 +50,7 @@
 #include "compiler/glsl/gl_nir_linker.h"
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/ir_optimization.h"
+#include "compiler/glsl/linker_util.h"
 #include "compiler/glsl/string_to_uint_map.h"
 
 static int
@@ -468,7 +469,7 @@ filter_64_bit_instr(const nir_instr *const_instr, UNUSED const void *data)
 /* Second third of converting glsl_to_nir. This creates uniforms, gathers
  * info on varyings, etc after NIR link time opts have been applied.
  */
-static void
+static char *
 st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
                          struct gl_shader_program *shader_program)
 {
@@ -572,8 +573,9 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 
    st_finalize_nir_before_variants(nir);
 
+   char *msg = NULL;
    if (st->allow_st_finalize_nir_twice)
-      st_finalize_nir(st, prog, shader_program, nir, true, true);
+      msg = st_finalize_nir(st, prog, shader_program, nir, true, true);
 
    if (st->ctx->_Shader->Flags & GLSL_DUMP) {
       _mesa_log("\n");
@@ -583,6 +585,8 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
       nir_print_shader(nir, _mesa_get_log_file());
       _mesa_log("\n\n");
    }
+
+   return msg;
 }
 
 static void
@@ -890,7 +894,11 @@ st_link_nir(struct gl_context *ctx,
       struct gl_linked_shader *shader = linked_shader[i];
       struct shader_info *info = &shader->Program->nir->info;
 
-      st_glsl_to_nir_post_opts(st, shader->Program, shader_program);
+      char *msg = st_glsl_to_nir_post_opts(st, shader->Program, shader_program);
+      if (msg) {
+         linker_error(shader_program, msg);
+         break;
+      }
 
       if (prev_info &&
           ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions->unify_interfaces) {
@@ -1032,7 +1040,7 @@ st_nir_lower_uniforms(struct st_context *st, nir_shader *nir)
 /* Last third of preparing nir from glsl, which happens after shader
  * variant lowering.
  */
-void
+char *
 st_finalize_nir(struct st_context *st, struct gl_program *prog,
                 struct gl_shader_program *shader_program,
                 nir_shader *nir, bool finalize_by_driver,
@@ -1071,8 +1079,11 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
    if (!screen->get_param(screen, PIPE_CAP_NIR_IMAGES_AS_DEREF))
       NIR_PASS_V(nir, gl_nir_lower_images, false);
 
+   char *msg = NULL;
    if (finalize_by_driver && screen->finalize_nir)
-      screen->finalize_nir(screen, nir);
+      msg = screen->finalize_nir(screen, nir);
+
+   return msg;
 }
 
 } /* extern "C" */

@@ -390,8 +390,10 @@ st_prog_to_nir_postprocess(struct st_context *st, nir_shader *nir,
    st_nir_opts(nir);
    st_finalize_nir_before_variants(nir);
 
-   if (st->allow_st_finalize_nir_twice)
-      st_finalize_nir(st, prog, NULL, nir, true, true);
+   if (st->allow_st_finalize_nir_twice) {
+      char *msg = st_finalize_nir(st, prog, NULL, nir, true, true);
+      free(msg);
+   }
 
    nir_validate_shader(nir, "after st/glsl finalize_nir");
 }
@@ -828,8 +830,9 @@ st_create_common_variant(struct st_context *st,
       }
 
       if (finalize || !st->allow_st_finalize_nir_twice) {
-         st_finalize_nir(st, &stp->Base, stp->shader_program, state.ir.nir,
-                         true, false);
+         char *msg = st_finalize_nir(st, &stp->Base, stp->shader_program, state.ir.nir,
+                                     true, false);
+         free(msg);
 
          /* Clip lowering and edgeflags may have introduced new varyings, so
           * update the inputs_read/outputs_written. However, with
@@ -1491,8 +1494,9 @@ st_create_fp_variant(struct st_context *st,
       }
 
       if (finalize || !st->allow_st_finalize_nir_twice) {
-         st_finalize_nir(st, &stfp->Base, stfp->shader_program, state.ir.nir,
-                         false, false);
+         char *msg = st_finalize_nir(st, &stfp->Base, stfp->shader_program, state.ir.nir,
+                                     false, false);
+         free(msg);
       }
 
       /* This pass needs to happen *after* nir_lower_sampler */
@@ -1511,8 +1515,10 @@ st_create_fp_variant(struct st_context *st,
                                 nir_shader_get_entrypoint(state.ir.nir));
 
          struct pipe_screen *screen = st->screen;
-         if (screen->finalize_nir)
-            screen->finalize_nir(screen, state.ir.nir);
+         if (screen->finalize_nir) {
+            char *msg = screen->finalize_nir(screen, state.ir.nir);
+            free(msg);
+         }
       }
 
       variant->base.driver_shader = st_create_nir_shader(st, &state);

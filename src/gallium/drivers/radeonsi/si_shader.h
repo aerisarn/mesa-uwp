@@ -887,7 +887,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
 void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *info);
 void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first);
 void si_nir_late_opts(nir_shader *nir);
-void si_finalize_nir(struct pipe_screen *screen, void *nirptr);
+char *si_finalize_nir(struct pipe_screen *screen, void *nirptr);
 
 /* si_state_shaders.c */
 void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *gs,

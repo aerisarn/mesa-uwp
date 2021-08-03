@@ -903,7 +903,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 }
 
-void si_finalize_nir(struct pipe_screen *screen, void *nirptr)
+char *si_finalize_nir(struct pipe_screen *screen, void *nirptr)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct nir_shader *nir = (struct nir_shader *)nirptr;
@@ -914,4 +914,6 @@ void si_finalize_nir(struct pipe_screen *screen, void *nirptr)
 
    if (sscreen->options.inline_uniforms)
       nir_find_inlinable_uniforms(nir);
+
+   return NULL;
 }

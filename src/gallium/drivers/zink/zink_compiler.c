@@ -1103,7 +1103,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    return ret;
 }
 
-void
+char *
 zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
 {
    struct zink_screen *screen = zink_screen(pscreen);
@@ -1123,6 +1123,8 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    if (screen->driconf.inline_uniforms)
       nir_find_inlinable_uniforms(nir);
+
+   return NULL;
 }
 
 void

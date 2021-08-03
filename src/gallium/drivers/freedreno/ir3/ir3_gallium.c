@@ -462,13 +462,15 @@ ir3_fixup_shader_state(struct pipe_context *pctx, struct ir3_shader_key *key)
    }
 }
 
-static void
+static char *
 ir3_screen_finalize_nir(struct pipe_screen *pscreen, void *nir)
 {
    struct fd_screen *screen = fd_screen(pscreen);
 
    ir3_nir_lower_io_to_temporaries(nir);
    ir3_finalize_nir(screen->compiler, nir);
+
+   return NULL;
 }
 
 static void

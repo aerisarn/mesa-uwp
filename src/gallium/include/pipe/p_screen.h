@@ -520,8 +520,11 @@ struct pipe_screen {
     *
     * gallium frontends should call this before passing shaders to drivers,
     * and ideally also before shader caching.
+    *
+    * The driver may return a non-NULL string to trigger GLSL link failure and
+    * logging of that message in the GLSL linker log.
     */
-   void (*finalize_nir)(struct pipe_screen *screen, void *nir);
+   char *(*finalize_nir)(struct pipe_screen *screen, void *nir);
 
    /*Separated memory/resource allocations interfaces for Vulkan */
 
