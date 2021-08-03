@@ -1548,18 +1548,6 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       vi_get_fast_clear_parameters(cmd_buffer->device, iview->image->vk_format, iview->vk_format,
                                    &clear_value, &reset_value, &can_avoid_fast_clear_elim);
 
-      if (iview->image->info.samples > 1) {
-         /* DCC fast clear with MSAA should clear CMASK. */
-         /* FIXME: This doesn't work for now. There is a
-          * hardware bug with fast clears and DCC for MSAA
-          * textures. AMDVLK has a workaround but it doesn't
-          * seem to work here. Note that we might emit useless
-          * CB flushes but that shouldn't matter.
-          */
-         if (!can_avoid_fast_clear_elim)
-            return false;
-      }
-
       if (iview->image->info.levels > 1) {
          if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
             uint32_t last_level = iview->base_mip + iview->level_count - 1;
