@@ -44,6 +44,8 @@ bi_fold_constant(bi_instr *I, bool *unsupported)
         /* Grab the sources */
         uint32_t a = bi_apply_swizzle(I->src[0].value, I->src[0].swizzle);
         uint32_t b = bi_apply_swizzle(I->src[1].value, I->src[1].swizzle);
+        uint32_t c = bi_apply_swizzle(I->src[2].value, I->src[2].swizzle);
+        uint32_t d = bi_apply_swizzle(I->src[3].value, I->src[3].swizzle);
 
         /* Evaluate the instruction */
         switch (I->op) {
@@ -53,10 +55,30 @@ bi_fold_constant(bi_instr *I, bool *unsupported)
         case BI_OPCODE_MKVEC_V2I16:
                 return (b << 16) | (a & 0xFFFF);
 
+        case BI_OPCODE_MKVEC_V4I8:
+                return (d << 24) | ((c & 0xFF) << 16) | ((b & 0xFF) << 8) | (a & 0xFF);
+
+        case BI_OPCODE_LSHIFT_OR_I32:
+                if (I->not_result || I->src[0].neg || I->src[1].neg)
+                        break;
+
+                return (a << c) | b;
+
+        case BI_OPCODE_F32_TO_U32:
+                if (I->round == BI_ROUND_NONE) {
+                        /* Explicitly clamp to prevent undefined behaviour and
+                         * match hardware rules */
+                        float f = uif(a);
+                        return (f >= 0.0) ? (uint32_t) f : 0;
+                } else
+                        break;
+
         default:
-                *unsupported = true;
-                return 0;
+                break;
         }
+
+        *unsupported = true;
+        return 0;
 }
 
 void

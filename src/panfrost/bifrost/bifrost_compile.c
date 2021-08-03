@@ -2297,6 +2297,14 @@ bi_emit_texc_array_index(bi_builder *b, bi_index idx, nir_alu_type T)
 static bi_index
 bi_emit_texc_lod_88(bi_builder *b, bi_index lod, bool fp16)
 {
+        /* Precompute for constant LODs to avoid general constant folding */
+        if (lod.type == BI_INDEX_CONSTANT) {
+                uint32_t raw = lod.value;
+                float x = fp16 ? _mesa_half_to_float(raw) : uif(raw);
+                int32_t s32 = CLAMP(x, -16.0f, 16.0f) * 256.0f;
+                return bi_imm_u32(s32 & 0xFFFF);
+        }
+
         /* Sort of arbitrary. Must be less than 128.0, greater than or equal to
          * the max LOD (16 since we cap at 2^16 texture dimensions), and
          * preferably small to minimize precision loss */
@@ -3689,6 +3697,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
         }
 
         if (likely(optimize)) {
+                bi_opt_copy_prop(ctx);
                 bi_opt_constant_fold(ctx);
                 bi_opt_copy_prop(ctx);
                 bi_opt_mod_prop_forward(ctx);
