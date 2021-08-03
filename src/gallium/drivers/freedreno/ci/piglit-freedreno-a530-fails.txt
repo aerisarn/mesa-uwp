@@ -212,10 +212,6 @@ spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY8_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_SNORM,Fail
-spec@ext_transform_feedback@api-errors bind_base_active,Crash
-spec@ext_transform_feedback@api-errors bind_pipeline,Fail
-spec@ext_transform_feedback@api-errors bind_range_active,Fail
-spec@ext_transform_feedback@api-errors useprogstage_active,Crash
 spec@ext_transform_feedback2@draw-auto,Fail
 spec@ext_transform_feedback@generatemipmap prims_generated,Fail
 spec@ext_transform_feedback@immediate-reuse,Fail
