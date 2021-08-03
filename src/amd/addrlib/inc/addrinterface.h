@@ -3005,6 +3005,9 @@ typedef struct _ADDR2_COMPUTE_CMASK_INFO_OUTPUT
         * - rb_aligned
         */
        struct gfx9_addr_meta_equation gfx9;
+
+       /* This is chip-specific, it requires 64KB_Z_X. */
+       UINT_16 *gfx10_bits; /* 68 2-byte elements */
     } equation;
 } ADDR2_COMPUTE_CMASK_INFO_OUTPUT;
 
