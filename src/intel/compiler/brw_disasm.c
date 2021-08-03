@@ -429,11 +429,12 @@ static const char *const dp_dc0_msg_type_gfx7[16] = {
    [GFX7_DATAPORT_DC_UNTYPED_SURFACE_WRITE] = "DC untyped surface write",
 };
 
-static const int dp_oword_block_rw[8] = {
-      [BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW] = 1,
-      [BRW_DATAPORT_OWORD_BLOCK_2_OWORDS] = 2,
-      [BRW_DATAPORT_OWORD_BLOCK_4_OWORDS] = 4,
-      [BRW_DATAPORT_OWORD_BLOCK_8_OWORDS] = 8,
+static const char *const dp_oword_block_rw[8] = {
+      [BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW]  = "1-low",
+      [BRW_DATAPORT_OWORD_BLOCK_1_OWORDHIGH] = "1-high",
+      [BRW_DATAPORT_OWORD_BLOCK_2_OWORDS]    = "2",
+      [BRW_DATAPORT_OWORD_BLOCK_4_OWORDS]    = "4",
+      [BRW_DATAPORT_OWORD_BLOCK_8_OWORDS]    = "8",
 };
 
 static const char *const dp_dc1_msg_type_hsw[32] = {
@@ -2307,8 +2308,8 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                case GFX7_DATAPORT_DC_OWORD_BLOCK_READ:
                case GFX7_DATAPORT_DC_OWORD_BLOCK_WRITE: {
                   unsigned msg_ctrl = brw_dp_desc_msg_control(devinfo, imm_desc);
-                  assert(dp_oword_block_rw[msg_ctrl & 7] > 0);
-                  format(file, "owords = %d, aligned = %d",
+                  assert(dp_oword_block_rw[msg_ctrl & 7]);
+                  format(file, "owords = %s, aligned = %d",
                         dp_oword_block_rw[msg_ctrl & 7], (msg_ctrl >> 3) & 3);
                   break;
                }
@@ -2369,8 +2370,8 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                   break;
                case GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE:
                case GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ:
-                  assert(dp_oword_block_rw[msg_ctrl & 7] > 0);
-                  format(file, "owords = %d, aligned = %d",
+                  assert(dp_oword_block_rw[msg_ctrl & 7]);
+                  format(file, "owords = %s, aligned = %d",
                         dp_oword_block_rw[msg_ctrl & 7], (msg_ctrl >> 3) & 3);
                   break;
                default:
