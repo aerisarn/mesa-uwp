@@ -157,20 +157,6 @@ bi_takes_clamp(bi_instr *I)
         }
 }
 
-/* Treating clamps as functions, compute the composition f circ g. For {NONE,
- * SAT, SAT_SIGNED, CLAMP_POS}, anything left- or right-composed with NONE is
- * unchanged, anything composed with itself is unchanged, and any two
- * nontrivial distinct clamps compose to SAT (left as an exercise) */
-
-static enum bi_clamp
-bi_compose_clamp(enum bi_clamp f, enum bi_clamp g)
-{
-        return  (f == BI_CLAMP_NONE) ? g :
-                (g == BI_CLAMP_NONE) ? f :
-                (f == g)             ? f :
-                BI_CLAMP_CLAMP_0_1;
-}
-
 static bool
 bi_is_fclamp(bi_instr *I)
 {
@@ -187,7 +173,8 @@ bi_optimizer_clamp(bi_instr *I, bi_instr *use)
         if (!bi_is_fclamp(use)) return false;
         if (!bi_takes_clamp(I)) return false;
 
-        I->clamp = bi_compose_clamp(I->clamp, use->clamp);
+        /* Clamps are bitfields (clamp_m1_1/clamp_0_inf) so composition is OR */
+        I->clamp |= use->clamp;
         I->dest[0] = use->dest[0];
         return true;
 }
