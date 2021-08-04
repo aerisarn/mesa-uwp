@@ -120,8 +120,6 @@ update_foz_index(struct foz_db *foz_db, FILE *db_idx, unsigned file_idx)
 
    fseek(db_idx, offset, SEEK_SET);
    while (offset < len) {
-      parsed_offset = offset;
-
       char bytes_to_read[FOSSILIZE_BLOB_HASH_LENGTH + sizeof(struct foz_payload_header)];
       struct foz_payload_header *header;
 
@@ -171,6 +169,7 @@ update_foz_index(struct foz_db *foz_db, FILE *db_idx, unsigned file_idx)
       _mesa_hash_table_u64_insert(foz_db->index_db, key, entry);
 
       offset += header->payload_size;
+      parsed_offset = offset;
    }
 
 
