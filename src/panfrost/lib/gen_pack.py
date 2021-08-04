@@ -179,7 +179,7 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define pan_merge(packed1, packed2, type) \
         do { \
                 for (unsigned i = 0; i < (PREFIX2(type, LENGTH) / 4); ++i) \
-                        packed1.opaque[i] |= packed2.opaque[i]; \
+                        (packed1).opaque[i] |= (packed2).opaque[i]; \
         } while(0)
 
 #define mali_pixel_format_print_v6(fp, format) \\
