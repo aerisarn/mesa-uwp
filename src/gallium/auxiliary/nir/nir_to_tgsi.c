@@ -1912,6 +1912,7 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       break;
 
    case nir_intrinsic_control_barrier:
+   case nir_intrinsic_memory_barrier_tcs_patch:
       ureg_BARRIER(c->ureg);
       break;
 
