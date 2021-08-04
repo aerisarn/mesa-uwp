@@ -1810,7 +1810,7 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
       vk_format_get_plane_width(image->vk_format, plane_id, iview->extent.width),
       vk_format_get_plane_height(image->vk_format, plane_id, iview->extent.height),
       iview->extent.depth, descriptor->plane_descriptors[descriptor_plane_id],
-      descriptor_plane_id ? NULL : descriptor->fmask_descriptor);
+      descriptor_plane_id || is_storage_image ? NULL : descriptor->fmask_descriptor);
 
    const struct legacy_surf_level *base_level_info = NULL;
    if (device->physical_device->rad_info.chip_class <= GFX9) {

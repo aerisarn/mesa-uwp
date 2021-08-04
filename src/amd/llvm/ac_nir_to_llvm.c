@@ -2387,6 +2387,9 @@ static LLVMValueRef adjust_sample_index_using_fmask(struct ac_llvm_context *ctx,
                                                     LLVMValueRef coord_z, LLVMValueRef sample_index,
                                                     LLVMValueRef fmask_desc_ptr)
 {
+   if (!fmask_desc_ptr)
+      return sample_index;
+
    unsigned sample_chan = coord_z ? 3 : 2;
    LLVMValueRef addr[4] = {coord_x, coord_y, coord_z};
    addr[sample_chan] = sample_index;

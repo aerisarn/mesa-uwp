@@ -497,6 +497,9 @@ radv_get_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set, unsign
 
    assert(base_index < layout->binding_count);
 
+   if (binding->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && desc_type == AC_DESC_FMASK)
+      return NULL;
+
    switch (desc_type) {
    case AC_DESC_IMAGE:
       type = ctx->ac.v8i32;
