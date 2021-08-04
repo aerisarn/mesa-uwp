@@ -1,4 +1,4 @@
-# Copyright © 2019 Intel Corporation
+# Copyright © 2019,2021 Intel Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,7 +18,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import sys
+import textwrap
+import typing
+
 import pytest
+
+# AsyncMock is new in 3.8, so if we're using an older version we need the
+# backported version of mock
+if sys.version_info >= (3, 8):
+    from unittest import mock
+else:
+    import mock
 
 from .gen_release_notes import *
 
@@ -58,3 +69,40 @@ async def test_gather_commits():
     version = '19.2.0'
     out = await gather_commits(version)
     assert out
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'content, bugs',
+    [
+        # It is important to have the title on a new line, as
+        # textwrap.dedent wont work otherwise.
+        (
+            '''\
+            A commit
+
+            It has a message in it
+
+            Closes: #1
+            ''',
+            ['1'],
+        ),
+        (
+            '''\
+            A commit with no body
+
+            Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3456
+            ''',
+            ['3456'],
+        ),
+    ])
+async def test_parse_issues(content: str, bugs: typing.List[str]) -> None:
+    mock_com = mock.AsyncMock(return_value=(textwrap.dedent(content).encode(), ''))
+    mock_p = mock.Mock()
+    mock_p.communicate = mock_com
+    mock_exec = mock.AsyncMock(return_value=mock_p)
+
+    with mock.patch('bin.gen_release_notes.asyncio.create_subprocess_exec', mock_exec), \
+            mock.patch('bin.gen_release_notes.gather_commits', mock.AsyncMock(return_value='sha\n')):
+        ids = await parse_issues('1234 not used')
+        assert ids == bugs

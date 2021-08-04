@@ -182,9 +182,7 @@ async def gather_commits(version: str) -> str:
     return out.decode().strip()
 
 
-async def gather_bugs(version: str) -> typing.List[str]:
-    commits = await gather_commits(version)
-
+async def parse_issues(commits: str) -> typing.List[str]:
     issues: typing.List[str] = []
     for commit in commits.split('\n'):
         sha, message = commit.split(maxsplit=1)
@@ -193,6 +191,7 @@ async def gather_bugs(version: str) -> typing.List[str]:
             stdout=asyncio.subprocess.PIPE)
         _out, _ = await p.communicate()
         out = _out.decode().split('\n')
+
         for line in reversed(out):
             if line.startswith('Closes:'):
                 bug = line.lstrip('Closes:').strip()
@@ -204,6 +203,13 @@ async def gather_bugs(version: str) -> typing.List[str]:
             issues.append(os.path.basename(urllib.parse.urlparse(bug).path))
         else:
             issues.append(bug.lstrip('#'))
+
+    return issues
+
+
+async def gather_bugs(version: str) -> typing.List[str]:
+    commits = await gather_commits(version)
+    issues = await parse_issues(commits)
 
     loop = asyncio.get_event_loop()
     async with aiohttp.ClientSession(loop=loop) as session:
