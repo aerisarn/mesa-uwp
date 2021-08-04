@@ -194,9 +194,6 @@ ntt_output_decl(struct ntt_compile *c, nir_intrinsic_instr *instr, uint32_t *fra
 
    struct ureg_dst out;
    if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
-      if (semantics.location == FRAG_RESULT_COLOR)
-         ureg_property(c->ureg, TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS, 1);
-
       unsigned semantic_name, semantic_index;
       tgsi_get_gl_frag_result_semantic(semantics.location,
                                        &semantic_name, &semantic_index);
@@ -384,6 +381,36 @@ ntt_setup_inputs(struct ntt_compile *c)
          c->input_index_map[var->data.driver_location + i] = decl;
          c->input_index_map[var->data.driver_location + i].Index += i;
       }
+   }
+}
+
+static int
+ntt_sort_by_location(const nir_variable *a, const nir_variable *b)
+{
+   return a->data.location - b->data.location;
+}
+
+/**
+ * Workaround for virglrenderer requiring that TGSI FS output color variables
+ * are declared in order.  Besides, it's a lot nicer to read the TGSI this way.
+ */
+static void
+ntt_setup_outputs(struct ntt_compile *c)
+{
+   if (c->s->info.stage != MESA_SHADER_FRAGMENT)
+      return;
+
+   nir_sort_variables_with_modes(c->s, ntt_sort_by_location, nir_var_shader_out);
+
+   nir_foreach_shader_out_variable(var, c->s) {
+      if (var->data.location == FRAG_RESULT_COLOR)
+         ureg_property(c->ureg, TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS, 1);
+
+      unsigned semantic_name, semantic_index;
+      tgsi_get_gl_frag_result_semantic(var->data.location,
+                                       &semantic_name, &semantic_index);
+
+      (void)ureg_DECL_output(c->ureg, semantic_name, semantic_index);
    }
 }
 
@@ -3100,6 +3127,7 @@ nir_to_tgsi(struct nir_shader *s,
    ureg_setup_shader_info(c->ureg, &s->info);
 
    ntt_setup_inputs(c);
+   ntt_setup_outputs(c);
    ntt_setup_uniforms(c);
 
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
