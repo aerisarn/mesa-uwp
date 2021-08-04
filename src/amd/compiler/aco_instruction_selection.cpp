@@ -5402,59 +5402,6 @@ load_desc_ptr(isel_context* ctx, unsigned desc_set)
 }
 
 void
-visit_load_resource(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   Builder bld(ctx->program, ctx->block);
-   Temp index = get_ssa_temp(ctx, instr->src[0].ssa);
-   if (!nir_dest_is_divergent(instr->dest))
-      index = bld.as_uniform(index);
-   unsigned desc_set = nir_intrinsic_desc_set(instr);
-   unsigned binding = nir_intrinsic_binding(instr);
-
-   Temp desc_ptr;
-   radv_pipeline_layout* pipeline_layout = ctx->options->layout;
-   radv_descriptor_set_layout* layout = pipeline_layout->set[desc_set].layout;
-   unsigned offset = layout->binding[binding].offset;
-   unsigned stride;
-   if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-       layout->binding[binding].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-      unsigned idx = pipeline_layout->set[desc_set].dynamic_offset_start +
-                     layout->binding[binding].dynamic_offset_offset;
-      desc_ptr = get_arg(ctx, ctx->args->ac.push_constants);
-      offset = pipeline_layout->push_constant_size + 16 * idx;
-      stride = 16;
-   } else {
-      desc_ptr = load_desc_ptr(ctx, desc_set);
-      stride = layout->binding[binding].size;
-   }
-
-   if (nir_src_is_const(instr->src[0])) {
-      index =
-         bld.copy(bld.def(s1), Operand::c32((offset + nir_src_as_uint(instr->src[0]) * stride)));
-   } else if (index.type() == RegType::vgpr) {
-      if (stride != 1) {
-         bool index24bit = layout->binding[binding].array_size <= 0x1000000;
-         index = bld.v_mul_imm(bld.def(v1), index, stride, index24bit);
-      }
-      if (offset)
-         index = bld.vadd32(bld.def(v1), Operand::c32(offset), index);
-   } else {
-      if (stride != 1)
-         index = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand::c32(stride), index);
-      if (offset)
-         index = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
-                          Operand::c32(offset), index);
-   }
-
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
-   elems[0] = desc_ptr;
-   elems[1] = index;
-   ctx->allocated_vec.emplace(dst.id(), elems);
-   bld.pseudo(aco_opcode::p_create_vector, Definition(dst), desc_ptr, index, Operand::zero());
-}
-
-void
 load_buffer(isel_context* ctx, unsigned num_components, unsigned component_size, Temp dst,
             Temp rsrc, Temp offset, unsigned align_mul, unsigned align_offset, bool glc = false,
             bool allow_smem = true, memory_sync_info sync = memory_sync_info())
@@ -5494,17 +5441,6 @@ load_buffer_rsrc(isel_context* ctx, Temp rsrc)
    return bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), set_ptr, binding);
 }
 
-bool
-is_inline_ubo(isel_context* ctx, nir_src rsrc)
-{
-   nir_binding binding = nir_chase_binding(rsrc);
-   if (!binding.success)
-      return false;
-
-   radv_descriptor_set_layout* layout = ctx->options->layout->set[binding.desc_set].layout;
-   return layout->binding[binding.binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT;
-}
-
 void
 visit_load_ubo(isel_context* ctx, nir_intrinsic_instr* instr)
 {
@@ -5513,28 +5449,11 @@ visit_load_ubo(isel_context* ctx, nir_intrinsic_instr* instr)
 
    Builder bld(ctx->program, ctx->block);
 
-   if (is_inline_ubo(ctx, instr->src[0])) {
-      Temp set_ptr = bld.as_uniform(emit_extract_vector(ctx, rsrc, 0, RegClass(rsrc.type(), 1)));
-      Temp binding_off =
-         bld.as_uniform(emit_extract_vector(ctx, rsrc, 1, RegClass(rsrc.type(), 1)));
-      rsrc = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), set_ptr, binding_off);
-
-      uint32_t desc_type =
-         S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-         S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-      if (ctx->options->chip_class >= GFX10) {
-         desc_type |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
-                      S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
-      } else {
-         desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-                      S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-      }
-      rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), rsrc,
-                        Operand::c32(S_008F04_BASE_ADDRESS_HI(ctx->options->address32_hi)),
-                        Operand::c32(0xFFFFFFFFu), Operand::c32(desc_type));
-   } else {
+   if (rsrc.bytes() == 16)
+      rsrc = bld.as_uniform(rsrc); /* for VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT */
+   else
       rsrc = load_buffer_rsrc(ctx, rsrc);
-   }
+
    unsigned size = instr->dest.ssa.bit_size / 8;
    load_buffer(ctx, instr->num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa),
                nir_intrinsic_align_mul(instr), nir_intrinsic_align_offset(instr));
@@ -8110,7 +8029,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_ubo: visit_load_ubo(ctx, instr); break;
    case nir_intrinsic_load_push_constant: visit_load_push_constant(ctx, instr); break;
    case nir_intrinsic_load_constant: visit_load_constant(ctx, instr); break;
-   case nir_intrinsic_vulkan_resource_index: visit_load_resource(ctx, instr); break;
    case nir_intrinsic_load_shared: visit_load_shared(ctx, instr); break;
    case nir_intrinsic_store_shared: visit_store_shared(ctx, instr); break;
    case nir_intrinsic_shared_atomic_add:

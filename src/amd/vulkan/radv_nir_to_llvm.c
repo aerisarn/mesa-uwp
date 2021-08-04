@@ -198,39 +198,6 @@ create_function(struct radv_shader_context *ctx, gl_shader_stage stage, bool has
    }
 }
 
-static LLVMValueRef
-radv_load_resource(struct ac_shader_abi *abi, LLVMValueRef index, unsigned desc_set,
-                   unsigned binding)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   LLVMValueRef desc_ptr = ctx->descriptor_sets[desc_set];
-   struct radv_pipeline_layout *pipeline_layout = ctx->options->layout;
-   struct radv_descriptor_set_layout *layout = pipeline_layout->set[desc_set].layout;
-   unsigned base_offset = layout->binding[binding].offset;
-   LLVMValueRef offset, stride;
-
-   if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-       layout->binding[binding].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-      unsigned idx = pipeline_layout->set[desc_set].dynamic_offset_start +
-                     layout->binding[binding].dynamic_offset_offset;
-      desc_ptr = ac_get_arg(&ctx->ac, ctx->args->ac.push_constants);
-      base_offset = pipeline_layout->push_constant_size + 16 * idx;
-      stride = LLVMConstInt(ctx->ac.i32, 16, false);
-   } else
-      stride = LLVMConstInt(ctx->ac.i32, layout->binding[binding].size, false);
-
-   offset = LLVMConstInt(ctx->ac.i32, base_offset, false);
-
-   if (layout->binding[binding].type != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-      offset = ac_build_imad(&ctx->ac, index, stride, offset);
-   }
-
-   desc_ptr = LLVMBuildPtrToInt(ctx->ac.builder, desc_ptr, ctx->ac.i32, "");
-
-   LLVMValueRef res[] = {desc_ptr, offset, ctx->ac.i32_0};
-   return ac_build_gather_values(&ctx->ac, res, 3);
-}
-
 static uint32_t
 radv_get_sample_pos_offset(uint32_t num_samples)
 {
@@ -2303,7 +2270,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    ctx.abi.load_ubo = radv_load_ubo;
    ctx.abi.load_ssbo = radv_load_ssbo;
    ctx.abi.load_sampler_desc = radv_get_sampler_desc;
-   ctx.abi.load_resource = radv_load_resource;
    ctx.abi.load_ring_tess_factors = load_ring_tess_factors;
    ctx.abi.load_ring_tess_offchip = load_ring_tess_offchip;
    ctx.abi.load_ring_esgs = load_ring_esgs;

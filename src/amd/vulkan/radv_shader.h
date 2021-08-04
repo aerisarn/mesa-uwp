@@ -510,6 +510,11 @@ bool radv_nir_lower_ycbcr_textures(nir_shader *shader, const struct radv_pipelin
 
 bool radv_nir_lower_ray_queries(nir_shader *shader, struct radv_device *device);
 
+void radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
+                                    const struct radv_pipeline_layout *layout,
+                                    const struct radv_shader_info *info,
+                                    const struct radv_shader_args *args);
+
 nir_shader *radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *module,
                                        const char *entrypoint_name, gl_shader_stage stage,
                                        const VkSpecializationInfo *spec_info,

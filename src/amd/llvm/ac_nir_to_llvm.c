@@ -3722,14 +3722,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_push_constant:
       result = visit_load_push_constant(ctx, instr);
       break;
-   case nir_intrinsic_vulkan_resource_index: {
-      LLVMValueRef index = get_src(ctx, instr->src[0]);
-      unsigned desc_set = nir_intrinsic_desc_set(instr);
-      unsigned binding = nir_intrinsic_binding(instr);
-
-      result = ctx->abi->load_resource(ctx->abi, index, desc_set, binding);
-      break;
-   }
    case nir_intrinsic_store_ssbo:
       visit_store_ssbo(ctx, instr);
       break;

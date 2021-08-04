@@ -290,13 +290,6 @@ radv_compiler_debug(void *private_data, enum radv_compiler_debug_level level, co
                    &debug_data->module->base, 0, 0, "radv", message);
 }
 
-static nir_ssa_def *
-convert_pointer_to_64(nir_builder *b, const struct radv_physical_device *pdev, nir_ssa_def *ptr)
-{
-   nir_ssa_def *comp[] = {ptr, nir_imm_int(b, pdev->rad_info.address32_hi)};
-   return nir_pack_64_2x32(b, nir_vec(b, comp, 2));
-}
-
 static bool
 lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
                  const struct radv_pipeline_layout *layout, const struct radv_physical_device *pdev)
@@ -317,44 +310,6 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
 
          nir_ssa_def *def = NULL;
          switch (intrin->intrinsic) {
-         case nir_intrinsic_load_vulkan_descriptor:
-            if (nir_intrinsic_desc_type(intrin) == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
-               nir_ssa_def *addr =
-                  convert_pointer_to_64(&b, pdev,
-                                        nir_iadd(&b, nir_channel(&b, intrin->src[0].ssa, 0),
-                                                 nir_channel(&b, intrin->src[0].ssa, 1)));
-
-               def = nir_build_load_global(&b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE);
-            } else {
-               def = nir_vector_insert_imm(&b, intrin->src[0].ssa, nir_imm_int(&b, 0), 2);
-            }
-            break;
-         case nir_intrinsic_vulkan_resource_index: {
-            unsigned desc_set = nir_intrinsic_desc_set(intrin);
-            unsigned binding = nir_intrinsic_binding(intrin);
-            struct radv_descriptor_set_layout *desc_layout = layout->set[desc_set].layout;
-
-            nir_ssa_def *new_res = nir_vulkan_resource_index(
-               &b, 3, 32, intrin->src[0].ssa, .desc_set = desc_set, .binding = binding,
-               .desc_type = nir_intrinsic_desc_type(intrin));
-
-            nir_ssa_def *stride;
-            if (desc_layout->binding[binding].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-                desc_layout->binding[binding].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-               stride = nir_imm_int(&b, 16);
-            } else {
-               stride = nir_imm_int(&b, desc_layout->binding[binding].size);
-            }
-            def = nir_vector_insert_imm(&b, new_res, stride, 2);
-            break;
-         }
-         case nir_intrinsic_vulkan_resource_reindex: {
-            nir_ssa_def *binding_ptr = nir_channel(&b, intrin->src[0].ssa, 1);
-            nir_ssa_def *stride = nir_channel(&b, intrin->src[0].ssa, 2);
-            binding_ptr = nir_iadd(&b, binding_ptr, nir_imul(&b, intrin->src[1].ssa, stride));
-            def = nir_vector_insert_imm(&b, intrin->src[0].ssa, binding_ptr, 1);
-            break;
-         }
          case nir_intrinsic_is_sparse_texels_resident:
             def = nir_ieq_imm(&b, intrin->src[0].ssa, 0);
             break;
