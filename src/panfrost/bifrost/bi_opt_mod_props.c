@@ -157,19 +157,16 @@ bi_takes_clamp(bi_instr *I)
 }
 
 static bool
-bi_is_fclamp(bi_instr *I)
+bi_is_fclamp(enum bi_opcode op, enum bi_size size)
 {
-        return (I->op == BI_OPCODE_FADD_F32 || I->op == BI_OPCODE_FADD_V2F16) &&
-                (!I->src[0].abs && !I->src[0].neg) &&
-                (I->src[1].type == BI_INDEX_CONSTANT && I->src[1].value == 0) &&
-                (I->clamp != BI_CLAMP_NONE);
+        return (size == BI_SIZE_32 && op == BI_OPCODE_FCLAMP_F32) ||
+               (size == BI_SIZE_16 && op == BI_OPCODE_FCLAMP_V2F16);
 }
 
 static bool
 bi_optimizer_clamp(bi_instr *I, bi_instr *use)
 {
-        if (bi_opcode_props[use->op].size != bi_opcode_props[I->op].size) return false;
-        if (!bi_is_fclamp(use)) return false;
+        if (!bi_is_fclamp(use->op, bi_opcode_props[I->op].size)) return false;
         if (!bi_takes_clamp(I)) return false;
 
         /* Clamps are bitfields (clamp_m1_1/clamp_0_inf) so composition is OR */
@@ -260,6 +257,8 @@ bi_lower_opt_instruction(bi_instr *I)
         switch (I->op) {
         case BI_OPCODE_FABSNEG_F32:
         case BI_OPCODE_FABSNEG_V2F16:
+        case BI_OPCODE_FCLAMP_F32:
+        case BI_OPCODE_FCLAMP_V2F16:
                 I->op = (bi_opcode_props[I->op].size == BI_SIZE_32) ?
                         BI_OPCODE_FADD_F32 : BI_OPCODE_FADD_V2F16;
 

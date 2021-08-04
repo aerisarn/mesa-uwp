@@ -1862,19 +1862,19 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_fsat: {
-                bi_instr *I = bi_fadd_to(b, sz, dst, s0, bi_negzero(), BI_ROUND_NONE);
+                bi_instr *I = bi_fclamp_to(b, sz, dst, s0);
                 I->clamp = BI_CLAMP_CLAMP_0_1;
                 break;
         }
 
         case nir_op_fsat_signed_mali: {
-                bi_instr *I = bi_fadd_to(b, sz, dst, s0, bi_negzero(), BI_ROUND_NONE);
+                bi_instr *I = bi_fclamp_to(b, sz, dst, s0);
                 I->clamp = BI_CLAMP_CLAMP_M1_1;
                 break;
         }
 
         case nir_op_fclamp_pos_mali: {
-                bi_instr *I = bi_fadd_to(b, sz, dst, s0, bi_negzero(), BI_ROUND_NONE);
+                bi_instr *I = bi_fclamp_to(b, sz, dst, s0);
                 I->clamp = BI_CLAMP_CLAMP_0_INF;
                 break;
         }

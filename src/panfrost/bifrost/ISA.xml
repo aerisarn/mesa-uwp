@@ -8313,4 +8313,24 @@
     </mod>
   </ins>
 
+  <ins name="*FCLAMP.f32" pseudo="true">
+    <src start="0" mask="0xfb"/>
+    <mod name="clamp" start="15" size="2">
+      <opt>none</opt>
+      <opt>clamp_0_inf</opt>
+      <opt>clamp_m1_1</opt>
+      <opt>clamp_0_1</opt>
+    </mod>
+  </ins>
+
+  <ins name="*FCLAMP.v2f16" pseudo="true">
+    <src start="0" mask="0xfb"/>
+    <mod name="clamp" start="15" size="2">
+      <opt>none</opt>
+      <opt>clamp_0_inf</opt>
+      <opt>clamp_m1_1</opt>
+      <opt>clamp_0_1</opt>
+    </mod>
+  </ins>
+
 </bifrost>
