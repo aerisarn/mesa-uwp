@@ -400,6 +400,33 @@
       clamps may be decomposed as two independent bits for `clamp_0_inf` and
       `clamp_m1_1`, with `clamp_0_1` arising as the composition of `clamp_0_inf`
       and `clamp_m1_1` in either order.
+
+      Clamps are implemented per the SPIR-V specification:
+
+      $$\text{clamp} \; (x, \ell, h) = \min( \max( x, \ell ), h)$$
+
+      The min/max functions return the other operand if one operand is NaN, and
+      compare $-0 &lt; +0$. That means the following identities hold for Valhall
+      clamps:
+
+      \begin{align*}
+        \text{clamp}(-0.0, 0.0, 1.0) &amp; = +0.0 \\
+        \text{clamp}(-\text{NaN}, 0.0, 1.0) &amp; = +0.0 \\
+        \text{clamp}(\text{NaN}, 0.0, 1.0) &amp; = +0.0 \\
+        &amp; \\
+        \text{clamp}(-0.0, -1.0, 1.0) &amp; = -0.0 \\
+        \text{clamp}(\text{NaN}, -1.0, 1.0) &amp; = -1.0 \\
+        \text{clamp}(-\text{NaN}, -1.0, 1.0) &amp; = -1.0 \\
+        &amp; \\
+        \max(\text{NaN}, 0.0) &amp; = +0.0 \\
+        \max(-\text{NaN}, 0.0) &amp; = +0.0 \\
+        \max(-0.0, 0.0) &amp; = +0.0 \\
+      \end{align*}
+
+      This behaviour is consistent with the FMin/FMax/FClamp and
+      NMin/NMax/NClamp rules prescribed by SPIR-V and governed by IEEE-754. As
+      a consequence, substituting these clamps for equivalent minimum/maximum
+      exprssions is legal even with strict floating point rules.
     </desc>
     <value default="true" desc="Identity">none</value>
     <value desc="Clamp positive">clamp_0_inf</value>
