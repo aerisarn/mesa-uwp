@@ -56,11 +56,11 @@ libpanfrost_versions = []
 foreach ver : panfrost_versions
   libpanfrost_versions += static_library(
     'panfrost-v' + ver,
-    ['pan_cmdstream.c', midgard_pack],
+    ['pan_cmdstream.c', pan_packers],
     include_directories : panfrost_includes,
     c_args : ['-DPAN_ARCH=' + ver],
     gnu_symbol_visibility : 'hidden',
-    dependencies : [idep_midgard_pack, idep_nir, dep_libdrm],
+    dependencies : [idep_pan_packers, idep_nir, dep_libdrm],
 )
 endforeach
 
@@ -72,7 +72,7 @@ libpanfrost = static_library(
     dep_libdrm,
     idep_mesautil,
     idep_nir,
-    idep_midgard_pack
+    idep_pan_packers
   ],
   include_directories : panfrost_includes,
   c_args : [c_msvc_compat_args, compile_args_panfrost],

@@ -97,7 +97,7 @@ libvulkan_panfrost = shared_library(
     dep_thread,
     dep_valgrind,
     idep_nir,
-    idep_midgard_pack,
+    idep_pan_packers,
     panvk_deps,
     idep_vulkan_util,
     idep_mesautil,
