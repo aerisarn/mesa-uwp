@@ -5431,28 +5431,12 @@ load_buffer(isel_context* ctx, unsigned num_components, unsigned component_size,
       emit_load(ctx, bld, info, mubuf_load_params);
 }
 
-Temp
-load_buffer_rsrc(isel_context* ctx, Temp rsrc)
-{
-   Builder bld(ctx->program, ctx->block);
-   Temp set_ptr = emit_extract_vector(ctx, rsrc, 0, RegClass(rsrc.type(), 1));
-   Temp binding = bld.as_uniform(emit_extract_vector(ctx, rsrc, 1, RegClass(rsrc.type(), 1)));
-   set_ptr = convert_pointer_to_64_bit(ctx, set_ptr);
-   return bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), set_ptr, binding);
-}
-
 void
 visit_load_ubo(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   Temp rsrc = get_ssa_temp(ctx, instr->src[0].ssa);
-
    Builder bld(ctx->program, ctx->block);
-
-   if (rsrc.bytes() == 16)
-      rsrc = bld.as_uniform(rsrc); /* for VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT */
-   else
-      rsrc = load_buffer_rsrc(ctx, rsrc);
+   Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
 
    unsigned size = instr->dest.ssa.bit_size / 8;
    load_buffer(ctx, instr->num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa),
@@ -6403,7 +6387,7 @@ visit_load_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    unsigned num_components = instr->num_components;
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   Temp rsrc = load_buffer_rsrc(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+   Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
 
    unsigned access = nir_intrinsic_access(instr);
    bool glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
@@ -6425,7 +6409,7 @@ visit_store_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    unsigned writemask = util_widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
    Temp offset = get_ssa_temp(ctx, instr->src[2].ssa);
 
-   Temp rsrc = load_buffer_rsrc(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
+   Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa));
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc =
@@ -6475,7 +6459,7 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
                         get_ssa_temp(ctx, instr->src[3].ssa), data);
 
    Temp offset = get_ssa_temp(ctx, instr->src[1].ssa);
-   Temp rsrc = load_buffer_rsrc(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+   Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
@@ -6550,30 +6534,6 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    mubuf->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
    ctx->program->needs_exact = true;
    ctx->block->instructions.emplace_back(std::move(mubuf));
-}
-
-void
-visit_get_ssbo_size(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-
-   Temp rsrc = get_ssa_temp(ctx, instr->src[0].ssa);
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   bool non_uniform = dst.type() == RegType::vgpr;
-
-   Builder bld(ctx->program, ctx->block);
-   if (non_uniform) {
-      Temp set_ptr = emit_extract_vector(ctx, rsrc, 0, RegClass(rsrc.type(), 1));
-      Temp binding = emit_extract_vector(ctx, rsrc, 1, RegClass(rsrc.type(), 1));
-      Temp index = bld.vadd32(bld.def(v1), set_ptr, binding);
-      index = convert_pointer_to_64_bit(ctx, index, non_uniform);
-
-      LoadEmitInfo info = {Operand(index), dst, 1, 4};
-      info.align_mul = 4;
-      info.const_offset = 8;
-      emit_load(ctx, bld, info, global_load_params);
-   } else {
-      emit_extract_vector(ctx, load_buffer_rsrc(ctx, rsrc), 2, dst);
-   }
 }
 
 void
@@ -8095,7 +8055,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_ssbo_atomic_fmax: visit_atomic_ssbo(ctx, instr); break;
    case nir_intrinsic_load_scratch: visit_load_scratch(ctx, instr); break;
    case nir_intrinsic_store_scratch: visit_store_scratch(ctx, instr); break;
-   case nir_intrinsic_get_ssbo_size: visit_get_ssbo_size(ctx, instr); break;
    case nir_intrinsic_scoped_barrier: emit_scoped_barrier(ctx, instr); break;
    case nir_intrinsic_load_num_workgroups: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);

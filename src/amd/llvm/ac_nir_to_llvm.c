@@ -2259,10 +2259,8 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
    LLVMValueRef offset = get_src(ctx, instr->src[1]);
    int num_components = instr->num_components;
 
-   if (ctx->abi->load_ubo) {
-      nir_binding binding = nir_chase_binding(instr->src[0]);
-      rsrc = ctx->abi->load_ubo(ctx->abi, binding.desc_set, binding.binding, binding.success, rsrc);
-   }
+   if (ctx->abi->load_ubo)
+      rsrc = ctx->abi->load_ubo(ctx->abi, rsrc);
 
    /* Convert to a scalar 32-bit load. */
    if (instr->dest.ssa.bit_size == 64)
@@ -4352,7 +4350,7 @@ static LLVMValueRef get_bindless_index_from_uniform(struct ac_nir_context *ctx, 
    index = LLVMBuildMul(ctx->ac.builder, index, LLVMConstInt(ctx->ac.i32, 8, 0), "");
    offset = LLVMBuildAdd(ctx->ac.builder, offset, index, "");
 
-   LLVMValueRef ubo_index = ctx->abi->load_ubo(ctx->abi, 0, 0, false, ctx->ac.i32_0);
+   LLVMValueRef ubo_index = ctx->abi->load_ubo(ctx->abi, ctx->ac.i32_0);
 
    LLVMValueRef ret =
       ac_build_buffer_load(&ctx->ac, ubo_index, 1, NULL, offset, NULL, 0, ctx->ac.f32, 0, true, true);

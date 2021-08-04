@@ -365,89 +365,36 @@ radv_load_base_vertex(struct ac_shader_abi *abi, bool non_indexed_is_zero)
 }
 
 static LLVMValueRef
-get_desc_ptr(struct radv_shader_context *ctx, LLVMValueRef ptr, bool non_uniform)
+radv_load_rsrc(struct radv_shader_context *ctx, LLVMValueRef ptr, LLVMTypeRef type)
 {
-   LLVMValueRef set_ptr = ac_llvm_extract_elem(&ctx->ac, ptr, 0);
-   LLVMValueRef offset = ac_llvm_extract_elem(&ctx->ac, ptr, 1);
-   ptr = LLVMBuildNUWAdd(ctx->ac.builder, set_ptr, offset, "");
+   if (ptr && LLVMTypeOf(ptr) == ctx->ac.i32) {
+      LLVMValueRef result;
 
-   unsigned addr_space = AC_ADDR_SPACE_CONST_32BIT;
-   if (non_uniform) {
-      /* 32-bit seems to always use SMEM. addrspacecast from 32-bit -> 64-bit is broken. */
-      LLVMValueRef dwords[] = {ptr,
-                               LLVMConstInt(ctx->ac.i32, ctx->options->address32_hi, false)};
-      ptr = ac_build_gather_values(&ctx->ac, dwords, 2);
-      ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ctx->ac.i64, "");
-      addr_space = AC_ADDR_SPACE_CONST;
+      LLVMTypeRef ptr_type = LLVMPointerType(type, AC_ADDR_SPACE_CONST_32BIT);
+      ptr = LLVMBuildIntToPtr(ctx->ac.builder, ptr, ptr_type, "");
+      LLVMSetMetadata(ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
+
+      result = LLVMBuildLoad(ctx->ac.builder, ptr, "");
+      LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
+
+      return result;
    }
-   return LLVMBuildIntToPtr(ctx->ac.builder, ptr, LLVMPointerType(ctx->ac.v4i32, addr_space), "");
+
+   return ptr;
+}
+
+static LLVMValueRef
+radv_load_ubo(struct ac_shader_abi *abi, LLVMValueRef buffer_ptr)
+{
+   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
+   return radv_load_rsrc(ctx, buffer_ptr, ctx->ac.v4i32);
 }
 
 static LLVMValueRef
 radv_load_ssbo(struct ac_shader_abi *abi, LLVMValueRef buffer_ptr, bool write, bool non_uniform)
 {
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   LLVMValueRef result;
-
-   buffer_ptr = get_desc_ptr(ctx, buffer_ptr, non_uniform);
-   if (!non_uniform)
-      LLVMSetMetadata(buffer_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
-
-   result = LLVMBuildLoad(ctx->ac.builder, buffer_ptr, "");
-   LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
-   LLVMSetAlignment(result, 4);
-
-   return result;
-}
-
-static LLVMValueRef
-radv_load_ubo(struct ac_shader_abi *abi, unsigned desc_set, unsigned binding, bool valid_binding,
-              LLVMValueRef buffer_ptr)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   LLVMValueRef result;
-
-   if (valid_binding) {
-      struct radv_pipeline_layout *pipeline_layout = ctx->options->layout;
-      struct radv_descriptor_set_layout *layout = pipeline_layout->set[desc_set].layout;
-
-      if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-         LLVMValueRef set_ptr = ac_llvm_extract_elem(&ctx->ac, buffer_ptr, 0);
-         LLVMValueRef offset = ac_llvm_extract_elem(&ctx->ac, buffer_ptr, 1);
-         buffer_ptr = LLVMBuildNUWAdd(ctx->ac.builder, set_ptr, offset, "");
-
-         uint32_t desc_type =
-            S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-            S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
-         if (ctx->ac.chip_class >= GFX10) {
-            desc_type |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
-                         S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
-         } else {
-            desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-                         S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-         }
-
-         LLVMValueRef desc_components[4] = {
-            LLVMBuildPtrToInt(ctx->ac.builder, buffer_ptr, ctx->ac.intptr, ""),
-            LLVMConstInt(ctx->ac.i32, S_008F04_BASE_ADDRESS_HI(ctx->options->address32_hi),
-                         false),
-            LLVMConstInt(ctx->ac.i32, 0xffffffff, false),
-            LLVMConstInt(ctx->ac.i32, desc_type, false),
-         };
-
-         return ac_build_gather_values(&ctx->ac, desc_components, 4);
-      }
-   }
-
-   buffer_ptr = get_desc_ptr(ctx, buffer_ptr, false);
-   LLVMSetMetadata(buffer_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
-
-   result = LLVMBuildLoad(ctx->ac.builder, buffer_ptr, "");
-   LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
-   LLVMSetAlignment(result, 4);
-
-   return result;
+   return radv_load_rsrc(ctx, buffer_ptr, ctx->ac.v4i32);
 }
 
 static LLVMValueRef
