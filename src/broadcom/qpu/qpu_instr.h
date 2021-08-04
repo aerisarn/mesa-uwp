@@ -50,10 +50,13 @@ struct v3d_qpu_sig {
         bool ldvpm:1;
         bool ldtlb:1;
         bool ldtlbu:1;
-        bool small_imm_b:1;
         bool ucb:1;
         bool rotate:1;
         bool wrtmuc:1;
+        bool small_imm_a:1; /* raddr_a (add a), since V3D 7.x */
+        bool small_imm_b:1; /* raddr_b (add b) */
+        bool small_imm_c:1; /* raddr_c (mul a), since V3D 7.x */
+        bool small_imm_d:1; /* raddr_d (mul b), since V3D 7.x */
 };
 
 enum v3d_qpu_cond {

@@ -115,6 +115,11 @@ qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
         if (inst->type != V3D_QPU_INSTR_TYPE_ALU)
                 return;
 
+        if (devinfo->ver < 71) {
+           if (inst->sig.small_imm_a || inst->sig.small_imm_c || inst->sig.small_imm_d)
+              fail_instr(state, "small imm a/c/d added after V3D 7.1");
+        }
+
         /* LDVARY writes r5 two instructions later and LDUNIF writes
          * r5 one instruction later, which is illegal to have
          * together.
