@@ -25,16 +25,20 @@
 #include "pan_device.h"
 #include "pan_shader.h"
 
+#if PAN_ARCH <= 5
 #include "panfrost/midgard/midgard_compile.h"
+#else
 #include "panfrost/bifrost/bifrost_compile.h"
+#endif
 
 const nir_shader_compiler_options *
-pan_shader_get_compiler_options(const struct panfrost_device *dev)
+GENX(pan_shader_get_compiler_options)(void)
 {
-        if (pan_is_bifrost(dev))
-                return &bifrost_nir_options;
-
+#if PAN_ARCH >= 6
+        return &bifrost_nir_options;
+#else
         return &midgard_nir_options;
+#endif
 }
 
 static enum pipe_format
@@ -83,7 +87,7 @@ varying_format(nir_alu_type t, unsigned ncomps)
 static void
 collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                  struct pan_shader_varying *varyings,
-                 unsigned *varying_count, bool is_bifrost)
+                 unsigned *varying_count)
 {
         *varying_count = 0;
 
@@ -116,7 +120,7 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                 type = nir_alu_type_get_base_type(type);
 
                 /* Can't do type conversion since GLSL IR packs in funny ways */
-                if (is_bifrost && var->data.interpolation == INTERP_MODE_FLAT)
+                if (PAN_ARCH >= 6 && var->data.interpolation == INTERP_MODE_FLAT)
                         type = nir_type_uint;
 
                 /* Demote to fp16 where possible. int16 varyings are TODO as the hw
@@ -145,6 +149,7 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
         }
 }
 
+#if PAN_ARCH >= 6
 static enum mali_bifrost_register_file_format
 bifrost_blend_type_from_nir(nir_alu_type nir_type)
 {
@@ -168,20 +173,21 @@ bifrost_blend_type_from_nir(nir_alu_type nir_type)
                 return 0;
         }
 }
+#endif
 
 void
-pan_shader_compile(const struct panfrost_device *dev,
-                   nir_shader *s,
-                   const struct panfrost_compile_inputs *inputs,
-                   struct util_dynarray *binary,
-                   struct pan_shader_info *info)
+GENX(pan_shader_compile)(nir_shader *s,
+                         const struct panfrost_compile_inputs *inputs,
+                         struct util_dynarray *binary,
+                         struct pan_shader_info *info)
 {
         memset(info, 0, sizeof(*info));
 
-        if (pan_is_bifrost(dev))
-                bifrost_compile_shader_nir(s, inputs, binary, info);
-        else
-                midgard_compile_shader_nir(s, inputs, binary, info);
+#if PAN_ARCH >= 6
+        bifrost_compile_shader_nir(s, inputs, binary, info);
+#else
+        midgard_compile_shader_nir(s, inputs, binary, info);
+#endif
 
         info->stage = s->info.stage;
         info->contains_barrier = s->info.uses_memory_barrier ||
@@ -192,20 +198,22 @@ pan_shader_compile(const struct panfrost_device *dev,
         case MESA_SHADER_VERTEX:
                 info->attribute_count = util_bitcount64(s->info.inputs_read);
 
+#if PAN_ARCH <= 5
                 bool vertex_id = BITSET_TEST(s->info.system_values_read,
                                              SYSTEM_VALUE_VERTEX_ID_ZERO_BASE);
-                if (vertex_id && !pan_is_bifrost(dev))
+                if (vertex_id)
                         info->attribute_count = MAX2(info->attribute_count, PAN_VERTEX_ID + 1);
 
                 bool instance_id = BITSET_TEST(s->info.system_values_read,
                                                SYSTEM_VALUE_INSTANCE_ID);
-                if (instance_id && !pan_is_bifrost(dev))
+                if (instance_id)
                         info->attribute_count = MAX2(info->attribute_count, PAN_INSTANCE_ID + 1);
+#endif
 
                 info->vs.writes_point_size =
                         s->info.outputs_written & (1 << VARYING_SLOT_PSIZ);
                 collect_varyings(s, nir_var_shader_out, info->varyings.output,
-                                 &info->varyings.output_count, pan_is_bifrost(dev));
+                                 &info->varyings.output_count);
                 break;
         case MESA_SHADER_FRAGMENT:
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
@@ -265,7 +273,7 @@ pan_shader_compile(const struct panfrost_device *dev,
                 info->fs.reads_helper_invocation =
                         BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION);
                 collect_varyings(s, nir_var_shader_in, info->varyings.input,
-                                 &info->varyings.input_count, pan_is_bifrost(dev));
+                                 &info->varyings.input_count);
                 break;
         case MESA_SHADER_COMPUTE:
                 info->wls_size = s->info.shared_size;
@@ -287,11 +295,11 @@ pan_shader_compile(const struct panfrost_device *dev,
 
         info->sampler_count = info->texture_count = BITSET_LAST_BIT(s->info.textures_used);
 
+#if PAN_ARCH >= 6
         /* This is "redundant" information, but is needed in a draw-time hot path */
-        if (pan_is_bifrost(dev)) {
-                for (unsigned i = 0; i < ARRAY_SIZE(info->bifrost.blend); ++i) {
-                        info->bifrost.blend[i].format =
-                                bifrost_blend_type_from_nir(info->bifrost.blend[i].type);
-                }
+        for (unsigned i = 0; i < ARRAY_SIZE(info->bifrost.blend); ++i) {
+                info->bifrost.blend[i].format =
+                        bifrost_blend_type_from_nir(info->bifrost.blend[i].type);
         }
+#endif
 }

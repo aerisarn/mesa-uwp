@@ -521,7 +521,7 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
 
         nir_builder b =
                 nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
-                                               pan_shader_get_compiler_options(dev),
+                                               GENX(pan_shader_get_compiler_options)(),
                                                "pan_blend(rt=%d,fmt=%s,nr_samples=%d,%s=%s)",
                                                rt, util_format_name(rt_state->format),
                                                rt_state->nr_samples,
@@ -743,7 +743,7 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
 
         struct pan_shader_info info;
 
-        pan_shader_compile(dev, nir, &inputs, &variant->binary, &info);
+        GENX(pan_shader_compile)(nir, &inputs, &variant->binary, &info);
 
         variant->work_reg_count = info.work_reg_count;
 

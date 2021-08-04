@@ -3490,8 +3490,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 }
 
 static void
-prepare_rsd(struct panfrost_device *dev,
-            struct panfrost_shader_state *state,
+prepare_rsd(struct panfrost_shader_state *state,
             struct panfrost_pool *pool, bool upload)
 {
         struct mali_renderer_state_packed *out =
@@ -3506,8 +3505,7 @@ prepare_rsd(struct panfrost_device *dev,
         }
 
         pan_pack(out, RENDERER_STATE, cfg) {
-                pan_shader_prepare_rsd(dev, &state->info, state->bin.gpu,
-                                       &cfg);
+                pan_shader_prepare_rsd(&state->info, state->bin.gpu, &cfg);
         }
 }
 
@@ -3667,6 +3665,8 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
         screen->vtbl.init_batch = init_batch;
         screen->vtbl.get_blend_shader = GENX(pan_blend_get_shader_locked);
         screen->vtbl.init_polygon_list = init_polygon_list;
+        screen->vtbl.get_compiler_options = GENX(pan_shader_get_compiler_options);
+        screen->vtbl.compile_shader = GENX(pan_shader_compile);
 
         GENX(pan_blitter_init)(dev, &screen->blitter.bin_pool.base,
                                &screen->blitter.desc_pool.base);

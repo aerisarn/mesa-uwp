@@ -356,13 +356,13 @@ init_shader_builder(struct indirect_draw_shader_builder *builder,
         if (index_min_max_search) {
                 builder->b =
                         nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
-                                                       pan_shader_get_compiler_options(dev),
+                                                       GENX(pan_shader_get_compiler_options)(),
                                                        "indirect_draw_min_max_index(index_size=%d)",
                                                        builder->index_size);
         } else {
                 builder->b =
                         nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
-                                                       pan_shader_get_compiler_options(dev),
+                                                       GENX(pan_shader_get_compiler_options)(),
                                                        "indirect_draw(index_size=%d%s%s%s)",
                                                        builder->index_size,
                                                        flags & PAN_INDIRECT_DRAW_HAS_PSIZ ?
@@ -1076,7 +1076,7 @@ create_indirect_draw_shader(struct panfrost_device *dev,
         struct util_dynarray binary;
 
         util_dynarray_init(&binary, NULL);
-        pan_shader_compile(dev, b->shader, &inputs, &binary, &shader_info);
+        GENX(pan_shader_compile)(b->shader, &inputs, &binary, &shader_info);
 
         assert(!shader_info.tls_size);
         assert(!shader_info.wls_size);
@@ -1102,7 +1102,7 @@ create_indirect_draw_shader(struct panfrost_device *dev,
                 util_dynarray_fini(&binary);
 
                 pan_pack(state, RENDERER_STATE, cfg) {
-                        pan_shader_prepare_rsd(dev, &shader_info, address, &cfg);
+                        pan_shader_prepare_rsd(&shader_info, address, &cfg);
                 }
                 pthread_mutex_unlock(&dev->indirect_draw_shaders.lock);
 

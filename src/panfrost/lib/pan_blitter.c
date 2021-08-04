@@ -455,7 +455,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
 
         nir_builder b =
                 nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
-                                               pan_shader_get_compiler_options(dev),
+                                               GENX(pan_shader_get_compiler_options)(),
                                                "pan_blit(%s)", sig);
         b.shader->info.internal = true;
 
@@ -607,7 +607,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
 
         util_dynarray_init(&binary, NULL);
 
-        pan_shader_compile(dev, b.shader, &inputs, &binary, &info);
+        GENX(pan_shader_compile)(b.shader, &inputs, &binary, &info);
 
         shader = rzalloc(dev->blitter.shaders.blit,
                          struct pan_blit_shader_data);

@@ -718,12 +718,11 @@ panvk_per_arch(emit_base_fs_rsd)(const struct panvk_device *dev,
                                  const struct panvk_pipeline *pipeline,
                                  void *rsd)
 {
-   const struct panfrost_device *pdev = &dev->physical_device->pdev;
    const struct pan_shader_info *info = &pipeline->fs.info;
 
    pan_pack(rsd, RENDERER_STATE, cfg) {
       if (pipeline->fs.required) {
-         pan_shader_prepare_rsd(pdev, info, pipeline->fs.address, &cfg);
+         pan_shader_prepare_rsd(info, pipeline->fs.address, &cfg);
 
 #if PAN_ARCH == 5
          /* If either depth or stencil is enabled, discard matters */
@@ -827,12 +826,10 @@ panvk_per_arch(emit_non_fs_rsd)(const struct panvk_device *dev,
                                 mali_ptr shader_ptr,
                                 void *rsd)
 {
-   const struct panfrost_device *pdev = &dev->physical_device->pdev;
-
    assert(shader_info->stage != MESA_SHADER_FRAGMENT);
 
    pan_pack(rsd, RENDERER_STATE, cfg) {
-      pan_shader_prepare_rsd(pdev, shader_info, shader_ptr, &cfg);
+      pan_shader_prepare_rsd(shader_info, shader_ptr, &cfg);
    }
 }
 

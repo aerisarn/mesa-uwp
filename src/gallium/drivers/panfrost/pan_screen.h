@@ -53,8 +53,7 @@ struct pan_blend_state;
 struct panfrost_vtable {
         /* Prepares the renderer state descriptor for a given compiled shader,
          * and if desired uploads it as well */
-        void (*prepare_rsd)(struct panfrost_device *,
-                            struct panfrost_shader_state *,
+        void (*prepare_rsd)(struct panfrost_shader_state *,
                             struct panfrost_pool *, bool);
 
         /* Emits a thread local storage descriptor */
@@ -87,6 +86,13 @@ struct panfrost_vtable {
 
         /* Initialize the polygon list */
         void (*init_polygon_list)(struct panfrost_batch *);
+
+        /* Shader compilation methods */
+        const nir_shader_compiler_options *(*get_compiler_options)(void);
+        void (*compile_shader)(nir_shader *s,
+                               const struct panfrost_compile_inputs *inputs,
+                               struct util_dynarray *binary,
+                               struct pan_shader_info *info);
 };
 
 struct panfrost_screen {
