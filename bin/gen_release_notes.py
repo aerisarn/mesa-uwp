@@ -195,15 +195,13 @@ async def parse_issues(commits: str) -> typing.List[str]:
         for line in reversed(out):
             if line.startswith('Closes:'):
                 bug = line.lstrip('Closes:').strip()
-                break
-        else:
-            raise Exception('No closes found?')
-            
-        if bug.startswith('https://gitlab.freedesktop.org/mesa/mesa'):
-            # This means we have a bug in the form "Closes: https://..."
-            issues.append(os.path.basename(urllib.parse.urlparse(bug).path))
-        elif bug.startswith('#'):
-            issues.append(bug.lstrip('#'))
+                if bug.startswith('https://gitlab.freedesktop.org/mesa/mesa'):
+                    # This means we have a bug in the form "Closes: https://..."
+                    issues.append(os.path.basename(urllib.parse.urlparse(bug).path))
+                elif ',' in bug:
+                    issues.extend([b.strip().lstrip('#') for b in bug.split(',')])
+                elif bug.startswith('#'):
+                    issues.append(bug.lstrip('#'))
 
     return issues
 

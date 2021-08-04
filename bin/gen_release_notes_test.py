@@ -117,6 +117,37 @@ async def test_gather_commits():
             ''',
             [],
         ),
+
+        # Test  multiple issues on one line
+        (
+            '''\
+            Fix many bugs
+
+            Closes: #1, #2
+            ''',
+            ['1', '2'],
+        ),
+
+        # Test multiple closes
+        (
+            '''\
+            Fix many bugs
+
+            Closes: #1
+            Closes: #2
+            ''',
+            ['1', '2'],
+        ),
+        (
+            '''\
+            With long form
+
+            Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3456
+            Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3457
+            Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3458
+            ''',
+            ['3456', '3457', '3458'],
+        ),
     ])
 async def test_parse_issues(content: str, bugs: typing.List[str]) -> None:
     mock_com = mock.AsyncMock(return_value=(textwrap.dedent(content).encode(), ''))
@@ -127,4 +158,4 @@ async def test_parse_issues(content: str, bugs: typing.List[str]) -> None:
     with mock.patch('bin.gen_release_notes.asyncio.create_subprocess_exec', mock_exec), \
             mock.patch('bin.gen_release_notes.gather_commits', mock.AsyncMock(return_value='sha\n')):
         ids = await parse_issues('1234 not used')
-        assert ids == bugs
+        assert set(ids) == set(bugs)
