@@ -203,8 +203,9 @@ load_foz_dbs(struct foz_db *foz_db, FILE *db_idx, uint8_t file_idx,
    size_t len = ftell(db_idx);
    rewind(db_idx);
 
-   /* Try not to take the lock if len > 0, but if it is 0 we take the lock to initialize the files. */
-   if (len == 0) {
+   /* Try not to take the lock if len >= the size of the header, but if it is smaller we take the
+    * lock to potentially initialize the files. */
+   if (len < sizeof(stream_reference_magic_and_version)) {
       /* Wait for 100 ms in case of contention, after that we prioritize getting the app started. */
       int err = lock_file_with_timeout(foz_db->file[file_idx], 100000000);
       if (err == -1)
