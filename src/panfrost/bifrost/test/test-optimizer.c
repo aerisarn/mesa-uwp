@@ -237,6 +237,32 @@ main(int argc, const char **argv)
       I->clamp = BI_CLAMP_CLAMP_0_1;
    });
 
+   /* Check that we fuse comparisons with DISCARD */
+
+   CASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_LE, BI_RESULT_TYPE_F1)),
+        bi_discard_f32(b, x, y, BI_CMPF_LE));
+
+   CASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_NE, BI_RESULT_TYPE_I1)),
+        bi_discard_f32(b, x, y, BI_CMPF_NE));
+
+   CASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_EQ, BI_RESULT_TYPE_M1)),
+        bi_discard_f32(b, x, y, BI_CMPF_EQ));
+
+   for (unsigned h = 0; h < 2; ++h) {
+      CASE(bi_discard_b32(b, bi_half(bi_fcmp_v2f16(b, x, y, BI_CMPF_LE, BI_RESULT_TYPE_F1), h)),
+           bi_discard_f32(b, bi_half(x, h), bi_half(y, h), BI_CMPF_LE));
+
+      CASE(bi_discard_b32(b, bi_half(bi_fcmp_v2f16(b, x, y, BI_CMPF_NE, BI_RESULT_TYPE_I1), h)),
+           bi_discard_f32(b, bi_half(x, h), bi_half(y, h), BI_CMPF_NE));
+
+      CASE(bi_discard_b32(b, bi_half(bi_fcmp_v2f16(b, x, y, BI_CMPF_EQ, BI_RESULT_TYPE_M1), h)),
+           bi_discard_f32(b, bi_half(x, h), bi_half(y, h), BI_CMPF_EQ));
+   }
+
+   /* Refuse to fuse special comparisons */
+   NEGCASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_GTLT, BI_RESULT_TYPE_F1)));
+   NEGCASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_TOTAL, BI_RESULT_TYPE_F1)));
+
    ralloc_free(ralloc_ctx);
    TEST_END(nr_pass, nr_fail);
 }
