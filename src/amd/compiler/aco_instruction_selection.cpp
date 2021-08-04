@@ -9118,7 +9118,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
 void
 tex_fetch_ptrs(isel_context* ctx, nir_tex_instr* instr, Temp* res_ptr, Temp* samp_ptr,
-               Temp* fmask_ptr, enum glsl_base_type* stype)
+               enum glsl_base_type* stype)
 {
    nir_deref_instr* texture_deref_instr = NULL;
    nir_deref_instr* sampler_deref_instr = NULL;
@@ -9143,7 +9143,6 @@ tex_fetch_ptrs(isel_context* ctx, nir_tex_instr* instr, Temp* res_ptr, Temp* sam
       sampler_deref_instr = texture_deref_instr;
 
    if (plane >= 0) {
-      assert(instr->op != nir_texop_txf_ms && instr->op != nir_texop_samples_identical);
       assert(instr->sampler_dim != GLSL_SAMPLER_DIM_BUF);
       *res_ptr = get_sampler_desc(ctx, texture_deref_instr,
                                   (aco_descriptor_type)(ACO_DESC_PLANE_0 + plane), instr, false);
@@ -9178,8 +9177,6 @@ tex_fetch_ptrs(isel_context* ctx, nir_tex_instr* instr, Temp* res_ptr, Temp* sam
                                 samp[3]);
       }
    }
-   if (fmask_ptr && (instr->op == nir_texop_txf_ms || instr->op == nir_texop_samples_identical))
-      *fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false);
 }
 
 void
@@ -9318,19 +9315,19 @@ get_const_vec(nir_ssa_def* vec, nir_const_value* cv[4])
 void
 visit_tex(isel_context* ctx, nir_tex_instr* instr)
 {
+   assert(instr->op != nir_texop_txf_ms && instr->op != nir_texop_samples_identical);
+
    Builder bld(ctx->program, ctx->block);
    bool has_bias = false, has_lod = false, level_zero = false, has_compare = false,
         has_offset = false, has_ddx = false, has_ddy = false, has_derivs = false,
         has_sample_index = false, has_clamped_lod = false;
-   Temp resource, sampler, fmask_ptr, bias = Temp(), compare = Temp(), sample_index = Temp(),
-                                      lod = Temp(), offset = Temp(), ddx = Temp(), ddy = Temp(),
-                                      clamped_lod = Temp();
+   Temp resource, sampler, bias = Temp(), compare = Temp(), sample_index = Temp(), lod = Temp(),
+                           offset = Temp(), ddx = Temp(), ddy = Temp(), clamped_lod = Temp();
    std::vector<Temp> coords;
    std::vector<Temp> derivs;
-   nir_const_value* sample_index_cv = NULL;
    nir_const_value* const_offset[4] = {NULL, NULL, NULL, NULL};
    enum glsl_base_type stype;
-   tex_fetch_ptrs(ctx, instr, &resource, &sampler, &fmask_ptr, &stype);
+   tex_fetch_ptrs(ctx, instr, &resource, &sampler, &stype);
 
    bool tg4_integer_workarounds = ctx->options->chip_class <= GFX8 && instr->op == nir_texop_tg4 &&
                                   (stype == GLSL_TYPE_UINT || stype == GLSL_TYPE_INT);
@@ -9383,7 +9380,6 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          break;
       case nir_tex_src_ms_index:
          sample_index = get_ssa_temp(ctx, instr->src[i].src.ssa);
-         sample_index_cv = nir_src_as_const_value(instr->src[i].src);
          has_sample_index = true;
          break;
       case nir_tex_src_texture_offset:
@@ -9400,7 +9396,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       return;
    }
 
-   if (has_offset && instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms) {
+   if (has_offset && instr->op != nir_texop_txf) {
       aco_ptr<Instruction> tmp_instr;
       Temp acc, pack = Temp();
 
@@ -9492,8 +9488,8 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
        (instr->sampler_dim == GLSL_SAMPLER_DIM_2D || instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
         instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS ||
         instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
-       instr->is_array && instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms &&
-       instr->op != nir_texop_fragment_fetch_amd && instr->op != nir_texop_fragment_mask_fetch_amd)
+       instr->is_array && instr->op != nir_texop_txf && instr->op != nir_texop_fragment_fetch_amd &&
+       instr->op != nir_texop_fragment_mask_fetch_amd)
       coords[2] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coords[2]);
 
    if (ctx->options->chip_class == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
@@ -9507,21 +9503,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
 
    bool da = should_declare_array(ctx, instr->sampler_dim, instr->is_array);
 
-   if (instr->op == nir_texop_samples_identical)
-      resource = fmask_ptr;
-
-   else if ((instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
-             instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
-            instr->op != nir_texop_txs && instr->op != nir_texop_fragment_fetch_amd &&
-            instr->op != nir_texop_fragment_mask_fetch_amd) {
-      assert(has_sample_index);
-      Operand op(sample_index);
-      if (sample_index_cv)
-         op = Operand::c32(sample_index_cv->u32);
-      sample_index = adjust_sample_index_using_fmask(ctx, da, coords, op, fmask_ptr);
-   }
-
-   if (has_offset && (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)) {
+   if (has_offset && instr->op == nir_texop_txf) {
       for (unsigned i = 0; i < std::min(offset.size(), instr->coord_components); i++) {
          Temp off = emit_extract_vector(ctx, offset, i, v1);
          coords[i] = bld.vadd32(bld.def(v1), coords[i], off);
@@ -9551,8 +9533,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          dmask = 1 << instr->component;
       if (tg4_integer_cube_workaround || dst.type() == RegType::sgpr)
          tmp_dst = bld.tmp(instr->is_sparse ? v5 : v4);
-   } else if (instr->op == nir_texop_samples_identical ||
-              instr->op == nir_texop_fragment_mask_fetch_amd) {
+   } else if (instr->op == nir_texop_fragment_mask_fetch_amd) {
       tmp_dst = bld.tmp(v1);
    } else if (util_bitcount(dmask) != instr->dest.ssa.num_components ||
               dst.type() == RegType::sgpr) {
@@ -9731,8 +9712,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    if (has_clamped_lod)
       args.emplace_back(clamped_lod);
 
-   if (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms ||
-       instr->op == nir_texop_samples_identical || instr->op == nir_texop_fragment_fetch_amd ||
+   if (instr->op == nir_texop_txf || instr->op == nir_texop_fragment_fetch_amd ||
        instr->op == nir_texop_fragment_mask_fetch_amd) {
       aco_opcode op = level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
                             instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS
@@ -9750,14 +9730,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       tex->da = da;
       tex->tfe = instr->is_sparse;
 
-      if (instr->op == nir_texop_samples_identical) {
-         assert(dmask == 1 && dst.regClass() == bld.lm);
-         assert(dst.id() != tmp_dst.id());
-
-         bld.vopc(aco_opcode::v_cmp_eq_u32, Definition(dst), Operand::zero(), tmp_dst)
-            .def(0)
-            .setHint(vcc);
-      } else if (instr->op == nir_texop_fragment_mask_fetch_amd) {
+      if (instr->op == nir_texop_fragment_mask_fetch_amd) {
          /* Use 0x76543210 if the image doesn't have FMASK. */
          assert(dmask == 1 && dst.bytes() == 4);
          assert(dst.id() != tmp_dst.id());
