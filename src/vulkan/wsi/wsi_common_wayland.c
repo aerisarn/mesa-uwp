@@ -84,14 +84,25 @@ struct wsi_wayland {
 };
 
 static struct wsi_wl_format *
+find_format(struct u_vector *formats, VkFormat format)
+{
+   struct wsi_wl_format *f;
+
+   u_vector_foreach(f, formats)
+      if (f->vk_format == format)
+         return f;
+
+   return NULL;
+}
+
+static struct wsi_wl_format *
 wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
                              struct u_vector *formats, VkFormat format)
 {
    /* Don't add a format that's already in the list */
-   struct wsi_wl_format *f;
-   u_vector_foreach(f, formats)
-      if (f->vk_format == format)
-         return f;
+   struct wsi_wl_format *f = find_format(formats, format);
+   if (f)
+      return f;
 
    /* Don't add formats that aren't renderable. */
    VkFormatProperties props;
@@ -495,14 +506,12 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
        * can find it.  Some apps get confused if SRGB is first in the list.
        */
       struct wsi_wl_format *first_fmt = u_vector_head(&display->formats);
-      struct wsi_wl_format *iter_fmt, tmp_fmt;
-      u_vector_foreach(iter_fmt, &display->formats) {
-         if (iter_fmt->vk_format == VK_FORMAT_B8G8R8A8_UNORM) {
-            tmp_fmt = *iter_fmt;
-            *iter_fmt = *first_fmt;
-            *first_fmt = tmp_fmt;
-            break;
-         }
+      struct wsi_wl_format *f, tmp_fmt;
+      f = find_format(&display->formats, VK_FORMAT_B8G8R8A8_UNORM);
+      if (f) {
+         tmp_fmt = *f;
+         *f = *first_fmt;
+         *first_fmt = tmp_fmt;
       }
    }
 
@@ -1190,15 +1199,8 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
     * support them.
     */
    if (chain->display->wl_dmabuf && chain->base.wsi->supports_modifiers) {
-      struct wsi_wl_format *f;
-      bool found = false;
-      u_vector_foreach(f, &chain->display->formats) {
-         if (f->vk_format == chain->vk_format) {
-            found = true;
-            break;
-         }
-      }
-      if (found) {
+      struct wsi_wl_format *f = find_format(&chain->display->formats, chain->vk_format);
+      if (f) {
          chain->drm_modifiers = u_vector_tail(&f->modifiers);
          chain->num_drm_modifiers = u_vector_length(&f->modifiers);
       }
