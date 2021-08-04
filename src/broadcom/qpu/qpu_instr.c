@@ -35,6 +35,14 @@ v3d_qpu_magic_waddr_name(const struct v3d_device_info *devinfo,
         if (devinfo->ver < 40 && waddr == V3D_QPU_WADDR_TMU)
                 return "tmu";
 
+        /* V3D 7.x QUAD and REP aliases R5 and R5REPT in the table below
+         */
+        if (devinfo->ver >= 71 && waddr == V3D_QPU_WADDR_QUAD)
+                return "quad";
+
+        if (devinfo->ver >= 71 && waddr == V3D_QPU_WADDR_REP)
+                return "rep";
+
         static const char *waddr_magic[] = {
                 [V3D_QPU_WADDR_R0] = "r0",
                 [V3D_QPU_WADDR_R1] = "r1",

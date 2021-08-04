@@ -93,7 +93,8 @@ enum v3d_qpu_waddr {
         V3D_QPU_WADDR_R2 = 2,    /* Reserved on V3D 7.x */
         V3D_QPU_WADDR_R3 = 3,    /* Reserved on V3D 7.x */
         V3D_QPU_WADDR_R4 = 4,    /* Reserved on V3D 7.x */
-        V3D_QPU_WADDR_R5 = 5,
+        V3D_QPU_WADDR_R5 = 5,    /* V3D 4.x */
+        V3D_QPU_WADDR_QUAD = 5,  /* V3D 7.x */
         V3D_QPU_WADDR_NOP = 6,
         V3D_QPU_WADDR_TLB = 7,
         V3D_QPU_WADDR_TLBU = 8,
@@ -129,7 +130,8 @@ enum v3d_qpu_waddr {
         V3D_QPU_WADDR_TMUHSCM = 44,
         V3D_QPU_WADDR_TMUHSF = 45,
         V3D_QPU_WADDR_TMUHSLOD = 46,
-        V3D_QPU_WADDR_R5REP = 55,
+        V3D_QPU_WADDR_R5REP = 55, /* V3D 4.x */
+        V3D_QPU_WADDR_REP = 55,   /* V3D 7.x */
 };
 
 struct v3d_qpu_flags {
