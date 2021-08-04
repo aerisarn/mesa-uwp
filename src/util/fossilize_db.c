@@ -241,6 +241,9 @@ load_foz_dbs(struct foz_db *foz_db, FILE *db_idx, uint8_t file_idx,
                  sizeof(stream_reference_magic_and_version), db_idx) !=
           sizeof(stream_reference_magic_and_version))
          goto fail;
+
+      fflush(foz_db->file[file_idx]);
+      fflush(db_idx);
    }
 
    flock(fileno(foz_db->file[file_idx]), LOCK_UN);
