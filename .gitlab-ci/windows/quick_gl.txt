@@ -364,7 +364,6 @@ spec/!opengl 2.0/vertex-program-two-side/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/tes-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
-spec/!opengl 2.1/fbo-mrt-alphatest-no-buffer-zero-write: crash
 spec/!opengl 3.0/bound-resource-limits: fail
 spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
 spec/!opengl 3.0/required-sized-texture-formats: fail
@@ -4753,9 +4752,9 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    13299
+       pass:    13300
        fail:      538
-      crash:       68
+      crash:       67
        skip:     4126
     timeout:        0
        warn:       10

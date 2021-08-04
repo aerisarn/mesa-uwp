@@ -579,8 +579,8 @@ get_output_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
 
       ++num_outputs;
 
-      if (!is_depth_output(semantic.kind))
-         ++mod->num_psv_outputs;
+      mod->num_psv_outputs = MAX2(mod->num_psv_outputs,
+                                  semantic.start_row + semantic.rows);
 
       assert(num_outputs < ARRAY_SIZE(outputs));
    }
