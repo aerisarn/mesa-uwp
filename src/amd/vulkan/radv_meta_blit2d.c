@@ -1321,6 +1321,10 @@ radv_device_init_meta_blit2d_state(struct radv_device *device, bool on_demand)
          if (src == BLIT2D_SRC_TYPE_BUFFER && log2_samples > 0)
             continue;
 
+         /* There are no multisampled 3D images. */
+         if (src == BLIT2D_SRC_TYPE_IMAGE_3D && log2_samples > 0)
+            continue;
+
          result = meta_blit2d_create_pipe_layout(device, src, log2_samples);
          if (result != VK_SUCCESS)
             goto fail;
