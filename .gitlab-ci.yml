@@ -54,7 +54,6 @@ stages:
   - software-renderer
   - layered-backends
   - deploy
-  - success
 
 # Generic rule to not run the job during scheduled pipelines
 # ----------------------------------------------------------
@@ -176,25 +175,6 @@ test-docs-mr:
     max: 2
     when:
       - runner_system_failure
-
-success:
-  stage: success
-  image: debian:stable-slim
-  rules:
-    - *ignore_scheduled_pipelines
-    - if: *is-post-merge
-      when: never
-    - if: *is-for-marge
-      changes: *docs-or-ci
-      when: never
-    - changes: *all_paths
-      when: never
-    - if: *is-pre-merge
-      when: on_success
-  variables:
-    GIT_STRATEGY: none
-  script:
-    - echo "Dummy job to make sure every merge request pipeline runs at least one job"
 
 
 .ci-deqp-artifacts:
