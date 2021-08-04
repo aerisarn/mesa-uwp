@@ -86,6 +86,8 @@ struct iris_batch {
    struct iris_bo **exec_bos;
    int exec_count;
    int exec_array_size;
+   /** Bitset of whether this batch writes to BO `i'. */
+   BITSET_WORD *bos_written;
 
    /** Whether INTEL_BLACKHOLE_RENDER is enabled in the batch (aka first
     * instruction is a MI_BATCH_BUFFER_END).

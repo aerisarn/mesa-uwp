@@ -196,11 +196,13 @@ iris_init_batch(struct iris_context *ice,
    util_dynarray_init(&batch->syncobjs, ralloc_context(NULL));
 
    batch->exec_count = 0;
-   batch->exec_array_size = 100;
+   batch->exec_array_size = 128;
    batch->exec_bos =
       malloc(batch->exec_array_size * sizeof(batch->exec_bos[0]));
    batch->validation_list =
       malloc(batch->exec_array_size * sizeof(batch->validation_list[0]));
+   batch->bos_written =
+      rzalloc_array(NULL, BITSET_WORD, BITSET_WORDS(batch->exec_array_size));
 
    batch->cache.render = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                                                  _mesa_key_pointer_equal);
@@ -232,27 +234,29 @@ iris_init_batch(struct iris_context *ice,
    iris_batch_reset(batch);
 }
 
-static struct drm_i915_gem_exec_object2 *
-find_validation_entry(struct iris_batch *batch, struct iris_bo *bo)
+static int
+find_exec_index(struct iris_batch *batch, struct iris_bo *bo)
 {
    unsigned index = READ_ONCE(bo->index);
 
    if (index < batch->exec_count && batch->exec_bos[index] == bo)
-      return &batch->validation_list[index];
+      return index;
 
    /* May have been shared between multiple active batches */
    for (index = 0; index < batch->exec_count; index++) {
       if (batch->exec_bos[index] == bo)
-         return &batch->validation_list[index];
+         return index;
    }
 
-   return NULL;
+   return -1;
 }
 
 static void
 ensure_exec_obj_space(struct iris_batch *batch, uint32_t count)
 {
    while (batch->exec_count + count > batch->exec_array_size) {
+      unsigned old_size = batch->exec_array_size;
+
       batch->exec_array_size *= 2;
       batch->exec_bos =
          realloc(batch->exec_bos,
@@ -260,6 +264,10 @@ ensure_exec_obj_space(struct iris_batch *batch, uint32_t count)
       batch->validation_list =
          realloc(batch->validation_list,
                  batch->exec_array_size * sizeof(batch->validation_list[0]));
+      batch->bos_written =
+         rerzalloc(NULL, batch->bos_written, BITSET_WORD,
+                   BITSET_WORDS(old_size),
+                   BITSET_WORDS(batch->exec_array_size));
    }
 }
 
@@ -278,6 +286,9 @@ add_bo_to_batch(struct iris_batch *batch, struct iris_bo *bo, bool writable)
    iris_bo_reference(bo);
 
    batch->exec_bos[batch->exec_count] = bo;
+
+   if (writable)
+      BITSET_SET(batch->bos_written, batch->exec_count);
 
    batch->validation_list[batch->exec_count] =
       (struct drm_i915_gem_exec_object2) {
@@ -319,13 +330,14 @@ iris_use_pinned_bo(struct iris_batch *batch,
       iris_bo_bump_seqno(bo, batch->next_seqno, access);
    }
 
-   struct drm_i915_gem_exec_object2 *existing_entry =
-      find_validation_entry(batch, bo);
+   int existing_index = find_exec_index(batch, bo);
 
-   if (existing_entry) {
-      /* The BO is already in the validation list; mark it writable */
-      if (writable)
-         existing_entry->flags |= EXEC_OBJECT_WRITE;
+   if (existing_index != -1) {
+      /* The BO is already in the list; mark it writable */
+      if (writable) {
+         BITSET_SET(batch->bos_written, existing_index);
+         batch->validation_list[existing_index].flags |= EXEC_OBJECT_WRITE;
+      }
 
       return;
    }
@@ -335,8 +347,8 @@ iris_use_pinned_bo(struct iris_batch *batch,
        * we may need to flush and synchronize with other batches.
        */
       for (int b = 0; b < ARRAY_SIZE(batch->other_batches); b++) {
-         struct drm_i915_gem_exec_object2 *other_entry =
-            find_validation_entry(batch->other_batches[b], bo);
+         struct iris_batch *other_batch = batch->other_batches[b];
+         int other_index = find_exec_index(other_batch, bo);
 
          /* If the buffer is referenced by another batch, and either batch
           * intends to write it, then flush the other batch and synchronize.
@@ -352,9 +364,9 @@ iris_use_pinned_bo(struct iris_batch *batch,
           * share a streaming state buffer or shader assembly buffer, and
           * we want to avoid synchronizing in this case.
           */
-         if (other_entry &&
-             ((other_entry->flags & EXEC_OBJECT_WRITE) || writable))
-            iris_batch_flush(batch->other_batches[b]);
+         if (other_index != -1 &&
+             (writable || BITSET_TEST(other_batch->bos_written, other_index)))
+            iris_batch_flush(other_batch);
       }
    }
 
@@ -440,6 +452,7 @@ iris_batch_free(struct iris_batch *batch)
    }
    free(batch->exec_bos);
    free(batch->validation_list);
+   ralloc_free(batch->bos_written);
 
    ralloc_free(batch->exec_fences.mem_ctx);
 
@@ -923,7 +936,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 bool
 iris_batch_references(struct iris_batch *batch, struct iris_bo *bo)
 {
-   return find_validation_entry(batch, bo) != NULL;
+   return find_exec_index(batch, bo) != -1;
 }
 
 /**
