@@ -254,6 +254,10 @@ genX(blorp_exec)(struct blorp_batch *batch,
                  const struct blorp_params *params)
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
+   if (batch->flags & BLORP_BATCH_USE_COMPUTE)
+      assert(cmd_buffer->pool->queue_family->queueFlags & VK_QUEUE_COMPUTE_BIT);
+   else
+      assert(cmd_buffer->pool->queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT);
 
    if (!cmd_buffer->state.current_l3_config) {
       const struct intel_l3_config *cfg =
