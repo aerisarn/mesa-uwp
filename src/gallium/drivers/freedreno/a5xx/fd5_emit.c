@@ -873,12 +873,14 @@ fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
    if (needs_border)
       emit_border_color(ctx, ring);
 
-   if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_SSBO)
-      emit_ssbos(ctx, ring, SB4_SSBO, &ctx->shaderbuf[PIPE_SHADER_FRAGMENT],
-                 fp);
+   if (!emit->binning_pass) {
+      if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_SSBO)
+         emit_ssbos(ctx, ring, SB4_SSBO, &ctx->shaderbuf[PIPE_SHADER_FRAGMENT],
+                  fp);
 
-   if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_IMAGE)
-      fd5_emit_images(ctx, ring, PIPE_SHADER_FRAGMENT, fp);
+      if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_IMAGE)
+         fd5_emit_images(ctx, ring, PIPE_SHADER_FRAGMENT, fp);
+   }
 }
 
 void

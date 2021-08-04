@@ -321,7 +321,6 @@ spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Crash
 spec@nv_copy_image@nv_copy_image-formats,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH32F_STENCIL8/Destination: GL_DEPTH32F_STENCIL8,Fail
-spec@nv_image_formats@nv_image_formats-gles3,Crash
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
 spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
