@@ -147,29 +147,30 @@ update_foz_index(struct foz_db *foz_db, FILE *db_idx, unsigned file_idx)
       char hash_str[FOSSILIZE_BLOB_HASH_LENGTH + 1] = {0};
       memcpy(hash_str, bytes_to_read, FOSSILIZE_BLOB_HASH_LENGTH);
 
-      struct foz_db_entry *entry = ralloc(foz_db->mem_ctx,
-                                          struct foz_db_entry);
-      entry->header = *header;
-      entry->file_idx = file_idx;
-      _mesa_sha1_hex_to_sha1(entry->key, hash_str);
-
       /* read cache item offset from index file */
       uint64_t cache_offset;
       if (fread(&cache_offset, 1, sizeof(cache_offset), db_idx) !=
           sizeof(cache_offset))
          break;
 
-      entry->offset = cache_offset;
+      offset += header->payload_size;
+      parsed_offset = offset;
 
       /* Truncate the entry's hash string to a 64bit hash for use with a
        * 64bit hash table for looking up file offsets.
        */
       hash_str[16] = '\0';
       uint64_t key = strtoull(hash_str, NULL, 16);
-      _mesa_hash_table_u64_insert(foz_db->index_db, key, entry);
 
-      offset += header->payload_size;
-      parsed_offset = offset;
+      struct foz_db_entry *entry = ralloc(foz_db->mem_ctx,
+                                          struct foz_db_entry);
+      entry->header = *header;
+      entry->file_idx = file_idx;
+      _mesa_sha1_hex_to_sha1(entry->key, hash_str);
+
+      entry->offset = cache_offset;
+
+      _mesa_hash_table_u64_insert(foz_db->index_db, key, entry);
    }
 
 
