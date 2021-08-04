@@ -81,8 +81,7 @@ struct iris_batch {
 
    uint32_t hw_ctx_id;
 
-   /** The validation list */
-   struct drm_i915_gem_exec_object2 *validation_list;
+   /** A list of all BOs referenced by this batch */
    struct iris_bo **exec_bos;
    int exec_count;
    int exec_array_size;
