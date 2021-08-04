@@ -47,6 +47,44 @@
 #include "pan_indirect_dispatch.h"
 #include "pan_blitter.h"
 
+struct panfrost_rasterizer {
+        struct pipe_rasterizer_state base;
+
+        /* Partially packed RSD words */
+        struct mali_multisample_misc_packed multisample;
+        struct mali_stencil_mask_misc_packed stencil_misc;
+};
+
+struct panfrost_zsa_state {
+        struct pipe_depth_stencil_alpha_state base;
+
+        /* Is any depth, stencil, or alpha testing enabled? */
+        bool enabled;
+
+        /* Mask of PIPE_CLEAR_{DEPTH,STENCIL} written */
+        unsigned draws;
+
+        /* Prepacked words from the RSD */
+        struct mali_multisample_misc_packed rsd_depth;
+        struct mali_stencil_mask_misc_packed rsd_stencil;
+        struct mali_stencil_packed stencil_front, stencil_back;
+};
+
+struct panfrost_sampler_state {
+        struct pipe_sampler_state base;
+        struct mali_midgard_sampler_packed hw;
+};
+
+/* Misnomer: Sampler view corresponds to textures, not samplers */
+
+struct panfrost_sampler_view {
+        struct pipe_sampler_view base;
+        struct panfrost_pool_ref state;
+        struct mali_bifrost_texture_packed bifrost_descriptor;
+        mali_ptr texture_bo;
+        uint64_t modifier;
+};
+
 /* Statically assert that PIPE_* enums match the hardware enums.
  * (As long as they match, we don't need to translate them.)
  */
@@ -499,10 +537,14 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 #endif
 
         /* Merge with CSO state and upload */
-        if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer, zsa))
-                pan_merge(rsd, fs->partial_rsd, RENDERER_STATE);
-        else
+        if (panfrost_fs_required(fs, ctx->blend, &ctx->pipe_framebuffer, zsa)) {
+                struct mali_renderer_state_packed *partial_rsd =
+                        (struct mali_renderer_state_packed *)&fs->partial_rsd;
+                STATIC_ASSERT(sizeof(fs->partial_rsd) == sizeof(*partial_rsd));
+                pan_merge(rsd, *partial_rsd, RENDERER_STATE);
+        } else {
                 pan_merge_empty_fs(&rsd);
+        }
 
         /* Word 8, 9 Misc state */
         rsd.opaque[8] |= zsa->rsd_depth.opaque[0]
@@ -3447,7 +3489,8 @@ prepare_rsd(struct panfrost_device *dev,
             struct panfrost_shader_state *state,
             struct panfrost_pool *pool, bool upload)
 {
-        struct mali_renderer_state_packed *out = &state->partial_rsd;
+        struct mali_renderer_state_packed *out =
+                (struct mali_renderer_state_packed *)&state->partial_rsd;
 
         if (upload) {
                 struct panfrost_ptr ptr =
@@ -3514,6 +3557,18 @@ init_batch(struct panfrost_batch *batch)
 }
 
 static void
+panfrost_sampler_view_destroy(
+        struct pipe_context *pctx,
+        struct pipe_sampler_view *pview)
+{
+        struct panfrost_sampler_view *view = (struct panfrost_sampler_view *) pview;
+
+        pipe_resource_reference(&pview->texture, NULL);
+        panfrost_bo_unreference(view->state.bo);
+        ralloc_free(view);
+}
+
+static void
 context_init(struct pipe_context *pipe)
 {
         pipe->draw_vbo           = panfrost_draw_vbo;
@@ -3523,6 +3578,7 @@ context_init(struct pipe_context *pipe)
         pipe->create_rasterizer_state = panfrost_create_rasterizer_state;
         pipe->create_depth_stencil_alpha_state = panfrost_create_depth_stencil_state;
         pipe->create_sampler_view = panfrost_create_sampler_view;
+        pipe->sampler_view_destroy = panfrost_sampler_view_destroy;
         pipe->create_sampler_state = panfrost_create_sampler_state;
         pipe->create_blend_state = panfrost_create_blend_state;
 

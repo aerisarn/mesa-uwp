@@ -654,18 +654,6 @@ panfrost_set_sampler_views(
 }
 
 static void
-panfrost_sampler_view_destroy(
-        struct pipe_context *pctx,
-        struct pipe_sampler_view *pview)
-{
-        struct panfrost_sampler_view *view = (struct panfrost_sampler_view *) pview;
-
-        pipe_resource_reference(&pview->texture, NULL);
-        panfrost_bo_unreference(view->state.bo);
-        ralloc_free(view);
-}
-
-static void
 panfrost_set_shader_buffers(
         struct pipe_context *pctx,
         enum pipe_shader_type shader,
@@ -1065,7 +1053,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->set_stencil_ref = panfrost_set_stencil_ref;
 
         gallium->set_sampler_views = panfrost_set_sampler_views;
-        gallium->sampler_view_destroy = panfrost_sampler_view_destroy;
 
         gallium->bind_rasterizer_state = panfrost_bind_rasterizer_state;
         gallium->delete_rasterizer_state = panfrost_generic_cso_delete;
