@@ -4850,6 +4850,14 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       LLVMValueRef two = LLVMConstInt(ctx->ac.i32, 2, false);
       LLVMValueRef layers = LLVMBuildExtractElement(ctx->ac.builder, result, two, "");
       result = LLVMBuildInsertElement(ctx->ac.builder, result, layers, ctx->ac.i32_1, "");
+   } else if (instr->op == nir_texop_fragment_mask_fetch_amd) {
+      /* Use 0x76543210 if the image doesn't have FMASK. */
+      LLVMValueRef tmp = LLVMBuildBitCast(ctx->ac.builder, args.resource, ctx->ac.v8i32, "");
+      tmp = LLVMBuildExtractElement(ctx->ac.builder, tmp, ctx->ac.i32_1, "");
+      tmp = LLVMBuildICmp(ctx->ac.builder, LLVMIntNE, tmp, ctx->ac.i32_0, "");
+      result = LLVMBuildSelect(ctx->ac.builder, tmp,
+                               LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, ""),
+                               LLVMConstInt(ctx->ac.i32, 0x76543210, false), "");
    } else if (nir_tex_instr_result_size(instr) != 4)
       result = ac_trim_vector(&ctx->ac, result, instr->dest.ssa.num_components);
 
