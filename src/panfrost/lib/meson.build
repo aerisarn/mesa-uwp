@@ -19,13 +19,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-pan_packers = custom_target(
-  'midgard_pack.h',
-  input : ['gen_pack.py', 'midgard.xml'],
-  output : 'midgard_pack.h',
-  command : [prog_python, '@INPUT@'],
-  capture : true,
-)
+pan_packers = []
+foreach packer : ['common', 'midgard']
+  pan_packers += custom_target(
+    packer + '_pack.h',
+    input : ['gen_pack.py', packer + '.xml'],
+    output : packer + '_pack.h',
+    command : [prog_python, '@INPUT@'],
+    capture : true,
+  )
+endforeach
 
 idep_pan_packers = declare_dependency(
   sources : [pan_packers],
