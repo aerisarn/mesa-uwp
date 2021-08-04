@@ -136,6 +136,107 @@ main(int argc, const char **argv)
    NEGCASE(bi_fadd_f32_to(b, reg, bi_fadd_f32(b, bi_neg(bi_abs(x)), zero, BI_ROUND_NONE), y, BI_ROUND_NONE));
    NEGCASE(bi_fadd_f32_to(b, reg, bi_fadd_f32(b, x, zero, BI_ROUND_NONE), y, BI_ROUND_NONE));
 
+   /* Check clamps are propagated */
+   CASE({
+      bi_instr *I = bi_fclamp_f32_to(b, reg, bi_fadd_f32(b, x, y, BI_ROUND_NONE));
+      I->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+      bi_instr *I = bi_fadd_f32_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_INF;
+   });
+
+   CASE({
+      bi_instr *I = bi_fclamp_v2f16_to(b, reg, bi_fadd_v2f16(b, x, y, BI_ROUND_NONE));
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   }, {
+      bi_instr *I = bi_fadd_v2f16_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   /* Check clamps are composed */
+   CASE({
+      bi_instr *I = bi_fadd_f32_to(b, bi_temp(b->shader), x, y, BI_ROUND_NONE);
+      bi_instr *J = bi_fclamp_f32_to(b, reg, I->dest[0]);
+      I->clamp = BI_CLAMP_CLAMP_M1_1;
+      J->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+      bi_instr *I = bi_fadd_f32_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+      bi_instr *I = bi_fadd_f32_to(b, bi_temp(b->shader), x, y, BI_ROUND_NONE);
+      bi_instr *J = bi_fclamp_f32_to(b, reg, I->dest[0]);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+      J->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+      bi_instr *I = bi_fadd_f32_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+      bi_instr *I = bi_fadd_f32_to(b, bi_temp(b->shader), x, y, BI_ROUND_NONE);
+      bi_instr *J = bi_fclamp_f32_to(b, reg, I->dest[0]);
+      I->clamp = BI_CLAMP_CLAMP_0_INF;
+      J->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+      bi_instr *I = bi_fadd_f32_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_INF;
+   });
+
+   CASE({
+      bi_instr *I = bi_fadd_v2f16_to(b, bi_temp(b->shader), x, y, BI_ROUND_NONE);
+      bi_instr *J = bi_fclamp_v2f16_to(b, reg, I->dest[0]);
+      I->clamp = BI_CLAMP_CLAMP_M1_1;
+      J->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+      bi_instr *I = bi_fadd_v2f16_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+      bi_instr *I = bi_fadd_v2f16_to(b, bi_temp(b->shader), x, y, BI_ROUND_NONE);
+      bi_instr *J = bi_fclamp_v2f16_to(b, reg, I->dest[0]);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+      J->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+      bi_instr *I = bi_fadd_v2f16_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+      bi_instr *I = bi_fadd_v2f16_to(b, bi_temp(b->shader), x, y, BI_ROUND_NONE);
+      bi_instr *J = bi_fclamp_v2f16_to(b, reg, I->dest[0]);
+      I->clamp = BI_CLAMP_CLAMP_0_INF;
+      J->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+      bi_instr *I = bi_fadd_v2f16_to(b, reg, x, y, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_INF;
+   });
+
+   /* We can't mix sizes */
+
+   NEGCASE({
+      bi_instr *I = bi_fclamp_f32_to(b, reg, bi_fadd_v2f16(b, x, y, BI_ROUND_NONE));
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   NEGCASE({
+      bi_instr *I = bi_fclamp_v2f16_to(b, reg, bi_fadd_f32(b, x, y, BI_ROUND_NONE));
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   /* We can't use addition by 0.0 for clamps due to signed zeros. */
+   NEGCASE({
+      bi_instr *I = bi_fadd_f32_to(b, reg, bi_fadd_f32(b, x, y, BI_ROUND_NONE), zero, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_M1_1;
+   });
+
+   NEGCASE({
+      bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_fadd_v2f16(b, x, y, BI_ROUND_NONE), zero, BI_ROUND_NONE);
+      I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
    ralloc_free(ralloc_ctx);
    TEST_END(nr_pass, nr_fail);
 }
