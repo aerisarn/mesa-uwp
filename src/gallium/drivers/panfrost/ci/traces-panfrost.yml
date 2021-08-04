@@ -36,12 +36,12 @@ traces:
         checksum: 2fb2c8e83719526cb6c02b6c2e069d61
       - device: gl-panfrost-t760
         checksum: 2fb2c8e83719526cb6c02b6c2e069d61
-  - path: pathfinder/canvas_text.trace
+  - path: pathfinder/canvas_text_v2.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 939038749a5204ec2b1448d3b9208fb3
+        checksum: 35fbb0c520595e948d3a0f3aaa499d77
       - device: gl-panfrost-t760
-        checksum: 939038749a5204ec2b1448d3b9208fb3
+        checksum: 35fbb0c520595e948d3a0f3aaa499d77
   - path: gputest/furmark.trace
     expectations:
       - device: gl-panfrost-t860

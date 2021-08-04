@@ -84,16 +84,16 @@ traces:
         checksum: 21bccd42f2deb6416cf6591cd6a99258
       - device: gl-intel-kbl
         checksum: 21bccd42f2deb6416cf6591cd6a99258
-  - path: pathfinder/canvas_text.trace
+  - path: pathfinder/canvas_text_v2.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 7873656a6fd5cce14d37cb7873bfc813
+        checksum: 448886e3b24f6408e013ea13f7c96d28
       - device: gl-intel-glk
-        checksum: 7873656a6fd5cce14d37cb7873bfc813
+        checksum: 448886e3b24f6408e013ea13f7c96d28
       - device: gl-intel-amly
-        checksum: 7873656a6fd5cce14d37cb7873bfc813
+        checksum: 448886e3b24f6408e013ea13f7c96d28
       - device: gl-intel-kbl
-        checksum: 7873656a6fd5cce14d37cb7873bfc813
+        checksum: 448886e3b24f6408e013ea13f7c96d28
   - path: gputest/furmark.trace
     expectations:
       - device: gl-intel-apl

@@ -225,7 +225,7 @@ traces:
 #      - device: gl-virgl
 #        checksum: 0e32ca8fc815a7250f38a07faeafb21b
 # Crash
-#  - path: pathfinder/canvas_text.trace
+#  - path: pathfinder/canvas_text_v2.trace
 #    expectations:
 #      - device: gl-virgl
 #        checksum: 74129b650bd3ca806ff2dd46813ba6e6
