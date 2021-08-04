@@ -482,6 +482,9 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
                              &inputs[num_inputs], elm, psv_elm))
          return 0;
 
+      mod->num_psv_inputs = MAX2(mod->num_psv_inputs,
+                                 semantic.start_row + semantic.rows);
+
       ++num_inputs;
       assert(num_inputs < VARYING_SLOT_MAX);
    }
@@ -515,8 +518,6 @@ get_input_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
 
    if (!mod->num_sig_inputs && !mod->num_sig_inputs)
       return NULL;
-
-   mod->num_psv_inputs = next_row;
 
    const struct dxil_mdnode *retval = mod->num_sig_inputs ?
          dxil_get_metadata_node(mod, inputs, mod->num_sig_inputs) : NULL;
