@@ -176,12 +176,13 @@ struct iris_bo {
    uint64_t aux_map_address;
 
    /**
-    * The validation list index for this buffer, or -1 when not in a batch.
-    * Note that a single buffer may be in multiple batches (contexts), and
-    * this is a global field, which refers to the last batch using the BO.
-    * It should not be considered authoritative, but can be used to avoid a
-    * linear walk of the validation list in the common case by guessing that
-    * exec_bos[bo->index] == bo and confirming whether that's the case.
+    * If this BO is referenced by a batch, this _may_ be the index into the
+    * batch->exec_bos[] list.
+    *
+    * Note that a single buffer may be used by multiple batches/contexts,
+    * and thus appear in multiple lists, but we only track one index here.
+    * In the common case one can guess that batch->exec_bos[bo->index] == bo
+    * and double check if that's true to avoid a linear list walk.
     *
     * XXX: this is not ideal now that we have more than one batch per context,
     * XXX: as the index will flop back and forth between the render index and
