@@ -77,6 +77,8 @@ async def test_gather_commits():
     [
         # It is important to have the title on a new line, as
         # textwrap.dedent wont work otherwise.
+
+        # Test the `Closes: #N` syntax
         (
             '''\
             A commit
@@ -87,6 +89,8 @@ async def test_gather_commits():
             ''',
             ['1'],
         ),
+
+        # Test the Full url
         (
             '''\
             A commit with no body
@@ -94,6 +98,24 @@ async def test_gather_commits():
             Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3456
             ''',
             ['3456'],
+        ),
+
+        # Test projects that are not mesa
+        (
+            '''\
+            A commit for libdrm
+
+            Closes: https://gitlab.freedesktop.org/mesa/drm/-/3456
+            ''',
+            [],
+        ),
+        (
+            '''\
+            A commit for for something else completely
+
+            Closes: https://github.com/Organiztion/project/1234
+            ''',
+            [],
         ),
     ])
 async def test_parse_issues(content: str, bugs: typing.List[str]) -> None:
