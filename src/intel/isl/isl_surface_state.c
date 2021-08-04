@@ -120,6 +120,40 @@ get_surftype(enum isl_surf_dim dim, isl_surf_usage_flags_t usage)
    }
 }
 
+#if GFX_VERx10 >= 125
+static uint8_t
+get_media_compression_format(enum isl_format format,
+                             enum isl_format lowered_format)
+{
+   const uint32_t plane_bpb = isl_format_get_layout(lowered_format)->bpb;
+
+   /* From Bspec 43868, Enumeration_MediaCompressionFormat:
+    *
+    *    Luma P010 has MSB of 0 while chroma P010 has MSB of 1.
+    *    Luma P016 has MSB of 0 while chroma P016 has MSB of 1.
+    *    Luma NV12 has MSB of 0 while chroma NV12 has MSB of 1.
+    */
+   switch (format) {
+   case ISL_FORMAT_PLANAR_420_8: /* NV12 */
+      assert(plane_bpb == 8 || plane_bpb == 16);
+      assert((isl_format_get_aux_map_encoding(format) & 0xf0) == 0);
+
+      /* drm_fourcc.h defines the chroma plane of NV12 as 16-bpb */
+      return (plane_bpb == 16) << 4 | isl_format_get_aux_map_encoding(format);
+   case ISL_FORMAT_PLANAR_420_10:
+   case ISL_FORMAT_PLANAR_420_12:
+   case ISL_FORMAT_PLANAR_420_16:
+      assert(plane_bpb == 16 || plane_bpb == 32);
+      assert((isl_format_get_aux_map_encoding(format) & 0xf0) == 0);
+
+      /* drm_fourcc.h defines the chroma plane of P01X as 32-bpb */
+      return (plane_bpb == 32) << 4 | isl_format_get_aux_map_encoding(format);
+   default:
+      return isl_format_get_aux_map_encoding(format);
+   }
+}
+#endif
+
 void
 isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
                             const struct isl_surf_fill_state_info *restrict info)
@@ -552,8 +586,13 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
       }
 
 #if GFX_VERx10 >= 125
-      s.CompressionFormat =
-         isl_get_render_compression_format(info->surf->format);
+      if (info->aux_usage == ISL_AUX_USAGE_MC) {
+         s.CompressionFormat =
+            get_media_compression_format(info->mc_format, info->surf->format);
+      } else {
+         s.CompressionFormat =
+            isl_get_render_compression_format(info->surf->format);
+      }
 #endif
 #if GFX_VER >= 12
       s.MemoryCompressionEnable = info->aux_usage == ISL_AUX_USAGE_MC;
