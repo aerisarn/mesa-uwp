@@ -185,7 +185,7 @@ ntt_tgsi_var_usage_mask(const struct nir_variable *var)
 }
 
 static struct ureg_dst
-ntt_store_output_decl(struct ntt_compile *c, nir_intrinsic_instr *instr, uint32_t *frac)
+ntt_output_decl(struct ntt_compile *c, nir_intrinsic_instr *instr, uint32_t *frac)
 {
    nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
    int base = nir_intrinsic_base(instr);
@@ -247,7 +247,11 @@ ntt_store_output_decl(struct ntt_compile *c, nir_intrinsic_instr *instr, uint32_
                                     invariant);
    }
 
-   unsigned write_mask = nir_intrinsic_write_mask(instr);
+   unsigned write_mask;
+   if (nir_intrinsic_has_write_mask(instr))
+      write_mask = nir_intrinsic_write_mask(instr);
+   else
+      write_mask = ((1 << instr->num_components) - 1) << *frac;
 
    if (is_64) {
       write_mask = ntt_64bit_write_mask(write_mask);
@@ -296,7 +300,7 @@ ntt_try_store_in_tgsi_output(struct ntt_compile *c, struct ureg_dst *dst,
    }
 
    uint32_t frac;
-   *dst = ntt_store_output_decl(c, intr, &frac);
+   *dst = ntt_output_decl(c, intr, &frac);
    dst->Index += ntt_src_as_uint(c, intr->src[1]);
 
    return frac == 0;
@@ -1715,7 +1719,7 @@ ntt_emit_store_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
    }
 
    uint32_t frac;
-   struct ureg_dst out = ntt_store_output_decl(c, instr, &frac);
+   struct ureg_dst out = ntt_output_decl(c, instr, &frac);
 
    if (instr->intrinsic == nir_intrinsic_store_per_vertex_output) {
       out = ntt_ureg_dst_indirect(c, out, instr->src[2]);
@@ -1733,6 +1737,29 @@ ntt_emit_store_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
    src = ureg_swizzle(src, swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
 
    ureg_MOV(c->ureg, out, src);
+   ntt_reladdr_dst_put(c, out);
+}
+
+static void
+ntt_emit_load_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
+{
+   /* ntt_try_store_in_tgsi_output() optimization is not valid if load_output
+    * is present.
+    */
+   assert(c->s->info.stage != MESA_SHADER_VERTEX &&
+          c->s->info.stage != MESA_SHADER_FRAGMENT);
+
+   uint32_t frac;
+   struct ureg_dst out = ntt_output_decl(c, instr, &frac);
+
+   if (instr->intrinsic == nir_intrinsic_load_per_vertex_output) {
+      out = ntt_ureg_dst_indirect(c, out, instr->src[1]);
+      out = ntt_ureg_dst_dimension_indirect(c, out, instr->src[0]);
+   } else {
+      out = ntt_ureg_dst_indirect(c, out, instr->src[0]);
+   }
+
+   ureg_MOV(c->ureg, ntt_get_dest(c, &instr->dest), ureg_src(out));
    ntt_reladdr_dst_put(c, out);
 }
 
@@ -1821,6 +1848,11 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_per_vertex_output:
       ntt_emit_store_output(c, instr);
+      break;
+
+   case nir_intrinsic_load_output:
+   case nir_intrinsic_load_per_vertex_output:
+      ntt_emit_load_output(c, instr);
       break;
 
    case nir_intrinsic_discard:
