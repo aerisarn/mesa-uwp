@@ -581,7 +581,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 
       ralloc_free(mem_ctx);
 
-      m.syms.emplace_back(sym.name, std::string(),
+      m.syms.emplace_back(sym.name, sym.attributes,
                           sym.reqd_work_group_size, section_id, 0, args);
       m.secs.push_back(text);
       section_id++;

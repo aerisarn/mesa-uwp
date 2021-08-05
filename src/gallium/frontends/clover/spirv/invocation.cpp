@@ -47,8 +47,14 @@
 
 using namespace clover;
 
+using clover::detokenize;
+
 #ifdef HAVE_CLOVER_SPIRV
 namespace {
+
+   static const std::array<std::string,7> type_strs = {
+      "uchar", "ushort", "uint", "ulong", "half", "float", "double"
+   };
 
    template<typename T>
    T get(const char *source, size_t index) {
@@ -140,6 +146,7 @@ namespace {
 
       module m;
 
+      std::vector<std::string> attributes;
       std::unordered_map<SpvId, std::vector<size_t> > req_local_sizes;
       std::unordered_map<SpvId, std::string> kernels;
       std::unordered_map<SpvId, module::argument> types;
@@ -190,13 +197,47 @@ namespace {
 
          case SpvOpExecutionMode:
             switch (get<SpvExecutionMode>(inst, 2)) {
-            case SpvExecutionModeLocalSize:
+            case SpvExecutionModeLocalSize: {
                req_local_sizes[get<SpvId>(inst, 1)] = {
                   get<uint32_t>(inst, 3),
                   get<uint32_t>(inst, 4),
                   get<uint32_t>(inst, 5)
                };
+               std::string s = "reqd_work_group_size(";
+               s += std::to_string(get<uint32_t>(inst, 3));
+               s += ",";
+               s += std::to_string(get<uint32_t>(inst, 4));
+               s += ",";
+               s += std::to_string(get<uint32_t>(inst, 5));
+               s += ")";
+               attributes.emplace_back(s);
                break;
+            }
+            case SpvExecutionModeLocalSizeHint: {
+               std::string s = "work_group_size_hint(";
+               s += std::to_string(get<uint32_t>(inst, 3));
+               s += ",";
+               s += std::to_string(get<uint32_t>(inst, 4));
+               s += ",";
+               s += std::to_string(get<uint32_t>(inst, 5));
+               s += ")";
+               attributes.emplace_back(s);
+               break;
+            }
+	    case SpvExecutionModeVecTypeHint: {
+               uint32_t val = get<uint32_t>(inst, 3);
+               uint32_t size = val >> 16;
+
+               val &= 0xf;
+               if (val > 6)
+                  val = 0;
+               std::string s = "vec_type_hint(";
+               s += type_strs[val];
+               s += std::to_string(size);
+               s += ")";
+               attributes.emplace_back(s);
+	       break;
+            }
             default:
                break;
             }
@@ -457,11 +498,12 @@ namespace {
             for (size_t i = 0; i < param_type_names[kernel_name].size(); i++)
                args[i].info.type_name = param_type_names[kernel_name][i];
 
-            m.syms.emplace_back(kernel_name, std::string(),
+            m.syms.emplace_back(kernel_name, detokenize(attributes, " "),
                                 req_local_size, 0, kernel_nb, args);
             ++kernel_nb;
             kernel_name.clear();
             args.clear();
+            attributes.clear();
             break;
 
          default:
