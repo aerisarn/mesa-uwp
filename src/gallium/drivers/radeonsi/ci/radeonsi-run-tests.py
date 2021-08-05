@@ -172,7 +172,10 @@ def verify_results(baseline1, baseline2):
     #  - if no baseline, baseline2 will contain the list of failures
     #  - if there's a baseline, baseline2 will contain the diff
     # So in both cases, an empty baseline2 files means a successful run
-    return len(open(baseline2, 'r').readlines()) == 0
+    if len(open(baseline2, 'r').readlines()) != 0:
+        print_red('New errors. Check {}'.format(baseline2))
+        return False
+    return True
 
 # piglit test
 if args.piglit:
