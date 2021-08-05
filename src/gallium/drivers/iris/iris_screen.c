@@ -736,6 +736,8 @@ iris_init_identifier_bo(struct iris_screen *screen)
    if (!bo_map)
       return false;
 
+   assert(iris_bo_is_real(screen->workaround_bo));
+
    screen->workaround_bo->real.kflags |=
       EXEC_OBJECT_CAPTURE | EXEC_OBJECT_ASYNC;
    screen->workaround_address = (struct iris_address) {

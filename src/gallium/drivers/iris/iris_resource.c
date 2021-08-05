@@ -1631,7 +1631,7 @@ iris_invalidate_resource(struct pipe_context *ctx,
    /* Otherwise, try and replace the backing storage with a new BO. */
 
    /* We can't reallocate memory we didn't allocate in the first place. */
-   if (res->bo->real.userptr)
+   if (res->bo->gem_handle && res->bo->real.userptr)
       return;
 
    struct iris_bo *old_bo = res->bo;

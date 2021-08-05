@@ -259,6 +259,7 @@ struct iris_bo {
          bool local;
       } real;
       struct {
+         struct iris_bo *real;
       } slab;
    };
 };
@@ -351,29 +352,59 @@ void iris_bufmgr_unref(struct iris_bufmgr *bufmgr);
 int iris_bo_flink(struct iris_bo *bo, uint32_t *name);
 
 /**
+ * Returns true if the BO is backed by a real GEM object, false if it's
+ * a wrapper that's suballocated from a larger BO.
+ */
+static inline bool
+iris_bo_is_real(struct iris_bo *bo)
+{
+   return bo->gem_handle != 0;
+}
+
+/**
+ * Unwrap any slab-allocated wrapper BOs to get the BO for the underlying
+ * backing storage, which is a real BO associated with a GEM object.
+ */
+static inline struct iris_bo *
+iris_get_backing_bo(struct iris_bo *bo)
+{
+   if (!iris_bo_is_real(bo))
+      bo = bo->slab.real;
+
+   /* We only allow one level of wrapping. */
+   assert(iris_bo_is_real(bo));
+
+   return bo;
+}
+
+/**
  * Is this buffer shared with external clients (imported or exported)?
  */
 static inline bool
 iris_bo_is_external(const struct iris_bo *bo)
 {
+   bo = iris_get_backing_bo((struct iris_bo *) bo);
    return bo->real.exported || bo->real.imported;
 }
 
 static inline bool
 iris_bo_is_imported(const struct iris_bo *bo)
 {
+   bo = iris_get_backing_bo((struct iris_bo *) bo);
    return bo->real.imported;
 }
 
 static inline bool
 iris_bo_is_exported(const struct iris_bo *bo)
 {
+   bo = iris_get_backing_bo((struct iris_bo *) bo);
    return bo->real.exported;
 }
 
 static inline enum iris_mmap_mode
 iris_bo_mmap_mode(const struct iris_bo *bo)
 {
+   bo = iris_get_backing_bo((struct iris_bo *) bo);
    return bo->real.mmap_mode;
 }
 

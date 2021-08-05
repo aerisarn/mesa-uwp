@@ -283,7 +283,8 @@ add_bo_to_batch(struct iris_batch *batch, struct iris_bo *bo, bool writable)
    batch->exec_count++;
    batch->aperture_space += bo->size;
 
-   batch->max_gem_handle = MAX2(batch->max_gem_handle, bo->gem_handle);
+   batch->max_gem_handle =
+      MAX2(batch->max_gem_handle, iris_get_backing_bo(bo)->gem_handle);
 }
 
 /**
@@ -297,7 +298,7 @@ iris_use_pinned_bo(struct iris_batch *batch,
                    struct iris_bo *bo,
                    bool writable, enum iris_domain access)
 {
-   assert(bo->real.kflags & EXEC_OBJECT_PINNED);
+   assert(iris_get_backing_bo(bo)->real.kflags & EXEC_OBJECT_PINNED);
    assert(bo != batch->bo);
 
    /* Never mark the workaround BO with EXEC_OBJECT_WRITE.  We don't care
@@ -365,7 +366,7 @@ create_batch(struct iris_batch *batch)
    batch->bo = iris_bo_alloc(bufmgr, "command buffer",
                              BATCH_SZ + BATCH_RESERVED, 1,
                              IRIS_MEMZONE_OTHER, 0);
-   batch->bo->real.kflags |= EXEC_OBJECT_CAPTURE;
+   iris_get_backing_bo(batch->bo)->real.kflags |= EXEC_OBJECT_CAPTURE;
    batch->map = iris_bo_map(NULL, batch->bo, MAP_READ | MAP_WRITE);
    batch->map_next = batch->map;
 
@@ -756,7 +757,9 @@ submit_batch(struct iris_batch *batch)
 
    unsigned validation_count = 0;
    for (int i = 0; i < batch->exec_count; i++) {
-      struct iris_bo *bo = batch->exec_bos[i];
+      struct iris_bo *bo = iris_get_backing_bo(batch->exec_bos[i]);
+      assert(bo->gem_handle != 0);
+
       bool written = BITSET_TEST(batch->bos_written, i);
       unsigned prev_index = index_for_handle[bo->gem_handle];
       if (prev_index > 0) {

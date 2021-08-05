@@ -235,6 +235,7 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
 
    if (bo) {
       assert(iris_bo_is_external(bo));
+      assert(iris_bo_is_real(bo));
       assert(!bo->real.reusable);
 
       /* Being non-reusable, the BO cannot be in the cache lists, but it
@@ -385,6 +386,8 @@ vma_free(struct iris_bufmgr *bufmgr,
 static bool
 iris_bo_busy_gem(struct iris_bo *bo)
 {
+   assert(iris_bo_is_real(bo));
+
    struct iris_bufmgr *bufmgr = bo->bufmgr;
    struct drm_i915_gem_busy busy = { .handle = bo->gem_handle };
 
@@ -479,6 +482,9 @@ iris_bo_busy(struct iris_bo *bo)
 int
 iris_bo_madvise(struct iris_bo *bo, int state)
 {
+   /* We can't madvise suballocated BOs. */
+   assert(iris_bo_is_real(bo));
+
    struct drm_i915_gem_madvise madv = {
       .handle = bo->gem_handle,
       .madv = state,
@@ -507,6 +513,8 @@ bo_calloc(void)
 static void
 bo_unmap(struct iris_bo *bo)
 {
+   assert(iris_bo_is_real(bo));
+
    VG_NOACCESS(bo->real.map, bo->size);
    os_munmap(bo->real.map, bo->size);
    bo->real.map = NULL;
@@ -527,6 +535,8 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    struct iris_bo *bo = NULL;
 
    list_for_each_entry_safe(struct iris_bo, cur, &bucket->head, head) {
+      assert(iris_bo_is_real(cur));
+
       /* Find one that's got the right mapping type.  We used to swap maps
        * around but the kernel doesn't allow this on discrete GPUs.
        */
@@ -908,6 +918,8 @@ bo_close(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   assert(iris_bo_is_real(bo));
+
    if (iris_bo_is_external(bo)) {
       struct hash_entry *entry;
 
@@ -962,6 +974,8 @@ static void
 bo_free(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
+
+   assert(iris_bo_is_real(bo));
 
    if (!bo->real.userptr && bo->real.map)
       bo_unmap(bo);
@@ -1032,6 +1046,8 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
    struct bo_cache_bucket *bucket;
 
    DBG("bo_unreference final: %d (%s)\n", bo->gem_handle, bo->name);
+
+   assert(iris_bo_is_real(bo));
 
    bucket = NULL;
    if (bo->real.reusable)
@@ -1115,6 +1131,7 @@ iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg, struct iris_bo *bo)
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
    assert(bufmgr->vram.size == 0);
+   assert(iris_bo_is_real(bo));
    assert(bo->real.mmap_mode == IRIS_MMAP_WB ||
           bo->real.mmap_mode == IRIS_MMAP_WC);
 
@@ -1139,6 +1156,8 @@ static void *
 iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
+
+   assert(iris_bo_is_real(bo));
 
    struct drm_i915_gem_mmap_offset mmap_arg = {
       .handle = bo->gem_handle,
@@ -1198,27 +1217,35 @@ iris_bo_map(struct pipe_debug_callback *dbg,
             struct iris_bo *bo, unsigned flags)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
+   void *map = NULL;
 
-   assert(bo->real.mmap_mode != IRIS_MMAP_NONE);
-   if (bo->real.mmap_mode == IRIS_MMAP_NONE)
-      return NULL;
-
-   if (!bo->real.map) {
-      DBG("iris_bo_map: %d (%s)\n", bo->gem_handle, bo->name);
-      void *map = bufmgr->has_mmap_offset ? iris_bo_gem_mmap_offset(dbg, bo)
-                                          : iris_bo_gem_mmap_legacy(dbg, bo);
-      if (!map) {
+   if (bo->gem_handle == 0) {
+      struct iris_bo *real = iris_get_backing_bo(bo);
+      uint64_t offset = bo->address - real->address;
+      map = iris_bo_map(dbg, real, flags | MAP_ASYNC) + offset;
+   } else {
+      assert(bo->real.mmap_mode != IRIS_MMAP_NONE);
+      if (bo->real.mmap_mode == IRIS_MMAP_NONE)
          return NULL;
-      }
 
-      VG_DEFINED(map, bo->size);
+      if (!bo->real.map) {
+         DBG("iris_bo_map: %d (%s)\n", bo->gem_handle, bo->name);
+         map = bufmgr->has_mmap_offset ? iris_bo_gem_mmap_offset(dbg, bo)
+                                       : iris_bo_gem_mmap_legacy(dbg, bo);
+         if (!map) {
+            return NULL;
+         }
 
-      if (p_atomic_cmpxchg(&bo->real.map, NULL, map)) {
-         VG_NOACCESS(map, bo->size);
-         os_munmap(map, bo->size);
+         VG_DEFINED(map, bo->size);
+
+         if (p_atomic_cmpxchg(&bo->real.map, NULL, map)) {
+            VG_NOACCESS(map, bo->size);
+            os_munmap(map, bo->size);
+         }
       }
+      assert(bo->real.map);
+      map = bo->real.map;
    }
-   assert(bo->real.map);
 
    DBG("iris_bo_map: %d (%s) -> %p\n",
        bo->gem_handle, bo->name, bo->real.map);
@@ -1228,7 +1255,7 @@ iris_bo_map(struct pipe_debug_callback *dbg,
       bo_wait_with_stall_warning(dbg, bo, "memory mapping");
    }
 
-   return bo->real.map;
+   return map;
 }
 
 /** Waits for all GPU rendering with the object to have completed. */
@@ -1244,6 +1271,8 @@ iris_bo_wait_rendering(struct iris_bo *bo)
 static int
 iris_bo_wait_gem(struct iris_bo *bo, int64_t timeout_ns)
 {
+   assert(iris_bo_is_real(bo));
+
    struct iris_bufmgr *bufmgr = bo->bufmgr;
    struct drm_i915_gem_wait wait = {
       .bo_handle = bo->gem_handle,
@@ -1470,6 +1499,9 @@ out:
 static void
 iris_bo_mark_exported_locked(struct iris_bo *bo)
 {
+   /* We cannot export suballocated BOs. */
+   assert(iris_bo_is_real(bo));
+
    if (!iris_bo_is_external(bo))
       _mesa_hash_table_insert(bo->bufmgr->handle_table, &bo->gem_handle, bo);
 
@@ -1488,6 +1520,9 @@ iris_bo_mark_exported(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   /* We cannot export suballocated BOs. */
+   assert(iris_bo_is_real(bo));
+
    if (bo->real.exported) {
       assert(!bo->real.reusable);
       return;
@@ -1503,6 +1538,9 @@ iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   /* We cannot export suballocated BOs. */
+   assert(iris_bo_is_real(bo));
+
    iris_bo_mark_exported(bo);
 
    if (drmPrimeHandleToFD(bufmgr->fd, bo->gem_handle,
@@ -1515,6 +1553,9 @@ iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd)
 uint32_t
 iris_bo_export_gem_handle(struct iris_bo *bo)
 {
+   /* We cannot export suballocated BOs. */
+   assert(iris_bo_is_real(bo));
+
    iris_bo_mark_exported(bo);
 
    return bo->gem_handle;
@@ -1524,6 +1565,9 @@ int
 iris_bo_flink(struct iris_bo *bo, uint32_t *name)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
+
+   /* We cannot export suballocated BOs. */
+   assert(iris_bo_is_real(bo));
 
    if (!bo->real.global_name) {
       struct drm_gem_flink flink = { .handle = bo->gem_handle };
@@ -1548,6 +1592,9 @@ int
 iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
                                      uint32_t *out_handle)
 {
+   /* We cannot export suballocated BOs. */
+   assert(iris_bo_is_real(bo));
+
    /* Only add the new GEM handle to the list of export if it belongs to a
     * different GEM device. Otherwise we might close the same buffer multiple
     * times.
