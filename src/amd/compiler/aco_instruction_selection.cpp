@@ -9154,7 +9154,7 @@ tex_fetch_ptrs(isel_context* ctx, nir_tex_instr* instr, Temp* res_ptr, Temp* sam
                                   (aco_descriptor_type)(ACO_DESC_PLANE_0 + plane), instr, false);
    } else if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
       *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_BUFFER, instr, false);
-   } else if (instr->op == nir_texop_fragment_mask_fetch) {
+   } else if (instr->op == nir_texop_fragment_mask_fetch_amd) {
       *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false);
    } else {
       *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_IMAGE, instr, false);
@@ -9498,7 +9498,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
         instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS ||
         instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
        instr->is_array && instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms &&
-       instr->op != nir_texop_fragment_fetch && instr->op != nir_texop_fragment_mask_fetch)
+       instr->op != nir_texop_fragment_fetch_amd && instr->op != nir_texop_fragment_mask_fetch_amd)
       coords[2] = bld.vop1(aco_opcode::v_rndne_f32, bld.def(v1), coords[2]);
 
    if (ctx->options->chip_class == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
@@ -9517,8 +9517,8 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
 
    else if ((instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
              instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
-            instr->op != nir_texop_txs && instr->op != nir_texop_fragment_fetch &&
-            instr->op != nir_texop_fragment_mask_fetch) {
+            instr->op != nir_texop_txs && instr->op != nir_texop_fragment_fetch_amd &&
+            instr->op != nir_texop_fragment_mask_fetch_amd) {
       assert(has_sample_index);
       Operand op(sample_index);
       if (sample_index_cv)
@@ -9736,8 +9736,8 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       args.emplace_back(clamped_lod);
 
    if (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms ||
-       instr->op == nir_texop_samples_identical || instr->op == nir_texop_fragment_fetch ||
-       instr->op == nir_texop_fragment_mask_fetch) {
+       instr->op == nir_texop_samples_identical || instr->op == nir_texop_fragment_fetch_amd ||
+       instr->op == nir_texop_fragment_mask_fetch_amd) {
       aco_opcode op = level_zero || instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
                             instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS
                          ? aco_opcode::image_load

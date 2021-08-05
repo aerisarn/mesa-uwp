@@ -2720,11 +2720,11 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpFragmentFetchAMD:
-      texop = nir_texop_fragment_fetch;
+      texop = nir_texop_fragment_fetch_amd;
       break;
 
    case SpvOpFragmentMaskFetchAMD:
-      texop = nir_texop_fragment_mask_fetch;
+      texop = nir_texop_fragment_mask_fetch_amd;
       dest_type = nir_type_uint32;
       break;
 
@@ -2759,8 +2759,8 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    case nir_texop_query_levels:
    case nir_texop_texture_samples:
    case nir_texop_samples_identical:
-   case nir_texop_fragment_fetch:
-   case nir_texop_fragment_mask_fetch:
+   case nir_texop_fragment_fetch_amd:
+   case nir_texop_fragment_mask_fetch_amd:
       /* These don't */
       break;
    case nir_texop_txf_ms_fb:
