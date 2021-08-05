@@ -587,6 +587,7 @@ files_libmesa_gallium = files(
   'state_tracker/st_nir_lower_builtin.c',
   'state_tracker/st_nir_lower_tex_src_plane.c',
   'state_tracker/st_pbo.c',
+  'state_tracker/st_pbo_compute.c',
   'state_tracker/st_pbo.h',
   'state_tracker/st_program.c',
   'state_tracker/st_program.h',

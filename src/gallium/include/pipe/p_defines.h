@@ -1007,6 +1007,7 @@ enum pipe_cap
 enum pipe_texture_transfer_mode {
    PIPE_TEXTURE_TRANSFER_DEFAULT = 0,
    PIPE_TEXTURE_TRANSFER_BLIT = (1 << 0),
+   PIPE_TEXTURE_TRANSFER_COMPUTE = (1 << 1),
 };
 
 /**

@@ -181,7 +181,9 @@ The integer capabilities:
   that are supported for implementing a texture transfer which needs format conversions
   and swizzling in gallium frontends. Generally, all hardware drivers with
   dedicated memory should return PIPE_TEXTURE_TRANSFER_BLIT and all software rasterizers
-  should return PIPE_TEXTURE_TRANSFER_DEFAULT.
+  should return PIPE_TEXTURE_TRANSFER_DEFAULT. PIPE_TEXTURE_TRANSFER_COMPUTE requires drivers
+  to support 8bit and 16bit shader storage buffer writes and to implement
+  pipe_screen::is_compute_copy_faster.
 * ``PIPE_CAP_QUERY_PIPELINE_STATISTICS``: Whether PIPE_QUERY_PIPELINE_STATISTICS
   is supported.
 * ``PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK``: Bitmask indicating whether special

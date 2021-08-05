@@ -661,6 +661,9 @@ st_init_pbo_helpers(struct st_context *st)
    /* Rasterizer state */
    memset(&st->pbo.raster, 0, sizeof(struct pipe_rasterizer_state));
    st->pbo.raster.half_pixel_center = 1;
+
+   if (st->allow_compute_based_texture_transfer)
+      st->pbo.shaders = _mesa_hash_table_create_u32_keys(NULL);
 }
 
 void
@@ -696,5 +699,11 @@ st_destroy_pbo_helpers(struct st_context *st)
    if (st->pbo.vs) {
       st->pipe->delete_vs_state(st->pipe, st->pbo.vs);
       st->pbo.vs = NULL;
+   }
+
+   if (st->pbo.shaders) {
+      hash_table_foreach(st->pbo.shaders, entry)
+         st->pipe->delete_compute_state(st->pipe, entry->data);
+      _mesa_hash_table_destroy(st->pbo.shaders, NULL);
    }
 }
