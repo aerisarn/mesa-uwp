@@ -1477,11 +1477,17 @@ anv_CreateImage(VkDevice device,
       return anv_image_from_gralloc(device, pCreateInfo, gralloc_info,
                                     pAllocator, pImage);
 
+#ifndef VK_USE_PLATFORM_ANDROID_KHR
+   /* Ignore swapchain creation info on Android. Since we don't have an
+    * implementation in Mesa, we're guaranteed to access an Android object
+    * incorrectly.
+    */
    const VkImageSwapchainCreateInfoKHR *swapchain_info =
       vk_find_struct_const(pCreateInfo->pNext, IMAGE_SWAPCHAIN_CREATE_INFO_KHR);
    if (swapchain_info && swapchain_info->swapchain != VK_NULL_HANDLE)
       return anv_image_from_swapchain(device, pCreateInfo, swapchain_info,
                                       pAllocator, pImage);
+#endif
 
    return anv_image_create(device,
       &(struct anv_image_create_info) {
