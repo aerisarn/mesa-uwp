@@ -2755,6 +2755,8 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
             cmd->state.has_tess = true;
          if (secondary->state.has_subpass_predication)
             cmd->state.has_subpass_predication = true;
+         if (secondary->state.disable_gmem)
+            cmd->state.disable_gmem = true;
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
