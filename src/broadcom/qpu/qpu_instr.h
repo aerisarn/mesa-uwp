@@ -295,7 +295,10 @@ enum v3d_qpu_mux {
 };
 
 struct v3d_qpu_input {
-        enum v3d_qpu_mux mux;
+        union {
+                enum v3d_qpu_mux mux; /* V3D 4.x */
+                uint8_t raddr; /* V3D 7.x */
+        };
         enum v3d_qpu_input_unpack unpack;
 };
 
@@ -385,8 +388,8 @@ struct v3d_qpu_instr {
         struct v3d_qpu_sig sig;
         uint8_t sig_addr;
         bool sig_magic; /* If the signal writes to a magic address */
-        uint8_t raddr_a;
-        uint8_t raddr_b;
+        uint8_t raddr_a; /* V3D 4.x */
+        uint8_t raddr_b; /* V3D 4.x*/
         struct v3d_qpu_flags flags;
 
         union {
