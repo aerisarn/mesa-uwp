@@ -75,6 +75,12 @@ LOCAL_SHARED_LIBRARIES += libdrm_nouveau
 MESON_GEN_PKGCONFIGS += libdrm_nouveau:$(LIBDRM_VERSION)
 endif
 
+ifneq ($(filter d3d12,$(BOARD_MESA3D_GALLIUM_DRIVERS)),)
+LOCAL_HEADER_LIBRARIES += DirectX-Headers
+LOCAL_STATIC_LIBRARIES += DirectX-Guids
+MESON_GEN_PKGCONFIGS += DirectX-Headers
+endif
+
 ifneq ($(MESON_GEN_LLVM_STUB),)
 MESON_LLVM_VERSION := 12.0.0
 # Required for swr gallium target

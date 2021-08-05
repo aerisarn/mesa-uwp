@@ -648,9 +648,12 @@ endif
 
 dep_dxheaders = null_dep
 if with_gallium_d3d12 or with_microsoft_clc
-  dep_dxheaders = dependency('DirectX-Headers', fallback : ['DirectX-Headers', 'dep_dxheaders'],
-    required : with_gallium_d3d12
-  )
+  dep_dxheaders = dependency('directx-headers', required : false)
+  if not dep_dxheaders.found()
+    dep_dxheaders = dependency('DirectX-Headers', fallback : ['DirectX-Headers', 'dep_dxheaders'],
+      required : with_gallium_d3d12
+    )
+  endif
 endif
 
 if with_vulkan_overlay_layer or with_aco_tests
