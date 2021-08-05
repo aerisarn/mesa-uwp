@@ -249,6 +249,7 @@ enum dxil_intr {
    DXIL_INTR_THREAD_ID = 93,
    DXIL_INTR_GROUP_ID = 94,
    DXIL_INTR_THREAD_ID_IN_GROUP = 95,
+   DXIL_INTR_FLATTENED_THREAD_ID_IN_GROUP = 96,
 
    DXIL_INTR_EMIT_STREAM = 97,
    DXIL_INTR_CUT_STREAM = 98,
@@ -552,6 +553,26 @@ emit_threadidingroup_call(struct ntd_context *ctx,
    const struct dxil_value *args[] = {
      opcode,
      comp
+   };
+
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static const struct dxil_value *
+emit_flattenedthreadidingroup_call(struct ntd_context *ctx)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.flattenedThreadIdInGroup", DXIL_I32);
+
+   if (!func)
+      return NULL;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod,
+      DXIL_INTR_FLATTENED_THREAD_ID_IN_GROUP);
+   if (!opcode)
+      return NULL;
+
+   const struct dxil_value *args[] = {
+     opcode
    };
 
    return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
@@ -2288,6 +2309,21 @@ emit_load_local_invocation_id(struct ntd_context *ctx,
 }
 
 static bool
+emit_load_local_invocation_index(struct ntd_context *ctx,
+                                 nir_intrinsic_instr *intr)
+{
+   assert(intr->dest.is_ssa);
+
+   const struct dxil_value
+      *flattenedthreadidingroup = emit_flattenedthreadidingroup_call(ctx);
+   if (!flattenedthreadidingroup)
+      return false;
+   store_dest_value(ctx, &intr->dest, 0, flattenedthreadidingroup);
+   
+   return true;
+}
+
+static bool
 emit_load_local_workgroup_id(struct ntd_context *ctx,
                               nir_intrinsic_instr *intr)
 {
@@ -3480,6 +3516,8 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_global_invocation_id(ctx, intr);
    case nir_intrinsic_load_local_invocation_id:
       return emit_load_local_invocation_id(ctx, intr);
+   case nir_intrinsic_load_local_invocation_index:
+      return emit_load_local_invocation_index(ctx, intr);
    case nir_intrinsic_load_workgroup_id:
    case nir_intrinsic_load_workgroup_id_zero_base:
       return emit_load_local_workgroup_id(ctx, intr);
