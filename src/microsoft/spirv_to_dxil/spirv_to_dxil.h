@@ -95,6 +95,9 @@ spirv_to_dxil(const uint32_t* words,
 void
 spirv_to_dxil_free(void* buffer);
 
+uint64_t
+spirv_to_dxil_get_version();
+
 #ifdef __cplusplus
 }
 #endif

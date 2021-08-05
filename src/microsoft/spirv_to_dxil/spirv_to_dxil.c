@@ -28,6 +28,8 @@
 #include "spirv/nir_spirv.h"
 #include "util/blob.h"
 
+#include "git_sha1.h"
+
 bool
 spirv_to_dxil(const uint32_t *words, size_t word_count,
               struct dxil_spirv_specialization *specializations,
@@ -172,4 +174,15 @@ void
 spirv_to_dxil_free(void* buffer)
 {
    free(buffer);
+}
+
+uint64_t
+spirv_to_dxil_get_version()
+{
+   const char sha1[] = MESA_GIT_SHA1;
+   const char* dash = strchr(sha1, '-');
+   if (dash) {
+      return strtoull(dash + 1, NULL, 16);
+   }
+   return 0;
 }
