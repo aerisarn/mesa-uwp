@@ -1022,7 +1022,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
 
    DBG("Pipe Info:");
    DBG(" GPU-id:          %s", fd_dev_name(screen->dev_id));
-   DBG(" Chip-id:         0x%08x", screen->chip_id);
+   DBG(" Chip-id:         0x%016"PRIx64, screen->chip_id);
    DBG(" GMEM size:       0x%08x", screen->gmemsize_bytes);
 
    const struct fd_dev_info *info = fd_dev_info(screen->dev_id);

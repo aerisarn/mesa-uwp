@@ -250,7 +250,7 @@ msm_pipe_new(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
 
    INFO_MSG("Pipe Info:");
    INFO_MSG(" GPU-id:          %d", msm_pipe->gpu_id);
-   INFO_MSG(" Chip-id:         0x%08x", msm_pipe->chip_id);
+   INFO_MSG(" Chip-id:         0x%016"PRIx64, msm_pipe->chip_id);
    INFO_MSG(" GMEM size:       0x%08x", msm_pipe->gmem);
 
    if (open_submitqueue(pipe, prio))

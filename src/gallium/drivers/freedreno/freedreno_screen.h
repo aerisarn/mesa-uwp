@@ -84,7 +84,7 @@ struct fd_screen {
    const struct fd_dev_id *dev_id;
    uint8_t gen;      /* GPU (major) generation */
    uint32_t gpu_id;  /* 220, 305, etc */
-   uint32_t chip_id; /* coreid:8 majorrev:8 minorrev:8 patch:8 */
+   uint64_t chip_id; /* coreid:8 majorrev:8 minorrev:8 patch:8 */
    uint32_t max_freq;
    uint32_t ram_size;
    uint32_t max_rts; /* max # of render targets */

@@ -52,9 +52,9 @@ enum fd_pipe_id {
 enum fd_param_id {
    FD_DEVICE_ID,
    FD_GMEM_SIZE,
-   FD_GMEM_BASE,
+   FD_GMEM_BASE,     /* 64b */
    FD_GPU_ID,
-   FD_CHIP_ID,
+   FD_CHIP_ID,       /* 64b */
    FD_MAX_FREQ,
    FD_TIMESTAMP,
    FD_NR_RINGS,      /* # of rings == # of distinct priority levels */
