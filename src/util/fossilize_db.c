@@ -157,7 +157,7 @@ update_foz_index(struct foz_db *foz_db, FILE *db_idx, unsigned file_idx)
       uint64_t cache_offset;
       if (fread(&cache_offset, 1, sizeof(cache_offset), db_idx) !=
           sizeof(cache_offset))
-         return;
+         break;
 
       entry->offset = cache_offset;
 
