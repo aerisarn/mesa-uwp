@@ -826,7 +826,7 @@ schedule_VMEM(sched_ctx& ctx, Block* block, std::vector<RegisterDemand>& registe
       }
 
       /* if current depends on candidate, add additional dependencies and continue */
-      bool can_move_down = !is_vmem || part_of_clause;
+      bool can_move_down = !is_vmem || part_of_clause || candidate->definitions.empty();
 
       HazardResult haz =
          perform_hazard_query(part_of_clause ? &clause_hq : &indep_hq, candidate.get(), false);
