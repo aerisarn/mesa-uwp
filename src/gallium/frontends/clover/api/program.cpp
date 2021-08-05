@@ -22,6 +22,7 @@
 
 #include "api/util.hpp"
 #include "core/program.hpp"
+#include "core/platform.hpp"
 #include "spirv/invocation.hpp"
 #include "util/u_debug.h"
 
@@ -466,8 +467,11 @@ clUnloadCompiler() {
 }
 
 CLOVER_API cl_int
-clUnloadPlatformCompiler(cl_platform_id d_platform) {
+clUnloadPlatformCompiler(cl_platform_id d_platform) try {
+   find_platform(d_platform);
    return CL_SUCCESS;
+} catch (error &e) {
+   return e.get();
 }
 
 CLOVER_API cl_int
