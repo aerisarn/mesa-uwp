@@ -673,6 +673,9 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
          result = LLVMBuildTrunc(builder, result, bld_base->uint_bld.vec_type, "");
       break;
    }
+   case nir_op_fisfinite32:
+      result = lp_build_isfinite(get_flt_bld(bld_base, src_bit_size[0]), src[0]);
+      break;
    case nir_op_flog2:
       result = lp_build_log2_safe(&bld_base->base, src[0]);
       break;
