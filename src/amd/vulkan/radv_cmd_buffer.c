@@ -6624,6 +6624,14 @@ radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
    state->flush_bits |=
       radv_src_access_flush(cmd_buffer, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, image);
 
+   if (image->planes[0].surface.has_stencil &&
+       !(range->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
+      /* Flush caches before performing a separate aspect initialization because it's a
+       * read-modify-write operation.
+       */
+      state->flush_bits |= radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_READ_BIT, image);
+   }
+
    state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, htile_value);
 
    radv_set_ds_clear_metadata(cmd_buffer, image, range, value, range->aspectMask);
