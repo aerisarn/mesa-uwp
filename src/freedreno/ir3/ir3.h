@@ -126,11 +126,24 @@ struct ir3_register {
       /* meta-flags, for intermediate stages of IR, ie.
        * before register assignment is done:
        */
-      IR3_REG_SSA = 0x4000, /* 'instr' is ptr to assigning instr */
+      IR3_REG_SSA = 0x4000, /* 'def' is ptr to assigning destination */
       IR3_REG_ARRAY = 0x8000,
 
+      /* Set on a use whenever the SSA value becomes dead after the current
+       * instruction.
+       */
       IR3_REG_KILL = 0x10000,
+
+      /* Similar to IR3_REG_KILL, except that if there are multiple uses of the
+       * same SSA value in a single instruction, this is only set on the first
+       * use.
+       */
       IR3_REG_FIRST_KILL = 0x20000,
+
+      /* Set when a destination doesn't have any uses and is dead immediately
+       * after the instruction. This can happen even after optimizations for
+       * corner cases such as destinations of atomic instructions.
+       */
       IR3_REG_UNUSED = 0x40000,
    } flags;
 
