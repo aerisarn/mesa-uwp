@@ -35,6 +35,8 @@
 
 #include "tgsi/tgsi_parse.h"
 
+struct nir_shader;
+
 #define I915_PROGRAM_SIZE 192
 
 /* Use those indices for pos/face routing, must be >= num of inputs */
@@ -288,5 +290,7 @@ extern struct i915_token_list *i915_optimize(const struct tgsi_token *tokens);
 extern void i915_optimize_free(struct i915_token_list *tokens);
 
 extern uint32_t i915_num_coords(uint32_t tex);
+
+extern bool i915_nir_lower_sincos(struct nir_shader *s);
 
 #endif

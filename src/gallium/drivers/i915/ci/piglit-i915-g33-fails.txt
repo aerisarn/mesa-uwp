@@ -1,5 +1,4 @@
 shaders@glsl-bug-110796,Fail
-shaders@glsl-cos,Fail
 shaders@glsl-derivs,Fail
 shaders@glsl-fs-loop,Fail
 shaders@glsl-fs-loop-nested,Fail
@@ -7,7 +6,6 @@ shaders@glsl-fs-raytrace-bug27060,Fail
 shaders@glsl-fwidth,Fail
 shaders@glsl-max-varyings,Fail
 shaders@glsl-max-varyings >max_varying_components,Fail
-shaders@glsl-sin,Fail
 shaders@glsl-uniform-interstage-limits@520 vs- 1 fs,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Fail
@@ -463,10 +461,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA-
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4-vec4,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-cos-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-cos-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-cos-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-cos-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-vec3,Fail
@@ -628,10 +622,6 @@ spec@glsl-1.10@execution@built-in-functions@fs-reflect-vec4-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-refract-vec2-vec2-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-refract-vec3-vec3-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-refract-vec4-vec4-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-sin-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-sin-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-sin-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-sin-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-vec3,Fail
@@ -639,12 +629,7 @@ spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-float-float-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-vec2-vec2-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-vec3-vec3-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-vec4-vec4-vec4,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-tan-float,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-tan-vec2,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-tan-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-tan-vec4,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-atan-3,Fail
-spec@glsl-1.10@execution@builtins@glsl-fs-tan-1,Fail
 spec@glsl-1.10@execution@copy-propagation@glsl-copy-propagation-loop-1,Fail
 spec@glsl-1.10@execution@copy-propagation@glsl-copy-propagation-loop-2,Fail
 spec@glsl-1.10@execution@derivatives@glsl-derivs-abs,Fail

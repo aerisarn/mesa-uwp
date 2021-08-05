@@ -546,7 +546,11 @@ i915_create_fs_state(struct pipe_context *pipe,
    ifs->draw_data = draw_create_fragment_shader(i915->draw, templ);
 
    if (templ->type == PIPE_SHADER_IR_NIR) {
-      ifs->state.tokens = nir_to_tgsi(templ->ir.nir, pipe->screen);
+      nir_shader *s = templ->ir.nir;
+
+      NIR_PASS_V(s, i915_nir_lower_sincos);
+
+      ifs->state.tokens = nir_to_tgsi(s, pipe->screen);
    } else {
       assert(templ->type == PIPE_SHADER_IR_TGSI);
       /* we need to keep a local copy of the tokens */
