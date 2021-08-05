@@ -28,7 +28,7 @@
 #ifndef __PAN_CS_H
 #define __PAN_CS_H
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "pan_texture.h"
 

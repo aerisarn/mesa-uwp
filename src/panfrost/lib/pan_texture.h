@@ -28,13 +28,13 @@
 #ifndef __PAN_TEXTURE_H
 #define __PAN_TEXTURE_H
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include <stdbool.h>
 #include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
 #include "compiler/shader_enums.h"
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 #include "pan_bo.h"
 #include "pan_device.h"
 #include "pan_util.h"

@@ -26,7 +26,7 @@
 #ifndef __PAN_DECODE_H__
 #define __PAN_DECODE_H__
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "wrap.h"
 

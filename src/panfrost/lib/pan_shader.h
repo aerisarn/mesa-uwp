@@ -29,7 +29,7 @@
 #include "panfrost/util/pan_ir.h"
 
 #include "pan_device.h"
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 struct panfrost_device;
 

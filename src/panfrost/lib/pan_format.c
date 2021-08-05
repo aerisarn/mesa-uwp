@@ -24,7 +24,7 @@
  *   Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 #include "pan_format.h"
 #include "util/format/u_format.h"
 

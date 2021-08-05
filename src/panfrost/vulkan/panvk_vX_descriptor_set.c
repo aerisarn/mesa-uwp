@@ -25,7 +25,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "panvk_private.h"
 

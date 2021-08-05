@@ -25,7 +25,7 @@
 #ifndef __PAN_BLEND_H__
 #define __PAN_BLEND_H__
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "util/u_dynarray.h"
 #include "util/format/u_format.h"

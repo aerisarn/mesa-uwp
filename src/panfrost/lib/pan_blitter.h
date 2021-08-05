@@ -25,7 +25,7 @@
 #ifndef __PAN_BLITTER_H
 #define __PAN_BLITTER_H
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "panfrost-job.h"
 #include "pan_cs.h"

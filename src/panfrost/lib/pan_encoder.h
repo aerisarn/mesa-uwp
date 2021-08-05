@@ -33,7 +33,7 @@
 #include <stdbool.h>
 #include "util/format/u_format.h"
 #include "pan_bo.h"
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 #include "pan_device.h"
 
 /* Indices for named (non-XFB) varyings that are present. These are packed

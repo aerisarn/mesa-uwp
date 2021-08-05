@@ -21,7 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "util/macros.h"
 #include "compiler/shader_enums.h"

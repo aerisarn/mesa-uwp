@@ -34,7 +34,7 @@
 #include "gallium/auxiliary/util/u_blend.h"
 
 #include "panfrost-quirks.h"
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "pan_pool.h"
 #include "pan_bo.h"

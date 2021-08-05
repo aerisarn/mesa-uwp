@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-#include <gen_macros.h>
+#include <genxml/gen_macros.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>

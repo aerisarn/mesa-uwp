@@ -21,7 +21,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "gen_macros.h"
+#include "genxml/gen_macros.h"
 
 #include "nir/nir_builder.h"
 #include "pan_encoder.h"

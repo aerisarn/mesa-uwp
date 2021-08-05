@@ -41,7 +41,7 @@
 #include "pan_pool.h"
 #include "pan_util.h"
 
-#include <gen_macros.h>
+#include <genxml/gen_macros.h>
 
 #if defined(__cplusplus)
 extern "C" {
