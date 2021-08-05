@@ -1056,7 +1056,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
          gmem_offset = att->gmem_offset_stencil;
       }
 
-      if (!gmem)
+      if (!gmem || !subpass->input_attachments[i / 2].patch_input_gmem)
          continue;
 
       /* patched for gmem */
@@ -2924,6 +2924,9 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
       cmd->state.cache.pending_flush_bits;
    cmd->state.renderpass_cache.flush_bits = 0;
 
+   if (pass->subpasses[0].feedback_invalidate)
+      cmd->state.renderpass_cache.flush_bits |= TU_CMD_FLAG_CACHE_INVALIDATE;
+
    /* Track LRZ valid state */
    uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
    if (a != VK_ATTACHMENT_UNUSED) {
@@ -3010,6 +3013,9 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
 
    /* Handle dependencies for the next subpass */
    tu_subpass_barrier(cmd, &cmd->state.subpass->start_barrier, false);
+
+   if (cmd->state.subpass->feedback_invalidate)
+      cmd->state.renderpass_cache.flush_bits |= TU_CMD_FLAG_CACHE_INVALIDATE;
 
    /* emit mrt/zs/msaa/ubwc state for the subpass that is starting */
    tu6_emit_zs(cmd, cmd->state.subpass, cs);

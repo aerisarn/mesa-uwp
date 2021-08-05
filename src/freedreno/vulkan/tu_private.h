@@ -1542,6 +1542,12 @@ struct tu_subpass_barrier {
 struct tu_subpass_attachment
 {
    uint32_t attachment;
+
+   /* For input attachments, true if it needs to be patched to refer to GMEM
+    * in GMEM mode. This is false if it hasn't already been written as an
+    * attachment.
+    */
+   bool patch_input_gmem;
 };
 
 struct tu_subpass
@@ -1550,6 +1556,10 @@ struct tu_subpass
    uint32_t color_count;
    uint32_t resolve_count;
    bool resolve_depth_stencil;
+
+   /* True if we must invalidate UCHE thanks to a feedback loop. */
+   bool feedback_invalidate;
+
    struct tu_subpass_attachment *input_attachments;
    struct tu_subpass_attachment *color_attachments;
    struct tu_subpass_attachment *resolve_attachments;
