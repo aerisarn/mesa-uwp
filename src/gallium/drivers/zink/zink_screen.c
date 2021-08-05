@@ -544,8 +544,15 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return screen->info.props.limits.minTexelBufferOffsetAlignment;
 
-   case PIPE_CAP_TEXTURE_TRANSFER_MODES:
-      return PIPE_TEXTURE_TRANSFER_BLIT;
+   case PIPE_CAP_TEXTURE_TRANSFER_MODES: {
+      enum pipe_texture_transfer_mode mode = PIPE_TEXTURE_TRANSFER_BLIT;
+      if (!screen->is_cpu &&
+          screen->info.have_KHR_8bit_storage &&
+          screen->info.have_KHR_16bit_storage &&
+          screen->info.have_KHR_shader_float16_int8)
+         mode |= PIPE_TEXTURE_TRANSFER_COMPUTE;
+      return mode;
+   }
 
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
       return MIN2(get_smallest_buffer_heap(screen),
@@ -977,6 +984,23 @@ vk_sample_count_flags(uint32_t sample_count)
    default:
       return 0;
    }
+}
+
+static bool
+zink_is_compute_copy_faster(struct pipe_screen *pscreen,
+                            enum pipe_format src_format,
+                            enum pipe_format dst_format,
+                            unsigned width,
+                            unsigned height,
+                            unsigned depth,
+                            bool cpu)
+{
+   if (cpu)
+      /* very basic for now, probably even worse for some cases,
+       * but fixes lots of others
+       */
+      return width * height * depth > 64 * 64;
+   return false;
 }
 
 static bool
@@ -1980,6 +2004,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.get_shader_param = zink_get_shader_param;
    screen->base.get_compiler_options = zink_get_compiler_options;
    screen->base.get_sample_pixel_grid = zink_get_sample_pixel_grid;
+   screen->base.is_compute_copy_faster = zink_is_compute_copy_faster;
    screen->base.is_format_supported = zink_is_format_supported;
    screen->base.query_dmabuf_modifiers = zink_query_dmabuf_modifiers;
    screen->base.is_dmabuf_modifier_supported = zink_is_dmabuf_modifier_supported;
