@@ -113,10 +113,10 @@ vir_is_raw_mov(struct qinst *inst)
                 return false;
         }
 
-        if (inst->qpu.alu.add.a_unpack != V3D_QPU_UNPACK_NONE ||
-            inst->qpu.alu.add.b_unpack != V3D_QPU_UNPACK_NONE ||
-            inst->qpu.alu.mul.a_unpack != V3D_QPU_UNPACK_NONE ||
-            inst->qpu.alu.mul.b_unpack != V3D_QPU_UNPACK_NONE) {
+        if (inst->qpu.alu.add.a.unpack != V3D_QPU_UNPACK_NONE ||
+            inst->qpu.alu.add.b.unpack != V3D_QPU_UNPACK_NONE ||
+            inst->qpu.alu.mul.a.unpack != V3D_QPU_UNPACK_NONE ||
+            inst->qpu.alu.mul.b.unpack != V3D_QPU_UNPACK_NONE) {
                 return false;
         }
 
@@ -209,15 +209,15 @@ vir_set_unpack(struct qinst *inst, int src,
 
         if (vir_is_add(inst)) {
                 if (src == 0)
-                        inst->qpu.alu.add.a_unpack = unpack;
+                        inst->qpu.alu.add.a.unpack = unpack;
                 else
-                        inst->qpu.alu.add.b_unpack = unpack;
+                        inst->qpu.alu.add.b.unpack = unpack;
         } else {
                 assert(vir_is_mul(inst));
                 if (src == 0)
-                        inst->qpu.alu.mul.a_unpack = unpack;
+                        inst->qpu.alu.mul.a.unpack = unpack;
                 else
-                        inst->qpu.alu.mul.b_unpack = unpack;
+                        inst->qpu.alu.mul.b.unpack = unpack;
         }
 }
 

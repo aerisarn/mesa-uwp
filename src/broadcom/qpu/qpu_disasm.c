@@ -121,16 +121,16 @@ v3d_qpu_disasm_add(struct disasm_state *disasm,
         if (num_src >= 1) {
                 if (has_dst)
                         append(disasm, ", ");
-                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.add.a);
+                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.add.a.mux);
                 append(disasm, "%s",
-                       v3d_qpu_unpack_name(instr->alu.add.a_unpack));
+                       v3d_qpu_unpack_name(instr->alu.add.a.unpack));
         }
 
         if (num_src >= 2) {
                 append(disasm, ", ");
-                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.add.b);
+                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.add.b.mux);
                 append(disasm, "%s",
-                       v3d_qpu_unpack_name(instr->alu.add.b_unpack));
+                       v3d_qpu_unpack_name(instr->alu.add.b.unpack));
         }
 }
 
@@ -164,16 +164,16 @@ v3d_qpu_disasm_mul(struct disasm_state *disasm,
         if (num_src >= 1) {
                 if (has_dst)
                         append(disasm, ", ");
-                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.mul.a);
+                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.mul.a.mux);
                 append(disasm, "%s",
-                       v3d_qpu_unpack_name(instr->alu.mul.a_unpack));
+                       v3d_qpu_unpack_name(instr->alu.mul.a.unpack));
         }
 
         if (num_src >= 2) {
                 append(disasm, ", ");
-                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.mul.b);
+                v3d_qpu_disasm_raddr(disasm, instr, instr->alu.mul.b.mux);
                 append(disasm, "%s",
-                       v3d_qpu_unpack_name(instr->alu.mul.b_unpack));
+                       v3d_qpu_unpack_name(instr->alu.mul.b.unpack));
         }
 }
 

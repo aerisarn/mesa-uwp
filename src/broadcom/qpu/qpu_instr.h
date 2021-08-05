@@ -294,25 +294,26 @@ enum v3d_qpu_mux {
         V3D_QPU_MUX_B,
 };
 
+struct v3d_qpu_input {
+        enum v3d_qpu_mux mux;
+        enum v3d_qpu_input_unpack unpack;
+};
+
 struct v3d_qpu_alu_instr {
         struct {
                 enum v3d_qpu_add_op op;
-                enum v3d_qpu_mux a, b;
+                struct v3d_qpu_input a, b;
                 uint8_t waddr;
                 bool magic_write;
                 enum v3d_qpu_output_pack output_pack;
-                enum v3d_qpu_input_unpack a_unpack;
-                enum v3d_qpu_input_unpack b_unpack;
         } add;
 
         struct {
                 enum v3d_qpu_mul_op op;
-                enum v3d_qpu_mux a, b;
+                struct v3d_qpu_input a, b;
                 uint8_t waddr;
                 bool magic_write;
                 enum v3d_qpu_output_pack output_pack;
-                enum v3d_qpu_input_unpack a_unpack;
-                enum v3d_qpu_input_unpack b_unpack;
         } mul;
 };
 

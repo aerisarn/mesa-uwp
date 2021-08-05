@@ -106,20 +106,20 @@ set_src(struct v3d_qpu_instr *instr, enum v3d_qpu_mux *mux, struct qpu_reg src)
                 return;
         }
 
-        if (instr->alu.add.a != V3D_QPU_MUX_A &&
-            instr->alu.add.b != V3D_QPU_MUX_A &&
-            instr->alu.mul.a != V3D_QPU_MUX_A &&
-            instr->alu.mul.b != V3D_QPU_MUX_A) {
+        if (instr->alu.add.a.mux != V3D_QPU_MUX_A &&
+            instr->alu.add.b.mux != V3D_QPU_MUX_A &&
+            instr->alu.mul.a.mux != V3D_QPU_MUX_A &&
+            instr->alu.mul.b.mux != V3D_QPU_MUX_A) {
                 instr->raddr_a = src.index;
                 *mux = V3D_QPU_MUX_A;
         } else {
                 if (instr->raddr_a == src.index) {
                         *mux = V3D_QPU_MUX_A;
                 } else {
-                        assert(!(instr->alu.add.a == V3D_QPU_MUX_B &&
-                                 instr->alu.add.b == V3D_QPU_MUX_B &&
-                                 instr->alu.mul.a == V3D_QPU_MUX_B &&
-                                 instr->alu.mul.b == V3D_QPU_MUX_B) ||
+                        assert(!(instr->alu.add.a.mux == V3D_QPU_MUX_B &&
+                                 instr->alu.add.b.mux == V3D_QPU_MUX_B &&
+                                 instr->alu.mul.a.mux == V3D_QPU_MUX_B &&
+                                 instr->alu.mul.b.mux == V3D_QPU_MUX_B) ||
                                src.index == instr->raddr_b);
 
                         instr->raddr_b = src.index;
@@ -147,14 +147,14 @@ is_no_op_mov(struct qinst *qinst)
                 if (waddr < V3D_QPU_WADDR_R0 || waddr > V3D_QPU_WADDR_R4)
                         return false;
 
-                if (qinst->qpu.alu.mul.a !=
+                if (qinst->qpu.alu.mul.a.mux !=
                     V3D_QPU_MUX_R0 + (waddr - V3D_QPU_WADDR_R0)) {
                         return false;
                 }
         } else {
                 int raddr;
 
-                switch (qinst->qpu.alu.mul.a) {
+                switch (qinst->qpu.alu.mul.a.mux) {
                 case V3D_QPU_MUX_A:
                         raddr = qinst->qpu.raddr_a;
                         break;
@@ -171,7 +171,7 @@ is_no_op_mov(struct qinst *qinst)
         /* No packing or flags updates, or we need to execute the
          * instruction.
          */
-        if (qinst->qpu.alu.mul.a_unpack != V3D_QPU_UNPACK_NONE ||
+        if (qinst->qpu.alu.mul.a.unpack != V3D_QPU_UNPACK_NONE ||
             qinst->qpu.alu.mul.output_pack != V3D_QPU_PACK_NONE ||
             qinst->qpu.flags.mc != V3D_QPU_COND_NONE ||
             qinst->qpu.flags.mpf != V3D_QPU_PF_NONE ||
@@ -302,11 +302,11 @@ v3d_generate_code_block(struct v3d_compile *c,
                                 assert(qinst->qpu.alu.mul.op == V3D_QPU_M_NOP);
                                 if (nsrc >= 1) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.add.a, src[0]);
+                                                &qinst->qpu.alu.add.a.mux, src[0]);
                                 }
                                 if (nsrc >= 2) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.add.b, src[1]);
+                                                &qinst->qpu.alu.add.b.mux, src[1]);
                                 }
 
                                 qinst->qpu.alu.add.waddr = dst.index;
@@ -314,11 +314,11 @@ v3d_generate_code_block(struct v3d_compile *c,
                         } else {
                                 if (nsrc >= 1) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.mul.a, src[0]);
+                                                &qinst->qpu.alu.mul.a.mux, src[0]);
                                 }
                                 if (nsrc >= 2) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.mul.b, src[1]);
+                                                &qinst->qpu.alu.mul.b.mux, src[1]);
                                 }
 
                                 qinst->qpu.alu.mul.waddr = dst.index;

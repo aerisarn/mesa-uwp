@@ -104,14 +104,14 @@ vir_has_unpack(struct qinst *inst, int chan)
 
         if (vir_is_add(inst)) {
                 if (chan == 0)
-                        return inst->qpu.alu.add.a_unpack != V3D_QPU_UNPACK_NONE;
+                        return inst->qpu.alu.add.a.unpack != V3D_QPU_UNPACK_NONE;
                 else
-                        return inst->qpu.alu.add.b_unpack != V3D_QPU_UNPACK_NONE;
+                        return inst->qpu.alu.add.b.unpack != V3D_QPU_UNPACK_NONE;
         } else {
                 if (chan == 0)
-                        return inst->qpu.alu.mul.a_unpack != V3D_QPU_UNPACK_NONE;
+                        return inst->qpu.alu.mul.a.unpack != V3D_QPU_UNPACK_NONE;
                 else
-                        return inst->qpu.alu.mul.b_unpack != V3D_QPU_UNPACK_NONE;
+                        return inst->qpu.alu.mul.b.unpack != V3D_QPU_UNPACK_NONE;
         }
 }
 
@@ -161,7 +161,7 @@ try_copy_prop(struct v3d_compile *c, struct qinst *inst, struct qinst **movs)
                                 continue;
 
                         /* these ops can't represent abs. */
-                        if (mov->qpu.alu.mul.a_unpack == V3D_QPU_UNPACK_ABS) {
+                        if (mov->qpu.alu.mul.a.unpack == V3D_QPU_UNPACK_ABS) {
                                 switch (inst->qpu.alu.add.op) {
                                 case V3D_QPU_A_VFPACK:
                                 case V3D_QPU_A_FROUND:
@@ -189,7 +189,7 @@ try_copy_prop(struct v3d_compile *c, struct qinst *inst, struct qinst **movs)
 
                 inst->src[i] = mov->src[0];
                 if (vir_has_unpack(mov, 0)) {
-                        enum v3d_qpu_input_unpack unpack = mov->qpu.alu.mul.a_unpack;
+                        enum v3d_qpu_input_unpack unpack = mov->qpu.alu.mul.a.unpack;
 
                         vir_set_unpack(inst, i, unpack);
                 }

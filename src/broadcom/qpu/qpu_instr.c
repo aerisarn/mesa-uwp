@@ -926,10 +926,10 @@ v3d_qpu_uses_mux(const struct v3d_qpu_instr *inst, enum v3d_qpu_mux mux)
         int add_nsrc = v3d_qpu_add_op_num_src(inst->alu.add.op);
         int mul_nsrc = v3d_qpu_mul_op_num_src(inst->alu.mul.op);
 
-        return ((add_nsrc > 0 && inst->alu.add.a == mux) ||
-                (add_nsrc > 1 && inst->alu.add.b == mux) ||
-                (mul_nsrc > 0 && inst->alu.mul.a == mux) ||
-                (mul_nsrc > 1 && inst->alu.mul.b == mux));
+        return ((add_nsrc > 0 && inst->alu.add.a.mux == mux) ||
+                (add_nsrc > 1 && inst->alu.add.b.mux == mux) ||
+                (mul_nsrc > 0 && inst->alu.mul.a.mux == mux) ||
+                (mul_nsrc > 1 && inst->alu.mul.b.mux == mux));
 }
 
 bool

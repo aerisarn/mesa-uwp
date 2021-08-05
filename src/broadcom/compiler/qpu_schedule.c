@@ -306,14 +306,14 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
         /* XXX: LOAD_IMM */
 
         if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 0)
-                process_mux_deps(state, n, inst->alu.add.a);
+                process_mux_deps(state, n, inst->alu.add.a.mux);
         if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 1)
-                process_mux_deps(state, n, inst->alu.add.b);
+                process_mux_deps(state, n, inst->alu.add.b.mux);
 
         if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 0)
-                process_mux_deps(state, n, inst->alu.mul.a);
+                process_mux_deps(state, n, inst->alu.mul.a.mux);
         if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 1)
-                process_mux_deps(state, n, inst->alu.mul.b);
+                process_mux_deps(state, n, inst->alu.mul.b.mux);
 
         switch (inst->alu.add.op) {
         case V3D_QPU_A_VPMSETUP:
@@ -537,22 +537,22 @@ reads_too_soon_after_write(struct choose_scoreboard *scoreboard,
 
         if (inst->alu.add.op != V3D_QPU_A_NOP) {
                 if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 0 &&
-                    mux_reads_too_soon(scoreboard, inst, inst->alu.add.a)) {
+                    mux_reads_too_soon(scoreboard, inst, inst->alu.add.a.mux)) {
                         return true;
                 }
                 if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 1 &&
-                    mux_reads_too_soon(scoreboard, inst, inst->alu.add.b)) {
+                    mux_reads_too_soon(scoreboard, inst, inst->alu.add.b.mux)) {
                         return true;
                 }
         }
 
         if (inst->alu.mul.op != V3D_QPU_M_NOP) {
                 if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 0 &&
-                    mux_reads_too_soon(scoreboard, inst, inst->alu.mul.a)) {
+                    mux_reads_too_soon(scoreboard, inst, inst->alu.mul.a.mux)) {
                         return true;
                 }
                 if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 1 &&
-                    mux_reads_too_soon(scoreboard, inst, inst->alu.mul.b)) {
+                    mux_reads_too_soon(scoreboard, inst, inst->alu.mul.b.mux)) {
                         return true;
                 }
         }
@@ -839,20 +839,20 @@ qpu_merge_raddrs(struct v3d_qpu_instr *result,
         if (!result->sig.small_imm_b) {
                 if (v3d_qpu_uses_mux(add_instr, V3D_QPU_MUX_B) &&
                     raddr_a == add_instr->raddr_b) {
-                        if (add_instr->alu.add.a == V3D_QPU_MUX_B)
-                                result->alu.add.a = V3D_QPU_MUX_A;
-                        if (add_instr->alu.add.b == V3D_QPU_MUX_B &&
+                        if (add_instr->alu.add.a.mux == V3D_QPU_MUX_B)
+                                result->alu.add.a.mux = V3D_QPU_MUX_A;
+                        if (add_instr->alu.add.b.mux == V3D_QPU_MUX_B &&
                             v3d_qpu_add_op_num_src(add_instr->alu.add.op) > 1) {
-                                result->alu.add.b = V3D_QPU_MUX_A;
+                                result->alu.add.b.mux = V3D_QPU_MUX_A;
                         }
                 }
                 if (v3d_qpu_uses_mux(mul_instr, V3D_QPU_MUX_B) &&
                     raddr_a == mul_instr->raddr_b) {
-                        if (mul_instr->alu.mul.a == V3D_QPU_MUX_B)
-                                result->alu.mul.a = V3D_QPU_MUX_A;
-                        if (mul_instr->alu.mul.b == V3D_QPU_MUX_B &&
+                        if (mul_instr->alu.mul.a.mux == V3D_QPU_MUX_B)
+                                result->alu.mul.a.mux = V3D_QPU_MUX_A;
+                        if (mul_instr->alu.mul.b.mux == V3D_QPU_MUX_B &&
                             v3d_qpu_mul_op_num_src(mul_instr->alu.mul.op) > 1) {
-                                result->alu.mul.b = V3D_QPU_MUX_A;
+                                result->alu.mul.b.mux = V3D_QPU_MUX_A;
                         }
                 }
         }
@@ -863,20 +863,20 @@ qpu_merge_raddrs(struct v3d_qpu_instr *result,
         result->raddr_b = raddr_b;
         if (v3d_qpu_uses_mux(add_instr, V3D_QPU_MUX_A) &&
             raddr_b == add_instr->raddr_a) {
-                if (add_instr->alu.add.a == V3D_QPU_MUX_A)
-                        result->alu.add.a = V3D_QPU_MUX_B;
-                if (add_instr->alu.add.b == V3D_QPU_MUX_A &&
+                if (add_instr->alu.add.a.mux == V3D_QPU_MUX_A)
+                        result->alu.add.a.mux = V3D_QPU_MUX_B;
+                if (add_instr->alu.add.b.mux == V3D_QPU_MUX_A &&
                     v3d_qpu_add_op_num_src(add_instr->alu.add.op) > 1) {
-                        result->alu.add.b = V3D_QPU_MUX_B;
+                        result->alu.add.b.mux = V3D_QPU_MUX_B;
                 }
         }
         if (v3d_qpu_uses_mux(mul_instr, V3D_QPU_MUX_A) &&
             raddr_b == mul_instr->raddr_a) {
-                if (mul_instr->alu.mul.a == V3D_QPU_MUX_A)
-                        result->alu.mul.a = V3D_QPU_MUX_B;
-                if (mul_instr->alu.mul.b == V3D_QPU_MUX_A &&
+                if (mul_instr->alu.mul.a.mux == V3D_QPU_MUX_A)
+                        result->alu.mul.a.mux = V3D_QPU_MUX_B;
+                if (mul_instr->alu.mul.b.mux == V3D_QPU_MUX_A &&
                     v3d_qpu_mul_op_num_src(mul_instr->alu.mul.op) > 1) {
-                        result->alu.mul.b = V3D_QPU_MUX_B;
+                        result->alu.mul.b.mux = V3D_QPU_MUX_B;
                 }
         }
 
@@ -927,11 +927,12 @@ qpu_convert_add_to_mul(struct v3d_qpu_instr *inst)
         inst->flags.auf = V3D_QPU_UF_NONE;
 
         inst->alu.mul.output_pack = inst->alu.add.output_pack;
-        inst->alu.mul.a_unpack = inst->alu.add.a_unpack;
-        inst->alu.mul.b_unpack = inst->alu.add.b_unpack;
+
+        inst->alu.mul.a.unpack = inst->alu.add.a.unpack;
+        inst->alu.mul.b.unpack = inst->alu.add.b.unpack;
         inst->alu.add.output_pack = V3D_QPU_PACK_NONE;
-        inst->alu.add.a_unpack = V3D_QPU_UNPACK_NONE;
-        inst->alu.add.b_unpack = V3D_QPU_UNPACK_NONE;
+        inst->alu.add.a.unpack = V3D_QPU_UNPACK_NONE;
+        inst->alu.add.b.unpack = V3D_QPU_UNPACK_NONE;
 }
 
 static bool
@@ -2064,12 +2065,12 @@ alu_reads_register(struct v3d_qpu_instr *inst,
 
         if (add) {
                 num_src = v3d_qpu_add_op_num_src(inst->alu.add.op);
-                mux_a = inst->alu.add.a;
-                mux_b = inst->alu.add.b;
+                mux_a = inst->alu.add.a.mux;
+                mux_b = inst->alu.add.b.mux;
         } else {
                 num_src = v3d_qpu_mul_op_num_src(inst->alu.mul.op);
-                mux_a = inst->alu.mul.a;
-                mux_b = inst->alu.mul.b;
+                mux_a = inst->alu.mul.a.mux;
+                mux_b = inst->alu.mul.b.mux;
         }
 
         for (int i = 0; i < num_src; i++) {
