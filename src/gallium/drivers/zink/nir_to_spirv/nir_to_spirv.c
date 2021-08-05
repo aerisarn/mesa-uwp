@@ -891,14 +891,18 @@ get_bo_array_type(struct ntv_context *ctx, struct nir_variable *var, unsigned bi
 {
    assert(bitsize);
    SpvId array_type;
-   SpvId uint_type = spirv_builder_type_uint(&ctx->builder, bitsize);
-   if (glsl_type_is_unsized_array(var->type)) {
-      array_type = spirv_builder_type_runtime_array(&ctx->builder, uint_type);
-      spirv_builder_emit_array_stride(&ctx->builder, array_type, bitsize / 8);
-   } else {
-      uint32_t array_size = glsl_get_length(glsl_get_struct_field(var->interface_type, 0)) * (bitsize / 4);
-      array_type = get_sized_uint_array_type(ctx, array_size, bitsize);
+   const struct glsl_type *type = var->type;
+   if (!glsl_type_is_unsized_array(type)) {
+      type = glsl_get_struct_field(var->interface_type, 0);
+      if (!glsl_type_is_unsized_array(type)) {
+         uint32_t array_size = glsl_get_length(type) * (bitsize / 4);
+         assert(array_size);
+         return get_sized_uint_array_type(ctx, array_size, bitsize);
+      }
    }
+   SpvId uint_type = spirv_builder_type_uint(&ctx->builder, bitsize);
+   array_type = spirv_builder_type_runtime_array(&ctx->builder, uint_type);
+   spirv_builder_emit_array_stride(&ctx->builder, array_type, bitsize / 8);
    return array_type;
 }
 
@@ -910,7 +914,7 @@ get_bo_struct_type(struct ntv_context *ctx, struct nir_variable *var, unsigned b
 
    // wrap UBO-array in a struct
    SpvId runtime_array = 0;
-   if (ssbo) {
+   if (ssbo && glsl_get_length(var->interface_type) > 1) {
        const struct glsl_type *last_member = glsl_get_struct_field(var->interface_type, glsl_get_length(var->interface_type) - 1);
        if (glsl_type_is_unsized_array(last_member)) {
           bool is_64bit = glsl_type_is_64bit(glsl_without_array(last_member));
