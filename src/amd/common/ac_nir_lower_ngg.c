@@ -840,8 +840,7 @@ apply_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
          /* When we found any of these intrinsics, it means
           * we reached the top part and we must stop.
           */
-         if (intrin->intrinsic == nir_intrinsic_alloc_vertices_and_primitives_amd ||
-             intrin->intrinsic == nir_intrinsic_export_primitive_amd)
+         if (intrin->intrinsic == nir_intrinsic_alloc_vertices_and_primitives_amd)
             goto done;
 
          if (intrin->intrinsic != nir_intrinsic_store_deref)
