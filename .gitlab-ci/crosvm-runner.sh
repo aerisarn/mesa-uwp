@@ -33,7 +33,7 @@ syslogd > /dev/null
 crosvm run \
   --gpu "$CROSVM_GPU_ARGS" \
   -m 4096 \
-  -c 4 \
+  -c $((FDO_CI_CONCURRENT > 1 ? FDO_CI_CONCURRENT - 1 : 1)) \
   --disable-sandbox \
   --shared-dir /:my_root:type=fs:writeback=true:timeout=60:cache=always \
   --host_ip=192.168.30.1 --netmask=255.255.255.0 --mac "AA:BB:CC:00:00:12" \

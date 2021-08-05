@@ -41,9 +41,9 @@ dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.4,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.9,Fail
-dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_12,Fail
-dEQP-GLES31.functional.image_load_store.buffer.image_size.writeonly_32,Fail
+dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.8,Fail
+dEQP-GLES31.functional.image_load_store.buffer.image_size.writeonly_12,Fail
+dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_writeonly_12,Fail
 dEQP-GLES31.functional.primitive_bounding_box.wide_points.global_state.vertex_tessellation_fragment.default_framebuffer_bbox_equal,Fail
 dEQP-GLES31.functional.primitive_bounding_box.wide_points.global_state.vertex_tessellation_fragment.default_framebuffer_bbox_larger,Fail
 dEQP-GLES31.functional.primitive_bounding_box.wide_points.global_state.vertex_tessellation_fragment.fbo_bbox_equal,Fail
