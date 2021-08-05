@@ -582,7 +582,6 @@ libmesa = static_library(
   build_by_default : false,
 )
 
-subdir('drivers/dri')
 if with_tests
   subdir('main/tests')
 endif
