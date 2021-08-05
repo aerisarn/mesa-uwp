@@ -2462,6 +2462,8 @@ st_GetTexSubImage(struct gl_context * ctx,
           texImage->TexFormat != MESA_FORMAT_ETC1_RGB8);
 
    st_flush_bitmap_cache(st);
+   if (st->force_compute_based_texture_transfer)
+      goto non_blit_transfer;
 
    /* GetTexImage only returns a single face for cubemaps. */
    if (gl_target == GL_TEXTURE_CUBE_MAP) {
@@ -2571,7 +2573,7 @@ st_GetTexSubImage(struct gl_context * ctx,
 non_blit_transfer:
    if (done)
       return;
-   if (st->allow_compute_based_texture_transfer) {
+   if (st->allow_compute_based_texture_transfer || st->force_compute_based_texture_transfer) {
       if (st_GetTexSubImage_shader(ctx, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels, texImage))
          return;
    }

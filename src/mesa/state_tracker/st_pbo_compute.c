@@ -854,6 +854,19 @@ add_spec_data(struct pbo_async_data *async, struct pbo_data *pd)
    return spec;
 }
 
+static struct pbo_async_data *
+add_async_data(struct st_context *st, enum pipe_texture_target view_target, unsigned num_components, uint32_t hash_key)
+{
+   struct pbo_async_data *async = calloc(1, sizeof(struct pbo_async_data));
+   async->st = st;
+   async->target = view_target;
+   async->num_components = num_components;
+   util_queue_fence_init(&async->fence);
+   _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, async);
+   _mesa_set_init(&async->specialized, NULL, hash_pbo_data, equals_pbo_data);
+   return async;
+}
+
 static struct pipe_resource *
 download_texture_compute(struct st_context *st,
                          const struct gl_pixelstore_attrib *pack,
@@ -903,7 +916,22 @@ download_texture_compute(struct st_context *st,
    struct hash_entry *he = _mesa_hash_table_search(st->pbo.shaders, (void*)(uintptr_t)hash_key);
    void *cs = NULL;
    if (he) {
-      if (screen->driver_thread_add_job) {
+      /* disable async if MESA_COMPUTE_PBO is set */
+      if (st->force_specialized_compute_transfer) {
+         struct pbo_async_data *async = he->data;
+         struct pbo_spec_async_data *spec = add_spec_data(async, &pd);
+         if (spec->cs) {
+            cs = spec->cs;
+         } else {
+            create_spec_shader_async(spec, NULL, 0);
+            struct pipe_shader_state state = {
+               .type = PIPE_SHADER_IR_NIR,
+               .ir.nir = spec->nir,
+            };
+            cs = spec->cs = st_create_nir_shader(st, &state);
+         }
+         cb.buffer_size = 2 * sizeof(uint32_t);
+      } else if (!st->force_compute_based_texture_transfer && screen->driver_thread_add_job) {
          struct pbo_async_data *async = he->data;
          struct pbo_spec_async_data *spec = add_spec_data(async, &pd);
          if (!util_queue_fence_is_signalled(&async->fence))
@@ -947,28 +975,33 @@ download_texture_compute(struct st_context *st,
          cs = he->data;
       }
    } else {
-      if (screen->driver_thread_add_job) {
-         struct pbo_async_data *async = calloc(1, sizeof(struct pbo_async_data));
-         async->st = st;
-         async->target = view_target;
-         async->num_components = num_components;
-         util_queue_fence_init(&async->fence);
+      if (!st->force_compute_based_texture_transfer && screen->driver_thread_add_job) {
+         struct pbo_async_data *async = add_async_data(st, view_target, num_components, hash_key);
          screen->driver_thread_add_job(screen, async, &async->fence, create_conversion_shader_async, NULL, 0);
-         _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, async);
-
-         _mesa_set_init(&async->specialized, NULL, hash_pbo_data, equals_pbo_data);
          add_spec_data(async, &pd);
          return NULL;
+      }
+
+      if (st->force_specialized_compute_transfer) {
+         struct pbo_async_data *async = add_async_data(st, view_target, num_components, hash_key);
+         create_conversion_shader_async(async, NULL, 0);
+         struct pbo_spec_async_data *spec = add_spec_data(async, &pd);
+         create_spec_shader_async(spec, NULL, 0);
+         struct pipe_shader_state state = {
+            .type = PIPE_SHADER_IR_NIR,
+            .ir.nir = spec->nir,
+         };
+         cs = spec->cs = st_create_nir_shader(st, &state);
+         cb.buffer_size = 2 * sizeof(uint32_t);
       } else {
          nir_shader *nir = create_conversion_shader(st, view_target, num_components);
          struct pipe_shader_state state = {
             .type = PIPE_SHADER_IR_NIR,
             .ir.nir = nir,
          };
-
          cs = st_create_nir_shader(st, &state);
+         he = _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, cs);
       }
-      he = _mesa_hash_table_insert(st->pbo.shaders, (void*)(uintptr_t)hash_key, cs);
    }
    assert(cs);
    struct cso_context *cso = st->cso_context;
@@ -1265,7 +1298,8 @@ st_GetTexSubImage_shader(struct gl_context * ctx,
    }
 
    /* check with the driver to see if memcpy is likely to be faster */
-   if (!screen->is_compute_copy_faster(screen, src_format, dst_format, width, height, depth, true))
+   if (!st->force_compute_based_texture_transfer &&
+       !screen->is_compute_copy_faster(screen, src_format, dst_format, width, height, depth, true))
       return false;
 
    view_target = get_target_from_texture(src);
@@ -1305,7 +1339,8 @@ st_pbo_compute_deinit(struct st_context *st)
    if (!st->pbo.shaders)
       return;
    hash_table_foreach(st->pbo.shaders, entry) {
-      if (screen->driver_thread_add_job) {
+      if (st->force_specialized_compute_transfer ||
+          (!st->force_compute_based_texture_transfer && screen->driver_thread_add_job)) {
          struct pbo_async_data *async = entry->data;
          util_queue_fence_wait(&async->fence);
          if (async->cs)
