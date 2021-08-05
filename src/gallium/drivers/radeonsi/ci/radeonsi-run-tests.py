@@ -51,6 +51,7 @@ parser.add_argument(
     default=os.getenv("MAREKO_BUILD_PATH"),
 )
 parser.add_argument('--verbose', '-v', action='count', default=0)
+parser.add_argument('--include-tests', '-t', action='append', dest="include_tests")
 
 parser.add_argument(
     "--no-piglit", dest="piglit", help="Disable piglit tests", action="store_false"
@@ -192,6 +193,8 @@ if args.piglit:
             '--timeout', '300',
             '--jobs', str(args.jobs),
             '--skips', skips]
+    for t in args.include_tests:
+        cmd += ['-t', t]
     if os.path.exists(baseline):
         cmd += ['--baseline', baseline]
     env = os.environ.copy()
@@ -218,6 +221,8 @@ if args.glcts:
             '--skips', skips,
             '--jobs', str(args.jobs),
             '--timeout', '1000']
+    for t in args.include_tests:
+        cmd += ['-t', t]
     if os.path.exists(baseline):
         cmd += ['--baseline', baseline]
     cmd += deqp_args
@@ -226,6 +231,10 @@ if args.glcts:
     verify_results(baseline, new_baseline)
 
 if args.deqp:
+    if args.include_tests:
+        print_yellow('dEQP tests cannot be run with the -t/--include-tests option yet.')
+        sys.exit(0)
+
     print_yellow('Running   dEQP tests', args.verbose > 0)
 
     # Generate a test-suite file
