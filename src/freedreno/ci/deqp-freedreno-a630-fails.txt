@@ -58,12 +58,6 @@ KHR-GLES31.core.geometry_shader.layered_framebuffer.stencil_support,Fail
 # " [31] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
 KHR-GLES31.core.shader_image_load_store.basic-glsl-misc-fs,Fail
 
-# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[32][32][18] but should be [32][32][3].
-# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[64][64][6] but should be [64][64][1].
-# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[128][128][12] but should be [128][128][2].
-# Storage Type: IMMUTABLE imageSize() for imageCubeArray returned wrong values of [width][height][layers]. They are equal to[256][256][12] but should be [256][256][2].
-KHR-GLES31.core.texture_cube_map_array.texture_size_compute_sh,Fail
-
 # " Pixel data comparison failed; expected: (0.1, 0.2, 0.3, 0.4) rendered: (0, 0, 0, 0) epsilon: 0.00392157
 #   Pixel data comparison failed at esextcTessellationShaderPoints.cpp:597"
 KHR-GLES31.core.tessellation_shader.tessellation_shader_point_mode.point_rendering,Fail

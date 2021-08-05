@@ -781,11 +781,6 @@ tu_shader_create(struct tu_device *dev,
 
    NIR_PASS_V(nir, tu_lower_io, shader, layout);
 
-   nir_lower_image_options lower_image_opts = {
-      .lower_cube_size = true,
-   };
-   NIR_PASS_V(nir, nir_lower_image, &lower_image_opts);
-
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    ir3_finalize_nir(dev->compiler, nir);

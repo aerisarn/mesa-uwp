@@ -352,6 +352,11 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
       .lower_tg4_offsets = true,
    };
 
+   nir_lower_image_options lower_image_opts = {
+      .lower_cube_size = true,
+   };
+   NIR_PASS_V(s, nir_lower_image, &lower_image_opts);
+
    if (compiler->gen >= 4) {
       /* a4xx seems to have *no* sam.p */
       tex_options.lower_txp = ~0; /* lower all txp */
