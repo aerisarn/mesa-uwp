@@ -77,12 +77,13 @@ blorp_batch_finish(struct blorp_batch *batch)
 }
 
 void
-brw_blorp_surface_info_init(struct blorp_context *blorp,
+brw_blorp_surface_info_init(struct blorp_batch *batch,
                             struct brw_blorp_surface_info *info,
                             const struct blorp_surf *surf,
                             unsigned int level, float layer,
-                            enum isl_format format, bool is_render_target)
+                            enum isl_format format, bool is_dest)
 {
+   struct blorp_context *blorp = batch->blorp;
    memset(info, 0, sizeof(*info));
    assert(level < surf->surf->levels);
    assert(layer < MAX2(surf->surf->logical_level0_px.depth >> level,
@@ -105,9 +106,18 @@ brw_blorp_surface_info_init(struct blorp_context *blorp,
    info->clear_color = surf->clear_color;
    info->clear_color_addr = surf->clear_color_addr;
 
+   isl_surf_usage_flags_t view_usage;
+   if (is_dest) {
+      if (batch->flags & BLORP_BATCH_USE_COMPUTE)
+         view_usage = ISL_SURF_USAGE_STORAGE_BIT;
+      else
+         view_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
+   } else {
+      view_usage = ISL_SURF_USAGE_TEXTURE_BIT;
+   }
+
    info->view = (struct isl_view) {
-      .usage = is_render_target ? ISL_SURF_USAGE_RENDER_TARGET_BIT :
-                                  ISL_SURF_USAGE_TEXTURE_BIT,
+      .usage = view_usage,
       .format = format,
       .base_level = level,
       .levels = 1,
@@ -117,7 +127,7 @@ brw_blorp_surface_info_init(struct blorp_context *blorp,
    info->view.array_len = MAX2(info->surf.logical_level0_px.depth,
                                info->surf.logical_level0_px.array_len);
 
-   if (!is_render_target &&
+   if (!is_dest &&
        (info->surf.dim == ISL_SURF_DIM_3D ||
         info->surf.msaa_layout == ISL_MSAA_LAYOUT_ARRAY)) {
       /* 3-D textures don't support base_array layer and neither do 2-D
@@ -138,7 +148,7 @@ brw_blorp_surface_info_init(struct blorp_context *blorp,
    /* Sandy Bridge and earlier have a limit of a maximum of 512 layers for
     * layered rendering.
     */
-   if (is_render_target && blorp->isl_dev->info->ver <= 6)
+   if (is_dest && blorp->isl_dev->info->ver <= 6)
       info->view.array_len = MIN2(info->view.array_len, 512);
 
    if (surf->tile_x_sa || surf->tile_y_sa) {
@@ -422,7 +432,7 @@ blorp_hiz_op(struct blorp_batch *batch, struct blorp_surf *surf,
    for (uint32_t a = 0; a < num_layers; a++) {
       const uint32_t layer = start_layer + a;
 
-      brw_blorp_surface_info_init(batch->blorp, &params.depth, surf, level,
+      brw_blorp_surface_info_init(batch, &params.depth, surf, level,
                                   layer, surf->surf->format, true);
 
       /* Align the rectangle primitive to 8x4 pixels.

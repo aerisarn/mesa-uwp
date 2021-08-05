@@ -2353,9 +2353,9 @@ blorp_blit(struct blorp_batch *batch,
       }
    }
 
-   brw_blorp_surface_info_init(batch->blorp, &params.src, src_surf, src_level,
+   brw_blorp_surface_info_init(batch, &params.src, src_surf, src_level,
                                src_layer, src_format, false);
-   brw_blorp_surface_info_init(batch->blorp, &params.dst, dst_surf, dst_level,
+   brw_blorp_surface_info_init(batch, &params.dst, dst_surf, dst_level,
                                dst_layer, dst_format, true);
 
    params.src.view.swizzle = src_swizzle;
@@ -2657,9 +2657,9 @@ blorp_copy(struct blorp_batch *batch,
 
    blorp_params_init(&params);
    params.snapshot_type = INTEL_SNAPSHOT_COPY;
-   brw_blorp_surface_info_init(batch->blorp, &params.src, src_surf, src_level,
+   brw_blorp_surface_info_init(batch, &params.src, src_surf, src_level,
                                src_layer, ISL_FORMAT_UNSUPPORTED, false);
-   brw_blorp_surface_info_init(batch->blorp, &params.dst, dst_surf, dst_level,
+   brw_blorp_surface_info_init(batch, &params.dst, dst_surf, dst_level,
                                dst_layer, ISL_FORMAT_UNSUPPORTED, true);
 
    struct brw_blorp_blit_prog_key wm_prog_key = {
