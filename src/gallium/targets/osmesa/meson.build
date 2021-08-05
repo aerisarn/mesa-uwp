@@ -51,7 +51,7 @@ libosmesa = shared_library(
   link_depends : osmesa_link_deps,
   link_whole : [libosmesa_st, libglapi_static],
   link_with : [
-    libmesa_gallium, libgallium, libws_null, osmesa_link_with,
+    libmesa, libgallium, libws_null, osmesa_link_with,
   ],
   dependencies : [
     dep_ws2_32, dep_selinux, dep_thread, dep_clock, dep_unwind,
