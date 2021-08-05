@@ -181,6 +181,7 @@ struct iris_bufmgr {
    int fd;
 
    simple_mtx_t lock;
+   simple_mtx_t bo_deps_lock;
 
    /** Array of lists of cached gem objects of power-of-two sizes */
    struct bo_cache_bucket cache_bucket[14 * 4];
@@ -381,18 +382,98 @@ vma_free(struct iris_bufmgr *bufmgr,
    util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
 }
 
-int
-iris_bo_busy(struct iris_bo *bo)
+static bool
+iris_bo_busy_gem(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
    struct drm_i915_gem_busy busy = { .handle = bo->gem_handle };
 
    int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_BUSY, &busy);
    if (ret == 0) {
-      bo->idle = !busy.busy;
       return busy.busy;
    }
    return false;
+}
+
+/* A timeout of 0 just checks for busyness. */
+static int
+iris_bo_wait_syncobj(struct iris_bo *bo, int64_t timeout_ns)
+{
+   int ret = 0;
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+
+   /* If we know it's idle, don't bother with the kernel round trip */
+   if (bo->idle)
+      return 0;
+
+   simple_mtx_lock(&bufmgr->bo_deps_lock);
+
+   uint32_t handles[bo->deps_size * IRIS_BATCH_COUNT * 2];
+   int handle_count = 0;
+
+   for (int d = 0; d < bo->deps_size; d++) {
+      for (int b = 0; b < IRIS_BATCH_COUNT; b++) {
+         struct iris_syncobj *r = bo->deps[d].read_syncobjs[b];
+         struct iris_syncobj *w = bo->deps[d].write_syncobjs[b];
+         if (r)
+            handles[handle_count++] = r->handle;
+         if (w)
+            handles[handle_count++] = w->handle;
+      }
+   }
+
+   if (handle_count == 0)
+      goto out;
+
+   /* Unlike the gem wait, negative values are not infinite here. */
+   int64_t timeout_abs = os_time_get_absolute_timeout(timeout_ns);
+   if (timeout_abs < 0)
+      timeout_abs = INT64_MAX;
+
+   struct drm_syncobj_wait args = {
+      .handles = (uintptr_t) handles,
+      .timeout_nsec = timeout_abs,
+      .count_handles = handle_count,
+      .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL,
+   };
+
+   ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_SYNCOBJ_WAIT, &args);
+   if (ret != 0) {
+      ret = -errno;
+      goto out;
+   }
+
+   /* We just waited everything, so clean all the deps. */
+   for (int d = 0; d < bo->deps_size; d++) {
+      for (int b = 0; b < IRIS_BATCH_COUNT; b++) {
+         iris_syncobj_reference(bufmgr, &bo->deps[d].write_syncobjs[b], NULL);
+         iris_syncobj_reference(bufmgr, &bo->deps[d].read_syncobjs[b], NULL);
+      }
+   }
+
+out:
+   simple_mtx_unlock(&bufmgr->bo_deps_lock);
+   return ret;
+}
+
+static bool
+iris_bo_busy_syncobj(struct iris_bo *bo)
+{
+   return iris_bo_wait_syncobj(bo, 0) == -ETIME;
+}
+
+bool
+iris_bo_busy(struct iris_bo *bo)
+{
+   bool busy;
+   if (iris_bo_is_external(bo))
+      busy = iris_bo_busy_gem(bo);
+   else
+      busy = iris_bo_busy_syncobj(bo);
+
+   bo->idle = !busy;
+
+   return busy;
 }
 
 int
@@ -865,6 +946,14 @@ bo_close(struct iris_bo *bo)
    /* Return the VMA for reuse */
    vma_free(bo->bufmgr, bo->address, bo->size);
 
+   for (int d = 0; d < bo->deps_size; d++) {
+      for (int b = 0; b < IRIS_BATCH_COUNT; b++) {
+         iris_syncobj_reference(bufmgr, &bo->deps[d].write_syncobjs[b], NULL);
+         iris_syncobj_reference(bufmgr, &bo->deps[d].read_syncobjs[b], NULL);
+      }
+   }
+   free(bo->deps);
+
    free(bo);
 }
 
@@ -1149,6 +1238,22 @@ iris_bo_wait_rendering(struct iris_bo *bo)
    iris_bo_wait(bo, -1);
 }
 
+static int
+iris_bo_wait_gem(struct iris_bo *bo, int64_t timeout_ns)
+{
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+   struct drm_i915_gem_wait wait = {
+      .bo_handle = bo->gem_handle,
+      .timeout_ns = timeout_ns,
+   };
+
+   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_WAIT, &wait);
+   if (ret != 0)
+      return -errno;
+
+   return 0;
+}
+
 /**
  * Waits on a BO for the given amount of time.
  *
@@ -1179,17 +1284,13 @@ iris_bo_wait_rendering(struct iris_bo *bo)
 int
 iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
 {
-   struct iris_bufmgr *bufmgr = bo->bufmgr;
+   int ret;
 
-   /* If we know it's idle, don't bother with the kernel round trip */
-   if (bo->idle && !iris_bo_is_external(bo))
-      return 0;
+   if (iris_bo_is_external(bo))
+      ret = iris_bo_wait_gem(bo, timeout_ns);
+   else
+      ret = iris_bo_wait_syncobj(bo, timeout_ns);
 
-   struct drm_i915_gem_wait wait = {
-      .bo_handle = bo->gem_handle,
-      .timeout_ns = timeout_ns,
-   };
-   int ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_WAIT, &wait);
    if (ret != 0)
       return -errno;
 
@@ -1208,6 +1309,7 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
    bufmgr->aux_map_ctx = NULL;
 
    simple_mtx_destroy(&bufmgr->lock);
+   simple_mtx_destroy(&bufmgr->bo_deps_lock);
 
    /* Free any cached buffer objects we were going to reuse */
    for (int i = 0; i < bufmgr->num_buckets; i++) {
@@ -1786,6 +1888,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    p_atomic_set(&bufmgr->refcount, 1);
 
    simple_mtx_init(&bufmgr->lock, mtx_plain);
+   simple_mtx_init(&bufmgr->bo_deps_lock, mtx_plain);
 
    list_inithead(&bufmgr->zombie_list);
 
@@ -1923,4 +2026,10 @@ void*
 iris_bufmgr_get_aux_map_context(struct iris_bufmgr *bufmgr)
 {
    return bufmgr->aux_map_ctx;
+}
+
+simple_mtx_t *
+iris_bufmgr_get_bo_deps_lock(struct iris_bufmgr *bufmgr)
+{
+   return &bufmgr->bo_deps_lock;
 }

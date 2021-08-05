@@ -56,8 +56,6 @@ enum iris_batch_name {
    IRIS_BATCH_COMPUTE,
 };
 
-#define IRIS_BATCH_COUNT 2
-
 struct iris_batch {
    struct iris_context *ice;
    struct iris_screen *screen;

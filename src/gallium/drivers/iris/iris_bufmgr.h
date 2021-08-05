@@ -31,13 +31,15 @@
 #include "c11/threads.h"
 #include "util/macros.h"
 #include "util/u_atomic.h"
+#include "util/u_dynarray.h"
 #include "util/list.h"
+#include "util/simple_mtx.h"
 #include "pipe/p_defines.h"
 
-struct iris_batch;
 struct intel_device_info;
 struct pipe_debug_callback;
 struct isl_surf;
+struct iris_syncobj;
 
 /**
  * Memory zones.  When allocating a buffer, you can request that it is
@@ -129,6 +131,13 @@ enum iris_mmap_mode {
    IRIS_MMAP_WB, /**< Write-back mapping with CPU caches enabled */
 };
 
+#define IRIS_BATCH_COUNT 2
+
+struct iris_bo_screen_deps {
+   struct iris_syncobj *write_syncobjs[IRIS_BATCH_COUNT];
+   struct iris_syncobj *read_syncobjs[IRIS_BATCH_COUNT];
+};
+
 struct iris_bo {
    /**
     * Size in bytes of the buffer object.
@@ -212,6 +221,10 @@ struct iris_bo {
     * bit platforms.
     */
    uint64_t last_seqnos[NUM_IRIS_DOMAINS] __attribute__ ((aligned (8)));
+
+   /** Up to one per screen, may need realloc. */
+   struct iris_bo_screen_deps *deps;
+   int deps_size;
 
    /**
     * Boolean of whether the GPU is definitely not accessing the buffer.
@@ -346,10 +359,10 @@ iris_bo_is_external(const struct iris_bo *bo)
 void iris_bo_mark_exported(struct iris_bo *bo);
 
 /**
- * Returns 1 if mapping the buffer for write could cause the process
+ * Returns true  if mapping the buffer for write could cause the process
  * to block, due to the object being active in the GPU.
  */
-int iris_bo_busy(struct iris_bo *bo);
+bool iris_bo_busy(struct iris_bo *bo);
 
 /**
  * Specify the volatility of the buffer.
@@ -450,5 +463,7 @@ iris_bo_bump_seqno(struct iris_bo *bo, uint64_t seqno,
 enum iris_memory_zone iris_memzone_for_address(uint64_t address);
 
 int iris_bufmgr_create_screen_id(struct iris_bufmgr *bufmgr);
+
+simple_mtx_t *iris_bufmgr_get_bo_deps_lock(struct iris_bufmgr *bufmgr);
 
 #endif /* IRIS_BUFMGR_H */

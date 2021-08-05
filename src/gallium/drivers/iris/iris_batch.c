@@ -266,7 +266,14 @@ ensure_exec_obj_space(struct iris_batch *batch, uint32_t count)
 static void
 add_bo_to_batch(struct iris_batch *batch, struct iris_bo *bo, bool writable)
 {
+   uint64_t extra_flags = 0;
+
    assert(batch->exec_array_size > batch->exec_count);
+
+   if (writable)
+      extra_flags |= EXEC_OBJECT_WRITE;
+   if (!iris_bo_is_external(bo))
+      extra_flags |= EXEC_OBJECT_ASYNC;
 
    iris_bo_reference(bo);
 
@@ -276,7 +283,7 @@ add_bo_to_batch(struct iris_batch *batch, struct iris_bo *bo, bool writable)
       (struct drm_i915_gem_exec_object2) {
          .handle = bo->gem_handle,
          .offset = bo->address,
-         .flags = bo->kflags | (writable ? EXEC_OBJECT_WRITE : 0),
+         .flags = bo->kflags | extra_flags,
       };
 
    bo->index = batch->exec_count;
@@ -346,12 +353,8 @@ iris_use_pinned_bo(struct iris_batch *batch,
           * we want to avoid synchronizing in this case.
           */
          if (other_entry &&
-             ((other_entry->flags & EXEC_OBJECT_WRITE) || writable)) {
+             ((other_entry->flags & EXEC_OBJECT_WRITE) || writable))
             iris_batch_flush(batch->other_batches[b]);
-            iris_batch_add_syncobj(batch,
-                                   batch->other_batches[b]->last_fence->syncobj,
-                                   I915_EXEC_FENCE_WAIT);
-         }
       }
    }
 
@@ -627,6 +630,123 @@ iris_batch_check_for_reset(struct iris_batch *batch)
    return status;
 }
 
+static void
+move_syncobj_to_batch(struct iris_batch *batch,
+                      struct iris_syncobj **p_syncobj,
+                      unsigned flags)
+{
+   struct iris_bufmgr *bufmgr = batch->screen->bufmgr;
+
+   if (!*p_syncobj)
+      return;
+
+   bool found = false;
+   util_dynarray_foreach(&batch->syncobjs, struct iris_syncobj *, s) {
+      if (*p_syncobj == *s) {
+         found = true;
+         break;
+      }
+   }
+
+   if (!found)
+      iris_batch_add_syncobj(batch, *p_syncobj, flags);
+
+   iris_syncobj_reference(bufmgr, p_syncobj, NULL);
+}
+
+static void
+update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
+{
+   struct iris_screen *screen = batch->screen;
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+
+   /* Make sure bo->deps is big enough */
+   if (screen->id >= bo->deps_size) {
+      int new_size = screen->id + 1;
+      bo->deps= realloc(bo->deps, new_size * sizeof(bo->deps[0]));
+      memset(&bo->deps[bo->deps_size], 0,
+             sizeof(bo->deps[0]) * (new_size - bo->deps_size));
+
+      bo->deps_size = new_size;
+   }
+
+   /* When it comes to execbuf submission of non-shared buffers, we only need
+    * to care about the reads and writes done by the other batches of our own
+    * screen, and we also don't care about the reads and writes done by our
+    * own batch, although we need to track them. Just note that other places of
+    * our code may need to care about all the operations done by every batch
+    * on every screen.
+    */
+   struct iris_bo_screen_deps *deps = &bo->deps[screen->id];
+   int batch_idx = batch->name;
+
+#if IRIS_BATCH_COUNT == 2
+   /* Due to the above, we exploit the fact that IRIS_NUM_BATCHES is actually
+    * 2, which means there's only one other batch we need to care about.
+    */
+   int other_batch_idx = 1 - batch_idx;
+#else
+   /* For IRIS_BATCH_COUNT == 3 we can do:
+    *   int other_batch_idxs[IRIS_BATCH_COUNT - 1] = {
+    *      (batch_idx ^ 1) & 1,
+    *      (batch_idx ^ 2) & 2,
+    *   };
+    * For IRIS_BATCH_COUNT == 4 we can do:
+    *   int other_batch_idxs[IRIS_BATCH_COUNT - 1] = {
+    *      (batch_idx + 1) & 3,
+    *      (batch_idx + 2) & 3,
+    *      (batch_idx + 3) & 3,
+    *   };
+    */
+#error "Implement me."
+#endif
+
+   /* If it is being written to by others, wait on it. */
+   if (deps->write_syncobjs[other_batch_idx])
+      move_syncobj_to_batch(batch, &deps->write_syncobjs[other_batch_idx],
+                            I915_EXEC_FENCE_WAIT);
+
+   struct iris_syncobj *batch_syncobj = iris_batch_get_signal_syncobj(batch);
+
+   if (write) {
+      /* If we're writing to it, set our batch's syncobj as write_syncobj so
+       * others can wait on us. Also wait every reader we care about before
+       * writing.
+       */
+      iris_syncobj_reference(bufmgr, &deps->write_syncobjs[batch_idx],
+                              batch_syncobj);
+
+      move_syncobj_to_batch(batch, &deps->read_syncobjs[other_batch_idx],
+                           I915_EXEC_FENCE_WAIT);
+
+   } else {
+      /* If we're reading, replace the other read from our batch index. */
+      iris_syncobj_reference(bufmgr, &deps->read_syncobjs[batch_idx],
+                             batch_syncobj);
+   }
+}
+
+static void
+update_batch_syncobjs(struct iris_batch *batch)
+{
+   struct iris_bufmgr *bufmgr = batch->screen->bufmgr;
+   simple_mtx_t *bo_deps_lock = iris_bufmgr_get_bo_deps_lock(bufmgr);
+
+   simple_mtx_lock(bo_deps_lock);
+
+   for (int i = 0; i < batch->exec_count; i++) {
+      struct iris_bo *bo = batch->exec_bos[i];
+      struct drm_i915_gem_exec_object2 *exec_obj = &batch->validation_list[i];
+      bool write = exec_obj->flags & EXEC_OBJECT_WRITE;
+
+      if (bo == batch->screen->workaround_bo)
+         continue;
+
+      update_bo_syncobjs(batch, bo, write);
+   }
+   simple_mtx_unlock(bo_deps_lock);
+}
+
 /**
  * Submit the batch to the GPU via execbuffer2.
  */
@@ -710,6 +830,8 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
    iris_measure_batch_end(batch->ice, batch);
 
    iris_finish_batch(batch);
+
+   update_batch_syncobjs(batch);
 
    if (INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT | DEBUG_PIPE_CONTROL)) {
       const char *basefile = strstr(file, "iris/");
