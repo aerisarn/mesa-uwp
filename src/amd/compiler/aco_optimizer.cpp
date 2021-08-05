@@ -3055,8 +3055,9 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
    }
 
-   if (instr->opcode == aco_opcode::v_pk_add_f16) {
-      if (instr->definitions[0].isPrecise())
+   if (instr->opcode == aco_opcode::v_pk_add_f16 || instr->opcode == aco_opcode::v_pk_add_u16) {
+      bool fadd = instr->opcode == aco_opcode::v_pk_add_f16;
+      if (fadd && instr->definitions[0].isPrecise())
          return;
 
       Instruction* mul_instr = nullptr;
@@ -3069,9 +3070,14 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (!instr->operands[i].isTemp() || !ctx.info[instr->operands[i].tempId()].is_vop3p())
             continue;
          ssa_info& info = ctx.info[instr->operands[i].tempId()];
-         if (info.instr->opcode != aco_opcode::v_pk_mul_f16 ||
-             info.instr->definitions[0].isPrecise())
-            continue;
+         if (fadd) {
+            if (info.instr->opcode != aco_opcode::v_pk_mul_f16 ||
+                info.instr->definitions[0].isPrecise())
+               continue;
+         } else {
+            if (info.instr->opcode != aco_opcode::v_pk_mul_lo_u16)
+               continue;
+         }
 
          Operand op[3] = {info.instr->operands[0], info.instr->operands[1], instr->operands[1 - i]};
          if (ctx.uses[instr->operands[i].tempId()] >= uses || !check_vop3_operands(ctx, 3, op))
@@ -3103,8 +3109,9 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       /* turn packed mul+add into v_pk_fma_f16 */
       assert(mul_instr->isVOP3P());
+      aco_opcode mad = fadd ? aco_opcode::v_pk_fma_f16 : aco_opcode::v_pk_mad_u16;
       aco_ptr<VOP3P_instruction> fma{
-         create_instruction<VOP3P_instruction>(aco_opcode::v_pk_fma_f16, Format::VOP3P, 3, 1)};
+         create_instruction<VOP3P_instruction>(mad, Format::VOP3P, 3, 1)};
       VOP3P_instruction* mul = &mul_instr->vop3p();
       for (unsigned i = 0; i < 2; i++) {
          fma->operands[i] = op[i];
