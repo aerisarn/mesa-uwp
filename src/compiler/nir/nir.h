@@ -3427,6 +3427,8 @@ typedef struct nir_shader_compiler_options {
    bool lower_fneg;
    /** lowers ineg to isub. Driver must call nir_opt_algebraic_late(). */
    bool lower_ineg;
+   /** lowers fisnormal to alu ops. */
+   bool lower_fisnormal;
 
    /* lower {slt,sge,seq,sne} to {flt,fge,feq,fneu} + b2f: */
    bool lower_scmp;

@@ -2143,6 +2143,10 @@ for op in ['ineg', 'iabs', 'inot', 'isign']:
         ((op, ('bcsel', c, '#a', '#b')), ('bcsel', c, (op, a), (op, b))),
     ]
 
+optimizations.extend([
+    (('fisnormal', 'a@32'), ('ult', 0x1ffffff, ('iadd', ('ishl', a, 1), 0x1000000)), 'options->lower_fisnormal')
+    ])
+
 # This section contains optimizations to propagate downsizing conversions of
 # constructed vectors into vectors of downsized components. Whether this is
 # useful depends on the SIMD semantics of the backend. On a true SIMD machine,
