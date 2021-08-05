@@ -6609,7 +6609,6 @@ static void
 radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                       const VkImageSubresourceRange *range)
 {
-   VkImageAspectFlags aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
    struct radv_cmd_state *state = &cmd_buffer->state;
    uint32_t htile_value = radv_get_htile_initial_value(cmd_buffer->device, image);
    VkClearDepthStencilValue value = {0};
@@ -6625,10 +6624,7 @@ radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
 
    state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, htile_value);
 
-   if (vk_format_has_stencil(image->vk_format))
-      aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-
-   radv_set_ds_clear_metadata(cmd_buffer, image, range, value, aspects);
+   radv_set_ds_clear_metadata(cmd_buffer, image, range, value, range->aspectMask);
 
    if (radv_image_is_tc_compat_htile(image) && (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)) {
       /* Initialize the TC-compat metada value to 0 because by
