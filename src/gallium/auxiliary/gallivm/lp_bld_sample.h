@@ -203,10 +203,6 @@ struct lp_static_sampler_state
    unsigned apply_max_lod:1;  /**< max_lod < last_level ? */
    unsigned seamless_cube_map:1;
    unsigned aniso:1;
-
-   /* Hacks */
-   unsigned force_nearest_s:1;
-   unsigned force_nearest_t:1;
    unsigned reduction_mode:2;
 };
 
