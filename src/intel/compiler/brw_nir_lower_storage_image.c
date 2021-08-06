@@ -669,6 +669,44 @@ lower_image_size_instr(nir_builder *b,
    return true;
 }
 
+static bool
+brw_nir_lower_storage_image_instr(nir_builder *b,
+                                  nir_instr *instr,
+                                  void *cb_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   const struct intel_device_info *devinfo = cb_data;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_image_deref_load:
+      return lower_image_load_instr(b, devinfo, intrin);
+
+   case nir_intrinsic_image_deref_store:
+      return lower_image_store_instr(b, devinfo, intrin);
+
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+      return lower_image_atomic_instr(b, devinfo, intrin);
+
+   case nir_intrinsic_image_deref_size:
+      return lower_image_size_instr(b, devinfo, intrin);
+
+   default:
+      /* Nothing to do */
+      return false;
+   }
+}
+
 bool
 brw_nir_lower_storage_image(nir_shader *shader,
                             const struct intel_device_info *devinfo)
@@ -678,66 +716,13 @@ brw_nir_lower_storage_image(nir_shader *shader,
    const nir_lower_image_options image_options = {
       .lower_cube_size = true,
    };
+
    progress |= nir_lower_image(shader, &image_options);
 
-   nir_foreach_function(function, shader) {
-      if (function->impl == NULL)
-         continue;
-
-      bool impl_progress = false;
-      nir_foreach_block_safe(block, function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
-
-         nir_foreach_instr_safe(instr, block) {
-            if (instr->type != nir_instr_type_intrinsic)
-               continue;
-
-            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-            switch (intrin->intrinsic) {
-            case nir_intrinsic_image_deref_load:
-               if (lower_image_load_instr(&b, devinfo, intrin))
-                  impl_progress = true;
-               break;
-
-            case nir_intrinsic_image_deref_store:
-               if (lower_image_store_instr(&b, devinfo, intrin))
-                  impl_progress = true;
-               break;
-
-            case nir_intrinsic_image_deref_atomic_add:
-            case nir_intrinsic_image_deref_atomic_imin:
-            case nir_intrinsic_image_deref_atomic_umin:
-            case nir_intrinsic_image_deref_atomic_imax:
-            case nir_intrinsic_image_deref_atomic_umax:
-            case nir_intrinsic_image_deref_atomic_and:
-            case nir_intrinsic_image_deref_atomic_or:
-            case nir_intrinsic_image_deref_atomic_xor:
-            case nir_intrinsic_image_deref_atomic_exchange:
-            case nir_intrinsic_image_deref_atomic_comp_swap:
-               if (lower_image_atomic_instr(&b, devinfo, intrin))
-                  impl_progress = true;
-               break;
-
-            case nir_intrinsic_image_deref_size:
-               if (lower_image_size_instr(&b, devinfo, intrin))
-                  impl_progress = true;
-               break;
-
-            default:
-               /* Nothing to do */
-               break;
-            }
-         }
-      }
-
-      if (impl_progress) {
-         progress = true;
-         nir_metadata_preserve(function->impl, nir_metadata_none);
-      } else {
-         nir_metadata_preserve(function->impl, nir_metadata_all);
-      }
-   }
+   progress |= nir_shader_instructions_pass(shader,
+                                            brw_nir_lower_storage_image_instr,
+                                            nir_metadata_none,
+                                            (void *)devinfo);
 
    return progress;
 }
