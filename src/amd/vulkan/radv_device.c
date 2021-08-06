@@ -7962,9 +7962,16 @@ radv_GetPhysicalDeviceFragmentShadingRatesKHR(
 
    for (uint32_t x = 2; x >= 1; x--) {
       for (uint32_t y = 2; y >= 1; y--) {
-         append_rate(x, y,
-                     VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT |
-                        VK_SAMPLE_COUNT_8_BIT);
+         VkSampleCountFlagBits samples;
+
+         if (x == 1 && y == 1) {
+            samples = ~0;
+         } else {
+            samples = VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT |
+                      VK_SAMPLE_COUNT_4_BIT | VK_SAMPLE_COUNT_8_BIT;
+         }
+
+         append_rate(x, y, samples);
       }
    }
 #undef append_rate
