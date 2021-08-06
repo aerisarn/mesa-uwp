@@ -921,5 +921,5 @@ panvk_per_arch(emit_fb)(const struct panvk_device *dev,
       }
    }
 
-   return pan_emit_fbd(pdev, &fbinfo, tlsinfo, tilerctx, desc);
+   return GENX(pan_emit_fbd)(pdev, &fbinfo, tlsinfo, tilerctx, desc);
 }

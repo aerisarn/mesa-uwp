@@ -168,7 +168,7 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 
    if ((PAN_ARCH >= 6 || !cmdbuf->state.batch->fb.desc.cpu) &&
        cmdbuf->state.batch->tls.cpu) {
-      pan_emit_tls(pdev, &tlsinfo, cmdbuf->state.batch->tls.cpu);
+      GENX(pan_emit_tls)(&tlsinfo, cmdbuf->state.batch->tls.cpu);
    }
 
    if (cmdbuf->state.batch->fb.desc.cpu) {

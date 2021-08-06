@@ -2348,7 +2348,7 @@ emit_tls(struct panfrost_batch *batch)
         };
 
         assert(batch->tls.cpu);
-        pan_emit_tls(dev, &tls, batch->tls.cpu);
+        GENX(pan_emit_tls)(&tls, batch->tls.cpu);
 }
 
 static void
@@ -2370,8 +2370,8 @@ emit_fbd(struct panfrost_batch *batch, const struct pan_fb_info *fb)
         };
 
         batch->framebuffer.gpu |=
-                pan_emit_fbd(dev, fb, &tls, &batch->tiler_ctx,
-                             batch->framebuffer.cpu);
+                GENX(pan_emit_fbd)(dev, fb, &tls, &batch->tiler_ctx,
+                                   batch->framebuffer.cpu);
 }
 
 /* Mark a surface as written */
@@ -2392,8 +2392,6 @@ panfrost_initialize_surface(struct panfrost_batch *batch,
 static mali_ptr
 emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
 {
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
         /* Mark the affected buffers as initialized, since we're writing to it.
          * Also, add the surfaces we're writing to to the batch */
 
@@ -2427,8 +2425,8 @@ emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
         struct panfrost_ptr transfer =
                 pan_pool_alloc_desc(&batch->pool.base, FRAGMENT_JOB);
 
-        pan_emit_fragment_job(dev, pfb, batch->framebuffer.gpu,
-                              transfer.cpu);
+        GENX(pan_emit_fragment_job)(pfb, batch->framebuffer.gpu,
+                                    transfer.cpu);
 
         return transfer.gpu;
 }
@@ -2653,14 +2651,14 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
         struct panfrost_ptr t =
                 pan_pool_alloc_desc(&batch->pool.base, TILER_HEAP);
 
-        pan_emit_bifrost_tiler_heap(dev, t.cpu);
+        GENX(pan_emit_tiler_heap)(dev, t.cpu);
 
         mali_ptr heap = t.gpu;
 
         t = pan_pool_alloc_desc(&batch->pool.base, TILER_CONTEXT);
-        pan_emit_bifrost_tiler(dev, batch->key.width, batch->key.height,
-                               util_framebuffer_get_num_samples(&batch->key),
-                               heap, t.cpu);
+        GENX(pan_emit_tiler_ctx)(dev, batch->key.width, batch->key.height,
+                                 util_framebuffer_get_num_samples(&batch->key),
+                                 heap, t.cpu);
 
         batch->tiler_ctx.bifrost = t.gpu;
         return batch->tiler_ctx.bifrost;

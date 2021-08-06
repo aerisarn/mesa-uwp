@@ -33,94 +33,21 @@
 #include "pan_encoder.h"
 #include "pan_texture.h"
 
-static void
-pan_prepare_crc(const struct panfrost_device *dev,
-                const struct pan_fb_info *fb, int rt_crc,
-                struct MALI_ZS_CRC_EXTENSION *ext)
-{
-        if (rt_crc < 0)
-                return;
-
-        assert(rt_crc < fb->rt_count);
-
-        const struct pan_image_view *rt = fb->rts[rt_crc].view;
-        const struct pan_image_slice_layout *slice = &rt->image->layout.slices[rt->first_level];
-        ext->crc_base = (rt->image->layout.crc_mode == PAN_IMAGE_CRC_INBAND ?
-                         (rt->image->data.bo->ptr.gpu + rt->image->data.offset) :
-                         (rt->image->crc.bo->ptr.gpu + rt->image->crc.offset)) +
-                        slice->crc.offset;
-        ext->crc_row_stride = slice->crc.stride;
-
-        if (dev->arch == 7)
-                ext->crc_render_target = rt_crc;
-
-        if (fb->rts[rt_crc].clear) {
-                uint32_t clear_val = fb->rts[rt_crc].clear_value[0];
-                ext->crc_clear_color = clear_val | 0xc000000000000000 |
-                                       (((uint64_t)clear_val & 0xffff) << 32);
-        }
-}
-
-static enum mali_block_format_v7
-mod_to_block_fmt_v7(uint64_t mod)
-{
-        switch (mod) {
-        case DRM_FORMAT_MOD_LINEAR:
-                return MALI_BLOCK_FORMAT_V7_LINEAR;
-	case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
-                return MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
-        default:
-                if (drm_is_afbc(mod))
-                        return MALI_BLOCK_FORMAT_V7_AFBC;
-
-                unreachable("Unsupported modifer");
-        }
-}
-
-static enum mali_block_format
+static unsigned
 mod_to_block_fmt(uint64_t mod)
 {
         switch (mod) {
         case DRM_FORMAT_MOD_LINEAR:
-                return MALI_BLOCK_FORMAT_LINEAR;
+                return PAN_ARCH >= 7 ?
+                       MALI_BLOCK_FORMAT_V7_LINEAR : MALI_BLOCK_FORMAT_LINEAR;
 	case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
-                return MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
+                return PAN_ARCH >= 7 ?
+                       MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED : MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
         default:
                 if (drm_is_afbc(mod))
-                        return MALI_BLOCK_FORMAT_AFBC;
+                        return PAN_ARCH >= 7 ? MALI_BLOCK_FORMAT_V7_AFBC : MALI_BLOCK_FORMAT_AFBC;
 
                 unreachable("Unsupported modifer");
-        }
-}
-
-static enum mali_zs_format
-translate_zs_format(enum pipe_format in)
-{
-        switch (in) {
-        case PIPE_FORMAT_Z16_UNORM: return MALI_ZS_FORMAT_D16;
-        case PIPE_FORMAT_Z24_UNORM_S8_UINT: return MALI_ZS_FORMAT_D24S8;
-        case PIPE_FORMAT_Z24X8_UNORM: return MALI_ZS_FORMAT_D24X8;
-        case PIPE_FORMAT_Z32_FLOAT: return MALI_ZS_FORMAT_D32;
-        case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT: return MALI_ZS_FORMAT_D32_S8X24;
-        default: unreachable("Unsupported depth/stencil format.");
-        }
-}
-
-static enum mali_s_format
-translate_s_format(enum pipe_format in)
-{
-        switch (in) {
-        case PIPE_FORMAT_S8_UINT: return MALI_S_FORMAT_S8;
-        case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-        case PIPE_FORMAT_S8X24_UINT:
-                return MALI_S_FORMAT_S8X24;
-        case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-        case PIPE_FORMAT_X24S8_UINT:
-                return MALI_S_FORMAT_X24S8;
-        case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-                return MALI_S_FORMAT_X32_S8X24;
-        default:
-                unreachable("Unsupported stencil format.");
         }
 }
 
@@ -144,9 +71,90 @@ mali_sampling_mode(const struct pan_image_view *view)
         return MALI_MSAA_SINGLE;
 }
 
+static inline enum mali_sample_pattern
+pan_sample_pattern(unsigned samples)
+{
+        switch (samples) {
+        case 1:  return MALI_SAMPLE_PATTERN_SINGLE_SAMPLED;
+        case 4:  return MALI_SAMPLE_PATTERN_ROTATED_4X_GRID;
+        case 8:  return MALI_SAMPLE_PATTERN_D3D_8X_GRID;
+        case 16: return MALI_SAMPLE_PATTERN_D3D_16X_GRID;
+        default: unreachable("Unsupported sample count");
+        }
+}
+
+int
+GENX(pan_select_crc_rt)(const struct pan_fb_info *fb)
+{
+#if PAN_ARCH <= 6
+        if (fb->rt_count == 1 && fb->rts[0].view && !fb->rts[0].discard &&
+            fb->rts[0].view->image->layout.crc_mode != PAN_IMAGE_CRC_NONE)
+                return 0;
+
+        return -1;
+#else
+        bool best_rt_valid = false;
+        int best_rt = -1;
+
+        for (unsigned i = 0; i < fb->rt_count; i++) {
+		if (!fb->rts[i].view || fb->rts[0].discard ||
+                    fb->rts[i].view->image->layout.crc_mode == PAN_IMAGE_CRC_NONE)
+                        continue;
+
+                bool valid = *(fb->rts[i].crc_valid);
+                bool full = !fb->extent.minx && !fb->extent.miny &&
+                            fb->extent.maxx == (fb->width - 1) &&
+                            fb->extent.maxy == (fb->height - 1);
+                if (!full && !valid)
+                        continue;
+
+                if (best_rt < 0 || (valid && !best_rt_valid)) {
+                        best_rt = i;
+                        best_rt_valid = valid;
+                }
+
+                if (valid)
+                        break;
+        }
+
+        return best_rt;
+#endif
+}
+
+static enum mali_zs_format
+translate_zs_format(enum pipe_format in)
+{
+        switch (in) {
+        case PIPE_FORMAT_Z16_UNORM: return MALI_ZS_FORMAT_D16;
+        case PIPE_FORMAT_Z24_UNORM_S8_UINT: return MALI_ZS_FORMAT_D24S8;
+        case PIPE_FORMAT_Z24X8_UNORM: return MALI_ZS_FORMAT_D24X8;
+        case PIPE_FORMAT_Z32_FLOAT: return MALI_ZS_FORMAT_D32;
+        case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT: return MALI_ZS_FORMAT_D32_S8X24;
+        default: unreachable("Unsupported depth/stencil format.");
+        }
+}
+
+#if PAN_ARCH >= 5
+static enum mali_s_format
+translate_s_format(enum pipe_format in)
+{
+        switch (in) {
+        case PIPE_FORMAT_S8_UINT: return MALI_S_FORMAT_S8;
+        case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+        case PIPE_FORMAT_S8X24_UINT:
+                return MALI_S_FORMAT_S8X24;
+        case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+        case PIPE_FORMAT_X24S8_UINT:
+                return MALI_S_FORMAT_X24S8;
+        case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+                return MALI_S_FORMAT_X32_S8X24;
+        default:
+                unreachable("Unsupported stencil format.");
+        }
+}
+
 static void
-pan_prepare_s(const struct panfrost_device *dev,
-              const struct pan_fb_info *fb,
+pan_prepare_s(const struct pan_fb_info *fb,
               struct MALI_ZS_CRC_EXTENSION *ext)
 {
         const struct pan_image_view *s = fb->zs.view.s;
@@ -156,10 +164,11 @@ pan_prepare_s(const struct panfrost_device *dev,
 
         unsigned level = s->first_level;
 
-        if (dev->arch < 7)
-                ext->s_msaa = mali_sampling_mode(s);
-        else
-                ext->s_msaa_v7 = mali_sampling_mode(s);
+#if PAN_ARCH <= 6
+        ext->s_msaa = mali_sampling_mode(s);
+#else
+        ext->s_msaa_v7 = mali_sampling_mode(s);
+#endif
 
         struct pan_surface surf;
         pan_iview_get_surface(s, 0, 0, 0, &surf);
@@ -172,17 +181,17 @@ pan_prepare_s(const struct panfrost_device *dev,
                 (s->image->layout.nr_samples > 1) ?
                 s->image->layout.slices[level].surface_stride : 0;
 
-        if (dev->arch >= 7)
-                ext->s_block_format_v7 = mod_to_block_fmt_v7(s->image->layout.modifier);
-        else
-                ext->s_block_format = mod_to_block_fmt(s->image->layout.modifier);
+#if PAN_ARCH <= 6
+        ext->s_block_format = mod_to_block_fmt(s->image->layout.modifier);
+#else
+        ext->s_block_format_v7 = mod_to_block_fmt(s->image->layout.modifier);
+#endif
 
         ext->s_write_format = translate_s_format(s->format);
 }
 
 static void
-pan_prepare_zs(const struct panfrost_device *dev,
-               const struct pan_fb_info *fb,
+pan_prepare_zs(const struct pan_fb_info *fb,
                struct MALI_ZS_CRC_EXTENSION *ext)
 {
         const struct pan_image_view *zs = fb->zs.view.zs;
@@ -192,29 +201,30 @@ pan_prepare_zs(const struct panfrost_device *dev,
 
         unsigned level = zs->first_level;
 
-        if (dev->arch < 7)
-                ext->zs_msaa = mali_sampling_mode(zs);
-        else
-                ext->zs_msaa_v7 = mali_sampling_mode(zs);
+#if PAN_ARCH <= 6
+        ext->zs_msaa = mali_sampling_mode(zs);
+#else
+        ext->zs_msaa_v7 = mali_sampling_mode(zs);
+#endif
 
         struct pan_surface surf;
         pan_iview_get_surface(zs, 0, 0, 0, &surf);
 
         if (drm_is_afbc(zs->image->layout.modifier)) {
+#if PAN_ARCH >= 6
                 const struct pan_image_slice_layout *slice = &zs->image->layout.slices[level];
+
+                ext->zs_afbc_row_stride = slice->afbc.row_stride /
+                                          AFBC_HEADER_BYTES_PER_TILE;
+#else
+                ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
+                ext->zs_afbc_body_size = 0x1000;
+                ext->zs_afbc_chunk_size = 9;
+                ext->zs_afbc_sparse = true;
+#endif
 
                 ext->zs_afbc_header = surf.afbc.header;
                 ext->zs_afbc_body = surf.afbc.body;
-
-                if (pan_is_bifrost(dev)) {
-                        ext->zs_afbc_row_stride = slice->afbc.row_stride /
-                                                  AFBC_HEADER_BYTES_PER_TILE;
-                } else {
-                        ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
-                        ext->zs_afbc_body_size = 0x1000;
-                        ext->zs_afbc_chunk_size = 9;
-                        ext->zs_afbc_sparse = true;
-                }
         } else {
                 assert(zs->image->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED ||
                        zs->image->layout.modifier == DRM_FORMAT_MOD_LINEAR);
@@ -229,10 +239,11 @@ pan_prepare_zs(const struct panfrost_device *dev,
                         zs->image->layout.slices[level].surface_stride : 0;
         }
 
-        if (dev->arch >= 7)
-                ext->zs_block_format_v7 = mod_to_block_fmt_v7(zs->image->layout.modifier);
-        else
-                ext->zs_block_format = mod_to_block_fmt(zs->image->layout.modifier);
+#if PAN_ARCH <= 6
+        ext->zs_block_format = mod_to_block_fmt(zs->image->layout.modifier);
+#else
+        ext->zs_block_format_v7 = mod_to_block_fmt(zs->image->layout.modifier);
+#endif
 
         ext->zs_write_format = translate_zs_format(zs->format);
         if (ext->zs_write_format == MALI_ZS_FORMAT_D24S8)
@@ -240,15 +251,42 @@ pan_prepare_zs(const struct panfrost_device *dev,
 }
 
 static void
-pan_emit_zs_crc_ext(const struct panfrost_device *dev,
-                    const struct pan_fb_info *fb, int rt_crc,
+pan_prepare_crc(const struct pan_fb_info *fb, int rt_crc,
+                struct MALI_ZS_CRC_EXTENSION *ext)
+{
+        if (rt_crc < 0)
+                return;
+
+        assert(rt_crc < fb->rt_count);
+
+        const struct pan_image_view *rt = fb->rts[rt_crc].view;
+        const struct pan_image_slice_layout *slice = &rt->image->layout.slices[rt->first_level];
+        ext->crc_base = (rt->image->layout.crc_mode == PAN_IMAGE_CRC_INBAND ?
+                         (rt->image->data.bo->ptr.gpu + rt->image->data.offset) :
+                         (rt->image->crc.bo->ptr.gpu + rt->image->crc.offset)) +
+                        slice->crc.offset;
+        ext->crc_row_stride = slice->crc.stride;
+
+#if PAN_ARCH >= 7
+        ext->crc_render_target = rt_crc;
+#endif
+
+        if (fb->rts[rt_crc].clear) {
+                uint32_t clear_val = fb->rts[rt_crc].clear_value[0];
+                ext->crc_clear_color = clear_val | 0xc000000000000000 |
+                                       (((uint64_t)clear_val & 0xffff) << 32);
+        }
+}
+
+static void
+pan_emit_zs_crc_ext(const struct pan_fb_info *fb, int rt_crc,
                     void *zs_crc_ext)
 {
         pan_pack(zs_crc_ext, ZS_CRC_EXTENSION, cfg) {
-                pan_prepare_crc(dev, fb, rt_crc, &cfg);
+                pan_prepare_crc(fb, rt_crc, &cfg);
                 cfg.zs_clean_pixel_write_enable = fb->zs.clear.z || fb->zs.clear.s;
-                pan_prepare_zs(dev, fb, &cfg);
-                pan_prepare_s(dev, fb, &cfg);
+                pan_prepare_zs(fb, &cfg);
+                pan_prepare_s(fb, &cfg);
         }
 }
 
@@ -300,66 +338,6 @@ pan_internal_cbuf_size(const struct pan_fb_info *fb,
         return total_size;
 }
 
-static inline enum mali_sample_pattern
-pan_sample_pattern(unsigned samples)
-{
-        switch (samples) {
-        case 1:  return MALI_SAMPLE_PATTERN_SINGLE_SAMPLED;
-        case 4:  return MALI_SAMPLE_PATTERN_ROTATED_4X_GRID;
-        case 8:  return MALI_SAMPLE_PATTERN_D3D_8X_GRID;
-        case 16: return MALI_SAMPLE_PATTERN_D3D_16X_GRID;
-        default: unreachable("Unsupported sample count");
-        }
-}
-
-int
-pan_select_crc_rt(const struct panfrost_device *dev, const struct pan_fb_info *fb)
-{
-        if (dev->arch < 7) {
-                if (fb->rt_count == 1 && fb->rts[0].view && !fb->rts[0].discard &&
-                    fb->rts[0].view->image->layout.crc_mode != PAN_IMAGE_CRC_NONE)
-                        return 0;
-
-                return -1;
-        }
-
-        bool best_rt_valid = false;
-        int best_rt = -1;
-
-        for (unsigned i = 0; i < fb->rt_count; i++) {
-		if (!fb->rts[i].view || fb->rts[0].discard ||
-                    fb->rts[i].view->image->layout.crc_mode == PAN_IMAGE_CRC_NONE)
-                        continue;
-
-                bool valid = *(fb->rts[i].crc_valid);
-                bool full = !fb->extent.minx && !fb->extent.miny &&
-                            fb->extent.maxx == (fb->width - 1) &&
-                            fb->extent.maxy == (fb->height - 1);
-                if (!full && !valid)
-                        continue;
-
-                if (best_rt < 0 || (valid && !best_rt_valid)) {
-                        best_rt = i;
-                        best_rt_valid = valid;
-                }
-
-                if (valid)
-                        break;
-        }
-
-        return best_rt;
-}
-
-bool
-pan_fbd_has_zs_crc_ext(const struct panfrost_device *dev,
-                       const struct pan_fb_info *fb)
-{
-        if (dev->quirks & MIDGARD_SFBD)
-                return false;
-
-        return fb->zs.view.zs || fb->zs.view.s || pan_select_crc_rt(dev, fb) >= 0;
-}
-
 static enum mali_mfbd_color_format
 pan_mfbd_raw_format(unsigned bits)
 {
@@ -385,8 +363,7 @@ pan_mfbd_raw_format(unsigned bits)
 }
 
 static void
-pan_rt_init_format(const struct panfrost_device *dev,
-                   const struct pan_image_view *rt,
+pan_rt_init_format(const struct pan_image_view *rt,
                    struct MALI_RENDER_TARGET *cfg)
 {
         /* Explode details on the format */
@@ -428,8 +405,7 @@ pan_rt_init_format(const struct panfrost_device *dev,
 }
 
 static void
-pan_prepare_rt(const struct panfrost_device *dev,
-               const struct pan_fb_info *fb, unsigned idx,
+pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
                unsigned cbuf_offset,
                struct MALI_RENDER_TARGET *cfg)
 {
@@ -446,11 +422,10 @@ pan_prepare_rt(const struct panfrost_device *dev,
         if (!rt || fb->rts[idx].discard) {
                 cfg->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8;
                 cfg->internal_buffer_offset = cbuf_offset;
-                if (dev->arch >= 7) {
-                        cfg->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
-                        cfg->dithering_enable = true;
-                }
-
+#if PAN_ARCH >= 7
+                cfg->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
+                cfg->dithering_enable = true;
+#endif
                 return;
         }
 
@@ -471,12 +446,13 @@ pan_prepare_rt(const struct panfrost_device *dev,
 
         cfg->writeback_msaa = mali_sampling_mode(rt);
 
-        pan_rt_init_format(dev, rt, cfg);
+        pan_rt_init_format(rt, cfg);
 
-        if (dev->arch >= 7)
-                cfg->bifrost_v7.writeback_block_format = mod_to_block_fmt_v7(rt->image->layout.modifier);
-        else
-                cfg->midgard.writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
+#if PAN_ARCH <= 6
+        cfg->midgard.writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
+#else
+        cfg->bifrost_v7.writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
+#endif
 
         struct pan_surface surf;
         pan_iview_get_surface(rt, 0, 0, 0, &surf);
@@ -484,16 +460,16 @@ pan_prepare_rt(const struct panfrost_device *dev,
         if (drm_is_afbc(rt->image->layout.modifier)) {
                 const struct pan_image_slice_layout *slice = &rt->image->layout.slices[level];
 
-                if (pan_is_bifrost(dev)) {
-                        cfg->afbc.row_stride = slice->afbc.row_stride /
-                                               AFBC_HEADER_BYTES_PER_TILE;
-                        cfg->bifrost_afbc.afbc_wide_block_enable =
-                                panfrost_block_dim(rt->image->layout.modifier, true, 0) > 16;
-                } else {
-                        cfg->afbc.chunk_size = 9;
-                        cfg->midgard_afbc.sparse = true;
-                        cfg->afbc.body_size = slice->afbc.body_size;
-                }
+#if PAN_ARCH >= 6
+                cfg->afbc.row_stride = slice->afbc.row_stride /
+                                       AFBC_HEADER_BYTES_PER_TILE;
+                cfg->bifrost_afbc.afbc_wide_block_enable =
+                        panfrost_block_dim(rt->image->layout.modifier, true, 0) > 16;
+#else
+                cfg->afbc.chunk_size = 9;
+                cfg->midgard_afbc.sparse = true;
+                cfg->afbc.body_size = slice->afbc.body_size;
+#endif
 
                 cfg->afbc.header = surf.afbc.header;
                 cfg->afbc.body = surf.afbc.body;
@@ -508,45 +484,11 @@ pan_prepare_rt(const struct panfrost_device *dev,
                 cfg->rgb.surface_stride = layer_stride;
         }
 }
-
-static void
-pan_emit_rt(const struct panfrost_device *dev,
-            const struct pan_fb_info *fb,
-            unsigned idx, unsigned cbuf_offset, void *out)
-{
-        pan_pack(out, RENDER_TARGET, cfg) {
-                pan_prepare_rt(dev, fb, idx, cbuf_offset, &cfg);
-        }
-}
-
-static unsigned
-pan_wls_instances(const struct pan_compute_dim *dim)
-{
-        return util_next_power_of_two(dim->x) *
-               util_next_power_of_two(dim->y) *
-               util_next_power_of_two(dim->z);
-}
-
-static unsigned
-pan_wls_adjust_size(unsigned wls_size)
-{
-        return util_next_power_of_two(MAX2(wls_size, 128));
-}
-
-unsigned
-pan_wls_mem_size(const struct panfrost_device *dev,
-                 const struct pan_compute_dim *dim,
-                 unsigned wls_size)
-{
-        unsigned instances = pan_wls_instances(dim);
-
-        return pan_wls_adjust_size(wls_size) * instances * dev->core_count;
-}
+#endif
 
 void
-pan_emit_tls(const struct panfrost_device *dev,
-             const struct pan_tls_info *info,
-             void *out)
+GENX(pan_emit_tls)(const struct pan_tls_info *info,
+                   void *out)
 {
         pan_pack(out, LOCAL_STORAGE, cfg) {
                 if (info->tls.size) {
@@ -570,30 +512,7 @@ pan_emit_tls(const struct panfrost_device *dev,
         }
 }
 
-static void
-pan_emit_bifrost_mfbd_params(const struct panfrost_device *dev,
-                             const struct pan_fb_info *fb,
-                             void *fbd)
-{
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, params) {
-                params.sample_locations =
-                        panfrost_sample_positions(dev, pan_sample_pattern(fb->nr_samples));
-                params.pre_frame_0 = fb->bifrost.pre_post.modes[0];
-                params.pre_frame_1 = fb->bifrost.pre_post.modes[1];
-                params.post_frame = fb->bifrost.pre_post.modes[2];
-                params.frame_shader_dcds = fb->bifrost.pre_post.dcds.gpu;
-        }
-}
-
-static void
-pan_emit_mfbd_bifrost_tiler(const struct pan_tiler_context *ctx, void *fbd)
-{
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_TILER_POINTER, cfg) {
-                cfg.address = ctx->bifrost;
-        }
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_PADDING, padding);
-}
-
+#if PAN_ARCH <= 5
 static void
 pan_emit_midgard_tiler(const struct panfrost_device *dev,
                        const struct pan_fb_info *fb,
@@ -637,32 +556,16 @@ pan_emit_midgard_tiler(const struct panfrost_device *dev,
                 cfg.polygon_list_body = cfg.polygon_list + header_size;
         }
 }
+#endif
 
+#if PAN_ARCH >= 5
 static void
-pan_emit_mfbd_midgard_tiler(const struct panfrost_device *dev,
-                            const struct pan_fb_info *fb,
-                            const struct pan_tiler_context *ctx,
-                            void *fbd)
+pan_emit_rt(const struct pan_fb_info *fb,
+            unsigned idx, unsigned cbuf_offset, void *out)
 {
-       pan_emit_midgard_tiler(dev, fb, ctx,
-                              pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER, TILER));
-
-        /* All weights set to 0, nothing to do here */
-        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
-}
-
-static void
-pan_emit_sfbd_tiler(const struct panfrost_device *dev,
-                    const struct pan_fb_info *fb,
-                    const struct pan_tiler_context *ctx,
-                    void *fbd)
-{
-       pan_emit_midgard_tiler(dev, fb, ctx,
-                              pan_section_ptr(fbd, SINGLE_TARGET_FRAMEBUFFER, TILER));
-
-        /* All weights set to 0, nothing to do here */
-        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, PADDING_1, padding);
-        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
+        pan_pack(out, RENDER_TARGET, cfg) {
+                pan_prepare_rt(fb, idx, cbuf_offset, &cfg);
+        }
 }
 
 static unsigned
@@ -676,18 +579,25 @@ pan_emit_mfbd(const struct panfrost_device *dev,
         void *fbd = out;
         void *rtd = out + pan_size(MULTI_TARGET_FRAMEBUFFER);
 
-        if (pan_is_bifrost(dev)) {
-                pan_emit_bifrost_mfbd_params(dev, fb, fbd);
-        } else {
-                pan_emit_tls(dev, tls,
-                             pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER,
-                                             LOCAL_STORAGE));
+#if PAN_ARCH >= 6
+        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, params) {
+                params.sample_locations =
+                        panfrost_sample_positions(dev, pan_sample_pattern(fb->nr_samples));
+                params.pre_frame_0 = fb->bifrost.pre_post.modes[0];
+                params.pre_frame_1 = fb->bifrost.pre_post.modes[1];
+                params.post_frame = fb->bifrost.pre_post.modes[2];
+                params.frame_shader_dcds = fb->bifrost.pre_post.dcds.gpu;
         }
+#else
+        GENX(pan_emit_tls)(tls,
+                           pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER,
+                                           LOCAL_STORAGE));
+#endif
 
         unsigned tile_size;
         unsigned internal_cbuf_size = pan_internal_cbuf_size(fb, &tile_size);
-        int crc_rt = pan_select_crc_rt(dev, fb);
-        bool has_zs_crc_ext = pan_fbd_has_zs_crc_ext(dev, fb);
+        int crc_rt = GENX(pan_select_crc_rt)(fb);
+        bool has_zs_crc_ext = pan_fbd_has_zs_crc_ext(fb);
 
         pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, PARAMETERS, cfg) {
                 cfg.width = fb->width;
@@ -731,13 +641,21 @@ pan_emit_mfbd(const struct panfrost_device *dev,
                 }
         }
 
-        if (pan_is_bifrost(dev))
-                pan_emit_mfbd_bifrost_tiler(tiler_ctx, fbd);
-        else
-                pan_emit_mfbd_midgard_tiler(dev, fb, tiler_ctx, fbd);
+#if PAN_ARCH >= 6
+        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_TILER_POINTER, cfg) {
+                cfg.address = tiler_ctx->bifrost;
+        }
+        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_PADDING, padding);
+#else
+        pan_emit_midgard_tiler(dev, fb, tiler_ctx,
+                               pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER, TILER));
+
+        /* All weights set to 0, nothing to do here */
+        pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
+#endif
 
         if (has_zs_crc_ext) {
-                pan_emit_zs_crc_ext(dev, fb, crc_rt,
+                pan_emit_zs_crc_ext(fb, crc_rt,
                                     out + pan_size(MULTI_TARGET_FRAMEBUFFER));
                 rtd += pan_size(ZS_CRC_EXTENSION);
                 tags |= MALI_FBD_TAG_HAS_ZS_RT;
@@ -746,7 +664,7 @@ pan_emit_mfbd(const struct panfrost_device *dev,
         unsigned rt_count = MAX2(fb->rt_count, 1);
         unsigned cbuf_offset = 0;
         for (unsigned i = 0; i < rt_count; i++) {
-                pan_emit_rt(dev, fb, i, cbuf_offset, rtd);
+                pan_emit_rt(fb, i, cbuf_offset, rtd);
                 rtd += pan_size(RENDER_TARGET);
                 if (!fb->rts[i].view)
                         continue;
@@ -761,6 +679,20 @@ pan_emit_mfbd(const struct panfrost_device *dev,
 
         return tags;
 }
+#else /* PAN_ARCH == 4 */
+static void
+pan_emit_sfbd_tiler(const struct panfrost_device *dev,
+                    const struct pan_fb_info *fb,
+                    const struct pan_tiler_context *ctx,
+                    void *fbd)
+{
+       pan_emit_midgard_tiler(dev, fb, ctx,
+                              pan_section_ptr(fbd, SINGLE_TARGET_FRAMEBUFFER, TILER));
+
+        /* All weights set to 0, nothing to do here */
+        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, PADDING_1, padding);
+        pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, TILER_WEIGHTS, w);
+}
 
 static void
 pan_emit_sfbd(const struct panfrost_device *dev,
@@ -769,9 +701,9 @@ pan_emit_sfbd(const struct panfrost_device *dev,
               const struct pan_tiler_context *tiler_ctx,
               void *fbd)
 {
-        pan_emit_tls(dev, tls,
-                     pan_section_ptr(fbd, SINGLE_TARGET_FRAMEBUFFER,
-                                     LOCAL_STORAGE));
+        GENX(pan_emit_tls)(tls,
+                           pan_section_ptr(fbd, SINGLE_TARGET_FRAMEBUFFER,
+                                           LOCAL_STORAGE));
         pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, PARAMETERS, cfg) {
                 cfg.bound_max_x = fb->width - 1;
                 cfg.bound_max_y = fb->height - 1;
@@ -867,26 +799,28 @@ pan_emit_sfbd(const struct panfrost_device *dev,
         pan_emit_sfbd_tiler(dev, fb, tiler_ctx, fbd);
         pan_section_pack(fbd, SINGLE_TARGET_FRAMEBUFFER, PADDING_2, padding);
 }
+#endif
 
 unsigned
-pan_emit_fbd(const struct panfrost_device *dev,
-             const struct pan_fb_info *fb,
-             const struct pan_tls_info *tls,
-             const struct pan_tiler_context *tiler_ctx,
-             void *out)
+GENX(pan_emit_fbd)(const struct panfrost_device *dev,
+                   const struct pan_fb_info *fb,
+                   const struct pan_tls_info *tls,
+                   const struct pan_tiler_context *tiler_ctx,
+                   void *out)
 {
-        if (dev->quirks & MIDGARD_SFBD) {
-                assert(fb->rt_count <= 1);
-                pan_emit_sfbd(dev, fb, tls, tiler_ctx, out);
-                return 0;
-        } else {
-                return pan_emit_mfbd(dev, fb, tls, tiler_ctx, out);
-        }
+#if PAN_ARCH == 4
+        assert(fb->rt_count <= 1);
+        pan_emit_sfbd(dev, fb, tls, tiler_ctx, out);
+        return 0;
+#else
+        return pan_emit_mfbd(dev, fb, tls, tiler_ctx, out);
+#endif
 }
 
+#if PAN_ARCH >= 6
 void
-pan_emit_bifrost_tiler_heap(const struct panfrost_device *dev,
-                            void *out)
+GENX(pan_emit_tiler_heap)(const struct panfrost_device *dev,
+                          void *out)
 {
         pan_pack(out, BIFROST_TILER_HEAP, heap) {
                 heap.size = dev->tiler_heap->size;
@@ -897,11 +831,11 @@ pan_emit_bifrost_tiler_heap(const struct panfrost_device *dev,
 }
 
 void
-pan_emit_bifrost_tiler(const struct panfrost_device *dev,
-                       unsigned fb_width, unsigned fb_height,
-                       unsigned nr_samples,
-                       mali_ptr heap,
-                       void *out)
+GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev,
+                         unsigned fb_width, unsigned fb_height,
+                         unsigned nr_samples,
+                         mali_ptr heap,
+                         void *out)
 {
         unsigned max_levels = dev->tiler_features.max_levels;
         assert(max_levels >= 2);
@@ -915,12 +849,12 @@ pan_emit_bifrost_tiler(const struct panfrost_device *dev,
                 tiler.sample_pattern = pan_sample_pattern(nr_samples);
         }
 }
+#endif
 
 void
-pan_emit_fragment_job(const struct panfrost_device *dev,
-                      const struct pan_fb_info *fb,
-                      mali_ptr fbd,
-                      void *out)
+GENX(pan_emit_fragment_job)(const struct pan_fb_info *fb,
+                            mali_ptr fbd,
+                            void *out)
 {
         pan_section_pack(out, FRAGMENT_JOB, HEADER, header) {
                 header.type = MALI_JOB_TYPE_FRAGMENT;

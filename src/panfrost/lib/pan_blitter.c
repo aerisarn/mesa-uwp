@@ -1108,15 +1108,13 @@ pan_preload_emit_pre_frame_dcd(struct pan_pool *desc_pool,
                                mali_ptr coords, mali_ptr rsd,
                                mali_ptr tsd)
 {
-        struct panfrost_device *dev = desc_pool->dev;
-
         unsigned dcd_idx = zs ? 0 : 1;
         pan_preload_fb_alloc_pre_post_dcds(desc_pool, fb);
         assert(fb->bifrost.pre_post.dcds.cpu);
         void *dcd = fb->bifrost.pre_post.dcds.cpu +
                     (dcd_idx * (pan_size(DRAW) + pan_size(DRAW_PADDING)));
 
-        int crc_rt = pan_select_crc_rt(dev, fb);
+        int crc_rt = GENX(pan_select_crc_rt)(fb);
 
         bool always_write = false;
 
