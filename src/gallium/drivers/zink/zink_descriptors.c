@@ -1373,7 +1373,6 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
       ctx->dd->changed[is_compute][h] = false;
    }
    struct zink_batch *batch = &ctx->batch;
-   zink_batch_reference_program(batch, pg);
 
    uint32_t dynamic_offsets[PIPE_MAX_CONSTANT_BUFFERS];
    unsigned dynamic_offset_idx = 0;
