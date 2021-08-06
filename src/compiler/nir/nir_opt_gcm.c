@@ -395,6 +395,13 @@ static bool
 set_block_for_loop_instr(struct gcm_state *state, nir_instr *instr,
                          nir_block *block)
 {
+   /* If the instruction wasn't in a loop to begin with we don't want to push
+    * it down into one.
+    */
+   nir_loop *loop = state->blocks[instr->block->index].loop;
+   if (loop == NULL)
+      return true;
+
    if (nir_block_dominates(instr->block, block))
       return true;
 
@@ -402,7 +409,6 @@ set_block_for_loop_instr(struct gcm_state *state, nir_instr *instr,
     *    do{ ... break; } while(true)
     * Don't move the instruction as it will not help anything.
     */
-   nir_loop *loop = state->blocks[instr->block->index].loop;
    if (loop->info->limiting_terminator == NULL && !loop->info->complex_loop &&
        nir_block_ends_in_break(nir_loop_last_block(loop)))
       return false;
