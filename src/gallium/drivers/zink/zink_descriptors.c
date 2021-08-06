@@ -1172,6 +1172,7 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
    struct zink_shader **stages;
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
+   struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
    if (is_compute)
       stages = &ctx->curr_compute->shader;
    else
@@ -1190,13 +1191,24 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
        * because of this, we have to populate the dynamic offsets by their shader stage to ensure they
        * match what the driver expects
        */
-      dynamic_offsets[dynamic_idx] = info->offset;
+      const bool used = (pg->dd->push_usage & BITFIELD_BIT(pstage)) == BITFIELD_BIT(pstage);
+      dynamic_offsets[dynamic_idx] = used ? info->offset : 0;
       if (!cache_hit) {
-         struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, pstage, 0);
+         zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, pstage, 0);
          init_write_descriptor(NULL, zds, ZINK_DESCRIPTOR_TYPE_UBO, tgsi_processor_to_shader_stage(pstage), &wds[i], 0);
-         desc_set_res_add(zds, res, i, cache_hit);
+         if (used) {
+            desc_set_res_add(zds, ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_UBO][pstage][0], i, cache_hit);
+            buffer_infos[i].buffer = info->buffer;
+            buffer_infos[i].range = info->range;
+         } else {
+            desc_set_res_add(zds, NULL, i, cache_hit);
+            if (unlikely(!screen->info.rb2_feats.nullDescriptor))
+               buffer_infos[i].buffer = zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
+            else
+               buffer_infos[i].buffer = VK_NULL_HANDLE;
+            buffer_infos[i].range = VK_WHOLE_SIZE;
+         }
          /* these are dynamic UBO descriptors, so we have to always set 0 as the descriptor offset */
-         buffer_infos[i] = *info;
          buffer_infos[i].offset = 0;
          wds[i].pBufferInfo = &buffer_infos[i];
       }
