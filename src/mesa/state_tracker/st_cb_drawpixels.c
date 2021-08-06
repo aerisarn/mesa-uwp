@@ -789,6 +789,7 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
                                    !ctx->Transform.DepthClampNear;
       rasterizer.depth_clip_far = st->clamp_frag_depth_in_shader ||
                                   !ctx->Transform.DepthClampFar;
+      rasterizer.depth_clamp = !rasterizer.depth_clip_far;
       rasterizer.scissor = ctx->Scissor.EnableFlags;
       cso_set_rasterizer(cso, &rasterizer);
    }

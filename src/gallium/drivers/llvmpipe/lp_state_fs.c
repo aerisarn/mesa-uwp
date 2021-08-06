@@ -4165,10 +4165,8 @@ make_variant_key(struct llvmpipe_context *lp,
 
    /*
     * Propagate the depth clamp setting from the rasterizer state.
-    * depth_clip == 0 implies depth clamping is enabled.
-    *
     */
-   key->depth_clamp = (lp->rasterizer->depth_clip_near == 0) ? 1 : 0;
+   key->depth_clamp = lp->rasterizer->depth_clamp;
 
    /* alpha test only applies if render buffer 0 is non-integer (or does not exist) */
    if (!lp->framebuffer.nr_cbufs ||

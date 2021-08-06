@@ -80,6 +80,9 @@ The integer capabilities:
   disabling depth clipping (through pipe_rasterizer_state) separately for
   the near and far plane. If not, depth_clip_near and depth_clip_far will be
   equal.
+  ``PIPE_CAP_DEPTH_CLAMP_ENABLE``: Whether the driver is capable of
+  enabling depth clamping (through pipe_rasterizer_state) separately from depth
+  clipping. If not, depth_clamp will be the inverse of depth_clip_far.
 * ``PIPE_CAP_SHADER_STENCIL_EXPORT``: Whether a stencil reference value can be
   written from a fragment shader.
 * ``PIPE_CAP_TGSI_INSTANCEID``: Whether TGSI_SEMANTIC_INSTANCEID is supported

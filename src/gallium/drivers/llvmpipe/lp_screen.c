@@ -170,6 +170,8 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 1;
    case PIPE_CAP_DEPTH_CLIP_DISABLE:
       return 1;
+   case PIPE_CAP_DEPTH_CLAMP_ENABLE:
+      return 1;
    case PIPE_CAP_SHADER_STENCIL_EXPORT:
       return 1;
    case PIPE_CAP_TGSI_INSTANCEID:

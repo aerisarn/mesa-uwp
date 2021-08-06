@@ -163,6 +163,13 @@ struct pipe_rasterizer_state
    unsigned depth_clip_far:1;
 
    /**
+    * When true, depth clamp is enabled.
+    * If PIPE_CAP_DEPTH_CLAMP_ENABLE is unsupported, this is always the inverse
+    * of depth_clip_far.
+    */
+   unsigned depth_clamp:1;
+
+   /**
     * When true clip space in the z axis goes from [0..1] (D3D).  When false
     * [-1, 1] (GL).
     *
