@@ -28,6 +28,8 @@
 #ifndef __PAN_FORMAT_H
 #define __PAN_FORMAT_H
 
+#include "gen_macros.h"
+
 #include "util/format/u_format.h"
 
 /* Formats */
@@ -53,18 +55,6 @@ extern const struct panfrost_format panfrost_pipe_format_v6[PIPE_FORMAT_COUNT];
 extern const struct panfrost_format panfrost_pipe_format_v7[PIPE_FORMAT_COUNT];
 
 /* Helpers to construct swizzles */
-#ifndef PAN_PACK_H
-/* Avoid the GenXML dependence */
-
-enum mali_channel {
-        MALI_CHANNEL_R = 0,
-        MALI_CHANNEL_G = 1,
-        MALI_CHANNEL_B = 2,
-        MALI_CHANNEL_A = 3,
-        MALI_CHANNEL_0 = 4,
-        MALI_CHANNEL_1 = 5,
-};
-#endif
 
 #define PAN_V6_SWIZZLE(R, G, B, A) ( \
         ((MALI_CHANNEL_ ## R) << 0) | \
