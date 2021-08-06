@@ -30,6 +30,9 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 # Crosvm wants this
 syslogd > /dev/null
 
+# We aren't testing LLVMPipe here, so we don't need to validate NIR on the host
+export NIR_VALIDATE=0
+
 crosvm run \
   --gpu "$CROSVM_GPU_ARGS" \
   -m 4096 \
