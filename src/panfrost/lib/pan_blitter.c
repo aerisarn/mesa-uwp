@@ -228,7 +228,7 @@ pan_blitter_emit_bifrost_blend(const struct panfrost_device *dev,
                 if (!iview) {
                         cfg.enable = false;
                         cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OFF;
-                        return;
+                        continue;
                 }
 
                 nir_alu_type type = blit_shader->key.surfaces[rt].type;
