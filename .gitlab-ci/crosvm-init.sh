@@ -18,6 +18,8 @@ if sh $CROSVM_TEST_SCRIPT; then
     touch /results/success
 fi
 
+sleep 5   # Leave some time to get the last output flushed out
+
 poweroff -d -n -f || true
 
 sleep 10   # Just in case init would exit before the kernel shuts down the VM
