@@ -719,8 +719,8 @@ i915_translate_instruction(struct i915_fp_compile *p,
                       swizzle(src0, ZERO, ZERO, ZERO, ZERO), src0, 0);
 
       i915_emit_arith(
-         p, A0_ADD, get_result_vector(p, &inst->Dst[0]), get_result_flags(inst), 0,
-         get_result_vector(p, &inst->Dst[0]), negate(tmp, 1, 1, 1, 1), 0);
+         p, A0_ADD, get_result_vector(p, &inst->Dst[0]), get_result_flags(inst),
+         0, get_result_vector(p, &inst->Dst[0]), negate(tmp, 1, 1, 1, 1), 0);
       break;
 
    case TGSI_OPCODE_TEX:
