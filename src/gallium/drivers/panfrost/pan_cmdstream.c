@@ -2993,10 +2993,10 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         }
 
         batch->indirect_draw_job_id =
-                panfrost_emit_indirect_draw(&batch->pool.base,
-                                            &batch->scoreboard,
-                                            &draw_info,
-                                            &batch->indirect_draw_ctx);
+                GENX(panfrost_emit_indirect_draw)(&batch->pool.base,
+                                                  &batch->scoreboard,
+                                                  &draw_info,
+                                                  &batch->indirect_draw_ctx);
 
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 }
@@ -3527,6 +3527,7 @@ screen_destroy(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
         pan_blitter_cleanup(dev);
+        GENX(panfrost_cleanup_indirect_draw_shaders)(dev);
         GENX(pan_indirect_dispatch_cleanup)(dev);
 }
 
@@ -3668,4 +3669,5 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
         pan_blitter_init(dev, &screen->blitter.bin_pool.base,
                          &screen->blitter.desc_pool.base);
         GENX(pan_indirect_dispatch_init)(dev);
+        GENX(panfrost_init_indirect_draw_shaders)(dev, &screen->indirect_draw.bin_pool.base);
 }

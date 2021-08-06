@@ -397,17 +397,9 @@ update_job(struct indirect_draw_shader_builder *builder, enum mali_job_type type
         unsigned draw_offset =
                 type == MALI_JOB_TYPE_VERTEX ?
                 pan_section_offset(COMPUTE_JOB, DRAW) :
-                pan_is_bifrost(builder->dev) ?
-                pan_section_offset(BIFROST_TILER_JOB, DRAW) :
-                pan_section_offset(MIDGARD_TILER_JOB, DRAW);
-        unsigned prim_offset =
-                pan_is_bifrost(builder->dev) ?
-                pan_section_offset(BIFROST_TILER_JOB, PRIMITIVE) :
-                pan_section_offset(MIDGARD_TILER_JOB, PRIMITIVE);
-        unsigned psiz_offset =
-                pan_is_bifrost(builder->dev) ?
-                pan_section_offset(BIFROST_TILER_JOB, PRIMITIVE_SIZE) :
-                pan_section_offset(MIDGARD_TILER_JOB, PRIMITIVE_SIZE);
+                pan_section_offset(TILER_JOB, DRAW);
+        unsigned prim_offset = pan_section_offset(TILER_JOB, PRIMITIVE);
+        unsigned psiz_offset = pan_section_offset(TILER_JOB, PRIMITIVE_SIZE);
         unsigned index_size = builder->index_size;
 
         if (type == MALI_JOB_TYPE_TILER) {
@@ -586,8 +578,11 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
                 nir_local_variable_create(b->impl, glsl_uint_type(),
                                           "attrib_idx");
         nir_store_var(b, attrib_idx_var, nir_imm_int(b, 0), 1);
+
+#if PAN_ARCH <= 5
         nir_ssa_def *single_instance =
                 nir_ult(b, builder->draw.instance_count, nir_imm_int(b, 2));
+#endif
 
         LOOP {
                 nir_ssa_def *attrib_idx = nir_load_var(b, attrib_idx_var);
@@ -606,43 +601,43 @@ update_vertex_attribs(struct indirect_draw_shader_builder *builder)
 
                 nir_ssa_def *r_e, *d;
 
-                if (!pan_is_bifrost(builder->dev)) {
-                        IF (nir_ieq_imm(b, attrib_idx, PAN_VERTEX_ID)) {
-                                nir_ssa_def *r_p =
-                                        nir_bcsel(b, single_instance,
-                                                  nir_imm_int(b, 0x9f),
-                                                  builder->instance_size.packed);
+#if PAN_ARCH <= 5
+                IF (nir_ieq_imm(b, attrib_idx, PAN_VERTEX_ID)) {
+                        nir_ssa_def *r_p =
+                                nir_bcsel(b, single_instance,
+                                          nir_imm_int(b, 0x9f),
+                                          builder->instance_size.packed);
 
-                                store_global(b,
-                                             get_address_imm(b, attrib_buf_ptr, WORD(4)),
-                                             nir_ishl(b, r_p, nir_imm_int(b, 24)), 1);
+                        store_global(b,
+                                     get_address_imm(b, attrib_buf_ptr, WORD(4)),
+                                     nir_ishl(b, r_p, nir_imm_int(b, 24)), 1);
 
-                                nir_store_var(b, attrib_idx_var,
-                                              nir_iadd_imm(b, attrib_idx, 1), 1);
-                                CONTINUE;
-                        } ENDIF
+                        nir_store_var(b, attrib_idx_var,
+                                      nir_iadd_imm(b, attrib_idx, 1), 1);
+                        CONTINUE;
+                } ENDIF
 
-                        IF (nir_ieq_imm(b, attrib_idx, PAN_INSTANCE_ID)) {
-                                split_div(b, builder->instance_size.padded,
-                                          &r_e, &d);
-                                nir_ssa_def *default_div =
-                                        nir_ior(b, single_instance,
-                                                nir_ult(b,
-                                                        builder->instance_size.padded,
-                                                        nir_imm_int(b, 2)));
-                                r_e = nir_bcsel(b, default_div,
-                                                nir_imm_int(b, 0x3f), r_e);
-                                d = nir_bcsel(b, default_div,
-                                              nir_imm_int(b, (1u << 31) - 1), d);
-                                store_global(b,
-                                             get_address_imm(b, attrib_buf_ptr, WORD(1)),
-                                             nir_vec2(b, nir_ishl(b, r_e, nir_imm_int(b, 24)), d),
-                                             2);
-                                nir_store_var(b, attrib_idx_var,
-                                              nir_iadd_imm(b, attrib_idx, 1), 1);
-                                CONTINUE;
-                        } ENDIF
-                }
+                IF (nir_ieq_imm(b, attrib_idx, PAN_INSTANCE_ID)) {
+                        split_div(b, builder->instance_size.padded,
+                                  &r_e, &d);
+                        nir_ssa_def *default_div =
+                                nir_ior(b, single_instance,
+                                        nir_ult(b,
+                                                builder->instance_size.padded,
+                                                nir_imm_int(b, 2)));
+                        r_e = nir_bcsel(b, default_div,
+                                        nir_imm_int(b, 0x3f), r_e);
+                        d = nir_bcsel(b, default_div,
+                                      nir_imm_int(b, (1u << 31) - 1), d);
+                        store_global(b,
+                                     get_address_imm(b, attrib_buf_ptr, WORD(1)),
+                                     nir_vec2(b, nir_ishl(b, r_e, nir_imm_int(b, 24)), d),
+                                     2);
+                        nir_store_var(b, attrib_idx_var,
+                                      nir_iadd_imm(b, attrib_idx, 1), 1);
+                        CONTINUE;
+                } ENDIF
+#endif
 
                 nir_ssa_def *instance_div =
                         load_global(b, get_address_imm(b, attrib_buf_ptr, WORD(7)), 1, 32);
@@ -1098,9 +1093,11 @@ create_indirect_draw_shader(struct panfrost_device *dev,
                 mali_ptr address =
                         pan_pool_upload_aligned(dev->indirect_draw_shaders.bin_pool,
                                                 binary.data, binary.size,
-                                                pan_is_bifrost(dev) ? 128 : 64);
-                if (!pan_is_bifrost(dev))
-                        address |= shader_info.midgard.first_tag;
+                                                PAN_ARCH >= 6 ? 128 : 64);
+
+#if PAN_ARCH <= 5
+                address |= shader_info.midgard.first_tag;
+#endif
 
                 util_dynarray_fini(&binary);
 
@@ -1253,7 +1250,7 @@ panfrost_emit_index_min_max_search(struct pan_pool *pool,
 
         pan_section_pack(job.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                cfg.texture_descriptor_is_64b = !pan_is_bifrost(dev);
+                cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
                 cfg.state = rsd;
                 cfg.thread_storage = get_tls(pool->dev);
                 cfg.uniform_buffers = ubos;
@@ -1267,10 +1264,10 @@ panfrost_emit_index_min_max_search(struct pan_pool *pool,
 }
 
 unsigned
-panfrost_emit_indirect_draw(struct pan_pool *pool,
-                            struct pan_scoreboard *scoreboard,
-                            const struct pan_indirect_draw_info *draw_info,
-                            struct panfrost_ptr *ctx)
+GENX(panfrost_emit_indirect_draw)(struct pan_pool *pool,
+                                  struct pan_scoreboard *scoreboard,
+                                  const struct pan_indirect_draw_info *draw_info,
+                                  struct panfrost_ptr *ctx)
 {
         struct panfrost_device *dev = pool->dev;
 
@@ -1345,7 +1342,7 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
 
         pan_section_pack(job.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                cfg.texture_descriptor_is_64b = !pan_is_bifrost(dev);
+                cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
                 cfg.state = rsd;
                 cfg.thread_storage = get_tls(pool->dev);
                 cfg.uniform_buffers = ubos;
@@ -1370,8 +1367,8 @@ panfrost_emit_indirect_draw(struct pan_pool *pool,
 }
 
 void
-panfrost_init_indirect_draw_shaders(struct panfrost_device *dev,
-                                    struct pan_pool *bin_pool)
+GENX(panfrost_init_indirect_draw_shaders)(struct panfrost_device *dev,
+                                          struct pan_pool *bin_pool)
 {
         /* We allocate the states and varying_heap BO lazily to avoid
          * reserving memory when indirect draws are not used.
@@ -1381,7 +1378,7 @@ panfrost_init_indirect_draw_shaders(struct panfrost_device *dev,
 }
 
 void
-panfrost_cleanup_indirect_draw_shaders(struct panfrost_device *dev)
+GENX(panfrost_cleanup_indirect_draw_shaders)(struct panfrost_device *dev)
 {
         panfrost_bo_unreference(dev->indirect_draw_shaders.states);
         panfrost_bo_unreference(dev->indirect_draw_shaders.varying_heap);

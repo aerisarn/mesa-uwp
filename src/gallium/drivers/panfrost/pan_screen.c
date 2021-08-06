@@ -49,7 +49,6 @@
 #include "pan_resource.h"
 #include "pan_public.h"
 #include "pan_util.h"
-#include "pan_indirect_draw.h"
 #include "decode.h"
 
 #include "pan_context.h"
@@ -708,7 +707,6 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         struct panfrost_screen *screen = pan_screen(pscreen);
 
         panfrost_resource_screen_destroy(pscreen);
-        panfrost_cleanup_indirect_draw_shaders(dev);
         panfrost_pool_cleanup(&screen->indirect_draw.bin_pool);
         panfrost_pool_cleanup(&screen->blitter.bin_pool);
         panfrost_pool_cleanup(&screen->blitter.desc_pool);
@@ -898,7 +896,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         panfrost_pool_init(&screen->indirect_draw.bin_pool, NULL, dev,
                            PAN_BO_EXECUTE, 65536, "Indirect draw shaders",
                            false, true);
-        panfrost_init_indirect_draw_shaders(dev, &screen->indirect_draw.bin_pool.base);
         panfrost_pool_init(&screen->blitter.bin_pool, NULL, dev, PAN_BO_EXECUTE,
                            4096, "Blitter shaders", false, true);
         panfrost_pool_init(&screen->blitter.desc_pool, NULL, dev, 0, 65536,
