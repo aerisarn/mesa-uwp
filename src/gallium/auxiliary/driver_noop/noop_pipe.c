@@ -123,6 +123,23 @@ static struct pipe_resource *noop_resource_create(struct pipe_screen *screen,
    return &nresource->b.b;
 }
 
+static struct pipe_resource *
+noop_resource_create_with_modifiers(struct pipe_screen *screen,
+                                    const struct pipe_resource *templ,
+                                    const uint64_t *modifiers, int count)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+   struct pipe_resource *result;
+   struct pipe_resource *noop_resource;
+
+   result = oscreen->resource_create_with_modifiers(oscreen, templ,
+                                                    modifiers, count);
+   noop_resource = noop_resource_create(screen, result);
+   pipe_resource_reference(&result, NULL);
+   return noop_resource;
+}
+
 static struct pipe_resource *noop_resource_from_handle(struct pipe_screen *screen,
                                                        const struct pipe_resource *templ,
                                                        struct winsys_handle *handle,
@@ -589,6 +606,73 @@ static void noop_finalize_nir(struct pipe_screen *pscreen, void *nir, bool optim
    screen->finalize_nir(screen, nir, optimize);
 }
 
+static bool noop_check_resource_capability(struct pipe_screen *screen,
+                                           struct pipe_resource *resource,
+                                           unsigned bind)
+{
+   return true;
+}
+
+static void noop_set_max_shader_compiler_threads(struct pipe_screen *screen,
+                                                 unsigned max_threads)
+{
+}
+
+static bool noop_is_parallel_shader_compilation_finished(struct pipe_screen *screen,
+                                                         void *shader,
+                                                         unsigned shader_type)
+{
+   return true;
+}
+
+static bool noop_is_dmabuf_modifier_supported(struct pipe_screen *screen,
+                                              uint64_t modifier, enum pipe_format format,
+                                              bool *external_only)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+
+   return oscreen->is_dmabuf_modifier_supported(oscreen, modifier, format, external_only);
+}
+
+static unsigned int noop_get_dmabuf_modifier_planes(struct pipe_screen *screen,
+                                                    uint64_t modifier,
+                                                    enum pipe_format format)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+
+   return oscreen->get_dmabuf_modifier_planes(oscreen, modifier, format);
+}
+
+static void noop_get_driver_uuid(struct pipe_screen *screen, char *uuid)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+
+   oscreen->get_driver_uuid(oscreen, uuid);
+}
+
+static void noop_get_device_uuid(struct pipe_screen *screen, char *uuid)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+
+   oscreen->get_device_uuid(oscreen, uuid);
+}
+
+static void noop_query_dmabuf_modifiers(struct pipe_screen *screen,
+                                        enum pipe_format format, int max,
+                                        uint64_t *modifiers,
+                                        unsigned int *external_only, int *count)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+
+   oscreen->query_dmabuf_modifiers(oscreen, format, max, modifiers,
+                                   external_only, count);
+}
+
 struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
 {
    struct noop_pipe_screen *noop_screen;
@@ -629,6 +713,15 @@ struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
    screen->get_disk_shader_cache = noop_get_disk_shader_cache;
    screen->get_compiler_options = noop_get_compiler_options;
    screen->finalize_nir = noop_finalize_nir;
+   screen->check_resource_capability = noop_check_resource_capability;
+   screen->set_max_shader_compiler_threads = noop_set_max_shader_compiler_threads;
+   screen->is_parallel_shader_compilation_finished = noop_is_parallel_shader_compilation_finished;
+   screen->is_dmabuf_modifier_supported = noop_is_dmabuf_modifier_supported;
+   screen->get_dmabuf_modifier_planes = noop_get_dmabuf_modifier_planes;
+   screen->get_driver_uuid = noop_get_driver_uuid;
+   screen->get_device_uuid = noop_get_device_uuid;
+   screen->query_dmabuf_modifiers = noop_query_dmabuf_modifiers;
+   screen->resource_create_with_modifiers = noop_resource_create_with_modifiers;
 
    slab_create_parent(&noop_screen->pool_transfers,
                       sizeof(struct pipe_transfer), 64);
