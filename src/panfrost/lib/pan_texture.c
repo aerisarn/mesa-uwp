@@ -404,6 +404,21 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
         }
 }
 
+/* Map modifiers to mali_texture_layout for packing in a texture descriptor */
+
+static enum mali_texture_layout
+panfrost_modifier_to_layout(uint64_t modifier)
+{
+        if (drm_is_afbc(modifier))
+                return MALI_TEXTURE_LAYOUT_AFBC;
+        else if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
+                return MALI_TEXTURE_LAYOUT_TILED;
+        else if (modifier == DRM_FORMAT_MOD_LINEAR)
+                return MALI_TEXTURE_LAYOUT_LINEAR;
+        else
+                unreachable("Invalid modifer");
+}
+
 void
 panfrost_new_texture(const struct panfrost_device *dev,
                      const struct pan_image_view *iview,
