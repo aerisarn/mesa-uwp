@@ -5142,14 +5142,22 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
           */
          int ds_idx = subpass->depth_stencil_attachment->attachment;
          struct radv_image_view *ds_iview = cmd_buffer->state.attachments[ds_idx].iview;
+         struct radv_image *ds_image = ds_iview->image;
 
          VkExtent2D extent = {
-            .width = ds_iview->image->info.width,
-            .height = ds_iview->image->info.height,
+            .width = ds_image->info.width,
+            .height = ds_image->info.height,
          };
 
+         /* HTILE buffer */
+         uint64_t htile_offset = ds_image->offset + ds_image->planes[0].surface.meta_offset;
+         uint64_t htile_size = ds_image->planes[0].surface.meta_slice_size;
+         struct radv_buffer htile_buffer = {.bo = ds_image->bo,
+                                            .offset = htile_offset,
+                                            .size = htile_size};
+
          /* Copy the VRS rates to the HTILE buffer. */
-         radv_copy_vrs_htile(cmd_buffer, vrs_iview->image, &extent, ds_iview->image, true);
+         radv_copy_vrs_htile(cmd_buffer, vrs_iview->image, &extent, ds_image, &htile_buffer, true);
       } else {
          /* When a subpass uses a VRS attachment without binding a depth/stencil attachment, we have
           * to copy the VRS rates to our internal HTILE buffer.
@@ -5158,13 +5166,20 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
          struct radv_image *ds_image = radv_cmd_buffer_get_vrs_image(cmd_buffer);
 
          if (ds_image) {
+            /* HTILE buffer */
+            uint64_t htile_offset = ds_image->offset + ds_image->planes[0].surface.meta_offset;
+            uint64_t htile_size = ds_image->planes[0].surface.meta_slice_size;
+            struct radv_buffer htile_buffer = {.bo = ds_image->bo,
+                                               .offset = htile_offset,
+                                               .size = htile_size};
+
             VkExtent2D extent = {
                .width = MIN2(fb->width, ds_image->info.width),
                .height = MIN2(fb->height, ds_image->info.height),
             };
 
             /* Copy the VRS rates to the HTILE buffer. */
-            radv_copy_vrs_htile(cmd_buffer, vrs_iview->image, &extent, ds_image, false);
+            radv_copy_vrs_htile(cmd_buffer, vrs_iview->image, &extent, ds_image, &htile_buffer, false);
          }
       }
    }

@@ -220,7 +220,8 @@ fail:
 
 void
 radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_image,
-                    VkExtent2D *extent, struct radv_image *dst_image, bool read_htile_value)
+                    VkExtent2D *extent, struct radv_image *dst_image,
+                    struct radv_buffer *htile_buffer, bool read_htile_value)
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_state *state = &device->meta_state;
@@ -248,13 +249,6 @@ radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_i
 
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         state->copy_vrs_htile_pipeline);
-
-   /* HTILE buffer */
-   uint64_t htile_offset = dst_image->offset + dst_image->planes[0].surface.meta_offset;
-   uint64_t htile_size = dst_image->planes[0].surface.meta_slice_size;
-   struct radv_buffer htile_buffer = {.bo = dst_image->bo,
-                                      .offset = htile_offset,
-                                      .size = htile_size};
 
    radv_image_view_init(&vrs_iview, cmd_buffer->device,
                         &(VkImageViewCreateInfo){
@@ -292,9 +286,9 @@ radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_i
           .dstArrayElement = 0,
           .descriptorCount = 1,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-          .pBufferInfo = &(VkDescriptorBufferInfo){.buffer = radv_buffer_to_handle(&htile_buffer),
+          .pBufferInfo = &(VkDescriptorBufferInfo){.buffer = radv_buffer_to_handle(htile_buffer),
                                                    .offset = 0,
-                                                   .range = htile_size}}});
+                                                   .range = htile_buffer->size}}});
 
    const unsigned constants[3] = {
       dst_image->planes[0].surface.meta_pitch, dst_image->planes[0].surface.meta_slice_size,

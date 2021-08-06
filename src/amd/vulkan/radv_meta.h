@@ -220,7 +220,8 @@ void radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
 void radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                                      const VkImageSubresourceRange *subresourceRange);
 void radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_image,
-                         VkExtent2D *extent, struct radv_image *dst_image, bool read_htile_value);
+                         VkExtent2D *extent, struct radv_image *dst_image,
+                         struct radv_buffer *htile_buffer, bool read_htile_value);
 
 void radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer,
                                      struct radv_image *src_image, VkFormat src_format,
