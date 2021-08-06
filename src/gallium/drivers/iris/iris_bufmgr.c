@@ -617,8 +617,9 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    bool is_coherent = bufmgr->has_llc ||
                       (bufmgr->vram.size > 0 && !local) ||
                       (flags & BO_ALLOC_COHERENT);
+   bool is_scanout = (flags & BO_ALLOC_SCANOUT) != 0;
    enum iris_mmap_mode mmap_mode =
-      !local && is_coherent ? IRIS_MMAP_WB : IRIS_MMAP_WC;
+      !local && is_coherent && !is_scanout ? IRIS_MMAP_WB : IRIS_MMAP_WC;
 
    simple_mtx_lock(&bufmgr->lock);
 

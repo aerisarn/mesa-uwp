@@ -430,6 +430,12 @@ iris_resource_alloc_flags(const struct iris_screen *screen,
       break;
    }
 
+   /* Scanout and shared buffers need to be WC (shared because they might be
+    * used for scanout)
+    */
+   if (templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED))
+      flags |= BO_ALLOC_SCANOUT;
+
    if (templ->flags & (PIPE_RESOURCE_FLAG_MAP_COHERENT |
                        PIPE_RESOURCE_FLAG_MAP_PERSISTENT))
       flags |= BO_ALLOC_SMEM;
