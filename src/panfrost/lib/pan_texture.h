@@ -32,7 +32,7 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
 #include "compiler/shader_enums.h"
-#include "midgard_pack.h"
+#include "gen_macros.h"
 #include "pan_bo.h"
 #include "pan_device.h"
 #include "pan_util.h"

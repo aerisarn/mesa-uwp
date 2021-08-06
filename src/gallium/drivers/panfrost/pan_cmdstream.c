@@ -47,8 +47,6 @@
 #include "pan_indirect_dispatch.h"
 #include "pan_blitter.h"
 
-#include "midgard_pack.h"
-
 /* Statically assert that PIPE_* enums match the hardware enums.
  * (As long as they match, we don't need to translate them.)
  */

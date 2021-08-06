@@ -41,7 +41,7 @@
 #include "pan_pool.h"
 #include "pan_util.h"
 
-#include <midgard_pack.h>
+#include <gen_macros.h>
 
 #if defined(__cplusplus)
 extern "C" {

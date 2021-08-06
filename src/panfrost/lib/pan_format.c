@@ -25,7 +25,6 @@
  */
 
 #include "gen_macros.h"
-#include "midgard_pack.h"
 #include "pan_format.h"
 #include "util/format/u_format.h"
 

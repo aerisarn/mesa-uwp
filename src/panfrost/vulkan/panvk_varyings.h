@@ -28,7 +28,7 @@
 #include "util/format/u_format.h"
 
 #include "compiler/shader_enums.h"
-#include "midgard_pack.h"
+#include "gen_macros.h"
 #include "panfrost-job.h"
 
 struct pan_pool;

@@ -30,7 +30,7 @@
 #include <stdbool.h>
 #include "util/format/u_format.h"
 #include "pan_bo.h"
-#include "midgard_pack.h"
+#include "gen_macros.h"
 
 /* Indices for named (non-XFB) varyings that are present. These are packed
  * tightly so they correspond to a bitfield present (P) indexed by (1 <<

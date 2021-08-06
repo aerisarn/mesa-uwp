@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-#include <midgard_pack.h>
+#include <gen_macros.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>

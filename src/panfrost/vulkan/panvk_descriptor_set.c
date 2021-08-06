@@ -37,7 +37,7 @@
 #include "vk_util.h"
 
 #include "pan_bo.h"
-#include "midgard_pack.h"
+#include "gen_macros.h"
 
 VkResult
 panvk_CreateDescriptorSetLayout(VkDevice _device,
