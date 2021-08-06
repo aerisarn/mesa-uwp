@@ -831,21 +831,37 @@ iris_resource_configure_aux(struct iris_screen *screen,
    case ISL_AUX_USAGE_GFX12_CCS_E:
    case ISL_AUX_USAGE_STC_CCS:
    case ISL_AUX_USAGE_MC:
-      /* When CCS is used, we need to ensure that it starts off in a valid
-       * state. From the Sky Lake PRM, "MCS Buffer for Render Target(s)":
-       *
-       *    "If Software wants to enable Color Compression without Fast
-       *     clear, Software needs to initialize MCS with zeros."
-       *
-       * A CCS surface initialized to zero is in the pass-through state. This
-       * state can avoid the need to ambiguate in some cases. We'll map and
-       * zero the CCS later on in iris_resource_init_aux_buf.
-       */
       if (imported) {
          assert(res->aux.usage != ISL_AUX_USAGE_STC_CCS);
          initial_state =
             isl_drm_modifier_get_default_aux_state(res->mod_info->modifier);
+      } else if (devinfo->verx10 >= 125) {
+         assert(res->aux.surf.size_B == 0);
+         /* From Bspec 47709, "MCS/CCS Buffers for Render Target(s)":
+          *
+          *    "CCS surface does not require initialization. Illegal CCS
+          *     [values] are treated as uncompressed memory."
+          *
+          * Even if we wanted to, we can't initialize the CCS via CPU map. So,
+          * we choose an aux state which describes the current state and helps
+          * avoid ambiguating (something not currently supported for STC_CCS).
+          */
+         assert(isl_aux_usage_has_compression(res->aux.usage));
+         initial_state = isl_aux_usage_has_fast_clears(res->aux.usage) ?
+                         ISL_AUX_STATE_COMPRESSED_CLEAR :
+                         ISL_AUX_STATE_COMPRESSED_NO_CLEAR;
       } else {
+         assert(res->aux.surf.size_B > 0);
+         /* When CCS is used, we need to ensure that it starts off in a valid
+          * state. From the Sky Lake PRM, "MCS Buffer for Render Target(s)":
+          *
+          *    "If Software wants to enable Color Compression without Fast
+          *     clear, Software needs to initialize MCS with zeros."
+          *
+          * A CCS surface initialized to zero is in the pass-through state.
+          * This state can avoid the need to ambiguate in some cases. We'll
+          * map and zero the CCS later on in iris_resource_init_aux_buf.
+          */
          initial_state = ISL_AUX_STATE_PASS_THROUGH;
       }
       break;
