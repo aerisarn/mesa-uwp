@@ -5853,8 +5853,11 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
             rsrc2 = (rsrc2 & C_00B22C_LDS_SIZE) | S_00B22C_LDS_SIZE(v->info.num_lds_blocks_when_not_culling);
       }
 
-      /* When the pipeline is dirty, radv_emit_graphics_pipeline will write this register. */
-      if (!(cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE)) {
+      /* When the pipeline is dirty and not yet emitted, don't write it here
+       * because radv_emit_graphics_pipeline will overwrite this register.
+       */
+      if (!(cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE) ||
+          cmd_buffer->state.emitted_pipeline == pipeline) {
          radeon_set_sh_reg(cmd_buffer->cs, R_00B22C_SPI_SHADER_PGM_RSRC2_GS, rsrc2);
       }
    }
