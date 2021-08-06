@@ -40,6 +40,7 @@ void noop_init_state_functions(struct pipe_context *ctx);
 struct noop_pipe_screen {
    struct pipe_screen	pscreen;
    struct pipe_screen	*oscreen;
+   struct slab_parent_pool pool_transfers;
 };
 
 /*
@@ -357,6 +358,32 @@ static void noop_set_frontend_noop(struct pipe_context *ctx, bool enable)
 {
 }
 
+static void noop_replace_buffer_storage(struct pipe_context *ctx,
+                                        struct pipe_resource *dst,
+                                        struct pipe_resource *src,
+                                        unsigned num_rebinds,
+                                        uint32_t rebind_mask,
+                                        uint32_t delete_buffer_id)
+{
+}
+
+static struct pipe_fence_handle *
+noop_create_fence(struct pipe_context *ctx,
+                  struct tc_unflushed_batch_token *tc_token)
+{
+   struct pipe_reference *f = MALLOC_STRUCT(pipe_reference);
+
+   f->count = 1;
+   return (struct pipe_fence_handle*)f;
+}
+
+static bool noop_is_resource_busy(struct pipe_screen *screen,
+                                  struct pipe_resource *resource,
+                                  unsigned usage)
+{
+   return false;
+}
+
 static struct pipe_context *noop_create_context(struct pipe_screen *screen,
                                                 void *priv, unsigned flags)
 {
@@ -402,7 +429,21 @@ static struct pipe_context *noop_create_context(struct pipe_screen *screen,
    ctx->set_frontend_noop = noop_set_frontend_noop;
    noop_init_state_functions(ctx);
 
-   return ctx;
+   if (!(flags & PIPE_CONTEXT_PREFER_THREADED))
+      return ctx;
+
+   struct pipe_context *tc =
+      threaded_context_create(ctx,
+                              &((struct noop_pipe_screen*)screen)->pool_transfers,
+                              noop_replace_buffer_storage,
+                              noop_create_fence,
+                              noop_is_resource_busy,
+                              false, NULL);
+
+   if (tc && tc != ctx)
+      threaded_context_init_bytes_mapped_limit((struct threaded_context *)tc, 4);
+
+   return tc;
 }
 
 
@@ -490,6 +531,7 @@ static void noop_destroy_screen(struct pipe_screen *screen)
    struct pipe_screen *oscreen = noop_screen->oscreen;
 
    oscreen->destroy(oscreen);
+   slab_destroy_parent(&noop_screen->pool_transfers);
    FREE(screen);
 }
 
@@ -584,6 +626,9 @@ struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
    screen->get_disk_shader_cache = noop_get_disk_shader_cache;
    screen->get_compiler_options = noop_get_compiler_options;
    screen->finalize_nir = noop_finalize_nir;
+
+   slab_create_parent(&noop_screen->pool_transfers,
+                      sizeof(struct pipe_transfer), 64);
 
    return screen;
 }
