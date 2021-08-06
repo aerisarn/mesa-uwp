@@ -127,7 +127,7 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
 
    struct panfrost_device *pdev = &device->physical_device->pdev;
    unsigned bo_size =
-      panfrost_estimate_texture_payload_size(pdev, &view->pview) +
+      GENX(panfrost_estimate_texture_payload_size)(&view->pview) +
       pan_size(TEXTURE);
 
    unsigned surf_descs_offset = PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0;
@@ -142,7 +142,7 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
                     &view->desc : view->bo->ptr.cpu;
 
    STATIC_ASSERT(sizeof(view->desc) >= pan_size(TEXTURE));
-   panfrost_new_texture(pdev, &view->pview, tex_desc, &surf_descs);
+   GENX(panfrost_new_texture)(pdev, &view->pview, tex_desc, &surf_descs);
 
    *pView = panvk_image_view_to_handle(view);
    return VK_SUCCESS;

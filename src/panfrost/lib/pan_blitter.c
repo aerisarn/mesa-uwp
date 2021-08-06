@@ -883,12 +883,12 @@ pan_blitter_emit_textures(struct pan_pool *pool,
         for (unsigned i = 0; i < tex_count; i++) {
                 void *texture = textures.cpu + (pan_size(TEXTURE) * i);
                 size_t payload_size =
-                        panfrost_estimate_texture_payload_size(pool->dev, views[i]);
+                        GENX(panfrost_estimate_texture_payload_size)(views[i]);
                 struct panfrost_ptr surfaces =
                         pan_pool_alloc_aligned(pool, payload_size,
                                                pan_alignment(SURFACE_WITH_STRIDE));
 
-                panfrost_new_texture(pool->dev, views[i], texture, &surfaces);
+                GENX(panfrost_new_texture)(pool->dev, views[i], texture, &surfaces);
         }
 
         return textures.gpu;
@@ -897,7 +897,7 @@ pan_blitter_emit_textures(struct pan_pool *pool,
 
         for (unsigned i = 0; i < tex_count; i++) {
                 size_t sz = pan_size(TEXTURE) +
-                            panfrost_estimate_texture_payload_size(pool->dev, views[i]);
+                            GENX(panfrost_estimate_texture_payload_size)(views[i]);
                 struct panfrost_ptr texture =
                         pan_pool_alloc_aligned(pool, sz, pan_alignment(TEXTURE));
                 struct panfrost_ptr surfaces = {
@@ -905,7 +905,7 @@ pan_blitter_emit_textures(struct pan_pool *pool,
                         .gpu = texture.gpu + pan_size(TEXTURE),
                 };
 
-                panfrost_new_texture(pool->dev, views[i], texture.cpu, &surfaces);
+                GENX(panfrost_new_texture)(pool->dev, views[i], texture.cpu, &surfaces);
                 textures[i] = texture.gpu;
         }
 

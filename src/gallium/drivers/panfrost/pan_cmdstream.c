@@ -1315,8 +1315,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         };
 
         unsigned size =
-                (PAN_ARCH <= 5 ? pan_size(MIDGARD_TEXTURE) : 0) +
-                panfrost_estimate_texture_payload_size(device, &iview);
+                (PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0) +
+                GENX(panfrost_estimate_texture_payload_size)(&iview);
 
         struct panfrost_ptr payload = pan_pool_alloc_aligned(&ctx->descs.base, size, 64);
         so->state = panfrost_pool_take_ref(&ctx->descs, payload.gpu);
@@ -1328,7 +1328,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 payload.gpu += pan_size(MIDGARD_TEXTURE);
         }
 
-        panfrost_new_texture(device, &iview, tex, &payload);
+        GENX(panfrost_new_texture)(device, &iview, tex, &payload);
 }
 
 static void
