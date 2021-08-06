@@ -27,7 +27,6 @@ dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_unorm.r1
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_unorm.r16g16b16a16_unorm.linear_general_linear,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_unorm.r16g16b16a16_unorm.optimal_general_linear,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.r8g8b8a8_unorm.r16g16b16a16_unorm.optimal_linear_linear,Fail
-dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.ctimeolor.2d.a8b8g8r8_unorm_pack32.r16_unorm.general_optimal_linear,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.isampler2d_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1d_fixed_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1darray_float_fragment,Fail
