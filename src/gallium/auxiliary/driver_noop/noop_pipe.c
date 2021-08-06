@@ -310,8 +310,13 @@ static void noop_flush(struct pipe_context *ctx,
                        struct pipe_fence_handle **fence,
                        unsigned flags)
 {
-   if (fence)
-      *fence = NULL;
+   if (fence) {
+      struct pipe_reference *f = MALLOC_STRUCT(pipe_reference);
+      f->count = 1;
+
+      ctx->screen->fence_reference(ctx->screen, fence, NULL);
+      *fence = (struct pipe_fence_handle*)f;
+   }
 }
 
 static void noop_destroy_context(struct pipe_context *ctx)
@@ -488,6 +493,11 @@ static void noop_fence_reference(struct pipe_screen *screen,
                           struct pipe_fence_handle **ptr,
                           struct pipe_fence_handle *fence)
 {
+   if (pipe_reference((struct pipe_reference*)*ptr,
+                      (struct pipe_reference*)fence))
+      FREE(*ptr);
+
+   *ptr = fence;
 }
 
 static bool noop_fence_finish(struct pipe_screen *screen,
