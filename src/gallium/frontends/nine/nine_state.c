@@ -1004,38 +1004,37 @@ update_textures_and_samplers(struct NineDevice9 *device)
     uint16_t prev_mask = context->bound_samplers_mask_ps;
     context->bound_samplers_mask_ps = 0;
     const uint16_t ps_mask = sampler_mask | context->enabled_samplers_mask_ps;
-    /* iterate over extant+enabled mask */
-    u_foreach_bit(i, ps_mask) {
+    num_textures = util_last_bit(ps_mask) + 1;
+    /* iterate over the enabled samplers */
+    u_foreach_bit(i, context->enabled_samplers_mask_ps) {
         const unsigned s = NINE_SAMPLER_PS(i);
-        int sRGB;
+        int sRGB = context->samp[s][D3DSAMP_SRGBTEXTURE] ? 1 : 0;
 
-        if (context->enabled_samplers_mask_ps & BITFIELD_BIT(i)) {
-            sRGB = context->samp[s][D3DSAMP_SRGBTEXTURE] ? 1 : 0;
+        view[i] = context->texture[s].view[sRGB];
 
-            view[i] = context->texture[s].view[sRGB];
-
-            if (update_sampler_derived(context, s) || (context->changed.sampler[s] & 0x05fe)) {
-                context->changed.sampler[s] = 0;
-                commit_samplers = TRUE;
-                nine_convert_sampler_state(context->cso, s, context->samp[s]);
-            }
-        } else {
-            /* Bind dummy sampler. We do not bind dummy sampler when
-             * it is not needed because it could add overhead. The
-             * dummy sampler should have r=g=b=0 and a=1. We do not
-             * unbind dummy sampler directly when they are not needed
-             * anymore, but they're going to be removed as long as texture
-             * or sampler states are changed. */
-            view[i] = device->dummy_sampler_view;
-
-            cso_single_sampler(context->cso, PIPE_SHADER_FRAGMENT,
-                               s - NINE_SAMPLER_PS(0), &device->dummy_sampler_state);
-
+        if (update_sampler_derived(context, s) || (context->changed.sampler[s] & 0x05fe)) {
+            context->changed.sampler[s] = 0;
             commit_samplers = TRUE;
-            context->changed.sampler[s] = ~0;
+            nine_convert_sampler_state(context->cso, s, context->samp[s]);
         }
-        num_textures = i + 1;
+        context->bound_samplers_mask_ps |= (1 << s);
+    }
+    /* iterate over the dummy samplers */
+    u_foreach_bit(i, sampler_mask & ~context->enabled_samplers_mask_ps) {
+        const unsigned s = NINE_SAMPLER_PS(i);
+        /* Bind dummy sampler. We do not bind dummy sampler when
+         * it is not needed because it could add overhead. The
+         * dummy sampler should have r=g=b=0 and a=1. We do not
+         * unbind dummy sampler directly when they are not needed
+         * anymore, but they're going to be removed as long as texture
+         * or sampler states are changed. */
+        view[i] = device->dummy_sampler_view;
 
+        cso_single_sampler(context->cso, PIPE_SHADER_FRAGMENT,
+                           s - NINE_SAMPLER_PS(0), &device->dummy_sampler_state);
+
+        commit_samplers = TRUE;
+        context->changed.sampler[s] = ~0;
         context->bound_samplers_mask_ps |= (1 << s);
     }
     /* fill in unused samplers */
@@ -1054,37 +1053,35 @@ update_textures_and_samplers(struct NineDevice9 *device)
     prev_mask = context->bound_samplers_mask_vs;
     context->bound_samplers_mask_vs = 0;
     const uint16_t vs_mask = sampler_mask | context->enabled_samplers_mask_vs;
-    u_foreach_bit(i, vs_mask) {
+    num_textures = util_last_bit(vs_mask) + 1;
+    u_foreach_bit(i, context->enabled_samplers_mask_vs) {
         const unsigned s = NINE_SAMPLER_VS(i);
-        int sRGB;
+        int sRGB = context->samp[s][D3DSAMP_SRGBTEXTURE] ? 1 : 0;
 
-        if (context->texture[s].enabled) {
-            sRGB = context->samp[s][D3DSAMP_SRGBTEXTURE] ? 1 : 0;
+        view[i] = context->texture[s].view[sRGB];
 
-            view[i] = context->texture[s].view[sRGB];
-
-            if (update_sampler_derived(context, s) || (context->changed.sampler[s] & 0x05fe)) {
-                context->changed.sampler[s] = 0;
-                commit_samplers = TRUE;
-                nine_convert_sampler_state(context->cso, s, context->samp[s]);
-            }
-        } else {
-            /* Bind dummy sampler. We do not bind dummy sampler when
-             * it is not needed because it could add overhead. The
-             * dummy sampler should have r=g=b=0 and a=1. We do not
-             * unbind dummy sampler directly when they are not needed
-             * anymore, but they're going to be removed as long as texture
-             * or sampler states are changed. */
-            view[i] = device->dummy_sampler_view;
-
-            cso_single_sampler(context->cso, PIPE_SHADER_VERTEX,
-                               s - NINE_SAMPLER_VS(0), &device->dummy_sampler_state);
-
+        if (update_sampler_derived(context, s) || (context->changed.sampler[s] & 0x05fe)) {
+            context->changed.sampler[s] = 0;
             commit_samplers = TRUE;
-            context->changed.sampler[s] = ~0;
+            nine_convert_sampler_state(context->cso, s, context->samp[s]);
         }
-        num_textures = i + 1;
+        context->bound_samplers_mask_vs |= (1 << i);
+    }
+    u_foreach_bit(i, sampler_mask & ~context->enabled_samplers_mask_vs) {
+        const unsigned s = NINE_SAMPLER_VS(i);
+        /* Bind dummy sampler. We do not bind dummy sampler when
+         * it is not needed because it could add overhead. The
+         * dummy sampler should have r=g=b=0 and a=1. We do not
+         * unbind dummy sampler directly when they are not needed
+         * anymore, but they're going to be removed as long as texture
+         * or sampler states are changed. */
+        view[i] = device->dummy_sampler_view;
 
+        cso_single_sampler(context->cso, PIPE_SHADER_VERTEX,
+                           s - NINE_SAMPLER_VS(0), &device->dummy_sampler_state);
+
+        commit_samplers = TRUE;
+        context->changed.sampler[s] = ~0;
         context->bound_samplers_mask_vs |= (1 << i);
     }
     /* fill in unused samplers */
