@@ -429,31 +429,34 @@ emit_ssbos(struct fd_context *ctx, struct fd_ringbuffer *ring,
 {
    unsigned count = util_last_bit(so->enabled_mask);
 
-   for (unsigned i = 0; i < count; i++) {
-      OUT_PKT7(ring, CP_LOAD_STATE4, 5);
-      OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(i) |
-                        CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
-                        CP_LOAD_STATE4_0_STATE_BLOCK(sb) |
-                        CP_LOAD_STATE4_0_NUM_UNIT(1));
-      OUT_RING(ring, CP_LOAD_STATE4_1_STATE_TYPE(ST4_CONSTANTS) |
-                        CP_LOAD_STATE4_1_EXT_SRC_ADDR(0));
-      OUT_RING(ring, CP_LOAD_STATE4_2_EXT_SRC_ADDR_HI(0));
+   OUT_PKT7(ring, CP_LOAD_STATE4, 3 + 2 * count);
+   OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(0) |
+                     CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
+                     CP_LOAD_STATE4_0_STATE_BLOCK(sb) |
+                     CP_LOAD_STATE4_0_NUM_UNIT(count));
+   OUT_RING(ring, CP_LOAD_STATE4_1_STATE_TYPE(ST4_CONSTANTS) |
+                     CP_LOAD_STATE4_1_EXT_SRC_ADDR(0));
+   OUT_RING(ring, CP_LOAD_STATE4_2_EXT_SRC_ADDR_HI(0));
 
+   for (unsigned i = 0; i < count; i++) {
       struct pipe_shader_buffer *buf = &so->sb[i];
       unsigned sz = buf->buffer_size;
 
       /* Unlike a6xx, SSBO size is in bytes. */
       OUT_RING(ring, A5XX_SSBO_1_0_WIDTH(sz & MASK(16)));
       OUT_RING(ring, A5XX_SSBO_1_1_HEIGHT(sz >> 16));
+   }
 
-      OUT_PKT7(ring, CP_LOAD_STATE4, 5);
-      OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(i) |
-                        CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
-                        CP_LOAD_STATE4_0_STATE_BLOCK(sb) |
-                        CP_LOAD_STATE4_0_NUM_UNIT(1));
-      OUT_RING(ring, CP_LOAD_STATE4_1_STATE_TYPE(ST4_UBO) |
-                        CP_LOAD_STATE4_1_EXT_SRC_ADDR(0));
-      OUT_RING(ring, CP_LOAD_STATE4_2_EXT_SRC_ADDR_HI(0));
+   OUT_PKT7(ring, CP_LOAD_STATE4, 3 + 2 * count);
+   OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(0) |
+                     CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
+                     CP_LOAD_STATE4_0_STATE_BLOCK(sb) |
+                     CP_LOAD_STATE4_0_NUM_UNIT(count));
+   OUT_RING(ring, CP_LOAD_STATE4_1_STATE_TYPE(ST4_UBO) |
+                     CP_LOAD_STATE4_1_EXT_SRC_ADDR(0));
+   OUT_RING(ring, CP_LOAD_STATE4_2_EXT_SRC_ADDR_HI(0));
+   for (unsigned i = 0; i < count; i++) {
+      struct pipe_shader_buffer *buf = &so->sb[i];
 
       if (buf->buffer) {
          struct fd_resource *rsc = fd_resource(buf->buffer);
