@@ -629,15 +629,15 @@ if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
 binop("iadd", tint, _2src_commutative + associative, "(uint64_t)src0 + (uint64_t)src1")
 binop("iadd_sat", tint, _2src_commutative, """
       src1 > 0 ?
-         (src0 + src1 < src0 ? (1ull << (bit_size - 1)) - 1 : src0 + src1) :
-         (src0 < src0 + src1 ? (1ull << (bit_size - 1))     : src0 + src1)
+         (src0 + src1 < src0 ? u_intN_max(bit_size) : src0 + src1) :
+         (src0 < src0 + src1 ? u_intN_min(bit_size) : src0 + src1)
 """)
 binop("uadd_sat", tuint, _2src_commutative,
       "(src0 + src1) < src0 ? u_uintN_max(sizeof(src0) * 8) : (src0 + src1)")
 binop("isub_sat", tint, "", """
       src1 < 0 ?
-         (src0 - src1 < src0 ? (1ull << (bit_size - 1)) - 1 : src0 - src1) :
-         (src0 < src0 - src1 ? (1ull << (bit_size - 1))     : src0 - src1)
+         (src0 - src1 < src0 ? u_intN_max(bit_size) : src0 - src1) :
+         (src0 < src0 - src1 ? u_intN_min(bit_size) : src0 - src1)
 """)
 binop("usub_sat", tuint, "", "src0 < src1 ? 0 : src0 - src1")
 
