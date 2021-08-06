@@ -46,6 +46,7 @@ struct panfrost_context;
 struct panfrost_resource;
 struct panfrost_shader_state;
 struct pan_fb_info;
+struct pan_blend_state;
 
 /* Virtual table of per-generation (GenXML) functions */
 
@@ -76,6 +77,13 @@ struct panfrost_vtable {
 
         /* Device-dependent initialization of a panfrost_batch */
         void (*init_batch)(struct panfrost_batch *batch);
+
+        /* Get blend shader */
+        struct pan_blend_shader_variant *
+        (*get_blend_shader)(const struct panfrost_device *,
+                            const struct pan_blend_state *,
+                            nir_alu_type, nir_alu_type,
+                            unsigned rt);
 
         /* Initialize the polygon list */
         void (*init_polygon_list)(struct panfrost_batch *);

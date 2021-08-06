@@ -38,6 +38,7 @@
 
 #include "pan_pool.h"
 #include "pan_bo.h"
+#include "pan_blend.h"
 #include "pan_context.h"
 #include "pan_job.h"
 #include "pan_shader.h"
@@ -918,7 +919,7 @@ panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch,
         if (rt < batch->key.nr_cbufs && batch->key.cbufs[rt]) {
                 enum pipe_format format = batch->key.cbufs[rt]->format;
                 uniform->u[0] =
-                        pan_blend_get_bifrost_desc(dev, format, rt, size, false) >> 32;
+                        GENX(pan_blend_get_internal_desc)(dev, format, rt, size, false) >> 32;
         } else {
                 pan_pack(&uniform->u[0], BIFROST_INTERNAL_CONVERSION, cfg)
                         cfg.memory_format = dev->formats[PIPE_FORMAT_NONE].hw;
@@ -3666,6 +3667,7 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
         screen->vtbl.preload     = preload;
         screen->vtbl.context_init = context_init;
         screen->vtbl.init_batch = init_batch;
+        screen->vtbl.get_blend_shader = GENX(pan_blend_get_shader_locked);
         screen->vtbl.init_polygon_list = init_polygon_list;
 
         GENX(pan_blitter_init)(dev, &screen->blitter.bin_pool.base,
