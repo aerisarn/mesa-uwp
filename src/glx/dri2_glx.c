@@ -190,29 +190,20 @@ dri2_create_context_attribs(struct glx_screen *base,
    __GLXDRIconfigPrivate *config = (__GLXDRIconfigPrivate *) config_base;
    __DRIcontext *shared = NULL;
 
-   uint32_t minor_ver;
-   uint32_t major_ver;
-   uint32_t renderType;
-   uint32_t flags;
-   unsigned api;
-   int reset;
-   int release;
+   struct dri_ctx_attribs dca;
    uint32_t ctx_attribs[2 * 6];
    unsigned num_ctx_attribs = 0;
 
-   /* Remap the GLX tokens to DRI2 tokens.
-    */
-   if (!dri2_convert_glx_attribs(num_attribs, attribs,
-                                 &major_ver, &minor_ver, &renderType, &flags,
-                                 &api, &reset, &release, error))
+   *error = dri_convert_glx_attribs(num_attribs, attribs, &dca);
+   if (*error != __DRI_CTX_ERROR_SUCCESS)
       goto error_exit;
 
-   if (!dri2_check_no_error(flags, shareList, major_ver, error)) {
+   if (!dri2_check_no_error(dca.flags, shareList, dca.major_ver, error)) {
       goto error_exit;
    }
 
    /* Check the renderType value */
-   if (!validate_renderType_against_config(config_base, renderType))
+   if (!validate_renderType_against_config(config_base, dca.render_type))
        goto error_exit;
 
    if (shareList) {
@@ -234,44 +225,44 @@ dri2_create_context_attribs(struct glx_screen *base,
       goto error_exit;
 
    ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_MAJOR_VERSION;
-   ctx_attribs[num_ctx_attribs++] = major_ver;
+   ctx_attribs[num_ctx_attribs++] = dca.major_ver;
    ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_MINOR_VERSION;
-   ctx_attribs[num_ctx_attribs++] = minor_ver;
+   ctx_attribs[num_ctx_attribs++] = dca.minor_ver;
 
    /* Only send a value when the non-default value is requested.  By doing
     * this we don't have to check the driver's DRI2 version before sending the
     * default value.
     */
-   if (reset != __DRI_CTX_RESET_NO_NOTIFICATION) {
+   if (dca.reset != __DRI_CTX_RESET_NO_NOTIFICATION) {
       ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_RESET_STRATEGY;
-      ctx_attribs[num_ctx_attribs++] = reset;
+      ctx_attribs[num_ctx_attribs++] = dca.reset;
    }
 
-   if (release != __DRI_CTX_RELEASE_BEHAVIOR_FLUSH) {
+   if (dca.release != __DRI_CTX_RELEASE_BEHAVIOR_FLUSH) {
       ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_RELEASE_BEHAVIOR;
-      ctx_attribs[num_ctx_attribs++] = release;
+      ctx_attribs[num_ctx_attribs++] = dca.release;
    }
 
-   if (flags != 0) {
+   if (dca.flags != 0) {
       ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_FLAGS;
 
       /* The current __DRI_CTX_FLAG_* values are identical to the
        * GLX_CONTEXT_*_BIT values.
        */
-      ctx_attribs[num_ctx_attribs++] = flags;
+      ctx_attribs[num_ctx_attribs++] = dca.flags;
    }
 
    /* The renderType is retrieved from attribs, or set to default
     *  of GLX_RGBA_TYPE.
     */
-   pcp->base.renderType = renderType;
+   pcp->base.renderType = dca.render_type;
 
-   if (flags & __DRI_CTX_FLAG_NO_ERROR)
+   if (dca.flags & __DRI_CTX_FLAG_NO_ERROR)
       pcp->base.noError = GL_TRUE;
 
    pcp->driContext =
       (*psc->dri2->createContextAttribs) (psc->driScreen,
-					  api,
+					  dca.api,
 					  config ? config->driConfig : NULL,
 					  shared,
 					  num_ctx_attribs / 2,
