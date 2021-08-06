@@ -92,7 +92,7 @@ noop_set_active_query_state(struct pipe_context *pipe, bool enable)
  * resource
  */
 struct noop_resource {
-   struct pipe_resource	base;
+   struct threaded_resource b;
    unsigned		size;
    char			*data;
    struct sw_displaytarget	*dt;
@@ -109,16 +109,17 @@ static struct pipe_resource *noop_resource_create(struct pipe_screen *screen,
       return NULL;
 
    stride = util_format_get_stride(templ->format, templ->width0);
-   nresource->base = *templ;
-   nresource->base.screen = screen;
+   nresource->b.b = *templ;
+   nresource->b.b.screen = screen;
    nresource->size = stride * templ->height0 * templ->depth0;
    nresource->data = MALLOC(nresource->size);
-   pipe_reference_init(&nresource->base.reference, 1);
+   pipe_reference_init(&nresource->b.b.reference, 1);
    if (nresource->data == NULL) {
       FREE(nresource);
       return NULL;
    }
-   return &nresource->base;
+   threaded_resource_init(&nresource->b.b);
+   return &nresource->b.b;
 }
 
 static struct pipe_resource *noop_resource_from_handle(struct pipe_screen *screen,
@@ -189,6 +190,7 @@ static void noop_resource_destroy(struct pipe_screen *screen,
 {
    struct noop_resource *nresource = (struct noop_resource *)resource;
 
+   threaded_resource_deinit(resource);
    FREE(nresource->data);
    FREE(resource);
 }
