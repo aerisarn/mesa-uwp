@@ -30,6 +30,7 @@
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"
 #include "util/u_upload_mgr.h"
+#include "util/u_threaded_context.h"
 #include "noop_public.h"
 
 DEBUG_GET_ONCE_BOOL_OPTION(noop, "GALLIUM_NOOP", false)
@@ -45,6 +46,7 @@ struct noop_pipe_screen {
  * query
  */
 struct noop_query {
+   struct threaded_query b;
    unsigned	query;
 };
 static struct pipe_query *noop_create_query(struct pipe_context *ctx, unsigned query_type, unsigned index)
