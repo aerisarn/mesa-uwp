@@ -852,6 +852,7 @@ struct radv_device {
    /* Depth image for VRS when not bound by the app. */
    struct {
       struct radv_image *image;
+      struct radv_buffer *buffer; /* HTILE */
       struct radv_device_memory *mem;
    } vrs;
 };
@@ -1287,6 +1288,8 @@ void radv_initialise_color_surface(struct radv_device *device, struct radv_color
                                    struct radv_image_view *iview);
 void radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_info *ds,
                                 struct radv_image_view *iview);
+void radv_initialise_vrs_surface(struct radv_image *image, struct radv_buffer *htile_buffer,
+                                 struct radv_ds_buffer_info *ds);
 
 /**
  * Attachment state when recording a renderpass instance.
@@ -1561,7 +1564,7 @@ void radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
 void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples);
 unsigned radv_get_default_max_sample_dist(int log_samples);
 void radv_device_init_msaa(struct radv_device *device);
-VkResult radv_device_init_vrs_image(struct radv_device *device);
+VkResult radv_device_init_vrs_state(struct radv_device *device);
 
 void radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
                                    const struct radv_image_view *iview,
