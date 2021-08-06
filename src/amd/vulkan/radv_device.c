@@ -2237,17 +2237,8 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
          VkPhysicalDeviceSampleLocationsPropertiesEXT *properties =
             (VkPhysicalDeviceSampleLocationsPropertiesEXT *)ext;
-
-         VkSampleCountFlagBits supported_samples = VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
-         if (pdevice->rad_info.chip_class < GFX10) {
-            /* FIXME: Some MSAA8x tests fail for weird
-             * reasons on GFX10+ when the same pattern is
-             * used inside the same render pass.
-             */
-            supported_samples |= VK_SAMPLE_COUNT_8_BIT;
-         }
-
-         properties->sampleLocationSampleCounts = supported_samples;
+         properties->sampleLocationSampleCounts = VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT |
+                                                  VK_SAMPLE_COUNT_8_BIT;
          properties->maxSampleLocationGridSize = (VkExtent2D){2, 2};
          properties->sampleLocationCoordinateRange[0] = 0.0f;
          properties->sampleLocationCoordinateRange[1] = 0.9375f;
@@ -7941,11 +7932,8 @@ radv_GetPhysicalDeviceMultisamplePropertiesEXT(VkPhysicalDevice physicalDevice,
                                                VkSampleCountFlagBits samples,
                                                VkMultisamplePropertiesEXT *pMultisampleProperties)
 {
-   RADV_FROM_HANDLE(radv_physical_device, physical_device, physicalDevice);
-   VkSampleCountFlagBits supported_samples = VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
-
-   if (physical_device->rad_info.chip_class < GFX10)
-      supported_samples |= VK_SAMPLE_COUNT_8_BIT;
+   VkSampleCountFlagBits supported_samples = VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT |
+                                             VK_SAMPLE_COUNT_8_BIT;
 
    if (samples & supported_samples) {
       pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){2, 2};
