@@ -1002,8 +1002,8 @@ update_textures_and_samplers(struct NineDevice9 *device)
 
     commit_samplers = FALSE;
     uint16_t prev_mask = context->bound_samplers_mask_ps;
-    context->bound_samplers_mask_ps = 0;
     const uint16_t ps_mask = sampler_mask | context->enabled_samplers_mask_ps;
+    context->bound_samplers_mask_ps = ps_mask;
     num_textures = util_last_bit(ps_mask) + 1;
     /* iterate over the enabled samplers */
     u_foreach_bit(i, context->enabled_samplers_mask_ps) {
@@ -1017,7 +1017,6 @@ update_textures_and_samplers(struct NineDevice9 *device)
             commit_samplers = TRUE;
             nine_convert_sampler_state(context->cso, s, context->samp[s]);
         }
-        context->bound_samplers_mask_ps |= (1 << s);
     }
     /* iterate over the dummy samplers */
     u_foreach_bit(i, sampler_mask & ~context->enabled_samplers_mask_ps) {
@@ -1035,7 +1034,6 @@ update_textures_and_samplers(struct NineDevice9 *device)
 
         commit_samplers = TRUE;
         context->changed.sampler[s] = ~0;
-        context->bound_samplers_mask_ps |= (1 << s);
     }
     /* fill in unused samplers */
     u_foreach_bit(i, BITFIELD_MASK(num_textures) & ~ps_mask)
@@ -1051,8 +1049,8 @@ update_textures_and_samplers(struct NineDevice9 *device)
     commit_samplers = FALSE;
     sampler_mask = context->programmable_vs ? context->vs->sampler_mask : 0;
     prev_mask = context->bound_samplers_mask_vs;
-    context->bound_samplers_mask_vs = 0;
     const uint16_t vs_mask = sampler_mask | context->enabled_samplers_mask_vs;
+    context->bound_samplers_mask_vs = vs_mask;
     num_textures = util_last_bit(vs_mask) + 1;
     u_foreach_bit(i, context->enabled_samplers_mask_vs) {
         const unsigned s = NINE_SAMPLER_VS(i);
@@ -1065,7 +1063,6 @@ update_textures_and_samplers(struct NineDevice9 *device)
             commit_samplers = TRUE;
             nine_convert_sampler_state(context->cso, s, context->samp[s]);
         }
-        context->bound_samplers_mask_vs |= (1 << i);
     }
     u_foreach_bit(i, sampler_mask & ~context->enabled_samplers_mask_vs) {
         const unsigned s = NINE_SAMPLER_VS(i);
@@ -1082,7 +1079,6 @@ update_textures_and_samplers(struct NineDevice9 *device)
 
         commit_samplers = TRUE;
         context->changed.sampler[s] = ~0;
-        context->bound_samplers_mask_vs |= (1 << i);
     }
     /* fill in unused samplers */
     u_foreach_bit(i, BITFIELD_MASK(num_textures) & ~vs_mask)
