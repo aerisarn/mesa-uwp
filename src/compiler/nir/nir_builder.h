@@ -353,6 +353,17 @@ nir_imm_vec2(nir_builder *build, float x, float y)
 }
 
 static inline nir_ssa_def *
+nir_imm_vec3(nir_builder *build, float x, float y, float z)
+{
+   nir_const_value v[3] = {
+      nir_const_value_for_float(x, 32),
+      nir_const_value_for_float(y, 32),
+      nir_const_value_for_float(z, 32),
+   };
+   return nir_build_imm(build, 3, 32, v);
+}
+
+static inline nir_ssa_def *
 nir_imm_vec4(nir_builder *build, float x, float y, float z, float w)
 {
    nir_const_value v[4] = {
