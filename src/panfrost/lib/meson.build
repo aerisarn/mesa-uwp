@@ -49,6 +49,7 @@ foreach ver : pixel_format_versions
 endforeach
 
 libpanfrost_per_arch = []
+libpanfrost_decode_per_arch = []
 
 foreach ver : ['4', '5', '6', '7']
   libpanfrost_per_arch += static_library(
@@ -64,6 +65,16 @@ foreach ver : ['4', '5', '6', '7']
     c_args : ['-DPAN_ARCH=' + ver],
     gnu_symbol_visibility : 'hidden',
     dependencies : [dep_libdrm, idep_pan_packers, idep_nir],
+  )
+
+  libpanfrost_decode_per_arch += static_library(
+    'pandecode-arch-v' + ver,
+    ['decode.c', pan_packers],
+    include_directories : [inc_include, inc_src, inc_panfrost],
+    dependencies : [dep_libdrm, idep_pan_packers, idep_nir],
+    c_args : [no_override_init_args, '-DPAN_ARCH=' + ver],
+    gnu_symbol_visibility : 'hidden',
+    build_by_default : false,
   )
 endforeach
 
@@ -85,11 +96,6 @@ libpanfrost_lib_files = files(
   'pan_util.c',
 )
 
-libpanfrost_decode_files = files(
-  'decode_common.c',
-  'decode.c',
-)
-
 libpanfrost_lib = static_library(
   'panfrost_lib',
   [libpanfrost_lib_files, pan_packers],
@@ -103,12 +109,16 @@ libpanfrost_lib = static_library(
 
 libpanfrost_decode = static_library(
   'panfrost_decode',
-  [libpanfrost_decode_files, pan_packers],
+  [
+    'decode_common.c',
+    pan_packers
+  ],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost],
   dependencies : idep_mesautil,
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
+  link_with: [libpanfrost_decode_per_arch],
 )
 
 libpanfrost_dep = declare_dependency(

@@ -643,10 +643,10 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                                INT64_MAX, 0, NULL);
 
                 if (dev->debug & PAN_DBG_TRACE)
-                        pandecode_jc(submit.jc, pan_is_bifrost(dev), dev->gpu_id);
+                        pandecode_jc(submit.jc, dev->gpu_id);
 
                 if (dev->debug & PAN_DBG_SYNC)
-                        pandecode_abort_on_fault(submit.jc);
+                        pandecode_abort_on_fault(submit.jc, dev->gpu_id);
         }
 
         return 0;

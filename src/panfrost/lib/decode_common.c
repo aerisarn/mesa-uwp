@@ -36,6 +36,8 @@
 #include "util/u_dynarray.h"
 #include "util/hash_table.h"
 
+FILE *pandecode_dump_stream;
+
 /* Memory handling */
 
 static struct hash_table_u64 *mmap_table;
@@ -217,4 +219,38 @@ pandecode_close(void)
         _mesa_hash_table_u64_destroy(mmap_table);
         util_dynarray_fini(&ro_mappings);
         pandecode_dump_file_close();
+}
+
+void pandecode_abort_on_fault_v4(mali_ptr jc_gpu_va);
+void pandecode_abort_on_fault_v5(mali_ptr jc_gpu_va);
+void pandecode_abort_on_fault_v6(mali_ptr jc_gpu_va);
+void pandecode_abort_on_fault_v7(mali_ptr jc_gpu_va);
+
+void
+pandecode_abort_on_fault(mali_ptr jc_gpu_va, unsigned gpu_id)
+{
+        switch (pan_arch(gpu_id)) {
+        case 4: pandecode_abort_on_fault_v4(jc_gpu_va); return;
+        case 5: pandecode_abort_on_fault_v5(jc_gpu_va); return;
+        case 6: pandecode_abort_on_fault_v6(jc_gpu_va); return;
+        case 7: pandecode_abort_on_fault_v7(jc_gpu_va); return;
+        default: unreachable("Unsupported architecture");
+        }
+}
+
+void pandecode_jc_v4(mali_ptr jc_gpu_va, unsigned gpu_id);
+void pandecode_jc_v5(mali_ptr jc_gpu_va, unsigned gpu_id);
+void pandecode_jc_v6(mali_ptr jc_gpu_va, unsigned gpu_id);
+void pandecode_jc_v7(mali_ptr jc_gpu_va, unsigned gpu_id);
+
+void
+pandecode_jc(mali_ptr jc_gpu_va, unsigned gpu_id)
+{
+        switch (pan_arch(gpu_id)) {
+        case 4: pandecode_jc_v4(jc_gpu_va, gpu_id); return;
+        case 5: pandecode_jc_v5(jc_gpu_va, gpu_id); return;
+        case 6: pandecode_jc_v6(jc_gpu_va, gpu_id); return;
+        case 7: pandecode_jc_v7(jc_gpu_va, gpu_id); return;
+        default: unreachable("Unsupported architecture");
+        }
 }

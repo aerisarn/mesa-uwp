@@ -26,6 +26,8 @@
 #ifndef __PAN_DECODE_H__
 #define __PAN_DECODE_H__
 
+#include "gen_macros.h"
+
 #include "wrap.h"
 
 extern FILE *pandecode_dump_stream;
@@ -80,5 +82,10 @@ __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
 #define PANDECODE_PTR_VAR(name, mem, gpu_va) \
 	name = __pandecode_fetch_gpu_mem(mem, gpu_va, sizeof(*name), \
 				       __LINE__, __FILE__)
+
+#ifdef PAN_ARCH
+void GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id);
+void GENX(pandecode_abort_on_fault)(mali_ptr jc_gpu_va);
+#endif
 
 #endif /* __MMAP_TRACE_H__ */

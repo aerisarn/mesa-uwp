@@ -85,7 +85,7 @@ panvk_queue_submit_batch(struct panvk_queue *queue,
       }
 
       if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(batch->scoreboard.first_job, PAN_ARCH >= 6, pdev->gpu_id);
+         GENX(pandecode_jc)(batch->scoreboard.first_job, pdev->gpu_id);
    }
 
    if (batch->fragment_job) {
@@ -113,7 +113,7 @@ panvk_queue_submit_batch(struct panvk_queue *queue,
       }
 
       if (debug & PANVK_DEBUG_TRACE)
-         pandecode_jc(batch->fragment_job, PAN_ARCH >= 6, pdev->gpu_id);
+         GENX(pandecode_jc)(batch->fragment_job, pdev->gpu_id);
    }
 
    if (debug & PANVK_DEBUG_TRACE)
