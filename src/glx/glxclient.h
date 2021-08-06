@@ -502,6 +502,7 @@ struct glx_screen_vtable {
 struct glx_screen
 {
    const struct glx_screen_vtable *vtable;
+   const struct glx_context_vtable *context_vtable;
 
     /**
      * \name Storage for the GLX vendor, version, and extension strings

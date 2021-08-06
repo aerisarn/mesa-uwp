@@ -287,7 +287,7 @@ dri2_create_context_attribs(struct glx_screen *base,
    if (pcp->driContext == NULL)
       goto error_exit;
 
-   pcp->base.vtable = &dri2_context_vtable;
+   pcp->base.vtable = base->context_vtable;
 
    return &pcp->base;
 
@@ -1275,6 +1275,7 @@ dri2CreateScreen(int screen, struct glx_display * priv)
    psc->driver_configs = driver_configs;
 
    psc->base.vtable = &dri2_screen_vtable;
+   psc->base.context_vtable = &dri2_context_vtable;
    psp = &psc->vtable;
    psc->base.driScreen = psp;
    psp->destroyScreen = dri2DestroyScreen;
