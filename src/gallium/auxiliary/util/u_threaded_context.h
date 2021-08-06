@@ -333,12 +333,6 @@ struct threaded_resource {
     */
    uint32_t buffer_id_unique;
 
-   /* If positive, prefer DISCARD_RANGE with a staging buffer over any other
-    * method of CPU access when map flags allow it. Useful for buffers that
-    * are too large for the visible VRAM window.
-    */
-   int max_forced_staging_uploads;
-
    /* If positive, then a staging transfer is in progress.
     */
    int pending_staging_uploads;

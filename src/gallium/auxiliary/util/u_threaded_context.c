@@ -1996,11 +1996,8 @@ tc_improve_map_buffer_flags(struct threaded_context *tc,
    if (usage & (PIPE_MAP_DISCARD_RANGE |
                 PIPE_MAP_DISCARD_WHOLE_RESOURCE) &&
        !(usage & PIPE_MAP_PERSISTENT) &&
-       /* Try not to decrement the counter if it's not positive. Still racy,
-        * but it makes it harder to wrap the counter from INT_MIN to INT_MAX. */
-       tres->max_forced_staging_uploads > 0 &&
-       tc->use_forced_staging_uploads &&
-       p_atomic_dec_return(&tres->max_forced_staging_uploads) >= 0) {
+       tres->b.flags & PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY &&
+       tc->use_forced_staging_uploads) {
       usage &= ~(PIPE_MAP_DISCARD_WHOLE_RESOURCE |
                  PIPE_MAP_UNSYNCHRONIZED);
 

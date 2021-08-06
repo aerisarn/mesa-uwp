@@ -301,7 +301,6 @@ struct si_resource {
    enum radeon_bo_domain domains:8;
    enum radeon_bo_flag flags:16;
    unsigned bind_history;
-   int max_forced_staging_uploads;
 
    /* The buffer range which is initialized (with a write transfer,
     * streamout, DMA, or as a random access target). The rest of
