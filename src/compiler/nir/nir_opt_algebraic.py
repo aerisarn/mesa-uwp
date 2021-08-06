@@ -1162,19 +1162,6 @@ optimizations.extend([
    (('iabs', 'a(is_not_negative)'), a),
    (('fsat', 'a(is_not_positive)'), 0.0),
 
-   # Section 5.4.1 (Conversion and Scalar Constructors) of the GLSL 4.60 spec
-   # says:
-   #
-   #    It is undefined to convert a negative floating-point value to an
-   #    uint.
-   #
-   # Assuming that (uint)some_float behaves like (uint)(int)some_float allows
-   # some optimizations in the i965 backend to proceed.
-   (('ige', ('f2u', a), b), ('ige', ('f2i', a), b)),
-   (('ige', b, ('f2u', a)), ('ige', b, ('f2i', a))),
-   (('ilt', ('f2u', a), b), ('ilt', ('f2i', a), b)),
-   (('ilt', b, ('f2u', a)), ('ilt', b, ('f2i', a))),
-
    (('~fmin', 'a(is_not_negative)', 1.0), ('fsat', a), '!options->lower_fsat'),
 
    # The result of the multiply must be in [-1, 0], so the result of the ffma
