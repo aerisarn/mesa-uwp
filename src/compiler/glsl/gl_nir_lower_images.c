@@ -51,10 +51,12 @@ type_size_align_1(const struct glsl_type *type, unsigned *size, unsigned *align)
 }
 
 static bool
-lower_impl(nir_builder *b, nir_instr *instr, bool bindless_only)
+lower_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
+
+   bool bindless_only = *(bool *)cb_data;
 
    nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
 
@@ -111,28 +113,8 @@ lower_impl(nir_builder *b, nir_instr *instr, bool bindless_only)
 bool
 gl_nir_lower_images(nir_shader *shader, bool bindless_only)
 {
-   bool progress = false;
-
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
-
-         bool impl_progress = false;
-         nir_foreach_block(block, function->impl)
-            nir_foreach_instr(instr, block)
-               impl_progress |= lower_impl(&b, instr, bindless_only);
-
-         if (impl_progress) {
-            nir_metadata_preserve(function->impl,
-                                  nir_metadata_block_index |
-                                  nir_metadata_dominance);
-            progress = true;
-         } else {
-            nir_metadata_preserve(function->impl, nir_metadata_all);
-         }
-      }
-   }
-
-   return progress;
+   return nir_shader_instructions_pass(shader, lower_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       &bindless_only);
 }
