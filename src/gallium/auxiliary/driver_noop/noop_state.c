@@ -268,6 +268,22 @@ static void noop_set_window_rectangles(struct pipe_context *ctx,
 {
 }
 
+static void noop_set_shader_buffers(struct pipe_context *ctx,
+                                    enum pipe_shader_type shader,
+                                    unsigned start_slot, unsigned count,
+                                    const struct pipe_shader_buffer *buffers,
+                                    unsigned writable_bitmask)
+{
+}
+
+static void noop_set_shader_images(struct pipe_context *ctx,
+                                   enum pipe_shader_type shader,
+                                   unsigned start_slot, unsigned count,
+                                   unsigned unbind_num_trailing_slots,
+                                   const struct pipe_image_view *images)
+{
+}
+
 void noop_init_state_functions(struct pipe_context *ctx);
 
 void noop_init_state_functions(struct pipe_context *ctx)
@@ -312,6 +328,8 @@ void noop_init_state_functions(struct pipe_context *ctx)
    ctx->set_constant_buffer = noop_set_constant_buffer;
    ctx->set_inlinable_constants = noop_set_inlinable_constants;
    ctx->set_sampler_views = noop_set_sampler_views;
+   ctx->set_shader_buffers = noop_set_shader_buffers;
+   ctx->set_shader_images = noop_set_shader_images;
    ctx->set_framebuffer_state = noop_set_framebuffer_state;
    ctx->set_polygon_stipple = noop_set_polygon_stipple;
    ctx->set_sample_mask = noop_set_sample_mask;
