@@ -162,7 +162,8 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
           * This tweak improves performance for viewperf.
           */
          const unsigned min_size = 8196; /* tuned to minimize mapped VRAM */
-         const unsigned max_staging_uploads = 1; /* number of uploads before mapping directly */
+         /* Number of uploads before mapping directly. A very high number helps display lists (snx). */
+         const unsigned max_staging_uploads = 1000000;
 
          res->max_forced_staging_uploads = res->b.max_forced_staging_uploads =
             sscreen->info.has_dedicated_vram && size >= min_size ? max_staging_uploads : 0;
