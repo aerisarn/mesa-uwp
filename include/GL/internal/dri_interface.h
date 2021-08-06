@@ -1203,50 +1203,27 @@ struct __DRIdri2LoaderExtensionRec {
 
 #define __DRI_CTX_ATTRIB_MAJOR_VERSION		0
 #define __DRI_CTX_ATTRIB_MINOR_VERSION		1
+
 #define __DRI_CTX_ATTRIB_FLAGS			2
-
-/**
- * \requires __DRI2_ROBUSTNESS.
- */
-#define __DRI_CTX_ATTRIB_RESET_STRATEGY		3
-
 #define __DRI_CTX_FLAG_DEBUG			0x00000001
 #define __DRI_CTX_FLAG_FORWARD_COMPATIBLE	0x00000002
-
-/**
- * \requires __DRI2_ROBUSTNESS.
- */
 #define __DRI_CTX_FLAG_ROBUST_BUFFER_ACCESS	0x00000004
-
-/**
- * \requires __DRI2_NO_ERROR.
- *
- */
 #define __DRI_CTX_FLAG_NO_ERROR			0x00000008
 
-/**
- * \name Context reset strategies.
- */
-/*@{*/
+#define __DRI_CTX_ATTRIB_RESET_STRATEGY		3
 #define __DRI_CTX_RESET_NO_NOTIFICATION		0
 #define __DRI_CTX_RESET_LOSE_CONTEXT		1
-/*@}*/
 
 #define __DRI_CTX_ATTRIB_PRIORITY		4
-
 #define __DRI_CTX_PRIORITY_LOW			0
 #define __DRI_CTX_PRIORITY_MEDIUM		1
 #define __DRI_CTX_PRIORITY_HIGH			2
 
-/**
- * \name Context release behaviors.
- */
-/*@{*/
 #define __DRI_CTX_ATTRIB_RELEASE_BEHAVIOR	5
-
 #define __DRI_CTX_RELEASE_BEHAVIOR_NONE         0
 #define __DRI_CTX_RELEASE_BEHAVIOR_FLUSH        1
-/*@}*/
+
+#define __DRI_CTX_NUM_ATTRIBS                   6
 
 /**
  * \name Reasons that __DRIdri2Extension::createContextAttribs might fail
