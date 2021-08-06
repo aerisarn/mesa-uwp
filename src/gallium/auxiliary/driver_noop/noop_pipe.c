@@ -329,6 +329,7 @@ static void noop_destroy_context(struct pipe_context *ctx)
    if (ctx->stream_uploader)
       u_upload_destroy(ctx->stream_uploader);
 
+   p_atomic_dec(&ctx->screen->num_contexts);
    FREE(ctx);
 }
 
@@ -428,6 +429,8 @@ static struct pipe_context *noop_create_context(struct pipe_screen *screen,
    ctx->set_context_param = noop_set_context_param;
    ctx->set_frontend_noop = noop_set_frontend_noop;
    noop_init_state_functions(ctx);
+
+   p_atomic_inc(&screen->num_contexts);
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED))
       return ctx;
