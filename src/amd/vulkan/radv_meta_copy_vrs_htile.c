@@ -220,7 +220,7 @@ fail:
 
 void
 radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_image,
-                    VkExtent2D *extent, struct radv_image *dst_image)
+                    VkExtent2D *extent, struct radv_image *dst_image, bool read_htile_value)
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_state *state = &device->meta_state;
@@ -298,7 +298,7 @@ radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_i
 
    const unsigned constants[3] = {
       dst_image->planes[0].surface.meta_pitch, dst_image->planes[0].surface.meta_slice_size,
-      true,
+      read_htile_value,
    };
 
    radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer), state->copy_vrs_htile_p_layout,
