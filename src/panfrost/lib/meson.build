@@ -48,6 +48,21 @@ foreach ver : pixel_format_versions
 )
 endforeach
 
+libpanfrost_per_arch = []
+
+foreach ver : ['4', '5', '6', '7']
+  libpanfrost_per_arch += static_library(
+    'pan-arch-v' + ver,
+    [
+      'pan_indirect_dispatch.c',
+    ],
+    include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
+    c_args : ['-DPAN_ARCH=' + ver],
+    gnu_symbol_visibility : 'hidden',
+    dependencies : [dep_libdrm, idep_pan_packers, idep_nir],
+  )
+endforeach
+
 libpanfrost_lib_files = files(
   'pan_encoder.h',
 
@@ -58,7 +73,6 @@ libpanfrost_lib_files = files(
   'pan_blitter.c',
   'pan_clear.c',
   'pan_cs.c',
-  'pan_indirect_dispatch.c',
   'pan_indirect_draw.c',
   'pan_samples.c',
   'pan_tiler.c',
@@ -83,7 +97,7 @@ libpanfrost_lib = static_library(
   gnu_symbol_visibility : 'hidden',
   dependencies: [dep_libdrm, idep_nir],
   build_by_default : false,
-  link_with: [libpanfrost_pixel_format],
+  link_with: [libpanfrost_pixel_format, libpanfrost_per_arch],
 )
 
 libpanfrost_decode = static_library(
@@ -97,7 +111,7 @@ libpanfrost_decode = static_library(
 )
 
 libpanfrost_dep = declare_dependency(
-  link_with: [libpanfrost_lib, libpanfrost_decode, libpanfrost_midgard, libpanfrost_bifrost, libpanfrost_pixel_format],
+  link_with: [libpanfrost_lib, libpanfrost_decode, libpanfrost_midgard, libpanfrost_bifrost, libpanfrost_pixel_format, libpanfrost_per_arch],
   include_directories: [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw, inc_panfrost],
   dependencies: [dep_libdrm, idep_nir, idep_pan_packers],
 )
