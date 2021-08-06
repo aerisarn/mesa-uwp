@@ -127,7 +127,7 @@ deep_copy_vertex_input_state(void *mem_ctx,
       vk_foreach_struct(ext, src->pNext) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
-            VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_src = (VkPipelineVertexInputDivisorStateCreateInfoEXT *)ext;;
+            VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_src = (VkPipelineVertexInputDivisorStateCreateInfoEXT *)ext;
             VkPipelineVertexInputDivisorStateCreateInfoEXT *ext_dst = ralloc(mem_ctx, VkPipelineVertexInputDivisorStateCreateInfoEXT);
 
             ext_dst->sType = ext_src->sType;
@@ -239,6 +239,35 @@ deep_copy_dynamic_state(void *mem_ctx,
    return VK_SUCCESS;
 }
 
+
+static VkResult
+deep_copy_rasterization_state(void *mem_ctx,
+                              VkPipelineRasterizationStateCreateInfo *dst,
+                              const VkPipelineRasterizationStateCreateInfo *src)
+{
+   memcpy(dst, src, sizeof(VkPipelineRasterizationStateCreateInfo));
+   dst->pNext = NULL;
+
+   if (src->pNext) {
+      vk_foreach_struct(ext, src->pNext) {
+         switch (ext->sType) {
+         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: {
+            VkPipelineRasterizationDepthClipStateCreateInfoEXT *ext_src = (VkPipelineRasterizationDepthClipStateCreateInfoEXT *)ext;
+            VkPipelineRasterizationDepthClipStateCreateInfoEXT *ext_dst = ralloc(mem_ctx, VkPipelineRasterizationDepthClipStateCreateInfoEXT);
+            ext_dst->sType = ext_src->sType;
+            ext_dst->flags = ext_src->flags;
+            ext_dst->depthClipEnable = ext_src->depthClipEnable;
+            dst->pNext = ext_dst;
+            break;
+         }
+         default:
+            break;
+         }
+      }
+   }
+   return VK_SUCCESS;
+}
+
 static VkResult
 deep_copy_graphics_create_info(void *mem_ctx,
                                VkGraphicsPipelineCreateInfo *dst,
@@ -248,6 +277,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
    VkResult result;
    VkPipelineShaderStageCreateInfo *stages;
    VkPipelineVertexInputStateCreateInfo *vertex_input;
+   VkPipelineRasterizationStateCreateInfo *rasterization_state;
    LVP_FROM_HANDLE(lvp_render_pass, pass, src->renderPass);
 
    dst->sType = src->sType;
@@ -313,10 +343,11 @@ deep_copy_graphics_create_info(void *mem_ctx,
       dst->pViewportState = NULL;
 
    /* pRasterizationState */
-   LVP_PIPELINE_DUP(dst->pRasterizationState,
-                    src->pRasterizationState,
-                    VkPipelineRasterizationStateCreateInfo,
-                    1);
+   rasterization_state = ralloc(mem_ctx, VkPipelineRasterizationStateCreateInfo);
+   if (!rasterization_state)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   deep_copy_rasterization_state(mem_ctx, rasterization_state, src->pRasterizationState);
+   dst->pRasterizationState = rasterization_state;
 
    /* pMultisampleState */
    if (src->pMultisampleState && !rasterization_disabled) {

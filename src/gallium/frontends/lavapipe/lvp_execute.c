@@ -526,7 +526,14 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    /* rasterization state */
    if (pipeline->graphics_create_info.pRasterizationState) {
       const VkPipelineRasterizationStateCreateInfo *rsc = pipeline->graphics_create_info.pRasterizationState;
-      state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !rsc->depthClampEnable;
+      const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
+         vk_find_struct_const(rsc->pNext, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
+      state->rs_state.depth_clamp = rsc->depthClampEnable;
+      if (!depth_clip_state)
+         state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !rsc->depthClampEnable;
+      else
+         state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = depth_clip_state->depthClipEnable;
+
       if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT)])
          state->rs_state.rasterizer_discard = rsc->rasterizerDiscardEnable;
 
