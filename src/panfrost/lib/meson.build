@@ -54,6 +54,7 @@ foreach ver : ['4', '5', '6', '7']
   libpanfrost_per_arch += static_library(
     'pan-arch-v' + ver,
     [
+      'pan_blitter.c',
       'pan_indirect_dispatch.c',
       'pan_indirect_draw.c',
     ],
@@ -71,7 +72,6 @@ libpanfrost_lib_files = files(
   'pan_attributes.c',
   'pan_bo.c',
   'pan_blend.c',
-  'pan_blitter.c',
   'pan_clear.c',
   'pan_cs.c',
   'pan_samples.c',

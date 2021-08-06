@@ -39,6 +39,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "util/u_math.h"
 
+#if PAN_ARCH >= 6
 /* On Midgard, the native blit infrastructure (via MFBD preloads) is broken or
  * missing in many cases. We instead use software paths as fallbacks to
  * implement blits, which are done as TILER jobs. No vertex shader is
@@ -61,6 +62,7 @@ blit_type_to_reg_fmt(nir_alu_type in)
                 unreachable("Invalid blit type");
         }
 }
+#endif
 
 struct pan_blit_surface {
         gl_frag_result loc : 4;
@@ -111,147 +113,37 @@ struct pan_blit_rsd_data {
         mali_ptr address;
 };
 
+#if PAN_ARCH >= 5
 static void
-pan_blitter_prepare_midgard_rsd(const struct panfrost_device *dev,
-                                const struct pan_image_view **rts,
-                                mali_ptr *blend_shaders, unsigned rt_count,
-                                bool zs, struct MALI_RENDERER_STATE *rsd)
-{
-        mali_ptr blend_shader = blend_shaders ?
-                panfrost_last_nonnull(blend_shaders, rt_count) : 0;
-
-        rsd->properties.midgard.work_register_count = 4;
-        rsd->properties.midgard.force_early_z = !zs;
-        rsd->stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
-
-        /* Set even on v5 for erratum workaround */
-        rsd->sfbd_blend_shader = blend_shader;
-
-        if (!(dev->quirks & MIDGARD_SFBD))
-                return;
-
-        rsd->stencil_mask_misc.sfbd_write_enable = true;
-        rsd->stencil_mask_misc.sfbd_dither_disable = true;
-        rsd->multisample_misc.sfbd_blend_shader = !!blend_shader;
-        if (rsd->multisample_misc.sfbd_blend_shader)
-                return;
-
-        rsd->sfbd_blend_equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-        rsd->sfbd_blend_equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-        rsd->sfbd_blend_equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-        rsd->sfbd_blend_equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-        rsd->sfbd_blend_equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-        rsd->sfbd_blend_equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-        rsd->sfbd_blend_constant = 0;
-
-        if (rts && rts[0]) {
-                rsd->stencil_mask_misc.sfbd_srgb =
-                        util_format_is_srgb(rts[0]->format);
-                rsd->sfbd_blend_equation.color_mask = 0xf;
-        }
-}
-
-static void
-pan_blitter_prepare_bifrost_rsd(const struct panfrost_device *dev,
-                                bool zs, bool ms,
-                                struct MALI_RENDERER_STATE *rsd)
-{
-        if (zs) {
-                rsd->properties.bifrost.zs_update_operation =
-                        MALI_PIXEL_KILL_FORCE_LATE;
-                rsd->properties.bifrost.pixel_kill_operation =
-                        MALI_PIXEL_KILL_FORCE_LATE;
-        } else {
-                rsd->properties.bifrost.zs_update_operation =
-                        MALI_PIXEL_KILL_STRONG_EARLY;
-                rsd->properties.bifrost.pixel_kill_operation =
-                        MALI_PIXEL_KILL_FORCE_EARLY;
-        }
-
-        /* We can only allow blit shader fragments to kill if they write all
-         * colour outputs. This is true for our colour (non-Z/S) blit shaders,
-         * but obviously not true for Z/S shaders. However, blit shaders
-         * otherwise lack side effects, so other fragments may kill them.
-         * However, while shaders writing Z/S can normally be killed, on v6
-         * for frame shaders it can cause GPU timeouts, so only allow colour
-         * blit shaders to be killed. */
-
-        rsd->properties.bifrost.allow_forward_pixel_to_kill = !zs;
-        rsd->properties.bifrost.allow_forward_pixel_to_be_killed = (dev->arch >= 7) || !zs;
-
-        rsd->preload.fragment.coverage = true;
-        rsd->preload.fragment.sample_mask_id = ms;
-}
-
-static void
-pan_blitter_emit_midgard_blend(const struct panfrost_device *dev,
-                               unsigned rt,
-                               const struct pan_image_view *iview,
-                               mali_ptr blend_shader,
-                               void *out)
-{
-        assert(!(dev->quirks & MIDGARD_SFBD));
-
-        pan_pack(out, BLEND, cfg) {
-                if (!iview) {
-                        cfg.midgard.equation.color_mask = 0xf;
-                        cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-                        cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-                        cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-                        cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-                        cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-                        cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-                        continue;
-                }
-
-                cfg.round_to_fb_precision = true;
-                cfg.srgb = util_format_is_srgb(iview->format);
-
-                if (!blend_shader) {
-                        cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-                        cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-                        cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-                        cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-                        cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-                        cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
-                        cfg.midgard.equation.color_mask = 0xf;
-                } else {
-                        cfg.midgard.blend_shader = true;
-                        cfg.midgard.shader_pc = blend_shader;
-                }
-        }
-}
-
-static void
-pan_blitter_emit_bifrost_blend(const struct panfrost_device *dev,
-                               unsigned rt,
-                               const struct pan_image_view *iview,
-                               const struct pan_blit_shader_data *blit_shader,
-                               mali_ptr blend_shader,
-                               void *out)
+pan_blitter_emit_blend(const struct panfrost_device *dev,
+                       unsigned rt,
+                       const struct pan_image_view *iview,
+                       const struct pan_blit_shader_data *blit_shader,
+                       mali_ptr blend_shader,
+                       void *out)
 {
         pan_pack(out, BLEND, cfg) {
                 if (!iview) {
                         cfg.enable = false;
+#if PAN_ARCH >= 6
                         cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OFF;
+#endif
                         continue;
                 }
 
-                nir_alu_type type = blit_shader->key.surfaces[rt].type;
-
                 cfg.round_to_fb_precision = true;
                 cfg.srgb = util_format_is_srgb(iview->format);
+
+#if PAN_ARCH >= 6
                 cfg.bifrost.internal.mode = blend_shader ?
                                             MALI_BIFROST_BLEND_MODE_SHADER :
                                             MALI_BIFROST_BLEND_MODE_OPAQUE;
-                if (blend_shader) {
-                        cfg.bifrost.internal.shader.pc = blend_shader;
-                        if (blit_shader->blend_ret_offsets[rt]) {
-                                cfg.bifrost.internal.shader.return_value =
-                                        blit_shader->address +
-                                        blit_shader->blend_ret_offsets[rt];
-                        }
-                } else {
+#endif
+
+                if (!blend_shader) {
+#if PAN_ARCH >= 6
+                        nir_alu_type type = blit_shader->key.surfaces[rt].type;
+
                         cfg.bifrost.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
                         cfg.bifrost.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
                         cfg.bifrost.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
@@ -266,9 +158,31 @@ pan_blitter_emit_bifrost_blend(const struct panfrost_device *dev,
                                 blit_type_to_reg_fmt(type);
 
                         cfg.bifrost.internal.fixed_function.rt = rt;
+#else
+                        cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.midgard.equation.color_mask = 0xf;
+#endif
+                } else {
+#if PAN_ARCH >= 6
+                        cfg.bifrost.internal.shader.pc = blend_shader;
+                        if (blit_shader->blend_ret_offsets[rt]) {
+                                cfg.bifrost.internal.shader.return_value =
+                                        blit_shader->address +
+                                        blit_shader->blend_ret_offsets[rt];
+                        }
+#else
+                        cfg.midgard.blend_shader = true;
+                        cfg.midgard.shader_pc = blend_shader;
+#endif
                 }
         }
 }
+#endif
 
 static void
 pan_blitter_emit_rsd(const struct panfrost_device *dev,
@@ -333,31 +247,76 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                 cfg.stencil_front.mask = 0xFF;
                 cfg.stencil_back = cfg.stencil_front;
 
-                if (pan_is_bifrost(dev)) {
-                        pan_blitter_prepare_bifrost_rsd(dev, zs, ms, &cfg);
+#if PAN_ARCH >= 6
+                if (zs) {
+                        cfg.properties.bifrost.zs_update_operation =
+                                MALI_PIXEL_KILL_FORCE_LATE;
+                        cfg.properties.bifrost.pixel_kill_operation =
+                                MALI_PIXEL_KILL_FORCE_LATE;
                 } else {
-                        pan_blitter_prepare_midgard_rsd(dev, rts,
-                                                        blend_shaders,
-                                                        rt_count, zs, &cfg);
+                        cfg.properties.bifrost.zs_update_operation =
+                                MALI_PIXEL_KILL_STRONG_EARLY;
+                        cfg.properties.bifrost.pixel_kill_operation =
+                                MALI_PIXEL_KILL_FORCE_EARLY;
                 }
+
+                /* We can only allow blit shader fragments to kill if they write all
+                 * colour outputs. This is true for our colour (non-Z/S) blit shaders,
+                 * but obviously not true for Z/S shaders. However, blit shaders
+                 * otherwise lack side effects, so other fragments may kill them.
+                 * However, while shaders writing Z/S can normally be killed, on v6
+                 * for frame shaders it can cause GPU timeouts, so only allow colour
+                 * blit shaders to be killed. */
+
+                cfg.properties.bifrost.allow_forward_pixel_to_kill = !zs;
+                cfg.properties.bifrost.allow_forward_pixel_to_be_killed = (dev->arch >= 7) || !zs;
+
+                cfg.preload.fragment.coverage = true;
+                cfg.preload.fragment.sample_mask_id = ms;
+#else
+                mali_ptr blend_shader = blend_shaders ?
+                        panfrost_last_nonnull(blend_shaders, rt_count) : 0;
+
+                cfg.properties.midgard.work_register_count = 4;
+                cfg.properties.midgard.force_early_z = !zs;
+                cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
+
+                /* Set even on v5 for erratum workaround */
+                cfg.sfbd_blend_shader = blend_shader;
+#if PAN_ARCH == 4
+                cfg.stencil_mask_misc.sfbd_write_enable = true;
+                cfg.stencil_mask_misc.sfbd_dither_disable = true;
+                cfg.multisample_misc.sfbd_blend_shader = !!blend_shader;
+                cfg.sfbd_blend_shader = blend_shader;
+                if (!cfg.multisample_misc.sfbd_blend_shader) {
+                        cfg.sfbd_blend_equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.sfbd_blend_equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.sfbd_blend_equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.sfbd_blend_equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.sfbd_blend_equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.sfbd_blend_equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.sfbd_blend_constant = 0;
+
+                        if (rts && rts[0]) {
+                                cfg.stencil_mask_misc.sfbd_srgb =
+                                        util_format_is_srgb(rts[0]->format);
+                                cfg.sfbd_blend_equation.color_mask = 0xf;
+                        }
+               }
+#endif
+#endif
         }
 
-        if (dev->quirks & MIDGARD_SFBD)
-                return;
-
+#if PAN_ARCH >= 5
         for (unsigned i = 0; i < MAX2(rt_count, 1); ++i) {
                 void *dest = out + pan_size(RENDERER_STATE) + pan_size(BLEND) * i;
                 const struct pan_image_view *rt_view = rts ? rts[i] : NULL;
                 mali_ptr blend_shader = blend_shaders ? blend_shaders[i] : 0;
 
-                if (pan_is_bifrost(dev)) {
-                        pan_blitter_emit_bifrost_blend(dev, i, rt_view, blit_shader,
-                                                       blend_shader, dest);
-                } else {
-                        pan_blitter_emit_midgard_blend(dev, i, rt_view,
-                                                       blend_shader, dest);
-                }
+                pan_blitter_emit_blend(dev, i, rt_view, blit_shader,
+                                       blend_shader, dest);
         }
+#endif
 }
 
 static void
@@ -419,9 +378,9 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
                 pthread_mutex_lock(&dev->blend_shaders.lock);
                 struct pan_blend_shader_variant *b =
                         pan_blend_get_shader_locked(dev, &blend_state,
-                                        blit_shader->blend_types[i],
-                                        nir_type_float32, /* unused */
-                                        i);
+                                                    blit_shader->blend_types[i],
+                                                    nir_type_float32, /* unused */
+                                                    i);
 
                 ASSERTED unsigned full_threads =
                         (dev->arch >= 7) ? 32 : ((dev->arch == 6) ? 64 : 4);
@@ -429,7 +388,7 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
                 struct panfrost_ptr bin =
                         pan_pool_alloc_aligned(dev->blitter.shaders.pool,
                                                b->binary.size,
-                                               pan_is_bifrost(dev) ? 128 : 64);
+                                               PAN_ARCH >= 6 ? 128 : 64);
                 memcpy(bin.cpu, b->binary.data, b->binary.size);
 
                 blend_shader->address = bin.gpu | b->first_tag;
@@ -656,20 +615,19 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
         shader->address =
                 pan_pool_upload_aligned(dev->blitter.shaders.pool,
                                         binary.data, binary.size,
-                                        pan_is_bifrost(dev) ? 128 : 64);
+                                        PAN_ARCH >= 6 ? 128 : 64);
 
         util_dynarray_fini(&binary);
         ralloc_free(b.shader);
 
-        if (!pan_is_bifrost(dev))
-                shader->address |= info.midgard.first_tag;
-
-        if (pan_is_bifrost(dev)) {
-                for (unsigned i = 0; i < ARRAY_SIZE(shader->blend_ret_offsets); i++) {
-                        shader->blend_ret_offsets[i] = info.bifrost.blend[i].return_offset;
-                        shader->blend_types[i] = info.bifrost.blend[i].type;
-                }
+#if PAN_ARCH <= 5
+        shader->address |= info.midgard.first_tag;
+#else
+        for (unsigned i = 0; i < ARRAY_SIZE(shader->blend_ret_offsets); i++) {
+                shader->blend_ret_offsets[i] = info.bifrost.blend[i].return_offset;
+                shader->blend_types[i] = info.bifrost.blend[i].type;
         }
+#endif
 
         _mesa_hash_table_insert(dev->blitter.shaders.blit, &shader->key, shader);
 
@@ -743,12 +701,11 @@ pan_blitter_get_rsd(struct panfrost_device *dev,
         rsd = rzalloc(dev->blitter.rsds.rsds, struct pan_blit_rsd_data);
         rsd->key = rsd_key;
 
+        unsigned bd_count = PAN_ARCH >= 5 ? MAX2(rt_count, 1) : 0;
         struct panfrost_ptr rsd_ptr =
-                (dev->quirks & MIDGARD_SFBD) ?
-                pan_pool_alloc_desc(dev->blitter.rsds.pool, RENDERER_STATE) :
                 pan_pool_alloc_desc_aggregate(dev->blitter.rsds.pool,
                                               PAN_DESC(RENDERER_STATE),
-                                              PAN_DESC_ARRAY(MAX2(rt_count, 1), BLEND));
+                                              PAN_DESC_ARRAY(bd_count, BLEND));
 
         mali_ptr blend_shaders[8] = { 0 };
 
@@ -868,7 +825,7 @@ pan_blitter_emit_varying(struct pan_pool *pool,
                          struct MALI_DRAW *draw)
 {
         /* Bifrost needs an empty desc to mark end of prefetching */
-        bool padding_buffer = pan_is_bifrost(pool->dev);
+        bool padding_buffer = PAN_ARCH >= 6;
 
         struct panfrost_ptr varying =
                 pan_pool_alloc_desc(pool, ATTRIBUTE);
@@ -889,7 +846,7 @@ pan_blitter_emit_varying(struct pan_pool *pool,
 
         pan_pack(varying.cpu, ATTRIBUTE, cfg) {
                 cfg.buffer_index = 0;
-                cfg.offset_enable = !pan_is_bifrost(pool->dev);
+                cfg.offset_enable = PAN_ARCH <= 5;
                 cfg.format = pool->dev->formats[PIPE_FORMAT_R32G32B32_FLOAT].hw;
         }
 
@@ -898,13 +855,13 @@ pan_blitter_emit_varying(struct pan_pool *pool,
 }
 
 static mali_ptr
-pan_blitter_emit_bifrost_sampler(struct pan_pool *pool,
-                                 bool nearest_filter)
+pan_blitter_emit_sampler(struct pan_pool *pool,
+                         bool nearest_filter)
 {
         struct panfrost_ptr sampler =
-                 pan_pool_alloc_desc(pool, BIFROST_SAMPLER);
+                 pan_pool_alloc_desc(pool, SAMPLER);
 
-        pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
+        pan_pack(sampler.cpu, SAMPLER, cfg) {
                 cfg.seamless_cube_map = false;
                 cfg.normalized_coordinates = false;
                 cfg.minify_nearest = nearest_filter;
@@ -915,31 +872,16 @@ pan_blitter_emit_bifrost_sampler(struct pan_pool *pool,
 }
 
 static mali_ptr
-pan_blitter_emit_midgard_sampler(struct pan_pool *pool,
-                                 bool nearest_filter)
+pan_blitter_emit_textures(struct pan_pool *pool,
+                          unsigned tex_count,
+                          const struct pan_image_view **views)
 {
-        struct panfrost_ptr sampler =
-                 pan_pool_alloc_desc(pool, MIDGARD_SAMPLER);
-
-        pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg) {
-                cfg.normalized_coordinates = false;
-                cfg.magnify_nearest = nearest_filter;
-                cfg.minify_nearest = nearest_filter;
-        }
-
-        return sampler.gpu;
-}
-
-static mali_ptr
-pan_blitter_emit_bifrost_textures(struct pan_pool *pool,
-                                  unsigned tex_count,
-                                  const struct pan_image_view **views)
-{
+#if PAN_ARCH >= 6
         struct panfrost_ptr textures =
-                pan_pool_alloc_desc_array(pool, tex_count, BIFROST_TEXTURE);
+                pan_pool_alloc_desc_array(pool, tex_count, TEXTURE);
 
         for (unsigned i = 0; i < tex_count; i++) {
-                void *texture = textures.cpu + (pan_size(BIFROST_TEXTURE) * i);
+                void *texture = textures.cpu + (pan_size(TEXTURE) * i);
                 size_t payload_size =
                         panfrost_estimate_texture_payload_size(pool->dev, views[i]);
                 struct panfrost_ptr surfaces =
@@ -950,23 +892,17 @@ pan_blitter_emit_bifrost_textures(struct pan_pool *pool,
         }
 
         return textures.gpu;
-}
-
-static mali_ptr
-pan_blitter_emit_midgard_textures(struct pan_pool *pool,
-                                  unsigned tex_count,
-                                  const struct pan_image_view **views)
-{
+#else
         mali_ptr textures[8] = { 0 };
 
         for (unsigned i = 0; i < tex_count; i++) {
-                size_t sz = pan_size(MIDGARD_TEXTURE) +
+                size_t sz = pan_size(TEXTURE) +
                             panfrost_estimate_texture_payload_size(pool->dev, views[i]);
                 struct panfrost_ptr texture =
-                        pan_pool_alloc_aligned(pool, sz, pan_alignment(MIDGARD_TEXTURE));
+                        pan_pool_alloc_aligned(pool, sz, pan_alignment(TEXTURE));
                 struct panfrost_ptr surfaces = {
-                        .cpu = texture.cpu + pan_size(MIDGARD_TEXTURE),
-                        .gpu = texture.gpu + pan_size(MIDGARD_TEXTURE),
+                        .cpu = texture.cpu + pan_size(TEXTURE),
+                        .gpu = texture.gpu + pan_size(TEXTURE),
                 };
 
                 panfrost_new_texture(pool->dev, views[i], texture.cpu, &surfaces);
@@ -976,6 +912,7 @@ pan_blitter_emit_midgard_textures(struct pan_pool *pool,
         return pan_pool_upload_aligned(pool, textures,
                                        tex_count * sizeof(mali_ptr),
                                        sizeof(mali_ptr));
+#endif
 }
 
 static void
@@ -1016,10 +953,7 @@ pan_preload_emit_textures(struct pan_pool *pool,
 
         }
 
-        if (pan_is_bifrost(pool->dev))
-                draw->textures = pan_blitter_emit_bifrost_textures(pool, tex_count, views);
-        else
-                draw->textures = pan_blitter_emit_midgard_textures(pool, tex_count, views);
+        draw->textures = pan_blitter_emit_textures(pool, tex_count, views);
 }
 
 static mali_ptr
@@ -1055,33 +989,32 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                 cfg.position = coordinates;
                 pan_blitter_emit_varying(pool, coordinates, &cfg);
                 uint16_t minx = 0, miny = 0, maxx, maxy;
-                if (pool->dev->quirks & MIDGARD_SFBD) {
-                        maxx = fb->width - 1;
-                        maxy = fb->height - 1;
-                } else {
-                        /* Align on 32x32 tiles */
-                        minx = fb->extent.minx & ~31;
-                        miny = fb->extent.miny & ~31;
-                        maxx = MIN2(ALIGN_POT(fb->extent.maxx + 1, 32), fb->width) - 1;
-                        maxy = MIN2(ALIGN_POT(fb->extent.maxy + 1, 32), fb->height) - 1;
-                }
+
+#if PAN_ARCH == 4
+                maxx = fb->width - 1;
+                maxy = fb->height - 1;
+#else
+                /* Align on 32x32 tiles */
+                minx = fb->extent.minx & ~31;
+                miny = fb->extent.miny & ~31;
+                maxx = MIN2(ALIGN_POT(fb->extent.maxx + 1, 32), fb->width) - 1;
+                maxy = MIN2(ALIGN_POT(fb->extent.maxy + 1, 32), fb->height) - 1;
+#endif
 
                 cfg.viewport =
                         pan_blitter_emit_viewport(pool, minx, miny, maxx, maxy);
 
                 pan_preload_emit_textures(pool, fb, zs, &cfg);
 
-                if (pan_is_bifrost(pool->dev)) {
-                        cfg.samplers = pan_blitter_emit_bifrost_sampler(pool, true);
+                cfg.samplers = pan_blitter_emit_sampler(pool, true);
+                cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
 
-                        /* Tiles updated by blit shaders are still considered
-                         * clean (separate for colour and Z/S), allowing us to
-                         * suppress unnecessary writeback */
-                        cfg.clean_fragment_write = !always_write;
-                } else {
-                        cfg.samplers = pan_blitter_emit_midgard_sampler(pool, true);
-                        cfg.texture_descriptor_is_64b = true;
-                }
+#if PAN_ARCH >= 6
+                /* Tiles updated by blit shaders are still considered
+                 * clean (separate for colour and Z/S), allowing us to
+                 * suppress unnecessary writeback */
+                cfg.clean_fragment_write = !always_write;
+#endif
         }
 }
 
@@ -1101,18 +1034,61 @@ pan_blit_emit_dcd(struct pan_pool *pool,
                 cfg.position = dst_coords;
                 pan_blitter_emit_varying(pool, src_coords, &cfg);
                 cfg.viewport = vpd;
-                cfg.texture_descriptor_is_64b = !pan_is_bifrost(pool->dev);
+                cfg.texture_descriptor_is_64b = PAN_ARCH <= 5;
                 cfg.textures = textures;
                 cfg.samplers = samplers;
         }
 }
 
-static void
-pan_preload_fb_bifrost_alloc_pre_post_dcds(struct pan_pool *desc_pool,
-                                           struct pan_fb_info *fb)
+static struct panfrost_ptr
+pan_blit_emit_tiler_job(struct pan_pool *desc_pool,
+                        struct pan_scoreboard *scoreboard,
+                        mali_ptr src_coords, mali_ptr dst_coords,
+                        mali_ptr textures, mali_ptr samplers,
+                        mali_ptr vpd, mali_ptr rsd, mali_ptr tsd,
+                        mali_ptr tiler)
 {
-        assert(pan_is_bifrost(desc_pool->dev));
+        struct panfrost_ptr job =
+                pan_pool_alloc_desc(desc_pool, TILER_JOB);
 
+        pan_blit_emit_dcd(desc_pool,
+                          src_coords, dst_coords, textures, samplers,
+                          vpd, tsd, rsd,
+                          pan_section_ptr(job.cpu, TILER_JOB, DRAW));
+
+        pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE, cfg) {
+                cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
+                cfg.index_count = 4;
+                cfg.job_task_split = 6;
+        }
+
+        pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE_SIZE, cfg) {
+                cfg.constant = 1.0f;
+        }
+
+        void *invoc = pan_section_ptr(job.cpu,
+                                      TILER_JOB,
+                                      INVOCATION);
+        panfrost_pack_work_groups_compute(invoc, 1, 4,
+                                          1, 1, 1, 1, true, false);
+
+#if PAN_ARCH >= 6
+        pan_section_pack(job.cpu, TILER_JOB, PADDING, cfg);
+        pan_section_pack(job.cpu, TILER_JOB, TILER, cfg) {
+                cfg.address = tiler;
+        }
+#endif
+
+        panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
+                         false, false, 0, 0, &job, false);
+        return job;
+}
+
+#if PAN_ARCH >= 6
+static void
+pan_preload_fb_alloc_pre_post_dcds(struct pan_pool *desc_pool,
+                                   struct pan_fb_info *fb)
+{
         if (fb->bifrost.pre_post.dcds.gpu)
                 return;
 
@@ -1127,126 +1103,15 @@ pan_preload_fb_bifrost_alloc_pre_post_dcds(struct pan_pool *desc_pool,
 }
 
 static void
-pan_preload_emit_midgard_tiler_job(struct pan_pool *desc_pool,
-                                   struct pan_scoreboard *scoreboard,
-                                   struct pan_fb_info *fb, bool zs,
-                                   mali_ptr coords, mali_ptr rsd, mali_ptr tsd)
-{
-        struct panfrost_ptr job =
-                pan_pool_alloc_desc(desc_pool, MIDGARD_TILER_JOB);
-
-        pan_preload_emit_dcd(desc_pool, fb, zs, coords, tsd, rsd,
-                             pan_section_ptr(job.cpu, MIDGARD_TILER_JOB, DRAW),
-                             false);
-
-        pan_section_pack(job.cpu, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
-                cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
-                cfg.index_count = 4;
-                cfg.job_task_split = 6;
-        }
-
-        pan_section_pack(job.cpu, MIDGARD_TILER_JOB, PRIMITIVE_SIZE, cfg) {
-                cfg.constant = 1.0f;
-        }
-
-        void *invoc = pan_section_ptr(job.cpu,
-                                      MIDGARD_TILER_JOB,
-                                      INVOCATION);
-        panfrost_pack_work_groups_compute(invoc, 1, 4,
-                                          1, 1, 1, 1, true, false);
-
-        panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
-                         false, false, 0, 0, &job, true);
-}
-
-static struct panfrost_ptr
-pan_blit_emit_midgard_tiler_job(struct pan_pool *desc_pool,
-                                struct pan_scoreboard *scoreboard,
-                                mali_ptr src_coords, mali_ptr dst_coords,
-                                mali_ptr textures, mali_ptr samplers,
-                                mali_ptr vpd, mali_ptr rsd, mali_ptr tsd)
-{
-        struct panfrost_ptr job =
-                pan_pool_alloc_desc(desc_pool, MIDGARD_TILER_JOB);
-
-        pan_blit_emit_dcd(desc_pool,
-                          src_coords, dst_coords, textures, samplers,
-                          vpd, tsd, rsd,
-                          pan_section_ptr(job.cpu, MIDGARD_TILER_JOB, DRAW));
-
-        pan_section_pack(job.cpu, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
-                cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
-                cfg.index_count = 4;
-                cfg.job_task_split = 6;
-        }
-
-        pan_section_pack(job.cpu, MIDGARD_TILER_JOB, PRIMITIVE_SIZE, cfg) {
-                cfg.constant = 1.0f;
-        }
-
-        void *invoc = pan_section_ptr(job.cpu,
-                                      MIDGARD_TILER_JOB,
-                                      INVOCATION);
-        panfrost_pack_work_groups_compute(invoc, 1, 4,
-                                          1, 1, 1, 1, true, false);
-
-        panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
-                         false, false, 0, 0, &job, false);
-        return job;
-}
-
-static struct panfrost_ptr
-pan_blit_emit_bifrost_tiler_job(struct pan_pool *desc_pool,
-                                struct pan_scoreboard *scoreboard,
-                                mali_ptr src_coords, mali_ptr dst_coords,
-                                mali_ptr textures, mali_ptr samplers,
-                                mali_ptr vpd, mali_ptr rsd,
-                                mali_ptr tsd, mali_ptr tiler)
-{
-        struct panfrost_ptr job =
-                pan_pool_alloc_desc(desc_pool, BIFROST_TILER_JOB);
-
-        pan_blit_emit_dcd(desc_pool,
-                          src_coords, dst_coords, textures, samplers,
-                          vpd, tsd, rsd,
-                          pan_section_ptr(job.cpu, BIFROST_TILER_JOB, DRAW));
-
-        pan_section_pack(job.cpu, BIFROST_TILER_JOB, PRIMITIVE, cfg) {
-                cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
-                cfg.index_count = 4;
-                cfg.job_task_split = 6;
-        }
-
-        pan_section_pack(job.cpu, BIFROST_TILER_JOB, PRIMITIVE_SIZE, cfg) {
-                cfg.constant = 1.0f;
-        }
-
-        void *invoc = pan_section_ptr(job.cpu,
-                                      BIFROST_TILER_JOB,
-                                      INVOCATION);
-        panfrost_pack_work_groups_compute(invoc, 1, 4,
-                                          1, 1, 1, 1, true, false);
-
-        pan_section_pack(job.cpu, BIFROST_TILER_JOB, PADDING, cfg);
-        pan_section_pack(job.cpu, BIFROST_TILER_JOB, TILER, cfg) {
-                cfg.address = tiler;
-        }
-
-        panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
-                         false, false, 0, 0, &job, false);
-        return job;
-}
-
-static void
-pan_preload_emit_bifrost_pre_frame_dcd(struct pan_pool *desc_pool,
-                                       struct pan_fb_info *fb, bool zs,
-                                       mali_ptr coords, mali_ptr rsd,
-                                       mali_ptr tsd)
+pan_preload_emit_pre_frame_dcd(struct pan_pool *desc_pool,
+                               struct pan_fb_info *fb, bool zs,
+                               mali_ptr coords, mali_ptr rsd,
+                               mali_ptr tsd)
 {
         struct panfrost_device *dev = desc_pool->dev;
 
         unsigned dcd_idx = zs ? 0 : 1;
-        pan_preload_fb_bifrost_alloc_pre_post_dcds(desc_pool, fb);
+        pan_preload_fb_alloc_pre_post_dcds(desc_pool, fb);
         assert(fb->bifrost.pre_post.dcds.cpu);
         void *dcd = fb->bifrost.pre_post.dcds.cpu +
                     (dcd_idx * (pan_size(DRAW) + pan_size(DRAW_PADDING)));
@@ -1300,6 +1165,40 @@ pan_preload_emit_bifrost_pre_frame_dcd(struct pan_pool *desc_pool,
                         MALI_PRE_POST_FRAME_SHADER_MODE_INTERSECT;
         }
 }
+#else
+static void
+pan_preload_emit_tiler_job(struct pan_pool *desc_pool,
+                           struct pan_scoreboard *scoreboard,
+                           struct pan_fb_info *fb, bool zs,
+                           mali_ptr coords, mali_ptr rsd, mali_ptr tsd)
+{
+        struct panfrost_ptr job =
+                pan_pool_alloc_desc(desc_pool, TILER_JOB);
+
+        pan_preload_emit_dcd(desc_pool, fb, zs, coords, tsd, rsd,
+                             pan_section_ptr(job.cpu, TILER_JOB, DRAW),
+                             false);
+
+        pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE, cfg) {
+                cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
+                cfg.index_count = 4;
+                cfg.job_task_split = 6;
+        }
+
+        pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE_SIZE, cfg) {
+                cfg.constant = 1.0f;
+        }
+
+        void *invoc = pan_section_ptr(job.cpu,
+                                      TILER_JOB,
+                                      INVOCATION);
+        panfrost_pack_work_groups_compute(invoc, 1, 4,
+                                          1, 1, 1, 1, true, false);
+
+        panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
+                         false, false, 0, 0, &job, true);
+}
+#endif
 
 static void
 pan_preload_fb_part(struct pan_pool *pool,
@@ -1310,20 +1209,20 @@ pan_preload_fb_part(struct pan_pool *pool,
         struct panfrost_device *dev = pool->dev;
         mali_ptr rsd = pan_preload_get_rsd(dev, fb, zs);
 
-        if (pan_is_bifrost(dev)) {
-                pan_preload_emit_bifrost_pre_frame_dcd(pool, fb, zs,
-                                                       coords, rsd, tsd);
-        } else {
-                pan_preload_emit_midgard_tiler_job(pool, scoreboard,
-                                                   fb, zs, coords, rsd, tsd);
-        }
+#if PAN_ARCH >= 6
+        pan_preload_emit_pre_frame_dcd(pool, fb, zs,
+                                       coords, rsd, tsd);
+#else
+        pan_preload_emit_tiler_job(pool, scoreboard,
+                                   fb, zs, coords, rsd, tsd);
+#endif
 }
 
 void
-pan_preload_fb(struct pan_pool *pool,
-               struct pan_scoreboard *scoreboard,
-               struct pan_fb_info *fb,
-               mali_ptr tsd, mali_ptr tiler)
+GENX(pan_preload_fb)(struct pan_pool *pool,
+                     struct pan_scoreboard *scoreboard,
+                     struct pan_fb_info *fb,
+                     mali_ptr tsd, mali_ptr tiler)
 {
         bool preload_zs = pan_preload_needed(fb, true);
         bool preload_rts = pan_preload_needed(fb, false);
@@ -1352,10 +1251,10 @@ pan_preload_fb(struct pan_pool *pool,
 }
 
 void
-pan_blit_ctx_init(struct panfrost_device *dev,
-                  const struct pan_blit_info *info,
-                  struct pan_pool *blit_pool,
-                  struct pan_blit_context *ctx)
+GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
+                        const struct pan_blit_info *info,
+                        struct pan_pool *blit_pool,
+                        struct pan_blit_context *ctx)
 {
         memset(ctx, 0, sizeof(*ctx));
 
@@ -1448,17 +1347,8 @@ pan_blit_ctx_init(struct panfrost_device *dev,
         const struct pan_image_view *sview_ptrs[] = { &sviews[0], &sviews[1] };
         unsigned nviews = sviews[1].format ? 2 : 1;
 
-        if (pan_is_bifrost(dev)) {
-                ctx->textures =
-                        pan_blitter_emit_bifrost_textures(blit_pool, nviews, sview_ptrs);
-                ctx->samplers =
-                        pan_blitter_emit_bifrost_sampler(blit_pool, info->nearest);
-        } else {
-                ctx->textures =
-                        pan_blitter_emit_midgard_textures(blit_pool, nviews, sview_ptrs);
-                ctx->samplers =
-                        pan_blitter_emit_midgard_sampler(blit_pool, info->nearest);
-        }
+        ctx->textures = pan_blitter_emit_textures(blit_pool, nviews, sview_ptrs);
+        ctx->samplers = pan_blitter_emit_sampler(blit_pool, info->nearest);
 
         ctx->vpd = pan_blitter_emit_viewport(blit_pool,
                                              minx, miny, maxx, maxy);
@@ -1475,21 +1365,11 @@ pan_blit_ctx_init(struct panfrost_device *dev,
                                         sizeof(dst_rect), 64);
 }
 
-bool
-pan_blit_next_surface(struct pan_blit_context *ctx)
-{
-        if (ctx->dst.cur_layer >= ctx->dst.last_layer)
-                return false;
-
-        ctx->dst.cur_layer++;
-        return true;
-}
-
 struct panfrost_ptr
-pan_blit(struct pan_blit_context *ctx,
-         struct pan_pool *pool,
-         struct pan_scoreboard *scoreboard,
-         mali_ptr tsd, mali_ptr tiler)
+GENX(pan_blit)(struct pan_blit_context *ctx,
+               struct pan_pool *pool,
+               struct pan_scoreboard *scoreboard,
+               mali_ptr tsd, mali_ptr tiler)
 {
         if (ctx->dst.cur_layer < 0 || ctx->dst.cur_layer > ctx->dst.last_layer)
                 return (struct panfrost_ptr){ 0 };
@@ -1512,21 +1392,10 @@ pan_blit(struct pan_blit_context *ctx,
                 pan_pool_upload_aligned(pool, src_rect,
                                         sizeof(src_rect), 64);
 
-        struct panfrost_ptr job;
-
-        if (pan_is_bifrost(pool->dev)) {
-                job = pan_blit_emit_bifrost_tiler_job(pool, scoreboard,
-                                                      src_coords, ctx->position,
-                                                      ctx->textures, ctx->samplers,
-                                                      ctx->vpd, ctx->rsd, tsd, tiler);
-        } else {
-                job = pan_blit_emit_midgard_tiler_job(pool, scoreboard,
-                                                      src_coords, ctx->position,
-                                                      ctx->textures, ctx->samplers,
-                                                      ctx->vpd, ctx->rsd, tsd);
-        }
-
-        return job;
+        return pan_blit_emit_tiler_job(pool, scoreboard,
+                                       src_coords, ctx->position,
+                                       ctx->textures, ctx->samplers,
+                                       ctx->vpd, ctx->rsd, tsd, tiler);
 }
 
 static uint32_t pan_blit_shader_key_hash(const void *key)
@@ -1597,9 +1466,9 @@ pan_blitter_prefill_blit_shader_cache(struct panfrost_device *dev)
 }
 
 void
-pan_blitter_init(struct panfrost_device *dev,
-                 struct pan_pool *bin_pool,
-                 struct pan_pool *desc_pool)
+GENX(pan_blitter_init)(struct panfrost_device *dev,
+                       struct pan_pool *bin_pool,
+                       struct pan_pool *desc_pool)
 {
         dev->blitter.shaders.blit =
                 _mesa_hash_table_create(NULL, pan_blit_shader_key_hash,
@@ -1619,7 +1488,7 @@ pan_blitter_init(struct panfrost_device *dev,
 }
 
 void
-pan_blitter_cleanup(struct panfrost_device *dev)
+GENX(pan_blitter_cleanup)(struct panfrost_device *dev)
 {
         _mesa_hash_table_destroy(dev->blitter.shaders.blit, NULL);
         _mesa_hash_table_destroy(dev->blitter.shaders.blend, NULL);

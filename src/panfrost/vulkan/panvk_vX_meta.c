@@ -580,15 +580,15 @@ panvk_per_arch(meta_init)(struct panvk_physical_device *dev)
    panvk_pool_init(&dev->meta.blitter.desc_pool, &dev->pdev, NULL,
                    0, 16 * 1024, "panvk_meta blitter descriptor pool",
                    false);
-   pan_blitter_init(&dev->pdev, &dev->meta.blitter.bin_pool.base,
-                    &dev->meta.blitter.desc_pool.base);
+   GENX(pan_blitter_init)(&dev->pdev, &dev->meta.blitter.bin_pool.base,
+                          &dev->meta.blitter.desc_pool.base);
    panvk_meta_clear_attachment_init(dev);
 }
 
 void
 panvk_per_arch(meta_cleanup)(struct panvk_physical_device *dev)
 {
-   pan_blitter_cleanup(&dev->pdev);
+   GENX(pan_blitter_cleanup)(&dev->pdev);
    panvk_pool_cleanup(&dev->meta.blitter.desc_pool);
    panvk_pool_cleanup(&dev->meta.blitter.bin_pool);
    panvk_pool_cleanup(&dev->meta.desc_pool);

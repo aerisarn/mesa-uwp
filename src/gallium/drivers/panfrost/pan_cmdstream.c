@@ -3528,16 +3528,16 @@ static void
 screen_destroy(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
-        pan_blitter_cleanup(dev);
         GENX(panfrost_cleanup_indirect_draw_shaders)(dev);
         GENX(pan_indirect_dispatch_cleanup)(dev);
+        GENX(pan_blitter_cleanup)(dev);
 }
 
 static void
 preload(struct panfrost_batch *batch, struct pan_fb_info *fb)
 {
-        pan_preload_fb(&batch->pool.base, &batch->scoreboard, fb, batch->tls.gpu,
-                       PAN_ARCH >= 6 ? batch->tiler_ctx.bifrost : 0);
+        GENX(pan_preload_fb)(&batch->pool.base, &batch->scoreboard, fb, batch->tls.gpu,
+                             PAN_ARCH >= 6 ? batch->tiler_ctx.bifrost : 0);
 }
 
 static void
@@ -3668,8 +3668,8 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
         screen->vtbl.init_batch = init_batch;
         screen->vtbl.init_polygon_list = init_polygon_list;
 
-        pan_blitter_init(dev, &screen->blitter.bin_pool.base,
-                         &screen->blitter.desc_pool.base);
+        GENX(pan_blitter_init)(dev, &screen->blitter.bin_pool.base,
+                               &screen->blitter.desc_pool.base);
         GENX(pan_indirect_dispatch_init)(dev);
         GENX(panfrost_init_indirect_draw_shaders)(dev, &screen->indirect_draw.bin_pool.base);
 }
