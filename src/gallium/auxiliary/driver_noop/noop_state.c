@@ -284,6 +284,118 @@ static void noop_set_shader_images(struct pipe_context *ctx,
 {
 }
 
+static void noop_render_condition( struct pipe_context *pipe,
+                                   struct pipe_query *query,
+                                   bool condition,
+                                   enum pipe_render_cond_flag mode )
+{
+}
+
+static void noop_get_query_result_resource(struct pipe_context *pipe,
+                                           struct pipe_query *q,
+                                           bool wait,
+                                           enum pipe_query_value_type result_type,
+                                           int index,
+                                           struct pipe_resource *resource,
+                                           unsigned offset)
+{
+}
+
+static void noop_set_min_samples( struct pipe_context *ctx,
+                                  unsigned min_samples )
+{
+}
+
+static void noop_set_sample_locations( struct pipe_context *ctx,
+                                       size_t size, const uint8_t *locations )
+{
+}
+
+static void noop_set_tess_state(struct pipe_context *ctx,
+                                const float default_outer_level[4],
+                                const float default_inner_level[2])
+{
+}
+
+static void noop_clear_texture(struct pipe_context *pipe,
+                               struct pipe_resource *res,
+                               unsigned level,
+                               const struct pipe_box *box,
+                               const void *data)
+{
+}
+
+static void noop_clear_buffer(struct pipe_context *pipe,
+                              struct pipe_resource *res,
+                              unsigned offset,
+                              unsigned size,
+                              const void *clear_value,
+                              int clear_value_size)
+{
+}
+
+static void noop_fence_server_sync(struct pipe_context *pipe,
+                                   struct pipe_fence_handle *fence)
+{
+}
+
+static void noop_texture_barrier(struct pipe_context *ctx, unsigned flags)
+{
+}
+
+static void noop_memory_barrier(struct pipe_context *ctx, unsigned flags)
+{
+}
+
+static bool noop_resource_commit(struct pipe_context *ctx, struct pipe_resource *res,
+                                 unsigned level, struct pipe_box *box, bool commit)
+{
+   return true;
+}
+
+static void noop_get_sample_position(struct pipe_context *context,
+                                     unsigned sample_count,
+                                     unsigned sample_index,
+                                     float *out_value)
+{
+}
+
+static enum pipe_reset_status noop_get_device_reset_status(struct pipe_context *ctx)
+{
+   return PIPE_NO_RESET;
+}
+
+static uint64_t noop_create_texture_handle(struct pipe_context *ctx,
+                                           struct pipe_sampler_view *view,
+                                           const struct pipe_sampler_state *state)
+{
+   return 1;
+}
+
+static void noop_delete_texture_handle(struct pipe_context *ctx, uint64_t handle)
+{
+}
+
+static void noop_make_texture_handle_resident(struct pipe_context *ctx,
+                                              uint64_t handle, bool resident)
+{
+}
+
+static uint64_t noop_create_image_handle(struct pipe_context *ctx,
+                                         const struct pipe_image_view *image)
+{
+   return 2;
+}
+
+static void noop_delete_image_handle(struct pipe_context *ctx, uint64_t handle)
+{
+}
+
+static void noop_make_image_handle_resident(struct pipe_context *ctx, uint64_t handle,
+                                            unsigned access, bool resident)
+{
+}
+
 void noop_init_state_functions(struct pipe_context *ctx);
 
 void noop_init_state_functions(struct pipe_context *ctx)
@@ -345,4 +457,23 @@ void noop_init_state_functions(struct pipe_context *ctx)
    ctx->create_stream_output_target = noop_create_stream_output_target;
    ctx->stream_output_target_destroy = noop_stream_output_target_destroy;
    ctx->set_stream_output_targets = noop_set_stream_output_targets;
+   ctx->render_condition = noop_render_condition;
+   ctx->get_query_result_resource = noop_get_query_result_resource;
+   ctx->set_min_samples = noop_set_min_samples;
+   ctx->set_sample_locations = noop_set_sample_locations;
+   ctx->set_tess_state = noop_set_tess_state;
+   ctx->clear_texture = noop_clear_texture;
+   ctx->clear_buffer = noop_clear_buffer;
+   ctx->fence_server_sync = noop_fence_server_sync;
+   ctx->texture_barrier = noop_texture_barrier;
+   ctx->memory_barrier = noop_memory_barrier;
+   ctx->resource_commit = noop_resource_commit;
+   ctx->get_sample_position = noop_get_sample_position;
+   ctx->get_device_reset_status = noop_get_device_reset_status;
+   ctx->create_texture_handle = noop_create_texture_handle;
+   ctx->delete_texture_handle = noop_delete_texture_handle;
+   ctx->make_texture_handle_resident = noop_make_texture_handle_resident;
+   ctx->create_image_handle = noop_create_image_handle;
+   ctx->delete_image_handle = noop_delete_image_handle;
+   ctx->make_image_handle_resident = noop_make_image_handle_resident;
 }
