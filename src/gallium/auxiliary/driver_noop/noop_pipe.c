@@ -209,7 +209,7 @@ static void *noop_transfer_map(struct pipe_context *pipe,
    struct pipe_transfer *transfer;
    struct noop_resource *nresource = (struct noop_resource *)resource;
 
-   transfer = CALLOC_STRUCT(pipe_transfer);
+   transfer = (struct pipe_transfer*)CALLOC_STRUCT(threaded_transfer);
    if (!transfer)
       return NULL;
    pipe_resource_reference(&transfer->resource, resource);
