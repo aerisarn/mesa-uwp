@@ -254,3 +254,63 @@ iris-cml-traces:
     - .iris-cml-test
     - .iris-traces
     - .test-manual-mr
+
+.profile-traces:
+  extends:
+    - .iris-traces
+    - .iris-rules-performance
+  variables:
+    PIGLIT_REPLAY_SUBCOMMAND: "profile"
+    PIGLIT_REPLAY_EXTRA_ARGS: "--db-path ${CI_PROJECT_DIR}/replayer-db/"
+    # More than this can hit OOM due to BOs leaked during the replay of the last frame
+    PIGLIT_REPLAY_LOOP_TIMES: 150
+    # We don't want for more than one workload to be submitted to the GPU at a time
+    FDO_CI_CONCURRENT: 1
+    # So we aren't capped by VSync by the X server
+    EGL_PLATFORM: surfaceless
+    GIT_STRATEGY: none
+    HWCI_FREQ_MAX: 1
+    LAVA_TAGS: "cbg-0"
+  allow_failure: true
+
+iris-apl-traces-performance:
+  extends:
+    - .iris-apl-test
+    - .profile-traces
+  variables:
+    GPU_VERSION: intel-apl
+
+iris-glk-traces-performance:
+  extends:
+    - .iris-glk-test
+    - .profile-traces
+  variables:
+    GPU_VERSION: intel-glk
+
+iris-amly-traces-performance:
+  extends:
+    - .iris-amly-test
+    - .profile-traces
+  variables:
+    GPU_VERSION: intel-amly
+
+iris-kbl-traces-performance:
+  extends:
+    - .iris-kbl-test
+    - .profile-traces
+  variables:
+    GPU_VERSION: intel-kbl
+
+iris-whl-traces-performance:
+  extends:
+    - .iris-whl-test
+    - .profile-traces
+  variables:
+    GPU_VERSION: intel-whl
+
+iris-cml-traces-performance:
+  extends:
+    - .iris-cml-test
+    - .profile-traces
+  variables:
+    GPU_VERSION: intel-cml
