@@ -764,7 +764,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties(VkPhysicalDevice phys
       .maxComputeWorkGroupSize = { block_size[0], block_size[1], block_size[2] },
       .subPixelPrecisionBits                    = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_RASTERIZER_SUBPIXEL_BITS),
       .subTexelPrecisionBits                    = 8,
-      .mipmapPrecisionBits                      = 8,
+      .mipmapPrecisionBits                      = 4,
       .maxDrawIndexedIndexValue                 = UINT32_MAX,
       .maxDrawIndirectCount                     = UINT32_MAX,
       .maxSamplerLodBias                        = 16,
