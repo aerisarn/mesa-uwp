@@ -96,7 +96,7 @@ void
 spirv_to_dxil_free(void* buffer);
 
 uint64_t
-spirv_to_dxil_get_version();
+spirv_to_dxil_get_version(void);
 
 #ifdef __cplusplus
 }
