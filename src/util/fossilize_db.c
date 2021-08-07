@@ -448,6 +448,7 @@ foz_write_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
       _mesa_hash_table_u64_search(foz_db->index_db, hash);
    if (entry) {
       simple_mtx_unlock(&foz_db->mtx);
+      flock(fileno(foz_db->file[0]), LOCK_UN);
       return NULL;
    }
 
