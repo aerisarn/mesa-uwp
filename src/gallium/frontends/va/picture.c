@@ -130,16 +130,20 @@ handlePictureParameterBuffer(vlVaDriver *drv, vlVaContext *context, vlVaBuffer *
       vlVaHandlePictureParameterBufferMPEG4(drv, context, buf);
       break;
 
-  case PIPE_VIDEO_FORMAT_HEVC:
+   case PIPE_VIDEO_FORMAT_HEVC:
       vlVaHandlePictureParameterBufferHEVC(drv, context, buf);
       break;
 
-  case PIPE_VIDEO_FORMAT_JPEG:
+   case PIPE_VIDEO_FORMAT_JPEG:
       vlVaHandlePictureParameterBufferMJPEG(drv, context, buf);
       break;
 
-  case PIPE_VIDEO_FORMAT_VP9:
+   case PIPE_VIDEO_FORMAT_VP9:
       vlVaHandlePictureParameterBufferVP9(drv, context, buf);
+      break;
+
+   case PIPE_VIDEO_FORMAT_AV1:
+      vlVaHandlePictureParameterBufferAV1(drv, context, buf);
       break;
 
    default:
@@ -204,7 +208,7 @@ handleIQMatrixBuffer(vlVaContext *context, vlVaBuffer *buf)
 }
 
 static void
-handleSliceParameterBuffer(vlVaContext *context, vlVaBuffer *buf)
+handleSliceParameterBuffer(vlVaContext *context, vlVaBuffer *buf, unsigned num)
 {
    switch (u_reduce_video_profile(context->templat.profile)) {
    case PIPE_VIDEO_FORMAT_MPEG12:
@@ -233,6 +237,10 @@ handleSliceParameterBuffer(vlVaContext *context, vlVaBuffer *buf)
 
    case PIPE_VIDEO_FORMAT_VP9:
       vlVaHandleSliceParameterBufferVP9(context, buf);
+      break;
+
+   case PIPE_VIDEO_FORMAT_AV1:
+      vlVaHandleSliceParameterBufferAV1(context, buf, num);
       break;
 
    default:
@@ -325,6 +333,8 @@ handleVASliceDataBufferType(vlVaContext *context, vlVaBuffer *buf)
          break;
       case PIPE_VIDEO_FORMAT_VP9:
          vlVaDecoderVP9BitstreamHeader(context, buf);
+         break;
+      case PIPE_VIDEO_FORMAT_AV1:
          break;
       default:
          break;
@@ -598,7 +608,7 @@ vlVaRenderPicture(VADriverContextP ctx, VAContextID context_id, VABufferID *buff
          break;
 
       case VASliceParameterBufferType:
-         handleSliceParameterBuffer(context, buf);
+         handleSliceParameterBuffer(context, buf, i);
          break;
 
       case VASliceDataBufferType:
