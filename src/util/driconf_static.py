@@ -223,6 +223,6 @@ static const struct driconf_device *driconf[] = {
 xml = sys.argv[1]
 dst = sys.argv[2]
 
-with open(dst, 'wb') as f:
-    f.write(Template(template, output_encoding='utf-8').render(driconf=DriConf(xml)))
+with open(dst, 'w') as f:
+    f.write(Template(template).render(driconf=DriConf(xml)))
 

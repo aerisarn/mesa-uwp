@@ -246,16 +246,16 @@ void __trace_${trace_name}(struct u_trace *ut
 def utrace_generate(cpath, hpath):
     if cpath is not None:
         hdr = os.path.basename(cpath).rsplit('.', 1)[0] + '.h'
-        with open(cpath, 'wb') as f:
-            f.write(Template(src_template, output_encoding='utf-8').render(
+        with open(cpath, 'w') as f:
+            f.write(Template(src_template).render(
                 hdr=hdr,
                 HEADERS=HEADERS,
                 TRACEPOINTS=TRACEPOINTS))
 
     if hpath is not None:
         hdr = os.path.basename(hpath)
-        with open(hpath, 'wb') as f:
-            f.write(Template(hdr_template, output_encoding='utf-8').render(
+        with open(hpath, 'w') as f:
+            f.write(Template(hdr_template).render(
                 hdrname=hdr.rstrip('.h').upper(),
                 HEADERS=HEADERS,
                 TRACEPOINTS=TRACEPOINTS))

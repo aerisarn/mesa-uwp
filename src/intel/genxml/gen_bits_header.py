@@ -118,7 +118,7 @@ ${emit_per_gen_prop_func(field, 'start')}
 }
 #endif
 
-#endif /* ${guard} */""", output_encoding='utf-8')
+#endif /* ${guard} */""")
 
 class Gen(object):
 
@@ -324,7 +324,7 @@ def main():
         p.engines = set(engines)
         p.parse(source)
 
-    with open(pargs.output, 'wb') as f:
+    with open(pargs.output, 'w') as f:
         f.write(TEMPLATE.render(containers=containers, guard=pargs.cpp_guard))
 
 if __name__ == '__main__':

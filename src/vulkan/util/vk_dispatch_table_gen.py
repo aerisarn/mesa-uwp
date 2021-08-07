@@ -221,7 +221,7 @@ extern struct vk_device_dispatch_table vk_device_trampolines;
 #endif
 
 #endif /* VK_DISPATCH_TABLE_H */
-""", output_encoding='utf-8')
+""")
 
 TEMPLATE_C = Template(COPYRIGHT + """\
 /* This file generated from ${filename}, don't edit directly. */
@@ -667,7 +667,7 @@ struct vk_device_dispatch_table vk_device_trampolines = {
   % endif
 % endfor
 };
-""", output_encoding='utf-8')
+""")
 
 U32_MASK = 2**32 - 1
 
@@ -927,13 +927,13 @@ def main():
     # per entry point.
     try:
         if args.out_h:
-            with open(args.out_h, 'wb') as f:
+            with open(args.out_h, 'w') as f:
                 f.write(TEMPLATE_H.render(instance_entrypoints=instance_entrypoints,
                                           physical_device_entrypoints=physical_device_entrypoints,
                                           device_entrypoints=device_entrypoints,
                                           filename=os.path.basename(__file__)))
         if args.out_c:
-            with open(args.out_c, 'wb') as f:
+            with open(args.out_c, 'w') as f:
                 f.write(TEMPLATE_C.render(instance_entrypoints=instance_entrypoints,
                                           physical_device_entrypoints=physical_device_entrypoints,
                                           device_entrypoints=device_entrypoints,

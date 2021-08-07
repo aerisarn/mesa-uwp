@@ -99,7 +99,7 @@ extern const struct vk_device_entrypoint_table ${p}_device_entrypoints;
 #endif
 
 #endif /* ${guard} */
-""", output_encoding='utf-8')
+""")
 
 TEMPLATE_C = Template(COPYRIGHT + """
 /* This file generated from ${filename}, don't edit directly. */
@@ -159,7 +159,7 @@ const struct vk_${type}_entrypoint_table ${p}_${type}_entrypoints = {
 ${entrypoint_table('instance', instance_entrypoints, instance_prefixes)}
 ${entrypoint_table('physical_device', physical_device_entrypoints, physical_device_prefixes)}
 ${entrypoint_table('device', device_entrypoints, device_prefixes)}
-""", output_encoding='utf-8')
+""")
 
 def get_entrypoints_defines(doc):
     """Maps entry points to extension defines."""
@@ -236,10 +236,10 @@ def main():
     # For outputting entrypoints.h we generate a anv_EntryPoint() prototype
     # per entry point.
     try:
-        with open(args.out_h, 'wb') as f:
+        with open(args.out_h, 'w') as f:
             guard = os.path.basename(args.out_h).replace('.', '_').upper()
             f.write(TEMPLATE_H.render(guard=guard, **environment))
-        with open(args.out_c, 'wb') as f:
+        with open(args.out_c, 'w') as f:
             f.write(TEMPLATE_C.render(**environment))
 
     except Exception:
