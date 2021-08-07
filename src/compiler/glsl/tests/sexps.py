@@ -28,7 +28,6 @@
 # as ['constant', 'float', ['1.000000']].
 
 import re
-import sys
 
 def check_sexp(sexp):
     """Verify that the argument is a proper sexp.
@@ -40,7 +39,7 @@ def check_sexp(sexp):
     if isinstance(sexp, list):
         for s in sexp:
             check_sexp(s)
-    elif not isinstance(sexp, (str, bytes)):
+    elif not isinstance(sexp, str):
         raise Exception('Not a sexp: {0!r}'.format(sexp))
 
 def parse_sexp(sexp):
@@ -73,8 +72,6 @@ def sexp_to_string(sexp):
     """
     if isinstance(sexp, str):
         return sexp
-    if isinstance(sexp, bytes):
-        return sexp.encode('utf-8')
     assert isinstance(sexp, list)
     result = ''
     for s in sexp:
