@@ -112,7 +112,7 @@ update_foz_index(struct foz_db *foz_db, FILE *db_idx, unsigned file_idx)
 {
    uint64_t offset = ftell(db_idx);
    fseek(db_idx, 0, SEEK_END);
-   size_t len = ftell(db_idx);
+   uint64_t len = ftell(db_idx);
    uint64_t parsed_offset = offset;
 
    if (offset == len)
