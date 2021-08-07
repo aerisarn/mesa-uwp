@@ -853,14 +853,14 @@ static rvcn_dec_message_av1_t get_av1_msg(struct radeon_decoder *dec,
       }
    }
 
-   result.p010_mode = 0;
-   result.msb_mode = 0;
-   if (!pic->picture_parameter.bit_depth_idx) {
-      result.luma_10to8 = 0;
-      result.chroma_10to8 = 0;
-   } else {
-      result.luma_10to8 = 1;
-      result.chroma_10to8 = 1;
+   if (pic->picture_parameter.bit_depth_idx) {
+      if (target->buffer_format == PIPE_FORMAT_P010 || target->buffer_format == PIPE_FORMAT_P016) {
+         result.p010_mode = 1;
+         result.msb_mode = 1;
+      } else {
+         result.luma_10to8 = 1;
+         result.chroma_10to8 = 1;
+      }
    }
 
    result.preskip_segid = 0;
