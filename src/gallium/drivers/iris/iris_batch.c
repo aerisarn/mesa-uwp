@@ -97,22 +97,25 @@ dump_fence_list(struct iris_batch *batch)
  * Debugging code to dump the validation list, used by INTEL_DEBUG=submit.
  */
 static void
-dump_validation_list(struct iris_batch *batch,
-                     struct drm_i915_gem_exec_object2 *validation_list)
+dump_bo_list(struct iris_batch *batch)
 {
-   fprintf(stderr, "Validation list (length %d):\n", batch->exec_count);
+   fprintf(stderr, "BO list (length %d):\n", batch->exec_count);
 
    for (int i = 0; i < batch->exec_count; i++) {
-      uint64_t flags = validation_list[i].flags;
-      assert(validation_list[i].handle == batch->exec_bos[i]->gem_handle);
-      fprintf(stderr, "[%2d]: %2d %-14s @ 0x%"PRIx64" (%"PRIu64"B)\t %2d refs %s\n",
+      struct iris_bo *bo = batch->exec_bos[i];
+      struct iris_bo *backing = iris_get_backing_bo(bo);
+      bool written = BITSET_TEST(batch->bos_written, i);
+
+      fprintf(stderr, "[%2d]: %3d (%3d) %-14s @ 0x%016"PRIx64" (%-6s %8"PRIu64"B) %2d refs  %s\n",
               i,
-              validation_list[i].handle,
-              batch->exec_bos[i]->name,
-              (uint64_t)validation_list[i].offset,
-              batch->exec_bos[i]->size,
-              batch->exec_bos[i]->refcount,
-              (flags & EXEC_OBJECT_WRITE) ? " (write)" : "");
+              bo->gem_handle,
+              backing->gem_handle,
+              bo->name,
+              bo->address,
+              backing->real.local ? "local" : "system",
+              bo->size,
+              bo->refcount,
+              written ? "(write)" : "");
    }
 }
 
@@ -783,7 +786,7 @@ submit_batch(struct iris_batch *batch)
 
    if (INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT)) {
       dump_fence_list(batch);
-      dump_validation_list(batch, validation_list);
+      dump_bo_list(batch);
    }
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
