@@ -363,9 +363,10 @@ create_batch(struct iris_batch *batch)
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
 
+   /* TODO: We probably could suballocate batches... */
    batch->bo = iris_bo_alloc(bufmgr, "command buffer",
                              BATCH_SZ + BATCH_RESERVED, 1,
-                             IRIS_MEMZONE_OTHER, 0);
+                             IRIS_MEMZONE_OTHER, BO_ALLOC_NO_SUBALLOC);
    iris_get_backing_bo(batch->bo)->real.kflags |= EXEC_OBJECT_CAPTURE;
    batch->map = iris_bo_map(NULL, batch->bo, MAP_READ | MAP_WRITE);
    batch->map_next = batch->map;

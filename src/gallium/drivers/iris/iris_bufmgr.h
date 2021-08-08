@@ -264,10 +264,11 @@ struct iris_bo {
    };
 };
 
-#define BO_ALLOC_ZEROED     (1<<0)
-#define BO_ALLOC_COHERENT   (1<<1)
-#define BO_ALLOC_SMEM       (1<<2)
-#define BO_ALLOC_SCANOUT    (1<<3)
+#define BO_ALLOC_ZEROED      (1<<0)
+#define BO_ALLOC_COHERENT    (1<<1)
+#define BO_ALLOC_SMEM        (1<<2)
+#define BO_ALLOC_SCANOUT     (1<<3)
+#define BO_ALLOC_NO_SUBALLOC (1<<4)
 
 /**
  * Allocate a buffer object.
