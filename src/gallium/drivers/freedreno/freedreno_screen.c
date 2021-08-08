@@ -666,7 +666,10 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return PIPE_SHADER_IR_NIR;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
-      return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
+      return (1 << PIPE_SHADER_IR_NIR) |
+             COND(has_compute(screen) && (shader == PIPE_SHADER_COMPUTE),
+                  (1 << PIPE_SHADER_IR_NIR_SERIALIZED)) |
+             (1 << PIPE_SHADER_IR_TGSI);
    case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
       return 32;
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
