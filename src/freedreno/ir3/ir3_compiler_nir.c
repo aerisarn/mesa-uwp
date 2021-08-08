@@ -311,7 +311,8 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
     * order into each writemask channel.
     */
    if ((alu->op == nir_op_vec2) || (alu->op == nir_op_vec3) ||
-       (alu->op == nir_op_vec4)) {
+       (alu->op == nir_op_vec4) || (alu->op == nir_op_vec8) ||
+       (alu->op == nir_op_vec16)) {
 
       for (int i = 0; i < info->num_inputs; i++) {
          nir_alu_src *asrc = &alu->src[i];
