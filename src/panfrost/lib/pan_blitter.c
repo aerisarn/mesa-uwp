@@ -168,10 +168,13 @@ pan_blitter_prepare_bifrost_rsd(const struct panfrost_device *dev,
         /* We can only allow blit shader fragments to kill if they write all
          * colour outputs. This is true for our colour (non-Z/S) blit shaders,
          * but obviously not true for Z/S shaders. However, blit shaders
-         * otherwise lack side effects, so other fragments may kill them. */
+         * otherwise lack side effects, so other fragments may kill them.
+         * However, while shaders writing Z/S can normally be killed, on v6
+         * for frame shaders it can cause GPU timeouts, so only allow colour
+         * blit shaders to be killed. */
 
         rsd->properties.bifrost.allow_forward_pixel_to_kill = !zs;
-        rsd->properties.bifrost.allow_forward_pixel_to_be_killed = true;
+        rsd->properties.bifrost.allow_forward_pixel_to_be_killed = (dev->arch >= 7) || !zs;
 
         rsd->preload.fragment.coverage = true;
         rsd->preload.fragment.sample_mask_id = ms;
