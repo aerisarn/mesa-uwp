@@ -478,8 +478,11 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
          return 15;
       else
          return 14;
+
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
-      return 11;
+      if (is_a3xx(screen))
+         return 11;
+      return 12;
 
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
       return (is_a3xx(screen) || is_a4xx(screen) || is_a5xx(screen) ||
@@ -733,11 +736,8 @@ fd_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
 
    switch (param) {
    case PIPE_COMPUTE_CAP_ADDRESS_BITS:
-      // don't expose 64b pointer support yet, until ir3 supports 64b
-      // math, otherwise spir64 target is used and we get 64b pointer
-      // calculations that we can't do yet
-      //		if (is_a5xx(screen))
-      //			RET((uint32_t []){ 64 });
+      if (screen->gen >= 5)
+         RET((uint32_t[]){64});
       RET((uint32_t[]){32});
 
    case PIPE_COMPUTE_CAP_IR_TARGET:
