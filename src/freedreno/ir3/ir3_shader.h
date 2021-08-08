@@ -146,12 +146,14 @@ struct ir3_ubo_analysis_state {
  *    user consts
  *    UBO addresses
  *    SSBO sizes
+ *    image dimensions
  *    if (vertex shader) {
- *        driver params (IR3_DP_*)
+ *        driver params (IR3_DP_VS_COUNT)
  *        if (stream_output.num_outputs > 0)
  *           stream-out addresses
  *    } else if (compute_shader) {
- *        driver params (IR3_DP_*)
+ *        kernel params
+ *        driver params (IR3_DP_CS_COUNT)
  *    }
  *    immediates
  *
@@ -171,6 +173,7 @@ struct ir3_const_state {
       /* user const start at zero */
       unsigned ubo;
       unsigned image_dims;
+      unsigned kernel_params;
       unsigned driver_param;
       unsigned tfbo;
       unsigned primitive_param;
@@ -739,6 +742,14 @@ struct ir3_shader {
    bool nir_finalized;
    struct nir_shader *nir;
    struct ir3_stream_output_info stream_output;
+
+   /* per shader stage specific info: */
+   union {
+      /* for compute shaders: */
+      struct {
+         unsigned req_input_mem;    /* in dwords */
+      } cs;
+   };
 
    struct ir3_shader_variant *variants;
    mtx_t variants_lock;

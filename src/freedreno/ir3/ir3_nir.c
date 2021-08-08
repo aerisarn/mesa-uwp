@@ -888,6 +888,11 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
       constoff += align(cnt, 4) / 4;
    }
 
+   if (v->type == MESA_SHADER_KERNEL) {
+      const_state->offsets.kernel_params = constoff;
+      constoff += align(v->shader->cs.req_input_mem, 4) / 4;
+   }
+
    if (const_state->num_driver_params > 0) {
       /* num_driver_params in dwords.  we only need to align to vec4s for the
        * common case of immediate constant uploads, but for indirect dispatch

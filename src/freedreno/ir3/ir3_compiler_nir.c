@@ -851,6 +851,41 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    }
 }
 
+/* Load a kernel param: src[] = { address }. */
+static void
+emit_intrinsic_load_kernel_input(struct ir3_context *ctx,
+                                 nir_intrinsic_instr *intr,
+                                 struct ir3_instruction **dst)
+{
+   const struct ir3_const_state *const_state = ir3_const_state(ctx->so);
+   struct ir3_block *b = ctx->block;
+   unsigned offset = nir_intrinsic_base(intr);
+   unsigned p = regid(const_state->offsets.kernel_params, 0);
+
+   struct ir3_instruction *src0 = ir3_get_src(ctx, &intr->src[0])[0];
+
+   if (is_same_type_mov(src0) && (src0->srcs[0]->flags & IR3_REG_IMMED)) {
+      offset += src0->srcs[0]->iim_val;
+
+      /* kernel param position is in bytes, but constant space is 32b registers: */
+      compile_assert(ctx, !(offset & 0x3));
+
+      dst[0] = create_uniform(b, p + (offset / 4));
+   } else {
+      /* kernel param position is in bytes, but constant space is 32b registers: */
+      compile_assert(ctx, !(offset & 0x3));
+
+      /* TODO we should probably be lowering this in nir, and also handling
+       * non-32b inputs.. Also we probably don't want to be using
+       * SP_MODE_CONTROL.CONSTANT_DEMOTION_ENABLE for KERNEL shaders..
+       */
+      src0 = ir3_SHR_B(b, src0, 0, create_immed(b, 2), 0);
+
+      dst[0] = create_uniform_indirect(b, offset / 4, TYPE_U32,
+                                       ir3_get_addr0(ctx, src0, 1));
+   }
+}
+
 /* src[] = { block_index } */
 static void
 emit_intrinsic_ssbo_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
@@ -1800,6 +1835,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_interpolated_input:
    case nir_intrinsic_load_input:
       setup_input(ctx, intr);
+      break;
+   case nir_intrinsic_load_kernel_input:
+      emit_intrinsic_load_kernel_input(ctx, intr, dst);
       break;
    /* All SSBO intrinsics should have been lowered by 'lower_io_offsets'
     * pass and replaced by an ir3-specifc version that adds the
