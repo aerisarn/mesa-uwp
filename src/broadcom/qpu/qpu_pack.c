@@ -456,8 +456,15 @@ struct opcode_desc {
         uint8_t mux_b_mask;
         uint8_t mux_a_mask;
         uint8_t op;
-        /* 0 if it's the same across V3D versions, or a specific V3D version. */
-        uint8_t ver;
+
+        /* first_ver == 0 if it's the same across all V3D versions.
+         * first_ver == X, last_ver == 0 if it's the same for all V3D versions
+         *   starting from X
+         * first_ver == X, last_ver == Y if it's the same for all V3D versions
+         *   on the range X through Y
+         */
+        uint8_t first_ver;
+        uint8_t last_ver;
 };
 
 static const struct opcode_desc add_ops[] = {
@@ -578,15 +585,32 @@ static const struct opcode_desc mul_ops[] = {
         { 16, 63, ANYMUX, ANYMUX, V3D_QPU_M_FMUL },
 };
 
+/* Returns true if op_desc should be filtered out based on devinfo->ver
+ * against op_desc->first_ver and op_desc->last_ver. Check notes about
+ * first_ver/last_ver on struct opcode_desc comments.
+ */
+static bool
+opcode_invalid_in_version(const struct v3d_device_info *devinfo,
+                          const struct opcode_desc *op_desc)
+{
+        return (op_desc->first_ver != 0 && devinfo->ver < op_desc->first_ver) ||
+                (op_desc->last_ver != 0  && devinfo->ver > op_desc->last_ver);
+}
+
 static const struct opcode_desc *
-lookup_opcode_from_packed(const struct opcode_desc *opcodes, size_t num_opcodes,
-                          uint32_t opcode, uint32_t mux_a, uint32_t mux_b)
+lookup_opcode_from_packed(const struct v3d_device_info *devinfo,
+                          const struct opcode_desc *opcodes,
+                          size_t num_opcodes, uint32_t opcode,
+                          uint32_t mux_a, uint32_t mux_b)
 {
         for (int i = 0; i < num_opcodes; i++) {
                 const struct opcode_desc *op_desc = &opcodes[i];
 
                 if (opcode < op_desc->opcode_first ||
                     opcode > op_desc->opcode_last)
+                        continue;
+
+                if (opcode_invalid_in_version(devinfo, op_desc))
                         continue;
 
                 if (!(op_desc->mux_b_mask & (1 << mux_b)))
@@ -733,8 +757,9 @@ v3d_qpu_add_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst,
                 map_op = (map_op - 253 + 245);
 
         const struct opcode_desc *desc =
-                lookup_opcode_from_packed(add_ops, ARRAY_SIZE(add_ops),
+                lookup_opcode_from_packed(devinfo, add_ops, ARRAY_SIZE(add_ops),
                                           map_op, mux_a, mux_b);
+
         if (!desc)
                 return false;
 
@@ -878,7 +903,8 @@ v3d_qpu_mul_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst,
 
         {
                 const struct opcode_desc *desc =
-                        lookup_opcode_from_packed(mul_ops, ARRAY_SIZE(mul_ops),
+                        lookup_opcode_from_packed(devinfo, mul_ops,
+                                                  ARRAY_SIZE(mul_ops),
                                                   op, mux_a, mux_b);
                 if (!desc)
                         return false;
@@ -941,13 +967,17 @@ v3d_qpu_mul_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst,
 }
 
 static const struct opcode_desc *
-lookup_opcode_from_instr(const struct opcode_desc *opcodes, size_t num_opcodes,
+lookup_opcode_from_instr(const struct v3d_device_info *devinfo,
+                         const struct opcode_desc *opcodes, size_t num_opcodes,
                          uint8_t op)
 {
         for (int i = 0; i < num_opcodes; i++) {
                 const struct opcode_desc *op_desc = &opcodes[i];
 
                 if (op_desc->op != op)
+                        continue;
+
+                if (opcode_invalid_in_version(devinfo, op_desc))
                         continue;
 
                 return op_desc;
@@ -965,7 +995,7 @@ v3d_qpu_add_pack(const struct v3d_device_info *devinfo,
         uint32_t mux_b = instr->alu.add.b;
         int nsrc = v3d_qpu_add_op_num_src(instr->alu.add.op);
         const struct opcode_desc *desc =
-                lookup_opcode_from_instr(add_ops, ARRAY_SIZE(add_ops),
+                lookup_opcode_from_instr(devinfo, add_ops, ARRAY_SIZE(add_ops),
                                          instr->alu.add.op);
 
         if (!desc)
@@ -1178,7 +1208,7 @@ v3d_qpu_mul_pack(const struct v3d_device_info *devinfo,
         int nsrc = v3d_qpu_mul_op_num_src(instr->alu.mul.op);
 
         const struct opcode_desc *desc =
-                lookup_opcode_from_instr(mul_ops, ARRAY_SIZE(mul_ops),
+                lookup_opcode_from_instr(devinfo, mul_ops, ARRAY_SIZE(mul_ops),
                                          instr->alu.mul.op);
 
         if (!desc)
