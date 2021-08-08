@@ -982,6 +982,8 @@ radv_emit_inline_push_consts(struct radv_cmd_buffer *cmd_buffer, struct radv_pip
 
    assert(loc->num_sgprs == count);
 
+   radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 2 + count);
+
    radeon_set_sh_reg_seq(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, count);
    radeon_emit_array(cmd_buffer->cs, values, count);
 }
