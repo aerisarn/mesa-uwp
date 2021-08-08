@@ -38,7 +38,7 @@ clCreateKernel(cl_program d_prog, const char *name, cl_int *r_errcode) try {
    ret_error(r_errcode, CL_SUCCESS);
    return new kernel(prog, name, range(sym.args));
 
-} catch (std::out_of_range &e) {
+} catch (std::out_of_range &) {
    ret_error(r_errcode, CL_INVALID_KERNEL_NAME);
    return NULL;
 
@@ -100,7 +100,7 @@ clSetKernelArg(cl_kernel d_kern, cl_uint idx, size_t size,
    obj(d_kern).args().at(idx).set(size, value);
    return CL_SUCCESS;
 
-} catch (std::out_of_range &e) {
+} catch (std::out_of_range &) {
    return CL_INVALID_ARG_INDEX;
 
 } catch (error &e) {
@@ -189,7 +189,7 @@ clGetKernelWorkGroupInfo(cl_kernel d_kern, cl_device_id d_dev,
 } catch (error &e) {
    return e.get();
 
-} catch (std::out_of_range &e) {
+} catch (std::out_of_range &) {
    return CL_INVALID_DEVICE;
 }
 
@@ -231,7 +231,7 @@ clGetKernelArgInfo(cl_kernel d_kern,
 
    return CL_SUCCESS;
 
-} catch (std::out_of_range &e) {
+} catch (std::out_of_range &) {
    return CL_INVALID_ARG_INDEX;
 
 } catch (error &e) {
@@ -381,7 +381,7 @@ clSetKernelArgSVMPointer(cl_kernel d_kern,
    obj(d_kern).args().at(arg_index).set_svm(arg_value);
    return CL_SUCCESS;
 
-} catch (std::out_of_range &e) {
+} catch (std::out_of_range &) {
    return CL_INVALID_ARG_INDEX;
 
 } catch (error &e) {

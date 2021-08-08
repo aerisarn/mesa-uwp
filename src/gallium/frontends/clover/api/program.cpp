@@ -154,7 +154,7 @@ clCreateProgramWithBinary(cl_context d_ctx, cl_uint n,
 
             return { CL_SUCCESS, module::deserialize(s) };
 
-         } catch (std::istream::failure &e) {
+         } catch (std::istream::failure &) {
             return { CL_INVALID_BINARY, {} };
          }
       },
@@ -333,10 +333,10 @@ clCompileProgram(cl_program d_prog, cl_uint num_devs,
    prog.compile(devs, opts, headers);
    return CL_SUCCESS;
 
-} catch (invalid_build_options_error &e) {
+} catch (invalid_build_options_error &) {
    return CL_INVALID_COMPILER_OPTIONS;
 
-} catch (build_error &e) {
+} catch (build_error &) {
    return CL_COMPILE_PROGRAM_FAILURE;
 
 } catch (error &e) {
@@ -446,13 +446,13 @@ clLinkProgram(cl_context d_ctx, cl_uint num_devs, const cl_device_id *d_devs,
       prog().link(devs, opts, progs);
       ret_error(r_errcode, CL_SUCCESS);
 
-   } catch (build_error &e) {
+   } catch (build_error &) {
       ret_error(r_errcode, CL_LINK_PROGRAM_FAILURE);
    }
 
    return r_prog;
 
-} catch (invalid_build_options_error &e) {
+} catch (invalid_build_options_error &) {
    ret_error(r_errcode, CL_INVALID_LINKER_OPTIONS);
    return NULL;
 
