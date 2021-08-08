@@ -1306,14 +1306,14 @@ static bool
 radv_image_is_pipe_misaligned(const struct radv_device *device, const struct radv_image *image)
 {
    struct radeon_info *rad_info = &device->physical_device->rad_info;
-   unsigned log2_samples = util_logbase2(image->info.samples);
+   int log2_samples = util_logbase2(image->info.samples);
 
    assert(rad_info->chip_class >= GFX10);
 
    for (unsigned i = 0; i < image->plane_count; ++i) {
       VkFormat fmt = vk_format_get_plane_format(image->vk_format, i);
-      unsigned log2_bpp = util_logbase2(vk_format_get_blocksize(fmt));
-      unsigned log2_bpp_and_samples;
+      int log2_bpp = util_logbase2(vk_format_get_blocksize(fmt));
+      int log2_bpp_and_samples;
 
       if (rad_info->chip_class >= GFX10_3) {
          log2_bpp_and_samples = log2_bpp + log2_samples;
@@ -1325,7 +1325,7 @@ radv_image_is_pipe_misaligned(const struct radv_device *device, const struct rad
          log2_bpp_and_samples = MIN2(6, log2_bpp + log2_samples);
       }
 
-      unsigned num_pipes = G_0098F8_NUM_PIPES(rad_info->gb_addr_config);
+      int num_pipes = G_0098F8_NUM_PIPES(rad_info->gb_addr_config);
       int overlap = MAX2(0, log2_bpp_and_samples + num_pipes - 8);
 
       if (vk_format_has_depth(image->vk_format)) {
@@ -1333,7 +1333,7 @@ radv_image_is_pipe_misaligned(const struct radv_device *device, const struct rad
             return true;
          }
       } else {
-         unsigned max_compressed_frags = G_0098F8_MAX_COMPRESSED_FRAGS(rad_info->gb_addr_config);
+         int max_compressed_frags = G_0098F8_MAX_COMPRESSED_FRAGS(rad_info->gb_addr_config);
          int log2_samples_frag_diff = MAX2(0, log2_samples - max_compressed_frags);
          int samples_overlap = MIN2(log2_samples, overlap);
 
