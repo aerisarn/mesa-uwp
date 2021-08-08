@@ -42,6 +42,11 @@
 #include <dxguids/dxguids.h>
 #include <memory>
 
+#ifndef GENERIC_ALL
+ // This is only added to winadapter.h in newer DirectX-Headers
+#define GENERIC_ALL 0x10000000L
+#endif
+
 static bool
 can_map_directly(struct pipe_resource *pres)
 {
@@ -293,7 +298,8 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
                           const struct pipe_resource *templ,
                           struct winsys_handle *handle, unsigned usage)
 {
-   if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES)
+   if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES &&
+       handle->type != WINSYS_HANDLE_TYPE_FD)
       return NULL;
 
    struct d3d12_resource *res = CALLOC_STRUCT(d3d12_resource);
@@ -305,7 +311,25 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    res->base.b.screen = pscreen;
    res->dxgi_format = templ->target == PIPE_BUFFER ? DXGI_FORMAT_UNKNOWN :
                  d3d12_get_format(templ->format);
-   res->bo = d3d12_bo_wrap_res((ID3D12Resource *)handle->com_obj, templ->format);
+   if (handle->type == WINSYS_HANDLE_TYPE_D3D12_RES) {
+      res->bo = d3d12_bo_wrap_res((ID3D12Resource *)handle->com_obj, templ->format);
+   } else {
+      struct d3d12_screen *screen = d3d12_screen(pscreen);
+      ID3D12Resource *d3d12_res = nullptr;
+
+#ifdef _WIN32
+      HANDLE d3d_handle = handle->handle;
+#else
+      HANDLE d3d_handle = (HANDLE)(intptr_t)handle->handle;
+#endif
+      screen->dev->OpenSharedHandle(d3d_handle, IID_PPV_ARGS(&d3d12_res));
+      if (!d3d12_res) {
+         FREE(res);
+         return NULL;
+      }
+
+      res->bo = d3d12_bo_wrap_res(d3d12_res, templ->format);
+   }
    init_valid_range(res);
    threaded_resource_init(&res->base.b, false, 0);
    return &res->base.b;
@@ -319,12 +343,35 @@ d3d12_resource_get_handle(struct pipe_screen *pscreen,
                           unsigned usage)
 {
    struct d3d12_resource *res = d3d12_resource(pres);
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
 
-   if (handle->type != WINSYS_HANDLE_TYPE_D3D12_RES)
+   switch (handle->type) {
+   case WINSYS_HANDLE_TYPE_D3D12_RES:
+      handle->com_obj = d3d12_resource_resource(res);
+      return true;
+   case WINSYS_HANDLE_TYPE_FD: {
+      HANDLE d3d_handle = nullptr;
+
+      screen->dev->CreateSharedHandle(d3d12_resource_resource(res),
+                                      nullptr,
+                                      GENERIC_ALL,
+                                      nullptr,
+                                      &d3d_handle);
+      if (!d3d_handle)
+         return false;
+      
+#ifdef _WIN32
+      handle->handle = d3d_handle;
+#else
+      handle->handle = (int)(intptr_t)d3d_handle;
+#endif
+      handle->format = pres->format;
+      handle->modifier = ~0ull;
+      return true;
+   }
+   default:
       return false;
-
-   handle->com_obj = d3d12_resource_resource(res);
-   return true;
+   }
 }
 
 void
