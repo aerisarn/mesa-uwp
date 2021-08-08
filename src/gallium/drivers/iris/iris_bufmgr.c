@@ -170,6 +170,26 @@ struct iris_memregion {
    uint64_t size;
 };
 
+#define NUM_SLAB_ALLOCATORS 3
+
+enum iris_heap {
+   IRIS_HEAP_SYSTEM_MEMORY,
+   IRIS_HEAP_DEVICE_LOCAL,
+   IRIS_HEAP_MAX,
+};
+
+struct iris_slab {
+   struct pb_slab base;
+
+   unsigned entry_size;
+
+   /** The BO representing the entire slab */
+   struct iris_bo *bo;
+
+   /** Array of iris_bo structs representing BOs allocated out of this slab */
+   struct iris_bo *entries;
+};
+
 struct iris_bufmgr {
    /**
     * List into the list of bufmgr.
@@ -217,6 +237,8 @@ struct iris_bufmgr {
    bool bo_reuse:1;
 
    struct intel_aux_map_context *aux_map_ctx;
+
+   struct pb_slabs bo_slabs[NUM_SLAB_ALLOCATORS];
 };
 
 static simple_mtx_t global_bufmgr_list_mutex = _SIMPLE_MTX_INITIALIZER_NP;
@@ -520,6 +542,277 @@ bo_unmap(struct iris_bo *bo)
    bo->real.map = NULL;
 }
 
+static struct pb_slabs *
+get_slabs(struct iris_bufmgr *bufmgr, uint64_t size)
+{
+   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
+      struct pb_slabs *slabs = &bufmgr->bo_slabs[i];
+
+      if (size <= 1ull << (slabs->min_order + slabs->num_orders - 1))
+         return slabs;
+   }
+
+   unreachable("should have found a valid slab for this size");
+}
+
+/* Return the power of two size of a slab entry matching the input size. */
+static unsigned
+get_slab_pot_entry_size(struct iris_bufmgr *bufmgr, unsigned size)
+{
+   unsigned entry_size = util_next_power_of_two(size);
+   unsigned min_entry_size = 1 << bufmgr->bo_slabs[0].min_order;
+
+   return MAX2(entry_size, min_entry_size);
+}
+
+/* Return the slab entry alignment. */
+static unsigned
+get_slab_entry_alignment(struct iris_bufmgr *bufmgr, unsigned size)
+{
+   unsigned entry_size = get_slab_pot_entry_size(bufmgr, size);
+
+   if (size <= entry_size * 3 / 4)
+      return entry_size / 4;
+
+   return entry_size;
+}
+
+static bool
+iris_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
+{
+   struct iris_bo *bo = container_of(entry, struct iris_bo, slab.entry);
+
+   return !iris_bo_busy(bo);
+}
+
+static void
+iris_slab_free(void *priv, struct pb_slab *pslab)
+{
+   struct iris_bufmgr *bufmgr = priv;
+   struct iris_slab *slab = (void *) pslab;
+   struct intel_aux_map_context *aux_map_ctx = bufmgr->aux_map_ctx;
+
+   assert(!slab->bo->aux_map_address);
+
+   if (aux_map_ctx) {
+      /* Since we're freeing the whole slab, all buffers allocated out of it
+       * must be reclaimable.  We require buffers to be idle to be reclaimed
+       * (see iris_can_reclaim_slab()), so we know all entries must be idle.
+       * Therefore, we can safely unmap their aux table entries.
+       */
+      for (unsigned i = 0; i < pslab->num_entries; i++) {
+         struct iris_bo *bo = &slab->entries[i];
+         if (bo->aux_map_address) {
+            intel_aux_map_unmap_range(aux_map_ctx, bo->address, bo->size);
+            bo->aux_map_address = 0;
+         }
+      }
+   }
+
+   iris_bo_unreference(slab->bo);
+
+   free(slab->entries);
+   free(slab);
+}
+
+static struct pb_slab *
+iris_slab_alloc(void *priv,
+                unsigned heap,
+                unsigned entry_size,
+                unsigned group_index)
+{
+   struct iris_bufmgr *bufmgr = priv;
+   struct iris_slab *slab = calloc(1, sizeof(struct iris_slab));
+   unsigned flags = heap == IRIS_HEAP_SYSTEM_MEMORY ? BO_ALLOC_SMEM : 0;
+   unsigned slab_size = 0;
+   /* We only support slab allocation for IRIS_MEMZONE_OTHER */
+   enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
+
+   if (!slab)
+      return NULL;
+
+   struct pb_slabs *slabs = bufmgr->bo_slabs;
+
+   /* Determine the slab buffer size. */
+   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
+      unsigned max_entry_size =
+         1 << (slabs[i].min_order + slabs[i].num_orders - 1);
+
+      if (entry_size <= max_entry_size) {
+         /* The slab size is twice the size of the largest possible entry. */
+         slab_size = max_entry_size * 2;
+
+         if (!util_is_power_of_two_nonzero(entry_size)) {
+            assert(util_is_power_of_two_nonzero(entry_size * 4 / 3));
+
+            /* If the entry size is 3/4 of a power of two, we would waste
+             * space and not gain anything if we allocated only twice the
+             * power of two for the backing buffer:
+             *
+             *    2 * 3/4 = 1.5 usable with buffer size 2
+             *
+             * Allocating 5 times the entry size leads us to the next power
+             * of two and results in a much better memory utilization:
+             *
+             *    5 * 3/4 = 3.75 usable with buffer size 4
+             */
+            if (entry_size * 5 > slab_size)
+               slab_size = util_next_power_of_two(entry_size * 5);
+         }
+
+         /* The largest slab should have the same size as the PTE fragment
+          * size to get faster address translation.
+          *
+          * TODO: move this to intel_device_info?
+          */
+         const unsigned pte_size = 2 * 1024 * 1024;
+
+         if (i == NUM_SLAB_ALLOCATORS - 1 && slab_size < pte_size)
+            slab_size = pte_size;
+
+         break;
+      }
+   }
+   assert(slab_size != 0);
+
+   slab->bo =
+      iris_bo_alloc(bufmgr, "slab", slab_size, slab_size, memzone, flags);
+   if (!slab->bo)
+      goto fail;
+
+   slab_size = slab->bo->size;
+
+   slab->base.num_entries = slab_size / entry_size;
+   slab->base.num_free = slab->base.num_entries;
+   slab->entry_size = entry_size;
+   slab->entries = calloc(slab->base.num_entries, sizeof(*slab->entries));
+   if (!slab->entries)
+      goto fail_bo;
+
+   list_inithead(&slab->base.free);
+
+   for (unsigned i = 0; i < slab->base.num_entries; i++) {
+      struct iris_bo *bo = &slab->entries[i];
+
+      bo->size = entry_size;
+      bo->bufmgr = bufmgr;
+      bo->hash = _mesa_hash_pointer(bo);
+      bo->gem_handle = 0;
+      bo->address = slab->bo->address + i * entry_size;
+      bo->aux_map_address = 0;
+      bo->index = -1;
+      bo->refcount = 0;
+      bo->idle = true;
+
+      bo->slab.entry.slab = &slab->base;
+      bo->slab.entry.group_index = group_index;
+      bo->slab.entry.entry_size = entry_size;
+
+      bo->slab.real = iris_get_backing_bo(slab->bo);
+
+      list_addtail(&bo->slab.entry.head, &slab->base.free);
+   }
+
+   return &slab->base;
+
+fail_bo:
+   iris_bo_unreference(slab->bo);
+fail:
+   free(slab);
+   return NULL;
+}
+
+static struct iris_bo *
+alloc_bo_from_slabs(struct iris_bufmgr *bufmgr,
+                    const char *name,
+                    uint64_t size,
+                    uint32_t alignment,
+                    unsigned flags,
+                    bool local)
+{
+   if (flags & BO_ALLOC_NO_SUBALLOC)
+      return NULL;
+
+   struct pb_slabs *last_slab = &bufmgr->bo_slabs[NUM_SLAB_ALLOCATORS - 1];
+   unsigned max_slab_entry_size =
+      1 << (last_slab->min_order + last_slab->num_orders - 1);
+
+   if (size > max_slab_entry_size)
+      return NULL;
+
+   struct pb_slab_entry *entry;
+
+   enum iris_heap heap =
+      local ? IRIS_HEAP_DEVICE_LOCAL : IRIS_HEAP_SYSTEM_MEMORY;
+
+   unsigned alloc_size = size;
+
+   /* Always use slabs for sizes less than 4 KB because the kernel aligns
+    * everything to 4 KB.
+    */
+   if (size < alignment && alignment <= 4 * 1024)
+      alloc_size = alignment;
+
+   if (alignment > get_slab_entry_alignment(bufmgr, alloc_size)) {
+      /* 3/4 allocations can return too small alignment.
+       * Try again with a power of two allocation size.
+       */
+      unsigned pot_size = get_slab_pot_entry_size(bufmgr, alloc_size);
+
+      if (alignment <= pot_size) {
+         /* This size works but wastes some memory to fulfill the alignment. */
+         alloc_size = pot_size;
+      } else {
+         /* can't fulfill alignment requirements */
+         return NULL;
+      }
+   }
+
+   struct pb_slabs *slabs = get_slabs(bufmgr, alloc_size);
+   entry = pb_slab_alloc(slabs, alloc_size, heap);
+   if (!entry) {
+      /* Clean up and try again... */
+      pb_slabs_reclaim(slabs);
+
+      entry = pb_slab_alloc(slabs, alloc_size, heap);
+   }
+   if (!entry)
+      return NULL;
+
+   struct iris_bo *bo = container_of(entry, struct iris_bo, slab.entry);
+
+   if (bo->aux_map_address && bo->bufmgr->aux_map_ctx) {
+      /* This buffer was associated with an aux-buffer range.  We only allow
+       * slab allocated buffers to be reclaimed when idle (not in use by an
+       * executing batch).  (See iris_can_reclaim_slab().)  So we know that
+       * our previous aux mapping is no longer in use, and we can safely
+       * remove it.
+       */
+      intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->address,
+                                bo->size);
+      bo->aux_map_address = 0;
+   }
+
+   p_atomic_set(&bo->refcount, 1);
+   bo->name = name;
+   bo->size = size;
+
+   /* Zero the contents if necessary.  If this fails, fall back to
+    * allocating a fresh BO, which will always be zeroed by the kernel.
+    */
+   if (flags & BO_ALLOC_ZEROED) {
+      void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
+      if (map) {
+         memset(map, 0, bo->size);
+      } else {
+         pb_slab_free(slabs, &bo->slab.entry);
+         return NULL;
+      }
+   }
+
+   return bo;
+}
+
 static struct iris_bo *
 alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
                     struct bo_cache_bucket *bucket,
@@ -700,6 +993,14 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    bool local = bufmgr->vram.size > 0 &&
       !(flags & BO_ALLOC_COHERENT || flags & BO_ALLOC_SMEM);
    struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, local);
+
+   if (memzone != IRIS_MEMZONE_OTHER || (flags & BO_ALLOC_COHERENT))
+      flags |= BO_ALLOC_NO_SUBALLOC;
+
+   bo = alloc_bo_from_slabs(bufmgr, name, size, alignment, flags, local);
+
+   if (bo)
+      return bo;
 
    /* Round the size up to the bucket size, or if we don't have caching
     * at this size, a multiple of the page size.
@@ -1077,14 +1378,18 @@ iris_bo_unreference(struct iris_bo *bo)
 
       clock_gettime(CLOCK_MONOTONIC, &time);
 
-      simple_mtx_lock(&bufmgr->lock);
+      if (bo->gem_handle == 0) {
+         pb_slab_free(get_slabs(bufmgr, bo->size), &bo->slab.entry);
+      } else {
+         simple_mtx_lock(&bufmgr->lock);
 
-      if (p_atomic_dec_zero(&bo->refcount)) {
-         bo_unreference_final(bo, time.tv_sec);
-         cleanup_bo_cache(bufmgr, time.tv_sec);
+         if (p_atomic_dec_zero(&bo->refcount)) {
+            bo_unreference_final(bo, time.tv_sec);
+            cleanup_bo_cache(bufmgr, time.tv_sec);
+         }
+
+         simple_mtx_unlock(&bufmgr->lock);
       }
-
-      simple_mtx_unlock(&bufmgr->lock);
    }
 }
 
@@ -1339,6 +1644,11 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
 
    /* bufmgr will no longer try to free VMA entries in the aux-map */
    bufmgr->aux_map_ctx = NULL;
+
+   for (int i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
+      if (bufmgr->bo_slabs[i].groups)
+         pb_slabs_deinit(&bufmgr->bo_slabs[i]);
+   }
 
    simple_mtx_destroy(&bufmgr->lock);
    simple_mtx_destroy(&bufmgr->bo_deps_lock);
@@ -1986,6 +2296,28 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    init_cache_buckets(bufmgr, false);
    init_cache_buckets(bufmgr, true);
+
+   unsigned min_slab_order = 8;  /* 256 bytes */
+   unsigned max_slab_order = 20; /* 1 MB (slab size = 2 MB) */
+   unsigned num_slab_orders_per_allocator =
+      (max_slab_order - min_slab_order) / NUM_SLAB_ALLOCATORS;
+
+   /* Divide the size order range among slab managers. */
+   for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
+      unsigned min_order = min_slab_order;
+      unsigned max_order =
+         MIN2(min_order + num_slab_orders_per_allocator, max_slab_order);
+
+      if (!pb_slabs_init(&bufmgr->bo_slabs[i], min_order, max_order,
+                         IRIS_HEAP_MAX, true, bufmgr,
+                         iris_can_reclaim_slab,
+                         iris_slab_alloc,
+                         (void *) iris_slab_free)) {
+         free(bufmgr);
+         return NULL;
+      }
+      min_slab_order = max_order + 1;
+   }
 
    bufmgr->name_table =
       _mesa_hash_table_create(NULL, _mesa_hash_uint, _mesa_key_uint_equal);

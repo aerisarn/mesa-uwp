@@ -836,6 +836,8 @@ submit_batch(struct iris_batch *batch)
       bo->idle = false;
       bo->index = -1;
 
+      iris_get_backing_bo(bo)->idle = false;
+
       iris_bo_unreference(bo);
    }
 

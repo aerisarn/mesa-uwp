@@ -35,6 +35,7 @@
 #include "util/list.h"
 #include "util/simple_mtx.h"
 #include "pipe/p_defines.h"
+#include "pipebuffer/pb_slab.h"
 
 struct intel_device_info;
 struct pipe_debug_callback;
@@ -259,6 +260,7 @@ struct iris_bo {
          bool local;
       } real;
       struct {
+         struct pb_slab_entry entry;
          struct iris_bo *real;
       } slab;
    };
