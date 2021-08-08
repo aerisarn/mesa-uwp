@@ -519,8 +519,8 @@ opendir(const char *name)
    return dir;
 }
 
-/* If we've reached the end of the real directory list and we're
- * looking at /dev/dri, add our render node to the list.
+/* If we're looking at /dev/dri, add our render node to the list
+ * before the real entries in the directory.
  */
 PUBLIC struct dirent *
 readdir(DIR *dir)
@@ -529,26 +529,25 @@ readdir(DIR *dir)
 
    struct dirent *ent = NULL;
 
-   if (dir != fake_dev_dri)
-      ent = real_readdir(dir);
    static struct dirent render_node_dirent = { 0 };
 
-   if (!ent) {
-      mtx_lock(&shim_lock);
-      if (_mesa_set_search(opendir_set, dir)) {
-         strcpy(render_node_dirent.d_name,
-                render_node_dirent_name);
-         ent = &render_node_dirent;
-         _mesa_set_remove_key(opendir_set, dir);
-      }
-      mtx_unlock(&shim_lock);
+   mtx_lock(&shim_lock);
+   if (_mesa_set_search(opendir_set, dir)) {
+      strcpy(render_node_dirent.d_name,
+             render_node_dirent_name);
+      ent = &render_node_dirent;
+      _mesa_set_remove_key(opendir_set, dir);
    }
+   mtx_unlock(&shim_lock);
+
+   if (!ent && dir != fake_dev_dri)
+      ent = real_readdir(dir);
 
    return ent;
 }
 
-/* If we've reached the end of the real directory list and we're
- * looking at /dev/dri, add our render node to the list.
+/* If we're looking at /dev/dri, add our render node to the list
+ * before the real entries in the directory.
  */
 PUBLIC struct dirent64 *
 readdir64(DIR *dir)
@@ -556,20 +555,20 @@ readdir64(DIR *dir)
    init_shim();
 
    struct dirent64 *ent = NULL;
-   if (dir != fake_dev_dri)
-      ent = real_readdir64(dir);
+
    static struct dirent64 render_node_dirent = { 0 };
 
-   if (!ent) {
-      mtx_lock(&shim_lock);
-      if (_mesa_set_search(opendir_set, dir)) {
-         strcpy(render_node_dirent.d_name,
-                render_node_dirent_name);
-         ent = &render_node_dirent;
-         _mesa_set_remove_key(opendir_set, dir);
-      }
-      mtx_unlock(&shim_lock);
+   mtx_lock(&shim_lock);
+   if (_mesa_set_search(opendir_set, dir)) {
+      strcpy(render_node_dirent.d_name,
+             render_node_dirent_name);
+      ent = &render_node_dirent;
+      _mesa_set_remove_key(opendir_set, dir);
    }
+   mtx_unlock(&shim_lock);
+
+   if (!ent && dir != fake_dev_dri)
+      ent = real_readdir64(dir);
 
    return ent;
 }
