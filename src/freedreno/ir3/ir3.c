@@ -125,6 +125,7 @@ ir3_should_double_threadsize(struct ir3_shader_variant *v, unsigned regs_count)
    }
 
    switch (v->type) {
+   case MESA_SHADER_KERNEL:
    case MESA_SHADER_COMPUTE: {
       unsigned threads_per_wg =
          v->local_size[0] * v->local_size[1] * v->local_size[2];
@@ -177,7 +178,8 @@ ir3_get_reg_independent_max_waves(struct ir3_shader_variant *v,
    unsigned max_waves = compiler->max_waves;
 
    /* If this is a compute shader, compute the limit based on shared size */
-   if (v->type == MESA_SHADER_COMPUTE) {
+   if ((v->type == MESA_SHADER_COMPUTE) ||
+       (v->type == MESA_SHADER_KERNEL)) {
       /* Shared is allocated in chunks of 1k */
       unsigned shared_per_wg = ALIGN_POT(v->shared_size, 1024);
       if (shared_per_wg > 0 && !v->local_size_variable) {

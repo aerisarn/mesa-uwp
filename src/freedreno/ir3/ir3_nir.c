@@ -232,7 +232,8 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
        * for other stages.
        */
       if ((s->info.stage == MESA_SHADER_FRAGMENT) ||
-          (s->info.stage == MESA_SHADER_COMPUTE)) {
+          (s->info.stage == MESA_SHADER_COMPUTE) ||
+          (s->info.stage == MESA_SHADER_KERNEL)) {
          progress |= OPT(s, nir_opt_phi_precision);
       }
       progress |= OPT(s, nir_opt_algebraic);
@@ -531,7 +532,8 @@ ir3_nir_post_finalize(struct ir3_compiler *compiler, nir_shader *s)
       NIR_PASS_V(s, nir_lower_mediump_io, nir_var_shader_out, 0, false);
    }
 
-   if (s->info.stage == MESA_SHADER_COMPUTE) {
+   if ((s->info.stage == MESA_SHADER_COMPUTE) ||
+       (s->info.stage == MESA_SHADER_KERNEL)) {
       bool progress = false;
       NIR_PASS(progress, s, nir_lower_subgroups,
                &(nir_lower_subgroups_options){
