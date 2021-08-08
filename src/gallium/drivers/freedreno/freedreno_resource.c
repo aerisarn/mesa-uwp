@@ -1224,6 +1224,10 @@ fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
 
    prsc = &rsc->b.b;
 
+   /* Clover creates buffers with PIPE_FORMAT_NONE: */
+   if ((prsc->target == PIPE_BUFFER) && (format == PIPE_FORMAT_NONE))
+      format = prsc->format = PIPE_FORMAT_R8_UNORM;
+
    DBG("%" PRSC_FMT, PRSC_ARGS(prsc));
 
    if (tmpl->bind & PIPE_BIND_SHARED)
