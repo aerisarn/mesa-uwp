@@ -133,7 +133,10 @@ kperfmon_destroy(struct v3d_context *v3d, struct v3d_perfmon_state *perfmon)
         struct drm_v3d_perfmon_destroy destroyreq;
 
         destroyreq.id = perfmon->kperfmon_id;
-        v3d_ioctl(v3d->fd, DRM_IOCTL_V3D_PERFMON_DESTROY, &destroyreq);
+        int ret = v3d_ioctl(v3d->fd, DRM_IOCTL_V3D_PERFMON_DESTROY, &destroyreq);
+        if (ret != 0)
+                fprintf(stderr, "failed to destroy perfmon %d: %s\n",
+                        perfmon->kperfmon_id, strerror(errno));
 }
 
 int
