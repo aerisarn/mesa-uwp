@@ -109,10 +109,8 @@ llvmpipe_get_vendor(struct pipe_screen *screen)
 static const char *
 llvmpipe_get_name(struct pipe_screen *screen)
 {
-   static char buf[100];
-   snprintf(buf, sizeof(buf), "llvmpipe (LLVM " MESA_LLVM_VERSION_STRING ", %u bits)",
-            lp_native_vector_width );
-   return buf;
+   struct llvmpipe_screen *lscreen = llvmpipe_screen(screen);
+   return lscreen->renderer_string;
 }
 
 
@@ -1036,6 +1034,10 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
 #endif
    screen->num_threads = debug_get_num_option("LP_NUM_THREADS", screen->num_threads);
    screen->num_threads = MIN2(screen->num_threads, LP_MAX_THREADS);
+
+   lp_build_init(); /* get lp_native_vector_width initialised */
+
+   snprintf(screen->renderer_string, sizeof(screen->renderer_string), "llvmpipe (LLVM " MESA_LLVM_VERSION_STRING ", %u bits)", lp_native_vector_width );
 
    (void) mtx_init(&screen->cs_mutex, mtx_plain);
    (void) mtx_init(&screen->rast_mutex, mtx_plain);
