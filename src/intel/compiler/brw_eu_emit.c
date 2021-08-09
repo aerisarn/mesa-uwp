@@ -3251,7 +3251,7 @@ gfx12_set_memory_fence_message(struct brw_codegen *p,
    enum lsc_flush_type flush_type = LSC_FLUSH_TYPE_NONE;
 
    if (sfid == GFX12_SFID_TGM) {
-      scope = LSC_FENCE_GPU;
+      scope = LSC_FENCE_TILE;
       flush_type = LSC_FLUSH_TYPE_EVICT;
    }
 
