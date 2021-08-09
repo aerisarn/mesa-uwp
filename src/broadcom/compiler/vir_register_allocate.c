@@ -177,7 +177,12 @@ v3d_choose_spill_node(struct v3d_compile *c, struct ra_graph *g,
 void
 v3d_setup_spill_base(struct v3d_compile *c)
 {
-        c->cursor = vir_before_block(vir_entry_block(c));
+        /* Setting up the spill base is done in the entry block; so change
+         * both the current block to emit and the cursor.
+         */
+        struct qblock *current_block = c->cur_block;
+        c->cur_block = vir_entry_block(c);
+        c->cursor = vir_before_block(c->cur_block);
 
         int start_num_temps = c->num_temps;
 
@@ -204,6 +209,8 @@ v3d_setup_spill_base(struct v3d_compile *c)
         for (int i = start_num_temps; i < c->num_temps; i++)
                 BITSET_CLEAR(c->spillable, i);
 
+        /* Restore the current block. */
+        c->cur_block = current_block;
         c->cursor = vir_after_block(c->cur_block);
 }
 
