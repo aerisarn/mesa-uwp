@@ -754,10 +754,17 @@ get_iteration(nir_op cond_op, nir_const_value initial, nir_const_value step,
    nir_const_value span, iter;
 
    switch (cond_op) {
+   case nir_op_ine:
+      /* In order for execution to be here, limit must be the same as initial.
+       * Otherwise will_break_on_first_iteration would have returned false.
+       * If step is zero, the loop is infinite.  Otherwise the loop will
+       * execute once.
+       */
+      return step.u64 == 0 ? -1 : 1;
+
    case nir_op_ige:
    case nir_op_ilt:
    case nir_op_ieq:
-   case nir_op_ine:
       span = eval_const_binop(nir_op_isub, bit_size, limit, initial,
                               execution_mode);
       iter = eval_const_binop(nir_op_idiv, bit_size, span, step,
