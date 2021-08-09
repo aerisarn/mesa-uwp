@@ -243,6 +243,19 @@ vir_set_cond(struct qinst *inst, enum v3d_qpu_cond cond)
         }
 }
 
+enum v3d_qpu_cond
+vir_get_cond(struct qinst *inst)
+{
+        assert(inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU);
+
+        if (vir_is_add(inst))
+                return inst->qpu.flags.ac;
+        else if (vir_is_mul(inst))
+                return inst->qpu.flags.mc;
+        else /* NOP */
+                return V3D_QPU_COND_NONE;
+}
+
 void
 vir_set_pf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_pf pf)
 {

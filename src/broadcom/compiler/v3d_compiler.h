@@ -1049,6 +1049,7 @@ struct v3d_qpu_instr v3d_qpu_nop(void);
 struct qreg vir_emit_def(struct v3d_compile *c, struct qinst *inst);
 struct qinst *vir_emit_nondef(struct v3d_compile *c, struct qinst *inst);
 void vir_set_cond(struct qinst *inst, enum v3d_qpu_cond cond);
+enum v3d_qpu_cond vir_get_cond(struct qinst *inst);
 void vir_set_pf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_pf pf);
 void vir_set_uf(struct v3d_compile *c, struct qinst *inst, enum v3d_qpu_uf uf);
 void vir_set_unpack(struct qinst *inst, int src,
