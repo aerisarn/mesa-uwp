@@ -502,3 +502,188 @@ TEST_F(nir_loop_analyze_test, one_iteration_ieq)
    EXPECT_EQ(1, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
 }
+
+TEST_F(nir_loop_analyze_test, one_iteration_easy_fneu)
+{
+   /* Create IR:
+    *
+    *    float i = 0.0;
+    *    while (true) {
+    *       if (i != 0.0)
+    *          break;
+    *
+    *       i = i + 1.0;
+    *    }
+    */
+   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0x00000000);
+   nir_ssa_def *ssa_1 = nir_imm_int(&b, 0x3f800000);
+
+   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
+
+   nir_loop *loop = nir_push_loop(&b);
+   {
+      nir_ssa_dest_init(&phi->instr, &phi->dest,
+                        ssa_0->num_components, ssa_0->bit_size,
+                        NULL);
+
+      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
+                            nir_src_for_ssa(ssa_0));
+
+      nir_ssa_def *ssa_4 = &phi->dest.ssa;
+      nir_ssa_def *ssa_2 = nir_fneu(&b, ssa_4, ssa_0);
+
+      nir_if *nif = nir_push_if(&b, ssa_2);
+      {
+         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
+         nir_builder_instr_insert(&b, &jump->instr);
+      }
+      nir_pop_if(&b, nif);
+
+      nir_ssa_def *ssa_3 = nir_fadd(&b, ssa_4, ssa_1);
+
+      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
+                            nir_src_for_ssa(ssa_3));
+   }
+   nir_pop_loop(&b, loop);
+
+   b.cursor = nir_before_block(nir_loop_first_block(loop));
+   nir_builder_instr_insert(&b, &phi->instr);
+
+   /* At this point, we should have:
+    *
+    * impl main {
+    *         block block_0:
+    *         // preds:
+    *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
+    *         vec1 32 ssa_1 = load_const (0x3f800000 = 1.000000)
+    *         // succs: block_1
+    *         loop {
+    *                 block block_1:
+    *                 // preds: block_0 block_4
+    *                 vec1 32 ssa_4 = phi block_0: ssa_0, block_4: ssa_3
+    *                 vec1  1 ssa_2 = fneu ssa_4, ssa_0
+    *                 // succs: block_2 block_3
+    *                 if ssa_2 {
+    *                         block block_2:
+    *                         // preds: block_1
+    *                         break
+    *                         // succs: block_5
+    *                 } else {
+    *                         block block_3:
+    *                         // preds: block_1
+    *                         // succs: block_4
+    *                 }
+    *                 block block_4:
+    *                 // preds: block_3
+    *                 vec1 32 ssa_3 = fadd ssa_4, ssa_1
+    *                 // succs: block_1
+    *         }
+    *         block block_5:
+    *         // preds: block_2
+    *         // succs: block_6
+    *         block block_6:
+    * }
+    */
+   nir_validate_shader(b.shader, "input");
+
+   nir_loop_analyze_impl(b.impl, nir_var_all, false);
+
+   ASSERT_NE((void *)0, loop->info);
+   EXPECT_EQ(1, loop->info->max_trip_count);
+   EXPECT_TRUE(loop->info->exact_trip_count_known);
+}
+
+TEST_F(nir_loop_analyze_test, one_iteration_fneu)
+{
+   /* Create IR:
+    *
+    *    float i = uintBitsToFloat(0xe7000000);
+    *    while (true) {
+    *       if (i != uintBitsToFloat(0xe7000000))
+    *          break;
+    *
+    *       i = i + uintBitsToFloat(0x5b000000);
+    *    }
+    *
+    * Going towards smaller magnitude (i.e., adding a small positive value to
+    * a large negative value) requires a smaller delta to make a difference
+    * than going towards a larger magnitude. For this reason, ssa_0 + ssa_1 !=
+    * ssa_0, but ssa_0 - ssa_1 == ssa_0. Math class is tough.
+    */
+   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0xe7000000);
+   nir_ssa_def *ssa_1 = nir_imm_int(&b, 0x5b000000);
+
+   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
+
+   nir_loop *loop = nir_push_loop(&b);
+   {
+      nir_ssa_dest_init(&phi->instr, &phi->dest,
+                        ssa_0->num_components, ssa_0->bit_size,
+                        NULL);
+
+      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
+                            nir_src_for_ssa(ssa_0));
+
+      nir_ssa_def *ssa_4 = &phi->dest.ssa;
+      nir_ssa_def *ssa_2 = nir_fneu(&b, ssa_4, ssa_0);
+
+      nir_if *nif = nir_push_if(&b, ssa_2);
+      {
+         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
+         nir_builder_instr_insert(&b, &jump->instr);
+      }
+      nir_pop_if(&b, nif);
+
+      nir_ssa_def *ssa_3 = nir_fadd(&b, ssa_4, ssa_1);
+
+      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
+                            nir_src_for_ssa(ssa_3));
+   }
+   nir_pop_loop(&b, loop);
+
+   b.cursor = nir_before_block(nir_loop_first_block(loop));
+   nir_builder_instr_insert(&b, &phi->instr);
+
+   /* At this point, we should have:
+    *
+    * impl main {
+    *         block block_0:
+    *         // preds:
+    *         vec1 32 ssa_0 = load_const (0xe7000000 = -604462909807314587353088.0)
+    *         vec1 32 ssa_1 = load_const (0x5b000000 = 36028797018963968.0)
+    *         // succs: block_1
+    *         loop {
+    *                 block block_1:
+    *                 // preds: block_0 block_4
+    *                 vec1 32 ssa_4 = phi block_0: ssa_0, block_4: ssa_3
+    *                 vec1  1 ssa_2 = fneu ssa_4, ssa_0
+    *                 // succs: block_2 block_3
+    *                 if ssa_2 {
+    *                         block block_2:
+    *                         // preds: block_1
+    *                         break
+    *                         // succs: block_5
+    *                 } else {
+    *                         block block_3:
+    *                         // preds: block_1
+    *                         // succs: block_4
+    *                 }
+    *                 block block_4:
+    *                 // preds: block_3
+    *                 vec1 32 ssa_3 = fadd ssa_4, ssa_1
+    *                 // succs: block_1
+    *         }
+    *         block block_5:
+    *         // preds: block_2
+    *         // succs: block_6
+    *         block block_6:
+    * }
+    */
+   nir_validate_shader(b.shader, "input");
+
+   nir_loop_analyze_impl(b.impl, nir_var_all, false);
+
+   ASSERT_NE((void *)0, loop->info);
+   EXPECT_EQ(1, loop->info->max_trip_count);
+   EXPECT_TRUE(loop->info->exact_trip_count_known);
+}

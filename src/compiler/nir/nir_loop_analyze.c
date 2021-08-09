@@ -779,10 +779,27 @@ get_iteration(nir_op cond_op, nir_const_value initial, nir_const_value step,
                               execution_mode);
       break;
 
+   case nir_op_fneu:
+      /* In order for execution to be here, limit must be the same as initial.
+       * Otherwise will_break_on_first_iteration would have returned false.
+       * If step is zero, the loop is infinite.  Otherwise the loop will
+       * execute once.
+       *
+       * This is a little more tricky for floating point since X-Y might still
+       * be X even if Y is not zero.  Instead check that (initial + step) !=
+       * initial.
+       */
+      span = eval_const_binop(nir_op_fadd, bit_size, initial, step,
+                              execution_mode);
+      iter = eval_const_binop(nir_op_feq, bit_size, initial,
+                              span, execution_mode);
+
+      /* return (initial + step) == initial ? -1 : 1 */
+      return iter.b ? -1 : 1;
+
    case nir_op_fge:
    case nir_op_flt:
    case nir_op_feq:
-   case nir_op_fneu:
       span = eval_const_binop(nir_op_fsub, bit_size, limit, initial,
                               execution_mode);
       iter = eval_const_binop(nir_op_fdiv, bit_size, span,
@@ -952,6 +969,9 @@ calculate_iterations(nir_const_value initial, nir_const_value step,
     */
    if (iter_int < 0)
       return -1;
+
+   if (alu_op == nir_op_ine || alu_op == nir_op_fneu)
+      return iter_int;
 
    /* An explanation from the GLSL unrolling pass:
     *
