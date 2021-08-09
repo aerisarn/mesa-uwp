@@ -373,7 +373,7 @@ wsi_configure_image(const struct wsi_swapchain *chain,
 
    info->create = (VkImageCreateInfo) {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .flags = 0,
+      .flags = VK_IMAGE_CREATE_ALIAS_BIT,
       .imageType = VK_IMAGE_TYPE_2D,
       .format = pCreateInfo->imageFormat,
       .extent = {

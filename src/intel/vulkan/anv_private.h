@@ -3873,6 +3873,11 @@ struct anv_image {
    bool disjoint;
 
    /**
+    * Image is a WSI image
+    */
+   bool from_wsi;
+
+   /**
     * Image was imported from an struct AHardwareBuffer.  We have to delay
     * final image creation until bind time.
     */
