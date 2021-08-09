@@ -579,8 +579,8 @@ static const struct opcode_desc mul_ops[] = {
 };
 
 static const struct opcode_desc *
-lookup_opcode(const struct opcode_desc *opcodes, size_t num_opcodes,
-              uint32_t opcode, uint32_t mux_a, uint32_t mux_b)
+lookup_opcode_from_packed(const struct opcode_desc *opcodes, size_t num_opcodes,
+                          uint32_t opcode, uint32_t mux_a, uint32_t mux_b)
 {
         for (int i = 0; i < num_opcodes; i++) {
                 const struct opcode_desc *op_desc = &opcodes[i];
@@ -733,8 +733,8 @@ v3d_qpu_add_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst,
                 map_op = (map_op - 253 + 245);
 
         const struct opcode_desc *desc =
-                lookup_opcode(add_ops, ARRAY_SIZE(add_ops),
-                              map_op, mux_a, mux_b);
+                lookup_opcode_from_packed(add_ops, ARRAY_SIZE(add_ops),
+                                          map_op, mux_a, mux_b);
         if (!desc)
                 return false;
 
@@ -878,8 +878,8 @@ v3d_qpu_mul_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst,
 
         {
                 const struct opcode_desc *desc =
-                        lookup_opcode(mul_ops, ARRAY_SIZE(mul_ops),
-                                      op, mux_a, mux_b);
+                        lookup_opcode_from_packed(mul_ops, ARRAY_SIZE(mul_ops),
+                                                  op, mux_a, mux_b);
                 if (!desc)
                         return false;
 
@@ -940,6 +940,22 @@ v3d_qpu_mul_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst,
         return true;
 }
 
+static const struct opcode_desc *
+lookup_opcode_from_instr(const struct opcode_desc *opcodes, size_t num_opcodes,
+                         uint8_t op)
+{
+        for (int i = 0; i < num_opcodes; i++) {
+                const struct opcode_desc *op_desc = &opcodes[i];
+
+                if (op_desc->op != op)
+                        continue;
+
+                return op_desc;
+        }
+
+        return NULL;
+}
+
 static bool
 v3d_qpu_add_pack(const struct v3d_device_info *devinfo,
                  const struct v3d_qpu_instr *instr, uint64_t *packed_instr)
@@ -948,18 +964,14 @@ v3d_qpu_add_pack(const struct v3d_device_info *devinfo,
         uint32_t mux_a = instr->alu.add.a;
         uint32_t mux_b = instr->alu.add.b;
         int nsrc = v3d_qpu_add_op_num_src(instr->alu.add.op);
-        const struct opcode_desc *desc;
+        const struct opcode_desc *desc =
+                lookup_opcode_from_instr(add_ops, ARRAY_SIZE(add_ops),
+                                         instr->alu.add.op);
 
-        int opcode;
-        for (desc = add_ops; desc != &add_ops[ARRAY_SIZE(add_ops)];
-             desc++) {
-                if (desc->op == instr->alu.add.op)
-                        break;
-        }
-        if (desc == &add_ops[ARRAY_SIZE(add_ops)])
+        if (!desc)
                 return false;
 
-        opcode = desc->opcode_first;
+        uint32_t opcode = opcode = desc->opcode_first;
 
         /* If an operation doesn't use an arg, its mux values may be used to
          * identify the operation type.
@@ -1164,14 +1176,12 @@ v3d_qpu_mul_pack(const struct v3d_device_info *devinfo,
         uint32_t mux_a = instr->alu.mul.a;
         uint32_t mux_b = instr->alu.mul.b;
         int nsrc = v3d_qpu_mul_op_num_src(instr->alu.mul.op);
-        const struct opcode_desc *desc;
 
-        for (desc = mul_ops; desc != &mul_ops[ARRAY_SIZE(mul_ops)];
-             desc++) {
-                if (desc->op == instr->alu.mul.op)
-                        break;
-        }
-        if (desc == &mul_ops[ARRAY_SIZE(mul_ops)])
+        const struct opcode_desc *desc =
+                lookup_opcode_from_instr(mul_ops, ARRAY_SIZE(mul_ops),
+                                         instr->alu.mul.op);
+
+        if (!desc)
                 return false;
 
         uint32_t opcode = desc->opcode_first;
