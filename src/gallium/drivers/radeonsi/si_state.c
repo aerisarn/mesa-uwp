@@ -4863,20 +4863,20 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
       sctx->vertex_buffer_user_sgprs_dirty = false;
    }
 
-   if (old->count != v->count ||
-       old->instance_divisor_is_one != v->instance_divisor_is_one ||
+   if (old->instance_divisor_is_one != v->instance_divisor_is_one ||
        old->instance_divisor_is_fetched != v->instance_divisor_is_fetched ||
        (old->vb_alignment_check_mask ^ v->vb_alignment_check_mask) &
        sctx->vertex_buffer_unaligned ||
        ((v->vb_alignment_check_mask & sctx->vertex_buffer_unaligned) &&
         memcmp(old->vertex_buffer_index, v->vertex_buffer_index,
-               sizeof(v->vertex_buffer_index[0]) * v->count)) ||
+               sizeof(v->vertex_buffer_index[0]) * MAX2(old->count, v->count))) ||
        /* fix_fetch_{always,opencode,unaligned} and hw_load_is_dword are
         * functions of fix_fetch and the src_offset alignment.
         * If they change and fix_fetch doesn't, it must be due to different
         * src_offset alignment, which is reflected in fix_fetch_opencode. */
        old->fix_fetch_opencode != v->fix_fetch_opencode ||
-       memcmp(old->fix_fetch, v->fix_fetch, sizeof(v->fix_fetch[0]) * v->count))
+       memcmp(old->fix_fetch, v->fix_fetch, sizeof(v->fix_fetch[0]) *
+              MAX2(old->count, v->count)))
       sctx->do_update_shaders = true;
 
    if (v->instance_divisor_is_fetched) {
