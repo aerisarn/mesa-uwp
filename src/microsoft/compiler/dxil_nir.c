@@ -1116,6 +1116,8 @@ upcast_phi_impl(nir_function_impl *impl, unsigned min_bit_size)
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_block_index |
                                   nir_metadata_dominance);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
    }
 
    return progress;
