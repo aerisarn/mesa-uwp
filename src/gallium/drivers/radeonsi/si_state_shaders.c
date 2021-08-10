@@ -1822,8 +1822,8 @@ void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selecto
    key->mono.vs_fetch_opencode = opencode;
 }
 
-static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shader_selector *vs,
-                                         struct si_shader_key *key)
+static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
+                                  struct si_shader_key *key)
 {
    struct si_shader_selector *ps = sctx->shader.ps.cso;
 
@@ -1861,17 +1861,27 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
 
    if (vs->info.stage != MESA_SHADER_GEOMETRY) {
       key->opt.ngg_culling = sctx->ngg_culling;
-
-      if (sctx->shader.ps.cso && sctx->shader.ps.cso->info.uses_primid)
-         key->mono.u.vs_export_prim_id = 1;
+      key->mono.u.vs_export_prim_id = sctx->shader.ps.cso && sctx->shader.ps.cso->info.uses_primid;
+   } else {
+      key->opt.ngg_culling = 0;
+      key->mono.u.vs_export_prim_id = 0;
    }
 
    /* We need PKT3_CONTEXT_REG_RMW, which we currently only use on GFX10+. */
-   if (sctx->chip_class >= GFX10 &&
-       vs->info.writes_psize &&
-       sctx->current_rast_prim != PIPE_PRIM_POINTS &&
-       !sctx->queued.named.rasterizer->polygon_mode_is_points)
-      key->opt.kill_pointsize = 1;
+   key->opt.kill_pointsize = sctx->chip_class >= GFX10 &&
+                             vs->info.writes_psize &&
+                             sctx->current_rast_prim != PIPE_PRIM_POINTS &&
+                             !sctx->queued.named.rasterizer->polygon_mode_is_points;
+}
+
+static void si_clear_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
+                                    struct si_shader_key *key)
+{
+   key->opt.kill_clip_distances = 0;
+   key->opt.kill_outputs = 0;
+   key->opt.ngg_culling = 0;
+   key->mono.u.vs_export_prim_id = 0;
+   key->opt.kill_pointsize = 0;
 }
 
 void si_ps_key_update_framebuffer(struct si_context *sctx)
@@ -2115,7 +2125,9 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       si_shader_selector_key_vs(sctx, sel, key, &key->part.vs.prolog);
 
       if (!sctx->shader.tes.cso && !sctx->shader.gs.cso)
-         si_shader_selector_key_hw_vs(sctx, sel, key);
+         si_get_vs_key_outputs(sctx, sel, key);
+      else
+         si_clear_vs_key_outputs(sctx, sel, key);
       break;
    case MESA_SHADER_TESS_CTRL:
       memset(&key->part, 0, sizeof(key->part));
@@ -2157,7 +2169,9 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       memset(&key->opt, 0, sizeof(key->opt));
 
       if (!sctx->shader.gs.cso)
-         si_shader_selector_key_hw_vs(sctx, sel, key);
+         si_get_vs_key_outputs(sctx, sel, key);
+      else
+         si_clear_vs_key_outputs(sctx, sel, key);
       break;
    case MESA_SHADER_GEOMETRY:
       memset(&key->part, 0, sizeof(key->part));
@@ -2174,7 +2188,9 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
 
          /* Only NGG can eliminate GS outputs, because the code is shared with VS. */
          if (sctx->ngg)
-            si_shader_selector_key_hw_vs(sctx, sel, key);
+            si_get_vs_key_outputs(sctx, sel, key);
+         else
+            si_clear_vs_key_outputs(sctx, sel, key);
 
          /* This enables jumping over the VS prolog for GS-only waves. */
          key->opt.prefer_mono = 1;
