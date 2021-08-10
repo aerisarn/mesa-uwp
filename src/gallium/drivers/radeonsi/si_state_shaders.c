@@ -1874,6 +1874,156 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
       key->opt.kill_pointsize = 1;
 }
 
+static void si_update_ps_shader_key(struct si_context *sctx)
+{
+   struct si_shader_selector *sel = sctx->shader.ps.cso;
+   struct si_shader_key *key = &sctx->shader.ps.key;
+
+   memset(&key->part, 0, sizeof(key->part));
+   memset(&key->mono, 0, sizeof(key->mono));
+   memset(&key->opt, 0, sizeof(key->opt));
+
+   /** Framebuffer dependencies. */
+   if (sel->info.color0_writes_all_cbufs &&
+       sel->info.colors_written == 0x1)
+      key->part.ps.epilog.last_cbuf = MAX2(sctx->framebuffer.state.nr_cbufs, 1) - 1;
+
+   /* ps_uses_fbfetch is true only if the color buffer is bound. */
+   if (sctx->ps_uses_fbfetch && !sctx->blitter_running) {
+      struct pipe_surface *cb0 = sctx->framebuffer.state.cbufs[0];
+      struct pipe_resource *tex = cb0->texture;
+
+      /* 1D textures are allocated and used as 2D on GFX9. */
+      key->mono.u.ps.fbfetch_msaa = sctx->framebuffer.nr_samples > 1;
+      key->mono.u.ps.fbfetch_is_1D =
+         sctx->chip_class != GFX9 &&
+         (tex->target == PIPE_TEXTURE_1D || tex->target == PIPE_TEXTURE_1D_ARRAY);
+      key->mono.u.ps.fbfetch_layered =
+         tex->target == PIPE_TEXTURE_1D_ARRAY || tex->target == PIPE_TEXTURE_2D_ARRAY ||
+         tex->target == PIPE_TEXTURE_CUBE || tex->target == PIPE_TEXTURE_CUBE_ARRAY ||
+         tex->target == PIPE_TEXTURE_3D;
+   }
+
+   /** Framebuffer and blend dependencies. */
+   /* Select the shader color format based on whether
+    * blending or alpha are needed.
+    */
+   struct si_state_blend *blend = sctx->queued.named.blend;
+
+   key->part.ps.epilog.spi_shader_col_format =
+      (blend->blend_enable_4bit & blend->need_src_alpha_4bit &
+       sctx->framebuffer.spi_shader_col_format_blend_alpha) |
+      (blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
+       sctx->framebuffer.spi_shader_col_format_blend) |
+      (~blend->blend_enable_4bit & blend->need_src_alpha_4bit &
+       sctx->framebuffer.spi_shader_col_format_alpha) |
+      (~blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
+       sctx->framebuffer.spi_shader_col_format);
+   key->part.ps.epilog.spi_shader_col_format &= blend->cb_target_enabled_4bit;
+
+   /* The output for dual source blending should have
+    * the same format as the first output.
+    */
+   if (blend->dual_src_blend) {
+      key->part.ps.epilog.spi_shader_col_format |=
+         (key->part.ps.epilog.spi_shader_col_format & 0xf) << 4;
+   }
+
+   /* If alpha-to-coverage is enabled, we have to export alpha
+    * even if there is no color buffer.
+    */
+   if (!(key->part.ps.epilog.spi_shader_col_format & 0xf) && blend->alpha_to_coverage)
+      key->part.ps.epilog.spi_shader_col_format |= V_028710_SPI_SHADER_32_AR;
+
+   /* On GFX6 and GFX7 except Hawaii, the CB doesn't clamp outputs
+    * to the range supported by the type if a channel has less
+    * than 16 bits and the export format is 16_ABGR.
+    */
+   if (sctx->chip_class <= GFX7 && sctx->family != CHIP_HAWAII) {
+      key->part.ps.epilog.color_is_int8 = sctx->framebuffer.color_is_int8;
+      key->part.ps.epilog.color_is_int10 = sctx->framebuffer.color_is_int10;
+   }
+
+   /* Disable unwritten outputs (if WRITE_ALL_CBUFS isn't enabled). */
+   if (!key->part.ps.epilog.last_cbuf) {
+      key->part.ps.epilog.spi_shader_col_format &= sel->colors_written_4bit;
+      key->part.ps.epilog.color_is_int8 &= sel->info.colors_written;
+      key->part.ps.epilog.color_is_int10 &= sel->info.colors_written;
+   }
+
+   /* Eliminate shader code computing output values that are unused.
+    * This enables dead code elimination between shader parts.
+    * Check if any output is eliminated.
+    */
+   if (sel->colors_written_4bit &
+       ~(sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit))
+      key->opt.prefer_mono = 1;
+
+   /** Primitive type and shader dependencies. */
+   bool is_poly = !util_prim_is_points_or_lines(sctx->current_rast_prim);
+   bool is_line = util_prim_is_lines(sctx->current_rast_prim);
+
+   /** Blend and rasterizer dependencies. */
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
+   key->part.ps.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
+
+   /** Rasterizer dependencies. */
+   key->part.ps.prolog.color_two_side = rs->two_side && sel->info.colors_read;
+   key->part.ps.prolog.flatshade_colors = rs->flatshade && sel->info.uses_interp_color;
+   key->part.ps.epilog.clamp_color = rs->clamp_fragment_color;
+
+   /** Primitive type, shader, and rasterizer dependencies. */
+   key->part.ps.prolog.poly_stipple = rs->poly_stipple_enable && is_poly;
+
+   /** Primitive type, shader, rasterizer, and framebuffer dependencies. */
+   key->part.ps.epilog.poly_line_smoothing =
+      ((is_poly && rs->poly_smooth) || (is_line && rs->line_smooth)) &&
+      sctx->framebuffer.nr_samples <= 1;
+
+   /** Sample shading dependencies. */
+   if (sctx->ps_iter_samples > 1 && sel->info.reads_samplemask)
+      key->part.ps.prolog.samplemask_log_ps_iter = util_logbase2(sctx->ps_iter_samples);
+
+   /** Framebuffer, rasterizer, and sample shading dependencies. */
+   bool uses_persp_center = sel->info.uses_persp_center ||
+                            (!rs->flatshade && sel->info.uses_persp_center_color);
+   bool uses_persp_centroid = sel->info.uses_persp_centroid ||
+                              (!rs->flatshade && sel->info.uses_persp_centroid_color);
+   bool uses_persp_sample = sel->info.uses_persp_sample ||
+                            (!rs->flatshade && sel->info.uses_persp_sample_color);
+
+   if (rs->force_persample_interp && rs->multisample_enable &&
+       sctx->framebuffer.nr_samples > 1 && sctx->ps_iter_samples > 1) {
+      key->part.ps.prolog.force_persp_sample_interp =
+         uses_persp_center || uses_persp_centroid;
+
+      key->part.ps.prolog.force_linear_sample_interp =
+         sel->info.uses_linear_center || sel->info.uses_linear_centroid;
+   } else if (rs->multisample_enable && sctx->framebuffer.nr_samples > 1) {
+      key->part.ps.prolog.bc_optimize_for_persp =
+         uses_persp_center && uses_persp_centroid;
+      key->part.ps.prolog.bc_optimize_for_linear =
+         sel->info.uses_linear_center && sel->info.uses_linear_centroid;
+   } else {
+      /* Make sure SPI doesn't compute more than 1 pair
+       * of (i,j), which is the optimization here. */
+      key->part.ps.prolog.force_persp_center_interp = uses_persp_center +
+                                                      uses_persp_centroid +
+                                                      uses_persp_sample > 1;
+
+      key->part.ps.prolog.force_linear_center_interp = sel->info.uses_linear_center +
+                                                       sel->info.uses_linear_centroid +
+                                                       sel->info.uses_linear_sample > 1;
+
+      if (sel->info.uses_interp_at_sample)
+         key->mono.u.ps.interpolate_at_sample_force_center = 1;
+   }
+
+   /** DSA dependencies. */
+   key->part.ps.epilog.alpha_func = sctx->queued.named.dsa->alpha_func;
+}
+
 /* Compute the key for the hw shader variant */
 static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_shader_selector *sel,
                                           struct si_shader_key *key)
@@ -1966,141 +2116,9 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       }
       key->part.gs.prolog.tri_strip_adj_fix = sctx->gs_tri_strip_adj_fix;
       break;
-   case MESA_SHADER_FRAGMENT: {
-      memset(&key->part, 0, sizeof(key->part));
-      memset(&key->mono, 0, sizeof(key->mono));
-      memset(&key->opt, 0, sizeof(key->opt));
-
-      struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-      struct si_state_blend *blend = sctx->queued.named.blend;
-
-      if (sel->info.color0_writes_all_cbufs &&
-          sel->info.colors_written == 0x1)
-         key->part.ps.epilog.last_cbuf = MAX2(sctx->framebuffer.state.nr_cbufs, 1) - 1;
-
-      /* Select the shader color format based on whether
-       * blending or alpha are needed.
-       */
-      key->part.ps.epilog.spi_shader_col_format =
-         (blend->blend_enable_4bit & blend->need_src_alpha_4bit &
-          sctx->framebuffer.spi_shader_col_format_blend_alpha) |
-         (blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
-          sctx->framebuffer.spi_shader_col_format_blend) |
-         (~blend->blend_enable_4bit & blend->need_src_alpha_4bit &
-          sctx->framebuffer.spi_shader_col_format_alpha) |
-         (~blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
-          sctx->framebuffer.spi_shader_col_format);
-      key->part.ps.epilog.spi_shader_col_format &= blend->cb_target_enabled_4bit;
-
-      /* The output for dual source blending should have
-       * the same format as the first output.
-       */
-      if (blend->dual_src_blend) {
-         key->part.ps.epilog.spi_shader_col_format |=
-            (key->part.ps.epilog.spi_shader_col_format & 0xf) << 4;
-      }
-
-      /* If alpha-to-coverage is enabled, we have to export alpha
-       * even if there is no color buffer.
-       */
-      if (!(key->part.ps.epilog.spi_shader_col_format & 0xf) && blend->alpha_to_coverage)
-         key->part.ps.epilog.spi_shader_col_format |= V_028710_SPI_SHADER_32_AR;
-
-      /* On GFX6 and GFX7 except Hawaii, the CB doesn't clamp outputs
-       * to the range supported by the type if a channel has less
-       * than 16 bits and the export format is 16_ABGR.
-       */
-      if (sctx->chip_class <= GFX7 && sctx->family != CHIP_HAWAII) {
-         key->part.ps.epilog.color_is_int8 = sctx->framebuffer.color_is_int8;
-         key->part.ps.epilog.color_is_int10 = sctx->framebuffer.color_is_int10;
-      }
-
-      /* Disable unwritten outputs (if WRITE_ALL_CBUFS isn't enabled). */
-      if (!key->part.ps.epilog.last_cbuf) {
-         key->part.ps.epilog.spi_shader_col_format &= sel->colors_written_4bit;
-         key->part.ps.epilog.color_is_int8 &= sel->info.colors_written;
-         key->part.ps.epilog.color_is_int10 &= sel->info.colors_written;
-      }
-
-      /* Eliminate shader code computing output values that are unused.
-       * This enables dead code elimination between shader parts.
-       * Check if any output is eliminated.
-       */
-      if (sel->colors_written_4bit &
-          ~(sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit))
-         key->opt.prefer_mono = 1;
-
-      bool is_poly = !util_prim_is_points_or_lines(sctx->current_rast_prim);
-      bool is_line = util_prim_is_lines(sctx->current_rast_prim);
-
-      key->part.ps.prolog.color_two_side = rs->two_side && sel->info.colors_read;
-      key->part.ps.prolog.flatshade_colors = rs->flatshade && sel->info.uses_interp_color;
-
-      key->part.ps.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
-
-      key->part.ps.prolog.poly_stipple = rs->poly_stipple_enable && is_poly;
-      key->part.ps.epilog.poly_line_smoothing =
-         ((is_poly && rs->poly_smooth) || (is_line && rs->line_smooth)) &&
-         sctx->framebuffer.nr_samples <= 1;
-      key->part.ps.epilog.clamp_color = rs->clamp_fragment_color;
-
-      if (sctx->ps_iter_samples > 1 && sel->info.reads_samplemask) {
-         key->part.ps.prolog.samplemask_log_ps_iter = util_logbase2(sctx->ps_iter_samples);
-      }
-
-      bool uses_persp_center = sel->info.uses_persp_center ||
-                               (!rs->flatshade && sel->info.uses_persp_center_color);
-      bool uses_persp_centroid = sel->info.uses_persp_centroid ||
-                                 (!rs->flatshade && sel->info.uses_persp_centroid_color);
-      bool uses_persp_sample = sel->info.uses_persp_sample ||
-                               (!rs->flatshade && sel->info.uses_persp_sample_color);
-
-      if (rs->force_persample_interp && rs->multisample_enable &&
-          sctx->framebuffer.nr_samples > 1 && sctx->ps_iter_samples > 1) {
-         key->part.ps.prolog.force_persp_sample_interp =
-            uses_persp_center || uses_persp_centroid;
-
-         key->part.ps.prolog.force_linear_sample_interp =
-            sel->info.uses_linear_center || sel->info.uses_linear_centroid;
-      } else if (rs->multisample_enable && sctx->framebuffer.nr_samples > 1) {
-         key->part.ps.prolog.bc_optimize_for_persp =
-            uses_persp_center && uses_persp_centroid;
-         key->part.ps.prolog.bc_optimize_for_linear =
-            sel->info.uses_linear_center && sel->info.uses_linear_centroid;
-      } else {
-         /* Make sure SPI doesn't compute more than 1 pair
-          * of (i,j), which is the optimization here. */
-         key->part.ps.prolog.force_persp_center_interp = uses_persp_center +
-                                                         uses_persp_centroid +
-                                                         uses_persp_sample > 1;
-
-         key->part.ps.prolog.force_linear_center_interp = sel->info.uses_linear_center +
-                                                          sel->info.uses_linear_centroid +
-                                                          sel->info.uses_linear_sample > 1;
-
-         if (sel->info.uses_interp_at_sample)
-            key->mono.u.ps.interpolate_at_sample_force_center = 1;
-      }
-
-      key->part.ps.epilog.alpha_func = sctx->queued.named.dsa->alpha_func;
-
-      /* ps_uses_fbfetch is true only if the color buffer is bound. */
-      if (sctx->ps_uses_fbfetch && !sctx->blitter_running) {
-         struct pipe_surface *cb0 = sctx->framebuffer.state.cbufs[0];
-         struct pipe_resource *tex = cb0->texture;
-
-         /* 1D textures are allocated and used as 2D on GFX9. */
-         key->mono.u.ps.fbfetch_msaa = sctx->framebuffer.nr_samples > 1;
-         key->mono.u.ps.fbfetch_is_1D =
-            sctx->chip_class != GFX9 &&
-            (tex->target == PIPE_TEXTURE_1D || tex->target == PIPE_TEXTURE_1D_ARRAY);
-         key->mono.u.ps.fbfetch_layered =
-            tex->target == PIPE_TEXTURE_1D_ARRAY || tex->target == PIPE_TEXTURE_2D_ARRAY ||
-            tex->target == PIPE_TEXTURE_CUBE || tex->target == PIPE_TEXTURE_CUBE_ARRAY ||
-            tex->target == PIPE_TEXTURE_3D;
-      }
+   case MESA_SHADER_FRAGMENT:
+      si_update_ps_shader_key(sctx);
       break;
-   }
    default:
       assert(0);
    }
