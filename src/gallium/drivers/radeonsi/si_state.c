@@ -4890,8 +4890,10 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
         * src_offset alignment, which is reflected in fix_fetch_opencode. */
        old->fix_fetch_opencode != v->fix_fetch_opencode ||
        memcmp(old->fix_fetch, v->fix_fetch, sizeof(v->fix_fetch[0]) *
-              MAX2(old->count, v->count)))
+              MAX2(old->count, v->count))) {
+      si_vs_key_update_inputs(sctx);
       sctx->do_update_shaders = true;
+   }
 
    if (v->instance_divisor_is_fetched) {
       struct pipe_constant_buffer cb;
@@ -4987,8 +4989,10 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
     * be the case in well-behaved applications anyway.
     */
    if ((sctx->vertex_elements->vb_alignment_check_mask &
-        (unaligned | orig_unaligned) & updated_mask))
+        (unaligned | orig_unaligned) & updated_mask)) {
+      si_vs_key_update_inputs(sctx);
       sctx->do_update_shaders = true;
+   }
 }
 
 /*

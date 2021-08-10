@@ -1785,16 +1785,31 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader
    }
 }
 
-void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selector *vs,
-                               struct si_shader_key *key, struct si_vs_prolog_bits *prolog_key)
+static void si_clear_vs_key_inputs(struct si_context *sctx, struct si_shader_key *key,
+                                   struct si_vs_prolog_bits *prolog_key)
 {
-   if (vs->info.base.vs.blit_sgprs_amd)
+   prolog_key->instance_divisor_is_one = 0;
+   prolog_key->instance_divisor_is_fetched = 0;
+   key->mono.vs_fetch_opencode = 0;
+   memset(key->mono.vs_fix_fetch, 0, sizeof(key->mono.vs_fix_fetch));
+}
+
+void si_vs_key_update_inputs(struct si_context *sctx)
+{
+   struct si_shader_selector *vs = sctx->shader.vs.cso;
+   struct si_vertex_elements *elts = sctx->vertex_elements;
+   struct si_shader_key *key = &sctx->shader.vs.key;
+
+   if (!vs)
       return;
 
-   struct si_vertex_elements *elts = sctx->vertex_elements;
+   if (vs->info.base.vs.blit_sgprs_amd) {
+      si_clear_vs_key_inputs(sctx, key, &key->part.vs.prolog);
+      return;
+   }
 
-   prolog_key->instance_divisor_is_one = elts->instance_divisor_is_one;
-   prolog_key->instance_divisor_is_fetched = elts->instance_divisor_is_fetched;
+   key->part.vs.prolog.instance_divisor_is_one = elts->instance_divisor_is_one;
+   key->part.vs.prolog.instance_divisor_is_fetched = elts->instance_divisor_is_fetched;
 
    unsigned count_mask = (1 << vs->info.num_inputs) - 1;
    unsigned fix = elts->fix_fetch_always & count_mask;
@@ -1815,11 +1830,24 @@ void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selecto
       }
    }
 
+   memset(key->mono.vs_fix_fetch, 0, sizeof(key->mono.vs_fix_fetch));
+
    while (fix) {
       unsigned i = u_bit_scan(&fix);
       key->mono.vs_fix_fetch[i].bits = elts->fix_fetch[i];
    }
    key->mono.vs_fetch_opencode = opencode;
+}
+
+void si_get_vs_key_inputs(struct si_context *sctx, struct si_shader_key *key,
+                          struct si_vs_prolog_bits *prolog_key)
+{
+   prolog_key->instance_divisor_is_one = sctx->shader.vs.key.part.vs.prolog.instance_divisor_is_one;
+   prolog_key->instance_divisor_is_fetched = sctx->shader.vs.key.part.vs.prolog.instance_divisor_is_fetched;
+
+   key->mono.vs_fetch_opencode = sctx->shader.vs.key.mono.vs_fetch_opencode;
+   memcpy(key->mono.vs_fix_fetch, sctx->shader.vs.key.mono.vs_fix_fetch,
+          sizeof(key->mono.vs_fix_fetch));
 }
 
 static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
@@ -2118,24 +2146,14 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
 
    switch (sel->info.stage) {
    case MESA_SHADER_VERTEX:
-      memset(&key->part, 0, sizeof(key->part));
-      memset(&key->mono, 0, sizeof(key->mono));
-      memset(&key->opt, 0, sizeof(key->opt));
-
-      si_shader_selector_key_vs(sctx, sel, key, &key->part.vs.prolog);
-
       if (!sctx->shader.tes.cso && !sctx->shader.gs.cso)
          si_get_vs_key_outputs(sctx, sel, key);
       else
          si_clear_vs_key_outputs(sctx, sel, key);
       break;
    case MESA_SHADER_TESS_CTRL:
-      memset(&key->part, 0, sizeof(key->part));
-      memset(&key->mono, 0, sizeof(key->mono));
-      memset(&key->opt, 0, sizeof(key->opt));
-
       if (sctx->chip_class >= GFX9) {
-         si_shader_selector_key_vs(sctx, sctx->shader.vs.cso, key, &key->part.tcs.ls_prolog);
+         si_get_vs_key_inputs(sctx, key, &key->part.tcs.ls_prolog);
          key->part.tcs.ls = sctx->shader.vs.cso;
 
          /* When the LS VGPR fix is needed, monolithic shaders
@@ -2164,25 +2182,18 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->mono.u.ff_tcs_inputs_to_copy = sctx->shader.vs.cso->outputs_written;
       break;
    case MESA_SHADER_TESS_EVAL:
-      memset(&key->part, 0, sizeof(key->part));
-      memset(&key->mono, 0, sizeof(key->mono));
-      memset(&key->opt, 0, sizeof(key->opt));
-
       if (!sctx->shader.gs.cso)
          si_get_vs_key_outputs(sctx, sel, key);
       else
          si_clear_vs_key_outputs(sctx, sel, key);
       break;
    case MESA_SHADER_GEOMETRY:
-      memset(&key->part, 0, sizeof(key->part));
-      memset(&key->mono, 0, sizeof(key->mono));
-      memset(&key->opt, 0, sizeof(key->opt));
-
       if (sctx->chip_class >= GFX9) {
          if (sctx->shader.tes.cso) {
+            si_clear_vs_key_inputs(sctx, key, &key->part.gs.vs_prolog);
             key->part.gs.es = sctx->shader.tes.cso;
          } else {
-            si_shader_selector_key_vs(sctx, sctx->shader.vs.cso, key, &key->part.gs.vs_prolog);
+            si_get_vs_key_inputs(sctx, key, &key->part.gs.vs_prolog);
             key->part.gs.es = sctx->shader.vs.cso;
          }
 
@@ -3194,6 +3205,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
                        si_get_vs(sctx)->current);
    si_update_rasterized_prim(sctx);
+   si_vs_key_update_inputs(sctx);
 }
 
 static void si_update_tess_uses_prim_id(struct si_context *sctx)

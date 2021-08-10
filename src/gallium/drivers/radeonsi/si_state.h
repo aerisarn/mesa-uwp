@@ -578,8 +578,9 @@ int si_shader_select_with_key(struct si_screen *sscreen, struct si_shader_ctx_st
                               struct si_compiler_ctx_state *compiler_state,
                               const struct si_shader_key *key, int thread_index,
                               bool optimized_or_none);
-void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selector *vs,
-                               struct si_shader_key *key, struct si_vs_prolog_bits *prolog_key);
+void si_vs_key_update_inputs(struct si_context *sctx);
+void si_get_vs_key_inputs(struct si_context *sctx, struct si_shader_key *key,
+                          struct si_vs_prolog_bits *prolog_key);
 unsigned si_get_input_prim(const struct si_shader_selector *gs);
 bool si_update_ngg(struct si_context *sctx);
 void si_ps_key_update_framebuffer(struct si_context *sctx);
