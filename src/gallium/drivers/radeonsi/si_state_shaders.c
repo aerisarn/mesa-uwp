@@ -1878,7 +1878,6 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
 
 /* Compute the key for the hw shader variant */
 static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_shader_selector *sel,
-                                          union si_vgt_stages_key stages_key,
                                           struct si_shader_key *key)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -1902,9 +1901,9 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->as_ls = 1;
       else if (sctx->shader.gs.cso) {
          key->as_es = 1;
-         key->as_ngg = stages_key.u.ngg;
+         key->as_ngg = sctx->ngg;
       } else {
-         key->as_ngg = stages_key.u.ngg;
+         key->as_ngg = sctx->ngg;
          si_shader_selector_key_hw_vs(sctx, sel, key);
       }
       break;
@@ -1939,7 +1938,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->mono.u.ff_tcs_inputs_to_copy = sctx->shader.vs.cso->outputs_written;
       break;
    case MESA_SHADER_TESS_EVAL:
-      key->as_ngg = stages_key.u.ngg;
+      key->as_ngg = sctx->ngg;
 
       if (sctx->shader.gs.cso)
          key->as_es = 1;
@@ -1956,10 +1955,10 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
             key->part.gs.es = sctx->shader.vs.cso;
          }
 
-         key->as_ngg = stages_key.u.ngg;
+         key->as_ngg = sctx->ngg;
 
          /* Only NGG can eliminate GS outputs, because the code is shared with VS. */
-         if (stages_key.u.ngg)
+         if (sctx->ngg)
             si_shader_selector_key_hw_vs(sctx, sel, key);
 
          /* This enables jumping over the VS prolog for GS-only waves. */
@@ -2437,13 +2436,12 @@ current_not_ready:
 }
 
 static int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state,
-                            union si_vgt_stages_key stages_key,
                             struct si_compiler_ctx_state *compiler_state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_key key;
 
-   si_shader_selector_key(ctx, state->cso, stages_key, &key);
+   si_shader_selector_key(ctx, state->cso, &key);
    return si_shader_select_with_key(sctx->screen, state, compiler_state, &key, -1, false);
 }
 
@@ -4044,7 +4042,7 @@ bool si_update_shaders(struct si_context *sctx)
       }
 
       if (sctx->shader.tcs.cso) {
-         r = si_shader_select(ctx, &sctx->shader.tcs, key, &compiler_state);
+         r = si_shader_select(ctx, &sctx->shader.tcs, &compiler_state);
          if (r)
             return false;
          si_pm4_bind_state(sctx, hs, sctx->shader.tcs.current->pm4);
@@ -4055,14 +4053,14 @@ bool si_update_shaders(struct si_context *sctx)
                return false;
          }
 
-         r = si_shader_select(ctx, &sctx->fixed_func_tcs_shader, key, &compiler_state);
+         r = si_shader_select(ctx, &sctx->fixed_func_tcs_shader, &compiler_state);
          if (r)
             return false;
          si_pm4_bind_state(sctx, hs, sctx->fixed_func_tcs_shader.current->pm4);
       }
 
       if (!sctx->shader.gs.cso || sctx->chip_class <= GFX8) {
-         r = si_shader_select(ctx, &sctx->shader.tes, key, &compiler_state);
+         r = si_shader_select(ctx, &sctx->shader.tes, &compiler_state);
          if (r)
             return false;
 
@@ -4084,7 +4082,7 @@ bool si_update_shaders(struct si_context *sctx)
 
    /* Update GS. */
    if (sctx->shader.gs.cso) {
-      r = si_shader_select(ctx, &sctx->shader.gs, key, &compiler_state);
+      r = si_shader_select(ctx, &sctx->shader.gs, &compiler_state);
       if (r)
          return false;
       si_pm4_bind_state(sctx, gs, sctx->shader.gs.current->pm4);
@@ -4106,7 +4104,7 @@ bool si_update_shaders(struct si_context *sctx)
 
    /* Update VS. */
    if ((!key.u.tess && !key.u.gs) || sctx->chip_class <= GFX8) {
-      r = si_shader_select(ctx, &sctx->shader.vs, key, &compiler_state);
+      r = si_shader_select(ctx, &sctx->shader.vs, &compiler_state);
       if (r)
          return false;
 
@@ -4146,7 +4144,7 @@ bool si_update_shaders(struct si_context *sctx)
    if (sctx->shader.ps.cso) {
       unsigned db_shader_control;
 
-      r = si_shader_select(ctx, &sctx->shader.ps, key, &compiler_state);
+      r = si_shader_select(ctx, &sctx->shader.ps, &compiler_state);
       if (r)
          return false;
       si_pm4_bind_state(sctx, ps, sctx->shader.ps.current->pm4);
