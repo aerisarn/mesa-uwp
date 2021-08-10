@@ -211,7 +211,7 @@ reset_counters(struct gl_context *ctx)
    assert(save->buffer_map == save->buffer_ptr);
 
    if (save->vertex_size)
-      save->max_vert = (save->vertex_store->bufferobj->Size / sizeof(float) - save->vertex_store->used) /
+      save->max_vert = (save->vertex_store->buffer_in_ram_size / sizeof(float) - save->vertex_store->used) /
                         save->vertex_size;
    else
       save->max_vert = 0;
@@ -908,7 +908,7 @@ end:
     * the next vertex lists as well.
     */
    if (save->vertex_store->used >
-       save->vertex_store->bufferobj->Size / sizeof(float) - 16 * (save->vertex_size + 4)) {
+       save->vertex_store->buffer_in_ram_size / sizeof(float) - 16 * (save->vertex_size + 4)) {
       realloc_storage(ctx, -1, 0);
    }
    else {
@@ -1073,7 +1073,7 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
    save->enabled |= BITFIELD64_BIT(attr);
 
    save->vertex_size += newsz - oldsz;
-   save->max_vert = ((save->vertex_store->bufferobj->Size / sizeof(float) -
+   save->max_vert = ((save->vertex_store->buffer_in_ram_size / sizeof(float) -
                       save->vertex_store->used) /
                      save->vertex_size);
    save->vert_count = 0;
