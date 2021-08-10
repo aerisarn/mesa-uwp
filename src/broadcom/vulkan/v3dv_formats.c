@@ -45,6 +45,12 @@ uint8_t
 v3dv_get_tex_return_size(const struct v3dv_format *vf,
                          bool compare_enable)
 {
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_TMU_16BIT))
+      return 16;
+
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_TMU_32BIT))
+      return 32;
+
    if (compare_enable)
       return 16;
 

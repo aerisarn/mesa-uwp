@@ -76,6 +76,14 @@ static const struct debug_named_value debug_control[] = {
           "Dump register allocation failures" },
         { "dump_spirv",  V3D_DEBUG_DUMP_SPIRV,
           "Dump SPIR-V code" },
+        { "tmu32",  V3D_DEBUG_TMU_32BIT,
+          "Force 32-bit precision on all TMU operations" },
+        /* This can lead to incorrect behavior for applications that do
+         * require full 32-bit precision, but can improve performance
+         * for those that don't.
+         */
+        { "tmu16",  V3D_DEBUG_TMU_16BIT,
+          "Force 16-bit precision on all TMU operations" },
         { NULL }
 };
 

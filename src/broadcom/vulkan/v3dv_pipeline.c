@@ -711,7 +711,13 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
       deref->var->data.index + base_index :
       base_index;
 
-   uint8_t return_size = relaxed_precision || instr->is_shadow ? 16 : 32;
+   uint8_t return_size;
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_TMU_16BIT))
+      return_size = 16;
+   else  if (unlikely(V3D_DEBUG & V3D_DEBUG_TMU_32BIT))
+      return_size = 32;
+   else
+      return_size = relaxed_precision || instr->is_shadow ? 16 : 32;
 
    struct v3dv_descriptor_map *map =
       pipeline_get_descriptor_map(pipeline, binding_layout->type,
