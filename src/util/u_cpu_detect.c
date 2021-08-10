@@ -709,6 +709,9 @@ util_cpu_detect_once(void)
          case 0x19:
             util_cpu_caps.family = CPU_AMD_ZEN3;
             break;
+         default:
+            if (util_cpu_caps.x86_cpu_type > 0x19)
+               util_cpu_caps.family = CPU_AMD_ZEN_NEXT;
          }
 
          /* general feature flags */

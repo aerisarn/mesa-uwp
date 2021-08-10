@@ -50,6 +50,7 @@ enum cpu_family {
    CPU_AMD_ZEN1_ZEN2,
    CPU_AMD_ZEN_HYGON,
    CPU_AMD_ZEN3,
+   CPU_AMD_ZEN_NEXT,
    CPU_AMD_LAST,
 };
 
