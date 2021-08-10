@@ -2309,11 +2309,11 @@ use_local_key_copy(const struct si_shader_key *key, struct si_shader_key *local_
  *                           the compilation isn't finished, don't select any
  *                           shader and return an error.
  */
-int si_shader_select_with_key(struct si_screen *sscreen, struct si_shader_ctx_state *state,
-                              struct si_compiler_ctx_state *compiler_state,
+int si_shader_select_with_key(struct si_context *sctx, struct si_shader_ctx_state *state,
                               const struct si_shader_key *key, int thread_index,
                               bool optimized_or_none)
 {
+   struct si_screen *sscreen = sctx->screen;
    struct si_shader_selector *sel = state->cso;
    struct si_shader_selector *previous_stage_sel = NULL;
    struct si_shader *current = state->current;
@@ -2428,9 +2428,14 @@ current_not_ready:
 
    util_queue_fence_init(&shader->ready);
 
+   if (!sctx->compiler.passes)
+      si_init_compiler(sctx->screen, &sctx->compiler);
+
    shader->selector = sel;
    shader->key = *key;
-   shader->compiler_ctx_state = *compiler_state;
+   shader->compiler_ctx_state.compiler = &sctx->compiler;
+   shader->compiler_ctx_state.debug = sctx->debug;
+   shader->compiler_ctx_state.is_debug_context = sctx->is_debug;
 
    /* If this is a merged shader, get the first shader's selector. */
    if (sscreen->info.chip_class >= GFX9) {
@@ -2476,12 +2481,13 @@ current_not_ready:
          }
 
          simple_mtx_lock(&previous_stage_sel->mutex);
-         ok = si_check_missing_main_part(sscreen, previous_stage_sel, compiler_state, &shader1_key);
+         ok = si_check_missing_main_part(sscreen, previous_stage_sel, &shader->compiler_ctx_state,
+                                         &shader1_key);
          simple_mtx_unlock(&previous_stage_sel->mutex);
       }
 
       if (ok) {
-         ok = si_check_missing_main_part(sscreen, sel, compiler_state, key);
+         ok = si_check_missing_main_part(sscreen, sel, &shader->compiler_ctx_state, key);
       }
 
       if (!ok) {
@@ -2560,13 +2566,12 @@ current_not_ready:
    return shader->compilation_failed ? -1 : 0;
 }
 
-int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state,
-                     struct si_compiler_ctx_state *compiler_state)
+int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
    si_shader_selector_key(ctx, state->cso, &state->key);
-   return si_shader_select_with_key(sctx->screen, state, compiler_state, &state->key, -1, false);
+   return si_shader_select_with_key(sctx, state, &state->key, -1, false);
 }
 
 static void si_parse_next_shader_property(const struct si_shader_info *info, bool streamout,

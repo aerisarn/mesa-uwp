@@ -51,20 +51,12 @@ template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has
 static bool si_update_shaders(struct si_context *sctx)
 {
    struct pipe_context *ctx = (struct pipe_context *)sctx;
-   struct si_compiler_ctx_state compiler_state;
    struct si_shader *old_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
    unsigned old_kill_clip_distances = old_vs ? old_vs->key.opt.kill_clip_distances : 0;
    struct si_shader *old_ps = sctx->shader.ps.current;
    unsigned old_spi_shader_col_format =
       old_ps ? old_ps->key.part.ps.epilog.spi_shader_col_format : 0;
    int r;
-
-   if (!sctx->compiler.passes)
-      si_init_compiler(sctx->screen, &sctx->compiler);
-
-   compiler_state.compiler = &sctx->compiler;
-   compiler_state.debug = sctx->debug;
-   compiler_state.is_debug_context = sctx->is_debug;
 
    /* Update TCS and TES. */
    if (HAS_TESS) {
@@ -75,7 +67,7 @@ static bool si_update_shaders(struct si_context *sctx)
       }
 
       if (sctx->shader.tcs.cso) {
-         r = si_shader_select(ctx, &sctx->shader.tcs, &compiler_state);
+         r = si_shader_select(ctx, &sctx->shader.tcs);
          if (r)
             return false;
          si_pm4_bind_state(sctx, hs, sctx->shader.tcs.current->pm4);
@@ -87,14 +79,14 @@ static bool si_update_shaders(struct si_context *sctx)
                return false;
          }
 
-         r = si_shader_select(ctx, &sctx->fixed_func_tcs_shader, &compiler_state);
+         r = si_shader_select(ctx, &sctx->fixed_func_tcs_shader);
          if (r)
             return false;
          si_pm4_bind_state(sctx, hs, sctx->fixed_func_tcs_shader.current->pm4);
       }
 
       if (!HAS_GS || GFX_VERSION <= GFX8) {
-         r = si_shader_select(ctx, &sctx->shader.tes, &compiler_state);
+         r = si_shader_select(ctx, &sctx->shader.tes);
          if (r)
             return false;
 
@@ -119,7 +111,7 @@ static bool si_update_shaders(struct si_context *sctx)
 
    /* Update GS. */
    if (HAS_GS) {
-      r = si_shader_select(ctx, &sctx->shader.gs, &compiler_state);
+      r = si_shader_select(ctx, &sctx->shader.gs);
       if (r)
          return false;
       si_pm4_bind_state(sctx, gs, sctx->shader.gs.current->pm4);
@@ -145,7 +137,7 @@ static bool si_update_shaders(struct si_context *sctx)
 
    /* Update VS. */
    if ((!HAS_TESS && !HAS_GS) || GFX_VERSION <= GFX8) {
-      r = si_shader_select(ctx, &sctx->shader.vs, &compiler_state);
+      r = si_shader_select(ctx, &sctx->shader.vs);
       if (r)
          return false;
 
@@ -189,7 +181,7 @@ static bool si_update_shaders(struct si_context *sctx)
    if (old_kill_clip_distances != si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->key.opt.kill_clip_distances)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 
-   r = si_shader_select(ctx, &sctx->shader.ps, &compiler_state);
+   r = si_shader_select(ctx, &sctx->shader.ps);
    if (r)
       return false;
    si_pm4_bind_state(sctx, ps, sctx->shader.ps.current->pm4);
