@@ -2370,6 +2370,8 @@ init_draw_info(struct pipe_draw_info *info,
     info->primitive_restart = FALSE;
     info->has_user_indices = FALSE;
     info->take_index_buffer_ownership = FALSE;
+    info->index_bias_varies = FALSE;
+    info->increment_draw_id = FALSE;
     info->restart_index = 0;
 }
 
