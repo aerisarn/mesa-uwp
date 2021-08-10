@@ -2483,7 +2483,7 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
       NIR_PASS_V(nir, nir_lower_samplers);
 
    if (screen->finalize_nir) {
-      screen->finalize_nir(screen, nir, true);
+      screen->finalize_nir(screen, nir);
    } else {
       ttn_optimize_nir(nir);
       nir_shader_gather_info(nir, c->build.impl);

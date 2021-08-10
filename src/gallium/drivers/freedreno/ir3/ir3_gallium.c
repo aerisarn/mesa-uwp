@@ -461,7 +461,7 @@ ir3_fixup_shader_state(struct pipe_context *pctx, struct ir3_shader_key *key)
 }
 
 static void
-ir3_screen_finalize_nir(struct pipe_screen *pscreen, void *nir, bool optimize)
+ir3_screen_finalize_nir(struct pipe_screen *pscreen, void *nir)
 {
    struct fd_screen *screen = fd_screen(pscreen);
 

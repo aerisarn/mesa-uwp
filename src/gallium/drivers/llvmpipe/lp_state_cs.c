@@ -456,7 +456,7 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
       shader->base.ir.nir = nir_deserialize(NULL, pipe->screen->get_compiler_options(pipe->screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE), &reader);
       shader->base.type = PIPE_SHADER_IR_NIR;
 
-      pipe->screen->finalize_nir(pipe->screen, shader->base.ir.nir, false);
+      pipe->screen->finalize_nir(pipe->screen, shader->base.ir.nir);
       shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
    } else if (templ->ir_type == PIPE_SHADER_IR_NIR) {
       shader->base.ir.nir = (struct nir_shader *)templ->prog;

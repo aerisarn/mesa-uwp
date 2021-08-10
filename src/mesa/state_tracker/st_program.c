@@ -1512,7 +1512,7 @@ st_create_fp_variant(struct st_context *st,
 
          struct pipe_screen *screen = st->screen;
          if (screen->finalize_nir)
-            screen->finalize_nir(screen, state.ir.nir, false);
+            screen->finalize_nir(screen, state.ir.nir);
       }
 
       variant->base.driver_shader = st_create_nir_shader(st, &state);

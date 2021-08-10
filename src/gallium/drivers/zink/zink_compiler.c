@@ -1043,7 +1043,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 }
 
 void
-zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr, bool optimize)
+zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    nir_shader *nir = nirptr;
