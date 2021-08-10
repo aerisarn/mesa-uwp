@@ -219,6 +219,7 @@ struct lvp_device_memory {
    uint32_t                                     type_index;
    VkDeviceSize                                 map_size;
    void *                                       map;
+   bool is_user_ptr;
 };
 
 struct lvp_image {

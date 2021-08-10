@@ -130,6 +130,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_conditional_rendering             = true,
    .EXT_extended_dynamic_state            = true,
    .EXT_extended_dynamic_state2           = true,
+   .EXT_external_memory_host              = true,
    .EXT_host_query_reset                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_multi_draw                        = true,
@@ -980,6 +981,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          properties->lineSubPixelPrecisionBits = 4;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
+         VkPhysicalDeviceExternalMemoryHostPropertiesEXT *properties =
+            (VkPhysicalDeviceExternalMemoryHostPropertiesEXT *)ext;
+         properties->minImportedHostPointerAlignment = 4096;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
          VkPhysicalDeviceSubgroupProperties *properties =
             (VkPhysicalDeviceSubgroupProperties*)ext;
@@ -1086,6 +1093,23 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties2(
 {
    lvp_GetPhysicalDeviceMemoryProperties(physicalDevice,
                                          &pMemoryProperties->memoryProperties);
+}
+
+VkResult
+lvp_GetMemoryHostPointerPropertiesEXT(
+   VkDevice _device,
+   VkExternalMemoryHandleTypeFlagBits handleType,
+   const void *pHostPointer,
+   VkMemoryHostPointerPropertiesEXT *pMemoryHostPointerProperties)
+{
+   switch (handleType) {
+   case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT: {
+      pMemoryHostPointerProperties->memoryTypeBits = 1;
+      return VK_SUCCESS;
+   }
+   default:
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   }
 }
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_GetInstanceProcAddr(
@@ -1657,6 +1681,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
    LVP_FROM_HANDLE(lvp_device, device, _device);
    struct lvp_device_memory *mem;
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
+   const VkImportMemoryHostPointerInfoEXT *host_ptr_info =
+      vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_HOST_POINTER_INFO_EXT);
 
    if (pAllocateInfo->allocationSize == 0) {
       /* Apparently, this is allowed */
@@ -1671,10 +1697,17 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
 
    vk_object_base_init(&device->vk, &mem->base,
                        VK_OBJECT_TYPE_DEVICE_MEMORY);
-   mem->pmem = device->pscreen->allocate_memory(device->pscreen, pAllocateInfo->allocationSize);
-   if (!mem->pmem) {
-      vk_free2(&device->vk.alloc, pAllocator, mem);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   if (!host_ptr_info) {
+      mem->pmem = device->pscreen->allocate_memory(device->pscreen, pAllocateInfo->allocationSize);
+      if (!mem->pmem) {
+         vk_free2(&device->vk.alloc, pAllocator, mem);
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+      mem->is_user_ptr = false;
+   } else {
+      mem->is_user_ptr = true;
+      mem->pmem = host_ptr_info->pHostPointer;
    }
 
    mem->type_index = pAllocateInfo->memoryTypeIndex;
@@ -1695,7 +1728,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_FreeMemory(
    if (mem == NULL)
       return;
 
-   device->pscreen->free_memory(device->pscreen, mem->pmem);
+   if (!mem->is_user_ptr)
+      device->pscreen->free_memory(device->pscreen, mem->pmem);
    vk_object_base_finish(&mem->base);
    vk_free2(&device->vk.alloc, pAllocator, mem);
 
