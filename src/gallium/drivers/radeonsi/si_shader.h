@@ -640,9 +640,10 @@ struct si_shader_key {
    /* These three are initially set according to the NEXT_SHADER property,
     * or guessed if the property doesn't seem correct.
     */
-   unsigned as_es : 1;  /* export shader, which precedes GS */
-   unsigned as_ls : 1;  /* local shader, which precedes TCS */
-   unsigned as_ngg : 1; /* VS, TES, or GS compiled as NGG primitive shader */
+   unsigned as_es : 1;  /* whether it's a shader before GS */
+   unsigned as_ls : 1;  /* whether it's VS before TCS */
+   unsigned as_ngg : 1; /* whether it's the last GE stage and NGG is enabled,
+                           also set for the stage right before GS */
 
    /* Flags for monolithic compilation only. */
    struct {

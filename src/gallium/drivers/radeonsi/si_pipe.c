@@ -539,6 +539,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    }
 
    sctx->ngg = sscreen->use_ngg;
+   si_shader_change_notify(sctx);
 
    /* Initialize context functions used by graphics and compute. */
    if (sctx->chip_class >= GFX10)

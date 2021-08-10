@@ -804,6 +804,8 @@ struct si_streamout {
 struct si_shader_ctx_state {
    struct si_shader_selector *cso;
    struct si_shader *current;
+   /* The shader variant key representing the current state. */
+   struct si_shader_key key;
 };
 
 #define SI_NUM_VGT_PARAM_KEY_BITS 12

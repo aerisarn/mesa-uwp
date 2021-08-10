@@ -1882,7 +1882,9 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
-   memset(key, 0, sizeof(*key));
+   memset(&key->part, 0, sizeof(key->part));
+   memset(&key->mono, 0, sizeof(key->mono));
+   memset(&key->opt, 0, sizeof(key->opt));
 
    unsigned num_inlinable_uniforms = sel->info.base.num_inlinable_uniforms;
    if (num_inlinable_uniforms &&
@@ -1897,15 +1899,8 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
    case MESA_SHADER_VERTEX:
       si_shader_selector_key_vs(sctx, sel, key, &key->part.vs.prolog);
 
-      if (sctx->shader.tes.cso)
-         key->as_ls = 1;
-      else if (sctx->shader.gs.cso) {
-         key->as_es = 1;
-         key->as_ngg = sctx->ngg;
-      } else {
-         key->as_ngg = sctx->ngg;
+      if (!sctx->shader.tes.cso && !sctx->shader.gs.cso)
          si_shader_selector_key_hw_vs(sctx, sel, key);
-      }
       break;
    case MESA_SHADER_TESS_CTRL:
       if (sctx->chip_class >= GFX9) {
@@ -1938,13 +1933,8 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->mono.u.ff_tcs_inputs_to_copy = sctx->shader.vs.cso->outputs_written;
       break;
    case MESA_SHADER_TESS_EVAL:
-      key->as_ngg = sctx->ngg;
-
-      if (sctx->shader.gs.cso)
-         key->as_es = 1;
-      else {
+      if (!sctx->shader.gs.cso)
          si_shader_selector_key_hw_vs(sctx, sel, key);
-      }
       break;
    case MESA_SHADER_GEOMETRY:
       if (sctx->chip_class >= GFX9) {
@@ -1954,8 +1944,6 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
             si_shader_selector_key_vs(sctx, sctx->shader.vs.cso, key, &key->part.gs.vs_prolog);
             key->part.gs.es = sctx->shader.vs.cso;
          }
-
-         key->as_ngg = sctx->ngg;
 
          /* Only NGG can eliminate GS outputs, because the code is shared with VS. */
          if (sctx->ngg)
@@ -2439,10 +2427,9 @@ static int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state
                             struct si_compiler_ctx_state *compiler_state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
-   struct si_shader_key key;
 
-   si_shader_selector_key(ctx, state->cso, &key);
-   return si_shader_select_with_key(sctx->screen, state, compiler_state, &key, -1, false);
+   si_shader_selector_key(ctx, state->cso, &state->key);
+   return si_shader_select_with_key(sctx->screen, state, compiler_state, &state->key, -1, false);
 }
 
 static void si_parse_next_shader_property(const struct si_shader_info *info, bool streamout,

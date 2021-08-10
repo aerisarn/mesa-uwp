@@ -1985,6 +1985,36 @@ void si_shader_change_notify(struct si_context *sctx)
                                                sctx->shader.gs.cso ? GS_ON : GS_OFF,
                                                sctx->ngg ? NGG_ON : NGG_OFF,
                                                PIPE_SHADER_TESS_EVAL));
+
+   /* Update as_* flags in shader keys. Ignore disabled shader stages.
+    *   as_ls = VS before TCS
+    *   as_es = VS before GS or TES before GS
+    *   as_ngg = NGG enabled for the last geometry stage.
+    *            If GS sets as_ngg, the previous stage must set as_ngg too.
+    */
+   if (sctx->shader.tes.cso) {
+      sctx->shader.vs.key.as_ls = 1;
+      sctx->shader.vs.key.as_es = 0;
+      sctx->shader.vs.key.as_ngg = 0;
+
+      if (sctx->shader.gs.cso) {
+         sctx->shader.tes.key.as_es = 1;
+         sctx->shader.tes.key.as_ngg = sctx->ngg;
+         sctx->shader.gs.key.as_ngg = sctx->ngg;
+      } else {
+         sctx->shader.tes.key.as_es = 0;
+         sctx->shader.tes.key.as_ngg = sctx->ngg;
+      }
+   } else if (sctx->shader.gs.cso) {
+      sctx->shader.vs.key.as_ls = 0;
+      sctx->shader.vs.key.as_es = 1;
+      sctx->shader.vs.key.as_ngg = sctx->ngg;
+      sctx->shader.gs.key.as_ngg = sctx->ngg;
+   } else {
+      sctx->shader.vs.key.as_ls = 0;
+      sctx->shader.vs.key.as_es = 0;
+      sctx->shader.vs.key.as_ngg = sctx->ngg;
+   }
 }
 
 #define si_emit_consecutive_shader_pointers(sctx, pointer_mask, sh_base) do { \
