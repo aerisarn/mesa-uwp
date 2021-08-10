@@ -1022,13 +1022,14 @@ add_all_surfaces_implicit_layout(
    isl_tiling_flags_t isl_tiling_flags,
    const struct anv_image_create_info *create_info)
 {
+   assert(create_info);
    const struct intel_device_info *devinfo = &device->info;
    isl_surf_usage_flags_t isl_extra_usage_flags =
       create_info->isl_extra_usage_flags;
    VkResult result;
 
    const VkExternalMemoryImageCreateInfo *ext_mem_info =
-      vk_find_struct_const(create_info->vk_info->pNext,
+      vk_find_struct_const(create_info->vk_info,
                            EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
 
    u_foreach_bit(b, image->aspects) {
@@ -1602,9 +1603,13 @@ resolve_ahw_image(struct anv_device *device,
    uint32_t stride = desc.stride *
                      (isl_format_get_layout(isl_fmt)->bpb / 8);
 
+   struct anv_image_create_info create_info = {
+      .isl_extra_usage_flags = ISL_SURF_USAGE_DISABLE_AUX_BIT,
+   };
+
    result = add_all_surfaces_implicit_layout(device, image, NULL, stride,
                                              isl_tiling_flags,
-                                             ISL_SURF_USAGE_DISABLE_AUX_BIT);
+                                             &create_info);
    assert(result == VK_SUCCESS);
 #endif
 }
