@@ -2150,6 +2150,8 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    UPDATE_REG(gras_su_cntl, GRAS_SU_CNTL);
    UPDATE_REG(rb_depth_cntl, RB_DEPTH_CNTL);
    UPDATE_REG(rb_stencil_cntl, RB_STENCIL_CNTL);
+   UPDATE_REG(pc_raster_cntl, RASTERIZER_DISCARD);
+   UPDATE_REG(vpc_unknown_9107, RASTERIZER_DISCARD);
 #undef UPDATE_REG
 
    if (pipeline->rb_depth_cntl_disable)
@@ -2489,6 +2491,22 @@ tu_CmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
 
    cmd->state.primitive_restart_enable = primitiveRestartEnable;
+}
+
+void
+tu_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
+                                    VkBool32 rasterizerDiscardEnable)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.pc_raster_cntl &= ~A6XX_PC_RASTER_CNTL_DISCARD;
+   cmd->state.vpc_unknown_9107 &= ~A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
+   if (rasterizerDiscardEnable) {
+      cmd->state.pc_raster_cntl |= A6XX_PC_RASTER_CNTL_DISCARD;
+      cmd->state.vpc_unknown_9107 |= A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
+   }
+
+   cmd->state.dirty |= TU_CMD_DIRTY_RASTERIZER_DISCARD;
 }
 
 static void
@@ -3663,6 +3681,12 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (dirty_lrz) {
       cmd->state.lrz.state = tu6_build_lrz(cmd);
       cmd->state.depth_plane_state = tu6_build_depth_plane_z_mode(cmd);
+   }
+
+   if (cmd->state.dirty & TU_CMD_DIRTY_RASTERIZER_DISCARD) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, TU_DYNAMIC_STATE_RASTERIZER_DISCARD, 4);
+      tu_cs_emit_regs(&cs, A6XX_PC_RASTER_CNTL(.dword = cmd->state.pc_raster_cntl));
+      tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = cmd->state.vpc_unknown_9107));
    }
 
    if (cmd->state.dirty & TU_CMD_DIRTY_GRAS_SU_CNTL) {

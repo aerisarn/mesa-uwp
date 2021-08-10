@@ -2170,6 +2170,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
 
 static void
 tu_pipeline_shader_key_init(struct ir3_shader_key *key,
+                            const struct tu_pipeline *pipeline,
                             const VkGraphicsPipelineCreateInfo *pipeline_info)
 {
    for (uint32_t i = 0; i < pipeline_info->stageCount; i++) {
@@ -2179,7 +2180,8 @@ tu_pipeline_shader_key_init(struct ir3_shader_key *key,
       }
    }
 
-   if (pipeline_info->pRasterizationState->rasterizerDiscardEnable)
+   if (pipeline_info->pRasterizationState->rasterizerDiscardEnable &&
+       !(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD)))
       return;
 
    const VkPipelineMultisampleStateCreateInfo *msaa_info = pipeline_info->pMultisampleState;
@@ -2271,7 +2273,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    }
 
    struct ir3_shader_key key = {};
-   tu_pipeline_shader_key_init(&key, builder->create_info);
+   tu_pipeline_shader_key_init(&key, pipeline, builder->create_info);
 
    nir_shader *nir[ARRAY_SIZE(builder->shaders)] = { NULL };
 
@@ -2439,6 +2441,8 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
    pipeline->gras_su_cntl_mask = ~0u;
    pipeline->rb_depth_cntl_mask = ~0u;
    pipeline->rb_stencil_cntl_mask = ~0u;
+   pipeline->pc_raster_cntl_mask = ~0u;
+   pipeline->vpc_unknown_9107_mask = ~0u;
 
    if (!dynamic_info)
       return;
@@ -2516,6 +2520,11 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
          break;
       case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE);
+         break;
+      case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT:
+         pipeline->pc_raster_cntl_mask &= ~A6XX_PC_RASTER_CNTL_DISCARD;
+         pipeline->vpc_unknown_9107_mask &= ~A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RASTERIZER_DISCARD);
          break;
       default:
          assert(!"unsupported dynamic state");
@@ -2698,7 +2707,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
       depth_clip_disable = !depth_clip_state->depthClipEnable;
 
    struct tu_cs cs;
-   uint32_t cs_size = 13 + (builder->emit_msaa_state ? 11 : 0);
+   uint32_t cs_size = 9 + (builder->emit_msaa_state ? 11 : 0);
    pipeline->rast_state = tu_cs_draw_state(&pipeline->cs, &cs, cs_size);
 
    tu_cs_emit_regs(&cs,
@@ -2721,21 +2730,28 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                    A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
                    A6XX_GRAS_SU_POINT_SIZE(1.0f));
 
-   const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
-      vk_find_struct_const(rast_info->pNext,
-                           PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
-   unsigned stream = stream_info ? stream_info->rasterizationStream : 0;
-   tu_cs_emit_regs(&cs,
-                   A6XX_PC_RASTER_CNTL(.stream = stream,
-                                       .discard = rast_info->rasterizerDiscardEnable));
-   tu_cs_emit_regs(&cs,
-                   A6XX_VPC_UNKNOWN_9107(.raster_discard = rast_info->rasterizerDiscardEnable));
-
    /* If samples count couldn't be devised from the subpass, we should emit it here.
     * It happens when subpass doesn't use any color/depth attachment.
     */
    if (builder->emit_msaa_state)
       tu6_emit_msaa(&cs, builder->samples);
+
+   const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
+      vk_find_struct_const(rast_info->pNext,
+                           PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
+   unsigned stream = stream_info ? stream_info->rasterizationStream : 0;
+
+   pipeline->pc_raster_cntl = A6XX_PC_RASTER_CNTL_STREAM(stream);
+   pipeline->vpc_unknown_9107 = 0;
+   if (rast_info->rasterizerDiscardEnable) {
+      pipeline->pc_raster_cntl |= A6XX_PC_RASTER_CNTL_DISCARD;
+      pipeline->vpc_unknown_9107 |= A6XX_VPC_UNKNOWN_9107_RASTER_DISCARD;
+   }
+
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RASTERIZER_DISCARD, 4)) {
+      tu_cs_emit_regs(&cs, A6XX_PC_RASTER_CNTL(.dword = pipeline->pc_raster_cntl));
+      tu_cs_emit_regs(&cs, A6XX_VPC_UNKNOWN_9107(.dword = pipeline->vpc_unknown_9107));
+   }
 
    pipeline->gras_su_cntl =
       tu6_gras_su_cntl(rast_info, builder->samples, builder->multiview_mask != 0);
@@ -3077,6 +3093,17 @@ tu_pipeline_builder_init_graphics(
       .layout = layout,
    };
 
+   bool rasterizer_discard_dynamic = false;
+   if (create_info->pDynamicState) {
+      for (uint32_t i = 0; i < create_info->pDynamicState->dynamicStateCount; i++) {
+         if (create_info->pDynamicState->pDynamicStates[i] ==
+               VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT) {
+            rasterizer_discard_dynamic = true;
+            break;
+         }
+      }
+   }
+
    const struct tu_render_pass *pass =
       tu_render_pass_from_handle(create_info->renderPass);
    const struct tu_subpass *subpass =
@@ -3085,7 +3112,8 @@ tu_pipeline_builder_init_graphics(
    builder->multiview_mask = subpass->multiview_mask;
 
    builder->rasterizer_discard =
-      create_info->pRasterizationState->rasterizerDiscardEnable;
+      builder->create_info->pRasterizationState->rasterizerDiscardEnable &&
+      !rasterizer_discard_dynamic;
 
    /* variableMultisampleRate support */
    builder->emit_msaa_state = (subpass->samples == 0) && !builder->rasterizer_discard;

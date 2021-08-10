@@ -502,6 +502,7 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_RB_DEPTH_CNTL,
    TU_DYNAMIC_STATE_RB_STENCIL_CNTL,
    TU_DYNAMIC_STATE_VB_STRIDE,
+   TU_DYNAMIC_STATE_RASTERIZER_DISCARD,
    TU_DYNAMIC_STATE_COUNT,
    /* no associated draw state: */
    TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY = TU_DYNAMIC_STATE_COUNT,
@@ -725,8 +726,9 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_SHADER_CONSTS = BIT(7),
    TU_CMD_DIRTY_LRZ = BIT(8),
    TU_CMD_DIRTY_VS_PARAMS = BIT(9),
+   TU_CMD_DIRTY_RASTERIZER_DISCARD = BIT(10),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(10)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(11)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -940,6 +942,7 @@ struct tu_cmd_state
    uint32_t dynamic_stencil_ref;
 
    uint32_t gras_su_cntl, rb_depth_cntl, rb_stencil_cntl;
+   uint32_t pc_raster_cntl, vpc_unknown_9107;
    enum pc_di_primtype primtype;
    bool primitive_restart_enable;
 
@@ -1164,6 +1167,8 @@ struct tu_pipeline
    uint32_t gras_su_cntl, gras_su_cntl_mask;
    uint32_t rb_depth_cntl, rb_depth_cntl_mask;
    uint32_t rb_stencil_cntl, rb_stencil_cntl_mask;
+   uint32_t pc_raster_cntl, pc_raster_cntl_mask;
+   uint32_t vpc_unknown_9107, vpc_unknown_9107_mask;
    uint32_t stencil_wrmask;
 
    bool rb_depth_cntl_disable;
