@@ -32,7 +32,7 @@
       fprintf(stderr, "Constant folding failed:\n"); \
       bi_print_instr(instr, stderr); \
       fprintf(stderr, "\n"); \
-   } else if (_value == expected) { \
+   } else if (_value == (expected)) { \
       nr_pass++; \
    } else { \
       fprintf(stderr, "Got %" PRIx32 ", expected %" PRIx32 "\n", _value, expected); \
@@ -79,6 +79,35 @@ main(int argc, const char **argv)
          bi_imm_u16(0xBABE)), 0xBABECAFE);
    CASE(bi_mkvec_v2i16_to(b, reg, bi_swz_16(bi_imm_u32(0xCAFEBABE), true, true),
          bi_swz_16(bi_imm_u32(0xCAFEBABE), false, false)), 0xBABECAFE);
+
+   {
+      bi_index u32 = bi_imm_u32(0xCAFEBABE);
+
+      bi_index a = bi_byte(u32, 0); /* 0xBE */
+      bi_index c = bi_byte(u32, 2); /* 0xFE */
+
+      CASE(bi_mkvec_v4i8_to(b, reg, a, a, a, a), 0xBEBEBEBE);
+      CASE(bi_mkvec_v4i8_to(b, reg, a, c, a, c), 0xFEBEFEBE);
+      CASE(bi_mkvec_v4i8_to(b, reg, c, a, c, a), 0xBEFEBEFE);
+      CASE(bi_mkvec_v4i8_to(b, reg, c, c, c, c), 0xFEFEFEFE);
+   }
+
+   /* Limited shifts required for texturing */
+   CASE(bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE), bi_imm_u32(0xA0000), bi_imm_u8(4)), (0xCAFE << 4) | 0xA0000);
+   NEGCASE(bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE), bi_not(bi_imm_u32(0xA0000)), bi_imm_u8(4)));
+   NEGCASE(bi_lshift_or_i32_to(b, reg, bi_not(bi_imm_u32(0xCAFE)), bi_imm_u32(0xA0000), bi_imm_u8(4)));
+   {
+      bi_instr *I = bi_lshift_or_i32_to(b, reg, bi_imm_u32(0xCAFE), bi_imm_u32(0xA0000), bi_imm_u8(4));
+      I->not_result = true;
+      NEGCASE(I);
+   }
+
+   /* Limited rounding needed for texturing */
+   CASE(bi_f32_to_u32_to(b, reg, bi_imm_f32(15.0), BI_ROUND_NONE), 15);
+   CASE(bi_f32_to_u32_to(b, reg, bi_imm_f32(15.9), BI_ROUND_NONE), 15);
+   CASE(bi_f32_to_u32_to(b, reg, bi_imm_f32(-20.4), BI_ROUND_NONE), 0);
+   NEGCASE(bi_f32_to_u32_to(b, reg, bi_imm_f32(-20.4), BI_ROUND_RTP));
+   NEGCASE(bi_f32_to_u32_to(b, reg, bi_imm_f32(-20.4), BI_ROUND_RTZ));
 
    /* Instructions with non-constant sources cannot be constant folded */
    NEGCASE(bi_swz_v2i16_to(b, reg, bi_temp(b->shader)));
