@@ -392,6 +392,17 @@ if with_tests
     suite : ['util'],
   )
 
+  test(
+    'dag',
+    executable(
+      'dag_test',
+      'tests/dag_test.cpp',
+      dependencies : [idep_mesautil, idep_gtest],
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['util'],
+  )
+
   subdir('tests/cache')
   subdir('tests/fast_idiv_by_const')
   subdir('tests/fast_urem_by_const')
