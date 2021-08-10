@@ -4680,8 +4680,9 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
 
    v->count = count;
 
+   unsigned num_vbos_in_user_sgprs = si_num_vbos_in_user_sgprs(sscreen);
    unsigned alloc_count =
-      count > sscreen->num_vbos_in_user_sgprs ? count - sscreen->num_vbos_in_user_sgprs : 0;
+      count > num_vbos_in_user_sgprs ? count - num_vbos_in_user_sgprs : 0;
    v->vb_desc_list_alloc_size = align(alloc_count * 16, SI_CPDMA_ALIGNMENT);
 
    for (i = 0; i < count; ++i) {

@@ -1605,6 +1605,7 @@ template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has
 static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
 {
    unsigned count = sctx->num_vertex_elements;
+   unsigned num_vbos_in_user_sgprs = si_num_vbos_in_user_sgprs_inline(GFX_VERSION);
    bool pointer_dirty, user_sgprs_dirty;
 
    assert(count <= SI_MAX_ATTRIBS);
@@ -1641,7 +1642,6 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
       }
 
       unsigned first_vb_use_mask = velems->first_vb_use_mask;
-      unsigned num_vbos_in_user_sgprs = sctx->screen->num_vbos_in_user_sgprs;
 
       for (unsigned i = 0; i < count; i++) {
          struct pipe_vertex_buffer *vb;
@@ -1706,7 +1706,6 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
 
    if (pointer_dirty || user_sgprs_dirty) {
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-      unsigned num_vbos_in_user_sgprs = sctx->screen->num_vbos_in_user_sgprs;
       unsigned sh_base = si_get_user_data_base(GFX_VERSION, HAS_TESS, HAS_GS, NGG,
                                                PIPE_SHADER_VERTEX);
       assert(count);

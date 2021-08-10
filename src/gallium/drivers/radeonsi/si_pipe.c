@@ -1155,11 +1155,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    sscreen->max_memory_usage_kb = sscreen->info.vram_size_kb + sscreen->info.gart_size_kb / 4 * 3;
 
-   /* This decreases CPU overhead if all descriptors are in user SGPRs because we don't
-    * have to allocate and count references for the upload buffer.
-    */
-   sscreen->num_vbos_in_user_sgprs = sscreen->info.chip_class >= GFX9 ? 5 : 1;
-
    /* Determine tessellation ring info. */
    bool double_offchip_buffers = sscreen->info.chip_class >= GFX7 &&
                                  sscreen->info.family != CHIP_CARRIZO &&

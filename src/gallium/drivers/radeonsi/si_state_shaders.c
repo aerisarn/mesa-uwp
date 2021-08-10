@@ -2861,7 +2861,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       sel->info.stage == MESA_SHADER_VERTEX && !sel->info.base.vs.blit_sgprs_amd
          ? sel->info.num_inputs
          : 0;
-   sel->num_vbos_in_user_sgprs = MIN2(sel->num_vs_inputs, sscreen->num_vbos_in_user_sgprs);
+   unsigned num_vbos_in_sgprs = si_num_vbos_in_user_sgprs_inline(sscreen->info.chip_class);
+   sel->num_vbos_in_user_sgprs = MIN2(sel->num_vs_inputs, num_vbos_in_sgprs);
 
    /* The prolog is a no-op if there are no inputs. */
    sel->vs_needs_prolog = sel->info.stage == MESA_SHADER_VERTEX && sel->info.num_inputs &&

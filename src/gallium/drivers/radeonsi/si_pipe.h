@@ -518,7 +518,6 @@ struct si_screen {
                                    unsigned width, unsigned height, unsigned depth, uint32_t *state,
                                    uint32_t *fmask_state);
 
-   unsigned num_vbos_in_user_sgprs;
    unsigned max_memory_usage_kb;
    unsigned pa_sc_raster_config;
    unsigned pa_sc_raster_config_1;
@@ -1957,6 +1956,20 @@ static inline unsigned si_get_num_coverage_samples(struct si_context *sctx)
       return SI_NUM_SMOOTH_AA_SAMPLES;
 
    return 1;
+}
+
+static unsigned ALWAYS_INLINE
+si_num_vbos_in_user_sgprs_inline(enum chip_class chip_class)
+{
+   /* This decreases CPU overhead if all descriptors are in user SGPRs because we don't
+    * have to allocate and count references for the upload buffer.
+    */
+   return chip_class >= GFX9 ? 5 : 1;
+}
+
+static inline unsigned si_num_vbos_in_user_sgprs(struct si_screen *sscreen)
+{
+   return si_num_vbos_in_user_sgprs_inline(sscreen->info.chip_class);
 }
 
 #define PRINT_ERR(fmt, args...)                                                                    \
