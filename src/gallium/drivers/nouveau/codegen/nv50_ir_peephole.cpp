@@ -3277,6 +3277,9 @@ MemoryOpt::runOpt(BasicBlock *bb)
 // constructs.
 class FlatteningPass : public Pass
 {
+public:
+   FlatteningPass() : gpr_unit(0) {}
+
 private:
    virtual bool visit(Function *);
    virtual bool visit(BasicBlock *);
