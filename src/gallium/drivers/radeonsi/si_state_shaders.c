@@ -1880,10 +1880,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
 {
    struct si_context *sctx = (struct si_context *)ctx;
 
-   memset(&key->part, 0, sizeof(key->part));
-   memset(&key->mono, 0, sizeof(key->mono));
-   memset(&key->opt, 0, sizeof(key->opt));
-
+#if 0 /* TODO: enable this */
    unsigned num_inlinable_uniforms = sel->info.base.num_inlinable_uniforms;
    if (num_inlinable_uniforms &&
        sctx->inlinable_uniforms_valid_mask & (1 << sel->pipe_shader_type)) {
@@ -1892,15 +1889,24 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
              sctx->inlinable_uniforms[sel->pipe_shader_type],
              num_inlinable_uniforms * 4);
    }
+#endif
 
    switch (sel->info.stage) {
    case MESA_SHADER_VERTEX:
+      memset(&key->part, 0, sizeof(key->part));
+      memset(&key->mono, 0, sizeof(key->mono));
+      memset(&key->opt, 0, sizeof(key->opt));
+
       si_shader_selector_key_vs(sctx, sel, key, &key->part.vs.prolog);
 
       if (!sctx->shader.tes.cso && !sctx->shader.gs.cso)
          si_shader_selector_key_hw_vs(sctx, sel, key);
       break;
    case MESA_SHADER_TESS_CTRL:
+      memset(&key->part, 0, sizeof(key->part));
+      memset(&key->mono, 0, sizeof(key->mono));
+      memset(&key->opt, 0, sizeof(key->opt));
+
       if (sctx->chip_class >= GFX9) {
          si_shader_selector_key_vs(sctx, sctx->shader.vs.cso, key, &key->part.tcs.ls_prolog);
          key->part.tcs.ls = sctx->shader.vs.cso;
@@ -1931,10 +1937,18 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->mono.u.ff_tcs_inputs_to_copy = sctx->shader.vs.cso->outputs_written;
       break;
    case MESA_SHADER_TESS_EVAL:
+      memset(&key->part, 0, sizeof(key->part));
+      memset(&key->mono, 0, sizeof(key->mono));
+      memset(&key->opt, 0, sizeof(key->opt));
+
       if (!sctx->shader.gs.cso)
          si_shader_selector_key_hw_vs(sctx, sel, key);
       break;
    case MESA_SHADER_GEOMETRY:
+      memset(&key->part, 0, sizeof(key->part));
+      memset(&key->mono, 0, sizeof(key->mono));
+      memset(&key->opt, 0, sizeof(key->opt));
+
       if (sctx->chip_class >= GFX9) {
          if (sctx->shader.tes.cso) {
             key->part.gs.es = sctx->shader.tes.cso;
@@ -1953,6 +1967,10 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       key->part.gs.prolog.tri_strip_adj_fix = sctx->gs_tri_strip_adj_fix;
       break;
    case MESA_SHADER_FRAGMENT: {
+      memset(&key->part, 0, sizeof(key->part));
+      memset(&key->mono, 0, sizeof(key->mono));
+      memset(&key->opt, 0, sizeof(key->opt));
+
       struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
       struct si_state_blend *blend = sctx->queued.named.blend;
 
