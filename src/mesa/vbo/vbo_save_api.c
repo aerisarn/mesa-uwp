@@ -601,6 +601,9 @@ compile_vertex_list(struct gl_context *ctx)
 
    merge_prims(ctx, node->cold->prims, &node->cold->prim_count);
 
+   GLintptr buffer_offset = 0;
+   GLuint start_offset = 0;
+
    /* Create an index buffer. */
    node->cold->min_index = node->cold->max_index = 0;
    if (save->vert_count == 0 || save->prim_count == 0)
@@ -622,11 +625,6 @@ compile_vertex_list(struct gl_context *ctx)
    int max_indices_count = MAX2(total_vert_count * 2 - (node->cold->prim_count * 2) + 1,
                                 total_vert_count);
 
-   int indices_offset = 0;
-   int available = save->previous_ib ? (save->previous_ib->Size / 4 - save->ib_first_free_index) : 0;
-   if (available >= max_indices_count) {
-      indices_offset = save->ib_first_free_index;
-   }
    int size = max_indices_count * sizeof(uint32_t);
    uint32_t* indices = (uint32_t*) malloc(size);
    struct _mesa_prim *merged_prims = NULL;
@@ -729,7 +727,7 @@ compile_vertex_list(struct gl_context *ctx)
          assert(last_valid_prim <= i);
          merged_prims = realloc(merged_prims, (1 + last_valid_prim) * sizeof(struct _mesa_prim));
          merged_prims[last_valid_prim] = original_prims[i];
-         merged_prims[last_valid_prim].start = indices_offset + start;
+         merged_prims[last_valid_prim].start = start;
          merged_prims[last_valid_prim].count = idx - start;
       }
       merged_prims[last_valid_prim].mode = mode;
@@ -742,113 +740,114 @@ compile_vertex_list(struct gl_context *ctx)
    node->cold->ib.count = idx;
    node->cold->ib.index_size_shift = (GL_UNSIGNED_INT - GL_UNSIGNED_BYTE) >> 1;
 
-   GLintptr old_offset = 0;
-   if (save->VAO[0]) {
-      old_offset = save->VAO[0]->BufferBinding[0].Offset
-         + save->VAO[0]->VertexAttrib[VERT_ATTRIB_POS].RelativeOffset;
-   }
-   GLintptr buffer_offset =
-       (save->buffer_map - save->vertex_store->buffer_in_ram) * sizeof(GLfloat);
-   const GLintptr original_buffer_offset = buffer_offset;
-   assert(old_offset <= buffer_offset);
-   const GLintptr offset_diff = buffer_offset - old_offset;
-   GLuint start_offset = 0;
-   if (offset_diff > 0 && stride > 0 && offset_diff % stride == 0) {
-      /* The vertex size is an exact multiple of the buffer offset.
-       * This means that we can use zero-based vertex attribute pointers
-       * and specify the start of the primitive with the _mesa_prim::start
-       * field.  This results in issuing several draw calls with identical
-       * vertex attribute information.  This can result in fewer state
-       * changes in drivers.  In particular, the Gallium CSO module will
-       * filter out redundant vertex buffer changes.
-       */
-      /* We cannot immediately update the primitives as some methods below
-       * still need the uncorrected start vertices
-       */
-      start_offset = offset_diff/stride;
-      assert(old_offset == buffer_offset - offset_diff);
-      buffer_offset = old_offset;
-   }
+   /* How many bytes do we need to store the indices and the vertices */
+   total_vert_count = vertex_to_index ? (max_index + 1) : idx;
+   unsigned total_bytes_needed = idx * sizeof(uint32_t) +
+                                 total_vert_count * save->vertex_size * sizeof(fi_type);
 
-   /* Correct the primitive starts, we can only do this here as copy_vertices
-    * and convert_line_loop_to_strip above consume the uncorrected starts.
-    * On the other hand the _vbo_loopback_vertex_list call below needs the
-    * primitives to be corrected already.
-    */
-   for (unsigned i = 0; i < node->cold->prim_count; i++) {
-      node->cold->prims[i].start += start_offset;
-   }
-   /* start_offset shifts vertices (so v[0] becomes v[start_offset]), so we have
-    * to apply this transformation to all indices and max_index.
-    */
-   for (unsigned i = 0; i < idx; i++)
-      indices[i] += start_offset;
-   max_index += start_offset;
-
-   if (!indices_offset) {
-      /* Allocate a new index buffer */
-      _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
-      save->previous_ib = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
-      bool success = ctx->Driver.BufferData(ctx,
-                                            GL_ELEMENT_ARRAY_BUFFER_ARB,
-                                            MAX2(VBO_SAVE_INDEX_SIZE, idx) * sizeof(uint32_t),
-                                            NULL,
-                                            GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
-                                            save->previous_ib);
-      if (!success) {
-         _mesa_reference_buffer_object(ctx, &save->previous_ib, NULL);
-         _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+   const GLintptr old_offset = save->VAO[0] ?
+      save->VAO[0]->BufferBinding[0].Offset + save->VAO[0]->VertexAttrib[VERT_ATTRIB_POS].RelativeOffset : 0;
+   if (old_offset != save->current_bo_bytes_used && stride > 0) {
+      GLintptr offset_diff = save->current_bo_bytes_used - old_offset;
+      while (offset_diff > 0 &&
+             save->current_bo_bytes_used < save->current_bo->Size &&
+             offset_diff % stride != 0) {
+         save->current_bo_bytes_used++;
+         offset_diff = save->current_bo_bytes_used - old_offset;
       }
    }
+   buffer_offset = save->current_bo_bytes_used;
 
-   _mesa_reference_buffer_object(ctx, &node->cold->ib.obj, save->previous_ib);
+   /* Can we reuse the previous bo or should we allocate a new one? */
+   int available_bytes = save->current_bo ? save->current_bo->Size - save->current_bo_bytes_used : 0;
+   if (total_bytes_needed > available_bytes) {
+      if (save->current_bo)
+         _mesa_reference_buffer_object(ctx, &save->current_bo, NULL);
+      save->current_bo = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
+      bool success = ctx->Driver.BufferData(ctx,
+                                            GL_ELEMENT_ARRAY_BUFFER_ARB,
+                                            MAX2(total_bytes_needed, VBO_SAVE_BUFFER_SIZE * sizeof(uint32_t)),
+                                            NULL,
+                                            GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
+                                            save->current_bo);
+      if (!success) {
+         _mesa_reference_buffer_object(ctx, &save->current_bo, NULL);
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+      } else {
+         save->current_bo_bytes_used = 0;
+         available_bytes = save->current_bo->Size;
+      }
+      buffer_offset = 0;
+   } else {
+      assert(old_offset <= buffer_offset);
+      const GLintptr offset_diff = buffer_offset - old_offset;
+      if (offset_diff > 0 && stride > 0 && offset_diff % stride == 0) {
+         /* The vertex size is an exact multiple of the buffer offset.
+          * This means that we can use zero-based vertex attribute pointers
+          * and specify the start of the primitive with the _mesa_prim::start
+          * field.  This results in issuing several draw calls with identical
+          * vertex attribute information.  This can result in fewer state
+          * changes in drivers.  In particular, the Gallium CSO module will
+          * filter out redundant vertex buffer changes.
+          */
+         /* We cannot immediately update the primitives as some methods below
+          * still need the uncorrected start vertices
+          */
+         start_offset = offset_diff/stride;
+         assert(old_offset == buffer_offset - offset_diff);
+         buffer_offset = old_offset;
+      }
 
+      /* Correct the primitive starts, we can only do this here as copy_vertices
+       * and convert_line_loop_to_strip above consume the uncorrected starts.
+       * On the other hand the _vbo_loopback_vertex_list call below needs the
+       * primitives to be corrected already.
+       */
+      for (unsigned i = 0; i < node->cold->prim_count; i++) {
+         node->cold->prims[i].start += start_offset;
+      }
+      /* start_offset shifts vertices (so v[0] becomes v[start_offset]), so we have
+       * to apply this transformation to all indices and max_index.
+       */
+      for (unsigned i = 0; i < idx; i++)
+         indices[i] += start_offset;
+      max_index += start_offset;
+   }
+
+   _mesa_reference_buffer_object(ctx, &node->cold->ib.obj, save->current_bo);
+
+   /* Upload the vertices first (see buffer_offset) */
+   ctx->Driver.BufferSubData(ctx,
+                             save->current_bo_bytes_used,
+                             total_vert_count * save->vertex_size * sizeof(fi_type),
+                             vertex_to_index ? temp_vertices_buffer : save->buffer_map,
+                             node->cold->ib.obj);
+   save->current_bo_bytes_used += total_vert_count * save->vertex_size * sizeof(fi_type);
+
+  if (vertex_to_index) {
+      _mesa_hash_table_destroy(vertex_to_index, _free_entry);
+      free(temp_vertices_buffer);
+   }
+
+   /* Since we're append the indices to an existing buffer, we need to adjust the start value of each
+    * primitive (not the indices themselves). */
+   save->current_bo_bytes_used += align(save->current_bo_bytes_used, 4) - save->current_bo_bytes_used;
+   int indices_offset = save->current_bo_bytes_used / 4;
+   for (int i = 0; i < merged_prim_count; i++) {
+      merged_prims[i].start += indices_offset;
+   }
+
+   /* Then upload the indices. */
    if (node->cold->ib.obj) {
       ctx->Driver.BufferSubData(ctx,
-                                indices_offset * sizeof(uint32_t),
+                                save->current_bo_bytes_used,
                                 idx * sizeof(uint32_t),
                                 indices,
                                 node->cold->ib.obj);
-      save->ib_first_free_index = indices_offset + idx;
+      save->current_bo_bytes_used += idx * sizeof(uint32_t);
    } else {
       node->cold->vertex_count = 0;
       node->cold->prim_count = 0;
-   }
-
-
-  if (vertex_to_index) {
-      ctx->Driver.BufferSubData(ctx,
-                                original_buffer_offset,
-                                (max_index - start_offset + 1) * save->vertex_size * sizeof(fi_type),
-                                temp_vertices_buffer,
-                                save->vertex_store->bufferobj);
-
-      _mesa_hash_table_destroy(vertex_to_index, _free_entry);
-      free(temp_vertices_buffer);
-   } else {
-      ctx->Driver.BufferSubData(ctx,
-                                original_buffer_offset,
-                                idx * save->vertex_size * sizeof(fi_type),
-                                &save->vertex_store->buffer_in_ram[original_buffer_offset / sizeof(float)],
-                                save->vertex_store->bufferobj);
-   }
-
-   GLuint offsets[VBO_ATTRIB_MAX];
-   for (unsigned i = 0, offset = 0; i < VBO_ATTRIB_MAX; ++i) {
-      offsets[i] = offset;
-      offset += save->attrsz[i] * sizeof(GLfloat);
-   }
-   /* Create a pair of VAOs for the possible VERTEX_PROCESSING_MODEs
-    * Note that this may reuse the previous one of possible.
-    */
-   for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm) {
-      /* create or reuse the vao */
-      update_vao(ctx, vpm, &save->VAO[vpm],
-                 save->vertex_store->bufferobj, buffer_offset, stride,
-                 save->enabled, save->attrsz, save->attrtype, offsets);
-      /* Reference the vao in the dlist */
-      node->VAO[vpm] = NULL;
-      _mesa_reference_vao(ctx, &node->VAO[vpm], save->VAO[vpm]);
    }
 
    /* Prepare for DrawGallium */
@@ -891,6 +890,36 @@ compile_vertex_list(struct gl_context *ctx)
    free(merged_prims);
 
 end:
+
+   if (!save->current_bo) {
+      save->current_bo = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
+      bool success = ctx->Driver.BufferData(ctx,
+                                            GL_ELEMENT_ARRAY_BUFFER_ARB,
+                                            VBO_SAVE_BUFFER_SIZE * sizeof(uint32_t),
+                                            NULL,
+                                            GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
+                                            save->current_bo);
+   }
+
+   GLuint offsets[VBO_ATTRIB_MAX];
+   for (unsigned i = 0, offset = 0; i < VBO_ATTRIB_MAX; ++i) {
+      offsets[i] = offset;
+      offset += save->attrsz[i] * sizeof(GLfloat);
+   }
+   /* Create a pair of VAOs for the possible VERTEX_PROCESSING_MODEs
+    * Note that this may reuse the previous one of possible.
+    */
+   for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm) {
+      /* create or reuse the vao */
+      update_vao(ctx, vpm, &save->VAO[vpm],
+                 save->current_bo, buffer_offset, stride,
+                 save->enabled, save->attrsz, save->attrtype, offsets);
+      /* Reference the vao in the dlist */
+      node->VAO[vpm] = NULL;
+      _mesa_reference_vao(ctx, &node->VAO[vpm], save->VAO[vpm]);
+   }
+
+
    /* Deal with GL_COMPILE_AND_EXECUTE:
     */
    if (ctx->ExecuteFlag) {
@@ -898,8 +927,24 @@ end:
 
       _glapi_set_dispatch(ctx->Exec);
 
-      /* Note that the range of referenced vertices must be mapped already */
+      /* _vbo_loopback_vertex_list doesn't use the index buffer, so we have to
+       * use buffer_in_ram instead of current_bo which contains all vertices instead
+       * of the deduplicated vertices only in the !UseLoopback case.
+       *
+       * The problem is that the VAO offset is based on current_bo's layout,
+       * so we have to use a temp value.
+       */
+      struct gl_vertex_array_object *vao = node->VAO[VP_MODE_SHADER];
+      GLintptr original = vao->BufferBinding[0].Offset;
+      if (!ctx->ListState.Current.UseLoopback) {
+         GLintptr new_offset = (save->buffer_map - save->vertex_store->buffer_in_ram) *
+                               sizeof(GLfloat);
+         /* 'start_offset' has been added to all primitives 'start', so undo it here. */
+         new_offset -= start_offset * stride;
+         vao->BufferBinding[0].Offset = new_offset;
+      }
       _vbo_loopback_vertex_list(ctx, node, save->vertex_store->buffer_in_ram);
+      vao->BufferBinding[0].Offset = original;
 
       _glapi_set_dispatch(dispatch);
    }
@@ -1587,8 +1632,10 @@ _ensure_draws_fits_in_storage(struct gl_context *ctx, int primcount, int vertcou
    bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= save->max_vert);
 
    if (realloc_prim || realloc_vert) {
-      if (save->vert_count || save->prim_count)
+      if (save->vert_count || save->prim_count) {
+         /* TODO: this really isn't needed. We should realloc only the CPU-side memory. */
          compile_vertex_list(ctx);
+      }
       realloc_storage(ctx, realloc_prim ? primcount : -1, realloc_vert ? vertcount : -1);
       reset_counters(ctx);
       assert(save->prim_max);
