@@ -415,7 +415,11 @@ namespace {
          #undef EXT
       }
 
-      return SPIRV::TranslatorOpts(maximum_spirv_version, spirv_extensions);
+      auto translator_opts = SPIRV::TranslatorOpts(maximum_spirv_version, spirv_extensions);
+#if LLVM_VERSION_MAJOR >= 13
+      translator_opts.setPreserveOCLKernelArgTypeMetadataThroughString(true);
+#endif
+      return translator_opts;
    }
 #endif
 }
