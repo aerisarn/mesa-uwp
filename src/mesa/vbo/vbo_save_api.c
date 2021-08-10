@@ -548,61 +548,14 @@ compile_vertex_list(struct gl_context *ctx)
    /* Make sure the pointer is aligned to the size of a pointer */
    assert((GLintptr) node % sizeof(void *) == 0);
 
-   /* Duplicate our template, increment refcounts to the storage structs:
-    */
-   GLintptr old_offset = 0;
-   if (save->VAO[0]) {
-      old_offset = save->VAO[0]->BufferBinding[0].Offset
-         + save->VAO[0]->VertexAttrib[VERT_ATTRIB_POS].RelativeOffset;
-   }
    const GLsizei stride = save->vertex_size*sizeof(GLfloat);
-   GLintptr buffer_offset =
-       (save->buffer_map - save->vertex_store->buffer_in_ram) * sizeof(GLfloat);
-   const GLintptr original_buffer_offset = buffer_offset;
-   assert(old_offset <= buffer_offset);
-   const GLintptr offset_diff = buffer_offset - old_offset;
-   GLuint start_offset = 0;
-   if (offset_diff > 0 && stride > 0 && offset_diff % stride == 0) {
-      /* The vertex size is an exact multiple of the buffer offset.
-       * This means that we can use zero-based vertex attribute pointers
-       * and specify the start of the primitive with the _mesa_prim::start
-       * field.  This results in issuing several draw calls with identical
-       * vertex attribute information.  This can result in fewer state
-       * changes in drivers.  In particular, the Gallium CSO module will
-       * filter out redundant vertex buffer changes.
-       */
-      /* We cannot immediately update the primitives as some methods below
-       * still need the uncorrected start vertices
-       */
-      start_offset = offset_diff/stride;
-      assert(old_offset == buffer_offset - offset_diff);
-      buffer_offset = old_offset;
-   }
-   GLuint offsets[VBO_ATTRIB_MAX];
-   for (unsigned i = 0, offset = 0; i < VBO_ATTRIB_MAX; ++i) {
-      offsets[i] = offset;
-      offset += save->attrsz[i] * sizeof(GLfloat);
-   }
+
    node->cold->vertex_count = save->vert_count;
    node->cold->wrap_count = save->copied.nr;
    node->cold->prims = save->prims;
    node->cold->ib.obj = NULL;
    node->cold->prim_count = save->prim_count;
    node->cold->prim_store = save->prim_store;
-
-   /* Create a pair of VAOs for the possible VERTEX_PROCESSING_MODEs
-    * Note that this may reuse the previous one of possible.
-    */
-   for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm) {
-      /* create or reuse the vao */
-      update_vao(ctx, vpm, &save->VAO[vpm],
-                 save->vertex_store->bufferobj, buffer_offset, stride,
-                 save->enabled, save->attrsz, save->attrtype, offsets);
-      /* Reference the vao in the dlist */
-      node->VAO[vpm] = NULL;
-      _mesa_reference_vao(ctx, &node->VAO[vpm], save->VAO[vpm]);
-   }
-
    node->cold->prim_store->refcount++;
 
    if (save->no_current_update) {
@@ -789,6 +742,34 @@ compile_vertex_list(struct gl_context *ctx)
    node->cold->ib.count = idx;
    node->cold->ib.index_size_shift = (GL_UNSIGNED_INT - GL_UNSIGNED_BYTE) >> 1;
 
+   GLintptr old_offset = 0;
+   if (save->VAO[0]) {
+      old_offset = save->VAO[0]->BufferBinding[0].Offset
+         + save->VAO[0]->VertexAttrib[VERT_ATTRIB_POS].RelativeOffset;
+   }
+   GLintptr buffer_offset =
+       (save->buffer_map - save->vertex_store->buffer_in_ram) * sizeof(GLfloat);
+   const GLintptr original_buffer_offset = buffer_offset;
+   assert(old_offset <= buffer_offset);
+   const GLintptr offset_diff = buffer_offset - old_offset;
+   GLuint start_offset = 0;
+   if (offset_diff > 0 && stride > 0 && offset_diff % stride == 0) {
+      /* The vertex size is an exact multiple of the buffer offset.
+       * This means that we can use zero-based vertex attribute pointers
+       * and specify the start of the primitive with the _mesa_prim::start
+       * field.  This results in issuing several draw calls with identical
+       * vertex attribute information.  This can result in fewer state
+       * changes in drivers.  In particular, the Gallium CSO module will
+       * filter out redundant vertex buffer changes.
+       */
+      /* We cannot immediately update the primitives as some methods below
+       * still need the uncorrected start vertices
+       */
+      start_offset = offset_diff/stride;
+      assert(old_offset == buffer_offset - offset_diff);
+      buffer_offset = old_offset;
+   }
+
    /* Correct the primitive starts, we can only do this here as copy_vertices
     * and convert_line_loop_to_strip above consume the uncorrected starts.
     * On the other hand the _vbo_loopback_vertex_list call below needs the
@@ -850,6 +831,24 @@ compile_vertex_list(struct gl_context *ctx)
                                 idx * save->vertex_size * sizeof(fi_type),
                                 &save->vertex_store->buffer_in_ram[original_buffer_offset / sizeof(float)],
                                 save->vertex_store->bufferobj);
+   }
+
+   GLuint offsets[VBO_ATTRIB_MAX];
+   for (unsigned i = 0, offset = 0; i < VBO_ATTRIB_MAX; ++i) {
+      offsets[i] = offset;
+      offset += save->attrsz[i] * sizeof(GLfloat);
+   }
+   /* Create a pair of VAOs for the possible VERTEX_PROCESSING_MODEs
+    * Note that this may reuse the previous one of possible.
+    */
+   for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm) {
+      /* create or reuse the vao */
+      update_vao(ctx, vpm, &save->VAO[vpm],
+                 save->vertex_store->bufferobj, buffer_offset, stride,
+                 save->enabled, save->attrsz, save->attrtype, offsets);
+      /* Reference the vao in the dlist */
+      node->VAO[vpm] = NULL;
+      _mesa_reference_vao(ctx, &node->VAO[vpm], save->VAO[vpm]);
    }
 
    /* Prepare for DrawGallium */
