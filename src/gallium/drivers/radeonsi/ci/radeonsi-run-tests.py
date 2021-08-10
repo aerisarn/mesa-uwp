@@ -32,6 +32,7 @@ import tempfile
 import itertools
 import filecmp
 import multiprocessing
+import csv
 
 
 def print_red(txt, end_line=True):
@@ -61,7 +62,12 @@ parser.add_argument(
 )
 parser.add_argument("--verbose", "-v", action="count", default=0)
 parser.add_argument(
-    "--include-tests", "-t", action="append", dest="include_tests", default=[]
+    "--include-tests",
+    "-t",
+    action="append",
+    dest="include_tests",
+    default=[],
+    help="Only run the test matching this expression. This can only be a filename containing a list of failing tests to re-run.",
 )
 
 parser.add_argument(
@@ -199,6 +205,20 @@ def verify_results(baseline1, baseline2):
     return True
 
 
+def parse_test_filters(include_tests):
+    cmd = []
+    for t in include_tests:
+        if os.path.exists(t):
+            with open(t, "r") as file:
+                for row in csv.reader(file, delimiter=","):
+                    cmd += ["-t", row[0]]
+        else:
+            cmd += ["-t", t]
+    return cmd
+
+
+filters_args = parse_test_filters(args.include_tests)
+
 # piglit test
 if args.piglit:
     out = os.path.join(output_folder, "piglit")
@@ -223,9 +243,8 @@ if args.piglit:
         str(args.jobs),
         "--skips",
         skips,
-    ]
-    for t in args.include_tests:
-        cmd += ["-t", t]
+    ] + filters_args
+
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
     env = os.environ.copy()
@@ -265,9 +284,8 @@ if args.glcts:
         str(args.jobs),
         "--timeout",
         "1000",
-    ]
-    for t in args.include_tests:
-        cmd += ["-t", t]
+    ] + filters_args
+
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
     cmd += deqp_args
