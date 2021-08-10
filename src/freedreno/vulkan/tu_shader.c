@@ -546,38 +546,25 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    return true;
 }
 
+struct lower_instr_params {
+   struct tu_shader *shader;
+   const struct tu_pipeline_layout *layout;
+};
+
 static bool
-lower_impl(nir_function_impl *impl, struct tu_shader *shader,
-            const struct tu_pipeline_layout *layout)
+lower_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 {
-   nir_builder b;
-   nir_builder_init(&b, impl);
-   bool progress = false;
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         b.cursor = nir_before_instr(instr);
-         switch (instr->type) {
-         case nir_instr_type_tex:
-            progress |= lower_tex(&b, nir_instr_as_tex(instr), shader, layout);
-            break;
-         case nir_instr_type_intrinsic:
-            progress |= lower_intrinsic(&b, nir_instr_as_intrinsic(instr), shader, layout);
-            break;
-         default:
-            break;
-         }
-      }
+   struct lower_instr_params *params = cb_data;
+   b->cursor = nir_before_instr(instr);
+   switch (instr->type) {
+   case nir_instr_type_tex:
+      return lower_tex(b, nir_instr_as_tex(instr), params->shader, params->layout);
+   case nir_instr_type_intrinsic:
+      return lower_intrinsic(b, nir_instr_as_intrinsic(instr), params->shader, params->layout);
+   default:
+      return false;
    }
-
-   if (progress)
-      nir_metadata_preserve(impl, nir_metadata_none);
-   else
-      nir_metadata_preserve(impl, nir_metadata_all);
-
-   return progress;
 }
-
 
 /* Figure out the range of push constants that we're actually going to push to
  * the shader, and tell the backend to reserve this range when pushing UBO
@@ -629,14 +616,17 @@ static bool
 tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
             const struct tu_pipeline_layout *layout)
 {
-   bool progress = false;
-
    gather_push_constants(shader, tu_shader);
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= lower_impl(function->impl, tu_shader, layout);
-   }
+   struct lower_instr_params params = {
+      .shader = tu_shader,
+      .layout = layout,
+   };
+
+   bool progress = nir_shader_instructions_pass(shader,
+                                                lower_instr,
+                                                nir_metadata_none,
+                                                &params);
 
    /* Remove now-unused variables so that when we gather the shader info later
     * they won't be counted.
