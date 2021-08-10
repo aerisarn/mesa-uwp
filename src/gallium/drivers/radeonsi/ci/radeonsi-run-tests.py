@@ -35,12 +35,16 @@ import multiprocessing
 import csv
 
 
-def print_red(txt, end_line=True):
-    print("\033[0;31m", txt, "\033[0m", end="\n" if end_line else " ")
+def print_red(txt, end_line=True, prefix=None):
+    if prefix:
+        print(prefix, end="")
+    print("\033[0;31m{}\033[0m".format(txt), end="\n" if end_line else " ")
 
 
-def print_yellow(txt, end_line=True):
-    print("\033[1;33m", txt, "\033[0m", end="\n" if end_line else " ")
+def print_yellow(txt, end_line=True, prefix=None):
+    if prefix:
+        print(prefix, end="")
+    print("\033[1;33m{}\033[0m".format(txt), end="\n" if end_line else " ")
 
 
 parser = argparse.ArgumentParser(description="radeonsi tester")
@@ -163,8 +167,12 @@ spin = itertools.cycle("-\\|/")
 
 
 def run_cmd(args, verbosity, env=None):
-    if verbosity > 0:
-        print_yellow("Running ", args)
+    if verbosity > 1:
+        print_yellow(
+            "| Command line argument '"
+            + " ".join(['"{}"'.format(a) for a in args])
+            + "'"
+        )
     start = datetime.now()
     proc = subprocess.Popen(
         args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env
@@ -173,9 +181,9 @@ def run_cmd(args, verbosity, env=None):
         line = proc.stdout.readline().decode()
         if verbosity > 0:
             if "ERROR" in line:
-                print_red(line.strip())
+                print_red(line.strip(), prefix="| ")
             else:
-                print(line.strip())
+                print("| " + line.strip())
         else:
             sys.stdout.write(next(spin))
             sys.stdout.flush()
@@ -191,7 +199,10 @@ def run_cmd(args, verbosity, env=None):
     if verbosity == 0:
         sys.stdout.write(" ... ")
 
-    print_yellow("Completed in {} seconds".format(int((end - start).total_seconds())))
+    print_yellow(
+        "Completed in {} seconds".format(int((end - start).total_seconds())),
+        prefix="└ " if verbosity > 0 else None,
+    )
 
 
 def verify_results(baseline1, baseline2):
