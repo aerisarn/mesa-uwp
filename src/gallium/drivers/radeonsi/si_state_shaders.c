@@ -1879,12 +1879,12 @@ static void si_update_ps_shader_key(struct si_context *sctx)
    struct si_shader_selector *sel = sctx->shader.ps.cso;
    struct si_shader_key *key = &sctx->shader.ps.key;
 
-   memset(&key->part, 0, sizeof(key->part));
-
    /** Framebuffer dependencies. */
    if (sel->info.color0_writes_all_cbufs &&
        sel->info.colors_written == 0x1)
       key->part.ps.epilog.last_cbuf = MAX2(sctx->framebuffer.state.nr_cbufs, 1) - 1;
+   else
+      key->part.ps.epilog.last_cbuf = 0;
 
    /* ps_uses_fbfetch is true only if the color buffer is bound. */
    if (sctx->ps_uses_fbfetch && !sctx->blitter_running) {
@@ -1988,6 +1988,8 @@ static void si_update_ps_shader_key(struct si_context *sctx)
    /** Sample shading dependencies. */
    if (sctx->ps_iter_samples > 1 && sel->info.reads_samplemask)
       key->part.ps.prolog.samplemask_log_ps_iter = util_logbase2(sctx->ps_iter_samples);
+   else
+      key->part.ps.prolog.samplemask_log_ps_iter = 0;
 
    /** Framebuffer, rasterizer, and sample shading dependencies. */
    bool uses_persp_center = sel->info.uses_persp_center ||
@@ -1997,8 +1999,6 @@ static void si_update_ps_shader_key(struct si_context *sctx)
    bool uses_persp_sample = sel->info.uses_persp_sample ||
                             (!rs->flatshade && sel->info.uses_persp_sample_color);
 
-   key->mono.u.ps.interpolate_at_sample_force_center = 0;
-
    if (rs->force_persample_interp && rs->multisample_enable &&
        sctx->framebuffer.nr_samples > 1 && sctx->ps_iter_samples > 1) {
       key->part.ps.prolog.force_persp_sample_interp =
@@ -2006,12 +2006,26 @@ static void si_update_ps_shader_key(struct si_context *sctx)
 
       key->part.ps.prolog.force_linear_sample_interp =
          sel->info.uses_linear_center || sel->info.uses_linear_centroid;
+
+      key->part.ps.prolog.force_persp_center_interp = 0;
+      key->part.ps.prolog.force_linear_center_interp = 0;
+      key->part.ps.prolog.bc_optimize_for_persp = 0;
+      key->part.ps.prolog.bc_optimize_for_linear = 0;
+      key->mono.u.ps.interpolate_at_sample_force_center = 0;
    } else if (rs->multisample_enable && sctx->framebuffer.nr_samples > 1) {
+      key->part.ps.prolog.force_persp_sample_interp = 0;
+      key->part.ps.prolog.force_linear_sample_interp = 0;
+      key->part.ps.prolog.force_persp_center_interp = 0;
+      key->part.ps.prolog.force_linear_center_interp = 0;
       key->part.ps.prolog.bc_optimize_for_persp =
          uses_persp_center && uses_persp_centroid;
       key->part.ps.prolog.bc_optimize_for_linear =
          sel->info.uses_linear_center && sel->info.uses_linear_centroid;
+      key->mono.u.ps.interpolate_at_sample_force_center = 0;
    } else {
+      key->part.ps.prolog.force_persp_sample_interp = 0;
+      key->part.ps.prolog.force_linear_sample_interp = 0;
+
       /* Make sure SPI doesn't compute more than 1 pair
        * of (i,j), which is the optimization here. */
       key->part.ps.prolog.force_persp_center_interp = uses_persp_center +
@@ -2021,7 +2035,8 @@ static void si_update_ps_shader_key(struct si_context *sctx)
       key->part.ps.prolog.force_linear_center_interp = sel->info.uses_linear_center +
                                                        sel->info.uses_linear_centroid +
                                                        sel->info.uses_linear_sample > 1;
-
+      key->part.ps.prolog.bc_optimize_for_persp = 0;
+      key->part.ps.prolog.bc_optimize_for_linear = 0;
       key->mono.u.ps.interpolate_at_sample_force_center = sel->info.uses_interp_at_sample;
    }
 
