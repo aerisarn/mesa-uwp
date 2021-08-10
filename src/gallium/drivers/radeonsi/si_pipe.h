@@ -1054,8 +1054,6 @@ struct si_context {
    unsigned descriptors_dirty;
    unsigned shader_pointers_dirty;
    unsigned shader_needs_decompress_mask;
-   unsigned inlinable_uniforms_valid_mask;
-   uint32_t inlinable_uniforms[SI_NUM_SHADERS][MAX_INLINABLE_UNIFORMS];
    struct si_buffer_resources internal_bindings;
    struct si_buffer_resources const_and_shader_buffers[SI_NUM_SHADERS];
    struct si_samplers samplers[SI_NUM_SHADERS];
