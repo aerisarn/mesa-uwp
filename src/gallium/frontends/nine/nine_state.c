@@ -2369,6 +2369,7 @@ init_draw_info(struct pipe_draw_info *info,
         info->instance_count = MAX2(dev->context.stream_freq[0] & 0x7FFFFF, 1);
     info->primitive_restart = FALSE;
     info->has_user_indices = FALSE;
+    info->take_index_buffer_ownership = FALSE;
     info->restart_index = 0;
 }
 
