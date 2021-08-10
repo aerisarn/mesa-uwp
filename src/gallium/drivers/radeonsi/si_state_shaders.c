@@ -1775,12 +1775,6 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader
    }
 }
 
-static unsigned si_get_alpha_test_func(struct si_context *sctx)
-{
-   /* Alpha-test should be disabled if colorbuffer 0 is integer. */
-   return sctx->queued.named.dsa->alpha_func;
-}
-
 void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selector *vs,
                                struct si_shader_key *key, struct si_vs_prolog_bits *prolog_key)
 {
@@ -1837,7 +1831,7 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
       bool ps_modifies_zs = ps->info.base.fs.uses_discard || ps->info.writes_z || ps->info.writes_stencil ||
                             ps->info.writes_samplemask ||
                             sctx->queued.named.blend->alpha_to_coverage ||
-                            si_get_alpha_test_func(sctx) != PIPE_FUNC_ALWAYS;
+                            sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS;
       unsigned ps_colormask = si_get_total_colormask(sctx);
 
       ps_disabled = sctx->queued.named.rasterizer->rasterizer_discard ||
@@ -2066,7 +2060,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
             key->mono.u.ps.interpolate_at_sample_force_center = 1;
       }
 
-      key->part.ps.epilog.alpha_func = si_get_alpha_test_func(sctx);
+      key->part.ps.epilog.alpha_func = sctx->queued.named.dsa->alpha_func;
 
       /* ps_uses_fbfetch is true only if the color buffer is bound. */
       if (sctx->ps_uses_fbfetch && !sctx->blitter_running) {
@@ -4134,7 +4128,7 @@ bool si_update_shaders(struct si_context *sctx)
       si_pm4_bind_state(sctx, ps, sctx->shader.ps.current->pm4);
 
       db_shader_control = sctx->shader.ps.cso->db_shader_control |
-                          S_02880C_KILL_ENABLE(si_get_alpha_test_func(sctx) != PIPE_FUNC_ALWAYS);
+                          S_02880C_KILL_ENABLE(sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS);
 
       if (si_pm4_state_changed(sctx, ps) || si_pm4_state_changed(sctx, vs) ||
           (sctx->ngg && si_pm4_state_changed(sctx, gs)) ||
