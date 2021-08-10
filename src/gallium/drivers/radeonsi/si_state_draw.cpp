@@ -208,13 +208,8 @@ static bool si_update_shaders(struct si_context *sctx)
 
    if (si_pm4_state_changed(sctx, ps) ||
        (!NGG && si_pm4_state_changed(sctx, vs)) ||
-       (NGG && si_pm4_state_changed(sctx, gs)) ||
-       sctx->sprite_coord_enable != rs->sprite_coord_enable ||
-       sctx->flatshade != rs->flatshade) {
-      sctx->sprite_coord_enable = rs->sprite_coord_enable;
-      sctx->flatshade = rs->flatshade;
+       (NGG && si_pm4_state_changed(sctx, gs)))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.spi_map);
-   }
 
    if ((GFX_VERSION >= GFX10_3 || (GFX_VERSION >= GFX9 && sctx->screen->info.rbplus_allowed)) &&
        si_pm4_state_changed(sctx, ps) &&

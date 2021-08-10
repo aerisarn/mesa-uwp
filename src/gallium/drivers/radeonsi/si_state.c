@@ -1114,6 +1114,10 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
        old_rs->pa_cl_clip_cntl != rs->pa_cl_clip_cntl)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 
+   if (old_rs->sprite_coord_enable != rs->sprite_coord_enable ||
+       old_rs->flatshade != rs->flatshade)
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.spi_map);
+
    if (old_rs->clip_plane_enable != rs->clip_plane_enable ||
        old_rs->rasterizer_discard != rs->rasterizer_discard ||
        old_rs->sprite_coord_enable != rs->sprite_coord_enable ||

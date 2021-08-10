@@ -3478,16 +3478,17 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
                                      ubyte fp16_lo_hi_mask)
 {
    struct si_shader_info *vsinfo = &vs->selector->info;
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    unsigned offset, ps_input_cntl = 0;
 
    if (interpolate == INTERP_MODE_FLAT ||
-       (interpolate == INTERP_MODE_COLOR && sctx->flatshade) ||
+       (interpolate == INTERP_MODE_COLOR && rs->flatshade) ||
        semantic == VARYING_SLOT_PRIMITIVE_ID)
       ps_input_cntl |= S_028644_FLAT_SHADE(1);
 
    if (semantic == VARYING_SLOT_PNTC ||
        (semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7 &&
-        sctx->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
+        rs->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
       ps_input_cntl |= S_028644_PT_SPRITE_TEX(1);
       if (fp16_lo_hi_mask & 0x1) {
          ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |

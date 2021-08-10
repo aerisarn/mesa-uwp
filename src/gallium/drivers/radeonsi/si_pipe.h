@@ -1040,9 +1040,7 @@ struct si_context {
    uint64_t ps_inputs_read_or_disabled;
    struct si_vertex_elements *vertex_elements;
    unsigned num_vertex_elements;
-   unsigned sprite_coord_enable;
    unsigned cs_max_waves_per_sh;
-   bool flatshade;
    bool do_update_shaders;
    bool compute_shaderbuf_sgprs_dirty;
    bool compute_image_sgprs_dirty;
