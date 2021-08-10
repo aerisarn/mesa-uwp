@@ -1889,7 +1889,7 @@ static void si_ps_key_update_framebuffer(struct si_context *sctx)
       key->part.ps.epilog.last_cbuf = 0;
 
    /* ps_uses_fbfetch is true only if the color buffer is bound. */
-   if (sctx->ps_uses_fbfetch && !sctx->blitter_running) {
+   if (sctx->ps_uses_fbfetch) {
       struct pipe_surface *cb0 = sctx->framebuffer.state.cbufs[0];
       struct pipe_resource *tex = cb0->texture;
 
