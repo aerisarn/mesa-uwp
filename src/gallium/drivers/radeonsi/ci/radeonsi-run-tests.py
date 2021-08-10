@@ -51,7 +51,7 @@ parser.add_argument(
     default=os.getenv("MAREKO_BUILD_PATH"),
 )
 parser.add_argument('--verbose', '-v', action='count', default=0)
-parser.add_argument('--include-tests', '-t', action='append', dest="include_tests")
+parser.add_argument('--include-tests', '-t', action='append', dest="include_tests", default=[])
 
 parser.add_argument(
     "--no-piglit", dest="piglit", help="Disable piglit tests", action="store_false"
