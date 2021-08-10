@@ -484,16 +484,15 @@ static void _free_entry(struct hash_entry *entry)
  */
 static uint32_t
 add_vertex(struct vbo_save_context *save, struct hash_table *hash_to_index,
-           uint32_t index, uint32_t offset_in_bytes, uint32_t base_index, fi_type *new_buffer,
+           uint32_t index, uint32_t base_index, fi_type *new_buffer,
            uint32_t *max_index)
 {
    /* If vertex deduplication is disabled return the original index. */
    if (!hash_to_index)
       return index;
 
-   /* Apply the offset into buffer_in_ram ... */
-   fi_type *vert = save->vertex_store->buffer_in_ram + offset_in_bytes / sizeof(float);
-   /* ... and cancel the start_offset trick.
+   fi_type *vert = save->buffer_map;
+   /* Cancel the start_offset trick.
     * This way we get the correct offset in all cases (= start_offset being 0 or not).
     */
    vert += save->vertex_size * (index - base_index);
@@ -740,16 +739,14 @@ compile_vertex_list(struct gl_context *ctx)
 
          indices[idx] = indices[idx - 1];
          indices[idx + 1] = add_vertex(save, vertex_to_index, original_prims[i].start,
-                                       original_buffer_offset, start_offset,
-                                       temp_vertices_buffer, &max_index);
+                                       start_offset, temp_vertices_buffer, &max_index);
          idx += 2;
          merged_prims[last_valid_prim].count += 2;
 
          if (tri_count % 2) {
             /* Add another index to preserve winding order */
             indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start,
-                                        original_buffer_offset, start_offset,
-                                        temp_vertices_buffer, &max_index);
+                                        start_offset, temp_vertices_buffer, &max_index);
             merged_prims[last_valid_prim].count++;
          }
       }
@@ -767,13 +764,11 @@ compile_vertex_list(struct gl_context *ctx)
              original_prims[i + 1].mode == GL_LINES)))) {
          for (unsigned j = 0; j < vertex_count; j++) {
             indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start + j,
-                                        original_buffer_offset, start_offset,
-                                        temp_vertices_buffer, &max_index);
+                                        start_offset, temp_vertices_buffer, &max_index);
             /* Repeat all but the first/last indices. */
             if (j && j != vertex_count - 1) {
                indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start + j,
-                                           original_buffer_offset, start_offset,
-                                           temp_vertices_buffer, &max_index);
+                                           start_offset, temp_vertices_buffer, &max_index);
             }
          }
       } else {
@@ -782,8 +777,7 @@ compile_vertex_list(struct gl_context *ctx)
 
          for (unsigned j = 0; j < vertex_count; j++) {
             indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start + j,
-                                        original_buffer_offset, start_offset,
-                                        temp_vertices_buffer, &max_index);
+                                        start_offset, temp_vertices_buffer, &max_index);
          }
       }
 
