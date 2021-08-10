@@ -3329,6 +3329,22 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    si_update_rasterized_prim(sctx);
 }
 
+void si_update_ps_kill_enable(struct si_context *sctx)
+{
+   if (!sctx->shader.ps.cso)
+      return;
+
+   unsigned db_shader_control = sctx->shader.ps.cso->db_shader_control |
+                                S_02880C_KILL_ENABLE(sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS);
+
+   if (sctx->ps_db_shader_control != db_shader_control) {
+      sctx->ps_db_shader_control = db_shader_control;
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
+      if (sctx->screen->dpbb_allowed)
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
+   }
+}
+
 static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -3366,6 +3382,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
    si_ps_key_update_sample_shading(sctx);
    si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
    si_update_ps_inputs_read_or_disabled(sctx);
+   si_update_ps_kill_enable(sctx);
 }
 
 static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)

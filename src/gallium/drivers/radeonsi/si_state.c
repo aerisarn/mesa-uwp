@@ -1352,6 +1352,7 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
    if (old_dsa->alpha_func != dsa->alpha_func) {
       si_ps_key_update_dsa(sctx);
       si_update_ps_inputs_read_or_disabled(sctx);
+      si_update_ps_kill_enable(sctx);
       sctx->do_update_shaders = true;
    }
 

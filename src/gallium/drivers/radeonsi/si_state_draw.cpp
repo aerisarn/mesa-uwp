@@ -203,9 +203,6 @@ static bool si_update_shaders(struct si_context *sctx)
       return false;
    si_pm4_bind_state(sctx, ps, sctx->shader.ps.current->pm4);
 
-   unsigned db_shader_control = sctx->shader.ps.cso->db_shader_control |
-                                S_02880C_KILL_ENABLE(sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS);
-
    if (si_pm4_state_changed(sctx, ps) ||
        (!NGG && si_pm4_state_changed(sctx, vs)) ||
        (NGG && si_pm4_state_changed(sctx, gs)))
@@ -216,13 +213,6 @@ static bool si_update_shaders(struct si_context *sctx)
        (!old_ps || old_spi_shader_col_format !=
                       sctx->shader.ps.current->key.part.ps.epilog.spi_shader_col_format))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
-
-   if (sctx->ps_db_shader_control != db_shader_control) {
-      sctx->ps_db_shader_control = db_shader_control;
-      si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
-      if (sctx->screen->dpbb_allowed)
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
-   }
 
    if (sctx->smoothing_enabled !=
        sctx->shader.ps.current->key.part.ps.epilog.poly_line_smoothing) {
