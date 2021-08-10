@@ -1874,11 +1874,6 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
    uint64_t outputs_written = vs->outputs_written_before_ps;
    uint64_t inputs_read = 0;
 
-   /* Ignore outputs that are not passed from VS to PS. */
-   outputs_written &= ~((1ull << si_shader_io_get_unique_index(VARYING_SLOT_POS, true)) |
-                        (1ull << si_shader_io_get_unique_index(VARYING_SLOT_PSIZ, true)) |
-                        (1ull << si_shader_io_get_unique_index(VARYING_SLOT_CLIP_VERTEX, true)));
-
    if (!ps_disabled) {
       inputs_read = ps->inputs_read;
    }
@@ -2881,8 +2876,14 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          } else if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
                     semantic != VARYING_SLOT_EDGE) {
             sel->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
-            sel->outputs_written_before_ps |= 1ull
-                                              << si_shader_io_get_unique_index(semantic, true);
+
+            /* Ignore outputs that are not passed from VS to PS. */
+            if (semantic != VARYING_SLOT_POS &&
+                semantic != VARYING_SLOT_PSIZ &&
+                semantic != VARYING_SLOT_CLIP_VERTEX) {
+               sel->outputs_written_before_ps |= 1ull
+                                                 << si_shader_io_get_unique_index(semantic, true);
+            }
          }
       }
    }
