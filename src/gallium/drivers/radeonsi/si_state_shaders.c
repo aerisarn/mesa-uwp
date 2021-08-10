@@ -1779,8 +1779,7 @@ void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selecto
    prolog_key->instance_divisor_is_one = elts->instance_divisor_is_one;
    prolog_key->instance_divisor_is_fetched = elts->instance_divisor_is_fetched;
 
-   unsigned count = MIN2(vs->info.num_inputs, elts->count);
-   unsigned count_mask = (1 << count) - 1;
+   unsigned count_mask = (1 << vs->info.num_inputs) - 1;
    unsigned fix = elts->fix_fetch_always & count_mask;
    unsigned opencode = elts->fix_fetch_opencode & count_mask;
 
