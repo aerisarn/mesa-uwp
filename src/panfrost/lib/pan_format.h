@@ -42,7 +42,9 @@ struct panfrost_format {
 struct pan_blendable_format {
         /* enum mali_color_buffer_internal_format */ uint16_t internal;
         /* enum mali_mfbd_color_format */ uint16_t writeback;
-        mali_pixel_format bifrost;
+
+        /* Indexed by the dithered? flag. So _PU first, then _AU */
+        mali_pixel_format bifrost[2];
 };
 
 extern const struct pan_blendable_format panfrost_blendable_formats_v6[PIPE_FORMAT_COUNT];

@@ -272,7 +272,7 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
          cfg.bifrost.equation.color_mask = 0xf;
          cfg.bifrost.internal.fixed_function.num_comps = 4;
          cfg.bifrost.internal.fixed_function.conversion.memory_format =
-            panfrost_format_to_bifrost_blend(pdev, format);
+            panfrost_format_to_bifrost_blend(pdev, format, false);
          cfg.bifrost.internal.fixed_function.conversion.register_format =
             shader_info->bifrost.blend[rt].format;
       } else {

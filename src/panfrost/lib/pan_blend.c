@@ -526,7 +526,7 @@ pan_blend_create_shader(const struct panfrost_device *dev,
 uint64_t
 pan_blend_get_bifrost_desc(const struct panfrost_device *dev,
                            enum pipe_format fmt, unsigned rt,
-                           unsigned force_size)
+                           unsigned force_size, bool dithered)
 {
         const struct util_format_description *desc = util_format_description(fmt);
         uint64_t res;
@@ -573,7 +573,7 @@ pan_blend_get_bifrost_desc(const struct panfrost_device *dev,
                 }
 
                 cfg.fixed_function.conversion.memory_format =
-                         panfrost_format_to_bifrost_blend(dev, fmt);
+                         panfrost_format_to_bifrost_blend(dev, fmt, dithered);
         }
 
         return res;
@@ -644,7 +644,7 @@ pan_blend_get_shader_locked(const struct panfrost_device *dev,
 
         if (pan_is_bifrost(dev)) {
                 inputs.blend.bifrost_blend_desc =
-                        pan_blend_get_bifrost_desc(dev, key.format, key.rt, 0);
+                        pan_blend_get_bifrost_desc(dev, key.format, key.rt, 0, false);
         }
 
         struct pan_shader_info info;

@@ -50,6 +50,7 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out);
 
 unsigned
 panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
-                                 enum pipe_format format);
+                                 enum pipe_format format,
+                                 bool dithered);
 
 #endif /* PAN_UTIL_H */

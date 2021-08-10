@@ -144,7 +144,7 @@ pan_blend_create_shader(const struct panfrost_device *dev,
 uint64_t
 pan_blend_get_bifrost_desc(const struct panfrost_device *dev,
                            enum pipe_format fmt, unsigned rt,
-                           unsigned force_size);
+                           unsigned force_size, bool dithered);
 
 /* Take blend_shaders.lock before calling this function and release it when
  * you're done with the shader variant object.
