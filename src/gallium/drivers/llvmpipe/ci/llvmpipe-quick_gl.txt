@@ -380,12 +380,6 @@ spec/amd_framebuffer_multisample_advanced/api-gles3: skip
 spec/amd_performance_monitor/api: skip
 spec/amd_performance_monitor/measure: skip
 spec/amd_performance_monitor/vc4: skip
-spec/amd_pinned_memory/decrement-offset: skip
-spec/amd_pinned_memory/increment-offset: skip
-spec/amd_pinned_memory/map-buffer decrement-offset: skip
-spec/amd_pinned_memory/map-buffer increment-offset: skip
-spec/amd_pinned_memory/map-buffer offset=0: skip
-spec/amd_pinned_memory/offset=0: skip
 spec/apple_object_purgeable/object_purgeable-api-pbo: skip
 spec/apple_object_purgeable/object_purgeable-api-texture: skip
 spec/apple_object_purgeable/object_purgeable-api-vbo: skip

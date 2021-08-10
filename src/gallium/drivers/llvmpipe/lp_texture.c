@@ -531,6 +531,28 @@ llvmpipe_resource_get_handle(struct pipe_screen *screen,
    return winsys->displaytarget_get_handle(winsys, lpr->dt, whandle);
 }
 
+static struct pipe_resource *
+llvmpipe_resource_from_user_memory(struct pipe_screen *_screen,
+				   const struct pipe_resource *resource,
+				   void *user_memory)
+{
+   struct llvmpipe_screen *screen = llvmpipe_screen(_screen);
+   struct llvmpipe_resource *lpr;
+
+   lpr = CALLOC_STRUCT(llvmpipe_resource);
+   if (!lpr) {
+      return NULL;
+   }
+
+   lpr->base = *resource;
+   lpr->screen = screen;
+   pipe_reference_init(&lpr->base.reference, 1);
+   lpr->base.screen = _screen;
+
+   lpr->data = user_memory;
+   lpr->userBuffer = TRUE;
+   return &lpr->base;
+}
 
 void *
 llvmpipe_transfer_map_ms( struct pipe_context *pipe,
@@ -980,6 +1002,7 @@ llvmpipe_init_screen_resource_funcs(struct pipe_screen *screen)
 
    screen->resource_get_info = llvmpipe_get_resource_info;
    screen->resource_get_param = llvmpipe_resource_get_param;
+   screen->resource_from_user_memory = llvmpipe_resource_from_user_memory;
    screen->allocate_memory = llvmpipe_allocate_memory;
    screen->free_memory = llvmpipe_free_memory;
    screen->map_memory = llvmpipe_map_memory;
