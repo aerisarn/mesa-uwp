@@ -709,8 +709,11 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
        old_blend->alpha_to_one != blend->alpha_to_one ||
        old_blend->dual_src_blend != blend->dual_src_blend ||
        old_blend->blend_enable_4bit != blend->blend_enable_4bit ||
-       old_blend->need_src_alpha_4bit != blend->need_src_alpha_4bit)
+       old_blend->need_src_alpha_4bit != blend->need_src_alpha_4bit) {
+      si_ps_key_update_framebuffer_blend(sctx);
+      si_ps_key_update_blend_rasterizer(sctx);
       sctx->do_update_shaders = true;
+   }
 
    if (sctx->screen->dpbb_allowed &&
        (old_blend->alpha_to_coverage != blend->alpha_to_coverage ||
@@ -1119,8 +1122,12 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
        old_rs->poly_smooth != rs->poly_smooth || old_rs->line_smooth != rs->line_smooth ||
        old_rs->clamp_fragment_color != rs->clamp_fragment_color ||
        old_rs->force_persample_interp != rs->force_persample_interp ||
-       old_rs->polygon_mode_is_points != rs->polygon_mode_is_points)
+       old_rs->polygon_mode_is_points != rs->polygon_mode_is_points) {
+      si_ps_key_update_blend_rasterizer(sctx);
+      si_ps_key_update_rasterizer(sctx);
+      si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
       sctx->do_update_shaders = true;
+   }
 }
 
 static void si_delete_rs_state(struct pipe_context *ctx, void *state)
@@ -1336,8 +1343,10 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.stencil_ref);
    }
 
-   if (old_dsa->alpha_func != dsa->alpha_func)
+   if (old_dsa->alpha_func != dsa->alpha_func) {
+      si_ps_key_update_dsa(sctx);
       sctx->do_update_shaders = true;
+   }
 
    if (sctx->screen->dpbb_allowed && ((old_dsa->depth_enabled != dsa->depth_enabled ||
                                        old_dsa->stencil_enabled != dsa->stencil_enabled ||
@@ -2983,6 +2992,9 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
    }
 
+   si_ps_key_update_framebuffer(sctx);
+   si_ps_key_update_framebuffer_blend(sctx);
+   si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
    sctx->do_update_shaders = true;
 
    if (!sctx->decompression_enabled) {
@@ -3635,6 +3647,9 @@ static void si_set_min_samples(struct pipe_context *ctx, unsigned min_samples)
       return;
 
    sctx->ps_iter_samples = min_samples;
+
+   si_ps_key_update_sample_shading(sctx);
+   si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
    sctx->do_update_shaders = true;
 
    si_update_ps_iter_samples(sctx);

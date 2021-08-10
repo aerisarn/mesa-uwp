@@ -1874,7 +1874,7 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
       key->opt.kill_pointsize = 1;
 }
 
-static void si_ps_key_update_framebuffer(struct si_context *sctx)
+void si_ps_key_update_framebuffer(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
    struct si_shader_key *key = &sctx->shader.ps.key;
@@ -1909,7 +1909,7 @@ static void si_ps_key_update_framebuffer(struct si_context *sctx)
    }
 }
 
-static void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
+void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
    struct si_shader_key *key = &sctx->shader.ps.key;
@@ -1973,7 +1973,7 @@ static void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
       key->opt.prefer_mono = 0;
 }
 
-static void si_ps_key_update_blend_rasterizer(struct si_context *sctx)
+void si_ps_key_update_blend_rasterizer(struct si_context *sctx)
 {
    struct si_shader_key *key = &sctx->shader.ps.key;
    struct si_state_blend *blend = sctx->queued.named.blend;
@@ -1982,7 +1982,7 @@ static void si_ps_key_update_blend_rasterizer(struct si_context *sctx)
    key->part.ps.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
 }
 
-static void si_ps_key_update_rasterizer(struct si_context *sctx)
+void si_ps_key_update_rasterizer(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
    struct si_shader_key *key = &sctx->shader.ps.key;
@@ -1996,7 +1996,7 @@ static void si_ps_key_update_rasterizer(struct si_context *sctx)
    key->part.ps.epilog.clamp_color = rs->clamp_fragment_color;
 }
 
-static void si_ps_key_update_dsa(struct si_context *sctx)
+void si_ps_key_update_dsa(struct si_context *sctx)
 {
    struct si_shader_key *key = &sctx->shader.ps.key;
 
@@ -2017,7 +2017,7 @@ static void si_ps_key_update_primtype_shader_rasterizer_framebuffer(struct si_co
       sctx->framebuffer.nr_samples <= 1;
 }
 
-static void si_ps_key_update_sample_shading(struct si_context *sctx)
+void si_ps_key_update_sample_shading(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
    struct si_shader_key *key = &sctx->shader.ps.key;
@@ -2031,7 +2031,7 @@ static void si_ps_key_update_sample_shading(struct si_context *sctx)
       key->part.ps.prolog.samplemask_log_ps_iter = 0;
 }
 
-static void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *sctx)
+void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
    struct si_shader_key *key = &sctx->shader.ps.key;
@@ -2182,14 +2182,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       key->part.gs.prolog.tri_strip_adj_fix = sctx->gs_tri_strip_adj_fix;
       break;
    case MESA_SHADER_FRAGMENT:
-      si_ps_key_update_framebuffer(sctx);
-      si_ps_key_update_framebuffer_blend(sctx);
-      si_ps_key_update_blend_rasterizer(sctx);
-      si_ps_key_update_rasterizer(sctx);
-      si_ps_key_update_dsa(sctx);
       si_ps_key_update_primtype_shader_rasterizer_framebuffer(sctx);
-      si_ps_key_update_sample_shading(sctx);
-      si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
       break;
    default:
       assert(0);
@@ -3348,6 +3341,14 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
    }
    si_update_ps_colorbuf0_slot(sctx);
+
+   si_ps_key_update_framebuffer(sctx);
+   si_ps_key_update_framebuffer_blend(sctx);
+   si_ps_key_update_blend_rasterizer(sctx);
+   si_ps_key_update_rasterizer(sctx);
+   si_ps_key_update_dsa(sctx);
+   si_ps_key_update_sample_shading(sctx);
+   si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
 }
 
 static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)

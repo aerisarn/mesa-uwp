@@ -582,6 +582,13 @@ void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selecto
                                struct si_shader_key *key, struct si_vs_prolog_bits *prolog_key);
 unsigned si_get_input_prim(const struct si_shader_selector *gs);
 bool si_update_ngg(struct si_context *sctx);
+void si_ps_key_update_framebuffer(struct si_context *sctx);
+void si_ps_key_update_framebuffer_blend(struct si_context *sctx);
+void si_ps_key_update_blend_rasterizer(struct si_context *sctx);
+void si_ps_key_update_rasterizer(struct si_context *sctx);
+void si_ps_key_update_dsa(struct si_context *sctx);
+void si_ps_key_update_sample_shading(struct si_context *sctx);
+void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *sctx);
 
 /* si_state_draw.c */
 void si_init_draw_functions_GFX6(struct si_context *sctx);
