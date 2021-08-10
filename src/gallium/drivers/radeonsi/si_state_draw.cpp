@@ -1258,7 +1258,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                   sctx->last_drawid = drawid_base + num_draws - 1;
             }
          } else {
-            if (info->index_bias_varies) {
+            if (index_bias_varies) {
                /* Only BaseVertex varies. */
                for (unsigned i = 0; i < num_draws; i++) {
                   uint64_t va = index_va + draws[i].start * index_size;
