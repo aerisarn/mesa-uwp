@@ -318,9 +318,6 @@ struct crocus_uncompiled_shader {
    /** Have any shader variants been compiled yet? */
    bool compiled_once;
 
-   /** Should we use ALT mode for math?  Useful for ARB programs. */
-   bool use_alt_mode;
-
    bool needs_edge_flag;
 
    /** Constant data scraped from the shader by nir_opt_large_constants */
