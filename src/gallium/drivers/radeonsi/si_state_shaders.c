@@ -1880,8 +1880,6 @@ static void si_update_ps_shader_key(struct si_context *sctx)
    struct si_shader_key *key = &sctx->shader.ps.key;
 
    memset(&key->part, 0, sizeof(key->part));
-   memset(&key->mono, 0, sizeof(key->mono));
-   memset(&key->opt, 0, sizeof(key->opt));
 
    /** Framebuffer dependencies. */
    if (sel->info.color0_writes_all_cbufs &&
@@ -1902,6 +1900,10 @@ static void si_update_ps_shader_key(struct si_context *sctx)
          tex->target == PIPE_TEXTURE_1D_ARRAY || tex->target == PIPE_TEXTURE_2D_ARRAY ||
          tex->target == PIPE_TEXTURE_CUBE || tex->target == PIPE_TEXTURE_CUBE_ARRAY ||
          tex->target == PIPE_TEXTURE_3D;
+   } else {
+      key->mono.u.ps.fbfetch_msaa = 0;
+      key->mono.u.ps.fbfetch_is_1D = 0;
+      key->mono.u.ps.fbfetch_layered = 0;
    }
 
    /** Framebuffer and blend dependencies. */
@@ -1958,6 +1960,8 @@ static void si_update_ps_shader_key(struct si_context *sctx)
    if (sel->colors_written_4bit &
        ~(sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit))
       key->opt.prefer_mono = 1;
+   else
+      key->opt.prefer_mono = 0;
 
    /** Primitive type and shader dependencies. */
    bool is_poly = !util_prim_is_points_or_lines(sctx->current_rast_prim);
@@ -1993,6 +1997,8 @@ static void si_update_ps_shader_key(struct si_context *sctx)
    bool uses_persp_sample = sel->info.uses_persp_sample ||
                             (!rs->flatshade && sel->info.uses_persp_sample_color);
 
+   key->mono.u.ps.interpolate_at_sample_force_center = 0;
+
    if (rs->force_persample_interp && rs->multisample_enable &&
        sctx->framebuffer.nr_samples > 1 && sctx->ps_iter_samples > 1) {
       key->part.ps.prolog.force_persp_sample_interp =
@@ -2016,8 +2022,7 @@ static void si_update_ps_shader_key(struct si_context *sctx)
                                                        sel->info.uses_linear_centroid +
                                                        sel->info.uses_linear_sample > 1;
 
-      if (sel->info.uses_interp_at_sample)
-         key->mono.u.ps.interpolate_at_sample_force_center = 1;
+      key->mono.u.ps.interpolate_at_sample_force_center = sel->info.uses_interp_at_sample;
    }
 
    /** DSA dependencies. */
