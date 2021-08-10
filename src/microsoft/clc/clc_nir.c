@@ -273,6 +273,7 @@ clc_lower_printf_base(nir_shader *nir, unsigned uav_id)
                printf_deref = &deref->dest.ssa;
             }
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa, printf_deref);
+            progress = true;
          }
       }
 
