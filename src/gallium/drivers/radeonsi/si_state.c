@@ -1134,6 +1134,12 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
       si_update_ps_inputs_read_or_disabled(sctx);
       sctx->do_update_shaders = true;
    }
+
+   if (old_rs->line_smooth != rs->line_smooth ||
+       old_rs->poly_smooth != rs->poly_smooth ||
+       old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
+       old_rs->flatshade != rs->flatshade)
+      si_update_vrs_flat_shading(sctx);
 }
 
 static void si_delete_rs_state(struct pipe_context *ctx, void *state)

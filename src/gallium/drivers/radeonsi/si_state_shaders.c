@@ -3345,6 +3345,25 @@ void si_update_ps_kill_enable(struct si_context *sctx)
    }
 }
 
+void si_update_vrs_flat_shading(struct si_context *sctx)
+{
+   if (sctx->chip_class >= GFX10_3 && sctx->shader.ps.cso) {
+      struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+      struct si_shader_info *info = &sctx->shader.ps.cso->info;
+      bool allow_flat_shading = info->allow_flat_shading;
+
+      if (allow_flat_shading &&
+          (rs->line_smooth || rs->poly_smooth || rs->poly_stipple_enable ||
+           (!rs->flatshade && info->uses_interp_color)))
+         allow_flat_shading = false;
+
+      if (sctx->allow_flat_shading != allow_flat_shading) {
+         sctx->allow_flat_shading = allow_flat_shading;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
+      }
+   }
+}
+
 static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -3383,6 +3402,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
    si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
    si_update_ps_inputs_read_or_disabled(sctx);
    si_update_ps_kill_enable(sctx);
+   si_update_vrs_flat_shading(sctx);
 }
 
 static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)

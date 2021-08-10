@@ -52,7 +52,6 @@ static bool si_update_shaders(struct si_context *sctx)
 {
    struct pipe_context *ctx = (struct pipe_context *)sctx;
    struct si_compiler_ctx_state compiler_state;
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    struct si_shader *old_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
    unsigned old_kill_clip_distances = old_vs ? old_vs->key.opt.kill_clip_distances : 0;
    struct si_shader *old_ps = sctx->shader.ps.current;
@@ -228,21 +227,6 @@ static bool si_update_shaders(struct si_context *sctx)
 
       if (sctx->framebuffer.nr_samples <= 1)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_sample_locs);
-   }
-
-   if (GFX_VERSION >= GFX10_3) {
-      struct si_shader_info *info = &sctx->shader.ps.cso->info;
-      bool allow_flat_shading = info->allow_flat_shading;
-
-      if (allow_flat_shading &&
-          (rs->line_smooth || rs->poly_smooth || rs->poly_stipple_enable ||
-           (!rs->flatshade && info->uses_interp_color)))
-         allow_flat_shading = false;
-
-      if (sctx->allow_flat_shading != allow_flat_shading) {
-         sctx->allow_flat_shading = allow_flat_shading;
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
-      }
    }
 
    if (unlikely(sctx->screen->debug_flags & DBG(SQTT) && sctx->thread_trace)) {
