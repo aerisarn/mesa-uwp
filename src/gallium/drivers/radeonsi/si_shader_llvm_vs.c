@@ -1023,16 +1023,6 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    ctx->abi.vertex_id = input_vgprs[vertex_id_vgpr];
    ctx->abi.instance_id = input_vgprs[instance_id_vgpr];
 
-   /* InstanceID = VertexID >> 16;
-    * VertexID   = VertexID & 0xffff;
-    */
-   if (key->vs_prolog.states.unpack_instance_id_from_vertex_id) {
-      ctx->abi.instance_id =
-         LLVMBuildLShr(ctx->ac.builder, ctx->abi.vertex_id, LLVMConstInt(ctx->ac.i32, 16, 0), "");
-      ctx->abi.vertex_id = LLVMBuildAnd(ctx->ac.builder, ctx->abi.vertex_id,
-                                        LLVMConstInt(ctx->ac.i32, 0xffff, 0), "");
-   }
-
    /* Copy inputs to outputs. This should be no-op, as the registers match,
     * but it will prevent the compiler from overwriting them unintentionally.
     */

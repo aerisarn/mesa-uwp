@@ -1909,7 +1909,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
       (!sctx->screen->options.prim_restart_tri_strips_only ||
        (prim != PIPE_PRIM_TRIANGLE_STRIP && prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
    bool dispatch_prim_discard_cs = false;
-   bool prim_discard_cs_instancing = false;
    unsigned original_index_size = index_size;
 
    /* Determine if we can use the primitive discard compute shader. */
@@ -1923,11 +1922,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
        (!primitive_restart || pd_msg("primitive restart")) &&
        /* Supported prim types. */
        (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP)) &&
-       /* Instancing is limited to 16-bit indices, because InstanceID is packed into VertexID. */
-       /* Instanced index_size == 0 requires that start + count < USHRT_MAX, so just reject it. */
-       (instance_count == 1 ||
-        (instance_count <= USHRT_MAX && index_size && index_size <= 2) ||
-        pd_msg("instance_count too large or index_size == 4 or DrawArraysInstanced")) &&
+       (instance_count == 1 || pd_msg("instancing")) &&
        ((drawid_offset == 0 && (num_draws == 1 || !info->increment_draw_id)) ||
         !sctx->shader.vs.cso->info.uses_drawid || pd_msg("draw_id > 0")) &&
        (!sctx->render_cond || pd_msg("render condition")) &&
@@ -1957,7 +1952,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
                                                     total_direct_count)) {
       case SI_PRIM_DISCARD_ENABLED:
          original_index_size = index_size;
-         prim_discard_cs_instancing = instance_count > 1;
          dispatch_prim_discard_cs = true;
 
          /* The compute shader changes/lowers the following: */
@@ -1976,12 +1970,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
          DRAW_CLEANUP;
          return;
       }
-   }
-
-   if (ALLOW_PRIM_DISCARD_CS &&
-       prim_discard_cs_instancing != sctx->prim_discard_cs_instancing) {
-      sctx->prim_discard_cs_instancing = prim_discard_cs_instancing;
-      sctx->do_update_shaders = true;
    }
 
    /* Set the rasterization primitive type.

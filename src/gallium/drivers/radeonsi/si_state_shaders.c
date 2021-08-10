@@ -1791,7 +1791,6 @@ void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selecto
 
    prolog_key->instance_divisor_is_one = elts->instance_divisor_is_one;
    prolog_key->instance_divisor_is_fetched = elts->instance_divisor_is_fetched;
-   prolog_key->unpack_instance_id_from_vertex_id = sctx->prim_discard_cs_instancing;
 
    /* Prefer a monolithic shader to allow scheduling divisions around
     * VBO loads. */

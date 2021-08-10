@@ -28,9 +28,6 @@
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "sid.h"
-#include "util/fast_idiv_by_const.h"
-#include "util/u_prim.h"
-#include "util/u_suballoc.h"
 #include "util/u_upload_mgr.h"
 
 /* Based on:
@@ -69,8 +66,6 @@
  * Features:
  * - Triangle strips are decomposed into an indexed triangle list.
  *   The decomposition differs based on the provoking vertex state.
- * - Instanced draws are converted into non-instanced draws for 16-bit indices.
- *   (InstanceID is stored in the high bits of VertexID and unpacked by VS)
  * - W<0 culling (W<0 is behind the viewer, sort of like near Z culling).
  * - Back face culling, incl. culling zero-area / degenerate primitives.
  * - View XY culling.
@@ -84,9 +79,7 @@
  * Limitations (and unimplemented features that may be possible to implement):
  * - Only triangles and triangle strips are supported.
  * - Primitive restart is not supported.
- * - Instancing is only supported with 16-bit indices and instance count <= 2^16.
- * - The instance divisor buffer is unavailable, so all divisors must be
- *   either 0 or 1.
+ * - Instancing is unsupported.
  * - Multidraws where the vertex shader reads gl_DrawID are unsupported.
  * - No support for tessellation and geometry shaders.
  *   (patch elimination where tess factors are 0 would be possible to implement)
@@ -108,11 +101,6 @@
  *   VS.SAMPLERS_AND_IMAGES:      same value as VS
  *   VS.START_INSTANCE:           same value as VS
  *   SMALL_PRIM_CULLING_PRECISION: Scale the primitive bounding box by this number.
- *   NUM_PRIMS_UDIV_MULTIPLIER: For fast 31-bit division by the number of primitives
- *       per instance for instancing.
- *   NUM_PRIMS_UDIV_TERMS:
- *     - Bits [0:4]: "post_shift" for fast 31-bit division for instancing.
- *     - Bits [5:31]: The number of primitives per instance for computing the remainder.
  *
  * How to test primitive restart (the most complicated part because it needs
  * to get the primitive orientation right):
@@ -250,7 +238,6 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    struct ac_arg param_vb_desc, param_const_desc, param_start_out_index;
    struct ac_arg param_base_vertex, param_start_instance, param_start_in_index;
    struct ac_arg param_block_id, param_local_id, param_smallprim_precision;
-   struct ac_arg param_num_prims_udiv_multiplier, param_num_prims_udiv_terms;
    struct ac_arg param_sampler_desc;
 
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_vertex_counter);
@@ -263,10 +250,6 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_IMAGE_PTR, &param_sampler_desc);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_start_instance);
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_FLOAT, &param_smallprim_precision);
-   if (key->opt.cs_instancing) {
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_multiplier);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_num_prims_udiv_terms);
-   }
 
    /* Block ID and thread ID inputs. */
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &param_block_id);
@@ -281,7 +264,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    /* Assemble parameters for VS. */
    LLVMValueRef vs_params[16];
    unsigned num_vs_params = 0;
-   unsigned param_vertex_id, param_instance_id;
+   unsigned param_vertex_id;
 
    vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 0))); /* INTERNAL RESOURCES */
    vs_params[num_vs_params++] = LLVMGetUndef(LLVMTypeOf(LLVMGetParam(vs, 1))); /* BINDLESS */
@@ -295,7 +278,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    vs_params[num_vs_params++] = ac_get_arg(&ctx->ac, param_vb_desc);
 
    vs_params[(param_vertex_id = num_vs_params++)] = NULL;   /* VertexID */
-   vs_params[(param_instance_id = num_vs_params++)] = NULL; /* InstanceID */
+   vs_params[num_vs_params++] = ctx->ac.i32_0;              /* InstanceID */
    vs_params[num_vs_params++] = ctx->ac.i32_0;              /* unused (PrimID) */
    vs_params[num_vs_params++] = ctx->ac.i32_0;              /* unused */
 
@@ -317,29 +300,11 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    input_indexbuf = ac_build_gather_values(&ctx->ac, desc, 4);
    output_indexbuf = ac_build_gather_values(&ctx->ac, desc + 4, 4);
 
-   /* Compute PrimID and InstanceID. */
+   /* Compute PrimID. */
    LLVMValueRef global_thread_id = ac_build_imad(&ctx->ac, ac_get_arg(&ctx->ac, param_block_id),
                                                  LLVMConstInt(ctx->ac.i32, THREADGROUP_SIZE, 0),
                                                  ac_get_arg(&ctx->ac, param_local_id));
-   LLVMValueRef prim_id = global_thread_id; /* PrimID within an instance */
-   LLVMValueRef instance_id = ctx->ac.i32_0;
-
-   if (key->opt.cs_instancing) {
-      LLVMValueRef num_prims_udiv_terms = ac_get_arg(&ctx->ac, param_num_prims_udiv_terms);
-      LLVMValueRef num_prims_udiv_multiplier =
-         ac_get_arg(&ctx->ac, param_num_prims_udiv_multiplier);
-      /* Unpack num_prims_udiv_terms. */
-      LLVMValueRef post_shift =
-         LLVMBuildAnd(builder, num_prims_udiv_terms, LLVMConstInt(ctx->ac.i32, 0x1f, 0), "");
-      LLVMValueRef prims_per_instance =
-         LLVMBuildLShr(builder, num_prims_udiv_terms, LLVMConstInt(ctx->ac.i32, 5, 0), "");
-      /* Divide the total prim_id by the number of prims per instance. */
-      instance_id =
-         ac_build_fast_udiv_u31_d_not_one(&ctx->ac, prim_id, num_prims_udiv_multiplier, post_shift);
-      /* Compute the remainder. */
-      prim_id = LLVMBuildSub(builder, prim_id,
-                             LLVMBuildMul(builder, instance_id, prims_per_instance, ""), "");
-   }
+   LLVMValueRef prim_id = global_thread_id;
 
    /* Generate indices (like a non-indexed draw call). */
    LLVMValueRef index[4] = {NULL, NULL, NULL, LLVMGetUndef(ctx->ac.i32)};
@@ -401,7 +366,6 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    LLVMValueRef pos[3][4];
    for (unsigned i = 0; i < vertices_per_prim; i++) {
       vs_params[param_vertex_id] = index[i];
-      vs_params[param_instance_id] = instance_id;
 
       LLVMValueRef ret = ac_build_call(&ctx->ac, vs, vs_params, num_vs_params);
       for (unsigned chan = 0; chan < 4; chan++)
@@ -434,7 +398,6 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    options.cull_w = true;
 
    LLVMValueRef params[] = {
-      instance_id,
       vertex_counter,
       output_indexbuf,
       (void*)index,
@@ -451,15 +414,13 @@ static void si_build_primitive_accepted(struct ac_llvm_context *ac, LLVMValueRef
                                         void *userdata)
 {
    struct si_shader_context *ctx = container_of(ac, struct si_shader_context, ac);
-   struct si_shader_key *key = &ctx->shader->key;
    LLVMBuilderRef builder = ctx->ac.builder;
    unsigned vertices_per_prim = 3;
    LLVMValueRef *params = (LLVMValueRef *)userdata;
-   LLVMValueRef instance_id = params[0];
-   LLVMValueRef vertex_counter = params[1];
-   LLVMValueRef output_indexbuf = params[2];
-   LLVMValueRef *index = (LLVMValueRef *)params[3];
-   LLVMValueRef start_out_index = params[4];
+   LLVMValueRef vertex_counter = params[0];
+   LLVMValueRef output_indexbuf = params[1];
+   LLVMValueRef *index = (LLVMValueRef *)params[2];
+   LLVMValueRef start_out_index = params[3];
 
    LLVMValueRef accepted_threadmask = ac_get_i1_sgpr_mask(&ctx->ac, accepted);
 
@@ -492,14 +453,6 @@ static void si_build_primitive_accepted(struct ac_llvm_context *ac, LLVMValueRef
     * the output index buffer.
     */
 
-   /* We have lowered instancing. Pack the instance ID into vertex ID. */
-   if (key->opt.cs_instancing) {
-      instance_id = LLVMBuildShl(builder, instance_id, LLVMConstInt(ctx->ac.i32, 16, 0), "");
-
-      for (unsigned i = 0; i < vertices_per_prim; i++)
-         index[i] = LLVMBuildOr(builder, index[i], instance_id, "");
-   }
-
    /* Write indices for accepted primitives. */
    LLVMValueRef vindex = LLVMBuildAdd(builder, start, prim_index, "");
    vindex = LLVMBuildAdd(builder, vindex, start_out_index, "");
@@ -524,11 +477,9 @@ static bool si_shader_select_prim_discard_cs(struct si_context *sctx,
    si_shader_selector_key_vs(sctx, sctx->shader.vs.cso, &key, &key.part.vs.prolog);
    assert(!key.part.vs.prolog.instance_divisor_is_fetched);
 
-   key.part.vs.prolog.unpack_instance_id_from_vertex_id = 0;
    key.opt.vs_as_prim_discard_cs = 1;
    key.opt.cs_prim_type = info->mode;
    key.opt.cs_indexed = info->index_size != 0;
-   key.opt.cs_instancing = info->instance_count > 1;
    key.opt.cs_provoking_vertex_first = rs->provoking_vertex_first;
 
    if (rs->rasterizer_discard) {
@@ -606,27 +557,22 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 
    struct radeon_cmdbuf *gfx_cs = &sctx->gfx_cs;
    unsigned prim = info->mode;
-   unsigned instance_count = info->instance_count;
 
-   unsigned num_prims_per_instance;
+   unsigned num_prims;
    if (prim == PIPE_PRIM_TRIANGLES)
-      num_prims_per_instance = total_count / 3;
+      num_prims = total_count / 3;
    else if (prim == PIPE_PRIM_TRIANGLE_STRIP)
-      num_prims_per_instance = total_count - 2; /* approximation ignoring multi draws */
+      num_prims = total_count - 2; /* approximation ignoring multi draws */
    else
       unreachable("shouldn't get here");
 
-   unsigned num_prims = num_prims_per_instance * instance_count;
    unsigned out_indexbuf_size = num_prims * 12;
    bool ring_full = !si_check_ring_space(sctx, out_indexbuf_size);
 
    /* Split draws at the draw call level if the ring is full. This makes
     * better use of the ring space.
-    *
-    * If instancing is enabled and there is not enough ring buffer space, compute-based
-    * primitive discard is disabled.
     */
-   if (ring_full && num_prims > PRIMS_PER_BATCH && instance_count == 1) {
+   if (ring_full && num_prims > PRIMS_PER_BATCH) {
       unsigned vert_count_per_subdraw = 0;
 
       if (prim == PIPE_PRIM_TRIANGLES)
@@ -819,8 +765,6 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
    if (!num_total_prims)
       return;
 
-   num_total_prims *= info->instance_count;
-
    unsigned out_indexbuf_offset;
    uint64_t output_indexbuf_size = num_total_prims * vertices_per_prim * 4;
 
@@ -963,7 +907,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
    /* Set user data SGPRs. */
    /* This can't be >= 16 if we want the fastest launch rate. */
-   unsigned user_sgprs = info->instance_count > 1 ? 12 : 10;
+   unsigned user_sgprs = 10;
 
    uint64_t index_buffers_va = indexbuf_desc->gpu_address + indexbuf_desc_offset;
    unsigned vs_const_desc = si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_VERTEX);
@@ -1012,33 +956,20 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
    STATIC_ASSERT(PRIMS_PER_BATCH % THREADGROUP_SIZE == 0);
 
-   struct si_fast_udiv_info32 num_prims_udiv = {};
-
    for (unsigned i = 0; i < num_draws; i++) {
       unsigned count = draws[i].count;
-      unsigned num_prims_per_instance, num_prims;
+      unsigned num_prims;
 
-      /* Determine the number of primitives per instance. */
+      /* Determine the number of primitives per draw. */
       if (info->mode == PIPE_PRIM_TRIANGLES)
-         num_prims_per_instance = count / 3;
+         num_prims = count / 3;
       else if (count >= 2)
-         num_prims_per_instance = count - 2;
+         num_prims = count - 2;
       else
-         num_prims_per_instance = 0;
+         num_prims = 0;
 
-      if (!num_prims_per_instance)
+      if (!num_prims)
          continue;
-
-      num_prims = num_prims_per_instance;
-
-      if (info->instance_count > 1) {
-         num_prims_udiv = si_compute_fast_udiv_info32(num_prims_per_instance, 31);
-         num_prims *= info->instance_count;
-      }
-
-      /* Limitations on how these two are packed in the user SGPR. */
-      assert(num_prims_udiv.post_shift < 32);
-      assert(num_prims_per_instance < 1 << 27);
 
       /* Big draw calls are split into smaller dispatches and draw packets. */
       for (unsigned start_prim = 0; start_prim < num_prims; start_prim += PRIMS_PER_BATCH) {
@@ -1101,11 +1032,6 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
                radeon_emit(cs, info->start_instance);
                /* small-prim culling precision (same as rasterizer precision = QUANT_MODE) */
                radeon_emit(cs, fui(cull_info.small_prim_precision));
-
-               if (info->instance_count > 1) {
-                  radeon_emit(cs, num_prims_udiv.multiplier);
-                  radeon_emit(cs, num_prims_udiv.post_shift | (num_prims_per_instance << 5));
-               }
             } else {
                /* Subsequent draws. */
                radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 4);
@@ -1113,12 +1039,6 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
                radeon_emit(cs, 0);
                radeon_emit(cs, draws[i].start);
                radeon_emit(cs, index_size ? draws[i].index_bias : draws[i].start);
-
-               if (info->instance_count > 1) {
-                  radeon_set_sh_reg_seq(cs, R_00B928_COMPUTE_USER_DATA_10, 2);
-                  radeon_emit(cs, num_prims_udiv.multiplier);
-                  radeon_emit(cs, num_prims_udiv.post_shift | (num_prims_per_instance << 5));
-               }
             }
          } else {
             /* Draw split. Only update the SGPRs that changed. */

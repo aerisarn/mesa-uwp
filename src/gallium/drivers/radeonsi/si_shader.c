@@ -1150,8 +1150,6 @@ static void si_dump_shader_key_vs(const struct si_shader_key *key,
    fprintf(f, "  %s.instance_divisor_is_one = %u\n", prefix, prolog->instance_divisor_is_one);
    fprintf(f, "  %s.instance_divisor_is_fetched = %u\n", prefix,
            prolog->instance_divisor_is_fetched);
-   fprintf(f, "  %s.unpack_instance_id_from_vertex_id = %u\n", prefix,
-           prolog->unpack_instance_id_from_vertex_id);
    fprintf(f, "  %s.ls_vgpr_fix = %u\n", prefix, prolog->ls_vgpr_fix);
 
    fprintf(f, "  mono.vs.fetch_opencode = %x\n", key->mono.vs_fetch_opencode);
@@ -1186,7 +1184,6 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  opt.vs_as_prim_discard_cs = %u\n", key->opt.vs_as_prim_discard_cs);
       fprintf(f, "  opt.cs_prim_type = %s\n", tgsi_primitive_names[key->opt.cs_prim_type]);
       fprintf(f, "  opt.cs_indexed = %u\n", key->opt.cs_indexed);
-      fprintf(f, "  opt.cs_instancing = %u\n", key->opt.cs_instancing);
       fprintf(f, "  opt.cs_provoking_vertex_first = %u\n", key->opt.cs_provoking_vertex_first);
       fprintf(f, "  opt.cs_cull_front = %u\n", key->opt.cs_cull_front);
       fprintf(f, "  opt.cs_cull_back = %u\n", key->opt.cs_cull_back);
@@ -1290,7 +1287,6 @@ bool si_vs_needs_prolog(const struct si_shader_selector *sel,
    /* VGPR initialization fixup for Vega10 and Raven is always done in the
     * VS prolog. */
    return sel->vs_needs_prolog || prolog_key->ls_vgpr_fix ||
-          prolog_key->unpack_instance_id_from_vertex_id ||
           /* The 2nd VS prolog loads input VGPRs from LDS */
           (key->opt.ngg_culling && !ngg_cull_shader) ||
           /* The 1st VS prolog generates input VGPRs for fast launch. */

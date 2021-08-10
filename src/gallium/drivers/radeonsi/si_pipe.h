@@ -1139,7 +1139,6 @@ struct si_context {
    /* Emitted draw state. */
    bool gs_tri_strip_adj_fix : 1;
    bool ls_vgpr_fix : 1;
-   bool prim_discard_cs_instancing : 1;
    bool ngg : 1;
    bool same_patch_vertices : 1;
    uint8_t ngg_culling;
@@ -2032,14 +2031,6 @@ static inline void si_select_draw_vbo(struct si_context *sctx)
       sctx->real_draw_vbo = draw_vbo;
    else
       sctx->b.draw_vbo = draw_vbo;
-
-   if (!has_prim_discard_cs) {
-      /* Reset this to false if prim discard CS is disabled because draw_vbo doesn't reset it. */
-      if (sctx->prim_discard_cs_instancing) {
-         sctx->do_update_shaders = true;
-         sctx->prim_discard_cs_instancing = false;
-      }
-   }
 }
 
 /* Return the number of samples that the rasterizer uses. */

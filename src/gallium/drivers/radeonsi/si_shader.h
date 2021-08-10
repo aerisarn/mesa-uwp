@@ -528,7 +528,6 @@ struct si_vs_prolog_bits {
    uint16_t instance_divisor_is_one;     /* bitmask of inputs */
    uint16_t instance_divisor_is_fetched; /* bitmask of inputs */
    unsigned ls_vgpr_fix : 1;
-   unsigned unpack_instance_id_from_vertex_id : 1;
 };
 
 /* Common TCS bits between the shader key and the epilog key. */
@@ -688,7 +687,6 @@ struct si_shader_key {
       unsigned vs_as_prim_discard_cs : 1;
       unsigned cs_prim_type : 4;
       unsigned cs_indexed : 1;
-      unsigned cs_instancing : 1;
       unsigned cs_provoking_vertex_first : 1;
       unsigned cs_cull_front : 1;
       unsigned cs_cull_back : 1;
