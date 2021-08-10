@@ -595,7 +595,7 @@ void si_ps_key_update_sample_shading(struct si_context *sctx);
 void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *sctx);
 void si_init_tess_factor_ring(struct si_context *sctx);
 bool si_update_gs_ring_buffers(struct si_context *sctx);
-bool si_update_spi_tmpring_size(struct si_context *sctx);
+bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes);
 
 /* si_state_draw.c */
 void si_init_draw_functions_GFX6(struct si_context *sctx);
