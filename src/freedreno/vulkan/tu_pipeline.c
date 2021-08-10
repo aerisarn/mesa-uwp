@@ -2633,8 +2633,6 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
    const VkPipelineTessellationStateCreateInfo *tess_info =
       builder->create_info->pTessellationState;
 
-   assert(!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)));
-
    assert(pipeline->ia.primtype == DI_PT_PATCHES0);
    assert(tess_info->patchControlPoints <= 32);
    pipeline->ia.primtype += tess_info->patchControlPoints;
