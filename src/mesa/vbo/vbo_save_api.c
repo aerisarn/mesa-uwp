@@ -145,22 +145,9 @@ alloc_vertex_store(struct gl_context *ctx, int vertex_count)
     * user.  Perhaps there could be a special number for internal
     * buffers:
     */
-   vertex_store->bufferobj = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID);
-   if (vertex_store->bufferobj) {
-      vertex_store->buffer_in_ram_size = size * sizeof(GLfloat);
-      vertex_store->buffer_in_ram = malloc(vertex_store->buffer_in_ram_size);
-      save->out_of_memory = vertex_store->buffer_in_ram == NULL;
-      save->out_of_memory =
-         !ctx->Driver.BufferData(ctx,
-                                 GL_ARRAY_BUFFER_ARB,
-                                 size * sizeof(GLfloat),
-                                 NULL, GL_STATIC_DRAW_ARB,
-                                 GL_MAP_WRITE_BIT,
-                                 vertex_store->bufferobj);
-   }
-   else {
-      save->out_of_memory = GL_TRUE;
-   }
+   vertex_store->buffer_in_ram_size = size * sizeof(GLfloat);
+   vertex_store->buffer_in_ram = malloc(vertex_store->buffer_in_ram_size);
+   save->out_of_memory = vertex_store->buffer_in_ram == NULL;
 
    if (save->out_of_memory) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "internal VBO allocation");
@@ -178,11 +165,6 @@ free_vertex_store(struct gl_context *ctx,
                   struct vbo_save_vertex_store *vertex_store)
 {
    free(vertex_store->buffer_in_ram);
-
-   if (vertex_store->bufferobj) {
-      _mesa_reference_buffer_object(ctx, &vertex_store->bufferobj, NULL);
-   }
-
    free(vertex_store);
 }
 

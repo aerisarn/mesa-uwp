@@ -149,7 +149,6 @@ _vbo_save_get_vertex_count(const struct vbo_save_vertex_list *node)
 #define VBO_SAVE_INDEX_SIZE (32 * 1024)
 
 struct vbo_save_vertex_store {
-   struct gl_buffer_object *bufferobj;
    fi_type *buffer_in_ram;
    GLuint buffer_in_ram_size;
    GLuint used;           /**< Number of 4-byte words used in buffer */
