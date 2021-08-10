@@ -1874,12 +1874,14 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
       key->opt.kill_pointsize = 1;
 }
 
-static void si_update_ps_shader_key(struct si_context *sctx)
+static void si_ps_key_update_framebuffer(struct si_context *sctx)
 {
    struct si_shader_selector *sel = sctx->shader.ps.cso;
    struct si_shader_key *key = &sctx->shader.ps.key;
 
-   /** Framebuffer dependencies. */
+   if (!sel)
+      return;
+
    if (sel->info.color0_writes_all_cbufs &&
        sel->info.colors_written == 0x1)
       key->part.ps.epilog.last_cbuf = MAX2(sctx->framebuffer.state.nr_cbufs, 1) - 1;
@@ -1905,13 +1907,20 @@ static void si_update_ps_shader_key(struct si_context *sctx)
       key->mono.u.ps.fbfetch_is_1D = 0;
       key->mono.u.ps.fbfetch_layered = 0;
    }
+}
 
-   /** Framebuffer and blend dependencies. */
+static void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
+{
+   struct si_shader_selector *sel = sctx->shader.ps.cso;
+   struct si_shader_key *key = &sctx->shader.ps.key;
+   struct si_state_blend *blend = sctx->queued.named.blend;
+
+   if (!sel)
+      return;
+
    /* Select the shader color format based on whether
     * blending or alpha are needed.
     */
-   struct si_state_blend *blend = sctx->queued.named.blend;
-
    key->part.ps.epilog.spi_shader_col_format =
       (blend->blend_enable_4bit & blend->need_src_alpha_4bit &
        sctx->framebuffer.spi_shader_col_format_blend_alpha) |
@@ -1962,36 +1971,75 @@ static void si_update_ps_shader_key(struct si_context *sctx)
       key->opt.prefer_mono = 1;
    else
       key->opt.prefer_mono = 0;
+}
 
-   /** Primitive type and shader dependencies. */
-   bool is_poly = !util_prim_is_points_or_lines(sctx->current_rast_prim);
-   bool is_line = util_prim_is_lines(sctx->current_rast_prim);
-
-   /** Blend and rasterizer dependencies. */
+static void si_ps_key_update_blend_rasterizer(struct si_context *sctx)
+{
+   struct si_shader_key *key = &sctx->shader.ps.key;
+   struct si_state_blend *blend = sctx->queued.named.blend;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
    key->part.ps.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
+}
 
-   /** Rasterizer dependencies. */
+static void si_ps_key_update_rasterizer(struct si_context *sctx)
+{
+   struct si_shader_selector *sel = sctx->shader.ps.cso;
+   struct si_shader_key *key = &sctx->shader.ps.key;
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
+   if (!sel)
+      return;
+
    key->part.ps.prolog.color_two_side = rs->two_side && sel->info.colors_read;
    key->part.ps.prolog.flatshade_colors = rs->flatshade && sel->info.uses_interp_color;
    key->part.ps.epilog.clamp_color = rs->clamp_fragment_color;
+}
 
-   /** Primitive type, shader, and rasterizer dependencies. */
+static void si_ps_key_update_dsa(struct si_context *sctx)
+{
+   struct si_shader_key *key = &sctx->shader.ps.key;
+
+   key->part.ps.epilog.alpha_func = sctx->queued.named.dsa->alpha_func;
+}
+
+static void si_ps_key_update_primtype_shader_rasterizer_framebuffer(struct si_context *sctx)
+{
+   struct si_shader_key *key = &sctx->shader.ps.key;
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
+   bool is_poly = !util_prim_is_points_or_lines(sctx->current_rast_prim);
+   bool is_line = util_prim_is_lines(sctx->current_rast_prim);
+
    key->part.ps.prolog.poly_stipple = rs->poly_stipple_enable && is_poly;
-
-   /** Primitive type, shader, rasterizer, and framebuffer dependencies. */
    key->part.ps.epilog.poly_line_smoothing =
       ((is_poly && rs->poly_smooth) || (is_line && rs->line_smooth)) &&
       sctx->framebuffer.nr_samples <= 1;
+}
 
-   /** Sample shading dependencies. */
+static void si_ps_key_update_sample_shading(struct si_context *sctx)
+{
+   struct si_shader_selector *sel = sctx->shader.ps.cso;
+   struct si_shader_key *key = &sctx->shader.ps.key;
+
+   if (!sel)
+      return;
+
    if (sctx->ps_iter_samples > 1 && sel->info.reads_samplemask)
       key->part.ps.prolog.samplemask_log_ps_iter = util_logbase2(sctx->ps_iter_samples);
    else
       key->part.ps.prolog.samplemask_log_ps_iter = 0;
+}
 
-   /** Framebuffer, rasterizer, and sample shading dependencies. */
+static void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *sctx)
+{
+   struct si_shader_selector *sel = sctx->shader.ps.cso;
+   struct si_shader_key *key = &sctx->shader.ps.key;
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
+   if (!sel)
+      return;
+
    bool uses_persp_center = sel->info.uses_persp_center ||
                             (!rs->flatshade && sel->info.uses_persp_center_color);
    bool uses_persp_centroid = sel->info.uses_persp_centroid ||
@@ -2039,9 +2087,6 @@ static void si_update_ps_shader_key(struct si_context *sctx)
       key->part.ps.prolog.bc_optimize_for_linear = 0;
       key->mono.u.ps.interpolate_at_sample_force_center = sel->info.uses_interp_at_sample;
    }
-
-   /** DSA dependencies. */
-   key->part.ps.epilog.alpha_func = sctx->queued.named.dsa->alpha_func;
 }
 
 /* Compute the key for the hw shader variant */
@@ -2137,7 +2182,14 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       key->part.gs.prolog.tri_strip_adj_fix = sctx->gs_tri_strip_adj_fix;
       break;
    case MESA_SHADER_FRAGMENT:
-      si_update_ps_shader_key(sctx);
+      si_ps_key_update_framebuffer(sctx);
+      si_ps_key_update_framebuffer_blend(sctx);
+      si_ps_key_update_blend_rasterizer(sctx);
+      si_ps_key_update_rasterizer(sctx);
+      si_ps_key_update_dsa(sctx);
+      si_ps_key_update_primtype_shader_rasterizer_framebuffer(sctx);
+      si_ps_key_update_sample_shading(sctx);
+      si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
       break;
    default:
       assert(0);
