@@ -505,6 +505,7 @@ enum tu_dynamic_state
    TU_DYNAMIC_STATE_COUNT,
    /* no associated draw state: */
    TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY = TU_DYNAMIC_STATE_COUNT,
+   TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE,
    /* re-use the line width enum as it uses GRAS_SU_CNTL: */
    TU_DYNAMIC_STATE_GRAS_SU_CNTL = VK_DYNAMIC_STATE_LINE_WIDTH,
 };
@@ -940,6 +941,7 @@ struct tu_cmd_state
 
    uint32_t gras_su_cntl, rb_depth_cntl, rb_stencil_cntl;
    enum pc_di_primtype primtype;
+   bool primitive_restart_enable;
 
    /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
