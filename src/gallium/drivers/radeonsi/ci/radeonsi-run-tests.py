@@ -33,14 +33,23 @@ import itertools
 import filecmp
 import multiprocessing
 
+
 def print_red(txt, end_line=True):
-    print('\033[0;31m', txt, '\033[0m', end='\n' if end_line else ' ')
+    print("\033[0;31m", txt, "\033[0m", end="\n" if end_line else " ")
+
 
 def print_yellow(txt, end_line=True):
-    print('\033[1;33m', txt, '\033[0m', end='\n' if end_line else ' ')
+    print("\033[1;33m", txt, "\033[0m", end="\n" if end_line else " ")
+
 
 parser = argparse.ArgumentParser(description="radeonsi tester")
-parser.add_argument("--jobs", "-j", type=int, help="Number of processes/threads to use.", default=multiprocessing.cpu_count())
+parser.add_argument(
+    "--jobs",
+    "-j",
+    type=int,
+    help="Number of processes/threads to use.",
+    default=multiprocessing.cpu_count(),
+)
 parser.add_argument("--piglit-path", type=str, help="Path to piglit source folder.")
 parser.add_argument("--glcts-path", type=str, help="Path to GLCTS source folder.")
 parser.add_argument("--deqp-path", type=str, help="Path to dEQP source folder.")
@@ -50,8 +59,10 @@ parser.add_argument(
     help="Path to folder containing piglit/GLCTS and dEQP source folders.",
     default=os.getenv("MAREKO_BUILD_PATH"),
 )
-parser.add_argument('--verbose', '-v', action='count', default=0)
-parser.add_argument('--include-tests', '-t', action='append', dest="include_tests", default=[])
+parser.add_argument("--verbose", "-v", action="count", default=0)
+parser.add_argument(
+    "--include-tests", "-t", action="append", dest="include_tests", default=[]
+)
 
 parser.add_argument(
     "--no-piglit", dest="piglit", help="Disable piglit tests", action="store_false"
@@ -94,7 +105,7 @@ parser.set_defaults(deqp_gles2=True)
 parser.set_defaults(deqp_gles3=True)
 parser.set_defaults(deqp_gles31=True)
 
-parser.add_argument("output_folder", help='Output folder (logs, etc)')
+parser.add_argument("output_folder", help="Output folder (logs, etc)")
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -115,14 +126,19 @@ else:
         sys.exit(0)
 
 base = os.path.dirname(__file__)
-skips = os.path.join(base, 'skips.csv')
+skips = os.path.join(base, "skips.csv")
 
 # Use piglit's glinfo to determine the GPU name
-gpu_name = 'unknown'
-p = subprocess.run(['./glinfo'], capture_output='True', cwd=os.path.join(piglit_path, 'bin'), check=True)
-for line in p.stdout.decode().split('\n'):
-    if 'GL_RENDER' in line:
-        gpu_name = line.replace('(TM)', '').split('(')[1].split(',')[0].lower()
+gpu_name = "unknown"
+p = subprocess.run(
+    ["./glinfo"],
+    capture_output="True",
+    cwd=os.path.join(piglit_path, "bin"),
+    check=True,
+)
+for line in p.stdout.decode().split("\n"):
+    if "GL_RENDER" in line:
+        gpu_name = line.replace("(TM)", "").split("(")[1].split(",")[0].lower()
         break
 
 output_folder = args.output_folder
@@ -135,145 +151,189 @@ os.mkdir(output_folder)
 new_baseline_folder = os.path.join(output_folder, "new_baseline")
 os.mkdir(new_baseline_folder)
 
-logfile = open(os.path.join(output_folder, '{}-run-tests.log'.format(gpu_name)), 'w')
+logfile = open(os.path.join(output_folder, "{}-run-tests.log".format(gpu_name)), "w")
 
-spin = itertools.cycle('-\\|/')
+spin = itertools.cycle("-\\|/")
+
 
 def run_cmd(args, verbosity, env=None):
     if verbosity > 0:
-        print_yellow('Running ', args)
+        print_yellow("Running ", args)
     start = datetime.now()
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+    proc = subprocess.Popen(
+        args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env
+    )
     while True:
         line = proc.stdout.readline().decode()
         if verbosity > 0:
-            if 'ERROR' in line:
+            if "ERROR" in line:
                 print_red(line.strip())
             else:
                 print(line.strip())
         else:
             sys.stdout.write(next(spin))
             sys.stdout.flush()
-            sys.stdout.write('\b')
+            sys.stdout.write("\b")
 
         logfile.write(line)
 
         if proc.poll() is not None:
-           break
+            break
     proc.wait()
     end = datetime.now()
 
     if verbosity == 0:
-        sys.stdout.write(' ... ')
+        sys.stdout.write(" ... ")
 
-    print_yellow('Completed in {} seconds'.format(int((end - start).total_seconds())))
+    print_yellow("Completed in {} seconds".format(int((end - start).total_seconds())))
+
 
 def verify_results(baseline1, baseline2):
     # We're not using baseline1 because piglit-runner/deqp-runner already are:
     #  - if no baseline, baseline2 will contain the list of failures
     #  - if there's a baseline, baseline2 will contain the diff
     # So in both cases, an empty baseline2 files means a successful run
-    if len(open(baseline2, 'r').readlines()) != 0:
-        print_red('New errors. Check {}'.format(baseline2))
+    if len(open(baseline2, "r").readlines()) != 0:
+        print_red("New errors. Check {}".format(baseline2))
         return False
     return True
+
 
 # piglit test
 if args.piglit:
     out = os.path.join(output_folder, "piglit")
-    baseline = os.path.join(base, '{}-piglit-quick-fail.csv'.format(gpu_name))
-    new_baseline = os.path.join(new_baseline_folder, '{}-piglit-quick-fail.csv'.format(gpu_name))
-    print_yellow('Running piglit tests', args.verbose > 0)
-    cmd = ['piglit-runner',
-            'run',
-            '--piglit-folder', piglit_path,
-            '--profile', 'quick',
-            '--output', out,
-            '--process-isolation',
-            '--timeout', '300',
-            '--jobs', str(args.jobs),
-            '--skips', skips]
+    baseline = os.path.join(base, "{}-piglit-quick-fail.csv".format(gpu_name))
+    new_baseline = os.path.join(
+        new_baseline_folder, "{}-piglit-quick-fail.csv".format(gpu_name)
+    )
+    print_yellow("Running piglit tests", args.verbose > 0)
+    cmd = [
+        "piglit-runner",
+        "run",
+        "--piglit-folder",
+        piglit_path,
+        "--profile",
+        "quick",
+        "--output",
+        out,
+        "--process-isolation",
+        "--timeout",
+        "300",
+        "--jobs",
+        str(args.jobs),
+        "--skips",
+        skips,
+    ]
     for t in args.include_tests:
-        cmd += ['-t', t]
+        cmd += ["-t", t]
     if os.path.exists(baseline):
-        cmd += ['--baseline', baseline]
+        cmd += ["--baseline", baseline]
     env = os.environ.copy()
-    env['PIGLIT_PLATFORM'] = 'gbm'
+    env["PIGLIT_PLATFORM"] = "gbm"
     run_cmd(cmd, args.verbose, env)
-    shutil.copy(os.path.join(out, 'failures.csv'), new_baseline)
+    shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
     verify_results(baseline, new_baseline)
 
-deqp_args = '-- --deqp-surface-width=256 --deqp-surface-height=256 --deqp-gl-config-name=rgba8888d24s8ms0 --deqp-visibility=hidden'.split(' ')
+deqp_args = "-- --deqp-surface-width=256 --deqp-surface-height=256 --deqp-gl-config-name=rgba8888d24s8ms0 --deqp-visibility=hidden".split(
+    " "
+)
 
 # glcts test
 if args.glcts:
     out = os.path.join(output_folder, "glcts")
-    baseline = os.path.join(base, '{}-glcts-fail.csv'.format(gpu_name))
-    new_baseline = os.path.join(new_baseline_folder, '{}-glcts-fail.csv'.format(gpu_name))
-    print_yellow('Running  GLCTS tests', args.verbose > 0)
-    os.mkdir(os.path.join(output_folder, 'glcts'))
+    baseline = os.path.join(base, "{}-glcts-fail.csv".format(gpu_name))
+    new_baseline = os.path.join(
+        new_baseline_folder, "{}-glcts-fail.csv".format(gpu_name)
+    )
+    print_yellow("Running  GLCTS tests", args.verbose > 0)
+    os.mkdir(os.path.join(output_folder, "glcts"))
 
-    cmd = ['deqp-runner',
-            'run',
-            '--deqp', '{}/external/openglcts/modules/glcts'.format(glcts_path),
-            '--caselist', '{}/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-master.txt'.format(glcts_path),
-            '--output', out,
-            '--skips', skips,
-            '--jobs', str(args.jobs),
-            '--timeout', '1000']
+    cmd = [
+        "deqp-runner",
+        "run",
+        "--deqp",
+        "{}/external/openglcts/modules/glcts".format(glcts_path),
+        "--caselist",
+        "{}/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/gl46-master.txt".format(
+            glcts_path
+        ),
+        "--output",
+        out,
+        "--skips",
+        skips,
+        "--jobs",
+        str(args.jobs),
+        "--timeout",
+        "1000",
+    ]
     for t in args.include_tests:
-        cmd += ['-t', t]
+        cmd += ["-t", t]
     if os.path.exists(baseline):
-        cmd += ['--baseline', baseline]
+        cmd += ["--baseline", baseline]
     cmd += deqp_args
     run_cmd(cmd, args.verbose)
-    shutil.copy(os.path.join(out, 'failures.csv'), new_baseline)
+    shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
     verify_results(baseline, new_baseline)
 
 if args.deqp:
     if args.include_tests:
-        print_yellow('dEQP tests cannot be run with the -t/--include-tests option yet.')
+        print_yellow("dEQP tests cannot be run with the -t/--include-tests option yet.")
         sys.exit(0)
 
-    print_yellow('Running   dEQP tests', args.verbose > 0)
+    print_yellow("Running   dEQP tests", args.verbose > 0)
 
     # Generate a test-suite file
-    suite_filename = os.path.join(output_folder, 'deqp-suite.toml')
-    suite = open(suite_filename, 'w')
-    os.mkdir(os.path.join(output_folder, 'deqp'))
-    baseline = os.path.join(base, '{}-deqp-fail.csv'.format(gpu_name))
-    new_baseline = os.path.join(new_baseline_folder, '{}-deqp-fail.csv'.format(gpu_name))
+    suite_filename = os.path.join(output_folder, "deqp-suite.toml")
+    suite = open(suite_filename, "w")
+    os.mkdir(os.path.join(output_folder, "deqp"))
+    baseline = os.path.join(base, "{}-deqp-fail.csv".format(gpu_name))
+    new_baseline = os.path.join(
+        new_baseline_folder, "{}-deqp-fail.csv".format(gpu_name)
+    )
 
     deqp_tests = {
-        'egl': args.deqp_egl,
-        'gles2': args.deqp_gles2,
-        'gles3': args.deqp_gles3,
-        'gles31': args.deqp_gles31
+        "egl": args.deqp_egl,
+        "gles2": args.deqp_gles2,
+        "gles3": args.deqp_gles3,
+        "gles31": args.deqp_gles31,
     }
 
     for k in deqp_tests:
         if not deqp_tests[k]:
             continue
 
-        suite.write('[[deqp]]\n')
-        suite.write('deqp = "{}"\n'.format('{}/modules/{subtest}/deqp-{subtest}'.format(deqp_path, subtest=k)))
-        suite.write('caselists = ["{}"]\n'.format('{}/android/cts/master/{}-master.txt'.format(deqp_path, k)))
+        suite.write("[[deqp]]\n")
+        suite.write(
+            'deqp = "{}"\n'.format(
+                "{}/modules/{subtest}/deqp-{subtest}".format(deqp_path, subtest=k)
+            )
+        )
+        suite.write(
+            'caselists = ["{}"]\n'.format(
+                "{}/android/cts/master/{}-master.txt".format(deqp_path, k)
+            )
+        )
         if os.path.exists(baseline):
             suite.write('baseline = "{}"\n'.format(baseline))
         suite.write('skips = ["{}"]\n'.format(skips))
-        suite.write('deqp_args = [\n')
+        suite.write("deqp_args = [\n")
         for a in deqp_args[1:-1]:
             suite.write('    "{}",\n'.format(a))
         suite.write('    "{}"\n'.format(deqp_args[-1]))
-        suite.write(']\n')
+        suite.write("]\n")
 
     suite.close()
 
-    cmd = ['deqp-runner',
-           'suite',
-           '--jobs', str(args.jobs),
-           '--output', os.path.join(output_folder, 'deqp'),
-           '--suite', suite_filename]
+    cmd = [
+        "deqp-runner",
+        "suite",
+        "--jobs",
+        str(args.jobs),
+        "--output",
+        os.path.join(output_folder, "deqp"),
+        "--suite",
+        suite_filename,
+    ]
     run_cmd(cmd, args.verbose)
-    shutil.copy(os.path.join(out, 'failures.csv'), new_baseline)
+    shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
     verify_results(baseline, new_baseline)
