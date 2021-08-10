@@ -266,22 +266,20 @@ i915_query_perf_config_data(struct intel_perf_config *perf,
                             int fd, const char *guid,
                             struct drm_i915_perf_oa_config *config)
 {
-   struct {
-      struct drm_i915_query_perf_config query;
-      struct drm_i915_perf_oa_config config;
-   } item_data;
+   char data[sizeof(struct drm_i915_query_perf_config) +
+             sizeof(struct drm_i915_perf_oa_config)] = {};
+   struct drm_i915_query_perf_config *query = (void *)data;
 
-   memset(&item_data, 0, sizeof(item_data));
-   memcpy(item_data.query.uuid, guid, sizeof(item_data.query.uuid));
-   memcpy(&item_data.config, config, sizeof(item_data.config));
+   memcpy(query->uuid, guid, sizeof(query->uuid));
+   memcpy(query->data, config, sizeof(*config));
 
-   int32_t item_length = sizeof(item_data);
+   int32_t item_length = sizeof(data);
    if (intel_i915_query_flags(fd, DRM_I915_QUERY_PERF_CONFIG,
                               DRM_I915_QUERY_PERF_CONFIG_DATA_FOR_UUID,
-                              &item_data, &item_length))
+                              query, &item_length))
       return false;
 
-   memcpy(config, &item_data.config, sizeof(item_data.config));
+   memcpy(config, query->data, sizeof(*config));
 
    return true;
 }
