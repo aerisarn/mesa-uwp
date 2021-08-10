@@ -2229,9 +2229,6 @@ if with_gallium
   if with_gallium_xvmc
     gallium_st += 'xvmc'
   endif
-  if with_gallium_xvmc
-    gallium_st += 'xvmc'
-  endif
   if with_gallium_vdpau
     gallium_st += 'vdpau'
   endif
