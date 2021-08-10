@@ -1037,6 +1037,7 @@ struct si_context {
    struct si_cs_shader_state cs_shader_state;
 
    /* shader information */
+   uint64_t ps_inputs_read_or_disabled;
    struct si_vertex_elements *vertex_elements;
    unsigned num_vertex_elements;
    unsigned sprite_coord_enable;

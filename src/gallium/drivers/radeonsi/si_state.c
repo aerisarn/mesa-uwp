@@ -712,6 +712,7 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
        old_blend->need_src_alpha_4bit != blend->need_src_alpha_4bit) {
       si_ps_key_update_framebuffer_blend(sctx);
       si_ps_key_update_blend_rasterizer(sctx);
+      si_update_ps_inputs_read_or_disabled(sctx);
       sctx->do_update_shaders = true;
    }
 
@@ -1126,6 +1127,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
       si_ps_key_update_blend_rasterizer(sctx);
       si_ps_key_update_rasterizer(sctx);
       si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
+      si_update_ps_inputs_read_or_disabled(sctx);
       sctx->do_update_shaders = true;
    }
 }
@@ -1345,6 +1347,7 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
 
    if (old_dsa->alpha_func != dsa->alpha_func) {
       si_ps_key_update_dsa(sctx);
+      si_update_ps_inputs_read_or_disabled(sctx);
       sctx->do_update_shaders = true;
    }
 
@@ -2995,6 +2998,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    si_ps_key_update_framebuffer(sctx);
    si_ps_key_update_framebuffer_blend(sctx);
    si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
+   si_update_ps_inputs_read_or_disabled(sctx);
    sctx->do_update_shaders = true;
 
    if (!sctx->decompression_enabled) {

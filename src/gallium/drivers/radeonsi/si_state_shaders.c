@@ -1850,12 +1850,9 @@ void si_get_vs_key_inputs(struct si_context *sctx, struct si_shader_key *key,
           sizeof(key->mono.vs_fix_fetch));
 }
 
-static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
-                                  struct si_shader_key *key)
+void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
 {
    struct si_shader_selector *ps = sctx->shader.ps.cso;
-
-   key->opt.kill_clip_distances = vs->clipdist_mask & ~sctx->queued.named.rasterizer->clip_plane_enable;
 
    /* Find out if PS is disabled. */
    bool ps_disabled = true;
@@ -1870,15 +1867,18 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
                     (!ps_colormask && !ps_modifies_zs && !ps->info.base.writes_memory);
    }
 
+   sctx->ps_inputs_read_or_disabled = ps_disabled ? 0 : ps->inputs_read;
+}
+
+static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
+                                  struct si_shader_key *key)
+{
+
+   key->opt.kill_clip_distances = vs->clipdist_mask & ~sctx->queued.named.rasterizer->clip_plane_enable;
+
    /* Find out which VS outputs aren't used by the PS. */
    uint64_t outputs_written = vs->outputs_written_before_ps;
-   uint64_t inputs_read = 0;
-
-   if (!ps_disabled) {
-      inputs_read = ps->inputs_read;
-   }
-
-   uint64_t linked = outputs_written & inputs_read;
+   uint64_t linked = outputs_written & sctx->ps_inputs_read_or_disabled;
 
    key->opt.kill_outputs = ~linked & outputs_written;
 
@@ -3365,6 +3365,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
    si_ps_key_update_dsa(sctx);
    si_ps_key_update_sample_shading(sctx);
    si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
+   si_update_ps_inputs_read_or_disabled(sctx);
 }
 
 static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
