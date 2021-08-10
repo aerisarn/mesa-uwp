@@ -173,7 +173,6 @@ struct si_vertex_elements {
    uint16_t vb_alignment_check_mask;
 
    uint8_t count;
-   bool uses_instance_divisors;
 
    uint16_t first_vb_use_mask;
    /* Vertex buffer descriptor list size aligned for optimal prefetch. */

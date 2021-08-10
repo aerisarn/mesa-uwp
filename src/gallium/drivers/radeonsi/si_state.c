@@ -4668,8 +4668,6 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
 
       unsigned instance_divisor = elements[i].instance_divisor;
       if (instance_divisor) {
-         v->uses_instance_divisors = true;
-
          if (instance_divisor == 1) {
             v->instance_divisor_is_one |= 1u << i;
          } else {
@@ -4866,9 +4864,8 @@ static void si_bind_vertex_elements(struct pipe_context *ctx, void *state)
    }
 
    if (old->count != v->count ||
-       old->uses_instance_divisors != v->uses_instance_divisors ||
-       /* we don't check which divisors changed */
-       v->uses_instance_divisors ||
+       old->instance_divisor_is_one != v->instance_divisor_is_one ||
+       old->instance_divisor_is_fetched != v->instance_divisor_is_fetched ||
        (old->vb_alignment_check_mask ^ v->vb_alignment_check_mask) &
        sctx->vertex_buffer_unaligned ||
        ((v->vb_alignment_check_mask & sctx->vertex_buffer_unaligned) &&
