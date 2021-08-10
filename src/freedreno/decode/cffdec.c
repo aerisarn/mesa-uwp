@@ -168,9 +168,6 @@ static void dump_tex_const(uint32_t *texsamp, int num_unit, int level);
 static bool
 highlight_gpuaddr(uint64_t gpuaddr)
 {
-   if (!options->color)
-      return false;
-
    if (!options->ibs[ib].base)
       return false;
 
@@ -178,7 +175,7 @@ highlight_gpuaddr(uint64_t gpuaddr)
       return false;
 
    if (ibs[ib].triggered)
-      return true;
+      return options->color;
 
    if (options->ibs[ib].base != ibs[ib].base)
       return false;
@@ -193,7 +190,7 @@ highlight_gpuaddr(uint64_t gpuaddr)
    if (triggered)
       printf("ESTIMATED CRASH LOCATION!\n");
 
-   return triggered;
+   return triggered & options->color;
 }
 
 static void
