@@ -166,7 +166,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_depth_clip_enable = true,
       .EXT_descriptor_indexing = true,
       .EXT_extended_dynamic_state = true,
-      .EXT_extended_dynamic_state2 = false,
+      .EXT_extended_dynamic_state2 = true,
       .EXT_filter_cubic = device->info->a6xx.has_tex_filter_cubic,
       .EXT_host_query_reset = true,
       .EXT_index_type_uint8 = true,
@@ -681,7 +681,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
          VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *features =
             (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *)ext;
-         features->extendedDynamicState2 = false;
+         features->extendedDynamicState2 = true;
          features->extendedDynamicState2LogicOp = false;
          features->extendedDynamicState2PatchControlPoints = false;
          break;
