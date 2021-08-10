@@ -1346,6 +1346,12 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
          S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
          S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1);
    }
+
+   shader->ctx_reg.ngg.vgt_stages.u.ngg = 1;
+   shader->ctx_reg.ngg.vgt_stages.u.streamout = gs_sel->so.num_outputs;
+   shader->ctx_reg.ngg.vgt_stages.u.ngg_passthrough = gfx10_is_ngg_passthrough(shader);
+   shader->ctx_reg.ngg.vgt_stages.u.ngg_gs_fast_launch =
+      !!(shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
 }
 
 static void si_emit_shader_vs(struct si_context *sctx)

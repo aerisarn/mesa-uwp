@@ -837,35 +837,6 @@ union si_vgt_param_key {
    uint16_t index;
 };
 
-#define SI_NUM_VGT_STAGES_KEY_BITS 6
-#define SI_NUM_VGT_STAGES_STATES   (1 << SI_NUM_VGT_STAGES_KEY_BITS)
-
-/* The VGT_SHADER_STAGES key used to index the table of precomputed values.
- * Some fields are set by state-change calls, most are set by draw_vbo.
- */
-union si_vgt_stages_key {
-   struct {
-#if UTIL_ARCH_LITTLE_ENDIAN
-      uint8_t tess : 1;
-      uint8_t gs : 1;
-      uint8_t ngg_gs_fast_launch : 1;
-      uint8_t ngg_passthrough : 1;
-      uint8_t ngg : 1;       /* gfx10+ */
-      uint8_t streamout : 1; /* only used with NGG */
-      uint8_t _pad : 8 - SI_NUM_VGT_STAGES_KEY_BITS;
-#else /* UTIL_ARCH_BIG_ENDIAN */
-      uint8_t _pad : 8 - SI_NUM_VGT_STAGES_KEY_BITS;
-      uint8_t streamout : 1;
-      uint8_t ngg : 1;
-      uint8_t ngg_passthrough : 1;
-      uint8_t ngg_gs_fast_launch : 1;
-      uint8_t gs : 1;
-      uint8_t tess : 1;
-#endif
-   } u;
-   uint8_t index;
-};
-
 struct si_texture_handle {
    unsigned desc_slot;
    bool desc_dirty;

@@ -178,16 +178,8 @@ static bool si_update_shaders(struct si_context *sctx)
       key.u.tess = 1;
    if (HAS_GS)
       key.u.gs = 1;
-
-   if (NGG) {
-      struct si_shader *vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
-
-      key.u.ngg = 1;
-      key.u.streamout = !!si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->cso->so.num_outputs;
-      /* These must be done after the shader variant is selected. */
-      key.u.ngg_passthrough = gfx10_is_ngg_passthrough(vs);
-      key.u.ngg_gs_fast_launch = !!(vs->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
-   }
+   if (NGG)
+      key.index |= si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ctx_reg.ngg.vgt_stages.index;
 
    struct si_pm4_state **pm4 = &sctx->vgt_shader_config[key.index];
    if (unlikely(!*pm4))
