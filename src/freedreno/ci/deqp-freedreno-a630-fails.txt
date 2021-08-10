@@ -281,6 +281,3 @@ dEQP-VK.ssbo.layout.random.all_shared_buffer.5,Fail
 dEQP-VK.ssbo.layout.random.nested_structs_arrays.0,Fail
 dEQP-VK.ssbo.layout.random.nested_structs_arrays.17,Fail
 dEQP-VK.ssbo.layout.random.scalar.19,Fail
-
-# "Mismatch at offset 0 expected -89 received 0 (elemNdx=0 vecNdx=0 compNdx=0)"
-dEQP-VK.transform_feedback.fuzz.various_buffers.buffers100_instance_array_vertex,Fail

@@ -726,8 +726,8 @@ tu6_setup_streamout(struct tu_cs *cs,
       unsigned k = out->register_index;
       unsigned idx;
 
-      /* Skip it, if there's an unused reg in the middle of outputs. */
-      if (v->outputs[k].regid == INVALID_REG)
+      /* Skip it, if it's an output that was never assigned a register. */
+      if (k >= v->outputs_count || v->outputs[k].regid == INVALID_REG)
          continue;
 
       ncomp[out->output_buffer] += out->num_components;
