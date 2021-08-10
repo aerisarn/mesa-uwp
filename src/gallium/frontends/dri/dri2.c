@@ -2350,6 +2350,15 @@ dri2_init_screen(__DRIscreen * sPriv)
    screen->broken_invalidate = !sPriv->dri2.useInvalidate;
    screen->lookup_egl_image = dri2_lookup_egl_image;
 
+   const __DRIimageLookupExtension *loader = sPriv->dri2.image;
+   if (loader &&
+       loader->base.version >= 2 &&
+       loader->validateEGLImage &&
+       loader->lookupEGLImageValidated) {
+      screen->validate_egl_image = dri2_validate_egl_image;
+      screen->lookup_egl_image_validated = dri2_lookup_egl_image_validated;
+   }
+
    return configs;
 
 destroy_screen:
@@ -2403,6 +2412,15 @@ dri_kms_init_screen(__DRIscreen * sPriv)
    screen->auto_fake_front = dri_with_format(sPriv);
    screen->broken_invalidate = !sPriv->dri2.useInvalidate;
    screen->lookup_egl_image = dri2_lookup_egl_image;
+
+   const __DRIimageLookupExtension *loader = sPriv->dri2.image;
+   if (loader &&
+       loader->base.version >= 2 &&
+       loader->validateEGLImage &&
+       loader->lookupEGLImageValidated) {
+      screen->validate_egl_image = dri2_validate_egl_image;
+      screen->lookup_egl_image_validated = dri2_lookup_egl_image_validated;
+   }
 
    return configs;
 
