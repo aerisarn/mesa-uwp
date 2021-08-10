@@ -2086,9 +2086,6 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
    default:
       assert(0);
    }
-
-   if (unlikely(sctx->screen->debug_flags & DBG(NO_OPT_VARIANT)))
-      memset(&key->opt, 0, sizeof(key->opt));
 }
 
 static void si_build_shader_variant(struct si_shader *shader, int thread_index, bool low_priority)
@@ -2208,6 +2205,12 @@ int si_shader_select_with_key(struct si_screen *sscreen, struct si_shader_ctx_st
     * use a copy.
     */
    struct si_shader_key local_key;
+
+   if (unlikely(sscreen->debug_flags & DBG(NO_OPT_VARIANT))) {
+      /* Disable shader variant optimizations. */
+      key = use_local_key_copy(key, &local_key);
+      memset(&local_key.opt, 0, sizeof(key->opt));
+   }
 
 again:
    /* Check if we don't need to change anything.
