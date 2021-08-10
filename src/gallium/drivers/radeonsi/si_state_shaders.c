@@ -2146,7 +2146,7 @@ static const struct si_shader_key zeroed;
 
 static bool si_check_missing_main_part(struct si_screen *sscreen, struct si_shader_selector *sel,
                                        struct si_compiler_ctx_state *compiler_state,
-                                       struct si_shader_key *key)
+                                       const struct si_shader_key *key)
 {
    struct si_shader **mainp = si_get_main_shader_part(sel, key);
 
@@ -2177,6 +2177,16 @@ static bool si_check_missing_main_part(struct si_screen *sscreen, struct si_shad
    return true;
 }
 
+/* A helper to copy *key to *local_key and return local_key. */
+static const struct si_shader_key *
+use_local_key_copy(const struct si_shader_key *key, struct si_shader_key *local_key)
+{
+   if (key != local_key)
+      memcpy(local_key, key, sizeof(*key));
+
+   return local_key;
+}
+
 /**
  * Select a shader variant according to the shader key.
  *
@@ -2186,12 +2196,18 @@ static bool si_check_missing_main_part(struct si_screen *sscreen, struct si_shad
  */
 int si_shader_select_with_key(struct si_screen *sscreen, struct si_shader_ctx_state *state,
                               struct si_compiler_ctx_state *compiler_state,
-                              struct si_shader_key *key, int thread_index, bool optimized_or_none)
+                              const struct si_shader_key *key, int thread_index,
+                              bool optimized_or_none)
 {
    struct si_shader_selector *sel = state->cso;
    struct si_shader_selector *previous_stage_sel = NULL;
    struct si_shader *current = state->current;
    struct si_shader *iter, *shader = NULL;
+   /* si_shader_select_with_key must not modify 'key' because it would affect future shaders.
+    * If we need to modify it for this specific shader (eg: to disable optimizations), we
+    * use a copy.
+    */
+   struct si_shader_key local_key;
 
 again:
    /* Check if we don't need to change anything.
@@ -2204,7 +2220,8 @@ again:
             if (optimized_or_none)
                return -1;
 
-            memset(&key->opt, 0, sizeof(key->opt));
+            key = use_local_key_copy(key, &local_key);
+            memset(&local_key.opt, 0, sizeof(key->opt));
             goto current_not_ready;
          }
 
@@ -2243,9 +2260,10 @@ current_not_ready:
                     key->opt.inlined_uniform_values,
                     MAX_INLINABLE_UNIFORMS * 4) != 0) {
             if (variant_count++ > max_inline_uniforms_variants) {
+               key = use_local_key_copy(key, &local_key);
                /* Too many variants. Disable inlining for this shader. */
-               key->opt.inline_uniforms = 0;
-               memset(key->opt.inlined_uniform_values, 0, MAX_INLINABLE_UNIFORMS * 4);
+               local_key.opt.inline_uniforms = 0;
+               memset(local_key.opt.inlined_uniform_values, 0, MAX_INLINABLE_UNIFORMS * 4);
                simple_mtx_unlock(&sel->mutex);
                goto again;
             }
@@ -2262,7 +2280,9 @@ current_not_ready:
             if (iter->is_optimized) {
                if (optimized_or_none)
                   return -1;
-               memset(&key->opt, 0, sizeof(key->opt));
+
+               key = use_local_key_copy(key, &local_key);
+               memset(&local_key.opt, 0, sizeof(key->opt));
                goto again;
             }
 
@@ -2383,7 +2403,8 @@ current_not_ready:
       }
 
       /* Use the default (unoptimized) shader for now. */
-      memset(&key->opt, 0, sizeof(key->opt));
+      key = use_local_key_copy(key, &local_key);
+      memset(&local_key.opt, 0, sizeof(key->opt));
       simple_mtx_unlock(&sel->mutex);
 
       if (sscreen->options.sync_compile)

@@ -576,7 +576,8 @@ void si_get_active_slot_masks(const struct si_shader_info *info, uint64_t *const
                               uint64_t *samplers_and_images);
 int si_shader_select_with_key(struct si_screen *sscreen, struct si_shader_ctx_state *state,
                               struct si_compiler_ctx_state *compiler_state,
-                              struct si_shader_key *key, int thread_index, bool optimized_or_none);
+                              const struct si_shader_key *key, int thread_index,
+                              bool optimized_or_none);
 void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selector *vs,
                                struct si_shader_key *key, struct si_vs_prolog_bits *prolog_key);
 unsigned si_get_input_prim(const struct si_shader_selector *gs);
