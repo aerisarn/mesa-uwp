@@ -564,7 +564,6 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen, unsigned char ir_sha
 void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_sha1_cache_key[20],
                                    struct si_shader *shader, bool insert_into_disk_cache);
 bool si_shader_mem_ordered(struct si_shader *shader);
-bool si_update_shaders(struct si_context *sctx);
 void si_init_screen_live_shader_cache(struct si_screen *sscreen);
 void si_init_shader_functions(struct si_context *sctx);
 bool si_init_shader_cache(struct si_screen *sscreen);
@@ -579,6 +578,8 @@ int si_shader_select_with_key(struct si_screen *sscreen, struct si_shader_ctx_st
                               struct si_compiler_ctx_state *compiler_state,
                               const struct si_shader_key *key, int thread_index,
                               bool optimized_or_none);
+int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state,
+                     struct si_compiler_ctx_state *compiler_state);
 void si_vs_key_update_inputs(struct si_context *sctx);
 void si_get_vs_key_inputs(struct si_context *sctx, struct si_shader_key *key,
                           struct si_vs_prolog_bits *prolog_key);
@@ -592,6 +593,9 @@ void si_ps_key_update_rasterizer(struct si_context *sctx);
 void si_ps_key_update_dsa(struct si_context *sctx);
 void si_ps_key_update_sample_shading(struct si_context *sctx);
 void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *sctx);
+void si_init_tess_factor_ring(struct si_context *sctx);
+bool si_update_gs_ring_buffers(struct si_context *sctx);
+bool si_update_spi_tmpring_size(struct si_context *sctx);
 
 /* si_state_draw.c */
 void si_init_draw_functions_GFX6(struct si_context *sctx);
