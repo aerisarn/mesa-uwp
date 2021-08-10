@@ -212,7 +212,8 @@ fi
 
 FAILURE_MESSAGE=$(printf "%s" "Unexpected change in results:")
 
-if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
+if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
+       && [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
     ci-fairy minio login $MINIO_ARGS $CI_JOB_JWT
 fi
 
