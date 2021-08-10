@@ -120,7 +120,9 @@ create_surface(struct pipe_context *pctx,
    surface->base.context = pctx;
    surface->base.format = templ->format;
    surface->base.width = u_minify(pres->width0, level);
+   assert(surface->base.width);
    surface->base.height = u_minify(pres->height0, level);
+   assert(surface->base.height);
    surface->base.nr_samples = templ->nr_samples;
    surface->base.u.tex.level = level;
    surface->base.u.tex.first_layer = templ->u.tex.first_layer;
