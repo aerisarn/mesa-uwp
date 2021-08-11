@@ -4194,10 +4194,6 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
       db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
       db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(extra->depth_compress_disable);
       db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(extra->stencil_compress_disable);
-      db_render_override2 |=
-         S_028010_DISABLE_ZMASK_EXPCLEAR_OPTIMIZATION(extra->db_depth_disable_expclear);
-      db_render_override2 |=
-         S_028010_DISABLE_SMEM_EXPCLEAR_OPTIMIZATION(extra->db_stencil_disable_expclear);
    }
 
    db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |

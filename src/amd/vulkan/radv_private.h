@@ -1828,8 +1828,6 @@ struct radv_graphics_pipeline_create_info {
    bool use_rectlist;
    bool db_depth_clear;
    bool db_stencil_clear;
-   bool db_depth_disable_expclear;
-   bool db_stencil_disable_expclear;
    bool depth_compress_disable;
    bool stencil_compress_disable;
    bool resummarize_enable;

@@ -636,11 +636,9 @@ create_depthstencil_pipeline(struct radv_device *device, VkImageAspectFlags aspe
 
    if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
       extra.db_depth_clear = index == DEPTH_CLEAR_SLOW ? false : true;
-      extra.db_depth_disable_expclear = index == DEPTH_CLEAR_FAST ? true : false;
    }
    if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
       extra.db_stencil_clear = index == DEPTH_CLEAR_SLOW ? false : true;
-      extra.db_stencil_disable_expclear = index == DEPTH_CLEAR_FAST ? true : false;
    }
    result =
       create_pipeline(device, radv_render_pass_from_handle(render_pass), samples, vs_nir, fs_nir,
