@@ -3358,15 +3358,10 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
          /* The input is loaded from parameter memory. */
          ps_input_cntl |= S_028644_OFFSET(offset);
       } else if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
-         if (offset == AC_EXP_PARAM_UNDEFINED) {
-            /* This can happen with depth-only rendering. */
-            offset = 0;
-         } else {
-            /* The input is a DEFAULT_VAL constant. */
-            assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
-                   offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
-            offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
-         }
+         /* The input is a DEFAULT_VAL constant. */
+         assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
+                offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
+         offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
 
          ps_input_cntl = S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(offset);
       }

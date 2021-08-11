@@ -1447,7 +1447,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       si_dump_streamout(&sel->so);
    }
 
-   memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
+   memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
           sizeof(shader->info.vs_output_param_offset));
 
    shader->info.uses_instanceid = sel->info.uses_instanceid;
