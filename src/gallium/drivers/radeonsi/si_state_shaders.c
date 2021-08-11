@@ -3525,68 +3525,6 @@ static void si_delete_shader_selector(struct pipe_context *ctx, void *state)
    si_shader_selector_reference(sctx, &sel, NULL);
 }
 
-static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *vs,
-                                     unsigned semantic, enum glsl_interp_mode interpolate,
-                                     ubyte fp16_lo_hi_mask)
-{
-   struct si_shader_info *vsinfo = &vs->selector->info;
-   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-   unsigned offset, ps_input_cntl = 0;
-
-   int vs_slot = vsinfo->output_semantic_to_slot[semantic];
-   if (vs_slot >= 0) {
-      offset = vs->info.vs_output_param_offset[vs_slot];
-
-      if (offset <= AC_EXP_PARAM_OFFSET_31) {
-         /* The input is loaded from parameter memory. */
-         ps_input_cntl |= S_028644_OFFSET(offset);
-
-         if (interpolate == INTERP_MODE_FLAT ||
-             (interpolate == INTERP_MODE_COLOR && rs->flatshade)) {
-            ps_input_cntl |= S_028644_FLAT_SHADE(1);
-         }
-      } else {
-         /* The input is a DEFAULT_VAL constant. */
-         assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
-                offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
-         offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
-
-         /* Overwrite the whole value. OFFSET=0x20 means that DEFAULT_VAL is used. */
-         ps_input_cntl = S_028644_OFFSET(0x20) |
-                         S_028644_DEFAULT_VAL(offset);
-      }
-
-      if (fp16_lo_hi_mask) {
-         assert(offset <= AC_EXP_PARAM_OFFSET_31 || offset == AC_EXP_PARAM_DEFAULT_VAL_0000);
-
-         ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
-                          S_028644_USE_DEFAULT_ATTR1(offset == AC_EXP_PARAM_DEFAULT_VAL_0000) |
-                          S_028644_DEFAULT_VAL_ATTR1(0) |
-                          S_028644_ATTR0_VALID(1) | /* this must be set if FP16_INTERP_MODE is set */
-                          S_028644_ATTR1_VALID(!!(fp16_lo_hi_mask & 0x2));
-      }
-   } else {
-      /* No corresponding output found, load defaults into input. */
-      ps_input_cntl = S_028644_OFFSET(0x20) |
-                      /* D3D 9 behaviour for COLOR0. GL is undefined */
-                      S_028644_DEFAULT_VAL(semantic == VARYING_SLOT_COL1 ? 3 : 0);
-   }
-
-   if (semantic == VARYING_SLOT_PNTC ||
-       (semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7 &&
-        rs->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
-      /* Overwrite the whole value for sprite coordinates. */
-      ps_input_cntl = S_028644_OFFSET(0) |
-                      S_028644_PT_SPRITE_TEX(1);
-      if (fp16_lo_hi_mask & 0x1) {
-         ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
-                          S_028644_ATTR0_VALID(1);
-      }
-   }
-
-   return ps_input_cntl;
-}
-
 static void si_emit_spi_map(struct si_context *sctx)
 {
    struct si_shader *ps = sctx->shader.ps.current;
@@ -3605,14 +3543,67 @@ static void si_emit_spi_map(struct si_context *sctx)
       vs = si_get_vs(sctx)->current;
 
    unsigned num_interp = ps->ctx_reg.ps.num_interp;
+   struct si_shader_info *vsinfo = &vs->selector->info;
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
    for (i = 0; i < num_interp; i++) {
       unsigned semantic = psinfo->input[i].semantic;
       unsigned interpolate = psinfo->input[i].interpolate;
       ubyte fp16_lo_hi_mask = psinfo->input[i].fp16_lo_hi_valid;
+      unsigned ps_input_cntl = 0;
 
-      spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic, interpolate,
-                                                              fp16_lo_hi_mask);
+      int vs_slot = vsinfo->output_semantic_to_slot[semantic];
+      if (vs_slot >= 0) {
+         unsigned offset = vs->info.vs_output_param_offset[vs_slot];
+
+         if (offset <= AC_EXP_PARAM_OFFSET_31) {
+            /* The input is loaded from parameter memory. */
+            ps_input_cntl |= S_028644_OFFSET(offset);
+
+            if (interpolate == INTERP_MODE_FLAT ||
+                (interpolate == INTERP_MODE_COLOR && rs->flatshade)) {
+               ps_input_cntl |= S_028644_FLAT_SHADE(1);
+            }
+         } else {
+            /* The input is a DEFAULT_VAL constant. */
+            assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
+                   offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
+            offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
+
+            /* Overwrite the whole value. OFFSET=0x20 means that DEFAULT_VAL is used. */
+            ps_input_cntl = S_028644_OFFSET(0x20) |
+                            S_028644_DEFAULT_VAL(offset);
+         }
+
+         if (fp16_lo_hi_mask) {
+            assert(offset <= AC_EXP_PARAM_OFFSET_31 || offset == AC_EXP_PARAM_DEFAULT_VAL_0000);
+
+            ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                             S_028644_USE_DEFAULT_ATTR1(offset == AC_EXP_PARAM_DEFAULT_VAL_0000) |
+                             S_028644_DEFAULT_VAL_ATTR1(0) |
+                             S_028644_ATTR0_VALID(1) | /* this must be set if FP16_INTERP_MODE is set */
+                             S_028644_ATTR1_VALID(!!(fp16_lo_hi_mask & 0x2));
+         }
+      } else {
+         /* No corresponding output found, load defaults into input. */
+         ps_input_cntl = S_028644_OFFSET(0x20) |
+                         /* D3D 9 behaviour for COLOR0. GL is undefined */
+                         S_028644_DEFAULT_VAL(semantic == VARYING_SLOT_COL1 ? 3 : 0);
+      }
+
+      if (semantic == VARYING_SLOT_PNTC ||
+          (semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7 &&
+           rs->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
+         /* Overwrite the whole value for sprite coordinates. */
+         ps_input_cntl = S_028644_OFFSET(0) |
+                         S_028644_PT_SPRITE_TEX(1);
+         if (fp16_lo_hi_mask & 0x1) {
+            ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                             S_028644_ATTR0_VALID(1);
+         }
+      }
+
+      spi_ps_input_cntl[num_written++] = ps_input_cntl;
    }
 
    assert(num_interp > 0);
