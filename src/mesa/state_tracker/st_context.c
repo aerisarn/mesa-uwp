@@ -953,7 +953,8 @@ st_pin_driver_to_l3_cache(struct gl_context *ctx, unsigned L3_cache)
 
 static void
 st_init_driver_functions(struct pipe_screen *screen,
-                         struct dd_function_table *functions)
+                         struct dd_function_table *functions,
+                         bool has_egl_image_validate)
 {
    _mesa_init_sampler_object_functions(functions);
 
@@ -968,7 +969,7 @@ st_init_driver_functions(struct pipe_screen *screen,
 
    st_init_drawtex_functions(functions);
 
-   st_init_eglimage_functions(functions);
+   st_init_eglimage_functions(functions, has_egl_image_validate);
 
    st_init_fbo_functions(functions);
    st_init_feedback_functions(functions);
@@ -1030,7 +1031,7 @@ st_create_context(gl_api api, struct pipe_context *pipe,
                   const struct gl_config *visual,
                   struct st_context *share,
                   const struct st_config_options *options,
-                  bool no_error)
+                  bool no_error, bool has_egl_image_validate)
 {
    struct gl_context *ctx;
    struct gl_context *shareCtx = share ? share->ctx : NULL;
@@ -1040,7 +1041,7 @@ st_create_context(gl_api api, struct pipe_context *pipe,
    util_cpu_detect();
 
    memset(&funcs, 0, sizeof(funcs));
-   st_init_driver_functions(pipe->screen, &funcs);
+   st_init_driver_functions(pipe->screen, &funcs, has_egl_image_validate);
 
    if (pipe->set_context_param)
       funcs.PinDriverToL3Cache = st_pin_driver_to_l3_cache;

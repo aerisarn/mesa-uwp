@@ -1385,6 +1385,8 @@ struct dd_function_table {
                                             struct gl_shader_program *shprog);
 
    void (*PinDriverToL3Cache)(struct gl_context *ctx, unsigned L3_cache);
+
+   GLboolean (*ValidateEGLImage)(struct gl_context *ctx, GLeglImageOES image_handle);
 };
 
 
