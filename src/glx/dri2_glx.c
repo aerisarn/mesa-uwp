@@ -200,11 +200,6 @@ dri2_create_context_attribs(struct glx_screen *base,
    uint32_t ctx_attribs[2 * 6];
    unsigned num_ctx_attribs = 0;
 
-   if (psc->dri2->base.version < 3) {
-      *error = __DRI_CTX_ERROR_NO_MEMORY;
-      goto error_exit;
-   }
-
    /* Remap the GLX tokens to DRI2 tokens.
     */
    if (!dri2_convert_glx_attribs(num_attribs, attribs,
@@ -1047,6 +1042,7 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
 {
    const struct dri2_display *const pdp = (struct dri2_display *)
       priv->dri2Display;
+   const unsigned mask = psc->dri2->getAPIMask(psc->driScreen);
    const __DRIextension **extensions;
    int i;
 
@@ -1074,21 +1070,17 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
       __glXEnableDirectExtension(&psc->base, "GLX_INTEL_swap_event");
    }
 
-   if (psc->dri2->base.version >= 3) {
-      const unsigned mask = psc->dri2->getAPIMask(psc->driScreen);
+   __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context");
+   __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context_profile");
+   __glXEnableDirectExtension(&psc->base, "GLX_EXT_no_config_context");
 
-      __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context");
-      __glXEnableDirectExtension(&psc->base, "GLX_ARB_create_context_profile");
-      __glXEnableDirectExtension(&psc->base, "GLX_EXT_no_config_context");
-
-      if ((mask & ((1 << __DRI_API_GLES) |
-                   (1 << __DRI_API_GLES2) |
-                   (1 << __DRI_API_GLES3))) != 0) {
-         __glXEnableDirectExtension(&psc->base,
-                                    "GLX_EXT_create_context_es_profile");
-         __glXEnableDirectExtension(&psc->base,
-                                    "GLX_EXT_create_context_es2_profile");
-      }
+   if ((mask & ((1 << __DRI_API_GLES) |
+                (1 << __DRI_API_GLES2) |
+                (1 << __DRI_API_GLES3))) != 0) {
+      __glXEnableDirectExtension(&psc->base,
+                                 "GLX_EXT_create_context_es_profile");
+      __glXEnableDirectExtension(&psc->base,
+                                 "GLX_EXT_create_context_es2_profile");
    }
 
    for (i = 0; extensions[i]; i++) {
@@ -1108,27 +1100,15 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
       if (((strcmp(extensions[i]->name, __DRI2_THROTTLE) == 0)))
 	 psc->throttle = (__DRI2throttleExtension *) extensions[i];
 
-      /* DRI2 version 3 is also required because
-       * GLX_ARB_create_context_robustness requires GLX_ARB_create_context.
-       */
-      if (psc->dri2->base.version >= 3
-          && strcmp(extensions[i]->name, __DRI2_ROBUSTNESS) == 0)
+      if (strcmp(extensions[i]->name, __DRI2_ROBUSTNESS) == 0)
          __glXEnableDirectExtension(&psc->base,
                                     "GLX_ARB_create_context_robustness");
 
-      /* DRI2 version 3 is also required because
-       * GLX_ARB_create_context_no_error requires GLX_ARB_create_context.
-       */
-      if (psc->dri2->base.version >= 3
-          && strcmp(extensions[i]->name, __DRI2_NO_ERROR) == 0)
+      if (strcmp(extensions[i]->name, __DRI2_NO_ERROR) == 0)
          __glXEnableDirectExtension(&psc->base,
                                     "GLX_ARB_create_context_no_error");
 
-      /* DRI2 version 3 is also required because GLX_MESA_query_renderer
-       * requires GLX_ARB_create_context_profile.
-       */
-      if (psc->dri2->base.version >= 3
-          && strcmp(extensions[i]->name, __DRI2_RENDERER_QUERY) == 0) {
+      if (strcmp(extensions[i]->name, __DRI2_RENDERER_QUERY) == 0) {
          psc->rendererQuery = (__DRI2rendererQueryExtension *) extensions[i];
          __glXEnableDirectExtension(&psc->base, "GLX_MESA_query_renderer");
       }
@@ -1136,11 +1116,7 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
       if (strcmp(extensions[i]->name, __DRI2_INTEROP) == 0)
 	 psc->interop = (__DRI2interopExtension*)extensions[i];
 
-      /* DRI2 version 3 is also required because
-       * GLX_ARB_control_flush_control requires GLX_ARB_create_context.
-       */
-      if (psc->dri2->base.version >= 3
-          && strcmp(extensions[i]->name, __DRI2_FLUSH_CONTROL) == 0)
+      if (strcmp(extensions[i]->name, __DRI2_FLUSH_CONTROL) == 0)
          __glXEnableDirectExtension(&psc->base,
                                     "GLX_ARB_context_flush_control");
    }
@@ -1232,7 +1208,7 @@ dri2CreateScreen(int screen, struct glx_display * priv)
 	 psc->dri2 = (__DRIdri2Extension *) extensions[i];
    }
 
-   if (psc->core == NULL || psc->dri2 == NULL) {
+   if (psc->core == NULL || psc->dri2 || psc->dri2->base.version < 3) {
       ErrorMessageF("core dri or dri2 extension not found\n");
       goto handle_error;
    }
