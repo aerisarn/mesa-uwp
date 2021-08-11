@@ -114,7 +114,11 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
          unsigned loc = driver_location + i;
 
          info->input_semantic[loc] = semantic + i;
-         info->input_interpolate[loc] = interp;
+
+         if (semantic == SYSTEM_VALUE_PRIMITIVE_ID)
+            info->input_interpolate[loc] = INTERP_MODE_FLAT;
+         else
+            info->input_interpolate[loc] = interp;
 
          if (mask) {
             info->input_usage_mask[loc] |= mask;

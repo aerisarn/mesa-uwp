@@ -3531,8 +3531,7 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
    unsigned offset, ps_input_cntl = 0;
 
    if (interpolate == INTERP_MODE_FLAT ||
-       (interpolate == INTERP_MODE_COLOR && rs->flatshade) ||
-       semantic == VARYING_SLOT_PRIMITIVE_ID)
+       (interpolate == INTERP_MODE_COLOR && rs->flatshade))
       ps_input_cntl |= S_028644_FLAT_SHADE(1);
 
    if (semantic == VARYING_SLOT_PNTC ||
