@@ -120,6 +120,10 @@ wine \
 
 . .gitlab-ci/container/container_pre_build.sh
 
+############### Build libdrm
+
+. .gitlab-ci/container/build-libdrm.sh
+
 ############### Build parallel-deqp-runner's hang-detection tool
 
 . .gitlab-ci/container/build-hang-detection.sh
@@ -145,10 +149,6 @@ PIGLIT_BUILD_TARGETS="piglit_replayer" . .gitlab-ci/container/build-piglit.sh
 setup_wine "/vkd3d-proton-wine64"
 
 . .gitlab-ci/container/build-vkd3d-proton.sh
-
-############### Build libdrm
-
-. .gitlab-ci/container/build-libdrm.sh
 
 ############### Uninstall the build software
 
