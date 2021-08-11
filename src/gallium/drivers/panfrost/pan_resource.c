@@ -407,6 +407,10 @@ panfrost_best_modifier(struct panfrost_device *dev,
                        const struct panfrost_resource *pres,
                        enum pipe_format fmt)
 {
+        /* Force linear textures when debugging tiling/compression */
+        if (unlikely(dev->debug & PAN_DBG_LINEAR))
+                return DRM_FORMAT_MOD_LINEAR;
+
         if (panfrost_should_afbc(dev, pres, fmt)) {
                 uint64_t afbc =
                         AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |

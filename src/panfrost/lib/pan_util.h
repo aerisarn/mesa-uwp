@@ -40,6 +40,7 @@
 #define PAN_DBG_NO_AFBC         0x0200
 #define PAN_DBG_MSAA16          0x0400
 #define PAN_DBG_NOINDIRECT      0x0800
+#define PAN_DBG_LINEAR          0x1000
 
 unsigned
 panfrost_translate_swizzle_4(const unsigned char swizzle[4]);

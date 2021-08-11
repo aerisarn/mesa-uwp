@@ -69,6 +69,7 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"nocrc",     PAN_DBG_NO_CRC,   "Disable transaction elimination"},
         {"msaa16",    PAN_DBG_MSAA16,   "Enable MSAA 8x and 16x support"},
         {"noindirect", PAN_DBG_NOINDIRECT, "Emulate indirect draws on the CPU"},
+        {"linear",    PAN_DBG_LINEAR,   "Force linear textures"},
         DEBUG_NAMED_VALUE_END
 };
 
