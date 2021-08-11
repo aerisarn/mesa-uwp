@@ -569,7 +569,8 @@ create_fs(struct st_context *st, bool download,
                             nir_vec4(&b, pbo_addr, zero, zero, zero),
                             zero,
                             result,
-                            nir_imm_int(&b, 0));
+                            nir_imm_int(&b, 0),
+                            .image_dim = GLSL_SAMPLER_DIM_BUF);
    } else {
       nir_variable *color =
          nir_variable_create(b.shader, nir_var_shader_out, glsl_vec4_type(),
