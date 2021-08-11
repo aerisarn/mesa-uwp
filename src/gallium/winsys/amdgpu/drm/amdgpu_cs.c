@@ -1129,11 +1129,8 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
 {
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
    struct amdgpu_ib *ib = rcs == cs->main.rcs ? &cs->main : &cs->compute_ib;
-   unsigned requested_size = rcs->prev_dw + rcs->current.cdw + dw;
    unsigned cs_epilog_dw = amdgpu_cs_epilog_dws(cs);
    unsigned need_byte_size = (dw + cs_epilog_dw) * 4;
-   uint64_t va;
-   uint32_t *new_ptr_ib_size;
 
    assert(rcs->current.cdw <= rcs->current.max_dw);
 
@@ -1144,6 +1141,8 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
 
    /* If force_chaining is true, we can't return. We have to chain. */
    if (!force_chaining) {
+      unsigned requested_size = rcs->prev_dw + rcs->current.cdw + dw;
+
       if (requested_size > amdgpu_ib_max_submit_dwords(ib->ib_type))
          return false;
 
@@ -1177,7 +1176,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
       return false;
 
    assert(ib->used_ib_space == 0);
-   va = amdgpu_winsys_bo(ib->big_ib_buffer)->va;
+   uint64_t va = amdgpu_winsys_bo(ib->big_ib_buffer)->va;
 
    /* This space was originally reserved. */
    rcs->current.max_dw += cs_epilog_dw;
@@ -1190,7 +1189,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
    radeon_emit(rcs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
    radeon_emit(rcs, va);
    radeon_emit(rcs, va >> 32);
-   new_ptr_ib_size = &rcs->current.buf[rcs->current.cdw++];
+   uint32_t *new_ptr_ib_size = &rcs->current.buf[rcs->current.cdw++];
    assert((rcs->current.cdw & ib_pad_dw_mask) == 0);
 
    assert((rcs->current.cdw & 7) == 0);
