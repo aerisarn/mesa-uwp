@@ -300,6 +300,55 @@ iris_lower_storage_image_derefs(nir_shader *nir)
    }
 }
 
+static bool
+iris_uses_image_atomic(const nir_shader *shader)
+{
+   nir_foreach_function(function, shader) {
+      if (function->impl == NULL)
+         continue;
+
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            switch (intrin->intrinsic) {
+            case nir_intrinsic_image_deref_atomic_add:
+            case nir_intrinsic_image_deref_atomic_imin:
+            case nir_intrinsic_image_deref_atomic_umin:
+            case nir_intrinsic_image_deref_atomic_imax:
+            case nir_intrinsic_image_deref_atomic_umax:
+            case nir_intrinsic_image_deref_atomic_and:
+            case nir_intrinsic_image_deref_atomic_or:
+            case nir_intrinsic_image_deref_atomic_xor:
+            case nir_intrinsic_image_deref_atomic_exchange:
+            case nir_intrinsic_image_deref_atomic_comp_swap:
+               unreachable("Should have been lowered in "
+                           "iris_lower_storage_image_derefs");
+
+            case nir_intrinsic_image_atomic_add:
+            case nir_intrinsic_image_atomic_imin:
+            case nir_intrinsic_image_atomic_umin:
+            case nir_intrinsic_image_atomic_imax:
+            case nir_intrinsic_image_atomic_umax:
+            case nir_intrinsic_image_atomic_and:
+            case nir_intrinsic_image_atomic_or:
+            case nir_intrinsic_image_atomic_xor:
+            case nir_intrinsic_image_atomic_exchange:
+            case nir_intrinsic_image_atomic_comp_swap:
+               return true;
+
+            default:
+               break;
+            }
+         }
+      }
+   }
+
+   return false;
+}
+
 /**
  * Undo nir_lower_passthrough_edgeflags but keep the inputs_read flag.
  */
@@ -2395,11 +2444,12 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
 
    brw_preprocess_nir(screen->compiler, nir, NULL);
 
-   NIR_PASS_V(nir, brw_nir_lower_storage_image, devinfo,
-              &ish->uses_atomic_load_store);
+   NIR_PASS_V(nir, brw_nir_lower_storage_image, devinfo);
    NIR_PASS_V(nir, iris_lower_storage_image_derefs);
 
    nir_sweep(nir);
+
+   ish->uses_atomic_load_store = iris_uses_image_atomic(nir);
 
    ish->program_id = get_new_program_id(screen);
    ish->nir = nir;
