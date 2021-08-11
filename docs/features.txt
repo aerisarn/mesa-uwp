@@ -479,7 +479,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_display_swapchain                              not started
   VK_KHR_external_fence_fd                              DONE (anv, radv, tu, v3dv, vn)
   VK_KHR_external_fence_win32                           not started
-  VK_KHR_external_memory_fd                             DONE (anv, radv, tu, v3dv, vn)
+  VK_KHR_external_memory_fd                             DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_external_memory_win32                          not started
   VK_KHR_external_semaphore_fd                          DONE (anv, radv, tu, v3dv, vn)
   VK_KHR_external_semaphore_win32                       not started

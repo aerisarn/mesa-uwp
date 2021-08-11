@@ -104,6 +104,9 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_driver_properties                 = true,
    .KHR_external_fence                    = true,
    .KHR_external_memory                   = true,
+#ifdef PIPE_MEMORY_FD
+   .KHR_external_memory_fd                = true,
+#endif
    .KHR_external_semaphore                = true,
    .KHR_shader_float_controls             = true,
    .KHR_get_memory_requirements2          = true,
