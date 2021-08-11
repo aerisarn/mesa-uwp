@@ -32,6 +32,7 @@ MESA_VK_LIB_SUFFIX_amd := radeon
 MESA_VK_LIB_SUFFIX_intel := intel
 MESA_VK_LIB_SUFFIX_freedreno := freedreno
 MESA_VK_LIB_SUFFIX_broadcom := broadcom
+MESA_VK_LIB_SUFFIX_panfrost := panfrost
 MESA_VK_LIB_SUFFIX_virtio-experimental := virtio
 MESA_VK_LIB_SUFFIX_swrast := lvp
 
