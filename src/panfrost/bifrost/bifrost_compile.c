@@ -3576,6 +3576,10 @@ bifrost_compile_shader_nir(nir_shader *nir,
         ctx->stage = nir->info.stage;
         ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
         ctx->arch = inputs->gpu_id >> 12;
+
+        /* If nothing is pushed, all UBOs need to be uploaded */
+        ctx->ubo_mask = ~0;
+
         list_inithead(&ctx->blocks);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
@@ -3677,7 +3681,10 @@ bifrost_compile_shader_nir(nir_shader *nir,
         bi_validate(ctx, "Early lowering");
 
         /* Runs before copy prop */
-        bi_opt_push_ubo(ctx);
+        if (!ctx->inputs->no_ubo_to_push) {
+                bi_opt_push_ubo(ctx);
+        }
+
         bi_opt_constant_fold(ctx);
 
         bi_opt_copy_prop(ctx);
