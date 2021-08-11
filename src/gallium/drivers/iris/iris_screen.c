@@ -830,6 +830,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->fd = iris_bufmgr_get_fd(screen->bufmgr);
    screen->winsys_fd = fd;
 
+   screen->id = iris_bufmgr_create_screen_id(screen->bufmgr);
+
    screen->workaround_bo =
       iris_bo_alloc(screen->bufmgr, "workaround", 4096, 1,
                     IRIS_MEMZONE_OTHER, 0);

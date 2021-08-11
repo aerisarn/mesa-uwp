@@ -449,4 +449,6 @@ iris_bo_bump_seqno(struct iris_bo *bo, uint64_t seqno,
 
 enum iris_memory_zone iris_memzone_for_address(uint64_t address);
 
+int iris_bufmgr_create_screen_id(struct iris_bufmgr *bufmgr);
+
 #endif /* IRIS_BUFMGR_H */

@@ -223,6 +223,9 @@ struct iris_screen {
    struct disk_cache *disk_cache;
 
    struct intel_measure_device measure;
+
+   /** Every screen on a bufmgr has an unique ID assigned by the bufmgr. */
+   int id;
 };
 
 struct pipe_screen *

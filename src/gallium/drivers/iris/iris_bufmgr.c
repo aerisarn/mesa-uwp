@@ -206,6 +206,8 @@ struct iris_bufmgr {
    uint64_t vma_min_align;
    struct iris_memregion vram, sys;
 
+   int next_screen_id;
+
    bool has_llc:1;
    bool has_local_mem:1;
    bool has_mmap_offset:1;
@@ -1864,6 +1866,13 @@ iris_bufmgr_unref(struct iris_bufmgr *bufmgr)
       iris_bufmgr_destroy(bufmgr);
    }
    simple_mtx_unlock(&global_bufmgr_list_mutex);
+}
+
+/** Returns a new unique id, to be used by screens. */
+int
+iris_bufmgr_create_screen_id(struct iris_bufmgr *bufmgr)
+{
+   return p_atomic_inc_return(&bufmgr->next_screen_id) - 1;
 }
 
 /**
