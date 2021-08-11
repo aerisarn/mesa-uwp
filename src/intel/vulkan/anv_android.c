@@ -392,8 +392,6 @@ anv_create_ahw_memory(VkDevice device_h,
                       const VkMemoryAllocateInfo *pAllocateInfo)
 {
 #if ANDROID_API_LEVEL >= 26
-   ANV_FROM_HANDLE(anv_device, dev, device_h);
-
    const VkMemoryDedicatedAllocateInfo *dedicated_info =
       vk_find_struct_const(pAllocateInfo->pNext,
                            MEMORY_DEDICATED_ALLOCATE_INFO);
@@ -754,7 +752,6 @@ anv_AcquireImageANDROID(
       VkSemaphore         semaphore_h,
       VkFence             fence_h)
 {
-   ANV_FROM_HANDLE(anv_device, device, device_h);
    VkResult result = VK_SUCCESS;
 
    /* From https://source.android.com/devices/graphics/implement-vulkan :
