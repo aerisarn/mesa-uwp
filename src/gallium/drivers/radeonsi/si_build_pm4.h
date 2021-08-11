@@ -252,14 +252,10 @@
  * Set consecutive registers if any registers value is different.
  */
 #define radeon_opt_set_context_regn(sctx, offset, value, saved_val, num) do { \
-   for (unsigned i = 0; i < (num); i++) { \
-      if ((saved_val)[i] != (value)[i]) { \
-         radeon_set_context_reg_seq(&(sctx)->gfx_cs, offset, num); \
-         for (unsigned j = 0; j < (num); j++) \
-            radeon_emit(cs, value[j]); \
-         memcpy(saved_val, value, sizeof(uint32_t) * (num)); \
-         break; \
-      } \
+   if (memcmp(value, saved_val, sizeof(uint32_t) * (num))) { \
+      radeon_set_context_reg_seq(&(sctx)->gfx_cs, offset, num); \
+      radeon_emit_array(cs, value, num); \
+      memcpy(saved_val, value, sizeof(uint32_t) * (num)); \
    } \
 } while (0)
 
