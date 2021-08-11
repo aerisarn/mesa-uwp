@@ -447,8 +447,7 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    tex->buffer.b.b.bind = templ.bind;
    radeon_bo_reference(sctx->screen->ws, &tex->buffer.buf, new_tex->buffer.buf);
    tex->buffer.gpu_address = new_tex->buffer.gpu_address;
-   tex->buffer.vram_usage_kb = new_tex->buffer.vram_usage_kb;
-   tex->buffer.gart_usage_kb = new_tex->buffer.gart_usage_kb;
+   tex->buffer.memory_usage_kb = new_tex->buffer.memory_usage_kb;
    tex->buffer.bo_size = new_tex->buffer.bo_size;
    tex->buffer.bo_alignment_log2 = new_tex->buffer.bo_alignment_log2;
    tex->buffer.domains = new_tex->buffer.domains;
@@ -984,8 +983,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       resource->bo_alignment_log2 = plane0->buffer.bo_alignment_log2;
       resource->flags = plane0->buffer.flags;
       resource->domains = plane0->buffer.domains;
-      resource->vram_usage_kb = plane0->buffer.vram_usage_kb;
-      resource->gart_usage_kb = plane0->buffer.gart_usage_kb;
+      resource->memory_usage_kb = plane0->buffer.memory_usage_kb;
 
       radeon_bo_reference(sscreen->ws, &resource->buf, plane0->buffer.buf);
       resource->gpu_address = plane0->buffer.gpu_address;
@@ -1001,10 +999,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       resource->bo_size = imported_buf->size;
       resource->bo_alignment_log2 = imported_buf->alignment_log2;
       resource->domains = sscreen->ws->buffer_get_initial_domain(resource->buf);
-      if (resource->domains & RADEON_DOMAIN_VRAM)
-         resource->vram_usage_kb = MAX2(1, resource->bo_size / 1024);
-      else if (resource->domains & RADEON_DOMAIN_GTT)
-         resource->gart_usage_kb = MAX2(1, resource->bo_size / 1024);
+      resource->memory_usage_kb = MAX2(1, resource->bo_size / 1024);
       if (sscreen->ws->buffer_get_flags)
          resource->flags = sscreen->ws->buffer_get_flags(resource->buf);
    }

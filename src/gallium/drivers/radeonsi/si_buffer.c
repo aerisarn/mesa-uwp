@@ -145,12 +145,9 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
       res->flags |= RADEON_FLAG_UNCACHED;
 
    /* Set expected VRAM and GART usage for the buffer. */
-   res->vram_usage_kb = 0;
-   res->gart_usage_kb = 0;
+   res->memory_usage_kb = MAX2(1, size / 1024);
 
    if (res->domains & RADEON_DOMAIN_VRAM) {
-      res->vram_usage_kb = MAX2(1, size / 1024);
-
       /* We don't want to evict buffers from VRAM by mapping them for CPU access,
        * because they might never be moved back again. If a buffer is large enough,
        * upload data by copying from a temporary GTT buffer. 8K might not seem much,
@@ -162,8 +159,6 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
           sscreen->info.has_dedicated_vram &&
           size >= 8196)
          res->b.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
-   } else if (res->domains & RADEON_DOMAIN_GTT) {
-      res->gart_usage_kb = MAX2(1, size / 1024);
    }
 }
 
@@ -292,8 +287,7 @@ void si_replace_buffer_storage(struct pipe_context *ctx, struct pipe_resource *d
    sdst->b.b.bind = ssrc->b.b.bind;
    sdst->flags = ssrc->flags;
 
-   assert(sdst->vram_usage_kb == ssrc->vram_usage_kb);
-   assert(sdst->gart_usage_kb == ssrc->gart_usage_kb);
+   assert(sdst->memory_usage_kb == ssrc->memory_usage_kb);
    assert(sdst->bo_size == ssrc->bo_size);
    assert(sdst->bo_alignment_log2 == ssrc->bo_alignment_log2);
    assert(sdst->domains == ssrc->domains);
@@ -655,8 +649,7 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
    }
 
    buf->gpu_address = ws->buffer_get_virtual_address(buf->buf);
-   buf->vram_usage_kb = 0;
-   buf->gart_usage_kb = templ->width0 / 1024;
+   buf->memory_usage_kb = templ->width0 / 1024;
    buf->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
    return &buf->b.b;
 }
@@ -678,10 +671,7 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
    res->bo_alignment_log2 = imported_buf->alignment_log2;
    res->domains = sscreen->ws->buffer_get_initial_domain(res->buf);
 
-   if (res->domains & RADEON_DOMAIN_VRAM)
-      res->vram_usage_kb = MAX2(1, res->bo_size / 1024);
-   else if (res->domains & RADEON_DOMAIN_GTT)
-      res->gart_usage_kb = MAX2(1, res->bo_size / 1024);
+   res->memory_usage_kb = MAX2(1, res->bo_size / 1024);
 
    if (sscreen->ws->buffer_get_flags)
       res->flags = sscreen->ws->buffer_get_flags(res->buf);

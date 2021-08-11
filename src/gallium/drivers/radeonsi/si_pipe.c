@@ -1164,6 +1164,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    if (!debug_get_bool_option("RADEON_DISABLE_PERFCOUNTERS", false))
       si_init_perfcounters(sscreen);
 
+   sscreen->max_memory_usage_kb = sscreen->info.vram_size_kb + sscreen->info.gart_size_kb / 4 * 3;
+
    unsigned prim_discard_vertex_count_threshold, tmp;
    si_initialize_prim_discard_tunables(sscreen, false, &prim_discard_vertex_count_threshold, &tmp);
    /* Compute-shader-based culling doesn't support VBOs in user SGPRs. */
