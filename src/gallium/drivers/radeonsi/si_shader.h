@@ -869,6 +869,7 @@ struct si_shader {
          unsigned spi_shader_z_format;
          unsigned spi_shader_col_format;
          unsigned cb_shader_mask;
+         unsigned num_interp;
       } ps;
    } ctx_reg;
 

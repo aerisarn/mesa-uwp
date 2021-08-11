@@ -1721,10 +1721,13 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    shader->ctx_reg.ps.spi_ps_input_ena = input_ena;
    shader->ctx_reg.ps.spi_ps_input_addr = shader->config.spi_ps_input_addr;
 
+   unsigned num_interp = si_get_ps_num_interp(shader);
+
    /* Set interpolation controls. */
-   spi_ps_in_control = S_0286D8_NUM_INTERP(si_get_ps_num_interp(shader)) |
+   spi_ps_in_control = S_0286D8_NUM_INTERP(num_interp) |
                        S_0286D8_PS_W32_EN(sscreen->ps_wave_size == 32);
 
+   shader->ctx_reg.ps.num_interp = num_interp;
    shader->ctx_reg.ps.spi_baryc_cntl = spi_baryc_cntl;
    shader->ctx_reg.ps.spi_ps_in_control = spi_ps_in_control;
    shader->ctx_reg.ps.spi_shader_z_format =
@@ -3589,7 +3592,7 @@ static void si_emit_spi_map(struct si_context *sctx)
    struct si_shader *ps = sctx->shader.ps.current;
    struct si_shader *vs;
    struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
-   unsigned i, num_interp, num_written = 0;
+   unsigned i, num_written = 0;
    unsigned spi_ps_input_cntl[32];
 
    if (!ps || !ps->selector->info.num_inputs)
@@ -3600,9 +3603,6 @@ static void si_emit_spi_map(struct si_context *sctx)
       vs = sctx->shader.gs.cso->gs_copy_shader;
    else
       vs = si_get_vs(sctx)->current;
-
-   num_interp = si_get_ps_num_interp(ps);
-   assert(num_interp > 0);
 
    for (i = 0; i < psinfo->num_inputs; i++) {
       unsigned semantic = psinfo->input[i].semantic;
@@ -3624,6 +3624,9 @@ static void si_emit_spi_map(struct si_context *sctx)
                                                                  false);
       }
    }
+
+   unsigned num_interp = ps->ctx_reg.ps.num_interp;
+   assert(num_interp > 0);
    assert(num_interp == num_written);
 
    /* R_028644_SPI_PS_INPUT_CNTL_0 */
