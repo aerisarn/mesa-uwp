@@ -58,7 +58,6 @@ struct amdgpu_cs_buffer {
 enum ib_type {
    IB_PREAMBLE,
    IB_MAIN,
-   IB_PARALLEL_COMPUTE,
    IB_NUM,
 };
 
@@ -115,10 +114,6 @@ struct amdgpu_cs_context {
    struct amdgpu_fence_list    syncobj_dependencies;
    struct amdgpu_fence_list    syncobj_to_signal;
 
-   /* The compute IB uses the dependencies above + these: */
-   struct amdgpu_fence_list    compute_fence_dependencies;
-   struct amdgpu_fence_list    compute_start_fence_dependencies;
-
    struct pipe_fence_handle    *fence;
 
    /* the error returned from cs_flush for non-async submissions */
@@ -132,7 +127,6 @@ struct amdgpu_cs_context {
 
 struct amdgpu_cs {
    struct amdgpu_ib main; /* must be first because this is inherited */
-   struct amdgpu_ib compute_ib;      /* optional parallel compute IB */
    struct amdgpu_winsys *ws;
    struct amdgpu_ctx *ctx;
    enum ring_type ring_type;

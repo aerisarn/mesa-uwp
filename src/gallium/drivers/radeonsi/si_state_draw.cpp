@@ -971,7 +971,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
       }                                                                  \
    } while (0)
 
-template <chip_class GFX_VERSION, si_has_ngg NGG, si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
+template <chip_class GFX_VERSION, si_has_ngg NGG>
 ALWAYS_INLINE
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
                                  unsigned drawid_base,
@@ -980,7 +980,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                                  unsigned num_draws, unsigned total_count,
                                  struct pipe_resource *indexbuf, unsigned index_size,
                                  unsigned index_offset, unsigned instance_count,
-                                 bool dispatch_prim_discard_cs, unsigned original_index_size)
+                                 unsigned original_index_size)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -1042,22 +1042,19 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          sctx->last_index_size = index_size;
       }
 
-      /* If !ALLOW_PRIM_DISCARD_CS, index_size == original_index_size. */
-      if (!ALLOW_PRIM_DISCARD_CS || original_index_size) {
-         index_max_size = (indexbuf->width0 - index_offset) >> util_logbase2(original_index_size);
-         /* Skip draw calls with 0-sized index buffers.
-          * They cause a hang on some chips, like Navi10-14.
-          */
-         if (!index_max_size) {
-            radeon_end();
-            return;
-         }
-
-         index_va = si_resource(indexbuf)->gpu_address + index_offset;
-
-         radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(indexbuf), RADEON_USAGE_READ,
-                                   RADEON_PRIO_INDEX_BUFFER);
+      index_max_size = (indexbuf->width0 - index_offset) >> util_logbase2(index_size);
+      /* Skip draw calls with 0-sized index buffers.
+       * They cause a hang on some chips, like Navi10-14.
+       */
+      if (!index_max_size) {
+         radeon_end();
+         return;
       }
+
+      index_va = si_resource(indexbuf)->gpu_address + index_offset;
+
+      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(indexbuf), RADEON_USAGE_READ,
+                                RADEON_PRIO_INDEX_BUFFER);
    } else {
       /* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE,
        * so the state must be re-emitted before the next indexed draw.
@@ -1190,16 +1187,6 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       bool increment_draw_id = num_draws > 1 && set_draw_id && info->increment_draw_id;
 
       if (index_size) {
-         if (ALLOW_PRIM_DISCARD_CS && dispatch_prim_discard_cs) {
-            radeon_end();
-
-            si_dispatch_prim_discard_cs_and_draw(sctx, info, draws, num_draws,
-                                                 original_index_size, total_count, index_va,
-                                                 index_max_size);
-            EMIT_SQTT_END_DRAW;
-            return;
-         }
-
          /* NOT_EOP allows merging multiple draws into 1 wave, but only user VGPRs
           * can be changed between draws, and GS fast launch must be disabled.
           * NOT_EOP doesn't work on gfx9 and older.
@@ -1629,100 +1616,12 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
           info->restart_index, min_vertex_count);
 }
 
-static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_resource *indexbuf)
-{
-   struct radeon_winsys *ws = sctx->ws;
-   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   struct si_descriptors *buffers =
-      &sctx->descriptors[si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_VERTEX)];
-   struct si_shader_selector *vs = sctx->shader.vs.cso;
-   struct si_vertex_elements *velems = sctx->vertex_elements;
-   unsigned num_velems = velems->count;
-   unsigned num_images = vs->info.base.num_images;
-
-   /* Index buffer. */
-   if (indexbuf && ws->cs_is_buffer_referenced(cs, si_resource(indexbuf)->buf, RADEON_USAGE_WRITE))
-      goto has_write_reference;
-
-   /* Vertex buffers. */
-   for (unsigned i = 0; i < num_velems; i++) {
-      if (!((1 << i) & velems->first_vb_use_mask))
-         continue;
-
-      unsigned vb_index = velems->vertex_buffer_index[i];
-      struct pipe_resource *res = sctx->vertex_buffer[vb_index].buffer.resource;
-      if (!res)
-         continue;
-
-      if (ws->cs_is_buffer_referenced(cs, si_resource(res)->buf, RADEON_USAGE_WRITE))
-         goto has_write_reference;
-   }
-
-   /* Constant and shader buffers. */
-   for (unsigned i = 0; i < buffers->num_active_slots; i++) {
-      unsigned index = buffers->first_active_slot + i;
-      struct pipe_resource *res = sctx->const_and_shader_buffers[PIPE_SHADER_VERTEX].buffers[index];
-      if (!res)
-         continue;
-
-      if (ws->cs_is_buffer_referenced(cs, si_resource(res)->buf, RADEON_USAGE_WRITE))
-         goto has_write_reference;
-   }
-
-   /* Samplers. */
-   if (vs->info.base.textures_used[0]) {
-      unsigned num_samplers = BITSET_LAST_BIT(vs->info.base.textures_used);
-
-      for (unsigned i = 0; i < num_samplers; i++) {
-         struct pipe_sampler_view *view = sctx->samplers[PIPE_SHADER_VERTEX].views[i];
-         if (!view)
-            continue;
-
-         if (ws->cs_is_buffer_referenced(cs, si_resource(view->texture)->buf, RADEON_USAGE_WRITE))
-            goto has_write_reference;
-      }
-   }
-
-   /* Images. */
-   if (num_images) {
-      for (unsigned i = 0; i < num_images; i++) {
-         struct pipe_resource *res = sctx->images[PIPE_SHADER_VERTEX].views[i].resource;
-         if (!res)
-            continue;
-
-         if (ws->cs_is_buffer_referenced(cs, si_resource(res)->buf, RADEON_USAGE_WRITE))
-            goto has_write_reference;
-      }
-   }
-
-   return true;
-
-has_write_reference:
-   /* If the current gfx IB has enough packets, flush it to remove write
-    * references to buffers.
-    */
-   if (cs->prev_dw + cs->current.cdw > 2048) {
-      si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
-      assert(si_all_vs_resources_read_only(sctx, indexbuf));
-      return true;
-   }
-   return false;
-}
-
-static ALWAYS_INLINE bool pd_msg(const char *s)
-{
-   if (SI_PRIM_DISCARD_DEBUG)
-      printf("PD failed: %s\n", s);
-   return false;
-}
-
 #define DRAW_CLEANUP do {                                 \
       if (index_size && indexbuf != info->index.resource) \
          pipe_resource_reference(&indexbuf, NULL);        \
    } while (0)
 
-template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
+template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
 static void si_draw_vbo(struct pipe_context *ctx,
                         const struct pipe_draw_info *info,
                         unsigned drawid_offset,
@@ -1910,69 +1809,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
       info->primitive_restart &&
       (!sctx->screen->options.prim_restart_tri_strips_only ||
        (prim != PIPE_PRIM_TRIANGLE_STRIP && prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
-   bool dispatch_prim_discard_cs = false;
    unsigned original_index_size = index_size;
-
-   /* Determine if we can use the primitive discard compute shader. */
-   /* TODO: this requires that primitives can be drawn out of order, so check depth/stencil/blend states. */
-   if (ALLOW_PRIM_DISCARD_CS &&
-       (total_direct_count > sctx->prim_discard_vertex_count_threshold
-           ? (sctx->compute_num_verts_rejected += total_direct_count, true)
-           : /* Add, then return true. */
-           (sctx->compute_num_verts_ineligible += total_direct_count,
-            false)) && /* Add, then return false. */
-       (!primitive_restart || pd_msg("primitive restart")) &&
-       /* Supported prim types. */
-       (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP)) &&
-       (instance_count == 1 || pd_msg("instancing")) &&
-       ((drawid_offset == 0 && (num_draws == 1 || !info->increment_draw_id)) ||
-        !sctx->shader.vs.cso->info.uses_drawid || pd_msg("draw_id > 0")) &&
-       (!sctx->render_cond || pd_msg("render condition")) &&
-       /* Forced enablement ignores pipeline statistics queries. */
-       (sctx->screen->debug_flags & (DBG(PD) | DBG(ALWAYS_PD)) ||
-        (!sctx->num_pipeline_stat_queries && !sctx->streamout.prims_gen_query_enabled) ||
-        pd_msg("pipestat or primgen query")) &&
-       (!sctx->vertex_elements->instance_divisor_is_fetched || pd_msg("loads instance divisors")) &&
-       (!sctx->shader.ps.cso->info.uses_primid || pd_msg("PS uses PrimID")) &&
-       !rs->polygon_mode_enabled &&
-#if SI_PRIM_DISCARD_DEBUG /* same as cso->prim_discard_cs_allowed */
-       (!sctx->shader.vs.cso->info.uses_bindless_images || pd_msg("uses bindless images")) &&
-       (!sctx->shader.vs.cso->info.uses_bindless_samplers || pd_msg("uses bindless samplers")) &&
-       (!sctx->shader.vs.cso->info.base.writes_memory || pd_msg("writes memory")) &&
-       (!sctx->shader.vs.cso->info.writes_viewport_index || pd_msg("writes viewport index")) &&
-       !sctx->shader.vs.cso->info.base.vs.window_space_position &&
-       !sctx->shader.vs.cso->so.num_outputs &&
-#else
-       (sctx->shader.vs.cso->prim_discard_cs_allowed ||
-        pd_msg("VS shader uses unsupported features")) &&
-#endif
-       /* Check that all buffers are used for read only, because compute
-        * dispatches can run ahead. */
-       (si_all_vs_resources_read_only(sctx, index_size ? indexbuf : NULL) ||
-        pd_msg("write reference"))) {
-      switch (si_prepare_prim_discard_or_split_draw(sctx, info, drawid_offset, draws, num_draws,
-                                                    total_direct_count)) {
-      case SI_PRIM_DISCARD_ENABLED:
-         original_index_size = index_size;
-         dispatch_prim_discard_cs = true;
-
-         /* The compute shader changes/lowers the following: */
-         prim = PIPE_PRIM_TRIANGLES;
-         index_size = 4;
-         instance_count = 1;
-         sctx->compute_num_verts_rejected -= total_direct_count;
-         sctx->compute_num_verts_accepted += total_direct_count;
-         break;
-      case SI_PRIM_DISCARD_DISABLED:
-         break;
-      case SI_PRIM_DISCARD_DRAW_SPLIT:
-      case SI_PRIM_DISCARD_MULTI_DRAW_SPLIT:
-         sctx->compute_num_verts_rejected -= total_direct_count;
-         /* The multi draw was split into multiple ones and executed. Return. */
-         DRAW_CLEANUP;
-         return;
-      }
-   }
 
    /* Set the rasterization primitive type.
     *
@@ -2005,7 +1842,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
    if (GFX_VERSION >= GFX10) {
       struct si_shader_selector *hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->cso;
 
-      if (NGG && !HAS_GS && !dispatch_prim_discard_cs &&
+      if (NGG && !HAS_GS &&
           /* Tessellation sets ngg_cull_vert_threshold to UINT_MAX if the prim type
            * is not triangles, so this check is only needed without tessellation. */
           (HAS_TESS || sctx->current_rast_prim == PIPE_PRIM_TRIANGLES) &&
@@ -2154,10 +1991,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
+      si_emit_draw_packets<GFX_VERSION, NGG>
             (sctx, info, drawid_offset, indirect, draws, num_draws, total_direct_count, indexbuf,
-             index_size, index_offset, instance_count, dispatch_prim_discard_cs,
-             original_index_size);
+             index_size, index_offset, instance_count, original_index_size);
       /* <-- CUs are busy here. */
 
       /* Start prefetches after the draw has been started. Both will run
@@ -2193,10 +2029,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets<GFX_VERSION, NGG, ALLOW_PRIM_DISCARD_CS>
+      si_emit_draw_packets<GFX_VERSION, NGG>
             (sctx, info, drawid_offset, indirect, draws, num_draws, total_direct_count, indexbuf,
-             index_size, index_offset, instance_count, dispatch_prim_discard_cs,
-             original_index_size);
+             index_size, index_offset, instance_count, original_index_size);
 
       /* Prefetch the remaining shaders after the draw has been
        * started. */
@@ -2281,40 +2116,27 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    pipe->draw_vbo(pipe, &info, 0, NULL, &draw, 1);
 }
 
-template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS,
-          si_has_ngg NGG, si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
+template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
 static void si_init_draw_vbo(struct si_context *sctx)
 {
-   /* Prim discard CS is only useful on gfx7+ because gfx6 doesn't have async compute. */
-   if (ALLOW_PRIM_DISCARD_CS && GFX_VERSION < GFX8)
-      return;
-
-   if (ALLOW_PRIM_DISCARD_CS && (HAS_TESS || HAS_GS))
-      return;
-
    if (NGG && GFX_VERSION < GFX10)
       return;
 
-   sctx->draw_vbo[HAS_TESS][HAS_GS][NGG][ALLOW_PRIM_DISCARD_CS] =
-      si_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG, ALLOW_PRIM_DISCARD_CS>;
-}
-
-template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS>
-static void si_init_draw_vbo_all_internal_options(struct si_context *sctx)
-{
-   si_init_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG_OFF, PRIM_DISCARD_CS_OFF>(sctx);
-   si_init_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG_OFF, PRIM_DISCARD_CS_ON>(sctx);
-   si_init_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG_ON, PRIM_DISCARD_CS_OFF>(sctx);
-   si_init_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG_ON, PRIM_DISCARD_CS_ON>(sctx);
+   sctx->draw_vbo[HAS_TESS][HAS_GS][NGG] =
+      si_draw_vbo<GFX_VERSION, HAS_TESS, HAS_GS, NGG>;
 }
 
 template <chip_class GFX_VERSION>
 static void si_init_draw_vbo_all_pipeline_options(struct si_context *sctx)
 {
-   si_init_draw_vbo_all_internal_options<GFX_VERSION, TESS_OFF, GS_OFF>(sctx);
-   si_init_draw_vbo_all_internal_options<GFX_VERSION, TESS_OFF, GS_ON>(sctx);
-   si_init_draw_vbo_all_internal_options<GFX_VERSION, TESS_ON, GS_OFF>(sctx);
-   si_init_draw_vbo_all_internal_options<GFX_VERSION, TESS_ON, GS_ON>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_OFF, GS_OFF, NGG_OFF>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_OFF, GS_ON,  NGG_OFF>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_ON,  GS_OFF, NGG_OFF>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_ON,  GS_ON,  NGG_OFF>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_OFF, GS_OFF, NGG_ON>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_OFF, GS_ON,  NGG_ON>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_ON,  GS_OFF, NGG_ON>(sctx);
+   si_init_draw_vbo<GFX_VERSION, TESS_ON,  GS_ON,  NGG_ON>(sctx);
 }
 
 static void si_invalid_draw_vbo(struct pipe_context *pipe,

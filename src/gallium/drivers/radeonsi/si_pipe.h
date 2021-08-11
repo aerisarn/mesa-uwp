@@ -44,7 +44,6 @@ extern "C" {
 #endif
 
 #define ATI_VENDOR_ID         0x1002
-#define SI_PRIM_DISCARD_DEBUG 0
 #define SI_NOT_QUERY          0xffffffff
 
 /* The base vertex and primitive restart can be any number, but we must pick
@@ -155,11 +154,6 @@ enum si_has_ngg {
    NGG_ON,
 };
 
-enum si_has_prim_discard_cs {
-   PRIM_DISCARD_CS_OFF,
-   PRIM_DISCARD_CS_ON,
-};
-
 enum si_clear_code
 {
    DCC_CLEAR_COLOR_0000 = 0x00000000,
@@ -223,9 +217,6 @@ enum
    DBG_ALWAYS_NGG_CULLING_TESS,
    DBG_NO_NGG_CULLING,
    DBG_NO_FAST_LAUNCH,
-   DBG_ALWAYS_PD,
-   DBG_PD,
-   DBG_NO_PD,
    DBG_SWITCH_ON_EOP,
    DBG_NO_OUT_OF_ORDER,
    DBG_NO_DPBB,
@@ -896,7 +887,6 @@ struct si_saved_cs {
    unsigned trace_id;
 
    unsigned gfx_last_dw;
-   unsigned compute_last_dw;
    bool flushed;
    int64_t time_flush;
 };
@@ -995,26 +985,6 @@ struct si_context {
    /* NGG streamout. */
    struct pb_buffer *gds;
    struct pb_buffer *gds_oa;
-   /* Compute-based primitive discard. */
-   unsigned prim_discard_vertex_count_threshold;
-   struct radeon_cmdbuf prim_discard_compute_cs;
-   struct si_shader *compute_ib_last_shader;
-   uint32_t compute_rewind_va;
-   unsigned compute_num_prims_in_batch;
-   /* index_ring is divided into 2 halves for doublebuffering. */
-   struct si_resource *index_ring;
-   unsigned index_ring_base;        /* offset of a per-IB portion */
-   unsigned index_ring_offset;      /* offset within a per-IB portion */
-   unsigned index_ring_size_per_ib; /* max available size per IB */
-   bool prim_discard_compute_ib_initialized;
-   /* For tracking the last execution barrier - it can be either
-    * a WRITE_DATA packet or a fence. */
-   uint32_t *last_pkt3_write_data;
-   struct si_resource *barrier_buf;
-   unsigned barrier_buf_offset;
-   struct pipe_fence_handle *last_ib_barrier_fence;
-   struct si_resource *last_ib_barrier_buf;
-   unsigned last_ib_barrier_buf_offset;
 
    /* Atoms (direct states). */
    union si_state_atoms atoms;
@@ -1063,7 +1033,6 @@ struct si_context {
       /* indexed access using pipe_shader_type (not by MESA_SHADER_*) */
       struct si_shader_ctx_state shaders[SI_NUM_GRAPHICS_SHADERS];
    };
-   struct si_shader_ctx_state cs_prim_discard_state;
    struct si_cs_shader_state cs_shader_state;
 
    /* shader information */
@@ -1254,9 +1223,6 @@ struct si_context {
    unsigned num_resident_handles;
    uint64_t num_alloc_tex_transfer_bytes;
    unsigned last_tex_ps_draw_ratio; /* for query */
-   unsigned compute_num_verts_accepted;
-   unsigned compute_num_verts_rejected;
-   unsigned compute_num_verts_ineligible; /* due to low vertex count */
    unsigned context_roll;
 
    /* Queries. */
@@ -1287,7 +1253,7 @@ struct si_context {
     */
    struct hash_table *dirty_implicit_resources;
 
-   pipe_draw_vbo_func draw_vbo[2][2][2][2];
+   pipe_draw_vbo_func draw_vbo[2][2][2];
    /* When b.draw_vbo is a wrapper, real_draw_vbo is the real draw_vbo function */
    pipe_draw_vbo_func real_draw_vbo;
 
@@ -1483,7 +1449,6 @@ void si_allocate_gds(struct si_context *ctx);
 void si_set_tracked_regs_to_clear_state(struct si_context *ctx);
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs);
 void si_trace_emit(struct si_context *sctx);
-void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx);
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
                           unsigned cp_coher_cntl);
 void gfx10_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
@@ -1501,32 +1466,6 @@ unsigned si_end_counter(struct si_screen *sscreen, unsigned type, uint64_t begin
 /* si_compute.c */
 void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf *cs);
 void si_init_compute_functions(struct si_context *sctx);
-
-/* si_compute_prim_discard.c */
-enum si_prim_discard_outcome
-{
-   SI_PRIM_DISCARD_ENABLED,
-   SI_PRIM_DISCARD_DISABLED,
-   SI_PRIM_DISCARD_DRAW_SPLIT,
-   SI_PRIM_DISCARD_MULTI_DRAW_SPLIT,
-};
-
-void si_build_prim_discard_compute_shader(struct si_shader_context *ctx);
-enum si_prim_discard_outcome
-si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
-                                      unsigned drawid_offset,
-                                      const struct pipe_draw_start_count_bias *draws,
-                                      unsigned num_draws, unsigned total_count);
-void si_compute_signal_gfx(struct si_context *sctx);
-void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
-                                          const struct pipe_draw_info *info,
-                                          const struct pipe_draw_start_count_bias *draws,
-                                          unsigned num_draws, unsigned index_size,
-                                          unsigned total_count, uint64_t input_indexbuf_va,
-                                          unsigned index_max_size);
-void si_initialize_prim_discard_tunables(struct si_screen *sscreen, bool is_aux_context,
-                                         unsigned *prim_discard_vertex_count_threshold,
-                                         unsigned *index_ring_size_per_ib);
 
 /* si_pipe.c */
 void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler);
@@ -1996,14 +1935,9 @@ static inline void radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sc
    radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, bo, usage, priority);
 }
 
-static inline bool si_compute_prim_discard_enabled(struct si_context *sctx)
-{
-   return sctx->prim_discard_vertex_count_threshold != UINT_MAX;
-}
-
 static inline unsigned si_get_wave_size(struct si_screen *sscreen,
                                         gl_shader_stage stage, bool ngg, bool es,
-                                        bool gs_fast_launch, bool prim_discard_cs)
+                                        bool gs_fast_launch)
 {
    if (stage == MESA_SHADER_COMPUTE)
       return sscreen->compute_wave_size;
@@ -2011,8 +1945,7 @@ static inline unsigned si_get_wave_size(struct si_screen *sscreen,
       return sscreen->ps_wave_size;
    else if (gs_fast_launch)
       return 32; /* GS fast launch hangs with Wave64, so always use Wave32. */
-   else if ((stage == MESA_SHADER_VERTEX && prim_discard_cs) || /* only Wave64 implemented */
-            (stage == MESA_SHADER_VERTEX && es && !ngg) ||
+   else if ((stage == MESA_SHADER_VERTEX && es && !ngg) ||
             (stage == MESA_SHADER_TESS_EVAL && es && !ngg) ||
             (stage == MESA_SHADER_GEOMETRY && !ngg)) /* legacy GS only supports Wave64 */
       return 64;
@@ -2025,18 +1958,14 @@ static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
    return si_get_wave_size(shader->selector->screen, shader->selector->info.stage,
                            shader->key.as_ngg,
                            shader->key.as_es,
-                           shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL,
-                           shader->key.opt.vs_as_prim_discard_cs);
+                           shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
 }
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
 {
-   bool has_prim_discard_cs = si_compute_prim_discard_enabled(sctx) &&
-                              !sctx->shader.tes.cso && !sctx->shader.gs.cso;
    pipe_draw_vbo_func draw_vbo = sctx->draw_vbo[!!sctx->shader.tes.cso]
                                                [!!sctx->shader.gs.cso]
-                                               [sctx->ngg]
-                                               [has_prim_discard_cs];
+                                               [sctx->ngg];
    assert(draw_vbo);
    if (unlikely(sctx->real_draw_vbo))
       sctx->real_draw_vbo = draw_vbo;

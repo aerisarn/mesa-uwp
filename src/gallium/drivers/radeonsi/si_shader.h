@@ -446,7 +446,6 @@ struct si_shader_selector {
    ubyte const_and_shader_buf_descriptors_index;
    ubyte sampler_and_images_descriptors_index;
    bool vs_needs_prolog;
-   bool prim_discard_cs_allowed;
    ubyte cs_shaderbufs_sgpr_index;
    ubyte cs_num_shaderbufs_in_user_sgprs;
    ubyte cs_images_sgpr_index;
@@ -577,7 +576,6 @@ union si_shader_part_key {
       unsigned as_ls : 1;
       unsigned as_es : 1;
       unsigned as_ngg : 1;
-      unsigned as_prim_discard_cs : 1;
       unsigned gs_fast_launch_tri_list : 1;  /* for NGG culling */
       unsigned gs_fast_launch_tri_strip : 1; /* for NGG culling */
       unsigned gs_fast_launch_index_size_packed : 2;
@@ -683,14 +681,6 @@ struct si_shader_key {
        * possible, because it's in the "opt" group.
        */
       unsigned prefer_mono : 1;
-
-      /* Primitive discard compute shader. */
-      unsigned vs_as_prim_discard_cs : 1;
-      unsigned cs_prim_type : 4;
-      unsigned cs_indexed : 1;
-      unsigned cs_provoking_vertex_first : 1;
-      unsigned cs_cull_front : 1;
-      unsigned cs_cull_back : 1;
 
       /* VS and TCS have the same number of patch vertices. */
       unsigned same_patch_vertices:1;

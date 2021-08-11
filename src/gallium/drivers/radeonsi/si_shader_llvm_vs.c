@@ -793,32 +793,6 @@ void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi)
    FREE(outputs);
 }
 
-static void si_llvm_emit_prim_discard_cs_epilogue(struct ac_shader_abi *abi)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   struct si_shader_info *info = &ctx->shader->selector->info;
-   LLVMValueRef *addrs = abi->outputs;
-   LLVMValueRef pos[4] = {};
-
-   assert(info->num_outputs <= AC_LLVM_MAX_OUTPUTS);
-
-   for (unsigned i = 0; i < info->num_outputs; i++) {
-      if (info->output_semantic[i] != VARYING_SLOT_POS)
-         continue;
-
-      for (unsigned chan = 0; chan < 4; chan++)
-         pos[chan] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
-      break;
-   }
-   assert(pos[0] != NULL);
-
-   /* Return the position output. */
-   LLVMValueRef ret = ctx->return_value;
-   for (unsigned chan = 0; chan < 4; chan++)
-      ret = LLVMBuildInsertValue(ctx->ac.builder, ret, pos[chan], chan, "");
-   ctx->return_value = ret;
-}
-
 /**
  * Build the vertex shader prolog function.
  *
@@ -1121,8 +1095,6 @@ void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shad
       ctx->abi.emit_outputs = si_llvm_emit_ls_epilogue;
    else if (shader->key.as_es)
       ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
-   else if (shader->key.opt.vs_as_prim_discard_cs)
-      ctx->abi.emit_outputs = si_llvm_emit_prim_discard_cs_epilogue;
    else if (ngg_cull_shader)
       ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue;
    else if (shader->key.as_ngg)

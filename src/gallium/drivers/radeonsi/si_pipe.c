@@ -95,9 +95,6 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"nggc", DBG(ALWAYS_NGG_CULLING_ALL), "Always use NGG culling even when it can hurt."},
    {"nggctess", DBG(ALWAYS_NGG_CULLING_TESS), "Always use NGG culling for tessellation."},
    {"nonggc", DBG(NO_NGG_CULLING), "Disable NGG culling."},
-   {"alwayspd", DBG(ALWAYS_PD), "Always enable the primitive discard compute shader."},
-   {"pd", DBG(PD), "Enable the primitive discard compute shader for large draw calls."},
-   {"nopd", DBG(NO_PD), "Disable the primitive discard compute shader."},
    {"switch_on_eop", DBG(SWITCH_ON_EOP), "Program WD/IA to switch on end-of-packet."},
    {"nooutoforder", DBG(NO_OUT_OF_ORDER), "Disable out-of-order rasterization"},
    {"nodpbb", DBG(NO_DPBB), "Disable DPBB."},
@@ -309,12 +306,8 @@ static void si_destroy_context(struct pipe_context *context)
    u_suballocator_destroy(&sctx->allocator_zeroed_memory);
 
    sctx->ws->fence_reference(&sctx->last_gfx_fence, NULL);
-   sctx->ws->fence_reference(&sctx->last_ib_barrier_fence, NULL);
    si_resource_reference(&sctx->eop_bug_scratch, NULL);
    si_resource_reference(&sctx->eop_bug_scratch_tmz, NULL);
-   si_resource_reference(&sctx->index_ring, NULL);
-   si_resource_reference(&sctx->barrier_buf, NULL);
-   si_resource_reference(&sctx->last_ib_barrier_buf, NULL);
    si_resource_reference(&sctx->shadowed_regs, NULL);
    radeon_bo_reference(sctx->screen->ws, &sctx->gds, NULL);
    radeon_bo_reference(sctx->screen->ws, &sctx->gds_oa, NULL);
@@ -618,12 +611,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       default:
          unreachable("unhandled chip class");
       }
-
-      si_initialize_prim_discard_tunables(sscreen, flags & SI_CONTEXT_FLAG_AUX,
-                                          &sctx->prim_discard_vertex_count_threshold,
-                                          &sctx->index_ring_size_per_ib);
-   } else {
-      sctx->prim_discard_vertex_count_threshold = UINT_MAX;
    }
 
    sctx->sample_mask = 0xffff;
@@ -641,7 +628,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       sctx->b.create_video_buffer = vl_video_buffer_create;
    }
 
-   if (sctx->chip_class >= GFX9 || si_compute_prim_discard_enabled(sctx)) {
+   if (sctx->chip_class >= GFX9) {
       sctx->wait_mem_scratch =
            si_aligned_buffer_create(screen,
                                     SI_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
@@ -1167,15 +1154,10 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    sscreen->max_memory_usage_kb = sscreen->info.vram_size_kb + sscreen->info.gart_size_kb / 4 * 3;
 
-   unsigned prim_discard_vertex_count_threshold, tmp;
-   si_initialize_prim_discard_tunables(sscreen, false, &prim_discard_vertex_count_threshold, &tmp);
-   /* Compute-shader-based culling doesn't support VBOs in user SGPRs. */
-   if (prim_discard_vertex_count_threshold == UINT_MAX) {
-      /* This decreases CPU overhead if all descriptors are in user SGPRs because we don't
-       * have to allocate and count references for the upload buffer.
-       */
-      sscreen->num_vbos_in_user_sgprs = sscreen->info.chip_class >= GFX9 ? 5 : 1;
-   }
+   /* This decreases CPU overhead if all descriptors are in user SGPRs because we don't
+    * have to allocate and count references for the upload buffer.
+    */
+   sscreen->num_vbos_in_user_sgprs = sscreen->info.chip_class >= GFX9 ? 5 : 1;
 
    /* Determine tessellation ring info. */
    bool double_offchip_buffers = sscreen->info.chip_class >= GFX7 &&

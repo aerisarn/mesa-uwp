@@ -92,9 +92,6 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 
    ctx->gfx_flush_in_progress = true;
 
-   if (radeon_emitted(&ctx->prim_discard_compute_cs, 0))
-      si_compute_signal_gfx(ctx);
-
    if (ctx->has_graphics) {
       if (!list_is_empty(&ctx->active_queries))
          si_suspend_queries(ctx);
@@ -136,29 +133,6 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
       si_log_hw_flush(ctx);
    }
 
-   if (si_compute_prim_discard_enabled(ctx)) {
-      /* The compute IB can start after the previous gfx IB starts. */
-      if (radeon_emitted(&ctx->prim_discard_compute_cs, 0) && ctx->last_gfx_fence) {
-         ctx->ws->cs_add_fence_dependency(
-            &ctx->gfx_cs, ctx->last_gfx_fence,
-            RADEON_DEPENDENCY_PARALLEL_COMPUTE_ONLY | RADEON_DEPENDENCY_START_FENCE);
-      }
-
-      /* Remember the last execution barrier. It's in the IB.
-       * It will signal the start of the next compute IB.
-       */
-      if (flags & RADEON_FLUSH_START_NEXT_GFX_IB_NOW && ctx->last_pkt3_write_data) {
-         *ctx->last_pkt3_write_data = PKT3(PKT3_WRITE_DATA, 3, 0);
-         ctx->last_pkt3_write_data = NULL;
-
-         si_resource_reference(&ctx->last_ib_barrier_buf, ctx->barrier_buf);
-         ctx->last_ib_barrier_buf_offset = ctx->barrier_buf_offset;
-         si_resource_reference(&ctx->barrier_buf, NULL);
-
-         ws->fence_reference(&ctx->last_ib_barrier_fence, NULL);
-      }
-   }
-
    if (ctx->is_noop)
       flags |= RADEON_FLUSH_NOOP;
 
@@ -170,17 +144,6 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
       ws->fence_reference(fence, ctx->last_gfx_fence);
 
    ctx->num_gfx_cs_flushes++;
-
-   if (si_compute_prim_discard_enabled(ctx)) {
-      /* Remember the last execution barrier, which is the last fence
-       * in this case.
-       */
-      if (!(flags & RADEON_FLUSH_START_NEXT_GFX_IB_NOW)) {
-         ctx->last_pkt3_write_data = NULL;
-         si_resource_reference(&ctx->last_ib_barrier_buf, NULL);
-         ws->fence_reference(&ctx->last_ib_barrier_fence, ctx->last_gfx_fence);
-      }
-   }
 
    /* Check VM faults if needed. */
    if (sscreen->debug_flags & DBG(CHECK_VM)) {
@@ -216,7 +179,7 @@ static void si_begin_gfx_cs_debug(struct si_context *ctx)
    pipe_reference_init(&ctx->current_saved_cs->reference, 1);
 
    ctx->current_saved_cs->trace_buf =
-      si_resource(pipe_buffer_create(ctx->b.screen, 0, PIPE_USAGE_STAGING, 8));
+      si_resource(pipe_buffer_create(ctx->b.screen, 0, PIPE_USAGE_STAGING, 4));
    if (!ctx->current_saved_cs->trace_buf) {
       free(ctx->current_saved_cs);
       ctx->current_saved_cs = NULL;
@@ -368,11 +331,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    bool is_secure = false;
 
    if (unlikely(radeon_uses_secure_bos(ctx->ws))) {
-      /* Disable features that don't work with TMZ:
-       *   - primitive discard
-       */
-      ctx->prim_discard_vertex_count_threshold = UINT_MAX;
-
       is_secure = ctx->ws->cs_is_secure(&ctx->gfx_cs);
 
       si_install_draw_wrapper(ctx, si_draw_vbo_tmz_preamble);
@@ -549,18 +507,6 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
 
    assert(!ctx->gfx_cs.prev_dw);
    ctx->initial_gfx_cs_size = ctx->gfx_cs.current.cdw;
-   ctx->prim_discard_compute_ib_initialized = false;
-
-   /* Compute-based primitive discard:
-    *   The index ring is divided into 2 halves. Switch between the halves
-    *   in the same fashion as doublebuffering.
-    */
-   if (ctx->index_ring_base)
-      ctx->index_ring_base = 0;
-   else
-      ctx->index_ring_base = ctx->index_ring_size_per_ib;
-
-   ctx->index_ring_offset = 0;
 
    /* All buffer references are removed on a flush, so si_check_needs_implicit_sync
     * cannot determine if si_make_CB_shader_coherent() needs to be called.
@@ -586,34 +532,9 @@ void si_trace_emit(struct si_context *sctx)
       u_log_flush(sctx->log);
 }
 
-void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
-{
-   if (!si_compute_prim_discard_enabled(sctx))
-      return;
-
-   if (!sctx->barrier_buf) {
-      u_suballocator_alloc(&sctx->allocator_zeroed_memory, 4, 4, &sctx->barrier_buf_offset,
-                           (struct pipe_resource **)&sctx->barrier_buf);
-   }
-
-   /* Emit a placeholder to signal the next compute IB to start.
-    * See si_compute_prim_discard.c for explanation.
-    */
-   uint32_t signal = 1;
-   si_cp_write_data(sctx, sctx->barrier_buf, sctx->barrier_buf_offset, 4, V_370_MEM, V_370_ME,
-                    &signal);
-
-   sctx->last_pkt3_write_data = &sctx->gfx_cs.current.buf[sctx->gfx_cs.current.cdw - 5];
-
-   /* Only the last occurrence of WRITE_DATA will be executed.
-    * The packet will be enabled in si_flush_gfx_cs.
-    */
-   *sctx->last_pkt3_write_data = PKT3(PKT3_NOP, 3, 0);
-}
-
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned cp_coher_cntl)
 {
-   bool compute_ib = !sctx->has_graphics || cs == &sctx->prim_discard_compute_cs;
+   bool compute_ib = !sctx->has_graphics;
 
    assert(sctx->chip_class <= GFX9);
 
@@ -857,14 +778,6 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
 
    uint32_t cp_coher_cntl = 0;
    const uint32_t flush_cb_db = flags & (SI_CONTEXT_FLUSH_AND_INV_CB | SI_CONTEXT_FLUSH_AND_INV_DB);
-   const bool is_barrier =
-      flush_cb_db ||
-      /* INV_ICACHE == beginning of gfx IB. Checking
-       * INV_ICACHE fixes corruption for DeusExMD with
-       * compute-based culling, but I don't know why.
-       */
-      flags & (SI_CONTEXT_INV_ICACHE | SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_VS_PARTIAL_FLUSH) ||
-      (flags & SI_CONTEXT_CS_PARTIAL_FLUSH && sctx->compute_is_busy);
 
    assert(sctx->chip_class <= GFX9);
 
@@ -1076,9 +989,6 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
       radeon_emit(cs, 0);
       radeon_end();
    }
-
-   if (is_barrier)
-      si_prim_discard_signal_next_compute_ib_start(sctx);
 
    if (flags & SI_CONTEXT_START_PIPELINE_STATS && sctx->pipeline_stats_enabled != 1) {
       radeon_begin(cs);

@@ -419,12 +419,6 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
       /* VGPRs */
       declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
-
-      /* Return values */
-      if (shader->key.opt.vs_as_prim_discard_cs) {
-         for (i = 0; i < 4; i++)
-            ac_add_return(&ctx->args, AC_ARG_VGPR);
-      }
       break;
 
    case MESA_SHADER_TESS_CTRL: /* GFX6-GFX8 */
@@ -1070,8 +1064,6 @@ const char *si_get_shader_name(const struct si_shader *shader)
          return "Vertex Shader as ES";
       else if (shader->key.as_ls)
          return "Vertex Shader as LS";
-      else if (shader->key.opt.vs_as_prim_discard_cs)
-         return "Vertex Shader as Primitive Discard CS";
       else if (shader->key.as_ngg)
          return "Vertex Shader as ESGS";
       else
@@ -1183,12 +1175,6 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  as_ls = %u\n", key->as_ls);
       fprintf(f, "  as_ngg = %u\n", key->as_ngg);
       fprintf(f, "  mono.u.vs_export_prim_id = %u\n", key->mono.u.vs_export_prim_id);
-      fprintf(f, "  opt.vs_as_prim_discard_cs = %u\n", key->opt.vs_as_prim_discard_cs);
-      fprintf(f, "  opt.cs_prim_type = %s\n", tgsi_primitive_names[key->opt.cs_prim_type]);
-      fprintf(f, "  opt.cs_indexed = %u\n", key->opt.cs_indexed);
-      fprintf(f, "  opt.cs_provoking_vertex_first = %u\n", key->opt.cs_provoking_vertex_first);
-      fprintf(f, "  opt.cs_cull_front = %u\n", key->opt.cs_cull_front);
-      fprintf(f, "  opt.cs_cull_back = %u\n", key->opt.cs_cull_back);
       break;
 
    case MESA_SHADER_TESS_CTRL:
@@ -1317,7 +1303,6 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
    key->vs_prolog.as_ls = shader_out->key.as_ls;
    key->vs_prolog.as_es = shader_out->key.as_es;
    key->vs_prolog.as_ngg = shader_out->key.as_ngg;
-   key->vs_prolog.as_prim_discard_cs = shader_out->key.opt.vs_as_prim_discard_cs;
 
    if (ngg_cull_shader) {
       key->vs_prolog.gs_fast_launch_tri_list =
@@ -1342,8 +1327,7 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
 
    /* Only one of these combinations can be set. as_ngg can be set with as_es. */
    assert(key->vs_prolog.as_ls + key->vs_prolog.as_ngg +
-             (key->vs_prolog.as_es && !key->vs_prolog.as_ngg) + key->vs_prolog.as_prim_discard_cs <=
-          1);
+          (key->vs_prolog.as_es && !key->vs_prolog.as_ngg) <= 1);
 
    /* Enable loading the InstanceID VGPR. */
    uint16_t input_mask = u_bit_consecutive(0, info->num_inputs);
@@ -1557,7 +1541,6 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
          (key->vs_prolog.gs_fast_launch_tri_list ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST : 0) |
          (key->vs_prolog.gs_fast_launch_tri_strip ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP : 0) |
          SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(key->vs_prolog.gs_fast_launch_index_size_packed);
-      shader.key.opt.vs_as_prim_discard_cs = key->vs_prolog.as_prim_discard_cs;
       break;
    case MESA_SHADER_TESS_CTRL:
       assert(!prolog);
@@ -1581,8 +1564,7 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    si_llvm_context_init(&ctx, sscreen, compiler,
                         si_get_wave_size(sscreen, stage,
                                          shader.key.as_ngg, shader.key.as_es,
-                                         shader.key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL,
-                                         shader.key.opt.vs_as_prim_discard_cs));
+                                         shader.key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL));
    ctx.shader = &shader;
    ctx.stage = stage;
 

@@ -773,12 +773,6 @@ radeonsi driver environment variables
       Always use NGG culling even when it can hurt.
    ``nonggc``
       Disable NGG culling.
-   ``alwayspd``
-      Always enable the primitive discard compute shader.
-   ``pd``
-      Enable the primitive discard compute shader for large draw calls.
-   ``nopd``
-      Disable the primitive discard compute shader.
    ``switch_on_eop``
       Program WD/IA to switch on end-of-packet.
    ``nooutoforder``
