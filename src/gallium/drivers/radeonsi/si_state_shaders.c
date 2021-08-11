@@ -2149,26 +2149,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       if (sctx->chip_class >= GFX9) {
          si_get_vs_key_inputs(sctx, key, &key->part.tcs.ls_prolog);
          key->part.tcs.ls = sctx->shader.vs.cso;
-
-         /* When the LS VGPR fix is needed, monolithic shaders
-          * can:
-          *  - avoid initializing EXEC in both the LS prolog
-          *    and the LS main part when !vs_needs_prolog
-          *  - remove the fixup for unused input VGPRs
-          */
-         key->part.tcs.ls_prolog.ls_vgpr_fix = sctx->ls_vgpr_fix;
-
-         key->opt.same_patch_vertices = sctx->same_patch_vertices;
       }
-
-      key->part.tcs.epilog.prim_mode =
-         sctx->shader.tes.cso->info.base.tess.primitive_mode;
-      key->part.tcs.epilog.invoc0_tess_factors_are_def =
-         sel->info.tessfactors_are_def_in_all_invocs;
-      key->part.tcs.epilog.tes_reads_tess_factors = sctx->shader.tes.cso->info.reads_tess_factors;
-
-      if (sel == sctx->fixed_func_tcs_shader.cso)
-         key->mono.u.ff_tcs_inputs_to_copy = sctx->shader.vs.cso->outputs_written;
       break;
    case MESA_SHADER_TESS_EVAL:
       if (!sctx->shader.gs.cso)
@@ -3192,6 +3173,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    sctx->shader.vs.current = sel ? sel->first_variant : NULL;
    sctx->num_vs_blit_sgprs = sel ? sel->info.base.vs.blit_sgprs_amd : 0;
    sctx->vs_uses_draw_id = sel ? sel->info.uses_drawid : false;
+   sctx->fixed_func_tcs_shader.key.mono.u.ff_tcs_inputs_to_copy = sel ? sel->outputs_written : 0;
 
    if (si_update_ngg(sctx))
       si_shader_change_notify(sctx);
@@ -3299,6 +3281,8 @@ static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
 
    sctx->shader.tcs.cso = sel;
    sctx->shader.tcs.current = sel ? sel->first_variant : NULL;
+   sctx->shader.tcs.key.part.tcs.epilog.invoc0_tess_factors_are_def =
+      sel ? sel->info.tessfactors_are_def_in_all_invocs : 0;
    si_update_tess_uses_prim_id(sctx);
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_TESS_CTRL);
@@ -3322,6 +3306,14 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    sctx->shader.tes.current = sel ? sel->first_variant : NULL;
    sctx->ia_multi_vgt_param_key.u.uses_tess = sel != NULL;
    si_update_tess_uses_prim_id(sctx);
+
+   sctx->shader.tcs.key.part.tcs.epilog.prim_mode =
+   sctx->fixed_func_tcs_shader.key.part.tcs.epilog.prim_mode =
+      sel ? sel->info.base.tess.primitive_mode : 0;
+
+   sctx->shader.tcs.key.part.tcs.epilog.tes_reads_tess_factors =
+   sctx->fixed_func_tcs_shader.key.part.tcs.epilog.tes_reads_tess_factors =
+      sel ? sel->info.reads_tess_factors : 0;
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_TESS_EVAL);
    si_select_draw_vbo(sctx);

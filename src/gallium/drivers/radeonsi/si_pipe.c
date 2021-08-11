@@ -722,6 +722,11 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       /* The LS output / HS input layout can be communicated
        * directly instead of via user SGPRs for merged LS-HS.
        * This also enables jumping over the VS prolog for HS-only waves.
+       *
+       * When the LS VGPR fix is needed, monolithic shaders can:
+       *  - avoid initializing EXEC in both the LS prolog
+       *    and the LS main part when !vs_needs_prolog
+       *  - remove the fixup for unused input VGPRs
        */
       sctx->shader.tcs.key.opt.prefer_mono = 1;
 

@@ -1078,9 +1078,7 @@ struct si_context {
 
    /* Emitted draw state. */
    bool gs_tri_strip_adj_fix : 1;
-   bool ls_vgpr_fix : 1;
    bool ngg : 1;
-   bool same_patch_vertices : 1;
    uint8_t ngg_culling;
    unsigned last_index_size;
    int last_base_vertex;

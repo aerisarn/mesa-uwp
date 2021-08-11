@@ -134,6 +134,9 @@ static bool si_update_shaders(struct si_context *sctx)
                (struct si_shader_selector*)si_create_fixed_func_tcs(sctx);
             if (!sctx->fixed_func_tcs_shader.cso)
                return false;
+
+            sctx->fixed_func_tcs_shader.key.part.tcs.epilog.invoc0_tess_factors_are_def =
+               sctx->fixed_func_tcs_shader.cso->info.tessfactors_are_def_in_all_invocs;
          }
 
          r = si_shader_select(ctx, &sctx->fixed_func_tcs_shader);
@@ -1973,8 +1976,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
          GFX_VERSION >= GFX9 &&
          tcs && sctx->patch_vertices == tcs->info.base.tess.tcs_vertices_out;
 
-      if (sctx->same_patch_vertices != same_patch_vertices) {
-         sctx->same_patch_vertices = same_patch_vertices;
+      if (sctx->shader.tcs.key.opt.same_patch_vertices != same_patch_vertices) {
+         sctx->shader.tcs.key.opt.same_patch_vertices = same_patch_vertices;
          sctx->do_update_shaders = true;
       }
 
@@ -1989,8 +1992,9 @@ static void si_draw_vbo(struct pipe_context *ctx,
          bool ls_vgpr_fix =
             tcs && sctx->patch_vertices > tcs->info.base.tess.tcs_vertices_out;
 
-         if (ls_vgpr_fix != sctx->ls_vgpr_fix) {
-            sctx->ls_vgpr_fix = ls_vgpr_fix;
+         if (ls_vgpr_fix != sctx->shader.tcs.key.part.tcs.ls_prolog.ls_vgpr_fix) {
+            sctx->shader.tcs.key.part.tcs.ls_prolog.ls_vgpr_fix = ls_vgpr_fix;
+            sctx->fixed_func_tcs_shader.key.part.tcs.ls_prolog.ls_vgpr_fix = ls_vgpr_fix;
             sctx->do_update_shaders = true;
          }
       }
