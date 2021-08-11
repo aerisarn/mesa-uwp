@@ -20,6 +20,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+#include "radv_acceleration_structure.h"
 #include "radv_private.h"
 
 #include "util/format/format_utils.h"
@@ -28,64 +29,6 @@
 #include "radv_cs.h"
 #include "radv_meta.h"
 
-struct radv_accel_struct_header {
-   uint32_t root_node_offset;
-   uint32_t reserved;
-   float aabb[2][3];
-   uint64_t compacted_size;
-   uint64_t serialization_size;
-};
-
-struct radv_bvh_triangle_node {
-   float coords[3][3];
-   uint32_t reserved[3];
-   uint32_t triangle_id;
-   /* flags in upper 4 bits */
-   uint32_t geometry_id_and_flags;
-   uint32_t reserved2;
-   uint32_t id;
-};
-
-struct radv_bvh_aabb_node {
-   float aabb[2][3];
-   uint32_t primitive_id;
-   /* flags in upper 4 bits */
-   uint32_t geometry_id_and_flags;
-   uint32_t reserved[8];
-};
-
-struct radv_bvh_instance_node {
-   uint64_t base_ptr;
-   /* lower 24 bits are the custom instance index, upper 8 bits are the visibility mask */
-   uint32_t custom_instance_and_mask;
-   /* lower 24 bits are the sbt offset, upper 8 bits are VkGeometryInstanceFlagsKHR */
-   uint32_t sbt_offset_and_flags;
-
-   /* The translation component is actually a pre-translation instead of a post-translation. If you
-    * want to get a proper matrix out of it you need to apply the directional component of the
-    * matrix to it. The pre-translation of the world->object matrix is the same as the
-    * post-translation of the object->world matrix so this way we can share data between both
-    * matrices. */
-   float wto_matrix[12];
-   float aabb[2][3];
-   uint32_t instance_id;
-
-   /* Object to world matrix transposed from the initial transform. Translate part is store in the
-    * wto_matrix. */
-   float otw_matrix[9];
-};
-
-struct radv_bvh_box16_node {
-   uint32_t children[4];
-   uint32_t coords[4][3];
-};
-
-struct radv_bvh_box32_node {
-   uint32_t children[4];
-   float coords[4][2][3];
-   uint32_t reserved[4];
-};
-
 void
 radv_GetAccelerationStructureBuildSizesKHR(
    VkDevice _device, VkAccelerationStructureBuildTypeKHR buildType,
@@ -93,6 +36,12 @@ radv_GetAccelerationStructureBuildSizesKHR(
    const uint32_t *pMaxPrimitiveCounts, VkAccelerationStructureBuildSizesInfoKHR *pSizeInfo)
 {
    uint64_t triangles = 0, boxes = 0, instances = 0;
+
+   STATIC_ASSERT(sizeof(struct radv_bvh_triangle_node) == 64);
+   STATIC_ASSERT(sizeof(struct radv_bvh_aabb_node) == 64);
+   STATIC_ASSERT(sizeof(struct radv_bvh_instance_node) == 128);
+   STATIC_ASSERT(sizeof(struct radv_bvh_box16_node) == 64);
+   STATIC_ASSERT(sizeof(struct radv_bvh_box32_node) == 128);
 
    for (uint32_t i = 0; i < pBuildInfo->geometryCount; ++i) {
       const VkAccelerationStructureGeometryKHR *geometry;
