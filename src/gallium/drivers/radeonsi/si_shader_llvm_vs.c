@@ -26,6 +26,7 @@
 #include "si_shader_internal.h"
 #include "sid.h"
 #include "util/u_memory.h"
+#include "ac_exp_param.h"
 
 static LLVMValueRef unpack_sint16(struct si_shader_context *ctx, LLVMValueRef i32, unsigned index)
 {
@@ -451,6 +452,9 @@ static void si_prepare_param_exports(struct si_shader_context *ctx,
 {
    struct si_shader *shader = ctx->shader;
    unsigned param_count = 0;
+
+   memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
+          sizeof(shader->info.vs_output_param_offset));
 
    for (unsigned i = 0; i < noutput; i++) {
       unsigned semantic = outputs[i].semantic;

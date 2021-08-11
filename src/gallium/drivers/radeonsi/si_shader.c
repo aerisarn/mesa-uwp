@@ -1433,8 +1433,10 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       si_dump_streamout(&sel->so);
    }
 
-   memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
-          sizeof(shader->info.vs_output_param_offset));
+   /* Initialize vs_output_ps_input_cntl to default. */
+   for (unsigned i = 0; i < ARRAY_SIZE(shader->info.vs_output_ps_input_cntl); i++)
+      shader->info.vs_output_ps_input_cntl[i] = SI_PS_INPUT_CNTL_UNUSED;
+   shader->info.vs_output_ps_input_cntl[VARYING_SLOT_COL0] = SI_PS_INPUT_CNTL_UNUSED_COLOR0;
 
    shader->info.uses_instanceid = sel->info.uses_instanceid;
 
@@ -1444,6 +1446,43 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
     */
    if (!si_llvm_compile_shader(sscreen, compiler, shader, debug, nir, free_nir))
       return false;
+
+   /* Compute vs_output_ps_input_cntl. */
+   if ((sel->info.stage == MESA_SHADER_VERTEX ||
+        sel->info.stage == MESA_SHADER_TESS_EVAL ||
+        sel->info.stage == MESA_SHADER_GEOMETRY) &&
+       !shader->key.as_ls && !shader->key.as_es) {
+      ubyte *vs_output_param_offset = shader->info.vs_output_param_offset;
+
+      if (sel->info.stage == MESA_SHADER_GEOMETRY && !shader->key.as_ngg)
+         vs_output_param_offset = sel->gs_copy_shader->info.vs_output_param_offset;
+
+      /* VS and TES should also set primitive ID output if it's used. */
+      unsigned num_outputs_with_prim_id = sel->info.num_outputs +
+                                          shader->key.mono.u.vs_export_prim_id;
+
+      for (unsigned i = 0; i < num_outputs_with_prim_id; i++) {
+         unsigned semantic = sel->info.output_semantic[i];
+         unsigned offset = vs_output_param_offset[i];
+         unsigned ps_input_cntl;
+
+         if (offset <= AC_EXP_PARAM_OFFSET_31) {
+            /* The input is loaded from parameter memory. */
+            ps_input_cntl = S_028644_OFFSET(offset);
+         } else {
+            /* The input is a DEFAULT_VAL constant. */
+            assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
+                   offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
+            offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
+
+            /* OFFSET=0x20 means that DEFAULT_VAL is used. */
+            ps_input_cntl = S_028644_OFFSET(0x20) |
+                            S_028644_DEFAULT_VAL(offset);
+         }
+
+         shader->info.vs_output_ps_input_cntl[semantic] = ps_input_cntl;
+      }
+   }
 
    /* Validate SGPR and VGPR usage for compute to detect compiler bugs. */
    if (sel->info.stage == MESA_SHADER_COMPUTE) {
@@ -2002,8 +2041,8 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       shader->info.num_input_vgprs = mainp->info.num_input_vgprs;
       shader->info.face_vgpr_index = mainp->info.face_vgpr_index;
       shader->info.ancillary_vgpr_index = mainp->info.ancillary_vgpr_index;
-      memcpy(shader->info.vs_output_param_offset, mainp->info.vs_output_param_offset,
-             sizeof(mainp->info.vs_output_param_offset));
+      memcpy(shader->info.vs_output_ps_input_cntl, mainp->info.vs_output_ps_input_cntl,
+             sizeof(mainp->info.vs_output_ps_input_cntl));
       shader->info.uses_instanceid = mainp->info.uses_instanceid;
       shader->info.nr_pos_exports = mainp->info.nr_pos_exports;
       shader->info.nr_param_exports = mainp->info.nr_param_exports;

@@ -52,7 +52,6 @@ template<int NUM_INTERP>
 static void si_emit_spi_map(struct si_context *sctx)
 {
    struct si_shader *ps = sctx->shader.ps.current;
-   struct si_shader *vs;
    struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
    unsigned spi_ps_input_cntl[NUM_INTERP];
 
@@ -61,56 +60,24 @@ static void si_emit_spi_map(struct si_context *sctx)
    if (!NUM_INTERP)
       return;
 
-   /* With legacy GS, only the GS copy shader contains information about param exports. */
-   if (sctx->shader.gs.cso && !sctx->ngg)
-      vs = sctx->shader.gs.cso->gs_copy_shader;
-   else
-      vs = si_get_vs(sctx)->current;
-
-   struct si_shader_info *vsinfo = &vs->selector->info;
+   struct si_shader *vs = si_get_vs(sctx)->current;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
    for (unsigned i = 0; i < NUM_INTERP; i++) {
       union si_input_info input = psinfo->input[i];
-      unsigned ps_input_cntl = 0;
+      unsigned ps_input_cntl = vs->info.vs_output_ps_input_cntl[input.semantic];
+      bool non_default_val = G_028644_OFFSET(ps_input_cntl) != 0x20;
 
-      int vs_slot = vsinfo->output_semantic_to_slot[input.semantic];
-      if (vs_slot >= 0) {
-         unsigned offset = vs->info.vs_output_param_offset[vs_slot];
-
-         if (offset <= AC_EXP_PARAM_OFFSET_31) {
-            /* The input is loaded from parameter memory. */
-            ps_input_cntl |= S_028644_OFFSET(offset);
-
-            if (input.interpolate == INTERP_MODE_FLAT ||
-                (input.interpolate == INTERP_MODE_COLOR && rs->flatshade)) {
-               ps_input_cntl |= S_028644_FLAT_SHADE(1);
-            }
-         } else {
-            /* The input is a DEFAULT_VAL constant. */
-            assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
-                   offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
-            offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
-
-            /* Overwrite the whole value. OFFSET=0x20 means that DEFAULT_VAL is used. */
-            ps_input_cntl = S_028644_OFFSET(0x20) |
-                            S_028644_DEFAULT_VAL(offset);
-         }
+      if (non_default_val) {
+         if (input.interpolate == INTERP_MODE_FLAT ||
+             (input.interpolate == INTERP_MODE_COLOR && rs->flatshade))
+            ps_input_cntl |= S_028644_FLAT_SHADE(1);
 
          if (input.fp16_lo_hi_valid) {
-            assert(offset <= AC_EXP_PARAM_OFFSET_31 || offset == AC_EXP_PARAM_DEFAULT_VAL_0000);
-
             ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
-                             S_028644_USE_DEFAULT_ATTR1(offset == AC_EXP_PARAM_DEFAULT_VAL_0000) |
-                             S_028644_DEFAULT_VAL_ATTR1(0) |
                              S_028644_ATTR0_VALID(1) | /* this must be set if FP16_INTERP_MODE is set */
                              S_028644_ATTR1_VALID(!!(input.fp16_lo_hi_valid & 0x2));
          }
-      } else {
-         /* No corresponding output found, load defaults into input. */
-         ps_input_cntl = S_028644_OFFSET(0x20) |
-                         /* D3D 9 behaviour for COLOR0. GL is undefined */
-                         S_028644_DEFAULT_VAL(input.semantic == VARYING_SLOT_COL1 ? 3 : 0);
       }
 
       if (input.semantic == VARYING_SLOT_PNTC ||

@@ -2632,6 +2632,19 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
    if (!compiler->passes)
       si_init_compiler(sscreen, compiler);
 
+   /* The GS copy shader is always pre-compiled. */
+   if (sel->info.stage == MESA_SHADER_GEOMETRY &&
+       (!sscreen->use_ngg || !sscreen->use_ngg_streamout || /* also for PRIMITIVES_GENERATED */
+        sel->tess_turns_off_ngg)) {
+      sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
+      if (!sel->gs_copy_shader) {
+         fprintf(stderr, "radeonsi: can't create GS copy shader\n");
+         return;
+      }
+
+      si_shader_vs(sscreen, sel->gs_copy_shader, sel);
+   }
+
    /* Serialize NIR to save memory. Monolithic shader variants
     * have to deserialize NIR before compilation.
     */
@@ -2716,14 +2729,16 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
          unsigned i;
 
          for (i = 0; i < sel->info.num_outputs; i++) {
-            unsigned offset = shader->info.vs_output_param_offset[i];
+            unsigned semantic = sel->info.output_semantic[i];
+            unsigned ps_input_cntl = shader->info.vs_output_ps_input_cntl[semantic];
 
-            if (offset <= AC_EXP_PARAM_OFFSET_31)
+            /* OFFSET=0x20 means DEFAULT_VAL, which means VS doesn't export it. */
+            if (G_028644_OFFSET(ps_input_cntl) != 0x20)
                continue;
 
-            unsigned semantic = sel->info.output_semantic[i];
             unsigned id;
 
+            /* Remove the output from the mask. */
             if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
                 semantic != VARYING_SLOT_POS &&
                 semantic != VARYING_SLOT_PSIZ &&
@@ -2734,19 +2749,6 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
             }
          }
       }
-   }
-
-   /* The GS copy shader is always pre-compiled. */
-   if (sel->info.stage == MESA_SHADER_GEOMETRY &&
-       (!sscreen->use_ngg || !sscreen->use_ngg_streamout || /* also for PRIMITIVES_GENERATED */
-        sel->tess_turns_off_ngg)) {
-      sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
-      if (!sel->gs_copy_shader) {
-         fprintf(stderr, "radeonsi: can't create GS copy shader\n");
-         return;
-      }
-
-      si_shader_vs(sscreen, sel->gs_copy_shader, sel);
    }
 
    /* Free NIR. We only keep serialized NIR after this point. */

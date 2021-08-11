@@ -158,6 +158,12 @@ struct si_context;
 
 #define SI_NGG_PRIM_EDGE_FLAG_BITS ((1 << 9) | (1 << 19) | (1 << 29))
 
+#define SI_PS_INPUT_CNTL_0000          (S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(0))
+#define SI_PS_INPUT_CNTL_0001          (S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(3))
+#define SI_PS_INPUT_CNTL_UNUSED        SI_PS_INPUT_CNTL_0000
+/* D3D9 behaviour for COLOR0 requires 0001. GL is undefined. */
+#define SI_PS_INPUT_CNTL_UNUSED_COLOR0 SI_PS_INPUT_CNTL_0001
+
 /* SGPR user data indices */
 enum
 {
@@ -342,7 +348,6 @@ struct si_shader_info {
    ubyte num_outputs;
    union si_input_info input[PIPE_MAX_SHADER_INPUTS];
    ubyte output_semantic[PIPE_MAX_SHADER_OUTPUTS];
-   char output_semantic_to_slot[VARYING_SLOT_VAR15_16BIT + 1];
    ubyte output_usagemask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_readmask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_streams[PIPE_MAX_SHADER_OUTPUTS];
@@ -707,6 +712,7 @@ struct si_shader_key {
 /* GCN-specific shader info. */
 struct si_shader_binary_info {
    ubyte vs_output_param_offset[SI_MAX_VS_OUTPUTS];
+   uint32_t vs_output_ps_input_cntl[NUM_TOTAL_VARYING_SLOTS];
    ubyte num_input_sgprs;
    ubyte num_input_vgprs;
    signed char face_vgpr_index;

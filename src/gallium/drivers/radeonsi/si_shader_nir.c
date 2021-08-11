@@ -134,13 +134,11 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    } else {
       /* Outputs. */
       assert(driver_location + num_slots <= ARRAY_SIZE(info->output_usagemask));
-      assert(semantic + num_slots < ARRAY_SIZE(info->output_semantic_to_slot));
 
       for (unsigned i = 0; i < num_slots; i++) {
          unsigned loc = driver_location + i;
 
          info->output_semantic[loc] = semantic + i;
-         info->output_semantic_to_slot[semantic + i] = loc;
 
          if (is_output_load) {
             /* Output loads have only a few things that we need to track. */
@@ -479,8 +477,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       info->writes_position = nir->info.outputs_written & VARYING_BIT_POS;
    }
 
-   memset(info->output_semantic_to_slot, -1, sizeof(info->output_semantic_to_slot));
-
    func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
    nir_foreach_block (block, func->impl) {
       nir_foreach_instr (instr, block)
@@ -493,7 +489,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
        * and si_emit_spi_map uses this unconditionally when such a pixel shader is used.
        */
       info->output_semantic[info->num_outputs] = VARYING_SLOT_PRIMITIVE_ID;
-      info->output_semantic_to_slot[VARYING_SLOT_PRIMITIVE_ID] = info->num_outputs;
       info->output_type[info->num_outputs] = nir_type_uint32;
       info->output_usagemask[info->num_outputs] = 0x1;
    }
