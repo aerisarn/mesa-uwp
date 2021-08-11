@@ -63,6 +63,16 @@ static const DXGI_FORMAT formats[PIPE_FORMAT_COUNT] = {
    MAP_FORMAT_INT(R8G8B8A8)
    MAP_FORMAT_SRGB(R8G8B8A8)
 
+   /* Since we report PIPE_CAP_RGB_OVERRIDE_DST_ALPHA_BLEND and other caps,
+    * we can rely on st/mesa to force the alpha to 1 for these, so we can
+    * just use RGBA. This is needed to support RGB configs, since some apps
+    * will only choose RGB (not RGBA) configs.
+    */
+   [PIPE_FORMAT_R8G8B8X8_UNORM] = DXGI_FORMAT_R8G8B8A8_UNORM,
+   [PIPE_FORMAT_R8G8B8X8_SNORM] = DXGI_FORMAT_R8G8B8A8_SNORM,
+   [PIPE_FORMAT_R8G8B8X8_UINT] = DXGI_FORMAT_R8G8B8A8_UINT,
+   [PIPE_FORMAT_R8G8B8X8_SINT] = DXGI_FORMAT_R8G8B8A8_SINT,
+
    [PIPE_FORMAT_B8G8R8X8_UNORM] = DXGI_FORMAT_B8G8R8X8_UNORM,
    [PIPE_FORMAT_B8G8R8A8_UNORM] = DXGI_FORMAT_B8G8R8A8_UNORM,
 
@@ -238,6 +248,8 @@ d3d12_get_format_info(enum pipe_format pformat, enum pipe_texture_target target)
           * but the shader will read the x component so we need to adjust the swizzle. */
          plane_slice = 1;
          swizzle = STENCIL_SWIZZLE;
+      } else if (util_format_has_alpha1(pformat)) {
+         swizzle = RGB1_SWIZZLE;
       }
    }
 

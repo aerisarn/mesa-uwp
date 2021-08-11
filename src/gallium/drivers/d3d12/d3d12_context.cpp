@@ -1697,6 +1697,10 @@ d3d12_clear_render_target(struct pipe_context *pctx,
          clear_color[c] = color->f[c];
    }
 
+   if (!(util_format_colormask(util_format_description(psurf->texture->format)) &
+       PIPE_MASK_A))
+      clear_color[3] = 1.0f;
+
    D3D12_RECT rect = { (int)dstx, (int)dsty,
                        (int)dstx + (int)width,
                        (int)dsty + (int)height };

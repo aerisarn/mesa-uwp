@@ -69,7 +69,8 @@ resolve_supported(const struct pipe_blit_info *info)
       return false;
    } else {
       if (util_format_get_mask(info->dst.format) != info->mask ||
-          util_format_get_mask(info->src.format) != info->mask)
+          util_format_get_mask(info->src.format) != info->mask ||
+          util_format_has_alpha1(info->src.format))
          return false;
    }
 
