@@ -435,7 +435,9 @@ dri_get_egl_image(struct st_manager *smapi,
    __DRIimage *img = NULL;
    const struct dri2_format_mapping *map;
 
-   if (screen->lookup_egl_image) {
+   if (screen->lookup_egl_image_validated) {
+      img = screen->lookup_egl_image_validated(screen, egl_image);
+   } else if (screen->lookup_egl_image) {
       img = screen->lookup_egl_image(screen, egl_image);
    }
 

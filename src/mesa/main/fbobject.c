@@ -2749,6 +2749,13 @@ _mesa_EGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES image)
       return;
    }
 
+   if (!image || (ctx->Driver.ValidateEGLImage &&
+                  !ctx->Driver.ValidateEGLImage(ctx, image))) {
+      _mesa_error(ctx, GL_INVALID_VALUE,
+                  "EGLImageTargetRenderbufferStorageOES");
+      return;
+   }
+
    FLUSH_VERTICES(ctx, _NEW_BUFFERS, 0);
 
    ctx->Driver.EGLImageTargetRenderbufferStorage(ctx, rb, image);
