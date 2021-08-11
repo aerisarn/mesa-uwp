@@ -29,7 +29,7 @@
 #include "util/format_rgb9e5.h"
 #include "vk_format.h"
 
-enum { DEPTH_CLEAR_SLOW, DEPTH_CLEAR_FAST_EXPCLEAR, DEPTH_CLEAR_FAST_NO_EXPCLEAR };
+enum { DEPTH_CLEAR_SLOW, DEPTH_CLEAR_FAST };
 
 static void
 build_color_shaders(struct nir_shader **out_vs, struct nir_shader **out_fs, uint32_t frag_output)
@@ -636,11 +636,11 @@ create_depthstencil_pipeline(struct radv_device *device, VkImageAspectFlags aspe
 
    if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
       extra.db_depth_clear = index == DEPTH_CLEAR_SLOW ? false : true;
-      extra.db_depth_disable_expclear = index == DEPTH_CLEAR_FAST_NO_EXPCLEAR ? true : false;
+      extra.db_depth_disable_expclear = index == DEPTH_CLEAR_FAST ? true : false;
    }
    if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
       extra.db_stencil_clear = index == DEPTH_CLEAR_SLOW ? false : true;
-      extra.db_stencil_disable_expclear = index == DEPTH_CLEAR_FAST_NO_EXPCLEAR ? true : false;
+      extra.db_stencil_disable_expclear = index == DEPTH_CLEAR_FAST ? true : false;
    }
    result =
       create_pipeline(device, radv_render_pass_from_handle(render_pass), samples, vs_nir, fs_nir,
@@ -688,14 +688,8 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_
    bool fast = depth_view_can_fast_clear(cmd_buffer, iview, aspects, layout, in_render_loop,
                                          clear_rect, clear_value);
    bool unrestricted = cmd_buffer->device->vk.enabled_extensions.EXT_depth_range_unrestricted;
-   int index = DEPTH_CLEAR_SLOW;
+   int index = fast ? DEPTH_CLEAR_FAST : DEPTH_CLEAR_SLOW;
    VkPipeline *pipeline;
-
-   if (fast) {
-      /* we don't know the previous clear values, so we always have
-       * the NO_EXPCLEAR path */
-      index = DEPTH_CLEAR_FAST_NO_EXPCLEAR;
-   }
 
    switch (aspects) {
    case VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT:
