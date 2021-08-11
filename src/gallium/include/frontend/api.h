@@ -474,6 +474,12 @@ struct st_manager
                          struct st_egl_image *out);
 
    /**
+    * Validate EGLImage passed to get_egl_image.
+    */
+   bool (*validate_egl_image)(struct st_manager *smapi,
+                              void *egl_image);
+
+   /**
     * Query an manager param.
     */
    int (*get_param)(struct st_manager *smapi,
