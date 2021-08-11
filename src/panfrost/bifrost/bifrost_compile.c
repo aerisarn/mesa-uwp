@@ -46,6 +46,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"nosched",   BIFROST_DBG_NOSCHED, 	"Force trivial bundling"},
         {"inorder",   BIFROST_DBG_INORDER, 	"Force in-order bundling"},
         {"novalidate",BIFROST_DBG_NOVALIDATE,   "Skip IR validation"},
+        {"noopt",     BIFROST_DBG_NOOPT,        "Skip optimization passes"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -3676,24 +3677,27 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_emit_atest(&b, bi_zero());
         }
 
+        bool optimize = !(bifrost_debug & BIFROST_DBG_NOOPT);
+
         /* Runs before constant folding */
         bi_lower_swizzle(ctx);
         bi_validate(ctx, "Early lowering");
 
         /* Runs before copy prop */
-        if (!ctx->inputs->no_ubo_to_push) {
+        if (optimize && !ctx->inputs->no_ubo_to_push) {
                 bi_opt_push_ubo(ctx);
         }
 
-        bi_opt_constant_fold(ctx);
-
-        bi_opt_copy_prop(ctx);
-        bi_opt_mod_prop_forward(ctx);
-        bi_opt_mod_prop_backward(ctx);
-        bi_opt_dead_code_eliminate(ctx);
-        bi_opt_cse(ctx);
-        bi_opt_dead_code_eliminate(ctx);
-        bi_validate(ctx, "Optimization passes");
+        if (likely(optimize)) {
+                bi_opt_constant_fold(ctx);
+                bi_opt_copy_prop(ctx);
+                bi_opt_mod_prop_forward(ctx);
+                bi_opt_mod_prop_backward(ctx);
+                bi_opt_dead_code_eliminate(ctx);
+                bi_opt_cse(ctx);
+                bi_opt_dead_code_eliminate(ctx);
+                bi_validate(ctx, "Optimization passes");
+        }
 
         bi_foreach_block(ctx, block) {
                 bi_lower_branch(block);
@@ -3710,7 +3714,10 @@ bifrost_compile_shader_nir(nir_shader *nir,
         bi_validate(ctx, "Late lowering");
 
         bi_register_allocate(ctx);
-        bi_opt_post_ra(ctx);
+
+        if (likely(optimize))
+                bi_opt_post_ra(ctx);
+
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
 
