@@ -972,6 +972,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
    } while (0)
 
 template <chip_class GFX_VERSION, si_has_ngg NGG, si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
+ALWAYS_INLINE
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
                                  unsigned drawid_base,
                                  const struct pipe_draw_indirect_info *indirect,
@@ -1581,6 +1582,7 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
 }
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
+ALWAYS_INLINE
 static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_info *info,
                                const struct pipe_draw_indirect_info *indirect,
                                enum pipe_prim_type prim, unsigned instance_count,
