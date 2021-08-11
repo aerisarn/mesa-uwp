@@ -77,6 +77,9 @@ convert_pc_to_bits(struct GENX(PIPE_CONTROL) *pc) {
    bits |= (pc->StallAtPixelScoreboard) ?  ANV_PIPE_STALL_AT_SCOREBOARD_BIT : 0;
    bits |= (pc->DepthStallEnable) ?  ANV_PIPE_DEPTH_STALL_BIT : 0;
    bits |= (pc->CommandStreamerStallEnable) ?  ANV_PIPE_CS_STALL_BIT : 0;
+#if GFX_VERx10 == 125
+   bits |= (pc->UntypedDataPortCacheFlushEnable) ? ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT : 0;
+#endif
    return bits;
 }
 
@@ -2085,6 +2088,34 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
    if (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS |
                ANV_PIPE_END_OF_PIPE_SYNC_BIT)) {
       anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe) {
+#if GFX_VERx10 >= 125
+         /* BSpec 47112: PIPE_CONTROL::Untyped Data-Port Cache Flush:
+          *
+          *    "'HDC Pipeline Flush' bit must be set for this bit to take
+          *     effect."
+          *
+          * BSpec 47112: PIPE_CONTROL::HDC Pipeline Flush:
+          *
+          *    "When the "Pipeline Select" mode in PIPELINE_SELECT command is
+          *     set to "3D", HDC Pipeline Flush can also flush/invalidate the
+          *     LSC Untyped L1 cache based on the programming of HDC_Chicken0
+          *     register bits 13:11."
+          *
+          *    "When the 'Pipeline Select' mode is set to 'GPGPU', the LSC
+          *     Untyped L1 cache flush is controlled by 'Untyped Data-Port
+          *     Cache Flush' bit in the PIPE_CONTROL command."
+          *
+          *    As part of Wa_1608949956 & Wa_14010198302, i915 is programming
+          *    HDC_CHICKEN0[11:13] = 0 ("Untyped L1 is flushed, for both 3D
+          *    Pipecontrol Dataport flush, and UAV coherency barrier event").
+          *    So there is no need to set "Untyped Data-Port Cache" in 3D
+          *    mode.
+          */
+         pipe.UntypedDataPortCacheFlushEnable =
+            (bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT) &&
+            current_pipeline == GPGPU;
+         pipe.HDCPipelineFlushEnable |= pipe.UntypedDataPortCacheFlushEnable;
+#endif
 #if GFX_VER >= 12
          pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
          pipe.HDCPipelineFlushEnable |= bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
@@ -5920,7 +5951,8 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                              ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
                              ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT |
                              ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
-                             ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT,
+                             ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT |
+                             ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT,
                              "flush and invalidate for PIPELINE_SELECT");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
