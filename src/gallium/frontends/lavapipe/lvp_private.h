@@ -216,13 +216,20 @@ struct lvp_device {
 
 void lvp_device_get_cache_uuid(void *uuid);
 
+enum lvp_device_memory_type {
+   LVP_DEVICE_MEMORY_TYPE_DEFAULT,
+   LVP_DEVICE_MEMORY_TYPE_USER_PTR,
+   LVP_DEVICE_MEMORY_TYPE_OPAQUE_FD,
+};
+
 struct lvp_device_memory {
    struct vk_object_base base;
    struct pipe_memory_allocation *pmem;
    uint32_t                                     type_index;
    VkDeviceSize                                 map_size;
    void *                                       map;
-   bool is_user_ptr;
+   enum lvp_device_memory_type memory_type;
+   int                                          backed_fd;
 };
 
 struct lvp_image {

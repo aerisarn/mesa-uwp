@@ -26,6 +26,8 @@
 #include "pipe-loader/pipe_loader.h"
 #include "git_sha1.h"
 #include "vk_util.h"
+#include "pipe/p_config.h"
+#include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 #include "frontend/drisw_api.h"
@@ -1630,15 +1632,42 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
    struct lvp_device_memory *mem;
+   const VkExportMemoryAllocateInfo *export_info = NULL;
+   const VkImportMemoryFdInfoKHR *import_info = NULL;
+   const VkImportMemoryHostPointerInfoEXT *host_ptr_info = NULL;
+   VkResult error = VK_ERROR_OUT_OF_DEVICE_MEMORY;
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
-   const VkImportMemoryHostPointerInfoEXT *host_ptr_info =
-      vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_HOST_POINTER_INFO_EXT);
 
    if (pAllocateInfo->allocationSize == 0) {
       /* Apparently, this is allowed */
       *pMem = VK_NULL_HANDLE;
       return VK_SUCCESS;
    }
+
+   vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
+      switch ((unsigned)ext->sType) {
+      case VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT:
+         host_ptr_info = (VkImportMemoryHostPointerInfoEXT*)ext;
+         assert(host_ptr_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT);
+         break;
+      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
+         export_info = (VkExportMemoryAllocateInfo*)ext;
+         assert(export_info->handleTypes == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
+         break;
+      case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
+         import_info = (VkImportMemoryFdInfoKHR*)ext;
+         assert(import_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
+         break;
+      default:
+         break;
+      }
+   }
+
+#ifdef PIPE_MEMORY_FD
+   if (import_info != NULL && import_info->fd < 0) {
+      return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
+#endif
 
    mem = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8,
                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -1648,16 +1677,47 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
    vk_object_base_init(&device->vk, &mem->base,
                        VK_OBJECT_TYPE_DEVICE_MEMORY);
 
-   if (!host_ptr_info) {
+   mem->memory_type = LVP_DEVICE_MEMORY_TYPE_DEFAULT;
+   mem->backed_fd = -1;
+
+   if (host_ptr_info) {
+      mem->pmem = host_ptr_info->pHostPointer;
+      mem->memory_type = LVP_DEVICE_MEMORY_TYPE_USER_PTR;
+   }
+#ifdef PIPE_MEMORY_FD
+   else if(import_info) {
+      uint64_t size;
+      if(!device->pscreen->import_memory_fd(device->pscreen, import_info->fd, &mem->pmem, &size)) {
+         close(import_info->fd);
+         error = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+         goto fail;
+      }
+      if(size < pAllocateInfo->allocationSize) {
+         device->pscreen->free_memory_fd(device->pscreen, mem->pmem);
+         close(import_info->fd);
+         goto fail;
+      }
+      if (export_info) {
+         mem->backed_fd = import_info->fd;
+      }
+      else {
+         close(import_info->fd);
+      }
+      mem->memory_type = LVP_DEVICE_MEMORY_TYPE_OPAQUE_FD;
+   }
+   else if (export_info) {
+      mem->pmem = device->pscreen->allocate_memory_fd(device->pscreen, pAllocateInfo->allocationSize, &mem->backed_fd);
+      if (!mem->pmem || mem->backed_fd < 0) {
+         goto fail;
+      }
+      mem->memory_type = LVP_DEVICE_MEMORY_TYPE_OPAQUE_FD;
+   }
+#endif
+   else {
       mem->pmem = device->pscreen->allocate_memory(device->pscreen, pAllocateInfo->allocationSize);
       if (!mem->pmem) {
-         vk_free2(&device->vk.alloc, pAllocator, mem);
-         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+         goto fail;
       }
-      mem->is_user_ptr = false;
-   } else {
-      mem->is_user_ptr = true;
-      mem->pmem = host_ptr_info->pHostPointer;
    }
 
    mem->type_index = pAllocateInfo->memoryTypeIndex;
@@ -1665,6 +1725,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
    *pMem = lvp_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
+
+fail:
+   vk_free2(&device->vk.alloc, pAllocator, mem);
+   return vk_error(device->instance, error);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_FreeMemory(
@@ -1678,8 +1742,21 @@ VKAPI_ATTR void VKAPI_CALL lvp_FreeMemory(
    if (mem == NULL)
       return;
 
-   if (!mem->is_user_ptr)
+   switch(mem->memory_type) {
+   case LVP_DEVICE_MEMORY_TYPE_DEFAULT:
       device->pscreen->free_memory(device->pscreen, mem->pmem);
+      break;
+#ifdef PIPE_MEMORY_FD
+   case LVP_DEVICE_MEMORY_TYPE_OPAQUE_FD:
+      device->pscreen->free_memory_fd(device->pscreen, mem->pmem);
+      if(mem->backed_fd >= 0)
+         close(mem->backed_fd);
+      break;
+#endif
+   case LVP_DEVICE_MEMORY_TYPE_USER_PTR:
+   default:
+      break;
+   }
    vk_object_base_finish(&mem->base);
    vk_free2(&device->vk.alloc, pAllocator, mem);
 
@@ -1909,6 +1986,42 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
    }
    return VK_SUCCESS;
 }
+
+#ifdef PIPE_MEMORY_FD
+
+VkResult
+lvp_GetMemoryFdKHR(VkDevice _device, const VkMemoryGetFdInfoKHR *pGetFdInfo, int *pFD)
+{
+   LVP_FROM_HANDLE(lvp_device_memory, memory, pGetFdInfo->memory);
+
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR);
+   assert(pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
+
+   *pFD = dup(memory->backed_fd);
+   assert(*pFD >= 0);
+   return VK_SUCCESS;
+}
+
+VkResult
+lvp_GetMemoryFdPropertiesKHR(VkDevice _device,
+                             VkExternalMemoryHandleTypeFlagBits handleType,
+                             int fd,
+                             VkMemoryFdPropertiesKHR *pMemoryFdProperties)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+
+   assert(pMemoryFdProperties->sType == VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR);
+
+   if(handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT) {
+      // There is only one memoryType so select this one
+      pMemoryFdProperties->memoryTypeBits = 1;
+   }
+   else
+      return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   return VK_SUCCESS;
+}
+
+#endif
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueBindSparse(
    VkQueue                                     queue,
