@@ -540,13 +540,6 @@ drisw_create_context_attribs(struct glx_screen *base,
        return NULL;
    }
 
-   if (reset != __DRI_CTX_RESET_NO_NOTIFICATION)
-      return NULL;
-
-   if (release != __DRI_CTX_RELEASE_BEHAVIOR_FLUSH &&
-       release != __DRI_CTX_RELEASE_BEHAVIOR_NONE)
-      return NULL;
-
    if (shareList) {
       /* We can't share with an indirect context */
       if (!shareList->isDirect)
