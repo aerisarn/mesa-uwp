@@ -228,6 +228,14 @@ crocus_resource_configure_main(const struct crocus_screen *screen,
    const enum isl_format format =
       crocus_format_for_usage(&screen->devinfo, templ->format, usage).fmt;
 
+   if (row_pitch_B == 0 && templ->usage == PIPE_USAGE_STAGING &&
+       templ->target == PIPE_TEXTURE_2D &&
+       devinfo->ver < 6) {
+      /* align row pitch to 4 so we can keep using BLT engine */
+      row_pitch_B = util_format_get_stride(templ->format, templ->width0);
+      row_pitch_B = ALIGN(row_pitch_B, 4);
+   }
+
    const struct isl_surf_init_info init_info = {
       .dim = crocus_target_to_isl_surf_dim(templ->target),
       .format = format,
