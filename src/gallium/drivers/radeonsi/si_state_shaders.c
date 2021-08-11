@@ -2962,7 +2962,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    case MESA_SHADER_FRAGMENT:
       for (i = 0; i < sel->info.num_inputs; i++) {
-         unsigned semantic = sel->info.input_semantic[i];
+         unsigned semantic = sel->info.input[i].semantic;
 
          if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
              semantic != VARYING_SLOT_PNTC) {
@@ -2975,9 +2975,9 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
             sel->colors_written_4bit |= 0xf << (4 * i);
 
       for (i = 0; i < sel->info.num_inputs; i++) {
-         if (sel->info.input_semantic[i] == VARYING_SLOT_COL0)
+         if (sel->info.input[i].semantic == VARYING_SLOT_COL0)
             sel->color_attr_index[0] = i;
-         else if (sel->info.input_semantic[i] == VARYING_SLOT_COL1)
+         else if (sel->info.input[i].semantic == VARYING_SLOT_COL1)
             sel->color_attr_index[1] = i;
       }
       break;
@@ -3605,9 +3605,9 @@ static void si_emit_spi_map(struct si_context *sctx)
    assert(num_interp > 0);
 
    for (i = 0; i < psinfo->num_inputs; i++) {
-      unsigned semantic = psinfo->input_semantic[i];
-      unsigned interpolate = psinfo->input_interpolate[i];
-      ubyte fp16_lo_hi_mask = psinfo->input_fp16_lo_hi_valid[i];
+      unsigned semantic = psinfo->input[i].semantic;
+      unsigned interpolate = psinfo->input[i].interpolate;
+      ubyte fp16_lo_hi_mask = psinfo->input[i].fp16_lo_hi_valid;
 
       spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic, interpolate,
                                                               fp16_lo_hi_mask);

@@ -52,7 +52,7 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
    unsigned param;
    LLVMValueRef value;
 
-   param = si_shader_io_get_unique_index(info->input_semantic[input_index], false);
+   param = si_shader_io_get_unique_index(info->input[input_index].semantic, false);
 
    /* GFX9 has the ESGS ring in LDS. */
    if (ctx->screen->info.chip_class >= GFX9) {

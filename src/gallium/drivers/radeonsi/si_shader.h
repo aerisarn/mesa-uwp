@@ -323,6 +323,16 @@ enum si_color_output_type {
    SI_TYPE_UINT16,
 };
 
+union si_input_info {
+   struct {
+      ubyte semantic;
+      ubyte interpolate;
+      ubyte fp16_lo_hi_valid;
+      ubyte usage_mask;
+   };
+   uint32_t _unused; /* this just forces 4-byte alignment */
+};
+
 struct si_shader_info {
    shader_info base;
 
@@ -330,10 +340,7 @@ struct si_shader_info {
 
    ubyte num_inputs;
    ubyte num_outputs;
-   ubyte input_semantic[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_interpolate[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_usage_mask[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_fp16_lo_hi_valid[PIPE_MAX_SHADER_INPUTS];
+   union si_input_info input[PIPE_MAX_SHADER_INPUTS];
    ubyte output_semantic[PIPE_MAX_SHADER_OUTPUTS];
    char output_semantic_to_slot[VARYING_SLOT_VAR15_16BIT + 1];
    ubyte output_usagemask[PIPE_MAX_SHADER_OUTPUTS];

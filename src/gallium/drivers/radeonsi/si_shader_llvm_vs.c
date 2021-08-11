@@ -107,7 +107,7 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
     * ... which is what we must prevent at all cost.
     */
    const bool can_speculate = false;
-   unsigned bit_size = info->input_fp16_lo_hi_valid[input_index] & 0x1 ? 16 : 32;
+   unsigned bit_size = info->input[input_index].fp16_lo_hi_valid & 0x1 ? 16 : 32;
    LLVMTypeRef int_type = bit_size == 16 ? ctx->ac.i16 : ctx->ac.i32;
    LLVMTypeRef float_type = bit_size == 16 ? ctx->ac.f16 : ctx->ac.f32;
    unsigned num_vbos_in_user_sgprs = ctx->shader->selector->num_vbos_in_user_sgprs;
@@ -157,7 +157,7 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
       return;
    }
 
-   unsigned required_channels = util_last_bit(info->input_usage_mask[input_index]);
+   unsigned required_channels = util_last_bit(info->input[input_index].usage_mask);
    if (required_channels == 0) {
       for (unsigned i = 0; i < 4; ++i)
          out[i] = LLVMGetUndef(ctx->ac.f32);

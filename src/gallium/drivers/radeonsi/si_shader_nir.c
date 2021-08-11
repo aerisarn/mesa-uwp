@@ -108,25 +108,25 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    unsigned num_slots = indirect ? nir_intrinsic_io_semantics(intr).num_slots : 1;
 
    if (is_input) {
-      assert(driver_location + num_slots <= ARRAY_SIZE(info->input_usage_mask));
+      assert(driver_location + num_slots <= ARRAY_SIZE(info->input));
 
       for (unsigned i = 0; i < num_slots; i++) {
          unsigned loc = driver_location + i;
 
-         info->input_semantic[loc] = semantic + i;
+         info->input[loc].semantic = semantic + i;
 
          if (semantic == SYSTEM_VALUE_PRIMITIVE_ID)
-            info->input_interpolate[loc] = INTERP_MODE_FLAT;
+            info->input[loc].interpolate = INTERP_MODE_FLAT;
          else
-            info->input_interpolate[loc] = interp;
+            info->input[loc].interpolate = interp;
 
          if (mask) {
-            info->input_usage_mask[loc] |= mask;
+            info->input[loc].usage_mask |= mask;
             if (bit_size == 16) {
                if (nir_intrinsic_io_semantics(intr).high_16bits)
-                  info->input_fp16_lo_hi_valid[loc] |= 0x2;
+                  info->input[loc].fp16_lo_hi_valid |= 0x2;
                else
-                  info->input_fp16_lo_hi_valid[loc] |= 0x1;
+                  info->input[loc].fp16_lo_hi_valid |= 0x1;
             }
             info->num_inputs = MAX2(info->num_inputs, loc + 1);
          }
@@ -517,9 +517,9 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       for (unsigned i = 0; i < 2; i++) {
          if ((info->colors_read >> (i * 4)) & 0xf) {
-            info->input_semantic[info->num_inputs] = VARYING_SLOT_COL0 + i;
-            info->input_interpolate[info->num_inputs] = info->color_interpolate[i];
-            info->input_usage_mask[info->num_inputs] = info->colors_read >> (i * 4);
+            info->input[info->num_inputs].semantic = VARYING_SLOT_COL0 + i;
+            info->input[info->num_inputs].interpolate = info->color_interpolate[i];
+            info->input[info->num_inputs].usage_mask = info->colors_read >> (i * 4);
             info->num_inputs++;
          }
       }

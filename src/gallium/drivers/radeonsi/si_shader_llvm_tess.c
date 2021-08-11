@@ -390,7 +390,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
    ubyte semantic;
 
    if (load_input) {
-      semantic = info->input_semantic[driver_location];
+      semantic = info->input[driver_location].semantic;
    } else {
       semantic = info->output_semantic[driver_location];
    }
@@ -448,7 +448,7 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
    struct si_shader_info *info = &ctx->shader->selector->info;
    LLVMValueRef base, addr;
 
-   ubyte semantic = info->input_semantic[driver_location];
+   ubyte semantic = info->input[driver_location].semantic;
 
    assert((semantic >= VARYING_SLOT_PATCH0 ||
            semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
