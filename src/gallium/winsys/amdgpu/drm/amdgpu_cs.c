@@ -761,21 +761,6 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    return true;
 }
 
-static unsigned amdgpu_ib_max_submit_dwords(enum ib_type ib_type)
-{
-   /* The maximum IB size including all chained IBs. */
-   switch (ib_type) {
-   case IB_MAIN:
-      /* Smaller submits means the GPU gets busy sooner and there is less
-       * waiting for buffers and fences. Proof:
-       *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
-       */
-      return 20 * 1024;
-   default:
-      unreachable("bad ib_type");
-   }
-}
-
 static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
                               struct radeon_cmdbuf *rcs,
                               struct amdgpu_ib *ib,
@@ -797,7 +782,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
    if (!cs->has_chaining) {
       ib_size = MAX2(ib_size,
                      4 * MIN2(util_next_power_of_two(ib->max_ib_size),
-                              amdgpu_ib_max_submit_dwords(ib->ib_type)));
+                              IB_MAX_SUBMIT_DWORDS));
    }
 
    ib->max_ib_size = ib->max_ib_size - ib->max_ib_size / 32;
@@ -1101,7 +1086,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
    if (!force_chaining) {
       unsigned requested_size = rcs->prev_dw + rcs->current.cdw + dw;
 
-      if (requested_size > amdgpu_ib_max_submit_dwords(ib->ib_type))
+      if (requested_size > IB_MAX_SUBMIT_DWORDS)
          return false;
 
       ib->max_ib_size = MAX2(ib->max_ib_size, requested_size);

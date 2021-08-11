@@ -32,6 +32,12 @@
 #include "util/u_memory.h"
 #include "drm-uapi/amdgpu_drm.h"
 
+/* Smaller submits means the GPU gets busy sooner and there is less
+ * waiting for buffers and fences. Proof:
+ *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
+ */
+#define IB_MAX_SUBMIT_DWORDS (20 * 1024)
+
 struct amdgpu_ctx {
    struct amdgpu_winsys *ws;
    amdgpu_context_handle ctx;
