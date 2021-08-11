@@ -511,16 +511,25 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
                                    BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS) ||
                                    BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN) ||
                                    BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION));
-   }
 
-   /* Add color inputs to the list of inputs. */
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      for (unsigned i = 0; i < 2; i++) {
-         if ((info->colors_read >> (i * 4)) & 0xf) {
-            info->input[info->num_inputs].semantic = VARYING_SLOT_COL0 + i;
-            info->input[info->num_inputs].interpolate = info->color_interpolate[i];
-            info->input[info->num_inputs].usage_mask = info->colors_read >> (i * 4);
-            info->num_inputs++;
+      /* Add both front and back color inputs. */
+      unsigned num_inputs_with_colors = info->num_inputs;
+      for (unsigned back = 0; back < 2; back++) {
+         for (unsigned i = 0; i < 2; i++) {
+            if ((info->colors_read >> (i * 4)) & 0xf) {
+               unsigned index = num_inputs_with_colors;
+
+               info->input[index].semantic = (back ? VARYING_SLOT_BFC0 : VARYING_SLOT_COL0) + i;
+               info->input[index].interpolate = info->color_interpolate[i];
+               info->input[index].usage_mask = info->colors_read >> (i * 4);
+               num_inputs_with_colors++;
+
+               /* Back-face color don't increment num_inputs. si_emit_spi_map will use
+                * back-face colors conditionally only when they are needed.
+                */
+               if (!back)
+                  info->num_inputs = num_inputs_with_colors;
+            }
          }
       }
    }

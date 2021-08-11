@@ -3604,7 +3604,9 @@ static void si_emit_spi_map(struct si_context *sctx)
    else
       vs = si_get_vs(sctx)->current;
 
-   for (i = 0; i < psinfo->num_inputs; i++) {
+   unsigned num_interp = ps->ctx_reg.ps.num_interp;
+
+   for (i = 0; i < num_interp; i++) {
       unsigned semantic = psinfo->input[i].semantic;
       unsigned interpolate = psinfo->input[i].interpolate;
       ubyte fp16_lo_hi_mask = psinfo->input[i].fp16_lo_hi_valid;
@@ -3613,19 +3615,6 @@ static void si_emit_spi_map(struct si_context *sctx)
                                                               fp16_lo_hi_mask);
    }
 
-   if (ps->key.part.ps.prolog.color_two_side) {
-      for (i = 0; i < 2; i++) {
-         if (!(psinfo->colors_read & (0xf << (i * 4))))
-            continue;
-
-         unsigned semantic = VARYING_SLOT_BFC0 + i;
-         spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic,
-                                                                 psinfo->color_interpolate[i],
-                                                                 false);
-      }
-   }
-
-   unsigned num_interp = ps->ctx_reg.ps.num_interp;
    assert(num_interp > 0);
    assert(num_interp == num_written);
 
