@@ -2028,8 +2028,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
       bool gs_tri_strip_adj_fix =
          !HAS_TESS && prim == PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
 
-      if (gs_tri_strip_adj_fix != sctx->gs_tri_strip_adj_fix) {
-         sctx->gs_tri_strip_adj_fix = gs_tri_strip_adj_fix;
+      if (gs_tri_strip_adj_fix != sctx->shader.gs.key.part.gs.prolog.tri_strip_adj_fix) {
+         sctx->shader.gs.key.part.gs.prolog.tri_strip_adj_fix = gs_tri_strip_adj_fix;
          sctx->do_update_shaders = true;
       }
    }

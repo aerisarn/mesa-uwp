@@ -1077,7 +1077,6 @@ struct si_context {
    bool allow_flat_shading : 1;
 
    /* Emitted draw state. */
-   bool gs_tri_strip_adj_fix : 1;
    bool ngg : 1;
    uint8_t ngg_culling;
    unsigned last_index_size;
