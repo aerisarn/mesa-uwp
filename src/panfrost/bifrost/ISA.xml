@@ -3710,6 +3710,7 @@
       <opt>subgroup2</opt>
       <opt>subgroup4</opt>
       <opt>subgroup8</opt>
+      <opt pseudo="true">subgroup16</opt> <!-- Only on Valhall -->
     </mod>
     <mod name="inactive_result" start="10" size="4">
       <opt>zero</opt>
