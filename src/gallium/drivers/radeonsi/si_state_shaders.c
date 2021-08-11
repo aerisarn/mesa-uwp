@@ -3530,20 +3530,6 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    unsigned offset, ps_input_cntl = 0;
 
-   if (interpolate == INTERP_MODE_FLAT ||
-       (interpolate == INTERP_MODE_COLOR && rs->flatshade))
-      ps_input_cntl |= S_028644_FLAT_SHADE(1);
-
-   if (semantic == VARYING_SLOT_PNTC ||
-       (semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7 &&
-        rs->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
-      ps_input_cntl |= S_028644_PT_SPRITE_TEX(1);
-      if (fp16_lo_hi_mask & 0x1) {
-         ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
-                          S_028644_ATTR0_VALID(1);
-      }
-   }
-
    int vs_slot = vsinfo->output_semantic_to_slot[semantic];
    if (vs_slot >= 0) {
       offset = vs->info.vs_output_param_offset[vs_slot];
@@ -3551,16 +3537,23 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
       if (offset <= AC_EXP_PARAM_OFFSET_31) {
          /* The input is loaded from parameter memory. */
          ps_input_cntl |= S_028644_OFFSET(offset);
-      } else if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
+
+         if (interpolate == INTERP_MODE_FLAT ||
+             (interpolate == INTERP_MODE_COLOR && rs->flatshade)) {
+            ps_input_cntl |= S_028644_FLAT_SHADE(1);
+         }
+      } else {
          /* The input is a DEFAULT_VAL constant. */
          assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
                 offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
          offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
 
-         ps_input_cntl = S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(offset);
+         /* Overwrite the whole value. OFFSET=0x20 means that DEFAULT_VAL is used. */
+         ps_input_cntl = S_028644_OFFSET(0x20) |
+                         S_028644_DEFAULT_VAL(offset);
       }
 
-      if (fp16_lo_hi_mask && !G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
+      if (fp16_lo_hi_mask) {
          assert(offset <= AC_EXP_PARAM_OFFSET_31 || offset == AC_EXP_PARAM_DEFAULT_VAL_0000);
 
          ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
@@ -3570,14 +3563,21 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
                           S_028644_ATTR1_VALID(!!(fp16_lo_hi_mask & 0x2));
       }
    } else {
-      if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
-         /* No corresponding output found, load defaults into input.
-          * Don't set any other bits.
-          * (FLAT_SHADE=1 completely changes behavior) */
-         ps_input_cntl = S_028644_OFFSET(0x20);
-         /* D3D 9 behaviour. GL is undefined */
-         if (semantic == VARYING_SLOT_COL0)
-            ps_input_cntl |= S_028644_DEFAULT_VAL(3);
+      /* No corresponding output found, load defaults into input. */
+      ps_input_cntl = S_028644_OFFSET(0x20) |
+                      /* D3D 9 behaviour for COLOR0. GL is undefined */
+                      S_028644_DEFAULT_VAL(semantic == VARYING_SLOT_COL1 ? 3 : 0);
+   }
+
+   if (semantic == VARYING_SLOT_PNTC ||
+       (semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7 &&
+        rs->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
+      /* Overwrite the whole value for sprite coordinates. */
+      ps_input_cntl = S_028644_OFFSET(0) |
+                      S_028644_PT_SPRITE_TEX(1);
+      if (fp16_lo_hi_mask & 0x1) {
+         ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                          S_028644_ATTR0_VALID(1);
       }
    }
 
