@@ -726,7 +726,7 @@ class StringIntMap(object):
             self.collisions[min(level, 9)] += 1
             self.mapping[h & self.hash_mask] = idx
 
-EntrypointParam = namedtuple('EntrypointParam', 'type name decl')
+EntrypointParam = namedtuple('EntrypointParam', 'type name decl len')
 
 class EntrypointBase(object):
     def __init__(self, name):
@@ -811,7 +811,8 @@ def get_entrypoints(doc, entrypoints_to_defines):
             params = [EntrypointParam(
                 type=p.find('./type').text,
                 name=p.find('./name').text,
-                decl=''.join(p.itertext())
+                decl=''.join(p.itertext()),
+                len=p.attrib.get('len', None)
             ) for p in command.findall('./param')]
             guard = entrypoints_to_defines.get(name)
             # They really need to be unique
