@@ -483,6 +483,17 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
          scan_instruction(nir, info, instr);
    }
 
+   if (info->stage == MESA_SHADER_VERTEX || info->stage == MESA_SHADER_TESS_EVAL) {
+      /* Add the PrimitiveID output, but don't increment num_outputs.
+       * The driver inserts PrimitiveID only when it's used by the pixel shader,
+       * and si_emit_spi_map uses this unconditionally when such a pixel shader is used.
+       */
+      info->output_semantic[info->num_outputs] = VARYING_SLOT_PRIMITIVE_ID;
+      info->output_semantic_to_slot[VARYING_SLOT_PRIMITIVE_ID] = info->num_outputs;
+      info->output_type[info->num_outputs] = nir_type_uint32;
+      info->output_usagemask[info->num_outputs] = 0x1;
+   }
+
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->allow_flat_shading = !(info->uses_persp_center || info->uses_persp_centroid ||
                                    info->uses_persp_sample || info->uses_linear_center ||

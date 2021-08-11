@@ -3571,11 +3571,7 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
                           S_028644_ATTR1_VALID(!!(fp16_lo_hi_mask & 0x2));
       }
    } else {
-      /* VS output not found. */
-      if (semantic == VARYING_SLOT_PRIMITIVE_ID) {
-         /* PrimID is written after the last output when HW VS is used. */
-         ps_input_cntl |= S_028644_OFFSET(vs->info.vs_output_param_offset[vsinfo->num_outputs]);
-      } else if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
+      if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
          /* No corresponding output found, load defaults into input.
           * Don't set any other bits.
           * (FLAT_SHADE=1 completely changes behavior) */
