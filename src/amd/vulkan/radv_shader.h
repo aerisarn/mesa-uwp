@@ -473,9 +473,6 @@ void radv_shader_variant_destroy(struct radv_device *device, struct radv_shader_
 unsigned radv_get_max_waves(struct radv_device *device, struct radv_shader_variant *variant,
                             gl_shader_stage stage);
 
-unsigned radv_get_max_workgroup_size(enum chip_class chip_class, gl_shader_stage stage,
-                                     const unsigned *sizes);
-
 const char *radv_get_shader_name(struct radv_shader_info *info, gl_shader_stage stage);
 
 bool radv_can_dump_shader(struct radv_device *device, struct vk_shader_module *module,

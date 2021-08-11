@@ -2559,9 +2559,6 @@ void llvm_compile_shader(struct radv_device *device, unsigned shader_count,
                          struct nir_shader *const *shaders, struct radv_shader_binary **binary,
                          struct radv_shader_args *args);
 
-unsigned radv_nir_get_max_workgroup_size(enum chip_class chip_class, gl_shader_stage stage,
-                                         const struct nir_shader *nir);
-
 /* radv_shader_info.h */
 struct radv_shader_info;
 struct radv_shader_variant_key;

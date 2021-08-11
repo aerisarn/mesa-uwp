@@ -925,7 +925,6 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
    ac_nir_ngg_config out_conf = {0};
    const struct gfx10_ngg_info *ngg_info = &info->ngg_info;
-   unsigned num_gs_invocations = (nir->info.stage != MESA_SHADER_GEOMETRY || ngg_info->max_vert_out_per_gs_instance) ? 1 : info->gs.invocations;
    unsigned num_vertices_per_prim = 3;
 
    /* Get the number of vertices per input primitive */
@@ -955,17 +954,6 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
    /* Invocations that process an input vertex */
    unsigned max_vtx_in = MIN2(256, ngg_info->enable_vertex_grouping ? ngg_info->hw_max_esverts : num_vertices_per_prim * ngg_info->max_gsprims);
-   /* Invocations that export an output vertex */
-   unsigned max_vtx_out = ngg_info->max_out_verts;
-   /* Invocations that process an input primitive */
-   unsigned max_prm_in = ngg_info->max_gsprims * num_gs_invocations;
-   /* Invocations that produce an output primitive */
-   unsigned max_prm_out = ngg_info->max_gsprims * num_gs_invocations * ngg_info->prim_amp_factor;
-
-   unsigned max_workgroup_size = MAX4(max_vtx_in, max_vtx_out, max_prm_in, max_prm_out);
-
-   /* Maximum HW limit for NGG workgroups */
-   max_workgroup_size = MIN2(256, max_workgroup_size);
 
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_EVAL) {
@@ -979,7 +967,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
             nir,
             max_vtx_in,
             num_vertices_per_prim,
-            max_workgroup_size,
+            info->workgroup_size,
             info->wave_size,
             consider_culling,
             key->vs_common_out.as_ngg_passthrough,
@@ -994,7 +982,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       assert(info->is_ngg);
       ac_nir_lower_ngg_gs(
-         nir, info->wave_size, max_workgroup_size,
+         nir, info->wave_size, info->workgroup_size,
          info->ngg_info.esgs_ring_size,
          info->gs.gsvs_vertex_size,
          info->ngg_info.ngg_emit_size * 4u,
@@ -1748,25 +1736,6 @@ radv_get_shader_name(struct radv_shader_info *info, gl_shader_stage stage)
 }
 
 unsigned
-radv_get_max_workgroup_size(enum chip_class chip_class, gl_shader_stage stage,
-                            const unsigned *sizes)
-{
-   switch (stage) {
-   case MESA_SHADER_TESS_CTRL:
-      return chip_class >= GFX7 ? 128 : 64;
-   case MESA_SHADER_GEOMETRY:
-      return chip_class >= GFX9 ? 128 : 64;
-   case MESA_SHADER_COMPUTE:
-      break;
-   default:
-      return 0;
-   }
-
-   unsigned max_workgroup_size = sizes[0] * sizes[1] * sizes[2];
-   return max_workgroup_size;
-}
-
-unsigned
 radv_get_max_waves(struct radv_device *device, struct radv_shader_variant *variant,
                    gl_shader_stage stage)
 {
@@ -1784,8 +1753,7 @@ radv_get_max_waves(struct radv_device *device, struct radv_shader_variant *varia
          conf->lds_size * info->lds_encode_granularity + variant->info.ps.num_interp * 48;
       lds_per_wave = align(lds_per_wave, info->lds_alloc_granularity);
    } else if (stage == MESA_SHADER_COMPUTE) {
-      unsigned max_workgroup_size =
-         radv_get_max_workgroup_size(chip_class, stage, variant->info.cs.block_size);
+      unsigned max_workgroup_size = variant->info.workgroup_size;
       lds_per_wave =
          align(conf->lds_size * info->lds_encode_granularity, info->lds_alloc_granularity);
       lds_per_wave /= DIV_ROUND_UP(max_workgroup_size, wave_size);
@@ -1848,7 +1816,7 @@ radv_GetShaderInfoAMD(VkDevice _device, VkPipeline _pipeline, VkShaderStageFlagB
 
          if (stage == MESA_SHADER_COMPUTE) {
             unsigned *local_size = variant->info.cs.block_size;
-            unsigned workgroup_size = local_size[0] * local_size[1] * local_size[2];
+            unsigned workgroup_size = pipeline->shaders[MESA_SHADER_COMPUTE]->info.workgroup_size;
 
             statistics.numAvailableVgprs =
                statistics.numPhysicalVgprs /

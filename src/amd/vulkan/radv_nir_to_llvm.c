@@ -2905,17 +2905,6 @@ ac_setup_rings(struct radv_shader_context *ctx)
    }
 }
 
-unsigned
-radv_nir_get_max_workgroup_size(enum chip_class chip_class, gl_shader_stage stage,
-                                const struct nir_shader *nir)
-{
-   const unsigned backup_sizes[] = {chip_class >= GFX9 ? 128 : 64, 1, 1};
-   unsigned sizes[3];
-   for (unsigned i = 0; i < 3; i++)
-      sizes[i] = nir ? nir->info.workgroup_size[i] : backup_sizes[i];
-   return radv_get_max_workgroup_size(chip_class, stage, sizes);
-}
-
 /* Fixup the HW not emitting the TCS regs if there are no HS threads. */
 static void
 ac_nir_fixup_ls_hs_input_vgprs(struct radv_shader_context *ctx)
@@ -2989,12 +2978,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
                         args->shader_info->ballot_bit_size);
    ctx.context = ctx.ac.context;
 
-   ctx.max_workgroup_size = 0;
-   for (int i = 0; i < shader_count; ++i) {
-      ctx.max_workgroup_size = MAX2(
-         ctx.max_workgroup_size, radv_nir_get_max_workgroup_size(
-                                    args->options->chip_class, shaders[i]->info.stage, shaders[i]));
-   }
+   ctx.max_workgroup_size = args->shader_info->workgroup_size;
 
    if (ctx.ac.chip_class >= GFX10) {
       if (is_pre_gs_stage(shaders[0]->info.stage) && args->options->key.vs_common_out.as_ngg) {
