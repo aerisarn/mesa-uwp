@@ -571,6 +571,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       si_init_state_functions(sctx);
       si_init_streamout_functions(sctx);
       si_init_viewport_functions(sctx);
+      si_init_spi_map_functions(sctx);
 
       sctx->blitter = util_blitter_create(&sctx->b);
       if (sctx->blitter == NULL)

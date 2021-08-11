@@ -22,6 +22,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "ac_exp_param.h"
 #include "ac_sqtt.h"
 #include "si_build_pm4.h"
 #include "util/u_index_modify.h"
@@ -46,6 +47,95 @@
 
 /* special primitive types */
 #define SI_PRIM_RECTANGLE_LIST PIPE_PRIM_MAX
+
+template<int NUM_INTERP>
+static void si_emit_spi_map(struct si_context *sctx)
+{
+   struct si_shader *ps = sctx->shader.ps.current;
+   struct si_shader *vs;
+   struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
+   unsigned spi_ps_input_cntl[NUM_INTERP];
+
+   STATIC_ASSERT(NUM_INTERP >= 0 && NUM_INTERP <= 32);
+
+   if (!NUM_INTERP)
+      return;
+
+   /* With legacy GS, only the GS copy shader contains information about param exports. */
+   if (sctx->shader.gs.cso && !sctx->ngg)
+      vs = sctx->shader.gs.cso->gs_copy_shader;
+   else
+      vs = si_get_vs(sctx)->current;
+
+   struct si_shader_info *vsinfo = &vs->selector->info;
+   struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+
+   for (unsigned i = 0; i < NUM_INTERP; i++) {
+      union si_input_info input = psinfo->input[i];
+      unsigned ps_input_cntl = 0;
+
+      int vs_slot = vsinfo->output_semantic_to_slot[input.semantic];
+      if (vs_slot >= 0) {
+         unsigned offset = vs->info.vs_output_param_offset[vs_slot];
+
+         if (offset <= AC_EXP_PARAM_OFFSET_31) {
+            /* The input is loaded from parameter memory. */
+            ps_input_cntl |= S_028644_OFFSET(offset);
+
+            if (input.interpolate == INTERP_MODE_FLAT ||
+                (input.interpolate == INTERP_MODE_COLOR && rs->flatshade)) {
+               ps_input_cntl |= S_028644_FLAT_SHADE(1);
+            }
+         } else {
+            /* The input is a DEFAULT_VAL constant. */
+            assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
+                   offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
+            offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
+
+            /* Overwrite the whole value. OFFSET=0x20 means that DEFAULT_VAL is used. */
+            ps_input_cntl = S_028644_OFFSET(0x20) |
+                            S_028644_DEFAULT_VAL(offset);
+         }
+
+         if (input.fp16_lo_hi_valid) {
+            assert(offset <= AC_EXP_PARAM_OFFSET_31 || offset == AC_EXP_PARAM_DEFAULT_VAL_0000);
+
+            ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                             S_028644_USE_DEFAULT_ATTR1(offset == AC_EXP_PARAM_DEFAULT_VAL_0000) |
+                             S_028644_DEFAULT_VAL_ATTR1(0) |
+                             S_028644_ATTR0_VALID(1) | /* this must be set if FP16_INTERP_MODE is set */
+                             S_028644_ATTR1_VALID(!!(input.fp16_lo_hi_valid & 0x2));
+         }
+      } else {
+         /* No corresponding output found, load defaults into input. */
+         ps_input_cntl = S_028644_OFFSET(0x20) |
+                         /* D3D 9 behaviour for COLOR0. GL is undefined */
+                         S_028644_DEFAULT_VAL(input.semantic == VARYING_SLOT_COL1 ? 3 : 0);
+      }
+
+      if (input.semantic == VARYING_SLOT_PNTC ||
+          (input.semantic >= VARYING_SLOT_TEX0 && input.semantic <= VARYING_SLOT_TEX7 &&
+           rs->sprite_coord_enable & (1 << (input.semantic - VARYING_SLOT_TEX0)))) {
+         /* Overwrite the whole value for sprite coordinates. */
+         ps_input_cntl = S_028644_OFFSET(0) |
+                         S_028644_PT_SPRITE_TEX(1);
+         if (input.fp16_lo_hi_valid & 0x1) {
+            ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
+                             S_028644_ATTR0_VALID(1);
+         }
+      }
+
+      spi_ps_input_cntl[i] = ps_input_cntl;
+   }
+
+   /* R_028644_SPI_PS_INPUT_CNTL_0 */
+   /* Dota 2: Only ~16% of SPI map updates set different values. */
+   /* Talos: Only ~9% of SPI map updates set different values. */
+   radeon_begin(&sctx->gfx_cs);
+   radeon_opt_set_context_regn(sctx, R_028644_SPI_PS_INPUT_CNTL_0, spi_ps_input_cntl,
+                               sctx->tracked_regs.spi_ps_input_cntl, NUM_INTERP);
+   radeon_end_update_context_roll(sctx);
+}
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG>
 static bool si_update_shaders(struct si_context *sctx)
@@ -188,8 +278,10 @@ static bool si_update_shaders(struct si_context *sctx)
 
    if (si_pm4_state_changed(sctx, ps) ||
        (!NGG && si_pm4_state_changed(sctx, vs)) ||
-       (NGG && si_pm4_state_changed(sctx, gs)))
+       (NGG && si_pm4_state_changed(sctx, gs))) {
+      sctx->atoms.s.spi_map.emit = sctx->emit_spi_map[sctx->shader.ps.current->ctx_reg.ps.num_interp];
       si_mark_atom_dirty(sctx, &sctx->atoms.s.spi_map);
+   }
 
    if ((GFX_VERSION >= GFX10_3 || (GFX_VERSION >= GFX9 && sctx->screen->info.rbplus_allowed)) &&
        si_pm4_state_changed(sctx, ps) &&
@@ -2413,3 +2505,48 @@ void GFX(si_init_draw_functions_)(struct si_context *sctx)
 
    si_init_ia_multi_vgt_param_table(sctx);
 }
+
+#if GFX_VER == 6 /* declare this function only once because it supports all chips. */
+
+extern "C"
+void si_init_spi_map_functions(struct si_context *sctx)
+{
+   /* This unrolls the loops in si_emit_spi_map and inlines memcmp and memcpys.
+    * It improves performance for viewperf/snx.
+    */
+   sctx->emit_spi_map[0] = si_emit_spi_map<0>;
+   sctx->emit_spi_map[1] = si_emit_spi_map<1>;
+   sctx->emit_spi_map[2] = si_emit_spi_map<2>;
+   sctx->emit_spi_map[3] = si_emit_spi_map<3>;
+   sctx->emit_spi_map[4] = si_emit_spi_map<4>;
+   sctx->emit_spi_map[5] = si_emit_spi_map<5>;
+   sctx->emit_spi_map[6] = si_emit_spi_map<6>;
+   sctx->emit_spi_map[7] = si_emit_spi_map<7>;
+   sctx->emit_spi_map[8] = si_emit_spi_map<8>;
+   sctx->emit_spi_map[9] = si_emit_spi_map<9>;
+   sctx->emit_spi_map[10] = si_emit_spi_map<10>;
+   sctx->emit_spi_map[11] = si_emit_spi_map<11>;
+   sctx->emit_spi_map[12] = si_emit_spi_map<12>;
+   sctx->emit_spi_map[13] = si_emit_spi_map<13>;
+   sctx->emit_spi_map[14] = si_emit_spi_map<14>;
+   sctx->emit_spi_map[15] = si_emit_spi_map<15>;
+   sctx->emit_spi_map[16] = si_emit_spi_map<16>;
+   sctx->emit_spi_map[17] = si_emit_spi_map<17>;
+   sctx->emit_spi_map[18] = si_emit_spi_map<18>;
+   sctx->emit_spi_map[19] = si_emit_spi_map<19>;
+   sctx->emit_spi_map[20] = si_emit_spi_map<20>;
+   sctx->emit_spi_map[21] = si_emit_spi_map<21>;
+   sctx->emit_spi_map[22] = si_emit_spi_map<22>;
+   sctx->emit_spi_map[23] = si_emit_spi_map<23>;
+   sctx->emit_spi_map[24] = si_emit_spi_map<24>;
+   sctx->emit_spi_map[25] = si_emit_spi_map<25>;
+   sctx->emit_spi_map[26] = si_emit_spi_map<26>;
+   sctx->emit_spi_map[27] = si_emit_spi_map<27>;
+   sctx->emit_spi_map[28] = si_emit_spi_map<28>;
+   sctx->emit_spi_map[29] = si_emit_spi_map<29>;
+   sctx->emit_spi_map[30] = si_emit_spi_map<30>;
+   sctx->emit_spi_map[31] = si_emit_spi_map<31>;
+   sctx->emit_spi_map[32] = si_emit_spi_map<32>;
+}
+
+#endif
