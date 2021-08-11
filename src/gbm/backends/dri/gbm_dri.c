@@ -68,6 +68,28 @@ dri_lookup_egl_image(__DRIscreen *screen, void *image, void *data)
    return dri->lookup_image(screen, image, dri->lookup_user_data);
 }
 
+static GLboolean
+dri_validate_egl_image(void *image, void *data)
+{
+   struct gbm_dri_device *dri = data;
+
+   if (dri->validate_image == NULL)
+      return false;
+
+   return dri->validate_image(image, dri->lookup_user_data);
+}
+
+static __DRIimage *
+dri_lookup_egl_image_validated(void *image, void *data)
+{
+   struct gbm_dri_device *dri = data;
+
+   if (dri->lookup_image_validated == NULL)
+      return NULL;
+
+   return dri->lookup_image_validated(image, dri->lookup_user_data);
+}
+
 static __DRIbuffer *
 dri_get_buffers(__DRIdrawable * driDrawable,
 		 int *width, int *height,
@@ -214,9 +236,11 @@ static const __DRIuseInvalidateExtension use_invalidate = {
 };
 
 static const __DRIimageLookupExtension image_lookup_extension = {
-   .base = { __DRI_IMAGE_LOOKUP, 1 },
+   .base = { __DRI_IMAGE_LOOKUP, 2 },
 
-   .lookupEGLImage          = dri_lookup_egl_image
+   .lookupEGLImage          = dri_lookup_egl_image,
+   .validateEGLImage        = dri_validate_egl_image,
+   .lookupEGLImageValidated = dri_lookup_egl_image_validated,
 };
 
 static const __DRIdri2LoaderExtension dri2_loader_extension = {
