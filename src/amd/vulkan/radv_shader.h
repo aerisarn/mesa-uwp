@@ -267,6 +267,7 @@ struct radv_shader_info {
    bool has_ngg_early_prim_export;
    uint32_t num_lds_blocks_when_not_culling;
    uint32_t num_tess_patches;
+   unsigned workgroup_size;
    struct {
       uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
