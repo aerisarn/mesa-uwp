@@ -1702,7 +1702,7 @@ vi_get_fast_clear_parameters(struct radv_device *device, const struct radv_image
    bool has_alpha = false;
 
    /* comp-to-single allows to perform DCC fast clears without requiring a FCE. */
-   if (radv_image_use_comp_to_single(device, iview->image)) {
+   if (iview->image->support_comp_to_single) {
       *reset_value = RADV_DCC_CLEAR_SINGLE;
       *can_avoid_fast_clear_elim = true;
    } else {

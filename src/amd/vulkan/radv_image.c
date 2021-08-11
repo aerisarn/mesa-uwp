@@ -1377,6 +1377,64 @@ radv_image_is_l2_coherent(const struct radv_device *device, const struct radv_im
    return false;
 }
 
+/**
+ * Determine if the given image can be fast cleared.
+ */
+static bool
+radv_image_can_fast_clear(const struct radv_device *device, const struct radv_image *image)
+{
+   if (device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS)
+      return false;
+
+   if (vk_format_is_color(image->vk_format)) {
+      if (!radv_image_has_cmask(image) && !radv_image_has_dcc(image))
+         return false;
+
+      /* RB+ doesn't work with CMASK fast clear on Stoney. */
+      if (!radv_image_has_dcc(image) && device->physical_device->rad_info.family == CHIP_STONEY)
+         return false;
+   } else {
+      if (!radv_image_has_htile(image))
+         return false;
+   }
+
+   /* Do not fast clears 3D images. */
+   if (image->type == VK_IMAGE_TYPE_3D)
+      return false;
+
+   return true;
+}
+
+/**
+ * Determine if the given image can be fast cleared using comp-to-single.
+ */
+static bool
+radv_image_use_comp_to_single(const struct radv_device *device, const struct radv_image *image)
+{
+   /* comp-to-single is only available for GFX10+. */
+   if (device->physical_device->rad_info.chip_class < GFX10)
+      return false;
+
+   /* If the image can't be fast cleared, comp-to-single can't be used. */
+   if (!radv_image_can_fast_clear(device, image))
+      return false;
+
+   /* If the image doesn't have DCC, it can't be fast cleared using comp-to-single */
+   if (!radv_image_has_dcc(image))
+      return false;
+
+   /* TODO: DCC fast clears with MSAA aren't fully supported. */
+   if (image->info.samples > 1)
+      return false;
+
+   /* It seems 8bpp and 16bpp require RB+ to work. */
+   unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk_format);
+   if (bytes_per_pixel <= 2 && !device->physical_device->rad_info.rbplus_allowed)
+      return false;
+
+   return true;
+}
+
 static void
 radv_image_reset_layout(struct radv_image *image)
 {
@@ -1495,6 +1553,8 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
 
    image->l2_coherent = radv_image_is_l2_coherent(device, image);
 
+   image->support_comp_to_single = radv_image_use_comp_to_single(device, image);
+
    radv_image_alloc_values(device, image);
 
    assert(image->planes[0].surface.surf_size);
@@ -1540,64 +1600,6 @@ radv_image_print_info(struct radv_device *device, struct radv_image *image)
 
       ac_surface_print_info(stderr, &device->physical_device->rad_info, surf);
    }
-}
-
-/**
- * Determine if the given image can be fast cleared.
- */
-static bool
-radv_image_can_fast_clear(const struct radv_device *device, const struct radv_image *image)
-{
-   if (device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS)
-      return false;
-
-   if (vk_format_is_color(image->vk_format)) {
-      if (!radv_image_has_cmask(image) && !radv_image_has_dcc(image))
-         return false;
-
-      /* RB+ doesn't work with CMASK fast clear on Stoney. */
-      if (!radv_image_has_dcc(image) && device->physical_device->rad_info.family == CHIP_STONEY)
-         return false;
-   } else {
-      if (!radv_image_has_htile(image))
-         return false;
-   }
-
-   /* Do not fast clears 3D images. */
-   if (image->type == VK_IMAGE_TYPE_3D)
-      return false;
-
-   return true;
-}
-
-/**
- * Determine if the given image can be fast cleared using comp-to-single.
- */
-bool
-radv_image_use_comp_to_single(const struct radv_device *device, const struct radv_image *image)
-{
-   /* comp-to-single is only available for GFX10+. */
-   if (device->physical_device->rad_info.chip_class < GFX10)
-      return false;
-
-   /* If the image can't be fast cleared, comp-to-single can't be used. */
-   if (!radv_image_can_fast_clear(device, image))
-      return false;
-
-   /* If the image doesn't have DCC, it can't be fast cleared using comp-to-single */
-   if (!radv_image_has_dcc(image))
-      return false;
-
-   /* TODO: DCC fast clears with MSAA aren't fully supported. */
-   if (image->info.samples > 1)
-      return false;
-
-   /* It seems 8bpp and 16bpp require RB+ to work. */
-   unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk_format);
-   if (bytes_per_pixel <= 2 && !device->physical_device->rad_info.rbplus_allowed)
-      return false;
-
-   return true;
 }
 
 static uint64_t
