@@ -131,7 +131,6 @@ spec/!opengl 1.1/draw-pixels samples=32: skip
 spec/!opengl 1.1/draw-pixels samples=4: skip
 spec/!opengl 1.1/draw-pixels samples=6: skip
 spec/!opengl 1.1/draw-pixels samples=8: skip
-spec/!opengl 1.1/linestipple/line strip: fail
 spec/!opengl 1.1/polygon-mode-facing: fail
 spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on bottom edge: fail
 spec/!opengl 1.1/polygon-mode-offset/config 3: expected white pixel on left edge: fail
