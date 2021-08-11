@@ -73,6 +73,7 @@ files_mesa_util = files(
   'os_time.c',
   'os_time.h',
   'os_file.c',
+  'os_memory_fd.c',
   'os_misc.c',
   'os_misc.h',
   'os_socket.c',

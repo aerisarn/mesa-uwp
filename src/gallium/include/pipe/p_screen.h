@@ -562,6 +562,27 @@ struct pipe_screen {
                        struct pipe_memory_allocation *);
 
    /**
+    * Allocate fd-based memory to be bound to resources.
+    */
+   struct pipe_memory_allocation *(*allocate_memory_fd)(struct pipe_screen *screen,
+                                                        uint64_t size,
+                                                        int *fd);
+
+   /**
+    * Import memory from an fd-handle.
+    */
+   bool (*import_memory_fd)(struct pipe_screen *screen,
+                            int fd,
+                            struct pipe_memory_allocation **pmem,
+                            uint64_t *size);
+
+   /**
+    * Free previously allocated fd-based memory.
+    */
+   void (*free_memory_fd)(struct pipe_screen *screen,
+                          struct pipe_memory_allocation *pmem);
+
+   /**
     * Bind memory to a resource.
     */
    bool (*resource_bind_backing)(struct pipe_screen *screen,
