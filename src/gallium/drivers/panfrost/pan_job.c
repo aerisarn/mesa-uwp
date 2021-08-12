@@ -87,9 +87,6 @@ panfrost_batch_init(struct panfrost_context *ctx,
 static void
 panfrost_batch_cleanup(struct panfrost_batch *batch)
 {
-        if (!batch)
-                return;
-
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *dev = pan_device(ctx->base.screen);
 
