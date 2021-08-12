@@ -40,7 +40,7 @@ LLVM is *not* required by Panfrost's compilers. LLVM support in Mesa can
 safely be disabled for most OpenGL ES users with Panfrost.
 
 Build with meson like ``meson . build/ -Ddri-drivers= -Dvulkan-drivers=
--Dgallium-drivers=panfrost -Dllvm=false`` for a build directory
+-Dgallium-drivers=panfrost -Dllvm=disabled`` for a build directory
 ``build``.
 
 Building for Android via the legacy ``Android.mk`` system is not officially
