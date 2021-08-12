@@ -169,9 +169,6 @@ struct vbo_save_context {
 
    GLboolean out_of_memory;  /**< True if last VBO allocation failed */
 
-   struct _mesa_prim *prims;
-   GLuint prim_count, prim_max;
-
    bool no_current_update;
 
    struct vbo_save_vertex_store *vertex_store;

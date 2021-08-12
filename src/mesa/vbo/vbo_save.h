@@ -152,8 +152,6 @@ struct vbo_save_vertex_store {
    GLuint used;           /**< Number of 4-byte words used in buffer */
 };
 
-/* Storage to be shared among several vertex_lists.
- */
 struct vbo_save_primitive_store {
    struct _mesa_prim *prims;
    GLuint used;

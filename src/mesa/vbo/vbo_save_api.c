@@ -186,7 +186,6 @@ reset_counters(struct gl_context *ctx)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
-   save->prims = save->prim_store->prims + save->prim_store->used;
    save->buffer_map = save->vertex_store->buffer_in_ram + save->vertex_store->used;
 
    assert(save->buffer_map == save->buffer_ptr);
@@ -197,9 +196,8 @@ reset_counters(struct gl_context *ctx)
    else
       save->max_vert = 0;
 
+   save->prim_store->used = 0;
    save->vert_count = 0;
-   save->prim_count = 0;
-   save->prim_max = save->prim_store->size - save->prim_store->used;
    save->dangling_attr_ref = GL_FALSE;
 }
 
@@ -531,9 +529,10 @@ compile_vertex_list(struct gl_context *ctx)
 
    node->cold->vertex_count = save->vert_count;
    node->cold->wrap_count = save->copied.nr;
-   node->cold->prims = save->prims;
+   node->cold->prims = malloc(sizeof(struct _mesa_prim) * save->prim_store->used);
+   memcpy(node->cold->prims, save->prim_store->prims, sizeof(struct _mesa_prim) * save->prim_store->used);
    node->cold->ib.obj = NULL;
-   node->cold->prim_count = save->prim_count;
+   node->cold->prim_count = save->prim_store->used;
 
    if (save->no_current_update) {
       node->cold->current_data = NULL;
@@ -583,7 +582,7 @@ compile_vertex_list(struct gl_context *ctx)
 
    /* Create an index buffer. */
    node->cold->min_index = node->cold->max_index = 0;
-   if (save->vert_count == 0 || save->prim_count == 0)
+   if (save->vert_count == 0 || node->cold->prim_count == 0)
       goto end;
 
    /* We won't modify node->prims, so use a const alias to avoid unintended
@@ -958,16 +957,16 @@ static void
 wrap_buffers(struct gl_context *ctx)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
-   GLint i = save->prim_count - 1;
+   GLint i = save->prim_store->used - 1;
    GLenum mode;
 
-   assert(i < (GLint) save->prim_max);
+   assert(i < (GLint) save->prim_store->size);
    assert(i >= 0);
 
    /* Close off in-progress primitive.
     */
-   save->prims[i].count = (save->vert_count - save->prims[i].start);
-   mode = save->prims[i].mode;
+   save->prim_store->prims[i].count = (save->vert_count - save->prim_store->prims[i].start);
+   mode = save->prim_store->prims[i].mode;
 
    /* store the copied vertices, and allocate a new list.
     */
@@ -975,12 +974,12 @@ wrap_buffers(struct gl_context *ctx)
 
    /* Restart interrupted primitive
     */
-   save->prims[0].mode = mode;
-   save->prims[0].begin = 0;
-   save->prims[0].end = 0;
-   save->prims[0].start = 0;
-   save->prims[0].count = 0;
-   save->prim_count = 1;
+   save->prim_store->prims[0].mode = mode;
+   save->prim_store->prims[0].begin = 0;
+   save->prim_store->prims[0].end = 0;
+   save->prim_store->prims[0].start = 0;
+   save->prim_store->prims[0].count = 0;
+   save->prim_store->used = 1;
 }
 
 
@@ -1347,11 +1346,11 @@ dlist_fallback(struct gl_context *ctx)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
-   if (save->vert_count || save->prim_count) {
-      if (save->prim_count > 0) {
+   if (save->vert_count || save->prim_store->used) {
+      if (save->prim_store->used > 0) {
          /* Close off in-progress primitive. */
-         GLint i = save->prim_count - 1;
-         save->prims[i].count = save->vert_count - save->prims[i].start;
+         GLint i = save->prim_store->used - 1;
+         save->prim_store->prims[i].count = save->vert_count - save->prim_store->prims[i].start;
       }
 
       /* Need to replay this display list with loopback,
@@ -1451,16 +1450,16 @@ vbo_save_NotifyBegin(struct gl_context *ctx, GLenum mode,
                      bool no_current_update)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
-   const GLuint i = save->prim_count++;
+   const GLuint i = save->prim_store->used++;
 
    ctx->Driver.CurrentSavePrimitive = mode;
 
-   assert(i < save->prim_max);
-   save->prims[i].mode = mode & VBO_SAVE_PRIM_MODE_MASK;
-   save->prims[i].begin = 1;
-   save->prims[i].end = 0;
-   save->prims[i].start = save->vert_count;
-   save->prims[i].count = 0;
+   assert(i < save->prim_store->size);
+   save->prim_store->prims[i].mode = mode & VBO_SAVE_PRIM_MODE_MASK;
+   save->prim_store->prims[i].begin = 1;
+   save->prim_store->prims[i].end = 0;
+   save->prim_store->prims[i].start = save->vert_count;
+   save->prim_store->prims[i].count = 0;
 
    save->no_current_update = no_current_update;
 
@@ -1481,13 +1480,13 @@ _save_End(void)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct vbo_save_context *save = &vbo_context(ctx)->save;
-   const GLint i = save->prim_count - 1;
+   const GLint i = save->prim_store->used - 1;
 
    ctx->Driver.CurrentSavePrimitive = PRIM_OUTSIDE_BEGIN_END;
-   save->prims[i].end = 1;
-   save->prims[i].count = (save->vert_count - save->prims[i].start);
+   save->prim_store->prims[i].end = 1;
+   save->prim_store->prims[i].count = (save->vert_count - save->prim_store->prims[i].start);
 
-   if (i == (GLint) save->prim_max - 1) {
+   if (i == (GLint) save->prim_store->size - 1) {
       compile_vertex_list(ctx);
       assert(save->copied.nr == 0);
    }
@@ -1520,7 +1519,7 @@ _save_PrimitiveRestartNV(void)
    GET_CURRENT_CONTEXT(ctx);
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
-   if (save->prim_count == 0) {
+   if (save->prim_store->used == 0) {
       /* We're not inside a glBegin/End pair, so calling glPrimitiverRestartNV
        * is an error.
        */
@@ -1528,7 +1527,7 @@ _save_PrimitiveRestartNV(void)
                           "glPrimitiveRestartNV called outside glBegin/End");
    } else {
       /* get current primitive mode */
-      GLenum curPrim = save->prims[save->prim_count - 1].mode;
+      GLenum curPrim = save->prim_store->prims[save->prim_store->used - 1].mode;
       bool no_current_update = save->no_current_update;
 
       /* restart primitive */
@@ -1605,17 +1604,16 @@ _ensure_draws_fits_in_storage(struct gl_context *ctx, int primcount, int vertcou
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
-   bool realloc_prim = save->prim_count + primcount > save->prim_max;
+   bool realloc_prim = save->prim_store->used + primcount > save->prim_store->size;
    bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= save->max_vert);
 
    if (realloc_prim || realloc_vert) {
-      if (save->vert_count || save->prim_count) {
+      if (save->vert_count || save->prim_store->used) {
          /* TODO: this really isn't needed. We should realloc only the CPU-side memory. */
          compile_vertex_list(ctx);
       }
       realloc_storage(ctx, realloc_prim ? primcount : -1, realloc_vert ? vertcount : -1);
       reset_counters(ctx);
-      assert(save->prim_max);
    }
 }
 
@@ -1932,7 +1930,7 @@ vbo_save_SaveFlushVertices(struct gl_context *ctx)
    if (ctx->Driver.CurrentSavePrimitive <= PRIM_MAX)
       return;
 
-   if (save->vert_count || save->prim_count)
+   if (save->vert_count || save->prim_store->used)
       compile_vertex_list(ctx);
 
    copy_to_current(ctx);
@@ -1978,11 +1976,11 @@ vbo_save_EndList(struct gl_context *ctx)
    /* EndList called inside a (saved) Begin/End pair?
     */
    if (_mesa_inside_dlist_begin_end(ctx)) {
-      if (save->prim_count > 0) {
-         GLint i = save->prim_count - 1;
+      if (save->prim_store->used > 0) {
+         GLint i = save->prim_store->used - 1;
          ctx->Driver.CurrentSavePrimitive = PRIM_OUTSIDE_BEGIN_END;
-         save->prims[i].end = 0;
-         save->prims[i].count = save->vert_count - save->prims[i].start;
+         save->prim_store->prims[i].end = 0;
+         save->prim_store->prims[i].count = save->vert_count - save->prim_store->prims[i].start;
       }
 
       /* Make sure this vertex list gets replayed by the "loopback"
