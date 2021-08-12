@@ -60,11 +60,9 @@ void vbo_save_destroy( struct gl_context *ctx )
       _mesa_reference_vao(ctx, &save->VAO[vpm], NULL);
 
    if (save->prim_store) {
-      if ( --save->prim_store->refcount == 0 ) {
-         free(save->prim_store->prims);
-         free(save->prim_store);
-         save->prim_store = NULL;
-      }
+      free(save->prim_store->prims);
+      free(save->prim_store);
+      save->prim_store = NULL;
    }
    if (save->vertex_store) {
       free(save->vertex_store->buffer_in_ram);

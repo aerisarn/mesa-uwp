@@ -82,8 +82,6 @@ struct vbo_save_vertex_list {
       struct _mesa_prim *prims;
       GLuint prim_count;
       GLuint min_index, max_index;
-
-      struct vbo_save_primitive_store *prim_store;
    } *cold;
 };
 
@@ -160,7 +158,6 @@ struct vbo_save_primitive_store {
    struct _mesa_prim *prims;
    GLuint used;
    GLuint size;
-   GLuint refcount;
 };
 
 

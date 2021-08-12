@@ -797,11 +797,6 @@ vbo_destroy_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *nod
    for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm)
       _mesa_reference_vao(ctx, &node->VAO[vpm], NULL);
 
-   if (--node->cold->prim_store->refcount == 0) {
-      free(node->cold->prim_store->prims);
-      free(node->cold->prim_store);
-   }
-
    if (node->merged.mode) {
       free(node->merged.mode);
       free(node->merged.start_counts);

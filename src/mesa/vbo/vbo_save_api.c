@@ -177,7 +177,6 @@ alloc_prim_store(int prim_count)
    store->size = MAX2(prim_count, VBO_SAVE_PRIM_SIZE);
    store->prims = calloc(store->size, sizeof(struct _mesa_prim));
    store->used = 0;
-   store->refcount = 1;
    return store;
 }
 
@@ -423,10 +422,8 @@ realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
    }
 
    if (prim_count >= 0) {
-      if (--save->prim_store->refcount == 0) {
-         free(save->prim_store->prims);
-         free(save->prim_store);
-      }
+      free(save->prim_store->prims);
+      free(save->prim_store);
       save->prim_store = alloc_prim_store(prim_count);
    }
 }
@@ -537,8 +534,6 @@ compile_vertex_list(struct gl_context *ctx)
    node->cold->prims = save->prims;
    node->cold->ib.obj = NULL;
    node->cold->prim_count = save->prim_count;
-   node->cold->prim_store = save->prim_store;
-   node->cold->prim_store->refcount++;
 
    if (save->no_current_update) {
       node->cold->current_data = NULL;
