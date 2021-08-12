@@ -173,7 +173,7 @@ decode_batch(struct iris_batch *batch)
                      batch->exec_bos[0]->address, false);
 }
 
-void
+static void
 iris_init_batch(struct iris_context *ice,
                 enum iris_batch_name name,
                 int priority)
@@ -238,6 +238,14 @@ iris_init_batch(struct iris_context *ice,
    iris_init_batch_measure(ice, batch);
 
    iris_batch_reset(batch);
+}
+
+void
+iris_init_batches(struct iris_context *ice, int priority)
+{
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      iris_init_batch(ice, (enum iris_batch_name) i, priority);
+   }
 }
 
 static int

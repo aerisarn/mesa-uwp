@@ -176,9 +176,7 @@ struct iris_batch {
    struct iris_measure_batch *measure;
 };
 
-void iris_init_batch(struct iris_context *ice,
-                     enum iris_batch_name name,
-                     int priority);
+void iris_init_batches(struct iris_context *ice, int priority);
 void iris_chain_to_new_batch(struct iris_batch *batch);
 void iris_batch_free(struct iris_batch *batch);
 void iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate);
