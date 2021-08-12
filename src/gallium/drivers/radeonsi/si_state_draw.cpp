@@ -127,7 +127,7 @@ static bool si_update_shaders(struct si_context *sctx)
          r = si_shader_select(ctx, &sctx->shader.tcs);
          if (r)
             return false;
-         si_pm4_bind_state(sctx, hs, sctx->shader.tcs.current->pm4);
+         si_pm4_bind_state(sctx, hs, sctx->shader.tcs.current);
       } else {
          if (!sctx->fixed_func_tcs_shader.cso) {
             sctx->fixed_func_tcs_shader.cso =
@@ -142,7 +142,7 @@ static bool si_update_shaders(struct si_context *sctx)
          r = si_shader_select(ctx, &sctx->fixed_func_tcs_shader);
          if (r)
             return false;
-         si_pm4_bind_state(sctx, hs, sctx->fixed_func_tcs_shader.current->pm4);
+         si_pm4_bind_state(sctx, hs, sctx->fixed_func_tcs_shader.current);
       }
 
       if (!HAS_GS || GFX_VERSION <= GFX8) {
@@ -153,11 +153,11 @@ static bool si_update_shaders(struct si_context *sctx)
          if (HAS_GS) {
             /* TES as ES */
             assert(GFX_VERSION <= GFX8);
-            si_pm4_bind_state(sctx, es, sctx->shader.tes.current->pm4);
+            si_pm4_bind_state(sctx, es, sctx->shader.tes.current);
          } else if (NGG) {
-            si_pm4_bind_state(sctx, gs, sctx->shader.tes.current->pm4);
+            si_pm4_bind_state(sctx, gs, sctx->shader.tes.current);
          } else {
-            si_pm4_bind_state(sctx, vs, sctx->shader.tes.current->pm4);
+            si_pm4_bind_state(sctx, vs, sctx->shader.tes.current);
          }
       }
    } else {
@@ -174,9 +174,9 @@ static bool si_update_shaders(struct si_context *sctx)
       r = si_shader_select(ctx, &sctx->shader.gs);
       if (r)
          return false;
-      si_pm4_bind_state(sctx, gs, sctx->shader.gs.current->pm4);
+      si_pm4_bind_state(sctx, gs, sctx->shader.gs.current);
       if (!NGG) {
-         si_pm4_bind_state(sctx, vs, sctx->shader.gs.cso->gs_copy_shader->pm4);
+         si_pm4_bind_state(sctx, vs, sctx->shader.gs.cso->gs_copy_shader);
 
          if (!si_update_gs_ring_buffers(sctx))
             return false;
@@ -203,23 +203,23 @@ static bool si_update_shaders(struct si_context *sctx)
 
       if (!HAS_TESS && !HAS_GS) {
          if (NGG) {
-            si_pm4_bind_state(sctx, gs, sctx->shader.vs.current->pm4);
+            si_pm4_bind_state(sctx, gs, sctx->shader.vs.current);
             si_pm4_bind_state(sctx, vs, NULL);
             sctx->prefetch_L2_mask &= ~SI_PREFETCH_VS;
          } else {
-            si_pm4_bind_state(sctx, vs, sctx->shader.vs.current->pm4);
+            si_pm4_bind_state(sctx, vs, sctx->shader.vs.current);
          }
       } else if (HAS_TESS) {
-         si_pm4_bind_state(sctx, ls, sctx->shader.vs.current->pm4);
+         si_pm4_bind_state(sctx, ls, sctx->shader.vs.current);
       } else {
          assert(HAS_GS);
-         si_pm4_bind_state(sctx, es, sctx->shader.vs.current->pm4);
+         si_pm4_bind_state(sctx, es, sctx->shader.vs.current);
       }
    }
 
    sctx->vs_uses_base_instance =
       sctx->shader.vs.current ? sctx->shader.vs.current->uses_base_instance :
-      sctx->queued.named.hs ? sctx->queued.named.hs->shader->uses_base_instance :
+      sctx->queued.named.hs ? sctx->queued.named.hs->uses_base_instance :
       sctx->shader.gs.current->uses_base_instance;
 
    union si_vgt_stages_key key;
@@ -244,7 +244,7 @@ static bool si_update_shaders(struct si_context *sctx)
    r = si_shader_select(ctx, &sctx->shader.ps);
    if (r)
       return false;
-   si_pm4_bind_state(sctx, ps, sctx->shader.ps.current->pm4);
+   si_pm4_bind_state(sctx, ps, sctx->shader.ps.current);
 
    if (si_pm4_state_changed(sctx, ps) ||
        (!NGG && si_pm4_state_changed(sctx, vs)) ||
@@ -310,7 +310,7 @@ static bool si_update_shaders(struct si_context *sctx)
          if (GFX_VERSION <= GFX8) /* LS */
             scratch_size = MAX2(scratch_size, sctx->shader.vs.current->config.scratch_bytes_per_wave);
 
-         scratch_size = MAX2(scratch_size, sctx->queued.named.hs->shader->config.scratch_bytes_per_wave);
+         scratch_size = MAX2(scratch_size, sctx->queued.named.hs->config.scratch_bytes_per_wave);
 
          if (HAS_GS) {
             if (GFX_VERSION <= GFX8) /* ES */
@@ -383,9 +383,9 @@ static unsigned si_conv_pipe_prim(unsigned mode)
    return prim_conv[mode];
 }
 
-static void si_prefetch_shader_async(struct si_context *sctx, struct si_pm4_state *state)
+static void si_prefetch_shader_async(struct si_context *sctx, struct si_shader *shader)
 {
-   struct pipe_resource *bo = &state->shader->bo->b.b;
+   struct pipe_resource *bo = &shader->bo->b.b;
 
    si_cp_dma_prefetch(sctx, bo, 0, bo->width0);
 }

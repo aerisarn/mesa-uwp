@@ -138,6 +138,7 @@
 #include "util/u_inlines.h"
 #include "util/u_live_shader_cache.h"
 #include "util/u_queue.h"
+#include "si_pm4.h"
 
 #include <stdio.h>
 
@@ -772,6 +773,7 @@ union si_vgt_stages_key {
 };
 
 struct si_shader {
+   struct si_pm4_state pm4; /* base class */
    struct si_compiler_ctx_state compiler_ctx_state;
 
    struct si_shader_selector *selector;
@@ -783,7 +785,6 @@ struct si_shader {
    struct si_shader_part *prolog2;
    struct si_shader_part *epilog;
 
-   struct si_pm4_state *pm4;
    struct si_resource *bo;
    struct si_resource *scratch_bo;
    struct si_shader_key key;
