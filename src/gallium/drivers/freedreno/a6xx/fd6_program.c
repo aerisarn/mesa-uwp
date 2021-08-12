@@ -817,8 +817,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    OUT_RING(ring, COND(sample_shading, A6XX_RB_SAMPLE_CNTL_PER_SAMP_MODE));
 
    OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_PS_INPUT_CNTL, 1);
-   OUT_RING(ring, A6XX_GRAS_LRZ_PS_INPUT_CNTL_FRAGCOORDSAMPLEMODE(
-         sample_shading ? FRAGCOORD_SAMPLE : FRAGCOORD_CENTER));
+   OUT_RING(ring,
+         CONDREG(samp_id_regid, A6XX_GRAS_LRZ_PS_INPUT_CNTL_SAMPLEID) |
+         A6XX_GRAS_LRZ_PS_INPUT_CNTL_FRAGCOORDSAMPLEMODE(
+            sample_shading ? FRAGCOORD_SAMPLE : FRAGCOORD_CENTER));
 
    OUT_PKT4(ring, REG_A6XX_GRAS_SAMPLE_CNTL, 1);
    OUT_RING(ring, COND(sample_shading, A6XX_GRAS_SAMPLE_CNTL_PER_SAMP_MODE));
