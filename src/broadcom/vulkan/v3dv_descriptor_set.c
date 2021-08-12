@@ -1253,3 +1253,23 @@ v3dv_UpdateDescriptorSetWithTemplate(
       }
    }
 }
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_CreateSamplerYcbcrConversion(
+    VkDevice _device,
+    const VkSamplerYcbcrConversionCreateInfo *pCreateInfo,
+    const VkAllocationCallbacks *pAllocator,
+    VkSamplerYcbcrConversion *pYcbcrConversion)
+{
+   unreachable("Ycbcr sampler conversion is not supported");
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+v3dv_DestroySamplerYcbcrConversion(
+    VkDevice _device,
+    VkSamplerYcbcrConversion YcbcrConversion,
+    const VkAllocationCallbacks *pAllocator)
+{
+   unreachable("Ycbcr sampler conversion is not supported");
+}
