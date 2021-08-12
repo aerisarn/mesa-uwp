@@ -176,7 +176,6 @@ struct vbo_save_context {
    struct gl_buffer_object *current_bo;
    unsigned current_bo_bytes_used;
 
-   fi_type *buffer_map;            /**< Mapping of vertex_store's buffer */
    fi_type vertex[VBO_ATTRIB_MAX*4];	   /* current values */
    fi_type *attrptr[VBO_ATTRIB_MAX];
    GLuint vert_count;
