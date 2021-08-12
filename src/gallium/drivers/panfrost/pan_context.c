@@ -297,6 +297,8 @@ panfrost_create_shader_state(
         struct panfrost_device *dev = pan_device(pctx->screen);
         so->base = *cso;
 
+        simple_mtx_init(&so->lock, mtx_plain);
+
         /* Token deep copy to prevent memory corruption */
 
         if (cso->type == PIPE_SHADER_IR_TGSI)
@@ -338,6 +340,8 @@ panfrost_delete_shader_state(
                 panfrost_bo_unreference(shader_state->state.bo);
                 panfrost_bo_unreference(shader_state->linkage.bo);
         }
+
+        simple_mtx_destroy(&cso->lock);
 
         free(cso->variants);
         free(so);
@@ -451,6 +455,8 @@ panfrost_bind_shader_state(
         signed variant = -1;
         struct panfrost_shader_variants *variants = (struct panfrost_shader_variants *) hwcso;
 
+        simple_mtx_lock(&variants->lock);
+
         for (unsigned i = 0; i < variants->variant_count; ++i) {
                 if (panfrost_variant_matches(ctx, &variants->variants[i], type)) {
                         variant = i;
@@ -528,6 +534,11 @@ panfrost_bind_shader_state(
                         update_so_info(&shader_state->stream_output,
                                        shader_state->info.outputs_written);
         }
+
+        /* TODO: it would be more efficient to release the lock before
+         * compiling instead of after, but that can race if thread A compiles a
+         * variant while thread B searches for that same variant */
+        simple_mtx_unlock(&variants->lock);
 }
 
 static void *

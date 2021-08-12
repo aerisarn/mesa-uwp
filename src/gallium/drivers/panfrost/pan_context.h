@@ -44,6 +44,7 @@
 #include "pipe/p_state.h"
 #include "util/u_blitter.h"
 #include "util/hash_table.h"
+#include "util/simple_mtx.h"
 
 #include "midgard/midgard_compile.h"
 #include "compiler/shader_enums.h"
@@ -285,6 +286,9 @@ struct panfrost_shader_variants {
                 struct pipe_shader_state base;
                 struct pipe_compute_state cbase;
         };
+
+        /** Lock for the variants array */
+        simple_mtx_t lock;
 
         struct panfrost_shader_state *variants;
         unsigned variant_space;
