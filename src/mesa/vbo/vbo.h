@@ -177,7 +177,6 @@ struct vbo_save_context {
    unsigned current_bo_bytes_used;
 
    fi_type *buffer_map;            /**< Mapping of vertex_store's buffer */
-   fi_type *buffer_ptr;		   /**< cursor, points into buffer_map */
    fi_type vertex[VBO_ATTRIB_MAX*4];	   /* current values */
    fi_type *attrptr[VBO_ATTRIB_MAX];
    GLuint vert_count;

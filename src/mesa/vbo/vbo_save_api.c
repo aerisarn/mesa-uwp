@@ -190,8 +190,6 @@ reset_counters(struct gl_context *ctx)
 
    save->buffer_map = save->vertex_store->buffer_in_ram + save->vertex_store->used;
 
-   assert(save->buffer_map == save->buffer_ptr);
-
    if (save->vertex_size)
       save->max_vert = (save->vertex_store->buffer_in_ram_size / sizeof(float) - save->vertex_store->used) /
                         save->vertex_size;
@@ -272,7 +270,6 @@ convert_line_loop_to_strip(struct vbo_save_context *save,
       prim->count++;
       node->cold->vertex_count++;
       save->vert_count++;
-      save->buffer_ptr += sz;
       save->vertex_store->used += sz;
    }
 
@@ -417,8 +414,6 @@ realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
       /* Allocate and map new store:
        */
       save->vertex_store = alloc_vertex_store(ctx, vertex_count);
-      save->buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used;
-      save->out_of_memory = save->buffer_ptr == NULL;
    }
 
    if (prim_count >= 0)
@@ -562,8 +557,6 @@ compile_vertex_list(struct gl_context *ctx)
 
    if (save->dangling_attr_ref)
       ctx->ListState.Current.UseLoopback = true;
-
-   save->vertex_store->used += save->vertex_size * node->cold->vertex_count;
 
    /* Copy duplicated vertices
     */
@@ -930,11 +923,6 @@ end:
        save->vertex_store->buffer_in_ram_size / sizeof(float) - 16 * (save->vertex_size + 4)) {
       realloc_storage(ctx, -1, 0);
    }
-   else {
-      /* update buffer_ptr for next vertex */
-      save->buffer_ptr = save->vertex_store->buffer_in_ram
-         + save->vertex_store->used;
-   }
 
    /* Reset our structures for the next run of vertices:
     */
@@ -996,10 +984,11 @@ wrap_filled_vertex(struct gl_context *ctx)
    assert(save->max_vert - save->vert_count > save->copied.nr);
 
    numComponents = save->copied.nr * save->vertex_size;
-   memcpy(save->buffer_ptr,
+
+   fi_type *buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used;
+   memcpy(buffer_ptr,
           save->copied.buffer,
           numComponents * sizeof(fi_type));
-   save->buffer_ptr += numComponents;
    save->vert_count += save->copied.nr;
 }
 
@@ -1153,8 +1142,8 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
          }
       }
 
-      save->buffer_ptr = dest;
       save->vert_count += save->copied.nr;
+      save->vertex_store->used += save->vertex_size * save->copied.nr;
    }
 }
 
@@ -1256,12 +1245,12 @@ do {								\
 								\
    if ((A) == 0) {						\
       GLuint i;							\
+      fi_type *buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used; \
 								\
       for (i = 0; i < save->vertex_size; i++)			\
-	 save->buffer_ptr[i] = save->vertex[i];			\
+	     buffer_ptr[i] = save->vertex[i];			\
 								\
-      save->buffer_ptr += save->vertex_size;			\
-								\
+      save->vertex_store->used += save->vertex_size; \
       if (++save->vert_count >= save->max_vert)			\
 	 wrap_filled_vertex(ctx);				\
    }								\
@@ -1950,8 +1939,6 @@ vbo_save_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
 
    if (!save->vertex_store)
       save->vertex_store = alloc_vertex_store(ctx, 0);
-
-   save->buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used;
 
    reset_vertex(ctx);
    reset_counters(ctx);
