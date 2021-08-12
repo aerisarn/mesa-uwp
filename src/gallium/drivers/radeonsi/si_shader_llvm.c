@@ -520,7 +520,6 @@ static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *
    ctx->abi.robust_buffer_access = true;
    ctx->abi.convert_undef_to_zero = true;
    ctx->abi.adjust_frag_coord_z = false;
-   ctx->abi.disable_aniso_single_level = true;
    ctx->abi.load_grid_size_from_user_sgpr = true;
 
    const struct si_shader_info *info = &ctx->shader->selector->info;

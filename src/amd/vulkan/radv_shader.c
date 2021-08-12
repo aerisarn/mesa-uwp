@@ -1889,7 +1889,6 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
    options->enable_mrt_output_nan_fixup =
       module && !is_meta_shader(module->nir) && options->key.ps.enable_mrt_output_nan_fixup;
    options->adjust_frag_coord_z = options->key.adjust_frag_coord_z;
-   options->disable_aniso_single_level = options->key.disable_aniso_single_level;
    options->has_image_load_dcc_bug = device->physical_device->rad_info.has_image_load_dcc_bug;
    options->debug.func = radv_compiler_debug;
    options->debug.private_data = &debug_data;

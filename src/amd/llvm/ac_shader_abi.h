@@ -25,6 +25,7 @@
 #define AC_SHADER_ABI_H
 
 #include "ac_shader_args.h"
+#include "ac_shader_util.h"
 #include "compiler/shader_enums.h"
 #include <llvm-c/Core.h>
 
@@ -33,17 +34,6 @@
 #define AC_LLVM_MAX_OUTPUTS (VARYING_SLOT_VAR31 + 1)
 
 #define AC_MAX_INLINE_PUSH_CONSTS 8
-
-enum ac_descriptor_type
-{
-   AC_DESC_IMAGE,
-   AC_DESC_FMASK,
-   AC_DESC_SAMPLER,
-   AC_DESC_BUFFER,
-   AC_DESC_PLANE_0,
-   AC_DESC_PLANE_1,
-   AC_DESC_PLANE_2,
-};
 
 /* Document the shader ABI during compilation. This is what allows radeonsi and
  * radv to share a compiler backend.
@@ -158,11 +148,6 @@ struct ac_shader_abi {
     * some GFX10.3 chips.
     */
    bool adjust_frag_coord_z;
-
-   /* Whether anisotropic filtering should be disabled for single level
-    * images.
-    */
-   bool disable_aniso_single_level;
 
    /* Whether to inline the compute dispatch size in user sgprs. */
    bool load_grid_size_from_user_sgpr;

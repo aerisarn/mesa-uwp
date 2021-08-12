@@ -1355,7 +1355,9 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
-   case nir_op_vec5: {
+   case nir_op_vec5:
+   case nir_op_vec8:
+   case nir_op_vec16: {
       std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
       unsigned num = instr->dest.dest.ssa.num_components;
       for (unsigned i = 0; i < num; ++i)
@@ -8968,70 +8970,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
-tex_fetch_ptrs(isel_context* ctx, nir_tex_instr* instr, Temp* res_ptr, Temp* samp_ptr,
-               enum glsl_base_type* stype)
-{
-   nir_deref_instr* texture_deref_instr = NULL;
-   nir_deref_instr* sampler_deref_instr = NULL;
-   int plane = -1;
-
-   for (unsigned i = 0; i < instr->num_srcs; i++) {
-      switch (instr->src[i].src_type) {
-      case nir_tex_src_texture_deref:
-         texture_deref_instr = nir_src_as_deref(instr->src[i].src);
-         break;
-      case nir_tex_src_sampler_deref:
-         sampler_deref_instr = nir_src_as_deref(instr->src[i].src);
-         break;
-      case nir_tex_src_plane: plane = nir_src_as_int(instr->src[i].src); break;
-      default: break;
-      }
-   }
-
-   *stype = glsl_get_sampler_result_type(texture_deref_instr->type);
-
-   if (!sampler_deref_instr)
-      sampler_deref_instr = texture_deref_instr;
-
-   if (plane >= 0) {
-      assert(instr->sampler_dim != GLSL_SAMPLER_DIM_BUF);
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr,
-                                  (aco_descriptor_type)(ACO_DESC_PLANE_0 + plane), instr, false);
-   } else if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_BUFFER, instr, false);
-   } else if (instr->op == nir_texop_fragment_mask_fetch_amd) {
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false);
-   } else {
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_IMAGE, instr, false);
-   }
-   if (samp_ptr) {
-      *samp_ptr = get_sampler_desc(ctx, sampler_deref_instr, ACO_DESC_SAMPLER, instr, false);
-
-      if (ctx->options->disable_aniso_single_level &&
-          instr->sampler_dim < GLSL_SAMPLER_DIM_RECT && ctx->options->chip_class < GFX8) {
-         /* fix sampler aniso on SI/CI: samp[0] = samp[0] & img[7] */
-         Builder bld(ctx->program, ctx->block);
-
-         /* to avoid unnecessary moves, we split and recombine sampler and image */
-         Temp img[8] = {bld.tmp(s1), bld.tmp(s1), bld.tmp(s1), bld.tmp(s1),
-                        bld.tmp(s1), bld.tmp(s1), bld.tmp(s1), bld.tmp(s1)};
-         Temp samp[4] = {bld.tmp(s1), bld.tmp(s1), bld.tmp(s1), bld.tmp(s1)};
-         bld.pseudo(aco_opcode::p_split_vector, Definition(img[0]), Definition(img[1]),
-                    Definition(img[2]), Definition(img[3]), Definition(img[4]), Definition(img[5]),
-                    Definition(img[6]), Definition(img[7]), *res_ptr);
-         bld.pseudo(aco_opcode::p_split_vector, Definition(samp[0]), Definition(samp[1]),
-                    Definition(samp[2]), Definition(samp[3]), *samp_ptr);
-
-         samp[0] = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), samp[0], img[7]);
-         *res_ptr = bld.pseudo(aco_opcode::p_create_vector, bld.def(s8), img[0], img[1], img[2],
-                               img[3], img[4], img[5], img[6], img[7]);
-         *samp_ptr = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), samp[0], samp[1], samp[2],
-                                samp[3]);
-      }
-   }
-}
-
-void
 build_cube_select(isel_context* ctx, Temp ma, Temp id, Temp deriv, Temp* out_ma, Temp* out_sc,
                   Temp* out_tc)
 {
@@ -9178,11 +9116,21 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    std::vector<Temp> coords;
    std::vector<Temp> derivs;
    nir_const_value* const_offset[4] = {NULL, NULL, NULL, NULL};
-   enum glsl_base_type stype;
-   tex_fetch_ptrs(ctx, instr, &resource, &sampler, &stype);
+
+   for (unsigned i = 0; i < instr->num_srcs; i++) {
+      switch (instr->src[i].src_type) {
+      case nir_tex_src_texture_handle:
+         resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[i].src.ssa));
+         break;
+      case nir_tex_src_sampler_handle:
+         sampler = bld.as_uniform(get_ssa_temp(ctx, instr->src[i].src.ssa));
+         break;
+      default: break;
+      }
+   }
 
    bool tg4_integer_workarounds = ctx->options->chip_class <= GFX8 && instr->op == nir_texop_tg4 &&
-                                  (stype == GLSL_TYPE_UINT || stype == GLSL_TYPE_INT);
+                                  (instr->dest_type & (nir_type_int | nir_type_uint));
    bool tg4_integer_cube_workaround =
       tg4_integer_workarounds && instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE;
 
@@ -9476,7 +9424,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
                                          Operand::c32(V_008F14_IMG_DATA_FORMAT_8_8_8_8));
 
          Temp nfmt;
-         if (stype == GLSL_TYPE_UINT) {
+         if (instr->dest_type & nir_type_uint) {
             nfmt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1),
                             Operand::c32(V_008F14_IMG_NUM_FORMAT_USCALED),
                             Operand::c32(V_008F14_IMG_NUM_FORMAT_UINT), bld.scc(compare_cube_wa));
@@ -9753,7 +9701,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       for (unsigned i = 0; i < 4; i++) {
          val[i] = emit_extract_vector(ctx, tmp_dst, i, v1);
          Temp cvt_val;
-         if (stype == GLSL_TYPE_UINT)
+         if (instr->dest_type & nir_type_uint)
             cvt_val = bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), val[i]);
          else
             cvt_val = bld.vop1(aco_opcode::v_cvt_i32_f32, bld.def(v1), val[i]);

@@ -79,6 +79,17 @@ enum ac_fetch_format
    AC_FETCH_FORMAT_NONE,
 };
 
+enum ac_descriptor_type
+{
+   AC_DESC_IMAGE,
+   AC_DESC_FMASK,
+   AC_DESC_SAMPLER,
+   AC_DESC_BUFFER,
+   AC_DESC_PLANE_0,
+   AC_DESC_PLANE_1,
+   AC_DESC_PLANE_2,
+};
+
 unsigned ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil, bool writes_samplemask);
 
 unsigned ac_get_cb_shader_mask(unsigned spi_shader_col_format);

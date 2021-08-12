@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  *
  */
+#include "ac_shader_util.h"
 #include "nir.h"
 #include "nir_builder.h"
 #include "radv_private.h"
@@ -30,6 +31,7 @@
 typedef struct {
    enum chip_class chip_class;
    uint32_t address32_hi;
+   bool disable_aniso_single_level;
 
    const struct radv_shader_args *args;
    const struct radv_shader_info *info;
@@ -218,6 +220,122 @@ visit_get_ssbo_size(nir_builder *b, apply_layout_state *state, nir_intrinsic_ins
    nir_instr_remove(&intrin->instr);
 }
 
+static nir_ssa_def *
+get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *deref,
+                 enum ac_descriptor_type desc_type, bool non_uniform, nir_tex_instr *tex)
+{
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   assert(var);
+   unsigned desc_set = var->data.descriptor_set;
+   unsigned binding_index = var->data.binding;
+   bool indirect = nir_deref_instr_has_indirect(deref);
+
+   struct radv_descriptor_set_layout *layout = state->pipeline_layout->set[desc_set].layout;
+   struct radv_descriptor_set_binding_layout *binding = &layout->binding[binding_index];
+
+   /* Handle immutable (compile-time) samplers (VkDescriptorSetLayoutBinding::pImmutableSamplers)
+    * We can only do this for constant array index or if all samplers in the array are the same.
+    */
+   if (desc_type == AC_DESC_SAMPLER && binding->immutable_samplers_offset &&
+       (!indirect || binding->immutable_samplers_equal)) {
+      unsigned constant_index = 0;
+      if (!binding->immutable_samplers_equal) {
+         while (deref->deref_type != nir_deref_type_var) {
+            assert(deref->deref_type == nir_deref_type_array);
+            unsigned array_size = MAX2(glsl_get_aoa_size(deref->type), 1);
+            constant_index += nir_src_as_uint(deref->arr.index) * array_size;
+            deref = nir_deref_instr_parent(deref);
+         }
+      }
+
+      const uint32_t *samplers = radv_immutable_samplers(layout, binding);
+      return nir_imm_ivec4(b, samplers[constant_index * 4 + 0], samplers[constant_index * 4 + 1],
+                           samplers[constant_index * 4 + 2], samplers[constant_index * 4 + 3]);
+   }
+
+   unsigned size = 8;
+   unsigned offset = binding->offset;
+   switch (desc_type) {
+   case AC_DESC_IMAGE:
+   case AC_DESC_PLANE_0:
+      break;
+   case AC_DESC_FMASK:
+   case AC_DESC_PLANE_1:
+      offset += 32;
+      break;
+   case AC_DESC_SAMPLER:
+      size = 4;
+      if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+         offset += radv_combined_image_descriptor_sampler_offset(binding);
+      break;
+   case AC_DESC_BUFFER:
+      size = 4;
+      break;
+   case AC_DESC_PLANE_2:
+      size = 4;
+      offset += 64;
+      break;
+   }
+
+   nir_ssa_def *index = NULL;
+   while (deref->deref_type != nir_deref_type_var) {
+      assert(deref->deref_type == nir_deref_type_array);
+      unsigned array_size = MAX2(glsl_get_aoa_size(deref->type), 1);
+      array_size *= binding->size;
+
+      nir_ssa_def *tmp = nir_imul_imm(b, deref->arr.index.ssa, array_size);
+      if (tmp != deref->arr.index.ssa)
+         nir_instr_as_alu(tmp->parent_instr)->no_unsigned_wrap = true;
+
+      if (index) {
+         index = nir_iadd(b, tmp, index);
+         nir_instr_as_alu(index->parent_instr)->no_unsigned_wrap = true;
+      } else {
+         index = tmp;
+      }
+
+      deref = nir_deref_instr_parent(deref);
+   }
+
+   nir_ssa_def *index_offset = index ? nir_iadd_imm(b, index, offset) : nir_imm_int(b, offset);
+   if (index && index_offset != index)
+      nir_instr_as_alu(index_offset->parent_instr)->no_unsigned_wrap = true;
+
+   if (non_uniform)
+      return nir_iadd(b, load_desc_ptr(b, state, desc_set), index_offset);
+
+   nir_ssa_def *addr = convert_pointer_to_64_bit(b, state, load_desc_ptr(b, state, desc_set));
+   nir_ssa_def *desc = nir_load_smem_amd(b, size, addr, index_offset, .align_mul = size * 4u);
+
+   /* 3 plane formats always have same size and format for plane 1 & 2, so
+    * use the tail from plane 1 so that we can store only the first 16 bytes
+    * of the last plane. */
+   if (desc_type == AC_DESC_PLANE_2) {
+      nir_ssa_def *desc2 = get_sampler_desc(b, state, deref, AC_DESC_PLANE_1, non_uniform, tex);
+
+      nir_ssa_def *comp[8];
+      for (unsigned i = 0; i < 4; i++)
+         comp[i] = nir_channel(b, desc, i);
+      for (unsigned i = 4; i < 8; i++)
+         comp[i] = nir_channel(b, desc2, i);
+
+      return nir_vec(b, comp, 8);
+   } else if (desc_type == AC_DESC_SAMPLER && tex->op == nir_texop_tg4) {
+      nir_ssa_def *comp[4];
+      for (unsigned i = 0; i < 4; i++)
+         comp[i] = nir_channel(b, desc, i);
+
+      /* We want to always use the linear filtering truncation behaviour for
+       * nir_texop_tg4, even if the sampler uses nearest/point filtering.
+       */
+      comp[0] = nir_iand_imm(b, comp[0], C_008F30_TRUNC_COORD);
+
+      return nir_vec(b, comp, 4);
+   }
+
+   return desc;
+}
+
 static void
 apply_layout_to_intrin(nir_builder *b, apply_layout_state *state, nir_intrinsic_instr *intrin)
 {
@@ -263,6 +381,94 @@ apply_layout_to_intrin(nir_builder *b, apply_layout_state *state, nir_intrinsic_
    }
 }
 
+static void
+apply_layout_to_tex(nir_builder *b, apply_layout_state *state, nir_tex_instr *tex)
+{
+   b->cursor = nir_before_instr(&tex->instr);
+
+   nir_deref_instr *texture_deref_instr = NULL;
+   nir_deref_instr *sampler_deref_instr = NULL;
+   int plane = -1;
+
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      switch (tex->src[i].src_type) {
+      case nir_tex_src_texture_deref:
+         texture_deref_instr = nir_src_as_deref(tex->src[i].src);
+         break;
+      case nir_tex_src_sampler_deref:
+         sampler_deref_instr = nir_src_as_deref(tex->src[i].src);
+         break;
+      case nir_tex_src_plane:
+         plane = nir_src_as_int(tex->src[i].src);
+         break;
+      default:
+         break;
+      }
+   }
+
+   nir_ssa_def *image = NULL;
+   nir_ssa_def *sampler = NULL;
+   if (plane >= 0) {
+      assert(tex->op != nir_texop_txf_ms && tex->op != nir_texop_samples_identical);
+      assert(tex->sampler_dim != GLSL_SAMPLER_DIM_BUF);
+      image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_PLANE_0 + plane,
+                               tex->texture_non_uniform, tex);
+   } else if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
+      image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_BUFFER,
+                               tex->texture_non_uniform, tex);
+   } else if (tex->op == nir_texop_fragment_mask_fetch_amd ||
+              tex->op == nir_texop_samples_identical) {
+      image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_FMASK,
+                               tex->texture_non_uniform, tex);
+   } else {
+      image = get_sampler_desc(b, state, texture_deref_instr, AC_DESC_IMAGE,
+                               tex->texture_non_uniform, tex);
+   }
+
+   if (sampler_deref_instr) {
+      sampler = get_sampler_desc(b, state, sampler_deref_instr, AC_DESC_SAMPLER,
+                                 tex->sampler_non_uniform, tex);
+
+      if (state->disable_aniso_single_level && tex->sampler_dim < GLSL_SAMPLER_DIM_RECT &&
+          state->chip_class < GFX8) {
+         /* Disable anisotropic filtering if BASE_LEVEL == LAST_LEVEL.
+          *
+          * GFX6-GFX7:
+          *   If BASE_LEVEL == LAST_LEVEL, the shader must disable anisotropic
+          *   filtering manually. The driver sets img7 to a mask clearing
+          *   MAX_ANISO_RATIO if BASE_LEVEL == LAST_LEVEL. The shader must do:
+          *     s_and_b32 samp0, samp0, img7
+          *
+          * GFX8:
+          *   The ANISO_OVERRIDE sampler field enables this fix in TA.
+          */
+         /* TODO: This is unnecessary for combined image+sampler.
+          * We can do this when updating the desc set. */
+         nir_ssa_def *comp[4];
+         for (unsigned i = 0; i < 4; i++)
+            comp[i] = nir_channel(b, sampler, i);
+         comp[0] = nir_iand(b, comp[0], nir_channel(b, image, 7));
+
+         sampler = nir_vec(b, comp, 4);
+      }
+   }
+
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      switch (tex->src[i].src_type) {
+      case nir_tex_src_texture_deref:
+         tex->src[i].src_type = nir_tex_src_texture_handle;
+         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, image);
+         break;
+      case nir_tex_src_sampler_deref:
+         tex->src[i].src_type = nir_tex_src_sampler_handle;
+         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src, sampler);
+         break;
+      default:
+         break;
+      }
+   }
+}
+
 void
 radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
                                const struct radv_pipeline_layout *layout,
@@ -272,6 +478,7 @@ radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
    apply_layout_state state = {
       .chip_class = device->physical_device->rad_info.chip_class,
       .address32_hi = device->physical_device->rad_info.address32_hi,
+      .disable_aniso_single_level = device->instance->disable_aniso_single_level,
       .args = args,
       .info = info,
       .pipeline_layout = layout,
@@ -291,7 +498,9 @@ radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *device,
        */
       nir_foreach_block_reverse (block, function->impl) {
          nir_foreach_instr_reverse_safe (instr, block) {
-            if (instr->type == nir_instr_type_intrinsic)
+            if (instr->type == nir_instr_type_tex)
+               apply_layout_to_tex(&b, &state, nir_instr_as_tex(instr));
+            else if (instr->type == nir_instr_type_intrinsic)
                apply_layout_to_intrin(&b, &state, nir_instr_as_intrinsic(instr));
          }
       }

@@ -403,118 +403,30 @@ radv_get_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set, unsign
                       enum ac_descriptor_type desc_type, bool image, bool write, bool bindless)
 {
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   LLVMValueRef list = ctx->descriptor_sets[descriptor_set];
-   struct radv_descriptor_set_layout *layout =
-      ctx->options->layout->set[descriptor_set].layout;
-   struct radv_descriptor_set_binding_layout *binding = layout->binding + base_index;
-   unsigned offset = binding->offset;
-   unsigned stride = binding->size;
-   unsigned type_size;
-   LLVMBuilderRef builder = ctx->ac.builder;
-   LLVMTypeRef type;
 
-   assert(base_index < layout->binding_count);
-
-   if (binding->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && desc_type == AC_DESC_FMASK)
+   if (image && desc_type == AC_DESC_FMASK)
       return NULL;
-
-   switch (desc_type) {
-   case AC_DESC_IMAGE:
-      type = ctx->ac.v8i32;
-      type_size = 32;
-      break;
-   case AC_DESC_FMASK:
-      type = ctx->ac.v8i32;
-      offset += 32;
-      type_size = 32;
-      break;
-   case AC_DESC_SAMPLER:
-      type = ctx->ac.v4i32;
-      if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-         offset += radv_combined_image_descriptor_sampler_offset(binding);
-      }
-
-      type_size = 16;
-      break;
-   case AC_DESC_BUFFER:
-      type = ctx->ac.v4i32;
-      type_size = 16;
-      break;
-   case AC_DESC_PLANE_0:
-   case AC_DESC_PLANE_1:
-   case AC_DESC_PLANE_2:
-      type = ctx->ac.v8i32;
-      type_size = 32;
-      offset += 32 * (desc_type - AC_DESC_PLANE_0);
-      break;
-   default:
-      unreachable("invalid desc_type\n");
-   }
-
-   offset += constant_index * stride;
-
-   if (desc_type == AC_DESC_SAMPLER && binding->immutable_samplers_offset &&
-       (!index || binding->immutable_samplers_equal)) {
-      if (binding->immutable_samplers_equal)
-         constant_index = 0;
-
-      const uint32_t *samplers = radv_immutable_samplers(layout, binding);
-
-      LLVMValueRef constants[] = {
-         LLVMConstInt(ctx->ac.i32, samplers[constant_index * 4 + 0], 0),
-         LLVMConstInt(ctx->ac.i32, samplers[constant_index * 4 + 1], 0),
-         LLVMConstInt(ctx->ac.i32, samplers[constant_index * 4 + 2], 0),
-         LLVMConstInt(ctx->ac.i32, samplers[constant_index * 4 + 3], 0),
-      };
-      return ac_build_gather_values(&ctx->ac, constants, 4);
-   }
-
-   assert(stride % type_size == 0);
-
-   LLVMValueRef adjusted_index = index;
-   if (!adjusted_index)
-      adjusted_index = ctx->ac.i32_0;
-
-   adjusted_index =
-      LLVMBuildMul(builder, adjusted_index, LLVMConstInt(ctx->ac.i32, stride / type_size, 0), "");
-
-   LLVMValueRef val_offset = LLVMConstInt(ctx->ac.i32, offset, 0);
-   list = LLVMBuildGEP(builder, list, &val_offset, 1, "");
-   list = LLVMBuildPointerCast(builder, list, ac_array_in_const32_addr_space(type), "");
-
-   LLVMValueRef descriptor = ac_build_load_to_sgpr(&ctx->ac, list, adjusted_index);
 
    /* 3 plane formats always have same size and format for plane 1 & 2, so
     * use the tail from plane 1 so that we can store only the first 16 bytes
     * of the last plane. */
-   if (desc_type == AC_DESC_PLANE_2) {
-      LLVMValueRef descriptor2 =
-         radv_get_sampler_desc(abi, descriptor_set, base_index, constant_index, index,
-                               AC_DESC_PLANE_1, image, write, bindless);
+   if (desc_type == AC_DESC_PLANE_2 && index && LLVMTypeOf(index) == ctx->ac.i32) {
+      LLVMValueRef plane1_addr =
+         LLVMBuildSub(ctx->ac.builder, index, LLVMConstInt(ctx->ac.i32, 32, false), "");
+      LLVMValueRef descriptor1 = radv_load_rsrc(ctx, plane1_addr, ctx->ac.v8i32);
+      LLVMValueRef descriptor2 = radv_load_rsrc(ctx, index, ctx->ac.v4i32);
 
       LLVMValueRef components[8];
       for (unsigned i = 0; i < 4; ++i)
-         components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor, i);
+         components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor2, i);
 
       for (unsigned i = 4; i < 8; ++i)
-         components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor2, i);
-      descriptor = ac_build_gather_values(&ctx->ac, components, 8);
-   } else if (desc_type == AC_DESC_IMAGE &&
-              ctx->options->has_image_load_dcc_bug &&
-              image && !write) {
-      LLVMValueRef components[8];
-
-      for (unsigned i = 0; i < 8; i++)
-         components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor, i);
-
-      /* WRITE_COMPRESS_ENABLE must be 0 for all image loads to workaround a hardware bug. */
-      components[6] = LLVMBuildAnd(ctx->ac.builder, components[6],
-                                   LLVMConstInt(ctx->ac.i32, C_00A018_WRITE_COMPRESS_ENABLE, false), "");
-
-      descriptor = ac_build_gather_values(&ctx->ac, components, 8);
+         components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor1, i);
+      return ac_build_gather_values(&ctx->ac, components, 8);
    }
 
-   return descriptor;
+   bool v4 = desc_type == AC_DESC_BUFFER || desc_type == AC_DESC_SAMPLER;
+   return radv_load_rsrc(ctx, index, v4 ? ctx->ac.v4i32 : ctx->ac.v8i32);
 }
 
 static LLVMValueRef
@@ -2223,7 +2135,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    ctx.abi.clamp_shadow_reference = false;
    ctx.abi.adjust_frag_coord_z = options->adjust_frag_coord_z;
    ctx.abi.robust_buffer_access = options->robust_buffer_access;
-   ctx.abi.disable_aniso_single_level = options->disable_aniso_single_level;
    ctx.abi.load_grid_size_from_user_sgpr = args->load_grid_size_from_user_sgpr;
 
    bool is_ngg = is_pre_gs_stage(shaders[0]->info.stage) && info->is_ngg;
