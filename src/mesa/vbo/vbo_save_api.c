@@ -131,41 +131,18 @@ copy_vertices(struct gl_context *ctx,
 
 
 static struct vbo_save_vertex_store *
-alloc_vertex_store(struct gl_context *ctx, int vertex_count)
+realloc_vertex_store(struct vbo_save_vertex_store *store, uint32_t vertex_size, int vertex_count)
 {
-   struct vbo_save_context *save = &vbo_context(ctx)->save;
-   struct vbo_save_vertex_store *vertex_store =
-      CALLOC_STRUCT(vbo_save_vertex_store);
+   if (!store)
+      store = CALLOC_STRUCT(vbo_save_vertex_store);
 
-   int size = MAX2(vertex_count * save->vertex_size, VBO_SAVE_BUFFER_SIZE);
-
-   /* obj->Name needs to be non-zero, but won't ever be examined more
-    * closely than that.  In particular these buffers won't be entered
-    * into the hash and can never be confused with ones visible to the
-    * user.  Perhaps there could be a special number for internal
-    * buffers:
-    */
-   vertex_store->buffer_in_ram_size = size * sizeof(GLfloat);
-   vertex_store->buffer_in_ram = malloc(vertex_store->buffer_in_ram_size);
-   save->out_of_memory = vertex_store->buffer_in_ram == NULL;
-
-   if (save->out_of_memory) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "internal VBO allocation");
-      _mesa_install_save_vtxfmt(ctx, &save->vtxfmt_noop);
+   int new_size = MAX2(vertex_count * vertex_size, VBO_SAVE_BUFFER_SIZE) * sizeof(GLfloat);
+   if (new_size > store->buffer_in_ram_size) {
+      store->buffer_in_ram_size = new_size;
+      store->buffer_in_ram = realloc(store->buffer_in_ram, store->buffer_in_ram_size);
    }
 
-   vertex_store->used = 0;
-
-   return vertex_store;
-}
-
-
-static void
-free_vertex_store(struct gl_context *ctx,
-                  struct vbo_save_vertex_store *vertex_store)
-{
-   free(vertex_store->buffer_in_ram);
-   free(vertex_store);
+   return store;
 }
 
 
@@ -401,19 +378,8 @@ static void
 realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
-   if (vertex_count >= 0) {
-      /* Release old reference:
-       */
-      free_vertex_store(ctx, save->vertex_store);
-      save->vertex_store = NULL;
-      /* When we have a new vbo, we will for sure need a new vao */
-      for (gl_vertex_processing_mode vpm = 0; vpm < VP_MODE_MAX; ++vpm)
-         _mesa_reference_vao(ctx, &save->VAO[vpm], NULL);
-
-      /* Allocate and map new store:
-       */
-      save->vertex_store = alloc_vertex_store(ctx, vertex_count);
-   }
+   if (vertex_count >= 0)
+      save->vertex_store = realloc_vertex_store(save->vertex_store, save->vertex_size, vertex_count);
 
    if (prim_count >= 0)
       save->prim_store = realloc_prim_store(save->prim_store, prim_count);
@@ -1935,7 +1901,7 @@ vbo_save_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
       save->prim_store = realloc_prim_store(NULL, 8);
 
    if (!save->vertex_store)
-      save->vertex_store = alloc_vertex_store(ctx, 0);
+      save->vertex_store = realloc_vertex_store(NULL, save->vertex_size, 8);
 
    reset_vertex(ctx);
    ctx->Driver.SaveNeedFlush = GL_FALSE;
