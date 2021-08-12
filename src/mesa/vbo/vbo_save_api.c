@@ -188,11 +188,11 @@ reset_counters(struct gl_context *ctx)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
-   save->buffer_map = save->vertex_store->buffer_in_ram + save->vertex_store->used;
+   save->vertex_store->used = 0;
+   save->buffer_map = save->vertex_store->buffer_in_ram;
 
    if (save->vertex_size)
-      save->max_vert = (save->vertex_store->buffer_in_ram_size / sizeof(float) - save->vertex_store->used) /
-                        save->vertex_size;
+      save->max_vert = save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size);
    else
       save->max_vert = 0;
 
@@ -985,11 +985,13 @@ wrap_filled_vertex(struct gl_context *ctx)
 
    numComponents = save->copied.nr * save->vertex_size;
 
-   fi_type *buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used;
+   fi_type *buffer_ptr = save->vertex_store->buffer_in_ram;
    memcpy(buffer_ptr,
           save->copied.buffer,
           numComponents * sizeof(fi_type));
-   save->vert_count += save->copied.nr;
+   assert(save->vertex_store->used == 0 && save->vert_count == 0);
+   save->vert_count = save->copied.nr;
+   save->vertex_store->used = numComponents;
 }
 
 
