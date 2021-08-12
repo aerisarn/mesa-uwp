@@ -84,6 +84,9 @@
 #define V3D_QPU_MUL_A_SHIFT                 18
 #define V3D_QPU_MUL_A_MASK                  QPU_MASK(20, 18)
 
+#define V3D_QPU_RADDR_C_SHIFT               18
+#define V3D_QPU_RADDR_C_MASK                QPU_MASK(23, 18)
+
 #define V3D_QPU_ADD_B_SHIFT                 15
 #define V3D_QPU_ADD_B_MASK                  QPU_MASK(17, 15)
 
@@ -97,6 +100,9 @@
 
 #define V3D_QPU_BRANCH_BDI_SHIFT            12
 #define V3D_QPU_BRANCH_BDI_MASK             QPU_MASK(13, 12)
+
+#define V3D_QPU_RADDR_D_SHIFT               12
+#define V3D_QPU_RADDR_D_MASK                QPU_MASK(17, 12)
 
 #define V3D_QPU_RADDR_A_SHIFT               6
 #define V3D_QPU_RADDR_A_MASK                QPU_MASK(11, 6)
