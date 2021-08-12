@@ -1140,7 +1140,8 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
    key->has_gs = has_geometry_shader;
 
    const VkPipelineColorBlendStateCreateInfo *cb_info =
-      pCreateInfo->pColorBlendState;
+      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable ?
+      pCreateInfo->pColorBlendState : NULL;
 
    key->logicop_func = cb_info && cb_info->logicOpEnable == VK_TRUE ?
                        vk_to_pipe_logicop[cb_info->logicOp] :
@@ -1955,18 +1956,19 @@ pipeline_populate_graphics_key(struct v3dv_pipeline *pipeline,
    key->robust_buffer_access =
       pipeline->device->features.robustBufferAccess;
 
+   const bool raster_enabled =
+      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
    key->topology = vk_to_pipe_prim_type[ia_info->topology];
 
    const VkPipelineColorBlendStateCreateInfo *cb_info =
-      pCreateInfo->pColorBlendState;
+      raster_enabled ? pCreateInfo->pColorBlendState : NULL;
+
    key->logicop_func = cb_info && cb_info->logicOpEnable == VK_TRUE ?
       vk_to_pipe_logicop[cb_info->logicOp] :
       PIPE_LOGICOP_COPY;
-
-   const bool raster_enabled =
-      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
 
    /* Multisample rasterization state must be ignored if rasterization
     * is disabled.
