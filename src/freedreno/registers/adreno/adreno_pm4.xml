@@ -1509,7 +1509,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 
 <domain name="CP_SET_MARKER" width="32" varset="chip" prefix="chip" variants="A6XX-">
 	<doc>Tell CP the current operation mode, indicates save and restore procedure</doc>
-	<enum name="a6xx_render_mode">
+	<enum name="a6xx_marker">
 		<value value="1" name="RM6_BYPASS"/>
 		<value value="2" name="RM6_BINNING"/>
 		<value value="4" name="RM6_GMEM"/>
@@ -1540,8 +1540,8 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 			model this, without getting confused by spurious b4, this is
 			described as two overlapping bitfields:
 		 -->
-		<bitfield name="MODE" low="0" high="8" type="a6xx_render_mode"/>
-		<bitfield name="MARKER" low="0" high="3" type="a6xx_render_mode"/>
+		<bitfield name="MODE" low="0" high="8" type="a6xx_marker"/>
+		<bitfield name="MARKER" low="0" high="3" type="a6xx_marker"/>
 	</reg32>
 </domain>
 

@@ -360,7 +360,7 @@ update_render_cntl(struct fd_batch *batch, struct pipe_framebuffer_state *pfb,
          mrts_ubwc_enable |= 1 << i;
    }
 
-   cntl |= A6XX_RB_RENDER_CNTL_UNK4;
+   cntl |= A6XX_RB_RENDER_CNTL_CCUSINGLECACHELINESIZE(2);
    if (binning)
       cntl |= A6XX_RB_RENDER_CNTL_BINNING;
 
@@ -689,15 +689,15 @@ emit_binning_pass(struct fd_batch *batch) assert_dt
 
    OUT_WFI5(ring);
 
-   OUT_REG(ring, A6XX_VFD_MODE_CNTL(.binning_pass = true));
+   OUT_REG(ring, A6XX_VFD_MODE_CNTL(.render_mode = BINNING_PASS));
 
    update_vsc_pipe(batch);
 
-   OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9805, 1);
-   OUT_RING(ring, screen->info->a6xx.magic.PC_UNKNOWN_9805);
+   OUT_PKT4(ring, REG_A6XX_PC_POWER_CNTL, 1);
+   OUT_RING(ring, screen->info->a6xx.magic.PC_POWER_CNTL);
 
-   OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-   OUT_RING(ring, screen->info->a6xx.magic.SP_UNKNOWN_A0F8);
+   OUT_PKT4(ring, REG_A6XX_VFD_POWER_CNTL, 1);
+   OUT_RING(ring, screen->info->a6xx.magic.PC_POWER_CNTL);
 
    OUT_PKT7(ring, CP_EVENT_WRITE, 1);
    OUT_RING(ring, UNK_2C);
@@ -827,7 +827,8 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
       OUT_REG(ring, A6XX_VPC_SO_DISABLE(false));
 
       set_bin_size(ring, gmem->bin_w, gmem->bin_h,
-                   A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
+                   A6XX_RB_BIN_CONTROL_RENDER_MODE(BINNING_PASS) |
+                   A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
       update_render_cntl(batch, pfb, true);
       emit_binning_pass(batch);
 
@@ -840,20 +841,19 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
        * the reset of these cmds:
        */
 
-      // NOTE a618 not setting .USE_VIZ .. from a quick check on a630, it
-      // does not appear that this bit changes much (ie. it isn't actually
-      // .USE_VIZ like previous gens)
+      // NOTE a618 not setting .FORCE_LRZ_WRITE_DIS .. 
       set_bin_size(ring, gmem->bin_w, gmem->bin_h,
-                   A6XX_RB_BIN_CONTROL_USE_VIZ | 0x6000000);
+                   A6XX_RB_BIN_CONTROL_FORCE_LRZ_WRITE_DIS |
+                   A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
 
       OUT_PKT4(ring, REG_A6XX_VFD_MODE_CNTL, 1);
       OUT_RING(ring, 0x0);
 
-      OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9805, 1);
-      OUT_RING(ring, screen->info->a6xx.magic.PC_UNKNOWN_9805);
+      OUT_PKT4(ring, REG_A6XX_PC_POWER_CNTL, 1);
+      OUT_RING(ring, screen->info->a6xx.magic.PC_POWER_CNTL);
 
-      OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A0F8, 1);
-      OUT_RING(ring, screen->info->a6xx.magic.SP_UNKNOWN_A0F8);
+      OUT_PKT4(ring, REG_A6XX_VFD_POWER_CNTL, 1);
+      OUT_RING(ring, screen->info->a6xx.magic.PC_POWER_CNTL);
 
       OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
       OUT_RING(ring, 0x1);

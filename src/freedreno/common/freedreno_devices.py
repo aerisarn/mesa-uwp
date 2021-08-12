@@ -109,8 +109,7 @@ class A6xxGPUInfo(GPUInfo):
        duplication of parameters that are unique to the sub-generation.
     """
     def __init__(self, template, num_sp_cores, num_ccu,
-                 RB_UNKNOWN_8E04_blit, PC_UNKNOWN_9805,
-                 SP_UNKNOWN_A0F8):
+                 RB_UNKNOWN_8E04_blit, PC_POWER_CNTL):
         super().__init__(gmem_align_w = 16, gmem_align_h = 4,
                          tile_align_w = 32, tile_align_h = 32,
                          tile_max_w   = 1024, # max_bitfield_val(5, 0, 5)
@@ -129,8 +128,7 @@ class A6xxGPUInfo(GPUInfo):
 
         # Various "magic" register values:
         self.a6xx.magic.RB_UNKNOWN_8E04_blit = RB_UNKNOWN_8E04_blit
-        self.a6xx.magic.PC_UNKNOWN_9805 = PC_UNKNOWN_9805
-        self.a6xx.magic.SP_UNKNOWN_A0F8 = SP_UNKNOWN_A0F8
+        self.a6xx.magic.PC_POWER_CNTL = PC_POWER_CNTL
 
         # Things that earlier gens have and later gens remove, provide
         # defaults here and let them be overridden by sub-gen template:
@@ -247,8 +245,7 @@ add_gpus([
         num_sp_cores = 1,
         num_ccu = 1,
         RB_UNKNOWN_8E04_blit = 0x00100000,
-        PC_UNKNOWN_9805 = 0,
-        SP_UNKNOWN_A0F8 = 0,
+        PC_POWER_CNTL = 0,
     ))
 
 add_gpus([
@@ -258,8 +255,7 @@ add_gpus([
         num_sp_cores = 2,
         num_ccu = 2,
         RB_UNKNOWN_8E04_blit = 0x01000000,
-        PC_UNKNOWN_9805 = 1,
-        SP_UNKNOWN_A0F8 = 1,
+        PC_POWER_CNTL = 1,
     ))
 
 add_gpus([
@@ -269,8 +265,7 @@ add_gpus([
         num_sp_cores = 2,
         num_ccu = 2,
         RB_UNKNOWN_8E04_blit = 0x00100000,
-        PC_UNKNOWN_9805 = 1,
-        SP_UNKNOWN_A0F8 = 1,
+        PC_POWER_CNTL = 1,
     ))
 
 add_gpus([
@@ -280,8 +275,7 @@ add_gpus([
         num_sp_cores = 3,
         num_ccu = 3,
         RB_UNKNOWN_8E04_blit = 0x04100000,
-        PC_UNKNOWN_9805 = 2,
-        SP_UNKNOWN_A0F8 = 2,
+        PC_POWER_CNTL = 2,
     ))
 
 add_gpus([
@@ -291,8 +285,7 @@ add_gpus([
         num_sp_cores = 2,
         num_ccu = 2,
         RB_UNKNOWN_8E04_blit = 0x00100000,
-        PC_UNKNOWN_9805 = 1,
-        SP_UNKNOWN_A0F8 = 1,
+        PC_POWER_CNTL = 1,
     ))
 
 add_gpus([
@@ -302,8 +295,7 @@ add_gpus([
         num_sp_cores = 3,
         num_ccu = 3,
         RB_UNKNOWN_8E04_blit = 0x04100000,
-        PC_UNKNOWN_9805 = 2,
-        SP_UNKNOWN_A0F8 = 2,
+        PC_POWER_CNTL = 2,
     ))
 
 template = """\

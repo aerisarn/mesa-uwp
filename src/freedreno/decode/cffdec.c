@@ -2418,7 +2418,7 @@ cp_exec_cs_indirect(uint32_t *dwords, uint32_t sizedwords, int level)
 static void
 cp_set_marker(uint32_t *dwords, uint32_t sizedwords, int level)
 {
-   render_mode = rnn_enumname(rnn, "a6xx_render_mode", dwords[0] & 0xf);
+   render_mode = rnn_enumname(rnn, "a6xx_marker", dwords[0] & 0xf);
 
    if (!strcmp(render_mode, "RM6_BINNING")) {
       enable_mask = MODE_BINNING;

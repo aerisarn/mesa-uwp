@@ -99,8 +99,7 @@ struct fd_dev_info {
 
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
-            uint32_t PC_UNKNOWN_9805;
-            uint32_t SP_UNKNOWN_A0F8;
+            uint32_t PC_POWER_CNTL;
          } magic;
       } a6xx;
    };
