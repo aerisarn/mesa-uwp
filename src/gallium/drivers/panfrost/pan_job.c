@@ -222,21 +222,15 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx, const char *reaso
         batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
         panfrost_dirty_state_all(ctx);
 
-        /* The batch has no draw/clear queued, let's return it directly.
-         * Note that it's perfectly fine to re-use a batch with an
-         * existing clear, we'll just update it with the new clear request.
-         */
-        if (!batch->scoreboard.first_job) {
-                ctx->batch = batch;
-                return batch;
+        /* We only need to submit and get a fresh batch if there is no
+         * draw/clear queued. Otherwise we may reuse the batch. */
+
+        if (batch->scoreboard.first_job) {
+                perf_debug_ctx(ctx, "Flushing the current FBO due to: %s", reason);
+                panfrost_batch_submit(batch, 0, 0);
+                batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
         }
 
-        /* Otherwise, we need to freeze the existing one and instantiate a new
-         * one.
-         */
-        perf_debug_ctx(ctx, "Flushing the current FBO due to: %s", reason);
-        panfrost_batch_submit(batch, 0, 0);
-        batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
         ctx->batch = batch;
         return batch;
 }
