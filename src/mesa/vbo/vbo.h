@@ -179,7 +179,6 @@ struct vbo_save_context {
    fi_type vertex[VBO_ATTRIB_MAX*4];	   /* current values */
    fi_type *attrptr[VBO_ATTRIB_MAX];
    GLuint vert_count;
-   GLuint max_vert;
    GLboolean dangling_attr_ref;
 
    struct vbo_save_copied_vtx copied;

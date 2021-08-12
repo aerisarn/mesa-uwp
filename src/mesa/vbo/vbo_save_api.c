@@ -166,12 +166,6 @@ reset_counters(struct gl_context *ctx)
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
    save->vertex_store->used = 0;
-
-   if (save->vertex_size)
-      save->max_vert = save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size);
-   else
-      save->max_vert = 0;
-
    save->prim_store->used = 0;
    save->vert_count = 0;
    save->dangling_attr_ref = GL_FALSE;
@@ -938,6 +932,8 @@ wrap_filled_vertex(struct gl_context *ctx)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
    unsigned numComponents;
+   ASSERTED uint32_t max_vert = save->vertex_size ?
+      save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size) : 0;
 
    /* Emit a glEnd to close off the last vertex list.
     */
@@ -945,7 +941,7 @@ wrap_filled_vertex(struct gl_context *ctx)
 
    /* Copy stored stored vertices to start of new list.
     */
-   assert(save->max_vert - save->vert_count > save->copied.nr);
+   assert(max_vert - save->vert_count > save->copied.nr);
 
    numComponents = save->copied.nr * save->vertex_size;
 
@@ -1043,9 +1039,6 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
    save->enabled |= BITFIELD64_BIT(attr);
 
    save->vertex_size += newsz - oldsz;
-   save->max_vert = ((save->vertex_store->buffer_in_ram_size / sizeof(float) -
-                      save->vertex_store->used) /
-                     save->vertex_size);
    save->vert_count = 0;
 
    /* Recalculate all the attrptr[] values:
@@ -1211,13 +1204,15 @@ do {								\
 								\
    if ((A) == 0) {						\
       GLuint i;							\
+      uint32_t max_vert = save->vertex_size ? \
+         save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size) : 0; \
       fi_type *buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used; \
 								\
       for (i = 0; i < save->vertex_size; i++)			\
 	     buffer_ptr[i] = save->vertex[i];			\
 								\
       save->vertex_store->used += save->vertex_size; \
-      if (++save->vert_count >= save->max_vert)			\
+      if (++save->vert_count >= max_vert)			\
 	 wrap_filled_vertex(ctx);				\
    }								\
 } while (0)
@@ -1551,9 +1546,11 @@ static void
 _ensure_draws_fits_in_storage(struct gl_context *ctx, int primcount, int vertcount)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
+   uint32_t max_vert = save->vertex_size ?
+      save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size) : 0;
 
    bool realloc_prim = save->prim_store->used + primcount > save->prim_store->size;
-   bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= save->max_vert);
+   bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= max_vert);
 
    if (realloc_prim || realloc_vert) {
       if (realloc_vert && (save->vert_count || save->prim_store->used)) {
