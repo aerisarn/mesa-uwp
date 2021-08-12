@@ -186,6 +186,7 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
    /* Get pipeline state. */
    switch (pipeline) {
    case ST_PIPELINE_RENDER:
+   case ST_PIPELINE_RENDER_NO_VARRAYS:
       if (st->ctx->API == API_OPENGL_COMPAT)
          check_attrib_edgeflag(st);
 
@@ -196,7 +197,10 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
 
       st_manager_validate_framebuffers(st);
 
-      pipeline_mask = ST_PIPELINE_RENDER_STATE_MASK;
+      if (pipeline == ST_PIPELINE_RENDER)
+         pipeline_mask = ST_PIPELINE_RENDER_STATE_MASK;
+      else
+         pipeline_mask = ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS;
       break;
 
    case ST_PIPELINE_CLEAR:

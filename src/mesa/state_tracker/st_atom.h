@@ -48,6 +48,7 @@ struct cso_velems_state;
  */
 enum st_pipeline {
    ST_PIPELINE_RENDER,
+   ST_PIPELINE_RENDER_NO_VARRAYS,
    ST_PIPELINE_CLEAR,
    ST_PIPELINE_META,
    ST_PIPELINE_UPDATE_FRAMEBUFFER,
@@ -160,12 +161,13 @@ enum {
 
 /* All state flags within each group: */
 #define ST_PIPELINE_RENDER_STATE_MASK  (ST_NEW_CS_STATE - 1)
+#define ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS \
+   (ST_PIPELINE_RENDER_STATE_MASK & ~ST_NEW_VERTEX_ARRAYS)
 #define ST_PIPELINE_COMPUTE_STATE_MASK (0xffull << ST_NEW_CS_STATE_INDEX)
 #define ST_PIPELINE_CLEAR_STATE_MASK (ST_NEW_FB_STATE | \
                                       ST_NEW_SCISSOR | \
                                       ST_NEW_WINDOW_RECTANGLES)
-#define ST_PIPELINE_META_STATE_MASK (ST_PIPELINE_RENDER_STATE_MASK & \
-                                     ~ST_NEW_VERTEX_ARRAYS)
+#define ST_PIPELINE_META_STATE_MASK ST_PIPELINE_RENDER_STATE_MASK_NO_VARRAYS
 /* For ReadPixels, ReadBuffer, GetSamplePosition: */
 #define ST_PIPELINE_UPDATE_FB_STATE_MASK (ST_NEW_FB_STATE)
 

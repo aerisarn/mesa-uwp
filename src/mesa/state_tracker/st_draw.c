@@ -87,7 +87,8 @@ translate_prim(const struct gl_context *ctx, unsigned prim)
 }
 
 static inline void
-prepare_draw(struct st_context *st, struct gl_context *ctx)
+prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask,
+             enum st_pipeline pipeline)
 {
    /* Mesa core state should have been validated already */
    assert(ctx->NewState == 0x0);
@@ -98,10 +99,9 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
    st_invalidate_readpix_cache(st);
 
    /* Validate state. */
-   if ((st->dirty | ctx->NewDriverState) & st->active_states &
-       ST_PIPELINE_RENDER_STATE_MASK ||
+   if ((st->dirty | ctx->NewDriverState) & st->active_states & state_mask ||
        st->gfx_shaders_may_be_dirty) {
-      st_validate_state(st, ST_PIPELINE_RENDER);
+      st_validate_state(st, pipeline);
    }
 
    /* Pin threads regularly to the same Zen CCX that the main thread is
@@ -179,7 +179,7 @@ st_draw_gallium(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
 
    if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
       return;
@@ -196,7 +196,7 @@ st_draw_gallium_multimode(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
 
-   prepare_draw(st, ctx);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
 
    if (!prepare_indexed_draw(st, ctx, info, draws, num_draws))
       return;
@@ -238,7 +238,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    struct pipe_draw_start_count_bias draw = {0};
 
    assert(stride);
-   prepare_draw(st, ctx);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
@@ -293,7 +293,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    struct pipe_draw_indirect_info indirect;
    struct pipe_draw_start_count_bias draw = {0};
 
-   prepare_draw(st, ctx);
+   prepare_draw(st, ctx, ST_PIPELINE_RENDER_STATE_MASK, ST_PIPELINE_RENDER);
 
    memset(&indirect, 0, sizeof(indirect));
    util_draw_init_info(&info);
