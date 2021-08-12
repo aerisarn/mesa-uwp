@@ -170,12 +170,14 @@ free_vertex_store(struct gl_context *ctx,
 
 
 static struct vbo_save_primitive_store *
-alloc_prim_store(int prim_count)
+realloc_prim_store(struct vbo_save_primitive_store *store, int prim_count)
 {
-   struct vbo_save_primitive_store *store =
-      CALLOC_STRUCT(vbo_save_primitive_store);
-   store->size = MAX2(prim_count, VBO_SAVE_PRIM_SIZE);
-   store->prims = calloc(store->size, sizeof(struct _mesa_prim));
+   if (store == NULL)
+      store = CALLOC_STRUCT(vbo_save_primitive_store);
+   uint32_t old_size = store->size;
+   store->size = MAX3(store->size, prim_count, VBO_SAVE_PRIM_SIZE);
+   store->prims = realloc(store->prims, store->size * sizeof(struct _mesa_prim));
+   memset(&store->prims[old_size], 0, (store->size - old_size) * sizeof(struct _mesa_prim));
    store->used = 0;
    return store;
 }
@@ -419,11 +421,8 @@ realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
       save->out_of_memory = save->buffer_ptr == NULL;
    }
 
-   if (prim_count >= 0) {
-      free(save->prim_store->prims);
-      free(save->prim_store);
-      save->prim_store = alloc_prim_store(prim_count);
-   }
+   if (prim_count >= 0)
+      save->prim_store = realloc_prim_store(save->prim_store, prim_count);
 }
 
 struct vertex_key {
@@ -565,7 +564,6 @@ compile_vertex_list(struct gl_context *ctx)
       ctx->ListState.Current.UseLoopback = true;
 
    save->vertex_store->used += save->vertex_size * node->cold->vertex_count;
-   save->prim_store->used += node->cold->prim_count;
 
    /* Copy duplicated vertices
     */
@@ -1952,7 +1950,7 @@ vbo_save_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
    (void) mode;
 
    if (!save->prim_store)
-      save->prim_store = alloc_prim_store(0);
+      save->prim_store = realloc_prim_store(NULL, 8);
 
    if (!save->vertex_store)
       save->vertex_store = alloc_vertex_store(ctx, 0);
