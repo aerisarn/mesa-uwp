@@ -746,7 +746,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
          A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
          A6XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_regid[IJ_PERSP_SAMPLE]) |
          A6XX_HLSQ_CONTROL_4_REG_IJ_LINEAR_SAMPLE(ij_regid[IJ_LINEAR_SAMPLE]));
-   OUT_RING(ring, 0xfc); /* XXX */
+   OUT_RING(ring, 0xfcfc); /* line length (?), foveation quality */
 
    OUT_PKT4(ring, REG_A6XX_HLSQ_FS_CNTL_0, 1);
    OUT_RING(ring, A6XX_HLSQ_FS_CNTL_0_THREADSIZE(fssz) |
