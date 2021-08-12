@@ -2440,8 +2440,7 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
    list_inithead(&ish->variants);
    simple_mtx_init(&ish->lock, mtx_plain);
 
-   NIR_PASS(ish->needs_edge_flag, nir, iris_fix_edge_flags);
-   assert(ish->needs_edge_flag == nir->info.vs.needs_edge_flag);
+   NIR_PASS_V(nir, iris_fix_edge_flags);
 
    brw_preprocess_nir(screen->compiler, nir, NULL);
 
@@ -2832,7 +2831,7 @@ iris_bind_vs_state(struct pipe_context *ctx, void *state)
 
       if (ice->state.vs_uses_draw_params != uses_draw_params ||
           ice->state.vs_uses_derived_draw_params != uses_derived_draw_params ||
-          ice->state.vs_needs_edge_flag != ish->needs_edge_flag) {
+          ice->state.vs_needs_edge_flag != info->vs.needs_edge_flag) {
          ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
                              IRIS_DIRTY_VERTEX_ELEMENTS;
       }
@@ -2840,7 +2839,7 @@ iris_bind_vs_state(struct pipe_context *ctx, void *state)
       ice->state.vs_uses_draw_params = uses_draw_params;
       ice->state.vs_uses_derived_draw_params = uses_derived_draw_params;
       ice->state.vs_needs_sgvs_element = needs_sgvs_element;
-      ice->state.vs_needs_edge_flag = ish->needs_edge_flag;
+      ice->state.vs_needs_edge_flag = info->vs.needs_edge_flag;
    }
 
    bind_shader_state((void *) ctx, state, MESA_SHADER_VERTEX);

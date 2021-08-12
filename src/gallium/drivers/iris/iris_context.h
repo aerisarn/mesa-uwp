@@ -403,8 +403,6 @@ struct iris_uncompiled_shader {
    /** Have any shader variants been compiled yet? */
    bool compiled_once;
 
-   bool needs_edge_flag;
-
    /* Whether shader uses atomic operations. */
    bool uses_atomic_load_store;
 
