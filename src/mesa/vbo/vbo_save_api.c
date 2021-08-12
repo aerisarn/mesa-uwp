@@ -936,10 +936,6 @@ end:
          + save->vertex_store->used;
    }
 
-   if (save->prim_store->used > save->prim_store->size - 6) {
-      realloc_storage(ctx, 0, -1);
-   }
-
    /* Reset our structures for the next run of vertices:
     */
    reset_counters(ctx);
@@ -1606,7 +1602,7 @@ _ensure_draws_fits_in_storage(struct gl_context *ctx, int primcount, int vertcou
    bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= save->max_vert);
 
    if (realloc_prim || realloc_vert) {
-      if (save->vert_count || save->prim_store->used) {
+      if (realloc_vert && (save->vert_count || save->prim_store->used)) {
          /* TODO: this really isn't needed. We should realloc only the CPU-side memory. */
          compile_vertex_list(ctx);
       }
