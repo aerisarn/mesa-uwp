@@ -67,7 +67,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
         assert(whandle->type == WINSYS_HANDLE_TYPE_FD);
 
-        rsc = rzalloc(pscreen, struct panfrost_resource);
+        rsc = CALLOC_STRUCT(panfrost_resource);
         if (!rsc)
                 return NULL;
 
@@ -98,7 +98,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                                            crc_mode, &explicit_layout);
 
         if (!valid) {
-                ralloc_free(rsc);
+                FREE(rsc);
                 return NULL;
         }
 
@@ -107,7 +107,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
          * memory space to mmap it etc.
          */
         if (!rsc->image.data.bo) {
-                ralloc_free(rsc);
+                FREE(rsc);
                 return NULL;
         }
         if (rsc->image.layout.crc_mode == PAN_IMAGE_CRC_OOB)
@@ -554,7 +554,7 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                                 pres->damage.tile_map.stride *
                                 DIV_ROUND_UP(res->height0, 32);
                         pres->damage.tile_map.data =
-                                ralloc_size(pres, pres->damage.tile_map.size);
+                                malloc(pres->damage.tile_map.size);
                 }
 
                 memset(pres->damage.tile_map.data, 0, pres->damage.tile_map.size);
@@ -638,7 +638,7 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
             (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)))
                 return panfrost_create_scanout_res(screen, template, modifier);
 
-        struct panfrost_resource *so = rzalloc(screen, struct panfrost_resource);
+        struct panfrost_resource *so = CALLOC_STRUCT(panfrost_resource);
         so->base = *template;
         so->base.screen = screen;
 
@@ -676,7 +676,7 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
         panfrost_resource_set_damage_region(screen, &so->base, 0, NULL);
 
         if (template->bind & PIPE_BIND_INDEX_BUFFER)
-                so->index_cache = rzalloc(so, struct panfrost_minmax_cache);
+                so->index_cache = CALLOC_STRUCT(panfrost_minmax_cache);
 
         return (struct pipe_resource *)so;
 }
@@ -727,8 +727,11 @@ panfrost_resource_destroy(struct pipe_screen *screen,
         if (rsrc->image.crc.bo)
                 panfrost_bo_unreference(rsrc->image.crc.bo);
 
+        free(rsrc->index_cache);
+        free(rsrc->damage.tile_map.data);
+
         util_range_destroy(&rsrc->valid_buffer_range);
-        ralloc_free(rsrc);
+        free(rsrc);
 }
 
 /* Most of the time we can do CPU-side transfers, but sometimes we need to use
