@@ -58,6 +58,7 @@ enum st_pipeline {
 void st_init_atoms( struct st_context *st );
 void st_destroy_atoms( struct st_context *st );
 void st_validate_state( struct st_context *st, enum st_pipeline pipeline );
+void st_update_edgeflags(struct st_context *st, bool per_vertex_edgeflags);
 
 void
 st_setup_arrays(struct st_context *st,
@@ -73,6 +74,12 @@ st_setup_current_user(struct st_context *st,
                       const struct st_common_variant *vp_variant,
                       struct cso_velems_state *velements,
                       struct pipe_vertex_buffer *vbuffer, unsigned *num_vbuffers);
+
+struct pipe_vertex_state *
+st_create_gallium_vertex_state(struct gl_context *ctx,
+                               const struct gl_vertex_array_object *vao,
+                               struct gl_buffer_object *indexbuf,
+                               uint32_t enabled_attribs);
 
 /* Define ST_NEW_xxx_INDEX */
 enum {

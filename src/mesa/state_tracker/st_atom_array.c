@@ -322,3 +322,40 @@ st_update_array(struct st_context *st)
                                        vbuffer);
    st->last_num_vbuffers = num_vbuffers;
 }
+
+struct pipe_vertex_state *
+st_create_gallium_vertex_state(struct gl_context *ctx,
+                               const struct gl_vertex_array_object *vao,
+                               struct gl_buffer_object *indexbuf,
+                               uint32_t enabled_attribs)
+{
+   struct st_context *st = st_context(ctx);
+   const GLbitfield inputs_read = enabled_attribs;
+   const GLbitfield dual_slot_inputs = 0; /* always zero */
+   struct pipe_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];
+   unsigned num_vbuffers = 0;
+   struct cso_velems_state velements;
+   bool uses_user_vertex_buffers;
+
+   setup_arrays(st, vao, dual_slot_inputs, inputs_read, 0, inputs_read, 0,
+                &velements, vbuffer, &num_vbuffers, &uses_user_vertex_buffers);
+
+   if (num_vbuffers != 1 || uses_user_vertex_buffers) {
+      assert(!"this should never happen with display lists");
+      return NULL;
+   }
+
+   velements.count = util_bitcount(inputs_read);
+
+   struct pipe_screen *screen = st->screen;
+   struct pipe_vertex_state *state =
+      screen->create_vertex_state(screen, &vbuffer[0], velements.velems,
+                                  velements.count,
+                                  indexbuf ?
+                                    st_buffer_object(indexbuf)->buffer : NULL,
+                                  enabled_attribs);
+
+   for (unsigned i = 0; i < num_vbuffers; i++)
+      pipe_vertex_buffer_unreference(&vbuffer[i]);
+   return state;
+}

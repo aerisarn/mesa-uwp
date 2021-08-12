@@ -960,7 +960,7 @@ st_init_driver_functions(struct pipe_screen *screen,
 {
    _mesa_init_sampler_object_functions(functions);
 
-   st_init_draw_functions(functions);
+   st_init_draw_functions(screen, functions);
    st_init_blit_functions(functions);
    st_init_bufferobject_functions(screen, functions);
    st_init_clear_functions(functions);

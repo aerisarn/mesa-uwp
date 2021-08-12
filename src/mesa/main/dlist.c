@@ -73,7 +73,7 @@
 #include "vbo/vbo_util.h"
 #include "vbo/vbo_save.h"
 #include "util/format_r11g11b10f.h"
-
+#include "util/u_inlines.h"
 #include "util/u_memory.h"
 
 #define USE_BITMAP_ATLAS 1
@@ -797,8 +797,15 @@ void mesa_print_display_list(GLuint list);
 static void
 vbo_destroy_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *node)
 {
-   for (gl_vertex_processing_mode vpm = VP_MODE_FF; vpm < VP_MODE_MAX; ++vpm)
-      _mesa_reference_vao(ctx, &node->VAO[vpm], NULL);
+   for (gl_vertex_processing_mode mode = VP_MODE_FF; mode < VP_MODE_MAX; ++mode) {
+      _mesa_reference_vao(ctx, &node->VAO[mode], NULL);
+      if (node->merged.gallium.private_refcount[mode]) {
+         assert(node->merged.gallium.private_refcount[mode] > 0);
+         p_atomic_add(&node->merged.gallium.state[mode]->reference.count,
+                      -node->merged.gallium.private_refcount[mode]);
+      }
+      pipe_vertex_state_reference(&node->merged.gallium.state[mode], NULL);
+   }
 
    if (node->merged.mode) {
       free(node->merged.mode);
