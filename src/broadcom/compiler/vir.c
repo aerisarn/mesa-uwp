@@ -1869,6 +1869,21 @@ try_opt_ldunif(struct v3d_compile *c, uint32_t index, struct qreg *unif)
 {
         uint32_t count = 20;
         struct qinst *prev_inst = NULL;
+        assert(c->cur_block);
+
+#ifdef DEBUG
+        /* Check if the current instruction is part of the current block */
+        bool found = false;
+        vir_for_each_inst(inst, c->cur_block) {
+                if (&inst->link == c->cursor.link) {
+                        found = true;
+                        break;
+                }
+        }
+
+        assert(found || list_is_empty(&c->cur_block->instructions));
+#endif
+
         list_for_each_entry_from_rev(struct qinst, inst, c->cursor.link->prev,
                                      &c->cur_block->instructions, link) {
                 if ((inst->qpu.sig.ldunif || inst->qpu.sig.ldunifrf) &&
