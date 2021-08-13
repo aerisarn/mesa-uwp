@@ -51,6 +51,16 @@
   tags:
     - mesa-ci-x86-64-lava-hp-x360-14-G1-sona
 
+.iris-whl-test:
+  extends:
+    - .iris-test
+  variables:
+    DEVICE_TYPE: dell-latitude-5400-4305U-sarien
+    GPU_VERSION: iris-whl
+    DEQP_EXPECTED_RENDERER: WHL
+  tags:
+    - mesa-ci-x86-64-lava-dell-latitude-5400-4305U-sarien
+
 iris-apl-gles2:
   extends:
     - .iris-apl-test
@@ -216,5 +226,13 @@ iris-kbl-traces:
     GPU_VERSION: intel-kbl
   extends:
     - .iris-kbl-test
+    - .iris-traces
+    - .test-manual-mr
+
+iris-whl-traces:
+  variables:
+    GPU_VERSION: intel-whl
+  extends:
+    - .iris-whl-test
     - .iris-traces
     - .test-manual-mr
