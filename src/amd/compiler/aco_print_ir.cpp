@@ -627,6 +627,8 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
       }
       if (sdwa.clamp)
          fprintf(output, " clamp");
+      if (instr->isVOPC())
+         return;
       switch (sdwa.dst_sel & sdwa_asuint) {
       case sdwa_udword: break;
       case sdwa_ubyte0:
