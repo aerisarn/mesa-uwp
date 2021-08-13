@@ -368,10 +368,30 @@ update_vao(struct gl_context *ctx,
 }
 
 
+static void wrap_filled_vertex(struct gl_context *ctx);
+static void compile_vertex_list(struct gl_context *ctx);
+
 static void
 realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
+   const int ten_MB = 10 * 1024 * 1024;
+
+   /* Limit how much memory we allocate. */
+   if (save->prim_store->used > 0 &&
+       vertex_count > 0 &&
+       vertex_count * save->vertex_size > ten_MB) {
+      wrap_filled_vertex(ctx);
+      vertex_count = ten_MB / save->vertex_size;
+   }
+
+   if (prim_count > 0 &&
+       prim_count * sizeof(struct _mesa_prim) > ten_MB) {
+      if (save->prim_store->used > 0)
+         compile_vertex_list(ctx);
+      prim_count = ten_MB / sizeof(struct _mesa_prim);
+   }
+
    if (vertex_count >= 0)
       save->vertex_store = realloc_vertex_store(save->vertex_store, save->vertex_size, vertex_count);
 
