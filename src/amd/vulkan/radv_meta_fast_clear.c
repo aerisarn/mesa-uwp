@@ -742,12 +742,10 @@ radv_process_color_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
 
    radv_meta_restore(&saved_state, cmd_buffer);
 
-   if (image->fce_pred_offset != 0) {
-      /* Clear the image's fast-clear eliminate predicate because FMASK_DECOMPRESS and
-       * DCC_DECOMPRESS also perform a fast-clear eliminate.
-       */
-      radv_update_fce_metadata(cmd_buffer, image, subresourceRange, false);
-   }
+   /* Clear the image's fast-clear eliminate predicate because FMASK_DECOMPRESS and DCC_DECOMPRESS
+    * also perform a fast-clear eliminate.
+    */
+   radv_update_fce_metadata(cmd_buffer, image, subresourceRange, false);
 
    /* Mark the image as being decompressed. */
    if (op == DCC_DECOMPRESS)
