@@ -64,6 +64,39 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * This could be improved to fallback only when a mix of EvalCoord and
  * Vertex commands are issued within a single primitive.
+ *
+ * The compilation process works as follows. All vertex attributes
+ * except position are copied to vbo_save_context::attrptr (see ATTR_UNION).
+ * 'attrptr' are pointers to vbo_save_context::vertex ordered according to the enabled
+ * attributes (se upgrade_vertex).
+ * When the position attribute is received, all the attributes are then 
+ * copied to the vertex_store (see the end of ATTR_UNION).
+ * The vertex_store is simply an extensible float array.
+ * When the vertex list needs to be compiled (see compile_vertex_list),
+ * several transformations are performed:
+ *   - some primitives are merged together (eg: two consecutive GL_TRIANGLES
+ * with 3 vertices can be merged in a single GL_TRIANGLES with 6 vertices).
+ *   - an index buffer is built.
+ *   - identical vertices are detected and only one is kept.
+ * At the end of this transformation, the index buffer and the vertex buffer
+ * are uploaded in vRAM in the same buffer object.
+ * This buffer object is shared between multiple display list to allow
+ * draw calls merging later.
+ *
+ * The layout of this buffer for two display lists is:
+ *    V0A0|V0A1|V1A0|V1A1|P0I0|P0I1|V0A0V0A1V0A2|V1A1V1A1V1A2|...
+ *                                 ` new list starts
+ *        - VxAy: vertex x, attributes y
+ *        - PxIy: draw x, index y
+ *
+ * To allow draw call merging, display list must use the same VAO, including
+ * the same Offset in the buffer object. To achieve this, the start values of
+ * the primitive are shifted and the indices adjusted (see offset_diff and
+ * start_offset in compile_vertex_list).
+ *
+ * Display list using the loopback code (see vbo_save_playback_vertex_list_loopback),
+ * can't be drawn with an index buffer so this transformation is disabled
+ * in this case.
  */
 
 

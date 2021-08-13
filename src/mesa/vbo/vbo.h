@@ -162,10 +162,6 @@ struct vbo_save_context {
    GLuint vertex_size;  /**< size in GLfloats */
    struct gl_vertex_array_object *VAO[VP_MODE_MAX];
 
-   GLboolean out_of_memory;  /**< True if last VBO allocation failed */
-
-   bool no_current_update;
-
    struct vbo_save_vertex_store *vertex_store;
    struct vbo_save_primitive_store *prim_store;
    struct gl_buffer_object *current_bo;
@@ -173,7 +169,6 @@ struct vbo_save_context {
 
    fi_type vertex[VBO_ATTRIB_MAX*4];	   /* current values */
    fi_type *attrptr[VBO_ATTRIB_MAX];
-   GLboolean dangling_attr_ref;
 
    struct {
       fi_type *buffer;
@@ -182,6 +177,10 @@ struct vbo_save_context {
 
    fi_type *current[VBO_ATTRIB_MAX]; /* points into ctx->ListState */
    GLubyte *currentsz[VBO_ATTRIB_MAX];
+
+   GLboolean dangling_attr_ref;
+   GLboolean out_of_memory;  /**< True if last VBO allocation failed */
+   bool no_current_update;
 };
 
 GLboolean
