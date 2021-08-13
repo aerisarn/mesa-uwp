@@ -1163,6 +1163,13 @@ static void virgl_set_tess_state(struct pipe_context *ctx,
    virgl_encode_set_tess_state(vctx, default_outer_level, default_inner_level);
 }
 
+static void virgl_set_patch_vertices(struct pipe_context *ctx, uint8_t patch_vertices)
+{
+   struct virgl_context *vctx = virgl_context(ctx);
+
+   vctx->patch_vertices = patch_vertices;
+}
+
 static void virgl_resource_copy_region(struct pipe_context *ctx,
                                       struct pipe_resource *dst,
                                       unsigned dst_level,
@@ -1546,6 +1553,7 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    vctx->base.set_constant_buffer = virgl_set_constant_buffer;
 
    vctx->base.set_tess_state = virgl_set_tess_state;
+   vctx->base.set_patch_vertices = virgl_set_patch_vertices;
    vctx->base.create_vs_state = virgl_create_vs_state;
    vctx->base.create_tcs_state = virgl_create_tcs_state;
    vctx->base.create_tes_state = virgl_create_tes_state;

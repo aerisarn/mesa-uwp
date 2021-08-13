@@ -79,6 +79,8 @@ struct zink_gfx_pipeline_state {
 
    VkPipeline pipeline;
    enum pipe_prim_type mode : 8;
+
+   uint8_t patch_vertices;
 };
 
 struct zink_compute_pipeline_state {

@@ -2913,6 +2913,14 @@ iris_set_tess_state(struct pipe_context *ctx,
 }
 
 static void
+iris_set_patch_vertices(struct pipe_context *ctx, uint8_t patch_vertices)
+{
+   struct iris_context *ice = (struct iris_context *) ctx;
+
+   ice->state.patch_vertices = patch_vertices;
+}
+
+static void
 iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
 {
    struct iris_surface *surf = (void *) p_surf;
@@ -6321,7 +6329,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_VF_TOPOLOGY) {
       iris_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
          topo.PrimitiveTopologyType =
-            translate_prim_type(draw->mode, draw->vertices_per_patch);
+            translate_prim_type(draw->mode, ice->state.vertices_per_patch);
       }
    }
 
@@ -8095,6 +8103,7 @@ genX(init_state)(struct iris_context *ice)
    ctx->set_compute_resources = iris_set_compute_resources;
    ctx->set_global_binding = iris_set_global_binding;
    ctx->set_tess_state = iris_set_tess_state;
+   ctx->set_patch_vertices = iris_set_patch_vertices;
    ctx->set_framebuffer_state = iris_set_framebuffer_state;
    ctx->set_polygon_stipple = iris_set_polygon_stipple;
    ctx->set_sample_mask = iris_set_sample_mask;

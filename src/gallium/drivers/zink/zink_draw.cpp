@@ -428,7 +428,7 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    update_barriers(ctx, false);
 
-   if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
+   if (ctx->gfx_pipeline_state.vertices_per_patch != ctx->gfx_pipeline_state.patch_vertices)
       ctx->gfx_pipeline_state.dirty = true;
    bool drawid_broken = ctx->drawid_broken;
    ctx->drawid_broken = false;
@@ -438,7 +438,7 @@ zink_draw_vbo(struct pipe_context *pctx,
                            (HAS_MULTIDRAW && num_draws > 1 && !dinfo->increment_draw_id));
    if (drawid_broken != ctx->drawid_broken)
       ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
-   ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
+   ctx->gfx_pipeline_state.vertices_per_patch = ctx->gfx_pipeline_state.patch_vertices;
    if (ctx->rast_state->base.point_quad_rasterization &&
        ctx->gfx_prim_mode != mode) {
       if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS || mode == PIPE_PRIM_POINTS)

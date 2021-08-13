@@ -97,6 +97,7 @@ struct rendering_state {
    int num_viewports;
    struct pipe_viewport_state viewports[16];
 
+   uint8_t patch_vertices;
    ubyte index_size;
    unsigned index_offset;
    struct pipe_resource *index_buffer;
@@ -764,10 +765,10 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
    if (pipeline->graphics_create_info.pTessellationState) {
       if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT)]) {
          const VkPipelineTessellationStateCreateInfo *ts = pipeline->graphics_create_info.pTessellationState;
-         state->info.vertices_per_patch = ts->patchControlPoints;
+         state->patch_vertices = ts->patchControlPoints;
       }
    } else
-      state->info.vertices_per_patch = 0;
+      state->patch_vertices = 0;
 
    if (pipeline->graphics_create_info.pViewportState) {
       const VkPipelineViewportStateCreateInfo *vpi= pipeline->graphics_create_info.pViewportState;
@@ -1676,6 +1677,7 @@ static void handle_draw(struct lvp_cmd_buffer_entry *cmd,
    if (cmd->u.draw.draw_count > 1)
       state->info.increment_draw_id = true;
 
+   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, cmd->u.draw.draws, cmd->u.draw.draw_count);
 }
 
@@ -2252,6 +2254,7 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
       cmd->u.draw_indexed.calc_start = false;
    }
    state->info.index_bias_varies = cmd->u.draw_indexed.vertex_offset_changes;
+   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, NULL, cmd->u.draw_indexed.draws, cmd->u.draw_indexed.draw_count);
 }
 
@@ -2273,6 +2276,7 @@ static void handle_draw_indirect(struct lvp_cmd_buffer_entry *cmd,
    state->indirect_info.buffer = cmd->u.draw_indirect.buffer->bo;
    state->info.view_mask = subpass->view_mask;
 
+   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
 }
 
@@ -2746,6 +2750,7 @@ static void handle_draw_indirect_count(struct lvp_cmd_buffer_entry *cmd,
    state->indirect_info.indirect_draw_count = cmd->u.draw_indirect_count.count_buffer->bo;
    state->info.view_mask = subpass->view_mask;
 
+   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
 }
 
@@ -2920,6 +2925,7 @@ static void handle_draw_indirect_byte_count(struct lvp_cmd_buffer_entry *cmd,
 
    draw.count /= cmd->u.draw_indirect_byte_count.vertex_stride;
    state->info.view_mask = subpass->view_mask;
+   state->pctx->set_patch_vertices(state->pctx, state->patch_vertices);
    state->pctx->draw_vbo(state->pctx, &state->info, 0, &state->indirect_info, &draw, 1);
 }
 
@@ -3079,7 +3085,7 @@ static void handle_set_logic_op(struct lvp_cmd_buffer_entry *cmd,
 static void handle_set_patch_control_points(struct lvp_cmd_buffer_entry *cmd,
                                             struct rendering_state *state)
 {
-   state->info.vertices_per_patch = cmd->u.set_patch_control_points.vertices_per_patch;
+   state->patch_vertices = cmd->u.set_patch_control_points.vertices_per_patch;
 }
 
 static void handle_set_primitive_restart_enable(struct lvp_cmd_buffer_entry *cmd,

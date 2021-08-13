@@ -1081,6 +1081,29 @@ tc_set_tess_state(struct pipe_context *_pipe,
    memcpy(p + 4, default_inner_level, 2 * sizeof(float));
 }
 
+struct tc_patch_vertices {
+   struct tc_call_base base;
+   ubyte patch_vertices;
+};
+
+static uint16_t
+tc_call_set_patch_vertices(struct pipe_context *pipe, void *call, uint64_t *last)
+{
+   uint8_t patch_vertices = to_call(call, tc_patch_vertices)->patch_vertices;
+
+   pipe->set_patch_vertices(pipe, patch_vertices);
+   return call_size(tc_patch_vertices);
+}
+
+static void
+tc_set_patch_vertices(struct pipe_context *_pipe, uint8_t patch_vertices)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+
+   tc_add_call(tc, TC_CALL_set_patch_vertices,
+               tc_patch_vertices)->patch_vertices = patch_vertices;
+}
+
 struct tc_constant_buffer_base {
    struct tc_call_base base;
    ubyte shader, index;
@@ -2911,12 +2934,10 @@ simplify_draw_info(struct pipe_draw_info *info)
    info->index_bounds_valid = false;
    info->take_index_buffer_ownership = false;
    info->index_bias_varies = false;
+   info->_pad = 0;
 
    /* This shouldn't be set when merging single draws. */
    info->increment_draw_id = false;
-
-   if (info->mode != PIPE_PRIM_PATCHES)
-      info->vertices_per_patch = 0;
 
    if (info->index_size) {
       if (!info->primitive_restart)
@@ -4148,6 +4169,7 @@ threaded_context_create(struct pipe_context *pipe,
    CTX_INIT(set_window_rectangles);
    CTX_INIT(set_sampler_views);
    CTX_INIT(set_tess_state);
+   CTX_INIT(set_patch_vertices);
    CTX_INIT(set_shader_buffers);
    CTX_INIT(set_shader_images);
    CTX_INIT(set_vertex_buffers);

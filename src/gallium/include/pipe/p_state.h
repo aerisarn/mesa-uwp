@@ -765,9 +765,8 @@ struct pipe_draw_start_count_bias {
 struct pipe_draw_info
 {
    enum pipe_prim_type mode:8;  /**< the mode of the primitive */
-   ubyte vertices_per_patch; /**< the number of vertices per patch */
-   unsigned index_size:4;  /**< if 0, the draw is not indexed. */
-   unsigned view_mask:6; /**< mask of multiviews for this draw */
+   uint8_t index_size;        /**< if 0, the draw is not indexed. */
+   uint8_t view_mask;         /**< mask of multiviews for this draw */
    bool primitive_restart:1;
    bool has_user_indices:1;   /**< if true, use index.user_buffer */
    bool index_bounds_valid:1; /**< whether min_index and max_index are valid;
@@ -776,6 +775,7 @@ struct pipe_draw_info
    bool take_index_buffer_ownership:1; /**< callee inherits caller's refcount
          (no need to reference indexbuf, but still needs to unreference it) */
    bool index_bias_varies:1;   /**< true if index_bias varies between draws */
+   uint8_t _pad:2;
 
    unsigned start_instance; /**< first instance id */
    unsigned instance_count; /**< number of instances */

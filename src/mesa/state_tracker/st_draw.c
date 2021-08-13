@@ -259,7 +259,6 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    }
 
    info.mode = translate_prim(ctx, mode);
-   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    indirect.buffer = st_buffer_object(indirect_data)->buffer;
    indirect.offset = indirect_offset;
 
@@ -300,7 +299,6 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    util_draw_init_info(&info);
    info.max_index = ~0u; /* so that u_vbuf can tell that it's unknown */
    info.mode = translate_prim(ctx, mode);
-   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.instance_count = num_instances;
 
    /* Transform feedback drawing is always non-indexed. */

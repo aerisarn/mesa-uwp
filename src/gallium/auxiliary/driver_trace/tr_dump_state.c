@@ -820,8 +820,6 @@ void trace_dump_draw_info(const struct pipe_draw_info *state)
    trace_dump_member(uint, state, start_instance);
    trace_dump_member(uint, state, instance_count);
 
-   trace_dump_member(uint, state, vertices_per_patch);
-
    trace_dump_member(uint, state, min_index);
    trace_dump_member(uint, state, max_index);
 

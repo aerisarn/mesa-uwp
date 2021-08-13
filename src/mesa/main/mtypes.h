@@ -4799,8 +4799,9 @@ struct gl_driver_flags
 
    /**
     * gl_context::TessCtrlProgram::patch_default_*
+    * gl_context::TessCtrlProgram::patch_vertices
     */
-   uint64_t NewDefaultTessLevels;
+   uint64_t NewTessState;
 
    /**
     * gl_context::IntelConservativeRasterization

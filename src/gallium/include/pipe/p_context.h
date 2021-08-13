@@ -454,6 +454,11 @@ struct pipe_context {
                           const float default_inner_level[2]);
 
    /**
+    * Set the number of vertices per input patch for tessellation.
+    */
+   void (*set_patch_vertices)(struct pipe_context *ctx, uint8_t patch_vertices);
+
+   /**
     * Sets the debug callback. If the pointer is null, then no callback is
     * set, otherwise a copy of the data should be made.
     */

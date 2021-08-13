@@ -159,8 +159,8 @@ crocus_update_draw_info(struct crocus_context *ice,
    }
 
    if (info->mode == PIPE_PRIM_PATCHES &&
-       ice->state.vertices_per_patch != info->vertices_per_patch) {
-      ice->state.vertices_per_patch = info->vertices_per_patch;
+       ice->state.vertices_per_patch != ice->state.patch_vertices) {
+      ice->state.vertices_per_patch = ice->state.patch_vertices;
 
       if (screen->devinfo.ver == 8)
          ice->state.dirty |= CROCUS_DIRTY_GEN8_VF_TOPOLOGY;

@@ -1286,7 +1286,6 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    struct pipe_draw_start_count_bias draw;
 
    info.mode = mode;
-   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.index_size = 0;
    /* Packed section begin. */
    info.primitive_restart = false;
@@ -1614,7 +1613,6 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
    ALLOC_PRIMS(draw, primcount, "glMultiDrawElements");
 
    info.mode = mode;
-   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.index_size = 0;
    /* Packed section begin. */
    info.primitive_restart = false;
@@ -1728,7 +1726,6 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
    struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
 
    info.mode = mode;
-   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.index_size = 1 << index_size_shift;
    /* Packed section begin. */
    info.primitive_restart = ctx->Array._PrimitiveRestart[index_size_shift];
@@ -2115,7 +2112,6 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    struct pipe_draw_info info;
 
    info.mode = mode;
-   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.index_size = 1 << index_size_shift;
    /* Packed section begin. */
    info.primitive_restart = ctx->Array._PrimitiveRestart[index_size_shift];

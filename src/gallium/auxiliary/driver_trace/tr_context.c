@@ -1951,6 +1951,20 @@ trace_context_set_tess_state(struct pipe_context *_context,
    context->set_tess_state(context, default_outer_level, default_inner_level);
 }
 
+static void
+trace_context_set_patch_vertices(struct pipe_context *_context,
+                                 uint8_t patch_vertices)
+{
+   struct trace_context *tr_context = trace_context(_context);
+   struct pipe_context *context = tr_context->pipe;
+
+   trace_dump_call_begin("pipe_context", "set_patch_vertices");
+   trace_dump_arg(ptr, context);
+   trace_dump_arg(uint, patch_vertices);
+   trace_dump_call_end();
+
+   context->set_patch_vertices(context, patch_vertices);
+}
 
 static void trace_context_set_shader_buffers(struct pipe_context *_context,
                                              enum pipe_shader_type shader,
@@ -2229,6 +2243,7 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(memory_barrier);
    TR_CTX_INIT(resource_commit);
    TR_CTX_INIT(set_tess_state);
+   TR_CTX_INIT(set_patch_vertices);
    TR_CTX_INIT(set_shader_buffers);
    TR_CTX_INIT(launch_grid);
    TR_CTX_INIT(set_shader_images);

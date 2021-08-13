@@ -3204,6 +3204,14 @@ crocus_set_tess_state(struct pipe_context *ctx,
 }
 
 static void
+crocus_set_patch_vertices(struct pipe_context *ctx, uint8_t patch_vertices)
+{
+   struct crocus_context *ice = (struct crocus_context *) ctx;
+
+   ice->state.patch_vertices = patch_vertices;
+}
+
+static void
 crocus_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
 {
    struct crocus_surface *surf = (void *) p_surf;
@@ -7498,7 +7506,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
    if (dirty & CROCUS_DIRTY_GEN8_VF_TOPOLOGY) {
       crocus_emit_cmd(batch, GENX(3DSTATE_VF_TOPOLOGY), topo) {
          topo.PrimitiveTopologyType =
-            translate_prim_type(draw->mode, draw->vertices_per_patch);
+            translate_prim_type(draw->mode, ice->state.patch_vertices);
       }
    }
 #endif
@@ -7965,7 +7973,7 @@ crocus_upload_render_state(struct crocus_context *ice,
       prim.PredicateEnable = use_predicate;
 #endif
 
-      prim.PrimitiveTopologyType = translate_prim_type(ice->state.prim_mode, draw->vertices_per_patch);
+      prim.PrimitiveTopologyType = translate_prim_type(ice->state.prim_mode, ice->state.patch_vertices);
       if (indirect) {
          // XXX Probably have to do something for gen6 here?
 #if GFX_VER >= 7
@@ -9214,6 +9222,7 @@ genX(crocus_init_state)(struct crocus_context *ice)
    ctx->set_shader_images = crocus_set_shader_images;
    ctx->set_sampler_views = crocus_set_sampler_views;
    ctx->set_tess_state = crocus_set_tess_state;
+   ctx->set_patch_vertices = crocus_set_patch_vertices;
    ctx->set_framebuffer_state = crocus_set_framebuffer_state;
    ctx->set_polygon_stipple = crocus_set_polygon_stipple;
    ctx->set_sample_mask = crocus_set_sample_mask;

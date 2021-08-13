@@ -1593,7 +1593,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 
    si_emit_rasterizer_prim_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx);
    if (HAS_TESS)
-      si_emit_derived_tess_state(sctx, info->vertices_per_patch, &num_patches);
+      si_emit_derived_tess_state(sctx, sctx->patch_vertices, &num_patches);
 
    /* Emit state atoms. */
    unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
@@ -1625,8 +1625,8 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
    /* Emit draw states. */
    si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, info->index_size);
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
-         (sctx, indirect, prim, num_patches, instance_count, info->vertices_per_patch,
-          primitive_restart, info->restart_index, min_vertex_count);
+         (sctx, indirect, prim, num_patches, instance_count, sctx->patch_vertices, primitive_restart,
+          info->restart_index, min_vertex_count);
 }
 
 static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_resource *indexbuf)
@@ -1764,7 +1764,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
       /* The rarely occuring tcs == NULL case is not optimized. */
       bool same_patch_vertices =
          GFX_VERSION >= GFX9 &&
-         tcs && info->vertices_per_patch == tcs->info.base.tess.tcs_vertices_out;
+         tcs && sctx->patch_vertices == tcs->info.base.tess.tcs_vertices_out;
 
       if (sctx->same_patch_vertices != same_patch_vertices) {
          sctx->same_patch_vertices = same_patch_vertices;
@@ -1780,7 +1780,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
           * function TCS.
           */
          bool ls_vgpr_fix =
-            tcs && info->vertices_per_patch > tcs->info.base.tess.tcs_vertices_out;
+            tcs && sctx->patch_vertices > tcs->info.base.tess.tcs_vertices_out;
 
          if (ls_vgpr_fix != sctx->ls_vgpr_fix) {
             sctx->ls_vgpr_fix = ls_vgpr_fix;

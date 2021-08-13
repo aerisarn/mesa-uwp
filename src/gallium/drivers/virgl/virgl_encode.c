@@ -764,7 +764,7 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
    else
       virgl_encoder_write_dword(ctx->cbuf, 0);
    if (length >= VIRGL_DRAW_VBO_SIZE_TESS) {
-      virgl_encoder_write_dword(ctx->cbuf, info->vertices_per_patch); /* vertices per patch */
+      virgl_encoder_write_dword(ctx->cbuf, ctx->patch_vertices); /* vertices per patch */
       virgl_encoder_write_dword(ctx->cbuf, drawid_offset); /* drawid */
    }
    if (length == VIRGL_DRAW_VBO_SIZE_INDIRECT) {

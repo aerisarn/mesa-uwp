@@ -487,7 +487,7 @@ st_init_driver_flags(struct st_context *st)
    f->NewRasterizerDiscard = ST_NEW_RASTERIZER;
    f->NewTileRasterOrder = ST_NEW_RASTERIZER;
    f->NewUniformBuffer = ST_NEW_UNIFORM_BUFFER;
-   f->NewDefaultTessLevels = ST_NEW_TESS_STATE;
+   f->NewTessState = ST_NEW_TESS_STATE;
 
    /* Shader resources */
    f->NewTextureBuffer = ST_NEW_SAMPLER_VIEWS;

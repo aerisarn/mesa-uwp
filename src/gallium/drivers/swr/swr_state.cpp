@@ -1658,7 +1658,7 @@ swr_update_derived(struct pipe_context *pipe,
                      SWR_NEW_SAMPLER |
                      SWR_NEW_SAMPLER_VIEW)) {
       if (ctx->tcs) {
-         ctx->tcs->vertices_per_patch = p_draw_info->vertices_per_patch;
+         ctx->tcs->vertices_per_patch = ctx->patch_vertices;
 
          swr_jit_tcs_key key;
          swr_generate_tcs_key(key, ctx, ctx->tcs);
@@ -2162,6 +2162,14 @@ swr_set_so_targets(struct pipe_context *pipe,
    swr->dirty |= SWR_NEW_SO;
 }
 
+static void
+swr_set_patch_vertices(struct pipe_context *pipe, uint8_t patch_vertices)
+{
+   struct swr_context *swr = swr_context(pipe);
+
+   swr->patch_vertices = patch_vertices;
+}
+
 
 void
 swr_state_init(struct pipe_context *pipe)
@@ -2230,4 +2238,6 @@ swr_state_init(struct pipe_context *pipe)
    pipe->create_stream_output_target = swr_create_so_target;
    pipe->stream_output_target_destroy = swr_destroy_so_target;
    pipe->set_stream_output_targets = swr_set_so_targets;
+
+   pipe->set_patch_vertices = swr_set_patch_vertices;
 }

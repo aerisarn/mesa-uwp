@@ -1487,6 +1487,13 @@ zink_set_tess_state(struct pipe_context *pctx,
    memcpy(&ctx->default_outer_level, default_outer_level, sizeof(ctx->default_outer_level));
 }
 
+static void
+zink_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   ctx->gfx_pipeline_state.patch_vertices = patch_vertices;
+}
+
 static uint32_t
 hash_render_pass_state(const void *key)
 {
@@ -3380,6 +3387,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_clip_state = zink_set_clip_state;
    ctx->base.set_blend_color = zink_set_blend_color;
    ctx->base.set_tess_state = zink_set_tess_state;
+   ctx->base.set_patch_vertices = zink_set_patch_vertices;
 
    ctx->base.set_sample_mask = zink_set_sample_mask;
 

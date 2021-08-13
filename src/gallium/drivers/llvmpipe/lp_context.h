@@ -117,6 +117,8 @@ struct llvmpipe_context {
    
    /** Vertex format */
    struct vertex_info vertex_info;
+
+   uint8_t patch_vertices;
    
    /** Which vertex shader output slot contains color */
    int8_t color_slot[2];

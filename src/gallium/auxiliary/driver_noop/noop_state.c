@@ -397,6 +397,11 @@ static void noop_make_image_handle_resident(struct pipe_context *ctx, uint64_t h
 {
 }
 
+static void noop_set_patch_vertices(struct pipe_context *ctx,
+                                    uint8_t patch_vertices)
+{
+}
+
 void noop_init_state_functions(struct pipe_context *ctx);
 
 void noop_init_state_functions(struct pipe_context *ctx)
@@ -477,4 +482,5 @@ void noop_init_state_functions(struct pipe_context *ctx)
    ctx->create_image_handle = noop_create_image_handle;
    ctx->delete_image_handle = noop_delete_image_handle;
    ctx->make_image_handle_resident = noop_make_image_handle_resident;
+   ctx->set_patch_vertices = noop_set_patch_vertices;
 }

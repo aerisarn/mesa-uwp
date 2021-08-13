@@ -1004,6 +1004,14 @@ nvc0_set_tess_state(struct pipe_context *pipe,
 }
 
 static void
+nvc0_set_patch_vertices(struct pipe_context *pipe, uint8_t patch_vertices)
+{
+   struct nvc0_context *nvc0 = nvc0_context(pipe);
+
+   nvc0->patch_vertices = patch_vertices;
+}
+
+static void
 nvc0_set_vertex_buffers(struct pipe_context *pipe,
                         unsigned start_slot, unsigned count,
                         unsigned unbind_num_trailing_slots,
@@ -1499,6 +1507,7 @@ nvc0_init_state_functions(struct nvc0_context *nvc0)
    pipe->set_viewport_states = nvc0_set_viewport_states;
    pipe->set_window_rectangles = nvc0_set_window_rectangles;
    pipe->set_tess_state = nvc0_set_tess_state;
+   pipe->set_patch_vertices = nvc0_set_patch_vertices;
 
    pipe->create_vertex_elements_state = nvc0_vertex_state_create;
    pipe->delete_vertex_elements_state = nvc0_vertex_state_delete;

@@ -1074,6 +1074,7 @@ struct si_context {
    bool compute_image_sgprs_dirty;
    bool vs_uses_base_instance;
    bool vs_uses_draw_id;
+   uint8_t patch_vertices;
 
    /* shader descriptors */
    struct si_descriptors descriptors[SI_NUM_DESCS];

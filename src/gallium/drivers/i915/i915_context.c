@@ -113,7 +113,7 @@ i915_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    /*
     * Do the drawing
     */
-   draw_vbo(i915->draw, info, drawid_offset, NULL, draws, num_draws);
+   draw_vbo(i915->draw, info, drawid_offset, NULL, draws, num_draws, 0);
 
    /*
     * unmap vertex/index buffers

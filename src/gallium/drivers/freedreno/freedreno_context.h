@@ -250,6 +250,8 @@ struct fd_context {
    struct list_head acc_active_queries dt;
    /*@}*/
 
+   uint8_t patch_vertices;
+
    /* Whether we need to recheck the active_queries list next
     * fd_batch_update_queries().
     */
