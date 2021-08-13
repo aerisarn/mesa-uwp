@@ -1278,7 +1278,7 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
    if (image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
       return;
 
-   if (radv_image_has_cmask(image) || radv_image_has_dcc(image)) {
+   if (radv_image_has_cmask(image) || (radv_image_has_dcc(image) && !image->support_comp_to_single)) {
       image->fce_pred_offset = image->size;
       image->size += 8 * image->info.levels;
    }
