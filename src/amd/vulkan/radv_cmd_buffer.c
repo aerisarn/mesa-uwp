@@ -4412,8 +4412,11 @@ radv_CmdSetViewport(VkCommandBuffer commandBuffer, uint32_t firstViewport, uint3
 
    memcpy(state->dynamic.viewport.viewports + firstViewport, pViewports,
           viewportCount * sizeof(*pViewports));
-   for (unsigned i = firstViewport; i < firstViewport + viewportCount; i++)
-      radv_get_viewport_xform(&pViewports[i], state->dynamic.viewport.xform[i].scale, state->dynamic.viewport.xform[i].translate);
+   for (unsigned i = 0; i < viewportCount; i++) {
+      radv_get_viewport_xform(&pViewports[i],
+                              state->dynamic.viewport.xform[i + firstViewport].scale,
+                              state->dynamic.viewport.xform[i + firstViewport].translate);
+   }
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 }
