@@ -403,6 +403,36 @@ tu_render_pass_patch_input_gmem(struct tu_render_pass *pass)
    }
 }
 
+static void
+tu_render_pass_check_feedback_loop(struct tu_render_pass *pass)
+{
+   for (unsigned i = 0; i < pass->subpass_count; i++) {
+      struct tu_subpass *subpass = &pass->subpasses[i];
+
+      for (unsigned j = 0; j < subpass->color_count; j++) {
+         uint32_t a = subpass->color_attachments[j].attachment;
+         if (a == VK_ATTACHMENT_UNUSED)
+            continue;
+         for (unsigned k = 0; k < subpass->input_count; k++) {
+            if (subpass->input_attachments[k].attachment == a) {
+               subpass->feedback = true;
+               break;
+            }
+         }
+      }
+
+      if (subpass->depth_stencil_attachment.attachment != VK_ATTACHMENT_UNUSED) {
+         for (unsigned k = 0; k < subpass->input_count; k++) {
+            if (subpass->input_attachments[k].attachment ==
+                subpass->depth_stencil_attachment.attachment) {
+               subpass->feedback = true;
+               break;
+            }
+         }
+      }
+   }
+}
+
 static void update_samples(struct tu_subpass *subpass,
                            VkSampleCountFlagBits samples)
 {
@@ -707,6 +737,8 @@ tu_CreateRenderPass2(VkDevice _device,
    }
 
    tu_render_pass_patch_input_gmem(pass);
+
+   tu_render_pass_check_feedback_loop(pass);
 
    /* disable unused attachments */
    for (uint32_t i = 0; i < pass->attachment_count; i++) {

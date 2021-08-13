@@ -1566,6 +1566,9 @@ struct tu_subpass
    uint32_t resolve_count;
    bool resolve_depth_stencil;
 
+   /* True if there is any feedback loop at all. */
+   bool feedback;
+
    /* True if we must invalidate UCHE thanks to a feedback loop. */
    bool feedback_invalidate;
 
