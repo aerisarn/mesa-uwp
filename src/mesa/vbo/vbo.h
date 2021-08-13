@@ -158,7 +158,6 @@ struct vbo_save_copied_vtx {
 
 struct vbo_save_context {
    GLvertexformat vtxfmt;
-   GLvertexformat vtxfmt_noop;  /**< Used if out_of_memory is true */
 
    GLbitfield64 enabled; /**< mask of enabled vbo arrays. */
    GLubyte attrsz[VBO_ATTRIB_MAX];  /**< 1, 2, 3 or 4 */

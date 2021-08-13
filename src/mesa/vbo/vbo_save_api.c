@@ -107,6 +107,14 @@ _save_EvalCoord1f(GLfloat u);
 static void GLAPIENTRY
 _save_EvalCoord2f(GLfloat u, GLfloat v);
 
+static void
+handle_out_of_memory(struct gl_context *ctx)
+{
+   struct vbo_save_context *save = &vbo_context(ctx)->save;
+   _mesa_noop_vtxfmt_init(ctx, &save->vtxfmt);
+   save->out_of_memory = true;
+}
+
 /*
  * NOTE: Old 'parity' issue is gone, but copying can still be
  * wrong-footed on replay.
@@ -397,6 +405,10 @@ realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
 
    if (prim_count >= 0)
       save->prim_store = realloc_prim_store(save->prim_store, prim_count);
+
+   if (save->vertex_store->buffer_in_ram == NULL ||
+       save->prim_store->prims == NULL)
+      handle_out_of_memory(ctx);
 }
 
 struct vertex_key {
@@ -528,6 +540,7 @@ compile_vertex_list(struct gl_context *ctx)
                    current_size * sizeof(GLfloat));
          } else {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "Current value allocation");
+            handle_out_of_memory(ctx);
          }
       }
    }
@@ -719,6 +732,7 @@ compile_vertex_list(struct gl_context *ctx)
       if (!success) {
          _mesa_reference_buffer_object(ctx, &save->current_bo, NULL);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+         handle_out_of_memory(ctx);
       } else {
          save->current_bo_bytes_used = 0;
          available_bytes = save->current_bo->Size;
@@ -845,6 +859,8 @@ end:
                                             NULL,
                                             GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
                                             save->current_bo);
+      if (!success)
+         handle_out_of_memory(ctx);
    }
 
    GLuint offsets[VBO_ATTRIB_MAX];
@@ -1321,7 +1337,7 @@ dlist_fallback(struct gl_context *ctx)
    copy_to_current(ctx);
    reset_vertex(ctx);
    if (save->out_of_memory) {
-      _mesa_install_save_vtxfmt(ctx, &save->vtxfmt_noop);
+      _mesa_install_save_vtxfmt(ctx, &save->vtxfmt);
    }
    else {
       _mesa_install_save_vtxfmt(ctx, &ctx->ListState.ListVtxfmt);
@@ -1418,12 +1434,7 @@ vbo_save_NotifyBegin(struct gl_context *ctx, GLenum mode,
 
    save->no_current_update = no_current_update;
 
-   if (save->out_of_memory) {
-      _mesa_install_save_vtxfmt(ctx, &save->vtxfmt_noop);
-   }
-   else {
-      _mesa_install_save_vtxfmt(ctx, &save->vtxfmt);
-   }
+   _mesa_install_save_vtxfmt(ctx, &save->vtxfmt);
 
    /* We need to call vbo_save_SaveFlushVertices() if there's state change */
    ctx->Driver.SaveNeedFlush = GL_TRUE;
@@ -1451,7 +1462,7 @@ _save_End(void)
     * as opcodes.
     */
    if (save->out_of_memory) {
-      _mesa_install_save_vtxfmt(ctx, &save->vtxfmt_noop);
+      _mesa_install_save_vtxfmt(ctx, &save->vtxfmt);
    }
    else {
       _mesa_install_save_vtxfmt(ctx, &ctx->ListState.ListVtxfmt);
@@ -1981,5 +1992,4 @@ vbo_save_api_init(struct vbo_save_context *save)
 
    vtxfmt_init(ctx);
    current_init(ctx);
-   _mesa_noop_vtxfmt_init(ctx, &save->vtxfmt_noop);
 }
