@@ -179,7 +179,7 @@ realloc_vertex_store(struct vbo_save_vertex_store *store, uint32_t vertex_size, 
    if (!store)
       store = CALLOC_STRUCT(vbo_save_vertex_store);
 
-   int new_size = MAX2(vertex_count * vertex_size, VBO_SAVE_BUFFER_SIZE) * sizeof(GLfloat);
+   int new_size = MAX2(vertex_count * vertex_size * sizeof(GLfloat), 1024 * 1024);
    if (new_size > store->buffer_in_ram_size) {
       store->buffer_in_ram_size = new_size;
       store->buffer_in_ram = realloc(store->buffer_in_ram, store->buffer_in_ram_size);
@@ -194,8 +194,9 @@ realloc_prim_store(struct vbo_save_primitive_store *store, int prim_count)
 {
    if (store == NULL)
       store = CALLOC_STRUCT(vbo_save_primitive_store);
+
    uint32_t old_size = store->size;
-   store->size = MAX3(store->size, prim_count, VBO_SAVE_PRIM_SIZE);
+   store->size = MAX3(store->size, prim_count, 128);
    store->prims = realloc(store->prims, store->size * sizeof(struct _mesa_prim));
    memset(&store->prims[old_size], 0, (store->size - old_size) * sizeof(struct _mesa_prim));
    store->used = 0;
@@ -416,21 +417,20 @@ static void
 realloc_storage(struct gl_context *ctx, int prim_count, int vertex_count)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
-   const int ten_MB = 10 * 1024 * 1024;
 
    /* Limit how much memory we allocate. */
    if (save->prim_store->used > 0 &&
        vertex_count > 0 &&
-       vertex_count * save->vertex_size > ten_MB) {
+       vertex_count * save->vertex_size > VBO_SAVE_BUFFER_SIZE) {
       wrap_filled_vertex(ctx);
-      vertex_count = ten_MB / save->vertex_size;
+      vertex_count = VBO_SAVE_BUFFER_SIZE / save->vertex_size;
    }
 
    if (prim_count > 0 &&
-       prim_count * sizeof(struct _mesa_prim) > ten_MB) {
+       prim_count * sizeof(struct _mesa_prim) > VBO_SAVE_BUFFER_SIZE) {
       if (save->prim_store->used > 0)
          compile_vertex_list(ctx);
-      prim_count = ten_MB / sizeof(struct _mesa_prim);
+      prim_count = VBO_SAVE_BUFFER_SIZE / sizeof(struct _mesa_prim);
    }
 
    if (vertex_count >= 0)
@@ -764,7 +764,7 @@ compile_vertex_list(struct gl_context *ctx)
       save->current_bo = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
       bool success = ctx->Driver.BufferData(ctx,
                                             GL_ELEMENT_ARRAY_BUFFER_ARB,
-                                            MAX2(total_bytes_needed, VBO_SAVE_BUFFER_SIZE * sizeof(uint32_t)),
+                                            MAX2(total_bytes_needed, VBO_SAVE_BUFFER_SIZE),
                                             NULL,
                                             GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
                                             save->current_bo);
@@ -894,7 +894,7 @@ end:
       save->current_bo = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
       bool success = ctx->Driver.BufferData(ctx,
                                             GL_ELEMENT_ARRAY_BUFFER_ARB,
-                                            VBO_SAVE_BUFFER_SIZE * sizeof(uint32_t),
+                                            VBO_SAVE_BUFFER_SIZE,
                                             NULL,
                                             GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
                                             save->current_bo);

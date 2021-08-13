@@ -95,21 +95,12 @@ _vbo_save_get_stride(const struct vbo_save_vertex_list *node)
    return node->VAO[0]->BufferBinding[0].Stride;
 }
 
-
-/* These buffers should be a reasonable size to support upload to
- * hardware.  Current vbo implementation will re-upload on any
- * changes, so don't make too big or apps which dynamically create
- * dlists and use only a few times will suffer.
- *
- * Consider stategy of uploading regions from the VBO on demand in the
- * case of dynamic vbos.  Then make the dlist code signal that
- * likelyhood as it occurs.  No reason we couldn't change usage
- * internally even though this probably isn't allowed for client VBOs?
+/* Default size for the buffer holding the vertices and the indices.
+ * A bigger buffer helps reducing the number of draw calls but may
+ * waste memory.
  */
-#define VBO_SAVE_BUFFER_SIZE (256*1024) /* dwords */
-#define VBO_SAVE_PRIM_SIZE   128
-#define VBO_SAVE_PRIM_MODE_MASK         0x3f
-#define VBO_SAVE_INDEX_SIZE (32 * 1024)
+#define VBO_SAVE_BUFFER_SIZE (20*1024*1024)
+#define VBO_SAVE_PRIM_MODE_MASK 0x3f
 
 struct vbo_save_vertex_store {
    fi_type *buffer_in_ram;
