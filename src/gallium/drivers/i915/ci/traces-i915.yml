@@ -41,7 +41,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: i915-g33
-        checksum: 9306a8d9f37d83a327759319c46f7cae
+        checksum: 4cb0eb98c89c4d7ff962a25cc7931d8c
   # The shadow raytracing shader fails to compile
   #- path: humus/RaytracedShadows.trace
   #  expectations:
@@ -55,9 +55,9 @@ traces:
   - path: neverball/neverball.trace
     expectations:
       - device: i915-g33
-        checksum: 344479e929ad4bc7f7316b5e574b0131
+        checksum: bb7f4ddd30c36418a94ad8f02fc6bd09
   - path: valve/counterstrike-v2.trace
     # Tree foliage rendering is extra aliased.
     expectations:
       - device: i915-g33
-        checksum: 66a18e91b95674a3a1d227ed5681257d
+        checksum: 837c0aabe5d6bf75a071a3fa45cf448f
