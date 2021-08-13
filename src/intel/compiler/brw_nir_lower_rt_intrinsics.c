@@ -190,7 +190,7 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
              */
             nir_ssa_def *offset =
                nir_bcsel(b, build_leaf_is_procedural(b, &hit_in),
-                            nir_iadd_imm(b, hit_in.prim_leaf_index, 12),
+                            nir_iadd_imm(b, nir_ishl_imm(b, hit_in.prim_leaf_index, 2), 12),
                             nir_imm_int(b, 8));
             sysval = nir_load_global(b, nir_iadd(b, hit_in.prim_leaf_ptr,
                                                     nir_u2u64(b, offset)),
