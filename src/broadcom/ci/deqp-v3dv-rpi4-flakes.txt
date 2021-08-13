@@ -9,6 +9,7 @@ dEQP-VK.robustness.buffer_access.through_pointers.compute.reads.4B_out_of_memory
 dEQP-VK.robustness.buffer_access.through_pointers.compute.reads.4B_out_of_memory_with_vec4_s32
 dEQP-VK.robustness.buffer_access.through_pointers.graphics.reads.fragment.16B_out_of_memory_with_scalar_u32
 dEQP-VK.robustness.buffer_access.through_pointers.graphics.reads.fragment.1B_out_of_memory_with_scalar_f32
+dEQP-VK.robustness.buffer_access.through_pointers.graphics.reads.vertex.16B_out_of_memory_with_vec4_f32
 dEQP-VK.robustness.buffer_access.through_pointers.graphics.reads.vertex.1B_out_of_memory_with_vec4_s32
 dEQP-VK.robustness.buffer_access.through_pointers.graphics.reads.vertex.32B_out_of_memory_with_scalar_s32
 dEQP-VK.robustness.buffer_access.through_pointers.graphics.reads.vertex.3B_out_of_memory_with_scalar_f32
