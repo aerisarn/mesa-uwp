@@ -1645,6 +1645,29 @@ to upconvert to 32b float internally?
 	</enum>
 
 	<enum name="a6xx_single_prim_mode">
+		<value value="0x0" name="NO_FLUSH"/>
+		<doc>
+			In addition to FLUSH_PER_OVERLAP, guarantee that UCHE
+			and CCU don't get out of sync when fetching the previous
+			value for the current pixel. With NO_FLUSH, there's the
+			possibility that the flags for the current pixel are
+			flushed before the data or vice-versa, leading to
+			texture fetches via UCHE getting out of sync values.
+			This mode should eliminate that. It's used in bypass
+			mode for coherent blending
+			(GL_KHR_blend_equation_advanced_coherent) as well as
+			non-coherent blending.
+		</doc>
+		<value value="0x1" name="FLUSH_PER_OVERLAP_AND_OVERWRITE"/>
+		<doc>
+			Invalidate UCHE and wait for any pending work to finish
+			if there was possibly an overlapping primitive prior to
+			the current one. This is similar to a combination of
+			GRAS_SC_CONTROL::INJECT_L2_INVALIDATE_EVENT and
+			WAIT_RB_IDLE_ALL_TRI on a3xx. It's used in GMEM mode for
+			coherent blending
+			(GL_KHR_blend_equation_advanced_coherent).
+		</doc>
 		<value value="0x3" name="FLUSH_PER_OVERLAP"/>
 	</enum>
 
