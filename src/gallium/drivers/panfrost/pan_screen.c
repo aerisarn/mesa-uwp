@@ -68,7 +68,7 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"noafbc",    PAN_DBG_NO_AFBC,  "Disable AFBC support"},
         {"nocrc",     PAN_DBG_NO_CRC,   "Disable transaction elimination"},
         {"msaa16",    PAN_DBG_MSAA16,   "Enable MSAA 8x and 16x support"},
-        {"noindirect", PAN_DBG_NOINDIRECT, "Emulate indirect draws on the CPU"},
+        {"indirect",  PAN_DBG_INDIRECT, "Use experimental compute kernel for indirect draws"},
         {"linear",    PAN_DBG_LINEAR,   "Force linear textures"},
         {"nocache",   PAN_DBG_NO_CACHE, "Disable BO cache"},
         DEBUG_NAMED_VALUE_END
@@ -839,10 +839,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
          */
         if (dev->arch == 7)
                 dev->quirks |= MIDGARD_NO_AFBC;
-
-        /* XXX: Indirect draws on Midgard need debugging, emulate for now */
-        if (dev->arch < 6)
-                dev->debug |= PAN_DBG_NOINDIRECT;
 
         dev->ro = ro;
 

@@ -2998,8 +2998,8 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         if (!panfrost_render_condition_check(ctx))
                 return;
 
-        /* Emulate indirect draws when debugging */
-        if (dev->debug & PAN_DBG_NOINDIRECT && indirect && indirect->buffer) {
+        /* Emulate indirect draws unless we're using the experimental path */
+        if (!(dev->debug & PAN_DBG_INDIRECT) && indirect && indirect->buffer) {
                 assert(num_draws == 1);
                 util_draw_indirect(pipe, info, indirect);
                 return;
