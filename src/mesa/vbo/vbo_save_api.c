@@ -894,14 +894,6 @@ end:
       _glapi_set_dispatch(dispatch);
    }
 
-   /* Decide whether the storage structs are full, or can be used for
-    * the next vertex lists as well.
-    */
-   if (save->vertex_store->used >
-       save->vertex_store->buffer_in_ram_size / sizeof(float) - 16 * (save->vertex_size + 4)) {
-      realloc_storage(ctx, -1, 0);
-   }
-
    /* Reset our structures for the next run of vertices:
     */
    reset_counters(ctx);
@@ -1233,7 +1225,7 @@ do {								\
 								\
       save->vertex_store->used += save->vertex_size; \
       if (++save->vert_count >= max_vert)			\
-	 wrap_filled_vertex(ctx);				\
+	 realloc_storage(ctx, -1, max_vert * 2);				\
    }								\
 } while (0)
 
@@ -1572,13 +1564,8 @@ _ensure_draws_fits_in_storage(struct gl_context *ctx, int primcount, int vertcou
    bool realloc_prim = save->prim_store->used + primcount > save->prim_store->size;
    bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= max_vert);
 
-   if (realloc_prim || realloc_vert) {
-      if (realloc_vert && (save->vert_count || save->prim_store->used)) {
-         /* TODO: this really isn't needed. We should realloc only the CPU-side memory. */
-         compile_vertex_list(ctx);
-      }
+   if (realloc_prim || realloc_vert)
       realloc_storage(ctx, realloc_prim ? primcount : -1, realloc_vert ? vertcount : -1);
-   }
 }
 
 
