@@ -191,9 +191,7 @@ static void si_prefetch_shaders(struct si_context *sctx)
  * The information about LDS and other non-compile-time parameters is then
  * written to userdata SGPRs.
  */
-static void si_emit_derived_tess_state(struct si_context *sctx,
-                                       unsigned num_tcs_input_cp,
-                                       unsigned *num_patches)
+static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_patches)
 {
    struct si_shader *ls_current;
    struct si_shader_selector *ls;
@@ -204,6 +202,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
    unsigned tess_uses_primid = sctx->ia_multi_vgt_param_key.u.tess_uses_prim_id;
    bool has_primid_instancing_bug = sctx->chip_class == GFX6 && sctx->screen->info.max_se == 1;
    unsigned tes_sh_base = sctx->shader_pointers.sh_base[PIPE_SHADER_TESS_EVAL];
+   uint8_t num_tcs_input_cp = sctx->patch_vertices;
 
    /* Since GFX9 has merged LS-HS in the TCS state, set LS = TCS. */
    if (sctx->chip_class >= GFX9) {
@@ -652,7 +651,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
                                           const struct pipe_draw_indirect_info *indirect,
                                           enum pipe_prim_type prim, unsigned num_patches,
                                           unsigned instance_count, bool primitive_restart,
-                                          unsigned min_vertex_count, ubyte vertices_per_patch)
+                                          unsigned min_vertex_count)
 {
    union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
    unsigned primgroup_size;
@@ -670,7 +669,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
    key.u.uses_instancing = (indirect && indirect->buffer) || instance_count > 1;
    key.u.multi_instances_smaller_than_primgroup =
       num_instanced_prims_less_than(indirect, prim, min_vertex_count, instance_count,
-                                    primgroup_size, vertices_per_patch);
+                                    primgroup_size, sctx->patch_vertices);
    key.u.primitive_restart = primitive_restart;
    key.u.count_from_stream_output = indirect && indirect->count_from_stream_output;
    key.u.line_stipple_enabled = si_is_line_stipple_enabled(sctx);
@@ -691,7 +690,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
       if (GFX_VERSION == GFX7 &&
           sctx->family == CHIP_HAWAII && G_028AA8_SWITCH_ON_EOI(ia_multi_vgt_param) &&
           num_instanced_prims_less_than(indirect, prim, min_vertex_count, instance_count, 2,
-                                        vertices_per_patch))
+                                        sctx->patch_vertices))
          sctx->flags |= SI_CONTEXT_VGT_FLUSH;
    }
 
@@ -835,7 +834,7 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
                                        const struct pipe_draw_indirect_info *indirect,
                                        enum pipe_prim_type prim, unsigned num_patches,
                                        unsigned instance_count, bool primitive_restart,
-                                       unsigned min_vertex_count, ubyte vertices_per_patch)
+                                       unsigned min_vertex_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    unsigned ia_multi_vgt_param;
@@ -843,7 +842,7 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
    ia_multi_vgt_param =
       si_get_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS>
          (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count, vertices_per_patch);
+          min_vertex_count);
 
    /* Draw state. */
    if (ia_multi_vgt_param != sctx->last_multi_vgt_param) {
@@ -916,9 +915,8 @@ template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has
 static void si_emit_draw_registers(struct si_context *sctx,
                                    const struct pipe_draw_indirect_info *indirect,
                                    enum pipe_prim_type prim, unsigned num_patches,
-                                   unsigned instance_count, ubyte vertices_per_patch,
-                                   bool primitive_restart, unsigned restart_index,
-                                   unsigned min_vertex_count)
+                                   unsigned instance_count, bool primitive_restart,
+                                   unsigned restart_index, unsigned min_vertex_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -927,7 +925,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
    else
       si_emit_ia_multi_vgt_param<GFX_VERSION, HAS_TESS, HAS_GS>
          (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
-          min_vertex_count, vertices_per_patch);
+          min_vertex_count);
 
    radeon_begin(cs);
 
@@ -1593,7 +1591,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
 
    si_emit_rasterizer_prim_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx);
    if (HAS_TESS)
-      si_emit_derived_tess_state(sctx, sctx->patch_vertices, &num_patches);
+      si_emit_derived_tess_state(sctx, &num_patches);
 
    /* Emit state atoms. */
    unsigned mask = sctx->dirty_atoms & ~skip_atom_mask;
@@ -1625,7 +1623,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
    /* Emit draw states. */
    si_emit_vs_state<GFX_VERSION, HAS_TESS, HAS_GS, NGG>(sctx, info->index_size);
    si_emit_draw_registers<GFX_VERSION, HAS_TESS, HAS_GS, NGG>
-         (sctx, indirect, prim, num_patches, instance_count, sctx->patch_vertices, primitive_restart,
+         (sctx, indirect, prim, num_patches, instance_count, primitive_restart,
           info->restart_index, min_vertex_count);
 }
 
