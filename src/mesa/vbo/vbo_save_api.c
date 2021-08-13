@@ -579,12 +579,9 @@ compile_vertex_list(struct gl_context *ctx)
    node->cold->min_index = node->cold->prims[0].start;
    node->cold->max_index = end - 1;
 
-   /* Estimate for the worst case: all prims are line strips (the +1 is because
-    * wrap_buffers may call use but the last primitive may not be complete) */
-   int max_indices_count = MAX2(total_vert_count * 2 - (node->cold->prim_count * 2) + 1,
-                                total_vert_count);
+   int max_index_count = total_vert_count * 2;
 
-   int size = max_indices_count * sizeof(uint32_t);
+   int size = max_index_count * sizeof(uint32_t);
    uint32_t* indices = (uint32_t*) malloc(size);
    struct _mesa_prim *merged_prims = NULL;
 
@@ -692,7 +689,7 @@ compile_vertex_list(struct gl_context *ctx)
       merged_prims[last_valid_prim].mode = mode;
    }
 
-   assert(idx > 0 && idx <= max_indices_count);
+   assert(idx > 0 && idx <= max_index_count);
 
    unsigned merged_prim_count = last_valid_prim + 1;
    node->cold->ib.ptr = NULL;
