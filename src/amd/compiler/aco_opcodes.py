@@ -219,20 +219,15 @@ class Opcode(object):
 
       parts = name.replace('_e64', '').rsplit('_', 2)
       op_dtype = parts[-1]
-      def_dtype = parts[-2] if len(parts) > 1 else parts[-1]
 
-      def_dtype_sizes = {'{}{}'.format(prefix, size) : size for prefix in 'biuf' for size in [64, 32, 24, 16]}
-      op_dtype_sizes = {k:v for k, v in def_dtype_sizes.items()}
+      op_dtype_sizes = {'{}{}'.format(prefix, size) : size for prefix in 'biuf' for size in [64, 32, 24, 16]}
       # inline constants are 32-bit for 16-bit integer/typeless instructions: https://reviews.llvm.org/D81841
       op_dtype_sizes['b16'] = 32
       op_dtype_sizes['i16'] = 32
       op_dtype_sizes['u16'] = 32
 
-      # If we can't tell the definition size and the operand size, default to
-      # 32. Some opcodes can have a larger definition size, but
-      # get_subdword_definition_info() handles that.
+      # If we can't tell the operand size, default to 32.
       self.operand_size = op_dtype_sizes.get(op_dtype, 32)
-      self.definition_size = def_dtype_sizes.get(def_dtype, self.operand_size)
 
       # exceptions for operands:
       if 'qsad_' in name:
@@ -248,15 +243,6 @@ class Opcode(object):
       elif name in ['v_cvt_f32_ubyte0', 'v_cvt_f32_ubyte1',
                     'v_cvt_f32_ubyte2', 'v_cvt_f32_ubyte3']:
         self.operand_size = 32
-
-      # exceptions for definitions:
-      if 'qsad_' in name:
-        self.definition_size = 0
-      elif 'sad_' in name:
-        self.definition_size = 32
-      elif '_pk' in name:
-        self.definition_size = 32
-
 
 # global dictionary of opcodes
 opcodes = {}
@@ -1701,7 +1687,3 @@ for ver in ['gfx9', 'gfx10']:
         else:
             op_to_name[key] = op.name
 
-# These instructions write the entire 32-bit VGPR, but it's not clear in Opcode's constructor that
-# it should be 32, since it works accidentally.
-assert(opcodes['ds_read_u8'].definition_size == 32)
-assert(opcodes['ds_read_u16'].definition_size == 32)
