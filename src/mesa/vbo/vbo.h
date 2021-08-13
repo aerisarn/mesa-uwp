@@ -151,10 +151,6 @@ struct vbo_exec_context
 #endif
 };
 
-struct vbo_save_copied_vtx {
-   fi_type buffer[VBO_ATTRIB_MAX * 4 * VBO_MAX_COPIED_VERTS];
-   GLuint nr;
-};
 
 struct vbo_save_context {
    GLvertexformat vtxfmt;
@@ -180,7 +176,10 @@ struct vbo_save_context {
    GLuint vert_count;
    GLboolean dangling_attr_ref;
 
-   struct vbo_save_copied_vtx copied;
+   struct {
+      fi_type *buffer;
+      GLuint nr;
+   } copied;
 
    fi_type *current[VBO_ATTRIB_MAX]; /* points into ctx->ListState */
    GLubyte *currentsz[VBO_ATTRIB_MAX];

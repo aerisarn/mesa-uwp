@@ -127,14 +127,16 @@ copy_vertices(struct gl_context *ctx,
    struct vbo_save_context *save = &vbo_context(ctx)->save;
    struct _mesa_prim *prim = &node->cold->prims[node->cold->prim_count - 1];
    GLuint sz = save->vertex_size;
-   const fi_type *src = src_buffer + prim->start * sz;
-   fi_type *dst = save->copied.buffer;
 
-   if (prim->end)
+   if (prim->end || !prim->count || !sz)
       return 0;
 
+   const fi_type *src = src_buffer + prim->start * sz;
+   assert(save->copied.buffer == NULL);
+   save->copied.buffer = malloc(sizeof(fi_type) * sz * prim->count);
+
    return vbo_copy_vertices(ctx, prim->mode, prim->start, &prim->count,
-                            prim->begin, sz, true, dst, src);
+                            prim->begin, sz, true, save->copied.buffer, src);
 }
 
 
@@ -971,9 +973,14 @@ wrap_filled_vertex(struct gl_context *ctx)
    numComponents = save->copied.nr * save->vertex_size;
 
    fi_type *buffer_ptr = save->vertex_store->buffer_in_ram;
-   memcpy(buffer_ptr,
-          save->copied.buffer,
-          numComponents * sizeof(fi_type));
+   if (numComponents) {
+      assert(save->copied.buffer);
+      memcpy(buffer_ptr,
+             save->copied.buffer,
+             numComponents * sizeof(fi_type));
+      free(save->copied.buffer);
+      save->copied.buffer = NULL;
+   }
    assert(save->vertex_store->used == 0 && save->vert_count == 0);
    save->vert_count = save->copied.nr;
    save->vertex_store->used = numComponents;
@@ -1090,6 +1097,7 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
     * and will need fixup at runtime.
     */
    if (save->copied.nr) {
+      assert(save->copied.buffer);
       const fi_type *data = save->copied.buffer;
       fi_type *dest = save->vertex_store->buffer_in_ram;
 
@@ -1128,6 +1136,8 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
 
       save->vert_count += save->copied.nr;
       save->vertex_store->used += save->vertex_size * save->copied.nr;
+      free(save->copied.buffer);
+      save->copied.buffer = NULL;
    }
 }
 
