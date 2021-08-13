@@ -763,8 +763,17 @@ get_subdword_bytes_written(Program* program, const aco_ptr<Instruction>& instr, 
 
    if (instr->isPseudo())
       return chip >= GFX8 ? def.bytes() : def.size() * 4u;
-   if (instr->isSDWA() && instr->sdwa().dst_sel == (sdwa_isra | def.bytes()))
-      return def.bytes();
+   if (instr->isVALU()) {
+      assert(def.bytes() <= 2);
+
+      if (instr->isSDWA() && instr->sdwa().dst_sel == (sdwa_isra | def.bytes()))
+         return def.bytes();
+
+      if (instr_is_16bit(chip, instr->opcode))
+         return 2;
+
+      return 4;
+   }
 
    switch (instr->opcode) {
    case aco_opcode::buffer_load_ubyte_d16:
@@ -787,20 +796,8 @@ get_subdword_bytes_written(Program* program, const aco_ptr<Instruction>& instr, 
    case aco_opcode::global_load_short_d16_hi:
    case aco_opcode::ds_read_u8_d16_hi:
    case aco_opcode::ds_read_u16_d16_hi: return program->dev.sram_ecc_enabled ? 4 : 2;
-   case aco_opcode::v_mad_f16:
-   case aco_opcode::v_mad_u16:
-   case aco_opcode::v_mad_i16:
-   case aco_opcode::v_fma_f16:
-   case aco_opcode::v_div_fixup_f16:
-   case aco_opcode::v_interp_p2_f16:
-      if (chip >= GFX9)
-         return 2;
-      break;
-   default: break;
+   default: return def.size() * 4;
    }
-
-   return MAX2(chip >= GFX10 ? def.bytes() : 4,
-               instr_info.definition_size[(int)instr->opcode] / 8u);
 }
 
 } /* end namespace */
