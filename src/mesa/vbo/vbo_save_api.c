@@ -177,7 +177,6 @@ reset_counters(struct gl_context *ctx)
 
    save->vertex_store->used = 0;
    save->prim_store->used = 0;
-   save->vert_count = 0;
    save->dangling_attr_ref = GL_FALSE;
 }
 
@@ -249,7 +248,6 @@ convert_line_loop_to_strip(struct vbo_save_context *save,
 
       prim->count++;
       node->cold->vertex_count++;
-      save->vert_count++;
       save->vertex_store->used += sz;
    }
 
@@ -487,6 +485,15 @@ add_vertex(struct vbo_save_context *save, struct hash_table *hash_to_index,
 }
 
 
+static uint32_t
+get_vertex_count(struct vbo_save_context *save)
+{
+   if (!save->vertex_size)
+      return 0;
+   return save->vertex_store->used / save->vertex_size;
+}
+
+
 /**
  * Insert the active immediate struct onto the display list currently
  * being built.
@@ -514,7 +521,7 @@ compile_vertex_list(struct gl_context *ctx)
 
    const GLsizei stride = save->vertex_size*sizeof(GLfloat);
 
-   node->cold->vertex_count = save->vert_count;
+   node->cold->vertex_count = get_vertex_count(save);
    node->cold->wrap_count = save->copied.nr;
    node->cold->prims = malloc(sizeof(struct _mesa_prim) * save->prim_store->used);
    memcpy(node->cold->prims, save->prim_store->prims, sizeof(struct _mesa_prim) * save->prim_store->used);
@@ -567,7 +574,7 @@ compile_vertex_list(struct gl_context *ctx)
 
    /* Create an index buffer. */
    node->cold->min_index = node->cold->max_index = 0;
-   if (save->vert_count == 0 || node->cold->prim_count == 0)
+   if (node->cold->vertex_count == 0 || node->cold->prim_count == 0)
       goto end;
 
    /* We won't modify node->prims, so use a const alias to avoid unintended
@@ -932,7 +939,7 @@ wrap_buffers(struct gl_context *ctx)
 
    /* Close off in-progress primitive.
     */
-   save->prim_store->prims[i].count = (save->vert_count - save->prim_store->prims[i].start);
+   save->prim_store->prims[i].count = (get_vertex_count(save) - save->prim_store->prims[i].start);
    mode = save->prim_store->prims[i].mode;
 
    /* store the copied vertices, and allocate a new list.
@@ -959,17 +966,15 @@ wrap_filled_vertex(struct gl_context *ctx)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
    unsigned numComponents;
-   ASSERTED uint32_t max_vert = save->vertex_size ?
-      save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size) : 0;
 
    /* Emit a glEnd to close off the last vertex list.
     */
    wrap_buffers(ctx);
 
+   assert(save->vertex_store->used == 0 && save->vertex_store->used == 0);
+
    /* Copy stored stored vertices to start of new list.
     */
-   assert(max_vert - save->vert_count > save->copied.nr);
-
    numComponents = save->copied.nr * save->vertex_size;
 
    fi_type *buffer_ptr = save->vertex_store->buffer_in_ram;
@@ -981,8 +986,6 @@ wrap_filled_vertex(struct gl_context *ctx)
       free(save->copied.buffer);
       save->copied.buffer = NULL;
    }
-   assert(save->vertex_store->used == 0 && save->vert_count == 0);
-   save->vert_count = save->copied.nr;
    save->vertex_store->used = numComponents;
 }
 
@@ -1053,7 +1056,7 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
    /* Store the current run of vertices, and emit a GL_END.  Emit a
     * BEGIN in the new buffer.
     */
-   if (save->vert_count)
+   if (save->vertex_store->used)
       wrap_buffers(ctx);
    else
       assert(save->copied.nr == 0);
@@ -1071,7 +1074,6 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
    save->enabled |= BITFIELD64_BIT(attr);
 
    save->vertex_size += newsz - oldsz;
-   save->vert_count = 0;
 
    /* Recalculate all the attrptr[] values:
     */
@@ -1134,7 +1136,6 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
          }
       }
 
-      save->vert_count += save->copied.nr;
       save->vertex_store->used += save->vertex_size * save->copied.nr;
       free(save->copied.buffer);
       save->copied.buffer = NULL;
@@ -1239,16 +1240,16 @@ do {								\
 								\
    if ((A) == 0) {						\
       GLuint i;							\
-      uint32_t max_vert = save->vertex_size ? \
-         save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size) : 0; \
       fi_type *buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used; \
 								\
       for (i = 0; i < save->vertex_size; i++)			\
 	     buffer_ptr[i] = save->vertex[i];			\
 								\
       save->vertex_store->used += save->vertex_size; \
-      if (++save->vert_count >= max_vert)			\
-	 realloc_storage(ctx, -1, max_vert * 2);				\
+      if ((save->vertex_store->used + save->vertex_size) * sizeof(float) >= save->vertex_store->buffer_in_ram_size) { \
+	      realloc_storage(ctx, -1, get_vertex_count(save) * 2); \
+         assert((save->vertex_store->used + save->vertex_size) * sizeof(float) < save->vertex_store->buffer_in_ram_size); \
+      } \
    }								\
 } while (0)
 
@@ -1325,11 +1326,14 @@ dlist_fallback(struct gl_context *ctx)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
 
-   if (save->vert_count || save->prim_store->used) {
-      if (save->prim_store->used > 0) {
+   if (save->vertex_store->used || save->prim_store->used) {
+      if (save->prim_store->used > 0 && save->vertex_store->used > 0) {
+         assert(save->vertex_size);
          /* Close off in-progress primitive. */
          GLint i = save->prim_store->used - 1;
-         save->prim_store->prims[i].count = save->vert_count - save->prim_store->prims[i].start;
+         save->prim_store->prims[i].count =
+            get_vertex_count(save) -
+            save->prim_store->prims[i].start;
       }
 
       /* Need to replay this display list with loopback,
@@ -1436,7 +1440,7 @@ vbo_save_NotifyBegin(struct gl_context *ctx, GLenum mode,
    save->prim_store->prims[i].mode = mode & VBO_SAVE_PRIM_MODE_MASK;
    save->prim_store->prims[i].begin = 1;
    save->prim_store->prims[i].end = 0;
-   save->prim_store->prims[i].start = save->vert_count;
+   save->prim_store->prims[i].start = get_vertex_count(save);
    save->prim_store->prims[i].count = 0;
 
    save->no_current_update = no_current_update;
@@ -1457,7 +1461,7 @@ _save_End(void)
 
    ctx->Driver.CurrentSavePrimitive = PRIM_OUTSIDE_BEGIN_END;
    save->prim_store->prims[i].end = 1;
-   save->prim_store->prims[i].count = (save->vert_count - save->prim_store->prims[i].start);
+   save->prim_store->prims[i].count = (get_vertex_count(save) - save->prim_store->prims[i].start);
 
    if (i == (GLint) save->prim_store->size - 1) {
       compile_vertex_list(ctx);
@@ -1576,11 +1580,11 @@ static void
 _ensure_draws_fits_in_storage(struct gl_context *ctx, int primcount, int vertcount)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
-   uint32_t max_vert = save->vertex_size ?
-      save->vertex_store->buffer_in_ram_size / (sizeof(float) * save->vertex_size) : 0;
 
    bool realloc_prim = save->prim_store->used + primcount > save->prim_store->size;
-   bool realloc_vert = save->vertex_size && (save->vert_count + vertcount >= max_vert);
+   bool realloc_vert = save->vertex_size &&
+      (save->vertex_store->used + vertcount * save->vertex_size) >=
+         save->vertex_store->buffer_in_ram_size;
 
    if (realloc_prim || realloc_vert)
       realloc_storage(ctx, realloc_prim ? primcount : -1, realloc_vert ? vertcount : -1);
@@ -1899,7 +1903,7 @@ vbo_save_SaveFlushVertices(struct gl_context *ctx)
    if (ctx->Driver.CurrentSavePrimitive <= PRIM_MAX)
       return;
 
-   if (save->vert_count || save->prim_store->used)
+   if (save->vertex_store->used || save->prim_store->used)
       compile_vertex_list(ctx);
 
    copy_to_current(ctx);
@@ -1945,7 +1949,7 @@ vbo_save_EndList(struct gl_context *ctx)
          GLint i = save->prim_store->used - 1;
          ctx->Driver.CurrentSavePrimitive = PRIM_OUTSIDE_BEGIN_END;
          save->prim_store->prims[i].end = 0;
-         save->prim_store->prims[i].count = save->vert_count - save->prim_store->prims[i].start;
+         save->prim_store->prims[i].count = get_vertex_count(save) - save->prim_store->prims[i].start;
       }
 
       /* Make sure this vertex list gets replayed by the "loopback"
