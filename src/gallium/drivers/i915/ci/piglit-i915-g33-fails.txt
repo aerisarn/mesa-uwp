@@ -258,7 +258,6 @@ spec@arb_point_parameters@arb_point_parameters-point-attenuation@Aliased combina
 spec@arb_provoking_vertex@arb-provoking-vertex-render,Fail
 spec@arb_sampler_objects@gl_ext_texture_srgb_decode,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-texturelod-01,Fail
-spec@arb_texture_compression@fbo-generatemipmap-formats,Crash
 spec@arb_texture_compression@texwrap formats bordercolor,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_ALPHA- border color only,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_INTENSITY- border color only,Fail
@@ -429,15 +428,9 @@ spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-clear,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_rgb_s3tc_dxt1_ext,Crash
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_rgba_s3tc_dxt1_ext,Crash
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_rgba_s3tc_dxt3_ext,Crash
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_rgba_s3tc_dxt5_ext,Crash
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt1_ext,Crash
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt3_ext,Fail
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt5_ext,Crash
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_s3tc_dxt1_ext,Fail
-spec@ext_texture_compression_s3tc@fbo-generatemipmap-formats,Crash
 spec@ext_texture_compression_s3tc@s3tc-targeted,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGBA_S3TC_DXT1_EXT- border color only,Fail
