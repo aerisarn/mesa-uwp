@@ -2164,7 +2164,8 @@ brw_allowed_format(__DRIscreen *dri_screen, mesa_format format)
    if (!allow_rgba_ordering &&
        (format == MESA_FORMAT_R8G8B8A8_UNORM ||
         format == MESA_FORMAT_R8G8B8X8_UNORM ||
-        format == MESA_FORMAT_R8G8B8A8_SRGB))
+        format == MESA_FORMAT_R8G8B8A8_SRGB ||
+        format == MESA_FORMAT_R8G8B8X8_SRGB))
       return false;
 
     /* Shall we expose 10 bpc formats? */
@@ -2228,11 +2229,11 @@ brw_screen_make_configs(__DRIscreen *dri_screen)
 
       /* Required by Android, for HAL_PIXEL_FORMAT_RGBA_8888. */
       MESA_FORMAT_R8G8B8A8_UNORM,
+      MESA_FORMAT_R8G8B8A8_SRGB,
 
       /* Required by Android, for HAL_PIXEL_FORMAT_RGBX_8888. */
       MESA_FORMAT_R8G8B8X8_UNORM,
-
-      MESA_FORMAT_R8G8B8A8_SRGB,
+      MESA_FORMAT_R8G8B8X8_SRGB,
    };
 
    /* __DRI_ATTRIB_SWAP_COPY is not supported due to page flipping. */
