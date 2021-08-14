@@ -73,6 +73,10 @@ panfrost_create_compute_state(
                         so->cbase.ir_type, so->cbase.prog, MESA_SHADER_COMPUTE,
                         v);
 
+        /* There are no variants so we won't need the NIR again */
+        ralloc_free((void *)so->cbase.prog);
+        so->cbase.prog = NULL;
+
         return so;
 }
 
@@ -86,6 +90,10 @@ panfrost_bind_compute_state(struct pipe_context *pipe, void *cso)
 static void
 panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
 {
+        struct panfrost_shader_variants *so =
+                (struct panfrost_shader_variants *)cso;
+
+        free(so->variants);
         free(cso);
 }
 
