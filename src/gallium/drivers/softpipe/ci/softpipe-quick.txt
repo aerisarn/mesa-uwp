@@ -2718,18 +2718,6 @@ spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 2d: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 2d_projvec4: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 2dshadow: fail
 spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 3d: fail
-spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept: fail
-spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-reject: fail
-spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-different-from-position: fail
-spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-homogeneity: fail
-spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-primitives-lines: fail
-spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-primitives-points: fail
-spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-primitives-triangle-strip: fail
-spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-const-accept: fail
-spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-const-reject: fail
-spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-different-from-position: fail
-spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-homogeneity: fail
-spec/glsl-1.50/execution/compatibility/clipping/vs-gs-clip-vertex-primitives-triangle-strip: fail
 spec/glsl-1.50/execution/compatibility/gs-clamp-vertex-color: fail
 spec/glsl-1.50/execution/geometry/clip-distance-bulk-copy: fail
 spec/glsl-1.50/execution/geometry/clip-distance-itemized-copy: fail
@@ -2738,8 +2726,8 @@ spec/glsl-1.50/execution/interface-vs-unnamed-to-fs-unnamed: fail
 spec/glsl-1.50/execution/primitive-id-no-gs: fail
 spec/glsl-1.50/execution/primitive-id-no-gs-first-vertex: fail
 spec/glsl-1.50/execution/primitive-id-no-gs-instanced: fail
-spec/glsl-1.50/execution/primitive-id-no-gs-quad-strip: crash
-spec/glsl-1.50/execution/primitive-id-no-gs-quads: crash
+spec/glsl-1.50/execution/primitive-id-no-gs-quad-strip: fail
+spec/glsl-1.50/execution/primitive-id-no-gs-quads: fail
 spec/glsl-1.50/execution/primitive-id-no-gs-strip: fail
 spec/glsl-1.50/execution/primitive-id-no-gs-strip-first-vertex: fail
 spec/glsl-1.50/execution/texturesize/tes-texturesize-isampler1d: skip
