@@ -3282,5 +3282,8 @@ midgard_compile_shader_nir(nir_shader *nir,
                         ctx->spills, ctx->fills);
         }
 
+        _mesa_hash_table_u64_destroy(ctx->ssa_constants);
+        _mesa_hash_table_u64_destroy(ctx->sysval_to_id);
+
         ralloc_free(ctx);
 }

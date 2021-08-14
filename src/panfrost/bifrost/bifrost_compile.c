@@ -3624,6 +3624,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
                                 bifrost_nir_lower_store_component,
                                 nir_metadata_block_index |
                                 nir_metadata_dominance, stores);
+                _mesa_hash_table_u64_destroy(stores);
         }
 
         NIR_PASS_V(nir, nir_lower_ssbo);
@@ -3764,5 +3765,6 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_print_stats(ctx, binary->size, stderr);
         }
 
+        _mesa_hash_table_u64_destroy(ctx->sysval_to_id);
         ralloc_free(ctx);
 }
