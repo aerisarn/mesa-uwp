@@ -169,7 +169,7 @@ i915_texture_tiling(struct i915_screen *is, struct i915_texture *tex)
    if (tex->b.target == PIPE_TEXTURE_1D)
       return I915_TILE_NONE;
 
-   if (util_format_is_s3tc(tex->b.format))
+   if (util_format_is_compressed(tex->b.format))
       return I915_TILE_X;
 
    if (is->debug.use_blitter)
@@ -366,7 +366,7 @@ i915_texture_layout_2d(struct i915_texture *tex)
    unsigned nblocksy = util_format_get_nblocksy(pt->format, width);
    unsigned align_y = 2;
 
-   if (util_format_is_s3tc(pt->format))
+   if (util_format_is_compressed(pt->format))
       align_y = 1;
 
    tex->stride = align(util_format_get_stride(pt->format, width), 4);
@@ -470,7 +470,7 @@ i945_texture_layout_2d(struct i915_texture *tex)
    unsigned nblocksx = util_format_get_nblocksx(pt->format, width);
    unsigned nblocksy = util_format_get_nblocksy(pt->format, height);
 
-   if (util_format_is_s3tc(pt->format)) {
+   if (util_format_is_compressed(pt->format)) {
       align_x = 1;
       align_y = 1;
    }
@@ -648,7 +648,7 @@ i945_texture_layout_cube(struct i915_texture *tex)
    unsigned face;
 
    assert(pt->width0 == pt->height0);       /* cubemap images are square */
-   assert(util_format_is_s3tc(pt->format)); /* compressed only */
+   assert(util_format_is_compressed(pt->format)); /* compressed only */
 
    /*
     * Depending on the size of the largest images, pitch can be
@@ -747,7 +747,7 @@ i945_texture_layout(struct i915_texture *tex)
       i945_texture_layout_3d(tex);
       break;
    case PIPE_TEXTURE_CUBE:
-      if (!util_format_is_s3tc(tex->b.format))
+      if (!util_format_is_compressed(tex->b.format))
          i9x5_texture_layout_cube(tex);
       else
          i945_texture_layout_cube(tex);

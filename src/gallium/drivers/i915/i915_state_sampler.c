@@ -212,11 +212,9 @@ translate_texture_format(enum pipe_format pipeFormat,
       return (MAPSURF_422 | MT_422_YCRCB_NORMAL);
    case PIPE_FORMAT_UYVY:
       return (MAPSURF_422 | MT_422_YCRCB_SWAPY);
-#if 0
-   case PIPE_FORMAT_RGB_FXT1:
-   case PIPE_FORMAT_RGBA_FXT1:
+   case PIPE_FORMAT_FXT1_RGB:
+   case PIPE_FORMAT_FXT1_RGBA:
       return (MAPSURF_COMPRESSED | MT_COMPRESS_FXT1);
-#endif
    case PIPE_FORMAT_Z16_UNORM:
       return (MAPSURF_16BIT | MT_16BIT_L16);
    case PIPE_FORMAT_DXT1_RGB:
