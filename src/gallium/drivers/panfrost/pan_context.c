@@ -327,6 +327,9 @@ panfrost_delete_shader_state(
 {
         struct panfrost_shader_variants *cso = (struct panfrost_shader_variants *) so;
 
+        if (!cso->is_compute && cso->base.type == PIPE_SHADER_IR_NIR)
+                ralloc_free(cso->base.ir.nir);
+
         if (cso->base.type == PIPE_SHADER_IR_TGSI)
                 tgsi_free_tokens(cso->base.tokens);
 
