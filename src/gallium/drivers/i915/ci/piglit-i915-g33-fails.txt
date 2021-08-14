@@ -172,20 +172,6 @@ spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl es 2.0@draw_buffers_gles2,Fail
 spec@arb_arrays_of_arrays@execution@glsl-arrays-copy-size-mismatch,Fail
-spec@arb_color_buffer_float@gl_rgba16f-render,Crash
-spec@arb_color_buffer_float@gl_rgba16f-render-fog,Crash
-spec@arb_color_buffer_float@gl_rgba16f-render-sanity,Crash
-spec@arb_color_buffer_float@gl_rgba16f-render-sanity-fog,Crash
-spec@arb_color_buffer_float@gl_rgba32f-render,Crash
-spec@arb_color_buffer_float@gl_rgba32f-render-fog,Crash
-spec@arb_color_buffer_float@gl_rgba32f-render-sanity,Crash
-spec@arb_color_buffer_float@gl_rgba32f-render-sanity-fog,Crash
-spec@arb_color_buffer_float@gl_rgba8-render,Crash
-spec@arb_color_buffer_float@gl_rgba8-render-fog,Crash
-spec@arb_color_buffer_float@gl_rgba8_snorm-render,Crash
-spec@arb_color_buffer_float@gl_rgba8_snorm-render-fog,Crash
-spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Crash
-spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity-fog,Crash
 spec@arb_depth_texture@depth-level-clamp,Fail
 spec@arb_depth_texture@fbo-clear-formats,Fail
 spec@arb_depth_texture@fbo-clear-formats@GL_DEPTH_COMPONENT,Fail
