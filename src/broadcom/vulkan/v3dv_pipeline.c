@@ -2423,6 +2423,9 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       goto success;
    }
 
+   if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
+      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+
    /* Otherwise we try to get the NIR shaders (either from the original SPIR-V
     * shader or the pipeline cache) and compile.
     */
@@ -2930,6 +2933,8 @@ graphics_pipeline_create(VkDevice _device,
 
    if (result != VK_SUCCESS) {
       v3dv_destroy_pipeline(pipeline, device, pAllocator);
+      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         *pPipeline = VK_NULL_HANDLE;
       return result;
    }
 
@@ -2952,7 +2957,8 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
    if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
       mtx_lock(&device->pdevice->mutex);
 
-   for (uint32_t i = 0; i < count; i++) {
+   uint32_t i = 0;
+   for (; i < count; i++) {
       VkResult local_result;
 
       local_result = graphics_pipeline_create(_device,
@@ -2964,8 +2970,15 @@ v3dv_CreateGraphicsPipelines(VkDevice _device,
       if (local_result != VK_SUCCESS) {
          result = local_result;
          pPipelines[i] = VK_NULL_HANDLE;
+
+         if (pCreateInfos[i].flags &
+             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+            break;
       }
    }
+
+   for (; i < count; i++)
+      pPipelines[i] = VK_NULL_HANDLE;
 
    if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
       mtx_unlock(&device->pdevice->mutex);
@@ -3044,6 +3057,9 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
       assert(pipeline->shared_data->variants[BROADCOM_SHADER_COMPUTE]);
       goto success;
    }
+
+   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
+      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
 
    pipeline->shared_data = v3dv_pipeline_shared_data_new_empty(pipeline_sha1,
                                                                pipeline,
@@ -3128,6 +3144,8 @@ compute_pipeline_create(VkDevice _device,
                                   pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       v3dv_destroy_pipeline(pipeline, device, pAllocator);
+      if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
+         *pPipeline = VK_NULL_HANDLE;
       return result;
    }
 
@@ -3150,7 +3168,8 @@ v3dv_CreateComputePipelines(VkDevice _device,
    if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
       mtx_lock(&device->pdevice->mutex);
 
-   for (uint32_t i = 0; i < createInfoCount; i++) {
+   uint32_t i = 0;
+   for (; i < createInfoCount; i++) {
       VkResult local_result;
       local_result = compute_pipeline_create(_device,
                                               pipelineCache,
@@ -3161,8 +3180,15 @@ v3dv_CreateComputePipelines(VkDevice _device,
       if (local_result != VK_SUCCESS) {
          result = local_result;
          pPipelines[i] = VK_NULL_HANDLE;
+
+         if (pCreateInfos[i].flags &
+             VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+            break;
       }
    }
+
+   for (; i < createInfoCount; i++)
+      pPipelines[i] = VK_NULL_HANDLE;
 
    if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERS))
       mtx_unlock(&device->pdevice->mutex);

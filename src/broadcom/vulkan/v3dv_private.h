@@ -396,6 +396,9 @@ struct v3dv_pipeline_cache {
 
    struct hash_table *cache;
    struct v3dv_pipeline_cache_stats stats;
+
+   /* For VK_EXT_pipeline_creation_cache_control. */
+   bool externally_synchronized;
 };
 
 struct v3dv_device {
@@ -2017,6 +2020,7 @@ v3dv_immutable_samplers(const struct v3dv_descriptor_set_layout *set,
 
 void v3dv_pipeline_cache_init(struct v3dv_pipeline_cache *cache,
                               struct v3dv_device *device,
+                              VkPipelineCacheCreateFlags,
                               bool cache_enabled);
 
 void v3dv_pipeline_cache_finish(struct v3dv_pipeline_cache *cache);

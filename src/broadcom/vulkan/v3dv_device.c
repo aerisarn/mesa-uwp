@@ -144,6 +144,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_external_memory_dma_buf         = true,
       .EXT_index_type_uint8                = true,
       .EXT_physical_device_drm             = true,
+      .EXT_pipeline_creation_cache_control = true,
       .EXT_private_data                    = true,
    };
 }
@@ -1108,6 +1109,12 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
           break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
+         VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *features = (void *) ext;
+         features->pipelineCreationCacheControl = true;
+         break;
+      }
+
       /* Vulkan 1.1 */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
          VkPhysicalDeviceVulkan11Features *features =
@@ -1758,7 +1765,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 #endif
    init_device_meta(device);
    v3dv_bo_cache_init(device);
-   v3dv_pipeline_cache_init(&device->default_pipeline_cache, device,
+   v3dv_pipeline_cache_init(&device->default_pipeline_cache, device, 0,
                             device->instance->default_pipeline_cache_enabled);
    device->default_attribute_float =
       v3dv_pipeline_create_default_attribute_values(device, NULL);
