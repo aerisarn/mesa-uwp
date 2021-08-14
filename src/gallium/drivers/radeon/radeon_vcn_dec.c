@@ -461,7 +461,8 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
                                 RDECODE_FRAME_HDR_INFO_VP9_MODE_REF_DELTA_UPDATE_MASK;
 
    result.frame_header_flags |=
-      ((dec->show_frame && !pic->picture_parameter.pic_fields.error_resilient_mode)
+      ((dec->show_frame && !pic->picture_parameter.pic_fields.error_resilient_mode &&
+        dec->last_width == dec->base.width && dec->last_height == dec->base.height)
        << RDECODE_FRAME_HDR_INFO_VP9_USE_PREV_IN_FIND_MV_REFS_SHIFT) &
       RDECODE_FRAME_HDR_INFO_VP9_USE_PREV_IN_FIND_MV_REFS_MASK;
    dec->show_frame = pic->picture_parameter.pic_fields.show_frame;
