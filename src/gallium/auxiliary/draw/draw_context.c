@@ -1005,7 +1005,7 @@ draw_current_shader_clipvertex_output(const struct draw_context *draw)
    if (draw->gs.geometry_shader)
       return draw->gs.clipvertex_output;
    if (draw->tes.tess_eval_shader)
-      return draw->tes.position_output;
+      return draw->tes.clipvertex_output;
    return draw->vs.clipvertex_output;
 }
 
