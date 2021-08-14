@@ -694,6 +694,7 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         struct panfrost_device *dev = pan_device(pscreen);
         struct panfrost_screen *screen = pan_screen(pscreen);
 
+        panfrost_resource_screen_destroy(pscreen);
         pan_indirect_dispatch_cleanup(dev);
         panfrost_cleanup_indirect_draw_shaders(dev);
         panfrost_pool_cleanup(&screen->indirect_draw.bin_pool);

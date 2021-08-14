@@ -1333,6 +1333,11 @@ panfrost_resource_screen_init(struct pipe_screen *pscreen)
                                         true, false,
                                         fake_rgtc, true);
 }
+void
+panfrost_resource_screen_destroy(struct pipe_screen *pscreen)
+{
+        u_transfer_helper_destroy(pscreen->transfer_helper);
+}
 
 void
 panfrost_resource_context_init(struct pipe_context *pctx)

@@ -113,6 +113,8 @@ panfrost_get_afbc_pointers(struct panfrost_resource *rsrc,
 
 void panfrost_resource_screen_init(struct pipe_screen *screen);
 
+void panfrost_resource_screen_destroy(struct pipe_screen *screen);
+
 void panfrost_resource_context_init(struct pipe_context *pctx);
 
 /* Blitting */

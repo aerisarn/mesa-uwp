@@ -802,6 +802,8 @@ panfrost_destroy(struct pipe_context *pipe)
         panfrost_pool_cleanup(&panfrost->descs);
         panfrost_pool_cleanup(&panfrost->shaders);
 
+        util_primconvert_destroy(panfrost->primconvert);
+
         ralloc_free(pipe);
 }
 
