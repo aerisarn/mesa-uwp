@@ -219,10 +219,11 @@ translate_texture_format(enum pipe_format pipeFormat,
 #endif
    case PIPE_FORMAT_Z16_UNORM:
       return (MAPSURF_16BIT | MT_16BIT_L16);
-   case PIPE_FORMAT_DXT1_RGBA:
-   case PIPE_FORMAT_DXT1_SRGBA:
    case PIPE_FORMAT_DXT1_RGB:
    case PIPE_FORMAT_DXT1_SRGB:
+      return (MAPSURF_COMPRESSED | MT_COMPRESS_DXT1_RGB);
+   case PIPE_FORMAT_DXT1_RGBA:
+   case PIPE_FORMAT_DXT1_SRGBA:
       return (MAPSURF_COMPRESSED | MT_COMPRESS_DXT1);
    case PIPE_FORMAT_DXT3_RGBA:
    case PIPE_FORMAT_DXT3_SRGBA:
