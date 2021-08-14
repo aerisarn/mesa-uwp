@@ -447,8 +447,9 @@ i915_is_format_supported(struct pipe_screen *screen, enum pipe_format format,
       PIPE_FORMAT_YUYV,
       /* XXX why not?
       PIPE_FORMAT_Z16_UNORM, */
-      PIPE_FORMAT_DXT1_RGB, PIPE_FORMAT_DXT1_RGBA, PIPE_FORMAT_DXT3_RGBA,
-      PIPE_FORMAT_DXT5_RGBA, PIPE_FORMAT_Z24X8_UNORM,
+      PIPE_FORMAT_DXT1_RGB, PIPE_FORMAT_DXT1_SRGB, PIPE_FORMAT_DXT1_RGBA,
+      PIPE_FORMAT_DXT1_SRGBA, PIPE_FORMAT_DXT3_RGBA, PIPE_FORMAT_DXT3_SRGBA,
+      PIPE_FORMAT_DXT5_RGBA, PIPE_FORMAT_DXT5_SRGBA, PIPE_FORMAT_Z24X8_UNORM,
       PIPE_FORMAT_Z24_UNORM_S8_UINT, PIPE_FORMAT_NONE /* list terminator */
    };
    static const enum pipe_format render_supported[] = {

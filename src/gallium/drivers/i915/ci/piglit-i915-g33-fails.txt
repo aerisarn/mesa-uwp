@@ -41,7 +41,7 @@ spec@!opengl 1.1@clipflat@glDrawElements(GL_QUADS)- glFrontFace(GL_CW)- glPolygo
 spec@!opengl 1.1@clipflat@glDrawElements(GL_QUAD_STRIP)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
 spec@!opengl 1.1@clipflat@glDrawElements(GL_QUAD_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear,Fail
-spec@!opengl 1.1@getteximage-formats,Crash
+spec@!opengl 1.1@getteximage-formats,Fail
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_quad_strip,Crash
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 vbo gl_quad_strip,Crash
 spec@!opengl 1.1@gl-1.2-texture-base-level,Fail
@@ -395,8 +395,6 @@ spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index16-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index4-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index8-blit,Fail
-spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Crash
-spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-intel_external_sampler_only,Fail
@@ -428,9 +426,6 @@ spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-clear,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt3_ext,Fail
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3tc_dxt5_ext,Crash
-spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_s3tc_dxt1_ext,Fail
 spec@ext_texture_compression_s3tc@s3tc-targeted,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGBA_S3TC_DXT1_EXT- border color only,Fail
@@ -438,19 +433,20 @@ spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGBA
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGBA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGB_S3TC_DXT1_EXT- border color only,Fail
 spec@ext_texture_format_bgra8888@api-errors,Fail
-spec@ext_texture_srgb@fbo-generatemipmap-formats-s3tc,Crash
 spec@ext_texture_srgb@tex-srgb,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8_ALPHA8- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor@GL_SRGB8- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor@GL_SRGB8_ALPHA8- border color only,Fail
-spec@ext_texture_srgb@texwrap formats-s3tc,Crash
-spec@ext_texture_srgb@texwrap formats-s3tc bordercolor,Crash
+spec@ext_texture_srgb@texwrap formats-s3tc bordercolor,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SLUMINANCE- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SLUMINANCE_ALPHA- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA- border color only,Fail
+spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT- border color only,Fail
+spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT- border color only,Fail
+spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4-vec4,Fail
