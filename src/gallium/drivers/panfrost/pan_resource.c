@@ -183,6 +183,30 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         return false;
 }
 
+static bool
+panfrost_resource_get_param(struct pipe_screen *pscreen,
+                            struct pipe_context *pctx, struct pipe_resource *prsc,
+                            unsigned plane, unsigned layer, unsigned level,
+                            enum pipe_resource_param param,
+                            unsigned usage, uint64_t *value)
+{
+        struct panfrost_resource *rsrc = (struct panfrost_resource *) prsc;
+
+        switch (param) {
+        case PIPE_RESOURCE_PARAM_STRIDE:
+                *value = rsrc->image.layout.slices[level].line_stride;
+                return true;
+        case PIPE_RESOURCE_PARAM_OFFSET:
+                *value = rsrc->image.layout.slices[level].offset;
+                return true;
+        case PIPE_RESOURCE_PARAM_MODIFIER:
+                *value = rsrc->image.layout.modifier;
+                return true;
+        default:
+                return false;
+        }
+}
+
 static void
 panfrost_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
@@ -1329,6 +1353,7 @@ panfrost_resource_screen_init(struct pipe_screen *pscreen)
         pscreen->resource_destroy = u_transfer_helper_resource_destroy;
         pscreen->resource_from_handle = panfrost_resource_from_handle;
         pscreen->resource_get_handle = panfrost_resource_get_handle;
+        pscreen->resource_get_param = panfrost_resource_get_param;
         pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
                                         true, false,
                                         fake_rgtc, true);
