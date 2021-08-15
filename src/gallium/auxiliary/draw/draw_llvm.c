@@ -940,6 +940,33 @@ draw_llvm_create_variant(struct draw_llvm *llvm,
    return variant;
 }
 
+static void
+do_clamp_vertex_color(struct gallivm_state *gallivm,
+                      struct lp_type type,
+                      const struct tgsi_shader_info *info,
+                      LLVMValueRef (*outputs)[TGSI_NUM_CHANNELS])
+{
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef out;
+   unsigned chan, attrib;
+   struct lp_build_context bld;
+   lp_build_context_init(&bld, gallivm, type);
+
+   for (attrib = 0; attrib < info->num_outputs; ++attrib) {
+      for (chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
+         if (outputs[attrib][chan]) {
+            switch (info->output_semantic_name[attrib]) {
+            case TGSI_SEMANTIC_COLOR:
+            case TGSI_SEMANTIC_BCOLOR:
+               out = LLVMBuildLoad(builder, outputs[attrib][chan], "");
+               out = lp_build_clamp(&bld, out, bld.zero, bld.one);
+               LLVMBuildStore(builder, out, outputs[attrib][chan]);
+               break;
+            }
+         }
+      }
+   }
+}
 
 static void
 generate_vs(struct draw_llvm_variant *variant,
@@ -994,29 +1021,11 @@ generate_vs(struct draw_llvm_variant *variant,
                         &params,
                         outputs);
 
-   {
-      LLVMValueRef out;
-      unsigned chan, attrib;
-      struct lp_build_context bld;
-      struct tgsi_shader_info* info = &llvm->draw->vs.vertex_shader->info;
-      lp_build_context_init(&bld, variant->gallivm, vs_type);
-
-      for (attrib = 0; attrib < info->num_outputs; ++attrib) {
-         for (chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
-            if (outputs[attrib][chan]) {
-               switch (info->output_semantic_name[attrib]) {
-               case TGSI_SEMANTIC_COLOR:
-               case TGSI_SEMANTIC_BCOLOR:
-                  if (clamp_vertex_color) {
-                     out = LLVMBuildLoad(builder, outputs[attrib][chan], "");
-                     out = lp_build_clamp(&bld, out, bld.zero, bld.one);
-                     LLVMBuildStore(builder, out, outputs[attrib][chan]);
-                  }
-                  break;
-               }
-            }
-         }
-      }
+   if (clamp_vertex_color) {
+      const struct tgsi_shader_info *info = &llvm->draw->vs.vertex_shader->info;
+      do_clamp_vertex_color(variant->gallivm,
+                            vs_type, info,
+                            outputs);
    }
 }
 
@@ -1832,6 +1841,10 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
    lp_build_if(&if_ctx, gallivm, cnd);
    io = lp_build_pointer_get(builder, io, LLVMBuildExtractElement(builder, stream_id, lp_build_const_int32(gallivm, 0), ""));
 
+   if (variant->key.clamp_vertex_color) {
+      do_clamp_vertex_color(gallivm, gs_type,
+                            gs_info, outputs);
+   }
    convert_to_aos(gallivm, io, indices,
                   outputs, clipmask,
                   gs_info->num_outputs, gs_type,
@@ -2377,7 +2390,6 @@ draw_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
 
    memset(key, 0, offsetof(struct draw_llvm_variant_key, vertex_element[0]));
 
-   key->clamp_vertex_color = llvm->draw->rasterizer->clamp_vertex_color; /**/
 
    /* will have to rig this up properly later */
    key->clip_xy = llvm->draw->clip_xy;
@@ -2390,6 +2402,9 @@ draw_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
    key->ucp_enable = llvm->draw->rasterizer->clip_plane_enable;
    key->has_gs_or_tes = llvm->draw->gs.geometry_shader != NULL || llvm->draw->tes.tess_eval_shader != NULL;
    key->num_outputs = draw_total_vs_outputs(llvm->draw);
+
+   key->clamp_vertex_color = !key->has_gs_or_tes &&
+      llvm->draw->rasterizer->clamp_vertex_color;
 
    /* All variants of this shader will have the same value for
     * nr_samplers.  Not yet trying to compact away holes in the
@@ -3013,6 +3028,8 @@ draw_gs_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
 
    key->num_outputs = draw_total_gs_outputs(llvm->draw);
 
+   key->clamp_vertex_color = llvm->draw->rasterizer->clamp_vertex_color;
+
    /* All variants of this shader will have the same value for
     * nr_samplers.  Not yet trying to compact away holes in the
     * sampler array.
@@ -3057,6 +3074,8 @@ draw_gs_llvm_dump_variant_key(struct draw_gs_llvm_variant_key *key)
    unsigned i;
    struct draw_sampler_static_state *sampler = key->samplers;
    struct draw_image_static_state *image = draw_gs_llvm_variant_key_images(key);
+
+   debug_printf("clamp_vertex_color = %u\n", key->clamp_vertex_color);
    for (i = 0 ; i < key->nr_sampler_views; i++) {
       debug_printf("sampler[%i].src_format = %s\n", i,
                    util_format_name(sampler[i].texture_state.format));
@@ -4073,6 +4092,13 @@ draw_tes_llvm_generate(struct draw_llvm *llvm,
                        outputs);
 
       lp_build_mask_end(&mask);
+
+      if (variant->key.clamp_vertex_color) {
+         const struct tgsi_shader_info *info = &llvm->draw->tes.tess_eval_shader->info;
+         do_clamp_vertex_color(variant->gallivm,
+                               tes_type, info,
+                               outputs);
+      }
       LLVMValueRef clipmask = lp_build_const_int_vec(gallivm,
                                                      lp_int_type(tes_type), 0);
 
@@ -4196,6 +4222,9 @@ draw_tes_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
       key->primid_needed = true;
    }
 
+   key->clamp_vertex_color = llvm->draw->rasterizer->clamp_vertex_color &&
+      llvm->draw->gs.geometry_shader == NULL;
+
    /* All variants of this shader will have the same value for
     * nr_samplers.  Not yet trying to compact away holes in the
     * sampler array.
@@ -4243,6 +4272,7 @@ draw_tes_llvm_dump_variant_key(struct draw_tes_llvm_variant_key *key)
 
    if (key->primid_needed)
       debug_printf("prim id output %d\n", key->primid_output);
+   debug_printf("clamp_vertex_color = %u\n", key->clamp_vertex_color);
    for (i = 0 ; i < key->nr_sampler_views; i++) {
       debug_printf("sampler[%i].src_format = %s\n", i,
                    util_format_name(sampler[i].texture_state.format));
