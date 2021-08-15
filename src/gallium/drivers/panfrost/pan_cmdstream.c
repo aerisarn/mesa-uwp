@@ -2691,6 +2691,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.address = panfrost_batch_get_bifrost_tiler(batch, ~0);
         }
 
+        pan_section_pack(job, TILER_JOB, PADDING, cfg);
         pan_section_pack(job, TILER_JOB, DRAW_PADDING, cfg);
 #endif
 
