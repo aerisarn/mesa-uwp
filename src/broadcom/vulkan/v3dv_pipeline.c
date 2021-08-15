@@ -2849,6 +2849,12 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    const VkPipelineRasterizationStateCreateInfo *rs_info =
       raster_enabled ? pCreateInfo->pRasterizationState : NULL;
 
+   const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *pv_info =
+      rs_info ? vk_find_struct_const(
+         rs_info->pNext,
+         PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT) :
+            NULL;
+
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       raster_enabled ? pCreateInfo->pColorBlendState : NULL;
 
@@ -2870,7 +2876,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    assert(!ds_info || !ds_info->depthBoundsTestEnable);
 
    v3dv_X(device, pipeline_pack_state)(pipeline, cb_info, ds_info,
-                                       rs_info, ms_info);
+                                       rs_info, pv_info, ms_info);
 
    pipeline_set_ez_state(pipeline, ds_info);
    enable_depth_bias(pipeline, rs_info);

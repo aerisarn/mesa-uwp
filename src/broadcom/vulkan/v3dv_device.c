@@ -146,6 +146,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_physical_device_drm             = true,
       .EXT_pipeline_creation_cache_control = true,
       .EXT_private_data                    = true,
+      .EXT_provoking_vertex                = true,
    };
 }
 
@@ -1113,6 +1114,14 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *features = (void *) ext;
          features->pipelineCreationCacheControl = true;
          break;
+      }         
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
+         VkPhysicalDeviceProvokingVertexFeaturesEXT *features = (void *) ext;
+         features->provokingVertexLast = true;
+         /* FIXME: update when supporting EXT_transform_feedback */
+         features->transformFeedbackPreservesProvokingVertex = false;
+         break;
       }
 
       /* Vulkan 1.1 */
@@ -1413,6 +1422,14 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
             (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
          props->maxCustomBorderColorSamplers = V3D_MAX_TEXTURE_SAMPLERS;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
+         VkPhysicalDeviceProvokingVertexPropertiesEXT *props =
+            (VkPhysicalDeviceProvokingVertexPropertiesEXT *)ext;
+         props->provokingVertexModePerPipeline = true;
+         /* FIXME: update when supporting EXT_transform_feedback */
+         props->transformFeedbackPreservesTriangleFanProvokingVertex = false;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
