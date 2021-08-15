@@ -177,6 +177,11 @@ static void
 radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                       const VkAllocationCallbacks *allocator)
 {
+   if (pipeline->type == RADV_PIPELINE_COMPUTE) {
+      free(pipeline->compute.rt_group_handles);
+      free(pipeline->compute.rt_stack_sizes);
+   }
+
    for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i)
       if (pipeline->shaders[i])
          radv_shader_variant_destroy(device, pipeline->shaders[i]);

@@ -1734,6 +1734,16 @@ enum radv_pipeline_type {
    RADV_PIPELINE_COMPUTE,
 };
 
+struct radv_pipeline_group_handle {
+   uint32_t handles[2];
+};
+
+struct radv_pipeline_shader_stack_size {
+   uint32_t recursive_size;
+   /* anyhit + intersection */
+   uint32_t non_recursive_size;
+};
+
 struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
@@ -1798,6 +1808,10 @@ struct radv_pipeline {
          /* Last pre-PS API stage */
          gl_shader_stage last_vgt_api_stage;
       } graphics;
+      struct {
+         struct radv_pipeline_group_handle *rt_group_handles;
+         struct radv_pipeline_shader_stack_size *rt_stack_sizes;
+      } compute;
    };
 
    unsigned max_waves;
