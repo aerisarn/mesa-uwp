@@ -4561,8 +4561,6 @@ spec/glsl-1.30/execution/tex-miplevel-selection texturegrad cubearray: skip
 spec/glsl-1.30/execution/tex-miplevel-selection texturelod cubearray: skip
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
 spec/glsl-1.50/built-in constants compatibility: skip
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop ffs: fail
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop other: fail
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip: fail
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip_adjacency: fail
 spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip ffs: fail
@@ -4752,8 +4750,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    13300
-       fail:      538
+       pass:    13302
+       fail:      536
       crash:       67
        skip:     4126
     timeout:        0
