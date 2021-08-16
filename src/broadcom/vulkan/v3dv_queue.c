@@ -580,7 +580,7 @@ handle_cl_job(struct v3dv_queue *queue,
 {
    struct v3dv_device *device = queue->device;
 
-   struct drm_v3d_submit_cl submit;
+   struct drm_v3d_submit_cl submit = { 0 };
 
    /* Sanity check: we should only flag a bcl sync on a job that needs to be
     * serialized.
