@@ -224,6 +224,9 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.BindlessSamplerStateBaseAddressModifyEnable = true;
       sba.BindlessSamplerStateBufferSize = 0;
 #  endif
+#if GFX_VERx10 >= 125
+      sba.L1CacheControl = L1CC_WB;
+#endif
    }
 
 #if GFX_VERx10 == 120
