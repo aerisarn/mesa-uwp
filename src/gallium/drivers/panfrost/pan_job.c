@@ -46,6 +46,17 @@ panfrost_batch_idx(struct panfrost_batch *batch)
         return batch - batch->ctx->batches.slots;
 }
 
+/* Adds the BO backing surface to a batch if the surface is non-null */
+
+static void
+panfrost_batch_add_surface(struct panfrost_batch *batch, struct pipe_surface *surf)
+{
+        if (surf) {
+                struct panfrost_resource *rsrc = pan_resource(surf->texture);
+                panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_FRAGMENT);
+        }
+}
+
 static void
 panfrost_batch_init(struct panfrost_context *ctx,
                     const struct pipe_framebuffer_state *key,
@@ -79,7 +90,10 @@ panfrost_batch_init(struct panfrost_context *ctx,
         panfrost_pool_init(&batch->invisible_pool, NULL, dev,
                         PAN_BO_INVISIBLE, 65536, "Varyings", false, true);
 
-        panfrost_batch_add_fbo_bos(batch);
+        for (unsigned i = 0; i < batch->key.nr_cbufs; ++i)
+                panfrost_batch_add_surface(batch, batch->key.cbufs[i]);
+
+        panfrost_batch_add_surface(batch, batch->key.zsbuf);
 
         screen->vtbl.init_batch(batch);
 }
@@ -318,26 +332,6 @@ panfrost_batch_write_rsrc(struct panfrost_batch *batch,
                 panfrost_batch_add_bo_old(batch, rsrc->separate_stencil->image.data.bo, access);
 
         panfrost_batch_update_access(batch, rsrc, true);
-}
-
-/* Adds the BO backing surface to a batch if the surface is non-null */
-
-static void
-panfrost_batch_add_surface(struct panfrost_batch *batch, struct pipe_surface *surf)
-{
-        if (surf) {
-                struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_FRAGMENT);
-        }
-}
-
-void
-panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
-{
-        for (unsigned i = 0; i < batch->key.nr_cbufs; ++i)
-                panfrost_batch_add_surface(batch, batch->key.cbufs[i]);
-
-        panfrost_batch_add_surface(batch, batch->key.zsbuf);
 }
 
 struct panfrost_bo *
