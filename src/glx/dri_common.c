@@ -423,9 +423,8 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
                         struct dri_ctx_attribs *dca)
 {
    unsigned i;
-   bool got_profile = false;
    int no_error = 0;
-   uint32_t profile;
+   uint32_t profile = GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
 
    dca->major_ver = 1;
    dca->minor_ver = 0;
@@ -458,7 +457,6 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
 	 break;
       case GLX_CONTEXT_PROFILE_MASK_ARB:
 	 profile = attribs[i * 2 + 1];
-	 got_profile = true;
 	 break;
       case GLX_RENDER_TYPE:
          dca->render_type = attribs[i * 2 + 1];
@@ -502,39 +500,34 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
       dca->flags |= __DRI_CTX_FLAG_NO_ERROR;
    }
 
-   if (!got_profile) {
-      if (dca->major_ver > 3 || (dca->major_ver == 3 && dca->minor_ver >= 2))
-	 dca->api = __DRI_API_OPENGL_CORE;
-   } else {
-      switch (profile) {
-      case GLX_CONTEXT_CORE_PROFILE_BIT_ARB:
-	 /* There are no profiles before OpenGL 3.2.  The
-	  * GLX_ARB_create_context_profile spec says:
-	  *
-	  *     "If the requested OpenGL version is less than 3.2,
-	  *     GLX_CONTEXT_PROFILE_MASK_ARB is ignored and the functionality
-	  *     of the context is determined solely by the requested version."
-	  */
-	 dca->api = (dca->major_ver > 3 || (dca->major_ver == 3 && dca->minor_ver >= 2))
-	    ? __DRI_API_OPENGL_CORE : __DRI_API_OPENGL;
-	 break;
-      case GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB:
-	 dca->api = __DRI_API_OPENGL;
-	 break;
-      case GLX_CONTEXT_ES_PROFILE_BIT_EXT:
-         if (dca->major_ver >= 3)
-            dca->api = __DRI_API_GLES3;
-         else if (dca->major_ver == 2 && dca->minor_ver == 0)
-            dca->api = __DRI_API_GLES2;
-         else if (dca->major_ver == 1 && dca->minor_ver < 2)
-            dca->api = __DRI_API_GLES;
-         else {
-            return __DRI_CTX_ERROR_BAD_API;
-         }
-         break;
-      default:
-	 return __DRI_CTX_ERROR_BAD_API;
+   switch (profile) {
+   case GLX_CONTEXT_CORE_PROFILE_BIT_ARB:
+      /* This is the default value, but there are no profiles before OpenGL
+       * 3.2. The GLX_ARB_create_context_profile spec says:
+       *
+       *     "If the requested OpenGL version is less than 3.2,
+       *     GLX_CONTEXT_PROFILE_MASK_ARB is ignored and the functionality
+       *     of the context is determined solely by the requested version."
+       */
+      dca->api = (dca->major_ver > 3 || (dca->major_ver == 3 && dca->minor_ver >= 2))
+         ? __DRI_API_OPENGL_CORE : __DRI_API_OPENGL;
+      break;
+   case GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB:
+      dca->api = __DRI_API_OPENGL;
+      break;
+   case GLX_CONTEXT_ES_PROFILE_BIT_EXT:
+      if (dca->major_ver >= 3)
+         dca->api = __DRI_API_GLES3;
+      else if (dca->major_ver == 2 && dca->minor_ver == 0)
+         dca->api = __DRI_API_GLES2;
+      else if (dca->major_ver == 1 && dca->minor_ver < 2)
+         dca->api = __DRI_API_GLES;
+      else {
+         return __DRI_CTX_ERROR_BAD_API;
       }
+      break;
+   default:
+      return __DRI_CTX_ERROR_BAD_API;
    }
 
    /* Unknown flag value */
