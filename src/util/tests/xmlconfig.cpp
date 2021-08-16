@@ -110,6 +110,19 @@ TEST_F(xmlconfig_test, enums)
    EXPECT_EQ(driQueryOptioni(&options, "vblank_mode"), DRI_CONF_VBLANK_DEF_INTERVAL_1);
 }
 
+TEST_F(xmlconfig_test, enums_from_env)
+{
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_VBLANK_MODE(DRI_CONF_VBLANK_DEF_INTERVAL_1)
+   };
+
+   setenv("vblank_mode", "0", 1);
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
+
+   EXPECT_EQ(0, driQueryOptioni(&options, "vblank_mode"));
+}
+
 TEST_F(xmlconfig_test, string)
 {
    driOptionDescription driconf[] = {
