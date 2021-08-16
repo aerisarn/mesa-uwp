@@ -888,7 +888,7 @@ radv_get_htile_fast_clear_value(const struct radv_device *device, const struct r
    uint32_t zmin, zmax;
 
    /* Convert the depth value to 14-bit zmin/zmax values. */
-   zmin = ((value.depth * max_zval) + 0.5f);
+   zmin = lroundf(value.depth * max_zval);
    zmax = zmin;
 
    if (radv_image_tile_stencil_disabled(device, image)) {
