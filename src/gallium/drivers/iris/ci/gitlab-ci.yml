@@ -61,6 +61,16 @@
   tags:
     - mesa-ci-x86-64-lava-dell-latitude-5400-4305U-sarien
 
+.iris-cml-test:
+  extends:
+    - .iris-test
+  variables:
+    DEVICE_TYPE: asus-C436FA-Flip-hatch
+    GPU_VERSION: iris-cml
+    DEQP_EXPECTED_RENDERER: CML
+  tags:
+    - mesa-ci-x86-64-lava-asus-C436FA-flip-hatch
+
 iris-apl-gles2:
   extends:
     - .iris-apl-test
@@ -234,5 +244,13 @@ iris-whl-traces:
     GPU_VERSION: intel-whl
   extends:
     - .iris-whl-test
+    - .iris-traces
+    - .test-manual-mr
+
+iris-cml-traces:
+  variables:
+    GPU_VERSION: intel-cml
+  extends:
+    - .iris-cml-test
     - .iris-traces
     - .test-manual-mr
