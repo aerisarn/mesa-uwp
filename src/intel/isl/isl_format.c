@@ -835,6 +835,12 @@ isl_format_supports_ccs_d(const struct intel_device_info *devinfo,
 
    const struct isl_format_layout *fmtl = isl_format_get_layout(format);
 
+   /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
+    * Target(s)", beneath the "Fast Color Clear" bullet (p326):
+    *
+    *     - MCS buffer for non-MSRT is supported only for RT formats 32bpp,
+    *       64bpp, and 128bpp.
+    */
    return fmtl->bpb == 32 || fmtl->bpb == 64 || fmtl->bpb == 128;
 }
 
