@@ -175,7 +175,7 @@ vir_setup_def_use(struct v3d_compile *c)
                         }
 
                         if (inst->qpu.flags.auf != V3D_QPU_UF_NONE ||
-                            inst->qpu.flags.auf != V3D_QPU_UF_NONE) {
+                            inst->qpu.flags.muf != V3D_QPU_UF_NONE) {
                                 flags_inst = NULL;
                         }
 
