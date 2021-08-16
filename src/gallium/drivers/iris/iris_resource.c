@@ -773,7 +773,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
       } else if (want_ccs_e_for_format(devinfo, res->surf.format)) {
          res->aux.possible_usages |= devinfo->ver < 12 ?
             1 << ISL_AUX_USAGE_CCS_E : 1 << ISL_AUX_USAGE_GFX12_CCS_E;
-      } else if (isl_format_supports_ccs_d(devinfo, res->surf.format)) {
+      } else {
+         assert(isl_format_supports_ccs_d(devinfo, res->surf.format));
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
       }
    }
@@ -788,9 +789,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_NONE:
-      /* Update relevant fields to indicate that aux is disabled. */
-      iris_resource_disable_aux(res);
-
       /* Having no aux buffer is only okay if there's no modifier with aux. */
       return !res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE;
    case ISL_AUX_USAGE_HIZ:
