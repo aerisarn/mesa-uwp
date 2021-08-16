@@ -162,33 +162,6 @@ panfrost_get_batch(struct panfrost_context *ctx,
         return batch;
 }
 
-struct panfrost_batch *
-panfrost_get_fresh_batch(struct panfrost_context *ctx,
-                         const struct pipe_framebuffer_state *key,
-                         const char *reason)
-{
-        struct panfrost_batch *batch = panfrost_get_batch(ctx, key);
-
-        panfrost_dirty_state_all(ctx);
-
-        /* The batch has no draw/clear queued, let's return it directly.
-         * Note that it's perfectly fine to re-use a batch with an
-         * existing clear, we'll just update it with the new clear request.
-         */
-        if (!batch->scoreboard.first_job) {
-                ctx->batch = batch;
-                return batch;
-        }
-
-        /* Otherwise, we need to flush the existing one and instantiate a new
-         * one.
-         */
-        perf_debug_ctx(ctx, "Flushing a batch due to: %s", reason);
-        panfrost_batch_submit(batch, 0, 0);
-        batch = panfrost_get_batch(ctx, key);
-        return batch;
-}
-
 /* Get the job corresponding to the FBO we're currently rendering into */
 
 struct panfrost_batch *
