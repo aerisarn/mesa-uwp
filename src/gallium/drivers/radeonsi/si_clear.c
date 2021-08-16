@@ -476,7 +476,7 @@ static uint32_t si_get_htile_clear_value(struct si_texture *tex, float depth)
    const uint32_t smem  = 0;
 
    /* Convert depthValue to 14-bit zmin/zmax uint values. */
-   const uint32_t zmin = (depth * max_z_value) + 0.5f;
+   const uint32_t zmin = lroundf(depth * max_z_value);
    const uint32_t zmax = zmin;
 
    if (tex->htile_stencil_disabled) {
