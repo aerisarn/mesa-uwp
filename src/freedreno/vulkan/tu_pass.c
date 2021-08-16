@@ -235,6 +235,15 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
          att_used[a] = true;
       }
 
+      if (subpass->pDepthStencilAttachment &&
+          subpass->pDepthStencilAttachment->attachment != VK_ATTACHMENT_UNUSED) {
+         uint32_t a = subpass->pDepthStencilAttachment->attachment;
+         if (att[a].initialLayout != subpass->pDepthStencilAttachment->layout &&
+             !att_used[a] && !has_external_src[i])
+            src_implicit_dep = true;
+         att_used[a] = true;
+      }
+
       if (subpass->pResolveAttachments) {
          for (unsigned j = 0; j < subpass->colorAttachmentCount; j++) {
             uint32_t a = subpass->pResolveAttachments[j].attachment;
@@ -245,6 +254,18 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
                src_implicit_dep = true;
             att_used[a] = true;
          }
+      }
+
+      const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
+         vk_find_struct_const(subpass->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+
+      if (ds_resolve && ds_resolve->pDepthStencilResolveAttachment &&
+          ds_resolve->pDepthStencilResolveAttachment->attachment != VK_ATTACHMENT_UNUSED) {
+            uint32_t a = ds_resolve->pDepthStencilResolveAttachment->attachment;
+            if (att[a].initialLayout != subpass->pDepthStencilAttachment->layout &&
+               !att_used[a] && !has_external_src[i])
+               src_implicit_dep = true;
+            att_used[a] = true;
       }
 
       if (src_implicit_dep) {
@@ -290,6 +311,15 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
          att_used[a] = true;
       }
 
+      if (subpass->pDepthStencilAttachment &&
+          subpass->pDepthStencilAttachment->attachment != VK_ATTACHMENT_UNUSED) {
+         uint32_t a = subpass->pDepthStencilAttachment->attachment;
+         if (att[a].finalLayout != subpass->pDepthStencilAttachment->layout &&
+             !att_used[a] && !has_external_dst[i])
+            dst_implicit_dep = true;
+         att_used[a] = true;
+      }
+
       if (subpass->pResolveAttachments) {
          for (unsigned j = 0; j < subpass->colorAttachmentCount; j++) {
             uint32_t a = subpass->pResolveAttachments[j].attachment;
@@ -300,6 +330,18 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
                dst_implicit_dep = true;
             att_used[a] = true;
          }
+      }
+
+      const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
+         vk_find_struct_const(subpass->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR);
+
+      if (ds_resolve && ds_resolve->pDepthStencilResolveAttachment &&
+          ds_resolve->pDepthStencilResolveAttachment->attachment != VK_ATTACHMENT_UNUSED) {
+            uint32_t a = ds_resolve->pDepthStencilResolveAttachment->attachment;
+            if (att[a].finalLayout != subpass->pDepthStencilAttachment->layout &&
+               !att_used[a] && !has_external_dst[i])
+               dst_implicit_dep = true;
+            att_used[a] = true;
       }
 
       if (dst_implicit_dep) {
