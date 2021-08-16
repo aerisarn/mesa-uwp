@@ -17,7 +17,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 79634d7a6d48d36165ef12fde2901dfc
+        checksum: 8fb8cd54f1ff908952fe0b6dd9f28999
   - path: pathfinder/demo.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -181,7 +181,7 @@ traces:
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: ad472cdef2a68ffaabcbf2a694c4aefe
+        checksum: b5e0ae5ad680d884432f89a923f3e70d
   - path: gputest/pixmark-julia-fp64.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -193,7 +193,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: f9e6c1cb70add69cf2a4724800d48b25
+        checksum: ce101e0808b9a2e0092d1668e653a32b
   - path: gputest/tessmark.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -225,7 +225,7 @@ traces:
   - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: f1774fc459aa0734838888dd44db052e
+        checksum: fd717f0214c2e5d08538d2de30bfe180
   - path: supertuxkart/supertuxkart-menu.rdc
     expectations:
       - device: gl-radeonsi-stoney
@@ -233,4 +233,4 @@ traces:
   - path: supertuxkart/supertuxkart-ravenbridge-mansion.rdc
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 66b6dee290642bd25dfd817d190f6906
+        checksum: f2e730f7378af65abbf82cc30e4ba64d

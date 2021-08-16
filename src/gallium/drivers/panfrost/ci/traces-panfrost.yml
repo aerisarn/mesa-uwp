@@ -62,7 +62,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 63fd6b8720a6dbc42f3c1281179d5e82
+        checksum: 5a4fba0ae20e3ab9dc6fc4089add9457
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false.trace
     expectations:
       - device: gl-panfrost-t860
@@ -109,7 +109,7 @@ traces:
   - path: glmark2/effect2d:kernel=0,1,0;1,-4,1;0,1,0;.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 3ac755bfa14a89f13cb01e29198ba091
+        checksum: 4472d33cd46351290a602f98adb338b9
   - path: glmark2/effect2d:kernel=1,1,1,1,1;1,1,1,1,1;1,1,1,1,1;.trace
     expectations:
       - device: gl-panfrost-t860
@@ -209,7 +209,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 991efbfd046f70e1fd965d3983bb2965
+        checksum: a34223830866a42747db199b04c5e1be
   - path: humus/AmbientAperture.trace
     expectations:
       - device: gl-panfrost-t860

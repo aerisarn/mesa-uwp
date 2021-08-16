@@ -33,7 +33,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-virgl
-        checksum: 04e8615b6cc890738fd0b260df306633
+        checksum: 03145ecd597dca6aaf5e113b99687278
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false.trace
     expectations:
       - device: gl-virgl
@@ -77,7 +77,7 @@ traces:
   - path: glmark2/effect2d:kernel=0,1,0;1,-4,1;0,1,0;.trace
     expectations:
       - device: gl-virgl
-        checksum: a05ee2c5c4ba97d9fa7f14d3f8ef8c14
+        checksum: 25d3b5d18a64a86fc812872987f4f5e7
   - path: glmark2/effect2d:kernel=1,1,1,1,1;1,1,1,1,1;1,1,1,1,1;.trace
     expectations:
       - device: gl-virgl
@@ -166,7 +166,7 @@ traces:
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: gl-virgl
-        checksum: 2c62cb53123334754dea165c1e2efd49
+        checksum: dd78a9f15834d0def6c07be648240d85
 # Crash
 # - path: gputest/pixmark-julia-fp64.trace
 #   expectations:
@@ -179,7 +179,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-virgl
-        checksum: af749cddc043a8d23b55f8a9838be47a
+        checksum: 0ebf993380210d9e5138f1057ddaa7ab
 # Crash
 #  - path: gputest/tessmark.trace
 #    expectations:
@@ -237,7 +237,7 @@ traces:
   - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
     expectations:
       - device: gl-virgl
-        checksum: ecc2d8fdcc88a665c999f95c1ce26209
+        checksum: 0e93531dfb9d18941904ff1f49581ea0
 # Sometimes crashes
 #  - path: xonotic/xonotic-keybench-high.trace
 #    expectations:

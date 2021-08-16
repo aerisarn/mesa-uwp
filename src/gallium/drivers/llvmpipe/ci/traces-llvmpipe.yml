@@ -17,7 +17,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: b44ebac7708c6e677b145754f1efcbb7
+        checksum: 7f45f21eefb76b4a35506cd6a47040ad
   - path: pathfinder/demo.trace
     expectations:
       - device: gl-vmware-llvmpipe
@@ -117,7 +117,7 @@ traces:
   - path: bgfx/20-nanosvg.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: b10dadafb8b345a1dc88452d00b6e4c0
+        checksum: da60dfd9dc21a3e4716f1e19e346d7a3
   - path: bgfx/23-vectordisplay.rdc
     expectations:
       - device: gl-vmware-llvmpipe

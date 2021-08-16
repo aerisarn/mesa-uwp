@@ -17,7 +17,7 @@ traces:
   - path: behdad-glyphy/glyphy.trace
     expectations:
       - device: gl-intel-apl
-        checksum: e749faf799fe11f95208a01ca6e32fef
+        checksum: 5c7e2fc5961b43a18ea65523fe025b96
       - device: gl-intel-glk
         checksum: e749faf799fe11f95208a01ca6e32fef
       - device: gl-intel-amly
@@ -37,7 +37,7 @@ traces:
   - path: glmark2/jellyfish.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 3b7d64de0a60d527f63695518897f367
+        checksum: c31236c496768159903aa48f5a47bcdc
       - device: gl-intel-glk
         checksum: 3b7d64de0a60d527f63695518897f367
       - device: gl-intel-amly
@@ -57,7 +57,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 60d295cddd4679982993ffe60b4f5f12
+        checksum: 45739401f068971e6e1052f10afe9f99
       - device: gl-intel-glk
         checksum: 60d295cddd4679982993ffe60b4f5f12
       - device: gl-intel-amly
@@ -97,7 +97,7 @@ traces:
   - path: gputest/furmark.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 34466e5a6103be730f18eea2d4d357ee
+        checksum: 06d587a2b934295da6ad874b750b9c9d
       - device: gl-intel-glk
         checksum: 34466e5a6103be730f18eea2d4d357ee
       - device: gl-intel-amly
@@ -107,7 +107,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 9534418a99a80b31251266a987fb7c07
+        checksum: 3899d6cd893b7c3ef6baa637cbd79690
       - device: gl-intel-glk
         checksum: 9534418a99a80b31251266a987fb7c07
       - device: gl-intel-amly
@@ -127,7 +127,7 @@ traces:
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 7cd8249faa260ddb384b6707701370b1
+        checksum: 46052998784defb089ce20fc8f39c6e9
       - device: gl-intel-glk
         checksum: 7cd8249faa260ddb384b6707701370b1
       - device: gl-intel-amly
@@ -137,7 +137,7 @@ traces:
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=true.trace
     expectations:
       - device: gl-intel-apl
-        checksum: f3ffb9c057daf37836fa1d9edded10c8
+        checksum: 9ef1ec1d83a0b9448b2303b3c5f78447
       - device: gl-intel-glk
         checksum: f3ffb9c057daf37836fa1d9edded10c8
       - device: gl-intel-amly
@@ -147,7 +147,7 @@ traces:
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=subdata:interleave=false.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 5c59cc9445dfbfcb41464fd469af9c2b
+        checksum: 29a7734de59f3745158596942d0fb2fe
       - device: gl-intel-glk
         checksum: 5c59cc9445dfbfcb41464fd469af9c2b
       - device: gl-intel-amly
@@ -157,7 +157,7 @@ traces:
   - path: glmark2/bump:bump-render=height.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 5b119c2de40f8a46708470f567952852
+        checksum: e299189c84a7005726554f7ca74611eb
       - device: gl-intel-glk
         checksum: 5b119c2de40f8a46708470f567952852
       - device: gl-intel-amly
@@ -267,7 +267,7 @@ traces:
   - path: glmark2/build:use-vbo=false.trace
     expectations:
       - device: gl-intel-apl
-        checksum: cf8ee908ffab16537acf899cd31698d3
+        checksum: cd8899ad41a62df1425e9b9c9c8d9817
       - device: gl-intel-glk
         checksum: cf8ee908ffab16537acf899cd31698d3
       - device: gl-intel-amly
@@ -287,7 +287,7 @@ traces:
   - path: glmark2/ideas:speed=10000.trace
     expectations:
       - device: gl-intel-apl
-        checksum: b6d2684de7801307d540c1dc8d1a7bc4
+        checksum: 6af136c5ad47c86dfb48eaefae99856c
       - device: gl-intel-glk
         checksum: b6d2684de7801307d540c1dc8d1a7bc4
       - device: gl-intel-amly
@@ -337,7 +337,7 @@ traces:
   - path: glmark2/refract.trace
     expectations:
       - device: gl-intel-apl
-        checksum: dd8079f362dcbdd0cd1bdaac02c86dc4
+        checksum: fce8611398afd2fbef4b6d4e571fe878
       - device: gl-intel-glk
         checksum: dd8079f362dcbdd0cd1bdaac02c86dc4
       - device: gl-intel-amly
@@ -377,7 +377,7 @@ traces:
   - path: glmark2/shading:shading=phong.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 3fd0b081537d54868292b148ffa5ad80
+        checksum: f6b5fd88e53d12d90622f3504b92e6db
       - device: gl-intel-glk
         checksum: 3fd0b081537d54868292b148ffa5ad80
       - device: gl-intel-amly
@@ -397,7 +397,7 @@ traces:
   - path: glmark2/terrain.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 649b4fc7926c1f062fd72c80b1ffea93
+        checksum: 4cff4ebdf12cf46ffe3a4baee607f32c
       - device: gl-intel-glk
         checksum: 649b4fc7926c1f062fd72c80b1ffea93
       - device: gl-intel-amly
@@ -437,7 +437,7 @@ traces:
   - path: godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc
     expectations:
       - device: gl-intel-apl
-        checksum: daa6f0258a8f25e8cc6aa242ed796f64
+        checksum: ba5302821a4a4024ade9b98a191e80cc
       - device: gl-intel-glk
         checksum: daa6f0258a8f25e8cc6aa242ed796f64
       - device: gl-intel-amly
@@ -447,7 +447,7 @@ traces:
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 9beb523176e7c153300521679853127a
+        checksum: a5ec72a5da355dfcd689411f89164f0c
       - device: gl-intel-glk
         checksum: 9beb523176e7c153300521679853127a
       - device: gl-intel-amly
@@ -467,7 +467,7 @@ traces:
   - path: gputest/pixmark-volplosion.trace
     expectations:
       - device: gl-intel-apl
-        checksum: eedef23963d477408028b620badca109
+        checksum: 9c891fd21b0cdc79f7071001d95d549c
       - device: gl-intel-glk
         checksum: eedef23963d477408028b620badca109
       - device: gl-intel-amly
@@ -477,7 +477,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 777f3cb48ccfdc541d78b12104761616
+        checksum: cea8f26227763a3c3b2a2a6af9a0c1da
       - device: gl-intel-glk
         checksum: 777f3cb48ccfdc541d78b12104761616
       - device: gl-intel-amly
@@ -487,7 +487,7 @@ traces:
   - path: gputest/tessmark.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 37a451853926683b350353442a296c47
+        checksum: 10e49cd5a5e12d4a01f504c14b4335cc
       - device: gl-intel-glk
         checksum: 37a451853926683b350353442a296c47
       - device: gl-intel-amly
@@ -497,7 +497,7 @@ traces:
   - path: humus/AmbientAperture.trace
     expectations:
       - device: gl-intel-apl
-        checksum: a946252f3188a979144f4c8f4ea22fea
+        checksum: 5d0d439423d38d2f0f2520e6a1c4c819
       - device: gl-intel-glk
         checksum: a946252f3188a979144f4c8f4ea22fea
       - device: gl-intel-amly
@@ -507,7 +507,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 84da7effee40af07b99e60d12c836c3c
+        checksum: 4b50340b8898687c37a908e799f9238e
       - device: gl-intel-glk
         checksum: 84da7effee40af07b99e60d12c836c3c
       - device: gl-intel-amly
@@ -527,7 +527,7 @@ traces:
   - path: humus/DynamicBranching3.trace
     expectations:
       - device: gl-intel-apl
-        checksum: e4ad0f6c724ac072fe41c15d35fabc7c
+        checksum: 51d5ffe732076a80ffaa7f935c528c42
       - device: gl-intel-glk
         checksum: e4ad0f6c724ac072fe41c15d35fabc7c
       - device: gl-intel-amly
@@ -567,7 +567,7 @@ traces:
   - path: neverball/neverball.trace
     expectations:
       - device: gl-intel-apl
-        checksum: 4ca08b4200d9e8a5e74babcb9e14b726
+        checksum: 75acd3160d268de2c5f286ff4546258c
       - device: gl-intel-glk
         checksum: 4ca08b4200d9e8a5e74babcb9e14b726
       - device: gl-intel-amly
@@ -577,7 +577,7 @@ traces:
   - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
     expectations:
       - device: gl-intel-apl
-        checksum: 8b76f8dc6770a62b413b956d700a1080
+        checksum: 0af2faa0d9183c1bc4dc7612befe1f0a
       - device: gl-intel-glk
         checksum: 8b76f8dc6770a62b413b956d700a1080
       - device: gl-intel-amly
@@ -597,7 +597,7 @@ traces:
   - path: supertuxkart/supertuxkart-ravenbridge-mansion.rdc
     expectations:
       - device: gl-intel-apl
-        checksum: 66a7f3ad9511fd2700f5ec59589b0c7d
+        checksum: ca0b64f1a62e01765146be8391eae636
       - device: gl-intel-glk
         checksum: 66a7f3ad9511fd2700f5ec59589b0c7d
       - device: gl-intel-amly

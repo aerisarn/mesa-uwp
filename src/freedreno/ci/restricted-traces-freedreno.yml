@@ -10,7 +10,7 @@ traces:
   - path: civilization-v/CivilizationV-trim--s705-761-f762-v20201203.trace
     expectations:
       - device: freedreno-a630
-        checksum: ae376491202642d29498285e463538fa
+        checksum: 930dd4d5deb6df171235217898fa3567
   - path: golf-with-your-friends/GolfWithYourFriends-trim--f1070-v20201203.trace
     expectations:
       - device: freedreno-a630
@@ -27,7 +27,7 @@ traces:
   - path: overcooked2/Overcooked2-trim--f3301-v20201203.trace
     expectations:
       - device: freedreno-a630
-        checksum: a45f37ca95f54eb3255f5ca24e2c14cb
+        checksum: 358c723a5f1807fafea2d68bcd32040e
 # Crashes
 #  - path: plaugue-inc-evolved/PlagueIncEvolved-trim--f1200-v20201203.trace
 #    expectations:
@@ -36,4 +36,4 @@ traces:
   - path: portal2/Portal2-trim--f1020-v20201203.trace
     expectations:
       - device: freedreno-a630
-        checksum: 4df1b02310aa08d1e0118240d1f4ae05
+        checksum: 636cddddf4f416585aa4d5dca795a182
