@@ -527,7 +527,7 @@ i945_texture_layout_3d(struct i915_texture *tex)
    unsigned width = util_next_power_of_two(pt->width0);
    unsigned height = util_next_power_of_two(pt->height0);
    unsigned depth = util_next_power_of_two(pt->depth0);
-   unsigned nblocksy = util_format_get_nblocksy(pt->format, width);
+   unsigned nblocksy = util_format_get_nblocksy(pt->format, height);
    unsigned pack_x_pitch, pack_x_nr;
    unsigned pack_y_pitch;
    unsigned level;
