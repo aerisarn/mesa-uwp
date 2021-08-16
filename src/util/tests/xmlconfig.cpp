@@ -40,6 +40,19 @@ protected:
 
 xmlconfig_test::xmlconfig_test()
 {
+   /* Unset variables from the envrionment to prevent user settings from
+    * impacting the tests.
+    */
+   unsetenv("glsl_zero_init");
+   unsetenv("always_have_depth_buffer");
+   unsetenv("opt");
+   unsetenv("vblank_mode");
+   unsetenv("not_present");
+   unsetenv("mesa_b_option");
+   unsetenv("mesa_s_option");
+   unsetenv("mest_test_unknown_option");
+   unsetenv("mest_drirc_option");
+
    options = {};
 }
 
