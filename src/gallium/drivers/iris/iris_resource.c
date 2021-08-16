@@ -571,14 +571,15 @@ want_ccs_e_for_format(const struct intel_device_info *devinfo,
 
    const struct isl_format_layout *fmtl = isl_format_get_layout(format);
 
-   /* CCS_E seems to significantly hurt performance with 32-bit floating
-    * point formats.  For example, Paraview's "Wavelet Volume" case uses
-    * both R32_FLOAT and R32G32B32A32_FLOAT, and enabling CCS_E for those
+   /* Prior to TGL, CCS_E seems to significantly hurt performance with 32-bit
+    * floating point formats.  For example, Paraview's "Wavelet Volume" case
+    * uses both R32_FLOAT and R32G32B32A32_FLOAT, and enabling CCS_E for those
     * formats causes a 62% FPS drop.
     *
     * However, many benchmarks seem to use 16-bit float with no issues.
     */
-   if (fmtl->channels.r.bits == 32 && fmtl->channels.r.type == ISL_SFLOAT)
+   if (devinfo->ver <= 11 &&
+       fmtl->channels.r.bits == 32 && fmtl->channels.r.type == ISL_SFLOAT)
       return false;
 
    return true;
