@@ -1674,9 +1674,22 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 
    struct iris_bufmgr *bufmgr = (struct iris_bufmgr *)driver_ctx;
 
-   struct iris_bo *bo =
-      iris_bo_alloc(bufmgr, "aux-map", size, 64 * 1024,
-                    IRIS_MEMZONE_OTHER, 0);
+   bool local = bufmgr->vram.size > 0;
+   unsigned int page_size = getpagesize();
+   size = MAX2(ALIGN(size, page_size), page_size);
+
+   struct iris_bo *bo = alloc_fresh_bo(bufmgr, size, local);
+
+   simple_mtx_lock(&bufmgr->lock);
+   bo->address = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 64 * 1024);
+   assert(bo->address != 0ull);
+   simple_mtx_unlock(&bufmgr->lock);
+
+   bo->name = "aux-map";
+   p_atomic_set(&bo->refcount, 1);
+   bo->index = -1;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->mmap_mode = local ? IRIS_MMAP_WC : IRIS_MMAP_WB;
 
    buf->driver_bo = bo;
    buf->gpu = bo->address;
