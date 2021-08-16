@@ -212,9 +212,6 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
    memset(att_used, 0, sizeof(att_used));
 
    for (unsigned i = 0; i < info->subpassCount; i++) {
-      if (!has_external_src[i])
-         continue;
-
       const VkSubpassDescription2 *subpass = &info->pSubpasses[i];
       bool src_implicit_dep = false;
 
@@ -222,7 +219,8 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
          uint32_t a = subpass->pInputAttachments[j].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
-         if (att[a].initialLayout != subpass->pInputAttachments[j].layout && !att_used[a])
+         if (att[a].initialLayout != subpass->pInputAttachments[j].layout &&
+             !att_used[a] && !has_external_src[i])
             src_implicit_dep = true;
          att_used[a] = true;
       }
@@ -231,7 +229,8 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
          uint32_t a = subpass->pColorAttachments[j].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
-         if (att[a].initialLayout != subpass->pColorAttachments[j].layout && !att_used[a])
+         if (att[a].initialLayout != subpass->pColorAttachments[j].layout &&
+             !att_used[a] && !has_external_src[i])
             src_implicit_dep = true;
          att_used[a] = true;
       }
@@ -241,7 +240,8 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
             uint32_t a = subpass->pResolveAttachments[j].attachment;
             if (a == VK_ATTACHMENT_UNUSED)
                continue;
-            if (att[a].initialLayout != subpass->pResolveAttachments[j].layout && !att_used[a])
+            if (att[a].initialLayout != subpass->pResolveAttachments[j].layout &&
+               !att_used[a] && !has_external_src[i])
                src_implicit_dep = true;
             att_used[a] = true;
          }
@@ -267,9 +267,6 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
    memset(att_used, 0, sizeof(att_used));
 
    for (int i = info->subpassCount - 1; i >= 0; i--) {
-      if (!has_external_dst[i])
-         continue;
-
       const VkSubpassDescription2 *subpass = &info->pSubpasses[i];
       bool dst_implicit_dep = false;
 
@@ -277,7 +274,8 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
          uint32_t a = subpass->pInputAttachments[j].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
-         if (att[a].finalLayout != subpass->pInputAttachments[j].layout && !att_used[a])
+         if (att[a].finalLayout != subpass->pInputAttachments[j].layout &&
+             !att_used[a] && !has_external_dst[i])
             dst_implicit_dep = true;
          att_used[a] = true;
       }
@@ -286,7 +284,8 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
          uint32_t a = subpass->pColorAttachments[j].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
-         if (att[a].finalLayout != subpass->pColorAttachments[j].layout && !att_used[a])
+         if (att[a].finalLayout != subpass->pColorAttachments[j].layout &&
+             !att_used[a] && !has_external_dst[i])
             dst_implicit_dep = true;
          att_used[a] = true;
       }
@@ -296,7 +295,8 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
             uint32_t a = subpass->pResolveAttachments[j].attachment;
             if (a == VK_ATTACHMENT_UNUSED)
                continue;
-            if (att[a].finalLayout != subpass->pResolveAttachments[j].layout && !att_used[a])
+            if (att[a].finalLayout != subpass->pResolveAttachments[j].layout &&
+                !att_used[a] && !has_external_dst[i])
                dst_implicit_dep = true;
             att_used[a] = true;
          }
