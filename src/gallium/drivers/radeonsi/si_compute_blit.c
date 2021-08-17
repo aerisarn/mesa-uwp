@@ -706,7 +706,7 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
       return;
 
    si_make_CB_shader_coherent(sctx, tex->nr_samples, true,
-                              true /* DCC is not possible with image stores */);
+                              ((struct si_texture*)tex)->surface.u.gfx9.color.dcc.pipe_aligned);
 
    /* Save states. */
    struct pipe_image_view saved_image = {0};
