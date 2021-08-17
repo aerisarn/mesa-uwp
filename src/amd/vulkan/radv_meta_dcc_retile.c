@@ -115,7 +115,10 @@ radv_device_finish_meta_dcc_retile_state(struct radv_device *device)
 {
    struct radv_meta_state *state = &device->meta_state;
 
-   radv_DestroyPipeline(radv_device_to_handle(device), state->dcc_retile.pipeline, &state->alloc);
+   for (unsigned i = 0; i < ARRAY_SIZE(state->dcc_retile.pipeline); i++) {
+      radv_DestroyPipeline(radv_device_to_handle(device), state->dcc_retile.pipeline[i],
+                           &state->alloc);
+   }
    radv_DestroyPipelineLayout(radv_device_to_handle(device), state->dcc_retile.p_layout,
                               &state->alloc);
    radv_DestroyDescriptorSetLayout(radv_device_to_handle(device), state->dcc_retile.ds_layout,
@@ -131,9 +134,7 @@ radv_device_finish_meta_dcc_retile_state(struct radv_device *device)
  * - DCC equations
  * - DCC block size
  *
- * BPE is always 4 at the moment and the rest is derived from the tilemode,
- * and ac_surface limits displayable DCC to at most 1 tiling mode. So in effect
- * this shader is indepedent of the surface.
+ * BPE is always 4 at the moment and the rest is derived from the tilemode.
  */
 static VkResult
 radv_device_init_meta_dcc_retile_state(struct radv_device *device, struct radeon_surf *surf)
@@ -197,7 +198,7 @@ radv_device_init_meta_dcc_retile_state(struct radv_device *device, struct radeon
 
    result = radv_CreateComputePipelines(
       radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
-      &vk_pipeline_info, NULL, &device->meta_state.dcc_retile.pipeline);
+      &vk_pipeline_info, NULL, &device->meta_state.dcc_retile.pipeline[surf->u.gfx9.swizzle_mode]);
    if (result != VK_SUCCESS)
       goto cleanup;
 
@@ -222,8 +223,10 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
    state->flush_bits |= radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_READ_BIT, image) |
                         radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, image);
 
+   unsigned swizzle_mode = image->planes[0].surface.u.gfx9.swizzle_mode;
+
    /* Compile pipelines if not already done so. */
-   if (!cmd_buffer->device->meta_state.dcc_retile.pipeline) {
+   if (!cmd_buffer->device->meta_state.dcc_retile.pipeline[swizzle_mode]) {
       VkResult ret =
          radv_device_init_meta_dcc_retile_state(cmd_buffer->device, &image->planes[0].surface);
       if (ret != VK_SUCCESS) {
@@ -237,7 +240,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
       RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_CONSTANTS);
 
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
-                        device->meta_state.dcc_retile.pipeline);
+                        device->meta_state.dcc_retile.pipeline[swizzle_mode]);
 
    struct radv_buffer buffer = {.size = image->size, .bo = image->bo, .offset = image->offset};
 

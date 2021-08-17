@@ -669,7 +669,7 @@ struct radv_meta_state {
    struct {
       VkDescriptorSetLayout ds_layout;
       VkPipelineLayout p_layout;
-      VkPipeline pipeline;
+      VkPipeline pipeline[32];
    } dcc_retile;
 
    struct {
