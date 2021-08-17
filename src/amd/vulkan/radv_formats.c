@@ -1113,15 +1113,6 @@ radv_format_pack_clear_color(VkFormat format, uint32_t clear_vals[2], VkClearCol
    return true;
 }
 
-void
-radv_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format,
-                                       VkFormatProperties *pFormatProperties)
-{
-   RADV_FROM_HANDLE(radv_physical_device, physical_device, physicalDevice);
-
-   radv_physical_device_get_format_properties(physical_device, format, pFormatProperties);
-}
-
 static const struct ac_modifier_options radv_modifier_options = {
    .dcc = true,
    .dcc_retile = true,
@@ -1489,27 +1480,6 @@ unsupported:
    };
 
    return result;
-}
-
-VkResult
-radv_GetPhysicalDeviceImageFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format,
-                                            VkImageType type, VkImageTiling tiling,
-                                            VkImageUsageFlags usage, VkImageCreateFlags createFlags,
-                                            VkImageFormatProperties *pImageFormatProperties)
-{
-   RADV_FROM_HANDLE(radv_physical_device, physical_device, physicalDevice);
-
-   const VkPhysicalDeviceImageFormatInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
-      .pNext = NULL,
-      .format = format,
-      .type = type,
-      .tiling = tiling,
-      .usage = usage,
-      .flags = createFlags,
-   };
-
-   return radv_get_image_format_properties(physical_device, &info, format, pImageFormatProperties);
 }
 
 static void
