@@ -30,6 +30,7 @@
 #include "util/format/u_format.h"
 #include "util/format/u_format_s3tc.h"
 #include "util/u_dual_blend.h"
+#include "util/u_helpers.h"
 #include "util/u_memory.h"
 #include "util/u_resource.h"
 #include "util/u_upload_mgr.h"
@@ -636,14 +637,8 @@ static void *si_create_blend_state(struct pipe_context *ctx, const struct pipe_b
    return si_create_blend_state_mode(ctx, state, V_028808_CB_NORMAL);
 }
 
-static void si_draw_blend_dst_sampler_noop(struct pipe_context *ctx,
-                                           const struct pipe_draw_info *info,
-                                           unsigned drawid_offset,
-                                           const struct pipe_draw_indirect_info *indirect,
-                                           const struct pipe_draw_start_count_bias *draws,
-                                           unsigned num_draws) {
-   struct si_context *sctx = (struct si_context *)ctx;
-
+static bool si_check_blend_dst_sampler_noop(struct si_context *sctx)
+{
    if (sctx->framebuffer.state.nr_cbufs == 1) {
       struct si_shader_selector *sel = sctx->shader.ps.cso;
       bool free_nir;
@@ -677,14 +672,42 @@ static void si_draw_blend_dst_sampler_noop(struct pipe_context *ctx,
             if (tex->is_depth &&
                 tex->depth_cleared_level_mask & BITFIELD_BIT(samp->views[unit]->u.tex.first_level) &&
                 tex->depth_clear_value[0] == 1) {
-               return;
+               return false;
             }
             /* TODO: handle color textures */
          }
       }
    }
 
+   return true;
+}
+
+static void si_draw_blend_dst_sampler_noop(struct pipe_context *ctx,
+                                           const struct pipe_draw_info *info,
+                                           unsigned drawid_offset,
+                                           const struct pipe_draw_indirect_info *indirect,
+                                           const struct pipe_draw_start_count_bias *draws,
+                                           unsigned num_draws) {
+   struct si_context *sctx = (struct si_context *)ctx;
+
+   if (!si_check_blend_dst_sampler_noop(sctx))
+      return;
+
    sctx->real_draw_vbo(ctx, info, drawid_offset, indirect, draws, num_draws);
+}
+
+static void si_draw_vstate_blend_dst_sampler_noop(struct pipe_context *ctx,
+                                                  struct pipe_vertex_state *state,
+                                                  uint32_t partial_velem_mask,
+                                                  struct pipe_draw_vertex_state_info info,
+                                                  const struct pipe_draw_start_count_bias *draws,
+                                                  unsigned num_draws) {
+   struct si_context *sctx = (struct si_context *)ctx;
+
+   if (!si_check_blend_dst_sampler_noop(sctx))
+      return;
+
+   sctx->real_draw_vertex_state(ctx, state, partial_velem_mask, info, draws, num_draws);
 }
 
 static void si_bind_blend_state(struct pipe_context *ctx, void *state)
@@ -731,9 +754,10 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
 
    if (likely(!radeon_uses_secure_bos(sctx->ws))) {
       if (unlikely(blend->allows_noop_optimization)) {
-         si_install_draw_wrapper(sctx, si_draw_blend_dst_sampler_noop);
+         si_install_draw_wrapper(sctx, si_draw_blend_dst_sampler_noop,
+                                 si_draw_vstate_blend_dst_sampler_noop);
       } else {
-         si_install_draw_wrapper(sctx, NULL);
+         si_install_draw_wrapper(sctx, NULL, NULL);
       }
    }
 }
@@ -5011,6 +5035,78 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
    }
 }
 
+static struct pipe_vertex_state *
+si_create_vertex_state(struct pipe_screen *screen,
+                       struct pipe_vertex_buffer *buffer,
+                       const struct pipe_vertex_element *elements,
+                       unsigned num_elements,
+                       struct pipe_resource *indexbuf,
+                       uint32_t full_velem_mask)
+{
+   struct si_screen *sscreen = (struct si_screen *)screen;
+   struct si_vertex_state *state = CALLOC_STRUCT(si_vertex_state);
+
+   util_init_pipe_vertex_state(screen, buffer, elements, num_elements, indexbuf, full_velem_mask,
+                               &state->b);
+
+   /* Initialize the vertex element state in state->element.
+    * Do it by creating a vertex element state object and copying it there.
+    */
+   struct pipe_context ctx = {};
+   ctx.screen = screen;
+   struct si_vertex_elements *velems = si_create_vertex_elements(&ctx, num_elements, elements);
+   state->velems = *velems;
+   si_delete_vertex_element(&ctx, velems);
+
+   assert(!state->velems.instance_divisor_is_one);
+   assert(!state->velems.instance_divisor_is_fetched);
+   assert(!state->velems.fix_fetch_always);
+   assert(buffer->stride % 4 == 0);
+   assert(buffer->buffer_offset % 4 == 0);
+   assert(!buffer->is_user_buffer);
+   for (unsigned i = 0; i < num_elements; i++) {
+      assert(elements[i].src_offset % 4 == 0);
+      assert(!elements[i].dual_slot);
+   }
+
+   for (unsigned i = 0; i < num_elements; i++) {
+      si_set_vertex_buffer_descriptor(sscreen, &state->velems, &state->b.input.vbuffer, i,
+                                      &state->descriptors[i * 4]);
+   }
+
+   return &state->b;
+}
+
+static void si_vertex_state_destroy(struct pipe_screen *screen,
+                                    struct pipe_vertex_state *state)
+{
+   pipe_vertex_buffer_unreference(&state->input.vbuffer);
+   pipe_resource_reference(&state->input.indexbuf, NULL);
+   FREE(state);
+}
+
+static struct pipe_vertex_state *
+si_pipe_create_vertex_state(struct pipe_screen *screen,
+                            struct pipe_vertex_buffer *buffer,
+                            const struct pipe_vertex_element *elements,
+                            unsigned num_elements,
+                            struct pipe_resource *indexbuf,
+                            uint32_t full_velem_mask)
+{
+   struct si_screen *sscreen = (struct si_screen *)screen;
+
+   return util_vertex_state_cache_get(screen, buffer, elements, num_elements, indexbuf,
+                                      full_velem_mask, &sscreen->vertex_state_cache);
+}
+
+static void si_pipe_vertex_state_destroy(struct pipe_screen *screen,
+                                         struct pipe_vertex_state *state)
+{
+   struct si_screen *sscreen = (struct si_screen *)screen;
+
+   util_vertex_state_destroy(screen, &sscreen->vertex_state_cache, state);
+}
+
 /*
  * Misc
  */
@@ -5177,12 +5273,17 @@ void si_init_state_functions(struct si_context *sctx)
 void si_init_screen_state_functions(struct si_screen *sscreen)
 {
    sscreen->b.is_format_supported = si_is_format_supported;
+   sscreen->b.create_vertex_state = si_pipe_create_vertex_state;
+   sscreen->b.vertex_state_destroy = si_pipe_vertex_state_destroy;
 
    if (sscreen->info.chip_class >= GFX10) {
       sscreen->make_texture_descriptor = gfx10_make_texture_descriptor;
    } else {
       sscreen->make_texture_descriptor = si_make_texture_descriptor;
    }
+
+   util_vertex_state_cache_init(&sscreen->vertex_state_cache,
+                                si_create_vertex_state, si_vertex_state_destroy);
 }
 
 static void si_set_grbm_gfx_index(struct si_context *sctx, struct si_pm4_state *pm4, unsigned value)

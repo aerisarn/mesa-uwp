@@ -298,17 +298,31 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    ctx->last_gs_out_prim = 0; /* cleared by CLEAR_STATE */
 }
 
-void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper)
+void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper,
+                             pipe_draw_vertex_state_func vstate_wrapper)
 {
    if (wrapper) {
       if (wrapper != sctx->b.draw_vbo) {
-         assert (!sctx->real_draw_vbo);
+         assert(!sctx->real_draw_vbo);
+         assert(!sctx->real_draw_vertex_state);
          sctx->real_draw_vbo = sctx->b.draw_vbo;
+         sctx->real_draw_vertex_state = sctx->b.draw_vertex_state;
          sctx->b.draw_vbo = wrapper;
+         sctx->b.draw_vertex_state = vstate_wrapper;
       }
    } else if (sctx->real_draw_vbo) {
       sctx->real_draw_vbo = NULL;
+      sctx->real_draw_vertex_state = NULL;
       si_select_draw_vbo(sctx);
+   }
+}
+
+static void si_tmz_preamble(struct si_context *sctx)
+{
+   bool secure = si_gfx_resources_check_encrypted(sctx);
+   if (secure != sctx->ws->cs_is_secure(&sctx->gfx_cs)) {
+      si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
+                            RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
    }
 }
 
@@ -320,13 +334,20 @@ static void si_draw_vbo_tmz_preamble(struct pipe_context *ctx,
                                      unsigned num_draws) {
    struct si_context *sctx = (struct si_context *)ctx;
 
-   bool secure = si_gfx_resources_check_encrypted(sctx);
-   if (secure != sctx->ws->cs_is_secure(&sctx->gfx_cs)) {
-      si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
-                            RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
-   }
-
+   si_tmz_preamble(sctx);
    sctx->real_draw_vbo(ctx, info, drawid_offset, indirect, draws, num_draws);
+}
+
+static void si_draw_vstate_tmz_preamble(struct pipe_context *ctx,
+                                        struct pipe_vertex_state *state,
+                                        uint32_t partial_velem_mask,
+                                        struct pipe_draw_vertex_state_info info,
+                                        const struct pipe_draw_start_count_bias *draws,
+                                        unsigned num_draws) {
+   struct si_context *sctx = (struct si_context *)ctx;
+
+   si_tmz_preamble(sctx);
+   sctx->real_draw_vertex_state(ctx, state, partial_velem_mask, info, draws, num_draws);
 }
 
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
@@ -336,7 +357,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (unlikely(radeon_uses_secure_bos(ctx->ws))) {
       is_secure = ctx->ws->cs_is_secure(&ctx->gfx_cs);
 
-      si_install_draw_wrapper(ctx, si_draw_vbo_tmz_preamble);
+      si_install_draw_wrapper(ctx, si_draw_vbo_tmz_preamble,
+                              si_draw_vstate_tmz_preamble);
    }
 
    if (ctx->is_debug)

@@ -164,6 +164,9 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_ATOMINC_WRAP:
       return 1;
 
+   case PIPE_CAP_DRAW_VERTEX_STATE:
+      return !(sscreen->debug_flags & DBG(NO_FAST_DISPLAY_LIST));
+
    case PIPE_CAP_GLSL_ZERO_INIT:
       return 2;
 
