@@ -2,7 +2,6 @@ glx@glx-copy-sub-buffer,Fail
 glx@glx-copy-sub-buffer samples=2,Fail
 glx@glx-copy-sub-buffer samples=4,Fail
 glx@glx-multi-window-single-context,Fail
-glx@glx-multithread-buffer,Fail
 glx@glx-multithread-texture,Fail
 glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
@@ -126,7 +125,6 @@ spec@arb_sample_shading@samplemask 4 all@noms partition,Fail
 spec@arb_sample_shading@samplemask 4 all@sample mask_in_one,Fail
 spec@arb_seamless_cube_map@arb_seamless_cubemap,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
-spec@arb_texture_buffer_range@ranges-2 compat,Fail
 spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-shadow,Fail
 spec@arb_texture_float@fbo-blending-formats,Fail
 spec@arb_texture_float@fbo-blending-formats@GL_INTENSITY16F_ARB,Fail
@@ -815,3 +813,15 @@ spec@oes_texture_view@rendering-formats@clear GL_RGBA8_SNORM as GL_RGB10_A2UI,Fa
 spec@oes_texture_view@rendering-formats@clear GL_RGBA8_SNORM as GL_RGBA8,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGBA8_SNORM as GL_RGBA8I,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGBA8_SNORM as GL_RGBA8UI,Fail
+
+
+#literally no driver can pass these
+spec@!opengl 1.0@rasterpos,Fail
+spec@!opengl 1.0@rasterpos@glsl_vs_gs_linked,Fail
+spec@!opengl 1.0@rasterpos@glsl_vs_tes_linked,Fail
+spec@arb_direct_state_access@gettextureimage-formats,Crash
+spec@ext_texture_integer@fbo-integer,Fail
+
+#these need format conversions that gallium doesn't implement yet
+spec@arb_texture_buffer_object@formats (fs- arb),Crash
+spec@arb_texture_buffer_object@formats (vs- arb),Crash
