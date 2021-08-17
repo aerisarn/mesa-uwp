@@ -1250,6 +1250,9 @@ void tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1);
 
 void tu_disable_draw_states(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
 
+void tu6_apply_depth_bounds_workaround(struct tu_device *device,
+                                       uint32_t *rb_depth_cntl);
+
 struct tu_pvtmem_config {
    uint64_t iova;
    uint32_t per_fiber_size;

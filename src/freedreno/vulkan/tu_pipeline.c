@@ -2806,6 +2806,9 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
 
       if (ds_info->depthBoundsTestEnable)
          rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE;
+
+      if (ds_info->depthBoundsTestEnable && !ds_info->depthTestEnable)
+         tu6_apply_depth_bounds_workaround(builder->device, &rb_depth_cntl);
    } else {
       /* if RB_DEPTH_CNTL is set dynamically, we need to make sure it is set
        * to 0 when this pipeline is used, as enabling depth test when there

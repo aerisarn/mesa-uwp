@@ -471,6 +471,24 @@ tu6_emit_window_offset(struct tu_cs *cs, uint32_t x1, uint32_t y1)
                    A6XX_SP_TP_WINDOW_OFFSET(.x = x1, .y = y1));
 }
 
+void
+tu6_apply_depth_bounds_workaround(struct tu_device *device,
+                                  uint32_t *rb_depth_cntl)
+{
+   return;
+   if (!device->physical_device->info->a6xx.depth_bounds_require_depth_test_quirk)
+      return;
+
+   /* On some GPUs it is necessary to enable z test for depth bounds test when
+    * UBWC is enabled. Otherwise, the GPU would hang. FUNC_ALWAYS is required to
+    * pass z test. Relevant tests:
+    *  dEQP-VK.pipeline.extended_dynamic_state.two_draws_dynamic.depth_bounds_test_disable
+    *  dEQP-VK.dynamic_state.ds_state.depth_bounds_1
+    */
+   *rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE |
+                     A6XX_RB_DEPTH_CNTL_ZFUNC(FUNC_ALWAYS);
+}
+
 static void
 tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
 {
@@ -3742,6 +3760,10 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       if ((rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE) ||
           (rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE))
          rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE;
+
+      if ((rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE) &&
+          !(rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE))
+         tu6_apply_depth_bounds_workaround(cmd->device, &rb_depth_cntl);
 
       if (pipeline->rb_depth_cntl_disable)
          rb_depth_cntl = 0;
