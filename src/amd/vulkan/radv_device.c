@@ -2843,7 +2843,6 @@ radv_device_init_vrs_image(struct radv_device *device)
     * dynamically at some point. Also, it's probably better to use S8_UINT but no HTILE support yet.
     */
    uint32_t width = 4096, height = 4096;
-   VkMemoryRequirements mem_req;
    VkDeviceMemory mem;
    VkResult result;
    VkImage image;
@@ -2869,11 +2868,18 @@ radv_device_init_vrs_image(struct radv_device *device)
    if (result != VK_SUCCESS)
       return result;
 
-   radv_GetImageMemoryRequirements(radv_device_to_handle(device), image, &mem_req);
+   VkImageMemoryRequirementsInfo2 info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = image,
+   };
+   VkMemoryRequirements2 mem_req = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+   };
+   radv_GetImageMemoryRequirements2(radv_device_to_handle(device), &info, &mem_req);
 
    VkMemoryAllocateInfo alloc_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .allocationSize = mem_req.size,
+      .allocationSize = mem_req.memoryRequirements.size,
    };
 
    result = radv_AllocateMemory(radv_device_to_handle(device), &alloc_info,
@@ -5563,29 +5569,23 @@ radv_InvalidateMappedMemoryRanges(VkDevice _device, uint32_t memoryRangeCount,
 }
 
 void
-radv_GetBufferMemoryRequirements(VkDevice _device, VkBuffer _buffer,
-                                 VkMemoryRequirements *pMemoryRequirements)
+radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirementsInfo2 *pInfo,
+                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_buffer, buffer, _buffer);
+   RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
 
-   pMemoryRequirements->memoryTypeBits =
+   pMemoryRequirements->memoryRequirements.memoryTypeBits =
       (1u << device->physical_device->memory_properties.memoryTypeCount) - 1;
 
    if (buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
-      pMemoryRequirements->alignment = 4096;
+      pMemoryRequirements->memoryRequirements.alignment = 4096;
    else
-      pMemoryRequirements->alignment = 16;
+      pMemoryRequirements->memoryRequirements.alignment = 16;
 
-   pMemoryRequirements->size = align64(buffer->size, pMemoryRequirements->alignment);
-}
+   pMemoryRequirements->memoryRequirements.size =
+      align64(buffer->size, pMemoryRequirements->memoryRequirements.alignment);
 
-void
-radv_GetBufferMemoryRequirements2(VkDevice device, const VkBufferMemoryRequirementsInfo2 *pInfo,
-                                  VkMemoryRequirements2 *pMemoryRequirements)
-{
-   radv_GetBufferMemoryRequirements(device, pInfo->buffer,
-                                    &pMemoryRequirements->memoryRequirements);
    vk_foreach_struct(ext, pMemoryRequirements->pNext)
    {
       switch (ext->sType) {
@@ -5602,26 +5602,17 @@ radv_GetBufferMemoryRequirements2(VkDevice device, const VkBufferMemoryRequireme
 }
 
 void
-radv_GetImageMemoryRequirements(VkDevice _device, VkImage _image,
-                                VkMemoryRequirements *pMemoryRequirements)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_image, image, _image);
-
-   pMemoryRequirements->memoryTypeBits =
-      (1u << device->physical_device->memory_properties.memoryTypeCount) - 1;
-
-   pMemoryRequirements->size = image->size;
-   pMemoryRequirements->alignment = image->alignment;
-}
-
-void
-radv_GetImageMemoryRequirements2(VkDevice device, const VkImageMemoryRequirementsInfo2 *pInfo,
+radv_GetImageMemoryRequirements2(VkDevice _device, const VkImageMemoryRequirementsInfo2 *pInfo,
                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
-   radv_GetImageMemoryRequirements(device, pInfo->image, &pMemoryRequirements->memoryRequirements);
-
+   RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_image, image, pInfo->image);
+
+   pMemoryRequirements->memoryRequirements.memoryTypeBits =
+      (1u << device->physical_device->memory_properties.memoryTypeCount) - 1;
+
+   pMemoryRequirements->memoryRequirements.size = image->size;
+   pMemoryRequirements->memoryRequirements.alignment = image->alignment;
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext)
    {
@@ -5658,11 +5649,17 @@ radv_BindBufferMemory2(VkDevice _device, uint32_t bindInfoCount,
 
       if (mem) {
          if (mem->alloc_size) {
-            VkMemoryRequirements req;
+            VkBufferMemoryRequirementsInfo2 info = {
+               .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+               .buffer = pBindInfos[i].buffer,
+            };
+            VkMemoryRequirements2 reqs = {
+               .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+            };
 
-            radv_GetBufferMemoryRequirements(_device, pBindInfos[i].buffer, &req);
+            radv_GetBufferMemoryRequirements2(_device, &info, &reqs);
 
-            if (pBindInfos[i].memoryOffset + req.size > mem->alloc_size) {
+            if (pBindInfos[i].memoryOffset + reqs.memoryRequirements.size > mem->alloc_size) {
                return vk_errorf(device->instance, VK_ERROR_UNKNOWN,
                                 "Device memory object too small for the buffer.\n");
             }
@@ -5689,11 +5686,17 @@ radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount,
 
       if (mem) {
          if (mem->alloc_size) {
-            VkMemoryRequirements req;
+            VkImageMemoryRequirementsInfo2 info = {
+               .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+               .image = pBindInfos[i].image,
+            };
+            VkMemoryRequirements2 reqs = {
+               .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+            };
 
-            radv_GetImageMemoryRequirements(_device, pBindInfos[i].image, &req);
+            radv_GetImageMemoryRequirements2(_device, &info, &reqs);
 
-            if (pBindInfos[i].memoryOffset + req.size > mem->alloc_size) {
+            if (pBindInfos[i].memoryOffset + reqs.memoryRequirements.size > mem->alloc_size) {
                return vk_errorf(device->instance, VK_ERROR_UNKNOWN,
                                 "Device memory object too small for the image.\n");
             }
