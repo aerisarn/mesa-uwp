@@ -90,5 +90,8 @@ dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_stencil_only
 dEQP-VK.api.command_buffers.record_many_draws_primary_2
 dEQP-VK.api.command_buffers.record_many_draws_secondary_2
 
+# "dEQP-VK.wsi.display_control.register_display_event: vkRegisterDisplayEventEXT returned invalid result (Fail)"
+dEQP-VK.wsi.display_control.register_display_event
+
 # First noticed Jun 1 2020 on an innocent branch.
 KHR-GL33.packed_depth_stencil.verify_copy_tex_image.depth32f_stencil8
