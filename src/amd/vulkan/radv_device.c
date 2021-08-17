@@ -2939,6 +2939,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool custom_border_colors = false;
    bool vrs_enabled = false;
    bool attachment_vrs_enabled = false;
+   bool image_float32_atomics = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -2987,6 +2988,20 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          const VkPhysicalDeviceRobustness2FeaturesEXT *features = (const void *)ext;
          if (features->robustBufferAccess2)
             robust_buffer_access2 = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+         const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT *features = (const void *)ext;
+         if (features->shaderImageFloat32Atomics ||
+             features->sparseImageFloat32Atomics)
+            image_float32_atomics = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: {
+         const VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *features = (const void *)ext;
+         if (features->shaderImageFloat32AtomicMinMax ||
+             features->sparseImageFloat32AtomicMinMax)
+            image_float32_atomics = true;
          break;
       }
       default:
@@ -3042,6 +3057,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
        device->physical_device->rad_info.family == CHIP_NAVY_FLOUNDER ||
        device->physical_device->rad_info.family == CHIP_VANGOGH);
    device->attachment_vrs_enabled = attachment_vrs_enabled;
+
+   device->image_float32_atomics = image_float32_atomics;
 
    mtx_init(&device->shader_slab_mutex, mtx_plain);
    list_inithead(&device->shader_slabs);

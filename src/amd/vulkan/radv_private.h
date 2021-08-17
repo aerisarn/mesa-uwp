@@ -818,6 +818,9 @@ struct radv_device {
    /* Whether attachment VRS is enabled. */
    bool attachment_vrs_enabled;
 
+   /* Whether shader image 32-bit float atomics are enabled. */
+   bool image_float32_atomics;
+
    /* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
    int force_aniso;
 
