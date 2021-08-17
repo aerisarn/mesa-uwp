@@ -1361,9 +1361,9 @@ static void llvmpipe_launch_grid(struct pipe_context *pipe,
       struct lp_cs_tpool_task *task;
       mtx_lock(&screen->cs_mutex);
       task = lp_cs_tpool_queue_task(screen->cs_tpool, cs_exec_fn, &job_info, num_tasks);
+      mtx_unlock(&screen->cs_mutex);
 
       lp_cs_tpool_wait_for_task(screen->cs_tpool, &task);
-      mtx_unlock(&screen->cs_mutex);
    }
    llvmpipe->pipeline_statistics.cs_invocations += num_tasks * info->block[0] * info->block[1] * info->block[2];
 }
