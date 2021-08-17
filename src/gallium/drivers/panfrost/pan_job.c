@@ -40,6 +40,9 @@
 #include "decode.h"
 #include "panfrost-quirks.h"
 
+#define foreach_batch(ctx, idx) \
+        BITSET_FOREACH_SET(idx, ctx->batches.active, PAN_MAX_BATCHES)
+
 static unsigned
 panfrost_batch_idx(struct panfrost_batch *batch)
 {
