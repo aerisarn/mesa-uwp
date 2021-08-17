@@ -146,6 +146,9 @@ struct panfrost_context {
                 BITSET_DECLARE(active, PAN_MAX_BATCHES);
         } batches;
 
+        /* Map from resources to panfrost_batches */
+        struct hash_table *writers;
+
         /* Bound job batch */
         struct panfrost_batch *batch;
 

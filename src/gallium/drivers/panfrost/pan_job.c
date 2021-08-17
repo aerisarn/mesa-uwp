@@ -128,8 +128,10 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
         set_foreach_remove(batch->resources, entry) {
                 struct panfrost_resource *rsrc = (void *) entry->key;
 
-                if (rsrc->track.writer == batch)
-                        rsrc->track.writer = NULL;
+                if (_mesa_hash_table_search(ctx->writers, rsrc)) {
+                        _mesa_hash_table_remove_key(ctx->writers, rsrc);
+                        rsrc->track.nr_writers--;
+                }
 
                 rsrc->track.nr_users--;
 
@@ -238,7 +240,8 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
 {
         struct panfrost_context *ctx = batch->ctx;
         uint32_t batch_idx = panfrost_batch_idx(batch);
-        struct panfrost_batch *writer = rsrc->track.writer;
+        struct hash_entry *entry = _mesa_hash_table_search(ctx->writers, rsrc);
+        struct panfrost_batch *writer = entry ? entry->data : NULL;
         bool found = false;
 
         _mesa_set_search_or_add(batch->resources, rsrc, &found);
@@ -267,8 +270,10 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
                 }
         }
 
-        if (writes)
-                rsrc->track.writer = batch;
+        if (writes) {
+                _mesa_hash_table_insert(ctx->writers, rsrc, batch);
+                rsrc->track.nr_writers++;
+        }
 }
 
 static void
@@ -855,9 +860,11 @@ panfrost_flush_writer(struct panfrost_context *ctx,
                       struct panfrost_resource *rsrc,
                       const char *reason)
 {
-        if (rsrc->track.writer) {
+        struct hash_entry *entry = _mesa_hash_table_search(ctx->writers, rsrc);
+
+        if (entry) {
                 perf_debug_ctx(ctx, "Flushing writer due to: %s", reason);
-                panfrost_batch_submit(rsrc->track.writer, ctx->syncobj, ctx->syncobj);
+                panfrost_batch_submit(entry->data, ctx->syncobj, ctx->syncobj);
         }
 }
 

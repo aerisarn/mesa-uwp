@@ -874,7 +874,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
 
                 bool valid = BITSET_TEST(rsrc->valid.data, level);
 
-                if ((usage & PIPE_MAP_READ) && (valid || rsrc->track.writer)) {
+                if ((usage & PIPE_MAP_READ) && (valid || rsrc->track.nr_writers > 0)) {
                         pan_blit_to_staging(pctx, transfer);
                         panfrost_flush_writer(ctx, staging, "AFBC read staging blit");
                         panfrost_bo_wait(staging->image.data.bo, INT64_MAX, false);
