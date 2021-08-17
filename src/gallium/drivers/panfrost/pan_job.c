@@ -858,7 +858,6 @@ panfrost_flush_writer(struct panfrost_context *ctx,
         if (rsrc->track.writer) {
                 perf_debug_ctx(ctx, "Flushing writer due to: %s", reason);
                 panfrost_batch_submit(rsrc->track.writer, ctx->syncobj, ctx->syncobj);
-                rsrc->track.writer = NULL;
         }
 }
 
@@ -877,8 +876,6 @@ panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
                 perf_debug_ctx(ctx, "Flushing user due to: %s", reason);
                 panfrost_batch_submit(batch, ctx->syncobj, ctx->syncobj);
         }
-
-        rsrc->track.writer = NULL;
 }
 
 void
