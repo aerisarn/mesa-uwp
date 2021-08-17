@@ -903,13 +903,14 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
                         const struct pipe_vertex_buffer *buffers)
 {
    struct zink_context *ctx = zink_context(pctx);
-
+   const bool need_state_change = !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state &&
+                                  !zink_screen(pctx->screen)->info.have_EXT_vertex_input_dynamic_state;
    uint32_t enabled_buffers = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
    enabled_buffers |= u_bit_consecutive(start_slot, num_buffers);
    enabled_buffers &= ~u_bit_consecutive(start_slot + num_buffers, unbind_num_trailing_slots);
 
    if (buffers) {
-      if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state)
+      if (need_state_change)
          ctx->vertex_state_changed = true;
       for (unsigned i = 0; i < num_buffers; ++i) {
          const struct pipe_vertex_buffer *vb = buffers + i;
@@ -935,7 +936,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
          }
       }
    } else {
-      if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state)
+      if (need_state_change)
          ctx->vertex_state_changed = true;
       for (unsigned i = 0; i < num_buffers; ++i) {
          update_existing_vbo(ctx, start_slot + i);

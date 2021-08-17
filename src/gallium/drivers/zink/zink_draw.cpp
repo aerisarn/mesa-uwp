@@ -156,7 +156,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       }
    }
 
-   if (HAS_DYNAMIC_STATE)
+   if (HAS_DYNAMIC_STATE && !HAS_VERTEX_INPUT)
       screen->vk.CmdBindVertexBuffers2EXT(batch->state->cmdbuf, 0,
                                           elems->hw_state.num_bindings,
                                           buffers, buffer_offsets, NULL, buffer_strides);
