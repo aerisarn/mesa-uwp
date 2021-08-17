@@ -1912,10 +1912,15 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    if (iview->vk_format == VK_FORMAT_UNDEFINED)
       iview->vk_format = image->vk_format;
 
+   /* Split out the right aspect. Note that for internal meta code we sometimes
+    * use an equivalent color format for the aspect so we first have to check
+    * if we actually got depth/stencil formats. */
    if (iview->aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      iview->vk_format = vk_format_stencil_only(iview->vk_format);
+      if (vk_format_has_stencil(iview->vk_format))
+         iview->vk_format = vk_format_stencil_only(iview->vk_format);
    } else if (iview->aspect_mask == VK_IMAGE_ASPECT_DEPTH_BIT) {
-      iview->vk_format = vk_format_depth_only(iview->vk_format);
+      if (vk_format_has_depth(iview->vk_format))
+         iview->vk_format = vk_format_depth_only(iview->vk_format);
    }
 
    if (device->physical_device->rad_info.chip_class >= GFX9) {
