@@ -186,9 +186,19 @@ radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev, const v
 }
 
 static bool
-radv_formats_is_atomic_allowed(const void *pNext, VkFormat format, VkImageCreateFlags flags)
+radv_format_is_atomic_allowed(struct radv_device *device, VkFormat format)
 {
-   if (radv_is_atomic_format_supported(format))
+   if (format == VK_FORMAT_R32_SFLOAT && !device->image_float32_atomics)
+      return false;
+
+   return radv_is_atomic_format_supported(format);
+}
+
+static bool
+radv_formats_is_atomic_allowed(struct radv_device *device, const void *pNext, VkFormat format,
+                               VkImageCreateFlags flags)
+{
+   if (radv_format_is_atomic_allowed(device, format))
       return true;
 
    if (flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
@@ -199,7 +209,7 @@ radv_formats_is_atomic_allowed(const void *pNext, VkFormat format, VkImageCreate
       /* We have to ignore the existence of the list if viewFormatCount = 0 */
       if (format_list && format_list->viewFormatCount) {
          for (unsigned i = 0; i < format_list->viewFormatCount; ++i) {
-            if (radv_is_atomic_format_supported(format_list->pViewFormats[i]))
+            if (radv_format_is_atomic_allowed(device, format_list->pViewFormats[i]))
                return true;
          }
       }
@@ -232,7 +242,7 @@ radv_use_dcc_for_image(struct radv_device *device, struct radv_image *image,
     */
    if ((pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
        (device->physical_device->rad_info.chip_class < GFX10 ||
-        radv_formats_is_atomic_allowed(pCreateInfo->pNext, format, pCreateInfo->flags)))
+        radv_formats_is_atomic_allowed(device, pCreateInfo->pNext, format, pCreateInfo->flags)))
       return false;
 
    /* Do not enable DCC for fragment shading rate attachments. */
