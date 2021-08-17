@@ -141,6 +141,9 @@ struct panfrost_context {
         struct {
                 uint64_t seqnum;
                 struct panfrost_batch slots[PAN_MAX_BATCHES];
+
+                /** Set of active batches for faster traversal */
+                BITSET_DECLARE(active, PAN_MAX_BATCHES);
         } batches;
 
         /* Bound job batch */

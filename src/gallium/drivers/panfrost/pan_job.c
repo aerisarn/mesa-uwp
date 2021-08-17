@@ -143,6 +143,7 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
         util_sparse_array_finish(&batch->bos);
 
         memset(batch, 0, sizeof(*batch));
+        BITSET_CLEAR(ctx->batches.active, batch_idx);
 }
 
 static void
@@ -176,6 +177,9 @@ panfrost_get_batch(struct panfrost_context *ctx,
                 panfrost_batch_submit(batch, 0, 0);
 
         panfrost_batch_init(ctx, key, batch);
+
+        unsigned batch_idx = panfrost_batch_idx(batch);
+        BITSET_SET(ctx->batches.active, batch_idx);
 
         return batch;
 }
