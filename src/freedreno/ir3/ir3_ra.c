@@ -253,26 +253,28 @@ ir3_reg_interval_remove_temp(struct ir3_reg_ctx *ctx,
 }
 
 static void
-interval_dump(struct ir3_reg_interval *interval, unsigned indent)
+interval_dump(struct log_stream *stream, struct ir3_reg_interval *interval,
+              unsigned indent)
 {
    for (unsigned i = 0; i < indent; i++)
-      printf("\t");
-   printf("reg %u start %u\n", interval->reg->name,
-          interval->reg->interval_start);
+      mesa_log_stream_printf(stream, "\t");
+   mesa_log_stream_printf(stream, "reg %u start %u\n", interval->reg->name,
+                          interval->reg->interval_start);
 
    rb_tree_foreach (struct ir3_reg_interval, child, &interval->children, node) {
-      interval_dump(child, indent + 1);
+      interval_dump(stream, child, indent + 1);
    }
 
    for (unsigned i = 0; i < indent; i++)
-      printf("\t");
-   printf("reg %u end %u\n", interval->reg->name, interval->reg->interval_end);
+      mesa_log_stream_printf(stream, "\t");
+   mesa_log_stream_printf(stream, "reg %u end %u\n", interval->reg->name,
+                          interval->reg->interval_end);
 }
 
 void
-ir3_reg_interval_dump(struct ir3_reg_interval *interval)
+ir3_reg_interval_dump(struct log_stream *stream, struct ir3_reg_interval *interval)
 {
-   interval_dump(interval, 0);
+   interval_dump(stream, interval, 0);
 }
 
 /* These are the core datastructures used by the register allocator. First
@@ -616,45 +618,47 @@ ra_interval_init(struct ra_interval *interval, struct ir3_register *reg)
 }
 
 static void
-ra_interval_dump(struct ra_interval *interval)
+ra_interval_dump(struct log_stream *stream, struct ra_interval *interval)
 {
-   printf("physreg %u ", interval->physreg_start);
+   mesa_log_stream_printf(stream, "physreg %u ", interval->physreg_start);
 
-   ir3_reg_interval_dump(&interval->interval);
+   ir3_reg_interval_dump(stream, &interval->interval);
 }
 
 static void
-ra_file_dump(struct ra_file *file)
+ra_file_dump(struct log_stream *stream, struct ra_file *file)
 {
    rb_tree_foreach (struct ra_interval, interval, &file->physreg_intervals,
                     physreg_node) {
-      ra_interval_dump(interval);
+      ra_interval_dump(stream, interval);
    }
 
    unsigned start, end;
-   printf("available:\n");
+   mesa_log_stream_printf(stream, "available:\n");
    BITSET_FOREACH_RANGE (start, end, file->available, file->size) {
-      printf("%u-%u ", start, end);
+      mesa_log_stream_printf(stream, "%u-%u ", start, end);
    }
-   printf("\n");
+   mesa_log_stream_printf(stream, "\n");
 
-   printf("available to evict:\n");
+   mesa_log_stream_printf(stream, "available to evict:\n");
    BITSET_FOREACH_RANGE (start, end, file->available_to_evict, file->size) {
-      printf("%u-%u ", start, end);
+      mesa_log_stream_printf(stream, "%u-%u ", start, end);
    }
-   printf("\n");
-   printf("start: %u\n", file->start);
+   mesa_log_stream_printf(stream, "\n");
+   mesa_log_stream_printf(stream, "start: %u\n", file->start);
 }
 
 static void
 ra_ctx_dump(struct ra_ctx *ctx)
 {
-   printf("full:\n");
-   ra_file_dump(&ctx->full);
-   printf("half:\n");
-   ra_file_dump(&ctx->half);
-   printf("shared:\n");
-   ra_file_dump(&ctx->shared);
+   struct log_stream *stream = mesa_log_streami();
+   mesa_log_stream_printf(stream, "full:\n");
+   ra_file_dump(stream, &ctx->full);
+   mesa_log_stream_printf(stream, "half:\n");
+   ra_file_dump(stream, &ctx->half);
+   mesa_log_stream_printf(stream, "shared:");
+   ra_file_dump(stream, &ctx->shared);
+   mesa_log_stream_destroy(stream);
 }
 
 static unsigned
@@ -1923,7 +1927,7 @@ handle_block(struct ra_ctx *ctx, struct ir3_block *block)
    insert_live_in_moves(ctx);
 
    if (RA_DEBUG) {
-      printf("after live-in block %u:\n", block->index);
+      d("after live-in block %u:\n", block->index);
       ra_ctx_dump(ctx);
    }
 
@@ -1931,10 +1935,7 @@ handle_block(struct ra_ctx *ctx, struct ir3_block *block)
     * block.
     */
    foreach_instr (instr, &block->instr_list) {
-      if (RA_DEBUG) {
-         printf("processing: ");
-         ir3_print_instr(instr);
-      }
+      di(instr, "processing");
 
       if (instr->opc == OPC_META_PHI)
          assign_phi(ctx, instr);

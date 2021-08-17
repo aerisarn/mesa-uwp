@@ -498,7 +498,7 @@ index_merge_sets(struct ir3 *ir)
 static void
 dump_merge_sets(struct ir3 *ir)
 {
-   printf("merge sets:\n");
+   d("merge sets:");
    struct set *merge_sets = _mesa_pointer_set_create(NULL);
    foreach_block (block, &ir->block_list) {
       foreach_instr (instr, &block->instr_list) {
@@ -509,12 +509,12 @@ dump_merge_sets(struct ir3 *ir)
             if (!merge_set || _mesa_set_search(merge_sets, merge_set))
                continue;
 
-            printf("merge set, size %u, align %u:\n", merge_set->size,
-                   merge_set->alignment);
+            d("merge set, size %u, align %u:", merge_set->size,
+              merge_set->alignment);
             for (unsigned j = 0; j < merge_set->regs_count; j++) {
                struct ir3_register *reg = merge_set->regs[j];
-               printf("\t" SYN_SSA("ssa_%u") ":%u, offset %u\n",
-                      reg->instr->serialno, reg->name, reg->merge_set_offset);
+               d("\t" SYN_SSA("ssa_%u") ":%u, offset %u",
+                 reg->instr->serialno, reg->name, reg->merge_set_offset);
             }
 
             _mesa_set_add(merge_sets, merge_set);

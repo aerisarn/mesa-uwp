@@ -1586,6 +1586,9 @@ void ir3_validate(struct ir3 *ir);
 void ir3_print(struct ir3 *ir);
 void ir3_print_instr(struct ir3_instruction *instr);
 
+struct log_stream;
+void ir3_print_instr_stream(struct log_stream *stream, struct ir3_instruction *instr);
+
 /* delay calculation: */
 int ir3_delayslots(struct ir3_instruction *assigner,
                    struct ir3_instruction *consumer, unsigned n, bool soft);

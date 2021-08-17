@@ -423,6 +423,12 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
 }
 
 void
+ir3_print_instr_stream(struct log_stream *stream, struct ir3_instruction *instr)
+{
+   print_instr(stream, instr, 0);
+}
+
+void
 ir3_print_instr(struct ir3_instruction *instr)
 {
    struct log_stream *stream = mesa_log_streami();

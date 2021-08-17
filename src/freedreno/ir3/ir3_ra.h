@@ -36,15 +36,17 @@
 #define d(fmt, ...)                                                            \
    do {                                                                        \
       if (RA_DEBUG) {                                                          \
-         printf("RA: " fmt "\n", ##__VA_ARGS__);                               \
+         mesa_logi("RA: " fmt, ##__VA_ARGS__);                                 \
       }                                                                        \
    } while (0)
 
 #define di(instr, fmt, ...)                                                    \
    do {                                                                        \
       if (RA_DEBUG) {                                                          \
-         printf("RA: " fmt ": ", ##__VA_ARGS__);                               \
-         ir3_print_instr(instr);                                               \
+         struct log_stream *stream = mesa_log_streami();                       \
+         mesa_log_stream_printf(stream, "RA: " fmt ": ", ##__VA_ARGS__);       \
+         ir3_print_instr_stream(stream, instr);                                \
+         mesa_log_stream_destroy(stream);                                      \
       }                                                                        \
    } while (0)
 
@@ -257,7 +259,8 @@ ir3_reg_interval_init(struct ir3_reg_interval *interval,
    interval->inserted = false;
 }
 
-void ir3_reg_interval_dump(struct ir3_reg_interval *interval);
+void ir3_reg_interval_dump(struct log_stream *stream,
+                           struct ir3_reg_interval *interval);
 
 void ir3_reg_interval_insert(struct ir3_reg_ctx *ctx,
                              struct ir3_reg_interval *interval);

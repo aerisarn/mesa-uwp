@@ -240,10 +240,7 @@ update_max_pressure(struct ra_spill_ctx *ctx)
 static void
 handle_instr(struct ra_spill_ctx *ctx, struct ir3_instruction *instr)
 {
-   if (RA_DEBUG) {
-      printf("processing: ");
-      ir3_print_instr(instr);
-   }
+   di(instr, "processing");
 
    ra_foreach_dst (dst, instr) {
       init_dst(ctx, dst);
