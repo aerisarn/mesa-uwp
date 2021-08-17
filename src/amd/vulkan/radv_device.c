@@ -424,6 +424,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_external_memory_fd = true,
       .KHR_external_semaphore = true,
       .KHR_external_semaphore_fd = true,
+      .KHR_format_feature_flags2 = true,
       .KHR_fragment_shading_rate = device->rad_info.chip_class >= GFX10_3,
       .KHR_get_memory_requirements2 = true,
       .KHR_image_format_list = true,

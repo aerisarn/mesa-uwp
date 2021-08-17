@@ -18,3 +18,4 @@ Experimental raytracing support on RADV
 VK_KHR_synchronization2 on Intel
 NGG shader based culling is now enabled by default on GFX10.3 on RADV.
 VK_KHR_maintenance4 on RADV
+VK_KHR_format_feature_flags2 on RADV.
