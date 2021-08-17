@@ -3016,6 +3016,9 @@ struct anv_ray_tracing_pipeline {
     * client has requested a dynamic stack size.
     */
    uint32_t                                     stack_size;
+
+   /* Maximum scratch size for all shaders in this pipeline. */
+   uint32_t                                     scratch_size;
 };
 
 #define ANV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)             \

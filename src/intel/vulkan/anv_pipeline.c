@@ -2474,6 +2474,9 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
    anv_pipeline_add_executables(&pipeline->base, stage, bin);
    util_dynarray_append(&pipeline->shaders, struct anv_shader_bin *, bin);
 
+   pipeline->scratch_size =
+      MAX2(pipeline->scratch_size, bin->prog_data->total_scratch);
+
    *shader_out = bin;
 
    return VK_SUCCESS;
@@ -3131,6 +3134,14 @@ anv_ray_tracing_pipeline_create(
       return result;
    }
 
+   /* Compute the size of the scratch BO (for register spilling) by taking the
+    * max of all the shaders in the pipeline.
+    */
+   util_dynarray_foreach(&pipeline->shaders, struct anv_shader_bin *, shader) {
+      pipeline->scratch_size =
+         MAX2(pipeline->scratch_size, (*shader)->prog_data->total_scratch);
+   }
+
    if (pCreateInfo->pLibraryInfo) {
       uint32_t g = pCreateInfo->groupCount;
       for (uint32_t l = 0; l < pCreateInfo->pLibraryInfo->libraryCount; l++) {
@@ -3140,6 +3151,12 @@ anv_ray_tracing_pipeline_create(
             anv_pipeline_to_ray_tracing(library);
          for (uint32_t lg = 0; lg < rt_library->group_count; lg++)
             pipeline->groups[g++] = rt_library->groups[lg];
+
+         /* Also account for all the pipeline libraries for the size of the
+          * scratch BO.
+          */
+         pipeline->scratch_size =
+            MAX2(pipeline->scratch_size, rt_library->scratch_size);
       }
    }
 

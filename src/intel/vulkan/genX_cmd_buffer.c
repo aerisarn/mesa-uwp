@@ -5478,6 +5478,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
                       uint32_t launch_depth,
                       uint64_t launch_size_addr)
 {
+   struct anv_device *device = cmd_buffer->device;
    struct anv_cmd_ray_tracing_state *rt = &cmd_buffer->state.rt;
    struct anv_ray_tracing_pipeline *pipeline = rt->pipeline;
 
@@ -5610,6 +5611,35 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
           */
          uint32_t local_size = 1 << local_size_log2[i];
          global_size[i] = DIV_ROUND_UP((uint64_t)launch_size[i], local_size);
+      }
+   }
+
+   anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_BTD), btd) {
+      /* TODO: This is the timeout after which the bucketed thread dispatcher
+       *       will kick off a wave of threads. We go with the lowest value
+       *       for now. It could be tweaked on a per application basis
+       *       (drirc).
+       */
+      btd.DispatchTimeoutCounter = _64clocks;
+      /* BSpec 43851: "This field must be programmed to 6h i.e. memory backed
+       *               buffer must be 128KB."
+       */
+      btd.PerDSSMemoryBackedBufferSize = 6;
+      btd.MemoryBackedBufferBasePointer = (struct anv_address) { .bo = device->btd_fifo_bo };
+      if (pipeline->scratch_size > 0) {
+         struct anv_bo *scratch_bo =
+            anv_scratch_pool_alloc(device,
+                                   &device->scratch_pool,
+                                   MESA_SHADER_COMPUTE,
+                                   pipeline->scratch_size);
+         anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
+                               cmd_buffer->batch.alloc,
+                               scratch_bo);
+         uint32_t scratch_surf =
+            anv_scratch_pool_get_surf(cmd_buffer->device,
+                                      &device->scratch_pool,
+                                      pipeline->scratch_size);
+         btd.ScratchSpaceBuffer = scratch_surf >> 4;
       }
    }
 
