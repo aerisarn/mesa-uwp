@@ -196,6 +196,29 @@ LLVMValueRef lp_build_coro_begin_alloc_mem(struct gallivm_state *gallivm, LLVMVa
    return coro_hdl;
 }
 
+LLVMValueRef lp_build_coro_alloc_mem_array(struct gallivm_state *gallivm,
+					   LLVMValueRef coro_hdl_ptr, LLVMValueRef coro_idx,
+					   LLVMValueRef coro_num_hdls)
+{
+   LLVMTypeRef mem_ptr_type = LLVMPointerType(LLVMInt8TypeInContext(gallivm->context), 0);
+   LLVMValueRef alloced_ptr = LLVMBuildLoad(gallivm->builder, coro_hdl_ptr, "");
+
+   LLVMValueRef not_alloced = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, alloced_ptr, LLVMConstNull(mem_ptr_type), "");
+   LLVMValueRef coro_size = lp_build_coro_size(gallivm);
+
+   struct lp_build_if_state if_state_coro;
+   lp_build_if(&if_state_coro, gallivm, not_alloced);
+
+   LLVMValueRef alloc_mem;
+   LLVMValueRef alloc_size = LLVMBuildMul(gallivm->builder, coro_num_hdls, coro_size, "");
+   assert(gallivm->coro_malloc_hook);
+   alloc_mem = LLVMBuildCall(gallivm->builder, gallivm->coro_malloc_hook, &alloc_size, 1, "");
+   LLVMBuildStore(gallivm->builder, alloc_mem, coro_hdl_ptr);
+   lp_build_endif(&if_state_coro);
+
+   return LLVMBuildMul(gallivm->builder, coro_size, coro_idx, "");
+}
+
 void lp_build_coro_free_mem(struct gallivm_state *gallivm, LLVMValueRef coro_id, LLVMValueRef coro_hdl)
 {
    LLVMValueRef alloc_mem = lp_build_coro_free(gallivm, coro_id, coro_hdl);
