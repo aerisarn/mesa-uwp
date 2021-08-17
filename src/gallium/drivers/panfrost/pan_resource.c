@@ -898,7 +898,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
             (usage & PIPE_MAP_WRITE) &&
             !(resource->target == PIPE_BUFFER
               && !util_ranges_intersect(&rsrc->valid_buffer_range, box->x, box->x + box->width)) &&
-            BITSET_COUNT(rsrc->track.users) != 0) {
+            rsrc->track.nr_users > 0) {
 
                 /* When a resource to be modified is already being used by a
                  * pending batch, it is often faster to copy the whole BO than
@@ -917,7 +917,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                  * not ready yet (still accessed by one of the already flushed
                  * batches), we try to allocate a new one to avoid waiting.
                  */
-                if (BITSET_COUNT(rsrc->track.users) ||
+                if (rsrc->track.nr_users > 0 ||
                     !panfrost_bo_wait(bo, 0, true)) {
                         /* We want the BO to be MMAPed. */
                         uint32_t flags = bo->flags & ~PAN_BO_DELAY_MMAP;

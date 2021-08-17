@@ -129,6 +129,8 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
                 if (rsrc->track.writer == batch)
                         rsrc->track.writer = NULL;
 
+                rsrc->track.nr_users--;
+
                 pipe_resource_reference((struct pipe_resource **) &rsrc, NULL);
         }
 
@@ -237,6 +239,9 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
 
         if (!found) {
                 BITSET_SET(rsrc->track.users, batch_idx);
+
+                /* Cache number of batches accessing a resource */
+                rsrc->track.nr_users++;
 
                 /* Reference the resource on the batch */
                 pipe_reference(NULL, &rsrc->base.reference);
