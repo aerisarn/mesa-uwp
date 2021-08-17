@@ -150,6 +150,17 @@ static LLVMValueRef force_dcc_off(struct si_shader_context *ctx, LLVMValueRef rs
    }
 }
 
+static LLVMValueRef force_write_compress_off(struct si_shader_context *ctx, LLVMValueRef rsrc)
+{
+   LLVMValueRef i32_6 = LLVMConstInt(ctx->ac.i32, 6, 0);
+   LLVMValueRef i32_C = LLVMConstInt(ctx->ac.i32, C_00A018_WRITE_COMPRESS_ENABLE, 0);
+   LLVMValueRef tmp;
+
+   tmp = LLVMBuildExtractElement(ctx->ac.builder, rsrc, i32_6, "");
+   tmp = LLVMBuildAnd(ctx->ac.builder, tmp, i32_C, "");
+   return LLVMBuildInsertElement(ctx->ac.builder, rsrc, tmp, i32_6, "");
+}
+
 /* AC_DESC_FMASK is handled exactly like AC_DESC_IMAGE. The caller should
  * adjust "index" to point to FMASK. */
 static LLVMValueRef si_load_image_desc(struct si_shader_context *ctx, LLVMValueRef list,
@@ -173,6 +184,11 @@ static LLVMValueRef si_load_image_desc(struct si_shader_context *ctx, LLVMValueR
 
    if (desc_type == AC_DESC_IMAGE && uses_store && ctx->ac.chip_class <= GFX9)
       rsrc = force_dcc_off(ctx, rsrc);
+
+   if (desc_type == AC_DESC_IMAGE && !uses_store &&
+       ctx->screen->always_allow_dcc_stores && ctx->screen->info.has_image_load_dcc_bug)
+      rsrc = force_write_compress_off(ctx, rsrc);
+
    return rsrc;
 }
 

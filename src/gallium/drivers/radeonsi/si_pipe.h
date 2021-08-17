@@ -237,7 +237,8 @@ enum
    DBG_NO_DISPLAY_DCC,
    DBG_NO_DCC,
    DBG_NO_DCC_CLEAR,
-   DBG_NO_DCC_FB,
+   DBG_NO_DCC_STORE,
+   DBG_DCC_STORE,
    DBG_NO_DCC_MSAA,
    DBG_NO_FMASK,
 
@@ -550,6 +551,7 @@ struct si_screen {
    bool use_ngg_culling;
    bool use_ngg_streamout;
    bool allow_dcc_msaa_clear_to_reg_for_bpp[5]; /* indexed by log2(Bpp) */
+   bool always_allow_dcc_stores;
 
    struct {
 #define OPT_BOOL(name, dflt, description) bool name : 1;

@@ -109,7 +109,8 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"nodisplaydcc", DBG(NO_DISPLAY_DCC), "Disable display DCC"},
    {"nodcc", DBG(NO_DCC), "Disable DCC."},
    {"nodccclear", DBG(NO_DCC_CLEAR), "Disable DCC fast clear."},
-   {"nodccfb", DBG(NO_DCC_FB), "Disable separate DCC on the main framebuffer"},
+   {"nodccstore", DBG(NO_DCC_STORE), "Disable DCC stores"},
+   {"dccstore", DBG(DCC_STORE), "Enable DCC stores"},
    {"nodccmsaa", DBG(NO_DCC_MSAA), "Disable DCC for MSAA"},
    {"nofmask", DBG(NO_FMASK), "Disable MSAA compression"},
 
@@ -1259,6 +1260,14 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       for (unsigned bpp_log2 = util_logbase2(4); bpp_log2 <= util_logbase2(16); bpp_log2++)
          sscreen->allow_dcc_msaa_clear_to_reg_for_bpp[bpp_log2] = true;
    }
+
+   /* DCC stores have 50% performance of uncompressed stores and sometimes
+    * even less than that. It's risky to enable on dGPUs.
+    */
+   sscreen->always_allow_dcc_stores = !(sscreen->debug_flags & DBG(NO_DCC_STORE)) &&
+                                      ((sscreen->info.chip_class >= GFX10_3 &&
+                                        !sscreen->info.has_dedicated_vram) ||
+                                       sscreen->debug_flags & DBG(DCC_STORE));
 
    sscreen->dpbb_allowed = !(sscreen->debug_flags & DBG(NO_DPBB)) &&
                            (sscreen->info.chip_class >= GFX10 ||

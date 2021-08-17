@@ -741,6 +741,9 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
       bool uses_dcc = vi_dcc_enabled(tex, level);
       unsigned access = view->access;
 
+      if (uses_dcc && screen->always_allow_dcc_stores)
+         access |= SI_IMAGE_ACCESS_ALLOW_DCC_STORE;
+
       assert(!tex->is_depth);
       assert(fmask_desc || tex->surface.fmask_offset == 0);
 
@@ -782,7 +785,7 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
          view->u.tex.first_layer, view->u.tex.last_layer, width, height, depth, desc, fmask_desc);
       si_set_mutable_tex_desc_fields(screen, tex, &tex->surface.u.legacy.level[level], level, level,
                                      util_format_get_blockwidth(view->format),
-                                     false, view->access, desc);
+                                     false, access, desc);
    }
 }
 

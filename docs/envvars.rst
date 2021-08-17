@@ -697,8 +697,6 @@ radeonsi driver environment variables
       Disable DCC.
    ``nodccclear``
       Disable DCC fast clear.
-   ``nodccfb``
-      Disable separate DCC on the main framebuffer
    ``nodccmsaa``
       Disable DCC for MSAA
    ``nodpbb``
