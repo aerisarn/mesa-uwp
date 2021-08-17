@@ -78,7 +78,8 @@ panfrost_batch_init(struct panfrost_context *ctx,
         batch->maxx = batch->maxy = 0;
 
         util_copy_framebuffer_state(&batch->key, key);
-        util_dynarray_init(&batch->resources, NULL);
+        batch->resources =_mesa_set_create(NULL, _mesa_hash_pointer,
+                                          _mesa_key_pointer_equal);
 
         /* Preallocate the main pool, since every batch has at least one job
          * structure so it will be used */
@@ -121,16 +122,17 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
                 panfrost_bo_unreference(bo);
         }
 
-        util_dynarray_foreach(&batch->resources, struct panfrost_resource *, rsrc) {
-                BITSET_CLEAR((*rsrc)->track.users, batch_idx);
+        set_foreach_remove(batch->resources, entry) {
+                struct panfrost_resource *rsrc = (void *) entry->key;
+                BITSET_CLEAR(rsrc->track.users, batch_idx);
 
-                if ((*rsrc)->track.writer == batch)
-                        (*rsrc)->track.writer = NULL;
+                if (rsrc->track.writer == batch)
+                        rsrc->track.writer = NULL;
 
-                pipe_resource_reference((struct pipe_resource **) rsrc, NULL);
+                pipe_resource_reference((struct pipe_resource **) &rsrc, NULL);
         }
 
-        util_dynarray_fini(&batch->resources);
+        _mesa_set_destroy(batch->resources, NULL);
         panfrost_pool_cleanup(&batch->pool);
         panfrost_pool_cleanup(&batch->invisible_pool);
 
@@ -229,16 +231,15 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         uint32_t batch_idx = panfrost_batch_idx(batch);
         struct panfrost_batch *writer = rsrc->track.writer;
+        bool found = false;
 
-        if (unlikely(!BITSET_TEST(rsrc->track.users, batch_idx))) {
+        _mesa_set_search_or_add(batch->resources, rsrc, &found);
+
+        if (!found) {
                 BITSET_SET(rsrc->track.users, batch_idx);
 
                 /* Reference the resource on the batch */
-                struct pipe_resource **dst = util_dynarray_grow(&batch->resources,
-                                struct pipe_resource *, 1);
-
-                *dst = NULL;
-                pipe_resource_reference(dst, &rsrc->base);
+                pipe_reference(NULL, &rsrc->base.reference);
         }
 
         /* Flush users if required */
