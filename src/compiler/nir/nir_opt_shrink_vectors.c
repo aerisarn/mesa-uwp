@@ -96,6 +96,55 @@ is_only_used_by_alu(nir_ssa_def *def)
 }
 
 static bool
+opt_shrink_vector(nir_builder *b, nir_alu_instr *instr)
+{
+   nir_ssa_def *def = &instr->dest.dest.ssa;
+   unsigned mask = nir_ssa_def_components_read(def);
+
+   /* If nothing was read, leave it up to DCE. */
+   if (mask == 0)
+      return false;
+
+   /* don't remove any channels if used by non-ALU */
+   if (!is_only_used_by_alu(def))
+      return false;
+
+   uint8_t reswizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
+   nir_ssa_scalar srcs[NIR_MAX_VEC_COMPONENTS] = { 0 };
+   unsigned num_components = 0;
+   for (unsigned i = 0; i < def->num_components; i++) {
+      if (!((mask >> i) & 0x1))
+         continue;
+
+      /* Try reuse a component with the same value */
+      unsigned j;
+      for (j = 0; j < num_components; j++) {
+         if (nir_alu_srcs_equal(instr, instr, i, j)) {
+            reswizzle[i] = j;
+            break;
+         }
+      }
+
+      /* Otherwise, just append the value */
+      if (j == num_components) {
+         srcs[num_components] = nir_get_ssa_scalar(instr->src[i].src.ssa, instr->src[i].swizzle[0]);
+         reswizzle[i] = num_components++;
+      }
+   }
+
+   /* return if no component was removed */
+   if (num_components == def->num_components)
+      return false;
+
+   /* create new vecN and replace uses */
+   nir_ssa_def *new_vec = nir_vec_scalars(b, srcs, num_components);
+   nir_ssa_def_rewrite_uses(def, new_vec);
+   reswizzle_alu_uses(new_vec, reswizzle);
+
+   return true;
+}
+
+static bool
 opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
 {
    nir_ssa_def *def = &instr->dest.dest.ssa;
@@ -104,14 +153,12 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
    if (def->num_components == 1)
       return false;
 
-   bool is_vec = false;
    switch (instr->op) {
       /* don't use nir_op_is_vec() as not all vector sizes are supported. */
       case nir_op_vec4:
       case nir_op_vec3:
       case nir_op_vec2:
-         is_vec = true;
-         break;
+         return opt_shrink_vector(b, instr);
       default:
          if (nir_op_infos[instr->op].output_size != 0)
             return false;
@@ -131,21 +178,6 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
       return false;
 
    const bool is_bitfield_mask = last_bit == num_components;
-
-   if (is_vec) {
-      /* replace vecN with smaller version */
-      nir_ssa_scalar srcs[NIR_MAX_VEC_COMPONENTS] = { 0 };
-      unsigned index = 0;
-      for (int i = 0; i < last_bit; i++) {
-         if ((mask >> i) & 0x1)
-            srcs[index++] = nir_get_ssa_scalar(instr->src[i].src.ssa, instr->src[i].swizzle[0]);
-      }
-      assert(index == num_components);
-      nir_ssa_def *new_vec = nir_vec_scalars(b, srcs, num_components);
-      nir_ssa_def_rewrite_uses(def, new_vec);
-      def = new_vec;
-   }
-
    if (is_bitfield_mask) {
       /* just reduce the number of components and return */
       def->num_components = num_components;
@@ -153,30 +185,25 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
       return true;
    }
 
-   if (!is_vec) {
-      /* update sources */
-      for (int i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-         unsigned index = 0;
-         for (int j = 0; j < last_bit; j++) {
-            if ((mask >> j) & 0x1)
-               instr->src[i].swizzle[index++] = instr->src[i].swizzle[j];
-         }
-         assert(index == num_components);
-      }
-
-      /* update dest */
-      def->num_components = num_components;
-      instr->dest.write_mask = BITFIELD_MASK(num_components);
-   }
-
-   /* compute new dest swizzles */
    uint8_t reswizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
    unsigned index = 0;
-   for (int i = 0; i < last_bit; i++) {
-      if ((mask >> i) & 0x1)
-         reswizzle[i] = index++;
+   for (unsigned i = 0; i < last_bit; i++) {
+      /* skip unused components */
+      if (!((mask >> i) & 0x1))
+         continue;
+
+      /* reswizzle the sources */
+      for (int k = 0; k < nir_op_infos[instr->op].num_inputs; k++) {
+         instr->src[k].swizzle[index] = instr->src[k].swizzle[i];
+         reswizzle[i] = index;
+      }
+      index++;
    }
    assert(index == num_components);
+
+   /* update dest */
+   def->num_components = num_components;
+   instr->dest.write_mask = BITFIELD_MASK(num_components);
 
    /* update uses */
    reswizzle_alu_uses(def, reswizzle);
