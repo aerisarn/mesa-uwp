@@ -2498,7 +2498,7 @@ tu_CmdSetStencilOpEXT(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_RB_STENCIL_CNTL;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdSetDepthBiasEnableEXT(VkCommandBuffer commandBuffer,
                             VkBool32 depthBiasEnable)
 {
@@ -2511,7 +2511,7 @@ tu_CmdSetDepthBiasEnableEXT(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_GRAS_SU_CNTL;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer,
                                    VkBool32 primitiveRestartEnable)
 {
@@ -2520,7 +2520,7 @@ tu_CmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer,
    cmd->state.primitive_restart_enable = primitiveRestartEnable;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 tu_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
                                     VkBool32 rasterizerDiscardEnable)
 {
@@ -2534,6 +2534,20 @@ tu_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
    }
 
    cmd->state.dirty |= TU_CMD_DIRTY_RASTERIZER_DISCARD;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer,
+                    VkLogicOp logicOp)
+{
+   tu_stub();
+}
+
+VKAPI_ATTR void VKAPI_CALL
+tu_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer,
+                               uint32_t patchControlPoints)
+{
+   tu_stub();
 }
 
 static void
