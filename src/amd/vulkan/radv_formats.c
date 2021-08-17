@@ -1764,41 +1764,6 @@ radv_GetPhysicalDeviceSparseImageFormatProperties2(
 }
 
 void
-radv_GetPhysicalDeviceSparseImageFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format,
-                                                  VkImageType type, uint32_t samples,
-                                                  VkImageUsageFlags usage, VkImageTiling tiling,
-                                                  uint32_t *pNumProperties,
-                                                  VkSparseImageFormatProperties *pProperties)
-{
-   const VkPhysicalDeviceSparseImageFormatInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2,
-      .format = format,
-      .type = type,
-      .samples = samples,
-      .usage = usage,
-      .tiling = tiling};
-
-   if (!pProperties) {
-      radv_GetPhysicalDeviceSparseImageFormatProperties2(physicalDevice, &info, pNumProperties,
-                                                         NULL);
-      return;
-   }
-
-   VkSparseImageFormatProperties2 props[4];
-   uint32_t prop_cnt = MIN2(ARRAY_SIZE(props), *pNumProperties);
-
-   memset(props, 0, sizeof(props));
-   for (unsigned i = 0; i < ARRAY_SIZE(props); ++i)
-      props[i].sType = VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2;
-
-   radv_GetPhysicalDeviceSparseImageFormatProperties2(physicalDevice, &info, &prop_cnt, props);
-
-   for (unsigned i = 0; i < prop_cnt; ++i)
-      pProperties[i] = props[i].properties;
-   *pNumProperties = prop_cnt;
-}
-
-void
 radv_GetImageSparseMemoryRequirements2(VkDevice _device,
                                        const VkImageSparseMemoryRequirementsInfo2 *pInfo,
                                        uint32_t *pSparseMemoryRequirementCount,
@@ -1846,34 +1811,6 @@ radv_GetImageSparseMemoryRequirements2(VkDevice _device,
          req->memoryRequirements.imageMipTailStride = 0;
       }
    };
-}
-
-void
-radv_GetImageSparseMemoryRequirements(VkDevice device, VkImage image,
-                                      uint32_t *pSparseMemoryRequirementCount,
-                                      VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
-{
-   const VkImageSparseMemoryRequirementsInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2,
-      .image = image};
-
-   if (!pSparseMemoryRequirements) {
-      radv_GetImageSparseMemoryRequirements2(device, &info, pSparseMemoryRequirementCount, NULL);
-      return;
-   }
-
-   VkSparseImageMemoryRequirements2 reqs[4];
-   uint32_t reqs_cnt = MIN2(ARRAY_SIZE(reqs), *pSparseMemoryRequirementCount);
-
-   memset(reqs, 0, sizeof(reqs));
-   for (unsigned i = 0; i < ARRAY_SIZE(reqs); ++i)
-      reqs[i].sType = VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2;
-
-   radv_GetImageSparseMemoryRequirements2(device, &info, &reqs_cnt, reqs);
-
-   for (unsigned i = 0; i < reqs_cnt; ++i)
-      pSparseMemoryRequirements[i] = reqs[i].memoryRequirements;
-   *pSparseMemoryRequirementCount = reqs_cnt;
 }
 
 void
