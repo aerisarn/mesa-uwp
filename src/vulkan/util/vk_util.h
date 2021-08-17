@@ -278,6 +278,15 @@ struct nir_spirv_specialization*
 vk_spec_info_to_nir_spirv(const VkSpecializationInfo *spec_info,
                           uint32_t *out_num_spec_entries);
 
+#define STACK_ARRAY_SIZE 8
+
+#define STACK_ARRAY(type, name, size) \
+   type _stack_##name[STACK_ARRAY_SIZE], *const name = \
+      (size) <= STACK_ARRAY_SIZE ? _stack_##name : malloc((size) * sizeof(type))
+
+#define STACK_ARRAY_FINISH(name) \
+   if (name != _stack_##name) free(name)
+
 #ifdef __cplusplus
 }
 #endif
