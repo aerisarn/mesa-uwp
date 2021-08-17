@@ -613,16 +613,12 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    sctx->cs_user_data[2] = (tex->surface.u.gfx9.color.display_dcc_pitch_max + 1) |
                            (tex->surface.u.gfx9.color.display_dcc_height << 16);
 
-   /* There is only 1 shader variant because ac_surface only supports displayable DCC
-    * with one swizzle mode and 32bpp.
-    */
+   /* We have only 1 variant per bpp for now, so expect 32 bpp. */
    assert(tex->surface.bpe == 4);
-   assert(sctx->chip_class != GFX9 || tex->surface.u.gfx9.swizzle_mode == 25);  /* 64KB_S_X */
-   assert(sctx->chip_class != GFX10 || tex->surface.u.gfx9.swizzle_mode == 27); /* 64KB_R_X */
-   assert(sctx->chip_class != GFX10_3 || tex->surface.u.gfx9.swizzle_mode == 27); /* 64KB_R_X */
 
-   if (!sctx->cs_dcc_retile)
-      sctx->cs_dcc_retile = si_create_dcc_retile_cs(sctx, &tex->surface);
+   void **shader = &sctx->cs_dcc_retile[tex->surface.u.gfx9.swizzle_mode];
+   if (!*shader)
+      *shader = si_create_dcc_retile_cs(sctx, &tex->surface);
 
    /* Dispatch compute. */
    unsigned width = DIV_ROUND_UP(tex->buffer.b.b.width0, tex->surface.u.gfx9.color.dcc_block_width);
@@ -638,7 +634,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
    info.grid[2] = 1;
 
-   si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_dcc_retile, SI_OP_SYNC_BEFORE,
+   si_launch_grid_internal_ssbos(sctx, &info, *shader, SI_OP_SYNC_BEFORE,
                                  SI_COHERENCY_CB_META, 1, &sb, 0x1);
 
    /* Don't flush caches. L2 will be flushed by the kernel fence. */

@@ -958,7 +958,7 @@ struct si_context {
    void *cs_clear_render_target_1d_array;
    void *cs_clear_12bytes_buffer;
    void *cs_dcc_decompress;
-   void *cs_dcc_retile;
+   void *cs_dcc_retile[32];
    void *cs_fmask_expand[3][2]; /* [log2(samples)-1][is_array] */
    struct si_screen *screen;
    struct pipe_debug_callback debug;
