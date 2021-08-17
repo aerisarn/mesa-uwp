@@ -2235,8 +2235,6 @@ static void si_draw_vbo(struct pipe_context *ctx,
       zstex->depth_cleared_level_mask &= ~BITFIELD_BIT(sctx->framebuffer.state.zsbuf->u.tex.level);
    }
 
-   /* TODO: Set displayable_dcc_dirty if image stores are used. */
-
    DRAW_CLEANUP;
 }
 

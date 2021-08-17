@@ -820,10 +820,15 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
          images->needs_color_decompress_mask &= ~(1 << slot);
       }
 
-      if (tex->surface.display_dcc_offset && view->access & PIPE_IMAGE_ACCESS_WRITE)
+      if (tex->surface.display_dcc_offset && view->access & PIPE_IMAGE_ACCESS_WRITE) {
          images->display_dcc_store_mask |= 1u << slot;
-      else
+
+         /* Set displayable_dcc_dirty for non-compute stages conservatively (before draw calls). */
+         if (shader != PIPE_SHADER_COMPUTE)
+            tex->displayable_dcc_dirty = true;
+      } else {
          images->display_dcc_store_mask &= ~(1u << slot);
+      }
 
       if (vi_dcc_enabled(tex, level) && p_atomic_read(&tex->framebuffers_bound))
          ctx->need_check_render_feedback = true;
