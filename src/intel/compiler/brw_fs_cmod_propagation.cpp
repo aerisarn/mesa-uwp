@@ -258,10 +258,6 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
             !inst->src[0].negate))
          continue;
 
-      if (inst->opcode == BRW_OPCODE_MOV &&
-          inst->conditional_mod != BRW_CONDITIONAL_NZ)
-         continue;
-
       /* A CMP with a second source of zero can match with anything.  A CMP
        * with a second source that is not zero can only match with an ADD
        * instruction.
@@ -351,16 +347,26 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
                    *   destination type of inst must either be floating point
                    *   (of any size) or integer with a size at least as large
                    *   as the destination of inst.
+                   *
+                   * - If the conditional modifier is neither Z nor NZ, then the
+                   *   destination type of inst must either be floating point
+                   *   (of any size) or integer with a size at least as large
+                   *   as the destination of inst and the same signedness.
                    */
                   if (!brw_reg_type_is_integer(inst->src[0].type) ||
                       type_sz(scan_inst->dst.type) != type_sz(inst->src[0].type))
                      break;
 
-                  assert(inst->conditional_mod == BRW_CONDITIONAL_NZ);
+                  if (brw_reg_type_is_integer(inst->dst.type)) {
+                     if (type_sz(inst->dst.type) < type_sz(scan_inst->dst.type))
+                        break;
 
-                  if (brw_reg_type_is_integer(inst->dst.type) &&
-                      type_sz(inst->dst.type) < type_sz(scan_inst->dst.type))
-                     break;
+                     if (inst->conditional_mod != BRW_CONDITIONAL_Z &&
+                         inst->conditional_mod != BRW_CONDITIONAL_NZ &&
+                         brw_reg_type_is_unsigned_integer(inst->dst.type) !=
+                         brw_reg_type_is_unsigned_integer(scan_inst->dst.type))
+                        break;
+                  }
                }
             } else {
                /* Not safe to use inequality operators if the types are

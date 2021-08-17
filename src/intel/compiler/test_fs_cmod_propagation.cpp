@@ -1614,12 +1614,12 @@ TEST_F(cmod_propagation_test, fadd_fmov_z)
     * 1: mov.z(8)        null:F  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.z(8)        dest:F  src0:F  src1:F
     */
    test_mov_prop(BRW_CONDITIONAL_Z,
                  BRW_REGISTER_TYPE_F,
                  BRW_REGISTER_TYPE_F,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, fadd_fmov_l)
@@ -1629,12 +1629,12 @@ TEST_F(cmod_propagation_test, fadd_fmov_l)
     * 1: mov.l(8)        null:F  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.l(8)        dest:F  src0:F  src1:F
     */
    test_mov_prop(BRW_CONDITIONAL_L,
                  BRW_REGISTER_TYPE_F,
                  BRW_REGISTER_TYPE_F,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, fadd_fmov_g)
@@ -1644,12 +1644,12 @@ TEST_F(cmod_propagation_test, fadd_fmov_g)
     * 1: mov.g(8)        null:F  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.g(8)        dest:F  src0:F  src1:F
     */
    test_mov_prop(BRW_CONDITIONAL_G,
                  BRW_REGISTER_TYPE_F,
                  BRW_REGISTER_TYPE_F,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, fadd_fmov_le)
@@ -1659,12 +1659,12 @@ TEST_F(cmod_propagation_test, fadd_fmov_le)
     * 1: mov.le(8)       null:F  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.le(8)        dest:F  src0:F  src1:F
     */
    test_mov_prop(BRW_CONDITIONAL_LE,
                  BRW_REGISTER_TYPE_F,
                  BRW_REGISTER_TYPE_F,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, fadd_fmov_ge)
@@ -1674,12 +1674,12 @@ TEST_F(cmod_propagation_test, fadd_fmov_ge)
     * 1: mov.ge(8)       null:F  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.ge(8)       dest:F  src0:F  src1:F
     */
    test_mov_prop(BRW_CONDITIONAL_GE,
                  BRW_REGISTER_TYPE_F,
                  BRW_REGISTER_TYPE_F,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, iadd_imov_nz)
@@ -1704,12 +1704,12 @@ TEST_F(cmod_propagation_test, iadd_imov_z)
     * 1: mov.z(8)        null:D  dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.z(8)        dest:D  src0:D  src1:D
     */
    test_mov_prop(BRW_CONDITIONAL_Z,
                  BRW_REGISTER_TYPE_D,
                  BRW_REGISTER_TYPE_D,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, iadd_imov_l)
@@ -1719,12 +1719,12 @@ TEST_F(cmod_propagation_test, iadd_imov_l)
     * 1: mov.l(8)        null:D  dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.l(8)        dest:D  src0:D  src1:D
     */
    test_mov_prop(BRW_CONDITIONAL_L,
                  BRW_REGISTER_TYPE_D,
                  BRW_REGISTER_TYPE_D,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, iadd_imov_g)
@@ -1734,12 +1734,12 @@ TEST_F(cmod_propagation_test, iadd_imov_g)
     * 1: mov.g(8)        null:D  dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.g(8)        dest:D  src0:D  src1:D
     */
    test_mov_prop(BRW_CONDITIONAL_G,
                  BRW_REGISTER_TYPE_D,
                  BRW_REGISTER_TYPE_D,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, iadd_imov_le)
@@ -1749,12 +1749,12 @@ TEST_F(cmod_propagation_test, iadd_imov_le)
     * 1: mov.le(8)       null:D  dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.le(8)       dest:D  src0:D  src1:D
     */
    test_mov_prop(BRW_CONDITIONAL_LE,
                  BRW_REGISTER_TYPE_D,
                  BRW_REGISTER_TYPE_D,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, iadd_imov_ge)
@@ -1764,12 +1764,12 @@ TEST_F(cmod_propagation_test, iadd_imov_ge)
     * 1: mov.ge(8)       null:D  dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * 0: add.ge(8)       dest:D  src0:D  src1:D
     */
    test_mov_prop(BRW_CONDITIONAL_GE,
                  BRW_REGISTER_TYPE_D,
                  BRW_REGISTER_TYPE_D,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, iadd_umov_nz)
@@ -1794,14 +1794,12 @@ TEST_F(cmod_propagation_test, iadd_umov_z)
     * 1: mov.z(8)        null:UD dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
-    *
-    * In spite of the type conversion, the Z test would be safe to propagate.
+    * 0: add.z(8)        dest:D  src0:D  src1:D
     */
    test_mov_prop(BRW_CONDITIONAL_Z,
                  BRW_REGISTER_TYPE_D,
                  BRW_REGISTER_TYPE_UD,
-                 false);
+                 true);
 }
 
 TEST_F(cmod_propagation_test, iadd_umov_l)
@@ -1811,7 +1809,7 @@ TEST_F(cmod_propagation_test, iadd_umov_l)
     * 1: mov.l(8)        null:UD dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * Due to the signed-to-usigned type conversion, the conditional modifier
     * cannot be propagated to the ADD without changing at least the
@@ -1834,7 +1832,7 @@ TEST_F(cmod_propagation_test, iadd_umov_g)
     * 1: mov.g(8)        null:UD dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * In spite of the type conversion, this could be made to work by
     * propagating NZ instead of G to the ADD.
@@ -1852,7 +1850,7 @@ TEST_F(cmod_propagation_test, iadd_umov_le)
     * 1: mov.le(8)       null:UD dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * In spite of the type conversion, this could be made to work by
     * propagating Z instead of LE to the ADD.
@@ -1870,7 +1868,7 @@ TEST_F(cmod_propagation_test, iadd_umov_ge)
     * 1: mov.ge(8)       null:UD dest:D
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * Due to the signed-to-usigned type conversion, the conditional modifier
     * cannot be propagated to the ADD without changing at least the
@@ -1916,7 +1914,7 @@ TEST_F(cmod_propagation_test, fadd_f2u_z)
     * 1: mov.z(8)        null:UD dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to unsigned integer.  If dest is in
     * the range [-Inf, 1), the conversion will clamp it to zero.  If dest is
@@ -1936,7 +1934,7 @@ TEST_F(cmod_propagation_test, fadd_f2u_l)
     * 1: mov.l(8)        null:UD dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to unsigned integer.  If dest is in
     * the range [-Inf, 1), the conversion will clamp it to zero.  If dest is
@@ -1956,7 +1954,7 @@ TEST_F(cmod_propagation_test, fadd_f2u_g)
     * 1: mov.g(8)        null:UD dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to unsigned integer.  If dest is in
     * the range [-Inf, 1), the conversion will clamp it to zero.  If dest is
@@ -1976,7 +1974,7 @@ TEST_F(cmod_propagation_test, fadd_f2u_le)
     * 1: mov.le(8)       null:UD dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to unsigned integer.  If dest is in
     * the range [-Inf, 1), the conversion will clamp it to zero.  If dest is
@@ -1996,7 +1994,7 @@ TEST_F(cmod_propagation_test, fadd_f2u_ge)
     * 1: mov.ge(8)       null:UD dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to unsigned integer.  If dest is in
     * the range [-Inf, 1), the conversion will clamp it to zero.  If dest is
@@ -2034,7 +2032,7 @@ TEST_F(cmod_propagation_test, fadd_f2i_z)
     * 1: mov.z(8)        null:D  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to signed integer.  If dest is in
     * the range (-1, 1), the conversion will clamp it to zero.  If dest is
@@ -2054,7 +2052,7 @@ TEST_F(cmod_propagation_test, fadd_f2i_l)
     * 1: mov.l(8)        null:D  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to signed integer.  If dest is in
     * the range (-1, 1), the conversion will clamp it to zero.  If dest is
@@ -2074,7 +2072,7 @@ TEST_F(cmod_propagation_test, fadd_f2i_g)
     * 1: mov.g(8)        null:D  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to signed integer.  If dest is in
     * the range (-1, 1), the conversion will clamp it to zero.  If dest is
@@ -2094,7 +2092,7 @@ TEST_F(cmod_propagation_test, fadd_f2i_le)
     * 1: mov.le(8)       null:D  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to signed integer.  If dest is in
     * the range (-1, 1), the conversion will clamp it to zero.  If dest is
@@ -2114,7 +2112,7 @@ TEST_F(cmod_propagation_test, fadd_f2i_ge)
     * 1: mov.ge(8)       null:D  dest:F
     *
     * = After =
-    * No changes.  cmod propagation bails on every MOV except MOV.NZ.
+    * No changes.
     *
     * The MOV changes the type from float to signed integer.  If dest is in
     * the range (-1, 1), the conversion will clamp it to zero.  If dest is
@@ -2257,18 +2255,10 @@ TEST_F(cmod_propagation_test, float_saturate_z_mov)
     * = After =
     * 0: add.sat.le.f0(8)  dest  src0  src1
     */
-#if 1
-   /* cmod propagation bails on every MOV except MOV.NZ. */
-   test_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_Z,
-                      BRW_OPCODE_MOV,
-                      BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
-                      false);
-#else
    test_saturate_prop(BRW_CONDITIONAL_Z, BRW_CONDITIONAL_LE,
                       BRW_OPCODE_MOV,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
                       true);
-#endif
 }
 
 TEST_F(cmod_propagation_test, float_saturate_g_cmp)
@@ -2303,18 +2293,10 @@ TEST_F(cmod_propagation_test, float_saturate_g_mov)
     * = After =
     * 0: add.sat.g.f0(8)  dest  src0  src1
     */
-#if 1
-   /* cmod propagation bails on every MOV except MOV.NZ. */
-   test_saturate_prop(BRW_CONDITIONAL_G, BRW_CONDITIONAL_G,
-                      BRW_OPCODE_MOV,
-                      BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
-                      false);
-#else
    test_saturate_prop(BRW_CONDITIONAL_G, BRW_CONDITIONAL_G,
                       BRW_OPCODE_MOV,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
                       true);
-#endif
 }
 
 TEST_F(cmod_propagation_test, float_saturate_le_cmp)
@@ -2349,18 +2331,10 @@ TEST_F(cmod_propagation_test, float_saturate_le_mov)
     * = After =
     * 0: add.sat.le.f0(8)  dest  src0  src1
     */
-#if 1
-   /* cmod propagation bails on every MOV except MOV.NZ. */
-   test_saturate_prop(BRW_CONDITIONAL_LE, BRW_CONDITIONAL_LE,
-                      BRW_OPCODE_MOV,
-                      BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
-                      false);
-#else
    test_saturate_prop(BRW_CONDITIONAL_LE, BRW_CONDITIONAL_LE,
                       BRW_OPCODE_MOV,
                       BRW_REGISTER_TYPE_F, BRW_REGISTER_TYPE_F,
                       true);
-#endif
 }
 
 TEST_F(cmod_propagation_test, float_saturate_l_cmp)
