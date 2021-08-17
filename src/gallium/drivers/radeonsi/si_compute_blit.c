@@ -477,8 +477,12 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    /* src and dst have the same number of samples. */
    si_make_CB_shader_coherent(sctx, src->nr_samples, true,
-                              /* Only src can have DCC.*/
                               ((struct si_texture *)src)->surface.u.gfx9.color.dcc.pipe_aligned);
+   if (sctx->chip_class >= GFX10) {
+      /* GFX10+ uses DCC stores so si_make_CB_shader_coherent is required for dst too */
+      si_make_CB_shader_coherent(sctx, dst->nr_samples, true,
+                                 ((struct si_texture *)dst)->surface.u.gfx9.color.dcc.pipe_aligned);
+   }
 
    struct si_images *images = &sctx->images[PIPE_SHADER_COMPUTE];
    struct pipe_image_view saved_image[2] = {0};
