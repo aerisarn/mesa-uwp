@@ -127,7 +127,6 @@ panfrost_batch_cleanup(struct panfrost_batch *batch)
 
         set_foreach_remove(batch->resources, entry) {
                 struct panfrost_resource *rsrc = (void *) entry->key;
-                BITSET_CLEAR(rsrc->track.users, batch_idx);
 
                 if (rsrc->track.writer == batch)
                         rsrc->track.writer = NULL;
@@ -245,8 +244,6 @@ panfrost_batch_update_access(struct panfrost_batch *batch,
         _mesa_set_search_or_add(batch->resources, rsrc, &found);
 
         if (!found) {
-                BITSET_SET(rsrc->track.users, batch_idx);
-
                 /* Cache number of batches accessing a resource */
                 rsrc->track.nr_users++;
 
@@ -881,7 +878,6 @@ panfrost_flush_batches_accessing_rsrc(struct panfrost_context *ctx,
                 panfrost_batch_submit(batch, ctx->syncobj, ctx->syncobj);
         }
 
-        assert(!BITSET_COUNT(rsrc->track.users));
         rsrc->track.writer = NULL;
 }
 

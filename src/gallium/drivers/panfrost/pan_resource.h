@@ -49,7 +49,6 @@ struct panfrost_resource {
 
         struct {
                 struct panfrost_batch *writer;
-                BITSET_DECLARE(users, PAN_MAX_BATCHES);
 
                 /** Number of batches accessing this resource. Used to check if
                  * a resource is in use. */
