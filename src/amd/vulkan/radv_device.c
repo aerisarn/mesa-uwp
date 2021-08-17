@@ -3421,18 +3421,6 @@ radv_GetDeviceQueue2(VkDevice _device, const VkDeviceQueueInfo2 *pQueueInfo, VkQ
    *pQueue = radv_queue_to_handle(queue);
 }
 
-void
-radv_GetDeviceQueue(VkDevice _device, uint32_t queueFamilyIndex, uint32_t queueIndex,
-                    VkQueue *pQueue)
-{
-   const VkDeviceQueueInfo2 info =
-      (VkDeviceQueueInfo2){.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-                           .queueFamilyIndex = queueFamilyIndex,
-                           .queueIndex = queueIndex};
-
-   radv_GetDeviceQueue2(_device, &info, pQueue);
-}
-
 static void
 fill_geom_tess_rings(struct radv_queue *queue, uint32_t *map, bool add_sample_positions,
                      uint32_t esgs_ring_size, struct radeon_winsys_bo *esgs_ring_bo,
