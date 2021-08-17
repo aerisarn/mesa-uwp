@@ -2881,7 +2881,14 @@ radv_device_init_vrs_image(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   result = radv_BindImageMemory(radv_device_to_handle(device), image, mem, 0);
+   VkBindImageMemoryInfo bind_info = {
+      .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+      .image = image,
+      .memory = mem,
+      .memoryOffset = 0
+   };
+
+   result = radv_BindImageMemory2(radv_device_to_handle(device), 1, &bind_info);
    if (result != VK_SUCCESS)
       goto fail_bind;
 
@@ -5671,18 +5678,6 @@ radv_BindBufferMemory2(VkDevice _device, uint32_t bindInfoCount,
 }
 
 VkResult
-radv_BindBufferMemory(VkDevice device, VkBuffer buffer, VkDeviceMemory memory,
-                      VkDeviceSize memoryOffset)
-{
-   const VkBindBufferMemoryInfo info = {.sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-                                        .buffer = buffer,
-                                        .memory = memory,
-                                        .memoryOffset = memoryOffset};
-
-   return radv_BindBufferMemory2(device, 1, &info);
-}
-
-VkResult
 radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount,
                       const VkBindImageMemoryInfo *pBindInfos)
 {
@@ -5712,18 +5707,6 @@ radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount,
       }
    }
    return VK_SUCCESS;
-}
-
-VkResult
-radv_BindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory,
-                     VkDeviceSize memoryOffset)
-{
-   const VkBindImageMemoryInfo info = {.sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-                                       .image = image,
-                                       .memory = memory,
-                                       .memoryOffset = memoryOffset};
-
-   return radv_BindImageMemory2(device, 1, &info);
 }
 
 static bool
