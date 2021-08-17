@@ -545,6 +545,8 @@ radv_is_storage_image_format_supported(struct radv_physical_device *physical_dev
    case V_008F14_IMG_DATA_FORMAT_4_4_4_4:
       /* TODO: FMASK formats. */
       return true;
+   case V_008F14_IMG_DATA_FORMAT_5_9_9_9:
+      return physical_device->rad_info.chip_class >= GFX10_3;
    default:
       return false;
    }
