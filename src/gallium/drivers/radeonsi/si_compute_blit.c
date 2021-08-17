@@ -515,7 +515,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    if (is_dcc_decompress)
       image[1].access |= SI_IMAGE_ACCESS_DCC_OFF;
    else if (sctx->chip_class >= GFX10)
-      image[1].access |= SI_IMAGE_ACCESS_DCC_WRITE;
+      image[1].access |= SI_IMAGE_ACCESS_ALLOW_DCC_STORE;
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, image);
 
@@ -815,7 +815,7 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
 
    struct pipe_image_view image = {0};
    image.resource = dstsurf->texture;
-   image.shader_access = image.access = PIPE_IMAGE_ACCESS_WRITE | SI_IMAGE_ACCESS_DCC_WRITE;
+   image.shader_access = image.access = PIPE_IMAGE_ACCESS_WRITE | SI_IMAGE_ACCESS_ALLOW_DCC_STORE;
    image.format = util_format_linear(dstsurf->format);
    image.u.tex.level = dstsurf->u.tex.level;
    image.u.tex.first_layer = 0; /* 3D images ignore first_layer (BASE_ARRAY) */

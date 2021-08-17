@@ -363,7 +363,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
                      /* DCC image stores require INDEPENDENT_128B_BLOCKS, which is not set
                       * with displayable DCC on Navi12-14 due to DCN limitations. */
                      S_00A018_WRITE_COMPRESS_ENABLE(tex->surface.u.gfx9.color.dcc.independent_128B_blocks &&
-                                                    access & SI_IMAGE_ACCESS_DCC_WRITE);
+                                                    access & SI_IMAGE_ACCESS_ALLOW_DCC_STORE);
       }
 
       state[7] = meta_va >> 16;
@@ -746,7 +746,7 @@ static void si_set_shader_image_desc(struct si_context *ctx, const struct pipe_i
 
       if (uses_dcc && !skip_decompress &&
           !(access & SI_IMAGE_ACCESS_DCC_OFF) &&
-          ((!(access & SI_IMAGE_ACCESS_DCC_WRITE) && (access & PIPE_IMAGE_ACCESS_WRITE)) ||
+          ((!(access & SI_IMAGE_ACCESS_ALLOW_DCC_STORE) && (access & PIPE_IMAGE_ACCESS_WRITE)) ||
            !vi_dcc_formats_compatible(screen, res->b.b.format, view->format))) {
          /* If DCC can't be disabled, at least decompress it.
           * The decompression is relatively cheap if the surface
