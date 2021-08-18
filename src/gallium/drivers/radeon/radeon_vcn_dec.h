@@ -1082,6 +1082,8 @@ struct radeon_decoder {
    unsigned frame_number;
    unsigned db_alignment;
    unsigned dpb_size;
+   unsigned last_width;
+   unsigned last_height;
 
    struct pipe_screen *screen;
    struct radeon_winsys *ws;

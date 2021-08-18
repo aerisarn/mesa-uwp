@@ -565,6 +565,9 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
       memcpy(dec->ref_codec.ref_list, result.ref_frame_map, sizeof(result.ref_frame_map));
    }
 
+   dec->last_width = dec->base.width;
+   dec->last_height = dec->base.height;
+
    return result;
 }
 
