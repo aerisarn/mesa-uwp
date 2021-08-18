@@ -222,6 +222,74 @@ is_src_scalarizable(nir_src *src)
    }
 }
 
+static bool
+is_binding_dynamically_uniform(nir_src src)
+{
+   nir_binding binding = nir_chase_binding(src);
+   if (!binding.success)
+      return false;
+
+   for (unsigned i = 0; i < binding.num_indices; i++) {
+      if (!nir_src_is_dynamically_uniform(binding.indices[i]))
+         return false;
+   }
+
+   return true;
+}
+
+static void
+pin_intrinsic(nir_intrinsic_instr *intrin)
+{
+   nir_instr *instr = &intrin->instr;
+
+   if (!nir_intrinsic_can_reorder(intrin)) {
+      instr->pass_flags = GCM_INSTR_PINNED;
+      return;
+   }
+
+   instr->pass_flags = 0;
+
+   /* If the intrinsic requires a uniform source, we can't safely move it across non-uniform
+    * control flow if it's not uniform at the point it's defined.
+    * Stores and atomics can never be re-ordered, so we don't have to consider them here.
+    */
+   bool non_uniform = nir_intrinsic_has_access(intrin) &&
+                      (nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM);
+   if (!non_uniform &&
+       (intrin->intrinsic == nir_intrinsic_load_ubo ||
+        intrin->intrinsic == nir_intrinsic_load_ssbo ||
+        intrin->intrinsic == nir_intrinsic_get_ubo_size ||
+        intrin->intrinsic == nir_intrinsic_get_ssbo_size ||
+        nir_intrinsic_has_image_dim(intrin) ||
+        ((intrin->intrinsic == nir_intrinsic_load_deref ||
+          intrin->intrinsic == nir_intrinsic_deref_buffer_array_length) &&
+         nir_deref_mode_may_be(nir_src_as_deref(intrin->src[0]),
+                               nir_var_mem_ubo | nir_var_mem_ssbo)))) {
+      if (!is_binding_dynamically_uniform(intrin->src[0]))
+         instr->pass_flags = GCM_INSTR_PINNED;
+   } else if (intrin->intrinsic == nir_intrinsic_load_push_constant) {
+      if (!nir_src_is_dynamically_uniform(intrin->src[0]))
+         instr->pass_flags = GCM_INSTR_PINNED;
+   } else if (intrin->intrinsic == nir_intrinsic_load_deref &&
+              nir_deref_mode_is(nir_src_as_deref(intrin->src[0]),
+                                nir_var_mem_push_const)) {
+      nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+      while (deref->deref_type != nir_deref_type_var) {
+         if ((deref->deref_type == nir_deref_type_array ||
+              deref->deref_type == nir_deref_type_ptr_as_array) &&
+             !nir_src_is_dynamically_uniform(deref->arr.index)) {
+            instr->pass_flags = GCM_INSTR_PINNED;
+            return;
+         }
+         deref = nir_deref_instr_parent(deref);
+         if (!deref) {
+            instr->pass_flags = GCM_INSTR_PINNED;
+            return;
+         }
+      }
+   }
+}
+
 /* Walks the instruction list and marks immovable instructions as pinned or
  * placed.
  *
@@ -265,24 +333,47 @@ gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
             }
             break;
 
-         case nir_instr_type_tex:
-            if (nir_tex_instr_has_implicit_derivative(nir_instr_as_tex(instr)))
+         case nir_instr_type_tex: {
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            if (nir_tex_instr_has_implicit_derivative(tex))
                instr->pass_flags = GCM_INSTR_SCHEDULE_EARLIER_ONLY;
+
+            for (unsigned i = 0; i < tex->num_srcs; i++) {
+               nir_tex_src *src = &tex->src[i];
+               switch (src->src_type) {
+               case nir_tex_src_texture_deref:
+                  if (!tex->texture_non_uniform && !is_binding_dynamically_uniform(src->src))
+                     instr->pass_flags = GCM_INSTR_PINNED;
+                  break;
+               case nir_tex_src_sampler_deref:
+                  if (!tex->sampler_non_uniform && !is_binding_dynamically_uniform(src->src))
+                     instr->pass_flags = GCM_INSTR_PINNED;
+                  break;
+               case nir_tex_src_texture_offset:
+               case nir_tex_src_texture_handle:
+                  if (!tex->texture_non_uniform && !nir_src_is_dynamically_uniform(src->src))
+                     instr->pass_flags = GCM_INSTR_PINNED;
+                  break;
+               case nir_tex_src_sampler_offset:
+               case nir_tex_src_sampler_handle:
+                  if (!tex->sampler_non_uniform && !nir_src_is_dynamically_uniform(src->src))
+                     instr->pass_flags = GCM_INSTR_PINNED;
+                  break;
+               default:
+                  break;
+               }
+            }
             break;
+         }
 
          case nir_instr_type_deref:
          case nir_instr_type_load_const:
             instr->pass_flags = 0;
             break;
 
-         case nir_instr_type_intrinsic: {
-            if (nir_intrinsic_can_reorder(nir_instr_as_intrinsic(instr))) {
-               instr->pass_flags = 0;
-            } else {
-               instr->pass_flags = GCM_INSTR_PINNED;
-            }
+         case nir_instr_type_intrinsic:
+            pin_intrinsic(nir_instr_as_intrinsic(instr));
             break;
-         }
 
          case nir_instr_type_jump:
          case nir_instr_type_ssa_undef:
