@@ -263,7 +263,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_index_type_uint8                  = true,
       .EXT_inline_uniform_block              = true,
       .EXT_line_rasterization                = true,
-      .EXT_memory_budget                     = device->has_mem_available,
+      .EXT_memory_budget                     = device->sys.available,
       .EXT_pci_bus_info                      = true,
       .EXT_physical_device_drm               = true,
       .EXT_pipeline_creation_cache_control   = true,
@@ -395,8 +395,11 @@ anv_init_meminfo(struct anv_physical_device *device, int fd)
       if (info->region.memory_class == I915_MEMORY_CLASS_SYSTEM)
          size = anv_compute_sys_heap_size(device, size);
 
+      uint64_t available = MIN2(size, info->unallocated_size);
+
       region->region = info->region;
       region->size = size;
+      region->available = available;
    }
 
    if (mem_regions != (void *)sys_mem_regions)
@@ -909,9 +912,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
    uint64_t u64_ignore;
    device->has_reg_timestamp = anv_gem_reg_read(fd, TIMESTAMP | I915_REG_READ_8B_WA,
                                                 &u64_ignore) == 0;
-
-   uint64_t avail_mem;
-   device->has_mem_available = os_get_available_system_memory(&avail_mem);
 
    device->always_flush_cache =
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
