@@ -264,7 +264,7 @@ descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *po
    if (!pool)
       return;
    if (pool->descpool)
-      vkDestroyDescriptorPool(screen->dev, pool->descpool, NULL);
+      VKSCR(DestroyDescriptorPool)(screen->dev, pool->descpool, NULL);
 
    simple_mtx_lock(&pool->mtx);
 #ifndef NDEBUG
@@ -322,7 +322,7 @@ descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type typ
    dpci.poolSizeCount = num_type_sizes;
    dpci.flags = 0;
    dpci.maxSets = ZINK_DEFAULT_MAX_DESCS;
-   if (vkCreateDescriptorPool(screen->dev, &dpci, 0, &pool->descpool) != VK_SUCCESS) {
+   if (VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &pool->descpool) != VK_SUCCESS) {
       debug_printf("vkCreateDescriptorPool failed\n");
       goto fail;
    }
@@ -359,14 +359,14 @@ descriptor_layout_create(struct zink_screen *screen, enum zink_descriptor_type t
    supp.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT;
    supp.pNext = NULL;
    supp.supported = VK_FALSE;
-   if (screen->vk.GetDescriptorSetLayoutSupport) {
-      screen->vk.GetDescriptorSetLayoutSupport(screen->dev, &dcslci, &supp);
+   if (VKSCR(GetDescriptorSetLayoutSupport)) {
+      VKSCR(GetDescriptorSetLayoutSupport)(screen->dev, &dcslci, &supp);
       if (supp.supported == VK_FALSE) {
          debug_printf("vkGetDescriptorSetLayoutSupport claims layout is unsupported\n");
          return VK_NULL_HANDLE;
       }
    }
-   if (vkCreateDescriptorSetLayout(screen->dev, &dcslci, 0, &dsl) != VK_SUCCESS)
+   if (VKSCR(CreateDescriptorSetLayout)(screen->dev, &dcslci, 0, &dsl) != VK_SUCCESS)
       debug_printf("vkCreateDescriptorSetLayout failed\n");
    return dsl;
 }
@@ -407,7 +407,7 @@ create_layout(struct zink_context *ctx, enum zink_descriptor_type type,
    k->bindings = ralloc_size(k, bindings_size);
    if (!k->bindings) {
       ralloc_free(k);
-      vkDestroyDescriptorSetLayout(screen->dev, dsl, NULL);
+      VKSCR(DestroyDescriptorSetLayout)(screen->dev, dsl, NULL);
       return VK_NULL_HANDLE;
    }
    memcpy(k->bindings, bindings, bindings_size);
@@ -527,7 +527,7 @@ zink_descriptor_util_init_null_set(struct zink_context *ctx, VkDescriptorSet des
                       zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
    push_info.offset = 0;
    push_info.range = VK_WHOLE_SIZE;
-   vkUpdateDescriptorSets(screen->dev, 1, &push_wd, 0, NULL);
+   VKSCR(UpdateDescriptorSets)(screen->dev, 1, &push_wd, 0, NULL);
 }
 
 VkImageLayout
@@ -611,7 +611,7 @@ zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayou
       layouts[i] = dsl;
    dsai.pSetLayouts = layouts;
 
-   if (vkAllocateDescriptorSets(screen->dev, &dsai, sets) != VK_SUCCESS) {
+   if (VKSCR(AllocateDescriptorSets)(screen->dev, &dsai, sets) != VK_SUCCESS) {
       debug_printf("ZINK: %" PRIu64 " failed to allocate descriptor set :/\n", (uint64_t)dsl);
       return false;
    }
@@ -1266,7 +1266,7 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
    }
 
    if (!cache_hit)
-      vkUpdateDescriptorSets(screen->dev, num_stages + !!fbfetch, wds, 0, NULL);
+      VKSCR(UpdateDescriptorSets)(screen->dev, num_stages + !!fbfetch, wds, 0, NULL);
    return num_stages;
 }
 
@@ -1380,7 +1380,7 @@ update_descriptors_internal(struct zink_context *ctx, struct zink_descriptor_set
          }
       }
       if (num_wds)
-         vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
+         VKSCR(UpdateDescriptorSets)(screen->dev, num_wds, wds, 0, NULL);
    }
 }
 
@@ -1434,7 +1434,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 
    update_descriptors_internal(ctx, zds, pg, cache_hit);
 
-   vkCmdBindDescriptorSets(batch->state->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+   VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                            pg->layout, 0, pg->num_dsl, sets,
                            dynamic_offset_idx, dynamic_offsets);
    ctx->dd->pg[is_compute] = pg;
@@ -1720,9 +1720,9 @@ zink_descriptor_layouts_deinit(struct zink_context *ctx)
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(&ctx->desc_set_layouts[i], he) {
          struct zink_descriptor_layout *layout = he->data;
-         vkDestroyDescriptorSetLayout(screen->dev, layout->layout, NULL);
+         VKSCR(DestroyDescriptorSetLayout)(screen->dev, layout->layout, NULL);
          if (layout->desc_template)
-            screen->vk.DestroyDescriptorUpdateTemplate(screen->dev, layout->desc_template, NULL);
+            VKSCR(DestroyDescriptorUpdateTemplate)(screen->dev, layout->desc_template, NULL);
          ralloc_free(layout);
          _mesa_hash_table_remove(&ctx->desc_set_layouts[i], he);
       }
@@ -1737,7 +1737,7 @@ zink_descriptor_util_init_fbfetch(struct zink_context *ctx)
       return;
 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   vkDestroyDescriptorSetLayout(screen->dev, ctx->dd->push_dsl[0]->layout, NULL);
+   VKSCR(DestroyDescriptorSetLayout)(screen->dev, ctx->dd->push_dsl[0]->layout, NULL);
    ralloc_free(ctx->dd->push_dsl[0]);
    ralloc_free(ctx->dd->push_layout_keys[0]);
    ctx->dd->push_dsl[0] = create_gfx_layout(ctx, &ctx->dd->push_layout_keys[0], true);

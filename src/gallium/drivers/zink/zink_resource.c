@@ -73,10 +73,10 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
 {
    if (obj->is_buffer) {
       util_dynarray_foreach(&obj->tmp, VkBuffer, buffer)
-         vkDestroyBuffer(screen->dev, *buffer, NULL);
-      vkDestroyBuffer(screen->dev, obj->buffer, NULL);
+         VKSCR(DestroyBuffer)(screen->dev, *buffer, NULL);
+      VKSCR(DestroyBuffer)(screen->dev, obj->buffer, NULL);
    } else {
-      vkDestroyImage(screen->dev, obj->image, NULL);
+      VKSCR(DestroyImage)(screen->dev, obj->image, NULL);
    }
 
    util_dynarray_fini(&obj->tmp);
@@ -156,8 +156,8 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
    VkImageFormatProperties image_props;
    VkResult ret;
    assert(modifier == DRM_FORMAT_MOD_INVALID ||
-          (screen->vk.GetPhysicalDeviceImageFormatProperties2 && screen->info.have_EXT_image_drm_format_modifier));
-   if (screen->vk.GetPhysicalDeviceImageFormatProperties2) {
+          (VKSCR(GetPhysicalDeviceImageFormatProperties2) && screen->info.have_EXT_image_drm_format_modifier));
+   if (VKSCR(GetPhysicalDeviceImageFormatProperties2)) {
       VkImageFormatProperties2 props2;
       props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
       props2.pNext = NULL;
@@ -180,10 +180,10 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       } else
          info.pNext = NULL;
 
-      ret = screen->vk.GetPhysicalDeviceImageFormatProperties2(screen->pdev, &info, &props2);
+      ret = VKSCR(GetPhysicalDeviceImageFormatProperties2)(screen->pdev, &info, &props2);
       image_props = props2.imageFormatProperties;
    } else
-      ret = vkGetPhysicalDeviceImageFormatProperties(screen->pdev, ici->format, ici->imageType,
+      ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, ici->format, ici->imageType,
                                                    ici->tiling, ici->usage, ici->flags, &image_props);
    return ret == VK_SUCCESS;
 }
@@ -435,12 +435,12 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    if (templ->target == PIPE_BUFFER) {
       VkBufferCreateInfo bci = create_bci(screen, templ, templ->bind);
 
-      if (vkCreateBuffer(screen->dev, &bci, NULL, &obj->buffer) != VK_SUCCESS) {
+      if (VKSCR(CreateBuffer)(screen->dev, &bci, NULL, &obj->buffer) != VK_SUCCESS) {
          debug_printf("vkCreateBuffer failed\n");
          goto fail1;
       }
 
-      vkGetBufferMemoryRequirements(screen->dev, obj->buffer, &reqs);
+      VKSCR(GetBufferMemoryRequirements)(screen->dev, obj->buffer, &reqs);
       if (templ->usage == PIPE_USAGE_STAGING)
          flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
       else if (templ->usage == PIPE_USAGE_STREAM)
@@ -527,13 +527,13 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          ici.pNext = &image_wsi_info;
       }
 
-      VkResult result = vkCreateImage(screen->dev, &ici, NULL, &obj->image);
+      VkResult result = VKSCR(CreateImage)(screen->dev, &ici, NULL, &obj->image);
       if (result != VK_SUCCESS) {
          debug_printf("vkCreateImage failed\n");
          goto fail1;
       }
 
-      if (screen->vk.GetImageMemoryRequirements2) {
+      if (VKSCR(GetImageMemoryRequirements2)) {
          VkMemoryRequirements2 req2;
          req2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
          VkImageMemoryRequirementsInfo2 info2;
@@ -544,11 +544,11 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          ded.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
          ded.pNext = NULL;
          req2.pNext = &ded;
-         screen->vk.GetImageMemoryRequirements2(screen->dev, &info2, &req2);
+         VKSCR(GetImageMemoryRequirements2)(screen->dev, &info2, &req2);
          memcpy(&reqs, &req2.memoryRequirements, sizeof(VkMemoryRequirements));
          need_dedicated = ded.prefersDedicatedAllocation || ded.requiresDedicatedAllocation;
       } else {
-         vkGetImageMemoryRequirements(screen->dev, obj->image, &reqs);
+         VKSCR(GetImageMemoryRequirements)(screen->dev, obj->image, &reqs);
       }
       if (templ->usage == PIPE_USAGE_STAGING && ici.tiling == VK_IMAGE_TILING_LINEAR)
         flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
@@ -657,10 +657,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    if (templ->target == PIPE_BUFFER) {
       if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
-         if (vkBindBufferMemory(screen->dev, obj->buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+         if (VKSCR(BindBufferMemory)(screen->dev, obj->buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
             goto fail3;
    } else {
-      if (vkBindImageMemory(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+      if (VKSCR(BindImageMemory)(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
          goto fail3;
    }
    return obj;
@@ -670,9 +670,9 @@ fail3:
 
 fail2:
    if (templ->target == PIPE_BUFFER)
-      vkDestroyBuffer(screen->dev, obj->buffer, NULL);
+      VKSCR(DestroyBuffer)(screen->dev, obj->buffer, NULL);
    else
-      vkDestroyImage(screen->dev, obj->image, NULL);
+      VKSCR(DestroyImage)(screen->dev, obj->image, NULL);
 fail1:
    FREE(obj);
    return NULL;
@@ -801,7 +801,7 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
 
       sub_res.aspectMask = aspect;
 
-      vkGetImageSubresourceLayout(screen->dev, obj->image, &sub_res, &sub_res_layout);
+      VKSCR(GetImageSubresourceLayout)(screen->dev, obj->image, &sub_res, &sub_res_layout);
 
       *value = sub_res_layout.rowPitch;
       break;
@@ -814,7 +814,7 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
             layer
          };
          VkSubresourceLayout srl;
-         vkGetImageSubresourceLayout(screen->dev, obj->image, &isr, &srl);
+         VKSCR(GetImageSubresourceLayout)(screen->dev, obj->image, &isr, &srl);
          *value = srl.offset;
          break;
    }
@@ -828,7 +828,7 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
       VkImageDrmFormatModifierPropertiesEXT prop;
       prop.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
       prop.pNext = NULL;
-      if (screen->vk.GetImageDrmFormatModifierPropertiesEXT(screen->dev, obj->image, &prop) == VK_SUCCESS)
+      if (VKSCR(GetImageDrmFormatModifierPropertiesEXT)(screen->dev, obj->image, &prop) == VK_SUCCESS)
          *value = prop.drmFormatModifier;
       break;
    }
@@ -840,7 +840,7 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
             layer
          };
          VkSubresourceLayout srl;
-         vkGetImageSubresourceLayout(screen->dev, obj->image, &isr, &srl);
+         VKSCR(GetImageSubresourceLayout)(screen->dev, obj->image, &isr, &srl);
          if (res->base.b.target == PIPE_TEXTURE_3D)
             *value = srl.depthPitch;
          else
@@ -889,7 +889,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       //TODO: remove for wsi
       fd_info.memory = zink_bo_get_mem(obj->bo);
       fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-      VkResult result = (*screen->vk.GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
+      VkResult result = VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
       if (result != VK_SUCCESS)
          return false;
       whandle->handle = fd;
@@ -1235,7 +1235,7 @@ zink_buffer_map(struct pipe_context *pctx,
       VkDeviceSize size = box->width;
       VkDeviceSize offset = res->obj->offset + trans->offset;
       VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, offset, size);
-      if (vkInvalidateMappedMemoryRanges(screen->dev, 1, &range) != VK_SUCCESS) {
+      if (VKSCR(InvalidateMappedMemoryRanges)(screen->dev, 1, &range) != VK_SUCCESS) {
          zink_bo_unmap(screen, res->obj->bo);
          goto fail;
       }
@@ -1334,7 +1334,7 @@ zink_image_map(struct pipe_context *pctx,
          0
       };
       VkSubresourceLayout srl;
-      vkGetImageSubresourceLayout(screen->dev, res->obj->image, &isr, &srl);
+      VKSCR(GetImageSubresourceLayout)(screen->dev, res->obj->image, &isr, &srl);
       trans->base.b.stride = srl.rowPitch;
       if (res->base.b.target == PIPE_TEXTURE_3D)
          trans->base.b.layer_stride = srl.depthPitch;
@@ -1350,7 +1350,7 @@ zink_image_map(struct pipe_context *pctx,
       if (!res->obj->coherent) {
          VkDeviceSize size = (VkDeviceSize)box->width * box->height * desc->block.bits / 8;
          VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, res->obj->offset + offset, size);
-         vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+         VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
       }
       ptr = ((uint8_t *)ptr) + offset;
    }
@@ -1397,7 +1397,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
       }
       if (!m->obj->coherent) {
          VkMappedMemoryRange range = zink_resource_init_mem_range(screen, m->obj, m->obj->offset, m->obj->size);
-         vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+         VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
       }
       if (trans->staging_res) {
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
@@ -1509,9 +1509,9 @@ zink_resource_tmp_buffer(struct zink_screen *screen, struct zink_resource *res, 
    bci.size = size;
 
    VkBuffer buffer;
-   if (vkCreateBuffer(screen->dev, &bci, NULL, &buffer) != VK_SUCCESS)
+   if (VKSCR(CreateBuffer)(screen->dev, &bci, NULL, &buffer) != VK_SUCCESS)
       return VK_NULL_HANDLE;
-   vkBindBufferMemory(screen->dev, buffer, zink_bo_get_mem(res->obj->bo), res->obj->offset + offset);
+   VKSCR(BindBufferMemory)(screen->dev, buffer, zink_bo_get_mem(res->obj->bo), res->obj->offset + offset);
    if (offset_out)
       *offset_out = offset_add - offset;
    return buffer;

@@ -131,9 +131,9 @@ zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t
 
    VkResult ret;
    if (timeout_ns)
-      ret = vkWaitForFences(screen->dev, 1, &fence->fence, VK_TRUE, timeout_ns);
+      ret = VKSCR(WaitForFences)(screen->dev, 1, &fence->fence, VK_TRUE, timeout_ns);
    else
-      ret = vkGetFenceStatus(screen->dev, fence->fence);
+      ret = VKSCR(GetFenceStatus)(screen->dev, fence->fence);
    success = zink_screen_handle_vkresult(screen, ret);
 
    if (success) {

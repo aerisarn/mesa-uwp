@@ -241,6 +241,9 @@ struct mem_cache_entry {
    void *map;
 };
 
+#define VKCTX(fn) zink_screen(ctx->base.screen)->vk.fn
+#define VKSCR(fn) screen->vk.fn
+
 VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format);
 

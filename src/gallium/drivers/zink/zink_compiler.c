@@ -803,7 +803,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
    smci.codeSize = spirv->num_words * sizeof(uint32_t);
    smci.pCode = spirv->words;
 
-   if (vkCreateShaderModule(screen->dev, &smci, NULL, &mod) != VK_SUCCESS)
+   if (VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &mod) != VK_SUCCESS)
       mod = VK_NULL_HANDLE;
 
 done:

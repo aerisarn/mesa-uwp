@@ -130,7 +130,7 @@ bo_destroy(struct zink_screen *screen, struct pb_buffer *pbuf)
       zink_bo_unmap(screen, bo);
    }
 
-   vkFreeMemory(screen->dev, bo->mem, NULL);
+   VKSCR(FreeMemory)(screen->dev, bo->mem, NULL);
 
    simple_mtx_destroy(&bo->lock);
    FREE(bo);
@@ -265,7 +265,7 @@ bo_create_internal(struct zink_screen *screen,
       alignment = MAX2(alignment, screen->info.props.limits.minMemoryMapAlignment);
       mai.allocationSize = align(mai.allocationSize, screen->info.props.limits.minMemoryMapAlignment);
    }
-   VkResult ret = vkAllocateMemory(screen->dev, &mai, NULL, &bo->mem);
+   VkResult ret = VKSCR(AllocateMemory)(screen->dev, &mai, NULL, &bo->mem);
    if (!zink_screen_handle_vkresult(screen, ret))
       goto fail;
 
@@ -642,7 +642,7 @@ zink_bo_map(struct zink_screen *screen, struct zink_bo *bo)
        * be atomic thanks to the lock. */
       cpu = real->u.real.cpu_ptr;
       if (!cpu) {
-         VkResult result = vkMapMemory(screen->dev, real->mem, 0, real->base.size, 0, &cpu);
+         VkResult result = VKSCR(MapMemory)(screen->dev, real->mem, 0, real->base.size, 0, &cpu);
          if (result != VK_SUCCESS) {
             simple_mtx_unlock(&real->lock);
             return NULL;
@@ -665,7 +665,7 @@ zink_bo_unmap(struct zink_screen *screen, struct zink_bo *bo)
 
    if (p_atomic_dec_zero(&real->u.real.map_count)) {
       p_atomic_set(&real->u.real.cpu_ptr, NULL);
-      vkUnmapMemory(screen->dev, real->mem);
+      VKSCR(UnmapMemory)(screen->dev, real->mem);
    }
 }
 
@@ -681,7 +681,7 @@ resource_commit(struct zink_screen *screen, VkBindSparseInfo *sparse)
 {
    VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
 
-   VkResult ret = vkQueueBindSparse(queue, 1, sparse, VK_NULL_HANDLE);
+   VkResult ret = VKSCR(QueueBindSparse)(queue, 1, sparse, VK_NULL_HANDLE);
    return zink_screen_handle_vkresult(screen, ret);
 }
 

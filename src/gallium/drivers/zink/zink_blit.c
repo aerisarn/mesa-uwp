@@ -96,7 +96,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.extent.width = info->dst.box.width;
    region.extent.height = info->dst.box.height;
    region.extent.depth = info->dst.box.depth;
-   vkCmdResolveImage(batch->state->cmdbuf, src->obj->image, src->layout,
+   VKCTX(CmdResolveImage)(batch->state->cmdbuf, src->obj->image, src->layout,
                      dst->obj->image, dst->layout,
                      1, &region);
 
@@ -235,7 +235,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    }
    assert(region.dstOffsets[0].z != region.dstOffsets[1].z);
 
-   vkCmdBlitImage(batch->state->cmdbuf, src->obj->image, src->layout,
+   VKCTX(CmdBlitImage)(batch->state->cmdbuf, src->obj->image, src->layout,
                   dst->obj->image, dst->layout,
                   1, &region,
                   zink_filter(info->filter));

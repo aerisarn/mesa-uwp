@@ -38,10 +38,10 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 {
    hash_table_foreach(&fb->objects, he) {
 #if defined(_WIN64) || defined(__x86_64__)
-      vkDestroyFramebuffer(screen->dev, he->data, NULL);
+      VKSCR(DestroyFramebuffer)(screen->dev, he->data, NULL);
 #else
       VkFramebuffer *ptr = he->data;
-      vkDestroyFramebuffer(screen->dev, *ptr, NULL);
+      VKSCR(DestroyFramebuffer)(screen->dev, *ptr, NULL);
 #endif
    }
 
@@ -86,14 +86,14 @@ zink_init_framebuffer_imageless(struct zink_screen *screen, struct zink_framebuf
    attachments.pAttachmentImageInfos = fb->infos;
    fci.pNext = &attachments;
 
-   if (vkCreateFramebuffer(screen->dev, &fci, NULL, &ret) != VK_SUCCESS)
+   if (VKSCR(CreateFramebuffer)(screen->dev, &fci, NULL, &ret) != VK_SUCCESS)
       return;
 #if defined(_WIN64) || defined(__x86_64__)
    _mesa_hash_table_insert_pre_hashed(&fb->objects, hash, rp, ret);
 #else
    VkFramebuffer *ptr = ralloc(fb, VkFramebuffer);
    if (!ptr) {
-      vkDestroyFramebuffer(screen->dev, ret, NULL);
+      VKSCR(DestroyFramebuffer)(screen->dev, ret, NULL);
       return;
    }
    *ptr = ret;
@@ -203,14 +203,14 @@ zink_init_framebuffer(struct zink_screen *screen, struct zink_framebuffer *fb, s
    fci.height = fb->state.height;
    fci.layers = fb->state.layers + 1;
 
-   if (vkCreateFramebuffer(screen->dev, &fci, NULL, &ret) != VK_SUCCESS)
+   if (VKSCR(CreateFramebuffer)(screen->dev, &fci, NULL, &ret) != VK_SUCCESS)
       return;
 #if defined(_WIN64) || defined(__x86_64__)
    _mesa_hash_table_insert_pre_hashed(&fb->objects, hash, rp, ret);
 #else
    VkFramebuffer *ptr = ralloc(fb, VkFramebuffer);
    if (!ptr) {
-      vkDestroyFramebuffer(screen->dev, ret, NULL);
+      VKSCR(DestroyFramebuffer)(screen->dev, ret, NULL);
       return;
    }
    *ptr = ret;

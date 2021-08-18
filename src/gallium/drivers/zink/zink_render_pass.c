@@ -29,7 +29,7 @@
 #include "util/u_string.h"
 
 static VkRenderPass
-create_render_pass(VkDevice dev, struct zink_render_pass_state *state, struct zink_render_pass_pipeline_state *pstate)
+create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *state, struct zink_render_pass_pipeline_state *pstate)
 {
 
    VkAttachmentReference color_refs[PIPE_MAX_COLOR_BUFS], zs_ref;
@@ -118,7 +118,7 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state, struct zi
    rpci.pDependencies = deps;
 
    VkRenderPass render_pass;
-   if (vkCreateRenderPass(dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
+   if (VKSCR(CreateRenderPass)(screen->dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
       debug_printf("vkCreateRenderPass failed\n");
       return VK_NULL_HANDLE;
    }
@@ -135,7 +135,7 @@ zink_create_render_pass(struct zink_screen *screen,
    if (!rp)
       goto fail;
 
-   rp->render_pass = create_render_pass(screen->dev, state, pstate);
+   rp->render_pass = create_render_pass(screen, state, pstate);
    if (!rp->render_pass)
       goto fail;
    memcpy(&rp->state, state, sizeof(struct zink_render_pass_state));
@@ -151,7 +151,7 @@ void
 zink_destroy_render_pass(struct zink_screen *screen,
                          struct zink_render_pass *rp)
 {
-   vkDestroyRenderPass(screen->dev, rp->render_pass, NULL);
+   VKSCR(DestroyRenderPass)(screen->dev, rp->render_pass, NULL);
    FREE(rp);
 }
 

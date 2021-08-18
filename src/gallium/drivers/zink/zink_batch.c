@@ -30,7 +30,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
-   if (vkResetCommandPool(screen->dev, bs->cmdpool, 0) != VK_SUCCESS)
+   if (VKSCR(ResetCommandPool)(screen->dev, bs->cmdpool, 0) != VK_SUCCESS)
       debug_printf("vkResetCommandPool failed\n");
 
    /* unref all used resources */
@@ -61,7 +61,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    }
    util_dynarray_clear(&bs->dead_framebuffers);
    util_dynarray_foreach(&bs->zombie_samplers, VkSampler, samp) {
-      vkDestroySampler(screen->dev, *samp, NULL);
+      VKSCR(DestroySampler)(screen->dev, *samp, NULL);
    }
    util_dynarray_clear(&bs->zombie_samplers);
    util_dynarray_clear(&bs->persistent_resources);
@@ -130,14 +130,14 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    mtx_destroy(&bs->usage.mtx);
 
    if (bs->fence.fence)
-      vkDestroyFence(screen->dev, bs->fence.fence, NULL);
+      VKSCR(DestroyFence)(screen->dev, bs->fence.fence, NULL);
 
    if (bs->cmdbuf)
-      vkFreeCommandBuffers(screen->dev, bs->cmdpool, 1, &bs->cmdbuf);
+      VKSCR(FreeCommandBuffers)(screen->dev, bs->cmdpool, 1, &bs->cmdbuf);
    if (bs->barrier_cmdbuf)
-      vkFreeCommandBuffers(screen->dev, bs->cmdpool, 1, &bs->barrier_cmdbuf);
+      VKSCR(FreeCommandBuffers)(screen->dev, bs->cmdpool, 1, &bs->barrier_cmdbuf);
    if (bs->cmdpool)
-      vkDestroyCommandPool(screen->dev, bs->cmdpool, NULL);
+      VKSCR(DestroyCommandPool)(screen->dev, bs->cmdpool, NULL);
 
    util_dynarray_fini(&bs->zombie_samplers);
    util_dynarray_fini(&bs->dead_framebuffers);
@@ -159,7 +159,7 @@ create_batch_state(struct zink_context *ctx)
    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
    cpci.queueFamilyIndex = screen->gfx_queue;
    cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-   if (vkCreateCommandPool(screen->dev, &cpci, NULL, &bs->cmdpool) != VK_SUCCESS)
+   if (VKSCR(CreateCommandPool)(screen->dev, &cpci, NULL, &bs->cmdpool) != VK_SUCCESS)
       goto fail;
 
    VkCommandBufferAllocateInfo cbai = {0};
@@ -168,10 +168,10 @@ create_batch_state(struct zink_context *ctx)
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cbai.commandBufferCount = 1;
 
-   if (vkAllocateCommandBuffers(screen->dev, &cbai, &bs->cmdbuf) != VK_SUCCESS)
+   if (VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, &bs->cmdbuf) != VK_SUCCESS)
       goto fail;
 
-   if (vkAllocateCommandBuffers(screen->dev, &cbai, &bs->barrier_cmdbuf) != VK_SUCCESS)
+   if (VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, &bs->barrier_cmdbuf) != VK_SUCCESS)
       goto fail;
 
 #define SET_CREATE_OR_FAIL(ptr) \
@@ -199,7 +199,7 @@ create_batch_state(struct zink_context *ctx)
    VkFenceCreateInfo fci = {0};
    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-   if (vkCreateFence(screen->dev, &fci, NULL, &bs->fence.fence) != VK_SUCCESS)
+   if (VKSCR(CreateFence)(screen->dev, &fci, NULL, &bs->fence.fence) != VK_SUCCESS)
       goto fail;
 
    util_queue_fence_init(&bs->flush_completed);
@@ -285,9 +285,9 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    VkCommandBufferBeginInfo cbbi = {0};
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-   if (vkBeginCommandBuffer(batch->state->cmdbuf, &cbbi) != VK_SUCCESS)
+   if (VKCTX(BeginCommandBuffer)(batch->state->cmdbuf, &cbbi) != VK_SUCCESS)
       debug_printf("vkBeginCommandBuffer failed\n");
-   if (vkBeginCommandBuffer(batch->state->barrier_cmdbuf, &cbbi) != VK_SUCCESS)
+   if (VKCTX(BeginCommandBuffer)(batch->state->barrier_cmdbuf, &cbbi) != VK_SUCCESS)
       debug_printf("vkBeginCommandBuffer failed\n");
 
    batch->state->fence.batch_id = ctx->curr_batch;
@@ -296,6 +296,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
       struct zink_batch_state *last_state = zink_batch_state(ctx->last_fence);
       batch->last_batch_usage = &last_state->usage;
    }
+
    if (!ctx->queries_disabled)
       zink_resume_queries(ctx, batch);
 }
@@ -328,7 +329,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    bs->usage.unflushed = false;
    simple_mtx_unlock(&ctx->batch_mtx);
 
-   vkResetFences(screen->dev, 1, &bs->fence.fence);
+   VKSCR(ResetFences)(screen->dev, 1, &bs->fence.fence);
 
    uint64_t batch_id = bs->fence.batch_id;
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -365,12 +366,12 @@ submit_queue(void *data, void *gdata, int thread_index)
       si.pNext = &mem_signal;
    }
 
-   if (vkEndCommandBuffer(bs->cmdbuf) != VK_SUCCESS) {
+   if (VKSCR(EndCommandBuffer)(bs->cmdbuf) != VK_SUCCESS) {
       debug_printf("vkEndCommandBuffer failed\n");
       bs->is_device_lost = true;
       goto end;
    }
-   if (vkEndCommandBuffer(bs->barrier_cmdbuf) != VK_SUCCESS) {
+   if (VKSCR(EndCommandBuffer)(bs->barrier_cmdbuf) != VK_SUCCESS) {
       debug_printf("vkEndCommandBuffer failed\n");
       bs->is_device_lost = true;
       goto end;
@@ -379,10 +380,10 @@ submit_queue(void *data, void *gdata, int thread_index)
    while (util_dynarray_contains(&bs->persistent_resources, struct zink_resource_object*)) {
       struct zink_resource_object *obj = util_dynarray_pop(&bs->persistent_resources, struct zink_resource_object*);
        VkMappedMemoryRange range = zink_resource_init_mem_range(screen, obj, 0, obj->size);
-       vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+       VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
    }
 
-   if (vkQueueSubmit(bs->queue, 1, &si, bs->fence.fence) != VK_SUCCESS) {
+   if (VKSCR(QueueSubmit)(bs->queue, 1, &si, bs->fence.fence) != VK_SUCCESS) {
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       bs->is_device_lost = true;
    }
@@ -400,6 +401,7 @@ copy_scanout(struct zink_batch_state *bs, struct zink_resource *res)
 {
    if (!bs->scanout_flush)
       return;
+   struct zink_context *ctx = bs->ctx;
 
    VkImageCopy region = {0};
    struct pipe_box box = {0, 0, 0,
@@ -472,7 +474,7 @@ copy_scanout(struct zink_batch_state *bs, struct zink_resource *res)
 
    VkImageMemoryBarrier imb1;
    zink_resource_image_barrier_init(&imb1, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-   vkCmdPipelineBarrier(
+   VKCTX(CmdPipelineBarrier)(
       bs->cmdbuf,
       res->access_stage ? res->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -499,7 +501,7 @@ copy_scanout(struct zink_batch_state *bs, struct zink_resource *res)
       res->scanout_obj->image,
       isr
    };
-   vkCmdPipelineBarrier(
+   VKCTX(CmdPipelineBarrier)(
       bs->cmdbuf,
       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -509,14 +511,14 @@ copy_scanout(struct zink_batch_state *bs, struct zink_resource *res)
       1, &imb
    );
 
-   vkCmdCopyImage(bs->cmdbuf, res->obj->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+   VKCTX(CmdCopyImage)(bs->cmdbuf, res->obj->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                   res->scanout_obj->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   1, &region);
    imb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
    imb.dstAccessMask = 0;
    imb.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
    imb.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-   vkCmdPipelineBarrier(
+   VKCTX(CmdPipelineBarrier)(
       bs->cmdbuf,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
