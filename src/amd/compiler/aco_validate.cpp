@@ -165,6 +165,15 @@ validate_ir(Program* program)
                      "SDWA+VOPC definition must be fixed to vcc on GFX8", instr.get());
             }
 
+            for (unsigned i = 0; i < std::min<unsigned>(2, instr->operands.size()); i++) {
+               const Operand& op = instr->operands[i];
+               check(op.bytes() <= 4, "SDWA operands must not be larger than 4 bytes", instr.get());
+               if (sdwa.sel[i] & sdwa_isra)
+                  check(op.bytes() >= (sdwa.sel[i] & sdwa_rasize),
+                        "SDWA selection size must be at most operand size", instr.get());
+               else
+                  check(op.bytes() == 4, "SDWA selection needs dword operand", instr.get());
+            }
             if (instr->operands.size() >= 3) {
                check(instr->operands[2].isFixed() && instr->operands[2].physReg() == vcc,
                      "3rd operand must be fixed to vcc with SDWA", instr.get());
@@ -681,8 +690,8 @@ validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& instr, un
    if (instr->isPseudo() && chip >= GFX8)
       return true;
    if (instr->isSDWA()) {
-      unsigned sel = instr->sdwa().sel[index] & sdwa_asuint;
-      return (sel & sdwa_isra) && (sel & sdwa_rasize) <= op.bytes();
+      unsigned size = instr->sdwa().sel[index] & sdwa_rasize;
+      return byte % size == 0;
    }
    if (byte == 2 && can_use_opsel(chip, instr->opcode, index, 1))
       return true;
