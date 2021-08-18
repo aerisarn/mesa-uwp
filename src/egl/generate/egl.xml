@@ -575,7 +575,7 @@
         <enum value="0x31DC" name="EGL_PLATFORM_XCB_EXT"/>
         <enum value="0x31DD" name="EGL_PLATFORM_SURFACELESS_MESA"/>
         <enum value="0x31DE" name="EGL_PLATFORM_XCB_SCREEN_EXT"/>
-            <unused start="0x31DF" end="0x31DF"/>
+        <enum value="0x31DF" name="EGL_PRESENT_OPAQUE_EXT"/>
     </enums>
 
     <!-- Due to an oversight in development, these enums alias the above MESA
@@ -1030,7 +1030,8 @@
     </enums>
 
     <enums namespace="EGL" start="0x34C0" end="0x34CF" vendor="EXT" comment="Reserved for Robert Mader (PR 124)">
-        <unused start="0x34C0" end="0x34CF"/>
+        <enum value="0x34C0" name="EGL_CONFIG_SELECT_GROUP_EXT"/>
+            <unused start="0x34C1" end="0x34CF"/>
     </enums>
 
 <!-- Please remember that new enumerant allocations must be obtained by
@@ -1989,6 +1990,14 @@
              <param><ptype>EGLImage</ptype> <name>image</name></param>
              <param><ptype>EGLSync</ptype> <name>sync</name></param>
         </command>
+        <command>
+             <proto><ptype>EGLBoolean</ptype> <name>eglQueryDeviceBinaryEXT</name></proto>
+             <param><ptype>EGLDeviceEXT</ptype> <name>device</name></param>
+             <param><ptype>EGLint</ptype> <name>name</name></param>
+             <param><ptype>EGLint</ptype> <name>max_size</name></param>
+             <param>void *<name>value</name></param>
+             <param>EGLint *<name>size</name></param>
+        </command>
     </commands>
 
     <!-- SECTION: EGL API interface definitions. -->
@@ -2388,6 +2397,11 @@
                 <command name="eglClientSignalSyncEXT"/>
             </require>
         </extension>
+        <extension name="EGL_EXT_config_select_group" supported="egl">
+          <require>
+                <enum name="EGL_CONFIG_SELECT_GROUP_EXT"/>
+          </require>
+        </extension>
         <extension name="EGL_EXT_create_context_robustness" supported="egl">
             <require>
                 <enum name="EGL_CONTEXT_OPENGL_ROBUST_ACCESS_EXT"/>
@@ -2588,6 +2602,11 @@
             <require>
                 <enum name="EGL_PLATFORM_XCB_EXT"/>
                 <enum name="EGL_PLATFORM_XCB_SCREEN_EXT"/>
+            </require>
+        </extension>
+        <extension name="EGL_EXT_present_opaque" supported="egl">
+            <require>
+                <enum name="EGL_PRESENT_OPAQUE_EXT"/>
             </require>
         </extension>
         <extension name="EGL_EXT_protected_content" supported="egl">
@@ -3430,6 +3449,7 @@
                 <enum name="EGL_DEVICE_UUID_EXT"/>
                 <enum name="EGL_DRIVER_UUID_EXT"/>
                 <enum name="EGL_DRIVER_NAME_EXT"/>
+                <command name="eglQueryDeviceBinaryEXT"/>
             </require>
         </extension>
         <extension name="EGL_EXT_device_drm_render_node" supported="egl">
