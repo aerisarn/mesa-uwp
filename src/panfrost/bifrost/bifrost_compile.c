@@ -507,11 +507,17 @@ static void
 bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
 {
         /* Reads 2 or 4 staging registers to cover the input */
-        unsigned sr_count = (nir_alu_type_get_type_size(T) <= 16) ? 2 : 4;
+        unsigned size = nir_alu_type_get_type_size(T);
+        unsigned sr_count = (size <= 16) ? 2 : 4;
+        const struct panfrost_compile_inputs *inputs = b->shader->inputs;
+        uint64_t blend_desc = inputs->blend.bifrost_blend_desc;
 
-        if (b->shader->inputs->is_blend) {
-                uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
-
+        if (inputs->is_blend && inputs->blend.nr_samples > 1) {
+                /* Conversion descriptor comes from the compile inputs, pixel
+                 * indices derived at run time based on sample ID */
+                bi_st_tile(b, rgba, bi_pixel_indices(b, rt), bi_register(60),
+                                bi_imm_u32(blend_desc >> 32), BI_VECSIZE_V4);
+        } else if (b->shader->inputs->is_blend) {
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */
                 bi_blend_to(b, bi_register(0), rgba,
