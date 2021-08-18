@@ -647,7 +647,7 @@ i945_texture_layout_cube(struct i915_texture *tex)
    unsigned level;
    unsigned face;
 
-   assert(pt->width0 == pt->height0);       /* cubemap images are square */
+   assert(pt->width0 == pt->height0); /* cubemap images are square */
    assert(util_format_is_compressed(pt->format)); /* compressed only */
 
    /*
