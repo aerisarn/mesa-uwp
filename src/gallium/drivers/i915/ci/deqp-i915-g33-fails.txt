@@ -1,3 +1,5 @@
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4971
+# "../src/gallium/drivers/i915/i915_prim_vbuf.c:628: i915_vbuf_render_draw_elements: Assertion `0' failed."
 dEQP-GLES2.functional.buffer.write.random.0,Crash
 dEQP-GLES2.functional.buffer.write.random.1,Crash
 dEQP-GLES2.functional.buffer.write.random.2,Crash
@@ -10,26 +12,52 @@ dEQP-GLES2.functional.buffer.write.recreate_store.random_1,Crash
 dEQP-GLES2.functional.buffer.write.recreate_store.random_2,Crash
 dEQP-GLES2.functional.buffer.write.recreate_store.random_3,Crash
 dEQP-GLES2.functional.buffer.write.recreate_store.random_4,Crash
+
+# Lines with the center outside the viewport clipped out when they shouldn't be?
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
+
+# Points with center outside the viewport clipped out when they shouldn't be?
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
+
+# Minor deviations in the position of a clipped triangle.
 dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_neg_y_neg_z_and_neg_x_neg_y_pos_z,Fail
 dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_pos_y_pos_z_and_neg_x_neg_y_neg_z,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4972
+# Looks like a testcase bug
 dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgb10_a2,Fail
+
+# " // GL_INVALID_OPERATION returned
+#   // ERROR: expected GL_INVALID_VALUE"
+# Mesa: User error: GL_INVALID_OPERATION in glUniformMatrix(non-matrix uniform)
+# Mesa: User error: GL_INVALID_OPERATION in glUniformMatrix(non-matrix uniform)
+# Mesa: User error: GL_INVALID_OPERATION in glUniformMatrix(non-matrix uniform)
 dEQP-GLES2.functional.negative_api.shader.uniform_matrixfv_invalid_transpose,Fail
+
+# "GL_INVALID_OPERATION is generated if the zero level array is stored in a compressed internal format.
+#   // GL_NO_ERROR returned
+#   // ERROR: expected GL_INVALID_OPERATION"
 dEQP-GLES2.functional.negative_api.texture.generatemipmap_zero_level_array_compressed,Fail
+
+# Maybe doesn't like the color interpolation in wide lines?
 dEQP-GLES2.functional.rasterization.interpolation.basic.line_loop_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.basic.line_strip_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.basic.lines_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.projected.line_loop_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.projected.line_strip_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.projected.lines_wide,Fail
+
+# "Invalid fragment count in result image."
 dEQP-GLES2.functional.rasterization.primitives.line_loop_wide,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_strip_wide,Fail
 dEQP-GLES2.functional.rasterization.primitives.lines_wide,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4980
 dEQP-GLES2.functional.shaders.builtin_variable.frontfacing,Fail
+
 dEQP-GLES2.functional.shaders.discard.dynamic_loop_always,Fail
 dEQP-GLES2.functional.shaders.discard.dynamic_loop_dynamic,Fail
 dEQP-GLES2.functional.shaders.discard.dynamic_loop_texture,Fail
@@ -556,6 +584,8 @@ dEQP-GLES2.functional.shaders.struct.uniform.nested_struct_array_dynamic_index_f
 dEQP-GLES2.functional.shaders.struct.uniform.equal_fragment,Fail
 dEQP-GLES2.functional.shaders.struct.uniform.not_equal_fragment,Fail
 
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4982
+# -Y face renders incorrectly (black instead of texture contents)
 dEQP-GLES2.functional.texture.filtering.cube.linear_linear_clamp_l8_pot,Fail
 dEQP-GLES2.functional.texture.filtering.cube.linear_linear_mirror_l8_pot,Fail
 dEQP-GLES2.functional.texture.filtering.cube.linear_linear_repeat_l8_pot,Fail
@@ -573,13 +603,19 @@ dEQP-GLES2.functional.texture.filtering.cube.nearest_nearest_clamp_l8_pot,Fail
 dEQP-GLES2.functional.texture.filtering.cube.nearest_nearest_mirror_l8_pot,Fail
 dEQP-GLES2.functional.texture.filtering.cube.nearest_nearest_repeat_l8_pot,Fail
 dEQP-GLES2.functional.texture.size.cube.128x128_l8_mipmap,Fail
+dEQP-GLES2.functional.texture.size.cube.64x64_l8_mipmap,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4982
+# Minor errors on all faces, perhaps around filtering's texel selection?
 dEQP-GLES2.functional.texture.size.cube.15x15_l8,Fail
 dEQP-GLES2.functional.texture.size.cube.15x15_rgb888,Fail
 dEQP-GLES2.functional.texture.size.cube.15x15_rgba4444,Fail
 dEQP-GLES2.functional.texture.size.cube.15x15_rgba8888,Fail
 dEQP-GLES2.functional.texture.size.cube.16x16_l8_mipmap,Fail
-dEQP-GLES2.functional.texture.size.cube.64x64_l8_mipmap,Fail
+
+# Texel differences in the middle of the texture?
 dEQP-GLES2.functional.texture.wrap.clamp_clamp_nearest_npot_etc1,Fail
+
 dEQP-GLES2.functional.uniform_api.random.13,Fail
 dEQP-GLES2.functional.uniform_api.random.20,Fail
 dEQP-GLES2.functional.uniform_api.random.21,Fail
@@ -613,6 +649,8 @@ dEQP-GLES2.functional.uniform_api.value.initial.render.multiple_nested_structs_a
 dEQP-GLES2.functional.uniform_api.value.initial.render.nested_structs_arrays.mat4_mat2_fragment,Fail
 dEQP-GLES2.functional.uniform_api.value.initial.render.struct_in_array.mat4_mat2_both,Fail
 dEQP-GLES2.functional.uniform_api.value.initial.render.struct_in_array.mat4_mat2_fragment,Fail
+
+# "Fail (glCopyTexImage2D: glGetError() returned GL_INVALID_ENUM at glcInternalformatTests.cpp:1035)"
 KHR-GLES2.core.internalformat.copy_tex_image.alpha8_oes,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.luminance4_alpha4_oes,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.luminance8_alpha8_oes,Fail
@@ -621,14 +659,37 @@ KHR-GLES2.core.internalformat.copy_tex_image.rgb10_a2,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.rgb565,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.rgb5_a1,Fail
 KHR-GLES2.core.internalformat.copy_tex_image.rgba4,Fail
+
+# depth texture is sampling as as white instead of red.
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component16,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component24,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_component16,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4979
+# Non-unrolled loops, but they should be unrollable.
 KHR-GLES2.shaders.aggressive_optimizations.cos_float_frag,Fail
 KHR-GLES2.shaders.aggressive_optimizations.cos_vec2_frag,Fail
 KHR-GLES2.shaders.aggressive_optimizations.cos_vec3_frag,Fail
 KHR-GLES2.shaders.aggressive_optimizations.sin_vec2_frag,Fail
 KHR-GLES2.shaders.aggressive_optimizations.sin_vec3_frag,Fail
+
+# "GL_INVALID_FRAMEBUFFER_OPERATION was expected but got GL_INVALID_ENUM. GL_INVALID_FRAMEBUFFER_OPERATION is generated if the currently bound framebuffer is not framebuffer complete."
+# The invalid enums generated during the test are:
+# Mesa: User error: GL_INVALID_ENUM in glCopyTexSubImage3D(invalid target GL_NONE)
+# Mesa: User error: GL_INVALID_ENUM in glCheckFramebufferStatus(invalid target GL_READ_FRAMEBUFFER)
+# This appears to be a testcase bug, because GL_READ_FRAMEBUFFER is not a valid enum in GLES2.
 KHR-GLES2.texture_3d.copy_sub_image.negative,Fail
+
+# Mesa: User error: GL_INVALID_ENUM in glFramebufferTexture2D(invalid target GL_DRAW_FRAMEBUFFER)
+#  Fail (Could not attach texture object to draw framebuffer color attachment.: glGetError() returned GL_INVALID_ENUM at es2cTexture3DTests.cpp:840)
+# This appears to be a testcase bug, because GL_DRAW_FRAMEBUFFER is not a valid enum in GLES2.
 KHR-GLES2.texture_3d.copy_sub_image.rgba,Fail
+
+# "GL_INVALID_OPERATION was expected but got GL_INVALID_ENUM. GL_INVALID_OPERATION is generated if the combination of internalFormat, format and type is invalid."
+# The invalid enums generated during the test are:
+# Mesa: User error: GL_INVALID_ENUM in glTexImage3D(target=GL_NONE)
+# Mesa: User error: GL_INVALID_ENUM in glTexImage3D(target=GL_TEXTURE_2D)
+# Mesa: User error: GL_INVALID_ENUM in glTexImage3D(incompatible format = GL_RGBA, type = GL_NONE)
+# Mesa: User error: GL_INVALID_ENUM in glTexImage3D(incompatible format = GL_NONE, type = GL_UNSIGNED_BYTE)
+# Mesa: User error: GL_INVALID_ENUM in glTexImage3D(incompatible format = GL_RGBA_INTEGER, type = GL_INT)
 KHR-GLES2.texture_3d.filtering.combinations.negative,Fail

@@ -1,10 +1,26 @@
 shaders@glsl-bug-110796,Fail
+
+# No derivatives support in the HW.
 shaders@glsl-derivs,Fail
+
 shaders@glsl-fs-loop,Fail
 shaders@glsl-fs-loop-nested,Fail
 shaders@glsl-fs-raytrace-bug27060,Fail
+
+# No derivatives support in the HW.
 shaders@glsl-fwidth,Fail
+
+# "GL_MAX_VARYING_FLOATS = 40
+#  Probe color at (34,34)
+#    Expected: 0 255 0
+#    Observed: 255 0 0
+#    Failure with 9 vec4 varyings used in varying index 8
+#  Probe color at (34,38)
+#    Expected: 0 255 0
+#    Observed: 255 0 0
+#    Failure with 10 vec4 varyings used in varying index 8"
 shaders@glsl-max-varyings,Fail
+
 shaders@glsl-max-varyings >max_varying_components,Fail
 shaders@glsl-uniform-interstage-limits@520 vs- 1 fs,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5,Fail
@@ -13,11 +29,34 @@ shaders@ssa@fs-if-def-else-break,Fail
 shaders@ssa@fs-lost-copy-problem,Fail
 shaders@ssa@fs-swap-problem,Fail
 shaders@ssa@fs-while-loop-rotate-value,Fail
+
+# "Failed to compile fragment shader: 0:1(10): error: GLSL 1.30 is not supported. Supported versions are: 1.10, 1.20, and 1.00 ES"
+# not much of a gl-1.0 test.
 spec@!opengl 1.0@gl-1.0-bitmap-heart-dance,Fail
+
+# "MESA: error: Empty fragment shader"
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
+
+# "../src/gallium/drivers/i915/i915_prim_vbuf.c:470: draw_arrays_fallback: Assertion `0' failed."
 spec@!opengl 1.0@gl-1.0-long-line-loop,Crash
+
+# "Probe color at (74,4)
+#    Expected: 1.000000 1.000000 1.000000
+#    Observed: 0.000000 0.000000 0.000000
+#  Failure with path Polygon Stipple set to always pass.
+#  Probe color at (4,14)
+#    Expected: 1.000000 1.000000 1.000000
+#    Observed: 0.000000 0.000000 0.000000
+#  Failure with always-pass paths enabled.
+#  Probe color at (54,24)
+#    Expected: 0.000000 0.000000 0.000000
+#    Observed: 1.000000 1.000000 1.000000
+#  Failure with Scissor Test set to fail mode."
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
+
+# "../src/gallium/drivers/i915/i915_prim_vbuf.c:470: draw_arrays_fallback: Assertion `0' failed."
 spec@!opengl 1.0@gl-1.0-ortho-pos,Crash
+
 spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 
@@ -51,8 +90,13 @@ spec@!opengl 1.1@linestipple@Factor 2x,Fail
 spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple@Line loop,Fail
 spec@!opengl 1.1@linestipple@Line strip,Fail
+
+# longprim: ../src/gallium/drivers/i915/i915_prim_vbuf.c:470: draw_arrays_fallback: Assertion `0' failed.
 spec@!opengl 1.1@longprim,Crash
+
+# "../src/compiler/nir/nir_lower_int_to_float.c:102: lower_alu_instr: Assertion `nir_alu_type_get_base_type(info->output_type) != nir_type_int && nir_alu_type_get_base_type(info->output_type) != nir_type_uint' failed."
 spec@!opengl 1.1@point-line-no-cull,Crash
+
 spec@!opengl 1.1@polygon-mode-offset,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 3: Expected white pixel on bottom edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 3: Expected white pixel on left edge,Fail
@@ -64,7 +108,11 @@ spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on right edg
 spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on top edge,Fail
 spec@!opengl 1.1@read-front,Fail
 spec@!opengl 1.1@read-front clear-front-first,Fail
+
+# testcase bug: Requests a 64x64 level 6, which would be a 4k texture.
 spec@!opengl 1.1@tex-upside-down-miptree,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@!opengl 1.1@texwrap 1d bordercolor,Fail
 spec@!opengl 1.1@texwrap 1d bordercolor@GL_RGBA8- border color only,Fail
 spec@!opengl 1.1@texwrap 1d proj bordercolor,Fail
@@ -106,24 +154,40 @@ spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA16- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA2- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA4- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA8- border color only,Fail
+
 spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.2@levelclamp,Fail
+
+# "Mesa: User error: GL_INVALID_ENUM in glBindTexture(target = GL_TEXTURE_2D_ARRAY)
+#  Unexpected GL error: GL_INVALID_ENUM 0x500
+#  (Error at tests/texturing/teximage-errors.c:261)"
+# testcase bug, using array textures without corresponding ext.
 spec@!opengl 1.2@teximage-errors,Fail
+
 spec@!opengl 1.2@texwrap 3d,Fail
 spec@!opengl 1.2@texwrap 3d@GL_RGBA8- NPOT,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@!opengl 1.2@texwrap 3d bordercolor,Fail
 spec@!opengl 1.2@texwrap 3d bordercolor@GL_RGBA8- border color only,Fail
 spec@!opengl 1.2@texwrap 3d proj,Fail
 spec@!opengl 1.2@texwrap 3d proj@GL_RGBA8- NPOT- projected,Fail
 spec@!opengl 1.2@texwrap 3d proj bordercolor,Fail
 spec@!opengl 1.2@texwrap 3d proj bordercolor@GL_RGBA8- projected- border color only,Fail
+
 spec@!opengl 1.4@tex-miplevel-selection,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod-bias,Fail
 spec@!opengl 1.5@depth-tex-compare,Fail
+
+# testcase bug:
+# "Failed to link: error: sampler arrays indexed with non-constant expressions is forbidden in GLSL  110"
 spec@!opengl 2.0@max-samplers,Fail
 spec@!opengl 2.0@max-samplers border,Fail
+
+# Need to be able to report 0 OQ bits, since there are no HW OQs.
 spec@!opengl 2.0@occlusion-query-discard,Fail
+
 spec@!opengl 2.0@tex3d-npot,Fail
 spec@!opengl 2.0@vertex-program-two-side back front2,Fail
 spec@!opengl 2.0@vertex-program-two-side back front2@vs and fs,Fail
@@ -170,7 +234,13 @@ spec@!opengl 2.0@vertex-program-two-side front2 back2@vs and fs,Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
+
+# testcase bug:
+# "Mesa: User error: GL_INVALID_VALUE in glDrawBuffers(n > maximum number of draw buffers)
+#  Unexpected GL error: GL_INVALID_VALUE 0x501
+#  (Error at tests/spec/gles-2.0/draw-buffers.c:170)"
 spec@!opengl es 2.0@draw_buffers_gles2,Fail
+
 spec@arb_arrays_of_arrays@execution@glsl-arrays-copy-size-mismatch,Fail
 spec@arb_depth_texture@depth-level-clamp,Fail
 spec@arb_depth_texture@fbo-clear-formats,Fail
@@ -188,11 +258,20 @@ spec@arb_depth_texture@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT24 NPOT,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT32,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT32 NPOT,Fail
 spec@arb_depth_texture@texdepth,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@arb_depth_texture@texwrap formats bordercolor,Fail
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT16- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT24- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT32- border color only,Fail
+
+# testcase bug:
+# "Mesa: User error: GL_INVALID_OPERATION in glDrawBuffer(invalid buffer GL_COLOR_ATTACHMENT1)
+#  Unexpected GL error: GL_INVALID_OPERATION 0x502
+#  (Error at tests/spec/arb_es2_compatibility/arb_es2_compatibility-drawbuffers.c:110)"
 spec@arb_es2_compatibility@arb_es2_compatibility-drawbuffers,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor@GL_RGB565- border color only,Fail
 
@@ -212,13 +291,18 @@ spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index4,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_stencil_index8,Fail
 spec@arb_framebuffer_object@fbo-attachments-blit-scaled-linear,Fail
+
+# No derivatives support in the HW.
 spec@arb_framebuffer_object@fbo-deriv,Fail
+
 spec@arb_framebuffer_object@fbo-generatemipmap-1d,Fail
 spec@arb_framebuffer_object@fbo-generatemipmap-cubemap s3tc_dxt1,Fail
 spec@arb_framebuffer_object@framebuffer-blit-levels draw stencil,Fail
 spec@arb_framebuffer_object@framebuffer-blit-levels read stencil,Fail
 spec@arb_framebuffer_object@same-attachment-glframebuffertexture2d-gl_depth_stencil_attachment,Fail
 spec@arb_internalformat_query2@all internalformat_<x>_type pname checks,Timeout
+
+# Need to be able to report 0 OQ bits, since there are no HW OQs.
 spec@arb_occlusion_query2@render,Fail
 spec@arb_occlusion_query@occlusion_query,Fail
 spec@arb_occlusion_query@occlusion_query_conform,Fail
@@ -226,6 +310,7 @@ spec@arb_occlusion_query@occlusion_query_meta_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_no_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_save,Fail
 spec@arb_occlusion_query@occlusion_query_order,Crash
+
 spec@arb_pixel_buffer_object@cubemap npot pbo,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small,Fail
 spec@arb_pixel_buffer_object@pbo-getteximage,Fail
@@ -237,6 +322,8 @@ spec@arb_point_parameters@arb_point_parameters-point-attenuation@Aliased combina
 spec@arb_provoking_vertex@arb-provoking-vertex-render,Fail
 spec@arb_sampler_objects@gl_ext_texture_srgb_decode,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-texturelod-01,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@arb_texture_compression@texwrap formats bordercolor,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_ALPHA- border color only,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_INTENSITY- border color only,Fail
@@ -244,6 +331,7 @@ spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_LUMINANCE
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_LUMINANCE_ALPHA- border color only,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_RGB- border color only,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_RGBA- border color only,Fail
+
 spec@arb_texture_cube_map@copyteximage cube,Fail
 spec@arb_texture_cube_map@cubemap npot,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drect,Fail
@@ -259,19 +347,35 @@ spec@arb_texture_rectangle@tex-miplevel-selection gl2:textureproj 2drectshadow,F
 # IN[x].xyxw setting up the TXP coords.
 spec@arb_texture_rectangle@texrect-many,Fail
 
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@arb_texture_rectangle@texwrap rect bordercolor,Fail
 spec@arb_texture_rectangle@texwrap rect bordercolor@GL_RGBA8- border color only,Fail
 spec@arb_texture_rectangle@texwrap rect proj bordercolor,Fail
 spec@arb_texture_rectangle@texwrap rect proj bordercolor@GL_RGBA8- projected- border color only,Fail
+
+# "Mesa: User error: GL_INVALID_OPERATION in glTexSubImage2D(invalid texture level 8)
+#  Probe color at (80,80)
+#    Expected: 0.000000 1.000000 0.000000
+#    Observed: 1.000000 0.000000 0.000000"
+#  texture-storage: wrong color for mipmap level 1
+# PIGLIT: {"subtest": {"2D mipmap rendering " : "fail"}}"
 spec@arb_texture_storage@texture-storage,Fail
 spec@arb_texture_storage@texture-storage@2D mipmap rendering ,Fail
+
+# "Probe color at (68,68)
+#   Left: 0.784314 1.000000 1.000000 1.000000
+#   Right: 0.800000 1.000000 1.000000 1.000000
+#  PIGLIT: {"subtest": {"mov 8*c0" : "fail"}}"
 spec@ati_fragment_shader@ati_fragment_shader-render-ops,Fail
 spec@ati_fragment_shader@ati_fragment_shader-render-ops@mov 8*c0,Fail
+
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_ext_protected_content@conformance,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_rgba,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
+
+# testcase bug: Uses array textures without checking for support.
 spec@ext_direct_state_access@indexed-state-queries 12,Fail
 spec@ext_direct_state_access@indexed-state-queries 12@GetIntegerIndexedvEXT,Fail
 spec@ext_direct_state_access@multi-texture,Fail
@@ -297,7 +401,10 @@ spec@ext_direct_state_access@textures@TextureParameteriEXT + display list GL_COM
 spec@ext_direct_state_access@textures@TextureParameterivEXT,Fail
 spec@ext_direct_state_access@textures@TextureParameterivEXT + display list GL_COMPILE,Fail
 spec@ext_direct_state_access@textures@TextureParameterivEXT + display list GL_COMPILE_AND_EXECUTE,Fail
+
+# "Mesa: User error: GL_INVALID_OPERATION in unsupported function called (unsupported extension or deprecated function?)"
 spec@ext_draw_instanced@ext_draw_instanced-drawarrays,Fail
+
 spec@ext_external_objects@vk-buf-exchange,Fail
 spec@ext_external_objects@vk-depth-display,Fail
 spec@ext_external_objects@vk-image-display,Fail
@@ -308,7 +415,13 @@ spec@ext_external_objects@vk-semaphores,Fail
 spec@ext_external_objects@vk-semaphores-2,Fail
 spec@ext_external_objects@vk-vert-buf-reuse,Fail
 spec@ext_external_objects@vk-vert-buf-update-errors,Fail
+
+# "Failed blit src(0,0;1,1) - dst(0,0;2147483647,2147483647)
+#  Failed blit src(0,0;40,40) - dst(0,0;134217727,134217727)
+#  ..."
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
+
+# Unsupported non-unrolled loop
 spec@ext_framebuffer_multisample@accuracy all_samples color depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples color depthstencil linear,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples color small depthstencil,Fail
@@ -325,21 +438,41 @@ spec@ext_framebuffer_multisample@accuracy all_samples stencil_draw depthstencil,
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_draw small depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve small depthstencil,Fail
+
+# testcase bug:
+# "Mesa: User error: GL_INVALID_OPERATION in glFramebufferTexture2D(invalid color attachment GL_COLOR_ATTACHMENT1)
+#  Unexpected GL error: GL_INVALID_OPERATION 0x502"
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
+
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
+# "Probe color at (192,0)
+#    Expected: 0.810000 0.000000 0.000000 1.000000
+#    Observed: 0.901961 0.000000 0.000000 1.000000
+#    when testing FBO result, blending with DST_ALPHA."
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY12,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY16,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY4,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY8,Fail
+# "Testing GL_LUMINANCE4
+#  Probe color at (192,0)
+#    Expected: 0.800000 0.000000 0.000000 1.000000
+#    Observed: 0.901961 0.000000 0.000000 1.000000
+#    when testing FBO result, blending with DST_ALPHA."
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE12,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE16,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE4,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE8,Fail
+
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB10,Fail
+# "Probe color at (64,0)
+#    Expected: 0.480000 0.800000 0.680000 1.000000
+#    Observed: 0.533333 0.800000 0.666667 0.466667
+#    when testing window result, blending with CONSTANT_COLOR.
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB4,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB5,Fail
+
 spec@ext_framebuffer_object@fbo-clear-formats,Fail
 spec@ext_framebuffer_object@fbo-clear-formats@GL_INTENSITY,Fail
 spec@ext_framebuffer_object@fbo-clear-formats@GL_INTENSITY12,Fail
@@ -368,7 +501,11 @@ spec@ext_framebuffer_object@fbo-colormask-formats@GL_LUMINANCE16,Fail
 spec@ext_framebuffer_object@fbo-colormask-formats@GL_LUMINANCE4,Fail
 spec@ext_framebuffer_object@fbo-colormask-formats@GL_LUMINANCE8,Fail
 spec@ext_framebuffer_object@fbo-depth-sample-compare,Fail
+
+# Maybe test bug?
+# "Mesa: User error: GL_INVALID_OPERATION in glDrawBuffer(invalid buffer GL_BACK)"
 spec@ext_framebuffer_object@fbo-fragcoord2,Fail
+
 spec@ext_framebuffer_object@fbo-generatemipmap-filtering,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index16-blit,Fail
@@ -393,7 +530,10 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuv420,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-transcode-nv12-as-r8-gr88,Fail
+
+# Need to be able to report 0 OQ bits, since there are no HW OQs.
 spec@ext_occlusion_query_boolean@any-samples,Fail
+
 spec@ext_packed_depth_stencil@depth_stencil texture,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats@GL_DEPTH24_STENCIL8,Fail
@@ -403,6 +543,8 @@ spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH24_STENCIL8,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH_STENCIL,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-clear,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor,Fail
@@ -410,8 +552,27 @@ spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGBA
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGBA_S3TC_DXT3_EXT- border color only,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGBA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor@GL_COMPRESSED_RGB_S3TC_DXT1_EXT- border color only,Fail
+
+# "Unexpected GL error: GL_NO_ERROR 0x0
+#  (Error at tests/spec/ext_texture_format_bgra8888/api-errors.c:63)
+#  Expected GL error: GL_INVALID_OPERATION 0x502
+#  Unexpected GL error: GL_NO_ERROR 0x0
+#  (Error at tests/spec/ext_texture_format_bgra8888/api-errors.c:69)
+#  Expected GL error: GL_INVALID_OPERATION 0x502
+#  Mesa: User error: GL_INVALID_OPERATION in glTexImage2D(format = GL_BGRA, type = GL_FLOAT, internalformat = GL_BGRA)
+#  Unexpected GL error: GL_NO_ERROR 0x0
+#  (Error at tests/spec/ext_texture_format_bgra8888/api-errors.c:103)
+#  Expected GL error: GL_INVALID_OPERATION 0x502
+#  Mesa: User error: GL_INVALID_OPERATION in glTexSubImage2D(format = GL_BGRA, type = GL_FLOAT, internalformat = GL_BGRA)
+#  PIGLIT: {"result": "fail" }"
 spec@ext_texture_format_bgra8888@api-errors,Fail
+
+# "Probe color at (20,0)
+#    Expected: 0 76 0
+#    Observed: 0 18 0"
 spec@ext_texture_srgb@tex-srgb,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@ext_texture_srgb@texwrap formats bordercolor,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8- border color only,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor@GL_SLUMINANCE8_ALPHA8- border color only,Fail
@@ -426,6 +587,7 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
+
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-float,Fail
@@ -599,16 +761,22 @@ spec@glsl-1.10@execution@built-in-functions@fs-smoothstep-vec4-vec4-vec4,Fail
 spec@glsl-1.10@execution@builtins@glsl-fs-atan-3,Fail
 spec@glsl-1.10@execution@copy-propagation@glsl-copy-propagation-loop-1,Fail
 spec@glsl-1.10@execution@copy-propagation@glsl-copy-propagation-loop-2,Fail
+
+# No derivatives support in the HW.
 spec@glsl-1.10@execution@derivatives@glsl-derivs-abs,Fail
 spec@glsl-1.10@execution@derivatives@glsl-derivs-abs-sign,Fail
 spec@glsl-1.10@execution@derivatives@glsl-derivs-sign,Fail
 spec@glsl-1.10@execution@derivatives@glsl-derivs-swizzle,Fail
 spec@glsl-1.10@execution@derivatives@glsl-derivs-varyings,Fail
+
 spec@glsl-1.10@execution@discard@glsl-fs-discard-04,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4980
 spec@glsl-1.10@execution@fs-frontfacing-ternary-0.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1-neg-1,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-neg-1.0-1.0,Fail
+
 spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Fail
 spec@glsl-1.10@execution@fs-notequal-of-expression,Fail
 spec@glsl-1.10@execution@fs-sign-times-abs,Fail
@@ -868,8 +1036,11 @@ spec@glsl-1.20@execution@fs-vec4-const-array-indirect-access-048-elements,Fail
 spec@glsl-1.20@execution@fs-vec4-const-array-indirect-access-064-elements,Fail
 spec@glsl-1.20@execution@fs-vec4-const-array-indirect-access-128-elements,Fail
 spec@glsl-1.20@execution@fs-vec4-const-array-indirect-access-256-elements,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4980
 spec@glsl-1.20@execution@glsl-fs-frontfacing,Fail
 spec@glsl-1.20@execution@glsl-fs-frontfacing-not,Fail
+
 spec@glsl-1.20@execution@out-parameter-indexing@fs-inout-index-two-level,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1d,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1dshadow,Fail
