@@ -130,6 +130,7 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       enc->enc_pic.general_level_idc = pic->seq.general_level_idc;
       enc->enc_pic.max_poc = MAX2(16, util_next_power_of_two(pic->seq.intra_period));
       enc->enc_pic.log2_max_poc = 0;
+      enc->enc_pic.num_temporal_layers = 1;
       for (int i = enc->enc_pic.max_poc; i != 0; enc->enc_pic.log2_max_poc++)
          i = (i >> 1);
       enc->enc_pic.chroma_format_idc = pic->seq.chroma_format_idc;
