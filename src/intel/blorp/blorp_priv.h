@@ -151,8 +151,11 @@ struct brw_blorp_wm_inputs
     */
    float src_z;
 
-   /* Pad out to an integral number of registers */
-   uint32_t pad[1];
+   /* Note: Pad out to an integral number of registers when extending, but
+    * make sure subgroup_id is the last 32-bit item.
+    */
+   /* uint32_t pad[?]; */
+   uint32_t subgroup_id;
 };
 
 static inline nir_variable *
