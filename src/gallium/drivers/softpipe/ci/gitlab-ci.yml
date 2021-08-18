@@ -1,8 +1,9 @@
 .softpipe-deqp-test:
   extends:
-    - .softpipe-rules
     - .test-gl
     - .deqp-test
+    # this must be last to avoid breaking dependency rules
+    - .softpipe-rules
   variables:
     GPU_VERSION: softpipe
     LIBGL_ALWAYS_SOFTWARE: "true"
