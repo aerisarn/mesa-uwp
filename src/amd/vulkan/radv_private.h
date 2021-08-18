@@ -619,6 +619,10 @@ struct radv_meta_state {
       VkRenderPass pass;
    } depth_decomp[MAX_SAMPLES_LOG2];
 
+   VkDescriptorSetLayout expand_depth_stencil_compute_ds_layout;
+   VkPipelineLayout expand_depth_stencil_compute_p_layout;
+   VkPipeline expand_depth_stencil_compute_pipeline;
+
    struct {
       VkPipelineLayout p_layout;
       VkPipeline cmask_eliminate_pipeline;
