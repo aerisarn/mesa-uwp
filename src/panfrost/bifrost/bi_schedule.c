@@ -1634,6 +1634,7 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st, uint
                                 clause->dependencies |= (1 << BIFROST_SLOT_ELDEST_DEPTH);
                                 break;
                         case BI_OPCODE_LD_TILE:
+                        case BI_OPCODE_ST_TILE:
                                 if (!ctx->inputs->is_blend)
                                         clause->dependencies |= (1 << BIFROST_SLOT_ELDEST_COLOUR);
                                 break;
