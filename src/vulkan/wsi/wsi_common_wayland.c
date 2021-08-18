@@ -1010,6 +1010,8 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    struct wsi_wl_display *display = chain->display;
    VkResult result;
 
+   memset(image, 0, sizeof(*image));
+
    result = wsi_create_native_image(&chain->base, pCreateInfo,
                                     chain->num_drm_modifiers > 0 ? 1 : 0,
                                     &chain->num_drm_modifiers,
