@@ -4348,6 +4348,7 @@ static inline bool should_print_nir(UNUSED nir_shader *shader) { return false; }
       printf("%s\n", #pass);                                         \
    if (pass(nir, ##__VA_ARGS__)) {                                   \
       nir_validate_shader(nir, "after " #pass);                      \
+      UNUSED bool _;                                                 \
       progress = true;                                               \
       if (should_print_nir(nir))                                     \
          nir_print_shader(nir, stdout);                              \
