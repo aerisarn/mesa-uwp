@@ -388,7 +388,13 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
         bool msaa = rast->multisample;
 
-        UNUSED unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
+        unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
+
+        bool has_blend_shader = false;
+
+        for (unsigned c = 0; c < rt_count; ++c)
+                has_blend_shader |= (blend_shaders[c] != 0);
+
         pan_pack(rsd, RENDERER_STATE, cfg) {
                 if (panfrost_fs_required(fs, so, &ctx->pipe_framebuffer, zsa)) {
 #if PAN_ARCH >= 6
@@ -407,11 +413,6 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                         cfg.properties.midgard.force_early_z =
                                 fs->info.fs.can_early_z && !alpha_to_coverage &&
                                 ((enum mali_func) zsa->base.alpha_func == MALI_FUNC_ALWAYS);
-
-                        bool has_blend_shader = false;
-
-                        for (unsigned c = 0; c < rt_count; ++c)
-                                has_blend_shader |= (blend_shaders[c] != 0);
 
                         /* TODO: Reduce this limit? */
                         if (has_blend_shader)
@@ -467,6 +468,18 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
 
                 cfg.multisample_misc.evaluate_per_sample =
                         msaa && (ctx->min_samples > 1);
+
+#if PAN_ARCH >= 6
+                /* MSAA blend shaders need to pass their sample ID to
+                 * LD_TILE/ST_TILE, so we must preload it. Additionally, we
+                 * need per-sample shading for the blend shader, accomplished
+                 * by forcing per-sample shading for the whole program. */
+
+                if (msaa && has_blend_shader) {
+                        cfg.multisample_misc.evaluate_per_sample = true;
+                        cfg.preload.fragment.sample_mask_id = true;
+                }
+#endif
 
                 cfg.stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
                 cfg.depth_units = rast->offset_units * 2.0f;
