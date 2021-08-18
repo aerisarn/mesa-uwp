@@ -142,17 +142,12 @@ KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing6,Crash
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls1,Fail
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2,Fail
 
-# "gl_NumWorkGroups: Invalid data at index 0"
-KHR-GLES31.core.compute_shader.built-in-variables,Fail
-
 # "Got red: 1, expected 0.00392157, at (1, 0)"
 KHR-GLES31.core.compute_shader.resource-image,Fail
 
 # "../src/gallium/drivers/freedreno/a5xx/fd5_emit.c:82: fd5_emit_const_bo: Assertion `dst_off % 4 == 0' failed."
-KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-arrays,Crash
-KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-elements,Crash
-KHR-GLES31.core.draw_indirect.basic-drawArrays-vertexIds,Crash
-KHR-GLES31.core.draw_indirect.basic-drawElements-vertexIds,Crash
+KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-arrays,Fail
+KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-elements,Fail
 
 # "drawTestCompute failed expected: RGBA(4, 3, 2, 1) actual: RGBA(0, 255, 0, 255)"
 KHR-GLES31.core.layout_binding.sampler2DArray_layout_binding_texture_ComputeShader,Fail

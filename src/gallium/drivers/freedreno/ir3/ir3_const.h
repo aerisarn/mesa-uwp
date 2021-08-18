@@ -479,9 +479,10 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
     * stream so need to copy them to bo.
     */
    if (indirect && needs_vtxid_base) {
+      uint32_t vertex_params_area = align(vertex_params_size, 16);
       struct pipe_resource *vertex_params_rsc =
          pipe_buffer_create(&ctx->screen->base, PIPE_BIND_CONSTANT_BUFFER,
-                            PIPE_USAGE_STREAM, vertex_params_size * 4);
+                            PIPE_USAGE_STREAM, vertex_params_area * 4);
       unsigned src_off = indirect->offset;
       ;
       void *ptr;
@@ -501,7 +502,7 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
       ctx->screen->mem_to_mem(ring, vertex_params_rsc, 0, indirect->buffer,
                               src_off, 1);
 
-      emit_const_prsc(ring, v, offset * 4, 0, vertex_params_size,
+      emit_const_prsc(ring, v, offset * 4, 0, vertex_params_area,
                       vertex_params_rsc);
 
       pipe_resource_reference(&vertex_params_rsc, NULL);

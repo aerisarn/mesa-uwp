@@ -860,9 +860,6 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 
    const_state->num_ubos = nir->info.num_ubos;
 
-   /* num_driver_params is scalar, align to vec4: */
-   const_state->num_driver_params = align(const_state->num_driver_params, 4);
-
    debug_assert((const_state->ubo_state.size % 16) == 0);
    unsigned constoff = const_state->ubo_state.size / 16;
    unsigned ptrsz = ir3_pointer_size(compiler);
@@ -879,12 +876,26 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
    }
 
    if (const_state->num_driver_params > 0) {
+      /* num_driver_params in dwords.  we only need to align to vec4s for the
+       * common case of immediate constant uploads, but for indirect dispatch
+       * the constants may also be indirect and so we have to align the area in
+       * const space to that requirement.
+       */
+      const_state->num_driver_params = align(const_state->num_driver_params, 4);
+      unsigned upload_unit = 1;
+      if (v->type == MESA_SHADER_COMPUTE ||
+          (const_state->num_driver_params >= IR3_DP_VTXID_BASE)) {
+         upload_unit = compiler->const_upload_unit;
+      }
+
       /* offset cannot be 0 for vs params loaded by CP_DRAW_INDIRECT_MULTI */
       if (v->type == MESA_SHADER_VERTEX && compiler->gen >= 6)
          constoff = MAX2(constoff, 1);
+      constoff = align(constoff, upload_unit);
       const_state->offsets.driver_param = constoff;
+
+      constoff += align(const_state->num_driver_params / 4, upload_unit);
    }
-   constoff += const_state->num_driver_params / 4;
 
    if ((v->type == MESA_SHADER_VERTEX) && (compiler->gen < 5) &&
        v->shader->stream_output.num_outputs > 0) {
