@@ -593,7 +593,7 @@ panvk_cmd_prepare_clear_values(struct panvk_cmd_buffer *cmdbuf,
           }
        } else if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
           union pipe_color_union *col = (union pipe_color_union *) &in[i].color;
-          pan_pack_color(cmdbuf->state.clear[i].color, col, fmt);
+          pan_pack_color(cmdbuf->state.clear[i].color, col, fmt, false);
        }
    }
 }
