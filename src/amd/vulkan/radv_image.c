@@ -2063,7 +2063,8 @@ radv_layout_is_htile_compressed(const struct radv_device *device, const struct r
    case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR:
       return radv_image_has_htile(image);
    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-      return radv_image_has_htile(image) && queue_mask == (1u << RADV_QUEUE_GENERAL);
+      return radv_image_is_tc_compat_htile(image) ||
+             (radv_image_has_htile(image) && queue_mask == (1u << RADV_QUEUE_GENERAL));
    case VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:
    case VK_IMAGE_LAYOUT_GENERAL:
       /* It should be safe to enable TC-compat HTILE with
