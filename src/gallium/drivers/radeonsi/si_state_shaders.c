@@ -546,7 +546,6 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
 
    va = shader->bo->gpu_address;
    si_pm4_set_reg(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
-   si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS, S_00B524_MEM_BASE(va >> 40));
 
    shader->config.rsrc1 = S_00B528_VGPRS((shader->config.num_vgprs - 1) / 4) |
                           S_00B528_SGPRS((shader->config.num_sgprs - 1) / 8) |
@@ -571,10 +570,8 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
    if (sscreen->info.chip_class >= GFX9) {
       if (sscreen->info.chip_class >= GFX10) {
          si_pm4_set_reg(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
-         si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS, S_00B524_MEM_BASE(va >> 40));
       } else {
          si_pm4_set_reg(pm4, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
-         si_pm4_set_reg(pm4, R_00B414_SPI_SHADER_PGM_HI_LS, S_00B414_MEM_BASE(va >> 40));
       }
 
       unsigned num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_TCS_NUM_USER_SGPR);
@@ -588,7 +585,8 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
          shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
    } else {
       si_pm4_set_reg(pm4, R_00B420_SPI_SHADER_PGM_LO_HS, va >> 8);
-      si_pm4_set_reg(pm4, R_00B424_SPI_SHADER_PGM_HI_HS, S_00B424_MEM_BASE(va >> 40));
+      si_pm4_set_reg(pm4, R_00B424_SPI_SHADER_PGM_HI_HS,
+                     S_00B424_MEM_BASE(sscreen->info.address32_hi >> 8));
 
       shader->config.rsrc2 = S_00B42C_USER_SGPR(GFX6_TCS_NUM_USER_SGPR) | S_00B42C_OC_LDS_EN(1) |
                              S_00B42C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
@@ -662,7 +660,8 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
    oc_lds_en = shader->selector->info.stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
 
    si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
-   si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES, S_00B324_MEM_BASE(va >> 40));
+   si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES,
+                  S_00B324_MEM_BASE(sscreen->info.address32_hi >> 8));
    si_pm4_set_reg(pm4, R_00B328_SPI_SHADER_PGM_RSRC1_ES,
                   S_00B328_VGPRS((shader->config.num_vgprs - 1) / 4) |
                      S_00B328_SGPRS((shader->config.num_sgprs - 1) / 8) |
@@ -908,10 +907,8 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
       if (sscreen->info.chip_class >= GFX10) {
          si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
-         si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES, S_00B324_MEM_BASE(va >> 40));
       } else {
          si_pm4_set_reg(pm4, R_00B210_SPI_SHADER_PGM_LO_ES, va >> 8);
-         si_pm4_set_reg(pm4, R_00B214_SPI_SHADER_PGM_HI_ES, S_00B214_MEM_BASE(va >> 40));
       }
 
       uint32_t rsrc1 = S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) | S_00B228_DX10_CLAMP(1) |
@@ -960,7 +957,8 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
                         S_00B21C_CU_EN(0xffff) | S_00B21C_WAVE_LIMIT(0x3F));
       }
       si_pm4_set_reg(pm4, R_00B220_SPI_SHADER_PGM_LO_GS, va >> 8);
-      si_pm4_set_reg(pm4, R_00B224_SPI_SHADER_PGM_HI_GS, S_00B224_MEM_BASE(va >> 40));
+      si_pm4_set_reg(pm4, R_00B224_SPI_SHADER_PGM_HI_GS,
+                     S_00B224_MEM_BASE(sscreen->info.address32_hi >> 8));
 
       si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
                      S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) |
@@ -1197,7 +1195,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                          &late_alloc_wave64, &cu_mask);
 
    si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
-   si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES, S_00B324_MEM_BASE(va >> 40));
    si_pm4_set_reg(
       pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
       S_00B228_VGPRS((shader->config.num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
@@ -1494,7 +1491,8 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    }
 
    si_pm4_set_reg(pm4, R_00B120_SPI_SHADER_PGM_LO_VS, va >> 8);
-   si_pm4_set_reg(pm4, R_00B124_SPI_SHADER_PGM_HI_VS, S_00B124_MEM_BASE(va >> 40));
+   si_pm4_set_reg(pm4, R_00B124_SPI_SHADER_PGM_HI_VS,
+                  S_00B124_MEM_BASE(sscreen->info.address32_hi >> 8));
 
    uint32_t rsrc1 =
       S_00B128_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ge_wave_size == 32 ? 8 : 4)) |
@@ -1710,7 +1708,8 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 
    va = shader->bo->gpu_address;
    si_pm4_set_reg(pm4, R_00B020_SPI_SHADER_PGM_LO_PS, va >> 8);
-   si_pm4_set_reg(pm4, R_00B024_SPI_SHADER_PGM_HI_PS, S_00B024_MEM_BASE(va >> 40));
+   si_pm4_set_reg(pm4, R_00B024_SPI_SHADER_PGM_HI_PS,
+                  S_00B024_MEM_BASE(sscreen->info.address32_hi >> 8));
 
    uint32_t rsrc1 =
       S_00B028_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ps_wave_size == 32 ? 8 : 4)) |

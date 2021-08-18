@@ -5315,6 +5315,21 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028408_VGT_INDX_OFFSET, 0);
    }
 
+   if (sscreen->info.chip_class >= GFX10) {
+      si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS,
+                     S_00B524_MEM_BASE(sscreen->info.address32_hi >> 8));
+      si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES,
+                     S_00B324_MEM_BASE(sscreen->info.address32_hi >> 8));
+   } else if (sscreen->info.chip_class == GFX9) {
+      si_pm4_set_reg(pm4, R_00B414_SPI_SHADER_PGM_HI_LS,
+                     S_00B414_MEM_BASE(sscreen->info.address32_hi >> 8));
+      si_pm4_set_reg(pm4, R_00B214_SPI_SHADER_PGM_HI_ES,
+                     S_00B214_MEM_BASE(sscreen->info.address32_hi >> 8));
+   } else {
+      si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS,
+                     S_00B524_MEM_BASE(sscreen->info.address32_hi >> 8));
+   }
+
    if (sctx->chip_class >= GFX7 && sctx->chip_class <= GFX8) {
       si_pm4_set_reg(pm4, R_00B51C_SPI_SHADER_PGM_RSRC3_LS,
                      S_00B51C_CU_EN(0xffff) | S_00B51C_WAVE_LIMIT(0x3F));

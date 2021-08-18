@@ -367,6 +367,9 @@ static void si_set_global_binding(struct pipe_context *ctx, unsigned first, unsi
 void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
    radeon_begin(cs);
+   radeon_set_sh_reg(cs, R_00B834_COMPUTE_PGM_HI,
+                     S_00B834_DATA(sctx->screen->info.address32_hi >> 8));
+
    radeon_set_sh_reg_seq(cs, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, 2);
    /* R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 / SE1,
     * renamed COMPUTE_DESTINATION_EN_SEn on gfx10. */
@@ -535,9 +538,7 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
                              RADEON_PRIO_SHADER_BINARY);
 
    radeon_begin(cs);
-   radeon_set_sh_reg_seq(cs, R_00B830_COMPUTE_PGM_LO, 2);
-   radeon_emit(cs, shader_va >> 8);
-   radeon_emit(cs, S_00B834_DATA(shader_va >> 40));
+   radeon_set_sh_reg(cs, R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
 
    radeon_set_sh_reg_seq(cs, R_00B848_COMPUTE_PGM_RSRC1, 2);
    radeon_emit(cs, config->rsrc1);

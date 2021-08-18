@@ -858,8 +858,8 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
    si_resource_reference(&shader->bo, NULL);
    shader->bo = si_aligned_buffer_create(
       &sscreen->b,
-      (sscreen->info.cpdma_prefetch_writes_memory ?
-         0 : SI_RESOURCE_FLAG_READ_ONLY) | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+      (sscreen->info.cpdma_prefetch_writes_memory ? 0 : SI_RESOURCE_FLAG_READ_ONLY) |
+      SI_RESOURCE_FLAG_DRIVER_INTERNAL | SI_RESOURCE_FLAG_32BIT,
       PIPE_USAGE_IMMUTABLE, align(binary.rx_size, SI_CPDMA_ALIGNMENT), 256);
    if (!shader->bo)
       return false;
