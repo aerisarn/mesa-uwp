@@ -320,37 +320,68 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
             if (inst->opcode == BRW_OPCODE_AND)
                break;
 
-            /* Not safe to use inequality operators if the types are different
-             */
-            if (scan_inst->dst.type != inst->src[0].type &&
-                inst->conditional_mod != BRW_CONDITIONAL_Z &&
-                inst->conditional_mod != BRW_CONDITIONAL_NZ)
-               break;
-
-            /* Comparisons operate differently for ints and floats */
-            if (scan_inst->dst.type != inst->dst.type) {
-               /* Comparison result may be altered if the bit-size changes
-                * since that affects range, denorms, etc
-                */
-               if (type_sz(scan_inst->dst.type) != type_sz(inst->dst.type))
-                  break;
-
-               /* We should propagate from a MOV to another instruction in a
-                * sequence like:
-                *
-                *    and(16)         g31<1>UD       g20<8,8,1>UD   g22<8,8,1>UD
-                *    mov.nz.f0(16)   null<1>F       g31<8,8,1>D
-                */
-               if (inst->opcode == BRW_OPCODE_MOV) {
-                  if ((inst->src[0].type != BRW_REGISTER_TYPE_D &&
-                       inst->src[0].type != BRW_REGISTER_TYPE_UD) ||
-                      (scan_inst->dst.type != BRW_REGISTER_TYPE_D &&
-                       scan_inst->dst.type != BRW_REGISTER_TYPE_UD)) {
+            if (inst->opcode == BRW_OPCODE_MOV) {
+               if (brw_reg_type_is_floating_point(scan_inst->dst.type)) {
+                  /* If the destination type of scan_inst is floating-point,
+                   * then:
+                   *
+                   * - The source of the MOV instruction must be the same
+                   *   type.
+                   *
+                   * - The destination of the MOV instruction must be float
+                   *   point with a size at least as large as the destination
+                   *   of inst.  Size-reducing f2f conversions could cause
+                   *   non-zero values to become zero, etc.
+                   */
+                  if (scan_inst->dst.type != inst->src[0].type)
                      break;
-                  }
-               } else if (brw_reg_type_is_floating_point(scan_inst->dst.type) !=
-                          brw_reg_type_is_floating_point(inst->dst.type)) {
+
+                  if (!brw_reg_type_is_floating_point(inst->dst.type))
+                     break;
+
+                  if (type_sz(scan_inst->dst.type) > type_sz(inst->dst.type))
+                     break;
+               } else {
+                  /* If the destination type of scan_inst is integer, then:
+                   *
+                   * - The source of the MOV instruction must be integer with
+                   *   the same size.
+                   *
+                   * - If the conditional modifier is Z or NZ, then the
+                   *   destination type of inst must either be floating point
+                   *   (of any size) or integer with a size at least as large
+                   *   as the destination of inst.
+                   */
+                  if (!brw_reg_type_is_integer(inst->src[0].type) ||
+                      type_sz(scan_inst->dst.type) != type_sz(inst->src[0].type))
+                     break;
+
+                  assert(inst->conditional_mod == BRW_CONDITIONAL_NZ);
+
+                  if (brw_reg_type_is_integer(inst->dst.type) &&
+                      type_sz(inst->dst.type) < type_sz(scan_inst->dst.type))
+                     break;
+               }
+            } else {
+               /* Not safe to use inequality operators if the types are
+                * different.
+                */
+               if (scan_inst->dst.type != inst->src[0].type &&
+                   inst->conditional_mod != BRW_CONDITIONAL_Z &&
+                   inst->conditional_mod != BRW_CONDITIONAL_NZ)
                   break;
+
+               /* Comparisons operate differently for ints and floats */
+               if (scan_inst->dst.type != inst->dst.type) {
+                  /* Comparison result may be altered if the bit-size changes
+                   * since that affects range, denorms, etc
+                   */
+                  if (type_sz(scan_inst->dst.type) != type_sz(inst->dst.type))
+                     break;
+
+                  if (brw_reg_type_is_floating_point(scan_inst->dst.type) !=
+                      brw_reg_type_is_floating_point(inst->dst.type))
+                     break;
                }
             }
 

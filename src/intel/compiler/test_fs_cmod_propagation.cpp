@@ -1505,6 +1505,49 @@ TEST_F(cmod_propagation_test, signed_unsigned_comparison_mismatch)
    EXPECT_EQ(BRW_CONDITIONAL_LE, instruction(block0, 1)->conditional_mod);
 }
 
+TEST_F(cmod_propagation_test, ior_f2i_nz)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dest = bld.vgrf(BRW_REGISTER_TYPE_D);
+   fs_reg src0 = bld.vgrf(BRW_REGISTER_TYPE_D);
+   fs_reg src1 = bld.vgrf(BRW_REGISTER_TYPE_D);
+
+   bld.OR(dest, src0, src1);
+   bld.MOV(bld.null_reg_d(), retype(dest, BRW_REGISTER_TYPE_F))
+      ->conditional_mod = BRW_CONDITIONAL_NZ;
+
+   /* = Before =
+    * 0: or(8)           dest:D  src0:D  src1:D
+    * 1: mov.nz(8)       null:D  dest:F
+    *
+    * = After =
+    * No changes.
+    *
+    * If src0 = 0x30000000 and src1 = 0x0f000000, then the value stored in
+    * dest, interpreted as floating point, is 0.5.  This bit pattern is not
+    * zero, but after the float-to-integer conversion, the value is zero.
+    */
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+
+   EXPECT_EQ(BRW_OPCODE_OR, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NONE, instruction(block0, 0)->conditional_mod);
+
+   /* This is ASSERT_EQ because if end_ip is 0, the instruction(block0, 1)
+    * calls will not work properly, and the test will give weird results.
+    */
+   ASSERT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_MOV, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NZ, instruction(block0, 1)->conditional_mod);
+}
+
+
 void
 cmod_propagation_test::test_mov_prop(enum brw_conditional_mod cmod,
                                      enum brw_reg_type add_type,
