@@ -209,7 +209,11 @@ spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT32- border 
 spec@arb_es2_compatibility@arb_es2_compatibility-drawbuffers,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor@GL_RGB565- border color only,Fail
+
+# fails at 4 samples (for our 4 supported indirections) because the 1D coordinate workaround
+# causes an extra texture indirection phase.
 spec@arb_fragment_program@fp-indirections2,Fail
+
 spec@arb_fragment_program_shadow@tex-shadow1d,Fail
 spec@arb_fragment_program_shadow@tex-shadow2d,Fail
 spec@arb_fragment_program_shadow@tex-shadow2drect,Fail

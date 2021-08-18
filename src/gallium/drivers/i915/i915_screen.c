@@ -226,7 +226,7 @@ i915_get_shader_param(struct pipe_screen *screen, enum pipe_shader_type shader,
       case PIPE_SHADER_CAP_MAX_TEX_INSTRUCTIONS:
          return I915_MAX_TEX_INSN;
       case PIPE_SHADER_CAP_MAX_TEX_INDIRECTIONS:
-         return 8;
+         return 4;
       case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
          return 0;
       case PIPE_SHADER_CAP_MAX_INPUTS:
