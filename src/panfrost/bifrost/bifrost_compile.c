@@ -442,6 +442,17 @@ bi_load_sysval(bi_builder *b, int sysval,
 }
 
 static void
+bi_load_sample_id_to(bi_builder *b, bi_index dst)
+{
+        /* r61[16:23] contains the sampleID, mask it out. Upper bits
+         * seem to read garbage (despite being architecturally defined
+         * as zero), so use a 5-bit mask instead of 8-bits */
+
+        bi_rshift_and_i32_to(b, dst, bi_register(61), bi_imm_u32(0x1f),
+                                bi_imm_u8(16));
+}
+
+static void
 bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
 {
         ASSERTED nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
@@ -1293,15 +1304,9 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_u16_to_u32_to(b, dst, bi_half(bi_register(61), false));
                 break;
 
-        case nir_intrinsic_load_sample_id: {
-                /* r61[16:23] contains the sampleID, mask it out. Upper bits
-                 * seem to read garbage (despite being architecturally defined
-                 * as zero), so use a 5-bit mask instead of 8-bits */
-
-                bi_rshift_and_i32_to(b, dst, bi_register(61), bi_imm_u32(0x1f),
-                                bi_imm_u8(16));
+        case nir_intrinsic_load_sample_id:
+                bi_load_sample_id_to(b, dst);
                 break;
-        }
 
 	case nir_intrinsic_load_front_face:
                 /* r58 == 0 means primitive is front facing */
