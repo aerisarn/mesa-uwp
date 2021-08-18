@@ -167,11 +167,10 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: dd78a9f15834d0def6c07be648240d85
-# Crash
-# - path: gputest/pixmark-julia-fp64.trace
-#   expectations:
-#     - device: gl-virgl
-#       checksum: 0
+  - path: gputest/pixmark-julia-fp64.trace
+    expectations:
+      - device: gl-virgl
+        checksum: 70c4219dc1e344aefa17b5a7b594e495
   - path: gputest/pixmark-volplosion.trace
     expectations:
       - device: gl-virgl
@@ -180,11 +179,11 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: f3c0187ab2197c57e699135b7f42b8cc
-# Crash
-#  - path: gputest/tessmark.trace
-#    expectations:
-#      - device: gl-virgl
-#        checksum: 5d04b8d71517238b9bc8a527574e884b
+# Times out
+# - path: gputest/tessmark.trace
+#   expectations:
+#     - device: gl-virgl
+#       checksum: 5d04b8d71517238b9bc8a527574e884b
   - path: humus/AmbientAperture.trace
     expectations:
       - device: gl-virgl
@@ -210,39 +209,34 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: a6e3bc45fa4090a307d431d63036ca33
-# Crash
-#  - path: itoral-gl-terrain-demo/demo.trace
-#    expectations:
-#      - device: gl-virgl
-#        checksum: 9571117bf4eab6fe29b12f6c3d42d865
+  - path: itoral-gl-terrain-demo/demo.trace
+    expectations:
+      - device: gl-virgl
+        checksum: 2b5b7b64b1eb8e323e76e2061e3ac364
   - path: neverball/neverball.trace
     expectations:
       - device: gl-virgl
         checksum: 92ca4c422ca4aca917ffcc8a874a2c69
-# Crash
-#  - path: pathfinder/canvas_moire.trace
-#    expectations:
-#      - device: gl-virgl
-#        checksum: 0e32ca8fc815a7250f38a07faeafb21b
-# Crash
-#  - path: pathfinder/canvas_text_v2.trace
-#    expectations:
-#      - device: gl-virgl
-#        checksum: 74129b650bd3ca806ff2dd46813ba6e6
-# Crash
-#  - path: pathfinder/demo.trace
-#    expectations:
-#      - device: gl-virgl
-#        checksum: f6661ed4de9e0a444c6338ebd0cd3768
+  - path: pathfinder/canvas_moire.trace
+    expectations:
+      - device: gl-virgl
+        checksum: c4ee0eef519f1a32ba24b7b392b31b28
+  - path: pathfinder/canvas_text_v2.trace
+    expectations:
+      - device: gl-virgl
+        checksum: 7ec3d817091a273223158ab0f4f726b5
+  - path: pathfinder/demo.trace
+    expectations:
+      - device: gl-virgl
+        checksum: 4c7d1c9044a58d017405200746aa7962
   - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
     expectations:
       - device: gl-virgl
         checksum: 54847eaf8a2f1b6b45cc323be67417d3
-# Sometimes crashes
-#  - path: xonotic/xonotic-keybench-high.trace
-#    expectations:
-#      - device: gl-virgl
-#        checksum: e8a52c8f558a0085eb45fcba0f6c59e2
+  - path: xonotic/xonotic-keybench-high.trace
+    expectations:
+      - device: gl-virgl
+        checksum: 10c4ee7d1a0a6e708fc7b4176a03a465
   - path: valve/counterstrike.trace
     expectations:
       - device: gl-virgl
