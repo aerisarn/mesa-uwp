@@ -103,3 +103,16 @@ KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guar
 
 # looks like a cache flushing issue, and it does sometimes pass.
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.*
+
+# Flakes, all seen since merge of:
+# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/12258
+# Failures seen so far in different flakes:
+#
+#  "Array 1 length is 0 should be 4"
+#  "Array 2 length is 0 should be 2"
+#  "Array 4 length is 0 should be 22"
+#  "Array 5 length is 0 should be 122"
+#
+# test does a single point draw in a FS taking the length of the first 7 SSBOs and writing them to
+# ints in SSBO 7, then glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT), then mapping it.
+KHR-GLES31.core.shader_storage_buffer_object.advanced-unsizedArrayLength-fs-std430-matC-pad
