@@ -422,18 +422,19 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
                            bool is_dcc_decompress, unsigned flags)
 {
    struct pipe_context *ctx = &sctx->b;
+   struct si_texture *ssrc = (struct si_texture*)src;
+   struct si_texture *sdst = (struct si_texture*)dst;
    unsigned width = src_box->width;
    unsigned height = src_box->height;
    unsigned depth = src_box->depth;
    enum pipe_format src_format = util_format_linear(src->format);
    enum pipe_format dst_format = util_format_linear(dst->format);
-   bool is_linear = ((struct si_texture*)src)->surface.is_linear ||
-                    ((struct si_texture*)dst)->surface.is_linear;
+   bool is_linear = ssrc->surface.is_linear || sdst->surface.is_linear;
 
    assert(util_format_is_subsampled_422(src_format) == util_format_is_subsampled_422(dst_format));
 
-   if (!vi_dcc_enabled((struct si_texture*)src, src_level) &&
-       !vi_dcc_enabled((struct si_texture*)dst, dst_level) &&
+   if (!vi_dcc_enabled(ssrc, src_level) &&
+       !vi_dcc_enabled(sdst, dst_level) &&
        src_format == dst_format &&
        util_format_is_float(src_format) &&
        !util_format_is_compressed(src_format)) {
@@ -477,11 +478,11 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    /* src and dst have the same number of samples. */
    si_make_CB_shader_coherent(sctx, src->nr_samples, true,
-                              ((struct si_texture *)src)->surface.u.gfx9.color.dcc.pipe_aligned);
+                              ssrc->surface.u.gfx9.color.dcc.pipe_aligned);
    if (sctx->chip_class >= GFX10) {
       /* GFX10+ uses DCC stores so si_make_CB_shader_coherent is required for dst too */
       si_make_CB_shader_coherent(sctx, dst->nr_samples, true,
-                                 ((struct si_texture *)dst)->surface.u.gfx9.color.dcc.pipe_aligned);
+                                 sdst->surface.u.gfx9.color.dcc.pipe_aligned);
    }
 
    struct si_images *images = &sctx->images[PIPE_SHADER_COMPUTE];
@@ -533,7 +534,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
        * the DCC block size or a multiple thereof. The shader uses a barrier
        * between loads and stores to safely overwrite each DCC block of pixels.
        */
-      struct si_texture *tex = (struct si_texture*)src;
       unsigned dim[3] = {src_box->width, src_box->height, src_box->depth};
 
       assert(src == dst);
@@ -542,9 +542,9 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       if (!sctx->cs_dcc_decompress)
          sctx->cs_dcc_decompress = si_create_dcc_decompress_cs(ctx);
 
-      info.block[0] = tex->surface.u.gfx9.color.dcc_block_width;
-      info.block[1] = tex->surface.u.gfx9.color.dcc_block_height;
-      info.block[2] = tex->surface.u.gfx9.color.dcc_block_depth;
+      info.block[0] = ssrc->surface.u.gfx9.color.dcc_block_width;
+      info.block[1] = ssrc->surface.u.gfx9.color.dcc_block_height;
+      info.block[2] = ssrc->surface.u.gfx9.color.dcc_block_depth;
 
       /* Make sure the block size is at least the same as wave size. */
       while (info.block[0] * info.block[1] * info.block[2] <
