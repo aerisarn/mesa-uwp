@@ -2827,11 +2827,17 @@ nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes)
 
    nir_foreach_function(f, nir) {
       if (f->impl) {
+         bool impl_progress = false;
          nir_builder b;
          nir_builder_init(&b, f->impl);
          nir_foreach_block(block, f->impl) {
-            progress |= add_const_offset_to_base_block(block, &b, modes);
+            impl_progress |= add_const_offset_to_base_block(block, &b, modes);
          }
+         progress |= impl_progress;
+         if (impl_progress)
+            nir_metadata_preserve(f->impl, nir_metadata_block_index | nir_metadata_dominance);
+         else
+            nir_metadata_preserve(f->impl, nir_metadata_all);
       }
    }
 
