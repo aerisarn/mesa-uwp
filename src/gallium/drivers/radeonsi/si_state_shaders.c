@@ -983,13 +983,6 @@ static void gfx10_emit_ge_pc_alloc(struct si_context *sctx, unsigned value)
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
       radeon_begin(cs);
-
-      if (sctx->chip_class == GFX10) {
-         /* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
-         radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-         radeon_emit(cs, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
-      }
-
       radeon_set_uconfig_reg(cs, R_030980_GE_PC_ALLOC, value);
       radeon_end();
 
