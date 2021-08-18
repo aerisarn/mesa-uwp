@@ -203,10 +203,14 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
       }
    }
 
-   struct fd_ringbuffer *ring =
-      fd_ringbuffer_new_object(ctx->pipe, (13 + (2 * prog_count)) * 4);
+   unsigned sizedw = 12 + (2 * prog_count);
+   if (ctx->screen->info->a6xx.tess_use_shared)
+      sizedw += 2;
 
-   OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, 12 + (2 * prog_count));
+   struct fd_ringbuffer *ring =
+      fd_ringbuffer_new_object(ctx->pipe, (1 + sizedw) * 4);
+
+   OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, sizedw);
    OUT_RING(ring, REG_A6XX_VPC_SO_STREAM_CNTL);
    OUT_RING(ring,
             A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(0x1) |
@@ -227,6 +231,13 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
    for (unsigned i = 0; i < prog_count; i++) {
       OUT_RING(ring, REG_A6XX_VPC_SO_PROG);
       OUT_RING(ring, prog[i]);
+   }
+   if (ctx->screen->info->a6xx.tess_use_shared) {
+      /* Possibly not tess_use_shared related, but the combination of
+       * tess + xfb fails some tests if we don't emit this.
+       */
+      OUT_RING(ring, REG_A6XX_PC_SO_STREAM_CNTL);
+      OUT_RING(ring, A6XX_PC_SO_STREAM_CNTL_STREAM_ENABLE);
    }
 
    state->streamout_stateobj = ring;
