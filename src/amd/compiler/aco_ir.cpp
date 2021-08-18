@@ -419,6 +419,65 @@ can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high)
    }
 }
 
+bool
+instr_is_16bit(chip_class chip, aco_opcode op)
+{
+   /* partial register writes are GFX9+, only */
+   if (chip < GFX9)
+      return false;
+
+   switch (op) {
+   /* VOP3 */
+   case aco_opcode::v_mad_f16:
+   case aco_opcode::v_mad_u16:
+   case aco_opcode::v_mad_i16:
+   case aco_opcode::v_fma_f16:
+   case aco_opcode::v_div_fixup_f16:
+   case aco_opcode::v_interp_p2_f16:
+   case aco_opcode::v_fma_mixlo_f16:
+   /* VOP2 */
+   case aco_opcode::v_mac_f16:
+   case aco_opcode::v_madak_f16:
+   case aco_opcode::v_madmk_f16: return chip >= GFX9;
+   case aco_opcode::v_add_f16:
+   case aco_opcode::v_sub_f16:
+   case aco_opcode::v_subrev_f16:
+   case aco_opcode::v_mul_f16:
+   case aco_opcode::v_max_f16:
+   case aco_opcode::v_min_f16:
+   case aco_opcode::v_ldexp_f16:
+   case aco_opcode::v_fmac_f16:
+   case aco_opcode::v_fmamk_f16:
+   case aco_opcode::v_fmaak_f16:
+   /* VOP1 */
+   case aco_opcode::v_cvt_f16_f32:
+   case aco_opcode::v_cvt_f16_u16:
+   case aco_opcode::v_cvt_f16_i16:
+   case aco_opcode::v_rcp_f16:
+   case aco_opcode::v_sqrt_f16:
+   case aco_opcode::v_rsq_f16:
+   case aco_opcode::v_log_f16:
+   case aco_opcode::v_exp_f16:
+   case aco_opcode::v_frexp_mant_f16:
+   case aco_opcode::v_frexp_exp_i16_f16:
+   case aco_opcode::v_floor_f16:
+   case aco_opcode::v_ceil_f16:
+   case aco_opcode::v_trunc_f16:
+   case aco_opcode::v_rndne_f16:
+   case aco_opcode::v_fract_f16:
+   case aco_opcode::v_sin_f16:
+   case aco_opcode::v_cos_f16: return chip >= GFX10;
+   // TODO: confirm whether these write 16 or 32 bit on GFX10+
+   // case aco_opcode::v_cvt_u16_f16:
+   // case aco_opcode::v_cvt_i16_f16:
+   // case aco_opcode::p_cvt_f16_f32_rtne:
+   // case aco_opcode::v_cvt_norm_i16_f16:
+   // case aco_opcode::v_cvt_norm_u16_f16:
+   /* on GFX10, all opsel instructions preserve the high bits */
+   default: return chip >= GFX10 && can_use_opsel(chip, op, -1, false);
+   }
+}
+
 uint32_t
 get_reduction_identity(ReduceOp op, unsigned idx)
 {
