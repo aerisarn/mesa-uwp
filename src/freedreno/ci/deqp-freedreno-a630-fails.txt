@@ -53,8 +53,6 @@ KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guar
 
 # no debug info in the qpa
 KHR-GLES31.core.texture_cube_map_array.color_depth_attachments,Fail
-# failures in GS,TCS,TES texturing
-KHR-GLES31.core.texture_cube_map_array.sampling,Fail
 
 # rendering errors in ~4x4 blocks around the bottom side of the diagonal for the quad
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.colorburn,Fail

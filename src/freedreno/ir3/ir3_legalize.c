@@ -234,8 +234,9 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
       if (list_is_empty(&block->instr_list) && (opc_cat(n->opc) >= 5))
          ir3_NOP(block);
 
-      if (ctx->compiler->samgq_workaround && ctx->type == MESA_SHADER_VERTEX &&
-          n->opc == OPC_SAMGQ) {
+      if (ctx->compiler->samgq_workaround &&
+          ctx->type != MESA_SHADER_FRAGMENT &&
+          ctx->type != MESA_SHADER_COMPUTE && n->opc == OPC_SAMGQ) {
          struct ir3_instruction *samgp;
 
          list_delinit(&n->node);
