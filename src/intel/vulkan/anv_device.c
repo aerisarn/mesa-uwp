@@ -116,31 +116,6 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
    va_end(args);
 }
 
-static uint64_t
-anv_compute_heap_size(int fd, uint64_t gtt_size)
-{
-   /* Query the total ram from the system */
-   uint64_t total_ram;
-   if (!os_get_total_physical_memory(&total_ram))
-      return 0;
-
-   /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
-    * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
-    */
-   uint64_t available_ram;
-   if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
-      available_ram = total_ram / 2;
-   else
-      available_ram = total_ram * 3 / 4;
-
-   /* We also want to leave some padding for things we allocate in the driver,
-    * so don't go over 3/4 of the GTT either.
-    */
-   uint64_t available_gtt = gtt_size * 3 / 4;
-
-   return MIN2(available_ram, available_gtt);
-}
-
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
     defined(VK_USE_PLATFORM_XCB_KHR) || \
     defined(VK_USE_PLATFORM_XLIB_KHR) || \
@@ -327,6 +302,31 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_multi_draw                        = true,
       .NV_compute_shader_derivatives         = true,
    };
+}
+
+static uint64_t
+anv_compute_heap_size(int fd, uint64_t gtt_size)
+{
+   /* Query the total ram from the system */
+   uint64_t total_ram;
+   if (!os_get_total_physical_memory(&total_ram))
+      return 0;
+
+   /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
+    * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
+    */
+   uint64_t available_ram;
+   if (total_ram <= 4ull * 1024ull * 1024ull * 1024ull)
+      available_ram = total_ram / 2;
+   else
+      available_ram = total_ram * 3 / 4;
+
+   /* We also want to leave some padding for things we allocate in the driver,
+    * so don't go over 3/4 of the GTT either.
+    */
+   uint64_t available_gtt = gtt_size * 3 / 4;
+
+   return MIN2(available_ram, available_gtt);
 }
 
 static bool
