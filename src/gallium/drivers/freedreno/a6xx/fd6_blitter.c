@@ -524,6 +524,7 @@ fd6_clear_ubwc(struct fd_batch *batch, struct fd_resource *rsc) assert_dt
    fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
    fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
    fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
+   fd_wfi(batch, ring);
    fd6_cache_inv(batch, ring);
 }
 
@@ -893,6 +894,7 @@ fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
     * results in sysmem, so we need to flush manually here.
     */
    fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
+   fd_wfi(batch, ring);
 }
 
 static bool
@@ -956,6 +958,7 @@ handle_rgba_blit(struct fd_context *ctx,
    fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_COLOR_TS, true);
    fd6_event_write(batch, batch->draw, PC_CCU_FLUSH_DEPTH_TS, true);
    fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
+   fd_wfi(batch, batch->draw);
    fd6_cache_inv(batch, batch->draw);
 
    fd_batch_unlock_submit(batch);

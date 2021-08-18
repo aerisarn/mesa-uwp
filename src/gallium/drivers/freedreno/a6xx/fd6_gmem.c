@@ -1512,6 +1512,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
    }
 
    fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
+   fd_wfi(batch, ring);
 
    trace_end_clear_restore(&batch->trace);
 }
@@ -1609,7 +1610,7 @@ fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
 }
 
 static void
-fd6_emit_sysmem_fini(struct fd_batch *batch)
+fd6_emit_sysmem_fini(struct fd_batch *batch) assert_dt
 {
    struct fd_ringbuffer *ring = batch->gmem;
 
@@ -1625,6 +1626,7 @@ fd6_emit_sysmem_fini(struct fd_batch *batch)
 
    fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
    fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
+   fd_wfi(batch, ring);
 }
 
 void

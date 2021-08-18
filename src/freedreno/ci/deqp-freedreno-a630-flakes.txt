@@ -91,11 +91,6 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-GLES3.functional.fbo.blit.conversion.rg8i_to_r16i
 dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r16f
 
-# Started appearing after disabling cpufreq, devfreq and disabling runtime PM
-dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_basic
-dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_scale
-dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_stencil_only
-
 # Could trip hangcheck timeout
 dEQP-VK.api.command_buffers.record_many_draws_primary_2
 dEQP-VK.api.command_buffers.record_many_draws_secondary_2

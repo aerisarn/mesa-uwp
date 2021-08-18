@@ -1413,6 +1413,7 @@ fd6_framebuffer_barrier(struct fd_context *ctx) assert_dt
    fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
 
    seqno = fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
+   fd_wfi(batch, ring);
 
    fd6_event_write(batch, ring, 0x31, false);
 
