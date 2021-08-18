@@ -1355,11 +1355,17 @@ nir_src_is_dynamically_uniform(nir_src src)
    if (src.ssa->parent_instr->type == nir_instr_type_load_const)
       return true;
 
-   /* As are uniform variables */
    if (src.ssa->parent_instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(src.ssa->parent_instr);
+      /* As are uniform variables */
       if (intr->intrinsic == nir_intrinsic_load_uniform &&
           nir_src_is_dynamically_uniform(intr->src[0]))
+         return true;
+      /* Push constant loads always use uniform offsets. */
+      if (intr->intrinsic == nir_intrinsic_load_push_constant)
+         return true;
+      if (intr->intrinsic == nir_intrinsic_load_deref &&
+          nir_deref_mode_is(nir_src_as_deref(intr->src[0]), nir_var_mem_push_const))
          return true;
    }
 
