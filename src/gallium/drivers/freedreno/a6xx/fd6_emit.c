@@ -927,6 +927,23 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
       }
    }
 
+   /* Make sure that any use of our TFB outputs (indirect draw source or shader
+    * UBO reads) comes after the TFB output is written.  From the GL 4.6 core
+    * spec:
+    *
+    *     "Buffers should not be bound or in use for both transform feedback and
+    *      other purposes in the GL.  Specifically, if a buffer object is
+    *      simultaneously bound to a transform feedback buffer binding point
+    *      and elsewhere in the GL, any writes to or reads from the buffer
+    *      generate undefined values."
+    *
+    * So we idle whenever SO buffers change.  Note that this function is called
+    * on every draw with TFB enabled, so check the dirty flag for the buffers
+    * themselves.
+    */
+   if (ctx->dirty & FD_DIRTY_STREAMOUT)
+      fd_wfi(ctx->batch, ring);
+
    ctx->last.streamout_mask = emit->streamout_mask;
 }
 

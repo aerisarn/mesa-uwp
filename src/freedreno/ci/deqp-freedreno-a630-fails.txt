@@ -28,10 +28,6 @@ KHR-GLES31.core.gpu_shader5.fma_precision_vec4,Fail
 # "Got red: 1, expected 0.00392157, at (1, 0)"
 KHR-GLES31.core.compute_shader.resource-image,Fail
 
-# "(x,y)= (0,0). Color RGBA(0,0,0,1) is different than expected RGBA(0.1,0.2,0.3,1)"
-KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-arrays,Fail
-KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-elements,Fail
-
 # Lots of errors like "[279] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
 KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support,Fail
 

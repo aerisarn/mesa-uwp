@@ -311,7 +311,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SR
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- swizzled- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SRGB- swizzled- border color only,Fail
 spec@ext_transform_feedback@geometry-shaders-basic,Fail
-spec@ext_transform_feedback@immediate-reuse-index-buffer,Fail
 spec@ext_transform_feedback@intervening-read prims_generated,Fail
 spec@ext_transform_feedback@intervening-read prims_generated use_gs,Fail
 spec@ext_transform_feedback@overflow-edge-cases,Fail
