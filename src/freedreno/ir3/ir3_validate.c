@@ -185,6 +185,10 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
          /* handled below */
       } else if (opc_cat(instr->opc) == 0) {
          /* end/chmask/etc are allowed to have different size sources */
+      } else if (instr->opc == OPC_META_PARALLEL_COPY) {
+         /* pcopy sources have to match with their destination but can have
+          * different size.
+          */
       } else if (n > 0) {
          validate_assert(ctx, (last_reg->flags & IR3_REG_HALF) ==
                                  (reg->flags & IR3_REG_HALF));
@@ -320,6 +324,13 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
          if (instr->srcs_count > 1)
             validate_assert(ctx, !(instr->srcs[1]->flags & IR3_REG_HALF));
          break;
+      }
+   }
+
+   if (instr->opc == OPC_META_PARALLEL_COPY) {
+      foreach_src_n (src, n, instr) {
+         validate_assert(ctx, reg_class_flags(src) ==
+                         reg_class_flags(instr->dsts[n]));
       }
    }
 }
