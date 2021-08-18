@@ -1854,11 +1854,11 @@ static void si_draw_vbo(struct pipe_context *ctx,
           * A draw must have at least 1 full primitive.
           * The fast launch doesn't work with tessellation.
           *
-          * Small instances (including small draws) don't perform well with fast launch.
-          * It's better to use normal launch with NOT_EOP for small draws, and it's
-          * always better to use normal launch for small instances.
+          * Since NGG fast launch is enabled by VGT_SHADER_STAGES_EN, which causes a context roll,
+          * which decreases performance, decrease the frequency of switching it on/off using
+          * a high vertex count threshold.
           */
-         if (!HAS_TESS && ngg_culling && min_direct_count >= 64 &&
+         if (!HAS_TESS && ngg_culling && total_direct_count >= 8000 &&
              !(sctx->screen->debug_flags & DBG(NO_FAST_LAUNCH))) {
             if (prim == PIPE_PRIM_TRIANGLES && !index_size) {
                ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST;
