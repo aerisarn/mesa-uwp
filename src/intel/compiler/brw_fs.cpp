@@ -475,7 +475,7 @@ fs_inst::can_do_cmod()
     * equality with a 32-bit value.  See piglit fs-op-neg-uvec4.
     */
    for (unsigned i = 0; i < sources; i++) {
-      if (type_is_unsigned_int(src[i].type) && src[i].negate)
+      if (brw_reg_type_is_unsigned_integer(src[i].type) && src[i].negate)
          return false;
    }
 

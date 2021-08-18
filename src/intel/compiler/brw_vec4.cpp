@@ -263,7 +263,7 @@ vec4_instruction::can_do_cmod()
     */
    for (unsigned i = 0; i < 3; i++) {
       if (src[i].file != BAD_FILE &&
-          type_is_unsigned_int(src[i].type) && src[i].negate)
+          brw_reg_type_is_unsigned_integer(src[i].type) && src[i].negate)
          return false;
    }
 

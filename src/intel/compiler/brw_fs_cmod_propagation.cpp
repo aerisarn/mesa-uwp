@@ -125,7 +125,7 @@ cmod_propagate_cmp_to_add(const intel_device_info *devinfo, bblock_t *block,
 
          if (scan_inst->saturate &&
              (brw_reg_type_is_floating_point(scan_inst->dst.type) ||
-              type_is_unsigned_int(scan_inst->dst.type)) &&
+              brw_reg_type_is_unsigned_integer(scan_inst->dst.type)) &&
              (cond != BRW_CONDITIONAL_G &&
               cond != BRW_CONDITIONAL_LE))
             goto not_match;

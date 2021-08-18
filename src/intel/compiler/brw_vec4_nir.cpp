@@ -1112,7 +1112,7 @@ static bool
 const_src_fits_in_16_bits(const nir_src &src, brw_reg_type type)
 {
    assert(nir_src_is_const(src));
-   if (type_is_unsigned_int(type)) {
+   if (brw_reg_type_is_unsigned_integer(type)) {
       return nir_src_comp_as_uint(src, 0) <= UINT16_MAX;
    } else {
       const int64_t c = nir_src_comp_as_int(src, 0);
