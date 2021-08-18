@@ -266,8 +266,8 @@ lp_do_offset_tri(struct gallivm_state *gallivm,
 
    if (key->floating_point_depth) {
       /*
-       * bias = pgon_offset_units * 2^(exponent(max(z0, z1, z2)) - mantissa_bits) +
-       *           MAX2(dzdx, dzdy) * pgon_offset_scale
+       * bias = pgon_offset_units * 2^(exponent(max(abs(z0), abs(z1), abs(z2))) -
+       *           mantissa_bits) + MAX2(dzdx, dzdy) * pgon_offset_scale
        *
        * NOTE: Assumes IEEE float32.
        */
@@ -280,11 +280,14 @@ lp_do_offset_tri(struct gallivm_state *gallivm,
       exp_mask = lp_build_const_int32(gallivm, 0xff << 23);
 
       maxz0z1_value = lp_build_max(&flt_scalar_bld,
-                         LLVMBuildExtractElement(b, attribv[0], twoi, ""),
-                         LLVMBuildExtractElement(b, attribv[1], twoi, ""));
+                         lp_build_abs(&flt_scalar_bld,
+                            LLVMBuildExtractElement(b, attribv[0], twoi, "")),
+                         lp_build_abs(&flt_scalar_bld,
+                            LLVMBuildExtractElement(b, attribv[1], twoi, "")));
 
       maxz_value = lp_build_max(&flt_scalar_bld,
-                      LLVMBuildExtractElement(b, attribv[2], twoi, ""),
+                      lp_build_abs(&flt_scalar_bld,
+                         LLVMBuildExtractElement(b, attribv[2], twoi, "")),
                       maxz0z1_value);
 
       exp = LLVMBuildBitCast(b, maxz_value, int_scalar_bld.vec_type, "");
