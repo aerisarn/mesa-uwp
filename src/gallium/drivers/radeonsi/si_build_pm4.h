@@ -259,6 +259,16 @@
    } \
 } while (0)
 
+#define radeon_opt_set_sh_reg(sctx, offset, reg, val) do { \
+   unsigned __value = val; \
+   if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
+       sctx->tracked_regs.reg_value[reg] != __value) { \
+      radeon_set_sh_reg(cs, offset, __value); \
+      sctx->tracked_regs.reg_saved |= BITFIELD64_BIT(reg); \
+      sctx->tracked_regs.reg_value[reg] = __value; \
+   } \
+} while (0)
+
 #define radeon_set_privileged_config_reg(cs, reg, value) do { \
    assert((reg) < CIK_UCONFIG_REG_OFFSET); \
    radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0)); \

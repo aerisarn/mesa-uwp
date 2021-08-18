@@ -839,6 +839,8 @@ struct si_shader {
          unsigned vgt_gs_onchip_cntl;
          unsigned vgt_gs_max_prims_per_subgroup;
          unsigned vgt_esgs_ring_itemsize;
+         unsigned spi_shader_pgm_rsrc3_gs;
+         unsigned spi_shader_pgm_rsrc4_gs;
       } gs;
 
       struct {
@@ -855,6 +857,8 @@ struct si_shader {
          unsigned pa_cl_ngg_cntl;
          unsigned vgt_gs_max_vert_out; /* for API GS */
          unsigned ge_pc_alloc;         /* uconfig register */
+         unsigned spi_shader_pgm_rsrc3_gs;
+         unsigned spi_shader_pgm_rsrc4_gs;
          union si_vgt_stages_key vgt_stages;
       } ngg;
 
