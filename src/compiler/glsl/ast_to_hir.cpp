@@ -6830,8 +6830,11 @@ ir_rvalue *
 ast_switch_body::hir(exec_list *instructions,
                      struct _mesa_glsl_parse_state *state)
 {
-   if (stmts != NULL)
+   if (stmts != NULL) {
+      state->symbols->push_scope();
       stmts->hir(instructions, state);
+      state->symbols->pop_scope();
+   }
 
    /* Switch bodies do not have r-values. */
    return NULL;
