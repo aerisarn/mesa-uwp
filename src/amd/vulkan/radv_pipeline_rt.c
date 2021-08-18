@@ -714,9 +714,9 @@ insert_rt_case(nir_builder *b, nir_shader *shader, const struct rt_variables *va
 
    NIR_PASS_V(shader, lower_rt_instructions, &src_vars, call_idx_base);
 
-   NIR_PASS_V(shader, nir_opt_remove_phis);
-   NIR_PASS_V(shader, nir_lower_returns);
-   NIR_PASS_V(shader, nir_opt_dce);
+   NIR_PASS(_, shader, nir_opt_remove_phis);
+   NIR_PASS(_, shader, nir_lower_returns);
+   NIR_PASS(_, shader, nir_opt_dce);
 
    if (b->shader->info.stage == MESA_SHADER_ANY_HIT ||
        b->shader->info.stage == MESA_SHADER_INTERSECTION) {
@@ -819,14 +819,14 @@ parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo
       nir_rt_return_amd(&b_inner);
    }
 
-   NIR_PASS_V(shader, nir_lower_vars_to_explicit_types,
-              nir_var_function_temp | nir_var_shader_call_data | nir_var_ray_hit_attrib,
-              glsl_get_natural_size_align_bytes);
+   NIR_PASS(_, shader, nir_lower_vars_to_explicit_types,
+            nir_var_function_temp | nir_var_shader_call_data | nir_var_ray_hit_attrib,
+            glsl_get_natural_size_align_bytes);
 
-   NIR_PASS_V(shader, lower_rt_derefs);
+   NIR_PASS(_, shader, lower_rt_derefs);
 
-   NIR_PASS_V(shader, nir_lower_explicit_io, nir_var_function_temp,
-              nir_address_format_32bit_offset);
+   NIR_PASS(_, shader, nir_lower_explicit_io, nir_var_function_temp,
+            nir_address_format_32bit_offset);
 
    return shader;
 }
@@ -950,7 +950,7 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
    struct hash_table *any_hit_var_remap = NULL;
    if (any_hit) {
       any_hit = nir_shader_clone(dead_ctx, any_hit);
-      NIR_PASS_V(any_hit, nir_opt_dce);
+      NIR_PASS(_, any_hit, nir_opt_dce);
       any_hit_impl = lower_any_hit_for_intersection(any_hit);
       any_hit_var_remap = _mesa_pointer_hash_table_create(dead_ctx);
    }
@@ -1020,7 +1020,7 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
    nir_index_ssa_defs(impl);
 
    /* Eliminate the casts introduced for the commit return of the any-hit shader. */
-   NIR_PASS_V(intersection, nir_opt_deref);
+   NIR_PASS(_, intersection, nir_opt_deref);
 
    ralloc_free(dead_ctx);
 }

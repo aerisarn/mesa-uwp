@@ -74,6 +74,6 @@ ac_nir_lower_indirect_derefs(nir_shader *shader,
     */
    indirect_mask |= nir_var_function_temp;
 
-   progress |= nir_lower_indirect_derefs(shader, indirect_mask, UINT32_MAX);
+   NIR_PASS(progress, shader, nir_lower_indirect_derefs, indirect_mask, UINT32_MAX);
    return progress;
 }
