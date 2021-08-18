@@ -452,6 +452,36 @@ bi_load_sample_id_to(bi_builder *b, bi_index dst)
                                 bi_imm_u8(16));
 }
 
+static bi_index
+bi_load_sample_id(bi_builder *b)
+{
+        bi_index sample_id = bi_temp(b->shader);
+        bi_load_sample_id_to(b, sample_id);
+        return sample_id;
+}
+
+static bi_index
+bi_pixel_indices(bi_builder *b, unsigned rt)
+{
+        /* We want to load the current pixel. */
+        struct bifrost_pixel_indices pix = {
+                .y = BIFROST_CURRENT_PIXEL,
+                .rt = rt
+        };
+
+        uint32_t indices_u32 = 0;
+        memcpy(&indices_u32, &pix, sizeof(indices_u32));
+        bi_index indices = bi_imm_u32(indices_u32);
+
+        /* Sample index above is left as zero. For multisampling, we need to
+         * fill in the actual sample ID in the lower byte */
+
+        if (b->shader->inputs->blend.nr_samples > 1)
+                indices = bi_iadd_u32(b, indices, bi_load_sample_id(b), false);
+
+        return indices;
+}
+
 static void
 bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
 {
@@ -1040,23 +1070,11 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
                 rt = (loc - FRAG_RESULT_DATA0);
         }
 
-        /* We want to load the current pixel.
-         * FIXME: The sample to load is currently hardcoded to 0. This should
-         * be addressed for multi-sample FBs.
-         */
-        struct bifrost_pixel_indices pix = {
-                .y = BIFROST_CURRENT_PIXEL,
-                .rt = rt
-        };
-
         bi_index desc = b->shader->inputs->is_blend ?
                 bi_imm_u32(b->shader->inputs->blend.bifrost_blend_desc >> 32) :
                 bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt | (size << 4)), 1, 0);
 
-        uint32_t indices = 0;
-        memcpy(&indices, &pix, sizeof(indices));
-
-        bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_imm_u32(indices),
+        bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_pixel_indices(b, rt),
                         bi_register(60), desc, (instr->num_components - 1));
 }
 
