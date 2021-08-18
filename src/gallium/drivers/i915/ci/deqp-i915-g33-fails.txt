@@ -20,8 +20,6 @@ dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_pos_y_pos_z_and_neg
 dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgb10_a2,Fail
 dEQP-GLES2.functional.negative_api.shader.uniform_matrixfv_invalid_transpose,Fail
 dEQP-GLES2.functional.negative_api.texture.generatemipmap_zero_level_array_compressed,Fail
-dEQP-GLES2.functional.polygon_offset.default_displacement_with_units,Fail
-dEQP-GLES2.functional.polygon_offset.fixed16_displacement_with_units,Fail
 dEQP-GLES2.functional.rasterization.interpolation.basic.line_loop_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.basic.line_strip_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.basic.lines_wide,Fail

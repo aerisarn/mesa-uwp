@@ -54,10 +54,6 @@ spec@!opengl 1.1@linestipple@Line strip,Fail
 spec@!opengl 1.1@longprim,Crash
 spec@!opengl 1.1@point-line-no-cull,Crash
 spec@!opengl 1.1@polygon-mode-offset,Fail
-spec@!opengl 1.1@polygon-mode-offset@config 0: Expected white pixel on bottom edge,Fail
-spec@!opengl 1.1@polygon-mode-offset@config 0: Expected white pixel on left edge,Fail
-spec@!opengl 1.1@polygon-mode-offset@config 0: Expected white pixel on right edge,Fail
-spec@!opengl 1.1@polygon-mode-offset@config 0: Expected white pixel on top edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 3: Expected white pixel on bottom edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 3: Expected white pixel on left edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 3: Expected white pixel on right edge,Fail
@@ -66,7 +62,6 @@ spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on bottom ed
 spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on left edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on right edge,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on top edge,Fail
-spec@!opengl 1.1@polygon-offset,Fail
 spec@!opengl 1.1@read-front,Fail
 spec@!opengl 1.1@read-front clear-front-first,Fail
 spec@!opengl 1.1@tex-upside-down-miptree,Fail
@@ -122,7 +117,6 @@ spec@!opengl 1.2@texwrap 3d proj,Fail
 spec@!opengl 1.2@texwrap 3d proj@GL_RGBA8- NPOT- projected,Fail
 spec@!opengl 1.2@texwrap 3d proj bordercolor,Fail
 spec@!opengl 1.2@texwrap 3d proj bordercolor@GL_RGBA8- projected- border color only,Fail
-spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 spec@!opengl 1.4@tex-miplevel-selection,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod,Fail
 spec@!opengl 1.4@tex-miplevel-selection-lod-bias,Fail

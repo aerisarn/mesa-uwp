@@ -815,6 +815,8 @@ i915_set_framebuffer_state(struct pipe_context *pipe,
       pipe_surface_reference(&i915->framebuffer.cbufs[0], NULL);
    }
    pipe_surface_reference(&i915->framebuffer.zsbuf, fb->zsbuf);
+   if (fb->zsbuf)
+      draw_set_zs_format(i915->draw, fb->zsbuf->format);
 
    i915->dirty |= I915_NEW_FRAMEBUFFER;
 }
