@@ -414,19 +414,13 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
             }
 
             if ((attrib == 0) && (chan == 2) && !bld->depth_clamp){
-               /* FIXME: Depth values can exceed 1.0, due to the fact that
-                * setup interpolation coefficients refer to (0,0) which causes
-                * precision loss. So we must clamp to 1.0 here to avoid artifacts.
-                * Note though values outside [0,1] are perfectly valid with
-                * depth clip disabled.
-                * XXX: If depth clip is disabled but we force depth clamp
-                * we may get values larger than 1.0 in the fs (but not in
-                * depth test). Not sure if that's an issue...
-                * Also, on a similar note, it is not obvious if the depth values
-                * appearing in fs (with depth clip disabled) should be clamped
-                * to [0,1], clamped to near/far or not be clamped at all...
+               /* OpenGL requires clamping z to 0..1 range after polgon offset
+                * is applied if depth-clamping isn't enabled.
+                *
+                * This also fixes the problem that depth values can exceed 1.0,
+                * due to imprecision in the calculations.
                 */
-               a = lp_build_min(coeff_bld, a, coeff_bld->one);
+               a = lp_build_clamp(coeff_bld, a, coeff_bld->zero, coeff_bld->one);
             }
             bld->attribs[attrib][chan] = a;
          }
