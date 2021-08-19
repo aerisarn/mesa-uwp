@@ -786,16 +786,12 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
    case nir_address_format_64bit_bounded_global:
       assert(addr->num_components == 4);
       assert(addr->bit_size == offset->bit_size);
-      return nir_vec4(b, nir_channel(b, addr, 0),
-                         nir_channel(b, addr, 1),
-                         nir_channel(b, addr, 2),
-                         nir_iadd(b, nir_channel(b, addr, 3), offset));
+      return nir_vector_insert_imm(b, addr, nir_iadd(b, nir_channel(b, addr, 3), offset), 3);
 
    case nir_address_format_32bit_index_offset:
       assert(addr->num_components == 2);
       assert(addr->bit_size == offset->bit_size);
-      return nir_vec2(b, nir_channel(b, addr, 0),
-                         nir_iadd(b, nir_channel(b, addr, 1), offset));
+      return nir_vector_insert_imm(b, addr, nir_iadd(b, nir_channel(b, addr, 1), offset), 1);
 
    case nir_address_format_32bit_index_offset_pack64:
       assert(addr->num_components == 1);
@@ -807,8 +803,7 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
    case nir_address_format_vec2_index_32bit_offset:
       assert(addr->num_components == 3);
       assert(offset->bit_size == 32);
-      return nir_vec3(b, nir_channel(b, addr, 0), nir_channel(b, addr, 1),
-                         nir_iadd(b, nir_channel(b, addr, 2), offset));
+      return nir_vector_insert_imm(b, addr, nir_iadd(b, nir_channel(b, addr, 2), offset), 2);
 
    case nir_address_format_62bit_generic:
       assert(addr->num_components == 1);
