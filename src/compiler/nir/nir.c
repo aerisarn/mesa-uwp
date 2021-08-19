@@ -1730,30 +1730,40 @@ get_store_value(nir_intrinsic_instr *intrin)
 }
 
 nir_component_mask_t
+nir_src_components_read(const nir_src *src)
+{
+   assert(src->is_ssa && src->parent_instr);
+
+   if (src->parent_instr->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(src->parent_instr);
+      nir_alu_src *alu_src = exec_node_data(nir_alu_src, src, src);
+      int src_idx = alu_src - &alu->src[0];
+      assert(src_idx >= 0 && src_idx < nir_op_infos[alu->op].num_inputs);
+      return nir_alu_instr_src_read_mask(alu, src_idx);
+   } else if (src->parent_instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src->parent_instr);
+      if (nir_intrinsic_has_write_mask(intrin) && src->ssa == get_store_value(intrin))
+         return nir_intrinsic_write_mask(intrin);
+      else
+         return (1 << src->ssa->num_components) - 1;
+   } else {
+      return (1 << src->ssa->num_components) - 1;
+   }
+}
+
+nir_component_mask_t
 nir_ssa_def_components_read(const nir_ssa_def *def)
 {
    nir_component_mask_t read_mask = 0;
-   nir_foreach_use(use, def) {
-      if (use->parent_instr->type == nir_instr_type_alu) {
-         nir_alu_instr *alu = nir_instr_as_alu(use->parent_instr);
-         nir_alu_src *alu_src = exec_node_data(nir_alu_src, use, src);
-         int src_idx = alu_src - &alu->src[0];
-         assert(src_idx >= 0 && src_idx < nir_op_infos[alu->op].num_inputs);
-         read_mask |= nir_alu_instr_src_read_mask(alu, src_idx);
-      } else if (use->parent_instr->type == nir_instr_type_intrinsic) {
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(use->parent_instr);
-         if (nir_intrinsic_has_write_mask(intrin) && use->ssa == get_store_value(intrin)) {
-            read_mask |= nir_intrinsic_write_mask(intrin);
-         } else {
-            return (1 << def->num_components) - 1;
-         }
-      } else {
-         return (1 << def->num_components) - 1;
-      }
-   }
 
    if (!list_is_empty(&def->if_uses))
       read_mask |= 1;
+
+   nir_foreach_use(use, def) {
+      read_mask |= nir_src_components_read(use);
+      if (read_mask == (1 << def->num_components) - 1)
+         return read_mask;
+   }
 
    return read_mask;
 }
