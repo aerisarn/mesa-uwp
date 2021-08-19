@@ -157,7 +157,8 @@ vlVaHandleVAEncMiscParameterTypeRateControlH264(vlVaContext *context, VAEncMiscP
       context->desc.h264enc.rate_ctrl[temporal_id].target_bitrate =
          rc->bits_per_second * (rc->target_percentage / 100.0);
 
-   if (temporal_id >= context->desc.h264enc.num_temporal_layers)
+   if (context->desc.h264enc.num_temporal_layers > 0 &&
+       temporal_id >= context->desc.h264enc.num_temporal_layers)
       return VA_STATUS_ERROR_INVALID_PARAMETER;
 
    context->desc.h264enc.rate_ctrl[temporal_id].peak_bitrate = rc->bits_per_second;
