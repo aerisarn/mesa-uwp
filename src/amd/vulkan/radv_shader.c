@@ -311,8 +311,7 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
                def = nir_build_load_global(&b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE,
                                            .align_mul = 8, .align_offset = 0);
             } else {
-               def = nir_vec3(&b, nir_channel(&b, intrin->src[0].ssa, 0),
-                              nir_channel(&b, intrin->src[0].ssa, 1), nir_imm_int(&b, 0));
+               def = nir_vector_insert_imm(&b, intrin->src[0].ssa, nir_imm_int(&b, 0), 2);
             }
             break;
          case nir_intrinsic_vulkan_resource_index: {
@@ -323,8 +322,6 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
             nir_ssa_def *new_res = nir_vulkan_resource_index(
                &b, 3, 32, intrin->src[0].ssa, .desc_set = desc_set, .binding = binding,
                .desc_type = nir_intrinsic_desc_type(intrin));
-            nir_ssa_def *set_ptr = nir_channel(&b, new_res, 0);
-            nir_ssa_def *binding_ptr = nir_channel(&b, new_res, 1);
 
             nir_ssa_def *stride;
             if (desc_layout->binding[binding].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
@@ -333,15 +330,14 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
             } else {
                stride = nir_imm_int(&b, desc_layout->binding[binding].size);
             }
-            def = nir_vec3(&b, set_ptr, binding_ptr, stride);
+            def = nir_vector_insert_imm(&b, new_res, stride, 2);
             break;
          }
          case nir_intrinsic_vulkan_resource_reindex: {
-            nir_ssa_def *set_ptr = nir_channel(&b, intrin->src[0].ssa, 0);
             nir_ssa_def *binding_ptr = nir_channel(&b, intrin->src[0].ssa, 1);
             nir_ssa_def *stride = nir_channel(&b, intrin->src[0].ssa, 2);
             binding_ptr = nir_iadd(&b, binding_ptr, nir_imul(&b, intrin->src[1].ssa, stride));
-            def = nir_vec3(&b, set_ptr, binding_ptr, stride);
+            def = nir_vector_insert_imm(&b, intrin->src[0].ssa, binding_ptr, 1);
             break;
          }
          case nir_intrinsic_is_sparse_texels_resident:
