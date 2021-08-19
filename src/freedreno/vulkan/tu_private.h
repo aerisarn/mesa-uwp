@@ -763,41 +763,23 @@ enum tu_cmd_access_mask {
     * the location of a cache entry in CCU, to avoid conflicts. We assume that
     * any access in a renderpass after or before an access by a transfer needs
     * a flush/invalidate, and use the _INCOHERENT variants to represent access
-    * by a transfer.
+    * by a renderpass.
     */
    TU_ACCESS_CCU_COLOR_INCOHERENT_READ = 1 << 6,
    TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE = 1 << 7,
    TU_ACCESS_CCU_DEPTH_INCOHERENT_READ = 1 << 8,
    TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE = 1 << 9,
 
-   /* Accesses by the host */
-   TU_ACCESS_HOST_READ = 1 << 10,
-   TU_ACCESS_HOST_WRITE = 1 << 11,
-
-   /* Accesses by a GPU engine which bypasses any cache. e.g. writes via
-    * CP_EVENT_WRITE::BLIT and the CP are SYSMEM_WRITE.
+   /* Accesses which bypasses any cache. e.g. writes via the host,
+    * CP_EVENT_WRITE::BLIT, and the CP are SYSMEM_WRITE.
     */
-   TU_ACCESS_SYSMEM_READ = 1 << 12,
-   TU_ACCESS_SYSMEM_WRITE = 1 << 13,
-
-   /* Set if a WFI is required. This can be required for:
-    * - 2D engine which (on some models) doesn't wait for flushes to complete
-    *   before starting
-    * - CP draw indirect opcodes, where we need to wait for any flushes to
-    *   complete but the CP implicitly waits for WFI's to complete and
-    *   therefore we only need a WFI after the flushes.
-    */
-   TU_ACCESS_WFI_READ = 1 << 14,
-
-   /* Set if a CP_WAIT_FOR_ME is required due to the data being read by the CP
-    * without it waiting for any WFI.
-    */
-   TU_ACCESS_WFM_READ = 1 << 15,
+   TU_ACCESS_SYSMEM_READ = 1 << 10,
+   TU_ACCESS_SYSMEM_WRITE = 1 << 11,
 
    /* Memory writes from the CP start in-order with draws and event writes,
     * but execute asynchronously and hence need a CP_WAIT_MEM_WRITES if read.
     */
-   TU_ACCESS_CP_WRITE = 1 << 16,
+   TU_ACCESS_CP_WRITE = 1 << 12,
 
    TU_ACCESS_READ =
       TU_ACCESS_UCHE_READ |
@@ -805,10 +787,7 @@ enum tu_cmd_access_mask {
       TU_ACCESS_CCU_DEPTH_READ |
       TU_ACCESS_CCU_COLOR_INCOHERENT_READ |
       TU_ACCESS_CCU_DEPTH_INCOHERENT_READ |
-      TU_ACCESS_HOST_READ |
-      TU_ACCESS_SYSMEM_READ |
-      TU_ACCESS_WFI_READ |
-      TU_ACCESS_WFM_READ,
+      TU_ACCESS_SYSMEM_READ,
 
    TU_ACCESS_WRITE =
       TU_ACCESS_UCHE_WRITE |
@@ -816,13 +795,63 @@ enum tu_cmd_access_mask {
       TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE |
       TU_ACCESS_CCU_DEPTH_WRITE |
       TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE |
-      TU_ACCESS_HOST_WRITE |
       TU_ACCESS_SYSMEM_WRITE |
       TU_ACCESS_CP_WRITE,
 
    TU_ACCESS_ALL =
       TU_ACCESS_READ |
       TU_ACCESS_WRITE,
+};
+
+/* Starting with a6xx, the pipeline is split into several "clusters" (really
+ * pipeline stages). Each stage has its own pair of register banks and can
+ * switch them independently, so that earlier stages can run ahead of later
+ * ones. e.g. the FS of draw N and the VS of draw N + 1 can be executing at
+ * the same time.
+ *
+ * As a result of this, we need to insert a WFI when an earlier stage depends
+ * on the result of a later stage. CP_DRAW_* and CP_BLIT will wait for any
+ * pending WFI's to complete before starting, and usually before reading
+ * indirect params even, so a WFI also acts as a full "pipeline stall".
+ *
+ * Note, the names of the stages come from CLUSTER_* in devcoredump. We
+ * include all the stages for completeness, even ones which do not read/write
+ * anything.
+ */
+
+enum tu_stage {
+   /* This doesn't correspond to a cluster, but we need it for tracking
+    * indirect draw parameter reads etc.
+    */
+   TU_STAGE_CP,
+
+   /* - Fetch index buffer
+    * - Fetch vertex attributes, dispatch VS
+    */
+   TU_STAGE_FE,
+
+   /* Execute all geometry stages (VS thru GS) */
+   TU_STAGE_SP_VS,
+
+   /* Write to VPC, do primitive assembly. */
+   TU_STAGE_PC_VS,
+
+   /* Rasterization. RB_DEPTH_BUFFER_BASE only exists in CLUSTER_PS according
+    * to devcoredump so presumably this stage stalls for TU_STAGE_PS when
+    * early depth testing is enabled before dispatching fragments? However
+    * GRAS reads and writes LRZ directly.
+    */
+   TU_STAGE_GRAS,
+
+   /* Execute FS */
+   TU_STAGE_SP_PS,
+
+   /* - Fragment tests
+    * - Write color/depth
+    * - Streamout writes (???)
+    * - Varying interpolation (???)
+    */
+   TU_STAGE_PS,
 };
 
 enum tu_cmd_flush_bits {
@@ -845,18 +874,10 @@ enum tu_cmd_flush_bits {
        */
       TU_CMD_FLAG_WAIT_MEM_WRITES,
 
-   TU_CMD_FLAG_GPU_INVALIDATE =
+   TU_CMD_FLAG_ALL_INVALIDATE =
       TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
       TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
       TU_CMD_FLAG_CACHE_INVALIDATE,
-
-   TU_CMD_FLAG_ALL_INVALIDATE =
-      TU_CMD_FLAG_GPU_INVALIDATE |
-      /* Treat the CP as a sort of "cache" which may need to be "invalidated"
-       * via waiting for UCHE/CCU flushes to land with WFI/WFM.
-       */
-      TU_CMD_FLAG_WAIT_FOR_IDLE |
-      TU_CMD_FLAG_WAIT_FOR_ME,
 };
 
 /* Changing the CCU from sysmem mode to gmem mode or vice-versa is pretty
@@ -1546,6 +1567,7 @@ tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
 
 struct tu_subpass_barrier {
    VkPipelineStageFlags src_stage_mask;
+   VkPipelineStageFlags dst_stage_mask;
    VkAccessFlags src_access_mask;
    VkAccessFlags dst_access_mask;
    bool incoherent_ccu_color, incoherent_ccu_depth;

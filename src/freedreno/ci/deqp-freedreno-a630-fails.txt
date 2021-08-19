@@ -81,13 +81,6 @@ dEQP-VK.api.info.get_physical_device_properties2.properties,Fail
 dEQP-VK.api.object_management.alloc_callback_fail.device,Fail
 dEQP-VK.api.object_management.alloc_callback_fail.device_group,Fail
 
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3019
-# should be fixed by https://gerrit.khronos.org/c/vk-gl-cts/+/7745
-dEQP-VK.renderpass.dedicated_allocation.attachment_allocation.input_output.7,Fail
-dEQP-VK.renderpass.suballocation.attachment_allocation.input_output.7,Fail
-dEQP-VK.renderpass2.dedicated_allocation.attachment_allocation.input_output.7,Fail
-dEQP-VK.renderpass2.suballocation.attachment_allocation.input_output.7,Fail
-
 # "deqp-vk: ../src/freedreno/vulkan/tu_cs.h:186: tu_cs_reserve: Assertion `tu_cs_get_space(cs) >= reserved_size' failed."
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/8841
 dEQP-VK.spirv_assembly.instruction.compute.opphi.wide,Crash

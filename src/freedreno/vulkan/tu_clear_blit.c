@@ -1800,6 +1800,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
        */
       tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
       tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
+      tu_cs_emit_wfi(cs);
 
       tu_image_view_copy(&staging, &staging_image, dst_format,
                          &staging_subresource, 0, false);
@@ -2572,9 +2573,6 @@ tu_clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
 
    if (!attachment->clear_mask)
       return;
-
-   /* Wait for any flushes at the beginning of the renderpass to complete */
-   tu_cs_emit_wfi(cs);
 
    if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (attachment->clear_mask & VK_IMAGE_ASPECT_DEPTH_BIT) {

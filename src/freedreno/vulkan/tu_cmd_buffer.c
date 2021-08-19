@@ -68,7 +68,7 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
                  enum tu_cmd_flush_bits flushes)
 {
    if (unlikely(cmd_buffer->device->physical_device->instance->debug_flags & TU_DEBUG_FLUSHALL))
-      flushes |= TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_GPU_INVALIDATE;
+      flushes |= TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_ALL_INVALIDATE;
 
    if (unlikely(cmd_buffer->device->physical_device->instance->debug_flags & TU_DEBUG_SYNCDRAW))
       flushes |= TU_CMD_FLAG_WAIT_MEM_WRITES |
@@ -2575,26 +2575,16 @@ tu_flush_for_access(struct tu_cache_state *cache,
 {
    enum tu_cmd_flush_bits flush_bits = 0;
 
-   if (src_mask & TU_ACCESS_HOST_WRITE) {
-      /* Host writes are always visible to CP, so only invalidate GPU caches */
-      cache->pending_flush_bits |= TU_CMD_FLAG_GPU_INVALIDATE;
-   }
-
    if (src_mask & TU_ACCESS_SYSMEM_WRITE) {
-      /* Invalidate CP and 2D engine (make it do WFI + WFM if necessary) as
-       * well.
-       */
       cache->pending_flush_bits |= TU_CMD_FLAG_ALL_INVALIDATE;
    }
 
    if (src_mask & TU_ACCESS_CP_WRITE) {
-      /* Flush the CP write queue. However a WFI shouldn't be necessary as
-       * WAIT_MEM_WRITES should cover it.
+      /* Flush the CP write queue.
        */
       cache->pending_flush_bits |=
          TU_CMD_FLAG_WAIT_MEM_WRITES |
-         TU_CMD_FLAG_GPU_INVALIDATE |
-         TU_CMD_FLAG_WAIT_FOR_ME;
+         TU_CMD_FLAG_ALL_INVALIDATE;
    }
 
 #define SRC_FLUSH(domain, flush, invalidate) \
@@ -2624,8 +2614,7 @@ tu_flush_for_access(struct tu_cache_state *cache,
    /* Treat host & sysmem write accesses the same, since the kernel implicitly
     * drains the queue before signalling completion to the host.
     */
-   if (dst_mask & (TU_ACCESS_SYSMEM_READ | TU_ACCESS_SYSMEM_WRITE |
-                   TU_ACCESS_HOST_READ | TU_ACCESS_HOST_WRITE)) {
+   if (dst_mask & (TU_ACCESS_SYSMEM_READ | TU_ACCESS_SYSMEM_WRITE)) {
       flush_bits |= cache->pending_flush_bits & TU_CMD_FLAG_ALL_FLUSH;
    }
 
@@ -2656,30 +2645,26 @@ tu_flush_for_access(struct tu_cache_state *cache,
 
 #undef DST_INCOHERENT_FLUSH
 
-   if (dst_mask & TU_ACCESS_WFI_READ) {
-      flush_bits |= cache->pending_flush_bits &
-         (TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_WAIT_FOR_IDLE);
-   }
-
-   if (dst_mask & TU_ACCESS_WFM_READ) {
-      flush_bits |= cache->pending_flush_bits &
-         (TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_WAIT_FOR_ME);
-   }
-
    cache->flush_bits |= flush_bits;
    cache->pending_flush_bits &= ~flush_bits;
 }
 
-static enum tu_cmd_access_mask
-vk2tu_access(VkAccessFlags flags, bool gmem)
+static void
+tu_flush_for_stage(struct tu_cache_state *cache,
+                   enum tu_stage src_stage, enum tu_stage dst_stage)
 {
-   enum tu_cmd_access_mask mask = 0;
+   /* As far as we know, flushes take place in the last stage so if there are
+    * any pending flushes then we have to move down the source stage, because
+    * the data only becomes available when the flush finishes. In particular
+    * this can matter when the CP writes something and we need to invalidate
+    * UCHE to read it.
+    */
+   if (cache->flush_bits & (TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_ALL_INVALIDATE))
+      src_stage = TU_STAGE_PS;
 
-   /* If the GPU writes a buffer that is then read by an indirect draw
-    * command, we theoretically need to emit a WFI to wait for any cache
-    * flushes, and then a WAIT_FOR_ME to wait on the CP for the WFI to
-    * complete. Waiting for the WFI to complete is performed as part of the
-    * draw by the firmware, so we just need to execute the WFI.
+   /* Note: if the destination stage is the CP, then the CP also has to wait
+    * for any WFI's to finish. This is already done for draw calls, including
+    * before indirect param reads, for the most part, so we just need to WFI.
     *
     * Transform feedback counters are read via CP_MEM_TO_REG, which implicitly
     * does CP_WAIT_FOR_ME, but we still need a WFI if the GPU writes it.
@@ -2692,13 +2677,14 @@ vk2tu_access(VkAccessFlags flags, bool gmem)
     * future, or if CP_DRAW_PRED_SET grows the capability to do 32-bit
     * comparisons, then this will have to be dealt with.
     */
-   if (flags &
-       (VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
-        VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT |
-        VK_ACCESS_MEMORY_READ_BIT)) {
-      mask |= TU_ACCESS_WFI_READ;
-   }
+   if (src_stage > dst_stage)
+      cache->flush_bits |= TU_CMD_FLAG_WAIT_FOR_IDLE;
+}
+
+static enum tu_cmd_access_mask
+vk2tu_access(VkAccessFlags flags, bool gmem)
+{
+   enum tu_cmd_access_mask mask = 0;
 
    if (flags &
        (VK_ACCESS_INDIRECT_COMMAND_READ_BIT | /* Read performed by CP */
@@ -2717,13 +2703,13 @@ vk2tu_access(VkAccessFlags flags, bool gmem)
    if (flags &
        (VK_ACCESS_HOST_READ_BIT |
         VK_ACCESS_MEMORY_WRITE_BIT)) {
-      mask |= TU_ACCESS_HOST_READ;
+      mask |= TU_ACCESS_SYSMEM_READ;
    }
 
    if (flags &
        (VK_ACCESS_HOST_WRITE_BIT |
         VK_ACCESS_MEMORY_WRITE_BIT)) {
-      mask |= TU_ACCESS_HOST_WRITE;
+      mask |= TU_ACCESS_SYSMEM_WRITE;
    }
 
    if (flags &
@@ -2792,13 +2778,6 @@ vk2tu_access(VkAccessFlags flags, bool gmem)
       }
    }
 
-   /* When the dst access is a transfer read/write, it seems we sometimes need
-    * to insert a WFI after any flushes, to guarantee that the flushes finish
-    * before the 2D engine starts. However the opposite (i.e. a WFI after
-    * CP_BLIT and before any subsequent flush) does not seem to be needed, and
-    * the blob doesn't emit such a WFI.
-    */
-
    if (flags &
        (VK_ACCESS_TRANSFER_WRITE_BIT |
         VK_ACCESS_MEMORY_WRITE_BIT)) {
@@ -2807,18 +2786,82 @@ vk2tu_access(VkAccessFlags flags, bool gmem)
       } else {
          mask |= TU_ACCESS_CCU_COLOR_WRITE;
       }
-      mask |= TU_ACCESS_WFI_READ;
    }
 
    if (flags &
        (VK_ACCESS_TRANSFER_READ_BIT | /* Access performed by TP */
         VK_ACCESS_MEMORY_READ_BIT)) {
-      mask |= TU_ACCESS_UCHE_READ | TU_ACCESS_WFI_READ;
+      mask |= TU_ACCESS_UCHE_READ;
    }
 
    return mask;
 }
 
+static enum tu_stage
+vk2tu_single_stage(VkPipelineStageFlags vk_stage, bool dst)
+{
+   switch (vk_stage) {
+   case VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT:
+   case VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT:
+   case VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT:
+      return TU_STAGE_CP;
+   case VK_PIPELINE_STAGE_VERTEX_INPUT_BIT:
+      return TU_STAGE_FE;
+   case VK_PIPELINE_STAGE_VERTEX_SHADER_BIT:
+   case VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT:
+   case VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT:
+   case VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT:
+      return TU_STAGE_SP_VS;
+   case VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT:
+   case VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT:
+      return TU_STAGE_SP_PS;
+   case VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT: /* Yes, really */
+   /* See comment in TU_STAGE_GRAS about early fragment tests */
+   case VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT:
+   case VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT:
+   case VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT:
+   case VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT:
+      return TU_STAGE_PS;
+
+   case VK_PIPELINE_STAGE_TRANSFER_BIT:
+      /* Blits read in SP_PS and write in PS, in both 2d and 3d cases */
+      return dst ? TU_STAGE_SP_PS : TU_STAGE_PS;
+
+   case VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT:
+   case VK_PIPELINE_STAGE_ALL_COMMANDS_BIT:
+      /* Be conservative */
+      return dst ? TU_STAGE_CP : TU_STAGE_PS;
+
+   case VK_PIPELINE_STAGE_HOST_BIT:
+      return dst ? TU_STAGE_PS : TU_STAGE_CP;
+   }
+
+   unreachable("unknown pipeline stage");
+}
+
+static enum tu_stage
+vk2tu_src_stage(VkPipelineStageFlags vk_stages)
+{
+   enum tu_stage stage = TU_STAGE_CP;
+   u_foreach_bit (bit, vk_stages) {
+      enum tu_stage new_stage = vk2tu_single_stage(1ull << bit, false); 
+      stage = MAX2(stage, new_stage);
+   }
+
+   return stage;
+}
+
+static enum tu_stage
+vk2tu_dst_stage(VkPipelineStageFlags vk_stages)
+{
+   enum tu_stage stage = TU_STAGE_PS;
+   u_foreach_bit (bit, vk_stages) {
+      enum tu_stage new_stage = vk2tu_single_stage(1ull << bit, true); 
+      stage = MIN2(stage, new_stage);
+   }
+
+   return stage;
+}
 
 VKAPI_ATTR void VKAPI_CALL
 tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
@@ -3007,6 +3050,10 @@ tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
       src_flags |= TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE;
 
    tu_flush_for_access(cache, src_flags, dst_flags);
+
+   enum tu_stage src_stage = vk2tu_src_stage(barrier->src_stage_mask);
+   enum tu_stage dst_stage = vk2tu_dst_stage(barrier->dst_stage_mask);
+   tu_flush_for_stage(cache, src_stage, dst_stage);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3048,7 +3095,13 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
          cmd->state.lrz.prev_direction = TU_LRZ_UNKNOWN;
 
          tu6_clear_lrz(cmd, &cmd->cs, image, &pRenderPassBegin->pClearValues[a]);
-         tu6_emit_event_write(cmd, &cmd->cs, PC_CCU_FLUSH_COLOR_TS);
+
+         /* Clearing writes via CCU color in the PS stage, and LRZ is read via
+          * UCHE in the earlier GRAS stage.
+          */
+         cmd->state.cache.flush_bits |=
+            TU_CMD_FLAG_CCU_FLUSH_COLOR | TU_CMD_FLAG_CACHE_INVALIDATE |
+            TU_CMD_FLAG_WAIT_FOR_IDLE;
       } else {
          cmd->state.lrz.valid = false;
       }
@@ -4624,6 +4677,10 @@ tu_barrier(struct tu_cmd_buffer *cmd,
    struct tu_cache_state *cache =
       cmd->state.pass  ? &cmd->state.renderpass_cache : &cmd->state.cache;
    tu_flush_for_access(cache, src_flags, dst_flags);
+
+   enum tu_stage src_stage = vk2tu_src_stage(info->srcStageMask);
+   enum tu_stage dst_stage = vk2tu_dst_stage(info->dstStageMask);
+   tu_flush_for_stage(cache, src_stage, dst_stage);
 
    for (uint32_t i = 0; i < info->eventCount; i++) {
       TU_FROM_HANDLE(tu_event, event, info->pEvents[i]);

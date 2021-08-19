@@ -99,15 +99,6 @@ tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
    if (dep_invalid_for_gmem(dep))
       pass->gmem_pixels = 0;
 
-   struct tu_subpass_barrier *src_barrier;
-   if (src == VK_SUBPASS_EXTERNAL) {
-      src_barrier = &pass->subpasses[0].start_barrier;
-   } else if (src == pass->subpass_count - 1) {
-      src_barrier = &pass->end_barrier;
-   } else {
-      src_barrier = &pass->subpasses[src + 1].start_barrier;
-   }
-
    struct tu_subpass_barrier *dst_barrier;
    if (dst == VK_SUBPASS_EXTERNAL) {
       dst_barrier = &pass->end_barrier;
@@ -115,9 +106,9 @@ tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
       dst_barrier = &pass->subpasses[dst].start_barrier;
    }
 
-   if (dep->dstStageMask != VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
-      src_barrier->src_stage_mask |= dep->srcStageMask;
-   src_barrier->src_access_mask |= dep->srcAccessMask;
+   dst_barrier->src_stage_mask |= dep->srcStageMask;
+   dst_barrier->dst_stage_mask |= dep->dstStageMask;
+   dst_barrier->src_access_mask |= dep->srcAccessMask;
    dst_barrier->dst_access_mask |= dep->dstAccessMask;
 }
 
