@@ -811,6 +811,9 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
 
    rcs->current.buf = (uint32_t*)(ib->ib_mapped + ib->used_ib_space);
 
+   if (ib->ib_type == IB_MAIN)
+      cs->csc->ib_main_addr = rcs->current.buf;
+
    ib_size = ib->big_ib_buffer->size - ib->used_ib_space;
    rcs->current.max_dw = ib_size / 4 - amdgpu_cs_epilog_dws(cs);
    rcs->gpu_address = info->va_start;
@@ -1463,6 +1466,8 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    if (acs->ring_type == RING_GFX)
       ws->gfx_bo_list_counter += cs->num_real_buffers;
 
+   bool noop = false;
+
    if (acs->stop_exec_on_failure && acs->ctx->num_rejected_cs) {
       r = -ECANCELED;
    } else {
@@ -1572,10 +1577,23 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
          cs->ib[IB_MAIN].flags &= ~AMDGPU_IB_FLAGS_SECURE;
       }
 
+      /* Apply RADEON_NOOP. */
+      if (acs->noop) {
+         if (acs->ring_type == RING_GFX) {
+            /* Reduce the IB size and fill it with NOP to make it like an empty IB. */
+            unsigned noop_size = MIN2(cs->ib[IB_MAIN].ib_bytes, ws->info.ib_alignment);
+
+            cs->ib_main_addr[0] = PKT3(PKT3_NOP, noop_size / 4 - 2, 0);
+            cs->ib[IB_MAIN].ib_bytes = noop_size;
+         } else {
+            noop = true;
+         }
+      }
+
       assert(num_chunks <= ARRAY_SIZE(chunks));
 
-      r = acs->noop ? 0 : amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
-                                                num_chunks, chunks, &seq_no);
+      r = noop ? 0 : amdgpu_cs_submit_raw2(ws->dev, acs->ctx->ctx, bo_list,
+                                           num_chunks, chunks, &seq_no);
    }
 
    if (r) {
@@ -1589,7 +1607,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
       acs->ctx->num_rejected_cs++;
       ws->num_total_rejected_cs++;
-   } else if (!acs->noop) {
+   } else if (!noop) {
       /* Success. */
       uint64_t *user_fence = NULL;
 
@@ -1611,7 +1629,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 cleanup:
    /* If there was an error, signal the fence, because it won't be signalled
     * by the hardware. */
-   if (r || acs->noop)
+   if (r || noop)
       amdgpu_fence_signalled(cs->fence);
 
    cs->error_code = r;

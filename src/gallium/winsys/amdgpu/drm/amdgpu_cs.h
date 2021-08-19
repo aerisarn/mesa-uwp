@@ -95,6 +95,7 @@ struct amdgpu_fence_list {
 
 struct amdgpu_cs_context {
    struct drm_amdgpu_cs_chunk_ib ib[IB_NUM];
+   uint32_t                    *ib_main_addr; /* the beginning of IB before chaining */
 
    /* Buffers. */
    unsigned                    max_real_buffers;
