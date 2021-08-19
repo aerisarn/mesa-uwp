@@ -1986,12 +1986,6 @@ radv_get_num_input_vertices(nir_shader **nir)
 static void
 gfx10_emit_ge_pc_alloc(struct radeon_cmdbuf *cs, enum chip_class chip_class, uint32_t oversub_pc_lines)
 {
-   if (chip_class == GFX10) {
-      /* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(cs, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
-   }
-
    radeon_set_uconfig_reg(
       cs, R_030980_GE_PC_ALLOC,
       S_030980_OVERSUB_EN(oversub_pc_lines > 0) | S_030980_NUM_PC_LINES(oversub_pc_lines - 1));
