@@ -802,6 +802,8 @@ is_format_color_renderable(const struct gl_context *ctx, mesa_format format,
       return _mesa_has_EXT_color_buffer_float(ctx);
    case GL_RGB16F:
       return _mesa_has_EXT_color_buffer_half_float(ctx);
+   case GL_RGB10_A2:
+      return _mesa_is_gles3(ctx);
    case GL_RGB32F:
    case GL_RGB32I:
    case GL_RGB32UI:

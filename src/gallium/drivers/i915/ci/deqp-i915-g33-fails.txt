@@ -26,10 +26,6 @@ dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
 dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_neg_y_neg_z_and_neg_x_neg_y_pos_z,Fail
 dEQP-GLES2.functional.clipping.triangle_vertex.clip_two.clip_pos_y_pos_z_and_neg_x_neg_y_neg_z,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4972
-# Looks like a testcase bug
-dEQP-GLES2.functional.fbo.completeness.renderable.texture.color0.rgb10_a2,Fail
-
 # " // GL_INVALID_OPERATION returned
 #   // ERROR: expected GL_INVALID_VALUE"
 # Mesa: User error: GL_INVALID_OPERATION in glUniformMatrix(non-matrix uniform)
