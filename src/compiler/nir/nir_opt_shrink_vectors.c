@@ -24,15 +24,19 @@
 /**
  * @file
  *
- * Trims off the unused trailing components of SSA defs.
+ * Removes unused components of SSA defs.
  *
  * Due to various optimization passes (or frontend implementations,
  * particularly prog_to_nir), we may have instructions generating vectors
- * whose components don't get read by any instruction. As it can be tricky
- * to eliminate unused low components or channels in the middle of a writemask
- * (you might need to increment some offset from a load_uniform, for example),
- * it is trivial to just drop the trailing components. For vector ALU only used
- * by ALU, this pass eliminates arbitrary channels and reswizzles the uses.
+ * whose components don't get read by any instruction.
+ *
+ * For memory loads, while it can be tricky to eliminate unused low components
+ * or channels in the middle of a writemask (you might need to increment some
+ * offset from a load_uniform, for example), it is trivial to just drop the
+ * trailing components.
+ * For vector ALU and load_const, only used by other ALU instructions,
+ * this pass eliminates arbitrary channels as well as duplicate channels,
+ * and reswizzles the uses.
  *
  * This pass is probably only of use to vector backends -- scalar backends
  * typically get unused def channel trimming by scalarizing and dead code
