@@ -102,6 +102,21 @@ struct fd_dev_info {
 
          bool has_8bpp_ubwc;
 
+         /* a650 seems to be affected by a bug where flushing CCU color into
+          * depth or vice-versa requires a WFI. In particular, clearing a
+          * depth attachment (which writes to it as a color attachment) then
+          * using it as a normal depth attachment requires a WFI in addition
+          * to the expected CCU_FLUSH_COLOR + CCU_INVALIDATE_DEPTH, even
+          * though all those operations happen in the same stage. As this is
+          * usually the only scenario where a CCU flush doesn't require a WFI
+          * we just insert a WFI after every CCU flush.
+          *
+          * Tests affected include
+          * dEQP-VK.renderpass.suballocation.formats.d16_unorm.* in sysmem
+          * mode (a few tests flake when the entire series is run).
+          */
+         bool has_ccu_flush_bug;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_POWER_CNTL;

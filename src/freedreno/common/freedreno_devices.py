@@ -223,6 +223,7 @@ a6xx_gen3 = dict(
         storage_16bit = True,
         has_tex_filter_cubic = True,
         has_sample_locations = True,
+        has_ccu_flush_bug = True,
     )
 
 # a635, a650:

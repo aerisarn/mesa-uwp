@@ -96,7 +96,9 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
       tu6_emit_event_write(cmd_buffer, cs, CACHE_INVALIDATE);
    if (flushes & TU_CMD_FLAG_WAIT_MEM_WRITES)
       tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
-   if (flushes & TU_CMD_FLAG_WAIT_FOR_IDLE)
+   if ((flushes & TU_CMD_FLAG_WAIT_FOR_IDLE) ||
+       (cmd_buffer->device->physical_device->info->a6xx.has_ccu_flush_bug &&
+        (flushes & (TU_CMD_FLAG_CCU_FLUSH_COLOR | TU_CMD_FLAG_CCU_FLUSH_DEPTH))))
       tu_cs_emit_wfi(cs);
    if (flushes & TU_CMD_FLAG_WAIT_FOR_ME)
       tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
