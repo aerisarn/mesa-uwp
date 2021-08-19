@@ -876,27 +876,23 @@ compress_regs_left(struct ra_ctx *ctx, struct ra_file *file, unsigned size,
    intervals_count = intervals_sz = 0;
    intervals = NULL;
 
-   unsigned removed_full_size = 0;
-   unsigned removed_half_size = 0;
+   unsigned removed_size = 0, removed_half_size = 0;
    unsigned file_size =
       align == 1 ? MIN2(file->size, RA_HALF_SIZE) : file->size;
    physreg_t start_reg = 0;
 
    foreach_interval_rev_safe (interval, file) {
-      /* Check if we can sort the intervals *after* this one and have
-       * enough space leftover to accomodate "size" units.
+      /* Check if we can sort the intervals *after* this one and have enough
+       * space leftover to accomodate "size" units. Also check that we have
+       * enough space leftover for half-registers, if we're inserting a
+       * half-register (otherwise we only shift any half-registers down so they
+       * should be safe).
        */
-      if (align == 1) {
-         if (interval->physreg_end + removed_half_size <= file_size - size) {
-            start_reg = interval->physreg_end;
-            break;
-         }
-      } else {
-         if (interval->physreg_end + removed_half_size <=
-             file_size - removed_full_size - size) {
-            start_reg = interval->physreg_end;
-            break;
-         }
+      if (interval->physreg_end + size + removed_size <= file->size &&
+          (align != 1 ||
+           interval->physreg_end + size + removed_half_size <= file_size)) {
+         start_reg = interval->physreg_end;
+         break;
       }
 
       /* We assume that all frozen intervals are at the start and that we
@@ -908,12 +904,11 @@ compress_regs_left(struct ra_ctx *ctx, struct ra_file *file, unsigned size,
        * overlap the register we're trying to add.
        */
       if (!interval->is_killed && !is_source) {
-         if (interval->interval.reg->flags & IR3_REG_HALF)
-            removed_half_size +=
-               interval->physreg_end - interval->physreg_start;
-         else
-            removed_full_size +=
-               interval->physreg_end - interval->physreg_start;
+         removed_size += interval->physreg_end - interval->physreg_start;
+         if (interval->interval.reg->flags & IR3_REG_HALF) {
+            removed_half_size += interval->physreg_end -
+               interval->physreg_start;
+         }
       }
 
       /* Now that we've done the accounting, pop this off */
