@@ -79,6 +79,9 @@ si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs)
    radeon_emit(cs, 0);
    radeon_emit(cs, 0);
 
+   radeon_set_sh_reg(cs, R_00B834_COMPUTE_PGM_HI,
+                     S_00B834_DATA(device->physical_device->rad_info.address32_hi >> 8));
+
    radeon_set_sh_reg_seq(cs, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, 2);
    /* R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 / SE1,
     * renamed COMPUTE_DESTINATION_EN_SEn on gfx10. */
@@ -289,6 +292,23 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       radeon_set_context_reg(cs, R_028400_VGT_MAX_VTX_INDX, ~0);
       radeon_set_context_reg(cs, R_028404_VGT_MIN_VTX_INDX, 0);
       radeon_set_context_reg(cs, R_028408_VGT_INDX_OFFSET, 0);
+   }
+
+   if (device->physical_device->rad_info.chip_class >= GFX10) {
+      radeon_set_sh_reg(cs, R_00B524_SPI_SHADER_PGM_HI_LS,
+                        S_00B524_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
+      radeon_set_sh_reg(cs, R_00B324_SPI_SHADER_PGM_HI_ES,
+                        S_00B324_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
+   } else if (device->physical_device->rad_info.chip_class == GFX9) {
+      radeon_set_sh_reg(cs, R_00B414_SPI_SHADER_PGM_HI_LS,
+                        S_00B414_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
+      radeon_set_sh_reg(cs, R_00B214_SPI_SHADER_PGM_HI_ES,
+                        S_00B214_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
+   } else {
+      radeon_set_sh_reg(cs, R_00B524_SPI_SHADER_PGM_HI_LS,
+                        S_00B524_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
+      radeon_set_sh_reg(cs, R_00B324_SPI_SHADER_PGM_HI_ES,
+                        S_00B324_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
    }
 
    unsigned cu_mask_ps = 0xffffffff;
