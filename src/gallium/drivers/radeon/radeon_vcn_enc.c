@@ -61,7 +61,7 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
          enc->enc_pic.crop_top = 0;
          enc->enc_pic.crop_bottom = (align(enc->base.height, 16) - enc->base.height) / 2;
       }
-      enc->enc_pic.num_temporal_layers = pic->num_temporal_layers;
+      enc->enc_pic.num_temporal_layers = pic->num_temporal_layers ? pic->num_temporal_layers : 1;
       enc->enc_pic.temporal_id = 0;
       for (int i = 0; i < enc->enc_pic.num_temporal_layers; i++)
       {
