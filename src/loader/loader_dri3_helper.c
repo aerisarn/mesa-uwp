@@ -716,6 +716,7 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
     */
    int current_back_id = draw->cur_back;
    for (;;) {
+      /* Find idle buffer or unallocated slot */
       for (b = 0; b < num_to_consider; b++) {
          int id = LOADER_DRI3_BACK_ID((b + draw->cur_back) % draw->cur_num_back);
          struct loader_dri3_buffer *buffer = draw->buffers[id];
@@ -728,15 +729,23 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
          }
       }
 
+      /* No idle buffer, allocate another one if possible */
       if (num_to_consider < max_num) {
-         num_to_consider = ++draw->cur_num_back;
-      } else if (prefer_a_different) {
-         prefer_a_different = false;
-      } else if (!dri3_wait_for_event_locked(draw, NULL)) {
+         b = LOADER_DRI3_BACK_ID(draw->cur_num_back++);
+         draw->cur_back = b;
          mtx_unlock(&draw->mtx);
-         return -1;
+         return b;
       }
+
+      /* Prefer re-using the same buffer over blocking */
+      if (prefer_a_different)
+         prefer_a_different = false;
+      else if (!dri3_wait_for_event_locked(draw, NULL))
+         break;
    }
+
+   mtx_unlock(&draw->mtx);
+   return -1;
 }
 
 static xcb_gcontext_t
