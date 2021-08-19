@@ -165,7 +165,7 @@ brw_nir_num_rt_stacks(nir_builder *b,
                       const struct intel_device_info *devinfo)
 {
    return nir_imul_imm(b, nir_load_ray_num_dss_rt_stacks_intel(b),
-                          intel_device_info_num_dual_subslices(devinfo));
+                          intel_device_info_dual_subslice_id_bound(devinfo));
 }
 
 static inline nir_ssa_def *

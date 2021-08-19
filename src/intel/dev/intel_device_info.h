@@ -476,11 +476,29 @@ intel_device_info_eu_total(const struct intel_device_info *devinfo)
    return total;
 }
 
+/**
+ * Computes the bound of dualsubslice ID that can be used on this device.
+ *
+ * You should use this number if you're going to make calculation based on the
+ * slice/dualsubslice ID provided by the SR0.0 EU register. The maximum
+ * dualsubslice ID can be superior to the total number of dualsubslices on the
+ * device, depending on fusing.
+ *
+ * On a 16 dualsubslice GPU, the maximum dualsubslice ID is 15. This function
+ * would return the exclusive bound : 16.
+ */
 static inline unsigned
-intel_device_info_num_dual_subslices(UNUSED
-                                     const struct intel_device_info *devinfo)
+intel_device_info_dual_subslice_id_bound(const struct intel_device_info *devinfo)
 {
-   unreachable("TODO");
+   /* Start from the last slice/subslice so we find the answer faster. */
+   for (int s = devinfo->max_slices - 1; s >= 0; s--) {
+      for (int ss = devinfo->max_subslices_per_slice - 1; ss >= 0; ss--) {
+         if (intel_device_info_subslice_available(devinfo, s, ss))
+            return s * devinfo->max_subslices_per_slice + ss + 1;
+      }
+   }
+   unreachable("Invalid topology");
+   return 0;
 }
 
 int intel_device_name_to_pci_device_id(const char *name);
