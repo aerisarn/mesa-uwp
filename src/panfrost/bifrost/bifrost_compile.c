@@ -1998,7 +1998,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
                 bi_index left, right;
 
-                if (b->shader->arch == 6) {
+                if (b->shader->quirks & BIFROST_LIMITED_CLPER) {
                         left = bi_clper_v6_i32(b, s0, lane1);
                         right = bi_clper_v6_i32(b, s0, lane2);
                 } else {
