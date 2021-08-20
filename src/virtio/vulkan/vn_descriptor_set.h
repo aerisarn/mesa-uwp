@@ -13,6 +13,12 @@
 
 #include "vn_common.h"
 
+/* TODO accommodate new discrete type enums by:
+ * 1. increase the number of types here
+ * 2. add a helper to map to continuous array index
+ */
+#define VN_NUM_DESCRIPTOR_TYPES (VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT + 1)
+
 struct vn_descriptor_set_layout_binding {
    VkDescriptorType type;
    uint32_t count;
@@ -33,10 +39,18 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_descriptor_set_layout,
                                VkDescriptorSetLayout,
                                VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
 
+struct vn_descriptor_pool_state {
+   uint32_t set_count;
+   uint32_t descriptor_counts[VN_NUM_DESCRIPTOR_TYPES];
+};
+
 struct vn_descriptor_pool {
    struct vn_object_base base;
 
    VkAllocationCallbacks allocator;
+   bool async_set_allocation;
+   struct vn_descriptor_pool_state max;
+
    struct list_head descriptor_sets;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_descriptor_pool,
