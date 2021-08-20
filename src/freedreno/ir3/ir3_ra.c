@@ -51,7 +51,7 @@
 static int
 ir3_reg_interval_cmp(const struct rb_node *node, const void *data)
 {
-   physreg_t reg = *(const physreg_t *)data;
+   unsigned reg = *(const unsigned *)data;
    const struct ir3_reg_interval *interval =
       ir3_rb_node_to_interval_const(node);
    if (interval->reg->interval_start > reg)

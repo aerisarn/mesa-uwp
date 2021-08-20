@@ -75,15 +75,6 @@ dEQP-VK.api.info.get_physical_device_properties2.properties,Fail
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/8841
 dEQP-VK.spirv_assembly.instruction.compute.opphi.wide,Crash
 
-# " deqp-vk: ../src/freedreno/ir3/ir3_ra.c:526: ra_file_insert: Assertion `interval->physreg_end <= file->size' failed."
-# also https://gitlab.freedesktop.org/mesa/mesa/-/issues/5163
-dEQP-VK.spirv_assembly.instruction.compute.spirv_ids_abuse.lots_ids,Crash
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_frag,Crash
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_geom,Crash
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_tessc,Crash
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_tesse,Crash
-dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_vert,Crash
-
 # Fails when TU_DEBUG=forcebin is set
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail

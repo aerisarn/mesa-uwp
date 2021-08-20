@@ -129,14 +129,6 @@ KHR-GLES2.core.internalformat.copy_tex_image.alpha,Fail
 KHR-GLES3.core.internalformat.copy_tex_image.alpha,Fail
 KHR-GLES31.core.internalformat.copy_tex_image.alpha,Fail
 
-# "../src/freedreno/ir3/ir3_ra.c:132: interval_insert: Assertion `(interval->reg->flags & IR3_REG_HALF) == (right->reg->flags & IR3_REG_HALF)' failed."
-KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing1,Crash
-KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing2,Crash
-KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing3,Crash
-KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing4,Crash
-KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing5,Crash
-KHR-GLES31.core.arrays_of_arrays.InteractionArgumentAliasing6,Crash
-
 # "Invalid array size was returned. at es31cArrayOfArraysTests.cpp:4779"
 # msm 900000.mdss: [drm:a5xx_irq] *ERROR* gpu fault ring 0 fence 2c54ef status E40801C1 rb 0162/0162 ib1 000000000104B000/0000 ib2 000000000104C000/0000
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls1,Fail
