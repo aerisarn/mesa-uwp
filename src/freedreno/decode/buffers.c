@@ -55,7 +55,12 @@ buffer_insert_cmp(const struct rb_node *n1, const struct rb_node *n2)
 {
    const struct buffer *buf1 = (const struct buffer *)n1;
    const struct buffer *buf2 = (const struct buffer *)n2;
-   return buf1->gpuaddr - buf2->gpuaddr;
+   /* Note that gpuaddr comparisions can overflow an int: */
+   if (buf1->gpuaddr > buf2->gpuaddr)
+      return 1;
+   else if (buf1->gpuaddr < buf2->gpuaddr)
+      return -1;
+   return 0;
 }
 
 static int
