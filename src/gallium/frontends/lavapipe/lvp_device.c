@@ -1095,7 +1095,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties2(
                                          &pMemoryProperties->memoryProperties);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 lvp_GetMemoryHostPointerPropertiesEXT(
    VkDevice _device,
    VkExternalMemoryHandleTypeFlagBits handleType,
