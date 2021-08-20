@@ -21,6 +21,7 @@
  */
 
 #include "u_prim.h"
+#include "pipe/p_state.h"
 
 
 /** Return string name of given primitive type */
@@ -31,6 +32,10 @@ u_prim_name(enum pipe_prim_type prim)
    /* Check that the enum is packed: */
    STATIC_ASSERT(sizeof(enum pipe_prim_type) == 1);
 #endif
+
+   /* Draw merging in u_threaded_context requires that sizeof(mode) == 1. */
+   struct pipe_draw_info info;
+   STATIC_ASSERT(sizeof(info.mode) == 1);
 
    static const struct debug_named_value names[] = {
       DEBUG_NAMED_VALUE(PIPE_PRIM_POINTS),

@@ -1787,7 +1787,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
       }
    }
 
-   enum pipe_prim_type prim = info->mode;
+   enum pipe_prim_type prim = (enum pipe_prim_type)info->mode;
    unsigned instance_count = info->instance_count;
 
    /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is

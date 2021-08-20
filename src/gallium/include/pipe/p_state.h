@@ -764,7 +764,13 @@ struct pipe_draw_start_count_bias {
  */
 struct pipe_draw_info
 {
-   enum pipe_prim_type mode:8;  /**< the mode of the primitive */
+#if defined(__GNUC__)
+   /* sizeof(mode) == 1 because it's a packed enum. */
+   enum pipe_prim_type mode;  /**< the mode of the primitive */
+#else
+   /* sizeof(mode) == 1 is required by draw merging in u_threaded_context. */
+   uint8_t mode;              /**< the mode of the primitive */
+#endif
    uint8_t index_size;        /**< if 0, the draw is not indexed. */
    uint8_t view_mask;         /**< mask of multiviews for this draw */
    bool primitive_restart:1;

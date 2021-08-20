@@ -425,7 +425,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    bool reads_drawid = ctx->shader_reads_drawid;
    bool reads_basevertex = ctx->shader_reads_basevertex;
    unsigned work_count = ctx->batch.work_count;
-   enum pipe_prim_type mode = dinfo->mode;
+   enum pipe_prim_type mode = (enum pipe_prim_type)dinfo->mode;
 
    update_barriers(ctx, false);
 

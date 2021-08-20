@@ -400,7 +400,7 @@ get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate)
       mode = (enum pipe_prim_type)last_vertex_stage->current->nir->info.gs.output_primitive;
       break;
    case PIPE_SHADER_VERTEX:
-      mode = sel_ctx->dinfo ? sel_ctx->dinfo->mode : PIPE_PRIM_TRIANGLES;
+      mode = sel_ctx->dinfo ? (enum pipe_prim_type)sel_ctx->dinfo->mode : PIPE_PRIM_TRIANGLES;
       break;
    default:
       unreachable("Tesselation shaders are not supported");
