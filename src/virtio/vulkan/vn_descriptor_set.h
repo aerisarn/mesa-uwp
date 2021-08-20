@@ -14,11 +14,17 @@
 #include "vn_common.h"
 
 struct vn_descriptor_set_layout_binding {
+   VkDescriptorType type;
+   uint32_t count;
    bool has_immutable_samplers;
 };
 
 struct vn_descriptor_set_layout {
    struct vn_object_base base;
+
+   uint32_t last_binding;
+
+   /* bindings must be the last field in the layout */
    struct vn_descriptor_set_layout_binding bindings[];
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_descriptor_set_layout,
