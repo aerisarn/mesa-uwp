@@ -575,7 +575,7 @@ enum pipe_prim_type {
    PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY,
    PIPE_PRIM_PATCHES,
    PIPE_PRIM_MAX,
-};
+} ENUM_PACKED;
 
 /**
  * Tessellator spacing types

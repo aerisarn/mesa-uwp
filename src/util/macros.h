@@ -327,6 +327,13 @@ do {                       \
 #define ATTRIBUTE_NOINLINE
 #endif
 
+/* Use as: enum name { X, Y } ENUM_PACKED; */
+#if defined(__GNUC__)
+#define ENUM_PACKED __attribute__((packed))
+#else
+#define ENUM_PACKED
+#endif
+
 
 /**
  * Check that STRUCT::FIELD can hold MAXVAL.  We use a lot of bitfields

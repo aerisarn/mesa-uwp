@@ -27,6 +27,11 @@
 const char *
 u_prim_name(enum pipe_prim_type prim)
 {
+#if defined(__GNUC__)
+   /* Check that the enum is packed: */
+   STATIC_ASSERT(sizeof(enum pipe_prim_type) == 1);
+#endif
+
    static const struct debug_named_value names[] = {
       DEBUG_NAMED_VALUE(PIPE_PRIM_POINTS),
       DEBUG_NAMED_VALUE(PIPE_PRIM_LINES),
