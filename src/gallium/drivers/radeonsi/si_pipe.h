@@ -1457,6 +1457,7 @@ void si_init_debug_functions(struct si_context *sctx);
 void si_check_vm_faults(struct si_context *sctx, struct radeon_saved_cs *saved,
                         enum ring_type ring);
 bool si_replace_shader(unsigned num, struct si_shader_binary *binary);
+void si_print_current_ib(struct si_context *sctx, FILE *f);
 
 /* si_fence.c */
 void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs, unsigned event,

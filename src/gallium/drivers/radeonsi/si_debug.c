@@ -390,6 +390,12 @@ static void si_parse_current_ib(FILE *f, struct radeon_cmdbuf *cs, unsigned begi
    fprintf(f, "------------------- %s end (dw = %u) -------------------\n\n", name, orig_end);
 }
 
+void si_print_current_ib(struct si_context *sctx, FILE *f)
+{
+   si_parse_current_ib(f, &sctx->gfx_cs, 0, sctx->gfx_cs.prev_dw + sctx->gfx_cs.current.cdw,
+                       NULL, 0, "GFX", sctx->chip_class);
+}
+
 static void si_log_chunk_type_cs_print(void *data, FILE *f)
 {
    struct si_log_chunk_cs *chunk = data;
