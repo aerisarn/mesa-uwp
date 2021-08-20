@@ -491,8 +491,14 @@ radv_device_init_meta(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_accel_struct_build;
 
+   result = radv_device_init_meta_fmask_copy_state(device);
+   if (result != VK_SUCCESS)
+      goto fail_fmask_copy;
+
    return VK_SUCCESS;
 
+fail_fmask_copy:
+   radv_device_finish_accel_struct_build_state(device);
 fail_accel_struct_build:
    radv_device_finish_meta_fmask_expand_state(device);
 fail_fmask_expand:
@@ -541,6 +547,7 @@ radv_device_finish_meta(struct radv_device *device)
    radv_device_finish_meta_fmask_expand_state(device);
    radv_device_finish_meta_dcc_retile_state(device);
    radv_device_finish_meta_copy_vrs_htile_state(device);
+   radv_device_finish_meta_fmask_copy_state(device);
 
    radv_store_meta_pipeline(device);
    radv_pipeline_cache_finish(&device->meta_state.cache);

@@ -535,7 +535,11 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
          if (cs) {
             radv_meta_image_to_image_cs(cmd_buffer, &b_src, &b_dst, 1, &rect);
          } else {
-            radv_meta_blit2d(cmd_buffer, &b_src, NULL, &b_dst, 1, &rect);
+            if (radv_can_use_fmask_copy(cmd_buffer, b_src.image, b_dst.image, 1, &rect)) {
+               radv_fmask_copy(cmd_buffer, &b_src, &b_dst);
+            } else {
+               radv_meta_blit2d(cmd_buffer, &b_src, NULL, &b_dst, 1, &rect);
+            }
          }
 
          b_src.layer++;
