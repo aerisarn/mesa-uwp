@@ -1449,10 +1449,6 @@ radv_image_use_comp_to_single(const struct radv_device *device, const struct rad
    if (!radv_image_has_dcc(image))
       return false;
 
-   /* TODO: DCC fast clears with MSAA aren't fully supported. */
-   if (image->info.samples > 1)
-      return false;
-
    /* It seems 8bpp and 16bpp require RB+ to work. */
    unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk_format);
    if (bytes_per_pixel <= 2 && !device->physical_device->rad_info.rbplus_allowed)
