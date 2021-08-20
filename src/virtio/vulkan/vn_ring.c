@@ -42,15 +42,15 @@ vn_ring_load_status(const struct vn_ring *ring)
 }
 
 static void
-vn_ring_write_buffer(struct vn_ring *ring, const void *data, size_t size)
+vn_ring_write_buffer(struct vn_ring *ring, const void *data, uint32_t size)
 {
    assert(ring->cur + size - vn_ring_load_head(ring) <= VN_RING_BUFFER_SIZE);
 
-   const size_t offset = ring->cur & VN_RING_BUFFER_MASK;
+   const uint32_t offset = ring->cur & VN_RING_BUFFER_MASK;
    if (offset + size <= VN_RING_BUFFER_SIZE) {
       memcpy(ring->shared.buffer + offset, data, size);
    } else {
-      const size_t s = VN_RING_BUFFER_SIZE - offset;
+      const uint32_t s = VN_RING_BUFFER_SIZE - offset;
       memcpy(ring->shared.buffer + offset, data, s);
       memcpy(ring->shared.buffer, data + s, size - s);
    }
@@ -204,7 +204,7 @@ bool
 vn_ring_submit(struct vn_ring *ring,
                struct vn_ring_submit *submit,
                const void *cs_data,
-               size_t cs_size,
+               uint32_t cs_size,
                uint32_t *seqno)
 {
    const uint32_t cur_seqno = vn_ring_wait_space(ring, cs_size);

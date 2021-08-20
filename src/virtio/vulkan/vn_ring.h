@@ -88,7 +88,7 @@ bool
 vn_ring_submit(struct vn_ring *ring,
                struct vn_ring_submit *submit,
                const void *cs_data,
-               size_t cs_size,
+               uint32_t cs_size,
                uint32_t *seqno);
 
 void
