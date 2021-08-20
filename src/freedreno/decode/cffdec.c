@@ -2616,7 +2616,10 @@ cp_set_ctxswitch_ib(uint32_t *dwords, uint32_t sizedwords, int level)
 
    addr = dwords[0] | ((uint64_t)dwords[1] << 32);
 
-   printf("addr=%" PRIx64 "\n", addr);
+   if (!quiet(3)) {
+      printf("%saddr=%" PRIx64 "\n", levels[level], addr);
+   }
+
    ptr = hostptr(addr);
    if (ptr) {
       dump_commands(ptr, size, level + 1);
