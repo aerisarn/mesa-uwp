@@ -287,7 +287,7 @@ set_bitset_range(BITSET_WORD* words, unsigned start, unsigned size)
    unsigned end = start + size - 1;
    unsigned start_mod = start % BITSET_WORDBITS;
    if (start_mod + size <= BITSET_WORDBITS) {
-      BITSET_SET_RANGE(words, start, end);
+      BITSET_SET_RANGE_INSIDE_WORD(words, start, end);
    } else {
       unsigned first_size = BITSET_WORDBITS - start_mod;
       set_bitset_range(words, start, BITSET_WORDBITS - start_mod);

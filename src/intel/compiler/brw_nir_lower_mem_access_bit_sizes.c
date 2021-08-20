@@ -189,7 +189,7 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
 
    for (unsigned i = 0; i < num_components; i++) {
       if (writemask & (1u << i))
-         BITSET_SET_RANGE(mask, i * byte_size, ((i + 1) * byte_size) - 1);
+         BITSET_SET_RANGE_INSIDE_WORD(mask, i * byte_size, ((i + 1) * byte_size) - 1);
    }
 
    while (BITSET_FFS(mask) != 0) {

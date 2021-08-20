@@ -73,7 +73,7 @@ TEST(bitset, test_basic_range)
    BITSET_ZERO(mask128);
 
    const int max_set = 15;
-   BITSET_SET_RANGE(mask128, 0, max_set);
+   BITSET_SET_RANGE_INSIDE_WORD(mask128, 0, max_set);
    EXPECT_EQ(BITSET_TEST_RANGE(mask128, 0, max_set), true);
    EXPECT_EQ(BITSET_TEST_RANGE(mask128, max_set + 1, max_set + 15), false);
    for (int i = 0; i < 128; i++) {
@@ -105,7 +105,7 @@ TEST(bitset, test_bitset_ffs)
    BITSET_CLEAR(mask128, 14);
    EXPECT_EQ(BITSET_FFS(mask128), 29);
 
-   BITSET_SET_RANGE(mask128, 14, 18);
+   BITSET_SET_RANGE_INSIDE_WORD(mask128, 14, 18);
    EXPECT_EQ(BITSET_FFS(mask128), 15);
 }
 
@@ -114,10 +114,10 @@ TEST(bitset, test_range_bits)
    BITSET_DECLARE(mask128, 128);
    BITSET_ZERO(mask128);
 
-   BITSET_SET_RANGE(mask128, 0, 31);
-   BITSET_SET_RANGE(mask128, 32, 63);
-   BITSET_SET_RANGE(mask128, 64, 95);
-   BITSET_SET_RANGE(mask128, 96, 127);
+   BITSET_SET_RANGE_INSIDE_WORD(mask128, 0, 31);
+   BITSET_SET_RANGE_INSIDE_WORD(mask128, 32, 63);
+   BITSET_SET_RANGE_INSIDE_WORD(mask128, 64, 95);
+   BITSET_SET_RANGE_INSIDE_WORD(mask128, 96, 127);
 
    EXPECT_EQ(BITSET_TEST_RANGE(mask128, 0, 31), true);
    EXPECT_EQ(BITSET_TEST_RANGE(mask128, 32, 63), true);
@@ -144,8 +144,8 @@ TEST(bitset, test_and)
    EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
 
 
-   BITSET_SET_RANGE(a, 32, 63);
-   BITSET_SET_RANGE(b, 96, 127);
+   BITSET_SET_RANGE_INSIDE_WORD(a, 32, 63);
+   BITSET_SET_RANGE_INSIDE_WORD(b, 96, 127);
    BITSET_AND(r, a, b);
 
    EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
@@ -182,8 +182,8 @@ TEST(bitset, test_or)
    EXPECT_EQ(BITSET_TEST_RANGE(r, 96, 127), false);
 
 
-   BITSET_SET_RANGE(a, 32, 63);
-   BITSET_SET_RANGE(b, 96, 127);
+   BITSET_SET_RANGE_INSIDE_WORD(a, 32, 63);
+   BITSET_SET_RANGE_INSIDE_WORD(b, 96, 127);
    BITSET_OR(r, a, b);
 
    EXPECT_EQ(BITSET_TEST_RANGE(r, 0, 31), false);
