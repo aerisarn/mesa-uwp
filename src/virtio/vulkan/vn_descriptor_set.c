@@ -277,6 +277,73 @@ vn_DestroyDescriptorPool(VkDevice device,
    vk_free(alloc, pool);
 }
 
+static bool
+vn_descriptor_pool_alloc_descriptors(
+   struct vn_descriptor_pool *pool,
+   const struct vn_descriptor_set_layout *layout,
+   uint32_t last_binding_descriptor_count)
+{
+   struct vn_descriptor_pool_state recovery;
+
+   if (!pool->async_set_allocation)
+      return true;
+
+   if (pool->used.set_count == pool->max.set_count)
+      return false;
+
+   /* backup current pool state to recovery */
+   recovery = pool->used;
+
+   ++pool->used.set_count;
+
+   for (uint32_t i = 0; i <= layout->last_binding; i++) {
+      const VkDescriptorType type = layout->bindings[i].type;
+      const uint32_t count = i == layout->last_binding
+                                ? last_binding_descriptor_count
+                                : layout->bindings[i].count;
+
+      pool->used.descriptor_counts[type] += count;
+
+      if (pool->used.descriptor_counts[type] >
+          pool->max.descriptor_counts[type]) {
+         /* restore pool state before this allocation */
+         pool->used = recovery;
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static void
+vn_descriptor_pool_free_descriptors(
+   struct vn_descriptor_pool *pool,
+   const struct vn_descriptor_set_layout *layout,
+   uint32_t last_binding_descriptor_count)
+{
+   if (!pool->async_set_allocation)
+      return;
+
+   for (uint32_t i = 0; i <= layout->last_binding; i++) {
+      const uint32_t count = i == layout->last_binding
+                                ? last_binding_descriptor_count
+                                : layout->bindings[i].count;
+
+      pool->used.descriptor_counts[layout->bindings[i].type] -= count;
+   }
+
+   --pool->used.set_count;
+}
+
+static void
+vn_descriptor_pool_reset_descriptors(struct vn_descriptor_pool *pool)
+{
+   if (!pool->async_set_allocation)
+      return;
+
+   memset(&pool->used, 0, sizeof(pool->used));
+}
+
 VkResult
 vn_ResetDescriptorPool(VkDevice device,
                        VkDescriptorPool descriptorPool,
@@ -297,6 +364,8 @@ vn_ResetDescriptorPool(VkDevice device,
       vn_object_base_fini(&set->base);
       vk_free(alloc, set);
    }
+
+   vn_descriptor_pool_reset_descriptors(pool);
 
    return VK_SUCCESS;
 }
@@ -347,9 +416,18 @@ vn_AllocateDescriptorSets(VkDevice device,
          last_binding_descriptor_count = variable_info->pDescriptorCounts[i];
       }
 
+      if (!vn_descriptor_pool_alloc_descriptors(
+             pool, layout, last_binding_descriptor_count)) {
+         pDescriptorSets[i] = VK_NULL_HANDLE;
+         result = VK_ERROR_OUT_OF_POOL_MEMORY;
+         goto fail;
+      }
+
       set = vk_zalloc(alloc, sizeof(*set), VN_DEFAULT_ALIGN,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (!set) {
+         vn_descriptor_pool_free_descriptors(pool, layout,
+                                             last_binding_descriptor_count);
          pDescriptorSets[i] = VK_NULL_HANDLE;
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
@@ -380,6 +458,8 @@ fail:
       if (!set)
          break;
 
+      vn_descriptor_pool_free_descriptors(pool, set->layout,
+                                          set->last_binding_descriptor_count);
       list_del(&set->head);
       vn_object_base_fini(&set->base);
       vk_free(alloc, set);

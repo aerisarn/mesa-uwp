@@ -50,6 +50,7 @@ struct vn_descriptor_pool {
    VkAllocationCallbacks allocator;
    bool async_set_allocation;
    struct vn_descriptor_pool_state max;
+   struct vn_descriptor_pool_state used;
 
    struct list_head descriptor_sets;
 };
