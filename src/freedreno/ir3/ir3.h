@@ -384,7 +384,7 @@ struct ir3_instruction {
    };
 
    /* For assigning jump offsets, we need instruction's position: */
-   uint16_t ip;
+   uint32_t ip;
 
    /* used for per-pass extra instruction data.
     *
