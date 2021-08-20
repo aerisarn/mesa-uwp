@@ -226,7 +226,7 @@ a6xx_gen3 = dict(
         has_ccu_flush_bug = True,
     )
 
-# a635, a650:
+# a635, a660:
 a6xx_gen4 = dict(
         fibers_per_sp = 128 * 2 * 16,
         reg_size_vec4 = 64,
