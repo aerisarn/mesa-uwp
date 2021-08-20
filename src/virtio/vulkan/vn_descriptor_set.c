@@ -243,21 +243,16 @@ vn_AllocateDescriptorSets(VkDevice device,
    struct vn_descriptor_pool *pool =
       vn_descriptor_pool_from_handle(pAllocateInfo->descriptorPool);
    const VkAllocationCallbacks *alloc = &pool->allocator;
+   VkResult result;
 
    for (uint32_t i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
       struct vn_descriptor_set *set =
          vk_zalloc(alloc, sizeof(*set), VN_DEFAULT_ALIGN,
                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (!set) {
-         for (uint32_t j = 0; j < i; j++) {
-            set = vn_descriptor_set_from_handle(pDescriptorSets[j]);
-            list_del(&set->head);
-            vn_object_base_fini(&set->base);
-            vk_free(alloc, set);
-         }
-         memset(pDescriptorSets, 0,
-                sizeof(*pDescriptorSets) * pAllocateInfo->descriptorSetCount);
-         return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+         pDescriptorSets[i] = VK_NULL_HANDLE;
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto fail;
       }
 
       vn_object_base_init(&set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET,
@@ -270,22 +265,29 @@ vn_AllocateDescriptorSets(VkDevice device,
       pDescriptorSets[i] = set_handle;
    }
 
-   VkResult result = vn_call_vkAllocateDescriptorSets(
-      dev->instance, device, pAllocateInfo, pDescriptorSets);
-   if (result != VK_SUCCESS) {
-      for (uint32_t i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
-         struct vn_descriptor_set *set =
-            vn_descriptor_set_from_handle(pDescriptorSets[i]);
-         list_del(&set->head);
-         vn_object_base_fini(&set->base);
-         vk_free(alloc, set);
-      }
-      memset(pDescriptorSets, 0,
-             sizeof(*pDescriptorSets) * pAllocateInfo->descriptorSetCount);
-      return vn_error(dev->instance, result);
-   }
+   result = vn_call_vkAllocateDescriptorSets(dev->instance, device,
+                                             pAllocateInfo, pDescriptorSets);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    return VK_SUCCESS;
+
+fail:
+   for (uint32_t i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
+      struct vn_descriptor_set *set =
+         vn_descriptor_set_from_handle(pDescriptorSets[i]);
+      if (!set)
+         break;
+
+      list_del(&set->head);
+      vn_object_base_fini(&set->base);
+      vk_free(alloc, set);
+   }
+
+   memset(pDescriptorSets, 0,
+          sizeof(*pDescriptorSets) * pAllocateInfo->descriptorSetCount);
+
+   return vn_error(dev->instance, result);
 }
 
 VkResult
