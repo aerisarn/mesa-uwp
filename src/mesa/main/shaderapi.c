@@ -2043,20 +2043,22 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source)
 
    generate_sha1(source, sha);
 
-   const char *process_name =
-      ARRAY_SIZE(shader_replacements) ? util_get_process_name() : NULL;
-   for (size_t i = 0; i < ARRAY_SIZE(shader_replacements); i++) {
-      if (stage != shader_replacements[i].stage)
-         continue;
+   if (!debug_get_bool_option("MESA_NO_SHADER_REPLACEMENT", false)) {
+      const char *process_name =
+         ARRAY_SIZE(shader_replacements) ? util_get_process_name() : NULL;
+      for (size_t i = 0; i < ARRAY_SIZE(shader_replacements); i++) {
+         if (stage != shader_replacements[i].stage)
+            continue;
 
-      if (shader_replacements[i].app &&
-          strcmp(process_name, shader_replacements[i].app) != 0)
-         continue;
+         if (shader_replacements[i].app &&
+             strcmp(process_name, shader_replacements[i].app) != 0)
+            continue;
 
-      if (memcmp(sha, shader_replacements[i].sha1, 40) != 0)
-         continue;
+         if (memcmp(sha, shader_replacements[i].sha1, 40) != 0)
+            continue;
 
-      return load_shader_replacement(&shader_replacements[i]);
+         return load_shader_replacement(&shader_replacements[i]);
+      }
    }
 
    if (!path_exists)
