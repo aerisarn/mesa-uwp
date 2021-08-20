@@ -363,25 +363,6 @@ visit_end_primitive(struct ac_shader_abi *abi, unsigned stream)
 }
 
 static LLVMValueRef
-load_tess_coord(struct ac_shader_abi *abi)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-
-   LLVMValueRef coord[4] = {
-      ac_get_arg(&ctx->ac, ctx->args->ac.tes_u),
-      ac_get_arg(&ctx->ac, ctx->args->ac.tes_v),
-      ctx->ac.f32_0,
-      ctx->ac.f32_0,
-   };
-
-   if (ctx->shader->info.tess.primitive_mode == GL_TRIANGLES)
-      coord[2] = LLVMBuildFSub(ctx->ac.builder, ctx->ac.f32_1,
-                               LLVMBuildFAdd(ctx->ac.builder, coord[0], coord[1], ""), "");
-
-   return ac_build_gather_values(&ctx->ac, coord, 3);
-}
-
-static LLVMValueRef
 load_ring_tess_factors(struct ac_shader_abi *abi)
 {
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
@@ -2567,7 +2548,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
 
          ctx.abi.emit_primitive = visit_end_primitive;
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_EVAL) {
-         ctx.abi.load_tess_coord = load_tess_coord;
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX) {
          ctx.abi.load_base_vertex = radv_load_base_vertex;
          ctx.abi.load_inputs = radv_load_vs_inputs;

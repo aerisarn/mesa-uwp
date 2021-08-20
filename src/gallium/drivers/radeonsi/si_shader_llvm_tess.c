@@ -559,21 +559,6 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
    }
 }
 
-static LLVMValueRef si_load_tess_coord(struct ac_shader_abi *abi)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   LLVMValueRef coord[4] = {ac_get_arg(&ctx->ac, ctx->args.tes_u),
-                            ac_get_arg(&ctx->ac, ctx->args.tes_v),
-                            ctx->ac.f32_0, ctx->ac.f32_0};
-
-   /* For triangles, the vector should be (u, v, 1-u-v). */
-   if (ctx->shader->selector->info.base.tess.primitive_mode == GL_TRIANGLES) {
-      coord[2] = LLVMBuildFSub(ctx->ac.builder, ctx->ac.f32_1,
-                               LLVMBuildFAdd(ctx->ac.builder, coord[0], coord[1], ""), "");
-   }
-   return ac_build_gather_values(&ctx->ac, coord, 4);
-}
-
 static LLVMValueRef load_tess_level(struct si_shader_context *ctx, unsigned semantic)
 {
    LLVMValueRef base, addr;
@@ -1096,7 +1081,6 @@ void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx)
 void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
    ctx->abi.load_tess_varyings = si_nir_load_input_tes;
-   ctx->abi.load_tess_coord = si_load_tess_coord;
    ctx->abi.load_tess_level = si_load_tess_level;
    ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
 

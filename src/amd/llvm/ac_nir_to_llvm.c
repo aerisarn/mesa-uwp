@@ -3837,9 +3837,21 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_end_primitive_with_counter:
       ctx->abi->emit_primitive(ctx->abi, nir_intrinsic_stream_id(instr));
       break;
-   case nir_intrinsic_load_tess_coord:
-      result = ctx->abi->load_tess_coord(ctx->abi);
+   case nir_intrinsic_load_tess_coord: {
+      LLVMValueRef coord[] = {
+         ac_get_arg(&ctx->ac, ctx->args->tes_u),
+         ac_get_arg(&ctx->ac, ctx->args->tes_v),
+         ctx->ac.f32_0,
+      };
+
+      /* For triangles, the vector should be (u, v, 1-u-v). */
+      if (ctx->info->tess.primitive_mode == GL_TRIANGLES) {
+         coord[2] = LLVMBuildFSub(ctx->ac.builder, ctx->ac.f32_1,
+                                  LLVMBuildFAdd(ctx->ac.builder, coord[0], coord[1], ""), "");
+      }
+      result = ac_build_gather_values(&ctx->ac, coord, 3);
       break;
+   }
    case nir_intrinsic_load_tess_level_outer:
       result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_OUTER, false);
       break;

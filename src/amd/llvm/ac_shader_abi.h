@@ -93,8 +93,6 @@ struct ac_shader_abi {
                              LLVMValueRef src, unsigned writemask,
                              unsigned component, unsigned location, unsigned driver_location);
 
-   LLVMValueRef (*load_tess_coord)(struct ac_shader_abi *abi);
-
    LLVMValueRef (*load_patch_vertices_in)(struct ac_shader_abi *abi);
 
    LLVMValueRef (*load_ring_tess_offchip)(struct ac_shader_abi *abi);
