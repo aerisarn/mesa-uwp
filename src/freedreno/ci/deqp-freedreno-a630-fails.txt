@@ -59,11 +59,6 @@ bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.overlay,Fail
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.screen,Fail
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.softlight,Fail
 
-# "Fail (createInstance returned VK_ERROR_INITIALIZATION_FAILED)"
-# happens inside the loader on anholt's debian system, and there are various
-# likely-looking fixes in later versions of the loader.
-dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail,Fail
-
 # optimalTilingFeatures  missing: VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT|VK_FORMAT_FEATURE_TRANSFER_SRC_BIT|VK_FORMAT_FEATURE_TRANSFER_DST_BIT|VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT
 dEQP-VK.api.info.format_properties.g8_b8_r8_3plane_420_unorm,Fail
 dEQP-VK.api.info.format_properties.g8_b8r8_2plane_420_unorm,Fail
@@ -75,11 +70,6 @@ dEQP-VK.api.info.image_format_properties.2d.optimal.g8_b8r8_2plane_420_unorm,Fai
 
 # "Mismatch between VkPhysicalDeviceProtectedMemoryProperties at vktApiFeatureInfo.cpp:4208"
 dEQP-VK.api.info.get_physical_device_properties2.properties,Fail
-
-# LEAK 1: REALLOCATION: original=0x0000000000000000, size=400, alignment=8, scope=3, returnedPtr=0x0000aaaaf6b61310
-# ERROR: Found 1 memory leaks!
-dEQP-VK.api.object_management.alloc_callback_fail.device,Fail
-dEQP-VK.api.object_management.alloc_callback_fail.device_group,Fail
 
 # "deqp-vk: ../src/freedreno/vulkan/tu_cs.h:186: tu_cs_reserve: Assertion `tu_cs_get_space(cs) >= reserved_size' failed."
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/8841

@@ -1488,7 +1488,8 @@ fail_pipeline_cache:
    tu_destroy_clear_blit_shaders(device);
 fail_global_bo_map:
    tu_bo_finish(device, &device->global_bo);
-
+   vk_free(&device->vk.alloc, device->bo_idx);
+   vk_free(&device->vk.alloc, device->bo_list);
 fail_global_bo:
    ir3_compiler_destroy(device->compiler);
 
