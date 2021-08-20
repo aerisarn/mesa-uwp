@@ -150,6 +150,8 @@ struct ir3_register {
       IR3_REG_UNUSED = 0x40000,
    } flags;
 
+   unsigned name;
+
    /* used for cat5 instructions, but also for internal/IR level
     * tracking of what registers are read/written by an instruction.
     * wrmask may be a bad name since it is used to represent both
@@ -171,7 +173,6 @@ struct ir3_register {
     * rN.x becomes: (N << 2) | x
     */
    uint16_t num;
-   uint16_t name;
    union {
       /* immediate: */
       int32_t iim_val;
