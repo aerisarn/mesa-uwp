@@ -1422,6 +1422,15 @@ optimizations.extend([
 
    (('iadd', ('pack_half_2x16_split', a, 0), ('pack_half_2x16_split', 0, b)), ('pack_half_2x16_split', a, b)),
    (('ior',  ('pack_half_2x16_split', a, 0), ('pack_half_2x16_split', 0, b)), ('pack_half_2x16_split', a, b)),
+
+   (('extract_i8', ('pack_32_4x8_split', a, b, c, d), 0), ('i2i', a)),
+   (('extract_i8', ('pack_32_4x8_split', a, b, c, d), 1), ('i2i', b)),
+   (('extract_i8', ('pack_32_4x8_split', a, b, c, d), 2), ('i2i', c)),
+   (('extract_i8', ('pack_32_4x8_split', a, b, c, d), 3), ('i2i', d)),
+   (('extract_u8', ('pack_32_4x8_split', a, b, c, d), 0), ('u2u', a)),
+   (('extract_u8', ('pack_32_4x8_split', a, b, c, d), 1), ('u2u', b)),
+   (('extract_u8', ('pack_32_4x8_split', a, b, c, d), 2), ('u2u', c)),
+   (('extract_u8', ('pack_32_4x8_split', a, b, c, d), 3), ('u2u', d)),
 ])
 
 # After the ('extract_u8', a, 0) pattern, above, triggers, there will be
@@ -2531,6 +2540,11 @@ late_optimizations = [
    (('ishr', a, 0), a),
    (('ishr', a, -32), a),
    (('ushr', a, 0), a),
+
+   (('extract_i8', ('extract_i8', a, b), 0), ('extract_i8', a, b)),
+   (('extract_i8', ('extract_u8', a, b), 0), ('extract_i8', a, b)),
+   (('extract_u8', ('extract_i8', a, b), 0), ('extract_u8', a, b)),
+   (('extract_u8', ('extract_u8', a, b), 0), ('extract_u8', a, b)),
 ]
 
 # A few more extract cases we'd rather leave late
