@@ -383,9 +383,8 @@ struct ir3_instruction {
       } input;
    };
 
-   /* When we get to the RA stage, we need instruction's position/name: */
+   /* For assigning jump offsets, we need instruction's position: */
    uint16_t ip;
-   uint16_t name;
 
    /* used for per-pass extra instruction data.
     *

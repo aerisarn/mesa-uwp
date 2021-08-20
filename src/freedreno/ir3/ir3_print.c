@@ -75,7 +75,6 @@ print_instr_name(struct log_stream *stream, struct ir3_instruction *instr,
 #ifdef DEBUG
    mesa_log_stream_printf(stream, "%04u:", instr->serialno);
 #endif
-   mesa_log_stream_printf(stream, "%04u:", instr->name);
    mesa_log_stream_printf(stream, "%04u:", instr->ip);
    if (instr->flags & IR3_INSTR_UNUSED) {
       mesa_log_stream_printf(stream, "XXX: ");
