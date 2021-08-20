@@ -687,7 +687,6 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
 {
    struct loader_dri3_buffer *buffer;
    int b;
-   int num_to_consider;
    int max_num;
    int best_id = -1;
    uint64_t best_swap = 0;
@@ -710,11 +709,9 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
     * In that case, wait until it's not busy anymore.
     */
    if (!loader_dri3_have_image_blit(draw) && draw->cur_blit_source != -1) {
-      num_to_consider = 1;
       max_num = 1;
       draw->cur_blit_source = -1;
    } else {
-      num_to_consider = draw->cur_num_back;
       max_num = draw->max_num_back;
    }
 
@@ -728,10 +725,10 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
     * to wait for the copy to finish.
     */
    int current_back_id = draw->cur_back;
-   for (;;) {
-      /* Find idle buffer with lowest buffer age, or unallocated slot */
-      for (b = 0; b < num_to_consider; b++) {
-         int id = LOADER_DRI3_BACK_ID((b + draw->cur_back) % draw->cur_num_back);
+   do {
+      /* Find idle buffer with lowest buffer age, or first unallocated slot */
+      for (b = 0; b < max_num; b++) {
+         int id = LOADER_DRI3_BACK_ID((b + draw->cur_back) % draw->max_num_back);
 
          buffer = draw->buffers[id];
          if (buffer) {
@@ -741,29 +738,21 @@ dri3_find_back(struct loader_dri3_drawable *draw, bool prefer_a_different)
                best_id = id;
                best_swap = buffer->last_swap;
             }
-         } else if (best_id == -1) {
+         } else if (best_id == -1 || (!best_swap && id < best_id)) {
             best_id = id;
          }
       }
 
-      if (best_id != -1)
-         break;
-
-      /* No idle buffer, allocate another one if possible */
-      if (num_to_consider < max_num) {
-         best_id = LOADER_DRI3_BACK_ID(draw->cur_num_back++);
-         break;
-      }
-
       /* Prefer re-using the same buffer over blocking */
-      if (prefer_a_different)
-         prefer_a_different = false;
-      else if (!dri3_wait_for_event_locked(draw, NULL))
-         break;
-   }
+      if (prefer_a_different && best_id == -1 &&
+          !draw->buffers[LOADER_DRI3_BACK_ID(current_back_id)]->busy)
+         best_id = current_back_id;
+   } while (best_id == -1 && dri3_wait_for_event_locked(draw, NULL));
 
-   if (best_id != -1)
+   if (best_id != -1) {
       draw->cur_back = best_id;
+      draw->cur_num_back = MAX2(draw->cur_num_back, best_id + 1);
+   }
 
 unlock:
    mtx_unlock(&draw->mtx);
