@@ -2266,6 +2266,15 @@ to upconvert to 32b float internally?
 
 	<!-- TODO: there are some registers in the 0x8a00-0x8bff range -->
 
+	<!--
+		These show up in a6xx gen3+ but so far haven't found an example of
+		blob writing non-zero:
+	 -->
+	<reg32 offset="0x8a00" name="RB_UNKNOWN_8A00"/>
+	<reg32 offset="0x8a10" name="RB_UNKNOWN_8A10"/>
+	<reg32 offset="0x8a20" name="RB_UNKNOWN_8A20"/>
+	<reg32 offset="0x8a30" name="RB_UNKNOWN_8A30"/>
+
 	<reg32 offset="0x8c00" name="RB_2D_BLIT_CNTL" type="a6xx_2d_blit_cntl"/>
 	<reg32 offset="0x8c01" name="RB_2D_UNKNOWN_8C01" low="0" high="31"/>
 
@@ -2565,6 +2574,11 @@ to upconvert to 32b float internally?
 
 	<!-- probably a mirror of VFD_CONTROL_6 -->
 	<reg32 offset="0x9806" name="PC_PRIMID_PASSTHRU" pos="0" type="boolean"/>
+
+	<!-- New in a6xx gen3+ -->
+	<reg32 offset="0x9808" name="PC_SO_STREAM_CNTL">
+		<bitfield name="STREAM_ENABLE" pos="15" type="boolean"/>
+	</reg32>
 
 	<reg32 offset="0x980a" name="PC_DGEN_SU_CONSERVATIVE_RAS_CNTL">
 		<bitfield name="CONSERVATIVERASEN" pos="0" type="boolean"/>
