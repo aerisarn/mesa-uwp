@@ -56,6 +56,13 @@ struct ac_nir_context {
    LLVMValueRef main_function;
    LLVMBasicBlockRef continue_block;
    LLVMBasicBlockRef break_block;
+
+   LLVMValueRef vertex_id_replaced;
+   LLVMValueRef instance_id_replaced;
+   LLVMValueRef tes_u_replaced;
+   LLVMValueRef tes_v_replaced;
+   LLVMValueRef tes_rel_patch_id_replaced;
+   LLVMValueRef tes_patch_id_replaced;
 };
 
 static LLVMValueRef get_sampler_desc_index(struct ac_nir_context *ctx, nir_deref_instr *deref_instr,
@@ -3489,11 +3496,13 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ctx->abi->load_local_group_size(ctx->abi);
       break;
    case nir_intrinsic_load_vertex_id:
-      result = LLVMBuildAdd(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->vertex_id),
+      result = LLVMBuildAdd(ctx->ac.builder,
+                            ctx->vertex_id_replaced ? ctx->vertex_id_replaced :
+                                                      ac_get_arg(&ctx->ac, ctx->args->vertex_id),
                             ac_get_arg(&ctx->ac, ctx->args->base_vertex), "");
       break;
    case nir_intrinsic_load_vertex_id_zero_base: {
-      result = ctx->abi->vertex_id;
+      result = ctx->vertex_id_replaced ? ctx->vertex_id_replaced : ctx->abi->vertex_id;
       break;
    }
    case nir_intrinsic_load_local_invocation_id: {
@@ -3540,7 +3549,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       } else if (ctx->stage == MESA_SHADER_TESS_CTRL) {
          result = ac_get_arg(&ctx->ac, ctx->args->tcs_patch_id);
       } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
-         result = ac_get_arg(&ctx->ac, ctx->args->tes_patch_id);
+         result = ctx->tes_patch_id_replaced ? ctx->tes_patch_id_replaced
+                                             : ac_get_arg(&ctx->ac, ctx->args->tes_patch_id);
       } else
          fprintf(stderr, "Unknown primitive id intrinsic: %d", ctx->stage);
       break;
@@ -3582,7 +3592,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ctx->abi->user_data;
       break;
    case nir_intrinsic_load_instance_id:
-      result = ctx->abi->instance_id;
+      result = ctx->instance_id_replaced ? ctx->instance_id_replaced : ctx->abi->instance_id;
       break;
    case nir_intrinsic_load_num_workgroups:
       result = ac_get_arg(&ctx->ac, ctx->args->num_work_groups);
@@ -3847,8 +3857,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_load_tess_coord: {
       LLVMValueRef coord[] = {
-         ac_get_arg(&ctx->ac, ctx->args->tes_u),
-         ac_get_arg(&ctx->ac, ctx->args->tes_v),
+         ctx->tes_u_replaced ? ctx->tes_u_replaced : ac_get_arg(&ctx->ac, ctx->args->tes_u),
+         ctx->tes_v_replaced ? ctx->tes_v_replaced : ac_get_arg(&ctx->ac, ctx->args->tes_v),
          ctx->ac.f32_0,
       };
 
@@ -3879,7 +3889,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (ctx->stage == MESA_SHADER_TESS_CTRL)
          result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tcs_rel_ids), 0, 8);
       else if (ctx->stage == MESA_SHADER_TESS_EVAL)
-         result = ac_get_arg(&ctx->ac, ctx->args->tes_rel_patch_id);
+         result = ctx->tes_rel_patch_id_replaced ? ctx->tes_rel_patch_id_replaced
+                                                 : ac_get_arg(&ctx->ac, ctx->args->tes_rel_patch_id);
       else
          unreachable("tess_rel_patch_id_amd is only supported by tessellation shaders");
       break;
@@ -4135,6 +4146,16 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       ac_build_sendmsg_gs_alloc_req(&ctx->ac, ctx->ac.i32_0,
                                     get_src(ctx, instr->src[0]),
                                     get_src(ctx, instr->src[1]));
+      break;
+   case nir_intrinsic_overwrite_vs_arguments_amd:
+      ctx->vertex_id_replaced = get_src(ctx, instr->src[0]);
+      ctx->instance_id_replaced = get_src(ctx, instr->src[1]);
+      break;
+   case nir_intrinsic_overwrite_tes_arguments_amd:
+      ctx->tes_u_replaced = get_src(ctx, instr->src[0]);
+      ctx->tes_v_replaced = get_src(ctx, instr->src[1]);
+      ctx->tes_rel_patch_id_replaced = get_src(ctx, instr->src[2]);
+      ctx->tes_patch_id_replaced = get_src(ctx, instr->src[3]);
       break;
    case nir_intrinsic_export_primitive_amd: {
       struct ac_ngg_prim prim = {0};
