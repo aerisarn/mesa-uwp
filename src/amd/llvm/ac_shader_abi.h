@@ -50,6 +50,7 @@ enum ac_descriptor_type
  */
 struct ac_shader_abi {
    LLVMValueRef outputs[AC_LLVM_MAX_OUTPUTS * 4];
+   LLVMValueRef inputs[AC_LLVM_MAX_OUTPUTS * 4];
 
    /* These input registers sometimes need to be fixed up. */
    LLVMValueRef vertex_id;
@@ -57,13 +58,6 @@ struct ac_shader_abi {
    LLVMValueRef persp_centroid, linear_centroid;
    LLVMValueRef color0, color1;
    LLVMValueRef user_data;
-
-   /* For VS and PS: pre-loaded shader inputs.
-    *
-    * Currently only used for NIR shaders; indexed by variables'
-    * driver_location.
-    */
-   LLVMValueRef *inputs;
 
    /* Varying -> attribute number mapping. Also NIR-only */
    unsigned fs_input_attr_indices[MAX_VARYING];

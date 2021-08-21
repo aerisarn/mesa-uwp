@@ -262,7 +262,7 @@ void si_llvm_load_vs_inputs(struct si_shader_context *ctx, struct nir_shader *ni
       load_input_vs(ctx, i, values);
 
       for (unsigned chan = 0; chan < 4; chan++)
-         ctx->inputs[i * 4 + chan] = ac_to_integer(&ctx->ac, values[chan]);
+         ctx->abi.inputs[i * 4 + chan] = ac_to_integer(&ctx->ac, values[chan]);
    }
 }
 

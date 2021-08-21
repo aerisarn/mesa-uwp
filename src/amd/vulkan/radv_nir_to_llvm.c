@@ -40,8 +40,6 @@
 #include "ac_shader_util.h"
 #include "sid.h"
 
-#define RADEON_LLVM_MAX_INPUTS (VARYING_SLOT_VAR31 + 1)
-
 struct radv_shader_context {
    struct ac_llvm_context ac;
    const struct nir_shader *shader;
@@ -67,8 +65,6 @@ struct radv_shader_context {
    LLVMValueRef gsvs_ring[4];
    LLVMValueRef hs_ring_tess_offchip;
    LLVMValueRef hs_ring_tess_factor;
-
-   LLVMValueRef inputs[RADEON_LLVM_MAX_INPUTS * 4];
 
    uint64_t output_mask;
 
@@ -836,7 +832,7 @@ handle_vs_input_decl(struct radv_shader_context *ctx, struct nir_variable *varia
       load_vs_input(ctx, driver_location, type, output);
 
       for (unsigned chan = 0; chan < 4; chan++) {
-         ctx->inputs[ac_llvm_reg_index_soa(driver_location, chan)] = output[chan];
+         ctx->abi.inputs[ac_llvm_reg_index_soa(driver_location, chan)] = output[chan];
       }
    }
 }
@@ -2474,7 +2470,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
 
    create_function(&ctx, shaders[shader_count - 1]->info.stage, shader_count >= 2);
 
-   ctx.abi.inputs = &ctx.inputs[0];
    ctx.abi.emit_outputs = handle_shader_outputs_post;
    ctx.abi.emit_vertex_with_counter = visit_emit_vertex_with_counter;
    ctx.abi.load_ubo = radv_load_ubo;

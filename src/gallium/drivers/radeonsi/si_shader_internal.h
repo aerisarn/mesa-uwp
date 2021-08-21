@@ -30,8 +30,6 @@
 
 struct pipe_debug_callback;
 
-#define RADEON_LLVM_MAX_INPUTS 32 * 4
-
 /* Ideally pass the sample mask input to the PS epilog as v14, which
  * is its usual location, so that the shader doesn't have to add v_mov.
  */
@@ -59,8 +57,6 @@ struct si_shader_context {
 
    struct ac_shader_args args;
    struct ac_shader_abi abi;
-
-   LLVMValueRef inputs[RADEON_LLVM_MAX_INPUTS];
 
    LLVMBasicBlockRef merged_wrap_if_entry_block;
    int merged_wrap_if_label;
