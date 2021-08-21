@@ -132,11 +132,12 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
    ctx->return_value = ret;
 }
 
-void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs)
+void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader *es = ctx->shader;
    struct si_shader_info *info = &es->selector->info;
+   LLVMValueRef *addrs = abi->outputs;
    LLVMValueRef lds_base = NULL;
    unsigned chan;
    int i;
@@ -212,13 +213,12 @@ static void emit_gs_epilogue(struct si_shader_context *ctx)
       ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 }
 
-static void si_llvm_emit_gs_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
-                                     LLVMValueRef *addrs)
+static void si_llvm_emit_gs_epilogue(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info UNUSED *info = &ctx->shader->selector->info;
 
-   assert(info->num_outputs <= max_outputs);
+   assert(info->num_outputs <= AC_LLVM_MAX_OUTPUTS);
 
    emit_gs_epilogue(ctx);
 }

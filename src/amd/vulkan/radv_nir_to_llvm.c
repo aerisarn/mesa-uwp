@@ -2234,7 +2234,7 @@ emit_gs_epilogue(struct radv_shader_context *ctx)
 }
 
 static void
-handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs)
+handle_shader_outputs_post(struct ac_shader_abi *abi)
 {
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 

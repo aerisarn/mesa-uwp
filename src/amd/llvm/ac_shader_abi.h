@@ -70,7 +70,7 @@ struct ac_shader_abi {
 
    void (*export_vertex)(struct ac_shader_abi *abi);
 
-   void (*emit_outputs)(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs);
+   void (*emit_outputs)(struct ac_shader_abi *abi);
 
    void (*emit_vertex)(struct ac_shader_abi *abi, unsigned stream, LLVMValueRef *addrs);
 

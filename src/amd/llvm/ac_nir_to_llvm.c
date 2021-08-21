@@ -5244,7 +5244,7 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
       ac_build_kill_if_false(&ctx.ac, LLVMBuildLoad(ctx.ac.builder, ctx.ac.postponed_kill, ""));
 
    if (!gl_shader_stage_is_compute(nir->info.stage))
-      ctx.abi->emit_outputs(ctx.abi, AC_LLVM_MAX_OUTPUTS, ctx.abi->outputs);
+      ctx.abi->emit_outputs(ctx.abi);
 
    free(ctx.ssa_defs);
    ralloc_free(ctx.defs);

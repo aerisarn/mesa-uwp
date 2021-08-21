@@ -752,15 +752,16 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       ac_build_export(&ctx->ac, &param_exports[i]);
 }
 
-void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs)
+void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;
    struct si_shader_output_values *outputs = NULL;
+   LLVMValueRef *addrs = abi->outputs;
    int i, j;
 
    assert(!ctx->shader->is_gs_copy_shader);
-   assert(info->num_outputs <= max_outputs);
+   assert(info->num_outputs <= AC_LLVM_MAX_OUTPUTS);
 
    outputs = MALLOC((info->num_outputs + 1) * sizeof(outputs[0]));
 
@@ -791,14 +792,14 @@ void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, L
    FREE(outputs);
 }
 
-static void si_llvm_emit_prim_discard_cs_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
-                                                  LLVMValueRef *addrs)
+static void si_llvm_emit_prim_discard_cs_epilogue(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;
+   LLVMValueRef *addrs = abi->outputs;
    LLVMValueRef pos[4] = {};
 
-   assert(info->num_outputs <= max_outputs);
+   assert(info->num_outputs <= AC_LLVM_MAX_OUTPUTS);
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
       if (info->output_semantic[i] != VARYING_SLOT_POS)

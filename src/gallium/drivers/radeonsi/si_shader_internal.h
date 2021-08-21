@@ -190,9 +190,8 @@ bool gfx10_ngg_export_prim_early(struct si_shader *shader);
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx);
 void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef user_edgeflags[3],
                                  LLVMValueRef prim_passthrough);
-void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_outputs,
-                                     LLVMValueRef *addrs);
-void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs);
+void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi);
+void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi);
 void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LLVMValueRef *addrs);
 void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx);
 void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx);
@@ -238,7 +237,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);
 LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx);
-void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs);
+void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi);
 void si_preload_esgs_ring(struct si_shader_context *ctx);
 void si_preload_gs_rings(struct si_shader_context *ctx);
 void si_llvm_build_gs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);
@@ -246,7 +245,7 @@ void si_llvm_init_gs_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_tess.c */
 void si_llvm_preload_tes_rings(struct si_shader_context *ctx);
-void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs);
+void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi);
 void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_part_key *key);
 void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx);
 void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader);
@@ -271,7 +270,7 @@ void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_outp
                             unsigned noutput, unsigned stream);
 void si_llvm_build_vs_exports(struct si_shader_context *ctx,
                               struct si_shader_output_values *outputs, unsigned noutput);
-void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs);
+void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi);
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);
 void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader);
 
