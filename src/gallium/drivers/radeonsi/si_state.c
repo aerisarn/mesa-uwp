@@ -902,14 +902,6 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
       return NULL;
    }
 
-   if (!state->front_ccw) {
-      rs->cull_front = !!(state->cull_face & PIPE_FACE_FRONT);
-      rs->cull_back = !!(state->cull_face & PIPE_FACE_BACK);
-   } else {
-      rs->cull_back = !!(state->cull_face & PIPE_FACE_FRONT);
-      rs->cull_front = !!(state->cull_face & PIPE_FACE_BACK);
-   }
-   rs->provoking_vertex_first = state->flatshade_first;
    rs->scissor_enable = state->scissor;
    rs->clip_halfz = state->clip_halfz;
    rs->two_side = state->light_twoside;
@@ -929,9 +921,6 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
    rs->flatshade_first = state->flatshade_first;
    rs->sprite_coord_enable = state->sprite_coord_enable;
    rs->rasterizer_discard = state->rasterizer_discard;
-   rs->polygon_mode_enabled =
-      (state->fill_front != PIPE_POLYGON_MODE_FILL && !(state->cull_face & PIPE_FACE_FRONT)) ||
-      (state->fill_back != PIPE_POLYGON_MODE_FILL && !(state->cull_face & PIPE_FACE_BACK));
    rs->polygon_mode_is_lines =
       (state->fill_front == PIPE_POLYGON_MODE_LINE && !(state->cull_face & PIPE_FACE_FRONT)) ||
       (state->fill_back == PIPE_POLYGON_MODE_LINE && !(state->cull_face & PIPE_FACE_BACK));
@@ -957,12 +946,22 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
       rs->ngg_cull_flags = SI_NGG_CULL_ENABLED;
       rs->ngg_cull_flags_y_inverted = rs->ngg_cull_flags;
 
-      if (rs->cull_front) {
+      bool cull_front, cull_back;
+
+      if (!state->front_ccw) {
+         cull_front = !!(state->cull_face & PIPE_FACE_FRONT);
+         cull_back = !!(state->cull_face & PIPE_FACE_BACK);
+      } else {
+         cull_back = !!(state->cull_face & PIPE_FACE_FRONT);
+         cull_front = !!(state->cull_face & PIPE_FACE_BACK);
+      }
+
+      if (cull_front) {
          rs->ngg_cull_flags |= SI_NGG_CULL_FRONT_FACE;
          rs->ngg_cull_flags_y_inverted |= SI_NGG_CULL_BACK_FACE;
       }
 
-      if (rs->cull_back) {
+      if (cull_back) {
          rs->ngg_cull_flags |= SI_NGG_CULL_BACK_FACE;
          rs->ngg_cull_flags_y_inverted |= SI_NGG_CULL_FRONT_FACE;
       }
@@ -1006,6 +1005,11 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
          S_028A48_ALTERNATE_RBS_PER_TILE(sscreen->info.chip_class >= GFX9));
 
    si_pm4_set_reg(pm4, R_028B7C_PA_SU_POLY_OFFSET_CLAMP, fui(state->offset_clamp));
+
+   bool polygon_mode_enabled =
+      (state->fill_front != PIPE_POLYGON_MODE_FILL && !(state->cull_face & PIPE_FACE_FRONT)) ||
+      (state->fill_back != PIPE_POLYGON_MODE_FILL && !(state->cull_face & PIPE_FACE_BACK));
+
    si_pm4_set_reg(pm4, R_028814_PA_SU_SC_MODE_CNTL,
                   S_028814_PROVOKING_VTX_LAST(!state->flatshade_first) |
                      S_028814_CULL_FRONT((state->cull_face & PIPE_FACE_FRONT) ? 1 : 0) |
@@ -1014,11 +1018,11 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                      S_028814_POLY_OFFSET_FRONT_ENABLE(util_get_offset(state, state->fill_front)) |
                      S_028814_POLY_OFFSET_BACK_ENABLE(util_get_offset(state, state->fill_back)) |
                      S_028814_POLY_OFFSET_PARA_ENABLE(state->offset_point || state->offset_line) |
-                     S_028814_POLY_MODE(rs->polygon_mode_enabled) |
+                     S_028814_POLY_MODE(polygon_mode_enabled) |
                      S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
                      S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)) |
                      /* this must be set if POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set */
-                     S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.chip_class >= GFX10 ? rs->polygon_mode_enabled : 0));
+                     S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.chip_class >= GFX10 ? polygon_mode_enabled : 0));
 
    if (!rs->uses_poly_offset)
       return rs;

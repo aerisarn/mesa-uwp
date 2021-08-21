@@ -96,10 +96,6 @@ struct si_state_rasterizer {
    unsigned rasterizer_discard : 1;
    unsigned scissor_enable : 1;
    unsigned clip_halfz : 1;
-   unsigned cull_front : 1;
-   unsigned cull_back : 1;
-   unsigned provoking_vertex_first : 1;
-   unsigned polygon_mode_enabled : 1;
    unsigned polygon_mode_is_lines : 1;
    unsigned polygon_mode_is_points : 1;
 };
