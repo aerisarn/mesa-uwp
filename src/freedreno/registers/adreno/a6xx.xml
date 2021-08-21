@@ -3275,6 +3275,26 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa9bc" name="SP_CS_INSTRLEN" low="0" high="27" type="uint"/>
 	<reg32 offset="0xa9bd" name="SP_CS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
+	<!-- new in a6xx gen4, matches HLSQ_CS_CNTL_0 -->
+	<reg32 offset="0xa9c2" name="SP_CS_CNTL_0">
+		<bitfield name="WGIDCONSTID" low="0" high="7" type="a3xx_regid"/>
+		<bitfield name="WGSIZECONSTID" low="8" high="15" type="a3xx_regid"/>
+		<bitfield name="WGOFFSETCONSTID" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="LOCALIDREGID" low="24" high="31" type="a3xx_regid"/>
+	</reg32>
+	<!-- new in a6xx gen4, matches HLSQ_CS_CNTL_1 -->
+	<reg32 offset="0xa9c3" name="SP_CS_CNTL_1">
+		<!-- gl_LocalInvocationIndex -->
+		<bitfield name="LINEARLOCALIDREGID" low="0" high="7" type="a3xx_regid"/>
+		<!-- a650 has 6 "SP cores" (but 3 "SP"). this makes it use only
+		     one of those 6 "SP cores" -->
+		<bitfield name="SINGLE_SP_CORE" pos="8" type="boolean"/>
+		<!-- Must match SP_CS_CTRL -->
+		<bitfield name="THREADSIZE" pos="9" type="a6xx_threadsize"/>
+		<!-- 1 thread per wave (ignored if bit9 set) -->
+		<bitfield name="THREADSIZE_SCALAR" pos="10" type="boolean"/>
+	</reg32>
+
 	<!-- TODO: two 64kb aligned addresses at a9d0/a9d2 -->
 
 	<reg64 offset="0xa9e0" name="SP_FS_TEX_SAMP" type="address" align="16"/>
@@ -3573,6 +3593,14 @@ to upconvert to 32b float internally?
 		<!-- 64 alignment, 2 low bits for unknown flags (always 0x3 when enabled?) -->
 		<reg64 offset="0" name="ADDR" type="waddress"/>
 	</array>
+
+	<!-- new in a6xx gen4, mirror of SP_CS_UNKNOWN_A9B1? -->
+	<reg32 offset="0xb9d0" name="HLSQ_CS_UNKNOWN_B9D0">
+		<bitfield name="SHARED_SIZE" low="0" high="4" type="uint"/>
+		<bitfield name="UNK5" pos="5" type="boolean"/>
+		<!-- always 1 ? -->
+		<bitfield name="UNK6" pos="6" type="boolean"/>
+	</reg32>
 
 	<reg32 offset="0xbb00" name="HLSQ_DRAW_CMD">
 		<bitfield name="STATE_ID" low="0" high="7"/>
