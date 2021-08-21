@@ -3344,22 +3344,22 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
        nir_intrinsic_io_semantics(instr).fb_fetch_output)
       return ctx->abi->emit_fbfetch(ctx->abi);
 
-   /* Other non-fragment cases have inputs and outputs in temporaries. */
-   if (ctx->stage != MESA_SHADER_FRAGMENT) {
-      for (unsigned chan = component; chan < count + component; chan++) {
-         if (is_output) {
-            values[chan] = LLVMBuildLoad(ctx->ac.builder, ctx->abi->outputs[base * 4 + chan], "");
-         } else {
-            values[chan] = ctx->abi->inputs[base * 4 + chan];
-            if (!values[chan])
-               values[chan] = LLVMGetUndef(ctx->ac.i32);
-         }
-      }
+   if (ctx->stage == MESA_SHADER_VERTEX && !is_output)
+      return ctx->abi->load_inputs(ctx->abi, base, component, count, 0, component_type);
+
+   /* Other non-fragment cases have outputs in temporaries. */
+   if (is_output && (ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL)) {
+      assert(is_output);
+
+      for (unsigned chan = component; chan < count + component; chan++)
+         values[chan] = LLVMBuildLoad(ctx->ac.builder, ctx->abi->outputs[base * 4 + chan], "");
+
       LLVMValueRef result = ac_build_varying_gather_values(&ctx->ac, values, count, component);
       return LLVMBuildBitCast(ctx->ac.builder, result, dest_type, "");
    }
 
    /* Fragment shader inputs. */
+   assert(ctx->stage == MESA_SHADER_FRAGMENT);
    unsigned vertex_id = 2; /* P0 */
 
    if (instr->intrinsic == nir_intrinsic_load_input_vertex) {

@@ -257,7 +257,6 @@ void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
 void si_llvm_init_resource_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_vs.c */
-void si_llvm_load_vs_inputs(struct si_shader_context *ctx, struct nir_shader *nir);
 void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef const *so_buffers,
                                     LLVMValueRef const *so_write_offsets,
                                     struct pipe_stream_output *stream_out,

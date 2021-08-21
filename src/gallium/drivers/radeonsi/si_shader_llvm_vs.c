@@ -252,18 +252,19 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
       out[i] = ac_to_float(&ctx->ac, fetches[i]);
 }
 
-void si_llvm_load_vs_inputs(struct si_shader_context *ctx, struct nir_shader *nir)
+static LLVMValueRef si_load_vs_input(struct ac_shader_abi *abi, unsigned driver_location,
+                                     unsigned component, unsigned num_components,
+                                     unsigned vertex_index, LLVMTypeRef type)
 {
-   const struct si_shader_info *info = &ctx->shader->selector->info;
+   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+   LLVMValueRef values[4];
 
-   for (unsigned i = 0; i < info->num_inputs; i++) {
-      LLVMValueRef values[4];
+   load_input_vs(ctx, driver_location, values);
 
-      load_input_vs(ctx, i, values);
+   for (unsigned i = 0; i < 4; i++)
+      values[i] = LLVMBuildBitCast(ctx->ac.builder, values[i], type, "");
 
-      for (unsigned chan = 0; chan < 4; chan++)
-         ctx->abi.inputs[i * 4 + chan] = ac_to_integer(&ctx->ac, values[chan]);
-   }
+   return ac_build_varying_gather_values(&ctx->ac, values, num_components, component);
 }
 
 void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef const *so_buffers,
@@ -1130,4 +1131,5 @@ void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shad
       ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
 
    ctx->abi.load_base_vertex = get_base_vertex;
+   ctx->abi.load_inputs = si_load_vs_input;
 }
