@@ -2538,7 +2538,7 @@ to upconvert to 32b float internally?
 
 	<!-- always 0x0 ? -->
 	<reg32 offset="0x9801" name="PC_HS_INPUT_SIZE">
-		<bitfield name="SIZE" low="0" high="10"/>
+		<bitfield name="SIZE" low="0" high="10" type="uint"/>
 		<bitfield name="UNK13" pos="13"/>
 	</reg32>
 
