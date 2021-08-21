@@ -252,9 +252,17 @@ pipe_vertex_buffer_reference(struct pipe_vertex_buffer *dst,
    }
 
    pipe_vertex_buffer_unreference(dst);
-   if (!src->is_user_buffer)
+   /* Don't use memcpy because there is a hole between variables.
+    * dst can be used as a hash key.
+    */
+   dst->stride = src->stride;
+   dst->is_user_buffer = src->is_user_buffer;
+   dst->buffer_offset = src->buffer_offset;
+
+   if (src->is_user_buffer)
+      dst->buffer.user = src->buffer.user;
+   else
       pipe_resource_reference(&dst->buffer.resource, src->buffer.resource);
-   memcpy(dst, src, sizeof(*src));
 }
 
 static inline void
