@@ -117,6 +117,8 @@ struct fd_dev_info {
           */
          bool has_ccu_flush_bug;
 
+         bool has_lpac;
+
          struct {
             uint32_t RB_UNKNOWN_8E04_blit;
             uint32_t PC_POWER_CNTL;
