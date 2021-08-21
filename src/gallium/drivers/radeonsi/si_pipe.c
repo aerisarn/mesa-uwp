@@ -81,6 +81,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"compute", DBG(COMPUTE), "Print compute info"},
    {"vm", DBG(VM), "Print virtual addresses when creating resources"},
    {"cache_stats", DBG(CACHE_STATS), "Print shader cache statistics."},
+   {"ib", DBG(IB), "Print command buffers."},
 
    /* Driver options: */
    {"nowc", DBG(NO_WC), "Disable GTT write combining"},

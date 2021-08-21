@@ -203,6 +203,7 @@ enum
    DBG_COMPUTE,
    DBG_VM,
    DBG_CACHE_STATS,
+   DBG_IB,
 
    /* Driver options: */
    DBG_NO_WC,

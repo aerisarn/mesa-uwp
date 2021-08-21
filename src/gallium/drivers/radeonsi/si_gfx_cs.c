@@ -133,6 +133,9 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
       si_log_hw_flush(ctx);
    }
 
+   if (sscreen->debug_flags & DBG(IB))
+      si_print_current_ib(ctx, stderr);
+
    if (ctx->is_noop)
       flags |= RADEON_FLUSH_NOOP;
 
