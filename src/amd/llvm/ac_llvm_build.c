@@ -4597,6 +4597,22 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
    ac_build_endif(ctx, 5020);
 }
 
+
+LLVMValueRef ac_pack_edgeflags_for_export(struct ac_llvm_context *ctx,
+                                          const struct ac_shader_args *args)
+{
+   /* Use the following trick to extract the edge flags:
+    *   extracted = v_and_b32 gs_invocation_id, 0x700 ; get edge flags at bits 8, 9, 10
+    *   shifted = v_mul_u32_u24 extracted, 0x80402u   ; shift the bits: 8->9, 9->19, 10->29
+    *   result = v_and_b32 shifted, 0x20080200        ; remove garbage
+    */
+   LLVMValueRef tmp = LLVMBuildAnd(ctx->builder,
+                                   ac_get_arg(ctx, args->gs_invocation_id),
+                                   LLVMConstInt(ctx->i32, 0x700, 0), "");
+   tmp = LLVMBuildMul(ctx->builder, tmp, LLVMConstInt(ctx->i32, 0x80402u, 0), "");
+   return LLVMBuildAnd(ctx->builder, tmp, LLVMConstInt(ctx->i32, 0x20080200, 0), "");
+}
+
 LLVMValueRef ac_pack_prim_export(struct ac_llvm_context *ctx, const struct ac_ngg_prim *prim)
 {
    /* The prim export format is:

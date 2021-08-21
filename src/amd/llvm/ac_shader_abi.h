@@ -68,6 +68,8 @@ struct ac_shader_abi {
    /* Varying -> attribute number mapping. Also NIR-only */
    unsigned fs_input_attr_indices[MAX_VARYING];
 
+   void (*export_vertex)(struct ac_shader_abi *abi);
+
    void (*emit_outputs)(struct ac_shader_abi *abi, unsigned max_outputs, LLVMValueRef *addrs);
 
    void (*emit_vertex)(struct ac_shader_abi *abi, unsigned stream, LLVMValueRef *addrs);
