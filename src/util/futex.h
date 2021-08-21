@@ -34,6 +34,10 @@
 #include <sys/syscall.h>
 #include <sys/time.h>
 
+#ifndef SYS_futex
+#define SYS_futex SYS_futex_time64
+#endif
+
 static inline long sys_futex(void *addr1, int op, int val1, const struct timespec *timeout, void *addr2, int val3)
 {
    return syscall(SYS_futex, addr1, op, val1, timeout, addr2, val3);
