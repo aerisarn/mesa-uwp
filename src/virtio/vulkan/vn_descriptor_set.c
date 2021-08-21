@@ -32,6 +32,36 @@ vn_GetDescriptorSetLayoutSupport(
                                            pSupport);
 }
 
+static void
+vn_descriptor_set_layout_init(
+   struct vn_device *dev,
+   const VkDescriptorSetLayoutCreateInfo *create_info,
+   struct vn_descriptor_set_layout *layout)
+{
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   VkDescriptorSetLayout layout_handle =
+      vn_descriptor_set_layout_to_handle(layout);
+
+   for (uint32_t i = 0; i < create_info->bindingCount; i++) {
+      const VkDescriptorSetLayoutBinding *binding_info =
+         &create_info->pBindings[i];
+      struct vn_descriptor_set_layout_binding *binding =
+         &layout->bindings[binding_info->binding];
+
+      switch (binding_info->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         binding->has_immutable_samplers = binding_info->pImmutableSamplers;
+         break;
+      default:
+         break;
+      }
+   }
+
+   vn_async_vkCreateDescriptorSetLayout(dev->instance, dev_handle,
+                                        create_info, NULL, &layout_handle);
+}
+
 VkResult
 vn_CreateDescriptorSetLayout(
    VkDevice device,
@@ -92,30 +122,11 @@ vn_CreateDescriptorSetLayout(
    vn_object_base_init(&layout->base, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
                        &dev->base);
 
-   for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
-      const VkDescriptorSetLayoutBinding *binding =
-         &pCreateInfo->pBindings[i];
-      struct vn_descriptor_set_layout_binding *dst =
-         &layout->bindings[binding->binding];
-
-      switch (binding->descriptorType) {
-      case VK_DESCRIPTOR_TYPE_SAMPLER:
-      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-         dst->has_immutable_samplers = binding->pImmutableSamplers;
-         break;
-      default:
-         break;
-      }
-   }
-
-   VkDescriptorSetLayout layout_handle =
-      vn_descriptor_set_layout_to_handle(layout);
-   vn_async_vkCreateDescriptorSetLayout(dev->instance, device, pCreateInfo,
-                                        NULL, &layout_handle);
+   vn_descriptor_set_layout_init(dev, pCreateInfo, layout);
 
    vk_free(alloc, local_bindings);
 
-   *pSetLayout = layout_handle;
+   *pSetLayout = vn_descriptor_set_layout_to_handle(layout);
 
    return VK_SUCCESS;
 }
