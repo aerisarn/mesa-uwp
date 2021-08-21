@@ -542,6 +542,7 @@ vn_AllocateCommandBuffers(VkDevice device,
             cmd = vn_command_buffer_from_handle(pCommandBuffers[j]);
             vn_cs_encoder_fini(&cmd->cs);
             list_del(&cmd->head);
+            vn_object_base_fini(&cmd->base);
             vk_free(alloc, cmd);
          }
          memset(pCommandBuffers, 0,

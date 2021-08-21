@@ -252,6 +252,7 @@ vn_AllocateDescriptorSets(VkDevice device,
          for (uint32_t j = 0; j < i; j++) {
             set = vn_descriptor_set_from_handle(pDescriptorSets[j]);
             list_del(&set->head);
+            vn_object_base_fini(&set->base);
             vk_free(alloc, set);
          }
          memset(pDescriptorSets, 0,
@@ -276,6 +277,7 @@ vn_AllocateDescriptorSets(VkDevice device,
          struct vn_descriptor_set *set =
             vn_descriptor_set_from_handle(pDescriptorSets[i]);
          list_del(&set->head);
+         vn_object_base_fini(&set->base);
          vk_free(alloc, set);
       }
       memset(pDescriptorSets, 0,

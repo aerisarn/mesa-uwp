@@ -493,6 +493,7 @@ vn_CreateFence(VkDevice device,
    VkResult result = vn_fence_init_payloads(
       dev, fence, pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT, alloc);
    if (result != VK_SUCCESS) {
+      vn_object_base_fini(&fence->base);
       vk_free(alloc, fence);
       return vn_error(dev->instance, result);
    }
@@ -816,6 +817,7 @@ vn_CreateSemaphore(VkDevice device,
 
    VkResult result = vn_semaphore_init_payloads(dev, sem, initial_val, alloc);
    if (result != VK_SUCCESS) {
+      vn_object_base_fini(&sem->base);
       vk_free(alloc, sem);
       return vn_error(dev->instance, result);
    }
