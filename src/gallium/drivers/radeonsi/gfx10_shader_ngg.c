@@ -995,8 +995,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       struct ac_cull_options options = {};
       options.cull_front = shader->key.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE;
       options.cull_back = shader->key.opt.ngg_culling & SI_NGG_CULL_BACK_FACE;
-      options.cull_view_xy = shader->key.opt.ngg_culling & SI_NGG_CULL_VIEW_SMALLPRIMS;
-      options.cull_small_prims = options.cull_view_xy;
+      options.cull_view_xy = true;
+      options.cull_small_prims = true; /* this would only be false with conservative rasterization */
       options.cull_zero_area = options.cull_front || options.cull_back;
       options.cull_w = true;
 
