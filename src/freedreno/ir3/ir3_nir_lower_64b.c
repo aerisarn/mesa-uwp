@@ -214,3 +214,71 @@ ir3_nir_lower_64b_undef(nir_shader *shader)
          shader, lower_64b_undef_filter,
          lower_64b_undef, NULL);
 }
+
+/*
+ * Lowering for load_global/store_global with 64b addresses to ir3
+ * variants, which instead take a uvec2_32
+ */
+
+static bool
+lower_64b_global_filter(const nir_instr *instr, const void *unused)
+{
+   (void)unused;
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   return (intr->intrinsic == nir_intrinsic_load_global) ||
+          (intr->intrinsic == nir_intrinsic_load_global_constant) ||
+          (intr->intrinsic == nir_intrinsic_store_global);
+}
+
+static nir_ssa_def *
+lower_64b_global(nir_builder *b, nir_instr *instr, void *unused)
+{
+   (void)unused;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   bool load = intr->intrinsic != nir_intrinsic_store_global;
+
+   nir_ssa_def *addr64 = nir_ssa_for_src(b, intr->src[load ? 0 : 1], 1);
+   nir_ssa_def *addr = nir_unpack_64_2x32(b, addr64);
+
+   /*
+    * Note that we can get vec8/vec16 with OpenCL.. we need to split
+    * those up into max 4 components per load/store.
+    */
+
+   if (load) {
+      unsigned num_comp = nir_intrinsic_dest_components(intr);
+      nir_ssa_def *components[num_comp];
+      for (unsigned off = 0; off < num_comp;) {
+         unsigned c = MIN2(num_comp - off, 4);
+         nir_ssa_def *val = nir_build_load_global_ir3(
+               b, c, nir_dest_bit_size(intr->dest),
+               addr, nir_imm_int(b, off));
+         for (unsigned i = 0; i < c; i++) {
+            components[off++] = nir_channel(b, val, i);
+         }
+      }
+      return nir_build_alu_src_arr(b, nir_op_vec(num_comp), components);
+   } else {
+      unsigned num_comp = nir_intrinsic_src_components(intr, 0);
+      nir_ssa_def *value = nir_ssa_for_src(b, intr->src[0], num_comp);
+      for (unsigned off = 0; off < num_comp; off += 4) {
+         unsigned c = MIN2(num_comp - off, 4);
+         nir_ssa_def *v = nir_channels(b, value, BITFIELD_MASK(c) << off);
+         nir_build_store_global_ir3(b, v, addr, nir_imm_int(b, off));
+      }
+      return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+   }
+}
+
+bool
+ir3_nir_lower_64b_global(nir_shader *shader)
+{
+   return nir_shader_lower_instructions(
+         shader, lower_64b_global_filter,
+         lower_64b_global, NULL);
+}
