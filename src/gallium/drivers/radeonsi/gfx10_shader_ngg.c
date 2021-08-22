@@ -179,7 +179,12 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
       ngg_get_vertices_per_prim(ctx, &prim.num_vertices);
 
       prim.isnull = ctx->ac.i1false;
-      prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
+
+      if (ctx->stage == MESA_SHADER_VERTEX &&
+          !ctx->shader->selector->info.base.vs.blit_sgprs_amd)
+         prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
+      else
+         prim.edgeflags = ctx->ac.i32_0;
 
       for (unsigned i = 0; i < 3; ++i)
          prim.index[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
@@ -1152,7 +1157,11 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       struct ac_ngg_prim prim = {};
       prim.num_vertices = 3;
       prim.isnull = ctx->ac.i1false;
-      prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
+
+      if (ctx->stage == MESA_SHADER_VERTEX)
+         prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
+      else
+         prim.edgeflags = ctx->ac.i32_0;
 
       for (unsigned vtx = 0; vtx < 3; vtx++) {
          prim.index[vtx] = LLVMBuildLoad(
