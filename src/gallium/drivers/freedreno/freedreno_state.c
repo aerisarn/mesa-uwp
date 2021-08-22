@@ -659,9 +659,11 @@ fd_set_global_binding(struct pipe_context *pctx, unsigned first, unsigned count,
 
          if (so->buf[n]) {
             struct fd_resource *rsc = fd_resource(so->buf[n]);
-            uint64_t iova = fd_bo_get_iova(rsc->bo);
-            // TODO need to scream if iova > 32b or fix gallium API..
-            *handles[i] += iova;
+            uint32_t offset = *handles[i];
+            uint64_t iova = fd_bo_get_iova(rsc->bo) + offset;
+
+            /* Yes, really, despite what the type implies: */
+            memcpy(handles[i], &iova, sizeof(iova));
          }
 
          if (prscs[i])
