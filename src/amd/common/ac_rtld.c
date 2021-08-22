@@ -458,8 +458,12 @@ bool ac_rtld_open(struct ac_rtld_binary *binary, struct ac_rtld_open_info i)
    else if (i.info->chip_class >= GFX10)
       prefetch_distance = 3;
 
-   if (prefetch_distance)
-      binary->rx_size = align(binary->rx_size + prefetch_distance * 64, 64);
+   if (prefetch_distance) {
+      if (i.info->chip_class >= GFX11)
+         binary->rx_size = align(binary->rx_size + prefetch_distance * 64, 128);
+      else
+         binary->rx_size = align(binary->rx_size + prefetch_distance * 64, 64);
+   }
 
    return true;
 
