@@ -94,6 +94,7 @@ libfreedreno_ir3_files = files(
   'ir3_nir.c',
   'ir3_nir.h',
   'ir3_nir_analyze_ubo_ranges.c',
+  'ir3_nir_lower_64b.c',
   'ir3_nir_lower_load_barycentric_at_sample.c',
   'ir3_nir_lower_load_barycentric_at_offset.c',
   'ir3_nir_lower_io_offsets.c',

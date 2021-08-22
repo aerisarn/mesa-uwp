@@ -691,11 +691,6 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
          32 /* bytes */);
    OPT_V(s, ir3_nir_lower_load_constant, so);
 
-   if (!so->binning_pass)
-      OPT_V(s, ir3_nir_analyze_ubo_ranges, so);
-
-   progress |= OPT(s, ir3_nir_lower_ubo_loads, so);
-
    /* Lower large temporaries to scratch, which in Qualcomm terms is private
     * memory, to avoid excess register pressure. This should happen after
     * nir_opt_large_constants, because loading from a UBO is much, much less
@@ -708,6 +703,14 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 
    /* Lower scratch writemasks */
    progress |= OPT(s, nir_lower_wrmasks, should_split_wrmask, s);
+
+   progress |= OPT(s, ir3_nir_lower_64b_intrinsics);
+   progress |= OPT(s, nir_lower_int64);
+
+   if (!so->binning_pass)
+      OPT_V(s, ir3_nir_analyze_ubo_ranges, so);
+
+   progress |= OPT(s, ir3_nir_lower_ubo_loads, so);
 
    OPT_V(s, nir_lower_amul, ir3_glsl_type_size);
 
