@@ -1688,7 +1688,8 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
    bo->name = "aux-map";
    p_atomic_set(&bo->refcount, 1);
    bo->index = -1;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED |
+                EXEC_OBJECT_CAPTURE;
    bo->mmap_mode = local ? IRIS_MMAP_WC : IRIS_MMAP_WB;
 
    buf->driver_bo = bo;
