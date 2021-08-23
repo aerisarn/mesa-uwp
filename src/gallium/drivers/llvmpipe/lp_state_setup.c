@@ -389,12 +389,12 @@ load_attribute(struct gallivm_state *gallivm,
  * which obviously wouldn't work)).
  */
 static void 
-emit_coef4( struct gallivm_state *gallivm,
+calc_coef4( struct gallivm_state *gallivm,
             struct lp_setup_args *args,
-            unsigned slot,
             LLVMValueRef a0,
             LLVMValueRef a1,
-            LLVMValueRef a2)
+            LLVMValueRef a2,
+            LLVMValueRef out[3])
 {
    LLVMBuilderRef b = gallivm->builder;
    LLVMValueRef attr_0;
@@ -426,7 +426,23 @@ emit_coef4( struct gallivm_state *gallivm,
    LLVMValueRef attr_v0    = LLVMBuildFAdd(b, dadx_x0, dady_y0, "attr_v0");
    attr_0                  = LLVMBuildFSub(b, a0, attr_v0, "attr_0");
 
-   store_coef(gallivm, args, slot, attr_0, dadx, dady);
+   out[0] = attr_0;
+   out[1] = dadx;
+   out[2] = dady;
+}
+
+static void
+emit_coef4( struct gallivm_state *gallivm,
+            struct lp_setup_args *args,
+            unsigned slot,
+            LLVMValueRef a0,
+            LLVMValueRef a1,
+            LLVMValueRef a2)
+{
+   LLVMValueRef coeffs[3];
+   calc_coef4(gallivm, args, a0, a1, a2, coeffs);
+   store_coef(gallivm, args, slot,
+              coeffs[0], coeffs[1], coeffs[2]);
 }
 
 
