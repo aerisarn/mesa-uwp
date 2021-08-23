@@ -841,14 +841,13 @@ update_vertex_elements(struct NineDevice9 *device)
     unsigned n, b, i;
     int index;
     char vdecl_index_map[16]; /* vs->num_inputs <= 16 */
-    char used_streams[device->caps.MaxStreams];
+    uint16_t used_streams = 0;
     int dummy_vbo_stream = -1;
     BOOL need_dummy_vbo = FALSE;
     struct cso_velems_state ve;
 
     context->stream_usage_mask = 0;
     memset(vdecl_index_map, -1, 16);
-    memset(used_streams, 0, device->caps.MaxStreams);
     vs = context->programmable_vs ? context->vs : device->ff.vs;
 
     if (vdecl) {
@@ -859,7 +858,7 @@ update_vertex_elements(struct NineDevice9 *device)
             for (i = 0; i < vdecl->nelems; i++) {
                 if (vdecl->usage_map[i] == vs->input_map[n].ndecl) {
                     vdecl_index_map[n] = i;
-                    used_streams[vdecl->elems[i].vertex_buffer_index] = 1;
+                    used_streams |= BITFIELD_BIT(vdecl->elems[i].vertex_buffer_index);
                     break;
                 }
             }
@@ -873,11 +872,9 @@ update_vertex_elements(struct NineDevice9 *device)
     }
 
     if (need_dummy_vbo) {
-        for (i = 0; i < device->caps.MaxStreams; i++ ) {
-            if (!used_streams[i]) {
-                dummy_vbo_stream = i;
+        u_foreach_bit(bit, BITFIELD_MASK(device->caps.MaxStreams) & ~used_streams) {
+                dummy_vbo_stream = bit;
                 break;
-            }
         }
     }
     /* there are less vertex shader inputs than stream slots,
