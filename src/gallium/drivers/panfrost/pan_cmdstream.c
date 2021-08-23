@@ -571,7 +571,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
                                              PAN_DESC_ARRAY(rt_count, BLEND));
 #endif
 
-        mali_ptr blend_shaders[PIPE_MAX_COLOR_BUFS];
+        mali_ptr blend_shaders[PIPE_MAX_COLOR_BUFS] = { 0 };
         unsigned shader_offset = 0;
         struct panfrost_bo *shader_bo = NULL;
 
