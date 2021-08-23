@@ -12,12 +12,6 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fa
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_y,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.overwrite_common.common_blend_func_buffer_blend_func,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.overwrite_common.common_separate_blend_func_buffer_blend_func,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.overwrite_common.common_separate_blend_func_buffer_separate_blend_func,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.overwrite_indexed.common_blend_func_buffer_blend_func,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.overwrite_indexed.common_separate_blend_func_buffer_blend_func,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.overwrite_indexed.common_separate_blend_func_buffer_separate_blend_func,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.0,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.1,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.10,Fail
@@ -34,7 +28,6 @@ dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffe
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.3,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.4,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.5,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.6,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.7,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.8,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.9,Fail
@@ -47,8 +40,6 @@ dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.16,
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.17,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.18,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.2,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.3,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.8,Fail
 dEQP-GLES31.functional.separate_shader.random.23,Fail
 dEQP-GLES31.functional.separate_shader.random.35,Fail
 dEQP-GLES31.functional.separate_shader.random.68,Fail
@@ -62,12 +53,6 @@ dEQP-GLES31.functional.shaders.builtin_functions.integer.findmsb.uvec2_lowp_comp
 dEQP-GLES31.functional.shaders.builtin_functions.integer.findmsb.uvec3_lowp_compute,Fail
 dEQP-GLES31.functional.shaders.builtin_functions.integer.imulextended.ivec3_highp_fragment,Fail
 dEQP-GLES31.functional.shaders.builtin_functions.integer.umulextended.uvec3_highp_fragment,Fail
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ssbo.const_expression_vertex,Fail
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ssbo.const_literal_vertex,Fail
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.const_expression_fragment,Fail
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.const_expression_vertex,Fail
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.const_literal_fragment,Fail
-dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.const_literal_vertex,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.image_alias_overwrite,Crash
 dEQP-GLES31.functional.synchronization.in_invocation.image_atomic_alias_overwrite,Crash
 dEQP-GLES31.functional.synchronization.in_invocation.image_atomic_alias_write,Crash

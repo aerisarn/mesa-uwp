@@ -114,23 +114,25 @@ struct pan_blit_rsd_data {
 static void
 pan_blitter_prepare_midgard_rsd(const struct panfrost_device *dev,
                                 const struct pan_image_view **rts,
-                                mali_ptr *blend_shaders, bool zs,
-                                struct MALI_RENDERER_STATE *rsd)
+                                mali_ptr *blend_shaders, unsigned rt_count,
+                                bool zs, struct MALI_RENDERER_STATE *rsd)
 {
-        mali_ptr blend_shader = blend_shaders ? blend_shaders[0] : 0;
+        mali_ptr blend_shader = blend_shaders ?
+                panfrost_last_nonnull(blend_shaders, rt_count) : 0;
 
         rsd->properties.midgard.work_register_count = 4;
         rsd->properties.midgard.force_early_z = !zs;
         rsd->stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
-        if (!(dev->quirks & MIDGARD_SFBD)) {
-                rsd->sfbd_blend_shader = blend_shader;
+
+        /* Set even on v5 for erratum workaround */
+        rsd->sfbd_blend_shader = blend_shader;
+
+        if (!(dev->quirks & MIDGARD_SFBD))
                 return;
-        }
 
         rsd->stencil_mask_misc.sfbd_write_enable = true;
         rsd->stencil_mask_misc.sfbd_dither_disable = true;
         rsd->multisample_misc.sfbd_blend_shader = !!blend_shader;
-        rsd->sfbd_blend_shader = blend_shader;
         if (rsd->multisample_misc.sfbd_blend_shader)
                 return;
 
@@ -335,8 +337,8 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                         pan_blitter_prepare_bifrost_rsd(dev, zs, ms, &cfg);
                 } else {
                         pan_blitter_prepare_midgard_rsd(dev, rts,
-                                                        blend_shaders, zs,
-                                                        &cfg);
+                                                        blend_shaders,
+                                                        rt_count, zs, &cfg);
                 }
         }
 

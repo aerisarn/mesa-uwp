@@ -64,4 +64,17 @@ void
 pan_pack_color(uint32_t *packed, const union pipe_color_union *color,
                enum pipe_format format, bool dithered);
 
+/* Get the last blend shader, for an erratum workaround on v5 */
+
+static inline uint64_t
+panfrost_last_nonnull(uint64_t *ptrs, unsigned count)
+{
+        for (signed i = ((signed) count - 1); i >= 0; --i) {
+                if (ptrs[i])
+                        return ptrs[i];
+        }
+
+        return 0;
+}
+
 #endif /* PAN_UTIL_H */

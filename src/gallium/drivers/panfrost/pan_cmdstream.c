@@ -361,21 +361,6 @@ pan_merge_empty_fs(struct mali_renderer_state_packed *rsd)
         pan_merge((*rsd), empty_rsd, RENDERER_STATE);
 }
 
-#if PAN_ARCH == 5
-/* Get the last blend shader, for an erratum workaround */
-
-static mali_ptr
-panfrost_last_nonnull(mali_ptr *ptrs, unsigned count)
-{
-        for (signed i = ((signed) count - 1); i >= 0; --i) {
-                if (ptrs[i])
-                        return ptrs[i];
-        }
-
-        return 0;
-}
-#endif
-
 static void
 panfrost_prepare_fs_state(struct panfrost_context *ctx,
                           mali_ptr *blend_shaders,
