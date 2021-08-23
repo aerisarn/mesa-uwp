@@ -829,7 +829,7 @@ struct pipe_blit_info
 
    unsigned mask; /**< bitmask of PIPE_MASK_R/G/B/A/Z/S */
    unsigned filter; /**< PIPE_TEX_FILTER_* */
-
+   bool sample0_only;
    bool scissor_enable;
    struct pipe_scissor_state scissor;
 
