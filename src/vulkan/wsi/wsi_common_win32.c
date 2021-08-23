@@ -301,6 +301,7 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
                         uint32_t num_modifier_lists,
                         const uint32_t *num_modifiers,
                         const uint64_t *const *modifiers,
+                        uint8_t *(alloc_shm)(struct wsi_image *image, unsigned size),
                         struct wsi_image *image)
 {
    const struct wsi_device *wsi = chain->wsi;
@@ -432,7 +433,7 @@ wsi_win32_image_init(VkDevice device_h,
    struct wsi_win32_swapchain *chain = (struct wsi_win32_swapchain *) drv_chain;
 
    VkResult result = wsi_create_native_image(&chain->base, create_info,
-                                             0, NULL, NULL,
+                                             0, NULL, NULL, NULL,
                                              &image->base);
    if (result != VK_SUCCESS)
       return result;

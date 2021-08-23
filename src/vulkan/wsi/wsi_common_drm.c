@@ -107,6 +107,7 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
                         uint32_t num_modifier_lists,
                         const uint32_t *num_modifiers,
                         const uint64_t *const *modifiers,
+                        uint8_t *(alloc_shm)(struct wsi_image *image, unsigned size),
                         struct wsi_image *image)
 {
    const struct wsi_device *wsi = chain->wsi;
@@ -297,6 +298,19 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
    VkMemoryRequirements reqs;
    wsi->GetImageMemoryRequirements(chain->device, image->image, &reqs);
 
+   void *sw_host_ptr = NULL;
+   if (alloc_shm) {
+      VkSubresourceLayout layout;
+
+      wsi->GetImageSubresourceLayout(chain->device, image->image,
+                                     &(VkImageSubresource) {
+                                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                        .mipLevel = 0,
+                                        .arrayLayer = 0,
+                                     }, &layout);
+      sw_host_ptr = (*alloc_shm)(image, layout.size);
+   }
+
    const struct wsi_memory_allocate_info memory_wsi_info = {
       .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA,
       .pNext = NULL,
@@ -313,9 +327,14 @@ wsi_create_native_image(const struct wsi_swapchain *chain,
       .image = image->image,
       .buffer = VK_NULL_HANDLE,
    };
+   const VkImportMemoryHostPointerInfoEXT host_ptr_info = {
+      .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT,
+      .pNext = &memory_dedicated_info,
+      .pHostPointer = sw_host_ptr,
+   };
    const VkMemoryAllocateInfo memory_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .pNext = &memory_dedicated_info,
+      .pNext = sw_host_ptr ? (void *)&host_ptr_info : (void *)&memory_dedicated_info,
       .allocationSize = reqs.size,
       .memoryTypeIndex = select_memory_type(wsi, true, reqs.memoryTypeBits),
    };
