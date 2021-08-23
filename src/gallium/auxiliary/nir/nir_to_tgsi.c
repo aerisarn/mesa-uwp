@@ -360,15 +360,14 @@ ntt_setup_inputs(struct ntt_compile *c)
 
       uint32_t usage_mask = ntt_tgsi_var_usage_mask(var);
 
-      decl = ureg_DECL_fs_input_cyl_centroid_layout(c->ureg,
-                                                    semantic_name,
-                                                    semantic_index,
-                                                    interpolation,
-                                                    0,
-                                                    sample_loc,
-                                                    var->data.driver_location,
-                                                    usage_mask,
-                                                    array_id, array_len);
+      decl = ureg_DECL_fs_input_centroid_layout(c->ureg,
+                                                semantic_name,
+                                                semantic_index,
+                                                interpolation,
+                                                sample_loc,
+                                                var->data.driver_location,
+                                                usage_mask,
+                                                array_id, array_len);
 
       if (semantic_name == TGSI_SEMANTIC_FACE) {
          struct ureg_dst temp = ureg_DECL_temporary(c->ureg);

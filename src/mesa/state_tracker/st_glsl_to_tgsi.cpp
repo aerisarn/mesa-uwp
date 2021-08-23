@@ -6738,10 +6738,10 @@ st_translate_program(
             interp_location = (enum tgsi_interpolate_loc) decl->interp_loc;
          }
 
-         src = ureg_DECL_fs_input_cyl_centroid_layout(ureg,
+         src = ureg_DECL_fs_input_centroid_layout(ureg,
                   (enum tgsi_semantic) inputSemanticName[slot],
                   inputSemanticIndex[slot],
-                  interp_mode, 0, interp_location, slot, tgsi_usage_mask,
+                  interp_mode, interp_location, slot, tgsi_usage_mask,
                   decl->array_id, decl->size);
 
          for (unsigned j = 0; j < decl->size; ++j) {
