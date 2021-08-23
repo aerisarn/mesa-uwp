@@ -7141,8 +7141,15 @@ ast_iteration_statement::hir(exec_list *instructions,
    if (rest_expression != NULL)
       rest_expression->hir(&rest_instructions, state);
 
-   if (body != NULL)
+   if (body != NULL) {
+      if (mode == ast_do_while)
+         state->symbols->push_scope();
+
       body->hir(& stmt->body_instructions, state);
+
+      if (mode == ast_do_while)
+         state->symbols->pop_scope();
+   }
 
    if (rest_expression != NULL)
       stmt->body_instructions.append_list(&rest_instructions);
