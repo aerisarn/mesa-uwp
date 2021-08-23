@@ -1244,12 +1244,14 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         enum pipe_format format = so->base.format;
         assert(prsrc->image.data.bo);
 
-        /* Format to access the stencil portion of a Z32_S8 texture */
+        /* Format to access the stencil/depth portion of a Z32_S8 texture */
         if (format == PIPE_FORMAT_X32_S8X24_UINT) {
                 assert(prsrc->separate_stencil);
                 texture = &prsrc->separate_stencil->base;
                 prsrc = (struct panfrost_resource *)texture;
                 format = texture->format;
+        } else if (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
+                format = PIPE_FORMAT_Z32_FLOAT;
         }
 
         const struct util_format_description *desc = util_format_description(format);
