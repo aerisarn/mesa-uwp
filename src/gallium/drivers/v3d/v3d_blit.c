@@ -182,7 +182,7 @@ v3d_stencil_blit(struct pipe_context *ctx, struct pipe_blit_info *info)
                                   PIPE_MASK_R,
                                   PIPE_TEX_FILTER_NEAREST,
                                   info->scissor_enable ? &info->scissor : NULL,
-                                  info->alpha_blend);
+                                  info->alpha_blend, false);
 
         pipe_surface_reference(&dst_surf, NULL);
         pipe_sampler_view_reference(&src_view, NULL);
