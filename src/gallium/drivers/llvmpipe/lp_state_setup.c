@@ -201,7 +201,7 @@ lp_twoside(struct gallivm_state *gallivm,
 
 }
 
-static void
+static LLVMValueRef
 lp_do_offset_tri(struct gallivm_state *gallivm,
                  struct lp_setup_args *args,
                  const struct lp_setup_variant_key *key,
@@ -215,9 +215,7 @@ lp_do_offset_tri(struct gallivm_state *gallivm,
    struct lp_build_context int_scalar_bld;
    struct lp_build_context *bld = &args->bld;
    LLVMValueRef zoffset, mult;
-   LLVMValueRef z0_new, z1_new, z2_new;
    LLVMValueRef dzdxdzdy, dzdx, dzdy, dzxyz20, dyzzx01, dyzzx01_dzxyz20, dzx01_dyz20;
-   LLVMValueRef z0z1, z0z1z2;
    LLVMValueRef max, max_value, res12;
    LLVMValueRef shuffles[4];
    LLVMTypeRef shuf_type = LLVMInt32TypeInContext(gallivm->context);
@@ -323,29 +321,7 @@ lp_do_offset_tri(struct gallivm_state *gallivm,
                              zoffset);
    }
 
-   /* yuck */
-   shuffles[0] = twoi;
-   shuffles[1] = lp_build_const_int32(gallivm, 6);
-   shuffles[2] = LLVMGetUndef(shuf_type);
-   shuffles[3] = LLVMGetUndef(shuf_type);
-   z0z1 = LLVMBuildShuffleVector(b, attribv[0], attribv[1], LLVMConstVector(shuffles, 4), "");
-   shuffles[0] = zeroi;
-   shuffles[1] = onei;
-   shuffles[2] = lp_build_const_int32(gallivm, 6);
-   shuffles[3] = LLVMGetUndef(shuf_type);
-   z0z1z2 = LLVMBuildShuffleVector(b, z0z1, attribv[2], LLVMConstVector(shuffles, 4), "");
-   zoffset = lp_build_broadcast_scalar(bld, zoffset);
-
-   z0z1z2 = LLVMBuildFAdd(b, z0z1z2, zoffset, "");
-
-   /* insert into args->a0.z, a1.z, a2.z:
-    */
-   z0_new = LLVMBuildExtractElement(b, z0z1z2, zeroi, "");
-   z1_new = LLVMBuildExtractElement(b, z0z1z2, onei, "");
-   z2_new = LLVMBuildExtractElement(b, z0z1z2, twoi, "");
-   attribv[0] = LLVMBuildInsertElement(b, attribv[0], z0_new, twoi, "");
-   attribv[1] = LLVMBuildInsertElement(b, attribv[1], z1_new, twoi, "");
-   attribv[2] = LLVMBuildInsertElement(b, attribv[2], z2_new, twoi, "");
+   return zoffset;
 }
 
 static void
@@ -653,6 +629,7 @@ init_args(struct gallivm_state *gallivm,
    LLVMValueRef e, f, ef, ooa;
    LLVMValueRef shuffles[4], shuf10;
    LLVMValueRef attr_pos[3];
+   LLVMValueRef polygon_offset;
    struct lp_type typef4 = lp_type_float_vec(32, 128);
    struct lp_build_context bld;
 
@@ -693,7 +670,9 @@ init_args(struct gallivm_state *gallivm,
 
    /* tri offset calc shares a lot of arithmetic, do it here */
    if (key->pgon_offset_scale != 0.0f || key->pgon_offset_units != 0.0f) {
-      lp_do_offset_tri(gallivm, args, key, ooa, dxy01, dxy20, attr_pos);
+      polygon_offset = lp_do_offset_tri(gallivm, args, key, ooa, dxy01, dxy20, attr_pos);
+   } else {
+      polygon_offset = lp_build_const_float(gallivm, 0.0f);
    }
 
    dxy20 = LLVMBuildFMul(b, dxy20, ooa, "");
@@ -708,7 +687,22 @@ init_args(struct gallivm_state *gallivm,
    args->x0_center = lp_build_extract_broadcast(gallivm, typef4, typef4, xy0_center, zeroi);
    args->y0_center = lp_build_extract_broadcast(gallivm, typef4, typef4, xy0_center, onei);
 
-   emit_linear_coef(gallivm, args, 0, attr_pos);
+   LLVMValueRef coeffs[3];
+   calc_coef4(gallivm, args,
+              attr_pos[0], attr_pos[1], attr_pos[2],
+              coeffs);
+
+   /* This is a bit sneaky:
+    * Because we observe that the X component of A0 is otherwise unused,
+    * we can overwrite it with the computed polygon-offset value, to make
+    * sure it's available in the fragment shader without having to change
+    * the interface (which is error-prone).
+    */
+   coeffs[0] = LLVMBuildInsertElement(b, coeffs[0], polygon_offset,
+                                      lp_build_const_int32(gallivm, 0), "");
+
+   store_coef(gallivm, args, 0,
+              coeffs[0], coeffs[1], coeffs[2]);
 }
 
 /**

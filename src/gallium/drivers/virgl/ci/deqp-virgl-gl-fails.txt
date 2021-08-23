@@ -3,7 +3,6 @@ dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
-dEQP-GLES2.functional.polygon_offset.default_displacement_with_units,Fail
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 dEQP-GLES3.functional.clipping.point.wide_point_clip,Fail
@@ -19,9 +18,6 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
-dEQP-GLES3.functional.polygon_offset.default_displacement_with_units,Fail
-dEQP-GLES3.functional.polygon_offset.fixed24_displacement_with_units,Fail
-dEQP-GLES3.functional.polygon_offset.float32_displacement_with_units,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_required_draw_buffers.4,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.8,Fail
 dEQP-GLES31.functional.image_load_store.buffer.image_size.writeonly_12,Fail

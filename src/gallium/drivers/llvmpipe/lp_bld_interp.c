@@ -413,15 +413,25 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
                break;
             }
 
-            if ((attrib == 0) && (chan == 2) && !bld->depth_clamp){
-               /* OpenGL requires clamping z to 0..1 range after polgon offset
-                * is applied if depth-clamping isn't enabled.
-                *
-                * This also fixes the problem that depth values can exceed 1.0,
-                * due to imprecision in the calculations.
-                */
-               a = lp_build_clamp(coeff_bld, a, coeff_bld->zero, coeff_bld->one);
+            if ((attrib == 0) && (chan == 2)) {
+               /* add polygon-offset value, stored in the X component of a0 */
+               LLVMValueRef offset =
+                  lp_build_extract_broadcast(gallivm, setup_bld->type,
+                                             coeff_bld->type, bld->a0aos[0],
+                                             lp_build_const_int32(gallivm, 0));
+               a = LLVMBuildFAdd(builder, a, offset, "");
+
+               if (!bld->depth_clamp){
+                  /* OpenGL requires clamping z to 0..1 range after polgon offset
+                  * is applied if depth-clamping isn't enabled.
+                  *
+                  * This also fixes the problem that depth values can exceed 1.0,
+                  * due to imprecision in the calculations.
+                  */
+                  a = lp_build_clamp(coeff_bld, a, coeff_bld->zero, coeff_bld->one);
+               }
             }
+
             bld->attribs[attrib][chan] = a;
          }
       }
