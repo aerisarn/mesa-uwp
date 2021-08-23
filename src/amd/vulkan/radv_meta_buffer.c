@@ -333,7 +333,7 @@ radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
    return flush_bits;
 }
 
-static void
+void
 radv_copy_buffer(struct radv_cmd_buffer *cmd_buffer, struct radeon_winsys_bo *src_bo,
                  struct radeon_winsys_bo *dst_bo, uint64_t src_offset, uint64_t dst_offset,
                  uint64_t size)
