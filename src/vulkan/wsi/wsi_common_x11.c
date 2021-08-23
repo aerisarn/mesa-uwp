@@ -26,6 +26,7 @@
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
 #include <xcb/present.h>
+#include <xcb/shm.h>
 
 #include "util/macros.h"
 #include <stdlib.h>
@@ -47,12 +48,18 @@
 #include "wsi_common_x11.h"
 #include "wsi_common_queue.h"
 
+#ifdef HAVE_SYS_SHM_H
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#endif
+
 struct wsi_x11_connection {
    bool has_dri3;
    bool has_dri3_modifiers;
    bool has_present;
    bool is_proprietary_x11;
    bool is_xwayland;
+   bool has_mit_shm;
 };
 
 struct wsi_x11 {
@@ -166,8 +173,8 @@ static struct wsi_x11_connection *
 wsi_x11_connection_create(struct wsi_device *wsi_dev,
                           xcb_connection_t *conn)
 {
-   xcb_query_extension_cookie_t dri3_cookie, pres_cookie, randr_cookie, amd_cookie, nv_cookie;
-   xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply, *amd_reply, *nv_reply;
+   xcb_query_extension_cookie_t dri3_cookie, pres_cookie, randr_cookie, amd_cookie, nv_cookie, shm_cookie;
+   xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply, *amd_reply, *nv_reply, *shm_reply = NULL;
    bool has_dri3_v1_2 = false;
    bool has_present_v1_2 = false;
 
@@ -180,6 +187,9 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    dri3_cookie = xcb_query_extension(conn, 4, "DRI3");
    pres_cookie = xcb_query_extension(conn, 7, "Present");
    randr_cookie = xcb_query_extension(conn, 5, "RANDR");
+
+   if (wsi_dev->sw)
+      shm_cookie = xcb_query_extension(conn, 7, "MIT-SHM");
 
    /* We try to be nice to users and emit a warning if they try to use a
     * Vulkan application on a system without DRI3 enabled.  However, this ends
@@ -198,12 +208,16 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    randr_reply = xcb_query_extension_reply(conn, randr_cookie, NULL);
    amd_reply = xcb_query_extension_reply(conn, amd_cookie, NULL);
    nv_reply = xcb_query_extension_reply(conn, nv_cookie, NULL);
+   if (wsi_dev->sw)
+      shm_reply = xcb_query_extension_reply(conn, shm_cookie, NULL);
    if (!dri3_reply || !pres_reply) {
       free(dri3_reply);
       free(pres_reply);
       free(randr_reply);
       free(amd_reply);
       free(nv_reply);
+      if (wsi_dev->sw)
+         free(shm_reply);
       vk_free(&wsi_dev->instance_alloc, wsi_conn);
       return NULL;
    }
@@ -247,6 +261,32 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
       wsi_conn->is_proprietary_x11 = true;
    if (nv_reply && nv_reply->present)
       wsi_conn->is_proprietary_x11 = true;
+
+   wsi_conn->has_mit_shm = false;
+   if (wsi_conn->has_dri3 && wsi_conn->has_present && wsi_dev->sw) {
+      bool has_mit_shm = shm_reply->present != 0;
+
+      xcb_shm_query_version_cookie_t ver_cookie;
+      xcb_shm_query_version_reply_t *ver_reply;
+
+      ver_cookie = xcb_shm_query_version(conn);
+      ver_reply = xcb_shm_query_version_reply(conn, ver_cookie, NULL);
+
+      has_mit_shm = ver_reply->shared_pixmaps;
+      free(ver_reply);
+      xcb_void_cookie_t cookie;
+      xcb_generic_error_t *error;
+
+      if (has_mit_shm) {
+         cookie = xcb_shm_detach_checked(conn, 0);
+         if ((error = xcb_request_check(conn, cookie))) {
+            if (error->error_code != BadRequest)
+               wsi_conn->has_mit_shm = true;
+            free(error);
+         }
+      }
+      free(shm_reply);
+   }
 
    free(dri3_reply);
    free(pres_reply);
@@ -799,6 +839,7 @@ struct x11_swapchain {
    struct wsi_swapchain                        base;
 
    bool                                         has_dri3_modifiers;
+   bool                                         has_mit_shm;
 
    xcb_connection_t *                           conn;
    xcb_window_t                                 window;
@@ -1632,6 +1673,7 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->has_present_queue = false;
    chain->status = VK_SUCCESS;
    chain->has_dri3_modifiers = wsi_conn->has_dri3_modifiers;
+   chain->has_mit_shm = wsi_conn->has_mit_shm;
 
    if (chain->extent.width != cur_width || chain->extent.height != cur_height)
        chain->status = VK_SUBOPTIMAL_KHR;

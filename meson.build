@@ -1963,7 +1963,6 @@ if with_platform_x11
     dep_xext = dependency('xext')
     dep_xfixes = dependency('xfixes', version : '>= 2.0')
     dep_xcb_glx = dependency('xcb-glx', version : '>= 1.8.1')
-    dep_xcb_shm = dependency('xcb-shm')
   endif
   if (with_any_vk or with_glx == 'dri' or with_egl or
        (with_gallium_vdpau or with_gallium_xvmc or with_gallium_va or
@@ -1986,6 +1985,7 @@ if with_platform_x11
           dep_xcb_present.version().version_compare('>= 1.13'))
         pre_args += '-DHAVE_DRI3_MODIFIERS'
       endif
+      dep_xcb_shm = dependency('xcb-shm')
       dep_xcb_sync = dependency('xcb-sync')
       dep_xshmfence = dependency('xshmfence', version : '>= 1.1')
     endif
