@@ -2169,6 +2169,7 @@ panfrost_emit_varying_descs(
         }
 }
 
+#if PAN_ARCH <= 5
 static void
 pan_emit_special_input(struct mali_attribute_buffer_packed *out,
                 unsigned present,
@@ -2184,6 +2185,7 @@ pan_emit_special_input(struct mali_attribute_buffer_packed *out,
                 }
         }
 }
+#endif
 
 static void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
@@ -2279,12 +2281,14 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                 2, vertex_count);
         }
 
+#if PAN_ARCH <= 5
         pan_emit_special_input(varyings, present,
                         PAN_VARY_PNTCOORD, MALI_ATTRIBUTE_SPECIAL_POINT_COORD);
         pan_emit_special_input(varyings, present, PAN_VARY_FACE,
                         MALI_ATTRIBUTE_SPECIAL_FRONT_FACING);
         pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD,
                         MALI_ATTRIBUTE_SPECIAL_FRAG_COORD);
+#endif
 
         *buffers = T.gpu;
         *vs_attribs = linkage->producer;
