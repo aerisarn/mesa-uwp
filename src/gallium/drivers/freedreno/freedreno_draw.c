@@ -289,7 +289,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (info->index_size) {
       if (info->has_user_indices) {
          if (num_draws > 1) {
-				util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
+            util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
             return;
          }
          if (!util_upload_index_buffer(pctx, info, &draws[0], &indexbuf,
@@ -305,7 +305,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    if ((ctx->streamout.num_targets > 0) && (num_draws > 1)) {
-		util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
+      util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
