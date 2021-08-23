@@ -623,7 +623,7 @@ setup_tri_coefficients(struct setup_context *setup)
             tri_apply_cylindrical_wrap(setup->vmin[vertSlot][j],
                                        setup->vmid[vertSlot][j],
                                        setup->vmax[vertSlot][j],
-                                       fsInfo->input_cylindrical_wrap[fragSlot] & (1 << j),
+                                       0,
                                        v);
             tri_linear_coeff(setup, &setup->coef[fragSlot], j, v);
          }
@@ -633,7 +633,7 @@ setup_tri_coefficients(struct setup_context *setup)
             tri_apply_cylindrical_wrap(setup->vmin[vertSlot][j],
                                        setup->vmid[vertSlot][j],
                                        setup->vmax[vertSlot][j],
-                                       fsInfo->input_cylindrical_wrap[fragSlot] & (1 << j),
+                                       0,
                                        v);
             tri_persp_coeff(setup, &setup->coef[fragSlot], j, v);
          }
@@ -1008,7 +1008,7 @@ setup_line_coefficients(struct setup_context *setup,
          for (j = 0; j < TGSI_NUM_CHANNELS; j++) {
             line_apply_cylindrical_wrap(setup->vmin[vertSlot][j],
                                         setup->vmax[vertSlot][j],
-                                        fsInfo->input_cylindrical_wrap[fragSlot] & (1 << j),
+                                        0,
                                         v);
             line_linear_coeff(setup, &setup->coef[fragSlot], j, v);
          }
@@ -1017,7 +1017,7 @@ setup_line_coefficients(struct setup_context *setup,
          for (j = 0; j < TGSI_NUM_CHANNELS; j++) {
             line_apply_cylindrical_wrap(setup->vmin[vertSlot][j],
                                         setup->vmax[vertSlot][j],
-                                        fsInfo->input_cylindrical_wrap[fragSlot] & (1 << j),
+                                        0,
                                         v);
             line_persp_coeff(setup, &setup->coef[fragSlot], j, v);
          }
