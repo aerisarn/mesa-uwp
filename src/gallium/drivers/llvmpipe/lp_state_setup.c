@@ -472,82 +472,6 @@ apply_perspective_corr( struct gallivm_state *gallivm,
 
 
 /**
- * Apply cylindrical wrapping to vertex attributes if enabled.
- * Input coordinates must be in [0, 1] range, otherwise results are undefined.
- *
- * @param cyl_wrap  TGSI_CYLINDRICAL_WRAP_x flags
- */
-static void
-emit_apply_cyl_wrap(struct gallivm_state *gallivm,
-                    struct lp_setup_args *args,
-                    uint cyl_wrap,
-                    LLVMValueRef attribv[3])
-
-{
-   LLVMBuilderRef builder = gallivm->builder;
-   struct lp_type type = args->bld.type;
-   LLVMTypeRef float_vec_type = args->bld.vec_type;
-   LLVMValueRef pos_half;
-   LLVMValueRef neg_half;
-   LLVMValueRef cyl_mask;
-   LLVMValueRef offset;
-   LLVMValueRef delta;
-   LLVMValueRef one;
-
-   if (!cyl_wrap)
-      return;
-
-   /* Constants */
-   pos_half = lp_build_const_vec(gallivm, type, +0.5f);
-   neg_half = lp_build_const_vec(gallivm, type, -0.5f);
-   cyl_mask = lp_build_const_mask_aos(gallivm, type, cyl_wrap, 4);
-
-   one = lp_build_const_vec(gallivm, type, 1.0f);
-   one = LLVMBuildBitCast(builder, one, lp_build_int_vec_type(gallivm, type), "");
-   one = LLVMBuildAnd(builder, one, cyl_mask, "");
-
-   /* Edge v0 -> v1 */
-   delta = LLVMBuildFSub(builder, attribv[1], attribv[0], "");
-
-   offset     = lp_build_compare(gallivm, type, PIPE_FUNC_GREATER, delta, pos_half);
-   offset     = LLVMBuildAnd(builder, offset, one, "");
-   offset     = LLVMBuildBitCast(builder, offset, float_vec_type, "");
-   attribv[0] = LLVMBuildFAdd(builder, attribv[0], offset, "");
-
-   offset     = lp_build_compare(gallivm, type, PIPE_FUNC_LESS, delta, neg_half);
-   offset     = LLVMBuildAnd(builder, offset, one, "");
-   offset     = LLVMBuildBitCast(builder, offset, float_vec_type, "");
-   attribv[1] = LLVMBuildFAdd(builder, attribv[1], offset, "");
-
-   /* Edge v1 -> v2 */
-   delta = LLVMBuildFSub(builder, attribv[2], attribv[1], "");
-
-   offset     = lp_build_compare(gallivm, type, PIPE_FUNC_GREATER, delta, pos_half);
-   offset     = LLVMBuildAnd(builder, offset, one, "");
-   offset     = LLVMBuildBitCast(builder, offset, float_vec_type, "");
-   attribv[1] = LLVMBuildFAdd(builder, attribv[1], offset, "");
-
-   offset     = lp_build_compare(gallivm, type, PIPE_FUNC_LESS, delta, neg_half);
-   offset     = LLVMBuildAnd(builder, offset, one, "");
-   offset     = LLVMBuildBitCast(builder, offset, float_vec_type, "");
-   attribv[2] = LLVMBuildFAdd(builder, attribv[2], offset, "");
-
-   /* Edge v2 -> v0 */
-   delta = LLVMBuildFSub(builder, attribv[0], attribv[2], "");
-
-   offset     = lp_build_compare(gallivm, type, PIPE_FUNC_GREATER, delta, pos_half);
-   offset     = LLVMBuildAnd(builder, offset, one, "");
-   offset     = LLVMBuildBitCast(builder, offset, float_vec_type, "");
-   attribv[2] = LLVMBuildFAdd(builder, attribv[2], offset, "");
-
-   offset     = lp_build_compare(gallivm, type, PIPE_FUNC_LESS, delta, neg_half);
-   offset     = LLVMBuildAnd(builder, offset, one, "");
-   offset     = LLVMBuildBitCast(builder, offset, float_vec_type, "");
-   attribv[0] = LLVMBuildFAdd(builder, attribv[0], offset, "");
-}
-
-
-/**
  * Compute the inputs-> dadx, dady, a0 values.
  */
 static void 
@@ -575,13 +499,11 @@ emit_tri_coef( struct gallivm_state *gallivm,
 
       case LP_INTERP_LINEAR:
          load_attribute(gallivm, args, key, key->inputs[slot].src_index, attribs);
-         emit_apply_cyl_wrap(gallivm, args, key->inputs[slot].cyl_wrap, attribs);
          emit_linear_coef(gallivm, args, slot+1, attribs);
          break;
 
       case LP_INTERP_PERSPECTIVE:
          load_attribute(gallivm, args, key, key->inputs[slot].src_index, attribs);
-         emit_apply_cyl_wrap(gallivm, args, key->inputs[slot].cyl_wrap, attribs);
          apply_perspective_corr(gallivm, args, slot+1, attribs);
          emit_linear_coef(gallivm, args, slot+1, attribs);
          break;
