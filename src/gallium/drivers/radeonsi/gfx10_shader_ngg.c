@@ -153,7 +153,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
          if (prim_passthrough)
             prim.passthrough = prim_passthrough;
          else
-            prim.passthrough = ac_get_arg(&ctx->ac, ctx->gs_vtx01_offset);
+            prim.passthrough = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[0]);
 
          /* This is only used with NGG culling, which returns the NGG
           * passthrough prim export encoding.
@@ -190,9 +190,8 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
       ngg_get_vertices_per_prim(ctx, &prim.num_vertices);
 
       prim.isnull = ctx->ac.i1false;
-      prim.index[0] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16);
-      prim.index[1] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16);
-      prim.index[2] = si_unpack_param(ctx, ctx->gs_vtx23_offset, 0, 16);
+      for (unsigned i = 0; i < 3; ++i)
+         prim.index[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
 
       for (unsigned i = 0; i < prim.num_vertices; ++i) {
          prim.edgeflag[i] = ngg_get_initial_edgeflag(ctx, i);
@@ -908,13 +907,11 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
       /* For the GS fast launch, the VS prolog simply puts the Vertex IDs
        * into these VGPRs.
        */
-      vtxindex[0] = ac_get_arg(&ctx->ac, ctx->gs_vtx01_offset);
-      vtxindex[1] = ac_get_arg(&ctx->ac, ctx->gs_vtx23_offset);
-      vtxindex[2] = ac_get_arg(&ctx->ac, ctx->gs_vtx45_offset);
+      for (unsigned i = 0; i < 3; ++i)
+         vtxindex[i] = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[i]);
    } else {
-      vtxindex[0] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16);
-      vtxindex[1] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16);
-      vtxindex[2] = si_unpack_param(ctx, ctx->gs_vtx23_offset, 0, 16);
+      for (unsigned i = 0; i < 3; ++i)
+         vtxindex[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
    };
    LLVMValueRef gs_vtxptr[] = {
       ngg_nogs_vertex_ptr(ctx, vtxindex[0]),
@@ -1237,11 +1234,11 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
 
    val = LLVMBuildLoad(builder, new_vgpr0, "");
    ret = LLVMBuildInsertValue(builder, ret, ac_to_float(&ctx->ac, val), vgpr++, "");
-   vgpr++; /* gs_vtx23_offset */
+   vgpr++; /* gs_vtx_offset[1] = offsets of vertices 2-3  */
 
    ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_prim_id, vgpr++);
    ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_invocation_id, vgpr++);
-   vgpr++; /* gs_vtx45_offset */
+   vgpr++; /* gs_vtx_offset[2] = offsets of vertices 4-5 */
 
    /* Set the input VPGRs to the corresponding LDS addresses where the VGPR values are
     * stored. The VS prolog will load them.
@@ -1340,13 +1337,11 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
    LLVMValueRef vtxindex[3];
 
    if (ctx->shader->key.opt.ngg_culling) {
-      vtxindex[0] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 9);
-      vtxindex[1] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 10, 9);
-      vtxindex[2] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 20, 9);
+      for (unsigned i = 0; i < 3; ++i)
+         vtxindex[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[0], 10 * i, 9);
    } else {
-      vtxindex[0] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 0, 16);
-      vtxindex[1] = si_unpack_param(ctx, ctx->gs_vtx01_offset, 16, 16);
-      vtxindex[2] = si_unpack_param(ctx, ctx->gs_vtx23_offset, 0, 16);
+      for (unsigned i = 0; i < 3; ++i)
+         vtxindex[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
    }
 
    /* Determine the number of vertices per primitive. */

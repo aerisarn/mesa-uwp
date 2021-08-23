@@ -134,10 +134,6 @@ struct si_shader_context {
 
    /* API TES */
    struct ac_arg tes_offchip_addr;
-   /* API GS */
-   struct ac_arg gs_vtx01_offset;  /* in dwords (GFX9) */
-   struct ac_arg gs_vtx23_offset;  /* in dwords (GFX9) */
-   struct ac_arg gs_vtx45_offset;  /* in dwords (GFX9) */
    /* PS */
    struct ac_arg pos_fixed_pt;
    /* CS */

@@ -57,21 +57,8 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
    /* GFX9 has the ESGS ring in LDS. */
    if (ctx->screen->info.chip_class >= GFX9) {
       unsigned index = vtx_offset_param;
-
-      switch (index / 2) {
-      case 0:
-         vtx_offset = si_unpack_param(ctx, ctx->gs_vtx01_offset, index % 2 ? 16 : 0, 16);
-         break;
-      case 1:
-         vtx_offset = si_unpack_param(ctx, ctx->gs_vtx23_offset, index % 2 ? 16 : 0, 16);
-         break;
-      case 2:
-         vtx_offset = si_unpack_param(ctx, ctx->gs_vtx45_offset, index % 2 ? 16 : 0, 16);
-         break;
-      default:
-         assert(0);
-         return NULL;
-      }
+      vtx_offset =
+         si_unpack_param(ctx, ctx->args.gs_vtx_offset[index / 2], (index & 1) * 16, 16);
 
       unsigned offset = param * 4 + swizzle;
       vtx_offset =
@@ -137,11 +124,11 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 
    unsigned vgpr = 8 + SI_NUM_VS_STATE_RESOURCE_SGPRS;
 
-   ret = si_insert_input_ret_float(ctx, ret, ctx->gs_vtx01_offset, vgpr++);
-   ret = si_insert_input_ret_float(ctx, ret, ctx->gs_vtx23_offset, vgpr++);
+   ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_vtx_offset[0], vgpr++);
+   ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_vtx_offset[1], vgpr++);
    ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_prim_id, vgpr++);
    ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_invocation_id, vgpr++);
-   ret = si_insert_input_ret_float(ctx, ret, ctx->gs_vtx45_offset, vgpr++);
+   ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_vtx_offset[2], vgpr++);
    ctx->return_value = ret;
 }
 
