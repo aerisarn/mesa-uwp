@@ -589,6 +589,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    LLVMValueRef stencil_refs[2];
    LLVMValueRef outputs[PIPE_MAX_SHADER_OUTPUTS][TGSI_NUM_CHANNELS];
    LLVMValueRef zs_samples = lp_build_const_int32(gallivm, key->zsbuf_nr_samples);
+   LLVMValueRef z_out = NULL, s_out = NULL;
    struct lp_build_for_loop_state loop_state, sample_loop_state = {0};
    struct lp_build_mask_context mask;
    /*
@@ -699,6 +700,17 @@ generate_fs_loop(struct gallivm_state *gallivm,
                                                                       type),
                                                     color_store_size, "color1");
       }
+   }
+   if (shader->info.base.writes_z) {
+      z_out = lp_build_array_alloca(gallivm,
+                                    lp_build_vec_type(gallivm, type),
+                                    color_store_size, "depth");
+   }
+
+   if (shader->info.base.writes_stencil) {
+      s_out = lp_build_array_alloca(gallivm,
+                                    lp_build_vec_type(gallivm, type),
+                                    color_store_size, "depth");
    }
 
    lp_build_for_loop_begin(&loop_state, gallivm,
@@ -1049,6 +1061,33 @@ generate_fs_loop(struct gallivm_state *gallivm,
       LLVMBuildStore(builder, output_smask, out_sample_mask_storage);
    }
 
+   if (shader->info.base.writes_z) {
+      int pos0 = find_output_by_semantic(&shader->info.base,
+                                         TGSI_SEMANTIC_POSITION,
+                                         0);
+      LLVMValueRef out = LLVMBuildLoad(builder, outputs[pos0][2], "");
+      LLVMValueRef idx = loop_state.counter;
+      if (key->min_samples > 1)
+         idx = LLVMBuildAdd(builder, idx,
+                            LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
+      LLVMValueRef ptr = LLVMBuildGEP(builder, z_out, &idx, 1, "");
+      LLVMBuildStore(builder, out, ptr);
+   }
+
+   if (shader->info.base.writes_stencil) {
+      int sten_out = find_output_by_semantic(&shader->info.base,
+                                             TGSI_SEMANTIC_STENCIL,
+                                             0);
+      LLVMValueRef out = LLVMBuildLoad(builder, outputs[sten_out][1], "output.s");
+      LLVMValueRef idx = loop_state.counter;
+      if (key->min_samples > 1)
+         idx = LLVMBuildAdd(builder, idx,
+                            LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
+      LLVMValueRef ptr = LLVMBuildGEP(builder, s_out, &idx, 1, "");
+      LLVMBuildStore(builder, out, ptr);
+   }
+
+
    /* Color write - per fragment sample */
    for (attrib = 0; attrib < shader->info.base.num_outputs; ++attrib)
    {
@@ -1119,14 +1158,13 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    /* Late Z test */
    if (depth_mode & LATE_DEPTH_TEST) {
-      int pos0 = find_output_by_semantic(&shader->info.base,
-                                         TGSI_SEMANTIC_POSITION,
-                                         0);
-      int s_out = find_output_by_semantic(&shader->info.base,
-                                          TGSI_SEMANTIC_STENCIL,
-                                          0);
-      if (pos0 != -1 && outputs[pos0][2]) {
-         z = LLVMBuildLoad(builder, outputs[pos0][2], "output.z");
+      if (shader->info.base.writes_z) {
+         LLVMValueRef idx = loop_state.counter;
+         if (key->min_samples > 1)
+            idx = LLVMBuildAdd(builder, idx,
+                               LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
+         LLVMValueRef ptr = LLVMBuildGEP(builder, z_out, &idx, 1, "");
+         z = LLVMBuildLoad(builder, ptr, "output.z");
       } else {
          if (key->multisample) {
             lp_build_interp_soa_update_pos_dyn(interp, gallivm, loop_state.counter, key->multisample ? sample_loop_state.counter : NULL);
@@ -1148,10 +1186,15 @@ generate_fs_loop(struct gallivm_state *gallivm,
                             lp_build_const_vec(gallivm, type, 1.0));
       }
 
-      if (s_out != -1 && outputs[s_out][1]) {
+      if (shader->info.base.writes_stencil) {
+         LLVMValueRef idx = loop_state.counter;
+         if (key->min_samples > 1)
+            idx = LLVMBuildAdd(builder, idx,
+                               LLVMBuildMul(builder, sample_loop_state.counter, num_loop, ""), "");
+         LLVMValueRef ptr = LLVMBuildGEP(builder, s_out, &idx, 1, "");
+         stencil_refs[0] = LLVMBuildLoad(builder, ptr, "output.s");
          /* there's only one value, and spec says to discard additional bits */
          LLVMValueRef s_max_mask = lp_build_const_int_vec(gallivm, int_type, 255);
-         stencil_refs[0] = LLVMBuildLoad(builder, outputs[s_out][1], "output.s");
          stencil_refs[0] = LLVMBuildBitCast(builder, stencil_refs[0], int_vec_type, "");
          stencil_refs[0] = LLVMBuildAnd(builder, stencil_refs[0], s_max_mask, "");
          stencil_refs[1] = stencil_refs[0];
