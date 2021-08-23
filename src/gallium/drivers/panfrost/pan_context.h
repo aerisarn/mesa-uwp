@@ -148,9 +148,6 @@ struct panfrost_context {
         /* Within a launch_grid call.. */
         const struct pipe_grid_info *compute_grid;
 
-        /* Bit mask for supported PIPE_DRAW for this hardware */
-        unsigned draw_modes;
-
         struct pipe_framebuffer_state pipe_framebuffer;
         struct panfrost_streamout streamout;
 
@@ -198,7 +195,6 @@ struct panfrost_context {
         struct panfrost_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
         unsigned sampler_view_count[PIPE_SHADER_TYPES];
 
-        struct primconvert_context *primconvert;
         struct blitter_context *blitter;
 
         struct panfrost_blend_state *blend;

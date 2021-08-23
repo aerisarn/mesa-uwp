@@ -309,6 +309,19 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_DRAW_PARAMETERS:
                 return pan_is_bifrost(dev);
 
+        case PIPE_CAP_SUPPORTED_PRIM_MODES:
+        case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART: {
+                /* Mali supports GLES and QUADS. Midgard supports more */
+                uint32_t modes = BITFIELD_MASK(PIPE_PRIM_QUADS + 1);
+
+                if (dev->arch <= 5) {
+                        modes |= BITFIELD_BIT(PIPE_PRIM_QUAD_STRIP);
+                        modes |= BITFIELD_BIT(PIPE_PRIM_POLYGON);
+                }
+
+                return modes;
+        }
+
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
         }

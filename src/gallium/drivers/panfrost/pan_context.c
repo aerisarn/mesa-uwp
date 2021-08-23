@@ -44,7 +44,6 @@
 #include "util/format/u_format.h"
 #include "util/u_prim.h"
 #include "util/u_prim_restart.h"
-#include "indices/u_primconvert.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_from_mesa.h"
 #include "util/u_math.h"
@@ -802,8 +801,6 @@ panfrost_destroy(struct pipe_context *pipe)
         panfrost_pool_cleanup(&panfrost->descs);
         panfrost_pool_cleanup(&panfrost->shaders);
 
-        util_primconvert_destroy(panfrost->primconvert);
-
         ralloc_free(pipe);
 }
 
@@ -1115,18 +1112,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         panfrost_pool_init(&ctx->shaders, ctx, dev,
                         PAN_BO_EXECUTE, 4096, "Shaders", true, false);
-
-        /* All of our GPUs support ES mode. Midgard supports additionally
-         * QUADS/QUAD_STRIPS/POLYGON. Bifrost supports just QUADS. */
-
-        ctx->draw_modes = (1 << (PIPE_PRIM_QUADS + 1)) - 1;
-
-        if (!pan_is_bifrost(dev)) {
-                ctx->draw_modes |= (1 << PIPE_PRIM_QUAD_STRIP);
-                ctx->draw_modes |= (1 << PIPE_PRIM_POLYGON);
-        }
-
-        ctx->primconvert = util_primconvert_create(gallium, ctx->draw_modes);
 
         ctx->blitter = util_blitter_create(gallium);
 
