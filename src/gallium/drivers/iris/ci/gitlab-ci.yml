@@ -25,11 +25,11 @@
     - .iris-test
     - .test-manual-mr
   variables:
-    DEVICE_TYPE: hp-x360-12b-n4000-octopus
+    DEVICE_TYPE: hp-x360-12b-ca0010nr-n4020-octopus
     GPU_VERSION: iris-glk
     DEQP_EXPECTED_RENDERER: GLK
   tags:
-    - mesa-ci-x86-64-lava-hp-x360-12b-n4000-octopus
+    - mesa-ci-x86-64-lava-hp-x360-12b-ca0010nr-n4020-octopus
 
 .iris-amly-test:
   extends:
