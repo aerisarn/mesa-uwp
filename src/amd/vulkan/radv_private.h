@@ -1433,6 +1433,8 @@ struct radv_cmd_state {
 
    /* Whether DRAW_{INDEX}_INDIRECT_MULTI is emitted. */
    bool uses_draw_indirect_multi;
+
+   uint32_t rt_stack_size;
 };
 
 struct radv_cmd_pool {
@@ -1816,6 +1818,7 @@ struct radv_pipeline {
       struct {
          struct radv_pipeline_group_handle *rt_group_handles;
          struct radv_pipeline_shader_stack_size *rt_stack_sizes;
+         bool dynamic_stack_size;
       } compute;
       struct {
          unsigned stage_count;

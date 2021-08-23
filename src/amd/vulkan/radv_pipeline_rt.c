@@ -1946,6 +1946,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    pipeline->compute.rt_stack_sizes = stack_sizes;
    stack_sizes = NULL;
 
+   pipeline->compute.dynamic_stack_size = has_dynamic_stack_size(pCreateInfo);
+
    for (unsigned i = 0; i < local_create_info.groupCount; ++i) {
       const VkRayTracingShaderGroupCreateInfoKHR *group_info = &local_create_info.pGroups[i];
       switch (group_info->type) {

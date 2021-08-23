@@ -61,6 +61,8 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
                                          uint32_t dst_family, const VkImageSubresourceRange *range,
                                          struct radv_sample_locations_state *sample_locs);
 
+static void radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size);
+
 const struct radv_dynamic_state default_dynamic_state = {
    .viewport =
       {
@@ -4353,6 +4355,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          (VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
           VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR |
           VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR);
+      radv_set_rt_stack_size(cmd_buffer, cmd_buffer->state.rt_stack_size);
       break;
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
       if (cmd_buffer->state.pipeline == pipeline)
@@ -6595,6 +6598,33 @@ radv_CmdTraceRaysKHR(VkCommandBuffer commandBuffer,
    }
 
    radv_rt_dispatch(cmd_buffer, &info);
+}
+
+static void
+radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size)
+{
+   unsigned wave_size = 0;
+   unsigned scratch_bytes_per_wave = 0;
+
+   if (cmd_buffer->state.rt_pipeline) {
+      scratch_bytes_per_wave = cmd_buffer->state.rt_pipeline->scratch_bytes_per_wave;
+      wave_size = cmd_buffer->state.rt_pipeline->shaders[MESA_SHADER_COMPUTE]->info.wave_size;
+   }
+
+   /* The hardware register is specified as a multiple of 256 DWORDS. */
+   scratch_bytes_per_wave += align(size * wave_size, 1024);
+
+   cmd_buffer->compute_scratch_size_per_wave_needed =
+      MAX2(cmd_buffer->compute_scratch_size_per_wave_needed, scratch_bytes_per_wave);
+}
+
+void
+radv_CmdSetRayTracingPipelineStackSizeKHR(VkCommandBuffer commandBuffer, uint32_t size)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   radv_set_rt_stack_size(cmd_buffer, size);
+   cmd_buffer->state.rt_stack_size = size;
 }
 
 void
