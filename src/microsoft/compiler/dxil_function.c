@@ -60,6 +60,7 @@ static struct  predefined_func_descr predefined_funcs[] = {
 {"dx.op.sampleCmpLevelZero", "R", "i@@ffffiiif", DXIL_ATTR_KIND_READ_ONLY},
 {"dx.op.textureLoad", "R", "i@iiiiiii", DXIL_ATTR_KIND_READ_ONLY},
 {"dx.op.discard", "v", "ib", DXIL_ATTR_KIND_READ_NONE},
+{"dx.op.sampleIndex", "i", "i", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.emitStream", "v", "ic", DXIL_ATTR_KIND_NONE},
 {"dx.op.cutStream", "v", "ic", DXIL_ATTR_KIND_NONE},
 {"dx.op.getDimensions", "D", "i@i", DXIL_ATTR_KIND_READ_ONLY},

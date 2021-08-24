@@ -185,6 +185,9 @@ get_semantic_sv_name(nir_variable *var, struct semantic_info *info, bool _vulkan
    case SYSTEM_VALUE_PRIMITIVE_ID:
       info->kind = DXIL_SEM_PRIMITIVE_ID;
       break;
+   case SYSTEM_VALUE_SAMPLE_ID:
+      info->kind = DXIL_SEM_SAMPLE_INDEX;
+      break;
    default:
       unreachable("unsupported system value");
    }
