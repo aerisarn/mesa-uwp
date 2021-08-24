@@ -71,7 +71,6 @@ struct bifrost_reg_ctrl {
         bool read_reg0;
         bool read_reg1;
         struct bifrost_reg_ctrl_23 slot23;
-        bool clause_start;
 };
 
 static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
