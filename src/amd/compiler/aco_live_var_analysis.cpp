@@ -375,11 +375,25 @@ update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       /* adjust max_waves for workgroup and LDS limits */
       unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
       unsigned workgroups_per_cu_wgp = max_waves_per_simd * simd_per_cu_wgp / waves_per_workgroup;
-      if (program->config->lds_size) {
-         unsigned lds = program->config->lds_size * program->dev.lds_encoding_granule;
-         lds = align(lds, program->dev.lds_alloc_granule);
-         workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, lds_limit / lds);
+
+      unsigned lds_per_workgroup =
+         align(program->config->lds_size * program->dev.lds_encoding_granule,
+               program->dev.lds_alloc_granule);
+
+      if (program->stage == fragment_fs) {
+         /* PS inputs are moved from PC (parameter cache) to LDS before PS waves are launched.
+          * Each PS input occupies 3x vec4 of LDS space. See Figure 10.3 in GCN3 ISA manual.
+          * These limit occupancy the same way as other stages' LDS usage does.
+          */
+         unsigned lds_bytes_per_interp = 3 * 16;
+         unsigned lds_param_bytes = lds_bytes_per_interp * program->info->ps.num_interp;
+         lds_per_workgroup +=
+            align(lds_param_bytes, program->dev.lds_alloc_granule);
       }
+
+      if (lds_per_workgroup)
+         workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, lds_limit / lds_per_workgroup);
+
       if (waves_per_workgroup > 1 && program->chip_class < GFX10)
          workgroups_per_cu_wgp = std::min(
             workgroups_per_cu_wgp, 16u); /* TODO: is this a SI-only limit? what about Navi? */
