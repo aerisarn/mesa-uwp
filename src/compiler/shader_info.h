@@ -297,6 +297,9 @@ typedef struct shader_info {
 
          /* True if the shader writes position in window space coordinates pre-transform */
          bool window_space_position:1;
+
+         /** Is an edge flag input needed? */
+         bool needs_edge_flag:1;
       } vs;
 
       struct {

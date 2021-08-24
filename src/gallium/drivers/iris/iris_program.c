@@ -2441,6 +2441,7 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
    simple_mtx_init(&ish->lock, mtx_plain);
 
    NIR_PASS(ish->needs_edge_flag, nir, iris_fix_edge_flags);
+   assert(ish->needs_edge_flag == nir->info.vs.needs_edge_flag);
 
    brw_preprocess_nir(screen->compiler, nir, NULL);
 
