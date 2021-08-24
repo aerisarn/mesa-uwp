@@ -392,7 +392,7 @@ emit_intrinsic_load_global_ir3(struct ir3_context *ctx,
                    create_immed(b, 0), 0, create_immed(b, dest_components), 0);
    }
 
-   load->cat6.type = TYPE_U32;
+   load->cat6.type = type_uint_size(intr->dest.ssa.bit_size);
    load->dsts[0]->wrmask = MASK(dest_components);
 
    load->barrier_class = IR3_BARRIER_BUFFER_R;
@@ -432,7 +432,7 @@ emit_intrinsic_store_global_ir3(struct ir3_context *ctx,
                    create_immed(b, 0), 0, value, 0, create_immed(b, ncomp), 0);
    }
 
-   stg->cat6.type = TYPE_U32;
+   stg->cat6.type = type_uint_size(intr->src[0].ssa->bit_size);
    stg->cat6.iim_val = 1;
 
    array_insert(b, b->keeps, stg);
