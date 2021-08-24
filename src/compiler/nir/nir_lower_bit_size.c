@@ -74,7 +74,7 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
    nir_ssa_def *lowered_dst = NULL;
    if (op == nir_op_imul_high || op == nir_op_umul_high) {
       assert(dst_bit_size * 2 <= bit_size);
-      nir_ssa_def *lowered_dst = nir_imul(bld, srcs[0], srcs[1]);
+      lowered_dst = nir_imul(bld, srcs[0], srcs[1]);
       if (nir_op_infos[op].output_type & nir_type_uint)
          lowered_dst = nir_ushr_imm(bld, lowered_dst, dst_bit_size);
       else
