@@ -50,8 +50,8 @@ struct semantic_info {
 static bool
 is_depth_output(enum dxil_semantic_kind kind)
 {
-   return kind == DXIL_SEM_DEPTH ||
-         kind == DXIL_SEM_STENCIL_REF;
+   return kind == DXIL_SEM_DEPTH || kind == DXIL_SEM_DEPTH_GE ||
+          kind == DXIL_SEM_DEPTH_LE || kind == DXIL_SEM_STENCIL_REF;
 }
 
 static uint8_t
@@ -111,7 +111,11 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
    info->rows = 1;
    if (info->kind == DXIL_SEM_TARGET) {
       info->start_row = info->index;
-   } else if (is_depth || (info->kind == DXIL_SEM_PRIMITIVE_ID && is_gs_shader)) {
+   } else if (is_depth ||
+              (info->kind == DXIL_SEM_PRIMITIVE_ID && is_gs_shader) ||
+              info->kind == DXIL_SEM_COVERAGE ||
+              info->kind == DXIL_SEM_SAMPLE_INDEX) {
+      // This turns into a 'N/A' mask in the disassembly
       info->start_row = -1;
    } else if (var->data.compact) {
       if (var->data.location_frac) {
