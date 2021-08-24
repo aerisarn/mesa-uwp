@@ -2499,6 +2499,14 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
    if (stride == 0)
       stride = sizeof(DrawArraysIndirectCommand);
 
+   FLUSH_FOR_DRAW(ctx);
+
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
+
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
    /* From the ARB_draw_indirect spec:
     *
     *    "Initially zero is bound to DRAW_INDIRECT_BUFFER. In the
@@ -2509,34 +2517,42 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
    if (ctx->API == API_OPENGL_COMPAT &&
        !ctx->DrawIndirectBuffer) {
 
-      if (!_mesa_valid_draw_indirect_multi(ctx, primcount, stride,
-                                           "glMultiDrawArraysIndirect"))
+      if (!_mesa_is_no_error_enabled(ctx) &&
+          (!_mesa_valid_draw_indirect_multi(ctx, primcount, stride,
+                                           "glMultiDrawArraysIndirect") ||
+           !_mesa_validate_DrawArrays(ctx, mode, 1)))
          return;
+
+      struct pipe_draw_info info;
+      info.mode = mode;
+      info.index_size = 0;
+      info.view_mask = 0;
+      /* Packed section begin. */
+      info.primitive_restart = false;
+      info.has_user_indices = false;
+      info.index_bounds_valid = false;
+      info.increment_draw_id = primcount > 1;
+      info.take_index_buffer_ownership = false;
+      info.index_bias_varies = false;
+      /* Packed section end. */
 
       const uint8_t *ptr = (const uint8_t *) indirect;
       for (unsigned i = 0; i < primcount; i++) {
          DrawArraysIndirectCommand *cmd = (DrawArraysIndirectCommand *) ptr;
-         _mesa_DrawArraysInstancedBaseInstance(mode, cmd->first,
-                                               cmd->count, cmd->primCount,
-                                               cmd->baseInstance);
 
-         if (stride == 0) {
-            ptr += sizeof(DrawArraysIndirectCommand);
-         } else {
-            ptr += stride;
-         }
+         info.start_instance = cmd->baseInstance;
+         info.instance_count = cmd->primCount;
+
+         struct pipe_draw_start_count_bias draw;
+         draw.start = cmd->first;
+         draw.count = cmd->count;
+
+         ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
+         ptr += stride;
       }
 
       return;
    }
-
-   FLUSH_FOR_DRAW(ctx);
-
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
-                      ctx->VertexProgram._VPModeInputFilter);
-
-   if (ctx->NewState)
-      _mesa_update_state(ctx);
 
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_MultiDrawArraysIndirect(ctx, mode, indirect,
@@ -2554,6 +2570,14 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
                                 GLsizei primcount, GLsizei stride)
 {
    GET_CURRENT_CONTEXT(ctx);
+
+   FLUSH_FOR_DRAW(ctx);
+
+   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
+                      ctx->VertexProgram._VPModeInputFilter);
+
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
 
    /* If <stride> is zero, the array elements are treated as tightly packed. */
    if (stride == 0)
@@ -2582,31 +2606,47 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
          return;
       }
 
-      if (!_mesa_valid_draw_indirect_multi(ctx, primcount, stride,
-                                           "glMultiDrawArraysIndirect"))
+      if (!_mesa_is_no_error_enabled(ctx) &&
+          (!_mesa_valid_draw_indirect_multi(ctx, primcount, stride,
+                                           "glMultiDrawArraysIndirect") ||
+           !_mesa_validate_DrawElements(ctx, mode, 1, type)))
          return;
+
+      unsigned index_size_shift = get_index_size_shift(type);
+
+      struct pipe_draw_info info;
+      info.mode = mode;
+      info.index_size = 1 << index_size_shift;
+      info.view_mask = 0;
+      /* Packed section begin. */
+      info.primitive_restart = ctx->Array._PrimitiveRestart[index_size_shift];
+      info.has_user_indices = false;
+      info.index_bounds_valid = false;
+      info.increment_draw_id = primcount > 1;
+      info.take_index_buffer_ownership = false;
+      info.index_bias_varies = false;
+      /* Packed section end. */
+      info.restart_index = ctx->Array._RestartIndex[index_size_shift];
 
       const uint8_t *ptr = (const uint8_t *) indirect;
       for (unsigned i = 0; i < primcount; i++) {
-         _mesa_DrawElementsIndirect(mode, type, ptr);
+         DrawElementsIndirectCommand *cmd = (DrawElementsIndirectCommand*)ptr;
 
-         if (stride == 0) {
-            ptr += sizeof(DrawElementsIndirectCommand);
-         } else {
-            ptr += stride;
-         }
+         info.index.gl_bo = ctx->Array.VAO->IndexBufferObj;
+         info.start_instance = cmd->baseInstance;
+         info.instance_count = cmd->primCount;
+
+         struct pipe_draw_start_count_bias draw;
+         draw.start = cmd->firstIndex;
+         draw.count = cmd->count;
+         draw.index_bias = cmd->baseVertex;
+
+         ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
+         ptr += stride;
       }
 
       return;
    }
-
-   FLUSH_FOR_DRAW(ctx);
-
-   _mesa_set_draw_vao(ctx, ctx->Array.VAO,
-                      ctx->VertexProgram._VPModeInputFilter);
-
-   if (ctx->NewState)
-      _mesa_update_state(ctx);
 
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_MultiDrawElementsIndirect(ctx, mode, type, indirect,
