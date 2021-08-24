@@ -178,10 +178,7 @@ struct panfrost_context {
          * it is disabled, just equal to plain vertex count */
         unsigned padded_count;
 
-        /* TODO: Multiple uniform buffers (index =/= 0), finer updates? */
-
         struct panfrost_constant_buffer constant_buffer[PIPE_SHADER_TYPES];
-
         struct panfrost_rasterizer *rasterizer;
         struct panfrost_shader_variants *shader[PIPE_SHADER_TYPES];
         struct panfrost_vertex_state *vertex;

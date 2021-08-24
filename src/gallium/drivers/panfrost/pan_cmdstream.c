@@ -1422,7 +1422,6 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
         for (unsigned i = 0; i < last_bit; ++i) {
                 struct pipe_image_view *image = &ctx->images[shader][i];
 
-                /* TODO: understand how v3d/freedreno does it */
                 if (!(ctx->image_mask[shader] & (1 << i)) ||
                     !(image->shader_access & PIPE_IMAGE_ACCESS_READ_WRITE)) {
                         /* Unused image bindings */

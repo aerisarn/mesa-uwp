@@ -410,7 +410,9 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch)
                         uint32_t *polygon_list_body =
                                 batch->tiler_ctx.midgard.polygon_list->ptr.cpu +
                                 MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE;
-                         polygon_list_body[0] = 0xa0000000; /* TODO: Just that? */
+
+                        /* Magic for Mali T720 */
+                        polygon_list_body[0] = 0xa0000000;
                 }
 
                 batch->tiler_ctx.midgard.disable = !has_draws;
