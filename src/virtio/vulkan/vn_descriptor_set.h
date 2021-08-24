@@ -23,6 +23,7 @@ struct vn_descriptor_set_layout {
    struct vn_object_base base;
 
    uint32_t last_binding;
+   bool has_variable_descriptor_count;
 
    /* bindings must be the last field in the layout */
    struct vn_descriptor_set_layout_binding bindings[];

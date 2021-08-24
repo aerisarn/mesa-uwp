@@ -42,6 +42,18 @@ vn_descriptor_set_layout_init(
    VkDevice dev_handle = vn_device_to_handle(dev);
    VkDescriptorSetLayout layout_handle =
       vn_descriptor_set_layout_to_handle(layout);
+   const VkDescriptorSetLayoutBindingFlagsCreateInfo *binding_flags =
+      vk_find_struct_const(create_info->pNext,
+                           DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
+
+   /* 14.2.1. Descriptor Set Layout
+    *
+    * If bindingCount is zero or if this structure is not included in
+    * the pNext chain, the VkDescriptorBindingFlags for each descriptor
+    * set layout binding is considered to be zero.
+    */
+   if (binding_flags && !binding_flags->bindingCount)
+      binding_flags = NULL;
 
    layout->last_binding = last_binding;
 
@@ -50,6 +62,27 @@ vn_descriptor_set_layout_init(
          &create_info->pBindings[i];
       struct vn_descriptor_set_layout_binding *binding =
          &layout->bindings[binding_info->binding];
+
+      if (binding_info->binding == last_binding) {
+         /* 14.2.1. Descriptor Set Layout
+          *
+          * VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT must only be
+          * used for the last binding in the descriptor set layout (i.e. the
+          * binding with the largest value of binding).
+          *
+          * 41. Features
+          *
+          * descriptorBindingVariableDescriptorCount indicates whether the
+          * implementation supports descriptor sets with a variable-sized last
+          * binding. If this feature is not enabled,
+          * VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT must not be
+          * used.
+          */
+         layout->has_variable_descriptor_count =
+            binding_flags &&
+            (binding_flags->pBindingFlags[i] &
+             VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT);
+      }
 
       binding->type = binding_info->descriptorType;
       binding->count = binding_info->descriptorCount;
