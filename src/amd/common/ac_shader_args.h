@@ -107,7 +107,7 @@ struct ac_shader_args {
    struct ac_arg es2gs_offset;      /* separate legacy ES */
    struct ac_arg gs2vs_offset;      /* legacy GS */
    struct ac_arg gs_wave_id;        /* legacy GS */
-   struct ac_arg gs_vtx_offset[6];  /* separate legacy GS */
+   struct ac_arg gs_vtx_offset[6];  /* GFX6-8: [0-5], GFX9+: [0-2] packed */
    struct ac_arg gs_prim_id;
    struct ac_arg gs_invocation_id;
 

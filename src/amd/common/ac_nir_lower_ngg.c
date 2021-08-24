@@ -289,9 +289,8 @@ emit_pack_ngg_prim_exp_arg(nir_builder *b, unsigned num_vertices_per_primitives,
 static nir_ssa_def *
 ngg_input_primitive_vertex_index(nir_builder *b, unsigned vertex)
 {
-   /* TODO: This is RADV specific. We'll need to refactor RADV and/or RadeonSI to match. */
-   return nir_ubfe(b, nir_build_load_gs_vertex_offset_amd(b, .base = vertex / 2u * 2u),
-                      nir_imm_int(b, (vertex % 2u) * 16u), nir_imm_int(b, 16u));
+   return nir_ubfe(b, nir_build_load_gs_vertex_offset_amd(b, .base = vertex / 2u),
+                      nir_imm_int(b, (vertex & 1u) * 16u), nir_imm_int(b, 16u));
 }
 
 static nir_ssa_def *

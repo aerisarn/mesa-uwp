@@ -8901,7 +8901,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_load_gs_vertex_offset_amd: {
+      /* GFX6-8 uses 6 separate args, while GFX9+ packs these into only 3 args. */
       unsigned b = nir_intrinsic_base(instr);
+      assert(b <= (ctx->program->chip_class >= GFX9 ? 2 : 5));
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
                get_arg(ctx, ctx->args->ac.gs_vtx_offset[b]));
       break;

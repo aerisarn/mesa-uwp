@@ -2097,7 +2097,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
    LLVMValueRef vtxindex[] = {
       ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[0]), 0, 16),
       ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[0]), 16, 16),
-      ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[2]), 0, 16),
+      ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[1]), 0, 16),
    };
 
    /* Determine the number of vertices per primitive. */
@@ -2940,7 +2940,7 @@ prepare_gs_input_vgprs(struct radv_shader_context *ctx, bool merged)
    if (merged) {
       for (int i = 5; i >= 0; --i) {
          ctx->gs_vtx_offset[i] = ac_unpack_param(
-            &ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[i & ~1]), (i & 1) * 16, 16);
+            &ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[i / 2]), (i & 1) * 16, 16);
       }
 
       ctx->gs_wave_id =
