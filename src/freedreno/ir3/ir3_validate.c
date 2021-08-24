@@ -158,7 +158,7 @@ validate_dst(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
 
 #define validate_reg_size(ctx, reg, type)                                      \
    validate_assert(                                                            \
-      ctx, type_size(type) == (((reg)->flags & IR3_REG_HALF) ? 16 : 32))
+      ctx, (type_size(type) <= 16) == !!((reg)->flags & IR3_REG_HALF))
 
 static void
 validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
