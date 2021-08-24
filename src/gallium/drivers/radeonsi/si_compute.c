@@ -438,14 +438,16 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
    }
 
    if (sctx->chip_class >= GFX10) {
-      radeon_set_sh_reg_seq(R_00B890_COMPUTE_USER_ACCUM_0, 5);
+      radeon_set_sh_reg_seq(R_00B890_COMPUTE_USER_ACCUM_0, 4);
       radeon_emit(0); /* R_00B890_COMPUTE_USER_ACCUM_0 */
       radeon_emit(0); /* R_00B894_COMPUTE_USER_ACCUM_1 */
       radeon_emit(0); /* R_00B898_COMPUTE_USER_ACCUM_2 */
       radeon_emit(0); /* R_00B89C_COMPUTE_USER_ACCUM_3 */
-      radeon_emit(0); /* R_00B8A0_COMPUTE_PGM_RSRC3 */
 
       radeon_set_sh_reg(R_00B9F4_COMPUTE_DISPATCH_TUNNEL, 0);
+
+      if (sctx->chip_class < GFX11)
+         radeon_set_sh_reg(R_00B8A0_COMPUTE_PGM_RSRC3, 0);
    }
    radeon_end();
 }
@@ -550,6 +552,11 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
 
    radeon_begin(cs);
    radeon_set_sh_reg(R_00B830_COMPUTE_PGM_LO, shader_va >> 8);
+
+   if (sctx->chip_class >= GFX11) {
+      radeon_set_sh_reg(R_00B8A0_COMPUTE_PGM_RSRC3,
+                        S_00B8A0_INST_PREF_SIZE(si_calc_inst_pref_size(shader)));
+   }
 
    if (sctx->chip_class >= GFX11 && shader->scratch_bo) {
       radeon_set_sh_reg_seq(R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO, 4);
