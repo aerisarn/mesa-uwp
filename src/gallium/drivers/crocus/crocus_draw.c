@@ -41,7 +41,6 @@
 #include "crocus_context.h"
 #include "crocus_defines.h"
 #include "util/u_prim_restart.h"
-#include "indices/u_primconvert.h"
 #include "util/u_prim.h"
 
 static bool
