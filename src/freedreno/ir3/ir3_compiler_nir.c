@@ -293,8 +293,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    unsigned bs[info->num_inputs]; /* bit size */
    struct ir3_block *b = ctx->block;
    unsigned dst_sz, wrmask;
-   type_t dst_type =
-      nir_dest_bit_size(alu->dest.dest) == 16 ? TYPE_U16 : TYPE_U32;
+   type_t dst_type = type_uint_size(nir_dest_bit_size(alu->dest.dest));
 
    if (alu->dest.dest.is_ssa) {
       dst_sz = alu->dest.dest.ssa.num_components;
@@ -399,7 +398,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    case nir_op_f2b1:
       dst[0] = ir3_CMPS_F(
          b, src[0], 0,
-         create_immed_typed(b, 0, bs[0] == 16 ? TYPE_F16 : TYPE_F32), 0);
+         create_immed_typed(b, 0, type_float_size(bs[0])), 0);
       dst[0]->cat2.condition = IR3_COND_NE;
       break;
 
@@ -409,7 +408,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
        */
       dst[0] = ir3_CMPS_S(
          b, src[0], 0,
-         create_immed_typed(b, 0, bs[0] == 16 ? TYPE_U16 : TYPE_U32), 0);
+         create_immed_typed(b, 0, type_uint_size(bs[0])), 0);
       dst[0]->cat2.condition = IR3_COND_NE;
       break;
 
@@ -2246,7 +2245,10 @@ emit_load_const(struct ir3_context *ctx, nir_load_const_instr *instr)
       ir3_get_dst_ssa(ctx, &instr->def, instr->def.num_components);
    unsigned bit_size = ir3_bitsize(ctx, instr->def.bit_size);
 
-   if (bit_size <= 16) {
+   if (bit_size <= 8) {
+      for (int i = 0; i < instr->def.num_components; i++)
+         dst[i] = create_immed_typed(ctx->block, instr->value[i].u8, TYPE_U8);
+   } else if (bit_size <= 16) {
       for (int i = 0; i < instr->def.num_components; i++)
          dst[i] = create_immed_typed(ctx->block, instr->value[i].u16, TYPE_U16);
    } else {
