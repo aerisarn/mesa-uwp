@@ -180,6 +180,9 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
    if (pipeline->type == RADV_PIPELINE_COMPUTE) {
       free(pipeline->compute.rt_group_handles);
       free(pipeline->compute.rt_stack_sizes);
+   } else if (pipeline->type == RADV_PIPELINE_LIBRARY) {
+      free(pipeline->library.groups);
+      free(pipeline->library.stages);
    }
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i)
