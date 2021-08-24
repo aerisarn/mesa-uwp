@@ -23,18 +23,18 @@
 
 #include "nir_to_dxil.h"
 
-#include "dxil_module.h"
 #include "dxil_container.h"
-#include "dxil_function.h"
-#include "dxil_signature.h"
-#include "dxil_enums.h"
 #include "dxil_dump.h"
+#include "dxil_enums.h"
+#include "dxil_function.h"
+#include "dxil_module.h"
 #include "dxil_nir.h"
+#include "dxil_signature.h"
 
-#include "util/u_debug.h"
-#include "util/u_math.h"
-#include "util/u_dynarray.h"
 #include "nir/nir_builder.h"
+#include "util/u_debug.h"
+#include "util/u_dynarray.h"
+#include "util/u_math.h"
 
 #include "git_sha1.h"
 
@@ -3696,7 +3696,7 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
 
    if (!glsl_type_is_sampler(glsl_without_array(var->type)) &&
        !glsl_type_is_image(glsl_without_array(var->type)))
-   return true;
+      return true;
 
    const struct glsl_type *type = instr->type;
    const struct dxil_value *binding;

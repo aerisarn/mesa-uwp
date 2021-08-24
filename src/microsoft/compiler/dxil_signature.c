@@ -21,12 +21,12 @@
  * IN THE SOFTWARE.
  */
 
+#include "dxil_signature.h"
 #include "dxil_enums.h"
 #include "dxil_module.h"
-#include "dxil_signature.h"
 
-#include "nir_to_dxil.h"
 #include "glsl_types.h"
+#include "nir_to_dxil.h"
 #include "util/u_debug.h"
 
 #include <string.h>
