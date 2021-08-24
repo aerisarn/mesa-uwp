@@ -86,6 +86,7 @@ struct zink_batch_state {
 
    struct util_dynarray persistent_resources;
    struct util_dynarray zombie_samplers;
+   struct util_dynarray dead_framebuffers;
 
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
 

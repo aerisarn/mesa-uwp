@@ -2039,6 +2039,9 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          /* if this has no attachments then its lifetime has ended */
          _mesa_hash_table_remove(&screen->framebuffer_cache, he);
          he = NULL;
+         /* ensure an unflushed fb doesn't get destroyed by deferring it */
+         util_dynarray_append(&ctx->batch.state->dead_framebuffers, struct zink_framebuffer*, ctx->framebuffer);
+         ctx->framebuffer = NULL;
       }
       /* a framebuffer loses 1 ref every time we unset it;
        * we do NOT add refs here, as the ref has already been added in

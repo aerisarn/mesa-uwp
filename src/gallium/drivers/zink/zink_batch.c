@@ -56,6 +56,10 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       zink_buffer_view_reference(screen, &buffer_view, NULL);
    }
 
+   util_dynarray_foreach(&bs->dead_framebuffers, struct zink_framebuffer*, fb) {
+      zink_framebuffer_reference(screen, fb, NULL);
+   }
+   util_dynarray_clear(&bs->dead_framebuffers);
    util_dynarray_foreach(&bs->zombie_samplers, VkSampler, samp) {
       vkDestroySampler(screen->dev, *samp, NULL);
    }
@@ -143,6 +147,7 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
 
    _mesa_set_destroy(bs->fbs, NULL);
    util_dynarray_fini(&bs->zombie_samplers);
+   util_dynarray_fini(&bs->dead_framebuffers);
    _mesa_set_destroy(bs->surfaces, NULL);
    _mesa_set_destroy(bs->bufferviews, NULL);
    _mesa_set_destroy(bs->programs, NULL);
@@ -191,6 +196,7 @@ create_batch_state(struct zink_context *ctx)
    SET_CREATE_OR_FAIL(bs->programs);
    SET_CREATE_OR_FAIL(bs->active_queries);
    util_dynarray_init(&bs->zombie_samplers, NULL);
+   util_dynarray_init(&bs->dead_framebuffers, NULL);
    util_dynarray_init(&bs->persistent_resources, NULL);
 
    cnd_init(&bs->usage.flush);
