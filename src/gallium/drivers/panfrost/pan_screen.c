@@ -703,7 +703,8 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         panfrost_pool_cleanup(&screen->blitter.desc_pool);
         pan_blend_shaders_cleanup(dev);
 
-        screen->vtbl.screen_destroy(pscreen);
+        if (screen->vtbl.screen_destroy)
+                screen->vtbl.screen_destroy(pscreen);
 
         if (dev->ro)
                 dev->ro->destroy(dev->ro);
