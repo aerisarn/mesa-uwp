@@ -492,6 +492,11 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
       mod->num_psv_inputs = MAX2(mod->num_psv_inputs,
                                  semantic.start_row + semantic.rows);
 
+      mod->info.has_per_sample_input |=
+         semantic.kind == DXIL_SEM_SAMPLE_INDEX ||
+         semantic.interpolation == DXIL_INTERP_LINEAR_SAMPLE ||
+         semantic.interpolation == DXIL_INTERP_LINEAR_NOPERSPECTIVE_SAMPLE;
+
       ++num_inputs;
       assert(num_inputs < VARYING_SLOT_MAX);
    }
