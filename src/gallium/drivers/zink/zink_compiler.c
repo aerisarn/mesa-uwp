@@ -564,6 +564,79 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
    zs->streamout.have_xfb = !!zs->streamout.so_info.num_outputs;
 }
 
+struct decompose_state {
+  nir_variable **split;
+  bool needs_w;
+};
+
+static bool
+lower_attrib(nir_builder *b, nir_instr *instr, void *data)
+{
+   struct decompose_state *state = data;
+   nir_variable **split = state->split;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_deref)
+      return false;
+   nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   if (var != split[0])
+      return false;
+   unsigned num_components = glsl_get_vector_elements(split[0]->type);
+   b->cursor = nir_after_instr(instr);
+   nir_ssa_def *loads[4];
+   for (unsigned i = 0; i < (state->needs_w ? num_components - 1 : num_components); i++)
+      loads[i] = nir_load_deref(b, nir_build_deref_var(b, split[i+1]));
+   if (state->needs_w) {
+      /* oob load w comopnent to get correct value for int/float */
+      loads[3] = nir_channel(b, loads[0], 3);
+      loads[0] = nir_channel(b, loads[0], 0);
+   }
+   nir_ssa_def *new_load = nir_vec(b, loads, num_components);
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, new_load);
+   nir_instr_remove_v(instr);
+   return true;
+}
+
+static bool
+decompose_attribs(nir_shader *nir, uint32_t decomposed_attrs, uint32_t decomposed_attrs_without_w)
+{
+   uint32_t bits = 0;
+   nir_foreach_variable_with_modes(var, nir, nir_var_shader_in)
+      bits |= BITFIELD_BIT(var->data.driver_location);
+   bits = ~bits;
+   u_foreach_bit(location, decomposed_attrs | decomposed_attrs_without_w) {
+      nir_variable *split[5];
+      struct decompose_state state;
+      state.split = split;
+      nir_variable *var = nir_find_variable_with_driver_location(nir, nir_var_shader_in, location);
+      assert(var);
+      split[0] = var;
+      bits |= BITFIELD_BIT(var->data.driver_location);
+      const struct glsl_type *new_type = glsl_type_is_scalar(var->type) ? var->type : glsl_get_array_element(var->type);
+      unsigned num_components = glsl_get_vector_elements(var->type);
+      state.needs_w = (decomposed_attrs_without_w & BITFIELD_BIT(location)) != 0 && num_components == 4;
+      for (unsigned i = 0; i < (state.needs_w ? num_components - 1 : num_components); i++) {
+         split[i+1] = nir_variable_clone(var, nir);
+         split[i+1]->name = ralloc_asprintf(nir, "%s_split%u", var->name, i);
+         if (decomposed_attrs_without_w & BITFIELD_BIT(location))
+            split[i+1]->type = !i && num_components == 4 ? var->type : new_type;
+         else
+            split[i+1]->type = new_type;
+         split[i+1]->data.driver_location = ffs(bits) - 1;
+         bits &= ~BITFIELD_BIT(split[i+1]->data.driver_location);
+         nir_shader_add_variable(nir, split[i+1]);
+      }
+      var->data.mode = nir_var_shader_temp;
+      nir_shader_instructions_pass(nir, lower_attrib, nir_metadata_dominance, &state);
+   }
+   nir_fixup_deref_modes(nir);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+   optimize_nir(nir);
+   return true;
+}
+
 static void
 assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reserved, unsigned char *slot_map)
 {
@@ -731,17 +804,25 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
 
       /* TODO: use a separate mem ctx here for ralloc */
       switch (zs->nir->info.stage) {
-      case MESA_SHADER_VERTEX:
+      case MESA_SHADER_VERTEX: {
+         uint32_t decomposed_attrs = 0, decomposed_attrs_without_w = 0;
+         const struct zink_vs_key *vs_key = zink_vs_key(key);
+         decomposed_attrs = vs_key->decomposed_attrs;
+         decomposed_attrs_without_w = vs_key->decomposed_attrs_without_w;
+         if (decomposed_attrs || decomposed_attrs_without_w)
+            NIR_PASS_V(nir, decompose_attribs, decomposed_attrs, decomposed_attrs_without_w);
+         FALLTHROUGH;
+      }
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_GEOMETRY:
-         if (zink_vs_key(key)->last_vertex_stage) {
+         if (zink_vs_key_base(key)->last_vertex_stage) {
             if (zs->streamout.have_xfb)
                streamout = &zs->streamout;
 
-            if (!zink_vs_key(key)->clip_halfz) {
+            if (!zink_vs_key_base(key)->clip_halfz) {
                NIR_PASS_V(nir, nir_lower_clip_halfz);
             }
-            if (zink_vs_key(key)->push_drawid) {
+            if (zink_vs_key_base(key)->push_drawid) {
                NIR_PASS_V(nir, lower_drawid);
             }
          }

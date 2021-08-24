@@ -52,6 +52,9 @@ struct zink_vertex_elements_state {
    } bindings[PIPE_MAX_ATTRIBS];
    uint32_t divisor[PIPE_MAX_ATTRIBS];
    uint8_t binding_map[PIPE_MAX_ATTRIBS];
+   uint32_t decomposed_attrs;
+   unsigned decomposed_attrs_size;
+   uint32_t decomposed_attrs_without_w;
    struct zink_vertex_elements_hw_state hw_state;
 };
 

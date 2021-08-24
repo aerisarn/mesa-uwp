@@ -994,9 +994,15 @@ zink_is_format_supported(struct pipe_screen *pscreen,
    VkFormatProperties props = screen->format_props[format];
 
    if (target == PIPE_BUFFER) {
-      if (bind & PIPE_BIND_VERTEX_BUFFER &&
-          !(props.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT))
-         return false;
+      if (bind & PIPE_BIND_VERTEX_BUFFER) {
+         if (!(props.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)) {
+            enum pipe_format new_format = zink_decompose_vertex_format(format);
+            if (!new_format)
+               return false;
+            if (!(screen->format_props[new_format].bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT))
+               return false;
+         }
+      }
 
       if (bind & PIPE_BIND_SAMPLER_VIEW &&
          !(props.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT))

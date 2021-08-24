@@ -78,6 +78,8 @@ struct zink_gfx_pipeline_state {
    uint8_t coord_replace_bits;
    bool coord_replace_yinvert;
    bool drawid_broken;
+   uint32_t decomposed_attrs;
+   uint32_t decomposed_attrs_without_w;
    struct zink_blend_state *blend_state;
    struct zink_render_pass *render_pass;
    VkPipeline pipeline;
