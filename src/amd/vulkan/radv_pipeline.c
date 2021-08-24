@@ -173,7 +173,7 @@ radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline)
    return !!pipeline->gs_copy_shader;
 }
 
-static void
+void
 radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                       const VkAllocationCallbacks *allocator)
 {
@@ -5740,7 +5740,7 @@ radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
    return key;
 }
 
-static VkResult
+VkResult
 radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                              const VkComputePipelineCreateInfo *pCreateInfo,
                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)

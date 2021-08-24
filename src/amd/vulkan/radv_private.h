@@ -1861,6 +1861,14 @@ VkResult radv_graphics_pipeline_create(VkDevice device, VkPipelineCache cache,
                                        const struct radv_graphics_pipeline_create_info *extra,
                                        const VkAllocationCallbacks *alloc, VkPipeline *pPipeline);
 
+VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
+                                      const VkComputePipelineCreateInfo *pCreateInfo,
+                                      const VkAllocationCallbacks *pAllocator,
+                                      VkPipeline *pPipeline);
+
+void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
+                           const VkAllocationCallbacks *allocator);
+
 struct radv_binning_settings {
    unsigned context_states_per_bin;    /* allowed range: [1, 6] */
    unsigned persistent_states_per_bin; /* allowed range: [1, 32] */
