@@ -280,7 +280,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_gfx_program *prog)
 {
    bool hash_changed = false;
    bool default_variants = true;
-   bool first = !!prog->modules[PIPE_SHADER_VERTEX];
+   bool first = !prog->modules[PIPE_SHADER_VERTEX];
    u_foreach_bit(pstage, ctx->dirty_shader_stages & prog->stages_present) {
       assert(prog->shaders[pstage]);
       struct zink_shader_module *zm = get_shader_module_for_stage(ctx, prog->shaders[pstage], prog);
