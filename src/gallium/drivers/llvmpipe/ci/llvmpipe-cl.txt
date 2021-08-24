@@ -73,17 +73,11 @@ program/execute/calls-struct/small struct in regs: fail
 program/execute/fdiv-modifiers-f32: fail
 program/execute/global-offset/3d, input dependent: fail
 program/execute/image-attributes: crash
-program/execute/image-read-2d/read float from cl_float cl_rgba image.: fail
-program/execute/image-read-2d/read signed integer from cl_signed_int8 cl_rgba image.: fail
-program/execute/image-read-2d/read unsigned integer from cl_unsigned_int8 cl_rgba image.: fail
 program/execute/image-write-2d: crash
 program/execute/load-hi16-generic: skip
 program/execute/load-lo16-generic: skip
 program/execute/mad-mix: skip
 program/execute/program-tester-check-local-size-test-should-skip/this test should skip: skip
-program/execute/sampler/read from image using clamp_to_edge addressing mode: fail
-program/execute/sampler/read from image using linear filtering and normalized coords: fail
-program/execute/sampler/read from image using linear filtering and unnormalized coords: fail
 program/execute/scalar-logical-float: skip
 program/execute/store-hi16-generic: skip
 program/execute/vload/vload-half-constant: skip

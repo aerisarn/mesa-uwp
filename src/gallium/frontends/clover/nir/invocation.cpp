@@ -396,6 +396,12 @@ nir_shader *clover::nir::load_libclc_nir(const device &dev, std::string &r_log)
 				 &spirv_options, compiler_options);
 }
 
+static bool
+can_remove_var(nir_variable *var, void *data)
+{
+   return !(var->type->is_sampler() || var->type->is_image());
+}
+
 module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                                  std::string &r_log)
 {
@@ -525,7 +531,10 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
                  spirv_options.global_addr_format);
 
-      NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_all, NULL);
+      struct nir_remove_dead_variables_options remove_dead_variables_options = {
+            .can_remove_var = can_remove_var,
+      };
+      NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_all, &remove_dead_variables_options);
 
       if (compiler_options->lower_int64_options)
          NIR_PASS_V(nir, nir_lower_int64);
