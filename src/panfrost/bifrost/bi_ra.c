@@ -535,6 +535,7 @@ bi_register_allocate(bi_context *ctx)
         }
 
         assert(success);
+        assert(l != NULL);
 
         ctx->info->tls_size = spill_count;
         bi_install_registers(ctx, l);
