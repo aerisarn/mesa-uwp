@@ -192,9 +192,12 @@ update_gfx_program(struct zink_context *ctx)
       struct hash_table *ht = &ctx->program_cache[ctx->shader_stages >> 2];
       uint32_t hash = ht->key_hash_function(ctx->gfx_stages);
       struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
-      if (entry)
-         zink_update_gfx_program(ctx, (struct zink_gfx_program*)entry->data);
-      else {
+      if (entry) {
+         prog = (struct zink_gfx_program*)entry->data;
+         u_foreach_bit(stage, prog->stages_present & ~ctx->dirty_shader_stages)
+            ctx->gfx_pipeline_state.modules[stage] = prog->modules[stage]->shader;
+         zink_update_gfx_program(ctx, prog);
+      } else {
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages);
          entry = _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
       }
