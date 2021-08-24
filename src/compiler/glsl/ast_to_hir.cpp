@@ -6531,8 +6531,8 @@ ast_jump_statement::hir(exec_list *instructions,
          if (state->loop_nesting_ast != NULL &&
              mode == ast_continue && !state->switch_state.is_switch_innermost) {
             if (state->loop_nesting_ast->rest_expression) {
-               state->loop_nesting_ast->rest_expression->hir(instructions,
-                                                             state);
+               clone_ir_list(ctx, instructions,
+                             &state->loop_nesting_ast->rest_instructions);
             }
             if (state->loop_nesting_ast->mode ==
                 ast_iteration_statement::ast_do_while) {
@@ -6780,8 +6780,8 @@ ast_switch_statement::hir(exec_list *instructions,
 
       if (state->loop_nesting_ast != NULL) {
          if (state->loop_nesting_ast->rest_expression) {
-            state->loop_nesting_ast->rest_expression->hir(&irif->then_instructions,
-                                                          state);
+            clone_ir_list(ctx, &irif->then_instructions,
+                          &state->loop_nesting_ast->rest_instructions);
          }
          if (state->loop_nesting_ast->mode ==
              ast_iteration_statement::ast_do_while) {
@@ -7138,7 +7138,6 @@ ast_iteration_statement::hir(exec_list *instructions,
    if (mode != ast_do_while)
       condition_to_hir(&stmt->body_instructions, state);
 
-   exec_list rest_instructions;
    if (rest_expression != NULL)
       rest_expression->hir(&rest_instructions, state);
 
