@@ -1278,44 +1278,6 @@ panfrost_generate_mipmap(
         return blit_res;
 }
 
-/* Computes the address to a texture at a particular slice */
-
-mali_ptr
-panfrost_get_texture_address(struct panfrost_resource *rsrc,
-                             unsigned level, unsigned layer,
-                             unsigned sample)
-{
-        bool is_3d = rsrc->base.target == PIPE_TEXTURE_3D;
-        unsigned array_idx = is_3d ? 0 : layer;
-        unsigned surface_idx = is_3d ? layer : sample;
-        return rsrc->image.data.bo->ptr.gpu +
-               panfrost_texture_offset(&rsrc->image.layout, level,
-                                       array_idx, surface_idx);
-}
-
-void
-panfrost_get_afbc_pointers(struct panfrost_resource *rsrc,
-                           unsigned level, unsigned layer,
-                           mali_ptr *header, mali_ptr *body)
-{
-        assert(drm_is_afbc(rsrc->image.layout.modifier));
-
-        struct pan_image_slice_layout *slice = &rsrc->image.layout.slices[level];
-
-        if (rsrc->base.target == PIPE_TEXTURE_3D) {
-                *header = rsrc->image.data.bo->ptr.gpu + slice->offset +
-                          (layer * slice->afbc.surface_stride);
-                *body = rsrc->image.data.bo->ptr.gpu + slice->offset +
-                        slice->afbc.header_size +
-                        (slice->surface_stride * layer);
-        } else {
-                *header = rsrc->image.data.bo->ptr.gpu +
-                          panfrost_texture_offset(&rsrc->image.layout,
-                                                  level, layer, 0);
-                *body = *header + slice->afbc.header_size;
-        }
-}
-
 static void
 panfrost_resource_set_stencil(struct pipe_resource *prsrc,
                               struct pipe_resource *stencil)

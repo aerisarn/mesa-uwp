@@ -107,16 +107,6 @@ pan_transfer(struct pipe_transfer *p)
         return (struct panfrost_transfer *)p;
 }
 
-mali_ptr
-panfrost_get_texture_address(struct panfrost_resource *rsrc,
-                             unsigned level, unsigned layer,
-                             unsigned sample);
-
-void
-panfrost_get_afbc_pointers(struct panfrost_resource *rsrc,
-                           unsigned level, unsigned layer,
-                           mali_ptr *header, mali_ptr *body);
-
 void panfrost_resource_screen_init(struct pipe_screen *screen);
 
 void panfrost_resource_screen_destroy(struct pipe_screen *screen);

@@ -956,14 +956,3 @@ panfrost_batch_union_scissor(struct panfrost_batch *batch,
         batch->maxx = MAX2(batch->maxx, maxx);
         batch->maxy = MAX2(batch->maxy, maxy);
 }
-
-void
-panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
-                                  unsigned minx, unsigned miny,
-                                  unsigned maxx, unsigned maxy)
-{
-        batch->minx = MAX2(batch->minx, minx);
-        batch->miny = MAX2(batch->miny, miny);
-        batch->maxx = MIN2(batch->maxx, maxx);
-        batch->maxy = MIN2(batch->maxy, maxy);
-}
