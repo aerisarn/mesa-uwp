@@ -26,7 +26,6 @@
 #define __BUILDER_H__
 
 #define _LARGEFILE64_SOURCE 1
-#define CACHE_LINE_SIZE 1024 /* TODO */
 #include <sys/mman.h>
 #include <assert.h>
 #include "pan_resource.h"
