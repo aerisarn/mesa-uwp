@@ -202,6 +202,22 @@ valid_elements_type(struct gl_context *ctx, GLenum type)
    return GL_NO_ERROR;
 }
 
+static inline bool
+indices_aligned(unsigned index_size_shift, const GLvoid *indices)
+{
+   /* Require that indices are aligned to the element size. GL doesn't specify
+    * an error for this, but the ES 3.0 spec says:
+    *
+    *    "Clients must align data elements consistently with the requirements
+    *     of the client platform, with an additional base-level requirement
+    *     that an offset within a buffer to a datum comprising N basic machine
+    *     units be a multiple of N"
+    *
+    * This is only required by index buffers, not user indices.
+    */
+   return ((uintptr_t)indices & ((1 << index_size_shift) - 1)) == 0;
+}
+
 static GLenum
 validate_DrawElements_common(struct gl_context *ctx, GLenum mode,
                              GLsizei count, GLsizei numInstances, GLenum type)
@@ -1720,6 +1736,9 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
    unsigned index_size_shift = get_index_size_shift(type);
    struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
 
+   if (index_bo && !indices_aligned(index_size_shift, indices))
+      return;
+
    info.mode = mode;
    info.index_size = 1 << index_size_shift;
    /* Packed section begin. */
@@ -2150,7 +2169,8 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       } else {
          for (int i = 0; i < primcount; i++) {
             draw[i].start = (uintptr_t)indices[i] >> index_size_shift;
-            draw[i].count = count[i];
+            draw[i].count =
+               indices_aligned(index_size_shift, indices[i]) ? count[i] : 0;
             draw[i].index_bias = basevertex ? basevertex[i] : 0;
          }
       }
