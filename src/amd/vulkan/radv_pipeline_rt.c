@@ -135,6 +135,174 @@ fail:
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
+/*
+ * Global variables for an RT pipeline
+ */
+struct rt_variables {
+   /* idx of the next shader to run in the next iteration of the main loop */
+   nir_variable *idx;
+
+   /* scratch offset of the argument area relative to stack_ptr */
+   nir_variable *arg;
+
+   nir_variable *stack_ptr;
+
+   /* global address of the SBT entry used for the shader */
+   nir_variable *shader_record_ptr;
+
+   /* trace_ray arguments */
+   nir_variable *accel_struct;
+   nir_variable *flags;
+   nir_variable *cull_mask;
+   nir_variable *sbt_offset;
+   nir_variable *sbt_stride;
+   nir_variable *miss_index;
+   nir_variable *origin;
+   nir_variable *tmin;
+   nir_variable *direction;
+   nir_variable *tmax;
+
+   /* from the BTAS instance currently being visited */
+   nir_variable *custom_instance_and_mask;
+
+   /* Properties of the primitive currently being visited. */
+   nir_variable *primitive_id;
+   nir_variable *geometry_id_and_flags;
+   nir_variable *instance_id;
+   nir_variable *instance_addr;
+   nir_variable *hit_kind;
+   nir_variable *opaque;
+
+   /* Safeguard to ensure we don't end up in an infinite loop of non-existing case. Should not be
+    * needed but is extra anti-hang safety during bring-up. */
+   nir_variable *main_loop_case_visited;
+
+   /* Output variable for intersection & anyhit shaders. */
+   nir_variable *ahit_status;
+
+   /* Array of stack size struct for recording the max stack size for each group. */
+   struct radv_pipeline_shader_stack_size *stack_sizes;
+   unsigned group_idx;
+};
+
+static struct rt_variables
+create_rt_variables(nir_shader *shader, struct radv_pipeline_shader_stack_size *stack_sizes)
+{
+   struct rt_variables vars = {
+      NULL,
+   };
+   vars.idx = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "idx");
+   vars.arg = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "arg");
+   vars.stack_ptr = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "stack_ptr");
+   vars.shader_record_ptr =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "shader_record_ptr");
+
+   const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
+   vars.accel_struct =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "accel_struct");
+   vars.flags = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "ray_flags");
+   vars.cull_mask = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "cull_mask");
+   vars.sbt_offset =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "sbt_offset");
+   vars.sbt_stride =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "sbt_stride");
+   vars.miss_index =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "miss_index");
+   vars.origin = nir_variable_create(shader, nir_var_shader_temp, vec3_type, "ray_origin");
+   vars.tmin = nir_variable_create(shader, nir_var_shader_temp, glsl_float_type(), "ray_tmin");
+   vars.direction = nir_variable_create(shader, nir_var_shader_temp, vec3_type, "ray_direction");
+   vars.tmax = nir_variable_create(shader, nir_var_shader_temp, glsl_float_type(), "ray_tmax");
+
+   vars.custom_instance_and_mask = nir_variable_create(
+      shader, nir_var_shader_temp, glsl_uint_type(), "custom_instance_and_mask");
+   vars.primitive_id =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "primitive_id");
+   vars.geometry_id_and_flags =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "geometry_id_and_flags");
+   vars.instance_id =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "instance_id");
+   vars.instance_addr =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "instance_addr");
+   vars.hit_kind = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "hit_kind");
+   vars.opaque = nir_variable_create(shader, nir_var_shader_temp, glsl_bool_type(), "opaque");
+
+   vars.main_loop_case_visited =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_bool_type(), "main_loop_case_visited");
+   vars.ahit_status =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "ahit_status");
+
+   vars.stack_sizes = stack_sizes;
+   return vars;
+}
+
+/*
+ * Remap all the variables between the two rt_variables struct for inlining.
+ */
+static void
+map_rt_variables(struct hash_table *var_remap, struct rt_variables *src,
+                 const struct rt_variables *dst)
+{
+   _mesa_hash_table_insert(var_remap, src->idx, dst->idx);
+   _mesa_hash_table_insert(var_remap, src->arg, dst->arg);
+   _mesa_hash_table_insert(var_remap, src->stack_ptr, dst->stack_ptr);
+   _mesa_hash_table_insert(var_remap, src->shader_record_ptr, dst->shader_record_ptr);
+
+   _mesa_hash_table_insert(var_remap, src->accel_struct, dst->accel_struct);
+   _mesa_hash_table_insert(var_remap, src->flags, dst->flags);
+   _mesa_hash_table_insert(var_remap, src->cull_mask, dst->cull_mask);
+   _mesa_hash_table_insert(var_remap, src->sbt_offset, dst->sbt_offset);
+   _mesa_hash_table_insert(var_remap, src->sbt_stride, dst->sbt_stride);
+   _mesa_hash_table_insert(var_remap, src->miss_index, dst->miss_index);
+   _mesa_hash_table_insert(var_remap, src->origin, dst->origin);
+   _mesa_hash_table_insert(var_remap, src->tmin, dst->tmin);
+   _mesa_hash_table_insert(var_remap, src->direction, dst->direction);
+   _mesa_hash_table_insert(var_remap, src->tmax, dst->tmax);
+
+   _mesa_hash_table_insert(var_remap, src->custom_instance_and_mask, dst->custom_instance_and_mask);
+   _mesa_hash_table_insert(var_remap, src->primitive_id, dst->primitive_id);
+   _mesa_hash_table_insert(var_remap, src->geometry_id_and_flags, dst->geometry_id_and_flags);
+   _mesa_hash_table_insert(var_remap, src->instance_id, dst->instance_id);
+   _mesa_hash_table_insert(var_remap, src->instance_addr, dst->instance_addr);
+   _mesa_hash_table_insert(var_remap, src->hit_kind, dst->hit_kind);
+   _mesa_hash_table_insert(var_remap, src->opaque, dst->opaque);
+   _mesa_hash_table_insert(var_remap, src->ahit_status, dst->ahit_status);
+
+   src->stack_sizes = dst->stack_sizes;
+   src->group_idx = dst->group_idx;
+}
+
+/*
+ * Create a copy of the global rt variables where the primitive/instance related variables are
+ * independent.This is needed as we need to keep the old values of the global variables around
+ * in case e.g. an anyhit shader reject the collision. So there are inner variables that get copied
+ * to the outer variables once we commit to a better hit.
+ */
+static struct rt_variables
+create_inner_vars(nir_builder *b, const struct rt_variables *vars)
+{
+   struct rt_variables inner_vars = *vars;
+   inner_vars.idx =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_idx");
+   inner_vars.shader_record_ptr = nir_variable_create(
+      b->shader, nir_var_shader_temp, glsl_uint64_t_type(), "inner_shader_record_ptr");
+   inner_vars.primitive_id =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_primitive_id");
+   inner_vars.geometry_id_and_flags = nir_variable_create(
+      b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_geometry_id_and_flags");
+   inner_vars.tmax =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_float_type(), "inner_tmax");
+   inner_vars.instance_id =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_instance_id");
+   inner_vars.instance_addr = nir_variable_create(b->shader, nir_var_shader_temp,
+                                                  glsl_uint64_t_type(), "inner_instance_addr");
+   inner_vars.hit_kind =
+      nir_variable_create(b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_hit_kind");
+   inner_vars.custom_instance_and_mask = nir_variable_create(
+      b->shader, nir_var_shader_temp, glsl_uint_type(), "inner_custom_instance_and_mask");
+
+   return inner_vars;
+}
+
 static nir_shader *
 create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                  struct radv_pipeline_shader_stack_size *stack_sizes)
