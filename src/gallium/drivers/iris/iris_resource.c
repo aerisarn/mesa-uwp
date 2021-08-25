@@ -736,10 +736,10 @@ iris_resource_configure_aux(struct iris_screen *screen,
           res->mod_info->aux_usage == ISL_AUX_USAGE_GFX12_CCS_E ||
           res->mod_info->aux_usage == ISL_AUX_USAGE_MC);
 
-   const bool has_mcs = !res->mod_info &&
+   const bool has_mcs =
       isl_surf_get_mcs_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
 
-   const bool has_hiz = !res->mod_info && !INTEL_DEBUG(DEBUG_NO_HIZ) &&
+   const bool has_hiz = !INTEL_DEBUG(DEBUG_NO_HIZ) &&
       isl_surf_get_hiz_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
 
    const bool has_ccs =
@@ -755,9 +755,11 @@ iris_resource_configure_aux(struct iris_screen *screen,
       /* Only allow a CCS modifier if the aux was created successfully. */
       res->aux.possible_usages |= 1 << res->mod_info->aux_usage;
    } else if (has_mcs) {
+      assert(!res->mod_info);
       res->aux.possible_usages |=
          1 << (has_ccs ? ISL_AUX_USAGE_MCS_CCS : ISL_AUX_USAGE_MCS);
    } else if (has_hiz) {
+      assert(!res->mod_info);
       if (!has_ccs) {
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
       } else if (res->surf.samples == 1 &&
