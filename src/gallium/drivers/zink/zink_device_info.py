@@ -329,30 +329,10 @@ zink_get_physical_device_info(struct zink_screen *screen)
          %for ext in extensions:
          <%helpers:guard ext="${ext}">
             if (!strcmp(extensions[i].extensionName, "${ext.name}")) {
-         %if ext.core_since:
-         %for version in versions:
-         %if ext.core_since.struct_version == version.struct_version:
-               if (${version.version()} >= screen->vk_version) {
-         %if not (ext.has_features or ext.has_properties):
-                  info->have_${ext.name_with_vendor()} = true;
-         %else:
-                  support_${ext.name_with_vendor()} = true;
-         %endif
-               } else {
-         %if not (ext.has_features or ext.has_properties):
-                  info->have_${ext.name_with_vendor()} = true;
-         %else:
-                  support_${ext.name_with_vendor()} = true;
-         %endif
-               }
-         %endif
-         %endfor
-         %else:
          %if not (ext.has_features or ext.has_properties):
                info->have_${ext.name_with_vendor()} = true;
          %else:
                support_${ext.name_with_vendor()} = true;
-         %endif
          %endif
             }
          </%helpers:guard>
@@ -362,6 +342,22 @@ zink_get_physical_device_info(struct zink_screen *screen)
          FREE(extensions);
       }
    }
+
+   %for version in versions:
+   if (${version.version()} <= screen->vk_version) {
+   %for ext in extensions:
+   %if ext.core_since and ext.core_since.struct_version == version.struct_version:
+   <%helpers:guard ext="${ext}">
+   %if not (ext.has_features or ext.has_properties):
+       info->have_${ext.name_with_vendor()} = true;
+   %else:
+       support_${ext.name_with_vendor()} = true;
+   %endif
+   </%helpers:guard>
+   %endif
+   %endfor
+   }
+   %endfor
 
    // get device features
    if (screen->vk.GetPhysicalDeviceFeatures2) {
