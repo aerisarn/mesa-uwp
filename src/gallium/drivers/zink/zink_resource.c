@@ -702,7 +702,11 @@ resource_create(struct pipe_screen *pscreen,
    res->base.b.screen = pscreen;
 
    bool optimal_tiling = false;
-   res->obj = resource_object_create(screen, templ, whandle, &optimal_tiling, modifiers, 0);
+   struct pipe_resource templ2 = *templ;
+   unsigned scanout_flags = templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
+   if (!(templ->bind & PIPE_BIND_LINEAR))
+      templ2.bind &= ~scanout_flags;
+   res->obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, modifiers, 0);
    if (!res->obj) {
       free(res->modifiers);
       FREE(res);
@@ -727,10 +731,10 @@ resource_create(struct pipe_screen *pscreen,
       res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
       res->optimal_tiling = optimal_tiling;
       res->aspect = aspect_from_format(templ->format);
-      if (res->base.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED) && optimal_tiling) {
+      if (scanout_flags && optimal_tiling) {
          // TODO: remove for wsi
-         struct pipe_resource templ2 = res->base.b;
-         templ2.bind = (res->base.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)) | PIPE_BIND_LINEAR;
+         templ2 = res->base.b;
+         templ2.bind = scanout_flags | PIPE_BIND_LINEAR;
          res->scanout_obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, modifiers, modifiers_count);
          assert(!optimal_tiling);
       }
