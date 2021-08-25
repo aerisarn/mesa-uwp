@@ -125,6 +125,7 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    bci.pNext = NULL;
    bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
    bci.queueFamilyIndexCount = 0;
+   bci.pQueueFamilyIndices = NULL;
    bci.size = templ->width0;
    bci.flags = 0;
    assert(bci.size > 0);
