@@ -69,12 +69,14 @@ struct zink_shader_key {
 static inline const struct zink_fs_key *
 zink_fs_key(const struct zink_shader_key *key)
 {
+   assert(key);
    return &key->key.fs;
 }
 
 static inline const struct zink_vs_key *
 zink_vs_key(const struct zink_shader_key *key)
 {
+   assert(key);
    return &key->key.vs;
 }
 

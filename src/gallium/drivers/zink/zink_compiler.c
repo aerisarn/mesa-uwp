@@ -676,48 +676,48 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
          NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
                                                           nir_var_shader_out);
       }
-   }
 
-   /* TODO: use a separate mem ctx here for ralloc */
-   switch (zs->nir->info.stage) {
-   case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_EVAL:
-   case MESA_SHADER_GEOMETRY:
-      if (zink_vs_key(key)->last_vertex_stage) {
-         if (zs->streamout.have_xfb)
-            streamout = &zs->streamout;
+      /* TODO: use a separate mem ctx here for ralloc */
+      switch (zs->nir->info.stage) {
+      case MESA_SHADER_VERTEX:
+      case MESA_SHADER_TESS_EVAL:
+      case MESA_SHADER_GEOMETRY:
+         if (zink_vs_key(key)->last_vertex_stage) {
+            if (zs->streamout.have_xfb)
+               streamout = &zs->streamout;
 
-         if (!zink_vs_key(key)->clip_halfz) {
-            NIR_PASS_V(nir, nir_lower_clip_halfz);
+            if (!zink_vs_key(key)->clip_halfz) {
+               NIR_PASS_V(nir, nir_lower_clip_halfz);
+            }
+            if (zink_vs_key(key)->push_drawid) {
+               NIR_PASS_V(nir, lower_drawid);
+            }
          }
-         if (zink_vs_key(key)->push_drawid) {
-            NIR_PASS_V(nir, lower_drawid);
+         break;
+      case MESA_SHADER_FRAGMENT:
+         if (!zink_fs_key(key)->samples &&
+            nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
+            /* VK will always use gl_SampleMask[] values even if sample count is 0,
+            * so we need to skip this write here to mimic GL's behavior of ignoring it
+            */
+            nir_foreach_shader_out_variable(var, nir) {
+               if (var->data.location == FRAG_RESULT_SAMPLE_MASK)
+                  var->data.mode = nir_var_shader_temp;
+            }
+            nir_fixup_deref_modes(nir);
+            NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+            optimize_nir(nir);
          }
-      }
-      break;
-   case MESA_SHADER_FRAGMENT:
-      if (!zink_fs_key(key)->samples &&
-          nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
-         /* VK will always use gl_SampleMask[] values even if sample count is 0,
-          * so we need to skip this write here to mimic GL's behavior of ignoring it
-          */
-         nir_foreach_shader_out_variable(var, nir) {
-            if (var->data.location == FRAG_RESULT_SAMPLE_MASK)
-               var->data.mode = nir_var_shader_temp;
+         if (zink_fs_key(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
+            NIR_PASS_V(nir, lower_dual_blend);
          }
-         nir_fixup_deref_modes(nir);
-         NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-         optimize_nir(nir);
+         if (zink_fs_key(key)->coord_replace_bits) {
+            NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
+                     false, zink_fs_key(key)->coord_replace_yinvert);
+         }
+         break;
+      default: break;
       }
-      if (zink_fs_key(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
-         NIR_PASS_V(nir, lower_dual_blend);
-      }
-      if (zink_fs_key(key)->coord_replace_bits) {
-         NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
-                    false, zink_fs_key(key)->coord_replace_yinvert);
-      }
-      break;
-   default: break;
    }
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
