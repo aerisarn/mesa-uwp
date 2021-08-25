@@ -143,6 +143,7 @@ get_used_bindings(UNUSED nir_builder *_b, nir_instr *instr, void *_state)
       case nir_intrinsic_image_deref_atomic_xor:
       case nir_intrinsic_image_deref_atomic_exchange:
       case nir_intrinsic_image_deref_atomic_comp_swap:
+      case nir_intrinsic_image_deref_atomic_fadd:
       case nir_intrinsic_image_deref_size:
       case nir_intrinsic_image_deref_samples:
       case nir_intrinsic_image_deref_load_param_intel:
@@ -819,6 +820,7 @@ lower_direct_buffer_instr(nir_builder *b, nir_instr *instr, void *_state)
    case nir_intrinsic_deref_atomic_xor:
    case nir_intrinsic_deref_atomic_exchange:
    case nir_intrinsic_deref_atomic_comp_swap:
+   case nir_intrinsic_deref_atomic_fadd:
    case nir_intrinsic_deref_atomic_fmin:
    case nir_intrinsic_deref_atomic_fmax:
    case nir_intrinsic_deref_atomic_fcomp_swap:
@@ -1350,6 +1352,7 @@ apply_pipeline_layout(nir_builder *b, nir_instr *instr, void *_state)
       case nir_intrinsic_image_deref_atomic_xor:
       case nir_intrinsic_image_deref_atomic_exchange:
       case nir_intrinsic_image_deref_atomic_comp_swap:
+      case nir_intrinsic_image_deref_atomic_fadd:
       case nir_intrinsic_image_deref_size:
       case nir_intrinsic_image_deref_samples:
       case nir_intrinsic_image_deref_load_param_intel:

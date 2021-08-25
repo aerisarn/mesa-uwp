@@ -1708,7 +1708,7 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
          VkPhysicalDeviceShaderAtomicFloatFeaturesEXT *features = (void *)ext;
          features->shaderBufferFloat32Atomics =    true;
-         features->shaderBufferFloat32AtomicAdd =  false;
+         features->shaderBufferFloat32AtomicAdd =  pdevice->info.has_lsc;
          features->shaderBufferFloat64Atomics =    false;
          features->shaderBufferFloat64AtomicAdd =  false;
          features->shaderSharedFloat32Atomics =    true;
