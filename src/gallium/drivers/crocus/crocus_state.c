@@ -4796,7 +4796,7 @@ crocus_populate_fs_key(const struct crocus_context *ice,
 
    uint32_t line_aa = BRW_WM_AA_NEVER;
    if (rast->cso.line_smooth) {
-      int reduced_prim = u_reduced_prim(ice->state.prim_mode);
+      int reduced_prim = ice->state.reduced_prim_mode;
       if (reduced_prim == PIPE_PRIM_LINES)
          line_aa = BRW_WM_AA_ALWAYS;
       else if (reduced_prim == PIPE_PRIM_TRIANGLES) {
@@ -9259,6 +9259,7 @@ genX(crocus_init_state)(struct crocus_context *ice)
    ice->state.sample_mask = 0xff;
    ice->state.num_viewports = 1;
    ice->state.prim_mode = PIPE_PRIM_MAX;
+   ice->state.reduced_prim_mode = PIPE_PRIM_MAX;
    ice->state.genx = calloc(1, sizeof(struct crocus_genx_state));
    ice->draw.derived_params.drawid = -1;
 
