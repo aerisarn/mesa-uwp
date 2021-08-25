@@ -3815,7 +3815,8 @@ get_n_src(struct ntd_context *ctx, const struct dxil_value **values,
 
    for (i = 0; i < num_components; ++i) {
       values[i] = get_src(ctx, &src->src, i, type);
-      assert(values[i] != NULL);
+      if (!values[i])
+         return 0;
    }
 
    return num_components;
@@ -4000,11 +4001,15 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
       case nir_tex_src_coord:
          coord_components = get_n_src(ctx, params.coord, ARRAY_SIZE(params.coord),
                                       &instr->src[i], type);
+         if (!coord_components)
+            return false;
          break;
 
       case nir_tex_src_offset:
          offset_components = get_n_src(ctx, params.offset, ARRAY_SIZE(params.offset),
                                        &instr->src[i],  nir_type_int);
+         if (!offset_components)
+            return false;
          break;
 
       case nir_tex_src_bias:
@@ -4039,13 +4044,15 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
       case nir_tex_src_ddx:
          dx_components = get_n_src(ctx, params.dx, ARRAY_SIZE(params.dx),
                                    &instr->src[i], nir_type_float);
-         assert(dx_components != 0);
+         if (!dx_components)
+            return false;
          break;
 
       case nir_tex_src_ddy:
          dy_components = get_n_src(ctx, params.dy, ARRAY_SIZE(params.dy),
                                    &instr->src[i], nir_type_float);
-         assert(dy_components != 0);
+         if (!dy_components)
+            return false;
          break;
 
       case nir_tex_src_ms_index:
