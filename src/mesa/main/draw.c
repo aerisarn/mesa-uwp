@@ -204,8 +204,7 @@ valid_elements_type(struct gl_context *ctx, GLenum type)
 
 static GLenum
 validate_DrawElements_common(struct gl_context *ctx, GLenum mode,
-                             GLsizei count, GLsizei numInstances, GLenum type,
-                             const GLvoid *indices)
+                             GLsizei count, GLsizei numInstances, GLenum type)
 {
    if (count < 0 || numInstances < 0)
       return GL_INVALID_VALUE;
@@ -224,11 +223,9 @@ validate_DrawElements_common(struct gl_context *ctx, GLenum mode,
  */
 static GLboolean
 _mesa_validate_DrawElements(struct gl_context *ctx,
-                            GLenum mode, GLsizei count, GLenum type,
-                            const GLvoid *indices)
+                            GLenum mode, GLsizei count, GLenum type)
 {
-   GLenum error = validate_DrawElements_common(ctx, mode, count, 1, type,
-                                               indices);
+   GLenum error = validate_DrawElements_common(ctx, mode, count, 1, type);
    if (error)
       _mesa_error(ctx, error, "glDrawElements");
 
@@ -306,15 +303,14 @@ _mesa_validate_MultiDrawElements(struct gl_context *ctx,
 static GLboolean
 _mesa_validate_DrawRangeElements(struct gl_context *ctx, GLenum mode,
                                  GLuint start, GLuint end,
-                                 GLsizei count, GLenum type,
-                                 const GLvoid *indices)
+                                 GLsizei count, GLenum type)
 {
    GLenum error;
 
    if (end < start) {
       error = GL_INVALID_VALUE;
    } else {
-      error = validate_DrawElements_common(ctx, mode, count, 1, type, indices);
+      error = validate_DrawElements_common(ctx, mode, count, 1, type);
    }
 
    if (error)
@@ -542,11 +538,10 @@ _mesa_validate_MultiDrawArrays(struct gl_context *ctx, GLenum mode,
 static GLboolean
 _mesa_validate_DrawElementsInstanced(struct gl_context *ctx,
                                      GLenum mode, GLsizei count, GLenum type,
-                                     const GLvoid *indices, GLsizei numInstances)
+                                     GLsizei numInstances)
 {
    GLenum error =
-      validate_DrawElements_common(ctx, mode, count, numInstances, type,
-                                   indices);
+      validate_DrawElements_common(ctx, mode, count, numInstances, type);
 
    if (error)
       _mesa_error(ctx, error, "glDrawElementsInstanced");
@@ -1819,7 +1814,7 @@ _mesa_DrawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end,
 
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_DrawRangeElements(ctx, mode, start, end, count,
-                                         type, indices))
+                                         type))
       return;
 
    if ((int) end + basevertex < 0 || start + basevertex >= max_element) {
@@ -1914,7 +1909,7 @@ _mesa_DrawElements(GLenum mode, GLsizei count, GLenum type,
       _mesa_update_state(ctx);
 
    if (!_mesa_is_no_error_enabled(ctx) &&
-       !_mesa_validate_DrawElements(ctx, mode, count, type, indices))
+       !_mesa_validate_DrawElements(ctx, mode, count, type))
       return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
@@ -1939,7 +1934,7 @@ _mesa_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
       _mesa_update_state(ctx);
 
    if (!_mesa_is_no_error_enabled(ctx) &&
-       !_mesa_validate_DrawElements(ctx, mode, count, type, indices))
+       !_mesa_validate_DrawElements(ctx, mode, count, type))
       return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
@@ -1965,7 +1960,7 @@ _mesa_DrawElementsInstancedARB(GLenum mode, GLsizei count, GLenum type,
 
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                             indices, numInstances))
+                                             numInstances))
       return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
@@ -1993,7 +1988,7 @@ _mesa_DrawElementsInstancedBaseVertex(GLenum mode, GLsizei count,
 
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                             indices, numInstances))
+                                             numInstances))
       return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
@@ -2023,7 +2018,7 @@ _mesa_DrawElementsInstancedBaseInstance(GLenum mode, GLsizei count,
 
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                             indices, numInstances))
+                                             numInstances))
       return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
@@ -2055,7 +2050,7 @@ _mesa_DrawElementsInstancedBaseVertexBaseInstance(GLenum mode,
 
    if (!_mesa_is_no_error_enabled(ctx) &&
        !_mesa_validate_DrawElementsInstanced(ctx, mode, count, type,
-                                             indices, numInstances))
+                                             numInstances))
       return;
 
    _mesa_validated_drawrangeelements(ctx, mode, false, 0, ~0,
