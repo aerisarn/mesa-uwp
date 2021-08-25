@@ -1977,9 +1977,14 @@ emit_vec(struct ntd_context *ctx, nir_alu_instr *alu, unsigned num_inputs)
    const struct dxil_type *type = get_alu_src_type(ctx, alu, 0);
    nir_alu_type t = dxil_type_to_nir_type(type);
 
-   for (unsigned i = 0; i < num_inputs; i++)
-      store_alu_dest(ctx, alu, i, get_src(ctx, &alu->src[i].src,
-                                          alu->src[i].swizzle[0], t));
+   for (unsigned i = 0; i < num_inputs; i++) {
+      const struct dxil_value *src =
+         get_src(ctx, &alu->src[i].src, alu->src[i].swizzle[0], t);
+      if (!src)
+         return false;
+
+      store_alu_dest(ctx, alu, i, src);
+   }
    return true;
 }
 
@@ -2073,8 +2078,11 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    assert(alu->dest.write_mask == 1);
    const struct dxil_value *src[4];
    assert(nir_op_infos[alu->op].num_inputs <= 4);
-   for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
+   for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       src[i] = get_alu_src(ctx, alu, i);
+      if (!src[i])
+         return false;
+   }
 
    switch (alu->op) {
    case nir_op_iadd:
@@ -2564,11 +2572,15 @@ emit_store_shared(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    value = get_src(ctx, &intr->src[0], 0, nir_type_uint);
+   if (!value)
+      return false;
 
    if (intr->intrinsic == nir_intrinsic_store_shared_dxil)
       return dxil_emit_store(&ctx->mod, value, ptr, 4, false);
 
    const struct dxil_value *mask = get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   if (!mask)
+      return false;
 
    if (!dxil_emit_atomicrmw(&ctx->mod, mask, ptr, DXIL_RMWOP_AND, false,
                             DXIL_ATOMIC_ORDERING_ACQREL,
@@ -2610,6 +2622,9 @@ emit_store_scratch(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    value = get_src(ctx, &intr->src[0], 0, nir_type_uint);
+   if (!value)
+      return false;
+
    return dxil_emit_store(&ctx->mod, value, ptr, 4, false);
 }
 
@@ -2627,6 +2642,9 @@ emit_load_ubo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    } else {
       const struct dxil_value *offset_src = get_src(ctx, &intr->src[1], 0, nir_type_uint);
       const struct dxil_value *c4 = dxil_module_get_int32_const(&ctx->mod, 4);
+      if (!offset_src || !c4)
+         return false;
+
       offset = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ASHR, offset_src, c4, 0);
    }
 
@@ -2690,8 +2708,12 @@ emit_store_output(struct ntd_context *ctx, nir_intrinsic_instr *intr,
    if (output->data.compact) {
       nir_deref_instr *array_deref = nir_instr_as_deref(intr->src[0].ssa->parent_instr);
       unsigned array_index = nir_src_as_uint(array_deref->arr.index);
+
       const struct dxil_value *col = dxil_module_get_int8_const(&ctx->mod, array_index);
       const struct dxil_value *value = get_src(ctx, &intr->src[1], 0, out_type);
+      if (!col || !value)
+         return false;
+
       const struct dxil_value *args[] = {
          opcode, output_id, row, col, value
       };
@@ -2702,6 +2724,9 @@ emit_store_output(struct ntd_context *ctx, nir_intrinsic_instr *intr,
          if (writemask & (1 << i)) {
             const struct dxil_value *col = dxil_module_get_int8_const(&ctx->mod, i);
             const struct dxil_value *value = get_src(ctx, &intr->src[1], i, out_type);
+            if (!col || !value)
+               return false;
+
             const struct dxil_value *args[] = {
                opcode, output_id, row, col, value
             };
@@ -2745,6 +2770,9 @@ emit_load_input_array(struct ntd_context *ctx, nir_intrinsic_instr *intr, nir_va
       row = get_src(ctx, index, 0, nir_type_int);
    }
 
+   if (!opcode || !input_id || !vertex_id || !row)
+      return false;
+
    nir_alu_type out_type = nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(glsl_get_array_element(var->type)));
    enum overload_type overload = get_overload(out_type, glsl_get_bit_size(glsl_get_array_element(var->type)));
 
@@ -2755,6 +2783,8 @@ emit_load_input_array(struct ntd_context *ctx, nir_intrinsic_instr *intr, nir_va
 
    for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
       const struct dxil_value *comp = dxil_module_get_int8_const(&ctx->mod, i);
+      if (!comp)
+         return false;
 
       const struct dxil_value *args[] = {
          opcode, input_id, row, comp, vertex_id
@@ -2790,6 +2820,9 @@ emit_load_compact_input_array(struct ntd_context *ctx, nir_intrinsic_instr *intr
       vertex_id = dxil_module_get_undef(&ctx->mod, int32_type);
    }
 
+   if (!opcode || !input_id || !row || !vertex_id)
+      return false;
+
    nir_alu_type out_type = nir_type_float;
    enum overload_type overload = get_overload(out_type, 32);
 
@@ -2799,6 +2832,8 @@ emit_load_compact_input_array(struct ntd_context *ctx, nir_intrinsic_instr *intr
       return false;
 
    const struct dxil_value *comp = dxil_module_get_int8_const(&ctx->mod, nir_src_as_int(*col));
+   if (!comp)
+      return false;
 
    const struct dxil_value *args[] = {
       opcode, input_id, row, comp, vertex_id
@@ -2820,6 +2855,9 @@ emit_load_input_interpolated(struct ntd_context *ctx, nir_intrinsic_instr *intr,
    const struct dxil_value *row = dxil_module_get_int32_const(&ctx->mod, 0);
    const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_value *vertex_id = dxil_module_get_undef(&ctx->mod, int32_type);
+
+   if (!opcode || !input_id || !row || !int32_type || !vertex_id)
+      return false;
 
    nir_alu_type out_type = nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(var->type));
    enum overload_type overload = get_overload(out_type, glsl_get_bit_size(var->type));
@@ -2893,8 +2931,11 @@ emit_load_ptr(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    struct nir_variable *var =
       nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+
    const struct dxil_value *index =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   if (!index)
+      return false;
 
    const struct dxil_value *ptr = emit_gep_for_index(ctx, var, index);
    if (!ptr)
@@ -2902,6 +2943,8 @@ emit_load_ptr(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    const struct dxil_value *retval =
       dxil_emit_load(&ctx->mod, ptr, 4, false);
+   if (!retval)
+      return false;
 
    store_dest(ctx, &intr->dest, 0, retval, nir_type_uint);
    return true;
@@ -3024,6 +3067,9 @@ static bool
 emit_discard_if(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *value = get_src(ctx, &intr->src[0], 0, nir_type_bool);
+   if (!value)
+      return false;
+
    return emit_discard_if_with_value(ctx, value);
 }
 
@@ -3383,6 +3429,8 @@ emit_shared_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
       return false;
 
    value = get_src(ctx, &intr->src[1], 0, type);
+   if (!value)
+      return false;
 
    retval = dxil_emit_atomicrmw(&ctx->mod, value, ptr, op, false,
                                 DXIL_ATOMIC_ORDERING_ACQREL,
@@ -3418,6 +3466,8 @@ emit_shared_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    cmpval = get_src(ctx, &intr->src[1], 0, nir_type_uint);
    newval = get_src(ctx, &intr->src[2], 0, nir_type_uint);
+   if (!cmpval || !newval)
+      return false;
 
    retval = dxil_emit_cmpxchg(&ctx->mod, cmpval, newval, ptr, false,
                               DXIL_ATOMIC_ORDERING_ACQREL,
@@ -3442,9 +3492,13 @@ emit_vulkan_resource_index(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *index_value = dxil_module_get_int32_const(&ctx->mod, binding);
    if (!index_value)
       return false;
+
    if (!const_index) {
-      index_value = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
-         index_value, get_src(ctx, &intr->src[0], 0, nir_type_uint32), 0);
+      const struct dxil_value *offset = get_src(ctx, &intr->src[0], 0, nir_type_uint32);
+      if (!offset)
+         return false;
+
+      index_value = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD, index_value, offset, 0);
       if (!index_value)
          return false;
    }
@@ -3487,9 +3541,13 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
    }
 
+   const struct dxil_value *index_value = get_src(ctx, &intr->src[0], 0, nir_type_uint32);
+   if (!index_value)
+      return false;
+
    handle = emit_createhandle_call(ctx, resource_class,
       get_resource_id(ctx, resource_class, space, binding),
-      get_src(ctx, &intr->src[0], 0, nir_type_uint32), false);
+      index_value, false);
 
    store_dest_value(ctx, &intr->dest, 0, handle);
    store_dest(ctx, &intr->dest, 1, get_src(ctx, &intr->src[0], 1, nir_type_uint32), nir_type_uint32);
@@ -4016,7 +4074,8 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
          assert(instr->op == nir_texop_txb);
          assert(nir_src_num_components(instr->src[i].src) == 1);
          params.bias = get_src(ctx, &instr->src[i].src, 0, nir_type_float);
-         assert(params.bias != NULL);
+         if (!params.bias)
+            return false;
          break;
 
       case nir_tex_src_lod:
@@ -4026,19 +4085,22 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
             params.lod_or_sample = get_src(ctx, &instr->src[i].src, 0, type);
          else
             params.lod_or_sample = int_undef;
-         assert(params.lod_or_sample != NULL);
+         if (!params.lod_or_sample)
+            return false;
          break;
 
       case nir_tex_src_min_lod:
          assert(nir_src_num_components(instr->src[i].src) == 1);
          params.min_lod = get_src(ctx, &instr->src[i].src, 0, type);
-         assert(params.min_lod != NULL);
+         if (!params.min_lod)
+            return false;
          break;
 
       case nir_tex_src_comparator:
          assert(nir_src_num_components(instr->src[i].src) == 1);
          params.cmp = get_src(ctx, &instr->src[i].src, 0, nir_type_float);
-         assert(params.cmp != NULL);
+         if (!params.cmp)
+            return false;
          break;
 
       case nir_tex_src_ddx:
@@ -4057,7 +4119,8 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 
       case nir_tex_src_ms_index:
          params.lod_or_sample = get_src(ctx, &instr->src[i].src, 0, nir_type_int);
-         assert(params.lod_or_sample != NULL);
+         if (!params.lod_or_sample)
+            return false;
          break;
 
       case nir_tex_src_texture_deref:
@@ -4218,6 +4281,8 @@ emit_if(struct ntd_context *ctx, struct nir_if *if_stmt)
    assert(nir_src_num_components(if_stmt->condition) == 1);
    const struct dxil_value *cond = get_src(ctx, &if_stmt->condition, 0,
                                            nir_type_bool);
+   if (!cond)
+      return false;
 
    /* prepare blocks */
    nir_block *then_block = nir_if_first_then_block(if_stmt);
