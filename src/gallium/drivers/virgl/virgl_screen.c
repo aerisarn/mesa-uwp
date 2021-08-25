@@ -167,10 +167,12 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
       return (vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_FBO_MIXED_COLOR_FORMATS) ||
             (vscreen->caps.caps.v2.host_feature_check_version < 1);
+   case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
+       if (vscreen->caps.caps.v2.host_feature_check_version < 6)
+           return MIN2(vscreen->caps.caps.v1.glsl_level, 140);
+       FALLTHROUGH;
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
       return vscreen->caps.caps.v1.glsl_level;
-   case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return MIN2(vscreen->caps.caps.v1.glsl_level, 140);
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
       return 1;
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
