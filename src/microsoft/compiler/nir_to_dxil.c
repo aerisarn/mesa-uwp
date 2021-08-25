@@ -981,7 +981,7 @@ static unsigned get_dword_size(const struct glsl_type *type)
    return glsl_get_explicit_size(type, false);
 }
 
-static bool
+static void
 var_fill_const_array_with_vector_or_scalar(struct ntd_context *ctx,
                                            const struct nir_constant *c,
                                            const struct glsl_type *type,
@@ -1016,11 +1016,9 @@ var_fill_const_array_with_vector_or_scalar(struct ntd_context *ctx,
 
       offset += increment;
    }
-
-   return true;
 }
 
-static bool
+static void
 var_fill_const_array(struct ntd_context *ctx, const struct nir_constant *c,
                      const struct glsl_type *type, void *const_vals,
                      unsigned int offset)
@@ -1028,53 +1026,42 @@ var_fill_const_array(struct ntd_context *ctx, const struct nir_constant *c,
    assert(!glsl_type_is_interface(type));
 
    if (glsl_type_is_vector_or_scalar(type)) {
-      return var_fill_const_array_with_vector_or_scalar(ctx, c, type,
-                                                        const_vals,
-                                                        offset);
+      var_fill_const_array_with_vector_or_scalar(ctx, c, type,
+                                                 const_vals,
+                                                 offset);
    } else if (glsl_type_is_array(type)) {
       assert(!glsl_type_is_unsized_array(type));
       const struct glsl_type *without = glsl_without_array(type);
       unsigned stride = glsl_get_explicit_stride(without);
 
       for (unsigned elt = 0; elt < glsl_get_length(type); elt++) {
-         if (!var_fill_const_array(ctx, c->elements[elt], without,
-                                   const_vals, offset + (elt * stride))) {
-            return false;
-         }
+         var_fill_const_array(ctx, c->elements[elt], without,
+                              const_vals, offset + (elt * stride));
          offset += glsl_get_cl_size(without);
       }
-      return true;
    } else if (glsl_type_is_struct(type)) {
       for (unsigned int elt = 0; elt < glsl_get_length(type); elt++) {
          const struct glsl_type *elt_type = glsl_get_struct_field(type, elt);
          unsigned field_offset = glsl_get_struct_field_offset(type, elt);
 
-         if (!var_fill_const_array(ctx, c->elements[elt],
-                                   elt_type, const_vals,
-                                   offset + field_offset)) {
-            return false;
-         }
+         var_fill_const_array(ctx, c->elements[elt],
+                              elt_type, const_vals,
+                              offset + field_offset);
       }
-      return true;
-   }
-
-   unreachable("unknown GLSL type in var_fill_const_array");
+   } else
+      unreachable("unknown GLSL type in var_fill_const_array");
 }
 
 static bool
 emit_global_consts(struct ntd_context *ctx)
 {
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_temp) {
-      bool err;
-
       assert(var->constant_initializer);
 
       unsigned int num_members = DIV_ROUND_UP(glsl_get_cl_size(var->type), 4);
       uint32_t *const_ints = ralloc_array(ctx->ralloc_ctx, uint32_t, num_members);
-      err = var_fill_const_array(ctx, var->constant_initializer, var->type,
+      var_fill_const_array(ctx, var->constant_initializer, var->type,
                                  const_ints, 0);
-      if (!err)
-         return false;
       const struct dxil_value **const_vals =
          ralloc_array(ctx->ralloc_ctx, const struct dxil_value *, num_members);
       if (!const_vals)
