@@ -1199,7 +1199,7 @@ dri2CreateScreen(int screen, struct glx_display * priv)
 	 psc->dri2 = (__DRIdri2Extension *) extensions[i];
    }
 
-   if (psc->core == NULL || psc->dri2 || psc->dri2->base.version < 3) {
+   if (psc->core == NULL || psc->dri2 == NULL || psc->dri2->base.version < 3) {
       ErrorMessageF("core dri or dri2 extension not found\n");
       goto handle_error;
    }
