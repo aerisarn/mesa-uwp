@@ -2026,6 +2026,9 @@ crocus_create_rasterizer_state(struct pipe_context *ctx,
       sf.LineEndCapAntialiasingRegionWidth =
          state->line_smooth ? _10pixels : _05pixels;
       sf.LastPixelEnable = state->line_last_pixel;
+#if GFX_VER <= 7
+      sf.AntialiasingEnable = state->line_smooth;
+#endif
 #if GFX_VER == 8
       struct crocus_screen *screen = (struct crocus_screen *)ctx->screen;
       if (screen->devinfo.is_cherryview)
@@ -7037,11 +7040,15 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          sf.DestinationOriginHorizontalBias = 0.5;
          sf.DestinationOriginVerticalBias = 0.5;
 
+	 sf.LineEndCapAntialiasingRegionWidth =
+            cso_state->line_smooth ? _10pixels : _05pixels;
          sf.LastPixelEnable = cso_state->line_last_pixel;
+         sf.AntialiasingEnable = cso_state->line_smooth;
+
          sf.LineWidth = get_line_width(cso_state);
          sf.PointWidth = cso_state->point_size;
          sf.PointWidthSource = cso_state->point_size_per_vertex ? Vertex : State;
-#if GFX_VERx10 == 45 || GFX_VER >= 5
+#if GFX_VERx10 >= 45
          sf.AALineDistanceMode = AALINEDISTANCE_TRUE;
 #endif
          sf.ViewportTransformEnable = true;
