@@ -487,7 +487,7 @@ for (int bit = 31; bit >= 0; bit--) {
 }
 """)
 
-unop_convert("ifind_msb_rev", tint32, tuint, """
+unop_convert("ifind_msb_rev", tint32, tint, """
 dst = -1;
 if (src0 != 0 && src0 != -1) {
    for (int bit = 0; bit < 31; bit++) {
