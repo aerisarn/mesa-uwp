@@ -34,9 +34,7 @@
 static void
 destroy_fence(struct zink_screen *screen, struct zink_tc_fence *mfence)
 {
-   struct zink_batch_state *bs = zink_batch_state(mfence->fence);
    mfence->fence = NULL;
-   zink_batch_state_reference(screen, &bs, NULL);
    tc_unflushed_batch_token_reference(&mfence->tc_token, NULL);
    FREE(mfence);
 }

@@ -180,7 +180,6 @@ create_batch_state(struct zink_context *ctx)
       goto fail
 
    bs->ctx = ctx;
-   pipe_reference_init(&bs->reference, 1);
 
    SET_CREATE_OR_FAIL(bs->resources);
    SET_CREATE_OR_FAIL(bs->surfaces);

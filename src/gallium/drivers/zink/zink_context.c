@@ -100,15 +100,15 @@ zink_context_destroy(struct pipe_context *pctx)
 
    simple_mtx_destroy(&ctx->batch_mtx);
    zink_clear_batch_state(ctx, ctx->batch.state);
-   zink_batch_state_reference(screen, &ctx->batch.state, NULL);
+   zink_batch_state_destroy(screen, ctx->batch.state);
    hash_table_foreach(&ctx->batch_states, entry) {
       struct zink_batch_state *bs = entry->data;
       zink_clear_batch_state(ctx, bs);
-      zink_batch_state_reference(screen, &bs, NULL);
+      zink_batch_state_destroy(screen, bs);
    }
    util_dynarray_foreach(&ctx->free_batch_states, struct zink_batch_state*, bs) {
       zink_clear_batch_state(ctx, *bs);
-      zink_batch_state_reference(screen, bs, NULL);
+      zink_batch_state_destroy(screen, *bs);
    }
 
    if (ctx->framebuffer) {
@@ -2559,8 +2559,6 @@ zink_flush(struct pipe_context *pctx,
          *pfence = (struct pipe_fence_handle *)mfence;
       }
 
-      struct zink_batch_state *bs = zink_batch_state(fence);
-      zink_batch_state_reference(screen, NULL, bs);
       mfence->fence = fence;
       if (fence)
          mfence->submit_count = submit_count;
