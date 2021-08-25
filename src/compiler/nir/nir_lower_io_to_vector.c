@@ -127,7 +127,9 @@ variables_can_merge(const nir_shader *shader,
    assert(a->data.mode == b->data.mode);
    if (shader->info.stage == MESA_SHADER_FRAGMENT &&
        a->data.mode == nir_var_shader_in &&
-       a->data.interpolation != b->data.interpolation)
+       (a->data.interpolation != b->data.interpolation ||
+        a->data.centroid != b->data.centroid ||
+        a->data.sample != b->data.sample))
       return false;
 
    if (shader->info.stage == MESA_SHADER_FRAGMENT &&
