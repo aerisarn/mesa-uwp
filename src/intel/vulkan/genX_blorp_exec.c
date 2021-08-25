@@ -332,7 +332,25 @@ genX(blorp_exec)(struct blorp_batch *batch,
                              "after blorp BTI change");
 #endif
 
+   /* Calculate state that does not get touched by blorp.
+    * Flush everything else.
+    */
+   anv_cmd_dirty_mask_t skip_bits = ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
+                                    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
+                                    ANV_CMD_DIRTY_INDEX_BUFFER |
+                                    ANV_CMD_DIRTY_XFB_ENABLE |
+                                    ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE |
+                                    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
+                                    ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS |
+                                    ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE |
+                                    ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+
+   if (!params->wm_prog_data) {
+      skip_bits |= ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+                   ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
+   }
+
    cmd_buffer->state.gfx.vb_dirty = ~0;
-   cmd_buffer->state.gfx.dirty = ~0;
+   cmd_buffer->state.gfx.dirty |= ~skip_bits;
    cmd_buffer->state.push_constants_dirty = ~0;
 }
