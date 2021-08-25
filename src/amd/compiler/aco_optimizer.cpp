@@ -3448,6 +3448,14 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 bool
 to_uniform_bool_instr(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
+   /* Check every operand to make sure they are suitable. */
+   for (Operand& op : instr->operands) {
+      if (!op.isTemp())
+         return false;
+      if (!ctx.info[op.tempId()].is_uniform_bool() && !ctx.info[op.tempId()].is_uniform_bitwise())
+         return false;
+   }
+
    switch (instr->opcode) {
    case aco_opcode::s_and_b32:
    case aco_opcode::s_and_b64: instr->opcode = aco_opcode::s_and_b32; break;
