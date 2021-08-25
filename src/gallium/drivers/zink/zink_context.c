@@ -2059,7 +2059,9 @@ zink_set_sample_locations(struct pipe_context *pctx, size_t size, const uint8_t 
    ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
    if (size > sizeof(ctx->sample_locations))
       size = sizeof(ctx->sample_locations);
-   memcpy(ctx->sample_locations, locations, size);
+
+   if (locations)
+      memcpy(ctx->sample_locations, locations, size);
 }
 
 static VkAccessFlags
