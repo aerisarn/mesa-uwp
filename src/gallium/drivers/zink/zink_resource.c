@@ -803,6 +803,8 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
       *value = DRM_FORMAT_MOD_INVALID;
       if (!screen->info.have_EXT_image_drm_format_modifier)
          return false;
+      if (!res->modifiers)
+         return false;
       VkImageDrmFormatModifierPropertiesEXT prop;
       prop.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
       prop.pNext = NULL;
