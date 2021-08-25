@@ -78,6 +78,11 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
        sel->info.base.fs.uses_discard &&
        sel->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))
       shader_variant_flags |= 1 << 3;
+   /* use_ngg_culling disables NGG passthrough for non-culling shaders to reduce context
+    * rolls, which can be changed with AMD_DEBUG=nonggc or AMD_DEBUG=nggc.
+    */
+   if (sel->screen->use_ngg_culling)
+      shader_variant_flags |= 1 << 4;
 
    /* bit gap */
 
@@ -985,6 +990,21 @@ static void gfx10_emit_ge_pc_alloc(struct si_context *sctx, unsigned value)
       sctx->tracked_regs.reg_saved |= 0x1ull << reg;
       sctx->tracked_regs.reg_value[reg] = value;
    }
+}
+
+bool gfx10_is_ngg_passthrough(struct si_shader *shader)
+{
+   struct si_shader_selector *sel = shader->selector;
+
+   /* Never use NGG passthrough if culling is possible even when it's not used by this shader,
+    * so that we don't get context rolls when enabling and disabling NGG passthrough.
+    */
+   if (sel->screen->use_ngg_culling)
+      return false;
+
+   return sel->info.stage != MESA_SHADER_GEOMETRY && !sel->so.num_outputs && !sel->info.writes_edgeflag &&
+          !shader->key.opt.ngg_culling &&
+          (sel->info.stage != MESA_SHADER_VERTEX || !shader->key.mono.u.vs_export_prim_id);
 }
 
 /* Common tail code for NGG primitive shaders. */

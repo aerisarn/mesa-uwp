@@ -882,6 +882,7 @@ char *si_finalize_nir(struct pipe_screen *screen, void *nirptr);
 /* si_state_shaders.c */
 void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *gs,
                       struct gfx9_gs_info *out);
+bool gfx10_is_ngg_passthrough(struct si_shader *shader);
 
 /* Inline helpers. */
 
@@ -898,15 +899,6 @@ static inline struct si_shader **si_get_main_shader_part(struct si_shader_select
    if (key->as_ngg)
       return &sel->main_shader_part_ngg;
    return &sel->main_shader_part;
-}
-
-static inline bool gfx10_is_ngg_passthrough(struct si_shader *shader)
-{
-   struct si_shader_selector *sel = shader->selector;
-
-   return sel->info.stage != MESA_SHADER_GEOMETRY && !sel->so.num_outputs && !sel->info.writes_edgeflag &&
-          !shader->key.opt.ngg_culling &&
-          (sel->info.stage != MESA_SHADER_VERTEX || !shader->key.mono.u.vs_export_prim_id);
 }
 
 static inline bool si_shader_uses_bindless_samplers(struct si_shader_selector *selector)
