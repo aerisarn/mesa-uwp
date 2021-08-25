@@ -2103,7 +2103,8 @@ radv_cmd_buffer_clear_subpass(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                        VkImageLayout image_layout, const VkImageSubresourceRange *range,
-                       VkFormat format, int level, int layer, const VkClearValue *clear_val)
+                       VkFormat format, int level, unsigned layer_count,
+                       const VkClearValue *clear_val)
 {
    VkDevice device_h = radv_device_to_handle(cmd_buffer->device);
    struct radv_image_view iview;
@@ -2119,8 +2120,8 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
                            .subresourceRange = {.aspectMask = range->aspectMask,
                                                 .baseMipLevel = range->baseMipLevel + level,
                                                 .levelCount = 1,
-                                                .baseArrayLayer = range->baseArrayLayer + layer,
-                                                .layerCount = 1},
+                                                .baseArrayLayer = range->baseArrayLayer,
+                                                .layerCount = layer_count},
                         },
                         NULL);
 
@@ -2135,7 +2136,7 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
                                     },
                                  .width = width,
                                  .height = height,
-                                 .layers = 1},
+                                 .layers = layer_count},
       &cmd_buffer->pool->alloc, &fb);
 
    VkAttachmentDescription2 att_desc = {
@@ -2240,8 +2241,8 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
             .offset = {0, 0},
             .extent = {width, height},
          },
-      .baseArrayLayer = range->baseArrayLayer,
-      .layerCount = 1, /* FINISHME: clear multi-layer framebuffer */
+      .baseArrayLayer = 0,
+      .layerCount = layer_count,
    };
 
    emit_clear(cmd_buffer, &clear_att, &clear_rect, NULL, NULL, 0, false);
@@ -2379,9 +2380,9 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
          const uint32_t layer_count = image->type == VK_IMAGE_TYPE_3D
                                          ? radv_minify(image->info.depth, range->baseMipLevel + l)
                                          : radv_get_layerCount(image, range);
-         for (uint32_t s = 0; s < layer_count; ++s) {
 
-            if (cs) {
+         if (cs) {
+            for (uint32_t s = 0; s < layer_count; ++s) {
                struct radv_meta_blit2d_surf surf;
                surf.format = format;
                surf.image = image;
@@ -2390,11 +2391,11 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
                surf.aspect_mask = range->aspectMask;
                surf.disable_compression = disable_compression;
                radv_meta_clear_image_cs(cmd_buffer, &surf, &internal_clear_value.color);
-            } else {
-               assert(!disable_compression);
-               radv_clear_image_layer(cmd_buffer, image, image_layout, range, format, l, s,
-                                      &internal_clear_value);
             }
+         } else {
+            assert(!disable_compression);
+            radv_clear_image_layer(cmd_buffer, image, image_layout, range, format, l, layer_count,
+                                   &internal_clear_value);
          }
       }
    }
