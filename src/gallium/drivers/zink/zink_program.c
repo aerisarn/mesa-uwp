@@ -208,7 +208,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
       /* if comparing against the existing default, use the base variant key size since
        * we're only checking the stage-specific data
        */
-      key.is_default_variant = !memcmp(tmp->data, &key, key.size);
+      key.is_default_variant = tmp->size == key.size && !memcmp(tmp->data, &key, key.size);
    } else
       key.is_default_variant = true;
 
