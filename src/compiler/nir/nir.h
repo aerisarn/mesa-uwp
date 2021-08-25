@@ -3416,6 +3416,16 @@ typedef enum {
    nir_divergence_multiple_workgroup_per_compute_subgroup = (1 << 5),
 } nir_divergence_options;
 
+typedef enum {
+   nir_pack_varying_interp_mode_none          = (1 << 0),
+   nir_pack_varying_interp_mode_smooth        = (1 << 1),
+   nir_pack_varying_interp_mode_flat          = (1 << 2),
+   nir_pack_varying_interp_mode_noperspective = (1 << 3),
+   nir_pack_varying_interp_loc_sample         = (1 << 16),
+   nir_pack_varying_interp_loc_centroid       = (1 << 17),
+   nir_pack_varying_interp_loc_center         = (1 << 18),
+} nir_pack_varying_options;
+
 /** An instruction filtering callback
  *
  * Returns true if the instruction should be processed and false otherwise.
@@ -3777,6 +3787,13 @@ typedef struct nir_shader_compiler_options {
    nir_lower_int64_options lower_int64_options;
    nir_lower_doubles_options lower_doubles_options;
    nir_divergence_options divergence_analysis_options;
+
+   /**
+    * Support pack varyings with different interpolation location
+    * (center, centroid, sample) and mode (flat, noperspective, smooth)
+    * into same slot.
+    */
+   nir_pack_varying_options pack_varying_options;
 } nir_shader_compiler_options;
 
 typedef struct nir_shader {
