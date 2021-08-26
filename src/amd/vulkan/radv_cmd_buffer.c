@@ -2280,6 +2280,12 @@ radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 
    assert(radv_image_has_cmask(image) || radv_dcc_enabled(image, iview->base_mip));
 
+   /* Do not need to update the clear value for images that are fast cleared with the comp-to-single
+    * mode because the hardware gets the value from the image directly.
+    */
+   if (iview->image->support_comp_to_single)
+      return;
+
    radv_set_color_clear_metadata(cmd_buffer, image, &range, color_values);
 
    radv_update_bound_fast_clear_color(cmd_buffer, image, cb_idx, color_values);
@@ -2296,6 +2302,9 @@ radv_load_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_i
    struct radv_image *image = iview->image;
 
    if (!radv_image_has_cmask(image) && !radv_dcc_enabled(image, iview->base_mip))
+      return;
+
+   if (iview->image->support_comp_to_single)
       return;
 
    if (!radv_image_has_clear_value(image)) {
