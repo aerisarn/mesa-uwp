@@ -399,11 +399,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
 
    samples_log2 = ffs(samples) - 1;
    fs_key = radv_format_meta_fs_key(device, format);
-
-   if (fs_key == -1) {
-      radv_finishme("color clears incomplete");
-      return;
-   }
+   assert(fs_key != -1);
 
    if (device->meta_state.clear[samples_log2].render_pass[fs_key] == VK_NULL_HANDLE) {
       VkResult ret =
@@ -426,10 +422,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
    }
 
    pipeline = device->meta_state.clear[samples_log2].color_pipelines[fs_key];
-   if (!pipeline) {
-      radv_finishme("color clears incomplete");
-      return;
-   }
+
    assert(samples_log2 < ARRAY_SIZE(device->meta_state.clear));
    assert(pipeline);
    assert(clear_att->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);

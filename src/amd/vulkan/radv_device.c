@@ -6705,8 +6705,8 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    ntype = radv_translate_color_numformat(iview->vk_format, desc,
                                           vk_format_get_first_non_void_channel(iview->vk_format));
    format = radv_translate_colorformat(iview->vk_format);
-   if (format == V_028C70_COLOR_INVALID || ntype == ~0u)
-      radv_finishme("Illegal color\n");
+   assert(format != V_028C70_COLOR_INVALID);
+
    swap = radv_translate_colorswap(iview->vk_format, false);
    endian = radv_colorformat_endian_swap(format);
 
