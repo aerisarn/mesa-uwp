@@ -458,9 +458,6 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    }
    assert(dst_image->info.samples == 1);
 
-   if (src_image->info.array_size > 1)
-      radv_finishme("vkCmdResolveImage: multisample array images");
-
    unsigned fs_key = radv_format_meta_fs_key(device, dst_image->vk_format);
 
    /* From the Vulkan 1.0 spec:
