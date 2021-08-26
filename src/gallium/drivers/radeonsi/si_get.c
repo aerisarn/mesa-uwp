@@ -1039,6 +1039,13 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_uniforms_to_ubo = true,
       .support_16bit_alu = sscreen->options.fp16,
       .vectorize_vec2_16bit = sscreen->options.fp16,
+      .pack_varying_options =
+         nir_pack_varying_interp_mode_none |
+         nir_pack_varying_interp_mode_smooth |
+         nir_pack_varying_interp_mode_noperspective |
+         nir_pack_varying_interp_loc_center |
+         nir_pack_varying_interp_loc_sample |
+         nir_pack_varying_interp_loc_centroid,
    };
    sscreen->nir_options = nir_options;
 }
