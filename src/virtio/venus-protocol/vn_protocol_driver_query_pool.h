@@ -270,7 +270,7 @@ static inline VkResult vn_decode_vkGetQueryPoolResults_reply(struct vn_cs_decode
         const size_t array_size = vn_decode_array_size(dec, dataSize);
         vn_decode_blob_array(dec, pData, array_size);
     } else {
-        vn_decode_array_size(dec, 0);
+        vn_decode_array_size_unchecked(dec);
         pData = NULL;
     }
     /* skip stride */

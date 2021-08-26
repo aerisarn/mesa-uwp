@@ -566,16 +566,16 @@ vn_decode_VkBindImageMemoryDeviceGroupInfo_self(struct vn_cs_decoder *dec, VkBin
         const size_t array_size = vn_decode_array_size(dec, val->deviceIndexCount);
         vn_decode_uint32_t_array(dec, (uint32_t *)val->pDeviceIndices, array_size);
     } else {
-        vn_decode_array_size(dec, 0);
+        vn_decode_array_size_unchecked(dec);
         val->pDeviceIndices = NULL;
     }
     vn_decode_uint32_t(dec, &val->splitInstanceBindRegionCount);
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, val->splitInstanceBindRegionCount);
-        for (uint32_t i = 0; i < val->splitInstanceBindRegionCount; i++)
+        const uint32_t iter_count = vn_decode_array_size(dec, val->splitInstanceBindRegionCount);
+        for (uint32_t i = 0; i < iter_count; i++)
             vn_decode_VkRect2D(dec, &((VkRect2D *)val->pSplitInstanceBindRegions)[i]);
     } else {
-        vn_decode_array_size(dec, 0);
+        vn_decode_array_size_unchecked(dec);
         val->pSplitInstanceBindRegions = NULL;
     }
 }
@@ -1426,11 +1426,11 @@ static inline void vn_decode_vkGetImageSparseMemoryRequirements_reply(struct vn_
         pSparseMemoryRequirementCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
-        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
+        const uint32_t iter_count = vn_decode_array_size(dec, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < iter_count; i++)
             vn_decode_VkSparseImageMemoryRequirements(dec, &pSparseMemoryRequirements[i]);
     } else {
-        vn_decode_array_size(dec, 0);
+        vn_decode_array_size_unchecked(dec);
         pSparseMemoryRequirements = NULL;
     }
 }
@@ -1829,11 +1829,11 @@ static inline void vn_decode_vkGetImageSparseMemoryRequirements2_reply(struct vn
         pSparseMemoryRequirementCount = NULL;
     }
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
-        for (uint32_t i = 0; i < (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0); i++)
+        const uint32_t iter_count = vn_decode_array_size(dec, (pSparseMemoryRequirementCount ? *pSparseMemoryRequirementCount : 0));
+        for (uint32_t i = 0; i < iter_count; i++)
             vn_decode_VkSparseImageMemoryRequirements2(dec, &pSparseMemoryRequirements[i]);
     } else {
-        vn_decode_array_size(dec, 0);
+        vn_decode_array_size_unchecked(dec);
         pSparseMemoryRequirements = NULL;
     }
 }

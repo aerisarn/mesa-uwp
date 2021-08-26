@@ -898,7 +898,7 @@ static inline void vn_decode_vkGetVenusExperimentalFeatureData100000MESA_reply(s
         const size_t array_size = vn_decode_array_size(dec, (pDataSize ? *pDataSize : 0));
         vn_decode_blob_array(dec, pData, array_size);
     } else {
-        vn_decode_array_size(dec, 0);
+        vn_decode_array_size_unchecked(dec);
         pData = NULL;
     }
 }

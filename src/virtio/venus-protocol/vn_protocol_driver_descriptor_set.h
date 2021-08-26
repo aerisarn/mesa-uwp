@@ -463,11 +463,11 @@ static inline VkResult vn_decode_vkAllocateDescriptorSets_reply(struct vn_cs_dec
     /* skip device */
     /* skip pAllocateInfo */
     if (vn_peek_array_size(dec)) {
-        vn_decode_array_size(dec, (pAllocateInfo ? pAllocateInfo->descriptorSetCount : 0));
-        for (uint32_t i = 0; i < (pAllocateInfo ? pAllocateInfo->descriptorSetCount : 0); i++)
+        const uint32_t iter_count = vn_decode_array_size(dec, (pAllocateInfo ? pAllocateInfo->descriptorSetCount : 0));
+        for (uint32_t i = 0; i < iter_count; i++)
             vn_decode_VkDescriptorSet(dec, &pDescriptorSets[i]);
     } else {
-        vn_decode_array_size(dec, 0);
+        vn_decode_array_size_unchecked(dec);
         pDescriptorSets = NULL;
     }
 
