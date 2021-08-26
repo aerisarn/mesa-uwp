@@ -19,6 +19,10 @@
 #include "vn_physical_device.h"
 #include "vn_renderer.h"
 
+#define VN_INSTANCE_LARGE_RING_SIZE (64 * 1024)
+#define VN_INSTANCE_LARGE_RING_DIRECT_THRESHOLD                              \
+   (VN_INSTANCE_LARGE_RING_SIZE / 16)
+
 /* this must not exceed 2KiB for the ring to fit in a 4K page */
 #define VN_INSTANCE_RING_SIZE (2 * 1024)
 #define VN_INSTANCE_RING_DIRECT_THRESHOLD (VN_INSTANCE_RING_SIZE / 8)
@@ -111,7 +115,9 @@ vn_instance_init_renderer_versions(struct vn_instance *instance)
 static VkResult
 vn_instance_init_ring(struct vn_instance *instance)
 {
-   const size_t buf_size = VN_INSTANCE_RING_SIZE;
+   const size_t buf_size = instance->experimental.largeRing
+                              ? VN_INSTANCE_LARGE_RING_SIZE
+                              : VN_INSTANCE_RING_SIZE;
    /* 32-bit seqno for renderer roundtrips */
    const size_t extra_size = sizeof(uint32_t);
    struct vn_ring_layout layout;
@@ -215,9 +221,11 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
       vn_log(instance,
              "VkVenusExperimentalFeatures100000MESA is as below:"
              "\n\tmemoryResourceAllocationSize = %u"
-             "\n\tglobalFencing = %u",
+             "\n\tglobalFencing = %u"
+             "\n\tlargeRing = %u",
              instance->experimental.memoryResourceAllocationSize,
-             instance->experimental.globalFencing);
+             instance->experimental.globalFencing,
+             instance->experimental.largeRing);
    }
 
    return VK_SUCCESS;
@@ -448,9 +456,13 @@ vn_instance_submission_prepare(struct vn_instance_submission *submit,
 }
 
 static bool
-vn_instance_submission_can_direct(const struct vn_cs_encoder *cs)
+vn_instance_submission_can_direct(const struct vn_instance *instance,
+                                  const struct vn_cs_encoder *cs)
 {
-   return vn_cs_encoder_get_len(cs) <= VN_INSTANCE_RING_DIRECT_THRESHOLD;
+   const size_t threshold = instance->experimental.largeRing
+                               ? VN_INSTANCE_LARGE_RING_DIRECT_THRESHOLD
+                               : VN_INSTANCE_RING_DIRECT_THRESHOLD;
+   return vn_cs_encoder_get_len(cs) <= threshold;
 }
 
 static struct vn_cs_encoder *
@@ -483,7 +495,7 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
 {
    struct vn_ring *ring = &instance->ring.ring;
 
-   const bool direct = vn_instance_submission_can_direct(cs);
+   const bool direct = vn_instance_submission_can_direct(instance, cs);
    if (!direct && !cs->indirect) {
       cs = vn_instance_ring_cs_upload_locked(instance, cs);
       if (!cs)
