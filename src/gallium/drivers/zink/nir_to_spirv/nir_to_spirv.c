@@ -1865,7 +1865,7 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
 static void
 emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
+   nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
    bool ssbo = intr->intrinsic == nir_intrinsic_load_ssbo;
    assert(const_block_index); // no dynamic indexing for now
 
