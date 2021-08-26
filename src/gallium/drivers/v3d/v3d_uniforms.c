@@ -172,6 +172,20 @@ write_tmu_p0(struct v3d_job *job,
         int unit = v3d_unit_data_get_unit(data);
         struct pipe_sampler_view *psview = texstate->textures[unit];
         struct v3d_sampler_view *sview = v3d_sampler_view(psview);
+        /* GL_OES_texture_buffer spec:
+         *     "If no buffer object is bound to the buffer texture, the
+         *      results of the texel access are undefined."
+         *
+         * This can be interpreted as allowing any result to come back, but
+         * not terminate the program (and some tests interpret that).
+         *
+         * FIXME: just return is not a full valid solution, as it could still
+         * try to get a wrong address for the shader state address. Perhaps we
+         * would need to set up a BO with a "default texture state"
+         */
+        if (sview == NULL)
+                return;
+
         struct v3d_resource *rsc = v3d_resource(sview->texture);
 
         cl_aligned_reloc(&job->indirect, uniforms, sview->bo,
