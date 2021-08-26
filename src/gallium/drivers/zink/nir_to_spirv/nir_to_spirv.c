@@ -2909,11 +2909,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_read_invocation(ctx, intr);
       break;
 
-   case nir_intrinsic_load_workgroup_size: {
+   case nir_intrinsic_load_workgroup_size:
       assert(ctx->local_group_size_var);
       store_dest(ctx, &intr->dest, ctx->local_group_size_var, nir_type_uint);
       break;
-   }
 
    case nir_intrinsic_load_shared:
       emit_load_shared(ctx, intr);
