@@ -8,10 +8,6 @@
 #include "vn_cs.h"
 #include "vn_renderer.h"
 
-/* must be power-of-two */
-#define VN_RING_BUFFER_SIZE (1u << 11)
-#define VN_RING_BUFFER_MASK (VN_RING_BUFFER_SIZE - 1)
-
 enum vn_ring_status_flag {
    VN_RING_STATUS_IDLE = 1u << 0,
 };
@@ -45,13 +41,13 @@ vn_ring_load_status(const struct vn_ring *ring)
 static void
 vn_ring_write_buffer(struct vn_ring *ring, const void *data, uint32_t size)
 {
-   assert(ring->cur + size - vn_ring_load_head(ring) <= VN_RING_BUFFER_SIZE);
+   assert(ring->cur + size - vn_ring_load_head(ring) <= ring->buffer_size);
 
-   const uint32_t offset = ring->cur & VN_RING_BUFFER_MASK;
-   if (offset + size <= VN_RING_BUFFER_SIZE) {
+   const uint32_t offset = ring->cur & ring->buffer_mask;
+   if (offset + size <= ring->buffer_size) {
       memcpy(ring->shared.buffer + offset, data, size);
    } else {
-      const uint32_t s = VN_RING_BUFFER_SIZE - offset;
+      const uint32_t s = ring->buffer_size - offset;
       memcpy(ring->shared.buffer + offset, data, s);
       memcpy(ring->shared.buffer, data + s, size - s);
    }
@@ -108,20 +104,22 @@ vn_ring_wait_seqno(const struct vn_ring *ring, uint32_t seqno)
 static uint32_t
 vn_ring_wait_space(const struct vn_ring *ring, uint32_t size)
 {
-   assert(size <= VN_RING_BUFFER_SIZE);
+   assert(size <= ring->buffer_size);
 
    /* see the reasoning in vn_ring_wait_seqno */
    uint32_t iter = 0;
    do {
       const uint32_t head = vn_ring_load_head(ring);
-      if (ring->cur + size - head <= VN_RING_BUFFER_SIZE)
+      if (ring->cur + size - head <= ring->buffer_size)
          return head;
       vn_relax(&iter, "ring space");
    } while (true);
 }
 
 void
-vn_ring_get_layout(size_t extra_size, struct vn_ring_layout *layout)
+vn_ring_get_layout(size_t buf_size,
+                   size_t extra_size,
+                   struct vn_ring_layout *layout)
 {
    /* this can be changed/extended quite freely */
    struct layout {
@@ -131,7 +129,6 @@ vn_ring_get_layout(size_t extra_size, struct vn_ring_layout *layout)
 
       uint8_t buffer[] __attribute__((aligned(64)));
    };
-   const size_t buf_size = VN_RING_BUFFER_SIZE;
 
    assert(buf_size && util_is_power_of_two_or_zero(buf_size));
 
@@ -158,6 +155,11 @@ vn_ring_init(struct vn_ring *ring,
    memset(shared, 0, layout->shmem_size);
 
    ring->renderer = renderer;
+
+   assert(layout->buffer_size &&
+          util_is_power_of_two_or_zero(layout->buffer_size));
+   ring->buffer_size = layout->buffer_size;
+   ring->buffer_mask = ring->buffer_size - 1;
 
    ring->shared.head = shared + layout->head_offset;
    ring->shared.tail = shared + layout->tail_offset;

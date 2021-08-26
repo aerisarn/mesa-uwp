@@ -19,7 +19,9 @@
 #include "vn_physical_device.h"
 #include "vn_renderer.h"
 
-#define VN_INSTANCE_RING_DIRECT_THRESHOLD (256)
+/* this must not exceed 2KiB for the ring to fit in a 4K page */
+#define VN_INSTANCE_RING_SIZE (2 * 1024)
+#define VN_INSTANCE_RING_DIRECT_THRESHOLD (VN_INSTANCE_RING_SIZE / 8)
 
 /*
  * Instance extensions add instance-level or physical-device-level
@@ -109,10 +111,11 @@ vn_instance_init_renderer_versions(struct vn_instance *instance)
 static VkResult
 vn_instance_init_ring(struct vn_instance *instance)
 {
+   const size_t buf_size = VN_INSTANCE_RING_SIZE;
    /* 32-bit seqno for renderer roundtrips */
    const size_t extra_size = sizeof(uint32_t);
    struct vn_ring_layout layout;
-   vn_ring_get_layout(extra_size, &layout);
+   vn_ring_get_layout(buf_size, extra_size, &layout);
 
    instance->ring.shmem =
       vn_renderer_shmem_create(instance->renderer, layout.shmem_size);
