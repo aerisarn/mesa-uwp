@@ -78,28 +78,29 @@ build_resolve_compute_shader(struct radv_device *dev, bool is_integer, bool is_s
    nir_variable *output_img = nir_variable_create(b.shader, nir_var_uniform, img_type, "out_img");
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
 
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, 2);
 
    nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 16);
    nir_ssa_def *dst_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 8), .range = 16);
 
-   nir_ssa_def *img_coord = nir_channels(&b, nir_iadd(&b, global_id, src_offset), 0x3);
+   nir_ssa_def *src_coord = nir_iadd(&b, global_id, src_offset);
+   nir_ssa_def *dst_coord = nir_iadd(&b, global_id, dst_offset);
+
    nir_variable *color = nir_local_variable_create(b.impl, glsl_vec4_type(), "color");
 
-   radv_meta_build_resolve_shader_core(&b, is_integer, samples, input_img, color, img_coord);
+   radv_meta_build_resolve_shader_core(&b, is_integer, samples, input_img, color, src_coord);
 
    nir_ssa_def *outval = nir_load_var(&b, color);
    if (is_srgb)
       outval = radv_meta_build_resolve_srgb_conversion(&b, outval);
 
-   nir_ssa_def *coord = nir_iadd(&b, global_id, dst_offset);
-   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord,
+   nir_ssa_def *img_coord = nir_vec4(&b, nir_channel(&b, dst_coord, 0),
+                                         nir_channel(&b, dst_coord, 1),
+                                         nir_ssa_undef(&b, 1, 32),
+                                         nir_ssa_undef(&b, 1, 32));
+
+   nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord,
                          nir_ssa_undef(&b, 1, 32), outval, nir_imm_int(&b, 0),
                          .image_dim = GLSL_SAMPLER_DIM_2D);
    return b.shader;
@@ -149,17 +150,8 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
    nir_variable *output_img = nir_variable_create(b.shader, nir_var_uniform, img_type, "out_img");
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
 
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
-   nir_ssa_def *layer_id = nir_channel(&b, wg_id, 2);
-
-   nir_ssa_def *img_coord =
-      nir_vec3(&b, nir_channel(&b, global_id, 0), nir_channel(&b, global_id, 1), layer_id);
+   nir_ssa_def *img_coord = get_global_ids(&b, 3);
 
    nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
 

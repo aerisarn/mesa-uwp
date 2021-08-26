@@ -149,13 +149,7 @@ build_occlusion_query_shader(struct radv_device *device)
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
    nir_ssa_def *src_buf = radv_meta_load_descriptor(&b, 0, 1);
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
-   global_id = nir_channel(&b, global_id, 0); // We only care about x here.
+   nir_ssa_def *global_id = get_global_ids(&b, 1);
 
    nir_ssa_def *input_stride = nir_imm_int(&b, db_count * 16);
    nir_ssa_def *input_base = nir_imul(&b, input_stride, global_id);
@@ -290,13 +284,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
    nir_ssa_def *src_buf = radv_meta_load_descriptor(&b, 0, 1);
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
-   global_id = nir_channel(&b, global_id, 0); // We only care about x here.
+   nir_ssa_def *global_id = get_global_ids(&b, 1);
 
    nir_ssa_def *input_stride = nir_imm_int(&b, pipelinestat_block_size * 2);
    nir_ssa_def *input_base = nir_imul(&b, input_stride, global_id);
@@ -441,13 +429,7 @@ build_tfb_query_shader(struct radv_device *device)
    nir_ssa_def *src_buf = radv_meta_load_descriptor(&b, 0, 1);
 
    /* Compute global ID. */
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
-   global_id = nir_channel(&b, global_id, 0); // We only care about x here.
+   nir_ssa_def *global_id = get_global_ids(&b, 1);
 
    /* Compute src/dst strides. */
    nir_ssa_def *input_stride = nir_imm_int(&b, 32);
@@ -571,13 +553,7 @@ build_timestamp_query_shader(struct radv_device *device)
    nir_ssa_def *src_buf = radv_meta_load_descriptor(&b, 0, 1);
 
    /* Compute global ID. */
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
-   global_id = nir_channel(&b, global_id, 0); // We only care about x here.
+   nir_ssa_def *global_id = get_global_ids(&b, 1);
 
    /* Compute src/dst strides. */
    nir_ssa_def *input_stride = nir_imm_int(&b, 8);

@@ -27,22 +27,6 @@
 #include "radv_meta.h"
 #include "radv_private.h"
 
-static nir_ssa_def *
-get_global_ids(nir_builder *b, unsigned num_components)
-{
-   unsigned mask = BITFIELD_MASK(num_components);
-
-   nir_ssa_def *local_ids = nir_channels(b, nir_load_local_invocation_id(b), mask);
-   nir_ssa_def *block_ids = nir_channels(b, nir_load_workgroup_id(b, 32), mask);
-   nir_ssa_def *block_size = nir_channels(
-      b,
-      nir_imm_ivec4(b, b->shader->info.workgroup_size[0], b->shader->info.workgroup_size[1],
-                    b->shader->info.workgroup_size[2], 0),
-      mask);
-
-   return nir_iadd(b, nir_imul(b, block_ids, block_size), local_ids);
-}
-
 static nir_shader *
 build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *surf)
 {

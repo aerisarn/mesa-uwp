@@ -1057,13 +1057,7 @@ build_clear_htile_mask_shader()
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, 1);
 
    nir_ssa_def *offset = nir_imul(&b, global_id, nir_imm_int(&b, 16));
    offset = nir_channel(&b, offset, 0);
@@ -1168,13 +1162,7 @@ build_clear_dcc_comp_to_single_shader(bool is_msaa)
    b.shader->info.workgroup_size[1] = 8;
    b.shader->info.workgroup_size[2] = 1;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
-   nir_ssa_def *layer_id = nir_channel(&b, wg_id, 2);
+   nir_ssa_def *global_id = get_global_ids(&b, 3);
 
    /* Load the dimensions in pixels of a block that gets compressed to one DCC byte. */
    nir_ssa_def *dcc_block_size = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
@@ -1184,7 +1172,7 @@ build_clear_dcc_comp_to_single_shader(bool is_msaa)
    coord = nir_imul(&b, coord, dcc_block_size);
    coord = nir_vec4(&b, nir_channel(&b, coord, 0),
                         nir_channel(&b, coord, 1),
-                        layer_id,
+                        nir_channel(&b, global_id, 2),
                         nir_ssa_undef(&b, 1, 32));
 
    nir_variable *output_img = nir_variable_create(b.shader, nir_var_uniform, img_type, "out_img");

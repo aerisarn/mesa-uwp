@@ -51,13 +51,7 @@ build_nir_itob_compute_shader(struct radv_device *dev, bool is_3d)
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, is_3d ? 3 : 2);
 
    nir_ssa_def *offset =
       nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = 16);
@@ -239,13 +233,7 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, is_3d ? 3 : 2);
 
    nir_ssa_def *offset =
       nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = 16);
@@ -257,7 +245,7 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
    nir_ssa_def *buf_coord = nir_imul(&b, pos_y, stride);
    buf_coord = nir_iadd(&b, buf_coord, pos_x);
 
-   nir_ssa_def *img_coord = nir_iadd(&b, global_id, offset);
+   nir_ssa_def *coord = nir_iadd(&b, global_id, offset);
    nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
 
    nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
@@ -277,6 +265,12 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
    nir_builder_instr_insert(&b, &tex->instr);
 
    nir_ssa_def *outval = &tex->dest.ssa;
+
+   nir_ssa_def *img_coord = nir_vec4(&b, nir_channel(&b, coord, 0),
+                                         nir_channel(&b, coord, 1),
+                                         is_3d ? nir_channel(&b, coord, 2) : nir_ssa_undef(&b, 1, 32),
+                                         nir_ssa_undef(&b, 1, 32));
+
    nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord,
                          nir_ssa_undef(&b, 1, 32), outval, nir_imm_int(&b, 0), .image_dim = dim);
 
@@ -419,13 +413,7 @@ build_nir_btoi_r32g32b32_compute_shader(struct radv_device *dev)
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, 2);
 
    nir_ssa_def *offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 16);
    nir_ssa_def *pitch = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 8), .range = 16);
@@ -579,13 +567,7 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d, int samples)
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, is_3d ? 3 : 2);
 
    nir_ssa_def *src_offset =
       nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = 24);
@@ -622,9 +604,14 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d, int samples)
       nir_builder_instr_insert(&b, &tex->instr);
    }
 
+   nir_ssa_def *img_coord = nir_vec4(&b, nir_channel(&b, dst_coord, 0),
+                                         nir_channel(&b, dst_coord, 1),
+                                         is_3d ? nir_channel(&b, dst_coord, 2) : nir_ssa_undef(&b, 1, 32),
+                                         nir_ssa_undef(&b, 1, 32));
+
    for (uint32_t i = 0; i < samples; i++) {
       nir_ssa_def *outval = &tex_instr[i]->dest.ssa;
-      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, dst_coord,
+      nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, img_coord,
                             nir_imm_int(&b, i), outval, nir_imm_int(&b, 0), .image_dim = dim);
    }
 
@@ -781,13 +768,7 @@ build_nir_itoi_r32g32b32_compute_shader(struct radv_device *dev)
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 1;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, 2);
 
    nir_ssa_def *src_offset = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 0), .range = 24);
    nir_ssa_def *dst_offset = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 12), .range = 24);
@@ -943,13 +924,7 @@ build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d, int samples
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 0;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, 2);
 
    nir_ssa_def *clear_val = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .range = 20);
    nir_ssa_def *layer = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 16), .range = 20);
@@ -1107,13 +1082,7 @@ build_nir_cleari_r32g32b32_compute_shader(struct radv_device *dev)
    output_img->data.descriptor_set = 0;
    output_img->data.binding = 0;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
-   nir_ssa_def *block_size =
-      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
-                    b.shader->info.workgroup_size[2], 0);
-
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
+   nir_ssa_def *global_id = get_global_ids(&b, 2);
 
    nir_ssa_def *clear_val = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 0), .range = 16);
    nir_ssa_def *stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 12), .range = 16);
