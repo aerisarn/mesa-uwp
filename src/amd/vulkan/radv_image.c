@@ -1301,7 +1301,8 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
       image->size += 8 * image->info.levels;
    }
 
-   if (radv_image_has_dcc(image) || radv_image_has_cmask(image) || radv_image_has_htile(image)) {
+   if ((radv_image_has_dcc(image) && !image->support_comp_to_single) ||
+       radv_image_has_cmask(image) || radv_image_has_htile(image)) {
       image->clear_value_offset = image->size;
       image->size += 8 * image->info.levels;
    }
