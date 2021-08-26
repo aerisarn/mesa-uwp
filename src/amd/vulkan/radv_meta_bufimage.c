@@ -933,7 +933,7 @@ build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d, int samples
    comps[0] = nir_channel(&b, global_id, 0);
    comps[1] = nir_channel(&b, global_id, 1);
    comps[2] = layer;
-   comps[3] = nir_imm_int(&b, 0);
+   comps[3] = nir_ssa_undef(&b, 1, 32);
    global_id = nir_vec(&b, comps, 4);
 
    for (uint32_t i = 0; i < samples; i++) {

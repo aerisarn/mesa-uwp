@@ -76,7 +76,7 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
 
    nir_ssa_def *img_coord =
       nir_vec4(&b, nir_channel(&b, tex_coord, 0), nir_channel(&b, tex_coord, 1),
-               nir_channel(&b, tex_coord, 2), nir_imm_int(&b, 0));
+               nir_channel(&b, tex_coord, 2), nir_ssa_undef(&b, 1, 32));
 
    for (uint32_t i = 0; i < samples; i++) {
       nir_ssa_def *outval = &tex_instr[i]->dest.ssa;

@@ -220,7 +220,7 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
    }
 
    nir_ssa_def *coord = nir_vec4(&b, nir_channel(&b, img_coord, 0), nir_channel(&b, img_coord, 1),
-                                 nir_channel(&b, img_coord, 2), nir_imm_int(&b, 0));
+                                 nir_channel(&b, img_coord, 2), nir_ssa_undef(&b, 1, 32));
    nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa, coord,
                          nir_ssa_undef(&b, 1, 32), outval, nir_imm_int(&b, 0),
                          .image_dim = GLSL_SAMPLER_DIM_2D, .image_array = true);
