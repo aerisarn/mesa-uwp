@@ -3487,6 +3487,14 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_fddy_fine:
    case nir_op_fddx_coarse:
    case nir_op_fddy_coarse: {
+      if (!nir_src_is_divergent(instr->src[0].src)) {
+         /* Source is the same in all lanes, so the derivative is zero.
+          * This also avoids emitting invalid IR.
+          */
+         bld.copy(Definition(dst), Operand::zero());
+         break;
+      }
+
       Temp src = as_vgpr(ctx, get_alu_src(ctx, instr->src[0]));
       uint16_t dpp_ctrl1, dpp_ctrl2;
       if (instr->op == nir_op_fddx_fine) {
