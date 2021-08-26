@@ -5984,6 +5984,10 @@ fs_visitor::nir_emit_global_atomic_float(const fs_builder &bld,
       bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL,
                dest, addr, data, brw_imm_ud(op));
       break;
+   case 64:
+      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT64_LOGICAL,
+               dest, addr, data, brw_imm_ud(op));
+      break;
    default:
       unreachable("Unsupported bit size");
    }
