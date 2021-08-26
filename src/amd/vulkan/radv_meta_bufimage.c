@@ -254,10 +254,8 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
    nir_ssa_def *pos_x = nir_channel(&b, global_id, 0);
    nir_ssa_def *pos_y = nir_channel(&b, global_id, 1);
 
-   nir_ssa_def *tmp = nir_imul(&b, pos_y, stride);
-   tmp = nir_iadd(&b, tmp, pos_x);
-
-   nir_ssa_def *buf_coord = nir_vec4(&b, tmp, tmp, tmp, tmp);
+   nir_ssa_def *buf_coord = nir_imul(&b, pos_y, stride);
+   buf_coord = nir_iadd(&b, buf_coord, pos_x);
 
    nir_ssa_def *img_coord = nir_iadd(&b, global_id, offset);
    nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
@@ -266,7 +264,7 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
    tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
    tex->op = nir_texop_txf;
    tex->src[0].src_type = nir_tex_src_coord;
-   tex->src[0].src = nir_src_for_ssa(nir_channels(&b, buf_coord, 1));
+   tex->src[0].src = nir_src_for_ssa(buf_coord);
    tex->src[1].src_type = nir_tex_src_lod;
    tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
    tex->src[2].src_type = nir_tex_src_texture_deref;
@@ -436,10 +434,8 @@ build_nir_btoi_r32g32b32_compute_shader(struct radv_device *dev)
    nir_ssa_def *pos_x = nir_channel(&b, global_id, 0);
    nir_ssa_def *pos_y = nir_channel(&b, global_id, 1);
 
-   nir_ssa_def *tmp = nir_imul(&b, pos_y, stride);
-   tmp = nir_iadd(&b, tmp, pos_x);
-
-   nir_ssa_def *buf_coord = nir_vec4(&b, tmp, tmp, tmp, tmp);
+   nir_ssa_def *buf_coord = nir_imul(&b, pos_y, stride);
+   buf_coord = nir_iadd(&b, buf_coord, pos_x);
 
    nir_ssa_def *img_coord = nir_iadd(&b, global_id, offset);
 
@@ -453,7 +449,7 @@ build_nir_btoi_r32g32b32_compute_shader(struct radv_device *dev)
    tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
    tex->op = nir_texop_txf;
    tex->src[0].src_type = nir_tex_src_coord;
-   tex->src[0].src = nir_src_for_ssa(nir_channels(&b, buf_coord, 1));
+   tex->src[0].src = nir_src_for_ssa(buf_coord);
    tex->src[1].src_type = nir_tex_src_lod;
    tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
    tex->src[2].src_type = nir_tex_src_texture_deref;
@@ -813,17 +809,13 @@ build_nir_itoi_r32g32b32_compute_shader(struct radv_device *dev)
    for (int chan = 0; chan < 3; chan++) {
       /* src */
       nir_ssa_def *src_local_pos = nir_iadd(&b, src_global_pos, nir_imm_int(&b, chan));
-
-      nir_ssa_def *src_coord =
-         nir_vec4(&b, src_local_pos, src_local_pos, src_local_pos, src_local_pos);
-
       nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
 
       nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
       tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
       tex->op = nir_texop_txf;
       tex->src[0].src_type = nir_tex_src_coord;
-      tex->src[0].src = nir_src_for_ssa(nir_channels(&b, src_coord, 1));
+      tex->src[0].src = nir_src_for_ssa(src_local_pos);
       tex->src[1].src_type = nir_tex_src_lod;
       tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
       tex->src[2].src_type = nir_tex_src_texture_deref;
