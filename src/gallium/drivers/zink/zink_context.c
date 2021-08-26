@@ -619,7 +619,7 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
    bvci.format = zink_get_format(screen, format);
    assert(bvci.format);
    bvci.offset = offset;
-   bvci.range = range;
+   bvci.range = !offset && range == res->base.b.width0 ? VK_WHOLE_SIZE : range;
 
    uint32_t hash = hash_bufferview(&bvci);
    simple_mtx_lock(&screen->bufferview_mtx);
