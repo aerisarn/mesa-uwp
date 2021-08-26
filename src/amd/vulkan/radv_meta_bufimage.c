@@ -962,12 +962,10 @@ build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d, int samples
    nir_ssa_def *clear_val = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .range = 20);
    nir_ssa_def *layer = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 16), .range = 20);
 
-   nir_ssa_def *global_z = nir_iadd(&b, nir_channel(&b, global_id, 2), layer);
-
    nir_ssa_def *comps[4];
    comps[0] = nir_channel(&b, global_id, 0);
    comps[1] = nir_channel(&b, global_id, 1);
-   comps[2] = global_z;
+   comps[2] = layer;
    comps[3] = nir_imm_int(&b, 0);
    global_id = nir_vec(&b, comps, 4);
 
