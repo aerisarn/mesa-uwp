@@ -46,7 +46,8 @@ get_global_ids(nir_builder *b, unsigned num_components)
 static nir_shader *
 build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *surf)
 {
-   const struct glsl_type *buf_type = glsl_image_type(GLSL_SAMPLER_DIM_BUF, false, GLSL_TYPE_UINT);
+   enum glsl_sampler_dim dim = GLSL_SAMPLER_DIM_BUF;
+   const struct glsl_type *buf_type = glsl_image_type(dim, false, GLSL_TYPE_UINT);
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "dcc_retile_compute");
 
    b.shader->info.workgroup_size[0] = 8;
@@ -85,28 +86,14 @@ build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *sur
       dst_dcc_pitch, dst_dcc_height, zero, nir_channel(&b, coord, 0), nir_channel(&b, coord, 1),
       zero, zero, zero);
 
-   nir_intrinsic_instr *dcc_val =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_image_deref_load);
-   dcc_val->num_components = 1;
-   dcc_val->src[0] = nir_src_for_ssa(input_dcc_ref);
-   dcc_val->src[1] = nir_src_for_ssa(nir_vec4(&b, src, src, src, src));
-   dcc_val->src[2] = nir_src_for_ssa(nir_ssa_undef(&b, 1, 32));
-   dcc_val->src[3] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   nir_ssa_dest_init(&dcc_val->instr, &dcc_val->dest, 1, 32, "dcc_val");
-   nir_intrinsic_set_image_dim(dcc_val, GLSL_SAMPLER_DIM_BUF);
-   nir_builder_instr_insert(&b, &dcc_val->instr);
+   nir_ssa_def *dcc_val = nir_image_deref_load(&b, 1, 32, input_dcc_ref,
+                                               nir_vec4(&b, src, src, src, src),
+                                               nir_ssa_undef(&b, 1, 32), nir_imm_int(&b, 0),
+                                               .image_dim = dim);
 
-   nir_intrinsic_instr *store =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_image_deref_store);
-   store->num_components = 1;
-   store->src[0] = nir_src_for_ssa(output_dcc_ref);
-   store->src[1] = nir_src_for_ssa(nir_vec4(&b, dst, dst, dst, dst));
-   store->src[2] = nir_src_for_ssa(nir_ssa_undef(&b, 1, 32));
-   store->src[3] = nir_src_for_ssa(&dcc_val->dest.ssa);
-   store->src[4] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   nir_intrinsic_set_image_dim(store, GLSL_SAMPLER_DIM_BUF);
+   nir_image_deref_store(&b, output_dcc_ref, nir_vec4(&b, dst, dst, dst, dst),
+                         nir_ssa_undef(&b, 1, 32), dcc_val, nir_imm_int(&b, 0), .image_dim = dim);
 
-   nir_builder_instr_insert(&b, &store->instr);
    return b.shader;
 }
 
