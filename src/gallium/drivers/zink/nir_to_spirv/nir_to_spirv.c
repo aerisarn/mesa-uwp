@@ -2454,9 +2454,11 @@ static void
 emit_get_ssbo_size(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId uint_type = get_uvec_type(ctx, 32, 1);
-   nir_variable *var = ctx->ssbo_vars[nir_src_as_const_value(intr->src[0])->u32];
+   nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
+   assert(const_block_index); // no dynamic indexing for now
+   nir_variable *var = ctx->ssbo_vars[const_block_index->u32];
    SpvId result = spirv_builder_emit_binop(&ctx->builder, SpvOpArrayLength, uint_type,
-                                             ctx->ssbos[nir_src_as_const_value(intr->src[0])->u32], 1);
+                                             ctx->ssbos[const_block_index->u32], 1);
    /* this is going to be converted by nir to:
 
       length = (buffer_size - offset) / stride
