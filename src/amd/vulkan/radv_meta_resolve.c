@@ -451,11 +451,6 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    radv_meta_save(&saved_state, cmd_buffer, RADV_META_SAVE_GRAPHICS_PIPELINE);
 
    assert(src_image->info.samples > 1);
-   if (src_image->info.samples <= 1) {
-      /* this causes GPU hangs if we get past here */
-      fprintf(stderr, "radv: Illegal resolve operation (src not multisampled), will hang GPU.");
-      return;
-   }
    assert(dst_image->info.samples == 1);
 
    unsigned fs_key = radv_format_meta_fs_key(device, dst_image->vk_format);
