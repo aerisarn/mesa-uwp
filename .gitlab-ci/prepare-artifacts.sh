@@ -18,7 +18,7 @@ if [ -n "$CROSS" ]; then
 else
     STRIP="strip"
 fi
-if [ -z "$ARTIFACTS_DEBUG_SYMBOLS"]; then
+if [ -z "$ARTIFACTS_DEBUG_SYMBOLS" ]; then
     find install -name \*.so -exec $STRIP {} \;
 fi
 
