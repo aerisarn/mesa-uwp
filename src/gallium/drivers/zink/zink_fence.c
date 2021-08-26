@@ -206,7 +206,7 @@ zink_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *pfen
 {
    struct zink_tc_fence *mfence = zink_tc_fence(pfence);
 
-   if (pctx && mfence->deferred_ctx == pctx)
+   if (mfence->deferred_ctx == pctx)
       return;
 
    if (mfence->deferred_ctx) {
