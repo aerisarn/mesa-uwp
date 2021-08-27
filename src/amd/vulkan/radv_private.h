@@ -1688,6 +1688,8 @@ void radv_hash_shaders(unsigned char *hash, const VkPipelineShaderStageCreateInf
                        const struct radv_pipeline_layout *layout,
                        const struct radv_pipeline_key *key, uint32_t flags);
 
+bool radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo);
+
 #define RADV_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
 
 #define radv_foreach_stage(stage, stage_bits)                                                      \

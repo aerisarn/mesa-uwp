@@ -1726,12 +1726,168 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_pop_if(b, NULL);
 }
 
+static unsigned
+compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                      const struct radv_pipeline_shader_stack_size *stack_sizes)
+{
+   unsigned raygen_size = 0;
+   unsigned callable_size = 0;
+   unsigned chit_size = 0;
+   unsigned miss_size = 0;
+   unsigned non_recursive_size = 0;
+
+   for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
+      non_recursive_size = MAX2(stack_sizes[i].non_recursive_size, non_recursive_size);
+
+      const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
+      uint32_t shader_id = VK_SHADER_UNUSED_KHR;
+      unsigned size = stack_sizes[i].recursive_size;
+
+      switch (group_info->type) {
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
+         shader_id = group_info->generalShader;
+         break;
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
+         shader_id = group_info->closestHitShader;
+         break;
+      default:
+         break;
+      }
+      if (shader_id == VK_SHADER_UNUSED_KHR)
+         continue;
+
+      const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[shader_id];
+      switch (stage->stage) {
+      case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
+         raygen_size = MAX2(raygen_size, size);
+         break;
+      case VK_SHADER_STAGE_MISS_BIT_KHR:
+         miss_size = MAX2(miss_size, size);
+         break;
+      case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
+         chit_size = MAX2(chit_size, size);
+         break;
+      case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
+         callable_size = MAX2(callable_size, size);
+         break;
+      default:
+         unreachable("Invalid stage type in RT shader");
+      }
+   }
+   return raygen_size +
+          MIN2(pCreateInfo->maxPipelineRayRecursionDepth, 1) *
+             MAX2(MAX2(chit_size, miss_size), non_recursive_size) +
+          MAX2(0, (int)(pCreateInfo->maxPipelineRayRecursionDepth) - 1) *
+             MAX2(chit_size, miss_size) +
+          2 * callable_size;
+}
+
+bool
+radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
+{
+   if (!pCreateInfo->pDynamicState)
+      return false;
+
+   for (unsigned i = 0; i < pCreateInfo->pDynamicState->dynamicStateCount; ++i) {
+      if (pCreateInfo->pDynamicState->pDynamicStates[i] ==
+          VK_DYNAMIC_STATE_RAY_TRACING_PIPELINE_STACK_SIZE_KHR)
+         return true;
+   }
+
+   return false;
+}
+
 static nir_shader *
 create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                  struct radv_pipeline_shader_stack_size *stack_sizes)
 {
-   /* TODO */
-   return NULL;
+   RADV_FROM_HANDLE(radv_pipeline_layout, layout, pCreateInfo->layout);
+   struct radv_pipeline_key key;
+   memset(&key, 0, sizeof(key));
+
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "rt_combined");
+
+   b.shader->info.workgroup_size[0] = 8;
+   b.shader->info.workgroup_size[1] = 8;
+   b.shader->info.workgroup_size[2] = 1;
+
+   struct rt_variables vars = create_rt_variables(b.shader, stack_sizes);
+   load_sbt_entry(&b, &vars, nir_imm_int(&b, 0), SBT_RAYGEN, 0);
+   nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, 0), 0x1);
+
+   nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, true), 1);
+
+   nir_loop *loop = nir_push_loop(&b);
+
+   nir_push_if(&b, nir_ior(&b, nir_ieq(&b, nir_load_var(&b, vars.idx), nir_imm_int(&b, 0)),
+                           nir_ine(&b, nir_load_var(&b, vars.main_loop_case_visited),
+                                   nir_imm_bool(&b, true))));
+   nir_jump(&b, nir_jump_break);
+   nir_pop_if(&b, NULL);
+
+   nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, false), 1);
+
+   nir_push_if(&b, nir_ieq(&b, nir_load_var(&b, vars.idx), nir_imm_int(&b, 1)));
+   nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, true), 1);
+   insert_traversal(device, pCreateInfo, &b, &vars);
+   nir_pop_if(&b, NULL);
+
+   nir_ssa_def *idx = nir_load_var(&b, vars.idx);
+
+   /* We do a trick with the indexing of the resume shaders so that the first
+    * shader of group x always gets id x and the resume shader ids then come after
+    * groupCount. This makes the shadergroup handles independent of compilation. */
+   unsigned call_idx_base = pCreateInfo->groupCount + 1;
+   for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
+      const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
+      uint32_t shader_id = VK_SHADER_UNUSED_KHR;
+
+      switch (group_info->type) {
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
+         shader_id = group_info->generalShader;
+         break;
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
+         shader_id = group_info->closestHitShader;
+         break;
+      default:
+         break;
+      }
+      if (shader_id == VK_SHADER_UNUSED_KHR)
+         continue;
+
+      const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[shader_id];
+      nir_shader *nir_stage = parse_rt_stage(device, layout, stage);
+
+      b.shader->options = nir_stage->options;
+
+      uint32_t num_resume_shaders = 0;
+      nir_shader **resume_shaders = NULL;
+      nir_lower_shader_calls(nir_stage, nir_address_format_32bit_offset, 16, &resume_shaders,
+                             &num_resume_shaders, nir_stage);
+
+      vars.group_idx = i;
+      insert_rt_case(&b, nir_stage, &vars, idx, call_idx_base, i + 2);
+      for (unsigned j = 0; j < num_resume_shaders; ++j) {
+         insert_rt_case(&b, resume_shaders[j], &vars, idx, call_idx_base, call_idx_base + 1 + j);
+      }
+      call_idx_base += num_resume_shaders;
+   }
+
+   nir_pop_loop(&b, loop);
+
+   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo)) {
+      /* Put something so scratch gets enabled in the shader. */
+      b.shader->scratch_size = 16;
+   } else
+      b.shader->scratch_size = compute_rt_stack_size(pCreateInfo, stack_sizes);
+
+   /* Deal with all the inline functions. */
+   nir_index_ssa_defs(nir_shader_get_entrypoint(b.shader));
+   nir_metadata_preserve(nir_shader_get_entrypoint(b.shader), nir_metadata_none);
+
+   return b.shader;
 }
 
 static VkResult
@@ -1849,4 +2005,38 @@ radv_CreateRayTracingPipelinesKHR(VkDevice _device, VkDeferredOperationKHR defer
       pPipelines[i] = VK_NULL_HANDLE;
 
    return result;
+}
+
+VkResult
+radv_GetRayTracingShaderGroupHandlesKHR(VkDevice device, VkPipeline _pipeline, uint32_t firstGroup,
+                                        uint32_t groupCount, size_t dataSize, void *pData)
+{
+   RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
+   char *data = pData;
+
+   STATIC_ASSERT(sizeof(*pipeline->compute.rt_group_handles) <= RADV_RT_HANDLE_SIZE);
+
+   memset(data, 0, groupCount * RADV_RT_HANDLE_SIZE);
+
+   for (uint32_t i = 0; i < groupCount; ++i) {
+      memcpy(data + i * RADV_RT_HANDLE_SIZE, &pipeline->compute.rt_group_handles[firstGroup + i],
+             sizeof(*pipeline->compute.rt_group_handles));
+   }
+
+   return VK_SUCCESS;
+}
+
+VkDeviceSize
+radv_GetRayTracingShaderGroupStackSizeKHR(VkDevice device, VkPipeline _pipeline, uint32_t group,
+                                          VkShaderGroupShaderKHR groupShader)
+{
+   RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
+   const struct radv_pipeline_shader_stack_size *stack_size =
+      &pipeline->compute.rt_stack_sizes[group];
+
+   if (groupShader == VK_SHADER_GROUP_SHADER_ANY_HIT_KHR ||
+       groupShader == VK_SHADER_GROUP_SHADER_INTERSECTION_KHR)
+      return stack_size->non_recursive_size;
+   else
+      return stack_size->recursive_size;
 }
