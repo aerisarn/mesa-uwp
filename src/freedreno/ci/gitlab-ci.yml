@@ -238,5 +238,5 @@ a630-traces-performance:
     # So we aren't capped by VSync by the X server
     EGL_PLATFORM: surfaceless
     GIT_STRATEGY: none
-    HWCI_FREQ_MAX: 1
+    HWCI_FREQ_MAX: "true"
   allow_failure: true
