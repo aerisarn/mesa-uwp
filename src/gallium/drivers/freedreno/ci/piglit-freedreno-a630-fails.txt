@@ -434,9 +434,6 @@ spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color,Crash
-spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Fail
-spec@nv_primitive_restart@primitive-restart-draw-mode-quads,Fail
-spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
