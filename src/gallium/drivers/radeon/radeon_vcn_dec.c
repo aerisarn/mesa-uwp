@@ -467,6 +467,9 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
       RDECODE_FRAME_HDR_INFO_VP9_USE_PREV_IN_FIND_MV_REFS_MASK;
    dec->show_frame = pic->picture_parameter.pic_fields.show_frame;
 
+   result.frame_header_flags |=  (1 << RDECODE_FRAME_HDR_INFO_VP9_USE_UNCOMPRESSED_HEADER_SHIFT) &
+                                 RDECODE_FRAME_HDR_INFO_VP9_USE_UNCOMPRESSED_HEADER_MASK;
+
    result.interp_filter = pic->picture_parameter.pic_fields.mcomp_filter_type;
 
    result.frame_context_idx = pic->picture_parameter.pic_fields.frame_context_idx;
