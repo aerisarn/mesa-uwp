@@ -108,26 +108,6 @@ blorp_blit_apply_transform(nir_builder *b, nir_ssa_def *src_pos,
    return nir_fadd(b, nir_fmul(b, src_pos, mul), offset);
 }
 
-static inline void
-blorp_nir_discard_if_outside_rect(nir_builder *b, nir_ssa_def *pos,
-                                  struct brw_blorp_blit_vars *v)
-{
-   nir_ssa_def *c0, *c1, *c2, *c3;
-   nir_ssa_def *bounds_rect = nir_load_var(b, v->v_bounds_rect);
-   nir_ssa_def *dst_x0 = nir_channel(b, bounds_rect, 0);
-   nir_ssa_def *dst_x1 = nir_channel(b, bounds_rect, 1);
-   nir_ssa_def *dst_y0 = nir_channel(b, bounds_rect, 2);
-   nir_ssa_def *dst_y1 = nir_channel(b, bounds_rect, 3);
-
-   c0 = nir_ult(b, nir_channel(b, pos, 0), dst_x0);
-   c1 = nir_uge(b, nir_channel(b, pos, 0), dst_x1);
-   c2 = nir_ult(b, nir_channel(b, pos, 1), dst_y0);
-   c3 = nir_uge(b, nir_channel(b, pos, 1), dst_y1);
-
-   nir_ssa_def *oob = nir_ior(b, nir_ior(b, c0, c1), nir_ior(b, c2, c3));
-   nir_discard_if(b, oob);
-}
-
 static nir_tex_instr *
 blorp_create_nir_tex_instr(nir_builder *b, struct brw_blorp_blit_vars *v,
                            nir_texop op, nir_ssa_def *pos, unsigned num_srcs,
@@ -1255,8 +1235,12 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
     * If we need to kill pixels that are outside the destination rectangle,
     * now is the time to do it.
     */
-   if (key->use_kill)
-      blorp_nir_discard_if_outside_rect(&b, dst_pos, &v);
+   if (key->use_kill) {
+      nir_ssa_def *bounds_rect = nir_load_var(&b, v.v_bounds_rect);
+      nir_ssa_def *in_bounds = blorp_check_in_bounds(&b, bounds_rect,
+                                                     dst_pos);
+      nir_discard_if(&b, nir_inot(&b, in_bounds));
+   }
 
    src_pos = blorp_blit_apply_transform(&b, nir_i2f32(&b, dst_pos), &v);
    if (dst_pos->num_components == 3) {

@@ -106,7 +106,7 @@ struct brw_blorp_coord_transform
  *    - writing W-tiled stencil as Y-tiled
  *    - writing interleaved multisampled as single sampled.
  *
- * See blorp_nir_discard_if_outside_rect().
+ * See blorp_check_in_bounds().
  */
 struct brw_blorp_bounds_rect
 {
