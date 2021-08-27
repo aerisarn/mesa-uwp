@@ -498,7 +498,7 @@ gbm_bo_create_with_modifiers(struct gbm_device *gbm,
                              const unsigned int count)
 {
    return gbm_bo_create_with_modifiers2(gbm, width, height, format, modifiers,
-                                        count, 0);
+                                        count, GBM_BO_USE_SCANOUT);
 }
 
 GBM_EXPORT struct gbm_bo *
@@ -649,7 +649,8 @@ gbm_surface_create_with_modifiers(struct gbm_device *gbm,
                                   const unsigned int count)
 {
    return gbm_surface_create_with_modifiers2(gbm, width, height, format,
-                                             modifiers, count, 0);
+                                             modifiers, count,
+                                             GBM_BO_USE_SCANOUT);
 }
 
 GBM_EXPORT struct gbm_surface *
