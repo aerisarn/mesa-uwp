@@ -1688,6 +1688,13 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
       break;
    }
+   case aco_opcode::ds_read_u8:
+   case aco_opcode::ds_read_u8_d16:
+   case aco_opcode::ds_read_u16:
+   case aco_opcode::ds_read_u16_d16: {
+      ctx.info[instr->definitions[0].tempId()].set_usedef(instr.get());
+      break;
+   }
    default: break;
    }
 
@@ -2893,6 +2900,57 @@ apply_insert(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    return true;
 }
 
+/* Remove superfluous extract after ds_read like so:
+ * p_extract(ds_read_uN(), 0, N, 0) -> ds_read_uN()
+ */
+bool
+apply_ds_extract(opt_ctx& ctx, aco_ptr<Instruction>& extract)
+{
+   /* Check if p_extract has a usedef operand and is the only user. */
+   if (!ctx.info[extract->operands[0].tempId()].is_usedef() ||
+       ctx.uses[extract->operands[0].tempId()] > 1)
+      return false;
+
+   /* Check if the usedef is a DS instruction. */
+   Instruction* ds = ctx.info[extract->operands[0].tempId()].instr;
+   if (ds->format != Format::DS)
+      return false;
+
+   unsigned extract_idx = extract->operands[1].constantValue();
+   unsigned bits_extracted = extract->operands[2].constantValue();
+   unsigned sign_ext = extract->operands[3].constantValue();
+   unsigned dst_bitsize = extract->definitions[0].bytes() * 8u;
+
+   /* TODO: These are doable, but probably don't occour too often. */
+   if (extract_idx || sign_ext || dst_bitsize != 32)
+      return false;
+
+   unsigned bits_loaded = 0;
+   if (ds->opcode == aco_opcode::ds_read_u8 || ds->opcode == aco_opcode::ds_read_u8_d16)
+      bits_loaded = 8;
+   else if (ds->opcode == aco_opcode::ds_read_u16 || ds->opcode == aco_opcode::ds_read_u16_d16)
+      bits_loaded = 16;
+   else
+      return false;
+
+   /* Shrink the DS load if the extracted bit size is smaller. */
+   bits_loaded = MIN2(bits_loaded, bits_extracted);
+
+   /* Change the DS opcode so it writes the full register. */
+   if (bits_loaded == 8)
+      ds->opcode = aco_opcode::ds_read_u8;
+   else if (bits_loaded == 16)
+      ds->opcode = aco_opcode::ds_read_u16;
+   else
+      unreachable("Forgot to add DS opcode above.");
+
+   /* The DS now produces the exact same thing as the extract, remove the extract. */
+   std::swap(ds->definitions[0], extract->definitions[0]);
+   ctx.uses[extract->definitions[0].tempId()] = 0;
+   ctx.info[ds->definitions[0].tempId()].label = 0;
+   return true;
+}
+
 /* v_and(a, v_subbrev_co(0, 0, vcc)) -> v_cndmask(0, a, vcc) */
 bool
 combine_and_subbrev(opt_ctx& ctx, aco_ptr<Instruction>& instr)
@@ -3216,6 +3274,9 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    if (instr->isSDWA() || instr->isDPP())
       return;
+
+   if (instr->opcode == aco_opcode::p_extract)
+      apply_ds_extract(ctx, instr);
 
    /* TODO: There are still some peephole optimizations that could be done:
     * - abs(a - b) -> s_absdiff_i32
