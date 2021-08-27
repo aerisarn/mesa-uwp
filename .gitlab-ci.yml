@@ -14,7 +14,7 @@ variables:
   PIGLIT_REPLAY_REFERENCE_IMAGES_BASE: "${MINIO_HOST}/mesa-tracie-results/$FDO_UPSTREAM_REPO"
   # Individual CI farm status, set to "offline" to disable jobs
   # running on a particular CI farm (ie. for outages, etc):
-  FD_FARM: "online"
+  FD_FARM: "offline"
 
 include:
   - project: 'freedesktop/ci-templates'
