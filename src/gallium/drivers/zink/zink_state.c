@@ -455,6 +455,18 @@ line_width(float width, float granularity, const float range[2])
    return CLAMP(width, range[0], range[1]);
 }
 
+#define warn_line_feature(feat) \
+   do { \
+      static bool warned = false; \
+      if (!warned) { \
+         fprintf(stderr, "WARNING: Incorrect rendering will happen, " \
+                         "because the Vulkan device doesn't support " \
+                         "the %s feature of " \
+                         "VK_EXT_line_rasterization\n", feat); \
+         warned = true; \
+      } \
+   } while (0)
+
 static void *
 zink_create_rasterizer_state(struct pipe_context *pctx,
                              const struct pipe_rasterizer_state *rs_state)
@@ -498,13 +510,19 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
                if (line_feats->stippledSmoothLines)
                   state->hw_state.line_mode =
                      VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+               else
+                  warn_line_feature("stippledSmoothLines");
             } else if (line_feats->stippledRectangularLines)
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+            else
+               warn_line_feature("stippledRectangularLines");
          } else if (line_feats->stippledBresenhamLines)
             state->hw_state.line_mode =
                VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
          else {
+            warn_line_feature("stippledBresenhamLines");
+
             /* no suitable mode that supports line stippling */
             state->base.line_stipple_factor = 0;
             state->base.line_stipple_pattern = UINT16_MAX;
@@ -517,12 +535,18 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
                if (line_feats->smoothLines)
                   state->hw_state.line_mode =
                      VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+               else
+                  warn_line_feature("smoothLines");
             } else if (line_feats->rectangularLines)
                state->hw_state.line_mode =
                   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+            else
+               warn_line_feature("rectangularLines");
          } else if (line_feats->bresenhamLines)
             state->hw_state.line_mode =
                VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT;
+         else
+            warn_line_feature("bresenhamLines");
       }
       state->base.line_stipple_factor = 0;
       state->base.line_stipple_pattern = UINT16_MAX;
