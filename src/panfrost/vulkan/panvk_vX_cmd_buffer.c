@@ -99,10 +99,6 @@ static void
 panvk_copy_fb_desc(struct panvk_cmd_buffer *cmdbuf, void *src)
 {
    struct panvk_batch *batch = cmdbuf->state.batch;
-
-   if (batch->fb.desc.gpu)
-      return;
-
    const struct panvk_subpass *subpass = cmdbuf->state.subpass;
    uint32_t size = pan_size(MULTI_TARGET_FRAMEBUFFER);
 
