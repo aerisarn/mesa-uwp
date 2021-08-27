@@ -1905,7 +1905,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       if (screen->heap_map[i] == UINT8_MAX) {
          /* only cached mem has a failure case for now */
          assert(i == ZINK_HEAP_HOST_VISIBLE_CACHED);
-         screen->heap_map[i] = screen->heap_map[ZINK_HEAP_HOST_VISIBLE_ANY];
+         screen->heap_map[i] = screen->heap_map[ZINK_HEAP_HOST_VISIBLE_COHERENT];
       }
    }
    {
