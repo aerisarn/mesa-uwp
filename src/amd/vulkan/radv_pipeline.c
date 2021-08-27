@@ -1383,10 +1383,14 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
                              PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT))
       states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
 
-   if (!pCreateInfo->pRasterizationState ||
-       !vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
-                             PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT))
+   if (!pCreateInfo->pRasterizationState)
       states &= ~RADV_DYNAMIC_LINE_STIPPLE;
+   else {
+      const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line_info = vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
+                                                                                                 PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
+      if (!rast_line_info || !rast_line_info->stippledLineEnable)
+         states &= ~RADV_DYNAMIC_LINE_STIPPLE;
+   }
 
    if (!vk_find_struct_const(pCreateInfo->pNext,
                              PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) &&
