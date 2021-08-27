@@ -143,4 +143,17 @@ fd6_screen_init(struct pipe_screen *pscreen)
    fd6_resource_screen_init(pscreen);
    fd6_emit_init_screen(pscreen);
    ir3_screen_init(pscreen);
+
+   screen->primtypes = BITFIELD_BIT(PIPE_PRIM_POINTS) |
+                       BITFIELD_BIT(PIPE_PRIM_LINES) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_LOOP) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN) |
+                       BITFIELD_BIT(PIPE_PRIM_LINES_ADJACENCY) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP_ADJACENCY) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLES_ADJACENCY) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY) |
+                       BITFIELD_BIT(PIPE_PRIM_PATCHES);
 }

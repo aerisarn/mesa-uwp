@@ -107,4 +107,21 @@ fd2_screen_init(struct pipe_screen *pscreen)
       screen->tile_mode = fd2_tile_mode;
 
    fd2_emit_init_screen(pscreen);
+
+   if (screen->gpu_id >= 220) {
+      screen->primtypes = BITFIELD_BIT(PIPE_PRIM_POINTS) |
+                          BITFIELD_BIT(PIPE_PRIM_LINES) |
+                          BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+                          BITFIELD_BIT(PIPE_PRIM_LINE_LOOP) |
+                          BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+                          BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+                          BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
+   } else {
+      screen->primtypes = BITFIELD_BIT(PIPE_PRIM_POINTS) |
+                          BITFIELD_BIT(PIPE_PRIM_LINES) |
+                          BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+                          BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+                          BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+                          BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
+   }
 }

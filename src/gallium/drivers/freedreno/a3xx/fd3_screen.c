@@ -107,4 +107,12 @@ fd3_screen_init(struct pipe_screen *pscreen)
    screen->setup_slices = fd3_setup_slices;
    if (FD_DBG(TTILE))
       screen->tile_mode = fd3_tile_mode;
+
+   screen->primtypes = BITFIELD_BIT(PIPE_PRIM_POINTS) |
+                       BITFIELD_BIT(PIPE_PRIM_LINES) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_LOOP) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
 }

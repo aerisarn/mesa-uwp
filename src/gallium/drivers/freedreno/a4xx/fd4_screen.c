@@ -108,4 +108,12 @@ fd4_screen_init(struct pipe_screen *pscreen)
    pscreen->is_format_supported = fd4_screen_is_format_supported;
    fd4_emit_init_screen(pscreen);
    ir3_screen_init(pscreen);
+
+   screen->primtypes = BITFIELD_BIT(PIPE_PRIM_POINTS) |
+                       BITFIELD_BIT(PIPE_PRIM_LINES) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_LINE_LOOP) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
 }

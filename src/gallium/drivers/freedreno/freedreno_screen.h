@@ -89,6 +89,7 @@ struct fd_screen {
    uint32_t ram_size;
    uint32_t max_rts; /* max # of render targets */
    uint32_t priority_mask;
+   uint32_t primtypes;
    bool has_timestamp;
    bool has_robustness;
    bool has_syncobj;
