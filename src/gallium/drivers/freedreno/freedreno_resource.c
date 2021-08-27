@@ -1118,6 +1118,87 @@ alloc_resource_struct(struct pipe_screen *pscreen,
    return rsc;
 }
 
+enum fd_layout_type {
+   ERROR,
+   LINEAR,
+   TILED,
+   UBWC,
+};
+
+static enum fd_layout_type
+get_best_layout(struct fd_screen *screen, struct pipe_resource *prsc,
+                const struct pipe_resource *tmpl, const uint64_t *modifiers,
+                int count)
+{
+   bool implicit_modifiers =
+      (count == 0 ||
+       drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count));
+
+   /* First, find all the conditions which would force us to linear */
+   if (!screen->tile_mode)
+      return LINEAR;
+
+   if (!screen->tile_mode(prsc))
+      return LINEAR;
+
+   if (tmpl->target == PIPE_BUFFER)
+      return LINEAR;
+
+   if (tmpl->bind & PIPE_BIND_LINEAR) {
+      if (tmpl->usage != PIPE_USAGE_STAGING)
+         perf_debug("%" PRSC_FMT ": forcing linear: bind flags",
+                    PRSC_ARGS(prsc));
+      return LINEAR;
+   }
+
+   if (FD_DBG(NOTILE))
+       return LINEAR;
+
+   /* Shared resources with implicit modifiers must always be linear */
+   if (implicit_modifiers && (tmpl->bind & PIPE_BIND_SHARED)) {
+      perf_debug("%" PRSC_FMT
+                 ": forcing linear: shared resource + implicit modifiers",
+                 PRSC_ARGS(prsc));
+      return LINEAR;
+   }
+
+   bool ubwc_ok = is_a6xx(screen);
+   if (FD_DBG(NOUBWC))
+      ubwc_ok = false;
+
+   if (ubwc_ok && !implicit_modifiers &&
+       !drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count)) {
+      perf_debug("%" PRSC_FMT
+                 ": not using UBWC: not in acceptable modifier set",
+                 PRSC_ARGS(prsc));
+      ubwc_ok = false;
+   }
+
+   if (ubwc_ok)
+      return UBWC;
+
+   /* We can't use tiled with explicit modifiers, as there is no modifier token
+    * defined for it. But we might internally force tiled allocation using a
+    * private modifier token.
+    *
+    * TODO we should probably also limit TILED in a similar way to UBWC above,
+    * once we have a public modifier token defined.
+    */
+   if (implicit_modifiers ||
+       drm_find_modifier(FD_FORMAT_MOD_QCOM_TILED, modifiers, count))
+      return TILED;
+
+   if (!drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count)) {
+      perf_debug("%" PRSC_FMT ": need linear but not in modifier set",
+                 PRSC_ARGS(prsc));
+      return ERROR;
+   }
+
+   perf_debug("%" PRSC_FMT ": not using tiling: explicit modifiers and no UBWC",
+              PRSC_ARGS(prsc));
+   return LINEAR;
+}
+
 /**
  * Helper that allocates a resource and resolves its layout (but doesn't
  * allocate its bo).
@@ -1150,60 +1231,19 @@ fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
 
    fd_resource_layout_init(prsc);
 
-#define LINEAR (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR | PIPE_BIND_DISPLAY_TARGET)
-
-   bool linear = drm_find_modifier(DRM_FORMAT_MOD_LINEAR, modifiers, count);
-   if (linear) {
-      perf_debug("%" PRSC_FMT ": linear: DRM_FORMAT_MOD_LINEAR requested!",
-                 PRSC_ARGS(prsc));
-   } else if (tmpl->bind & LINEAR) {
-      if (tmpl->usage != PIPE_USAGE_STAGING)
-         perf_debug("%" PRSC_FMT ": linear: LINEAR bind requested!",
-                    PRSC_ARGS(prsc));
-      linear = true;
+   enum fd_layout_type layout =
+      get_best_layout(screen, prsc, tmpl, modifiers, count);
+   if (layout == ERROR) {
+      free(prsc);
+      return NULL;
    }
 
-   if (FD_DBG(NOTILE))
-      linear = true;
-
-   /* Normally, for non-shared buffers, allow buffer compression if
-    * not shared, otherwise only allow if QCOM_COMPRESSED modifier
-    * is requested:
-    *
-    * TODO we should probably also limit tiled in a similar way,
-    * except we don't have a format modifier for tiled.  (We probably
-    * should.)
-    */
-   bool allow_ubwc = false;
-   if (!linear) {
-      allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count);
-      if (!allow_ubwc) {
-         perf_debug("%" PRSC_FMT
-                    ": not UBWC: DRM_FORMAT_MOD_INVALID not requested!",
-                    PRSC_ARGS(prsc));
-      }
-      if (tmpl->bind & PIPE_BIND_SHARED) {
-         allow_ubwc =
-            drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count);
-         if (!allow_ubwc) {
-            perf_debug("%" PRSC_FMT
-                       ": not UBWC: shared and DRM_FORMAT_MOD_QCOM_COMPRESSED "
-                       "not requested!",
-                       PRSC_ARGS(prsc));
-            linear = true;
-         }
-      }
-   }
-
-   allow_ubwc &= !FD_DBG(NOUBWC);
-
-   if (screen->tile_mode && (tmpl->target != PIPE_BUFFER) && !linear) {
+   if (layout >= TILED)
       rsc->layout.tile_mode = screen->tile_mode(prsc);
-   }
+   if (layout == UBWC)
+      rsc->layout.ubwc = true;
 
    rsc->internal_format = format;
-
-   rsc->layout.ubwc = rsc->layout.tile_mode && is_a6xx(screen) && allow_ubwc;
 
    if (prsc->target == PIPE_BUFFER) {
       assert(prsc->format == PIPE_FORMAT_R8_UNORM);
