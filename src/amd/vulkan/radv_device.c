@@ -486,6 +486,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_pipeline_creation_cache_control = true,
       .EXT_pipeline_creation_feedback = true,
       .EXT_post_depth_coverage = device->rad_info.chip_class >= GFX10,
+      .EXT_primitive_topology_list_restart = true,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_queue_family_foreign = true,
@@ -1690,6 +1691,13 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderSharedFloat64AtomicMinMax = true;
          features->shaderImageFloat32AtomicMinMax = has_shader_float_minmax;
          features->sparseImageFloat32AtomicMinMax = has_shader_float_minmax;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
+         VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *features =
+            (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *)ext;
+         features->primitiveTopologyListRestart = true;
+         features->primitiveTopologyPatchListRestart = false;
          break;
       }
       default:
