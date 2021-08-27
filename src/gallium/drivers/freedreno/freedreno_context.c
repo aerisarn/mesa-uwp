@@ -368,9 +368,6 @@ fd_context_destroy(struct pipe_context *pctx)
       if (ctx->clear_rs_state[i])
          pctx->delete_rasterizer_state(pctx, ctx->clear_rs_state[i]);
 
-   if (ctx->primconvert)
-      util_primconvert_destroy(ctx->primconvert);
-
    slab_destroy_child(&ctx->transfer_pool);
    slab_destroy_child(&ctx->transfer_pool_unsync);
 
@@ -658,10 +655,6 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 
    ctx->blitter = util_blitter_create(pctx);
    if (!ctx->blitter)
-      goto fail;
-
-   ctx->primconvert = util_primconvert_create(pctx, ctx->primtype_mask);
-   if (!ctx->primconvert)
       goto fail;
 
    list_inithead(&ctx->hw_active_queries);

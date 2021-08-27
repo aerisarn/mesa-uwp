@@ -286,16 +286,6 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (!fd_render_condition_check(pctx))
       return;
 
-   /* emulate unsupported primitives: */
-   if (!fd_supported_prim(ctx, info->mode)) {
-      if (ctx->streamout.num_targets > 0)
-         mesa_loge("stream-out with emulated prims");
-      util_primconvert_save_rasterizer_state(ctx->primconvert, ctx->rasterizer);
-      util_primconvert_draw_vbo(ctx->primconvert, info, drawid_offset, indirect, draws,
-                                num_draws);
-      return;
-   }
-
    /* Upload a user index buffer. */
    struct pipe_resource *indexbuf = NULL;
    unsigned index_offset = 0;
