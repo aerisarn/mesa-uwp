@@ -2496,7 +2496,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
          is_odd = LLVMBuildTrunc(builder, is_odd, ctx->ac.i1, "");
 
          LLVMValueRef flatshade_first =
-            LLVMConstInt(ctx->ac.i32, !ctx->args->options->key.vs.provoking_vtx_last, false);
+            LLVMConstInt(ctx->ac.i1, !ctx->args->options->key.vs.provoking_vtx_last, false);
 
          ac_build_triangle_strip_indices_to_triangle(&ctx->ac, is_odd, flatshade_first, prim.index);
       }
