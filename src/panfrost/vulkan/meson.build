@@ -61,6 +61,7 @@ foreach arch : ['5', '6', '7']
   panvk_per_arch_libs += static_library(
     'panvk_v@0@'.format(arch),
     [
+      panvk_entrypoints[0],
       'panvk_vX_cmd_buffer.c',
       'panvk_vX_cs.c',
       'panvk_vX_descriptor_set.c',
