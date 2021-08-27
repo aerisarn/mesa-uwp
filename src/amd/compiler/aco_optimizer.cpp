@@ -1058,7 +1058,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          unsigned bits = get_operand_size(instr, i);
          if (info.is_constant(bits) && alu_can_accept_constant(instr->opcode, i) &&
-             (!instr->isSDWA() || ctx.program->chip_class >= GFX9)) {
+             (!instr->isSDWA() || ctx.program->chip_class >= GFX9) && !instr->isDPP()) {
             Operand op = get_constant_op(ctx, info, bits);
             perfwarn(ctx.program, instr->opcode == aco_opcode::v_cndmask_b32 && i == 2,
                      "v_cndmask_b32 with a constant selector", instr.get());
