@@ -12,6 +12,9 @@ variables:
   JOB_ARTIFACTS_BASE: ${PIPELINE_ARTIFACTS_BASE}/${CI_JOB_ID}
   # reference images stored for traces
   PIGLIT_REPLAY_REFERENCE_IMAGES_BASE: "${MINIO_HOST}/mesa-tracie-results/$FDO_UPSTREAM_REPO"
+  # Individual CI farm status, set to "offline" to disable jobs
+  # running on a particular CI farm (ie. for outages, etc):
+  FD_FARM: "online"
 
 include:
   - project: 'freedesktop/ci-templates'
