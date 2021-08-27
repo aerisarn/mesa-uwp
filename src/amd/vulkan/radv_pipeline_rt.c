@@ -771,6 +771,119 @@ insert_rt_case(nir_builder *b, nir_shader *shader, const struct rt_variables *va
    ralloc_free(var_remap);
 }
 
+static bool
+lower_rt_derefs(nir_shader *shader)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+
+   bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   b.cursor = nir_before_cf_list(&impl->body);
+   nir_ssa_def *arg_offset = nir_load_rt_arg_scratch_offset_amd(&b);
+
+   nir_foreach_block (block, impl) {
+      nir_foreach_instr_safe (instr, block) {
+         switch (instr->type) {
+         case nir_instr_type_deref: {
+            if (instr->type != nir_instr_type_deref)
+               continue;
+
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+            if (nir_deref_mode_is(deref, nir_var_shader_call_data)) {
+               deref->modes = nir_var_function_temp;
+               if (deref->deref_type == nir_deref_type_var) {
+                  b.cursor = nir_before_instr(&deref->instr);
+                  nir_deref_instr *cast = nir_build_deref_cast(
+                     &b, arg_offset, nir_var_function_temp, deref->var->type, 0);
+                  nir_ssa_def_rewrite_uses(&deref->dest.ssa, &cast->dest.ssa);
+                  nir_instr_remove(&deref->instr);
+               }
+               progress = true;
+            } else if (nir_deref_mode_is(deref, nir_var_ray_hit_attrib)) {
+               deref->modes = nir_var_function_temp;
+               if (deref->deref_type == nir_deref_type_var) {
+                  b.cursor = nir_before_instr(&deref->instr);
+                  nir_deref_instr *cast =
+                     nir_build_deref_cast(&b, nir_imm_int(&b, RADV_HIT_ATTRIB_OFFSET),
+                                          nir_var_function_temp, deref->type, 0);
+                  nir_ssa_def_rewrite_uses(&deref->dest.ssa, &cast->dest.ssa);
+                  nir_instr_remove(&deref->instr);
+               }
+               progress = true;
+            }
+            break;
+         }
+         default:
+            break;
+         }
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
+   }
+
+   return progress;
+}
+
+static gl_shader_stage
+convert_rt_stage(VkShaderStageFlagBits vk_stage)
+{
+   switch (vk_stage) {
+   case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
+      return MESA_SHADER_RAYGEN;
+   case VK_SHADER_STAGE_ANY_HIT_BIT_KHR:
+      return MESA_SHADER_ANY_HIT;
+   case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
+      return MESA_SHADER_CLOSEST_HIT;
+   case VK_SHADER_STAGE_MISS_BIT_KHR:
+      return MESA_SHADER_MISS;
+   case VK_SHADER_STAGE_INTERSECTION_BIT_KHR:
+      return MESA_SHADER_INTERSECTION;
+   case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
+      return MESA_SHADER_CALLABLE;
+   default:
+      unreachable("Unhandled RT stage");
+   }
+}
+
+static nir_shader *
+parse_rt_stage(struct radv_device *device, struct radv_pipeline_layout *layout,
+               const VkPipelineShaderStageCreateInfo *stage)
+{
+   struct radv_pipeline_key key;
+   memset(&key, 0, sizeof(key));
+
+   nir_shader *shader = radv_shader_compile_to_nir(
+      device, vk_shader_module_from_handle(stage->module), stage->pName,
+      convert_rt_stage(stage->stage), stage->pSpecializationInfo, 0, layout, &key);
+
+   if (shader->info.stage == MESA_SHADER_RAYGEN || shader->info.stage == MESA_SHADER_CLOSEST_HIT ||
+       shader->info.stage == MESA_SHADER_CALLABLE || shader->info.stage == MESA_SHADER_MISS) {
+      nir_block *last_block = nir_impl_last_block(nir_shader_get_entrypoint(shader));
+      nir_builder b_inner;
+      nir_builder_init(&b_inner, nir_shader_get_entrypoint(shader));
+      b_inner.cursor = nir_after_block(last_block);
+      nir_rt_return_amd(&b_inner);
+   }
+
+   NIR_PASS_V(shader, nir_lower_vars_to_explicit_types,
+              nir_var_function_temp | nir_var_shader_call_data | nir_var_ray_hit_attrib,
+              glsl_get_natural_size_align_bytes);
+
+   NIR_PASS_V(shader, lower_rt_derefs);
+
+   NIR_PASS_V(shader, nir_lower_explicit_io, nir_var_function_temp,
+              nir_address_format_32bit_offset);
+
+   return shader;
+}
+
 static nir_shader *
 create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                  struct radv_pipeline_shader_stack_size *stack_sizes)
