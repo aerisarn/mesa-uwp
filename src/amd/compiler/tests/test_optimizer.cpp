@@ -1032,3 +1032,29 @@ BEGIN_TEST(optimizer.dpp)
    finish_opt_test();
 END_TEST
 
+BEGIN_TEST(optimize.dpp_prop)
+   //>> v1: %a, s1: %b = p_startpgm
+   if (!setup_cs("v1 s1", GFX10))
+      return;
+
+   //! v1: %zero = p_parallelcopy 0
+   //! v1: %res0 = v_mul_f32 %zero, %a row_shl:1 bound_ctrl:1
+   //! p_unit_test 0, %res0
+   Temp zero = bld.copy(bld.def(v1), Operand::zero());
+   writeout(0, bld.vop2_dpp(aco_opcode::v_mul_f32, bld.def(v1), zero, inputs[0], dpp_row_sl(1)));
+
+   //! v1: %literal = p_parallelcopy 0x12345678
+   //! v1: %res1 = v_mul_f32 %literal, %a row_shl:1 bound_ctrl:1
+   //! p_unit_test 1, %res1
+   Temp literal = bld.copy(bld.def(v1), Operand::c32(0x12345678u));
+   writeout(1, bld.vop2_dpp(aco_opcode::v_mul_f32, bld.def(v1), literal, inputs[0], dpp_row_sl(1)));
+
+   //! v1: %b_v = p_parallelcopy %b
+   //! v1: %res2 = v_mul_f32 %b_v, %a row_shl:1 bound_ctrl:1
+   //! p_unit_test 2, %res2
+   Temp b_v = bld.copy(bld.def(v1), inputs[1]);
+   writeout(2, bld.vop2_dpp(aco_opcode::v_mul_f32, bld.def(v1), b_v, inputs[0], dpp_row_sl(1)));
+
+   finish_opt_test();
+END_TEST
+
