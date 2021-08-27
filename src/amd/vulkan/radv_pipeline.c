@@ -212,8 +212,8 @@ radv_DestroyPipeline(VkDevice _device, VkPipeline _pipeline,
    radv_pipeline_destroy(device, pipeline, pAllocator);
 }
 
-static uint32_t
-get_hash_flags(const struct radv_device *device, bool stats)
+uint32_t
+radv_get_hash_flags(const struct radv_device *device, bool stats)
 {
    uint32_t hash_flags = 0;
 
@@ -3348,7 +3348,7 @@ VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
                     struct radv_pipeline_cache *cache, const struct radv_pipeline_key *pipeline_key,
                     const VkPipelineShaderStageCreateInfo **pStages,
-                    const VkPipelineCreateFlags flags,
+                    const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
                     VkPipelineCreationFeedbackEXT *pipeline_feedback,
                     VkPipelineCreationFeedbackEXT **stage_feedbacks)
 {
@@ -3368,6 +3368,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
                               (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
                               device->keep_shader_info;
    bool disable_optimizations = flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
+   struct radv_pipeline_shader_stack_size **stack_sizes =
+      pipeline->type == RADV_PIPELINE_COMPUTE ? &pipeline->compute.rt_stack_sizes : NULL;
+   uint32_t *num_stack_sizes = stack_sizes ? &pipeline->compute.group_count : NULL;
 
    radv_start_feedback(pipeline_feedback);
 
@@ -3384,8 +3387,12 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       }
    }
 
-   radv_hash_shaders(hash, pStages, pipeline->layout, pipeline_key,
-                     get_hash_flags(device, keep_statistic_info));
+   if (custom_hash)
+      memcpy(hash, custom_hash, 20);
+   else {
+      radv_hash_shaders(hash, pStages, pipeline->layout, pipeline_key,
+                        radv_get_hash_flags(device, keep_statistic_info));
+   }
    memcpy(gs_copy_hash, hash, 20);
    gs_copy_hash[0] ^= 1;
 
@@ -3394,13 +3401,14 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
    bool found_in_application_cache = true;
    if (modules[MESA_SHADER_GEOMETRY] && !keep_executable_info) {
       struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
-      radv_create_shader_variants_from_pipeline_cache(device, cache, gs_copy_hash, variants,
-                                                      &found_in_application_cache);
+      radv_create_shader_variants_from_pipeline_cache(device, cache, gs_copy_hash, variants, NULL,
+                                                      NULL, &found_in_application_cache);
       pipeline->gs_copy_shader = variants[MESA_SHADER_GEOMETRY];
    }
 
    if (!keep_executable_info &&
        radv_create_shader_variants_from_pipeline_cache(device, cache, hash, pipeline->shaders,
+                                                       stack_sizes, num_stack_sizes,
                                                        &found_in_application_cache) &&
        (!modules[MESA_SHADER_GEOMETRY] || pipeline->gs_copy_shader)) {
       radv_stop_feedback(pipeline_feedback, found_in_application_cache);
@@ -3629,7 +3637,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          gs_binaries[MESA_SHADER_GEOMETRY] = gs_copy_binary;
          gs_variants[MESA_SHADER_GEOMETRY] = pipeline->gs_copy_shader;
 
-         radv_pipeline_cache_insert_shaders(device, cache, gs_copy_hash, gs_variants, gs_binaries);
+         radv_pipeline_cache_insert_shaders(device, cache, gs_copy_hash, gs_variants, gs_binaries,
+                                            NULL, 0);
 
          pipeline->gs_copy_shader = gs_variants[MESA_SHADER_GEOMETRY];
       }
@@ -3698,7 +3707,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
    }
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline->shaders, binaries);
+      radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline->shaders, binaries,
+                                         stack_sizes ? *stack_sizes : NULL,
+                                         num_stack_sizes ? *num_stack_sizes : 0);
    }
 
    for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
@@ -5519,7 +5530,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    struct radv_pipeline_key key =
       radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &blend);
 
-   result = radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags,
+   result = radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags, NULL,
                                 pipeline_feedback, stage_feedbacks);
    if (result != VK_SUCCESS)
       return result;
@@ -5746,7 +5757,9 @@ radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
 VkResult
 radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                              const VkComputePipelineCreateInfo *pCreateInfo,
-                             const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
+                             const VkAllocationCallbacks *pAllocator, const uint8_t *custom_hash,
+                             struct radv_pipeline_shader_stack_size *rt_stack_sizes,
+                             uint32_t rt_group_count, VkPipeline *pPipeline)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
@@ -5759,8 +5772,10 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (pipeline == NULL)
+   if (pipeline == NULL) {
+      free(rt_stack_sizes);
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
 
    vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
    pipeline->type = RADV_PIPELINE_COMPUTE;
@@ -5768,6 +5783,8 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    pipeline->device = device;
    pipeline->graphics.last_vgt_api_stage = MESA_SHADER_NONE;
    pipeline->layout = radv_pipeline_layout_from_handle(pCreateInfo->layout);
+   pipeline->compute.rt_stack_sizes = rt_stack_sizes;
+   pipeline->compute.group_count = rt_group_count;
    assert(pipeline->layout);
 
    const VkPipelineCreationFeedbackCreateInfoEXT *creation_feedback =
@@ -5784,7 +5801,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    struct radv_pipeline_key key = radv_generate_compute_pipeline_key(pipeline, pCreateInfo);
 
    result = radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags,
-                                pipeline_feedback, stage_feedbacks);
+                                custom_hash, pipeline_feedback, stage_feedbacks);
    if (result != VK_SUCCESS) {
       radv_pipeline_destroy(device, pipeline, pAllocator);
       return result;
@@ -5813,8 +5830,8 @@ radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uin
    unsigned i = 0;
    for (; i < count; i++) {
       VkResult r;
-      r = radv_compute_pipeline_create(_device, pipelineCache, &pCreateInfos[i], pAllocator,
-                                       &pPipelines[i]);
+      r = radv_compute_pipeline_create(_device, pipelineCache, &pCreateInfos[i], pAllocator, NULL,
+                                       NULL, 0, &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;

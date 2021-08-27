@@ -22,6 +22,7 @@
  */
 
 #include "radv_acceleration_structure.h"
+#include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_shader.h"
 
@@ -1899,6 +1900,11 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    VkResult result;
    struct radv_pipeline *pipeline = NULL;
    struct radv_pipeline_shader_stack_size *stack_sizes = NULL;
+   uint8_t hash[20];
+   nir_shader *shader = NULL;
+   bool keep_statistic_info =
+      (pCreateInfo->flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
+      (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) || device->keep_shader_info;
 
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)
       return radv_rt_pipeline_library_create(_device, _cache, pCreateInfo, pAllocator, pPipeline);
@@ -1910,30 +1916,44 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       goto fail;
    }
 
-   stack_sizes = calloc(sizeof(*stack_sizes), local_create_info.groupCount);
-   if (!stack_sizes) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
-   }
+   radv_hash_rt_shaders(hash, &local_create_info, radv_get_hash_flags(device, keep_statistic_info));
+   struct vk_shader_module module = {.base.type = VK_OBJECT_TYPE_SHADER_MODULE};
 
-   nir_shader *shader = create_rt_shader(device, &local_create_info, stack_sizes);
    VkComputePipelineCreateInfo compute_info = {
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
       .pNext = NULL,
-      .flags = pCreateInfo->flags,
+      .flags = pCreateInfo->flags | VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT,
       .stage =
          {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-            .module = vk_shader_module_handle_from_nir(shader),
+            .module = vk_shader_module_to_handle(&module),
             .pName = "main",
          },
       .layout = pCreateInfo->layout,
    };
-   result = radv_compute_pipeline_create(_device, _cache, &compute_info, pAllocator, pPipeline);
-   if (result != VK_SUCCESS)
-      goto shader_fail;
 
+   /* First check if we can get things from the cache before we take the expensive step of
+    * generating the nir. */
+   result = radv_compute_pipeline_create(_device, _cache, &compute_info, pAllocator, hash,
+                                         stack_sizes, local_create_info.groupCount, pPipeline);
+   if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT) {
+      stack_sizes = calloc(sizeof(*stack_sizes), local_create_info.groupCount);
+      if (!stack_sizes) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto fail;
+      }
+
+      shader = create_rt_shader(device, &local_create_info, stack_sizes);
+      module.nir = shader;
+      compute_info.flags = pCreateInfo->flags;
+      result = radv_compute_pipeline_create(_device, _cache, &compute_info, pAllocator, hash,
+                                            stack_sizes, local_create_info.groupCount, pPipeline);
+      stack_sizes = NULL;
+
+      if (result != VK_SUCCESS)
+         goto shader_fail;
+   }
    pipeline = radv_pipeline_from_handle(*pPipeline);
 
    pipeline->compute.rt_group_handles =
@@ -1943,10 +1963,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       goto shader_fail;
    }
 
-   pipeline->compute.rt_stack_sizes = stack_sizes;
-   stack_sizes = NULL;
-
-   pipeline->compute.dynamic_stack_size = has_dynamic_stack_size(pCreateInfo);
+   pipeline->compute.dynamic_stack_size = radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo);
 
    for (unsigned i = 0; i < local_create_info.groupCount; ++i) {
       const VkRayTracingShaderGroupCreateInfoKHR *group_info = &local_create_info.pGroups[i];
