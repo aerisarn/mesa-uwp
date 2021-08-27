@@ -345,8 +345,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
          assert(check <= screen->info.border_color_props.maxCustomBorderColorSamplers);
       } else
          sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO with custom shader if we're super interested?
-   } else
-      sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+   }
 
    sci.unnormalizedCoordinates = !state->normalized_coords;
 
