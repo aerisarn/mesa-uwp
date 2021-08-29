@@ -1336,7 +1336,7 @@ static void rvcn_dec_message_create(struct radeon_decoder *dec)
 static unsigned rvcn_dec_dynamic_dpb_t2_message(struct radeon_decoder *dec, rvcn_dec_message_decode_t *decode,
       rvcn_dec_message_dynamic_dpb_t2_t *dynamic_dpb_t2)
 {
-   struct rvcn_dec_dynamic_dpb_t2 *dpb = NULL;
+   struct rvcn_dec_dynamic_dpb_t2 *dpb = NULL, *dummy = NULL;
    unsigned width, height, size;
    uint64_t addr;
    int i;
@@ -1350,7 +1350,14 @@ static unsigned rvcn_dec_dynamic_dpb_t2_message(struct radeon_decoder *dec, rvcn
    list_for_each_entry_safe(struct rvcn_dec_dynamic_dpb_t2, d, &dec->dpb_ref_list, list) {
       for (i = 0; i < dec->ref_codec.ref_size; ++i) {
          if ((dec->ref_codec.ref_list[i] != 0x7f) && (d->index == (dec->ref_codec.ref_list[i] & 0x7f))) {
+            if (!dummy)
+               dummy = d;
+
             addr = dec->ws->buffer_get_virtual_address(d->dpb.res->buf);
+            if (!addr && dummy) {
+               RVID_ERR("Ref list from application is incorrect, using dummy buffer instead.\n");
+               addr = dec->ws->buffer_get_virtual_address(dummy->dpb.res->buf);
+            }
             dynamic_dpb_t2->dpbAddrLo[i] = addr;
             dynamic_dpb_t2->dpbAddrHi[i] = addr >> 32;
             ++dynamic_dpb_t2->dpbArraySize;
