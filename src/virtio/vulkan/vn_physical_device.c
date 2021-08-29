@@ -1224,27 +1224,28 @@ vn_instance_enumerate_physical_devices(struct vn_instance *instance)
    if (result != VK_SUCCESS)
       goto out;
 
-   uint32_t i = 0;
-   while (i < count) {
+   /* fully initialize physical devices and discard unsupported ones */
+   uint32_t supported_count = 0;
+   for (uint32_t i = 0; i < count; i++) {
       struct vn_physical_device *physical_dev = &physical_devs[i];
 
       result = vn_physical_device_init(physical_dev);
       if (result != VK_SUCCESS) {
-         vn_physical_device_base_fini(&physical_devs[i].base);
-         memmove(&physical_devs[i], &physical_devs[i + 1],
-                 sizeof(*physical_devs) * (count - i - 1));
-         count--;
+         vn_physical_device_base_fini(&physical_dev->base);
          continue;
       }
 
-      i++;
+      if (supported_count < i)
+         physical_devs[supported_count] = *physical_dev;
+      supported_count++;
    }
 
-   if (count) {
-      instance->physical_devices = physical_devs;
-      instance->physical_device_count = count;
-      result = VK_SUCCESS;
-   }
+   count = supported_count;
+   if (!count)
+      goto out;
+
+   instance->physical_devices = physical_devs;
+   instance->physical_device_count = count;
 
 out:
    if (result != VK_SUCCESS && physical_devs) {
