@@ -1219,21 +1219,36 @@ vn_instance_enumerate_physical_device_groups_locked(
    }
 
    /* fix VkPhysicalDeviceGroupProperties::physicalDevices to point to
-    * physical_devs
+    * physical_devs and discard unsupported ones
     */
+   uint32_t supported_count = 0;
    for (uint32_t i = 0; i < count; i++) {
       VkPhysicalDeviceGroupProperties *group = &groups[i];
 
+      uint32_t group_physical_dev_count = 0;
       for (uint32_t j = 0; j < group->physicalDeviceCount; j++) {
          struct vn_physical_device_base *temp_obj =
             (struct vn_physical_device_base *)group->physicalDevices[j];
          struct vn_physical_device *physical_dev = find_physical_device(
             physical_devs, physical_dev_count, temp_obj->id);
+         if (!physical_dev)
+            continue;
 
-         group->physicalDevices[j] =
+         group->physicalDevices[group_physical_dev_count++] =
             vn_physical_device_to_handle(physical_dev);
       }
+
+      group->physicalDeviceCount = group_physical_dev_count;
+      if (!group->physicalDeviceCount)
+         continue;
+
+      if (supported_count < i)
+         groups[supported_count] = *group;
+      supported_count++;
    }
+
+   count = supported_count;
+   assert(count);
 
    vk_free(alloc, temp_objs);
 
