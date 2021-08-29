@@ -953,6 +953,9 @@ VkResult genX(CreateSampler)(
                               sampler->n_planes * 32, 32);
    }
 
+   const bool seamless_cube =
+      !(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);
+
    for (unsigned p = 0; p < sampler->n_planes; p++) {
       const bool plane_has_chroma =
          sampler->conversion && sampler->conversion->format->planes[p].has_chroma;
@@ -1004,7 +1007,7 @@ VkResult genX(CreateSampler)(
          .ShadowFunction =
             vk_to_intel_shadow_compare_op[pCreateInfo->compareEnable ?
                                         pCreateInfo->compareOp : VK_COMPARE_OP_NEVER],
-         .CubeSurfaceControlMode = OVERRIDE,
+         .CubeSurfaceControlMode = seamless_cube ? OVERRIDE : PROGRAMMED,
 
          .BorderColorPointer = border_color_offset,
 
