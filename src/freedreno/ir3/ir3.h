@@ -124,6 +124,8 @@ struct ir3_register {
       IR3_REG_BNOT = 0x400,
       /* (ei) flag, end-input?  Set on last bary, presumably to signal
        * that the shader needs no more input:
+       *
+       * Note: Has different meaning on other instructions like add.s/u
        */
       IR3_REG_EI = 0x2000,
       /* meta-flags, for intermediate stages of IR, ie.

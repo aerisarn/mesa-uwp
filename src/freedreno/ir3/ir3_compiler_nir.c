@@ -553,6 +553,14 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    case nir_op_iadd:
       dst[0] = ir3_ADD_U(b, src[0], 0, src[1], 0);
       break;
+   case nir_op_ihadd:
+      dst[0] = ir3_ADD_S(b, src[0], 0, src[1], 0);
+      dst[0]->dsts[0]->flags |= IR3_REG_EI;
+      break;
+   case nir_op_uhadd:
+      dst[0] = ir3_ADD_U(b, src[0], 0, src[1], 0);
+      dst[0]->dsts[0]->flags |= IR3_REG_EI;
+      break;
    case nir_op_iand:
       dst[0] = ir3_AND_B(b, src[0], 0, src[1], 0);
       break;
