@@ -175,8 +175,14 @@ lower_intrinsic(lower_state *state, nir_intrinsic_instr *intr)
    case nir_intrinsic_global_atomic_fmin:
    case nir_intrinsic_global_atomic_fmax:
    case nir_intrinsic_global_atomic_fcomp_swap:
+   case nir_intrinsic_load_global_constant:
+   case nir_intrinsic_load_global:
       /* just assume we that 24b is not sufficient: */
       return lower_large_src(&intr->src[0], state);
+
+   case nir_intrinsic_store_global:
+      /* just assume we that 24b is not sufficient: */
+      return lower_large_src(&intr->src[1], state);
 
    /* These should all be small enough to unconditionally use imul24: */
    case nir_intrinsic_shared_atomic_add:
