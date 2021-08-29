@@ -779,6 +779,7 @@ vn_DestroyInstance(VkInstance _instance,
       return;
 
    if (instance->physical_devices) {
+      vk_free(alloc, instance->physical_device_groups);
       for (uint32_t i = 0; i < instance->physical_device_count; i++)
          vn_physical_device_fini(&instance->physical_devices[i]);
       vk_free(alloc, instance->physical_devices);
