@@ -114,6 +114,10 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
                     unsigned gs_total_out_vtx_bytes,
                     bool provoking_vtx_last);
 
+void
+ac_nir_lower_ngg_ms(nir_shader *shader,
+                    unsigned wave_size);
+
 nir_ssa_def *
 ac_nir_cull_triangle(nir_builder *b,
                      nir_ssa_def *initially_accepted,
