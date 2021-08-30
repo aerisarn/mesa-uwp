@@ -290,6 +290,12 @@ asSDWA(Format format)
    return (Format)((uint32_t)Format::SDWA | (uint32_t)format);
 }
 
+constexpr Format
+withoutDPP(Format format)
+{
+   return (Format)((uint32_t)format & ~(uint32_t)Format::DPP);
+}
+
 enum class RegType {
    none = 0,
    sgpr,

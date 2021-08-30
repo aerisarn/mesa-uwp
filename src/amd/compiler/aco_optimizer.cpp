@@ -560,10 +560,11 @@ pseudo_propagate_temp(opt_ctx& ctx, aco_ptr<Instruction>& instr, Temp temp, unsi
    return true;
 }
 
+/* This expects the DPP modifier to be removed. */
 bool
 can_apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
-   if ((instr->isSDWA() && ctx.program->chip_class < GFX9) || instr->isDPP())
+   if (instr->isSDWA() && ctx.program->chip_class < GFX9)
       return false;
    return instr->opcode != aco_opcode::v_readfirstlane_b32 &&
           instr->opcode != aco_opcode::v_readlane_b32 &&
@@ -1010,6 +1011,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          /* applying SGPRs to VOP1 doesn't increase code size and DCE is helped by doing it earlier */
          if (info.is_temp() && info.temp.type() == RegType::sgpr && can_apply_sgprs(ctx, instr) &&
              instr->operands.size() == 1) {
+            instr->format = withoutDPP(instr->format);
             instr->operands[i].setTemp(info.temp);
             info = ctx.info[info.temp.id()];
          }
@@ -1058,13 +1060,14 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          unsigned bits = get_operand_size(instr, i);
          if (info.is_constant(bits) && alu_can_accept_constant(instr->opcode, i) &&
-             (!instr->isSDWA() || ctx.program->chip_class >= GFX9) && !instr->isDPP()) {
+             (!instr->isSDWA() || ctx.program->chip_class >= GFX9)) {
             Operand op = get_constant_op(ctx, info, bits);
             perfwarn(ctx.program, instr->opcode == aco_opcode::v_cndmask_b32 && i == 2,
                      "v_cndmask_b32 with a constant selector", instr.get());
             if (i == 0 || instr->isSDWA() || instr->isVOP3P() ||
                 instr->opcode == aco_opcode::v_readlane_b32 ||
                 instr->opcode == aco_opcode::v_writelane_b32) {
+               instr->format = withoutDPP(instr->format);
                instr->operands[i] = op;
                continue;
             } else if (!instr->isVOP3() && can_swap_operands(instr, &instr->opcode)) {
@@ -2740,6 +2743,9 @@ apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (new_sgpr && num_sgprs >= max_sgprs)
          continue;
 
+      if (sgpr_idx == 0)
+         instr->format = withoutDPP(instr->format);
+
       if (sgpr_idx == 0 || instr->isVOP3() || instr->isSDWA() || instr->isVOP3P() ||
           info.is_extract()) {
          /* can_apply_extract() checks SGPR encoding restrictions */
@@ -3734,7 +3740,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
    }
 
-   if (instr->isSDWA() || instr->isDPP() || (instr->isVOP3() && ctx.program->chip_class < GFX10) ||
+   if (instr->isSDWA() || (instr->isVOP3() && ctx.program->chip_class < GFX10) ||
        (instr->isVOP3P() && ctx.program->chip_class < GFX10))
       return; /* some encodings can't ever take literals */
 
@@ -3858,6 +3864,7 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          unsigned bits = get_operand_size(instr, i);
          if (op.isTemp() && ctx.info[op.tempId()].is_literal(bits) && ctx.uses[op.tempId()] == 0) {
             Operand literal = Operand::c32(ctx.info[op.tempId()].val);
+            instr->format = withoutDPP(instr->format);
             if (instr->isVALU() && i > 0 && instr->format != Format::VOP3P)
                to_VOP3(ctx, instr);
             instr->operands[i] = literal;
