@@ -23,6 +23,9 @@ export XDG_CACHE_HOME=/tmp
 export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
 
 if [ "$HWCI_FREQ_MAX" = "true" ]; then
+  # Ensure initialization of the DRM device (needed by MSM)
+  head -0 /dev/dri/renderD128
+
   # Disable GPU frequency scaling
   DEVFREQ_GOVERNOR=`find /sys/devices -name governor | grep gpu || true`
   test -z "$DEVFREQ_GOVERNOR" || echo performance > $DEVFREQ_GOVERNOR || true
