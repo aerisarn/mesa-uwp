@@ -510,12 +510,12 @@ add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, uns
    if (instr->isVALU()) {
       /* check if we can use opsel */
       if (instr->format == Format::VOP3) {
-         assert(rc == v2b && byte == 2);
+         assert(byte == 2);
          instr->vop3().opsel |= 1 << idx;
          return;
       }
       if (instr->isVOP3P()) {
-         assert(rc == v2b && byte == 2 && !(instr->vop3p().opsel_lo & (1 << idx)));
+         assert(byte == 2 && !(instr->vop3p().opsel_lo & (1 << idx)));
          instr->vop3p().opsel_lo |= 1 << idx;
          instr->vop3p().opsel_hi |= 1 << idx;
          return;
