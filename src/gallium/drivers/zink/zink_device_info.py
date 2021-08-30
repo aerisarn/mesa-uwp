@@ -195,6 +195,10 @@ EXTENSIONS = [
         alias="vertex_input",
 	features=True,
 	conditions=["$feats.vertexInputDynamicState"]),
+    Extension("VK_EXT_primitive_topology_list_restart",
+        alias="list_restart",
+	features=True,
+	conditions=["$feats.primitiveTopologyListRestart"]),
     Extension("VK_KHR_dedicated_allocation",
         alias="dedicated"),
 ]
