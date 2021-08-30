@@ -735,7 +735,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
    }
 
    if (nr_planes > 3) {
-      lp_setup_add_scissor_planes(scissor, &plane[3], s_planes);
+      lp_setup_add_scissor_planes(scissor, &plane[3], s_planes, setup->multisample);
    }
 
    return lp_setup_bin_triangle(setup, tri, &bbox, &bboxpos, nr_planes, viewport_index);

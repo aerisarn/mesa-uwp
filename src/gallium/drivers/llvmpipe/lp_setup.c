@@ -1755,7 +1755,7 @@ lp_setup_flush_and_restart(struct lp_setup_context *setup)
 void
 lp_setup_add_scissor_planes(const struct u_rect *scissor,
                             struct lp_rast_plane *plane_s,
-                            boolean s_planes[4])
+                            boolean s_planes[4], bool multisample)
 {
    /*
     * When rasterizing scissored tris, use the intersection of the
@@ -1778,11 +1778,13 @@ lp_setup_add_scissor_planes(const struct u_rect *scissor,
     * scissor edge this is, so rasterization would treat them differently
     * (easier to evaluate) to ordinary planes.)
     */
+   int adj = multisample ? 127 : 0;
    if (s_planes[0]) {
       int x0 = scissor->x0 - 1;
       plane_s->dcdx = ~0U << 8;
       plane_s->dcdy = 0;
       plane_s->c = x0 << 8;
+      plane_s->c += adj;
       plane_s->c = -plane_s->c; /* flip sign */
       plane_s->eo = 1 << 8;
       plane_s++;
@@ -1792,7 +1794,7 @@ lp_setup_add_scissor_planes(const struct u_rect *scissor,
       plane_s->dcdx = 1 << 8;
       plane_s->dcdy = 0;
       plane_s->c = x1 << 8;
-      plane_s->c += 255;
+      plane_s->c += 127 + adj;
       plane_s->eo = 0 << 8;
       plane_s++;
    }
@@ -1801,6 +1803,7 @@ lp_setup_add_scissor_planes(const struct u_rect *scissor,
       plane_s->dcdx = 0;
       plane_s->dcdy = 1 << 8;
       plane_s->c = y0 << 8;
+      plane_s->c += adj;
       plane_s->c = -plane_s->c; /* flip sign */
       plane_s->eo = 1 << 8;
       plane_s++;
@@ -1810,7 +1813,7 @@ lp_setup_add_scissor_planes(const struct u_rect *scissor,
       plane_s->dcdx = 0;
       plane_s->dcdy = ~0U << 8;
       plane_s->c = y1 << 8;
-      plane_s->c += 255;
+      plane_s->c += 127 + adj;
       plane_s->eo = 0;
       plane_s++;
    }
