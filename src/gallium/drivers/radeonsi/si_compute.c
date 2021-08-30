@@ -423,11 +423,13 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
    }
 
    if (sctx->chip_class >= GFX10) {
-      radeon_set_sh_reg(cs, R_00B890_COMPUTE_USER_ACCUM_0, 0);
-      radeon_set_sh_reg(cs, R_00B894_COMPUTE_USER_ACCUM_1, 0);
-      radeon_set_sh_reg(cs, R_00B898_COMPUTE_USER_ACCUM_2, 0);
-      radeon_set_sh_reg(cs, R_00B89C_COMPUTE_USER_ACCUM_3, 0);
-      radeon_set_sh_reg(cs, R_00B8A0_COMPUTE_PGM_RSRC3, 0);
+      radeon_set_sh_reg_seq(cs, R_00B890_COMPUTE_USER_ACCUM_0, 5);
+      radeon_emit(cs, 0); /* R_00B890_COMPUTE_USER_ACCUM_0 */
+      radeon_emit(cs, 0); /* R_00B894_COMPUTE_USER_ACCUM_1 */
+      radeon_emit(cs, 0); /* R_00B898_COMPUTE_USER_ACCUM_2 */
+      radeon_emit(cs, 0); /* R_00B89C_COMPUTE_USER_ACCUM_3 */
+      radeon_emit(cs, 0); /* R_00B8A0_COMPUTE_PGM_RSRC3 */
+
       radeon_set_sh_reg(cs, R_00B9F4_COMPUTE_DISPATCH_TUNNEL, 0);
    }
    radeon_end();
