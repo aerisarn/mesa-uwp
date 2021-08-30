@@ -556,8 +556,14 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
       vn_encode_vkSetReplyCommandStreamMESA(&local_enc, 0, &stream);
       vn_cs_encoder_commit(&local_enc);
 
-      vn_instance_roundtrip(instance);
-      vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
+      if (likely(instance->ring.id)) {
+         vn_instance_roundtrip(instance);
+         vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
+      } else {
+         vn_renderer_submit_simple(instance->renderer,
+                                   set_reply_command_stream_data,
+                                   vn_cs_encoder_get_len(&local_enc));
+      }
    }
 
    /* TODO avoid this seek command and go lock-free? */
@@ -567,7 +573,14 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
    const size_t offset = instance->reply.used;
    vn_encode_vkSeekReplyCommandStreamMESA(&local_enc, 0, offset);
    vn_cs_encoder_commit(&local_enc);
-   vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
+
+   if (likely(instance->ring.id)) {
+      vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
+   } else {
+      vn_renderer_submit_simple(instance->renderer,
+                                seek_reply_command_stream_data,
+                                vn_cs_encoder_get_len(&local_enc));
+   }
 
    *ptr = instance->reply.ptr + offset;
    instance->reply.used += size;
