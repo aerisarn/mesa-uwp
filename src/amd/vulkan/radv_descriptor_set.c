@@ -966,6 +966,7 @@ write_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_
 
    if (buffer_info->range == VK_WHOLE_SIZE)
       range = buffer->size - buffer_info->offset;
+   assert(buffer->size > 0 && range > 0);
 
    /* robustBufferAccess is relaxed enough to allow this (in combination
     * with the alignment/size we return from vkGetBufferMemoryRequirements)
@@ -1028,6 +1029,7 @@ write_dynamic_buffer_descriptor(struct radv_device *device, struct radv_descript
 
    if (buffer_info->range == VK_WHOLE_SIZE)
       size = buffer->size - buffer_info->offset;
+   assert(buffer->size > 0 && size > 0);
 
    /* robustBufferAccess is relaxed enough to allow this (in combination
     * with the alignment/size we return from vkGetBufferMemoryRequirements)
@@ -1062,6 +1064,7 @@ write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_b
    } else {
       descriptor = &iview->descriptor;
    }
+   assert(size > 0);
 
    memcpy(dst, descriptor, size);
 
