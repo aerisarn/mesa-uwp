@@ -713,7 +713,7 @@ get_alu_src(struct isel_context* ctx, nir_alu_src src, unsigned size = 1)
       return get_ssa_temp(ctx, src.src.ssa);
 
    Temp vec = get_ssa_temp(ctx, src.src.ssa);
-   unsigned elem_size = vec.bytes() / src.src.ssa->num_components;
+   unsigned elem_size = src.src.ssa->bit_size / 8u;
    bool identity_swizzle = true;
 
    for (unsigned i = 0; identity_swizzle && i < size; i++) {
@@ -726,12 +726,15 @@ get_alu_src(struct isel_context* ctx, nir_alu_src src, unsigned size = 1)
    assert(elem_size > 0);
    assert(vec.bytes() % elem_size == 0);
 
-   if (elem_size < 4 && vec.type() == RegType::sgpr) {
+   if (elem_size < 4 && vec.type() == RegType::sgpr && size == 1) {
       assert(src.src.ssa->bit_size == 8 || src.src.ssa->bit_size == 16);
-      assert(size == 1);
       return extract_8_16_bit_sgpr_element(ctx, ctx->program->allocateTmp(s1), &src,
                                            sgpr_extract_undef);
    }
+
+   bool as_uniform = elem_size < 4 && vec.type() == RegType::sgpr;
+   if (as_uniform)
+      vec = as_vgpr(ctx, vec);
 
    RegClass elem_rc = elem_size < 4 ? RegClass(vec.type(), elem_size).as_subdword()
                                     : RegClass(vec.type(), elem_size / 4);
@@ -750,7 +753,7 @@ get_alu_src(struct isel_context* ctx, nir_alu_src src, unsigned size = 1)
       vec_instr->definitions[0] = Definition(dst);
       ctx->block->instructions.emplace_back(std::move(vec_instr));
       ctx->allocated_vec.emplace(dst.id(), elems);
-      return dst;
+      return vec.type() == RegType::sgpr ? Builder(ctx->program, ctx->block).as_uniform(dst) : dst;
    }
 }
 
@@ -3148,6 +3151,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       }
       break;
    }
+   case nir_op_pack_32_4x8: bld.copy(Definition(dst), get_alu_src(ctx, instr->src[0], 4)); break;
    case nir_op_pack_half_2x16_split: {
       if (dst.regClass() == v1) {
          nir_const_value* val = nir_src_as_const_value(instr->src[1].src);
