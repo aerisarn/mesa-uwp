@@ -105,8 +105,8 @@ pm4_pkt7_hdr(uint8_t opcode, uint16_t cnt)
 #define cp_type3_opcode(pkt) (((pkt) >> 8) & 0xFF)
 #define type3_pkt_size(pkt)  ((((pkt) >> 16) & 0x3FFF) + 1)
 
-static inline uint
-pm4_calc_odd_parity_bit(uint val)
+static inline unsigned
+pm4_calc_odd_parity_bit(unsigned val)
 {
    return (0x9669 >> (0xf & ((val) ^ ((val) >> 4) ^ ((val) >> 8) ^
                              ((val) >> 12) ^ ((val) >> 16) ^ ((val) >> 20) ^
