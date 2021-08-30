@@ -207,6 +207,10 @@ scissor_planes_needed(boolean scis_planes[4], const struct u_rect *bbox,
    scis_planes[3] = (bbox->y1 > scissor->y1);
 }
 
+void
+lp_setup_add_scissor_planes(const struct u_rect *scissor,
+                            struct lp_rast_plane *plane_s,
+                            boolean s_planes[4]);
 
 void lp_setup_choose_triangle( struct lp_setup_context *setup );
 void lp_setup_choose_line( struct lp_setup_context *setup );

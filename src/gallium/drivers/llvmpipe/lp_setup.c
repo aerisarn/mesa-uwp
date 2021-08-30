@@ -1752,4 +1752,58 @@ lp_setup_flush_and_restart(struct lp_setup_context *setup)
    return TRUE;
 }
 
-
+void
+lp_setup_add_scissor_planes(const struct u_rect *scissor,
+                            struct lp_rast_plane *plane_s,
+                            boolean s_planes[4])
+{
+   /*
+    * When rasterizing scissored tris, use the intersection of the
+    * triangle bounding box and the scissor rect to generate the
+    * scissor planes.
+    *
+    * This permits us to cut off the triangle "tails" that are present
+    * in the intermediate recursive levels caused when two of the
+    * triangles edges don't diverge quickly enough to trivially reject
+    * exterior blocks from the triangle.
+    *
+    * It's not really clear if it's worth worrying about these tails,
+    * but since we generate the planes for each scissored tri, it's
+    * free to trim them in this case.
+    *
+    * Note that otherwise, the scissor planes only vary in 'C' value,
+    * and even then only on state-changes.  Could alternatively store
+    * these planes elsewhere.
+    * (Or only store the c value together with a bit indicating which
+    * scissor edge this is, so rasterization would treat them differently
+    * (easier to evaluate) to ordinary planes.)
+    */
+   if (s_planes[0]) {
+      plane_s->dcdx = ~0U << 8;
+      plane_s->dcdy = 0;
+      plane_s->c = (1-scissor->x0) << 8;
+      plane_s->eo = 1 << 8;
+      plane_s++;
+   }
+   if (s_planes[1]) {
+      plane_s->dcdx = 1 << 8;
+      plane_s->dcdy = 0;
+      plane_s->c = (scissor->x1+1) << 8;
+      plane_s->eo = 0 << 8;
+      plane_s++;
+   }
+   if (s_planes[2]) {
+      plane_s->dcdx = 0;
+      plane_s->dcdy = 1 << 8;
+      plane_s->c = (1-scissor->y0) << 8;
+      plane_s->eo = 1 << 8;
+      plane_s++;
+   }
+   if (s_planes[3]) {
+      plane_s->dcdx = 0;
+      plane_s->dcdy = ~0U << 8;
+      plane_s->c = (scissor->y1+1) << 8;
+      plane_s->eo = 0;
+      plane_s++;
+   }
+}
