@@ -685,6 +685,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          prog->shaders[i] = NULL;
          destroy_shader_cache(screen, &prog->base.shader_cache[i]);
       }
+      ralloc_free(prog->nir[i]);
    }
 
    unsigned max_idx = ARRAY_SIZE(prog->pipelines);
