@@ -257,7 +257,7 @@ gbm_device_get_backend_name(struct gbm_device *gbm);
 
 int
 gbm_device_is_format_supported(struct gbm_device *gbm,
-                               uint32_t format, uint32_t usage);
+                               uint32_t format, uint32_t flags);
 
 int
 gbm_device_get_format_modifier_plane_count(struct gbm_device *gbm,
@@ -309,7 +309,7 @@ struct gbm_import_fd_modifier_data {
 
 struct gbm_bo *
 gbm_bo_import(struct gbm_device *gbm, uint32_t type,
-              void *buffer, uint32_t usage);
+              void *buffer, uint32_t flags);
 
 /**
  * Flags to indicate the type of mapping for the buffer - these are
