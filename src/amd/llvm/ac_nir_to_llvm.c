@@ -626,6 +626,15 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       else
          result = LLVMBuildAdd(ctx->ac.builder, src[0], src[1], "");
       break;
+   case nir_op_uadd_sat:
+   case nir_op_iadd_sat: {
+      char name[64], type[64];
+      ac_build_type_name_for_intr(def_type, type, sizeof(type));
+      snprintf(name, sizeof(name), "llvm.%cadd.sat.%s",
+               instr->op == nir_op_uadd_sat ? 'u' : 's', type);
+      result = ac_build_intrinsic(&ctx->ac, name, def_type, src, 2, AC_FUNC_ATTR_READNONE);
+      break;
+   }
    case nir_op_fadd:
       src[0] = ac_to_float(&ctx->ac, src[0]);
       src[1] = ac_to_float(&ctx->ac, src[1]);

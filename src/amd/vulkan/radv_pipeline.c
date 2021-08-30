@@ -3495,9 +3495,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          /* lower ALU operations */
          nir_lower_int64(nir[i]);
 
-         /* TODO: Implement nir_op_uadd_sat with LLVM. */
-         if (!radv_use_llvm_for_stage(device, i))
-            nir_opt_idiv_const(nir[i], 8);
+         nir_opt_idiv_const(nir[i], 8);
 
          nir_lower_idiv(nir[i],
                         &(nir_lower_idiv_options){
