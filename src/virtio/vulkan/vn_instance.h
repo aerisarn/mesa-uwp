@@ -39,17 +39,6 @@ struct vn_instance {
    struct vn_renderer *renderer;
    struct vn_renderer_info renderer_info;
 
-   /* Between the driver and the app, VN_MAX_API_VERSION is what we advertise
-    * and base.base.app_info.api_version is what the app requests.
-    *
-    * Between the driver and the renderer, renderer_api_version is the api
-    * version we request internally, which can be higher than
-    * base.base.app_info.api_version.  renderer_version is the instance
-    * version we can use internally.
-    */
-   uint32_t renderer_api_version;
-   uint32_t renderer_version;
-
    /* to synchronize renderer/ring */
    mtx_t roundtrip_mutex;
    uint32_t roundtrip_next;
@@ -70,6 +59,17 @@ struct vn_instance {
       size_t used;
       void *ptr;
    } reply;
+
+   /* Between the driver and the app, VN_MAX_API_VERSION is what we advertise
+    * and base.base.app_info.api_version is what the app requests.
+    *
+    * Between the driver and the renderer, renderer_api_version is the api
+    * version we request internally, which can be higher than
+    * base.base.app_info.api_version.  renderer_version is the instance
+    * version we can use internally.
+    */
+   uint32_t renderer_api_version;
+   uint32_t renderer_version;
 
    struct {
       mtx_t mutex;
