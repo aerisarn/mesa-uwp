@@ -3615,7 +3615,7 @@ typedef struct nir_shader_compiler_options {
    bool lower_hadd64;
 
    /**
-    * Set if nir_op_add_sat and nir_op_usub_sat should be lowered to simple
+    * Set if nir_op_uadd_sat and nir_op_usub_sat should be lowered to simple
     * arithmetic.
     *
     * If this flag is set, the lowering will be applied to all bit-sizes of
@@ -3623,7 +3623,7 @@ typedef struct nir_shader_compiler_options {
     *
     * \sa ::lower_usub_sat64
     */
-   bool lower_add_sat;
+   bool lower_uadd_sat;
 
    /**
     * Set if only 64-bit nir_op_usub_sat should be lowered to simple
@@ -3632,6 +3632,15 @@ typedef struct nir_shader_compiler_options {
     * \sa ::lower_add_sat
     */
    bool lower_usub_sat64;
+
+   /**
+    * Set if nir_op_iadd_sat and nir_op_isub_sat should be lowered to simple
+    * arithmetic.
+    *
+    * If this flag is set, the lowering will be applied to all bit-sizes of
+    * these instructions.
+    */
+   bool lower_iadd_sat;
 
    /**
     * Should IO be re-vectorized?  Some scalar ISAs still operate on vec4's

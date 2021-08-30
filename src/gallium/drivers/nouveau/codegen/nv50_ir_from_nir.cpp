@@ -3286,7 +3286,8 @@ nvir_nir_shader_compiler_options(int chipset)
    op.lower_device_index_to_zero = false; // TODO
    op.lower_wpos_pntc = false; // TODO
    op.lower_hadd = true; // TODO
-   op.lower_add_sat = true; // TODO
+   op.lower_uadd_sat = true; // TODO
+   op.lower_iadd_sat = true; // TODO
    op.vectorize_io = false;
    op.lower_to_scalar = false;
    op.unify_interfaces = false;
