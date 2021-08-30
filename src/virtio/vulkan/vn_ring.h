@@ -87,8 +87,7 @@ vn_ring_get_submit(struct vn_ring *ring, uint32_t shmem_count);
 bool
 vn_ring_submit(struct vn_ring *ring,
                struct vn_ring_submit *submit,
-               const void *cs_data,
-               uint32_t cs_size,
+               const struct vn_cs_encoder *cs,
                uint32_t *seqno);
 
 void

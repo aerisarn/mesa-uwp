@@ -5,6 +5,7 @@
 
 #include "vn_ring.h"
 
+#include "vn_cs.h"
 #include "vn_renderer.h"
 
 /* must be power-of-two */
@@ -203,12 +204,18 @@ vn_ring_get_submit(struct vn_ring *ring, uint32_t shmem_count)
 bool
 vn_ring_submit(struct vn_ring *ring,
                struct vn_ring_submit *submit,
-               const void *cs_data,
-               uint32_t cs_size,
+               const struct vn_cs_encoder *cs,
                uint32_t *seqno)
 {
-   const uint32_t cur_seqno = vn_ring_wait_space(ring, cs_size);
-   vn_ring_write_buffer(ring, cs_data, cs_size);
+   /* write cs to the ring */
+   assert(!vn_cs_encoder_is_empty(cs));
+   uint32_t cur_seqno;
+   for (uint32_t i = 0; i < cs->buffer_count; i++) {
+      const struct vn_cs_encoder_buffer *buf = &cs->buffers[i];
+      cur_seqno = vn_ring_wait_space(ring, buf->committed_size);
+      vn_ring_write_buffer(ring, buf->base, buf->committed_size);
+   }
+
    vn_ring_store_tail(ring);
    const bool notify = vn_ring_load_status(ring) & VN_RING_STATUS_IDLE;
 
