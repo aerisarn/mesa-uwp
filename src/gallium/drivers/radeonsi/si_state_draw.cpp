@@ -225,7 +225,7 @@ static bool si_update_shaders(struct si_context *sctx)
    union si_vgt_stages_key key;
    key.index = 0;
 
-   /* Update VGT_SHADER_CONFIG. */
+   /* Update VGT_SHADER_STAGES_EN. */
    if (HAS_TESS)
       key.u.tess = 1;
    if (HAS_GS)
