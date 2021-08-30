@@ -582,6 +582,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_cube_face_index_amd:
       src_components = 3;
       break;
+   case nir_op_pack_32_4x8:
    case nir_op_pack_64_4x16:
       src_components = 4;
       break;
@@ -1153,6 +1154,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_pack_32_4x8:
    case nir_op_pack_32_2x16: {
       result = LLVMBuildBitCast(ctx->ac.builder, src[0],
             ctx->ac.i32, "");
