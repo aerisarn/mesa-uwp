@@ -297,10 +297,17 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       uint32_t modes = BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
                        BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
                        BITFIELD_BIT(PIPE_PRIM_LINE_STRIP_ADJACENCY) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY) |
-                       BITFIELD_BIT(PIPE_PRIM_PATCHES);
+                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY);
       if (screen->have_triangle_fans)
          modes |= BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN);
+      if (screen->info.have_EXT_primitive_topology_list_restart) {
+         modes |= BITFIELD_BIT(PIPE_PRIM_POINTS) |
+                  BITFIELD_BIT(PIPE_PRIM_LINES) |
+                  BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+                  BITFIELD_BIT(PIPE_PRIM_TRIANGLES_ADJACENCY);
+         if (screen->info.list_restart_feats.primitiveTopologyPatchListRestart)
+            modes |= BITFIELD_BIT(PIPE_PRIM_PATCHES);
+      }
       return modes;
    }
    case PIPE_CAP_SUPPORTED_PRIM_MODES: {
