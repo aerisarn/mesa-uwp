@@ -158,19 +158,54 @@ vn_instance_init_ring(struct vn_instance *instance)
    return VK_SUCCESS;
 }
 
-static void
+static struct vn_renderer_shmem *
+vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
+                                   size_t size,
+                                   void **ptr);
+
+static VkResult
 vn_instance_init_experimental_features(struct vn_instance *instance)
 {
    if (instance->renderer_info.vk_mesa_venus_protocol_spec_version !=
        100000) {
       if (VN_DEBUG(INIT))
          vn_log(instance, "renderer supports no experimental features");
-      return;
+      return VK_SUCCESS;
    }
 
-   size_t size = sizeof(instance->experimental);
-   vn_call_vkGetVenusExperimentalFeatureData100000MESA(
-      instance, &size, &instance->experimental);
+   size_t struct_size = sizeof(instance->experimental);
+
+   /* prepare the reply shmem */
+   const size_t reply_size =
+      vn_sizeof_vkGetVenusExperimentalFeatureData100000MESA_reply(
+         &struct_size, &instance->experimental);
+   void *reply_ptr;
+   struct vn_renderer_shmem *reply_shmem =
+      vn_instance_get_reply_shmem_locked(instance, reply_size, &reply_ptr);
+   if (!reply_shmem)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   /* encode the command */
+   uint32_t local_data[16];
+   struct vn_cs_encoder local_enc =
+      VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
+   vn_encode_vkGetVenusExperimentalFeatureData100000MESA(
+      &local_enc, VK_COMMAND_GENERATE_REPLY_BIT_EXT, &struct_size,
+      &instance->experimental);
+
+   VkResult result = vn_renderer_submit_simple_sync(
+      instance->renderer, local_data, vn_cs_encoder_get_len(&local_enc));
+   if (result != VK_SUCCESS) {
+      vn_renderer_shmem_unref(instance->renderer, reply_shmem);
+      return result;
+   }
+
+   struct vn_cs_decoder reply_dec =
+      VN_CS_DECODER_INITIALIZER(reply_ptr, reply_size);
+   vn_decode_vkGetVenusExperimentalFeatureData100000MESA_reply(
+      &reply_dec, &struct_size, &instance->experimental);
+   vn_renderer_shmem_unref(instance->renderer, reply_shmem);
+
    if (VN_DEBUG(INIT)) {
       vn_log(instance,
              "VkVenusExperimentalFeatures100000MESA is as below:"
@@ -179,6 +214,8 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
              instance->experimental.memoryResourceAllocationSize,
              instance->experimental.globalFencing);
    }
+
+   return VK_SUCCESS;
 }
 
 static VkResult
@@ -700,11 +737,13 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (result != VK_SUCCESS)
       goto fail;
 
-   result = vn_instance_init_ring(instance);
+   result = vn_instance_init_experimental_features(instance);
    if (result != VK_SUCCESS)
       goto fail;
 
-   vn_instance_init_experimental_features(instance);
+   result = vn_instance_init_ring(instance);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    result = vn_instance_init_renderer_versions(instance);
    if (result != VK_SUCCESS)
