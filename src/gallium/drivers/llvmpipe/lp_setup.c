@@ -1779,30 +1779,38 @@ lp_setup_add_scissor_planes(const struct u_rect *scissor,
     * (easier to evaluate) to ordinary planes.)
     */
    if (s_planes[0]) {
+      int x0 = scissor->x0 - 1;
       plane_s->dcdx = ~0U << 8;
       plane_s->dcdy = 0;
-      plane_s->c = (1-scissor->x0) << 8;
+      plane_s->c = x0 << 8;
+      plane_s->c = -plane_s->c; /* flip sign */
       plane_s->eo = 1 << 8;
       plane_s++;
    }
    if (s_planes[1]) {
+      int x1 = scissor->x1;
       plane_s->dcdx = 1 << 8;
       plane_s->dcdy = 0;
-      plane_s->c = (scissor->x1+1) << 8;
+      plane_s->c = x1 << 8;
+      plane_s->c += 255;
       plane_s->eo = 0 << 8;
       plane_s++;
    }
    if (s_planes[2]) {
+      int y0 = scissor->y0 - 1;
       plane_s->dcdx = 0;
       plane_s->dcdy = 1 << 8;
-      plane_s->c = (1-scissor->y0) << 8;
+      plane_s->c = y0 << 8;
+      plane_s->c = -plane_s->c; /* flip sign */
       plane_s->eo = 1 << 8;
       plane_s++;
    }
    if (s_planes[3]) {
+      int y1 = scissor->y1;
       plane_s->dcdx = 0;
       plane_s->dcdy = ~0U << 8;
-      plane_s->c = (scissor->y1+1) << 8;
+      plane_s->c = y1 << 8;
+      plane_s->c += 255;
       plane_s->eo = 0;
       plane_s++;
    }
