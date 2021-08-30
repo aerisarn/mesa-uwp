@@ -554,15 +554,15 @@ BEGIN_TEST(to_hw_instr.extract)
       //>> p_unit_test 4
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
       //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 0, 8
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(0:7)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(0:7) dst_preserve
       EXT(0, 0)
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(16:23)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(16:23) dst_preserve
       if (i != GFX7)
          EXT(0, 2)
       //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 8, 8
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(8:15)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(8:15) dst_preserve
       EXT(1, 0)
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(24:31)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(24:31) dst_preserve
       if (i != GFX7)
          EXT(1, 2)
 

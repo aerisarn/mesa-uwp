@@ -39,11 +39,11 @@ BEGIN_TEST(validate.sdwa.allow)
 
       sdwa = &bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], inputs[1]).instr->sdwa();
       sdwa->dst_preserve = true;
-      sdwa->dst_sel = sdwa_ubyte0;
+      sdwa->dst_sel = SubdwordSel::ubyte0;
 
       sdwa = &bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], inputs[1]).instr->sdwa();
-      sdwa->sel[0] = sdwa_sbyte2;
-      sdwa->sel[1] = sdwa_uword1;
+      sdwa->sel[0] = SubdwordSel::sbyte2;
+      sdwa->sel[1] = SubdwordSel::uword1;
 
       finish_validator_test();
    }

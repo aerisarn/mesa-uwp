@@ -785,36 +785,33 @@ fixed_to_exec(Operand op)
    return op.isFixed() && op.physReg() == exec;
 }
 
-int
+SubdwordSel
 parse_extract(Instruction* instr)
 {
    if (instr->opcode == aco_opcode::p_extract) {
-      bool is_byte = instr->operands[2].constantEquals(8);
-      unsigned index = instr->operands[1].constantValue();
-      unsigned sel = (is_byte ? sdwa_ubyte0 : sdwa_uword0) + index;
-      if (!instr->operands[3].constantEquals(0))
-         sel |= sdwa_sext;
-      return sel;
+      unsigned size = instr->operands[2].constantValue() / 8;
+      unsigned offset = instr->operands[1].constantValue() * size;
+      bool sext = instr->operands[3].constantEquals(1);
+      return SubdwordSel(size, offset, sext);
    } else if (instr->opcode == aco_opcode::p_insert && instr->operands[1].constantEquals(0)) {
-      return instr->operands[2].constantEquals(8) ? sdwa_ubyte0 : sdwa_uword0;
+      return instr->operands[2].constantEquals(8) ? SubdwordSel::ubyte : SubdwordSel::uword;
    } else {
-      return -1;
+      return SubdwordSel();
    }
 }
 
-int
+SubdwordSel
 parse_insert(Instruction* instr)
 {
    if (instr->opcode == aco_opcode::p_extract && instr->operands[3].constantEquals(0) &&
        instr->operands[1].constantEquals(0)) {
-      return instr->operands[2].constantEquals(8) ? sdwa_ubyte0 : sdwa_uword0;
+      return instr->operands[2].constantEquals(8) ? SubdwordSel::ubyte : SubdwordSel::uword;
    } else if (instr->opcode == aco_opcode::p_insert) {
-      bool is_byte = instr->operands[2].constantEquals(8);
-      unsigned index = instr->operands[1].constantValue();
-      unsigned sel = (is_byte ? sdwa_ubyte0 : sdwa_uword0) + index;
-      return sel;
+      unsigned size = instr->operands[2].constantValue() / 8;
+      unsigned offset = instr->operands[1].constantValue() * size;
+      return SubdwordSel(size, offset, false);
    } else {
-      return -1;
+      return SubdwordSel();
    }
 }
 
@@ -825,20 +822,21 @@ can_apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_i
       return false;
 
    Temp tmp = info.instr->operands[0].getTemp();
-   unsigned sel = parse_extract(info.instr);
+   SubdwordSel sel = parse_extract(info.instr);
 
-   if (sel == sdwa_udword || sel == sdwa_sdword) {
+   if (!sel) {
+      return false;
+   } else if (sel.size() == 4) {
       return true;
-   } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel <= sdwa_ubyte3) {
+   } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel.size() == 1 && !sel.sign_extend()) {
       return true;
    } else if (can_use_SDWA(ctx.program->chip_class, instr, true) &&
               (tmp.type() == RegType::vgpr || ctx.program->chip_class >= GFX9)) {
-      if (instr->isSDWA() &&
-          (static_cast<SDWA_instruction*>(instr.get())->sel[idx] & sdwa_asuint) != sdwa_udword)
+      if (instr->isSDWA() && instr->sdwa().sel[idx] != SubdwordSel::dword)
          return false;
       return true;
-   } else if (instr->isVOP3() && (sel & sdwa_isword) &&
-              can_use_opsel(ctx.program->chip_class, instr->opcode, idx, (sel & sdwa_wordnum)) &&
+   } else if (instr->isVOP3() && sel.size() == 2 &&
+              can_use_opsel(ctx.program->chip_class, instr->opcode, idx, sel.offset()) &&
               !(instr->vop3().opsel & (1 << idx))) {
       return true;
    } else {
@@ -853,22 +851,24 @@ void
 apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info& info)
 {
    Temp tmp = info.instr->operands[0].getTemp();
-   unsigned sel = parse_extract(info.instr);
+   SubdwordSel sel = parse_extract(info.instr);
+   assert(sel);
 
-   if (sel == sdwa_udword || sel == sdwa_sdword) {
-   } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel <= sdwa_ubyte3) {
-      switch (sel) {
-      case sdwa_ubyte0: instr->opcode = aco_opcode::v_cvt_f32_ubyte0; break;
-      case sdwa_ubyte1: instr->opcode = aco_opcode::v_cvt_f32_ubyte1; break;
-      case sdwa_ubyte2: instr->opcode = aco_opcode::v_cvt_f32_ubyte2; break;
-      case sdwa_ubyte3: instr->opcode = aco_opcode::v_cvt_f32_ubyte3; break;
+   if (sel.size() == 4) {
+      /* full dword selection */
+   } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel.size() == 1 && !sel.sign_extend()) {
+      switch (sel.offset()) {
+      case 0: instr->opcode = aco_opcode::v_cvt_f32_ubyte0; break;
+      case 1: instr->opcode = aco_opcode::v_cvt_f32_ubyte1; break;
+      case 2: instr->opcode = aco_opcode::v_cvt_f32_ubyte2; break;
+      case 3: instr->opcode = aco_opcode::v_cvt_f32_ubyte3; break;
       }
    } else if (can_use_SDWA(ctx.program->chip_class, instr, true) &&
               (tmp.type() == RegType::vgpr || ctx.program->chip_class >= GFX9)) {
       to_SDWA(ctx, instr);
       static_cast<SDWA_instruction*>(instr.get())->sel[idx] = sel;
    } else if (instr->isVOP3()) {
-      if (sel & sdwa_wordnum)
+      if (sel.offset())
          instr->vop3().opsel |= 1 << idx;
    }
 
@@ -1023,7 +1023,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          can_use_mod = can_use_mod && instr_info.can_use_input_modifiers[(int)instr->opcode];
 
          if (instr->isSDWA())
-            can_use_mod = can_use_mod && (instr->sdwa().sel[i] & sdwa_asuint) == sdwa_udword;
+            can_use_mod = can_use_mod && instr->sdwa().sel[i].size() == 4;
          else
             can_use_mod = can_use_mod && (instr->isDPP() || can_use_VOP3(ctx, instr));
 
@@ -1673,7 +1673,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case aco_opcode::p_extract: {
       if (instr->definitions[0].bytes() == 4) {
          ctx.info[instr->definitions[0].tempId()].set_extract(instr.get());
-         if (instr->operands[0].regClass() == v1 && parse_insert(instr.get()) >= 0)
+         if (instr->operands[0].regClass() == v1 && parse_insert(instr.get()))
             ctx.info[instr->operands[0].tempId()].set_insert(instr.get());
       }
       break;
@@ -1682,7 +1682,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (instr->operands[0].bytes() == 4) {
          if (instr->operands[0].regClass() == v1)
             ctx.info[instr->operands[0].tempId()].set_insert(instr.get());
-         if (parse_extract(instr.get()) >= 0)
+         if (parse_extract(instr.get()))
             ctx.info[instr->definitions[0].tempId()].set_extract(instr.get());
          ctx.info[instr->definitions[0].tempId()].set_bitwise(instr.get());
       }
@@ -2868,20 +2868,21 @@ apply_insert(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    /* MADs/FMAs are created later, so we don't have to update the original add */
    assert(!ctx.info[instr->definitions[0].tempId()].is_mad());
 
-   unsigned sel = parse_insert(def_info.instr);
+   SubdwordSel sel = parse_insert(def_info.instr);
+   assert(sel);
 
-   if (instr->isVOP3() && (sel & sdwa_isword) && !(sel & sdwa_sext) &&
-       can_use_opsel(ctx.program->chip_class, instr->opcode, 3, (sel & sdwa_wordnum))) {
+   if (instr->isVOP3() && sel.size() == 2 && !sel.sign_extend() &&
+       can_use_opsel(ctx.program->chip_class, instr->opcode, 3, sel.offset())) {
       if (instr->vop3().opsel & (1 << 3))
          return false;
-      if (sel & sdwa_wordnum)
+      if (sel.offset())
          instr->vop3().opsel |= 1 << 3;
    } else {
       if (!can_use_SDWA(ctx.program->chip_class, instr, true))
          return false;
 
       to_SDWA(ctx, instr);
-      if ((static_cast<SDWA_instruction*>(instr.get())->dst_sel & sdwa_asuint) != sdwa_udword)
+      if (instr->sdwa().dst_sel.size() != 4)
          return false;
       static_cast<SDWA_instruction*>(instr.get())->dst_sel = sel;
    }

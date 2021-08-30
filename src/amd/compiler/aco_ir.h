@@ -1405,40 +1405,53 @@ struct DPP_instruction : public Instruction {
 };
 static_assert(sizeof(DPP_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
-enum sdwa_sel : uint8_t {
-   /* masks */
-   sdwa_wordnum = 0x1,
-   sdwa_bytenum = 0x3,
-   sdwa_asuint = 0x7 | 0x10,
-   sdwa_rasize = 0x3,
+struct SubdwordSel {
+   enum sdwa_sel : uint8_t {
+      ubyte = 0x4,
+      uword = 0x8,
+      dword = 0x10,
+      sext = 0x20,
+      sbyte = ubyte | sext,
+      sword = uword | sext,
 
-   /* flags */
-   sdwa_isword = 0x4,
-   sdwa_sext = 0x8,
-   sdwa_isra = 0x10,
+      ubyte0 = ubyte,
+      ubyte1 = ubyte | 1,
+      ubyte2 = ubyte | 2,
+      ubyte3 = ubyte | 3,
+      sbyte0 = sbyte,
+      sbyte1 = sbyte | 1,
+      sbyte2 = sbyte | 2,
+      sbyte3 = sbyte | 3,
+      uword0 = uword,
+      uword1 = uword | 2,
+      sword0 = sword,
+      sword1 = sword | 2,
+   };
 
-   /* specific values */
-   sdwa_ubyte0 = 0,
-   sdwa_ubyte1 = 1,
-   sdwa_ubyte2 = 2,
-   sdwa_ubyte3 = 3,
-   sdwa_uword0 = sdwa_isword | 0,
-   sdwa_uword1 = sdwa_isword | 1,
-   sdwa_udword = 6,
+   SubdwordSel() : sel((sdwa_sel)0) {}
+   constexpr SubdwordSel(sdwa_sel sel_) : sel(sel_) {}
+   constexpr SubdwordSel(unsigned size, unsigned offset, bool sign_extend)
+       : sel((sdwa_sel)((sign_extend ? sext : 0) | size << 2 | offset))
+   {}
+   constexpr operator sdwa_sel() const { return sel; }
+   explicit operator bool() const { return sel != 0; }
 
-   sdwa_sbyte0 = sdwa_ubyte0 | sdwa_sext,
-   sdwa_sbyte1 = sdwa_ubyte1 | sdwa_sext,
-   sdwa_sbyte2 = sdwa_ubyte2 | sdwa_sext,
-   sdwa_sbyte3 = sdwa_ubyte3 | sdwa_sext,
-   sdwa_sword0 = sdwa_uword0 | sdwa_sext,
-   sdwa_sword1 = sdwa_uword1 | sdwa_sext,
-   sdwa_sdword = sdwa_udword | sdwa_sext,
+   constexpr unsigned size() const { return (sel >> 2) & 0x7; }
+   constexpr unsigned offset() const { return sel & 0x3; }
+   constexpr bool sign_extend() const { return sel & sext; }
+   constexpr unsigned to_sdwa_sel(unsigned reg_byte_offset) const
+   {
+      reg_byte_offset += offset();
+      if (size() == 1)
+         return reg_byte_offset;
+      else if (size() == 2)
+         return 4 + (reg_byte_offset >> 1);
+      else
+         return 6;
+   }
 
-   /* register-allocated */
-   sdwa_ubyte = 1 | sdwa_isra,
-   sdwa_uword = 2 | sdwa_isra,
-   sdwa_sbyte = sdwa_ubyte | sdwa_sext,
-   sdwa_sword = sdwa_uword | sdwa_sext,
+private:
+   sdwa_sel sel;
 };
 
 /**
@@ -1452,8 +1465,8 @@ enum sdwa_sel : uint8_t {
 struct SDWA_instruction : public Instruction {
    /* these destination modifiers aren't available with VOPC except for
     * clamp on GFX8 */
-   uint8_t sel[2];
-   uint8_t dst_sel;
+   SubdwordSel sel[2];
+   SubdwordSel dst_sel;
    bool neg[2];
    bool abs[2];
    bool dst_preserve : 1;

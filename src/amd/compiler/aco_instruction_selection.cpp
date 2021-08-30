@@ -644,11 +644,9 @@ convert_int(isel_context* ctx, Builder& bld, Temp src, unsigned src_bits, unsign
          create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
       sdwa->operands[0] = Operand(src);
       sdwa->definitions[0] = Definition(tmp);
-      if (sign_extend)
-         sdwa->sel[0] = src_bits == 8 ? sdwa_sbyte : sdwa_sword;
-      else
-         sdwa->sel[0] = src_bits == 8 ? sdwa_ubyte : sdwa_uword;
-      sdwa->dst_sel = tmp.bytes() == 2 ? sdwa_uword : sdwa_udword;
+      sdwa->sel[0] = SubdwordSel(src_bits / 8, 0, sign_extend);
+      sdwa->dst_sel = tmp.bytes() == 2 ? SubdwordSel::uword : SubdwordSel::dword;
+      sdwa->dst_preserve = tmp.bytes() == 2;
       bld.insert(std::move(sdwa));
    } else {
       assert(src_bits < 32);

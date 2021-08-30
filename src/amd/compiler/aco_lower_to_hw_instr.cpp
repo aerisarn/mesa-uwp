@@ -516,11 +516,9 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
             aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
          sdwa->operands[0] = Operand(PhysReg{tmp}, v1);
          sdwa->definitions[0] = Definition(PhysReg{tmp}, v1);
-         if (reduce_op == imin8 || reduce_op == imax8)
-            sdwa->sel[0] = sdwa_sbyte;
-         else
-            sdwa->sel[0] = sdwa_ubyte;
-         sdwa->dst_sel = sdwa_udword;
+         bool sext = reduce_op == imin8 || reduce_op == imax8;
+         sdwa->sel[0] = SubdwordSel(1, 0, sext);
+         sdwa->dst_sel = SubdwordSel::dword;
          bld.insert(std::move(sdwa));
       } else {
          aco_opcode opcode;
@@ -541,11 +539,9 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
             aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
          sdwa->operands[0] = Operand(PhysReg{tmp}, v1);
          sdwa->definitions[0] = Definition(PhysReg{tmp}, v1);
-         if (reduce_op == imin16 || reduce_op == imax16 || reduce_op == iadd16)
-            sdwa->sel[0] = sdwa_sword;
-         else
-            sdwa->sel[0] = sdwa_uword;
-         sdwa->dst_sel = sdwa_udword;
+         bool sext = reduce_op == imin16 || reduce_op == imax16 || reduce_op == iadd16;
+         sdwa->sel[0] = SubdwordSel(2, 0, sext);
+         sdwa->dst_sel = SubdwordSel::dword;
          bld.insert(std::move(sdwa));
       } else if (ctx->program->chip_class == GFX6 || ctx->program->chip_class == GFX7) {
          aco_opcode opcode;
@@ -2099,10 +2095,9 @@ lower_to_hw_instr(Program* program)
                   sdwa->operands[0] = Operand(op.physReg().advance(-op.physReg().byte()),
                                               RegClass::get(op.regClass().type(), 4));
                   sdwa->definitions[0] = dst;
-                  sdwa->sel[0] = sdwa_ubyte0 + op.physReg().byte() + index;
-                  if (signext)
-                     sdwa->sel[0] |= sdwa_sext;
-                  sdwa->dst_sel = sdwa_uword;
+                  sdwa->sel[0] = SubdwordSel(1, op.physReg().byte() + offset / 8, signext);
+                  sdwa->dst_sel = SubdwordSel::uword;
+                  sdwa->dst_preserve = true;
                   bld.insert(std::move(sdwa));
                }
                break;
@@ -2143,8 +2138,8 @@ lower_to_hw_instr(Program* program)
                         (Format)((uint16_t)Format::VOP1 | (uint16_t)Format::SDWA), 1, 1)};
                      sdwa->operands[0] = op;
                      sdwa->definitions[0] = dst;
-                     sdwa->sel[0] = sdwa_udword;
-                     sdwa->dst_sel = (bits == 8 ? sdwa_ubyte0 : sdwa_uword0) + (offset / bits);
+                     sdwa->sel[0] = SubdwordSel::dword;
+                     sdwa->dst_sel = SubdwordSel(bits / 8, offset / 8, false);
                      bld.insert(std::move(sdwa));
                   } else {
                      bld.vop3(aco_opcode::v_bfe_u32, dst, op, Operand::zero(), Operand::c32(bits));
@@ -2157,7 +2152,7 @@ lower_to_hw_instr(Program* program)
                                             RegClass::get(op.regClass().type(), 4));
                   bld.vop2_sdwa(aco_opcode::v_lshlrev_b32, dst, Operand::c32(offset), sdwa_op)
                      .instr->sdwa()
-                     .sel[1] = sdwa_ubyte0 + op.physReg().byte();
+                     .sel[1] = SubdwordSel(1, op.physReg().byte(), false);
                }
                break;
             }

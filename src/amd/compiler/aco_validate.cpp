@@ -163,16 +163,30 @@ validate_ir(Program* program)
                check((instr->definitions[0].isFixed() && instr->definitions[0].physReg() == vcc) ||
                         program->chip_class >= GFX9,
                      "SDWA+VOPC definition must be fixed to vcc on GFX8", instr.get());
+            } else {
+               const Definition& def = instr->definitions[0];
+               check(def.bytes() <= 4, "SDWA definitions must not be larger than 4 bytes",
+                     instr.get());
+               check(def.bytes() >= sdwa.dst_sel.size() + sdwa.dst_sel.offset(),
+                     "SDWA definition selection size must be at most definition size", instr.get());
+               check(
+                  sdwa.dst_sel.size() == 1 || sdwa.dst_sel.size() == 2 || sdwa.dst_sel.size() == 4,
+                  "SDWA definition selection size must be 1, 2 or 4 bytes", instr.get());
+               check(sdwa.dst_sel.offset() % sdwa.dst_sel.size() == 0, "Invalid selection offset",
+                     instr.get());
+               check(def.bytes() == 4 || sdwa.dst_preserve,
+                     "SDWA subdword definition needs dst_preserve", instr.get());
             }
 
             for (unsigned i = 0; i < std::min<unsigned>(2, instr->operands.size()); i++) {
                const Operand& op = instr->operands[i];
                check(op.bytes() <= 4, "SDWA operands must not be larger than 4 bytes", instr.get());
-               if (sdwa.sel[i] & sdwa_isra)
-                  check(op.bytes() >= (sdwa.sel[i] & sdwa_rasize),
-                        "SDWA selection size must be at most operand size", instr.get());
-               else
-                  check(op.bytes() == 4, "SDWA selection needs dword operand", instr.get());
+               check(op.bytes() >= sdwa.sel[i].size() + sdwa.sel[i].offset(),
+                     "SDWA operand selection size must be at most operand size", instr.get());
+               check(sdwa.sel[i].size() == 1 || sdwa.sel[i].size() == 2 || sdwa.sel[i].size() == 4,
+                     "SDWA operand selection size must be 1, 2 or 4 bytes", instr.get());
+               check(sdwa.sel[i].offset() % sdwa.sel[i].size() == 0, "Invalid selection offset",
+                     instr.get());
             }
             if (instr->operands.size() >= 3) {
                check(instr->operands[2].isFixed() && instr->operands[2].physReg() == vcc,
@@ -201,10 +215,6 @@ validate_ir(Program* program)
                (instr->opcode == aco_opcode::v_mac_f32 && instr->opcode == aco_opcode::v_mac_f16);
 
             check(sdwa_opcodes || feature_mac, "SDWA can't be used with this opcode", instr.get());
-
-            if (instr->definitions[0].regClass().is_subdword())
-               check((sdwa.dst_sel & sdwa_asuint) == (sdwa_isra | instr->definitions[0].bytes()),
-                     "Unexpected SDWA sel for sub-dword definition", instr.get());
          }
 
          /* check opsel */
@@ -689,10 +699,9 @@ validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& instr, un
       return byte == 0;
    if (instr->isPseudo() && chip >= GFX8)
       return true;
-   if (instr->isSDWA()) {
-      unsigned size = instr->sdwa().sel[index] & sdwa_rasize;
-      return byte % size == 0;
-   }
+   if (instr->isSDWA())
+      return byte + instr->sdwa().sel[index].offset() + instr->sdwa().sel[index].size() <= 4 &&
+             byte % instr->sdwa().sel[index].size() == 0;
    if (byte == 2 && can_use_opsel(chip, instr->opcode, index, 1))
       return true;
 
@@ -742,8 +751,9 @@ validate_subdword_definition(chip_class chip, const aco_ptr<Instruction>& instr)
 
    if (instr->isPseudo() && chip >= GFX8)
       return true;
-   if (instr->isSDWA() && instr->sdwa().dst_sel == (sdwa_isra | def.bytes()))
-      return true;
+   if (instr->isSDWA())
+      return byte + instr->sdwa().dst_sel.offset() + instr->sdwa().dst_sel.size() <= 4 &&
+             byte % instr->sdwa().dst_sel.size() == 0;
    if (byte == 2 && can_use_opsel(chip, instr->opcode, -1, 1))
       return true;
 
@@ -774,9 +784,8 @@ get_subdword_bytes_written(Program* program, const aco_ptr<Instruction>& instr, 
       return chip >= GFX8 ? def.bytes() : def.size() * 4u;
    if (instr->isVALU()) {
       assert(def.bytes() <= 2);
-
-      if (instr->isSDWA() && instr->sdwa().dst_sel == (sdwa_isra | def.bytes()))
-         return def.bytes();
+      if (instr->isSDWA())
+         return instr->sdwa().dst_sel.size();
 
       if (instr_is_16bit(chip, instr->opcode))
          return 2;

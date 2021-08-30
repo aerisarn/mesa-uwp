@@ -276,23 +276,11 @@ convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr)
       if (i >= 2)
          break;
 
-      switch (instr->operands[i].bytes()) {
-      case 1: sdwa.sel[i] = sdwa_ubyte; break;
-      case 2: sdwa.sel[i] = sdwa_uword; break;
-      case 4: sdwa.sel[i] = sdwa_udword; break;
-      }
+      sdwa.sel[i] = SubdwordSel(instr->operands[i].bytes(), 0, false);
    }
-   switch (instr->definitions[0].bytes()) {
-   case 1:
-      sdwa.dst_sel = sdwa_ubyte;
-      sdwa.dst_preserve = true;
-      break;
-   case 2:
-      sdwa.dst_sel = sdwa_uword;
-      sdwa.dst_preserve = true;
-      break;
-   case 4: sdwa.dst_sel = sdwa_udword; break;
-   }
+
+   sdwa.dst_sel = SubdwordSel(instr->definitions[0].bytes(), 0, false);
+   sdwa.dst_preserve = sdwa.dst_sel.size() < 4;
 
    if (instr->definitions[0].getTemp().type() == RegType::sgpr && chip == GFX8)
       instr->definitions[0].setFixed(vcc);
