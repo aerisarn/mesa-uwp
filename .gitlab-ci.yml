@@ -934,7 +934,7 @@ debian-arm64:
     - .meson-arm
     - .ci-deqp-artifacts
   variables:
-    VULKAN_DRIVERS: "freedreno,broadcom"
+    VULKAN_DRIVERS: "freedreno,broadcom,panfrost"
     EXTRA_OPTION: >
       -D llvm=disabled
       -D valgrind=false
