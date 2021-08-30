@@ -69,31 +69,36 @@ struct dxil_spirv_specialization {
    bool defined_on_module;
 };
 
+struct dxil_spirv_object {
+   struct {
+      void *buffer;
+      size_t size;
+   } binary;
+};
+
 /**
  * Compile a SPIR-V module into DXIL.
  * \param  words  SPIR-V module to compile
  * \param  word_count  number of words in the SPIR-V module
  * \param  specializations  specialization constants to compile with the shader
  * \param  num_specializations  number of specialization constants
- * \param  buffer  will contain the DXIL bytes on success. Needs to be freed()
- * \param  size  length of returned buffer
+ * \param  stage  shader stage
+ * \param  entry_point_name  name of shader entrypoint
+ * \param  out_dxil  will contain the DXIL bytes on success (call spirv_to_dxil_free after use)
  * \return  true if compilation succeeded
  */
 bool
-spirv_to_dxil(const uint32_t* words,
-              size_t word_count,
-              struct dxil_spirv_specialization* specializations,
-              unsigned int num_specializations,
-              dxil_spirv_shader_stage stage,
-              const char* entry_point_name,
-              void** buffer,
-              size_t* size);
+spirv_to_dxil(const uint32_t *words, size_t word_count,
+              struct dxil_spirv_specialization *specializations,
+              unsigned int num_specializations, dxil_spirv_shader_stage stage,
+              const char *entry_point_name,
+              struct dxil_spirv_object *out_dxil);
 
 /**
  * Free the buffer allocated by spirv_to_dxil.
  */
 void
-spirv_to_dxil_free(void* buffer);
+spirv_to_dxil_free(struct dxil_spirv_object *dxil);
 
 uint64_t
 spirv_to_dxil_get_version(void);

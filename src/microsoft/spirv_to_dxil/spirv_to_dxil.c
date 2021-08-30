@@ -45,7 +45,8 @@ bool
 spirv_to_dxil(const uint32_t *words, size_t word_count,
               struct dxil_spirv_specialization *specializations,
               unsigned int num_specializations, dxil_spirv_shader_stage stage,
-              const char *entry_point_name, void **buffer, size_t *size)
+              const char *entry_point_name,
+              struct dxil_spirv_object *out_dxil)
 {
    if (stage == MESA_SHADER_NONE || stage == MESA_SHADER_KERNEL)
       return false;
@@ -187,16 +188,17 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       return false;
    }
 
-   blob_finish_get_buffer(&dxil_blob, buffer, size);
+   blob_finish_get_buffer(&dxil_blob, &out_dxil->binary.buffer,
+                          &out_dxil->binary.size);
 
    glsl_type_singleton_decref();
    return true;
 }
 
 void
-spirv_to_dxil_free(void* buffer)
+spirv_to_dxil_free(struct dxil_spirv_object *dxil)
 {
-   free(buffer);
+   free(dxil->binary.buffer);
 }
 
 uint64_t
