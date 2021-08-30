@@ -3728,6 +3728,9 @@ typedef struct nir_shader_compiler_options {
    /** Backend supports sudot_4x8 opcodes. */
    bool has_sudot_4x8;
 
+   /** Backend supports sdot_2x16 and udot_2x16 opcodes. */
+   bool has_dot_2x16;
+
    /* Whether to generate only scoped_barrier intrinsics instead of the set of
     * memory and control barrier intrinsics based on GLSL.
     */

@@ -1426,3 +1426,53 @@ opcode("sudot_4x8_iadd_sat", 0, tint32, [0, 0, 0], [tuint32, tuint32, tint32],
 
    dst = tmp >= INT32_MAX ? INT32_MAX : (tmp <= INT32_MIN ? INT32_MIN : tmp);
 """)
+
+# src0 and src1 are i16vec2 packed in an int32, and src2 is an int32.  The int16
+# components are sign-extended to 32-bits, and a dot-product is performed on
+# the resulting vectors.  src2 is added to the result of the dot-product.
+opcode("sdot_2x16_iadd", 0, tint32, [0, 0, 0], [tuint32, tuint32, tint32],
+       False, _2src_commutative, """
+   const int32_t v0x = (int16_t)(src0      );
+   const int32_t v0y = (int16_t)(src0 >> 16);
+   const int32_t v1x = (int16_t)(src1      );
+   const int32_t v1y = (int16_t)(src1 >> 16);
+
+   dst = (v0x * v1x) + (v0y * v1y) + src2;
+""")
+
+# Like sdot_2x16_iadd, but unsigned.
+opcode("udot_2x16_uadd", 0, tuint32, [0, 0, 0], [tuint32, tuint32, tuint32],
+       False, _2src_commutative, """
+   const uint32_t v0x = (uint16_t)(src0      );
+   const uint32_t v0y = (uint16_t)(src0 >> 16);
+   const uint32_t v1x = (uint16_t)(src1      );
+   const uint32_t v1y = (uint16_t)(src1 >> 16);
+
+   dst = (v0x * v1x) + (v0y * v1y) + src2;
+""")
+
+# Like sdot_2x16_iadd, but the result is clampled to the range [-0x80000000, 0x7ffffffff].
+opcode("sdot_2x16_iadd_sat", 0, tint32, [0, 0, 0], [tuint32, tuint32, tint32],
+       False, _2src_commutative, """
+   const int64_t v0x = (int16_t)(src0      );
+   const int64_t v0y = (int16_t)(src0 >> 16);
+   const int64_t v1x = (int16_t)(src1      );
+   const int64_t v1y = (int16_t)(src1 >> 16);
+
+   const int64_t tmp = (v0x * v1x) + (v0y * v1y) + src2;
+
+   dst = tmp >= INT32_MAX ? INT32_MAX : (tmp <= INT32_MIN ? INT32_MIN : tmp);
+""")
+
+# Like udot_2x16_uadd, but the result is clampled to the range [0, 0xfffffffff].
+opcode("udot_2x16_uadd_sat", 0, tint32, [0, 0, 0], [tuint32, tuint32, tint32],
+       False, _2src_commutative, """
+   const uint64_t v0x = (uint16_t)(src0      );
+   const uint64_t v0y = (uint16_t)(src0 >> 16);
+   const uint64_t v1x = (uint16_t)(src1      );
+   const uint64_t v1y = (uint16_t)(src1 >> 16);
+
+   const uint64_t tmp = (v0x * v1x) + (v0y * v1y) + src2;
+
+   dst = tmp >= UINT32_MAX ? UINT32_MAX : tmp;
+""")
