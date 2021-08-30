@@ -620,7 +620,7 @@ panvk_per_arch(emit_blend)(const struct panvk_device *dev,
 
       cfg.srgb = util_format_is_srgb(rts->format);
       cfg.load_destination = pan_blend_reads_dest(blend->rts[rt].equation);
-      cfg.round_to_fb_precision = dithered;
+      cfg.round_to_fb_precision = !dithered;
 
 #if PAN_ARCH <= 5
       cfg.midgard.blend_shader = false;
