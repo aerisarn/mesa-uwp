@@ -29,6 +29,7 @@
 #include "util/blob.h"
 
 #include "git_sha1.h"
+#include "vulkan/vulkan.h"
 
 static void
 shared_var_info(const struct glsl_type* type, unsigned* size, unsigned* align)
@@ -41,11 +42,108 @@ shared_var_info(const struct glsl_type* type, unsigned* size, unsigned* align)
    *align = comp_size;
 }
 
+static nir_variable *
+add_runtime_data_var(nir_shader *nir, unsigned desc_set, unsigned binding)
+{
+   const struct glsl_type *array_type = glsl_array_type(
+      glsl_uint_type(),
+      sizeof(struct dxil_spirv_compute_runtime_data) / sizeof(unsigned),
+      sizeof(unsigned));
+   const struct glsl_struct_field field = {array_type, "arr"};
+   nir_variable *var = nir_variable_create(
+      nir, nir_var_mem_ubo,
+      glsl_struct_type(&field, 1, "runtime_data", false), "runtime_data");
+   var->data.descriptor_set = desc_set;
+   // Check that desc_set fits on descriptor_set
+   assert(var->data.descriptor_set == desc_set);
+   var->data.binding = binding;
+   var->data.how_declared = nir_var_hidden;
+   return var;
+}
+
+struct lower_system_values_data {
+   nir_address_format ubo_format;
+   unsigned desc_set;
+   unsigned binding;
+};
+
+static bool
+lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
+                           void *cb_data)
+{
+   if (instr->type != nir_instr_type_intrinsic) {
+      return false;
+   }
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   /* All the intrinsics we care about are loads */
+   if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
+      return false;
+
+   assert(intrin->dest.is_ssa);
+
+   int offset = 0;
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_num_workgroups:
+      offset =
+         offsetof(struct dxil_spirv_compute_runtime_data, group_count_x);
+      break;
+   default:
+      return false;
+   }
+
+   struct lower_system_values_data *data =
+      (struct lower_system_values_data *)cb_data;
+
+   builder->cursor = nir_after_instr(instr);
+   nir_address_format ubo_format = data->ubo_format;
+
+   nir_ssa_def *index = nir_vulkan_resource_index(
+      builder, nir_address_format_num_components(ubo_format),
+      nir_address_format_bit_size(ubo_format),
+      nir_imm_int(builder, 0), 
+      .desc_set = data->desc_set, .binding = data->binding,
+      .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+   nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
+      builder, nir_address_format_num_components(ubo_format),
+      nir_address_format_bit_size(ubo_format),
+      index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+   nir_ssa_def *load_data = build_load_ubo_dxil(
+      builder, nir_channel(builder, load_desc, 0),
+      nir_imm_int(builder, offset),
+      nir_dest_num_components(intrin->dest), nir_dest_bit_size(intrin->dest));
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, load_data);
+   nir_instr_remove(instr);
+   return true;
+}
+
+static bool
+dxil_spirv_nir_lower_shader_system_values(nir_shader *shader,
+                                          nir_address_format ubo_format,
+                                          unsigned desc_set, unsigned binding)
+{
+   struct lower_system_values_data data = {
+      .ubo_format = ubo_format,
+      .desc_set = desc_set,
+      .binding = binding,
+   };
+   return nir_shader_instructions_pass(shader, lower_shader_system_values,
+                                       nir_metadata_block_index |
+                                          nir_metadata_dominance |
+                                          nir_metadata_loop_analysis,
+                                       &data);
+}
+
 bool
 spirv_to_dxil(const uint32_t *words, size_t word_count,
               struct dxil_spirv_specialization *specializations,
               unsigned int num_specializations, dxil_spirv_shader_stage stage,
               const char *entry_point_name,
+              const struct dxil_spirv_runtime_conf *conf,
               struct dxil_spirv_object *out_dxil)
 {
    if (stage == MESA_SHADER_NONE || stage == MESA_SHADER_KERNEL)
@@ -92,6 +190,17 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       SYSTEM_VALUE_BASE_INSTANCE
    };
    NIR_PASS_V(nir, dxil_nir_lower_system_values_to_zero, system_values, ARRAY_SIZE(system_values));
+
+   bool requires_runtime_data = false;
+   NIR_PASS(requires_runtime_data, nir,
+            dxil_spirv_nir_lower_shader_system_values,
+            spirv_opts.ubo_addr_format,
+            conf->runtime_data_cbv.register_space,
+            conf->runtime_data_cbv.base_shader_register);
+   if (requires_runtime_data) {
+      add_runtime_data_var(nir, conf->runtime_data_cbv.register_space,
+                           conf->runtime_data_cbv.base_shader_register);
+   }
 
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
@@ -188,6 +297,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       return false;
    }
 
+   out_dxil->metadata.requires_runtime_data = requires_runtime_data;
    blob_finish_get_buffer(&dxil_blob, &out_dxil->binary.buffer,
                           &out_dxil->binary.size);
 

@@ -69,11 +69,32 @@ struct dxil_spirv_specialization {
    bool defined_on_module;
 };
 
+struct dxil_spirv_metadata {
+   bool requires_runtime_data;
+};
+
 struct dxil_spirv_object {
+   struct dxil_spirv_metadata metadata;
    struct {
       void *buffer;
       size_t size;
    } binary;
+};
+
+/* This struct describes the layout of data expected in the CB bound to
+ * runtime_data_cbv during compute shader execution */
+struct dxil_spirv_compute_runtime_data {
+   /* Total number of groups dispatched (i.e. value passed to Dispatch()) */
+   uint32_t group_count_x;
+   uint32_t group_count_y;
+   uint32_t group_count_z;
+};
+
+struct dxil_spirv_runtime_conf {
+   struct {
+      uint32_t register_space;
+      uint32_t base_shader_register;
+   } runtime_data_cbv;
 };
 
 /**
@@ -84,6 +105,7 @@ struct dxil_spirv_object {
  * \param  num_specializations  number of specialization constants
  * \param  stage  shader stage
  * \param  entry_point_name  name of shader entrypoint
+ * \param  conf  configuration for spriv_to_dxil
  * \param  out_dxil  will contain the DXIL bytes on success (call spirv_to_dxil_free after use)
  * \return  true if compilation succeeded
  */
@@ -92,6 +114,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
               struct dxil_spirv_specialization *specializations,
               unsigned int num_specializations, dxil_spirv_shader_stage stage,
               const char *entry_point_name,
+              const struct dxil_spirv_runtime_conf *conf,
               struct dxil_spirv_object *out_dxil);
 
 /**
