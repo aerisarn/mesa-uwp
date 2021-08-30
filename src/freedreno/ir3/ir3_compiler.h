@@ -156,6 +156,9 @@ struct ir3_compiler {
 
    /* Whether private memory is supported */
    bool has_pvtmem;
+
+   /* True if 16-bit descriptors are used for both 16-bit and 32-bit access. */
+   bool storage_16bit;
 };
 
 void ir3_compiler_destroy(struct ir3_compiler *compiler);
