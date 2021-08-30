@@ -152,6 +152,9 @@ vn_instance_init_ring(struct vn_instance *instance)
    vn_cs_encoder_init_indirect(&instance->ring.upload, instance,
                                1 * 1024 * 1024);
 
+   mtx_init(&instance->ring.roundtrip_mutex, mtx_plain);
+   instance->ring.roundtrip_next = 1;
+
    return VK_SUCCESS;
 }
 
@@ -186,9 +189,6 @@ vn_instance_init_renderer(struct vn_instance *instance)
    VkResult result = vn_renderer_create(instance, alloc, &instance->renderer);
    if (result != VK_SUCCESS)
       return result;
-
-   mtx_init(&instance->roundtrip_mutex, mtx_plain);
-   instance->roundtrip_next = 1;
 
    vn_renderer_get_info(instance->renderer, &instance->renderer_info);
 
@@ -257,13 +257,13 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
       write_ring_extra_data, sizeof(write_ring_extra_data));
 
    /* submit a vkWriteRingExtraMESA through the renderer */
-   mtx_lock(&instance->roundtrip_mutex);
-   const uint32_t seqno = instance->roundtrip_next++;
+   mtx_lock(&instance->ring.roundtrip_mutex);
+   const uint32_t seqno = instance->ring.roundtrip_next++;
    vn_encode_vkWriteRingExtraMESA(&local_enc, 0, instance->ring.id, 0, seqno);
    VkResult result =
       vn_renderer_submit_simple(instance->renderer, write_ring_extra_data,
                                 vn_cs_encoder_get_len(&local_enc));
-   mtx_unlock(&instance->roundtrip_mutex);
+   mtx_unlock(&instance->ring.roundtrip_mutex);
 
    *roundtrip_seqno = seqno;
    return result;
@@ -748,16 +748,15 @@ fail:
       vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
                                 vn_cs_encoder_get_len(&local_enc));
 
+      mtx_destroy(&instance->ring.roundtrip_mutex);
       vn_cs_encoder_fini(&instance->ring.upload);
       vn_renderer_shmem_unref(instance->renderer, instance->ring.shmem);
       vn_ring_fini(&instance->ring.ring);
       mtx_destroy(&instance->ring.mutex);
    }
 
-   if (instance->renderer) {
-      mtx_destroy(&instance->roundtrip_mutex);
+   if (instance->renderer)
       vn_renderer_destroy(instance->renderer, alloc);
-   }
 
    mtx_destroy(&instance->physical_device.mutex);
 
@@ -797,12 +796,12 @@ vn_DestroyInstance(VkInstance _instance,
    vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
                              vn_cs_encoder_get_len(&local_enc));
 
+   mtx_destroy(&instance->ring.roundtrip_mutex);
    vn_cs_encoder_fini(&instance->ring.upload);
    vn_ring_fini(&instance->ring.ring);
    mtx_destroy(&instance->ring.mutex);
    vn_renderer_shmem_unref(instance->renderer, instance->ring.shmem);
 
-   mtx_destroy(&instance->roundtrip_mutex);
    vn_renderer_destroy(instance->renderer, alloc);
 
    driDestroyOptionCache(&instance->dri_options);

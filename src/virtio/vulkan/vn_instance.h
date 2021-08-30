@@ -39,10 +39,6 @@ struct vn_instance {
    struct vn_renderer *renderer;
    struct vn_renderer_info renderer_info;
 
-   /* to synchronize renderer/ring */
-   mtx_t roundtrip_mutex;
-   uint32_t roundtrip_next;
-
    struct {
       mtx_t mutex;
       struct vn_renderer_shmem *shmem;
@@ -51,6 +47,10 @@ struct vn_instance {
 
       struct vn_cs_encoder upload;
       uint32_t command_dropped;
+
+      /* to synchronize renderer/ring */
+      mtx_t roundtrip_mutex;
+      uint32_t roundtrip_next;
    } ring;
 
    struct {
