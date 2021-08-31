@@ -1060,6 +1060,11 @@ if (bits == 0) {
 }
 """)
 
+# Sum of absolute differences with accumulation.
+# (Equivalent to AMD's v_sad_u8 instruction.)
+# The first two sources contain packed 8-bit unsigned integers, the instruction
+# will calculate the absolute difference of these, and then add them together.
+# There is also a third source which is a 32-bit unsigned integer and added to the result.
 triop_horiz("sad_u8x4", 1, 1, 1, 1, """
 uint8_t s0_b0 = (src0.x & 0x000000ff) >> 0;
 uint8_t s0_b1 = (src0.x & 0x0000ff00) >> 8;
