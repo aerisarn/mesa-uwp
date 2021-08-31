@@ -553,10 +553,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->all_vram_visible = info->vram_size * 0.9 < info->vram_vis_size;
 
    util_cpu_detect();
-   info->smart_access_memory = info->all_vram_visible &&
-                               info->chip_class >= GFX10_3 &&
-                               util_get_cpu_caps()->family >= CPU_AMD_ZEN3 &&
-                               util_get_cpu_caps()->family < CPU_AMD_LAST;
 
    /* Set chip identification. */
    info->pci_id = amdinfo->asic_id; /* TODO: is this correct? */
@@ -652,6 +648,11 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       fprintf(stderr, "amdgpu: Unknown family.\n");
       return false;
    }
+
+   info->smart_access_memory = info->all_vram_visible &&
+                               info->chip_class >= GFX10_3 &&
+                               util_get_cpu_caps()->family >= CPU_AMD_ZEN3 &&
+                               util_get_cpu_caps()->family < CPU_AMD_LAST;
 
    info->family_id = amdinfo->family_id;
    info->chip_external_rev = amdinfo->chip_external_rev;
