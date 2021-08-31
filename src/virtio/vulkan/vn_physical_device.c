@@ -2173,6 +2173,9 @@ vn_GetPhysicalDeviceImageFormatProperties2(
          ahb_usage->androidHardwareBufferUsage = vn_android_get_ahb_usage(
             pImageFormatInfo->usage, pImageFormatInfo->flags);
       }
+
+      /* AHBs with mipmap usage will ignore this property */
+      pImageFormatProperties->imageFormatProperties.maxMipLevels = 1;
    } else {
       mem_props->compatibleHandleTypes = supported_handle_types;
       mem_props->exportFromImportedHandleTypes =
