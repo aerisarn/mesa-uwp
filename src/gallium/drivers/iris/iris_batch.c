@@ -858,6 +858,21 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    int ret = submit_batch(batch);
 
+   /* When batch submission fails, our end-of-batch syncobj remains
+    * unsignalled, and in fact is not even considered submitted.
+    *
+    * In the hang recovery case (-EIO) or -ENOMEM, we recreate our context and
+    * attempt to carry on.  In that case, we need to signal our syncobj,
+    * dubiously claiming that this batch completed, because future batches may
+    * depend on it.  If we don't, then execbuf would fail with -EINVAL for
+    * those batches, because they depend on a syncobj that's considered to be
+    * "never submitted".  This would lead to an abort().  So here, we signal
+    * the failing batch's syncobj to try and allow further progress to be
+    * made, knowing we may have broken our dependency tracking.
+    */
+   if (ret < 0)
+      iris_syncobj_signal(screen->bufmgr, iris_batch_get_signal_syncobj(batch));
+
    batch->exec_count = 0;
    batch->aperture_space = 0;
 

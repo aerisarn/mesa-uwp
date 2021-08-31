@@ -87,6 +87,21 @@ iris_syncobj_destroy(struct iris_bufmgr *bufmgr, struct iris_syncobj *syncobj)
    free(syncobj);
 }
 
+void
+iris_syncobj_signal(struct iris_bufmgr *bufmgr, struct iris_syncobj *syncobj)
+{
+   int fd = iris_bufmgr_get_fd(bufmgr);
+   struct drm_syncobj_array args = {
+      .handles = (uintptr_t)&syncobj->handle,
+      .count_handles = 1,
+   };
+
+   if (intel_ioctl(fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &args)) {
+      fprintf(stderr, "failed to signal syncobj %"PRIu32"\n",
+              syncobj->handle);
+   }
+}
+
 /**
  * Add a sync-point to the batch, with the given flags.
  *
