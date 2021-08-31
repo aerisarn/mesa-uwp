@@ -76,6 +76,7 @@ struct v3d_screen {
 
         uint32_t bo_size;
         uint32_t bo_count;
+        uint32_t prim_types;
 
         bool has_csd;
         bool has_cache_flush;

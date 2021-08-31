@@ -275,6 +275,10 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_MAX_GS_INVOCATIONS:
                 return 32;
 
+        case PIPE_CAP_SUPPORTED_PRIM_MODES:
+        case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART:
+                return screen->prim_types;
+
         default:
                 return u_pipe_screen_get_param_defaults(pscreen, param);
         }
@@ -831,6 +835,19 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
                 pscreen->get_driver_query_group_info = v3d_get_driver_query_group_info;
                 pscreen->get_driver_query_info = v3d_get_driver_query_info;
         }
+
+        /* Generate the bitmask of supported draw primitives. */
+        screen->prim_types = BITFIELD_BIT(PIPE_PRIM_POINTS) |
+                             BITFIELD_BIT(PIPE_PRIM_LINES) |
+                             BITFIELD_BIT(PIPE_PRIM_LINE_LOOP) |
+                             BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
+                             BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
+                             BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
+                             BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN) |
+                             BITFIELD_BIT(PIPE_PRIM_LINES_ADJACENCY) |
+                             BITFIELD_BIT(PIPE_PRIM_LINE_STRIP_ADJACENCY) |
+                             BITFIELD_BIT(PIPE_PRIM_TRIANGLES_ADJACENCY) |
+                             BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY);
 
         return pscreen;
 
