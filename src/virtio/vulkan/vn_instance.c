@@ -670,7 +670,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       return vn_error(NULL, result);
    }
 
-   mtx_init(&instance->physical_device_mutex, mtx_plain);
+   mtx_init(&instance->physical_device.mutex, mtx_plain);
 
    if (!vn_icd_supports_api_version(
           instance->base.base.app_info.api_version)) {
@@ -759,7 +759,7 @@ fail:
       vn_renderer_destroy(instance->renderer, alloc);
    }
 
-   mtx_destroy(&instance->physical_device_mutex);
+   mtx_destroy(&instance->physical_device.mutex);
 
    vn_instance_base_fini(&instance->base);
    vk_free(alloc, instance);
@@ -778,12 +778,13 @@ vn_DestroyInstance(VkInstance _instance,
    if (!instance)
       return;
 
-   if (instance->physical_devices) {
-      vk_free(alloc, instance->physical_device_groups);
-      for (uint32_t i = 0; i < instance->physical_device_count; i++)
-         vn_physical_device_fini(&instance->physical_devices[i]);
-      vk_free(alloc, instance->physical_devices);
+   if (instance->physical_device.devices) {
+      for (uint32_t i = 0; i < instance->physical_device.device_count; i++)
+         vn_physical_device_fini(&instance->physical_device.devices[i]);
+      vk_free(alloc, instance->physical_device.devices);
+      vk_free(alloc, instance->physical_device.groups);
    }
+   mtx_destroy(&instance->physical_device.mutex);
 
    vn_call_vkDestroyInstance(instance, _instance, NULL);
 
@@ -803,8 +804,6 @@ vn_DestroyInstance(VkInstance _instance,
 
    mtx_destroy(&instance->roundtrip_mutex);
    vn_renderer_destroy(instance->renderer, alloc);
-
-   mtx_destroy(&instance->physical_device_mutex);
 
    driDestroyOptionCache(&instance->dri_options);
    driDestroyOptionInfo(&instance->available_dri_options);

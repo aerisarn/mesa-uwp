@@ -1252,8 +1252,8 @@ vn_instance_enumerate_physical_device_groups_locked(
 
    vk_free(alloc, temp_objs);
 
-   instance->physical_device_groups = groups;
-   instance->physical_device_group_count = count;
+   instance->physical_device.groups = groups;
+   instance->physical_device.group_count = count;
 
    return VK_SUCCESS;
 }
@@ -1265,9 +1265,9 @@ vn_instance_enumerate_physical_devices(struct vn_instance *instance)
    struct vn_physical_device *physical_devs = NULL;
    VkResult result;
 
-   mtx_lock(&instance->physical_device_mutex);
+   mtx_lock(&instance->physical_device.mutex);
 
-   if (instance->physical_devices) {
+   if (instance->physical_device.devices) {
       result = VK_SUCCESS;
       goto out;
    }
@@ -1348,8 +1348,8 @@ vn_instance_enumerate_physical_devices(struct vn_instance *instance)
       goto out;
    }
 
-   instance->physical_devices = physical_devs;
-   instance->physical_device_count = count;
+   instance->physical_device.devices = physical_devs;
+   instance->physical_device.device_count = count;
 
 out:
    if (result != VK_SUCCESS && physical_devs) {
@@ -1358,7 +1358,7 @@ out:
       vk_free(alloc, physical_devs);
    }
 
-   mtx_unlock(&instance->physical_device_mutex);
+   mtx_unlock(&instance->physical_device.mutex);
    return result;
 }
 
@@ -1376,10 +1376,10 @@ vn_EnumeratePhysicalDevices(VkInstance _instance,
       return vn_error(instance, result);
 
    VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
-   for (uint32_t i = 0; i < instance->physical_device_count; i++) {
+   for (uint32_t i = 0; i < instance->physical_device.device_count; i++) {
       vk_outarray_append(&out, physical_dev) {
-         *physical_dev =
-            vn_physical_device_to_handle(&instance->physical_devices[i]);
+         *physical_dev = vn_physical_device_to_handle(
+            &instance->physical_device.devices[i]);
       }
    }
 
@@ -1400,9 +1400,9 @@ vn_EnumeratePhysicalDeviceGroups(
 
    VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
                     pPhysicalDeviceGroupCount);
-   for (uint32_t i = 0; i < instance->physical_device_group_count; i++) {
+   for (uint32_t i = 0; i < instance->physical_device.group_count; i++) {
       vk_outarray_append(&out, props) {
-         *props = instance->physical_device_groups[i];
+         *props = instance->physical_device.groups[i];
       }
    }
 

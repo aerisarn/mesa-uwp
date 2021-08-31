@@ -71,11 +71,14 @@ struct vn_instance {
       void *ptr;
    } reply;
 
-   mtx_t physical_device_mutex;
-   struct vn_physical_device *physical_devices;
-   uint32_t physical_device_count;
-   VkPhysicalDeviceGroupProperties *physical_device_groups;
-   uint32_t physical_device_group_count;
+   struct {
+      mtx_t mutex;
+
+      struct vn_physical_device *devices;
+      uint32_t device_count;
+      VkPhysicalDeviceGroupProperties *groups;
+      uint32_t group_count;
+   } physical_device;
 
    /* XXX staged features to be merged to core venus protocol */
    VkVenusExperimentalFeatures100000MESA experimental;
