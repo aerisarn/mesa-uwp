@@ -627,8 +627,6 @@ compare_counter_categories_and_names(const void *_c1, const void *_c2)
 static void
 build_unique_counter_list(struct intel_perf_config *perf)
 {
-   assert(perf->n_queries < 64);
-
    size_t max_counters = 0;
 
    for (int q = 0; q < perf->n_queries; q++)
@@ -661,14 +659,14 @@ build_unique_counter_list(struct intel_perf_config *perf)
 
          if (entry) {
             counter_info = entry->data;
-            counter_info->query_mask |= BITFIELD64_BIT(q);
+            BITSET_SET(counter_info->query_mask, q);
             continue;
          }
          assert(perf->n_counters < max_counters);
 
          counter_info = &counter_infos[perf->n_counters++];
          counter_info->counter = counter;
-         counter_info->query_mask = BITFIELD64_BIT(q);
+         BITSET_SET(counter_info->query_mask, q);
 
          counter_info->location.group_idx = q;
          counter_info->location.counter_idx = c;
@@ -863,37 +861,61 @@ intel_perf_store_configuration(struct intel_perf_config *perf_cfg, int fd,
    return i915_add_config(perf_cfg, fd, config, generated_guid);
 }
 
-static uint64_t
+static void
 get_passes_mask(struct intel_perf_config *perf,
                 const uint32_t *counter_indices,
-                uint32_t counter_indices_count)
+                uint32_t counter_indices_count,
+                BITSET_WORD *queries_mask)
 {
-   uint64_t queries_mask = 0;
-
-   assert(perf->n_queries < 64);
-
-   /* Compute the number of passes by going through all counters N times (with
-    * N the number of queries) to make sure we select the most constraining
-    * counters first and look at the more flexible ones (that could be
-    * obtained from multiple queries) later. That way we minimize the number
-    * of passes required.
+   /* For each counter, look if it's already computed by a selected metric set
+    * or find one that can compute it.
     */
-   for (uint32_t q = 0; q < perf->n_queries; q++) {
-      for (uint32_t i = 0; i < counter_indices_count; i++) {
-         assert(counter_indices[i] < perf->n_counters);
+   for (uint32_t c = 0; c < counter_indices_count; c++) {
+      uint32_t counter_idx = counter_indices[c];
+      assert(counter_idx < perf->n_counters);
 
-         uint32_t idx = counter_indices[i];
-         if (util_bitcount64(perf->counter_infos[idx].query_mask) != (q + 1))
-            continue;
+      const struct intel_perf_query_counter_info *counter_info =
+         &perf->counter_infos[counter_idx];
 
-         if (queries_mask & perf->counter_infos[idx].query_mask)
-            continue;
+      /* Check if the counter is already computed by one of the selected
+       * metric set. If it is, there is nothing more to do with this counter.
+       */
+      uint32_t match = UINT32_MAX;
+      for (uint32_t w = 0; w < BITSET_WORDS(INTEL_PERF_MAX_METRIC_SETS); w++) {
+         if (queries_mask[w] & counter_info->query_mask[w]) {
+            match = w * BITSET_WORDBITS + ffsll(queries_mask[w] & counter_info->query_mask[w]) - 1;
+            break;
+         }
+      }
+      if (match != UINT32_MAX)
+         continue;
 
-         queries_mask |= BITFIELD64_BIT(ffsll(perf->counter_infos[idx].query_mask) - 1);
+      /* Now go through each metric set and find one that contains this
+       * counter.
+       */
+      for (uint32_t q = 0; q < perf->n_queries; q++) {
+         bool found = false;
+
+         for (uint32_t w = 0; w < BITSET_WORDS(INTEL_PERF_MAX_METRIC_SETS); w++) {
+            if (!counter_info->query_mask[w])
+               continue;
+
+            uint32_t query_idx = w * BITSET_WORDBITS + ffsll(counter_info->query_mask[w]) - 1;
+
+            /* Since we already looked for this in the query_mask, it should
+             * not be set.
+             */
+            assert(!BITSET_TEST(queries_mask, query_idx));
+
+            BITSET_SET(queries_mask, query_idx);
+            found = true;
+            break;
+         }
+
+         if (found)
+            break;
       }
    }
-
-   return queries_mask;
 }
 
 uint32_t
@@ -902,17 +924,20 @@ intel_perf_get_n_passes(struct intel_perf_config *perf,
                         uint32_t counter_indices_count,
                         struct intel_perf_query_info **pass_queries)
 {
-   uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
+   BITSET_DECLARE(queries_mask, INTEL_PERF_MAX_METRIC_SETS);
+   BITSET_ZERO(queries_mask);
+
+   get_passes_mask(perf, counter_indices, counter_indices_count, queries_mask);
 
    if (pass_queries) {
       uint32_t pass = 0;
       for (uint32_t q = 0; q < perf->n_queries; q++) {
-         if ((1ULL << q) & queries_mask)
+         if (BITSET_TEST(queries_mask, q))
             pass_queries[pass++] = &perf->queries[q];
       }
    }
 
-   return util_bitcount64(queries_mask);
+   return BITSET_COUNT(queries_mask);
 }
 
 void
@@ -921,21 +946,52 @@ intel_perf_get_counters_passes(struct intel_perf_config *perf,
                                uint32_t counter_indices_count,
                                struct intel_perf_counter_pass *counter_pass)
 {
-   uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
-   ASSERTED uint32_t n_passes = util_bitcount64(queries_mask);
+   BITSET_DECLARE(queries_mask, INTEL_PERF_MAX_METRIC_SETS);
+   BITSET_ZERO(queries_mask);
+
+   get_passes_mask(perf, counter_indices, counter_indices_count, queries_mask);
+   ASSERTED uint32_t n_passes = BITSET_COUNT(queries_mask);
+
+   struct intel_perf_query_info **pass_array = calloc(perf->n_queries,
+                                                      sizeof(*pass_array));
+   uint32_t n_written_passes = 0;
 
    for (uint32_t i = 0; i < counter_indices_count; i++) {
       assert(counter_indices[i] < perf->n_counters);
 
-      uint32_t idx = counter_indices[i];
-      counter_pass[i].counter = perf->counter_infos[idx].counter;
+      uint32_t counter_idx = counter_indices[i];
+      counter_pass[i].counter = perf->counter_infos[counter_idx].counter;
 
-      uint32_t query_idx = ffsll(perf->counter_infos[idx].query_mask & queries_mask) - 1;
+      const struct intel_perf_query_counter_info *counter_info =
+         &perf->counter_infos[counter_idx];
+
+      uint32_t query_idx = UINT32_MAX;
+      for (uint32_t w = 0; w < BITSET_WORDS(INTEL_PERF_MAX_METRIC_SETS); w++) {
+         if (counter_info->query_mask[w] & queries_mask[w]) {
+            query_idx = w * BITSET_WORDBITS +
+               ffsll(counter_info->query_mask[w] & queries_mask[w]) - 1;
+            break;
+         }
+      }
+      assert(query_idx != UINT32_MAX);
+
       counter_pass[i].query = &perf->queries[query_idx];
 
-      uint32_t clear_bits = 63 - query_idx;
-      counter_pass[i].pass = util_bitcount64((queries_mask << clear_bits) >> clear_bits) - 1;
-      assert(counter_pass[i].pass < n_passes);
+      uint32_t pass_idx = UINT32_MAX;
+      for (uint32_t p = 0; p < n_written_passes; p++) {
+         if (pass_array[p] == counter_pass[i].query) {
+            pass_idx = p;
+            break;
+         }
+      }
+
+      if (pass_idx == UINT32_MAX) {
+         pass_array[n_written_passes] = counter_pass[i].query;
+         pass_idx = n_written_passes++;
+      }
+
+      counter_pass[i].pass = pass_idx;
+      assert(n_written_passes <= n_passes);
    }
 }
 
