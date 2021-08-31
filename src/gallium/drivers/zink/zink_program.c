@@ -683,8 +683,8 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       if (prog->shaders[i]) {
          _mesa_set_remove_key(prog->shaders[i]->programs, prog);
          prog->shaders[i] = NULL;
-         destroy_shader_cache(screen, &prog->base.shader_cache[i]);
       }
+      destroy_shader_cache(screen, &prog->base.shader_cache[i]);
       ralloc_free(prog->nir[i]);
    }
 
