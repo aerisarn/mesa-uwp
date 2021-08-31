@@ -141,7 +141,7 @@ clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const uni
 
    if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
        zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
-      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
+      zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
    VKCTX(CmdClearColorImage)(batch->state->cmdbuf, res->obj->image, res->layout, &color, 1, &range);
 }
@@ -162,7 +162,7 @@ clear_zs_no_rp(struct zink_context *ctx, struct zink_resource *res, VkImageAspec
 
    if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
        zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
-      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
+      zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
    VKCTX(CmdClearDepthStencilImage)(batch->state->cmdbuf, res->obj->image, res->layout, &zs_value, 1, &range);
 }

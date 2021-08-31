@@ -34,10 +34,10 @@ zink_emit_xfb_counter_barrier(struct zink_context *ctx)
          continue;
       struct zink_resource *res = zink_resource(t->counter_buffer);
       if (t->counter_buffer_valid)
-          zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
+          zink_resource_buffer_barrier(ctx, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
                                        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
       else
-          zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
+          zink_resource_buffer_barrier(ctx, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
                                        VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
    }
    ctx->xfb_barrier = false;
@@ -57,7 +57,7 @@ zink_emit_xfb_vertex_input_barrier(struct zink_context *ctx, struct zink_resourc
     *
     * - 20.3.1. Drawing Transform Feedback
     */
-   zink_resource_buffer_barrier(ctx, NULL, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+   zink_resource_buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 }
 
@@ -84,7 +84,7 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
          /* resource has been rebound */
          t->counter_buffer_valid = false;
       buffers[i] = res->obj->buffer;
-      zink_resource_buffer_barrier(ctx, NULL, zink_resource(t->base.buffer),
+      zink_resource_buffer_barrier(ctx, zink_resource(t->base.buffer),
                                    VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
       zink_batch_reference_resource_rw(batch, res, true);
       buffer_offsets[i] = t->base.buffer_offset;
@@ -104,7 +104,7 @@ ALWAYS_INLINE static void
 check_buffer_barrier(struct zink_context *ctx, struct pipe_resource *pres, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    struct zink_resource *res = zink_resource(pres);
-   zink_resource_buffer_barrier(ctx, NULL, res, flags, pipeline);
+   zink_resource_buffer_barrier(ctx, res, flags, pipeline);
 }
 
 ALWAYS_INLINE static void
@@ -376,11 +376,11 @@ update_barriers(struct zink_context *ctx, bool is_compute)
             }
          }
          if (res->base.b.target == PIPE_BUFFER)
-            zink_resource_buffer_barrier(ctx, NULL, res, access, pipeline);
+            zink_resource_buffer_barrier(ctx, res, access, pipeline);
          else {
             VkImageLayout layout = zink_descriptor_util_image_layout_eval(res, is_compute);
             if (layout != res->layout)
-               zink_resource_image_barrier(ctx, NULL, res, layout, access, pipeline);
+               zink_resource_image_barrier(ctx, res, layout, access, pipeline);
          }
          /* always barrier on draw if this resource has either multiple image write binds or
           * image write binds and image read binds

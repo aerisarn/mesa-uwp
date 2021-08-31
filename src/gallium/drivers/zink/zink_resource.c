@@ -1536,7 +1536,7 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
    } else {
       zink_fb_clears_apply_region(ctx, &res->base.b, (struct u_rect){0, res->base.b.width0, 0, res->base.b.height0});
-      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
+      zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
       res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
       struct zink_resource_object *old_obj = res->obj;
       struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->optimal_tiling, res->modifiers, res->modifiers_count);
@@ -1590,17 +1590,17 @@ zink_resource_setup_transfer_layouts(struct zink_context *ctx, struct zink_resou
        * VK_IMAGE_LAYOUT_GENERAL. And since this isn't a present-related
        * operation, VK_IMAGE_LAYOUT_GENERAL seems most appropriate.
        */
-      zink_resource_image_barrier(ctx, NULL, src,
+      zink_resource_image_barrier(ctx, src,
                                   VK_IMAGE_LAYOUT_GENERAL,
                                   VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
                                   VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
-      zink_resource_image_barrier(ctx, NULL, src,
+      zink_resource_image_barrier(ctx, src,
                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                   VK_ACCESS_TRANSFER_READ_BIT,
                                   VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-      zink_resource_image_barrier(ctx, NULL, dst,
+      zink_resource_image_barrier(ctx, dst,
                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                   VK_ACCESS_TRANSFER_WRITE_BIT,
                                   VK_PIPELINE_STAGE_TRANSFER_BIT);
