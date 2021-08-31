@@ -723,7 +723,8 @@ try_lower_direct_buffer_intrinsic(nir_builder *b,
       /* 64-bit atomics only support A64 messages so we can't lower them to
        * the index+offset model.
        */
-      if (is_atomic && nir_dest_bit_size(intrin->dest) == 64)
+      if (is_atomic && nir_dest_bit_size(intrin->dest) == 64 &&
+          !state->pdevice->info.has_lsc)
          return false;
 
       /* Normal binding table-based messages can't handle non-uniform access
