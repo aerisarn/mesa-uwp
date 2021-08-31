@@ -1064,10 +1064,11 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
       }
    }
 
-   ctx->Driver.Draw(ctx, prim, num_prims, index_size ? &ib : NULL,
-                    index_bounds_valid, info->primitive_restart,
-                    info->restart_index, min_index, max_index,
-                    info->instance_count, info->start_instance);
+   if (num_prims)
+      ctx->Driver.Draw(ctx, prim, num_prims, index_size ? &ib : NULL,
+                       index_bounds_valid, info->primitive_restart,
+                       info->restart_index, min_index, max_index,
+                       info->instance_count, info->start_instance);
    FREE_PRIMS(prim, num_draws);
 }
 
