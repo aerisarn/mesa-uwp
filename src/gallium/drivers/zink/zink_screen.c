@@ -1705,7 +1705,6 @@ check_base_requirements(struct zink_screen *screen)
        !screen->info.feats.features.fillModeNonSolid ||
        !screen->info.feats.features.wideLines ||
        !screen->info.feats.features.largePoints ||
-       !screen->info.feats.features.alphaToOne ||
        !screen->info.feats.features.shaderClipDistance ||
        !(screen->info.feats12.scalarBlockLayout ||
          screen->info.have_EXT_scalar_block_layout) ||
@@ -1722,7 +1721,6 @@ check_base_requirements(struct zink_screen *screen)
       CHECK_OR_PRINT(feats.features.fillModeNonSolid);
       CHECK_OR_PRINT(feats.features.wideLines);
       CHECK_OR_PRINT(feats.features.largePoints);
-      CHECK_OR_PRINT(feats.features.alphaToOne);
       CHECK_OR_PRINT(feats.features.shaderClipDistance);
       if (!screen->info.feats12.scalarBlockLayout && !screen->info.have_EXT_scalar_block_layout)
          printf("scalarBlockLayout OR EXT_scalar_block_layout ");

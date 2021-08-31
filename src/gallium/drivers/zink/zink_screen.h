@@ -266,4 +266,16 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback);
 
 void
 zink_stub_function_not_loaded(void);
+
+#define warn_missing_feature(feat) \
+   do { \
+      static bool warned = false; \
+      if (!warned) { \
+         fprintf(stderr, "WARNING: Incorrect rendering will happen, " \
+                         "because the Vulkan device doesn't support " \
+                         "the %s feature\n", feat); \
+         warned = true; \
+      } \
+   } while (0)
+
 #endif

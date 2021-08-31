@@ -117,6 +117,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    ms_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
    ms_state.rasterizationSamples = state->rast_samples + 1;
    ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
+   if (state->blend_state->alpha_to_one && !screen->info.feats.features.alphaToOne)
+      warn_missing_feature("alphaToOne");
    ms_state.alphaToOneEnable = state->blend_state->alpha_to_one;
    ms_state.pSampleMask = state->sample_mask ? &state->sample_mask : NULL;
    if (hw_rast_state->force_persample_interp) {
