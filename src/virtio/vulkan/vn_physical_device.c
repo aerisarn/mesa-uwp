@@ -1336,16 +1336,20 @@ vn_instance_enumerate_physical_devices(struct vn_instance *instance)
    }
 
    count = supported_count;
-   if (!count)
-      goto out;
-
-   result = vn_instance_enumerate_physical_device_groups_locked(
-      instance, physical_devs, count);
-   if (result != VK_SUCCESS) {
-      for (uint32_t i = 0; i < count; i++)
-         vn_physical_device_fini(&physical_devs[i]);
-      count = 0;
-      goto out;
+   if (count) {
+      result = vn_instance_enumerate_physical_device_groups_locked(
+         instance, physical_devs, count);
+      if (result != VK_SUCCESS) {
+         for (uint32_t i = 0; i < count; i++)
+            vn_physical_device_fini(&physical_devs[i]);
+         count = 0;
+         goto out;
+      }
+   } else {
+      /* no supported physical device is not an error */
+      result = VK_SUCCESS;
+      vk_free(alloc, physical_devs);
+      physical_devs = NULL;
    }
 
    instance->physical_device.devices = physical_devs;
