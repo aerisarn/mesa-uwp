@@ -2506,15 +2506,6 @@ zink_resource_needs_barrier(struct zink_resource *res, VkImageLayout layout, VkA
    return zink_resource_image_needs_barrier(res, layout, flags, pipeline);
 }
 
-void
-zink_resource_barrier(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
-{
-   if (res->base.b.target == PIPE_BUFFER)
-      zink_resource_buffer_barrier(ctx, batch, res, flags, pipeline);
-   else
-      zink_resource_image_barrier(ctx, batch, res, layout, flags, pipeline);
-}
-
 VkShaderStageFlagBits
 zink_shader_stage(enum pipe_shader_type type)
 {
