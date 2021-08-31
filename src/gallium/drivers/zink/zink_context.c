@@ -636,6 +636,7 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
          goto out;
       }
       pipe_reference_init(&buffer_view->reference, 1);
+      pipe_resource_reference(&buffer_view->pres, &res->base.b);
       util_dynarray_init(&buffer_view->desc_set_refs.refs, NULL);
       buffer_view->bvci = bvci;
       buffer_view->buffer_view = view;
@@ -751,6 +752,7 @@ zink_destroy_buffer_view(struct zink_screen *screen, struct zink_buffer_view *bu
    assert(he);
    _mesa_hash_table_remove(&screen->bufferview_cache, he);
    simple_mtx_unlock(&screen->bufferview_mtx);
+   pipe_resource_reference(&buffer_view->pres, NULL);
    VKSCR(DestroyBufferView)(screen->dev, buffer_view->buffer_view, NULL);
    zink_descriptor_set_refs_clear(&buffer_view->desc_set_refs, buffer_view);
    FREE(buffer_view);
