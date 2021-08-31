@@ -1400,8 +1400,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    const struct brw_compiler *compiler = pipeline->base.device->physical->compiler;
    struct anv_pipeline_stage stages[MESA_SHADER_STAGES] = {};
 
-   pipeline->active_stages = 0;
-
    /* Information on which states are considered dynamic. */
    const VkPipelineDynamicStateCreateInfo *dyn_info =
       info->pDynamicState;
@@ -1416,8 +1414,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    for (uint32_t i = 0; i < info->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
-
-      pipeline->active_stages |= sinfo->stage;
 
       int64_t stage_start = os_time_get_nano();
 
@@ -1477,9 +1473,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       stages[stage].feedback.duration += os_time_get_nano() - stage_start;
       stages[stage].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
    }
-
-   if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-      pipeline->active_stages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 
    assert(pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT);
 
@@ -2375,6 +2368,14 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
             pCreateInfo->pDynamicState->pDynamicStates[s]);
       }
    }
+
+   pipeline->active_stages = 0;
+   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++)
+      pipeline->active_stages |= pCreateInfo->pStages[i].stage;
+
+   if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+      pipeline->active_stages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+
    copy_non_dynamic_state(pipeline, pCreateInfo);
 
    pipeline->depth_clamp_enable = pCreateInfo->pRasterizationState->depthClampEnable;
