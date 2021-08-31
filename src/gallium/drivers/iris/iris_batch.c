@@ -242,6 +242,7 @@ iris_init_non_engine_contexts(struct iris_context *ice, int priority)
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
       struct iris_batch *batch = &ice->batches[i];
       batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
+      batch->exec_flags = I915_EXEC_RENDER;
       assert(batch->hw_ctx_id);
       iris_hw_context_set_priority(screen->bufmgr, batch->hw_ctx_id, priority);
    }
@@ -842,7 +843,7 @@ submit_batch(struct iris_batch *batch)
       .batch_start_offset = 0,
       /* This must be QWord aligned. */
       .batch_len = ALIGN(batch->primary_batch_size, 8),
-      .flags = I915_EXEC_RENDER |
+      .flags = batch->exec_flags |
                I915_EXEC_NO_RELOC |
                I915_EXEC_BATCH_FIRST |
                I915_EXEC_HANDLE_LUT,

@@ -80,6 +80,7 @@ struct iris_batch {
    uint64_t last_surface_base_address;
 
    uint32_t hw_ctx_id;
+   uint32_t exec_flags;
 
    /** A list of all BOs referenced by this batch */
    struct iris_bo **exec_bos;
