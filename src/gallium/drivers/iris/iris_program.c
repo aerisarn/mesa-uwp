@@ -2531,6 +2531,9 @@ iris_create_compute_state(struct pipe_context *ctx,
          iris_create_shader_variant(screen, NULL, IRIS_CACHE_CS,
                                     sizeof(key), &key);
 
+      /* Append our new variant to the shader's variant list. */
+      list_addtail(&shader->link, &ish->variants);
+
       if (!iris_disk_cache_retrieve(screen, uploader, ish, shader,
                                     &key, sizeof(key))) {
          iris_compile_cs(screen, uploader, &ice->dbg, ish, shader);
