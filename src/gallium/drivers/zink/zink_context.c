@@ -2847,7 +2847,7 @@ zink_flush_resource(struct pipe_context *pctx,
 }
 
 void
-zink_copy_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *dst, struct zink_resource *src,
+zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
                  unsigned dst_offset, unsigned src_offset, unsigned size)
 {
    VkBufferCopy region;
@@ -2855,11 +2855,8 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink
    region.dstOffset = dst_offset;
    region.size = size;
 
-   if (!batch) {
-      batch = &ctx->batch;
-      zink_batch_no_rp(ctx);
-   }
-   assert(!batch->in_rp);
+   struct zink_batch *batch = &ctx->batch;
+   zink_batch_no_rp(ctx);
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
    util_range_add(&dst->base.b, &dst->valid_buffer_range, dst_offset, dst_offset + size);
@@ -2869,17 +2866,14 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink
 }
 
 void
-zink_copy_image_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *dst, struct zink_resource *src,
+zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
                        unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
                        unsigned src_level, const struct pipe_box *src_box, enum pipe_map_flags map_flags)
 {
    struct zink_resource *img = dst->base.b.target == PIPE_BUFFER ? src : dst;
    struct zink_resource *buf = dst->base.b.target == PIPE_BUFFER ? dst : src;
-
-   if (!batch) {
-      batch = &ctx->batch;
-      zink_batch_no_rp(ctx);
-   }
+   struct zink_batch *batch = &ctx->batch;
+   zink_batch_no_rp(ctx);
 
    bool buf2img = buf == src;
 
@@ -3063,9 +3057,9 @@ zink_resource_copy_region(struct pipe_context *pctx,
                      1, &region);
    } else if (dst->base.b.target == PIPE_BUFFER &&
               src->base.b.target == PIPE_BUFFER) {
-      zink_copy_buffer(ctx, NULL, dst, src, dstx, src_box->x, src_box->width);
+      zink_copy_buffer(ctx, dst, src, dstx, src_box->x, src_box->width);
    } else
-      zink_copy_image_buffer(ctx, NULL, dst, src, dst_level, dstx, dsty, dstz, src_level, src_box, 0);
+      zink_copy_image_buffer(ctx, dst, src, dst_level, dstx, dsty, dstz, src_level, src_box, 0);
 }
 
 static struct pipe_stream_output_target *

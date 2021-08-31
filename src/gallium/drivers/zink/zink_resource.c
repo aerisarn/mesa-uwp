@@ -999,7 +999,7 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
       box.x = trans->offset;
 
    if (dst->obj->transfer_dst)
-      zink_copy_image_buffer(ctx, NULL, dst, src, trans->base.b.level, buf2img ? x : 0,
+      zink_copy_image_buffer(ctx, dst, src, trans->base.b.level, buf2img ? x : 0,
                               box.y, box.z, trans->base.b.level, &box, trans->base.b.usage);
    else
       util_blitter_copy_texture(ctx->blitter, &dst->base.b, trans->base.b.level,
@@ -1192,7 +1192,7 @@ zink_buffer_map(struct pipe_context *pctx,
          if (!trans->staging_res)
             goto fail;
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
-         zink_copy_buffer(ctx, NULL, staging_res, res, trans->offset, box->x, box->width);
+         zink_copy_buffer(ctx, staging_res, res, trans->offset, box->x, box->width);
          res = staging_res;
          usage &= ~PIPE_MAP_UNSYNCHRONIZED;
          ptr = map_resource(screen, res);
@@ -1403,7 +1403,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (ptrans->resource->target == PIPE_BUFFER)
-            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, offset, box->width);
+            zink_copy_buffer(ctx, res, staging_res, box->x, offset, box->width);
          else
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
       }

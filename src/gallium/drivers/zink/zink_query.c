@@ -194,7 +194,7 @@ qbo_sync_from_prev(struct zink_context *ctx, struct zink_query *query, unsigned 
    unsigned qbo_offset = last_start * get_num_results(query->type) * sizeof(uint64_t);
    query->curr_query = id_offset;
    query->curr_qbo->num_results = id_offset;
-   zink_copy_buffer(ctx, NULL, zink_resource(query->curr_qbo->buffer), zink_resource(prev->buffer), 0,
+   zink_copy_buffer(ctx, zink_resource(query->curr_qbo->buffer), zink_resource(prev->buffer), 0,
                     qbo_offset,
                     id_offset * result_size);
 }
@@ -1006,7 +1006,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
       }
       struct pipe_resource *staging = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, result_size * 2);
       copy_results_to_buffer(ctx, query, zink_resource(staging), 0, 1, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag);
-      zink_copy_buffer(ctx, &ctx->batch, res, zink_resource(staging), offset, result_size, result_size);
+      zink_copy_buffer(ctx, res, zink_resource(staging), offset, result_size, result_size);
       pipe_resource_reference(&staging, NULL);
       return;
    }
@@ -1019,7 +1019,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
             if (query->needs_update)
                update_qbo(ctx, query);
             /* internal qbo always writes 64bit value so we can just direct copy */
-            zink_copy_buffer(ctx, NULL, res, zink_resource(query->curr_qbo->buffer), offset,
+            zink_copy_buffer(ctx, res, zink_resource(query->curr_qbo->buffer), offset,
                              get_buffer_offset(query, query->curr_qbo->buffer, query->last_start),
                              result_size);
          } else
