@@ -180,6 +180,12 @@ iris_init_batch(struct iris_context *ice,
    struct iris_batch *batch = &ice->batches[name];
    struct iris_screen *screen = (void *) ice->ctx.screen;
 
+   /* Note: ctx_id, exec_flags and has_engines_context fields are initialized
+    * at an earlier phase when contexts are created.
+    *
+    * Ref: iris_init_engines_context(), iris_init_non_engine_contexts()
+    */
+
    batch->screen = screen;
    batch->dbg = &ice->dbg;
    batch->reset = &ice->reset;
@@ -243,15 +249,75 @@ iris_init_non_engine_contexts(struct iris_context *ice, int priority)
       struct iris_batch *batch = &ice->batches[i];
       batch->ctx_id = iris_create_hw_context(screen->bufmgr);
       batch->exec_flags = I915_EXEC_RENDER;
+      batch->has_engines_context = false;
       assert(batch->ctx_id);
       iris_hw_context_set_priority(screen->bufmgr, batch->ctx_id, priority);
    }
 }
 
+static int
+iris_create_engines_context(struct iris_context *ice, int priority)
+{
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   int fd = iris_bufmgr_get_fd(screen->bufmgr);
+
+   struct drm_i915_query_engine_info *engines_info =
+      intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO);
+
+   if (!engines_info)
+      return -1;
+
+   if (intel_gem_count_engines(engines_info, I915_ENGINE_CLASS_RENDER) < 1) {
+      free(engines_info);
+      return -1;
+   }
+
+   STATIC_ASSERT(IRIS_BATCH_COUNT == 2);
+   uint16_t engine_classes[IRIS_BATCH_COUNT] = {
+      [IRIS_BATCH_RENDER] = I915_ENGINE_CLASS_RENDER,
+      [IRIS_BATCH_COMPUTE] = I915_ENGINE_CLASS_RENDER,
+   };
+
+   int engines_ctx =
+      intel_gem_create_context_engines(fd, engines_info, IRIS_BATCH_COUNT,
+                                       engine_classes);
+
+   if (engines_ctx < 0) {
+      free(engines_info);
+      return -1;
+   }
+
+   iris_hw_context_set_unrecoverable(screen->bufmgr, engines_ctx);
+
+   free(engines_info);
+   return engines_ctx;
+}
+
+static bool
+iris_init_engines_context(struct iris_context *ice, int priority)
+{
+   int engines_ctx = iris_create_engines_context(ice, priority);
+   if (engines_ctx < 0)
+      return false;
+
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   iris_hw_context_set_priority(screen->bufmgr, engines_ctx, priority);
+
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      struct iris_batch *batch = &ice->batches[i];
+      batch->ctx_id = engines_ctx;
+      batch->exec_flags = i;
+      batch->has_engines_context = true;
+   }
+
+   return true;
+}
+
 void
 iris_init_batches(struct iris_context *ice, int priority)
 {
-   iris_init_non_engine_contexts(ice, priority);
+   if (!iris_init_engines_context(ice, priority))
+      iris_init_non_engine_contexts(ice, priority);
    for (int i = 0; i < IRIS_BATCH_COUNT; i++)
       iris_init_batch(ice, (enum iris_batch_name) i);
 }
@@ -488,7 +554,9 @@ iris_batch_free(struct iris_batch *batch)
    batch->map = NULL;
    batch->map_next = NULL;
 
-   iris_destroy_kernel_context(bufmgr, batch->ctx_id);
+   /* iris_destroy_batches() will destroy engines contexts. */
+   if (!batch->has_engines_context)
+      iris_destroy_kernel_context(bufmgr, batch->ctx_id);
 
    iris_destroy_batch_measure(batch->measure);
    batch->measure = NULL;
@@ -502,6 +570,15 @@ iris_batch_free(struct iris_batch *batch)
 void
 iris_destroy_batches(struct iris_context *ice)
 {
+   /* If we are using an engines context, then a single kernel context is
+    * created, with multiple hardware contexts. So, we only need to destroy
+    * the context on the first batch.
+    */
+   if (ice->batches[0].has_engines_context) {
+      iris_destroy_kernel_context(ice->batches[0].screen->bufmgr,
+                                  ice->batches[0].ctx_id);
+   }
+
    for (int i = 0; i < IRIS_BATCH_COUNT; i++)
       iris_batch_free(&ice->batches[i]);
 }
@@ -616,20 +693,35 @@ iris_finish_batch(struct iris_batch *batch)
  * Replace our current GEM context with a new one (in case it got banned).
  */
 static bool
-replace_hw_ctx(struct iris_batch *batch)
+replace_kernel_ctx(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
 
-   uint32_t new_ctx = iris_clone_hw_context(bufmgr, batch->ctx_id);
-   if (!new_ctx)
-      return false;
+   if (batch->has_engines_context) {
+      struct iris_context *ice = batch->ice;
+      int priority = iris_kernel_context_get_priority(bufmgr, batch->ctx_id);
+      uint32_t old_ctx = batch->ctx_id;
+      int new_ctx = iris_create_engines_context(ice, priority);
+      if (new_ctx < 0)
+         return false;
+      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+         ice->batches[i].ctx_id = new_ctx;
+         /* Notify the context that state must be re-initialized. */
+         iris_lost_context_state(&ice->batches[i]);
+      }
+      iris_destroy_kernel_context(bufmgr, old_ctx);
+   } else {
+      uint32_t new_ctx = iris_clone_hw_context(bufmgr, batch->ctx_id);
+      if (!new_ctx)
+         return false;
 
-   iris_destroy_kernel_context(bufmgr, batch->ctx_id);
-   batch->ctx_id = new_ctx;
+      iris_destroy_kernel_context(bufmgr, batch->ctx_id);
+      batch->ctx_id = new_ctx;
 
-   /* Notify the context that state must be re-initialized. */
-   iris_lost_context_state(batch);
+      /* Notify the context that state must be re-initialized. */
+      iris_lost_context_state(batch);
+   }
 
    return true;
 }
@@ -662,7 +754,7 @@ iris_batch_check_for_reset(struct iris_batch *batch)
        * Throw it away and start with a fresh context.  Ideally this may
        * catch the problem before our next execbuf fails with -EIO.
        */
-      replace_hw_ctx(batch);
+      replace_kernel_ctx(batch);
    }
 
    return status;
@@ -970,7 +1062,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
     * dubiously claim success...
     * Also handle ENOMEM here.
     */
-   if ((ret == -EIO || ret == -ENOMEM) && replace_hw_ctx(batch)) {
+   if ((ret == -EIO || ret == -ENOMEM) && replace_kernel_ctx(batch)) {
       if (batch->reset->reset) {
          /* Tell gallium frontends the device is lost and it was our fault. */
          batch->reset->reset(batch->reset->data, PIPE_GUILTY_CONTEXT_RESET);
