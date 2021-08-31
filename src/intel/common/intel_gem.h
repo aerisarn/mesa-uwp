@@ -148,5 +148,8 @@ bool intel_gem_supports_syncobj_wait(int fd);
 
 int intel_gem_count_engines(const struct drm_i915_query_engine_info *info,
                             enum drm_i915_gem_engine_class engine_class);
+int intel_gem_create_context_engines(int fd,
+                                     const struct drm_i915_query_engine_info *info,
+                                     int num_engines, uint16_t *engine_classes);
 
 #endif /* INTEL_GEM_H */

@@ -3063,9 +3063,9 @@ VkResult anv_CreateDevice(
             engine_classes[engine_count++] = queue_family->engine_class;
       }
       device->context_id =
-         anv_gem_create_context_engines(device,
-                                        physical_device->engine_info,
-                                        engine_count, engine_classes);
+         intel_gem_create_context_engines(device->fd,
+                                          physical_device->engine_info,
+                                          engine_count, engine_classes);
    } else {
       assert(num_queues == 1);
       device->context_id = anv_gem_create_context(device);
