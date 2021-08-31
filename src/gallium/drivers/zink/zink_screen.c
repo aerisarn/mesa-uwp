@@ -106,18 +106,6 @@ zink_get_name(struct pipe_screen *pscreen)
    return buf;
 }
 
-static bool
-equals_ivci(const void *a, const void *b)
-{
-   return memcmp(a, b, sizeof(VkImageViewCreateInfo)) == 0;
-}
-
-static bool
-equals_bvci(const void *a, const void *b)
-{
-   return memcmp(a, b, sizeof(VkBufferViewCreateInfo)) == 0;
-}
-
 static uint32_t
 hash_framebuffer_state(const void *key)
 {
@@ -1065,17 +1053,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       VKSCR(DestroyDebugUtilsMessengerEXT)(screen->instance, screen->debugUtilsCallbackHandle, NULL);
    }
 
-   hash_table_foreach(&screen->surface_cache, entry) {
-      struct pipe_surface *psurf = (struct pipe_surface*)entry->data;
-      /* context is already destroyed, so this has to be destroyed directly */
-      zink_destroy_surface(screen, psurf);
-   }
-
-   hash_table_foreach(&screen->bufferview_cache, entry) {
-      struct zink_buffer_view *bv = (struct zink_buffer_view*)entry->data;
-      zink_buffer_view_reference(screen, &bv, NULL);
-   }
-
    if (!screen->info.have_KHR_imageless_framebuffer) {
       hash_table_foreach(&screen->framebuffer_cache, entry) {
          struct zink_framebuffer* fb = (struct zink_framebuffer*)entry->data;
@@ -1083,9 +1060,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       }
       simple_mtx_destroy(&screen->framebuffer_mtx);
    }
-
-   simple_mtx_destroy(&screen->surface_mtx);
-   simple_mtx_destroy(&screen->bufferview_mtx);
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
 #ifdef ENABLE_SHADER_CACHE
@@ -1968,15 +1942,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
          screen->resizable_bar = true;
    }
 
-   simple_mtx_init(&screen->surface_mtx, mtx_plain);
-   simple_mtx_init(&screen->bufferview_mtx, mtx_plain);
-
    if (!screen->info.have_KHR_imageless_framebuffer) {
       simple_mtx_init(&screen->framebuffer_mtx, mtx_plain);
       _mesa_hash_table_init(&screen->framebuffer_cache, screen, hash_framebuffer_state, equals_framebuffer_state);
    }
-   _mesa_hash_table_init(&screen->surface_cache, screen, NULL, equals_ivci);
-   _mesa_hash_table_init(&screen->bufferview_cache, screen, NULL, equals_bvci);
 
    zink_screen_init_descriptor_funcs(screen, false);
    util_idalloc_mt_init_tc(&screen->buffer_ids);

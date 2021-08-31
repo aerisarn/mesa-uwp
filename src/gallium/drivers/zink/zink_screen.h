@@ -89,10 +89,6 @@ struct zink_screen {
 
    struct hash_table framebuffer_cache;
    simple_mtx_t framebuffer_mtx;
-   struct hash_table surface_cache;
-   simple_mtx_t surface_mtx;
-   struct hash_table bufferview_cache;
-   simple_mtx_t bufferview_mtx;
 
    struct slab_parent_pool transfer_pool;
    struct disk_cache *disk_cache;

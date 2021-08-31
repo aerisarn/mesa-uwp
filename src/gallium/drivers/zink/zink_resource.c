@@ -58,6 +58,19 @@
 #define DRM_FORMAT_MOD_LINEAR 0
 #endif
 
+
+static bool
+equals_ivci(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(VkImageViewCreateInfo)) == 0;
+}
+
+static bool
+equals_bvci(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(VkBufferViewCreateInfo)) == 0;
+}
+
 static void
 zink_transfer_flush_region(struct pipe_context *pctx,
                            struct pipe_transfer *ptrans,
@@ -95,7 +108,10 @@ zink_resource_destroy(struct pipe_screen *pscreen,
    if (pres->target == PIPE_BUFFER) {
       util_range_destroy(&res->valid_buffer_range);
       util_idalloc_mt_free(&screen->buffer_ids, res->base.buffer_id_unique);
-   }
+      simple_mtx_destroy(&res->bufferview_mtx);
+   } else
+      simple_mtx_destroy(&res->surface_mtx);
+   /* no need to do anything for the caches, these objects own the resource lifetimes */
 
    zink_resource_object_reference(screen, &res->obj, NULL);
    zink_resource_object_reference(screen, &res->scanout_obj, NULL);
@@ -772,9 +788,14 @@ resource_create(struct pipe_screen *pscreen,
                                              64, NULL,
                                              &res->dt_stride);
    }
-   if (res->obj->is_buffer)
+   if (res->obj->is_buffer) {
       res->base.buffer_id_unique = util_idalloc_mt_alloc(&screen->buffer_ids);
-
+      _mesa_hash_table_init(&res->bufferview_cache, screen, NULL, equals_bvci);
+      simple_mtx_init(&res->bufferview_mtx, mtx_plain);
+   } else {
+      _mesa_hash_table_init(&res->surface_cache, screen, NULL, equals_ivci);
+      simple_mtx_init(&res->surface_mtx, mtx_plain);
+   }
    return &res->base.b;
 }
 

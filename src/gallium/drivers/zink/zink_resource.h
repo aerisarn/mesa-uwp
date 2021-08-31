@@ -30,6 +30,7 @@ struct zink_batch;
 struct zink_context;
 struct zink_bo;
 
+#include "util/hash_table.h"
 #include "util/simple_mtx.h"
 #include "util/u_transfer.h"
 #include "util/u_range.h"
@@ -120,6 +121,17 @@ struct zink_resource {
    union {
       uint16_t bind_count[2]; //gfx, compute
       uint32_t all_binds;
+   };
+
+   union {
+      struct {
+         struct hash_table bufferview_cache;
+         simple_mtx_t bufferview_mtx;
+      };
+      struct {
+         struct hash_table surface_cache;
+         simple_mtx_t surface_mtx;
+      };
    };
 
    bool dmabuf_acquire;

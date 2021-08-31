@@ -621,8 +621,8 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
    bvci.range = !offset && range == res->base.b.width0 ? VK_WHOLE_SIZE : range;
 
    uint32_t hash = hash_bufferview(&bvci);
-   simple_mtx_lock(&screen->bufferview_mtx);
-   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->bufferview_cache, hash, &bvci);
+   simple_mtx_lock(&res->bufferview_mtx);
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&res->bufferview_cache, hash, &bvci);
    if (he) {
       buffer_view = he->data;
       p_atomic_inc(&buffer_view->reference.count);
@@ -641,10 +641,10 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, enum pipe_f
       buffer_view->bvci = bvci;
       buffer_view->buffer_view = view;
       buffer_view->hash = hash;
-      _mesa_hash_table_insert_pre_hashed(&screen->bufferview_cache, hash, &buffer_view->bvci, buffer_view);
+      _mesa_hash_table_insert_pre_hashed(&res->bufferview_cache, hash, &buffer_view->bvci, buffer_view);
    }
 out:
-   simple_mtx_unlock(&screen->bufferview_mtx);
+   simple_mtx_unlock(&res->bufferview_mtx);
    return buffer_view;
 }
 
@@ -747,11 +747,12 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
 void
 zink_destroy_buffer_view(struct zink_screen *screen, struct zink_buffer_view *buffer_view)
 {
-   simple_mtx_lock(&screen->bufferview_mtx);
-   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->bufferview_cache, buffer_view->hash, &buffer_view->bvci);
+   struct zink_resource *res = zink_resource(buffer_view->pres);
+   simple_mtx_lock(&res->bufferview_mtx);
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&res->bufferview_cache, buffer_view->hash, &buffer_view->bvci);
    assert(he);
-   _mesa_hash_table_remove(&screen->bufferview_cache, he);
-   simple_mtx_unlock(&screen->bufferview_mtx);
+   _mesa_hash_table_remove(&res->bufferview_cache, he);
+   simple_mtx_unlock(&res->bufferview_mtx);
    pipe_resource_reference(&buffer_view->pres, NULL);
    VKSCR(DestroyBufferView)(screen->dev, buffer_view->buffer_view, NULL);
    zink_descriptor_set_refs_clear(&buffer_view->desc_set_refs, buffer_view);

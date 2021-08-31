@@ -160,21 +160,21 @@ zink_get_surface(struct zink_context *ctx,
             const struct pipe_surface *templ,
             VkImageViewCreateInfo *ivci)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_surface *surface = NULL;
+   struct zink_resource *res = zink_resource(pres);
    uint32_t hash = hash_ivci(ivci);
 
-   simple_mtx_lock(&screen->surface_mtx);
-   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(&screen->surface_cache, hash, ivci);
+   simple_mtx_lock(&res->surface_mtx);
+   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(&res->surface_cache, hash, ivci);
 
    if (!entry) {
       /* create a new surface */
       surface = create_surface(&ctx->base, pres, templ, ivci);
       surface->hash = hash;
       surface->ivci = *ivci;
-      entry = _mesa_hash_table_insert_pre_hashed(&screen->surface_cache, hash, &surface->ivci, surface);
+      entry = _mesa_hash_table_insert_pre_hashed(&res->surface_cache, hash, &surface->ivci, surface);
       if (!entry) {
-         simple_mtx_unlock(&screen->surface_mtx);
+         simple_mtx_unlock(&res->surface_mtx);
          return NULL;
       }
 
@@ -183,7 +183,7 @@ zink_get_surface(struct zink_context *ctx,
       surface = entry->data;
       p_atomic_inc(&surface->base.reference.count);
    }
-   simple_mtx_unlock(&screen->surface_mtx);
+   simple_mtx_unlock(&res->surface_mtx);
 
    return &surface->base;
 }
@@ -233,12 +233,13 @@ void
 zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
 {
    struct zink_surface *surface = zink_surface(psurface);
-   simple_mtx_lock(&screen->surface_mtx);
-   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->surface_cache, surface->hash, &surface->ivci);
+   struct zink_resource *res = zink_resource(psurface->texture);
+   simple_mtx_lock(&res->surface_mtx);
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&res->surface_cache, surface->hash, &surface->ivci);
    assert(he);
    assert(he->data == surface);
-   _mesa_hash_table_remove(&screen->surface_cache, he);
-   simple_mtx_unlock(&screen->surface_mtx);
+   _mesa_hash_table_remove(&res->surface_cache, he);
+   simple_mtx_unlock(&res->surface_mtx);
    if (!screen->info.have_KHR_imageless_framebuffer)
       surface_clear_fb_refs(screen, psurface);
    zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
@@ -261,6 +262,7 @@ bool
 zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
 {
    struct zink_surface *surface = zink_surface(*psurface);
+   struct zink_resource *res = zink_resource((*psurface)->texture);
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (surface->simage_view)
       return false;
@@ -268,8 +270,8 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
                                             zink_resource((*psurface)->texture), (*psurface), surface->base.texture->target);
    uint32_t hash = hash_ivci(&ivci);
 
-   simple_mtx_lock(&screen->surface_mtx);
-   struct hash_entry *new_entry = _mesa_hash_table_search_pre_hashed(&screen->surface_cache, hash, &ivci);
+   simple_mtx_lock(&res->surface_mtx);
+   struct hash_entry *new_entry = _mesa_hash_table_search_pre_hashed(&res->surface_cache, hash, &ivci);
    if (zink_batch_usage_exists(surface->batch_uses))
       zink_batch_reference_surface(&ctx->batch, surface);
    surface_clear_fb_refs(screen, *psurface);
@@ -277,29 +279,29 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    if (new_entry) {
       /* reuse existing surface; old one will be cleaned up naturally */
       struct zink_surface *new_surface = new_entry->data;
-      simple_mtx_unlock(&screen->surface_mtx);
+      simple_mtx_unlock(&res->surface_mtx);
       zink_batch_usage_set(&new_surface->batch_uses, ctx->batch.state);
       zink_surface_reference(screen, (struct zink_surface**)psurface, new_surface);
       return true;
    }
-   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(&screen->surface_cache, surface->hash, &surface->ivci);
+   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(&res->surface_cache, surface->hash, &surface->ivci);
    assert(entry);
-   _mesa_hash_table_remove(&screen->surface_cache, entry);
+   _mesa_hash_table_remove(&res->surface_cache, entry);
    VkImageView image_view;
    if (VKSCR(CreateImageView)(screen->dev, &ivci, NULL, &image_view) != VK_SUCCESS) {
       debug_printf("zink: failed to create new imageview");
-      simple_mtx_unlock(&screen->surface_mtx);
+      simple_mtx_unlock(&res->surface_mtx);
       return false;
    }
    surface->hash = hash;
    surface->ivci = ivci;
-   entry = _mesa_hash_table_insert_pre_hashed(&screen->surface_cache, surface->hash, &surface->ivci, surface);
+   entry = _mesa_hash_table_insert_pre_hashed(&res->surface_cache, surface->hash, &surface->ivci, surface);
    assert(entry);
    surface->simage_view = surface->image_view;
    surface->image_view = image_view;
    surface->obj = zink_resource(surface->base.texture)->obj;
    zink_batch_usage_set(&surface->batch_uses, ctx->batch.state);
-   simple_mtx_unlock(&screen->surface_mtx);
+   simple_mtx_unlock(&res->surface_mtx);
    return true;
 }
 
