@@ -55,3 +55,16 @@ intel_gem_supports_syncobj_wait(int fd)
     */
    return ret == -1 && errno == ETIME;
 }
+
+int
+intel_gem_count_engines(const struct drm_i915_query_engine_info *info,
+                        enum drm_i915_gem_engine_class engine_class)
+{
+   assert(info != NULL);
+   int count = 0;
+   for (int i = 0; i < info->num_engines; i++) {
+      if (info->engines[i].engine.engine_class == engine_class)
+         count++;
+   }
+   return count;
+}

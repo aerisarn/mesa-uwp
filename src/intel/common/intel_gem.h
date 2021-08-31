@@ -146,4 +146,7 @@ intel_i915_query_alloc(int fd, uint64_t query_id)
 
 bool intel_gem_supports_syncobj_wait(int fd);
 
+int intel_gem_count_engines(const struct drm_i915_query_engine_info *info,
+                            enum drm_i915_gem_engine_class engine_class);
+
 #endif /* INTEL_GEM_H */

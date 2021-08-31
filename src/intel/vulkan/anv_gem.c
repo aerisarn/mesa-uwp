@@ -360,7 +360,7 @@ anv_gem_create_context_engines(struct anv_device *device,
 
    int i915_engine_counts[] = {
       [I915_ENGINE_CLASS_RENDER] =
-         anv_gem_count_engines(info, I915_ENGINE_CLASS_RENDER),
+         intel_gem_count_engines(info, I915_ENGINE_CLASS_RENDER),
    };
 
    /* For each queue, we look for the next instance that matches the class we
@@ -525,16 +525,4 @@ struct drm_i915_query_engine_info *
 anv_gem_get_engine_info(int fd)
 {
    return intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO);
-}
-
-int
-anv_gem_count_engines(const struct drm_i915_query_engine_info *info,
-                      uint16_t engine_class)
-{
-   int count = 0;
-   for (int i = 0; i < info->num_engines; i++) {
-      if (info->engines[i].engine.engine_class == engine_class)
-         count++;
-   }
-   return count;
 }

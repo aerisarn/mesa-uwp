@@ -697,7 +697,8 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
 
    if (pdevice->engine_info) {
       int gc_count =
-         anv_gem_count_engines(pdevice->engine_info, I915_ENGINE_CLASS_RENDER);
+         intel_gem_count_engines(pdevice->engine_info,
+                                 I915_ENGINE_CLASS_RENDER);
       int g_count = 0;
       int c_count = 0;
 

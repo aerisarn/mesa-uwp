@@ -209,13 +209,6 @@ anv_gem_get_engine_info(int fd)
 }
 
 int
-anv_gem_count_engines(const struct drm_i915_query_engine_info *info,
-                      uint16_t engine_class)
-{
-   unreachable("Unused");
-}
-
-int
 anv_gem_reg_read(int fd, uint32_t offset, uint64_t *result)
 {
    unreachable("Unused");
