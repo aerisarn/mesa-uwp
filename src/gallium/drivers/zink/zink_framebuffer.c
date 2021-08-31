@@ -145,14 +145,14 @@ zink_get_framebuffer_imageless(struct zink_context *ctx)
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (!psurf)
          psurf = ctx->dummy_surface[util_logbase2_ceil(ctx->gfx_pipeline_state.rast_samples+1)];
-      struct zink_surface *surface = zink_surface(psurf);
+      struct zink_surface *surface = zink_csurface(psurf);
       memcpy(&state.infos[i], &surface->info, sizeof(surface->info));
    }
 
    state.num_attachments = ctx->fb_state.nr_cbufs;
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
-      struct zink_surface *surface = zink_surface(psurf);
+      struct zink_surface *surface = zink_csurface(psurf);
       memcpy(&state.infos[state.num_attachments], &surface->info, sizeof(surface->info));
       state.num_attachments++;
    }
@@ -235,13 +235,13 @@ create_framebuffer(struct zink_context *ctx,
    for (int i = 0; i < state->num_attachments; i++) {
       struct zink_surface *surf;
       if (state->attachments[i]) {
-         surf = zink_surface(attachments[i]);
+         surf = zink_csurface(attachments[i]);
          /* no ref! */
          fb->surfaces[i] = attachments[i];
          num_attachments++;
          util_dynarray_append(&surf->framebuffer_refs, struct zink_framebuffer*, fb);
       } else {
-         surf = zink_surface(ctx->dummy_surface[util_logbase2_ceil(state->samples+1)]);
+         surf = zink_csurface(ctx->dummy_surface[util_logbase2_ceil(state->samples+1)]);
          state->attachments[i] = surf->image_view;
       }
    }
@@ -275,14 +275,14 @@ zink_get_framebuffer(struct zink_context *ctx)
    struct zink_framebuffer_state state = {0};
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
-      state.attachments[i] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
+      state.attachments[i] = psurf ? zink_csurface(psurf)->image_view : VK_NULL_HANDLE;
       attachments[i] = psurf;
    }
 
    state.num_attachments = ctx->fb_state.nr_cbufs;
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
-      state.attachments[state.num_attachments] = psurf ? zink_surface(psurf)->image_view : VK_NULL_HANDLE;
+      state.attachments[state.num_attachments] = psurf ? zink_csurface(psurf)->image_view : VK_NULL_HANDLE;
       attachments[state.num_attachments++] = psurf;
    }
 

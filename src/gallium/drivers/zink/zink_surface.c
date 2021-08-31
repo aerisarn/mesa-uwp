@@ -184,8 +184,18 @@ zink_get_surface(struct zink_context *ctx,
       p_atomic_inc(&surface->base.reference.count);
    }
    simple_mtx_unlock(&res->surface_mtx);
-
    return &surface->base;
+}
+
+static struct pipe_surface *
+wrap_surface(struct pipe_context *pctx, struct pipe_surface *psurf)
+{
+   struct zink_ctx_surface *csurf = CALLOC_STRUCT(zink_ctx_surface);
+   csurf->base = *psurf;
+   csurf->surf = (struct zink_surface*)psurf;
+   csurf->base.context = pctx;
+
+   return &csurf->base;
 }
 
 static struct pipe_surface *
@@ -199,7 +209,7 @@ zink_create_surface(struct pipe_context *pctx,
    if (pres->target == PIPE_TEXTURE_3D)
       ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
-   return zink_get_surface(zink_context(pctx), pres, templ, &ivci);
+   return wrap_surface(pctx, zink_get_surface(zink_context(pctx), pres, templ, &ivci));
 }
 
 /* framebuffers are owned by their surfaces, so each time a surface that's part of a cached fb
@@ -255,7 +265,9 @@ static void
 zink_surface_destroy(struct pipe_context *pctx,
                      struct pipe_surface *psurface)
 {
-   zink_destroy_surface(zink_screen(pctx->screen), psurface);
+   struct zink_ctx_surface *csurf = (struct zink_ctx_surface *)psurface;
+   zink_surface_reference(zink_screen(pctx->screen), &csurf->surf, NULL);
+   FREE(csurf);
 }
 
 bool
