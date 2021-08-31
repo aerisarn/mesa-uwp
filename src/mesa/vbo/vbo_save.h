@@ -96,41 +96,6 @@ _vbo_save_get_stride(const struct vbo_save_vertex_list *node)
 }
 
 
-/**
- * Return the first referenced vertex index in the display list node.
- */
-static inline GLuint
-_vbo_save_get_min_index(const struct vbo_save_vertex_list *node)
-{
-   assert(node->cold->prim_count > 0);
-   return node->cold->min_index;
-}
-
-
-/**
- * Return the last referenced vertex index in the display list node.
- */
-static inline GLuint
-_vbo_save_get_max_index(const struct vbo_save_vertex_list *node)
-{
-   assert(node->cold->prim_count > 0);
-   return node->cold->max_index;
-}
-
-
-/**
- * Return the vertex count in the display list node.
- */
-static inline GLuint
-_vbo_save_get_vertex_count(const struct vbo_save_vertex_list *node)
-{
-   assert(node->cold->prim_count > 0);
-   const struct _mesa_prim *first_prim = &node->cold->prims[0];
-   const struct _mesa_prim *last_prim = &node->cold->prims[node->cold->prim_count - 1];
-   return last_prim->start - first_prim->start + last_prim->count;
-}
-
-
 /* These buffers should be a reasonable size to support upload to
  * hardware.  Current vbo implementation will re-upload on any
  * changes, so don't make too big or apps which dynamically create
