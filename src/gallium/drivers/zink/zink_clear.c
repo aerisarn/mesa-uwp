@@ -116,14 +116,16 @@ clear_in_rp(struct pipe_context *pctx,
    }
    cr.baseArrayLayer = 0;
    cr.layerCount = util_framebuffer_get_num_layers(fb);
-   struct zink_batch *batch = zink_batch_rp(ctx);
+   struct zink_batch *batch = &ctx->batch;
+   zink_batch_rp(ctx);
    VKCTX(CmdClearAttachments)(batch->state->cmdbuf, num_attachments, attachments, 1, &cr);
 }
 
 static void
 clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const union pipe_color_union *pcolor, unsigned level, unsigned layer, unsigned layerCount)
 {
-   struct zink_batch *batch = zink_batch_no_rp(ctx);
+   struct zink_batch *batch = &ctx->batch;
+   zink_batch_no_rp(ctx);
    VkImageSubresourceRange range = {0};
    range.baseMipLevel = level;
    range.levelCount = 1;
@@ -147,7 +149,8 @@ clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const uni
 static void
 clear_zs_no_rp(struct zink_context *ctx, struct zink_resource *res, VkImageAspectFlags aspects, double depth, unsigned stencil, unsigned level, unsigned layer, unsigned layerCount)
 {
-   struct zink_batch *batch = zink_batch_no_rp(ctx);
+   struct zink_batch *batch = &ctx->batch;
+   zink_batch_no_rp(ctx);
    VkImageSubresourceRange range = {0};
    range.baseMipLevel = level;
    range.levelCount = 1;
@@ -448,7 +451,8 @@ zink_clear_buffer(struct pipe_context *pctx,
          - size is the number of bytes to fill, and must be either a multiple of 4,
            or VK_WHOLE_SIZE to fill the range from offset to the end of the buffer
        */
-      struct zink_batch *batch = zink_batch_no_rp(ctx);
+      struct zink_batch *batch = &ctx->batch;
+      zink_batch_no_rp(ctx);
       zink_batch_reference_resource_rw(batch, res, true);
       util_range_add(&res->base.b, &res->valid_buffer_range, offset, offset + size);
       VKCTX(CmdFillBuffer)(batch->state->cmdbuf, res->obj->buffer, offset, size, *(uint32_t*)clear_value);

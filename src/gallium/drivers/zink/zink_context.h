@@ -389,28 +389,22 @@ void
 zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc);
 
 void
-zink_begin_render_pass(struct zink_context *ctx,
-                       struct zink_batch *batch);
+zink_begin_render_pass(struct zink_context *ctx);
 void
-zink_end_render_pass(struct zink_context *ctx, struct zink_batch *batch);
+zink_end_render_pass(struct zink_context *ctx);
 
-static inline struct zink_batch *
+static inline void
 zink_batch_rp(struct zink_context *ctx)
 {
-   struct zink_batch *batch = &ctx->batch;
-   if (!batch->in_rp) {
-      zink_begin_render_pass(ctx, batch);
-   }
-   return batch;
+   if (!ctx->batch.in_rp)
+      zink_begin_render_pass(ctx);
 }
 
-static inline struct zink_batch *
+static inline void
 zink_batch_no_rp(struct zink_context *ctx)
 {
-   struct zink_batch *batch = &ctx->batch;
-   zink_end_render_pass(ctx, batch);
-   assert(!batch->in_rp);
-   return batch;
+   zink_end_render_pass(ctx);
+   assert(!ctx->batch.in_rp);
 }
 
 static inline VkPipelineStageFlags

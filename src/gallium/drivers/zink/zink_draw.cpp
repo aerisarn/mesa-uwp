@@ -514,7 +514,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (BATCH_CHANGED)
       zink_update_descriptor_refs(ctx, false);
 
-   batch = zink_batch_rp(ctx);
+   zink_batch_rp(ctx);
    bool pipeline_changed = false;
    if (!HAS_DYNAMIC_STATE)
       pipeline_changed = update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
