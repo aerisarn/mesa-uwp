@@ -21,6 +21,9 @@ glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 
+# X error 167 (GLXBadFBConfig (9)) was generated, but X error 8 was expected.
+glx@glx_arb_create_context_no_error@no error,Fail
+
 # "X error 2 (non-GLX error (-1)) was generated, but X error 8 was expected."
 glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail
 
