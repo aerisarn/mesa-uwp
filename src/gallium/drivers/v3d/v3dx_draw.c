@@ -28,7 +28,6 @@
 #include "util/u_pack_color.h"
 #include "util/u_prim_restart.h"
 #include "util/u_upload_mgr.h"
-#include "indices/u_primconvert.h"
 
 #include "v3d_context.h"
 #include "v3d_resource.h"
@@ -970,14 +969,6 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                         util_draw_vbo_without_prim_restart(pctx, info, drawid_offset, indirect, &draws[0]);
                         return;
                 }
-        }
-
-        if (info->mode >= PIPE_PRIM_QUADS && info->mode <= PIPE_PRIM_POLYGON) {
-                util_primconvert_save_rasterizer_state(v3d->primconvert, &v3d->rasterizer->base);
-                util_primconvert_draw_vbo(v3d->primconvert, info, drawid_offset, indirect, draws, num_draws);
-                perf_debug("Fallback conversion for %d %s vertices\n",
-                           draws[0].count, u_prim_name(info->mode));
-                return;
         }
 
         /* Before setting up the draw, flush anything writing to the resources

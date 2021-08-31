@@ -500,8 +500,6 @@ struct v3d_context {
         /** bitfield of V3D_DIRTY_* */
         uint64_t dirty;
 
-        struct primconvert_context *primconvert;
-
         uint32_t next_uncompiled_program_id;
         uint64_t next_compiled_program_id;
 
