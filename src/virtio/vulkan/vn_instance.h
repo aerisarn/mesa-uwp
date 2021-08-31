@@ -73,6 +73,7 @@ struct vn_instance {
 
    struct {
       mtx_t mutex;
+      bool initialized;
 
       struct vn_physical_device *devices;
       uint32_t device_count;

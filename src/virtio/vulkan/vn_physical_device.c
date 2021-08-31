@@ -1267,10 +1267,11 @@ vn_instance_enumerate_physical_devices(struct vn_instance *instance)
 
    mtx_lock(&instance->physical_device.mutex);
 
-   if (instance->physical_device.devices) {
+   if (instance->physical_device.initialized) {
       result = VK_SUCCESS;
       goto out;
    }
+   instance->physical_device.initialized = true;
 
    uint32_t count;
    result = vn_call_vkEnumeratePhysicalDevices(
