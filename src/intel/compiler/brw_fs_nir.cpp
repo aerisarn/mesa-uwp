@@ -5750,7 +5750,8 @@ fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
     * appear to exist.  However, if you look at Vol 2a, there are no message
     * descriptors provided for Qword atomic ops except for A64 messages.
     */
-   assert(nir_dest_bit_size(instr->dest) == 32);
+   assert(nir_dest_bit_size(instr->dest) == 32 ||
+          (nir_dest_bit_size(instr->dest) == 64 && devinfo->has_lsc));
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
