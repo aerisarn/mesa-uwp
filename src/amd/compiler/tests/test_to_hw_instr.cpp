@@ -240,18 +240,18 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
       //~gfx8! v1: %0:v[0] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx8! v1: %0:v[1] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx9! v1: %0:v[0],  v1: %0:v[1] = v_swap_b32 %0:v[1], %0:v[0]
-      //~gfx[89]! v2b: %0:v[1][16:32] = v_mov_b32 %0:v[0][16:32] dst_preserve
+      //~gfx[89]! v2b: %0:v[1][16:32] = v_mov_b32 %0:v[0][16:32] dst_sel:uword1 dst_preserve src0_sel:uword1
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(1u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_lo, v1), Definition(v1_lo, v2b),
                  Operand(v1_lo, v1), Operand(v0_lo, v2b));
 
       //~gfx[89]! p_unit_test 2
-      //~gfx[89]! v2b: %0:v[0][16:32] = v_mov_b32 %0:v[1][16:32] dst_preserve
-      //~gfx[89]! v2b: %0:v[1][16:32] = v_mov_b32 %0:v[0][0:16] dst_preserve
-      //~gfx[89]! v2b: %0:v[1][0:16] = v_xor_b32 %0:v[1][0:16], %0:v[0][0:16] dst_preserve
-      //~gfx[89]! v2b: %0:v[0][0:16] = v_xor_b32 %0:v[1][0:16], %0:v[0][0:16] dst_preserve
-      //~gfx[89]! v2b: %0:v[1][0:16] = v_xor_b32 %0:v[1][0:16], %0:v[0][0:16] dst_preserve
+      //~gfx[89]! v2b: %0:v[0][16:32] = v_mov_b32 %0:v[1][16:32] dst_sel:uword1 dst_preserve src0_sel:uword1
+      //~gfx[89]! v2b: %0:v[1][16:32] = v_mov_b32 %0:v[0][0:16] dst_sel:uword1 dst_preserve src0_sel:uword0
+      //~gfx[89]! v2b: %0:v[1][0:16] = v_xor_b32 %0:v[1][0:16], %0:v[0][0:16] dst_sel:uword0 dst_preserve src0_sel:uword0 src1_sel:uword0
+      //~gfx[89]! v2b: %0:v[0][0:16] = v_xor_b32 %0:v[1][0:16], %0:v[0][0:16] dst_sel:uword0 dst_preserve src0_sel:uword0 src1_sel:uword0
+      //~gfx[89]! v2b: %0:v[1][0:16] = v_xor_b32 %0:v[1][0:16], %0:v[0][0:16] dst_sel:uword0 dst_preserve src0_sel:uword0 src1_sel:uword0
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_lo, v1), Definition(v1_lo, v2b), Definition(v1_hi, v2b),
@@ -262,8 +262,8 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
       //~gfx8! v1: %0:v[0] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx8! v1: %0:v[1] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx9! v1: %0:v[0],  v1: %0:v[1] = v_swap_b32 %0:v[1], %0:v[0]
-      //~gfx[89]! v2b: %0:v[1][0:16] = v_mov_b32 %0:v[0][0:16] dst_preserve
-      //~gfx[89]! v1b: %0:v[1][16:24] = v_mov_b32 %0:v[0][16:24] dst_preserve
+      //~gfx[89]! v2b: %0:v[1][0:16] = v_mov_b32 %0:v[0][0:16] dst_sel:uword0 dst_preserve src0_sel:uword0
+      //~gfx[89]! v1b: %0:v[1][16:24] = v_mov_b32 %0:v[0][16:24] dst_sel:ubyte2 dst_preserve src0_sel:ubyte2
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(3u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_lo, v1), Definition(v1_b3, v1b),
@@ -274,8 +274,8 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
       //~gfx8! v1: %0:v[0] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx8! v1: %0:v[1] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx9! v1: %0:v[0],  v1: %0:v[1] = v_swap_b32 %0:v[1], %0:v[0]
-      //~gfx[89]! v1b: %0:v[1][8:16] = v_mov_b32 %0:v[0][8:16] dst_preserve
-      //~gfx[89]! v2b: %0:v[1][16:32] = v_mov_b32 %0:v[0][16:32] dst_preserve
+      //~gfx[89]! v1b: %0:v[1][8:16] = v_mov_b32 %0:v[0][8:16] dst_sel:ubyte1 dst_preserve src0_sel:ubyte1
+      //~gfx[89]! v2b: %0:v[1][16:32] = v_mov_b32 %0:v[0][16:32] dst_sel:uword1 dst_preserve src0_sel:uword1
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_lo, v1), Definition(v1_lo, v1b),
@@ -286,8 +286,8 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
       //~gfx8! v1: %0:v[1] = v_xor_b32 %0:v[0], %0:v[1]
       //~gfx8! v1: %0:v[0] = v_xor_b32 %0:v[0], %0:v[1]
       //~gfx9! v1: %0:v[1],  v1: %0:v[0] = v_swap_b32 %0:v[0], %0:v[1]
-      //~gfx[89]! v1b: %0:v[0][8:16] = v_mov_b32 %0:v[1][8:16] dst_preserve
-      //~gfx[89]! v1b: %0:v[0][24:32] = v_mov_b32 %0:v[1][24:32] dst_preserve
+      //~gfx[89]! v1b: %0:v[0][8:16] = v_mov_b32 %0:v[1][8:16] dst_sel:ubyte1 dst_preserve src0_sel:ubyte1
+      //~gfx[89]! v1b: %0:v[0][24:32] = v_mov_b32 %0:v[1][24:32] dst_sel:ubyte3 dst_preserve src0_sel:ubyte3
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(5u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_lo, v1b), Definition(v0_hi, v1b), Definition(v1_lo, v1),
@@ -319,9 +319,9 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
       //~gfx8! v1: %0:v[0] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx8! v1: %0:v[1] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx9! v1: %0:v[0],  v1: %0:v[1] = v_swap_b32 %0:v[1], %0:v[0]
-      //~gfx[89]! v1b: %0:v[1][24:32] = v_xor_b32 %0:v[1][24:32], %0:v[0][24:32] dst_preserve
-      //~gfx[89]! v1b: %0:v[0][24:32] = v_xor_b32 %0:v[1][24:32], %0:v[0][24:32] dst_preserve
-      //~gfx[89]! v1b: %0:v[1][24:32] = v_xor_b32 %0:v[1][24:32], %0:v[0][24:32] dst_preserve
+      //~gfx[89]! v1b: %0:v[1][24:32] = v_xor_b32 %0:v[1][24:32], %0:v[0][24:32] dst_sel:ubyte3 dst_preserve src0_sel:ubyte3 src1_sel:ubyte3
+      //~gfx[89]! v1b: %0:v[0][24:32] = v_xor_b32 %0:v[1][24:32], %0:v[0][24:32] dst_sel:ubyte3 dst_preserve src0_sel:ubyte3 src1_sel:ubyte3
+      //~gfx[89]! v1b: %0:v[1][24:32] = v_xor_b32 %0:v[1][24:32], %0:v[0][24:32] dst_sel:ubyte3 dst_preserve src0_sel:ubyte3 src1_sel:ubyte3
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(8u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_lo, v3b), Definition(v1_lo, v3b),
@@ -332,26 +332,26 @@ BEGIN_TEST(to_hw_instr.swap_subdword)
       //~gfx8! v1: %0:v[0] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx8! v1: %0:v[1] = v_xor_b32 %0:v[1], %0:v[0]
       //~gfx9! v1: %0:v[0],  v1: %0:v[1] = v_swap_b32 %0:v[1], %0:v[0]
-      //~gfx[89]! v1b: %0:v[1][24:32] = v_mov_b32 %0:v[0][24:32] dst_preserve
+      //~gfx[89]! v1b: %0:v[1][24:32] = v_mov_b32 %0:v[0][24:32] dst_sel:ubyte3 dst_preserve src0_sel:ubyte3
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(9u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_lo, v3b), Definition(v1_lo, v3b), Definition(v0_b3, v1b),
                  Operand(v1_lo, v3b), Operand(v0_lo, v3b), Operand(v1_b3, v1b));
 
       //~gfx[89]! p_unit_test 10
-      //~gfx[89]! v1b: %0:v[1][8:16] = v_xor_b32 %0:v[1][8:16], %0:v[0][8:16] dst_preserve
-      //~gfx[89]! v1b: %0:v[0][8:16] = v_xor_b32 %0:v[1][8:16], %0:v[0][8:16] dst_preserve
-      //~gfx[89]! v1b: %0:v[1][8:16] = v_xor_b32 %0:v[1][8:16], %0:v[0][8:16] dst_preserve
-      //~gfx[89]! v1b: %0:v[1][16:24] = v_xor_b32 %0:v[1][16:24], %0:v[0][16:24] dst_preserve
-      //~gfx[89]! v1b: %0:v[0][16:24] = v_xor_b32 %0:v[1][16:24], %0:v[0][16:24] dst_preserve
-      //~gfx[89]! v1b: %0:v[1][16:24] = v_xor_b32 %0:v[1][16:24], %0:v[0][16:24] dst_preserve
+      //~gfx[89]! v1b: %0:v[1][8:16] = v_xor_b32 %0:v[1][8:16], %0:v[0][8:16] dst_sel:ubyte1 dst_preserve src0_sel:ubyte1 src1_sel:ubyte1
+      //~gfx[89]! v1b: %0:v[0][8:16] = v_xor_b32 %0:v[1][8:16], %0:v[0][8:16] dst_sel:ubyte1 dst_preserve src0_sel:ubyte1 src1_sel:ubyte1
+      //~gfx[89]! v1b: %0:v[1][8:16] = v_xor_b32 %0:v[1][8:16], %0:v[0][8:16] dst_sel:ubyte1 dst_preserve src0_sel:ubyte1 src1_sel:ubyte1
+      //~gfx[89]! v1b: %0:v[1][16:24] = v_xor_b32 %0:v[1][16:24], %0:v[0][16:24] dst_sel:ubyte2 dst_preserve src0_sel:ubyte2 src1_sel:ubyte2
+      //~gfx[89]! v1b: %0:v[0][16:24] = v_xor_b32 %0:v[1][16:24], %0:v[0][16:24] dst_sel:ubyte2 dst_preserve src0_sel:ubyte2 src1_sel:ubyte2
+      //~gfx[89]! v1b: %0:v[1][16:24] = v_xor_b32 %0:v[1][16:24], %0:v[0][16:24] dst_sel:ubyte2 dst_preserve src0_sel:ubyte2 src1_sel:ubyte2
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(10u));
       bld.pseudo(aco_opcode::p_parallelcopy,
                  Definition(v0_b1, v2b), Definition(v1_b1, v2b),
                  Operand(v1_b1, v2b), Operand(v0_b1, v2b));
 
       //~gfx[89]! p_unit_test 11
-      //~gfx[89]! v2b: %0:v[1][0:16] = v_mov_b32 %0:v[0][16:32] dst_preserve
+      //~gfx[89]! v2b: %0:v[1][0:16] = v_mov_b32 %0:v[0][16:32] dst_sel:uword0 dst_preserve src0_sel:uword1
       //~gfx[89]! v1: %0:v[0] = v_mov_b32 42
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(11u));
       bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v1), Definition(v1_lo, v2b),
@@ -419,7 +419,7 @@ BEGIN_TEST(to_hw_instr.subdword_constant)
 
       /* 16-bit copy */
       //! p_unit_test 6
-      //! v2b: %_:v[0][0:16] = v_add_f16 0.5, 0 dst_preserve
+      //! v2b: %_:v[0][0:16] = v_add_f16 0.5, 0 dst_sel:uword0 dst_preserve src0_sel:uword0 src1_sel:dword
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(6u));
       bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v2b), Operand::c16(0x3800));
 
@@ -438,20 +438,20 @@ BEGIN_TEST(to_hw_instr.subdword_constant)
       bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_hi, v2b), Operand::c16(0x4205));
 
       //! p_unit_test 9
-      //! v1b: %_:v[0][8:16] = v_mov_b32 0 dst_preserve
-      //! v1b: %_:v[0][16:24] = v_mov_b32 56 dst_preserve
+      //! v1b: %_:v[0][8:16] = v_mov_b32 0 dst_sel:ubyte1 dst_preserve src0_sel:dword
+      //! v1b: %_:v[0][16:24] = v_mov_b32 56 dst_sel:ubyte2 dst_preserve src0_sel:dword
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(9u));
       bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_b1, v2b), Operand::c16(0x3800));
 
       //! p_unit_test 10
-      //! v1b: %_:v[0][8:16] = v_mov_b32 5 dst_preserve
-      //! v1b: %_:v[0][16:24] = v_mul_u32_u24 2, 33 dst_preserve
+      //! v1b: %_:v[0][8:16] = v_mov_b32 5 dst_sel:ubyte1 dst_preserve src0_sel:dword
+      //! v1b: %_:v[0][16:24] = v_mul_u32_u24 2, 33 dst_sel:ubyte2 dst_preserve src0_sel:dword src1_sel:dword
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(10u));
       bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_b1, v2b), Operand::c16(0x4205));
 
       /* 8-bit copy */
       //! p_unit_test 11
-      //! v1b: %_:v[0][0:8] = v_mul_u32_u24 2, 33 dst_preserve
+      //! v1b: %_:v[0][0:8] = v_mul_u32_u24 2, 33 dst_sel:ubyte0 dst_preserve src0_sel:dword src1_sel:dword
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(11u));
       bld.pseudo(aco_opcode::p_parallelcopy, Definition(v0_lo, v1b), Operand::c8(0x42));
 
@@ -505,7 +505,7 @@ BEGIN_TEST(to_hw_instr.extract)
       //; funcs['v_shr'] = lambda _: 'v_ashrrev_i32' if variant.endswith('_signed') else 'v_lshrrev_b32'
       //; funcs['s_bfe'] = lambda _: 's_bfe_i32' if variant.endswith('_signed') else 's_bfe_u32'
       //; funcs['s_shr'] = lambda _: 's_ashr_i32' if variant.endswith('_signed') else 's_lshr_b32'
-      //; funcs['sel'] = lambda bits: ('sext(%%_:v[1])[%s]' if variant.endswith('_signed') else '%%_:v[1][%s]') % bits
+      //; funcs['byte'] = lambda n: '%cbyte%s' % ('s' if variant.endswith('_signed') else 'u', n)
 
       //>> p_unit_test 0
       bld.pseudo(aco_opcode::p_unit_test, Operand::zero());
@@ -554,15 +554,15 @@ BEGIN_TEST(to_hw_instr.extract)
       //>> p_unit_test 4
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
       //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 0, 8
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(0:7) dst_preserve
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(0)
       EXT(0, 0)
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(16:23) dst_preserve
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(2)
       if (i != GFX7)
          EXT(0, 2)
       //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 8, 8
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(8:15) dst_preserve
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(1)
       EXT(1, 0)
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 @sel(24:31) dst_preserve
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(3)
       if (i != GFX7)
          EXT(1, 2)
 
@@ -595,11 +595,11 @@ BEGIN_TEST(to_hw_instr.insert)
       INS(0, 8)
       //~gfx7! v1: %0:v[0] = v_bfe_u32 %0:v[1], 0, 8
       //~gfx7! v1: %0:v[0] = v_lshlrev_b32 8, %0:v[0]
-      //~gfx[^7]! v1: %0:v[0] = v_mov_b32 %0:v[1] dst_sel:ubyte1
+      //~gfx[^7]! v1: %0:v[0] = v_mov_b32 %0:v[1] dst_sel:ubyte1 src0_sel:dword
       INS(1, 8)
       //~gfx7! v1: %0:v[0] = v_bfe_u32 %0:v[1], 0, 8
       //~gfx7! v1: %0:v[0] = v_lshlrev_b32 16, %0:v[0]
-      //~gfx[^7]! v1: %0:v[0] = v_mov_b32 %0:v[1] dst_sel:ubyte2
+      //~gfx[^7]! v1: %0:v[0] = v_mov_b32 %0:v[1] dst_sel:ubyte2 src0_sel:dword
       INS(2, 8)
       //! v1: %0:v[0] = v_lshlrev_b32 24, %0:v[1]
       INS(3, 8)
@@ -640,15 +640,15 @@ BEGIN_TEST(to_hw_instr.insert)
       //>> p_unit_test 2
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
       //~gfx7! v2b: %_:v[0][0:16] = v_bfe_u32 %_:v[1][0:16], 0, 8
-      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 0, %0:v[1][0:7] dst_preserve
+      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 0, %0:v[1] dst_sel:uword0 dst_preserve src0_sel:dword src1_sel:ubyte0
       INS(0, 0)
-      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 0, %0:v[1][0:7] dst_preserve
+      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 0, %0:v[1] dst_sel:uword1 dst_preserve src0_sel:dword src1_sel:ubyte0
       if (i != GFX7)
          INS(0, 2)
       //~gfx7! v2b: %_:v[0][0:16] = v_lshlrev_b32 8, %_:v[1][0:16]
-      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 8, %0:v[1][0:7] dst_preserve
+      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 8, %0:v[1] dst_sel:uword0 dst_preserve src0_sel:dword src1_sel:ubyte0
       INS(1, 0)
-      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 8, %0:v[1][0:7] dst_preserve
+      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 8, %0:v[1] dst_sel:uword1 dst_preserve src0_sel:dword src1_sel:ubyte0
       if (i != GFX7)
          INS(1, 2)
 

@@ -627,19 +627,32 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
       }
       if (sdwa.clamp)
          fprintf(output, " clamp");
-      if (instr->isVOPC())
-         return;
-      if (instr->definitions[0].bytes() == 4) {
+      if (!instr->isVOPC()) {
          char sext = sdwa.dst_sel.sign_extend() ? 's' : 'u';
+         unsigned offset = sdwa.dst_sel.offset();
+         if (instr->definitions[0].isFixed())
+            offset += instr->definitions[0].physReg().byte();
          switch (sdwa.dst_sel.size()) {
-         case 1: fprintf(output, " dst_sel:%cbyte%u", sext, sdwa.dst_sel.offset()); break;
-         case 2: fprintf(output, " dst_sel:%cword%u", sext, sdwa.dst_sel.offset() >> 1); break;
-         case 4: break;
+         case 1: fprintf(output, " dst_sel:%cbyte%u", sext, offset); break;
+         case 2: fprintf(output, " dst_sel:%cword%u", sext, offset >> 1); break;
+         case 4: fprintf(output, " dst_sel:dword"); break;
+         default: break;
+         }
+         if (instr->definitions[0].bytes() < 4)
+            fprintf(output, " dst_preserve");
+      }
+      for (unsigned i = 0; i < std::min<unsigned>(2, instr->operands.size()); i++) {
+         char sext = sdwa.sel[i].sign_extend() ? 's' : 'u';
+         unsigned offset = sdwa.sel[i].offset();
+         if (instr->operands[i].isFixed())
+            offset += instr->operands[i].physReg().byte();
+         switch (sdwa.sel[i].size()) {
+         case 1: fprintf(output, " src%d_sel:%cbyte%u", i, sext, offset); break;
+         case 2: fprintf(output, " src%d_sel:%cword%u", i, sext, offset >> 1); break;
+         case 4: fprintf(output, " src%d_sel:dword", i); break;
          default: break;
          }
       }
-      if (instr->definitions[0].bytes() < 4)
-         fprintf(output, " dst_preserve");
    }
 }
 
@@ -659,12 +672,10 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
       bool* const abs = (bool*)alloca(instr->operands.size() * sizeof(bool));
       bool* const neg = (bool*)alloca(instr->operands.size() * sizeof(bool));
       bool* const opsel = (bool*)alloca(instr->operands.size() * sizeof(bool));
-      SubdwordSel* const sel = (SubdwordSel*)alloca(instr->operands.size() * sizeof(SubdwordSel));
       for (unsigned i = 0; i < instr->operands.size(); ++i) {
          abs[i] = false;
          neg[i] = false;
          opsel[i] = false;
-         sel[i] = SubdwordSel::dword;
       }
       if (instr->isVOP3()) {
          const VOP3_instruction& vop3 = instr->vop3();
@@ -686,7 +697,6 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
             abs[i] = sdwa.abs[i];
             neg[i] = sdwa.neg[i];
             opsel[i] = false;
-            sel[i] = sdwa.sel[i];
          }
       }
       for (unsigned i = 0; i < instr->operands.size(); ++i) {
@@ -701,16 +711,9 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
             fprintf(output, "|");
          if (opsel[i])
             fprintf(output, "hi(");
-         else if (sel[i].sign_extend())
-            fprintf(output, "sext(");
          aco_print_operand(&instr->operands[i], output, flags);
-         if (opsel[i] || (sel[i].sign_extend()))
+         if (opsel[i])
             fprintf(output, ")");
-         if (instr->isSDWA() && i < 2 && sel[i].size() < 4 && instr->operands[i].bytes() == 4) {
-            unsigned begin = sel[i].offset() * 8;
-            unsigned end = begin + sel[i].size() * 8 - 1;
-            fprintf(output, "[%u:%u]", begin, end);
-         }
          if (abs[i])
             fprintf(output, "|");
 
