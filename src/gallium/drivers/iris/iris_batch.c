@@ -175,8 +175,7 @@ decode_batch(struct iris_batch *batch)
 
 static void
 iris_init_batch(struct iris_context *ice,
-                enum iris_batch_name name,
-                int priority)
+                enum iris_batch_name name)
 {
    struct iris_batch *batch = &ice->batches[name];
    struct iris_screen *screen = (void *) ice->ctx.screen;
@@ -193,11 +192,6 @@ iris_init_batch(struct iris_context *ice,
       u_upload_create(&ice->ctx, 4096, PIPE_BIND_CUSTOM,
                       PIPE_USAGE_STAGING, 0);
    iris_fine_fence_init(batch);
-
-   batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
-   assert(batch->hw_ctx_id);
-
-   iris_hw_context_set_priority(screen->bufmgr, batch->hw_ctx_id, priority);
 
    util_dynarray_init(&batch->exec_fences, ralloc_context(NULL));
    util_dynarray_init(&batch->syncobjs, ralloc_context(NULL));
@@ -240,12 +234,25 @@ iris_init_batch(struct iris_context *ice,
    iris_batch_reset(batch);
 }
 
+static void
+iris_init_non_engine_contexts(struct iris_context *ice, int priority)
+{
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
+      struct iris_batch *batch = &ice->batches[i];
+      batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
+      assert(batch->hw_ctx_id);
+      iris_hw_context_set_priority(screen->bufmgr, batch->hw_ctx_id, priority);
+   }
+}
+
 void
 iris_init_batches(struct iris_context *ice, int priority)
 {
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      iris_init_batch(ice, (enum iris_batch_name) i, priority);
-   }
+   iris_init_non_engine_contexts(ice, priority);
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
+      iris_init_batch(ice, (enum iris_batch_name) i);
 }
 
 static int
