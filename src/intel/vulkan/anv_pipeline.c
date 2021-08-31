@@ -2036,7 +2036,8 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
          pCreateInfo->pRasterizationState->frontFace;
    }
 
-   if (states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) {
+   if ((states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) &&
+         (pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT)) {
       assert(pCreateInfo->pInputAssemblyState);
       dynamic->primitive_topology = pCreateInfo->pInputAssemblyState->topology;
    }
@@ -2053,7 +2054,8 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
          pCreateInfo->pRasterizationState->depthBiasEnable;
    }
 
-   if (states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
+   if ((states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE) &&
+         (pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT)) {
       assert(pCreateInfo->pInputAssemblyState);
       dynamic->primitive_restart_enable =
          pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
