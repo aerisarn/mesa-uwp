@@ -70,6 +70,7 @@ struct radeon_info {
    bool has_load_ctx_reg_pkt;
    bool has_out_of_order_rast;
    bool has_packed_math_16bit;
+   bool has_accelerated_dot_product;
    bool cpdma_prefetch_writes_memory;
    bool has_gfx9_scissor_bug;
    bool has_tc_compat_zrange_bug;

@@ -870,6 +870,13 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* Whether chips support double rate packed math instructions. */
    info->has_packed_math_16bit = info->chip_class >= GFX9;
 
+   /* Whether chips support dot product instructions. A subset of these support a smaller
+    * instruction encoding which accumulates with the destination.
+    */
+   info->has_accelerated_dot_product =
+      info->family == CHIP_ARCTURUS || info->family == CHIP_ALDEBARAN ||
+      info->family == CHIP_VEGA20 || info->family >= CHIP_NAVI12;
+
    /* TODO: Figure out how to use LOAD_CONTEXT_REG on GFX6-GFX7. */
    info->has_load_ctx_reg_pkt =
       info->chip_class >= GFX9 || (info->chip_class >= GFX8 && info->me_fw_feature >= 41);
