@@ -75,6 +75,7 @@ enum PACKED intel_perf_counter_data_type {
 enum PACKED intel_perf_counter_units {
    /* size */
    INTEL_PERF_COUNTER_UNITS_BYTES,
+   INTEL_PERF_COUNTER_UNITS_GBPS,
 
    /* frequency */
    INTEL_PERF_COUNTER_UNITS_HZ,

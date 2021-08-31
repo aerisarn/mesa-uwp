@@ -186,8 +186,14 @@ def brkt(subexp):
 def splice_bitwise_and(args):
     return brkt(args[1]) + " & " + brkt(args[0])
 
+def splice_bitwise_or(args):
+    return brkt(args[1]) + " | " + brkt(args[0])
+
 def splice_logical_and(args):
     return brkt(args[1]) + " && " + brkt(args[0])
+
+def splice_umul(args):
+    return brkt(args[1]) + " * " + brkt(args[0])
 
 def splice_ult(args):
     return brkt(args[1]) + " < " + brkt(args[0])
@@ -201,12 +207,22 @@ def splice_ulte(args):
 def splice_ugt(args):
     return brkt(args[1]) + " > " + brkt(args[0])
 
+def splice_lshft(args):
+    return brkt(args[1]) + " << " + brkt(args[0])
+
+def splice_equal(args):
+    return brkt(args[1]) + " == " + brkt(args[0])
+
 exp_ops = {}
 #                 (n operands, splicer)
 exp_ops["AND"]  = (2, splice_bitwise_and)
+exp_ops["OR"]   = (2, splice_bitwise_or)
 exp_ops["UGTE"] = (2, splice_ugte)
 exp_ops["ULT"]  = (2, splice_ult)
 exp_ops["&&"]   = (2, splice_logical_and)
+exp_ops["UMUL"] = (2, splice_umul)
+exp_ops["<<"]   = (2, splice_lshft)
+exp_ops["=="]   = (2, splice_equal)
 
 
 hw_vars = {}
@@ -436,6 +452,7 @@ units_map = {
     "threads" : True,
     "us" : True,
     "utilization" : False,
+    "gbps" : True,
     }
 
 
