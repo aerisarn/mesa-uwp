@@ -30,8 +30,11 @@ struct radv_accel_struct_header {
    uint32_t root_node_offset;
    uint32_t reserved;
    float aabb[2][3];
+
+   /* Everything after this gets updated/copied from the CPU. */
    uint64_t compacted_size;
    uint64_t serialization_size;
+   uint32_t copy_dispatch_size[3];
 };
 
 struct radv_bvh_triangle_node {

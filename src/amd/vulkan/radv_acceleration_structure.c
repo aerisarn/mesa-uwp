@@ -622,7 +622,12 @@ build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometry
 
    compute_bounds(base_ptr, header->root_node_offset, &header->aabb[0][0]);
 
-   /* TODO init sizes and figure out what is needed for serialization. */
+   header->compacted_size = (char *)ctx.curr_ptr - base_ptr;
+
+   /* 16 bytes per invocation, 64 invocations per workgroup */
+   header->copy_dispatch_size[0] = DIV_ROUND_UP(header->compacted_size, 16 * 64);
+   header->copy_dispatch_size[1] = 1;
+   header->copy_dispatch_size[2] = 1;
 
 fail:
    device->ws->buffer_unmap(accel->bo);
@@ -1519,10 +1524,26 @@ radv_CmdBuildAccelerationStructuresKHR(
                                cmd_buffer->device->meta_state.accel_struct_build.internal_p_layout,
                                VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
          radv_unaligned_dispatch(cmd_buffer, dst_node_count, 1, 1);
-         bvh_states[i].node_offset += dst_node_count * 128;
+         if (!final_iter)
+            bvh_states[i].node_offset += dst_node_count * 128;
          bvh_states[i].node_count = dst_node_count;
          bvh_states[i].scratch_offset = dst_scratch_offset;
       }
+   }
+   for (uint32_t i = 0; i < infoCount; ++i) {
+      RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
+                       pInfos[i].dstAccelerationStructure);
+      const size_t base = offsetof(struct radv_accel_struct_header, compacted_size);
+      struct radv_accel_struct_header header;
+      header.compacted_size = bvh_states[i].node_offset;
+
+      /* 16 bytes per invocation, 64 invocations per workgroup */
+      header.copy_dispatch_size[0] = DIV_ROUND_UP(header.compacted_size, 16 * 64);
+      header.copy_dispatch_size[1] = 1;
+      header.copy_dispatch_size[2] = 1;
+
+      radv_update_buffer(cmd_buffer, accel_struct->bo, accel_struct->mem_offset + base,
+                         (const char *)&header + base, sizeof(header) - base);
    }
    free(bvh_states);
    radv_meta_restore(&saved_state, cmd_buffer);
