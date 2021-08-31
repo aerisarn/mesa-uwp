@@ -81,6 +81,8 @@ struct zink_batch_state {
    struct set *surfaces;
    struct set *bufferviews;
 
+   struct util_dynarray unref_resources;
+
    struct util_dynarray persistent_resources;
    struct util_dynarray zombie_samplers;
    struct util_dynarray dead_framebuffers;
