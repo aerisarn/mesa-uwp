@@ -235,7 +235,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    } else
       key.is_default_variant = true;
 
-   if (zs->nir->info.num_inlinable_uniforms &&
+   if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
       key.inline_uniforms = true;
       memcpy(key.base.inlined_uniform_values,
