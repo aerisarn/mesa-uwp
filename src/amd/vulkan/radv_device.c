@@ -99,11 +99,15 @@ radv_get_current_time(void)
 static uint64_t
 radv_get_absolute_timeout(uint64_t timeout)
 {
-   uint64_t current_time = radv_get_current_time();
+   if (timeout == UINT64_MAX) {
+      return timeout;
+   } else {
+      uint64_t current_time = radv_get_current_time();
 
-   timeout = MIN2(UINT64_MAX - current_time, timeout);
+      timeout = MIN2(UINT64_MAX - current_time, timeout);
 
-   return current_time + timeout;
+      return current_time + timeout;
+   }
 }
 
 static int
