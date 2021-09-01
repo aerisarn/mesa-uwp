@@ -918,6 +918,7 @@ vn_android_device_import_ahb(struct vn_device *dev,
    int dup_fd = -1;
    uint64_t alloc_size = 0;
    uint32_t mem_type_bits = 0;
+   bool force_unmappable = false;
    VkResult result = VK_SUCCESS;
 
    handle = AHardwareBuffer_getNativeHandle(ahb);
@@ -960,6 +961,12 @@ vn_android_device_import_ahb(struct vn_device *dev,
       }
 
       alloc_size = mem_req.size;
+
+      /* XXX Workaround before we use cross-domain backend in minigbm. The
+       * blob_mem allocated from virgl backend can have a queried guest mappable
+       * size smaller than the size returned from image memory requirement.
+       */
+      force_unmappable = true;
    }
 
    if (dedicated_info && dedicated_info->buffer != VK_NULL_HANDLE) {
@@ -999,8 +1006,8 @@ vn_android_device_import_ahb(struct vn_device *dev,
       .allocationSize = alloc_size,
       .memoryTypeIndex = alloc_info->memoryTypeIndex,
    };
-   result =
-      vn_device_memory_import_dma_buf(dev, mem, &local_alloc_info, dup_fd);
+   result = vn_device_memory_import_dma_buf(dev, mem, &local_alloc_info,
+                                            force_unmappable, dup_fd);
    if (result != VK_SUCCESS) {
       close(dup_fd);
       return result;
