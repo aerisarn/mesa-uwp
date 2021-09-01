@@ -314,6 +314,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_FBFETCH:
       return 8;
    case PIPE_CAP_FBFETCH_COHERENT:
+   case PIPE_CAP_FBFETCH_ZS:
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
       return 1;
