@@ -2424,6 +2424,11 @@ fill_surface_state(struct isl_device *isl_dev,
       f.aux_usage = aux_usage;
       f.clear_color = res->aux.clear_color;
 
+      if (aux_usage == ISL_AUX_USAGE_MC)
+         f.mc_format = iris_format_for_usage(isl_dev->info,
+                                             res->external_format,
+                                             surf->usage).fmt;
+
       if (res->aux.bo)
          f.aux_address = res->aux.bo->address + res->aux.offset;
 
