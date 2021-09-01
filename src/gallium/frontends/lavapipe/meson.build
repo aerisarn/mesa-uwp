@@ -65,7 +65,7 @@ liblavapipe_st = static_library(
   'lavapipe_st',
   [liblvp_files, lvp_entrypoints, lvp_commands, sha1_h],
   link_with : [ libvulkan_wsi ],
-  c_args : [ lvp_flags ],
+  c_args : [ c_msvc_compat_args, lvp_flags ],
   gnu_symbol_visibility : 'hidden',
   include_directories : [ inc_include, inc_src, inc_util, inc_gallium, inc_compiler, inc_gallium_aux, inc_vulkan_wsi ],
   dependencies : [ idep_nir, idep_mesautil, idep_vulkan_util, lvp_deps ]
