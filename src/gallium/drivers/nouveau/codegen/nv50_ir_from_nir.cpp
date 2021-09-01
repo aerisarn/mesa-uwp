@@ -1706,7 +1706,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          }
 
          TexInstruction *texi = mkTex(OP_TXF, TEX_TARGET_2D_MS_ARRAY, 0, 0, defs, srcs);
-         texi->tex.levelZero = 1;
+         texi->tex.levelZero = true;
          texi->tex.mask = mask;
          texi->tex.useOffsets = 0;
          texi->tex.r = 0xffff;

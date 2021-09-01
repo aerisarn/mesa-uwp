@@ -1737,7 +1737,7 @@ ModifierFolding::visit(BasicBlock *bb)
    for (i = bb->getEntry(); i; i = next) {
       next = i->next;
 
-      if (0 && i->op == OP_SUB) {
+      if (false && i->op == OP_SUB) {
          // turn "sub" into "add neg" (do we really want this ?)
          i->op = OP_ADD;
          i->src(0).mod = i->src(0).mod ^ Modifier(NV50_IR_MOD_NEG);
