@@ -736,10 +736,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_TEX_INSTRUCTIONS:
    case PIPE_SHADER_CAP_MAX_TEX_INDIRECTIONS:
    case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
-      if (shader == PIPE_SHADER_VERTEX ||
-          shader == PIPE_SHADER_FRAGMENT)
-         return INT_MAX;
-      return 0;
+      return INT_MAX;
 
    case PIPE_SHADER_CAP_MAX_INPUTS: {
       uint32_t max = 0;
