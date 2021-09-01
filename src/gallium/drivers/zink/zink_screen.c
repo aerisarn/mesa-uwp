@@ -817,10 +817,12 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
    case PIPE_SHADER_CAP_SUBROUTINES:
    case PIPE_SHADER_CAP_INT64_ATOMICS:
-   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
       return 0; /* not implemented */
 
+   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
+      return screen->info.feats11.uniformAndStorageBuffer16BitAccess ||
+             (screen->info.have_KHR_16bit_storage && screen->info.storage_16bit_feats.uniformAndStorageBuffer16BitAccess);
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:
       return screen->info.feats11.storageInputOutput16 ||
              (screen->info.have_KHR_16bit_storage && screen->info.storage_16bit_feats.storageInputOutput16);
