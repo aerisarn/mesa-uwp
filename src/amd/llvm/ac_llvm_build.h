@@ -581,7 +581,7 @@ struct ac_ngg_prim {
    unsigned num_vertices;
    LLVMValueRef isnull;
    LLVMValueRef index[3];
-   LLVMValueRef edgeflag[3];
+   LLVMValueRef edgeflags;
    LLVMValueRef passthrough;
 };
 

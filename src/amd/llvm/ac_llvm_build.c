@@ -4627,12 +4627,10 @@ LLVMValueRef ac_pack_prim_export(struct ac_llvm_context *ctx, const struct ac_ng
    LLVMBuilderRef builder = ctx->builder;
    LLVMValueRef tmp = LLVMBuildZExt(builder, prim->isnull, ctx->i32, "");
    LLVMValueRef result = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->i32, 31, false), "");
+   result = LLVMBuildOr(ctx->builder, result, prim->edgeflags, "");
 
    for (unsigned i = 0; i < prim->num_vertices; ++i) {
       tmp = LLVMBuildShl(builder, prim->index[i], LLVMConstInt(ctx->i32, 10 * i, false), "");
-      result = LLVMBuildOr(builder, result, tmp, "");
-      tmp = LLVMBuildZExt(builder, prim->edgeflag[i], ctx->i32, "");
-      tmp = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->i32, 10 * i + 9, false), "");
       result = LLVMBuildOr(builder, result, tmp, "");
    }
    return result;

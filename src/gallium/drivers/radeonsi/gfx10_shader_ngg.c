@@ -70,17 +70,6 @@ static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
                                 LLVMConstInt(ctx->ac.i32, GFX10_GS_QUERY_BUF, false));
 }
 
-static LLVMValueRef ngg_get_initial_edgeflag(struct si_shader_context *ctx, unsigned index)
-{
-   if (ctx->stage == MESA_SHADER_VERTEX) {
-      LLVMValueRef tmp;
-      tmp = LLVMBuildLShr(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args.gs_invocation_id),
-                          LLVMConstInt(ctx->ac.i32, 8 + index, false), "");
-      return LLVMBuildTrunc(ctx->ac.builder, tmp, ctx->ac.i1, "");
-   }
-   return ctx->ac.i1false;
-}
-
 /**
  * Return the number of vertices as a constant in \p num_vertices,
  * and return a more precise value as LLVMValueRef from the function.
@@ -190,19 +179,23 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
       ngg_get_vertices_per_prim(ctx, &prim.num_vertices);
 
       prim.isnull = ctx->ac.i1false;
+      prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
+
       for (unsigned i = 0; i < 3; ++i)
          prim.index[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
 
-      for (unsigned i = 0; i < prim.num_vertices; ++i) {
-         prim.edgeflag[i] = ngg_get_initial_edgeflag(ctx, i);
+      if (ctx->shader->selector->info.writes_edgeflag) {
+         LLVMValueRef edgeflags = ctx->ac.i32_0;
 
-         if (ctx->shader->selector->info.writes_edgeflag) {
+         for (unsigned i = 0; i < prim.num_vertices; ++i) {
             LLVMValueRef edge;
 
             edge = LLVMBuildLoad(ctx->ac.builder, user_edgeflags[i], "");
-            edge = LLVMBuildAnd(ctx->ac.builder, prim.edgeflag[i], edge, "");
-            prim.edgeflag[i] = edge;
+            edge = LLVMBuildZExt(ctx->ac.builder, edge, ctx->ac.i32, "");
+            edge = LLVMBuildShl(ctx->ac.builder, edge, LLVMConstInt(ctx->ac.i32, 9 + i*10, 0), "");
+            edgeflags = LLVMBuildOr(ctx->ac.builder, edgeflags, edge, "");
          }
+         prim.edgeflags = LLVMBuildAnd(ctx->ac.builder, prim.edgeflags, edgeflags, "");
       }
 
       ac_build_export_prim(&ctx->ac, &prim);
@@ -1159,12 +1152,12 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       struct ac_ngg_prim prim = {};
       prim.num_vertices = 3;
       prim.isnull = ctx->ac.i1false;
+      prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
 
       for (unsigned vtx = 0; vtx < 3; vtx++) {
          prim.index[vtx] = LLVMBuildLoad(
             builder, si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte1_new_thread_id), "");
          prim.index[vtx] = LLVMBuildZExt(builder, prim.index[vtx], ctx->ac.i32, "");
-         prim.edgeflag[vtx] = ngg_get_initial_edgeflag(ctx, vtx);
       }
 
       /* Set the new GS input VGPR. */
@@ -1909,11 +1902,11 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
       tmp = ngg_gs_vertex_ptr(ctx, tid);
       flags = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
       prim.isnull = LLVMBuildNot(builder, LLVMBuildTrunc(builder, flags, ctx->ac.i1, ""), "");
+      prim.edgeflags = ctx->ac.i32_0;
 
       for (unsigned i = 0; i < verts_per_prim; ++i) {
          prim.index[i] = LLVMBuildSub(builder, vertlive_scan.result_exclusive,
                                       LLVMConstInt(ctx->ac.i32, verts_per_prim - i - 1, false), "");
-         prim.edgeflag[i] = ctx->ac.i1false;
       }
 
       /* Geometry shaders output triangle strips, but NGG expects triangles. */

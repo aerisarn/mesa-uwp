@@ -1654,13 +1654,8 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
       } else {
          prim.num_vertices = num_vertices;
          prim.isnull = ctx->ac.i1false;
+         prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args->ac);
          memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
-
-         for (unsigned i = 0; i < num_vertices; ++i) {
-            tmp = LLVMBuildLShr(builder, ac_get_arg(&ctx->ac, ctx->args->ac.gs_invocation_id),
-                                LLVMConstInt(ctx->ac.i32, 8 + i, false), "");
-            prim.edgeflag[i] = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
-         }
       }
 
       ac_build_export_prim(&ctx->ac, &prim);
@@ -1926,11 +1921,11 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
       tmp = ngg_gs_vertex_ptr(ctx, tid);
       flags = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 0), "");
       prim.isnull = LLVMBuildNot(builder, LLVMBuildTrunc(builder, flags, ctx->ac.i1, ""), "");
+      prim.edgeflags = ctx->ac.i32_0;
 
       for (unsigned i = 0; i < verts_per_prim; ++i) {
          prim.index[i] = LLVMBuildSub(builder, vertlive_scan.result_exclusive,
                                       LLVMConstInt(ctx->ac.i32, verts_per_prim - i - 1, false), "");
-         prim.edgeflag[i] = ctx->ac.i1false;
       }
 
       /* Geometry shaders output triangle strips, but NGG expects triangles. */
