@@ -3911,7 +3911,10 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
 Operand
 load_lds_size_m0(Builder& bld)
 {
-   /* TODO: m0 does not need to be initialized on GFX9+ */
+   /* m0 does not need to be initialized on GFX9+ */
+   if (bld.program->chip_class >= GFX9)
+      return Operand(s1);
+
    return bld.m0((Temp)bld.copy(bld.def(s1, m0), Operand::c32(0xffffffffu)));
 }
 
@@ -3976,6 +3979,9 @@ lds_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned 
    else
       instr = bld.ds(op, Definition(val), offset, m, const_offset);
    instr->ds().sync = info.sync;
+
+   if (m.isUndefined())
+      instr->operands.pop_back();
 
    return val;
 }
@@ -4410,6 +4416,9 @@ store_lds(isel_context* ctx, unsigned elem_size_bytes, Temp data, uint32_t wrmas
          instr = bld.ds(op, address_offset, split_data, m, inline_offset);
       }
       instr->ds().sync = memory_sync_info(storage_shared);
+
+      if (m.isUndefined())
+         instr->operands.pop_back();
    }
 }
 
@@ -7293,6 +7302,10 @@ visit_shared_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    if (return_previous)
       ds->definitions[0] = Definition(get_ssa_temp(ctx, &instr->dest.ssa));
    ds->sync = memory_sync_info(storage_shared, semantic_atomicrmw);
+
+   if (m.isUndefined())
+      ds->operands.pop_back();
+
    ctx->block->instructions.emplace_back(std::move(ds));
 }
 
