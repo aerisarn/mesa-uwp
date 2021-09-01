@@ -744,6 +744,7 @@ static const _mesa_glsl_extension _mesa_glsl_supported_extensions[] = {
    EXT(AMD_vertex_shader_layer),
    EXT(AMD_vertex_shader_viewport_index),
    EXT(ANDROID_extension_pack_es31a),
+   EXT(ARM_shader_framebuffer_fetch_depth_stencil),
    EXT(EXT_blend_func_extended),
    EXT(EXT_demote_to_helper_invocation),
    EXT(EXT_frag_depth),

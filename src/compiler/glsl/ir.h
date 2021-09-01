@@ -612,6 +612,13 @@ public:
              this->name != this->name_storage;
    }
 
+   inline bool is_fb_fetch_color_output() const
+   {
+      return this->data.fb_fetch_output &&
+             this->data.location != FRAG_RESULT_DEPTH &&
+             this->data.location != FRAG_RESULT_STENCIL;
+   }
+
    /**
     * Enable emitting extension warnings for this variable
     */
