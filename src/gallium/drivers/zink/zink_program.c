@@ -853,6 +853,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
+      zink_screen_update_pipeline_cache(screen, &prog->base);
       struct gfx_pipeline_cache_entry *pc_entry = CALLOC_STRUCT(gfx_pipeline_cache_entry);
       if (!pc_entry)
          return VK_NULL_HANDLE;

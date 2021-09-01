@@ -276,7 +276,6 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       debug_printf("vkCreateGraphicsPipelines failed\n");
       return VK_NULL_HANDLE;
    }
-   zink_screen_update_pipeline_cache(screen, &prog->base);
 
    return pipeline;
 }
