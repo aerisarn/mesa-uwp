@@ -435,18 +435,19 @@ elif _egl == 'false'
 endif
 if _egl == 'auto'
   with_egl = (
-    not ['darwin', 'windows'].contains(host_machine.system()) and
-    with_dri and with_shared_glapi
+    host_machine.system() != 'darwin' and
+    (with_platform_windows or with_dri) and
+    with_shared_glapi
   )
 elif _egl == 'enabled'
-  if not with_dri and not with_platform_haiku
-    error('EGL requires dri')
+  if not with_dri and not with_platform_haiku and not with_platform_windows
+    error('EGL requires dri, haiku, or windows')
   elif not with_shared_glapi
     error('EGL requires shared-glapi')
   elif not ['disabled', 'dri'].contains(with_glx)
     error('EGL requires dri, but a GLX is being built without dri')
-  elif ['darwin', 'windows'].contains(host_machine.system())
-    error('EGL is not available on Windows or MacOS')
+  elif host_machine.system() == 'darwin'
+    error('EGL is not available on MacOS')
   endif
   with_egl = true
 else
@@ -912,6 +913,9 @@ else
 endif
 if with_gbm and not with_platform_android
   pre_args += '-DHAVE_DRM_PLATFORM'
+endif
+if with_platform_windows
+  pre_args += '-DHAVE_WINDOWS_PLATFORM'
 endif
 
 with_android_stub = get_option('android-stub')
@@ -2187,6 +2191,9 @@ if with_egl
   endif
   if with_dri3
     egl_drivers += 'builtin:egl_dri3'
+  endif
+  if with_platform_windows
+    egl_drivers += 'builtin:wgl'
   endif
   lines += 'EGL drivers:     ' + ' '.join(egl_drivers)
 endif
