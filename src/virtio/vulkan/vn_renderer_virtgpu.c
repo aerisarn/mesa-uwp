@@ -1173,15 +1173,20 @@ virtgpu_bo_create_from_dma_buf(struct vn_renderer *renderer,
       if (info.blob_mem != VIRTGPU_BLOB_MEM_HOST3D)
          goto fail;
 
-      if (info.size < size)
-         goto fail;
-
       /* blob_flags is not passed to the kernel and is only for internal use
        * on imports.  Set it to what works best for us.
        */
       blob_flags = virtgpu_bo_blob_flags(flags, 0);
       blob_flags |= VIRTGPU_BLOB_FLAG_USE_SHAREABLE;
-      mmap_size = size;
+
+      /* mmap_size is only used when mappable */
+      mmap_size = 0;
+      if (blob_flags & VIRTGPU_BLOB_FLAG_USE_MAPPABLE) {
+         if (info.size < size)
+            goto fail;
+
+         mmap_size = size;
+      }
    } else {
       /* must be classic resource here
        * set blob_flags to 0 to fail virtgpu_bo_map
