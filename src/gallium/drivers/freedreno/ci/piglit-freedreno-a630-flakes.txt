@@ -20,6 +20,14 @@ spec@arb_draw_indirect@arb_draw_indirect-transform-feedback
 # Flaky since around 2021-03-22.  First appeared on an innocent mingw branch.
 spec@arb_depth_texture@fbo-clear-formats
 
+# Occasionally passes instead of failing
+spec@egl_chromium_sync_control@conformance
+spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test
+
+# First appeared on 2021-07-07 in a container uprev, became frequent by
+# 2021-08-04 starting from a pretty clearly unrelated MR
+spec@ext_framebuffer_object@fbo-blending-format-quirks
+
 # Flaky since around 2021-04-21.  First appeared on
 # https://gitlab.freedesktop.org/robclark/mesa/-/jobs/9101752 (fd/go-fast)
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil
