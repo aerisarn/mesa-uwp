@@ -26,6 +26,8 @@
 #ifndef ZINK_SHADER_KEYS_H
 # define ZINK_SHADER_KEYS_H
 
+#include "compiler/shader_info.h"
+
 struct zink_vs_key_base {
    bool clip_halfz;
    bool push_drawid;
@@ -79,7 +81,6 @@ struct zink_shader_key {
    struct zink_shader_key_base base;
    unsigned inline_uniforms:1;
    uint32_t size;
-   bool is_default_variant;
 };
 
 static inline const struct zink_fs_key *

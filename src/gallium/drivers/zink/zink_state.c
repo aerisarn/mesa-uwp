@@ -25,6 +25,7 @@
 
 #include "zink_context.h"
 #include "zink_format.h"
+#include "zink_program.h"
 #include "zink_screen.h"
 
 #include "compiler/shader_enums.h"
@@ -178,11 +179,45 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
          ctx->vertex_state_changed = !zink_screen(pctx->screen)->info.have_EXT_vertex_input_dynamic_state;
          ctx->vertex_buffers_dirty = ctx->element_state->hw_state.num_bindings > 0;
       }
-      if (ctx->element_state->decomposed_attrs != state->decomposed_attrs ||
-          ctx->element_state->decomposed_attrs_without_w != state->decomposed_attrs_without_w)
-         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
-      state->decomposed_attrs = ctx->element_state->decomposed_attrs;
-      state->decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
+      const struct zink_vs_key *vs = zink_get_vs_key(ctx);
+      uint32_t decomposed_attrs = 0, decomposed_attrs_without_w = 0;
+      switch (vs->size) {
+      case 1:
+         decomposed_attrs = vs->u8.decomposed_attrs;
+         decomposed_attrs_without_w = vs->u8.decomposed_attrs_without_w;
+         break;
+      case 2:
+         decomposed_attrs = vs->u16.decomposed_attrs;
+         decomposed_attrs_without_w = vs->u16.decomposed_attrs_without_w;
+         break;
+      case 4:
+         decomposed_attrs = vs->u16.decomposed_attrs;
+         decomposed_attrs_without_w = vs->u16.decomposed_attrs_without_w;
+         break;
+      }
+      if (ctx->element_state->decomposed_attrs != decomposed_attrs ||
+          ctx->element_state->decomposed_attrs_without_w != decomposed_attrs_without_w) {
+         unsigned size = MAX2(ctx->element_state->decomposed_attrs_size, ctx->element_state->decomposed_attrs_without_w_size);
+         struct zink_shader_key *key = (struct zink_shader_key *)zink_set_vs_key(ctx);
+         key->size -= 2 * key->key.vs.size;
+         switch (size) {
+         case 1:
+            key->key.vs.u8.decomposed_attrs = ctx->element_state->decomposed_attrs;
+            key->key.vs.u8.decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
+            break;
+         case 2:
+            key->key.vs.u16.decomposed_attrs = ctx->element_state->decomposed_attrs;
+            key->key.vs.u16.decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
+            break;
+         case 4:
+            key->key.vs.u32.decomposed_attrs = ctx->element_state->decomposed_attrs;
+            key->key.vs.u32.decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
+            break;
+         default: break;
+         }
+         key->key.vs.size = size;
+         key->size += 2 * size;
+      }
       state->element_state = &ctx->element_state->hw_state;
    } else {
      state->element_state = NULL;
@@ -380,6 +415,10 @@ zink_bind_blend_state(struct pipe_context *pctx, void *cso)
       state->blend_state = cso;
       state->blend_id = blend ? blend->hash : 0;
       state->dirty = true;
+      bool force_dual_color_blend = zink_screen(pctx->screen)->driconf.dual_color_blend_by_location &&
+                                    blend && blend->dual_src_blend && state->blend_state->attachments[1].blendEnable;
+      if (force_dual_color_blend != zink_get_fs_key(ctx)->force_dual_color_blend)
+         zink_set_fs_key(ctx)->force_dual_color_blend = force_dual_color_blend;
       ctx->blend_state_changed = true;
    }
 }
@@ -635,7 +674,6 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
-   bool clip_halfz = ctx->rast_state ? ctx->rast_state->base.clip_halfz : false;
    bool point_quad_rasterization = ctx->rast_state ? ctx->rast_state->base.point_quad_rasterization : false;
    bool scissor = ctx->rast_state ? ctx->rast_state->base.scissor : false;
    bool pv_last = ctx->rast_state ? ctx->rast_state->hw_state.pv_last : false;
@@ -654,8 +692,8 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       ctx->gfx_pipeline_state.dirty = true;
       ctx->rast_state_changed = true;
 
-      if (clip_halfz != ctx->rast_state->base.clip_halfz) {
-         ctx->last_vertex_stage_dirty = true;
+      if (zink_get_last_vertex_key(ctx)->clip_halfz != ctx->rast_state->base.clip_halfz) {
+         zink_set_last_vertex_key(ctx)->clip_halfz = ctx->rast_state->base.clip_halfz;
          ctx->vp_state_changed = true;
       }
 
@@ -663,11 +701,8 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
          ctx->gfx_pipeline_state.dyn_state1.front_face = ctx->rast_state->front_face;
          ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
       }
-      if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization) {
-         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
-         ctx->gfx_pipeline_state.coord_replace_bits = ctx->rast_state->base.sprite_coord_enable;
-         ctx->gfx_pipeline_state.coord_replace_yinvert = !!ctx->rast_state->base.sprite_coord_mode;
-      }
+      if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)
+         zink_set_fs_point_coord_key(ctx);
       if (ctx->rast_state->base.scissor != scissor)
          ctx->scissor_changed = true;
    }

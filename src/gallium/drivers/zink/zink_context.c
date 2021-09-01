@@ -1000,12 +1000,22 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
 {
    struct zink_context *ctx = (struct zink_context *)pctx;
    const uint32_t bit = BITFIELD_BIT(shader);
+   uint32_t *inlinable_uniforms;
+   struct zink_shader_key *key = NULL;
 
+   if (shader == PIPE_SHADER_COMPUTE) {
+      inlinable_uniforms = ctx->compute_inlinable_uniforms;
+   } else {
+      key = &ctx->gfx_pipeline_state.shader_keys.key[shader];
+      inlinable_uniforms = key->base.inlined_uniform_values;
+   }
    if (!(ctx->inlinable_uniforms_valid_mask & bit) ||
-       memcmp(ctx->inlinable_uniforms[shader], values, num_values * 4)) {
-      memcpy(ctx->inlinable_uniforms[shader], values, num_values * 4);
+       memcmp(inlinable_uniforms, values, num_values * 4)) {
+      memcpy(inlinable_uniforms, values, num_values * 4);
       ctx->dirty_shader_stages |= bit;
       ctx->inlinable_uniforms_valid_mask |= bit;
+      if (key)
+         key->inline_uniforms = true;
    }
 }
 
@@ -1017,6 +1027,21 @@ unbind_ubo(struct zink_context *ctx, struct zink_resource *res, enum pipe_shader
    res->ubo_bind_mask[pstage] &= ~BITFIELD_BIT(slot);
    res->ubo_bind_count[pstage == PIPE_SHADER_COMPUTE]--;
    update_res_bind_count(ctx, res, pstage == PIPE_SHADER_COMPUTE, true);
+}
+
+static void
+invalidate_inlined_uniforms(struct zink_context *ctx, enum pipe_shader_type pstage)
+{
+   unsigned bit = BITFIELD_BIT(pstage);
+   if (!(ctx->inlinable_uniforms_valid_mask & bit))
+      return;
+   ctx->inlinable_uniforms_valid_mask &= ~bit;
+   ctx->dirty_shader_stages |= bit;
+   if (pstage == PIPE_SHADER_COMPUTE)
+      return;
+
+   struct zink_shader_key *key = &ctx->gfx_pipeline_state.shader_keys.key[pstage];
+   key->inline_uniforms = false;
 }
 
 static void
@@ -1086,7 +1111,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
    }
    if (index == 0) {
       /* Invalidate current inlinable uniforms. */
-      ctx->inlinable_uniforms_valid_mask &= ~(1 << shader);
+      invalidate_inlined_uniforms(ctx, shader);
    }
 
    if (update)
@@ -2066,7 +2091,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       ctx->scissor_changed = true;
    rebind_fb_state(ctx, NULL, true);
    ctx->fb_state.samples = util_framebuffer_get_num_samples(state);
-   uint8_t rast_samples = ctx->fb_state.samples - 1;
    /* get_framebuffer adds a ref if the fb is reused or created;
     * always do get_framebuffer first to avoid deleting the same fb
     * we're about to use
@@ -2095,9 +2119,16 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->fb_changed |= ctx->framebuffer != fb;
    ctx->framebuffer = fb;
 
-   /* in vulkan, gl_SampleMask needs to be explicitly ignored for sampleCount == 1 */
-   if ((ctx->gfx_pipeline_state.rast_samples > 0) != (rast_samples > 0))
-      ctx->dirty_shader_stages |= 1 << PIPE_SHADER_FRAGMENT;
+   uint8_t rast_samples = ctx->fb_state.samples - 1;
+   /* update the shader key if applicable:
+    * if gl_SampleMask[] is written to, we have to ensure that we get a shader with the same sample count:
+    * in GL, rast_samples==1 means ignore gl_SampleMask[]
+    * in VK, gl_SampleMask[] is never ignored
+    */
+   if (rast_samples != ctx->gfx_pipeline_state.rast_samples &&
+       (!ctx->gfx_stages[PIPE_SHADER_FRAGMENT] ||
+        ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir->info.outputs_written & (1 << FRAG_RESULT_SAMPLE_MASK)))
+      zink_set_fs_key(ctx)->samples = ctx->fb_state.samples > 0;
    if (ctx->gfx_pipeline_state.rast_samples != rast_samples) {
       ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;
       ctx->gfx_pipeline_state.dirty = true;
@@ -3646,6 +3677,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->blitter)
       goto fail;
 
+   ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base.last_vertex_stage = true;
+   ctx->last_vertex_stage_dirty = true;
+   ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX].size = sizeof(struct zink_vs_key_base);
+   ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_TESS_EVAL].size = sizeof(struct zink_vs_key_base);
+   ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_GEOMETRY].size = sizeof(struct zink_vs_key_base);
+   ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_FRAGMENT].size = sizeof(struct zink_fs_key);
    _mesa_hash_table_init(&ctx->compute_program_cache, ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
    _mesa_hash_table_init(&ctx->framebuffer_cache, ctx, hash_framebuffer_imageless, equals_framebuffer_imageless);
    _mesa_set_init(&ctx->render_pass_state_cache, ctx, hash_rp_state, equals_rp_state);

@@ -193,7 +193,7 @@ struct zink_context {
 
    unsigned shader_has_inlinable_uniforms_mask;
    unsigned inlinable_uniforms_valid_mask;
-   uint32_t inlinable_uniforms[PIPE_SHADER_TYPES][MAX_INLINABLE_UNIFORMS];
+   uint32_t compute_inlinable_uniforms[MAX_INLINABLE_UNIFORMS];
 
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_shader_buffer ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];

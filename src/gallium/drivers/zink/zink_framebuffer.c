@@ -160,7 +160,7 @@ zink_get_framebuffer_imageless(struct zink_context *ctx)
    state.width = MAX2(ctx->fb_state.width, 1);
    state.height = MAX2(ctx->fb_state.height, 1);
    state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1) - 1;
-   state.samples = ctx->gfx_pipeline_state.rast_samples;
+   state.samples = ctx->fb_state.samples - 1;
 
    struct zink_framebuffer *fb;
    struct hash_entry *entry = _mesa_hash_table_search(&ctx->framebuffer_cache, &state);
@@ -289,7 +289,7 @@ zink_get_framebuffer(struct zink_context *ctx)
    state.width = MAX2(ctx->fb_state.width, 1);
    state.height = MAX2(ctx->fb_state.height, 1);
    state.layers = MAX2(util_framebuffer_get_num_layers(&ctx->fb_state), 1) - 1;
-   state.samples = ctx->gfx_pipeline_state.rast_samples;
+   state.samples = ctx->fb_state.samples - 1;
 
    struct zink_framebuffer *fb;
    simple_mtx_lock(&screen->framebuffer_mtx);

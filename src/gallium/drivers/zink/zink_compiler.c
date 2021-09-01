@@ -782,7 +782,7 @@ zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
 }
 
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, struct zink_shader_key *key)
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, const struct zink_shader_key *key)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = NULL;

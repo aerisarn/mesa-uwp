@@ -99,7 +99,7 @@ zink_screen_init_compiler(struct zink_screen *screen);
 void
 zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer);
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, struct zink_shader_key *key);
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, const struct zink_shader_key *key);
 
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,

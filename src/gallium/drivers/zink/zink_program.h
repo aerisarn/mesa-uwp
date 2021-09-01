@@ -278,6 +278,59 @@ zink_program_has_descriptors(const struct zink_program *pg)
 {
    return pg->num_dsl > 0;
 }
+
+static inline struct zink_fs_key *
+zink_set_fs_key(struct zink_context *ctx)
+{
+   ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
+   return (struct zink_fs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_FRAGMENT];
+}
+
+static inline const struct zink_fs_key *
+zink_get_fs_key(struct zink_context *ctx)
+{
+   return (const struct zink_fs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_FRAGMENT];
+}
+
+static inline struct zink_vs_key *
+zink_set_vs_key(struct zink_context *ctx)
+{
+   ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
+   return (struct zink_vs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX];
+}
+
+static inline const struct zink_vs_key *
+zink_get_vs_key(struct zink_context *ctx)
+{
+   return (const struct zink_vs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX];
+}
+
+static inline struct zink_vs_key_base *
+zink_set_last_vertex_key(struct zink_context *ctx)
+{
+   ctx->last_vertex_stage_dirty = true;
+   return (struct zink_vs_key_base *)&ctx->gfx_pipeline_state.shader_keys.last_vertex;
+}
+
+static inline const struct zink_vs_key_base *
+zink_get_last_vertex_key(struct zink_context *ctx)
+{
+   return (const struct zink_vs_key_base *)&ctx->gfx_pipeline_state.shader_keys.last_vertex;
+}
+
+static inline void
+zink_set_fs_point_coord_key(struct zink_context *ctx)
+{
+   const struct zink_fs_key *fs = zink_get_fs_key(ctx);
+   bool disable = !ctx->gfx_pipeline_state.has_points || !ctx->rast_state->base.sprite_coord_enable;
+   uint8_t coord_replace_bits = disable ? 0 : ctx->rast_state->base.sprite_coord_enable;
+   bool coord_replace_yinvert = disable ? false : !!ctx->rast_state->base.sprite_coord_mode;
+   if (fs->coord_replace_bits != coord_replace_bits || fs->coord_replace_yinvert != coord_replace_yinvert) {
+      zink_set_fs_key(ctx)->coord_replace_bits = coord_replace_bits;
+      zink_set_fs_key(ctx)->coord_replace_yinvert = coord_replace_yinvert;
+   }
+}
+
 #ifdef __cplusplus
 }
 #endif
