@@ -91,6 +91,8 @@ struct zink_program {
    bool removed;
 };
 
+#define ZINK_MAX_INLINED_VARIANTS 5
+
 struct zink_gfx_program {
    struct zink_program base;
 
@@ -102,6 +104,7 @@ struct zink_gfx_program {
    struct zink_shader *last_vertex_stage;
 
    struct list_head shader_cache[ZINK_SHADER_COUNT][2]; //normal, inline uniforms
+   unsigned inlined_variant_count[ZINK_SHADER_COUNT];
 
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    struct hash_table pipelines[11]; // number of draw modes we support

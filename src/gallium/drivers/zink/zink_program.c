@@ -85,18 +85,21 @@ shader_module_hash(const struct zink_shader_module *zm)
 static struct zink_shader_module *
 get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen,
                             struct zink_shader *zs, struct zink_gfx_program *prog,
-                            const struct zink_gfx_pipeline_state *state)
+                            struct zink_gfx_pipeline_state *state)
 {
    gl_shader_stage stage = zs->nir->info.stage;
    enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
    VkShaderModule mod;
    struct zink_shader_module *zm = NULL;
    unsigned base_size = 0;
-   const struct zink_shader_key *key = &state->shader_keys.key[pstage];
+   struct zink_shader_key *key = &state->shader_keys.key[pstage];
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
-      base_size = zs->nir->info.num_inlinable_uniforms;
+      if (prog->inlined_variant_count[pstage] < ZINK_MAX_INLINED_VARIANTS)
+         base_size = zs->nir->info.num_inlinable_uniforms;
+      else
+         key->inline_uniforms = false;
    }
 
    struct zink_shader_module *iter, *next;
@@ -127,6 +130,8 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
          memcpy(zm->key + key->size, &key->base, base_size * sizeof(uint32_t));
       zm->hash = shader_module_hash(zm);
       zm->default_variant = !base_size && list_is_empty(&prog->shader_cache[pstage][0]);
+      if (base_size)
+         prog->inlined_variant_count[pstage]++;
    }
    list_add(&zm->list, &prog->shader_cache[pstage][!!base_size]);
    return zm;
