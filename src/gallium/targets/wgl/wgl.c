@@ -83,7 +83,7 @@ static boolean use_zink = FALSE;
 static const char *created_driver_name = NULL;
 
 static struct pipe_screen *
-gdi_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
+wgl_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
 {
    struct pipe_screen* screen = NULL;
 
@@ -125,7 +125,7 @@ gdi_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
 }
 
 static struct pipe_screen *
-gdi_screen_create(HDC hDC)
+wgl_screen_create(HDC hDC)
 {
    struct sw_winsys *winsys;
    UNUSED bool sw_only = env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
@@ -154,7 +154,7 @@ gdi_screen_create(HDC hDC)
     * sorted list. Don't do this if GALLIUM_DRIVER is specified.
     */
    for (unsigned i = 0; i < ARRAY_SIZE(drivers); ++i) {
-      struct pipe_screen* screen = gdi_screen_create_by_name(hDC, drivers[i], winsys);
+      struct pipe_screen* screen = wgl_screen_create_by_name(hDC, drivers[i], winsys);
       if (screen) {
          created_driver_name = drivers[i];
          return screen;
@@ -169,7 +169,7 @@ gdi_screen_create(HDC hDC)
 
 
 static void
-gdi_present(struct pipe_screen *screen,
+wgl_present(struct pipe_screen *screen,
             struct pipe_context *ctx,
             struct pipe_resource *res,
             HDC hDC)
@@ -227,7 +227,7 @@ gdi_present(struct pipe_screen *screen,
 
 #if WINVER >= 0xA00
 static boolean
-gdi_get_adapter_luid(struct pipe_screen* screen,
+wgl_get_adapter_luid(struct pipe_screen* screen,
    HDC hDC,
    LUID* adapter_luid)
 {
@@ -241,7 +241,7 @@ gdi_get_adapter_luid(struct pipe_screen* screen,
 
 
 static unsigned
-gdi_get_pfd_flags(struct pipe_screen *screen)
+wgl_get_pfd_flags(struct pipe_screen *screen)
 {
 #ifdef GALLIUM_D3D12
    if (use_d3d12)
@@ -252,7 +252,7 @@ gdi_get_pfd_flags(struct pipe_screen *screen)
 
 
 static struct stw_winsys_framebuffer *
-gdi_create_framebuffer(struct pipe_screen *screen,
+wgl_create_framebuffer(struct pipe_screen *screen,
                        HDC hDC,
                        int iPixelFormat)
 {
@@ -264,26 +264,26 @@ gdi_create_framebuffer(struct pipe_screen *screen,
 }
 
 static const char *
-gdi_get_name(void)
+wgl_get_name(void)
 {
    return created_driver_name;
 }
 
 
 static const struct stw_winsys stw_winsys = {
-   &gdi_screen_create,
-   &gdi_present,
+   &wgl_screen_create,
+   &wgl_present,
 #if WINVER >= 0xA00
-   &gdi_get_adapter_luid,
+   &wgl_get_adapter_luid,
 #else
    NULL, /* get_adapter_luid */
 #endif
    NULL, /* shared_surface_open */
    NULL, /* shared_surface_close */
    NULL, /* compose */
-   &gdi_get_pfd_flags,
-   &gdi_create_framebuffer,
-   &gdi_get_name,
+   &wgl_get_pfd_flags,
+   &wgl_create_framebuffer,
+   &wgl_get_name,
 };
 
 

@@ -28,18 +28,16 @@ ogldef = files('opengl32.def')[0]
 
 libopengl32 = shared_library(
   'opengl32',
-  ['libgl_gdi.c', 'stw_wgl.c'],
+  ['stw_wgl.c'],
   vs_module_defs : ogldef,
   include_directories : [
-    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_wgl, inc_gallium_winsys, inc_gallium_winsys_sw, inc_gallium_drivers,
+    inc_include, inc_wgl, inc_src,
   ],
-  link_whole : [libwgl],
   link_with : [
-    libgallium, libglsl, libmesa_gallium, libwsgdi, libglapi_static, libglapi
+    libgallium_wgl, libglapi_static, libglapi
   ],
   dependencies : [
-    dep_ws2_32, idep_nir, idep_mesautil, driver_swrast, driver_swr,
-    driver_d3d12, driver_zink, winsys_d3d12_wgl
+    idep_mesautil
   ],
   c_args : ['-D_GDI32_'],
   link_args : opengl32_link_args,
@@ -69,6 +67,7 @@ if with_tests
   # The CI pipeline for MinGW doesn't support creating a window, so don't run these tests there
   if with_tests and cc.get_id() != 'gcc'
     wgl_test_env = environment()
+    wgl_test_env.append('PATH', libgallium_wgl_build_dir)
     if with_shared_glapi
       wgl_test_env.append('PATH', libglapi_build_dir)
     endif
