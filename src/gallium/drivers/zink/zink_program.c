@@ -153,7 +153,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    }
    keybox = make_keybox(prog, key, key->size, &key->base, base_size);
    hash = keybox_hash(keybox);
-   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(&prog->base.shader_cache[pstage],
+   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(&prog->shader_cache[pstage],
                                                                  hash, keybox);
 
    if (entry) {
@@ -179,7 +179,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       }
       zm->shader = mod;
 
-      _mesa_hash_table_insert_pre_hashed(&prog->base.shader_cache[pstage], hash, keybox, zm);
+      _mesa_hash_table_insert_pre_hashed(&prog->shader_cache[pstage], hash, keybox, zm);
       if (is_default_variant) {
          /* previously returned */
          *default_zm = zm;
@@ -377,7 +377,7 @@ zink_create_gfx_program(struct zink_context *ctx,
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (stages[i]) {
-         _mesa_hash_table_init(&prog->base.shader_cache[i], prog, keybox_hash, keybox_equals);
+         _mesa_hash_table_init(&prog->shader_cache[i], prog, keybox_hash, keybox_equals);
          prog->shaders[i] = stages[i];
          prog->stages_present |= BITFIELD_BIT(i);
       }
@@ -386,7 +386,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       prog->shaders[PIPE_SHADER_TESS_EVAL]->generated =
       prog->shaders[PIPE_SHADER_TESS_CTRL] =
         zink_shader_tcs_create(screen, stages[PIPE_SHADER_VERTEX], vertices_per_patch);
-        _mesa_hash_table_init(&prog->base.shader_cache[PIPE_SHADER_TESS_CTRL], prog, keybox_hash, keybox_equals);
+        _mesa_hash_table_init(&prog->shader_cache[PIPE_SHADER_TESS_CTRL], prog, keybox_hash, keybox_equals);
       prog->stages_present |= BITFIELD_BIT(PIPE_SHADER_TESS_CTRL);
    }
 
@@ -619,7 +619,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          _mesa_set_remove_key(prog->shaders[i]->programs, prog);
          prog->shaders[i] = NULL;
       }
-      destroy_shader_cache(screen, &prog->base.shader_cache[i]);
+      destroy_shader_cache(screen, &prog->shader_cache[i]);
       ralloc_free(prog->nir[i]);
    }
 

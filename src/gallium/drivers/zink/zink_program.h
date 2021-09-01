@@ -88,9 +88,6 @@ struct zink_program {
    VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES + 1]; // one for each type + push
    unsigned num_dsl;
 
-   /* the shader cache stores a mapping of zink_shader_key::VkShaderModule */
-   struct hash_table shader_cache[ZINK_SHADER_COUNT];
-
    bool removed;
 };
 
@@ -105,6 +102,9 @@ struct zink_gfx_program {
    struct zink_shader_module *default_variants[ZINK_SHADER_COUNT][2]; //[default, no streamout]
    const void *default_variant_key[ZINK_SHADER_COUNT];
    struct zink_shader *last_vertex_stage;
+
+   /* the shader cache stores a mapping of zink_shader_key::VkShaderModule */
+   struct hash_table shader_cache[ZINK_SHADER_COUNT];
 
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    struct hash_table pipelines[11]; // number of draw modes we support
