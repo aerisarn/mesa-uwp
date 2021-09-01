@@ -177,12 +177,8 @@ static void
 update_gfx_program(struct zink_context *ctx)
 {
    if (ctx->last_vertex_stage_dirty) {
-      if (ctx->gfx_stages[PIPE_SHADER_GEOMETRY])
-         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_GEOMETRY);
-      else if (ctx->gfx_stages[PIPE_SHADER_TESS_EVAL])
-         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_TESS_EVAL);
-      else
-         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
+      enum pipe_shader_type pstage = pipe_shader_type_from_mesa(ctx->last_vertex_stage->nir->info.stage);
+      ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
       ctx->last_vertex_stage_dirty = false;
    }
    unsigned bits = BITFIELD_MASK(PIPE_SHADER_COMPUTE);
