@@ -145,6 +145,8 @@ elif with_platform_windows
     '-DEGLAPI=', '-DPUBLIC='
   ]
   files_egl += files('drivers/wgl/egl_wgl.c')
+  incs_for_egl += [inc_wgl, inc_gallium, inc_gallium_aux]
+  link_for_egl += libgallium_wgl
 endif
 
 if cc.has_function('mincore')
