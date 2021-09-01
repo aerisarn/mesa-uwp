@@ -18,6 +18,9 @@ glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 shaders@glsl-fs-fogscale,Fail
 shaders@glsl-fs-fogscale@gs-out and fs,Fail
+
+# "MESA: error: unknown vertex shader output name: VARYING_SLOT_EDGE
+#  gl-2.0-edgeflag: ../src/freedreno/ir3/ir3_context.c:411: ir3_context_error: Assertion `!""' failed."
 shaders@point-vertex-id divisor,Crash
 shaders@point-vertex-id gl_instanceid,Crash
 shaders@point-vertex-id gl_instanceid divisor,Crash
@@ -25,10 +28,15 @@ shaders@point-vertex-id gl_vertexid,Crash
 shaders@point-vertex-id gl_vertexid divisor,Crash
 shaders@point-vertex-id gl_vertexid gl_instanceid,Crash
 shaders@point-vertex-id gl_vertexid gl_instanceid divisor,Crash
+
+# "nir_src_comp_as_uint: Assertion `nir_src_is_const(src)' failed." looking up image
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non-const-uniform-index2,Crash
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non-const-uniform-index,Crash
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-non-const-uniform-index,Crash
+
+# "shader_runner: ../src/freedreno/ir3/ir3_compiler_nir.c:3928: collect_tex_prefetches: Assertion `fetch->samp_id < 0xf' failed."
 spec@arb_arrays_of_arrays@execution@sampler@fs-struct-const-index-sampler-const-index,Crash
+
 spec@arb_compute_shader@execution@border-color,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
@@ -49,7 +57,10 @@ spec@arb_depth_texture@texwrap formats bordercolor-swizzled,Fail
 spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT16- swizzled- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT24- swizzled- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT32- swizzled- border color only,Fail
+
+# "arb_direct_state_access-gettextureimage-formats: ../src/mesa/main/texstore.c:413: _mesa_texstore_s8_z24: Assertion `srcFormat == GL_DEPTH_STENCIL_EXT || srcFormat == GL_DEPTH_COMPONENT || srcFormat == GL_STENCIL_INDEX' failed."
 spec@arb_direct_state_access@gettextureimage-formats,Crash
+
 spec@arb_direct_state_access@transformfeedback-bufferbase,Fail
 spec@arb_direct_state_access@transformfeedback-bufferbase@general test,Fail
 spec@arb_direct_state_access@transformfeedback-bufferrange,Fail
@@ -88,7 +99,10 @@ spec@arb_sample_shading@samplemask 4 all@sample mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4,Fail
 spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
+
+# "nir_src_comp_as_uint: Assertion `nir_src_is_const(src)' failed." looking up image
 spec@arb_shader_image_load_store@indexing,Crash
+
 spec@arb_shader_storage_buffer_object@array-ssbo-auto-binding,Fail
 spec@arb_shader_storage_buffer_object@linker@instance-matching-shader-storage-blocks-member-array-size-mismatch,Fail
 spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
@@ -183,7 +197,10 @@ spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32I- swizzled-
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32UI- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8I- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8UI- swizzled- border color only,Fail
+
+# segfault on fd6_emit_image_tex() of null image resource
 spec@arb_texture_view@bug-layers-image,Crash
+
 spec@arb_texture_view@mipgen,Fail
 spec@arb_texture_view@rendering-layers-image,Fail
 spec@arb_texture_view@rendering-layers-image@layers rendering of image1DArray,Fail
@@ -198,7 +215,10 @@ spec@arb_transform_feedback3@gl_skipcomponents2,Fail
 spec@arb_transform_feedback3@gl_skipcomponents3,Fail
 spec@arb_transform_feedback3@gl_skipcomponents4,Fail
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
+
+# crash in dri3_fence_reset with a NULL buffer arg
 spec@egl 1.4@egl-copy-buffers,Crash
+
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance,Fail
@@ -247,8 +267,11 @@ spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled@GL_DEPTH24_ST
 spec@ext_packed_float@query-rgba-signed-components,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled@GL_R11F_G11F_B10F- swizzled- border color only,Fail
+
+# "../src/gallium/drivers/freedreno/a6xx/fd6_gmem.c:976:emit_blit: Assertion `psurf->u.tex.first_layer == psurf->u.tex.last_layer' failed."
 spec@ext_texture_array@fbo-depth-array depth-layered-clear,Crash
 spec@ext_texture_array@fbo-depth-array stencil-layered-clear,Crash
+
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RED_RGTC1- swizzled- border color only,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RG_RGTC2- swizzled- border color only,Fail
@@ -429,18 +452,31 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb@sRGB decode,Fail
+
+# "MESA: error: Unhandled ALU op: f2f64"
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color,Crash
+
+# segfault on fd6_emit_image_tex() of null image resource
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
+
+# "MESA: error: unknown vertex shader output name: VARYING_SLOT_EDGE
+#  gl-2.0-edgeflag: ../src/freedreno/ir3/ir3_context.c:411: ir3_context_error: Assertion `!""' failed."
 spec@!opengl 1.0@gl-1.0-edgeflag,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
+
+# "Failure with Polygon Stipple set to fail mode."
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
+
 spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
+
+# crash in tgsi exec doing st_freedback_draw_vbo().
 spec@!opengl 1.0@rasterpos,Crash
+
 spec@!opengl 1.1@linestipple@Factor 2x,Fail
 spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple,Fail
@@ -479,8 +515,13 @@ spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA4- swizzled- border
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA8- swizzled- border color only,Fail
 spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
+
+# "MESA: error: unknown vertex shader output name: VARYING_SLOT_EDGE
+#  gl-2.0-edgeflag: ../src/freedreno/ir3/ir3_context.c:411: ir3_context_error: Assertion `!""' failed."
 spec@!opengl 2.0@gl-2.0-edgeflag,Crash
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Crash
+
+# "../src/freedreno/ir3/ir3_shader.h:843:ir3_find_output: Assertion `0' failed."
 spec@!opengl 2.0@vertex-program-two-side back2,Crash
 spec@!opengl 2.0@vertex-program-two-side back back2,Crash
 spec@!opengl 2.0@vertex-program-two-side back,Crash
@@ -511,6 +552,7 @@ spec@!opengl 2.0@vertex-program-two-side front back front2,Crash
 spec@!opengl 2.0@vertex-program-two-side front,Crash
 spec@!opengl 2.0@vertex-program-two-side front front2 back2,Crash
 spec@!opengl 2.0@vertex-program-two-side front front2,Crash
+
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
@@ -518,4 +560,6 @@ spec@!opengl 3.0@clearbuffer-depth-cs-probe,Timeout
 spec@!opengl 3.0@clearbuffer-depth,Fail
 spec@!opengl 3.0@clearbuffer-stencil,Fail
 spec@!opengl 3.1@primitive-restart-xfb generated,Fail
+
+# "../src/gallium/drivers/freedreno/a6xx/fd6_gmem.c:976:emit_blit: Assertion `psurf->u.tex.first_layer == psurf->u.tex.last_layer' failed."
 spec@!opengl 3.2@layered-rendering@clear-depth,Crash
