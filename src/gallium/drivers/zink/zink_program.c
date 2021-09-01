@@ -92,28 +92,13 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    VkShaderModule mod;
    struct zink_shader_module *zm = NULL;
    unsigned base_size = 0;
-   bool is_default_variant;
    const struct zink_shader_key *key = &state->shader_keys.key[pstage];
-
-   /* this is default variant if there is no default or it matches the default */
-   if (pstage != PIPE_SHADER_TESS_CTRL && prog->default_variants[pstage]) {
-      const struct zink_shader_module *tmp = prog->default_variants[pstage];
-      /* if comparing against the existing default, use the base variant key size since
-       * we're only checking the stage-specific data
-       */
-      is_default_variant = shader_key_matches(tmp, key, 0);
-   } else
-      is_default_variant = true;
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
       base_size = zs->nir->info.num_inlinable_uniforms;
-      is_default_variant = false;
    }
-   if (is_default_variant) {
-      if (prog->default_variants[pstage])
-         return prog->default_variants[pstage];
-   }
+
    struct zink_shader_module *iter, *next;
    LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[pstage], list) {
       if (!shader_key_matches(iter, key, base_size))
@@ -141,11 +126,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       if (base_size)
          memcpy(zm->key + key->size, &key->base, base_size * sizeof(uint32_t));
       zm->hash = shader_module_hash(zm);
-      if (is_default_variant) {
-         prog->default_variants[pstage] = zm;
-         zm->default_variant = true;
-      } else
-         zm->default_variant = false;
+      zm->default_variant = !base_size && list_is_empty(&prog->shader_cache[pstage]);
    }
    list_add(&zm->list, &prog->shader_cache[pstage]);
    return zm;

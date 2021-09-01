@@ -99,7 +99,6 @@ struct zink_gfx_program {
 
    struct zink_shader_module *modules[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
 
-   struct zink_shader_module *default_variants[ZINK_SHADER_COUNT];
    struct zink_shader *last_vertex_stage;
 
    struct list_head shader_cache[ZINK_SHADER_COUNT];
