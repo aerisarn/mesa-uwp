@@ -100,7 +100,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    }
 
    struct zink_shader_module *iter, *next;
-   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[pstage], list) {
+   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[pstage][!!base_size], list) {
       if (!shader_key_matches(iter, key, base_size))
          continue;
       list_delinit(&iter->list);
@@ -126,9 +126,9 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       if (base_size)
          memcpy(zm->key + key->size, &key->base, base_size * sizeof(uint32_t));
       zm->hash = shader_module_hash(zm);
-      zm->default_variant = !base_size && list_is_empty(&prog->shader_cache[pstage]);
+      zm->default_variant = !base_size && list_is_empty(&prog->shader_cache[pstage][0]);
    }
-   list_add(&zm->list, &prog->shader_cache[pstage]);
+   list_add(&zm->list, &prog->shader_cache[pstage][!!base_size]);
    return zm;
 }
 
@@ -319,7 +319,8 @@ zink_create_gfx_program(struct zink_context *ctx,
    pipe_reference_init(&prog->base.reference, 1);
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
-      list_inithead(&prog->shader_cache[i]);
+      list_inithead(&prog->shader_cache[i][0]);
+      list_inithead(&prog->shader_cache[i][1]);
       if (stages[i]) {
          prog->shaders[i] = stages[i];
          prog->stages_present |= BITFIELD_BIT(i);
@@ -561,7 +562,8 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          _mesa_set_remove_key(prog->shaders[i]->programs, prog);
          prog->shaders[i] = NULL;
       }
-      destroy_shader_cache(screen, &prog->shader_cache[i]);
+      destroy_shader_cache(screen, &prog->shader_cache[i][0]);
+      destroy_shader_cache(screen, &prog->shader_cache[i][1]);
       ralloc_free(prog->nir[i]);
    }
 

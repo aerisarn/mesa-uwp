@@ -101,7 +101,7 @@ struct zink_gfx_program {
 
    struct zink_shader *last_vertex_stage;
 
-   struct list_head shader_cache[ZINK_SHADER_COUNT];
+   struct list_head shader_cache[ZINK_SHADER_COUNT][2]; //normal, inline uniforms
 
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    struct hash_table pipelines[11]; // number of draw modes we support
