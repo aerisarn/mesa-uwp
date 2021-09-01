@@ -66,53 +66,20 @@ debug_describe_zink_compute_program(char *buf, const struct zink_compute_program
    sprintf(buf, "zink_compute_program");
 }
 
-/* copied from iris */
-struct keybox {
-   uint16_t size;
-   uint8_t data[0];
-};
-
-static struct keybox *
-make_keybox(void *mem_ctx, const void *key, uint32_t key_size, const void *base, uint32_t num_uniforms)
+static bool
+shader_key_matches(const struct zink_shader_module *zm, const struct zink_shader_key *key, unsigned num_uniforms)
 {
-   unsigned uniform_size = num_uniforms * sizeof(uint32_t); 
-   struct keybox *keybox = ralloc_size(mem_ctx, sizeof(struct keybox) + key_size + uniform_size);
-
-   keybox->size = key_size + uniform_size;
-   memcpy(keybox->data, key, key_size);
-   if (num_uniforms)
-      memcpy(&keybox->data[key_size], base, uniform_size);
-   return keybox;
+   if (zm->key_size != key->size || zm->num_uniforms != num_uniforms)
+      return false;
+   return !memcmp(zm->key, key, zm->key_size) &&
+          (!num_uniforms || !memcmp(zm->key + zm->key_size, key->base.inlined_uniform_values, zm->num_uniforms * sizeof(uint32_t)));
 }
 
 static uint32_t
-keybox_hash(const void *void_key)
+shader_module_hash(const struct zink_shader_module *zm)
 {
-   const struct keybox *key = void_key;
-   return _mesa_hash_data(&key->data, key->size);
-}
-
-static bool
-keybox_equals(const void *void_a, const void *void_b)
-{
-   const struct keybox *a = void_a, *b = void_b;
-   if (a->size != b->size)
-      return false;
-
-   return memcmp(a->data, b->data, a->size) == 0;
-}
-
-/* return pointer to make function reusable */
-static inline struct zink_shader_module **
-get_default_shader_module_ptr(struct zink_gfx_program *prog, struct zink_shader *zs, const struct zink_shader_key *key)
-{
-   if (zs->nir->info.stage == MESA_SHADER_VERTEX ||
-       zs->nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      /* no streamout or halfz */
-      if (!zink_vs_key_base(key)->last_vertex_stage)
-         return &prog->default_variants[zs->nir->info.stage][1];
-   }
-   return &prog->default_variants[zs->nir->info.stage][0];
+   unsigned key_size = zm->key_size + zm->num_uniforms * sizeof(uint32_t);
+   return _mesa_hash_data(zm->key, key_size);
 }
 
 static struct zink_shader_module *
@@ -123,21 +90,18 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    gl_shader_stage stage = zs->nir->info.stage;
    enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
    VkShaderModule mod;
-   struct zink_shader_module *zm;
-   struct zink_shader_module **default_zm = NULL;
-   struct keybox *keybox;
-   uint32_t hash;
+   struct zink_shader_module *zm = NULL;
    unsigned base_size = 0;
    bool is_default_variant;
    const struct zink_shader_key *key = &state->shader_keys.key[pstage];
 
    /* this is default variant if there is no default or it matches the default */
-   if (pstage != PIPE_SHADER_TESS_CTRL && prog->default_variant_key[pstage]) {
-      const struct keybox *tmp = prog->default_variant_key[pstage];
+   if (pstage != PIPE_SHADER_TESS_CTRL && prog->default_variants[pstage]) {
+      const struct zink_shader_module *tmp = prog->default_variants[pstage];
       /* if comparing against the existing default, use the base variant key size since
        * we're only checking the stage-specific data
        */
-      is_default_variant = tmp->size == key->size && !memcmp(tmp->data, &key, key->size);
+      is_default_variant = shader_key_matches(tmp, key, 0);
    } else
       is_default_variant = true;
 
@@ -147,46 +111,43 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       is_default_variant = false;
    }
    if (is_default_variant) {
-      default_zm = get_default_shader_module_ptr(prog, zs, key);
-      if (*default_zm)
-         return *default_zm;
+      if (prog->default_variants[pstage])
+         return prog->default_variants[pstage];
    }
-   keybox = make_keybox(prog, key, key->size, &key->base, base_size);
-   hash = keybox_hash(keybox);
-   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(&prog->shader_cache[pstage],
-                                                                 hash, keybox);
+   struct zink_shader_module *iter, *next;
+   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[pstage], list) {
+      if (!shader_key_matches(iter, key, base_size))
+         continue;
+      list_delinit(&iter->list);
+      zm = iter;
+      break;
+   }
 
-   if (entry) {
-      ralloc_free(keybox);
-      zm = entry->data;
-   } else {
-      zm = malloc(sizeof(struct zink_shader_module) + key->size);
+   if (!zm) {
+      zm = malloc(sizeof(struct zink_shader_module) + key->size + base_size * sizeof(uint32_t));
       if (!zm) {
-         ralloc_free(keybox);
          return NULL;
       }
-      zm->hash = hash;
-      zm->num_uniforms = base_size;
-      zm->key_size = key->size;
-      if (base_size)
-         memcpy(zm->uniforms, &key->base, base_size * sizeof(uint32_t));
-      memcpy(zm->key, key, key->size);
       mod = zink_shader_compile(screen, zs, prog->nir[stage], key);
       if (!mod) {
-         ralloc_free(keybox);
          FREE(zm);
          return NULL;
       }
       zm->shader = mod;
-
-      _mesa_hash_table_insert_pre_hashed(&prog->shader_cache[pstage], hash, keybox, zm);
+      list_inithead(&zm->list);
+      zm->num_uniforms = base_size;
+      zm->key_size = key->size;
+      memcpy(zm->key, key, key->size);
+      if (base_size)
+         memcpy(zm->key + key->size, &key->base, base_size * sizeof(uint32_t));
+      zm->hash = shader_module_hash(zm);
       if (is_default_variant) {
-         /* previously returned */
-         *default_zm = zm;
+         prog->default_variants[pstage] = zm;
          zm->default_variant = true;
-         prog->default_variant_key[pstage] = keybox;
-      }
+      } else
+         zm->default_variant = false;
    }
+   list_add(&zm->list, &prog->shader_cache[pstage]);
    return zm;
 }
 
@@ -198,10 +159,11 @@ zink_destroy_shader_module(struct zink_screen *screen, struct zink_shader_module
 }
 
 static void
-destroy_shader_cache(struct zink_screen *screen, struct hash_table *sc)
+destroy_shader_cache(struct zink_screen *screen, struct list_head *sc)
 {
-   hash_table_foreach(sc, entry) {
-      struct zink_shader_module *zm = entry->data;
+   struct zink_shader_module *zm, *next;
+   LIST_FOR_EACH_ENTRY_SAFE(zm, next, sc, list) {
+      list_delinit(&zm->list);
       zink_destroy_shader_module(screen, zm);
    }
 }
@@ -376,8 +338,8 @@ zink_create_gfx_program(struct zink_context *ctx,
    pipe_reference_init(&prog->base.reference, 1);
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+      list_inithead(&prog->shader_cache[i]);
       if (stages[i]) {
-         _mesa_hash_table_init(&prog->shader_cache[i], prog, keybox_hash, keybox_equals);
          prog->shaders[i] = stages[i];
          prog->stages_present |= BITFIELD_BIT(i);
       }
@@ -386,7 +348,6 @@ zink_create_gfx_program(struct zink_context *ctx,
       prog->shaders[PIPE_SHADER_TESS_EVAL]->generated =
       prog->shaders[PIPE_SHADER_TESS_CTRL] =
         zink_shader_tcs_create(screen, stages[PIPE_SHADER_VERTEX], vertices_per_patch);
-        _mesa_hash_table_init(&prog->shader_cache[PIPE_SHADER_TESS_CTRL], prog, keybox_hash, keybox_equals);
       prog->stages_present |= BITFIELD_BIT(PIPE_SHADER_TESS_CTRL);
    }
 

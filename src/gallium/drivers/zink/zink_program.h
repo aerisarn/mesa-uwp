@@ -64,13 +64,13 @@ struct zink_cs_push_constant {
  * allowing us to skip going through shader keys
  */
 struct zink_shader_module {
+   struct list_head list;
    VkShaderModule shader;
    uint32_t hash;
    bool default_variant;
    uint8_t num_uniforms;
    uint8_t key_size;
-   uint32_t uniforms[MAX_INLINABLE_UNIFORMS];
-   uint8_t key[0];
+   uint8_t key[0]; /* | key | uniforms | */
 };
 
 struct zink_program {
@@ -99,12 +99,10 @@ struct zink_gfx_program {
 
    struct zink_shader_module *modules[ZINK_SHADER_COUNT]; // compute stage doesn't belong here
 
-   struct zink_shader_module *default_variants[ZINK_SHADER_COUNT][2]; //[default, no streamout]
-   const void *default_variant_key[ZINK_SHADER_COUNT];
+   struct zink_shader_module *default_variants[ZINK_SHADER_COUNT];
    struct zink_shader *last_vertex_stage;
 
-   /* the shader cache stores a mapping of zink_shader_key::VkShaderModule */
-   struct hash_table shader_cache[ZINK_SHADER_COUNT];
+   struct list_head shader_cache[ZINK_SHADER_COUNT];
 
    struct zink_shader *shaders[ZINK_SHADER_COUNT];
    struct hash_table pipelines[11]; // number of draw modes we support
