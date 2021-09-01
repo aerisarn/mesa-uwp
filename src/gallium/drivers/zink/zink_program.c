@@ -160,12 +160,17 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       ralloc_free(keybox);
       zm = entry->data;
    } else {
-      zm = CALLOC_STRUCT(zink_shader_module);
+      zm = malloc(sizeof(struct zink_shader_module) + key->size);
       if (!zm) {
          ralloc_free(keybox);
          return NULL;
       }
       zm->hash = hash;
+      zm->num_uniforms = base_size;
+      zm->key_size = key->size;
+      if (base_size)
+         memcpy(zm->uniforms, &key->base, base_size * sizeof(uint32_t));
+      memcpy(zm->key, key, key->size);
       mod = zink_shader_compile(screen, zs, prog->nir[stage], key);
       if (!mod) {
          ralloc_free(keybox);

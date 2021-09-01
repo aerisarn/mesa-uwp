@@ -67,6 +67,10 @@ struct zink_shader_module {
    VkShaderModule shader;
    uint32_t hash;
    bool default_variant;
+   uint8_t num_uniforms;
+   uint8_t key_size;
+   uint32_t uniforms[MAX_INLINABLE_UNIFORMS];
+   uint8_t key[0];
 };
 
 struct zink_program {
