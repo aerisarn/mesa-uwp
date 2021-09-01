@@ -173,22 +173,6 @@ copy_vertices(struct gl_context *ctx,
 }
 
 
-static struct vbo_save_vertex_store *
-realloc_vertex_store(struct vbo_save_vertex_store *store, uint32_t vertex_size, int vertex_count)
-{
-   if (!store)
-      store = CALLOC_STRUCT(vbo_save_vertex_store);
-
-   int new_size = MAX2(vertex_count * vertex_size * sizeof(GLfloat), 1024 * 1024);
-   if (new_size > store->buffer_in_ram_size) {
-      store->buffer_in_ram_size = new_size;
-      store->buffer_in_ram = realloc(store->buffer_in_ram, store->buffer_in_ram_size);
-   }
-
-   return store;
-}
-
-
 static struct vbo_save_primitive_store *
 realloc_prim_store(struct vbo_save_primitive_store *store, int prim_count)
 {
@@ -410,28 +394,34 @@ update_vao(struct gl_context *ctx,
    _mesa_set_vao_immutable(ctx, *vao);
 }
 
-
 static void wrap_filled_vertex(struct gl_context *ctx);
-static void compile_vertex_list(struct gl_context *ctx);
 
+/* Grow the vertex storage to accomodate for vertex_count new vertices */
 static void
-realloc_storage(struct gl_context *ctx, int vertex_count)
+grow_vertex_storage(struct gl_context *ctx, int vertex_count)
 {
    struct vbo_save_context *save = &vbo_context(ctx)->save;
+   assert (save->vertex_store);
+
+   int new_size = (save->vertex_store->used +
+                   vertex_count * save->vertex_size) * sizeof(GLfloat);
 
    /* Limit how much memory we allocate. */
    if (save->prim_store->used > 0 &&
        vertex_count > 0 &&
-       vertex_count * save->vertex_size > VBO_SAVE_BUFFER_SIZE) {
+       new_size > VBO_SAVE_BUFFER_SIZE) {
       wrap_filled_vertex(ctx);
-      vertex_count = VBO_SAVE_BUFFER_SIZE / save->vertex_size;
+      new_size = VBO_SAVE_BUFFER_SIZE;
    }
 
-   if (vertex_count >= 0)
-      save->vertex_store = realloc_vertex_store(save->vertex_store, save->vertex_size, vertex_count);
+   if (new_size > save->vertex_store->buffer_in_ram_size) {
+      save->vertex_store->buffer_in_ram_size = new_size;
+      save->vertex_store->buffer_in_ram = realloc(save->vertex_store->buffer_in_ram,
+                                                  save->vertex_store->buffer_in_ram_size);
+      if (save->vertex_store->buffer_in_ram == NULL)
+         handle_out_of_memory(ctx);
+   }
 
-   if (save->vertex_store->buffer_in_ram == NULL)
-      handle_out_of_memory(ctx);
 }
 
 struct vertex_key {
@@ -1196,6 +1186,8 @@ fixup_vertex(struct gl_context *ctx, GLuint attr,
    }
 
    save->active_sz[attr] = sz;
+
+   grow_vertex_storage(ctx, 1);
 }
 
 
@@ -1269,9 +1261,11 @@ do {								\
 	     buffer_ptr[i] = save->vertex[i];			\
 								\
       save->vertex_store->used += save->vertex_size; \
-      if ((save->vertex_store->used + save->vertex_size) * sizeof(float) >= save->vertex_store->buffer_in_ram_size) { \
-	      realloc_storage(ctx, get_vertex_count(save) * 2); \
-         assert((save->vertex_store->used + save->vertex_size) * sizeof(float) < save->vertex_store->buffer_in_ram_size); \
+      if ((save->vertex_store->used + save->vertex_size) * sizeof(float) > \
+          save->vertex_store->buffer_in_ram_size) { \
+	      grow_vertex_storage(ctx, get_vertex_count(save)); \
+         assert((save->vertex_store->used + save->vertex_size) * sizeof(float) <= \
+                save->vertex_store->buffer_in_ram_size); \
       } \
    }								\
 } while (0)
@@ -1596,18 +1590,6 @@ _save_OBE_Rectsv(const GLshort *v1, const GLshort *v2)
    _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
-static void
-_ensure_draws_fits_in_storage(struct gl_context *ctx, int vertcount)
-{
-   struct vbo_save_context *save = &vbo_context(ctx)->save;
-
-   if (save->vertex_size &&
-       (save->vertex_store->used + vertcount * save->vertex_size) >=
-        save->vertex_store->buffer_in_ram_size)
-      realloc_storage(ctx, vertcount);
-}
-
-
 static void GLAPIENTRY
 _save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
 {
@@ -1628,7 +1610,7 @@ _save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
    if (save->out_of_memory)
       return;
 
-   _ensure_draws_fits_in_storage(ctx, count);
+   grow_vertex_storage(ctx, count);
 
    /* Make sure to process any VBO binding changes */
    _mesa_update_state(ctx);
@@ -1673,7 +1655,7 @@ _save_OBE_MultiDrawArrays(GLenum mode, const GLint *first,
       vertcount += count[i];
    }
 
-   _ensure_draws_fits_in_storage(ctx, vertcount);
+   grow_vertex_storage(ctx, vertcount);
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
@@ -1737,7 +1719,7 @@ _save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
    if (save->out_of_memory)
       return;
 
-   _ensure_draws_fits_in_storage(ctx, count);
+   grow_vertex_storage(ctx, count);
 
    /* Make sure to process any VBO binding changes */
    _mesa_update_state(ctx);
@@ -1829,7 +1811,7 @@ _save_OBE_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
    for (i = 0; i < primcount; i++) {
       vertcount += count[i];
    }
-   _ensure_draws_fits_in_storage(ctx, vertcount);
+   grow_vertex_storage(ctx, vertcount);
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
@@ -1854,7 +1836,7 @@ _save_OBE_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    for (i = 0; i < primcount; i++) {
       vertcount += count[i];
    }
-   _ensure_draws_fits_in_storage(ctx, vertcount);
+   grow_vertex_storage(ctx, vertcount);
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
@@ -1944,7 +1926,7 @@ vbo_save_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
       save->prim_store = realloc_prim_store(NULL, 8);
 
    if (!save->vertex_store)
-      save->vertex_store = realloc_vertex_store(NULL, save->vertex_size, 8);
+      save->vertex_store = CALLOC_STRUCT(vbo_save_vertex_store);
 
    reset_vertex(ctx);
    ctx->Driver.SaveNeedFlush = GL_FALSE;
