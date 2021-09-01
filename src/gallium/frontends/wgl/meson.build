@@ -43,7 +43,6 @@ libwgl = static_library(
     'stw_pixelformat.c',
     'stw_st.c',
     'stw_tls.c',
-    'stw_wgl.c',
   ),
   c_args : [
     '-D_GDI32_',             # prevent wgl* being declared __declspec(dllimport)

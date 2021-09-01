@@ -210,3 +210,9 @@ wglMakeContextCurrentARB(HDC hDrawDC, HDC hReadDC, HGLRC hglrc)
 
    return stw_make_current(hDrawDC, hReadDC, dhglrc);
 }
+
+HDC APIENTRY
+wglGetCurrentReadDCARB(VOID)
+{
+   return stw_get_current_read_dc();
+}
