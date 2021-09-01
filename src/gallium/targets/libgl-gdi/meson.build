@@ -24,7 +24,7 @@ if cc.get_id() == 'gcc' and host_machine.cpu_family() != 'x86_64'
   opengl32_link_args += ['-Wl,--enable-stdcall-fixup']
 endif
 
-ogldef = files('../../frontends/wgl/opengl32.def')[0]
+ogldef = files('opengl32.def')[0]
 
 libopengl32 = shared_library(
   'opengl32',
