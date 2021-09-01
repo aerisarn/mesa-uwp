@@ -200,6 +200,8 @@ EXT(ARB_vertex_type_2_10_10_10_rev          , ARB_vertex_type_2_10_10_10_rev    
 EXT(ARB_viewport_array                      , ARB_viewport_array                     , GLL, GLC,  x ,  x , 2010)
 EXT(ARB_window_pos                          , dummy_true                             , GLL,  x ,  x ,  x , 2001)
 
+EXT(ARM_shader_framebuffer_fetch_depth_stencil, ARM_shader_framebuffer_fetch_depth_stencil, GLL, GLC,  x , ES2, 2014)
+
 EXT(ATI_blend_equation_separate             , EXT_blend_equation_separate            , GLL, GLC,  x ,  x , 2003)
 EXT(ATI_draw_buffers                        , dummy_true                             , GLL,  x ,  x ,  x , 2002)
 EXT(ATI_fragment_shader                     , ATI_fragment_shader                    , GLL,  x ,  x ,  x , 2001)
