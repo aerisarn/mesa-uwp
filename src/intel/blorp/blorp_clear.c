@@ -75,15 +75,7 @@ blorp_params_get_clear_kernel(struct blorp_batch *batch,
       nir_ssa_def *pos = nir_f2i32(&b, nir_load_frag_coord(&b));
       nir_ssa_def *comp = nir_umod(&b, nir_channel(&b, pos, 0),
                                        nir_imm_int(&b, 3));
-      nir_ssa_def *color_component =
-         nir_bcsel(&b, nir_ieq_imm(&b, comp, 0),
-                       nir_channel(&b, color, 0),
-                       nir_bcsel(&b, nir_ieq_imm(&b, comp, 1),
-                                     nir_channel(&b, color, 1),
-                                     nir_channel(&b, color, 2)));
-
-      nir_ssa_def *u = nir_ssa_undef(&b, 1, 32);
-      color = nir_vec4(&b, color_component, u, u, u);
+      color = nir_pad_vec4(&b, nir_vector_extract(&b, color, comp));
    }
 
    nir_variable *frag_color = nir_variable_create(b.shader, nir_var_shader_out,
