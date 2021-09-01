@@ -4166,6 +4166,10 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_export_vertex_amd:
       ctx->abi->export_vertex(ctx->abi);
       break;
+   case nir_intrinsic_elect:
+      result = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, visit_first_invocation(ctx),
+                             ac_get_thread_id(&ctx->ac), "");
+      break;
    case nir_intrinsic_byte_permute_amd:
       if (LLVM_VERSION_MAJOR < 13) {
          assert("unimplemented byte_permute, LLVM 12 doesn't have amdgcn.perm");
