@@ -33,6 +33,7 @@
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/ralloc.h"
+#ifdef DRAW_LLVM_AVAILABLE
 static inline int
 draw_tes_get_input_index(int semantic, int index,
                          const struct tgsi_shader_info *input_info)
@@ -48,7 +49,6 @@ draw_tes_get_input_index(int semantic, int index,
    return -1;
 }
 
-#ifdef DRAW_LLVM_AVAILABLE
 #define DEBUG_INPUTS 0
 static void
 llvm_fetch_tcs_input(struct draw_tess_ctrl_shader *shader,
