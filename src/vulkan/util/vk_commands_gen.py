@@ -92,8 +92,13 @@ VKAPI_ATTR ${c.return_type} VKAPI_CALL lvp_${c.name} (VkCommandBuffer commandBuf
 
 """, output_encoding='utf-8')
 
+def remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix):]
+    return text
+
 def to_underscore(name):
-    return re.sub('([A-Z]+)', r'_\1', name).lower().removeprefix('_')
+    return remove_prefix(re.sub('([A-Z]+)', r'_\1', name).lower(), '_')
 
 def main():
     parser = argparse.ArgumentParser()
