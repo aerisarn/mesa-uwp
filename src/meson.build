@@ -117,9 +117,6 @@ if with_gbm
 else
   inc_gbm = []
 endif
-if with_egl
-  subdir('egl')
-endif
 if with_gallium
   subdir('gallium')
   # This has to be here since it requires libgallium, and subdir cannot
@@ -127,6 +124,9 @@ if with_gallium
   if with_tests and with_shared_glapi
     subdir('mesa/state_tracker/tests')
   endif
+endif
+if with_egl
+  subdir('egl')
 endif
 
 # This must be after at least mesa, glx, and gallium, since libgl will be
