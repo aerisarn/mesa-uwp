@@ -57,7 +57,6 @@ u_driconf_fill_st_options(struct st_config_options *options,
    query_bool_option(force_glsl_abs_sqrt);
    query_bool_option(allow_glsl_cross_stage_interpolation_mismatch);
    query_bool_option(allow_draw_out_of_order);
-   query_bool_option(allow_incorrect_primitive_id);
    query_bool_option(ignore_map_unsynchronized);
    query_bool_option(force_gl_names_reuse);
    query_bool_option(transcode_etc);
