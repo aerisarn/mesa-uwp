@@ -472,7 +472,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS];
    bool need_index_buffer_unref = false;
-   bool mode_changed = ctx->gfx_prim_mode != dinfo->mode;
+   bool mode_changed = ctx->gfx_pipeline_state.gfx_prim_mode != dinfo->mode;
    bool reads_drawid = ctx->shader_reads_drawid;
    bool reads_basevertex = ctx->shader_reads_basevertex;
    unsigned work_count = ctx->batch.work_count;
@@ -507,14 +507,14 @@ zink_draw_vbo(struct pipe_context *pctx,
       if (mode == PIPE_PRIM_POINTS) {
          ctx->gfx_pipeline_state.has_points++;
          points_changed = true;
-      } else if (ctx->gfx_prim_mode == PIPE_PRIM_POINTS) {
+      } else if (ctx->gfx_pipeline_state.gfx_prim_mode == PIPE_PRIM_POINTS) {
          ctx->gfx_pipeline_state.has_points--;
          points_changed = true;
       }
       if (points_changed && ctx->rast_state->base.point_quad_rasterization)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_FRAGMENT);
    }
-   ctx->gfx_prim_mode = mode;
+   ctx->gfx_pipeline_state.gfx_prim_mode = mode;
 
    if (!HAS_DYNAMIC_STATE2) {
       if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
