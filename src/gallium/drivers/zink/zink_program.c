@@ -450,7 +450,8 @@ assign_io(struct zink_gfx_program *prog, struct zink_shader *stages[ZINK_SHADER_
 
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
-                        struct zink_shader *stages[ZINK_SHADER_COUNT])
+                        struct zink_shader *stages[ZINK_SHADER_COUNT],
+                        unsigned vertices_per_patch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_gfx_program *prog = rzalloc(NULL, struct zink_gfx_program);
@@ -469,7 +470,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (stages[PIPE_SHADER_TESS_EVAL] && !stages[PIPE_SHADER_TESS_CTRL]) {
       prog->shaders[PIPE_SHADER_TESS_EVAL]->generated =
       prog->shaders[PIPE_SHADER_TESS_CTRL] =
-        zink_shader_tcs_create(ctx, stages[PIPE_SHADER_VERTEX]);
+        zink_shader_tcs_create(screen, stages[PIPE_SHADER_VERTEX], vertices_per_patch);
         _mesa_hash_table_init(&prog->base.shader_cache[PIPE_SHADER_TESS_CTRL], prog, keybox_hash, keybox_equals);
       prog->stages_present |= BITFIELD_BIT(PIPE_SHADER_TESS_CTRL);
    }

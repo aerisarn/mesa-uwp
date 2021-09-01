@@ -112,7 +112,7 @@ void
 zink_shader_free(struct zink_context *ctx, struct zink_shader *shader);
 
 struct zink_shader *
-zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs);
+zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsigned vertices_per_patch);
 
 static inline bool
 zink_shader_descriptor_is_buffer(struct zink_shader *zs, enum zink_descriptor_type type, unsigned i)
