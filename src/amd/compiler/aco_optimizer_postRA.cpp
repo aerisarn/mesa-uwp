@@ -110,9 +110,10 @@ save_reg_writes(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (def.regClass().is_subdword())
          idx = clobbered;
 
+      assert((r + dw_size) <= max_reg_cnt);
       assert(def.size() == dw_size || def.regClass().is_subdword());
       std::fill(&ctx.instr_idx_by_regs[ctx.current_block->index][r],
-                &ctx.instr_idx_by_regs[ctx.current_block->index][r + dw_size], idx);
+                &ctx.instr_idx_by_regs[ctx.current_block->index][r] + dw_size, idx);
    }
 }
 
