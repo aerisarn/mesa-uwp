@@ -384,7 +384,7 @@ struct ltg_node {
 /* emit the copies in an order that does not
  * create interferences within a merge-set */
 void
-emit_copies_block(Builder bld, std::map<uint32_t, ltg_node>& ltg, RegType type)
+emit_copies_block(Builder& bld, std::map<uint32_t, ltg_node>& ltg, RegType type)
 {
    auto&& it = ltg.begin();
    while (it != ltg.end()) {
