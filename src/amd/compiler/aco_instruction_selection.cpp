@@ -646,7 +646,6 @@ convert_int(isel_context* ctx, Builder& bld, Temp src, unsigned src_bits, unsign
       sdwa->definitions[0] = Definition(tmp);
       sdwa->sel[0] = SubdwordSel(src_bits / 8, 0, sign_extend);
       sdwa->dst_sel = tmp.bytes() == 2 ? SubdwordSel::uword : SubdwordSel::dword;
-      sdwa->dst_preserve = tmp.bytes() == 2;
       bld.insert(std::move(sdwa));
    } else {
       assert(src_bits < 32);

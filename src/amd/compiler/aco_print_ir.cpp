@@ -638,7 +638,7 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
          default: break;
          }
       }
-      if (sdwa.dst_preserve)
+      if (instr->definitions[0].bytes() < 4)
          fprintf(output, " dst_preserve");
    }
 }

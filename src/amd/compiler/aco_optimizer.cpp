@@ -2079,7 +2079,6 @@ combine_inverse_comparison(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       memcpy(new_sdwa->sel, cmp_sdwa.sel, sizeof(new_sdwa->sel));
       memcpy(new_sdwa->neg, cmp_sdwa.neg, sizeof(new_sdwa->neg));
       new_sdwa->dst_sel = cmp_sdwa.dst_sel;
-      new_sdwa->dst_preserve = cmp_sdwa.dst_preserve;
       new_sdwa->clamp = cmp_sdwa.clamp;
       new_sdwa->omod = cmp_sdwa.omod;
       new_instr = new_sdwa;

@@ -280,7 +280,6 @@ convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr)
    }
 
    sdwa.dst_sel = SubdwordSel(instr->definitions[0].bytes(), 0, false);
-   sdwa.dst_preserve = sdwa.dst_sel.size() < 4;
 
    if (instr->definitions[0].getTemp().type() == RegType::sgpr && chip == GFX8)
       instr->definitions[0].setFixed(vcc);

@@ -704,7 +704,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          } else {
             encoding |= sdwa.dst_sel.to_sdwa_sel(instr->definitions[0].physReg().byte()) << 8;
             uint32_t dst_u = sdwa.dst_sel.sign_extend() ? 1 : 0;
-            if (sdwa.dst_preserve)
+            if (instr->definitions[0].bytes() < 4) /* dst_preserve */
                dst_u = 2;
             encoding |= dst_u << 11;
             encoding |= (sdwa.clamp ? 1 : 0) << 13;

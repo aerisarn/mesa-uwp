@@ -174,8 +174,11 @@ validate_ir(Program* program)
                   "SDWA definition selection size must be 1, 2 or 4 bytes", instr.get());
                check(sdwa.dst_sel.offset() % sdwa.dst_sel.size() == 0, "Invalid selection offset",
                      instr.get());
-               check(def.bytes() == 4 || sdwa.dst_preserve,
-                     "SDWA subdword definition needs dst_preserve", instr.get());
+               check(def.bytes() == 4 || def.bytes() == sdwa.dst_sel.size(),
+                     "SDWA dst_sel size must be definition size for subdword definitions",
+                     instr.get());
+               check(def.bytes() == 4 || sdwa.dst_sel.offset() == 0,
+                     "SDWA dst_sel offset must be 0 for subdword definitions", instr.get());
             }
 
             for (unsigned i = 0; i < std::min<unsigned>(2, instr->operands.size()); i++) {

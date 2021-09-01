@@ -2097,7 +2097,6 @@ lower_to_hw_instr(Program* program)
                   sdwa->definitions[0] = dst;
                   sdwa->sel[0] = SubdwordSel(1, op.physReg().byte() + offset / 8, signext);
                   sdwa->dst_sel = SubdwordSel::uword;
-                  sdwa->dst_preserve = true;
                   bld.insert(std::move(sdwa));
                }
                break;

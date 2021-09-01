@@ -180,7 +180,6 @@ class Format(Enum):
          for i in range(min(num_operands, 2)):
             res += 'instr->sel[{0}] = SubdwordSel(op{0}.op.bytes(), 0, false);'.format(i)
          res += 'instr->dst_sel = SubdwordSel(def0.bytes(), 0, false);\n'
-         res += 'if (def0.bytes() < 4) instr->dst_preserve = true;'
       return res
 
 

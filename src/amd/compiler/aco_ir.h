@@ -1469,10 +1469,9 @@ struct SDWA_instruction : public Instruction {
    SubdwordSel dst_sel;
    bool neg[2];
    bool abs[2];
-   bool dst_preserve : 1;
    bool clamp : 1;
    uint8_t omod : 2; /* GFX9+ */
-   uint8_t padding : 4;
+   uint8_t padding : 5;
 };
 static_assert(sizeof(SDWA_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 

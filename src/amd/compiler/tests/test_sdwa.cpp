@@ -37,9 +37,7 @@ BEGIN_TEST(validate.sdwa.allow)
       SDWA_instruction *sdwa = &bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], inputs[1]).instr->sdwa();
       sdwa->neg[0] = sdwa->neg[1] = sdwa->abs[0] = sdwa->abs[1] = true;
 
-      sdwa = &bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], inputs[1]).instr->sdwa();
-      sdwa->dst_preserve = true;
-      sdwa->dst_sel = SubdwordSel::ubyte0;
+      sdwa = &bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1b), inputs[0], inputs[1]).instr->sdwa();
 
       sdwa = &bld.vop2_sdwa(aco_opcode::v_mul_f32, bld.def(v1), inputs[0], inputs[1]).instr->sdwa();
       sdwa->sel[0] = SubdwordSel::sbyte2;
