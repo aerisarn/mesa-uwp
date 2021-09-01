@@ -73,15 +73,15 @@ struct keybox {
 };
 
 static struct keybox *
-make_keybox(void *mem_ctx, const void *key, uint32_t key_size, const void *base, uint32_t base_size)
+make_keybox(void *mem_ctx, const void *key, uint32_t key_size, const void *base, uint32_t num_uniforms)
 {
-   struct keybox *keybox =
-      ralloc_size(mem_ctx, sizeof(struct keybox) + key_size + base_size);
+   unsigned uniform_size = num_uniforms * sizeof(uint32_t); 
+   struct keybox *keybox = ralloc_size(mem_ctx, sizeof(struct keybox) + key_size + uniform_size);
 
-   keybox->size = key_size + base_size;
+   keybox->size = key_size + uniform_size;
    memcpy(keybox->data, key, key_size);
-   if (base_size)
-      memcpy(&keybox->data[key_size], base, base_size);
+   if (num_uniforms)
+      memcpy(&keybox->data[key_size], base, uniform_size);
    return keybox;
 }
 
@@ -143,7 +143,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
-      base_size = zs->nir->info.num_inlinable_uniforms * sizeof(uint32_t);
+      base_size = zs->nir->info.num_inlinable_uniforms;
       is_default_variant = false;
    }
    if (is_default_variant) {
