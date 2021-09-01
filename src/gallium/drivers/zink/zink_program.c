@@ -481,14 +481,11 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
 
    pipe_reference_init(&comp->base.reference, 1);
    comp->base.is_compute = true;
-   /* TODO: cs shader keys placeholder for now */
-   _mesa_hash_table_init(&comp->base.shader_cache[0], comp, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
    comp->module->shader = zink_shader_compile(screen, shader, shader->nir, NULL);
    assert(comp->module->shader);
-   _mesa_hash_table_insert(&comp->base.shader_cache[0], shader, comp->module);
 
    comp->pipelines = _mesa_hash_table_create(NULL, hash_compute_pipeline_state,
                                              equals_compute_pipeline_state);
@@ -670,7 +667,8 @@ zink_destroy_compute_program(struct zink_screen *screen,
       free(pc_entry);
    }
    _mesa_hash_table_destroy(comp->pipelines, NULL);
-   destroy_shader_cache(screen, &comp->base.shader_cache[0]);
+   VKSCR(DestroyShaderModule)(screen->dev, comp->module->shader, NULL);
+   free(comp->module);
    if (comp->base.pipeline_cache)
       VKSCR(DestroyPipelineCache)(screen->dev, comp->base.pipeline_cache, NULL);
    screen->descriptor_program_deinit(screen, &comp->base);
