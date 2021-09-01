@@ -220,18 +220,18 @@ const char *
 panfrost_model_name(unsigned gpu_id)
 {
         switch (gpu_id) {
-        case 0x600: return "Mali T600 (Panfrost)";
-        case 0x620: return "Mali T620 (Panfrost)";
-        case 0x720: return "Mali T720 (Panfrost)";
-        case 0x820: return "Mali T820 (Panfrost)";
-        case 0x830: return "Mali T830 (Panfrost)";
-        case 0x750: return "Mali T760 (Panfrost)";
-        case 0x860: return "Mali T860 (Panfrost)";
-        case 0x880: return "Mali T880 (Panfrost)";
-        case 0x6221: return "Mali G72 (Panfrost)";
-        case 0x7093: return "Mali G31 (Panfrost)";
-        case 0x7212: return "Mali G52 (Panfrost)";
-        case 0x7402: return "Mali G52r1 (Panfrost)";
+        case 0x600: return "Mali-T600 (Panfrost)";
+        case 0x620: return "Mali-T620 (Panfrost)";
+        case 0x720: return "Mali-T720 (Panfrost)";
+        case 0x820: return "Mali-T820 (Panfrost)";
+        case 0x830: return "Mali-T830 (Panfrost)";
+        case 0x750: return "Mali-T760 (Panfrost)";
+        case 0x860: return "Mali-T860 (Panfrost)";
+        case 0x880: return "Mali-T880 (Panfrost)";
+        case 0x6221: return "Mali-G72 (Panfrost)";
+        case 0x7093: return "Mali-G31 (Panfrost)";
+        case 0x7212: return "Mali-G52 (Panfrost)";
+        case 0x7402: return "Mali-G52 r1 (Panfrost)";
         default:
                     unreachable("Invalid GPU ID");
         }
