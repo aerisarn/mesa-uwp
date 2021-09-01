@@ -22,6 +22,7 @@ glx@glx_ext_import_context@query context info,Fail
 shaders@glsl-arb-fragment-coord-conventions,Fail
 shaders@glsl-bug-110796,Fail
 shaders@glsl-max-vertex-attrib,Fail
+shaders@glsl-predication-on-large-array,Fail
 spec@!opengl 1.0@gl-1.0-bitmap-heart-dance,Fail
 spec@!opengl 1.0@gl-1.0-dlist-bitmap,Crash
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail

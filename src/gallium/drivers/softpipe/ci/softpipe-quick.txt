@@ -843,6 +843,7 @@ spec/arb_sample_shading/samplemask 6: skip
 spec/arb_sample_shading/samplemask 6 all: skip
 spec/arb_sample_shading/samplemask 8: skip
 spec/arb_sample_shading/samplemask 8 all: skip
+spec/arb_separate_shader_objects/execution/layout-location-named-block-with-array: skip
 spec/arb_separate_shader_objects/linker/pervertex-clipdistance-tcs-out-tes: skip
 spec/arb_separate_shader_objects/linker/pervertex-clipdistance-tes-out-gs: skip
 spec/arb_separate_shader_objects/linker/pervertex-clipdistance-vs-out-tcs: skip
