@@ -983,9 +983,15 @@ bool gfx10_is_ngg_passthrough(struct si_shader *shader)
    if (sel->screen->use_ngg_culling)
       return false;
 
-   return sel->info.stage != MESA_SHADER_GEOMETRY && !sel->so.num_outputs && !sel->info.writes_edgeflag &&
-          !shader->key.opt.ngg_culling &&
-          (sel->info.stage != MESA_SHADER_VERTEX || !shader->key.mono.u.vs_export_prim_id);
+   /* The definition of NGG passthrough is:
+    * - user GS is turned off (no amplification, no GS instancing, and no culling)
+    * - VGT_ESGS_RING_ITEMSIZE is ignored (behaving as if it was equal to 1)
+    * - vertex indices are packed into 1 VGPR
+    * - Dimgrey and later chips can optionally skip the gs_alloc_req message
+    *
+    * NGG passthrough still allows the use of LDS.
+    */
+   return sel->info.stage != MESA_SHADER_GEOMETRY && !shader->key.opt.ngg_culling;
 }
 
 /* Common tail code for NGG primitive shaders. */

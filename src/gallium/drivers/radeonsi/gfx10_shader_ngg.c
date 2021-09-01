@@ -1339,7 +1339,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
    LLVMValueRef is_es_thread = si_is_es_thread(ctx);
    LLVMValueRef vtxindex[3];
 
-   if (ctx->shader->key.opt.ngg_culling) {
+   if (ctx->shader->key.opt.ngg_culling || gfx10_is_ngg_passthrough(ctx->shader)) {
       for (unsigned i = 0; i < 3; ++i)
          vtxindex[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[0], 10 * i, 9);
    } else {
