@@ -554,15 +554,15 @@ BEGIN_TEST(to_hw_instr.extract)
       //>> p_unit_test 4
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(4u));
       //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 0, 8
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(0)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1][0:16] dst_sel:uword0 dst_preserve src0_sel:@byte(0)
       EXT(0, 0)
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(2)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1][16:32] dst_sel:uword0 dst_preserve src0_sel:@byte(2)
       if (i != GFX7)
          EXT(0, 2)
       //~gfx7.*! v2b: %_:v[0][0:16] = @v_bfe %_:v[1][0:16], 8, 8
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(1)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1][0:16] dst_sel:uword0 dst_preserve src0_sel:@byte(1)
       EXT(1, 0)
-      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1] dst_sel:uword0 dst_preserve src0_sel:@byte(3)
+      //~gfx[^7].*! v2b: %_:v[0][0:16] = v_mov_b32 %_:v[1][16:32] dst_sel:uword0 dst_preserve src0_sel:@byte(3)
       if (i != GFX7)
          EXT(1, 2)
 
@@ -640,15 +640,15 @@ BEGIN_TEST(to_hw_instr.insert)
       //>> p_unit_test 2
       bld.pseudo(aco_opcode::p_unit_test, Operand::c32(2u));
       //~gfx7! v2b: %_:v[0][0:16] = v_bfe_u32 %_:v[1][0:16], 0, 8
-      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 0, %0:v[1] dst_sel:uword0 dst_preserve src0_sel:dword src1_sel:ubyte0
+      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 0, %0:v[1][0:16] dst_sel:uword0 dst_preserve src0_sel:dword src1_sel:ubyte0
       INS(0, 0)
-      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 0, %0:v[1] dst_sel:uword1 dst_preserve src0_sel:dword src1_sel:ubyte0
+      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 0, %0:v[1][0:16] dst_sel:uword1 dst_preserve src0_sel:dword src1_sel:ubyte0
       if (i != GFX7)
          INS(0, 2)
       //~gfx7! v2b: %_:v[0][0:16] = v_lshlrev_b32 8, %_:v[1][0:16]
-      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 8, %0:v[1] dst_sel:uword0 dst_preserve src0_sel:dword src1_sel:ubyte0
+      //~gfx[^7]! v2b: %0:v[0][0:16] = v_lshlrev_b32 8, %0:v[1][0:16] dst_sel:uword0 dst_preserve src0_sel:dword src1_sel:ubyte0
       INS(1, 0)
-      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 8, %0:v[1] dst_sel:uword1 dst_preserve src0_sel:dword src1_sel:ubyte0
+      //~gfx[^7]! v2b: %0:v[0][16:32] = v_lshlrev_b32 8, %0:v[1][0:16] dst_sel:uword1 dst_preserve src0_sel:dword src1_sel:ubyte0
       if (i != GFX7)
          INS(1, 2)
 

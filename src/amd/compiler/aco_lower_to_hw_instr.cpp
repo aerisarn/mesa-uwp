@@ -2089,15 +2089,8 @@ lower_to_hw_instr(Program* program)
                               Operand::c32(offset), Operand::c32(bits));
                   }
                } else if (dst.regClass() == v2b) {
-                  aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(
-                     aco_opcode::v_mov_b32,
-                     (Format)((uint16_t)Format::VOP1 | (uint16_t)Format::SDWA), 1, 1)};
-                  sdwa->operands[0] = Operand(op.physReg().advance(-op.physReg().byte()),
-                                              RegClass::get(op.regClass().type(), 4));
-                  sdwa->definitions[0] = dst;
-                  sdwa->sel[0] = SubdwordSel(1, op.physReg().byte() + offset / 8, signext);
-                  sdwa->dst_sel = SubdwordSel::uword;
-                  bld.insert(std::move(sdwa));
+                  bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op).instr->sdwa().sel[0] =
+                     SubdwordSel(1, offset / 8, signext);
                }
                break;
             }
@@ -2132,14 +2125,8 @@ lower_to_hw_instr(Program* program)
                      bld.vop3(aco_opcode::v_bfe_u32, dst, op, Operand::zero(), Operand::c32(bits));
                   } else if (program->chip_class >= GFX9 ||
                              (op.regClass() != s1 && program->chip_class >= GFX8)) {
-                     aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(
-                        aco_opcode::v_mov_b32,
-                        (Format)((uint16_t)Format::VOP1 | (uint16_t)Format::SDWA), 1, 1)};
-                     sdwa->operands[0] = op;
-                     sdwa->definitions[0] = dst;
-                     sdwa->sel[0] = SubdwordSel::dword;
-                     sdwa->dst_sel = SubdwordSel(bits / 8, offset / 8, false);
-                     bld.insert(std::move(sdwa));
+                     bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op).instr->sdwa().dst_sel =
+                        SubdwordSel(bits / 8, offset / 8, false);
                   } else {
                      bld.vop3(aco_opcode::v_bfe_u32, dst, op, Operand::zero(), Operand::c32(bits));
                      bld.vop2(aco_opcode::v_lshlrev_b32, dst, Operand::c32(offset),
@@ -2147,11 +2134,9 @@ lower_to_hw_instr(Program* program)
                   }
                } else {
                   assert(dst.regClass() == v2b);
-                  Operand sdwa_op = Operand(op.physReg().advance(-op.physReg().byte()),
-                                            RegClass::get(op.regClass().type(), 4));
-                  bld.vop2_sdwa(aco_opcode::v_lshlrev_b32, dst, Operand::c32(offset), sdwa_op)
+                  bld.vop2_sdwa(aco_opcode::v_lshlrev_b32, dst, Operand::c32(offset), op)
                      .instr->sdwa()
-                     .sel[1] = SubdwordSel(1, op.physReg().byte(), false);
+                     .sel[1] = SubdwordSel::ubyte;
                }
                break;
             }
