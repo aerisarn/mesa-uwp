@@ -137,7 +137,6 @@ struct radv_nir_compiler_options {
    bool check_ir;
    bool has_ls_vgpr_init_bug;
    bool has_image_load_dcc_bug;
-   bool use_ngg_streamout;
    bool enable_mrt_output_nan_fixup;
    bool disable_optimizations; /* only used by ACO */
    bool wgp_mode;

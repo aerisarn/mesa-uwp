@@ -339,12 +339,6 @@ declare_streamout_sgprs(struct radv_shader_args *args, gl_shader_stage stage)
 {
    int i;
 
-   if (args->options->use_ngg_streamout) {
-      if (stage == MESA_SHADER_TESS_EVAL)
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
-      return;
-   }
-
    /* Streamout SGPRs. */
    if (args->shader_info->so.num_outputs) {
       assert(stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL);
