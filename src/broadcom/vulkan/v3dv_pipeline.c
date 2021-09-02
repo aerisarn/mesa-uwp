@@ -3002,8 +3002,14 @@ pipeline_init(struct v3dv_pipeline *pipeline,
       return result;
    }
 
-   v3dv_X(device, pipeline_pack_compile_state)(pipeline,
-                                               pCreateInfo->pVertexInputState);
+   const VkPipelineVertexInputStateCreateInfo *vi_info =
+      pCreateInfo->pVertexInputState;
+
+   const VkPipelineVertexInputDivisorStateCreateInfoEXT *vd_info =
+      vk_find_struct_const(vi_info->pNext,
+                           PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
+
+   v3dv_X(device, pipeline_pack_compile_state)(pipeline, vi_info, vd_info);
 
    if (pipeline_has_integer_vertex_attrib(pipeline)) {
       pipeline->default_attribute_values =

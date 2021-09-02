@@ -553,7 +553,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_subgroup_size_control                          DONE (anv, radv)
   VK_EXT_texel_buffer_alignment                         DONE (anv, radv)
   VK_EXT_transform_feedback                             DONE (anv, lvp, radv, tu, vn)
-  VK_EXT_vertex_attribute_divisor                       DONE (anv, radv, lvp, tu)
+  VK_EXT_vertex_attribute_divisor                       DONE (anv, radv, lvp, tu, v3dv)
   VK_EXT_vertex_input_dynamic_state                     DONE (lvp)
   VK_EXT_ycbcr_image_arrays                             DONE (anv, radv)
   VK_ANDROID_external_memory_android_hardware_buffer    DONE (anv, radv)

@@ -599,7 +599,8 @@ pack_shader_state_attribute_record(struct v3dv_pipeline *pipeline,
 
 void
 v3dX(pipeline_pack_compile_state)(struct v3dv_pipeline *pipeline,
-                                  const VkPipelineVertexInputStateCreateInfo *vi_info)
+                                  const VkPipelineVertexInputStateCreateInfo *vi_info,
+                                  const VkPipelineVertexInputDivisorStateCreateInfoEXT *vd_info)
 {
    pack_shader_state_record(pipeline);
    pack_vcm_cache_size(pipeline);
@@ -611,6 +612,15 @@ v3dX(pipeline_pack_compile_state)(struct v3dv_pipeline *pipeline,
 
       pipeline->vb[desc->binding].stride = desc->stride;
       pipeline->vb[desc->binding].instance_divisor = desc->inputRate;
+   }
+
+   if (vd_info) {
+      for (uint32_t i = 0; i < vd_info->vertexBindingDivisorCount; i++) {
+         const VkVertexInputBindingDivisorDescriptionEXT *desc =
+            &vd_info->pVertexBindingDivisors[i];
+
+         pipeline->vb[desc->binding].instance_divisor = desc->divisor;
+      }
    }
 
    pipeline->va_count = 0;

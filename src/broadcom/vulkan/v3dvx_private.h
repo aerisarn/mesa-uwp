@@ -298,8 +298,8 @@ v3dX(pipeline_pack_state)(struct v3dv_pipeline *pipeline,
                           const VkPipelineMultisampleStateCreateInfo *ms_info);
 void
 v3dX(pipeline_pack_compile_state)(struct v3dv_pipeline *pipeline,
-                                  const VkPipelineVertexInputStateCreateInfo *vi_info);
-
+                                  const VkPipelineVertexInputStateCreateInfo *vi_info,
+                                  const VkPipelineVertexInputDivisorStateCreateInfoEXT *vd_info);
 /* Used at v3dv_queue */
 void
 v3dX(job_emit_noop)(struct v3dv_job *job);
