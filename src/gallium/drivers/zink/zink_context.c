@@ -3446,7 +3446,8 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    assert(d->obj);
    assert(s->obj);
    util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
-   if (zink_resource_has_unflushed_usage(d))
+   if (zink_resource_has_unflushed_usage(d) ||
+       (zink_resource_has_usage(d) && zink_resource_has_binds(d)))
       zink_batch_reference_resource(&ctx->batch, d);
    zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, s->obj);
    d->access = s->access;
