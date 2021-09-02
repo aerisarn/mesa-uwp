@@ -1757,8 +1757,17 @@ begin_render_pass(struct zink_context *ctx)
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++)
       att[i] = prep_fb_attachment(ctx, ctx->fb_state.cbufs[i], i);
    att[ctx->fb_state.nr_cbufs] = prep_fb_attachment(ctx, ctx->fb_state.zsbuf, ctx->fb_state.nr_cbufs);
-   if (zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer)
+   if (zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer) {
+#ifndef NDEBUG
+      for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+         assert(!ctx->fb_state.cbufs[i] || zink_resource(ctx->fb_state.cbufs[i]->texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
+         assert(!ctx->fb_state.cbufs[i] || zink_resource(ctx->fb_state.cbufs[i]->texture)->obj->vkflags == ctx->framebuffer->state.infos[i].flags);
+      }
+      assert(!ctx->fb_state.zsbuf || zink_resource(ctx->fb_state.zsbuf->texture)->obj->vkusage == ctx->framebuffer->state.infos[ctx->fb_state.nr_cbufs].usage);
+      assert(!ctx->fb_state.zsbuf || zink_resource(ctx->fb_state.zsbuf->texture)->obj->vkflags == ctx->framebuffer->state.infos[ctx->fb_state.nr_cbufs].flags);
+#endif
       rpbi.pNext = &infos;
+   }
 
    VKCTX(CmdBeginRenderPass)(batch->state->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
    batch->in_rp = true;
