@@ -520,6 +520,30 @@ if not with_platform_windows or not with_shared_glapi
     c_args += '-fno-emulated-tls'
     cpp_args += '-fno-emulated-tls'
   endif
+
+  # -mtls-dialect=gnu2 speeds up non-initial-exec TLS significantly but requires
+  # full toolchain (including libc) support.
+  have_mtls_dialect = false
+  foreach c_arg : get_option('c_args')
+    if c_arg.startswith('-mtls-dialect=')
+      have_mtls_dialect = true
+      break
+    endif
+  endforeach
+  if not have_mtls_dialect
+    # need .run to check libc support. meson aborts when calling .run when
+    # cross-compiling, but because this is just an optimization we can skip it
+    if meson.is_cross_build()
+      warning('cannot auto-detect -mtls-dialect when cross-compiling, using compiler default')
+    else
+      # -fpic to force dynamic tls, otherwise TLS relaxation defeats check
+      gnu2_test = cc.run('int __thread x; int main() { return x; }', args: ['-mtls-dialect=gnu2', '-fpic'], name: '-mtls-dialect=gnu2')
+      if gnu2_test.returncode() == 0
+        c_args += '-mtls-dialect=gnu2'
+        cpp_args += '-mtls-dialect=gnu2'
+      endif
+    endif
+  endif
 endif
 
 if with_glx != 'disabled'
