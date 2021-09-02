@@ -689,7 +689,7 @@ iris_has_invalid_primary(const struct iris_resource *res,
                          unsigned start_level, unsigned num_levels,
                          unsigned start_layer, unsigned num_layers)
 {
-   if (!res->aux.bo)
+   if (res->aux.usage == ISL_AUX_USAGE_NONE)
       return false;
 
    /* Clamp the level range to fit the resource */
@@ -718,7 +718,7 @@ iris_resource_prepare_access(struct iris_context *ice,
                              enum isl_aux_usage aux_usage,
                              bool fast_clear_supported)
 {
-   if (!res->aux.bo)
+   if (res->aux.usage == ISL_AUX_USAGE_NONE)
       return;
 
    /* We can't do resolves on the compute engine, so awkwardly, we have to
@@ -772,7 +772,7 @@ iris_resource_finish_write(struct iris_context *ice,
                            uint32_t start_layer, uint32_t num_layers,
                            enum isl_aux_usage aux_usage)
 {
-   if (!res->aux.bo)
+   if (res->aux.usage == ISL_AUX_USAGE_NONE)
       return;
 
    const uint32_t level_layers =
