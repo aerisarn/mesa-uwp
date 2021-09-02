@@ -1209,6 +1209,14 @@ static void
 emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
                           struct ir3_instruction **dst)
 {
+   /* Coherent accesses have to go directly to memory, rather than through
+    * ISAM's texture cache (which isn't coherent with image stores).
+    */
+   if (nir_intrinsic_access(intr) & ACCESS_COHERENT && ctx->compiler->gen >= 6) {
+      ctx->funcs->emit_intrinsic_load_image(ctx, intr, dst);
+      return;
+   }
+
    struct ir3_block *b = ctx->block;
    struct tex_src_info info = get_image_samp_tex_src(ctx, intr);
    struct ir3_instruction *sam;

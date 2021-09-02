@@ -20,16 +20,10 @@ KHR-GLES31.core.gpu_shader5.fma_precision_vec2,Fail
 KHR-GLES31.core.gpu_shader5.fma_precision_vec3,Fail
 KHR-GLES31.core.gpu_shader5.fma_precision_vec4,Fail
 
-# "Got red: 1, expected 0.00392157, at (1, 0)"
-KHR-GLES31.core.compute_shader.resource-image,Fail
-
 # Lots of errors like "[279] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
 KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support,Fail
 
 KHR-GLES31.core.geometry_shader.layered_framebuffer.stencil_support,Fail
-
-# " [31] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
-KHR-GLES31.core.shader_image_load_store.basic-glsl-misc-fs,Fail
 
 # " Pixel data comparison failed; expected: (0.1, 0.2, 0.3, 0.4) rendered: (0, 0, 0, 0) epsilon: 0.00392157
 #   Pixel data comparison failed at esextcTessellationShaderPoints.cpp:597"
