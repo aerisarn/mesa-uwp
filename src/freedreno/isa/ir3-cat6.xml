@@ -400,14 +400,12 @@ SOFTWARE.
 	</encode>
 </bitset>
 
-<!-- ldgb.untyped.4d.f32.4 r0.x, g[0], r0.x, r1.z -->
-<bitset name="ldgb" extends="#instruction-cat6-a3xx-ibo">
+<bitset name="#instruction-cat6-a3xx-ibo-load" extends="#instruction-cat6-a3xx-ibo">
 	<display>
 		{SY}{JP}{NAME}.{TYPED}.{D}d.{TYPE}.{TYPE_SIZE} {DST}, g[{SSBO}], {SRC1}, {SRC2}
 	</display>
 	<gen max="599"/>
 
-        <pattern pos="0"           >x</pattern> <!-- .a -->
 	<pattern low="1"  high="8" >xxxxxxxx</pattern>  <!-- SRC3 -->
 	<field   low="14" high="21" name="SRC1" type="#cat6-src">
 		<param name="SRC1_IM" as="SRC_IM"/>
@@ -418,14 +416,23 @@ SOFTWARE.
 		<param name="SRC2_IM" as="SRC_IM"/>
 	</field>
 	<field   low="32" high="39" name="DST" type="#reg-gpr"/>
-	<pattern pos="40"          >0</pattern> <!-- .rck -->
-	<pattern low="54" high="58">11011</pattern>  <!-- OPC -->
+	<pattern pos="40"          >x</pattern> <!-- .rck -->
 	<encode>
 		<map name="SRC1">src->srcs[1]</map>
 		<map name="SRC1_IM">!!(src->srcs[1]->flags &amp; IR3_REG_IMMED)</map>
 		<map name="SRC2">src->srcs[2]</map>
 		<map name="SRC2_IM">!!(src->srcs[2]->flags &amp; IR3_REG_IMMED)</map>
 	</encode>
+</bitset>
+
+<bitset name="ldgb" extends="#instruction-cat6-a3xx-ibo-load">
+	<pattern low="54" high="58">11011</pattern>  <!-- OPC -->
+        <pattern pos="0"           >x</pattern> <!-- .a -->
+</bitset>
+
+<bitset name="ldib" extends="#instruction-cat6-a3xx-ibo-load">
+	<pattern low="54" high="58">00110</pattern>  <!-- OPC -->
+        <pattern pos="0"           >1</pattern> <!-- .a -->
 </bitset>
 
 <bitset name="#instruction-cat6-a3xx-ibo-store" extends="#instruction-cat6-a3xx-ibo">

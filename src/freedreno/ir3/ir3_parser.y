@@ -1034,15 +1034,13 @@ cat6_load:         T_OP_LDG   { new_instr(OPC_LDG); }   cat6_type dst_reg ',' 'g
                        new_src(0, IR3_REG_IMMED)->iim_val = $8;
                    } ',' immediate
 
-// TODO some of the cat6 instructions have different syntax for a6xx..
-//|                  T_OP_LDIB { new_instr(OPC_LDIB); } cat6_type dst_reg cat6_offset ',' reg ',' cat6_immed
-
 cat6_store:        T_OP_STG   { new_instr(OPC_STG); dummy_dst(); }   cat6_type 'g' '[' src cat6_imm_offset ']' ',' src ',' immediate
 |                  T_OP_STG_A { new_instr(OPC_STG_A); dummy_dst(); } cat6_type 'g' '[' src cat6_stg_ldg_a6xx_offset ']' ',' src ',' immediate
 |                  T_OP_STP  { new_instr(OPC_STP); dummy_dst(); }  cat6_type 'p' '[' src cat6_dst_offset ']' ',' src ',' immediate
 |                  T_OP_STL  { new_instr(OPC_STL); dummy_dst(); }  cat6_type 'l' '[' src cat6_dst_offset ']' ',' src ',' immediate
 |                  T_OP_STLW { new_instr(OPC_STLW); dummy_dst(); } cat6_type 'l' '[' src cat6_dst_offset ']' ',' src ',' immediate
 
+cat6_loadib:       T_OP_LDIB { new_instr(OPC_LDIB); } cat6_typed cat6_dim cat6_type '.' cat6_immed dst_reg ',' 'g' '[' immediate ']' ',' src ',' src
 cat6_storeib:      T_OP_STIB { new_instr(OPC_STIB); dummy_dst(); } cat6_typed cat6_dim cat6_type '.' cat6_immed'g' '[' immediate ']' ',' src ',' src ',' src
 
 cat6_prefetch:     T_OP_PREFETCH { new_instr(OPC_PREFETCH); new_dst(0,0); /* dummy dst */ } 'g' '[' src cat6_offset ']' ',' cat6_immed
@@ -1128,6 +1126,7 @@ cat6_todo:         T_OP_G2L                 { new_instr(OPC_G2L); }
 |                  T_OP_RESFMT              { new_instr(OPC_RESFMT); }
 
 cat6_instr:        cat6_load
+|                  cat6_loadib
 |                  cat6_store
 |                  cat6_storeib
 |                  cat6_prefetch
