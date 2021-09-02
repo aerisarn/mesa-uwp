@@ -334,7 +334,6 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CLIP_HALFZ:
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_TEXTURE_BARRIER:
-   case PIPE_CAP_DRAW_PARAMETERS:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_CLEAR_SCISSORED:
@@ -343,6 +342,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PACKED_UNIFORMS:
    case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
       return 1;
+
+   case PIPE_CAP_DRAW_PARAMETERS:
+      return screen->info.feats11.shaderDrawParameters || screen->info.have_KHR_shader_draw_parameters;
 
    case PIPE_CAP_TGSI_VOTE:
       return screen->spirv_version >= SPIRV_VERSION(1, 3);
