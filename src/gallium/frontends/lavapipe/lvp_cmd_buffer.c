@@ -443,34 +443,60 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetWithTemplateKHR(
    for (unsigned i = 0; i < templ->entry_count; i++) {
       VkDescriptorUpdateTemplateEntry *entry = &templ->entry[i];
 
-      if (entry->descriptorCount > 1) {
-         info_size += entry->stride * entry->descriptorCount;
-      } else {
-         switch (entry->descriptorType) {
-         case VK_DESCRIPTOR_TYPE_SAMPLER:
-         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            info_size += sizeof(VkDescriptorImageInfo);
-            break;
-         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            info_size += sizeof(VkBufferView);
-            break;
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         default:
-            info_size += sizeof(VkDescriptorBufferInfo);
-            break;
-         }
+      switch (entry->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         info_size += sizeof(VkDescriptorImageInfo) * entry->descriptorCount;
+         break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         info_size += sizeof(VkBufferView) * entry->descriptorCount;
+         break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      default:
+         info_size += sizeof(VkDescriptorBufferInfo) * entry->descriptorCount;
+         break;
       }
    }
 
    cmd->u.push_descriptor_set_with_template_khr.data = vk_zalloc(cmd_buffer->queue.alloc, info_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   memcpy(cmd->u.push_descriptor_set_with_template_khr.data, pData, info_size);
+
+   uint64_t offset = 0;
+   for (unsigned i = 0; i < templ->entry_count; i++) {
+      VkDescriptorUpdateTemplateEntry *entry = &templ->entry[i];
+
+      unsigned size = 0;
+      switch (entry->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         size = sizeof(VkDescriptorImageInfo);
+         break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         size = sizeof(VkBufferView);
+         break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      default:
+         size = sizeof(VkDescriptorBufferInfo);
+         break;
+      }
+      for (unsigned i = 0; i < entry->descriptorCount; i++) {
+         memcpy((uint8_t*)cmd->u.push_descriptor_set_with_template_khr.data + offset, (const uint8_t*)pData + entry->offset + i * entry->stride, size);
+         offset += size;
+      }
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_CmdBindDescriptorSets(
