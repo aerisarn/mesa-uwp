@@ -48,6 +48,8 @@ MANUAL_COMMANDS = ['CmdPushDescriptorSetKHR',             # This script doesn't 
                    'CmdCopyImageToBuffer',
                    'CmdBlitImage',
                    'CmdResolveImage',
+                   'CmdBeginRenderPass', #pNext copying isn't handled
+                   'CmdBeginRenderPass2', #pNext copying isn't handled
                   ]
 
 TEMPLATE_C = Template(COPYRIGHT + """
