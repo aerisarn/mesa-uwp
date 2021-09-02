@@ -312,6 +312,10 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    surface->simage_view = surface->image_view;
    surface->image_view = image_view;
    surface->obj = zink_resource(surface->base.texture)->obj;
+   /* update for imageless fb */
+   surface->info.flags = res->obj->vkflags;
+   surface->info.usage = res->obj->vkusage;
+   surface->info_hash = _mesa_hash_data(&surface->info, sizeof(surface->info));
    zink_batch_usage_set(&surface->batch_uses, ctx->batch.state);
    simple_mtx_unlock(&res->surface_mtx);
    return true;
