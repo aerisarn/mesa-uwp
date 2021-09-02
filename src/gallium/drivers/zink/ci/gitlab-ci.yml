@@ -30,6 +30,12 @@ zink-piglit-no_timelines:
   script:
     - xvfb-run --server-args='-noreset' sh -c "ZINK_NO_TIMELINES=1 GALLIUM_DRIVER=zink VK_DRIVER=lvp install/piglit/piglit-runner.sh"
 
+zink-piglit-lazy:
+  extends:
+    - .zink-piglit-quick_gl
+  script:
+    - xvfb-run --server-args='-noreset' sh -c "ZINK_DESCRIPTORS=lazy GALLIUM_DRIVER=zink VK_DRIVER=lvp install/piglit/piglit-runner.sh"
+
 zink-lvp-deqp:
   extends:
     - .test-gl
