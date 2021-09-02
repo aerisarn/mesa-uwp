@@ -121,6 +121,16 @@ stw_unlock_contexts(struct stw_device *stw_dev)
    LeaveCriticalSection(&stw_dev->ctx_mutex);
 }
 
+static inline struct stw_context *
+stw_lookup_context( DHGLRC dhglrc )
+{
+   struct stw_context *ret;
+   stw_lock_contexts(stw_dev);
+   ret = stw_lookup_context_locked(dhglrc);
+   stw_unlock_contexts(stw_dev);
+   return ret;
+}
+
 
 static inline void
 stw_lock_framebuffers(struct stw_device *stw_dev)

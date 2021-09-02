@@ -163,7 +163,7 @@ get_matching_pixel_format(HDC hdc)
  * wglCreateContextAttribsARB() to actually create a rendering context.
  */
 struct stw_context *
-stw_create_context_attribs(HDC hdc, INT iLayerPlane, DHGLRC hShareContext,
+stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCtx,
                            int majorVersion, int minorVersion,
                            int contextFlags, int profileMask)
 {
@@ -172,7 +172,6 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, DHGLRC hShareContext,
    const struct stw_pixelformat_info *pfi;
    struct st_context_attribs attribs;
    struct stw_context *ctx = NULL;
-   struct stw_context *shareCtx = NULL;
    enum st_context_error ctx_err = 0;
 
    if (!stw_dev)
@@ -203,12 +202,8 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, DHGLRC hShareContext,
 
    pfi = stw_pixelformat_get_info( iPixelFormat );
 
-   if (hShareContext != 0) {
-      stw_lock_contexts(stw_dev);
-      shareCtx = stw_lookup_context_locked( hShareContext );
+   if (shareCtx != NULL)
       shareCtx->shared = TRUE;
-      stw_unlock_contexts(stw_dev);
-   }
 
    ctx = CALLOC_STRUCT( stw_context );
    if (ctx == NULL)

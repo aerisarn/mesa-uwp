@@ -197,7 +197,9 @@ wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList)
          share_dhglrc = (DHGLRC)(INT_PTR)hShareContext;
       }
 
-      struct stw_context *stw_ctx = stw_create_context_attribs(hDC, layerPlane, share_dhglrc,
+      struct stw_context *share_stw = stw_lookup_context(share_dhglrc);
+
+      struct stw_context *stw_ctx = stw_create_context_attribs(hDC, layerPlane, share_stw,
                                                                majorVersion, minorVersion,
                                                                contextFlags, profileMask);
 

@@ -49,7 +49,7 @@ struct stw_context
 };
 
 struct stw_context *stw_create_context_attribs(HDC hdc, INT iLayerPlane,
-                                               DHGLRC hShareContext,
+                                               struct stw_context *shareCtx,
                                                int majorVersion, int minorVersion,
                                                int contextFlags, int profileMask);
 
