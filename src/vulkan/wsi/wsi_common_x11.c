@@ -834,7 +834,7 @@ struct x11_image {
    uint32_t                                  sync_fence;
    uint32_t                                  serial;
    xcb_shm_seg_t                             shmseg;
-   uint32_t                                  shmid;
+   int                                       shmid;
    uint8_t *                                 shmaddr;
 };
 
