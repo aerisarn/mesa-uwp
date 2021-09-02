@@ -427,8 +427,26 @@ stw_get_current_read_dc( void )
    return ctx->hReadDC;
 }
 
+static void
+release_old_framebuffers(struct stw_framebuffer *old_fb, struct stw_framebuffer *old_fbRead,
+                         struct stw_context *old_ctx)
+{
+   if (old_fb || old_fbRead) {
+      stw_lock_framebuffers(stw_dev);
+      if (old_fb) {
+         stw_framebuffer_lock(old_fb);
+         stw_framebuffer_release_locked(old_fb, old_ctx->st);
+      }
+      if (old_fbRead) {
+         stw_framebuffer_lock(old_fbRead);
+         stw_framebuffer_release_locked(old_fbRead, old_ctx->st);
+      }
+      stw_unlock_framebuffers(stw_dev);
+   }
+}
+
 BOOL
-stw_make_current(HDC hDrawDC, HDC hReadDC, struct stw_context *ctx)
+stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, struct stw_context *ctx)
 {
    struct stw_context *old_ctx = NULL;
    BOOL ret = FALSE;
@@ -439,7 +457,7 @@ stw_make_current(HDC hDrawDC, HDC hReadDC, struct stw_context *ctx)
    old_ctx = stw_current_context();
    if (old_ctx != NULL) {
       if (old_ctx == ctx) {
-         if (old_ctx->hDrawDC == hDrawDC && old_ctx->hReadDC == hReadDC) {
+         if (old_ctx->current_framebuffer == fb && old_ctx->current_read_framebuffer == fbRead) {
             /* Return if already current. */
             return TRUE;
          }
@@ -465,104 +483,52 @@ stw_make_current(HDC hDrawDC, HDC hReadDC, struct stw_context *ctx)
    }
 
    if (ctx) {
-      struct stw_framebuffer *fb = NULL;
-      struct stw_framebuffer *fbRead = NULL;
-
-      /* This call locks fb's mutex */
-      fb = stw_framebuffer_from_hdc( hDrawDC );
-      if (fb) {
-         stw_framebuffer_update(fb);
-      }
-      else {
-         /* Applications should call SetPixelFormat before creating a context,
-          * but not all do, and the opengl32 runtime seems to use a default
-          * pixel format in some cases, so we must create a framebuffer for
-          * those here.
-          */
-         int iPixelFormat = get_matching_pixel_format(hDrawDC);
-         if (iPixelFormat)
-            fb = stw_framebuffer_create( hDrawDC, iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW );
-         if (!fb)
-            goto fail;
-      }
+      if (!fb || !fbRead)
+         goto fail;
 
       if (fb->iPixelFormat != ctx->iPixelFormat) {
-         stw_framebuffer_unlock(fb);
+         SetLastError(ERROR_INVALID_PIXEL_FORMAT);
+         goto fail;
+      }
+      if (fbRead->iPixelFormat != ctx->iPixelFormat) {
          SetLastError(ERROR_INVALID_PIXEL_FORMAT);
          goto fail;
       }
 
-      /* Bind the new framebuffer */
-      ctx->hDrawDC = hDrawDC;
-      ctx->hReadDC = hReadDC;
-
-      struct stw_framebuffer *old_fb = ctx->current_framebuffer;
-      if (old_fb != fb) {
-         stw_framebuffer_reference_locked(fb);
-         ctx->current_framebuffer = fb;
-      }
+      stw_framebuffer_lock(fb);
+      stw_framebuffer_update(fb);
+      stw_framebuffer_reference_locked(fb);
       stw_framebuffer_unlock(fb);
 
-      if (hReadDC) {
-         if (hReadDC == hDrawDC) {
-            fbRead = fb;
-         }
-         else {
-            fbRead = stw_framebuffer_from_hdc( hReadDC );
+      stw_framebuffer_lock(fbRead);
+      if (fbRead != fb)
+         stw_framebuffer_update(fbRead);
+      stw_framebuffer_reference_locked(fbRead);
+      stw_framebuffer_unlock(fbRead);
 
-            if (fbRead) {
-               stw_framebuffer_update(fbRead);
-            }
-            else {
-               /* Applications should call SetPixelFormat before creating a
-                * context, but not all do, and the opengl32 runtime seems to
-                * use a default pixel format in some cases, so we must create
-                * a framebuffer for those here.
-                */
-               int iPixelFormat = GetPixelFormat(hReadDC);
-               if (iPixelFormat)
-                  fbRead = stw_framebuffer_create( hReadDC, iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW );
-               if (!fbRead)
-                  goto fail;
-            }
+      struct stw_framebuffer *old_fb = ctx->current_framebuffer;
+      struct stw_framebuffer *old_fbRead = ctx->current_read_framebuffer;
+      ctx->current_framebuffer = fb;
+      ctx->current_read_framebuffer = fbRead;
 
-            if (fbRead->iPixelFormat != ctx->iPixelFormat) {
-               stw_framebuffer_unlock(fbRead);
-               SetLastError(ERROR_INVALID_PIXEL_FORMAT);
-               goto fail;
-            }
-            stw_framebuffer_unlock(fbRead);
-         }
-         ret = stw_dev->stapi->make_current(stw_dev->stapi, ctx->st,
-                                            fb->stfb, fbRead->stfb);
-      }
-      else {
-         /* Note: when we call this function we will wind up in the
-          * stw_st_framebuffer_validate_locked() function which will incur
-          * a recursive fb->mutex lock.
-          */
-         ret = stw_dev->stapi->make_current(stw_dev->stapi, ctx->st,
-                                            fb->stfb, fb->stfb);
-      }
+      ret = stw_dev->stapi->make_current(stw_dev->stapi, ctx->st,
+                                          fb->stfb, fbRead->stfb);
 
-      if (old_fb && old_fb != fb) {
-         stw_lock_framebuffers(stw_dev);
-         stw_framebuffer_lock(old_fb);
-         stw_framebuffer_release_locked(old_fb, old_ctx->st);
-         stw_unlock_framebuffers(stw_dev);
-      }
+      /* Release the old framebuffers from this context. */
+      release_old_framebuffers(old_fb, old_fbRead, ctx);
 
 fail:
-      if (fb) {
-         /* fb must be unlocked at this point. */
+      /* fb and fbRead must be unlocked at this point. */
+      if (fb)
          assert(!stw_own_mutex(&fb->mutex));
-      }
+      if (fbRead)
+         assert(!stw_own_mutex(&fbRead->mutex));
 
       /* On failure, make the thread's current rendering context not current
        * before returning.
        */
       if (!ret) {
-         stw_make_current(NULL, NULL, 0);
+         stw_make_current(NULL, NULL, NULL);
       }
    } else {
       ret = stw_dev->stapi->make_current(stw_dev->stapi, NULL, NULL, NULL);
@@ -572,17 +538,37 @@ fail:
     * make_current, as it can be referenced inside.
     */
    if (old_ctx && old_ctx != ctx) {
-      struct stw_framebuffer *old_fb = old_ctx->current_framebuffer;
-      if (old_fb) {
-         old_ctx->current_framebuffer = NULL;
-         stw_lock_framebuffers(stw_dev);
-         stw_framebuffer_lock(old_fb);
-         stw_framebuffer_release_locked(old_fb, old_ctx->st);
-         stw_unlock_framebuffers(stw_dev);
-      }
+      release_old_framebuffers(old_ctx->current_framebuffer, old_ctx->current_read_framebuffer, old_ctx);
+      old_ctx->current_framebuffer = NULL;
+      old_ctx->current_read_framebuffer = NULL;
    }
 
    return ret;
+}
+
+static struct stw_framebuffer *
+get_unlocked_refd_framebuffer_from_dc(HDC hDC)
+{
+   if (!hDC)
+      return NULL;
+
+   /* This call locks fb's mutex */
+   struct stw_framebuffer *fb = stw_framebuffer_from_hdc(hDC);
+   if (!fb) {
+      /* Applications should call SetPixelFormat before creating a context,
+       * but not all do, and the opengl32 runtime seems to use a default
+       * pixel format in some cases, so we must create a framebuffer for
+       * those here.
+       */
+      int iPixelFormat = get_matching_pixel_format(hDC);
+      if (iPixelFormat)
+         fb = stw_framebuffer_create(hDC, iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW);
+      if (!fb)
+         return NULL;
+   }
+   stw_framebuffer_reference_locked(fb);
+   stw_framebuffer_unlock(fb);
+   return fb;
 }
 
 BOOL
@@ -590,9 +576,49 @@ stw_make_current_by_handles(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
 {
    struct stw_context *ctx = stw_lookup_context(dhglrc);
    if (dhglrc && !ctx) {
-      stw_make_current(NULL, NULL, NULL);
+      stw_make_current_by_handles(NULL, NULL, 0);
+      return FALSE;
    }
-   return stw_make_current(hDrawDC, hReadDC, ctx);
+
+   struct stw_framebuffer *fb = get_unlocked_refd_framebuffer_from_dc(hDrawDC);
+   if (ctx && !fb) {
+      stw_make_current_by_handles(NULL, NULL, 0);
+      return FALSE;
+   }
+
+   struct stw_framebuffer *fbRead = (hDrawDC == hReadDC || hReadDC == NULL) ?
+      fb : get_unlocked_refd_framebuffer_from_dc(hReadDC);
+   if (ctx && !fbRead) {
+      release_old_framebuffers(fb, NULL, ctx);
+      stw_make_current_by_handles(NULL, NULL, 0);
+      return FALSE;
+   }
+
+   BOOL success = stw_make_current(fb, fbRead, ctx);
+
+   if (ctx) {
+      if (success) {
+         ctx->hDrawDC = hDrawDC;
+         ctx->hReadDC = hReadDC;
+      } else {
+         ctx->hDrawDC = NULL;
+         ctx->hReadDC = NULL;
+      }
+
+      assert(fb && fbRead);
+      /* In the success case, the context took extra references on these framebuffers,
+       * so release our local references.
+       */
+      stw_lock_framebuffers(stw_dev);
+      stw_framebuffer_lock(fb);
+      stw_framebuffer_release_locked(fb, ctx->st);
+      if (fb != fbRead) {
+         stw_framebuffer_lock(fbRead);
+         stw_framebuffer_release_locked(fbRead, ctx->st);
+      }
+      stw_unlock_framebuffers(stw_dev);
+   }
+   return success;
 }
 
 

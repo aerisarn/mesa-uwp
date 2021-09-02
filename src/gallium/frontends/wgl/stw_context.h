@@ -44,6 +44,7 @@ struct stw_context
    BOOL shared;
 
    struct stw_framebuffer *current_framebuffer;
+   struct stw_framebuffer *current_read_framebuffer;
 
    struct hud_context *hud;
 };
@@ -65,7 +66,7 @@ HDC stw_get_current_dc( void );
 
 HDC stw_get_current_read_dc( void );
 
-BOOL stw_make_current( HDC hDrawDC, HDC hReadDC, struct stw_context *ctx );
+BOOL stw_make_current( struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, struct stw_context *ctx );
 
 BOOL stw_make_current_by_handles( HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc );
 
