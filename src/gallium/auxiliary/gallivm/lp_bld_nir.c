@@ -1317,7 +1317,7 @@ static void visit_load_ssbo(struct lp_build_nir_context *bld_base,
                            nir_intrinsic_instr *instr,
                            LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
-   LLVMValueRef idx = get_src(bld_base, instr->src[0]);
+   LLVMValueRef idx = cast_type(bld_base, get_src(bld_base, instr->src[0]), nir_type_uint, 32);
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
    bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
                        idx, offset, result);
@@ -1327,7 +1327,7 @@ static void visit_store_ssbo(struct lp_build_nir_context *bld_base,
                              nir_intrinsic_instr *instr)
 {
    LLVMValueRef val = get_src(bld_base, instr->src[0]);
-   LLVMValueRef idx = get_src(bld_base, instr->src[1]);
+   LLVMValueRef idx = cast_type(bld_base, get_src(bld_base, instr->src[1]), nir_type_uint, 32);
    LLVMValueRef offset = get_src(bld_base, instr->src[2]);
    int writemask = instr->const_index[0];
    int nc = nir_src_num_components(instr->src[0]);
@@ -1339,7 +1339,7 @@ static void visit_get_ssbo_size(struct lp_build_nir_context *bld_base,
                                 nir_intrinsic_instr *instr,
                                 LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
-   LLVMValueRef idx = get_src(bld_base, instr->src[0]);
+   LLVMValueRef idx = cast_type(bld_base, get_src(bld_base, instr->src[0]), nir_type_uint, 32);
    result[0] = bld_base->get_ssbo_size(bld_base, idx);
 }
 
@@ -1347,7 +1347,7 @@ static void visit_ssbo_atomic(struct lp_build_nir_context *bld_base,
                               nir_intrinsic_instr *instr,
                               LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
-   LLVMValueRef idx = get_src(bld_base, instr->src[0]);
+   LLVMValueRef idx = cast_type(bld_base, get_src(bld_base, instr->src[0]), nir_type_uint, 32);
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
    LLVMValueRef val = get_src(bld_base, instr->src[2]);
    LLVMValueRef val2 = NULL;
