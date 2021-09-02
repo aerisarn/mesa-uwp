@@ -3161,16 +3161,19 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
 {
    if (!ctx->framebuffer)
       return;
-   for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-      if (!ctx->fb_state.cbufs[i] ||
-          zink_resource(ctx->fb_state.cbufs[i]->texture) != res)
-         continue;
-      zink_rebind_ctx_surface(ctx, &ctx->fb_state.cbufs[i]);
-      zink_batch_no_rp(ctx);
-   }
-   if (ctx->fb_state.zsbuf && zink_resource(ctx->fb_state.zsbuf->texture) != res) {
-      zink_rebind_ctx_surface(ctx, &ctx->fb_state.zsbuf);
-      zink_batch_no_rp(ctx);
+   if (res->aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+      for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+         if (!ctx->fb_state.cbufs[i] ||
+             zink_resource(ctx->fb_state.cbufs[i]->texture) != res)
+            continue;
+         zink_rebind_ctx_surface(ctx, &ctx->fb_state.cbufs[i]);
+         zink_batch_no_rp(ctx);
+      }
+   } else {
+      if (ctx->fb_state.zsbuf && zink_resource(ctx->fb_state.zsbuf->texture) != res) {
+         zink_rebind_ctx_surface(ctx, &ctx->fb_state.zsbuf);
+         zink_batch_no_rp(ctx);
+      }
    }
    if (rebind_fb_state(ctx, res, false))
       zink_batch_no_rp(ctx);
