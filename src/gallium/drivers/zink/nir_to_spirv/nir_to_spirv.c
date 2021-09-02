@@ -2577,10 +2577,12 @@ static void
 emit_image_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId img_var = get_src(ctx, &intr->src[0]);
-   SpvId sample = get_src(ctx, &intr->src[2]);
    SpvId param = get_src(ctx, &intr->src[3]);
    nir_variable *var = get_var_from_image(ctx, img_var);
    const struct glsl_type *type = glsl_without_array(var->type);
+   bool is_ms;
+   type_to_dim(glsl_get_sampler_dim(type), &is_ms);
+   SpvId sample = is_ms ? get_src(ctx, &intr->src[2]) : emit_uint_const(ctx, 32, 0);
    SpvId coord = get_image_coords(ctx, type, &intr->src[1]);
    SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
    SpvId texel = spirv_builder_emit_image_texel_pointer(&ctx->builder, base_type, img_var, coord, sample);
