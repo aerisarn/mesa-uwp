@@ -470,7 +470,7 @@ struct radv_shader_variant *radv_create_trap_handler_shader(struct radv_device *
 
 void radv_shader_variant_destroy(struct radv_device *device, struct radv_shader_variant *variant);
 
-unsigned radv_get_max_waves(struct radv_device *device, struct radv_shader_variant *variant,
+unsigned radv_get_max_waves(const struct radv_device *device, struct radv_shader_variant *variant,
                             gl_shader_stage stage);
 
 const char *radv_get_shader_name(struct radv_shader_info *info, gl_shader_stage stage);

@@ -1737,7 +1737,7 @@ radv_get_shader_name(struct radv_shader_info *info, gl_shader_stage stage)
 }
 
 unsigned
-radv_get_max_waves(struct radv_device *device, struct radv_shader_variant *variant,
+radv_get_max_waves(const struct radv_device *device, struct radv_shader_variant *variant,
                    gl_shader_stage stage)
 {
    struct radeon_info *info = &device->physical_device->rad_info;
