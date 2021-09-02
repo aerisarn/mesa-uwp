@@ -910,7 +910,7 @@ get_reg_simple(ra_ctx& ctx, RegisterFile& reg_file, DefInfo info)
    if (rc.is_subdword()) {
       for (std::pair<const uint32_t, std::array<uint32_t, 4>>& entry : reg_file.subdword_regs) {
          assert(reg_file[PhysReg{entry.first}] == 0xF0000000);
-         if (!bounds.contains(PhysReg{entry.first}))
+         if (!bounds.contains({PhysReg{entry.first}, rc.size()}))
             continue;
 
          for (unsigned i = 0; i < 4; i += info.stride) {
@@ -1434,19 +1434,21 @@ is_mimg_vaddr_intact(ra_ctx& ctx, RegisterFile& reg_file, Instruction* instr)
       if (ctx.assignments[op.tempId()].assigned) {
          PhysReg reg = ctx.assignments[op.tempId()].reg;
 
-         if (first.reg() != 512 && reg != first.advance(i * 4))
-            return false; /* not at the best position */
-
-         if ((reg.reg() - 256) < i)
-            return false; /* no space for previous operands */
-
-         first = reg.advance(i * -4);
-      } else if (first.reg() != 512) {
+         if (first.reg() == 512) {
+            PhysRegInterval bounds = get_reg_bounds(ctx.program, RegType::vgpr);
+            first = reg.advance(i * -4);
+            PhysRegInterval vec = PhysRegInterval{first, instr->operands.size() - 3u};
+            if (!bounds.contains(vec)) /* not enough space for other operands */
+               return false;
+         } else {
+            if (reg != first.advance(i * 4)) /* not at the best position */
+               return false;
+         }
+      } else {
          /* If there's an unexpected temporary, this operand is unlikely to be
           * placed in the best position.
           */
-         unsigned id = reg_file.get_id(first.advance(i * 4));
-         if (id && id != op.tempId())
+         if (first.reg() != 512 && reg_file.test(first.advance(i * 4), 4))
             return false;
       }
    }
