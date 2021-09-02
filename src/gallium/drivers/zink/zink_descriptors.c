@@ -403,6 +403,7 @@ create_layout(struct zink_context *ctx, enum zink_descriptor_type type,
       return VK_NULL_HANDLE;
 
    struct zink_descriptor_layout_key *k = ralloc(ctx, struct zink_descriptor_layout_key);
+   k->use_count = 0;
    k->num_descriptors = num_bindings;
    size_t bindings_size = MAX2(num_bindings, 1) * sizeof(VkDescriptorSetLayoutBinding);
    k->bindings = ralloc_size(k, bindings_size);
