@@ -151,6 +151,20 @@ vn_android_drm_format_to_vk_format(uint32_t format)
    }
 }
 
+static bool
+vn_android_drm_format_is_yuv(uint32_t format)
+{
+   assert(vn_android_drm_format_to_vk_format(format) != VK_FORMAT_UNDEFINED);
+
+   switch (format) {
+   case DRM_FORMAT_YVU420:
+   case DRM_FORMAT_NV12:
+      return true;
+   default:
+      return false;
+   }
+}
+
 uint64_t
 vn_android_get_ahb_usage(const VkImageUsageFlags usage,
                          const VkImageCreateFlags flags)
@@ -743,6 +757,19 @@ vn_android_get_ahb_format_properties(
    const VkFormatFeatureFlags format_features =
       mod_props.drmFormatModifierTilingFeatures |
       VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
+
+   /* 11.2.7. Android Hardware Buffer External Memory
+    *
+    * Implementations may not always be able to determine the color model,
+    * numerical range, or chroma offsets of the image contents, so the values
+    * in VkAndroidHardwareBufferFormatPropertiesANDROID are only suggestions.
+    * Applications should treat these values as sensible defaults to use in the
+    * absence of more reliable information obtained through some other means.
+    */
+   const VkSamplerYcbcrModelConversion model =
+      vn_android_drm_format_is_yuv(buf_props.drm_fourcc)
+         ? VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601
+         : VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY;
    *out_props = (VkAndroidHardwareBufferFormatPropertiesANDROID) {
       .sType = out_props->sType,
       .pNext = out_props->pNext,
@@ -755,7 +782,7 @@ vn_android_get_ahb_format_properties(
          .b = VK_COMPONENT_SWIZZLE_IDENTITY,
          .a = VK_COMPONENT_SWIZZLE_IDENTITY,
       },
-      .suggestedYcbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601,
+      .suggestedYcbcrModel = model,
       .suggestedYcbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_FULL,
       .suggestedXChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
       .suggestedYChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
