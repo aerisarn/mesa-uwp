@@ -3911,6 +3911,7 @@ LocalCSE::visit(BasicBlock *bb)
 class DeadCodeElim : public Pass
 {
 public:
+   DeadCodeElim() : deadCount(0) {}
    bool buryAll(Program *);
 
 private:
