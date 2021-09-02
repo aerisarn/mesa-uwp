@@ -3161,22 +3161,33 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
 {
    if (!ctx->framebuffer)
       return;
+   bool did_rebind = false;
    if (res->aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
       for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          if (!ctx->fb_state.cbufs[i] ||
              zink_resource(ctx->fb_state.cbufs[i]->texture) != res)
             continue;
          zink_rebind_ctx_surface(ctx, &ctx->fb_state.cbufs[i]);
-         zink_batch_no_rp(ctx);
+         did_rebind = true;
       }
    } else {
       if (ctx->fb_state.zsbuf && zink_resource(ctx->fb_state.zsbuf->texture) != res) {
          zink_rebind_ctx_surface(ctx, &ctx->fb_state.zsbuf);
-         zink_batch_no_rp(ctx);
+         did_rebind = true;
       }
    }
-   if (rebind_fb_state(ctx, res, false))
-      zink_batch_no_rp(ctx);
+
+   did_rebind |= rebind_fb_state(ctx, res, false);
+
+   if (!did_rebind)
+      return;
+
+   zink_batch_no_rp(ctx);
+   if (zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer) {
+      struct zink_framebuffer *fb = ctx->get_framebuffer(ctx);
+      ctx->fb_changed |= ctx->framebuffer != fb;
+      ctx->framebuffer = fb;
+   }
 }
 
 ALWAYS_INLINE static struct zink_resource *
