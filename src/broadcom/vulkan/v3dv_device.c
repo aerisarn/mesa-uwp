@@ -1252,7 +1252,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
    const uint32_t v3d_coord_shift = 6;
 
-   const uint32_t v3d_point_line_granularity = 2.0f / (1 << v3d_coord_shift);
+   const float v3d_point_line_granularity = 2.0f / (1 << v3d_coord_shift);
    const uint32_t max_fb_size = 4096;
 
    const VkSampleCountFlags supported_sample_counts =
