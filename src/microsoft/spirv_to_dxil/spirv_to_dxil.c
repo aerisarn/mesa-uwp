@@ -45,10 +45,14 @@ shared_var_info(const struct glsl_type* type, unsigned* size, unsigned* align)
 static nir_variable *
 add_runtime_data_var(nir_shader *nir, unsigned desc_set, unsigned binding)
 {
-   const struct glsl_type *array_type = glsl_array_type(
-      glsl_uint_type(),
-      sizeof(struct dxil_spirv_compute_runtime_data) / sizeof(unsigned),
-      sizeof(unsigned));
+   unsigned runtime_data_size =
+      nir->info.stage == MESA_SHADER_COMPUTE
+         ? sizeof(struct dxil_spirv_compute_runtime_data)
+         : sizeof(struct dxil_spirv_vertex_runtime_data);
+
+   const struct glsl_type *array_type =
+      glsl_array_type(glsl_uint_type(), runtime_data_size / sizeof(unsigned),
+                      sizeof(unsigned));
    const struct glsl_struct_field field = {array_type, "arr"};
    nir_variable *var = nir_variable_create(
       nir, nir_var_mem_ubo,
@@ -88,6 +92,16 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
    case nir_intrinsic_load_num_workgroups:
       offset =
          offsetof(struct dxil_spirv_compute_runtime_data, group_count_x);
+      break;
+   case nir_intrinsic_load_first_vertex:
+      offset = offsetof(struct dxil_spirv_vertex_runtime_data, first_vertex);
+      break;
+   case nir_intrinsic_load_is_indexed_draw:
+      offset =
+         offsetof(struct dxil_spirv_vertex_runtime_data, is_indexed_draw);
+      break;
+   case nir_intrinsic_load_base_instance:
+      offset = offsetof(struct dxil_spirv_vertex_runtime_data, base_instance);
       break;
    default:
       return false;
@@ -164,8 +178,9 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    glsl_type_singleton_init_or_ref();
 
    struct nir_shader_compiler_options nir_options = *dxil_get_nir_compiler_options();
-   // We will manually handle base_vertex
-   nir_options.lower_base_vertex = false;
+   // We will manually handle base_vertex when vertex_id and instance_id have
+   // have been already converted to zero-base.
+   nir_options.lower_base_vertex = !conf->zero_based_vertex_instance_id;
 
    nir_shader *nir = spirv_to_nir(
       words, word_count, (struct nir_spirv_specialization *)specializations,
@@ -181,15 +196,16 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
 
    NIR_PASS_V(nir, nir_lower_system_values);
 
-   // vertex_id and instance_id should have already been transformed to base
-   //  zero before spirv_to_dxil was called. Also, WebGPU does not support
-   //  base/firstVertex/Instance.
-   gl_system_value system_values[] = {
-      SYSTEM_VALUE_FIRST_VERTEX,
-      SYSTEM_VALUE_BASE_VERTEX,
-      SYSTEM_VALUE_BASE_INSTANCE
-   };
-   NIR_PASS_V(nir, dxil_nir_lower_system_values_to_zero, system_values, ARRAY_SIZE(system_values));
+   if (conf->zero_based_vertex_instance_id) {
+      // vertex_id and instance_id should have already been transformed to
+      // base zero before spirv_to_dxil was called. Therefore, we can zero out
+      // base/firstVertex/Instance.
+      gl_system_value system_values[] = {SYSTEM_VALUE_FIRST_VERTEX,
+                                         SYSTEM_VALUE_BASE_VERTEX,
+                                         SYSTEM_VALUE_BASE_INSTANCE};
+      NIR_PASS_V(nir, dxil_nir_lower_system_values_to_zero, system_values,
+                 ARRAY_SIZE(system_values));
+   }
 
    bool requires_runtime_data = false;
    NIR_PASS(requires_runtime_data, nir,

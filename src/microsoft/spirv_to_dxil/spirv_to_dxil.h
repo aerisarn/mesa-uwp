@@ -90,11 +90,23 @@ struct dxil_spirv_compute_runtime_data {
    uint32_t group_count_z;
 };
 
+/* This struct describes the layout of data expected in the CB bound to
+ * runtime_data_cbv during vertex stages */
+struct dxil_spirv_vertex_runtime_data {
+   uint32_t first_vertex;
+   uint32_t base_instance;
+   bool is_indexed_draw;
+};
+
 struct dxil_spirv_runtime_conf {
    struct {
       uint32_t register_space;
       uint32_t base_shader_register;
    } runtime_data_cbv;
+
+   // Set true if vertex and instance ids have already been converted to
+   // zero-based. Otherwise, runtime_data will be required to lower them.
+   bool zero_based_vertex_instance_id;
 };
 
 /**
