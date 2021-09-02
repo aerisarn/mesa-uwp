@@ -935,7 +935,6 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             zink_resource_buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
             set_vertex_buffer_clamped(ctx, start_slot + i);
-            zink_batch_resource_usage_set(&ctx->batch, res, false);
          }
       }
    } else {
