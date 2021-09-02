@@ -27,6 +27,7 @@ COPYRIGHT=u"""
 import argparse
 import os
 import re
+from collections import namedtuple
 import xml.etree.ElementTree as et
 
 from mako.template import Template
@@ -189,8 +190,10 @@ void vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
 % elif '[' in p.decl:
    memcpy(cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)}, ${p.name},
           sizeof(*${p.name}) * ${get_array_len(p)});
+% elif p.type == "void":
+   cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)} = (${remove_suffix(p.decl.replace("const", ""), p.name)}) ${p.name};
 % elif '*' in p.decl:
-   ${get_struct_copy(c, p, types)}
+   ${get_struct_copy("cmd->u.%s.%s" % (to_struct_field_name(c.name), to_field_name(p.name)), p.name, p.type, 'sizeof(%s)' % p.type, types)}
 % else:
    cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)} = ${p.name};
 % endif
@@ -276,33 +279,57 @@ def get_array_copy(command, param):
     copy = "memcpy((%s)%s, %s, %s * %s);" % (const_cast, field_name, param.name, field_size, param.len)
     return "%s\n   %s" % (allocation, copy)
 
-def get_array_member_copy(command, param, member):
-    field_name = "cmd->u.%s.%s->%s" % (to_struct_field_name(command.name), to_field_name(param.name), member.name)
-    len_field_name = "cmd->u.%s.%s->%s" % (to_struct_field_name(command.name), to_field_name(param.name), member.len)
+def get_array_member_copy(struct, src_name, member):
+    field_name = "%s->%s" % (struct, member.name)
+    len_field_name = "%s->%s" % (struct, member.len)
     allocation = "%s = vk_zalloc(queue->alloc, sizeof(*%s) * %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);" % (field_name, field_name, len_field_name)
     const_cast = remove_suffix(member.decl.replace("const", ""), member.name)
-    copy = "memcpy((%s)%s, %s->%s, sizeof(*%s) * %s);" % (const_cast, field_name, param.name, member.name, field_name, len_field_name)
+    copy = "memcpy((%s)%s, %s->%s, sizeof(*%s) * %s);" % (const_cast, field_name, src_name, member.name, field_name, len_field_name)
     return "%s\n   %s\n" % (allocation, copy)
-    
-def get_struct_copy(command, param, types):
-    field_name = "cmd->u.%s.%s" % (to_struct_field_name(command.name), to_field_name(param.name))
 
-    if param.type == "void":
-        const_cast = remove_suffix(param.decl.replace("const", ""), param.name)
-        return "%s = (%s) %s;" % (field_name, const_cast, param.name)
+def get_pnext_member_copy(struct, src_type, member, types, level):
+    if not types[src_type].extended_by:
+        return ""
+    field_name = "%s->%s" % (struct, member.name)
+    pnext_decl = "const VkBaseInStructure *pnext = %s;" % field_name
+    case_stmts = ""
+    for type in types[src_type].extended_by:
+        case_stmts += """
+      case %s:
+         %s
+         break;
+      """ % (type.enum, get_struct_copy(field_name, "pnext", type.name, "sizeof(%s)" % type.name, types, level))
+    return """
+      %s
+      if (pnext) {
+         switch ((int32_t)pnext->sType) {
+         %s
+         }
+      }
+      """ % (pnext_decl, case_stmts)
 
-    allocation = "%s = vk_zalloc(queue->alloc, sizeof(*%s), 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);" % (field_name, field_name)
-    copy = "memcpy(%s, %s, sizeof(*%s));" % (field_name, param.name, field_name)
+def get_struct_copy(dst, src_name, src_type, size, types, level=0):
+    global tmp_dst_idx
+    global tmp_src_idx
+
+    allocation = "%s = vk_zalloc(queue->alloc, %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);" % (dst, size)
+    copy = "memcpy((void*)%s, %s, %s);" % (dst, src_name, size)
+
+    level += 1
+    tmp_dst = "%s *tmp_dst%d = (void *) %s; (void) tmp_dst%d;" % (src_type, level, dst, level)
+    tmp_src = "%s *tmp_src%d = (void *) %s; (void) tmp_src%d;" % (src_type, level, src_name, level)
 
     member_copies = ""
-    if (param.type in types):
-        for member in types[param.type]:
+    if src_type in types:
+        for member in types[src_type].members:
             if member.len and member.len != 'null-terminated':
-                member_copies += get_array_member_copy(command, param, member)
+                member_copies += get_array_member_copy("tmp_dst%d" % level, "tmp_src%d" % level, member)
+            elif member.name == 'pNext':
+                member_copies += get_pnext_member_copy("tmp_dst%d" % level, src_type, member, types, level)
 
-    null_assignment = "%s = NULL;" % field_name
-    if_stmt = "if (%s) {" % param.name
-    return "%s\n      %s\n      %s\n   %s   } else {\n      %s\n   }" % (if_stmt, allocation, copy, member_copies, null_assignment)
+    null_assignment = "%s = NULL;" % dst
+    if_stmt = "if (%s) {" % src_name
+    return "%s\n      %s\n      %s\n   %s\n   %s   \n   %s   } else {\n      %s\n   }" % (if_stmt, allocation, copy, tmp_dst, tmp_src, member_copies, null_assignment)
 
 def get_struct_free(command, param, types):
     field_name = "cmd->u.%s.%s" % (to_struct_field_name(command.name), to_field_name(param.name))
@@ -311,12 +338,14 @@ def get_struct_free(command, param, types):
     struct_free = "vk_free(queue->alloc, (%s)%s);" % (const_cast, field_name)
     member_frees = ""
     if (param.type in types):
-        for member in types[param.type]:
+        for member in types[param.type].members:
             if member.len and member.len != 'null-terminated':
                 member_name = "cmd->u.%s.%s->%s" % (to_struct_field_name(command.name), to_field_name(param.name), member.name)
                 const_cast = remove_suffix(member.decl.replace("const", ""), member.name)
                 member_frees += "vk_free(queue->alloc, (%s)%s);\n" % (const_cast, member_name)
     return "%s      %s      %s\n" % (member_frees, driver_data_free, struct_free)
+
+EntrypointType = namedtuple('EntrypointType', 'name enum members extended_by')
 
 def get_types(doc):
     """Extract the types from the registry."""
@@ -325,13 +354,26 @@ def get_types(doc):
     for _type in doc.findall('./types/type'):
         if _type.attrib.get('category') != 'struct':
             continue
-        params = [EntrypointParam(
-            type=p.find('./type').text,
-            name=p.find('./name').text,
-            decl=''.join(p.itertext()),
-            len=p.attrib.get('len', None)
-        ) for p in _type.findall('./member')]
-        types[_type.attrib['name']] = params
+        members = []
+        type_enum = None
+        for p in _type.findall('./member'):
+            member = EntrypointParam(type=p.find('./type').text,
+                                     name=p.find('./name').text,
+                                     decl=''.join(p.itertext()),
+                                     len=p.attrib.get('len', None))
+            members.append(member)
+
+            if p.find('./name').text == 'sType':
+                type_enum = p.attrib.get('values')
+        types[_type.attrib['name']] = EntrypointType(name=_type.attrib['name'], enum=type_enum, members=members, extended_by=[])
+
+    for _type in doc.findall('./types/type'):
+        if _type.attrib.get('category') != 'struct':
+            continue
+        if _type.attrib.get('structextends') is None:
+            continue
+        for extended in _type.attrib.get('structextends').split(','):
+            types[extended].extended_by.append(types[_type.attrib['name']])
 
     return types
 
