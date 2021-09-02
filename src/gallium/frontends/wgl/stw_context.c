@@ -126,9 +126,16 @@ DrvCreateContext(HDC hdc)
 DHGLRC APIENTRY
 DrvCreateLayerContext(HDC hdc, INT iLayerPlane)
 {
-   return stw_create_context_attribs(hdc, iLayerPlane, 0, 1, 0, 0,
-                                     WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-                                     0);
+   struct stw_context *ctx = stw_create_context_attribs(hdc, iLayerPlane, 0, 1, 0, 0,
+                                                        WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB);
+   if (!ctx)
+      return 0;
+
+   DHGLRC ret = stw_create_context_handle(ctx, 0);
+   if (!ret)
+      stw_destroy_context(ctx);
+
+   return ret;
 }
 
 
@@ -154,15 +161,11 @@ get_matching_pixel_format(HDC hdc)
 /**
  * Called via DrvCreateContext(), DrvCreateLayerContext() and
  * wglCreateContextAttribsARB() to actually create a rendering context.
- * \param handle  the desired DHGLRC handle to use for the context, or zero
- *                if a new handle should be allocated.
- * \return the handle for the new context or zero if there was a problem.
  */
-DHGLRC
+struct stw_context *
 stw_create_context_attribs(HDC hdc, INT iLayerPlane, DHGLRC hShareContext,
                            int majorVersion, int minorVersion,
-                           int contextFlags, int profileMask,
-                           DHGLRC handle)
+                           int contextFlags, int profileMask)
 {
    int iPixelFormat;
    struct stw_framebuffer *fb;
@@ -283,6 +286,19 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, DHGLRC hShareContext,
       ctx->hud = hud_create(ctx->st->cso_context, ctx->st, NULL);
    }
 
+   return ctx;
+
+no_st_ctx:
+   FREE(ctx);
+no_ctx:
+   return NULL;
+}
+
+DHGLRC
+stw_create_context_handle(struct stw_context *ctx, DHGLRC handle)
+{
+   assert(ctx->dhglrc == 0);
+
    stw_lock_contexts(stw_dev);
    if (handle) {
       /* We're replacing the context data for this handle. See the
@@ -291,12 +307,7 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, DHGLRC hShareContext,
       struct stw_context *old_ctx =
          stw_lookup_context_locked((unsigned) handle);
       if (old_ctx) {
-         /* free the old context data associated with this handle */
-         if (old_ctx->hud) {
-            hud_destroy(old_ctx->hud, NULL);
-         }
-         ctx->st->destroy(old_ctx->st);
-         FREE(old_ctx);
+         stw_destroy_context(old_ctx);
       }
 
       /* replace table entry */
@@ -311,20 +322,18 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, DHGLRC hShareContext,
 
    stw_unlock_contexts(stw_dev);
 
-   if (!ctx->dhglrc)
-      goto no_hglrc;
-
    return ctx->dhglrc;
+}
 
-no_hglrc:
+void
+stw_destroy_context(struct stw_context *ctx)
+{
    if (ctx->hud) {
       hud_destroy(ctx->hud, NULL);
    }
+
    ctx->st->destroy(ctx->st);
-no_st_ctx:
    FREE(ctx);
-no_ctx:
-   return 0;
 }
 
 
@@ -349,13 +358,7 @@ DrvDeleteContext(DHGLRC dhglrc)
       if (curctx == ctx)
          stw_dev->stapi->make_current(stw_dev->stapi, NULL, NULL, NULL);
 
-      if (ctx->hud) {
-         hud_destroy(ctx->hud, NULL);
-      }
-
-      ctx->st->destroy(ctx->st);
-      FREE(ctx);
-
+      stw_destroy_context(ctx);
       ret = TRUE;
    }
 
