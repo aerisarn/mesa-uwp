@@ -24,7 +24,8 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#define GPU 400
+/* 500 gets us LDIB but doesn't change any other a4xx instructions */
+#define GPU 500
 
 #include "ir3_context.h"
 #include "ir3_image.h"
@@ -227,6 +228,32 @@ get_image_offset(struct ir3_context *ctx, const nir_intrinsic_instr *instr,
    return ir3_collect(ctx, offset, create_immed(b, 0));
 }
 
+/* src[] = { deref, coord, sample_index }. const_index[] = {} */
+static void
+emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
+                          struct ir3_instruction **dst)
+{
+   struct ir3_block *b = ctx->block;
+   struct ir3_instruction *const *coords = ir3_get_src(ctx, &intr->src[1]);
+   struct ir3_instruction *ibo = ir3_image_to_ibo(ctx, intr->src[0]);
+   struct ir3_instruction *offset = get_image_offset(ctx, intr, coords, true);
+   unsigned ncoords = ir3_get_image_coords(intr, NULL);
+   unsigned ncomp =
+      ir3_get_num_components_for_image_format(nir_intrinsic_format(intr));
+
+   struct ir3_instruction *ldib = ir3_LDIB(
+      b, ibo, 0, offset, 0, ir3_create_collect(ctx, coords, ncoords), 0);
+   ldib->dsts[0]->wrmask = MASK(intr->num_components);
+   ldib->cat6.iim_val = ncomp;
+   ldib->cat6.d = ncoords;
+   ldib->cat6.type = ir3_get_type_for_image_intrinsic(intr);
+   ldib->cat6.typed = true;
+   ldib->barrier_class = IR3_BARRIER_IMAGE_R;
+   ldib->barrier_conflict = IR3_BARRIER_IMAGE_W;
+
+   ir3_split_dest(b, dst, ldib, 0, intr->num_components);
+}
+
 /* src[] = { index, coord, sample_index, value }. const_index[] = {} */
 static void
 emit_intrinsic_store_image(struct ir3_context *ctx, nir_intrinsic_instr *intr)
@@ -332,6 +359,7 @@ const struct ir3_context_funcs ir3_a4xx_funcs = {
    .emit_intrinsic_load_ssbo = emit_intrinsic_load_ssbo,
    .emit_intrinsic_store_ssbo = emit_intrinsic_store_ssbo,
    .emit_intrinsic_atomic_ssbo = emit_intrinsic_atomic_ssbo,
+   .emit_intrinsic_load_image = emit_intrinsic_load_image,
    .emit_intrinsic_store_image = emit_intrinsic_store_image,
    .emit_intrinsic_atomic_image = emit_intrinsic_atomic_image,
    .emit_intrinsic_image_size = emit_intrinsic_image_size_tex,
