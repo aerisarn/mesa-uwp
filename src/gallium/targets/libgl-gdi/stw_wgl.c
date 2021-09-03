@@ -48,10 +48,6 @@
 #include "stw_wgl.h"
 #include "stw_ext_context.h"
 
-
-static void
-overrideOpenGL32EntryPoints(void);
-
 WINGDIAPI BOOL APIENTRY
 wglCopyContext(
    HGLRC hglrcSrc,
@@ -67,7 +63,7 @@ WINGDIAPI HGLRC APIENTRY
 wglCreateContext(
    HDC hdc )
 {
-   overrideOpenGL32EntryPoints();
+   stw_override_opengl32_entry_points(&wglCreateContext, &wglDeleteContext);
    return (HGLRC)(UINT_PTR)DrvCreateContext(hdc);
 }
 
@@ -76,7 +72,7 @@ wglCreateLayerContext(
    HDC hdc,
    int iLayerPlane )
 {
-   overrideOpenGL32EntryPoints();
+   stw_override_opengl32_entry_points(&wglCreateContext, &wglDeleteContext);
    return (HGLRC)(UINT_PTR)DrvCreateLayerContext( hdc, iLayerPlane );
 }
 
@@ -377,16 +373,3 @@ wglRealizeLayerPalette(
 }
 
 
-/* When this library is used as a opengl32.dll drop-in replacement, ensure we
- * use the wglCreate/Destroy entrypoints above, and not the true opengl32.dll,
- * which could happen if this library's name is not opengl32.dll exactly.
- *
- * For example, Qt 5.4 bundles this as opengl32sw.dll:
- * https://blog.qt.io/blog/2014/11/27/qt-weekly-21-dynamic-opengl-implementation-loading-in-qt-5-4/
- */
-static void
-overrideOpenGL32EntryPoints(void)
-{
-   wglCreateContext_func = &wglCreateContext;
-   wglDeleteContext_func = &wglDeleteContext;
-}
