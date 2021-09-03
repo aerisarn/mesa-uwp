@@ -1376,21 +1376,18 @@ zink_set_sampler_views(struct pipe_context *pctx,
             check_samplerview_for_batch_ref(ctx, a);
          }
          if (res->base.b.target == PIPE_BUFFER) {
-            if (res->bind_history & BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW)) {
+            if (b->buffer_view->bvci.buffer != res->obj->buffer) {
                /* if this resource has been rebound while it wasn't set here,
                 * its backing resource will have changed and thus we need to update
                 * the bufferview
                 */
                struct zink_buffer_view *buffer_view = get_buffer_view(ctx, res, b->base.format, b->base.u.buf.offset, b->base.u.buf.size);
-               if (buffer_view == b->buffer_view)
-                  p_atomic_dec(&buffer_view->reference.count);
-               else {
-                  if (zink_batch_usage_exists(b->buffer_view->batch_uses))
-                     zink_batch_reference_bufferview(&ctx->batch, b->buffer_view);
-                  zink_buffer_view_reference(zink_screen(ctx->base.screen), &b->buffer_view, NULL);
-                  b->buffer_view = buffer_view;
-                  update = true;
-               }
+               assert(buffer_view != b->buffer_view);
+               if (zink_batch_usage_exists(b->buffer_view->batch_uses))
+                  zink_batch_reference_bufferview(&ctx->batch, b->buffer_view);
+               zink_buffer_view_reference(zink_screen(ctx->base.screen), &b->buffer_view, NULL);
+               b->buffer_view = buffer_view;
+               update = true;
             }
             zink_batch_usage_set(&b->buffer_view->batch_uses, ctx->batch.state);
             zink_fake_buffer_barrier(res, VK_ACCESS_SHADER_READ_BIT,
