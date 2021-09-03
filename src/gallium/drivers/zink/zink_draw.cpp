@@ -371,7 +371,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          if (is_compute)
             pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
          else {
-            u_foreach_bit(stage, res->bind_history) {
+            u_foreach_bit(stage, res->bind_stages) {
                pipeline |= zink_pipeline_flags_from_pipe_stage((enum pipe_shader_type)stage);
             }
          }
