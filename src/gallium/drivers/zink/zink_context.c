@@ -3443,6 +3443,8 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    struct zink_context *ctx = zink_context(pctx);
 
    assert(d->internal_format == s->internal_format);
+   assert(d->obj);
+   assert(s->obj);
    util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
    if (zink_resource_has_unflushed_usage(d))
       zink_batch_reference_resource(&ctx->batch, d);
