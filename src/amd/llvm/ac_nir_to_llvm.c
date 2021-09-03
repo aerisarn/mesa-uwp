@@ -1979,6 +1979,12 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
    case nir_intrinsic_ssbo_atomic_comp_swap:
       op = "cmpswap";
       break;
+   case nir_intrinsic_ssbo_atomic_fmin:
+      op = "fmin";
+      break;
+   case nir_intrinsic_ssbo_atomic_fmax:
+      op = "fmax";
+      break;
    default:
       abort();
    }
@@ -1989,10 +1995,17 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
       result = emit_ssbo_comp_swap_64(ctx, descriptor, get_src(ctx, instr->src[1]),
                                       get_src(ctx, instr->src[2]), get_src(ctx, instr->src[3]), false);
    } else {
+      LLVMValueRef data = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
+
       if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
          params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
       }
-      params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
+      if (instr->intrinsic == nir_intrinsic_ssbo_atomic_fmin ||
+          instr->intrinsic == nir_intrinsic_ssbo_atomic_fmax) {
+         data = ac_to_float(&ctx->ac, data);
+         return_type = LLVMTypeOf(data);
+      }
+      params[arg_count++] = data;
       params[arg_count++] = descriptor;
       params[arg_count++] = get_src(ctx, instr->src[1]); /* voffset */
       params[arg_count++] = ctx->ac.i32_0;               /* soffset */
@@ -2002,6 +2015,11 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
       snprintf(name, sizeof(name), "llvm.amdgcn.raw.buffer.atomic.%s.%s", op, type);
 
       result = ac_build_intrinsic(&ctx->ac, name, return_type, params, arg_count, 0);
+
+      if (instr->intrinsic == nir_intrinsic_ssbo_atomic_fmin ||
+          instr->intrinsic == nir_intrinsic_ssbo_atomic_fmax) {
+         result = ac_to_integer(&ctx->ac, result);
+      }
    }
 
    result = exit_waterfall(ctx, &wctx, result);
@@ -3666,6 +3684,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_ssbo_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_fmin:
+   case nir_intrinsic_ssbo_atomic_fmax:
       result = visit_atomic_ssbo(ctx, instr);
       break;
    case nir_intrinsic_load_ubo:
