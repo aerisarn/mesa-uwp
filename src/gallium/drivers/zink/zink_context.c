@@ -1034,8 +1034,6 @@ zink_set_constant_buffer(struct pipe_context *pctx,
       if (new_res) {
          if (new_res != res) {
             unbind_ubo(ctx, res, shader, index);
-            new_res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_UBO);
-            new_res->bind_stages |= 1 << shader;
             new_res->ubo_bind_count[shader == PIPE_SHADER_COMPUTE]++;
             new_res->ubo_bind_mask[shader] |= BITFIELD_BIT(index);
             update_res_bind_count(ctx, new_res, shader == PIPE_SHADER_COMPUTE, false);
@@ -1122,8 +1120,6 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          struct zink_resource *new_res = zink_resource(buffers[i].buffer);
          if (new_res != res) {
             unbind_ssbo(ctx, res, p_stage, i, was_writable);
-            new_res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_SSBO);
-            new_res->bind_stages |= 1 << p_stage;
             new_res->ssbo_bind_mask[p_stage] |= BITFIELD_BIT(i);
             update_res_bind_count(ctx, new_res, p_stage == PIPE_SHADER_COMPUTE, false);
          }
@@ -1264,8 +1260,6 @@ zink_set_shader_images(struct pipe_context *pctx,
                if (!old_res->obj->is_buffer && !old_res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE])
                   check_for_layout_update(ctx, old_res, p_stage == PIPE_SHADER_COMPUTE);
             }
-            res->bind_history |= BITFIELD_BIT(ZINK_DESCRIPTOR_TYPE_IMAGE);
-            res->bind_stages |= 1 << p_stage;
             update_res_bind_count(ctx, res, p_stage == PIPE_SHADER_COMPUTE, false);
          }
          util_copy_image_view(&image_view->base, images + i);
@@ -1370,8 +1364,6 @@ zink_set_sampler_views(struct pipe_context *pctx,
             if (a)
                unbind_samplerview(ctx, shader_type, start_slot + i);
             update_res_bind_count(ctx, res, shader_type == PIPE_SHADER_COMPUTE, false);
-            res->bind_history |= BITFIELD64_BIT(ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
-            res->bind_stages |= 1 << shader_type;
          } else if (a != b) {
             check_samplerview_for_batch_ref(ctx, a);
          }

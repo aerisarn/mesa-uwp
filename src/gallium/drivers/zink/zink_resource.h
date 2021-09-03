@@ -125,9 +125,6 @@ struct zink_resource {
    struct sw_displaytarget *dt;
    unsigned dt_stride;
 
-   uint32_t bind_history; // enum zink_descriptor_type bitmask
-   uint32_t bind_stages;
-
    uint8_t modifiers_count;
    uint64_t *modifiers;
 };
