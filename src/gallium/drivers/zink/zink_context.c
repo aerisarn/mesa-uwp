@@ -73,7 +73,7 @@ debug_describe_zink_buffer_view(char *buf, const struct zink_buffer_view *ptr)
 ALWAYS_INLINE static void
 check_resource_for_batch_ref(struct zink_context *ctx, struct zink_resource *res)
 {
-   if (!res->bind_count[0] && !res->bind_count[1])
+   if (!zink_resource_has_binds(res))
       zink_batch_reference_resource(&ctx->batch, res);
 }
 
@@ -3358,7 +3358,7 @@ static void
 rebind_image(struct zink_context *ctx, struct zink_resource *res)
 {
     zink_rebind_framebuffer(ctx, res);
-    if (!res->bind_count[0] && !res->bind_count[1])
+    if (!zink_resource_has_binds(res))
        return;
     for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
        if (res->sampler_binds[i]) {
@@ -3390,7 +3390,7 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 {
    /* force counter buffer reset */
    res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
-   if (!res->bind_count[0] && !res->bind_count[1])
+   if (!zink_resource_has_binds(res))
       return true;
    if (res->base.b.target == PIPE_BUFFER)
       return rebind_buffer(ctx, res, 0, 0) == res->bind_count[0] + res->bind_count[1];
