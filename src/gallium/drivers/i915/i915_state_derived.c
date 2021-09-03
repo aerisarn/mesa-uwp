@@ -59,6 +59,7 @@ calculate_vertex_layout(struct i915_context *i915)
    for (i = 0; i < fs->info.num_inputs; i++) {
       switch (fs->info.input_semantic_name[i]) {
       case TGSI_SEMANTIC_POSITION:
+      case TGSI_SEMANTIC_PCOORD:
       case TGSI_SEMANTIC_FACE:
          /* Handled as texcoord inputs below */
          break;
@@ -66,8 +67,8 @@ calculate_vertex_layout(struct i915_context *i915)
          assert(fs->info.input_semantic_index[i] < 2);
          colors[fs->info.input_semantic_index[i]] = true;
          break;
+      case TGSI_SEMANTIC_TEXCOORD:
       case TGSI_SEMANTIC_GENERIC:
-         /* texcoords/varyings/other generic */
          needW = true;
          break;
       case TGSI_SEMANTIC_FOG:

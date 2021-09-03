@@ -129,6 +129,8 @@ struct i915_fragment_shader {
       enum tgsi_semantic semantic;
       int index;
    } texcoords[I915_TEX_UNITS];
+
+   bool reads_pntc;
 };
 
 struct i915_cache_context;

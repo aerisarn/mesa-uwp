@@ -580,6 +580,10 @@ i915_bind_fs_state(struct pipe_context *pipe, void *shader)
    draw_bind_fragment_shader(i915->draw,
                              (i915->fs ? i915->fs->draw_data : NULL));
 
+   /* Tell draw if we need to do point sprites so we can get PNTC. */
+   if (i915->fs)
+      draw_wide_point_sprites(i915->draw, i915->fs->reads_pntc);
+
    i915->dirty |= I915_NEW_FS;
 }
 

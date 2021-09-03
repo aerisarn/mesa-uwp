@@ -162,7 +162,12 @@ src_vector(struct i915_fp_compile *p,
 
       switch (sem_name) {
       case TGSI_SEMANTIC_GENERIC:
+      case TGSI_SEMANTIC_TEXCOORD:
+      case TGSI_SEMANTIC_PCOORD:
       case TGSI_SEMANTIC_POSITION: {
+         if (sem_name == TGSI_SEMANTIC_PCOORD)
+            fs->reads_pntc = true;
+
          int real_tex_unit = get_mapping(fs, sem_name, sem_ind);
          src = i915_emit_decl(p, REG_TYPE_T, T_TEX0 + real_tex_unit,
                               D0_CHANNEL_ALL);
