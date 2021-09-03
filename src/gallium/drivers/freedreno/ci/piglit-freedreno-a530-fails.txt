@@ -103,6 +103,8 @@ spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-copypixels,Fai
 spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-blit,Fail
 spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-copypixels,Fail
 spec@arb_direct_state_access@gettextureimage-formats,Crash
+spec@arb_draw_indirect@gl_vertexid used with gldrawarraysindirect,Fail
+spec@arb_draw_indirect@gl_vertexid used with gldrawelementsindirect,Fail
 spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-atomic,Fail
 spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-atomic@MS4,Fail
 spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-query,Fail
