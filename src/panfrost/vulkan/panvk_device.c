@@ -693,7 +693,8 @@ panvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       }
    }
 
-   VkSampleCountFlags sample_counts = 0xf;
+   VkSampleCountFlags sample_counts =
+      VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
 
    /* make sure that the entire descriptor set is addressable with a signed
     * 32-bit int. So the sum of all limits scaled by descriptor size has to
