@@ -67,10 +67,16 @@ if with_tests
 
   # The CI pipeline for MinGW doesn't support creating a window, so don't run these tests there
   if with_tests and cc.get_id() != 'gcc'
+    wgl_test_env = environment()
+    if with_shared_glapi
+      wgl_test_env.append('PATH', libglapi_build_dir)
+    endif
+
     test(
       'wgl',
       test_wgl,
       suite : ['wgl'],
+      env : wgl_test_env,
       depends : [libopengl32],
     )
   endif
