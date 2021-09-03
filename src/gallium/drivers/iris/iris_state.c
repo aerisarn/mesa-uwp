@@ -4822,8 +4822,8 @@ use_surface(struct iris_context *ice,
    if (res->aux.bo)
       iris_use_pinned_bo(batch, res->aux.bo, writeable, access);
 
-   iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture),
-                      writeable, access);
+   iris_use_pinned_bo(batch, res->bo, writeable, access);
+
    if (GFX_VER == 8 && is_read_surface) {
       iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.ref.res), false,
                          IRIS_DOMAIN_NONE);
