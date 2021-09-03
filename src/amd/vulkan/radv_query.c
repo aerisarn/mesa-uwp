@@ -30,6 +30,7 @@
 
 #include "nir/nir_builder.h"
 #include "util/u_atomic.h"
+#include "radv_acceleration_structure.h"
 #include "radv_cs.h"
 #include "radv_meta.h"
 #include "radv_private.h"
@@ -963,6 +964,8 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
       pool->stride = pipelinestat_block_size * 2;
       break;
    case VK_QUERY_TYPE_TIMESTAMP:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
       pool->stride = 8;
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
@@ -1029,7 +1032,9 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
       uint32_t available;
 
       switch (pool->type) {
-      case VK_QUERY_TYPE_TIMESTAMP: {
+      case VK_QUERY_TYPE_TIMESTAMP:
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR: {
          uint64_t const *src64 = (uint64_t const *)src;
          uint64_t value;
 
@@ -1269,6 +1274,8 @@ radv_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
                         pool->pipeline_stats_mask, pool->availability_offset + 4 * firstQuery);
       break;
    case VK_QUERY_TYPE_TIMESTAMP:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
       if (flags & VK_QUERY_RESULT_WAIT_BIT) {
          for (unsigned i = 0; i < queryCount; ++i, dest_va += stride) {
             unsigned query = firstQuery + i;
@@ -1315,13 +1322,26 @@ radv_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
    }
 }
 
+static uint32_t
+query_clear_value(VkQueryType type)
+{
+   switch (type) {
+   case VK_QUERY_TYPE_TIMESTAMP:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+   case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
+      return (uint32_t)TIMESTAMP_NOT_READY;
+   default:
+      return 0;
+   }
+}
+
 void
 radv_CmdResetQueryPool(VkCommandBuffer commandBuffer, VkQueryPool queryPool, uint32_t firstQuery,
                        uint32_t queryCount)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_query_pool, pool, queryPool);
-   uint32_t value = pool->type == VK_QUERY_TYPE_TIMESTAMP ? (uint32_t)TIMESTAMP_NOT_READY : 0;
+   uint32_t value = query_clear_value(pool->type);
    uint32_t flush_bits = 0;
 
    /* Make sure to sync all previous work if the given command buffer has
@@ -1351,7 +1371,7 @@ radv_ResetQueryPool(VkDevice _device, VkQueryPool queryPool, uint32_t firstQuery
 {
    RADV_FROM_HANDLE(radv_query_pool, pool, queryPool);
 
-   uint32_t value = pool->type == VK_QUERY_TYPE_TIMESTAMP ? (uint32_t)TIMESTAMP_NOT_READY : 0;
+   uint32_t value = query_clear_value(pool->type);
    uint32_t *data = (uint32_t *)(pool->ptr + firstQuery * pool->stride);
    uint32_t *data_end = (uint32_t *)(pool->ptr + (firstQuery + queryCount) * pool->stride);
 
@@ -1670,6 +1690,54 @@ radv_CmdWriteTimestamp(VkCommandBuffer commandBuffer, VkPipelineStageFlagBits pi
    if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
       cmd_buffer->active_query_flush_bits |=
          RADV_CMD_FLAG_FLUSH_AND_INV_CB | RADV_CMD_FLAG_FLUSH_AND_INV_DB;
+   }
+
+   assert(cmd_buffer->cs->cdw <= cdw_max);
+}
+
+void
+radv_CmdWriteAccelerationStructuresPropertiesKHR(
+   VkCommandBuffer commandBuffer, uint32_t accelerationStructureCount,
+   const VkAccelerationStructureKHR *pAccelerationStructures, VkQueryType queryType,
+   VkQueryPool queryPool, uint32_t firstQuery)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_query_pool, pool, queryPool);
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   uint64_t pool_va = radv_buffer_get_va(pool->bo);
+   uint64_t query_va = pool_va + pool->stride * firstQuery;
+
+   radv_cs_add_buffer(cmd_buffer->device->ws, cs, pool->bo);
+
+   emit_query_flush(cmd_buffer, pool);
+
+   ASSERTED unsigned cdw_max =
+      radeon_check_space(cmd_buffer->device->ws, cs, 6 * accelerationStructureCount);
+
+   for (uint32_t i = 0; i < accelerationStructureCount; ++i) {
+      RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, pAccelerationStructures[i]);
+      uint64_t va = radv_accel_struct_get_va(accel_struct);
+
+      switch (queryType) {
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR:
+         va += offsetof(struct radv_accel_struct_header, compacted_size);
+         break;
+      case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
+         va += offsetof(struct radv_accel_struct_header, serialization_size);
+         break;
+      default:
+         unreachable("Unhandle accel struct query type.");
+      }
+
+      radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+      radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                         COPY_DATA_COUNT_SEL | COPY_DATA_WR_CONFIRM);
+      radeon_emit(cs, va);
+      radeon_emit(cs, va >> 32);
+      radeon_emit(cs, query_va);
+      radeon_emit(cs, query_va >> 32);
+
+      query_va += pool->stride;
    }
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
