@@ -108,15 +108,18 @@ i915_program_error(struct i915_fp_compile *p, const char *msg, ...)
 }
 
 static uint32_t
-get_mapping(struct i915_fragment_shader *fs, int unit)
+get_mapping(struct i915_fragment_shader *fs, enum tgsi_semantic semantic,
+            int index)
 {
    int i;
    for (i = 0; i < I915_TEX_UNITS; i++) {
-      if (fs->generic_mapping[i] == -1) {
-         fs->generic_mapping[i] = unit;
+      if (fs->texcoords[i].semantic == -1) {
+         fs->texcoords[i].semantic = semantic;
+         fs->texcoords[i].index = index;
          return i;
       }
-      if (fs->generic_mapping[i] == unit)
+      if (fs->texcoords[i].semantic == semantic &&
+          fs->texcoords[i].index == index)
          return i;
    }
    debug_printf("Exceeded max generics\n");
@@ -158,9 +161,9 @@ src_vector(struct i915_fp_compile *p,
       sem_ind = p->shader->info.input_semantic_index[index];
 
       switch (sem_name) {
+      case TGSI_SEMANTIC_GENERIC:
       case TGSI_SEMANTIC_POSITION: {
-         /* for fragcoord */
-         int real_tex_unit = get_mapping(fs, I915_SEMANTIC_POS);
+         int real_tex_unit = get_mapping(fs, sem_name, sem_ind);
          src = i915_emit_decl(p, REG_TYPE_T, T_TEX0 + real_tex_unit,
                               D0_CHANNEL_ALL);
          break;
@@ -179,15 +182,9 @@ src_vector(struct i915_fp_compile *p,
          src = i915_emit_decl(p, REG_TYPE_T, T_FOG_W, D0_CHANNEL_W);
          src = swizzle(src, W, W, W, W);
          break;
-      case TGSI_SEMANTIC_GENERIC: {
-         int real_tex_unit = get_mapping(fs, sem_ind);
-         src = i915_emit_decl(p, REG_TYPE_T, T_TEX0 + real_tex_unit,
-                              D0_CHANNEL_ALL);
-         break;
-      }
       case TGSI_SEMANTIC_FACE: {
          /* for back/front faces */
-         int real_tex_unit = get_mapping(fs, I915_SEMANTIC_FACE);
+         int real_tex_unit = get_mapping(fs, sem_name, sem_ind);
          src =
             i915_emit_decl(p, REG_TYPE_T, T_TEX0 + real_tex_unit, D0_CHANNEL_X);
          break;
@@ -875,7 +872,7 @@ i915_init_compile(struct i915_context *i915, struct i915_fragment_shader *ifs)
    memset(&p->register_phases, 0, sizeof(p->register_phases));
 
    for (i = 0; i < I915_TEX_UNITS; i++)
-      ifs->generic_mapping[i] = -1;
+      ifs->texcoords[i].semantic = -1;
 
    p->log_program_errors = !i915->no_log_program_errors;
 

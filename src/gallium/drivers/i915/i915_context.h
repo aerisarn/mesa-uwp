@@ -122,10 +122,13 @@ struct i915_fragment_shader {
    ubyte constant_flags[I915_MAX_CONSTANT];
 
    /**
-    * The mapping between generics and hw texture coords.
+    * The mapping between TGSI inputs and hw texture coords.
     * We need to share this between the vertex and fragment stages.
     **/
-   int generic_mapping[I915_TEX_UNITS];
+   struct {
+      enum tgsi_semantic semantic;
+      int index;
+   } texcoords[I915_TEX_UNITS];
 };
 
 struct i915_cache_context;

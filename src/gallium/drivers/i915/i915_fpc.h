@@ -39,10 +39,6 @@ struct nir_shader;
 
 #define I915_PROGRAM_SIZE 192
 
-/* Use those indices for pos/face routing, must be >= num of inputs */
-#define I915_SEMANTIC_POS  100
-#define I915_SEMANTIC_FACE 101
-
 /**
  * Program translation state
  */
