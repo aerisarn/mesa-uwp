@@ -69,10 +69,14 @@ get_format_properties(struct panvk_physical_device *physical_device,
       tex |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
              VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
              VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-             VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
              VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT |
              VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT |
              VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
+
+      /* Integer formats only support nearest filtering */
+      if (!util_format_is_scaled(pfmt) &&
+          !util_format_is_pure_integer(pfmt))
+         tex |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
       buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
 
