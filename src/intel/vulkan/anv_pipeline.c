@@ -1469,7 +1469,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                               const VkGraphicsPipelineCreateInfo *info)
 {
    VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
 
@@ -1547,7 +1547,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       }
 
       stages[stage].feedback.duration += os_time_get_nano() - stage_start;
-      stages[stage].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
+      stages[stage].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
    }
 
    assert(pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT);
@@ -1590,7 +1590,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          if (cache_hit) {
             cache_hits++;
             stages[s].feedback.flags |=
-               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
          }
          stages[s].feedback.duration += os_time_get_nano() - stage_start;
       }
@@ -1598,7 +1598,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       if (found == __builtin_popcount(pipeline->active_stages)) {
          if (cache_hits == found) {
             pipeline_feedback.flags |=
-               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
          }
          /* We found all our shaders in the cache.  We're done. */
          for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
@@ -1636,8 +1636,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       }
    }
 
-   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
-      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
+      return VK_PIPELINE_COMPILE_REQUIRED;
 
    void *pipeline_ctx = ralloc_context(NULL);
 
@@ -1864,8 +1864,8 @@ done:
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
-   const VkPipelineCreationFeedbackCreateInfoEXT *create_feedback =
-      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
+      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
    if (create_feedback) {
       *create_feedback->pPipelineCreationFeedback = pipeline_feedback;
 
@@ -1898,7 +1898,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         const VkSpecializationInfo *spec_info)
 {
    VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
 
@@ -1913,7 +1913,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          .stage = MESA_SHADER_COMPUTE,
       },
       .feedback = {
-         .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+         .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
       },
    };
    anv_pipeline_hash_shader(stage.module,
@@ -1924,9 +1924,9 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
    struct anv_shader_bin *bin = NULL;
 
-   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info =
+   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *rss_info =
       vk_find_struct_const(info->stage.pNext,
-                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
+                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
 
    const enum brw_subgroup_size_type subgroup_size_type =
       anv_subgroup_size_type(MESA_SHADER_COMPUTE, stage.module, info->stage.flags, rss_info);
@@ -1951,8 +1951,8 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    }
 
    if (bin == NULL &&
-       (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT))
-      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+       (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+      return VK_PIPELINE_COMPILE_REQUIRED;
 
    void *mem_ctx = ralloc_context(NULL);
    if (bin == NULL) {
@@ -2028,14 +2028,14 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
    if (cache_hit) {
       stage.feedback.flags |=
-         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
       pipeline_feedback.flags |=
-         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
    }
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
-   const VkPipelineCreationFeedbackCreateInfoEXT *create_feedback =
-      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
+      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
    if (create_feedback) {
       *create_feedback->pPipelineCreationFeedback = pipeline_feedback;
 
@@ -2773,7 +2773,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
             .stage = vk_to_mesa_shader_stage(sinfo->stage),
          },
          .feedback = {
-            .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+            .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
          },
       };
 
@@ -2850,7 +2850,7 @@ anv_pipeline_load_cached_shaders(struct anv_ray_tracing_pipeline *pipeline,
       if (cache_hit) {
          cache_hits++;
          stages[i].feedback.flags |=
-            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
       }
 
       if (stages[i].bin != NULL) {
@@ -2877,8 +2877,8 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
    const struct intel_device_info *devinfo = &pipeline->base.device->info;
    VkResult result;
 
-   VkPipelineCreationFeedbackEXT pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT,
+   VkPipelineCreationFeedback pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
    int64_t pipeline_start = os_time_get_nano();
 
@@ -2897,13 +2897,13 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
    if (!skip_cache_lookup &&
        anv_pipeline_load_cached_shaders(pipeline, cache, info, stages, stack_max)) {
       pipeline_feedback.flags |=
-         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+         VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
       goto done;
    }
 
-   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT) {
+   if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
       ralloc_free(pipeline_ctx);
-      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+      return VK_PIPELINE_COMPILE_REQUIRED;
    }
 
    for (uint32_t i = 0; i < info->stageCount; i++) {
@@ -3057,8 +3057,8 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
-   const VkPipelineCreationFeedbackCreateInfoEXT *create_feedback =
-      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
+      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
    if (create_feedback) {
       *create_feedback->pPipelineCreationFeedback = pipeline_feedback;
 

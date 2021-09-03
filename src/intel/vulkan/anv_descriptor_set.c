@@ -854,9 +854,9 @@ VkResult anv_CreateDescriptorPool(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_descriptor_pool *pool;
 
-   const VkDescriptorPoolInlineUniformBlockCreateInfoEXT *inline_info =
+   const VkDescriptorPoolInlineUniformBlockCreateInfo *inline_info =
       vk_find_struct_const(pCreateInfo->pNext,
-                           DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT);
+                           DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO);
    const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
@@ -1801,9 +1801,9 @@ void anv_UpdateDescriptorSets(
          break;
 
       case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
-         const VkWriteDescriptorSetInlineUniformBlockEXT *inline_write =
+         const VkWriteDescriptorSetInlineUniformBlock *inline_write =
             vk_find_struct_const(write->pNext,
-                                 WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT);
+                                 WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK);
          assert(inline_write->dataSize == write->descriptorCount);
          anv_descriptor_set_write_inline_uniform_data(device, set,
                                                       write->dstBinding,
