@@ -3441,17 +3441,18 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    struct zink_resource *d = zink_resource(dst);
    struct zink_resource *s = zink_resource(src);
    struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
 
    assert(d->internal_format == s->internal_format);
    assert(d->obj);
    assert(s->obj);
-   util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
-   zink_resource_object_reference(zink_screen(pctx->screen), NULL, s->obj);
+   util_idalloc_mt_free(&screen->buffer_ids, delete_buffer_id);
+   zink_resource_object_reference(screen, NULL, s->obj);
    if (zink_resource_has_unflushed_usage(d) ||
        (zink_resource_has_usage(d) && zink_resource_has_binds(d)))
       zink_batch_reference_resource_move(&ctx->batch, d);
    else
-      zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, NULL);
+      zink_resource_object_reference(screen, &d->obj, NULL);
    d->obj = s->obj;
    d->access = s->access;
    d->access_stage = s->access_stage;
@@ -3459,7 +3460,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    /* force counter buffer reset */
    d->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
    if (num_rebinds && rebind_buffer(ctx, d, rebind_mask, num_rebinds) != num_rebinds)
-      ctx->buffer_rebind_counter = p_atomic_inc_return(&zink_screen(ctx->base.screen)->buffer_rebind_counter);
+      ctx->buffer_rebind_counter = p_atomic_inc_return(&screen->buffer_rebind_counter);
 }
 
 static bool
