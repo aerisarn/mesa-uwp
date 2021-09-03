@@ -388,6 +388,8 @@ enum ac_atomic_op
    ac_atomic_xor,
    ac_atomic_inc_wrap,
    ac_atomic_dec_wrap,
+   ac_atomic_fmin,
+   ac_atomic_fmax,
 };
 
 /* These cache policy bits match the definitions used by the LLVM intrinsics. */

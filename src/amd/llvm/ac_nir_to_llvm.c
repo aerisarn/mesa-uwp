@@ -2726,6 +2726,14 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
       atomic_name = "dec";
       atomic_subop = ac_atomic_dec_wrap;
       break;
+   case nir_intrinsic_image_deref_atomic_fmin:
+      atomic_name = "fmin";
+      atomic_subop = ac_atomic_fmin;
+      break;
+   case nir_intrinsic_image_deref_atomic_fmax:
+      atomic_name = "fmax";
+      atomic_subop = ac_atomic_fmax;
+      break;
    default:
       abort();
    }
@@ -2733,6 +2741,9 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
    if (cmpswap)
       params[param_count++] = get_src(ctx, instr->src[4]);
    params[param_count++] = get_src(ctx, instr->src[3]);
+
+   if (atomic_subop == ac_atomic_fmin || atomic_subop == ac_atomic_fmax)
+      params[0] = ac_to_float(&ctx->ac, params[0]);
 
    LLVMValueRef result;
    if (dim == GLSL_SAMPLER_DIM_BUF) {
@@ -2743,12 +2754,16 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
       if (cmpswap && instr->dest.ssa.bit_size == 64) {
          result = emit_ssbo_comp_swap_64(ctx, params[2], params[3], params[1], params[0], true);
       } else {
+         LLVMTypeRef data_type = LLVMTypeOf(params[0]);
+         char type[8];
+
          params[param_count++] = ctx->ac.i32_0; /* soffset */
          params[param_count++] = ctx->ac.i32_0; /* slc */
 
+         ac_build_type_name_for_intr(data_type, type, sizeof(type));
          length = snprintf(intrinsic_name, sizeof(intrinsic_name),
-                           "llvm.amdgcn.struct.buffer.atomic.%s.%s", atomic_name,
-                           instr->dest.ssa.bit_size == 64 ? "i64" : "i32");
+                           "llvm.amdgcn.struct.buffer.atomic.%s.%s",
+                           atomic_name, type);
 
          assert(length < sizeof(intrinsic_name));
          result = ac_build_intrinsic(&ctx->ac, intrinsic_name, LLVMTypeOf(params[0]), params, param_count, 0);
@@ -3721,6 +3736,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_inc_wrap:
    case nir_intrinsic_image_deref_atomic_dec_wrap:
+   case nir_intrinsic_image_deref_atomic_fmin:
+   case nir_intrinsic_image_deref_atomic_fmax:
       result = visit_image_atomic(ctx, instr, false);
       break;
    case nir_intrinsic_bindless_image_size:

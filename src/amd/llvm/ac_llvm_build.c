@@ -2076,6 +2076,10 @@ static const char *get_atomic_name(enum ac_atomic_op op)
       return "inc";
    case ac_atomic_dec_wrap:
       return "dec";
+   case ac_atomic_fmin:
+      return "fmin";
+   case ac_atomic_fmax:
+      return "fmax";
    }
    unreachable("bad atomic op");
 }
