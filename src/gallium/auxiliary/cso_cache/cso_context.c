@@ -325,7 +325,8 @@ void cso_unbind_context(struct cso_context *ctx)
                break;
             }
 
-            int maxsam = ctx->max_fs_samplerviews;
+            int maxsam = scr->get_shader_param(scr, sh,
+                                               PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS);
             int maxview = scr->get_shader_param(scr, sh,
                                                 PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS);
             int maxssbo = scr->get_shader_param(scr, sh,
