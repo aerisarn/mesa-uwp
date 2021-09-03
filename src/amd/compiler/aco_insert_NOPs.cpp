@@ -234,8 +234,19 @@ handle_raw_hazard_instr(aco_ptr<Instruction>& pred, PhysReg reg, int* nops_neede
 
 template <bool Valu, bool Vintrp, bool Salu>
 int
-handle_raw_hazard_internal(State& state, Block* block, int nops_needed, PhysReg reg, uint32_t mask)
+handle_raw_hazard_internal(State& state, Block* block, int nops_needed, PhysReg reg, uint32_t mask,
+                           bool start_at_end)
 {
+   if (block == state.block && start_at_end) {
+      /* If it's the current block, block->instructions is incomplete. */
+      for (int pred_idx = state.old_instructions.size() - 1; pred_idx >= 0; pred_idx--) {
+         aco_ptr<Instruction>& instr = state.old_instructions[pred_idx];
+         if (!instr)
+            break; /* Instruction has been moved to block->instructions. */
+         if (handle_raw_hazard_instr<Valu, Vintrp, Salu>(instr, reg, &nops_needed, &mask))
+            return nops_needed;
+      }
+   }
    for (int pred_idx = block->instructions.size() - 1; pred_idx >= 0; pred_idx--) {
       if (handle_raw_hazard_instr<Valu, Vintrp, Salu>(block->instructions[pred_idx], reg,
                                                       &nops_needed, &mask))
@@ -248,8 +259,9 @@ handle_raw_hazard_internal(State& state, Block* block, int nops_needed, PhysReg 
     * states. So even with loops this should finish unless nops_needed is some
     * huge value. */
    for (unsigned lin_pred : block->linear_preds) {
-      res = std::max(res, handle_raw_hazard_internal<Valu, Vintrp, Salu>(
-                             state, &state.program->blocks[lin_pred], nops_needed, reg, mask));
+      res =
+         std::max(res, handle_raw_hazard_internal<Valu, Vintrp, Salu>(
+                          state, &state.program->blocks[lin_pred], nops_needed, reg, mask, true));
    }
    return res;
 }
@@ -261,7 +273,7 @@ handle_raw_hazard(State& state, int* NOPs, int min_states, Operand op)
    if (*NOPs >= min_states)
       return;
    int res = handle_raw_hazard_internal<Valu, Vintrp, Salu>(
-      state, state.block, min_states, op.physReg(), u_bit_consecutive(0, op.size()));
+      state, state.block, min_states, op.physReg(), u_bit_consecutive(0, op.size()), false);
    *NOPs = MAX2(*NOPs, res);
 }
 
