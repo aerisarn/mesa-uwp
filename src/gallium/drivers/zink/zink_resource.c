@@ -948,10 +948,10 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    if (res->valid_buffer_range.start > res->valid_buffer_range.end)
       return false;
 
-   if (res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT)
+   if (res->so_valid)
       ctx->dirty_so_targets = true;
    /* force counter buffer reset */
-   res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
+   res->so_valid = false;
 
    util_range_set_empty(&res->valid_buffer_range);
    if (!zink_resource_has_usage(res))
@@ -1211,10 +1211,10 @@ zink_buffer_map(struct pipe_context *pctx,
 
    if (!ptr) {
       /* if writing to a streamout buffer, ensure synchronization next time it's used */
-      if (usage & PIPE_MAP_WRITE && res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT) {
+      if (usage & PIPE_MAP_WRITE && res->so_valid) {
          ctx->dirty_so_targets = true;
          /* force counter buffer reset */
-         res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
+         res->so_valid = false;
       }
       ptr = map_resource(screen, res);
       if (!ptr)

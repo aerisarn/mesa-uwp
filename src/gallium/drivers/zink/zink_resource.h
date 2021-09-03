@@ -29,7 +29,6 @@ struct sw_displaytarget;
 struct zink_batch;
 struct zink_context;
 struct zink_bo;
-#define ZINK_RESOURCE_USAGE_STREAMOUT (1 << 10) //much greater than ZINK_DESCRIPTOR_TYPES
 
 #include "util/simple_mtx.h"
 #include "util/u_transfer.h"
@@ -103,6 +102,7 @@ struct zink_resource {
          uint32_t vbo_bind_mask : PIPE_MAX_ATTRIBS;
          uint8_t ubo_bind_count[2];
          uint8_t so_bind_count;
+         bool so_valid;
          uint32_t ubo_bind_mask[PIPE_SHADER_TYPES];
          uint32_t ssbo_bind_mask[PIPE_SHADER_TYPES];
       };

@@ -3076,7 +3076,7 @@ zink_create_stream_output_target(struct pipe_context *pctx,
    t->base.buffer_offset = buffer_offset;
    t->base.buffer_size = buffer_size;
 
-   zink_resource(t->base.buffer)->bind_history |= ZINK_RESOURCE_USAGE_STREAMOUT;
+   zink_resource(t->base.buffer)->so_valid = true;
 
    return &t->base;
 }
@@ -3386,7 +3386,7 @@ bool
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 {
    /* force counter buffer reset */
-   res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
+   res->so_valid = false;
    if (!zink_resource_has_binds(res))
       return true;
    if (res->base.b.target == PIPE_BUFFER)
@@ -3455,7 +3455,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    d->access_stage = s->access_stage;
    d->unordered_barrier = s->unordered_barrier;
    /* force counter buffer reset */
-   d->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
+   d->so_valid = false;
    if (num_rebinds && rebind_buffer(ctx, d, rebind_mask, num_rebinds) != num_rebinds)
       ctx->buffer_rebind_counter = p_atomic_inc_return(&screen->buffer_rebind_counter);
 }
