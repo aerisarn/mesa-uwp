@@ -3446,10 +3446,13 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    assert(d->obj);
    assert(s->obj);
    util_idalloc_mt_free(&zink_screen(pctx->screen)->buffer_ids, delete_buffer_id);
+   zink_resource_object_reference(zink_screen(pctx->screen), NULL, s->obj);
    if (zink_resource_has_unflushed_usage(d) ||
        (zink_resource_has_usage(d) && zink_resource_has_binds(d)))
-      zink_batch_reference_resource(&ctx->batch, d);
-   zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, s->obj);
+      zink_batch_reference_resource_move(&ctx->batch, d);
+   else
+      zink_resource_object_reference(zink_screen(pctx->screen), &d->obj, NULL);
+   d->obj = s->obj;
    d->access = s->access;
    d->access_stage = s->access_stage;
    d->unordered_barrier = s->unordered_barrier;
