@@ -2034,3 +2034,72 @@ radv_CopyAccelerationStructureToMemoryKHR(VkDevice _device,
    device->ws->buffer_unmap(accel_struct->bo);
    return VK_SUCCESS;
 }
+
+void
+radv_CmdCopyMemoryToAccelerationStructureKHR(
+   VkCommandBuffer commandBuffer, const VkCopyMemoryToAccelerationStructureInfoKHR *pInfo)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_acceleration_structure, dst, pInfo->dst);
+   struct radv_meta_saved_state saved_state;
+
+   radv_meta_save(
+      &saved_state, cmd_buffer,
+      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
+
+   uint64_t dst_addr = radv_accel_struct_get_va(dst);
+
+   radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
+                        cmd_buffer->device->meta_state.accel_struct_build.copy_pipeline);
+
+   const struct copy_constants consts = {
+      .src_addr = pInfo->src.deviceAddress,
+      .dst_addr = dst_addr,
+      .mode = COPY_MODE_DESERIALIZE,
+   };
+
+   radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
+                         cmd_buffer->device->meta_state.accel_struct_build.copy_p_layout,
+                         VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+
+   radv_CmdDispatch(commandBuffer, 512, 1, 1);
+   radv_meta_restore(&saved_state, cmd_buffer);
+}
+
+void
+radv_CmdCopyAccelerationStructureToMemoryKHR(
+   VkCommandBuffer commandBuffer, const VkCopyAccelerationStructureToMemoryInfoKHR *pInfo)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_acceleration_structure, src, pInfo->src);
+   struct radv_meta_saved_state saved_state;
+
+   radv_meta_save(
+      &saved_state, cmd_buffer,
+      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
+
+   uint64_t src_addr = radv_accel_struct_get_va(src);
+
+   radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
+                        cmd_buffer->device->meta_state.accel_struct_build.copy_pipeline);
+
+   const struct copy_constants consts = {
+      .src_addr = src_addr,
+      .dst_addr = pInfo->dst.deviceAddress,
+      .mode = COPY_MODE_SERIALIZE,
+   };
+
+   radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
+                         cmd_buffer->device->meta_state.accel_struct_build.copy_p_layout,
+                         VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+
+   radv_indirect_dispatch(cmd_buffer, src->bo,
+                          src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
+   radv_meta_restore(&saved_state, cmd_buffer);
+
+   /* Set the header of the serialized data. */
+   uint8_t header_data[2 * VK_UUID_SIZE] = {0};
+   memcpy(header_data, cmd_buffer->device->physical_device->driver_uuid, VK_UUID_SIZE);
+
+   radv_update_buffer_cp(cmd_buffer, pInfo->dst.deviceAddress, header_data, sizeof(header_data));
+}
