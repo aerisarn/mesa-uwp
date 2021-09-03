@@ -1762,13 +1762,23 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->devinfo = physical_device->devinfo;
 
-   if (pCreateInfo->pEnabledFeatures) {
+   /* Vulkan 1.1 and VK_KHR_get_physical_device_properties2 added
+    * VkPhysicalDeviceFeatures2 which can be used in the pNext chain of
+    * vkDeviceCreateInfo, in which case it should be used instead of
+    * pEnabledFeatures.
+    */
+   const VkPhysicalDeviceFeatures2 *features2 =
+      vk_find_struct_const(pCreateInfo->pNext, PHYSICAL_DEVICE_FEATURES_2);
+   if (features2) {
+      memcpy(&device->features, &features2->features,
+             sizeof(device->features));
+   } else  if (pCreateInfo->pEnabledFeatures) {
       memcpy(&device->features, pCreateInfo->pEnabledFeatures,
              sizeof(device->features));
-
-      if (device->features.robustBufferAccess)
-         perf_debug("Device created with Robust Buffer Access enabled.\n");
    }
+
+   if (device->features.robustBufferAccess)
+      perf_debug("Device created with Robust Buffer Access enabled.\n");
 
    int ret = drmSyncobjCreate(physical_device->render_fd,
                               DRM_SYNCOBJ_CREATE_SIGNALED,
