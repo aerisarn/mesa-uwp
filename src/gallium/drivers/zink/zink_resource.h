@@ -117,7 +117,10 @@ struct zink_resource {
    uint32_t sampler_binds[PIPE_SHADER_TYPES];
    uint16_t image_bind_count[2]; //gfx, compute
    uint16_t write_bind_count[2]; //gfx, compute
-   uint16_t bind_count[2]; //gfx, compute
+   union {
+      uint16_t bind_count[2]; //gfx, compute
+      uint32_t all_binds;
+   };
 
    struct sw_displaytarget *dt;
    unsigned dt_stride;
@@ -181,6 +184,12 @@ zink_resource_tmp_buffer(struct zink_screen *screen, struct zink_resource *res, 
 
 bool
 zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource *res);
+
+static inline bool
+zink_resource_has_binds(const struct zink_resource *res)
+{
+   return res->all_binds > 0;
+}
 
 #ifndef __cplusplus
 #include "zink_bo.h"
