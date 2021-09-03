@@ -67,6 +67,7 @@
 #include "util/u_string.h"
 #include "util/simple_list.h"
 #include "util/u_dual_blend.h"
+#include "util/u_upload_mgr.h"
 #include "util/os_time.h"
 #include "pipe/p_shader_tokens.h"
 #include "draw/draw_context.h"
@@ -3984,7 +3985,7 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
                              const struct pipe_constant_buffer *cb)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
-   struct pipe_resource *constants = cb ? cb->buffer : NULL;
+   struct pipe_constant_buffer *constants = &llvmpipe->constants[shader][index];
 
    assert(shader < PIPE_SHADER_TYPES);
    assert(index < ARRAY_SIZE(llvmpipe->constants[shader]));
@@ -3993,10 +3994,19 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
    util_copy_constant_buffer(&llvmpipe->constants[shader][index], cb,
                              take_ownership);
 
-   if (constants) {
-       if (!(constants->bind & PIPE_BIND_CONSTANT_BUFFER)) {
+   /* user_buffer is only valid until the next set_constant_buffer (at most,
+    * possibly until shader deletion), so we need to upload it now to make sure
+    * it doesn't get updated/freed out from under us.
+    */
+   if (constants->user_buffer) {
+      u_upload_data(llvmpipe->pipe.const_uploader, 0, constants->buffer_size, 16,
+                    constants->user_buffer, &constants->buffer_offset,
+                    &constants->buffer);
+   }
+   if (constants->buffer) {
+       if (!(constants->buffer->bind & PIPE_BIND_CONSTANT_BUFFER)) {
          debug_printf("Illegal set constant without bind flag\n");
-         constants->bind |= PIPE_BIND_CONSTANT_BUFFER;
+         constants->buffer->bind |= PIPE_BIND_CONSTANT_BUFFER;
       }
    }
 
@@ -4006,20 +4016,10 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
        shader == PIPE_SHADER_TESS_EVAL) {
       /* Pass the constants to the 'draw' module */
       const unsigned size = cb ? cb->buffer_size : 0;
-      const ubyte *data;
 
-      if (constants) {
-         data = (ubyte *) llvmpipe_resource_data(constants);
-      }
-      else if (cb && cb->user_buffer) {
-         data = (ubyte *) cb->user_buffer;
-      }
-      else {
-         data = NULL;
-      }
-
-      if (data)
-         data += cb->buffer_offset;
+      const ubyte *data = NULL;
+      if (constants->buffer)
+         data = (ubyte *) llvmpipe_resource_data(constants->buffer) + constants->buffer_offset;
 
       draw_set_mapped_constant_buffer(llvmpipe->draw, shader,
                                       index, data, size);
@@ -4028,10 +4028,6 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
       llvmpipe->cs_dirty |= LP_CSNEW_CONSTANTS;
    else
       llvmpipe->dirty |= LP_NEW_FS_CONSTANTS;
-
-   if (cb && cb->user_buffer) {
-      pipe_resource_reference(&constants, NULL);
-   }
 }
 
 static void
