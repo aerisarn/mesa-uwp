@@ -500,7 +500,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_sampler_filter_minmax = true,
       .EXT_scalar_block_layout = device->rad_info.chip_class >= GFX7,
       .EXT_shader_atomic_float = true,
-      .EXT_shader_atomic_float2 = !device->use_llvm,
+      .EXT_shader_atomic_float2 = !device->use_llvm || LLVM_VERSION_MAJOR >= 14,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_image_atomic_int64 = true,
       .EXT_shader_stencil_export = true,
@@ -1685,20 +1685,24 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: {
          VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *features =
             (VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *)ext;
-         bool has_shader_float_minmax = pdevice->rad_info.chip_class != GFX8 &&
-                                        pdevice->rad_info.chip_class != GFX9;
+         bool has_shader_buffer_float_minmax = ((pdevice->rad_info.chip_class == GFX6 ||
+                                                 pdevice->rad_info.chip_class == GFX7) &&
+                                                !pdevice->use_llvm) ||
+                                               pdevice->rad_info.chip_class >= GFX10;
+         bool has_shader_image_float_minmax = pdevice->rad_info.chip_class != GFX8 &&
+                                              pdevice->rad_info.chip_class != GFX9;
          features->shaderBufferFloat16Atomics = false;
          features->shaderBufferFloat16AtomicAdd = false;
          features->shaderBufferFloat16AtomicMinMax = false;
-         features->shaderBufferFloat32AtomicMinMax = has_shader_float_minmax;
-         features->shaderBufferFloat64AtomicMinMax = has_shader_float_minmax;
+         features->shaderBufferFloat32AtomicMinMax = has_shader_buffer_float_minmax;
+         features->shaderBufferFloat64AtomicMinMax = has_shader_buffer_float_minmax;
          features->shaderSharedFloat16Atomics = false;
          features->shaderSharedFloat16AtomicAdd = false;
          features->shaderSharedFloat16AtomicMinMax = false;
          features->shaderSharedFloat32AtomicMinMax = true;
          features->shaderSharedFloat64AtomicMinMax = true;
-         features->shaderImageFloat32AtomicMinMax = has_shader_float_minmax;
-         features->sparseImageFloat32AtomicMinMax = has_shader_float_minmax;
+         features->shaderImageFloat32AtomicMinMax = has_shader_image_float_minmax;
+         features->sparseImageFloat32AtomicMinMax = has_shader_image_float_minmax;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
