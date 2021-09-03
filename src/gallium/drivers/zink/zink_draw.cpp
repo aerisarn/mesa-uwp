@@ -336,6 +336,17 @@ draw(struct zink_context *ctx,
    }
 }
 
+ALWAYS_INLINE static VkPipelineStageFlags
+find_pipeline_bits(uint32_t *mask)
+{
+   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+      if (mask[i]) {
+         return zink_pipeline_flags_from_pipe_stage((enum pipe_shader_type)i);
+      }
+   }
+   return 0;
+}
+
 static void
 update_barriers(struct zink_context *ctx, bool is_compute)
 {
@@ -371,9 +382,14 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          if (is_compute)
             pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
          else if (!pipeline) {
-            u_foreach_bit(stage, res->bind_stages) {
-               pipeline |= zink_pipeline_flags_from_pipe_stage((enum pipe_shader_type)stage);
-            }
+            if (res->ubo_bind_count[0])
+               pipeline |= find_pipeline_bits(res->ubo_bind_mask);
+            if (!pipeline)
+               pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
+            if (!pipeline)
+               pipeline |= find_pipeline_bits(res->sampler_binds);
+            if (!pipeline) //must be a shader image
+               pipeline = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
          }
          if (res->base.b.target == PIPE_BUFFER)
             zink_resource_buffer_barrier(ctx, res, access, pipeline);
