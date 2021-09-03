@@ -485,7 +485,7 @@ get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, 
    switch (instr->opcode) {
    case aco_opcode::v_cvt_f32_ubyte0: return 1;
    case aco_opcode::ds_write_b8:
-   case aco_opcode::ds_write_b16: return chip >= GFX8 ? 2 : 4;
+   case aco_opcode::ds_write_b16: return chip >= GFX9 ? 2 : 4;
    case aco_opcode::buffer_store_byte:
    case aco_opcode::buffer_store_short:
    case aco_opcode::flat_store_byte:
