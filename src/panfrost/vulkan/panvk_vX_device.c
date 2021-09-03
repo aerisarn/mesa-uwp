@@ -262,6 +262,16 @@ panvk_per_arch(QueueSubmit)(VkQueue _queue,
             bos[bo_idx++] = pdev->sample_positions->gem_handle;
             assert(bo_idx == nr_bos);
 
+            /* Merge identical BO entries. */
+            for (unsigned x = 0; x < nr_bos; x++) {
+               for (unsigned y = x + 1; y < nr_bos; ) {
+                  if (bos[x] == bos[y])
+                     bos[y] = bos[--nr_bos];
+                  else
+                     y++;
+               }
+            }
+
             unsigned nr_in_fences = 0;
             unsigned max_wait_event_syncobjs =
                util_dynarray_num_elements(&batch->event_ops,
