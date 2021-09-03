@@ -3080,6 +3080,32 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
       LLVMValueRef src1 = get_src(ctx, instr->src[src_idx + 1]);
       result = ac_build_atomic_cmp_xchg(&ctx->ac, ptr, src, src1, sync_scope);
       result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
+   } else if (instr->intrinsic == nir_intrinsic_shared_atomic_fmin ||
+              instr->intrinsic == nir_intrinsic_shared_atomic_fmax) {
+      const char *op = instr->intrinsic == nir_intrinsic_shared_atomic_fmin ? "fmin" : "fmax";
+      char name[64], type[8];
+      LLVMValueRef params[5];
+      LLVMTypeRef src_type;
+      int arg_count = 0;
+
+      src = ac_to_float(&ctx->ac, src);
+      src_type = LLVMTypeOf(src);
+
+      LLVMTypeRef ptr_type =
+         LLVMPointerType(src_type, LLVMGetPointerAddressSpace(LLVMTypeOf(ptr)));
+      ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
+
+      params[arg_count++] = ptr;
+      params[arg_count++] = src;
+      params[arg_count++] = ctx->ac.i32_0;
+      params[arg_count++] = ctx->ac.i32_0;
+      params[arg_count++] = ctx->ac.i1false;
+
+      ac_build_type_name_for_intr(src_type, type, sizeof(type));
+      snprintf(name, sizeof(name), "llvm.amdgcn.ds.%s.%s", op, type);
+
+      result = ac_build_intrinsic(&ctx->ac, name, src_type, params, arg_count, 0);
+      result = ac_to_integer(&ctx->ac, result);
    } else {
       LLVMAtomicRMWBinOp op;
       switch (instr->intrinsic) {
@@ -3820,7 +3846,9 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_shared_atomic_xor:
    case nir_intrinsic_shared_atomic_exchange:
    case nir_intrinsic_shared_atomic_comp_swap:
-   case nir_intrinsic_shared_atomic_fadd: {
+   case nir_intrinsic_shared_atomic_fadd:
+   case nir_intrinsic_shared_atomic_fmin:
+   case nir_intrinsic_shared_atomic_fmax: {
       LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], instr->src[1].ssa->bit_size, 0);
       result = visit_var_atomic(ctx, instr, ptr, 1);
       break;
