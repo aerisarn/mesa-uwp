@@ -253,12 +253,12 @@ wgl_get_pfd_flags(struct pipe_screen *screen)
 
 static struct stw_winsys_framebuffer *
 wgl_create_framebuffer(struct pipe_screen *screen,
-                       HDC hDC,
+                       HWND hWnd,
                        int iPixelFormat)
 {
 #ifdef GALLIUM_D3D12
    if (use_d3d12)
-      return d3d12_wgl_create_framebuffer(screen, hDC, iPixelFormat);
+      return d3d12_wgl_create_framebuffer(screen, hWnd, iPixelFormat);
 #endif
    return NULL;
 }

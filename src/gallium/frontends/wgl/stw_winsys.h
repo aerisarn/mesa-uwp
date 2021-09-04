@@ -131,7 +131,7 @@ struct stw_winsys
     */
    struct stw_winsys_framebuffer *
    (*create_framebuffer)( struct pipe_screen *screen,
-                          HDC hDC,
+                          HWND hWnd,
                           int iPixelFormat );
 
    /**

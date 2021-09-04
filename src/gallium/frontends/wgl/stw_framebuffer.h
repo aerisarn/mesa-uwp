@@ -152,7 +152,7 @@ struct stw_framebuffer
  * must be called when done 
  */
 struct stw_framebuffer *
-stw_framebuffer_create(HDC hdc, int iPixelFormat, enum stw_framebuffer_owner owner);
+stw_framebuffer_create(HWND hwnd, int iPixelFormat, enum stw_framebuffer_owner owner);
 
 
 /**

@@ -94,10 +94,10 @@ gdi_get_pfd_flags(struct pipe_screen *screen)
 
 static struct stw_winsys_framebuffer *
 gdi_create_framebuffer(struct pipe_screen *screen,
-                       HDC hDC,
+                       HWND hWnd,
                        int iPixelFormat)
 {
-   return d3d12_wgl_create_framebuffer(screen, hDC, iPixelFormat);
+   return d3d12_wgl_create_framebuffer(screen, hWnd, iPixelFormat);
 }
 
 static const char *

@@ -261,16 +261,10 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
  * with its mutex locked.
  */
 struct stw_framebuffer *
-stw_framebuffer_create(HDC hdc, int iPixelFormat, enum stw_framebuffer_owner owner)
+stw_framebuffer_create(HWND hWnd, int iPixelFormat, enum stw_framebuffer_owner owner)
 {
-   HWND hWnd;
    struct stw_framebuffer *fb;
    const struct stw_pixelformat_info *pfi;
-
-   /* We only support drawing to a window. */
-   hWnd = WindowFromDC( hdc );
-   if (!hWnd)
-      return NULL;
 
    fb = CALLOC_STRUCT( stw_framebuffer );
    if (fb == NULL)
@@ -281,7 +275,7 @@ stw_framebuffer_create(HDC hdc, int iPixelFormat, enum stw_framebuffer_owner own
 
    if (stw_dev->stw_winsys->create_framebuffer)
       fb->winsys_framebuffer =
-         stw_dev->stw_winsys->create_framebuffer(stw_dev->screen, hdc, iPixelFormat);
+         stw_dev->stw_winsys->create_framebuffer(stw_dev->screen, hWnd, iPixelFormat);
 
    /*
     * We often need a displayable pixel format to make GDI happy. Set it
@@ -493,7 +487,7 @@ DrvSetPixelFormat(HDC hdc, LONG iPixelFormat)
       return bPbuffer;
    }
 
-   fb = stw_framebuffer_create(hdc, iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW);
+   fb = stw_framebuffer_create(WindowFromDC(hdc), iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW);
    if (!fb) {
       return FALSE;
    }
