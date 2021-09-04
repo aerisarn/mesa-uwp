@@ -186,6 +186,12 @@ stw_init_screen(HDC hdc)
    return stw_dev->screen != NULL;
 }
 
+struct stw_device *
+stw_get_device(void)
+{
+   return stw_dev;
+}
+
 boolean
 stw_init_thread(void)
 {
