@@ -201,7 +201,7 @@ wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList)
 
       struct stw_context *stw_ctx = stw_create_context_attribs(hDC, layerPlane, share_stw,
                                                                majorVersion, minorVersion,
-                                                               contextFlags, profileMask);
+                                                               contextFlags, profileMask, 0);
 
       if (!stw_ctx) {
          wglDeleteContext_func(context);

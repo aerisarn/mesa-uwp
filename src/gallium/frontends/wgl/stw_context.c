@@ -127,7 +127,8 @@ DHGLRC APIENTRY
 DrvCreateLayerContext(HDC hdc, INT iLayerPlane)
 {
    struct stw_context *ctx = stw_create_context_attribs(hdc, iLayerPlane, 0, 1, 0, 0,
-                                                        WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB);
+                                                        WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+                                                        0);
    if (!ctx)
       return 0;
 
@@ -165,10 +166,9 @@ get_matching_pixel_format(HDC hdc)
 struct stw_context *
 stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCtx,
                            int majorVersion, int minorVersion,
-                           int contextFlags, int profileMask)
+                           int contextFlags, int profileMask,
+                           int iPixelFormat)
 {
-   int iPixelFormat;
-   struct stw_framebuffer *fb;
    const struct stw_pixelformat_info *pfi;
    struct st_context_attribs attribs;
    struct stw_context *ctx = NULL;
@@ -180,24 +180,28 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
    if (iLayerPlane != 0)
       return 0;
 
-   /*
-    * GDI only knows about displayable pixel formats, so determine the pixel
-    * format from the framebuffer.
-    *
-    * This also allows to use a OpenGL DLL / ICD without installing.
-    */
-   fb = stw_framebuffer_from_hdc( hdc );
-   if (fb) {
-      iPixelFormat = fb->iPixelFormat;
-      stw_framebuffer_unlock(fb);
-   } else {
-      /* Applications should call SetPixelFormat before creating a context,
-       * but not all do, and the opengl32 runtime seems to use a default
-       * pixel format in some cases, so use that.
+   if (!iPixelFormat) {
+      /*
+       * GDI only knows about displayable pixel formats, so determine the pixel
+       * format from the framebuffer.
+       *
+       * This also allows to use a OpenGL DLL / ICD without installing.
        */
-      iPixelFormat = get_matching_pixel_format(hdc);
-      if (!iPixelFormat)
-         return 0;
+      struct stw_framebuffer *fb;
+      fb = stw_framebuffer_from_hdc(hdc);
+      if (fb) {
+         iPixelFormat = fb->iPixelFormat;
+         stw_framebuffer_unlock(fb);
+      }
+      else {
+         /* Applications should call SetPixelFormat before creating a context,
+          * but not all do, and the opengl32 runtime seems to use a default
+          * pixel format in some cases, so use that.
+          */
+         iPixelFormat = get_matching_pixel_format(hdc);
+         if (!iPixelFormat)
+            return 0;
+      }
    }
 
    pfi = stw_pixelformat_get_info( iPixelFormat );
