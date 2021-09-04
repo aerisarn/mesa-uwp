@@ -333,6 +333,33 @@ stw_framebuffer_create(HDC hdc, int iPixelFormat, enum stw_framebuffer_owner own
    return fb;
 }
 
+/**
+ * Increase fb reference count.  The referenced framebuffer should be locked.
+ *
+ * It's not necessary to hold stw_dev::fb_mutex global lock.
+ */
+void
+stw_framebuffer_reference_locked(struct stw_framebuffer *fb)
+{
+   if (fb) {
+      assert(stw_own_mutex(&fb->mutex));
+      fb->refcnt++;
+   }
+}
+
+/**
+ * Release stw_framebuffer::mutex lock. This framebuffer must not be accessed
+ * after calling this function, as it may have been deleted by another thread
+ * in the meanwhile.
+ */
+void
+stw_framebuffer_unlock(struct stw_framebuffer *fb)
+{
+   assert(fb);
+   assert(stw_own_mutex(&fb->mutex));
+   LeaveCriticalSection(&fb->mutex);
+}
+
 
 /**
  * Update the framebuffer's size if necessary.

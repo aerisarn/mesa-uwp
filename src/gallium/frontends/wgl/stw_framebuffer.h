@@ -160,14 +160,8 @@ stw_framebuffer_create(HDC hdc, int iPixelFormat, enum stw_framebuffer_owner own
  *
  * It's not necessary to hold stw_dev::fb_mutex global lock.
  */
-static inline void
-stw_framebuffer_reference_locked(struct stw_framebuffer *fb)
-{
-   if (fb) {
-      assert(stw_own_mutex(&fb->mutex));
-      fb->refcnt++;
-   }
-}
+void
+stw_framebuffer_reference_locked(struct stw_framebuffer *fb);
 
 
 void
@@ -214,13 +208,8 @@ stw_framebuffer_lock(struct stw_framebuffer *fb)
  * after calling this function, as it may have been deleted by another thread
  * in the meanwhile.
  */
-static inline void
-stw_framebuffer_unlock(struct stw_framebuffer *fb)
-{
-   assert(fb);
-   assert(stw_own_mutex(&fb->mutex));
-   LeaveCriticalSection(&fb->mutex);
-}
+void
+stw_framebuffer_unlock(struct stw_framebuffer *fb);
 
 
 /**
