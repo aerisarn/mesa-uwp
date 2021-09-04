@@ -1366,7 +1366,12 @@ void lp_rast_destroy( struct lp_rasterizer *rast )
     * per https://bugs.freedesktop.org/show_bug.cgi?id=76252 */
    for (i = 0; i < rast->num_threads; i++) {
 #ifdef _WIN32
-      pipe_semaphore_wait(&rast->tasks[i].work_done);
+      /* Threads might already be dead - Windows apparently terminates other threads when
+       * returning from main.
+       */
+      DWORD exit_code = STILL_ACTIVE;
+      if (GetExitCodeThread(rast->threads[i], &exit_code) && exit_code == STILL_ACTIVE)
+         pipe_semaphore_wait(&rast->tasks[i].work_done);
 #else
       thrd_join(rast->threads[i], NULL);
 #endif
