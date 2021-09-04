@@ -50,7 +50,6 @@ enum ac_descriptor_type
  */
 struct ac_shader_abi {
    LLVMValueRef outputs[AC_LLVM_MAX_OUTPUTS * 4];
-   LLVMValueRef inputs[AC_LLVM_MAX_OUTPUTS * 4];
 
    /* These input registers sometimes need to be fixed up. */
    LLVMValueRef vertex_id;

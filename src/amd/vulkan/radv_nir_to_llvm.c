@@ -805,38 +805,6 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
    }
 }
 
-static void
-handle_vs_input_decl(struct radv_shader_context *ctx, struct nir_variable *variable)
-{
-   unsigned attrib_count = glsl_count_attribute_slots(variable->type, true);
-   enum glsl_base_type var_type = glsl_get_base_type(variable->type);
-   LLVMTypeRef type;
-
-   switch (var_type) {
-   case GLSL_TYPE_FLOAT16:
-      type = ctx->ac.f16;
-      break;
-   case GLSL_TYPE_UINT16:
-   case GLSL_TYPE_INT16:
-      type = ctx->ac.i16;
-      break;
-   default:
-      type = ctx->ac.i32;
-      break;
-   }
-
-   for (unsigned i = 0; i < attrib_count; ++i) {
-      unsigned driver_location = variable->data.location + i;
-      LLVMValueRef output[4];
-
-      load_vs_input(ctx, driver_location, type, output);
-
-      for (unsigned chan = 0; chan < 4; chan++) {
-         ctx->abi.inputs[ac_llvm_reg_index_soa(driver_location, chan)] = output[chan];
-      }
-   }
-}
-
 static LLVMValueRef
 radv_load_vs_inputs(struct ac_shader_abi *abi, unsigned driver_location, unsigned component,
                     unsigned num_components, unsigned vertex_index, LLVMTypeRef type)
@@ -850,13 +818,6 @@ radv_load_vs_inputs(struct ac_shader_abi *abi, unsigned driver_location, unsigne
       values[i] = LLVMBuildBitCast(ctx->ac.builder, values[i], type, "");
 
    return ac_build_varying_gather_values(&ctx->ac, values, num_components, component);
-}
-
-static void
-handle_vs_inputs(struct radv_shader_context *ctx, struct nir_shader *nir)
-{
-   nir_foreach_shader_in_variable (variable, nir)
-      handle_vs_input_decl(ctx, variable);
 }
 
 static void
@@ -2612,8 +2573,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
 
       if (shaders[shader_idx]->info.stage == MESA_SHADER_FRAGMENT)
          prepare_interp_optimize(&ctx, shaders[shader_idx]);
-      else if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX)
-         handle_vs_inputs(&ctx, shaders[shader_idx]);
       else if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY)
          prepare_gs_input_vgprs(&ctx, shader_count >= 2);
 
