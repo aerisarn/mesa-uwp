@@ -194,6 +194,9 @@ stw_framebuffer_present_locked(HDC hdc,
 void
 stw_framebuffer_update(struct stw_framebuffer *fb);
 
+BOOL
+stw_framebuffer_swap_locked(HDC hdc, struct stw_framebuffer *fb);
+
 
 static inline void
 stw_framebuffer_lock(struct stw_framebuffer *fb)

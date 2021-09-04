@@ -670,20 +670,10 @@ wait_swap_interval(struct stw_framebuffer *fb)
    fb->prev_swap_time = cur_time;
 }
 
-
-BOOL APIENTRY
-DrvSwapBuffers(HDC hdc)
+BOOL
+stw_framebuffer_swap_locked(HDC hdc, struct stw_framebuffer *fb)
 {
    struct stw_context *ctx;
-   struct stw_framebuffer *fb;
-
-   if (!stw_dev)
-      return FALSE;
-
-   fb = stw_framebuffer_from_hdc( hdc );
-   if (fb == NULL)
-      return FALSE;
-
    if (!(fb->pfi->pfd.dwFlags & PFD_DOUBLEBUFFER)) {
       stw_framebuffer_unlock(fb);
       return TRUE;
@@ -711,6 +701,21 @@ DrvSwapBuffers(HDC hdc)
    }
 
    return stw_st_swap_framebuffer_locked(hdc, ctx->st, fb->stfb);
+}
+
+BOOL APIENTRY
+DrvSwapBuffers(HDC hdc)
+{
+   struct stw_framebuffer *fb;
+
+   if (!stw_dev)
+      return FALSE;
+
+   fb = stw_framebuffer_from_hdc( hdc );
+   if (fb == NULL)
+      return FALSE;
+
+   return stw_framebuffer_swap_locked(hdc, fb);
 }
 
 
