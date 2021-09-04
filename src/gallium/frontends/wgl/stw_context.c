@@ -383,7 +383,7 @@ DrvReleaseContext(DHGLRC dhglrc)
    if (ctx != stw_current_context())
       return FALSE;
 
-   if (stw_make_current( NULL, NULL, 0 ) == FALSE)
+   if (stw_make_current( NULL, NULL, NULL ) == FALSE)
       return FALSE;
 
    return TRUE;
@@ -428,10 +428,9 @@ stw_get_current_read_dc( void )
 }
 
 BOOL
-stw_make_current(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
+stw_make_current(HDC hDrawDC, HDC hReadDC, struct stw_context *ctx)
 {
    struct stw_context *old_ctx = NULL;
-   struct stw_context *ctx = NULL;
    BOOL ret = FALSE;
 
    if (!stw_dev)
@@ -439,7 +438,7 @@ stw_make_current(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
 
    old_ctx = stw_current_context();
    if (old_ctx != NULL) {
-      if (old_ctx->dhglrc == dhglrc) {
+      if (old_ctx == ctx) {
          if (old_ctx->hDrawDC == hDrawDC && old_ctx->hReadDC == hReadDC) {
             /* Return if already current. */
             return TRUE;
@@ -465,15 +464,9 @@ stw_make_current(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
       }
    }
 
-   if (dhglrc) {
+   if (ctx) {
       struct stw_framebuffer *fb = NULL;
       struct stw_framebuffer *fbRead = NULL;
-      stw_lock_contexts(stw_dev);
-      ctx = stw_lookup_context_locked( dhglrc );
-      stw_unlock_contexts(stw_dev);
-      if (!ctx) {
-         goto fail;
-      }
 
       /* This call locks fb's mutex */
       fb = stw_framebuffer_from_hdc( hDrawDC );
@@ -590,6 +583,16 @@ fail:
    }
 
    return ret;
+}
+
+BOOL
+stw_make_current_by_handles(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
+{
+   struct stw_context *ctx = stw_lookup_context(dhglrc);
+   if (dhglrc && !ctx) {
+      stw_make_current(NULL, NULL, NULL);
+   }
+   return stw_make_current(hDrawDC, hReadDC, ctx);
 }
 
 
@@ -955,7 +958,7 @@ DrvSetContext(HDC hdc, DHGLRC dhglrc, PFN_SETPROCTABLE pfnSetProcTable)
 {
    PGLCLTPROCTABLE r = (PGLCLTPROCTABLE)&cpt;
 
-   if (!stw_make_current(hdc, hdc, dhglrc))
+   if (!stw_make_current_by_handles(hdc, hdc, dhglrc))
       r = NULL;
 
    return r;

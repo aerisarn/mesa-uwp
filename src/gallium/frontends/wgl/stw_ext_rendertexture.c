@@ -173,7 +173,7 @@ wglBindTexImageARB(HPBUFFERARB hPbuffer, int iBuffer)
    pixelFormatSave = fb->iPixelFormat;
    fb->iPixelFormat = curctx->iPixelFormat;
    dc = wglGetPbufferDCARB(hPbuffer);
-   retVal = stw_make_current(dc, dc, curctx->dhglrc);
+   retVal = stw_make_current(dc, dc, curctx);
    fb->iPixelFormat = pixelFormatSave;
    if (!retVal) {
       debug_printf("stw_make_current(#1) failed in wglBindTexImageARB()\n");
@@ -186,7 +186,7 @@ wglBindTexImageARB(HPBUFFERARB hPbuffer, int iBuffer)
                                   fb->textureFace, texFormat);
 
    /* rebind previous drawing surface */
-   retVal = stw_make_current(prevDrawable, prevReadable, curctx->dhglrc);
+   retVal = stw_make_current(prevDrawable, prevReadable, curctx);
    if (!retVal) {
       debug_printf("stw_make_current(#2) failed in wglBindTexImageARB()\n");
    }

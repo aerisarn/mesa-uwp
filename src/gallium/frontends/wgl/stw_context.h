@@ -65,7 +65,9 @@ HDC stw_get_current_dc( void );
 
 HDC stw_get_current_read_dc( void );
 
-BOOL stw_make_current( HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc );
+BOOL stw_make_current( HDC hDrawDC, HDC hReadDC, struct stw_context *ctx );
+
+BOOL stw_make_current_by_handles( HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc );
 
 void stw_notify_current_locked( struct stw_framebuffer *fb );
 
