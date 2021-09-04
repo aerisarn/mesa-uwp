@@ -481,7 +481,7 @@ stw_make_current(HDC hDrawDC, HDC hReadDC, struct stw_context *ctx)
           */
          int iPixelFormat = get_matching_pixel_format(hDrawDC);
          if (iPixelFormat)
-            fb = stw_framebuffer_create( hDrawDC, iPixelFormat );
+            fb = stw_framebuffer_create( hDrawDC, iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW );
          if (!fb)
             goto fail;
       }
@@ -521,7 +521,7 @@ stw_make_current(HDC hDrawDC, HDC hReadDC, struct stw_context *ctx)
                 */
                int iPixelFormat = GetPixelFormat(hReadDC);
                if (iPixelFormat)
-                  fbRead = stw_framebuffer_create( hReadDC, iPixelFormat );
+                  fbRead = stw_framebuffer_create( hReadDC, iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW );
                if (!fbRead)
                   goto fail;
             }

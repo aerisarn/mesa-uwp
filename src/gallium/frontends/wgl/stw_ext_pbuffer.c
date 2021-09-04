@@ -248,13 +248,11 @@ wglCreatePbufferARB(HDC hCurrentDC,
     * We can't pass non-displayable pixel formats to GDI, which is why we
     * create the framebuffer object before calling SetPixelFormat().
     */
-   fb = stw_framebuffer_create(hDC, iPixelFormat);
+   fb = stw_framebuffer_create(hDC, iPixelFormat, STW_FRAMEBUFFER_PBUFFER);
    if (!fb) {
       SetLastError(ERROR_NO_SYSTEM_RESOURCES);
       return NULL;
    }
-
-   fb->bPbuffer = TRUE;
 
    /* WGL_ARB_render_texture fields */
    fb->textureTarget = textureTarget;

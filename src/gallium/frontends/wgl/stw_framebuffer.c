@@ -81,7 +81,7 @@ stw_framebuffer_release_locked(struct stw_framebuffer *fb,
 
    assert(fb);
    assert(stw_own_mutex(&fb->mutex));
-   assert(stw_own_mutex(&stw_dev->fb_mutex));
+   assert(stw_own_mutex(&stw_dev->fb_mutex) || fb->owner == STW_FRAMEBUFFER_EGL_WINDOW);
 
    /* check the reference count */
    fb->refcnt--;
@@ -90,13 +90,15 @@ stw_framebuffer_release_locked(struct stw_framebuffer *fb,
       return;
    }
 
-   /* remove this stw_framebuffer from the device's linked list */
-   link = &stw_dev->fb_head;
-   while (*link != fb)
-      link = &(*link)->next;
-   assert(*link);
-   *link = fb->next;
-   fb->next = NULL;
+   if (fb->owner != STW_FRAMEBUFFER_EGL_WINDOW) {
+      /* remove this stw_framebuffer from the device's linked list */
+      link = &stw_dev->fb_head;
+      while (*link != fb)
+         link = &(*link)->next;
+      assert(*link);
+      *link = fb->next;
+      fb->next = NULL;
+   }
 
    if (fb->shared_surface)
       stw_dev->stw_winsys->shared_surface_close(stw_dev->screen,
@@ -259,7 +261,7 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
  * with its mutex locked.
  */
 struct stw_framebuffer *
-stw_framebuffer_create(HDC hdc, int iPixelFormat)
+stw_framebuffer_create(HDC hdc, int iPixelFormat, enum stw_framebuffer_owner owner)
 {
    HWND hWnd;
    struct stw_framebuffer *fb;
@@ -287,6 +289,7 @@ stw_framebuffer_create(HDC hdc, int iPixelFormat)
     */
    fb->iDisplayablePixelFormat = iPixelFormat <= stw_dev->pixelformat_count
       ? iPixelFormat : 1;
+   fb->owner = owner;
 
    fb->pfi = pfi = stw_pixelformat_get_info( iPixelFormat );
    fb->stfb = stw_st_create_framebuffer( fb );
@@ -320,10 +323,12 @@ stw_framebuffer_create(HDC hdc, int iPixelFormat)
     */
    stw_framebuffer_lock(fb);
 
-   stw_lock_framebuffers(stw_dev);
-   fb->next = stw_dev->fb_head;
-   stw_dev->fb_head = fb;
-   stw_unlock_framebuffers(stw_dev);
+   if (owner != STW_FRAMEBUFFER_EGL_WINDOW) {
+      stw_lock_framebuffers(stw_dev);
+      fb->next = stw_dev->fb_head;
+      stw_dev->fb_head = fb;
+      stw_unlock_framebuffers(stw_dev);
+   }
 
    return fb;
 }
@@ -454,14 +459,14 @@ DrvSetPixelFormat(HDC hdc, LONG iPixelFormat)
        * SetPixelFormat must be called only once.  However ignore
        * pbuffers, for which the framebuffer object is created first.
        */
-      boolean bPbuffer = fb->bPbuffer;
+      boolean bPbuffer = fb->owner == STW_FRAMEBUFFER_PBUFFER;
 
       stw_framebuffer_unlock( fb );
 
       return bPbuffer;
    }
 
-   fb = stw_framebuffer_create(hdc, iPixelFormat);
+   fb = stw_framebuffer_create(hdc, iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW);
    if (!fb) {
       return FALSE;
    }
