@@ -58,6 +58,8 @@ DHGLRC stw_create_context_handle(struct stw_context *context, DHGLRC handle);
 
 void stw_destroy_context(struct stw_context *);
 
+BOOL stw_unbind_context(struct stw_context *);
+
 DHGLRC stw_get_current_context( void );
 
 struct stw_context *stw_current_context(void);

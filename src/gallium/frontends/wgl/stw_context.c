@@ -360,19 +360,9 @@ DrvDeleteContext(DHGLRC dhglrc)
    return ret;
 }
 
-
-BOOL APIENTRY
-DrvReleaseContext(DHGLRC dhglrc)
+BOOL
+stw_unbind_context(struct stw_context *ctx)
 {
-   struct stw_context *ctx;
-
-   if (!stw_dev)
-      return FALSE;
-
-   stw_lock_contexts(stw_dev);
-   ctx = stw_lookup_context_locked( dhglrc );
-   stw_unlock_contexts(stw_dev);
-
    if (!ctx)
       return FALSE;
 
@@ -387,6 +377,21 @@ DrvReleaseContext(DHGLRC dhglrc)
       return FALSE;
 
    return TRUE;
+}
+
+BOOL APIENTRY
+DrvReleaseContext(DHGLRC dhglrc)
+{
+   struct stw_context *ctx;
+
+   if (!stw_dev)
+      return FALSE;
+
+   stw_lock_contexts(stw_dev);
+   ctx = stw_lookup_context_locked( dhglrc );
+   stw_unlock_contexts(stw_dev);
+
+   return stw_unbind_context(ctx);
 }
 
 
