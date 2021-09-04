@@ -223,6 +223,11 @@ def follow_job_execution(proxy, job_id):
 
             line_count += len(logs)
 
+        # `proxy.scheduler.jobs.logs` does not block, even when there is no
+        # new log to be fetched. To avoid dosing the LAVA dispatcher
+        # machine, let's add a sleep to save them some stamina.
+        time.sleep(5)
+
 
 def show_job_data(proxy, job_id):
     show = _call_proxy(proxy.scheduler.jobs.show, job_id)
