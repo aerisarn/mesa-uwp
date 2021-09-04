@@ -192,6 +192,7 @@ libegl = shared_library(
   version : egl_lib_version,
   soversion : egl_lib_soversion,
   name_prefix : 'lib', # even on windows
+  vs_module_defs : 'main/egl.def'
 )
 
 if not with_glvnd
