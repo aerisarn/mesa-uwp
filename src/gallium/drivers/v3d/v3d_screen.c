@@ -652,6 +652,23 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
                 return false;
         }
 
+        if (usage & PIPE_BIND_SHADER_IMAGE) {
+                switch (format) {
+                /* FIXME: maybe we can implement a swizzle-on-writes to add
+                 * support for BGRA-alike formats.
+                 */
+                case PIPE_FORMAT_A4B4G4R4_UNORM:
+                case PIPE_FORMAT_A1B5G5R5_UNORM:
+                case PIPE_FORMAT_B5G6R5_UNORM:
+                case PIPE_FORMAT_B8G8R8A8_UNORM:
+                case PIPE_FORMAT_X8Z24_UNORM:
+                case PIPE_FORMAT_Z16_UNORM:
+                        return false;
+                default:
+                        return true;
+                }
+        }
+
         return true;
 }
 
