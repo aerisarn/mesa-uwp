@@ -748,6 +748,7 @@ struct ir3_shader {
       /* for compute shaders: */
       struct {
          unsigned req_input_mem;    /* in dwords */
+         unsigned req_local_mem;
       } cs;
    };
 
