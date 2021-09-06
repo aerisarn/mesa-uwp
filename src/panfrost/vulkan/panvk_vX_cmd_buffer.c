@@ -309,6 +309,9 @@ panvk_cmd_upload_sysval(struct panvk_cmd_buffer *cmdbuf,
       /* TODO: support base_{vertex,instance} */
       data->u32[0] = data->u32[1] = data->u32[2] = 0;
       break;
+   case PAN_SYSVAL_BLEND_CONSTANTS:
+      memcpy(data->f32, cmdbuf->state.blend.constants, sizeof(data->f32));
+      break;
    default:
       unreachable("Invalid static sysval");
    }
