@@ -301,7 +301,9 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    }
 
    device->master_fd = master_fd;
-   device->pdev.debug = PAN_DBG_TRACE;
+   if (instance->debug_flags & PANVK_DEBUG_TRACE)
+      device->pdev.debug |= PAN_DBG_TRACE;
+
    panfrost_open_device(NULL, fd, &device->pdev);
    fd = -1;
 
