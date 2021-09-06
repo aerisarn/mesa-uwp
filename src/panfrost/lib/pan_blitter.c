@@ -1310,25 +1310,38 @@ GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
         ctx->src.end.x = info->src.end.x;
         ctx->src.end.y = info->src.end.y;
         ctx->src.dim = sviews[0].dim;
-        if (sviews[0].dim == MALI_TEXTURE_DIMENSION_3D)
-                ctx->src.z_offset = info->src.start.z;
-        else
-                ctx->src.layer_offset = info->src.start.layer;
 
         if (info->dst.planes[0].image->layout.dim == MALI_TEXTURE_DIMENSION_3D) {
                 unsigned max_z = u_minify(info->dst.planes[0].image->layout.depth, info->dst.level) - 1;
 
-                ctx->dst.layer_offset = info->dst.start.z;
-                ctx->dst.cur_layer = info->dst.start.z;
-                ctx->dst.last_layer = MIN2(MAX2(info->dst.end.z, 0), max_z);
-                ctx->z_scale = (float)(info->dst.end.z - info->dst.start.z) /
-                               (info->src.end.z - info->src.start.z);
+                ctx->z_scale = (float)(info->src.end.z - info->src.start.z) /
+                               (info->dst.end.z - info->dst.start.z);
+                assert(info->dst.start.z != info->dst.end.z);
+                if (info->dst.start.z > info->dst.end.z) {
+                        ctx->dst.cur_layer = info->dst.start.z - 1;
+                        ctx->dst.last_layer = info->dst.end.z;
+                } else {
+                        ctx->dst.cur_layer = info->dst.start.z;
+                        ctx->dst.last_layer = info->dst.end.z - 1;
+                }
+                ctx->dst.cur_layer = MIN2(MAX2(ctx->dst.cur_layer, 0), max_z);
+                ctx->dst.last_layer = MIN2(MAX2(ctx->dst.last_layer, 0), max_z);
+                ctx->dst.layer_offset = ctx->dst.cur_layer;
         } else {
                 unsigned max_layer = info->dst.planes[0].image->layout.array_size - 1;
                 ctx->dst.layer_offset = info->dst.start.layer;
                 ctx->dst.cur_layer = info->dst.start.layer;
                 ctx->dst.last_layer = MIN2(info->dst.end.layer, max_layer);
                 ctx->z_scale = 1;
+        }
+
+        if (sviews[0].dim == MALI_TEXTURE_DIMENSION_3D) {
+                if (info->src.start.z < info->src.end.z)
+                        ctx->src.z_offset = info->src.start.z + fabs(ctx->z_scale * 0.5f);
+                else
+                        ctx->src.z_offset = info->src.start.z - fabs(ctx->z_scale * 0.5f);
+        } else {
+                ctx->src.layer_offset = info->src.start.layer;
         }
 
         /* Split depth and stencil */
