@@ -73,11 +73,12 @@
 /**
  * Maximum control flow nesting
  *
+ * Vulkan CTS tests seem to have up to 76 levels. Add a few for safety.
  * SM4.0 requires 64 (per subroutine actually, subroutine nesting itself is 32)
  * SM3.0 requires 24 (most likely per subroutine too)
  * add 2 more (some translation could add one more)
  */
-#define LP_MAX_TGSI_NESTING 66
+#define LP_MAX_TGSI_NESTING 80
 
 /**
  * Maximum iterations before loop termination
