@@ -350,6 +350,44 @@ mir_compute_interference(
 
         mir_foreach_block(ctx, _blk) {
                 midgard_block *blk = (midgard_block *) _blk;
+
+                /* The scalar and vector units run in parallel. We need to make
+                 * sure they don't write to same portion of the register file
+                 * otherwise the result is undefined. Add interferences to
+                 * avoid this situation.
+                 */
+                util_dynarray_foreach(&blk->bundles, midgard_bundle, bundle) {
+                        midgard_instruction *instrs[2][3];
+                        unsigned instr_count[2] = { 0, 0 };
+
+                        for (unsigned i = 0; i < bundle->instruction_count; i++) {
+                                if (bundle->instructions[i]->unit == UNIT_VMUL ||
+                                    bundle->instructions[i]->unit == UNIT_SADD)
+                                        instrs[0][instr_count[0]++] = bundle->instructions[i];
+                                else
+                                        instrs[1][instr_count[1]++] = bundle->instructions[i];
+                        }
+
+                        for (unsigned i = 0; i < ARRAY_SIZE(instr_count); i++) {
+                                for (unsigned j = 0; j < instr_count[i]; j++) {
+                                        midgard_instruction *ins_a = instrs[i][j];
+
+                                        if (ins_a->dest >= ctx->temp_count) continue;
+
+                                        for (unsigned k = j + 1; k < instr_count[i]; k++) {
+                                                midgard_instruction *ins_b = instrs[i][k];
+
+                                                if (ins_b->dest >= ctx->temp_count) continue;
+
+                                                lcra_add_node_interference(l, ins_b->dest,
+                                                                           mir_bytemask(ins_b),
+                                                                           ins_a->dest,
+                                                                           mir_bytemask(ins_a));
+                                        }
+                                }
+                        }
+                }
+
                 uint16_t *live = mem_dup(_blk->live_out, ctx->temp_count * sizeof(uint16_t));
 
                 mir_foreach_instr_in_block_rev(blk, ins) {
