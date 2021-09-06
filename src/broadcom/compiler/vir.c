@@ -984,14 +984,6 @@ v3d_nir_lower_fs_early(struct v3d_compile *c)
                 /* The lowering pass can introduce new sysval reads */
                 nir_shader_gather_info(c->s, nir_shader_get_entrypoint(c->s));
         }
-
-        /* If the shader has no non-TLB side effects, we can promote it to
-         * enabling early_fragment_tests even if the user didn't.
-         */
-        if (!(c->s->info.num_images ||
-              c->s->info.num_ssbos)) {
-                c->s->info.fs.early_fragment_tests = true;
-        }
 }
 
 static void

@@ -3,8 +3,3 @@ dEQP-VK.geometry.input.basic_primitive.line_strip_adjacency,Fail
 
 # CTS bug; fix submitted
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
-
-# Triagged
-dEQP-VK.spirv_assembly.instruction.graphics.early_fragment.depth_greater,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.early_fragment.depth_less,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.early_fragment.depth_not_equal,Fail

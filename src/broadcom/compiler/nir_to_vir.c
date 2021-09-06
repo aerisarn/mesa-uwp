@@ -1670,6 +1670,15 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
 static void
 emit_frag_end(struct v3d_compile *c)
 {
+        /* If the shader has no non-TLB side effects and doesn't write Z
+         * we can promote it to enabling early_fragment_tests even
+         * if the user didn't.
+         */
+        if (c->output_position_index == -1 &&
+            !(c->s->info.num_images || c->s->info.num_ssbos)) {
+                c->s->info.fs.early_fragment_tests = true;
+        }
+
         if (c->output_sample_mask_index != -1) {
                 vir_SETMSF_dest(c, vir_nop_reg(),
                                 vir_AND(c,
@@ -1694,7 +1703,8 @@ emit_frag_end(struct v3d_compile *c)
         }
 
         struct qreg tlbu_reg = vir_magic_reg(V3D_QPU_WADDR_TLBU);
-        if (c->output_position_index != -1) {
+        if (c->output_position_index != -1 &&
+            !c->s->info.fs.early_fragment_tests) {
                 struct qinst *inst = vir_MOV_dest(c, tlbu_reg,
                                                   c->outputs[c->output_position_index]);
                 uint8_t tlb_specifier = TLB_TYPE_DEPTH;
