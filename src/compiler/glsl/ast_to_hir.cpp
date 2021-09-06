@@ -1741,6 +1741,14 @@ ast_expression::do_hir(exec_list *instructions,
       op[0] = this->subexpressions[0]->hir(instructions, state);
       op[1] = this->subexpressions[1]->hir(instructions, state);
 
+      /* Break out if operand types were not parsed successfully. */
+      if ((op[0]->type == glsl_type::error_type ||
+           op[1]->type == glsl_type::error_type)) {
+         error_emitted = true;
+         result = ir_rvalue::error_value(ctx);
+         break;
+      }
+
       orig_type = op[0]->type;
       type = modulus_result_type(op[0], op[1], state, &loc);
 
@@ -1771,6 +1779,15 @@ ast_expression::do_hir(exec_list *instructions,
       this->subexpressions[0]->set_is_lhs(true);
       op[0] = this->subexpressions[0]->hir(instructions, state);
       op[1] = this->subexpressions[1]->hir(instructions, state);
+
+      /* Break out if operand types were not parsed successfully. */
+      if ((op[0]->type == glsl_type::error_type ||
+           op[1]->type == glsl_type::error_type)) {
+         error_emitted = true;
+         result = ir_rvalue::error_value(ctx);
+         break;
+      }
+
       type = shift_result_type(op[0]->type, op[1]->type, this->oper, state,
                                &loc);
       ir_rvalue *temp_rhs = new(ctx) ir_expression(operations[this->oper],
@@ -1790,6 +1807,14 @@ ast_expression::do_hir(exec_list *instructions,
       this->subexpressions[0]->set_is_lhs(true);
       op[0] = this->subexpressions[0]->hir(instructions, state);
       op[1] = this->subexpressions[1]->hir(instructions, state);
+
+      /* Break out if operand types were not parsed successfully. */
+      if ((op[0]->type == glsl_type::error_type ||
+           op[1]->type == glsl_type::error_type)) {
+         error_emitted = true;
+         result = ir_rvalue::error_value(ctx);
+         break;
+      }
 
       orig_type = op[0]->type;
       type = bit_logic_result_type(op[0], op[1], this->oper, state, &loc);
