@@ -325,30 +325,43 @@ pan_pack_unorm_1010102(nir_builder *b, nir_ssa_def *v)
 /* On the other hand, the pure int RGB10_A2 is identical to the spec */
 
 static nir_ssa_def *
-pan_pack_uint_1010102(nir_builder *b, nir_ssa_def *v)
+pan_pack_int_1010102(nir_builder *b, nir_ssa_def *v, bool is_signed)
 {
-        nir_ssa_def *shift = nir_ishl(b, nir_u2u32(b, v),
-                        nir_imm_ivec4(b, 0, 10, 20, 30));
+        v = nir_u2u32(b, v);
 
-        nir_ssa_def *p = nir_ior(b,
-                        nir_ior(b, nir_channel(b, shift, 0), nir_channel(b, shift, 1)),
-                        nir_ior(b, nir_channel(b, shift, 2), nir_channel(b, shift, 3)));
+        /* Clamp the values */
+        if (is_signed) {
+                v = nir_imin(b, v, nir_imm_ivec4(b, 511, 511, 511, 1));
+                v = nir_imax(b, v, nir_imm_ivec4(b, -512, -512, -512, -2));
+        } else {
+                v = nir_umin(b, v, nir_imm_ivec4(b, 1023, 1023, 1023, 3));
+        }
 
-        return pan_replicate_4(b, p);
+        v = nir_ishl(b, v, nir_imm_ivec4(b, 0, 10, 20, 30));
+        v = nir_ior(b,
+                    nir_ior(b, nir_channel(b, v, 0), nir_channel(b, v, 1)),
+                    nir_ior(b, nir_channel(b, v, 2), nir_channel(b, v, 3)));
+
+        return pan_replicate_4(b, v);
 }
 
 static nir_ssa_def *
-pan_unpack_uint_1010102(nir_builder *b, nir_ssa_def *packed)
+pan_unpack_int_1010102(nir_builder *b, nir_ssa_def *packed, bool is_signed)
 {
-        nir_ssa_def *chan = nir_channel(b, packed, 0);
+        nir_ssa_def *v = pan_replicate_4(b, nir_channel(b, packed, 0));
 
-        nir_ssa_def *shift = nir_ushr(b, pan_replicate_4(b, chan),
-                        nir_imm_ivec4(b, 0, 10, 20, 30));
+        /* Left shift all components so the sign bit is on the MSB, and
+         * can be extended by ishr(). The ishl()+[u,i]shr() combination
+         * sets all unused bits to 0 without requiring a mask.
+         */
+        v = nir_ishl(b, v, nir_imm_ivec4(b, 22, 12, 2, 0));
 
-        nir_ssa_def *mask = nir_iand(b, shift,
-                        nir_imm_ivec4(b, 0x3ff, 0x3ff, 0x3ff, 0x3));
+        if (is_signed)
+                v = nir_ishr(b, v, nir_imm_ivec4(b, 22, 22, 22, 30));
+        else
+                v = nir_ushr(b, v, nir_imm_ivec4(b, 22, 22, 22, 30));
 
-        return nir_i2i16(b, mask);
+        return nir_i2i16(b, v);
 }
 
 /* NIR means we can *finally* catch a break */
@@ -427,7 +440,10 @@ pan_unpack(nir_builder *b,
         switch (desc->format) {
         case PIPE_FORMAT_R10G10B10A2_UINT:
         case PIPE_FORMAT_B10G10R10A2_UINT:
-                return pan_unpack_uint_1010102(b, packed);
+                return pan_unpack_int_1010102(b, packed, false);
+        case PIPE_FORMAT_R10G10B10A2_SINT:
+        case PIPE_FORMAT_B10G10R10A2_SINT:
+                return pan_unpack_int_1010102(b, packed, true);
         case PIPE_FORMAT_R11G11B10_FLOAT:
                 return pan_unpack_r11g11b10(b, packed);
         default:
@@ -491,7 +507,10 @@ pan_pack(nir_builder *b,
                 return pan_pack_unorm_1010102(b, unpacked);
         case PIPE_FORMAT_R10G10B10A2_UINT:
         case PIPE_FORMAT_B10G10R10A2_UINT:
-                return pan_pack_uint_1010102(b, unpacked);
+                return pan_pack_int_1010102(b, unpacked, false);
+        case PIPE_FORMAT_R10G10B10A2_SINT:
+        case PIPE_FORMAT_B10G10R10A2_SINT:
+                return pan_pack_int_1010102(b, unpacked, true);
         case PIPE_FORMAT_R11G11B10_FLOAT:
                 return pan_pack_r11g11b10(b, unpacked);
         default:
