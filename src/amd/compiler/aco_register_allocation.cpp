@@ -1911,6 +1911,136 @@ get_reg_for_operand(ra_ctx& ctx, RegisterFile& register_file,
    update_renames(ctx, register_file, parallelcopy, instr, rename_not_killed_ops | fill_killed_ops);
 }
 
+void
+get_regs_for_phis(ra_ctx& ctx, Block& block, RegisterFile& register_file,
+                  std::vector<aco_ptr<Instruction>>& instructions, IDSet& live_in)
+{
+   /* look up the affinities */
+   for (aco_ptr<Instruction>& phi : block.instructions) {
+      if (!is_phi(phi))
+         break;
+      Definition& definition = phi->definitions[0];
+      if (definition.isKill() || definition.isFixed())
+         continue;
+
+      if (ctx.assignments[definition.tempId()].affinity &&
+          ctx.assignments[ctx.assignments[definition.tempId()].affinity].assigned) {
+         assignment& affinity = ctx.assignments[ctx.assignments[definition.tempId()].affinity];
+         assert(affinity.rc == definition.regClass());
+         PhysReg reg = affinity.reg;
+         if (reg == scc) {
+            /* only use scc if all operands are already placed there */
+            bool use_scc = std::all_of(phi->operands.begin(), phi->operands.end(),
+                                       [](const Operand& op) {
+                                          return op.isTemp() && op.isFixed() && op.physReg() == scc;
+                                       });
+            if (!use_scc)
+               continue;
+         }
+
+         /* only assign if register is still free */
+         if (!register_file.test(reg, definition.bytes())) {
+            definition.setFixed(reg);
+            register_file.fill(definition);
+            ctx.assignments[definition.tempId()].set(definition);
+         }
+      }
+   }
+
+   /* find registers for phis without affinity or where the register was blocked */
+   for (aco_ptr<Instruction>& phi : block.instructions) {
+      if (!is_phi(phi))
+         break;
+
+      Definition& definition = phi->definitions[0];
+      if (definition.isKill())
+         continue;
+
+      if (!definition.isFixed()) {
+         std::vector<std::pair<Operand, Definition>> parallelcopy;
+         /* try to find a register that is used by at least one operand */
+         for (int i = phi->operands.size() - 1; i >= 0; i--) {
+            /* by going backwards, we aim to avoid copies in else-blocks */
+            const Operand& op = phi->operands[i];
+            if (!op.isTemp() || !op.isFixed())
+               continue;
+            PhysReg reg = op.physReg();
+            /* we tried this already on the previous loop */
+            if (reg == scc)
+               continue;
+            if (get_reg_specified(ctx, register_file, definition.regClass(), phi, reg)) {
+               definition.setFixed(reg);
+               break;
+            }
+         }
+         if (!definition.isFixed()) {
+            definition.setFixed(
+               get_reg(ctx, register_file, definition.getTemp(), parallelcopy, phi));
+            update_renames(ctx, register_file, parallelcopy, phi, rename_not_killed_ops);
+         }
+
+         /* process parallelcopy */
+         for (std::pair<Operand, Definition> pc : parallelcopy) {
+            /* see if it's a copy from a different phi */
+            // TODO: prefer moving some previous phis over live-ins
+            // TODO: somehow prevent phis fixed before the RA from being updated (shouldn't be a
+            // problem in practice since they can only be fixed to exec)
+            Instruction* prev_phi = NULL;
+            std::vector<aco_ptr<Instruction>>::iterator phi_it;
+            for (phi_it = instructions.begin(); phi_it != instructions.end(); ++phi_it) {
+               if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
+                  prev_phi = phi_it->get();
+            }
+            if (prev_phi) {
+               /* if so, just update that phi's register */
+               prev_phi->definitions[0].setFixed(pc.second.physReg());
+               ctx.assignments[prev_phi->definitions[0].tempId()].set(pc.second);
+               continue;
+            }
+
+            /* rename */
+            std::unordered_map<unsigned, Temp>::iterator orig_it =
+               ctx.orig_names.find(pc.first.tempId());
+            Temp orig = pc.first.getTemp();
+            if (orig_it != ctx.orig_names.end())
+               orig = orig_it->second;
+            else
+               ctx.orig_names[pc.second.tempId()] = orig;
+            ctx.renames[block.index][orig.id()] = pc.second.getTemp();
+
+            /* otherwise, this is a live-in and we need to create a new phi
+             * to move it in this block's predecessors */
+            aco_opcode opcode =
+               pc.first.getTemp().is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
+            std::vector<unsigned>& preds =
+               pc.first.getTemp().is_linear() ? block.linear_preds : block.logical_preds;
+            aco_ptr<Instruction> new_phi{
+               create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
+            new_phi->definitions[0] = pc.second;
+            for (unsigned i = 0; i < preds.size(); i++)
+               new_phi->operands[i] = Operand(pc.first);
+            instructions.emplace_back(std::move(new_phi));
+
+            /* Remove from live_out_per_block (now used for live-in), because handle_loop_phis()
+             * would re-create this phi later if this is a loop header.
+             */
+            live_in.erase(orig.id());
+         }
+
+         register_file.fill(definition);
+         ctx.assignments[definition.tempId()].set(definition);
+      }
+
+      /* update phi affinities */
+      for (const Operand& op : phi->operands) {
+         if (op.isTemp() && op.regClass() == phi->definitions[0].regClass())
+            ctx.assignments[op.tempId()].affinity = definition.tempId();
+      }
+
+      instructions.emplace_back(std::move(phi));
+   }
+}
+
 Temp
 read_variable(ra_ctx& ctx, Temp val, unsigned block_idx)
 {
@@ -2266,139 +2396,10 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
       ctx.war_hint.reset();
 
       std::vector<aco_ptr<Instruction>> instructions;
-      std::vector<aco_ptr<Instruction>>::iterator instr_it;
 
       /* this is a slight adjustment from the paper as we already have phi nodes:
        * We consider them incomplete phis and only handle the definition. */
-
-      /* look up the affinities */
-      for (instr_it = block.instructions.begin(); instr_it != block.instructions.end();
-           ++instr_it) {
-         aco_ptr<Instruction>& phi = *instr_it;
-         if (!is_phi(phi))
-            break;
-         Definition& definition = phi->definitions[0];
-         if (definition.isKill() || definition.isFixed())
-            continue;
-
-         if (ctx.assignments[definition.tempId()].affinity &&
-             ctx.assignments[ctx.assignments[definition.tempId()].affinity].assigned) {
-            assignment& affinity = ctx.assignments[ctx.assignments[definition.tempId()].affinity];
-            assert(affinity.rc == definition.regClass());
-            PhysReg reg = affinity.reg;
-            if (reg == scc) {
-               /* only use scc if all operands are already placed there */
-               bool use_scc =
-                  std::all_of(phi->operands.begin(), phi->operands.end(),
-                              [](const Operand& op)
-                              { return op.isTemp() && op.isFixed() && op.physReg() == scc; });
-               if (!use_scc)
-                  continue;
-            }
-
-            /* only assign if register is still free */
-            if (!register_file.test(reg, definition.bytes())) {
-               definition.setFixed(reg);
-               register_file.fill(definition);
-               ctx.assignments[definition.tempId()].set(definition);
-            }
-         }
-      }
-
-      /* find registers for phis without affinity or where the register was blocked */
-      for (instr_it = block.instructions.begin(); instr_it != block.instructions.end();
-           ++instr_it) {
-         aco_ptr<Instruction>& phi = *instr_it;
-         if (!is_phi(phi))
-            break;
-
-         Definition& definition = phi->definitions[0];
-         if (definition.isKill())
-            continue;
-
-         if (!definition.isFixed()) {
-            std::vector<std::pair<Operand, Definition>> parallelcopy;
-            /* try to find a register that is used by at least one operand */
-            for (int i = phi->operands.size() - 1; i >= 0; i--) {
-               /* by going backwards, we aim to avoid copies in else-blocks */
-               const Operand& op = phi->operands[i];
-               if (!op.isTemp() || !op.isFixed())
-                  continue;
-               PhysReg reg = op.physReg();
-               /* we tried this already on the previous loop */
-               if (reg == scc)
-                  continue;
-               if (get_reg_specified(ctx, register_file, definition.regClass(), phi, reg)) {
-                  definition.setFixed(reg);
-                  break;
-               }
-            }
-            if (!definition.isFixed()) {
-               definition.setFixed(
-                  get_reg(ctx, register_file, definition.getTemp(), parallelcopy, phi));
-               update_renames(ctx, register_file, parallelcopy, phi, rename_not_killed_ops);
-            }
-
-            /* process parallelcopy */
-            for (std::pair<Operand, Definition> pc : parallelcopy) {
-               /* see if it's a copy from a different phi */
-               // TODO: prefer moving some previous phis over live-ins
-               // TODO: somehow prevent phis fixed before the RA from being updated (shouldn't be a
-               // problem in practice since they can only be fixed to exec)
-               Instruction* prev_phi = NULL;
-               std::vector<aco_ptr<Instruction>>::iterator phi_it;
-               for (phi_it = instructions.begin(); phi_it != instructions.end(); ++phi_it) {
-                  if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
-                     prev_phi = phi_it->get();
-               }
-               if (prev_phi) {
-                  /* if so, just update that phi's register */
-                  prev_phi->definitions[0].setFixed(pc.second.physReg());
-                  ctx.assignments[prev_phi->definitions[0].tempId()].set(pc.second);
-                  continue;
-               }
-
-               /* rename */
-               std::unordered_map<unsigned, Temp>::iterator orig_it =
-                  ctx.orig_names.find(pc.first.tempId());
-               Temp orig = pc.first.getTemp();
-               if (orig_it != ctx.orig_names.end())
-                  orig = orig_it->second;
-               else
-                  ctx.orig_names[pc.second.tempId()] = orig;
-               ctx.renames[block.index][orig.id()] = pc.second.getTemp();
-
-               /* otherwise, this is a live-in and we need to create a new phi
-                * to move it in this block's predecessors */
-               aco_opcode opcode =
-                  pc.first.getTemp().is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
-               std::vector<unsigned>& preds =
-                  pc.first.getTemp().is_linear() ? block.linear_preds : block.logical_preds;
-               aco_ptr<Instruction> new_phi{
-                  create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
-               new_phi->definitions[0] = pc.second;
-               for (unsigned i = 0; i < preds.size(); i++)
-                  new_phi->operands[i] = Operand(pc.first);
-               instructions.emplace_back(std::move(new_phi));
-
-               /* Remove from live_out_per_block (now used for live-in), because handle_loop_phis()
-                * would re-create this phi later if this is a loop header.
-                */
-               live_out_per_block[block.index].erase(orig.id());
-            }
-
-            register_file.fill(definition);
-            ctx.assignments[definition.tempId()].set(definition);
-         }
-
-         /* update phi affinities */
-         for (const Operand& op : phi->operands) {
-            if (op.isTemp() && op.regClass() == phi->definitions[0].regClass())
-               ctx.assignments[op.tempId()].affinity = definition.tempId();
-         }
-
-         instructions.emplace_back(std::move(*instr_it));
-      }
+      get_regs_for_phis(ctx, block, register_file, instructions, live_out_per_block[block.index]);
 
       /* fill in sgpr_live_in */
       for (unsigned i = 0; i <= ctx.max_used_sgpr; i++)
@@ -2406,6 +2407,9 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
       sgpr_live_in[block.index][127] = register_file[scc];
 
       /* Handle all other instructions of the block */
+      auto NonPhi = [](aco_ptr<Instruction>& instr) -> bool { return instr && !is_phi(instr); };
+      std::vector<aco_ptr<Instruction>>::iterator instr_it =
+         std::find_if(block.instructions.begin(), block.instructions.end(), NonPhi);
       for (; instr_it != block.instructions.end(); ++instr_it) {
          aco_ptr<Instruction>& instr = *instr_it;
 
