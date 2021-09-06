@@ -304,6 +304,7 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    if (instance->debug_flags & PANVK_DEBUG_TRACE)
       device->pdev.debug |= PAN_DBG_TRACE;
 
+   device->pdev.debug |= PAN_DBG_NO_CACHE;
    panfrost_open_device(NULL, fd, &device->pdev);
    fd = -1;
 
