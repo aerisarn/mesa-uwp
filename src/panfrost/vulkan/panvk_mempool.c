@@ -124,6 +124,7 @@ panvk_pool_reset(struct panvk_pool *pool)
    }
 
    util_dynarray_clear(&pool->bos);
+   pool->transient_bo = NULL;
 }
 
 void
