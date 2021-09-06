@@ -563,7 +563,11 @@ print_vector_constants(FILE *fp, unsigned src_binary,
         comp_mask = effective_writemask(alu->op, condense_writemask(alu->mask, bits));
         num_comp = util_bitcount(comp_mask);
 
-        fprintf(fp, "<");
+        if (num_comp > 1)
+                fprintf(fp, "<");
+        else
+                fprintf(fp, "#");
+
         bool first = true;
 
 	for (unsigned i = 0; i < max_comp; ++i) {
