@@ -5,11 +5,11 @@ traces:
   - path: glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 26080879ac8eb63c2c5da3de5fc732f4
+        checksum: 0f3d505644e0adc6ac947b2e609b8ecf
   - path: glmark2/jellyfish.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 91dbe94735a132aeb192ae5c618ddc06
+        checksum: 878c45710869e0d9d585bacdc5b9b8a0
   - path: glxgears/glxgears-2.trace
     expectations:
       - device: gl-vmware-llvmpipe

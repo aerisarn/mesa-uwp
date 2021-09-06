@@ -188,6 +188,7 @@ spec/glsl-4.00/execution/conversion/vert-conversion-explicit-dvec2-vec2: fail
 spec/glsl-4.00/execution/conversion/vert-conversion-explicit-dvec3-vec3: fail
 spec/glsl-4.00/execution/conversion/vert-conversion-explicit-dvec4-vec4: fail
 spec/glsl-4.50/execution/ssbo-atomiccompswap-int: fail
+spec/glsl-es-1.00/linker/glsl-mismatched-uniform-precision-unused: fail
 spec/intel_shader_atomic_float_minmax/execution/shared-atomiccompswap-float: skip
 spec/intel_shader_atomic_float_minmax/execution/shared-atomicexchange-float: skip
 spec/intel_shader_atomic_float_minmax/execution/shared-atomicmax-float: skip
