@@ -208,8 +208,9 @@ panvk_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
-   memcpy(cmdbuf->state.blend.constants, blendConstants,
-          sizeof(cmdbuf->state.blend.constants));
+   for (unsigned i = 0; i < 4; i++)
+      cmdbuf->state.blend.constants[i] = CLAMP(blendConstants[i], 0.0f, 1.0f);
+
    cmdbuf->state.dirty |= PANVK_DYNAMIC_BLEND_CONSTANTS;
    cmdbuf->state.fs_rsd = 0;
 }
