@@ -119,6 +119,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_separate_depth_stencil_layouts    = true,
    .KHR_shader_atomic_int64               = true,
    .KHR_shader_draw_parameters            = true,
+   .KHR_shader_float16_int8               = true,
    .KHR_storage_buffer_storage_class      = true,
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_swapchain                         = true,
@@ -624,6 +625,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->bufferDeviceAddress = true;
          features->bufferDeviceAddressCaptureReplay = false;
          features->bufferDeviceAddressMultiDevice = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
+         VkPhysicalDeviceShaderFloat16Int8Features *features =
+            (VkPhysicalDeviceShaderFloat16Int8Features*)ext;
+         features->shaderFloat16 = pdevice->pscreen->get_shader_param(pdevice->pscreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16) != 0;
+         features->shaderInt8 = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
