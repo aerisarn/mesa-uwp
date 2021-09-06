@@ -138,6 +138,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
         case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
         case PIPE_CAP_TGSI_TEXCOORD:
+        case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
                 return 1;
 
         case PIPE_CAP_TEXTURE_QUERY_LOD:

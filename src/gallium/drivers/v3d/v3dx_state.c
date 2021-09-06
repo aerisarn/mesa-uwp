@@ -520,6 +520,8 @@ translate_wrap(uint32_t pipe_wrap)
                 return V3D_WRAP_MODE_MIRROR;
         case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
                 return V3D_WRAP_MODE_BORDER;
+        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE:
+                return V3D_WRAP_MODE_MIRROR_ONCE;
         default:
                 unreachable("Unknown wrap mode");
         }
