@@ -426,6 +426,7 @@ pan_unpack(nir_builder *b,
 
         switch (desc->format) {
         case PIPE_FORMAT_R10G10B10A2_UINT:
+        case PIPE_FORMAT_B10G10R10A2_UINT:
                 return pan_unpack_uint_1010102(b, packed);
         case PIPE_FORMAT_R11G11B10_FLOAT:
                 return pan_unpack_r11g11b10(b, packed);
@@ -489,6 +490,7 @@ pan_pack(nir_builder *b,
         case PIPE_FORMAT_B10G10R10A2_UNORM:
                 return pan_pack_unorm_1010102(b, unpacked);
         case PIPE_FORMAT_R10G10B10A2_UINT:
+        case PIPE_FORMAT_B10G10R10A2_UINT:
                 return pan_pack_uint_1010102(b, unpacked);
         case PIPE_FORMAT_R11G11B10_FLOAT:
                 return pan_pack_r11g11b10(b, unpacked);
