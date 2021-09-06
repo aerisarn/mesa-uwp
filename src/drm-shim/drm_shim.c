@@ -63,7 +63,7 @@ bool drm_shim_debug;
  */
 DIR *fake_dev_dri = (void *)&opendir_set;
 
-/* XXX: implement REAL_FUNCTION_POINTER(close); */
+REAL_FUNCTION_POINTER(close);
 REAL_FUNCTION_POINTER(closedir);
 REAL_FUNCTION_POINTER(dup);
 REAL_FUNCTION_POINTER(fcntl);
@@ -204,6 +204,7 @@ init_shim(void)
                                   _mesa_hash_string,
                                   _mesa_key_string_equal);
 
+   GET_FUNCTION_POINTER(close);
    GET_FUNCTION_POINTER(closedir);
    GET_FUNCTION_POINTER(dup);
    GET_FUNCTION_POINTER(fcntl);
@@ -291,6 +292,15 @@ PUBLIC int open(const char *path, int flags, ...)
    return fd;
 }
 PUBLIC int open64(const char*, int, ...) __attribute__((alias("open")));
+
+PUBLIC int close(int fd)
+{
+   init_shim();
+
+   drm_shim_fd_unregister(fd);
+
+   return real_close(fd);
+}
 
 #if HAS_XSTAT
 /* Fakes stat to return character device stuff for our fake render node. */

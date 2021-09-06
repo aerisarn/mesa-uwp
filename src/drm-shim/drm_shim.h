@@ -80,6 +80,7 @@ void drm_shim_device_init(void);
 void drm_shim_override_file(const char *contents,
                             const char *path_format, ...) PRINTFLIKE(2, 3);
 void drm_shim_fd_register(int fd, struct shim_fd *shim_fd);
+void drm_shim_fd_unregister(int fd);
 struct shim_fd *drm_shim_fd_lookup(int fd);
 int drm_shim_ioctl(int fd, unsigned long request, void *arg);
 void *drm_shim_mmap(struct shim_fd *shim_fd, size_t length, int prot, int flags,

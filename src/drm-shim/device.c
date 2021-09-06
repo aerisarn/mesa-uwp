@@ -135,6 +135,11 @@ void drm_shim_fd_register(int fd, struct shim_fd *shim_fd)
    _mesa_hash_table_insert(shim_device.fd_map, (void *)(uintptr_t)(fd + 1), shim_fd);
 }
 
+void drm_shim_fd_unregister(int fd)
+{
+   _mesa_hash_table_remove_key(shim_device.fd_map, (void *)(uintptr_t)(fd + 1));
+}
+
 struct shim_fd *
 drm_shim_fd_lookup(int fd)
 {
