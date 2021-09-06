@@ -90,5 +90,3 @@ dEQP-GLES31.functional.texture.multisample.samples_3.use_texture_uint_2d,Fail
 dEQP-GLES31.functional.texture.multisample.samples_3.use_texture_uint_2d_array,Fail
 dEQP-GLES31.functional.texture.multisample.samples_4.use_texture_int_2d,Fail
 dEQP-GLES31.functional.texture.multisample.samples_4.use_texture_int_2d_array,Fail
-dEQP-GLES31.functional.texture.multisample.samples_4.use_texture_uint_2d,Fail
-dEQP-GLES31.functional.texture.multisample.samples_4.use_texture_uint_2d_array,Fail
