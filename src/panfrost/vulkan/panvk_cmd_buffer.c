@@ -342,6 +342,75 @@ panvk_cmd_prepare_clear_values(struct panvk_cmd_buffer *cmdbuf,
 }
 
 void
+panvk_cmd_fb_info_set_subpass(struct panvk_cmd_buffer *cmdbuf)
+{
+   const struct panvk_subpass *subpass = cmdbuf->state.subpass;
+   struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
+   const struct panvk_framebuffer *fb = cmdbuf->state.framebuffer;
+   const struct panvk_clear_value *clears = cmdbuf->state.clear;
+   struct panvk_image_view *view;
+
+   fbinfo->nr_samples = 1;
+   fbinfo->rt_count = subpass->color_count;
+   memset(&fbinfo->bifrost.pre_post.dcds, 0, sizeof(fbinfo->bifrost.pre_post.dcds));
+
+   for (unsigned cb = 0; cb < subpass->color_count; cb++) {
+      int idx = subpass->color_attachments[cb].idx;
+      view = idx != VK_ATTACHMENT_UNUSED ?
+             fb->attachments[idx].iview : NULL;
+      if (!view)
+         continue;
+      fbinfo->rts[cb].view = &view->pview;
+      fbinfo->rts[cb].clear = subpass->color_attachments[cb].clear;
+      fbinfo->rts[cb].preload = subpass->color_attachments[cb].preload;
+      fbinfo->rts[cb].crc_valid = &cmdbuf->state.fb.crc_valid[cb];
+
+      memcpy(fbinfo->rts[cb].clear_value, clears[idx].color,
+             sizeof(fbinfo->rts[cb].clear_value));
+      fbinfo->nr_samples =
+         MAX2(fbinfo->nr_samples, view->pview.image->layout.nr_samples);
+   }
+
+   if (subpass->zs_attachment.idx != VK_ATTACHMENT_UNUSED) {
+      view = fb->attachments[subpass->zs_attachment.idx].iview;
+      const struct util_format_description *fdesc =
+         util_format_description(view->pview.format);
+
+      fbinfo->nr_samples =
+         MAX2(fbinfo->nr_samples, view->pview.image->layout.nr_samples);
+
+      if (util_format_has_depth(fdesc)) {
+         fbinfo->zs.clear.z = subpass->zs_attachment.clear;
+         fbinfo->zs.clear_value.depth = clears[subpass->zs_attachment.idx].depth;
+         fbinfo->zs.view.zs = &view->pview;
+      }
+
+      if (util_format_has_stencil(fdesc)) {
+         fbinfo->zs.clear.s = subpass->zs_attachment.clear;
+         fbinfo->zs.clear_value.stencil = clears[subpass->zs_attachment.idx].depth;
+         if (!fbinfo->zs.view.zs)
+            fbinfo->zs.view.s = &view->pview;
+      }
+   }
+}
+
+void
+panvk_cmd_fb_info_init(struct panvk_cmd_buffer *cmdbuf)
+{
+   struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
+   const struct panvk_framebuffer *fb = cmdbuf->state.framebuffer;
+
+   memset(cmdbuf->state.fb.crc_valid, 0, sizeof(cmdbuf->state.fb.crc_valid));
+
+   *fbinfo = (struct pan_fb_info) {
+      .width = fb->width,
+      .height = fb->height,
+      .extent.maxx = fb->width - 1,
+      .extent.maxy = fb->height - 1,
+   };
+}
+
+void
 panvk_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                           const VkRenderPassBeginInfo *pRenderPassBegin,
                           const VkSubpassBeginInfo *pSubpassBeginInfo)
@@ -363,9 +432,10 @@ panvk_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                                    sizeof(*cmdbuf->state.clear) *
                                    pRenderPassBegin->clearValueCount, 8,
                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   assert(pRenderPassBegin->clearValueCount == pass->attachment_count);
    panvk_cmd_prepare_clear_values(cmdbuf, pRenderPassBegin->pClearValues);
    memset(&cmdbuf->state.compute, 0, sizeof(cmdbuf->state.compute));
+   panvk_cmd_fb_info_init(cmdbuf);
+   panvk_cmd_fb_info_set_subpass(cmdbuf);
 }
 
 void
@@ -379,6 +449,29 @@ panvk_CmdBeginRenderPass(VkCommandBuffer cmd,
    };
 
    return panvk_CmdBeginRenderPass2(cmd, info, &subpass_info);
+}
+
+void
+panvk_cmd_preload_fb_after_batch_split(struct panvk_cmd_buffer *cmdbuf)
+{
+   for (unsigned i = 0; i < cmdbuf->state.fb.info.rt_count; i++) {
+      if (cmdbuf->state.fb.info.rts[i].view) {
+         cmdbuf->state.fb.info.rts[i].clear = false;
+         cmdbuf->state.fb.info.rts[i].preload = true;
+      }
+   }
+
+   if (cmdbuf->state.fb.info.zs.view.zs) {
+      cmdbuf->state.fb.info.zs.clear.z = false;
+      cmdbuf->state.fb.info.zs.preload.z = true;
+   }
+
+   if (cmdbuf->state.fb.info.zs.view.s ||
+       (cmdbuf->state.fb.info.zs.view.zs &&
+        util_format_is_depth_and_stencil(cmdbuf->state.fb.info.zs.view.zs->format))) {
+      cmdbuf->state.fb.info.zs.clear.s = false;
+      cmdbuf->state.fb.info.zs.preload.s = true;
+   }
 }
 
 void

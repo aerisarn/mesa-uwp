@@ -585,6 +585,11 @@ struct panvk_cmd_state {
       } s_front, s_back;
    } zs;
 
+   struct {
+      struct pan_fb_info info;
+      bool crc_valid[MAX_RTS];
+   } fb;
+
    const struct panvk_render_pass *pass;
    const struct panvk_subpass *subpass;
    const struct panvk_framebuffer *framebuffer;
@@ -648,6 +653,15 @@ struct panvk_cmd_buffer {
 
 void
 panvk_cmd_open_batch(struct panvk_cmd_buffer *cmdbuf);
+
+void
+panvk_cmd_fb_info_set_subpass(struct panvk_cmd_buffer *cmdbuf);
+
+void
+panvk_cmd_fb_info_init(struct panvk_cmd_buffer *cmdbuf);
+
+void
+panvk_cmd_preload_fb_after_batch_split(struct panvk_cmd_buffer *cmdbuf);
 
 void
 panvk_pack_color(struct panvk_clear_value *out,
@@ -918,6 +932,7 @@ struct panvk_subpass_attachment {
    uint32_t idx;
    VkImageLayout layout;
    bool clear;
+   bool preload;
 };
 
 struct panvk_subpass {
@@ -943,7 +958,7 @@ struct panvk_render_pass_attachment {
    VkImageLayout initial_layout;
    VkImageLayout final_layout;
    unsigned view_mask;
-   unsigned clear_subpass;
+   unsigned first_used_in_subpass;
 };
 
 struct panvk_render_pass {

@@ -79,7 +79,7 @@ panvk_CreateRenderPass2(VkDevice _device,
       att->final_layout = pCreateInfo->pAttachments[i].finalLayout;
       att->store_op = pCreateInfo->pAttachments[i].storeOp;
       att->stencil_store_op = pCreateInfo->pAttachments[i].stencilStoreOp;
-      att->clear_subpass = ~0;
+      att->first_used_in_subpass = ~0;
    }
 
    uint32_t subpass_attachment_count = 0;
@@ -144,9 +144,14 @@ panvk_CreateRenderPass2(VkDevice _device,
 
             if (idx != VK_ATTACHMENT_UNUSED) {
                pass->attachments[idx].view_mask |= subpass->view_mask;
-               if (pass->attachments[idx].clear_subpass == ~0) {
-                  pass->attachments[idx].clear_subpass = i;
-                  subpass->color_attachments[j].clear = true;
+               if (pass->attachments[idx].first_used_in_subpass == ~0) {
+                  pass->attachments[idx].first_used_in_subpass = i;
+                  if (pass->attachments[idx].load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+                     subpass->color_attachments[j].clear = true;
+                  else if (pass->attachments[idx].load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
+                     subpass->color_attachments[j].preload = true;
+               } else {
+                  subpass->color_attachments[j].preload = true;
                }
             }
          }
@@ -176,9 +181,15 @@ panvk_CreateRenderPass2(VkDevice _device,
       if (idx != VK_ATTACHMENT_UNUSED) {
          subpass->zs_attachment.layout = desc->pDepthStencilAttachment->layout;
          pass->attachments[idx].view_mask |= subpass->view_mask;
-         if (pass->attachments[idx].clear_subpass == ~0) {
-            pass->attachments[idx].clear_subpass = i;
-            subpass->zs_attachment.clear = true;
+
+         if (pass->attachments[idx].first_used_in_subpass == ~0) {
+            pass->attachments[idx].first_used_in_subpass = i;
+            if (pass->attachments[idx].load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+               subpass->zs_attachment.clear = true;
+            else if (pass->attachments[idx].load_op == VK_ATTACHMENT_LOAD_OP_LOAD)
+               subpass->zs_attachment.preload = true;
+         } else {
+            subpass->zs_attachment.preload = true;
          }
       }
    }
