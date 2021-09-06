@@ -1413,7 +1413,6 @@ panvk_BindImageMemory2(VkDevice device,
       VK_FROM_HANDLE(panvk_device_memory, mem, pBindInfos[i].memory);
 
       if (mem) {
-         panfrost_bo_reference(mem->bo);
          image->pimage.data.bo = mem->bo;
          image->pimage.data.offset = pBindInfos[i].memoryOffset;
          /* Reset the AFBC headers */
@@ -1430,7 +1429,6 @@ panvk_BindImageMemory2(VkDevice device,
             }
          }
       } else {
-         panfrost_bo_unreference(image->pimage.data.bo);
          image->pimage.data.bo = NULL;
          image->pimage.data.offset = pBindInfos[i].memoryOffset;
       }
