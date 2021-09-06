@@ -747,7 +747,13 @@ panvk_per_arch(emit_base_fs_rsd)(const struct panvk_device *dev,
          cfg.properties.midgard.shader_contains_discard =
             zs_enabled && info->fs.can_discard;
 #else
-         cfg.properties.bifrost.allow_forward_pixel_to_kill = info->fs.can_fpk;
+         uint8_t rt_written = pipeline->fs.info.outputs_written >> FRAG_RESULT_DATA0;
+         uint8_t rt_mask = pipeline->fs.rt_mask;
+         cfg.properties.bifrost.allow_forward_pixel_to_kill =
+                 pipeline->fs.info.fs.can_fpk &&
+                 !(rt_mask & ~rt_written) &&
+                 !pipeline->ms.alpha_to_coverage &&
+                 !pipeline->blend.reads_dest;
 #endif
       } else {
 #if PAN_ARCH == 5

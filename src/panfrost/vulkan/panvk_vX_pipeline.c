@@ -606,6 +606,8 @@ panvk_pipeline_builder_parse_color_blend(struct panvk_pipeline_builder *builder,
       out->equation.alpha_dst_factor = translate_blend_factor(in->dstAlphaBlendFactor, dest_has_alpha);
       out->equation.alpha_invert_dst_factor = inverted_blend_factor(in->dstAlphaBlendFactor, dest_has_alpha);
 
+      pipeline->blend.reads_dest |= pan_blend_reads_dest(out->equation);
+
       unsigned constant_mask =
          panvk_per_arch(blend_needs_lowering)(pdev, &pipeline->blend.state, i) ?
          0 : pan_blend_constant_mask(out->equation);
@@ -755,6 +757,7 @@ panvk_pipeline_builder_init_fs_state(struct panvk_pipeline_builder *builder,
    pipeline->fs.address = pipeline->binary_bo->ptr.gpu +
                           builder->stages[MESA_SHADER_FRAGMENT].shader_offset;
    pipeline->fs.info = builder->shaders[MESA_SHADER_FRAGMENT]->info;
+   pipeline->fs.rt_mask = builder->active_color_attachments;
    pipeline->fs.required = panvk_fs_required(pipeline);
 }
 
