@@ -153,3 +153,7 @@ lima_disasm = executable(
   build_by_default : with_tools.contains('lima'),
   install : with_tools.contains('lima'),
 )
+
+if with_tools.contains('drm-shim')
+  subdir('drm-shim')
+endif
