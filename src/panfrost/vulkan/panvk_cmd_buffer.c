@@ -326,10 +326,17 @@ panvk_cmd_prepare_clear_values(struct panvk_cmd_buffer *cmdbuf,
               attachment->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
              cmdbuf->state.clear[i].depth = in[i].depthStencil.depth;
              cmdbuf->state.clear[i].stencil = in[i].depthStencil.stencil;
+          } else {
+             cmdbuf->state.clear[i].depth = 0;
+             cmdbuf->state.clear[i].stencil = 0;
           }
-       } else if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-          union pipe_color_union *col = (union pipe_color_union *) &in[i].color;
-          pan_pack_color(cmdbuf->state.clear[i].color, col, fmt, false);
+       } else {
+          if (attachment->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+             union pipe_color_union *col = (union pipe_color_union *) &in[i].color;
+             pan_pack_color(cmdbuf->state.clear[i].color, col, fmt, false);
+          } else {
+             memset(cmdbuf->state.clear[i].color, 0, sizeof(cmdbuf->state.clear[0].color));
+          }
        }
    }
 }
