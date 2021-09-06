@@ -104,16 +104,29 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0x84" name="FMT6_32_32_32_32_SINT"/>
 	<value value="0x85" name="FMT6_32_32_32_32_FIXED"/>
 
-	<value value="0x8c" name="FMT6_G8R8B8R8_422_UNORM"/>
-	<value value="0x8d" name="FMT6_R8G8R8B8_422_UNORM"/>
-	<value value="0x8e" name="FMT6_R8_G8B8_2PLANE_420_UNORM"/>
-	<value value="0x90" name="FMT6_R8_G8_B8_3PLANE_420_UNORM"/>
+	<value value="0x8c" name="FMT6_G8R8B8R8_422_UNORM"/> <!-- UYVY -->
+	<value value="0x8d" name="FMT6_R8G8R8B8_422_UNORM"/> <!-- YUYV -->
+	<value value="0x8e" name="FMT6_R8_G8B8_2PLANE_420_UNORM"/> <!-- NV12 -->
+	<value value="0x8f" name="FMT6_NV21"/>
+	<value value="0x90" name="FMT6_R8_G8_B8_3PLANE_420_UNORM"/> <!-- YV12 -->
 
 	<value value="0x91" name="FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8"/>
 
-	<!-- used with the Y plane of FMT6_R8_G8B8_2PLANE_420_UNORM
-	     which has different UBWC compression from regular 8_UNORM format -->
-	<value value="0x94" name="FMT6_8_PLANE_UNORM"/>
+	<!-- Note: tiling/UBWC for these may be different from equivalent formats
+	For example FMT6_NV12_Y is not compatible with FMT6_8_UNORM
+	-->
+	<value value="0x94" name="FMT6_NV12_Y"/>
+	<value value="0x95" name="FMT6_NV12_UV"/>
+	<value value="0x96" name="FMT6_NV12_VU"/>
+	<value value="0x97" name="FMT6_NV12_4R"/>
+	<value value="0x98" name="FMT6_NV12_4R_Y"/>
+	<value value="0x99" name="FMT6_NV12_4R_UV"/>
+	<value value="0x9a" name="FMT6_P010"/>
+	<value value="0x9b" name="FMT6_P010_Y"/>
+	<value value="0x9c" name="FMT6_P010_UV"/>
+	<value value="0x9d" name="FMT6_TP10"/>
+	<value value="0x9e" name="FMT6_TP10_Y"/>
+	<value value="0x9f" name="FMT6_TP10_UV"/>
 
 	<value value="0xa0" name="FMT6_Z24_UNORM_S8_UINT"/>
 
