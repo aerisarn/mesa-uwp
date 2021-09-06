@@ -1337,6 +1337,11 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                 nir_dest_num_components(instr->dest), 0);
                 break;
 
+        case nir_intrinsic_load_blend_const_color_rgba:
+                bi_load_sysval_nir(b, instr,
+                                   nir_dest_num_components(instr->dest), 0);
+                break;
+
 	case nir_intrinsic_load_sample_positions_pan:
                 bi_mov_i32_to(b, bi_word(dst, 0),
                                 bi_fau(BIR_FAU_SAMPLE_POS_ARRAY, false));

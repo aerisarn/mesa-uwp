@@ -2037,6 +2037,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 emit_sysval_read(ctx, &instr->instr, 3, 0);
                 break;
 
+        case nir_intrinsic_load_blend_const_color_rgba:
+                emit_sysval_read(ctx, &instr->instr, 4, 0);
+                break;
+
         case nir_intrinsic_load_workgroup_id:
         case nir_intrinsic_load_local_invocation_id:
         case nir_intrinsic_load_global_invocation_id:

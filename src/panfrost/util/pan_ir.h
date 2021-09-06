@@ -58,6 +58,7 @@ enum {
         PAN_SYSVAL_RT_CONVERSION = 13,
         PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS = 14,
         PAN_SYSVAL_DRAWID = 15,
+        PAN_SYSVAL_BLEND_CONSTANTS = 16,
 };
 
 #define PAN_TXS_SYSVAL_ID(texidx, dim, is_array)          \
