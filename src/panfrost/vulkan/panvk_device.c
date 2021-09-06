@@ -303,6 +303,7 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    device->master_fd = master_fd;
    device->pdev.debug = PAN_DBG_TRACE;
    panfrost_open_device(NULL, fd, &device->pdev);
+   fd = -1;
 
    if (device->pdev.quirks & MIDGARD_SFBD) {
       result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
@@ -319,7 +320,7 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    if (panvk_device_get_cache_uuid(device->pdev.gpu_id, device->cache_uuid)) {
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                          "cannot generate UUID");
-      goto fail;
+      goto fail_close_device;
    }
 
    fprintf(stderr, "WARNING: panvk is not a conformant vulkan implementation, "
@@ -331,13 +332,16 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    result = panvk_wsi_init(device);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
-      goto fail;
+      goto fail_close_device;
    }
 
    return VK_SUCCESS;
 
+fail_close_device:
+   panfrost_close_device(&device->pdev);
 fail:
-   close(fd);
+   if (fd != -1)
+      close(fd);
    if (master_fd != -1)
       close(master_fd);
    return result;
