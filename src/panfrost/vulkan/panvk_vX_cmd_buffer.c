@@ -465,7 +465,7 @@ panvk_draw_prepare_fs_rsd(struct panvk_cmd_buffer *cmdbuf,
 
             STATIC_ASSERT(sizeof(pipeline->blend.bd_template[0]) >= sizeof(*bd_templ));
             panvk_per_arch(emit_blend_constant)(cmdbuf->device, pipeline, i,
-                                                cmdbuf->state.blend.constants[i],
+                                                cmdbuf->state.blend.constants,
                                                 &bd_dyn);
             pan_merge(bd_dyn, (*bd_templ), BLEND);
             memcpy(bd, &bd_dyn, sizeof(bd_dyn));

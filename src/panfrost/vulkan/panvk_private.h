@@ -544,7 +544,7 @@ struct panvk_cmd_state {
    mali_ptr fs_rsd;
 
    struct {
-      float constants[8][4];
+      float constants[4];
    } blend;
 
    struct {
