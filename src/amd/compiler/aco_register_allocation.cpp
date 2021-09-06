@@ -2293,46 +2293,29 @@ get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
       std::vector<aco_ptr<Instruction>>::reverse_iterator rit;
       for (rit = block.instructions.rbegin(); rit != block.instructions.rend(); ++rit) {
          aco_ptr<Instruction>& instr = *rit;
-         if (is_phi(instr)) {
-            if (instr->definitions[0].isKill() || instr->definitions[0].isFixed()) {
-               live.erase(instr->definitions[0].tempId());
-               continue;
-            }
-            /* collect information about affinity-related temporaries */
-            std::vector<Temp> affinity_related;
-            /* affinity_related[0] is the last seen affinity-related temp */
-            affinity_related.emplace_back(instr->definitions[0].getTemp());
-            affinity_related.emplace_back(instr->definitions[0].getTemp());
-            for (const Operand& op : instr->operands) {
-               if (op.isTemp() && op.isKill() &&
-                   op.regClass() == instr->definitions[0].regClass()) {
-                  affinity_related.emplace_back(op.getTemp());
-                  temp_to_phi_ressources[op.tempId()] = phi_ressources.size();
-               }
-            }
-            phi_ressources.emplace_back(std::move(affinity_related));
-         } else {
-            /* add vector affinities */
-            if (instr->opcode == aco_opcode::p_create_vector) {
-               for (const Operand& op : instr->operands) {
-                  if (op.isTemp() && op.isFirstKill() &&
-                      op.getTemp().type() == instr->definitions[0].getTemp().type())
-                     ctx.vectors[op.tempId()] = instr.get();
-               }
-            } else if (instr->format == Format::MIMG && instr->operands.size() > 4) {
-               for (unsigned i = 3; i < instr->operands.size(); i++)
-                  ctx.vectors[instr->operands[i].tempId()] = instr.get();
-            }
+         if (is_phi(instr))
+            break;
 
-            if (instr->opcode == aco_opcode::p_split_vector &&
-                instr->operands[0].isFirstKillBeforeDef())
-               ctx.split_vectors[instr->operands[0].tempId()] = instr.get();
-
-            /* add operands to live variables */
+         /* add vector affinities */
+         if (instr->opcode == aco_opcode::p_create_vector) {
             for (const Operand& op : instr->operands) {
-               if (op.isTemp())
-                  live.insert(op.tempId());
+               if (op.isTemp() && op.isFirstKill() &&
+                   op.getTemp().type() == instr->definitions[0].getTemp().type())
+                  ctx.vectors[op.tempId()] = instr.get();
             }
+         } else if (instr->format == Format::MIMG && instr->operands.size() > 4) {
+            for (unsigned i = 3; i < instr->operands.size(); i++)
+               ctx.vectors[instr->operands[i].tempId()] = instr.get();
+         }
+
+         if (instr->opcode == aco_opcode::p_split_vector &&
+             instr->operands[0].isFirstKillBeforeDef())
+            ctx.split_vectors[instr->operands[0].tempId()] = instr.get();
+
+         /* add operands to live variables */
+         for (const Operand& op : instr->operands) {
+            if (op.isTemp())
+               live.insert(op.tempId());
          }
 
          /* erase definitions from live */
@@ -2379,10 +2362,41 @@ get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
             }
          }
       }
+
+      /* collect phi affinities */
+      for (; rit != block.instructions.rend(); ++rit) {
+         aco_ptr<Instruction>& instr = *rit;
+         assert(is_phi(instr));
+
+         live.erase(instr->definitions[0].tempId());
+         if (instr->definitions[0].isKill() || instr->definitions[0].isFixed())
+            continue;
+
+         assert(instr->definitions[0].isTemp());
+         std::unordered_map<unsigned, unsigned>::iterator it =
+            temp_to_phi_ressources.find(instr->definitions[0].tempId());
+         unsigned index = phi_ressources.size();
+         std::vector<Temp>* affinity_related;
+         if (it != temp_to_phi_ressources.end()) {
+            index = it->second;
+            phi_ressources[index][0] = instr->definitions[0].getTemp();
+            affinity_related = &phi_ressources[index];
+         } else {
+            phi_ressources.emplace_back(std::vector<Temp>{instr->definitions[0].getTemp()});
+            affinity_related = &phi_ressources.back();
+         }
+
+         for (unsigned i = 0; i < instr->operands.size(); i++) {
+            const Operand& op = instr->operands[i];
+            if (op.isTemp() && op.isKill() && op.regClass() == instr->definitions[0].regClass()) {
+               affinity_related->emplace_back(op.getTemp());
+               temp_to_phi_ressources[op.tempId()] = index;
+            }
+         }
+      }
    }
    /* create affinities */
    for (std::vector<Temp>& vec : phi_ressources) {
-      assert(vec.size() > 1);
       for (unsigned i = 1; i < vec.size(); i++)
          if (vec[i].id() != vec[0].id())
             ctx.assignments[vec[i].id()].affinity = vec[0].id();
