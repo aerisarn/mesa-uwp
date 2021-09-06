@@ -24,6 +24,7 @@
 
 #include "pan_device.h"
 #include "pan_shader.h"
+#include "pan_format.h"
 
 #if PAN_ARCH <= 5
 #include "panfrost/midgard/midgard_compile.h"
@@ -177,7 +178,7 @@ bifrost_blend_type_from_nir(nir_alu_type nir_type)
 
 void
 GENX(pan_shader_compile)(nir_shader *s,
-                         const struct panfrost_compile_inputs *inputs,
+                         struct panfrost_compile_inputs *inputs,
                          struct util_dynarray *binary,
                          struct pan_shader_info *info)
 {
@@ -186,6 +187,14 @@ GENX(pan_shader_compile)(nir_shader *s,
 #if PAN_ARCH >= 6
         bifrost_compile_shader_nir(s, inputs, binary, info);
 #else
+        for (unsigned i = 0; i < ARRAY_SIZE(inputs->rt_formats); i++) {
+                enum pipe_format fmt = inputs->rt_formats[i];
+                unsigned wb_fmt = panfrost_blendable_formats_v6[fmt].writeback;
+
+                if (wb_fmt <= MALI_MFBD_COLOR_FORMAT_RAW2048)
+                        inputs->raw_fmt_mask |= BITFIELD_BIT(i);
+        }
+
         midgard_compile_shader_nir(s, inputs, binary, info);
 #endif
 

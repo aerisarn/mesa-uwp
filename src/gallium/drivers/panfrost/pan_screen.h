@@ -90,7 +90,7 @@ struct panfrost_vtable {
         /* Shader compilation methods */
         const nir_shader_compiler_options *(*get_compiler_options)(void);
         void (*compile_shader)(nir_shader *s,
-                               const struct panfrost_compile_inputs *inputs,
+                               struct panfrost_compile_inputs *inputs,
                                struct util_dynarray *binary,
                                struct pan_shader_info *info);
 };

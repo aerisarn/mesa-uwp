@@ -197,6 +197,36 @@ pan_unpack_pure_16(nir_builder *b, nir_ssa_def *pack, unsigned num_components)
 }
 
 static nir_ssa_def *
+pan_pack_reorder(nir_builder *b,
+                 const struct util_format_description *desc,
+                 nir_ssa_def *v)
+{
+        unsigned swizzle[4] = { 0, 1, 2, 3 };
+
+        for (unsigned i = 0; i < v->num_components; i++) {
+                if (desc->swizzle[i] <= PIPE_SWIZZLE_W)
+                        swizzle[i] = desc->swizzle[i];
+        }
+
+        return nir_swizzle(b, v, swizzle, v->num_components);
+}
+
+static nir_ssa_def *
+pan_unpack_reorder(nir_builder *b,
+                   const struct util_format_description *desc,
+                   nir_ssa_def *v)
+{
+        unsigned swizzle[4] = { 0, 1, 2, 3 };
+
+        for (unsigned i = 0; i < v->num_components; i++) {
+                if (desc->swizzle[i] <= PIPE_SWIZZLE_W)
+                        swizzle[desc->swizzle[i]] = i;
+        }
+
+        return nir_swizzle(b, v, swizzle, v->num_components);
+}
+
+static nir_ssa_def *
 pan_replicate_4(nir_builder *b, nir_ssa_def *v)
 {
         return nir_vec4(b, v, v, v, v);
@@ -475,10 +505,16 @@ pan_lower_fb_store(nir_shader *shader,
                 nir_builder *b,
                 nir_intrinsic_instr *intr,
                 const struct util_format_description *desc,
+                bool reorder_comps,
                 unsigned quirks)
 {
         /* For stores, add conversion before */
         nir_ssa_def *unpacked = nir_ssa_for_src(b, intr->src[1], 4);
+
+        /* Re-order the components */
+        if (reorder_comps)
+                unpacked = pan_pack_reorder(b, desc, unpacked);
+
         nir_ssa_def *packed = pan_pack(b, desc, unpacked);
 
         nir_store_raw_output_pan(b, packed);
@@ -495,6 +531,7 @@ pan_lower_fb_load(nir_shader *shader,
                 nir_builder *b,
                 nir_intrinsic_instr *intr,
                 const struct util_format_description *desc,
+                bool reorder_comps,
                 unsigned base, int sample, unsigned quirks)
 {
         nir_ssa_def *packed =
@@ -524,12 +561,16 @@ pan_lower_fb_load(nir_shader *shader,
         unpacked = nir_convert_to_bit_size(b, unpacked, src_type, bits);
         unpacked = nir_pad_vector(b, unpacked, nir_dest_num_components(intr->dest));
 
+        /* Reorder the components */
+        if (reorder_comps)
+                unpacked = pan_unpack_reorder(b, desc, unpacked);
+
         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, unpacked, &intr->instr);
 }
 
 bool
 pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
-                      bool is_blend, unsigned quirks)
+                      uint8_t raw_fmt_mask, bool is_blend, unsigned quirks)
 {
         if (shader->info.stage != MESA_SHADER_FRAGMENT)
                return false;
@@ -579,16 +620,17 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
                                  * MSAA blend shaders are not yet handled, so
                                  * for now always load sample 0. */
                                 int sample = is_blend ? 0 : -1;
+                                bool reorder_comps = raw_fmt_mask & BITFIELD_BIT(rt);
 
                                 nir_builder b;
                                 nir_builder_init(&b, func->impl);
 
                                 if (is_store) {
                                         b.cursor = nir_before_instr(instr);
-                                        pan_lower_fb_store(shader, &b, intr, desc, quirks);
+                                        pan_lower_fb_store(shader, &b, intr, desc, reorder_comps, quirks);
                                 } else {
                                         b.cursor = nir_after_instr(instr);
-                                        pan_lower_fb_load(shader, &b, intr, desc, base, sample, quirks);
+                                        pan_lower_fb_load(shader, &b, intr, desc, reorder_comps, base, sample, quirks);
                                 }
 
                                 nir_instr_remove(instr);
