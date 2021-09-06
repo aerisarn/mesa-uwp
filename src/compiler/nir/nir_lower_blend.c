@@ -364,10 +364,12 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    /* Blend the two colors per the passed options */
    nir_ssa_def *blended = src;
 
-   if (options->logicop_enable)
+   if (options->logicop_enable) {
       blended = nir_blend_logicop(b, *options, rt, src, dst);
-   else if (!util_format_is_pure_integer(options->format[rt]))
+   } else if (!util_format_is_pure_integer(options->format[rt])) {
+      assert(!util_format_is_scaled(options->format[rt]));
       blended = nir_blend(b, *options, rt, src, options->src1, dst);
+   }
 
    /* Apply a colormask */
    blended = nir_color_mask(b, options->rt[rt].colormask, blended, dst);
