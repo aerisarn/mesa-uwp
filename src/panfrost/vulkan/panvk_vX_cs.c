@@ -635,7 +635,7 @@ panvk_per_arch(emit_blend)(const struct panvk_device *dev,
          util_format_description(rts->format);
       unsigned chan_size = 0;
       for (unsigned i = 0; i < format_desc->nr_channels; i++)
-         chan_size = MAX2(format_desc->channel[0].size, chan_size);
+         chan_size = MAX2(format_desc->channel[i].size, chan_size);
 
       pan_blend_to_fixed_function_equation(blend->rts[rt].equation,
                                            &cfg.bifrost.equation);
