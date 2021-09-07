@@ -2424,20 +2424,6 @@ iris_resource_set_clear_color(struct iris_context *ice,
    return false;
 }
 
-union isl_color_value
-iris_resource_get_clear_color(const struct iris_resource *res,
-                              struct iris_bo **clear_color_bo,
-                              uint64_t *clear_color_offset)
-{
-   assert(res->aux.bo);
-
-   if (clear_color_bo)
-      *clear_color_bo = res->aux.clear_color_bo;
-   if (clear_color_offset)
-      *clear_color_offset = res->aux.clear_color_offset;
-   return res->aux.clear_color;
-}
-
 static enum pipe_format
 iris_resource_get_internal_format(struct pipe_resource *p_res)
 {

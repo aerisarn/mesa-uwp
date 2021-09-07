@@ -261,8 +261,7 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
          .reloc_flags = is_render_target ? EXEC_OBJECT_WRITE : 0,
          .mocs = iris_mocs(res->bo, isl_dev, 0),
       };
-      surf->clear_color =
-         iris_resource_get_clear_color(res, NULL, NULL);
+      surf->clear_color = res->aux.clear_color;
       surf->clear_color_addr = (struct blorp_address) {
          .buffer = res->aux.clear_color_bo,
          .offset = res->aux.clear_color_offset,

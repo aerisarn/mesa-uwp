@@ -2346,13 +2346,10 @@ fill_surface_state(struct isl_device *isl_dev,
       f.aux_surf = &res->aux.surf;
       f.aux_usage = aux_usage;
       f.aux_address = res->aux.bo->address + res->aux.offset;
-
-      struct iris_bo *clear_bo = NULL;
-      uint64_t clear_offset = 0;
-      f.clear_color =
-         iris_resource_get_clear_color(res, &clear_bo, &clear_offset);
-      if (clear_bo) {
-         f.clear_address = clear_bo->address + clear_offset;
+      f.clear_color = res->aux.clear_color;
+      if (res->aux.clear_color_bo) {
+         f.clear_address = res->aux.clear_color_bo->address +
+                           res->aux.clear_color_offset;
          f.use_clear_address = isl_dev->info->ver > 9;
       }
    }
@@ -6291,16 +6288,13 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       if (zres && ice->state.hiz_usage != ISL_AUX_USAGE_NONE) {
-         union isl_color_value clear_value =
-            iris_resource_get_clear_color(zres, NULL, NULL);
-
          uint32_t *clear_params =
             cso_z->packets + ARRAY_SIZE(cso_z->packets) -
             GENX(3DSTATE_CLEAR_PARAMS_length);
 
          iris_pack_command(GENX(3DSTATE_CLEAR_PARAMS), clear_params, clear) {
             clear.DepthClearValueValid = true;
-            clear.DepthClearValue = clear_value.f32[0];
+            clear.DepthClearValue = zres->aux.clear_color.f32[0];
          }
       }
 

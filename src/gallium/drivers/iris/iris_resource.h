@@ -332,10 +332,6 @@ void iris_get_depth_stencil_resources(struct pipe_resource *res,
 bool iris_resource_set_clear_color(struct iris_context *ice,
                                    struct iris_resource *res,
                                    union isl_color_value color);
-union isl_color_value
-iris_resource_get_clear_color(const struct iris_resource *res,
-                              struct iris_bo **clear_color_bo,
-                              uint64_t *clear_color_offset);
 
 void iris_replace_buffer_storage(struct pipe_context *ctx,
                                  struct pipe_resource *dst,
