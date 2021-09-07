@@ -511,6 +511,16 @@ retarget_jump(struct ir3_instruction *instr, struct ir3_block *new_target)
       cur_block->successors[1] = new_target;
    }
 
+   /* also update physical_successors.. we don't really need them at
+    * this stage, but it keeps ir3_validate happy:
+    */
+   if (cur_block->physical_successors[0] == old_target) {
+      cur_block->physical_successors[0] = new_target;
+   } else {
+      debug_assert(cur_block->physical_successors[1] == old_target);
+      cur_block->physical_successors[1] = new_target;
+   }
+
    /* update new target's predecessors: */
    ir3_block_add_predecessor(new_target, cur_block);
 
