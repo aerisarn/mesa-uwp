@@ -1236,38 +1236,39 @@ is_vertex_position(const struct gl_context *ctx, GLuint index)
  * 3f version won't otherwise set color[3] to 1.0 -- this is the job
  * of the chooser function when switching between Color4f and Color3f.
  */
-#define ATTR_UNION(A, N, T, C, V0, V1, V2, V3)			\
-do {								\
-   struct vbo_save_context *save = &vbo_context(ctx)->save;	\
-   int sz = (sizeof(C) / sizeof(GLfloat));			\
-								\
-   if (save->active_sz[A] != N)					\
-      fixup_vertex(ctx, A, N * sz, T);				\
-								\
-   {								\
+#define ATTR_UNION(A, N, T, C, V0, V1, V2, V3)                  \
+do {                                                            \
+   struct vbo_save_context *save = &vbo_context(ctx)->save;     \
+   int sz = (sizeof(C) / sizeof(GLfloat));                      \
+                                                                \
+   if (save->active_sz[A] != N)                                 \
+      fixup_vertex(ctx, A, N * sz, T);                          \
+                                                                \
+   {                                                            \
       C *dest = (C *)save->attrptr[A];                          \
-      if (N>0) dest[0] = V0;					\
-      if (N>1) dest[1] = V1;					\
-      if (N>2) dest[2] = V2;					\
-      if (N>3) dest[3] = V3;					\
-      save->attrtype[A] = T;					\
-   }								\
-								\
-   if ((A) == 0) {						\
-      GLuint i;							\
-      fi_type *buffer_ptr = save->vertex_store->buffer_in_ram + save->vertex_store->used; \
-								\
-      for (i = 0; i < save->vertex_size; i++)			\
-	     buffer_ptr[i] = save->vertex[i];			\
-								\
-      save->vertex_store->used += save->vertex_size; \
-      if ((save->vertex_store->used + save->vertex_size) * sizeof(float) > \
-          save->vertex_store->buffer_in_ram_size) { \
-	      grow_vertex_storage(ctx, get_vertex_count(save)); \
-         assert((save->vertex_store->used + save->vertex_size) * sizeof(float) <= \
-                save->vertex_store->buffer_in_ram_size); \
-      } \
-   }								\
+      if (N>0) dest[0] = V0;                                    \
+      if (N>1) dest[1] = V1;                                    \
+      if (N>2) dest[2] = V2;                                    \
+      if (N>3) dest[3] = V3;                                    \
+      save->attrtype[A] = T;                                    \
+   }                                                            \
+                                                                \
+   if ((A) == VBO_ATTRIB_POS) {                                 \
+      fi_type *buffer_ptr = save->vertex_store->buffer_in_ram + \
+                            save->vertex_store->used;           \
+                                                                \
+      for (int i = 0; i < save->vertex_size; i++)               \
+        buffer_ptr[i] = save->vertex[i];                        \
+                                                                \
+      save->vertex_store->used += save->vertex_size;            \
+      unsigned used_next = (save->vertex_store->used +          \
+                            save->vertex_size) * sizeof(float); \
+      if (used_next > save->vertex_store->buffer_in_ram_size) { \
+         grow_vertex_storage(ctx, get_vertex_count(save));      \
+         assert(used_next <=                                    \
+                save->vertex_store->buffer_in_ram_size);        \
+      }                                                         \
+   }                                                            \
 } while (0)
 
 #define TAG(x) _save_##x
@@ -1275,13 +1276,12 @@ do {								\
 #include "vbo_attrib_tmp.h"
 
 
-
-#define MAT( ATTR, N, face, params )			\
-do {							\
-   if (face != GL_BACK)					\
-      MAT_ATTR( ATTR, N, params ); /* front */		\
-   if (face != GL_FRONT)				\
-      MAT_ATTR( ATTR + 1, N, params ); /* back */	\
+#define MAT( ATTR, N, face, params )                            \
+do {                                                            \
+   if (face != GL_BACK)                                         \
+      MAT_ATTR( ATTR, N, params ); /* front */                  \
+   if (face != GL_FRONT)                                        \
+      MAT_ATTR( ATTR + 1, N, params ); /* back */               \
 } while (0)
 
 
@@ -1815,7 +1815,7 @@ _save_OBE_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
-	 CALL_DrawElements(dispatch, (mode, count[i], type, indices[i]));
+         CALL_DrawElements(dispatch, (mode, count[i], type, indices[i]));
       }
    }
 }
@@ -1840,9 +1840,9 @@ _save_OBE_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
-	 CALL_DrawElementsBaseVertex(dispatch, (mode, count[i], type,
-						      indices[i],
-						      basevertex[i]));
+         CALL_DrawElementsBaseVertex(dispatch, (mode, count[i], type,
+                                     indices[i],
+                                     basevertex[i]));
       }
    }
 }
