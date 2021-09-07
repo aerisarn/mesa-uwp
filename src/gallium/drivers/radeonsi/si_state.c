@@ -1560,8 +1560,8 @@ static void si_emit_db_render_state(struct si_context *sctx)
 /*
  * format translation
  */
-static uint32_t si_translate_colorformat(enum chip_class chip_class,
-                                         enum pipe_format format)
+uint32_t si_translate_colorformat(enum chip_class chip_class,
+                                  enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
    if (!desc)

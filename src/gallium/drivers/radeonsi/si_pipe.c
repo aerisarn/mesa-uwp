@@ -112,6 +112,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"dccstore", DBG(DCC_STORE), "Enable DCC stores"},
    {"nodccmsaa", DBG(NO_DCC_MSAA), "Disable DCC for MSAA"},
    {"nofmask", DBG(NO_FMASK), "Disable MSAA compression"},
+   {"nodma", DBG(NO_DMA), "Disable SDMA-copy for DRI_PRIME"},
 
    {"tmz", DBG(TMZ), "Force allocation of scanout/depth/stencil buffer as encrypted"},
    {"sqtt", DBG(SQTT), "Enable SQTT"},
@@ -290,6 +291,10 @@ static void si_destroy_context(struct pipe_context *context)
    sctx->ws->cs_destroy(&sctx->gfx_cs);
    if (sctx->ctx)
       sctx->ws->ctx_destroy(sctx->ctx);
+   if (sctx->sdma_cs) {
+      sctx->ws->cs_destroy(sctx->sdma_cs);
+      free(sctx->sdma_cs);
+   }
 
    if (sctx->dirty_implicit_resources)
       _mesa_hash_table_destroy(sctx->dirty_implicit_resources,

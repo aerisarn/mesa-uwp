@@ -235,6 +235,7 @@ enum
    DBG_DCC_STORE,
    DBG_NO_DCC_MSAA,
    DBG_NO_FMASK,
+   DBG_NO_DMA,
 
    DBG_TMZ,
    DBG_SQTT,
@@ -898,6 +899,7 @@ struct si_context {
    struct radeon_winsys *ws;
    struct radeon_winsys_ctx *ctx;
    struct radeon_cmdbuf gfx_cs; /* compute IB if graphics is disabled */
+   struct radeon_cmdbuf *sdma_cs;
    struct pipe_fence_handle *last_gfx_fence;
    struct si_resource *eop_bug_scratch;
    struct si_resource *eop_bug_scratch_tmz;
@@ -1427,6 +1429,8 @@ struct pipe_fence_handle *si_create_fence(struct pipe_context *ctx,
 
 /* si_get.c */
 void si_init_screen_get_functions(struct si_screen *sscreen);
+
+bool si_sdma_copy_image(struct si_context *ctx, struct si_texture *dst, struct si_texture *src);
 
 /* si_gfx_cs.c */
 void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_handle **fence);
