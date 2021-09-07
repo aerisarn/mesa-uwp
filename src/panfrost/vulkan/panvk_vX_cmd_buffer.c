@@ -44,8 +44,6 @@ static void
 panvk_cmd_prepare_fragment_job(struct panvk_cmd_buffer *cmdbuf)
 {
    const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
-   assert(cmdbuf->state.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
-
    struct panvk_batch *batch = cmdbuf->state.batch;
    struct panfrost_ptr job_ptr =
       pan_pool_alloc_desc(&cmdbuf->desc_pool.base, FRAGMENT_JOB);
