@@ -205,8 +205,10 @@ test-docs-mr:
     FDO_DISTRIBUTION_TAG: "${MESA_IMAGE_TAG}--${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
 .set-image:
+  extends:
+    - .incorporate-templates-commit
   variables:
-    MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${FDO_DISTRIBUTION_TAG}"
   image: "$MESA_IMAGE"
 
 .set-image-base-tag:
@@ -214,7 +216,7 @@ test-docs-mr:
     - .set-image
     - .incorporate-base-tag+templates-commit
   variables:
-    MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${MESA_IMAGE_TAG}--${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
+    MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${FDO_DISTRIBUTION_TAG}"
 
 
 # Build the CI docker images.
