@@ -2429,8 +2429,6 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
                               nir_shader *nir,
                               const struct pipe_stream_output_info *so_info)
 {
-   const struct intel_device_info *devinfo = &screen->devinfo;
-
    struct iris_uncompiled_shader *ish =
       calloc(1, sizeof(struct iris_uncompiled_shader));
    if (!ish)
@@ -2439,15 +2437,6 @@ iris_create_uncompiled_shader(struct iris_screen *screen,
    pipe_reference_init(&ish->ref, 1);
    list_inithead(&ish->variants);
    simple_mtx_init(&ish->lock, mtx_plain);
-
-   NIR_PASS_V(nir, iris_fix_edge_flags);
-
-   brw_preprocess_nir(screen->compiler, nir, NULL);
-
-   NIR_PASS_V(nir, brw_nir_lower_storage_image, devinfo);
-   NIR_PASS_V(nir, iris_lower_storage_image_derefs);
-
-   nir_sweep(nir);
 
    ish->uses_atomic_load_store = iris_uses_image_atomic(nir);
 
@@ -2907,6 +2896,25 @@ iris_bind_cs_state(struct pipe_context *ctx, void *state)
    bind_shader_state((void *) ctx, state, MESA_SHADER_COMPUTE);
 }
 
+static char *
+iris_finalize_nir(struct pipe_screen *_screen, void *nirptr)
+{
+   struct iris_screen *screen = (struct iris_screen *)_screen;
+   struct nir_shader *nir = (struct nir_shader *) nirptr;
+   const struct intel_device_info *devinfo = &screen->devinfo;
+
+   NIR_PASS_V(nir, iris_fix_edge_flags);
+
+   brw_preprocess_nir(screen->compiler, nir, NULL);
+
+   NIR_PASS_V(nir, brw_nir_lower_storage_image, devinfo);
+   NIR_PASS_V(nir, iris_lower_storage_image_derefs);
+
+   nir_sweep(nir);
+
+   return NULL;
+}
+
 static void
 iris_set_max_shader_compiler_threads(struct pipe_screen *pscreen,
                                      unsigned max_threads)
@@ -2946,6 +2954,7 @@ iris_init_screen_program_functions(struct pipe_screen *pscreen)
       iris_is_parallel_shader_compilation_finished;
    pscreen->set_max_shader_compiler_threads =
       iris_set_max_shader_compiler_threads;
+   pscreen->finalize_nir = iris_finalize_nir;
 }
 
 void
