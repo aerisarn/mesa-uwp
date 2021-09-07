@@ -2907,6 +2907,47 @@ iris_bind_cs_state(struct pipe_context *ctx, void *state)
    bind_shader_state((void *) ctx, state, MESA_SHADER_COMPUTE);
 }
 
+static void
+iris_set_max_shader_compiler_threads(struct pipe_screen *pscreen,
+                                     unsigned max_threads)
+{
+   struct iris_screen *screen = (struct iris_screen *) pscreen;
+   util_queue_adjust_num_threads(&screen->shader_compiler_queue, max_threads);
+}
+
+static bool
+iris_is_parallel_shader_compilation_finished(struct pipe_screen *pscreen,
+                                             void *v_shader,
+                                             enum pipe_shader_type p_stage)
+{
+   struct iris_screen *screen = (struct iris_screen *) pscreen;
+
+   /* Threaded compilation is only used for the precompile.  If precompile is
+    * disabled, threaded compilation is "done."
+    */
+   if (!screen->precompile)
+      return true;
+
+   struct iris_uncompiled_shader *ish = v_shader;
+
+   /* When precompile is enabled, the first entry is the precompile variant.
+    * Check the ready fence of the precompile variant.
+    */
+   struct iris_compiled_shader *first =
+      list_first_entry(&ish->variants, struct iris_compiled_shader, link);
+
+   return util_queue_fence_is_signalled(&first->ready);
+}
+
+void
+iris_init_screen_program_functions(struct pipe_screen *pscreen)
+{
+   pscreen->is_parallel_shader_compilation_finished =
+      iris_is_parallel_shader_compilation_finished;
+   pscreen->set_max_shader_compiler_threads =
+      iris_set_max_shader_compiler_threads;
+}
+
 void
 iris_init_program_functions(struct pipe_context *ctx)
 {

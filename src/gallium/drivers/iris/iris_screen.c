@@ -651,38 +651,6 @@ iris_get_disk_shader_cache(struct pipe_screen *pscreen)
    return screen->disk_cache;
 }
 
-static void
-iris_set_max_shader_compiler_threads(struct pipe_screen *pscreen,
-                                     unsigned max_threads)
-{
-   struct iris_screen *screen = (struct iris_screen *) pscreen;
-   util_queue_adjust_num_threads(&screen->shader_compiler_queue, max_threads);
-}
-
-static bool
-iris_is_parallel_shader_compilation_finished(struct pipe_screen *pscreen,
-                                             void *v_shader,
-                                             enum pipe_shader_type p_stage)
-{
-   struct iris_screen *screen = (struct iris_screen *) pscreen;
-
-   /* Threaded compilation is only used for the precompile.  If precompile is
-    * disabled, threaded compilation is "done."
-    */
-   if (!screen->precompile)
-      return true;
-
-   struct iris_uncompiled_shader *ish = v_shader;
-
-   /* When precompile is enabled, the first entry is the precompile variant.
-    * Check the ready fence of the precompile variant.
-    */
-   struct iris_compiled_shader *first =
-      list_first_entry(&ish->variants, struct iris_compiled_shader, link);
-
-   return util_queue_fence_is_signalled(&first->ready);
-}
-
 static int
 iris_getparam(int fd, int param, int *value)
 {
@@ -899,8 +867,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->query_memory_info = iris_query_memory_info;
    pscreen->get_driver_query_group_info = iris_get_monitor_group_info;
    pscreen->get_driver_query_info = iris_get_monitor_info;
-   pscreen->is_parallel_shader_compilation_finished = iris_is_parallel_shader_compilation_finished;
-   pscreen->set_max_shader_compiler_threads = iris_set_max_shader_compiler_threads;
+   iris_init_screen_program_functions(pscreen);
 
    genX_call(&screen->devinfo, init_screen_state, screen);
 
