@@ -451,6 +451,8 @@ _handle_copies(struct ir3_compiler *compiler, struct ir3_instruction *instr,
                entry->src.reg + (blocking->src.reg - entry->dst);
          }
       }
+
+      entry->done = true;
    }
 }
 
