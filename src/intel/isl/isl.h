@@ -1255,6 +1255,8 @@ struct isl_device {
       uint8_t clear_value_offset;
    } ss;
 
+   uint64_t max_buffer_size;
+
    /**
     * Describes the layout of the depth/stencil/hiz commands as emitted by
     * isl_emit_depth_stencil_hiz.

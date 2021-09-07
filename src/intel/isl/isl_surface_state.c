@@ -875,21 +875,15 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
 
    uint32_t num_elements = buffer_size / info->stride_B;
 
-   if (GFX_VER >= 7) {
+   assert(num_elements > 0);
+   if (info->format == ISL_FORMAT_RAW) {
+      assert(num_elements <= dev->max_buffer_size);
+   } else {
       /* From the IVB PRM, SURFACE_STATE::Height,
        *
        *    For typed buffer and structured buffer surfaces, the number
-       *    of entries in the buffer ranges from 1 to 2^27. For raw buffer
-       *    surfaces, the number of entries in the buffer is the number of bytes
-       *    which can range from 1 to 2^30.
+       *    of entries in the buffer ranges from 1 to 2^27.
        */
-      if (info->format == ISL_FORMAT_RAW) {
-         assert(num_elements <= (1ull << 30));
-         assert(num_elements > 0);
-      } else {
-         assert(num_elements <= (1ull << 27));
-      }
-   } else {
       assert(num_elements <= (1ull << 27));
    }
 

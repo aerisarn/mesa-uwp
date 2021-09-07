@@ -265,6 +265,21 @@ isl_device_init(struct isl_device *dev,
       dev->ds.hiz_offset = 0;
    }
 
+   if (ISL_GFX_VER(dev) >= 7) {
+      /* From the IVB PRM, SURFACE_STATE::Height,
+       *
+       *    For typed buffer and structured buffer surfaces, the number
+       *    of entries in the buffer ranges from 1 to 2^27. For raw buffer
+       *    surfaces, the number of entries in the buffer is the number of bytes
+       *    which can range from 1 to 2^30.
+       *
+       * This limit is only concerned with raw buffers.
+       */
+      dev->max_buffer_size = 1ull << 30;
+   } else {
+      dev->max_buffer_size = 1ull << 27;
+   }
+
    isl_device_setup_mocs(dev);
 }
 
