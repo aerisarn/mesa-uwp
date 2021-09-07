@@ -125,7 +125,7 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
 #ifdef ANDROID
 #define ANV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
 #else
-#define ANV_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
+#define ANV_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
 #endif
 
 VkResult anv_EnumerateInstanceVersion(
