@@ -3191,7 +3191,12 @@ emit_stream_out(struct ir3_context *ctx)
    orig_end_block->successors[0] = stream_out_block;
    orig_end_block->successors[1] = new_end_block;
 
+   orig_end_block->physical_successors[0] = stream_out_block;
+   orig_end_block->physical_successors[1] = new_end_block;
+
    stream_out_block->successors[0] = new_end_block;
+
+   stream_out_block->physical_successors[0] = new_end_block;
 
    /* setup 'if (vtxcnt < maxvtxcnt)' condition: */
    cond = ir3_CMPS_S(ctx->block, vtxcnt, 0, maxvtxcnt, 0);
