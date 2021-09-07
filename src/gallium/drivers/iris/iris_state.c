@@ -2345,8 +2345,11 @@ fill_surface_state(struct isl_device *isl_dev,
    if (aux_usage != ISL_AUX_USAGE_NONE) {
       f.aux_surf = &res->aux.surf;
       f.aux_usage = aux_usage;
-      f.aux_address = res->aux.bo->address + res->aux.offset;
       f.clear_color = res->aux.clear_color;
+
+      if (res->aux.bo)
+         f.aux_address = res->aux.bo->address + res->aux.offset;
+
       if (res->aux.clear_color_bo) {
          f.clear_address = res->aux.clear_color_bo->address +
                            res->aux.clear_color_offset;
