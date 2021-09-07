@@ -336,6 +336,15 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
    }
 }
 
+static bool
+is_physical_successor(struct ir3_block *block, struct ir3_block *succ)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(block->physical_successors); i++)
+      if (block->physical_successors[i] == succ)
+         return true;
+   return false;
+}
+
 void
 ir3_validate(struct ir3 *ir)
 {
@@ -375,9 +384,16 @@ ir3_validate(struct ir3 *ir)
       }
 
       for (unsigned i = 0; i < 2; i++) {
-         if (block->successors[i])
+         if (block->successors[i]) {
             validate_phi_src(ctx, block->successors[i], block);
+
+            /* Each logical successor should also be a physical successor: */
+            validate_assert(ctx, is_physical_successor(block, block->successors[i]));
+         }
       }
+
+      validate_assert(ctx, block->successors[0] || !block->successors[1]);
+      validate_assert(ctx, block->physical_successors[0] || !block->physical_successors[1]);
    }
 
    ralloc_free(ctx);
