@@ -3057,7 +3057,10 @@ emit_if(struct ir3_context *ctx, nir_if *nif)
    struct ir3_block *last_else = get_block(ctx, nir_if_last_else_block(nif));
    struct ir3_block *after_if =
       get_block(ctx, nir_cf_node_as_block(nir_cf_node_next(&nif->cf_node)));
-   last_else->physical_successors[0] = after_if;
+   assert(last_else->physical_successors[0] &&
+          !last_else->physical_successors[1]);
+   if (after_if != last_else->physical_successors[0])
+      last_else->physical_successors[1] = after_if;
 }
 
 static void
