@@ -91,6 +91,11 @@ typedef uint32_t xcb_window_t;
 
 #include "wsi_common.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* Helper to determine if we should compile
  * any of the Android AHB support.
  *
@@ -2896,5 +2901,9 @@ RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_render_pass, VkRenderPass)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, VkSampler)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler_ycbcr_conversion, VkSamplerYcbcrConversion)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_semaphore, VkSemaphore)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* RADV_PRIVATE_H */
