@@ -314,7 +314,7 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
    assert(mask == VK_IMAGE_ASPECT_COLOR_BIT);
 
    panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
-   panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf);
+   panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf, true);
 
 #if PAN_ARCH <= 5
    panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
