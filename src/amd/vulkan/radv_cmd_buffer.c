@@ -3493,7 +3493,7 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags dst_flag
 }
 
 void
-radv_subpass_barrier(struct radv_cmd_buffer *cmd_buffer, const struct radv_subpass_barrier *barrier)
+radv_emit_subpass_barrier(struct radv_cmd_buffer *cmd_buffer, const struct radv_subpass_barrier *barrier)
 {
    struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
    if (fb && !fb->imageless) {
@@ -5142,7 +5142,7 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4096);
 
-   radv_subpass_barrier(cmd_buffer, &subpass->start_barrier);
+   radv_emit_subpass_barrier(cmd_buffer, &subpass->start_barrier);
 
    radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 
@@ -6656,7 +6656,7 @@ radv_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pS
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   radv_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier);
+   radv_emit_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier);
 
    radv_cmd_buffer_end_subpass(cmd_buffer);
 
