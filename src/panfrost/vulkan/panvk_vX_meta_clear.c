@@ -366,6 +366,53 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
    util_dynarray_append(&batch->jobs, void *, job.cpu);
 }
 
+static void
+panvk_meta_clear_color_img(struct panvk_cmd_buffer *cmdbuf,
+                           struct panvk_image *img,
+                           const VkClearColorValue *color,
+                           const VkImageSubresourceRange *range)
+{
+   struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
+   struct pan_image_view view = {
+      .format = img->pimage.layout.format,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .image = &img->pimage,
+      .nr_samples = img->pimage.layout.nr_samples,
+      .swizzle = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
+   };
+
+   cmdbuf->state.fb.crc_valid[0] = false;
+   *fbinfo = (struct pan_fb_info){
+      .nr_samples = img->pimage.layout.nr_samples,
+      .rt_count = 1,
+      .rts[0].view = &view,
+      .rts[0].clear = true,
+      .rts[0].crc_valid = &cmdbuf->state.fb.crc_valid[0],
+   };
+
+   uint32_t clearval[4];
+   pan_pack_color(clearval, (union pipe_color_union *)color,
+                  img->pimage.layout.format, false);
+   memcpy(fbinfo->rts[0].clear_value, clearval, sizeof(fbinfo->rts[0].clear_value));
+
+   for (unsigned level = range->baseMipLevel;
+        level < range->baseMipLevel + range->levelCount; level++) {
+      view.first_level = view.last_level = level;
+      fbinfo->width = u_minify(img->pimage.layout.width, level);
+      fbinfo->height = u_minify(img->pimage.layout.height, level);
+      fbinfo->extent.maxx = fbinfo->width - 1;
+      fbinfo->extent.maxy = fbinfo->height - 1;
+
+      for (unsigned layer = range->baseArrayLayer;
+           layer < range->baseArrayLayer + range->layerCount; layer++) {
+         view.first_layer = view.last_layer = layer;
+         panvk_cmd_open_batch(cmdbuf);
+         panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
+         panvk_per_arch(cmd_close_batch)(cmdbuf);
+      }
+   }
+}
+
 void
 panvk_per_arch(CmdClearColorImage)(VkCommandBuffer commandBuffer,
                                    VkImage image,
@@ -374,18 +421,93 @@ panvk_per_arch(CmdClearColorImage)(VkCommandBuffer commandBuffer,
                                    uint32_t rangeCount,
                                    const VkImageSubresourceRange *pRanges)
 {
-   panvk_stub();
+   VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+   VK_FROM_HANDLE(panvk_image, img, image);
+
+   if (cmdbuf->state.batch)
+      panvk_per_arch(cmd_close_batch)(cmdbuf);
+
+   for (unsigned i = 0; i < rangeCount; i++)
+      panvk_meta_clear_color_img(cmdbuf, img, pColor, &pRanges[i]);
+}
+
+static void
+panvk_meta_clear_zs_img(struct panvk_cmd_buffer *cmdbuf,
+                        struct panvk_image *img,
+                        const VkClearDepthStencilValue *value,
+                        const VkImageSubresourceRange *range)
+{
+   struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
+   struct pan_image_view view = {
+      .format = img->pimage.layout.format,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .image = &img->pimage,
+      .nr_samples = img->pimage.layout.nr_samples,
+      .swizzle = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
+   };
+
+   cmdbuf->state.fb.crc_valid[0] = false;
+   *fbinfo = (struct pan_fb_info){
+      .nr_samples = img->pimage.layout.nr_samples,
+      .rt_count = 1,
+   };
+
+   const struct util_format_description *fdesc =
+      util_format_description(view.format);
+
+   if (util_format_has_depth(fdesc)) {
+      fbinfo->zs.view.zs = &view;
+      fbinfo->zs.clear.z = range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT;
+      if (util_format_has_stencil(fdesc)) {
+         fbinfo->zs.clear.s = range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT;
+         fbinfo->zs.preload.z = !fbinfo->zs.clear.z && fbinfo->zs.clear.s;
+         fbinfo->zs.preload.s = !fbinfo->zs.clear.s && fbinfo->zs.clear.z;
+      }
+   } else {
+      fbinfo->zs.view.s = &view;
+      fbinfo->zs.clear.s = range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT;
+   }
+
+   if (fbinfo->zs.clear.z)
+      fbinfo->zs.clear_value.depth = value->depth;
+
+   if (fbinfo->zs.clear.s)
+      fbinfo->zs.clear_value.stencil = value->stencil;
+
+   for (unsigned level = range->baseMipLevel;
+        level < range->baseMipLevel + range->levelCount; level++) {
+      view.first_level = view.last_level = level;
+      fbinfo->width = u_minify(img->pimage.layout.width, level);
+      fbinfo->height = u_minify(img->pimage.layout.height, level);
+      fbinfo->extent.maxx = fbinfo->width - 1;
+      fbinfo->extent.maxy = fbinfo->height - 1;
+
+      for (unsigned layer = range->baseArrayLayer;
+           layer < range->baseArrayLayer + range->layerCount; layer++) {
+         view.first_layer = view.last_layer = layer;
+         panvk_cmd_open_batch(cmdbuf);
+         panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
+         panvk_per_arch(cmd_close_batch)(cmdbuf);
+      }
+   }
 }
 
 void
 panvk_per_arch(CmdClearDepthStencilImage)(VkCommandBuffer commandBuffer,
-                                          VkImage image_h,
+                                          VkImage image,
                                           VkImageLayout imageLayout,
                                           const VkClearDepthStencilValue *pDepthStencil,
                                           uint32_t rangeCount,
                                           const VkImageSubresourceRange *pRanges)
 {
-   panvk_stub();
+   VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+   VK_FROM_HANDLE(panvk_image, img, image);
+
+   if (cmdbuf->state.batch)
+      panvk_per_arch(cmd_close_batch)(cmdbuf);
+
+   for (unsigned i = 0; i < rangeCount; i++)
+      panvk_meta_clear_zs_img(cmdbuf, img, pDepthStencil, &pRanges[i]);
 }
 
 void
