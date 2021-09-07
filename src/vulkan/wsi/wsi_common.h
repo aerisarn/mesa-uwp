@@ -121,6 +121,11 @@ struct wsi_device {
        * driver in VkSurfaceCapabilitiesKHR::minImageCount.
        */
       bool ensure_minImageCount;
+
+      /* Wait for fences before submitting buffers to Xwayland. Defaults to
+       * true.
+       */
+      bool xwaylandWaitReady;
    } x11;
 
    bool sw;
