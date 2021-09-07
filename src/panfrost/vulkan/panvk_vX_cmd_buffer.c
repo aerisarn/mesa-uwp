@@ -259,8 +259,8 @@ panvk_per_arch(cmd_alloc_fb_desc)(struct panvk_cmd_buffer *cmdbuf)
    if (batch->fb.desc.gpu)
       return;
 
-   const struct panvk_subpass *subpass = cmdbuf->state.subpass;
-   bool has_zs_ext = subpass->zs_attachment.idx != VK_ATTACHMENT_UNUSED;
+   const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
+   bool has_zs_ext = fbinfo->zs.view.zs || fbinfo->zs.view.s;
    unsigned tags = MALI_FBD_TAG_IS_MFBD;
 
    batch->fb.info = cmdbuf->state.framebuffer;
@@ -268,7 +268,7 @@ panvk_per_arch(cmd_alloc_fb_desc)(struct panvk_cmd_buffer *cmdbuf)
       pan_pool_alloc_desc_aggregate(&cmdbuf->desc_pool.base,
                                     PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
                                     PAN_DESC_ARRAY(has_zs_ext ? 1 : 0, ZS_CRC_EXTENSION),
-                                    PAN_DESC_ARRAY(MAX2(subpass->color_count, 1), RENDER_TARGET));
+                                    PAN_DESC_ARRAY(MAX2(fbinfo->rt_count, 1), RENDER_TARGET));
 
    /* Tag the pointer */
    batch->fb.desc.gpu |= tags;
