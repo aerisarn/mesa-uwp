@@ -66,7 +66,7 @@
 #include "drm-uapi/i915_drm.h"
 #endif
 
-#define V3DV_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
+#define V3DV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
 
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_EnumerateInstanceVersion(uint32_t *pApiVersion)
