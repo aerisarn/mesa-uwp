@@ -517,23 +517,30 @@ panvk_per_arch(cmd_get_tiler_context)(struct panvk_cmd_buffer *cmdbuf,
 }
 #endif
 
+void
+panvk_per_arch(cmd_prepare_tiler_context)(struct panvk_cmd_buffer *cmdbuf)
+{
+   const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
+
+#if PAN_ARCH == 5
+   panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
+                                        fbinfo->width,
+                                        fbinfo->height,
+                                        true);
+#else
+   panvk_per_arch(cmd_get_tiler_context)(cmdbuf,
+                                         fbinfo->width,
+                                         fbinfo->height);
+#endif
+}
+
 static void
 panvk_draw_prepare_tiler_context(struct panvk_cmd_buffer *cmdbuf,
                                  struct panvk_draw_info *draw)
 {
    struct panvk_batch *batch = cmdbuf->state.batch;
 
-#if PAN_ARCH == 5
-   panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
-                                        batch->fb.info->width,
-                                        batch->fb.info->height,
-                                        true);
-#else
-   panvk_per_arch(cmd_get_tiler_context)(cmdbuf,
-                                         batch->fb.info->width,
-                                         batch->fb.info->height);
-#endif
-
+   panvk_per_arch(cmd_prepare_tiler_context)(cmdbuf);
    draw->tiler_ctx = &batch->tiler.ctx;
 }
 
