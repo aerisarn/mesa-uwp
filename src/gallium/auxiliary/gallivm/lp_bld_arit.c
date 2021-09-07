@@ -2030,6 +2030,12 @@ lp_build_trunc(struct lp_build_context *bld,
    assert(type.floating);
    assert(lp_check_value(type, a));
 
+   if (type.width == 16) {
+      char intrinsic[64];
+      lp_format_intrinsic(intrinsic, 64, "llvm.trunc", bld->vec_type);
+      return lp_build_intrinsic_unary(builder, intrinsic, bld->vec_type, a);
+   }
+
    if (arch_rounding_available(type)) {
       return lp_build_round_arch(bld, a, LP_BUILD_ROUND_TRUNCATE);
    }
@@ -2082,6 +2088,12 @@ lp_build_round(struct lp_build_context *bld,
 
    assert(type.floating);
    assert(lp_check_value(type, a));
+
+   if (type.width == 16) {
+      char intrinsic[64];
+      lp_format_intrinsic(intrinsic, 64, "llvm.round", bld->vec_type);
+      return lp_build_intrinsic_unary(builder, intrinsic, bld->vec_type, a);
+   }
 
    if (arch_rounding_available(type)) {
       return lp_build_round_arch(bld, a, LP_BUILD_ROUND_NEAREST);
