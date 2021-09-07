@@ -109,6 +109,13 @@ KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guar
 # looks like a cache flushing issue, and it does sometimes pass.
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.*
 
+# Testcase was mostly fixed in 23f7e06cd8d40569f8bfabde9c01d1597573abef, but has
+# flaked in CI since then:
+# " [775] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]
+#   [806] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]
+#   ..."
+KHR-GLES31.core.shader_image_load_store.basic-glsl-misc-fs
+
 # Flakes, all seen since merge of:
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/12258
 # Failures seen so far in different flakes:
