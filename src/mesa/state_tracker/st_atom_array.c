@@ -56,7 +56,7 @@
 static void ALWAYS_INLINE
 init_velement(struct pipe_vertex_element *velements,
               const struct gl_vertex_format *vformat,
-              int src_offset, int instance_divisor,
+              int src_offset, unsigned instance_divisor,
               int vbo_index, bool dual_slot, int idx)
 {
    velements[idx].src_offset = src_offset;
