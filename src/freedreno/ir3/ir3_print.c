@@ -366,23 +366,20 @@ print_instr(struct log_stream *stream, struct ir3_instruction *instr, int lvl)
       /* the predicate register src is implied: */
       if (instr->opc == OPC_B) {
          static const struct {
-            const char *suffix;
             int nsrc;
             bool idx;
          } brinfo[7] = {
             /* clang-format off */
-            [BRANCH_PLAIN] = {"r",   1, false},
-            [BRANCH_OR]    = {"rao", 2, false},
-            [BRANCH_AND]   = {"raa", 2, false},
-            [BRANCH_CONST] = {"rac", 0, true},
-            [BRANCH_ANY]   = {"any", 1, false},
-            [BRANCH_ALL]   = {"all", 1, false},
-            [BRANCH_X]     = {"rax", 0, false},
+            [BRANCH_PLAIN] = {1, false},
+            [BRANCH_OR]    = {2, false},
+            [BRANCH_AND]   = {2, false},
+            [BRANCH_CONST] = {0, true},
+            [BRANCH_ANY]   = {1, false},
+            [BRANCH_ALL]   = {1, false},
+            [BRANCH_X]     = {0, false},
             /* clang-format on */
          };
 
-         mesa_log_stream_printf(stream, "%s",
-                                brinfo[instr->cat0.brtype].suffix);
          if (brinfo[instr->cat0.brtype].idx) {
             mesa_log_stream_printf(stream, ".%u", instr->cat0.idx);
          }
