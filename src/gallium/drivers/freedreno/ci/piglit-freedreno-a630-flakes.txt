@@ -8,7 +8,7 @@ glx@glx-visuals-stencil
 
 # Occasionally flakes preceded by a GPU fault;
 #  [  375.034086] adreno 5000000.gpu: [drm:a6xx_irq] *ERROR* gpu fault ring 0 fence aefe8 status 00E51005 rb 0602/06d2 ib1 000000010023D000/0000 ib2 0000000100246170/0000
-glx@glx-ftp
+glx@glx-tfp
 
 # async shader compiler asserts in get_image_samp_tex_src()'s nir_src_comp_as_uint().
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4474
