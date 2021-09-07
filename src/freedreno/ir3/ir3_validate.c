@@ -30,6 +30,9 @@
 struct ir3_validate_ctx {
    struct ir3 *ir;
 
+   /* Current block being validated: */
+   struct ir3_block *current_block;
+
    /* Current instruction being validated: */
    struct ir3_instruction *current_instr;
 
@@ -43,8 +46,12 @@ static void
 validate_error(struct ir3_validate_ctx *ctx, const char *condstr)
 {
    fprintf(stderr, "validation fail: %s\n", condstr);
-   fprintf(stderr, "  -> for instruction: ");
-   ir3_print_instr(ctx->current_instr);
+   if (ctx->current_instr) {
+      fprintf(stderr, "  -> for instruction: ");
+      ir3_print_instr(ctx->current_instr);
+   } else {
+      fprintf(stderr, "  -> for block%u\n", block_id(ctx->current_block));
+   }
    abort();
 }
 
@@ -363,6 +370,9 @@ ir3_validate(struct ir3 *ir)
    ctx->defs = _mesa_pointer_set_create(ctx);
 
    foreach_block (block, &ir->block_list) {
+      ctx->current_block = block;
+      ctx->current_instr = NULL;
+
       /* We require that the first block does not have any predecessors,
        * which allows us to assume that phi nodes and meta:input's do not
        * appear in the same basic block.
@@ -386,6 +396,8 @@ ir3_validate(struct ir3 *ir)
       for (unsigned i = 0; i < 2; i++) {
          if (block->successors[i]) {
             validate_phi_src(ctx, block->successors[i], block);
+
+            ctx->current_instr = NULL;
 
             /* Each logical successor should also be a physical successor: */
             validate_assert(ctx, is_physical_successor(block, block->successors[i]));
