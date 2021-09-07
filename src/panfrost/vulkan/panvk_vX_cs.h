@@ -85,11 +85,6 @@ panvk_per_arch(emit_tiler_job)(const struct panvk_pipeline *pipeline,
                                void *job);
 
 void
-panvk_per_arch(emit_fragment_job)(const struct panvk_framebuffer *fb,
-                                  mali_ptr fbdesc,
-                                  void *job);
-
-void
 panvk_per_arch(emit_viewport)(const VkViewport *viewport,
                               const VkRect2D *scissor,
                               void *vpd);

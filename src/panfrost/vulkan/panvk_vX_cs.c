@@ -519,26 +519,6 @@ panvk_per_arch(emit_tiler_job)(const struct panvk_pipeline *pipeline,
 }
 
 void
-panvk_per_arch(emit_fragment_job)(const struct panvk_framebuffer *fb,
-                                  mali_ptr fbdesc,
-                                  void *job)
-{
-   pan_section_pack(job, FRAGMENT_JOB, HEADER, header) {
-      header.type = MALI_JOB_TYPE_FRAGMENT;
-      header.index = 1;
-   }
-
-   pan_section_pack(job, FRAGMENT_JOB, PAYLOAD, payload) {
-      payload.bound_min_x = 0;
-      payload.bound_min_y = 0;
-
-      payload.bound_max_x = (fb->width - 1) >> MALI_TILE_SHIFT;
-      payload.bound_max_y = (fb->height - 1) >> MALI_TILE_SHIFT;
-      payload.framebuffer = fbdesc;
-   }
-}
-
-void
 panvk_per_arch(emit_viewport)(const VkViewport *viewport,
                               const VkRect2D *scissor,
                               void *vpd)

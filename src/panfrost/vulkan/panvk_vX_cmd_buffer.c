@@ -43,15 +43,14 @@
 static void
 panvk_cmd_prepare_fragment_job(struct panvk_cmd_buffer *cmdbuf)
 {
+   const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
    assert(cmdbuf->state.bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    struct panvk_batch *batch = cmdbuf->state.batch;
    struct panfrost_ptr job_ptr =
       pan_pool_alloc_desc(&cmdbuf->desc_pool.base, FRAGMENT_JOB);
 
-   panvk_per_arch(emit_fragment_job)(cmdbuf->state.framebuffer,
-                                     cmdbuf->state.batch->fb.desc.gpu,
-                                     job_ptr.cpu);
+   GENX(pan_emit_fragment_job)(fbinfo, batch->fb.desc.gpu, job_ptr.cpu),
    cmdbuf->state.batch->fragment_job = job_ptr.gpu;
    util_dynarray_append(&batch->jobs, void *, job_ptr.cpu);
 }
