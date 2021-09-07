@@ -11,7 +11,11 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 
+#if defined(PIPE_ARCH_X86_64) || defined(PIPE_ARCH_PPC_64) || defined(PIPE_ARCH_AARCH64) || defined(PIPE_ARCH_MIPS64)
 #define NUM_QUERIES 5000
+#else
+#define NUM_QUERIES 500
+#endif
 
 struct zink_query_buffer {
    struct list_head list;
