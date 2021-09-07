@@ -42,7 +42,7 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
    struct pipe_screen *pscreen = sctx->screen;
 
    /* Return early if we are loading the shader from on-disk cache */
-   if (st_load_ir_from_disk_cache(ctx, prog, true)) {
+   if (st_load_nir_from_disk_cache(ctx, prog)) {
       return GL_TRUE;
    }
 

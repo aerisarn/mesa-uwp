@@ -933,7 +933,7 @@ st_link_nir(struct gl_context *ctx,
           shader->Stage == MESA_SHADER_GEOMETRY)
          st_translate_stream_output_info(prog);
 
-      st_store_ir_in_disk_cache(st, prog, true);
+      st_store_nir_in_disk_cache(st, prog);
 
       st_release_variants(st, prog);
       st_finalize_program(st, prog);
