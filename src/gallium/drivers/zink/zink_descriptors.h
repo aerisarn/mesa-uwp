@@ -286,6 +286,8 @@ zink_descriptors_deinit_lazy(struct zink_context *ctx);
 
 void
 zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set);
+void
+zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, uint8_t changed_sets, bool need_push, bool update_push);
 #ifdef __cplusplus
 }
 #endif
