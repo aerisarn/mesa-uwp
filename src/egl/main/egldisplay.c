@@ -128,10 +128,9 @@ _eglNativePlatformDetectNativeDisplay(void *nativeDisplay)
    if (nativeDisplay == EGL_DEFAULT_DISPLAY)
       return _EGL_INVALID_PLATFORM;
 
+#if defined(HAVE_WAYLAND_PLATFORM) || defined(HAVE_DRM_PLATFORM)
    if (_eglPointerIsDereferencable(nativeDisplay)) {
       void *first_pointer = *(void **) nativeDisplay;
-
-      (void) first_pointer; /* silence unused var warning */
 
 #ifdef HAVE_WAYLAND_PLATFORM
       /* wl_display is a wl_proxy, which is a wl_object.
@@ -146,6 +145,7 @@ _eglNativePlatformDetectNativeDisplay(void *nativeDisplay)
          return _EGL_PLATFORM_DRM;
 #endif
    }
+#endif
 
    return _EGL_INVALID_PLATFORM;
 }
