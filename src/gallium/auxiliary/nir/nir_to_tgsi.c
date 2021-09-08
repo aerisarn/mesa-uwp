@@ -738,11 +738,7 @@ ntt_get_dest(struct ntt_compile *c, nir_dest *dest)
 static void
 ntt_store_def(struct ntt_compile *c, nir_ssa_def *def, struct ureg_src src)
 {
-   if (!src.Negate && !src.Absolute && !src.Indirect && !src.DimIndirect &&
-       src.SwizzleX == TGSI_SWIZZLE_X &&
-       (src.SwizzleY == TGSI_SWIZZLE_Y || def->num_components < 2) &&
-       (src.SwizzleZ == TGSI_SWIZZLE_Z || def->num_components < 3) &&
-       (src.SwizzleW == TGSI_SWIZZLE_W || def->num_components < 4)) {
+   if (!src.Indirect && !src.DimIndirect) {
       switch (src.File) {
       case TGSI_FILE_IMMEDIATE:
       case TGSI_FILE_INPUT:
