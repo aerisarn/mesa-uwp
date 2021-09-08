@@ -86,12 +86,22 @@ new_qpu_nop_before(struct qinst *inst)
         return q;
 }
 
+static void
+v3d71_set_src(struct v3d_qpu_instr *instr, uint8_t *raddr, struct qpu_reg src)
+{
+        if (src.smimm)
+                unreachable("v3d71_set_src: pending handling small immediates");
+
+        assert(!src.magic);
+        *raddr = src.index;
+}
+
 /**
  * Allocates the src register (accumulator or register file) into the RADDR
  * fields of the instruction.
  */
 static void
-set_src(struct v3d_qpu_instr *instr, enum v3d_qpu_mux *mux, struct qpu_reg src)
+v3d33_set_src(struct v3d_qpu_instr *instr, enum v3d_qpu_mux *mux, struct qpu_reg src)
 {
         if (src.smimm) {
                 assert(instr->sig.small_imm_b);
@@ -126,6 +136,24 @@ set_src(struct v3d_qpu_instr *instr, enum v3d_qpu_mux *mux, struct qpu_reg src)
                         *mux = V3D_QPU_MUX_B;
                 }
         }
+}
+
+/*
+ * The main purpose of the following wrapper is to make calling set_src
+ * cleaner. This is the reason it receives both mux and raddr pointers. Those
+ * will be filled or not based on the device version.
+ */
+static void
+set_src(struct v3d_qpu_instr *instr,
+        enum v3d_qpu_mux *mux,
+        uint8_t *raddr,
+        struct qpu_reg src,
+        const struct v3d_device_info *devinfo)
+{
+        if (devinfo->ver < 71)
+                return v3d33_set_src(instr, mux, src);
+        else
+                return v3d71_set_src(instr, raddr, src);
 }
 
 static bool
@@ -340,13 +368,18 @@ v3d_generate_code_block(struct v3d_compile *c,
                                 qinst->qpu.sig_magic = dst.magic;
                         } else if (qinst->qpu.alu.add.op != V3D_QPU_A_NOP) {
                                 assert(qinst->qpu.alu.mul.op == V3D_QPU_M_NOP);
+
                                 if (nsrc >= 1) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.add.a.mux, src[0]);
+                                                &qinst->qpu.alu.add.a.mux,
+                                                &qinst->qpu.alu.add.a.raddr,
+                                                src[0], c->devinfo);
                                 }
                                 if (nsrc >= 2) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.add.b.mux, src[1]);
+                                                &qinst->qpu.alu.add.b.mux,
+                                                &qinst->qpu.alu.add.b.raddr,
+                                                src[1], c->devinfo);
                                 }
 
                                 qinst->qpu.alu.add.waddr = dst.index;
@@ -354,11 +387,15 @@ v3d_generate_code_block(struct v3d_compile *c,
                         } else {
                                 if (nsrc >= 1) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.mul.a.mux, src[0]);
+                                                &qinst->qpu.alu.mul.a.mux,
+                                                &qinst->qpu.alu.mul.a.raddr,
+                                                src[0], c->devinfo);
                                 }
                                 if (nsrc >= 2) {
                                         set_src(&qinst->qpu,
-                                                &qinst->qpu.alu.mul.b.mux, src[1]);
+                                                &qinst->qpu.alu.mul.b.mux,
+                                                &qinst->qpu.alu.mul.b.raddr,
+                                                src[1], c->devinfo);
                                 }
 
                                 qinst->qpu.alu.mul.waddr = dst.index;
