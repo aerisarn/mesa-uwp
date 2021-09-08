@@ -107,7 +107,6 @@ else
 
             LD_LIBRARY_PATH="$__LD_LIBRARY_PATH" \
             GALLIUM_DRIVER=llvmpipe \
-            GALLIVM_PERF="nopt" \
             VTEST_USE_EGL_SURFACELESS=1 \
             VTEST_USE_GLES=1 \
             virgl_test_server >"$RESULTS"/vtest-log.txt 2>&1 &
