@@ -364,10 +364,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    layer_regid = ir3_find_output_regid(vs, VARYING_SLOT_LAYER);
    vertex_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
    instance_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
-   if (gs)
-      vs_primitive_regid = ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID);
-   else if (hs)
+   if (hs)
       vs_primitive_regid = ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID);
+   else if (gs)
+      vs_primitive_regid = ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID);
    else
       vs_primitive_regid = regid(63, 0);
 
