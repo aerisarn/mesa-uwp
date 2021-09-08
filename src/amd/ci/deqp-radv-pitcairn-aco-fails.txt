@@ -1,2 +1,2 @@
 # ACO crash
-dEQP-VK.graphicsfuzz.cov-nested-loops-global-loop-counter-do-while-accumulate-float
+dEQP-VK.graphicsfuzz.cov-nested-loops-global-loop-counter-do-while-accumulate-float,Crash
