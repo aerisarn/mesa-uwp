@@ -6,6 +6,7 @@
     GALLIUM_DRIVER: "virgl"
     CROSVM_GALLIUM_DRIVER: "llvmpipe"
     CROSVM_GPU_ARGS: "gles=false,backend=virglrenderer,egl=true,surfaceless=true"
+    GALLIVM_PERF: "nopt,no_quad_lod"
 
 virgl-on-gl:
   variables:
