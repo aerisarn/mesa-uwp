@@ -54,7 +54,7 @@ struct ntt_compile {
 
    /* TGSI temps for our NIR SSA and register values. */
    struct ureg_dst *reg_temp;
-   struct ureg_dst *ssa_temp;
+   struct ureg_src *ssa_temp;
 
    nir_instr_liveness *liveness;
 
@@ -624,7 +624,7 @@ ntt_get_src(struct ntt_compile *c, nir_src src)
       if (src.ssa->parent_instr->type == nir_instr_type_load_const)
          return ntt_get_load_const_src(c, nir_instr_as_load_const(src.ssa->parent_instr));
 
-      return ureg_src(c->ssa_temp[src.ssa->index]);
+      return c->ssa_temp[src.ssa->index];
    } else {
       nir_register *reg = src.reg.reg;
       struct ureg_dst reg_temp = c->reg_temp[reg->index];
@@ -701,9 +701,9 @@ ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
    if (!ntt_try_store_in_tgsi_output(c, &dst, &ssa->uses, &ssa->if_uses))
       dst = ureg_DECL_temporary(c->ureg);
 
-   c->ssa_temp[ssa->index] = ureg_writemask(dst, writemask);
+   c->ssa_temp[ssa->index] = ntt_swizzle_for_write_mask(ureg_src(dst), writemask);
 
-   return c->ssa_temp[ssa->index];
+   return ureg_writemask(dst, writemask);
 }
 
 static struct ureg_dst
@@ -748,7 +748,7 @@ ntt_store_def(struct ntt_compile *c, nir_ssa_def *def, struct ureg_src src)
       case TGSI_FILE_INPUT:
       case TGSI_FILE_CONSTANT:
       case TGSI_FILE_SYSTEM_VALUE:
-         c->ssa_temp[def->index] = ureg_dst(src);
+         c->ssa_temp[def->index] = src;
          return;
       }
    }
@@ -2257,7 +2257,7 @@ ntt_free_ssa_temp_by_index(struct ntt_compile *c, int index)
    if (c->ssa_temp[index].File != TGSI_FILE_TEMPORARY)
       return;
 
-   ureg_release_temporary(c->ureg, c->ssa_temp[index]);
+   ureg_release_temporary(c->ureg, ureg_dst(c->ssa_temp[index]));
    memset(&c->ssa_temp[index], 0, sizeof(c->ssa_temp[index]));
 }
 
@@ -2342,7 +2342,7 @@ ntt_emit_impl(struct ntt_compile *c, nir_function_impl *impl)
    c->impl = impl;
    c->liveness = nir_live_ssa_defs_per_instr(impl);
 
-   c->ssa_temp = rzalloc_array(c, struct ureg_dst, impl->ssa_alloc);
+   c->ssa_temp = rzalloc_array(c, struct ureg_src, impl->ssa_alloc);
    c->reg_temp = rzalloc_array(c, struct ureg_dst, impl->reg_alloc);
 
    ntt_setup_registers(c, &impl->registers);
