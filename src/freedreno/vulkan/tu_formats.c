@@ -252,10 +252,11 @@ tu_physical_device_get_format_properties(
    if (tu6_pipe2depth(vk_format) != (enum a6xx_depth_format)~0)
       optimal |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-   if (vk_format == VK_FORMAT_G8B8G8R8_422_UNORM ||
-       vk_format == VK_FORMAT_B8G8R8G8_422_UNORM ||
-       vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
-      /* these formats don't support UBWC or tiling */
+   if (!tiling_possible(vk_format) &&
+       /* We don't actually support tiling for this format, but we need to
+        * fake it as it's required by VK_KHR_sampler_ycbcr_conversion.
+        */
+       vk_format != VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
       optimal = 0;
    }
 
@@ -311,6 +312,7 @@ tu_GetPhysicalDeviceFormatProperties2(
 
       /* note: ubwc_possible() argument values to be ignored except for format */
       if (pFormatProperties->formatProperties.optimalTilingFeatures &&
+          tiling_possible(format) &&
           ubwc_possible(format, VK_IMAGE_TYPE_2D, 0, 0, physical_device->info, VK_SAMPLE_COUNT_1_BIT)) {
          vk_outarray_append(&out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
@@ -351,7 +353,8 @@ tu_get_image_format_properties(
          /* falling back to linear/non-UBWC isn't possible with explicit modifier */
 
          /* formats which don't support tiling */
-         if (!format_props.optimalTilingFeatures)
+         if (!format_props.optimalTilingFeatures ||
+             !tiling_possible(info->format))
             return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
          /* for mutable formats, its very unlikely to be possible to use UBWC */

@@ -1517,6 +1517,9 @@ tu_image_view_init(struct tu_image_view *iview,
                    bool limited_z24s8);
 
 bool
+tiling_possible(VkFormat format);
+
+bool
 ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage, VkImageUsageFlags stencil_usage,
               const struct fd_dev_info *info, VkSampleCountFlagBits samples);
 

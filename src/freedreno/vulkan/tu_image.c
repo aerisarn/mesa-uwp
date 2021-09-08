@@ -323,6 +323,17 @@ tu_image_view_init(struct tu_image_view *iview,
 }
 
 bool
+tiling_possible(VkFormat format)
+{
+   if (format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM ||
+       format == VK_FORMAT_G8B8G8R8_422_UNORM ||
+       format == VK_FORMAT_B8G8R8G8_422_UNORM)
+      return false;
+
+   return true;
+}
+
+bool
 ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage,
               VkImageUsageFlags stencil_usage, const struct fd_dev_info *info,
               VkSampleCountFlagBits samples)
@@ -452,6 +463,12 @@ tu_CreateImage(VkDevice _device,
 
    /* use linear tiling if requested */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR || modifier == DRM_FORMAT_MOD_LINEAR) {
+      tile_mode = TILE6_LINEAR;
+      ubwc_enabled = false;
+   }
+
+   /* Force linear tiling for formats with "fake" optimalTilingFeatures */
+   if (!tiling_possible(image->vk_format)) {
       tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
