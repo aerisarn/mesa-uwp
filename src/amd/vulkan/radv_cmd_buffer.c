@@ -4446,7 +4446,9 @@ radv_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer, uint32_t firstBindi
          const uint32_t bit = 1u << idx;
          if (!buffer) {
             cmd_buffer->state.vbo_misaligned_mask &= ~bit;
+            cmd_buffer->state.vbo_bound_mask &= ~bit;
          } else {
+            cmd_buffer->state.vbo_bound_mask |= bit;
             if (pStrides && vb[idx].stride != stride) {
                if (stride & state->format_align_req_minus_1[idx])
                   cmd_buffer->state.vbo_misaligned_mask |= bit;
@@ -5483,15 +5485,16 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
 
       if (chip == GFX6 || chip >= GFX10) {
          struct radv_vertex_binding *vb = cmd_buffer->vertex_bindings;
+         unsigned bit = 1u << loc;
          if (binding->stride & format_align_req_minus_1) {
-            state->misaligned_mask |= 1u << loc;
-            if (vb[attrib->binding].buffer)
-               cmd_buffer->state.vbo_misaligned_mask |= 1u << loc;
+            state->misaligned_mask |= bit;
+            if (cmd_buffer->state.vbo_bound_mask & bit)
+               cmd_buffer->state.vbo_misaligned_mask |= bit;
          } else {
-            state->possibly_misaligned_mask |= 1u << loc;
-            if (vb[attrib->binding].buffer &&
+            state->possibly_misaligned_mask |= bit;
+            if (cmd_buffer->state.vbo_bound_mask & bit &&
                 ((vb[attrib->binding].offset + state->offsets[loc]) & format_align_req_minus_1))
-               cmd_buffer->state.vbo_misaligned_mask |= 1u << loc;
+               cmd_buffer->state.vbo_misaligned_mask |= bit;
          }
       }
 
