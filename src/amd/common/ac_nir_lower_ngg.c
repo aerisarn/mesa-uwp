@@ -1546,6 +1546,37 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    shader->info.shared_size = state.total_lds_bytes;
 }
 
+/**
+ * Return the address of the LDS storage reserved for the N'th vertex,
+ * where N is in emit order, meaning:
+ * - during the finale, N is the invocation_index (within the workgroup)
+ * - during vertex emit, i.e. while the API GS shader invocation is running,
+ *   N = invocation_index * gs_max_out_vertices + emit_idx
+ *   where emit_idx is the vertex index in the current API GS invocation.
+ *
+ * Goals of the LDS memory layout:
+ * 1. Eliminate bank conflicts on write for geometry shaders that have all emits
+ *    in uniform control flow
+ * 2. Eliminate bank conflicts on read for export if, additionally, there is no
+ *    culling
+ * 3. Agnostic to the number of waves (since we don't know it before compiling)
+ * 4. Allow coalescing of LDS instructions (ds_write_b128 etc.)
+ * 5. Avoid wasting memory.
+ *
+ * We use an AoS layout due to point 4 (this also helps point 3). In an AoS
+ * layout, elimination of bank conflicts requires that each vertex occupy an
+ * odd number of dwords. We use the additional dword to store the output stream
+ * index as well as a flag to indicate whether this vertex ends a primitive
+ * for rasterization.
+ *
+ * Swizzling is required to satisfy points 1 and 2 simultaneously.
+ *
+ * Vertices are stored in export order (gsthread * gs_max_out_vertices + emitidx).
+ * Indices are swizzled in groups of 32, which ensures point 1 without
+ * disturbing point 2.
+ *
+ * \return an LDS pointer to type {[N x i32], [4 x i8]}
+ */
 static nir_ssa_def *
 ngg_gs_out_vertex_addr(nir_builder *b, nir_ssa_def *out_vtx_idx, lower_ngg_gs_state *s)
 {
