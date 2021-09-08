@@ -101,8 +101,6 @@ typedef struct {
 
    /* map of instruction/var/etc to failed assert string */
    struct hash_table *errors;
-
-   struct set *shader_gc_list;
 } validate_state;
 
 static void
@@ -1112,9 +1110,6 @@ validate_instr(nir_instr *instr, validate_state *state)
 
    state->instr = instr;
 
-   if (state->shader_gc_list)
-      validate_assert(state, _mesa_set_search(state->shader_gc_list, instr));
-
    switch (instr->type) {
    case nir_instr_type_alu:
       validate_alu_instr(nir_instr_as_alu(instr), state);
@@ -1723,8 +1718,6 @@ init_validate_state(validate_state *state)
    state->blocks = _mesa_pointer_set_create(state->mem_ctx);
    state->var_defs = _mesa_pointer_hash_table_create(state->mem_ctx);
    state->errors = _mesa_pointer_hash_table_create(state->mem_ctx);
-   state->shader_gc_list = NIR_DEBUG(VALIDATE_GC_LIST) ?
-                           _mesa_pointer_set_create(state->mem_ctx) : NULL;
 
    state->loop = NULL;
    state->instr = NULL;
@@ -1780,13 +1773,6 @@ nir_validate_shader(nir_shader *shader, const char *when)
 
    validate_state state;
    init_validate_state(&state);
-
-   if (state.shader_gc_list) {
-      list_for_each_entry(nir_instr, instr, &shader->gc_list, gc_node) {
-         if (instr->node.prev || instr->node.next)
-            _mesa_set_add(state.shader_gc_list, instr);
-      }
-   }
 
    state.shader = shader;
 
