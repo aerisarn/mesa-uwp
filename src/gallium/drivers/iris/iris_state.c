@@ -6920,7 +6920,7 @@ iris_upload_compute_walker(struct iris_context *ice,
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
          cfe.MaximumNumberofThreads =
-            devinfo->max_cs_threads * screen->subslice_total - 1;
+            devinfo->max_cs_threads * devinfo->subslice_total - 1;
          if (prog_data->total_scratch > 0) {
             cfe.ScratchSpaceBuffer =
                iris_get_scratch_surf(ice, prog_data->total_scratch)->offset >> 4;
@@ -7003,7 +7003,7 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
          }
 
          vfe.MaximumNumberofThreads =
-            devinfo->max_cs_threads * screen->subslice_total - 1;
+            devinfo->max_cs_threads * devinfo->subslice_total - 1;
 #if GFX_VER < 11
          vfe.ResetGatewayTimer =
             Resettingrelativetimerandlatchingtheglobaltimestamp;

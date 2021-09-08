@@ -2589,14 +2589,12 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
 
-   const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
-
    const UNUSED struct anv_shader_bin *cs_bin = pipeline->cs;
    const struct intel_device_info *devinfo = &device->info;
 
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
       cfe.MaximumNumberofThreads =
-         devinfo->max_cs_threads * subslices - 1;
+         devinfo->max_cs_threads * devinfo->subslice_total - 1;
       cfe.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, cs_bin);
    }
 }
@@ -2618,8 +2616,6 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
       ALIGN(cs_prog_data->push.per_thread.regs * dispatch.threads +
             cs_prog_data->push.cross_thread.regs, 2);
 
-   const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
-
    const struct anv_shader_bin *cs_bin = pipeline->cs;
 
    anv_batch_emit(&pipeline->base.batch, GENX(MEDIA_VFE_STATE), vfe) {
@@ -2629,7 +2625,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
       vfe.GPGPUMode              = true;
 #endif
       vfe.MaximumNumberofThreads =
-         devinfo->max_cs_threads * subslices - 1;
+         devinfo->max_cs_threads * devinfo->subslice_total - 1;
       vfe.NumberofURBEntries     = GFX_VER <= 7 ? 0 : 2;
 #if GFX_VER < 11
       vfe.ResetGatewayTimer      = true;

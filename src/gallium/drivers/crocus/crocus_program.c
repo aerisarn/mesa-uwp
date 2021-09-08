@@ -2645,9 +2645,8 @@ crocus_get_scratch_space(struct crocus_context *ice,
 
    struct crocus_bo **bop = &ice->shaders.scratch_bos[encoded_size][stage];
 
-   unsigned subslice_total = screen->subslice_total;
-   subslice_total = 4 * devinfo->num_slices;
-   //   assert(subslice_total >= screen->subslice_total);
+   /* TODO: This doesn't seem to match brw_alloc_stage_scratch */
+   unsigned cs_subslices = 4 * devinfo->num_slices;
 
    if (!*bop) {
       unsigned scratch_ids_per_subslice = devinfo->max_cs_threads;
@@ -2658,7 +2657,7 @@ crocus_get_scratch_space(struct crocus_context *ice,
          [MESA_SHADER_TESS_EVAL] = devinfo->max_tes_threads,
          [MESA_SHADER_GEOMETRY]  = devinfo->max_gs_threads,
          [MESA_SHADER_FRAGMENT]  = devinfo->max_wm_threads,
-         [MESA_SHADER_COMPUTE]   = scratch_ids_per_subslice * subslice_total,
+         [MESA_SHADER_COMPUTE]   = scratch_ids_per_subslice * cs_subslices,
       };
 
       uint32_t size = per_thread_scratch * max_threads[stage];

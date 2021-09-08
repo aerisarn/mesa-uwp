@@ -167,6 +167,12 @@ struct intel_device_info
                           DIV_ROUND_UP(INTEL_DEVICE_MAX_SUBSLICES, 8)];
 
    /**
+    * The number of enabled subslices (considering fusing). For exactly which
+    * subslices are enabled, see subslice_masks[].
+    */
+   unsigned subslice_total;
+
+   /**
     * An array of bit mask of EUs available, use eu_slice_stride &
     * eu_subslice_stride to access this array.
     */
@@ -330,17 +336,6 @@ intel_device_info_eu_available(const struct intel_device_info *devinfo,
       subslice * devinfo->eu_subslice_stride;
 
    return (devinfo->eu_masks[subslice_offset + eu / 8] & (1U << eu % 8)) != 0;
-}
-
-static inline uint32_t
-intel_device_info_subslice_total(const struct intel_device_info *devinfo)
-{
-   uint32_t total = 0;
-
-   for (uint32_t i = 0; i < devinfo->num_slices; i++)
-      total += __builtin_popcount(devinfo->subslice_masks[i]);
-
-   return total;
 }
 
 static inline uint32_t

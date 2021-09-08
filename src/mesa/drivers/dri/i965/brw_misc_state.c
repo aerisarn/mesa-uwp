@@ -497,9 +497,8 @@ brw_emit_select_pipeline(struct brw_context *brw, enum brw_pipeline pipeline)
       /* We seem to have issues with geometry flickering when 3D and compute
        * are combined in the same batch and this appears to fix it.
        */
-      const uint32_t subslices = MAX2(brw->screen->subslice_total, 1);
       const uint32_t maxNumberofThreads =
-         devinfo->max_cs_threads * subslices - 1;
+         devinfo->max_cs_threads * devinfo->subslice_total - 1;
 
       BEGIN_BATCH(9);
       OUT_BATCH(MEDIA_VFE_STATE << 16 | (9 - 2));

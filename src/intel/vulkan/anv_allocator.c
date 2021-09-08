@@ -1464,7 +1464,7 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
    if (bo != NULL)
       return bo;
 
-   unsigned subslices = MAX2(device->physical->subslice_total, 1);
+   unsigned subslices = devinfo->subslice_total;
 
    /* The documentation for 3DSTATE_PS "Scratch Space Base Pointer" says:
     *

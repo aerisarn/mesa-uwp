@@ -813,9 +813,6 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
    slab_create_parent(&screen->transfer_pool,
                       sizeof(struct crocus_transfer), 64);
 
-   screen->subslice_total = intel_device_info_subslice_total(&screen->devinfo);
-   assert(screen->subslice_total >= 1);
-
    struct pipe_screen *pscreen = &screen->base;
 
    crocus_init_screen_fence_functions(pscreen);

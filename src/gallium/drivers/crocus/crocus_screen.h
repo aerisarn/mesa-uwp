@@ -201,8 +201,6 @@ struct crocus_screen {
       bool always_flush_cache;
    } driconf;
 
-   unsigned subslice_total;
-
    uint64_t aperture_bytes;
 
    struct intel_device_info devinfo;

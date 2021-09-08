@@ -4321,15 +4321,8 @@ genX(upload_cs_state)(struct brw_context *brw)
          vfe.PerThreadScratchSpace = per_thread_scratch_value;
       }
 
-      /* If brw->screen->subslice_total is greater than one, then
-       * devinfo->max_cs_threads stores number of threads per sub-slice;
-       * thus we need to multiply by that number by subslices to get
-       * the actual maximum number of threads; the -1 is because the HW
-       * has a bias of 1 (would not make sense to say the maximum number
-       * of threads is 0).
-       */
-      const uint32_t subslices = MAX2(brw->screen->subslice_total, 1);
-      vfe.MaximumNumberofThreads = devinfo->max_cs_threads * subslices - 1;
+      vfe.MaximumNumberofThreads =
+         devinfo->max_cs_threads * devinfo->subslice_total - 1;
       vfe.NumberofURBEntries = GFX_VER >= 8 ? 2 : 0;
 #if GFX_VER < 11
       vfe.ResetGatewayTimer =

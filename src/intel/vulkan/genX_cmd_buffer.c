@@ -5401,11 +5401,9 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
        * GPGPU and 3D are back-to-back and this seems to fix it.  We don't
        * really know why.
        */
-      const uint32_t subslices =
-         MAX2(cmd_buffer->device->physical->subslice_total, 1);
       anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_VFE_STATE), vfe) {
          vfe.MaximumNumberofThreads =
-            devinfo->max_cs_threads * subslices - 1;
+            devinfo->max_cs_threads * devinfo->subslice_total - 1;
          vfe.NumberofURBEntries     = 2;
          vfe.URBEntryAllocationSize = 2;
       }

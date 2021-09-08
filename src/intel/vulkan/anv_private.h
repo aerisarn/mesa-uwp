@@ -960,8 +960,6 @@ struct anv_physical_device {
 
     bool                                        always_flush_cache;
 
-    uint32_t                                    subslice_total;
-
     struct {
       uint32_t                                  family_count;
       struct anv_queue_family                   families[ANV_MAX_QUEUE_FAMILIES];

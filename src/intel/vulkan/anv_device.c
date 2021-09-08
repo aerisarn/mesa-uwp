@@ -940,9 +940,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->has_userptr_probe =
       anv_gem_get_param(fd, I915_PARAM_HAS_USERPTR_PROBE);
 
-   /* GENs prior to 8 do not support EU/Subslice info */
-   device->subslice_total = intel_device_info_subslice_total(&device->info);
-
    device->compiler = brw_compiler_create(NULL, &device->info);
    if (device->compiler == NULL) {
       result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);

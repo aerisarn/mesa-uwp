@@ -2611,9 +2611,6 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    isl_device_init(&screen->isl_dev, &screen->devinfo,
                    screen->hw_has_swizzling);
 
-   /* GENs prior to 8 do not support EU/Subslice info */
-   screen->subslice_total = intel_device_info_subslice_total(devinfo);
-
    /* Gfx7-7.5 kernel requirements / command parser saga:
     *
     * - pre-v3.16:

@@ -1538,5 +1538,13 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    intel_get_aperture_size(fd, &devinfo->aperture_bytes);
    devinfo->has_tiling_uapi = has_get_tiling(fd);
 
+   devinfo->subslice_total = 0;
+   for (uint32_t i = 0; i < devinfo->num_slices; i++)
+      devinfo->subslice_total += __builtin_popcount(devinfo->subslice_masks[i]);
+
+   /* Gfx7 and older do not support EU/Subslice info */
+   assert(devinfo->subslice_total >= 1 || devinfo->ver <= 7);
+   devinfo->subslice_total = MAX2(devinfo->subslice_total, 1);
+
    return true;
 }

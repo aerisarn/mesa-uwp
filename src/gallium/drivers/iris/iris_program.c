@@ -2334,7 +2334,7 @@ iris_get_scratch_space(struct iris_context *ice,
     * For, Gfx11+, scratch space allocation is based on the number of threads
     * in the base configuration.
     */
-   unsigned subslice_total = screen->subslice_total;
+   unsigned subslice_total = devinfo->subslice_total;
    if (devinfo->verx10 == 125)
       subslice_total = 32;
    else if (devinfo->ver == 12)
@@ -2343,7 +2343,7 @@ iris_get_scratch_space(struct iris_context *ice,
       subslice_total = 8;
    else if (devinfo->ver < 11)
       subslice_total = 4 * devinfo->num_slices;
-   assert(subslice_total >= screen->subslice_total);
+   assert(subslice_total >= devinfo->subslice_total);
 
    if (!*bop) {
       unsigned scratch_ids_per_subslice = devinfo->max_cs_threads;
