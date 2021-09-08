@@ -454,7 +454,7 @@ static void dest_free_indirects(nir_dest *dest)
 /* NOTE: if the instruction you are copying a src to is already added
  * to the IR, use nir_instr_rewrite_src() instead.
  */
-void nir_src_copy(nir_src *dest, const nir_src *src)
+void nir_src_copy(nir_src *dest, const nir_src *src, void *mem_ctx)
 {
    src_free_indirects(dest);
 
@@ -466,14 +466,14 @@ void nir_src_copy(nir_src *dest, const nir_src *src)
       dest->reg.reg = src->reg.reg;
       if (src->reg.indirect) {
          dest->reg.indirect = calloc(1, sizeof(nir_src));
-         nir_src_copy(dest->reg.indirect, src->reg.indirect);
+         nir_src_copy(dest->reg.indirect, src->reg.indirect, mem_ctx);
       } else {
          dest->reg.indirect = NULL;
       }
    }
 }
 
-void nir_dest_copy(nir_dest *dest, const nir_dest *src)
+void nir_dest_copy(nir_dest *dest, const nir_dest *src, nir_instr *instr)
 {
    /* Copying an SSA definition makes no sense whatsoever. */
    assert(!src->is_ssa);
@@ -486,16 +486,17 @@ void nir_dest_copy(nir_dest *dest, const nir_dest *src)
    dest->reg.reg = src->reg.reg;
    if (src->reg.indirect) {
       dest->reg.indirect = calloc(1, sizeof(nir_src));
-      nir_src_copy(dest->reg.indirect, src->reg.indirect);
+      nir_src_copy(dest->reg.indirect, src->reg.indirect, instr);
    } else {
       dest->reg.indirect = NULL;
    }
 }
 
 void
-nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src)
+nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
+                 nir_alu_instr *instr)
 {
-   nir_src_copy(&dest->src, &src->src);
+   nir_src_copy(&dest->src, &src->src, &instr->instr);
    dest->abs = src->abs;
    dest->negate = src->negate;
    for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
@@ -503,9 +504,10 @@ nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src)
 }
 
 void
-nir_alu_dest_copy(nir_alu_dest *dest, const nir_alu_dest *src)
+nir_alu_dest_copy(nir_alu_dest *dest, const nir_alu_dest *src,
+                  nir_alu_instr *instr)
 {
-   nir_dest_copy(&dest->dest, &src->dest);
+   nir_dest_copy(&dest->dest, &src->dest, &instr->instr);
    dest->write_mask = src->write_mask;
    dest->saturate = src->saturate;
 }
@@ -1680,7 +1682,7 @@ nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src)
    assert(!src_is_valid(src) || src->parent_instr == instr);
 
    src_remove_all_uses(src);
-   nir_src_copy(src, &new_src);
+   nir_src_copy(src, &new_src, instr);
    src_add_all_uses(src, instr, NULL);
 }
 
@@ -1704,7 +1706,7 @@ nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src)
    assert(!src_is_valid(src) || src->parent_if == if_stmt);
 
    src_remove_all_uses(src);
-   nir_src_copy(src, &new_src);
+   nir_src_copy(src, &new_src, if_stmt);
    src_add_all_uses(src, NULL, if_stmt);
 }
 
@@ -1723,7 +1725,7 @@ nir_instr_rewrite_dest(nir_instr *instr, nir_dest *dest, nir_dest new_dest)
    /* We can't re-write with an SSA def */
    assert(!new_dest.is_ssa);
 
-   nir_dest_copy(dest, &new_dest);
+   nir_dest_copy(dest, &new_dest, instr);
 
    dest->reg.parent_instr = instr;
    list_addtail(&dest->reg.def_link, &new_dest.reg.reg->defs);

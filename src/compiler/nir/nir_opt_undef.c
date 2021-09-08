@@ -56,7 +56,8 @@ opt_undef_csel(nir_alu_instr *instr)
        */
       nir_instr_rewrite_src(&instr->instr, &instr->src[0].src,
                             instr->src[i == 1 ? 2 : 1].src);
-      nir_alu_src_copy(&instr->src[0], &instr->src[i == 1 ? 2 : 1]);
+      nir_alu_src_copy(&instr->src[0], &instr->src[i == 1 ? 2 : 1],
+                       instr);
 
       nir_src empty_src;
       memset(&empty_src, 0, sizeof(empty_src));

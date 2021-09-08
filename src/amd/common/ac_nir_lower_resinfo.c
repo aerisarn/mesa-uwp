@@ -279,7 +279,7 @@ static bool lower_resinfo(nir_builder *b, nir_instr *instr, void *data)
                new_tex->texture_index = tex->texture_index;
                new_tex->sampler_index = tex->sampler_index;
                new_tex->dest_type = nir_type_int32;
-               nir_src_copy(&new_tex->src[0].src, &tex->src[i].src);
+               nir_src_copy(&new_tex->src[0].src, &tex->src[i].src, &new_tex->instr);
                new_tex->src[0].src_type = tex->src[i].src_type;
                nir_ssa_dest_init(&new_tex->instr, &new_tex->dest,
                                  nir_tex_instr_dest_size(new_tex), 32, NULL);
