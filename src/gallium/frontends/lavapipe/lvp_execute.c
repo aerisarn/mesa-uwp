@@ -2525,6 +2525,8 @@ static void handle_draw_indirect(struct vk_cmd_queue_entry *cmd,
       state->info.index_size = state->index_size;
       state->info.index.resource = state->index_buffer;
       state->info.max_index = ~0;
+      if (state->info.primitive_restart)
+         state->info.restart_index = util_prim_restart_index_from_size(state->info.index_size);
    } else
       state->info.index_size = 0;
    state->indirect_info.offset = cmd->u.draw_indirect.offset;
