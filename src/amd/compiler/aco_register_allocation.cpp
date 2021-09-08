@@ -1987,69 +1987,65 @@ get_regs_for_phis(ra_ctx& ctx, Block& block, RegisterFile& register_file,
       if (definition.isKill())
          continue;
 
-      if (!definition.isFixed()) {
-         std::vector<std::pair<Operand, Definition>> parallelcopy;
-         definition.setFixed(get_reg(ctx, register_file, definition.getTemp(), parallelcopy, phi));
-         update_renames(ctx, register_file, parallelcopy, phi, rename_not_killed_ops);
+      if (definition.isFixed()) {
+         instructions.emplace_back(std::move(phi));
+         continue;
+      }
 
-         /* process parallelcopy */
-         for (std::pair<Operand, Definition> pc : parallelcopy) {
-            /* see if it's a copy from a different phi */
-            // TODO: prefer moving some previous phis over live-ins
-            // TODO: somehow prevent phis fixed before the RA from being updated (shouldn't be a
-            // problem in practice since they can only be fixed to exec)
-            Instruction* prev_phi = NULL;
-            std::vector<aco_ptr<Instruction>>::iterator phi_it;
-            for (phi_it = instructions.begin(); phi_it != instructions.end(); ++phi_it) {
-               if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
-                  prev_phi = phi_it->get();
-            }
-            if (prev_phi) {
-               /* if so, just update that phi's register */
-               prev_phi->definitions[0].setFixed(pc.second.physReg());
-               ctx.assignments[prev_phi->definitions[0].tempId()].set(pc.second);
-               continue;
-            }
+      std::vector<std::pair<Operand, Definition>> parallelcopy;
+      definition.setFixed(get_reg(ctx, register_file, definition.getTemp(), parallelcopy, phi));
+      update_renames(ctx, register_file, parallelcopy, phi, rename_not_killed_ops);
 
-            /* rename */
-            std::unordered_map<unsigned, Temp>::iterator orig_it =
-               ctx.orig_names.find(pc.first.tempId());
-            Temp orig = pc.first.getTemp();
-            if (orig_it != ctx.orig_names.end())
-               orig = orig_it->second;
-            else
-               ctx.orig_names[pc.second.tempId()] = orig;
-            ctx.renames[block.index][orig.id()] = pc.second.getTemp();
-
-            /* otherwise, this is a live-in and we need to create a new phi
-             * to move it in this block's predecessors */
-            aco_opcode opcode =
-               pc.first.getTemp().is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
-            std::vector<unsigned>& preds =
-               pc.first.getTemp().is_linear() ? block.linear_preds : block.logical_preds;
-            aco_ptr<Instruction> new_phi{
-               create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
-            new_phi->definitions[0] = pc.second;
-            for (unsigned i = 0; i < preds.size(); i++)
-               new_phi->operands[i] = Operand(pc.first);
-            instructions.emplace_back(std::move(new_phi));
-
-            /* Remove from live_out_per_block (now used for live-in), because handle_loop_phis()
-             * would re-create this phi later if this is a loop header.
-             */
-            live_in.erase(orig.id());
+      /* process parallelcopy */
+      for (std::pair<Operand, Definition> pc : parallelcopy) {
+         /* see if it's a copy from a different phi */
+         // TODO: prefer moving some previous phis over live-ins
+         // TODO: somehow prevent phis fixed before the RA from being updated (shouldn't be a
+         // problem in practice since they can only be fixed to exec)
+         Instruction* prev_phi = NULL;
+         std::vector<aco_ptr<Instruction>>::iterator phi_it;
+         for (phi_it = instructions.begin(); phi_it != instructions.end(); ++phi_it) {
+            if ((*phi_it)->definitions[0].tempId() == pc.first.tempId())
+               prev_phi = phi_it->get();
+         }
+         if (prev_phi) {
+            /* if so, just update that phi's register */
+            prev_phi->definitions[0].setFixed(pc.second.physReg());
+            ctx.assignments[prev_phi->definitions[0].tempId()].set(pc.second);
+            continue;
          }
 
-         register_file.fill(definition);
-         ctx.assignments[definition.tempId()].set(definition);
+         /* rename */
+         std::unordered_map<unsigned, Temp>::iterator orig_it =
+            ctx.orig_names.find(pc.first.tempId());
+         Temp orig = pc.first.getTemp();
+         if (orig_it != ctx.orig_names.end())
+            orig = orig_it->second;
+         else
+            ctx.orig_names[pc.second.tempId()] = orig;
+         ctx.renames[block.index][orig.id()] = pc.second.getTemp();
+
+         /* otherwise, this is a live-in and we need to create a new phi
+          * to move it in this block's predecessors */
+         aco_opcode opcode =
+            pc.first.getTemp().is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
+         std::vector<unsigned>& preds =
+            pc.first.getTemp().is_linear() ? block.linear_preds : block.logical_preds;
+         aco_ptr<Instruction> new_phi{
+            create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
+         new_phi->definitions[0] = pc.second;
+         for (unsigned i = 0; i < preds.size(); i++)
+            new_phi->operands[i] = Operand(pc.first);
+         instructions.emplace_back(std::move(new_phi));
+
+         /* Remove from live_out_per_block (now used for live-in), because handle_loop_phis()
+          * would re-create this phi later if this is a loop header.
+          */
+         live_in.erase(orig.id());
       }
 
-      /* update phi affinities */
-      for (const Operand& op : phi->operands) {
-         if (op.isTemp() && op.regClass() == phi->definitions[0].regClass())
-            ctx.assignments[op.tempId()].affinity = definition.tempId();
-      }
-
+      register_file.fill(definition);
+      ctx.assignments[definition.tempId()].set(definition);
       instructions.emplace_back(std::move(phi));
    }
 }
