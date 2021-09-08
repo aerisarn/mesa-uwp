@@ -238,8 +238,6 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
 {
    struct iris_resource *res = (void *) p_res;
 
-   assert(!iris_resource_unfinished_aux_import(res));
-
    *surf = (struct blorp_surf) {
       .surf = &res->surf,
       .addr = (struct blorp_address) {
@@ -461,11 +459,6 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          pipe_format_for_aspect(info->src.format, aspect);
       enum pipe_format dst_pfmt =
          pipe_format_for_aspect(info->dst.format, aspect);
-
-      if (iris_resource_unfinished_aux_import(src_res))
-         iris_resource_finish_aux_import(ctx->screen, src_res);
-      if (iris_resource_unfinished_aux_import(dst_res))
-         iris_resource_finish_aux_import(ctx->screen, dst_res);
 
       struct iris_format_info src_fmt =
          iris_format_for_usage(devinfo, src_pfmt, ISL_SURF_USAGE_TEXTURE_BIT);
@@ -741,13 +734,6 @@ iris_resource_copy_region(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   struct iris_resource *src = (void *) p_src;
-   struct iris_resource *dst = (void *) p_dst;
-
-   if (iris_resource_unfinished_aux_import(src))
-      iris_resource_finish_aux_import(ctx->screen, src);
-   if (iris_resource_unfinished_aux_import(dst))
-      iris_resource_finish_aux_import(ctx->screen, dst);
 
    /* Use MI_COPY_MEM_MEM for tiny (<= 16 byte, % 4) buffer copies. */
    if (p_src->target == PIPE_BUFFER && p_dst->target == PIPE_BUFFER &&
@@ -777,7 +763,7 @@ iris_resource_copy_region(struct pipe_context *ctx,
                        dsty, dstz, &s_src_res->base.b, src_level, src_box);
    }
 
-   iris_flush_and_dirty_for_history(ice, batch, dst,
+   iris_flush_and_dirty_for_history(ice, batch, (struct iris_resource *)p_dst,
                                     PIPE_CONTROL_RENDER_TARGET_FLUSH | PIPE_CONTROL_TILE_CACHE_FLUSH,
                                     "cache history: post copy_region");
 }

@@ -488,16 +488,6 @@ enum isl_aux_usage iris_image_view_aux_usage(struct iris_context *ice,
 enum isl_format iris_image_view_get_format(struct iris_context *ice,
                                            const struct pipe_image_view *img);
 
-static inline bool
-iris_resource_unfinished_aux_import(struct iris_resource *res)
-{
-   return res->aux.bo == NULL && res->mod_info &&
-      res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
-}
-
-void iris_resource_finish_aux_import(struct pipe_screen *pscreen,
-                                     struct iris_resource *res);
-
 bool iris_has_invalid_primary(const struct iris_resource *res,
                               unsigned start_level, unsigned num_levels,
                               unsigned start_layer, unsigned num_layers);

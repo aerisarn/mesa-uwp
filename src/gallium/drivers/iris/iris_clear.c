@@ -704,11 +704,7 @@ iris_clear_texture(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
-   struct iris_resource *res = (void *) p_res;
    const struct intel_device_info *devinfo = &screen->devinfo;
-
-   if (iris_resource_unfinished_aux_import(res))
-      iris_resource_finish_aux_import(ctx->screen, res);
 
    if (util_format_is_depth_or_stencil(p_res->format)) {
       const struct util_format_unpack_description *unpack =

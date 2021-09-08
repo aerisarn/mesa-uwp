@@ -898,12 +898,11 @@ import_aux_info(struct iris_resource *res,
    res->aux.offset = aux_res->aux.offset;
 }
 
-void
+static void
 iris_resource_finish_aux_import(struct pipe_screen *pscreen,
                                 struct iris_resource *res)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   assert(iris_resource_unfinished_aux_import(res));
 
    /* Create an array of resources. Combining main and aux planes is easier
     * with indexing as opposed to scanning the linked list.
@@ -1276,6 +1275,12 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       res->bo = NULL;
    }
 
+   if (get_num_planes(&res->base.b) ==
+       iris_get_dmabuf_modifier_planes(pscreen, whandle->modifier,
+                                       whandle->format)) {
+      iris_resource_finish_aux_import(pscreen, res);
+   }
+
    return &res->base.b;
 
 fail:
@@ -1418,13 +1423,9 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    bool mod_with_aux =
       res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
    bool wants_aux = mod_with_aux && plane > 0;
+   struct iris_bo *bo = wants_aux ? res->aux.bo : res->bo;
    bool result;
    unsigned handle;
-
-   if (iris_resource_unfinished_aux_import(res))
-      iris_resource_finish_aux_import(pscreen, res);
-
-   struct iris_bo *bo = wants_aux ? res->aux.bo : res->bo;
 
    iris_resource_disable_aux_on_first_query(resource, handle_usage);
 
@@ -2043,9 +2044,6 @@ iris_transfer_map(struct pipe_context *ctx,
    struct iris_resource *res = (struct iris_resource *)resource;
    struct isl_surf *surf = &res->surf;
 
-   if (iris_resource_unfinished_aux_import(res))
-      iris_resource_finish_aux_import(ctx->screen, res);
-
    if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       /* Replace the backing storage with a fresh buffer for non-async maps */
       if (!(usage & (PIPE_MAP_UNSYNCHRONIZED |
@@ -2280,9 +2278,6 @@ iris_texture_subdata(struct pipe_context *ctx,
    const struct isl_surf *surf = &res->surf;
 
    assert(resource->target != PIPE_BUFFER);
-
-   if (iris_resource_unfinished_aux_import(res))
-      iris_resource_finish_aux_import(ctx->screen, res);
 
    /* Just use the transfer-based path for linear buffers - it will already
     * do a direct mapping, or a simple linear staging buffer.

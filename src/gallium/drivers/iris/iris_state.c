@@ -2340,8 +2340,6 @@ fill_surface_state(struct isl_device *isl_dev,
       .y_offset_sa = tile_y_sa,
    };
 
-   assert(!iris_resource_unfinished_aux_import(res));
-
    if (aux_usage != ISL_AUX_USAGE_NONE) {
       f.aux_surf = &res->aux.surf;
       f.aux_usage = aux_usage;
@@ -2435,9 +2433,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
          isv->view.array_len =
             tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
       }
-
-      if (iris_resource_unfinished_aux_import(isv->res))
-         iris_resource_finish_aux_import(&screen->base, isv->res);
 
       unsigned aux_modes = isv->res->aux.sampler_usages;
       while (aux_modes) {
@@ -2597,9 +2592,6 @@ iris_create_surface(struct pipe_context *ctx,
 #endif
 
    if (!isl_format_is_compressed(res->surf.format)) {
-      if (iris_resource_unfinished_aux_import(res))
-         iris_resource_finish_aux_import(&screen->base, res);
-
       void *map = surf->surface_state.cpu;
       UNUSED void *map_read = surf->surface_state_read.cpu;
 
