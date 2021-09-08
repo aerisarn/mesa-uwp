@@ -3627,7 +3627,8 @@ generate_variant(struct llvmpipe_context *lp,
          !key->blend.alpha_to_coverage &&
          !key->depth.enabled &&
          !shader->info.base.uses_kill &&
-         !shader->info.base.writes_samplemask;
+         !shader->info.base.writes_samplemask &&
+         !shader->info.base.uses_fbfetch;
 
    variant->opaque =
          no_kill &&
