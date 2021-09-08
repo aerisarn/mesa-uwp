@@ -89,6 +89,7 @@ struct zink_program_descriptor_data_cached {
    struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
    unsigned num_refs[ZINK_DESCRIPTOR_TYPES];
    union zink_program_descriptor_refs *refs[ZINK_DESCRIPTOR_TYPES];
+   unsigned cache_misses[ZINK_DESCRIPTOR_TYPES];
 };
 
 
@@ -1385,6 +1386,8 @@ update_descriptors_internal(struct zink_context *ctx, enum zink_descriptor_type 
 static void
 zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_program *pg);
 
+#define MAX_CACHE_MISSES 50
+
 void
 zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 {
@@ -1423,23 +1426,39 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
 
    {
       for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
-         ctx->dd->changed[is_compute][h] |= ctx->dd->pg[is_compute] != pg;
-         if (pg->dsl[h + 1]) {
-            /* null set has null pool */
-            if (pdd_cached(pg)->pool[h]) {
-               zds = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit);
-            } else
-               zds = NULL;
-            /* reuse dummy set for bind */
-            desc_set = zds ? zds->desc_set : ctx->dd->dummy_set;
-            update_descriptors_internal(ctx, h, zds, pg, cache_hit);
+         if (pdd_cached(pg)->cache_misses[h] < MAX_CACHE_MISSES) {
+            ctx->dd->changed[is_compute][h] |= ctx->dd->pg[is_compute] != pg;
+            if (pg->dsl[h + 1]) {
+               /* null set has null pool */
+               if (pdd_cached(pg)->pool[h]) {
+                  zds = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit);
+                  if (cache_hit) {
+                     pdd_cached(pg)->cache_misses[h] = 0;
+                  } else {
+                     if (++pdd_cached(pg)->cache_misses[h] == MAX_CACHE_MISSES) {
+                        const char *set_names[] = {
+                           "UBO",
+                           "TEXTURES",
+                           "SSBO",
+                           "IMAGES",
+                        };
+                        debug_printf("zink: descriptor cache exploded for prog %p set %s: getting lazy (not a bug, just lettin you know)\n", pg, set_names[h]);
+                     }
+                  }
+               } else
+                  zds = NULL;
+               /* reuse dummy set for bind */
+               desc_set = zds ? zds->desc_set : ctx->dd->dummy_set;
+               update_descriptors_internal(ctx, h, zds, pg, cache_hit);
 
-            VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, bp,
-                                         pg->layout, h + 1, 1, &desc_set,
-                                         0, NULL);
+               VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, bp,
+                                            pg->layout, h + 1, 1, &desc_set,
+                                            0, NULL);
+            }
+         } else {
+            zink_descriptors_update_lazy_masked(ctx, is_compute, BITFIELD_BIT(h), false, false);
          }
          ctx->dd->changed[is_compute][h] = false;
-
       }
    }
    ctx->dd->pg[is_compute] = pg;
@@ -1665,7 +1684,8 @@ zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_prog
       ctx->dd->last_push_usage[pg->is_compute] = pg->dd->push_usage;
    }
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      if (pdd_cached(pg)->pool[i] && !ctx->dd->descriptor_states[pg->is_compute].valid[i])
+      if (pdd_cached(pg)->pool[i] && pdd_cached(pg)->cache_misses[i] < MAX_CACHE_MISSES &&
+          !ctx->dd->descriptor_states[pg->is_compute].valid[i])
          update_descriptor_state(ctx, i, pg->is_compute);
    }
 }
@@ -1673,6 +1693,7 @@ zink_context_update_descriptor_states(struct zink_context *ctx, struct zink_prog
 void
 zink_context_invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type, unsigned start, unsigned count)
 {
+   zink_context_invalidate_descriptor_state_lazy(ctx, shader, type, start, count);
    if (type == ZINK_DESCRIPTOR_TYPE_UBO && !start) {
       /* ubo 0 is the push set */
       ctx->dd->push_state[shader == PIPE_SHADER_COMPUTE] = 0;
