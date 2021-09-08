@@ -133,6 +133,7 @@ panvk_logi_v(const char *format, va_list va);
 #define PANVK_META_COPY_IMG2BUF_NUM_FORMATS 12
 #define PANVK_META_COPY_IMG2IMG_NUM_FORMATS 14
 #define PANVK_META_COPY_NUM_TEX_TYPES 5
+#define PANVK_META_COPY_BUF2BUF_NUM_BLKSIZES 5
 
 static inline unsigned
 panvk_meta_copy_tex_type(unsigned dim, bool isarray)
@@ -172,6 +173,10 @@ struct panvk_meta {
       struct {
          mali_ptr rsd;
       } img2img[PANVK_META_COPY_NUM_TEX_TYPES][PANVK_META_COPY_IMG2IMG_NUM_FORMATS];
+      struct {
+         mali_ptr rsd;
+         struct panfrost_ubo_push pushmap;
+      } buf2buf[PANVK_META_COPY_BUF2BUF_NUM_BLKSIZES];
    } copy;
 };
 
