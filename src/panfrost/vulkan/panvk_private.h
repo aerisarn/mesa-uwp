@@ -130,6 +130,7 @@ panvk_logi_v(const char *format, va_list va);
 #define panvk_stub() assert(!"stub")
 
 #define PANVK_META_COPY_BUF2IMG_NUM_FORMATS 12
+#define PANVK_META_COPY_IMG2BUF_NUM_FORMATS 12
 #define PANVK_META_COPY_IMG2IMG_NUM_FORMATS 14
 #define PANVK_META_COPY_NUM_TEX_TYPES 5
 
@@ -164,6 +165,10 @@ struct panvk_meta {
          mali_ptr rsd;
          struct panfrost_ubo_push pushmap;
       } buf2img[PANVK_META_COPY_BUF2IMG_NUM_FORMATS];
+      struct {
+         mali_ptr rsd;
+         struct panfrost_ubo_push pushmap;
+      } img2buf[PANVK_META_COPY_NUM_TEX_TYPES][PANVK_META_COPY_IMG2BUF_NUM_FORMATS];
       struct {
          mali_ptr rsd;
       } img2img[PANVK_META_COPY_NUM_TEX_TYPES][PANVK_META_COPY_IMG2IMG_NUM_FORMATS];
