@@ -2107,7 +2107,6 @@ handle_live_in(ra_ctx& ctx, Temp val, Block* block)
          assert(ctx.assignments[ops[i].id()].assigned);
          assert(ops[i].regClass() == new_val.regClass());
          phi->operands[i].setFixed(ctx.assignments[ops[i].id()].reg);
-         ctx.assignments.back().affinity = ops[i].id();
       }
       block->instructions.insert(block->instructions.begin(), std::move(phi));
    }
