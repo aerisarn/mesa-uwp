@@ -4288,6 +4288,14 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       ac_build_export_prim(&ctx->ac, &prim);
       break;
    }
+   case nir_intrinsic_gds_atomic_add_amd: {
+      LLVMValueRef store_val = get_src(ctx, instr->src[0]);
+      LLVMValueRef addr = get_src(ctx, instr->src[1]);
+      LLVMTypeRef gds_ptr_type = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);
+      LLVMValueRef gds_base = LLVMBuildIntToPtr(ctx->ac.builder, addr, gds_ptr_type, "");
+      ac_build_atomic_rmw(&ctx->ac, LLVMAtomicRMWBinOpAdd, gds_base, store_val, "workgroup-one-as");
+      break;
+   }
    case nir_intrinsic_export_vertex_amd:
       ctx->abi->export_vertex(ctx->abi);
       break;
@@ -5433,6 +5441,32 @@ static void setup_shared(struct ac_nir_context *ctx, struct nir_shader *nir)
       LLVMBuildBitCast(ctx->ac.builder, lds, LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS), "");
 }
 
+static void setup_gds(struct ac_nir_context *ctx, nir_function_impl *impl)
+{
+   bool has_gds_atomic = false;
+
+   if (ctx->ac.gfx_level >= GFX10 &&
+       (ctx->stage == MESA_SHADER_VERTEX ||
+        ctx->stage == MESA_SHADER_TESS_EVAL ||
+        ctx->stage == MESA_SHADER_GEOMETRY)) {
+
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+            has_gds_atomic |= intrin->intrinsic == nir_intrinsic_gds_atomic_add_amd;
+         }
+      }
+   }
+
+   unsigned gds_size = has_gds_atomic ? 0x100 : 0;
+
+   if (gds_size)
+      ac_llvm_add_target_dep_function_attr(ctx->main_function, "amdgpu-gds-size", gds_size);
+}
+
 void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
                       const struct ac_shader_args *args, struct nir_shader *nir)
 {
@@ -5471,6 +5505,7 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 
    setup_scratch(&ctx, nir);
    setup_constant_data(&ctx, nir);
+   setup_gds(&ctx, func->impl);
 
    if (gl_shader_stage_is_compute(nir->info.stage))
       setup_shared(&ctx, nir);
