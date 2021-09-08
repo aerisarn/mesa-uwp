@@ -74,7 +74,7 @@ st_nir_fixup_varying_slots(struct st_context *st, nir_shader *shader,
    assert(!st->allow_st_finalize_nir_twice);
 
    nir_foreach_variable_with_modes(var, shader, mode) {
-      if (var->data.location >= VARYING_SLOT_VAR0) {
+      if (var->data.location >= VARYING_SLOT_VAR0 && var->data.location < VARYING_SLOT_PATCH0) {
          var->data.location += 9;
       } else if (var->data.location == VARYING_SLOT_PNTC) {
          var->data.location = VARYING_SLOT_VAR8;
