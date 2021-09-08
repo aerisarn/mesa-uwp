@@ -1810,6 +1810,7 @@ static void
 write_if(write_ctx *ctx, nir_if *nif)
 {
    write_src(ctx, &nif->condition);
+   blob_write_uint8(ctx->blob, nif->control);
 
    write_cf_list(ctx, &nif->then_list);
    write_cf_list(ctx, &nif->else_list);
@@ -1821,6 +1822,7 @@ read_if(read_ctx *ctx, struct exec_list *cf_list)
    nir_if *nif = nir_if_create(ctx->nir);
 
    read_src(ctx, &nif->condition, nif);
+   nif->control = blob_read_uint8(ctx->blob);
 
    nir_cf_node_insert_end(cf_list, &nif->cf_node);
 
@@ -1831,6 +1833,7 @@ read_if(read_ctx *ctx, struct exec_list *cf_list)
 static void
 write_loop(write_ctx *ctx, nir_loop *loop)
 {
+   blob_write_uint8(ctx->blob, loop->control);
    write_cf_list(ctx, &loop->body);
 }
 
@@ -1841,6 +1844,7 @@ read_loop(read_ctx *ctx, struct exec_list *cf_list)
 
    nir_cf_node_insert_end(cf_list, &loop->cf_node);
 
+   loop->control = blob_read_uint8(ctx->blob);
    read_cf_list(ctx, &loop->body);
 }
 
