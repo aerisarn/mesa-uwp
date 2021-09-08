@@ -36,7 +36,11 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    /* unref all used resources */
    set_foreach_remove(bs->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      zink_resource_object_usage_unset(obj, bs);
+      if (!zink_resource_object_usage_unset(obj, bs)) {
+         obj->unordered_barrier = false;
+         obj->access = 0;
+         obj->access_stage = 0;
+      }
       util_dynarray_append(&bs->unref_resources, struct zink_resource_object*, obj);
    }
 
