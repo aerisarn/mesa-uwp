@@ -5498,8 +5498,10 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
          }
       }
 
-      state->alpha_adjust_lo |= (alpha_adjust & 0x1) << loc;
-      state->alpha_adjust_hi |= (alpha_adjust >> 1) << loc;
+      if (alpha_adjust) {
+         state->alpha_adjust_lo |= (alpha_adjust & 0x1) << loc;
+         state->alpha_adjust_hi |= (alpha_adjust >> 1) << loc;
+      }
 
       if (post_shuffle)
          state->post_shuffle |= 1u << loc;
