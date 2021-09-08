@@ -56,6 +56,7 @@ panvk_per_arch(meta_init)(struct panvk_physical_device *dev)
    panvk_pool_init(&dev->meta.desc_pool, &dev->pdev, NULL, 0,
                    16 * 1024, "panvk_meta descriptor pool", false);
    panvk_per_arch(meta_blit_init)(dev);
+   panvk_per_arch(meta_copy_init)(dev);
    panvk_per_arch(meta_clear_init)(dev);
 }
 

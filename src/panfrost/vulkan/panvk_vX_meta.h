@@ -48,3 +48,6 @@ panvk_per_arch(meta_blit_init)(struct panvk_physical_device *dev);
 
 void
 panvk_per_arch(meta_blit_cleanup)(struct panvk_physical_device *dev);
+
+void
+panvk_per_arch(meta_copy_init)(struct panvk_physical_device *dev);

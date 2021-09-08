@@ -129,6 +129,17 @@ panvk_logi_v(const char *format, va_list va);
 
 #define panvk_stub() assert(!"stub")
 
+#define PANVK_META_COPY_IMG2IMG_NUM_FORMATS 14
+#define PANVK_META_COPY_NUM_TEX_TYPES 5
+
+static inline unsigned
+panvk_meta_copy_tex_type(unsigned dim, bool isarray)
+{
+   assert(dim > 0 && dim <= 3);
+   assert(dim < 3 || !isarray);
+   return (((dim - 1) << 1) | (isarray ? 1 : 0));
+}
+
 struct panvk_meta {
    struct panvk_pool bin_pool;
    struct panvk_pool desc_pool;
@@ -146,6 +157,12 @@ struct panvk_meta {
       mali_ptr shader;
       struct pan_shader_info shader_info;
    } clear_attachment[MAX_RTS][3]; /* 3 base types */
+
+   struct {
+      struct {
+         mali_ptr rsd;
+      } img2img[PANVK_META_COPY_NUM_TEX_TYPES][PANVK_META_COPY_IMG2IMG_NUM_FORMATS];
+   } copy;
 };
 
 struct panvk_physical_device {
