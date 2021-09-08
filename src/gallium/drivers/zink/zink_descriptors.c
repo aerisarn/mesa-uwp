@@ -1240,7 +1240,6 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
       const bool used = (pg->dd->push_usage & BITFIELD_BIT(pstage)) == BITFIELD_BIT(pstage);
       dynamic_offsets[dynamic_idx] = used ? info->offset : 0;
       if (!cache_hit) {
-         zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, pstage, 0);
          init_write_descriptor(NULL, zds, ZINK_DESCRIPTOR_TYPE_UBO, tgsi_processor_to_shader_stage(pstage), &wds[i], 0);
          if (used) {
             desc_set_res_add(zds, ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_UBO][pstage][0], i, cache_hit);
@@ -1333,7 +1332,7 @@ update_descriptors_internal(struct zink_context *ctx, enum zink_descriptor_type 
          FALLTHROUGH;
          case ZINK_DESCRIPTOR_TYPE_SSBO: {
             VkDescriptorBufferInfo *info;
-            struct zink_resource *res = zink_get_resource_for_descriptor(ctx, type, stage, index);
+            struct zink_resource *res = ctx->di.descriptor_res[type][stage][index];
             if (type == ZINK_DESCRIPTOR_TYPE_UBO)
                info = &ctx->di.ubos[stage][index];
             else
@@ -1499,29 +1498,10 @@ zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *
    return !!bs->dd->desc_sets;
 }
 
-struct zink_resource *
-zink_get_resource_for_descriptor(struct zink_context *ctx, enum zink_descriptor_type type, enum pipe_shader_type shader, int idx)
-{
-   switch (type) {
-   case ZINK_DESCRIPTOR_TYPE_UBO:
-      return zink_resource(ctx->ubos[shader][idx].buffer);
-   case ZINK_DESCRIPTOR_TYPE_SSBO:
-      return zink_resource(ctx->ssbos[shader][idx].buffer);
-   case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-      return ctx->sampler_views[shader][idx] ? zink_resource(ctx->sampler_views[shader][idx]->texture) : NULL;
-   case ZINK_DESCRIPTOR_TYPE_IMAGE:
-      return zink_resource(ctx->image_views[shader][idx].base.resource);
-   default:
-      break;
-   }
-   unreachable("unknown descriptor type!");
-   return NULL;
-}
-
 static uint32_t
 calc_descriptor_state_hash_ubo(struct zink_context *ctx, enum pipe_shader_type shader, int idx, uint32_t hash, bool need_offset)
 {
-   struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_UBO, shader, idx);
+   struct zink_resource *res = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_UBO][shader][idx];
    struct zink_resource_object *obj = res ? res->obj : NULL;
    hash = XXH32(&obj, sizeof(void*), hash);
    void *hash_data = &ctx->ubos[shader][idx].buffer_size;
@@ -1535,7 +1515,7 @@ calc_descriptor_state_hash_ubo(struct zink_context *ctx, enum pipe_shader_type s
 static uint32_t
 calc_descriptor_state_hash_ssbo(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
 {
-   struct zink_resource *res = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_SSBO, shader, idx);
+   struct zink_resource *res = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_SSBO][shader][idx];
    struct zink_resource_object *obj = res ? res->obj : NULL;
    hash = XXH32(&obj, sizeof(void*), hash);
    if (obj) {

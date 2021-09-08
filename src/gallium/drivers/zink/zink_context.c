@@ -3309,7 +3309,7 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res, const uint32_
    unsigned num_image_rebinds_remaining = rebind_mask ? expected_num_rebinds - num_rebinds : res->image_bind_count[0] + res->image_bind_count[1];
    u_foreach_bit(shader, image_mask >> TC_BINDING_IMAGE_VS) {
       for (unsigned slot = 0; num_image_rebinds_remaining && slot < ctx->di.num_images[shader]; slot++) {
-         struct zink_resource *cres = zink_get_resource_for_descriptor(ctx, ZINK_DESCRIPTOR_TYPE_IMAGE, shader, slot);
+         struct zink_resource *cres = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_IMAGE][shader][slot];
          if (res != cres)
             continue;
 
