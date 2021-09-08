@@ -1198,6 +1198,16 @@ mod_plane_is_clear_color(uint64_t modifier, uint32_t plane)
    }
 }
 
+static unsigned
+get_num_planes(const struct pipe_resource *resource)
+{
+   unsigned count = 0;
+   for (const struct pipe_resource *cur = resource; cur; cur = cur->next)
+      count++;
+
+   return count;
+}
+
 static struct pipe_resource *
 iris_resource_from_handle(struct pipe_screen *pscreen,
                           const struct pipe_resource *templ,
@@ -1425,10 +1435,7 @@ iris_resource_get_param(struct pipe_screen *pscreen,
                                                   res->mod_info->modifier,
                                                   res->external_format);
       } else {
-         unsigned count = 0;
-         for (struct pipe_resource *cur = resource; cur; cur = cur->next)
-            count++;
-         *value = count;
+         *value = get_num_planes(&res->base.b);
       }
       return true;
    case PIPE_RESOURCE_PARAM_STRIDE:
