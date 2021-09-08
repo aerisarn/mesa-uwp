@@ -690,7 +690,7 @@ ntt_swizzle_for_write_mask(struct ureg_src src, uint32_t write_mask)
                        (write_mask & TGSI_WRITEMASK_W) ? TGSI_SWIZZLE_W : first_chan);
 }
 
-static struct ureg_dst *
+static struct ureg_dst
 ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
 {
    uint32_t writemask = BITSET_MASK(ssa->num_components);
@@ -703,22 +703,22 @@ ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
 
    c->ssa_temp[ssa->index] = ureg_writemask(dst, writemask);
 
-   return &c->ssa_temp[ssa->index];
+   return c->ssa_temp[ssa->index];
 }
 
-static struct ureg_dst *
+static struct ureg_dst
 ntt_get_dest_decl(struct ntt_compile *c, nir_dest *dest)
 {
    if (dest->is_ssa)
       return ntt_get_ssa_def_decl(c, &dest->ssa);
    else
-      return &c->reg_temp[dest->reg.reg->index];
+      return c->reg_temp[dest->reg.reg->index];
 }
 
 static struct ureg_dst
 ntt_get_dest(struct ntt_compile *c, nir_dest *dest)
 {
-   struct ureg_dst dst = *ntt_get_dest_decl(c, dest);
+   struct ureg_dst dst = ntt_get_dest_decl(c, dest);
 
    if (!dest->is_ssa) {
       dst.Index += dest->reg.base_offset;
@@ -753,7 +753,7 @@ ntt_store_def(struct ntt_compile *c, nir_ssa_def *def, struct ureg_src src)
       }
    }
 
-   ureg_MOV(c->ureg, *ntt_get_ssa_def_decl(c, def), src);
+   ureg_MOV(c->ureg, ntt_get_ssa_def_decl(c, def), src);
 }
 
 static void
