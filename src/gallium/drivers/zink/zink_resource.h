@@ -54,6 +54,10 @@ struct mem_key {
 struct zink_resource_object {
    struct pipe_reference reference;
 
+   VkPipelineStageFlagBits access_stage;
+   VkAccessFlags access;
+   bool unordered_barrier;
+
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
    struct zink_descriptor_refs desc_set_refs;
 
@@ -88,10 +92,6 @@ struct zink_resource {
    struct threaded_resource base;
 
    enum pipe_format internal_format:16;
-
-   VkPipelineStageFlagBits access_stage;
-   VkAccessFlags access;
-   bool unordered_barrier;
 
    struct zink_resource_object *obj;
    struct zink_resource_object *scanout_obj; //TODO: remove for wsi

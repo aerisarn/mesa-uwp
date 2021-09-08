@@ -988,9 +988,6 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    /* this ref must be transferred before rebind or else BOOM */
    zink_batch_reference_resource_move(&ctx->batch, res);
    res->obj = new_obj;
-   res->access_stage = 0;
-   res->access = 0;
-   res->unordered_barrier = false;
    zink_resource_rebind(ctx, res);
    zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
    return true;
@@ -1227,8 +1224,8 @@ zink_buffer_map(struct pipe_context *pctx,
          zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_RW);
       else
          zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
-      res->access = 0;
-      res->access_stage = 0;
+      res->obj->access = 0;
+      res->obj->access_stage = 0;
    }
 
    if (!ptr) {
