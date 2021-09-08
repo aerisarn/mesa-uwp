@@ -245,11 +245,12 @@ zink_bo_usage_set(struct zink_bo *bo, struct zink_batch_state *bs, bool write)
       zink_batch_usage_set(&bo->reads, bs);
 }
 
-static inline void
+static inline bool
 zink_bo_usage_unset(struct zink_bo *bo, struct zink_batch_state *bs)
 {
    zink_batch_usage_unset(&bo->reads, bs);
    zink_batch_usage_unset(&bo->writes, bs);
+   return bo->reads || bo->writes;
 }
 
 
