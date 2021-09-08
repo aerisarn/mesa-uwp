@@ -680,11 +680,9 @@ tu6_emit_vs_system_values(struct tu_cs *cs,
    const uint32_t gs_primitiveid_regid = gs ?
          ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) :
          regid(63, 0);
-   const uint32_t hs_primitiveid_regid = hs ?
+   const uint32_t vs_primitiveid_regid = hs ?
          ir3_find_sysval_regid(hs, SYSTEM_VALUE_PRIMITIVE_ID) :
-         regid(63, 0);
-   const uint32_t vs_primitiveid_regid = gs ? gs_primitiveid_regid :
-      hs_primitiveid_regid;
+         gs_primitiveid_regid;
    const uint32_t ds_primitiveid_regid = ds ?
          ir3_find_sysval_regid(ds, SYSTEM_VALUE_PRIMITIVE_ID) :
          regid(63, 0);
