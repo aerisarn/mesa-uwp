@@ -3913,7 +3913,7 @@ vir_remove_thrsw(struct v3d_compile *c)
         c->last_thrsw = NULL;
 }
 
-void
+static void
 vir_emit_last_thrsw(struct v3d_compile *c)
 {
         /* On V3D before 4.1, we need a TMU op to be outstanding when thread
