@@ -36,6 +36,12 @@
 
 #define CANARY 0x5A1106
 
+#if defined(__LP64__) || defined(_WIN64)
+#define HEADER_ALIGN alignas(16)
+#else
+#define HEADER_ALIGN alignas(8)
+#endif
+
 /* Align the header's size so that ralloc() allocations will return with the
  * same alignment as a libc malloc would have (8 on 32-bit GLIBC, 16 on
  * 64-bit), avoiding performance penalities on x86 and alignment faults on
@@ -43,11 +49,7 @@
  */
 struct ralloc_header
 {
-#if defined(__LP64__) || defined(_WIN64)
-   alignas(16)
-#else
-   alignas(8)
-#endif
+   HEADER_ALIGN
 
 #ifndef NDEBUG
    /* A canary value used to determine whether a pointer is ralloc'd. */
@@ -550,12 +552,7 @@ ralloc_vasprintf_rewrite_tail(char **str, size_t *start, const char *fmt,
 
 struct linear_header {
 
-   /* align first member to align struct */
-#if defined(__LP64__) || defined(_WIN64)
-   alignas(16)
-#else
-   alignas(8)
-#endif
+   HEADER_ALIGN
 
 #ifndef NDEBUG
    unsigned magic;   /* for debugging */
