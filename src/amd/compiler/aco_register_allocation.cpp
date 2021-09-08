@@ -1915,7 +1915,7 @@ void
 get_regs_for_phis(ra_ctx& ctx, Block& block, RegisterFile& register_file,
                   std::vector<aco_ptr<Instruction>>& instructions, IDSet& live_in)
 {
-   /* assign phis with matching registers to that register */
+   /* assign phis with all-matching registers to that register */
    for (aco_ptr<Instruction>& phi : block.instructions) {
       if (!is_phi(phi))
          break;
@@ -1941,7 +1941,7 @@ get_regs_for_phis(ra_ctx& ctx, Block& block, RegisterFile& register_file,
       ctx.assignments[definition.tempId()].set(definition);
    }
 
-   /* look up the affinities */
+   /* try to find a register that is used by at least one operand */
    for (aco_ptr<Instruction>& phi : block.instructions) {
       if (!is_phi(phi))
          break;
@@ -1949,22 +1949,36 @@ get_regs_for_phis(ra_ctx& ctx, Block& block, RegisterFile& register_file,
       if (definition.isKill() || definition.isFixed())
          continue;
 
+      /* use affinity if available */
       if (ctx.assignments[definition.tempId()].affinity &&
           ctx.assignments[ctx.assignments[definition.tempId()].affinity].assigned) {
          assignment& affinity = ctx.assignments[ctx.assignments[definition.tempId()].affinity];
          assert(affinity.rc == definition.regClass());
-         PhysReg reg = affinity.reg;
+         if (get_reg_specified(ctx, register_file, definition.regClass(), phi, affinity.reg)) {
+            definition.setFixed(affinity.reg);
+            register_file.fill(definition);
+            ctx.assignments[definition.tempId()].set(definition);
+            continue;
+         }
+      }
 
-         /* only assign if register is still free */
-         if (!register_file.test(reg, definition.bytes())) {
+      /* by going backwards, we aim to avoid copies in else-blocks */
+      for (int i = phi->operands.size() - 1; i >= 0; i--) {
+         const Operand& op = phi->operands[i];
+         if (!op.isTemp() || !op.isFixed())
+            continue;
+
+         PhysReg reg = op.physReg();
+         if (get_reg_specified(ctx, register_file, definition.regClass(), phi, reg)) {
             definition.setFixed(reg);
             register_file.fill(definition);
             ctx.assignments[definition.tempId()].set(definition);
+            break;
          }
       }
    }
 
-   /* find registers for phis without affinity or where the register was blocked */
+   /* find registers for phis where the register was blocked or no operand was assigned */
    for (aco_ptr<Instruction>& phi : block.instructions) {
       if (!is_phi(phi))
          break;
@@ -1975,24 +1989,8 @@ get_regs_for_phis(ra_ctx& ctx, Block& block, RegisterFile& register_file,
 
       if (!definition.isFixed()) {
          std::vector<std::pair<Operand, Definition>> parallelcopy;
-         /* try to find a register that is used by at least one operand */
-         for (int i = phi->operands.size() - 1; i >= 0; i--) {
-            /* by going backwards, we aim to avoid copies in else-blocks */
-            const Operand& op = phi->operands[i];
-            if (!op.isTemp() || !op.isFixed())
-               continue;
-
-            PhysReg reg = op.physReg();
-            if (get_reg_specified(ctx, register_file, definition.regClass(), phi, reg)) {
-               definition.setFixed(reg);
-               break;
-            }
-         }
-         if (!definition.isFixed()) {
-            definition.setFixed(
-               get_reg(ctx, register_file, definition.getTemp(), parallelcopy, phi));
-            update_renames(ctx, register_file, parallelcopy, phi, rename_not_killed_ops);
-         }
+         definition.setFixed(get_reg(ctx, register_file, definition.getTemp(), parallelcopy, phi));
+         update_renames(ctx, register_file, parallelcopy, phi, rename_not_killed_ops);
 
          /* process parallelcopy */
          for (std::pair<Operand, Definition> pc : parallelcopy) {
