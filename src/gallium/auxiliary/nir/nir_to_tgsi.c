@@ -2751,6 +2751,7 @@ nir_to_tgsi_lower_tex_instr(nir_builder *b, nir_instr *instr, void *data)
    /* XXX: LZ */
    nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_lod, &s);
    nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_projector, &s);
+   nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_ms_index, &s);
 
    /* No need to pack undefs in unused channels of the tex instr */
    while (!s.channels[s.i - 1])
