@@ -246,7 +246,7 @@ lower_locals_to_regs_block(nir_block *block,
 
          nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_mov);
 
-         nir_src_copy(&mov->src[0].src, &intrin->src[1], mov);
+         nir_src_copy(&mov->src[0].src, &intrin->src[1], &mov->instr);
 
          /* The normal NIR SSA copy propagate pass can't happen after this pass,
           * so do an ad-hoc copy propagate since this ALU op can do swizzles

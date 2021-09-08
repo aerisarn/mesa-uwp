@@ -150,7 +150,7 @@ TEST_F(ValuefactoryTest, test_create_register_array_indirect_access)
    mov->dest.dest.reg.base_offset = 0;
    mov->dest.dest.reg.indirect = (nir_src *)calloc(1, sizeof(nir_src));
    nir_src addr = nir_src_for_ssa(c2);
-   nir_src_copy(mov->dest.dest.reg.indirect, &addr, mov);
+   nir_src_copy(mov->dest.dest.reg.indirect, &addr, &mov->instr);
    nir_builder_instr_insert(&b, &mov->instr);
 
    auto addr_reg = factory->src(addr, 0);

@@ -1273,7 +1273,7 @@ rewrite_atomic_ssbo_instr(nir_builder *b, nir_instr *instr, struct bo_vars *bo)
       new_instr->src[0] = nir_src_for_ssa(&deref_arr->dest.ssa);
       /* deref ops have no offset src, so copy the srcs after it */
       for (unsigned i = 2; i < nir_intrinsic_infos[intr->intrinsic].num_srcs; i++)
-         nir_src_copy(&new_instr->src[i - 1], &intr->src[i], new_instr);
+         nir_src_copy(&new_instr->src[i - 1], &intr->src[i], &new_instr->instr);
       nir_builder_instr_insert(b, &new_instr->instr);
 
       result[i] = &new_instr->dest.ssa;

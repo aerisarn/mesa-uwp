@@ -451,10 +451,8 @@ static void dest_free_indirects(nir_dest *dest)
    }
 }
 
-/* NOTE: if the instruction you are copying a src to is already added
- * to the IR, use nir_instr_rewrite_src() instead.
- */
-void nir_src_copy(nir_src *dest, const nir_src *src, void *mem_ctx)
+static void
+src_copy(nir_src *dest, const nir_src *src)
 {
    src_free_indirects(dest);
 
@@ -466,11 +464,19 @@ void nir_src_copy(nir_src *dest, const nir_src *src, void *mem_ctx)
       dest->reg.reg = src->reg.reg;
       if (src->reg.indirect) {
          dest->reg.indirect = calloc(1, sizeof(nir_src));
-         nir_src_copy(dest->reg.indirect, src->reg.indirect, mem_ctx);
+         src_copy(dest->reg.indirect, src->reg.indirect);
       } else {
          dest->reg.indirect = NULL;
       }
    }
+}
+
+/* NOTE: if the instruction you are copying a src to is already added
+ * to the IR, use nir_instr_rewrite_src() instead.
+ */
+void nir_src_copy(nir_src *dest, const nir_src *src, nir_instr *instr)
+{
+   src_copy(dest, src);
 }
 
 void nir_dest_copy(nir_dest *dest, const nir_dest *src, nir_instr *instr)
@@ -496,7 +502,7 @@ void
 nir_alu_src_copy(nir_alu_src *dest, const nir_alu_src *src,
                  nir_alu_instr *instr)
 {
-   nir_src_copy(&dest->src, &src->src, &instr->instr);
+   nir_src_copy(&dest->src, &src->src, instr ? &instr->instr : NULL);
    dest->abs = src->abs;
    dest->negate = src->negate;
    for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
@@ -1706,7 +1712,7 @@ nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src)
    assert(!src_is_valid(src) || src->parent_if == if_stmt);
 
    src_remove_all_uses(src);
-   nir_src_copy(src, &new_src, if_stmt);
+   src_copy(src, &new_src);
    src_add_all_uses(src, NULL, if_stmt);
 }
 
