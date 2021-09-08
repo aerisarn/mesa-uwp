@@ -1434,7 +1434,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                   zds = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit);
                   if (cache_hit) {
                      pdd_cached(pg)->cache_misses[h] = 0;
-                  } else {
+                  } else if (likely(zink_screen(ctx->base.screen)->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOFALLBACK)) {
                      if (++pdd_cached(pg)->cache_misses[h] == MAX_CACHE_MISSES) {
                         const char *set_names[] = {
                            "UBO",

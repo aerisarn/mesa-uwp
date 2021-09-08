@@ -64,6 +64,7 @@ enum zink_descriptor_type;
 enum zink_descriptor_mode {
    ZINK_DESCRIPTOR_MODE_AUTO,
    ZINK_DESCRIPTOR_MODE_LAZY,
+   ZINK_DESCRIPTOR_MODE_NOFALLBACK,
    ZINK_DESCRIPTOR_MODE_NOTEMPLATES,
 };
 
