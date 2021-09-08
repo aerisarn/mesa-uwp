@@ -42,3 +42,9 @@ panvk_per_arch(meta_emit_viewport)(struct pan_pool *pool,
 
 void
 panvk_per_arch(meta_clear_init)(struct panvk_physical_device *dev);
+
+void
+panvk_per_arch(meta_blit_init)(struct panvk_physical_device *dev);
+
+void
+panvk_per_arch(meta_blit_cleanup)(struct panvk_physical_device *dev);

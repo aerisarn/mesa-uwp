@@ -24,39 +24,12 @@
 #include "gen_macros.h"
 
 #include "nir/nir_builder.h"
-#include "pan_blitter.h"
 #include "pan_encoder.h"
 #include "pan_shader.h"
 
 #include "panvk_private.h"
 
 #include "vk_format.h"
-
-void
-panvk_per_arch(CmdBlitImage)(VkCommandBuffer commandBuffer,
-                             VkImage srcImage,
-                             VkImageLayout srcImageLayout,
-                             VkImage destImage,
-                             VkImageLayout destImageLayout,
-                             uint32_t regionCount,
-                             const VkImageBlit *pRegions,
-                             VkFilter filter)
-
-{
-   panvk_stub();
-}
-
-void
-panvk_per_arch(CmdResolveImage)(VkCommandBuffer cmd_buffer_h,
-                                VkImage src_image_h,
-                                VkImageLayout src_image_layout,
-                                VkImage dest_image_h,
-                                VkImageLayout dest_image_layout,
-                                uint32_t region_count,
-                                const VkImageResolve *regions)
-{
-   panvk_stub();
-}
 
 mali_ptr
 panvk_per_arch(meta_emit_viewport)(struct pan_pool *pool,
@@ -82,25 +55,14 @@ panvk_per_arch(meta_init)(struct panvk_physical_device *dev)
                    16 * 1024, "panvk_meta binary pool", false);
    panvk_pool_init(&dev->meta.desc_pool, &dev->pdev, NULL, 0,
                    16 * 1024, "panvk_meta descriptor pool", false);
-   panvk_pool_init(&dev->meta.blitter.bin_pool, &dev->pdev, NULL,
-                   PAN_BO_EXECUTE, 16 * 1024,
-                   "panvk_meta blitter binary pool", false);
-   panvk_pool_init(&dev->meta.blitter.desc_pool, &dev->pdev, NULL,
-                   0, 16 * 1024, "panvk_meta blitter descriptor pool",
-                   false);
-   pan_blend_shaders_init(&dev->pdev);
-   GENX(pan_blitter_init)(&dev->pdev, &dev->meta.blitter.bin_pool.base,
-                          &dev->meta.blitter.desc_pool.base);
+   panvk_per_arch(meta_blit_init)(dev);
    panvk_per_arch(meta_clear_init)(dev);
 }
 
 void
 panvk_per_arch(meta_cleanup)(struct panvk_physical_device *dev)
 {
-   GENX(pan_blitter_cleanup)(&dev->pdev);
-   pan_blend_shaders_cleanup(&dev->pdev);
-   panvk_pool_cleanup(&dev->meta.blitter.desc_pool);
-   panvk_pool_cleanup(&dev->meta.blitter.bin_pool);
+   panvk_per_arch(meta_blit_cleanup)(dev);
    panvk_pool_cleanup(&dev->meta.desc_pool);
    panvk_pool_cleanup(&dev->meta.bin_pool);
 }
