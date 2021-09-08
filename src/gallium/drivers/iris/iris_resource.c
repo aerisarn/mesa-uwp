@@ -929,7 +929,10 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
    }
 
    /* Combine main and aux plane information. */
-   if (num_main_planes == 1 && num_planes == 2) {
+   switch (res->mod_info->modifier) {
+   case I915_FORMAT_MOD_Y_TILED_CCS:
+   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
+      assert(num_main_planes == 1 && num_planes == 2);
       import_aux_info(r[0], r[1]);
       map_aux_addresses(screen, r[0], format, 0);
 
@@ -940,7 +943,9 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
                           iris_get_aux_clear_color_state_size(screen), 1,
                           IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
       }
-   } else if (num_main_planes == 1 && num_planes == 3) {
+      break;
+   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
+      assert(num_main_planes == 1 && num_planes == 3);
       import_aux_info(r[0], r[1]);
       map_aux_addresses(screen, r[0], format, 0);
 
@@ -949,18 +954,29 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
       r[0]->aux.clear_color_bo = r[2]->aux.clear_color_bo;
       r[0]->aux.clear_color_offset = r[2]->aux.clear_color_offset;
       r[0]->aux.clear_color_unknown = true;
-   } else if (num_main_planes == 2 && num_planes == 4) {
-      import_aux_info(r[0], r[2]);
-      import_aux_info(r[1], r[3]);
-      map_aux_addresses(screen, r[0], format, 0);
-      map_aux_addresses(screen, r[1], format, 1);
-   } else {
-      /* Gallium has lowered a single main plane into two. */
-      assert(num_main_planes == 2 && num_planes == 3);
-      assert(isl_format_is_yuv(format) && !isl_format_is_planar(format));
-      import_aux_info(r[0], r[2]);
-      import_aux_info(r[1], r[2]);
-      map_aux_addresses(screen, r[0], format, 0);
+      break;
+   case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
+      if (num_main_planes == 1 && num_planes == 2) {
+         import_aux_info(r[0], r[1]);
+         map_aux_addresses(screen, r[0], format, 0);
+      } else if (num_main_planes == 2 && num_planes == 4) {
+         import_aux_info(r[0], r[2]);
+         import_aux_info(r[1], r[3]);
+         map_aux_addresses(screen, r[0], format, 0);
+         map_aux_addresses(screen, r[1], format, 1);
+      } else {
+         /* Gallium has lowered a single main plane into two. */
+         assert(num_main_planes == 2 && num_planes == 3);
+         assert(isl_format_is_yuv(format) && !isl_format_is_planar(format));
+         import_aux_info(r[0], r[2]);
+         import_aux_info(r[1], r[2]);
+         map_aux_addresses(screen, r[0], format, 0);
+      }
+      assert(!isl_aux_usage_has_fast_clears(res->mod_info->aux_usage));
+      break;
+   default:
+      assert(res->mod_info->aux_usage == ISL_AUX_USAGE_NONE);
+      break;
    }
 }
 
