@@ -1504,11 +1504,11 @@ calc_descriptor_state_hash_ubo(struct zink_context *ctx, enum pipe_shader_type s
    struct zink_resource *res = ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_UBO][shader][idx];
    struct zink_resource_object *obj = res ? res->obj : NULL;
    hash = XXH32(&obj, sizeof(void*), hash);
-   void *hash_data = &ctx->ubos[shader][idx].buffer_size;
+   void *hash_data = &ctx->di.ubos[shader][idx].range;
    size_t data_size = sizeof(unsigned);
    hash = XXH32(hash_data, data_size, hash);
    if (need_offset)
-      hash = XXH32(&ctx->ubos[shader][idx].buffer_offset, sizeof(unsigned), hash);
+      hash = XXH32(&ctx->di.ubos[shader][idx].offset, sizeof(unsigned), hash);
    return hash;
 }
 
