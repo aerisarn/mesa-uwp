@@ -1464,84 +1464,8 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
    if (bo != NULL)
       return bo;
 
-   unsigned subslices = devinfo->subslice_total;
-
-   /* The documentation for 3DSTATE_PS "Scratch Space Base Pointer" says:
-    *
-    *    "Scratch Space per slice is computed based on 4 sub-slices.  SW
-    *     must allocate scratch space enough so that each slice has 4
-    *     slices allowed."
-    *
-    * According to the other driver team, this applies to compute shaders
-    * as well.  This is not currently documented at all.
-    *
-    * This hack is no longer necessary on Gfx11+.
-    *
-    * For, Gfx11+, scratch space allocation is based on the number of threads
-    * in the base configuration.
-    */
-   if (devinfo->verx10 == 125)
-      subslices = 32;
-   else if (devinfo->ver == 12)
-      subslices = (devinfo->is_dg1 || devinfo->gt == 2 ? 6 : 2);
-   else if (devinfo->ver == 11)
-      subslices = 8;
-   else if (devinfo->ver >= 9)
-      subslices = 4 * devinfo->num_slices;
-
-   unsigned scratch_ids_per_subslice;
-   if (devinfo->ver >= 12) {
-      /* Same as ICL below, but with 16 EUs. */
-      scratch_ids_per_subslice = 16 * 8;
-   } else if (devinfo->ver == 11) {
-      /* The MEDIA_VFE_STATE docs say:
-       *
-       *    "Starting with this configuration, the Maximum Number of
-       *     Threads must be set to (#EU * 8) for GPGPU dispatches.
-       *
-       *     Although there are only 7 threads per EU in the configuration,
-       *     the FFTID is calculated as if there are 8 threads per EU,
-       *     which in turn requires a larger amount of Scratch Space to be
-       *     allocated by the driver."
-       */
-      scratch_ids_per_subslice = 8 * 8;
-   } else if (devinfo->is_haswell) {
-      /* WaCSScratchSize:hsw
-       *
-       * Haswell's scratch space address calculation appears to be sparse
-       * rather than tightly packed. The Thread ID has bits indicating
-       * which subslice, EU within a subslice, and thread within an EU it
-       * is. There's a maximum of two slices and two subslices, so these
-       * can be stored with a single bit. Even though there are only 10 EUs
-       * per subslice, this is stored in 4 bits, so there's an effective
-       * maximum value of 16 EUs. Similarly, although there are only 7
-       * threads per EU, this is stored in a 3 bit number, giving an
-       * effective maximum value of 8 threads per EU.
-       *
-       * This means that we need to use 16 * 8 instead of 10 * 7 for the
-       * number of threads per subslice.
-       */
-      scratch_ids_per_subslice = 16 * 8;
-   } else if (devinfo->is_cherryview) {
-      /* Cherryview devices have either 6 or 8 EUs per subslice, and each EU
-       * has 7 threads. The 6 EU devices appear to calculate thread IDs as if
-       * it had 8 EUs.
-       */
-      scratch_ids_per_subslice = 8 * 7;
-   } else {
-      scratch_ids_per_subslice = devinfo->max_cs_threads;
-   }
-
-   uint32_t max_threads[] = {
-      [MESA_SHADER_VERTEX]           = devinfo->max_vs_threads,
-      [MESA_SHADER_TESS_CTRL]        = devinfo->max_tcs_threads,
-      [MESA_SHADER_TESS_EVAL]        = devinfo->max_tes_threads,
-      [MESA_SHADER_GEOMETRY]         = devinfo->max_gs_threads,
-      [MESA_SHADER_FRAGMENT]         = devinfo->max_wm_threads,
-      [MESA_SHADER_COMPUTE]          = scratch_ids_per_subslice * subslices,
-   };
-
-   uint32_t size = per_thread_scratch * max_threads[stage];
+   assert(stage < ARRAY_SIZE(devinfo->max_scratch_ids));
+   uint32_t size = per_thread_scratch * devinfo->max_scratch_ids[stage];
 
    /* Even though the Scratch base pointers in 3DSTATE_*S are 64 bits, they
     * are still relative to the general state base address.  When we emit

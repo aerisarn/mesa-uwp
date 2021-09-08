@@ -29,6 +29,7 @@
 #include <stdint.h>
 
 #include "util/macros.h"
+#include "compiler/shader_enums.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -230,6 +231,13 @@ struct intel_device_info
     * number of threads we can dispatch in a single workgroup.
     */
    unsigned max_cs_workgroup_threads;
+
+   /**
+    * The maximum number of potential scratch ids. Due to hardware
+    * implementation details, the range of scratch ids may be larger than the
+    * number of subslices.
+    */
+   unsigned max_scratch_ids[MESA_SHADER_STAGES];
 
    struct {
       /**
