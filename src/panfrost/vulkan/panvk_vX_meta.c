@@ -47,50 +47,6 @@ panvk_per_arch(CmdBlitImage)(VkCommandBuffer commandBuffer,
 }
 
 void
-panvk_per_arch(CmdCopyImage)(VkCommandBuffer commandBuffer,
-                             VkImage srcImage,
-                             VkImageLayout srcImageLayout,
-                             VkImage destImage,
-                             VkImageLayout destImageLayout,
-                             uint32_t regionCount,
-                             const VkImageCopy *pRegions)
-{
-   panvk_stub();
-}
-
-void
-panvk_per_arch(CmdCopyBufferToImage)(VkCommandBuffer commandBuffer,
-                                     VkBuffer srcBuffer,
-                                     VkImage destImage,
-                                     VkImageLayout destImageLayout,
-                                     uint32_t regionCount,
-                                     const VkBufferImageCopy *pRegions)
-{
-   panvk_stub();
-}
-
-void
-panvk_per_arch(CmdCopyImageToBuffer)(VkCommandBuffer commandBuffer,
-                                     VkImage srcImage,
-                                     VkImageLayout srcImageLayout,
-                                     VkBuffer destBuffer,
-                                     uint32_t regionCount,
-                                     const VkBufferImageCopy *pRegions)
-{
-   panvk_stub();
-}
-
-void
-panvk_per_arch(CmdCopyBuffer)(VkCommandBuffer commandBuffer,
-                              VkBuffer srcBuffer,
-                              VkBuffer destBuffer,
-                              uint32_t regionCount,
-                              const VkBufferCopy *pRegions)
-{
-   panvk_stub();
-}
-
-void
 panvk_per_arch(CmdResolveImage)(VkCommandBuffer cmd_buffer_h,
                                 VkImage src_image_h,
                                 VkImageLayout src_image_layout,
@@ -98,26 +54,6 @@ panvk_per_arch(CmdResolveImage)(VkCommandBuffer cmd_buffer_h,
                                 VkImageLayout dest_image_layout,
                                 uint32_t region_count,
                                 const VkImageResolve *regions)
-{
-   panvk_stub();
-}
-
-void
-panvk_per_arch(CmdFillBuffer)(VkCommandBuffer commandBuffer,
-                              VkBuffer dstBuffer,
-                              VkDeviceSize dstOffset,
-                              VkDeviceSize fillSize,
-                              uint32_t data)
-{
-   panvk_stub();
-}
-
-void
-panvk_per_arch(CmdUpdateBuffer)(VkCommandBuffer commandBuffer,
-                                VkBuffer dstBuffer,
-                                VkDeviceSize dstOffset,
-                                VkDeviceSize dataSize,
-                                const void *pData)
 {
    panvk_stub();
 }
