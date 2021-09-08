@@ -384,19 +384,34 @@ ntt_setup_inputs(struct ntt_compile *c)
 }
 
 static enum tgsi_texture_type
-tgsi_target_from_sampler_dim(enum glsl_sampler_dim dim, bool is_array)
+tgsi_texture_type_from_sampler_dim(enum glsl_sampler_dim dim, bool is_array, bool is_shadow)
 {
    switch (dim) {
    case GLSL_SAMPLER_DIM_1D:
-      return is_array ? TGSI_TEXTURE_1D_ARRAY : TGSI_TEXTURE_1D;
+      if (is_shadow)
+         return is_array ? TGSI_TEXTURE_SHADOW1D_ARRAY : TGSI_TEXTURE_SHADOW1D;
+      else
+         return is_array ? TGSI_TEXTURE_1D_ARRAY : TGSI_TEXTURE_1D;
    case GLSL_SAMPLER_DIM_2D:
-      return is_array ? TGSI_TEXTURE_2D_ARRAY : TGSI_TEXTURE_2D;
+   case GLSL_SAMPLER_DIM_EXTERNAL:
+      if (is_shadow)
+         return is_array ? TGSI_TEXTURE_SHADOW2D_ARRAY : TGSI_TEXTURE_SHADOW2D;
+      else
+         return is_array ? TGSI_TEXTURE_2D_ARRAY : TGSI_TEXTURE_2D;
    case GLSL_SAMPLER_DIM_3D:
       return TGSI_TEXTURE_3D;
    case GLSL_SAMPLER_DIM_CUBE:
-      return is_array ? TGSI_TEXTURE_CUBE_ARRAY : TGSI_TEXTURE_CUBE;
+      if (is_shadow)
+         return is_array ? TGSI_TEXTURE_SHADOWCUBE_ARRAY : TGSI_TEXTURE_SHADOWCUBE;
+      else
+         return is_array ? TGSI_TEXTURE_CUBE_ARRAY : TGSI_TEXTURE_CUBE;
    case GLSL_SAMPLER_DIM_RECT:
-      return TGSI_TEXTURE_RECT;
+      if (is_shadow)
+         return TGSI_TEXTURE_SHADOWRECT;
+      else
+         return TGSI_TEXTURE_RECT;
+   case GLSL_SAMPLER_DIM_MS:
+      return is_array ? TGSI_TEXTURE_2D_ARRAY_MSAA : TGSI_TEXTURE_2D_MSAA;
    case GLSL_SAMPLER_DIM_BUF:
       return TGSI_TEXTURE_BUFFER;
    default:
@@ -404,14 +419,46 @@ tgsi_target_from_sampler_dim(enum glsl_sampler_dim dim, bool is_array)
    }
 }
 
+static enum tgsi_return_type
+tgsi_return_type_from_base_type(enum glsl_base_type type)
+{
+   switch (type) {
+   case GLSL_TYPE_INT:
+      return TGSI_RETURN_TYPE_SINT;
+   case GLSL_TYPE_UINT:
+      return TGSI_RETURN_TYPE_UINT;
+   case GLSL_TYPE_FLOAT:
+     return TGSI_RETURN_TYPE_FLOAT;
+   default:
+      unreachable("unexpected texture type");
+   }
+}
+
 static void
 ntt_setup_uniforms(struct ntt_compile *c)
 {
    nir_foreach_uniform_variable(var, c->s) {
-      if (glsl_type_is_image(var->type)) {
+      if (glsl_type_is_sampler(glsl_without_array(var->type))) {
+         /* Don't use this size for the check for samplers -- arrays of structs
+          * containing samplers should be ignored, and just the separate lowered
+          * sampler uniform decl used.
+          */
+         int size = glsl_type_get_sampler_count(var->type);
+
+         const struct glsl_type *stype = glsl_without_array(var->type);
+         enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(glsl_get_sampler_dim(stype),
+                                                                            glsl_sampler_type_is_array(stype),
+                                                                            glsl_sampler_type_is_shadow(stype));
+         enum tgsi_return_type ret_type = tgsi_return_type_from_base_type(glsl_get_sampler_result_type(stype));
+         for (int i = 0; i < size; i++) {
+            ureg_DECL_sampler_view(c->ureg, var->data.binding + i,
+               target, ret_type, ret_type, ret_type, ret_type);
+            ureg_DECL_sampler(c->ureg, var->data.binding + i);
+         }
+      } else if (glsl_type_is_image(var->type)) {
          enum tgsi_texture_type tex_type =
-             tgsi_target_from_sampler_dim(glsl_get_sampler_dim(var->type),
-                                          glsl_sampler_type_is_array(var->type));
+               tgsi_texture_type_from_sampler_dim(glsl_get_sampler_dim(var->type),
+                                                  glsl_sampler_type_is_array(var->type), false);
 
          c->images[var->data.binding] = ureg_DECL_image(c->ureg,
                                                         var->data.binding,
@@ -463,11 +510,6 @@ ntt_setup_uniforms(struct ntt_compile *c)
        */
       bool atomic = false;
       ureg_DECL_buffer(c->ureg, i, atomic);
-   }
-
-   for (int i = 0; i < PIPE_MAX_SAMPLERS; i++) {
-      if (BITSET_TEST(c->s->info.textures_used, i))
-         ureg_DECL_sampler(c->ureg, i);
    }
 }
 
@@ -1473,7 +1515,7 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
 
    struct ureg_dst temp = ureg_dst_undef();
 
-   enum tgsi_texture_type target = tgsi_target_from_sampler_dim(dim, is_array);
+   enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(dim, is_array, false);
 
    struct ureg_src resource =
       ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
@@ -1957,7 +1999,7 @@ static void
 ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
 {
    struct ureg_dst dst = ntt_get_dest(c, &instr->dest);
-   unsigned target;
+   enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(instr->sampler_dim, instr->is_array, instr->is_shadow);
    unsigned tex_opcode;
 
    struct ureg_src sampler = ureg_DECL_sampler(c->ureg, instr->sampler_index);
@@ -2022,79 +2064,6 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
 
    /* non-coord arg for TXQ */
    ntt_push_tex_arg(c, instr, nir_tex_src_lod, &s);
-
-   switch (instr->sampler_dim) {
-   case GLSL_SAMPLER_DIM_1D:
-      if (instr->is_array) {
-         if (instr->is_shadow) {
-            target = TGSI_TEXTURE_SHADOW1D_ARRAY;
-         } else {
-            target = TGSI_TEXTURE_1D_ARRAY;
-         }
-      } else {
-         if (instr->is_shadow) {
-            target = TGSI_TEXTURE_SHADOW1D;
-         } else {
-            target = TGSI_TEXTURE_1D;
-         }
-      }
-      break;
-   case GLSL_SAMPLER_DIM_2D:
-   case GLSL_SAMPLER_DIM_EXTERNAL:
-      if (instr->is_array) {
-         if (instr->is_shadow) {
-            target = TGSI_TEXTURE_SHADOW2D_ARRAY;
-         } else {
-            target = TGSI_TEXTURE_2D_ARRAY;
-         }
-      } else {
-         if (instr->is_shadow) {
-            target = TGSI_TEXTURE_SHADOW2D;
-         } else {
-            target = TGSI_TEXTURE_2D;
-         }
-      }
-      break;
-   case GLSL_SAMPLER_DIM_MS:
-      if (instr->is_array) {
-         target = TGSI_TEXTURE_2D_ARRAY_MSAA;
-      } else {
-         target = TGSI_TEXTURE_2D_ARRAY;
-      }
-      break;
-   case GLSL_SAMPLER_DIM_3D:
-      assert(!instr->is_shadow);
-      target = TGSI_TEXTURE_3D;
-      break;
-   case GLSL_SAMPLER_DIM_RECT:
-      if (instr->is_shadow) {
-         target = TGSI_TEXTURE_SHADOWRECT;
-      } else {
-         target = TGSI_TEXTURE_RECT;
-      }
-      break;
-   case GLSL_SAMPLER_DIM_CUBE:
-      if (instr->is_array) {
-         if (instr->is_shadow) {
-            target = TGSI_TEXTURE_SHADOWCUBE_ARRAY;
-         } else {
-            target = TGSI_TEXTURE_CUBE_ARRAY;
-         }
-      } else {
-         if (instr->is_shadow) {
-            target = TGSI_TEXTURE_SHADOWCUBE;
-         } else {
-            target = TGSI_TEXTURE_CUBE;
-         }
-      }
-      break;
-   case GLSL_SAMPLER_DIM_BUF:
-      target = TGSI_TEXTURE_BUFFER;
-      break;
-   default:
-      fprintf(stderr, "Unknown sampler dimensions: %d\n", instr->sampler_dim);
-      abort();
-   }
 
    if (s.i > 1) {
       if (tex_opcode == TGSI_OPCODE_TEX)
