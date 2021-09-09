@@ -415,7 +415,10 @@ print_vec_selectors_64(FILE *fp, unsigned swizzle,
                 unsigned a = (swizzle >> (i * 2)) & 3;
 
                 if (INPUT_EXPANDS(expand_mode)) {
-                        fprintf(fp, "%c", components[a]);
+                        if (expand_mode == midgard_src_expand_high)
+                                a += 2;
+
+                        fprintf(fp, "%c", components[a / 2]);
                         continue;
                 }
 
