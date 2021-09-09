@@ -287,24 +287,6 @@ batch_reset_resources(struct fd_batch *batch)
    batch->bos = NULL;
 }
 
-static void
-batch_reset(struct fd_batch *batch) assert_dt
-{
-   DBG("%p", batch);
-
-   batch_reset_dependencies(batch);
-   batch_reset_resources(batch);
-   batch_fini(batch);
-   batch_init(batch);
-}
-
-void
-fd_batch_reset(struct fd_batch *batch)
-{
-   if (batch->needs_flush)
-      batch_reset(batch);
-}
-
 void
 __fd_batch_destroy(struct fd_batch *batch)
 {
