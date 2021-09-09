@@ -244,6 +244,12 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                         bool lo = swizzle[0] >= COMPONENT_Z;
                         bool hi = swizzle[1] >= COMPONENT_Z;
 
+                        assert(!(mask & ~0xf));
+                        assert(!(mask & 0x3) || !(mask & 0xc));
+
+                        if (mask > 3)
+                                mask >>= 2;
+
                         if (mask & 0x1) {
                                 /* We can't mix halves... */
                                 if (mask & 2)
