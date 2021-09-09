@@ -3075,6 +3075,8 @@ static LLVMValueRef visit_load_num_subgroups(struct ac_nir_context *ctx)
    if (ctx->stage == MESA_SHADER_COMPUTE) {
       return LLVMBuildAnd(ctx->ac.builder, ac_get_arg(&ctx->ac, ctx->args->tg_size),
                           LLVMConstInt(ctx->ac.i32, 0x3f, false), "");
+   } else if (ctx->args->merged_wave_info.used) {
+      return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 28, 4);
    } else {
       return LLVMConstInt(ctx->ac.i32, 1, false);
    }
