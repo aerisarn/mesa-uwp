@@ -276,13 +276,13 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                 for (unsigned c = (dest_up ? 4 : 0); c < (dest_up ? 8 : 4); ++c) {
                         unsigned v = swizzle[c];
 
-                        ASSERTED bool t_upper = v > 3;
+                        ASSERTED bool t_upper = v > (sz == 8 ? 7 : 3);
 
                         /* Ensure we're doing something sane */
 
                         if (mask & (1 << c)) {
                                 assert(t_upper == upper);
-                                assert(v <= 7);
+                                assert(v <= (sz == 8 ? 15 : 7));
                         }
 
                         /* Use the non upper part */
