@@ -1951,3 +1951,86 @@ radv_CmdCopyAccelerationStructureKHR(VkCommandBuffer commandBuffer,
                           src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
    radv_meta_restore(&saved_state, cmd_buffer);
 }
+
+void
+radv_GetDeviceAccelerationStructureCompatibilityKHR(
+   VkDevice _device, const VkAccelerationStructureVersionInfoKHR *pVersionInfo,
+   VkAccelerationStructureCompatibilityKHR *pCompatibility)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   uint8_t zero[VK_UUID_SIZE] = {
+      0,
+   };
+   bool compat =
+      memcmp(pVersionInfo->pVersionData, device->physical_device->driver_uuid, VK_UUID_SIZE) == 0 &&
+      memcmp(pVersionInfo->pVersionData + VK_UUID_SIZE, zero, VK_UUID_SIZE) == 0;
+   *pCompatibility = compat ? VK_ACCELERATION_STRUCTURE_COMPATIBILITY_COMPATIBLE_KHR
+                            : VK_ACCELERATION_STRUCTURE_COMPATIBILITY_INCOMPATIBLE_KHR;
+}
+
+VkResult
+radv_CopyMemoryToAccelerationStructureKHR(VkDevice _device,
+                                          VkDeferredOperationKHR deferredOperation,
+                                          const VkCopyMemoryToAccelerationStructureInfoKHR *pInfo)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, pInfo->dst);
+
+   char *base = device->ws->buffer_map(accel_struct->bo);
+   if (!base)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   base += accel_struct->mem_offset;
+   const struct radv_accel_struct_header *header = (const struct radv_accel_struct_header *)base;
+
+   const char *src = pInfo->src.hostAddress;
+   struct radv_accel_struct_serialization_header *src_header = (void *)src;
+   src += sizeof(*src_header) + sizeof(uint64_t) * src_header->instance_count;
+
+   memcpy(base, src, src_header->compacted_size);
+
+   for (unsigned i = 0; i < src_header->instance_count; ++i) {
+      uint64_t *p = (uint64_t *)(base + i * 128 + header->instance_offset);
+      *p = (*p & 63) | src_header->instances[i];
+   }
+
+   device->ws->buffer_unmap(accel_struct->bo);
+   return VK_SUCCESS;
+}
+
+VkResult
+radv_CopyAccelerationStructureToMemoryKHR(VkDevice _device,
+                                          VkDeferredOperationKHR deferredOperation,
+                                          const VkCopyAccelerationStructureToMemoryInfoKHR *pInfo)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, pInfo->src);
+
+   const char *base = device->ws->buffer_map(accel_struct->bo);
+   if (!base)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   base += accel_struct->mem_offset;
+   const struct radv_accel_struct_header *header = (const struct radv_accel_struct_header *)base;
+
+   char *dst = pInfo->dst.hostAddress;
+   struct radv_accel_struct_serialization_header *dst_header = (void *)dst;
+   dst += sizeof(*dst_header) + sizeof(uint64_t) * header->instance_count;
+
+   memcpy(dst_header->driver_uuid, device->physical_device->driver_uuid, VK_UUID_SIZE);
+   memset(dst_header->accel_struct_compat, 0, VK_UUID_SIZE);
+
+   dst_header->serialization_size = header->serialization_size;
+   dst_header->compacted_size = header->compacted_size;
+   dst_header->instance_count = header->instance_count;
+
+   memcpy(dst, base, header->compacted_size);
+
+   for (unsigned i = 0; i < header->instance_count; ++i) {
+      dst_header->instances[i] =
+         *(const uint64_t *)(base + i * 128 + header->instance_offset) & ~63ull;
+   }
+
+   device->ws->buffer_unmap(accel_struct->bo);
+   return VK_SUCCESS;
+}
