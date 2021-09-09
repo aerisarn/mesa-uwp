@@ -95,14 +95,14 @@ panvk_per_arch(cmd_get_polygon_list)(struct panvk_cmd_buffer *cmdbuf,
 static void
 panvk_copy_fb_desc(struct panvk_cmd_buffer *cmdbuf, void *src)
 {
+   const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
    struct panvk_batch *batch = cmdbuf->state.batch;
-   const struct panvk_subpass *subpass = cmdbuf->state.subpass;
    uint32_t size = pan_size(MULTI_TARGET_FRAMEBUFFER);
 
-   if (subpass->zs_attachment.idx != VK_ATTACHMENT_UNUSED)
+   if (fbinfo->zs.view.zs || fbinfo->zs.view.s)
       size += pan_size(ZS_CRC_EXTENSION);
 
-   size += MAX2(subpass->color_count, 1) * pan_size(RENDER_TARGET);
+   size += MAX2(fbinfo->rt_count, 1) * pan_size(RENDER_TARGET);
 
    memcpy(batch->fb.desc.cpu, src, size);
 }
@@ -182,9 +182,11 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 
    if (cmdbuf->state.batch->fb.desc.cpu) {
 #if PAN_ARCH == 5
+      const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
+
       panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
-                                           batch->fb.info->width,
-                                           batch->fb.info->height,
+                                           fbinfo->width,
+                                           fbinfo->height,
                                            false);
 
       mali_ptr polygon_list =
