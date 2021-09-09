@@ -155,6 +155,7 @@ static void
 process_mux_deps(struct schedule_state *state, struct schedule_node *n,
                  enum v3d_qpu_mux mux)
 {
+        assert(state->devinfo->ver < 71);
         switch (mux) {
         case V3D_QPU_MUX_A:
                 add_read_dep(state, state->last_rf[n->inst->qpu.raddr_a], n);
@@ -169,6 +170,17 @@ process_mux_deps(struct schedule_state *state, struct schedule_node *n,
                 add_read_dep(state, state->last_r[mux - V3D_QPU_MUX_R0], n);
                 break;
         }
+}
+
+
+static void
+process_raddr_deps(struct schedule_state *state, struct schedule_node *n,
+                   uint8_t raddr, bool is_small_imm)
+{
+        assert(state->devinfo->ver >= 71);
+
+        if (!is_small_imm)
+                add_read_dep(state, state->last_rf[raddr], n);
 }
 
 static bool
@@ -305,15 +317,39 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
 
         /* XXX: LOAD_IMM */
 
-        if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 0)
-                process_mux_deps(state, n, inst->alu.add.a.mux);
-        if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 1)
-                process_mux_deps(state, n, inst->alu.add.b.mux);
+        if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 0) {
+                if (devinfo->ver < 71) {
+                        process_mux_deps(state, n, inst->alu.add.a.mux);
+                } else {
+                        process_raddr_deps(state, n, inst->alu.add.a.raddr,
+                                           inst->sig.small_imm_a);
+                }
+        }
+        if (v3d_qpu_add_op_num_src(inst->alu.add.op) > 1) {
+                if (devinfo->ver < 71) {
+                        process_mux_deps(state, n, inst->alu.add.b.mux);
+                } else {
+                        process_raddr_deps(state, n, inst->alu.add.b.raddr,
+                                           inst->sig.small_imm_b);
+                }
+        }
 
-        if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 0)
-                process_mux_deps(state, n, inst->alu.mul.a.mux);
-        if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 1)
-                process_mux_deps(state, n, inst->alu.mul.b.mux);
+        if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 0) {
+                if (devinfo->ver < 71) {
+                        process_mux_deps(state, n, inst->alu.mul.a.mux);
+                } else {
+                        process_raddr_deps(state, n, inst->alu.mul.a.raddr,
+                                           inst->sig.small_imm_c);
+                }
+        }
+        if (v3d_qpu_mul_op_num_src(inst->alu.mul.op) > 1) {
+                if (devinfo->ver < 71) {
+                        process_mux_deps(state, n, inst->alu.mul.b.mux);
+                } else {
+                        process_raddr_deps(state, n, inst->alu.mul.b.raddr,
+                                           inst->sig.small_imm_d);
+                }
+        }
 
         switch (inst->alu.add.op) {
         case V3D_QPU_A_VPMSETUP:
