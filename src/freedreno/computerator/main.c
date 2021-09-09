@@ -249,6 +249,9 @@ main(int argc, char **argv)
 
    struct backend *backend;
    switch (fd_dev_gen(dev_id)) {
+   case 4:
+      backend = a4xx_init(dev, dev_id);
+      break;
    case 6:
       backend = a6xx_init(dev, dev_id);
       break;

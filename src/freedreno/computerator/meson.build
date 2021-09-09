@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 computerator_files = [
+  'a4xx.c',
   'a6xx.c',
   'ir3_asm.c',
   'main.c',

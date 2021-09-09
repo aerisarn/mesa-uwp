@@ -80,6 +80,7 @@ struct backend {
       return (struct _to *)f;                                                  \
    }
 
+struct backend *a4xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id);
 struct backend *a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id);
 
 /* for conditionally setting boolean flag(s): */
