@@ -833,7 +833,7 @@ emit_sop2_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Te
 }
 
 void
-emit_vop2_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Temp dst,
+emit_vop2_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode opc, Temp dst,
                       bool commutative, bool swap_srcs = false, bool flush_denorms = false,
                       bool nuw = false, uint8_t uses_ub = 0)
 {
@@ -852,28 +852,27 @@ emit_vop2_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Te
       }
    }
 
-   Operand op0(src0);
-   Operand op1(src1);
+   Operand op[2] = {Operand(src0), Operand(src1)};
 
    for (int i = 0; i < 2; i++) {
       if (uses_ub & (1 << i)) {
          uint32_t src_ub = get_alu_src_ub(ctx, instr, swap_srcs ? !i : i);
          if (src_ub <= 0xffff)
-            bld.set16bit(i ? op1 : op0);
+            op[i].set16bit(true);
          else if (src_ub <= 0xffffff)
-            bld.set24bit(i ? op1 : op0);
+            op[i].set24bit(true);
       }
    }
 
    if (flush_denorms && ctx->program->chip_class < GFX9) {
       assert(dst.size() == 1);
-      Temp tmp = bld.vop2(op, bld.def(v1), op0, op1);
+      Temp tmp = bld.vop2(opc, bld.def(v1), op[0], op[1]);
       bld.vop2(aco_opcode::v_mul_f32, Definition(dst), Operand::c32(0x3f800000u), tmp);
    } else {
       if (nuw) {
-         bld.nuw().vop2(op, Definition(dst), op0, op1);
+         bld.nuw().vop2(opc, Definition(dst), op[0], op[1]);
       } else {
-         bld.vop2(op, Definition(dst), op0, op1);
+         bld.vop2(opc, Definition(dst), op[0], op[1]);
       }
    }
 }
@@ -1646,7 +1645,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          emit_vop3p_instruction(ctx, instr, aco_opcode::v_pk_lshlrev_b16, dst, true);
       } else if (dst.regClass() == v1) {
          emit_vop2_instruction(ctx, instr, aco_opcode::v_lshlrev_b32, dst, false, true, false,
-                               false, 1);
+                               false, 2);
       } else if (dst.regClass() == v2 && ctx->program->chip_class >= GFX8) {
          bld.vop3(aco_opcode::v_lshlrev_b64, Definition(dst), get_alu_src(ctx, instr->src[1]),
                   get_alu_src(ctx, instr->src[0]));
