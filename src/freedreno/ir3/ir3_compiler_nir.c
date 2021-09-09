@@ -194,7 +194,7 @@ create_cov(struct ir3_context *ctx, struct ir3_instruction *src,
    case nir_op_b2i8:
    case nir_op_b2i16:
    case nir_op_b2i32:
-      src_type = TYPE_U32;
+      src_type = ctx->compiler->bool_type;
       break;
 
    default:
@@ -590,7 +590,9 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       break;
    case nir_op_inot:
       if (bs[0] == 1) {
-         dst[0] = ir3_SUB_U(b, create_immed(ctx->block, 1), 0, src[0], 0);
+         struct ir3_instruction *one =
+               create_immed_typed(ctx->block, 1, ctx->compiler->bool_type);
+         dst[0] = ir3_SUB_U(b, one, 0, src[0], 0);
       } else {
          dst[0] = ir3_NOT_B(b, src[0], 0);
       }
@@ -655,24 +657,34 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       }
 
       compile_assert(ctx, bs[1] == bs[2]);
+
       /* The condition's size has to match the other two arguments' size, so
        * convert down if necessary.
+       *
+       * Single hashtable is fine, because the conversion will either be
+       * 16->32 or 32->16, but never both
        */
-      if (bs[1] == 16) {
+      if (is_half(src[1]) != is_half(cond)) {
          struct hash_entry *prev_entry =
             _mesa_hash_table_search(ctx->sel_cond_conversions, src[0]);
          if (prev_entry) {
             cond = prev_entry->data;
          } else {
-            cond = ir3_COV(b, cond, TYPE_U32, TYPE_U16);
+            if (is_half(cond)) {
+               cond = ir3_COV(b, cond, TYPE_U16, TYPE_U32);
+            } else {
+               cond = ir3_COV(b, cond, TYPE_U32, TYPE_U16);
+            }
             _mesa_hash_table_insert(ctx->sel_cond_conversions, src[0], cond);
          }
       }
 
-      if (bs[1] != 16)
-         dst[0] = ir3_SEL_B32(b, src[1], 0, cond, 0, src[2], 0);
-      else
+      if (is_half(src[1])) {
          dst[0] = ir3_SEL_B16(b, src[1], 0, cond, 0, src[2], 0);
+      } else {
+         dst[0] = ir3_SEL_B32(b, src[1], 0, cond, 0, src[2], 0);
+      }
+
       break;
    }
    case nir_op_bit_count: {
@@ -2093,11 +2105,13 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          cond = src[0];
       } else {
          /* unconditional discard: */
-         cond = create_immed(b, 1);
+         cond = create_immed_typed(b, 1, ctx->compiler->bool_type);
       }
 
       /* NOTE: only cmps.*.* can write p0.x: */
-      cond = ir3_CMPS_S(b, cond, 0, create_immed(b, 0), 0);
+      struct ir3_instruction *zero =
+            create_immed_typed(b, 0, is_half(cond) ? TYPE_U16 : TYPE_U32);
+      cond = ir3_CMPS_S(b, cond, 0, zero, 0);
       cond->cat2.condition = IR3_COND_NE;
 
       /* condition always goes in predicate register: */
@@ -2130,7 +2144,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       cond = src[0];
 
       /* NOTE: only cmps.*.* can write p0.x: */
-      cond = ir3_CMPS_S(b, cond, 0, create_immed(b, 0), 0);
+      struct ir3_instruction *zero =
+            create_immed_typed(b, 0, is_half(cond) ? TYPE_U16 : TYPE_U32);
+      cond = ir3_CMPS_S(b, cond, 0, zero, 0);
       cond->cat2.condition = IR3_COND_NE;
 
       /* condition always goes in predicate register: */
@@ -2228,8 +2244,9 @@ emit_load_const(struct ir3_context *ctx, nir_load_const_instr *instr)
 {
    struct ir3_instruction **dst =
       ir3_get_dst_ssa(ctx, &instr->def, instr->def.num_components);
+   unsigned bit_size = ir3_bitsize(ctx, instr->def.bit_size);
 
-   if (instr->def.bit_size == 16) {
+   if (bit_size <= 16) {
       for (int i = 0; i < instr->def.num_components; i++)
          dst[i] = create_immed_typed(ctx->block, instr->value[i].u16, TYPE_U16);
    } else {
@@ -2243,7 +2260,7 @@ emit_undef(struct ir3_context *ctx, nir_ssa_undef_instr *undef)
 {
    struct ir3_instruction **dst =
       ir3_get_dst_ssa(ctx, &undef->def, undef->def.num_components);
-   type_t type = (undef->def.bit_size == 16) ? TYPE_U16 : TYPE_U32;
+   type_t type = utype_for_size(ir3_bitsize(ctx, undef->def.bit_size));
 
    /* backend doesn't want undefined instructions, so just plug
     * in 0.0..
