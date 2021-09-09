@@ -45,7 +45,6 @@ include:
 stages:
   - sanity
   - container
-  - container-2
   - git-archive
   - build-x86_64
   - build-misc
@@ -282,7 +281,6 @@ test-docs-mr:
     - .incorporate-base-tag+templates-commit
     # Don't want the .container rules
     - .ci-run-policy
-  stage: container-2
 
 # Debian 11 based x86 build image base
 debian/x86_build-base:
@@ -461,7 +459,7 @@ fedora/x86_build:
 .kernel+rootfs:
   extends:
     - .ci-run-policy
-  stage: container-2
+  stage: container
   variables:
     GIT_STRATEGY: fetch
     KERNEL_URL: *kernel-rootfs-url
@@ -512,7 +510,6 @@ debian/arm_test:
     - .container
     # Don't want the .container rules
     - .ci-run-policy
-  stage: build-misc
   needs:
     - kernel+rootfs_arm64
     - kernel+rootfs_armhf
