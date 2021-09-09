@@ -24,6 +24,8 @@
 #ifndef ZINK_QUERY_H
 #define ZINK_QUERY_H
 
+#include <stdbool.h>
+
 struct zink_batch;
 struct zink_batch_state;
 struct zink_context;
@@ -51,6 +53,9 @@ zink_start_conditional_render(struct zink_context *ctx);
 
 void
 zink_stop_conditional_render(struct zink_context *ctx);
+
+bool
+zink_check_conditional_render(struct zink_context *ctx);
 #ifdef __cplusplus
 }
 #endif

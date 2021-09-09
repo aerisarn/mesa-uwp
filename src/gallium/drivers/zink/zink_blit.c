@@ -253,6 +253,11 @@ zink_blit(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    const struct util_format_description *src_desc = util_format_description(info->src.format);
    const struct util_format_description *dst_desc = util_format_description(info->dst.format);
+
+   if (info->render_condition_enable &&
+       unlikely(!zink_screen(pctx->screen)->info.have_EXT_conditional_rendering && !zink_check_conditional_render(ctx)))
+      return;
+
    if (src_desc == dst_desc ||
        src_desc->nr_channels != 4 || src_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN ||
        (src_desc->nr_channels == 4 && src_desc->channel[3].type != UTIL_FORMAT_TYPE_VOID)) {

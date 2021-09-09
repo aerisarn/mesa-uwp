@@ -892,6 +892,8 @@ zink_set_active_query_state(struct pipe_context *pctx, bool enable)
 void
 zink_start_conditional_render(struct zink_context *ctx)
 {
+   if (unlikely(!zink_screen(ctx->base.screen)->info.have_EXT_conditional_rendering))
+      return;
    struct zink_batch *batch = &ctx->batch;
    VkConditionalRenderingFlagsEXT begin_flags = 0;
    if (ctx->render_condition.inverted)
@@ -909,7 +911,23 @@ zink_stop_conditional_render(struct zink_context *ctx)
 {
    struct zink_batch *batch = &ctx->batch;
    zink_clear_apply_conditionals(ctx);
+   if (unlikely(!zink_screen(ctx->base.screen)->info.have_EXT_conditional_rendering))
+      return;
    VKCTX(CmdEndConditionalRenderingEXT)(batch->state->cmdbuf);
+}
+
+bool
+zink_check_conditional_render(struct zink_context *ctx)
+{
+   if (!ctx->render_condition_active)
+      return true;
+   assert(ctx->render_condition.query);
+
+   union pipe_query_result result;
+   zink_get_query_result(&ctx->base, (struct pipe_query*)ctx->render_condition.query, true, &result);
+   return is_bool_query(ctx->render_condition.query) ?
+          ctx->render_condition.inverted != result.b :
+          ctx->render_condition.inverted != !!result.u64;
 }
 
 static void
