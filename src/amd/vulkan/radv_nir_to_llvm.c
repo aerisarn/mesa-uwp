@@ -2044,12 +2044,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
    ctx.max_workgroup_size = info->workgroup_size;
 
-   if (ctx.ac.gfx_level >= GFX10) {
-      if (is_pre_gs_stage(shaders[0]->info.stage) && info->is_ngg) {
-         ctx.max_workgroup_size = 128;
-      }
-   }
-
    create_function(&ctx, shaders[shader_count - 1]->info.stage, shader_count >= 2);
 
    ctx.abi.intrinsic_load = radv_intrinsic_load;
