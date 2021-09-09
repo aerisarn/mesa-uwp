@@ -31,6 +31,7 @@
 #include "util/xmlconfig.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
+#include "nir/nir_to_tgsi.h"
 
 #include "tgsi/tgsi_exec.h"
 
@@ -45,6 +46,7 @@ int virgl_debug = 0;
 static const struct debug_named_value virgl_debug_options[] = {
    { "verbose",   VIRGL_DEBUG_VERBOSE,             NULL },
    { "tgsi",      VIRGL_DEBUG_TGSI,                NULL },
+   { "nir",       VIRGL_DEBUG_NIR,                 NULL },
    { "noemubgra", VIRGL_DEBUG_NO_EMULATE_BGRA,     "Disable tweak to emulate BGRA as RGBA on GLES hosts"},
    { "nobgraswz", VIRGL_DEBUG_NO_BGRA_DEST_SWIZZLE,"Disable tweak to swizzle emulated BGRA on GLES hosts" },
    { "sync",      VIRGL_DEBUG_SYNC,                "Sync after every flush" },
@@ -190,6 +192,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
+   case PIPE_CAP_NIR_IMAGES_AS_DEREF:
       return 0;
    case PIPE_CAP_QUERY_TIMESTAMP:
       return 1;
@@ -425,8 +428,10 @@ virgl_get_shader_param(struct pipe_screen *screen,
             return vscreen->caps.caps.v2.max_shader_image_frag_compute;
          else
             return vscreen->caps.caps.v2.max_shader_image_other_stages;
+      case PIPE_SHADER_CAP_PREFERRED_IR:
+         return (virgl_debug & VIRGL_DEBUG_NIR) ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return (1 << PIPE_SHADER_IR_TGSI);
+         return (1 << PIPE_SHADER_IR_TGSI) | ((virgl_debug & VIRGL_DEBUG_NIR) ? (1 << PIPE_SHADER_IR_NIR) : 0);
       case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
          return vscreen->caps.caps.v2.max_atomic_counters[shader];
       case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
@@ -906,13 +911,23 @@ static void virgl_disk_cache_create(struct virgl_screen *screen)
 {
    const struct build_id_note *note =
       build_id_find_nhdr_for_addr(virgl_disk_cache_create);
-   assert(note && build_id_length(note) == 20); /* sha1 */
+   unsigned build_id_len = build_id_length(note);
+   assert(note && build_id_len == 20); /* sha1 */
 
    const uint8_t *id_sha1 = build_id_data(note);
    assert(id_sha1);
 
+   struct mesa_sha1 sha1_ctx;
+   _mesa_sha1_init(&sha1_ctx);
+   _mesa_sha1_update(&sha1_ctx, id_sha1, build_id_len);
+
+   uint32_t shader_debug_flags = virgl_debug & VIRGL_DEBUG_NIR;
+   _mesa_sha1_update(&sha1_ctx, &shader_debug_flags, sizeof(shader_debug_flags));
+
+   uint8_t sha1[20];
+   _mesa_sha1_final(&sha1_ctx, sha1);
    char timestamp[41];
-   _mesa_sha1_format(timestamp, id_sha1);
+   _mesa_sha1_format(timestamp, sha1);
 
    screen->disk_cache = disk_cache_create("virgl", timestamp, 0);
 }
@@ -969,6 +984,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    screen->base.get_shader_param = virgl_get_shader_param;
    screen->base.get_compute_param = virgl_get_compute_param;
    screen->base.get_paramf = virgl_get_paramf;
+   screen->base.get_compiler_options = nir_to_tgsi_get_compiler_options;
    screen->base.is_format_supported = virgl_is_format_supported;
    screen->base.destroy = virgl_destroy_screen;
    screen->base.context_create = virgl_context_create;
