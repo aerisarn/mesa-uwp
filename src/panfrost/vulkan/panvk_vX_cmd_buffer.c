@@ -112,6 +112,7 @@ void
 panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 {
    struct panvk_batch *batch = cmdbuf->state.batch;
+   const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
 #if PAN_ARCH <= 5
    uint32_t tmp_fbd[(pan_size(MULTI_TARGET_FRAMEBUFFER) +
                      pan_size(ZS_CRC_EXTENSION) +
@@ -120,7 +121,11 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 
    assert(batch);
 
-   if (!batch->fragment_job && !batch->scoreboard.first_job) {
+   bool clear = fbinfo->zs.clear.z | fbinfo->zs.clear.s;
+   for (unsigned i = 0; i < fbinfo->rt_count; i++)
+      clear |= fbinfo->rts[i].clear;
+
+   if (!clear && !batch->scoreboard.first_job) {
       if (util_dynarray_num_elements(&batch->event_ops, struct panvk_event_op) == 0) {
          /* Content-less batch, let's drop it */
          vk_free(&cmdbuf->pool->alloc, batch);
@@ -182,8 +187,6 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 
    if (cmdbuf->state.batch->fb.desc.cpu) {
 #if PAN_ARCH == 5
-      const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
-
       panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
                                            fbinfo->width,
                                            fbinfo->height,
