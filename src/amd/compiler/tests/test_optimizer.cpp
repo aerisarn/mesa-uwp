@@ -802,8 +802,7 @@ BEGIN_TEST(optimize.add_lshlrev)
       lshl = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(4u), a_16bit);
       writeout(4, bld.vadd32(bld.def(v1), lshl, Operand(inputs[1])));
 
-      //~gfx8! v1: %lshl5 = v_lshlrev_b32 4, (is24bit)%c
-      //~gfx8! v1: %res5, s2: %_ = v_add_co_u32 %c, %lshl5
+      //~gfx8! v1: %res5 = v_mad_u32_u24 (is24bit)%c, 16, %c
       //~gfx(9|10)! v1: %res5 = v_lshl_add_u32 (is24bit)%c, 4, %c
       //! p_unit_test 5, %res5
       Operand c_24bit = Operand(inputs[2]);
