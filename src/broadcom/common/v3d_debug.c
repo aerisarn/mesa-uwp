@@ -42,6 +42,8 @@ uint32_t V3D_DEBUG = 0;
 static const struct debug_named_value debug_control[] = {
         { "cl",          V3D_DEBUG_CL,
           "Dump command list during creation" },
+        { "cl_nobin",    V3D_DEBUG_CL_NO_BIN,
+          "Dump command listduring creation, excluding binary resources" },
         { "clif",        V3D_DEBUG_CLIF,
           "Dump command list (CLIF format) during creation", },
         { "qpu",         V3D_DEBUG_QPU,
