@@ -2932,6 +2932,45 @@ nir_to_tgsi_lower_txp(nir_shader *s)
    NIR_PASS_V(s, nir_lower_tex, &lower_tex_options);
 }
 
+static bool
+nir_lower_primid_sysval_to_input_filter(const nir_instr *instr, const void *_data)
+{
+   return (instr->type == nir_instr_type_intrinsic &&
+           nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_load_primitive_id);
+}
+
+static nir_ssa_def *
+nir_lower_primid_sysval_to_input_lower(nir_builder *b, nir_instr *instr, void *data)
+{
+   nir_variable *var = *(nir_variable **)data;
+   if (!var) {
+      var = nir_variable_create(b->shader, nir_var_shader_in, glsl_uint_type(), "gl_PrimitiveID");
+      var->data.location = VARYING_SLOT_PRIMITIVE_ID;
+      b->shader->info.inputs_read |= VARYING_BIT_PRIMITIVE_ID;
+      var->data.driver_location = b->shader->num_outputs++;
+
+      *(nir_variable **)data = var;
+   }
+
+   nir_io_semantics semantics = {
+      .location = var->data.location,
+       .num_slots = 1
+   };
+   return nir_load_input(b, 1, 32, nir_imm_int(b, 0),
+                         .base = var->data.driver_location,
+                         .io_semantics = semantics);
+}
+
+static bool
+nir_lower_primid_sysval_to_input(nir_shader *s)
+{
+   nir_variable *input = NULL;
+
+   return nir_shader_lower_instructions(s,
+                                        nir_lower_primid_sysval_to_input_filter,
+                                        nir_lower_primid_sysval_to_input_lower, &input);
+}
+
 /**
  * Translates the NIR shader to TGSI.
  *
@@ -2960,6 +2999,13 @@ nir_to_tgsi(struct nir_shader *s,
 
    nir_to_tgsi_lower_txp(s);
    NIR_PASS_V(s, nir_to_tgsi_lower_tex);
+
+   /* While TGSI can represent PRIMID as either an input or a system value,
+    * glsl-to-tgsi had the GS (not TCS or TES) primid as an input, and drivers
+    * depend on that.
+    */
+   if (s->info.stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(s, nir_lower_primid_sysval_to_input);
 
    if (s->info.num_abos)
       NIR_PASS_V(s, ntt_lower_atomic_pre_dec);
