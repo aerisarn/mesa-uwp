@@ -695,6 +695,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
             anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL) ? RR_STRICT :
                                                                       RR_FREE;
          vfg.DistributionGranularity = BatchLevelGranularity;
+         /* Wa_14014890652 */
+         if (intel_device_info_is_dg2(&cmd_buffer->device->info))
+            vfg.GranularityThresholdDisable = 1;
          vfg.ListCutIndexEnable = d->primitive_restart_enable;
          /* 192 vertices for TRILIST_ADJ */
          vfg.ListNBatchSizeScale = 0;

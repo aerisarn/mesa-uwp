@@ -6639,6 +6639,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL ? RR_STRICT :
                                                                RR_FREE;
          vfg.DistributionGranularity = BatchLevelGranularity;
+         /* Wa_14014890652 */
+         if (intel_device_info_is_dg2(&batch->screen->devinfo))
+            vfg.GranularityThresholdDisable = 1;
          vfg.ListCutIndexEnable = draw->primitive_restart;
          /* 192 vertices for TRILIST_ADJ */
          vfg.ListNBatchSizeScale = 0;
