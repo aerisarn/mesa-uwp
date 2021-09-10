@@ -2078,6 +2078,57 @@ panvk_per_arch(CmdFillBuffer)(VkCommandBuffer commandBuffer,
    panvk_meta_fill_buf(cmdbuf, dst, fillSize, dstOffset, data);
 }
 
+static void
+panvk_meta_update_buf(struct panvk_cmd_buffer *cmdbuf,
+                      const struct panvk_buffer *dst, VkDeviceSize offset,
+                      VkDeviceSize size, const void *data)
+{
+   struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
+
+   struct panvk_meta_copy_buf2buf_info info = {
+      .src = pan_pool_upload_aligned(&cmdbuf->desc_pool.base, data, size, 4),
+      .dst = dst->bo->ptr.gpu + dst->bo_offset + offset,
+   };
+
+   unsigned log2blksz = ffs(sizeof(uint32_t)) - 1;
+
+   mali_ptr rsd =
+      cmdbuf->device->physical_device->meta.copy.buf2buf[log2blksz].rsd;
+   const struct panfrost_ubo_push *pushmap =
+      &cmdbuf->device->physical_device->meta.copy.buf2buf[log2blksz].pushmap;
+
+   mali_ptr pushconsts =
+      panvk_meta_copy_emit_push_constants(pdev, pushmap, &cmdbuf->desc_pool.base,
+                                          &info, sizeof(info));
+   mali_ptr ubo =
+      panvk_meta_copy_emit_ubo(pdev, &cmdbuf->desc_pool.base, &info, sizeof(info));
+
+   if (cmdbuf->state.batch)
+      panvk_per_arch(cmd_close_batch)(cmdbuf);
+
+   panvk_cmd_open_batch(cmdbuf);
+
+   struct panvk_batch *batch = cmdbuf->state.batch;
+
+   panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf, false);
+
+   mali_ptr tsd = batch->tls.gpu;
+
+   unsigned nblocks = size >> log2blksz;
+   struct pan_compute_dim num_wg = { nblocks, 1, 1 };
+   struct pan_compute_dim wg_sz = { 1, 1, 1};
+   struct panfrost_ptr job =
+     panvk_meta_copy_emit_compute_job(&cmdbuf->desc_pool.base,
+                                      &batch->scoreboard,
+                                      &num_wg, &wg_sz,
+                                      0, 0, ubo, pushconsts, rsd, tsd);
+
+   util_dynarray_append(&batch->jobs, void *, job.cpu);
+
+   batch->blit.dst = dst->bo;
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
+}
+
 void
 panvk_per_arch(CmdUpdateBuffer)(VkCommandBuffer commandBuffer,
                                 VkBuffer dstBuffer,
@@ -2085,7 +2136,10 @@ panvk_per_arch(CmdUpdateBuffer)(VkCommandBuffer commandBuffer,
                                 VkDeviceSize dataSize,
                                 const void *pData)
 {
-   panvk_stub();
+   VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+   VK_FROM_HANDLE(panvk_buffer, dst, dstBuffer);
+
+   panvk_meta_update_buf(cmdbuf, dst, dstOffset, dataSize, pData);
 }
 
 void
