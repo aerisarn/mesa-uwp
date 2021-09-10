@@ -121,24 +121,24 @@ panfrost-g52-gl:arm64:
     DEQP_EXPECTED_RENDERER: G52
     PAN_MESA_DEBUG: "deqp,sync,indirect"
 
-.lava-acer-mt8183-cp311-3h-jacuzzi:
+.lava-mt8183-kukui-jacuzzi-juniper-sku16:
   extends:
     - .panfrost-bifrost-rules
     - .panfrost-test
   variables:
-    DEVICE_TYPE: acer-mt8183-cp311-3h-jacuzzi
+    DEVICE_TYPE: mt8183-kukui-jacuzzi-juniper-sku16
     DTB: mt8183-kukui-jacuzzi-juniper-sku16
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     GPU_VERSION: panfrost-g72
   tags:
-    - mesa-ci-x86-64-lava-acer-mt8183-cp311-3h-jacuzzi
+    - mesa-ci-x86-64-lava-mt8183-kukui-jacuzzi-juniper-sku16
 
-.panfrost-g72-gl:arm64:
+panfrost-g72-gl:arm64:
   parallel: 3
   extends:
     - .lava-test:arm64
-    - .lava-acer-mt8183-cp311-3h-jacuzzi
+    - .lava-mt8183-kukui-jacuzzi-juniper-sku16
   variables:
     DEQP_EXPECTED_RENDERER: G72
     DEQP_SUITE: panfrost-g72
