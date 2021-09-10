@@ -1692,9 +1692,9 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
          break;
 
       case nir_intrinsic_load_barycentric_at_sample:
+         /* We stored the sample in the fake "bary" dest. */
          ureg_INTERP_SAMPLE(c->ureg, ntt_get_dest(c, &instr->dest), input,
-                            ureg_imm1u(c->ureg,
-                                       ntt_src_as_uint(c, bary_instr->src[0])));
+                            ntt_get_src(c, instr->src[0]));
          break;
 
       case nir_intrinsic_load_barycentric_at_offset:
@@ -1997,15 +1997,14 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       break;
 
       /* In TGSI we don't actually generate the barycentric coords, and emit
-       * interp intrinsics later.  However, we do need to store the _at_offset
-       * argument so that we can use it at that point.
+       * interp intrinsics later.  However, we do need to store the
+       * load_barycentric_at_* argument so that we can use it at that point.
        */
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_centroid:
    case nir_intrinsic_load_barycentric_sample:
-   case nir_intrinsic_load_barycentric_at_sample:
       break;
-
+   case nir_intrinsic_load_barycentric_at_sample:
    case nir_intrinsic_load_barycentric_at_offset:
       ntt_store(c, &instr->dest, ntt_get_src(c, instr->src[0]));
       break;
