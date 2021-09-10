@@ -50,6 +50,7 @@
 #endif
 
 #ifdef ZINK_USE_DMABUF
+#include <xf86drm.h>
 #include "drm-uapi/drm_fourcc.h"
 #else
 /* these won't actually be used */
@@ -906,7 +907,10 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
       //TODO: remove for wsi
       fd_info.memory = zink_bo_get_mem(obj->bo);
-      fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+      if (whandle->type == WINSYS_HANDLE_TYPE_FD)
+         fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+      else
+         fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       VkResult result = VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
       if (result != VK_SUCCESS)
          return false;
