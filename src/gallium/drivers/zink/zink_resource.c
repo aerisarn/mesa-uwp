@@ -42,7 +42,7 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
-
+#include "util/os_file.h"
 #include "frontend/sw_winsys.h"
 
 #ifndef _WIN32
@@ -425,9 +425,21 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    VkMemoryRequirements reqs;
    VkMemoryPropertyFlags flags;
    bool need_dedicated = false;
+   VkExternalMemoryHandleTypeFlags export_types = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+
+   VkExternalMemoryHandleTypeFlags external = 0;
+   if (whandle) {
+      if (whandle->type == WINSYS_HANDLE_TYPE_FD)
+         external = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+      else
+         unreachable("unknown handle type");
+   }
+
    /* TODO: remove linear for wsi */
-   bool scanout = (templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR)) == (PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR);
-   bool shared = (templ->bind & (PIPE_BIND_SHARED | PIPE_BIND_LINEAR)) == (PIPE_BIND_SHARED | PIPE_BIND_LINEAR);
+   bool scanout = templ->bind & PIPE_BIND_SCANOUT;
+   bool shared = templ->bind & PIPE_BIND_SHARED;
+   if (shared && screen->info.have_EXT_external_memory_dma_buf)
+      export_types |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
 
    pipe_reference_init(&obj->reference, 1);
    util_dynarray_init(&obj->tmp, NULL);
@@ -464,10 +476,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (!success)
          goto fail1;
 
-      if (shared) {
+      if (shared || external) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
          emici.pNext = NULL;
-         emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+         emici.handleTypes = export_types;
          ici.pNext = &emici;
 
          assert(ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT || mod != DRM_FORMAT_MOD_INVALID);
@@ -501,7 +513,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             ici.pNext = &idfmlci;
          } else if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
             // TODO: remove for wsi
-            ici.pNext = NULL;
+            if (!external)
+               ici.pNext = NULL;
             scanout = false;
             shared = false;
          }
@@ -609,7 +622,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    VkExportMemoryAllocateInfo emai;
    if (templ->bind & PIPE_BIND_SHARED && shared) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
-      emai.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+      emai.handleTypes = export_types;
 
       emai.pNext = mai.pNext;
       mai.pNext = &emai;
@@ -622,8 +635,12 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    if (whandle && whandle->type == WINSYS_HANDLE_TYPE_FD) {
       imfi.pNext = NULL;
-      imfi.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-      imfi.fd = whandle->handle;
+      imfi.handleType = external;
+      imfi.fd = os_dupfd_cloexec(whandle->handle);
+      if (imfi.fd < 0) {
+         mesa_loge("ZINK: failed to dup dmabuf fd: %s\n", strerror(errno));
+         goto fail1;
+      }
 
       imfi.pNext = mai.pNext;
       emai.pNext = &imfi;
