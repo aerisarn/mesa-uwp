@@ -360,9 +360,19 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
 
          state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
                      S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8) |
-                     /* DCC image stores require INDEPENDENT_128B_BLOCKS, which is not set
-                      * with displayable DCC on Navi12-14 due to DCN limitations. */
-                     S_00A018_WRITE_COMPRESS_ENABLE(tex->surface.u.gfx9.color.dcc.independent_128B_blocks &&
+                     /* DCC image stores require the following settings:
+                      * - INDEPENDENT_64B_BLOCKS = 0
+                      * - INDEPENDENT_128B_BLOCKS = 1
+                      * - MAX_COMPRESSED_BLOCK_SIZE = 128B
+                      * - MAX_UNCOMPRESSED_BLOCK_SIZE = 256B (always used)
+                      *
+                      * The same limitations apply to SDMA compressed stores because
+                      * SDMA uses the same DCC codec.
+                      */
+                     S_00A018_WRITE_COMPRESS_ENABLE(!tex->surface.u.gfx9.color.dcc.independent_64B_blocks &&
+                                                    tex->surface.u.gfx9.color.dcc.independent_128B_blocks &&
+                                                    tex->surface.u.gfx9.color.dcc.max_compressed_block_size ==
+                                                    V_028C78_MAX_BLOCK_SIZE_128B &&
                                                     access & SI_IMAGE_ACCESS_ALLOW_DCC_STORE);
       }
 
