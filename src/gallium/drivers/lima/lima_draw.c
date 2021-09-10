@@ -600,8 +600,7 @@ lima_calculate_depth_test(struct pipe_depth_stencil_alpha_state *depth,
    return (depth->depth_enabled && depth->depth_writemask) |
       ((int)func << 1) |
       (offset_scale << 16) |
-      (offset_units << 24) |
-      0x30; /* find out what is this */
+      (offset_units << 24);
 }
 
 static void
@@ -646,6 +645,11 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    struct pipe_rasterizer_state *rst = &ctx->rasterizer->base;
    render->depth_test = lima_calculate_depth_test(&ctx->zsa->base, rst);
+
+   if (!rst->depth_clip_near || ctx->viewport.near == 0.0f)
+      render->depth_test |= 0x10; /* don't clip depth near */
+   if (!rst->depth_clip_far || ctx->viewport.far == 1.0f)
+      render->depth_test |= 0x20; /* don't clip depth far */
 
    ushort far, near;
 
