@@ -295,16 +295,18 @@ radv_image_use_dcc_image_stores(const struct radv_device *device, const struct r
    if (device->physical_device->rad_info.chip_class < GFX10)
       return false;
 
-   if ((device->physical_device->rad_info.family == CHIP_NAVI12 ||
-        device->physical_device->rad_info.family == CHIP_NAVI14) &&
-       !image->planes[0].surface.u.gfx9.color.dcc.independent_128B_blocks) {
-      /* Do not enable DCC image stores because INDEPENDENT_128B_BLOCKS is required, and 64B is used
-       * for displayable DCC on NAVI12-14.
-       */
-      return false;
-   }
-
-   return true;
+   /* DCC image stores require the following settings:
+    * - INDEPENDENT_64B_BLOCKS = 0
+    * - INDEPENDENT_128B_BLOCKS = 1
+    * - MAX_COMPRESSED_BLOCK_SIZE = 128B
+    * - MAX_UNCOMPRESSED_BLOCK_SIZE = 256B (always used)
+    *
+    * The same limitations apply to SDMA compressed stores because
+    * SDMA uses the same DCC codec.
+    */
+   return !image->planes[0].surface.u.gfx9.color.dcc.independent_64B_blocks  &&
+           image->planes[0].surface.u.gfx9.color.dcc.independent_128B_blocks &&
+           image->planes[0].surface.u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_128B;
 }
 
 /*
