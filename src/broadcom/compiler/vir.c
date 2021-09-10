@@ -563,7 +563,8 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->fallback_scheduler = fallback_scheduler;
         c->disable_tmu_pipelining = disable_tmu_pipelining;
         c->disable_constant_ubo_load_sorting = disable_constant_ubo_load_sorting;
-        c->disable_loop_unrolling = disable_loop_unrolling;
+        c->disable_loop_unrolling = V3D_DEBUG & V3D_DEBUG_NO_LOOP_UNROLL
+                ? true : disable_loop_unrolling;
 
         s = nir_shader_clone(c, s);
         c->s = s;

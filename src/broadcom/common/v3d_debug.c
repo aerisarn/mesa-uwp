@@ -84,6 +84,8 @@ static const struct debug_named_value debug_control[] = {
          */
         { "tmu16",  V3D_DEBUG_TMU_16BIT,
           "Force 16-bit precision on all TMU operations" },
+        { "noloopunroll",  V3D_DEBUG_NO_LOOP_UNROLL,
+          "Disable loop unrolling" },
         { NULL }
 };
 

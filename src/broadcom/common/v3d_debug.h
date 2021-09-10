@@ -61,6 +61,7 @@ extern uint32_t V3D_DEBUG;
 #define V3D_DEBUG_DUMP_SPIRV        (1 << 17)
 #define V3D_DEBUG_TMU_32BIT         (1 << 18)
 #define V3D_DEBUG_TMU_16BIT         (1 << 19)
+#define V3D_DEBUG_NO_LOOP_UNROLL    (1 << 20)
 
 #define V3D_DEBUG_SHADERS           (V3D_DEBUG_TGSI | V3D_DEBUG_NIR | \
                                      V3D_DEBUG_VIR | V3D_DEBUG_QPU | \
