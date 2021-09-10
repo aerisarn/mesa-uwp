@@ -2386,11 +2386,43 @@ get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
             affinity_related = &phi_ressources.back();
          }
 
-         for (unsigned i = 0; i < instr->operands.size(); i++) {
-            const Operand& op = instr->operands[i];
+         for (const Operand& op : instr->operands) {
             if (op.isTemp() && op.isKill() && op.regClass() == instr->definitions[0].regClass()) {
                affinity_related->emplace_back(op.getTemp());
+               if (block.kind & block_kind_loop_header)
+                  continue;
                temp_to_phi_ressources[op.tempId()] = index;
+            }
+         }
+      }
+
+      /* visit the loop header phis first in order to create nested affinities */
+      if (block.kind & block_kind_loop_exit) {
+         /* find loop header */
+         auto header_rit = block_rit;
+         while ((header_rit + 1)->loop_nest_depth > block.loop_nest_depth)
+            header_rit++;
+
+         for (aco_ptr<Instruction>& phi : header_rit->instructions) {
+            if (!is_phi(phi))
+               break;
+            if (phi->definitions[0].isKill() || phi->definitions[0].isFixed())
+               continue;
+
+            /* create an (empty) merge-set for the phi-related variables */
+            auto it = temp_to_phi_ressources.find(phi->definitions[0].tempId());
+            unsigned index = phi_ressources.size();
+            if (it == temp_to_phi_ressources.end()) {
+               temp_to_phi_ressources[phi->definitions[0].tempId()] = index;
+               phi_ressources.emplace_back(std::vector<Temp>{phi->definitions[0].getTemp()});
+            } else {
+               index = it->second;
+            }
+            for (unsigned i = 1; i < phi->operands.size(); i++) {
+               const Operand& op = phi->operands[i];
+               if (op.isTemp() && op.isKill() && op.regClass() == phi->definitions[0].regClass()) {
+                  temp_to_phi_ressources[op.tempId()] = index;
+               }
             }
          }
       }
