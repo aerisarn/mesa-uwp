@@ -122,6 +122,7 @@ struct zink_resource {
       uint32_t all_binds;
    };
 
+   bool dmabuf_acquire;
    struct sw_displaytarget *dt;
    unsigned dt_stride;
 

@@ -748,6 +748,7 @@ resource_create(struct pipe_screen *pscreen,
       }
    } else {
       res->format = zink_get_format(screen, templ->format);
+      res->dmabuf_acquire = whandle && whandle->type == WINSYS_HANDLE_TYPE_FD;
       res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
       res->optimal_tiling = optimal_tiling;
       res->aspect = aspect_from_format(templ->format);
