@@ -1254,34 +1254,13 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       unreachable("Should be VS or TES.");
 }
 
-static bool
-can_use_deferred_attribute_culling(nir_shader *shader)
-{
-   /* When the shader writes memory, it is difficult to guarantee correctness.
-    * Future work:
-    * - if only write-only SSBOs are used
-    * - if we can prove that non-position outputs don't rely on memory stores
-    * then may be okay to keep the memory stores in the 1st shader part, and delete them from the 2nd.
-    */
-   if (shader->info.writes_memory)
-      return false;
-
-   /* When the shader relies on the subgroup invocation ID, we'd break it, because the ID changes after the culling.
-    * Future work: try to save this to LDS and reload, but it can still be broken in subtle ways.
-    */
-   if (BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_SUBGROUP_INVOCATION))
-      return false;
-
-   return true;
-}
-
 ac_nir_ngg_config
 ac_nir_lower_ngg_nogs(nir_shader *shader,
                       unsigned max_num_es_vertices,
                       unsigned num_vertices_per_primitives,
                       unsigned max_workgroup_size,
                       unsigned wave_size,
-                      bool consider_culling,
+                      bool can_cull,
                       bool consider_passthrough,
                       bool export_prim_id,
                       bool provoking_vtx_last,
@@ -1292,8 +1271,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    assert(impl);
    assert(max_num_es_vertices && max_workgroup_size && wave_size);
 
-   bool can_cull = consider_culling && (num_vertices_per_primitives == 3) &&
-                   can_use_deferred_attribute_culling(shader);
    bool passthrough = consider_passthrough && !can_cull &&
                       !(shader->info.stage == MESA_SHADER_VERTEX && export_prim_id);
 
@@ -1441,7 +1418,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
 
    ac_nir_ngg_config ret = {
       .lds_bytes_if_culling_off = lds_bytes_if_culling_off,
-      .can_cull = can_cull,
       .passthrough = passthrough,
       .early_prim_export = state.early_prim_export,
       .nggc_inputs_read_by_pos = state.inputs_needed_by_pos,

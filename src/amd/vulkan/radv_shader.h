@@ -530,11 +530,10 @@ bool radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
 
 void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
                     struct radv_shader_info *info,
-                    const struct radv_pipeline_key *pl_key,
-                    bool consider_culling);
+                    const struct radv_pipeline_key *pl_key);
 
 bool radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
-                           uint64_t ps_inputs_read);
+                           uint64_t ps_inputs_read, unsigned num_vertices_per_primitive);
 
 void radv_get_nir_options(struct radv_physical_device *device);
 

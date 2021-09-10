@@ -2764,6 +2764,29 @@ radv_get_ballot_bit_size(struct radv_device *device, const VkPipelineShaderStage
 }
 
 static void
+radv_determine_ngg_settings(struct radv_pipeline *pipeline,
+                            const struct radv_pipeline_key *pipeline_key,
+                            struct radv_shader_info *infos, nir_shader **nir)
+{
+   struct radv_device *device = pipeline->device;
+
+   if (!nir[MESA_SHADER_GEOMETRY] && pipeline->graphics.last_vgt_api_stage != MESA_SHADER_NONE) {
+      uint64_t ps_inputs_read =
+         nir[MESA_SHADER_FRAGMENT] ? nir[MESA_SHADER_FRAGMENT]->info.inputs_read : 0;
+      gl_shader_stage es_stage = pipeline->graphics.last_vgt_api_stage;
+
+      unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(pipeline_key->vs.topology) + 1;
+      if (es_stage == MESA_SHADER_TESS_EVAL)
+         num_vertices_per_prim = nir[es_stage]->info.tess.point_mode                      ? 1
+                                 : nir[es_stage]->info.tess.primitive_mode == GL_ISOLINES ? 2
+                                                                                          : 3;
+
+      infos[es_stage].has_ngg_culling =
+         radv_consider_culling(device, nir[es_stage], ps_inputs_read, num_vertices_per_prim);
+   }
+}
+
+static void
 radv_fill_shader_info(struct radv_pipeline *pipeline,
                       const VkPipelineShaderStageCreateInfo **pStages,
                       const struct radv_pipeline_key *pipeline_key,
@@ -3454,6 +3477,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       infos[hw_vs_api_stage].workgroup_size = infos[hw_vs_api_stage].wave_size;
    }
 
+   radv_determine_ngg_settings(pipeline, pipeline_key, infos, nir);
+
    for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
       if (nir[i]) {
          radv_start_feedback(stage_feedbacks[i]);
@@ -3518,11 +3543,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          bool io_to_mem = radv_lower_io_to_mem(device, nir[i], &infos[i], pipeline_key);
          bool lowered_ngg = pipeline_has_ngg && i == pipeline->graphics.last_vgt_api_stage &&
                             !radv_use_llvm_for_stage(device, i);
-         if (lowered_ngg) {
-            uint64_t ps_inputs_read = nir[MESA_SHADER_FRAGMENT] ? nir[MESA_SHADER_FRAGMENT]->info.inputs_read : 0;
-            bool consider_culling = radv_consider_culling(device, nir[i], ps_inputs_read);
-            radv_lower_ngg(device, nir[i], &infos[i], pipeline_key, consider_culling);
-         }
+         if (lowered_ngg)
+            radv_lower_ngg(device, nir[i], &infos[i], pipeline_key);
 
          radv_optimize_nir_algebraic(nir[i], io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE);
 
