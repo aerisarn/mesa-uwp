@@ -633,7 +633,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       NULL,
    };
 
-   if (whandle && whandle->type == WINSYS_HANDLE_TYPE_FD) {
+   if (whandle) {
       imfi.pNext = NULL;
       imfi.handleType = external;
       imfi.fd = os_dupfd_cloexec(whandle->handle);
@@ -643,7 +643,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
 
       imfi.pNext = mai.pNext;
-      emai.pNext = &imfi;
+      mai.pNext = &imfi;
    }
 
    struct wsi_memory_allocate_info memory_wsi_info = {
