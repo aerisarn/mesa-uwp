@@ -177,6 +177,10 @@ struct panvk_meta {
          mali_ptr rsd;
          struct panfrost_ubo_push pushmap;
       } buf2buf[PANVK_META_COPY_BUF2BUF_NUM_BLKSIZES];
+      struct {
+         mali_ptr rsd;
+         struct panfrost_ubo_push pushmap;
+      } fillbuf;
    } copy;
 };
 

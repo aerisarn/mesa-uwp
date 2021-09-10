@@ -1911,6 +1911,160 @@ panvk_per_arch(CmdCopyBuffer)(VkCommandBuffer commandBuffer,
    }
 }
 
+struct panvk_meta_fill_buf_info {
+   mali_ptr start;
+   uint32_t val;
+};
+
+#define panvk_meta_fill_buf_get_info_field(b, field) \
+        nir_load_ubo((b), 1, \
+                     sizeof(((struct panvk_meta_fill_buf_info *)0)->field) * 8, \
+                     nir_imm_int(b, 0), \
+                     nir_imm_int(b, offsetof(struct panvk_meta_fill_buf_info, field)), \
+                     .align_mul = 4, \
+                     .align_offset = 0, \
+                     .range_base = 0, \
+                     .range = ~0)
+
+static mali_ptr
+panvk_meta_fill_buf_shader(struct panfrost_device *pdev,
+                           struct pan_pool *bin_pool,
+                           struct pan_shader_info *shader_info)
+{
+   /* FIXME: Won't work on compute queues, but we can't do that with
+    * a compute shader if the destination is an AFBC surface.
+    */
+   nir_builder b =
+      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+                                     GENX(pan_shader_get_compiler_options)(),
+                                     "panvk_meta_fill_buf()");
+
+   b.shader->info.internal = true;
+   b.shader->info.num_ubos = 1;
+
+   nir_ssa_def *coord = nir_load_global_invocation_id(&b, 32);
+
+   nir_ssa_def *offset =
+      nir_u2u64(&b, nir_imul(&b, nir_channel(&b, coord, 0), nir_imm_int(&b, sizeof(uint32_t))));
+   nir_ssa_def *ptr =
+      nir_iadd(&b, panvk_meta_fill_buf_get_info_field(&b, start), offset);
+   nir_ssa_def *val = panvk_meta_fill_buf_get_info_field(&b, val);
+
+   nir_store_global(&b, ptr, sizeof(uint32_t), val, 1);
+
+   struct panfrost_compile_inputs inputs = {
+      .gpu_id = pdev->gpu_id,
+      .is_blit = true,
+   };
+
+   struct util_dynarray binary;
+
+   util_dynarray_init(&binary, NULL);
+   GENX(pan_shader_compile)(b.shader, &inputs, &binary, shader_info);
+
+   /* Make sure UBO words have been upgraded to push constants and everything
+    * is at the right place.
+    */
+   assert(shader_info->ubo_count == 1);
+   assert(shader_info->push.count == 3);
+
+   mali_ptr shader =
+      pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
+                              PAN_ARCH >= 6 ? 128 : 64);
+
+   util_dynarray_fini(&binary);
+   ralloc_free(b.shader);
+
+   return shader;
+}
+
+static mali_ptr
+panvk_meta_fill_buf_emit_rsd(struct panfrost_device *pdev,
+                             struct pan_pool *bin_pool,
+                             struct pan_pool *desc_pool,
+                             struct panfrost_ubo_push *pushmap)
+{
+   struct pan_shader_info shader_info;
+
+   mali_ptr shader =
+      panvk_meta_fill_buf_shader(pdev, bin_pool, &shader_info);
+
+   struct panfrost_ptr rsd_ptr =
+      pan_pool_alloc_desc_aggregate(desc_pool,
+                                    PAN_DESC(RENDERER_STATE));
+
+   pan_pack(rsd_ptr.cpu, RENDERER_STATE, cfg) {
+      pan_shader_prepare_rsd(&shader_info, shader, &cfg);
+   }
+
+   *pushmap = shader_info.push;
+   return rsd_ptr.gpu;
+}
+
+static void
+panvk_meta_fill_buf_init(struct panvk_physical_device *dev)
+{
+   dev->meta.copy.fillbuf.rsd =
+      panvk_meta_fill_buf_emit_rsd(&dev->pdev, &dev->meta.bin_pool.base,
+                                   &dev->meta.desc_pool.base,
+                                   &dev->meta.copy.fillbuf.pushmap);
+}
+
+static void
+panvk_meta_fill_buf(struct panvk_cmd_buffer *cmdbuf,
+                    const struct panvk_buffer *dst,
+                    VkDeviceSize size, VkDeviceSize offset,
+                    uint32_t val)
+{
+   struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
+
+   if (size == VK_WHOLE_SIZE)
+      size = (dst->size - offset) & ~3ULL;
+
+   struct panvk_meta_fill_buf_info info = {
+      .start = dst->bo->ptr.gpu + dst->bo_offset + offset,
+      .val = val,
+   };
+
+   assert(!(offset & 3) && !(size & 3));
+
+   unsigned nwords = size / sizeof(uint32_t);
+   mali_ptr rsd =
+      cmdbuf->device->physical_device->meta.copy.fillbuf.rsd;
+   const struct panfrost_ubo_push *pushmap =
+      &cmdbuf->device->physical_device->meta.copy.fillbuf.pushmap;
+
+   mali_ptr pushconsts =
+      panvk_meta_copy_emit_push_constants(pdev, pushmap, &cmdbuf->desc_pool.base,
+                                          &info, sizeof(info));
+   mali_ptr ubo =
+      panvk_meta_copy_emit_ubo(pdev, &cmdbuf->desc_pool.base, &info, sizeof(info));
+
+   if (cmdbuf->state.batch)
+      panvk_per_arch(cmd_close_batch)(cmdbuf);
+
+   panvk_cmd_open_batch(cmdbuf);
+
+   struct panvk_batch *batch = cmdbuf->state.batch;
+
+   panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf, false);
+
+   mali_ptr tsd = batch->tls.gpu;
+
+   struct pan_compute_dim num_wg = { nwords, 1, 1 };
+   struct pan_compute_dim wg_sz = { 1, 1, 1};
+   struct panfrost_ptr job =
+     panvk_meta_copy_emit_compute_job(&cmdbuf->desc_pool.base,
+                                      &batch->scoreboard,
+                                      &num_wg, &wg_sz,
+                                      0, 0, ubo, pushconsts, rsd, tsd);
+
+   util_dynarray_append(&batch->jobs, void *, job.cpu);
+
+   batch->blit.dst = dst->bo;
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
+}
+
 void
 panvk_per_arch(CmdFillBuffer)(VkCommandBuffer commandBuffer,
                               VkBuffer dstBuffer,
@@ -1918,7 +2072,10 @@ panvk_per_arch(CmdFillBuffer)(VkCommandBuffer commandBuffer,
                               VkDeviceSize fillSize,
                               uint32_t data)
 {
-   panvk_stub();
+   VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+   VK_FROM_HANDLE(panvk_buffer, dst, dstBuffer);
+
+   panvk_meta_fill_buf(cmdbuf, dst, fillSize, dstOffset, data);
 }
 
 void
@@ -1938,4 +2095,5 @@ panvk_per_arch(meta_copy_init)(struct panvk_physical_device *dev)
    panvk_meta_copy_buf2img_init(dev);
    panvk_meta_copy_img2buf_init(dev);
    panvk_meta_copy_buf2buf_init(dev);
+   panvk_meta_fill_buf_init(dev);
 }
