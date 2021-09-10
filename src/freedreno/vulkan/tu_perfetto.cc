@@ -275,11 +275,11 @@ tu_end_##event_name(struct tu_device *dev, uint64_t ts_ns,                    \
                    const void *flush_data,                                    \
                    const struct trace_end_##event_name *payload)              \
 {                                                                             \
-   auto trace_flush_data = (const struct tu_u_trace_flush_data *) flush_data; \
-   uint32_t submission_id =                                                   \
-      tu_u_trace_flush_data_get_submit_id(trace_flush_data);                  \
-   stage_end(dev, ts_ns, stage, submission_id, payload,                       \
-      (trace_payload_as_extra_func) &trace_payload_as_extra_end_##event_name);\
+   auto trace_flush_data = (const struct tu_u_trace_submission_data *) flush_data; \
+   uint32_t submission_id =                                                        \
+      tu_u_trace_submission_data_get_submit_id(trace_flush_data);                  \
+   stage_end(dev, ts_ns, stage, submission_id, payload,                            \
+      (trace_payload_as_extra_func) &trace_payload_as_extra_end_##event_name);     \
 }
 
 CREATE_EVENT_CALLBACK(render_pass, SURFACE_STAGE_ID)

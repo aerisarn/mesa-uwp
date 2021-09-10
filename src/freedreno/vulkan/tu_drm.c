@@ -43,7 +43,7 @@
 struct tu_queue_submit
 {
    struct vk_queue_submit *vk_submit;
-   struct tu_u_trace_cmd_data *cmd_buffer_trace_data;
+   struct tu_u_trace_submission_data *u_trace_submission_data;
 
    struct drm_msm_gem_submit_cmd *cmds;
    struct drm_msm_gem_submit_syncobj *in_syncobjs;
@@ -751,35 +751,14 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
    }
 
    if (has_trace_points) {
-      new_submit->cmd_buffer_trace_data = vk_zalloc(&queue->device->vk.alloc,
-            vk_submit->command_buffer_count * sizeof(struct tu_u_trace_cmd_data),
-            8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+      result =
+         tu_u_trace_submission_data_create(
+            queue->device, cmd_buffers,
+            vk_submit->command_buffer_count,
+            &new_submit->u_trace_submission_data);
 
-      if (new_submit->cmd_buffer_trace_data == NULL) {
-         result = vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
-         goto fail_cmd_trace_data;
-      }
-
-      for (uint32_t i = 0; i < vk_submit->command_buffer_count; ++i) {
-         struct tu_cmd_buffer *cmdbuf = cmd_buffers[i];
-
-         if (!(cmdbuf->usage_flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT) &&
-             u_trace_has_points(&cmdbuf->trace)) {
-            /* A single command buffer could be submitted several times, but we
-             * already backed timestamp iova addresses and trace points are
-             * single-use. Therefor we have to copy trace points and create
-             * a new timestamp buffer on every submit of reusable command buffer.
-             */
-            if (tu_create_copy_timestamp_cs(cmdbuf,
-                  &new_submit->cmd_buffer_trace_data[i].timestamp_copy_cs,
-                  &new_submit->cmd_buffer_trace_data[i].trace) != VK_SUCCESS) {
-               result = vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
-               goto fail_copy_timestamp_cs;
-            }
-            assert(new_submit->cmd_buffer_trace_data[i].timestamp_copy_cs->entry_count == 1);
-         } else {
-            new_submit->cmd_buffer_trace_data[i].trace = &cmdbuf->trace;
-         }
+      if (result != VK_SUCCESS) {
+         goto fail_u_trace_submission_data;
       }
    }
 
@@ -814,12 +793,10 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
 fail_out_syncobjs:
    vk_free(&queue->device->vk.alloc, new_submit->in_syncobjs);
 fail_in_syncobjs:
-   if (new_submit->cmd_buffer_trace_data)
-      tu_u_trace_cmd_data_finish(queue->device, new_submit->cmd_buffer_trace_data,
-                                 new_submit->vk_submit->command_buffer_count);
-fail_copy_timestamp_cs:
-   vk_free(&queue->device->vk.alloc, new_submit->cmd_buffer_trace_data);
-fail_cmd_trace_data:
+   if (new_submit->u_trace_submission_data)
+      tu_u_trace_submission_data_finish(queue->device,
+                                        new_submit->u_trace_submission_data);
+fail_u_trace_submission_data:
    vk_free(&queue->device->vk.alloc, new_submit->cmds);
 fail_cmds:
    return result;
@@ -873,8 +850,9 @@ tu_queue_build_msm_gem_submit_cmds(struct tu_queue *queue,
          cmds[entry_idx].relocs = 0;
       }
 
-      if (submit->cmd_buffer_trace_data) {
-         struct tu_cs *ts_cs = submit->cmd_buffer_trace_data[j].timestamp_copy_cs;
+      if (submit->u_trace_submission_data) {
+         struct tu_cs *ts_cs =
+            submit->u_trace_submission_data->cmd_trace_data[j].timestamp_copy_cs;
          if (ts_cs) {
             cmds[entry_idx].type = MSM_SUBMIT_CMD_BUF;
             cmds[entry_idx].submit_idx =
@@ -940,24 +918,29 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
    tu_perfetto_submit(queue->device, queue->device->submit_count);
 #endif
 
-   if (submit->cmd_buffer_trace_data) {
-      struct tu_u_trace_flush_data *flush_data =
-         vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_flush_data),
-               8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-      flush_data->submission_id = queue->device->submit_count;
-      flush_data->syncobj =
+   if (submit->u_trace_submission_data) {
+      struct tu_u_trace_submission_data *submission_data =
+         submit->u_trace_submission_data;
+      submission_data->submission_id = queue->device->submit_count;
+      /* We have to allocate it here since it is different between drm/kgsl */
+      submission_data->syncobj =
          vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_syncobj),
                8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-      flush_data->syncobj->fence = req.fence;
-      flush_data->syncobj->msm_queue_id = queue->msm_queue_id;
+      submission_data->syncobj->fence = req.fence;
+      submission_data->syncobj->msm_queue_id = queue->msm_queue_id;
 
-      flush_data->cmd_trace_data = submit->cmd_buffer_trace_data;
-      flush_data->trace_count = submit->vk_submit->command_buffer_count;
-      submit->cmd_buffer_trace_data = NULL;
+      submit->u_trace_submission_data = NULL;
 
       for (uint32_t i = 0; i < submit->vk_submit->command_buffer_count; i++) {
-         bool free_data = i == (submit->vk_submit->command_buffer_count - 1);
-         u_trace_flush(flush_data->cmd_trace_data[i].trace, flush_data, free_data);
+         bool free_data = i == submission_data->last_buffer_with_tracepoints;
+         if (submission_data->cmd_trace_data[i].trace)
+            u_trace_flush(submission_data->cmd_trace_data[i].trace,
+                          submission_data, free_data);
+
+         if (!submission_data->cmd_trace_data[i].timestamp_copy_cs) {
+            /* u_trace is owned by cmd_buffer */
+            submission_data->cmd_trace_data[i].trace = NULL;
+         }
       }
    }
 

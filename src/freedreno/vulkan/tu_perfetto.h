@@ -103,9 +103,9 @@ tu_device_get_timestamp(struct tu_device *dev,
 uint64_t
 tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts);
 
-struct tu_u_trace_flush_data;
+struct tu_u_trace_submission_data;
 uint32_t
-tu_u_trace_flush_data_get_submit_id(const struct tu_u_trace_flush_data *data);
+tu_u_trace_submission_data_get_submit_id(const struct tu_u_trace_submission_data *data);
 
 #endif
 

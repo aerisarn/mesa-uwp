@@ -42,7 +42,7 @@ tu_device_get_timestamp(struct tu_device *dev,
 }
 
 uint32_t
-tu_u_trace_flush_data_get_submit_id(const struct tu_u_trace_flush_data *data)
+tu_u_trace_submission_data_get_submit_id(const struct tu_u_trace_submission_data *data)
 {
     return data->submission_id;
 }

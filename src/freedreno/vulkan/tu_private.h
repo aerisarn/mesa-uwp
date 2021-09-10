@@ -1759,24 +1759,40 @@ VkResult
 tu_create_copy_timestamp_cs(struct tu_cmd_buffer *cmdbuf, struct tu_cs** cs,
                             struct u_trace **trace_copy);
 
+/* If we copy trace and timestamps we will have to free them. */
 struct tu_u_trace_cmd_data
 {
    struct tu_cs *timestamp_copy_cs;
    struct u_trace *trace;
 };
 
-void
-tu_u_trace_cmd_data_finish(struct tu_device *device,
-                           struct tu_u_trace_cmd_data *trace_data,
-                           uint32_t entry_count);
-
-struct tu_u_trace_flush_data
+/* Data necessary to retrieve timestamps and clean all
+ * associated resources afterwards.
+ */
+struct tu_u_trace_submission_data
 {
    uint32_t submission_id;
+   /* We have to know when timestamps are available,
+    * this sync object indicates it.
+    */
    struct tu_u_trace_syncobj *syncobj;
-   uint32_t trace_count;
+
+   uint32_t cmd_buffer_count;
+   uint32_t last_buffer_with_tracepoints;
    struct tu_u_trace_cmd_data *cmd_trace_data;
 };
+
+VkResult
+tu_u_trace_submission_data_create(
+   struct tu_device *device,
+   struct tu_cmd_buffer **cmd_buffers,
+   uint32_t cmd_buffer_count,
+   struct tu_u_trace_submission_data **submission_data);
+
+void
+tu_u_trace_submission_data_finish(
+   struct tu_device *device,
+   struct tu_u_trace_submission_data *submission_data);
 
 #define TU_FROM_HANDLE(__tu_type, __name, __handle)                          \
    VK_FROM_HANDLE(__tu_type, __name, __handle)
