@@ -2350,6 +2350,11 @@ ureg_setup_fragment_shader(struct ureg_program *ureg,
          assert(0);
       }
    }
+
+   if (info->fs.advanced_blend_modes) {
+      ureg_property(ureg, TGSI_PROPERTY_FS_BLEND_EQUATION_ADVANCED,
+                    info->fs.advanced_blend_modes);
+   }
 }
 
 static void

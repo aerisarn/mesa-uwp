@@ -410,6 +410,11 @@ typedef struct shader_info {
          unsigned color1_interp:3; /* glsl_interp_mode */
          bool color1_sample:1;
          bool color1_centroid:1;
+
+         /* Bitmask of gl_advanced_blend_mode values that may be used with this
+          * shader.
+          */
+         unsigned advanced_blend_modes;
       } fs;
 
       struct {

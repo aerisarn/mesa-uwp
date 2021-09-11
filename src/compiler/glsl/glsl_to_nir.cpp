@@ -256,6 +256,7 @@ glsl_to_nir(struct gl_context *ctx,
    if (shader->info.stage == MESA_SHADER_FRAGMENT) {
       shader->info.fs.pixel_center_integer = sh->Program->info.fs.pixel_center_integer;
       shader->info.fs.origin_upper_left = sh->Program->info.fs.origin_upper_left;
+      shader->info.fs.advanced_blend_modes = sh->Program->info.fs.advanced_blend_modes;
    }
 
    return shader;

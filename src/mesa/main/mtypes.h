@@ -2258,15 +2258,6 @@ struct gl_program
          GLuint NumBindlessImages;
          GLboolean HasBoundBindlessImage;
          struct gl_bindless_image *BindlessImages;
-
-         union {
-            struct {
-               /**
-                * A bitmask of gl_advanced_blend_mode values
-                */
-               GLbitfield BlendSupport;
-            } fs;
-         };
       } sh;
 
       /** ARB assembly-style program fields */
