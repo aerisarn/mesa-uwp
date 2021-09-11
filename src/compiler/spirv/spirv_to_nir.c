@@ -2803,6 +2803,15 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
       struct vtn_ssa_value *coord_val = vtn_ssa_value(b, w[idx++]);
       coord = coord_val->def;
+      /* From the SPIR-V spec verxion 1.5, rev. 5:
+       *
+       *    "Coordinate must be a scalar or vector of floating-point type. It
+       *    contains (u[, v] ... [, array layer]) as needed by the definition
+       *    of Sampled Image. It may be a vector larger than needed, but all
+       *    unused components appear after all used components."
+       */
+      vtn_fail_if(coord->num_components < coord_components,
+                  "Coordinate value passed has fewer components than sampler dimensionality.");
       p->src = nir_src_for_ssa(nir_channels(&b->nb, coord,
                                             (1 << coord_components) - 1));
 
