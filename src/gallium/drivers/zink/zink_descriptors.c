@@ -400,7 +400,7 @@ create_layout(struct zink_context *ctx, enum zink_descriptor_type type,
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkDescriptorSetLayout dsl = descriptor_layout_create(screen, type, bindings, MAX2(num_bindings, 1));
    if (!dsl)
-      return VK_NULL_HANDLE;
+      return NULL;
 
    struct zink_descriptor_layout_key *k = ralloc(ctx, struct zink_descriptor_layout_key);
    k->use_count = 0;
@@ -410,7 +410,7 @@ create_layout(struct zink_context *ctx, enum zink_descriptor_type type,
    if (!k->bindings) {
       ralloc_free(k);
       VKSCR(DestroyDescriptorSetLayout)(screen->dev, dsl, NULL);
-      return VK_NULL_HANDLE;
+      return NULL;
    }
    memcpy(k->bindings, bindings, bindings_size);
 
