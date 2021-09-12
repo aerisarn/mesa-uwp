@@ -1917,3 +1917,37 @@ radv_CmdBuildAccelerationStructuresKHR(
    free(bvh_states);
    radv_meta_restore(&saved_state, cmd_buffer);
 }
+
+void
+radv_CmdCopyAccelerationStructureKHR(VkCommandBuffer commandBuffer,
+                                     const VkCopyAccelerationStructureInfoKHR *pInfo)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_acceleration_structure, src, pInfo->src);
+   RADV_FROM_HANDLE(radv_acceleration_structure, dst, pInfo->dst);
+   struct radv_meta_saved_state saved_state;
+
+   radv_meta_save(
+      &saved_state, cmd_buffer,
+      RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_CONSTANTS);
+
+   uint64_t src_addr = radv_accel_struct_get_va(src);
+   uint64_t dst_addr = radv_accel_struct_get_va(dst);
+
+   radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
+                        cmd_buffer->device->meta_state.accel_struct_build.copy_pipeline);
+
+   const struct copy_constants consts = {
+      .src_addr = src_addr,
+      .dst_addr = dst_addr,
+      .mode = COPY_MODE_COPY,
+   };
+
+   radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
+                         cmd_buffer->device->meta_state.accel_struct_build.copy_p_layout,
+                         VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+
+   radv_indirect_dispatch(cmd_buffer, src->bo,
+                          src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
+   radv_meta_restore(&saved_state, cmd_buffer);
+}
