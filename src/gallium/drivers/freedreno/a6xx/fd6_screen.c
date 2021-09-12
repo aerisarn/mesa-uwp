@@ -121,6 +121,24 @@ fd6_screen_is_format_supported(struct pipe_screen *pscreen,
    return retval == usage;
 }
 
+/* clang-format off */
+static const uint8_t primtypes[] = {
+   [PIPE_PRIM_POINTS]                      = DI_PT_POINTLIST,
+   [PIPE_PRIM_LINES]                       = DI_PT_LINELIST,
+   [PIPE_PRIM_LINE_STRIP]                  = DI_PT_LINESTRIP,
+   [PIPE_PRIM_LINE_LOOP]                   = DI_PT_LINELOOP,
+   [PIPE_PRIM_TRIANGLES]                   = DI_PT_TRILIST,
+   [PIPE_PRIM_TRIANGLE_STRIP]              = DI_PT_TRISTRIP,
+   [PIPE_PRIM_TRIANGLE_FAN]                = DI_PT_TRIFAN,
+   [PIPE_PRIM_LINES_ADJACENCY]             = DI_PT_LINE_ADJ,
+   [PIPE_PRIM_LINE_STRIP_ADJACENCY]        = DI_PT_LINESTRIP_ADJ,
+   [PIPE_PRIM_TRIANGLES_ADJACENCY]         = DI_PT_TRI_ADJ,
+   [PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY]    = DI_PT_TRISTRIP_ADJ,
+   [PIPE_PRIM_PATCHES]                     = DI_PT_PATCHES0,
+   [PIPE_PRIM_MAX]                         = DI_PT_RECTLIST,  /* internal clear blits */
+};
+/* clang-format on */
+
 void
 fd6_screen_init(struct pipe_screen *pscreen)
 {
@@ -144,16 +162,5 @@ fd6_screen_init(struct pipe_screen *pscreen)
    fd6_emit_init_screen(pscreen);
    ir3_screen_init(pscreen);
 
-   screen->primtypes = BITFIELD_BIT(PIPE_PRIM_POINTS) |
-                       BITFIELD_BIT(PIPE_PRIM_LINES) |
-                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP) |
-                       BITFIELD_BIT(PIPE_PRIM_LINE_LOOP) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN) |
-                       BITFIELD_BIT(PIPE_PRIM_LINES_ADJACENCY) |
-                       BITFIELD_BIT(PIPE_PRIM_LINE_STRIP_ADJACENCY) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLES_ADJACENCY) |
-                       BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY) |
-                       BITFIELD_BIT(PIPE_PRIM_PATCHES);
+   screen->primtypes = primtypes;
 }

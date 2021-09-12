@@ -236,7 +236,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    struct fd_ringbuffer *ring = ctx->batch->draw;
 
    struct CP_DRAW_INDX_OFFSET_0 draw0 = {
-      .prim_type = ctx->primtypes[info->mode],
+      .prim_type = ctx->screen->primtypes[info->mode],
       .vis_cull = USE_VISIBILITY,
       .gs_enable = !!emit.key.gs,
    };

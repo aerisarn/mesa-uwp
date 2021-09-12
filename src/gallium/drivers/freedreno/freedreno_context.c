@@ -589,13 +589,12 @@ fd_context_cleanup_common_vbos(struct fd_context *ctx)
 
 struct pipe_context *
 fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
-                const uint8_t *primtypes, void *priv,
-                unsigned flags) disable_thread_safety_analysis
+                void *priv, unsigned flags)
+   disable_thread_safety_analysis
 {
    struct fd_screen *screen = fd_screen(pscreen);
    struct pipe_context *pctx;
    unsigned prio = 1;
-   int i;
 
    /* lower numerical value == higher priority: */
    if (FD_DBG(HIPRIO))
@@ -620,12 +619,6 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
       ctx->context_reset_count = fd_get_reset_count(ctx, true);
       ctx->global_reset_count = fd_get_reset_count(ctx, false);
    }
-
-   ctx->primtypes = primtypes;
-   ctx->primtype_mask = 0;
-   for (i = 0; i <= PIPE_PRIM_MAX; i++)
-      if (primtypes[i])
-         ctx->primtype_mask |= (1 << i);
 
    simple_mtx_init(&ctx->gmem_lock, mtx_plain);
 

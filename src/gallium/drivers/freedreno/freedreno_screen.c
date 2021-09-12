@@ -241,7 +241,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_SUPPORTED_PRIM_MODES:
    case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART:
-      return screen->primtypes;
+      return screen->primtypes_mask;
 
    case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
    case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
@@ -1074,6 +1074,13 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
       screen->ccu_offset_gmem = (screen->gmemsize_bytes -
          screen->info->num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
    }
+
+   /* fdN_screen_init() should set this: */
+   assert(screen->primtypes);
+   screen->primtypes_mask = 0;
+   for (unsigned i = 0; i <= PIPE_PRIM_MAX; i++)
+      if (screen->primtypes[i])
+         screen->primtypes_mask |= (1 << i);
 
    if (FD_DBG(PERFC)) {
       screen->perfcntr_groups =

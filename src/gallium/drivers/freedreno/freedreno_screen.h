@@ -89,7 +89,6 @@ struct fd_screen {
    uint32_t ram_size;
    uint32_t max_rts; /* max # of render targets */
    uint32_t priority_mask;
-   uint32_t primtypes;
    bool has_timestamp;
    bool has_robustness;
    bool has_syncobj;
@@ -149,6 +148,17 @@ struct fd_screen {
    const uint64_t *supported_modifiers;
 
    struct renderonly *ro;
+
+   /* table with PIPE_PRIM_MAX+1 entries mapping PIPE_PRIM_x to
+    * DI_PT_x value to use for draw initiator.  There are some
+    * slight differences between generation.
+    *
+    * Note that primtypes[PRIM_TYPE_MAX] is used to map to the
+    * internal RECTLIST primtype, if available, used for blits/
+    * clears.
+    */
+   const uint8_t *primtypes;
+   uint32_t primtypes_mask;
 };
 
 static inline struct fd_screen *
