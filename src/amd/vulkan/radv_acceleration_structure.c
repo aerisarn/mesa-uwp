@@ -1314,14 +1314,276 @@ build_internal_shader(struct radv_device *dev)
    return b.shader;
 }
 
+enum copy_mode {
+   COPY_MODE_COPY,
+   COPY_MODE_SERIALIZE,
+   COPY_MODE_DESERIALIZE,
+};
+
+struct copy_constants {
+   uint64_t src_addr;
+   uint64_t dst_addr;
+   uint32_t mode;
+};
+
+static nir_shader *
+build_copy_shader(struct radv_device *dev)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "accel_copy");
+   b.shader->info.workgroup_size[0] = 64;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+
+   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
+   nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);
+   nir_ssa_def *block_size =
+      nir_imm_ivec4(&b, b.shader->info.workgroup_size[0], b.shader->info.workgroup_size[1],
+                    b.shader->info.workgroup_size[2], 0);
+
+   nir_ssa_def *global_id =
+      nir_channel(&b, nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id), 0);
+
+   nir_variable *offset_var =
+      nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "offset");
+   nir_ssa_def *offset = nir_imul(&b, global_id, nir_imm_int(&b, 16));
+   nir_store_var(&b, offset_var, offset, 1);
+
+   nir_ssa_def *increment = nir_imul(&b, nir_channel(&b, nir_load_num_workgroups(&b, 32), 0),
+                                     nir_imm_int(&b, b.shader->info.workgroup_size[0] * 16));
+
+   nir_ssa_def *pconst0 =
+      nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
+   nir_ssa_def *pconst1 =
+      nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .base = 16, .range = 4);
+   nir_ssa_def *src_base_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 3));
+   nir_ssa_def *dst_base_addr = nir_pack_64_2x32(&b, nir_channels(&b, pconst0, 0xc));
+   nir_ssa_def *mode = nir_channel(&b, pconst1, 0);
+
+   nir_variable *compacted_size_var =
+      nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint64_t_type(), "compacted_size");
+   nir_variable *src_offset_var =
+      nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "src_offset");
+   nir_variable *dst_offset_var =
+      nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "dst_offset");
+   nir_variable *instance_offset_var =
+      nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "instance_offset");
+   nir_variable *instance_count_var =
+      nir_variable_create(b.shader, nir_var_shader_temp, glsl_uint_type(), "instance_count");
+   nir_variable *value_var =
+      nir_variable_create(b.shader, nir_var_shader_temp, glsl_vec4_type(), "value");
+
+   nir_push_if(&b, nir_ieq(&b, mode, nir_imm_int(&b, COPY_MODE_SERIALIZE)));
+   {
+      nir_ssa_def *instance_count = nir_build_load_global(
+         &b, 1, 32,
+         nir_iadd(&b, src_base_addr,
+                  nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, instance_count))),
+         .align_mul = 4, .align_offset = 0);
+      nir_ssa_def *compacted_size = nir_build_load_global(
+         &b, 1, 64,
+         nir_iadd(&b, src_base_addr,
+                  nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, compacted_size))),
+         .align_mul = 8, .align_offset = 0);
+      nir_ssa_def *serialization_size = nir_build_load_global(
+         &b, 1, 64,
+         nir_iadd(&b, src_base_addr,
+                  nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, serialization_size))),
+         .align_mul = 8, .align_offset = 0);
+
+      nir_store_var(&b, compacted_size_var, compacted_size, 1);
+      nir_store_var(
+         &b, instance_offset_var,
+         nir_build_load_global(
+            &b, 1, 32,
+            nir_iadd(&b, src_base_addr,
+                     nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, instance_offset))),
+            .align_mul = 4, .align_offset = 0),
+         1);
+      nir_store_var(&b, instance_count_var, instance_count, 1);
+
+      nir_ssa_def *dst_offset =
+         nir_iadd(&b, nir_imm_int(&b, sizeof(struct radv_accel_struct_serialization_header)),
+                  nir_imul(&b, instance_count, nir_imm_int(&b, sizeof(uint64_t))));
+      nir_store_var(&b, src_offset_var, nir_imm_int(&b, 0), 1);
+      nir_store_var(&b, dst_offset_var, dst_offset, 1);
+
+      nir_push_if(&b, nir_ieq(&b, global_id, nir_imm_int(&b, 0)));
+      {
+         nir_build_store_global(
+            &b, serialization_size,
+            nir_iadd(&b, dst_base_addr,
+                     nir_imm_int64(&b, offsetof(struct radv_accel_struct_serialization_header,
+                                                serialization_size))),
+            .write_mask = 0x1, .align_mul = 8, .align_offset = 0);
+         nir_build_store_global(
+            &b, compacted_size,
+            nir_iadd(&b, dst_base_addr,
+                     nir_imm_int64(&b, offsetof(struct radv_accel_struct_serialization_header,
+                                                compacted_size))),
+            .write_mask = 0x1, .align_mul = 8, .align_offset = 0);
+         nir_build_store_global(
+            &b, nir_u2u64(&b, instance_count),
+            nir_iadd(&b, dst_base_addr,
+                     nir_imm_int64(&b, offsetof(struct radv_accel_struct_serialization_header,
+                                                instance_count))),
+            .write_mask = 0x1, .align_mul = 8, .align_offset = 0);
+      }
+      nir_pop_if(&b, NULL);
+   }
+   nir_push_else(&b, NULL);
+   nir_push_if(&b, nir_ieq(&b, mode, nir_imm_int(&b, COPY_MODE_DESERIALIZE)));
+   {
+      nir_ssa_def *instance_count = nir_build_load_global(
+         &b, 1, 32,
+         nir_iadd(&b, src_base_addr,
+                  nir_imm_int64(
+                     &b, offsetof(struct radv_accel_struct_serialization_header, instance_count))),
+         .align_mul = 4, .align_offset = 0);
+      nir_ssa_def *src_offset =
+         nir_iadd(&b, nir_imm_int(&b, sizeof(struct radv_accel_struct_serialization_header)),
+                  nir_imul(&b, instance_count, nir_imm_int(&b, sizeof(uint64_t))));
+
+      nir_ssa_def *header_addr = nir_iadd(&b, src_base_addr, nir_u2u64(&b, src_offset));
+      nir_store_var(
+         &b, compacted_size_var,
+         nir_build_load_global(
+            &b, 1, 64,
+            nir_iadd(&b, header_addr,
+                     nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, compacted_size))),
+            .align_mul = 8, .align_offset = 0),
+         1);
+      nir_store_var(
+         &b, instance_offset_var,
+         nir_build_load_global(
+            &b, 1, 32,
+            nir_iadd(&b, header_addr,
+                     nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, instance_offset))),
+            .align_mul = 4, .align_offset = 0),
+         1);
+      nir_store_var(&b, instance_count_var, instance_count, 1);
+      nir_store_var(&b, src_offset_var, src_offset, 1);
+      nir_store_var(&b, dst_offset_var, nir_imm_int(&b, 0), 1);
+   }
+   nir_push_else(&b, NULL); /* COPY_MODE_COPY */
+   {
+      nir_store_var(
+         &b, compacted_size_var,
+         nir_build_load_global(
+            &b, 1, 64,
+            nir_iadd(&b, src_base_addr,
+                     nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, compacted_size))),
+            .align_mul = 8, .align_offset = 0),
+         1);
+
+      nir_store_var(&b, src_offset_var, nir_imm_int(&b, 0), 1);
+      nir_store_var(&b, dst_offset_var, nir_imm_int(&b, 0), 1);
+      nir_store_var(&b, instance_offset_var, nir_imm_int(&b, 0), 1);
+      nir_store_var(&b, instance_count_var, nir_imm_int(&b, 0), 1);
+   }
+   nir_pop_if(&b, NULL);
+   nir_pop_if(&b, NULL);
+
+   nir_ssa_def *instance_bound =
+      nir_imul(&b, nir_imm_int(&b, sizeof(struct radv_bvh_instance_node)),
+               nir_load_var(&b, instance_count_var));
+   nir_ssa_def *compacted_size = nir_build_load_global(
+      &b, 1, 32,
+      nir_iadd(&b, src_base_addr,
+               nir_imm_int64(&b, offsetof(struct radv_accel_struct_header, compacted_size))),
+      .align_mul = 4, .align_offset = 0);
+
+   nir_push_loop(&b);
+   {
+      offset = nir_load_var(&b, offset_var);
+      nir_push_if(&b, nir_ilt(&b, offset, compacted_size));
+      {
+         nir_ssa_def *src_offset = nir_iadd(&b, offset, nir_load_var(&b, src_offset_var));
+         nir_ssa_def *dst_offset = nir_iadd(&b, offset, nir_load_var(&b, dst_offset_var));
+         nir_ssa_def *src_addr = nir_iadd(&b, src_base_addr, nir_u2u64(&b, src_offset));
+         nir_ssa_def *dst_addr = nir_iadd(&b, dst_base_addr, nir_u2u64(&b, dst_offset));
+
+         nir_ssa_def *value =
+            nir_build_load_global(&b, 4, 32, src_addr, .align_mul = 16, .align_offset = 0);
+         nir_store_var(&b, value_var, value, 0xf);
+
+         nir_ssa_def *instance_offset = nir_isub(&b, offset, nir_load_var(&b, instance_offset_var));
+         nir_ssa_def *in_instance_bound =
+            nir_iand(&b, nir_uge(&b, offset, nir_load_var(&b, instance_offset_var)),
+                     nir_ult(&b, instance_offset, instance_bound));
+         nir_ssa_def *instance_start =
+            nir_ieq(&b,
+                    nir_iand(&b, instance_offset,
+                             nir_imm_int(&b, sizeof(struct radv_bvh_instance_node) - 1)),
+                    nir_imm_int(&b, 0));
+
+         nir_push_if(&b, nir_iand(&b, in_instance_bound, instance_start));
+         {
+            nir_ssa_def *instance_id = nir_ushr(&b, instance_offset, nir_imm_int(&b, 7));
+
+            nir_push_if(&b, nir_ieq(&b, mode, nir_imm_int(&b, COPY_MODE_SERIALIZE)));
+            {
+               nir_ssa_def *instance_addr =
+                  nir_imul(&b, instance_id, nir_imm_int(&b, sizeof(uint64_t)));
+               instance_addr =
+                  nir_iadd(&b, instance_addr,
+                           nir_imm_int(&b, sizeof(struct radv_accel_struct_serialization_header)));
+               instance_addr = nir_iadd(&b, dst_base_addr, nir_u2u64(&b, instance_addr));
+
+               nir_build_store_global(&b, nir_channels(&b, value, 3), instance_addr,
+                                      .write_mask = 3, .align_mul = 8, .align_offset = 0);
+            }
+            nir_push_else(&b, NULL);
+            {
+               nir_ssa_def *instance_addr =
+                  nir_imul(&b, instance_id, nir_imm_int(&b, sizeof(uint64_t)));
+               instance_addr =
+                  nir_iadd(&b, instance_addr,
+                           nir_imm_int(&b, sizeof(struct radv_accel_struct_serialization_header)));
+               instance_addr = nir_iadd(&b, src_base_addr, nir_u2u64(&b, instance_addr));
+
+               nir_ssa_def *instance_value = nir_build_load_global(
+                  &b, 2, 32, instance_addr, .align_mul = 8, .align_offset = 0);
+
+               nir_ssa_def *values[] = {
+                  nir_channel(&b, instance_value, 0),
+                  nir_channel(&b, instance_value, 1),
+                  nir_channel(&b, value, 2),
+                  nir_channel(&b, value, 3),
+               };
+
+               nir_store_var(&b, value_var, nir_vec(&b, values, 4), 0xf);
+            }
+            nir_pop_if(&b, NULL);
+         }
+         nir_pop_if(&b, NULL);
+
+         nir_store_var(&b, offset_var, nir_iadd(&b, offset, increment), 1);
+
+         nir_build_store_global(&b, nir_load_var(&b, value_var), dst_addr, .write_mask = 0xf,
+                                .align_mul = 16, .align_offset = 0);
+      }
+      nir_push_else(&b, NULL);
+      {
+         nir_jump(&b, nir_jump_break);
+      }
+      nir_pop_if(&b, NULL);
+   }
+   nir_pop_loop(&b, NULL);
+   return b.shader;
+}
+
 void
 radv_device_finish_accel_struct_build_state(struct radv_device *device)
 {
    struct radv_meta_state *state = &device->meta_state;
+   radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.copy_pipeline,
+                        &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.internal_pipeline,
                         &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.leaf_pipeline,
                         &state->alloc);
+   radv_DestroyPipelineLayout(radv_device_to_handle(device),
+                              state->accel_struct_build.copy_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.internal_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
@@ -1334,6 +1596,7 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    VkResult result;
    nir_shader *leaf_cs = build_leaf_shader(device);
    nir_shader *internal_cs = build_internal_shader(device);
+   nir_shader *copy_cs = build_copy_shader(device);
 
    const VkPipelineLayoutCreateInfo leaf_pl_create_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1405,6 +1668,42 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail;
 
+   const VkPipelineLayoutCreateInfo copy_pl_create_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 0,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange){VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(struct copy_constants)},
+   };
+
+   result = radv_CreatePipelineLayout(radv_device_to_handle(device), &copy_pl_create_info,
+                                      &device->meta_state.alloc,
+                                      &device->meta_state.accel_struct_build.copy_p_layout);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   VkPipelineShaderStageCreateInfo copy_shader_stage = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+      .module = vk_shader_module_handle_from_nir(copy_cs),
+      .pName = "main",
+      .pSpecializationInfo = NULL,
+   };
+
+   VkComputePipelineCreateInfo copy_pipeline_info = {
+      .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+      .stage = copy_shader_stage,
+      .flags = 0,
+      .layout = device->meta_state.accel_struct_build.copy_p_layout,
+   };
+
+   result = radv_CreateComputePipelines(
+      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      &copy_pipeline_info, NULL, &device->meta_state.accel_struct_build.copy_pipeline);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   ralloc_free(copy_cs);
    ralloc_free(internal_cs);
    ralloc_free(leaf_cs);
 
@@ -1412,6 +1711,7 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
 
 fail:
    radv_device_finish_accel_struct_build_state(device);
+   ralloc_free(copy_cs);
    ralloc_free(internal_cs);
    ralloc_free(leaf_cs);
    return result;

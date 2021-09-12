@@ -648,6 +648,8 @@ struct radv_meta_state {
       VkPipeline leaf_pipeline;
       VkPipelineLayout internal_p_layout;
       VkPipeline internal_pipeline;
+      VkPipelineLayout copy_p_layout;
+      VkPipeline copy_pipeline;
    } accel_struct_build;
 };
 
