@@ -712,12 +712,6 @@ fd_context_get_scissor(struct fd_context *ctx) assert_dt
    return ctx->current_scissor;
 }
 
-static inline bool
-fd_supported_prim(struct fd_context *ctx, unsigned prim)
-{
-   return (1 << prim) & ctx->primtype_mask;
-}
-
 void fd_context_switch_from(struct fd_context *ctx) assert_dt;
 void fd_context_switch_to(struct fd_context *ctx,
                           struct fd_batch *batch) assert_dt;
