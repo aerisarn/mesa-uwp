@@ -669,6 +669,35 @@ radv_BuildAccelerationStructuresKHR(
    return result;
 }
 
+VkResult
+radv_CopyAccelerationStructureKHR(VkDevice _device, VkDeferredOperationKHR deferredOperation,
+                                  const VkCopyAccelerationStructureInfoKHR *pInfo)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   RADV_FROM_HANDLE(radv_acceleration_structure, src_struct, pInfo->src);
+   RADV_FROM_HANDLE(radv_acceleration_structure, dst_struct, pInfo->dst);
+
+   char *src_ptr = (char *)device->ws->buffer_map(src_struct->bo);
+   if (!src_ptr)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   char *dst_ptr = (char *)device->ws->buffer_map(dst_struct->bo);
+   if (!dst_ptr) {
+      device->ws->buffer_unmap(src_struct->bo);
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   src_ptr += src_struct->mem_offset;
+   dst_ptr += dst_struct->mem_offset;
+
+   const struct radv_accel_struct_header *header = (const void *)src_ptr;
+   memcpy(dst_ptr, src_ptr, header->compacted_size);
+
+   device->ws->buffer_unmap(src_struct->bo);
+   device->ws->buffer_unmap(dst_struct->bo);
+   return VK_SUCCESS;
+}
+
 static nir_ssa_def *
 get_indices(nir_builder *b, nir_ssa_def *addr, nir_ssa_def *type, nir_ssa_def *id)
 {
