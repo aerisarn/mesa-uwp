@@ -1035,6 +1035,8 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
       goto fail;
    }
 
+   screen->info = info;
+
    /* explicitly checking for GPU revisions that are known to work.  This
     * may be overly conservative for a3xx, where spoofing the gpu_id with
     * the blob driver seems to generate identical cmdstream dumps.  But
@@ -1065,14 +1067,6 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
    default:
       mesa_loge("unsupported GPU generation: a%uxx", screen->gen);
       goto fail;
-   }
-
-   screen->info = info;
-
-   if (is_a6xx(screen)) {
-      screen->ccu_offset_bypass = screen->info->num_ccu * A6XX_CCU_DEPTH_SIZE;
-      screen->ccu_offset_gmem = (screen->gmemsize_bytes -
-         screen->info->num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
    }
 
    /* fdN_screen_init() should set this: */

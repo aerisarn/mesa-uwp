@@ -146,6 +146,10 @@ fd6_screen_init(struct pipe_screen *pscreen)
 
    screen->max_rts = A6XX_MAX_RENDER_TARGETS;
 
+   screen->ccu_offset_bypass = screen->info->num_ccu * A6XX_CCU_DEPTH_SIZE;
+   screen->ccu_offset_gmem = (screen->gmemsize_bytes -
+         screen->info->num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
+
    /* Currently only FB_READ forces GMEM path, mostly because we'd have to
     * deal with cmdstream patching otherwise..
     */
