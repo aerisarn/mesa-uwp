@@ -463,6 +463,8 @@ get_main(gl_linked_shader *sh)
 bool
 lower_blend_equation_advanced(struct gl_linked_shader *sh, bool coherent)
 {
+   assert(sh->Stage == MESA_SHADER_FRAGMENT);
+
    if (sh->Program->info.fs.advanced_blend_modes == 0)
       return false;
 
