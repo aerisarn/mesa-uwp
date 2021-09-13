@@ -14,6 +14,22 @@ export LD_LIBRARY_PATH=`pwd`/install/lib/
 export EGL_PLATFORM=surfaceless
 export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.${VK_CPU:-`uname -m`}.json
 
+if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
+    # deqp is to use virpipe, and virgl_test_server llvmpipe
+    export GALLIUM_DRIVER="$GALLIUM_DRIVER"
+
+    VTEST_ARGS="--use-egl-surfaceless"
+    if [ "$VIRGL_HOST_API" = "GLES" ]; then
+        VTEST_ARGS="$VTEST_ARGS --use-gles"
+    fi
+
+    GALLIUM_DRIVER=llvmpipe \
+    GALLIVM_PERF="nopt" \
+    virgl_test_server $VTEST_ARGS >$RESULTS/vtest-log.txt 2>&1 &
+
+    sleep 1
+fi
+
 RESULTS=`pwd`/${PIGLIT_RESULTS_DIR:-results}
 mkdir -p $RESULTS
 
