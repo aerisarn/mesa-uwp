@@ -29,6 +29,9 @@
 #include <stdbool.h>
 #include <vulkan/vulkan.h>
 
+enum pipe_format
+zink_decompose_vertex_format(enum pipe_format format);
+
 VkFormat
 zink_pipe_format_to_vk_format(enum pipe_format format);
 
