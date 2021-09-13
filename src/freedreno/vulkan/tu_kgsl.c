@@ -656,6 +656,20 @@ tu_device_submit_deferred_locked(struct tu_device *dev)
    return VK_SUCCESS;
 }
 
+VkResult
+tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
+{
+   tu_finishme("tu_device_wait_u_trace");
+   return VK_SUCCESS;
+}
+
+int
+tu_drm_get_timestamp(struct tu_physical_device *device, uint64_t *ts)
+{
+   tu_finishme("tu_drm_get_timestamp");
+   return 0;
+}
+
 #ifdef ANDROID
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
