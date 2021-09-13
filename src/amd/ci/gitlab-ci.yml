@@ -51,7 +51,7 @@ radv_polaris10_vkcts:
     - .test-radv
     - .test-manual
   variables:
-    GPU_VERSION: radv-polaris10
+    GPU_VERSION: radv-polaris10-aco
   tags:
     - polaris10
 
