@@ -35,8 +35,22 @@ struct zink_vs_key_base {
 struct zink_vs_key {
    struct zink_vs_key_base base;
    uint8_t pad;
-   uint32_t decomposed_attrs;
-   uint32_t decomposed_attrs_without_w;
+   union {
+      struct {
+         uint32_t decomposed_attrs;
+         uint32_t decomposed_attrs_without_w;
+      } u32;
+      struct {
+         uint16_t decomposed_attrs;
+         uint16_t decomposed_attrs_without_w;
+      } u16;
+      struct {
+         uint8_t decomposed_attrs;
+         uint8_t decomposed_attrs_without_w;
+      } u8;
+   };
+   // not hashed
+   unsigned size;
 };
 
 struct zink_fs_key {

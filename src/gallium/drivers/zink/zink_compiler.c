@@ -807,8 +807,21 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       case MESA_SHADER_VERTEX: {
          uint32_t decomposed_attrs = 0, decomposed_attrs_without_w = 0;
          const struct zink_vs_key *vs_key = zink_vs_key(key);
-         decomposed_attrs = vs_key->decomposed_attrs;
-         decomposed_attrs_without_w = vs_key->decomposed_attrs_without_w;
+         switch (vs_key->size) {
+         case 4:
+            decomposed_attrs = vs_key->u32.decomposed_attrs;
+            decomposed_attrs_without_w = vs_key->u32.decomposed_attrs_without_w;
+            break;
+         case 2:
+            decomposed_attrs = vs_key->u16.decomposed_attrs;
+            decomposed_attrs_without_w = vs_key->u16.decomposed_attrs_without_w;
+            break;
+         case 1:
+            decomposed_attrs = vs_key->u8.decomposed_attrs;
+            decomposed_attrs_without_w = vs_key->u8.decomposed_attrs_without_w;
+            break;
+         default: break;
+         }
          if (decomposed_attrs || decomposed_attrs_without_w)
             NIR_PASS_V(nir, decompose_attribs, decomposed_attrs, decomposed_attrs_without_w);
          FALLTHROUGH;

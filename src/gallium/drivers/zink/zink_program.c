@@ -134,9 +134,24 @@ shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
 {
    struct zink_vs_key *vs_key = &key->key.vs;
    shader_key_vs_base_gen(ctx, zs, shaders, key);
-   vs_key->decomposed_attrs = ctx->element_state->decomposed_attrs;
-   vs_key->decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
-   key->size += 2 * 4;
+   unsigned size = MAX2(ctx->element_state->decomposed_attrs_size, ctx->element_state->decomposed_attrs_without_w_size);
+   switch (size) {
+   case 1:
+      vs_key->u8.decomposed_attrs = ctx->element_state->decomposed_attrs;
+      vs_key->u8.decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
+      break;
+   case 2:
+      vs_key->u16.decomposed_attrs = ctx->element_state->decomposed_attrs;
+      vs_key->u16.decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
+      break;
+   case 4:
+      vs_key->u32.decomposed_attrs = ctx->element_state->decomposed_attrs;
+      vs_key->u32.decomposed_attrs_without_w = ctx->element_state->decomposed_attrs_without_w;
+      break;
+   default: break;
+   }
+   vs_key->size = size;
+   key->size += 2 * size;
 }
 
 static void

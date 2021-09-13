@@ -55,6 +55,7 @@ struct zink_vertex_elements_state {
    uint32_t decomposed_attrs;
    unsigned decomposed_attrs_size;
    uint32_t decomposed_attrs_without_w;
+   unsigned decomposed_attrs_without_w_size;
    struct zink_vertex_elements_hw_state hw_state;
 };
 

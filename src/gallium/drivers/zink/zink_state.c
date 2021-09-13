@@ -99,6 +99,7 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
             ves->decomposed_attrs_size = size;
          } else {
             ves->decomposed_attrs_without_w |= BITFIELD_BIT(i);
+            ves->decomposed_attrs_without_w_size = size;
          }
       }
 
