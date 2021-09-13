@@ -2755,11 +2755,6 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
    if (!ctx->framebuffer || !ctx->framebuffer->state.num_attachments)
       return;
 
-   VkMemoryBarrier bmb;
-   bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-   bmb.pNext = NULL;
-   bmb.srcAccessMask = 0;
-   bmb.dstAccessMask = 0;
    zink_batch_no_rp(ctx);
    if (ctx->fb_state.zsbuf) {
       VkMemoryBarrier dmb;
@@ -2776,24 +2771,26 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
          0, NULL,
          0, NULL
       );
-   } else {
-      bmb.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      bmb.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
    }
-   if (ctx->fb_state.nr_cbufs > 0) {
-      bmb.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      bmb.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
-   }
-   if (bmb.srcAccessMask)
-      VKCTX(CmdPipelineBarrier)(
-         ctx->batch.state->cmdbuf,
-         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-         0,
-         1, &bmb,
-         0, NULL,
-         0, NULL
-      );
+   if (!ctx->fb_state.nr_cbufs)
+      return;
+
+   VkMemoryBarrier bmb;
+   bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   bmb.pNext = NULL;
+   bmb.srcAccessMask = 0;
+   bmb.dstAccessMask = 0;
+   bmb.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+   bmb.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
+   VKCTX(CmdPipelineBarrier)(
+      ctx->batch.state->cmdbuf,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      0,
+      1, &bmb,
+      0, NULL,
+      0, NULL
+   );
 }
 
 static inline void
