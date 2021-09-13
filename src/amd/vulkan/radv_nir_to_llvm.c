@@ -790,7 +790,7 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
    for (unsigned chan = 0; chan < 4; chan++) {
       LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, chan, false);
       out[chan] = LLVMBuildExtractElement(ctx->ac.builder, input, llvm_chan, "");
-      if (dest_type == ctx->ac.f16) {
+      if (dest_type == ctx->ac.i16 && is_float) {
          out[chan] = LLVMBuildBitCast(ctx->ac.builder, out[chan], ctx->ac.f32, "");
          out[chan] = LLVMBuildFPTrunc(ctx->ac.builder, out[chan], ctx->ac.f16, "");
       }
@@ -800,7 +800,7 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
 
    for (unsigned chan = 0; chan < 4; chan++) {
       out[chan] = ac_to_integer(&ctx->ac, out[chan]);
-      if (dest_type == ctx->ac.i16)
+      if (dest_type == ctx->ac.i16 && !is_float)
          out[chan] = LLVMBuildTrunc(ctx->ac.builder, out[chan], ctx->ac.i16, "");
    }
 }
