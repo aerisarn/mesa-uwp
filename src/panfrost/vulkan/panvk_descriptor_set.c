@@ -307,6 +307,16 @@ panvk_CreatePipelineLayout(VkDevice _device,
       }
    }
 
+   for (unsigned range = 0; range < pCreateInfo->pushConstantRangeCount; range++) {
+      layout->push_constants.size =
+         MAX2(pCreateInfo->pPushConstantRanges[range].offset +
+              pCreateInfo->pPushConstantRanges[range].size,
+              layout->push_constants.size);
+   }
+
+   if (layout->push_constants.size)
+      layout->push_constants.ubo_idx = ubo_idx++;
+
    layout->num_samplers = sampler_idx;
    layout->num_textures = tex_idx;
    layout->num_ubos = ubo_idx;

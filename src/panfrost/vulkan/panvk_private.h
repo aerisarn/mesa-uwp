@@ -420,6 +420,11 @@ struct panvk_pipeline_layout {
    uint32_t num_sets;
 
    struct {
+      uint32_t size;
+      unsigned ubo_idx;
+   } push_constants;
+
+   struct {
       struct panvk_descriptor_set_layout *layout;
       unsigned sampler_offset;
       unsigned tex_offset;
@@ -485,6 +490,7 @@ struct panvk_descriptor_state {
    mali_ptr ubos;
    mali_ptr textures;
    mali_ptr samplers;
+   mali_ptr push_constants;
 };
 
 #define INVOCATION_DESC_WORDS 2

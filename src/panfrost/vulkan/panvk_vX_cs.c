@@ -379,6 +379,12 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
                                pipeline->sysvals[i].ids.sysval_count * 16,
                                &ubos[pipeline->sysvals[i].ubo_idx]);
    }
+
+   if (pipeline->layout->push_constants.size) {
+      panvk_per_arch(emit_ubo)(state->push_constants,
+                               ALIGN_POT(pipeline->layout->push_constants.size, 16),
+                               &ubos[pipeline->layout->push_constants.ubo_idx]);
+   }
 }
 
 void

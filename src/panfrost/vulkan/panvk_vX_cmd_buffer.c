@@ -347,6 +347,26 @@ panvk_cmd_prepare_sysvals(struct panvk_cmd_buffer *cmdbuf,
 }
 
 static void
+panvk_cmd_prepare_push_constants(struct panvk_cmd_buffer *cmdbuf,
+                                 struct panvk_cmd_bind_point_state *bind_point_state)
+{
+   struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
+
+   if (!pipeline->layout->push_constants.size || desc_state->push_constants)
+      return;
+
+   struct panfrost_ptr push_constants =
+      pan_pool_alloc_aligned(&cmdbuf->desc_pool.base,
+                             ALIGN_POT(pipeline->layout->push_constants.size, 16),
+                             16);
+
+   memcpy(push_constants.cpu, cmdbuf->push_constants,
+          pipeline->layout->push_constants.size);
+   desc_state->push_constants = push_constants.gpu;
+}
+
+static void
 panvk_cmd_prepare_ubos(struct panvk_cmd_buffer *cmdbuf,
                        struct panvk_cmd_bind_point_state *bind_point_state)
 {
@@ -357,6 +377,7 @@ panvk_cmd_prepare_ubos(struct panvk_cmd_buffer *cmdbuf,
       return;
 
    panvk_cmd_prepare_sysvals(cmdbuf, bind_point_state);
+   panvk_cmd_prepare_push_constants(cmdbuf, bind_point_state);
 
    struct panfrost_ptr ubos =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,

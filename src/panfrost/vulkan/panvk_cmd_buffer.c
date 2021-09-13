@@ -121,7 +121,25 @@ panvk_CmdPushConstants(VkCommandBuffer commandBuffer,
                        uint32_t size,
                        const void *pValues)
 {
-   panvk_stub();
+   VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+
+   memcpy(cmdbuf->push_constants + offset, pValues, size);
+
+   if (stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+      struct panvk_descriptor_state *desc_state =
+         panvk_cmd_get_desc_state(cmdbuf, GRAPHICS);
+
+      desc_state->ubos = 0;
+      desc_state->push_constants = 0;
+   }
+
+   if (stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+      struct panvk_descriptor_state *desc_state =
+         panvk_cmd_get_desc_state(cmdbuf, COMPUTE);
+
+      desc_state->ubos = 0;
+      desc_state->push_constants = 0;
+   }
 }
 
 void

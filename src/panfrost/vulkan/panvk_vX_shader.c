@@ -432,6 +432,33 @@ panvk_lower_blend(struct panfrost_device *pdev,
    }
 }
 
+static bool
+panvk_lower_load_push_constant(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_push_constant)
+      return false;
+
+   const struct panvk_pipeline_layout *layout = data;
+
+   b->cursor = nir_before_instr(instr);
+   nir_ssa_def *ubo_load =
+      nir_load_ubo(b, nir_dest_num_components(intr->dest),
+                   nir_dest_bit_size(intr->dest),
+                   nir_imm_int(b, layout->push_constants.ubo_idx),
+                   intr->src[0].ssa,
+                   .align_mul = nir_dest_bit_size(intr->dest) / 8,
+                   .align_offset = 0,
+                   .range_base = nir_intrinsic_base(intr),
+                   .range = nir_intrinsic_range(intr));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, ubo_load);
+   nir_instr_remove(instr);
+   return true;
+}
+
 struct panvk_shader *
 panvk_per_arch(shader_create)(struct panvk_device *dev,
                               gl_shader_stage stage,
@@ -513,6 +540,14 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_32bit_index_offset);
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_mem_push_const,
+              nir_address_format_32bit_offset);
+   NIR_PASS_V(nir, nir_shader_instructions_pass,
+              panvk_lower_load_push_constant,
+              nir_metadata_block_index |
+              nir_metadata_dominance,
+              (void *)layout);
 
    nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, stage);
    nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs, stage);
