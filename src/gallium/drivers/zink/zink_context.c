@@ -2365,6 +2365,8 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    /* only barrier if we're changing layout or doing something besides read -> read */
    VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res);
    assert(new_layout);
+   if (!res->obj->access_stage)
+      imb.srcAccessMask = 0;
    if (res->obj->needs_zs_evaluate)
       imb.pNext = &res->obj->zs_evaluate;
    res->obj->needs_zs_evaluate = false;
@@ -2468,6 +2470,8 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
    bmb.pNext = NULL;
    bmb.srcAccessMask = res->obj->access;
    bmb.dstAccessMask = flags;
+   if (!res->obj->access_stage)
+      bmb.srcAccessMask = 0;
    VkCommandBuffer cmdbuf = get_cmdbuf(ctx, res);
    /* only barrier if we're changing layout or doing something besides read -> read */
    VKCTX(CmdPipelineBarrier)(
