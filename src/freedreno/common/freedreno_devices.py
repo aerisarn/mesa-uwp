@@ -224,6 +224,7 @@ a6xx_gen3 = dict(
         has_tex_filter_cubic = True,
         has_sample_locations = True,
         has_ccu_flush_bug = True,
+        has_8bpp_ubwc = False,
     )
 
 # a635, a660:
