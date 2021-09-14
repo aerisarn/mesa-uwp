@@ -115,9 +115,9 @@ tu_drm_get_gmem_base(const struct tu_physical_device *dev, uint64_t *base)
 }
 
 int
-tu_drm_get_timestamp(struct tu_physical_device *device, uint64_t *ts)
+tu_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
-   return tu_drm_get_param(device, MSM_PARAM_TIMESTAMP, ts);
+   return tu_drm_get_param(dev->physical_device, MSM_PARAM_TIMESTAMP, ts);
 }
 
 int

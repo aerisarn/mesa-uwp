@@ -97,8 +97,8 @@ struct tu_perfetto_state *
 tu_device_get_perfetto_state(struct tu_device *dev);
 
 int
-tu_device_get_timestamp(struct tu_device *dev,
-                        uint64_t *ts);
+tu_device_get_gpu_timestamp(struct tu_device *dev,
+                            uint64_t *ts);
 
 uint64_t
 tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts);

@@ -196,7 +196,7 @@ sync_timestamp(struct tu_device *dev)
    if (cpu_ts < next_clock_sync_ns)
       return;
 
-    if (tu_device_get_timestamp(dev, &gpu_ts)) {
+    if (tu_device_get_gpu_timestamp(dev, &gpu_ts)) {
       PERFETTO_ELOG("Could not sync CPU and GPU clocks");
       return;
     }

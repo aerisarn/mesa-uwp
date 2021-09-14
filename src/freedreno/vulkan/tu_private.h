@@ -1728,8 +1728,8 @@ VkResult
 tu_enumerate_devices(struct tu_instance *instance);
 
 int
-tu_drm_get_timestamp(struct tu_physical_device *device,
-                     uint64_t *ts);
+tu_device_get_gpu_timestamp(struct tu_device *dev,
+                            uint64_t *ts);
 
 int
 tu_drm_submitqueue_new(const struct tu_device *dev,
