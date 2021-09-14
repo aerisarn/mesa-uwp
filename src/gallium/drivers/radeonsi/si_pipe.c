@@ -747,10 +747,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
        *    and the LS main part when !vs_needs_prolog
        *  - remove the fixup for unused input VGPRs
        */
-      sctx->shader.tcs.key.opt.prefer_mono = 1;
+      sctx->shader.tcs.key.ge.opt.prefer_mono = 1;
 
       /* This enables jumping over the VS prolog for GS-only waves. */
-      sctx->shader.gs.key.opt.prefer_mono = 1;
+      sctx->shader.gs.key.ge.opt.prefer_mono = 1;
    }
 
    si_begin_new_gfx_cs(sctx, true);

@@ -1222,15 +1222,34 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
    sctx->descriptors_dirty |= 1u << descriptors_idx;
 }
 
+void si_get_inline_uniform_state(union si_shader_key *key, enum pipe_shader_type shader,
+                                 bool *inline_uniforms, uint32_t **inlined_values)
+{
+   if (shader == PIPE_SHADER_FRAGMENT) {
+      *inline_uniforms = key->ps.opt.inline_uniforms;
+      *inlined_values = key->ps.opt.inlined_uniform_values;
+   } else {
+      *inline_uniforms = key->ge.opt.inline_uniforms;
+      *inlined_values = key->ge.opt.inlined_uniform_values;
+   }
+}
+
 void si_invalidate_inlinable_uniforms(struct si_context *sctx, enum pipe_shader_type shader)
 {
    if (shader == PIPE_SHADER_COMPUTE)
       return;
 
-   if (sctx->shaders[shader].key.opt.inline_uniforms) {
-      sctx->shaders[shader].key.opt.inline_uniforms = false;
-      memset(sctx->shaders[shader].key.opt.inlined_uniform_values, 0,
-             sizeof(sctx->shaders[shader].key.opt.inlined_uniform_values));
+   bool inline_uniforms;
+   uint32_t *inlined_values;
+   si_get_inline_uniform_state(&sctx->shaders[shader].key, shader, &inline_uniforms, &inlined_values);
+
+   if (inline_uniforms) {
+      if (shader == PIPE_SHADER_FRAGMENT)
+         sctx->shaders[shader].key.ps.opt.inline_uniforms = false;
+      else
+         sctx->shaders[shader].key.ge.opt.inline_uniforms = false;
+
+      memset(inlined_values, 0, MAX_INLINABLE_UNIFORMS * 4);
       sctx->do_update_shaders = true;
    }
 }
@@ -1273,10 +1292,18 @@ static void si_set_inlinable_constants(struct pipe_context *ctx,
    if (shader == PIPE_SHADER_COMPUTE)
       return;
 
-   if (!sctx->shaders[shader].key.opt.inline_uniforms) {
+   bool inline_uniforms;
+   uint32_t *inlined_values;
+   si_get_inline_uniform_state(&sctx->shaders[shader].key, shader, &inline_uniforms, &inlined_values);
+
+   if (!inline_uniforms) {
       /* It's the first time we set the constants. Always update shaders. */
-      sctx->shaders[shader].key.opt.inline_uniforms = true;
-      memcpy(sctx->shaders[shader].key.opt.inlined_uniform_values, values, num_values * 4);
+      if (shader == PIPE_SHADER_FRAGMENT)
+         sctx->shaders[shader].key.ps.opt.inline_uniforms = true;
+      else
+         sctx->shaders[shader].key.ge.opt.inline_uniforms = true;
+
+      memcpy(inlined_values, values, num_values * 4);
       sctx->do_update_shaders = true;
       return;
    }
@@ -1284,8 +1311,8 @@ static void si_set_inlinable_constants(struct pipe_context *ctx,
    /* We have already set inlinable constants for this shader. Update the shader only if
     * the constants are being changed so as not to update shaders needlessly.
     */
-   if (memcmp(sctx->shaders[shader].key.opt.inlined_uniform_values, values, num_values * 4)) {
-      memcpy(sctx->shaders[shader].key.opt.inlined_uniform_values, values, num_values * 4);
+   if (memcmp(inlined_values, values, num_values * 4)) {
+      memcpy(inlined_values, values, num_values * 4);
       sctx->do_update_shaders = true;
    }
 }
@@ -2029,27 +2056,27 @@ void si_shader_change_notify(struct si_context *sctx)
     *            If GS sets as_ngg, the previous stage must set as_ngg too.
     */
    if (sctx->shader.tes.cso) {
-      sctx->shader.vs.key.as_ls = 1;
-      sctx->shader.vs.key.as_es = 0;
-      sctx->shader.vs.key.as_ngg = 0;
+      sctx->shader.vs.key.ge.as_ls = 1;
+      sctx->shader.vs.key.ge.as_es = 0;
+      sctx->shader.vs.key.ge.as_ngg = 0;
 
       if (sctx->shader.gs.cso) {
-         sctx->shader.tes.key.as_es = 1;
-         sctx->shader.tes.key.as_ngg = sctx->ngg;
-         sctx->shader.gs.key.as_ngg = sctx->ngg;
+         sctx->shader.tes.key.ge.as_es = 1;
+         sctx->shader.tes.key.ge.as_ngg = sctx->ngg;
+         sctx->shader.gs.key.ge.as_ngg = sctx->ngg;
       } else {
-         sctx->shader.tes.key.as_es = 0;
-         sctx->shader.tes.key.as_ngg = sctx->ngg;
+         sctx->shader.tes.key.ge.as_es = 0;
+         sctx->shader.tes.key.ge.as_ngg = sctx->ngg;
       }
    } else if (sctx->shader.gs.cso) {
-      sctx->shader.vs.key.as_ls = 0;
-      sctx->shader.vs.key.as_es = 1;
-      sctx->shader.vs.key.as_ngg = sctx->ngg;
-      sctx->shader.gs.key.as_ngg = sctx->ngg;
+      sctx->shader.vs.key.ge.as_ls = 0;
+      sctx->shader.vs.key.ge.as_es = 1;
+      sctx->shader.vs.key.ge.as_ngg = sctx->ngg;
+      sctx->shader.gs.key.ge.as_ngg = sctx->ngg;
    } else {
-      sctx->shader.vs.key.as_ls = 0;
-      sctx->shader.vs.key.as_es = 0;
-      sctx->shader.vs.key.as_ngg = sctx->ngg;
+      sctx->shader.vs.key.ge.as_ls = 0;
+      sctx->shader.vs.key.ge.as_es = 0;
+      sctx->shader.vs.key.ge.as_ngg = sctx->ngg;
    }
 }
 

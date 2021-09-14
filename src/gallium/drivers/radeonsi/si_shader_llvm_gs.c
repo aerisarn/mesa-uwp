@@ -108,7 +108,7 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 
    ret = si_insert_input_ptr(ctx, ret, ctx->other_const_and_shader_buffers, 0);
    ret = si_insert_input_ptr(ctx, ret, ctx->other_samplers_and_images, 1);
-   if (ctx->shader->key.as_ngg)
+   if (ctx->shader->key.ge.as_ngg)
       ret = si_insert_input_ptr(ctx, ret, ctx->args.gs_tg_info, 2);
    else
       ret = si_insert_input_ret(ctx, ret, ctx->args.gs2vs_offset, 2);
@@ -199,7 +199,7 @@ static LLVMValueRef si_get_gs_wave_id(struct si_shader_context *ctx)
 
 static void emit_gs_epilogue(struct si_shader_context *ctx)
 {
-   if (ctx->shader->key.as_ngg) {
+   if (ctx->shader->key.ge.as_ngg) {
       gfx10_ngg_gs_emit_epilogue(ctx);
       return;
    }
@@ -228,7 +228,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
-   if (ctx->shader->key.as_ngg) {
+   if (ctx->shader->key.ge.as_ngg) {
       gfx10_ngg_gs_emit_vertex(ctx, stream, addrs);
       return;
    }
@@ -303,7 +303,7 @@ static void si_llvm_emit_primitive(struct ac_shader_abi *abi, unsigned stream)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
-   if (ctx->shader->key.as_ngg) {
+   if (ctx->shader->key.ge.as_ngg) {
       LLVMBuildStore(ctx->ac.builder, ctx->ac.i32_0, ctx->gs_curprim_verts[stream]);
       return;
    }

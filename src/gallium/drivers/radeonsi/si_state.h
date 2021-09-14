@@ -478,6 +478,8 @@ struct si_buffer_resources {
    } while (0)
 
 /* si_descriptors.c */
+void si_get_inline_uniform_state(union si_shader_key *key, enum pipe_shader_type shader,
+                                 bool *inline_uniforms, uint32_t **inlined_values);
 void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture *tex,
                                     const struct legacy_surf_level *base_level_info,
                                     unsigned base_level, unsigned first_level, unsigned block_width,
@@ -572,17 +574,14 @@ void si_schedule_initial_compile(struct si_context *sctx, gl_shader_stage stage,
                                  util_queue_execute_func execute);
 void si_get_active_slot_masks(const struct si_shader_info *info, uint64_t *const_and_shader_buffers,
                               uint64_t *samplers_and_images);
-int si_shader_select_with_key(struct si_context *sctx, struct si_shader_ctx_state *state,
-                              const struct si_shader_key *key, int thread_index,
-                              bool optimized_or_none);
 int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state);
 void si_vs_key_update_inputs(struct si_context *sctx);
-void si_get_vs_key_inputs(struct si_context *sctx, struct si_shader_key *key,
+void si_get_vs_key_inputs(struct si_context *sctx, union si_shader_key *key,
                           struct si_vs_prolog_bits *prolog_key);
 void si_update_ps_inputs_read_or_disabled(struct si_context *sctx);
 void si_update_ps_kill_enable(struct si_context *sctx);
 void si_update_vrs_flat_shading(struct si_context *sctx);
-unsigned si_get_input_prim(const struct si_shader_selector *gs, const struct si_shader_key *key);
+unsigned si_get_input_prim(const struct si_shader_selector *gs, const union si_shader_key *key);
 bool si_update_ngg(struct si_context *sctx);
 void si_ps_key_update_framebuffer(struct si_context *sctx);
 void si_ps_key_update_framebuffer_blend(struct si_context *sctx);

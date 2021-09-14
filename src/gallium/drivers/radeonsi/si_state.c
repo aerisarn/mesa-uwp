@@ -123,7 +123,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
    /* RB+ register settings. */
    if (sctx->screen->info.rbplus_allowed) {
       unsigned spi_shader_col_format =
-         sctx->shader.ps.cso ? sctx->shader.ps.current->key.part.ps.epilog.spi_shader_col_format
+         sctx->shader.ps.cso ? sctx->shader.ps.current->key.ps.part.epilog.spi_shader_col_format
                              : 0;
       unsigned sx_ps_downconvert = 0;
       unsigned sx_blend_opt_epsilon = 0;

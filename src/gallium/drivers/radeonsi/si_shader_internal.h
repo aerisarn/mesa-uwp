@@ -168,12 +168,12 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader);
 unsigned si_get_max_workgroup_size(const struct si_shader *shader);
 bool si_vs_needs_prolog(const struct si_shader_selector *sel,
                         const struct si_vs_prolog_bits *prolog_key,
-                        const struct si_shader_key *key, bool ngg_cull_shader);
+                        const union si_shader_key *key, bool ngg_cull_shader);
 void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_sgprs,
                           bool ngg_cull_shader, const struct si_vs_prolog_bits *prolog_key,
                           struct si_shader *shader_out, union si_shader_part_key *key);
 struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
-                                     const struct si_shader_key *key,
+                                     const union si_shader_key *key,
                                      bool *free_nir);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,

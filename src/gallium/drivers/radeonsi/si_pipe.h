@@ -805,7 +805,7 @@ struct si_shader_ctx_state {
    struct si_shader_selector *cso;
    struct si_shader *current;
    /* The shader variant key representing the current state. */
-   struct si_shader_key key;
+   union si_shader_key key;
 };
 
 #define SI_NUM_VGT_PARAM_KEY_BITS 12
@@ -1965,9 +1965,14 @@ static inline unsigned si_get_wave_size(struct si_screen *sscreen,
 
 static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
 {
+   if (shader->selector->info.stage <= MESA_SHADER_GEOMETRY) {
+      return si_get_wave_size(shader->selector->screen, shader->selector->info.stage,
+                              shader->key.ge.as_ngg,
+                              shader->key.ge.as_es);
+   }
+
    return si_get_wave_size(shader->selector->screen, shader->selector->info.stage,
-                           shader->key.as_ngg,
-                           shader->key.as_es);
+                           false, false);
 }
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
