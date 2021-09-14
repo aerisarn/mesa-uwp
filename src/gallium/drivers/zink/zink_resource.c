@@ -916,7 +916,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
                          struct winsys_handle *whandle,
                          unsigned usage)
 {
-   if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
+   if (whandle->type == WINSYS_HANDLE_TYPE_FD || whandle->type == WINSYS_HANDLE_TYPE_KMS) {
 #ifdef ZINK_USE_DMABUF
       struct zink_resource *res = zink_resource(tex);
       struct zink_screen *screen = zink_screen(pscreen);
@@ -935,6 +935,14 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       VkResult result = VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
       if (result != VK_SUCCESS)
          return false;
+      if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
+         uint32_t h;
+         if (drmPrimeFDToHandle(screen->drm_fd, fd, &h)) {
+            return false;
+         }
+         close(fd);
+         fd = h;
+      }
       whandle->handle = fd;
       uint64_t value;
       zink_resource_get_param(pscreen, context, tex, 0, 0, 0, PIPE_RESOURCE_PARAM_MODIFIER, 0, &value);
