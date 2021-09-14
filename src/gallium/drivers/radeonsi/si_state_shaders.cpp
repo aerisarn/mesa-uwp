@@ -188,7 +188,7 @@ static void *si_get_shader_binary(struct si_shader *shader)
    ptr = write_data(ptr, &shader->info, sizeof(shader->info));
    ptr = write_chunk(ptr, shader->binary.elf_buffer, shader->binary.elf_size);
    ptr = write_chunk(ptr, shader->binary.llvm_ir_string, llvm_ir_size);
-   assert((char *)ptr - (char *)buffer == size);
+   assert((char *)ptr - (char *)buffer == (ptrdiff_t)size);
 
    /* Compute CRC32. */
    ptr = (uint32_t *)buffer;
@@ -283,7 +283,7 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen, unsigned char ir_sha
    disk_cache_compute_key(sscreen->disk_shader_cache, ir_sha1_cache_key, 20, sha1);
 
    size_t binary_size;
-   uint8_t *buffer = disk_cache_get(sscreen->disk_shader_cache, sha1, &binary_size);
+   uint8_t *buffer = (uint8_t*)disk_cache_get(sscreen->disk_shader_cache, sha1, &binary_size);
    if (buffer) {
       if (binary_size >= sizeof(uint32_t) && *((uint32_t *)buffer) == binary_size) {
          if (si_load_shader_binary(shader, buffer)) {
@@ -2206,10 +2206,10 @@ static void si_build_shader_variant(struct si_shader *shader, int thread_index, 
 
    if (thread_index >= 0) {
       if (low_priority) {
-         assert(thread_index < ARRAY_SIZE(sscreen->compiler_lowp));
+         assert(thread_index < (int)ARRAY_SIZE(sscreen->compiler_lowp));
          compiler = &sscreen->compiler_lowp[thread_index];
       } else {
-         assert(thread_index < ARRAY_SIZE(sscreen->compiler));
+         assert(thread_index < (int)ARRAY_SIZE(sscreen->compiler));
          compiler = &sscreen->compiler[thread_index];
       }
       if (!debug->async)
@@ -2248,7 +2248,8 @@ static void si_build_shader_variant_low_priority(void *job, void *gdata, int thr
    si_build_shader_variant(shader, thread_index, true);
 }
 
-static const struct si_shader_key zeroed;
+/* This should be const, but C++ doesn't allow implicit zero-initialization with const. */
+static struct si_shader_key zeroed;
 
 static bool si_check_missing_main_part(struct si_screen *sscreen, struct si_shader_selector *sel,
                                        struct si_compiler_ctx_state *compiler_state,
@@ -2357,7 +2358,7 @@ current_not_ready:
    simple_mtx_lock(&sel->mutex);
 
    /* Compute the size of the key without the uniform values. */
-   size_t s = (void*)&key->opt.inlined_uniform_values - (void*)key;
+   size_t s = (uint8_t*)&key->opt.inlined_uniform_values - (uint8_t*)key;
    int variant_count = 0;
    const int max_inline_uniforms_variants = 5;
 
@@ -2614,7 +2615,7 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
 
    assert(!debug->debug_message || debug->async);
    assert(thread_index >= 0);
-   assert(thread_index < ARRAY_SIZE(sscreen->compiler));
+   assert(thread_index < (int)ARRAY_SIZE(sscreen->compiler));
    compiler = &sscreen->compiler[thread_index];
 
    if (!compiler->passes)
@@ -2828,7 +2829,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       sel->nir = tgsi_to_nir(state->tokens, ctx->screen, true);
    } else {
       assert(state->type == PIPE_SHADER_IR_NIR);
-      sel->nir = state->ir.nir;
+      sel->nir = (nir_shader*)state->ir.nir;
    }
 
    si_nir_scan_shader(sel->nir, &sel->info);
@@ -2845,7 +2846,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
                             &sel->active_samplers_and_images);
 
    /* Record which streamout buffers are enabled. */
-   for (i = 0; i < sel->so.num_outputs; i++) {
+   for (unsigned i = 0; i < sel->so.num_outputs; i++) {
       sel->enabled_streamout_buffer_mask |= (1 << sel->so.output[i].output_buffer)
                                             << (sel->so.output[i].stream * 4);
    }
@@ -2896,14 +2897,14 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    switch (sel->info.stage) {
    case MESA_SHADER_GEOMETRY:
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      sel->rast_prim = sel->info.base.gs.output_primitive;
+      sel->rast_prim = (enum pipe_prim_type)sel->info.base.gs.output_primitive;
       if (util_rast_prim_is_triangles(sel->rast_prim))
          sel->rast_prim = PIPE_PRIM_TRIANGLES;
 
       sel->gsvs_vertex_size = sel->info.num_outputs * 16;
       sel->max_gsvs_emit_size = sel->gsvs_vertex_size * sel->info.base.gs.vertices_out;
       sel->gs_input_verts_per_prim =
-         u_vertices_per_prim(sel->info.base.gs.input_primitive);
+         u_vertices_per_prim((enum pipe_prim_type)sel->info.base.gs.input_primitive);
 
       /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation so
        * we can't split workgroups. Disable ngg if any of the following conditions is true:
@@ -3176,7 +3177,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *old_hw_vs = si_get_vs(sctx)->cso;
    struct si_shader *old_hw_vs_variant = si_get_vs(sctx)->current;
-   struct si_shader_selector *sel = state;
+   struct si_shader_selector *sel = (struct si_shader_selector*)state;
 
    if (sctx->shader.vs.cso == sel)
       return;
@@ -3253,7 +3254,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *old_hw_vs = si_get_vs(sctx)->cso;
    struct si_shader *old_hw_vs_variant = si_get_vs(sctx)->current;
-   struct si_shader_selector *sel = state;
+   struct si_shader_selector *sel = (struct si_shader_selector*)state;
    bool enable_changed = !!sctx->shader.gs.cso != !!sel;
    bool ngg_changed;
 
@@ -3285,7 +3286,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
 static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
-   struct si_shader_selector *sel = state;
+   struct si_shader_selector *sel = (struct si_shader_selector*)state;
    bool enable_changed = !!sctx->shader.tcs.cso != !!sel;
 
    if (sctx->shader.tcs.cso == sel)
@@ -3308,7 +3309,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *old_hw_vs = si_get_vs(sctx)->cso;
    struct si_shader *old_hw_vs_variant = si_get_vs(sctx)->current;
-   struct si_shader_selector *sel = state;
+   struct si_shader_selector *sel = (struct si_shader_selector*)state;
    bool enable_changed = !!sctx->shader.tes.cso != !!sel;
 
    if (sctx->shader.tes.cso == sel)
@@ -3382,7 +3383,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *old_sel = sctx->shader.ps.cso;
-   struct si_shader_selector *sel = state;
+   struct si_shader_selector *sel = (struct si_shader_selector*)state;
 
    /* skip if supplied shader is one already in use */
    if (old_sel == sel)

@@ -553,7 +553,8 @@ struct si_fast_udiv_info32 si_compute_fast_udiv_info32(uint32_t D, unsigned num_
 /* si_state_binning.c */
 void si_emit_dpbb_state(struct si_context *sctx);
 
-/* si_state_shaders.c */
+/* si_state_shaders.cpp */
+struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union si_vgt_stages_key key);
 void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
                          unsigned char ir_sha1_cache_key[20]);
 bool si_shader_cache_load_shader(struct si_screen *sscreen, unsigned char ir_sha1_cache_key[20],

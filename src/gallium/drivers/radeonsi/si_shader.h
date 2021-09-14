@@ -918,7 +918,7 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first);
 void si_nir_late_opts(nir_shader *nir);
 char *si_finalize_nir(struct pipe_screen *screen, void *nirptr);
 
-/* si_state_shaders.c */
+/* si_state_shaders.cpp */
 void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *gs,
                       struct gfx9_gs_info *out);
 bool gfx10_is_ngg_passthrough(struct si_shader *shader);
