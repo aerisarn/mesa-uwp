@@ -1279,6 +1279,50 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
    image_view->surface = NULL;
 }
 
+static struct zink_buffer_view *
+create_image_bufferview(struct zink_context *ctx, const struct pipe_image_view *view)
+{
+   struct zink_resource *res = zink_resource(view->resource);
+   VkBufferViewCreateInfo bvci = create_bvci(ctx, res, view->format, view->u.buf.offset, view->u.buf.size);
+   struct zink_buffer_view *buffer_view = get_buffer_view(ctx, res, &bvci);
+   if (!buffer_view)
+      return NULL;
+   util_range_add(&res->base.b, &res->valid_buffer_range, view->u.buf.offset,
+                  view->u.buf.offset + view->u.buf.size);
+   return buffer_view;
+}
+
+static void
+finalize_image_bind(struct zink_context *ctx, struct zink_resource *res, bool is_compute)
+{
+   /* if this is the first image bind and there are sampler binds, the image's sampler layout
+    * must be updated to GENERAL
+    */
+   if (res->image_bind_count[is_compute] == 1 &&
+       res->bind_count[is_compute] > 1)
+      update_binds_for_samplerviews(ctx, res, is_compute);
+   check_for_layout_update(ctx, res, is_compute);
+}
+
+static struct zink_surface *
+create_image_surface(struct zink_context *ctx, const struct pipe_image_view *view, bool is_compute)
+{
+   struct zink_resource *res = zink_resource(view->resource);
+   struct pipe_surface tmpl = {0};
+   tmpl.format = view->format;
+   tmpl.u.tex.level = view->u.tex.level;
+   tmpl.u.tex.first_layer = view->u.tex.first_layer;
+   tmpl.u.tex.last_layer = view->u.tex.last_layer;
+   struct pipe_surface *psurf = ctx->base.create_surface(&ctx->base, &res->base.b, &tmpl);
+   if (!psurf)
+      return NULL;
+   /* this is actually a zink_ctx_surface, but we just want the inner surface */
+   struct zink_surface *surface = zink_csurface(psurf);
+   FREE(psurf);
+   flush_pending_clears(ctx, res);
+   return surface;
+}
+
 static void
 zink_set_shader_images(struct pipe_context *pctx,
                        enum pipe_shader_type p_stage,
@@ -1316,34 +1360,16 @@ zink_set_shader_images(struct pipe_context *pctx,
          }
          res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE]++;
          if (images[i].resource->target == PIPE_BUFFER) {
-            VkBufferViewCreateInfo bvci = create_bvci(ctx, res, images[i].format, images[i].u.buf.offset, images[i].u.buf.size);
-            image_view->buffer_view = get_buffer_view(ctx, res, &bvci);
+            image_view->buffer_view = create_image_bufferview(ctx, &images[i]);
             assert(image_view->buffer_view);
-            util_range_add(&res->base.b, &res->valid_buffer_range, images[i].u.buf.offset,
-                           images[i].u.buf.offset + images[i].u.buf.size);
             zink_batch_usage_set(&image_view->buffer_view->batch_uses, ctx->batch.state);
             zink_fake_buffer_barrier(res, access,
                                          zink_pipeline_flags_from_pipe_stage(p_stage));
          } else {
-            struct pipe_surface tmpl = {0};
-            tmpl.format = images[i].format;
-            tmpl.u.tex.level = images[i].u.tex.level;
-            tmpl.u.tex.first_layer = images[i].u.tex.first_layer;
-            tmpl.u.tex.last_layer = images[i].u.tex.last_layer;
-            struct pipe_surface *psurf = pctx->create_surface(pctx, &res->base.b, &tmpl);
-            /* this is actually a zink_ctx_surface, but we just want the inner surface */
-            image_view->surface = zink_csurface(psurf);
-            FREE(psurf);
+            image_view->surface = create_image_surface(ctx, &images[i], p_stage == PIPE_SHADER_COMPUTE);
             assert(image_view->surface);
-            /* if this is the first image bind and there are sampler binds, the image's sampler layout
-             * must be updated to GENERAL
-             */
-            if (res->image_bind_count[p_stage == PIPE_SHADER_COMPUTE] == 1 &&
-                res->bind_count[p_stage == PIPE_SHADER_COMPUTE] > 1)
-               update_binds_for_samplerviews(ctx, res, p_stage == PIPE_SHADER_COMPUTE);
-            check_for_layout_update(ctx, res, p_stage == PIPE_SHADER_COMPUTE);
+            finalize_image_bind(ctx, res, p_stage == PIPE_SHADER_COMPUTE);
             zink_batch_usage_set(&image_view->surface->batch_uses, ctx->batch.state);
-            flush_pending_clears(ctx, res);
          }
          zink_batch_resource_usage_set(&ctx->batch, zink_resource(image_view->base.resource),
                                           zink_resource_access_is_write(access));
