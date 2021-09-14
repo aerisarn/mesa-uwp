@@ -730,6 +730,17 @@ resource_create(struct pipe_screen *pscreen,
          FREE(res);
          return NULL;
       }
+      /* TODO: remove this when multi-plane modifiers are supported */
+      const struct zink_modifier_prop *prop = &screen->modifier_props[templ->format];
+      for (unsigned i = 0; i < modifiers_count; i++) {
+         for (unsigned j = 0; j < prop->drmFormatModifierCount; j++) {
+            if (prop->pDrmFormatModifierProperties[j].drmFormatModifier == modifiers[i]) {
+               if (prop->pDrmFormatModifierProperties[j].drmFormatModifierPlaneCount != 1)
+                  res->modifiers[i] = DRM_FORMAT_MOD_INVALID;
+               break;
+            }
+         }
+      }
    }
 
    res->base.b = *templ;
@@ -743,7 +754,7 @@ resource_create(struct pipe_screen *pscreen,
    unsigned scanout_flags = templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
    if (!(templ->bind & PIPE_BIND_LINEAR))
       templ2.bind &= ~scanout_flags;
-   res->obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, modifiers, 0);
+   res->obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, NULL, 0);
    if (!res->obj) {
       free(res->modifiers);
       FREE(res);
@@ -773,7 +784,7 @@ resource_create(struct pipe_screen *pscreen,
          // TODO: remove for wsi
          templ2 = res->base.b;
          templ2.bind = scanout_flags | PIPE_BIND_LINEAR;
-         res->scanout_obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, modifiers, modifiers_count);
+         res->scanout_obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, res->modifiers, res->modifiers_count);
          assert(!optimal_tiling);
       }
    }
