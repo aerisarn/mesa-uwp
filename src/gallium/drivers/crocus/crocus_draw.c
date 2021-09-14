@@ -406,7 +406,7 @@ crocus_draw_vbo(struct pipe_context *ctx,
     * write offsets, changing the behavior.
     */
    if (INTEL_DEBUG & DEBUG_REEMIT) {
-      ice->state.dirty |= CROCUS_ALL_DIRTY_FOR_RENDER & ~CROCUS_DIRTY_GEN7_SO_BUFFERS;
+      ice->state.dirty |= CROCUS_ALL_DIRTY_FOR_RENDER & ~(CROCUS_DIRTY_GEN7_SO_BUFFERS | CROCUS_DIRTY_GEN6_SVBI);
       ice->state.stage_dirty |= CROCUS_ALL_STAGE_DIRTY_FOR_RENDER;
    }
 
