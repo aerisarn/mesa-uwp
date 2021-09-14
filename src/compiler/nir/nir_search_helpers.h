@@ -288,7 +288,7 @@ is_not_fmul(struct hash_table *ht, const nir_alu_instr *instr, unsigned src,
    if (src_alu->op == nir_op_fneg)
       return is_not_fmul(ht, src_alu, 0, 0, NULL);
 
-   return src_alu->op != nir_op_fmul;
+   return src_alu->op != nir_op_fmul && src_alu->op != nir_op_fmulz;
 }
 
 static inline bool
@@ -304,7 +304,7 @@ is_fmul(struct hash_table *ht, const nir_alu_instr *instr, unsigned src,
    if (src_alu->op == nir_op_fneg)
       return is_fmul(ht, src_alu, 0, 0, NULL);
 
-   return src_alu->op == nir_op_fmul;
+   return src_alu->op == nir_op_fmul || src_alu->op == nir_op_fmulz;
 }
 
 static inline bool
@@ -497,6 +497,17 @@ is_finite(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
    const struct ssa_result_range v = nir_analyze_range(ht, instr, src);
 
    return v.is_finite;
+}
+
+static inline bool
+is_finite_not_zero(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
+                   unsigned src, UNUSED unsigned num_components,
+                   UNUSED const uint8_t *swizzle)
+{
+   const struct ssa_result_range v = nir_analyze_range(ht, instr, src);
+
+   return v.is_finite &&
+          (v.range == lt_zero || v.range == gt_zero || v.range == ne_zero);
 }
 
 
