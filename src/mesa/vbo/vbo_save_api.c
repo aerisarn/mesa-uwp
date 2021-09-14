@@ -1114,6 +1114,7 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
    if (save->copied.nr) {
       assert(save->copied.buffer);
       const fi_type *data = save->copied.buffer;
+      grow_vertex_storage(ctx, save->copied.nr);
       fi_type *dest = save->vertex_store->buffer_in_ram;
 
       /* Need to note this and fix up at runtime (or loopback):
@@ -1129,20 +1130,34 @@ upgrade_vertex(struct gl_context *ctx, GLuint attr, GLuint newsz)
             const int j = u_bit_scan64(&enabled);
             assert(save->attrsz[j]);
             if (j == attr) {
-               if (oldsz) {
-                  COPY_CLEAN_4V_TYPE_AS_UNION(dest, oldsz, data,
-                                              save->attrtype[j]);
-                  data += oldsz;
-                  dest += newsz;
+               int k;
+               const fi_type *src = oldsz ? data : save->current[attr];
+               int copy = oldsz ? oldsz : newsz;
+               for (k = 0; k < copy; k++)
+                  dest[k] = src[k];
+               for (; k < newsz; k++) {
+                  switch (save->attrtype[j]) {
+                     case GL_FLOAT:
+                        dest[k] = FLOAT_AS_UNION(k == 3);
+                        break;
+                     case GL_INT:
+                        dest[k] = INT_AS_UNION(k == 3);
+                        break;
+                     case GL_UNSIGNED_INT:
+                        dest[k] = UINT_AS_UNION(k == 3);
+                        break;
+                     default:
+                        dest[k] = FLOAT_AS_UNION(k == 3);
+                        assert(!"Unexpected type in upgrade_vertex");
+                        break;
+                  }
                }
-               else {
-                  COPY_SZ_4V(dest, newsz, save->current[attr]);
-                  dest += newsz;
-               }
-            }
-            else {
+               dest += newsz;
+               data += oldsz;
+            } else {
                GLint sz = save->attrsz[j];
-               COPY_SZ_4V(dest, sz, data);
+               for (int k = 0; k < sz; k++)
+                  dest[k] = data[k];
                data += sz;
                dest += sz;
             }
