@@ -626,6 +626,8 @@ struct crocus_context {
 
       struct crocus_shader_state shaders[MESA_SHADER_STAGES];
 
+      /* track if geom shader is active for IVB GT2 workaround */
+      bool gs_enabled;
       /** Do vertex shader uses shader draw parameters ? */
       bool vs_uses_draw_params;
       bool vs_uses_derived_draw_params;
