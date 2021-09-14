@@ -5727,7 +5727,7 @@ radv_skip_ngg_culling(bool has_tess, const unsigned vtx_cnt,
     * When tessellation is used, what matters is the number of tessellated
     * vertices, so let's always assume it's not a small draw.
     */
-   return !has_tess && !indirect && vtx_cnt < 512;
+   return !has_tess && !indirect && vtx_cnt < 128;
 }
 
 ALWAYS_INLINE static uint32_t
