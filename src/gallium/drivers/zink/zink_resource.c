@@ -525,8 +525,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          } else if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
             idfmlci.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT;
             idfmlci.pNext = ici.pNext;
-            idfmlci.drmFormatModifierCount = 1;
-            idfmlci.pDrmFormatModifiers = &mod;
+            idfmlci.drmFormatModifierCount = modifiers_count;
+            idfmlci.pDrmFormatModifiers = modifiers;
             ici.pNext = &idfmlci;
          } else if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
             // TODO: remove for wsi
