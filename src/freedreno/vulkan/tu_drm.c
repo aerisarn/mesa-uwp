@@ -1058,6 +1058,8 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
    if (ret != VK_SUCCESS)
        return ret;
 
+   u_trace_context_process(&queue->device->trace_context, true);
+
    return VK_SUCCESS;
 }
 
