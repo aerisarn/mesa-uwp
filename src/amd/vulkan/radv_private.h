@@ -2572,6 +2572,8 @@ bool radv_end_thread_trace(struct radv_queue *queue);
 bool radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_trace);
 void radv_emit_thread_trace_userdata(const struct radv_device *device, struct radeon_cmdbuf *cs,
                                      const void *data, uint32_t num_dwords);
+bool radv_is_instruction_timing_enabled(void);
+
 /* radv_sqtt_layer_.c */
 struct radv_barrier_data {
    union {

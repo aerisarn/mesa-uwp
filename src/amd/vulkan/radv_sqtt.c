@@ -29,6 +29,12 @@
 
 #define SQTT_BUFFER_ALIGN_SHIFT 12
 
+bool
+radv_is_instruction_timing_enabled(void)
+{
+   return getenv("RADV_THREAD_TRACE_PIPELINE");
+}
+
 static bool
 radv_se_is_disabled(struct radv_device *device, unsigned se)
 {
@@ -77,10 +83,18 @@ radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *c
             V_008D18_REG_INCLUDE_SQDEC | V_008D18_REG_INCLUDE_SHDEC | V_008D18_REG_INCLUDE_GFXUDEC |
             V_008D18_REG_INCLUDE_COMP | V_008D18_REG_INCLUDE_CONTEXT | V_008D18_REG_INCLUDE_CONFIG);
 
-         /* Performance counters with SQTT are considered
-          * deprecated.
-          */
-         thread_trace_token_mask |= S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF);
+         /* Performance counters with SQTT are considered deprecated. */
+         uint32_t token_exclude = V_008D18_TOKEN_EXCLUDE_PERF;
+
+         if (!radv_is_instruction_timing_enabled()) {
+            /* Reduce SQTT traffic when instruction timing isn't enabled. */
+            token_exclude |= V_008D18_TOKEN_EXCLUDE_VMEMEXEC |
+                             V_008D18_TOKEN_EXCLUDE_ALUEXEC |
+                             V_008D18_TOKEN_EXCLUDE_VALUINST |
+                             V_008D18_TOKEN_EXCLUDE_IMMEDIATE |
+                             V_008D18_TOKEN_EXCLUDE_INST;
+         }
+         thread_trace_token_mask |= S_008D18_TOKEN_EXCLUDE(token_exclude);
 
          radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
                                           thread_trace_token_mask);

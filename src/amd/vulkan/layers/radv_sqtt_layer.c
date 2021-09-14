@@ -624,12 +624,6 @@ sqtt_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
 
 #define API_MARKER(cmd_name, ...) API_MARKER_ALIAS(cmd_name, cmd_name, __VA_ARGS__);
 
-static bool
-radv_sqtt_dump_pipeline()
-{
-   return getenv("RADV_THREAD_TRACE_PIPELINE");
-}
-
 void
 sqtt_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
                      VkPipeline _pipeline)
@@ -638,7 +632,7 @@ sqtt_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
    API_MARKER(BindPipeline, commandBuffer, pipelineBindPoint, _pipeline);
 
-   if (radv_sqtt_dump_pipeline())
+   if (radv_is_instruction_timing_enabled())
       radv_describe_pipeline_bind(cmd_buffer, pipelineBindPoint, pipeline);
 }
 
@@ -1020,7 +1014,7 @@ sqtt_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, ui
    if (result != VK_SUCCESS)
       return result;
 
-   if (radv_sqtt_dump_pipeline()) {
+   if (radv_is_instruction_timing_enabled()) {
       for (unsigned i = 0; i < count; i++) {
          RADV_FROM_HANDLE(radv_pipeline, pipeline, pPipelines[i]);
 
@@ -1056,7 +1050,7 @@ sqtt_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uin
    if (result != VK_SUCCESS)
       return result;
 
-   if (radv_sqtt_dump_pipeline()) {
+   if (radv_is_instruction_timing_enabled()) {
       for (unsigned i = 0; i < count; i++) {
          RADV_FROM_HANDLE(radv_pipeline, pipeline, pPipelines[i]);
 
@@ -1089,7 +1083,7 @@ sqtt_DestroyPipeline(VkDevice _device, VkPipeline _pipeline,
    if (!_pipeline)
       return;
 
-   if (radv_sqtt_dump_pipeline())
+   if (radv_is_instruction_timing_enabled())
       radv_unregister_pipeline(device, pipeline);
 
    radv_DestroyPipeline(_device, _pipeline, pAllocator);
