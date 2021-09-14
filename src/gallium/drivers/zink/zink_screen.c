@@ -513,6 +513,11 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PRIMITIVE_RESTART:
       return 1;
 
+   case PIPE_CAP_BINDLESS_TEXTURE:
+      return screen->info.have_EXT_descriptor_indexing &&
+             /* push, 4 types, bindless */
+             screen->info.props.limits.maxBoundDescriptorSets >= 6;
+
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return screen->info.props.limits.minTexelBufferOffsetAlignment;
 
