@@ -373,6 +373,7 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
                           __DRIscreen *dri_screen,
                           bool is_different_gpu,
                           bool multiplanes_available,
+                          bool prefer_back_buffer_reuse,
                           const __DRIconfig *dri_config,
                           struct loader_dri3_extensions *ext,
                           const struct loader_dri3_vtable *vtable,
@@ -392,6 +393,7 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
    draw->dri_screen = dri_screen;
    draw->is_different_gpu = is_different_gpu;
    draw->multiplanes_available = multiplanes_available;
+   draw->prefer_back_buffer_reuse = prefer_back_buffer_reuse;
 
    draw->have_back = 0;
    draw->have_fake_front = 0;

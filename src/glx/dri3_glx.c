@@ -375,6 +375,7 @@ dri3_create_drawable(struct glx_screen *base, XID xDrawable,
    if (loader_dri3_drawable_init(XGetXCBConnection(base->dpy),
                                  xDrawable, psc->driScreen,
                                  psc->is_different_gpu, has_multibuffer,
+                                 psc->prefer_back_buffer_reuse,
                                  config->driConfig,
                                  &psc->loader_dri3_ext, &glx_dri3_vtable,
                                  &pdraw->loader_drawable)) {
@@ -1021,6 +1022,15 @@ dri3_create_screen(int screen, struct glx_display * priv)
       psc->show_fps_interval = 0;
 
    InfoMessageF("Using DRI3 for screen %d\n", screen);
+
+   psc->prefer_back_buffer_reuse = 1;
+   if (psc->is_different_gpu && psc->rendererQuery) {
+      unsigned value;
+      if (psc->rendererQuery->queryInteger(psc->driScreen,
+                                           __DRI2_RENDERER_PREFER_BACK_BUFFER_REUSE,
+                                           &value) == 0)
+         psc->prefer_back_buffer_reuse = value;
+   }
 
    return &psc->base;
 
