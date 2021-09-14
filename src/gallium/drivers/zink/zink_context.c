@@ -1246,9 +1246,9 @@ check_for_layout_update(struct zink_context *ctx, struct zink_resource *res, boo
 {
    VkImageLayout layout = res->bind_count[is_compute] ? zink_descriptor_util_image_layout_eval(res, is_compute) : VK_IMAGE_LAYOUT_UNDEFINED;
    VkImageLayout other_layout = res->bind_count[!is_compute] ? zink_descriptor_util_image_layout_eval(res, !is_compute) : VK_IMAGE_LAYOUT_UNDEFINED;
-   if (res->bind_count[is_compute] && res->layout != layout)
+   if (res->bind_count[is_compute] && layout && res->layout != layout)
       _mesa_set_add(ctx->need_barriers[is_compute], res);
-   if (res->bind_count[!is_compute] && (layout != other_layout || res->layout != other_layout))
+   if (res->bind_count[!is_compute] && other_layout && (layout != other_layout || res->layout != other_layout))
       _mesa_set_add(ctx->need_barriers[!is_compute], res);
 }
 
