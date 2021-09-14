@@ -1007,32 +1007,36 @@ emit_fragcoord_input(struct v3d_compile *c, int attr)
 
 static struct qreg
 emit_smooth_varying(struct v3d_compile *c,
-                    struct qreg vary, struct qreg w, struct qreg r5)
+                    struct qreg vary, struct qreg w, struct qreg c_reg)
 {
-        return vir_FADD(c, vir_FMUL(c, vary, w), r5);
+        return vir_FADD(c, vir_FMUL(c, vary, w), c_reg);
 }
 
 static struct qreg
 emit_noperspective_varying(struct v3d_compile *c,
-                           struct qreg vary, struct qreg r5)
+                           struct qreg vary, struct qreg c_reg)
 {
-        return vir_FADD(c, vir_MOV(c, vary), r5);
+        return vir_FADD(c, vir_MOV(c, vary), c_reg);
 }
 
 static struct qreg
 emit_flat_varying(struct v3d_compile *c,
-                  struct qreg vary, struct qreg r5)
+                  struct qreg vary, struct qreg c_reg)
 {
         vir_MOV_dest(c, c->undef, vary);
-        return vir_MOV(c, r5);
+        return vir_MOV(c, c_reg);
 }
 
 static struct qreg
 emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                       int8_t input_idx, uint8_t swizzle, int array_index)
 {
-        struct qreg r3 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R3);
-        struct qreg r5 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R5);
+        struct qreg c_reg; /* C coefficient */
+
+        if (c->devinfo->has_accumulators)
+                c_reg = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R5);
+        else
+                c_reg = vir_reg(QFILE_REG, 0);
 
         struct qinst *ldvary = NULL;
         struct qreg vary;
@@ -1043,7 +1047,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 vary = vir_emit_def(c, ldvary);
         } else {
                 vir_NOP(c)->qpu.sig.ldvary = true;
-                vary = r3;
+                vary = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R3);
         }
 
         /* Store the input value before interpolation so we can implement
@@ -1052,7 +1056,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
         if (input_idx >= 0) {
                 assert(var);
                 c->interp[input_idx].vp = vary;
-                c->interp[input_idx].C = vir_MOV(c, r5);
+                c->interp[input_idx].C = vir_MOV(c, c_reg);
                 c->interp[input_idx].mode = var->data.interpolation;
         }
 
@@ -1062,7 +1066,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
          */
         if (!var) {
                 assert(input_idx < 0);
-                return emit_smooth_varying(c, vary, c->payload_w, r5);
+                return emit_smooth_varying(c, vary, c->payload_w, c_reg);
         }
 
         int i = c->num_inputs++;
@@ -1077,20 +1081,20 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 if (var->data.centroid) {
                         BITSET_SET(c->centroid_flags, i);
                         result = emit_smooth_varying(c, vary,
-                                                     c->payload_w_centroid, r5);
+                                                     c->payload_w_centroid, c_reg);
                 } else {
-                        result = emit_smooth_varying(c, vary, c->payload_w, r5);
+                        result = emit_smooth_varying(c, vary, c->payload_w, c_reg);
                 }
                 break;
 
         case INTERP_MODE_NOPERSPECTIVE:
                 BITSET_SET(c->noperspective_flags, i);
-                result = emit_noperspective_varying(c, vary, r5);
+                result = emit_noperspective_varying(c, vary, c_reg);
                 break;
 
         case INTERP_MODE_FLAT:
                 BITSET_SET(c->flat_shade_flags, i);
-                result = emit_flat_varying(c, vary, r5);
+                result = emit_flat_varying(c, vary, c_reg);
                 break;
 
         default:
