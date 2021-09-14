@@ -204,7 +204,10 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
             has_bindings |= BITFIELD_BIT(j);
          }
       }
+      pg->dd->bindless |= shader->bindless;
    }
+   if (pg->dd->bindless)
+      zink_descriptors_init_bindless(ctx);
    pg->dd->binding_usage = has_bindings;
    if (!has_bindings && !push_count) {
       ralloc_free(pg->dd);
@@ -232,6 +235,19 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       }
       for (unsigned i = 0; i < ARRAY_SIZE(pg->dd->sizes); i++)
          pg->dd->sizes[i].descriptorCount *= screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY ? MAX_LAZY_DESCRIPTORS : ZINK_DEFAULT_MAX_DESCS;
+   }
+   /* TODO: make this dynamic? */
+   if (pg->dd->bindless) {
+      pg->num_dsl = ZINK_DESCRIPTOR_BINDLESS + 1;
+      pg->dsl[ZINK_DESCRIPTOR_BINDLESS] = ctx->dd->bindless_layout;
+      for (unsigned i = 0; i < ZINK_DESCRIPTOR_BINDLESS; i++) {
+         if (!pg->dsl[i]) {
+            /* inject a null dsl */
+            pg->dsl[i] = ctx->dd->dummy_dsl->layout;
+            if (i != ZINK_DESCRIPTOR_TYPES)
+               pg->dd->binding_usage |= BITFIELD_BIT(i);
+         }
+      }
    }
 
    pg->layout = zink_pipeline_layout_create(screen, pg, &pg->compat_id);
@@ -261,6 +277,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       bool is_push = i == 0;
       /* no need for empty templates */
       if (pg->dsl[i] == ctx->dd->dummy_dsl->layout ||
+          pg->dsl[i] == ctx->dd->bindless_layout ||
           (!is_push && pg->dd->layouts[i]->desc_template))
          continue;
       template[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
@@ -558,6 +575,12 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    bool need_push = pg->dd->push_usage &&
                     (dd_lazy(ctx)->push_state_changed[is_compute] || batch_changed);
    zink_descriptors_update_lazy_masked(ctx, is_compute, changed_sets, need_push, true);
+   if (pg->dd->bindless && unlikely(!ctx->dd->bindless_bound)) {
+      VKCTX(CmdBindDescriptorSets)(ctx->batch.state->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                   pg->layout, ZINK_DESCRIPTOR_BINDLESS, 1, &ctx->dd->bindless_set,
+                                   0, NULL);
+      ctx->dd->bindless_bound = true;
+   }
 }
 
 void
@@ -694,6 +717,7 @@ zink_descriptors_init_lazy(struct zink_context *ctx)
    zink_descriptor_util_alloc_sets(screen, ctx->dd->dummy_dsl->layout,
                                    ctx->dd->dummy_pool, &ctx->dd->dummy_set, 1);
    zink_descriptor_util_init_null_set(ctx, ctx->dd->dummy_set);
+
    return true;
 }
 

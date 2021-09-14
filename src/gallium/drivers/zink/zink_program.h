@@ -86,7 +86,7 @@ struct zink_program {
 
    uint32_t compat_id;
    VkPipelineLayout layout;
-   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES + 1]; // one for each type + push
+   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES + 2]; // one for each type + push + bindless
    unsigned num_dsl;
 
    bool removed;

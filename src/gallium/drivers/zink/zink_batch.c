@@ -44,6 +44,15 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
       util_dynarray_append(&bs->unref_resources, struct zink_resource_object*, obj);
    }
 
+   for (unsigned i = 0; i < 2; i++) {
+      while (util_dynarray_contains(&bs->bindless_releases[i], uint32_t)) {
+         uint32_t handle = util_dynarray_pop(&bs->bindless_releases[i], uint32_t);
+         bool is_buffer = ZINK_BINDLESS_IS_BUFFER(handle);
+         struct util_idalloc *ids = i ? &ctx->di.bindless[is_buffer].img_slots : &ctx->di.bindless[is_buffer].tex_slots;
+         util_idalloc_free(ids, is_buffer ? handle - ZINK_MAX_BINDLESS_HANDLES : handle);
+      }
+   }
+
    set_foreach_remove(bs->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
       zink_prune_query(screen, bs, query);
@@ -156,6 +165,8 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    util_dynarray_fini(&bs->zombie_samplers);
    util_dynarray_fini(&bs->dead_framebuffers);
    util_dynarray_fini(&bs->unref_resources);
+   util_dynarray_fini(&bs->bindless_releases[0]);
+   util_dynarray_fini(&bs->bindless_releases[1]);
    _mesa_set_destroy(bs->surfaces, NULL);
    _mesa_set_destroy(bs->bufferviews, NULL);
    _mesa_set_destroy(bs->programs, NULL);
@@ -205,6 +216,8 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->dead_framebuffers, NULL);
    util_dynarray_init(&bs->persistent_resources, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
+   util_dynarray_init(&bs->bindless_releases[0], NULL);
+   util_dynarray_init(&bs->bindless_releases[1], NULL);
 
    cnd_init(&bs->usage.flush);
    mtx_init(&bs->usage.mtx, mtx_plain);

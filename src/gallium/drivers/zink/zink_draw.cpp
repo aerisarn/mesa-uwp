@@ -753,6 +753,9 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (zink_program_has_descriptors(&ctx->curr_program->base))
       screen->descriptors_update(ctx, false);
 
+   if (ctx->di.any_bindless_dirty && ctx->curr_program->base.dd->bindless)
+      zink_descriptors_update_bindless(ctx);
+
    if (reads_basevertex) {
       unsigned draw_mode_is_indexed = index_size > 0;
       VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
@@ -865,6 +868,8 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    if (zink_program_has_descriptors(&ctx->curr_compute->base))
       screen->descriptors_update(ctx, true);
+   if (ctx->di.any_bindless_dirty && ctx->curr_compute->base.dd->bindless)
+      zink_descriptors_update_bindless(ctx);
 
    zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info->block);
    VkPipeline prev_pipeline = ctx->compute_pipeline_state.pipeline;

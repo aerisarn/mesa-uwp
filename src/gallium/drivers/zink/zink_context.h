@@ -30,6 +30,8 @@
 #define ZINK_DEFAULT_MAX_DESCS 5000
 #define ZINK_DEFAULT_DESC_CLAMP (ZINK_DEFAULT_MAX_DESCS * 0.9)
 
+#define ZINK_MAX_BINDLESS_HANDLES 1024
+
 #include "zink_clear.h"
 #include "zink_pipeline.h"
 #include "zink_batch.h"
@@ -41,7 +43,7 @@
 #include "pipe/p_state.h"
 #include "util/u_rect.h"
 #include "util/u_threaded_context.h"
-
+#include "util/u_idalloc.h"
 #include "util/slab.h"
 #include "util/list.h"
 #include "util/u_dynarray.h"
@@ -138,6 +140,19 @@ struct zink_descriptor_surface {
    };
    bool is_buffer;
 };
+
+struct zink_bindless_descriptor {
+   struct zink_descriptor_surface ds;
+   struct zink_sampler_state *sampler;
+   uint32_t handle;
+   uint32_t access; //PIPE_ACCESS_...
+};
+
+static inline struct zink_resource *
+zink_descriptor_surface_resource(struct zink_descriptor_surface *ds)
+{
+   return ds->is_buffer ? (struct zink_resource*)ds->bufferview->pres : (struct zink_resource*)ds->surface->base.texture;
+}
 
 typedef void (*pipe_draw_vbo_func)(struct pipe_context *pipe,
                                    const struct pipe_draw_info *info,
@@ -313,6 +328,22 @@ struct zink_context {
       struct zink_resource *descriptor_res[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       struct zink_descriptor_surface sampler_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       struct zink_descriptor_surface image_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+
+      struct {
+         struct util_idalloc tex_slots;
+         struct util_idalloc img_slots;
+         struct hash_table tex_handles;
+         struct hash_table img_handles;
+         VkBufferView *buffer_infos; //tex, img
+         VkDescriptorImageInfo *img_infos; //tex, img
+         struct util_dynarray updates;
+         struct util_dynarray resident;
+      } bindless[2];  //img, buffer
+      union {
+         bool bindless_dirty[2]; //tex, img
+         uint16_t any_bindless_dirty;
+      };
+      bool bindless_refs_dirty;
    } di;
    struct set *need_barriers[2]; //gfx, compute
    struct set update_barriers[2][2]; //[gfx, compute][current, next]

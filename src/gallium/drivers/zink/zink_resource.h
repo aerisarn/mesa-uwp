@@ -119,6 +119,7 @@ struct zink_resource {
    uint32_t sampler_binds[PIPE_SHADER_TYPES];
    uint16_t image_bind_count[2]; //gfx, compute
    uint16_t write_bind_count[2]; //gfx, compute
+   uint16_t bindless[2]; //tex, img
    union {
       uint16_t bind_count[2]; //gfx, compute
       uint32_t all_binds;

@@ -82,6 +82,7 @@ struct zink_batch_state {
    struct set *bufferviews;
 
    struct util_dynarray unref_resources;
+   struct util_dynarray bindless_releases[2];
 
    struct util_dynarray persistent_resources;
    struct util_dynarray zombie_samplers;
