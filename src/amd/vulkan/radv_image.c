@@ -1522,6 +1522,15 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
 
       device->ws->surface_init(device->ws, &info, &image->planes[plane].surface);
 
+      if (plane == 0) {
+        /* TODO: Fix storage images with DCC without DCC image stores.
+         * Disabling it for now. */
+         if(radv_image_has_dcc(image) && (image->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+            !radv_image_use_dcc_image_stores(device, image)) {
+            ac_surface_zero_dcc_fields(&image->planes[0].surface);
+         }
+      }
+
       if (create_info.bo_metadata && !mod_info &&
           !ac_surface_set_umd_metadata(&device->physical_device->rad_info,
                                        &image->planes[plane].surface, image_info.storage_samples,
