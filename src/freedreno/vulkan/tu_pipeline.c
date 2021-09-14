@@ -634,6 +634,12 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
    tu_cs_emit(cs, A6XX_SP_CS_UNKNOWN_A9B1_SHARED_SIZE(shared_size) |
                   A6XX_SP_CS_UNKNOWN_A9B1_UNK6);
 
+   if (cs->device->physical_device->info->a6xx.has_lpac) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_UNKNOWN_B9D0, 1);
+      tu_cs_emit(cs, A6XX_HLSQ_CS_UNKNOWN_B9D0_SHARED_SIZE(shared_size) |
+                     A6XX_HLSQ_CS_UNKNOWN_B9D0_UNK6);
+   }
+
    uint32_t local_invocation_id =
       ir3_find_sysval_regid(v, SYSTEM_VALUE_LOCAL_INVOCATION_ID);
    uint32_t work_group_id =
@@ -648,6 +654,17 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
               A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
    tu_cs_emit(cs, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
                   A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz));
+
+   if (cs->device->physical_device->info->a6xx.has_lpac) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CNTL_0, 2);
+      tu_cs_emit(cs,
+                 A6XX_SP_CS_CNTL_0_WGIDCONSTID(work_group_id) |
+                 A6XX_SP_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
+                 A6XX_SP_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
+                 A6XX_SP_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
+      tu_cs_emit(cs, A6XX_SP_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
+                     A6XX_SP_CS_CNTL_1_THREADSIZE(thrsz));
+   }
 }
 
 static void
