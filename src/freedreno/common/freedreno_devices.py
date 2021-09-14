@@ -243,6 +243,7 @@ a6xx_gen4 = dict(
         has_cp_reg_write = False,
         has_8bpp_ubwc = False,
         has_lpac = True,
+        has_shading_rate = True,
     )
 
 add_gpus([

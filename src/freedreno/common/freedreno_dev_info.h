@@ -69,6 +69,9 @@ struct fd_dev_info {
 
          bool tess_use_shared;
 
+         /* Does the hw support GL_QCOM_shading_rate? */
+         bool has_shading_rate;
+
          /* newer a6xx allows using 16-bit descriptor for both 16-bit
           * and 32-bit access
           */
