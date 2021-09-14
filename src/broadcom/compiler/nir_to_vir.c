@@ -4311,7 +4311,11 @@ nir_to_vir(struct v3d_compile *c)
 {
         switch (c->s->info.stage) {
         case MESA_SHADER_FRAGMENT:
-                c->payload_w = vir_MOV(c, vir_reg(QFILE_REG, 0));
+                if (c->devinfo->ver < 71)
+                        c->payload_w = vir_MOV(c, vir_reg(QFILE_REG, 0));
+                else
+                        c->payload_w = vir_MOV(c, vir_reg(QFILE_REG, 3));
+
                 c->payload_w_centroid = vir_MOV(c, vir_reg(QFILE_REG, 1));
                 c->payload_z = vir_MOV(c, vir_reg(QFILE_REG, 2));
 

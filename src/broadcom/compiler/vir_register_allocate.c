@@ -1034,6 +1034,11 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c, int *acc_nodes,
         if (inst->src[0].file == QFILE_REG) {
                 switch (inst->src[0].index) {
                 case 0:
+                        /* V3D 7.x doesn't use rf0 for thread payload */
+                        if (c->devinfo->ver >= 71)
+                                break;
+                        else
+                                FALLTHROUGH;
                 case 1:
                 case 2:
                 case 3: {
@@ -1163,7 +1168,6 @@ v3d_register_allocate(struct v3d_compile *c)
         vir_for_each_inst_inorder(inst, c) {
                 inst->ip = ip++;
                 update_graph_and_reg_classes_for_inst(c, acc_nodes, inst);
-
         }
 
         /* Set the register classes for all our temporaries in the graph */
