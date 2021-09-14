@@ -454,6 +454,7 @@ bool ac_get_supported_modifiers(const struct radeon_info *info,
                                 uint64_t *mods);
 bool ac_modifier_has_dcc(uint64_t modifier);
 bool ac_modifier_has_dcc_retile(uint64_t modifier);
+bool ac_modifier_supports_dcc_image_stores(uint64_t modifier);
 
 unsigned ac_surface_get_nplanes(const struct radeon_surf *surf);
 uint64_t ac_surface_get_plane_offset(enum chip_class chip_class,

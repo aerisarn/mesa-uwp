@@ -105,6 +105,14 @@ bool ac_modifier_has_dcc_retile(uint64_t modifier)
    return IS_AMD_FMT_MOD(modifier) && AMD_FMT_MOD_GET(DCC_RETILE, modifier);
 }
 
+bool ac_modifier_supports_dcc_image_stores(uint64_t modifier)
+{
+   return ac_modifier_has_dcc(modifier) &&
+         !AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier) &&
+          AMD_FMT_MOD_GET(DCC_INDEPENDENT_128B, modifier) &&
+          AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier) == AMD_FMT_MOD_DCC_BLOCK_128B;
+}
+
 static
 AddrSwizzleMode ac_modifier_gfx9_swizzle_mode(uint64_t modifier)
 {
