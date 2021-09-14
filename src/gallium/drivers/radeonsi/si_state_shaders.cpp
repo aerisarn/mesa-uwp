@@ -2288,14 +2288,16 @@ static bool si_check_missing_main_part(struct si_screen *sscreen, struct si_shad
 
 /* A helper to copy *key to *local_key and return local_key. */
 template<typename SHADER_KEY_TYPE>
-static const SHADER_KEY_TYPE *
-use_local_key_copy(const SHADER_KEY_TYPE *key, SHADER_KEY_TYPE *local_key)
+static ALWAYS_INLINE const SHADER_KEY_TYPE *
+use_local_key_copy(const SHADER_KEY_TYPE *key, SHADER_KEY_TYPE *local_key, unsigned key_size)
 {
    if (key != local_key)
-      memcpy(local_key, key, sizeof(*key));
+      memcpy(local_key, key, key_size);
 
    return local_key;
 }
+
+#define NO_INLINE_UNIFORMS false
 
 /**
  * Select a shader variant according to the shader key.
@@ -2303,8 +2305,12 @@ use_local_key_copy(const SHADER_KEY_TYPE *key, SHADER_KEY_TYPE *local_key)
  * \param optimized_or_none  If the key describes an optimized shader variant and
  *                           the compilation isn't finished, don't select any
  *                           shader and return an error.
+ *
+ * This uses a C++ template to compute the optimal memcmp size at compile time, which is important
+ * for getting inlined memcmp. The memcmp size depends on the shader key type and whether inlined
+ * uniforms are enabled.
  */
-template<typename SHADER_KEY_TYPE>
+template<bool INLINE_UNIFORMS = true, typename SHADER_KEY_TYPE>
 static int si_shader_select_with_key(struct si_context *sctx, struct si_shader_ctx_state *state,
                                      const SHADER_KEY_TYPE *key, int thread_index,
                                      bool optimized_or_none)
@@ -2316,6 +2322,20 @@ static int si_shader_select_with_key(struct si_context *sctx, struct si_shader_c
    struct si_shader *iter, *shader = NULL;
    const SHADER_KEY_TYPE *zeroed_key = (SHADER_KEY_TYPE*)&zeroed;
 
+   /* "opt" must be the last field and "inlined_uniform_values" must be the last field inside opt.
+    * If there is padding, insert the padding manually before opt or inside opt.
+    */
+   STATIC_ASSERT(offsetof(SHADER_KEY_TYPE, opt) + sizeof(key->opt) == sizeof(*key));
+   STATIC_ASSERT(offsetof(SHADER_KEY_TYPE, opt.inlined_uniform_values) +
+                 sizeof(key->opt.inlined_uniform_values) == sizeof(*key));
+
+   const unsigned key_size_no_uniforms = sizeof(*key) - sizeof(key->opt.inlined_uniform_values);
+   /* Don't compare inlined_uniform_values if uniform inlining is disabled. */
+   const unsigned key_size = INLINE_UNIFORMS ? sizeof(*key) : key_size_no_uniforms;
+   const unsigned key_opt_size =
+      INLINE_UNIFORMS ? sizeof(key->opt) :
+                        sizeof(key->opt) - sizeof(key->opt.inlined_uniform_values);
+
    /* si_shader_select_with_key must not modify 'key' because it would affect future shaders.
     * If we need to modify it for this specific shader (eg: to disable optimizations), we
     * use a copy.
@@ -2324,8 +2344,8 @@ static int si_shader_select_with_key(struct si_context *sctx, struct si_shader_c
 
    if (unlikely(sscreen->debug_flags & DBG(NO_OPT_VARIANT))) {
       /* Disable shader variant optimizations. */
-      key = use_local_key_copy<SHADER_KEY_TYPE>(key, &local_key);
-      memset(&local_key.opt, 0, sizeof(key->opt));
+      key = use_local_key_copy<SHADER_KEY_TYPE>(key, &local_key, key_size);
+      memset(&local_key.opt, 0, key_opt_size);
    }
 
 again:
@@ -2333,14 +2353,14 @@ again:
     * This path is also used for most shaders that don't need multiple
     * variants, it will cost just a computation of the key and this
     * test. */
-   if (likely(current && memcmp(&current->key, key, sizeof(*key)) == 0)) {
+   if (likely(current && memcmp(&current->key, key, key_size) == 0)) {
       if (unlikely(!util_queue_fence_is_signalled(&current->ready))) {
          if (current->is_optimized) {
             if (optimized_or_none)
                return -1;
 
-            key = use_local_key_copy(key, &local_key);
-            memset(&local_key.opt, 0, sizeof(key->opt));
+            key = use_local_key_copy(key, &local_key, key_size);
+            memset(&local_key.opt, 0, key_opt_size);
             goto current_not_ready;
          }
 
@@ -2363,8 +2383,6 @@ current_not_ready:
 
    simple_mtx_lock(&sel->mutex);
 
-   /* Compute the size of the key without the uniform values. */
-   size_t s = (uint8_t*)&key->opt.inlined_uniform_values - (uint8_t*)key;
    int variant_count = 0;
    const int max_inline_uniforms_variants = 5;
 
@@ -2372,8 +2390,8 @@ current_not_ready:
    for (iter = sel->first_variant; iter; iter = iter->next_variant) {
       const SHADER_KEY_TYPE *iter_key = (const SHADER_KEY_TYPE *)&iter->key;
 
-      if (memcmp(iter_key, key, s) == 0) {
-         /* Check the inlined uniform values separatly, and count
+      if (memcmp(iter_key, key, key_size_no_uniforms) == 0) {
+         /* Check the inlined uniform values separately, and count
           * the number of variants based on them.
           */
          if (key->opt.inline_uniforms &&
@@ -2381,7 +2399,7 @@ current_not_ready:
                     key->opt.inlined_uniform_values,
                     MAX_INLINABLE_UNIFORMS * 4) != 0) {
             if (variant_count++ > max_inline_uniforms_variants) {
-               key = use_local_key_copy(key, &local_key);
+               key = use_local_key_copy(key, &local_key, key_size);
                /* Too many variants. Disable inlining for this shader. */
                local_key.opt.inline_uniforms = 0;
                memset(local_key.opt.inlined_uniform_values, 0, MAX_INLINABLE_UNIFORMS * 4);
@@ -2402,8 +2420,8 @@ current_not_ready:
                if (optimized_or_none)
                   return -1;
 
-               key = use_local_key_copy(key, &local_key);
-               memset(&local_key.opt, 0, sizeof(key->opt));
+               key = use_local_key_copy(key, &local_key, key_size);
+               memset(&local_key.opt, 0, key_opt_size);
                goto again;
             }
 
@@ -2509,10 +2527,10 @@ current_not_ready:
    /* Monolithic-only shaders don't make a distinction between optimized
     * and unoptimized. */
    shader->is_monolithic =
-      is_pure_monolithic || memcmp(&key->opt, &zeroed_key->opt, sizeof(key->opt)) != 0;
+      is_pure_monolithic || memcmp(&key->opt, &zeroed_key->opt, key_opt_size) != 0;
 
    shader->is_optimized = !is_pure_monolithic &&
-                          memcmp(&key->opt, &zeroed_key->opt, sizeof(key->opt)) != 0;
+                          memcmp(&key->opt, &zeroed_key->opt, key_opt_size) != 0;
 
    /* If it's an optimized shader, compile it asynchronously. */
    if (shader->is_optimized && thread_index < 0) {
@@ -2531,8 +2549,8 @@ current_not_ready:
       }
 
       /* Use the default (unoptimized) shader for now. */
-      key = use_local_key_copy(key, &local_key);
-      memset(&local_key.opt, 0, sizeof(key->opt));
+      key = use_local_key_copy(key, &local_key, key_size);
+      memset(&local_key.opt, 0, key_opt_size);
       simple_mtx_unlock(&sel->mutex);
 
       if (sscreen->options.sync_compile)
@@ -2573,10 +2591,18 @@ int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state
 
    si_shader_selector_key(ctx, state->cso, &state->key);
 
-   if (state->cso->info.stage == MESA_SHADER_FRAGMENT)
-      return si_shader_select_with_key(sctx, state, &state->key.ps, -1, false);
-   else
-      return si_shader_select_with_key(sctx, state, &state->key.ge, -1, false);
+   if (state->cso->info.stage == MESA_SHADER_FRAGMENT) {
+      if (state->key.ps.opt.inline_uniforms)
+         return si_shader_select_with_key(sctx, state, &state->key.ps, -1, false);
+      else
+         return si_shader_select_with_key<NO_INLINE_UNIFORMS>(sctx, state, &state->key.ps, -1, false);
+   } else {
+      if (state->key.ge.opt.inline_uniforms) {
+         return si_shader_select_with_key(sctx, state, &state->key.ge, -1, false);
+      } else {
+         return si_shader_select_with_key<NO_INLINE_UNIFORMS>(sctx, state, &state->key.ge, -1, false);
+      }
+   }
 }
 
 static void si_parse_next_shader_property(const struct si_shader_info *info, bool streamout,
