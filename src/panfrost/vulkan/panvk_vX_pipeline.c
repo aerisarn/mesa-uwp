@@ -376,13 +376,12 @@ panvk_pipeline_builder_parse_viewport(struct panvk_pipeline_builder *builder,
                                     vpd);
       pipeline->vpd = pipeline->state_bo->ptr.gpu +
                       builder->vpd_offset;
-   } else {
-      if (builder->create_info->pViewportState->pViewports)
-         pipeline->viewport = builder->create_info->pViewportState->pViewports[0];
-
-      if (builder->create_info->pViewportState->pScissors)
-         pipeline->scissor = builder->create_info->pViewportState->pScissors[0];
    }
+   if (panvk_pipeline_static_state(pipeline, VK_DYNAMIC_STATE_VIEWPORT))
+      pipeline->viewport = builder->create_info->pViewportState->pViewports[0];
+
+   if (panvk_pipeline_static_state(pipeline, VK_DYNAMIC_STATE_SCISSOR))
+      pipeline->scissor = builder->create_info->pViewportState->pScissors[0];
 }
 
 static void

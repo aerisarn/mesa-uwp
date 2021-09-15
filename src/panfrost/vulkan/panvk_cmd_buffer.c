@@ -141,6 +141,11 @@ panvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
    memset(cmdbuf->descriptors[pipelineBindPoint].sysvals, 0,
           sizeof(cmdbuf->descriptors[pipelineBindPoint].sysvals));
 
+   if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_VIEWPORT)))
+      cmdbuf->state.viewport = pipeline->viewport;
+   if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_SCISSOR)))
+      cmdbuf->state.scissor = pipeline->scissor;
+
    /* Sysvals are passed through UBOs, we need dirty the UBO array if the
     * pipeline contain shaders using sysvals.
     */
