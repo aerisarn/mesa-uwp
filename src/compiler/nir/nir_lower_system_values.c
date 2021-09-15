@@ -197,6 +197,16 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          return nir_load_barycentric(b, nir_intrinsic_load_barycentric_model,
                                      INTERP_MODE_NONE);
 
+      case SYSTEM_VALUE_HELPER_INVOCATION: {
+         /* When demote operation is used, reading the HelperInvocation
+          * needs to use Volatile memory access semantics to provide the
+          * correct (dynamic) value.  See OpDemoteToHelperInvocation.
+          */
+         if (nir_intrinsic_access(intrin) & ACCESS_VOLATILE)
+            return nir_is_helper_invocation(b, 1);
+         break;
+      }
+
       default:
          break;
       }
