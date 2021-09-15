@@ -4526,7 +4526,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          }
 
          if (urb_fence) {
-            unreachable("TODO: Emit a URB barrier message");
+            assert(opcode == SHADER_OPCODE_MEMORY_FENCE);
+            fence_regs[fence_regs_count++] =
+               emit_fence(ubld, opcode, BRW_SFID_URB,
+                          true /* commit_enable */,
+                          0 /* BTI; ignored for LSC */);
          }
       } else if (devinfo->ver >= 11) {
          if (tgm_fence || ugm_fence || urb_fence) {
