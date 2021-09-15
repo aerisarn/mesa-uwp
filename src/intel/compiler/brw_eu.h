@@ -375,6 +375,13 @@ brw_urb_desc_msg_type(ASSERTED const struct intel_device_info *devinfo,
    return GET_BITS(desc, 3, 0);
 }
 
+static inline uint32_t
+brw_urb_fence_desc(const struct intel_device_info *devinfo)
+{
+   assert(devinfo->has_lsc);
+   return brw_urb_desc(devinfo, GFX125_URB_OPCODE_FENCE, false, false, 0);
+}
+
 /**
  * Construct a message descriptor immediate with the specified sampler
  * function controls.

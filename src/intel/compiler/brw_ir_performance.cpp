@@ -946,6 +946,7 @@ namespace {
             else
                abort();
 
+         case BRW_SFID_URB:
          case GFX7_SFID_DATAPORT_DATA_CACHE:
          case GFX12_SFID_SLM:
          case GFX12_SFID_TGM:

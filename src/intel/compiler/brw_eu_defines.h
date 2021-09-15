@@ -1608,6 +1608,7 @@ enum brw_message_target {
 #define GFX8_URB_OPCODE_ATOMIC_ADD  6
 #define GFX8_URB_OPCODE_SIMD8_WRITE 7
 #define GFX8_URB_OPCODE_SIMD8_READ  8
+#define GFX125_URB_OPCODE_FENCE     9
 
 #define BRW_URB_SWIZZLE_NONE          0
 #define BRW_URB_SWIZZLE_INTERLEAVE    1
