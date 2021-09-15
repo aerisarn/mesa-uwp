@@ -40,24 +40,6 @@
 
 static void sweep_cf_node(nir_shader *nir, nir_cf_node *cf_node);
 
-static bool
-sweep_src_indirect(nir_src *src, void *nir)
-{
-   if (!src->is_ssa && src->reg.indirect)
-      ralloc_steal(nir, src->reg.indirect);
-
-   return true;
-}
-
-static bool
-sweep_dest_indirect(nir_dest *dest, void *nir)
-{
-   if (!dest->is_ssa && dest->reg.indirect)
-      ralloc_steal(nir, dest->reg.indirect);
-
-   return true;
-}
-
 static void
 sweep_block(nir_shader *nir, nir_block *block)
 {
@@ -75,9 +57,6 @@ sweep_block(nir_shader *nir, nir_block *block)
    nir_foreach_instr(instr, block) {
       list_del(&instr->gc_node);
       list_add(&instr->gc_node, &nir->gc_list);
-
-      nir_foreach_src(instr, sweep_src_indirect, nir);
-      nir_foreach_dest(instr, sweep_dest_indirect, nir);
    }
 }
 
