@@ -207,7 +207,7 @@ panvk_pipeline_builder_alloc_static_state_bo(struct panvk_pipeline_builder *buil
       builder->stages[i].rsd_offset = bo_size;
       bo_size += pan_size(RENDERER_STATE);
       if (i == MESA_SHADER_FRAGMENT)
-         bo_size += pan_size(BLEND) * pipeline->blend.state.rt_count;
+         bo_size += pan_size(BLEND) * MAX2(pipeline->blend.state.rt_count, 1);
    }
 
    if (panvk_pipeline_static_state(pipeline, VK_DYNAMIC_STATE_VIEWPORT) &&
