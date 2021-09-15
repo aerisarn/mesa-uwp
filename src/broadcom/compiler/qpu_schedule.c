@@ -422,6 +422,8 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
                 add_write_dep(state, &state->last_r[4], n);
         if (v3d_qpu_writes_r5(devinfo, inst))
                 add_write_dep(state, &state->last_r[5], n);
+        if (v3d_qpu_writes_rf0_implicitly(devinfo, inst))
+                add_write_dep(state, &state->last_rf[0], n);
 
         /* If we add any more dependencies here we should consider whether we
          * also need to update qpu_inst_after_thrsw_valid_in_delay_slot.
