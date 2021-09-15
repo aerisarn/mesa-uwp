@@ -1529,6 +1529,11 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
       return false;
 
    switch (info->chip_class) {
+   case GFX6:
+   case GFX7:
+   case GFX8:
+      /* We can get here due to SI_FORCE_FAMILY. */
+      return false;
    case GFX9:
       /* There are more constraints, but we always set
        * INDEPENDENT_64B_BLOCKS = 1 and MAX_COMPRESSED_BLOCK_SIZE = 64B,
