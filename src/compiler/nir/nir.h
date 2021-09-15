@@ -716,6 +716,27 @@ _nir_shader_variable_has_mode(nir_variable *var, unsigned modes)
    nir_foreach_variable_with_modes_safe(var, shader, nir_var_uniform)
 
 static inline bool
+_nir_variable_is_image(const nir_variable *var)
+{
+   if (!glsl_type_contains_image(var->type))
+      return false;
+
+   /* GL, Vulkan, and OpenCL only allows arrays of arrays of images */
+   assert(glsl_type_is_image(glsl_without_array(var->type)));
+   return true;
+}
+
+#define nir_foreach_image_variable(var, shader) \
+   nir_foreach_variable_with_modes(var, shader, nir_var_uniform | \
+                                                nir_var_mem_image) \
+      if (_nir_variable_is_image(var))
+
+#define nir_foreach_image_variable_safe(var, shader) \
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_uniform | \
+                                                     nir_var_mem_image) \
+      if (_nir_variable_is_image(var))
+
+static inline bool
 nir_variable_is_global(const nir_variable *var)
 {
    return var->data.mode != nir_var_function_temp;

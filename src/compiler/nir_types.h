@@ -155,6 +155,7 @@ bool glsl_type_is_numeric(const struct glsl_type *type);
 bool glsl_type_is_boolean(const struct glsl_type *type);
 bool glsl_type_is_integer(const struct glsl_type *type);
 bool glsl_type_contains_64bit(const struct glsl_type *type);
+bool glsl_type_contains_image(const struct glsl_type *type);
 bool glsl_sampler_type_is_shadow(const struct glsl_type *type);
 bool glsl_sampler_type_is_array(const struct glsl_type *type);
 bool glsl_struct_type_is_packed(const struct glsl_type *type);
