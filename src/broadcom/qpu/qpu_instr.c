@@ -854,6 +854,9 @@ bool
 v3d_qpu_writes_r3(const struct v3d_device_info *devinfo,
                   const struct v3d_qpu_instr *inst)
 {
+        if(!devinfo->has_accumulators)
+                return false;
+
         if (qpu_writes_magic_waddr_explicitly(devinfo, inst, V3D_QPU_WADDR_R3))
                 return true;
 
@@ -864,6 +867,9 @@ bool
 v3d_qpu_writes_r4(const struct v3d_device_info *devinfo,
                   const struct v3d_qpu_instr *inst)
 {
+        if (!devinfo->has_accumulators)
+                return false;
+
         if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
                 if (inst->alu.add.op != V3D_QPU_A_NOP &&
                     inst->alu.add.magic_write &&
@@ -894,6 +900,9 @@ bool
 v3d_qpu_writes_r5(const struct v3d_device_info *devinfo,
                   const struct v3d_qpu_instr *inst)
 {
+        if (!devinfo->has_accumulators)
+                return false;
+
         if (qpu_writes_magic_waddr_explicitly(devinfo, inst, V3D_QPU_WADDR_R5))
                 return true;
 
@@ -904,6 +913,9 @@ bool
 v3d_qpu_writes_accum(const struct v3d_device_info *devinfo,
                      const struct v3d_qpu_instr *inst)
 {
+        if (!devinfo->has_accumulators)
+                return false;
+
         if (v3d_qpu_writes_r5(devinfo, inst))
                 return true;
         if (v3d_qpu_writes_r4(devinfo, inst))
