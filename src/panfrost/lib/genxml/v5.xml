@@ -300,6 +300,22 @@
     <value name="Replicated" value="7"/>
   </enum>
 
+  <enum name="ASTC 2D Dimension">
+    <value name="4" value="0"/>
+    <value name="5" value="1"/>
+    <value name="6" value="2"/>
+    <value name="8" value="4"/>
+    <value name="10" value="6"/>
+    <value name="12" value="7"/>
+  </enum>
+
+  <enum name="ASTC 3D Dimension">
+    <value name="4" value="0"/>
+    <value name="5" value="1"/>
+    <value name="6" value="2"/>
+    <value name="3" value="3"/>
+  </enum>
+
   <enum name="Block Format">
     <!--- 16x16 block u-interleaved -->
     <value name="Tiled U-Interleaved" value="0"/>
