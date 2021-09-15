@@ -1239,7 +1239,12 @@ v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
 
    return devid;
 #else
-   return dev->devinfo.ver;
+   switch (dev->devinfo.ver) {
+   case 42:
+      return 0xBE485FD3; /* Broadcom deviceID for 2711 */
+   default:
+      unreachable("Unsupported V3D version");
+   }
 #endif
 }
 
