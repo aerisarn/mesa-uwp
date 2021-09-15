@@ -938,7 +938,8 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             zink_resource_buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
             set_vertex_buffer_clamped(ctx, start_slot + i);
-         }
+         } else
+            enabled_buffers &= ~BITFIELD_BIT(i);
       }
    } else {
       if (need_state_change)
@@ -954,6 +955,10 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
    }
    ctx->gfx_pipeline_state.vertex_buffers_enabled_mask = enabled_buffers;
    ctx->vertex_buffers_dirty = num_buffers > 0;
+#ifndef NDEBUG
+   u_foreach_bit(b, enabled_buffers)
+      assert(ctx->vertex_buffers[b].buffer.resource);
+#endif
 }
 
 static void
