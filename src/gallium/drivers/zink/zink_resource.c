@@ -209,18 +209,22 @@ static VkImageUsageFlags
 get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats, const struct pipe_resource *templ, unsigned bind)
 {
    VkImageUsageFlags usage = 0;
-   /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
-   if (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
-      usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-   if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
-      usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && (bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
-      usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+   if (bind & ZINK_BIND_TRANSIENT)
+      usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+   else {
+      /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
+      if (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
+         usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
+         usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && (bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
+         usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-   if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
-       (bind & PIPE_BIND_SHADER_IMAGE)) {
-      if (feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
-         usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+      if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
+          (bind & PIPE_BIND_SHADER_IMAGE)) {
+         if (feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
+            usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+      }
    }
 
    if (bind & PIPE_BIND_RENDER_TARGET) {
@@ -250,6 +254,7 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
 
    if (bind & PIPE_BIND_STREAM_OUTPUT)
       usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
    return usage;
 }
 
@@ -597,6 +602,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    else if (!(flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
             templ->usage == PIPE_USAGE_STAGING)
       flags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+
+   if (templ->bind & ZINK_BIND_TRANSIENT)
+      flags |= VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
 
    VkMemoryAllocateInfo mai;
    enum zink_alloc_flag aflags = templ->flags & PIPE_RESOURCE_FLAG_SPARSE ? ZINK_ALLOC_SPARSE : 0;
