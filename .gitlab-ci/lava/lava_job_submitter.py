@@ -37,6 +37,20 @@ import yaml
 from datetime import datetime, timedelta
 from lavacli.utils import loader
 
+# Timeout in minutes to decide if the device from the dispatched LAVA job has
+# hung or not due to the lack of new log output.
+DEVICE_HANGING_TIMEOUT_MIN = 5
+
+# How many seconds the script should wait before try a new polling iteration to
+# check if the dispatched LAVA job is running or waiting in the job queue.
+WAIT_FOR_DEVICE_POLLING_TIME_SEC = 10
+
+# How many seconds to wait between log output LAVA RPC calls.
+LOG_POLLING_TIME_SEC = 5
+
+# How many retries should be made when a timeout happen.
+NUMBER_OF_RETRIES_TIMEOUT_DETECTION = 2
+
 
 def print_log(msg):
     print("{}: {}".format(datetime.now(), msg))
@@ -112,7 +126,7 @@ def generate_lava_yaml(args):
             'format': 'Lava-Test Test Definition 1.0',
           },
           'parse': {
-            'pattern': 'hwci: (?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
+            'pattern': r'hwci: (?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
           },
           'run': {
           },
@@ -218,7 +232,7 @@ def wait_until_job_is_started(proxy, job_id):
         job_state = _call_proxy(proxy.scheduler.job_state, job_id)
         current_state = job_state["job_state"]
 
-        time.sleep(30)
+        time.sleep(WAIT_FOR_DEVICE_POLLING_TIME_SEC)
     print_log(f"Job {job_id} started.")
 
 def follow_job_execution(proxy, job_id):
@@ -237,7 +251,7 @@ def follow_job_execution(proxy, job_id):
             line_count += len(logs)
 
         else:
-            time_limit = timedelta(minutes=1)
+            time_limit = timedelta(minutes=DEVICE_HANGING_TIMEOUT_MIN)
             if datetime.now() - last_time_logs > time_limit:
                 print_log("LAVA job {} doesn't advance (machine got hung?). Retry.".format(job_id))
                 return False
@@ -245,7 +259,7 @@ def follow_job_execution(proxy, job_id):
         # `proxy.scheduler.jobs.logs` does not block, even when there is no
         # new log to be fetched. To avoid dosing the LAVA dispatcher
         # machine, let's add a sleep to save them some stamina.
-        time.sleep(5)
+        time.sleep(LOG_POLLING_TIME_SEC)
 
     return True
 
@@ -282,7 +296,7 @@ def main(args):
         print("LAVA job definition validated successfully")
         return
 
-    retry_count = 2
+    retry_count = NUMBER_OF_RETRIES_TIMEOUT_DETECTION
 
     while retry_count >= 0:
         job_id = submit_job(proxy, yaml_file)
