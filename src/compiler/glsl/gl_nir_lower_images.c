@@ -87,7 +87,9 @@ lower_impl(nir_builder *b, nir_instr *instr, bool bindless_only)
       return false;
    }
 
-   bool bindless = var->data.mode != nir_var_uniform || var->data.bindless;
+   bool bindless = (var->data.mode != nir_var_uniform &&
+                    var->data.mode != nir_var_mem_image) ||
+                   var->data.bindless;
    if (bindless_only && !bindless)
       return false;
 
