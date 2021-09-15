@@ -1597,7 +1597,7 @@ to upconvert to 32b float internally?
 		<bitfield name="LINEHALFWIDTH" low="3" high="10" radix="2" type="fixed"/>
 		<bitfield name="POLY_OFFSET" pos="11" type="boolean"/>
 		<bitfield name="UNK12" pos="12"/>
-		<bitfield name="MSAA_ENABLE" pos="13" type="boolean"/>
+		<bitfield name="LINE_MODE" pos="13" type="a5xx_line_mode"/>
 		<bitfield name="UNK15" low="15" high="16"/>
 		<!--
 		This is set by the blob when multiview is enabled, but doesn't seem

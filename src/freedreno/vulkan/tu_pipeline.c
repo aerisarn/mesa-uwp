@@ -1990,7 +1990,7 @@ tu6_gras_su_cntl(const VkPipelineRasterizationStateCreateInfo *rast_info,
       gras_su_cntl |= A6XX_GRAS_SU_CNTL_POLY_OFFSET;
 
    if (samples > VK_SAMPLE_COUNT_1_BIT)
-      gras_su_cntl |= A6XX_GRAS_SU_CNTL_MSAA_ENABLE;
+      gras_su_cntl |= A6XX_GRAS_SU_CNTL_LINE_MODE(RECTANGULAR);
 
    if (multiview) {
       gras_su_cntl |=

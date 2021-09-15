@@ -61,7 +61,7 @@ __fd6_setup_rasterizer_stateobj(struct fd_context *ctx,
    OUT_REG(ring,
            A6XX_GRAS_SU_CNTL(.linehalfwidth = cso->line_width / 2.0,
                              .poly_offset = cso->offset_tri,
-                             .msaa_enable = cso->multisample,
+                             .line_mode = cso->multisample ? RECTANGULAR : BRESENHAM,
                              .cull_front = cso->cull_face & PIPE_FACE_FRONT,
                              .cull_back = cso->cull_face & PIPE_FACE_BACK,
                              .front_cw = !cso->front_ccw, ));
