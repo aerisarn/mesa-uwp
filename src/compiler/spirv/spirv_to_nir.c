@@ -4458,10 +4458,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityImageGatherExtended:
       case SpvCapabilityStorageImageExtendedFormats:
       case SpvCapabilityVector16:
-      case SpvCapabilityDotProductKHR:
-      case SpvCapabilityDotProductInputAllKHR:
-      case SpvCapabilityDotProductInput4x8BitKHR:
-      case SpvCapabilityDotProductInput4x8BitPackedKHR:
+      case SpvCapabilityDotProduct:
+      case SpvCapabilityDotProductInputAll:
+      case SpvCapabilityDotProductInput4x8Bit:
+      case SpvCapabilityDotProductInput4x8BitPacked:
          break;
 
       case SpvCapabilityLinkage:
@@ -4702,7 +4702,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(fragment_shader_pixel_interlock, cap);
          break;
 
-      case SpvCapabilityDemoteToHelperInvocationEXT:
+      case SpvCapabilityDemoteToHelperInvocation:
          spv_check_supported(demote_to_helper_invocation, cap);
          b->uses_demote_to_helper_invocation = true;
          break;
@@ -6120,7 +6120,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       nir_end_invocation_interlock(&b->nb);
       break;
 
-   case SpvOpDemoteToHelperInvocationEXT: {
+   case SpvOpDemoteToHelperInvocation: {
       nir_demote(&b->nb);
       break;
    }
