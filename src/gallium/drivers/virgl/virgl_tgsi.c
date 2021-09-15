@@ -36,12 +36,20 @@ struct virgl_transform_context {
    bool cull_enabled;
    bool has_precise;
    bool fake_fp64;
+
+   unsigned next_temp;
+
+   unsigned writemask_fixup_outs[5];
+   unsigned writemask_fixup_temps;
+   unsigned num_writemask_fixups;
 };
 
 static void
 virgl_tgsi_transform_declaration(struct tgsi_transform_context *ctx,
                                  struct tgsi_full_declaration *decl)
 {
+   struct virgl_transform_context *vtctx = (struct virgl_transform_context *)ctx;
+
    switch (decl->Declaration.File) {
    case TGSI_FILE_CONSTANT:
       if (decl->Declaration.Dimension) {
@@ -49,11 +57,32 @@ virgl_tgsi_transform_declaration(struct tgsi_transform_context *ctx,
             decl->Declaration.Dimension = 0;
       }
       break;
+   case TGSI_FILE_OUTPUT:
+      switch (decl->Semantic.Name) {
+      case TGSI_SEMANTIC_CLIPDIST:
+         vtctx->writemask_fixup_outs[vtctx->num_writemask_fixups++] = decl->Range.First;
+         if (decl->Range.Last != decl->Range.First)
+            vtctx->writemask_fixup_outs[vtctx->num_writemask_fixups++] = decl->Range.Last;
+         break;
+      case TGSI_SEMANTIC_CLIPVERTEX:
+         vtctx->writemask_fixup_outs[vtctx->num_writemask_fixups++] = decl->Range.First;
+         break;
+      case TGSI_SEMANTIC_COLOR:
+         /* Vertex front/backface color output also has issues with writemasking */
+         if (vtctx->base.processor != PIPE_SHADER_FRAGMENT)
+            vtctx->writemask_fixup_outs[vtctx->num_writemask_fixups++] = decl->Range.First;
+         break;
+      }
+      break;
+   case TGSI_FILE_TEMPORARY:
+      vtctx->next_temp = MAX2(vtctx->next_temp, decl->Range.Last + 1);
+      break;
    default:
       break;
    }
-   ctx->emit_declaration(ctx, decl);
+   assert(vtctx->num_writemask_fixups <= ARRAY_SIZE(vtctx->writemask_fixup_outs));
 
+   ctx->emit_declaration(ctx, decl);
 }
 
 /* for now just strip out the new properties the remote doesn't understand
@@ -78,6 +107,20 @@ virgl_tgsi_transform_property(struct tgsi_transform_context *ctx,
 }
 
 static void
+virgl_tgsi_transform_prolog(struct tgsi_transform_context * ctx)
+{
+   struct virgl_transform_context *vtctx = (struct virgl_transform_context *)ctx;
+
+   if (vtctx->num_writemask_fixups) {
+      vtctx->writemask_fixup_temps = vtctx->next_temp;
+      vtctx->next_temp += vtctx->num_writemask_fixups;
+      tgsi_transform_temps_decl(ctx,
+                                vtctx->writemask_fixup_temps,
+                                vtctx->writemask_fixup_temps + vtctx->num_writemask_fixups - 1);
+   }
+}
+
+static void
 virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
 				 struct tgsi_full_instruction *inst)
 {
@@ -92,6 +135,24 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
    if (!vtctx->has_precise && inst->Instruction.Precise)
       inst->Instruction.Precise = 0;
 
+   for (unsigned i = 0; i < inst->Instruction.NumDstRegs; i++) {
+      /* virglrenderer would fail to compile on clipdist, clipvertex, and some
+       * two-sided-related color writes without a full writemask.  So, we write
+       * to a temp and store that temp with a full writemask.
+       *
+       * https://gitlab.freedesktop.org/virgl/virglrenderer/-/merge_requests/616
+       */
+      if (inst->Dst[i].Register.File == TGSI_FILE_OUTPUT) {
+         for (int j = 0; j < vtctx->num_writemask_fixups; j++) {
+            if (inst->Dst[i].Register.Index == vtctx->writemask_fixup_outs[j]) {
+               inst->Dst[i].Register.File = TGSI_FILE_TEMPORARY;
+               inst->Dst[i].Register.Index = vtctx->writemask_fixup_temps + j;
+               break;
+            }
+         }
+      }
+   }
+
    for (unsigned i = 0; i < inst->Instruction.NumSrcRegs; i++) {
       if (inst->Src[i].Register.File == TGSI_FILE_CONSTANT &&
           inst->Src[i].Register.Dimension &&
@@ -99,12 +160,25 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
          inst->Src[i].Register.Dimension = 0;
    }
    ctx->emit_instruction(ctx, inst);
+
+   for (unsigned i = 0; i < inst->Instruction.NumDstRegs; i++) {
+      if (vtctx->num_writemask_fixups &&
+         inst->Dst[i].Register.File == TGSI_FILE_TEMPORARY &&
+         inst->Dst[i].Register.Index >= vtctx->writemask_fixup_temps &&
+         inst->Dst[i].Register.Index < vtctx->writemask_fixup_temps + vtctx->num_writemask_fixups) {
+         /* Emit the fixup MOV from the clipdist/vert temporary to the real output. */
+         unsigned real_out = vtctx->writemask_fixup_outs[inst->Dst[i].Register.Index - vtctx->writemask_fixup_temps];
+         tgsi_transform_op1_inst(ctx, TGSI_OPCODE_MOV,
+                                 TGSI_FILE_OUTPUT, real_out, TGSI_WRITEMASK_XYZW,
+                                 inst->Dst[i].Register.File, inst->Dst[i].Register.Index);
+      }
+   }
 }
 
 struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const struct tgsi_token *tokens_in)
 {
    struct virgl_transform_context transform;
-   const uint newLen = tgsi_num_tokens(tokens_in);
+   const uint newLen = tgsi_num_tokens(tokens_in) * 2 /* XXX: how many to allocate? */;
    struct tgsi_token *new_tokens;
 
    new_tokens = tgsi_alloc_tokens(newLen);
@@ -115,10 +189,12 @@ struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const stru
    transform.base.transform_declaration = virgl_tgsi_transform_declaration;
    transform.base.transform_property = virgl_tgsi_transform_property;
    transform.base.transform_instruction = virgl_tgsi_transform_instruction;
+   transform.base.prolog = virgl_tgsi_transform_prolog;
    transform.cull_enabled = vscreen->caps.caps.v1.bset.has_cull;
    transform.has_precise = vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_TGSI_PRECISE;
    transform.fake_fp64 =
       vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_FAKE_FP64;
+
    tgsi_transform_shader(tokens_in, new_tokens, newLen, &transform.base);
 
    return new_tokens;
