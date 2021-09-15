@@ -192,6 +192,7 @@ wrap_surface(struct pipe_context *pctx, struct pipe_surface *psurf)
 {
    struct zink_ctx_surface *csurf = CALLOC_STRUCT(zink_ctx_surface);
    csurf->base = *psurf;
+   pipe_reference_init(&csurf->base.reference, 1);
    csurf->surf = (struct zink_surface*)psurf;
    csurf->base.context = pctx;
 
