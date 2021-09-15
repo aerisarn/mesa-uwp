@@ -339,11 +339,36 @@ nir_function_create(nir_shader *shader, const char *name)
    return func;
 }
 
+static bool src_has_indirect(nir_src *src)
+{
+   return !src->is_ssa && src->reg.indirect;
+}
+
+static void src_free_indirects(nir_src *src)
+{
+   if (src_has_indirect(src)) {
+      assert(src->reg.indirect->is_ssa || !src->reg.indirect->reg.indirect);
+      free(src->reg.indirect);
+      src->reg.indirect = NULL;
+   }
+}
+
+static void dest_free_indirects(nir_dest *dest)
+{
+   if (!dest->is_ssa && dest->reg.indirect) {
+      assert(dest->reg.indirect->is_ssa || !dest->reg.indirect->reg.indirect);
+      free(dest->reg.indirect);
+      dest->reg.indirect = NULL;
+   }
+}
+
 /* NOTE: if the instruction you are copying a src to is already added
  * to the IR, use nir_instr_rewrite_src() instead.
  */
 void nir_src_copy(nir_src *dest, const nir_src *src)
 {
+   src_free_indirects(dest);
+
    dest->is_ssa = src->is_ssa;
    if (src->is_ssa) {
       dest->ssa = src->ssa;
@@ -363,6 +388,8 @@ void nir_dest_copy(nir_dest *dest, const nir_dest *src)
 {
    /* Copying an SSA definition makes no sense whatsoever. */
    assert(!src->is_ssa);
+
+   dest_free_indirects(dest);
 
    dest->is_ssa = false;
 
@@ -1120,30 +1147,22 @@ void nir_instr_remove_v(nir_instr *instr)
    }
 }
 
-static bool nir_instr_free_src_indirects(nir_src *src, void *state)
+static bool free_src_indirects_cb(nir_src *src, void *state)
 {
-   if (!src->is_ssa && src->reg.indirect) {
-      assert(src->reg.indirect->is_ssa || !src->reg.indirect->reg.indirect);
-      free(src->reg.indirect);
-      src->reg.indirect = NULL;
-   }
+   src_free_indirects(src);
    return true;
 }
 
-static bool nir_instr_free_dest_indirects(nir_dest *dest, void *state)
+static bool free_dest_indirects_cb(nir_dest *dest, void *state)
 {
-   if (!dest->is_ssa && dest->reg.indirect) {
-      assert(dest->reg.indirect->is_ssa || !dest->reg.indirect->reg.indirect);
-      free(dest->reg.indirect);
-      dest->reg.indirect = NULL;
-   }
+   dest_free_indirects(dest);
    return true;
 }
 
 void nir_instr_free(nir_instr *instr)
 {
-   nir_foreach_src(instr, nir_instr_free_src_indirects, NULL);
-   nir_foreach_dest(instr, nir_instr_free_dest_indirects, NULL);
+   nir_foreach_src(instr, free_src_indirects_cb, NULL);
+   nir_foreach_dest(instr, free_dest_indirects_cb, NULL);
 
    switch (instr->type) {
    case nir_instr_type_tex:
@@ -1531,7 +1550,7 @@ nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src)
    assert(!src_is_valid(src) || src->parent_instr == instr);
 
    src_remove_all_uses(src);
-   *src = new_src;
+   nir_src_copy(src, &new_src);
    src_add_all_uses(src, instr, NULL);
 }
 
@@ -1541,6 +1560,7 @@ nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src)
    assert(!src_is_valid(dest) || dest->parent_instr == dest_instr);
 
    src_remove_all_uses(dest);
+   src_free_indirects(dest);
    src_remove_all_uses(src);
    *dest = *src;
    *src = NIR_SRC_INIT;
@@ -1554,7 +1574,7 @@ nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src)
    assert(!src_is_valid(src) || src->parent_if == if_stmt);
 
    src_remove_all_uses(src);
-   *src = new_src;
+   nir_src_copy(src, &new_src);
    src_add_all_uses(src, NULL, if_stmt);
 }
 
