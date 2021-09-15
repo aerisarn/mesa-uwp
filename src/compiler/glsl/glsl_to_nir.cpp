@@ -545,6 +545,8 @@ nir_visitor::visit(ir_variable *ir)
    case ir_var_uniform:
       if (ir->get_interface_type())
          var->data.mode = nir_var_mem_ubo;
+      else if (ir->type->contains_image() && !ir->data.bindless)
+         var->data.mode = nir_var_mem_image;
       else
          var->data.mode = nir_var_uniform;
       break;
