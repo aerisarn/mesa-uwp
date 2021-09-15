@@ -342,7 +342,7 @@ zink_surface_create_null(struct zink_context *ctx, enum pipe_texture_target targ
       return NULL;
 
    surf_templ.format = PIPE_FORMAT_R8_UINT;
-   surf_templ.nr_samples = samples;
+   surf_templ.nr_samples = 0;
    struct pipe_surface *psurf = ctx->base.create_surface(&ctx->base, pres, &surf_templ);
    pipe_resource_reference(&pres, NULL);
    return psurf;
