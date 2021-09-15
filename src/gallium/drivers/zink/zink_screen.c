@@ -346,6 +346,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
       return 1;
 
+   case PIPE_CAP_SURFACE_SAMPLE_COUNT:
+      return screen->vk_version >= VK_MAKE_VERSION(1,2,0);
+
    case PIPE_CAP_DRAW_PARAMETERS:
       return screen->info.feats11.shaderDrawParameters || screen->info.have_KHR_shader_draw_parameters;
 

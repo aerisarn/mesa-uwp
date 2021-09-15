@@ -170,6 +170,7 @@ zink_get_surface(struct zink_context *ctx,
    if (!entry) {
       /* create a new surface */
       surface = create_surface(&ctx->base, pres, templ, ivci);
+      surface->base.nr_samples = 0;
       surface->hash = hash;
       surface->ivci = *ivci;
       entry = _mesa_hash_table_insert_pre_hashed(&res->surface_cache, hash, &surface->ivci, surface);
@@ -184,6 +185,7 @@ zink_get_surface(struct zink_context *ctx,
       p_atomic_inc(&surface->base.reference.count);
    }
    simple_mtx_unlock(&res->surface_mtx);
+
    return &surface->base;
 }
 
@@ -210,7 +212,31 @@ zink_create_surface(struct pipe_context *pctx,
    if (pres->target == PIPE_TEXTURE_3D)
       ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
-   return wrap_surface(pctx, zink_get_surface(zink_context(pctx), pres, templ, &ivci));
+   struct pipe_surface *psurf = zink_get_surface(zink_context(pctx), pres, templ, &ivci);
+   if (!psurf)
+      return NULL;
+
+   struct zink_ctx_surface *csurf = (struct zink_ctx_surface*)wrap_surface(pctx, psurf);
+
+   if (templ->nr_samples) {
+      /* transient fb attachment: not cached */
+      struct pipe_resource rtempl = *pres;
+      rtempl.nr_samples = templ->nr_samples;
+      rtempl.bind |= ZINK_BIND_TRANSIENT;
+      struct zink_resource *transient = zink_resource(pctx->screen->resource_create(pctx->screen, &rtempl));
+      if (!transient)
+         return NULL;
+      ivci.image = transient->obj->image;
+      csurf->transient = (struct zink_ctx_surface*)wrap_surface(pctx, (struct pipe_surface*)create_surface(pctx, &transient->base.b, templ, &ivci));
+      if (!csurf->transient) {
+         pipe_resource_reference((struct pipe_resource**)&transient, NULL);
+         pipe_surface_release(pctx, &psurf);
+         return NULL;
+      }
+      pipe_resource_reference((struct pipe_resource**)&transient, NULL);
+   }
+
+   return &csurf->base;
 }
 
 /* framebuffers are owned by their surfaces, so each time a surface that's part of a cached fb
@@ -245,12 +271,14 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
 {
    struct zink_surface *surface = zink_surface(psurface);
    struct zink_resource *res = zink_resource(psurface->texture);
-   simple_mtx_lock(&res->surface_mtx);
-   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&res->surface_cache, surface->hash, &surface->ivci);
-   assert(he);
-   assert(he->data == surface);
-   _mesa_hash_table_remove(&res->surface_cache, he);
-   simple_mtx_unlock(&res->surface_mtx);
+   if (!psurface->nr_samples) {
+      simple_mtx_lock(&res->surface_mtx);
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&res->surface_cache, surface->hash, &surface->ivci);
+      assert(he);
+      assert(he->data == surface);
+      _mesa_hash_table_remove(&res->surface_cache, he);
+      simple_mtx_unlock(&res->surface_mtx);
+   }
    if (!screen->info.have_KHR_imageless_framebuffer)
       surface_clear_fb_refs(screen, psurface);
    zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
@@ -268,6 +296,7 @@ zink_surface_destroy(struct pipe_context *pctx,
 {
    struct zink_ctx_surface *csurf = (struct zink_ctx_surface *)psurface;
    zink_surface_reference(zink_screen(pctx->screen), &csurf->surf, NULL);
+   pipe_surface_release(pctx, (struct pipe_surface**)&csurf->transient);
    FREE(csurf);
 }
 
