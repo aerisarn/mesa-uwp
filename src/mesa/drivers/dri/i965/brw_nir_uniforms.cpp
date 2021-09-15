@@ -150,13 +150,9 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
                            struct brw_stage_prog_data *stage_prog_data,
                            bool is_scalar)
 {
-   if (var->type->without_array()->is_sampler())
+   if (var->type->without_array()->is_sampler() ||
+       var->type->without_array()->is_image())
       return;
-
-   if (var->type->without_array()->is_image()) {
-      brw_setup_image_uniform_values(var, stage_prog_data);
-      return;
-   }
 
    /* The data for our (non-builtin) uniforms is stored in a series of
     * gl_uniform_storage structs for each subcomponent that
@@ -236,6 +232,9 @@ brw_nir_setup_glsl_uniforms(void *mem_ctx, nir_shader *shader,
                                     stage_prog_data, is_scalar);
       }
    }
+
+   nir_foreach_image_variable(var, shader)
+      brw_setup_image_uniform_values(var, stage_prog_data);
 }
 
 void
@@ -306,12 +305,7 @@ brw_nir_lower_gl_images(nir_shader *shader,
                         const struct gl_program *prog)
 {
    /* We put image uniforms at the end */
-   nir_foreach_uniform_variable(var, shader) {
-      if (!var->type->contains_image())
-         continue;
-
-      /* GL Only allows arrays of arrays of images */
-      assert(var->type->without_array()->is_image());
+   nir_foreach_image_variable(var, shader) {
       const unsigned num_images = MAX2(1, var->type->arrays_of_arrays_size());
 
       var->data.driver_location = shader->num_uniforms;
