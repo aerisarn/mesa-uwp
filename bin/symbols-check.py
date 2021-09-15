@@ -73,7 +73,7 @@ def get_symbols_dumpbin(dumpbin, lib):
             continue
         symbol_name = fields[3]
         # De-mangle symbols
-        if symbol_name[0] == '_':
+        if symbol_name[0] == '_' and '@' in symbol_name:
             symbol_name = symbol_name[1:].split('@')[0]
         symbols.append(symbol_name)
     return symbols
