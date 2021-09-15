@@ -78,6 +78,13 @@ convert_pc_to_bits(struct GENX(PIPE_CONTROL) *pc) {
       fprintf(stderr, ") reason: %s\n", __FUNCTION__); \
    }
 
+static bool
+is_render_queue_cmd_buffer(const struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_queue_family *queue_family = cmd_buffer->pool->queue_family;
+   return (queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
+}
+
 void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -6716,6 +6723,12 @@ void genX(CmdBeginRenderPass2)(
    ANV_FROM_HANDLE(anv_render_pass, pass, pRenderPassBeginInfo->renderPass);
    ANV_FROM_HANDLE(anv_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
    VkResult result;
+
+   if (!is_render_queue_cmd_buffer(cmd_buffer)) {
+      assert(!"Trying to start a render pass on non-render queue!");
+      anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_UNKNOWN);
+      return;
+   }
 
    cmd_buffer->state.framebuffer = framebuffer;
    cmd_buffer->state.pass = pass;
