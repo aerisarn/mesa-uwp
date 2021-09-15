@@ -43,6 +43,11 @@ static uint64_t next_clock_sync_ns; /* cpu time of next clk sync */
  */
 static uint64_t sync_gpu_ts;
 
+static uint64_t last_suspend_count;
+
+static uint64_t gpu_max_timestamp;
+static uint64_t gpu_timestamp_offset;
+
 struct TuRenderpassIncrementalState {
    bool was_cleared = true;
 };
@@ -73,6 +78,10 @@ public:
        */
       gpu_clock_id =
          _mesa_hash_string("org.freedesktop.mesa.freedreno") | 0x80000000;
+
+      gpu_timestamp_offset = 0;
+      gpu_max_timestamp = 0;
+      last_suspend_count = 0;
    }
 
    void OnStop(const StopArgs &) override
@@ -156,7 +165,9 @@ stage_end(struct tu_device *dev, uint64_t ts_ns, enum tu_stage_id stage,
 
       auto packet = tctx.NewTracePacket();
 
-      packet->set_timestamp(p->start_ts[stage]);
+      gpu_max_timestamp = MAX2(gpu_max_timestamp, ts_ns + gpu_timestamp_offset);
+
+      packet->set_timestamp(p->start_ts[stage] + gpu_timestamp_offset);
       packet->set_timestamp_clock_id(gpu_clock_id);
 
       auto event = packet->set_gpu_render_stage_event();
@@ -201,8 +212,38 @@ sync_timestamp(struct tu_device *dev)
       return;
     }
 
+   uint64_t current_suspend_count = 0;
+   /* If we fail to get it we will use a fallback */
+   tu_device_get_suspend_count(dev, &current_suspend_count);
+
    /* convert GPU ts into ns: */
    gpu_ts = tu_device_ticks_to_ns(dev, gpu_ts);
+
+   /* GPU timestamp is being reset after suspend-resume cycle.
+    * Perfetto requires clock snapshots to be monotonic,
+    * so we have to fix-up the time.
+    */
+   if (current_suspend_count != last_suspend_count) {
+      gpu_timestamp_offset = gpu_max_timestamp;
+      last_suspend_count = current_suspend_count;
+   }
+
+   gpu_ts += gpu_timestamp_offset;
+
+   /* Fallback check, detect non-monotonic cases which would happen
+    * if we cannot retrieve suspend count.
+    */
+   if (sync_gpu_ts > gpu_ts) {
+      gpu_ts += (gpu_max_timestamp - gpu_timestamp_offset);
+      gpu_timestamp_offset = gpu_max_timestamp;
+   }
+
+   if (sync_gpu_ts > gpu_ts) {
+      PERFETTO_ELOG("Non-monotonic gpu timestamp detected, bailing out");
+      return;
+   }
+
+   gpu_max_timestamp = gpu_ts;
 
    TuRenderpassDataSource::Trace([=](TuRenderpassDataSource::TraceContext tctx) {
       auto packet = tctx.NewTracePacket();

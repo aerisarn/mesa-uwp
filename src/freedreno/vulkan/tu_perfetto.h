@@ -100,6 +100,10 @@ int
 tu_device_get_gpu_timestamp(struct tu_device *dev,
                             uint64_t *ts);
 
+int
+tu_device_get_suspend_count(struct tu_device *dev,
+                            uint64_t *suspend_count);
+
 uint64_t
 tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts);
 

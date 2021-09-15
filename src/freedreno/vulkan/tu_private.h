@@ -1732,6 +1732,10 @@ tu_device_get_gpu_timestamp(struct tu_device *dev,
                             uint64_t *ts);
 
 int
+tu_device_get_suspend_count(struct tu_device *dev,
+                            uint64_t *suspend_count);
+
+int
 tu_drm_submitqueue_new(const struct tu_device *dev,
                        int priority,
                        uint32_t *queue_id);

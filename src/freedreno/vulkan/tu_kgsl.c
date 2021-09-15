@@ -663,6 +663,14 @@ tu_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
    return 0;
 }
 
+int
+tu_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
+{
+   /* kgsl doesn't have a way to get it */
+   *suspend_count = 0;
+   return 0;
+}
+
 #ifdef ANDROID
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
