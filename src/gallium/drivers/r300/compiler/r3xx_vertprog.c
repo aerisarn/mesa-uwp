@@ -369,7 +369,7 @@ static void translate_vertex_program(struct radeon_compiler *c, void *user)
 	struct r300_vertex_program_compiler *compiler = (struct r300_vertex_program_compiler*)c;
 	struct rc_instruction *rci;
 
-	unsigned loops[R500_PVS_MAX_LOOP_DEPTH];
+	unsigned loops[R500_PVS_MAX_LOOP_DEPTH] = {};
 	unsigned loop_depth = 0;
 
 	compiler->code->pos_end = 0;	/* Not supported yet */
