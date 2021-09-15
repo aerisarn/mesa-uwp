@@ -44,10 +44,15 @@ get_phys_index(const struct v3d_device_info *devinfo)
 #define CLASS_BITS_PHYS   (1 << 0)
 #define CLASS_BITS_ACC    (1 << 1)
 #define CLASS_BITS_R5     (1 << 4)
-#define CLASS_BITS_ANY    (CLASS_BITS_PHYS | \
-                           CLASS_BITS_ACC | \
-                           CLASS_BITS_R5)
 
+static uint8_t
+get_class_bit_any(const struct v3d_device_info *devinfo)
+{
+        if (devinfo->has_accumulators)
+                return (CLASS_BITS_PHYS | CLASS_BITS_ACC | CLASS_BITS_R5);
+        else
+                return CLASS_BITS_PHYS;
+}
 static inline uint32_t
 temp_to_node(struct v3d_compile *c, uint32_t temp)
 {
@@ -82,11 +87,13 @@ choose_reg_class(struct v3d_compile *c, uint8_t class_bits)
         if (class_bits == CLASS_BITS_PHYS) {
                 return c->compiler->reg_class_phys[c->thread_index];
         } else if (class_bits == (CLASS_BITS_R5)) {
+                assert(c->devinfo->has_accumulators);
                 return c->compiler->reg_class_r5[c->thread_index];
         } else if (class_bits == (CLASS_BITS_PHYS | CLASS_BITS_ACC)) {
+                assert(c->devinfo->has_accumulators);
                 return c->compiler->reg_class_phys_or_acc[c->thread_index];
         } else {
-                assert(class_bits == CLASS_BITS_ANY);
+                assert(class_bits == get_class_bit_any(c->devinfo));
                 return c->compiler->reg_class_any[c->thread_index];
         }
 }
@@ -447,7 +454,7 @@ v3d_emit_spill_tmua(struct v3d_compile *c,
          */
         assert(c->disable_ldunif_opt);
         struct qreg offset = vir_uniform_ui(c, spill_offset);
-        add_node(c, offset.index, CLASS_BITS_ANY);
+        add_node(c, offset.index, get_class_bit_any(c->devinfo));
 
         /* We always enable per-quad on spills/fills to ensure we spill
          * any channels involved with helper invocations.
@@ -645,7 +652,8 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
                                          * instruction immediately after, so
                                          * we can use any register class for it.
                                          */
-                                        add_node(c, unif.index, CLASS_BITS_ANY);
+                                        add_node(c, unif.index,
+                                                 get_class_bit_any(c->devinfo));
                                 } else if (spill_type == SPILL_TYPE_RECONSTRUCT) {
                                         struct qreg temp =
                                                 reconstruct_temp(c, reconstruct_op);
@@ -924,31 +932,38 @@ vir_init_reg_sets(struct v3d_compiler *compiler)
         for (int threads = 0; threads < max_thread_index; threads++) {
                 compiler->reg_class_any[threads] =
                         ra_alloc_contig_reg_class(compiler->regs, 1);
-                compiler->reg_class_r5[threads] =
-                        ra_alloc_contig_reg_class(compiler->regs, 1);
-                compiler->reg_class_phys_or_acc[threads] =
-                        ra_alloc_contig_reg_class(compiler->regs, 1);
+                if (compiler->devinfo->has_accumulators) {
+                        compiler->reg_class_r5[threads] =
+                                ra_alloc_contig_reg_class(compiler->regs, 1);
+                        compiler->reg_class_phys_or_acc[threads] =
+                                ra_alloc_contig_reg_class(compiler->regs, 1);
+                }
                 compiler->reg_class_phys[threads] =
                         ra_alloc_contig_reg_class(compiler->regs, 1);
 
                 for (int i = phys_index;
                      i < phys_index + (PHYS_COUNT >> threads); i++) {
-                        ra_class_add_reg(compiler->reg_class_phys_or_acc[threads], i);
+                        if (compiler->devinfo->has_accumulators)
+                                ra_class_add_reg(compiler->reg_class_phys_or_acc[threads], i);
                         ra_class_add_reg(compiler->reg_class_phys[threads], i);
                         ra_class_add_reg(compiler->reg_class_any[threads], i);
                 }
 
-                for (int i = ACC_INDEX + 0; i < ACC_INDEX + ACC_COUNT - 1; i++) {
-                        ra_class_add_reg(compiler->reg_class_phys_or_acc[threads], i);
-                        ra_class_add_reg(compiler->reg_class_any[threads], i);
+                if (compiler->devinfo->has_accumulators) {
+                        for (int i = ACC_INDEX + 0; i < ACC_INDEX + ACC_COUNT - 1; i++) {
+                                ra_class_add_reg(compiler->reg_class_phys_or_acc[threads], i);
+                                ra_class_add_reg(compiler->reg_class_any[threads], i);
+                        }
                 }
                 /* r5 can only store a single 32-bit value, so not much can
                  * use it.
                  */
-                ra_class_add_reg(compiler->reg_class_r5[threads],
-                                 ACC_INDEX + 5);
-                ra_class_add_reg(compiler->reg_class_any[threads],
-                                 ACC_INDEX + 5);
+                if (compiler->devinfo->has_accumulators) {
+                        ra_class_add_reg(compiler->reg_class_r5[threads],
+                                         ACC_INDEX + 5);
+                        ra_class_add_reg(compiler->reg_class_any[threads],
+                                         ACC_INDEX + 5);
+                }
         }
 
         ra_set_finalize(compiler->regs, NULL);
@@ -1086,7 +1101,7 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c, int *acc_nodes,
         }
 
         /* All accumulators are invalidated across a thread switch. */
-        if (inst->qpu.sig.thrsw) {
+        if (inst->qpu.sig.thrsw && c->devinfo->has_accumulators) {
                 for (int i = 0; i < c->num_temps; i++) {
                         if (c->temp_start[i] < ip && c->temp_end[i] > ip) {
                                 set_temp_class_bits(c, i,
@@ -1157,7 +1172,8 @@ v3d_register_allocate(struct v3d_compile *c)
                         uint32_t t = node_to_temp(c, i);
                         c->nodes.info[i].priority =
                                 c->temp_end[t] - c->temp_start[t];
-                        c->nodes.info[i].class_bits = CLASS_BITS_ANY;
+                        c->nodes.info[i].class_bits =
+                                get_class_bit_any(c->devinfo);
                 }
         }
 
