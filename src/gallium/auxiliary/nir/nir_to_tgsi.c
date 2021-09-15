@@ -66,6 +66,8 @@ struct ntt_compile {
    struct ureg_src *input_index_map;
    uint64_t centroid_inputs;
 
+   uint32_t first_ubo;
+
    struct ureg_src images[PIPE_MAX_SHADER_IMAGES];
 };
 
@@ -513,11 +515,16 @@ ntt_setup_uniforms(struct ntt_compile *c)
        */
    }
 
+   c->first_ubo = ~0;
+
    unsigned ubo_sizes[PIPE_MAX_CONSTANT_BUFFERS] = {0};
    nir_foreach_variable_with_modes(var, c->s, nir_var_mem_ubo) {
       int ubo = var->data.driver_location;
       if (ubo == -1)
          continue;
+
+      if (!(ubo == 0 && c->s->info.first_ubo_is_default_ubo))
+         c->first_ubo = MIN2(c->first_ubo, ubo);
 
       unsigned size = glsl_get_explicit_size(var->interface_type, false);
 
@@ -1314,7 +1321,25 @@ ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
 
    struct ureg_src src = ureg_src_register(TGSI_FILE_CONSTANT, 0);
 
-   src = ntt_ureg_src_dimension_indirect(c, src, instr->src[0]);
+   struct ureg_dst addr_temp = ureg_dst_undef();
+
+   if (nir_src_is_const(instr->src[0])) {
+      src = ureg_src_dimension(src, ntt_src_as_uint(c, instr->src[0]));
+   } else {
+      /* virglrenderer requires that indirect UBO references have the UBO
+       * array's base index in the Index field, not added to the indrect
+       * address.
+       *
+       * Many nir intrinsics have a base address const value for the start of
+       * their array indirection, but load_ubo doesn't.  We fake it by
+       * subtracting it off here.
+       */
+      addr_temp = ureg_DECL_temporary(c->ureg);
+      ureg_UADD(c->ureg, addr_temp, ntt_get_src(c, instr->src[0]), ureg_imm1i(c->ureg, -c->first_ubo));
+      src = ureg_src_dimension_indirect(src,
+                                         ntt_reladdr(c, ureg_src(addr_temp)),
+                                         c->first_ubo);
+   }
 
    if (instr->intrinsic == nir_intrinsic_load_ubo_vec4) {
       /* !PIPE_CAP_LOAD_CONSTBUF: Just emit it as a vec4 reference to the const
@@ -1352,6 +1377,8 @@ ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
                        0 /* format: unused */
       );
    }
+
+   ureg_release_temporary(c->ureg, addr_temp);
 }
 
 static unsigned
