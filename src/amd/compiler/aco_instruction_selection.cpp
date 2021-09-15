@@ -7080,8 +7080,10 @@ emit_scoped_barrier(isel_context* ctx, nir_intrinsic_instr* instr)
       ctx->stage.hw == HWStage::CS || ctx->stage.hw == HWStage::HS || ctx->stage.hw == HWStage::NGG;
 
    unsigned nir_storage = nir_intrinsic_memory_modes(instr);
-   if (nir_storage & (nir_var_mem_ssbo | nir_var_mem_global | nir_var_mem_image))
-      storage |= storage_buffer | storage_image; // TODO: split this when NIR gets nir_var_mem_image
+   if (nir_storage & (nir_var_mem_ssbo | nir_var_mem_global))
+      storage |= storage_buffer;
+   if (nir_storage & nir_var_mem_image)
+      storage |= storage_image;
    if (shared_storage_used && (nir_storage & nir_var_mem_shared))
       storage |= storage_shared;
 
