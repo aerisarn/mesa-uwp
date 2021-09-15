@@ -473,6 +473,8 @@ bool v3d_qpu_writes_r4(const struct v3d_device_info *devinfo,
                        const struct v3d_qpu_instr *instr) ATTRIBUTE_CONST;
 bool v3d_qpu_writes_r5(const struct v3d_device_info *devinfo,
                        const struct v3d_qpu_instr *instr) ATTRIBUTE_CONST;
+bool v3d_qpu_writes_rf0_implicitly(const struct v3d_device_info *devinfo,
+                                   const struct v3d_qpu_instr *instr) ATTRIBUTE_CONST;
 bool v3d_qpu_writes_accum(const struct v3d_device_info *devinfo,
                           const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_waits_on_tmu(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;

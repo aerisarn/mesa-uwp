@@ -921,6 +921,18 @@ v3d_qpu_writes_accum(const struct v3d_device_info *devinfo,
 }
 
 bool
+v3d_qpu_writes_rf0_implicitly(const struct v3d_device_info *devinfo,
+                              const struct v3d_qpu_instr *inst)
+{
+        if (devinfo->ver >= 71 &&
+            (inst->sig.ldvary || inst->sig.ldunif || inst->sig.ldunifa)) {
+                return true;
+        }
+
+        return false;
+}
+
+bool
 v3d_qpu_uses_mux(const struct v3d_qpu_instr *inst, enum v3d_qpu_mux mux)
 {
         int add_nsrc = v3d_qpu_add_op_num_src(inst->alu.add.op);
