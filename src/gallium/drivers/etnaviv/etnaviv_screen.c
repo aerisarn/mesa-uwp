@@ -979,11 +979,6 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
    screen->ro = ro;
    screen->refcnt = 1;
 
-   if (!screen->ro) {
-      DBG("could not create renderonly object");
-      goto fail;
-   }
-
    screen->drm_version = etnaviv_device_version(screen->dev);
    etna_mesa_debug = debug_get_option_etna_mesa_debug();
 
