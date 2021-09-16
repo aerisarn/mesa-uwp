@@ -1429,6 +1429,15 @@ ASSERTED static bool is_dcc_supported_by_L2(const struct radeon_info *info,
           surf->u.gfx9.color.dcc.max_compressed_block_size <= V_028C78_MAX_BLOCK_SIZE_128B;
 }
 
+static bool gfx10_DCN_requires_independent_64B_blocks(const struct radeon_info *info,
+                                                      const struct ac_surf_config *config)
+{
+   assert(info->chip_class >= GFX10);
+
+   /* For 4K, DCN requires INDEPENDENT_64B_BLOCKS = 1 and MAX_COMPRESSED_BLOCK_SIZE = 64B. */
+   return config->info.width > 2560 || config->info.height > 2560;
+}
+
 static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
                                     const struct ac_surf_config *config,
                                     const struct radeon_surf *surf, bool rb_aligned,
@@ -1460,8 +1469,7 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
       if (info->chip_class == GFX10 && surf->u.gfx9.color.dcc.independent_128B_blocks)
          return false;
 
-      /* For 4K, DCN requires INDEPENDENT_64B_BLOCKS = 1. */
-      return ((config->info.width <= 2560 && config->info.height <= 2560) ||
+      return (!gfx10_DCN_requires_independent_64B_blocks(info, config) ||
               (surf->u.gfx9.color.dcc.independent_64B_blocks &&
                surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_64B));
    default:
@@ -2083,7 +2091,8 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
                surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
             }
 
-            if (info->chip_class >= GFX10_3) {
+            if (info->chip_class >= GFX10_3 &&
+                gfx10_DCN_requires_independent_64B_blocks(info, config)) {
                surf->u.gfx9.color.dcc.independent_64B_blocks = 1;
                surf->u.gfx9.color.dcc.independent_128B_blocks = 1;
                surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
