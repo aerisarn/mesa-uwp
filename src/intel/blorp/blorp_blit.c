@@ -1461,11 +1461,11 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
 static bool
 brw_blorp_get_blit_kernel(struct blorp_batch *batch,
                           struct blorp_params *params,
-                          const struct brw_blorp_blit_prog_key *prog_key)
+                          const struct brw_blorp_blit_prog_key *key)
 {
    struct blorp_context *blorp = batch->blorp;
 
-   if (blorp->lookup_shader(batch, prog_key, sizeof(*prog_key),
+   if (blorp->lookup_shader(batch, key, sizeof(*key),
                             &params->wm_prog_kernel, &params->wm_prog_data))
       return true;
 
@@ -1474,23 +1474,23 @@ brw_blorp_get_blit_kernel(struct blorp_batch *batch,
    const unsigned *program;
    struct brw_wm_prog_data prog_data;
 
-   nir_shader *nir = brw_blorp_build_nir_shader(blorp, mem_ctx, prog_key);
+   nir_shader *nir = brw_blorp_build_nir_shader(blorp, mem_ctx, key);
    nir->info.name =
-      ralloc_strdup(nir, blorp_shader_type_to_name(prog_key->base.shader_type));
+      ralloc_strdup(nir, blorp_shader_type_to_name(key->base.shader_type));
 
    struct brw_wm_prog_key wm_key;
    brw_blorp_init_wm_prog_key(&wm_key);
    wm_key.base.tex.compressed_multisample_layout_mask =
-      isl_aux_usage_has_mcs(prog_key->tex_aux_usage);
-   wm_key.base.tex.msaa_16 = prog_key->tex_samples == 16;
-   wm_key.multisample_fbo = prog_key->rt_samples > 1;
+      isl_aux_usage_has_mcs(key->tex_aux_usage);
+   wm_key.base.tex.msaa_16 = key->tex_samples == 16;
+   wm_key.multisample_fbo = key->rt_samples > 1;
 
    program = blorp_compile_fs(blorp, mem_ctx, nir, &wm_key, false,
                               &prog_data);
 
    bool result =
       blorp->upload_shader(batch, MESA_SHADER_FRAGMENT,
-                           prog_key, sizeof(*prog_key),
+                           key, sizeof(*key),
                            program, prog_data.base.program_size,
                            &prog_data.base, sizeof(prog_data),
                            &params->wm_prog_kernel, &params->wm_prog_data);
@@ -1798,7 +1798,7 @@ enum blit_shrink_status {
 static enum blit_shrink_status
 try_blorp_blit(struct blorp_batch *batch,
                struct blorp_params *params,
-               struct brw_blorp_blit_prog_key *wm_prog_key,
+               struct brw_blorp_blit_prog_key *key,
                struct blt_coords *coords)
 {
    const struct intel_device_info *devinfo = batch->blorp->isl_dev->info;
@@ -1812,40 +1812,40 @@ try_blorp_blit(struct blorp_batch *batch,
           * and stencil.  It's easier to just render using the color pipe
           * on those platforms.
           */
-         wm_prog_key->dst_usage = ISL_SURF_USAGE_DEPTH_BIT;
+         key->dst_usage = ISL_SURF_USAGE_DEPTH_BIT;
       } else {
-         wm_prog_key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
+         key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
       }
    } else if (params->dst.surf.usage & ISL_SURF_USAGE_STENCIL_BIT) {
       assert(params->dst.surf.format == ISL_FORMAT_R8_UINT);
       if (devinfo->ver >= 9) {
-         wm_prog_key->dst_usage = ISL_SURF_USAGE_STENCIL_BIT;
+         key->dst_usage = ISL_SURF_USAGE_STENCIL_BIT;
       } else {
-         wm_prog_key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
+         key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
       }
    } else {
-      wm_prog_key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
+      key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
    }
 
    if (isl_format_has_sint_channel(params->src.view.format)) {
-      wm_prog_key->texture_data_type = nir_type_int;
+      key->texture_data_type = nir_type_int;
    } else if (isl_format_has_uint_channel(params->src.view.format)) {
-      wm_prog_key->texture_data_type = nir_type_uint;
+      key->texture_data_type = nir_type_uint;
    } else {
-      wm_prog_key->texture_data_type = nir_type_float;
+      key->texture_data_type = nir_type_float;
    }
 
    /* src_samples and dst_samples are the true sample counts */
-   wm_prog_key->src_samples = params->src.surf.samples;
-   wm_prog_key->dst_samples = params->dst.surf.samples;
+   key->src_samples = params->src.surf.samples;
+   key->dst_samples = params->dst.surf.samples;
 
-   wm_prog_key->tex_aux_usage = params->src.aux_usage;
+   key->tex_aux_usage = params->src.aux_usage;
 
    /* src_layout and dst_layout indicate the true MSAA layout used by src and
     * dst.
     */
-   wm_prog_key->src_layout = params->src.surf.msaa_layout;
-   wm_prog_key->dst_layout = params->dst.surf.msaa_layout;
+   key->src_layout = params->src.surf.msaa_layout;
+   key->dst_layout = params->dst.surf.msaa_layout;
 
    /* Round floating point values to nearest integer to avoid "off by one texel"
     * kind of errors when blitting.
@@ -1871,17 +1871,17 @@ try_blorp_blit(struct blorp_batch *batch,
        */
       if (params->dst.surf.usage & ISL_SURF_USAGE_CUBE_BIT) {
          blorp_surf_convert_to_single_slice(batch->blorp->isl_dev, &params->dst);
-         wm_prog_key->need_dst_offset = true;
+         key->need_dst_offset = true;
       }
 
       if (params->src.surf.usage & ISL_SURF_USAGE_CUBE_BIT) {
          blorp_surf_convert_to_single_slice(batch->blorp->isl_dev, &params->src);
-         wm_prog_key->need_src_offset = true;
+         key->need_src_offset = true;
       }
    }
 
    if (devinfo->ver > 6 &&
-       !isl_surf_usage_is_depth_or_stencil(wm_prog_key->dst_usage) &&
+       !isl_surf_usage_is_depth_or_stencil(key->dst_usage) &&
        params->dst.surf.msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
       assert(params->dst.surf.samples > 1);
 
@@ -1906,12 +1906,12 @@ try_blorp_blit(struct blorp_batch *batch,
 
       blorp_surf_fake_interleaved_msaa(batch->blorp->isl_dev, &params->dst);
 
-      wm_prog_key->use_kill = true;
-      wm_prog_key->need_dst_offset = true;
+      key->use_kill = true;
+      key->need_dst_offset = true;
    }
 
    if (params->dst.surf.tiling == ISL_TILING_W &&
-       wm_prog_key->dst_usage != ISL_SURF_USAGE_STENCIL_BIT) {
+       key->dst_usage != ISL_SURF_USAGE_STENCIL_BIT) {
       /* We must modify the rectangle we send through the rendering pipeline
        * (and the size and x/y offset of the destination surface), to account
        * for the fact that we are mapping it as Y-tiled when it is in fact
@@ -1968,9 +1968,9 @@ try_blorp_blit(struct blorp_batch *batch,
       /* Retile the surface to Y-tiled */
       blorp_surf_retile_w_to_y(batch->blorp->isl_dev, &params->dst);
 
-      wm_prog_key->dst_tiled_w = true;
-      wm_prog_key->use_kill = true;
-      wm_prog_key->need_dst_offset = true;
+      key->dst_tiled_w = true;
+      key->use_kill = true;
+      key->need_dst_offset = true;
 
       if (params->dst.surf.samples > 1) {
          /* If the destination surface is a W-tiled multisampled stencil
@@ -1979,7 +1979,7 @@ try_blorp_blit(struct blorp_batch *batch,
           * because the memory layout of related samples doesn't match between
           * W and Y tiling.
           */
-         wm_prog_key->persample_msaa_dispatch = true;
+         key->persample_msaa_dispatch = true;
       }
    }
 
@@ -1994,21 +1994,21 @@ try_blorp_blit(struct blorp_batch *batch,
        */
       blorp_surf_retile_w_to_y(batch->blorp->isl_dev, &params->src);
 
-      wm_prog_key->src_tiled_w = true;
-      wm_prog_key->need_src_offset = true;
+      key->src_tiled_w = true;
+      key->need_src_offset = true;
    }
 
    /* tex_samples and rt_samples are the sample counts that are set up in
     * SURFACE_STATE.
     */
-   wm_prog_key->tex_samples = params->src.surf.samples;
-   wm_prog_key->rt_samples  = params->dst.surf.samples;
+   key->tex_samples = params->src.surf.samples;
+   key->rt_samples  = params->dst.surf.samples;
 
    /* tex_layout and rt_layout indicate the MSAA layout the GPU pipeline will
     * use to access the source and destination surfaces.
     */
-   wm_prog_key->tex_layout = params->src.surf.msaa_layout;
-   wm_prog_key->rt_layout = params->dst.surf.msaa_layout;
+   key->tex_layout = params->src.surf.msaa_layout;
+   key->rt_layout = params->dst.surf.msaa_layout;
 
    if (params->src.surf.samples > 0 && params->dst.surf.samples > 1) {
       /* We are blitting from a multisample buffer to a multisample buffer, so
@@ -2016,16 +2016,16 @@ try_blorp_blit(struct blorp_batch *batch,
        * arrange for the WM program to run once per sample rather than once
        * per pixel.
        */
-      wm_prog_key->persample_msaa_dispatch = true;
+      key->persample_msaa_dispatch = true;
    }
 
    params->num_samples = params->dst.surf.samples;
 
-   if ((wm_prog_key->filter == BLORP_FILTER_AVERAGE ||
-        wm_prog_key->filter == BLORP_FILTER_BILINEAR) &&
+   if ((key->filter == BLORP_FILTER_AVERAGE ||
+        key->filter == BLORP_FILTER_BILINEAR) &&
        batch->blorp->isl_dev->info->ver <= 6) {
       /* Gfx4-5 don't support non-normalized texture coordinates */
-      wm_prog_key->src_coords_normalized = true;
+      key->src_coords_normalized = true;
       params->wm_inputs.src_inv_size[0] =
          1.0f / minify(params->src.surf.logical_level0_px.width,
                        params->src.view.base_level);
@@ -2045,19 +2045,19 @@ try_blorp_blit(struct blorp_batch *batch,
 
       /* If it happens to be sRGB, we need to force a conversion */
       if (params->dst.view.format == ISL_FORMAT_R8G8B8_UNORM_SRGB)
-         wm_prog_key->dst_format = ISL_FORMAT_R8G8B8_UNORM_SRGB;
+         key->dst_format = ISL_FORMAT_R8G8B8_UNORM_SRGB;
 
       surf_fake_rgb_with_red(batch->blorp->isl_dev, &params->dst);
 
-      wm_prog_key->dst_rgb = true;
-      wm_prog_key->need_dst_offset = true;
+      key->dst_rgb = true;
+      key->need_dst_offset = true;
    } else if (isl_format_is_rgbx(params->dst.view.format)) {
       /* We can handle RGBX formats easily enough by treating them as RGBA */
       params->dst.view.format =
          isl_format_rgbx_to_rgba(params->dst.view.format);
    } else if (params->dst.view.format == ISL_FORMAT_R24_UNORM_X8_TYPELESS &&
-              wm_prog_key->dst_usage != ISL_SURF_USAGE_DEPTH_BIT) {
-      wm_prog_key->dst_format = params->dst.view.format;
+              key->dst_usage != ISL_SURF_USAGE_DEPTH_BIT) {
+      key->dst_format = params->dst.view.format;
       params->dst.view.format = ISL_FORMAT_R32_UINT;
    } else if (params->dst.view.format == ISL_FORMAT_A4B4G4R4_UNORM) {
       params->dst.view.swizzle =
@@ -2065,37 +2065,37 @@ try_blorp_blit(struct blorp_batch *batch,
                              ISL_SWIZZLE(ALPHA, RED, GREEN, BLUE));
       params->dst.view.format = ISL_FORMAT_B4G4R4A4_UNORM;
    } else if (params->dst.view.format == ISL_FORMAT_L8_UNORM_SRGB) {
-      wm_prog_key->dst_format = params->dst.view.format;
+      key->dst_format = params->dst.view.format;
       params->dst.view.format = ISL_FORMAT_R8_UNORM;
    } else if (params->dst.view.format == ISL_FORMAT_R9G9B9E5_SHAREDEXP) {
-      wm_prog_key->dst_format = params->dst.view.format;
+      key->dst_format = params->dst.view.format;
       params->dst.view.format = ISL_FORMAT_R32_UINT;
    }
 
    if (devinfo->verx10 <= 70 &&
        !isl_swizzle_is_identity(params->src.view.swizzle)) {
-      wm_prog_key->src_swizzle = params->src.view.swizzle;
+      key->src_swizzle = params->src.view.swizzle;
       params->src.view.swizzle = ISL_SWIZZLE_IDENTITY;
    } else {
-      wm_prog_key->src_swizzle = ISL_SWIZZLE_IDENTITY;
+      key->src_swizzle = ISL_SWIZZLE_IDENTITY;
    }
 
    if (!isl_swizzle_supports_rendering(devinfo, params->dst.view.swizzle)) {
-      wm_prog_key->dst_swizzle = params->dst.view.swizzle;
+      key->dst_swizzle = params->dst.view.swizzle;
       params->dst.view.swizzle = ISL_SWIZZLE_IDENTITY;
    } else {
-      wm_prog_key->dst_swizzle = ISL_SWIZZLE_IDENTITY;
+      key->dst_swizzle = ISL_SWIZZLE_IDENTITY;
    }
 
    if (params->src.tile_x_sa || params->src.tile_y_sa) {
-      assert(wm_prog_key->need_src_offset);
+      assert(key->need_src_offset);
       surf_get_intratile_offset_px(&params->src,
                                    &params->wm_inputs.src_offset.x,
                                    &params->wm_inputs.src_offset.y);
    }
 
    if (params->dst.tile_x_sa || params->dst.tile_y_sa) {
-      assert(wm_prog_key->need_dst_offset);
+      assert(key->need_dst_offset);
       surf_get_intratile_offset_px(&params->dst,
                                    &params->wm_inputs.dst_offset.x,
                                    &params->wm_inputs.dst_offset.y);
@@ -2108,7 +2108,7 @@ try_blorp_blit(struct blorp_batch *batch,
    /* For some texture types, we need to pass the layer through the sampler. */
    params->wm_inputs.src_z = params->src.z_offset;
 
-   if (!brw_blorp_get_blit_kernel(batch, params, wm_prog_key))
+   if (!brw_blorp_get_blit_kernel(batch, params, key))
       return 0;
 
    if (!blorp_ensure_sf_program(batch, params))
@@ -2128,10 +2128,10 @@ try_blorp_blit(struct blorp_batch *batch,
       result |= BLIT_DST_HEIGHT_SHRINK;
 
    if (result == 0) {
-      if (wm_prog_key->dst_usage == ISL_SURF_USAGE_DEPTH_BIT) {
+      if (key->dst_usage == ISL_SURF_USAGE_DEPTH_BIT) {
          params->depth = params->dst;
          memset(&params->dst, 0, sizeof(params->dst));
-      } else if (wm_prog_key->dst_usage == ISL_SURF_USAGE_STENCIL_BIT) {
+      } else if (key->dst_usage == ISL_SURF_USAGE_STENCIL_BIT) {
          params->stencil = params->dst;
          params->stencil_mask = 0xff;
          memset(&params->dst, 0, sizeof(params->dst));
@@ -2229,7 +2229,7 @@ shrink_surface_params(const struct isl_device *dev,
 static void
 do_blorp_blit(struct blorp_batch *batch,
               const struct blorp_params *orig_params,
-              struct brw_blorp_blit_prog_key *wm_prog_key,
+              struct brw_blorp_blit_prog_key *key,
               const struct blt_coords *orig)
 {
    struct blorp_params params;
@@ -2261,18 +2261,18 @@ do_blorp_blit(struct blorp_batch *batch,
          shrink_surface_params(batch->blorp->isl_dev, &params.src,
                                &blit_coords.x.src0, &blit_coords.x.src1,
                                &blit_coords.y.src0, &blit_coords.y.src1);
-         wm_prog_key->need_src_offset = false;
+         key->need_src_offset = false;
       }
 
       if (shrink & (BLIT_DST_WIDTH_SHRINK | BLIT_DST_HEIGHT_SHRINK)) {
          shrink_surface_params(batch->blorp->isl_dev, &params.dst,
                                &blit_coords.x.dst0, &blit_coords.x.dst1,
                                &blit_coords.y.dst0, &blit_coords.y.dst1);
-         wm_prog_key->need_dst_offset = false;
+         key->need_dst_offset = false;
       }
 
       enum blit_shrink_status result =
-         try_blorp_blit(batch, &params, wm_prog_key, &blit_coords);
+         try_blorp_blit(batch, &params, key, &blit_coords);
 
       if (result & (BLIT_SRC_WIDTH_SHRINK | BLIT_SRC_HEIGHT_SHRINK))
          assert(can_shrink_surface(&orig_params->src));
@@ -2364,7 +2364,7 @@ blorp_blit(struct blorp_batch *batch,
    const struct isl_format_layout *src_fmtl =
       isl_format_get_layout(params.src.view.format);
 
-   struct brw_blorp_blit_prog_key wm_prog_key = {
+   struct brw_blorp_blit_prog_key key = {
       .base = BRW_BLORP_BASE_KEY_INIT(BLORP_SHADER_TYPE_BLIT),
       .filter = filter,
       .sint32_to_uint = src_fmtl->channels.r.bits == 32 &&
@@ -2379,17 +2379,17 @@ blorp_blit(struct blorp_batch *batch,
     * blits.
     */
    if (params.src.surf.samples == 16)
-      wm_prog_key.x_scale = 4.0f;
+      key.x_scale = 4.0f;
    else
-      wm_prog_key.x_scale = 2.0f;
-   wm_prog_key.y_scale = params.src.surf.samples / wm_prog_key.x_scale;
+      key.x_scale = 2.0f;
+   key.y_scale = params.src.surf.samples / key.x_scale;
 
    params.wm_inputs.rect_grid.x1 =
       minify(params.src.surf.logical_level0_px.width, src_level) *
-      wm_prog_key.x_scale - 1.0f;
+      key.x_scale - 1.0f;
    params.wm_inputs.rect_grid.y1 =
       minify(params.src.surf.logical_level0_px.height, src_level) *
-      wm_prog_key.y_scale - 1.0f;
+      key.y_scale - 1.0f;
 
    struct blt_coords coords = {
       .x = {
@@ -2408,7 +2408,7 @@ blorp_blit(struct blorp_batch *batch,
       }
    };
 
-   do_blorp_blit(batch, &params, &wm_prog_key, &coords);
+   do_blorp_blit(batch, &params, &key, &coords);
 }
 
 static enum isl_format
@@ -2662,7 +2662,7 @@ blorp_copy(struct blorp_batch *batch,
    brw_blorp_surface_info_init(batch, &params.dst, dst_surf, dst_level,
                                dst_layer, ISL_FORMAT_UNSUPPORTED, true);
 
-   struct brw_blorp_blit_prog_key wm_prog_key = {
+   struct brw_blorp_blit_prog_key key = {
       .base = BRW_BLORP_BASE_KEY_INIT(BLORP_SHADER_TYPE_COPY),
       .filter = BLORP_FILTER_NONE,
       .need_src_offset = src_surf->tile_x_sa || src_surf->tile_y_sa,
@@ -2737,9 +2737,9 @@ blorp_copy(struct blorp_batch *batch,
          dst_cast_format = isl_format_rgb_to_rgba(dst_cast_format);
 
       if (src_cast_format != dst_cast_format) {
-         wm_prog_key.format_bit_cast = true;
-         wm_prog_key.src_format = src_cast_format;
-         wm_prog_key.dst_format = dst_cast_format;
+         key.format_bit_cast = true;
+         key.src_format = src_cast_format;
+         key.dst_format = dst_cast_format;
       }
    }
 
@@ -2747,13 +2747,13 @@ blorp_copy(struct blorp_batch *batch,
       blorp_surf_convert_to_uncompressed(batch->blorp->isl_dev, &params.src,
                                          &src_x, &src_y,
                                          &src_width, &src_height);
-      wm_prog_key.need_src_offset = true;
+      key.need_src_offset = true;
    }
 
    if (dst_fmtl->bw > 1 || dst_fmtl->bh > 1) {
       blorp_surf_convert_to_uncompressed(batch->blorp->isl_dev, &params.dst,
                                          &dst_x, &dst_y, NULL, NULL);
-      wm_prog_key.need_dst_offset = true;
+      key.need_dst_offset = true;
    }
 
    /* Once both surfaces are stompped to uncompressed as needed, the
@@ -2779,7 +2779,7 @@ blorp_copy(struct blorp_batch *batch,
       }
    };
 
-   do_blorp_blit(batch, &params, &wm_prog_key, &coords);
+   do_blorp_blit(batch, &params, &key, &coords);
 }
 
 static enum isl_format
