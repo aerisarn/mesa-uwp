@@ -142,6 +142,11 @@ etna_drm_screen_destroy(struct pipe_screen *pscreen)
    if (destroy) {
       int fd = etna_device_fd(screen->dev);
       _mesa_hash_table_remove_key(fd_tab, intptr_to_pointer(fd));
+
+      if (!fd_tab->entries) {
+         _mesa_hash_table_destroy(fd_tab, NULL);
+         fd_tab = NULL;
+      }
    }
    mtx_unlock(&etna_screen_mutex);
 
