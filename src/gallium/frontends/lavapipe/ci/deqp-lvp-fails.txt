@@ -114,3 +114,4 @@ dEQP-VK.rasterization.primitives_multisample_4_bit.static_stipple.line_strip_wid
 dEQP-VK.rasterization.primitives_multisample_4_bit.static_stipple.rectangular_line_strip_wide,Fail
 dEQP-VK.rasterization.primitives.static_stipple.line_strip_wide,Fail
 dEQP-VK.rasterization.primitives.static_stipple.smooth_line_strip_wide,Fail
+dEQP-VK.spirv_assembly.instruction.spirv1p4.entrypoint.comp_workgroup_entry_point,Fail

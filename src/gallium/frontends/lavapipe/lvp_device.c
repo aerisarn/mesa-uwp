@@ -121,6 +121,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_shader_draw_parameters            = true,
    .KHR_shader_float16_int8               = true,
    .KHR_shader_subgroup_extended_types    = true,
+   .KHR_spirv_1_4                         = true,
    .KHR_storage_buffer_storage_class      = true,
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_swapchain                         = true,
