@@ -467,6 +467,63 @@ lvp_get_physical_device_features_1_1(struct lvp_physical_device *pdevice,
    f->shaderDrawParameters                = true;
 }
 
+static void
+lvp_get_physical_device_features_1_2(struct lvp_physical_device *pdevice,
+                                     VkPhysicalDeviceVulkan12Features *f)
+{
+   assert(f->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES);
+
+   f->samplerMirrorClampToEdge = true;
+   f->drawIndirectCount = true;
+   f->storageBuffer8BitAccess = true;
+   f->uniformAndStorageBuffer8BitAccess = true;
+   f->storagePushConstant8 = true;
+   f->shaderBufferInt64Atomics = true;
+   f->shaderSharedInt64Atomics = true;
+   f->shaderFloat16 = pdevice->pscreen->get_shader_param(pdevice->pscreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16) != 0;
+   f->shaderInt8 = true;
+
+   f->descriptorIndexing = false;
+   f->shaderInputAttachmentArrayDynamicIndexing = false;
+   f->shaderUniformTexelBufferArrayDynamicIndexing = false;
+   f->shaderStorageTexelBufferArrayDynamicIndexing = false;
+   f->shaderUniformBufferArrayNonUniformIndexing = false;
+   f->shaderSampledImageArrayNonUniformIndexing = false;
+   f->shaderStorageBufferArrayNonUniformIndexing = false;
+   f->shaderStorageImageArrayNonUniformIndexing = false;
+   f->shaderInputAttachmentArrayNonUniformIndexing = false;
+   f->shaderUniformTexelBufferArrayNonUniformIndexing = false;
+   f->shaderStorageTexelBufferArrayNonUniformIndexing = false;
+   f->descriptorBindingUniformBufferUpdateAfterBind = false;
+   f->descriptorBindingSampledImageUpdateAfterBind = false;
+   f->descriptorBindingStorageImageUpdateAfterBind = false;
+   f->descriptorBindingStorageBufferUpdateAfterBind = false;
+   f->descriptorBindingUniformTexelBufferUpdateAfterBind = false;
+   f->descriptorBindingStorageTexelBufferUpdateAfterBind = false;
+   f->descriptorBindingUpdateUnusedWhilePending = false;
+   f->descriptorBindingPartiallyBound = false;
+   f->descriptorBindingVariableDescriptorCount = false;
+   f->runtimeDescriptorArray = false;
+
+   f->samplerFilterMinmax = true;
+   f->scalarBlockLayout = true;
+   f->imagelessFramebuffer = true;
+   f->uniformBufferStandardLayout = true;
+   f->shaderSubgroupExtendedTypes = true;
+   f->separateDepthStencilLayouts = true;
+   f->hostQueryReset = true;
+   f->timelineSemaphore = true;
+   f->bufferDeviceAddress = true;
+   f->bufferDeviceAddressCaptureReplay = false;
+   f->bufferDeviceAddressMultiDevice = false;
+   f->vulkanMemoryModel = false;
+   f->vulkanMemoryModelDeviceScope = false;
+   f->vulkanMemoryModelAvailabilityVisibilityChains = false;
+   f->shaderOutputViewportIndex = true;
+   f->shaderOutputLayer = true;
+   f->subgroupBroadcastDynamicId = false;
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceFeatures2                  *pFeatures)
@@ -478,6 +535,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
    };
    lvp_get_physical_device_features_1_1(pdevice, &core_1_1);
+
+   VkPhysicalDeviceVulkan12Features core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+   };
+   lvp_get_physical_device_features_1_2(pdevice, &core_1_2);
 
 #define CORE_FEATURE(major, minor, feature) \
    features->feature = core_##major##_##minor.feature
@@ -505,9 +567,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
          VkPhysicalDevice8BitStorageFeaturesKHR *features =
             (VkPhysicalDevice8BitStorageFeaturesKHR *)ext;
-         features->storageBuffer8BitAccess = true;
-         features->uniformAndStorageBuffer8BitAccess = true;
-         features->storagePushConstant8 = true;
+         CORE_FEATURE(1, 2, storageBuffer8BitAccess);
+         CORE_FEATURE(1, 2, uniformAndStorageBuffer8BitAccess);
+         CORE_FEATURE(1, 2, storagePushConstant8);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
@@ -569,6 +631,31 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->geometryStreams = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
+         VkPhysicalDeviceDescriptorIndexingFeatures *features =
+            (VkPhysicalDeviceDescriptorIndexingFeatures *)ext;
+         CORE_FEATURE(1, 2, shaderInputAttachmentArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayDynamicIndexing);
+         CORE_FEATURE(1, 2, shaderUniformBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderSampledImageArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageImageArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderInputAttachmentArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayNonUniformIndexing);
+         CORE_FEATURE(1, 2, descriptorBindingUniformBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingSampledImageUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageImageUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingUniformTexelBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingStorageTexelBufferUpdateAfterBind);
+         CORE_FEATURE(1, 2, descriptorBindingUpdateUnusedWhilePending);
+         CORE_FEATURE(1, 2, descriptorBindingPartiallyBound);
+         CORE_FEATURE(1, 2, descriptorBindingVariableDescriptorCount);
+         CORE_FEATURE(1, 2, runtimeDescriptorArray);
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
          VkPhysicalDeviceConditionalRenderingFeaturesEXT *features =
             (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)ext;
@@ -579,7 +666,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
          VkPhysicalDeviceTimelineSemaphoreFeatures *features =
             (VkPhysicalDeviceTimelineSemaphoreFeatures*)ext;
-         features->timelineSemaphore = true;
+         CORE_FEATURE(1, 2, timelineSemaphore);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
@@ -599,16 +686,20 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          lvp_get_physical_device_features_1_1(pdevice, (void *)ext);
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
+         lvp_get_physical_device_features_1_2(pdevice, (void *)ext);
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
          VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *features =
             (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
-         features->uniformBufferStandardLayout = true;
+         CORE_FEATURE(1, 2, uniformBufferStandardLayout);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
          VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
             (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
-         features->scalarBlockLayout = true;
+         CORE_FEATURE(1, 2, scalarBlockLayout);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
@@ -620,45 +711,45 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
          VkPhysicalDeviceHostQueryResetFeaturesEXT *features =
             (VkPhysicalDeviceHostQueryResetFeaturesEXT *)ext;
-         features->hostQueryReset = true;
+         CORE_FEATURE(1, 2, hostQueryReset);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: {
          VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *features = (void *)ext;
-         features->bufferDeviceAddress = true;
-         features->bufferDeviceAddressCaptureReplay = false;
-         features->bufferDeviceAddressMultiDevice = false;
+         CORE_FEATURE(1, 2, bufferDeviceAddress);
+         CORE_FEATURE(1, 2, bufferDeviceAddressCaptureReplay);
+         CORE_FEATURE(1, 2, bufferDeviceAddressMultiDevice);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
          VkPhysicalDeviceShaderFloat16Int8Features *features =
             (VkPhysicalDeviceShaderFloat16Int8Features*)ext;
-         features->shaderFloat16 = pdevice->pscreen->get_shader_param(pdevice->pscreen, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16) != 0;
-         features->shaderInt8 = true;
+         CORE_FEATURE(1, 2, shaderFloat16);
+         CORE_FEATURE(1, 2, shaderInt8);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
          VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *features = (void *)ext;
-         features->shaderBufferInt64Atomics = true;
-         features->shaderSharedInt64Atomics = true;
+         CORE_FEATURE(1, 2, shaderBufferInt64Atomics);
+         CORE_FEATURE(1, 2, shaderSharedInt64Atomics);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
          VkPhysicalDeviceImagelessFramebufferFeatures *features =
             (VkPhysicalDeviceImagelessFramebufferFeatures*)ext;
-         features->imagelessFramebuffer = true;
+         CORE_FEATURE(1, 2, imagelessFramebuffer);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
          VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *features =
             (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *)ext;
-         features->shaderSubgroupExtendedTypes = true;
+         CORE_FEATURE(1, 2, shaderSubgroupExtendedTypes);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR: {
          VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *features =
             (VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *)ext;
-         features->separateDepthStencilLayouts = true;
+         CORE_FEATURE(1, 2, separateDepthStencilLayouts);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
@@ -893,6 +984,83 @@ lvp_get_physical_device_properties_1_1(struct lvp_physical_device *pdevice,
    p->maxMemoryAllocationSize = (1u << 31);
 }
 
+static void
+lvp_get_physical_device_properties_1_2(struct lvp_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan12Properties *p)
+{
+   p->driverID = VK_DRIVER_ID_MESA_LLVMPIPE;
+   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "llvmpipe");
+   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1
+#ifdef MESA_LLVM_VERSION_STRING
+                  " (LLVM " MESA_LLVM_VERSION_STRING ")"
+#endif
+            );
+
+   p->conformanceVersion = (VkConformanceVersion){
+      .major = 0,
+      .minor = 0,
+      .subminor = 0,
+      .patch = 0,
+   };
+
+   p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+   p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+   p->shaderDenormFlushToZeroFloat16 = false;
+   p->shaderDenormPreserveFloat16 = false;
+   p->shaderRoundingModeRTEFloat16 = true;
+   p->shaderRoundingModeRTZFloat16 = false;
+   p->shaderSignedZeroInfNanPreserveFloat16 = true;
+
+   p->shaderDenormFlushToZeroFloat32 = false;
+   p->shaderDenormPreserveFloat32 = false;
+   p->shaderRoundingModeRTEFloat32 = true;
+   p->shaderRoundingModeRTZFloat32 = false;
+   p->shaderSignedZeroInfNanPreserveFloat32 = true;
+
+   p->shaderDenormFlushToZeroFloat64 = false;
+   p->shaderDenormPreserveFloat64 = false;
+   p->shaderRoundingModeRTEFloat64 = true;
+   p->shaderRoundingModeRTZFloat64 = false;
+   p->shaderSignedZeroInfNanPreserveFloat64 = true;
+
+   p->maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX / 64;
+   p->shaderUniformBufferArrayNonUniformIndexingNative = false;
+   p->shaderSampledImageArrayNonUniformIndexingNative = false;
+   p->shaderStorageBufferArrayNonUniformIndexingNative = false;
+   p->shaderStorageImageArrayNonUniformIndexingNative = false;
+   p->shaderInputAttachmentArrayNonUniformIndexingNative = false;
+   p->robustBufferAccessUpdateAfterBind = true;
+   p->quadDivergentImplicitLod = false;
+
+   size_t max_descriptor_set_size = 65536; //TODO
+   p->maxPerStageDescriptorUpdateAfterBindSamplers = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindUniformBuffers = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindStorageBuffers = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindSampledImages = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindStorageImages = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindInputAttachments = max_descriptor_set_size;
+   p->maxPerStageUpdateAfterBindResources = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindSamplers = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindUniformBuffers = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = 16;
+   p->maxDescriptorSetUpdateAfterBindStorageBuffers = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = 16;
+   p->maxDescriptorSetUpdateAfterBindSampledImages = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindStorageImages = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindInputAttachments = max_descriptor_set_size;
+
+   p->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT | VK_RESOLVE_MODE_AVERAGE_BIT;
+   p->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+   p->independentResolveNone = false;
+   p->independentResolve = false;
+
+   p->filterMinmaxImageComponentMapping = true;
+   p->filterMinmaxSingleComponentFormats = true;
+
+   p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+   p->framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT;
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceProperties2                *pProperties)
@@ -904,6 +1072,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
    };
    lvp_get_physical_device_properties_1_1(pdevice, &core_1_1);
+
+   VkPhysicalDeviceVulkan12Properties core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+   };
+   lvp_get_physical_device_properties_1_2(pdevice, &core_1_2);
 
 #define CORE_RENAMED_PROPERTY(major, minor, ext_property, core_property) \
    memcpy(&properties->ext_property, &core_##major##_##minor.core_property, \
@@ -929,20 +1102,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
-         VkPhysicalDeviceDriverPropertiesKHR *driver_props =
+         VkPhysicalDeviceDriverPropertiesKHR *properties =
             (VkPhysicalDeviceDriverPropertiesKHR *) ext;
-         driver_props->driverID = VK_DRIVER_ID_MESA_LLVMPIPE;
-         snprintf(driver_props->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR, "llvmpipe");
-         snprintf(driver_props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
-                  "Mesa " PACKAGE_VERSION MESA_GIT_SHA1
-#ifdef MESA_LLVM_VERSION_STRING
-                  " (LLVM " MESA_LLVM_VERSION_STRING ")"
-#endif
-                 );
-         driver_props->conformanceVersion.major = 1;
-         driver_props->conformanceVersion.minor = 0;
-         driver_props->conformanceVersion.subminor = 0;
-         driver_props->conformanceVersion.patch = 0;;
+         CORE_PROPERTY(1, 2, driverID);
+         CORE_PROPERTY(1, 2, driverName);
+         CORE_PROPERTY(1, 2, driverInfo);
+         CORE_PROPERTY(1, 2, conformanceVersion);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
@@ -985,7 +1150,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
          VkPhysicalDeviceTimelineSemaphoreProperties *properties =
             (VkPhysicalDeviceTimelineSemaphoreProperties *)ext;
-         properties->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+         CORE_PROPERTY(1, 2, maxTimelineSemaphoreValueDifference);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
@@ -997,6 +1162,34 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          CORE_PROPERTY(1, 1, deviceLUIDValid);
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+         VkPhysicalDeviceDescriptorIndexingProperties *properties =
+            (VkPhysicalDeviceDescriptorIndexingProperties *)ext;
+         CORE_PROPERTY(1, 2, maxUpdateAfterBindDescriptorsInAllPools);
+         CORE_PROPERTY(1, 2, shaderUniformBufferArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderSampledImageArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderStorageBufferArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderStorageImageArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderInputAttachmentArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, robustBufferAccessUpdateAfterBind);
+         CORE_PROPERTY(1, 2, quadDivergentImplicitLod);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindSamplers);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindUniformBuffers);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindStorageBuffers);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindSampledImages);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindStorageImages);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindInputAttachments);
+         CORE_PROPERTY(1, 2, maxPerStageUpdateAfterBindResources);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindSamplers);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindUniformBuffers);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindUniformBuffersDynamic);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageBuffers);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageBuffersDynamic);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindSampledImages);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageImages);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindInputAttachments);
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
          VkPhysicalDeviceProtectedMemoryProperties *properties =
             (VkPhysicalDeviceProtectedMemoryProperties *)ext;
@@ -1006,8 +1199,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT: {
          VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *properties =
             (VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *)ext;
-         properties->filterMinmaxImageComponentMapping = true;
-         properties->filterMinmaxSingleComponentFormats = true;
+         CORE_PROPERTY(1, 2, filterMinmaxImageComponentMapping);
+         CORE_PROPERTY(1, 2, filterMinmaxSingleComponentFormats);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
@@ -1039,6 +1232,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
          lvp_get_physical_device_properties_1_1(pdevice, (void *)ext);
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
+         lvp_get_physical_device_properties_1_2(pdevice, (void *)ext);
+         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
          VkPhysicalDeviceCustomBorderColorPropertiesEXT *properties =
             (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
@@ -1060,33 +1256,33 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
          VkPhysicalDeviceDepthStencilResolveProperties *properties =
             (VkPhysicalDeviceDepthStencilResolveProperties *)ext;
-         properties->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT | VK_RESOLVE_MODE_AVERAGE_BIT;
-         properties->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-         properties->independentResolveNone = false;
-         properties->independentResolve = false;
+         CORE_PROPERTY(1, 2, supportedDepthResolveModes);
+         CORE_PROPERTY(1, 2, supportedStencilResolveModes);
+         CORE_PROPERTY(1, 2, independentResolveNone);
+         CORE_PROPERTY(1, 2, independentResolve);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR : {
          VkPhysicalDeviceFloatControlsPropertiesKHR *properties = (VkPhysicalDeviceFloatControlsPropertiesKHR *)ext;
-         properties->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
-         properties->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
-         properties->shaderDenormFlushToZeroFloat16 = false;
-         properties->shaderDenormPreserveFloat16 = false;
-         properties->shaderRoundingModeRTEFloat16 = true;
-         properties->shaderRoundingModeRTZFloat16 = false;
-         properties->shaderSignedZeroInfNanPreserveFloat16 = true;
+         CORE_PROPERTY(1, 2, denormBehaviorIndependence);
+         CORE_PROPERTY(1, 2, roundingModeIndependence);
+         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat16);
+         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat16);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat16);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat16);
+         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat16);
 
-         properties->shaderDenormFlushToZeroFloat32 = false;
-         properties->shaderDenormPreserveFloat32 = false;
-         properties->shaderRoundingModeRTEFloat32 = true;
-         properties->shaderRoundingModeRTZFloat32 = false;
-         properties->shaderSignedZeroInfNanPreserveFloat32 = true;
+         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat32);
+         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat32);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat32);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat32);
+         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat32);
 
-         properties->shaderDenormFlushToZeroFloat64 = false;
-         properties->shaderDenormPreserveFloat64 = false;
-         properties->shaderRoundingModeRTEFloat64 = true;
-         properties->shaderRoundingModeRTZFloat64 = false;
-         properties->shaderSignedZeroInfNanPreserveFloat64 = true;
+         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat64);
+         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat64);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat64);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat64);
+         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat64);
          break;
       }
       default:
