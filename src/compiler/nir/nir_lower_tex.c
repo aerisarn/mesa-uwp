@@ -1311,7 +1311,7 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
          nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_index].src);
          nir_variable *var = nir_deref_instr_get_variable(deref);
          texture_index = var ? var->data.binding : 0;
-         texture_mask = var ? (1u << texture_index) : 0u;
+         texture_mask = var && texture_index < 32 ? (1u << texture_index) : 0u;
       }
 
       if (texture_mask & options->lower_y_uv_external) {
