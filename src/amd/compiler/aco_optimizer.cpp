@@ -3139,7 +3139,7 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       fma->neg_lo[1] = fma->neg_lo[1] ^ vop3p->neg_lo[1 - add_op_idx];
       fma->neg_hi[1] = fma->neg_hi[1] ^ vop3p->neg_hi[1 - add_op_idx];
       fma->definitions[0] = instr->definitions[0];
-      instr.reset(fma.release());
+      instr = std::move(fma);
       ctx.info[instr->definitions[0].tempId()].set_vop3p(instr.get());
       return;
    }
@@ -3361,7 +3361,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          /* mark this ssa_def to be re-checked for profitability and literals */
          ctx.mad_infos.emplace_back(std::move(instr), mul_instr->definitions[0].tempId());
          ctx.info[mad->definitions[0].tempId()].set_mad(mad.get(), ctx.mad_infos.size() - 1);
-         instr.reset(mad.release());
+         instr = std::move(mad);
          return;
       }
    }
@@ -3380,7 +3380,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             new_instr->operands[1] = instr->operands[!i];
             new_instr->operands[2] = Operand(ctx.info[instr->operands[i].tempId()].temp);
             new_instr->definitions[0] = instr->definitions[0];
-            instr.reset(new_instr.release());
+            instr = std::move(new_instr);
             ctx.info[instr->definitions[0].tempId()].label = 0;
             return;
          }
@@ -3579,7 +3579,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                aco_opcode::p_create_vector, Format::PSEUDO, 1, 1)};
             extract->operands[0] = op;
             extract->definitions[0] = instr->definitions[idx];
-            instr.reset(extract.release());
+            instr = std::move(extract);
 
             done = true;
          }
@@ -3594,7 +3594,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          extract->operands[1] =
             Operand::c32((uint32_t)split_offset / instr->definitions[idx].bytes());
          extract->definitions[0] = instr->definitions[idx];
-         instr.reset(extract.release());
+         instr = std::move(extract);
       }
    }
 

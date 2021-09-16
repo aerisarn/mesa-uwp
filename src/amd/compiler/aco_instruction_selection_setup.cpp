@@ -936,7 +936,7 @@ init_context(isel_context* ctx, nir_shader* shader)
    ctx->program->config->spi_ps_input_ena = spi_ps_inputs;
    ctx->program->config->spi_ps_input_addr = spi_ps_inputs;
 
-   ctx->cf_info.nir_to_aco.reset(nir_to_aco.release());
+   ctx->cf_info.nir_to_aco = std::move(nir_to_aco);
 
    /* align and copy constant data */
    while (ctx->program->constant_data.size() % 4u)
