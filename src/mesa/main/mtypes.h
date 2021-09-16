@@ -3956,6 +3956,15 @@ struct gl_constants
    GLboolean AllowExtraPPTokens;
 
    /**
+    * The spec forbids a shader to "statically write both gl_ClipVertex
+    * and gl_ClipDistance".
+    * This option adds a tolerance for shader that statically writes to
+    * both but at least one of the write can be removed by a dead code
+    * elimination pass.
+    */
+   GLboolean DoDCEBeforeClipCullAnalysis;
+
+   /**
     * Force computing the absolute value for sqrt() and inversesqrt() to follow
     * D3D9 when apps rely on this behaviour.
     */

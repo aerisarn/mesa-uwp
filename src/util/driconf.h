@@ -212,6 +212,10 @@
    DRI_CONF_OPT_B(allow_glsl_cross_stage_interpolation_mismatch, def,   \
                   "Allow interpolation qualifier mismatch across shader stages")
 
+#define DRI_CONF_DO_DCE_BEFORE_CLIP_CULL_ANALYSIS(def) \
+   DRI_CONF_OPT_B(do_dce_before_clip_cull_analysis, def,   \
+                  "Use dead code elimitation before checking for invalid Clip*/CullDistance variables usage.")
+
 #define DRI_CONF_ALLOW_DRAW_OUT_OF_ORDER(def) \
    DRI_CONF_OPT_B(allow_draw_out_of_order, def, \
                   "Allow out-of-order draw optimizations. Set when Z fighting doesn't have to be accurate.")

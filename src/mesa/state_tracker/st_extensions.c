@@ -1201,6 +1201,8 @@ void st_init_extensions(struct pipe_screen *screen,
 
    consts->AllowGLSLCrossStageInterpolationMismatch = options->allow_glsl_cross_stage_interpolation_mismatch;
 
+   consts->DoDCEBeforeClipCullAnalysis = options->do_dce_before_clip_cull_analysis;
+
    consts->GLSLIgnoreWriteToReadonlyVar = options->glsl_ignore_write_to_readonly_var;
 
    consts->PrimitiveRestartFixedIndex =
