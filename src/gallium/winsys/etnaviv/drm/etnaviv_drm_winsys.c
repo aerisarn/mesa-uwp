@@ -181,7 +181,7 @@ etna_drm_screen_create_renderonly(struct renderonly *ro)
          * ie. pipe driver having to call in to winsys, we
          * override the pipe drivers screen->destroy() */
          etna_screen(pscreen)->winsys_priv = pscreen->destroy;
-      pscreen->destroy = etna_drm_screen_destroy;
+         pscreen->destroy = etna_drm_screen_destroy;
       }
    }
 
