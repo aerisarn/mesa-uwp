@@ -375,7 +375,6 @@ clear_color(struct iris_context *ice,
       return;
    }
 
-   bool color_write_disable[4] = { false, false, false, false };
    enum isl_aux_usage aux_usage =
       iris_resource_render_aux_usage(ice, res, level, format, false);
 
@@ -399,7 +398,7 @@ clear_color(struct iris_context *ice,
    blorp_clear(&blorp_batch, &surf, format, swizzle,
                level, box->z, box->depth, box->x, box->y,
                box->x + box->width, box->y + box->height,
-               color, color_write_disable);
+               color, 0 /* color_write_disable */);
 
    blorp_batch_finish(&blorp_batch);
    iris_batch_sync_region_end(batch);

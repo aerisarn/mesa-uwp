@@ -219,7 +219,7 @@ struct blorp_params
    enum isl_aux_op hiz_op;
    bool full_surface_hiz_op;
    enum isl_aux_op fast_clear_op;
-   bool color_write_disable[4];
+   uint8_t color_write_disable;
    struct brw_blorp_wm_inputs wm_inputs;
    struct blorp_vs_inputs vs_inputs;
    bool dst_clear_color_as_input;

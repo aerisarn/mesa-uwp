@@ -1111,10 +1111,10 @@ blorp_emit_blend_state(struct blorp_batch *batch,
          .PostBlendColorClampEnable = true,
          .ColorClampRange = COLORCLAMP_RTFORMAT,
 
-         .WriteDisableRed = params->color_write_disable[0],
-         .WriteDisableGreen = params->color_write_disable[1],
-         .WriteDisableBlue = params->color_write_disable[2],
-         .WriteDisableAlpha = params->color_write_disable[3],
+         .WriteDisableRed = params->color_write_disable & 1,
+         .WriteDisableGreen = params->color_write_disable & 2,
+         .WriteDisableBlue = params->color_write_disable & 4,
+         .WriteDisableAlpha = params->color_write_disable & 8,
       };
       GENX(BLEND_STATE_ENTRY_pack)(NULL, pos, &entry);
       pos += GENX(BLEND_STATE_ENTRY_length);
@@ -1424,7 +1424,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
                          const struct brw_blorp_surface_info *surface,
                          UNUSED enum isl_aux_op aux_op,
                          void *state, uint32_t state_offset,
-                         const bool color_write_disables[4],
+                         uint8_t color_write_disable,
                          bool is_render_target)
 {
    const struct isl_device *isl_dev = batch->blorp->isl_dev;
@@ -1451,13 +1451,13 @@ blorp_emit_surface_state(struct blorp_batch *batch,
 
    isl_channel_mask_t write_disable_mask = 0;
    if (is_render_target && GFX_VER <= 5) {
-      if (color_write_disables[0])
+      if (color_write_disable & BITFIELD_BIT(0))
          write_disable_mask |= ISL_CHANNEL_RED_BIT;
-      if (color_write_disables[1])
+      if (color_write_disable & BITFIELD_BIT(1))
          write_disable_mask |= ISL_CHANNEL_GREEN_BIT;
-      if (color_write_disables[2])
+      if (color_write_disable & BITFIELD_BIT(2))
          write_disable_mask |= ISL_CHANNEL_BLUE_BIT;
-      if (color_write_disables[3])
+      if (color_write_disable & BITFIELD_BIT(3))
          write_disable_mask |= ISL_CHANNEL_ALPHA_BIT;
    }
 
@@ -1592,7 +1592,7 @@ blorp_setup_binding_table(struct blorp_batch *batch,
                                   params->fast_clear_op,
                                   surface_maps[BLORP_TEXTURE_BT_INDEX],
                                   surface_offsets[BLORP_TEXTURE_BT_INDEX],
-                                  NULL, false);
+                                  0, false);
          if (params->src.clear_color_addr.buffer != NULL)
             has_indirect_clear_color = true;
       }

@@ -180,7 +180,7 @@ blorp_clear(struct blorp_batch *batch,
             uint32_t level, uint32_t start_layer, uint32_t num_layers,
             uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1,
             union isl_color_value clear_color,
-            const bool color_write_disable[4]);
+            uint8_t color_write_disable);
 
 void
 blorp_clear_depth_stencil(struct blorp_batch *batch,
