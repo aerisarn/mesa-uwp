@@ -5165,6 +5165,49 @@ sampler_msg_type(const intel_device_info *devinfo,
    }
 }
 
+/**
+ * Emit a LOAD_PAYLOAD instruction while ensuring the sources are aligned to
+ * the given requested_alignment_sz.
+ */
+static fs_inst *
+emit_load_payload_with_padding(const fs_builder &bld, const fs_reg &dst,
+                               const fs_reg *src, unsigned sources,
+                               unsigned header_size,
+                               unsigned requested_alignment_sz)
+{
+   unsigned length = 0;
+   unsigned num_srcs =
+      sources * DIV_ROUND_UP(requested_alignment_sz, bld.dispatch_width());
+   fs_reg *src_comps = new fs_reg[num_srcs];
+
+   for (unsigned i = 0; i < header_size; i++)
+      src_comps[length++] = src[i];
+
+   for (unsigned i = header_size; i < sources; i++) {
+      unsigned src_sz =
+         retype(dst, src[i].type).component_size(bld.dispatch_width());
+      const enum brw_reg_type padding_payload_type =
+         brw_reg_type_from_bit_size(type_sz(src[i].type) * 8,
+                                    BRW_REGISTER_TYPE_UD);
+
+      src_comps[length++] = src[i];
+
+      /* Expand the real sources if component of requested payload type is
+       * larger than real source component.
+       */
+      if (src_sz < requested_alignment_sz) {
+         for (unsigned j = 0; j < (requested_alignment_sz / src_sz) - 1; j++) {
+            src_comps[length++] = retype(fs_reg(), padding_payload_type);
+         }
+      }
+   }
+
+   fs_inst *inst = bld.LOAD_PAYLOAD(dst, src_comps, length, header_size);
+   delete[] src_comps;
+
+   return inst;
+}
+
 static void
 lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &coordinate,
