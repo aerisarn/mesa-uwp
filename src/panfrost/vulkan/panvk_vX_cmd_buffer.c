@@ -161,28 +161,20 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
          util_dynarray_append(&batch->jobs, void *, preload_jobs[i].cpu);
    }
 
-   struct pan_tls_info tlsinfo = { 0 };
-
-   if (cmdbuf->state.pipeline) {
-      tlsinfo.tls.size = cmdbuf->state.pipeline->tls_size;
-      tlsinfo.wls.size = cmdbuf->state.pipeline->wls_size;
+   if (batch->tlsinfo.tls.size) {
+      batch->tlsinfo.tls.ptr =
+         pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, batch->tlsinfo.tls.size, 4096).gpu;
    }
 
-   if (tlsinfo.tls.size) {
-      tlsinfo.tls.ptr =
-         pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, tlsinfo.tls.size, 4096).gpu;
-   }
-
-   if (tlsinfo.wls.size) {
-      unsigned wls_size =
-         pan_wls_mem_size(pdev, &cmdbuf->state.compute.wg_count, tlsinfo.wls.size);
-      tlsinfo.wls.ptr =
-         pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, wls_size, 4096).gpu;
+   if (batch->tlsinfo.wls.size) {
+      assert(batch->wls_total_size);
+      batch->tlsinfo.wls.ptr =
+         pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, batch->wls_total_size, 4096).gpu;
    }
 
    if ((PAN_ARCH >= 6 || !cmdbuf->state.batch->fb.desc.cpu) &&
        cmdbuf->state.batch->tls.cpu) {
-      GENX(pan_emit_tls)(&tlsinfo, cmdbuf->state.batch->tls.cpu);
+      GENX(pan_emit_tls)(&batch->tlsinfo, batch->tls.cpu);
    }
 
    if (cmdbuf->state.batch->fb.desc.cpu) {
@@ -208,9 +200,9 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
       void *fbd = cmdbuf->state.batch->fb.desc.cpu;
 #endif
 
-      cmdbuf->state.batch->fb.desc.gpu |=
-         GENX(pan_emit_fbd)(pdev, &cmdbuf->state.fb.info, &tlsinfo,
-                            &cmdbuf->state.batch->tiler.ctx, fbd);
+      batch->fb.desc.gpu |=
+         GENX(pan_emit_fbd)(pdev, &cmdbuf->state.fb.info, &batch->tlsinfo,
+                            &batch->tiler.ctx, fbd);
 
 #if PAN_ARCH <= 5
       panvk_copy_fb_desc(cmdbuf, tmp_fbd);
@@ -237,7 +229,6 @@ panvk_per_arch(CmdNextSubpass2)(VkCommandBuffer commandBuffer,
    cmdbuf->state.subpass++;
    panvk_cmd_fb_info_set_subpass(cmdbuf);
    panvk_cmd_open_batch(cmdbuf);
-   memset(&cmdbuf->state.compute, 0, sizeof(cmdbuf->state.compute));
 }
 
 void
@@ -700,6 +691,7 @@ panvk_per_arch(CmdDraw)(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
    struct panvk_batch *batch = cmdbuf->state.batch;
+   const struct panvk_pipeline *pipeline = cmdbuf->state.pipeline;
 
    /* There are only 16 bits in the descriptor for the job ID, make sure all
     * the 3 (2 in Bifrost) jobs in this draw are in the same batch.
@@ -745,8 +737,9 @@ panvk_per_arch(CmdDraw)(VkCommandBuffer commandBuffer,
    panvk_draw_prepare_tiler_context(cmdbuf, &draw);
    panvk_draw_prepare_vertex_job(cmdbuf, &draw);
    panvk_draw_prepare_tiler_job(cmdbuf, &draw);
+   batch->tlsinfo.tls.size = MAX2(pipeline->tls_size, batch->tlsinfo.tls.size);
+   assert(!pipeline->wls_size);
 
-   const struct panvk_pipeline *pipeline = cmdbuf->state.pipeline;
    unsigned vjob_id =
       panfrost_add_job(&cmdbuf->desc_pool.base, &batch->scoreboard,
                        MALI_JOB_TYPE_VERTEX, false, false, 0, 0,
@@ -788,7 +781,6 @@ panvk_per_arch(CmdEndRenderPass2)(VkCommandBuffer commandBuffer,
    cmdbuf->state.subpass = NULL;
    cmdbuf->state.framebuffer = NULL;
    cmdbuf->state.clear = NULL;
-   memset(&cmdbuf->state.compute, 0, sizeof(cmdbuf->state.compute));
 }
 
 void

@@ -438,7 +438,6 @@ panvk_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                                    pRenderPassBegin->clearValueCount, 8,
                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    panvk_cmd_prepare_clear_values(cmdbuf, pRenderPassBegin->pClearValues);
-   memset(&cmdbuf->state.compute, 0, sizeof(cmdbuf->state.compute));
    panvk_cmd_fb_info_init(cmdbuf);
    panvk_cmd_fb_info_set_subpass(cmdbuf);
 }

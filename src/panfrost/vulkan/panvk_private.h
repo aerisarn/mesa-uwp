@@ -299,6 +299,8 @@ struct panvk_batch {
       struct panfrost_ptr descs;
       uint32_t templ[TILER_DESC_WORDS];
    } tiler;
+   struct pan_tls_info tlsinfo;
+   unsigned wls_total_size;
    bool issued;
 };
 
@@ -582,10 +584,6 @@ struct panvk_cmd_state {
    struct {
       float constants[4];
    } blend;
-
-   struct {
-      struct pan_compute_dim wg_count;
-   } compute;
 
    struct {
       struct {
