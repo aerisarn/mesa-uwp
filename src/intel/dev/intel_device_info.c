@@ -993,6 +993,7 @@ static const struct intel_device_info intel_device_info_adl_gt1 = {
 static const struct intel_device_info intel_device_info_adl_gt2 = {
    GFX12_GT_FEATURES(2),
    .is_alderlake = true,
+   .display_ver = 13,
 };
 
 #define GFX12_DG1_SG1_FEATURES                  \
@@ -1321,6 +1322,9 @@ intel_get_device_info_from_pci_id(int pci_id,
 
    if (devinfo->verx10 == 0)
       devinfo->verx10 = devinfo->ver * 10;
+
+   if (devinfo->display_ver == 0)
+      devinfo->display_ver = devinfo->ver;
 
    update_cs_workgroup_threads(devinfo);
 
