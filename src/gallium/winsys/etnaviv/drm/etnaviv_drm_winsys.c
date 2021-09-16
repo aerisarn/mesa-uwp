@@ -96,14 +96,14 @@ hash_table_create_file_description_keys(void)
 }
 
 static struct pipe_screen *
-screen_create(struct renderonly *ro)
+screen_create(int gpu_fd, struct renderonly *ro)
 {
    struct etna_device *dev;
    struct etna_gpu *gpu;
    uint64_t val;
    int i;
 
-   dev = etna_device_new_dup(ro->gpu_fd);
+   dev = etna_device_new_dup(gpu_fd);
    if (!dev) {
       fprintf(stderr, "Error creating device\n");
       return NULL;
@@ -172,7 +172,7 @@ etna_drm_screen_create_renderonly(struct renderonly *ro)
    if (pscreen) {
       etna_screen(pscreen)->refcnt++;
    } else {
-      pscreen = screen_create(ro);
+      pscreen = screen_create(ro->gpu_fd, ro);
       if (pscreen) {
          int fd = etna_device_fd(etna_screen(pscreen)->dev);
          _mesa_hash_table_insert(fd_tab, intptr_to_pointer(fd), pscreen);
