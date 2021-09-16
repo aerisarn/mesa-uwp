@@ -321,6 +321,8 @@ files_libgallium = files(
   'util/u_upload_mgr.h',
   'util/u_vbuf.c',
   'util/u_vbuf.h',
+  'util/u_vertex_state_cache.c',
+  'util/u_vertex_state_cache.h',
   'util/u_video.h',
   'util/u_viewport.h',
   'nir/tgsi_to_nir.c',
