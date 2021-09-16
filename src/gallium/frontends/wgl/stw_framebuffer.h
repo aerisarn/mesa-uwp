@@ -154,6 +154,9 @@ struct stw_framebuffer
 struct stw_framebuffer *
 stw_framebuffer_create(HWND hwnd, int iPixelFormat, enum stw_framebuffer_owner owner);
 
+struct stw_framebuffer *
+stw_pbuffer_create(int iPixelFormat, int iWidth, int iHeight);
+
 
 /**
  * Increase fb reference count.  The referenced framebuffer should be locked.
