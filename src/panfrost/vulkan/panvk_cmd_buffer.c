@@ -78,7 +78,7 @@ panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(panvk_pipeline_layout, layout, _layout);
 
    struct panvk_descriptor_state *descriptors_state =
-      &cmdbuf->descriptors[pipelineBindPoint];
+      &cmdbuf->bind_points[pipelineBindPoint].desc_state;
 
    for (unsigned i = 0; i < descriptorSetCount; ++i) {
       unsigned idx = i + firstSet;
@@ -133,23 +133,25 @@ panvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(panvk_pipeline, pipeline, _pipeline);
 
-   cmdbuf->state.bind_point = pipelineBindPoint;
-   cmdbuf->state.pipeline = pipeline;
-   cmdbuf->state.varyings = pipeline->varyings;
+   cmdbuf->bind_points[pipelineBindPoint].pipeline = pipeline;
    cmdbuf->state.fs_rsd = 0;
-   memset(cmdbuf->descriptors[pipelineBindPoint].sysvals, 0,
-          sizeof(cmdbuf->descriptors[pipelineBindPoint].sysvals));
+   memset(cmdbuf->bind_points[pipelineBindPoint].desc_state.sysvals, 0,
+          sizeof(cmdbuf->bind_points[0].desc_state.sysvals));
 
-   if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_VIEWPORT)))
-      cmdbuf->state.viewport = pipeline->viewport;
-   if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_SCISSOR)))
-      cmdbuf->state.scissor = pipeline->scissor;
+   if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      cmdbuf->state.varyings = pipeline->varyings;
+
+      if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_VIEWPORT)))
+         cmdbuf->state.viewport = pipeline->viewport;
+      if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_SCISSOR)))
+         cmdbuf->state.scissor = pipeline->scissor;
+   }
 
    /* Sysvals are passed through UBOs, we need dirty the UBO array if the
     * pipeline contain shaders using sysvals.
     */
    if (pipeline->num_sysvals)
-      cmdbuf->descriptors[pipelineBindPoint].ubos = 0;
+      cmdbuf->bind_points[pipelineBindPoint].desc_state.ubos = 0;
 }
 
 void

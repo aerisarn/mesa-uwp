@@ -572,10 +572,6 @@ struct panvk_attrib_buf {
 };
 
 struct panvk_cmd_state {
-   VkPipelineBindPoint bind_point;
-
-   struct panvk_pipeline *pipeline;
-
    uint32_t dirty;
 
    struct panvk_varyings_info varyings;
@@ -657,6 +653,11 @@ enum panvk_cmd_buffer_status {
    PANVK_CMD_BUFFER_STATUS_PENDING,
 };
 
+struct panvk_cmd_bind_point_state {
+   struct panvk_descriptor_state desc_state;
+   const struct panvk_pipeline *pipeline;
+};
+
 struct panvk_cmd_buffer {
    struct vk_object_base base;
 
@@ -680,10 +681,19 @@ struct panvk_cmd_buffer {
    VkShaderStageFlags push_constant_stages;
    struct panvk_descriptor_set meta_push_descriptors;
 
-   struct panvk_descriptor_state descriptors[MAX_BIND_POINTS];
+   struct panvk_cmd_bind_point_state bind_points[MAX_BIND_POINTS];
 
    VkResult record_result;
 };
+
+#define panvk_cmd_get_bind_point_state(cmdbuf, bindpoint) \
+        &(cmdbuf)->bind_points[VK_PIPELINE_BIND_POINT_ ## bindpoint]
+
+#define panvk_cmd_get_pipeline(cmdbuf, bindpoint) \
+        (cmdbuf)->bind_points[VK_PIPELINE_BIND_POINT_ ## bindpoint].pipeline
+
+#define panvk_cmd_get_desc_state(cmdbuf, bindpoint) \
+        &(cmdbuf)->bind_points[VK_PIPELINE_BIND_POINT_ ## bindpoint].desc_state
 
 struct panvk_batch *
 panvk_cmd_open_batch(struct panvk_cmd_buffer *cmdbuf);
