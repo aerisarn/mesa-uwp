@@ -1677,6 +1677,8 @@ struct radv_event {
 #define RADV_HASH_SHADER_FORCE_VRS_2x1     (1 << 10)
 #define RADV_HASH_SHADER_FORCE_VRS_1x2     (1 << 11)
 #define RADV_HASH_SHADER_FORCE_NGG_CULLING (1 << 13)
+#define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS (1 << 14)
+#define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS2 (1 << 15)
 
 void radv_hash_shaders(unsigned char *hash, const VkPipelineShaderStageCreateInfo **stages,
                        const struct radv_pipeline_layout *layout,
