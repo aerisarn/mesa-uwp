@@ -715,23 +715,6 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    zink_query_update_gs_states(ctx);
 
-   if (have_streamout) {
-      for (unsigned i = 0; i < ctx->num_so_targets; i++) {
-         struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
-         counter_buffers[i] = VK_NULL_HANDLE;
-         if (t) {
-            struct zink_resource *res = zink_resource(t->counter_buffer);
-            t->stride = ctx->last_vertex_stage->streamout.so_info.stride[i] * sizeof(uint32_t);
-            zink_batch_reference_resource_rw(batch, res, true);
-            if (t->counter_buffer_valid) {
-               counter_buffers[i] = res->obj->buffer;
-               counter_buffer_offsets[i] = t->counter_buffer_offset;
-            }
-         }
-      }
-      VKCTX(CmdBeginTransformFeedbackEXT)(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
-   }
-
    if (BATCH_CHANGED) {
       ctx->pipeline_changed[0] = false;
       zink_select_draw_vbo(ctx);
@@ -761,6 +744,23 @@ zink_draw_vbo(struct pipe_context *pctx,
       VKCTX(CmdPushConstants)(batch->state->cmdbuf, ctx->curr_program->base.layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
                          offsetof(struct zink_gfx_push_constant, default_inner_level), sizeof(float) * 6,
                          &ctx->tess_levels[0]);
+
+   if (have_streamout) {
+      for (unsigned i = 0; i < ctx->num_so_targets; i++) {
+         struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
+         counter_buffers[i] = VK_NULL_HANDLE;
+         if (t) {
+            struct zink_resource *res = zink_resource(t->counter_buffer);
+            t->stride = ctx->last_vertex_stage->streamout.so_info.stride[i] * sizeof(uint32_t);
+            zink_batch_reference_resource_rw(batch, res, true);
+            if (t->counter_buffer_valid) {
+               counter_buffers[i] = res->obj->buffer;
+               counter_buffer_offsets[i] = t->counter_buffer_offset;
+            }
+         }
+      }
+      VKCTX(CmdBeginTransformFeedbackEXT)(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
+   }
 
    bool needs_drawid = reads_drawid && ctx->gfx_pipeline_state.drawid_broken;
    work_count += num_draws;
