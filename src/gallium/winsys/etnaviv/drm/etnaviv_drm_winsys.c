@@ -28,7 +28,6 @@
 
 #include "util/os_file.h"
 #include "util/u_hash_table.h"
-#include "util/u_memory.h"
 #include "util/u_pointer.h"
 
 #include "etnaviv/etnaviv_screen.h"
@@ -156,8 +155,8 @@ etna_drm_screen_destroy(struct pipe_screen *pscreen)
    }
 }
 
-struct pipe_screen *
-etna_drm_screen_create_renderonly(struct renderonly *ro)
+static struct pipe_screen *
+etna_lookup_or_create_screen(int gpu_fd, struct renderonly *ro)
 {
    struct pipe_screen *pscreen = NULL;
 
@@ -168,11 +167,11 @@ etna_drm_screen_create_renderonly(struct renderonly *ro)
          goto unlock;
    }
 
-   pscreen = util_hash_table_get(fd_tab, intptr_to_pointer(ro->gpu_fd));
+   pscreen = util_hash_table_get(fd_tab, intptr_to_pointer(gpu_fd));
    if (pscreen) {
       etna_screen(pscreen)->refcnt++;
    } else {
-      pscreen = screen_create(ro->gpu_fd, ro);
+      pscreen = screen_create(gpu_fd, ro);
       if (pscreen) {
          int fd = etna_device_fd(etna_screen(pscreen)->dev);
          _mesa_hash_table_insert(fd_tab, intptr_to_pointer(fd), pscreen);
@@ -190,29 +189,14 @@ unlock:
    return pscreen;
 }
 
-static void etnaviv_ro_destroy(struct renderonly *ro)
+struct pipe_screen *
+etna_drm_screen_create_renderonly(struct renderonly *ro)
 {
-   FREE(ro);
+   return etna_lookup_or_create_screen(ro->gpu_fd, ro);
 }
 
 struct pipe_screen *
 etna_drm_screen_create(int fd)
 {
-
-   struct renderonly *ro = CALLOC_STRUCT(renderonly);
-   struct pipe_screen *screen;
-
-   if (!ro)
-      return NULL;
-
-   ro->create_for_resource = renderonly_create_gpu_import_for_resource;
-   ro->destroy = etnaviv_ro_destroy;
-   ro->kms_fd = -1;
-   ro->gpu_fd = fd;
-
-   screen = etna_drm_screen_create_renderonly(ro);
-   if (!screen)
-      FREE(ro);
-
-   return screen;
+   return etna_lookup_or_create_screen(fd, NULL);
 }
