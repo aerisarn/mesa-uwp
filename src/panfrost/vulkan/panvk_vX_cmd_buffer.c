@@ -49,7 +49,7 @@ panvk_cmd_prepare_fragment_job(struct panvk_cmd_buffer *cmdbuf)
       pan_pool_alloc_desc(&cmdbuf->desc_pool.base, FRAGMENT_JOB);
 
    GENX(pan_emit_fragment_job)(fbinfo, batch->fb.desc.gpu, job_ptr.cpu),
-   cmdbuf->state.batch->fragment_job = job_ptr.gpu;
+   batch->fragment_job = job_ptr.gpu;
    util_dynarray_append(&batch->jobs, void *, job_ptr.cpu);
 }
 
@@ -151,7 +151,7 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 
    struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
 
-   list_addtail(&cmdbuf->state.batch->node, &cmdbuf->batches);
+   list_addtail(&batch->node, &cmdbuf->batches);
 
    if (batch->scoreboard.first_tiler) {
       struct panfrost_ptr preload_jobs[2];
@@ -176,12 +176,10 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
          pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, batch->wls_total_size, 4096).gpu;
    }
 
-   if ((PAN_ARCH >= 6 || !cmdbuf->state.batch->fb.desc.cpu) &&
-       cmdbuf->state.batch->tls.cpu) {
+   if ((PAN_ARCH >= 6 || !batch->fb.desc.cpu) && batch->tls.cpu)
       GENX(pan_emit_tls)(&batch->tlsinfo, batch->tls.cpu);
-   }
 
-   if (cmdbuf->state.batch->fb.desc.cpu) {
+   if (batch->fb.desc.cpu) {
 #if PAN_ARCH == 5
       panvk_per_arch(cmd_get_polygon_list)(cmdbuf,
                                            fbinfo->width,
@@ -189,19 +187,19 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
                                            false);
 
       mali_ptr polygon_list =
-         cmdbuf->state.batch->tiler.ctx.midgard.polygon_list->ptr.gpu;
+         batch->tiler.ctx.midgard.polygon_list->ptr.gpu;
       struct panfrost_ptr writeval_job =
          panfrost_scoreboard_initialize_tiler(&cmdbuf->desc_pool.base,
-                                              &cmdbuf->state.batch->scoreboard,
+                                              &batch->scoreboard,
                                               polygon_list);
       if (writeval_job.cpu)
-         util_dynarray_append(&cmdbuf->state.batch->jobs, void *, writeval_job.cpu);
+         util_dynarray_append(&batch->jobs, void *, writeval_job.cpu);
 #endif
 
 #if PAN_ARCH <= 5
       void *fbd = tmp_fbd;
 #else
-      void *fbd = cmdbuf->state.batch->fb.desc.cpu;
+      void *fbd = batch->fb.desc.cpu;
 #endif
 
       batch->fb.desc.gpu |=
@@ -210,7 +208,7 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 
 #if PAN_ARCH <= 5
       panvk_copy_fb_desc(cmdbuf, tmp_fbd);
-      memcpy(cmdbuf->state.batch->tiler.templ,
+      memcpy(batch->tiler.templ,
              pan_section_ptr(fbd, MULTI_TARGET_FRAMEBUFFER, TILER),
              pan_size(TILER_CONTEXT));
 #endif
