@@ -703,8 +703,7 @@ panvk_per_arch(CmdDraw)(VkCommandBuffer commandBuffer,
    if (batch->scoreboard.job_index >= (UINT16_MAX - 3)) {
       panvk_per_arch(cmd_close_batch)(cmdbuf);
       panvk_cmd_preload_fb_after_batch_split(cmdbuf);
-      panvk_cmd_open_batch(cmdbuf);
-      batch = cmdbuf->state.batch;
+      batch = panvk_cmd_open_batch(cmdbuf);
    }
 
    if (cmdbuf->state.pipeline->fs.required)

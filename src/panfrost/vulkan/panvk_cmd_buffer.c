@@ -478,7 +478,7 @@ panvk_cmd_preload_fb_after_batch_split(struct panvk_cmd_buffer *cmdbuf)
    }
 }
 
-void
+struct panvk_batch *
 panvk_cmd_open_batch(struct panvk_cmd_buffer *cmdbuf)
 {
    assert(!cmdbuf->state.batch);
@@ -486,6 +486,7 @@ panvk_cmd_open_batch(struct panvk_cmd_buffer *cmdbuf)
                                    sizeof(*cmdbuf->state.batch), 8,
                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    assert(cmdbuf->state.batch);
+   return cmdbuf->state.batch;
 }
 
 void

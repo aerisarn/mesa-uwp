@@ -107,9 +107,7 @@ panvk_meta_blit(struct panvk_cmd_buffer *cmdbuf,
       if (ctx.dst.cur_layer < 0)
          continue;
 
-      panvk_cmd_open_batch(cmdbuf);
-
-      struct panvk_batch *batch = cmdbuf->state.batch;
+      struct panvk_batch *batch = panvk_cmd_open_batch(cmdbuf);
       mali_ptr tsd, tiler;
 
       views[0].first_layer = views[0].last_layer = ctx.dst.cur_layer;

@@ -685,7 +685,7 @@ struct panvk_cmd_buffer {
    VkResult record_result;
 };
 
-void
+struct panvk_batch *
 panvk_cmd_open_batch(struct panvk_cmd_buffer *cmdbuf);
 
 void
