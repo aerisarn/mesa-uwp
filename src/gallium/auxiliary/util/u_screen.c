@@ -472,6 +472,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 1;
 
    case PIPE_CAP_EMULATE_NONFIXED_PRIMITIVE_RESTART:
+   case PIPE_CAP_DRAW_VERTEX_STATE:
       return 0;
 
    default:

@@ -231,6 +231,18 @@ pipe_so_target_reference(struct pipe_stream_output_target **dst,
 }
 
 static inline void
+pipe_vertex_state_reference(struct pipe_vertex_state **dst,
+                            struct pipe_vertex_state *src)
+{
+   struct pipe_vertex_state *old_dst = *dst;
+
+   if (pipe_reference(old_dst ? &old_dst->reference : NULL,
+                      src ? &src->reference : NULL))
+      old_dst->screen->vertex_state_destroy(old_dst->screen, old_dst);
+   *dst = src;
+}
+
+static inline void
 pipe_vertex_buffer_unreference(struct pipe_vertex_buffer *dst)
 {
    if (dst->is_user_buffer)

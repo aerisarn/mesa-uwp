@@ -708,6 +708,39 @@ struct pipe_vertex_element
    unsigned instance_divisor;
 };
 
+/**
+ * Opaque refcounted constant state object encapsulating a vertex buffer,
+ * index buffer, and vertex elements. Used by display lists to bind those
+ * states and pass buffer references quickly.
+ *
+ * The state contains 1 index buffer, 0 or 1 vertex buffer, and 0 or more
+ * vertex elements.
+ *
+ * Constraints on the buffers to get the fastest codepath:
+ * - All buffer contents are considered immutable and read-only after
+ *   initialization. This implies the following things.
+ * - No place is required to track whether these buffers are busy.
+ * - All CPU mappings of these buffers can be forced to UNSYNCHRONIZED by
+ *   both drivers and common code unconditionally.
+ * - Buffer invalidation can be skipped by both drivers and common code
+ *   unconditionally.
+ */
+struct pipe_vertex_state {
+   struct pipe_reference reference;
+   struct pipe_screen *screen;
+
+   /* The following structure is used as a key for util_vertex_state_cache
+    * to deduplicate identical state objects and thus enable more
+    * opportunities for draw merging.
+    */
+   struct {
+      struct pipe_resource *indexbuf;
+      struct pipe_vertex_buffer vbuffer;
+      unsigned num_elements;
+      struct pipe_vertex_element elements[PIPE_MAX_ATTRIBS];
+      uint32_t full_velem_mask;
+   } input;
+};
 
 struct pipe_draw_indirect_info
 {
@@ -764,6 +797,25 @@ struct pipe_draw_start_count_bias {
    unsigned start;
    unsigned count;
    int index_bias; /**< a bias to be added to each index */
+};
+
+/**
+ * Draw vertex state description. It's translated to pipe_draw_info as follows:
+ * - mode comes from this structure
+ * - index_size is 4
+ * - instance_count is 1
+ * - index.resource comes from pipe_vertex_state
+ * - everything else is 0
+ */
+struct pipe_draw_vertex_state_info {
+#if defined(__GNUC__)
+   /* sizeof(mode) == 1 because it's a packed enum. */
+   enum pipe_prim_type mode;  /**< the mode of the primitive */
+#else
+   /* sizeof(mode) == 1 is required by draw merging in u_threaded_context. */
+   uint8_t mode;              /**< the mode of the primitive */
+#endif
+   bool take_vertex_state_ownership; /**< for skipping reference counting */
 };
 
 /**
