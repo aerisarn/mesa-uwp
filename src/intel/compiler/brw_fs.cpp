@@ -4037,11 +4037,9 @@ fs_visitor::lower_load_payload()
       }
 
       for (uint8_t i = inst->header_size; i < inst->sources; i++) {
+         dst.type = inst->src[i].type;
          if (inst->src[i].file != BAD_FILE) {
-            dst.type = inst->src[i].type;
             ibld.MOV(dst, inst->src[i]);
-         } else {
-            dst.type = BRW_REGISTER_TYPE_UD;
          }
          dst = offset(dst, ibld, 1);
       }
