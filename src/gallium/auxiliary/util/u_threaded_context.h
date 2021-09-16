@@ -145,6 +145,10 @@
  *    the threaded context wants to replace a resource's backing storage with
  *    another resource's backing storage. The threaded context uses it to
  *    implement buffer invalidation. This call is always queued.
+ *    Note that 'minimum_num_rebinds' specifies only the minimum number of rebinds
+ *    which must be managed by the driver; if a buffer is bound multiple times in
+ *    the same binding point (e.g., vertex buffer slots 0,1,2), this will be counted
+ *    as a single rebind.
  *
  *
  * Optional resource busy callbacks for better performance
@@ -290,7 +294,7 @@ enum tc_binding_type {
 typedef void (*tc_replace_buffer_storage_func)(struct pipe_context *ctx,
                                                struct pipe_resource *dst,
                                                struct pipe_resource *src,
-                                               unsigned num_rebinds,
+                                               unsigned minimum_num_rebinds,
                                                uint32_t rebind_mask,
                                                uint32_t delete_buffer_id);
 typedef struct pipe_fence_handle *(*tc_create_fence_func)(struct pipe_context *ctx,
