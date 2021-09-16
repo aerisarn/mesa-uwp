@@ -66,6 +66,14 @@ si_thread_trace_init_bo(struct si_context *sctx)
    return true;
 }
 
+static bool
+si_se_is_disabled(struct si_context* sctx, unsigned se)
+{
+   /* No active CU on the SE means it is disabled. */
+   return sctx->screen->info.cu_mask[se][0] == 0;
+}
+
+
 static void
 si_emit_thread_trace_start(struct si_context* sctx,
                            struct radeon_cmdbuf *cs,
@@ -81,6 +89,9 @@ si_emit_thread_trace_start(struct si_context* sctx,
       uint64_t va = sctx->ws->buffer_get_virtual_address(sctx->thread_trace->bo);
       uint64_t data_va = ac_thread_trace_get_data_va(&sctx->screen->info, sctx->thread_trace, va, se);
       uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
+
+      if (si_se_is_disabled(sctx, se))
+         continue;
 
       /* Target SEx and SH0. */
       radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
@@ -291,6 +302,9 @@ si_emit_thread_trace_stop(struct si_context *sctx,
    radeon_end();
 
    for (unsigned se = 0; se < max_se; se++) {
+      if (si_se_is_disabled(sctx, se))
+         continue;
+
       radeon_begin(cs);
 
       /* Target SEi and SH0. */
