@@ -745,8 +745,7 @@ panvk_meta_copy_img2img(struct panvk_cmd_buffer *cmdbuf,
    mali_ptr sampler =
       panvk_meta_copy_img_emit_sampler(pdev, &cmdbuf->desc_pool.base);
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
 
    minx = MAX2(region->srcOffset.x, 0);
    miny = MAX2(region->srcOffset.y, 0);
@@ -1200,8 +1199,7 @@ panvk_meta_copy_buf2img(struct panvk_cmd_buffer *cmdbuf,
       .rts[0].crc_valid = &cmdbuf->state.fb.crc_valid[0],
    };
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
 
    assert(region->imageSubresource.layerCount == 1 ||
           region->imageExtent.depth == 1);
@@ -1651,9 +1649,7 @@ panvk_meta_copy_img2buf(struct panvk_cmd_buffer *cmdbuf,
    mali_ptr sampler =
       panvk_meta_copy_img_emit_sampler(pdev, &cmdbuf->desc_pool.base);
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
-
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
    panvk_cmd_open_batch(cmdbuf);
 
    struct panvk_batch *batch = cmdbuf->state.batch;
@@ -1690,8 +1686,7 @@ panvk_meta_copy_img2buf(struct panvk_cmd_buffer *cmdbuf,
 
    util_dynarray_append(&batch->jobs, void *, job.cpu);
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
 }
 
 static void
@@ -1868,9 +1863,7 @@ panvk_meta_copy_buf2buf(struct panvk_cmd_buffer *cmdbuf,
    mali_ptr ubo =
       panvk_meta_copy_emit_ubo(pdev, &cmdbuf->desc_pool.base, &info, sizeof(info));
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
-
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
    panvk_cmd_open_batch(cmdbuf);
 
    struct panvk_batch *batch = cmdbuf->state.batch;
@@ -2040,9 +2033,7 @@ panvk_meta_fill_buf(struct panvk_cmd_buffer *cmdbuf,
    mali_ptr ubo =
       panvk_meta_copy_emit_ubo(pdev, &cmdbuf->desc_pool.base, &info, sizeof(info));
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
-
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
    panvk_cmd_open_batch(cmdbuf);
 
    struct panvk_batch *batch = cmdbuf->state.batch;
@@ -2103,9 +2094,7 @@ panvk_meta_update_buf(struct panvk_cmd_buffer *cmdbuf,
    mali_ptr ubo =
       panvk_meta_copy_emit_ubo(pdev, &cmdbuf->desc_pool.base, &info, sizeof(info));
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
-
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
    panvk_cmd_open_batch(cmdbuf);
 
    struct panvk_batch *batch = cmdbuf->state.batch;

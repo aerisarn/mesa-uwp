@@ -112,6 +112,10 @@ void
 panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
 {
    struct panvk_batch *batch = cmdbuf->state.batch;
+
+   if (!batch)
+      return;
+
    const struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
 #if PAN_ARCH <= 5
    uint32_t tmp_fbd[(pan_size(MULTI_TARGET_FRAMEBUFFER) +
@@ -760,9 +764,7 @@ panvk_per_arch(EndCommandBuffer)(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
-
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
    cmdbuf->status = PANVK_CMD_BUFFER_STATUS_EXECUTABLE;
 
    return cmdbuf->record_result;

@@ -100,8 +100,7 @@ panvk_meta_blit(struct panvk_cmd_buffer *cmdbuf,
       fbinfo->zs.view.s = &views[1];
    }
 
-   if (cmdbuf->state.batch)
-      panvk_per_arch(cmd_close_batch)(cmdbuf);
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
 
    GENX(pan_blit_ctx_init)(pdev, blitinfo, &cmdbuf->desc_pool.base, &ctx);
    do {
