@@ -127,7 +127,7 @@ screen_create(struct renderonly *ro)
    return etna_screen_create(dev, gpu, ro);
 }
 
-static struct hash_table *etna_tab = NULL;
+static struct hash_table *fd_tab = NULL;
 
 static mtx_t etna_screen_mutex = _MTX_INITIALIZER_NP;
 
@@ -141,7 +141,7 @@ etna_drm_screen_destroy(struct pipe_screen *pscreen)
    destroy = --screen->refcnt == 0;
    if (destroy) {
       int fd = etna_device_fd(screen->dev);
-      _mesa_hash_table_remove_key(etna_tab, intptr_to_pointer(fd));
+      _mesa_hash_table_remove_key(fd_tab, intptr_to_pointer(fd));
    }
    mtx_unlock(&etna_screen_mutex);
 
@@ -157,20 +157,20 @@ etna_drm_screen_create_renderonly(struct renderonly *ro)
    struct pipe_screen *pscreen = NULL;
 
    mtx_lock(&etna_screen_mutex);
-   if (!etna_tab) {
-      etna_tab = hash_table_create_file_description_keys();
-      if (!etna_tab)
+   if (!fd_tab) {
+      fd_tab = hash_table_create_file_description_keys();
+      if (!fd_tab)
          goto unlock;
    }
 
-   pscreen = util_hash_table_get(etna_tab, intptr_to_pointer(ro->gpu_fd));
+   pscreen = util_hash_table_get(fd_tab, intptr_to_pointer(ro->gpu_fd));
    if (pscreen) {
       etna_screen(pscreen)->refcnt++;
    } else {
       pscreen = screen_create(ro);
       if (pscreen) {
          int fd = etna_device_fd(etna_screen(pscreen)->dev);
-         _mesa_hash_table_insert(etna_tab, intptr_to_pointer(fd), pscreen);
+         _mesa_hash_table_insert(fd_tab, intptr_to_pointer(fd), pscreen);
 
          /* Bit of a hack, to avoid circular linkage dependency,
          * ie. pipe driver having to call in to winsys, we
