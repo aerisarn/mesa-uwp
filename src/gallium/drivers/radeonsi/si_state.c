@@ -5369,6 +5369,18 @@ static void si_set_raster_config(struct si_context *sctx, struct si_pm4_state *p
    }
 }
 
+unsigned gfx103_get_cu_mask_ps(struct si_screen *sscreen)
+{
+   /* It's wasteful to enable all CUs for PS if shader arrays have a different
+    * number of CUs. The reason is that the hardware sends the same number of PS
+    * waves to each shader array, so the slowest shader array limits the performance.
+    * Disable the extra CUs for PS in other shader arrays to save power and thus
+    * increase clocks for busy CUs. In the future, we might disable or enable this
+    * tweak only for certain apps.
+    */
+   return u_bit_consecutive(0, sscreen->info.min_good_cu_per_sa);
+}
+
 void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 {
    struct si_screen *sscreen = sctx->screen;
@@ -5458,15 +5470,8 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
    unsigned cu_mask_ps = 0xffffffff;
 
-   /* It's wasteful to enable all CUs for PS if shader arrays have a different
-    * number of CUs. The reason is that the hardware sends the same number of PS
-    * waves to each shader array, so the slowest shader array limits the performance.
-    * Disable the extra CUs for PS in other shader arrays to save power and thus
-    * increase clocks for busy CUs. In the future, we might disable or enable this
-    * tweak only for certain apps.
-    */
    if (sctx->chip_class >= GFX10_3)
-      cu_mask_ps = u_bit_consecutive(0, sscreen->info.min_good_cu_per_sa);
+      cu_mask_ps = gfx103_get_cu_mask_ps(sscreen);
 
    if (sctx->chip_class >= GFX7) {
       ac_set_reg_cu_en(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
@@ -5576,17 +5581,6 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    }
 
    if (sctx->chip_class >= GFX10) {
-      /* Logical CUs 16 - 31 */
-      ac_set_reg_cu_en(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS, S_00B004_CU_EN(cu_mask_ps >> 16),
-                       C_00B004_CU_EN, 16, &sscreen->info,
-                       (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
-      ac_set_reg_cu_en(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS, S_00B104_CU_EN(0xffff),
-                       C_00B104_CU_EN, 16, &sscreen->info,
-                       (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
-      ac_set_reg_cu_en(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS, S_00B404_CU_EN(0xffff),
-                       C_00B404_CU_EN, 16, &sscreen->info,
-                       (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
-
       si_pm4_set_reg(pm4, R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0, 0);
       si_pm4_set_reg(pm4, R_00B0CC_SPI_SHADER_USER_ACCUM_PS_1, 0);
       si_pm4_set_reg(pm4, R_00B0D0_SPI_SHADER_USER_ACCUM_PS_2, 0);
@@ -5664,6 +5658,19 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_030928_GE_INDX_OFFSET, 0);
       si_pm4_set_reg(pm4, R_03097C_GE_STEREO_CNTL, 0);
       si_pm4_set_reg(pm4, R_030988_GE_USER_VGPR_EN, 0);
+   }
+
+   if (sctx->chip_class >= GFX10 && sctx->chip_class <= GFX10_3) {
+      /* Logical CUs 16 - 31 */
+      ac_set_reg_cu_en(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS, S_00B004_CU_EN(cu_mask_ps >> 16),
+                       C_00B004_CU_EN, 16, &sscreen->info,
+                       (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
+      ac_set_reg_cu_en(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS, S_00B104_CU_EN(0xffff),
+                       C_00B104_CU_EN, 16, &sscreen->info,
+                       (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
+      ac_set_reg_cu_en(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS, S_00B404_CU_EN(0xffff),
+                       C_00B404_CU_EN, 16, &sscreen->info,
+                       (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
    }
 
    if (sctx->chip_class >= GFX10_3) {

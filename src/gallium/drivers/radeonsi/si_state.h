@@ -538,6 +538,7 @@ void si_update_ps_iter_samples(struct si_context *sctx);
 void si_save_qbo_state(struct si_context *sctx, struct si_qbo_state *st);
 void si_restore_qbo_state(struct si_context *sctx, struct si_qbo_state *st);
 void si_set_occlusion_query_state(struct si_context *sctx, bool old_perfect_enable);
+unsigned gfx103_get_cu_mask_ps(struct si_screen *sscreen);
 
 struct si_fast_udiv_info32 {
    unsigned multiplier; /* the "magic number" multiplier */
@@ -590,6 +591,7 @@ void si_ps_key_update_framebuffer_rasterizer_sample_shading(struct si_context *s
 void si_init_tess_factor_ring(struct si_context *sctx);
 bool si_update_gs_ring_buffers(struct si_context *sctx);
 bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes);
+unsigned si_calc_inst_pref_size(struct si_shader *shader);
 
 /* si_state_draw.cpp */
 void si_set_vertex_buffer_descriptor(struct si_screen *sscreen, struct si_vertex_elements *velems,
