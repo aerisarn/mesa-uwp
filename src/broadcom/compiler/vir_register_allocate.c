@@ -797,6 +797,9 @@ v3d_ra_favor_accum(struct v3d_ra_select_callback_data *v3d_ra,
                    BITSET_WORD *regs,
                    int priority)
 {
+        if (!v3d_ra->devinfo->has_accumulators)
+                return false;
+
         /* Favor accumulators if we have less that this number of physical
          * registers. Accumulators have more restrictions (like being
          * invalidated through thrsw), so running out of physical registers
@@ -832,6 +835,9 @@ v3d_ra_select_accum(struct v3d_ra_select_callback_data *v3d_ra,
                     BITSET_WORD *regs,
                     unsigned int *out)
 {
+        if (!v3d_ra->devinfo->has_accumulators)
+                return false;
+
         /* Choose r5 for our ldunifs if possible (nobody else can load to that
          * reg, and it keeps the QPU cond field free from being occupied by
          * ldunifrf).
