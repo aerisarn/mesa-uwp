@@ -323,6 +323,7 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    ici->pNext = NULL;
    ici->flags = modifiers_count || dmabuf || bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
    ici->usage = 0;
+   ici->queueFamilyIndexCount = 0;
 
    switch (templ->target) {
    case PIPE_TEXTURE_1D:
