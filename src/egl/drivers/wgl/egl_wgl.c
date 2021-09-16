@@ -491,9 +491,13 @@ wgl_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
    if (!_eglPutSurface(surf))
       return EGL_TRUE;
 
-   struct stw_context *ctx = stw_current_context();
-   stw_framebuffer_lock(wgl_surf->fb);
-   stw_framebuffer_release_locked(wgl_surf->fb, ctx ? ctx->st : NULL);
+   if (wgl_surf->fb->owner == STW_FRAMEBUFFER_PBUFFER) {
+      DestroyWindow(wgl_surf->fb->hWnd);
+   } else {
+      struct stw_context *ctx = stw_current_context();
+      stw_framebuffer_lock(wgl_surf->fb);
+      stw_framebuffer_release_locked(wgl_surf->fb, ctx ? ctx->st : NULL);
+   }
    return EGL_TRUE;
 }
 
@@ -688,6 +692,34 @@ wgl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
    return &wgl_surf->base;
 }
 
+static _EGLSurface*
+wgl_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
+                           const EGLint *attrib_list)
+{
+   struct wgl_egl_config *wgl_conf = wgl_egl_config(conf);
+
+   struct wgl_egl_surface *wgl_surf = calloc(1, sizeof(*wgl_surf));
+   if (!wgl_surf)
+      return NULL;
+
+   if (!_eglInitSurface(&wgl_surf->base, disp, EGL_PBUFFER_BIT, conf, attrib_list, NULL)) {
+      free(wgl_surf);
+      return NULL;
+   }
+
+   const struct stw_pixelformat_info *stw_conf = wgl_conf->stw_config[1] ?
+      wgl_conf->stw_config[1] : wgl_conf->stw_config[0];
+   wgl_surf->fb = stw_pbuffer_create(stw_conf->iPixelFormat, wgl_surf->base.Width, wgl_surf->base.Height);
+   if (!wgl_surf->fb) {
+      free(wgl_surf);
+      return NULL;
+   }
+
+   stw_framebuffer_unlock(wgl_surf->fb);
+
+   return &wgl_surf->base;
+}
+
 static EGLBoolean
 wgl_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
                   EGLint attribute, EGLint *value)
@@ -730,6 +762,7 @@ struct _egl_driver _eglDriver = {
    .DestroyContext = wgl_destroy_context,
    .MakeCurrent = wgl_make_current,
    .CreateWindowSurface = wgl_create_window_surface,
+   .CreatePbufferSurface = wgl_create_pbuffer_surface,
    .DestroySurface = wgl_destroy_surface,
    .QuerySurface = wgl_query_surface,
    .GetProcAddress = _glapi_get_proc_address,
