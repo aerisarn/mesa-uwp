@@ -312,9 +312,10 @@ if args.deqp:
     print_yellow("Running   dEQP tests", args.verbose > 0)
 
     # Generate a test-suite file
+    out = os.path.join(output_folder, "deqp")
     suite_filename = os.path.join(output_folder, "deqp-suite.toml")
     suite = open(suite_filename, "w")
-    os.mkdir(os.path.join(output_folder, "deqp"))
+    os.mkdir(out)
     baseline = os.path.join(base, "{}-deqp-fail.csv".format(gpu_name))
     new_baseline = os.path.join(
         new_baseline_folder, "{}-deqp-fail.csv".format(gpu_name)
