@@ -848,6 +848,7 @@ struct iris_context {
 
 struct pipe_context *
 iris_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
+void iris_destroy_context(struct pipe_context *ctx);
 
 void iris_lost_context_state(struct iris_batch *batch);
 
