@@ -689,6 +689,27 @@ wgl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
 }
 
 static EGLBoolean
+wgl_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
+                  EGLint attribute, EGLint *value)
+{
+   struct wgl_egl_surface *wgl_surf = wgl_egl_surface(surf);
+   RECT client_rect;
+
+   switch (attribute) {
+   case EGL_WIDTH:
+   case EGL_HEIGHT:
+      if (GetClientRect(wgl_surf->fb->hWnd, &client_rect)) {
+         surf->Width = client_rect.right;
+         surf->Height = client_rect.bottom;
+      }
+      break;
+   default:
+      break;
+   }
+   return _eglQuerySurface(disp, surf, attribute, value);
+}
+
+static EGLBoolean
 wgl_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 {
    struct wgl_egl_display *wgl_disp = wgl_egl_display(disp);
@@ -710,6 +731,7 @@ struct _egl_driver _eglDriver = {
    .MakeCurrent = wgl_make_current,
    .CreateWindowSurface = wgl_create_window_surface,
    .DestroySurface = wgl_destroy_surface,
+   .QuerySurface = wgl_query_surface,
    .GetProcAddress = _glapi_get_proc_address,
    .SwapBuffers = wgl_swap_buffers,
 };
