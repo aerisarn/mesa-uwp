@@ -37,7 +37,7 @@ static const bool split_blorp_blit_debug = false;
 
 struct brw_blorp_blit_vars {
    /* Input values from brw_blorp_wm_inputs */
-   nir_variable *v_discard_rect;
+   nir_variable *v_bounds_rect;
    nir_variable *v_rect_grid;
    nir_variable *v_coord_transform;
    nir_variable *v_src_z;
@@ -53,7 +53,7 @@ brw_blorp_blit_vars_init(nir_builder *b, struct brw_blorp_blit_vars *v,
 #define LOAD_INPUT(name, type)\
    v->v_##name = BLORP_CREATE_NIR_INPUT(b->shader, name, type);
 
-   LOAD_INPUT(discard_rect, glsl_vec4_type())
+   LOAD_INPUT(bounds_rect, glsl_vec4_type())
    LOAD_INPUT(rect_grid, glsl_vec4_type())
    LOAD_INPUT(coord_transform, glsl_vec4_type())
    LOAD_INPUT(src_z, glsl_float_type())
@@ -113,11 +113,11 @@ blorp_nir_discard_if_outside_rect(nir_builder *b, nir_ssa_def *pos,
                                   struct brw_blorp_blit_vars *v)
 {
    nir_ssa_def *c0, *c1, *c2, *c3;
-   nir_ssa_def *discard_rect = nir_load_var(b, v->v_discard_rect);
-   nir_ssa_def *dst_x0 = nir_channel(b, discard_rect, 0);
-   nir_ssa_def *dst_x1 = nir_channel(b, discard_rect, 1);
-   nir_ssa_def *dst_y0 = nir_channel(b, discard_rect, 2);
-   nir_ssa_def *dst_y1 = nir_channel(b, discard_rect, 3);
+   nir_ssa_def *bounds_rect = nir_load_var(b, v->v_bounds_rect);
+   nir_ssa_def *dst_x0 = nir_channel(b, bounds_rect, 0);
+   nir_ssa_def *dst_x1 = nir_channel(b, bounds_rect, 1);
+   nir_ssa_def *dst_y0 = nir_channel(b, bounds_rect, 2);
+   nir_ssa_def *dst_y1 = nir_channel(b, bounds_rect, 3);
 
    c0 = nir_ult(b, nir_channel(b, pos, 0), dst_x0);
    c1 = nir_uge(b, nir_channel(b, pos, 0), dst_x1);
@@ -1866,10 +1866,10 @@ try_blorp_blit(struct blorp_batch *batch,
    /* Round floating point values to nearest integer to avoid "off by one texel"
     * kind of errors when blitting.
     */
-   params->x0 = params->wm_inputs.discard_rect.x0 = round(coords->x.dst0);
-   params->y0 = params->wm_inputs.discard_rect.y0 = round(coords->y.dst0);
-   params->x1 = params->wm_inputs.discard_rect.x1 = round(coords->x.dst1);
-   params->y1 = params->wm_inputs.discard_rect.y1 = round(coords->y.dst1);
+   params->x0 = params->wm_inputs.bounds_rect.x0 = round(coords->x.dst0);
+   params->y0 = params->wm_inputs.bounds_rect.y0 = round(coords->y.dst0);
+   params->x1 = params->wm_inputs.bounds_rect.x1 = round(coords->x.dst1);
+   params->y1 = params->wm_inputs.bounds_rect.y1 = round(coords->y.dst1);
 
    brw_blorp_setup_coord_transform(&params->wm_inputs.coord_transform[0],
                                    coords->x.src0, coords->x.src1,

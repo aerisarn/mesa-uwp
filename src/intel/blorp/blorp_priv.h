@@ -99,16 +99,16 @@ struct brw_blorp_coord_transform
 };
 
 /**
- * Bounding rectangle telling pixel discard which pixels are not to be
- * touched. This is needed in when surfaces are configured as something else
- * what they really are:
+ * Bounding rectangle telling pixel discard which pixels are to be touched.
+ * This is needed in when surfaces are configured as something else what they
+ * really are:
  *
  *    - writing W-tiled stencil as Y-tiled
  *    - writing interleaved multisampled as single sampled.
  *
  * See blorp_nir_discard_if_outside_rect().
  */
-struct brw_blorp_discard_rect
+struct brw_blorp_bounds_rect
 {
    uint32_t x0;
    uint32_t x1;
@@ -136,7 +136,7 @@ struct brw_blorp_wm_inputs
 {
    uint32_t clear_color[4];
 
-   struct brw_blorp_discard_rect discard_rect;
+   struct brw_blorp_bounds_rect bounds_rect;
    struct brw_blorp_rect_grid rect_grid;
    struct brw_blorp_coord_transform coord_transform[2];
 
