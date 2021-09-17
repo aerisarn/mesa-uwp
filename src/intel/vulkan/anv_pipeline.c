@@ -392,15 +392,11 @@ populate_sampler_prog_key(const struct intel_device_info *devinfo,
 
 static void
 populate_base_prog_key(const struct intel_device_info *devinfo,
-                       VkPipelineShaderStageCreateFlags flags,
+                       enum brw_subgroup_size_type subgroup_size_type,
                        bool robust_buffer_acccess,
                        struct brw_base_prog_key *key)
 {
-   if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT)
-      key->subgroup_size_type = BRW_SUBGROUP_SIZE_VARYING;
-   else
-      key->subgroup_size_type = BRW_SUBGROUP_SIZE_API_CONSTANT;
-
+   key->subgroup_size_type = subgroup_size_type;
    key->robust_buffer_access = robust_buffer_acccess;
 
    populate_sampler_prog_key(devinfo, &key->tex);
@@ -408,13 +404,14 @@ populate_base_prog_key(const struct intel_device_info *devinfo,
 
 static void
 populate_vs_prog_key(const struct intel_device_info *devinfo,
-                     VkPipelineShaderStageCreateFlags flags,
+                     enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_vs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(devinfo, subgroup_size_type,
+                          robust_buffer_acccess, &key->base);
 
    /* XXX: Handle vertex input work-arounds */
 
@@ -423,38 +420,41 @@ populate_vs_prog_key(const struct intel_device_info *devinfo,
 
 static void
 populate_tcs_prog_key(const struct intel_device_info *devinfo,
-                      VkPipelineShaderStageCreateFlags flags,
+                      enum brw_subgroup_size_type subgroup_size_type,
                       bool robust_buffer_acccess,
                       unsigned input_vertices,
                       struct brw_tcs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(devinfo, subgroup_size_type,
+                          robust_buffer_acccess, &key->base);
 
    key->input_vertices = input_vertices;
 }
 
 static void
 populate_tes_prog_key(const struct intel_device_info *devinfo,
-                      VkPipelineShaderStageCreateFlags flags,
+                      enum brw_subgroup_size_type subgroup_size_type,
                       bool robust_buffer_acccess,
                       struct brw_tes_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(devinfo, subgroup_size_type,
+                          robust_buffer_acccess, &key->base);
 }
 
 static void
 populate_gs_prog_key(const struct intel_device_info *devinfo,
-                     VkPipelineShaderStageCreateFlags flags,
+                     enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_gs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(devinfo, subgroup_size_type,
+                          robust_buffer_acccess, &key->base);
 }
 
 static bool
@@ -548,35 +548,14 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
 
 static void
 populate_cs_prog_key(const struct intel_device_info *devinfo,
-                     VkPipelineShaderStageCreateFlags flags,
+                     enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
-                     const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info,
                      struct brw_cs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
-
-   if (rss_info) {
-      assert(key->base.subgroup_size_type != BRW_SUBGROUP_SIZE_VARYING);
-
-      /* These enum values are expressly chosen to be equal to the subgroup
-       * size that they require.
-       */
-      assert(rss_info->requiredSubgroupSize == 8 ||
-             rss_info->requiredSubgroupSize == 16 ||
-             rss_info->requiredSubgroupSize == 32);
-      key->base.subgroup_size_type = rss_info->requiredSubgroupSize;
-   } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT &&
-              !(flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT)) {
-      /* If the client expressly requests full subgroups and they don't
-       * specify a subgroup size neither allow varying subgroups, we need to
-       * pick one.  So we specify the API value of 32.  Performance will
-       * likely be terrible in this case but there's nothing we can do about
-       * that.  The client should have chosen a size.
-       */
-      key->base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_32;
-   }
+   populate_base_prog_key(devinfo, subgroup_size_type,
+                          robust_buffer_acccess, &key->base);
 }
 
 static void
@@ -1346,6 +1325,40 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
    }
 }
 
+static enum brw_subgroup_size_type
+anv_subgroup_size_type(gl_shader_stage stage,
+                       VkPipelineShaderStageCreateFlags flags,
+                       const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info)
+{
+   enum brw_subgroup_size_type subgroup_size_type;
+
+   if (rss_info) {
+      assert(stage == MESA_SHADER_COMPUTE);
+      /* These enum values are expressly chosen to be equal to the subgroup
+       * size that they require.
+       */
+      assert(rss_info->requiredSubgroupSize == 8 ||
+             rss_info->requiredSubgroupSize == 16 ||
+             rss_info->requiredSubgroupSize == 32);
+      subgroup_size_type = rss_info->requiredSubgroupSize;
+   } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) {
+      subgroup_size_type = BRW_SUBGROUP_SIZE_VARYING;
+   } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
+      assert(stage == MESA_SHADER_COMPUTE);
+      /* If the client expressly requests full subgroups and they don't
+       * specify a subgroup size neither allow varying subgroups, we need to
+       * pick one.  So we specify the API value of 32.  Performance will
+       * likely be terrible in this case but there's nothing we can do about
+       * that.  The client should have chosen a size.
+       */
+      subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_32;
+   } else {
+      subgroup_size_type = BRW_SUBGROUP_SIZE_API_CONSTANT;
+   }
+
+   return subgroup_size_type;
+}
+
 static void
 anv_pipeline_init_from_cached_graphics(struct anv_graphics_pipeline *pipeline)
 {
@@ -1411,26 +1424,29 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                                stages[stage].spec_info,
                                stages[stage].shader_sha1);
 
+      enum brw_subgroup_size_type subgroup_size_type =
+         anv_subgroup_size_type(stage, sinfo->flags, NULL);
+
       const struct intel_device_info *devinfo = &pipeline->base.device->info;
       switch (stage) {
       case MESA_SHADER_VERTEX:
-         populate_vs_prog_key(devinfo, sinfo->flags,
+         populate_vs_prog_key(devinfo, subgroup_size_type,
                               pipeline->base.device->robust_buffer_access,
                               &stages[stage].key.vs);
          break;
       case MESA_SHADER_TESS_CTRL:
-         populate_tcs_prog_key(devinfo, sinfo->flags,
+         populate_tcs_prog_key(devinfo, subgroup_size_type,
                                pipeline->base.device->robust_buffer_access,
                                info->pTessellationState->patchControlPoints,
                                &stages[stage].key.tcs);
          break;
       case MESA_SHADER_TESS_EVAL:
-         populate_tes_prog_key(devinfo, sinfo->flags,
+         populate_tes_prog_key(devinfo, subgroup_size_type,
                                pipeline->base.device->robust_buffer_access,
                                &stages[stage].key.tes);
          break;
       case MESA_SHADER_GEOMETRY:
-         populate_gs_prog_key(devinfo, sinfo->flags,
+         populate_gs_prog_key(devinfo, subgroup_size_type,
                               pipeline->base.device->robust_buffer_access,
                               &stages[stage].key.gs);
          break;
@@ -1438,7 +1454,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          const bool raster_enabled =
             !info->pRasterizationState->rasterizerDiscardEnable ||
             dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
-         populate_wm_prog_key(pipeline, sinfo->flags,
+         populate_wm_prog_key(pipeline, subgroup_size_type,
                               pipeline->base.device->robust_buffer_access,
                               pipeline->subpass,
                               raster_enabled ? info->pMultisampleState : NULL,
@@ -1823,9 +1839,12 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       vk_find_struct_const(info->stage.pNext,
                            PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
 
-   populate_cs_prog_key(&pipeline->base.device->info, info->stage.flags,
+   const enum brw_subgroup_size_type subgroup_size_type =
+      anv_subgroup_size_type(MESA_SHADER_COMPUTE, info->stage.flags, rss_info);
+
+   populate_cs_prog_key(&pipeline->base.device->info, subgroup_size_type,
                         pipeline->base.device->robust_buffer_access,
-                        rss_info, &stage.key.cs);
+                        &stage.key.cs);
 
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
 
