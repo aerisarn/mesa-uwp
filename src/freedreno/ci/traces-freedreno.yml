@@ -413,14 +413,14 @@ traces:
       # - device: freedreno-a306
       #   checksum: 751e0e784ba2f003cfc456fe8699f1fa
       - device: freedreno-a530
-        checksum: a8580a2a85f37600c15fb897cd874432
+        checksum: ba53d1ffbe911171546a93259fb2e57c
       - device: freedreno-a630
-        checksum: 66d7cfb1aedfe40048fe2cdf8032071c
+        checksum: 313ef615f0f5a11eeaf95a2a87769a32
 # Note: Requires GL3.3
   - path: gputest/gimark.trace
     expectations:
       - device: freedreno-a630
-        checksum: 286cab0d6d6562d5dcc969d778cfa666
+        checksum: e58167bd8eeb8952facbc00ff0449135
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: freedreno-a630
@@ -459,7 +459,7 @@ traces:
   - path: gputest/tessmark.trace
     expectations:
       - device: freedreno-a630
-        checksum: 93d7cb8c775a7b60c499695045edc07f
+        checksum: af356a98c4d55fb10613a11fbe687adb
   - path: gputest/triangle.trace
     expectations:
       - device: freedreno-a306
