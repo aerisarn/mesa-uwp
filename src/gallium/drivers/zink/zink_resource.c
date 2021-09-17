@@ -553,7 +553,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          .scanout = true,
       };
 
-      if ((screen->needs_mesa_wsi || screen->needs_mesa_flush_wsi) && scanout) {
+      if ((screen->needs_mesa_wsi || screen->needs_mesa_flush_wsi) && scanout &&
+          ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
          image_wsi_info.pNext = ici.pNext;
          ici.pNext = &image_wsi_info;
       }
