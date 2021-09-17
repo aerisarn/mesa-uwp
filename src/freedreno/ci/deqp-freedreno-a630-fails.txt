@@ -63,7 +63,6 @@ dEQP-VK.api.info.image_format_properties.2d.optimal.g8_b8_r8_3plane_420_unorm,Fa
 dEQP-VK.api.info.image_format_properties.2d.optimal.g8_b8r8_2plane_420_unorm,Fail
 
 # Fails when TU_DEBUG=forcebin is set
-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
 
