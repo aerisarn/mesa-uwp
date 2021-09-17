@@ -51,6 +51,9 @@ fd6_context_destroy(struct pipe_context *pctx) in_dt
    u_upload_destroy(fd6_ctx->border_color_uploader);
    pipe_resource_reference(&fd6_ctx->border_color_buf, NULL);
 
+   if (fd6_ctx->streamout_disable_stateobj)
+      fd_ringbuffer_del(fd6_ctx->streamout_disable_stateobj);
+
    fd_context_destroy(pctx);
 
    if (fd6_ctx->vsc_draw_strm)

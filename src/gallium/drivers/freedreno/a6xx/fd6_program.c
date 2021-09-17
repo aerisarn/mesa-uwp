@@ -152,6 +152,35 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_RELOC(ring, so->bo, 0, 0, 0);
 }
 
+/**
+ * Build a pre-baked state-obj to disable SO, so that we aren't dynamically
+ * building this at draw time whenever we transition from SO enabled->disabled
+ */
+static void
+setup_stream_out_disable(struct fd_context *ctx)
+{
+   unsigned sizedw = 4;
+
+   if (ctx->screen->info->a6xx.tess_use_shared)
+      sizedw += 2;
+
+   struct fd_ringbuffer *ring =
+      fd_ringbuffer_new_object(ctx->pipe, (1 + sizedw) * 4);
+
+   OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, sizedw);
+   OUT_RING(ring, REG_A6XX_VPC_SO_CNTL);
+   OUT_RING(ring, 0);
+   OUT_RING(ring, REG_A6XX_VPC_SO_STREAM_CNTL);
+   OUT_RING(ring, 0);
+
+   if (ctx->screen->info->a6xx.tess_use_shared) {
+      OUT_RING(ring, REG_A6XX_PC_SO_STREAM_CNTL);
+      OUT_RING(ring, 0);
+   }
+
+   fd6_context(ctx)->streamout_disable_stateobj = ring;
+}
+
 static void
 setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
                  const struct ir3_shader_variant *v,
@@ -568,6 +597,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
     */
    if (do_streamout && !binning_pass) {
       setup_stream_out(ctx, state, last_shader, &l);
+
+      if (!fd6_context(ctx)->streamout_disable_stateobj)
+         setup_stream_out_disable(ctx);
    }
 
    debug_assert(l.cnt <= 32);
