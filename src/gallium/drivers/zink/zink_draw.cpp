@@ -84,8 +84,6 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
          /* resource has been rebound */
          t->counter_buffer_valid = false;
       buffers[i] = res->obj->buffer;
-      zink_resource_buffer_barrier(ctx, zink_resource(t->base.buffer),
-                                   VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
       zink_batch_reference_resource_rw(batch, res, true);
       buffer_offsets[i] = t->base.buffer_offset;
       buffer_sizes[i] = t->base.buffer_size;
@@ -490,6 +488,54 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->buffer_rebind_counter = screen->buffer_rebind_counter;
       zink_rebind_all_buffers(ctx);
    }
+
+   unsigned index_offset = 0;
+   unsigned index_size = dinfo->index_size;
+   struct pipe_resource *index_buffer = NULL;
+   if (index_size > 0) {
+      if (dinfo->has_user_indices) {
+         if (!util_upload_index_buffer(pctx, dinfo, &draws[0], &index_buffer, &index_offset, 4)) {
+            debug_printf("util_upload_index_buffer() failed\n");
+            return;
+         }
+         zink_batch_reference_resource_move(batch, zink_resource(index_buffer));
+      } else {
+         index_buffer = dinfo->index.resource;
+         zink_batch_reference_resource_rw(batch, zink_resource(index_buffer), false);
+      }
+      assert(index_size <= 4 && index_size != 3);
+      assert(index_size != 1 || screen->info.have_EXT_index_type_uint8);
+   }
+
+   bool have_streamout = !!ctx->num_so_targets;
+   if (have_streamout) {
+      if (ctx->xfb_barrier)
+         zink_emit_xfb_counter_barrier(ctx);
+      if (ctx->dirty_so_targets) {
+         /* have to loop here and below because barriers must be emitted out of renderpass,
+          * but xfb buffers can't be bound before the renderpass is active to avoid
+          * breaking from recursion
+          */
+         for (unsigned i = 0; i < ctx->num_so_targets; i++) {
+            struct zink_so_target *t = (struct zink_so_target *)ctx->so_targets[i];
+            if (t)
+               zink_resource_buffer_barrier(ctx, zink_resource(t->base.buffer),
+                                            VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+         }
+      }
+   }
+
+   if (so_target)
+      zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
+
+   barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
+
+   if (BATCH_CHANGED)
+      zink_update_descriptor_refs(ctx, false);
+
+   zink_batch_rp(ctx);
+
+   /* these must be after renderpass start to avoid issues with recursion */
    uint8_t vertices_per_patch = ctx->gfx_pipeline_state.patch_vertices ? ctx->gfx_pipeline_state.patch_vertices - 1 : 0;
    if (ctx->gfx_pipeline_state.vertices_per_patch != vertices_per_patch)
       ctx->gfx_pipeline_state.dirty = true;
@@ -515,28 +561,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
    ctx->gfx_pipeline_state.gfx_prim_mode = mode;
 
-   if (!HAS_DYNAMIC_STATE2) {
-      if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
-         ctx->gfx_pipeline_state.dirty = true;
-      ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
-   }
-
-   unsigned index_offset = 0;
-   unsigned index_size = dinfo->index_size;
-   struct pipe_resource *index_buffer = NULL;
-   if (index_size > 0) {
-      if (dinfo->has_user_indices) {
-         if (!util_upload_index_buffer(pctx, dinfo, &draws[0], &index_buffer, &index_offset, 4)) {
-            debug_printf("util_upload_index_buffer() failed\n");
-            return;
-         }
-         zink_batch_reference_resource_move(batch, zink_resource(index_buffer));
-      } else {
-         index_buffer = dinfo->index.resource;
-         zink_batch_reference_resource_rw(batch, zink_resource(index_buffer), false);
-      }
-      assert(index_size <= 4 && index_size != 3);
-      assert(index_size != 1 || screen->info.have_EXT_index_type_uint8);
+   if (index_size) {
       const VkIndexType index_type[3] = {
          VK_INDEX_TYPE_UINT8_EXT,
          VK_INDEX_TYPE_UINT16,
@@ -545,24 +570,15 @@ zink_draw_vbo(struct pipe_context *pctx,
       struct zink_resource *res = zink_resource(index_buffer);
       VKCTX(CmdBindIndexBuffer)(batch->state->cmdbuf, res->obj->buffer, index_offset, index_type[index_size >> 1]);
    }
-
-   bool have_streamout = !!ctx->num_so_targets;
-   if (have_streamout) {
-      if (ctx->xfb_barrier)
-         zink_emit_xfb_counter_barrier(ctx);
-      if (ctx->dirty_so_targets)
-         zink_emit_stream_output_targets(pctx);
+   if (!HAS_DYNAMIC_STATE2) {
+      if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
+         ctx->gfx_pipeline_state.dirty = true;
+      ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
    }
 
-   if (so_target)
-      zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
+   if (have_streamout && ctx->dirty_so_targets)
+      zink_emit_stream_output_targets(pctx);
 
-   barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
-
-   if (BATCH_CHANGED)
-      zink_update_descriptor_refs(ctx, false);
-
-   zink_batch_rp(ctx);
    bool pipeline_changed = false;
    if (!HAS_DYNAMIC_STATE)
       pipeline_changed = update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
