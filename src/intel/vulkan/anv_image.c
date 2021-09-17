@@ -1276,6 +1276,7 @@ anv_image_create(VkDevice _device,
       anv_image_create_usage(pCreateInfo, image->vk.stencil_usage);
 
    if (pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      assert(!image->vk.wsi_legacy_scanout);
       mod_explicit_info =
          vk_find_struct_const(pCreateInfo->pNext,
                               IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT);
