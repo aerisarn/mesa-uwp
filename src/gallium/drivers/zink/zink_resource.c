@@ -949,10 +949,10 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
          return false;
       if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
          uint32_t h;
-         if (drmPrimeFDToHandle(screen->drm_fd, fd, &h)) {
-            return false;
-         }
+         bool success = drmPrimeFDToHandle(screen->drm_fd, fd, &h) == 0;
          close(fd);
+         if (!success)
+            return false;
          fd = h;
       }
       whandle->handle = fd;
