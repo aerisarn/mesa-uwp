@@ -482,7 +482,8 @@ zink_draw_vbo(struct pipe_context *pctx,
          return;
    }
 
-   zink_flush_memory_barrier(ctx, false);
+   if (ctx->memory_barrier)
+      zink_flush_memory_barrier(ctx, false);
    update_barriers(ctx, false);
 
    if (unlikely(ctx->buffer_rebind_counter < screen->buffer_rebind_counter)) {
@@ -843,7 +844,8 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    struct zink_batch *batch = &ctx->batch;
 
    update_barriers(ctx, true);
-   zink_flush_memory_barrier(ctx, true);
+   if (ctx->memory_barrier)
+      zink_flush_memory_barrier(ctx, true);
 
    if (zink_program_has_descriptors(&ctx->curr_compute->base))
       screen->descriptors_update(ctx, true);
