@@ -2443,6 +2443,29 @@ fill_surface_state(struct isl_device *isl_dev,
    isl_surf_fill_state_s(isl_dev, map, &f);
 }
 
+static void
+fill_surface_states(struct isl_device *isl_dev,
+                    struct iris_surface_state *surf_state,
+                    struct iris_resource *res,
+                    struct isl_surf *surf,
+                    struct isl_view *view,
+                    uint64_t extra_main_offset,
+                    uint32_t tile_x_sa,
+                    uint32_t tile_y_sa)
+{
+   void *map = surf_state->cpu;
+   unsigned aux_modes = surf_state->aux_usages;
+
+   while (aux_modes) {
+      enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
+
+      fill_surface_state(isl_dev, map, res, surf, view, aux_usage,
+                         extra_main_offset, tile_x_sa, tile_y_sa);
+
+      map += SURFACE_STATE_ALIGNMENT;
+   }
+}
+
 /**
  * The pipe->create_sampler_view() driver hook.
  */
@@ -2519,15 +2542,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
             tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
       }
 
-      unsigned aux_modes = isv->res->aux.sampler_usages;
-      while (aux_modes) {
-         enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-
-         fill_surface_state(&screen->isl_dev, map, isv->res, &isv->res->surf,
-                            &isv->view, aux_usage, 0, 0, 0);
-
-         map += SURFACE_STATE_ALIGNMENT;
-      }
+      fill_surface_states(&screen->isl_dev, &isv->surface_state, isv->res,
+                          &isv->res->surf, &isv->view, 0, 0, 0);
    } else {
       fill_buffer_surface_state(&screen->isl_dev, isv->res, map,
                                 isv->view.format, isv->view.swizzle,
@@ -2677,28 +2693,16 @@ iris_create_surface(struct pipe_context *ctx,
 #endif
 
    if (!isl_format_is_compressed(res->surf.format)) {
-      void *map = surf->surface_state.cpu;
-      UNUSED void *map_read = surf->surface_state_read.cpu;
-
       /* This is a normal surface.  Fill out a SURFACE_STATE for each possible
        * auxiliary surface mode and return the pipe_surface.
        */
-      unsigned aux_modes = res->aux.possible_usages;
-      while (aux_modes) {
-         enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-         fill_surface_state(&screen->isl_dev, map, res, &res->surf,
-                            view, aux_usage, 0, 0, 0);
-         map += SURFACE_STATE_ALIGNMENT;
-
+      fill_surface_states(&screen->isl_dev, &surf->surface_state, res,
+                          &res->surf, view, 0, 0, 0);
 #if GFX_VER == 8
-         fill_surface_state(&screen->isl_dev, map_read, res,
-                            &read_surf, read_view, aux_usage,
-                            read_surf_offset_B,
-                            read_surf_tile_x_sa, read_surf_tile_y_sa);
-         map_read += SURFACE_STATE_ALIGNMENT;
+      fill_surface_states(&screen->isl_dev, &surf->surface_state_read, res,
+                          &read_surf, read_view, read_surf_offset_B,
+                          read_surf_tile_x_sa, read_surf_tile_y_sa);
 #endif
-      }
-
       return psurf;
    }
 
@@ -2839,15 +2843,8 @@ iris_set_shader_images(struct pipe_context *ctx,
                                          0, res->bo->size,
                                          ISL_SURF_USAGE_STORAGE_BIT);
             } else {
-               unsigned aux_modes = aux_usages;
-               while (aux_modes) {
-                  enum isl_aux_usage usage = u_bit_scan(&aux_modes);
-
-                  fill_surface_state(&screen->isl_dev, map, res, &res->surf,
-                                     &view, usage, 0, 0, 0);
-
-                  map += SURFACE_STATE_ALIGNMENT;
-               }
+               fill_surface_states(&screen->isl_dev, &iv->surface_state, res,
+                                   &res->surf, &view, 0, 0, 0);
             }
 
             isl_surf_fill_image_param(&screen->isl_dev,
@@ -4865,14 +4862,7 @@ update_clear_value(struct iris_context *ice,
    /* TODO: Could update rather than re-filling */
    alloc_surface_states(surf_state, surf_state->aux_usages);
 
-   void *map = surf_state->cpu;
-
-   while (aux_modes) {
-      enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-      fill_surface_state(isl_dev, map, res, &res->surf, view, aux_usage,
-                         0, 0, 0);
-      map += SURFACE_STATE_ALIGNMENT;
-   }
+   fill_surface_states(isl_dev, surf_state, res, &res->surf, view, 0, 0, 0);
 
    upload_surface_states(ice->state.surface_uploader, surf_state);
 #endif
