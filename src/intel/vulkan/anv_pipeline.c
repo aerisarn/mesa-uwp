@@ -1392,12 +1392,26 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
    }
 }
 
+static uint32_t
+get_module_spirv_version(const struct vk_shader_module *module)
+{
+   uint32_t *spirv = (uint32_t *) module->data;
+   assert(module->size >= 8);
+   assert(spirv[0] == SPIR_V_MAGIC_NUMBER);
+   return spirv[1];
+}
+
 static enum brw_subgroup_size_type
 anv_subgroup_size_type(gl_shader_stage stage,
+                       const struct vk_shader_module *module,
                        VkPipelineShaderStageCreateFlags flags,
                        const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info)
 {
    enum brw_subgroup_size_type subgroup_size_type;
+
+   const bool allow_varying =
+      flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT ||
+      get_module_spirv_version(module) >= 0x10600;
 
    if (rss_info) {
       assert(stage == MESA_SHADER_COMPUTE);
@@ -1408,7 +1422,7 @@ anv_subgroup_size_type(gl_shader_stage stage,
              rss_info->requiredSubgroupSize == 16 ||
              rss_info->requiredSubgroupSize == 32);
       subgroup_size_type = rss_info->requiredSubgroupSize;
-   } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) {
+   } else if (allow_varying) {
       subgroup_size_type = BRW_SUBGROUP_SIZE_VARYING;
    } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
       assert(stage == MESA_SHADER_COMPUTE);
@@ -1490,7 +1504,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                                stages[stage].shader_sha1);
 
       enum brw_subgroup_size_type subgroup_size_type =
-         anv_subgroup_size_type(stage, sinfo->flags, NULL);
+         anv_subgroup_size_type(stage, stages[stage].module, sinfo->flags, NULL);
 
       const struct intel_device_info *devinfo = &pipeline->base.device->info;
       switch (stage) {
@@ -1915,7 +1929,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                            PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
 
    const enum brw_subgroup_size_type subgroup_size_type =
-      anv_subgroup_size_type(MESA_SHADER_COMPUTE, info->stage.flags, rss_info);
+      anv_subgroup_size_type(MESA_SHADER_COMPUTE, stage.module, info->stage.flags, rss_info);
 
    populate_cs_prog_key(&pipeline->base.device->info, subgroup_size_type,
                         pipeline->base.device->robust_buffer_access,
