@@ -567,18 +567,15 @@ populate_cs_prog_key(const struct intel_device_info *devinfo,
              rss_info->requiredSubgroupSize == 16 ||
              rss_info->requiredSubgroupSize == 32);
       key->base.subgroup_size_type = rss_info->requiredSubgroupSize;
-   } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
+   } else if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT &&
+              !(flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT)) {
       /* If the client expressly requests full subgroups and they don't
-       * specify a subgroup size, we need to pick one.  If they're requested
-       * varying subgroup sizes, we set it to UNIFORM and let the back-end
-       * compiler pick.  Otherwise, we specify the API value of 32.
-       * Performance will likely be terrible in this case but there's nothing
-       * we can do about that.  The client should have chosen a size.
+       * specify a subgroup size neither allow varying subgroups, we need to
+       * pick one.  So we specify the API value of 32.  Performance will
+       * likely be terrible in this case but there's nothing we can do about
+       * that.  The client should have chosen a size.
        */
-      if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT)
-         key->base.subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM;
-      else
-         key->base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_32;
+      key->base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_32;
    }
 }
 
