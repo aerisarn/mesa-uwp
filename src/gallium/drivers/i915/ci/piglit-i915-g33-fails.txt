@@ -512,8 +512,7 @@ spec@ext_framebuffer_object@fbo-colormask-formats@GL_LUMINANCE4,Fail
 spec@ext_framebuffer_object@fbo-colormask-formats@GL_LUMINANCE8,Fail
 spec@ext_framebuffer_object@fbo-depth-sample-compare,Fail
 
-# Maybe test bug?
-# "Mesa: User error: GL_INVALID_OPERATION in glDrawBuffer(invalid buffer GL_BACK)"
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4980
 spec@ext_framebuffer_object@fbo-fragcoord2,Fail
 
 spec@ext_framebuffer_object@fbo-generatemipmap-filtering,Fail
