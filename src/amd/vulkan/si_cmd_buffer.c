@@ -369,6 +369,15 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       radeon_set_context_reg(cs, R_028C50_PA_SC_NGG_MODE_CNTL, S_028C50_MAX_DEALLOCS_IN_WAVE(512));
       radeon_set_context_reg(cs, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
 
+      /* Vulkan doesn't support user edge flags and it also doesn't
+       * need to prevent drawing lines on internal edges of
+       * decomposed primitives (such as quads) with polygon mode = lines.
+       */
+      unsigned vertex_reuse_depth = physical_device->rad_info.chip_class >= GFX10_3 ? 30 : 0;
+      radeon_set_context_reg(cs, R_028838_PA_CL_NGG_CNTL,
+                             S_028838_INDEX_BUF_EDGE_FLAG_ENA(0) |
+                             S_028838_VERTEX_REUSE_DEPTH(vertex_reuse_depth));
+
       /* Enable CMASK/FMASK/HTILE/DCC caching in L2 for small chips. */
       unsigned meta_write_policy, meta_read_policy;
 
