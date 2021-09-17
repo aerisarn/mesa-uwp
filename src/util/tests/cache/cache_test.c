@@ -524,6 +524,69 @@ test_put_key_and_get_key(void)
 
    disk_cache_destroy(cache);
 }
+
+/* To make sure we are not just using the inmemory cache index for the single
+ * file cache we test adding and retriving cache items between two different
+ * cache instances.
+ */
+static void
+test_put_and_get_between_instances()
+{
+   char blob[] = "This is a blob of thirty-seven bytes";
+   uint8_t blob_key[20];
+   char string[] = "While this string has thirty-four";
+   uint8_t string_key[20];
+   char *result;
+   size_t size;
+
+#ifdef SHADER_CACHE_DISABLE_BY_DEFAULT
+   setenv("MESA_GLSL_CACHE_DISABLE", "false", 1);
+#endif /* SHADER_CACHE_DISABLE_BY_DEFAULT */
+
+   struct disk_cache *cache1 = disk_cache_create("test_between_instances",
+                                                 "make_check", 0);
+   struct disk_cache *cache2 = disk_cache_create("test_between_instances",
+                                                 "make_check", 0);
+
+   disk_cache_compute_key(cache1, blob, sizeof(blob), blob_key);
+
+   /* Ensure that disk_cache_get returns nothing before anything is added. */
+   result = disk_cache_get(cache1, blob_key, &size);
+   expect_null(result, "disk_cache_get(cache1) with non-existent item (pointer)");
+   expect_equal(size, 0, "disk_cache_get(cach1) with non-existent item (size)");
+
+   result = disk_cache_get(cache2, blob_key, &size);
+   expect_null(result, "disk_cache_get(cache2) with non-existent item (pointer)");
+   expect_equal(size, 0, "disk_cache_get(cache2) with non-existent item (size)");
+
+   /* Simple test of put and get. */
+   disk_cache_put(cache1, blob_key, blob, sizeof(blob), NULL);
+
+   /* disk_cache_put() hands things off to a thread so wait for it. */
+   disk_cache_wait_for_idle(cache1);
+
+   result = disk_cache_get(cache2, blob_key, &size);
+   expect_equal_str(blob, result, "disk_cache_get(cache2) of existing item (pointer)");
+   expect_equal(size, sizeof(blob), "disk_cache_get of(cache2) existing item (size)");
+
+   free(result);
+
+   /* Test put and get of a second item, via the opposite instances */
+   disk_cache_compute_key(cache2, string, sizeof(string), string_key);
+   disk_cache_put(cache2, string_key, string, sizeof(string), NULL);
+
+   /* disk_cache_put() hands things off to a thread so wait for it. */
+   disk_cache_wait_for_idle(cache2);
+
+   result = disk_cache_get(cache1, string_key, &size);
+   expect_equal_str(result, string, "2nd disk_cache_get(cache1) of existing item (pointer)");
+   expect_equal(size, sizeof(string), "2nd disk_cache_get(cache1) of existing item (size)");
+
+   free(result);
+
+   disk_cache_destroy(cache1);
+   disk_cache_destroy(cache2);
+}
 #endif /* ENABLE_SHADER_CACHE */
 
 static void
@@ -562,6 +625,8 @@ test_single_file_cache(void)
    test_put_and_get(false);
 
    test_put_key_and_get_key();
+
+   test_put_and_get_between_instances();
 
    setenv("MESA_DISK_CACHE_SINGLE_FILE", "false", 1);
 
