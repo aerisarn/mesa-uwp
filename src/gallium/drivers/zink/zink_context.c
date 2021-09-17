@@ -1702,12 +1702,11 @@ setup_framebuffer(struct zink_context *ctx)
 }
 
 static VkImageView
-prep_fb_attachment(struct zink_context *ctx, struct pipe_surface *psurf, unsigned i)
+prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned i)
 {
-   if (!psurf)
+   if (!surf)
       return zink_csurface(ctx->dummy_surface[util_logbase2_ceil(ctx->fb_state.samples)])->image_view;
 
-   struct zink_surface *surf = zink_csurface(psurf);
    zink_batch_resource_usage_set(&ctx->batch, zink_resource(surf->base.texture), true);
    zink_batch_usage_set(&surf->batch_uses, ctx->batch.state);
 
@@ -1718,6 +1717,21 @@ prep_fb_attachment(struct zink_context *ctx, struct pipe_surface *psurf, unsigne
                                                                        i, &pipeline, &access);
    zink_resource_image_barrier(ctx, res, layout, access, pipeline);
    return surf->image_view;
+}
+
+static void
+prep_fb_attachments(struct zink_context *ctx, VkImageView *att)
+{
+   const unsigned cresolve_offset = ctx->fb_state.nr_cbufs + !!ctx->fb_state.zsbuf;
+   unsigned num_resolves = 0;
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
+      att[i] = prep_fb_attachment(ctx, surf, i);
+   }
+   if (ctx->fb_state.zsbuf) {
+      struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
+      att[ctx->fb_state.nr_cbufs] = prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
+   }
 }
 
 static unsigned
@@ -1784,9 +1798,7 @@ begin_render_pass(struct zink_context *ctx)
    infos.pNext = NULL;
    infos.attachmentCount = ctx->framebuffer->state.num_attachments;
    infos.pAttachments = att;
-   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++)
-      att[i] = prep_fb_attachment(ctx, ctx->fb_state.cbufs[i], i);
-   att[ctx->fb_state.nr_cbufs] = prep_fb_attachment(ctx, ctx->fb_state.zsbuf, ctx->fb_state.nr_cbufs);
+   prep_fb_attachments(ctx, att);
    if (zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer) {
 #ifndef NDEBUG
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
