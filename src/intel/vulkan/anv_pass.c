@@ -275,15 +275,24 @@ vk_image_layout_depth_only(VkImageLayout layout)
 static VkImageLayout
 stencil_ref_layout(const VkAttachmentReference2KHR *att_ref)
 {
-   if (!vk_image_layout_depth_only(att_ref->layout))
-      return att_ref->layout;
-
    const VkAttachmentReferenceStencilLayoutKHR *stencil_ref =
       vk_find_struct_const(att_ref->pNext,
                            ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR);
-   if (!stencil_ref)
-      return VK_IMAGE_LAYOUT_UNDEFINED;
-   return stencil_ref->stencilLayout;
+
+   if (stencil_ref)
+      return stencil_ref->stencilLayout;
+
+   /* From VUID-VkAttachmentReference2-attachment-04755:
+    *  "If attachment is not VK_ATTACHMENT_UNUSED, and the format of the
+    *   referenced attachment is a depth/stencil format which includes both
+    *   depth and stencil aspects, and layout is
+    *   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL or
+    *   VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL, the pNext chain must include
+    *   a VkAttachmentReferenceStencilLayout structure."
+    */
+   assert(!vk_image_layout_depth_only(att_ref->layout));
+
+   return att_ref->layout;
 }
 
 /* From the Vulkan Specification 1.2.166 - VkAttachmentDescription2:
@@ -301,18 +310,29 @@ stencil_desc_layout(const VkAttachmentDescription2KHR *att_desc, bool final)
    if (!vk_format_has_stencil(att_desc->format))
       return VK_IMAGE_LAYOUT_UNDEFINED;
 
-   const VkImageLayout main_layout =
-      final ? att_desc->finalLayout : att_desc->initialLayout;
-   if (!vk_image_layout_depth_only(main_layout))
-      return main_layout;
-
    const VkAttachmentDescriptionStencilLayoutKHR *stencil_desc =
       vk_find_struct_const(att_desc->pNext,
                            ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT_KHR);
-   assert(stencil_desc);
-   return final ?
-      stencil_desc->stencilFinalLayout :
-      stencil_desc->stencilInitialLayout;
+
+   if (stencil_desc) {
+      return final ?
+         stencil_desc->stencilFinalLayout :
+         stencil_desc->stencilInitialLayout;
+   }
+
+   const VkImageLayout main_layout =
+      final ? att_desc->finalLayout : att_desc->initialLayout;
+
+   /* From VUID-VkAttachmentDescription2-format-03302/03303:
+    *  "If format is a depth/stencil format which includes both depth and
+    *   stencil aspects, and initial/finalLayout is
+    *   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL or
+    *   VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL, the pNext chain must include
+    *   a VkAttachmentDescriptionStencilLayout structure."
+    */
+   assert(!vk_image_layout_depth_only(main_layout));
+
+   return main_layout;
 }
 
 VkResult anv_CreateRenderPass2(
