@@ -982,6 +982,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
             key->vs_common_out.as_ngg_passthrough,
             key->vs_common_out.export_prim_id,
             key->vs.provoking_vtx_last,
+            false,
             key->vs.instance_rate_inputs);
 
       info->has_ngg_culling = out_conf.can_cull;

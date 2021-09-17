@@ -51,6 +51,7 @@ typedef struct
    bool passthrough;
    bool export_prim_id;
    bool early_prim_export;
+   bool use_edgeflags;
    unsigned wave_size;
    unsigned max_num_waves;
    unsigned num_vertices_per_primitives;
@@ -294,9 +295,10 @@ pervertex_lds_addr(nir_builder *b, nir_ssa_def *vertex_idx, unsigned per_vtx_byt
 
 static nir_ssa_def *
 emit_pack_ngg_prim_exp_arg(nir_builder *b, unsigned num_vertices_per_primitives,
-                           nir_ssa_def *vertex_indices[3], nir_ssa_def *is_null_prim)
+                           nir_ssa_def *vertex_indices[3], nir_ssa_def *is_null_prim,
+                           bool use_edgeflags)
 {
-   nir_ssa_def *arg = b->shader->info.stage == MESA_SHADER_VERTEX
+   nir_ssa_def *arg = use_edgeflags
                       ? nir_build_load_initial_edgeflags_amd(b)
                       : nir_imm_int(b, 0);
 
@@ -339,7 +341,7 @@ emit_ngg_nogs_prim_exp_arg(nir_builder *b, lower_ngg_nogs_state *st)
                ? ngg_input_primitive_vertex_index(b, 2)
                : nir_imm_zero(b, 1, 32);
 
-      return emit_pack_ngg_prim_exp_arg(b, st->num_vertices_per_primitives, vtx_idx, NULL);
+      return emit_pack_ngg_prim_exp_arg(b, st->num_vertices_per_primitives, vtx_idx, NULL, st->use_edgeflags);
    }
 }
 
@@ -741,7 +743,7 @@ compact_vertices_after_culling(nir_builder *b,
          exporter_vtx_indices[v] = nir_u2u32(b, exporter_vtx_idx);
       }
 
-      nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, 3, exporter_vtx_indices, NULL);
+      nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, 3, exporter_vtx_indices, NULL, nogs_state->use_edgeflags);
       nir_store_var(b, prim_exp_arg_var, prim_exp_arg, 0x1u);
    }
    nir_pop_if(b, if_gs_accepted);
@@ -1256,6 +1258,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
                       bool consider_passthrough,
                       bool export_prim_id,
                       bool provoking_vtx_last,
+                      bool use_edgeflags,
                       uint32_t instance_rate_inputs)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
@@ -1276,6 +1279,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
       .passthrough = passthrough,
       .export_prim_id = export_prim_id,
       .early_prim_export = exec_list_is_singular(&impl->body),
+      .use_edgeflags = use_edgeflags,
       .num_vertices_per_primitives = num_vertices_per_primitives,
       .provoking_vtx_idx = provoking_vtx_last ? (num_vertices_per_primitives - 1) : 0,
       .position_value_var = position_value_var,
@@ -1705,7 +1709,7 @@ ngg_gs_export_primitives(nir_builder *b, nir_ssa_def *max_num_out_prims, nir_ssa
       }
    }
 
-   nir_ssa_def *arg = emit_pack_ngg_prim_exp_arg(b, s->num_vertices_per_primitive, vtx_indices, is_null_prim);
+   nir_ssa_def *arg = emit_pack_ngg_prim_exp_arg(b, s->num_vertices_per_primitive, vtx_indices, is_null_prim, false);
    nir_build_export_primitive_amd(b, arg);
    nir_pop_if(b, if_prim_export_thread);
 }
