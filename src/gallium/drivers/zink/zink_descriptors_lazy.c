@@ -528,7 +528,6 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
        dd_lazy(ctx)->push_state_changed[is_compute] |= bdd->push_usage[is_compute] != pg->dd->push_usage;
        bdd->push_usage[is_compute] = pg->dd->push_usage;
    }
-   bdd->pg[is_compute] = pg;
 
    uint8_t changed_sets = pg->dd->binding_usage & dd_lazy(ctx)->state_changed[is_compute];
    bool need_push = pg->dd->push_usage &&
