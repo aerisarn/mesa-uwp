@@ -766,6 +766,8 @@ tu_CreateRenderPass2(VkDevice _device,
       if (a != VK_ATTACHMENT_UNUSED) {
             pass->attachments[a].gmem_offset = 0;
             update_samples(subpass, pCreateInfo->pAttachments[a].samples);
+
+            pass->attachments[a].clear_views |= subpass->multiview_mask;
       }
    }
 
