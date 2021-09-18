@@ -117,9 +117,12 @@ d3d12_create_query(struct pipe_context *pctx,
    query->num_queries = 16;
 
    /* With timer queries we want a few more queries, especially since we need two slots
-    * per query for TIME_ELAPSED queries */
-   if (unlikely(query->d3d12qtype == D3D12_QUERY_TYPE_TIMESTAMP))
+    * per query for TIME_ELAPSED queries
+    * For TIMESTAMP, we don't need more than one slot, since there's nothing to accumulate */
+   if (unlikely(query_type == PIPE_QUERY_TIME_ELAPSED))
       query->num_queries = 64;
+   else if (query_type == PIPE_QUERY_TIMESTAMP)
+      query->num_queries = 1;
 
    query->curr_query = 0;
 
@@ -356,6 +359,10 @@ end_query(struct d3d12_context *ctx, struct d3d12_query *q)
    /* End subquery first so that we can use fence value from parent */
    if (q->subquery)
       end_query(ctx, q->subquery);
+
+   /* For TIMESTAMP, there's only one slot */
+   if (q->type == PIPE_QUERY_TIMESTAMP)
+      q->curr_query = 0;
 
    /* With QUERY_TIME_ELAPSED we have recorded one value at
     * (2 * q->curr_query), and now we record a value at (2 * q->curr_query + 1)
