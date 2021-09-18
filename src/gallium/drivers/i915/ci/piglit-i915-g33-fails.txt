@@ -596,8 +596,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_D
 # that uses dynamic loops
 spec@ext_timer_query@time-elapsed,Fail
 
-spec@glsl-1.10@execution@built-in-functions@fs-atan-vec3-vec3,Fail
-spec@glsl-1.10@execution@built-in-functions@fs-atan-vec4-vec4,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-vec3,Fail
@@ -857,7 +855,6 @@ spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-row-wr,Fail
-spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-varying-array-mat3-index-col-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-varying-array-mat3-index-col-row-rd,Fail
@@ -1070,8 +1067,6 @@ spec@glsl-1.20@execution@uniform-initializer@fs-mat4,Fail
 spec@glsl-1.20@execution@uniform-initializer@fs-mat4-array,Fail
 spec@glsl-1.20@execution@uniform-initializer@fs-mat4-from-const,Fail
 spec@glsl-1.20@execution@uniform-initializer@fs-mat4-set-by-other-stage,Fail
-spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat2-index-col-wr,Fail
-spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat2-index-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat2-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-wr,Fail
@@ -1079,7 +1074,6 @@ spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-row-wr,Fail
-spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-varying-array-mat3-index-col-rd,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-varying-array-mat3-index-col-row-rd,Fail

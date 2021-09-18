@@ -1123,10 +1123,12 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
          /* NIR is src0 != 0 ? src1 : src2.
           * TGSI is src0 < 0 ? src1 : src2.
           *
-          * However, fcsel so far as I can find only appears on
-          * bools-as-floats (1.0 or 0.0), so we can negate it for the TGSI op.
+          * However, fcsel so far as I can find only appears on bools-as-floats
+          * (1.0 or 0.0), so we can just negate it for the TGSI op.  It's
+          * important to not have an abs here, as i915g has to make extra
+          * instructions to do the abs.
           */
-         ureg_CMP(c->ureg, dst, ureg_negate(ureg_abs(src[0])), src[1], src[2]);
+         ureg_CMP(c->ureg, dst, ureg_negate(src[0]), src[1], src[2]);
          break;
 
          /* It would be nice if we could get this left as scalar in NIR, since
