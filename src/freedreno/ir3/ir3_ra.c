@@ -2143,7 +2143,13 @@ ir3_ra(struct ir3_shader_variant *v)
 
    ir3_create_parallel_copies(v->ir);
 
-   struct ir3_liveness *live = ir3_calc_liveness(v);
+   struct ra_ctx *ctx = rzalloc(NULL, struct ra_ctx);
+
+   ctx->merged_regs = v->mergedregs;
+   ctx->compiler = v->shader->compiler;
+   ctx->stage = v->type;
+
+   struct ir3_liveness *live = ir3_calc_liveness(ctx, v->ir);
 
    ir3_debug_print(v->ir, "AFTER: create_parallel_copies");
 
@@ -2169,7 +2175,7 @@ ir3_ra(struct ir3_shader_variant *v)
    if (max_pressure.shared > limit_pressure.shared) {
       /* TODO shared reg -> normal reg spilling */
       d("shared max pressure exceeded!");
-      return 1;
+      goto fail;
    }
 
    bool spilled = false;
@@ -2177,7 +2183,7 @@ ir3_ra(struct ir3_shader_variant *v)
        max_pressure.half > limit_pressure.half) {
       if (!v->shader->compiler->has_pvtmem) {
          d("max pressure exceeded!");
-         return 1;
+         goto fail;
       }
       d("max pressure exceeded, spilling!");
       IR3_PASS(v->ir, ir3_spill, v, &live, &limit_pressure);
@@ -2187,11 +2193,6 @@ ir3_ra(struct ir3_shader_variant *v)
       spilled = true;
    }
 
-   struct ra_ctx *ctx = rzalloc(NULL, struct ra_ctx);
-
-   ctx->merged_regs = v->mergedregs;
-   ctx->compiler = v->shader->compiler;
-   ctx->stage = v->type;
    ctx->live = live;
    ctx->intervals =
       rzalloc_array(ctx, struct ra_interval, live->definitions_count);
@@ -2250,6 +2251,9 @@ ir3_ra(struct ir3_shader_variant *v)
    ir3_debug_print(v->ir, "AFTER: ir3_lower_copies");
 
    ralloc_free(ctx);
-   ralloc_free(live);
+
    return 0;
+fail:
+   ralloc_free(ctx);
+   return -1;
 }
