@@ -37,4 +37,5 @@ stw_framebuffer_create
 stw_framebuffer_release_locked
 stw_framebuffer_unlock
 stw_framebuffer_swap_locked
+stw_get_framebuffer_resource
 stw_pbuffer_create

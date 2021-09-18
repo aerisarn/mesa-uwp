@@ -37,6 +37,7 @@
 #include <GL/wglext.h>
 
 #include <pipe/p_screen.h>
+#include <pipe/p_state.h>
 
 #include <mapi/glapi/glapi.h>
 
@@ -743,6 +744,61 @@ wgl_query_surface(_EGLDisplay *disp, _EGLSurface *surf,
 }
 
 static EGLBoolean
+wgl_bind_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
+{
+   struct wgl_egl_surface *wgl_surf = wgl_egl_surface(surf);
+   enum st_attachment_type target = ST_TEXTURE_2D;
+
+   _EGLContext *ctx = _eglGetCurrentContext();
+   struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
+
+   if (!_eglBindTexImage(disp, surf, buffer))
+      return EGL_FALSE;
+
+   struct pipe_resource *pres = stw_get_framebuffer_resource(wgl_surf->fb->stfb, ST_ATTACHMENT_FRONT_LEFT);
+   enum pipe_format format = pres->format;
+
+   switch (surf->TextureFormat) {
+   case EGL_TEXTURE_RGB:
+      switch (format) {
+      case PIPE_FORMAT_R16G16B16A16_FLOAT:
+         format = PIPE_FORMAT_R16G16B16X16_FLOAT;
+         break;
+      case PIPE_FORMAT_B10G10R10A2_UNORM:
+         format = PIPE_FORMAT_B10G10R10X2_UNORM;
+         break;
+      case PIPE_FORMAT_R10G10B10A2_UNORM:
+         format = PIPE_FORMAT_R10G10B10X2_UNORM;
+         break;
+      case PIPE_FORMAT_BGRA8888_UNORM:
+         format = PIPE_FORMAT_BGRX8888_UNORM;
+         break;
+      case PIPE_FORMAT_ARGB8888_UNORM:
+         format = PIPE_FORMAT_XRGB8888_UNORM;
+         break;
+      default:
+         break;
+      }
+      break;
+   case EGL_TEXTURE_RGBA:
+      break;
+   default:
+      assert(!"Unexpected texture format in wgl_bind_tex_image()");
+   }
+
+   switch (surf->TextureTarget) {
+   case EGL_TEXTURE_2D:
+      break;
+   default:
+      assert(!"Unexpected texture target in wgl_bind_tex_image()");
+   }
+
+   wgl_ctx->ctx->st->teximage(wgl_ctx->ctx->st, target, 0, format, pres, false);
+
+   return EGL_TRUE;
+}
+
+static EGLBoolean
 wgl_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 {
    struct wgl_egl_display *wgl_disp = wgl_egl_display(disp);
@@ -766,6 +822,8 @@ struct _egl_driver _eglDriver = {
    .CreatePbufferSurface = wgl_create_pbuffer_surface,
    .DestroySurface = wgl_destroy_surface,
    .QuerySurface = wgl_query_surface,
+   .BindTexImage = wgl_bind_tex_image,
+   .ReleaseTexImage = _eglReleaseTexImage,
    .GetProcAddress = _glapi_get_proc_address,
    .SwapBuffers = wgl_swap_buffers,
 };
