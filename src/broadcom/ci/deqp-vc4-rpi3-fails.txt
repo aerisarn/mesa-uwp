@@ -403,7 +403,6 @@ dEQP-GLES2.functional.draw.draw_arrays.line_loop.multiple_attributes,Fail
 dEQP-GLES2.functional.draw.draw_arrays.line_loop.single_attribute,Fail
 dEQP-GLES2.functional.fbo.render.texsubimage.after_render_tex2d_rgba,Fail
 dEQP-GLES2.functional.fbo.render.texsubimage.between_render_tex2d_rgba,Fail
-dEQP-GLES2.functional.negative_api.shader.uniform_matrixfv_invalid_transpose,Fail
 dEQP-GLES2.functional.negative_api.vertex_array.vertex_attrib,Fail
 dEQP-GLES2.functional.negative_api.vertex_array.vertex_attribv,Fail
 dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_linear_linear_mirror_rgba8888,Fail

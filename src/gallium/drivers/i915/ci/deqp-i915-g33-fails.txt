@@ -22,13 +22,6 @@ dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
 
-# " // GL_INVALID_OPERATION returned
-#   // ERROR: expected GL_INVALID_VALUE"
-# Mesa: User error: GL_INVALID_OPERATION in glUniformMatrix(non-matrix uniform)
-# Mesa: User error: GL_INVALID_OPERATION in glUniformMatrix(non-matrix uniform)
-# Mesa: User error: GL_INVALID_OPERATION in glUniformMatrix(non-matrix uniform)
-dEQP-GLES2.functional.negative_api.shader.uniform_matrixfv_invalid_transpose,Fail
-
 # Maybe doesn't like the color interpolation in wide lines?
 dEQP-GLES2.functional.rasterization.interpolation.basic.line_loop_wide,Fail
 dEQP-GLES2.functional.rasterization.interpolation.basic.line_strip_wide,Fail
