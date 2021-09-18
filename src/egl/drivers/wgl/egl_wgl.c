@@ -126,6 +126,7 @@ wgl_add_config(_EGLDisplay *disp, const struct stw_pixelformat_info *stw_config,
 
    base.MinSwapInterval = 0;
    base.MaxSwapInterval = 1;
+   base.YInvertedNOK = EGL_TRUE;
 
    if (!_eglValidateConfig(&base, EGL_FALSE)) {
       _eglLog(_EGL_DEBUG, "wgl: failed to validate config %d", id);
