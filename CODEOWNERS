@@ -24,6 +24,9 @@ meson.build @dbaker @eric
 /meson_options.txt @dbaker @eric
 /docs/meson.rst @dbaker @eric
 
+# Build system - Android
+/android/ @roman.stratiienko
+
 # Compatibility headers
 /include/c99* @evelikov
 /include/c11* @eric
