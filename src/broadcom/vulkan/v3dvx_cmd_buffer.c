@@ -1246,9 +1246,7 @@ v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
     * now, would need to change if we allow multiple viewports
     */
    float *vptranslate = dynamic->viewport.translate[0];
-#if V3D_VERSION == 42
    float *vpscale = dynamic->viewport.scale[0];
-#endif
 
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -1268,7 +1266,10 @@ v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
    }
 #endif
 #if V3D_VERSION >= 71
-   unreachable("HW generation 71 not supported yet.");
+   cl_emit(&job->bcl, CLIPPER_XY_SCALING, clip) {
+      clip.viewport_half_width_in_1_64th_of_pixel = vpscale[0] * 64.0f;
+      clip.viewport_half_height_in_1_64th_of_pixel = vpscale[1] * 64.0f;
+   }
 #endif
 
    float translate_z, scale_z;
