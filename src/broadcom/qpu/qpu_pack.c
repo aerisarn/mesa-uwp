@@ -112,7 +112,7 @@
 #define LDTMU .ldtmu = true
 #define LDVARY .ldvary = true
 #define LDVPM .ldvpm = true
-#define SMIMM .small_imm = true
+#define SMIMM_B .small_imm_b = true
 #define LDTLB .ldtlb = true
 #define LDTLBU .ldtlbu = true
 #define UCB .ucb = true
@@ -135,8 +135,8 @@ static const struct v3d_qpu_sig v33_sig_map[] = {
         [11] = { THRSW, LDVARY,         LDUNIF },
         [12] = {        LDVARY, LDTMU,         },
         [13] = { THRSW, LDVARY, LDTMU,         },
-        [14] = { SMIMM, LDVARY,                },
-        [15] = { SMIMM,                        },
+        [14] = { SMIMM_B, LDVARY,              },
+        [15] = { SMIMM_B,                      },
         [16] = {        LDTLB,                 },
         [17] = {        LDTLBU,                },
         /* 18-21 reserved */
@@ -148,8 +148,8 @@ static const struct v3d_qpu_sig v33_sig_map[] = {
         [27] = { THRSW, LDVPM,          LDUNIF },
         [28] = {        LDVPM, LDTMU,          },
         [29] = { THRSW, LDVPM, LDTMU,          },
-        [30] = { SMIMM, LDVPM,                 },
-        [31] = { SMIMM,                        },
+        [30] = { SMIMM_B, LDVPM,               },
+        [31] = { SMIMM_B,                      },
 };
 
 static const struct v3d_qpu_sig v40_sig_map[] = {
@@ -167,8 +167,8 @@ static const struct v3d_qpu_sig v40_sig_map[] = {
         [10] = {        LDVARY,         LDUNIF },
         [11] = { THRSW, LDVARY,         LDUNIF },
         /* 12-13 reserved */
-        [14] = { SMIMM, LDVARY,                },
-        [15] = { SMIMM,                        },
+        [14] = { SMIMM_B, LDVARY,              },
+        [15] = { SMIMM_B,                      },
         [16] = {        LDTLB,                 },
         [17] = {        LDTLBU,                },
         [18] = {                        WRTMUC },
@@ -178,7 +178,7 @@ static const struct v3d_qpu_sig v40_sig_map[] = {
         [22] = { UCB,                          },
         [23] = { ROT,                          },
         /* 24-30 reserved */
-        [31] = { SMIMM,         LDTMU,         },
+        [31] = { SMIMM_B,       LDTMU,         },
 };
 
 static const struct v3d_qpu_sig v41_sig_map[] = {
@@ -197,8 +197,8 @@ static const struct v3d_qpu_sig v41_sig_map[] = {
         [11] = { THRSW,    LDVARY, LDUNIF },
         [12] = { LDUNIFRF                 },
         [13] = { THRSW,    LDUNIFRF       },
-        [14] = { SMIMM,    LDVARY,        },
-        [15] = { SMIMM,                   },
+        [14] = { SMIMM_B,    LDVARY       },
+        [15] = { SMIMM_B,                 },
         [16] = {           LDTLB,         },
         [17] = {           LDTLBU,        },
         [18] = {                          WRTMUC },
@@ -210,7 +210,7 @@ static const struct v3d_qpu_sig v41_sig_map[] = {
         [24] = {                   LDUNIFA},
         [25] = { LDUNIFARF                },
         /* 26-30 reserved */
-        [31] = { SMIMM,            LDTMU, },
+        [31] = { SMIMM_B,          LDTMU, },
 };
 
 bool

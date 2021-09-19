@@ -80,7 +80,7 @@ vir_opt_small_immediates(struct v3d_compile *c)
                          */
                         struct v3d_qpu_sig new_sig = inst->qpu.sig;
                         uint32_t sig_packed;
-                        new_sig.small_imm = true;
+                        new_sig.small_imm_b = true;
                         if (!v3d_qpu_sig_pack(c->devinfo, &new_sig, &sig_packed))
                                 continue;
 
@@ -89,7 +89,7 @@ vir_opt_small_immediates(struct v3d_compile *c)
                                 vir_dump_inst(c, inst);
                                 fprintf(stderr, "\n");
                         }
-                        inst->qpu.sig.small_imm = true;
+                        inst->qpu.sig.small_imm_b = true;
                         inst->qpu.raddr_b = packed;
 
                         inst->src[i].file = QFILE_SMALL_IMM;

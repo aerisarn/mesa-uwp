@@ -160,7 +160,7 @@ process_mux_deps(struct schedule_state *state, struct schedule_node *n,
                 add_read_dep(state, state->last_rf[n->inst->qpu.raddr_a], n);
                 break;
         case V3D_QPU_MUX_B:
-                if (!n->inst->qpu.sig.small_imm) {
+                if (!n->inst->qpu.sig.small_imm_b) {
                         add_read_dep(state,
                                      state->last_rf[n->inst->qpu.raddr_b], n);
                 }
@@ -615,7 +615,7 @@ qpu_instruction_uses_rf(const struct v3d_qpu_instr *inst,
               return true;
 
         if (v3d_qpu_uses_mux(inst, V3D_QPU_MUX_B) &&
-            !inst->sig.small_imm && (inst->raddr_b == waddr))
+            !inst->sig.small_imm_b && (inst->raddr_b == waddr))
               return true;
 
         return false;
@@ -790,11 +790,11 @@ qpu_raddrs_used(const struct v3d_qpu_instr *a,
         uint64_t raddrs_used = 0;
         if (v3d_qpu_uses_mux(a, V3D_QPU_MUX_A))
                 raddrs_used |= (1ll << a->raddr_a);
-        if (!a->sig.small_imm && v3d_qpu_uses_mux(a, V3D_QPU_MUX_B))
+        if (!a->sig.small_imm_b && v3d_qpu_uses_mux(a, V3D_QPU_MUX_B))
                 raddrs_used |= (1ll << a->raddr_b);
         if (v3d_qpu_uses_mux(b, V3D_QPU_MUX_A))
                 raddrs_used |= (1ll << b->raddr_a);
-        if (!b->sig.small_imm && v3d_qpu_uses_mux(b, V3D_QPU_MUX_B))
+        if (!b->sig.small_imm_b && v3d_qpu_uses_mux(b, V3D_QPU_MUX_B))
                 raddrs_used |= (1ll << b->raddr_b);
 
         return raddrs_used;
@@ -816,16 +816,16 @@ qpu_merge_raddrs(struct v3d_qpu_instr *result,
         if (naddrs > 2)
                 return false;
 
-        if ((add_instr->sig.small_imm || mul_instr->sig.small_imm)) {
+        if ((add_instr->sig.small_imm_b || mul_instr->sig.small_imm_b)) {
                 if (naddrs > 1)
                         return false;
 
-                if (add_instr->sig.small_imm && mul_instr->sig.small_imm)
+                if (add_instr->sig.small_imm_b && mul_instr->sig.small_imm_b)
                         if (add_instr->raddr_b != mul_instr->raddr_b)
                                 return false;
 
-                result->sig.small_imm = true;
-                result->raddr_b = add_instr->sig.small_imm ?
+                result->sig.small_imm_b = true;
+                result->raddr_b = add_instr->sig.small_imm_b ?
                         add_instr->raddr_b : mul_instr->raddr_b;
         }
 
@@ -836,7 +836,7 @@ qpu_merge_raddrs(struct v3d_qpu_instr *result,
         raddrs_used &= ~(1ll << raddr_a);
         result->raddr_a = raddr_a;
 
-        if (!result->sig.small_imm) {
+        if (!result->sig.small_imm_b) {
                 if (v3d_qpu_uses_mux(add_instr, V3D_QPU_MUX_B) &&
                     raddr_a == add_instr->raddr_b) {
                         if (add_instr->alu.add.a == V3D_QPU_MUX_B)
@@ -1025,7 +1025,7 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
         merge.sig.ldtmu |= b->sig.ldtmu;
         merge.sig.ldvary |= b->sig.ldvary;
         merge.sig.ldvpm |= b->sig.ldvpm;
-        merge.sig.small_imm |= b->sig.small_imm;
+        merge.sig.small_imm_b |= b->sig.small_imm_b;
         merge.sig.ldtlb |= b->sig.ldtlb;
         merge.sig.ldtlbu |= b->sig.ldtlbu;
         merge.sig.ucb |= b->sig.ucb;
@@ -1614,7 +1614,7 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
                         return false;
 
                 if (inst->raddr_b < 3 &&
-                    !inst->sig.small_imm &&
+                    !inst->sig.small_imm_b &&
                     v3d_qpu_uses_mux(inst, V3D_QPU_MUX_B)) {
                         return false;
                 }

@@ -50,7 +50,7 @@ struct v3d_qpu_sig {
         bool ldvpm:1;
         bool ldtlb:1;
         bool ldtlbu:1;
-        bool small_imm:1;
+        bool small_imm_b:1;
         bool ucb:1;
         bool rotate:1;
         bool wrtmuc:1;

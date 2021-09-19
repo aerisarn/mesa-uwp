@@ -94,7 +94,7 @@ static void
 set_src(struct v3d_qpu_instr *instr, enum v3d_qpu_mux *mux, struct qpu_reg src)
 {
         if (src.smimm) {
-                assert(instr->sig.small_imm);
+                assert(instr->sig.small_imm_b);
                 *mux = V3D_QPU_MUX_B;
                 return;
         }
