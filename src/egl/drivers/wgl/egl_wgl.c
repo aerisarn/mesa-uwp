@@ -831,6 +831,16 @@ wgl_wait_client(_EGLDisplay *disp, _EGLContext *ctx)
    return EGL_TRUE;
 }
 
+static EGLBoolean
+wgl_wait_native(EGLint engine)
+{
+   if (engine != EGL_CORE_NATIVE_ENGINE)
+      return _eglError(EGL_BAD_PARAMETER, "eglWaitNative");
+   /* It's unclear what "native" means, but GDI is as good a guess as any */
+   GdiFlush();
+   return EGL_TRUE;
+}
+
 struct _egl_driver _eglDriver = {
    .Initialize = wgl_initialize,
    .Terminate = wgl_terminate,
@@ -847,5 +857,6 @@ struct _egl_driver _eglDriver = {
    .SwapInterval = wgl_swap_interval,
    .SwapBuffers = wgl_swap_buffers,
    .WaitClient = wgl_wait_client,
+   .WaitNative = wgl_wait_native,
 };
 
