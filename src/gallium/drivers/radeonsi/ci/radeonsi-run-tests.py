@@ -309,10 +309,6 @@ if args.glcts:
     verify_results(baseline, new_baseline)
 
 if args.deqp:
-    if args.include_tests:
-        print_yellow("dEQP tests cannot be run with the -t/--include-tests option yet.")
-        sys.exit(0)
-
     print_yellow("Running   dEQP tests", args.verbose > 0)
 
     # Generate a test-suite file
@@ -367,7 +363,7 @@ if args.deqp:
         os.path.join(output_folder, "deqp"),
         "--suite",
         suite_filename,
-    ]
+    ] + filters_args
     run_cmd(cmd, args.verbose)
     shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
     verify_results(baseline, new_baseline)
