@@ -1423,7 +1423,7 @@ ASSERTED static bool is_dcc_supported_by_L2(const struct radeon_info *info,
 
    /* 128B is recommended, but 64B can be set too if needed for 4K by DCN.
     * Since there is no reason to ever disable 128B, require it.
-    * DCC image stores are always supported.
+    * If 64B is used, DCC image stores are unsupported.
     */
    return surf->u.gfx9.color.dcc.independent_128B_blocks &&
           surf->u.gfx9.color.dcc.max_compressed_block_size <= V_028C78_MAX_BLOCK_SIZE_128B;
