@@ -2247,10 +2247,14 @@ vtn_get_mem_operands(struct vtn_builder *b, const uint32_t *w, unsigned count,
 static enum gl_access_qualifier
 spv_access_to_gl_access(SpvMemoryAccessMask access)
 {
-   if (access & SpvMemoryAccessVolatileMask)
-      return ACCESS_VOLATILE;
+   unsigned result = 0;
 
-   return 0;
+   if (access & SpvMemoryAccessVolatileMask)
+      result |= ACCESS_VOLATILE;
+   if (access & SpvMemoryAccessNontemporalMask)
+      result |= ACCESS_STREAM_CACHE_POLICY;
+
+   return result;
 }
 
 
