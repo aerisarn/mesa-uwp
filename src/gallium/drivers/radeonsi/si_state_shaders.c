@@ -1288,19 +1288,20 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, true);
 
    /* Oversubscribe PC. This improves performance when there are too many varyings. */
-   float oversub_pc_factor = 0.25;
+   unsigned oversub_pc_factor = 1;
 
    if (shader->key.opt.ngg_culling) {
       /* Be more aggressive with NGG culling. */
       if (shader->info.nr_param_exports > 4)
-         oversub_pc_factor = 1;
+         oversub_pc_factor = 4;
       else if (shader->info.nr_param_exports > 2)
-         oversub_pc_factor = 0.75;
+         oversub_pc_factor = 3;
       else
-         oversub_pc_factor = 0.5;
+         oversub_pc_factor = 2;
    }
 
-   unsigned oversub_pc_lines = late_alloc_wave64 ? sscreen->info.pc_lines * oversub_pc_factor : 0;
+   unsigned oversub_pc_lines =
+      late_alloc_wave64 ? (sscreen->info.pc_lines / 4) * oversub_pc_factor : 0;
    shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) |
                                      S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
