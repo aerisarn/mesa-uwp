@@ -827,6 +827,39 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    }
 }
 
+
+static void
+tu_get_physical_device_properties_1_1(struct tu_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan11Properties *p)
+{
+   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES);
+
+   memcpy(p->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
+   memcpy(p->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
+   memset(p->deviceLUID, 0, VK_LUID_SIZE);
+   p->deviceNodeMask = 0;
+   p->deviceLUIDValid = false;
+
+   p->subgroupSize = 128;
+   p->subgroupSupportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
+   p->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
+                                    VK_SUBGROUP_FEATURE_VOTE_BIT |
+                                    VK_SUBGROUP_FEATURE_BALLOT_BIT;
+   p->subgroupQuadOperationsInAllStages = false;
+
+   p->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+   p->maxMultiviewViewCount = MAX_VIEWS;
+   p->maxMultiviewInstanceIndex = INT_MAX;
+   p->protectedNoFault = false;
+   /* Make sure everything is addressable by a signed 32-bit int, and
+    * our largest descriptors are 96 bytes.
+    */
+   p->maxPerSetDescriptors = (1ull << 31) / 96;
+   /* Our buffer size fields allow only this much */
+   p->maxMemoryAllocationSize = 0xFFFFFFFFull;
+
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                 VkPhysicalDeviceProperties2 *pProperties)
@@ -965,6 +998,18 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    strcpy(pProperties->properties.deviceName, pdevice->name);
    memcpy(pProperties->properties.pipelineCacheUUID, pdevice->cache_uuid, VK_UUID_SIZE);
 
+   VkPhysicalDeviceVulkan11Properties core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
+   };
+   tu_get_physical_device_properties_1_1(pdevice, &core_1_1);
+
+#define CORE_RENAMED_PROPERTY(major, minor, ext_property, core_property) \
+   memcpy(&properties->ext_property, &core_##major##_##minor.core_property, \
+          sizeof(core_##major##_##minor.core_property))
+
+#define CORE_PROPERTY(major, minor, property) \
+   CORE_RENAMED_PROPERTY(major, minor, property, property)
+
    vk_foreach_struct(ext, pProperties->pNext)
    {
       switch (ext->sType) {
@@ -977,33 +1022,30 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
          VkPhysicalDeviceIDProperties *properties =
             (VkPhysicalDeviceIDProperties *) ext;
-         memcpy(properties->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
-         memcpy(properties->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
-         properties->deviceLUIDValid = false;
+         CORE_PROPERTY(1, 1, deviceUUID);
+         CORE_PROPERTY(1, 1, driverUUID);
+         CORE_PROPERTY(1, 1, deviceLUID);
+         CORE_PROPERTY(1, 1, deviceLUIDValid);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
          VkPhysicalDeviceMultiviewProperties *properties =
             (VkPhysicalDeviceMultiviewProperties *) ext;
-         properties->maxMultiviewViewCount = MAX_VIEWS;
-         properties->maxMultiviewInstanceIndex = INT_MAX;
+         CORE_PROPERTY(1, 1, maxMultiviewViewCount);
+         CORE_PROPERTY(1, 1, maxMultiviewInstanceIndex);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
          VkPhysicalDevicePointClippingProperties *properties =
             (VkPhysicalDevicePointClippingProperties *) ext;
-         properties->pointClippingBehavior =
-            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+         CORE_PROPERTY(1, 1, pointClippingBehavior);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
          VkPhysicalDeviceMaintenance3Properties *properties =
             (VkPhysicalDeviceMaintenance3Properties *) ext;
-         /* Make sure everything is addressable by a signed 32-bit int, and
-          * our largest descriptors are 96 bytes. */
-         properties->maxPerSetDescriptors = (1ull << 31) / 96;
-         /* Our buffer size fields allow only this much */
-         properties->maxMemoryAllocationSize = 0xFFFFFFFFull;
+         CORE_PROPERTY(1, 1, maxPerSetDescriptors);
+         CORE_PROPERTY(1, 1, maxMemoryAllocationSize);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
@@ -1047,12 +1089,13 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
          VkPhysicalDeviceSubgroupProperties *properties =
             (VkPhysicalDeviceSubgroupProperties *)ext;
-         properties->subgroupSize = 128;
-         properties->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
-         properties->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
-                                           VK_SUBGROUP_FEATURE_VOTE_BIT |
-                                           VK_SUBGROUP_FEATURE_BALLOT_BIT;
-         properties->quadOperationsInAllStages = false;
+         CORE_PROPERTY(1, 1, subgroupSize);
+         CORE_RENAMED_PROPERTY(1, 1, supportedStages,
+                                     subgroupSupportedStages);
+         CORE_RENAMED_PROPERTY(1, 1, supportedOperations,
+                                     subgroupSupportedOperations);
+         CORE_RENAMED_PROPERTY(1, 1, quadOperationsInAllStages,
+                                     subgroupQuadOperationsInAllStages);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
@@ -1153,6 +1196,11 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->transformFeedbackPreservesTriangleFanProvokingVertex = false;
          break;
       }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
+         tu_get_physical_device_properties_1_1(pdevice, (void *)ext);
+         break;
+
       default:
          break;
       }
