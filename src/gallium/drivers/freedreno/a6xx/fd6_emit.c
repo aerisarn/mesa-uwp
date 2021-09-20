@@ -1224,7 +1224,7 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 void
 fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
-   // struct fd_context *ctx = batch->ctx;
+   struct fd_screen *screen = batch->ctx->screen;
 
    if (!batch->nondraw) {
       trace_start_state_restore(&batch->trace, ring);
@@ -1248,7 +1248,7 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
    WRITE(REG_A6XX_SP_UNKNOWN_AE00, 0);
    WRITE(REG_A6XX_SP_PERFCTR_ENABLE, 0x3f);
    WRITE(REG_A6XX_TPL1_UNKNOWN_B605, 0x44);
-   WRITE(REG_A6XX_TPL1_DBG_ECO_CNTL, 0x100000);
+   WRITE(REG_A6XX_TPL1_DBG_ECO_CNTL, screen->info->a6xx.magic.TPL1_DBG_ECO_CNTL);
    WRITE(REG_A6XX_HLSQ_UNKNOWN_BE00, 0x80);
    WRITE(REG_A6XX_HLSQ_UNKNOWN_BE01, 0);
 
