@@ -822,6 +822,15 @@ wgl_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
    return ret;
 }
 
+static EGLBoolean
+wgl_wait_client(_EGLDisplay *disp, _EGLContext *ctx)
+{
+   struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
+   struct pipe_fence_handle *fence = NULL;
+   wgl_ctx->ctx->st->flush(wgl_ctx->ctx->st, ST_FLUSH_END_OF_FRAME | ST_FLUSH_WAIT, &fence, NULL, NULL);
+   return EGL_TRUE;
+}
+
 struct _egl_driver _eglDriver = {
    .Initialize = wgl_initialize,
    .Terminate = wgl_terminate,
@@ -837,5 +846,6 @@ struct _egl_driver _eglDriver = {
    .GetProcAddress = _glapi_get_proc_address,
    .SwapInterval = wgl_swap_interval,
    .SwapBuffers = wgl_swap_buffers,
+   .WaitClient = wgl_wait_client,
 };
 
