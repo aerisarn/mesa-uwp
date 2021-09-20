@@ -5,3 +5,11 @@
 # Some compute jobs take more 0.5s, the maximum allowed by the
 # kernel driver
 dEQP-GLES31.functional.draw_indirect.compute_interop.large.*
+
+# We lack a dependency between the vertex job filling the indirect draw
+# buffers and the indirect draw compute job reading from these buffers,
+# leading to unreliable results (the tests pass if the vertex job is
+# done before the compute job starts, and fail otherwise). Let's disable
+# those tests until we sort it out.
+KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-arrays
+KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-elements
