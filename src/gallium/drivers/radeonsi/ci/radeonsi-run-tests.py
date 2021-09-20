@@ -115,7 +115,7 @@ parser.set_defaults(deqp_gles2=True)
 parser.set_defaults(deqp_gles3=True)
 parser.set_defaults(deqp_gles31=True)
 
-parser.add_argument("output_folder", help="Output folder (logs, etc)")
+parser.add_argument("output_folder", nargs="?", help="Output folder (logs, etc)")
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -151,7 +151,11 @@ for line in p.stdout.decode().split("\n"):
         gpu_name = line.replace("(TM)", "").split("(")[1].split(",")[0].lower()
         break
 
-output_folder = args.output_folder
+if args.output_folder:
+    output_folder = args.output_folder
+else:
+    output_folder = os.path.join(tempfile.gettempdir(), datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+
 count = 1
 while os.path.exists(output_folder):
     output_folder = "{}.{}".format(args.output_folder, count)
