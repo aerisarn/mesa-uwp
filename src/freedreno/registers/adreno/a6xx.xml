@@ -3469,7 +3469,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb4d1" name="SP_WINDOW_OFFSET" type="a6xx_reg_xy"/>
 
 	<!-- always 0x100000 or 0x1000000? -->
-	<reg32 offset="0xb600" name="TPL1_UNKNOWN_B600" low="0" high="25"/>
+	<reg32 offset="0xb600" name="TPL1_DBG_ECO_CNTL" low="0" high="25"/>
 	<reg32 offset="0xb601" name="TPL1_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xb602" name="TPL1_UNKNOWN_B602" low="0" high="7" type="uint"/>
 	<reg32 offset="0xb604" name="TPL1_NC_MODE_CNTL">
