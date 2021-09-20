@@ -373,10 +373,9 @@ pan_rt_init_format(const struct pan_image_view *rt,
 
         /* The swizzle for rendering is inverted from texturing */
 
-        unsigned char swizzle[4];
-        panfrost_invert_swizzle(desc->swizzle, swizzle);
-
-        cfg->swizzle = panfrost_translate_swizzle_4(swizzle);
+        unsigned char swizzle[4] = {
+                PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W,
+        };
 
         /* Fill in accordingly, defaulting to 8-bit UNORM */
 
@@ -388,6 +387,7 @@ pan_rt_init_format(const struct pan_image_view *rt,
         if (fmt.internal) {
                 cfg->internal_format = fmt.internal;
                 cfg->writeback_format = fmt.writeback;
+                panfrost_invert_swizzle(desc->swizzle, swizzle);
         } else {
                 /* Construct RAW internal/writeback, where internal is
                  * specified logarithmically (round to next power-of-two).
@@ -402,6 +402,8 @@ pan_rt_init_format(const struct pan_image_view *rt,
 
                 cfg->writeback_format = pan_mfbd_raw_format(bits);
         }
+
+        cfg->swizzle = panfrost_translate_swizzle_4(swizzle);
 }
 
 static void
