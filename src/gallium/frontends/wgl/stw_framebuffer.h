@@ -129,6 +129,7 @@ struct stw_framebuffer
    struct stw_winsys_framebuffer *winsys_framebuffer;
 
    /* For WGL_EXT_swap_control */
+   int swap_interval;
    int64_t prev_swap_time;
 
    /** 

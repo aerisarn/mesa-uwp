@@ -302,6 +302,9 @@ stw_framebuffer_create(HWND hWnd, int iPixelFormat, enum stw_framebuffer_owner o
 
    fb->refcnt = 1;
 
+   /* A -1 means defer to the global stw_dev->swap_interval */
+   fb->swap_interval = -1;
+
    /*
     * Windows can be sometimes have zero width and or height, but we ensure
     * a non-zero framebuffer size at all times.
@@ -604,7 +607,8 @@ stw_framebuffer_present_locked(HDC hdc,
                                struct pipe_resource *res)
 {
    if (fb->winsys_framebuffer) {
-      BOOL result = fb->winsys_framebuffer->present(fb->winsys_framebuffer);
+      int interval = fb->swap_interval == -1 ? stw_dev->swap_interval : fb->swap_interval;
+      BOOL result = fb->winsys_framebuffer->present(fb->winsys_framebuffer, interval);
 
       stw_framebuffer_update(fb);
       stw_notify_current_locked(fb);
@@ -653,7 +657,7 @@ stw_framebuffer_present_locked(HDC hdc,
  * This is for the WGL_ARB_swap_interval extension.
  */
 static void
-wait_swap_interval(struct stw_framebuffer *fb)
+wait_swap_interval(struct stw_framebuffer *fb, int interval)
 {
    /* Note: all time variables here are in units of microseconds */
    int64_t cur_time = os_time_get_nano() / 1000;
@@ -662,7 +666,7 @@ wait_swap_interval(struct stw_framebuffer *fb)
       /* Compute time since previous swap */
       int64_t delta = cur_time - fb->prev_swap_time;
       int64_t min_swap_period =
-         1.0e6 / stw_dev->refresh_rate * stw_dev->swap_interval;
+         1.0e6 / stw_dev->refresh_rate * interval;
 
       /* If time since last swap is less than wait period, wait.
        * Note that it's possible for the delta to be negative because of
@@ -704,8 +708,9 @@ stw_framebuffer_swap_locked(HDC hdc, struct stw_framebuffer *fb)
       }
    }
 
-   if (stw_dev->swap_interval != 0 && !fb->winsys_framebuffer) {
-      wait_swap_interval(fb);
+   int interval = fb->swap_interval == -1 ? stw_dev->swap_interval : fb->swap_interval;
+   if (interval != 0 && !fb->winsys_framebuffer) {
+      wait_swap_interval(fb, interval);
    }
 
    return stw_st_swap_framebuffer_locked(hdc, ctx->st, fb->stfb);
