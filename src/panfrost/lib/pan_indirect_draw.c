@@ -1076,7 +1076,9 @@ get_shader_id(unsigned flags, unsigned index_size, bool index_min_max_search)
                 return flags;
         }
 
-        return PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_1B_INDEX +
+        return ((flags & PAN_INDIRECT_DRAW_PRIMITIVE_RESTART) ?
+                PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_1B_INDEX_PRIM_RESTART :
+                PAN_INDIRECT_DRAW_MIN_MAX_SEARCH_1B_INDEX) +
                util_logbase2(index_size);
 }
 
