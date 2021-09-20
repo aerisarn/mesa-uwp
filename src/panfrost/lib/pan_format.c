@@ -240,6 +240,7 @@ const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
         FMT(R10G10B10X2_SNORM,       RGB10_A2_SNORM,  RGB1, L, VT__),
         FMT(R10G10B10A2_SNORM,       RGB10_A2_SNORM,  RGBA, L, VT__),
         FMT(B10G10R10A2_SNORM,       RGB10_A2_SNORM,  BGRA, L, VT__),
+        FMT(R3G3B2_UNORM,            RGB332_UNORM,    RGB1, L, VT__),
 #else
         FMT(R10G10B10X2_SNORM,       RGB10_A2_SNORM,  RGB1, L, V___),
         FMT(R10G10B10A2_SNORM,       RGB10_A2_SNORM,  RGBA, L, V___),
@@ -283,7 +284,6 @@ const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
         FMT(R32G32_SSCALED,          RG32I,           RG01, L, V___),
         FMT(R32G32B32_SSCALED,       RGB32I,          RGB1, L, V___),
         FMT(R32G32B32A32_SSCALED,    RGBA32I,         RGBA, L, V___),
-        FMT(R3G3B2_UNORM,            RGB332_UNORM,    RGB1, L, VT__),
         FMT(R32_FIXED,               R32_FIXED,       R001, L, V___),
         FMT(R32G32_FIXED,            RG32_FIXED,      RG01, L, V___),
         FMT(R32G32B32_FIXED,         RGB32_FIXED,     RGB1, L, V___),
