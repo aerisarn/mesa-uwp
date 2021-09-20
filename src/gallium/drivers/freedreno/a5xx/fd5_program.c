@@ -542,15 +542,18 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_PKT4(ring, REG_A5XX_SP_SP_CNTL, 1);
    OUT_RING(ring, 0x00000010); /* XXX */
 
-   /* XXX: missing enable bits for per-sample bary linear centroid and
-    * IJ_PERSP_SIZE (should be identical to a6xx)
-    */
-
    OUT_PKT4(ring, REG_A5XX_GRAS_CNTL, 1);
    OUT_RING(ring,
             CONDREG(ij_regid[IJ_PERSP_PIXEL], A5XX_GRAS_CNTL_IJ_PERSP_PIXEL) |
                CONDREG(ij_regid[IJ_PERSP_CENTROID],
                        A5XX_GRAS_CNTL_IJ_PERSP_CENTROID) |
+               CONDREG(ij_regid[IJ_PERSP_SAMPLE],
+                       A5XX_GRAS_CNTL_IJ_PERSP_SAMPLE) |
+               CONDREG(ij_regid[IJ_LINEAR_PIXEL], A5XX_GRAS_CNTL_IJ_LINEAR_PIXEL) |
+               CONDREG(ij_regid[IJ_LINEAR_CENTROID],
+                       A5XX_GRAS_CNTL_IJ_LINEAR_CENTROID) |
+               CONDREG(ij_regid[IJ_LINEAR_SAMPLE],
+                       A5XX_GRAS_CNTL_IJ_LINEAR_SAMPLE) |
                COND(s[FS].v->fragcoord_compmask != 0,
                     A5XX_GRAS_CNTL_COORD_MASK(s[FS].v->fragcoord_compmask) |
                        A5XX_GRAS_CNTL_IJ_LINEAR_PIXEL) |
@@ -564,6 +567,14 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
               A5XX_RB_RENDER_CONTROL0_IJ_PERSP_PIXEL) |
          CONDREG(ij_regid[IJ_PERSP_CENTROID],
                  A5XX_RB_RENDER_CONTROL0_IJ_PERSP_CENTROID) |
+         CONDREG(ij_regid[IJ_PERSP_SAMPLE],
+                 A5XX_RB_RENDER_CONTROL0_IJ_PERSP_SAMPLE) |
+         CONDREG(ij_regid[IJ_LINEAR_PIXEL],
+              A5XX_RB_RENDER_CONTROL0_IJ_LINEAR_PIXEL) |
+         CONDREG(ij_regid[IJ_LINEAR_CENTROID],
+                 A5XX_RB_RENDER_CONTROL0_IJ_LINEAR_CENTROID) |
+         CONDREG(ij_regid[IJ_LINEAR_SAMPLE],
+                 A5XX_RB_RENDER_CONTROL0_IJ_LINEAR_SAMPLE) |
          COND(s[FS].v->fragcoord_compmask != 0,
               A5XX_RB_RENDER_CONTROL0_COORD_MASK(s[FS].v->fragcoord_compmask) |
                  A5XX_RB_RENDER_CONTROL0_IJ_LINEAR_PIXEL) |
