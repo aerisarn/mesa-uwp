@@ -23,43 +23,35 @@
 
 #pragma once
 
-#include <egldriver.h>
-#include <egldisplay.h>
-#include <eglconfig.h>
-#include <eglimage.h>
+#include <pipe/p_state.h>
+#include "stw_context.h"
 
-#include <stw_pixelformat.h>
-#include <windows.h>
+#include <GL/gl.h>
 
-struct wgl_egl_display
+enum stw_image_error
 {
-   int ref_count;
-   struct pipe_screen *screen;
+   STW_IMAGE_ERROR_SUCCESS,
+   STW_IMAGE_ERROR_BAD_ALLOC,
+   STW_IMAGE_ERROR_BAD_PARAMETER,
+   STW_IMAGE_ERROR_BAD_MATCH,
+   STW_IMAGE_ERROR_BAD_ACCESS,
 };
 
-struct wgl_egl_config
+struct stw_image
 {
-   _EGLConfig                         base;
-   const struct stw_pixelformat_info *stw_config[2];
+   struct pipe_resource *pres;
+   unsigned level;
+   unsigned layer;
+   enum pipe_format format;
 };
 
-struct wgl_egl_context
-{
-   _EGLContext base;
-   struct stw_context *ctx;
-};
+struct stw_image *
+stw_create_image_from_texture(struct stw_context *ctx, GLenum gl_target, GLuint texture,
+                              GLuint depth, GLint level, enum stw_image_error *error);
 
-struct wgl_egl_surface
-{
-   _EGLSurface base;
-   struct stw_framebuffer *fb;
-};
+struct stw_image *
+stw_create_image_from_renderbuffer(struct stw_context *ctx, GLuint renderbuffer,
+                                   enum stw_image_error *error);
 
-struct wgl_egl_image
-{
-   _EGLImage base;
-   struct stw_image *img;
-};
-
-_EGL_DRIVER_STANDARD_TYPECASTS(wgl_egl)
-_EGL_DRIVER_TYPECAST(wgl_egl_image, _EGLImage, obj)
+void
+stw_destroy_image(struct stw_image *img);

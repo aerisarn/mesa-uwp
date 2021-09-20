@@ -33,6 +33,7 @@
 #include <stw_pixelformat.h>
 #include <stw_context.h>
 #include <stw_framebuffer.h>
+#include <stw_image.h>
 
 #include <GL/wglext.h>
 
@@ -242,21 +243,12 @@ wgl_initialize_impl(_EGLDisplay *disp, HDC hdc)
       disp->Extensions.KHR_gl_colorspace = EGL_TRUE;
 
    disp->Extensions.KHR_create_context = EGL_TRUE;
-   disp->Extensions.KHR_reusable_sync = EGL_TRUE;
 
-#if 0
    disp->Extensions.KHR_image_base = EGL_TRUE;
    disp->Extensions.KHR_gl_renderbuffer_image = EGL_TRUE;
-   if (wgl_dpy->image->base.version >= 5 &&
-      wgl_dpy->image->createImageFromTexture) {
-      disp->Extensions.KHR_gl_texture_2D_image = EGL_TRUE;
-      disp->Extensions.KHR_gl_texture_cubemap_image = EGL_TRUE;
-
-      if (wgl_renderer_query_integer(wgl_dpy,
-         __wgl_RENDERER_HAS_TEXTURE_3D))
-         disp->Extensions.KHR_gl_texture_3D_image = EGL_TRUE;
-   }
-#endif
+   disp->Extensions.KHR_gl_texture_2D_image = EGL_TRUE;
+   disp->Extensions.KHR_gl_texture_cubemap_image = EGL_TRUE;
+   disp->Extensions.KHR_gl_texture_3D_image = EGL_TRUE;
 
    if (!wgl_add_configs(disp)) {
       err = "wgl: failed to add configs";
@@ -841,6 +833,161 @@ wgl_wait_native(EGLint engine)
    return EGL_TRUE;
 }
 
+static EGLint
+egl_error_from_stw_image_error(enum stw_image_error err)
+{
+   switch (err) {
+   case STW_IMAGE_ERROR_SUCCESS:
+      return EGL_SUCCESS;
+   case STW_IMAGE_ERROR_BAD_ALLOC:
+      return EGL_BAD_ALLOC;
+   case STW_IMAGE_ERROR_BAD_MATCH:
+      return EGL_BAD_MATCH;
+   case STW_IMAGE_ERROR_BAD_PARAMETER:
+      return EGL_BAD_PARAMETER;
+   case STW_IMAGE_ERROR_BAD_ACCESS:
+      return EGL_BAD_ACCESS;
+   default:
+      assert(!"unknown stw_image_error code");
+      return EGL_BAD_ALLOC;
+   }
+}
+
+static _EGLImage *
+wgl_create_image_khr_texture(_EGLDisplay *disp, _EGLContext *ctx,
+                                   EGLenum target,
+                                   EGLClientBuffer buffer,
+                                   const EGLint *attr_list)
+{
+   struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
+   struct wgl_egl_image *wgl_img;
+   GLuint texture = (GLuint) (uintptr_t) buffer;
+   _EGLImageAttribs attrs;
+   GLuint depth;
+   GLenum gl_target;
+   enum stw_image_error error;
+
+   if (texture == 0) {
+      _eglError(EGL_BAD_PARAMETER, "wgl_create_image_khr");
+      return EGL_NO_IMAGE_KHR;
+   }
+
+   if (!_eglParseImageAttribList(&attrs, disp, attr_list))
+      return EGL_NO_IMAGE_KHR;
+
+   switch (target) {
+   case EGL_GL_TEXTURE_2D_KHR:
+      depth = 0;
+      gl_target = GL_TEXTURE_2D;
+      break;
+   case EGL_GL_TEXTURE_3D_KHR:
+      depth = attrs.GLTextureZOffset;
+      gl_target = GL_TEXTURE_3D;
+      break;
+   case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Y_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_KHR:
+      depth = target - EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR;
+      gl_target = GL_TEXTURE_CUBE_MAP;
+      break;
+   default:
+      unreachable("Unexpected target in wgl_create_image_khr_texture()");
+      return EGL_NO_IMAGE_KHR;
+   }
+
+   wgl_img = malloc(sizeof *wgl_img);
+   if (!wgl_img) {
+      _eglError(EGL_BAD_ALLOC, "wgl_create_image_khr");
+      return EGL_NO_IMAGE_KHR;
+   }
+
+   _eglInitImage(&wgl_img->base, disp);
+
+   wgl_img->img = stw_create_image_from_texture(wgl_ctx->ctx,
+                                                gl_target,
+                                                texture,
+                                                depth,
+                                                attrs.GLTextureLevel,
+                                                &error);
+   assert(!!wgl_img->img == (error == STW_IMAGE_ERROR_SUCCESS));
+
+   if (!wgl_img->img) {
+      free(wgl_img);
+      _eglError(egl_error_from_stw_image_error(error), "wgl_create_image_khr");
+      return EGL_NO_IMAGE_KHR;
+   }
+   return &wgl_img->base;
+}
+
+static _EGLImage *
+wgl_create_image_khr_renderbuffer(_EGLDisplay *disp, _EGLContext *ctx,
+                                   EGLClientBuffer buffer,
+                                   const EGLint *attr_list)
+{
+   struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
+   struct wgl_egl_image *wgl_img;
+   GLuint renderbuffer = (GLuint) (uintptr_t) buffer;
+   enum stw_image_error error;
+
+   if (renderbuffer == 0) {
+      _eglError(EGL_BAD_PARAMETER, "wgl_create_image_khr");
+      return EGL_NO_IMAGE_KHR;
+   }
+
+   wgl_img = malloc(sizeof(*wgl_img));
+   if (!wgl_img) {
+      _eglError(EGL_BAD_ALLOC, "wgl_create_image");
+      return NULL;
+   }
+
+   _eglInitImage(&wgl_img->base, disp);
+
+   wgl_img->img = stw_create_image_from_renderbuffer(wgl_ctx->ctx, renderbuffer, &error);
+   assert(!!wgl_img->img == (error == STW_IMAGE_ERROR_SUCCESS));
+
+   if (!wgl_img->img) {
+      free(wgl_img);
+      _eglError(egl_error_from_stw_image_error(error), "wgl_create_image_khr");
+      return EGL_NO_IMAGE_KHR;
+   }
+
+   return &wgl_img->base;
+}
+
+static _EGLImage *
+wgl_create_image_khr(_EGLDisplay *disp, _EGLContext *ctx, EGLenum target,
+                      EGLClientBuffer buffer, const EGLint *attr_list)
+{
+   switch (target) {
+   case EGL_GL_TEXTURE_2D_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_X_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Y_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z_KHR:
+   case EGL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_KHR:
+   case EGL_GL_TEXTURE_3D_KHR:
+      return wgl_create_image_khr_texture(disp, ctx, target, buffer, attr_list);
+   case EGL_GL_RENDERBUFFER_KHR:
+      return wgl_create_image_khr_renderbuffer(disp, ctx, buffer, attr_list);
+   default:
+      _eglError(EGL_BAD_PARAMETER, "wgl_create_image_khr");
+      return EGL_NO_IMAGE_KHR;
+   }
+}
+
+static EGLBoolean
+wgl_destroy_image_khr(_EGLDisplay *disp, _EGLImage *img)
+{
+   struct wgl_egl_image *wgl_img = wgl_egl_image(img);
+   stw_destroy_image(wgl_img->img);
+   free(wgl_img);
+   return EGL_TRUE;
+}
+
 struct _egl_driver _eglDriver = {
    .Initialize = wgl_initialize,
    .Terminate = wgl_terminate,
@@ -858,5 +1005,7 @@ struct _egl_driver _eglDriver = {
    .SwapBuffers = wgl_swap_buffers,
    .WaitClient = wgl_wait_client,
    .WaitNative = wgl_wait_native,
+   .CreateImageKHR = wgl_create_image_khr,
+   .DestroyImageKHR = wgl_destroy_image_khr,
 };
 

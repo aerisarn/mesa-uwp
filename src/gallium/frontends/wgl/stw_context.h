@@ -29,6 +29,8 @@
 #define STW_CONTEXT_H
 
 #include <windows.h>
+#include <GL/gl.h>
+#include <gldrv.h>
 
 struct hud_context;
 struct stw_framebuffer;
