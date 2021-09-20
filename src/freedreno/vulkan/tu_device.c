@@ -27,6 +27,7 @@
 
 #include "tu_private.h"
 #include "tu_cs.h"
+#include "git_sha1.h"
 
 #include <fcntl.h>
 #include <poll.h>
@@ -860,21 +861,104 @@ tu_get_physical_device_properties_1_1(struct tu_physical_device *pdevice,
 
 }
 
+
+/* I have no idea what the maximum size is, but the hardware supports very
+ * large numbers of descriptors (at least 2^16). This limit is based on
+ * CP_LOAD_STATE6, which has a 28-bit field for the DWORD offset, so that
+ * we don't have to think about what to do if that overflows, but really
+ * nothing is likely to get close to this.
+ */
+static const size_t max_descriptor_set_size = (1 << 28) / A6XX_TEX_CONST_DWORDS;
+static const VkSampleCountFlags sample_counts =
+   VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
+
+static void
+tu_get_physical_device_properties_1_2(struct tu_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan12Properties *p)
+{
+   assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES);
+
+   p->driverID = 0; /* XXX: VK 1.2: Need to get a value assigned */
+   memset(p->driverName, 0, sizeof(p->driverName));
+   snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR,
+            "turnip Mesa driver");
+   memset(p->driverInfo, 0, sizeof(p->driverInfo));
+   snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+            "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
+   /* XXX: VK 1.2: Need to pass conformance. */
+   p->conformanceVersion = (VkConformanceVersionKHR) {
+      .major = 0,
+      .minor = 0,
+      .subminor = 0,
+      .patch = 0,
+   };
+
+   p->denormBehaviorIndependence =
+      VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
+   p->roundingModeIndependence =
+      VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
+
+   p->shaderDenormFlushToZeroFloat16         = true;
+   p->shaderDenormPreserveFloat16            = false;
+   p->shaderRoundingModeRTEFloat16           = true;
+   p->shaderRoundingModeRTZFloat16           = false;
+   p->shaderSignedZeroInfNanPreserveFloat16  = true;
+
+   p->shaderDenormFlushToZeroFloat32         = true;
+   p->shaderDenormPreserveFloat32            = false;
+   p->shaderRoundingModeRTEFloat32           = true;
+   p->shaderRoundingModeRTZFloat32           = false;
+   p->shaderSignedZeroInfNanPreserveFloat32  = true;
+
+   p->shaderDenormFlushToZeroFloat64         = false;
+   p->shaderDenormPreserveFloat64            = false;
+   p->shaderRoundingModeRTEFloat64           = false;
+   p->shaderRoundingModeRTZFloat64           = false;
+   p->shaderSignedZeroInfNanPreserveFloat64  = false;
+
+   p->shaderUniformBufferArrayNonUniformIndexingNative   = true;
+   p->shaderSampledImageArrayNonUniformIndexingNative    = true;
+   p->shaderStorageBufferArrayNonUniformIndexingNative   = true;
+   p->shaderStorageImageArrayNonUniformIndexingNative    = true;
+   p->shaderInputAttachmentArrayNonUniformIndexingNative = false;
+   p->robustBufferAccessUpdateAfterBind                  = false;
+   p->quadDivergentImplicitLod                           = false;
+
+   p->maxUpdateAfterBindDescriptorsInAllPools            = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindSamplers       = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindUniformBuffers = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindStorageBuffers = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindSampledImages  = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindStorageImages  = max_descriptor_set_size;
+   p->maxPerStageDescriptorUpdateAfterBindInputAttachments = max_descriptor_set_size;
+   p->maxPerStageUpdateAfterBindResources                = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindSamplers            = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindUniformBuffers      = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DYNAMIC_UNIFORM_BUFFERS;
+   p->maxDescriptorSetUpdateAfterBindStorageBuffers      = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DYNAMIC_STORAGE_BUFFERS;
+   p->maxDescriptorSetUpdateAfterBindSampledImages       = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindStorageImages       = max_descriptor_set_size;
+   p->maxDescriptorSetUpdateAfterBindInputAttachments    = max_descriptor_set_size;
+
+   p->supportedDepthResolveModes    = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+   p->supportedStencilResolveModes  = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+   p->independentResolveNone  = false;
+   p->independentResolve      = false;
+
+   p->filterMinmaxSingleComponentFormats  = true;
+   p->filterMinmaxImageComponentMapping   = true;
+
+   p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+
+   p->framebufferIntegerColorSampleCounts = sample_counts;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                 VkPhysicalDeviceProperties2 *pProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
-   VkSampleCountFlags sample_counts =
-      VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
-
-   /* I have no idea what the maximum size is, but the hardware supports very
-    * large numbers of descriptors (at least 2^16). This limit is based on
-    * CP_LOAD_STATE6, which has a 28-bit field for the DWORD offset, so that
-    * we don't have to think about what to do if that overflows, but really
-    * nothing is likely to get close to this.
-    */
-   const size_t max_descriptor_set_size = (1 << 28) / A6XX_TEX_CONST_DWORDS;
 
    VkPhysicalDeviceLimits limits = {
       .maxImageDimension1D = (1 << 14),
@@ -1003,6 +1087,11 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    };
    tu_get_physical_device_properties_1_1(pdevice, &core_1_1);
 
+   VkPhysicalDeviceVulkan12Properties core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+   };
+   tu_get_physical_device_properties_1_2(pdevice, &core_1_2);
+
 #define CORE_RENAMED_PROPERTY(major, minor, ext_property, core_property) \
    memcpy(&properties->ext_property, &core_##major##_##minor.core_property, \
           sizeof(core_##major##_##minor.core_property))
@@ -1019,6 +1108,17 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
          break;
       }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR: {
+         VkPhysicalDeviceDriverPropertiesKHR *properties =
+            (VkPhysicalDeviceDriverPropertiesKHR *) ext;
+         CORE_PROPERTY(1, 2, driverID);
+         CORE_PROPERTY(1, 2, driverName);
+         CORE_PROPERTY(1, 2, driverInfo);
+         CORE_PROPERTY(1, 2, conformanceVersion);
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
          VkPhysicalDeviceIDProperties *properties =
             (VkPhysicalDeviceIDProperties *) ext;
@@ -1082,8 +1182,8 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
          VkPhysicalDeviceSamplerFilterMinmaxProperties *properties =
             (VkPhysicalDeviceSamplerFilterMinmaxProperties *)ext;
-         properties->filterMinmaxImageComponentMapping = true;
-         properties->filterMinmaxSingleComponentFormats = true;
+         CORE_PROPERTY(1, 2, filterMinmaxImageComponentMapping);
+         CORE_PROPERTY(1, 2, filterMinmaxSingleComponentFormats);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
@@ -1110,12 +1210,12 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
-         VkPhysicalDeviceDepthStencilResolveProperties *props =
+         VkPhysicalDeviceDepthStencilResolveProperties *properties =
             (VkPhysicalDeviceDepthStencilResolveProperties *)ext;
-         props->independentResolve = false;
-         props->independentResolveNone = false;
-         props->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-         props->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+         CORE_PROPERTY(1, 2, supportedDepthResolveModes);
+         CORE_PROPERTY(1, 2, supportedStencilResolveModes);
+         CORE_PROPERTY(1, 2, independentResolveNone);
+         CORE_PROPERTY(1, 2, independentResolve);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR: {
@@ -1125,54 +1225,53 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
-         VkPhysicalDeviceDescriptorIndexingPropertiesEXT *props =
+         VkPhysicalDeviceDescriptorIndexingPropertiesEXT *properties =
             (VkPhysicalDeviceDescriptorIndexingPropertiesEXT *)ext;
-         props->shaderUniformBufferArrayNonUniformIndexingNative = true;
-         props->shaderSampledImageArrayNonUniformIndexingNative = true;
-         props->shaderStorageBufferArrayNonUniformIndexingNative = true;
-         props->shaderStorageImageArrayNonUniformIndexingNative = true;
-         props->shaderInputAttachmentArrayNonUniformIndexingNative = false;
-         props->robustBufferAccessUpdateAfterBind = false;
-         props->quadDivergentImplicitLod = false;
-
-         props->maxUpdateAfterBindDescriptorsInAllPools = max_descriptor_set_size;
-         props->maxPerStageDescriptorUpdateAfterBindSamplers = max_descriptor_set_size;
-         props->maxPerStageDescriptorUpdateAfterBindUniformBuffers = max_descriptor_set_size;
-         props->maxPerStageDescriptorUpdateAfterBindStorageBuffers = max_descriptor_set_size;
-         props->maxPerStageDescriptorUpdateAfterBindSampledImages = max_descriptor_set_size;
-         props->maxPerStageDescriptorUpdateAfterBindStorageImages = max_descriptor_set_size;
-         props->maxPerStageDescriptorUpdateAfterBindInputAttachments = max_descriptor_set_size;
-         props->maxPerStageUpdateAfterBindResources = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindSamplers = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindUniformBuffers = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DYNAMIC_UNIFORM_BUFFERS;
-         props->maxDescriptorSetUpdateAfterBindStorageBuffers = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DYNAMIC_STORAGE_BUFFERS;
-         props->maxDescriptorSetUpdateAfterBindSampledImages = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindStorageImages = max_descriptor_set_size;
-         props->maxDescriptorSetUpdateAfterBindInputAttachments = max_descriptor_set_size;
+         CORE_PROPERTY(1, 2, maxUpdateAfterBindDescriptorsInAllPools);
+         CORE_PROPERTY(1, 2, shaderUniformBufferArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderSampledImageArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderStorageBufferArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderStorageImageArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, shaderInputAttachmentArrayNonUniformIndexingNative);
+         CORE_PROPERTY(1, 2, robustBufferAccessUpdateAfterBind);
+         CORE_PROPERTY(1, 2, quadDivergentImplicitLod);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindSamplers);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindUniformBuffers);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindStorageBuffers);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindSampledImages);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindStorageImages);
+         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindInputAttachments);
+         CORE_PROPERTY(1, 2, maxPerStageUpdateAfterBindResources);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindSamplers);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindUniformBuffers);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindUniformBuffersDynamic);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageBuffers);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageBuffersDynamic);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindSampledImages);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageImages);
+         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindInputAttachments);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
          VkPhysicalDeviceFloatControlsProperties *properties =
             (VkPhysicalDeviceFloatControlsProperties *) ext;
-         properties->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
-         properties->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
-         properties->shaderSignedZeroInfNanPreserveFloat16 = true;
-         properties->shaderSignedZeroInfNanPreserveFloat32 = true;
-         properties->shaderSignedZeroInfNanPreserveFloat64 = false;
-         properties->shaderDenormPreserveFloat16 = false;
-         properties->shaderDenormPreserveFloat32 = false;
-         properties->shaderDenormPreserveFloat64 = false;
-         properties->shaderDenormFlushToZeroFloat16 = true;
-         properties->shaderDenormFlushToZeroFloat32 = true;
-         properties->shaderDenormFlushToZeroFloat64 = false;
-         properties->shaderRoundingModeRTEFloat16 = true;
-         properties->shaderRoundingModeRTEFloat32 = true;
-         properties->shaderRoundingModeRTEFloat64 = false;
-         properties->shaderRoundingModeRTZFloat16 = false;
-         properties->shaderRoundingModeRTZFloat32 = false;
-         properties->shaderRoundingModeRTZFloat64 = false;
+         CORE_PROPERTY(1, 2, denormBehaviorIndependence);
+         CORE_PROPERTY(1, 2, roundingModeIndependence);
+         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat16);
+         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat16);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat16);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat16);
+         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat16);
+         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat32);
+         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat32);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat32);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat32);
+         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat32);
+         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat64);
+         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat64);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat64);
+         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat64);
+         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat64);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
@@ -1184,9 +1283,9 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
-         VkPhysicalDeviceTimelineSemaphorePropertiesKHR *props =
+         VkPhysicalDeviceTimelineSemaphorePropertiesKHR *properties =
             (VkPhysicalDeviceTimelineSemaphorePropertiesKHR *) ext;
-         props->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+         CORE_PROPERTY(1, 2, maxTimelineSemaphoreValueDifference);
          break;
       }
 
@@ -1207,6 +1306,10 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
          tu_get_physical_device_properties_1_1(pdevice, (void *)ext);
+         break;
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
+         tu_get_physical_device_properties_1_2(pdevice, (void *)ext);
          break;
 
       default:
