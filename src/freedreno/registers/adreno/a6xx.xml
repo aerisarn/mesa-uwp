@@ -1565,18 +1565,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8005" name="GRAS_CNTL">
 		<!-- see also RB_RENDER_CONTROL0 -->
 		<bitfield name="IJ_PERSP_PIXEL" pos="0" type="boolean"/>
-		<!-- b1 set for interpolateAtCentroid() -->
 		<bitfield name="IJ_PERSP_CENTROID" pos="1" type="boolean"/>
-		<!-- b2 set instead of b0 when running in per-sample mode -->
 		<bitfield name="IJ_PERSP_SAMPLE" pos="2" type="boolean"/>
-		<!--
-		b3 set for interpolateAt{Offset,Sample}() if not in per-sample
-		mode, and frag_face
-		 -->
-		<bitfield name="SIZE" pos="3" type="boolean"/>
-		<bitfield name="UNK4" pos="4" type="boolean"/>
-		<!-- b5 set ofr interpolateAt{Offset,Sample}() if in per-sample mode -->
-		<bitfield name="SIZE_PERSAMP" pos="5" type="boolean"/>
+		<bitfield name="IJ_LINEAR_PIXEL" pos="3" type="boolean"/>
+		<bitfield name="IJ_LINEAR_CENTROID" pos="4" type="boolean"/>
+		<bitfield name="IJ_LINEAR_SAMPLE" pos="5" type="boolean"/>
 		<bitfield name="COORD_MASK" low="6" high="9" type="hex"/>
 	</reg32>
 	<reg32 offset="0x8006" name="GRAS_CL_GUARDBAND_CLIP_ADJ">
@@ -1965,18 +1958,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8809" name="RB_RENDER_CONTROL0">
 		<!-- see also GRAS_CNTL -->
 		<bitfield name="IJ_PERSP_PIXEL" pos="0" type="boolean"/>
-		<!-- b1 set for interpolateAtCentroid() -->
 		<bitfield name="IJ_PERSP_CENTROID" pos="1" type="boolean"/>
-		<!-- b2 set instead of b0 when running in per-sample mode -->
 		<bitfield name="IJ_PERSP_SAMPLE" pos="2" type="boolean"/>
-		<!--
-		b3 set for interpolateAt{Offset,Sample}() if not in per-sample
-		mode, and frag_face
-		 -->
-		<bitfield name="SIZE" pos="3" type="boolean"/>
-		<bitfield name="UNK4" pos="4" type="boolean"/>
-		<!-- b5 set ofr interpolateAt{Offset,Sample}() if in per-sample mode -->
-		<bitfield name="SIZE_PERSAMP" pos="5" type="boolean"/>
+		<bitfield name="IJ_LINEAR_PIXEL" pos="3" type="boolean"/>
+		<bitfield name="IJ_LINEAR_CENTROID" pos="4" type="boolean"/>
+		<bitfield name="IJ_LINEAR_SAMPLE" pos="5" type="boolean"/>
 		<bitfield name="COORD_MASK" low="6" high="9" type="hex"/>
 		<bitfield name="UNK10" pos="10" type="boolean"/>
 	</reg32>
