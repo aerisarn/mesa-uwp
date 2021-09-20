@@ -455,8 +455,10 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    /* Always add cache items to disk. This will allow collection of
     * compiled shaders by third parties such as steam, even if the app
     * implements its own pipeline cache.
+    *
+    * Make sure to exclude meta shaders because they are stored in a different cache file.
     */
-   if (device->physical_device->disk_cache) {
+   if (device->physical_device->disk_cache && cache != &device->meta_state.cache) {
       uint8_t disk_sha1[20];
       disk_cache_compute_key(device->physical_device->disk_cache, sha1, 20, disk_sha1);
 
