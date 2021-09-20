@@ -663,15 +663,12 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       goto fail_wsi;
    }
 
-   /* These flags affect shader compilation. */
-   uint64_t shader_env_flags = (device->use_llvm ? 0 : 0x2);
-
    /* The gpu id is already embedded in the uuid so we just pass "radv"
     * when creating the cache.
     */
    char buf[VK_UUID_SIZE * 2 + 1];
    disk_cache_format_hex_id(buf, device->cache_uuid, VK_UUID_SIZE * 2);
-   device->disk_cache = disk_cache_create(device->name, buf, shader_env_flags);
+   device->disk_cache = disk_cache_create(device->name, buf, 0);
 #endif
 
    if (device->rad_info.chip_class < GFX8 || device->rad_info.chip_class > GFX10)
