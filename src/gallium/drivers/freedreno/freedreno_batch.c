@@ -341,7 +341,6 @@ batch_flush(struct fd_batch *batch) assert_dt
    batch_flush_dependencies(batch);
 
    batch_reset_resources(batch);
-   fd_bc_free_key(batch);
    batch->flushed = true;
 
    if (batch == batch->ctx->batch)
@@ -353,6 +352,9 @@ batch_flush(struct fd_batch *batch) assert_dt
    fd_gmem_render_tiles(batch);
 
    debug_assert(batch->reference.count > 0);
+
+   /* Must come after fd_gmem_render_tiles, since that uses the key. */
+   fd_bc_free_key(batch);
 
    cleanup_submit(batch);
    fd_batch_unlock_submit(batch);
