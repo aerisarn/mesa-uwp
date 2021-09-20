@@ -126,7 +126,7 @@ wgl_add_config(_EGLDisplay *disp, const struct stw_pixelformat_info *stw_config,
    base.Conformant = disp->ClientAPIs;
 
    base.MinSwapInterval = 0;
-   base.MaxSwapInterval = 1;
+   base.MaxSwapInterval = 4;
    base.YInvertedNOK = EGL_TRUE;
 
    if (!_eglValidateConfig(&base, EGL_FALSE)) {
@@ -689,6 +689,7 @@ wgl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
       return NULL;
    }
 
+   wgl_surf->fb->swap_interval = 1;
    stw_framebuffer_unlock(wgl_surf->fb);
 
    return &wgl_surf->base;
@@ -717,6 +718,7 @@ wgl_create_pbuffer_surface(_EGLDisplay *disp, _EGLConfig *conf,
       return NULL;
    }
 
+   wgl_surf->fb->swap_interval = 1;
    stw_framebuffer_unlock(wgl_surf->fb);
 
    return &wgl_surf->base;
@@ -799,6 +801,14 @@ wgl_bind_tex_image(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
 }
 
 static EGLBoolean
+wgl_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
+{
+   struct wgl_egl_surface *wgl_surf = wgl_egl_surface(surf);
+   wgl_surf->fb->swap_interval = interval;
+   return EGL_TRUE;
+}
+
+static EGLBoolean
 wgl_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 {
    struct wgl_egl_display *wgl_disp = wgl_egl_display(disp);
@@ -825,6 +835,7 @@ struct _egl_driver _eglDriver = {
    .BindTexImage = wgl_bind_tex_image,
    .ReleaseTexImage = _eglReleaseTexImage,
    .GetProcAddress = _glapi_get_proc_address,
+   .SwapInterval = wgl_swap_interval,
    .SwapBuffers = wgl_swap_buffers,
 };
 
