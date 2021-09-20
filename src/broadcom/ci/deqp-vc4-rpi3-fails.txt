@@ -1,8 +1,11 @@
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component16,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_component24,Fail
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_component16,Fail
+
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3133
 KHR-GLES2.texture_3d.copy_sub_image.negative,Fail
 KHR-GLES2.texture_3d.copy_sub_image.rgba,Fail
+
 KHR-GLES2.texture_3d.filtering.combinations.linear_linear_clamp_clamp_clamp,Fail
 KHR-GLES2.texture_3d.filtering.combinations.linear_linear_clamp_clamp_mirror,Fail
 KHR-GLES2.texture_3d.filtering.combinations.linear_linear_clamp_clamp_repeat,Fail
@@ -327,7 +330,10 @@ KHR-GLES2.texture_3d.filtering.combinations.nearest_nearest_repeat_mirror_repeat
 KHR-GLES2.texture_3d.filtering.combinations.nearest_nearest_repeat_repeat_clamp,Fail
 KHR-GLES2.texture_3d.filtering.combinations.nearest_nearest_repeat_repeat_mirror,Fail
 KHR-GLES2.texture_3d.filtering.combinations.nearest_nearest_repeat_repeat_repeat,Fail
+
+# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3134
 KHR-GLES2.texture_3d.filtering.combinations.negative,Fail
+
 KHR-GLES2.texture_3d.filtering.formats.rgba8_linear,Fail
 KHR-GLES2.texture_3d.filtering.formats.rgba8_linear_mipmap_linear,Fail
 KHR-GLES2.texture_3d.filtering.formats.rgba8_linear_mipmap_nearest,Fail
