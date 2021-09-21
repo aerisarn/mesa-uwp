@@ -1251,72 +1251,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
    vk_foreach_struct(ext, pFeatures->pNext)
    {
+      if (vk_get_physical_device_core_1_1_feature_ext(ext, &core_1_1))
+         continue;
+      if (vk_get_physical_device_core_1_2_feature_ext(ext, &core_1_2))
+         continue;
+
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
-         VkPhysicalDeviceVariablePointersFeatures *features = (void *)ext;
-         CORE_FEATURE(1, 1, variablePointersStorageBuffer);
-         CORE_FEATURE(1, 1, variablePointers);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
-         VkPhysicalDeviceMultiviewFeatures *features = (VkPhysicalDeviceMultiviewFeatures *)ext;
-         CORE_FEATURE(1, 1, multiview);
-         CORE_FEATURE(1, 1, multiviewGeometryShader);
-         CORE_FEATURE(1, 1, multiviewTessellationShader);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
-         VkPhysicalDeviceShaderDrawParametersFeatures *features =
-            (VkPhysicalDeviceShaderDrawParametersFeatures *)ext;
-         CORE_FEATURE(1, 1, shaderDrawParameters);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
-         VkPhysicalDeviceProtectedMemoryFeatures *features =
-            (VkPhysicalDeviceProtectedMemoryFeatures *)ext;
-         CORE_FEATURE(1, 1, protectedMemory);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
-         VkPhysicalDevice16BitStorageFeatures *features =
-            (VkPhysicalDevice16BitStorageFeatures *)ext;
-         CORE_FEATURE(1, 1, storageBuffer16BitAccess);
-         CORE_FEATURE(1, 1, uniformAndStorageBuffer16BitAccess);
-         CORE_FEATURE(1, 1, storagePushConstant16);
-         CORE_FEATURE(1, 1, storageInputOutput16);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
-         VkPhysicalDeviceSamplerYcbcrConversionFeatures *features =
-            (VkPhysicalDeviceSamplerYcbcrConversionFeatures *)ext;
-         CORE_FEATURE(1, 1, samplerYcbcrConversion);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
-         VkPhysicalDeviceDescriptorIndexingFeatures *features =
-            (VkPhysicalDeviceDescriptorIndexingFeatures *)ext;
-         CORE_FEATURE(1, 2, shaderInputAttachmentArrayDynamicIndexing);
-         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayDynamicIndexing);
-         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayDynamicIndexing);
-         CORE_FEATURE(1, 2, shaderUniformBufferArrayNonUniformIndexing);
-         CORE_FEATURE(1, 2, shaderSampledImageArrayNonUniformIndexing);
-         CORE_FEATURE(1, 2, shaderStorageBufferArrayNonUniformIndexing);
-         CORE_FEATURE(1, 2, shaderStorageImageArrayNonUniformIndexing);
-         CORE_FEATURE(1, 2, shaderInputAttachmentArrayNonUniformIndexing);
-         CORE_FEATURE(1, 2, shaderUniformTexelBufferArrayNonUniformIndexing);
-         CORE_FEATURE(1, 2, shaderStorageTexelBufferArrayNonUniformIndexing);
-         CORE_FEATURE(1, 2, descriptorBindingUniformBufferUpdateAfterBind);
-         CORE_FEATURE(1, 2, descriptorBindingSampledImageUpdateAfterBind);
-         CORE_FEATURE(1, 2, descriptorBindingStorageImageUpdateAfterBind);
-         CORE_FEATURE(1, 2, descriptorBindingStorageBufferUpdateAfterBind);
-         CORE_FEATURE(1, 2, descriptorBindingUniformTexelBufferUpdateAfterBind);
-         CORE_FEATURE(1, 2, descriptorBindingStorageTexelBufferUpdateAfterBind);
-         CORE_FEATURE(1, 2, descriptorBindingUpdateUnusedWhilePending);
-         CORE_FEATURE(1, 2, descriptorBindingPartiallyBound);
-         CORE_FEATURE(1, 2, descriptorBindingVariableDescriptorCount);
-         CORE_FEATURE(1, 2, runtimeDescriptorArray);
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
          VkPhysicalDeviceConditionalRenderingFeaturesEXT *features =
             (VkPhysicalDeviceConditionalRenderingFeaturesEXT *)ext;
@@ -1350,53 +1290,10 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->memoryPriority = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
-         VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *features =
-            (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *)ext;
-         CORE_FEATURE(1, 2, bufferDeviceAddress);
-         CORE_FEATURE(1, 2, bufferDeviceAddressCaptureReplay);
-         CORE_FEATURE(1, 2, bufferDeviceAddressMultiDevice);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: {
-         VkPhysicalDeviceBufferDeviceAddressFeatures *features =
-            (VkPhysicalDeviceBufferDeviceAddressFeatures *)ext;
-         CORE_FEATURE(1, 2, bufferDeviceAddress);
-         CORE_FEATURE(1, 2, bufferDeviceAddressCaptureReplay);
-         CORE_FEATURE(1, 2, bufferDeviceAddressMultiDevice);
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
          VkPhysicalDeviceDepthClipEnableFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipEnableFeaturesEXT *)ext;
          features->depthClipEnable = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
-         VkPhysicalDeviceHostQueryResetFeatures *features =
-            (VkPhysicalDeviceHostQueryResetFeatures *)ext;
-         CORE_FEATURE(1, 2, hostQueryReset);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
-         VkPhysicalDevice8BitStorageFeatures *features = (VkPhysicalDevice8BitStorageFeatures *)ext;
-         CORE_FEATURE(1, 2, storageBuffer8BitAccess);
-         CORE_FEATURE(1, 2, uniformAndStorageBuffer8BitAccess);
-         CORE_FEATURE(1, 2, storagePushConstant8);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
-         VkPhysicalDeviceShaderFloat16Int8Features *features =
-            (VkPhysicalDeviceShaderFloat16Int8Features *)ext;
-         CORE_FEATURE(1, 2, shaderFloat16);
-         CORE_FEATURE(1, 2, shaderInt8);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
-         VkPhysicalDeviceShaderAtomicInt64Features *features =
-            (VkPhysicalDeviceShaderAtomicInt64Features *)ext;
-         CORE_FEATURE(1, 2, shaderBufferInt64Atomics);
-         CORE_FEATURE(1, 2, shaderSharedInt64Atomics);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
@@ -1426,22 +1323,10 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->ycbcrImageArrays = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: {
-         VkPhysicalDeviceUniformBufferStandardLayoutFeatures *features =
-            (VkPhysicalDeviceUniformBufferStandardLayoutFeatures *)ext;
-         CORE_FEATURE(1, 2, uniformBufferStandardLayout);
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
          VkPhysicalDeviceIndexTypeUint8FeaturesEXT *features =
             (VkPhysicalDeviceIndexTypeUint8FeaturesEXT *)ext;
          features->indexTypeUint8 = pdevice->rad_info.chip_class >= GFX8;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
-         VkPhysicalDeviceImagelessFramebufferFeatures *features =
-            (VkPhysicalDeviceImagelessFramebufferFeatures *)ext;
-         CORE_FEATURE(1, 2, imagelessFramebuffer);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: {
@@ -1463,12 +1348,6 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->texelBufferAlignment = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
-         VkPhysicalDeviceTimelineSemaphoreFeatures *features =
-            (VkPhysicalDeviceTimelineSemaphoreFeatures *)ext;
-         CORE_FEATURE(1, 2, timelineSemaphore);
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: {
          VkPhysicalDeviceSubgroupSizeControlFeaturesEXT *features =
             (VkPhysicalDeviceSubgroupSizeControlFeaturesEXT *)ext;
@@ -1480,26 +1359,6 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceCoherentMemoryFeaturesAMD *features =
             (VkPhysicalDeviceCoherentMemoryFeaturesAMD *)ext;
          features->deviceCoherentMemory = pdevice->rad_info.has_l2_uncached;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
-         VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *features =
-            (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures *)ext;
-         CORE_FEATURE(1, 2, shaderSubgroupExtendedTypes);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR: {
-         VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *features =
-            (VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *)ext;
-         CORE_FEATURE(1, 2, separateDepthStencilLayouts);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
-         radv_get_physical_device_features_1_1(pdevice, (void *)ext);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
-         radv_get_physical_device_features_1_2(pdevice, (void *)ext);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
@@ -1547,14 +1406,6 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *features =
             (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *)ext;
          features->pipelineCreationCacheControl = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
-         VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *features =
-            (VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *)ext;
-         CORE_FEATURE(1, 2, vulkanMemoryModel);
-         CORE_FEATURE(1, 2, vulkanMemoryModelDeviceScope);
-         CORE_FEATURE(1, 2, vulkanMemoryModelAvailabilityVisibilityChains);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
@@ -1733,7 +1584,6 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
    }
-#undef CORE_FEATURE
 }
 
 static size_t
@@ -2068,41 +1918,18 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    };
    radv_get_physical_device_properties_1_2(pdevice, &core_1_2);
 
-#define CORE_RENAMED_PROPERTY(major, minor, ext_property, core_property)                           \
-   memcpy(&properties->ext_property, &core_##major##_##minor.core_property,                        \
-          sizeof(core_##major##_##minor.core_property))
-
-#define CORE_PROPERTY(major, minor, property)                                                      \
-   CORE_RENAMED_PROPERTY(major, minor, property, property)
-
    vk_foreach_struct(ext, pProperties->pNext)
    {
+      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
+         continue;
+      if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
+         continue;
+
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
          VkPhysicalDevicePushDescriptorPropertiesKHR *properties =
             (VkPhysicalDevicePushDescriptorPropertiesKHR *)ext;
          properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-         VkPhysicalDeviceIDProperties *properties = (VkPhysicalDeviceIDProperties *)ext;
-         CORE_PROPERTY(1, 1, deviceUUID);
-         CORE_PROPERTY(1, 1, driverUUID);
-         CORE_PROPERTY(1, 1, deviceLUID);
-         CORE_PROPERTY(1, 1, deviceLUIDValid);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
-         VkPhysicalDeviceMultiviewProperties *properties =
-            (VkPhysicalDeviceMultiviewProperties *)ext;
-         CORE_PROPERTY(1, 1, maxMultiviewViewCount);
-         CORE_PROPERTY(1, 1, maxMultiviewInstanceIndex);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-         VkPhysicalDevicePointClippingProperties *properties =
-            (VkPhysicalDevicePointClippingProperties *)ext;
-         CORE_PROPERTY(1, 1, pointClippingBehavior);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT: {
@@ -2115,28 +1942,6 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceExternalMemoryHostPropertiesEXT *properties =
             (VkPhysicalDeviceExternalMemoryHostPropertiesEXT *)ext;
          properties->minImportedHostPointerAlignment = 4096;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
-         VkPhysicalDeviceSubgroupProperties *properties = (VkPhysicalDeviceSubgroupProperties *)ext;
-         CORE_PROPERTY(1, 1, subgroupSize);
-         CORE_RENAMED_PROPERTY(1, 1, supportedStages, subgroupSupportedStages);
-         CORE_RENAMED_PROPERTY(1, 1, supportedOperations, subgroupSupportedOperations);
-         CORE_RENAMED_PROPERTY(1, 1, quadOperationsInAllStages, subgroupQuadOperationsInAllStages);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
-         VkPhysicalDeviceMaintenance3Properties *properties =
-            (VkPhysicalDeviceMaintenance3Properties *)ext;
-         CORE_PROPERTY(1, 1, maxPerSetDescriptors);
-         CORE_PROPERTY(1, 1, maxMemoryAllocationSize);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
-         VkPhysicalDeviceSamplerFilterMinmaxProperties *properties =
-            (VkPhysicalDeviceSamplerFilterMinmaxProperties *)ext;
-         CORE_PROPERTY(1, 2, filterMinmaxImageComponentMapping);
-         CORE_PROPERTY(1, 2, filterMinmaxSingleComponentFormats);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD: {
@@ -2178,40 +1983,6 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->maxVertexAttribDivisor = UINT32_MAX;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
-         VkPhysicalDeviceDescriptorIndexingProperties *properties =
-            (VkPhysicalDeviceDescriptorIndexingProperties *)ext;
-         CORE_PROPERTY(1, 2, maxUpdateAfterBindDescriptorsInAllPools);
-         CORE_PROPERTY(1, 2, shaderUniformBufferArrayNonUniformIndexingNative);
-         CORE_PROPERTY(1, 2, shaderSampledImageArrayNonUniformIndexingNative);
-         CORE_PROPERTY(1, 2, shaderStorageBufferArrayNonUniformIndexingNative);
-         CORE_PROPERTY(1, 2, shaderStorageImageArrayNonUniformIndexingNative);
-         CORE_PROPERTY(1, 2, shaderInputAttachmentArrayNonUniformIndexingNative);
-         CORE_PROPERTY(1, 2, robustBufferAccessUpdateAfterBind);
-         CORE_PROPERTY(1, 2, quadDivergentImplicitLod);
-         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindSamplers);
-         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindUniformBuffers);
-         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindStorageBuffers);
-         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindSampledImages);
-         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindStorageImages);
-         CORE_PROPERTY(1, 2, maxPerStageDescriptorUpdateAfterBindInputAttachments);
-         CORE_PROPERTY(1, 2, maxPerStageUpdateAfterBindResources);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindSamplers);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindUniformBuffers);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindUniformBuffersDynamic);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageBuffers);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageBuffersDynamic);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindSampledImages);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageImages);
-         CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindInputAttachments);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
-         VkPhysicalDeviceProtectedMemoryProperties *properties =
-            (VkPhysicalDeviceProtectedMemoryProperties *)ext;
-         CORE_PROPERTY(1, 1, protectedNoFault);
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
          VkPhysicalDeviceConservativeRasterizationPropertiesEXT *properties =
             (VkPhysicalDeviceConservativeRasterizationPropertiesEXT *)ext;
@@ -2237,14 +2008,6 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       }
 #endif
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
-         VkPhysicalDeviceDriverProperties *properties = (VkPhysicalDeviceDriverProperties *)ext;
-         CORE_PROPERTY(1, 2, driverID);
-         CORE_PROPERTY(1, 2, driverName);
-         CORE_PROPERTY(1, 2, driverInfo);
-         CORE_PROPERTY(1, 2, conformanceVersion);
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
          VkPhysicalDeviceTransformFeedbackPropertiesEXT *properties =
             (VkPhysicalDeviceTransformFeedbackPropertiesEXT *)ext;
@@ -2284,15 +2047,6 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->variableSampleLocations = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
-         VkPhysicalDeviceDepthStencilResolveProperties *properties =
-            (VkPhysicalDeviceDepthStencilResolveProperties *)ext;
-         CORE_PROPERTY(1, 2, supportedDepthResolveModes);
-         CORE_PROPERTY(1, 2, supportedStencilResolveModes);
-         CORE_PROPERTY(1, 2, independentResolveNone);
-         CORE_PROPERTY(1, 2, independentResolve);
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
          VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *properties =
             (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *)ext;
@@ -2300,34 +2054,6 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->storageTexelBufferOffsetSingleTexelAlignment = true;
          properties->uniformTexelBufferOffsetAlignmentBytes = 4;
          properties->uniformTexelBufferOffsetSingleTexelAlignment = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
-         VkPhysicalDeviceFloatControlsProperties *properties =
-            (VkPhysicalDeviceFloatControlsProperties *)ext;
-         CORE_PROPERTY(1, 2, denormBehaviorIndependence);
-         CORE_PROPERTY(1, 2, roundingModeIndependence);
-         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat16);
-         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat16);
-         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat16);
-         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat16);
-         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat16);
-         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat32);
-         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat32);
-         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat32);
-         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat32);
-         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat32);
-         CORE_PROPERTY(1, 2, shaderDenormFlushToZeroFloat64);
-         CORE_PROPERTY(1, 2, shaderDenormPreserveFloat64);
-         CORE_PROPERTY(1, 2, shaderRoundingModeRTEFloat64);
-         CORE_PROPERTY(1, 2, shaderRoundingModeRTZFloat64);
-         CORE_PROPERTY(1, 2, shaderSignedZeroInfNanPreserveFloat64);
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
-         VkPhysicalDeviceTimelineSemaphoreProperties *properties =
-            (VkPhysicalDeviceTimelineSemaphoreProperties *)ext;
-         CORE_PROPERTY(1, 2, maxTimelineSemaphoreValueDifference);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
@@ -2345,12 +2071,6 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          }
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
-         radv_get_physical_device_properties_1_1(pdevice, (void *)ext);
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
-         radv_get_physical_device_properties_1_2(pdevice, (void *)ext);
-         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
          VkPhysicalDeviceLineRasterizationPropertiesEXT *props =
             (VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
