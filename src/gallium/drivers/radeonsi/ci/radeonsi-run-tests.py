@@ -161,7 +161,7 @@ for line in p.stdout.decode().split("\n"):
 output_folder = args.output_folder
 count = 1
 while os.path.exists(output_folder):
-    output_folder = "{}.{}".format(args.output_folder, count)
+    output_folder = "{}.{}".format(os.path.abspath(args.output_folder), count)
     count += 1
 
 os.mkdir(output_folder)
