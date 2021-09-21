@@ -6561,9 +6561,6 @@ radv_rt_bind_tables(struct radv_cmd_buffer *cmd_buffer,
    if (!radv_cmd_buffer_upload_alloc(cmd_buffer, 64, &offset, &ptr))
       return false;
 
-   /* For the descriptor format. */
-   assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
-
    desc_ptr = ptr;
    for (unsigned i = 0; i < 4; ++i, desc_ptr += 4) {
       desc_ptr[0] = tables[i].deviceAddress;
