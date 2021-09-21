@@ -104,6 +104,19 @@ C_TEMPLATE = Template(textwrap.dedent(u"""\
             unreachable("Undefined struct type.");
         }
     }
+
+    const char *
+    vk_ObjectType_to_ObjectName(VkObjectType type)
+    {
+        switch((int)type) {
+    % for object_type in sorted(object_types[0].enum_to_name.keys()):
+        case ${object_type}:
+            return "${object_types[0].enum_to_name[object_type]}";
+    % endfor
+        default:
+            unreachable("Undefined enum value.");
+        }
+    }
     """))
 
 H_TEMPLATE = Template(textwrap.dedent(u"""\
@@ -138,6 +151,8 @@ H_TEMPLATE = Template(textwrap.dedent(u"""\
     % endfor
 
     size_t vk_structure_type_size(const struct VkBaseInStructure *item);
+
+    const char * vk_ObjectType_to_ObjectName(VkObjectType type);
 
     #ifdef __cplusplus
     } /* extern "C" */
@@ -264,8 +279,15 @@ def struct_get_stype(xml_node):
             return member.get('values')
     return None
 
+class VkObjectType(object):
+    """Simple struct-like class representing a single Vulkan object type"""
+    def __init__(self, name):
+        self.name = name
+        self.enum_to_name = dict()
 
-def parse_xml(enum_factory, ext_factory, struct_factory, filename):
+
+def parse_xml(enum_factory, ext_factory, struct_factory, obj_type_factory,
+              filename):
     """Parse the XML file. Accumulate results into the factories.
 
     This parser is a memory efficient iterative XML parser that returns a list
@@ -319,6 +341,14 @@ def parse_xml(enum_factory, ext_factory, struct_factory, filename):
                 if enum is not None:
                     enum.set_guard(define)
 
+    obj_types = obj_type_factory("VkObjectType")
+    for object_type in xml.findall('./types/type[@category="handle"]'):
+        for object_name in object_type.findall('./name'):
+            # Convert to int to avoid undefined enums
+            enum = object_type.attrib['objtypeenum']
+            enum_val = enum_factory.get("VkObjectType").name_to_value[enum]
+            obj_types.enum_to_name[enum_val] = object_name.text
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -335,11 +365,14 @@ def main():
     enum_factory = NamedFactory(VkEnum)
     ext_factory = NamedFactory(VkExtension)
     struct_factory = NamedFactory(VkChainStruct)
+    obj_type_factory = NamedFactory(VkObjectType)
     for filename in args.xml_files:
-        parse_xml(enum_factory, ext_factory, struct_factory, filename)
+        parse_xml(enum_factory, ext_factory, struct_factory, obj_type_factory,
+                  filename)
     enums = sorted(enum_factory.registry.values(), key=lambda e: e.name)
     extensions = sorted(ext_factory.registry.values(), key=lambda e: e.name)
     structs = sorted(struct_factory.registry.values(), key=lambda e: e.name)
+    object_types = sorted(obj_type_factory.registry.values(), key=lambda e: e.name)
 
     for template, file_ in [(C_TEMPLATE, os.path.join(args.outdir, 'vk_enum_to_str.c')),
                             (H_TEMPLATE, os.path.join(args.outdir, 'vk_enum_to_str.h'))]:
@@ -349,6 +382,7 @@ def main():
                 enums=enums,
                 extensions=extensions,
                 structs=structs,
+                object_types=object_types,
                 copyright=COPYRIGHT))
 
 
