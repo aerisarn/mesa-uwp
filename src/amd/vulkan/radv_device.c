@@ -5448,6 +5448,31 @@ radv_GetImageMemoryRequirements2(VkDevice _device, const VkImageMemoryRequiremen
 }
 
 void
+radv_GetDeviceImageMemoryRequirementsKHR(VkDevice device,
+                                         const VkDeviceImageMemoryRequirementsKHR *pInfo,
+                                         VkMemoryRequirements2 *pMemoryRequirements)
+{
+   UNUSED VkResult result;
+   VkImage image;
+
+   /* Determining the image size/alignment require to create a surface, which is complicated without
+    * creating an image.
+    * TODO: Avoid creating an image.
+    */
+   result = radv_CreateImage(device, pInfo->pCreateInfo, NULL, &image);
+   assert(result == VK_SUCCESS);
+
+   VkImageMemoryRequirementsInfo2 info2 = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = image,
+   };
+
+   radv_GetImageMemoryRequirements2(device, &info2, pMemoryRequirements);
+
+   radv_DestroyImage(device, image, NULL);
+}
+
+void
 radv_GetDeviceMemoryCommitment(VkDevice device, VkDeviceMemory memory,
                                VkDeviceSize *pCommittedMemoryInBytes)
 {
