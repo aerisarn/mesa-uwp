@@ -269,32 +269,30 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
  * with its mutex locked.
  */
 struct stw_framebuffer *
-stw_framebuffer_create(HWND hWnd, int iPixelFormat, enum stw_framebuffer_owner owner,
+stw_framebuffer_create(HWND hWnd, const struct stw_pixelformat_info *pfi, enum stw_framebuffer_owner owner,
                        struct st_manager *smapi)
 {
    struct stw_framebuffer *fb;
-   const struct stw_pixelformat_info *pfi;
 
    fb = CALLOC_STRUCT( stw_framebuffer );
    if (fb == NULL)
       return NULL;
 
    fb->hWnd = hWnd;
-   fb->iPixelFormat = iPixelFormat;
 
    if (stw_dev->stw_winsys->create_framebuffer)
       fb->winsys_framebuffer =
-         stw_dev->stw_winsys->create_framebuffer(stw_dev->screen, hWnd, iPixelFormat);
+         stw_dev->stw_winsys->create_framebuffer(stw_dev->screen, hWnd, pfi->iPixelFormat);
 
    /*
     * We often need a displayable pixel format to make GDI happy. Set it
     * here (always 1, i.e., out first pixel format) where appropriate.
     */
-   fb->iDisplayablePixelFormat = iPixelFormat <= stw_dev->pixelformat_count
-      ? iPixelFormat : 1;
+   fb->iDisplayablePixelFormat = pfi->iPixelFormat <= stw_dev->pixelformat_count
+      ? pfi->iPixelFormat : 1;
    fb->owner = owner;
 
-   fb->pfi = pfi = stw_pixelformat_get_info( iPixelFormat );
+   fb->pfi = pfi;
    fb->stfb = stw_st_create_framebuffer( fb, smapi );
    if (!fb->stfb) {
       FREE( fb );
@@ -499,7 +497,9 @@ DrvSetPixelFormat(HDC hdc, LONG iPixelFormat)
       return bPbuffer;
    }
 
-   fb = stw_framebuffer_create(WindowFromDC(hdc), iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW, stw_dev->smapi);
+   const struct stw_pixelformat_info *pfi = stw_pixelformat_get_info(iPixelFormat);
+
+   fb = stw_framebuffer_create(WindowFromDC(hdc), pfi, STW_FRAMEBUFFER_WGL_WINDOW, stw_dev->smapi);
    if (!fb) {
       return FALSE;
    }
@@ -528,7 +528,7 @@ stw_pixelformat_get(HDC hdc)
 
    fb = stw_framebuffer_from_hdc(hdc);
    if (fb) {
-      iPixelFormat = fb->iPixelFormat;
+      iPixelFormat = fb->pfi->iPixelFormat;
       stw_framebuffer_unlock(fb);
    }
 

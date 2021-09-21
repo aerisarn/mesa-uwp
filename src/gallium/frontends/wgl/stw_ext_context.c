@@ -213,10 +213,14 @@ wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList)
 
       struct stw_context *share_stw = stw_lookup_context(share_dhglrc);
 
+      const struct stw_pixelformat_info *pfi = stw_pixelformat_get_info_from_hdc(hDC);
+      if (!pfi)
+         return 0;
+
       struct stw_context *stw_ctx = stw_create_context_attribs(hDC, layerPlane, share_stw,
                                                                stw_dev->smapi,
                                                                majorVersion, minorVersion,
-                                                               contextFlags, profileMask, 0,
+                                                               contextFlags, profileMask, pfi,
                                                                resetStrategy);
 
       if (!stw_ctx) {

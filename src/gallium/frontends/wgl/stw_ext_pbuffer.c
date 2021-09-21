@@ -66,7 +66,7 @@ WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 struct stw_framebuffer *
-stw_pbuffer_create(int iPixelFormat, int iWidth, int iHeight, struct st_manager *smapi)
+stw_pbuffer_create(const struct stw_pixelformat_info *pfi, int iWidth, int iHeight, struct st_manager *smapi)
 {
    static boolean first = TRUE;
 
@@ -143,7 +143,7 @@ stw_pbuffer_create(int iPixelFormat, int iWidth, int iHeight, struct st_manager 
    assert(rect.bottom - rect.top == iHeight);
 #endif
 
-   return stw_framebuffer_create(hWnd, iPixelFormat, STW_FRAMEBUFFER_PBUFFER, smapi);
+   return stw_framebuffer_create(hWnd, pfi, STW_FRAMEBUFFER_PBUFFER, smapi);
 }
 
 
@@ -164,8 +164,9 @@ wglCreatePbufferARB(HDC hCurrentDC,
    int textureFormat = WGL_NO_TEXTURE_ARB;
    int textureTarget = WGL_NO_TEXTURE_ARB;
    BOOL textureMipmap = FALSE;
+   const struct stw_pixelformat_info *pfi = stw_pixelformat_get_info(iPixelFormat);
 
-   if (!stw_pixelformat_get_info(iPixelFormat)) {
+   if (!pfi) {
       SetLastError(ERROR_INVALID_PIXEL_FORMAT);
       return 0;
    }
@@ -241,7 +242,7 @@ wglCreatePbufferARB(HDC hCurrentDC,
     * We can't pass non-displayable pixel formats to GDI, which is why we
     * create the framebuffer object before calling SetPixelFormat().
     */
-   fb = stw_pbuffer_create(iPixelFormat, iWidth, iHeight, stw_dev->smapi);
+   fb = stw_pbuffer_create(pfi, iWidth, iHeight, stw_dev->smapi);
    if (!fb) {
       SetLastError(ERROR_NO_SYSTEM_RESOURCES);
       return NULL;

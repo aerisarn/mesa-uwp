@@ -41,7 +41,7 @@ struct stw_context
 {
    struct st_context_iface *st;
    DHGLRC dhglrc;
-   int iPixelFormat;
+   const struct stw_pixelformat_info *pfi;
    HDC hDrawDC;
    HDC hReadDC;
    BOOL shared;
@@ -57,7 +57,8 @@ struct stw_context *stw_create_context_attribs(HDC hdc, INT iLayerPlane,
                                                struct st_manager *smapi,
                                                int majorVersion, int minorVersion,
                                                int contextFlags, int profileMask,
-                                               int iPixelFormat, int resetStrategy);
+                                               const struct stw_pixelformat_info *pfi,
+                                               int resetStrategy);
 
 DHGLRC stw_create_context_handle(struct stw_context *context, DHGLRC handle);
 

@@ -129,9 +129,13 @@ DrvCreateLayerContext(HDC hdc, INT iLayerPlane)
    if (!stw_dev)
       return 0;
 
+   const struct stw_pixelformat_info *pfi = stw_pixelformat_get_info_from_hdc(hdc);
+   if (!pfi)
+      return 0;
+
    struct stw_context *ctx = stw_create_context_attribs(hdc, iLayerPlane, NULL, stw_dev->smapi, 1, 0, 0,
                                                         WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-                                                        0, WGL_NO_RESET_NOTIFICATION_ARB);
+                                                        pfi, WGL_NO_RESET_NOTIFICATION_ARB);
    if (!ctx)
       return 0;
 
@@ -142,26 +146,6 @@ DrvCreateLayerContext(HDC hdc, INT iLayerPlane)
    return ret;
 }
 
-
-/**
- * Return the stw pixel format that most closely matches the pixel format
- * on HDC.
- * Used to get a pixel format when SetPixelFormat() hasn't been called before.
- */
-static int
-get_matching_pixel_format(HDC hdc)
-{
-   int iPixelFormat = GetPixelFormat(hdc);
-   PIXELFORMATDESCRIPTOR pfd;
-
-   if (!iPixelFormat)
-      return 0;
-   if (!DescribePixelFormat(hdc, iPixelFormat, sizeof(pfd), &pfd))
-      return 0;
-   return stw_pixelformat_choose(hdc, &pfd);
-}
-
-
 /**
  * Called via DrvCreateContext(), DrvCreateLayerContext() and
  * wglCreateContextAttribsARB() to actually create a rendering context.
@@ -171,9 +155,9 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
                            struct st_manager *smapi,
                            int majorVersion, int minorVersion,
                            int contextFlags, int profileMask,
-                           int iPixelFormat, int resetStrategy)
+                           const struct stw_pixelformat_info *pfi,
+                           int resetStrategy)
 {
-   const struct stw_pixelformat_info *pfi;
    struct st_context_attribs attribs;
    struct stw_context *ctx = NULL;
    enum st_context_error ctx_err = 0;
@@ -184,32 +168,6 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
    if (iLayerPlane != 0)
       return 0;
 
-   if (!iPixelFormat) {
-      /*
-       * GDI only knows about displayable pixel formats, so determine the pixel
-       * format from the framebuffer.
-       *
-       * This also allows to use a OpenGL DLL / ICD without installing.
-       */
-      struct stw_framebuffer *fb;
-      fb = stw_framebuffer_from_hdc(hdc);
-      if (fb) {
-         iPixelFormat = fb->iPixelFormat;
-         stw_framebuffer_unlock(fb);
-      }
-      else {
-         /* Applications should call SetPixelFormat before creating a context,
-          * but not all do, and the opengl32 runtime seems to use a default
-          * pixel format in some cases, so use that.
-          */
-         iPixelFormat = get_matching_pixel_format(hdc);
-         if (!iPixelFormat)
-            return 0;
-      }
-   }
-
-   pfi = stw_pixelformat_get_info( iPixelFormat );
-
    if (shareCtx != NULL)
       shareCtx->shared = TRUE;
 
@@ -219,11 +177,12 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
 
    ctx->hDrawDC = hdc;
    ctx->hReadDC = hdc;
-   ctx->iPixelFormat = iPixelFormat;
+   ctx->pfi = pfi;
    ctx->shared = shareCtx != NULL;
 
    memset(&attribs, 0, sizeof(attribs));
-   attribs.visual = pfi->stvis;
+   if (pfi)
+      attribs.visual = pfi->stvis;
    attribs.major = majorVersion;
    attribs.minor = minorVersion;
    if (contextFlags & WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB)
@@ -500,29 +459,28 @@ stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, str
    }
 
    if (ctx) {
-      if (!fb || !fbRead)
-         goto fail;
-
-      if (fb->iPixelFormat != ctx->iPixelFormat) {
+      if (ctx->pfi && fb && fb->pfi != ctx->pfi) {
          SetLastError(ERROR_INVALID_PIXEL_FORMAT);
          goto fail;
       }
-      if (fbRead->iPixelFormat != ctx->iPixelFormat) {
+      if (ctx->pfi && fbRead && fbRead->pfi != ctx->pfi) {
          SetLastError(ERROR_INVALID_PIXEL_FORMAT);
          goto fail;
       }
 
-      stw_framebuffer_lock(fb);
-      stw_framebuffer_update(fb);
-      stw_framebuffer_reference_locked(fb);
-      stw_framebuffer_unlock(fb);
+      if (fb) {
+         stw_framebuffer_lock(fb);
+         stw_framebuffer_update(fb);
+         stw_framebuffer_reference_locked(fb);
+         stw_framebuffer_unlock(fb);
+      }
 
-      stw_framebuffer_lock(fbRead);
-      if (fbRead != fb) {
+      if (fbRead && fbRead != fb) {
+         stw_framebuffer_lock(fbRead);
          stw_framebuffer_update(fbRead);
          stw_framebuffer_reference_locked(fbRead);
+         stw_framebuffer_unlock(fbRead);
       }
-      stw_framebuffer_unlock(fbRead);
 
       struct stw_framebuffer *old_fb = ctx->current_framebuffer;
       struct stw_framebuffer *old_fbRead = ctx->current_read_framebuffer;
@@ -530,7 +488,8 @@ stw_make_current(struct stw_framebuffer *fb, struct stw_framebuffer *fbRead, str
       ctx->current_read_framebuffer = fbRead;
 
       ret = stw_dev->stapi->make_current(stw_dev->stapi, ctx->st,
-                                          fb->stfb, fbRead->stfb);
+                                         fb ? fb->stfb : NULL,
+                                         fbRead ? fbRead->stfb : NULL);
 
       /* Release the old framebuffers from this context. */
       release_old_framebuffers(old_fb, old_fbRead, ctx);
@@ -578,9 +537,9 @@ get_unlocked_refd_framebuffer_from_dc(HDC hDC)
        * pixel format in some cases, so we must create a framebuffer for
        * those here.
        */
-      int iPixelFormat = get_matching_pixel_format(hDC);
+      int iPixelFormat = stw_pixelformat_guess(hDC);
       if (iPixelFormat)
-         fb = stw_framebuffer_create(WindowFromDC(hDC), iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW, stw_dev->smapi);
+         fb = stw_framebuffer_create(WindowFromDC(hDC), stw_pixelformat_get_info(iPixelFormat), STW_FRAMEBUFFER_WGL_WINDOW, stw_dev->smapi);
       if (!fb)
          return NULL;
    }
