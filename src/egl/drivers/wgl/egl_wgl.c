@@ -34,6 +34,7 @@
 #include <stw_context.h>
 #include <stw_framebuffer.h>
 #include <stw_image.h>
+#include <stw_winsys.h>
 
 #include <GL/wglext.h>
 
@@ -1035,6 +1036,18 @@ wgl_destroy_image_khr(_EGLDisplay *disp, _EGLImage *img)
    return EGL_TRUE;
 }
 
+static const char *
+wgl_query_driver_name(_EGLDisplay *disp)
+{
+   return stw_get_device()->stw_winsys->get_name();
+}
+
+static char *
+wgl_query_driver_config(_EGLDisplay *disp)
+{
+   return stw_get_config_xml();
+}
+
 struct _egl_driver _eglDriver = {
    .Initialize = wgl_initialize,
    .Terminate = wgl_terminate,
@@ -1054,5 +1067,7 @@ struct _egl_driver _eglDriver = {
    .WaitNative = wgl_wait_native,
    .CreateImageKHR = wgl_create_image_khr,
    .DestroyImageKHR = wgl_destroy_image_khr,
+   .QueryDriverName = wgl_query_driver_name,
+   .QueryDriverConfig = wgl_query_driver_config,
 };
 
