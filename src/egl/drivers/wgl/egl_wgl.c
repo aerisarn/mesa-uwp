@@ -218,7 +218,9 @@ wgl_initialize_impl(_EGLDisplay *disp, HDC hdc)
       goto cleanup;
    }
 
-   wgl_dpy->screen = stw_get_device()->screen;
+   struct stw_device *stw_dev = stw_get_device();
+   wgl_dpy->screen = stw_dev->screen;
+   wgl_dpy->smapi = stw_dev->smapi;
 
    disp->ClientAPIs = 0;
    if (_eglIsApiValid(EGL_OPENGL_API))
@@ -443,6 +445,7 @@ wgl_create_context(_EGLDisplay *disp, _EGLConfig *conf,
    if (wgl_ctx->base.ResetNotificationStrategy != EGL_NO_RESET_NOTIFICATION)
       resetStrategy = WGL_LOSE_CONTEXT_ON_RESET_ARB;
    wgl_ctx->ctx = stw_create_context_attribs(disp->PlatformDisplay, 0, shared,
+      wgl_dpy->smapi,
       wgl_ctx->base.ClientMajorVersion,
       wgl_ctx->base.ClientMinorVersion,
       flags,

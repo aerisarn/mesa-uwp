@@ -126,7 +126,10 @@ DrvCreateContext(HDC hdc)
 DHGLRC APIENTRY
 DrvCreateLayerContext(HDC hdc, INT iLayerPlane)
 {
-   struct stw_context *ctx = stw_create_context_attribs(hdc, iLayerPlane, 0, 1, 0, 0,
+   if (!stw_dev)
+      return 0;
+
+   struct stw_context *ctx = stw_create_context_attribs(hdc, iLayerPlane, NULL, stw_dev->smapi, 1, 0, 0,
                                                         WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
                                                         0, WGL_NO_RESET_NOTIFICATION_ARB);
    if (!ctx)
@@ -165,6 +168,7 @@ get_matching_pixel_format(HDC hdc)
  */
 struct stw_context *
 stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCtx,
+                           struct st_manager *smapi,
                            int majorVersion, int minorVersion,
                            int contextFlags, int profileMask,
                            int iPixelFormat, int resetStrategy)
@@ -279,7 +283,7 @@ stw_create_context_attribs(HDC hdc, INT iLayerPlane, struct stw_context *shareCt
    attribs.options = stw_dev->st_options;
 
    ctx->st = stw_dev->stapi->create_context(stw_dev->stapi,
-         stw_dev->smapi, &attribs, &ctx_err, shareCtx ? shareCtx->st : NULL);
+         smapi, &attribs, &ctx_err, shareCtx ? shareCtx->st : NULL);
    if (ctx->st == NULL)
       goto no_st_ctx;
 

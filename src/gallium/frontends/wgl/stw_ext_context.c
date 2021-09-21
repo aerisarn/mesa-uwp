@@ -83,6 +83,9 @@ wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList)
                                 WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB |
                                 WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB);
 
+   if (!stw_dev)
+      return NULL;
+
    /* parse attrib_list */
    if (attribList) {
       for (i = 0; !done && attribList[i]; i++) {
@@ -211,6 +214,7 @@ wglCreateContextAttribsARB(HDC hDC, HGLRC hShareContext, const int *attribList)
       struct stw_context *share_stw = stw_lookup_context(share_dhglrc);
 
       struct stw_context *stw_ctx = stw_create_context_attribs(hDC, layerPlane, share_stw,
+                                                               stw_dev->smapi,
                                                                majorVersion, minorVersion,
                                                                contextFlags, profileMask, 0,
                                                                resetStrategy);

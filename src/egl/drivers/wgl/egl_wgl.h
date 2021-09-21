@@ -35,6 +35,7 @@ struct wgl_egl_display
 {
    int ref_count;
    struct pipe_screen *screen;
+   struct st_manager *smapi;
 };
 
 struct wgl_egl_config
