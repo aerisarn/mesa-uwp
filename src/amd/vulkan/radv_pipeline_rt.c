@@ -1681,7 +1681,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
          {
             /* box */
 
-            for (unsigned i = 0; i < 4; ++i) {
+            for (unsigned i = 4; i-- > 0; ) {
                nir_ssa_def *new_node = nir_vector_extract(b, result, nir_imm_int(b, i));
                nir_push_if(b, nir_ine(b, new_node, nir_imm_int(b, 0xffffffff)));
                {
