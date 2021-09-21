@@ -85,6 +85,32 @@ lima_clip_scissor_to_viewport(struct lima_context *ctx)
       cscissor->miny = cscissor->maxy;
 }
 
+static void
+lima_extend_viewport(struct lima_context *ctx, const struct pipe_draw_info *info)
+{
+   /* restore the original values */
+   ctx->ext_viewport.left = ctx->viewport.left;
+   ctx->ext_viewport.right = ctx->viewport.right;
+   ctx->ext_viewport.bottom = ctx->viewport.bottom;
+   ctx->ext_viewport.top = ctx->viewport.top;
+
+   if (info->mode != PIPE_PRIM_LINES)
+      return;
+
+   if (!ctx->rasterizer)
+      return;
+
+   float line_width = ctx->rasterizer->base.line_width;
+
+   if (line_width == 1.0f)
+      return;
+
+   ctx->ext_viewport.left = ctx->viewport.left - line_width / 2;
+   ctx->ext_viewport.right = ctx->viewport.right + line_width / 2;
+   ctx->ext_viewport.bottom = ctx->viewport.bottom - line_width / 2;
+   ctx->ext_viewport.top = ctx->viewport.top + line_width / 2;
+}
+
 static bool
 lima_is_scissor_zero(struct lima_context *ctx)
 {
@@ -327,10 +353,10 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info,
    struct lima_job *job = lima_job_get(ctx);
    PLBU_CMD_BEGIN(&job->plbu_cmd_array, 32);
 
-   PLBU_CMD_VIEWPORT_LEFT(fui(ctx->viewport.left));
-   PLBU_CMD_VIEWPORT_RIGHT(fui(ctx->viewport.right));
-   PLBU_CMD_VIEWPORT_BOTTOM(fui(ctx->viewport.bottom));
-   PLBU_CMD_VIEWPORT_TOP(fui(ctx->viewport.top));
+   PLBU_CMD_VIEWPORT_LEFT(fui(ctx->ext_viewport.left));
+   PLBU_CMD_VIEWPORT_RIGHT(fui(ctx->ext_viewport.right));
+   PLBU_CMD_VIEWPORT_BOTTOM(fui(ctx->ext_viewport.bottom));
+   PLBU_CMD_VIEWPORT_TOP(fui(ctx->ext_viewport.top));
 
    if (!info->index_size)
       PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN();
@@ -1170,6 +1196,10 @@ lima_draw_vbo(struct pipe_context *pctx,
    lima_clip_scissor_to_viewport(ctx);
    if (lima_is_scissor_zero(ctx))
       return;
+
+   /* extend the viewport in case of line draws with a line_width > 1.0f,
+    * otherwise use the original values */
+   lima_extend_viewport(ctx, info);
 
    if (!lima_update_fs_state(ctx) || !lima_update_vs_state(ctx))
       return;

@@ -209,6 +209,8 @@ struct lima_context {
 
    struct lima_context_framebuffer framebuffer;
    struct lima_context_viewport_state viewport;
+   /* input for PLBU_CMD_VIEWPORT_* */
+   struct lima_context_viewport_state ext_viewport;
    struct pipe_scissor_state scissor;
    struct pipe_scissor_state clipped_scissor;
    struct lima_vs_compiled_shader *vs;
