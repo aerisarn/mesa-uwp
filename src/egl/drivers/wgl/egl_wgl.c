@@ -211,6 +211,33 @@ wgl_egl_st_get_param(struct st_manager *smapi, enum st_manager_param param)
    return 0;
 }
 
+static bool
+wgl_get_egl_image(struct st_manager *smapi, void *image, struct st_egl_image *out)
+{
+   struct wgl_egl_image *wgl_img = (struct wgl_egl_image *)image;
+   stw_translate_image(wgl_img->img, out);
+   return true;
+}
+
+static bool
+wgl_validate_egl_image(struct st_manager *smapi, void *image)
+{
+   struct wgl_egl_display *wgl_dpy = (struct wgl_egl_display *)smapi;
+   _EGLDisplay *disp = wgl_dpy->parent;
+   _EGLImage *img;
+
+   mtx_lock(&disp->Mutex);
+   img = _eglLookupImage(image, disp);
+   mtx_unlock(&disp->Mutex);
+
+   if (img == NULL) {
+      _eglError(EGL_BAD_PARAMETER, "wgl_validate_egl_image");
+      return false;
+   }
+
+   return true;
+}
+
 static EGLBoolean
 wgl_initialize_impl(_EGLDisplay *disp, HDC hdc)
 {
@@ -234,6 +261,8 @@ wgl_initialize_impl(_EGLDisplay *disp, HDC hdc)
 
    wgl_dpy->base.screen = stw_dev->screen;
    wgl_dpy->base.get_param = wgl_egl_st_get_param;
+   wgl_dpy->base.get_egl_image = wgl_get_egl_image;
+   wgl_dpy->base.validate_egl_image = wgl_validate_egl_image;
 
    disp->ClientAPIs = 0;
    if (_eglIsApiValid(EGL_OPENGL_API))

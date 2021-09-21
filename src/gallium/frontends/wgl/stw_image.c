@@ -133,3 +133,11 @@ stw_destroy_image(struct stw_image *img)
    free(img);
 }
 
+void
+stw_translate_image(struct stw_image *in, struct st_egl_image *out)
+{
+   pipe_resource_reference(&out->texture, in->pres);
+   out->format = in->format;
+   out->layer = in->layer;
+   out->level = in->level;
+}
