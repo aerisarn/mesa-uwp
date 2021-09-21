@@ -5365,23 +5365,22 @@ radv_InvalidateMappedMemoryRanges(VkDevice _device, uint32_t memoryRangeCount,
    return VK_SUCCESS;
 }
 
-void
-radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirementsInfo2 *pInfo,
-                                  VkMemoryRequirements2 *pMemoryRequirements)
+static void
+radv_get_buffer_memory_requirements(struct radv_device *device,
+                                    VkDeviceSize size,
+                                    VkBufferCreateFlags flags,
+                                    VkMemoryRequirements2 *pMemoryRequirements)
 {
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
-
    pMemoryRequirements->memoryRequirements.memoryTypeBits =
       (1u << device->physical_device->memory_properties.memoryTypeCount) - 1;
 
-   if (buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
+   if (flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
       pMemoryRequirements->memoryRequirements.alignment = 4096;
    else
       pMemoryRequirements->memoryRequirements.alignment = 16;
 
    pMemoryRequirements->memoryRequirements.size =
-      align64(buffer->size, pMemoryRequirements->memoryRequirements.alignment);
+      align64(size, pMemoryRequirements->memoryRequirements.alignment);
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext)
    {
@@ -5396,6 +5395,27 @@ radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirem
          break;
       }
    }
+}
+
+void
+radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirementsInfo2 *pInfo,
+                                  VkMemoryRequirements2 *pMemoryRequirements)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
+
+   radv_get_buffer_memory_requirements(device, buffer->size, buffer->flags, pMemoryRequirements);
+}
+
+void
+radv_GetDeviceBufferMemoryRequirementsKHR(VkDevice _device,
+                                          const VkDeviceBufferMemoryRequirementsKHR* pInfo,
+                                          VkMemoryRequirements2 *pMemoryRequirements)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+
+   radv_get_buffer_memory_requirements(device, pInfo->pCreateInfo->size, pInfo->pCreateInfo->flags,
+                                       pMemoryRequirements);
 }
 
 void
