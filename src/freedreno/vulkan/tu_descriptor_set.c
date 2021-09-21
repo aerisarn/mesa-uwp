@@ -887,11 +887,10 @@ write_combined_image_sampler_descriptor(uint32_t *dst,
                                         const VkDescriptorImageInfo *image_info,
                                         bool has_sampler)
 {
-   TU_FROM_HANDLE(tu_sampler, sampler, image_info->sampler);
-
    write_image_descriptor(dst, descriptor_type, image_info);
    /* copy over sampler state */
    if (has_sampler) {
+      TU_FROM_HANDLE(tu_sampler, sampler, image_info->sampler);
       memcpy(dst + A6XX_TEX_CONST_DWORDS, sampler->descriptor, sizeof(sampler->descriptor));
    }
 }

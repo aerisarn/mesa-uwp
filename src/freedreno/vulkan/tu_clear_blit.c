@@ -1754,11 +1754,12 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu_image_view_copy(&src, src_image, src_format, &info->srcSubresource, src_offset.z, false);
 
       struct tu_image staging_image = {
+         .base.type = VK_OBJECT_TYPE_IMAGE,
          .vk_format = src_format,
          .level_count = 1,
          .layer_count = info->srcSubresource.layerCount,
          .bo_offset = 0,
-      }; 
+      };
 
       VkImageSubresourceLayers staging_subresource = {
          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,

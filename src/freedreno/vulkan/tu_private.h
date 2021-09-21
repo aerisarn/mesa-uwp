@@ -1761,60 +1761,56 @@ struct tu_u_trace_flush_data
    struct tu_u_trace_cmd_data *cmd_trace_data;
 };
 
-#define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
-                                                                             \
-   static inline struct __tu_type *__tu_type##_from_handle(__VkType _handle) \
-   {                                                                         \
-      return (struct __tu_type *) _handle;                                   \
-   }                                                                         \
-                                                                             \
-   static inline __VkType __tu_type##_to_handle(struct __tu_type *_obj)      \
-   {                                                                         \
-      return (__VkType) _obj;                                                \
-   }
-
-#define TU_DEFINE_NONDISP_HANDLE_CASTS(__tu_type, __VkType)                  \
-                                                                             \
-   static inline struct __tu_type *__tu_type##_from_handle(__VkType _handle) \
-   {                                                                         \
-      return (struct __tu_type *) (uintptr_t) _handle;                       \
-   }                                                                         \
-                                                                             \
-   static inline __VkType __tu_type##_to_handle(struct __tu_type *_obj)      \
-   {                                                                         \
-      return (__VkType)(uintptr_t) _obj;                                     \
-   }
-
 #define TU_FROM_HANDLE(__tu_type, __name, __handle)                          \
-   struct __tu_type *__name = __tu_type##_from_handle(__handle)
+   VK_FROM_HANDLE(__tu_type, __name, __handle)
 
-TU_DEFINE_HANDLE_CASTS(tu_cmd_buffer, VkCommandBuffer)
-TU_DEFINE_HANDLE_CASTS(tu_device, VkDevice)
-TU_DEFINE_HANDLE_CASTS(tu_instance, VkInstance)
-TU_DEFINE_HANDLE_CASTS(tu_physical_device, VkPhysicalDevice)
-TU_DEFINE_HANDLE_CASTS(tu_queue, VkQueue)
+VK_DEFINE_HANDLE_CASTS(tu_cmd_buffer, base, VkCommandBuffer,
+                       VK_OBJECT_TYPE_COMMAND_BUFFER)
+VK_DEFINE_HANDLE_CASTS(tu_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
+VK_DEFINE_HANDLE_CASTS(tu_instance, vk.base, VkInstance,
+                       VK_OBJECT_TYPE_INSTANCE)
+VK_DEFINE_HANDLE_CASTS(tu_physical_device, vk.base, VkPhysicalDevice,
+                       VK_OBJECT_TYPE_PHYSICAL_DEVICE)
+VK_DEFINE_HANDLE_CASTS(tu_queue, base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_cmd_pool, VkCommandPool)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer, VkBuffer)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer_view, VkBufferView)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_pool, VkDescriptorPool)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set, VkDescriptorSet)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set_layout,
-                               VkDescriptorSetLayout)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_update_template,
-                               VkDescriptorUpdateTemplate)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, VkDeviceMemory)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_event, VkEvent)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_framebuffer, VkFramebuffer)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_image, VkImage)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_image_view, VkImageView);
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_cache, VkPipelineCache)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline, VkPipeline)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_layout, VkPipelineLayout)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_query_pool, VkQueryPool)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_render_pass, VkRenderPass)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, VkSampler)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler_ycbcr_conversion, VkSamplerYcbcrConversion)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_cmd_pool, base, VkCommandPool,
+                               VK_OBJECT_TYPE_COMMAND_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer, base, VkBuffer,
+                               VK_OBJECT_TYPE_BUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_buffer_view, base, VkBufferView,
+                               VK_OBJECT_TYPE_BUFFER_VIEW)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_pool, base, VkDescriptorPool,
+                               VK_OBJECT_TYPE_DESCRIPTOR_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set, base, VkDescriptorSet,
+                               VK_OBJECT_TYPE_DESCRIPTOR_SET)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_set_layout, base,
+                               VkDescriptorSetLayout,
+                               VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_descriptor_update_template, base,
+                               VkDescriptorUpdateTemplate,
+                               VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_device_memory, base, VkDeviceMemory,
+                               VK_OBJECT_TYPE_DEVICE_MEMORY)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_framebuffer, base, VkFramebuffer,
+                               VK_OBJECT_TYPE_FRAMEBUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image, base, VkImage, VK_OBJECT_TYPE_IMAGE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_image_view, base, VkImageView,
+                               VK_OBJECT_TYPE_IMAGE_VIEW);
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_cache, base, VkPipelineCache,
+                               VK_OBJECT_TYPE_PIPELINE_CACHE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline, base, VkPipeline,
+                               VK_OBJECT_TYPE_PIPELINE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline_layout, base, VkPipelineLayout,
+                               VK_OBJECT_TYPE_PIPELINE_LAYOUT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_query_pool, base, VkQueryPool,
+                               VK_OBJECT_TYPE_QUERY_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_render_pass, base, VkRenderPass,
+                               VK_OBJECT_TYPE_RENDER_PASS)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, base, VkSampler,
+                               VK_OBJECT_TYPE_SAMPLER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler_ycbcr_conversion, base, VkSamplerYcbcrConversion,
+                               VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
 
 /* for TU_FROM_HANDLE with both VkFence and VkSemaphore: */
 #define tu_syncobj_from_handle(x) ((struct tu_syncobj*) (uintptr_t) (x))
