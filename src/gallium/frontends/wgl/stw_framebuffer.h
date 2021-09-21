@@ -40,6 +40,7 @@
 struct pipe_resource;
 struct st_framebuffer_iface;
 struct stw_pixelformat_info;
+struct st_manager;
 
 enum stw_framebuffer_owner
 {
@@ -153,10 +154,11 @@ struct stw_framebuffer
  * must be called when done 
  */
 struct stw_framebuffer *
-stw_framebuffer_create(HWND hwnd, int iPixelFormat, enum stw_framebuffer_owner owner);
+stw_framebuffer_create(HWND hwnd, int iPixelFormat, enum stw_framebuffer_owner owner,
+                       struct st_manager *smapi);
 
 struct stw_framebuffer *
-stw_pbuffer_create(int iPixelFormat, int iWidth, int iHeight);
+stw_pbuffer_create(int iPixelFormat, int iWidth, int iHeight, struct st_manager *smapi);
 
 
 /**

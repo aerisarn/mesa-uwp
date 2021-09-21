@@ -269,7 +269,8 @@ stw_call_window_proc(int nCode, WPARAM wParam, LPARAM lParam)
  * with its mutex locked.
  */
 struct stw_framebuffer *
-stw_framebuffer_create(HWND hWnd, int iPixelFormat, enum stw_framebuffer_owner owner)
+stw_framebuffer_create(HWND hWnd, int iPixelFormat, enum stw_framebuffer_owner owner,
+                       struct st_manager *smapi)
 {
    struct stw_framebuffer *fb;
    const struct stw_pixelformat_info *pfi;
@@ -294,7 +295,7 @@ stw_framebuffer_create(HWND hWnd, int iPixelFormat, enum stw_framebuffer_owner o
    fb->owner = owner;
 
    fb->pfi = pfi = stw_pixelformat_get_info( iPixelFormat );
-   fb->stfb = stw_st_create_framebuffer( fb );
+   fb->stfb = stw_st_create_framebuffer( fb, smapi );
    if (!fb->stfb) {
       FREE( fb );
       return NULL;
@@ -498,7 +499,7 @@ DrvSetPixelFormat(HDC hdc, LONG iPixelFormat)
       return bPbuffer;
    }
 
-   fb = stw_framebuffer_create(WindowFromDC(hdc), iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW);
+   fb = stw_framebuffer_create(WindowFromDC(hdc), iPixelFormat, STW_FRAMEBUFFER_WGL_WINDOW, stw_dev->smapi);
    if (!fb) {
       return FALSE;
    }
