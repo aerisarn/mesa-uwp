@@ -1793,6 +1793,33 @@ radv_GetImageSparseMemoryRequirements2(VkDevice _device,
 }
 
 void
+radv_GetDeviceImageSparseMemoryRequirementsKHR(VkDevice device,
+                                               const VkDeviceImageMemoryRequirementsKHR* pInfo,
+                                               uint32_t *pSparseMemoryRequirementCount,
+                                               VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
+{
+   UNUSED VkResult result;
+   VkImage image;
+
+   /* Determining the image size/alignment require to create a surface, which is complicated without
+    * creating an image.
+    * TODO: Avoid creating an image.
+    */
+   result = radv_CreateImage(device, pInfo->pCreateInfo, NULL, &image);
+   assert(result == VK_SUCCESS);
+
+   VkImageSparseMemoryRequirementsInfo2 info2 = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = image,
+   };
+
+   radv_GetImageSparseMemoryRequirements2(device, &info2, pSparseMemoryRequirementCount,
+                                          pSparseMemoryRequirements);
+
+   radv_DestroyImage(device, image, NULL);
+}
+
+void
 radv_GetPhysicalDeviceExternalBufferProperties(
    VkPhysicalDevice physicalDevice, const VkPhysicalDeviceExternalBufferInfo *pExternalBufferInfo,
    VkExternalBufferProperties *pExternalBufferProperties)
