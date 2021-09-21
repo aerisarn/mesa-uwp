@@ -1,9 +1,10 @@
 Panfrost
 ========
 
-The Panfrost driver stack includes a **non-conformant** OpenGL ES
-implementation for Arm Mali GPUs based on the Midgard and Bifrost
-microarchitectures. The following GPUs are currently supported:
+The Panfrost driver stack includes an OpenGL ES implementation for Arm Mali
+GPUs based on the Midgard and Bifrost microarchitectures. It is **conformant**
+on Mali G52 but **non-conformant** on other GPUs. The following hardware is
+currently supported:
 
 =========  ============ ============ =======
 Product    Architecture OpenGL ES    OpenGL
