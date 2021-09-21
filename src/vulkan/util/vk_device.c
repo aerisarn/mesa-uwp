@@ -260,6 +260,13 @@ vk_common_GetImageSparseMemoryRequirements(VkDevice _device,
    STACK_ARRAY_FINISH(mem_reqs2);
 }
 
+static void
+copy_vk_struct_guts(VkBaseOutStructure *dst, VkBaseInStructure *src, size_t struct_size)
+{
+   STATIC_ASSERT(sizeof(*dst) == sizeof(*src));
+   memcpy(dst + 1, src + 1, struct_size - sizeof(VkBaseOutStructure));
+}
+
 #define CORE_FEATURE(feature) features->feature = core->feature
 
 bool
@@ -309,6 +316,10 @@ vk_get_physical_device_core_1_1_feature_ext(struct VkBaseOutStructure *ext,
       CORE_FEATURE(variablePointers);
       return true;
    }
+
+   case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
+      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      return true;
 
    default:
       return false;
@@ -426,6 +437,10 @@ vk_get_physical_device_core_1_2_feature_ext(struct VkBaseOutStructure *ext,
       return true;
    }
 
+   case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
+      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      return true;
+
    default:
       return false;
    }
@@ -489,6 +504,10 @@ vk_get_physical_device_core_1_1_property_ext(struct VkBaseOutStructure *ext,
                                     subgroupQuadOperationsInAllStages);
       return true;
    }
+
+   case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
+      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      return true;
 
    default:
       return false;
@@ -581,6 +600,10 @@ vk_get_physical_device_core_1_2_property_ext(struct VkBaseOutStructure *ext,
       return true;
    }
 
+   case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
+      copy_vk_struct_guts(ext, (void *)core, sizeof(*core));
+      return true;
+
    default:
       return false;
    }
@@ -588,3 +611,4 @@ vk_get_physical_device_core_1_2_property_ext(struct VkBaseOutStructure *ext,
 
 #undef CORE_RENAMED_PROPERTY
 #undef CORE_PROPERTY
+
