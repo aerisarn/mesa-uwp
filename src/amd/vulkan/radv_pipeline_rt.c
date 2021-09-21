@@ -1359,7 +1359,7 @@ insert_traversal_triangle_case(struct radv_device *device,
 static void
 insert_traversal_aabb_case(struct radv_device *device,
                            const VkRayTracingPipelineCreateInfoKHR *pCreateInfo, nir_builder *b,
-                           nir_ssa_def *result, const struct rt_variables *vars,
+                           const struct rt_variables *vars,
                            const struct rt_traversal_vars *trav_vars, nir_ssa_def *bvh_node)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, layout, pCreateInfo->layout);
@@ -1616,8 +1616,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
             nir_push_if(
                b, nir_ine(b, nir_iand(b, bvh_node_type, nir_imm_int(b, 1)), nir_imm_int(b, 0)));
             {
-               insert_traversal_aabb_case(device, pCreateInfo, b, result, vars, &trav_vars,
-                                          bvh_node);
+               insert_traversal_aabb_case(device, pCreateInfo, b, vars, &trav_vars, bvh_node);
             }
             nir_push_else(b, NULL);
             {
