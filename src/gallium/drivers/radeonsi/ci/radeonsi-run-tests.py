@@ -47,7 +47,7 @@ def print_yellow(txt, end_line=True, prefix=None):
     print("\033[1;33m{}\033[0m".format(txt), end="\n" if end_line else " ")
 
 
-parser = argparse.ArgumentParser(description="radeonsi tester")
+parser = argparse.ArgumentParser(description="radeonsi tester", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(
     "--jobs",
     "-j",
@@ -115,10 +115,13 @@ parser.set_defaults(deqp_gles2=True)
 parser.set_defaults(deqp_gles3=True)
 parser.set_defaults(deqp_gles31=True)
 
-parser.add_argument("output_folder", nargs="?", help="Output folder (logs, etc)")
+parser.add_argument(
+    "output_folder",
+    nargs="?",
+    help="Output folder (logs, etc)",
+    default=os.path.join(tempfile.gettempdir(), datetime.now().strftime('%Y-%m-%d-%H-%M-%S')))
 
 args = parser.parse_args(sys.argv[1:])
-
 piglit_path = args.piglit_path
 glcts_path = args.glcts_path
 deqp_path = args.deqp_path
@@ -151,11 +154,7 @@ for line in p.stdout.decode().split("\n"):
         gpu_name = line.replace("(TM)", "").split("(")[1].split(",")[0].lower()
         break
 
-if args.output_folder:
-    output_folder = args.output_folder
-else:
-    output_folder = os.path.join(tempfile.gettempdir(), datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
-
+output_folder = args.output_folder
 count = 1
 while os.path.exists(output_folder):
     output_folder = "{}.{}".format(args.output_folder, count)
