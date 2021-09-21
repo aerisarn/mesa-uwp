@@ -493,7 +493,11 @@ void si_emit_dpbb_state(struct si_context *sctx)
    }
 
    /* Tunable parameters. */
-   unsigned fpovs_per_batch = 63; /* allowed range: [0, 255], 0 = unlimited */
+   /* Allowed range:
+    *    gfx9-10: [0, 255] (0 = unlimited)
+    *    gfx11: [1, 255] (255 = unlimited)
+    */
+   unsigned fpovs_per_batch = 63;
 
    /* Emit registers. */
    struct uvec2 bin_size_extend = {};

@@ -1224,7 +1224,9 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
     */
    unsigned max_offchip_buffers_per_se;
 
-   if (sscreen->info.chip_class >= GFX10)
+   if (sscreen->info.chip_class >= GFX11)
+      max_offchip_buffers_per_se = 256; /* TODO: we could decrease this to reduce memory/cache usage */
+   else if (sscreen->info.chip_class >= GFX10)
       max_offchip_buffers_per_se = 128;
    /* Only certain chips can use the maximum value. */
    else if (sscreen->info.family == CHIP_VEGA12 || sscreen->info.family == CHIP_VEGA20)
@@ -1249,7 +1251,12 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->tess_factor_ring_size = 48 * 1024 * sscreen->info.max_se;
    sscreen->tess_offchip_ring_size = max_offchip_buffers * sscreen->tess_offchip_block_dw_size * 4;
 
-   if (sscreen->info.chip_class >= GFX10_3) {
+   if (sscreen->info.chip_class >= GFX11) {
+      /* OFFCHIP_BUFFERING is per SE. */
+      sscreen->vgt_hs_offchip_param =
+            S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers_per_se - 1) |
+            S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
+   } else if (sscreen->info.chip_class >= GFX10_3) {
       sscreen->vgt_hs_offchip_param =
             S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers - 1) |
             S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);

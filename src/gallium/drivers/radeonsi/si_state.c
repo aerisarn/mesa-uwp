@@ -122,7 +122,8 @@ static void si_emit_cb_render_state(struct si_context *sctx)
             S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(sctx->chip_class <= GFX9) |
                S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
                S_028424_OVERWRITE_COMBINER_DISABLE(oc_disable) |
-               S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->screen->info.has_dcc_constant_encode));
+               S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->chip_class < GFX11 &&
+                                                    sctx->screen->info.has_dcc_constant_encode));
       }
    }
 
@@ -636,7 +637,8 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
          si_pm4_set_reg(pm4, R_028760_SX_MRT0_BLEND_OPT + i * 4, sx_mrt_blend_opt[i]);
 
       /* RB+ doesn't work with dual source blending, logic op, and RESOLVE. */
-      if (blend->dual_src_blend || logicop_enable || mode == V_028808_CB_RESOLVE)
+      if (blend->dual_src_blend || logicop_enable || mode == V_028808_CB_RESOLVE ||
+          (sctx->chip_class == GFX11 && blend->blend_enable_4bit))
          color_control |= S_028808_DISABLE_DUAL_QUAD(1);
    }
 
@@ -2658,9 +2660,11 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
       z_info = S_028038_FORMAT(format) |
                S_028038_NUM_SAMPLES(util_logbase2(tex->buffer.b.b.nr_samples)) |
                S_028038_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
-               S_028038_MAXMIP(tex->buffer.b.b.last_level);
+               S_028038_MAXMIP(tex->buffer.b.b.last_level) |
+               S_028040_ITERATE_256(sctx->chip_class >= GFX11);
       s_info = S_02803C_FORMAT(stencil_format) |
-               S_02803C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode);
+               S_02803C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode) |
+               S_028044_ITERATE_256(sctx->chip_class >= GFX11);
 
       if (sctx->chip_class == GFX9) {
          surf->db_z_info2 = S_028068_EPITCH(tex->surface.u.gfx9.epitch);
@@ -3441,8 +3445,12 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_set_context_reg(R_028014_DB_HTILE_DATA_BASE, zb->db_htile_data_base);
          radeon_set_context_reg(R_02801C_DB_DEPTH_SIZE_XY, zb->db_depth_size);
 
-         radeon_set_context_reg_seq(R_02803C_DB_DEPTH_INFO, 7);
-         radeon_emit(S_02803C_RESOURCE_LEVEL(1)); /* DB_DEPTH_INFO */
+         if (sctx->chip_class >= GFX11) {
+            radeon_set_context_reg_seq(R_028040_DB_Z_INFO, 6);
+         } else {
+            radeon_set_context_reg_seq(R_02803C_DB_DEPTH_INFO, 7);
+            radeon_emit(S_02803C_RESOURCE_LEVEL(1)); /* DB_DEPTH_INFO */
+         }
          radeon_emit(db_z_info |                  /* DB_Z_INFO */
                      S_028038_ZRANGE_PRECISION(tex->depth_clear_value[level] != 0));
          radeon_emit(db_stencil_info);     /* DB_STENCIL_INFO */
@@ -3524,7 +3532,11 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       else
          radeon_set_context_reg_seq(R_028040_DB_Z_INFO, 2);
 
-      radeon_emit(S_028040_FORMAT(V_028040_Z_INVALID));       /* DB_Z_INFO */
+      /* Gfx11 only: DB_Z_INFO.NUM_SAMPLES should always match the framebuffer samples.
+       * It affects VRS and occlusion queries if depth and stencil are not bound.
+       */
+      radeon_emit(S_028040_FORMAT(V_028040_Z_INVALID) |       /* DB_Z_INFO */
+                  S_028040_NUM_SAMPLES(sctx->chip_class == GFX11 ? sctx->framebuffer.log_samples : 0));
       radeon_emit(S_028044_FORMAT(V_028044_STENCIL_INVALID)); /* DB_STENCIL_INFO */
    }
 
@@ -5516,10 +5528,13 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028AC4_DB_SRESULTS_COMPARE_STATE1, 0x0);
       si_pm4_set_reg(pm4, R_028AC8_DB_PRELOAD_CONTROL, 0x0);
       si_pm4_set_reg(pm4, R_02800C_DB_RENDER_OVERRIDE, 0);
-      si_pm4_set_reg(pm4, R_028A5C_VGT_GS_PER_VS, 0x2);
       si_pm4_set_reg(pm4, R_028A8C_VGT_PRIMITIVEID_RESET, 0x0);
       si_pm4_set_reg(pm4, R_028B98_VGT_STRMOUT_BUFFER_CONFIG, 0x0);
-      si_pm4_set_reg(pm4, R_028AB8_VGT_VTX_CNT_EN, 0x0);
+
+      if (sctx->chip_class < GFX11) {
+         si_pm4_set_reg(pm4, R_028A5C_VGT_GS_PER_VS, 0x2);
+         si_pm4_set_reg(pm4, R_028AB8_VGT_VTX_CNT_EN, 0x0);
+      }
    }
 
    si_pm4_set_reg(pm4, R_028080_TA_BC_BASE_ADDR, border_color_va >> 8);
@@ -5540,8 +5555,10 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    }
 
    if (sctx->chip_class <= GFX7 || !has_clear_state) {
-      si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
-      si_pm4_set_reg(pm4, R_028C5C_VGT_OUT_DEALLOC_CNTL, 16);
+      if (sctx->chip_class < GFX11) {
+         si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
+         si_pm4_set_reg(pm4, R_028C5C_VGT_OUT_DEALLOC_CNTL, 16);
+      }
 
       /* CLEAR_STATE doesn't clear these correctly on certain generations.
        * I don't know why. Deduced by trial and error.
@@ -5567,7 +5584,8 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    if (sctx->chip_class >= GFX7) {
       ac_set_reg_cu_en(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
                        S_00B01C_CU_EN(cu_mask_ps) |
-                       S_00B01C_WAVE_LIMIT(0x3F),
+                       S_00B01C_WAVE_LIMIT(0x3F) |
+                       S_00B01C_LDS_GROUP_SIZE(sctx->chip_class >= GFX11),
                        C_00B01C_CU_EN, 0, &sscreen->info,
                        (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
    }
@@ -5676,10 +5694,6 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_00B0CC_SPI_SHADER_USER_ACCUM_PS_1, 0);
       si_pm4_set_reg(pm4, R_00B0D0_SPI_SHADER_USER_ACCUM_PS_2, 0);
       si_pm4_set_reg(pm4, R_00B0D4_SPI_SHADER_USER_ACCUM_PS_3, 0);
-      si_pm4_set_reg(pm4, R_00B1C8_SPI_SHADER_USER_ACCUM_VS_0, 0);
-      si_pm4_set_reg(pm4, R_00B1CC_SPI_SHADER_USER_ACCUM_VS_1, 0);
-      si_pm4_set_reg(pm4, R_00B1D0_SPI_SHADER_USER_ACCUM_VS_2, 0);
-      si_pm4_set_reg(pm4, R_00B1D4_SPI_SHADER_USER_ACCUM_VS_3, 0);
       si_pm4_set_reg(pm4, R_00B2C8_SPI_SHADER_USER_ACCUM_ESGS_0, 0);
       si_pm4_set_reg(pm4, R_00B2CC_SPI_SHADER_USER_ACCUM_ESGS_1, 0);
       si_pm4_set_reg(pm4, R_00B2D0_SPI_SHADER_USER_ACCUM_ESGS_2, 0);
@@ -5692,7 +5706,6 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
                      S_00B0C0_SOFT_GROUPING_EN(1) |
                      S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
-      si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
 
       /* Enable CMASK/HTILE/DCC caching in L2 for small chips. */
       unsigned meta_write_policy, meta_read_policy;
@@ -5745,9 +5758,13 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
        * the size of the PC minus the largest possible allocation for
        * a single primitive shader subgroup.
        */
-      si_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL, S_028C50_MAX_DEALLOCS_IN_WAVE(512));
-      /* Reuse for legacy (non-NGG) only. */
-      si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
+      si_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL,
+                     S_028C50_MAX_DEALLOCS_IN_WAVE(sctx->chip_class >= GFX11 ? 16 : 512));
+
+      if (sctx->chip_class < GFX11) {
+         /* Reuse for legacy (non-NGG) only. */
+         si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
+      }
 
       if (!has_clear_state) {
          si_pm4_set_reg(pm4, R_02835C_PA_SC_TILE_STEERING_OVERRIDE,
@@ -5773,6 +5790,12 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       ac_set_reg_cu_en(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS, S_00B404_CU_EN(0xffff),
                        C_00B404_CU_EN, 16, &sscreen->info,
                        (void*)(sctx->chip_class >= GFX10 ? si_pm4_set_reg_idx3 : si_pm4_set_reg));
+
+      si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
+      si_pm4_set_reg(pm4, R_00B1C8_SPI_SHADER_USER_ACCUM_VS_0, 0);
+      si_pm4_set_reg(pm4, R_00B1CC_SPI_SHADER_USER_ACCUM_VS_1, 0);
+      si_pm4_set_reg(pm4, R_00B1D0_SPI_SHADER_USER_ACCUM_VS_2, 0);
+      si_pm4_set_reg(pm4, R_00B1D4_SPI_SHADER_USER_ACCUM_VS_3, 0);
    }
 
    if (sctx->chip_class >= GFX10_3) {
@@ -5792,6 +5815,10 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    }
 
    if (sctx->chip_class >= GFX11) {
+      si_pm4_set_reg(pm4, R_028C54_PA_SC_BINNER_CNTL_2, 0);
+      si_pm4_set_reg(pm4, R_028620_PA_RATE_CNTL,
+                     S_028620_VERTEX_RATE(2) | S_028620_PRIM_RATE(1));
+
       /* We must wait for idle before changing the SPI attribute ring registers. */
       si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
       si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
@@ -5801,6 +5828,9 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
       si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
       si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_PS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+      si_pm4_set_reg(pm4, R_031110_SPI_GS_THROTTLE_CNTL1, 0x12355123);
+      si_pm4_set_reg(pm4, R_031114_SPI_GS_THROTTLE_CNTL2, 0x1544D);
 
       assert((sscreen->attribute_ring->gpu_address >> 32) == sscreen->info.address32_hi);
 

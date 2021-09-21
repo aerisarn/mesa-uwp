@@ -1186,8 +1186,10 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
                               shader->ctx_reg.ngg.ge_ngg_subgrp_cntl);
    radeon_opt_set_context_reg(sctx, R_028A84_VGT_PRIMITIVEID_EN, SI_TRACKED_VGT_PRIMITIVEID_EN,
                               shader->ctx_reg.ngg.vgt_primitiveid_en);
-   radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL, SI_TRACKED_VGT_GS_ONCHIP_CNTL,
-                              shader->ctx_reg.ngg.vgt_gs_onchip_cntl);
+   if (sctx->chip_class < GFX11) {
+      radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL, SI_TRACKED_VGT_GS_ONCHIP_CNTL,
+                                 shader->ctx_reg.ngg.vgt_gs_onchip_cntl);
+   }
    radeon_opt_set_context_reg(sctx, R_028B90_VGT_GS_INSTANCE_CNT, SI_TRACKED_VGT_GS_INSTANCE_CNT,
                               shader->ctx_reg.ngg.vgt_gs_instance_cnt);
    radeon_opt_set_context_reg(sctx, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
@@ -1467,10 +1469,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    if (es_stage == MESA_SHADER_TESS_EVAL)
       si_set_tesseval_regs(sscreen, es_sel, shader);
 
-   shader->ctx_reg.ngg.vgt_gs_onchip_cntl =
-      S_028A44_ES_VERTS_PER_SUBGRP(shader->ngg.hw_max_esverts) |
-      S_028A44_GS_PRIMS_PER_SUBGRP(shader->ngg.max_gsprims) |
-      S_028A44_GS_INST_PRIMS_IN_SUBGRP(shader->ngg.max_gsprims * gs_num_invocations);
    shader->ctx_reg.ngg.ge_max_output_per_subgroup =
       S_0287FC_MAX_VERTS_PER_SUBGROUP(shader->ngg.max_out_verts);
    shader->ctx_reg.ngg.ge_ngg_subgrp_cntl = S_028B4C_PRIM_AMP_FACTOR(shader->ngg.prim_amp_factor) |
@@ -1516,6 +1514,11 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       shader->ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(shader->ngg.max_gsprims) |
                         S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
                         S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+
+      shader->ctx_reg.ngg.vgt_gs_onchip_cntl =
+         S_028A44_ES_VERTS_PER_SUBGRP(shader->ngg.hw_max_esverts) |
+         S_028A44_GS_PRIMS_PER_SUBGRP(shader->ngg.max_gsprims) |
+         S_028A44_GS_INST_PRIMS_IN_SUBGRP(shader->ngg.max_gsprims * gs_num_invocations);
    }
 
    /* On gfx10, the GE only checks against the maximum number of ES verts after
@@ -1928,6 +1931,10 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    /* Set interpolation controls. */
    spi_ps_in_control = S_0286D8_NUM_INTERP(num_interp) |
                        S_0286D8_PS_W32_EN(shader->wave_size == 32);
+
+   /* Workaround when there are no PS inputs but LDS is used. */
+   if (sscreen->info.chip_class == GFX11 && !num_interp && shader->config.lds_size)
+      spi_ps_in_control |= S_0286D8_PARAM_GEN(1);
 
    shader->ctx_reg.ps.num_interp = num_interp;
    shader->ctx_reg.ps.spi_baryc_cntl = spi_baryc_cntl;

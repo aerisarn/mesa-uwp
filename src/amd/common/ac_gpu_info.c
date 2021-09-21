@@ -1181,7 +1181,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->has_stable_pstate = info->drm_minor >= 45;
 
-   if (info->chip_class >= GFX9 && info->has_graphics) {
+   if (info->chip_class >= GFX11) {
+      info->pc_lines = 1024;
+      info->pbb_max_alloc_count = 255; /* minimum is 2, maximum is 256 */
+   } else if (info->chip_class >= GFX9 && info->has_graphics) {
       unsigned pc_lines = 0;
 
       switch (info->family) {

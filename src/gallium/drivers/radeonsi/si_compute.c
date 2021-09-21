@@ -452,6 +452,17 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
       if (sctx->chip_class < GFX11)
          radeon_set_sh_reg(R_00B8A0_COMPUTE_PGM_RSRC3, 0);
    }
+
+   if (sctx->chip_class >= GFX11) {
+      radeon_set_sh_reg_seq(R_00B8AC_COMPUTE_STATIC_THREAD_MGMT_SE4, 4);
+      radeon_emit(S_00B8AC_SA0_CU_EN(info->spi_cu_en) | S_00B8AC_SA1_CU_EN(info->spi_cu_en)); /* SE4 */
+      radeon_emit(S_00B8AC_SA0_CU_EN(info->spi_cu_en) | S_00B8AC_SA1_CU_EN(info->spi_cu_en)); /* SE5 */
+      radeon_emit(S_00B8AC_SA0_CU_EN(info->spi_cu_en) | S_00B8AC_SA1_CU_EN(info->spi_cu_en)); /* SE6 */
+      radeon_emit(S_00B8AC_SA0_CU_EN(info->spi_cu_en) | S_00B8AC_SA1_CU_EN(info->spi_cu_en)); /* SE7 */
+
+      radeon_set_sh_reg(R_00B8BC_COMPUTE_DISPATCH_INTERLEAVE, 64);
+   }
+
    radeon_end();
 }
 

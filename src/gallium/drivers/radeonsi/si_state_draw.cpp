@@ -1109,7 +1109,10 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 
    unsigned gs_out_prim = si_conv_prim_to_gs_out(rast_prim);
    if (unlikely(gs_out_prim != sctx->last_gs_out_prim && (NGG || HAS_GS))) {
-      radeon_set_context_reg(R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out_prim);
+      if (GFX_VERSION >= GFX11)
+         radeon_set_uconfig_reg(R_030998_VGT_GS_OUT_PRIM_TYPE, gs_out_prim);
+      else
+         radeon_set_context_reg(R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out_prim);
       sctx->last_gs_out_prim = gs_out_prim;
    }
 
