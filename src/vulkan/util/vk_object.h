@@ -173,6 +173,9 @@ vk_object_base_get_private_data(struct vk_device *device,
                                 VkPrivateDataSlotEXT privateDataSlot,
                                 uint64_t *pData);
 
+const char *
+vk_object_base_name(struct vk_object_base *obj);
+
 #ifdef __cplusplus
 }
 #endif
