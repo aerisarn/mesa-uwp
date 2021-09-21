@@ -1127,7 +1127,7 @@ init_traversal_vars(nir_builder *b)
 }
 
 static nir_ssa_def *
-nir_build_addr_to_node(nir_builder *b, nir_ssa_def *addr)
+build_addr_to_node(nir_builder *b, nir_ssa_def *addr)
 {
    const uint64_t bvh_size = 1ull << 42;
    nir_ssa_def *node = nir_ushr(b, addr, nir_imm_int(b, 3));
@@ -1135,13 +1135,15 @@ nir_build_addr_to_node(nir_builder *b, nir_ssa_def *addr)
 }
 
 static nir_ssa_def *
-nir_build_node_to_addr(nir_builder *b, nir_ssa_def *node)
+build_node_to_addr(struct radv_device *device, nir_builder *b, nir_ssa_def *node)
 {
    nir_ssa_def *addr = nir_iand(b, node, nir_imm_int64(b, ~7ull));
    addr = nir_ishl(b, addr, nir_imm_int(b, 3));
    /* Assumes everything is in the top half of address space, which is true in
     * GFX9+ for now. */
-   return nir_ior(b, addr, nir_imm_int64(b, 0xffffull << 48));
+   return device->physical_device->rad_info.chip_class >= GFX9
+      ? nir_ior(b, addr, nir_imm_int64(b, 0xffffull << 48))
+      : addr;
 }
 
 /* When a hit is opaque the any_hit shader is skipped for this hit and the hit
@@ -1259,7 +1261,7 @@ insert_traversal_triangle_case(struct radv_device *device,
 
       nir_ssa_def *triangle_info = nir_build_load_global(
          b, 2, 32,
-         nir_iadd(b, nir_build_node_to_addr(b, bvh_node),
+         nir_iadd(b, build_node_to_addr(device, b, bvh_node),
                   nir_imm_int64(b, offsetof(struct radv_bvh_triangle_node, triangle_id))),
          .align_mul = 4, .align_offset = 0);
       nir_ssa_def *primitive_id = nir_channel(b, triangle_info, 0);
@@ -1364,7 +1366,7 @@ insert_traversal_aabb_case(struct radv_device *device,
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, layout, pCreateInfo->layout);
 
-   nir_ssa_def *node_addr = nir_build_node_to_addr(b, bvh_node);
+   nir_ssa_def *node_addr = build_node_to_addr(device, b, bvh_node);
    nir_ssa_def *triangle_info = nir_build_load_global(
       b, 2, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 24)), .align_mul = 4, .align_offset = 0);
    nir_ssa_def *primitive_id = nir_channel(b, triangle_info, 0);
@@ -1549,7 +1551,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    nir_push_if(b, nir_ine(b, accel_struct, nir_imm_int64(b, 0)));
    {
-      nir_store_var(b, trav_vars.bvh_base, nir_build_addr_to_node(b, accel_struct), 1);
+      nir_store_var(b, trav_vars.bvh_base, build_addr_to_node(b, accel_struct), 1);
 
       nir_ssa_def *bvh_root =
          nir_build_load_global(b, 1, 32, accel_struct, .access = ACCESS_NON_WRITEABLE,
@@ -1586,7 +1588,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
          b, nir_uge(b, nir_load_var(b, trav_vars.top_stack), nir_load_var(b, trav_vars.stack)));
       nir_store_var(b, trav_vars.top_stack, nir_imm_int(b, 0), 1);
       nir_store_var(b, trav_vars.bvh_base,
-                    nir_build_addr_to_node(b, nir_load_var(b, vars->accel_struct)), 1);
+                    build_addr_to_node(b, nir_load_var(b, vars->accel_struct)), 1);
       nir_store_var(b, trav_vars.origin, nir_load_var(b, vars->origin), 7);
       nir_store_var(b, trav_vars.dir, nir_load_var(b, vars->direction), 7);
       nir_store_var(b, trav_vars.inv_dir, nir_fdiv(b, vec3ones, nir_load_var(b, trav_vars.dir)), 7);
@@ -1621,7 +1623,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
             nir_push_else(b, NULL);
             {
                /* instance */
-               nir_ssa_def *instance_node_addr = nir_build_node_to_addr(b, bvh_node);
+               nir_ssa_def *instance_node_addr = build_node_to_addr(device, b, bvh_node);
                nir_ssa_def *instance_data = nir_build_load_global(
                   b, 4, 32, instance_node_addr, .align_mul = 64, .align_offset = 0);
                nir_ssa_def *wto_matrix[] = {
@@ -1648,7 +1650,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
                nir_store_var(b, trav_vars.top_stack, nir_load_var(b, trav_vars.stack), 1);
                nir_store_var(b, trav_vars.bvh_base,
-                             nir_build_addr_to_node(
+                             build_addr_to_node(
                                 b, nir_pack_64_2x32(b, nir_channels(b, instance_data, 0x3))),
                              1);
                nir_store_shared(b,
