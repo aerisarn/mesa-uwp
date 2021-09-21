@@ -215,6 +215,8 @@ print_instr_name(struct log_stream *stream, struct ir3_instruction *instr,
          mesa_log_stream_printf(stream, ".a1en");
       if (instr->opc == OPC_LDC)
          mesa_log_stream_printf(stream, ".offset%d", instr->cat6.d);
+      if (instr->opc == OPC_LDC_K)
+         mesa_log_stream_printf(stream, ".%d", instr->cat6.iim_val);
       if (instr->flags & IR3_INSTR_B) {
          mesa_log_stream_printf(
             stream, ".base%d",

@@ -899,6 +899,32 @@ emit_intrinsic_load_ubo_ldc(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    ir3_split_dest(b, dst, ldc, 0, ncomp);
 }
 
+static void
+emit_intrinsic_copy_ubo_to_uniform(struct ir3_context *ctx,
+                                   nir_intrinsic_instr *intr)
+{
+   struct ir3_block *b = ctx->block;
+
+   unsigned base = nir_intrinsic_base(intr);
+   unsigned size = nir_intrinsic_range(intr);
+
+   struct ir3_instruction *addr1 = ir3_get_addr1(ctx, base);
+
+   struct ir3_instruction *offset = ir3_get_src(ctx, &intr->src[1])[0];
+   struct ir3_instruction *idx = ir3_get_src(ctx, &intr->src[0])[0];
+   struct ir3_instruction *ldc = ir3_LDC_K(b, idx, 0, offset, 0);
+   ldc->cat6.iim_val = size;
+   ldc->barrier_class = ldc->barrier_conflict = IR3_BARRIER_CONST_W;
+
+   ir3_handle_bindless_cat6(ldc, intr->src[0]);
+   if (ldc->flags & IR3_INSTR_B)
+      ctx->so->bindless_ubo = true;
+
+   ir3_instr_set_address(ldc, addr1);
+
+   array_insert(b, b->keeps, ldc);
+}
+
 /* handles direct/indirect UBO reads: */
 static void
 emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
@@ -2127,6 +2153,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       break;
    case nir_intrinsic_load_ubo_vec4:
       emit_intrinsic_load_ubo_ldc(ctx, intr, dst);
+      break;
+   case nir_intrinsic_copy_ubo_to_uniform_ir3:
+      emit_intrinsic_copy_ubo_to_uniform(ctx, intr);
       break;
    case nir_intrinsic_load_frag_coord:
       ir3_split_dest(b, dst, get_frag_coord(ctx, intr), 0, 4);

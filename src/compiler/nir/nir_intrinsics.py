@@ -1149,6 +1149,11 @@ barrier("preamble_end_ir3")
 # IR3-specific intrinsic for stc. Should be used in the shader preamble.
 store("uniform_ir3", [], indices=[BASE])
 
+# IR3-specific intrinsic for ldc.k. Copies UBO to constant file.
+# base is the const file base in components, range is the amount to copy in
+# vec4's.
+intrinsic("copy_ubo_to_uniform_ir3", [1, 1], indices=[BASE, RANGE])
+
 # DXIL specific intrinsics
 # src[] = { value, mask, index, offset }.
 intrinsic("store_ssbo_masked_dxil", [1, 1, 1, 1])

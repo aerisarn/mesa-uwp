@@ -348,6 +348,11 @@ static const struct test {
    INSTR_6XX(c0260000_00478400, "ldc.offset2.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
    INSTR_6XX(c0260000_00478600, "ldc.offset3.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
 
+   /* dEQP-VK.glsl.conditionals.if.if_else_vertex */
+   INSTR_6XX(c0360000_00c78100, "ldc.1.k.imm.base0 c[a1.x], 0, 0"), /* ldc.1.k.mode4.base0 c[a1.x], 0, 0 */
+   /* custom */
+   INSTR_6XX(c0360003_00c78100, "ldc.4.k.imm.base0 c[a1.x], 0, 0"), /* ldc.4.k.mode4.base0 c[a1.x], 0, 0 */
+
    /* dEQP-VK.glsl.struct.local.nested_struct_array_dynamic_index_fragment */
    INSTR_6XX(c1425b50_01803e02, "stp.f32 p[r11.y-176], r0.y, 1"),
    INSTR_6XX(c1425b98_02803e14, "stp.f32 p[r11.y-104], r2.z, 2"),

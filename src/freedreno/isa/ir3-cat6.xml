@@ -878,27 +878,8 @@ SOFTWARE.
 	</encode>
 </bitset>
 
-<bitset name="ldc" extends="#instruction-cat6-a6xx">
-	<doc>
-		LoaD Constant - UBO load
-	</doc>
-	<override>
-		<!-- TODO.. wtf? -->
-		<expr>{K}</expr>
-		<display>
-			{SY}{JP}{NAME}.{TYPE_SIZE}.k.{MODE}{BASE} c[a1.x], {SRC1}, {SRC2}
-		</display>
-		<field   low="32" high="39" name="TYPE_SIZE_MINUS_ONE" type="uint"/>
-	</override>
-	<!--
-	TODO are these *really* all bindless?  Or does that bit have a different
-	meaning?  Maybe I don't have enough ldc examples from deqp-glesN
-	 -->
-	<display>
-		{SY}{JP}{NAME}.offset{OFFSET}.{TYPE_SIZE}.{MODE}{BASE} {DST}, {SRC1}, {SRC2}
-	</display>
+<bitset name="#cat6-ldc-common" extends="#instruction-cat6-a6xx">
 	<pattern pos="0"           >x</pattern>
-	<field   low="9"  high="10" name="OFFSET" type="uint"/>   <!-- D_MINUS_ONE -->
 	<pattern pos="11"          >x</pattern>        <!-- TYPED -->
 	<pattern low="14" high="19">011110</pattern>   <!-- OPC -->
 	<pattern low="20" high="22">1xx</pattern>
@@ -910,16 +891,59 @@ SOFTWARE.
 	<field   low="24" high="31" name="SRC1" type="#cat6-src">
 		<param name="SRC1_IM" as="SRC_IM"/>
 	</field>
-	<field   low="32" high="39" name="DST" type="#reg-gpr"/>
 	<pattern low="49" high="51">x11</pattern>      <!-- TYPE -->
-	<field   pos="52"           name="K" type="bool"/>
-	<pattern pos="53"          >1</pattern>
 	<encode>
-		<map name="K">0</map>  <!-- TODO.. once we figure out what this is -->
 		<map name="SRC1_IM">!!(src->srcs[1]->flags &amp; IR3_REG_IMMED)</map>
-		<map name="OFFSET">src->cat6.d</map>
 		<map name="SRC1">src->srcs[1]</map>
 		<map name="SRC2">src->srcs[0]</map>
+	</encode>
+</bitset>
+
+<bitset name="ldc.k" extends="#cat6-ldc-common">
+	<doc>
+		ldc.k copies a series of UBO values to constants. In other
+		words, it acts the same as a series of ldc followed by stc. It's
+		also similar to a CP_LOAD_STATE with a UBO source but executed
+		in the shader.
+
+		Like CP_LOAD_STATE, the UBO offset and const file offset must be
+		a multiple of 4 vec4's but it can load any number of vec4's. The
+		UBO descriptor and offset are the same as a normal ldc. The
+		const file offset is specified in a1.x and is in units of
+		components, and the number of vec4's to copy is specified in
+		LOAD_SIZE.
+	</doc>
+	<display>
+		{SY}{JP}ldc.{LOAD_SIZE}.k.{MODE}{BASE} c[a1.x], {SRC1}, {SRC2}
+	</display>
+
+	<derived name="LOAD_SIZE" expr="#cat6-load-size" type="uint"/>
+
+	<field   low="32" high="39" name="LOAD_SIZE_MINUS_ONE" type="uint"/>
+	<pattern low="9"  high="10">xx</pattern>   <!-- D_MINUS_ONE -->
+	<pattern low="52" high="53">11</pattern>
+
+	<encode>
+		<map name="LOAD_SIZE_MINUS_ONE">src->cat6.iim_val - 1</map>
+	</encode>
+</bitset>
+
+<bitset name="ldc" extends="#cat6-ldc-common">
+	<doc>
+		LoaD Constant - UBO load
+	</doc>
+	<!--
+	TODO are these *really* all bindless?  Or does that bit have a different
+	meaning?  Maybe I don't have enough ldc examples from deqp-glesN
+	 -->
+	<display>
+		{SY}{JP}{NAME}.offset{OFFSET}.{TYPE_SIZE}.{MODE}{BASE} {DST}, {SRC1}, {SRC2}
+	</display>
+	<field   low="9"  high="10" name="OFFSET" type="uint"/>   <!-- D_MINUS_ONE -->
+	<field   low="32" high="39" name="DST" type="#reg-gpr"/>
+	<pattern low="52" high="53">10</pattern>
+	<encode>
+		<map name="OFFSET">src->cat6.d</map>
 	</encode>
 </bitset>
 
@@ -1133,6 +1157,10 @@ SOFTWARE.
 
 <expr name="#cat6-type-size">
 	{TYPE_SIZE_MINUS_ONE} + 1
+</expr>
+
+<expr name="#cat6-load-size">
+	{LOAD_SIZE_MINUS_ONE} + 1
 </expr>
 
 <bitset name="#cat6-typed" size="1">

@@ -1229,8 +1229,12 @@ cat6_bindless_ibo: cat6_bindless_ibo_opc_1src cat6_typed cat6_dim cat6_type '.' 
 
 cat6_bindless_ldc_opc: T_OP_LDC  { new_instr(OPC_LDC); }
 
-cat6_bindless_ldc: cat6_bindless_ldc_opc '.' T_OFFSET '.' cat6_immed '.' cat6_bindless_mode dst_reg ',' cat6_reg_or_immed ',' cat6_reg_or_immed {
-                      instr->cat6.d = $3;
+/* This is separated from the opcode to avoid lookahead/shift-reduce conflicts */
+cat6_bindless_ldc_middle:
+                        T_OFFSET '.' cat6_immed '.' cat6_bindless_mode dst_reg { instr->cat6.d = $1; }
+|                       cat6_immed '.' 'k' '.' cat6_bindless_mode 'c' '[' T_A1 ']' { instr->opc = OPC_LDC_K; }
+
+cat6_bindless_ldc: cat6_bindless_ldc_opc '.' cat6_bindless_ldc_middle ',' cat6_reg_or_immed ',' cat6_reg_or_immed {
                       instr->cat6.type = TYPE_U32;
                       /* TODO cleanup ir3 src order: */
                       swap(instr->srcs[0], instr->srcs[1]);
