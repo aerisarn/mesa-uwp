@@ -452,7 +452,9 @@ brw_sampler_desc_simd_mode(const struct intel_device_info *devinfo,
                            uint32_t desc)
 {
    assert(devinfo->ver >= 5);
-   if (devinfo->ver >= 7)
+   if (devinfo->ver >= 8)
+      return GET_BITS(desc, 18, 17) | GET_BITS(desc, 29, 29) << 2;
+   else if (devinfo->ver >= 7)
       return GET_BITS(desc, 18, 17);
    else
       return GET_BITS(desc, 17, 16);
@@ -462,8 +464,11 @@ static  inline unsigned
 brw_sampler_desc_return_format(ASSERTED const struct intel_device_info *devinfo,
                                uint32_t desc)
 {
-   assert(devinfo->verx10 == 40);
-   return GET_BITS(desc, 13, 12);
+   assert(devinfo->verx10 == 40 || devinfo->ver >= 8);
+   if (devinfo->ver >= 8)
+      return GET_BITS(desc, 30, 30);
+   else
+      return GET_BITS(desc, 13, 12);
 }
 
 /**
