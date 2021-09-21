@@ -40,6 +40,7 @@
 
 #include <pipe/p_screen.h>
 #include <pipe/p_state.h>
+#include <pipe/p_context.h>
 
 #include <mapi/glapi/glapi.h>
 
@@ -294,6 +295,10 @@ wgl_initialize_impl(_EGLDisplay *disp, HDC hdc)
    disp->Extensions.KHR_gl_texture_2D_image = EGL_TRUE;
    disp->Extensions.KHR_gl_texture_cubemap_image = EGL_TRUE;
    disp->Extensions.KHR_gl_texture_3D_image = EGL_TRUE;
+
+   disp->Extensions.KHR_fence_sync = EGL_TRUE;
+   disp->Extensions.KHR_reusable_sync = EGL_TRUE;
+   disp->Extensions.KHR_wait_sync = EGL_TRUE;
 
    if (!wgl_add_configs(disp)) {
       err = "wgl: failed to add configs";
@@ -1036,6 +1041,163 @@ wgl_destroy_image_khr(_EGLDisplay *disp, _EGLImage *img)
    return EGL_TRUE;
 }
 
+static _EGLSync *
+wgl_create_sync_khr(_EGLDisplay *disp, EGLenum type, const EGLAttrib *attrib_list)
+{
+
+   _EGLContext *ctx = _eglGetCurrentContext();
+   struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
+   struct wgl_egl_sync *wgl_sync;
+
+   struct st_context_iface *st_ctx = wgl_ctx ? wgl_ctx->ctx->st : NULL;
+
+   wgl_sync = calloc(1, sizeof(struct wgl_egl_sync));
+   if (!wgl_sync) {
+      _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
+      return NULL;
+   }
+
+   if (!_eglInitSync(&wgl_sync->base, disp, type, attrib_list)) {
+      free(wgl_sync);
+      return NULL;
+   }
+
+   switch (type) {
+   case EGL_SYNC_FENCE_KHR:
+      st_ctx->flush(st_ctx, 0, &wgl_sync->fence, NULL, NULL);
+      if (!wgl_sync->fence) {
+         _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
+         free(wgl_sync);
+         return NULL;
+      }
+      break;
+
+   case EGL_SYNC_REUSABLE_KHR:
+      wgl_sync->event = CreateEvent(NULL, TRUE, FALSE, NULL);
+      if (!wgl_sync->event) {
+         _eglError(EGL_BAD_ALLOC, "eglCreateSyncKHR");
+         free(wgl_sync);
+         return NULL;
+      }
+   }
+
+   wgl_sync->refcount = 1;
+   return &wgl_sync->base;
+}
+
+static void
+wgl_egl_unref_sync(struct wgl_egl_display *wgl_dpy, struct wgl_egl_sync *wgl_sync)
+{
+   if (InterlockedDecrement((volatile LONG *)&wgl_sync->refcount) > 0)
+      return;
+
+   if (wgl_sync->fence)
+      wgl_dpy->screen->fence_reference(wgl_dpy->screen, &wgl_sync->fence, NULL);
+   if (wgl_sync->event)
+      CloseHandle(wgl_sync->event);
+   free(wgl_sync);
+}
+
+static EGLBoolean
+wgl_destroy_sync_khr(_EGLDisplay *disp, _EGLSync *sync)
+{
+   struct wgl_egl_display *wgl_dpy = wgl_egl_display(disp);
+   struct wgl_egl_sync *wgl_sync = wgl_egl_sync(sync);
+   wgl_egl_unref_sync(wgl_dpy, wgl_sync);
+   return EGL_TRUE;
+}
+
+static EGLint
+wgl_client_wait_sync_khr(_EGLDisplay *disp, _EGLSync *sync, EGLint flags, EGLTime timeout)
+{
+   _EGLContext *ctx = _eglGetCurrentContext();
+   struct wgl_egl_display *wgl_dpy = wgl_egl_display(disp);
+   struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
+   struct wgl_egl_sync *wgl_sync = wgl_egl_sync(sync);
+
+   EGLint ret = EGL_CONDITION_SATISFIED_KHR;
+
+   /* the sync object should take a reference while waiting */
+   InterlockedIncrement((volatile LONG *)&wgl_sync->refcount);
+
+   switch (sync->Type) {
+   case EGL_SYNC_FENCE_KHR:
+      if (wgl_dpy->screen->fence_finish(wgl_dpy->screen, NULL, wgl_sync->fence, timeout))
+         wgl_sync->base.SyncStatus = EGL_SIGNALED_KHR;
+      else
+         ret = EGL_TIMEOUT_EXPIRED_KHR;
+      break;
+
+   case EGL_SYNC_REUSABLE_KHR:
+      if (wgl_ctx && wgl_sync->base.SyncStatus == EGL_UNSIGNALED_KHR &&
+          (flags & EGL_SYNC_FLUSH_COMMANDS_BIT_KHR)) {
+         /* flush context if EGL_SYNC_FLUSH_COMMANDS_BIT_KHR is set */
+         wgl_gl_flush();
+      }
+
+      DWORD wait_milliseconds = (timeout == EGL_FOREVER_KHR) ? INFINITE : (DWORD)(timeout / 1000000ull);
+      DWORD wait_ret = WaitForSingleObject(wgl_sync->event, wait_milliseconds);
+      switch (wait_ret) {
+      case WAIT_OBJECT_0:
+         assert(wgl_sync->base.SyncStatus == EGL_SIGNALED_KHR);
+         break;
+      case WAIT_TIMEOUT:
+         assert(wgl_sync->base.SyncStatus == EGL_UNSIGNALED_KHR);
+         ret = EGL_TIMEOUT_EXPIRED_KHR;
+         break;
+      default:
+         _eglError(EGL_BAD_ACCESS, "eglClientWaitSyncKHR");
+         ret = EGL_FALSE;
+         break;
+      }
+      break;
+  }
+  wgl_egl_unref_sync(wgl_dpy, wgl_sync);
+
+  return ret;
+}
+
+static EGLint
+wgl_wait_sync_khr(_EGLDisplay *disp, _EGLSync *sync)
+{
+   _EGLContext *ctx = _eglGetCurrentContext();
+   struct wgl_egl_context *wgl_ctx = wgl_egl_context(ctx);
+   struct wgl_egl_sync *wgl_sync = wgl_egl_sync(sync);
+
+   if (!wgl_sync->fence)
+      return EGL_TRUE;
+
+   struct pipe_context *pipe = wgl_ctx->ctx->st->pipe;
+   if (pipe->fence_server_sync)
+      pipe->fence_server_sync(pipe, wgl_sync->fence);
+
+   return EGL_TRUE;
+}
+
+static EGLBoolean
+wgl_signal_sync_khr(_EGLDisplay *disp, _EGLSync *sync, EGLenum mode)
+{
+   struct wgl_egl_sync *wgl_sync = wgl_egl_sync(sync);
+
+   if (sync->Type != EGL_SYNC_REUSABLE_KHR)
+      return _eglError(EGL_BAD_MATCH, "eglSignalSyncKHR");
+
+   if (mode != EGL_SIGNALED_KHR && mode != EGL_UNSIGNALED_KHR)
+      return _eglError(EGL_BAD_ATTRIBUTE, "eglSignalSyncKHR");
+
+   wgl_sync->base.SyncStatus = mode;
+
+   if (mode == EGL_SIGNALED_KHR) {
+      if (!SetEvent(wgl_sync->event))
+         return _eglError(EGL_BAD_ACCESS, "eglSignalSyncKHR");
+   } else {
+      if (!ResetEvent(wgl_sync->event))
+         return _eglError(EGL_BAD_ACCESS, "eglSignalSyncKHR");
+   }
+
+   return EGL_TRUE;
+}
+
 static const char *
 wgl_query_driver_name(_EGLDisplay *disp)
 {
@@ -1067,6 +1229,11 @@ struct _egl_driver _eglDriver = {
    .WaitNative = wgl_wait_native,
    .CreateImageKHR = wgl_create_image_khr,
    .DestroyImageKHR = wgl_destroy_image_khr,
+   .CreateSyncKHR = wgl_create_sync_khr,
+   .DestroySyncKHR = wgl_destroy_sync_khr,
+   .ClientWaitSyncKHR = wgl_client_wait_sync_khr,
+   .WaitSyncKHR = wgl_wait_sync_khr,
+   .SignalSyncKHR = wgl_signal_sync_khr,
    .QueryDriverName = wgl_query_driver_name,
    .QueryDriverConfig = wgl_query_driver_config,
 };
