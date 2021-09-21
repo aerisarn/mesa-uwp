@@ -50,4 +50,6 @@ For general information on building Mesa, read :doc:`the install documentation
 Chat
 ----
 
-Panfrost developers and users hang out on IRC at ``#panfrost`` on OFTC.
+Panfrost developers and users hang out on IRC at ``#panfrost`` on OFTC. Note
+that registering and authenticating with `NickServ` is required to prevent
+spam. [Join the chat.](https://webchat.oftc.net/?channels=#panfrost)
