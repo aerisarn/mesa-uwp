@@ -637,6 +637,32 @@ decompose_attribs(nir_shader *nir, uint32_t decomposed_attrs, uint32_t decompose
    return true;
 }
 
+static bool
+rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_load_ubo:
+   case nir_intrinsic_load_ubo_vec4:
+      b->cursor = nir_before_instr(instr);
+      nir_instr_rewrite_src_ssa(instr, &intr->src[1], nir_udiv_imm(b, intr->src[1].ssa, MIN2(nir_dest_bit_size(intr->dest), 32) / 8));
+      return true;
+   case nir_intrinsic_store_ssbo:
+   default:
+      break;
+   }
+   return false;
+}
+
+static bool
+rewrite_bo_access(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, rewrite_bo_access_instr, nir_metadata_dominance, NULL);
+}
+
 static void
 assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reserved, unsigned char *slot_map)
 {
@@ -872,6 +898,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       default: break;
       }
    }
+   if (screen->driconf.inline_uniforms)
+      NIR_PASS_V(nir, rewrite_bo_access);
    if (inlined_uniforms) {
       optimize_nir(nir);
 
@@ -1384,6 +1412,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          nir->info.fs.color_is_dual_source ? 1 : 8);
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    NIR_PASS_V(nir, unbreak_bos);
+   /* run in compile if there could be inlined uniforms */
+   if (!screen->driconf.inline_uniforms)
+      NIR_PASS_V(nir, rewrite_bo_access);
 
    if (zink_debug & ZINK_DEBUG_NIR) {
       fprintf(stderr, "NIR shader:\n---8<---\n");

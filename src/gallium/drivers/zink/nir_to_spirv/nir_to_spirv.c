@@ -1941,8 +1941,6 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    /* destination type for the load */
    SpvId type = get_dest_uvec_type(ctx, &intr->dest);
-   /* an id of an array member in bytes */
-   SpvId uint_size = emit_uint_const(ctx, 32, MIN2(bit_size, 32) / 8);
 
    /* we grab a single array member at a time, so it's a pointer to a uint */
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
@@ -1955,18 +1953,13 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
     *    uint base[array_size];
     * };
     *
-    * where 'array_size' is set as though every member of the ubo takes up a vec4,
-    * even if it's only a vec2 or a float.
-    *
     * first, access 'base'
     */
    SpvId member = emit_uint_const(ctx, 32, 0);
-   /* this is the offset (in bytes) that we're accessing:
+   /* this is the array member we're accessing:
     * it may be a const value or it may be dynamic in the shader
     */
    SpvId offset = get_src(ctx, &intr->src[1]);
-   /* calculate the byte offset in the array */
-   SpvId vec_offset = emit_binop(ctx, SpvOpUDiv, uint_type, offset, uint_size);
    /* OpAccessChain takes an array of indices that drill into a hierarchy based on the type:
     * index 0 is accessing 'base'
     * index 1 is accessing 'base[index 1]'
@@ -1976,7 +1969,7 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
     * (composite|vector)_extract both take literals
     */
    for (unsigned i = 0; i < num_components; i++) {
-      SpvId indices[2] = { member, vec_offset };
+      SpvId indices[2] = { member, offset };
       SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
                                                   bo, indices,
                                                   ARRAY_SIZE(indices));
@@ -1985,8 +1978,9 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
          constituents[i] = emit_atomic(ctx, SpvOpAtomicLoad, uint_type, ptr, 0, 0);
       else
          constituents[i] = spirv_builder_emit_load(&ctx->builder, uint_type, ptr);
+
       /* increment to the next member index for the next load */
-      vec_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_offset, one);
+      offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
    }
 
    /* if we're loading a 64bit value, we have to reassemble all the u32 values we've loaded into u64 values
