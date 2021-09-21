@@ -235,7 +235,7 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
                  instr->opc == OPC_READ_FIRST_MACRO ||
                  instr->opc == OPC_READ_COND_MACRO) {
          /* nothing yet */
-      } else if (instr->opc == OPC_ELECT_MACRO) {
+      } else if (instr->opc == OPC_ELECT_MACRO || instr->opc == OPC_SHPS_MACRO) {
          validate_assert(ctx, instr->dsts_count == 1);
          validate_assert(ctx, !(instr->dsts[0]->flags & IR3_REG_SHARED));
       } else if (instr->opc == OPC_SCAN_MACRO) {

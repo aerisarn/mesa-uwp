@@ -1129,6 +1129,23 @@ load("global_ir3", [2, 1], indices=[ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN
 # Note that this doesn't actually turn into a HW instruction.
 intrinsic("bindless_resource_ir3", [1], dest_comp=1, indices=[DESC_SET], flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# IR3-specific intrinsics for shader preamble. These are meant to be used like
+# this:
+#
+# if (preamble_start()) {
+#    if (subgroupElect()) {
+#       // preamble
+#       ...
+#       preamble_end();
+#    }
+# }
+# // main shader
+# ...
+
+intrinsic("preamble_start_ir3", [], dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
+
+barrier("preamble_end_ir3")
+
 # DXIL specific intrinsics
 # src[] = { value, mask, index, offset }.
 intrinsic("store_ssbo_masked_dxil", [1, 1, 1, 1])

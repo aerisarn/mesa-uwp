@@ -482,6 +482,7 @@ struct ir3_instruction {
       IR3_BARRIER_ARRAY_W = 1 << 8,
       IR3_BARRIER_PRIVATE_R = 1 << 9,
       IR3_BARRIER_PRIVATE_W = 1 << 10,
+      IR3_BARRIER_CONST_W = 1 << 11,
    } barrier_class,
       barrier_conflict;
 
@@ -581,6 +582,7 @@ enum ir3_branch_type {
    IR3_BRANCH_ANY,    /* subgroupAny(condition) */
    IR3_BRANCH_ALL,    /* subgroupAll(condition) */
    IR3_BRANCH_GETONE, /* subgroupElect() */
+   IR3_BRANCH_SHPS,   /* preamble start */
 };
 
 struct ir3_block {
@@ -2190,6 +2192,8 @@ INSTR1NODST(PREDT)
 INSTR0(PREDF)
 INSTR0(PREDE)
 INSTR0(GETONE)
+INSTR0(SHPS)
+INSTR0(SHPE)
 
 /* cat1 macros */
 INSTR1(ANY_MACRO)
@@ -2202,6 +2206,15 @@ ir3_ELECT_MACRO(struct ir3_block *block)
 {
    struct ir3_instruction *instr =
       ir3_instr_create(block, OPC_ELECT_MACRO, 1, 0);
+   __ssa_dst(instr);
+   return instr;
+}
+
+static inline struct ir3_instruction *
+ir3_SHPS_MACRO(struct ir3_block *block)
+{
+   struct ir3_instruction *instr =
+      ir3_instr_create(block, OPC_SHPS_MACRO, 1, 0);
    __ssa_dst(instr);
    return instr;
 }

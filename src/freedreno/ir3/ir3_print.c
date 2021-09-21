@@ -535,6 +535,9 @@ print_block(struct ir3_block *block, int lvl)
       case IR3_BRANCH_GETONE:
          mesa_log_stream_printf(stream, "getone ");
          break;
+      case IR3_BRANCH_SHPS:
+         mesa_log_stream_printf(stream, "shps ");
+         break;
       }
       if (block->condition)
          mesa_log_stream_printf(stream, SYN_SSA("ssa_%u") " ",

@@ -161,7 +161,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
          ctx->max_bary = MAX2(ctx->max_bary, inloc->iim_val);
       }
 
-      if (last_n && is_barrier(last_n)) {
+      if ((last_n && is_barrier(last_n)) || n->opc == OPC_SHPE) {
          n->flags |= IR3_INSTR_SS | IR3_INSTR_SY;
          last_input_needs_ss = false;
          regmask_init(&state->needs_ss_war, mergedregs);
@@ -746,13 +746,17 @@ block_sched(struct ir3 *ir)
          /* if/else, conditional branches to "then" or "else": */
          struct ir3_instruction *br1, *br2;
 
-         if (block->brtype == IR3_BRANCH_GETONE) {
-            /* getone can't be inverted, and it wouldn't even make sense
+         if (block->brtype == IR3_BRANCH_GETONE ||
+             block->brtype == IR3_BRANCH_SHPS) {
+            /* getone/shps can't be inverted, and it wouldn't even make sense
              * to follow it with an inverted branch, so follow it by an
              * unconditional branch.
              */
             debug_assert(!block->condition);
-            br1 = ir3_GETONE(block);
+            if (block->brtype == IR3_BRANCH_GETONE)
+               br1 = ir3_GETONE(block);
+            else
+               br1 = ir3_SHPS(block);
             br1->cat0.target = block->successors[1];
 
             br2 = ir3_JUMP(block);
@@ -788,6 +792,7 @@ block_sched(struct ir3 *ir)
                br2->cat0.brtype = BRANCH_ANY;
                break;
             case IR3_BRANCH_GETONE:
+            case IR3_BRANCH_SHPS:
                unreachable("can't get here");
             }
          }
