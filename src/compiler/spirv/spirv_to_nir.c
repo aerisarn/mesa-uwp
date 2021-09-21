@@ -1475,6 +1475,37 @@ translate_image_format(struct vtn_builder *b, SpvImageFormat format)
 }
 
 static void
+validate_image_type_for_sampled_image(struct vtn_builder *b,
+                                      const struct glsl_type *image_type,
+                                      const char *operand)
+{
+   /* From OpTypeSampledImage description in SPIR-V 1.6, revision 1:
+    *
+    *   Image Type must be an OpTypeImage. It is the type of the image in the
+    *   combined sampler and image type. It must not have a Dim of
+    *   SubpassData. Additionally, starting with version 1.6, it must not have
+    *   a Dim of Buffer.
+    *
+    * Same also applies to the type of the Image operand in OpSampledImage.
+    */
+
+   const enum glsl_sampler_dim dim = glsl_get_sampler_dim(image_type);
+
+   vtn_fail_if(dim == GLSL_SAMPLER_DIM_SUBPASS ||
+               dim == GLSL_SAMPLER_DIM_SUBPASS_MS,
+               "%s must not have a Dim of SubpassData.", operand);
+
+   if (dim == GLSL_SAMPLER_DIM_BUF) {
+      if (b->version >= 0x10600) {
+         vtn_fail("Starting with SPIR-V 1.6, %s "
+                  "must not have a Dim of Buffer.", operand);
+      } else {
+         vtn_warn("%s should not have a Dim of Buffer.", operand);
+      }
+   }
+}
+
+static void
 vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
                 const uint32_t *w, unsigned count)
 {
@@ -1845,6 +1876,10 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTypeSampledImage: {
       val->type->base_type = vtn_base_type_sampled_image;
       val->type->image = vtn_get_type(b, w[2]);
+
+      validate_image_type_for_sampled_image(
+         b, val->type->image->glsl_image,
+         "Image Type operand of OpTypeSampledImage");
 
       /* Sampled images are represented NIR as a vec2 SSA value where each
        * component is the result of a deref instruction.  The first component
@@ -2743,6 +2778,10 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
          .image = vtn_get_image(b, w[3], NULL),
          .sampler = vtn_get_sampler(b, w[4]),
       };
+
+      validate_image_type_for_sampled_image(
+         b, si.image->type,
+         "Type of Image operand of OpSampledImage");
 
       enum gl_access_qualifier access = 0;
       vtn_foreach_decoration(b, vtn_untyped_value(b, w[3]),
