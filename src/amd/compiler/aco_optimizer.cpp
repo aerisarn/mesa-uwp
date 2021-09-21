@@ -1603,7 +1603,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       break;
    case aco_opcode::v_mul_f64: ctx.info[instr->definitions[0].tempId()].set_mul(instr.get()); break;
    case aco_opcode::v_mul_f16:
-   case aco_opcode::v_mul_f32: { /* omod */
+   case aco_opcode::v_mul_f32:
+   case aco_opcode::v_mul_legacy_f32: { /* omod */
       ctx.info[instr->definitions[0].tempId()].set_mul(instr.get());
 
       /* TODO: try to move the negate/abs modifier to the consumer instead */
@@ -1645,8 +1646,9 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                        (fp16 ? 0x3800 : 0x3f000000)) { /* 0.5 */
                ctx.info[instr->operands[i].tempId()].set_omod5(instr.get());
             } else if (instr->operands[!i].constantValue() == 0u &&
-                       !(fp16 ? ctx.fp_mode.preserve_signed_zero_inf_nan16_64
-                              : ctx.fp_mode.preserve_signed_zero_inf_nan32)) { /* 0.0 */
+                       (!(fp16 ? ctx.fp_mode.preserve_signed_zero_inf_nan16_64
+                               : ctx.fp_mode.preserve_signed_zero_inf_nan32) ||
+                        instr->opcode == aco_opcode::v_mul_legacy_f32)) { /* 0.0 */
                ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, 0u);
             } else {
                continue;
@@ -3496,6 +3498,9 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          return;
       if (mul_instr->isSDWA() || mul_instr->isDPP())
          return;
+      if (mul_instr->opcode == aco_opcode::v_mul_legacy_f32 &&
+          ctx.fp_mode.preserve_signed_zero_inf_nan32)
+         return;
 
       /* convert to mul(neg(a), b) */
       ctx.uses[mul_instr->definitions[0].tempId()]--;
@@ -3552,6 +3557,10 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          /* no clamp/omod allowed between mul and add */
          if (info.instr->isVOP3() && (info.instr->vop3().clamp || info.instr->vop3().omod))
+            continue;
+
+         bool legacy = info.instr->opcode == aco_opcode::v_mul_legacy_f32;
+         if (legacy && need_fma && ctx.program->chip_class < GFX10_3)
             continue;
 
          Operand op[3] = {info.instr->operands[0], info.instr->operands[1], instr->operands[1 - i]};
@@ -3619,13 +3628,17 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             neg[2 - add_op_idx] = neg[2 - add_op_idx] ^ true;
 
          aco_opcode mad_op = need_fma ? aco_opcode::v_fma_f32 : aco_opcode::v_mad_f32;
-         if (mad16)
+         if (mul_instr->opcode == aco_opcode::v_mul_legacy_f32) {
+            assert(need_fma == (ctx.program->chip_class >= GFX10_3));
+            mad_op = need_fma ? aco_opcode::v_fma_legacy_f32 : aco_opcode::v_mad_legacy_f32;
+         } else if (mad16) {
             mad_op = need_fma ? (ctx.program->chip_class == GFX8 ? aco_opcode::v_fma_legacy_f16
                                                                  : aco_opcode::v_fma_f16)
                               : (ctx.program->chip_class == GFX8 ? aco_opcode::v_mad_legacy_f16
                                                                  : aco_opcode::v_mad_f16);
-         if (mad64)
+         } else if (mad64) {
             mad_op = aco_opcode::v_fma_f64;
+         }
 
          aco_ptr<VOP3_instruction> mad{
             create_instruction<VOP3_instruction>(mad_op, Format::VOP3, 3, 1)};
@@ -3646,7 +3659,9 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
    }
    /* v_mul_f32(v_cndmask_b32(0, 1.0, cond), a) -> v_cndmask_b32(0, a, cond) */
-   else if (instr->opcode == aco_opcode::v_mul_f32 && !ctx.fp_mode.preserve_signed_zero_inf_nan32 &&
+   else if (((instr->opcode == aco_opcode::v_mul_f32 &&
+              !ctx.fp_mode.preserve_signed_zero_inf_nan32) ||
+             instr->opcode == aco_opcode::v_mul_legacy_f32) &&
             !instr->usesModifiers() && !ctx.fp_mode.must_flush_denorms32) {
       for (unsigned i = 0; i < 2; i++) {
          if (instr->operands[i].isTemp() && ctx.info[instr->operands[i].tempId()].is_b2f() &&
@@ -3904,7 +3919,9 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          mad_info = NULL;
       }
       /* check literals */
-      else if (!instr->usesModifiers() && instr->opcode != aco_opcode::v_fma_f64) {
+      else if (!instr->usesModifiers() && instr->opcode != aco_opcode::v_fma_f64 &&
+               instr->opcode != aco_opcode::v_mad_legacy_f32 &&
+               instr->opcode != aco_opcode::v_fma_legacy_f32) {
          /* FMA can only take literals on GFX10+ */
          if ((instr->opcode == aco_opcode::v_fma_f32 || instr->opcode == aco_opcode::v_fma_f16) &&
              ctx.program->chip_class < GFX10)
