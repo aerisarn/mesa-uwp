@@ -73,7 +73,11 @@ parser.add_argument(
     default=[],
     help="Only run the test matching this expression. This can only be a filename containing a list of failing tests to re-run.",
 )
-
+parser.add_argument(
+    "--baseline",
+    dest="baseline",
+    help="Folder containing expected results files",
+    default=os.path.dirname(__file__))
 parser.add_argument(
     "--no-piglit", dest="piglit", help="Disable piglit tests", action="store_false"
 )
@@ -138,8 +142,8 @@ else:
         parser.print_help()
         sys.exit(0)
 
-base = os.path.dirname(__file__)
-skips = os.path.join(base, "skips.csv")
+base = args.baseline
+skips = os.path.join(os.path.dirname(__file__), "skips.csv")
 
 # Use piglit's glinfo to determine the GPU name
 gpu_name = "unknown"
@@ -261,6 +265,7 @@ if args.piglit:
 
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
+        print_yellow("[baseline {}]".format(baseline), args.verbose > 0)
     env = os.environ.copy()
     env["PIGLIT_PLATFORM"] = "gbm"
     run_cmd(cmd, args.verbose, env)
@@ -302,6 +307,7 @@ if args.glcts:
 
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
+        print_yellow("[baseline {}]".format(baseline), args.verbose > 0)
     cmd += deqp_args
     run_cmd(cmd, args.verbose)
     shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
@@ -319,6 +325,9 @@ if args.deqp:
     new_baseline = os.path.join(
         new_baseline_folder, "{}-deqp-fail.csv".format(gpu_name)
     )
+
+    if os.path.exists(baseline):
+        print_yellow("[baseline {}]".format(baseline), args.verbose > 0)
 
     deqp_tests = {
         "egl": args.deqp_egl,
