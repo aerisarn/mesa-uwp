@@ -33,9 +33,10 @@
 
 struct wgl_egl_display
 {
+   struct st_manager base;
+   _EGLDisplay *parent;
    int ref_count;
    struct pipe_screen *screen;
-   struct st_manager *smapi;
 };
 
 struct wgl_egl_config
