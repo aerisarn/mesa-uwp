@@ -775,7 +775,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    /* See also brw_nir_trig_workarounds.py */
    if (compiler->precise_trig &&
-       !(devinfo->ver >= 10 || devinfo->is_kabylake))
+       !(devinfo->ver >= 10 || devinfo->platform == INTEL_PLATFORM_KBL))
       OPT(brw_nir_apply_trig_workarounds);
 
    if (devinfo->ver >= 12)

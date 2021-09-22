@@ -146,7 +146,8 @@ brw_init_extensions(struct gl_context *ctx)
 
    if (devinfo->ver >= 8)
       ctx->Const.GLSLVersion = 460;
-   else if (devinfo->is_haswell && can_do_pipelined_register_writes(brw->screen))
+   else if (devinfo->platform == INTEL_PLATFORM_HSW &&
+            can_do_pipelined_register_writes(brw->screen))
       ctx->Const.GLSLVersion = 450;
    else if (devinfo->ver >= 7 && can_do_pipelined_register_writes(brw->screen))
       ctx->Const.GLSLVersion = 420;
@@ -165,7 +166,7 @@ brw_init_extensions(struct gl_context *ctx)
    ctx->Extensions.EXT_shader_integer_mix = ctx->Const.GLSLVersion >= 130;
    ctx->Extensions.MESA_shader_integer_functions = ctx->Const.GLSLVersion >= 130;
 
-   if (devinfo->is_g4x || devinfo->ver >= 5) {
+   if (devinfo->verx10 >= 45) {
       ctx->Extensions.EXT_shader_framebuffer_fetch_non_coherent = true;
       ctx->Extensions.KHR_blend_equation_advanced = true;
    }
@@ -294,7 +295,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.OES_viewport_array = true;
    }
 
-   if (devinfo->verx10 >= 75 || devinfo->is_baytrail) {
+   if (devinfo->verx10 >= 75 || devinfo->platform == INTEL_PLATFORM_BYT) {
       ctx->Extensions.ARB_robust_buffer_access_behavior = true;
    }
 
@@ -302,7 +303,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.ARB_query_buffer_object = true;
    }
 
-   if (devinfo->ver >= 8 || devinfo->is_baytrail) {
+   if (devinfo->ver >= 8 || devinfo->platform == INTEL_PLATFORM_BYT) {
       /* For now, we can't enable OES_texture_view on Gen 7 because of
        * some piglit failures coming from
        * piglit/tests/spec/arb_texture_view/rendering-formats.c that need

@@ -737,7 +737,7 @@ genX(emit_vertices)(struct brw_context *brw)
           * vertex element may poke over the end of the buffer by 2 bytes.
           */
          const unsigned padding =
-            (GFX_VERx10 < 75 && !devinfo->is_baytrail) * 2;
+            (GFX_VERx10 < 75 && devinfo->platform != INTEL_PLATFORM_BYT) * 2;
          const unsigned end = buffer->offset + buffer->size + padding;
          dw = genX(emit_vertex_buffer_state)(brw, dw, i, buffer->bo,
                                              buffer->offset,
@@ -1795,7 +1795,7 @@ genX(upload_sf)(struct brw_context *brw)
 #if GFX_VER == 8
       const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
-      if (devinfo->is_cherryview)
+      if (devinfo->platform == INTEL_PLATFORM_CHV)
          sf.CHVLineWidth = brw_get_line_width(brw);
       else
          sf.LineWidth = brw_get_line_width(brw);
@@ -2312,7 +2312,7 @@ genX(upload_vs_state)(struct brw_context *brw)
    }
 #endif
 
-   if (GFX_VER == 7 && devinfo->is_ivybridge)
+   if (GFX_VER == 7 && devinfo->platform == INTEL_PLATFORM_IVB)
       gfx7_emit_vs_workaround_flush(brw);
 
 #if GFX_VER >= 6
@@ -3249,7 +3249,9 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
       &brw->wm.base,
    };
 
-   if (GFX_VERx10 == 70 && !devinfo->is_baytrail &&
+
+   if (GFX_VERx10 == 70 &&
+       devinfo->platform == INTEL_PLATFORM_IVB &&
        stage_states[MESA_SHADER_VERTEX]->push_constants_dirty)
       gfx7_emit_vs_workaround_flush(brw);
 

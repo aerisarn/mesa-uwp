@@ -4658,7 +4658,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             (instr->num_components - 1) * type_sz(dest.type);
 
          bool supports_64bit_indirects =
-            !devinfo->is_cherryview && !intel_device_info_is_9lp(devinfo);
+            devinfo->platform != INTEL_PLATFORM_CHV && !intel_device_info_is_9lp(devinfo);
 
          if (type_sz(dest.type) != 8 || supports_64bit_indirects) {
             for (unsigned j = 0; j < instr->num_components; j++) {
@@ -6467,7 +6467,7 @@ setup_imm_df(const fs_builder &bld, double v)
    /* gfx7.5 does not support DF immediates straighforward but the DIM
     * instruction allows to set the 64-bit immediate value.
     */
-   if (devinfo->is_haswell) {
+   if (devinfo->platform == INTEL_PLATFORM_HSW) {
       const fs_builder ubld = bld.exec_all().group(1, 0);
       fs_reg dst = ubld.vgrf(BRW_REGISTER_TYPE_DF, 1);
       ubld.DIM(dst, brw_imm_df(v));

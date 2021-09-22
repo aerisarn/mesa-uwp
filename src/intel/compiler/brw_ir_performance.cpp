@@ -367,7 +367,7 @@ namespace {
             else
                return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                      0, 8, 4, 12, 0, 0);
-         } else if (devinfo->is_haswell) {
+         } else if (devinfo->verx10 >= 75) {
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 10, 6 /* XXX */, 16, 0, 0);
          } else {
@@ -392,7 +392,7 @@ namespace {
             else
                return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                      0, 8, 4, 12, 0, 0);
-         } else if (devinfo->is_haswell) {
+         } else if (devinfo->verx10 >= 75) {
             if (info.tx == BRW_REGISTER_TYPE_F)
                return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                      0, 12, 8 /* XXX */, 18, 0, 0);
@@ -422,7 +422,7 @@ namespace {
          else if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 0, 2, 1, 0, 2,
                                   0, 8, 4 /* XXX */, 12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0, 2, 1, 0, 2,
                                   0, 10, 6 /* XXX */, 16 /* XXX */, 0, 0);
          else if (devinfo->ver >= 7)
@@ -442,7 +442,7 @@ namespace {
             else
                return calculate_desc(info, unit_fpu, 0, 2, 1, 0, 2,
                                      0, 8, 4 /* XXX */, 12 /* XXX */, 0, 0);
-         } else if (devinfo->is_haswell) {
+         } else if (devinfo->verx10 >= 75) {
             if (info.tx == BRW_REGISTER_TYPE_F)
                return calculate_desc(info, unit_fpu, 0, 2, 1, 0, 2,
                                      0, 12, 8 /* XXX */, 18, 0, 0);
@@ -472,7 +472,7 @@ namespace {
          else if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 0, 4, 0, 0, 4,
                                   0, 8, 4 /* XXX */, 12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0, 4, 0, 0, 4,
                                   0, 10, 6 /* XXX */, 16 /* XXX */, 0, 0);
          else if (devinfo->ver >= 7)
@@ -488,7 +488,7 @@ namespace {
          if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 12, 8 /* XXX */, 16 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 10, 6 /* XXX */, 16 /* XXX */, 0, 0);
          else
@@ -524,7 +524,7 @@ namespace {
                if (devinfo->ver >= 8)
                   return calculate_desc(info, unit_em, -2, 4, 0, 0, 4,
                                         0, 16, 0, 0, 0, 0);
-               else if (devinfo->is_haswell)
+               else if (devinfo->verx10 >= 75)
                   return calculate_desc(info, unit_em, 0, 2, 0, 0, 2,
                                         0, 12, 0, 0, 0, 0);
                else
@@ -535,7 +535,7 @@ namespace {
                if (devinfo->ver >= 8)
                   return calculate_desc(info, unit_em, -2, 4, 0, 0, 8,
                                         0, 24, 0, 0, 0, 0);
-               else if (devinfo->is_haswell)
+               else if (devinfo->verx10 >= 75)
                   return calculate_desc(info, unit_em, 0, 2, 0, 0, 4,
                                         0, 20, 0, 0, 0, 0);
                else
@@ -603,7 +603,7 @@ namespace {
          if (devinfo->ver >= 8)
             return calculate_desc(info, unit_null, 8, 0, 0, 0, 0,
                                   0, 0, 0, 0, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_null, 6, 0, 0, 0, 0,
                                   0, 0, 0, 0, 0, 0);
          else
@@ -614,7 +614,7 @@ namespace {
          if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 0, 4, 0, 0, 4,
                                   0, 12, 8 /* XXX */, 16 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 10, 6 /* XXX */, 16 /* XXX */, 0, 0);
          else
@@ -625,7 +625,7 @@ namespace {
          if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 0, 4, 1, 0, 4,
                                   0, 12, 8 /* XXX */, 16 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0, 2, 1, 0, 2,
                                   0, 10, 6 /* XXX */, 16 /* XXX */, 0, 0);
          else if (devinfo->ver >= 6)
@@ -643,7 +643,7 @@ namespace {
             return calculate_desc(info, unit_fpu, 16, 6, 0, 0, 6,
                                   0, 8 /* XXX */, 4 /* XXX */,
                                   12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 20, 6, 0, 0, 6,
                                   0, 10 /* XXX */, 6 /* XXX */,
                                   16 /* XXX */, 0, 0);
@@ -663,7 +663,7 @@ namespace {
             return calculate_desc(info, unit_fpu, 34, 0, 0, 34, 0,
                                   0, 8 /* XXX */, 4 /* XXX */,
                                   12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 34, 0, 0, 34, 0,
                                   0, 10 /* XXX */, 6 /* XXX */,
                                   16 /* XXX */, 0, 0);
@@ -679,7 +679,7 @@ namespace {
          else if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 18, 0, 0, 4, 0,
                                   0, 8, 4 /* XXX */, 12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 18, 0, 0, 4, 0,
                                   0, 10, 6 /* XXX */, 16 /* XXX */, 0, 0);
          else if (devinfo->ver >= 7)
@@ -695,7 +695,7 @@ namespace {
          else if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 2, 0, 0, 2, 0,
                                   0, 8, 4 /* XXX */, 12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 36, 0, 0, 6, 0,
                                   0, 10, 6 /* XXX */, 16 /* XXX */, 0, 0);
          else if (devinfo->ver >= 7)
@@ -714,7 +714,7 @@ namespace {
             return calculate_desc(info, unit_fpu, 20 /* XXX */, 0, 0,
                                   4 /* XXX */, 0,
                                   0, 0, 0, 0, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 24 /* XXX */, 0, 0,
                                   4 /* XXX */, 0,
                                   0, 0, 0, 0, 0, 0);
@@ -736,7 +736,7 @@ namespace {
                                   42 /* XXX */, 0,
                                   0, 8 /* XXX */, 4 /* XXX */,
                                   12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0, 44 /* XXX */, 0,
                                   0, 44 /* XXX */,
                                   0, 10 /* XXX */, 6 /* XXX */,
@@ -760,7 +760,7 @@ namespace {
                                   0, 4 /* XXX */,
                                   0, 8 /* XXX */, 4 /* XXX */,
                                   12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 10 /* XXX */, 4 /* XXX */, 0,
                                   0, 4 /* XXX */,
                                   0, 10 /* XXX */, 6 /* XXX */,
@@ -782,7 +782,7 @@ namespace {
                                   0, 8 /* XXX */,
                                   0, 8 /* XXX */, 4 /* XXX */,
                                   12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0 /* XXX */, 8 /* XXX */, 0,
                                   0, 8 /* XXX */,
                                   0, 10 /* XXX */, 6 /* XXX */,
@@ -800,7 +800,7 @@ namespace {
          else if (devinfo->ver >= 8)
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 8, 4 /* XXX */, 12 /* XXX */, 0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 0, 2, 0, 0, 2,
                                   0, 12, 8 /* XXX */, 18 /* XXX */, 0, 0);
          else
@@ -825,7 +825,7 @@ namespace {
                                   4 /* XXX */, 0,
                                   0, 8 /* XXX */, 4 /* XXX */, 12 /* XXX */,
                                   0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 4 /* XXX */, 0, 0,
                                   4 /* XXX */, 0,
                                   0, 10 /* XXX */, 6 /* XXX */, 16 /* XXX */,
@@ -846,7 +846,7 @@ namespace {
                                   6 /* XXX */, 0,
                                   0, 8 /* XXX */, 4 /* XXX */, 12 /* XXX */,
                                   0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 26 /* XXX */, 0, 0,
                                   6 /* XXX */, 0,
                                   0, 10 /* XXX */, 6 /* XXX */, 16 /* XXX */,
@@ -864,7 +864,7 @@ namespace {
                                   8 /* XXX */, 0,
                                   0, 8 /* XXX */, 4 /* XXX */, 12 /* XXX */,
                                   0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 38 /* XXX */, 0, 0,
                                   8 /* XXX */, 0,
                                   0, 10 /* XXX */, 6 /* XXX */, 16 /* XXX */,
@@ -883,7 +883,7 @@ namespace {
                                   4 /* XXX */, 0,
                                   0, 8 /* XXX */, 4 /* XXX */, 12 /* XXX */,
                                   0, 0);
-         else if (devinfo->is_haswell)
+         else if (devinfo->verx10 >= 75)
             return calculate_desc(info, unit_fpu, 14 /* XXX */, 0, 0,
                                   4 /* XXX */, 0,
                                   0, 10 /* XXX */, 6 /* XXX */, 16 /* XXX */,

@@ -288,7 +288,7 @@ setup_imm_df(const vec4_builder &bld, double v)
    /* gfx7.5 does not support DF immediates straighforward but the DIM
     * instruction allows to set the 64-bit immediate value.
     */
-   if (devinfo->is_haswell) {
+   if (devinfo->verx10 == 75) {
       const vec4_builder ubld = bld.exec_all();
       const dst_reg dst = bld.vgrf(BRW_REGISTER_TYPE_DF);
       ubld.DIM(dst, brw_imm_df(v));

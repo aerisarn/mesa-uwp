@@ -1011,7 +1011,7 @@ iris_init_render_context(struct iris_batch *batch)
       reg.PartialResolveDisableInVCMask = true;
    }
 
-   if (devinfo->is_geminilake)
+   if (devinfo->platform == INTEL_PLATFORM_GLK)
       init_glk_barrier_mode(batch, GLK_BARRIER_MODE_3D_HULL);
 #endif
 
@@ -1112,7 +1112,7 @@ iris_init_compute_context(struct iris_batch *batch)
 #endif
 
 #if GFX_VER == 9
-   if (devinfo->is_geminilake)
+   if (devinfo->platform == INTEL_PLATFORM_GLK)
       init_glk_barrier_mode(batch, GLK_BARRIER_MODE_GPGPU);
 #endif
 

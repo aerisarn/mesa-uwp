@@ -441,7 +441,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          GENX(3DSTATE_SF_header),
       };
 #if GFX_VER == 8
-      if (cmd_buffer->device->info.is_cherryview) {
+      if (cmd_buffer->device->info.platform == INTEL_PLATFORM_CHV) {
          sf.CHVLineWidth = d->line_width;
       } else {
          sf.LineWidth = d->line_width;

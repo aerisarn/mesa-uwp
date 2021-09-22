@@ -32,6 +32,8 @@ main(int argc, char *argv[])
 
       assert(devinfo.ver < 7 || devinfo.max_constant_urb_size_kb > 0);
 
+      assert(devinfo.platform >= 1);
+
       assert(devinfo.num_slices <= ARRAY_SIZE(devinfo.subslice_masks));
 
       assert(devinfo.num_slices <= devinfo.max_slices);

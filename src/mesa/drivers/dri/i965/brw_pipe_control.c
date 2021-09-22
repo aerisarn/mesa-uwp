@@ -304,7 +304,7 @@ brw_emit_end_of_pipe_sync(struct brw_context *brw, uint32_t flags)
                                   brw->workaround_bo,
                                   brw->workaround_bo_offset, 0);
 
-      if (devinfo->is_haswell) {
+      if (devinfo->platform == INTEL_PLATFORM_HSW) {
          /* Haswell needs addition work-arounds:
           *
           * From Haswell PRM, volume 2, part 1, "End-of-Pipe Synchronization":
@@ -408,8 +408,8 @@ brw_init_pipe_control(struct brw_context *brw,
       break;
    case 7:
       brw->vtbl.emit_raw_pipe_control =
-         devinfo->is_haswell ? gfx75_emit_raw_pipe_control
-                             : gfx7_emit_raw_pipe_control;
+         devinfo->verx10 == 75 ?
+         gfx75_emit_raw_pipe_control : gfx7_emit_raw_pipe_control;
       break;
    case 6:
       brw->vtbl.emit_raw_pipe_control = gfx6_emit_raw_pipe_control;
@@ -419,8 +419,8 @@ brw_init_pipe_control(struct brw_context *brw,
       break;
    case 4:
       brw->vtbl.emit_raw_pipe_control =
-         devinfo->is_g4x ? gfx45_emit_raw_pipe_control
-                         : gfx4_emit_raw_pipe_control;
+         devinfo->verx10 == 45 ?
+         gfx45_emit_raw_pipe_control : gfx4_emit_raw_pipe_control;
       break;
    default:
       unreachable("Unhandled Gen.");

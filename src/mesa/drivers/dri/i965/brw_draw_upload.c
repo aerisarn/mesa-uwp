@@ -254,7 +254,7 @@ brw_get_vertex_surface_type(struct brw_context *brw,
    int size = glformat->Size;
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const bool is_ivybridge_or_older =
-      devinfo->verx10 <= 70 && !devinfo->is_baytrail;
+      devinfo->verx10 < 70 || devinfo->platform == INTEL_PLATFORM_IVB;
 
    if (INTEL_DEBUG(DEBUG_VERTS))
       fprintf(stderr, "type %s size %d normalized %d\n",

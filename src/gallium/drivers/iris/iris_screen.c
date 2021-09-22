@@ -785,7 +785,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    p_atomic_set(&screen->refcount, 1);
 
-   if (screen->devinfo.ver < 8 || screen->devinfo.is_cherryview)
+   if (screen->devinfo.ver < 8 || screen->devinfo.platform == INTEL_PLATFORM_CHV)
       return NULL;
 
    driParseConfigFiles(config->options, config->options_info, 0, "iris",

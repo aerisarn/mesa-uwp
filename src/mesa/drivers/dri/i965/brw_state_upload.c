@@ -317,7 +317,7 @@ void brw_init_state( struct brw_context *brw )
       gfx9_init_atoms(brw);
    else if (devinfo->ver >= 8)
       gfx8_init_atoms(brw);
-   else if (devinfo->is_haswell)
+   else if (devinfo->verx10 >= 75)
       gfx75_init_atoms(brw);
    else if (devinfo->ver >= 7)
       gfx7_init_atoms(brw);
@@ -325,7 +325,7 @@ void brw_init_state( struct brw_context *brw )
       gfx6_init_atoms(brw);
    else if (devinfo->ver >= 5)
       gfx5_init_atoms(brw);
-   else if (devinfo->is_g4x)
+   else if (devinfo->verx10 >= 45)
       gfx45_init_atoms(brw);
    else
       gfx4_init_atoms(brw);

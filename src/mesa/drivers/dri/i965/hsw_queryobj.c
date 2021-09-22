@@ -337,7 +337,7 @@ hsw_result_to_gpr0(struct gl_context *ctx, struct brw_query_object *query,
        * and correctly emitted the number of pixel shader invocations, but,
        * whomever forgot to undo the multiply by 4.
        */
-      if (devinfo->ver == 8 || devinfo->is_haswell)
+      if (devinfo->ver == 8 || devinfo->platform == INTEL_PLATFORM_HSW)
          shr_gpr0_by_2_bits(brw);
       break;
    case GL_TIME_ELAPSED:

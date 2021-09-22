@@ -3829,7 +3829,7 @@ fs_visitor::insert_gfx4_post_send_dependency_workarounds(bblock_t *block, fs_ins
 void
 fs_visitor::insert_gfx4_send_dependency_workarounds()
 {
-   if (devinfo->ver != 4 || devinfo->is_g4x)
+   if (devinfo->ver != 4 || devinfo->platform == INTEL_PLATFORM_G4X)
       return;
 
    bool progress = false;
@@ -7105,7 +7105,7 @@ get_fpu_lowered_simd_width(const struct intel_device_info *devinfo,
       for (unsigned i = 0; i < inst->sources; i++) {
          /* IVB implements DF scalars as <0;2,1> regions. */
          const bool is_scalar_exception = is_uniform(inst->src[i]) &&
-            (devinfo->is_haswell || type_sz(inst->src[i].type) != 8);
+            (devinfo->platform == INTEL_PLATFORM_HSW || type_sz(inst->src[i].type) != 8);
          const bool is_packed_word_exception =
             type_sz(inst->dst.type) == 4 && inst->dst.stride == 1 &&
             type_sz(inst->src[i].type) == 2 && inst->src[i].stride == 1;
@@ -7384,7 +7384,7 @@ get_lowered_simd_width(const struct intel_device_info *devinfo,
        * should
        *  "Force BFI instructions to be executed always in SIMD8."
        */
-      return MIN2(devinfo->is_haswell ? 8 : ~0u,
+      return MIN2(devinfo->platform == INTEL_PLATFORM_HSW ? 8 : ~0u,
                   get_fpu_lowered_simd_width(devinfo, inst));
 
    case BRW_OPCODE_IF:
@@ -7401,7 +7401,7 @@ get_lowered_simd_width(const struct intel_device_info *devinfo,
       /* Unary extended math instructions are limited to SIMD8 on Gfx4 and
        * Gfx6. Extended Math Function is limited to SIMD8 with half-float.
        */
-      if (devinfo->ver == 6 || (devinfo->ver == 4 && !devinfo->is_g4x))
+      if (devinfo->ver == 6 || devinfo->verx10 == 40)
          return MIN2(8, inst->exec_size);
       if (inst->dst.type == BRW_REGISTER_TYPE_HF)
          return MIN2(8, inst->exec_size);
@@ -8937,7 +8937,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
       prog_data->total_scratch = brw_get_scratch_size(last_scratch);
 
       if (stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL) {
-         if (devinfo->is_haswell) {
+         if (devinfo->platform == INTEL_PLATFORM_HSW) {
             /* According to the MEDIA_VFE_STATE's "Per Thread Scratch Space"
              * field documentation, Haswell supports a minimum of 2kB of
              * scratch space for compute shaders, unlike every other stage
@@ -9328,7 +9328,7 @@ fs_visitor::run_cs(bool allow_spilling)
    if (shader_time_index >= 0)
       emit_shader_time_begin();
 
-   if (devinfo->is_haswell && prog_data->total_shared > 0) {
+   if (devinfo->platform == INTEL_PLATFORM_HSW && prog_data->total_shared > 0) {
       /* Move SLM index from g0.0[27:24] to sr0.1[11:8] */
       const fs_builder abld = bld.exec_all().group(1, 0);
       abld.MOV(retype(brw_sr0_reg(1), BRW_REGISTER_TYPE_UW),

@@ -86,12 +86,14 @@ intel_device_name_to_pci_device_id(const char *name)
 
 static const struct intel_device_info intel_device_info_gfx3 = {
    .ver = 3,
+   .platform = INTEL_PLATFORM_GFX3,
    .simulator_id = -1,
    .cs_prefetch_size = 512,
 };
 
 static const struct intel_device_info intel_device_info_i965 = {
    .ver = 4,
+   .platform = INTEL_PLATFORM_I965,
    .has_negative_rhw_bug = true,
    .num_slices = 1,
    .num_subslices = { 1, },
@@ -114,7 +116,7 @@ static const struct intel_device_info intel_device_info_g4x = {
    .has_pln = true,
    .has_compr4 = true,
    .has_surface_tile_offset = true,
-   .is_g4x = true,
+   .platform = INTEL_PLATFORM_G4X,
    .num_slices = 1,
    .num_subslices = { 1, },
    .num_eu_per_subslice = 10,
@@ -132,6 +134,7 @@ static const struct intel_device_info intel_device_info_g4x = {
 
 static const struct intel_device_info intel_device_info_ilk = {
    .ver = 5,
+   .platform = INTEL_PLATFORM_ILK,
    .has_pln = true,
    .has_compr4 = true,
    .has_surface_tile_offset = true,
@@ -153,6 +156,7 @@ static const struct intel_device_info intel_device_info_ilk = {
 static const struct intel_device_info intel_device_info_snb_gt1 = {
    .ver = 6,
    .gt = 1,
+   .platform = INTEL_PLATFORM_SNB,
    .has_hiz_and_separate_stencil = true,
    .has_llc = true,
    .has_pln = true,
@@ -183,6 +187,7 @@ static const struct intel_device_info intel_device_info_snb_gt1 = {
 static const struct intel_device_info intel_device_info_snb_gt2 = {
    .ver = 6,
    .gt = 2,
+   .platform = INTEL_PLATFORM_SNB,
    .has_hiz_and_separate_stencil = true,
    .has_llc = true,
    .has_pln = true,
@@ -223,7 +228,7 @@ static const struct intel_device_info intel_device_info_snb_gt2 = {
    .cs_prefetch_size = 512
 
 static const struct intel_device_info intel_device_info_ivb_gt1 = {
-   GFX7_FEATURES, .is_ivybridge = true, .gt = 1,
+   GFX7_FEATURES, .platform = INTEL_PLATFORM_IVB, .gt = 1,
    .num_slices = 1,
    .num_subslices = { 1, },
    .num_eu_per_subslice = 6,
@@ -251,7 +256,7 @@ static const struct intel_device_info intel_device_info_ivb_gt1 = {
 };
 
 static const struct intel_device_info intel_device_info_ivb_gt2 = {
-   GFX7_FEATURES, .is_ivybridge = true, .gt = 2,
+   GFX7_FEATURES, .platform = INTEL_PLATFORM_IVB, .gt = 2,
    .num_slices = 1,
    .num_subslices = { 1, },
    .num_eu_per_subslice = 12,
@@ -280,7 +285,7 @@ static const struct intel_device_info intel_device_info_ivb_gt2 = {
 };
 
 static const struct intel_device_info intel_device_info_byt = {
-   GFX7_FEATURES, .is_baytrail = true, .gt = 1,
+   GFX7_FEATURES, .platform = INTEL_PLATFORM_BYT, .gt = 1,
    .num_slices = 1,
    .num_subslices = { 1, },
    .num_eu_per_subslice = 4,
@@ -308,10 +313,10 @@ static const struct intel_device_info intel_device_info_byt = {
    .simulator_id = 10,
 };
 
-#define HSW_FEATURES             \
-   GFX7_FEATURES,                \
-   .is_haswell = true,           \
-   .verx10 = 75,                 \
+#define HSW_FEATURES \
+   GFX7_FEATURES, \
+   .platform = INTEL_PLATFORM_HSW, \
+   .verx10 = 75, \
    .supports_simd16_3src = true
 
 static const struct intel_device_info intel_device_info_hsw_gt1 = {
@@ -426,7 +431,7 @@ static const struct intel_device_info intel_device_info_hsw_gt3 = {
 
 static const struct intel_device_info intel_device_info_bdw_gt1 = {
    GFX8_FEATURES, .gt = 1,
-   .is_broadwell = true,
+   .platform = INTEL_PLATFORM_BDW,
    .num_slices = 1,
    .num_subslices = { 2, },
    .num_eu_per_subslice = 6,
@@ -450,7 +455,7 @@ static const struct intel_device_info intel_device_info_bdw_gt1 = {
 
 static const struct intel_device_info intel_device_info_bdw_gt2 = {
    GFX8_FEATURES, .gt = 2,
-   .is_broadwell = true,
+   .platform = INTEL_PLATFORM_BDW,
    .num_slices = 1,
    .num_subslices = { 3, },
    .num_eu_per_subslice = 8,
@@ -473,7 +478,7 @@ static const struct intel_device_info intel_device_info_bdw_gt2 = {
 
 static const struct intel_device_info intel_device_info_bdw_gt3 = {
    GFX8_FEATURES, .gt = 3,
-   .is_broadwell = true,
+   .platform = INTEL_PLATFORM_BDW,
    .num_slices = 2,
    .num_subslices = { 3, 3, },
    .num_eu_per_subslice = 8,
@@ -495,7 +500,7 @@ static const struct intel_device_info intel_device_info_bdw_gt3 = {
 };
 
 static const struct intel_device_info intel_device_info_chv = {
-   GFX8_FEATURES, .is_cherryview = 1, .gt = 1,
+   GFX8_FEATURES, .platform = INTEL_PLATFORM_CHV, .gt = 1,
    .has_llc = false,
    .has_integer_dword_mul = false,
    .num_slices = 1,
@@ -607,7 +612,7 @@ static const struct intel_device_info intel_device_info_chv = {
 
 static const struct intel_device_info intel_device_info_skl_gt1 = {
    GFX9_FEATURES, .gt = 1,
-   .is_skylake = true,
+   .platform = INTEL_PLATFORM_SKL,
    .num_slices = 1,
    .num_subslices = { 2, },
    .num_eu_per_subslice = 6,
@@ -621,7 +626,7 @@ static const struct intel_device_info intel_device_info_skl_gt1 = {
 
 static const struct intel_device_info intel_device_info_skl_gt2 = {
    GFX9_FEATURES, .gt = 2,
-   .is_skylake = true,
+   .platform = INTEL_PLATFORM_SKL,
    .num_slices = 1,
    .num_subslices = { 3, },
    .num_eu_per_subslice = 8,
@@ -631,7 +636,7 @@ static const struct intel_device_info intel_device_info_skl_gt2 = {
 
 static const struct intel_device_info intel_device_info_skl_gt3 = {
    GFX9_FEATURES, .gt = 3,
-   .is_skylake = true,
+   .platform = INTEL_PLATFORM_SKL,
    .num_slices = 2,
    .num_subslices = { 3, 3, },
    .num_eu_per_subslice = 8,
@@ -641,7 +646,7 @@ static const struct intel_device_info intel_device_info_skl_gt3 = {
 
 static const struct intel_device_info intel_device_info_skl_gt4 = {
    GFX9_FEATURES, .gt = 4,
-   .is_skylake = true,
+   .platform = INTEL_PLATFORM_SKL,
    .num_slices = 3,
    .num_subslices = { 3, 3, 3, },
    .num_eu_per_subslice = 8,
@@ -659,14 +664,14 @@ static const struct intel_device_info intel_device_info_skl_gt4 = {
 
 static const struct intel_device_info intel_device_info_bxt = {
    GFX9_LP_FEATURES_3X6,
-   .is_broxton = true,
+   .platform = INTEL_PLATFORM_BXT,
    .l3_banks = 2,
    .simulator_id = 14,
 };
 
 static const struct intel_device_info intel_device_info_bxt_2x6 = {
    GFX9_LP_FEATURES_2X6,
-   .is_broxton = true,
+   .platform = INTEL_PLATFORM_BXT,
    .l3_banks = 1,
    .simulator_id = 14,
 };
@@ -677,7 +682,7 @@ static const struct intel_device_info intel_device_info_bxt_2x6 = {
 
 static const struct intel_device_info intel_device_info_kbl_gt1 = {
    GFX9_FEATURES,
-   .is_kabylake = true,
+   .platform = INTEL_PLATFORM_KBL,
    .gt = 1,
 
    .max_cs_threads = 7 * 6,
@@ -695,7 +700,7 @@ static const struct intel_device_info intel_device_info_kbl_gt1 = {
 
 static const struct intel_device_info intel_device_info_kbl_gt1_5 = {
    GFX9_FEATURES,
-   .is_kabylake = true,
+   .platform = INTEL_PLATFORM_KBL,
    .gt = 1,
 
    .max_cs_threads = 7 * 6,
@@ -708,7 +713,7 @@ static const struct intel_device_info intel_device_info_kbl_gt1_5 = {
 
 static const struct intel_device_info intel_device_info_kbl_gt2 = {
    GFX9_FEATURES,
-   .is_kabylake = true,
+   .platform = INTEL_PLATFORM_KBL,
    .gt = 2,
 
    .num_slices = 1,
@@ -720,7 +725,7 @@ static const struct intel_device_info intel_device_info_kbl_gt2 = {
 
 static const struct intel_device_info intel_device_info_kbl_gt3 = {
    GFX9_FEATURES,
-   .is_kabylake = true,
+   .platform = INTEL_PLATFORM_KBL,
    .gt = 3,
 
    .num_slices = 2,
@@ -732,7 +737,7 @@ static const struct intel_device_info intel_device_info_kbl_gt3 = {
 
 static const struct intel_device_info intel_device_info_kbl_gt4 = {
    GFX9_FEATURES,
-   .is_kabylake = true,
+   .platform = INTEL_PLATFORM_KBL,
    .gt = 4,
 
    /*
@@ -754,21 +759,21 @@ static const struct intel_device_info intel_device_info_kbl_gt4 = {
 
 static const struct intel_device_info intel_device_info_glk = {
    GFX9_LP_FEATURES_3X6,
-   .is_geminilake = true,
+   .platform = INTEL_PLATFORM_GLK,
    .l3_banks = 2,
    .simulator_id = 17,
 };
 
 static const struct intel_device_info intel_device_info_glk_2x6 = {
    GFX9_LP_FEATURES_2X6,
-   .is_geminilake = true,
+   .platform = INTEL_PLATFORM_GLK,
    .l3_banks = 2,
    .simulator_id = 17,
 };
 
 static const struct intel_device_info intel_device_info_cfl_gt1 = {
    GFX9_FEATURES,
-   .is_coffeelake = true,
+   .platform = INTEL_PLATFORM_CFL,
    .gt = 1,
 
    .num_slices = 1,
@@ -784,7 +789,7 @@ static const struct intel_device_info intel_device_info_cfl_gt1 = {
 };
 static const struct intel_device_info intel_device_info_cfl_gt2 = {
    GFX9_FEATURES,
-   .is_coffeelake = true,
+   .platform = INTEL_PLATFORM_CFL,
    .gt = 2,
 
    .num_slices = 1,
@@ -796,7 +801,7 @@ static const struct intel_device_info intel_device_info_cfl_gt2 = {
 
 static const struct intel_device_info intel_device_info_cfl_gt3 = {
    GFX9_FEATURES,
-   .is_coffeelake = true,
+   .platform = INTEL_PLATFORM_CFL,
    .gt = 3,
 
    .num_slices = 2,
@@ -818,9 +823,10 @@ static const struct intel_device_info intel_device_info_cfl_gt3 = {
    .max_cs_threads = 56,                            \
    .cs_prefetch_size = 512
 
-#define GFX11_FEATURES(_gt, _slices, _subslices, _l3) \
+#define GFX11_FEATURES(_gt, _slices, _subslices, _l3, _platform)  \
    GFX8_FEATURES,                                     \
    GFX11_HW_INFO,                                     \
+   .platform = _platform,                             \
    .has_64bit_float = false,                          \
    .has_64bit_int = false,                            \
    .has_integer_dword_mul = false,                    \
@@ -842,7 +848,7 @@ static const struct intel_device_info intel_device_info_cfl_gt3 = {
    }
 
 static const struct intel_device_info intel_device_info_icl_gt2 = {
-   GFX11_FEATURES(2, 1, subslices(8), 8),
+   GFX11_FEATURES(2, 1, subslices(8), 8, INTEL_PLATFORM_ICL),
    .urb = {
       GFX11_URB_MIN_MAX_ENTRIES,
    },
@@ -850,7 +856,7 @@ static const struct intel_device_info intel_device_info_icl_gt2 = {
 };
 
 static const struct intel_device_info intel_device_info_icl_gt1_5 = {
-   GFX11_FEATURES(1, 1, subslices(6), 6),
+   GFX11_FEATURES(1, 1, subslices(6), 6, INTEL_PLATFORM_ICL),
    .urb = {
       GFX11_URB_MIN_MAX_ENTRIES,
    },
@@ -858,7 +864,7 @@ static const struct intel_device_info intel_device_info_icl_gt1_5 = {
 };
 
 static const struct intel_device_info intel_device_info_icl_gt1 = {
-   GFX11_FEATURES(1, 1, subslices(4), 6),
+   GFX11_FEATURES(1, 1, subslices(4), 6, INTEL_PLATFORM_ICL),
    .urb = {
       GFX11_URB_MIN_MAX_ENTRIES,
    },
@@ -866,7 +872,7 @@ static const struct intel_device_info intel_device_info_icl_gt1 = {
 };
 
 static const struct intel_device_info intel_device_info_icl_gt0_5 = {
-   GFX11_FEATURES(1, 1, subslices(1), 6),
+   GFX11_FEATURES(1, 1, subslices(1), 6, INTEL_PLATFORM_ICL),
    .urb = {
       GFX11_URB_MIN_MAX_ENTRIES,
    },
@@ -874,7 +880,6 @@ static const struct intel_device_info intel_device_info_icl_gt0_5 = {
 };
 
 #define GFX11_LP_FEATURES                           \
-   .is_elkhartlake = true,                          \
    .urb = {                                         \
       GFX11_URB_MIN_MAX_ENTRIES,                    \
    },                                               \
@@ -882,35 +887,35 @@ static const struct intel_device_info intel_device_info_icl_gt0_5 = {
    .simulator_id = 28
 
 static const struct intel_device_info intel_device_info_ehl_4x8 = {
-   GFX11_FEATURES(1, 1, subslices(4), 4),
+   GFX11_FEATURES(1, 1, subslices(4), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
 };
 
 static const struct intel_device_info intel_device_info_ehl_4x6 = {
-   GFX11_FEATURES(1, 1, subslices(4), 4),
+   GFX11_FEATURES(1, 1, subslices(4), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
    .num_eu_per_subslice = 6,
 };
 
 static const struct intel_device_info intel_device_info_ehl_4x5 = {
-   GFX11_FEATURES(1, 1, subslices(4), 4),
+   GFX11_FEATURES(1, 1, subslices(4), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
    .num_eu_per_subslice = 5,
 };
 
 static const struct intel_device_info intel_device_info_ehl_4x4 = {
-   GFX11_FEATURES(1, 1, subslices(4), 4),
+   GFX11_FEATURES(1, 1, subslices(4), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
    .num_eu_per_subslice = 4,
 };
 
 static const struct intel_device_info intel_device_info_ehl_2x8 = {
-   GFX11_FEATURES(1, 1, subslices(2), 4),
+   GFX11_FEATURES(1, 1, subslices(2), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
 };
 
 static const struct intel_device_info intel_device_info_ehl_2x4 = {
-   GFX11_FEATURES(1, 1, subslices(2), 4),
+   GFX11_FEATURES(1, 1, subslices(2), 4, INTEL_PLATFORM_EHL),
    GFX11_LP_FEATURES,
    .num_eu_per_subslice =4,
 };
@@ -965,43 +970,43 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
 
 static const struct intel_device_info intel_device_info_tgl_gt1 = {
    GFX12_GT_FEATURES(1),
-   .is_tigerlake = true,
+   .platform = INTEL_PLATFORM_TGL,
 };
 
 static const struct intel_device_info intel_device_info_tgl_gt2 = {
    GFX12_GT_FEATURES(2),
-   .is_tigerlake = true,
+   .platform = INTEL_PLATFORM_TGL,
 };
 
 static const struct intel_device_info intel_device_info_rkl_gt05 = {
    GFX12_GT05_FEATURES,
-   .is_rocketlake = true,
+   .platform = INTEL_PLATFORM_RKL,
 };
 
 static const struct intel_device_info intel_device_info_rkl_gt1 = {
    GFX12_GT_FEATURES(1),
-   .is_rocketlake = true,
+   .platform = INTEL_PLATFORM_RKL,
 };
 
 static const struct intel_device_info intel_device_info_adl_gt05 = {
    GFX12_GT05_FEATURES,
-   .is_alderlake = true,
+   .platform = INTEL_PLATFORM_ADL,
 };
 
 static const struct intel_device_info intel_device_info_adl_gt1 = {
    GFX12_GT_FEATURES(1),
-   .is_alderlake = true,
+   .platform = INTEL_PLATFORM_ADL,
 };
 
 static const struct intel_device_info intel_device_info_adl_gt2 = {
    GFX12_GT_FEATURES(2),
-   .is_alderlake = true,
+   .platform = INTEL_PLATFORM_ADL,
    .display_ver = 13,
 };
 
 #define GFX12_DG1_SG1_FEATURES                  \
    GFX12_GT_FEATURES(2),                        \
-   .is_dg1 = true,                              \
+   .platform = INTEL_PLATFORM_DG1,              \
    .has_llc = false,                            \
    .has_local_mem = true,                       \
    .urb.size = 768,                             \
@@ -1459,7 +1464,7 @@ has_get_tiling(int fd)
 static void
 fixup_chv_device_info(struct intel_device_info *devinfo)
 {
-   assert(devinfo->is_cherryview);
+   assert(devinfo->platform == INTEL_PLATFORM_CHV);
 
    /* Cherryview is annoying.  The number of EUs is depending on fusing and
     * isn't determinable from the PCI ID alone.  We default to the minimum
@@ -1525,7 +1530,7 @@ init_max_scratch_ids(struct intel_device_info *devinfo)
    if (devinfo->verx10 == 125)
       subslices = 32;
    else if (devinfo->ver == 12)
-      subslices = (devinfo->is_dg1 || devinfo->gt == 2 ? 6 : 2);
+      subslices = (devinfo->platform == INTEL_PLATFORM_DG1 || devinfo->gt == 2 ? 6 : 2);
    else if (devinfo->ver == 11)
       subslices = 8;
    else if (devinfo->ver >= 9 && devinfo->ver < 11)
@@ -1550,7 +1555,7 @@ init_max_scratch_ids(struct intel_device_info *devinfo)
        *     allocated by the driver."
        */
       scratch_ids_per_subslice = 8 * 8;
-   } else if (devinfo->is_haswell) {
+   } else if (devinfo->platform == INTEL_PLATFORM_HSW) {
       /* WaCSScratchSize:hsw
        *
        * Haswell's scratch space address calculation appears to be sparse
@@ -1567,7 +1572,7 @@ init_max_scratch_ids(struct intel_device_info *devinfo)
        * number of threads per subslice.
        */
       scratch_ids_per_subslice = 16 * 8;
-   } else if (devinfo->is_cherryview) {
+   } else if (devinfo->platform == INTEL_PLATFORM_CHV) {
       /* Cherryview devices have either 6 or 8 EUs per subslice, and each
        * EU has 7 threads. The 6 EU devices appear to calculate thread IDs
        * as if it had 8 EUs.
@@ -1674,7 +1679,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       getparam_topology(devinfo, fd);
    }
 
-   if (devinfo->is_cherryview)
+   if (devinfo->platform == INTEL_PLATFORM_CHV)
       fixup_chv_device_info(devinfo);
 
    /* Broadwell PRM says:

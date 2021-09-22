@@ -713,14 +713,14 @@ isl_format_supports_sampling(const struct intel_device_info *devinfo,
    if (!format_info_exists(format))
       return false;
 
-   if (devinfo->is_baytrail) {
+   if (devinfo->platform == INTEL_PLATFORM_BYT) {
       const struct isl_format_layout *fmtl = isl_format_get_layout(format);
       /* Support for ETC1 and ETC2 exists on Bay Trail even though big-core
        * GPUs didn't get it until Broadwell.
        */
       if (fmtl->txc == ISL_TXC_ETC1 || fmtl->txc == ISL_TXC_ETC2)
          return true;
-   } else if (devinfo->is_cherryview) {
+   } else if (devinfo->platform == INTEL_PLATFORM_CHV) {
       /* Support for ASTC LDR theoretically exists on Cherry View even though
        * big-core GPUs didn't get it until Skylake.  However, it's fairly
        * badly broken and requires some nasty workarounds which no Mesa driver
@@ -774,7 +774,7 @@ isl_format_supports_vertex_fetch(const struct intel_device_info *devinfo,
    /* For vertex fetch, Bay Trail supports the same set of formats as Haswell
     * but is a superset of Ivy Bridge.
     */
-   if (devinfo->is_baytrail)
+   if (devinfo->platform == INTEL_PLATFORM_BYT)
       return 75 >= format_info[format].input_vb;
 
    return devinfo->verx10 >= format_info[format].input_vb;
@@ -849,7 +849,7 @@ isl_format_supports_ccs_e(const struct intel_device_info *devinfo,
                           enum isl_format format)
 {
    /* Wa_22011186057: Disable compression on ADL-P A0 */
-   if (devinfo->is_alderlake && devinfo->gt == 2 && devinfo->revision == 0)
+   if (devinfo->platform == INTEL_PLATFORM_ADL && devinfo->gt == 2 && devinfo->revision == 0)
       return false;
 
    if (!format_info_exists(format))

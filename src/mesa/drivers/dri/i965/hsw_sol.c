@@ -199,7 +199,7 @@ hsw_pause_transform_feedback(struct gl_context *ctx,
       (struct brw_transform_feedback_object *) obj;
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->is_haswell) {
+   if (devinfo->platform == INTEL_PLATFORM_HSW) {
       /* Flush any drawing so that the counters have the right values. */
       brw_emit_mi_flush(brw);
 
@@ -229,7 +229,7 @@ hsw_resume_transform_feedback(struct gl_context *ctx,
       (struct brw_transform_feedback_object *) obj;
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->is_haswell) {
+   if (devinfo->platform == INTEL_PLATFORM_HSW) {
       /* Reload the SOL buffer offset registers. */
       for (int i = 0; i < BRW_MAX_XFB_STREAMS; i++) {
          BEGIN_BATCH(3);

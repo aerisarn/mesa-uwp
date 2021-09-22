@@ -3544,7 +3544,7 @@ brw_broadcast(struct brw_codegen *p,
 
          /* Use indirect addressing to fetch the specified component. */
          if (type_sz(src.type) > 4 &&
-             (devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
+             (devinfo->platform == INTEL_PLATFORM_CHV || intel_device_info_is_9lp(devinfo) ||
               !devinfo->has_64bit_float)) {
             /* From the Cherryview PRM Vol 7. "Register Region Restrictions":
              *

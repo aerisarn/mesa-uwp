@@ -165,10 +165,10 @@ get_l3_list(const struct intel_device_info *devinfo)
 {
    switch (devinfo->ver) {
    case 7:
-      return (devinfo->is_baytrail ? &vlv_l3_list : &ivb_l3_list);
+      return (devinfo->platform == INTEL_PLATFORM_BYT ? &vlv_l3_list : &ivb_l3_list);
 
    case 8:
-      return (devinfo->is_cherryview ? &chv_l3_list : &bdw_l3_list);
+      return (devinfo->platform == INTEL_PLATFORM_CHV ? &chv_l3_list : &bdw_l3_list);
 
    case 9:
       if (devinfo->l3_banks == 1)
@@ -179,7 +179,8 @@ get_l3_list(const struct intel_device_info *devinfo)
       return &icl_l3_list;
 
    case 12:
-      if (devinfo->is_dg1 || devinfo->is_dg2)
+      if (devinfo->platform == INTEL_PLATFORM_DG1 ||
+          devinfo->platform == INTEL_PLATFORM_DG2)
          return &empty_l3_list;
       else
          return &tgl_l3_list;
@@ -269,7 +270,7 @@ intel_get_default_l3_weights(const struct intel_device_info *devinfo,
       w.w[INTEL_L3P_ALL] = 1.0;
    } else {
       w.w[INTEL_L3P_DC] = needs_dc ? 0.1 : 0;
-      w.w[INTEL_L3P_RO] = devinfo->is_baytrail ? 0.5 : 1.0;
+      w.w[INTEL_L3P_RO] = devinfo->platform == INTEL_PLATFORM_BYT ? 0.5 : 1.0;
    }
 
    return norm_l3_weights(w);
@@ -352,7 +353,7 @@ intel_get_l3_config_urb_size(const struct intel_device_info *devinfo,
                              const struct intel_l3_config *cfg)
 {
    /* We don't have to program the URB size in DG1, it's a fixed value. */
-   if (devinfo->is_dg1)
+   if (devinfo->platform == INTEL_PLATFORM_DG1)
       return devinfo->urb.size;
 
    /* From the SKL "L3 Allocation and Programming" documentation:

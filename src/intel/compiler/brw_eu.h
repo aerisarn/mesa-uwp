@@ -402,7 +402,7 @@ brw_sampler_desc(const struct intel_device_info *devinfo,
    else if (devinfo->ver >= 5)
       return (desc | SET_BITS(msg_type, 15, 12) |
               SET_BITS(simd_mode, 17, 16));
-   else if (devinfo->is_g4x)
+   else if (devinfo->verx10 >= 45)
       return desc | SET_BITS(msg_type, 15, 12);
    else
       return (desc | SET_BITS(return_format, 13, 12) |
@@ -429,7 +429,7 @@ brw_sampler_desc_msg_type(const struct intel_device_info *devinfo, uint32_t desc
 {
    if (devinfo->ver >= 7)
       return GET_BITS(desc, 16, 12);
-   else if (devinfo->ver >= 5 || devinfo->is_g4x)
+   else if (devinfo->verx10 >= 45)
       return GET_BITS(desc, 15, 12);
    else
       return GET_BITS(desc, 15, 14);
@@ -450,7 +450,7 @@ static  inline unsigned
 brw_sampler_desc_return_format(ASSERTED const struct intel_device_info *devinfo,
                                uint32_t desc)
 {
-   assert(devinfo->ver == 4 && !devinfo->is_g4x);
+   assert(devinfo->verx10 == 40);
    return GET_BITS(desc, 13, 12);
 }
 
@@ -522,7 +522,7 @@ brw_dp_read_desc(const struct intel_device_info *devinfo,
 {
    if (devinfo->ver >= 6)
       return brw_dp_desc(devinfo, binding_table_index, msg_type, msg_control);
-   else if (devinfo->ver >= 5 || devinfo->is_g4x)
+   else if (devinfo->verx10 >= 45)
       return (SET_BITS(binding_table_index, 7, 0) |
               SET_BITS(msg_control, 10, 8) |
               SET_BITS(msg_type, 13, 11) |
@@ -540,7 +540,7 @@ brw_dp_read_desc_msg_type(const struct intel_device_info *devinfo,
 {
    if (devinfo->ver >= 6)
       return brw_dp_desc_msg_type(devinfo, desc);
-   else if (devinfo->ver >= 5 || devinfo->is_g4x)
+   else if (devinfo->verx10 >= 45)
       return GET_BITS(desc, 13, 11);
    else
       return GET_BITS(desc, 13, 12);
@@ -552,7 +552,7 @@ brw_dp_read_desc_msg_control(const struct intel_device_info *devinfo,
 {
    if (devinfo->ver >= 6)
       return brw_dp_desc_msg_control(devinfo, desc);
-   else if (devinfo->ver >= 5 || devinfo->is_g4x)
+   else if (devinfo->verx10 >= 45)
       return GET_BITS(desc, 10, 8);
    else
       return GET_BITS(desc, 11, 8);
@@ -779,7 +779,7 @@ brw_dp_dword_scattered_rw_desc(const struct intel_device_info *devinfo,
    } else {
       if (devinfo->ver >= 7) {
          msg_type = GFX7_DATAPORT_DC_DWORD_SCATTERED_READ;
-      } else if (devinfo->ver > 4 || devinfo->is_g4x) {
+      } else if (devinfo->verx10 >= 45) {
          msg_type = G45_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ;
       } else {
          msg_type = BRW_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ;

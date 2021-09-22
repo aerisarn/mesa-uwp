@@ -670,7 +670,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.MaxPointSizeAA = 255.0;
    ctx->Const.PointSizeGranularity = 1.0;
 
-   if (devinfo->ver >= 5 || devinfo->is_g4x)
+   if (devinfo->verx10 >= 45)
       ctx->Const.MaxClipPlanes = 8;
 
    ctx->Const.GLSLFragCoordIsSysVal = true;

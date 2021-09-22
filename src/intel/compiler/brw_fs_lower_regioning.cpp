@@ -203,7 +203,8 @@ namespace {
       case SHADER_OPCODE_BROADCAST:
       case SHADER_OPCODE_MOV_INDIRECT:
          return (((devinfo->verx10 == 70) ||
-                  devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
+                  devinfo->platform == INTEL_PLATFORM_CHV ||
+                  intel_device_info_is_9lp(devinfo) ||
                   devinfo->verx10 >= 125) && type_sz(inst->src[0].type) > 4) ||
                 (devinfo->verx10 >= 125 &&
                  brw_reg_type_is_floating_point(inst->src[0].type)) ?

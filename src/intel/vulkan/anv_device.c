@@ -772,11 +772,11 @@ anv_physical_device_try_create(struct anv_instance *instance,
    }
 
    bool is_alpha = true;
-   if (devinfo.is_haswell) {
+   if (devinfo.platform == INTEL_PLATFORM_HSW) {
       mesa_logw("Haswell Vulkan support is incomplete");
-   } else if (devinfo.ver == 7 && !devinfo.is_baytrail) {
+   } else if (devinfo.platform == INTEL_PLATFORM_IVB) {
       mesa_logw("Ivy Bridge Vulkan support is incomplete");
-   } else if (devinfo.ver == 7 && devinfo.is_baytrail) {
+   } else if (devinfo.platform == INTEL_PLATFORM_BYT) {
       mesa_logw("Bay Trail Vulkan support is incomplete");
    } else if (devinfo.ver >= 8 && devinfo.ver <= 12) {
       /* Gfx8-12 fully supported */
@@ -851,7 +851,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
       goto fail_base;
    }
 
-   if (device->info.ver >= 8 && !device->info.is_cherryview &&
+   if (device->info.ver >= 8 &&
+       device->info.platform != INTEL_PLATFORM_CHV &&
        !anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                          "kernel missing softpin");
@@ -893,7 +894,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
       goto fail_base;
 
    device->use_softpin = device->info.ver >= 8 &&
-                         !device->info.is_cherryview;
+                         device->info.platform != INTEL_PLATFORM_CHV;
    assert(device->use_softpin == device->supports_48bit_addresses);
 
    device->has_context_isolation =
@@ -1279,7 +1280,7 @@ void anv_GetPhysicalDeviceFeatures(
       .multiViewport                            = true,
       .samplerAnisotropy                        = true,
       .textureCompressionETC2                   = pdevice->info.ver >= 8 ||
-                                                  pdevice->info.is_baytrail,
+                                                  pdevice->info.platform == INTEL_PLATFORM_BYT,
       .textureCompressionASTC_LDR               = has_astc_ldr,
       .textureCompressionBC                     = true,
       .occlusionQueryPrecise                    = true,
@@ -2770,7 +2771,7 @@ anv_state_pool_emit_data(struct anv_state_pool *pool, size_t size, size_t align,
 static void
 anv_device_init_border_colors(struct anv_device *device)
 {
-   if (device->info.is_haswell) {
+   if (device->info.platform == INTEL_PLATFORM_HSW) {
       static const struct hsw_border_color border_colors[] = {
          [VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK] =  { .float32 = { 0.0, 0.0, 0.0, 0.0 } },
          [VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK] =       { .float32 = { 0.0, 0.0, 0.0, 1.0 } },

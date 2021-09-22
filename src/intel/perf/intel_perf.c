@@ -416,55 +416,56 @@ typedef void (*perf_register_oa_queries_t)(struct intel_perf_config *);
 static perf_register_oa_queries_t
 get_register_queries_function(const struct intel_device_info *devinfo)
 {
-   if (devinfo->is_haswell)
+   switch (devinfo->platform) {
+   case INTEL_PLATFORM_HSW:
       return intel_oa_register_queries_hsw;
-   if (devinfo->is_cherryview)
+   case INTEL_PLATFORM_CHV:
       return intel_oa_register_queries_chv;
-   if (devinfo->is_broadwell)
+   case INTEL_PLATFORM_BDW:
       return intel_oa_register_queries_bdw;
-   if (devinfo->is_broxton)
+   case INTEL_PLATFORM_BXT:
       return intel_oa_register_queries_bxt;
-   if (devinfo->is_skylake) {
+   case INTEL_PLATFORM_SKL:
       if (devinfo->gt == 2)
          return intel_oa_register_queries_sklgt2;
       if (devinfo->gt == 3)
          return intel_oa_register_queries_sklgt3;
       if (devinfo->gt == 4)
          return intel_oa_register_queries_sklgt4;
-   }
-   if (devinfo->is_kabylake) {
+      return NULL;
+   case INTEL_PLATFORM_KBL:
       if (devinfo->gt == 2)
          return intel_oa_register_queries_kblgt2;
       if (devinfo->gt == 3)
          return intel_oa_register_queries_kblgt3;
-   }
-   if (devinfo->is_geminilake)
+      return NULL;
+   case INTEL_PLATFORM_GLK:
       return intel_oa_register_queries_glk;
-   if (devinfo->is_coffeelake) {
+   case INTEL_PLATFORM_CFL:
       if (devinfo->gt == 2)
          return intel_oa_register_queries_cflgt2;
       if (devinfo->gt == 3)
          return intel_oa_register_queries_cflgt3;
-   }
-   if (devinfo->ver == 11) {
-      if (devinfo->is_elkhartlake)
-         return intel_oa_register_queries_ehl;
+      return NULL;
+   case INTEL_PLATFORM_ICL:
       return intel_oa_register_queries_icl;
-   }
-   if (devinfo->is_tigerlake) {
+   case INTEL_PLATFORM_EHL:
+      return intel_oa_register_queries_ehl;
+   case INTEL_PLATFORM_TGL:
       if (devinfo->gt == 1)
          return intel_oa_register_queries_tglgt1;
       if (devinfo->gt == 2)
          return intel_oa_register_queries_tglgt2;
-   }
-   if (devinfo->is_rocketlake)
+      return NULL;
+   case INTEL_PLATFORM_RKL:
       return intel_oa_register_queries_rkl;
-   if (devinfo->is_dg1)
+   case INTEL_PLATFORM_DG1:
       return intel_oa_register_queries_dg1;
-   if (devinfo->is_alderlake)
+   case INTEL_PLATFORM_ADL:
       return intel_oa_register_queries_adl;
-
-   return NULL;
+   default:
+      return NULL;
+   }
 }
 
 static int
@@ -549,7 +550,7 @@ load_pipeline_statistic_metrics(struct intel_perf_config *perf_cfg,
    intel_perf_query_add_basic_stat_reg(query, CL_PRIMITIVES_COUNT,
                                        "N primitives leaving clipping");
 
-   if (devinfo->is_haswell || devinfo->ver == 8) {
+   if (devinfo->verx10 == 75 || devinfo->ver == 8) {
       intel_perf_query_add_stat_reg(query, PS_INVOCATION_COUNT, 1, 4,
                                     "N fragment shader invocations",
                                     "N fragment shader invocations");
@@ -713,7 +714,7 @@ oa_metrics_available(struct intel_perf_config *perf, int fd,
       /* If _paranoid == 1 then on Gfx8+ we won't be able to access OA
        * metrics unless running as root.
        */
-      if (devinfo->is_haswell)
+      if (devinfo->platform == INTEL_PLATFORM_HSW)
          i915_perf_oa_available = true;
       else {
          uint64_t paranoid = 1;
@@ -1311,7 +1312,7 @@ intel_perf_init_query_fields(struct intel_perf_config *perf_cfg,
          field->mask = PERF_CNT_VALUE_MASK;
       }
 
-      if (devinfo->ver == 8 && !devinfo->is_cherryview) {
+      if (devinfo->ver == 8 && devinfo->platform != INTEL_PLATFORM_CHV) {
          add_query_register(layout,
                          INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
                             GFX7_RPSTAT1, 4, 0);

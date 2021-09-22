@@ -2100,7 +2100,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                       brw_sampler_desc_binding_table_index(devinfo, imm_desc),
                       brw_sampler_desc_sampler(devinfo, imm_desc),
                       brw_sampler_desc_msg_type(devinfo, imm_desc));
-               if (!devinfo->is_g4x) {
+               if (devinfo->verx10 != 45) {
                   err |= control(file, "sampler target format",
                                  sampler_target_format,
                                  brw_sampler_desc_return_format(devinfo, imm_desc),
@@ -2120,7 +2120,7 @@ brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                       devinfo->ver >= 7 ? 0u :
                       brw_dp_write_desc_write_commit(devinfo, imm_desc));
             } else {
-               bool is_965 = devinfo->ver == 4 && !devinfo->is_g4x;
+               bool is_965 = devinfo->verx10 == 40;
                err |= control(file, "DP read message type",
                               is_965 ? gfx4_dp_read_port_msg_type :
                                        g45_dp_read_port_msg_type,

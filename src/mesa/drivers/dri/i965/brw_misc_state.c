@@ -287,7 +287,7 @@ brw_emit_depth_stencil_hiz(struct brw_context *brw,
    }
 
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
-   const unsigned len = (devinfo->is_g4x || devinfo->ver == 5) ? 6 : 5;
+   const unsigned len = (devinfo->verx10 == 45 || devinfo->ver == 5) ? 6 : 5;
 
    BEGIN_BATCH(len);
    OUT_BATCH(_3DSTATE_DEPTH_BUFFER << 16 | (len - 2));
@@ -307,7 +307,7 @@ brw_emit_depth_stencil_hiz(struct brw_context *brw,
              ((height + tile_y - 1) << 19));
    OUT_BATCH(0);
 
-   if (devinfo->is_g4x || devinfo->ver >= 5)
+   if (devinfo->verx10 >= 45)
       OUT_BATCH(tile_x | (tile_y << 16));
    else
       assert(tile_x == 0 && tile_y == 0);
@@ -470,7 +470,7 @@ void
 brw_emit_select_pipeline(struct brw_context *brw, enum brw_pipeline pipeline)
 {
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
-   const bool is_965 = devinfo->ver == 4 && !devinfo->is_g4x;
+   const bool is_965 = devinfo->verx10 == 40;
    const uint32_t _3DSTATE_PIPELINE_SELECT =
       is_965 ? CMD_PIPELINE_SELECT_965 : CMD_PIPELINE_SELECT_GM45;
 
@@ -585,7 +585,7 @@ brw_emit_select_pipeline(struct brw_context *brw, enum brw_pipeline pipeline)
       ADVANCE_BATCH();
    }
 
-   if (devinfo->is_geminilake) {
+   if (devinfo->platform == INTEL_PLATFORM_GLK) {
       /* Project: DevGLK
        *
        * "This chicken bit works around a hardware issue with barrier logic
@@ -698,7 +698,7 @@ void
 brw_upload_invariant_state(struct brw_context *brw)
 {
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
-   const bool is_965 = devinfo->ver == 4 && !devinfo->is_g4x;
+   const bool is_965 = devinfo->verx10 == 40;
 
    brw_emit_select_pipeline(brw, BRW_RENDER_PIPELINE);
    brw->last_pipeline = BRW_RENDER_PIPELINE;

@@ -760,7 +760,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
     *    This bit must be set for the following surface types: BC2_UNORM
     *    BC3_UNORM BC5_UNORM BC5_SNORM BC7_UNORM
     */
-   if (GFX_VER >= 9 || dev->info->is_cherryview) {
+   if (GFX_VER >= 9 || dev->info->platform == INTEL_PLATFORM_CHV) {
       switch (info->view->format) {
       case ISL_FORMAT_BC2_UNORM:
       case ISL_FORMAT_BC3_UNORM:

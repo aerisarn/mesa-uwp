@@ -2569,7 +2569,7 @@ genX(graphics_pipeline_create)(
     * whole fixed function pipeline" means to emit a PIPE_CONTROL with the "CS
     * Stall" bit set.
     */
-   if (!device->info.is_haswell && !device->info.is_baytrail)
+   if (device->info.platform == INTEL_PLATFORM_IVB)
       gfx7_emit_vs_workaround_flush(brw);
 #endif
 

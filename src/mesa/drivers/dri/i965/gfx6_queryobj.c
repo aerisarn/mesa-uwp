@@ -296,7 +296,7 @@ gfx6_queryobj_get_results(struct gl_context *ctx,
        * and correctly emitted the number of pixel shader invocations, but,
        * whomever forgot to undo the multiply by 4.
        */
-      if (devinfo->ver == 8 || devinfo->is_haswell)
+      if (devinfo->ver == 8 || devinfo->verx10 == 75)
          query->Base.Result /= 4;
       break;
 

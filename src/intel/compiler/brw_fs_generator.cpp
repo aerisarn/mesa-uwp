@@ -279,7 +279,7 @@ fs_generator::patch_halt_jumps()
       brw_inst_set_thread_control(devinfo, reset, BRW_THREAD_SWITCH);
    }
 
-   if (devinfo->ver == 4 && !devinfo->is_g4x) {
+   if (devinfo->ver == 4 && devinfo->platform != INTEL_PLATFORM_G4X) {
       /* From the g965 PRM:
        *
        *    "[DevBW, DevCL] Erratum: The subfields in mask stack register are
@@ -550,7 +550,7 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
 
       if (type_sz(reg.type) > 4 &&
           ((devinfo->verx10 == 70) ||
-           devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
+           devinfo->platform == INTEL_PLATFORM_CHV || intel_device_info_is_9lp(devinfo) ||
            !devinfo->has_64bit_float || devinfo->verx10 >= 125)) {
          /* IVB has an issue (which we found empirically) where it reads two
           * address register components per channel for indirectly addressed
@@ -715,7 +715,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
 
          if (type_sz(src.type) > 4 &&
              ((devinfo->verx10 == 70) ||
-              devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
+              devinfo->platform == INTEL_PLATFORM_CHV || intel_device_info_is_9lp(devinfo) ||
               !devinfo->has_64bit_float)) {
             /* IVB has an issue (which we found empirically) where it reads
              * two address register components per channel for indirectly
@@ -1418,7 +1418,7 @@ fs_generator::generate_ddy(const fs_inst *inst,
        * inherits its FP16 hardware from SKL, so it is not affected.
        */
       if (devinfo->ver >= 11 ||
-          (devinfo->is_broadwell && src.type == BRW_REGISTER_TYPE_HF)) {
+          (devinfo->platform == INTEL_PLATFORM_BDW && src.type == BRW_REGISTER_TYPE_HF)) {
          src = stride(src, 0, 2, 1);
 
          brw_push_insn_state(p);
@@ -2285,7 +2285,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                       src[0], brw_null_reg());
 	 } else {
             assert(inst->mlen >= 1);
-            assert(devinfo->ver == 5 || devinfo->is_g4x || inst->exec_size == 8);
+            assert(devinfo->ver == 5 || devinfo->platform == INTEL_PLATFORM_G4X || inst->exec_size == 8);
             gfx4_math(p, dst,
                       brw_math_function(inst->opcode),
                       inst->base_mrf, src[0],
@@ -2583,7 +2583,8 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          struct brw_reg strided = stride(suboffset(src[0], component),
                                          vstride, width, 0);
          if (type_sz(src[0].type) > 4 &&
-             (devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
+             (devinfo->platform == INTEL_PLATFORM_CHV ||
+              intel_device_info_is_9lp(devinfo) ||
               !devinfo->has_64bit_float)) {
             /* IVB has an issue (which we found empirically) where it reads
              * two address register components per channel for indirectly
@@ -2661,7 +2662,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 	 break;
 
       case BRW_OPCODE_DIM:
-         assert(devinfo->is_haswell);
+         assert(devinfo->platform == INTEL_PLATFORM_HSW);
          assert(src[0].type == BRW_REGISTER_TYPE_DF);
          assert(dst.type == BRW_REGISTER_TYPE_DF);
          brw_DIM(p, dst, retype(src[0], BRW_REGISTER_TYPE_F));

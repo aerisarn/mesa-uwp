@@ -633,7 +633,7 @@ brw_finish_batch(struct brw_context *brw)
        !(brw->screen->kernel_features & KERNEL_ALLOWS_CONTEXT_ISOLATION))
       gfx7_restore_default_l3_config(brw);
 
-   if (devinfo->is_haswell) {
+   if (devinfo->platform == INTEL_PLATFORM_HSW) {
       /* From the Haswell PRM, Volume 2b, Command Reference: Instructions,
        * 3DSTATE_CC_STATE_POINTERS > "Note":
        *

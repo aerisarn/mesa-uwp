@@ -43,6 +43,31 @@ struct drm_i915_query_topology_info;
 #define INTEL_DEVICE_MAX_EUS_PER_SUBSLICE (16) /* Maximum on gfx12 */
 #define INTEL_DEVICE_MAX_PIXEL_PIPES      (3)  /* Maximum on gfx12 */
 
+enum intel_platform {
+   INTEL_PLATFORM_GFX3 = 1,
+   INTEL_PLATFORM_I965,
+   INTEL_PLATFORM_ILK,
+   INTEL_PLATFORM_G4X,
+   INTEL_PLATFORM_SNB,
+   INTEL_PLATFORM_IVB,
+   INTEL_PLATFORM_BYT,
+   INTEL_PLATFORM_HSW,
+   INTEL_PLATFORM_BDW,
+   INTEL_PLATFORM_CHV,
+   INTEL_PLATFORM_SKL,
+   INTEL_PLATFORM_BXT,
+   INTEL_PLATFORM_KBL,
+   INTEL_PLATFORM_GLK,
+   INTEL_PLATFORM_CFL,
+   INTEL_PLATFORM_ICL,
+   INTEL_PLATFORM_EHL,
+   INTEL_PLATFORM_TGL,
+   INTEL_PLATFORM_RKL,
+   INTEL_PLATFORM_DG1,
+   INTEL_PLATFORM_ADL,
+   INTEL_PLATFORM_DG2,
+};
+
 /**
  * Intel hardware information and quirks
  */
@@ -55,23 +80,7 @@ struct intel_device_info
    int revision;
    int gt;
 
-   bool is_g4x;
-   bool is_ivybridge;
-   bool is_baytrail;
-   bool is_haswell;
-   bool is_broadwell;
-   bool is_cherryview;
-   bool is_skylake;
-   bool is_broxton;
-   bool is_kabylake;
-   bool is_geminilake;
-   bool is_coffeelake;
-   bool is_elkhartlake;
-   bool is_tigerlake;
-   bool is_rocketlake;
-   bool is_dg1;
-   bool is_alderlake;
-   bool is_dg2;
+   enum intel_platform platform;
 
    bool has_hiz_and_separate_stencil;
    bool must_use_separate_stencil;
@@ -348,12 +357,14 @@ struct intel_device_info
 #ifdef GFX_VER
 
 #define intel_device_info_is_9lp(devinfo) \
-   (GFX_VER == 9 && ((devinfo)->is_broxton || (devinfo)->is_geminilake))
+   (GFX_VER == 9 && ((devinfo)->platform == INTEL_PLATFORM_BXT || \
+                     (devinfo)->platform == INTEL_PLATFORM_GLK))
 
 #else
 
 #define intel_device_info_is_9lp(devinfo) \
-   ((devinfo)->is_broxton || (devinfo)->is_geminilake)
+   ((devinfo)->platform == INTEL_PLATFORM_BXT || \
+    (devinfo)->platform == INTEL_PLATFORM_GLK)
 
 #endif
 

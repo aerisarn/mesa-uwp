@@ -414,11 +414,11 @@ genX(emit_l3_config)(struct anv_batch *batch,
     * client (URB for all validated configurations) set to the
     * lower-bandwidth 2-bank address hashing mode.
     */
-   const bool urb_low_bw = cfg->n[INTEL_L3P_SLM] && !devinfo->is_baytrail;
+   const bool urb_low_bw = cfg->n[INTEL_L3P_SLM] && devinfo->platform != INTEL_PLATFORM_BYT;
    assert(!urb_low_bw || cfg->n[INTEL_L3P_URB] == cfg->n[INTEL_L3P_SLM]);
 
    /* Minimum number of ways that can be allocated to the URB. */
-   const unsigned n0_urb = devinfo->is_baytrail ? 32 : 0;
+   const unsigned n0_urb = devinfo->platform == INTEL_PLATFORM_BYT ? 32 : 0;
    assert(cfg->n[INTEL_L3P_URB] >= n0_urb);
 
    anv_batch_write_reg(batch, GENX(L3SQCREG1), l3sqc) {
@@ -430,7 +430,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
       l3sqc.L3SQGeneralPriorityCreditInitialization = SQGPCI_DEFAULT;
 #else
       l3sqc.L3SQGeneralPriorityCreditInitialization =
-         devinfo->is_baytrail ? BYT_SQGPCI_DEFAULT : SQGPCI_DEFAULT;
+         devinfo->platform == INTEL_PLATFORM_BYT ? BYT_SQGPCI_DEFAULT : SQGPCI_DEFAULT;
 #endif
       l3sqc.L3SQHighPriorityCreditInitialization = SQHPCI_DEFAULT;
    }

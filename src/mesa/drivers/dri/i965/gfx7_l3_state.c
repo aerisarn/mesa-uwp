@@ -136,11 +136,11 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
        * client (URB for all validated configurations) set to the
        * lower-bandwidth 2-bank address hashing mode.
        */
-      const bool urb_low_bw = has_slm && !devinfo->is_baytrail;
+      const bool urb_low_bw = has_slm && devinfo->platform != INTEL_PLATFORM_BYT;
       assert(!urb_low_bw || cfg->n[INTEL_L3P_URB] == cfg->n[INTEL_L3P_SLM]);
 
       /* Minimum number of ways that can be allocated to the URB. */
-      const unsigned n0_urb = (devinfo->is_baytrail ? 32 : 0);
+      const unsigned n0_urb = (devinfo->platform == INTEL_PLATFORM_BYT ? 32 : 0);
       assert(cfg->n[INTEL_L3P_URB] >= n0_urb);
 
       BEGIN_BATCH(7);
@@ -148,8 +148,8 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
 
       /* Demote any clients with no ways assigned to LLC. */
       OUT_BATCH(GFX7_L3SQCREG1);
-      OUT_BATCH((devinfo->is_haswell ? HSW_L3SQCREG1_SQGHPCI_DEFAULT :
-                 devinfo->is_baytrail ? VLV_L3SQCREG1_SQGHPCI_DEFAULT :
+      OUT_BATCH((devinfo->platform == INTEL_PLATFORM_HSW ? HSW_L3SQCREG1_SQGHPCI_DEFAULT :
+                 devinfo->platform == INTEL_PLATFORM_BYT ? VLV_L3SQCREG1_SQGHPCI_DEFAULT :
                  IVB_L3SQCREG1_SQGHPCI_DEFAULT) |
                 (has_dc ? 0 : GFX7_L3SQCREG1_CONV_DC_UC) |
                 (has_is ? 0 : GFX7_L3SQCREG1_CONV_IS_UC) |

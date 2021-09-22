@@ -5460,7 +5460,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    }
 
 #if GFX_VER == 9
-   if (devinfo->is_geminilake) {
+   if (devinfo->platform == INTEL_PLATFORM_GLK) {
       /* Project: DevGLK
        *
        * "This chicken bit works around a hardware issue with barrier logic

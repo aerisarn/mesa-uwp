@@ -2071,7 +2071,7 @@ brw_detect_pipelined_so(struct brw_screen *screen)
       return false;
 
    /* See the big explanation about command parser versions below */
-   if (screen->cmd_parser_version >= (devinfo->is_haswell ? 7 : 2))
+   if (screen->cmd_parser_version >= (devinfo->verx10 == 75 ? 7 : 2))
       return true;
 
    /* We use SO_WRITE_OFFSET0 since you're supposed to write it (unlike the
@@ -2388,14 +2388,14 @@ set_max_gl_versions(struct brw_screen *screen)
       dri_screen->max_gl_core_version = 33;
       if (can_do_pipelined_register_writes(screen)) {
          dri_screen->max_gl_core_version = 42;
-         if (screen->devinfo.is_haswell && can_do_compute_dispatch(screen))
+         if (screen->devinfo.platform == INTEL_PLATFORM_HSW && can_do_compute_dispatch(screen))
             dri_screen->max_gl_core_version = 43;
-         if (screen->devinfo.is_haswell && can_do_mi_math_and_lrr(screen))
+         if (screen->devinfo.platform == INTEL_PLATFORM_HSW && can_do_mi_math_and_lrr(screen))
             dri_screen->max_gl_core_version = 45;
       }
       dri_screen->max_gl_compat_version = 30;
       dri_screen->max_gl_es1_version = 11;
-      dri_screen->max_gl_es2_version = screen->devinfo.is_haswell ? 31 : 30;
+      dri_screen->max_gl_es2_version = screen->devinfo.platform == INTEL_PLATFORM_HSW ? 31 : 30;
       break;
    case 6:
       dri_screen->max_gl_core_version = 33;
@@ -2701,7 +2701,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    /* Haswell requires command parser version 4 in order to have L3
     * atomic scratch1 and chicken3 bits
     */
-   if (devinfo->is_haswell && screen->cmd_parser_version >= 4) {
+   if (devinfo->verx10 == 75 && screen->cmd_parser_version >= 4) {
       screen->kernel_features |=
          KERNEL_ALLOWS_HSW_SCRATCH1_AND_ROW_CHICKEN3;
    }
@@ -2711,7 +2711,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
     * MI_LOAD_REGISTER_REG (which all users of MI_MATH use).
     */
    if (devinfo->ver >= 8 ||
-       (devinfo->is_haswell && screen->cmd_parser_version >= 7)) {
+       (devinfo->verx10 == 75 && screen->cmd_parser_version >= 7)) {
       screen->kernel_features |= KERNEL_ALLOWS_MI_MATH_AND_LRR;
    }
 

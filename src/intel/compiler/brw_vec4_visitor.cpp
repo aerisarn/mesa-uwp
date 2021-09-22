@@ -819,7 +819,7 @@ vec4_visitor::emit_mcs_fetch(const glsl_type *coordinate_type,
 bool
 vec4_visitor::is_high_sampler(src_reg sampler)
 {
-   if (!devinfo->is_haswell)
+   if (devinfo->verx10 != 75)
       return false;
 
    return sampler.file != IMM || sampler.ud >= 16;

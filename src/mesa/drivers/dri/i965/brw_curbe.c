@@ -331,7 +331,7 @@ emit:
     *
     * BRW_NEW_FRAGMENT_PROGRAM
     */
-   if (devinfo->ver == 4 && !devinfo->is_g4x &&
+   if (devinfo->verx10 == 40 &&
        BITSET_TEST(fp->info.system_values_read, SYSTEM_VALUE_FRAG_COORD)) {
       BEGIN_BATCH(2);
       OUT_BATCH(_3DSTATE_GLOBAL_DEPTH_OFFSET_CLAMP << 16 | (2 - 2));

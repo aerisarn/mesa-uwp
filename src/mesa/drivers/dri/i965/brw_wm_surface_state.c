@@ -513,7 +513,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
                                    format == ISL_FORMAT_R32G32_SINT ||
                                    format == ISL_FORMAT_R32G32_UINT)) {
             format = ISL_FORMAT_R32G32_FLOAT_LD;
-            need_green_to_blue = devinfo->is_haswell;
+            need_green_to_blue = devinfo->platform == INTEL_PLATFORM_HSW;
          } else if (devinfo->ver == 6) {
             /* Sandybridge's gather4 message is broken for integer formats.
              * To work around this, we pretend the surface is UNORM for

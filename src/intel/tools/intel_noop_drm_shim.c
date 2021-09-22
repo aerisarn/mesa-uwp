@@ -124,7 +124,7 @@ i915_ioctl_gem_context_getparam(int fd, unsigned long request, void *arg)
    struct drm_i915_gem_context_param *param = arg;
 
    if (param->param ==  I915_CONTEXT_PARAM_GTT_SIZE) {
-      if (i915.devinfo.ver >= 8 && !i915.devinfo.is_cherryview)
+      if (i915.devinfo.ver >= 8 && i915.devinfo.platform != INTEL_PLATFORM_CHV)
          param->value = 1ull << 48;
       else
          param->value = 1ull << 31;
@@ -319,7 +319,7 @@ i915_gem_get_aperture(int fd, unsigned long request, void *arg)
    struct drm_i915_gem_get_aperture *aperture = arg;
 
    if (i915.devinfo.ver >= 8 &&
-       !i915.devinfo.is_cherryview) {
+       i915.devinfo.platform != INTEL_PLATFORM_CHV) {
       aperture->aper_size = 1ull << 48;
       aperture->aper_available_size = 1ull << 48;
    } else {
