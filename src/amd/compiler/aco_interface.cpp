@@ -247,7 +247,7 @@ aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
    legacy_binary->exec_size = exec_size;
    legacy_binary->code_size = code.size() * sizeof(uint32_t);
 
-   legacy_binary->config = config;
+   legacy_binary->base.config = config;
    legacy_binary->disasm_size = 0;
    legacy_binary->ir_size = llvm_ir.size();
 

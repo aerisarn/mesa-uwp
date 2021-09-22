@@ -353,6 +353,7 @@ struct radv_shader_binary {
    gl_shader_stage stage;
    bool is_gs_copy_shader;
 
+   struct ac_shader_config config;
    struct radv_shader_info info;
 
    /* Self-referential size so we avoid consistency issues. */
@@ -361,7 +362,6 @@ struct radv_shader_binary {
 
 struct radv_shader_binary_legacy {
    struct radv_shader_binary base;
-   struct ac_shader_config config;
    unsigned code_size;
    unsigned exec_size;
    unsigned ir_size;

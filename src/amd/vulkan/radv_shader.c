@@ -1445,7 +1445,7 @@ radv_shader_variant_create(struct radv_device *device, const struct radv_shader_
       variant->exec_size = rtld_binary.exec_size;
    } else {
       assert(binary->type == RADV_BINARY_TYPE_LEGACY);
-      config = ((struct radv_shader_binary_legacy *)binary)->config;
+      config = ((struct radv_shader_binary_legacy *)binary)->base.config;
       variant->code_size =
          radv_get_shader_binary_size(((struct radv_shader_binary_legacy *)binary)->code_size);
       variant->exec_size = ((struct radv_shader_binary_legacy *)binary)->exec_size;
