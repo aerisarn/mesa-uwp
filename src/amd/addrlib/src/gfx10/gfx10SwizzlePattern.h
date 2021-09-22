@@ -3740,7 +3740,6 @@ const ADDR_SW_PATINFO GFX10_SW_VAR_Z_X_8xaa_RBPLUS_PATINFO[] =
     {   3,   27,  344,  365,  124, } , // 64 pipes (32 PKRs) 16 bpe @ SW_VAR_Z_X 8xaa @ RbPlus
 };
 
-
 const UINT_64 GFX10_SW_PATTERN_NIBBLE01[][8] =
 {
     {X0,            X1,            X2,            X3,            Y0,            Y1,            Y2,            Y3,            }, // 0
@@ -5849,7 +5848,6 @@ const UINT_8 GFX10_CMASK_VAR_RBPLUS_PATIDX[] =
       29, // 64 pipes (32 PKRs) 4 bpe pa @ CMASK_VAR @ RbPlus
       31, // 64 pipes (32 PKRs) 8 bpe pa @ CMASK_VAR @ RbPlus
 };
-
 
 const UINT_64 GFX10_DCC_64K_R_X_SW_PATTERN[][17] =
 {

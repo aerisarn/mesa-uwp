@@ -356,7 +356,6 @@ private:
         const ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT* pIn,
         ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_OUTPUT*      pOut) const;
 
-
     UINT_32 ComputeOffsetFromSwizzlePattern(
         const UINT_64* pPattern,
         UINT_32        numBits,
