@@ -91,7 +91,9 @@ static LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi)
    if (ctx->shader->key.ps.mono.fbfetch_msaa)
       args.coords[chan++] = si_get_sample_id(ctx);
 
-   if (ctx->shader->key.ps.mono.fbfetch_msaa && !(ctx->screen->debug_flags & DBG(NO_FMASK))) {
+   if (ctx->screen->info.chip_class < GFX11 &&
+       ctx->shader->key.ps.mono.fbfetch_msaa &&
+       !(ctx->screen->debug_flags & DBG(NO_FMASK))) {
       fmask = ac_build_load_to_sgpr(&ctx->ac, ptr,
                                     LLVMConstInt(ctx->ac.i32, SI_PS_IMAGE_COLORBUF0_FMASK / 2, 0));
 

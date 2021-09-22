@@ -2490,7 +2490,8 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
    assert(!add_frag_pos && "Input attachments should be lowered by this point.");
    count = image_type_to_components_count(dim, is_array);
 
-   if (is_ms && (instr->intrinsic == nir_intrinsic_image_deref_load ||
+   if (ctx->ac.chip_class < GFX11 &&
+       is_ms && (instr->intrinsic == nir_intrinsic_image_deref_load ||
                  instr->intrinsic == nir_intrinsic_bindless_image_load ||
                  instr->intrinsic == nir_intrinsic_image_deref_sparse_load ||
                  instr->intrinsic == nir_intrinsic_bindless_image_sparse_load)) {
@@ -4637,6 +4638,7 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       /* The fragment mask is fetched from the compressed
        * multisampled surface.
        */
+      assert(ctx->ac.chip_class < GFX11);
       main_descriptor = AC_DESC_FMASK;
    }
 
@@ -4679,7 +4681,8 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       if (instr->sampler_dim < GLSL_SAMPLER_DIM_RECT)
          *samp_ptr = sici_fix_sampler_aniso(ctx, *res_ptr, *samp_ptr);
    }
-   if (fmask_ptr && (instr->op == nir_texop_txf_ms || instr->op == nir_texop_samples_identical))
+   if (ctx->ac.chip_class < GFX11 &&
+       fmask_ptr && (instr->op == nir_texop_txf_ms || instr->op == nir_texop_samples_identical))
       *fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, AC_DESC_FMASK, &instr->instr,
                                     texture_dynamic_index, false, false);
 }
@@ -4922,6 +4925,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       args.coords[instr->coord_components] = sample_index;
 
    if (instr->op == nir_texop_samples_identical) {
+      assert(ctx->ac.chip_class < GFX11);
       struct ac_image_args txf_args = {0};
       memcpy(txf_args.coords, args.coords, sizeof(txf_args.coords));
 
@@ -4935,7 +4939,8 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       goto write_result;
    }
 
-   if ((instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ||
+   if (ctx->ac.chip_class < GFX11 &&
+       (instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ||
         instr->sampler_dim == GLSL_SAMPLER_DIM_MS) &&
        instr->op != nir_texop_txs && instr->op != nir_texop_fragment_fetch_amd &&
        instr->op != nir_texop_fragment_mask_fetch_amd) {

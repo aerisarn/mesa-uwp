@@ -222,6 +222,7 @@ static LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx, LLVMValu
       break;
    case AC_DESC_FMASK:
       /* The FMASK is at [8:15]. */
+      assert(ctx->screen->info.chip_class < GFX11);
       index = ac_build_imad(&ctx->ac, index, LLVMConstInt(ctx->ac.i32, 2, 0), ctx->ac.i32_1);
       break;
    case AC_DESC_SAMPLER:

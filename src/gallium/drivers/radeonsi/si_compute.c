@@ -127,7 +127,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    assert(program->ir_type == PIPE_SHADER_IR_NIR);
    si_nir_scan_shader(sscreen, sel->nir, &sel->info);
 
-   si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
+   si_get_active_slot_masks(sscreen, &sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);
 
    program->shader.is_monolithic = true;
@@ -150,10 +150,13 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    }
 
    /* Images in user SGPRs. */
-   unsigned non_msaa_images = u_bit_consecutive(0, sel->info.base.num_images) &
-                              ~sel->info.base.msaa_images;
+   unsigned non_fmask_images = u_bit_consecutive(0, sel->info.base.num_images);
 
-   for (unsigned i = 0; i < 3 && non_msaa_images & (1 << i); i++) {
+   /* Remove images with FMASK from the bitmask. */
+   if (sscreen->info.chip_class < GFX11)
+      non_fmask_images &= ~sel->info.base.msaa_images;
+
+   for (unsigned i = 0; i < 3 && non_fmask_images & (1 << i); i++) {
       unsigned num_sgprs = sel->info.base.image_buffers & (1 << i) ? 4 : 8;
 
       if (align(user_sgprs, num_sgprs) + num_sgprs > 16)

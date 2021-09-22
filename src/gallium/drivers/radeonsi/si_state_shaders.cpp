@@ -3038,8 +3038,8 @@ void si_schedule_initial_compile(struct si_context *sctx, gl_shader_stage stage,
 }
 
 /* Return descriptor slot usage masks from the given shader info. */
-void si_get_active_slot_masks(const struct si_shader_info *info, uint64_t *const_and_shader_buffers,
-                              uint64_t *samplers_and_images)
+void si_get_active_slot_masks(struct si_screen *sscreen, const struct si_shader_info *info,
+                              uint64_t *const_and_shader_buffers, uint64_t *samplers_and_images)
 {
    unsigned start, num_shaderbufs, num_constbufs, num_images, num_msaa_images, num_samplers;
 
@@ -3063,7 +3063,7 @@ void si_get_active_slot_masks(const struct si_shader_info *info, uint64_t *const
     * and so we can benefit from a better cache hit rate if we keep image
     * descriptors together.
     */
-   if (num_msaa_images)
+   if (sscreen->info.chip_class < GFX11 && num_msaa_images)
       num_images = SI_NUM_IMAGES + num_msaa_images; /* add FMASK descriptors */
 
    start = si_get_image_slot(num_images - 1) / 2;
@@ -3102,7 +3102,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       si_sampler_and_image_descriptors_idx(type);
 
    p_atomic_inc(&sscreen->num_shaders_created);
-   si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
+   si_get_active_slot_masks(sscreen, &sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);
 
    switch (sel->stage) {
