@@ -2526,8 +2526,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
       .usage = usage,
    };
 
-   void *map = isv->surface_state.cpu;
-
    /* Fill out SURFACE_STATE for this view. */
    if (tmpl->target != PIPE_BUFFER) {
       isv->view.base_level = tmpl->u.tex.first_level;
@@ -2545,7 +2543,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
       fill_surface_states(&screen->isl_dev, &isv->surface_state, isv->res,
                           &isv->res->surf, &isv->view, 0, 0, 0);
    } else {
-      fill_buffer_surface_state(&screen->isl_dev, isv->res, map,
+      fill_buffer_surface_state(&screen->isl_dev, isv->res,
+                                isv->surface_state.cpu,
                                 isv->view.format, isv->view.swizzle,
                                 tmpl->u.buf.offset, tmpl->u.buf.size,
                                 ISL_SURF_USAGE_TEXTURE_BIT);
@@ -2823,8 +2822,6 @@ iris_set_shader_images(struct pipe_context *ctx,
          alloc_surface_states(&iv->surface_state, aux_usages);
          iv->surface_state.bo_address = res->bo->address;
 
-         void *map = iv->surface_state.cpu;
-
          if (res->base.b.target != PIPE_BUFFER) {
             struct isl_view view = {
                .format = isl_fmt,
@@ -2838,7 +2835,8 @@ iris_set_shader_images(struct pipe_context *ctx,
 
             /* If using untyped fallback. */
             if (isl_fmt == ISL_FORMAT_RAW) {
-               fill_buffer_surface_state(&screen->isl_dev, res, map,
+               fill_buffer_surface_state(&screen->isl_dev, res,
+                                         iv->surface_state.cpu,
                                          isl_fmt, ISL_SWIZZLE_IDENTITY,
                                          0, res->bo->size,
                                          ISL_SURF_USAGE_STORAGE_BIT);
@@ -2854,7 +2852,8 @@ iris_set_shader_images(struct pipe_context *ctx,
             util_range_add(&res->base.b, &res->valid_buffer_range, img->u.buf.offset,
                            img->u.buf.offset + img->u.buf.size);
 
-            fill_buffer_surface_state(&screen->isl_dev, res, map,
+            fill_buffer_surface_state(&screen->isl_dev, res,
+                                      iv->surface_state.cpu,
                                       isl_fmt, ISL_SWIZZLE_IDENTITY,
                                       img->u.buf.offset, img->u.buf.size,
                                       ISL_SURF_USAGE_STORAGE_BIT);
