@@ -48,7 +48,7 @@ clamp_int64(int64_t x, int64_t min, int64_t max)
 void
 gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    uint32_t count = cmd_buffer->state.gfx.dynamic.scissor.count;
    const VkRect2D *scissors = cmd_buffer->state.gfx.dynamic.scissor.scissors;
    const VkViewport *viewports =

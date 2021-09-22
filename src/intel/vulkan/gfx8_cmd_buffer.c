@@ -37,7 +37,7 @@
 void
 gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
    const VkViewport *viewports =
       cmd_buffer->state.gfx.dynamic.viewport.viewports;

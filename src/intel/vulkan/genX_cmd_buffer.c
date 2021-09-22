@@ -1570,7 +1570,7 @@ cmd_buffer_alloc_state_attachments(struct anv_cmd_buffer *cmd_buffer,
 static VkResult
 genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
                                    const struct anv_render_pass *pass,
-                                   const struct anv_framebuffer *framebuffer,
+                                   const struct vk_framebuffer *framebuffer,
                                    const VkRenderPassBeginInfo *begin)
 {
    struct anv_cmd_state *state = &cmd_buffer->state;
@@ -1592,7 +1592,8 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          ANV_FROM_HANDLE(anv_image_view, iview, attach_begin->pAttachments[i]);
          state->attachments[i].image_view = iview;
       } else if (framebuffer && i < framebuffer->attachment_count) {
-         state->attachments[i].image_view = framebuffer->attachments[i];
+         ANV_FROM_HANDLE(anv_image_view, iview, framebuffer->attachments[i]);
+         state->attachments[i].image_view = iview;
       } else {
          state->attachments[i].image_view = NULL;
       }
@@ -1852,8 +1853,8 @@ genX(BeginCommandBuffer)(
       } else {
          subpass = &pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
 
-         ANV_FROM_HANDLE(anv_framebuffer, framebuffer,
-                         pBeginInfo->pInheritanceInfo->framebuffer);
+         VK_FROM_HANDLE(vk_framebuffer, framebuffer,
+                        pBeginInfo->pInheritanceInfo->framebuffer);
 
          cmd_buffer->state.pass = pass;
          cmd_buffer->state.subpass = subpass;
@@ -6383,7 +6384,7 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
                        uint32_t base_layer)
 {
    struct anv_cmd_state *cmd_state = &cmd_buffer->state;
-   struct anv_framebuffer *fb = cmd_state->framebuffer;
+   struct vk_framebuffer *fb = cmd_state->framebuffer;
    VkRect2D render_area = cmd_state->render_area;
    bool is_multiview = cmd_state->subpass->view_mask != 0;
 
@@ -6588,7 +6589,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                              "begin subpass deps/attachments");
 
    VkRect2D render_area = cmd_state->render_area;
-   struct anv_framebuffer *fb = cmd_state->framebuffer;
+   struct vk_framebuffer *fb = cmd_state->framebuffer;
 
    bool is_multiview = subpass->view_mask != 0;
 
@@ -6851,7 +6852,7 @@ static void
 cmd_buffer_mark_images_written(struct anv_cmd_buffer *cmd_buffer,
                                struct anv_cmd_state *cmd_state,
                                struct anv_subpass *subpass,
-                               struct anv_framebuffer *fb)
+                               struct vk_framebuffer *fb)
 {
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
       struct anv_subpass_attachment *att = &subpass->attachments[i];
@@ -6910,7 +6911,7 @@ static void
 cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
                                struct anv_cmd_state *cmd_state,
                                struct anv_subpass *subpass,
-                               struct anv_framebuffer *fb,
+                               struct vk_framebuffer *fb,
                                uint32_t subpass_id)
 {
    struct anv_attachment_state *attachments = cmd_state->attachments;
@@ -7154,7 +7155,7 @@ static void
 cmd_buffer_do_layout_transitions(struct anv_cmd_buffer *cmd_buffer,
                                  struct anv_cmd_state *cmd_state,
                                  struct anv_subpass *subpass,
-                                 struct anv_framebuffer *fb,
+                                 struct vk_framebuffer *fb,
                                  uint32_t subpass_id)
 {
    struct anv_render_pass *pass = cmd_state->pass;
@@ -7239,7 +7240,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
    struct anv_cmd_state *cmd_state = &cmd_buffer->state;
    struct anv_subpass *subpass = cmd_state->subpass;
    uint32_t subpass_id = anv_get_subpass_id(&cmd_buffer->state);
-   struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
 
    cmd_buffer_clear_state_pointers(cmd_state);
 
@@ -7266,7 +7267,8 @@ void genX(CmdBeginRenderPass2)(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_render_pass, pass, pRenderPassBeginInfo->renderPass);
-   ANV_FROM_HANDLE(anv_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
+   VK_FROM_HANDLE(vk_framebuffer, framebuffer,
+                  pRenderPassBeginInfo->framebuffer);
    VkResult result;
 
    if (!is_render_queue_cmd_buffer(cmd_buffer)) {
@@ -7637,7 +7639,7 @@ cmd_buffer_end_rendering(struct anv_cmd_buffer *cmd_buffer)
    struct anv_cmd_state *cmd_state = &cmd_buffer->state;
    struct anv_subpass *subpass = cmd_state->subpass;
    uint32_t subpass_id = anv_get_subpass_id(&cmd_buffer->state);
-   struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
 
    cmd_buffer_clear_state_pointers(cmd_state);
 
@@ -7649,7 +7651,7 @@ cmd_buffer_end_rendering(struct anv_cmd_buffer *cmd_buffer)
 }
 
 static void
-setup_dynamic_framebuffer(struct anv_framebuffer *fb,
+setup_dynamic_framebuffer(struct vk_framebuffer *fb,
                           const VkRenderingInfoKHR *info)
 {
    fb->width = info->renderArea.extent.width + info->renderArea.offset.x;
