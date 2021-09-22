@@ -1378,7 +1378,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
 
 struct radv_shader_variant *
 radv_shader_variant_create(struct radv_device *device, const struct radv_shader_binary *binary,
-                           bool keep_shader_info)
+                           bool keep_shader_info, bool from_cache)
 {
    struct ac_shader_config config = {0};
    struct ac_rtld_binary rtld_binary = {0};
@@ -1452,7 +1452,13 @@ radv_shader_variant_create(struct radv_device *device, const struct radv_shader_
    }
 
    variant->info = binary->info;
-   radv_postprocess_config(device, &config, &binary->info, binary->stage, &variant->config);
+
+   if (from_cache) {
+      /* Copy the shader binary configuration from the cache. */
+      memcpy(&variant->config, &binary->config, sizeof(variant->config));
+   } else {
+      radv_postprocess_config(device, &config, &binary->info, binary->stage, &variant->config);
+   }
 
    void *dest_ptr = radv_alloc_shader_memory(device, variant);
    if (!dest_ptr) {
@@ -1617,7 +1623,7 @@ shader_variant_compile(struct radv_device *device, struct vk_shader_module *modu
    binary->info = *info;
 
    struct radv_shader_variant *variant =
-      radv_shader_variant_create(device, binary, keep_shader_info);
+      radv_shader_variant_create(device, binary, keep_shader_info, false);
    if (!variant) {
       free(binary);
       return NULL;
@@ -1645,6 +1651,9 @@ shader_variant_compile(struct radv_device *device, struct vk_shader_module *modu
          variant->spirv_size = module->size;
       }
    }
+
+   /* Copy the shader binary configuration to store it in the cache. */
+   memcpy(&binary->config, &variant->config, sizeof(binary->config));
 
    if (binary_out)
       *binary_out = binary;

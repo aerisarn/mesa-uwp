@@ -434,7 +434,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 struct radv_shader_variant *radv_shader_variant_create(struct radv_device *device,
                                                        const struct radv_shader_binary *binary,
-                                                       bool keep_shader_info);
+                                                       bool keep_shader_info, bool from_cache);
 struct radv_shader_variant *radv_shader_variant_compile(
    struct radv_device *device, struct vk_shader_module *module, struct nir_shader *const *shaders,
    int shader_count, struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
