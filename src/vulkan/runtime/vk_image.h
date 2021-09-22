@@ -208,6 +208,8 @@ struct vk_image_view {
    /* VK_KHR_maintenance2 */
    VkImageUsageFlags usage;
 };
+VK_DEFINE_NONDISP_HANDLE_CASTS(vk_image_view, base, VkImageView,
+                               VK_OBJECT_TYPE_IMAGE_VIEW);
 
 void vk_image_view_init(struct vk_device *device,
                         struct vk_image_view *image_view,
