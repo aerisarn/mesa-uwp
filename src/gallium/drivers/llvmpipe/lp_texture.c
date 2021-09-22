@@ -1103,7 +1103,7 @@ llvmpipe_resource_get_param(struct pipe_screen *screen,
 
       if (!llvmpipe_resource_get_handle(screen, context, resource, &whandle, handle_usage))
          return false;
-      *value = whandle.handle;
+      *value = (uint64_t)whandle.handle;
       return true;
    default:
       break;

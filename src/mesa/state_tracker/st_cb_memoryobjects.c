@@ -70,6 +70,7 @@ st_import_memoryobj_fd(struct gl_context *ctx,
                        GLuint64 size,
                        int fd)
 {
+#if !defined(_WIN32)
    struct st_memory_object *st_obj = st_memory_object(obj);
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->screen;
@@ -85,7 +86,6 @@ st_import_memoryobj_fd(struct gl_context *ctx,
                                                       &whandle,
                                                       obj->Dedicated);
 
-#if !defined(_WIN32)
    /* We own fd, but we no longer need it. So get rid of it */
    close(fd);
 #endif
