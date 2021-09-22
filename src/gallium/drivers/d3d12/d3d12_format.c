@@ -199,6 +199,52 @@ d3d12_get_typeless_format(enum pipe_format format)
    return typeless_formats[format];
 }
 
+enum pipe_format
+d3d12_get_pipe_format(DXGI_FORMAT format)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(formats); ++i) {
+      if (formats[i] == format) {
+         return (enum pipe_format)i;
+      }
+   }
+   return PIPE_FORMAT_NONE;
+}
+
+enum pipe_format
+d3d12_get_default_pipe_format(DXGI_FORMAT format)
+{
+#define TYPELESS_TO(channels, suffix) \
+   case DXGI_FORMAT_##channels##_TYPELESS: \
+      return PIPE_FORMAT_##channels##_##suffix
+
+   switch (format) {
+      TYPELESS_TO(R8, UNORM);
+      TYPELESS_TO(R8G8, UNORM);
+      TYPELESS_TO(R8G8B8A8, UNORM);
+      TYPELESS_TO(B8G8R8X8, UNORM);
+      TYPELESS_TO(B8G8R8A8, UNORM);
+      TYPELESS_TO(R16, FLOAT);
+      TYPELESS_TO(R16G16, FLOAT);
+      TYPELESS_TO(R16G16B16A16, FLOAT);
+      TYPELESS_TO(R32, FLOAT);
+      TYPELESS_TO(R32G32, FLOAT);
+      TYPELESS_TO(R32G32B32, FLOAT);
+      TYPELESS_TO(R32G32B32A32, FLOAT);
+   case DXGI_FORMAT_BC1_TYPELESS:
+      return PIPE_FORMAT_DXT1_RGBA;
+   case DXGI_FORMAT_BC2_TYPELESS:
+      return PIPE_FORMAT_DXT3_RGBA;
+   case DXGI_FORMAT_BC3_TYPELESS:
+      return PIPE_FORMAT_DXT5_RGBA;
+   case DXGI_FORMAT_BC4_TYPELESS:
+      return PIPE_FORMAT_RGTC1_UNORM;
+   case DXGI_FORMAT_BC5_TYPELESS:
+      return PIPE_FORMAT_RGTC2_UNORM;
+   default:
+      return PIPE_FORMAT_NONE;
+   }
+}
+
 DXGI_FORMAT
 d3d12_get_resource_rt_format(enum pipe_format f)
 {
