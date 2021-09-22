@@ -294,7 +294,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_i
         pandecode_sample_locations(fb, job_no);
 
         pan_section_unpack(fb, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, bparams);
-        unsigned dcd_size = pan_size(DRAW);
+        unsigned dcd_size = pan_size(DRAW) + pan_size(DRAW_PADDING);
         struct pandecode_mapped_memory *dcdmem =
                 pandecode_find_mapped_gpu_mem_containing(bparams.frame_shader_dcds);
 
