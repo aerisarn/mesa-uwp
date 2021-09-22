@@ -25,6 +25,7 @@
 #include "util/u_draw.h"
 #include "util/u_prim.h"
 #include "util/format/u_format.h"
+#include "util/u_helpers.h"
 #include "util/u_pack_color.h"
 #include "util/u_prim_restart.h"
 #include "util/u_upload_mgr.h"
@@ -1563,6 +1564,17 @@ v3d_tlb_clear(struct v3d_job *job, unsigned buffers,
                         swapped_color.f[3] = color->f[3];
                         color = &swapped_color;
                 }
+
+                /*  While hardware supports clamping, this is not applied on
+                 *  the clear values, so we need to do it manually.
+                 *
+                 *  "Clamping is performed on color values immediately as they
+                 *   enter the TLB and after blending. Clamping is not
+                 *   performed on the clear color."
+                 */
+                union pipe_color_union clamped_color =
+                        util_clamp_color(psurf->format, color);
+                color = &clamped_color;
 
                 switch (surf->internal_type) {
                 case V3D_INTERNAL_TYPE_8:
