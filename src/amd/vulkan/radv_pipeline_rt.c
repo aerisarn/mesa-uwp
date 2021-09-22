@@ -1877,7 +1877,8 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
       bvh_node = nir_iadd(b, nir_load_var(b, trav_vars.bvh_base), nir_u2u(b, bvh_node, 64));
       nir_ssa_def *intrinsic_result = NULL;
-      if (device->physical_device->rad_info.chip_class >= GFX10_3) {
+      if (device->physical_device->rad_info.chip_class >= GFX10_3
+       && !(device->instance->perftest_flags & RADV_PERFTEST_FORCE_EMULATE_RT)) {
          intrinsic_result = nir_bvh64_intersect_ray_amd(
             b, 32, desc, nir_unpack_64_2x32(b, bvh_node), nir_load_var(b, vars->tmax),
             nir_load_var(b, trav_vars.origin), nir_load_var(b, trav_vars.dir),

@@ -702,6 +702,9 @@ RADV driver environment variables
       enable wave32 for compute shaders (GFX10+)
    ``dccmsaa``
       enable DCC for MSAA images
+   ``force_emulate_rt``
+      forces ray-tracing to be emulated in software,
+      even if there is hardware support.
    ``gewave32``
       enable wave32 for vertex/tess/geometry shaders (GFX10+)
    ``localbos``

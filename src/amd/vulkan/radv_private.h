@@ -1662,6 +1662,7 @@ struct radv_event {
 #define RADV_HASH_SHADER_FORCE_NGG_CULLING (1 << 13)
 #define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS (1 << 14)
 #define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS2 (1 << 15)
+#define RADV_HASH_SHADER_FORCE_EMULATE_RT (1 << 16)
 
 struct radv_pipeline_key;
 
