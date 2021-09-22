@@ -862,7 +862,8 @@ static unsigned si_get_shader_binary_size(struct si_screen *screen, struct si_sh
    return size;
 }
 
-static bool si_get_external_symbol(void *data, const char *name, uint64_t *value)
+static bool si_get_external_symbol(enum chip_class chip_class, void *data, const char *name,
+                                   uint64_t *value)
 {
    uint64_t *scratch_va = data;
 
@@ -872,7 +873,12 @@ static bool si_get_external_symbol(void *data, const char *name, uint64_t *value
    }
    if (!strcmp(scratch_rsrc_dword1_symbol, name)) {
       /* Enable scratch coalescing. */
-      *value = S_008F04_BASE_ADDRESS_HI(*scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1);
+      *value = S_008F04_BASE_ADDRESS_HI(*scratch_va >> 32);
+
+      if (chip_class >= GFX11)
+         *value |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
+      else
+         *value |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
       return true;
    }
 

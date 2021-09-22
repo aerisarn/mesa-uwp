@@ -257,6 +257,7 @@ bool ac_rtld_open(struct ac_rtld_binary *binary, struct ac_rtld_open_info i)
    memset(binary, 0, sizeof(*binary));
    memcpy(&binary->options, &i.options, sizeof(binary->options));
    binary->wave_size = i.wave_size;
+   binary->chip_class = i.info->chip_class;
    binary->num_parts = i.num_parts;
    binary->parts = calloc(sizeof(*binary->parts), i.num_parts);
    if (!binary->parts)
@@ -576,7 +577,7 @@ static bool resolve_symbol(const struct ac_rtld_upload_info *u, unsigned part_id
 
       /* TODO: resolve from other parts */
 
-      if (u->get_external_symbol(u->cb_data, name, value))
+      if (u->get_external_symbol(u->binary->chip_class, u->cb_data, name, value))
          return true;
 
       report_errorf("symbol %s: unknown", name);
