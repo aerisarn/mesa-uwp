@@ -1064,7 +1064,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
       UNUSED const uint32_t *clear_color =
          &state->attachments[attachment_idx].clear_value.color[0];
 
-      uint32_t clear_pad = 0;
+      UNUSED uint32_t clear_pad = 0;
       if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
           slice->tiling == V3D_TILING_UIF_XOR) {
          int uif_block_height = v3d_utile_height(image->planes[plane].cpp) * 2;
@@ -1084,10 +1084,8 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          clear.clear_color_next_24_bits = clear_color[1] & 0xffffff;
          clear.render_target_number = i;
       };
-#endif
 
       if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_64) {
-#if V3D_VERSION == 42
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART2, clear) {
             clear.clear_color_mid_low_32_bits =
                ((clear_color[1] >> 24) | (clear_color[2] << 8));
@@ -1095,25 +1093,16 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
                ((clear_color[2] >> 24) | ((clear_color[3] & 0xffff) << 8));
             clear.render_target_number = i;
          };
-#endif
-#if V3D_VERSION >= 71
-         unreachable("HW generation 71 not supported yet.");
-#endif
-
       }
 
       if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_128 || clear_pad) {
-#if V3D_VERSION == 42
          cl_emit(rcl, TILE_RENDERING_MODE_CFG_CLEAR_COLORS_PART3, clear) {
             clear.uif_padded_height_in_uif_blocks = clear_pad;
             clear.clear_color_high_16_bits = clear_color[3] >> 16;
             clear.render_target_number = i;
          };
-#endif
-#if V3D_VERSION >= 71
-         unreachable("HW generation 71 not supported yet.");
-#endif
       }
+#endif
 
 #if V3D_VERSION >= 71
       cl_emit(rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART1, rt) {
@@ -1132,6 +1121,24 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
           * it is in 512-bit units.
           */
          base_addr += (tiling->tile_height * rt.stride) / 8;
+      }
+
+      if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_64) {
+         cl_emit(rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART2, rt) {
+            rt.clear_color_mid_bits = /* 40 bits (32 + 8)  */
+               ((uint64_t) clear_color[1]) |
+               (((uint64_t) (clear_color[2] & 0xff)) << 32);
+            rt.render_target_number = i;
+         }
+      }
+
+      if (iview->planes[0].internal_bpp >= V3D_INTERNAL_BPP_128) {
+         cl_emit(rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART3, rt) {
+            rt.clear_color_top_bits = /* 56 bits (24 + 32) */
+               (((uint64_t) (clear_color[2] & 0xffffff00)) >> 8) |
+               (((uint64_t) (clear_color[3])) << 24);
+            rt.render_target_number = i;
+         }
       }
 #endif
    }
