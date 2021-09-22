@@ -521,7 +521,7 @@ lvp_get_physical_device_features_1_2(struct lvp_physical_device *pdevice,
    f->vulkanMemoryModelAvailabilityVisibilityChains = false;
    f->shaderOutputViewportIndex = true;
    f->shaderOutputLayer = true;
-   f->subgroupBroadcastDynamicId = false;
+   f->subgroupBroadcastDynamicId = true;
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(

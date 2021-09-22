@@ -2220,28 +2220,27 @@ static void emit_read_invocation(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef idx;
    struct lp_build_context *uint_bld = get_int_bld(bld_base, true, bit_size);
-   if (invoc) {
-      idx = invoc;
-      idx = LLVMBuildExtractElement(gallivm->builder, idx, lp_build_const_int32(gallivm, 0), "");
-   } else {
-      /* have to find the first active invocation */
-      LLVMValueRef exec_mask = mask_vec(bld_base);
-      struct lp_build_loop_state loop_state;
-      LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
-      LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
-      lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length));
 
-      LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
-      struct lp_build_if_state ifthen;
+   /* have to find the first active invocation */
+   LLVMValueRef exec_mask = mask_vec(bld_base);
+   struct lp_build_loop_state loop_state;
+   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+   LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
+   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length));
 
-      lp_build_if(&ifthen, gallivm, if_cond);
-      LLVMBuildStore(builder, loop_state.counter, res_store);
-      lp_build_endif(&ifthen);
+   LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
+   struct lp_build_if_state ifthen;
 
-      lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, -1),
-                             lp_build_const_int32(gallivm, -1), LLVMIntEQ);
-      idx = LLVMBuildLoad(builder, res_store, "");
-   }
+   lp_build_if(&ifthen, gallivm, if_cond);
+   LLVMValueRef store_val = loop_state.counter;
+   if (invoc)
+      store_val = LLVMBuildExtractElement(gallivm->builder, invoc, loop_state.counter, "");
+   LLVMBuildStore(builder, store_val, res_store);
+   lp_build_endif(&ifthen);
+
+   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, -1),
+                          lp_build_const_int32(gallivm, -1), LLVMIntEQ);
+   idx = LLVMBuildLoad(builder, res_store, "");
 
    LLVMValueRef value = LLVMBuildExtractElement(gallivm->builder,
                                                 src, idx, "");
