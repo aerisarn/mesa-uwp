@@ -279,15 +279,6 @@ class VkEnum(object):
         self.guard = g
 
 
-class VkCommand(object):
-    """Simple struct-like class representing a single Vulkan command"""
-
-    def __init__(self, name, device_entrypoint=False):
-        self.name = name
-        self.device_entrypoint = device_entrypoint
-        self.extension = None
-
-
 class VkChainStruct(object):
     """Simple struct-like class representing a single Vulkan struct identified with a VkStructureType"""
     def __init__(self, name, stype):
