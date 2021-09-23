@@ -104,20 +104,20 @@ si_emit_thread_trace_start(struct si_context* sctx,
 
       if (sctx->chip_class >= GFX10) {
          /* Order seems important for the following 2 registers. */
-         radeon_set_privileged_config_reg(cs, R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
+         radeon_set_privileged_config_reg(R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
                                           S_008D04_SIZE(shifted_size) |
                                           S_008D04_BASE_HI(shifted_va >> 32));
 
-         radeon_set_privileged_config_reg(cs, R_008D00_SQ_THREAD_TRACE_BUF0_BASE, shifted_va);
+         radeon_set_privileged_config_reg(R_008D00_SQ_THREAD_TRACE_BUF0_BASE, shifted_va);
 
          int wgp = first_active_cu / 2;
-         radeon_set_privileged_config_reg(cs, R_008D14_SQ_THREAD_TRACE_MASK,
+         radeon_set_privileged_config_reg(R_008D14_SQ_THREAD_TRACE_MASK,
                                           S_008D14_WTYPE_INCLUDE(0x7f) | /* all shader stages */
                                           S_008D14_SA_SEL(0) |
                                           S_008D14_WGP_SEL(wgp) |
                                           S_008D14_SIMD_SEL(0));
 
-         radeon_set_privileged_config_reg(cs, R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
+         radeon_set_privileged_config_reg(R_008D18_SQ_THREAD_TRACE_TOKEN_MASK,
                       S_008D18_REG_INCLUDE(V_008D18_REG_INCLUDE_SQDEC |
                                            V_008D18_REG_INCLUDE_SHDEC |
                                            V_008D18_REG_INCLUDE_GFXUDEC |
@@ -127,7 +127,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
                       S_008D18_TOKEN_EXCLUDE(V_008D18_TOKEN_EXCLUDE_PERF));
 
          /* Should be emitted last (it enables thread traces). */
-         radeon_set_privileged_config_reg(cs, R_008D1C_SQ_THREAD_TRACE_CTRL,
+         radeon_set_privileged_config_reg(R_008D1C_SQ_THREAD_TRACE_CTRL,
                                           S_008D1C_MODE(1) |
                                           S_008D1C_HIWATER(5) |
                                           S_008D1C_UTIL_TIMER(1) |
@@ -324,7 +324,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
          radeon_emit(4); /* poll interval */
 
          /* Disable the thread trace mode. */
-         radeon_set_privileged_config_reg(cs, R_008D1C_SQ_THREAD_TRACE_CTRL,
+         radeon_set_privileged_config_reg(R_008D1C_SQ_THREAD_TRACE_CTRL,
                                           S_008D1C_MODE(0));
 
          /* Wait for thread trace completion. */
@@ -763,7 +763,7 @@ si_emit_spi_config_cntl(struct si_context* sctx,
       radeon_set_uconfig_reg(R_031100_SPI_CONFIG_CNTL, spi_config_cntl);
    } else {
       /* SPI_CONFIG_CNTL is a protected register on GFX6-GFX8. */
-      radeon_set_privileged_config_reg(cs, R_009100_SPI_CONFIG_CNTL,
+      radeon_set_privileged_config_reg(R_009100_SPI_CONFIG_CNTL,
                                        S_009100_ENABLE_SQG_TOP_EVENTS(enable) |
                                        S_009100_ENABLE_SQG_BOP_EVENTS(enable));
    }

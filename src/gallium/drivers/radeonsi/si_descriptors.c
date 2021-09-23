@@ -2070,7 +2070,7 @@ void si_shader_change_notify(struct si_context *sctx)
          \
          radeon_set_sh_reg_seq(sh_offset, count); \
          for (int i = 0; i < count; i++) \
-            radeon_emit_32bit_pointer(sctx->screen, cs, descs[i].gpu_address); \
+            radeon_emit_32bit_pointer(sctx->screen, descs[i].gpu_address); \
       } \
    } \
 } while (0)

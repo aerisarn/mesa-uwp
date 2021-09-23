@@ -152,7 +152,7 @@
    radeon_emit(value); \
 } while (0)
 
-#define radeon_set_context_reg_rmw(cs, reg, value, mask) do { \
+#define radeon_set_context_reg_rmw(reg, value, mask) do { \
    SI_CHECK_SHADOWED_REGS(reg, 1); \
    assert((reg) >= SI_CONTEXT_REG_OFFSET); \
    radeon_emit(PKT3(PKT3_CONTEXT_REG_RMW, 2, 0)); \
@@ -168,7 +168,7 @@
    __value &= mask; \
    if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
        sctx->tracked_regs.reg_value[reg] != __value) { \
-      radeon_set_context_reg_rmw(cs, offset, __value, mask); \
+      radeon_set_context_reg_rmw(offset, __value, mask); \
       sctx->tracked_regs.reg_saved |= 0x1ull << (reg); \
       sctx->tracked_regs.reg_value[reg] = __value; \
    } \
@@ -279,7 +279,7 @@
    } \
 } while (0)
 
-#define radeon_set_privileged_config_reg(cs, reg, value) do { \
+#define radeon_set_privileged_config_reg(reg, value) do { \
    assert((reg) < CIK_UCONFIG_REG_OFFSET); \
    radeon_emit(PKT3(PKT3_COPY_DATA, 4, 0)); \
    radeon_emit(COPY_DATA_SRC_SEL(COPY_DATA_IMM) | \
@@ -290,7 +290,7 @@
    radeon_emit(0); /* unused */ \
 } while (0)
 
-#define radeon_emit_32bit_pointer(sscreen, cs, va) do { \
+#define radeon_emit_32bit_pointer(sscreen, va) do { \
    radeon_emit(va); \
    assert((va) == 0 || ((va) >> 32) == sscreen->info.address32_hi); \
 } while (0)
@@ -298,7 +298,7 @@
 #define radeon_emit_one_32bit_pointer(sctx, desc, sh_base) do { \
    unsigned sh_offset = (sh_base) + (desc)->shader_userdata_offset; \
    radeon_set_sh_reg_seq(sh_offset, 1); \
-   radeon_emit_32bit_pointer(sctx->screen, cs, (desc)->gpu_address); \
+   radeon_emit_32bit_pointer(sctx->screen, (desc)->gpu_address); \
 } while (0)
 
 /* This should be evaluated at compile time if all parameters are constants. */
