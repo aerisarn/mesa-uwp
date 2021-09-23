@@ -302,9 +302,6 @@ struct tu_queue
    struct vk_queue vk;
 
    struct tu_device *device;
-   uint32_t queue_family_index;
-   int queue_idx;
-   VkDeviceQueueCreateFlags flags;
 
    uint32_t msm_queue_id;
    int fence;

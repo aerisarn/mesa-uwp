@@ -252,7 +252,7 @@ tu_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
 
    return wsi_common_queue_present(
       &queue->device->physical_device->wsi_device,
-      tu_device_to_handle(queue->device), _queue, queue->queue_family_index,
+      tu_device_to_handle(queue->device), _queue, queue->vk.queue_family_index,
       pPresentInfo);
 }
 
