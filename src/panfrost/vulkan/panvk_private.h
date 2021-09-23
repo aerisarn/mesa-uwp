@@ -725,6 +725,7 @@ struct panvk_shader {
    struct pan_shader_info info;
    struct util_dynarray binary;
    unsigned sysval_ubo;
+   struct pan_compute_dim local_size;
 };
 
 struct panvk_shader *
@@ -791,6 +792,10 @@ struct panvk_pipeline {
       bool dynamic_rsd;
       uint8_t rt_mask;
    } fs;
+
+   struct {
+      struct pan_compute_dim local_size;
+   } cs;
 
    struct {
       unsigned topology;

@@ -579,6 +579,9 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    shader->info.texture_count = layout->num_textures;
 
    shader->sysval_ubo = sysval_ubo;
+   shader->local_size.x = nir->info.workgroup_size[0];
+   shader->local_size.y = nir->info.workgroup_size[1];
+   shader->local_size.z = nir->info.workgroup_size[2];
 
    ralloc_free(nir);
 
