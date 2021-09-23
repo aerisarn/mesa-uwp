@@ -1081,7 +1081,6 @@ struct anv_queue {
 
    struct anv_device *                       device;
 
-   VkDeviceQueueCreateFlags                  flags;
    const struct anv_queue_family *           family;
 
    uint32_t                                  exec_flags;

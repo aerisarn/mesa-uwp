@@ -3413,7 +3413,7 @@ void anv_GetDeviceQueue2(
    }
    assert(queue != NULL);
 
-   if (queue && queue->flags == pQueueInfo->flags)
+   if (queue && queue->vk.flags == pQueueInfo->flags)
       *pQueue = anv_queue_to_handle(queue);
    else
       *pQueue = NULL;

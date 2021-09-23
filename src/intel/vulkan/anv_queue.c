@@ -485,10 +485,9 @@ anv_queue_init(struct anv_device *device, struct anv_queue *queue,
       return result;
 
    queue->device = device;
-   queue->flags = pCreateInfo->flags;
 
-   assert(pCreateInfo->queueFamilyIndex < pdevice->queue.family_count);
-   queue->family = &pdevice->queue.families[pCreateInfo->queueFamilyIndex];
+   assert(queue->vk.queue_family_index < pdevice->queue.family_count);
+   queue->family = &pdevice->queue.families[queue->vk.queue_family_index];
 
    queue->exec_flags = exec_flags;
    queue->lost = false;
