@@ -499,7 +499,7 @@ radv_get_saved_pipeline(struct radv_device *device, enum ring_type ring)
 static void
 radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
 {
-   enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
+   enum ring_type ring = radv_queue_family_to_ring(queue->vk.queue_family_index);
    struct radv_pipeline *pipeline;
 
    fprintf(f, "RING_%s:\n", ring == RING_GFX ? "GFX" : "COMPUTE");
@@ -609,7 +609,7 @@ radv_dump_device_name(struct radv_device *device, FILE *f)
 static void
 radv_dump_umr_ring(struct radv_queue *queue, FILE *f)
 {
-   enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
+   enum ring_type ring = radv_queue_family_to_ring(queue->vk.queue_family_index);
    struct radv_device *device = queue->device;
    char cmd[128];
 
@@ -627,7 +627,7 @@ radv_dump_umr_ring(struct radv_queue *queue, FILE *f)
 static void
 radv_dump_umr_waves(struct radv_queue *queue, FILE *f)
 {
-   enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
+   enum ring_type ring = radv_queue_family_to_ring(queue->vk.queue_family_index);
    struct radv_device *device = queue->device;
    char cmd[128];
 
@@ -647,7 +647,7 @@ radv_gpu_hang_occured(struct radv_queue *queue, enum ring_type ring)
 {
    struct radeon_winsys *ws = queue->device->ws;
 
-   if (!ws->ctx_wait_idle(queue->hw_ctx, ring, queue->queue_idx))
+   if (!ws->ctx_wait_idle(queue->hw_ctx, ring, queue->vk.index_in_family))
       return true;
 
    return false;
@@ -660,7 +660,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
    enum ring_type ring;
    uint64_t addr;
 
-   ring = radv_queue_family_to_ring(queue->queue_family_index);
+   ring = radv_queue_family_to_ring(queue->vk.queue_family_index);
 
    bool hang_occurred = radv_gpu_hang_occured(queue, ring);
    bool vm_fault_occurred = false;
@@ -999,12 +999,12 @@ radv_dump_sq_hw_regs(struct radv_device *device)
 void
 radv_check_trap_handler(struct radv_queue *queue)
 {
-   enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
+   enum ring_type ring = radv_queue_family_to_ring(queue->vk.queue_family_index);
    struct radv_device *device = queue->device;
    struct radeon_winsys *ws = device->ws;
 
    /* Wait for the context to be idle in a finite time. */
-   ws->ctx_wait_idle(queue->hw_ctx, ring, queue->queue_idx);
+   ws->ctx_wait_idle(queue->hw_ctx, ring, queue->vk.index_in_family);
 
    /* Try to detect if the trap handler has been reached by the hw by
     * looking at ttmp0 which should be non-zero if a shader exception

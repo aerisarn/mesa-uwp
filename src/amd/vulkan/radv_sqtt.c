@@ -507,7 +507,7 @@ bool
 radv_begin_thread_trace(struct radv_queue *queue)
 {
    struct radv_device *device = queue->device;
-   int family = queue->queue_family_index;
+   int family = queue->vk.queue_family_index;
    struct radeon_winsys *ws = device->ws;
    struct radeon_cmdbuf *cs;
    VkResult result;
@@ -563,7 +563,7 @@ bool
 radv_end_thread_trace(struct radv_queue *queue)
 {
    struct radv_device *device = queue->device;
-   int family = queue->queue_family_index;
+   int family = queue->vk.queue_family_index;
    struct radeon_winsys *ws = device->ws;
    struct radeon_cmdbuf *cs;
    VkResult result;

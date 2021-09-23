@@ -2508,10 +2508,7 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
                 const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority)
 {
    queue->device = device;
-   queue->queue_family_index = create_info->queueFamilyIndex;
-   queue->queue_idx = idx;
    queue->priority = radv_get_queue_global_priority(global_priority);
-   queue->flags = create_info->flags;
    queue->hw_ctx = device->hw_ctx[queue->priority];
 
    VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info, idx);
@@ -3235,7 +3232,7 @@ radv_GetDeviceQueue2(VkDevice _device, const VkDeviceQueueInfo2 *pQueueInfo, VkQ
    struct radv_queue *queue;
 
    queue = &device->queues[pQueueInfo->queueFamilyIndex][pQueueInfo->queueIndex];
-   if (pQueueInfo->flags != queue->flags) {
+   if (pQueueInfo->flags != queue->vk.flags) {
       /* From the Vulkan 1.1.70 spec:
        *
        * "The queue returned by vkGetDeviceQueue2 must have the same
@@ -3523,7 +3520,7 @@ radv_emit_graphics_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
                            uint32_t size_per_wave, uint32_t waves,
                            struct radeon_winsys_bo *scratch_bo)
 {
-   if (queue->queue_family_index != RADV_QUEUE_GENERAL)
+   if (queue->vk.queue_family_index != RADV_QUEUE_GENERAL)
       return;
 
    if (!scratch_bo)
@@ -3828,7 +3825,7 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
       enum rgp_flush_bits sqtt_flush_bits = 0;
       struct radeon_cmdbuf *cs = NULL;
       cs = queue->device->ws->cs_create(queue->device->ws,
-                                        queue->queue_family_index ? RING_COMPUTE : RING_GFX);
+                                        queue->vk.queue_family_index ? RING_COMPUTE : RING_GFX);
       if (!cs) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
@@ -3840,7 +3837,7 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
          radv_cs_add_buffer(queue->device->ws, cs, scratch_bo);
 
       /* Emit initial configuration. */
-      switch (queue->queue_family_index) {
+      switch (queue->vk.queue_family_index) {
       case RADV_QUEUE_GENERAL:
          radv_init_graphics_state(cs, queue);
          break;
@@ -3875,9 +3872,9 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
       if (i == 0) {
          si_cs_emit_cache_flush(
             cs, queue->device->physical_device->rad_info.chip_class, NULL, 0,
-            queue->queue_family_index == RING_COMPUTE &&
+            queue->vk.queue_family_index == RING_COMPUTE &&
                queue->device->physical_device->rad_info.chip_class >= GFX7,
-            (queue->queue_family_index == RADV_QUEUE_COMPUTE
+            (queue->vk.queue_family_index == RADV_QUEUE_COMPUTE
                 ? RADV_CMD_FLAG_CS_PARTIAL_FLUSH
                 : (RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH)) |
                RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE | RADV_CMD_FLAG_INV_VCACHE |
@@ -3885,7 +3882,7 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
             &sqtt_flush_bits, 0);
       } else if (i == 1) {
          si_cs_emit_cache_flush(cs, queue->device->physical_device->rad_info.chip_class, NULL, 0,
-                                queue->queue_family_index == RING_COMPUTE &&
+                                queue->vk.queue_family_index == RING_COMPUTE &&
                                    queue->device->physical_device->rad_info.chip_class >= GFX7,
                                 RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE |
                                    RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2 |
@@ -4610,8 +4607,8 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
    }
 
    if (!submission->cmd_buffer_count) {
-      result = queue->device->ws->cs_submit(ctx, queue->queue_idx,
-                                            &queue->device->empty_cs[queue->queue_family_index], 1,
+      result = queue->device->ws->cs_submit(ctx, queue->vk.index_in_family,
+                                            &queue->device->empty_cs[queue->vk.queue_family_index], 1,
                                             NULL, NULL, &sem_info, false);
       if (result != VK_SUCCESS)
          goto fail;
@@ -4641,7 +4638,7 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
          sem_info.cs_emit_wait = j == 0;
          sem_info.cs_emit_signal = j + advance == submission->cmd_buffer_count;
 
-         result = queue->device->ws->cs_submit(ctx, queue->queue_idx, cs_array + j, advance,
+         result = queue->device->ws->cs_submit(ctx, queue->vk.index_in_family, cs_array + j, advance,
                                                initial_preamble, continue_preamble_cs, &sem_info,
                                                can_patch);
          if (result != VK_SUCCESS) {
@@ -4862,7 +4859,8 @@ radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
       return false;
 
    result =
-      queue->device->ws->cs_submit(ctx, queue->queue_idx, &cs, 1, NULL, NULL, &sem_info, false);
+      queue->device->ws->cs_submit(ctx, queue->vk.index_in_family, &cs, 1,
+                                   NULL, NULL, &sem_info, false);
    radv_free_sem_info(&sem_info);
    if (result != VK_SUCCESS)
       return false;
@@ -4951,7 +4949,7 @@ radv_QueueSubmit(VkQueue _queue, uint32_t submitCount, const VkSubmitInfo *pSubm
 static const char *
 radv_get_queue_family_name(struct radv_queue *queue)
 {
-   switch (queue->queue_family_index) {
+   switch (queue->vk.queue_family_index) {
    case RADV_QUEUE_GENERAL:
       return "graphics";
    case RADV_QUEUE_COMPUTE:
@@ -4978,7 +4976,8 @@ radv_QueueWaitIdle(VkQueue _queue)
    mtx_unlock(&queue->pending_mutex);
 
    if (!queue->device->ws->ctx_wait_idle(
-          queue->hw_ctx, radv_queue_family_to_ring(queue->queue_family_index), queue->queue_idx)) {
+          queue->hw_ctx, radv_queue_family_to_ring(queue->vk.queue_family_index),
+          queue->vk.index_in_family)) {
       return radv_device_set_lost(queue->device,
                                   "Failed to wait for a '%s' queue "
                                   "to be idle. GPU hang ?",
