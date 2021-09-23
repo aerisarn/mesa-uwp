@@ -3386,39 +3386,6 @@ VkResult anv_EnumerateInstanceLayerProperties(
    return vk_error(VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-void anv_GetDeviceQueue2(
-    VkDevice                                    _device,
-    const VkDeviceQueueInfo2*                   pQueueInfo,
-    VkQueue*                                    pQueue)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_physical_device *pdevice = device->physical;
-
-   assert(pQueueInfo->queueFamilyIndex < pdevice->queue.family_count);
-   struct anv_queue_family *queue_family =
-      &pdevice->queue.families[pQueueInfo->queueFamilyIndex];
-
-   int idx_in_family = 0;
-   struct anv_queue *queue = NULL;
-   for (uint32_t i = 0; i < device->queue_count; i++) {
-      if (device->queues[i].family != queue_family)
-         continue;
-
-      if (idx_in_family == pQueueInfo->queueIndex) {
-         queue = &device->queues[i];
-         break;
-      }
-
-      idx_in_family++;
-   }
-   assert(queue != NULL);
-
-   if (queue && queue->vk.flags == pQueueInfo->flags)
-      *pQueue = anv_queue_to_handle(queue);
-   else
-      *pQueue = NULL;
-}
-
 void
 _anv_device_report_lost(struct anv_device *device)
 {
@@ -3558,23 +3525,6 @@ anv_device_wait(struct anv_device *device, struct anv_bo *bo,
     * an ioctl, but we just did an ioctl to wait so it's no great loss.
     */
    return anv_device_query_status(device);
-}
-
-VkResult anv_DeviceWaitIdle(
-    VkDevice                                    _device)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-
-   if (anv_device_is_lost(device))
-      return VK_ERROR_DEVICE_LOST;
-
-   for (uint32_t i = 0; i < device->queue_count; i++) {
-      VkResult res = anv_queue_submit_simple_batch(&device->queues[i], NULL);
-      if (res != VK_SUCCESS)
-         return res;
-   }
-
-   return VK_SUCCESS;
 }
 
 uint64_t
