@@ -2158,7 +2158,13 @@ static void si_draw_vbo(struct pipe_context *ctx,
           /* Tessellation sets ngg_cull_vert_threshold to UINT_MAX if the prim type
            * is not triangles, so this check is only needed without tessellation. */
           (HAS_TESS || sctx->current_rast_prim == PIPE_PRIM_TRIANGLES) &&
-          total_direct_count > hw_vs->ngg_cull_vert_threshold) {
+          /* Only the first draw for a shader starts with culling disabled and it's disabled
+           * until we pass the total_direct_count check and then it stays enabled until
+           * the shader is changed. This eliminates most culling on/off state changes. */
+          (old_ngg_culling || total_direct_count > hw_vs->ngg_cull_vert_threshold)) {
+         /* Check that the current shader allows culling. */
+         assert(hw_vs->ngg_cull_vert_threshold != UINT_MAX);
+
          uint8_t ngg_culling = sctx->viewport0_y_inverted ? rs->ngg_cull_flags_y_inverted :
                                                             rs->ngg_cull_flags;
 

@@ -3154,6 +3154,9 @@ static void si_update_common_shader_state(struct si_context *sctx, struct si_sha
                                 si_shader_uses_bindless_images(sctx->shader.tcs.cso) ||
                                 si_shader_uses_bindless_images(sctx->shader.tes.cso);
 
+   if (type == PIPE_SHADER_VERTEX || type == PIPE_SHADER_TESS_EVAL || type == PIPE_SHADER_GEOMETRY)
+      sctx->ngg_culling = 0; /* this will be enabled on the first draw if needed */
+
    si_invalidate_inlinable_uniforms(sctx, type);
    sctx->do_update_shaders = true;
 }
