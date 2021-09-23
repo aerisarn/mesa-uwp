@@ -185,6 +185,7 @@ void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *ke
 void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
 
 /* gfx10_shader_ngg.c */
+LLVMValueRef gfx10_get_thread_id_in_tg(struct si_shader_context *ctx);
 bool gfx10_ngg_export_prim_early(struct si_shader *shader);
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx);
 void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef user_edgeflags[3],
