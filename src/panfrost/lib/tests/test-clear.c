@@ -139,7 +139,7 @@ static const struct test clear_tests[] = {
 };
 
 #define ASSERT_EQ(x, y) do { \
-   if ((x[0] == y[0]) || (x[1] == y[1]) || (x[2] == y[2]) || (x[3] == y[3])) { \
+   if ((x[0] == y[0]) && (x[1] == y[1]) && (x[2] == y[2]) && (x[3] == y[3])) { \
       nr_pass++; \
    } else { \
       nr_fail++; \
