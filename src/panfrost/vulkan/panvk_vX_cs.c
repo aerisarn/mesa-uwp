@@ -352,23 +352,31 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
    for (unsigned i = 0; i < ARRAY_SIZE(state->sets); i++) {
       const struct panvk_descriptor_set_layout *set_layout =
          pipeline->layout->sets[i].layout;
-      const struct panvk_descriptor_set *set = state->sets[i].set;
+      const struct panvk_descriptor_set *set = state->sets[i];
       unsigned offset = pipeline->layout->sets[i].ubo_offset;
 
       if (!set_layout)
          continue;
 
       if (!set) {
-         unsigned num_ubos = (set_layout->num_dynoffsets != 0) + set_layout->num_ubos;
-         memset(&ubos[offset], 0, num_ubos * sizeof(*ubos));
+         memset(&ubos[offset], 0, set_layout->num_ubos * sizeof(*ubos));
       } else {
          memcpy(&ubos[offset], set->ubos, set_layout->num_ubos * sizeof(*ubos));
-         if (set_layout->num_dynoffsets) {
-            panvk_per_arch(emit_ubo)(state->sets[i].dynoffsets.gpu,
-                                     set->layout->num_dynoffsets * sizeof(uint32_t),
-                                     &ubos[offset + set_layout->num_ubos]);
-         }
       }
+   }
+
+   unsigned offset = pipeline->layout->num_ubos;
+   for (unsigned i = 0; i < pipeline->layout->num_dyn_ubos; i++) {
+      const struct panvk_buffer_desc *bdesc = &state->dyn.ubos[i];
+      size_t size = (bdesc->size == VK_WHOLE_SIZE && bdesc->buffer) ?
+                    (bdesc->buffer->bo->size - bdesc->offset) :
+                    bdesc->size;
+      mali_ptr address = bdesc->buffer ? bdesc->buffer->bo->ptr.gpu + bdesc->offset : 0;
+
+      if (size)
+         panvk_per_arch(emit_ubo)(address, size, &ubos[offset + i]);
+      else
+         memset(&ubos[offset + i], 0, sizeof(*ubos));
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(pipeline->sysvals); i++) {

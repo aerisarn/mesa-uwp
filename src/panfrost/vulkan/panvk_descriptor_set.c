@@ -87,7 +87,7 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->binding_count = num_bindings;
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0, ssbo_idx = 0;
-   unsigned dynoffset_idx = 0, desc_idx = 0;
+   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, desc_idx = 0;
 
    for (unsigned i = 0; i < pCreateInfo->bindingCount; i++) {
       const VkDescriptorSetLayoutBinding *binding = &bindings[i];
@@ -128,17 +128,17 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
          tex_idx += binding_layout->array_size;
          break;
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-         binding_layout->dynoffset_idx = dynoffset_idx;
-         dynoffset_idx += binding_layout->array_size;
-         FALLTHROUGH;
+         binding_layout->dyn_ubo_idx = dyn_ubo_idx;
+         dyn_ubo_idx += binding_layout->array_size;
+         break;
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
          binding_layout->ubo_idx = ubo_idx;
          ubo_idx += binding_layout->array_size;
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         binding_layout->dynoffset_idx = dynoffset_idx;
-         dynoffset_idx += binding_layout->array_size;
-         FALLTHROUGH;
+         binding_layout->dyn_ssbo_idx = dyn_ssbo_idx;
+         dyn_ssbo_idx += binding_layout->array_size;
+         break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          binding_layout->ssbo_idx = ssbo_idx;
          ssbo_idx += binding_layout->array_size;
@@ -152,8 +152,9 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->num_samplers = sampler_idx;
    set_layout->num_textures = tex_idx;
    set_layout->num_ubos = ubo_idx;
+   set_layout->num_dyn_ubos = dyn_ubo_idx;
    set_layout->num_ssbos = ssbo_idx;
-   set_layout->num_dynoffsets = dynoffset_idx;
+   set_layout->num_dyn_ssbos = dyn_ssbo_idx;
 
    free(bindings);
    *pSetLayout = panvk_descriptor_set_layout_to_handle(set_layout);
@@ -273,7 +274,8 @@ panvk_CreatePipelineLayout(VkDevice _device,
    layout->num_sets = pCreateInfo->setLayoutCount;
    _mesa_sha1_init(&ctx);
 
-   unsigned sampler_idx = 0, tex_idx = 0, ssbo_idx = 0, ubo_idx = 0, dynoffset_idx = 0;
+   unsigned sampler_idx = 0, tex_idx = 0, ssbo_idx = 0, ubo_idx = 0;
+   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0;
    for (unsigned set = 0; set < pCreateInfo->setLayoutCount; set++) {
       VK_FROM_HANDLE(panvk_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
@@ -281,13 +283,15 @@ panvk_CreatePipelineLayout(VkDevice _device,
       layout->sets[set].sampler_offset = sampler_idx;
       layout->sets[set].tex_offset = tex_idx;
       layout->sets[set].ubo_offset = ubo_idx;
+      layout->sets[set].dyn_ubo_offset = dyn_ubo_idx;
       layout->sets[set].ssbo_offset = ssbo_idx;
-      layout->sets[set].dynoffset_offset = dynoffset_idx;
+      layout->sets[set].dyn_ssbo_offset = dyn_ssbo_idx;
       sampler_idx += set_layout->num_samplers;
       tex_idx += set_layout->num_textures;
-      ubo_idx += set_layout->num_ubos + (set_layout->num_dynoffsets != 0);
+      ubo_idx += set_layout->num_ubos;
+      dyn_ubo_idx += set_layout->num_dyn_ubos;
       ssbo_idx += set_layout->num_ssbos;
-      dynoffset_idx += set_layout->num_dynoffsets;
+      dyn_ssbo_idx += set_layout->num_dyn_ssbos;
 
       for (unsigned b = 0; b < set_layout->binding_count; b++) {
          struct panvk_descriptor_set_binding_layout *binding_layout =
@@ -320,8 +324,9 @@ panvk_CreatePipelineLayout(VkDevice _device,
    layout->num_samplers = sampler_idx;
    layout->num_textures = tex_idx;
    layout->num_ubos = ubo_idx;
+   layout->num_dyn_ubos = dyn_ubo_idx;
    layout->num_ssbos = ssbo_idx;
-   layout->num_dynoffsets = dynoffset_idx;
+   layout->num_dyn_ssbos = dyn_ssbo_idx;
 
    _mesa_sha1_final(&ctx, layout->sha1);
 
@@ -436,7 +441,9 @@ panvk_descriptor_set_destroy(struct panvk_device *device,
    vk_free(&device->vk.alloc, set->textures);
    vk_free(&device->vk.alloc, set->samplers);
    vk_free(&device->vk.alloc, set->ubos);
+   vk_free(&device->vk.alloc, set->dyn_ubos);
    vk_free(&device->vk.alloc, set->ssbos);
+   vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->descs);
    vk_object_free(&device->vk, NULL, set);
 }

@@ -126,7 +126,7 @@ panvk_pipeline_builder_compile_shaders(struct panvk_pipeline_builder *builder,
    }
 
    /* compile shaders in reverse order */
-   unsigned sysval_ubo = builder->layout->num_ubos;
+   unsigned sysval_ubo = builder->layout->num_ubos + builder->layout->num_dyn_ubos;
 
    for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
         stage > MESA_SHADER_NONE; stage--) {
@@ -361,7 +361,7 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
          pipeline->cs.local_size = shader->local_size;
    }
 
-   pipeline->num_ubos = builder->layout->num_ubos;
+   pipeline->num_ubos = builder->layout->num_ubos + builder->layout->num_dyn_ubos;
    for (unsigned i = 0; i < ARRAY_SIZE(pipeline->sysvals); i++) {
       if (pipeline->sysvals[i].ids.sysval_count)
          pipeline->num_ubos = MAX2(pipeline->num_ubos, pipeline->sysvals[i].ubo_idx + 1);

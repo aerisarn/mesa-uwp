@@ -66,7 +66,7 @@ panvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
 void
 panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                             VkPipelineBindPoint pipelineBindPoint,
-                            VkPipelineLayout _layout,
+                            VkPipelineLayout layout,
                             uint32_t firstSet,
                             uint32_t descriptorSetCount,
                             const VkDescriptorSet *pDescriptorSets,
@@ -74,36 +74,46 @@ panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                             const uint32_t *pDynamicOffsets)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
-   VK_FROM_HANDLE(panvk_pipeline_layout, layout, _layout);
+   VK_FROM_HANDLE(panvk_pipeline_layout, playout, layout);
 
    struct panvk_descriptor_state *descriptors_state =
       &cmdbuf->bind_points[pipelineBindPoint].desc_state;
 
+   unsigned dynoffset_idx = 0;
    for (unsigned i = 0; i < descriptorSetCount; ++i) {
       unsigned idx = i + firstSet;
       VK_FROM_HANDLE(panvk_descriptor_set, set, pDescriptorSets[i]);
 
-      descriptors_state->sets[idx].set = set;
+      descriptors_state->sets[idx] = set;
 
-      if (layout->num_dynoffsets) {
-         assert(dynamicOffsetCount >= set->layout->num_dynoffsets);
+      if (set->layout->num_dyn_ssbos || set->layout->num_dyn_ubos) {
+         unsigned dyn_ubo_offset = playout->sets[idx].dyn_ubo_offset;
+         unsigned dyn_ssbo_offset = playout->sets[idx].dyn_ssbo_offset;
 
-         descriptors_state->sets[idx].dynoffsets =
-            pan_pool_alloc_aligned(&cmdbuf->desc_pool.base,
-                                   ALIGN(layout->num_dynoffsets, 4) *
-                                   sizeof(*pDynamicOffsets),
-                                   16);
-         memcpy(descriptors_state->sets[idx].dynoffsets.cpu,
-                pDynamicOffsets,
-                sizeof(*pDynamicOffsets) * set->layout->num_dynoffsets);
-         dynamicOffsetCount -= set->layout->num_dynoffsets;
-         pDynamicOffsets += set->layout->num_dynoffsets;
+         for (unsigned b = 0; b < set->layout->binding_count; b++) {
+            for (unsigned e = 0; e < set->layout->bindings[b].array_size; e++) {
+               struct panvk_buffer_desc *bdesc = NULL;
+
+               if (set->layout->bindings[b].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
+                  bdesc = &descriptors_state->dyn.ubos[dyn_ubo_offset++];
+                  *bdesc = set->dyn_ubos[set->layout->bindings[b].dyn_ubo_idx + e];
+               } else if (set->layout->bindings[b].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+                  bdesc = &descriptors_state->dyn.ssbos[dyn_ssbo_offset++];
+                  *bdesc = set->dyn_ssbos[set->layout->bindings[b].dyn_ssbo_idx + e];
+               }
+
+               if (bdesc) {
+                  bdesc->offset += pDynamicOffsets[dynoffset_idx++];
+               }
+            }
+         }
       }
 
-      if (set->layout->num_ssbos)
+      if (set->layout->num_ssbos || set->layout->num_dyn_ssbos)
          descriptors_state->dirty |= PANVK_DYNAMIC_SSBO;
 
-      if (set->layout->num_ubos || set->layout->num_ssbos || set->layout->num_dynoffsets)
+      if (set->layout->num_ubos || set->layout->num_dyn_ubos ||
+          set->layout->num_ssbos || set->layout->num_dyn_ssbos)
          descriptors_state->ubos = 0;
 
       if (set->layout->num_textures)
@@ -113,7 +123,7 @@ panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
          descriptors_state->samplers = 0;
    }
 
-   assert(!dynamicOffsetCount);
+   assert(dynoffset_idx == dynamicOffsetCount);
 }
 
 void

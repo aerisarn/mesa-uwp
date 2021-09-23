@@ -150,13 +150,19 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *intr,
    unsigned base;
 
    switch (binding_layout->type) {
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       base = binding_layout->ubo_idx + ctx->layout->sets[set].ubo_offset;
       break;
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      base = binding_layout->dyn_ubo_idx + ctx->layout->num_ubos +
+             ctx->layout->sets[set].dyn_ubo_offset;
+      break;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
       base = binding_layout->ssbo_idx + ctx->layout->sets[set].ssbo_offset;
+      break;
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      base = binding_layout->dyn_ssbo_idx + ctx->layout->num_ssbos +
+             ctx->layout->sets[set].dyn_ssbo_offset;
       break;
    default:
       unreachable("Invalid descriptor type");

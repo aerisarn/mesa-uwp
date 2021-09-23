@@ -357,7 +357,9 @@ struct panvk_descriptor_set {
    const struct panvk_descriptor_set_layout *layout;
    struct panvk_descriptor *descs;
    struct panvk_buffer_desc *ssbos;
+   struct panvk_buffer_desc *dyn_ssbos;
    void *ubos;
+   struct panvk_buffer_desc *dyn_ubos;
    void *samplers;
    void *textures;
 };
@@ -377,13 +379,11 @@ struct panvk_descriptor_set_binding_layout {
          unsigned sampler_idx;
          unsigned tex_idx;
       };
-      struct {
-         union {
-            unsigned ssbo_idx;
-            unsigned ubo_idx;
-         };
-         unsigned dynoffset_idx;
-      };
+      unsigned ssbo_idx;
+      unsigned dyn_ssbo_idx;
+      unsigned ubo_idx;
+      unsigned dyn_ubo_idx;
+      unsigned img_idx;
    };
 
    /* Shader stages affected by this set+binding */
@@ -405,8 +405,9 @@ struct panvk_descriptor_set_layout {
    unsigned num_samplers;
    unsigned num_textures;
    unsigned num_ubos;
+   unsigned num_dyn_ubos;
    unsigned num_ssbos;
-   unsigned num_dynoffsets;
+   unsigned num_dyn_ssbos;
 
    /* Number of bindings in this descriptor set */
    uint32_t binding_count;
@@ -422,8 +423,9 @@ struct panvk_pipeline_layout {
    unsigned num_samplers;
    unsigned num_textures;
    unsigned num_ubos;
+   unsigned num_dyn_ubos;
    unsigned num_ssbos;
-   unsigned num_dynoffsets;
+   unsigned num_dyn_ssbos;
    uint32_t num_sets;
 
    struct {
@@ -436,8 +438,9 @@ struct panvk_pipeline_layout {
       unsigned sampler_offset;
       unsigned tex_offset;
       unsigned ubo_offset;
+      unsigned dyn_ubo_offset;
       unsigned ssbo_offset;
-      unsigned dynoffset_offset;
+      unsigned dyn_ssbo_offset;
    } sets[MAX_SETS];
 };
 
@@ -491,10 +494,11 @@ enum panvk_dynamic_state_bits {
 
 struct panvk_descriptor_state {
    uint32_t dirty;
+   const struct panvk_descriptor_set *sets[MAX_SETS];
    struct {
-      const struct panvk_descriptor_set *set;
-      struct panfrost_ptr dynoffsets;
-   } sets[MAX_SETS];
+      struct panvk_buffer_desc ubos[MAX_DYNAMIC_UNIFORM_BUFFERS];
+      struct panvk_buffer_desc ssbos[MAX_DYNAMIC_STORAGE_BUFFERS];
+   } dyn;
    mali_ptr sysvals[MESA_SHADER_STAGES];
    mali_ptr ubos;
    mali_ptr textures;

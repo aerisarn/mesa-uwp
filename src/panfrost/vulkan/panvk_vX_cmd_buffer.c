@@ -305,10 +305,14 @@ panvk_sysval_upload_ssbo_info(struct panvk_cmd_buffer *cmdbuf,
    for (unsigned s = 0; s < pipeline->layout->num_sets; s++) {
       unsigned ssbo_offset = pipeline->layout->sets[s].ssbo_offset;
       unsigned num_ssbos = pipeline->layout->sets[s].layout->num_ssbos;
+      unsigned dyn_ssbo_offset = pipeline->layout->sets[s].dyn_ssbo_offset + pipeline->layout->num_ssbos;
+      unsigned num_dyn_ssbos = pipeline->layout->sets[s].layout->num_dyn_ssbos;
       const struct panvk_buffer_desc *ssbo = NULL;
 
       if (ssbo_id >= ssbo_offset && ssbo_id < (ssbo_offset + num_ssbos))
-         ssbo = &desc_state->sets[s].set->ssbos[ssbo_id - ssbo_offset];
+         ssbo = &desc_state->sets[s]->ssbos[ssbo_id - ssbo_offset];
+      else if (ssbo_id >= dyn_ssbo_offset && ssbo_id < (dyn_ssbo_offset + num_dyn_ssbos))
+         ssbo = &desc_state->dyn.ssbos[ssbo_id - pipeline->layout->num_ssbos];
 
       if (ssbo) {
          data->u64[0] = ssbo->buffer->bo->ptr.gpu + ssbo->offset;
@@ -446,14 +450,14 @@ panvk_cmd_prepare_textures(struct panvk_cmd_buffer *cmdbuf,
    void *texture = textures.cpu;
 
    for (unsigned i = 0; i < ARRAY_SIZE(desc_state->sets); i++) {
-      if (!desc_state->sets[i].set) continue;
+      if (!desc_state->sets[i]) continue;
 
       memcpy(texture,
-             desc_state->sets[i].set->textures,
-             desc_state->sets[i].set->layout->num_textures *
+             desc_state->sets[i]->textures,
+             desc_state->sets[i]->layout->num_textures *
              tex_entry_size);
 
-      texture += desc_state->sets[i].set->layout->num_textures *
+      texture += desc_state->sets[i]->layout->num_textures *
                  tex_entry_size;
    }
 
@@ -479,14 +483,15 @@ panvk_cmd_prepare_samplers(struct panvk_cmd_buffer *cmdbuf,
    void *sampler = samplers.cpu;
 
    for (unsigned i = 0; i < ARRAY_SIZE(desc_state->sets); i++) {
-      if (!desc_state->sets[i].set) continue;
+      if (!desc_state->sets[i]) continue;
 
       memcpy(sampler,
-             desc_state->sets[i].set->samplers,
-             desc_state->sets[i].set->layout->num_samplers *
+             desc_state->sets[i]->samplers,
+             desc_state->sets[i]->layout->num_samplers *
              pan_size(SAMPLER));
 
-      sampler += desc_state->sets[i].set->layout->num_samplers;
+      sampler += desc_state->sets[i]->layout->num_samplers *
+                 pan_size(SAMPLER);
    }
 
    desc_state->samplers = samplers.gpu;

@@ -72,11 +72,27 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
          goto err_free_set;
    }
 
+   if (layout->num_dyn_ubos) {
+      set->dyn_ubos = vk_zalloc(&device->vk.alloc,
+                            sizeof(*set->dyn_ubos) * layout->num_dyn_ubos, 8,
+                            VK_OBJECT_TYPE_DESCRIPTOR_SET);
+      if (!set->dyn_ubos)
+         goto err_free_set;
+   }
+
    if (layout->num_ssbos) {
       set->ssbos = vk_zalloc(&device->vk.alloc,
                             sizeof(*set->ssbos) * layout->num_ssbos, 8,
                             VK_OBJECT_TYPE_DESCRIPTOR_SET);
       if (!set->ssbos)
+         goto err_free_set;
+   }
+
+   if (layout->num_dyn_ssbos) {
+      set->dyn_ssbos = vk_zalloc(&device->vk.alloc,
+                            sizeof(*set->dyn_ssbos) * layout->num_dyn_ssbos, 8,
+                            VK_OBJECT_TYPE_DESCRIPTOR_SET);
+      if (!set->dyn_ssbos)
          goto err_free_set;
    }
 
@@ -115,7 +131,9 @@ err_free_set:
    vk_free(&device->vk.alloc, set->textures);
    vk_free(&device->vk.alloc, set->samplers);
    vk_free(&device->vk.alloc, set->ssbos);
+   vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->ubos);
+   vk_free(&device->vk.alloc, set->dyn_ubos);
    vk_free(&device->vk.alloc, set->descs);
    vk_object_free(&device->vk, NULL, set);
    return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -170,16 +188,6 @@ panvk_set_texel_buffer_view_desc(struct panvk_descriptor *desc,
 {
    VK_FROM_HANDLE(panvk_buffer_view, buffer_view, *pTexelBufferView);
    desc->buffer_view = buffer_view;
-}
-
-static void
-panvk_set_buffer_info_desc(struct panvk_descriptor *desc,
-                           const VkDescriptorBufferInfo *pBufferInfo)
-{
-   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
-   desc->buffer_info.buffer = buffer;
-   desc->buffer_info.offset = pBufferInfo->offset;
-   desc->buffer_info.range = pBufferInfo->range;
 }
 
 static void
@@ -295,14 +303,18 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          for (unsigned i = 0; i < ndescs; i++) {
             unsigned ubo = binding_layout->ubo_idx + dest_offset + i;
             panvk_per_arch(set_ubo_desc)(&ubos[ubo],
                                          &pDescriptorWrite->pBufferInfo[src_offset + i]);
          }
          break;
-
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         for (unsigned i = 0; i < ndescs; i++) {
+            unsigned ubo = binding_layout->dyn_ubo_idx + dest_offset + i;
+            panvk_set_buffer_desc(&set->dyn_ubos[ubo], &pDescriptorWrite->pBufferInfo[src_offset + i]);
+         }
+         break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          for (unsigned i = 0; i < ndescs; i++) {
             unsigned ssbo = binding_layout->ssbo_idx + dest_offset + i;
@@ -310,8 +322,10 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
          }
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         for (unsigned i = 0; i < ndescs; i++)
-            panvk_set_buffer_info_desc(&descs[i], &pDescriptorWrite->pBufferInfo[src_offset + i]);
+         for (unsigned i = 0; i < ndescs; i++) {
+            unsigned ssbo = binding_layout->dyn_ssbo_idx + dest_offset + i;
+            panvk_set_buffer_desc(&set->dyn_ssbos[ssbo], &pDescriptorWrite->pBufferInfo[src_offset + i]);
+         }
          break;
       default:
          unreachable("Invalid type");
