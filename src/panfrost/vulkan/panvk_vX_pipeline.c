@@ -947,7 +947,7 @@ panvk_pipeline_builder_init_graphics(struct panvk_pipeline_builder *builder,
       builder->use_depth_stencil_attachment =
          subpass->zs_attachment.idx != VK_ATTACHMENT_UNUSED;
 
-      assert(subpass->color_count == create_info->pColorBlendState->attachmentCount);
+      assert(subpass->color_count <= create_info->pColorBlendState->attachmentCount);
       builder->active_color_attachments = 0;
       for (uint32_t i = 0; i < subpass->color_count; i++) {
          uint32_t idx = subpass->color_attachments[i].idx;
