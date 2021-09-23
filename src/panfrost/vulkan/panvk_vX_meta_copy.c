@@ -401,14 +401,15 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
                                struct pan_pool *bin_pool,
                                enum pipe_format srcfmt,
                                enum pipe_format dstfmt, unsigned dstmask,
-                               unsigned texdim, unsigned texisarray,
+                               unsigned texdim, bool texisarray, bool is_ms,
                                struct pan_shader_info *shader_info)
 {
    nir_builder b =
       nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                      GENX(pan_shader_get_compiler_options)(),
-                                     "panvk_meta_copy_img2img(srcfmt=%s,dstfmt=%s)",
-                                     util_format_name(srcfmt), util_format_name(dstfmt));
+                                     "panvk_meta_copy_img2img(srcfmt=%s,dstfmt=%s,%dD%s%s)",
+                                     util_format_name(srcfmt), util_format_name(dstfmt),
+                                     texdim, texisarray ? "[]" : "", is_ms ? ",ms" : "");
 
    b.shader->info.internal = true;
 
@@ -419,8 +420,8 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
    coord_var->data.location = VARYING_SLOT_TEX0;
    nir_ssa_def *coord = nir_f2u32(&b, nir_load_var(&b, coord_var));
 
-   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 1);
-   tex->op = nir_texop_txf;
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, is_ms ? 2 : 1);
+   tex->op = is_ms ? nir_texop_txf_ms : nir_texop_txf;
    tex->texture_index = 0;
    tex->is_array = texisarray;
    tex->dest_type = util_format_is_unorm(srcfmt) ?
@@ -436,6 +437,12 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
    tex->src[0].src_type = nir_tex_src_coord;
    tex->src[0].src = nir_src_for_ssa(coord);
    tex->coord_components = texdim + texisarray;
+
+   if (is_ms) {
+      tex->src[1].src_type = nir_tex_src_ms_index;
+      tex->src[1].src = nir_src_for_ssa(nir_load_sample_id(&b));
+   }
+
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4,
                      nir_alu_type_get_type_size(tex->dest_type), NULL);
    nir_builder_instr_insert(&b, &tex->instr);
@@ -546,6 +553,8 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
 
    util_dynarray_init(&binary, NULL);
    GENX(pan_shader_compile)(b.shader, &inputs, &binary, shader_info);
+
+   shader_info->fs.sample_shading = is_ms;
 
    mali_ptr shader =
       pan_pool_upload_aligned(bin_pool, binary.data, binary.size,
@@ -669,14 +678,17 @@ panvk_meta_copy_img2img(struct panvk_cmd_buffer *cmdbuf,
                                           region->dstSubresource.aspectMask),
    };
 
+   assert(src->pimage.layout.nr_samples == dst->pimage.layout.nr_samples);
+
    unsigned texdimidx =
       panvk_meta_copy_tex_type(src->pimage.layout.dim,
                                src->pimage.layout.array_size > 1);
    unsigned fmtidx =
       panvk_meta_copy_img2img_format_idx(key);
+   unsigned ms = dst->pimage.layout.nr_samples > 1 ? 1 : 0;
 
    mali_ptr rsd =
-      cmdbuf->device->physical_device->meta.copy.img2img[texdimidx][fmtidx].rsd;
+      cmdbuf->device->physical_device->meta.copy.img2img[ms][texdimidx][fmtidx].rsd;
 
    struct pan_image_view srcview = {
       .format = key.srcfmt,
@@ -733,7 +745,7 @@ panvk_meta_copy_img2img(struct panvk_cmd_buffer *cmdbuf,
       .extent.miny = miny & ~31,
       .extent.maxx = MIN2(ALIGN_POT(maxx + 1, 32), width) - 1,
       .extent.maxy = MIN2(ALIGN_POT(maxy + 1, 32), height) - 1,
-      .nr_samples = 1,
+      .nr_samples = dst->pimage.layout.nr_samples,
       .rt_count = 1,
       .rts[0].view = &dstview,
       .rts[0].preload = true,
@@ -802,14 +814,17 @@ panvk_meta_copy_img2img(struct panvk_cmd_buffer *cmdbuf,
 }
 
 static void
-panvk_meta_copy_img2img_init(struct panvk_physical_device *dev)
+panvk_meta_copy_img2img_init(struct panvk_physical_device *dev, bool is_ms)
 {
    STATIC_ASSERT(ARRAY_SIZE(panvk_meta_copy_img2img_fmts) == PANVK_META_COPY_IMG2IMG_NUM_FORMATS);
 
    for (unsigned i = 0; i < ARRAY_SIZE(panvk_meta_copy_img2img_fmts); i++) {
       for (unsigned texdim = 1; texdim <= 3; texdim++) {
          unsigned texdimidx = panvk_meta_copy_tex_type(texdim, false);
-         assert(texdimidx < ARRAY_SIZE(dev->meta.copy.img2img));
+         assert(texdimidx < ARRAY_SIZE(dev->meta.copy.img2img[0]));
+
+         /* No MSAA on 3D textures */
+         if (texdim == 3 && is_ms) continue;
 
          struct pan_shader_info shader_info;
          mali_ptr shader =
@@ -817,8 +832,8 @@ panvk_meta_copy_img2img_init(struct panvk_physical_device *dev)
                                            panvk_meta_copy_img2img_fmts[i].srcfmt,
                                            panvk_meta_copy_img2img_fmts[i].dstfmt,
                                            panvk_meta_copy_img2img_fmts[i].dstmask,
-                                           texdim, false, &shader_info);
-         dev->meta.copy.img2img[texdimidx][i].rsd =
+                                           texdim, false, is_ms, &shader_info);
+         dev->meta.copy.img2img[is_ms][texdimidx][i].rsd =
             panvk_meta_copy_to_img_emit_rsd(&dev->pdev, &dev->meta.desc_pool.base,
                                             shader, &shader_info,
                                             panvk_meta_copy_img2img_fmts[i].dstfmt,
@@ -827,16 +842,16 @@ panvk_meta_copy_img2img_init(struct panvk_physical_device *dev)
          if (texdim == 3)
             continue;
 
-	 memset(&shader_info, 0, sizeof(shader_info));
+         memset(&shader_info, 0, sizeof(shader_info));
          texdimidx = panvk_meta_copy_tex_type(texdim, true);
-         assert(texdimidx < ARRAY_SIZE(dev->meta.copy.img2img));
+         assert(texdimidx < ARRAY_SIZE(dev->meta.copy.img2img[0]));
          shader =
             panvk_meta_copy_img2img_shader(&dev->pdev, &dev->meta.bin_pool.base,
                                            panvk_meta_copy_img2img_fmts[i].srcfmt,
                                            panvk_meta_copy_img2img_fmts[i].dstfmt,
                                            panvk_meta_copy_img2img_fmts[i].dstmask,
-                                           texdim, true, &shader_info);
-         dev->meta.copy.img2img[texdimidx][i].rsd =
+                                           texdim, true, is_ms, &shader_info);
+         dev->meta.copy.img2img[is_ms][texdimidx][i].rsd =
             panvk_meta_copy_to_img_emit_rsd(&dev->pdev, &dev->meta.desc_pool.base,
                                             shader, &shader_info,
                                             panvk_meta_copy_img2img_fmts[i].dstfmt,
@@ -2126,7 +2141,8 @@ panvk_per_arch(CmdUpdateBuffer)(VkCommandBuffer commandBuffer,
 void
 panvk_per_arch(meta_copy_init)(struct panvk_physical_device *dev)
 {
-   panvk_meta_copy_img2img_init(dev);
+   panvk_meta_copy_img2img_init(dev, false);
+   panvk_meta_copy_img2img_init(dev, true);
    panvk_meta_copy_buf2img_init(dev);
    panvk_meta_copy_img2buf_init(dev);
    panvk_meta_copy_buf2buf_init(dev);

@@ -172,7 +172,7 @@ struct panvk_meta {
       } img2buf[PANVK_META_COPY_NUM_TEX_TYPES][PANVK_META_COPY_IMG2BUF_NUM_FORMATS];
       struct {
          mali_ptr rsd;
-      } img2img[PANVK_META_COPY_NUM_TEX_TYPES][PANVK_META_COPY_IMG2IMG_NUM_FORMATS];
+      } img2img[2][PANVK_META_COPY_NUM_TEX_TYPES][PANVK_META_COPY_IMG2IMG_NUM_FORMATS];
       struct {
          mali_ptr rsd;
          struct panfrost_ubo_push pushmap;
