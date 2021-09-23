@@ -4021,7 +4021,7 @@ static void si_emit_scratch_state(struct si_context *sctx)
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
    radeon_begin(cs);
-   radeon_set_context_reg(cs, R_0286E8_SPI_TMPRING_SIZE, sctx->spi_tmpring_size);
+   radeon_set_context_reg(R_0286E8_SPI_TMPRING_SIZE, sctx->spi_tmpring_size);
    radeon_end();
 
    if (sctx->scratch_buffer) {

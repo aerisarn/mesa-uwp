@@ -287,7 +287,7 @@ static void si_flush_vgt_streamout(struct si_context *sctx)
       radeon_set_uconfig_reg(cs, reg_strmout_cntl, 0);
    } else {
       reg_strmout_cntl = R_0084FC_CP_STRMOUT_CNTL;
-      radeon_set_config_reg(cs, reg_strmout_cntl, 0);
+      radeon_set_config_reg(reg_strmout_cntl, 0);
    }
 
    radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -323,7 +323,7 @@ static void si_emit_streamout_begin(struct si_context *sctx)
       /* AMD GCN binds streamout buffers as shader resources.
        * VGT only counts primitives and tells the shader
        * through SGPRs what to do. */
-      radeon_set_context_reg_seq(cs, R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, 2);
+      radeon_set_context_reg_seq(R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, 2);
       radeon_emit((t[i]->b.buffer_offset + t[i]->b.buffer_size) >> 2); /* BUFFER_SIZE (in DW) */
       radeon_emit(stride_in_dw[i]);                                    /* VTX_STRIDE (in DW) */
 
@@ -393,7 +393,7 @@ void si_emit_streamout_end(struct si_context *sctx)
        * primitives emitted) may be enabled even if there is not
        * buffer bound. This ensures that the primitives-emitted query
        * won't increment. */
-      radeon_set_context_reg(cs, R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, 0);
+      radeon_set_context_reg(R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, 0);
 
       t[i]->buf_filled_size_valid = true;
    }
@@ -414,7 +414,7 @@ static void si_emit_streamout_enable(struct si_context *sctx)
    assert(!sctx->screen->use_ngg_streamout);
 
    radeon_begin(&sctx->gfx_cs);
-   radeon_set_context_reg_seq(&sctx->gfx_cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
+   radeon_set_context_reg_seq(R_028B94_VGT_STRMOUT_CONFIG, 2);
    radeon_emit(S_028B94_STREAMOUT_0_EN(si_get_strmout_en(sctx)) |
                S_028B94_RAST_STREAM(0) |
                S_028B94_STREAMOUT_1_EN(si_get_strmout_en(sctx)) |

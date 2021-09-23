@@ -759,9 +759,9 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
    if (sctx->last_ls_hs_config != ls_hs_config) {
       radeon_begin(cs);
       if (sctx->chip_class >= GFX7) {
-         radeon_set_context_reg_idx(cs, R_028B58_VGT_LS_HS_CONFIG, 2, ls_hs_config);
+         radeon_set_context_reg_idx(R_028B58_VGT_LS_HS_CONFIG, 2, ls_hs_config);
       } else {
-         radeon_set_context_reg(cs, R_028B58_VGT_LS_HS_CONFIG, ls_hs_config);
+         radeon_set_context_reg(R_028B58_VGT_LS_HS_CONFIG, ls_hs_config);
       }
       radeon_end_update_context_roll(sctx);
       sctx->last_ls_hs_config = ls_hs_config;
@@ -1061,7 +1061,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 
    unsigned gs_out_prim = si_conv_prim_to_gs_out(rast_prim);
    if (unlikely(gs_out_prim != sctx->last_gs_out_prim && (NGG || HAS_GS))) {
-      radeon_set_context_reg(cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out_prim);
+      radeon_set_context_reg(R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out_prim);
       sctx->last_gs_out_prim = gs_out_prim;
    }
 
@@ -1164,9 +1164,9 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
          radeon_set_uconfig_reg_idx(cs, sctx->screen, GFX_VERSION,
                                     R_030960_IA_MULTI_VGT_PARAM, 4, ia_multi_vgt_param);
       else if (GFX_VERSION >= GFX7)
-         radeon_set_context_reg_idx(cs, R_028AA8_IA_MULTI_VGT_PARAM, 1, ia_multi_vgt_param);
+         radeon_set_context_reg_idx(R_028AA8_IA_MULTI_VGT_PARAM, 1, ia_multi_vgt_param);
       else
-         radeon_set_context_reg(cs, R_028AA8_IA_MULTI_VGT_PARAM, ia_multi_vgt_param);
+         radeon_set_context_reg(R_028AA8_IA_MULTI_VGT_PARAM, ia_multi_vgt_param);
 
       radeon_end();
 
@@ -1249,7 +1249,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
       else if (GFX_VERSION >= GFX7)
          radeon_set_uconfig_reg_idx(cs, sctx->screen, GFX_VERSION, R_030908_VGT_PRIMITIVE_TYPE, 1, vgt_prim);
       else
-         radeon_set_config_reg(cs, R_008958_VGT_PRIMITIVE_TYPE, vgt_prim);
+         radeon_set_config_reg(R_008958_VGT_PRIMITIVE_TYPE, vgt_prim);
 
       sctx->last_prim = prim;
    }
@@ -1259,12 +1259,12 @@ static void si_emit_draw_registers(struct si_context *sctx,
       if (GFX_VERSION >= GFX9)
          radeon_set_uconfig_reg(cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
       else
-         radeon_set_context_reg(cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
+         radeon_set_context_reg(R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
 
       sctx->last_primitive_restart_en = primitive_restart;
    }
    if (si_prim_restart_index_changed(sctx, primitive_restart, restart_index)) {
-      radeon_set_context_reg(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, restart_index);
+      radeon_set_context_reg(R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, restart_index);
       sctx->last_restart_index = restart_index;
       if (GFX_VERSION == GFX9)
          sctx->context_roll = true;
@@ -1306,7 +1306,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       struct si_streamout_target *t = (struct si_streamout_target *)indirect->count_from_stream_output;
 
       radeon_begin(cs);
-      radeon_set_context_reg(cs, R_028B30_VGT_STRMOUT_DRAW_OPAQUE_VERTEX_STRIDE, t->stride_in_dw);
+      radeon_set_context_reg(R_028B30_VGT_STRMOUT_DRAW_OPAQUE_VERTEX_STRIDE, t->stride_in_dw);
       radeon_end();
 
       si_cp_copy_data(sctx, &sctx->gfx_cs, COPY_DATA_REG, NULL,

@@ -389,7 +389,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
       if (sctx->screen->info.si_TA_CS_BC_BASE_ADDR_allowed) {
          uint64_t bc_va = sctx->border_color_buffer->gpu_address;
 
-         radeon_set_config_reg(cs, R_00950C_TA_CS_BC_BASE_ADDR, bc_va >> 8);
+         radeon_set_config_reg(R_00950C_TA_CS_BC_BASE_ADDR, bc_va >> 8);
       }
    }
 
