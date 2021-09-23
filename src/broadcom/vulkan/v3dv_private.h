@@ -222,7 +222,6 @@ struct v3dv_queue {
    struct vk_queue vk;
 
    struct v3dv_device *device;
-   VkDeviceQueueCreateFlags flags;
 
    /* A list of active v3dv_queue_submit_wait_info */
    struct list_head submit_wait_list;

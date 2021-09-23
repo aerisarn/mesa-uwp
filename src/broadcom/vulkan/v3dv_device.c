@@ -1685,7 +1685,6 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue,
    if (result != VK_SUCCESS)
       return result;
    queue->device = device;
-   queue->flags = 0;
    queue->noop_job = NULL;
    list_inithead(&queue->submit_wait_list);
    pthread_mutex_init(&queue->mutex, NULL);
