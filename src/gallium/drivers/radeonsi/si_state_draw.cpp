@@ -719,9 +719,9 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
       /* Set userdata SGPRs for merged LS-HS. */
       radeon_set_sh_reg_seq(
          cs, R_00B430_SPI_SHADER_USER_DATA_LS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
-      radeon_emit(cs, offchip_layout);
-      radeon_emit(cs, tcs_out_offsets);
-      radeon_emit(cs, tcs_out_layout);
+      radeon_emit(offchip_layout);
+      radeon_emit(tcs_out_offsets);
+      radeon_emit(tcs_out_layout);
    } else {
       unsigned ls_rsrc2 = ls_current->config.rsrc2;
 
@@ -733,22 +733,22 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
       if (sctx->chip_class == GFX7 && sctx->family != CHIP_HAWAII)
          radeon_set_sh_reg(cs, R_00B52C_SPI_SHADER_PGM_RSRC2_LS, ls_rsrc2);
       radeon_set_sh_reg_seq(cs, R_00B528_SPI_SHADER_PGM_RSRC1_LS, 2);
-      radeon_emit(cs, ls_current->config.rsrc1);
-      radeon_emit(cs, ls_rsrc2);
+      radeon_emit(ls_current->config.rsrc1);
+      radeon_emit(ls_rsrc2);
 
       /* Set userdata SGPRs for TCS. */
       radeon_set_sh_reg_seq(
          cs, R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX6_SGPR_TCS_OFFCHIP_LAYOUT * 4, 4);
-      radeon_emit(cs, offchip_layout);
-      radeon_emit(cs, tcs_out_offsets);
-      radeon_emit(cs, tcs_out_layout);
-      radeon_emit(cs, tcs_in_layout);
+      radeon_emit(offchip_layout);
+      radeon_emit(tcs_out_offsets);
+      radeon_emit(tcs_out_layout);
+      radeon_emit(tcs_in_layout);
    }
 
    /* Set userdata SGPRs for TES. */
    radeon_set_sh_reg_seq(cs, tes_sh_base + SI_SGPR_TES_OFFCHIP_LAYOUT * 4, 2);
-   radeon_emit(cs, offchip_layout);
-   radeon_emit(cs, ring_va);
+   radeon_emit(offchip_layout);
+   radeon_emit(ring_va);
    radeon_end();
 
    unsigned ls_hs_config =
@@ -1275,9 +1275,8 @@ static void si_emit_draw_registers(struct si_context *sctx,
 #define EMIT_SQTT_END_DRAW do {                                          \
       if (GFX_VERSION >= GFX9 && unlikely(sctx->thread_trace_enabled)) { \
          radeon_begin(&sctx->gfx_cs);                                    \
-         radeon_emit(&sctx->gfx_cs, PKT3(PKT3_EVENT_WRITE, 0, 0));       \
-         radeon_emit(&sctx->gfx_cs,                                      \
-                     EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER) |          \
+         radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));       \
+         radeon_emit(EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER) |          \
                      EVENT_INDEX(0));                                    \
          radeon_end();                                      \
       }                                                                  \
@@ -1347,8 +1346,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
             radeon_set_uconfig_reg_idx(cs, sctx->screen, GFX_VERSION,
                                        R_03090C_VGT_INDEX_TYPE, 2, index_type);
          } else {
-            radeon_emit(cs, PKT3(PKT3_INDEX_TYPE, 0, 0));
-            radeon_emit(cs, index_type);
+            radeon_emit(PKT3(PKT3_INDEX_TYPE, 0, 0));
+            radeon_emit(index_type);
          }
 
          sctx->last_index_size = index_size;
@@ -1386,10 +1385,10 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       si_invalidate_draw_constants(sctx);
 
-      radeon_emit(cs, PKT3(PKT3_SET_BASE, 2, 0));
-      radeon_emit(cs, 1);
-      radeon_emit(cs, indirect_va);
-      radeon_emit(cs, indirect_va >> 32);
+      radeon_emit(PKT3(PKT3_SET_BASE, 2, 0));
+      radeon_emit(1);
+      radeon_emit(indirect_va);
+      radeon_emit(indirect_va >> 32);
 
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(indirect->buffer),
                                 RADEON_USAGE_READ, RADEON_PRIO_DRAW_INDIRECT);
@@ -1399,21 +1398,21 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       assert(indirect->offset % 4 == 0);
 
       if (index_size) {
-         radeon_emit(cs, PKT3(PKT3_INDEX_BASE, 1, 0));
-         radeon_emit(cs, index_va);
-         radeon_emit(cs, index_va >> 32);
+         radeon_emit(PKT3(PKT3_INDEX_BASE, 1, 0));
+         radeon_emit(index_va);
+         radeon_emit(index_va >> 32);
 
-         radeon_emit(cs, PKT3(PKT3_INDEX_BUFFER_SIZE, 0, 0));
-         radeon_emit(cs, index_max_size);
+         radeon_emit(PKT3(PKT3_INDEX_BUFFER_SIZE, 0, 0));
+         radeon_emit(index_max_size);
       }
 
       if (!sctx->screen->has_draw_indirect_multi) {
-         radeon_emit(cs, PKT3(index_size ? PKT3_DRAW_INDEX_INDIRECT : PKT3_DRAW_INDIRECT, 3,
-                              render_cond_bit));
-         radeon_emit(cs, indirect->offset);
-         radeon_emit(cs, (sh_base_reg + SI_SGPR_BASE_VERTEX * 4 - SI_SH_REG_OFFSET) >> 2);
-         radeon_emit(cs, (sh_base_reg + SI_SGPR_START_INSTANCE * 4 - SI_SH_REG_OFFSET) >> 2);
-         radeon_emit(cs, di_src_sel);
+         radeon_emit(PKT3(index_size ? PKT3_DRAW_INDEX_INDIRECT : PKT3_DRAW_INDIRECT, 3,
+                          render_cond_bit));
+         radeon_emit(indirect->offset);
+         radeon_emit((sh_base_reg + SI_SGPR_BASE_VERTEX * 4 - SI_SH_REG_OFFSET) >> 2);
+         radeon_emit((sh_base_reg + SI_SGPR_START_INSTANCE * 4 - SI_SH_REG_OFFSET) >> 2);
+         radeon_emit(di_src_sel);
       } else {
          uint64_t count_va = 0;
 
@@ -1426,28 +1425,27 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
             count_va = params_buf->gpu_address + indirect->indirect_draw_count_offset;
          }
 
-         radeon_emit(cs,
-                     PKT3(index_size ? PKT3_DRAW_INDEX_INDIRECT_MULTI : PKT3_DRAW_INDIRECT_MULTI, 8,
+         radeon_emit(PKT3(index_size ? PKT3_DRAW_INDEX_INDIRECT_MULTI : PKT3_DRAW_INDIRECT_MULTI, 8,
                           render_cond_bit));
-         radeon_emit(cs, indirect->offset);
-         radeon_emit(cs, (sh_base_reg + SI_SGPR_BASE_VERTEX * 4 - SI_SH_REG_OFFSET) >> 2);
-         radeon_emit(cs, (sh_base_reg + SI_SGPR_START_INSTANCE * 4 - SI_SH_REG_OFFSET) >> 2);
-         radeon_emit(cs, ((sh_base_reg + SI_SGPR_DRAWID * 4 - SI_SH_REG_OFFSET) >> 2) |
-                            S_2C3_DRAW_INDEX_ENABLE(sctx->shader.vs.cso->info.uses_drawid) |
-                            S_2C3_COUNT_INDIRECT_ENABLE(!!indirect->indirect_draw_count));
-         radeon_emit(cs, indirect->draw_count);
-         radeon_emit(cs, count_va);
-         radeon_emit(cs, count_va >> 32);
-         radeon_emit(cs, indirect->stride);
-         radeon_emit(cs, di_src_sel);
+         radeon_emit(indirect->offset);
+         radeon_emit((sh_base_reg + SI_SGPR_BASE_VERTEX * 4 - SI_SH_REG_OFFSET) >> 2);
+         radeon_emit((sh_base_reg + SI_SGPR_START_INSTANCE * 4 - SI_SH_REG_OFFSET) >> 2);
+         radeon_emit(((sh_base_reg + SI_SGPR_DRAWID * 4 - SI_SH_REG_OFFSET) >> 2) |
+                     S_2C3_DRAW_INDEX_ENABLE(sctx->shader.vs.cso->info.uses_drawid) |
+                     S_2C3_COUNT_INDIRECT_ENABLE(!!indirect->indirect_draw_count));
+         radeon_emit(indirect->draw_count);
+         radeon_emit(count_va);
+         radeon_emit(count_va >> 32);
+         radeon_emit(indirect->stride);
+         radeon_emit(di_src_sel);
       }
    } else {
       /* Register shadowing requires that we always emit PKT3_NUM_INSTANCES. */
       if (sctx->shadowed_regs ||
           sctx->last_instance_count == SI_INSTANCE_COUNT_UNKNOWN ||
           sctx->last_instance_count != instance_count) {
-         radeon_emit(cs, PKT3(PKT3_NUM_INSTANCES, 0, 0));
-         radeon_emit(cs, instance_count);
+         radeon_emit(PKT3(PKT3_NUM_INSTANCES, 0, 0));
+         radeon_emit(instance_count);
          sctx->last_instance_count = instance_count;
       }
 
@@ -1475,16 +1473,16 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                  sh_base_reg != sctx->last_sh_base_reg) {
          if (set_base_instance) {
             radeon_set_sh_reg_seq(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 3);
-            radeon_emit(cs, base_vertex);
-            radeon_emit(cs, drawid_base);
-            radeon_emit(cs, info->start_instance);
+            radeon_emit(base_vertex);
+            radeon_emit(drawid_base);
+            radeon_emit(info->start_instance);
 
             sctx->last_start_instance = info->start_instance;
             sctx->last_drawid = drawid_base;
          } else if (set_draw_id) {
             radeon_set_sh_reg_seq(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 2);
-            radeon_emit(cs, base_vertex);
-            radeon_emit(cs, drawid_base);
+            radeon_emit(base_vertex);
+            radeon_emit(drawid_base);
 
             sctx->last_drawid = drawid_base;
          } else {
@@ -1523,16 +1521,16 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
                   if (i > 0) {
                      radeon_set_sh_reg_seq(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 2);
-                     radeon_emit(cs, draws[i].index_bias);
-                     radeon_emit(cs, drawid_base + i);
+                     radeon_emit(draws[i].index_bias);
+                     radeon_emit(drawid_base + i);
                   }
 
-                  radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
-                  radeon_emit(cs, index_max_size);
-                  radeon_emit(cs, va);
-                  radeon_emit(cs, va >> 32);
-                  radeon_emit(cs, draws[i].count);
-                  radeon_emit(cs, V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
+                  radeon_emit(PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
+                  radeon_emit(index_max_size);
+                  radeon_emit(va);
+                  radeon_emit(va >> 32);
+                  radeon_emit(draws[i].count);
+                  radeon_emit(V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
                }
                if (num_draws > 1) {
                   sctx->last_base_vertex = draws[num_draws - 1].index_bias;
@@ -1546,12 +1544,12 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                   if (i > 0)
                      radeon_set_sh_reg(cs, sh_base_reg + SI_SGPR_DRAWID * 4, drawid_base + i);
 
-                  radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
-                  radeon_emit(cs, index_max_size);
-                  radeon_emit(cs, va);
-                  radeon_emit(cs, va >> 32);
-                  radeon_emit(cs, draws[i].count);
-                  radeon_emit(cs, V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
+                  radeon_emit(PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
+                  radeon_emit(index_max_size);
+                  radeon_emit(va);
+                  radeon_emit(va >> 32);
+                  radeon_emit(draws[i].count);
+                  radeon_emit(V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
                }
                if (num_draws > 1)
                   sctx->last_drawid = drawid_base + num_draws - 1;
@@ -1565,12 +1563,12 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                   if (i > 0)
                      radeon_set_sh_reg(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, draws[i].index_bias);
 
-                  radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
-                  radeon_emit(cs, index_max_size);
-                  radeon_emit(cs, va);
-                  radeon_emit(cs, va >> 32);
-                  radeon_emit(cs, draws[i].count);
-                  radeon_emit(cs, V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
+                  radeon_emit(PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
+                  radeon_emit(index_max_size);
+                  radeon_emit(va);
+                  radeon_emit(va >> 32);
+                  radeon_emit(draws[i].count);
+                  radeon_emit(V_0287F0_DI_SRC_SEL_DMA); /* NOT_EOP disabled */
                }
                if (num_draws > 1)
                   sctx->last_base_vertex = draws[num_draws - 1].index_bias;
@@ -1589,12 +1587,12 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                for (unsigned i = 0; i < num_draws; i++) {
                   uint64_t va = index_va + draws[i].start * index_size;
 
-                  radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
-                  radeon_emit(cs, index_max_size);
-                  radeon_emit(cs, va);
-                  radeon_emit(cs, va >> 32);
-                  radeon_emit(cs, draws[i].count);
-                  radeon_emit(cs, V_0287F0_DI_SRC_SEL_DMA |
+                  radeon_emit(PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
+                  radeon_emit(index_max_size);
+                  radeon_emit(va);
+                  radeon_emit(va >> 32);
+                  radeon_emit(draws[i].count);
+                  radeon_emit(V_0287F0_DI_SRC_SEL_DMA |
                               S_0287F0_NOT_EOP(GFX_VERSION >= GFX10 && i < num_draws - 1));
                }
             }
@@ -1612,8 +1610,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                uint64_t index_va = base_index_va + draws[i].start * original_index_size;
 
                radeon_set_sh_reg_seq(cs, R_00B208_SPI_SHADER_USER_DATA_ADDR_LO_GS, 2);
-               radeon_emit(cs, index_va);
-               radeon_emit(cs, index_va >> 32);
+               radeon_emit(index_va);
+               radeon_emit(index_va >> 32);
 
                if (i > 0) {
                   if (increment_draw_id) {
@@ -1625,9 +1623,9 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                }
 
                /* TODO: Do index buffer bounds checking? We don't do it in this case. */
-               radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
-               radeon_emit(cs, draws[i].count);
-               radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
+               radeon_emit(PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
+               radeon_emit(draws[i].count);
+               radeon_emit(V_0287F0_DI_SRC_SEL_AUTO_INDEX);
             }
             radeon_end();
 
@@ -1641,8 +1639,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                   unsigned draw_id = drawid_base + i;
 
                   radeon_set_sh_reg_seq(cs, sh_base_reg + SI_SGPR_BASE_VERTEX * 4, 2);
-                  radeon_emit(cs, draws[i].start);
-                  radeon_emit(cs, draw_id);
+                  radeon_emit(draws[i].start);
+                  radeon_emit(draw_id);
 
                   sctx->last_drawid = draw_id;
                } else {
@@ -1650,9 +1648,9 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                }
             }
 
-            radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
-            radeon_emit(cs, draws[i].count);
-            radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
+            radeon_emit(PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
+            radeon_emit(draws[i].count);
+            radeon_emit(V_0287F0_DI_SRC_SEL_AUTO_INDEX | use_opaque);
          }
          if (num_draws > 1 && !sctx->num_vs_blit_sgprs)
             sctx->last_base_vertex = draws[num_draws - 1].start;

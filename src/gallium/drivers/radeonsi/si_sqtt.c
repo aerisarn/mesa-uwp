@@ -218,8 +218,8 @@ si_emit_thread_trace_start(struct si_context* sctx,
       radeon_set_sh_reg(cs, R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(1));
    } else {
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_START) | EVENT_INDEX(0));
+      radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+      radeon_emit(EVENT_TYPE(V_028A90_THREAD_TRACE_START) | EVENT_INDEX(0));
    }
    radeon_end();
 }
@@ -265,14 +265,14 @@ si_copy_thread_trace_info_regs(struct si_context* sctx,
 
    /* Copy back the info struct one DWORD at a time. */
    for (unsigned i = 0; i < 3; i++) {
-      radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-      radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
-                      COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
+      radeon_emit(PKT3(PKT3_COPY_DATA, 4, 0));
+      radeon_emit(COPY_DATA_SRC_SEL(COPY_DATA_PERF) |
+                  COPY_DATA_DST_SEL(COPY_DATA_TC_L2) |
                   COPY_DATA_WR_CONFIRM);
-      radeon_emit(cs, thread_trace_info_regs[i] >> 2);
-      radeon_emit(cs, 0); /* unused */
-      radeon_emit(cs, (info_va + i * 4));
-      radeon_emit(cs, (info_va + i * 4) >> 32);
+      radeon_emit(thread_trace_info_regs[i] >> 2);
+      radeon_emit(0); /* unused */
+      radeon_emit((info_va + i * 4));
+      radeon_emit((info_va + i * 4) >> 32);
    }
    radeon_end();
 }
@@ -293,12 +293,12 @@ si_emit_thread_trace_stop(struct si_context *sctx,
       radeon_set_sh_reg(cs, R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(0));
    } else {
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-      radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_STOP) | EVENT_INDEX(0));
+      radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+      radeon_emit(EVENT_TYPE(V_028A90_THREAD_TRACE_STOP) | EVENT_INDEX(0));
    }
 
-   radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_FINISH) | EVENT_INDEX(0));
+   radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+   radeon_emit(EVENT_TYPE(V_028A90_THREAD_TRACE_FINISH) | EVENT_INDEX(0));
    radeon_end();
 
    for (unsigned se = 0; se < max_se; se++) {
@@ -315,39 +315,39 @@ si_emit_thread_trace_stop(struct si_context *sctx,
 
       if (sctx->chip_class >= GFX10) {
          /* Make sure to wait for the trace buffer. */
-         radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
-         radeon_emit(cs, WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
-         radeon_emit(cs, R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
-         radeon_emit(cs, 0);
-         radeon_emit(cs, 0); /* reference value */
-         radeon_emit(cs, S_008D20_FINISH_DONE(1)); /* mask */
-         radeon_emit(cs, 4); /* poll interval */
+         radeon_emit(PKT3(PKT3_WAIT_REG_MEM, 5, 0));
+         radeon_emit(WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
+         radeon_emit(R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
+         radeon_emit(0);
+         radeon_emit(0); /* reference value */
+         radeon_emit(S_008D20_FINISH_DONE(1)); /* mask */
+         radeon_emit(4); /* poll interval */
 
          /* Disable the thread trace mode. */
          radeon_set_privileged_config_reg(cs, R_008D1C_SQ_THREAD_TRACE_CTRL,
                                           S_008D1C_MODE(0));
 
          /* Wait for thread trace completion. */
-         radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
-         radeon_emit(cs, WAIT_REG_MEM_EQUAL); /* wait until the register is equal to the reference value */
-         radeon_emit(cs, R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
-         radeon_emit(cs, 0);
-         radeon_emit(cs, 0); /* reference value */
-         radeon_emit(cs, S_008D20_BUSY(1)); /* mask */
-         radeon_emit(cs, 4); /* poll interval */
+         radeon_emit(PKT3(PKT3_WAIT_REG_MEM, 5, 0));
+         radeon_emit(WAIT_REG_MEM_EQUAL); /* wait until the register is equal to the reference value */
+         radeon_emit(R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
+         radeon_emit(0);
+         radeon_emit(0); /* reference value */
+         radeon_emit(S_008D20_BUSY(1)); /* mask */
+         radeon_emit(4); /* poll interval */
       } else {
          /* Disable the thread trace mode. */
          radeon_set_uconfig_reg(cs, R_030CD8_SQ_THREAD_TRACE_MODE,
                                 S_030CD8_MODE(0));
 
          /* Wait for thread trace completion. */
-         radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
-         radeon_emit(cs, WAIT_REG_MEM_EQUAL); /* wait until the register is equal to the reference value */
-         radeon_emit(cs, R_030CE8_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
-         radeon_emit(cs, 0);
-         radeon_emit(cs, 0); /* reference value */
-         radeon_emit(cs, S_030CE8_BUSY(1)); /* mask */
-         radeon_emit(cs, 4); /* poll interval */
+         radeon_emit(PKT3(PKT3_WAIT_REG_MEM, 5, 0));
+         radeon_emit(WAIT_REG_MEM_EQUAL); /* wait until the register is equal to the reference value */
+         radeon_emit(R_030CE8_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
+         radeon_emit(0);
+         radeon_emit(0); /* reference value */
+         radeon_emit(S_030CE8_BUSY(1)); /* mask */
+         radeon_emit(4); /* poll interval */
       }
       radeon_end();
 
@@ -372,13 +372,13 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
 
    switch (family) {
       case RING_GFX:
-         radeon_emit(cs, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
-         radeon_emit(cs, CC0_UPDATE_LOAD_ENABLES(1));
-         radeon_emit(cs, CC1_UPDATE_SHADOW_ENABLES(1));
+         radeon_emit(PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
+         radeon_emit(CC0_UPDATE_LOAD_ENABLES(1));
+         radeon_emit(CC1_UPDATE_SHADOW_ENABLES(1));
          break;
       case RING_COMPUTE:
-         radeon_emit(cs, PKT3(PKT3_NOP, 0, 0));
-         radeon_emit(cs, 0);
+         radeon_emit(PKT3(PKT3_NOP, 0, 0));
+         radeon_emit(0);
          break;
    }
    radeon_end();
@@ -415,13 +415,13 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
 
    switch (family) {
       case RING_GFX:
-         radeon_emit(sctx->thread_trace->stop_cs[family], PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
-         radeon_emit(sctx->thread_trace->stop_cs[family], CC0_UPDATE_LOAD_ENABLES(1));
-         radeon_emit(sctx->thread_trace->stop_cs[family], CC1_UPDATE_SHADOW_ENABLES(1));
+         radeon_emit(PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
+         radeon_emit(CC0_UPDATE_LOAD_ENABLES(1));
+         radeon_emit(CC1_UPDATE_SHADOW_ENABLES(1));
          break;
       case RING_COMPUTE:
-         radeon_emit(sctx->thread_trace->stop_cs[family], PKT3(PKT3_NOP, 0, 0));
-         radeon_emit(sctx->thread_trace->stop_cs[family], 0);
+         radeon_emit(PKT3(PKT3_NOP, 0, 0));
+         radeon_emit(0);
          break;
    }
    radeon_end();

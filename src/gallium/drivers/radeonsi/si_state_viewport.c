@@ -221,15 +221,15 @@ static void si_emit_one_scissor(struct si_context *ctx, struct radeon_cmdbuf *cs
     * SCREEN_OFFSET != 0 and any_scissor.BR_X/Y <= 0.
     */
    if (ctx->chip_class == GFX6 && (final.maxx == 0 || final.maxy == 0)) {
-      radeon_emit(cs, S_028250_TL_X(1) | S_028250_TL_Y(1) | S_028250_WINDOW_OFFSET_DISABLE(1));
-      radeon_emit(cs, S_028254_BR_X(1) | S_028254_BR_Y(1));
+      radeon_emit(S_028250_TL_X(1) | S_028250_TL_Y(1) | S_028250_WINDOW_OFFSET_DISABLE(1));
+      radeon_emit(S_028254_BR_X(1) | S_028254_BR_Y(1));
       radeon_end();
       return;
    }
 
-   radeon_emit(cs, S_028250_TL_X(final.minx) | S_028250_TL_Y(final.miny) |
-                      S_028250_WINDOW_OFFSET_DISABLE(1));
-   radeon_emit(cs, S_028254_BR_X(final.maxx) | S_028254_BR_Y(final.maxy));
+   radeon_emit(S_028250_TL_X(final.minx) | S_028250_TL_Y(final.miny) |
+                  S_028250_WINDOW_OFFSET_DISABLE(1));
+   radeon_emit(S_028254_BR_X(final.maxx) | S_028254_BR_Y(final.maxy));
    radeon_end();
 }
 
@@ -489,12 +489,12 @@ static void si_emit_one_viewport(struct si_context *ctx, struct pipe_viewport_st
    struct radeon_cmdbuf *cs = &ctx->gfx_cs;
 
    radeon_begin(cs);
-   radeon_emit(cs, fui(state->scale[0]));
-   radeon_emit(cs, fui(state->translate[0]));
-   radeon_emit(cs, fui(state->scale[1]));
-   radeon_emit(cs, fui(state->translate[1]));
-   radeon_emit(cs, fui(state->scale[2]));
-   radeon_emit(cs, fui(state->translate[2]));
+   radeon_emit(fui(state->scale[0]));
+   radeon_emit(fui(state->translate[0]));
+   radeon_emit(fui(state->scale[1]));
+   radeon_emit(fui(state->translate[1]));
+   radeon_emit(fui(state->scale[2]));
+   radeon_emit(fui(state->translate[2]));
    radeon_end();
 }
 
@@ -549,8 +549,8 @@ static void si_emit_depth_ranges(struct si_context *ctx)
 
       radeon_begin(cs);
       radeon_set_context_reg_seq(cs, R_0282D0_PA_SC_VPORT_ZMIN_0, 2);
-      radeon_emit(cs, fui(zmin));
-      radeon_emit(cs, fui(zmax));
+      radeon_emit(fui(zmin));
+      radeon_emit(fui(zmax));
       radeon_end();
       return;
    }
@@ -562,8 +562,8 @@ static void si_emit_depth_ranges(struct si_context *ctx)
    radeon_set_context_reg_seq(cs, R_0282D0_PA_SC_VPORT_ZMIN_0, SI_MAX_VIEWPORTS * 2);
    for (unsigned i = 0; i < SI_MAX_VIEWPORTS; i++) {
       si_viewport_zmin_zmax(&states[i], clip_halfz, window_space, &zmin, &zmax);
-      radeon_emit(cs, fui(zmin));
-      radeon_emit(cs, fui(zmax));
+      radeon_emit(fui(zmin));
+      radeon_emit(fui(zmax));
    }
    radeon_end();
 }
@@ -664,8 +664,8 @@ static void si_emit_window_rectangles(struct si_context *sctx)
 
    radeon_set_context_reg_seq(cs, R_028210_PA_SC_CLIPRECT_0_TL, num_rectangles * 2);
    for (unsigned i = 0; i < num_rectangles; i++) {
-      radeon_emit(cs, S_028210_TL_X(rects[i].minx) | S_028210_TL_Y(rects[i].miny));
-      radeon_emit(cs, S_028214_BR_X(rects[i].maxx) | S_028214_BR_Y(rects[i].maxy));
+      radeon_emit(S_028210_TL_X(rects[i].minx) | S_028210_TL_Y(rects[i].miny));
+      radeon_emit(S_028214_BR_X(rects[i].maxx) | S_028214_BR_Y(rects[i].maxy));
    }
    radeon_end();
 }

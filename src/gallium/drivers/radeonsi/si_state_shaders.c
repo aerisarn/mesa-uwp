@@ -3539,12 +3539,12 @@ static void si_emit_vgt_flush(struct radeon_cmdbuf *cs)
    radeon_begin(cs);
 
    /* This is required before VGT_FLUSH. */
-   radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   radeon_emit(cs, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+   radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+   radeon_emit(EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
 
    /* VGT_FLUSH is required even if VGT is idle. It resets VGT pointers. */
-   radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+   radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+   radeon_emit(EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
    radeon_end();
 }
 

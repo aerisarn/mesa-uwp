@@ -91,8 +91,8 @@ static void si_pc_emit_shaders(struct si_context *sctx, unsigned shaders)
 
    radeon_begin(cs);
    radeon_set_uconfig_reg_seq(cs, R_036780_SQ_PERFCOUNTER_CTRL, 2, false);
-   radeon_emit(cs, shaders & 0x7f);
-   radeon_emit(cs, 0xffffffff);
+   radeon_emit(shaders & 0x7f);
+   radeon_emit(0xffffffff);
    radeon_end();
 }
 
@@ -113,12 +113,12 @@ static void si_pc_emit_select(struct si_context *sctx, struct ac_pc_block *block
 
    for (idx = 0; idx < count; ++idx) {
       radeon_set_uconfig_reg_seq(cs, regs->select0[idx], 1, false);
-      radeon_emit(cs, selectors[idx] | regs->select_or);
+      radeon_emit(selectors[idx] | regs->select_or);
    }
 
    for (idx = 0; idx < regs->num_spm_counters; idx++) {
       radeon_set_uconfig_reg_seq(cs, regs->select1[idx], 1, false);
-      radeon_emit(cs, 0);
+      radeon_emit(0);
    }
 
    radeon_end();
@@ -134,8 +134,8 @@ static void si_pc_emit_start(struct si_context *sctx, struct si_resource *buffer
    radeon_begin(cs);
    radeon_set_uconfig_reg(cs, R_036020_CP_PERFMON_CNTL,
                           S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_DISABLE_AND_RESET));
-   radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   radeon_emit(cs, EVENT_TYPE(V_028A90_PERFCOUNTER_START) | EVENT_INDEX(0));
+   radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+   radeon_emit(EVENT_TYPE(V_028A90_PERFCOUNTER_START) | EVENT_INDEX(0));
    radeon_set_uconfig_reg(cs, R_036020_CP_PERFMON_CNTL,
                           S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_START_COUNTING));
    radeon_end();
@@ -152,10 +152,10 @@ static void si_pc_emit_stop(struct si_context *sctx, struct si_resource *buffer,
    si_cp_wait_mem(sctx, cs, va, 0, 0xffffffff, WAIT_REG_MEM_EQUAL);
 
    radeon_begin(cs);
-   radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   radeon_emit(cs, EVENT_TYPE(V_028A90_PERFCOUNTER_SAMPLE) | EVENT_INDEX(0));
-   radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   radeon_emit(cs, EVENT_TYPE(V_028A90_PERFCOUNTER_STOP) | EVENT_INDEX(0));
+   radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+   radeon_emit(EVENT_TYPE(V_028A90_PERFCOUNTER_SAMPLE) | EVENT_INDEX(0));
+   radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+   radeon_emit(EVENT_TYPE(V_028A90_PERFCOUNTER_STOP) | EVENT_INDEX(0));
    radeon_set_uconfig_reg(
       cs, R_036020_CP_PERFMON_CNTL,
       S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_STOP_COUNTING) | S_036020_PERFMON_SAMPLE_ENABLE(1));
@@ -178,26 +178,26 @@ static void si_pc_emit_read(struct si_context *sctx, struct ac_pc_block *block, 
          if (regs->counters)
             reg = regs->counters[idx];
 
-         radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-         radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_PERF) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+         radeon_emit(PKT3(PKT3_COPY_DATA, 4, 0));
+         radeon_emit(COPY_DATA_SRC_SEL(COPY_DATA_PERF) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
                             COPY_DATA_COUNT_SEL); /* 64 bits */
-         radeon_emit(cs, reg >> 2);
-         radeon_emit(cs, 0); /* unused */
-         radeon_emit(cs, va);
-         radeon_emit(cs, va >> 32);
+         radeon_emit(reg >> 2);
+         radeon_emit(0); /* unused */
+         radeon_emit(va);
+         radeon_emit(va >> 32);
          va += sizeof(uint64_t);
          reg += reg_delta;
       }
    } else {
       /* Fake counters. */
       for (idx = 0; idx < count; ++idx) {
-         radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-         radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
-                            COPY_DATA_COUNT_SEL);
-         radeon_emit(cs, 0); /* immediate */
-         radeon_emit(cs, 0);
-         radeon_emit(cs, va);
-         radeon_emit(cs, va >> 32);
+         radeon_emit(PKT3(PKT3_COPY_DATA, 4, 0));
+         radeon_emit(COPY_DATA_SRC_SEL(COPY_DATA_IMM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                     COPY_DATA_COUNT_SEL);
+         radeon_emit(0); /* immediate */
+         radeon_emit(0);
+         radeon_emit(va);
+         radeon_emit(va >> 32);
          va += sizeof(uint64_t);
       }
    }
