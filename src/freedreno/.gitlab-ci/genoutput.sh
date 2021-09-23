@@ -53,6 +53,3 @@ $cffdump --frame 0 --once $traces/dEQP-VK.draw.indirect_draw.indexed.indirect_dr
 $cffdump --script $base/decode/scripts/parse-submits.lua $traces/shadow.rd.gz | filter $output/shadow.log
 
 $crashdec -sf $traces/crash.devcore | filter $output/crash.log
-
-$asm -g 6 $traces/afuc_test.asm $output/afuc_test.fw
-$disasm -g 630 $reference/afuc_test.fw | filter $output/afuc_test.asm

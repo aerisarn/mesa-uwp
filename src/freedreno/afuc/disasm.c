@@ -893,9 +893,10 @@ main(int argc, char **argv)
    uint32_t gpu_id = 0;
    size_t sz;
    int c, ret;
+   bool unit_test = false;
 
    /* Argument parsing: */
-   while ((c = getopt(argc, argv, "g:vce")) != -1) {
+   while ((c = getopt(argc, argv, "g:vceu")) != -1) {
       switch (c) {
       case 'g':
          gpu_id = atoi(optarg);
@@ -909,6 +910,9 @@ main(int argc, char **argv)
       case 'e':
          emulator = true;
          verbose  = true;
+         break;
+      case 'u':
+         unit_test = true;
          break;
       default:
          usage();
@@ -956,7 +960,8 @@ main(int argc, char **argv)
 
    buf = (uint32_t *)os_read_file(file, &sz);
 
-   printf("; Disassembling microcode: %s\n", file);
+   if (!unit_test)
+      printf("; Disassembling microcode: %s\n", file);
    printf("; Version: %08x\n\n", buf[1]);
 
    if (gpuver < 6) {
