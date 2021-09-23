@@ -116,7 +116,13 @@ panvk_varying_hw_format(const struct panvk_device *dev,
              panfrost_get_default_swizzle(4);
    default:
       assert(!panvk_varying_is_builtin(stage, loc));
-      return pdev->formats[varyings->varying[loc].format].hw;
+      if (varyings->varying[loc].format != PIPE_FORMAT_NONE)
+         return pdev->formats[varyings->varying[loc].format].hw;
+#if PAN_ARCH >= 7
+      return (MALI_CONSTANT << 12) | MALI_RGB_COMPONENT_ORDER_0000;
+#else
+      return (MALI_CONSTANT << 12) | PAN_V6_SWIZZLE(0, 0, 0, 0);
+#endif
    }
 }
 

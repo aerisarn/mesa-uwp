@@ -827,6 +827,9 @@ panvk_pipeline_builder_collect_varyings(struct panvk_pipeline_builder *builder,
    /* TODO: Xfb */
    gl_varying_slot loc;
    BITSET_FOREACH_SET(loc, pipeline->varyings.active, VARYING_SLOT_MAX) {
+      if (pipeline->varyings.varying[loc].format == PIPE_FORMAT_NONE)
+         continue;
+
       enum panvk_varying_buf_id buf_id =
          panvk_varying_buf_id(false, loc);
       unsigned buf_idx = panvk_varying_buf_index(&pipeline->varyings, buf_id);
