@@ -759,7 +759,7 @@ tu_get_physical_device_properties_1_2(struct tu_physical_device *pdevice,
 {
    assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES);
 
-   p->driverID = 0; /* XXX: VK 1.2: Need to get a value assigned */
+   p->driverID = VK_DRIVER_ID_MESA_TURNIP;
    memset(p->driverName, 0, sizeof(p->driverName));
    snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR,
             "turnip Mesa driver");
