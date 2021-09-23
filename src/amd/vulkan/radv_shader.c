@@ -1294,7 +1294,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
 
       bool tes_triangles =
          stage == MESA_SHADER_TESS_EVAL && info->tes.primitive_mode >= 4; /* GL_TRIANGLES */
-      if (info->uses_invocation_id || stage == MESA_SHADER_VERTEX) {
+      if (info->uses_invocation_id) {
          gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
       } else if (info->uses_prim_id) {
          gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
