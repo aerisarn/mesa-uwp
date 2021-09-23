@@ -1861,20 +1861,6 @@ v3dv_DestroyDevice(VkDevice _device,
    vk_free2(&device->vk.alloc, pAllocator, device);
 }
 
-VKAPI_ATTR void VKAPI_CALL
-v3dv_GetDeviceQueue(VkDevice _device,
-                    uint32_t queueFamilyIndex,
-                    uint32_t queueIndex,
-                    VkQueue *pQueue)
-{
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
-
-   assert(queueIndex == 0);
-   assert(queueFamilyIndex == 0);
-
-   *pQueue = v3dv_queue_to_handle(&device->queue);
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_DeviceWaitIdle(VkDevice _device)
 {
