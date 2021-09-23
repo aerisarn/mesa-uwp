@@ -416,6 +416,39 @@ panvk_per_arch(emit_vertex_job)(const struct panvk_pipeline *pipeline,
    }
 }
 
+void
+panvk_per_arch(emit_compute_job)(const struct panvk_pipeline *pipeline,
+                                 const struct panvk_dispatch_info *dispatch,
+                                 void *job)
+{
+   panfrost_pack_work_groups_compute(pan_section_ptr(job, COMPUTE_JOB, INVOCATION),
+                                     dispatch->wg_count.x,
+                                     dispatch->wg_count.y,
+                                     dispatch->wg_count.z,
+                                     pipeline->cs.local_size.x,
+                                     pipeline->cs.local_size.y,
+                                     pipeline->cs.local_size.z,
+                                     false, false);
+
+   pan_section_pack(job, COMPUTE_JOB, PARAMETERS, cfg) {
+      cfg.job_task_split =
+         util_logbase2_ceil(pipeline->cs.local_size.x + 1) +
+         util_logbase2_ceil(pipeline->cs.local_size.y + 1) +
+         util_logbase2_ceil(pipeline->cs.local_size.z + 1);
+   }
+
+   pan_section_pack(job, COMPUTE_JOB, DRAW, cfg) {
+      cfg.state = pipeline->rsds[MESA_SHADER_COMPUTE];
+      cfg.attributes = dispatch->attributes;
+      cfg.attribute_buffers = dispatch->attribute_bufs;
+      cfg.thread_storage = dispatch->tsd;
+      cfg.uniform_buffers = dispatch->ubos;
+      cfg.push_uniforms = dispatch->push_uniforms;
+      cfg.textures = dispatch->textures;
+      cfg.samplers = dispatch->samplers;
+   }
+}
+
 static void
 panvk_emit_tiler_primitive(const struct panvk_pipeline *pipeline,
                            const struct panvk_draw_info *draw,

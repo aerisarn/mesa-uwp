@@ -554,6 +554,17 @@ struct panvk_draw_info {
    } jobs;
 };
 
+struct panvk_dispatch_info {
+   struct pan_compute_dim wg_count;
+   mali_ptr attributes;
+   mali_ptr attribute_bufs;
+   mali_ptr tsd;
+   mali_ptr ubos;
+   mali_ptr push_uniforms;
+   mali_ptr textures;
+   mali_ptr samplers;
+};
+
 struct panvk_attrib_info {
    unsigned buf;
    unsigned offset;
@@ -629,6 +640,10 @@ struct panvk_cmd_state {
       struct pan_fb_info info;
       bool crc_valid[MAX_RTS];
    } fb;
+
+   struct {
+      struct pan_compute_dim wg_count;
+   } compute;
 
    const struct panvk_render_pass *pass;
    const struct panvk_subpass *subpass;

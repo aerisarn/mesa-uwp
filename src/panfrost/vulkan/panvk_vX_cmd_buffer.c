@@ -349,6 +349,16 @@ panvk_cmd_upload_sysval(struct panvk_cmd_buffer *cmdbuf,
        */
       panvk_sysval_upload_ssbo_info(cmdbuf, PAN_SYSVAL_ID(id), bind_point_state, data);
       break;
+   case PAN_SYSVAL_NUM_WORK_GROUPS:
+      data->u32[0] = cmdbuf->state.compute.wg_count.x;
+      data->u32[1] = cmdbuf->state.compute.wg_count.y;
+      data->u32[2] = cmdbuf->state.compute.wg_count.z;
+      break;
+   case PAN_SYSVAL_LOCAL_GROUP_SIZE:
+      data->u32[0] = bind_point_state->pipeline->cs.local_size.x;
+      data->u32[1] = bind_point_state->pipeline->cs.local_size.y;
+      data->u32[2] = bind_point_state->pipeline->cs.local_size.z;
+      break;
    default:
       unreachable("Invalid static sysval");
    }
@@ -1367,4 +1377,60 @@ panvk_per_arch(TrimCommandPool)(VkDevice device,
    list_for_each_entry_safe(struct panvk_cmd_buffer, cmdbuf,
                             &pool->free_cmd_buffers, pool_link)
       panvk_destroy_cmdbuf(cmdbuf);
+}
+
+void
+panvk_per_arch(CmdDispatch)(VkCommandBuffer commandBuffer,
+                            uint32_t x,
+                            uint32_t y,
+                            uint32_t z)
+{
+   VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+   const struct panfrost_device *pdev =
+      &cmdbuf->device->physical_device->pdev;
+   struct panvk_dispatch_info dispatch = {
+      .wg_count = { x, y, z },
+   };
+
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
+   struct panvk_batch *batch = panvk_cmd_open_batch(cmdbuf);
+
+   struct panvk_cmd_bind_point_state *bind_point_state =
+      panvk_cmd_get_bind_point_state(cmdbuf, COMPUTE);
+   struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
+   struct panfrost_ptr job =
+      pan_pool_alloc_desc(&cmdbuf->desc_pool.base, COMPUTE_JOB);
+
+   cmdbuf->state.compute.wg_count = dispatch.wg_count;
+   panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf, false);
+   dispatch.tsd = batch->tls.gpu;
+
+   panvk_prepare_non_vs_attribs(cmdbuf, bind_point_state);
+   dispatch.attributes = desc_state->non_vs_attribs;
+   dispatch.attribute_bufs = desc_state->non_vs_attrib_bufs;
+
+   panvk_cmd_prepare_ubos(cmdbuf, bind_point_state);
+   dispatch.ubos = desc_state->ubos;
+
+   panvk_cmd_prepare_textures(cmdbuf, bind_point_state);
+   dispatch.textures = desc_state->textures;
+
+   panvk_cmd_prepare_samplers(cmdbuf, bind_point_state);
+   dispatch.samplers = desc_state->samplers;
+
+   panvk_per_arch(emit_compute_job)(pipeline, &dispatch, job.cpu);
+   panfrost_add_job(&cmdbuf->desc_pool.base, &batch->scoreboard,
+                    MALI_JOB_TYPE_COMPUTE, false, false, 0, 0,
+                    &job, false);
+
+   batch->tlsinfo.tls.size = pipeline->tls_size;
+   batch->tlsinfo.wls.size = pipeline->wls_size;
+   if (batch->tlsinfo.wls.size) {
+      batch->wls_total_size =
+         pan_wls_mem_size(pdev, &dispatch.wg_count, batch->tlsinfo.wls.size);
+   }
+
+   panvk_per_arch(cmd_close_batch)(cmdbuf);
+   desc_state->dirty = 0;
 }

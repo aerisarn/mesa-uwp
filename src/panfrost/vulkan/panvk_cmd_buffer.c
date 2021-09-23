@@ -574,15 +574,6 @@ panvk_CmdDispatchBase(VkCommandBuffer commandBuffer,
 }
 
 void
-panvk_CmdDispatch(VkCommandBuffer commandBuffer,
-                  uint32_t x,
-                  uint32_t y,
-                  uint32_t z)
-{
-   panvk_stub();
-}
-
-void
 panvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
                           VkBuffer _buffer,
                           VkDeviceSize offset)

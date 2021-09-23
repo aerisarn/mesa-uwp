@@ -80,6 +80,11 @@ panvk_per_arch(emit_vertex_job)(const struct panvk_pipeline *pipeline,
                                 void *job);
 
 void
+panvk_per_arch(emit_compute_job)(const struct panvk_pipeline *pipeline,
+                                 const struct panvk_dispatch_info *dispatch,
+                                 void *job);
+
+void
 panvk_per_arch(emit_tiler_job)(const struct panvk_pipeline *pipeline,
                                const struct panvk_draw_info *draw,
                                void *job);

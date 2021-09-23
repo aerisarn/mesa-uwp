@@ -5,4 +5,12 @@ renderer_check = "Mali-G52"
 include = [
     "dEQP-VK.pipeline.blend.*",
     "dEQP-VK.api.copy_and_blit.core.*",
+    "dEQP-VK.compute.builtin_var.*",
+    "dEQP-VK.image.load_store.with_format.1d.*",
+    "dEQP-VK.image.load_store.with_format.1d_array.*",
+    "dEQP-VK.image.load_store.with_format.2d.*",
+    "dEQP-VK.image.load_store.with_format.2d_array.*",
+    "dEQP-VK.image.load_store.with_format.3d.*",
+    "dEQP-VK.image.load_store.with_format.cube.*",
+    "dEQP-VK.ssbo.layout.single_basic_type.*",
 ]
