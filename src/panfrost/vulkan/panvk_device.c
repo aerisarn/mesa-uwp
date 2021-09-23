@@ -1070,46 +1070,6 @@ panvk_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
    return VK_SUCCESS;
 }
 
-void
-panvk_GetDeviceQueue2(VkDevice _device,
-                      const VkDeviceQueueInfo2 *pQueueInfo,
-                      VkQueue *pQueue)
-{
-   VK_FROM_HANDLE(panvk_device, device, _device);
-   struct panvk_queue *queue;
-
-   queue = &device->queues[pQueueInfo->queueFamilyIndex][pQueueInfo->queueIndex];
-   if (pQueueInfo->flags != queue->vk.flags) {
-      /* From the Vulkan 1.1.70 spec:
-       *
-       * "The queue returned by vkGetDeviceQueue2 must have the same
-       * flags value from this structure as that used at device
-       * creation time in a VkDeviceQueueCreateInfo instance. If no
-       * matching flags were specified at device creation time then
-       * pQueue will return VK_NULL_HANDLE."
-       */
-      *pQueue = VK_NULL_HANDLE;
-      return;
-   }
-
-   *pQueue = panvk_queue_to_handle(queue);
-}
-
-void
-panvk_GetDeviceQueue(VkDevice _device,
-                     uint32_t queueFamilyIndex,
-                     uint32_t queueIndex,
-                     VkQueue *pQueue)
-{
-   const VkDeviceQueueInfo2 info = (VkDeviceQueueInfo2) {
-      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-      .queueFamilyIndex = queueFamilyIndex,
-      .queueIndex = queueIndex
-   };
-
-   panvk_GetDeviceQueue2(_device, &info, pQueue);
-}
-
 VkResult
 panvk_QueueWaitIdle(VkQueue _queue)
 {
@@ -1130,22 +1090,6 @@ panvk_QueueWaitIdle(VkQueue _queue)
    ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
    assert(!ret);
 
-   return VK_SUCCESS;
-}
-
-VkResult
-panvk_DeviceWaitIdle(VkDevice _device)
-{
-   VK_FROM_HANDLE(panvk_device, device, _device);
-
-   if (panvk_device_is_lost(device))
-      return VK_ERROR_DEVICE_LOST;
-
-   for (unsigned i = 0; i < PANVK_MAX_QUEUE_FAMILIES; i++) {
-      for (unsigned q = 0; q < device->queue_count[i]; q++) {
-         panvk_QueueWaitIdle(panvk_queue_to_handle(&device->queues[i][q]));
-      }
-   }
    return VK_SUCCESS;
 }
 
