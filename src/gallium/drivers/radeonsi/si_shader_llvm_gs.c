@@ -176,7 +176,7 @@ void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi)
             continue;
          }
 
-         ac_build_buffer_store_dword(&ctx->ac, ctx->esgs_ring, out_val, 1, NULL,
+         ac_build_buffer_store_dword(&ctx->ac, ctx->esgs_ring, out_val, 1, NULL, NULL,
                                      ac_get_arg(&ctx->ac, ctx->args.es2gs_offset),
                                      (4 * param + chan) * 4, ac_glc | ac_slc | ac_swizzled);
       }
@@ -277,8 +277,8 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
 
          out_val = ac_to_integer(&ctx->ac, out_val);
 
-         ac_build_buffer_store_dword(&ctx->ac, ctx->gsvs_ring[stream], out_val, 1, voffset, soffset,
-                                     0, ac_glc | ac_slc | ac_swizzled);
+         ac_build_buffer_store_dword(&ctx->ac, ctx->gsvs_ring[stream], out_val, 1, NULL,
+                                     voffset, soffset, 0, ac_glc | ac_slc | ac_swizzled);
       }
    }
 
