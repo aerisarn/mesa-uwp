@@ -1663,15 +1663,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_DeviceWaitIdle(
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
 
-   util_queue_finish(&device->queue.queue);
-   simple_mtx_lock(&device->queue.last_lock);
-   uint64_t timeline = device->queue.last_fence_timeline;
-   if (device->queue.last_fence) {
-      device->pscreen->fence_finish(device->pscreen, NULL, device->queue.last_fence, PIPE_TIMEOUT_INFINITE);
-      device->pscreen->fence_reference(device->pscreen, &device->queue.last_fence, NULL);
-      device->queue.last_finished = timeline;
-   }
-   simple_mtx_unlock(&device->queue.last_lock);
+   lvp_QueueWaitIdle(lvp_queue_to_handle(&device->queue));
+
    return VK_SUCCESS;
 }
 
