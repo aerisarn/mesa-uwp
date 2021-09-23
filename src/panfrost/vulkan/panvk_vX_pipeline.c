@@ -264,8 +264,8 @@ panvk_pipeline_builder_upload_sysval(struct panvk_pipeline_builder *builder,
                                          data);
       break;
    case PAN_SYSVAL_VIEWPORT_OFFSET:
-      panvk_sysval_upload_viewport_scale(builder->create_info->pViewportState->pViewports,
-                                         data);
+      panvk_sysval_upload_viewport_offset(builder->create_info->pViewportState->pViewports,
+                                          data);
       break;
    default:
       unreachable("Invalid static sysval");
