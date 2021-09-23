@@ -1654,7 +1654,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
       } else {
          prim.num_vertices = num_vertices;
          prim.isnull = ctx->ac.i1false;
-         prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args->ac);
+         prim.edgeflags = ctx->ac.i32_0;
          memcpy(prim.index, vtxindex, sizeof(vtxindex[0]) * 3);
       }
 
