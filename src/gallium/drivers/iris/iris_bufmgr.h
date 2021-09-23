@@ -402,7 +402,6 @@ bool iris_bo_busy(struct iris_bo *bo);
  */
 int iris_bo_madvise(struct iris_bo *bo, int madv);
 
-/* drm_bacon_bufmgr_gem.c */
 struct iris_bufmgr *iris_bufmgr_get_for_fd(struct intel_device_info *devinfo,
                                            int fd, bool bo_reuse);
 int iris_bufmgr_get_fd(struct iris_bufmgr *bufmgr);
