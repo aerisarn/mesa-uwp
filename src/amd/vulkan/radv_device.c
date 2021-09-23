@@ -3225,29 +3225,6 @@ radv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *p
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-void
-radv_GetDeviceQueue2(VkDevice _device, const VkDeviceQueueInfo2 *pQueueInfo, VkQueue *pQueue)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   struct radv_queue *queue;
-
-   queue = &device->queues[pQueueInfo->queueFamilyIndex][pQueueInfo->queueIndex];
-   if (pQueueInfo->flags != queue->vk.flags) {
-      /* From the Vulkan 1.1.70 spec:
-       *
-       * "The queue returned by vkGetDeviceQueue2 must have the same
-       * flags value from this structure as that used at device
-       * creation time in a VkDeviceQueueCreateInfo instance. If no
-       * matching flags were specified at device creation time then
-       * pQueue will return VK_NULL_HANDLE."
-       */
-      *pQueue = VK_NULL_HANDLE;
-      return;
-   }
-
-   *pQueue = radv_queue_to_handle(queue);
-}
-
 static void
 fill_geom_tess_rings(struct radv_queue *queue, uint32_t *map, bool add_sample_positions,
                      uint32_t esgs_ring_size, struct radeon_winsys_bo *esgs_ring_bo,
@@ -4984,22 +4961,6 @@ radv_QueueWaitIdle(VkQueue _queue)
                                   radv_get_queue_family_name(queue));
    }
 
-   return VK_SUCCESS;
-}
-
-VkResult
-radv_DeviceWaitIdle(VkDevice _device)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-
-   for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
-      for (unsigned q = 0; q < device->queue_count[i]; q++) {
-         VkResult result = radv_QueueWaitIdle(radv_queue_to_handle(&device->queues[i][q]));
-
-         if (result != VK_SUCCESS)
-            return result;
-      }
-   }
    return VK_SUCCESS;
 }
 
