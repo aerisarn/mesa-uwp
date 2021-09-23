@@ -340,6 +340,15 @@ panvk_CreatePipelineLayout(VkDevice _device,
    layout->num_dyn_ssbos = dyn_ssbo_idx;
    layout->num_imgs = img_idx;
 
+   /* Some NIR texture operations don't require a sampler, but Bifrost/Midgard
+    * ones always expect one. Add a dummy sampler to deal with this limitation.
+    */
+   if (layout->num_textures) {
+      layout->num_samplers++;
+      for (unsigned set = 0; set < pCreateInfo->setLayoutCount; set++)
+         layout->sets[set].sampler_offset++;
+   }
+
    _mesa_sha1_final(&ctx, layout->sha1);
 
    *pPipelineLayout = panvk_pipeline_layout_to_handle(layout);

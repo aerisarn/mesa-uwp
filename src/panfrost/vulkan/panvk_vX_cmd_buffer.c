@@ -492,6 +492,18 @@ panvk_cmd_prepare_samplers(struct panvk_cmd_buffer *cmdbuf,
 
    void *sampler = samplers.cpu;
 
+   /* Prepare the dummy sampler */
+   pan_pack(sampler, SAMPLER, cfg) {
+#if PAN_ARCH >= 6
+      cfg.seamless_cube_map = false;
+#endif
+      cfg.magnify_nearest = true;
+      cfg.minify_nearest = true;
+      cfg.normalized_coordinates = false;
+   }
+
+   sampler += pan_size(SAMPLER);
+
    for (unsigned i = 0; i < ARRAY_SIZE(desc_state->sets); i++) {
       if (!desc_state->sets[i]) continue;
 
