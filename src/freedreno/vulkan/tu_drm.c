@@ -897,10 +897,6 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
 {
    queue->device->submit_count++;
 
-#if HAVE_PERFETTO
-   tu_perfetto_submit(queue->device, queue->device->submit_count);
-#endif
-
    uint32_t flags = MSM_PIPE_3D0;
 
    if (submit->vk_submit->wait_count)
@@ -939,6 +935,10 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
 
    if (ret)
       return vk_device_set_lost(&queue->device->vk, "submit failed: %m");
+
+#if HAVE_PERFETTO
+   tu_perfetto_submit(queue->device, queue->device->submit_count);
+#endif
 
    if (submit->cmd_buffer_trace_data) {
       struct tu_u_trace_flush_data *flush_data =

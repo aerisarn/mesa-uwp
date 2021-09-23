@@ -248,6 +248,10 @@ emit_submit_id(uint32_t submission_id)
 void
 tu_perfetto_submit(struct tu_device *dev, uint32_t submission_id)
 {
+   /* sync_timestamp isn't free */
+   if (!ut_perfetto_enabled)
+      return;
+
    sync_timestamp(dev);
    emit_submit_id(submission_id);
 }
