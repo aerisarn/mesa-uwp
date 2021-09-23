@@ -255,7 +255,6 @@ radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipelin
 {
    unsigned scratch_bytes_per_wave = 0;
    unsigned max_waves = 0;
-   unsigned min_waves = 1;
 
    for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
       if (pipeline->shaders[i] && pipeline->shaders[i]->config.scratch_bytes_per_wave) {
@@ -269,13 +268,6 @@ radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipelin
                  radv_get_max_waves(device, pipeline->shaders[i], i));
          max_waves = MAX2(max_waves, max_stage_waves);
       }
-   }
-
-   if (pipeline->shaders[MESA_SHADER_COMPUTE]) {
-      unsigned group_size = pipeline->shaders[MESA_SHADER_COMPUTE]->info.cs.block_size[0] *
-                            pipeline->shaders[MESA_SHADER_COMPUTE]->info.cs.block_size[1] *
-                            pipeline->shaders[MESA_SHADER_COMPUTE]->info.cs.block_size[2];
-      min_waves = MAX2(min_waves, round_up_u32(group_size, 64));
    }
 
    pipeline->scratch_bytes_per_wave = scratch_bytes_per_wave;
