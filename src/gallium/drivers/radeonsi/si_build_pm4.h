@@ -122,24 +122,24 @@
    radeon_emit(value); \
 } while (0)
 
-#define radeon_set_uconfig_reg_seq(cs, reg, num, perfctr) do { \
+#define radeon_set_uconfig_reg_seq(reg, num, perfctr) do { \
    SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) >= CIK_UCONFIG_REG_OFFSET && (reg) < CIK_UCONFIG_REG_END); \
    radeon_emit(PKT3(PKT3_SET_UCONFIG_REG, num, perfctr)); \
    radeon_emit(((reg) - CIK_UCONFIG_REG_OFFSET) >> 2); \
 } while (0)
 
-#define radeon_set_uconfig_reg(cs, reg, value) do { \
-   radeon_set_uconfig_reg_seq(cs, reg, 1, false); \
+#define radeon_set_uconfig_reg(reg, value) do { \
+   radeon_set_uconfig_reg_seq(reg, 1, false); \
    radeon_emit(value); \
 } while (0)
 
-#define radeon_set_uconfig_reg_perfctr(cs, reg, value) do { \
-   radeon_set_uconfig_reg_seq(cs, reg, 1, true); \
+#define radeon_set_uconfig_reg_perfctr(reg, value) do { \
+   radeon_set_uconfig_reg_seq(reg, 1, true); \
    radeon_emit(value); \
 } while (0)
 
-#define radeon_set_uconfig_reg_idx(cs, screen, chip_class, reg, idx, value) do { \
+#define radeon_set_uconfig_reg_idx(screen, chip_class, reg, idx, value) do { \
    SI_CHECK_SHADOWED_REGS(reg, 1); \
    assert((reg) >= CIK_UCONFIG_REG_OFFSET && (reg) < CIK_UCONFIG_REG_END); \
    assert((idx) != 0); \
@@ -273,7 +273,7 @@
    unsigned __value = val; \
    if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
        sctx->tracked_regs.reg_value[reg] != __value) { \
-      radeon_set_uconfig_reg(cs, offset, __value); \
+      radeon_set_uconfig_reg(offset, __value); \
       sctx->tracked_regs.reg_saved |= 0x1ull << (reg); \
       sctx->tracked_regs.reg_value[reg] = __value; \
    } \

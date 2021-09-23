@@ -94,7 +94,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
          continue;
 
       /* Target SEx and SH0. */
-      radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
+      radeon_set_uconfig_reg(R_030800_GRBM_GFX_INDEX,
                              S_030800_SE_INDEX(se) |
                              S_030800_SH_INDEX(0) |
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
@@ -141,15 +141,15 @@ si_emit_thread_trace_start(struct si_context* sctx,
                                              sctx->chip_class >= GFX10_3 ? 4 : 0));
       } else {
          /* Order seems important for the following 4 registers. */
-         radeon_set_uconfig_reg(cs, R_030CDC_SQ_THREAD_TRACE_BASE2,
+         radeon_set_uconfig_reg(R_030CDC_SQ_THREAD_TRACE_BASE2,
                                 S_030CDC_ADDR_HI(shifted_va >> 32));
 
-         radeon_set_uconfig_reg(cs, R_030CC0_SQ_THREAD_TRACE_BASE, shifted_va);
+         radeon_set_uconfig_reg(R_030CC0_SQ_THREAD_TRACE_BASE, shifted_va);
 
-         radeon_set_uconfig_reg(cs, R_030CC4_SQ_THREAD_TRACE_SIZE,
+         radeon_set_uconfig_reg(R_030CC4_SQ_THREAD_TRACE_SIZE,
                                 S_030CC4_SIZE(shifted_size));
 
-         radeon_set_uconfig_reg(cs, R_030CD4_SQ_THREAD_TRACE_CTRL,
+         radeon_set_uconfig_reg(R_030CD4_SQ_THREAD_TRACE_CTRL,
                                 S_030CD4_RESET_BUFFER(1));
 
          uint32_t thread_trace_mask = S_030CC8_CU_SEL(first_active_cu) |
@@ -160,28 +160,28 @@ si_emit_thread_trace_start(struct si_context* sctx,
                                       S_030CC8_SPI_STALL_EN(1) |
                                       S_030CC8_SQ_STALL_EN(1);
 
-         radeon_set_uconfig_reg(cs, R_030CC8_SQ_THREAD_TRACE_MASK,
+         radeon_set_uconfig_reg(R_030CC8_SQ_THREAD_TRACE_MASK,
                                 thread_trace_mask);
 
          /* Trace all tokens and registers. */
-         radeon_set_uconfig_reg(cs, R_030CCC_SQ_THREAD_TRACE_TOKEN_MASK,
+         radeon_set_uconfig_reg(R_030CCC_SQ_THREAD_TRACE_TOKEN_MASK,
                                 S_030CCC_TOKEN_MASK(0xbfff) |
                                 S_030CCC_REG_MASK(0xff) |
                                 S_030CCC_REG_DROP_ON_STALL(0));
 
          /* Enable SQTT perf counters for all CUs. */
-         radeon_set_uconfig_reg(cs, R_030CD0_SQ_THREAD_TRACE_PERF_MASK,
+         radeon_set_uconfig_reg(R_030CD0_SQ_THREAD_TRACE_PERF_MASK,
                                 S_030CD0_SH0_MASK(0xffff) |
                                 S_030CD0_SH1_MASK(0xffff));
 
-         radeon_set_uconfig_reg(cs, R_030CE0_SQ_THREAD_TRACE_TOKEN_MASK2, 0xffffffff);
+         radeon_set_uconfig_reg(R_030CE0_SQ_THREAD_TRACE_TOKEN_MASK2, 0xffffffff);
 
-         radeon_set_uconfig_reg(cs, R_030CEC_SQ_THREAD_TRACE_HIWATER,
+         radeon_set_uconfig_reg(R_030CEC_SQ_THREAD_TRACE_HIWATER,
                                 S_030CEC_HIWATER(4));
 
          if (sctx->chip_class == GFX9) {
             /* Reset thread trace status errors. */
-            radeon_set_uconfig_reg(cs, R_030CE8_SQ_THREAD_TRACE_STATUS,
+            radeon_set_uconfig_reg(R_030CE8_SQ_THREAD_TRACE_STATUS,
                                    S_030CE8_UTC_ERROR(0));
          }
 
@@ -202,13 +202,13 @@ si_emit_thread_trace_start(struct si_context* sctx,
             thread_trace_mode |= S_030CD8_TC_PERF_EN(1);
          }
 
-         radeon_set_uconfig_reg(cs, R_030CD8_SQ_THREAD_TRACE_MODE,
+         radeon_set_uconfig_reg(R_030CD8_SQ_THREAD_TRACE_MODE,
                                 thread_trace_mode);
       }
    }
 
    /* Restore global broadcasting. */
-   radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
+   radeon_set_uconfig_reg(R_030800_GRBM_GFX_INDEX,
                           S_030800_SE_BROADCAST_WRITES(1) |
                              S_030800_SH_BROADCAST_WRITES(1) |
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
@@ -308,7 +308,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
       radeon_begin(cs);
 
       /* Target SEi and SH0. */
-      radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
+      radeon_set_uconfig_reg(R_030800_GRBM_GFX_INDEX,
                              S_030800_SE_INDEX(se) |
                              S_030800_SH_INDEX(0) |
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
@@ -337,7 +337,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
          radeon_emit(4); /* poll interval */
       } else {
          /* Disable the thread trace mode. */
-         radeon_set_uconfig_reg(cs, R_030CD8_SQ_THREAD_TRACE_MODE,
+         radeon_set_uconfig_reg(R_030CD8_SQ_THREAD_TRACE_MODE,
                                 S_030CD8_MODE(0));
 
          /* Wait for thread trace completion. */
@@ -356,7 +356,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
 
    /* Restore global broadcasting. */
    radeon_begin_again(cs);
-   radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
+   radeon_set_uconfig_reg(R_030800_GRBM_GFX_INDEX,
                           S_030800_SE_BROADCAST_WRITES(1) |
                              S_030800_SH_BROADCAST_WRITES(1) |
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
@@ -735,7 +735,7 @@ si_emit_thread_trace_userdata(struct si_context* sctx,
 
       /* Without the perfctr bit the CP might not always pass the
        * write on correctly. */
-      radeon_set_uconfig_reg_seq(cs, R_030D08_SQ_THREAD_TRACE_USERDATA_2, count, sctx->chip_class >= GFX10);
+      radeon_set_uconfig_reg_seq(R_030D08_SQ_THREAD_TRACE_USERDATA_2, count, sctx->chip_class >= GFX10);
 
       radeon_emit_array(dwords, count);
 
@@ -760,7 +760,7 @@ si_emit_spi_config_cntl(struct si_context* sctx,
       if (sctx->chip_class >= GFX10)
          spi_config_cntl |= S_031100_PS_PKR_PRIORITY_CNTL(3);
 
-      radeon_set_uconfig_reg(cs, R_031100_SPI_CONFIG_CNTL, spi_config_cntl);
+      radeon_set_uconfig_reg(R_031100_SPI_CONFIG_CNTL, spi_config_cntl);
    } else {
       /* SPI_CONFIG_CNTL is a protected register on GFX6-GFX8. */
       radeon_set_privileged_config_reg(cs, R_009100_SPI_CONFIG_CNTL,

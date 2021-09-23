@@ -410,7 +410,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
       if (sctx->border_color_buffer) {
          uint64_t bc_va = sctx->border_color_buffer->gpu_address;
 
-         radeon_set_uconfig_reg_seq(cs, R_030E00_TA_CS_BC_BASE_ADDR, 2, false);
+         radeon_set_uconfig_reg_seq(R_030E00_TA_CS_BC_BASE_ADDR, 2, false);
          radeon_emit(bc_va >> 8);                    /* R_030E00_TA_CS_BC_BASE_ADDR */
          radeon_emit(S_030E04_ADDRESS(bc_va >> 40)); /* R_030E04_TA_CS_BC_BASE_ADDR_HI */
       }
@@ -421,7 +421,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
     */
    if (sctx->chip_class >= GFX9 &&
        (cs != &sctx->gfx_cs || !sctx->screen->info.has_graphics)) {
-      radeon_set_uconfig_reg(cs, R_0301EC_CP_COHER_START_DELAY,
+      radeon_set_uconfig_reg(R_0301EC_CP_COHER_START_DELAY,
                              sctx->chip_class >= GFX10 ? 0x20 : 0);
    }
 

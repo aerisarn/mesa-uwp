@@ -3644,11 +3644,11 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
       /* Set the GS registers. */
       if (sctx->esgs_ring) {
          assert(sctx->chip_class <= GFX8);
-         radeon_set_uconfig_reg(cs, R_030900_VGT_ESGS_RING_SIZE,
+         radeon_set_uconfig_reg(R_030900_VGT_ESGS_RING_SIZE,
                                 sctx->esgs_ring->width0 / 256);
       }
       if (sctx->gsvs_ring) {
-         radeon_set_uconfig_reg(cs, R_030904_VGT_GSVS_RING_SIZE,
+         radeon_set_uconfig_reg(R_030904_VGT_GSVS_RING_SIZE,
                                 sctx->gsvs_ring->width0 / 256);
       }
       radeon_end();
@@ -3910,17 +3910,17 @@ void si_init_tess_factor_ring(struct si_context *sctx)
 
       /* Set tessellation registers. */
       radeon_begin(cs);
-      radeon_set_uconfig_reg(cs, R_030938_VGT_TF_RING_SIZE,
+      radeon_set_uconfig_reg(R_030938_VGT_TF_RING_SIZE,
                              S_030938_SIZE(sctx->screen->tess_factor_ring_size / 4));
-      radeon_set_uconfig_reg(cs, R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
+      radeon_set_uconfig_reg(R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
       if (sctx->chip_class >= GFX10) {
-         radeon_set_uconfig_reg(cs, R_030984_VGT_TF_MEMORY_BASE_HI_UMD,
+         radeon_set_uconfig_reg(R_030984_VGT_TF_MEMORY_BASE_HI_UMD,
                                 S_030984_BASE_HI(factor_va >> 40));
       } else if (sctx->chip_class == GFX9) {
-         radeon_set_uconfig_reg(cs, R_030944_VGT_TF_MEMORY_BASE_HI,
+         radeon_set_uconfig_reg(R_030944_VGT_TF_MEMORY_BASE_HI,
                                 S_030944_BASE_HI(factor_va >> 40));
       }
-      radeon_set_uconfig_reg(cs, R_03093C_VGT_HS_OFFCHIP_PARAM,
+      radeon_set_uconfig_reg(R_03093C_VGT_HS_OFFCHIP_PARAM,
                              sctx->screen->vgt_hs_offchip_param);
       radeon_end();
       return;

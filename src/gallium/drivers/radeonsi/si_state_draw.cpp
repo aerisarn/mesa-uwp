@@ -1161,7 +1161,7 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
       radeon_begin(cs);
 
       if (GFX_VERSION == GFX9)
-         radeon_set_uconfig_reg_idx(cs, sctx->screen, GFX_VERSION,
+         radeon_set_uconfig_reg_idx(sctx->screen, GFX_VERSION,
                                     R_030960_IA_MULTI_VGT_PARAM, 4, ia_multi_vgt_param);
       else if (GFX_VERSION >= GFX7)
          radeon_set_context_reg_idx(R_028AA8_IA_MULTI_VGT_PARAM, 1, ia_multi_vgt_param);
@@ -1217,7 +1217,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
       radeon_begin(cs);
-      radeon_set_uconfig_reg(cs, R_03096C_GE_CNTL, ge_cntl);
+      radeon_set_uconfig_reg(R_03096C_GE_CNTL, ge_cntl);
       radeon_end();
       sctx->last_multi_vgt_param = ge_cntl;
    }
@@ -1245,9 +1245,9 @@ static void si_emit_draw_registers(struct si_context *sctx,
       unsigned vgt_prim = si_conv_pipe_prim(prim);
 
       if (GFX_VERSION >= GFX10)
-         radeon_set_uconfig_reg(cs, R_030908_VGT_PRIMITIVE_TYPE, vgt_prim);
+         radeon_set_uconfig_reg(R_030908_VGT_PRIMITIVE_TYPE, vgt_prim);
       else if (GFX_VERSION >= GFX7)
-         radeon_set_uconfig_reg_idx(cs, sctx->screen, GFX_VERSION, R_030908_VGT_PRIMITIVE_TYPE, 1, vgt_prim);
+         radeon_set_uconfig_reg_idx(sctx->screen, GFX_VERSION, R_030908_VGT_PRIMITIVE_TYPE, 1, vgt_prim);
       else
          radeon_set_config_reg(R_008958_VGT_PRIMITIVE_TYPE, vgt_prim);
 
@@ -1257,7 +1257,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
    /* Primitive restart. */
    if (primitive_restart != sctx->last_primitive_restart_en) {
       if (GFX_VERSION >= GFX9)
-         radeon_set_uconfig_reg(cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
+         radeon_set_uconfig_reg(R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
       else
          radeon_set_context_reg(R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, primitive_restart);
 
@@ -1343,7 +1343,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          }
 
          if (GFX_VERSION >= GFX9) {
-            radeon_set_uconfig_reg_idx(cs, sctx->screen, GFX_VERSION,
+            radeon_set_uconfig_reg_idx(sctx->screen, GFX_VERSION,
                                        R_03090C_VGT_INDEX_TYPE, 2, index_type);
          } else {
             radeon_emit(PKT3(PKT3_INDEX_TYPE, 0, 0));
