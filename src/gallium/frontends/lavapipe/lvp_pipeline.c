@@ -833,7 +833,11 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    } else
       pipeline->line_rectangular = true;
 
-   if (!dynamic_state_contains(pipeline->graphics_create_info.pDynamicState, VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)) {
+   bool rasterization_disabled = !dynamic_state_contains(pipeline->graphics_create_info.pDynamicState, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT) &&
+      pipeline->graphics_create_info.pRasterizationState->rasterizerDiscardEnable;
+   LVP_FROM_HANDLE(lvp_render_pass, pass, pipeline->graphics_create_info.renderPass);
+   if (!dynamic_state_contains(pipeline->graphics_create_info.pDynamicState, VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT) &&
+       !rasterization_disabled && pass->has_color_attachment) {
       const VkPipelineColorWriteCreateInfoEXT *cw_state =
          vk_find_struct_const(pCreateInfo->pColorBlendState, PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
       if (cw_state) {
