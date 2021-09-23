@@ -166,10 +166,11 @@ char *rnndec_decodeval(struct rnndeccontext *ctx, struct rnntypeinfo *ti, uint64
 	int bitfieldsnum;
 	char *tmp;
 	const char *ctmp;
-	uint64_t mask, value_orig;
+	uint64_t mask;
+
+	uint64_t value_orig = value;
 	if (!ti)
 		goto failhex;
-	value_orig = value;
 	value = (value & typeinfo_mask(ti)) >> ti->low;
 	value <<= ti->shr;
 
