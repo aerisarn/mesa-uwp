@@ -914,7 +914,9 @@ panvk_queue_init(struct panvk_device *device,
 {
    const struct panfrost_device *pdev = &device->physical_device->pdev;
 
-   vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
+   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   if (result != VK_SUCCESS)
+      return result;
    queue->device = device;
    queue->queue_family_index = queue_family_index;
    queue->flags = flags;
@@ -924,8 +926,10 @@ panvk_queue_init(struct panvk_device *device,
    };
 
    int ret = drmIoctl(pdev->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
-   if (ret)
+   if (ret) {
+      vk_queue_finish(&queue->vk);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
 
    queue->sync = create.handle;
    return VK_SUCCESS;
@@ -934,6 +938,7 @@ panvk_queue_init(struct panvk_device *device,
 static void
 panvk_queue_finish(struct panvk_queue *queue)
 {
+   vk_queue_finish(&queue->vk);
 }
 
 VkResult

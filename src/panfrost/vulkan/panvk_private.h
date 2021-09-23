@@ -53,6 +53,7 @@
 #include "vk_instance.h"
 #include "vk_object.h"
 #include "vk_physical_device.h"
+#include "vk_queue.h"
 #include "wsi_common.h"
 
 #include "drm-uapi/panfrost_drm.h"
@@ -247,7 +248,7 @@ struct panvk_pipeline_cache {
 #define PANVK_MAX_QUEUE_FAMILIES 1
 
 struct panvk_queue {
-   struct vk_object_base base;
+   struct vk_queue vk;
    struct panvk_device *device;
    uint32_t queue_family_index;
    VkDeviceQueueCreateFlags flags;
@@ -1021,7 +1022,7 @@ VK_DEFINE_HANDLE_CASTS(panvk_cmd_buffer, base, VkCommandBuffer, VK_OBJECT_TYPE_C
 VK_DEFINE_HANDLE_CASTS(panvk_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 VK_DEFINE_HANDLE_CASTS(panvk_instance, vk.base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
 VK_DEFINE_HANDLE_CASTS(panvk_physical_device, vk.base, VkPhysicalDevice, VK_OBJECT_TYPE_PHYSICAL_DEVICE)
-VK_DEFINE_HANDLE_CASTS(panvk_queue, base, VkQueue, VK_OBJECT_TYPE_QUEUE)
+VK_DEFINE_HANDLE_CASTS(panvk_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_cmd_pool, base, VkCommandPool, VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_buffer, base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
