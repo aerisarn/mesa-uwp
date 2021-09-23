@@ -129,6 +129,20 @@ static const struct dri2_wl_visual {
       { 8, 8, 8, 8 },
    },
    {
+      "ABGR8888",
+      WL_DRM_FORMAT_ABGR8888, WL_SHM_FORMAT_ABGR8888,
+      __DRI_IMAGE_FORMAT_ABGR8888, __DRI_IMAGE_FORMAT_NONE, 32,
+      { 0, 8, 16, 24 },
+      { 8, 8, 8, 8 },
+   },
+   {
+      "XBGR8888",
+      WL_DRM_FORMAT_XBGR8888, WL_SHM_FORMAT_XBGR8888,
+      __DRI_IMAGE_FORMAT_XBGR8888, __DRI_IMAGE_FORMAT_NONE, 32,
+      { 0, 8, 16, -1 },
+      { 8, 8, 8, 0 },
+   },
+   {
       "RGB565",
       WL_DRM_FORMAT_RGB565, WL_SHM_FORMAT_RGB565,
       __DRI_IMAGE_FORMAT_RGB565, __DRI_IMAGE_FORMAT_NONE, 16,
@@ -811,6 +825,8 @@ dri2_wl_get_capability(void *loaderPrivate, enum dri_loader_cap cap)
 {
    switch (cap) {
    case DRI_LOADER_CAP_FP16:
+      return 1;
+   case DRI_LOADER_CAP_RGBA_ORDERING:
       return 1;
    default:
       return 0;
