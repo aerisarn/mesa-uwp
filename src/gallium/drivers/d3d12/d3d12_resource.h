@@ -42,6 +42,7 @@ struct d3d12_resource {
    struct threaded_resource base;
    struct d3d12_bo *bo;
    DXGI_FORMAT dxgi_format;
+   enum pipe_format overall_format;
    unsigned mip_levels;
    struct sw_displaytarget *dt;
    unsigned dt_stride;
