@@ -295,6 +295,21 @@ vk_common_GetImageSparseMemoryRequirements(VkDevice _device,
    STACK_ARRAY_FINISH(mem_reqs2);
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL
+vk_common_DeviceWaitIdle(VkDevice _device)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
+
+   vk_foreach_queue(queue, device) {
+      VkResult result = disp->QueueWaitIdle(vk_queue_to_handle(queue));
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
+}
+
 static void
 copy_vk_struct_guts(VkBaseOutStructure *dst, VkBaseInStructure *src, size_t struct_size)
 {
