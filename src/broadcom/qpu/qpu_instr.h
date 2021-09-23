@@ -494,4 +494,6 @@ bool v3d_qpu_unpacks_f32(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 bool v3d_qpu_unpacks_f16(const struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
 
 bool v3d_qpu_is_nop(struct v3d_qpu_instr *inst) ATTRIBUTE_CONST;
+
+bool v3d71_qpu_reads_raddr(const struct v3d_qpu_instr *inst, uint8_t raddr);
 #endif

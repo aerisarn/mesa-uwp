@@ -679,29 +679,37 @@ pixel_scoreboard_too_soon(struct v3d_compile *c,
 }
 
 static bool
-qpu_instruction_uses_rf(const struct v3d_qpu_instr *inst,
+qpu_instruction_uses_rf(const struct v3d_device_info *devinfo,
+                        const struct v3d_qpu_instr *inst,
                         uint32_t waddr) {
 
         if (inst->type != V3D_QPU_INSTR_TYPE_ALU)
            return false;
 
-        if (v3d_qpu_uses_mux(inst, V3D_QPU_MUX_A) &&
-            inst->raddr_a == waddr)
-              return true;
+        if (devinfo->ver < 71) {
+                if (v3d_qpu_uses_mux(inst, V3D_QPU_MUX_A) &&
+                    inst->raddr_a == waddr)
+                        return true;
 
-        if (v3d_qpu_uses_mux(inst, V3D_QPU_MUX_B) &&
-            !inst->sig.small_imm_b && (inst->raddr_b == waddr))
-              return true;
+                if (v3d_qpu_uses_mux(inst, V3D_QPU_MUX_B) &&
+                    !inst->sig.small_imm_b && (inst->raddr_b == waddr))
+                        return true;
+        } else {
+                /* FIXME: skip if small immediate */
+                if (v3d71_qpu_reads_raddr(inst, waddr))
+                        return true;
+        }
 
         return false;
 }
 
 static bool
-mux_read_stalls(struct choose_scoreboard *scoreboard,
-                const struct v3d_qpu_instr *inst)
+read_stalls(const struct v3d_device_info *devinfo,
+            struct choose_scoreboard *scoreboard,
+            const struct v3d_qpu_instr *inst)
 {
         return scoreboard->tick == scoreboard->last_stallable_sfu_tick + 1 &&
-                qpu_instruction_uses_rf(inst,
+                qpu_instruction_uses_rf(devinfo, inst,
                                         scoreboard->last_stallable_sfu_reg);
 }
 
@@ -1319,7 +1327,7 @@ retry:
 
                 int prio = get_instruction_priority(c->devinfo, inst);
 
-                if (mux_read_stalls(scoreboard, inst)) {
+                if (read_stalls(c->devinfo, scoreboard, inst)) {
                         /* Don't merge an instruction that stalls */
                         if (prev_inst)
                                 continue;
@@ -2389,7 +2397,7 @@ schedule_instructions(struct v3d_compile *c,
                                         }
                                 }
                         }
-                        if (mux_read_stalls(scoreboard, inst))
+                        if (read_stalls(c->devinfo, scoreboard, inst))
                                 c->qpu_inst_stalled_count++;
                 }
 

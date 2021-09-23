@@ -957,6 +957,18 @@ v3d_qpu_uses_mux(const struct v3d_qpu_instr *inst, enum v3d_qpu_mux mux)
 }
 
 bool
+v3d71_qpu_reads_raddr(const struct v3d_qpu_instr *inst, uint8_t raddr)
+{
+        int add_nsrc = v3d_qpu_add_op_num_src(inst->alu.add.op);
+        int mul_nsrc = v3d_qpu_mul_op_num_src(inst->alu.mul.op);
+
+        return (add_nsrc > 0 && inst->alu.add.a.raddr == raddr) ||
+               (add_nsrc > 1 && inst->alu.add.b.raddr == raddr) ||
+               (mul_nsrc > 0 && inst->alu.mul.a.raddr == raddr) ||
+               (mul_nsrc > 1 && inst->alu.mul.b.raddr == raddr);
+}
+
+bool
 v3d_qpu_sig_writes_address(const struct v3d_device_info *devinfo,
                            const struct v3d_qpu_sig *sig)
 {
