@@ -34,6 +34,15 @@ extern "C" {
 struct vk_queue {
    struct vk_object_base base;
 
+   /* VkDeviceQueueCreateInfo::flags */
+   VkDeviceQueueCreateFlags flags;
+
+   /* VkDeviceQueueCreateInfo::queueFamilyIndex */
+   uint32_t queue_family_index;
+
+   /* Which queue this is within the queue family */
+   uint32_t index_in_family;
+
    /**
     * VK_EXT_debug_utils
     *
@@ -78,7 +87,9 @@ struct vk_queue {
 VK_DEFINE_HANDLE_CASTS(vk_queue, base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
 VkResult MUST_CHECK
-vk_queue_init(struct vk_queue *queue, struct vk_device *device);
+vk_queue_init(struct vk_queue *queue, struct vk_device *device,
+              const VkDeviceQueueCreateInfo *pCreateInfo,
+              uint32_t index_in_family);
 
 void
 vk_queue_finish(struct vk_queue *queue);

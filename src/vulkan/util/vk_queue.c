@@ -24,10 +24,18 @@
 #include "vk_queue.h"
 
 VkResult
-vk_queue_init(struct vk_queue *queue, struct vk_device *device)
+vk_queue_init(struct vk_queue *queue, struct vk_device *device,
+              const VkDeviceQueueCreateInfo *pCreateInfo,
+              uint32_t index_in_family)
 {
    memset(queue, 0, sizeof(*queue));
    vk_object_base_init(device, &queue->base, VK_OBJECT_TYPE_QUEUE);
+
+   queue->flags = pCreateInfo->flags;
+   queue->queue_family_index = pCreateInfo->queueFamilyIndex;
+
+   assert(index_in_family < pCreateInfo->queueCount);
+   queue->index_in_family = index_in_family;
 
    util_dynarray_init(&queue->labels, NULL);
    queue->region_begin = true;

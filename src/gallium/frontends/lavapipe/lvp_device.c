@@ -1356,9 +1356,12 @@ queue_thread(void *data, void *gdata, int thread_index)
 }
 
 static VkResult
-lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue)
+lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue,
+               const VkDeviceQueueCreateInfo *create_info,
+               uint32_t index_in_family)
 {
-   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info,
+                                   index_in_family);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1438,7 +1441,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
 
    device->pscreen = physical_device->pscreen;
 
-   lvp_queue_init(device, &device->queue);
+   assert(pCreateInfo->queueCreateInfoCount == 1);
+   assert(pCreateInfo->pQueueCreateInfos[0].queueFamilyIndex == 0);
+   assert(pCreateInfo->pQueueCreateInfos[0].queueCount == 1);
+   lvp_queue_init(device, &device->queue, pCreateInfo->pQueueCreateInfos, 0);
 
    *pDevice = lvp_device_to_handle(device);
 

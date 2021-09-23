@@ -3033,7 +3033,7 @@ VkResult anv_CreateDevice(
                                device->queue_count : I915_EXEC_RENDER;
 
          result = anv_queue_init(device, &device->queues[device->queue_count],
-                                 exec_flags, queueCreateInfo);
+                                 exec_flags, queueCreateInfo, j);
          if (result != VK_SUCCESS)
             goto fail_queues;
 

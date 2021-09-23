@@ -1169,18 +1169,17 @@ tu_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice pdev,
 static VkResult
 tu_queue_init(struct tu_device *device,
               struct tu_queue *queue,
-              uint32_t queue_family_index,
               int idx,
-              VkDeviceQueueCreateFlags flags)
+              const VkDeviceQueueCreateInfo *create_info)
 {
-   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info, idx);
    if (result != VK_SUCCESS)
       return result;
 
    queue->device = device;
-   queue->queue_family_index = queue_family_index;
+   queue->queue_family_index = create_info->queueFamilyIndex;
    queue->queue_idx = idx;
-   queue->flags = flags;
+   queue->flags = create_info->flags;
 
    list_inithead(&queue->queued_submits);
 
@@ -1463,8 +1462,8 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       device->queue_count[qfi] = queue_create->queueCount;
 
       for (unsigned q = 0; q < queue_create->queueCount; q++) {
-         result = tu_queue_init(device, &device->queues[qfi][q], qfi, q,
-                                queue_create->flags);
+         result = tu_queue_init(device, &device->queues[qfi][q], q,
+                                queue_create);
          if (result != VK_SUCCESS)
             goto fail_queues;
       }

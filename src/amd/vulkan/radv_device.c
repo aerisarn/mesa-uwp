@@ -2503,18 +2503,18 @@ radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoEXT *p
 }
 
 static int
-radv_queue_init(struct radv_device *device, struct radv_queue *queue, uint32_t queue_family_index,
-                int idx, VkDeviceQueueCreateFlags flags,
+radv_queue_init(struct radv_device *device, struct radv_queue *queue,
+                int idx, const VkDeviceQueueCreateInfo *create_info,
                 const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority)
 {
    queue->device = device;
-   queue->queue_family_index = queue_family_index;
+   queue->queue_family_index = create_info->queueFamilyIndex;
    queue->queue_idx = idx;
    queue->priority = radv_get_queue_global_priority(global_priority);
-   queue->flags = flags;
+   queue->flags = create_info->flags;
    queue->hw_ctx = device->hw_ctx[queue->priority];
 
-   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info, idx);
    if (result != VK_SUCCESS)
       return result;
 
@@ -2931,8 +2931,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       device->queue_count[qfi] = queue_create->queueCount;
 
       for (unsigned q = 0; q < queue_create->queueCount; q++) {
-         result = radv_queue_init(device, &device->queues[qfi][q], qfi, q, queue_create->flags,
-                                  global_priority);
+         result = radv_queue_init(device, &device->queues[qfi][q], q, queue_create, global_priority);
          if (result != VK_SUCCESS)
             goto fail;
       }

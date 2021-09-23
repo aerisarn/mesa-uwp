@@ -473,12 +473,14 @@ anv_queue_submit_post(struct anv_queue *queue,
 VkResult
 anv_queue_init(struct anv_device *device, struct anv_queue *queue,
                uint32_t exec_flags,
-               const VkDeviceQueueCreateInfo *pCreateInfo)
+               const VkDeviceQueueCreateInfo *pCreateInfo,
+               uint32_t index_in_family)
 {
    struct anv_physical_device *pdevice = device->physical;
    VkResult result;
 
-   result = vk_queue_init(&queue->vk, &device->vk);
+   result = vk_queue_init(&queue->vk, &device->vk, pCreateInfo,
+                          index_in_family);
    if (result != VK_SUCCESS)
       return result;
 

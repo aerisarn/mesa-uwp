@@ -908,18 +908,17 @@ panvk_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
 static VkResult
 panvk_queue_init(struct panvk_device *device,
                  struct panvk_queue *queue,
-                 uint32_t queue_family_index,
                  int idx,
-                 VkDeviceQueueCreateFlags flags)
+                 const VkDeviceQueueCreateInfo *create_info)
 {
    const struct panfrost_device *pdev = &device->physical_device->pdev;
 
-   VkResult result = vk_queue_init(&queue->vk, &device->vk);
+   VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info, idx);
    if (result != VK_SUCCESS)
       return result;
    queue->device = device;
-   queue->queue_family_index = queue_family_index;
-   queue->flags = flags;
+   queue->queue_family_index = create_info->queueFamilyIndex;
+   queue->flags = create_info->flags;
 
    struct drm_syncobj_create create = {
       .flags = DRM_SYNCOBJ_CREATE_SIGNALED,
@@ -1025,8 +1024,8 @@ panvk_CreateDevice(VkPhysicalDevice physicalDevice,
       device->queue_count[qfi] = queue_create->queueCount;
 
       for (unsigned q = 0; q < queue_create->queueCount; q++) {
-         result = panvk_queue_init(device, &device->queues[qfi][q], qfi, q,
-                                   queue_create->flags);
+         result = panvk_queue_init(device, &device->queues[qfi][q], q,
+                                   queue_create);
          if (result != VK_SUCCESS)
             goto fail;
       }
