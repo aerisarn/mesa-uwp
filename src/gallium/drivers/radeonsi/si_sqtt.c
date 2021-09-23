@@ -215,7 +215,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
 
    /* Start the thread trace with a different event based on the queue. */
    if (queue_family_index == RING_COMPUTE) {
-      radeon_set_sh_reg(cs, R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
+      radeon_set_sh_reg(R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(1));
    } else {
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -290,7 +290,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
 
    /* Stop the thread trace with a different event based on the queue. */
    if (queue_family_index == RING_COMPUTE) {
-      radeon_set_sh_reg(cs, R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
+      radeon_set_sh_reg(R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(0));
    } else {
       radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));

@@ -104,7 +104,7 @@ static void si_emit_cull_state(struct si_context *sctx)
    radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->small_prim_cull_info_buf,
                              RADEON_USAGE_READ, RADEON_PRIO_CONST_BUFFER);
    radeon_begin(&sctx->gfx_cs);
-   radeon_set_sh_reg(&sctx->gfx_cs, R_00B220_SPI_SHADER_PGM_LO_GS,
+   radeon_set_sh_reg(R_00B220_SPI_SHADER_PGM_LO_GS,
                      sctx->small_prim_cull_info_address >> 8);
    radeon_end();
 

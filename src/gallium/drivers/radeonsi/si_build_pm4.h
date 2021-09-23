@@ -110,15 +110,15 @@
    radeon_emit(value); \
 } while (0)
 
-#define radeon_set_sh_reg_seq(cs, reg, num) do { \
+#define radeon_set_sh_reg_seq(reg, num) do { \
    SI_CHECK_SHADOWED_REGS(reg, num); \
    assert((reg) >= SI_SH_REG_OFFSET && (reg) < SI_SH_REG_END); \
    radeon_emit(PKT3(PKT3_SET_SH_REG, num, 0)); \
    radeon_emit(((reg) - SI_SH_REG_OFFSET) >> 2); \
 } while (0)
 
-#define radeon_set_sh_reg(cs, reg, value) do { \
-   radeon_set_sh_reg_seq(cs, reg, 1); \
+#define radeon_set_sh_reg(reg, value) do { \
+   radeon_set_sh_reg_seq(reg, 1); \
    radeon_emit(value); \
 } while (0)
 
@@ -263,7 +263,7 @@
    unsigned __value = val; \
    if (((sctx->tracked_regs.reg_saved >> (reg)) & 0x1) != 0x1 || \
        sctx->tracked_regs.reg_value[reg] != __value) { \
-      radeon_set_sh_reg(cs, offset, __value); \
+      radeon_set_sh_reg(offset, __value); \
       sctx->tracked_regs.reg_saved |= BITFIELD64_BIT(reg); \
       sctx->tracked_regs.reg_value[reg] = __value; \
    } \
@@ -297,7 +297,7 @@
 
 #define radeon_emit_one_32bit_pointer(sctx, desc, sh_base) do { \
    unsigned sh_offset = (sh_base) + (desc)->shader_userdata_offset; \
-   radeon_set_sh_reg_seq(cs, sh_offset, 1); \
+   radeon_set_sh_reg_seq(sh_offset, 1); \
    radeon_emit_32bit_pointer(sctx->screen, cs, (desc)->gpu_address); \
 } while (0)
 
