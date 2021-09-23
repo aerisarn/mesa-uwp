@@ -203,7 +203,7 @@ panvk_per_arch(set_texture_desc)(struct panvk_descriptor_set *set,
 
 #if PAN_ARCH > 5
    memcpy(&((struct mali_bifrost_texture_packed *)set->textures)[idx],
-          view->desc, pan_size(TEXTURE));
+          view->descs.tex, pan_size(TEXTURE));
 #else
    ((mali_ptr *)set->textures)[idx] = view->bo->ptr.gpu;
 #endif

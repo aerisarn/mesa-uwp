@@ -933,7 +933,9 @@ struct panvk_image_view {
 
    VkFormat vk_format;
    struct panfrost_bo *bo;
-   uint32_t desc[TEXTURE_DESC_WORDS];
+   struct {
+      uint32_t tex[TEXTURE_DESC_WORDS];
+   } descs;
 };
 
 #define SAMPLER_DESC_WORDS 8

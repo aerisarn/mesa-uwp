@@ -126,23 +126,27 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
    view->vk_format = pCreateInfo->format;
 
    struct panfrost_device *pdev = &device->physical_device->pdev;
-   unsigned bo_size =
-      GENX(panfrost_estimate_texture_payload_size)(&view->pview) +
-      pan_size(TEXTURE);
 
-   unsigned surf_descs_offset = PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0;
+   if (image->usage &
+       (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+      unsigned bo_size =
+         GENX(panfrost_estimate_texture_payload_size)(&view->pview) +
+         pan_size(TEXTURE);
 
-   view->bo = panfrost_bo_create(pdev, bo_size, 0, "Texture descriptor");
+      unsigned surf_descs_offset = PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0;
 
-   struct panfrost_ptr surf_descs = {
-      .cpu = view->bo->ptr.cpu + surf_descs_offset,
-      .gpu = view->bo->ptr.gpu + surf_descs_offset,
-   };
-   void *tex_desc = PAN_ARCH >= 6 ?
-                    &view->desc : view->bo->ptr.cpu;
+      view->bo = panfrost_bo_create(pdev, bo_size, 0, "Texture descriptor");
 
-   STATIC_ASSERT(sizeof(view->desc) >= pan_size(TEXTURE));
-   GENX(panfrost_new_texture)(pdev, &view->pview, tex_desc, &surf_descs);
+      struct panfrost_ptr surf_descs = {
+         .cpu = view->bo->ptr.cpu + surf_descs_offset,
+         .gpu = view->bo->ptr.gpu + surf_descs_offset,
+      };
+      void *tex_desc = PAN_ARCH >= 6 ?
+                       &view->descs.tex : view->bo->ptr.cpu;
+
+      STATIC_ASSERT(sizeof(view->descs.tex) >= pan_size(TEXTURE));
+      GENX(panfrost_new_texture)(pdev, &view->pview, tex_desc, &surf_descs);
+   }
 
    *pView = panvk_image_view_to_handle(view);
    return VK_SUCCESS;
