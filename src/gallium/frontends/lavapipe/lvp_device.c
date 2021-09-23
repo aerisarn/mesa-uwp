@@ -1503,47 +1503,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateDeviceLayerProperties(
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceQueue2(
-   VkDevice                                    _device,
-   const VkDeviceQueueInfo2*                   pQueueInfo,
-   VkQueue*                                    pQueue)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   struct lvp_queue *queue;
-
-   queue = &device->queue;
-   if (pQueueInfo->flags != queue->vk.flags) {
-      /* From the Vulkan 1.1.70 spec:
-       *
-       * "The queue returned by vkGetDeviceQueue2 must have the same
-       * flags value from this structure as that used at device
-       * creation time in a VkDeviceQueueCreateInfo instance. If no
-       * matching flags were specified at device creation time then
-       * pQueue will return VK_NULL_HANDLE."
-       */
-      *pQueue = VK_NULL_HANDLE;
-      return;
-   }
-
-   *pQueue = lvp_queue_to_handle(queue);
-}
-
-
-VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceQueue(
-   VkDevice                                    _device,
-   uint32_t                                    queueFamilyIndex,
-   uint32_t                                    queueIndex,
-   VkQueue*                                    pQueue)
-{
-   const VkDeviceQueueInfo2 info = (VkDeviceQueueInfo2) {
-      .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-      .queueFamilyIndex = queueFamilyIndex,
-      .queueIndex = queueIndex
-   };
-
-   lvp_GetDeviceQueue2(_device, &info, pQueue);
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
    VkQueue                                     _queue,
    uint32_t                                    submitCount,
