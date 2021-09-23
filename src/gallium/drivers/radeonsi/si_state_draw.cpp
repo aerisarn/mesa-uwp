@@ -1165,7 +1165,7 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
        *
        * For TES or the GS copy shader without NGG:
        */
-      if (vs_base != R_00B130_SPI_SHADER_USER_DATA_VS_0) {
+      if (GFX_VERSION <= GFX10_3 && vs_base != R_00B130_SPI_SHADER_USER_DATA_VS_0) {
          radeon_set_sh_reg(R_00B130_SPI_SHADER_USER_DATA_VS_0 + SI_SGPR_VS_STATE_BITS * 4,
                            sctx->current_vs_state);
       }
