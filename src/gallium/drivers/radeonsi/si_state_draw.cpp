@@ -217,10 +217,12 @@ static bool si_update_shaders(struct si_context *sctx)
       }
    }
 
-   sctx->vs_uses_base_instance =
-      sctx->shader.vs.current ? sctx->shader.vs.current->uses_base_instance :
-      sctx->queued.named.hs ? sctx->queued.named.hs->uses_base_instance :
-      sctx->shader.gs.current->uses_base_instance;
+   if (GFX_VERSION >= GFX9 && HAS_TESS)
+      sctx->vs_uses_base_instance = sctx->queued.named.hs->uses_base_instance;
+   else if (GFX_VERSION >= GFX9 && HAS_GS)
+      sctx->vs_uses_base_instance = sctx->shader.gs.current->uses_base_instance;
+   else
+      sctx->vs_uses_base_instance = sctx->shader.vs.current->uses_base_instance;
 
    union si_vgt_stages_key key;
    key.index = 0;
