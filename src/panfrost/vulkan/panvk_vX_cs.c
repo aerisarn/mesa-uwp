@@ -402,7 +402,7 @@ panvk_per_arch(emit_vertex_job)(const struct panvk_pipeline *pipeline,
       cfg.draw_descriptor_is_64b = true;
       cfg.state = pipeline->rsds[MESA_SHADER_VERTEX];
       cfg.attributes = draw->stages[MESA_SHADER_VERTEX].attributes;
-      cfg.attribute_buffers = draw->attribute_bufs;
+      cfg.attribute_buffers = draw->stages[MESA_SHADER_VERTEX].attribute_bufs;
       cfg.varyings = draw->stages[MESA_SHADER_VERTEX].varyings;
       cfg.varying_buffers = draw->varying_bufs;
       cfg.thread_storage = draw->tls;
@@ -461,7 +461,7 @@ panvk_emit_tiler_dcd(const struct panvk_pipeline *pipeline,
       cfg.position = draw->position;
       cfg.state = draw->fs_rsd;
       cfg.attributes = draw->stages[MESA_SHADER_FRAGMENT].attributes;
-      cfg.attribute_buffers = draw->attribute_bufs;
+      cfg.attribute_buffers = draw->stages[MESA_SHADER_FRAGMENT].attribute_bufs;
       cfg.viewport = draw->viewport;
       cfg.varyings = draw->stages[MESA_SHADER_FRAGMENT].varyings;
       cfg.varying_buffers = cfg.varyings ? draw->varying_bufs : 0;

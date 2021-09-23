@@ -87,7 +87,7 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->binding_count = num_bindings;
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0, ssbo_idx = 0;
-   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, desc_idx = 0;
+   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, desc_idx = 0, img_idx = 0;
 
    for (unsigned i = 0; i < pCreateInfo->bindingCount; i++) {
       const VkDescriptorSetLayoutBinding *binding = &bindings[i];
@@ -120,7 +120,6 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
          tex_idx += binding_layout->array_size;
          break;
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
@@ -143,6 +142,10 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
          binding_layout->ssbo_idx = ssbo_idx;
          ssbo_idx += binding_layout->array_size;
          break;
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         binding_layout->img_idx = img_idx;
+         img_idx += binding_layout->array_size;
+         break;
       default:
          unreachable("Invalid descriptor type");
       }
@@ -155,6 +158,7 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->num_dyn_ubos = dyn_ubo_idx;
    set_layout->num_ssbos = ssbo_idx;
    set_layout->num_dyn_ssbos = dyn_ssbo_idx;
+   set_layout->num_imgs = img_idx;
 
    free(bindings);
    *pSetLayout = panvk_descriptor_set_layout_to_handle(set_layout);
@@ -181,6 +185,7 @@ panvk_DestroyDescriptorSetLayout(VkDevice _device,
 
 /* FIXME: make sure those values are correct */
 #define PANVK_MAX_TEXTURES     (1 << 16)
+#define PANVK_MAX_IMAGES       (1 << 8)
 #define PANVK_MAX_SAMPLERS     (1 << 16)
 #define PANVK_MAX_UBOS         255
 
@@ -203,8 +208,9 @@ panvk_GetDescriptorSetLayoutSupport(VkDevice _device,
       return;
    }
 
-   unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0, UNUSED ssbo_idx = 0,
-      UNUSED dynoffset_idx = 0;
+   unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0;
+   unsigned ssbo_idx = 0, dynoffset_idx = 0, img_idx = 0;
+
    for (unsigned i = 0; i < pCreateInfo->bindingCount; i++) {
       const VkDescriptorSetLayoutBinding *binding = &bindings[i];
 
@@ -217,7 +223,6 @@ panvk_GetDescriptorSetLayoutSupport(VkDevice _device,
          tex_idx += binding->descriptorCount;
          break;
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
@@ -235,6 +240,9 @@ panvk_GetDescriptorSetLayoutSupport(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          ssbo_idx += binding->descriptorCount;
          break;
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         img_idx += binding->descriptorCount;
+         break;
       default:
          unreachable("Invalid descriptor type");
       }
@@ -245,7 +253,8 @@ panvk_GetDescriptorSetLayoutSupport(VkDevice _device,
     */
    if (tex_idx > PANVK_MAX_TEXTURES / MAX_SETS ||
        sampler_idx > PANVK_MAX_SAMPLERS / MAX_SETS ||
-       ubo_idx > PANVK_MAX_UBOS / MAX_SETS)
+       ubo_idx > PANVK_MAX_UBOS / MAX_SETS ||
+       img_idx > PANVK_MAX_IMAGES / MAX_SETS)
       return;
 
    pSupport->supported = true;
@@ -275,7 +284,7 @@ panvk_CreatePipelineLayout(VkDevice _device,
    _mesa_sha1_init(&ctx);
 
    unsigned sampler_idx = 0, tex_idx = 0, ssbo_idx = 0, ubo_idx = 0;
-   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0;
+   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, img_idx = 0;
    for (unsigned set = 0; set < pCreateInfo->setLayoutCount; set++) {
       VK_FROM_HANDLE(panvk_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
@@ -286,12 +295,14 @@ panvk_CreatePipelineLayout(VkDevice _device,
       layout->sets[set].dyn_ubo_offset = dyn_ubo_idx;
       layout->sets[set].ssbo_offset = ssbo_idx;
       layout->sets[set].dyn_ssbo_offset = dyn_ssbo_idx;
+      layout->sets[set].img_offset = img_idx;
       sampler_idx += set_layout->num_samplers;
       tex_idx += set_layout->num_textures;
       ubo_idx += set_layout->num_ubos;
       dyn_ubo_idx += set_layout->num_dyn_ubos;
       ssbo_idx += set_layout->num_ssbos;
       dyn_ssbo_idx += set_layout->num_dyn_ssbos;
+      img_idx += set_layout->num_imgs;
 
       for (unsigned b = 0; b < set_layout->binding_count; b++) {
          struct panvk_descriptor_set_binding_layout *binding_layout =
@@ -327,6 +338,7 @@ panvk_CreatePipelineLayout(VkDevice _device,
    layout->num_dyn_ubos = dyn_ubo_idx;
    layout->num_ssbos = ssbo_idx;
    layout->num_dyn_ssbos = dyn_ssbo_idx;
+   layout->num_imgs = img_idx;
 
    _mesa_sha1_final(&ctx, layout->sha1);
 
@@ -444,6 +456,8 @@ panvk_descriptor_set_destroy(struct panvk_device *device,
    vk_free(&device->vk.alloc, set->dyn_ubos);
    vk_free(&device->vk.alloc, set->ssbos);
    vk_free(&device->vk.alloc, set->dyn_ssbos);
+   vk_free(&device->vk.alloc, set->img_fmts);
+   vk_free(&device->vk.alloc, set->img_attrib_bufs);
    vk_free(&device->vk.alloc, set->descs);
    vk_object_free(&device->vk, NULL, set);
 }

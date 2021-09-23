@@ -362,6 +362,8 @@ struct panvk_descriptor_set {
    struct panvk_buffer_desc *dyn_ubos;
    void *samplers;
    void *textures;
+   void *img_attrib_bufs;
+   uint32_t *img_fmts;
 };
 
 #define MAX_SETS 4
@@ -408,6 +410,7 @@ struct panvk_descriptor_set_layout {
    unsigned num_dyn_ubos;
    unsigned num_ssbos;
    unsigned num_dyn_ssbos;
+   unsigned num_imgs;
 
    /* Number of bindings in this descriptor set */
    uint32_t binding_count;
@@ -426,6 +429,7 @@ struct panvk_pipeline_layout {
    unsigned num_dyn_ubos;
    unsigned num_ssbos;
    unsigned num_dyn_ssbos;
+   uint32_t num_imgs;
    uint32_t num_sets;
 
    struct {
@@ -441,6 +445,7 @@ struct panvk_pipeline_layout {
       unsigned dyn_ubo_offset;
       unsigned ssbo_offset;
       unsigned dyn_ssbo_offset;
+      unsigned img_offset;
    } sets[MAX_SETS];
 };
 
@@ -504,6 +509,10 @@ struct panvk_descriptor_state {
    mali_ptr textures;
    mali_ptr samplers;
    mali_ptr push_constants;
+   mali_ptr vs_attribs;
+   mali_ptr vs_attrib_bufs;
+   mali_ptr non_vs_attribs;
+   mali_ptr non_vs_attrib_bufs;
 };
 
 #define INVOCATION_DESC_WORDS 2
@@ -522,10 +531,10 @@ struct panvk_draw_info {
    struct {
       mali_ptr varyings;
       mali_ptr attributes;
+      mali_ptr attribute_bufs;
       mali_ptr push_constants;
    } stages[MESA_SHADER_STAGES];
    mali_ptr varying_bufs;
-   mali_ptr attribute_bufs;
    mali_ptr textures;
    mali_ptr samplers;
    mali_ptr ubos;
@@ -596,8 +605,6 @@ struct panvk_cmd_state {
    struct {
       struct panvk_attrib_buf bufs[MAX_VBS];
       unsigned count;
-      mali_ptr attribs;
-      mali_ptr attrib_bufs;
    } vb;
 
    /* Index buffer */
@@ -730,6 +737,7 @@ struct panvk_shader {
    struct util_dynarray binary;
    unsigned sysval_ubo;
    struct pan_compute_dim local_size;
+   bool has_img_access;
 };
 
 struct panvk_shader *
@@ -774,6 +782,9 @@ struct panvk_pipeline {
 
    mali_ptr vpd;
    mali_ptr rsds[MESA_SHADER_STAGES];
+
+   /* shader stage bit is set of the stage accesses storage images */
+   uint32_t img_access_mask;
 
    unsigned num_ubos;
    unsigned num_sysvals;
@@ -931,6 +942,7 @@ unsigned
 panvk_image_get_total_size(const struct panvk_image *image);
 
 #define TEXTURE_DESC_WORDS 8
+#define ATTRIB_BUF_DESC_WORDS 4
 
 struct panvk_image_view {
    struct vk_object_base base;
@@ -940,6 +952,7 @@ struct panvk_image_view {
    struct panfrost_bo *bo;
    struct {
       uint32_t tex[TEXTURE_DESC_WORDS];
+      uint32_t img_attrib_buf[ATTRIB_BUF_DESC_WORDS * 2];
    } descs;
 };
 

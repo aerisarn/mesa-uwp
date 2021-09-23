@@ -661,51 +661,143 @@ panvk_draw_prepare_varyings(struct panvk_cmd_buffer *cmdbuf,
 }
 
 static void
-panvk_draw_prepare_attributes(struct panvk_cmd_buffer *cmdbuf,
-                              struct panvk_draw_info *draw)
+panvk_fill_non_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
+                          struct panvk_cmd_bind_point_state *bind_point_state,
+                          void *attrib_bufs, void *attribs,
+                          unsigned first_buf)
 {
-   const struct panvk_pipeline *pipeline = panvk_cmd_get_pipeline(cmdbuf, GRAPHICS);
+   struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
 
-   /* TODO: images */
-   if (!pipeline->attribs.buf_count)
+   for (unsigned s = 0; s < pipeline->layout->num_sets; s++) {
+      const struct panvk_descriptor_set *set = desc_state->sets[s];
+
+      if (!set) continue;
+
+      const struct panvk_descriptor_set_layout *layout = set->layout;
+      unsigned img_idx = pipeline->layout->sets[s].img_offset;
+      unsigned offset = img_idx * pan_size(ATTRIBUTE_BUFFER) * 2;
+      unsigned size = layout->num_imgs * pan_size(ATTRIBUTE_BUFFER) * 2;
+
+      memcpy(attrib_bufs + offset, desc_state->sets[s]->img_attrib_bufs, size);
+
+      offset = img_idx * pan_size(ATTRIBUTE);
+      for (unsigned i = 0; i < layout->num_imgs; i++) {
+         pan_pack(attribs + offset, ATTRIBUTE, cfg) {
+            cfg.buffer_index = first_buf + (img_idx + i) * 2;
+            cfg.format = desc_state->sets[s]->img_fmts[i];
+            cfg.offset_enable = PAN_ARCH <= 5;
+         }
+         offset += pan_size(ATTRIBUTE);
+      }
+   }
+}
+
+static void
+panvk_prepare_non_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
+                             struct panvk_cmd_bind_point_state *bind_point_state)
+{
+   struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
+
+   if (desc_state->non_vs_attribs || !pipeline->img_access_mask)
       return;
 
-   if (cmdbuf->state.vb.attribs) {
-      draw->stages[MESA_SHADER_VERTEX].attributes = cmdbuf->state.vb.attribs;
-      draw->attribute_bufs = cmdbuf->state.vb.attrib_bufs;
+   unsigned attrib_count = pipeline->layout->num_imgs;
+   unsigned attrib_buf_count = (pipeline->layout->num_imgs * 2);
+   struct panfrost_ptr bufs =
+      pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
+                                attrib_buf_count + (PAN_ARCH >= 6 ? 1 : 0),
+                                ATTRIBUTE_BUFFER);
+   struct panfrost_ptr attribs =
+      pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base, attrib_count,
+                                ATTRIBUTE);
+
+   panvk_fill_non_vs_attribs(cmdbuf, bind_point_state, bufs.cpu, attribs.cpu, 0);
+
+   desc_state->non_vs_attrib_bufs = bufs.gpu;
+   desc_state->non_vs_attribs = attribs.gpu;
+}
+
+static void
+panvk_draw_prepare_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
+                              struct panvk_draw_info *draw)
+{
+   struct panvk_cmd_bind_point_state *bind_point_state =
+      panvk_cmd_get_bind_point_state(cmdbuf, GRAPHICS);
+   struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
+   unsigned num_imgs =
+      pipeline->img_access_mask & BITFIELD_BIT(MESA_SHADER_VERTEX) ?
+      pipeline->layout->num_imgs : 0;
+   unsigned attrib_count = pipeline->attribs.buf_count + num_imgs;
+
+   if (desc_state->vs_attribs || !attrib_count)
+      return;
+
+   if (!pipeline->attribs.buf_count) {
+      panvk_prepare_non_vs_attribs(cmdbuf, bind_point_state);
+      desc_state->vs_attrib_bufs = desc_state->non_vs_attrib_bufs;
+      desc_state->vs_attribs = desc_state->non_vs_attribs;
       return;
    }
 
-   unsigned buf_count = pipeline->attribs.buf_count * 2;
+   unsigned attrib_buf_count = attrib_count * 2;
    struct panfrost_ptr bufs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
-                                buf_count + (PAN_ARCH >= 6 ? 1 : 0),
+                                attrib_buf_count + (PAN_ARCH >= 6 ? 1 : 0),
                                 ATTRIBUTE_BUFFER);
+   struct panfrost_ptr attribs =
+      pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base, attrib_count,
+                                ATTRIBUTE);
 
    panvk_per_arch(emit_attrib_bufs)(&pipeline->attribs,
                                     cmdbuf->state.vb.bufs,
                                     cmdbuf->state.vb.count,
                                     draw, bufs.cpu);
-   cmdbuf->state.vb.attrib_bufs = bufs.gpu;
-
-   struct panfrost_ptr attribs =
-      pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
-                                pipeline->attribs.attrib_count,
-                                ATTRIBUTE);
-
    panvk_per_arch(emit_attribs)(cmdbuf->device, &pipeline->attribs,
                                 cmdbuf->state.vb.bufs, cmdbuf->state.vb.count,
                                 attribs.cpu);
 
+   if (attrib_count > pipeline->attribs.buf_count) {
+      unsigned bufs_offset = pipeline->attribs.buf_count * pan_size(ATTRIBUTE_BUFFER) * 2;
+      unsigned attribs_offset = pipeline->attribs.buf_count * pan_size(ATTRIBUTE);
+
+      panvk_fill_non_vs_attribs(cmdbuf, bind_point_state,
+                                bufs.cpu + bufs_offset, attribs.cpu + attribs_offset,
+                                pipeline->attribs.buf_count * 2);
+   }
+
    /* A NULL entry is needed to stop prefecting on Bifrost */
 #if PAN_ARCH >= 6
-   memset(bufs.cpu + (pan_size(ATTRIBUTE_BUFFER) * buf_count), 0,
+   memset(bufs.cpu + (pan_size(ATTRIBUTE_BUFFER) * attrib_buf_count), 0,
           pan_size(ATTRIBUTE_BUFFER));
 #endif
 
-   cmdbuf->state.vb.attribs = attribs.gpu;
-   draw->stages[MESA_SHADER_VERTEX].attributes = cmdbuf->state.vb.attribs;
-   draw->attribute_bufs = cmdbuf->state.vb.attrib_bufs;
+   desc_state->vs_attrib_bufs = bufs.gpu;
+   desc_state->vs_attribs = attribs.gpu;
+}
+
+static void
+panvk_draw_prepare_attributes(struct panvk_cmd_buffer *cmdbuf,
+                              struct panvk_draw_info *draw)
+{
+   struct panvk_cmd_bind_point_state *bind_point_state =
+      panvk_cmd_get_bind_point_state(cmdbuf, GRAPHICS);
+   struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(draw->stages); i++) {
+      if (i == MESA_SHADER_VERTEX) {
+         panvk_draw_prepare_vs_attribs(cmdbuf, draw);
+         draw->stages[i].attributes = desc_state->vs_attribs;
+         draw->stages[i].attribute_bufs = desc_state->vs_attrib_bufs;
+      } else if (pipeline->img_access_mask & BITFIELD_BIT(i)) {
+         panvk_prepare_non_vs_attribs(cmdbuf, bind_point_state);
+         draw->stages[i].attributes = desc_state->non_vs_attribs;
+         draw->stages[i].attribute_bufs = desc_state->non_vs_attrib_bufs;
+      }
+   }
 }
 
 static void

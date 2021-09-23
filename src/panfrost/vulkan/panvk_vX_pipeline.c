@@ -326,6 +326,9 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
       pipeline->tls_size = MAX2(pipeline->tls_size, shader->info.tls_size);
       pipeline->wls_size = MAX2(pipeline->wls_size, shader->info.wls_size);
 
+      if (shader->has_img_access)
+         pipeline->img_access_mask |= BITFIELD_BIT(i);
+
       if (i == MESA_SHADER_VERTEX && shader->info.vs.writes_point_size)
          pipeline->ia.writes_point_size = true;
 

@@ -41,6 +41,8 @@ panvk_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
                            const VkDeviceSize *pOffsets)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+   struct panvk_descriptor_state *desc_state =
+      panvk_cmd_get_desc_state(cmdbuf, GRAPHICS);
 
    assert(firstBinding + bindingCount <= MAX_VBS);
 
@@ -50,8 +52,9 @@ panvk_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
       cmdbuf->state.vb.bufs[firstBinding + i].address = buf->bo->ptr.gpu + pOffsets[i];
       cmdbuf->state.vb.bufs[firstBinding + i].size = buf->size - pOffsets[i];
    }
+
    cmdbuf->state.vb.count = MAX2(cmdbuf->state.vb.count, firstBinding + bindingCount);
-   cmdbuf->state.vb.attrib_bufs = cmdbuf->state.vb.attribs = 0;
+   desc_state->vs_attrib_bufs = desc_state->vs_attribs = 0;
 }
 
 void
@@ -121,6 +124,11 @@ panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       if (set->layout->num_samplers)
          descriptors_state->samplers = 0;
+
+      if (set->layout->num_imgs) {
+         descriptors_state->vs_attrib_bufs = descriptors_state->non_vs_attrib_bufs = 0;
+         descriptors_state->vs_attribs = descriptors_state->non_vs_attribs = 0;
+      }
    }
 
    assert(dynoffset_idx == dynamicOffsetCount);

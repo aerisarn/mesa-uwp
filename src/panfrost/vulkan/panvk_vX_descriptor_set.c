@@ -114,6 +114,22 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
          goto err_free_set;
    }
 
+   if (layout->num_imgs) {
+      set->img_fmts =
+         vk_zalloc(&device->vk.alloc,
+                   sizeof(*set->img_fmts) * layout->num_imgs,
+                   8, VK_OBJECT_TYPE_DESCRIPTOR_SET);
+      if (!set->img_fmts)
+         goto err_free_set;
+
+      set->img_attrib_bufs =
+         vk_zalloc(&device->vk.alloc,
+                   pan_size(ATTRIBUTE_BUFFER) * 2 * layout->num_imgs,
+                   8, VK_OBJECT_TYPE_DESCRIPTOR_SET);
+      if (!set->img_attrib_bufs)
+         goto err_free_set;
+   }
+
    for (unsigned i = 0; i < layout->binding_count; i++) {
       if (!layout->bindings[i].immutable_samplers)
          continue;
@@ -134,6 +150,8 @@ err_free_set:
    vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->ubos);
    vk_free(&device->vk.alloc, set->dyn_ubos);
+   vk_free(&device->vk.alloc, set->img_fmts);
+   vk_free(&device->vk.alloc, set->img_attrib_bufs);
    vk_free(&device->vk.alloc, set->descs);
    vk_object_free(&device->vk, NULL, set);
    return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -169,17 +187,6 @@ err_free_sets:
       pDescriptorSets[i] = VK_NULL_HANDLE;
 
    return result; 
-}
-
-static void
-panvk_set_image_desc(struct panvk_descriptor *desc,
-                     const VkDescriptorImageInfo *pImageInfo)
-{
-   VK_FROM_HANDLE(panvk_sampler, sampler, pImageInfo->sampler);
-   VK_FROM_HANDLE(panvk_image_view, image_view, pImageInfo->imageView);
-   desc->image.sampler = sampler;
-   desc->image.view = image_view;
-   desc->image.layout = pImageInfo->imageLayout;
 }
 
 static void
@@ -238,6 +245,20 @@ panvk_per_arch(set_texture_desc)(struct panvk_descriptor_set *set,
 }
 
 static void
+panvk_set_img_desc(struct panvk_device *dev,
+                   struct panvk_descriptor_set *set,
+                   unsigned idx,
+                   const VkDescriptorImageInfo *pImageInfo)
+{
+   const struct panfrost_device *pdev = &dev->physical_device->pdev;
+   VK_FROM_HANDLE(panvk_image_view, view, pImageInfo->imageView);
+   void *attrib_buf = (uint8_t *)set->img_attrib_bufs + (pan_size(ATTRIBUTE_BUFFER) * 2 * idx);
+
+   set->img_fmts[idx] = pdev->formats[view->pview.format].hw;
+   memcpy(attrib_buf, view->descs.img_attrib_buf, pan_size(ATTRIBUTE_BUFFER) * 2);
+}
+
+static void
 panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
                                      const VkWriteDescriptorSet *pDescriptorWrite)
 {
@@ -292,8 +313,12 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
 
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-         for (unsigned i = 0; i < ndescs; i++)
-            panvk_set_image_desc(&descs[i], &pDescriptorWrite->pImageInfo[src_offset + i]);
+         for (unsigned i = 0; i < ndescs; i++) {
+            const VkDescriptorImageInfo *info = &pDescriptorWrite->pImageInfo[src_offset + i];
+            unsigned img = binding_layout->img_idx + dest_offset + i;
+
+            panvk_set_img_desc(dev, set, img, info);
+         }
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:

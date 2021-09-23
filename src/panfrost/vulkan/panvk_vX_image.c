@@ -154,6 +154,41 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
       GENX(panfrost_new_texture)(pdev, &view->pview, tex_desc, &surf_descs);
    }
 
+   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+      uint8_t *attrib_buf = (uint8_t *)view->descs.img_attrib_buf;
+      bool is_3d = image->pimage.layout.dim == MALI_TEXTURE_DIMENSION_3D;
+      unsigned offset = image->pimage.data.offset;
+      offset += panfrost_texture_offset(&image->pimage.layout,
+                                        view->pview.first_level,
+                                        is_3d ? 0 : view->pview.first_layer,
+                                        is_3d ? view->pview.first_layer : 0);
+
+      pan_pack(attrib_buf, ATTRIBUTE_BUFFER, cfg) {
+         cfg.type = image->pimage.layout.modifier == DRM_FORMAT_MOD_LINEAR ?
+                    MALI_ATTRIBUTE_TYPE_3D_LINEAR : MALI_ATTRIBUTE_TYPE_3D_INTERLEAVED;
+         cfg.pointer = image->pimage.data.bo->ptr.gpu + offset;
+         cfg.stride = util_format_get_blocksize(view->pview.format);
+         cfg.size = image->pimage.data.bo->size - offset;
+      }
+
+      attrib_buf += pan_size(ATTRIBUTE_BUFFER);
+      pan_pack(attrib_buf, ATTRIBUTE_BUFFER_CONTINUATION_3D, cfg) {
+         unsigned level = view->pview.first_level;
+
+         cfg.s_dimension = u_minify(image->pimage.layout.width, level);
+         cfg.t_dimension = u_minify(image->pimage.layout.height, level);
+         cfg.r_dimension =
+            view->pview.dim == MALI_TEXTURE_DIMENSION_3D ?
+            u_minify(image->pimage.layout.depth, level) :
+            (view->pview.last_layer - view->pview.first_layer + 1);
+         cfg.row_stride = image->pimage.layout.slices[level].row_stride;
+         if (cfg.r_dimension > 1) {
+            cfg.slice_stride =
+               panfrost_get_layer_stride(&image->pimage.layout, level);
+         }
+      }
+   }
+
    *pView = panvk_image_view_to_handle(view);
    return VK_SUCCESS;
 }
