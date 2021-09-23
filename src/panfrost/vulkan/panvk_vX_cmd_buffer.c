@@ -326,7 +326,7 @@ panvk_cmd_prepare_sysvals(struct panvk_cmd_buffer *cmdbuf,
 
    for (unsigned i = 0; i < ARRAY_SIZE(desc_state->sysvals); i++) {
       unsigned sysval_count = pipeline->sysvals[i].ids.sysval_count;
-      if (!sysval_count ||
+      if (!sysval_count || pipeline->sysvals[i].ubo ||
           (desc_state->sysvals[i] &&
            !(cmdbuf->state.dirty & pipeline->sysvals[i].dirty_mask)))
          continue;
