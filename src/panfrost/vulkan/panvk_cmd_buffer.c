@@ -136,7 +136,6 @@ panvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
    cmdbuf->state.bind_point = pipelineBindPoint;
    cmdbuf->state.pipeline = pipeline;
    cmdbuf->state.varyings = pipeline->varyings;
-   cmdbuf->state.vb.attrib_bufs = cmdbuf->state.vb.attribs = 0;
    cmdbuf->state.fs_rsd = 0;
    memset(cmdbuf->descriptors[pipelineBindPoint].sysvals, 0,
           sizeof(cmdbuf->descriptors[pipelineBindPoint].sysvals));
