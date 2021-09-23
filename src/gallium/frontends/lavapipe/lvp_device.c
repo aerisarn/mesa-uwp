@@ -1368,7 +1368,6 @@ lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue,
    queue->device = device;
 
    simple_mtx_init(&queue->last_lock, mtx_plain);
-   queue->flags = 0;
    queue->timeline = 0;
    queue->ctx = device->pscreen->context_create(device->pscreen, NULL, PIPE_CONTEXT_ROBUST_BUFFER_ACCESS);
    queue->cso = cso_create_context(queue->ctx, CSO_NO_VBUF);
@@ -1513,7 +1512,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceQueue2(
    struct lvp_queue *queue;
 
    queue = &device->queue;
-   if (pQueueInfo->flags != queue->flags) {
+   if (pQueueInfo->flags != queue->vk.flags) {
       /* From the Vulkan 1.1.70 spec:
        *
        * "The queue returned by vkGetDeviceQueue2 must have the same

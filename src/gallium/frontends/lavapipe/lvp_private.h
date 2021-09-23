@@ -167,7 +167,6 @@ bool lvp_physical_device_extension_supported(struct lvp_physical_device *dev,
 
 struct lvp_queue {
    struct vk_queue vk;
-   VkDeviceQueueCreateFlags flags;
    struct lvp_device *                         device;
    struct pipe_context *ctx;
    struct cso_context *cso;
