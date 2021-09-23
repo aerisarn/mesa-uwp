@@ -47,6 +47,12 @@ def print_yellow(txt, end_line=True, prefix=None):
     print("\033[1;33m{}\033[0m".format(txt), end="\n" if end_line else " ")
 
 
+def print_green(txt, end_line=True, prefix=None):
+    if prefix:
+        print(prefix, end="")
+    print("\033[1;32m{}\033[0m".format(txt), end="\n" if end_line else " ")
+
+
 parser = argparse.ArgumentParser(description="radeonsi tester", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(
     "--jobs",
@@ -125,6 +131,19 @@ parser.add_argument(
     help="Output folder (logs, etc)",
     default=os.path.join(tempfile.gettempdir(), datetime.now().strftime('%Y-%m-%d-%H-%M-%S')))
 
+available_gpus = []
+for f in os.listdir("/dev/dri/by-path"):
+    idx = f.find("-render")
+    if idx < 0:
+        continue
+    # gbm name is the full path, but DRI_PRIME expects a different
+    # format
+    available_gpus += [(os.path.join("/dev/dri/by-path", f),
+                        f[:idx].replace(':', '_').replace('.', '_'))]
+
+if len(available_gpus) > 1:
+    parser.add_argument('--gpu', type=int, dest="gpu", default=0, help='Select GPU (0..{})'.format(len(available_gpus) - 1))
+
 args = parser.parse_args(sys.argv[1:])
 piglit_path = args.piglit_path
 glcts_path = args.glcts_path
@@ -145,20 +164,38 @@ else:
 base = args.baseline
 skips = os.path.join(os.path.dirname(__file__), "skips.csv")
 
+env = os.environ.copy()
+env["PIGLIT_PLATFORM"] = "gbm"
+
+if "DRI_PRIME" in env:
+    print("Don't use DRI_PRIME. Instead use --gpu N")
+    del env["DRI_PRIME"]
+if "gpu" in args:
+    env["DRI_PRIME"] = available_gpus[args.gpu][1]
+    env["WAFFLE_GBM_DEVICE"] = available_gpus[args.gpu][0]
+
 # Use piglit's glinfo to determine the GPU name
 gpu_name = "unknown"
+gpu_name_full = ""
+
 p = subprocess.run(
     ["./glinfo"],
     capture_output="True",
     cwd=os.path.join(piglit_path, "bin"),
     check=True,
+    env=env
 )
 for line in p.stdout.decode().split("\n"):
     if "GL_RENDER" in line:
+        line = line.split("=")[1]
+        gpu_name_full = '('.join(line.split("(")[:-1]).strip()
         gpu_name = line.replace("(TM)", "").split("(")[1].split(",")[0].lower()
         break
 
 output_folder = args.output_folder
+print_green("Tested GPU: '{}' ({})".format(gpu_name_full, gpu_name))
+print_green("Output folder: '{}'".format(output_folder))
+
 count = 1
 while os.path.exists(output_folder):
     output_folder = "{}.{}".format(os.path.abspath(args.output_folder), count)
@@ -173,7 +210,7 @@ logfile = open(os.path.join(output_folder, "{}-run-tests.log".format(gpu_name)),
 spin = itertools.cycle("-\\|/")
 
 
-def run_cmd(args, verbosity, env=None):
+def run_cmd(args, verbosity):
     if verbosity > 1:
         print_yellow(
             "| Command line argument '"
@@ -266,9 +303,7 @@ if args.piglit:
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
         print_yellow("[baseline {}]".format(baseline), args.verbose > 0)
-    env = os.environ.copy()
-    env["PIGLIT_PLATFORM"] = "gbm"
-    run_cmd(cmd, args.verbose, env)
+    run_cmd(cmd, args.verbose)
     shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
     verify_results(baseline, new_baseline)
 
