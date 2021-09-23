@@ -26,6 +26,7 @@
 #include "vk_common_entrypoints.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
+#include "vk_queue.h"
 #include "vk_util.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
@@ -76,6 +77,8 @@ vk_device_init(struct vk_device *device,
 
    p_atomic_set(&device->private_data_next_index, 0);
 
+   list_inithead(&device->queues);
+
 #ifdef ANDROID
    mtx_init(&device->swapchain_private_mtx, mtx_plain);
    device->swapchain_private = NULL;
@@ -87,6 +90,9 @@ vk_device_init(struct vk_device *device,
 void
 vk_device_finish(UNUSED struct vk_device *device)
 {
+   /* Drivers should tear down their own queues */
+   assert(list_is_empty(&device->queues));
+
 #ifdef ANDROID
    if (device->swapchain_private) {
       hash_table_foreach(device->swapchain_private, entry)
@@ -145,6 +151,35 @@ vk_common_GetDeviceQueue(VkDevice _device,
    };
 
    device->dispatch_table.GetDeviceQueue2(_device, &info, pQueue);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_GetDeviceQueue2(VkDevice _device,
+                          const VkDeviceQueueInfo2 *pQueueInfo,
+                          VkQueue *pQueue)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+
+   struct vk_queue *queue = NULL;
+   vk_foreach_queue(iter, device) {
+      if (iter->queue_family_index == pQueueInfo->queueFamilyIndex &&
+          iter->index_in_family == pQueueInfo->queueIndex) {
+         queue = iter;
+         break;
+      }
+   }
+
+   /* From the Vulkan 1.1.70 spec:
+    *
+    *    "The queue returned by vkGetDeviceQueue2 must have the same flags
+    *    value from this structure as that used at device creation time in a
+    *    VkDeviceQueueCreateInfo instance. If no matching flags were specified
+    *    at device creation time then pQueue will return VK_NULL_HANDLE."
+    */
+   if (queue && queue->flags == pQueueInfo->flags)
+      *pQueue = vk_queue_to_handle(queue);
+   else
+      *pQueue = VK_NULL_HANDLE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

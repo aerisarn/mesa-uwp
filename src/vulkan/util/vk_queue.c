@@ -23,6 +23,8 @@
 
 #include "vk_queue.h"
 
+#include "vk_device.h"
+
 VkResult
 vk_queue_init(struct vk_queue *queue, struct vk_device *device,
               const VkDeviceQueueCreateInfo *pCreateInfo,
@@ -30,6 +32,8 @@ vk_queue_init(struct vk_queue *queue, struct vk_device *device,
 {
    memset(queue, 0, sizeof(*queue));
    vk_object_base_init(device, &queue->base, VK_OBJECT_TYPE_QUEUE);
+
+   list_addtail(&queue->link, &device->queues);
 
    queue->flags = pCreateInfo->flags;
    queue->queue_family_index = pCreateInfo->queueFamilyIndex;
@@ -47,5 +51,6 @@ void
 vk_queue_finish(struct vk_queue *queue)
 {
    util_dynarray_fini(&queue->labels);
+   list_del(&queue->link);
    vk_object_base_finish(&queue->base);
 }
