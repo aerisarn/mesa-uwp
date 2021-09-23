@@ -72,6 +72,14 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
          goto err_free_set;
    }
 
+   if (layout->num_ssbos) {
+      set->ssbos = vk_zalloc(&device->vk.alloc,
+                            sizeof(*set->ssbos) * layout->num_ssbos, 8,
+                            VK_OBJECT_TYPE_DESCRIPTOR_SET);
+      if (!set->ssbos)
+         goto err_free_set;
+   }
+
    if (layout->num_samplers) {
       set->samplers = vk_zalloc(&device->vk.alloc,
                                 pan_size(SAMPLER) * layout->num_samplers, 8,
@@ -106,6 +114,7 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
 err_free_set:
    vk_free(&device->vk.alloc, set->textures);
    vk_free(&device->vk.alloc, set->samplers);
+   vk_free(&device->vk.alloc, set->ssbos);
    vk_free(&device->vk.alloc, set->ubos);
    vk_free(&device->vk.alloc, set->descs);
    vk_object_free(&device->vk, NULL, set);
@@ -171,6 +180,17 @@ panvk_set_buffer_info_desc(struct panvk_descriptor *desc,
    desc->buffer_info.buffer = buffer;
    desc->buffer_info.offset = pBufferInfo->offset;
    desc->buffer_info.range = pBufferInfo->range;
+}
+
+static void
+panvk_set_buffer_desc(struct panvk_buffer_desc *bdesc,
+                      const VkDescriptorBufferInfo *pBufferInfo)
+{
+   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
+
+   bdesc->buffer = buffer;
+   bdesc->offset = pBufferInfo->offset;
+   bdesc->size = pBufferInfo->range;
 }
 
 static void
@@ -284,6 +304,11 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
          break;
 
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         for (unsigned i = 0; i < ndescs; i++) {
+            unsigned ssbo = binding_layout->ssbo_idx + dest_offset + i;
+            panvk_set_buffer_desc(&set->ssbos[ssbo], &pDescriptorWrite->pBufferInfo[src_offset + i]);
+         }
+         break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          for (unsigned i = 0; i < ndescs; i++)
             panvk_set_buffer_info_desc(&descs[i], &pDescriptorWrite->pBufferInfo[src_offset + i]);

@@ -230,6 +230,9 @@ panvk_pipeline_builder_alloc_static_state_bo(struct panvk_pipeline_builder *buil
          case PAN_SYSVAL_VIEWPORT_OFFSET:
             pipeline->sysvals[i].dirty_mask |= PANVK_DYNAMIC_VIEWPORT;
             break;
+         case PAN_SYSVAL_SSBO:
+            pipeline->sysvals[i].dirty_mask |= PANVK_DYNAMIC_SSBO;
+            break;
          default:
             break;
          }

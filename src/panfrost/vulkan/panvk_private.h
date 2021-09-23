@@ -345,11 +345,18 @@ struct panvk_descriptor {
    };
 };
 
+struct panvk_buffer_desc {
+   struct panvk_buffer *buffer;
+   VkDeviceSize offset;
+   VkDeviceSize size;
+};
+
 struct panvk_descriptor_set {
    struct vk_object_base base;
    struct panvk_descriptor_pool *pool;
    const struct panvk_descriptor_set_layout *layout;
    struct panvk_descriptor *descs;
+   struct panvk_buffer_desc *ssbos;
    void *ubos;
    void *samplers;
    void *textures;
@@ -478,10 +485,12 @@ enum panvk_dynamic_state_bits {
    PANVK_DYNAMIC_STENCIL_WRITE_MASK = 1 << 7,
    PANVK_DYNAMIC_STENCIL_REFERENCE = 1 << 8,
    PANVK_DYNAMIC_DISCARD_RECTANGLE = 1 << 9,
-   PANVK_DYNAMIC_ALL = (1 << 10) - 1,
+   PANVK_DYNAMIC_SSBO = 1 << 10,
+   PANVK_DYNAMIC_ALL = (1 << 11) - 1,
 };
 
 struct panvk_descriptor_state {
+   uint32_t dirty;
    struct {
       const struct panvk_descriptor_set *set;
       struct panfrost_ptr dynoffsets;

@@ -436,6 +436,7 @@ panvk_descriptor_set_destroy(struct panvk_device *device,
    vk_free(&device->vk.alloc, set->textures);
    vk_free(&device->vk.alloc, set->samplers);
    vk_free(&device->vk.alloc, set->ubos);
+   vk_free(&device->vk.alloc, set->ssbos);
    vk_free(&device->vk.alloc, set->descs);
    vk_object_free(&device->vk, NULL, set);
 }

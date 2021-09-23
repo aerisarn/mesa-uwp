@@ -294,8 +294,34 @@ panvk_per_arch(cmd_alloc_tls_desc)(struct panvk_cmd_buffer *cmdbuf, bool gfx)
 }
 
 static void
+panvk_sysval_upload_ssbo_info(struct panvk_cmd_buffer *cmdbuf,
+                              unsigned ssbo_id,
+                              struct panvk_cmd_bind_point_state *bind_point_state,
+                              union panvk_sysval_data *data)
+{
+   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
+   const struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+
+   for (unsigned s = 0; s < pipeline->layout->num_sets; s++) {
+      unsigned ssbo_offset = pipeline->layout->sets[s].ssbo_offset;
+      unsigned num_ssbos = pipeline->layout->sets[s].layout->num_ssbos;
+      const struct panvk_buffer_desc *ssbo = NULL;
+
+      if (ssbo_id >= ssbo_offset && ssbo_id < (ssbo_offset + num_ssbos))
+         ssbo = &desc_state->sets[s].set->ssbos[ssbo_id - ssbo_offset];
+
+      if (ssbo) {
+         data->u64[0] = ssbo->buffer->bo->ptr.gpu + ssbo->offset;
+         data->u32[2] = ssbo->size == VK_WHOLE_SIZE ? ssbo->buffer->size - ssbo->offset : ssbo->size;
+      }
+   }
+}
+
+static void
 panvk_cmd_upload_sysval(struct panvk_cmd_buffer *cmdbuf,
-                        unsigned id, union panvk_sysval_data *data)
+                        unsigned id,
+                        struct panvk_cmd_bind_point_state *bind_point_state,
+                        union panvk_sysval_data *data)
 {
    switch (PAN_SYSVAL_TYPE(id)) {
    case PAN_SYSVAL_VIEWPORT_SCALE:
@@ -310,6 +336,14 @@ panvk_cmd_upload_sysval(struct panvk_cmd_buffer *cmdbuf,
       break;
    case PAN_SYSVAL_BLEND_CONSTANTS:
       memcpy(data->f32, cmdbuf->state.blend.constants, sizeof(data->f32));
+      break;
+   case PAN_SYSVAL_SSBO:
+      /* This won't work with dynamic SSBO indexing. We might want to
+       * consider storing SSBO mappings in a separate UBO if we need to
+       * support
+       * VkPhysicalDeviceVulkan12Features.shaderStorageBufferArrayNonUniformIndexing.
+       */
+      panvk_sysval_upload_ssbo_info(cmdbuf, PAN_SYSVAL_ID(id), bind_point_state, data);
       break;
    default:
       unreachable("Invalid static sysval");
@@ -326,11 +360,12 @@ panvk_cmd_prepare_sysvals(struct panvk_cmd_buffer *cmdbuf,
    if (!pipeline->num_sysvals)
       return;
 
+   uint32_t dirty = cmdbuf->state.dirty | desc_state->dirty;
+
    for (unsigned i = 0; i < ARRAY_SIZE(desc_state->sysvals); i++) {
       unsigned sysval_count = pipeline->sysvals[i].ids.sysval_count;
       if (!sysval_count || pipeline->sysvals[i].ubo ||
-          (desc_state->sysvals[i] &&
-           !(cmdbuf->state.dirty & pipeline->sysvals[i].dirty_mask)))
+          (desc_state->sysvals[i] && !(dirty & pipeline->sysvals[i].dirty_mask)))
          continue;
 
       struct panfrost_ptr sysvals =
@@ -339,7 +374,7 @@ panvk_cmd_prepare_sysvals(struct panvk_cmd_buffer *cmdbuf,
 
       for (unsigned s = 0; s < pipeline->sysvals[i].ids.sysval_count; s++) {
          panvk_cmd_upload_sysval(cmdbuf, pipeline->sysvals[i].ids.sysvals[s],
-                                 &data[s]);
+                                 bind_point_state, &data[s]);
       }
 
       desc_state->sysvals[i] = sysvals.gpu;
@@ -782,7 +817,7 @@ panvk_per_arch(CmdDraw)(VkCommandBuffer commandBuffer,
    }
 
    /* Clear the dirty flags all at once */
-   cmdbuf->state.dirty = 0;
+   desc_state->dirty = cmdbuf->state.dirty = 0;
 }
 
 VkResult

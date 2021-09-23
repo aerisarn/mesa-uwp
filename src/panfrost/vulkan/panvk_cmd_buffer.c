@@ -100,7 +100,10 @@ panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
          pDynamicOffsets += set->layout->num_dynoffsets;
       }
 
-      if (set->layout->num_ubos || set->layout->num_dynoffsets)
+      if (set->layout->num_ssbos)
+         descriptors_state->dirty |= PANVK_DYNAMIC_SSBO;
+
+      if (set->layout->num_ubos || set->layout->num_ssbos || set->layout->num_dynoffsets)
          descriptors_state->ubos = 0;
 
       if (set->layout->num_textures)
