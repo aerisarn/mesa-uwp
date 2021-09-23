@@ -2605,10 +2605,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
    if (shader_count == 1)
       ac_nir_eliminate_const_vs_outputs(&ctx);
 
-   if (args->options->dump_shader) {
-      args->shader_info->private_mem_vgprs = ac_count_scratch_private_memory(ctx.main_function);
-   }
-
    return ctx.ac.module;
 }
 

@@ -5980,14 +5980,6 @@ radv_GetPipelineExecutableStatisticsKHR(VkDevice _device,
    ++s;
 
    if (s < end) {
-      desc_copy(s->name, "PrivMem VGPRs");
-      desc_copy(s->description, "Number of VGPRs stored in private memory per subgroup");
-      s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
-      s->value.u64 = shader->info.private_mem_vgprs;
-   }
-   ++s;
-
-   if (s < end) {
       desc_copy(s->name, "Code size");
       desc_copy(s->description, "Code size in bytes");
       s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
