@@ -418,7 +418,7 @@ static struct rnndecaddrinfo *trymatch (struct rnndeccontext *ctx, struct rnndel
 					offset = addr - (elems[i]->offset + elems[i]->stride * idx);
 					int extraidx = (elems[i]->length != 1);
 					int nindnum = (elems[i]->name ? 0 : indicesnum + extraidx);
-					uint64_t nind[nindnum];
+					uint64_t nind[MAX2(nindnum, 1)];
 					if (!elems[i]->name) {
 						for (j = 0; j < indicesnum; j++)
 							nind[j] = indices[j];
