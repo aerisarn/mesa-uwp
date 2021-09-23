@@ -253,6 +253,48 @@ init_texture(struct d3d12_screen *screen,
    return true;
 }
 
+static void
+convert_planar_resource(struct d3d12_resource *res)
+{
+   unsigned num_planes = util_format_get_num_planes(res->base.b.format);
+   if (num_planes <= 1 || res->base.b.next || !res->bo)
+      return;
+
+   struct pipe_resource *next = nullptr;
+   struct pipe_resource *planes[3] = {
+      &res->base.b, nullptr, nullptr
+   };
+   for (int plane = num_planes - 1; plane >= 0; --plane) {
+      struct d3d12_resource *plane_res = d3d12_resource(planes[plane]);
+      if (!plane_res) {
+         plane_res = CALLOC_STRUCT(d3d12_resource);
+         *plane_res = *res;
+         d3d12_bo_reference(plane_res->bo);
+         pipe_reference_init(&plane_res->base.b.reference, 1);
+         threaded_resource_init(&plane_res->base.b, false, 0);
+      }
+
+      plane_res->base.b.next = next;
+      next = &plane_res->base.b;
+
+      plane_res->base.b.format = util_format_get_plane_format(res->base.b.format, plane);
+      plane_res->base.b.width0 = util_format_get_plane_width(res->base.b.format, plane, res->base.b.width0);
+      plane_res->base.b.height0 = util_format_get_plane_height(res->base.b.format, plane, res->base.b.height0);
+
+#if DEBUG
+      struct d3d12_screen *screen = d3d12_screen(res->base.b.screen);
+      D3D12_RESOURCE_DESC desc = res->bo->res->GetDesc();
+      D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed_footprint = {};
+      D3D12_SUBRESOURCE_FOOTPRINT *footprint = &placed_footprint.Footprint;
+      unsigned subresource = plane * desc.MipLevels * desc.DepthOrArraySize;
+      screen->dev->GetCopyableFootprints(&desc, subresource, 1, 0, &placed_footprint, nullptr, nullptr, nullptr);
+      assert(plane_res->base.b.width0 == footprint->Width);
+      assert(plane_res->base.b.height0 == footprint->Height);
+      assert(plane_res->base.b.depth0 == footprint->Depth);
+#endif
+   }
+}
+
 static struct pipe_resource *
 d3d12_resource_create(struct pipe_screen *pscreen,
                       const struct pipe_resource *templ)
@@ -290,6 +332,8 @@ d3d12_resource_create(struct pipe_screen *pscreen,
    threaded_resource_init(&res->base.b, false, 0);
 
    memset(&res->bind_counts, 0, sizeof(d3d12_resource::bind_counts));
+
+   convert_planar_resource(res);
 
    return &res->base.b;
 }
@@ -346,9 +390,14 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    incoming_res_desc = d3d12_res->GetDesc();
 
    /* Get a description for this plane */
-   {
+   if (templ && handle->format != templ->format) {
       unsigned subresource = handle->plane * incoming_res_desc.MipLevels * incoming_res_desc.DepthOrArraySize;
       screen->dev->GetCopyableFootprints(&incoming_res_desc, subresource, 1, 0, &placed_footprint, nullptr, nullptr, nullptr);
+   } else {
+      footprint->Format = incoming_res_desc.Format;
+      footprint->Width = incoming_res_desc.Width;
+      footprint->Height = incoming_res_desc.Height;
+      footprint->Depth = incoming_res_desc.DepthOrArraySize;
    }
 
    if (footprint->Width > UINT32_MAX ||
@@ -478,7 +527,10 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
       res->bo = d3d12_bo_wrap_res(d3d12_res, res->overall_format);
    }
    init_valid_range(res);
+
    threaded_resource_init(&res->base.b, false, 0);
+   convert_planar_resource(res);
+
    return &res->base.b;
 
 invalid:
