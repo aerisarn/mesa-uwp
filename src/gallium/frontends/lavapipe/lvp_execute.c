@@ -719,19 +719,29 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 
       if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT)]) {
          for (i = 0; i < vi->vertexBindingDescriptionCount; i++) {
-            state->vb[i].stride = vi->pVertexBindingDescriptions[i].stride;
+            state->vb[vi->pVertexBindingDescriptions[i].binding].stride = vi->pVertexBindingDescriptions[i].stride;
          }
       }
 
       int max_location = -1;
       for (i = 0; i < vi->vertexAttributeDescriptionCount; i++) {
          unsigned location = vi->pVertexAttributeDescriptions[i].location;
+         unsigned binding = vi->pVertexAttributeDescriptions[i].binding;
+         const struct VkVertexInputBindingDescription *desc_binding = NULL;
+         for (unsigned j = 0; j < vi->vertexBindingDescriptionCount; j++) {
+            const struct VkVertexInputBindingDescription *b = &vi->pVertexBindingDescriptions[j];
+            if (b->binding == binding) {
+               desc_binding = b;
+               break;
+            }
+         }
+         assert(desc_binding);
          state->velem.velems[location].src_offset = vi->pVertexAttributeDescriptions[i].offset;
-         state->velem.velems[location].vertex_buffer_index = vi->pVertexAttributeDescriptions[i].binding;
+         state->velem.velems[location].vertex_buffer_index = binding;
          state->velem.velems[location].src_format = lvp_vk_format_to_pipe_format(vi->pVertexAttributeDescriptions[i].format);
          state->velem.velems[location].dual_slot = false;
 
-         switch (vi->pVertexBindingDescriptions[vi->pVertexAttributeDescriptions[i].binding].inputRate) {
+         switch (desc_binding->inputRate) {
          case VK_VERTEX_INPUT_RATE_VERTEX:
             state->velem.velems[location].instance_divisor = 0;
             break;
@@ -3441,8 +3451,17 @@ static void handle_set_vertex_input(struct vk_cmd_queue_entry *cmd,
    const struct VkVertexInputAttributeDescription2EXT *attrs = vertex_input->vertex_attribute_descriptions;
    int max_location = -1;
    for (unsigned i = 0; i < vertex_input->vertex_attribute_description_count; i++) {
-      const struct VkVertexInputBindingDescription2EXT *binding = &bindings[attrs[i].binding];
+      const struct VkVertexInputBindingDescription2EXT *binding = NULL;
       unsigned location = attrs[i].location;
+
+      for (unsigned j = 0; j < vertex_input->vertex_binding_description_count; j++) {
+         const struct VkVertexInputBindingDescription2EXT *b = &bindings[j];
+         if (b->binding == attrs[i].binding) {
+            binding = b;
+            break;
+         }
+      }
+      assert(binding);
       state->velem.velems[location].src_offset = attrs[i].offset;
       state->velem.velems[location].vertex_buffer_index = attrs[i].binding;
       state->velem.velems[location].src_format = lvp_vk_format_to_pipe_format(attrs[i].format);
