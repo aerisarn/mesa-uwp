@@ -402,7 +402,7 @@ disasm_instr(uint32_t *instrs, unsigned pc)
          printf(" << %u", instr->movi.shift);
 
       if ((instr->movi.dst == REG_ADDR) && (instr->movi.shift >= 16)) {
-         uint32_t val = instr->movi.uimm << instr->movi.shift;
+         uint32_t val = (uint32_t)instr->movi.uimm << (uint32_t)instr->movi.shift;
          val &= ~0x40000;  /* b18 seems to be a flag */
 
          if ((val & 0x00ffffff) == 0) {
@@ -439,7 +439,7 @@ disasm_instr(uint32_t *instrs, unsigned pc)
          }
       }
 
-      print_gpu_reg(instr->movi.uimm << instr->movi.shift);
+      print_gpu_reg((uint32_t)instr->movi.uimm << (uint32_t)instr->movi.shift);
 
       break;
    }
