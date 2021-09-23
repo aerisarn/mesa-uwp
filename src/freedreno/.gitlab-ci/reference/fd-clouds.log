@@ -1,4 +1,3 @@
-Reading src/freedreno/.gitlab-ci/traces/fd-clouds.rd.gz...
 gpu_id: 630
 cmd: null_platform_t/2995: fence=1855
 ############################################################

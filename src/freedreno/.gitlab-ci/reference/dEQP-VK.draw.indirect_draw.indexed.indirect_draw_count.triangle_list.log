@@ -1,4 +1,3 @@
-Reading src/freedreno/.gitlab-ci/traces/dEQP-VK.draw.indirect_draw.indexed.indirect_draw_count.triangle_list.rd.gz...
 gpu_id: 640
 cmd: deqp-vk/74711: fence=247337
 ############################################################
