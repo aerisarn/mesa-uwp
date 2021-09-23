@@ -49,6 +49,7 @@
 #include "util/list.h"
 #include "util/macros.h"
 #include "vk_alloc.h"
+#include "vk_command_buffer.h"
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_object.h"
@@ -660,7 +661,7 @@ struct panvk_cmd_bind_point_state {
 };
 
 struct panvk_cmd_buffer {
-   struct vk_object_base base;
+   struct vk_command_buffer vk;
 
    struct panvk_device *device;
 
@@ -1018,7 +1019,7 @@ struct panvk_render_pass {
    struct panvk_subpass subpasses[0];
 };
 
-VK_DEFINE_HANDLE_CASTS(panvk_cmd_buffer, base, VkCommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER)
+VK_DEFINE_HANDLE_CASTS(panvk_cmd_buffer, vk.base, VkCommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER)
 VK_DEFINE_HANDLE_CASTS(panvk_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
 VK_DEFINE_HANDLE_CASTS(panvk_instance, vk.base, VkInstance, VK_OBJECT_TYPE_INSTANCE)
 VK_DEFINE_HANDLE_CASTS(panvk_physical_device, vk.base, VkPhysicalDevice, VK_OBJECT_TYPE_PHYSICAL_DEVICE)

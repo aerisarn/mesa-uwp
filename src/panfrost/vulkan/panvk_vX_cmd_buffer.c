@@ -943,6 +943,8 @@ panvk_per_arch(CmdWaitEvents)(VkCommandBuffer commandBuffer,
 static VkResult
 panvk_reset_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
 {
+   vk_command_buffer_reset(&cmdbuf->vk);
+
    cmdbuf->record_result = VK_SUCCESS;
 
    list_for_each_entry_safe(struct panvk_batch, batch, &cmdbuf->batches, node) {
@@ -990,7 +992,8 @@ panvk_destroy_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
    panvk_pool_cleanup(&cmdbuf->desc_pool);
    panvk_pool_cleanup(&cmdbuf->tls_pool);
    panvk_pool_cleanup(&cmdbuf->varying_pool);
-   vk_object_free(&device->vk, NULL, cmdbuf);
+   vk_command_buffer_finish(&cmdbuf->vk);
+   vk_free(&device->vk.alloc, cmdbuf);
 }
 
 static VkResult
@@ -1001,10 +1004,16 @@ panvk_create_cmdbuf(struct panvk_device *device,
 {
    struct panvk_cmd_buffer *cmdbuf;
 
-   cmdbuf = vk_object_zalloc(&device->vk, NULL, sizeof(*cmdbuf),
-                             VK_OBJECT_TYPE_COMMAND_BUFFER);
+   cmdbuf = vk_zalloc(&device->vk.alloc, sizeof(*cmdbuf),
+                      8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmdbuf)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   VkResult result = vk_command_buffer_init(&cmdbuf->vk, &device->vk);
+   if (result != VK_SUCCESS) {
+      vk_free(&device->vk.alloc, cmdbuf);
+      return result;
+   }
 
    cmdbuf->device = device;
    cmdbuf->level = level;
@@ -1058,7 +1067,8 @@ panvk_per_arch(AllocateCommandBuffers)(VkDevice _device,
          list_addtail(&cmdbuf->pool_link, &pool->active_cmd_buffers);
 
          cmdbuf->level = pAllocateInfo->level;
-         vk_object_base_reset(&cmdbuf->base);
+         vk_command_buffer_finish(&cmdbuf->vk);
+         result = vk_command_buffer_init(&cmdbuf->vk, &device->vk);
       } else {
          result = panvk_create_cmdbuf(device, pool, pAllocateInfo->level, &cmdbuf);
       }
