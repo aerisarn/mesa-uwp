@@ -1461,7 +1461,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
          /* Blit VS doesn't use BASE_VERTEX, START_INSTANCE, and DRAWID. */
          radeon_set_sh_reg_seq(cs, sh_base_reg + SI_SGPR_VS_BLIT_DATA * 4, sctx->num_vs_blit_sgprs);
-         radeon_emit_array(cs, sctx->vs_blit_sh_data, sctx->num_vs_blit_sgprs);
+         radeon_emit_array(sctx->vs_blit_sh_data, sctx->num_vs_blit_sgprs);
       } else if (base_vertex != sctx->last_base_vertex ||
                  sctx->last_base_vertex == SI_BASE_VERTEX_UNKNOWN ||
                  (set_base_instance &&
@@ -1796,7 +1796,7 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
          unsigned num_sgprs = MIN2(count, num_vbos_in_user_sgprs) * 4;
 
          radeon_set_sh_reg_seq(cs, sh_base + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4, num_sgprs);
-         radeon_emit_array(cs, sctx->vb_descriptor_user_sgprs, num_sgprs);
+         radeon_emit_array(sctx->vb_descriptor_user_sgprs, num_sgprs);
          sctx->vertex_buffer_user_sgprs_dirty = false;
       }
       radeon_end();

@@ -67,7 +67,7 @@
       (sctx)->context_roll = true; \
 } while (0)
 
-#define radeon_emit_array(cs, values, num) do { \
+#define radeon_emit_array(values, num) do { \
    unsigned __n = (num); \
    memcpy(__cs_buf + __cs_num, (values), __n * 4); \
    __cs_num += __n; \
@@ -99,7 +99,7 @@
 
 #define radeon_set_context_reg_seq_array(cs, reg, num, values) do { \
    radeon_set_context_reg_seq(cs, reg, num); \
-   radeon_emit_array(cs, values, num); \
+   radeon_emit_array(values, num); \
 } while (0)
 
 #define radeon_set_context_reg_idx(cs, reg, idx, value) do { \
@@ -254,7 +254,7 @@
 #define radeon_opt_set_context_regn(sctx, offset, value, saved_val, num) do { \
    if (memcmp(value, saved_val, sizeof(uint32_t) * (num))) { \
       radeon_set_context_reg_seq(&(sctx)->gfx_cs, offset, num); \
-      radeon_emit_array(cs, value, num); \
+      radeon_emit_array(value, num); \
       memcpy(saved_val, value, sizeof(uint32_t) * (num)); \
    } \
 } while (0)

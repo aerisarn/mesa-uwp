@@ -757,7 +757,7 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
 
    if (sel->info.base.cs.user_data_components_amd) {
       radeon_set_sh_reg_seq(cs, cs_user_data_reg, sel->info.base.cs.user_data_components_amd);
-      radeon_emit_array(cs, sctx->cs_user_data, sel->info.base.cs.user_data_components_amd);
+      radeon_emit_array(sctx->cs_user_data, sel->info.base.cs.user_data_components_amd);
    }
    radeon_end();
 }

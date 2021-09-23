@@ -764,7 +764,7 @@ static void si_emit_blend_color(struct si_context *sctx)
 
    radeon_begin(cs);
    radeon_set_context_reg_seq(cs, R_028414_CB_BLEND_RED, 4);
-   radeon_emit_array(cs, (uint32_t *)sctx->blend_color.color, 4);
+   radeon_emit_array((uint32_t *)sctx->blend_color.color, 4);
    radeon_end();
 }
 
@@ -798,7 +798,7 @@ static void si_emit_clip_state(struct si_context *sctx)
 
    radeon_begin(cs);
    radeon_set_context_reg_seq(cs, R_0285BC_PA_CL_UCP_0_X, 6 * 4);
-   radeon_emit_array(cs, (uint32_t *)sctx->clip_state.ucp, 6 * 4);
+   radeon_emit_array((uint32_t *)sctx->clip_state.ucp, 6 * 4);
    radeon_end();
 }
 

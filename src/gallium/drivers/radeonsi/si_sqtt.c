@@ -737,7 +737,7 @@ si_emit_thread_trace_userdata(struct si_context* sctx,
        * write on correctly. */
       radeon_set_uconfig_reg_seq(cs, R_030D08_SQ_THREAD_TRACE_USERDATA_2, count, sctx->chip_class >= GFX10);
 
-      radeon_emit_array(cs, dwords, count);
+      radeon_emit_array(dwords, count);
 
       dwords += count;
       num_dwords -= count;

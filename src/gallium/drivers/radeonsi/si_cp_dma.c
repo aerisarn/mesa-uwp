@@ -495,7 +495,7 @@ void si_cp_write_data(struct si_context *sctx, struct si_resource *buf, unsigned
    radeon_emit(S_370_DST_SEL(dst_sel) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(engine));
    radeon_emit(va);
    radeon_emit(va >> 32);
-   radeon_emit_array(cs, (const uint32_t *)data, size / 4);
+   radeon_emit_array((const uint32_t *)data, size / 4);
    radeon_end();
 }
 

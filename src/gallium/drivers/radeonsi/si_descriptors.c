@@ -2166,7 +2166,7 @@ void si_emit_compute_shader_pointers(struct si_context *sctx)
                             num_shaderbufs * 4);
 
       for (unsigned i = 0; i < num_shaderbufs; i++)
-         radeon_emit_array(cs, &desc->list[si_get_shaderbuf_slot(i) * 4], 4);
+         radeon_emit_array(&desc->list[si_get_shaderbuf_slot(i) * 4], 4);
 
       sctx->compute_shaderbuf_sgprs_dirty = false;
    }
@@ -2190,7 +2190,7 @@ void si_emit_compute_shader_pointers(struct si_context *sctx)
             num_sgprs = 4;
          }
 
-         radeon_emit_array(cs, &desc->list[desc_offset], num_sgprs);
+         radeon_emit_array(&desc->list[desc_offset], num_sgprs);
       }
 
       sctx->compute_image_sgprs_dirty = false;
