@@ -2388,7 +2388,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
 
    enum ac_float_mode float_mode = AC_FLOAT_MODE_DEFAULT;
 
-   if (args->shader_info->float_controls_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32) {
+   if (shaders[0]->info.float_controls_execution_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32) {
       float_mode = AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO;
    }
 

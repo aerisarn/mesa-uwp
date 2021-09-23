@@ -724,8 +724,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       es_info->esgs_itemsize = num_outputs_written * 16;
    }
 
-   info->float_controls_mode = nir->info.float_controls_execution_mode;
-
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->ps.allow_flat_shading =
          !(info->ps.uses_persp_or_linear_interp || info->ps.needs_sample_positions ||
