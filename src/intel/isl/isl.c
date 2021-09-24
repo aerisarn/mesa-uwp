@@ -1581,10 +1581,20 @@ isl_calc_row_pitch_alignment(const struct isl_device *dev,
     *    "When using linear memory, this must be at least 64 byte aligned."
     *
     * However, when displaying on NVIDIA and recent AMD GPUs via PRIME,
-    * we need a larger pitch of 256 bytes.  We do that just in case.
+    * we need a larger pitch of 256 bytes.
+    *
+    * If the ISL caller didn't specify a row_pitch_B, then we should assume
+    * the NVIDIA/AMD requirements. Otherwise, if we have a specified
+    * row_pitch_B, this is probably because the caller is trying to import a
+    * buffer. In that case we limit the minimum row pitch to the Intel HW
+    * requirement.
     */
-   if (surf_info->usage & ISL_SURF_USAGE_DISPLAY_BIT)
-      alignment = isl_align(alignment, 256);
+   if (surf_info->usage & ISL_SURF_USAGE_DISPLAY_BIT) {
+      if (surf_info->row_pitch_B == 0)
+         alignment = isl_align(alignment, 256);
+      else
+         alignment = isl_align(alignment, 64);
+   }
 
    return alignment;
 }
