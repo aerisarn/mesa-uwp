@@ -66,6 +66,7 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    VTC(R8_SINT,    8_SINT,                      WZYX),
    V__(R8_USCALED, 8_UINT,                      WZYX),
    V__(R8_SSCALED, 8_SINT,                      WZYX),
+   _TC(R8_SRGB,    8_UNORM,                     WZYX),
 
    FMT(A8_UNORM,   NONE, 8_UNORM, A8_UNORM,     WZYX),
    _TC(L8_UNORM,   8_UNORM,                     WZYX),
@@ -109,6 +110,7 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    VTC(R8G8_SINT,    8_8_SINT,                  WZYX),
    V__(R8G8_USCALED, 8_8_UINT,                  WZYX),
    V__(R8G8_SSCALED, 8_8_SINT,                  WZYX),
+   _TC(R8G8_SRGB,    8_8_UNORM,                 WZYX),
 
    _T_(L8A8_UINT,    8_8_UINT,                  WZYX),
    _T_(L8A8_SINT,    8_8_SINT,                  WZYX),
