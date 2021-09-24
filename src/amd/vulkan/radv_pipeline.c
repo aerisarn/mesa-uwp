@@ -2760,64 +2760,7 @@ radv_fill_shader_keys(struct radv_device *device, struct radv_shader_variant_key
    keys[MESA_SHADER_VERTEX].vs.topology = key->vs.topology;
 
    if (nir[MESA_SHADER_TESS_CTRL]) {
-      keys[MESA_SHADER_VERTEX].vs_common_out.as_ls = true;
       keys[MESA_SHADER_TESS_CTRL].tcs.input_vertices = key->tcs.tess_input_vertices;
-   }
-
-   if (nir[MESA_SHADER_GEOMETRY]) {
-      if (nir[MESA_SHADER_TESS_CTRL])
-         keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_es = true;
-      else
-         keys[MESA_SHADER_VERTEX].vs_common_out.as_es = true;
-   }
-
-   if (device->physical_device->use_ngg) {
-      if (nir[MESA_SHADER_TESS_CTRL]) {
-         keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = true;
-      } else {
-         keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = true;
-      }
-
-      if (nir[MESA_SHADER_TESS_CTRL] && nir[MESA_SHADER_GEOMETRY] &&
-          nir[MESA_SHADER_GEOMETRY]->info.gs.invocations *
-                nir[MESA_SHADER_GEOMETRY]->info.gs.vertices_out >
-             256) {
-         /* Fallback to the legacy path if tessellation is
-          * enabled with extreme geometry because
-          * EN_MAX_VERT_OUT_PER_GS_INSTANCE doesn't work and it
-          * might hang.
-          */
-         keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
-      }
-
-      gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
-
-      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-         if (nir[i])
-            last_xfb_stage = i;
-      }
-
-      bool uses_xfb = nir[last_xfb_stage] && radv_nir_stage_uses_xfb(nir[last_xfb_stage]);
-
-      if (!device->physical_device->use_ngg_streamout && uses_xfb) {
-         if (nir[MESA_SHADER_TESS_CTRL])
-            keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
-         else
-            keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = false;
-      }
-
-      /* Determine if the pipeline is eligible for the NGG passthrough
-       * mode. It can't be enabled for geometry shaders, for NGG
-       * streamout or for vertex shaders that export the primitive ID
-       * (this is checked later because we don't have the info here.)
-       */
-      if (!nir[MESA_SHADER_GEOMETRY] && !uses_xfb) {
-         if (nir[MESA_SHADER_TESS_CTRL] && keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg) {
-            keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg_passthrough = true;
-         } else if (nir[MESA_SHADER_VERTEX] && keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg) {
-            keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg_passthrough = true;
-         }
-      }
    }
 
    for (int i = 0; i < MESA_SHADER_STAGES; ++i)
@@ -2869,6 +2812,66 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
          active_stages |= (1 << i);
    }
 
+   if (nir[MESA_SHADER_TESS_CTRL]) {
+      infos[MESA_SHADER_VERTEX].vs.as_ls = true;
+   }
+
+   if (nir[MESA_SHADER_GEOMETRY]) {
+      if (nir[MESA_SHADER_TESS_CTRL])
+         infos[MESA_SHADER_TESS_EVAL].tes.as_es = true;
+      else
+         infos[MESA_SHADER_VERTEX].vs.as_es = true;
+   }
+
+   if (device->physical_device->use_ngg) {
+      if (nir[MESA_SHADER_TESS_CTRL]) {
+         infos[MESA_SHADER_TESS_EVAL].is_ngg = true;
+      } else {
+         infos[MESA_SHADER_VERTEX].is_ngg = true;
+      }
+
+      if (nir[MESA_SHADER_TESS_CTRL] && nir[MESA_SHADER_GEOMETRY] &&
+          nir[MESA_SHADER_GEOMETRY]->info.gs.invocations *
+                nir[MESA_SHADER_GEOMETRY]->info.gs.vertices_out >
+             256) {
+         /* Fallback to the legacy path if tessellation is
+          * enabled with extreme geometry because
+          * EN_MAX_VERT_OUT_PER_GS_INSTANCE doesn't work and it
+          * might hang.
+          */
+         infos[MESA_SHADER_TESS_EVAL].is_ngg = false;
+      }
+
+      gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
+
+      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+         if (nir[i])
+            last_xfb_stage = i;
+      }
+
+      bool uses_xfb = nir[last_xfb_stage] && radv_nir_stage_uses_xfb(nir[last_xfb_stage]);
+
+      if (!device->physical_device->use_ngg_streamout && uses_xfb) {
+         if (nir[MESA_SHADER_TESS_CTRL])
+           infos[MESA_SHADER_TESS_EVAL].is_ngg = false;
+         else
+           infos[MESA_SHADER_VERTEX].is_ngg = false;
+      }
+
+      /* Determine if the pipeline is eligible for the NGG passthrough
+       * mode. It can't be enabled for geometry shaders, for NGG
+       * streamout or for vertex shaders that export the primitive ID
+       * (this is checked later because we don't have the info here.)
+       */
+      if (!nir[MESA_SHADER_GEOMETRY] && !uses_xfb) {
+         if (nir[MESA_SHADER_TESS_CTRL] && infos[MESA_SHADER_TESS_EVAL].is_ngg) {
+            infos[MESA_SHADER_TESS_EVAL].is_ngg_passthrough = true;
+         } else if (nir[MESA_SHADER_VERTEX] && infos[MESA_SHADER_VERTEX].is_ngg) {
+            infos[MESA_SHADER_VERTEX].is_ngg_passthrough = true;
+         }
+      }
+   }
+
    if (nir[MESA_SHADER_FRAGMENT]) {
       radv_nir_shader_info_init(&infos[MESA_SHADER_FRAGMENT]);
       radv_nir_shader_info_pass(pipeline->device, nir[MESA_SHADER_FRAGMENT], pipeline->layout,
@@ -2901,7 +2904,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
        * that export the primitive ID.
        */
       if (nir[MESA_SHADER_VERTEX] && infos[MESA_SHADER_VERTEX].vs.outinfo.export_prim_id) {
-         keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg_passthrough = false;
+         infos[MESA_SHADER_VERTEX].is_ngg_passthrough = false;
       }
 
       filled_stages |= (1 << MESA_SHADER_FRAGMENT);
@@ -2914,6 +2917,9 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       key->tcs.vs_key = keys[MESA_SHADER_VERTEX].vs;
 
       radv_nir_shader_info_init(&infos[MESA_SHADER_TESS_CTRL]);
+
+      /* Copy data to merged stage. */
+      infos[MESA_SHADER_TESS_CTRL].vs.as_ls = true;
 
       for (int i = 0; i < 2; i++) {
          radv_nir_shader_info_pass(pipeline->device, combined_nir[i], pipeline->layout, pipeline_key,
@@ -2931,6 +2937,15 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       struct nir_shader *combined_nir[] = {nir[pre_stage], nir[MESA_SHADER_GEOMETRY]};
 
       radv_nir_shader_info_init(&infos[MESA_SHADER_GEOMETRY]);
+
+      /* Copy data to merged stage. */
+      if (pre_stage == MESA_SHADER_VERTEX) {
+         infos[MESA_SHADER_GEOMETRY].vs.as_es = infos[MESA_SHADER_VERTEX].vs.as_es;
+      } else {
+         infos[MESA_SHADER_GEOMETRY].tes.as_es = infos[MESA_SHADER_TESS_EVAL].tes.as_es;
+      }
+      infos[MESA_SHADER_GEOMETRY].is_ngg = infos[pre_stage].is_ngg;
+      infos[MESA_SHADER_GEOMETRY].is_ngg_passthrough = infos[pre_stage].is_ngg_passthrough;
 
       for (int i = 0; i < 2; i++) {
          radv_nir_shader_info_pass(pipeline->device, combined_nir[i], pipeline->layout, pipeline_key,
@@ -3446,11 +3461,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       }
    }
 
-   infos[MESA_SHADER_VERTEX].vs.as_ls = !!nir[MESA_SHADER_TESS_CTRL];
-   infos[MESA_SHADER_VERTEX].vs.as_es = !!nir[MESA_SHADER_GEOMETRY] && !nir[MESA_SHADER_TESS_CTRL];
-   infos[MESA_SHADER_TESS_EVAL].tes.as_es =
-      !!nir[MESA_SHADER_GEOMETRY] && !!nir[MESA_SHADER_TESS_CTRL];
-
    if (nir[MESA_SHADER_TESS_CTRL]) {
       nir_lower_patch_vertices(nir[MESA_SHADER_TESS_EVAL],
                                nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_vertices_out, NULL);
@@ -3460,8 +3470,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
    radv_fill_shader_keys(device, keys, pipeline_key, nir);
    radv_fill_shader_info(pipeline, pStages, pipeline_key, keys, infos, nir);
 
-   bool pipeline_has_ngg = (nir[MESA_SHADER_VERTEX] && keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg) ||
-                           (nir[MESA_SHADER_TESS_EVAL] && keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg);
+   bool pipeline_has_ngg = (nir[MESA_SHADER_VERTEX] && infos[MESA_SHADER_VERTEX].is_ngg) ||
+                           (nir[MESA_SHADER_TESS_EVAL] && infos[MESA_SHADER_TESS_EVAL].is_ngg);
 
    if (pipeline_has_ngg) {
       struct gfx10_ngg_info *ngg_info;

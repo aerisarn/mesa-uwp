@@ -461,7 +461,7 @@ gather_info_output_decl_gs(const nir_shader *nir, const nir_variable *var,
 
 static void
 gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
-                        struct radv_shader_info *info, const struct radv_shader_variant_key *key)
+                        struct radv_shader_info *info)
 {
    struct radv_vs_output_info *vs_info = NULL;
 
@@ -470,11 +470,10 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
       gather_info_output_decl_ps(nir, var, info);
       break;
    case MESA_SHADER_VERTEX:
-      if (!key->vs_common_out.as_ls && !key->vs_common_out.as_es)
+      if (!info->vs.as_ls && !info->vs.as_es)
          vs_info = &info->vs.outinfo;
 
-      /* TODO: Adjust as_ls/as_nng. */
-      if (!key->vs_common_out.as_ls && key->vs_common_out.as_ngg)
+      if (!info->vs.as_ls && info->is_ngg)
          gather_info_output_decl_gs(nir, var, info);
       break;
    case MESA_SHADER_GEOMETRY:
@@ -482,7 +481,7 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
       gather_info_output_decl_gs(nir, var, info);
       break;
    case MESA_SHADER_TESS_EVAL:
-      if (!key->vs_common_out.as_es)
+      if (!info->tes.as_es)
          vs_info = &info->tes.outinfo;
       break;
    default:
@@ -581,7 +580,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_info_block(nir, block, info);
    }
 
-   nir_foreach_shader_out_variable(variable, nir) gather_info_output_decl(nir, variable, info, key);
+   nir_foreach_shader_out_variable(variable, nir) gather_info_output_decl(nir, variable, info);
 
    if (nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL ||
        nir->info.stage == MESA_SHADER_GEOMETRY)
@@ -630,18 +629,11 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->tes.spacing = nir->info.tess.spacing;
       info->tes.ccw = nir->info.tess.ccw;
       info->tes.point_mode = nir->info.tess.point_mode;
-      info->tes.as_es = key->vs_common_out.as_es;
-      info->is_ngg = key->vs_common_out.as_ngg;
-      info->is_ngg_passthrough = key->vs_common_out.as_ngg_passthrough;
       break;
    case MESA_SHADER_TESS_CTRL:
       info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
       break;
    case MESA_SHADER_VERTEX:
-      info->vs.as_es = key->vs_common_out.as_es;
-      info->vs.as_ls = key->vs_common_out.as_ls;
-      info->is_ngg = key->vs_common_out.as_ngg;
-      info->is_ngg_passthrough = key->vs_common_out.as_ngg_passthrough;
       break;
    default:
       break;
@@ -655,8 +647,8 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    }
 
    /* Compute the ESGS item size for VS or TES as ES. */
-   if ((nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL) &&
-       key->vs_common_out.as_es) {
+   if ((nir->info.stage == MESA_SHADER_VERTEX && info->vs.as_es) ||
+       (nir->info.stage == MESA_SHADER_TESS_EVAL && info->tes.as_es)) {
       struct radv_es_output_info *es_info =
          nir->info.stage == MESA_SHADER_VERTEX ? &info->vs.es_info : &info->tes.es_info;
       uint32_t num_outputs_written = nir->info.stage == MESA_SHADER_VERTEX
