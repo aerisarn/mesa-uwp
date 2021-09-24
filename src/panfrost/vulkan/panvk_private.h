@@ -378,14 +378,16 @@ struct panvk_descriptor_set_binding_layout {
    unsigned desc_idx;
    union {
       struct {
-         unsigned sampler_idx;
+         union {
+            unsigned sampler_idx;
+            unsigned img_idx;
+         };
          unsigned tex_idx;
       };
       unsigned ssbo_idx;
       unsigned dyn_ssbo_idx;
       unsigned ubo_idx;
       unsigned dyn_ubo_idx;
-      unsigned img_idx;
    };
 
    /* Shader stages affected by this set+binding */
@@ -980,6 +982,12 @@ struct panvk_sampler {
 
 struct panvk_buffer_view {
    struct vk_object_base base;
+   struct panfrost_bo *bo;
+   struct {
+      uint32_t tex[TEXTURE_DESC_WORDS];
+      uint32_t img_attrib_buf[ATTRIB_BUF_DESC_WORDS * 2];
+   } descs;
+   enum pipe_format fmt;
 };
 
 struct panvk_attachment_info {

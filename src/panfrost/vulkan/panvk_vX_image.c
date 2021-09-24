@@ -192,3 +192,89 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
    *pView = panvk_image_view_to_handle(view);
    return VK_SUCCESS;
 }
+
+VkResult
+panvk_per_arch(CreateBufferView)(VkDevice _device,
+                                 const VkBufferViewCreateInfo *pCreateInfo,
+                                 const VkAllocationCallbacks *pAllocator,
+                                 VkBufferView *pView)
+{
+   VK_FROM_HANDLE(panvk_device, device, _device);
+   VK_FROM_HANDLE(panvk_buffer, buffer, pCreateInfo->buffer);
+
+   struct panvk_buffer_view *view =
+      vk_object_zalloc(&device->vk, pAllocator, sizeof(*view),
+                       VK_OBJECT_TYPE_BUFFER_VIEW);
+
+   if (!view)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   view->fmt = vk_format_to_pipe_format(pCreateInfo->format);
+
+   struct panfrost_device *pdev = &device->physical_device->pdev;
+   unsigned offset = buffer->bo_offset + pCreateInfo->offset;
+   mali_ptr address = buffer->bo->ptr.gpu + offset;
+   unsigned size = pCreateInfo->range == VK_WHOLE_SIZE ?
+                   buffer->bo->size - offset : pCreateInfo->range;
+   unsigned blksz = util_format_get_blocksize(view->fmt);
+   unsigned width = size / blksz;
+
+   assert(!(address & 63));
+
+   if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT) {
+      unsigned bo_size =
+         PAN_ARCH <= 5 ? (pan_size(SURFACE) + pan_size(TEXTURE)) :
+                         pan_size(SURFACE_WITH_STRIDE);
+      view->bo = panfrost_bo_create(pdev, bo_size, 0, "Texture descriptor");
+
+      void *surf = view->bo->ptr.cpu + (PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0);
+      void *tex = PAN_ARCH <= 5 ? view->bo->ptr.cpu : &view->descs.tex;
+
+#if PAN_ARCH <= 5
+      pan_pack(surf, SURFACE, cfg) {
+#else
+      pan_pack(surf, SURFACE_WITH_STRIDE, cfg) {
+#endif
+         cfg.pointer = address;
+      }
+
+      pan_pack(tex, TEXTURE, cfg) {
+         cfg.dimension = MALI_TEXTURE_DIMENSION_1D;
+         cfg.format = pdev->formats[view->fmt].hw;
+         cfg.width = width;
+         cfg.depth = cfg.height = 1;
+         cfg.swizzle = PAN_V6_SWIZZLE(R, G, B, A);
+         cfg.texel_ordering = MALI_TEXTURE_LAYOUT_LINEAR;
+         cfg.levels = 1;
+         cfg.array_size = 1;
+#if PAN_ARCH >= 6
+         cfg.surfaces = view->bo->ptr.gpu;
+         cfg.maximum_lod = cfg.minimum_lod = FIXED_16(0, false);
+#else
+         cfg.manual_stride = false;
+#endif
+      }
+   }
+
+   if (buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
+      uint8_t *attrib_buf = (uint8_t *)view->descs.img_attrib_buf;
+
+      pan_pack(attrib_buf, ATTRIBUTE_BUFFER, cfg) {
+         cfg.type = MALI_ATTRIBUTE_TYPE_3D_LINEAR;
+         cfg.pointer = address;
+         cfg.stride = blksz;
+         cfg.size = width * blksz;
+      }
+
+      attrib_buf += pan_size(ATTRIBUTE_BUFFER);
+      pan_pack(attrib_buf, ATTRIBUTE_BUFFER_CONTINUATION_3D, cfg) {
+         cfg.s_dimension = width;
+         cfg.t_dimension = 1;
+         cfg.r_dimension = 1;
+         cfg.row_stride = width * blksz;
+      }
+   }
+
+   *pView = panvk_buffer_view_to_handle(view);
+   return VK_SUCCESS;
+}

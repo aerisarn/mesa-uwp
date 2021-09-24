@@ -290,22 +290,19 @@ panvk_DestroyImageView(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, view);
 }
 
-VkResult
-panvk_CreateBufferView(VkDevice _device,
-                       const VkBufferViewCreateInfo *pCreateInfo,
-                       const VkAllocationCallbacks *pAllocator,
-                       VkBufferView *pView)
-{
-   panvk_stub();
-   return VK_SUCCESS;
-}
-
 void
 panvk_DestroyBufferView(VkDevice _device,
                         VkBufferView bufferView,
                         const VkAllocationCallbacks *pAllocator)
 {
-   panvk_stub();
+   VK_FROM_HANDLE(panvk_device, device, _device);
+   VK_FROM_HANDLE(panvk_buffer_view, view, bufferView);
+
+   if (!view)
+      return;
+
+   panfrost_bo_unreference(view->bo);
+   vk_object_free(&device->vk, pAllocator, view);
 }
 
 VkResult
