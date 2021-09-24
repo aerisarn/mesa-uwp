@@ -1856,12 +1856,12 @@ tu_AllocateMemory(VkDevice _device,
    struct tu_memory_heap *mem_heap = &device->physical_device->heap;
    uint64_t mem_heap_used = p_atomic_read(&mem_heap->used);
    if (mem_heap_used > mem_heap->size)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem),
                          VK_OBJECT_TYPE_DEVICE_MEMORY);
    if (mem == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    const VkImportMemoryFdInfoKHR *fd_info =
       vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
@@ -1897,7 +1897,7 @@ tu_AllocateMemory(VkDevice _device,
       if (mem_heap_used > mem_heap->size) {
          p_atomic_add(&mem_heap->used, -mem->bo.size);
          tu_bo_finish(device, &mem->bo);
-         result = vk_errorf(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+         result = vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                             "Out of heap memory");
       }
    }
@@ -2113,7 +2113,7 @@ tu_CreateEvent(VkDevice _device,
          vk_object_alloc(&device->vk, pAllocator, sizeof(*event),
                          VK_OBJECT_TYPE_EVENT);
    if (!event)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result = tu_bo_init_new(device, &event->bo, 0x1000,
                                     TU_BO_ALLOC_NO_FLAGS);
@@ -2132,7 +2132,7 @@ fail_map:
    tu_bo_finish(device, &event->bo);
 fail_alloc:
    vk_object_free(&device->vk, pAllocator, event);
-   return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2192,7 +2192,7 @@ tu_CreateBuffer(VkDevice _device,
    buffer = vk_object_alloc(&device->vk, pAllocator, sizeof(*buffer),
                             VK_OBJECT_TYPE_BUFFER);
    if (buffer == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    buffer->size = pCreateInfo->size;
    buffer->usage = pCreateInfo->usage;
@@ -2234,7 +2234,7 @@ tu_CreateFramebuffer(VkDevice _device,
    framebuffer = vk_object_alloc(&device->vk, pAllocator, size,
                                  VK_OBJECT_TYPE_FRAMEBUFFER);
    if (framebuffer == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    framebuffer->attachment_count = pCreateInfo->attachmentCount;
    framebuffer->width = pCreateInfo->width;
@@ -2351,7 +2351,7 @@ tu_CreateSampler(VkDevice _device,
    sampler = vk_object_alloc(&device->vk, pAllocator, sizeof(*sampler),
                              VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    tu_init_sampler(device, sampler, pCreateInfo);
    *pSampler = tu_sampler_to_handle(sampler);
@@ -2447,7 +2447,7 @@ tu_GetMemoryFdKHR(VkDevice _device,
 
    int prime_fd = tu_bo_export_dmabuf(device, &memory->bo);
    if (prime_fd < 0)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    *pFd = prime_fd;
    return VK_SUCCESS;

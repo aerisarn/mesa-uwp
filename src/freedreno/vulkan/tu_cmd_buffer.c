@@ -1398,7 +1398,7 @@ tu_create_cmd_buffer(struct tu_device *device,
                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (cmd_buffer == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
    if (result != VK_SUCCESS) {
@@ -3003,7 +3003,7 @@ tu_CreateCommandPool(VkDevice _device,
    pool = vk_object_alloc(&device->vk, pAllocator, sizeof(*pool),
                           VK_OBJECT_TYPE_COMMAND_POOL);
    if (pool == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (pAllocator)
       pool->alloc = *pAllocator;

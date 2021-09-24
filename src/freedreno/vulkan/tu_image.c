@@ -568,7 +568,7 @@ tu_CreateImage(VkDevice _device,
    image = vk_object_zalloc(&device->vk, alloc, sizeof(*image),
                             VK_OBJECT_TYPE_IMAGE);
    if (!image)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    const VkExternalMemoryImageCreateInfo *external_info =
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
@@ -737,7 +737,7 @@ tu_CreateImage(VkDevice _device,
 
 invalid_layout:
    vk_object_free(&device->vk, alloc, image);
-   return vk_error(device->instance, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
+   return vk_error(device, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -819,7 +819,7 @@ tu_CreateImageView(VkDevice _device,
    view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
                           VK_OBJECT_TYPE_IMAGE_VIEW);
    if (view == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    tu_image_view_init(view, pCreateInfo, device->physical_device->info->a6xx.has_z24uint_s8uint);
 
@@ -902,7 +902,7 @@ tu_CreateBufferView(VkDevice _device,
    view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
                           VK_OBJECT_TYPE_BUFFER_VIEW);
    if (!view)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    tu_buffer_view_init(view, device, pCreateInfo);
 

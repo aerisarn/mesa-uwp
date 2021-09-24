@@ -162,7 +162,7 @@ tu_pipeline_cache_grow(struct tu_pipeline_cache *cache)
 
    table = malloc(byte_size);
    if (table == NULL)
-      return vk_error(cache->device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(cache, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    cache->hash_table = table;
    cache->table_size = table_size;
@@ -257,7 +257,7 @@ tu_CreatePipelineCache(VkDevice _device,
    cache = vk_object_alloc(&device->vk, pAllocator, sizeof(*cache),
                            VK_OBJECT_TYPE_PIPELINE_CACHE);
    if (cache == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (pAllocator)
       cache->alloc = *pAllocator;
