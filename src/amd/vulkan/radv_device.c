@@ -1291,6 +1291,14 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->memoryPriority = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
+         VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *features =
+            (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *)ext;
+         CORE_FEATURE(1, 2, bufferDeviceAddress);
+         CORE_FEATURE(1, 2, bufferDeviceAddressCaptureReplay);
+         CORE_FEATURE(1, 2, bufferDeviceAddressMultiDevice);
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
          VkPhysicalDeviceDepthClipEnableFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipEnableFeaturesEXT *)ext;
