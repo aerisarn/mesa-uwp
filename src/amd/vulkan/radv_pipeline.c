@@ -1835,7 +1835,7 @@ gfx9_get_gs_info(const struct radv_pipeline_key *key, const struct radv_pipeline
 
    unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
    bool uses_adjacency;
-   switch (key->topology) {
+   switch (key->vs.topology) {
    case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
    case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
    case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
@@ -1996,7 +1996,7 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pi
    unsigned min_verts_per_prim = gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
    unsigned gs_num_invocations = nir[MESA_SHADER_GEOMETRY] ? MAX2(gs_info->gs.invocations, 1) : 1;
    bool uses_adjacency;
-   switch (key->topology) {
+   switch (key->vs.topology) {
    case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
    case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
    case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
@@ -2385,7 +2385,7 @@ radv_link_shaders(struct radv_pipeline *pipeline,
             ordered_shaders[i - 1]->info.inputs_read & VARYING_BIT_PSIZ;
          bool topology_uses_psiz =
             info->stage == pipeline->graphics.last_vgt_api_stage &&
-            ((info->stage == MESA_SHADER_VERTEX && pipeline_key->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) ||
+            ((info->stage == MESA_SHADER_VERTEX && pipeline_key->vs.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) ||
              (info->stage == MESA_SHADER_TESS_EVAL && info->tess.point_mode) ||
              (info->stage == MESA_SHADER_GEOMETRY && info->gs.output_primitive == GL_POINTS));
 
@@ -2597,8 +2597,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       int first_non_void;
 
       if (binding_input_rate & (1u << binding)) {
-         key.instance_rate_inputs |= 1u << location;
-         key.instance_rate_divisors[location] = instance_rate_divisors[binding];
+         key.vs.instance_rate_inputs |= 1u << location;
+         key.vs.instance_rate_divisors[location] = instance_rate_divisors[binding];
       }
 
       format_desc = vk_format_description(desc->format);
@@ -2607,9 +2607,9 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       num_format = radv_translate_buffer_numformat(format_desc, first_non_void);
       data_format = radv_translate_buffer_dataformat(format_desc, first_non_void);
 
-      key.vertex_attribute_formats[location] = data_format | (num_format << 4);
-      key.vertex_attribute_bindings[location] = desc->binding;
-      key.vertex_attribute_offsets[location] = desc->offset;
+      key.vs.vertex_attribute_formats[location] = data_format | (num_format << 4);
+      key.vs.vertex_attribute_bindings[location] = desc->binding;
+      key.vs.vertex_attribute_offsets[location] = desc->offset;
 
       const struct ac_data_format_info *dfmt_info = ac_get_data_format_info(data_format);
       unsigned attrib_align =
@@ -2619,8 +2619,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
        * skip updating vertex_binding_align in this case.
        */
       if (desc->offset % attrib_align == 0)
-         key.vertex_binding_align[desc->binding] =
-            MAX2(key.vertex_binding_align[desc->binding], attrib_align);
+         key.vs.vertex_binding_align[desc->binding] =
+            MAX2(key.vs.vertex_binding_align[desc->binding], attrib_align);
 
       if (!uses_dynamic_stride) {
          /* From the Vulkan spec 1.2.157:
@@ -2638,7 +2638,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
           * avoid computing a wrong offset if it's initialized
           * to something else than zero.
           */
-         key.vertex_attribute_strides[location] =
+         key.vs.vertex_attribute_strides[location] =
             radv_get_attrib_stride(input_state, desc->binding);
       }
 
@@ -2663,7 +2663,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
             break;
          }
       }
-      key.vertex_alpha_adjust[location] = adjust;
+      key.vs.vertex_alpha_adjust[location] = adjust;
 
       switch (desc->format) {
       case VK_FORMAT_B8G8R8A8_UNORM:
@@ -2679,7 +2679,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
       case VK_FORMAT_A2R10G10B10_UINT_PACK32:
       case VK_FORMAT_A2R10G10B10_SINT_PACK32:
-         key.vertex_post_shuffle |= 1 << location;
+         key.vs.vertex_post_shuffle |= 1 << location;
          break;
       default:
          break;
@@ -2689,25 +2689,25 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    const VkPipelineTessellationStateCreateInfo *tess =
       radv_pipeline_get_tessellation_state(pCreateInfo);
    if (tess)
-      key.tess_input_vertices = tess->patchControlPoints;
+      key.tcs.tess_input_vertices = tess->patchControlPoints;
 
    const VkPipelineMultisampleStateCreateInfo *vkms =
       radv_pipeline_get_multisample_state(pCreateInfo);
    if (vkms && vkms->rasterizationSamples > 1) {
       uint32_t num_samples = vkms->rasterizationSamples;
       uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo);
-      key.num_samples = num_samples;
-      key.log2_ps_iter_samples = util_logbase2(ps_iter_samples);
+      key.ps.num_samples = num_samples;
+      key.ps.log2_ps_iter_samples = util_logbase2(ps_iter_samples);
    }
 
-   key.col_format = blend->spi_shader_col_format;
+   key.ps.col_format = blend->spi_shader_col_format;
    if (pipeline->device->physical_device->rad_info.chip_class < GFX8) {
-      key.is_int8 = blend->col_format_is_int8;
-      key.is_int10 = blend->col_format_is_int10;
+      key.ps.is_int8 = blend->col_format_is_int8;
+      key.ps.is_int10 = blend->col_format_is_int10;
    }
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
-      key.topology = pCreateInfo->pInputAssemblyState->topology;
+      key.vs.topology = pCreateInfo->pInputAssemblyState->topology;
 
       const VkPipelineRasterizationStateCreateInfo *raster_info = pCreateInfo->pRasterizationState;
       const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
@@ -2715,7 +2715,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
                               PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
       if (provoking_vtx_info &&
           provoking_vtx_info->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
-         key.provoking_vtx_last = true;
+         key.vs.provoking_vtx_last = true;
       }
    }
    return key;
@@ -2735,24 +2735,24 @@ static void
 radv_fill_shader_keys(struct radv_device *device, struct radv_shader_variant_key *keys,
                       const struct radv_pipeline_key *key, nir_shader **nir)
 {
-   keys[MESA_SHADER_VERTEX].vs.instance_rate_inputs = key->instance_rate_inputs;
-   keys[MESA_SHADER_VERTEX].vs.post_shuffle = key->vertex_post_shuffle;
+   keys[MESA_SHADER_VERTEX].vs.instance_rate_inputs = key->vs.instance_rate_inputs;
+   keys[MESA_SHADER_VERTEX].vs.post_shuffle = key->vs.vertex_post_shuffle;
    for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; ++i) {
-      keys[MESA_SHADER_VERTEX].vs.instance_rate_divisors[i] = key->instance_rate_divisors[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_formats[i] = key->vertex_attribute_formats[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_bindings[i] = key->vertex_attribute_bindings[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_offsets[i] = key->vertex_attribute_offsets[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_strides[i] = key->vertex_attribute_strides[i];
-      keys[MESA_SHADER_VERTEX].vs.alpha_adjust[i] = key->vertex_alpha_adjust[i];
+      keys[MESA_SHADER_VERTEX].vs.instance_rate_divisors[i] = key->vs.instance_rate_divisors[i];
+      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_formats[i] = key->vs.vertex_attribute_formats[i];
+      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_bindings[i] = key->vs.vertex_attribute_bindings[i];
+      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_offsets[i] = key->vs.vertex_attribute_offsets[i];
+      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_strides[i] = key->vs.vertex_attribute_strides[i];
+      keys[MESA_SHADER_VERTEX].vs.alpha_adjust[i] = key->vs.vertex_alpha_adjust[i];
    }
    for (unsigned i = 0; i < MAX_VBS; ++i)
-      keys[MESA_SHADER_VERTEX].vs.vertex_binding_align[i] = key->vertex_binding_align[i];
-   keys[MESA_SHADER_VERTEX].vs.provoking_vtx_last = key->provoking_vtx_last;
-   keys[MESA_SHADER_VERTEX].vs.topology = key->topology;
+      keys[MESA_SHADER_VERTEX].vs.vertex_binding_align[i] = key->vs.vertex_binding_align[i];
+   keys[MESA_SHADER_VERTEX].vs.provoking_vtx_last = key->vs.provoking_vtx_last;
+   keys[MESA_SHADER_VERTEX].vs.topology = key->vs.topology;
 
    if (nir[MESA_SHADER_TESS_CTRL]) {
       keys[MESA_SHADER_VERTEX].vs_common_out.as_ls = true;
-      keys[MESA_SHADER_TESS_CTRL].tcs.input_vertices = key->tess_input_vertices;
+      keys[MESA_SHADER_TESS_CTRL].tcs.input_vertices = key->tcs.tess_input_vertices;
    }
 
    if (nir[MESA_SHADER_GEOMETRY]) {
@@ -2814,11 +2814,11 @@ radv_fill_shader_keys(struct radv_device *device, struct radv_shader_variant_key
    for (int i = 0; i < MESA_SHADER_STAGES; ++i)
       keys[i].has_multiview_view_index = key->has_multiview_view_index;
 
-   keys[MESA_SHADER_FRAGMENT].fs.col_format = key->col_format;
-   keys[MESA_SHADER_FRAGMENT].fs.is_int8 = key->is_int8;
-   keys[MESA_SHADER_FRAGMENT].fs.is_int10 = key->is_int10;
-   keys[MESA_SHADER_FRAGMENT].fs.log2_ps_iter_samples = key->log2_ps_iter_samples;
-   keys[MESA_SHADER_FRAGMENT].fs.num_samples = key->num_samples;
+   keys[MESA_SHADER_FRAGMENT].fs.col_format = key->ps.col_format;
+   keys[MESA_SHADER_FRAGMENT].fs.is_int8 = key->ps.is_int8;
+   keys[MESA_SHADER_FRAGMENT].fs.is_int10 = key->ps.is_int10;
+   keys[MESA_SHADER_FRAGMENT].fs.log2_ps_iter_samples = key->ps.log2_ps_iter_samples;
+   keys[MESA_SHADER_FRAGMENT].fs.num_samples = key->ps.num_samples;
 }
 
 static uint8_t
@@ -2937,10 +2937,9 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    }
 
    if (nir[MESA_SHADER_COMPUTE]) {
-      /* Variable workgroup size is not supported by Vulkan. */
-      unsigned subgroup_size = pipeline_key->compute_subgroup_size;
+      unsigned subgroup_size = pipeline_key->cs.compute_subgroup_size;
       unsigned req_subgroup_size = subgroup_size;
-      bool require_full_subgroups = pipeline_key->require_full_subgroups;
+      bool require_full_subgroups = pipeline_key->cs.require_full_subgroups;
 
       if (!subgroup_size)
          subgroup_size = device->physical_device->cs_wave_size;
@@ -3036,7 +3035,7 @@ gather_tess_info(struct radv_device *device, nir_shader **nir, struct radv_shade
 {
    merge_tess_info(&nir[MESA_SHADER_TESS_EVAL]->info, &nir[MESA_SHADER_TESS_CTRL]->info);
 
-   unsigned tess_in_patch_size = pipeline_key->tess_input_vertices;
+   unsigned tess_in_patch_size = pipeline_key->tcs.tess_input_vertices;
    unsigned tess_out_patch_size = nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_vertices_out;
 
    /* Number of tessellation patches per workgroup processed by the current pipeline. */
@@ -5706,9 +5705,9 @@ radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
    if (subgroup_size) {
       assert(subgroup_size->requiredSubgroupSize == 32 ||
              subgroup_size->requiredSubgroupSize == 64);
-      key.compute_subgroup_size = subgroup_size->requiredSubgroupSize;
+      key.cs.compute_subgroup_size = subgroup_size->requiredSubgroupSize;
    } else if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
-      key.require_full_subgroups = true;
+      key.cs.require_full_subgroups = true;
    }
 
    return key;

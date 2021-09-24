@@ -418,13 +418,13 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
                            const struct radv_pipeline_key *key)
 {
    unsigned subgroup_size = 64, ballot_bit_size = 64;
-   if (key->compute_subgroup_size) {
+   if (key->cs.compute_subgroup_size) {
       /* Only compute shaders currently support requiring a
        * specific subgroup size.
        */
       assert(stage == MESA_SHADER_COMPUTE);
-      subgroup_size = key->compute_subgroup_size;
-      ballot_bit_size = key->compute_subgroup_size;
+      subgroup_size = key->cs.compute_subgroup_size;
+      ballot_bit_size = key->cs.compute_subgroup_size;
    }
 
    nir_shader *nir;
@@ -857,7 +857,7 @@ radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
          nir, device->physical_device->rad_info.chip_class, info->tcs.tes_reads_tess_factors,
          info->tcs.tes_inputs_read, info->tcs.tes_patch_inputs_read, info->tcs.num_linked_inputs,
          info->tcs.num_linked_outputs, info->tcs.num_linked_patch_outputs, true);
-      ac_nir_lower_tess_to_const(nir, pl_key->tess_input_vertices, info->num_tess_patches,
+      ac_nir_lower_tess_to_const(nir, pl_key->tcs.tess_input_vertices, info->num_tess_patches,
                                  ac_nir_lower_patch_vtx_in | ac_nir_lower_num_patches);
 
       return true;
@@ -949,7 +949,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
       /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
-      num_vertices_per_prim = si_conv_prim_to_gs_out(pl_key->topology) + 1;
+      num_vertices_per_prim = si_conv_prim_to_gs_out(pl_key->vs.topology) + 1;
 
       /* Manually mark the instance ID used, so the shader can repack it. */
       if (key->vs.instance_rate_inputs)
