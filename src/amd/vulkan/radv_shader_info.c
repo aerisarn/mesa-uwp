@@ -654,6 +654,23 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       }
    }
 
+   /* Make sure to export the clip/cull distances if the fragment shader needs it. */
+   if (key->vs_common_out.export_clip_dists) {
+      switch (nir->info.stage) {
+      case MESA_SHADER_VERTEX:
+         info->vs.outinfo.export_clip_dists = true;
+         break;
+      case MESA_SHADER_TESS_EVAL:
+         info->tes.outinfo.export_clip_dists = true;
+         break;
+      case MESA_SHADER_GEOMETRY:
+         info->vs.outinfo.export_clip_dists = true;
+         break;
+      default:
+         break;
+      }
+   }
+
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       info->ps.num_interp = nir->num_inputs;
 

@@ -214,6 +214,7 @@ struct radv_vs_output_info {
    bool writes_viewport_index;
    bool writes_primitive_shading_rate;
    bool export_prim_id;
+   bool export_clip_dists;
    unsigned pos_exports;
 };
 
