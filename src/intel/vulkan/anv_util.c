@@ -31,24 +31,6 @@
 #include "anv_private.h"
 #include "vk_enum_to_str.h"
 
-/** Log an error message.  */
-void anv_printflike(1, 2)
-anv_loge(const char *format, ...)
-{
-   va_list va;
-
-   va_start(va, format);
-   anv_loge_v(format, va);
-   va_end(va);
-}
-
-/** \see anv_loge() */
-void
-anv_loge_v(const char *format, va_list va)
-{
-   mesa_loge_v(format, va);
-}
-
 void
 __anv_perf_warn(struct anv_device *device,
                 const struct vk_object_base *object,
