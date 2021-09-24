@@ -34,6 +34,45 @@
 
 #include "log.h"
 
+static struct vk_device *
+vk_object_to_device(struct vk_object_base *obj)
+{
+   assert(obj->device);
+   return obj->device;
+}
+
+static struct vk_physical_device *
+vk_object_to_physical_device(struct vk_object_base *obj)
+{
+   switch (obj->type) {
+   case VK_OBJECT_TYPE_INSTANCE:
+      unreachable("Unsupported object type");
+   case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
+      return container_of(obj, struct vk_physical_device, base);
+   case VK_OBJECT_TYPE_SURFACE_KHR:
+   case VK_OBJECT_TYPE_DISPLAY_KHR:
+   case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:
+   case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:
+   case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:
+      unreachable("Unsupported object type");
+   default:
+      return vk_object_to_device(obj)->physical;
+   }
+}
+
+static struct vk_instance *
+vk_object_to_instance(struct vk_object_base *obj)
+{
+   if (obj == NULL)
+      return NULL;
+
+   if (obj->type == VK_OBJECT_TYPE_INSTANCE) {
+      return container_of(obj, struct vk_instance, base);
+   } else {
+      return vk_object_to_physical_device(obj)->instance;
+   }
+}
+
 void
 __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
               VkDebugUtilsMessageTypeFlagsEXT types,
@@ -50,7 +89,7 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       instance = (struct vk_instance *) objects_or_instance;
    } else {
       objects = (struct vk_object_base **) objects_or_instance;
-      instance = objects[0]->device->physical->instance;
+      instance = vk_object_to_instance(objects[0]);
       assert(instance->base.client_visible);
    }
 
