@@ -30,22 +30,16 @@
 #include "util/ralloc.h"
 #include "vk_enum_to_str.h"
 
-static void
-vk_object_base_reinit(struct vk_object_base *base)
-{
-   base->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
-   util_sparse_array_init(&base->private_data, sizeof(uint64_t), 8);
-}
-
 void
 vk_object_base_init(struct vk_device *device,
                     struct vk_object_base *base,
                     UNUSED VkObjectType obj_type)
 {
-   vk_object_base_reinit(base);
+   base->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
    base->type = obj_type;
    base->device = device;
    base->object_name = NULL;
+   util_sparse_array_init(&base->private_data, sizeof(uint64_t), 8);
 }
 
 void
@@ -55,13 +49,6 @@ vk_object_base_finish(struct vk_object_base *base)
 
    if (base->object_name != NULL)
       vk_free(&base->device->alloc, base->object_name);
-}
-
-void
-vk_object_base_reset(struct vk_object_base *base)
-{
-   vk_object_base_finish(base);
-   vk_object_base_reinit(base);
 }
 
 void *
