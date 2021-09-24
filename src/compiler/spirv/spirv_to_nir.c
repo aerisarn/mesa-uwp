@@ -6039,6 +6039,29 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
       (b->generator_id == vtn_generator_glslang_reference_front_end &&
        generator_version < 3);
 
+   /* Identifying the LLVM-SPIRV translator:
+    *
+    * The LLVM-SPIRV translator currently doesn't store any generator ID [1].
+    * Our use case involving the SPIRV-Tools linker also mean we want to check
+    * for that tool instead. Finally the SPIRV-Tools linker also stores its
+    * generator ID in the wrong location [2].
+    *
+    * [1] : https://github.com/KhronosGroup/SPIRV-LLVM-Translator/pull/1223
+    * [2] : https://github.com/KhronosGroup/SPIRV-Tools/pull/4549
+    */
+   const bool is_llvm_spirv_translator =
+      (b->generator_id == 0 &&
+       generator_version == vtn_generator_spirv_tools_linker) ||
+      b->generator_id == vtn_generator_spirv_tools_linker;
+
+   /* The LLVM-SPIRV translator generates Undef initializers for _local
+    * variables [1].
+    *
+    * [1] : https://github.com/KhronosGroup/SPIRV-LLVM-Translator/issues/1224
+    */
+   b->wa_llvm_spirv_ignore_workgroup_initializer =
+      b->options->environment == NIR_SPIRV_OPENCL && is_llvm_spirv_translator;
+
    /* words[2] == generator magic */
    unsigned value_id_bound = words[3];
    if (words[4] != 0) {

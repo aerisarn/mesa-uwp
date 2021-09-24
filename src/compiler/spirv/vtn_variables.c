@@ -2015,6 +2015,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       unreachable("Should have been caught before");
    }
 
+   /* Ignore incorrectly generated Undef initializers. */
+   if (b->wa_llvm_spirv_ignore_workgroup_initializer &&
+       initializer &&
+       storage_class == SpvStorageClassWorkgroup)
+      initializer = NULL;
+
    if (initializer) {
       switch (storage_class) {
       case SpvStorageClassWorkgroup:
