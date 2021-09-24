@@ -265,6 +265,12 @@ struct intel_device_info
       unsigned max_entries[4];
    } urb;
 
+   /* Maximum size in Kb that can be allocated to constants in the URB, this
+    * is usually divided among the stages for implementing push constants.
+    * See 3DSTATE_PUSH_CONSTANT_ALLOC_*.
+    */
+   unsigned max_constant_urb_size_kb;
+
    /**
     * Size of the command streamer prefetch. This is important to know for
     * self modifying batches.

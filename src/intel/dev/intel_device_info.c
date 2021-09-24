@@ -219,6 +219,7 @@ static const struct intel_device_info intel_device_info_snb_gt2 = {
    .has_64bit_float = true,                         \
    .has_surface_tile_offset = true,                 \
    .timestamp_frequency = 12500000,                 \
+   .max_constant_urb_size_kb = 16,                  \
    .cs_prefetch_size = 512
 
 static const struct intel_device_info intel_device_info_ivb_gt1 = {
@@ -394,6 +395,7 @@ static const struct intel_device_info intel_device_info_hsw_gt3 = {
          [MESA_SHADER_GEOMETRY]  = 640,
       },
    },
+   .max_constant_urb_size_kb = 32,
    .simulator_id = 9,
 };
 
@@ -419,6 +421,7 @@ static const struct intel_device_info intel_device_info_hsw_gt3 = {
    .max_gs_threads = 504,                           \
    .max_wm_threads = 384,                           \
    .timestamp_frequency = 12500000,                 \
+   .max_constant_urb_size_kb = 32,                  \
    .cs_prefetch_size = 512
 
 static const struct intel_device_info intel_device_info_bdw_gt1 = {

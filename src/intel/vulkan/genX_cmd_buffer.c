@@ -2501,13 +2501,8 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
    if (stages == cmd_buffer->state.gfx.push_constant_stages)
       return;
 
-#if GFX_VER >= 8
-   const unsigned push_constant_kb = 32;
-#elif GFX_VERx10 == 75
-   const unsigned push_constant_kb = cmd_buffer->device->info.gt == 3 ? 32 : 16;
-#else
-   const unsigned push_constant_kb = 16;
-#endif
+   const unsigned push_constant_kb =
+      cmd_buffer->device->info.max_constant_urb_size_kb;
 
    const unsigned num_stages =
       util_bitcount(stages & VK_SHADER_STAGE_ALL_GRAPHICS);

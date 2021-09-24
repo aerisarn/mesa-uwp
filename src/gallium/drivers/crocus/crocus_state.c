@@ -1321,13 +1321,8 @@ emit_pipeline_select(struct crocus_batch *batch, uint32_t pipeline)
 static void
 crocus_alloc_push_constants(struct crocus_batch *batch)
 {
-#if GFX_VERx10 == 75
-   const unsigned push_constant_kb = batch->screen->devinfo.gt == 3 ? 32 : 16;
-#elif GFX_VER == 8
-   const unsigned push_constant_kb = 32;
-#else
-   const unsigned push_constant_kb = 16;
-#endif
+   const unsigned push_constant_kb =
+      batch->screen->devinfo.max_constant_urb_size_kb;
    unsigned size_per_stage = push_constant_kb / 5;
 
    /* For now, we set a static partitioning of the push constant area,

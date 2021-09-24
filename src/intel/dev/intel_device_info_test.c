@@ -28,6 +28,8 @@ main(int argc, char *argv[])
       assert(devinfo.num_thread_per_eu != 0);
       assert(devinfo.timestamp_frequency != 0);
       assert(devinfo.cs_prefetch_size > 0);
+
+      assert(devinfo.ver < 7 || devinfo.max_constant_urb_size_kb > 0);
    }
 
    return 0;
