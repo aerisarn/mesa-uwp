@@ -1337,6 +1337,30 @@ check_have_device_time(struct zink_screen *screen)
    return false;
 }
 
+static void
+zink_error(const char *msg)
+{
+   fprintf(stderr, "zink ERR: '%s'\n", msg);
+}
+
+static void
+zink_warn(const char *msg)
+{
+   fprintf(stderr, "zink WRN: '%s'\n", msg);
+}
+
+static void
+zink_info(const char *msg)
+{
+   fprintf(stderr, "zink NFO: '%s'\n", msg);
+}
+
+static void
+zink_msg(const char *msg)
+{
+   fprintf(stderr, "zink MSG: '%s'\n", msg);
+}
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL
 zink_debug_util_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT           messageSeverity,
@@ -1344,19 +1368,17 @@ zink_debug_util_callback(
     const VkDebugUtilsMessengerCallbackDataEXT      *pCallbackData,
     void                                            *pUserData)
 {
-   const char *severity = "MSG";
-
    // Pick message prefix and color to use.
    // Only MacOS and Linux have been tested for color support
    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-      severity = "ERR";
+      zink_error(pCallbackData->pMessage);
    } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-      severity = "WRN";
+      zink_warn(pCallbackData->pMessage);
    } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-      severity = "NFO";
-   }
+      zink_info(pCallbackData->pMessage);
+   } else
+      zink_msg(pCallbackData->pMessage);
 
-   fprintf(stderr, "zink DEBUG: %s: '%s'\n", severity, pCallbackData->pMessage);
    return VK_FALSE;
 }
 
