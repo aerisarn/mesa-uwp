@@ -232,12 +232,13 @@ the :doc:`Xlib software driver page <xlibdriver>` for details.
 :envvar:`MESA_GLX_ALPHA_BITS`
    specifies default number of bits for alpha channel.
 
-i945/i965 driver environment variables (non-Gallium)
+Intel driver environment variables
 ----------------------------------------------------
 
-:envvar:`INTEL_NO_HW`
-   if set to 1, true or yes, prevents batches from being submitted to the
-   hardware. This is useful for debugging hangs, etc.
+:envvar:`INTEL_BLACKHOLE_DEFAULT`
+   if set to 1, true or yes, then the OpenGL implementation will
+   default ``GL_BLACKHOLE_RENDER_INTEL`` to true, thus disabling any
+   rendering.
 :envvar:`INTEL_DEBUG`
    a comma-separated list of named flags, which do various things:
 
@@ -334,8 +335,9 @@ i945/i965 driver environment variables (non-Gallium)
    ``vs``
       dump shader assembly for vertex shaders
 
-:envvar:`INTEL_SCALAR_VS` (or ``TCS``, ``TES``, ``GS``)
-   force scalar/vec4 mode for a shader stage (Gen8-9 only)
+:envvar:`INTEL_NO_HW`
+   if set to 1, true or yes, prevents batches from being submitted to the
+   hardware. This is useful for debugging hangs, etc.
 :envvar:`INTEL_PRECISE_TRIG`
    if set to 1, true or yes, then the driver prefers accuracy over
    performance in trig functions.
@@ -353,10 +355,6 @@ i945/i965 driver environment variables (non-Gallium)
    The success of assembly override would be signified by "Successfully
    overrode shader with sha1 <sha1>" in stderr replacing the original
    assembly.
-:envvar:`INTEL_BLACKHOLE_DEFAULT`
-   if set to 1, true or yes, then the OpenGL implementation will
-   default ``GL_BLACKHOLE_RENDER_INTEL`` to true, thus disabling any
-   rendering.
 
 
 Radeon driver environment variables (radeon, r200, and r300g)
