@@ -78,13 +78,13 @@ needs_view_index_sgpr(struct radv_shader_args *args, gl_shader_stage stage)
    switch (stage) {
    case MESA_SHADER_VERTEX:
       if (args->shader_info->needs_multiview_view_index ||
-          (!args->options->key.vs_common_out.as_es && !args->options->key.vs_common_out.as_ls &&
+          (!args->shader_info->vs.as_es && !args->shader_info->vs.as_ls &&
            args->options->key.has_multiview_view_index))
          return true;
       break;
    case MESA_SHADER_TESS_EVAL:
       if (args->shader_info->needs_multiview_view_index ||
-          (!args->options->key.vs_common_out.as_es && args->options->key.has_multiview_view_index))
+          (!args->shader_info->tes.as_es && args->options->key.has_multiview_view_index))
          return true;
       break;
    case MESA_SHADER_TESS_CTRL:
@@ -93,7 +93,7 @@ needs_view_index_sgpr(struct radv_shader_args *args, gl_shader_stage stage)
       break;
    case MESA_SHADER_GEOMETRY:
       if (args->shader_info->needs_multiview_view_index ||
-          (args->options->key.vs_common_out.as_ngg && args->options->key.has_multiview_view_index))
+          (args->shader_info->is_ngg && args->options->key.has_multiview_view_index))
          return true;
       break;
    default:
@@ -199,7 +199,7 @@ allocate_user_sgprs(struct radv_shader_args *args, gl_shader_stage stage, bool h
    case MESA_SHADER_VERTEX:
       if (!args->is_gs_copy_shader)
          user_sgpr_count += count_vs_user_sgprs(args);
-      if (args->options->key.vs_common_out.as_ngg)
+      if (args->shader_info->is_ngg)
          user_sgpr_count += count_ngg_sgprs(args, stage);
       break;
    case MESA_SHADER_TESS_CTRL:
@@ -209,12 +209,12 @@ allocate_user_sgprs(struct radv_shader_args *args, gl_shader_stage stage, bool h
       }
       break;
    case MESA_SHADER_TESS_EVAL:
-      if (args->options->key.vs_common_out.as_ngg)
+      if (args->shader_info->is_ngg)
          user_sgpr_count += count_ngg_sgprs(args, stage);
       break;
    case MESA_SHADER_GEOMETRY:
       if (has_previous_stage) {
-         if (args->options->key.vs_common_out.as_ngg)
+         if (args->shader_info->is_ngg)
             user_sgpr_count += count_ngg_sgprs(args, stage);
 
          if (previous_stage == MESA_SHADER_VERTEX) {
@@ -307,7 +307,7 @@ declare_vs_input_vgprs(struct radv_shader_args *args)
 {
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vertex_id);
    if (!args->is_gs_copy_shader) {
-      if (args->options->key.vs_common_out.as_ls) {
+      if (args->shader_info->vs.as_ls) {
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.vs_rel_patch_id);
          if (args->options->chip_class >= GFX10) {
             ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user vgpr */
@@ -318,7 +318,7 @@ declare_vs_input_vgprs(struct radv_shader_args *args)
          }
       } else {
          if (args->options->chip_class >= GFX10) {
-            if (args->options->key.vs_common_out.as_ngg) {
+            if (args->shader_info->is_ngg) {
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user vgpr */
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* user vgpr */
                ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.instance_id);
@@ -467,7 +467,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
    bool needs_view_index = needs_view_index_sgpr(args, stage);
 
    if (args->options->chip_class >= GFX10) {
-      if (is_pre_gs_stage(stage) && args->options->key.vs_common_out.as_ngg) {
+      if (is_pre_gs_stage(stage) && args->shader_info->is_ngg) {
          /* On GFX10, VS is merged into GS for NGG. */
          previous_stage = stage;
          stage = MESA_SHADER_GEOMETRY;
@@ -528,9 +528,9 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
       }
 
-      if (args->options->key.vs_common_out.as_es) {
+      if (args->shader_info->vs.as_es) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.es2gs_offset);
-      } else if (args->options->key.vs_common_out.as_ls) {
+      } else if (args->shader_info->vs.as_ls) {
          /* no extra parameters */
       } else {
          declare_streamout_sgprs(args, stage);
@@ -539,7 +539,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       if (args->options->explicit_scratch_args) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
       }
-      if (args->options->key.vs_common_out.as_ngg) {
+      if (args->shader_info->is_ngg) {
          declare_ngg_sgprs(args, stage);
       }
 
@@ -590,7 +590,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       if (needs_view_index)
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
 
-      if (args->options->key.vs_common_out.as_es) {
+      if (args->shader_info->tes.as_es) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.es2gs_offset);
@@ -601,7 +601,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       if (args->options->explicit_scratch_args) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
       }
-      if (args->options->key.vs_common_out.as_ngg) {
+      if (args->shader_info->is_ngg) {
          declare_ngg_sgprs(args, stage);
       }
       declare_tes_input_vgprs(args);
@@ -609,7 +609,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
    case MESA_SHADER_GEOMETRY:
       if (has_previous_stage) {
          // First 6 system regs
-         if (args->options->key.vs_common_out.as_ngg) {
+         if (args->shader_info->is_ngg) {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs_tg_info);
          } else {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs2vs_offset);
@@ -632,7 +632,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
          }
 
-         if (args->options->key.vs_common_out.as_ngg) {
+         if (args->shader_info->is_ngg) {
             declare_ngg_sgprs(args, stage);
          }
 
@@ -729,7 +729,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       set_vs_specific_input_locs(args, stage, has_previous_stage, previous_stage, &user_sgpr_idx);
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
-      if (args->options->key.vs_common_out.as_ngg)
+      if (args->shader_info->is_ngg)
          set_ngg_sgprs_locs(args, stage, &user_sgpr_idx);
       break;
    case MESA_SHADER_TESS_CTRL:
@@ -740,7 +740,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
    case MESA_SHADER_TESS_EVAL:
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
-      if (args->options->key.vs_common_out.as_ngg)
+      if (args->shader_info->is_ngg)
          set_ngg_sgprs_locs(args, stage, &user_sgpr_idx);
       break;
    case MESA_SHADER_GEOMETRY:
@@ -752,7 +752,7 @@ radv_declare_shader_args(struct radv_shader_args *args, gl_shader_stage stage,
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
 
-      if (args->options->key.vs_common_out.as_ngg)
+      if (args->shader_info->is_ngg)
          set_ngg_sgprs_locs(args, stage, &user_sgpr_idx);
       break;
    case MESA_SHADER_FRAGMENT:
