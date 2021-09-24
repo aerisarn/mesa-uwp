@@ -1018,6 +1018,9 @@ clc_spirv_specialize(const struct clc_binary *in_spirv,
          words.resize(2);
          memcpy(words.data(), &consts->specializations[i].value.u64, 8);
          break;
+      case CLC_SPEC_CONSTANT_UNKNOWN:
+         assert(0);
+         break;
       }
 
       ASSERTED auto ret = spec_const_map.emplace(id, std::move(words));

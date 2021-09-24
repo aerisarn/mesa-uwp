@@ -44,6 +44,11 @@ struct clc_compile_args {
    unsigned num_args;
 };
 
+struct clc_binary {
+   void *data;
+   size_t size;
+};
+
 struct clc_linker_args {
    const struct clc_binary * const *in_objs;
    unsigned num_in_objs;
@@ -56,11 +61,6 @@ struct clc_logger {
    void *priv;
    clc_msg_callback error;
    clc_msg_callback warning;
-};
-
-struct clc_binary {
-   void *data;
-   size_t size;
 };
 
 enum clc_kernel_arg_type_qualifier {
