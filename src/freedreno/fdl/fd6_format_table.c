@@ -168,7 +168,7 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 
    VTC(B8G8R8A8_UNORM,   8_8_8_8_UNORM,         WXYZ),
    _TC(B8G8R8X8_UNORM,   8_8_8_8_UNORM,         WXYZ),
-   VTC(B8G8R8A8_SRGB,    8_8_8_8_UNORM,         WXYZ),
+   _TC(B8G8R8A8_SRGB,    8_8_8_8_UNORM,         WXYZ),
    _TC(B8G8R8X8_SRGB,    8_8_8_8_UNORM,         WXYZ),
    VTC(B8G8R8A8_SNORM,   8_8_8_8_SNORM,         WXYZ),
    VTC(B8G8R8A8_UINT,    8_8_8_8_UINT,          WXYZ),
