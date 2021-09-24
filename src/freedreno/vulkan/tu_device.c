@@ -1740,6 +1740,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       ir3_compiler_create(NULL, &physical_device->dev_id,
                           &(struct ir3_compiler_options) {
                               .robust_ubo_access = robust_buffer_access2,
+                              .push_ubo_with_preamble = true,
                            });
    if (!device->compiler) {
       result = vk_startup_errorf(physical_device->instance,

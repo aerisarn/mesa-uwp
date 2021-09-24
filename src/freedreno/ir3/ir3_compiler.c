@@ -314,6 +314,12 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->bool_type = (compiler->gen >= 5) ? TYPE_U16 : TYPE_U32;
    compiler->has_shared_regfile = compiler->gen >= 5;
 
+   compiler->push_ubo_with_preamble = options->push_ubo_with_preamble;
+
+   /* The driver can't request this unless preambles are supported. */
+   if (options->push_ubo_with_preamble)
+      assert(compiler->has_preamble);
+
    if (compiler->gen >= 6) {
       compiler->nir_options = nir_options_a6xx;
       compiler->nir_options.has_udot_4x8 = dev_info->a6xx.has_dp2acc;

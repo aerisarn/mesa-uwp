@@ -1916,7 +1916,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       hlsq_invalidate_value = A6XX_HLSQ_INVALIDATE_CMD_GFX_BINDLESS(0x1f);
 
       cmd->state.desc_sets = tu_cs_draw_state(&cmd->sub_cs, &state_cs, 24);
-      cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS;
+      cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD;
       cs = &state_cs;
    } else {
       assert(pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE);
@@ -3427,43 +3427,11 @@ tu6_user_consts_size(const struct tu_pipeline *pipeline,
 {
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
-   const struct ir3_ubo_analysis_state *state = &link->const_state.ubo_state;
    uint32_t dwords = 0;
 
    if (link->push_consts.count > 0) {
       unsigned num_units = link->push_consts.count;
       dwords += 4 + num_units * 4;
-   }
-
-   for (uint32_t i = 0; i < state->num_enabled; i++) {
-      uint32_t size = state->range[i].end - state->range[i].start;
-
-      size = MIN2(size, (16 * link->constlen) - state->range[i].offset);
-
-      if (size == 0)
-         continue;
-
-      if (!state->range[i].ubo.bindless)
-         continue;
-
-      uint32_t *base = state->range[i].ubo.bindless_base == MAX_SETS ?
-         descriptors_state->dynamic_descriptors :
-         descriptors_state->sets[state->range[i].ubo.bindless_base]->mapped_ptr;
-      unsigned block = state->range[i].ubo.block;
-      uint32_t *desc = base + block * A6XX_TEX_CONST_DWORDS;
-      uint32_t desc_size = (desc[1] >> A6XX_UBO_1_SIZE__SHIFT) * 16;
-      desc_size = desc_size > state->range[i].start ?
-         desc_size - state->range[i].start : 0;
-
-      if (desc_size < size) {
-         uint32_t zero_size = size - desc_size;
-         dwords += 4 + zero_size / 4;
-         size = desc_size;
-      }
-
-      if (size > 0) {
-         dwords += 4;
-      }
    }
 
    return dwords;
@@ -3477,8 +3445,6 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
 {
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
-   const struct ir3_const_state *const_state = &link->const_state;
-   const struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
 
    if (link->push_consts.count > 0) {
       unsigned num_units = link->push_consts.count;
@@ -3493,74 +3459,6 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
       tu_cs_emit(cs, 0);
       for (unsigned i = 0; i < num_units * 4; i++)
          tu_cs_emit(cs, push_constants[i + offset * 4]);
-   }
-
-   for (uint32_t i = 0; i < state->num_enabled; i++) {
-      uint32_t size = state->range[i].end - state->range[i].start;
-      uint32_t offset = state->range[i].start;
-
-      /* and even if the start of the const buffer is before
-       * first_immediate, the end may not be:
-       */
-      size = MIN2(size, (16 * link->constlen) - state->range[i].offset);
-
-      if (size == 0)
-         continue;
-
-      /* things should be aligned to vec4: */
-      debug_assert((state->range[i].offset % 16) == 0);
-      debug_assert((size % 16) == 0);
-      debug_assert((offset % 16) == 0);
-
-      /* Dig out the descriptor from the descriptor state and read the VA from
-       * it.  All our UBOs are bindless with the exception of the NIR
-       * constant_data, which is uploaded once in the pipeline.
-       */
-      if (!state->range[i].ubo.bindless) {
-         assert(state->range[i].ubo.block == const_state->constant_data_ubo);
-         continue;
-      }
-
-      uint32_t *base = state->range[i].ubo.bindless_base == MAX_SETS ?
-         descriptors_state->dynamic_descriptors :
-         descriptors_state->sets[state->range[i].ubo.bindless_base]->mapped_ptr;
-      unsigned block = state->range[i].ubo.block;
-      uint32_t *desc = base + block * A6XX_TEX_CONST_DWORDS;
-      uint64_t va = desc[0] | ((uint64_t)(desc[1] & A6XX_UBO_1_BASE_HI__MASK) << 32);
-      uint32_t desc_size = (desc[1] >> A6XX_UBO_1_SIZE__SHIFT) * 16;
-      desc_size = desc_size > state->range[i].start ?
-         desc_size - state->range[i].start : 0;
-
-      /* Handle null UBO descriptors and out-of-range UBO reads by filling the
-       * rest with 0, simulating what reading with ldc would do. This behavior
-       * is required by VK_EXT_robustness2.
-       */
-      if (desc_size < size) {
-         uint32_t zero_size = size - desc_size;
-         uint32_t zero_offset = state->range[i].offset + desc_size;
-         tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3 + zero_size / 4);
-         tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(zero_offset / 16) |
-               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-               CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-               CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-               CP_LOAD_STATE6_0_NUM_UNIT(zero_size / 16));
-         tu_cs_emit_qw(cs, 0);
-         for (unsigned i = 0; i < zero_size / 4; i++) {
-            tu_cs_emit(cs, 0);
-         }
-         size = desc_size;
-      }
-
-      if (size > 0) {
-         assert(va);
-         tu_cs_emit_pkt7(cs, tu6_stage2opcode(type), 3);
-         tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(state->range[i].offset / 16) |
-               CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-               CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-               CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
-               CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
-         tu_cs_emit_qw(cs, va + offset);
-      }
    }
 }
 

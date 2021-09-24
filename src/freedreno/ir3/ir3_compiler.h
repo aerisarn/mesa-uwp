@@ -182,6 +182,8 @@ struct ir3_compiler {
 
    /* True if preamble instructions (shps, shpe, etc.) are supported */
    bool has_preamble;
+
+   bool push_ubo_with_preamble;
 };
 
 struct ir3_compiler_options {
@@ -189,6 +191,13 @@ struct ir3_compiler_options {
     * VK_EXT_robustness2 and optimizations may have to be more conservative.
     */
    bool robust_ubo_access;
+
+   /* If true, promote UBOs (except for constant data) to constants using ldc.k
+    * in the preamble. The driver should ignore everything in ubo_state except
+    * for the constant data UBO, which is excluded because the command pushing
+    * constants for it can be pre-baked when compiling the shader.
+    */
+   bool push_ubo_with_preamble;
 };
 
 void ir3_compiler_destroy(struct ir3_compiler *compiler);
