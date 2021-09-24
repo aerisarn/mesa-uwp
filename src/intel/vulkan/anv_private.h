@@ -228,9 +228,6 @@ struct intel_perf_query_result;
  *    allocations with a size greater than or equal to 4GB. Such a limit is
  *    implementation-dependent, and if such a failure occurs then the error
  *    VK_ERROR_OUT_OF_DEVICE_MEMORY should be returned."
- *
- * We don't use vk_error here because it's not an error so much as an
- * indication to the application that the allocation is too large.
  */
 #define MAX_MEMORY_ALLOCATION_SIZE (1ull << 31)
 
