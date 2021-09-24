@@ -237,7 +237,8 @@ anv_timeline_gc_locked(struct anv_device *device,
    return VK_SUCCESS;
 }
 
-static VkResult anv_queue_submit_add_fence_bo(struct anv_queue_submit *submit,
+static VkResult anv_queue_submit_add_fence_bo(struct anv_queue *queue,
+                                              struct anv_queue_submit *submit,
                                               struct anv_bo *bo,
                                               bool signal);
 
@@ -257,7 +258,7 @@ anv_queue_submit_timeline_locked(struct anv_queue *queue,
       list_for_each_entry(struct anv_timeline_point, point, &timeline->points, link) {
          if (point->serial < wait_value)
             continue;
-         result = anv_queue_submit_add_fence_bo(submit, point->bo, false);
+         result = anv_queue_submit_add_fence_bo(queue, submit, point->bo, false);
          if (result != VK_SUCCESS)
             return result;
          break;
@@ -273,7 +274,7 @@ anv_queue_submit_timeline_locked(struct anv_queue *queue,
       if (result != VK_SUCCESS)
          return result;
 
-      result = anv_queue_submit_add_fence_bo(submit, point->bo, true);
+      result = anv_queue_submit_add_fence_bo(queue, submit, point->bo, true);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -545,7 +546,8 @@ anv_queue_finish(struct anv_queue *queue)
 }
 
 static VkResult
-anv_queue_submit_add_fence_bo(struct anv_queue_submit *submit,
+anv_queue_submit_add_fence_bo(struct anv_queue *queue,
+                              struct anv_queue_submit *submit,
                               struct anv_bo *bo,
                               bool signal)
 {
@@ -571,14 +573,14 @@ anv_queue_submit_add_fence_bo(struct anv_queue_submit *submit,
 }
 
 static VkResult
-anv_queue_submit_add_syncobj(struct anv_queue_submit* submit,
-                             struct anv_device *device,
+anv_queue_submit_add_syncobj(struct anv_queue *queue,
+                             struct anv_queue_submit* submit,
                              uint32_t handle, uint32_t flags,
                              uint64_t value)
 {
    assert(flags != 0);
 
-   if (device->has_thread_submit && (flags & I915_EXEC_FENCE_WAIT)) {
+   if (queue->device->has_thread_submit && (flags & I915_EXEC_FENCE_WAIT)) {
       if (submit->wait_timeline_count >= submit->wait_timeline_array_length) {
          uint32_t new_len = MAX2(submit->wait_timeline_array_length * 2, 64);
 
@@ -642,8 +644,8 @@ anv_queue_submit_add_syncobj(struct anv_queue_submit* submit,
 }
 
 static VkResult
-anv_queue_submit_add_timeline_wait(struct anv_queue_submit* submit,
-                                   struct anv_device *device,
+anv_queue_submit_add_timeline_wait(struct anv_queue *queue,
+                                   struct anv_queue_submit* submit,
                                    struct anv_timeline *timeline,
                                    uint64_t value)
 {
@@ -679,8 +681,8 @@ anv_queue_submit_add_timeline_wait(struct anv_queue_submit* submit,
 }
 
 static VkResult
-anv_queue_submit_add_timeline_signal(struct anv_queue_submit* submit,
-                                     struct anv_device *device,
+anv_queue_submit_add_timeline_signal(struct anv_queue *queue,
+                                     struct anv_queue_submit* submit,
                                      struct anv_timeline *timeline,
                                      uint64_t value)
 {
@@ -760,7 +762,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
          goto err_free_submit;
       }
 
-      result = anv_queue_submit_add_syncobj(submit, device, syncobj,
+      result = anv_queue_submit_add_syncobj(queue, submit, syncobj,
                                             I915_EXEC_FENCE_SIGNAL, 0);
    } else {
       result = anv_device_alloc_bo(device, "simple-batch-sync", 4096,
@@ -771,7 +773,8 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
       if (result != VK_SUCCESS)
          goto err_free_submit;
 
-      result = anv_queue_submit_add_fence_bo(submit, sync_bo, true /* signal */);
+      result = anv_queue_submit_add_fence_bo(queue, submit, sync_bo,
+                                             true /* signal */);
    }
 
    if (result != VK_SUCCESS)
@@ -831,7 +834,8 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
  * anv_queue_submit_free() once the driver is finished with them.
  */
 static VkResult
-maybe_transfer_temporary_semaphore(struct anv_queue_submit *submit,
+maybe_transfer_temporary_semaphore(struct anv_queue *queue,
+                                   struct anv_queue_submit *submit,
                                    struct anv_semaphore *semaphore,
                                    struct anv_semaphore_impl **out_impl)
 {
@@ -886,8 +890,8 @@ maybe_transfer_temporary_semaphore(struct anv_queue_submit *submit,
 }
 
 static VkResult
-anv_queue_submit_add_in_semaphore(struct anv_queue_submit *submit,
-                                  struct anv_device *device,
+anv_queue_submit_add_in_semaphore(struct anv_queue *queue,
+                                  struct anv_queue_submit *submit,
                                   const VkSemaphore _semaphore,
                                   const uint64_t value)
 {
@@ -895,7 +899,7 @@ anv_queue_submit_add_in_semaphore(struct anv_queue_submit *submit,
    struct anv_semaphore_impl *impl;
    VkResult result;
 
-   result = maybe_transfer_temporary_semaphore(submit, semaphore, &impl);
+   result = maybe_transfer_temporary_semaphore(queue, submit, semaphore, &impl);
    if (result != VK_SUCCESS)
       return result;
 
@@ -907,13 +911,14 @@ anv_queue_submit_add_in_semaphore(struct anv_queue_submit *submit,
        * rendering until they are finished. This is exactly the
        * synchronization we want with vkAcquireNextImage.
        */
-      result = anv_queue_submit_add_fence_bo(submit, impl->bo, true /* signal */);
+      result = anv_queue_submit_add_fence_bo(queue, submit, impl->bo,
+                                             true /* signal */);
       if (result != VK_SUCCESS)
          return result;
       break;
 
    case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ:
-      result = anv_queue_submit_add_syncobj(submit, device,
+      result = anv_queue_submit_add_syncobj(queue, submit,
                                             impl->syncobj,
                                             I915_EXEC_FENCE_WAIT,
                                             0);
@@ -924,7 +929,7 @@ anv_queue_submit_add_in_semaphore(struct anv_queue_submit *submit,
    case ANV_SEMAPHORE_TYPE_TIMELINE:
       if (value == 0)
          break;
-      result = anv_queue_submit_add_timeline_wait(submit, device,
+      result = anv_queue_submit_add_timeline_wait(queue, submit,
                                                   &impl->timeline,
                                                   value);
       if (result != VK_SUCCESS)
@@ -934,7 +939,7 @@ anv_queue_submit_add_in_semaphore(struct anv_queue_submit *submit,
    case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE:
       if (value == 0)
          break;
-      result = anv_queue_submit_add_syncobj(submit, device,
+      result = anv_queue_submit_add_syncobj(queue, submit,
                                             impl->syncobj,
                                             I915_EXEC_FENCE_WAIT,
                                             value);
@@ -950,8 +955,8 @@ anv_queue_submit_add_in_semaphore(struct anv_queue_submit *submit,
 }
 
 static VkResult
-anv_queue_submit_add_out_semaphore(struct anv_queue_submit *submit,
-                                   struct anv_device *device,
+anv_queue_submit_add_out_semaphore(struct anv_queue *queue,
+                                   struct anv_queue_submit *submit,
                                    const VkSemaphore _semaphore,
                                    const uint64_t value)
 {
@@ -980,9 +985,9 @@ anv_queue_submit_add_out_semaphore(struct anv_queue_submit *submit,
        * signaled dma-fence, until one is added by EXECBUFFER by the
        * submission thread.
        */
-      anv_gem_syncobj_reset(device, impl->syncobj);
+      anv_gem_syncobj_reset(queue->device, impl->syncobj);
 
-      result = anv_queue_submit_add_syncobj(submit, device, impl->syncobj,
+      result = anv_queue_submit_add_syncobj(queue, submit, impl->syncobj,
                                             I915_EXEC_FENCE_SIGNAL,
                                             0);
       if (result != VK_SUCCESS)
@@ -993,7 +998,7 @@ anv_queue_submit_add_out_semaphore(struct anv_queue_submit *submit,
    case ANV_SEMAPHORE_TYPE_TIMELINE:
       if (value == 0)
          break;
-      result = anv_queue_submit_add_timeline_signal(submit, device,
+      result = anv_queue_submit_add_timeline_signal(queue, submit,
                                                     &impl->timeline,
                                                     value);
       if (result != VK_SUCCESS)
@@ -1003,7 +1008,7 @@ anv_queue_submit_add_out_semaphore(struct anv_queue_submit *submit,
    case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE:
       if (value == 0)
          break;
-      result = anv_queue_submit_add_syncobj(submit, device, impl->syncobj,
+      result = anv_queue_submit_add_syncobj(queue, submit, impl->syncobj,
                                             I915_EXEC_FENCE_SIGNAL,
                                             value);
       if (result != VK_SUCCESS)
@@ -1018,8 +1023,8 @@ anv_queue_submit_add_out_semaphore(struct anv_queue_submit *submit,
 }
 
 static VkResult
-anv_queue_submit_add_fence(struct anv_queue_submit *submit,
-                           struct anv_device *device,
+anv_queue_submit_add_fence(struct anv_queue *queue,
+                           struct anv_queue_submit *submit,
                            struct anv_fence *fence)
 {
    /* Under most circumstances, out fences won't be temporary. However, the
@@ -1041,8 +1046,9 @@ anv_queue_submit_add_fence(struct anv_queue_submit *submit,
 
    switch (impl->type) {
    case ANV_FENCE_TYPE_BO:
-      assert(!device->has_thread_submit);
-      result = anv_queue_submit_add_fence_bo(submit, impl->bo.bo, true /* signal */);
+      assert(!queue->device->has_thread_submit);
+      result = anv_queue_submit_add_fence_bo(queue, submit, impl->bo.bo,
+                                             true /* signal */);
       if (result != VK_SUCCESS)
          return result;
       break;
@@ -1053,9 +1059,9 @@ anv_queue_submit_add_fence(struct anv_queue_submit *submit,
        * reset the fence's syncobj so that they don't contain a signaled
        * dma-fence.
        */
-      anv_gem_syncobj_reset(device, impl->syncobj);
+      anv_gem_syncobj_reset(queue->device, impl->syncobj);
 
-      result = anv_queue_submit_add_syncobj(submit, device, impl->syncobj,
+      result = anv_queue_submit_add_syncobj(queue, submit, impl->syncobj,
                                             I915_EXEC_FENCE_SIGNAL,
                                             0);
       if (result != VK_SUCCESS)
@@ -1102,7 +1108,8 @@ anv_post_queue_fence_update(struct anv_device *device, struct anv_fence *fence)
 }
 
 static VkResult
-anv_queue_submit_add_cmd_buffer(struct anv_queue_submit *submit,
+anv_queue_submit_add_cmd_buffer(struct anv_queue *queue,
+                                struct anv_queue_submit *submit,
                                 struct anv_cmd_buffer *cmd_buffer,
                                 int perf_pass)
 {
@@ -1258,8 +1265,7 @@ VkResult anv_QueueSubmit2KHR(
 
       /* Wait semaphores */
       for (uint32_t j = 0; j < pSubmits[i].waitSemaphoreInfoCount; j++) {
-         result = anv_queue_submit_add_in_semaphore(submit,
-                                                    device,
+         result = anv_queue_submit_add_in_semaphore(queue, submit,
                                                     pSubmits[i].pWaitSemaphoreInfos[j].semaphore,
                                                     pSubmits[i].pWaitSemaphoreInfos[j].value);
          if (result != VK_SUCCESS)
@@ -1283,15 +1289,15 @@ VkResult anv_QueueSubmit2KHR(
                goto out;
          }
 
-         result = anv_queue_submit_add_cmd_buffer(submit, cmd_buffer, perf_pass);
+         result = anv_queue_submit_add_cmd_buffer(queue, submit,
+                                                  cmd_buffer, perf_pass);
          if (result != VK_SUCCESS)
             goto out;
       }
 
       /* Signal semaphores */
       for (uint32_t j = 0; j < pSubmits[i].signalSemaphoreInfoCount; j++) {
-         result = anv_queue_submit_add_out_semaphore(submit,
-                                                     device,
+         result = anv_queue_submit_add_out_semaphore(queue, submit,
                                                      pSubmits[i].pSignalSemaphoreInfos[j].semaphore,
                                                      pSubmits[i].pSignalSemaphoreInfos[j].value);
          if (result != VK_SUCCESS)
@@ -1300,7 +1306,7 @@ VkResult anv_QueueSubmit2KHR(
 
       /* WSI BO */
       if (wsi_signal_bo) {
-         result = anv_queue_submit_add_fence_bo(submit, wsi_signal_bo,
+         result = anv_queue_submit_add_fence_bo(queue, submit, wsi_signal_bo,
                                                 true /* signal */);
          if (result != VK_SUCCESS)
             goto out;
@@ -1308,7 +1314,7 @@ VkResult anv_QueueSubmit2KHR(
    }
 
    if (fence) {
-      result = anv_queue_submit_add_fence(submit, device, fence);
+      result = anv_queue_submit_add_fence(queue, submit, fence);
       if (result != VK_SUCCESS)
          goto out;
    }
