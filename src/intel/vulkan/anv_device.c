@@ -347,16 +347,14 @@ anv_gather_meminfo(struct anv_physical_device *device, int fd, bool update)
       intel_i915_query_alloc(fd, DRM_I915_QUERY_MEMORY_REGIONS);
    if (mem_regions == NULL) {
       if (device->info.has_local_mem) {
-         return anv_errorfi(device->instance, NULL,
-                           VK_ERROR_INCOMPATIBLE_DRIVER,
-                           "failed to memory regions: %m");
+         return vk_errorf(device, VK_ERROR_INCOMPATIBLE_DRIVER,
+                          "failed to memory regions: %m");
       }
 
       uint64_t total_phys;
       if (!os_get_total_physical_memory(&total_phys)) {
-         return anv_errorfi(device->instance, NULL,
-                           VK_ERROR_INITIALIZATION_FAILED,
-                           "failed to get total physical memory: %m");
+         return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                          "failed to get total physical memory: %m");
       }
 
       uint64_t available;
@@ -440,9 +438,8 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
                     "Failed to get I915_CONTEXT_PARAM_GTT_SIZE: %m");
 
       if (intel_get_aperture_size(fd, &device->gtt_size) == -1) {
-         return anv_errorfi(device->instance, NULL,
-                           VK_ERROR_INITIALIZATION_FAILED,
-                           "failed to get aperture size: %m");
+         return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                          "failed to get aperture size: %m");
       }
    }
 
@@ -555,16 +552,14 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
    const struct build_id_note *note =
       build_id_find_nhdr_for_addr(anv_physical_device_init_uuids);
    if (!note) {
-      return anv_errorfi(device->instance, NULL,
-                        VK_ERROR_INITIALIZATION_FAILED,
-                        "Failed to find build-id");
+      return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                       "Failed to find build-id");
    }
 
    unsigned build_id_len = build_id_length(note);
    if (build_id_len < 20) {
-      return anv_errorfi(device->instance, NULL,
-                        VK_ERROR_INITIALIZATION_FAILED,
-                        "build-id too short.  It needs to be a SHA");
+      return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                       "build-id too short.  It needs to be a SHA");
    }
 
    memcpy(device->driver_build_sha1, build_id_data(note), 20);
@@ -759,16 +754,16 @@ anv_physical_device_try_create(struct anv_instance *instance,
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
       if (errno == ENOMEM) {
-         return anv_errorfi(instance, NULL, VK_ERROR_OUT_OF_HOST_MEMORY,
-                        "Unable to open device %s: out of memory", path);
+         return vk_errorf(instance, VK_ERROR_OUT_OF_HOST_MEMORY,
+                          "Unable to open device %s: out of memory", path);
       }
-      return anv_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
-                        "Unable to open device %s: %m", path);
+      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                       "Unable to open device %s: %m", path);
    }
 
    struct intel_device_info devinfo;
    if (!intel_get_device_info_from_fd(fd, &devinfo)) {
-      result = anv_error(VK_ERROR_INCOMPATIBLE_DRIVER);
+      result = vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
       goto fail_fd;
    }
 
@@ -781,8 +776,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
    } else if (devinfo.ver >= 8 && devinfo.ver <= 12) {
       /* Gfx8-12 fully supported */
    } else {
-      result = anv_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
-                          "Vulkan not yet supported on %s", devinfo.name);
+      result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                         "Vulkan not yet supported on %s", devinfo.name);
       goto fail_fd;
    }
 
@@ -790,7 +785,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
       vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (device == NULL) {
-      result = anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto fail_fd;
    }
 
@@ -802,7 +797,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
                                     NULL, /* We set up extensions later */
                                     &dispatch_table);
    if (result != VK_SUCCESS) {
-      anv_error(result);
+      vk_error(instance, result);
       goto fail_alloc;
    }
    device->instance = instance;
@@ -822,47 +817,41 @@ anv_physical_device_try_create(struct anv_instance *instance,
       device->cmd_parser_version =
          anv_gem_get_param(fd, I915_PARAM_CMD_PARSER_VERSION);
       if (device->cmd_parser_version == -1) {
-         result = anv_errorfi(device->instance, NULL,
-                             VK_ERROR_INITIALIZATION_FAILED,
-                             "failed to get command parser version");
+         result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                            "failed to get command parser version");
          goto fail_base;
       }
    }
 
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_WAIT_TIMEOUT)) {
-      result = anv_errorfi(device->instance, NULL,
-                          VK_ERROR_INITIALIZATION_FAILED,
-                          "kernel missing gem wait");
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing gem wait");
       goto fail_base;
    }
 
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXECBUF2)) {
-      result = anv_errorfi(device->instance, NULL,
-                          VK_ERROR_INITIALIZATION_FAILED,
-                          "kernel missing execbuf2");
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing execbuf2");
       goto fail_base;
    }
 
    if (!device->info.has_llc &&
        anv_gem_get_param(fd, I915_PARAM_MMAP_VERSION) < 1) {
-      result = anv_errorfi(device->instance, NULL,
-                          VK_ERROR_INITIALIZATION_FAILED,
-                          "kernel missing wc mmap");
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing wc mmap");
       goto fail_base;
    }
 
    if (device->info.ver >= 8 && !device->info.is_cherryview &&
        !anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
-      result = anv_errorfi(device->instance, NULL,
-                          VK_ERROR_INITIALIZATION_FAILED,
-                          "kernel missing softpin");
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing softpin");
       goto fail_alloc;
    }
 
    if (!anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_FENCE_ARRAY)) {
-      result = anv_errorfi(device->instance, NULL,
-                          VK_ERROR_INITIALIZATION_FAILED,
-                          "kernel missing syncobj support");
+      result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                         "kernel missing syncobj support");
       goto fail_base;
    }
 
@@ -940,7 +929,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    device->compiler = brw_compiler_create(NULL, &device->info);
    if (device->compiler == NULL) {
-      result = anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto fail_base;
    }
    device->compiler->shader_debug_log = compiler_debug_log;
@@ -1069,7 +1058,7 @@ VkResult anv_EnumerateInstanceExtensionProperties(
     VkExtensionProperties*                      pProperties)
 {
    if (pLayerName)
-      return anv_error(VK_ERROR_LAYER_NOT_PRESENT);
+      return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 
    return vk_enumerate_instance_extension_properties(
       &instance_extensions, pPropertyCount, pProperties);
@@ -1104,7 +1093,7 @@ VkResult anv_CreateInstance(
    instance = vk_alloc(pAllocator, sizeof(*instance), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!instance)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    struct vk_instance_dispatch_table dispatch_table;
    vk_instance_dispatch_table_from_entrypoints(
@@ -1114,7 +1103,7 @@ VkResult anv_CreateInstance(
                              &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(pAllocator, instance);
-      return anv_error(result);
+      return vk_error(NULL, result);
    }
 
    instance->physical_devices_enumerated = false;
@@ -2918,7 +2907,7 @@ VkResult anv_CreateDevice(
    assert(pCreateInfo->queueCreateInfoCount > 0);
    for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       if (pCreateInfo->pQueueCreateInfos[i].flags != 0)
-         return anv_error(VK_ERROR_INITIALIZATION_FAILED);
+         return vk_error(physical_device, VK_ERROR_INITIALIZATION_FAILED);
    }
 
    /* Check if client specified queue priority. */
@@ -2934,7 +2923,7 @@ VkResult anv_CreateDevice(
                        sizeof(*device), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(physical_device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    struct vk_device_dispatch_table dispatch_table;
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
@@ -2945,7 +2934,7 @@ VkResult anv_CreateDevice(
    result = vk_device_init(&device->vk, &physical_device->vk,
                            &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
-      anv_error(result);
+      vk_error(physical_device, result);
       goto fail_alloc;
    }
 
@@ -2968,7 +2957,7 @@ VkResult anv_CreateDevice(
    /* XXX(chadv): Can we dup() physicalDevice->fd here? */
    device->fd = open(physical_device->path, O_RDWR | O_CLOEXEC);
    if (device->fd == -1) {
-      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_device;
    }
 
@@ -3002,7 +2991,7 @@ VkResult anv_CreateDevice(
       device->context_id = anv_gem_create_context(device);
    }
    if (device->context_id == -1) {
-      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_fd;
    }
 
@@ -3021,7 +3010,7 @@ VkResult anv_CreateDevice(
       vk_zalloc(&device->vk.alloc, num_queues * sizeof(*device->queues), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (device->queues == NULL) {
-      result = anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto fail_context_id;
    }
 
@@ -3049,7 +3038,7 @@ VkResult anv_CreateDevice(
 
    if (physical_device->use_softpin) {
       if (pthread_mutex_init(&device->vma_mutex, NULL) != 0) {
-         result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
+         result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
          goto fail_queues;
       }
 
@@ -3081,7 +3070,7 @@ VkResult anv_CreateDevice(
                                           I915_CONTEXT_PARAM_PRIORITY,
                                           vk_priority_to_gen(priority));
       if (err != 0 && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT) {
-         result = anv_error(VK_ERROR_NOT_PERMITTED_EXT);
+         result = vk_error(device, VK_ERROR_NOT_PERMITTED_EXT);
          goto fail_vmas;
       }
    }
@@ -3099,28 +3088,28 @@ VkResult anv_CreateDevice(
    device->robust_buffer_access = robust_buffer_access;
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
-      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_queues;
    }
 
    pthread_condattr_t condattr;
    if (pthread_condattr_init(&condattr) != 0) {
-      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
    }
    if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0) {
       pthread_condattr_destroy(&condattr);
-      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
    }
    if (pthread_cond_init(&device->queue_submit, &condattr) != 0) {
       pthread_condattr_destroy(&condattr);
-      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
    }
    pthread_condattr_destroy(&condattr);
 
-   result = anv_bo_cache_init(&device->bo_cache);
+   result = anv_bo_cache_init(&device->bo_cache, device);
    if (result != VK_SUCCESS)
       goto fail_queue_cond;
 
@@ -3389,7 +3378,7 @@ VkResult anv_EnumerateInstanceLayerProperties(
    }
 
    /* None supported at this time */
-   return anv_error(VK_ERROR_LAYER_NOT_PRESENT);
+   return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
 void
@@ -3402,8 +3391,7 @@ _anv_device_report_lost(struct anv_device *device)
    for (uint32_t i = 0; i < device->queue_count; i++) {
       struct anv_queue *queue = &device->queues[i];
       if (queue->lost) {
-         __anv_errorf(device->physical->instance, &device->vk.base,
-                     VK_ERROR_DEVICE_LOST,
+         __vk_errorf(queue, VK_ERROR_DEVICE_LOST,
                      queue->error_file, queue->error_line,
                      "%s", queue->error_msg);
       }
@@ -3425,8 +3413,7 @@ _anv_device_set_lost(struct anv_device *device,
    device->lost_reported = true;
 
    va_start(ap, msg);
-   err = __anv_errorv(device->physical->instance, &device->vk.base,
-                     VK_ERROR_DEVICE_LOST, file, line, msg, ap);
+   err = __vk_errorv(device, VK_ERROR_DEVICE_LOST, file, line, msg, ap);
    va_end(ap);
 
    if (env_var_as_boolean("ANV_ABORT_ON_DEVICE_LOSS", false))
@@ -3613,7 +3600,7 @@ VkResult anv_AllocateMemory(
       align_u64(pAllocateInfo->allocationSize, 4096);
 
    if (aligned_alloc_size > MAX_MEMORY_ALLOCATION_SIZE)
-      return anv_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.type_count);
    struct anv_memory_type *mem_type =
@@ -3624,12 +3611,12 @@ VkResult anv_AllocateMemory(
 
    uint64_t mem_heap_used = p_atomic_read(&mem_heap->used);
    if (mem_heap_used + aligned_alloc_size > mem_heap->size)
-      return anv_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem),
                          VK_OBJECT_TYPE_DEVICE_MEMORY);
    if (mem == NULL)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    mem->type = mem_type;
    mem->map = NULL;
@@ -3755,8 +3742,7 @@ VkResult anv_AllocateMemory(
        * this sort of attack but only if it can trust the buffer size.
        */
       if (mem->bo->size < aligned_alloc_size) {
-         result = anv_errorf(device, &device->vk.base,
-                            VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         result = vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                             "aligned allocationSize too large for "
                             "VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT: "
                             "%"PRIu64"B > %"PRIu64"B",
@@ -3781,7 +3767,7 @@ VkResult anv_AllocateMemory(
    if (host_ptr_info && host_ptr_info->handleType) {
       if (host_ptr_info->handleType ==
           VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT) {
-         result = anv_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         result = vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
          goto fail;
       }
 
@@ -3828,8 +3814,7 @@ VkResult anv_AllocateMemory(
                                       i915_tiling);
          if (ret) {
             anv_device_release_bo(device, mem->bo);
-            result = anv_errorf(device, &device->vk.base,
-                               VK_ERROR_OUT_OF_DEVICE_MEMORY,
+            result = vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                                "failed to set BO tiling: %m");
             goto fail;
          }
@@ -3841,8 +3826,7 @@ VkResult anv_AllocateMemory(
    if (mem_heap_used > mem_heap->size) {
       p_atomic_add(&mem_heap->used, -mem->bo->size);
       anv_device_release_bo(device, mem->bo);
-      result = anv_errorf(device, &device->vk.base,
-                         VK_ERROR_OUT_OF_DEVICE_MEMORY,
+      result = vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                          "Out of heap memory");
       goto fail;
    }
@@ -3900,7 +3884,7 @@ VkResult anv_GetMemoryFdPropertiesKHR(
        *
        * So opaque handle types fall into the default "unsupported" case.
        */
-      return anv_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 }
 
@@ -4020,7 +4004,7 @@ VkResult anv_MapMemory(
    void *map = anv_gem_mmap(device, mem->bo->gem_handle,
                             map_offset, map_size, gem_flags);
    if (map == MAP_FAILED)
-      return anv_error(VK_ERROR_MEMORY_MAP_FAILED);
+      return vk_error(device, VK_ERROR_MEMORY_MAP_FAILED);
 
    mem->map = map;
    mem->map_size = map_size;
@@ -4149,7 +4133,7 @@ VkResult anv_QueueBindSparse(
    if (anv_device_is_lost(queue->device))
       return VK_ERROR_DEVICE_LOST;
 
-   return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   return vk_error(queue, VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
 // Event functions
@@ -4168,7 +4152,7 @@ VkResult anv_CreateEvent(
    event = vk_object_alloc(&device->vk, pAllocator, sizeof(*event),
                            VK_OBJECT_TYPE_EVENT);
    if (event == NULL)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    event->state = anv_state_pool_alloc(&device->dynamic_state_pool,
                                        sizeof(uint64_t), 8);
@@ -4326,14 +4310,14 @@ VkResult anv_CreateBuffer(
     * allocating a buffer larger than our GTT size.
     */
    if (pCreateInfo->size > device->physical->gtt_size)
-      return anv_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
    buffer = vk_object_alloc(&device->vk, pAllocator, sizeof(*buffer),
                             VK_OBJECT_TYPE_BUFFER);
    if (buffer == NULL)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    buffer->create_flags = pCreateInfo->flags;
    buffer->size = pCreateInfo->size;
@@ -4455,7 +4439,7 @@ VkResult anv_CreateFramebuffer(
    framebuffer = vk_object_alloc(&device->vk, pAllocator, size,
                                  VK_OBJECT_TYPE_FRAMEBUFFER);
    if (framebuffer == NULL)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;

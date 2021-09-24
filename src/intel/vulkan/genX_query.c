@@ -163,7 +163,7 @@ VkResult genX(CreateQueryPool)(
 
    if (!vk_object_multialloc(&device->vk, &ma, pAllocator,
                              VK_OBJECT_TYPE_QUERY_POOL))
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    pool->type = pCreateInfo->queryType;
    pool->pipeline_statistics = pipeline_statistics;

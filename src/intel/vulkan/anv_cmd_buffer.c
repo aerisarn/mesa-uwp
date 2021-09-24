@@ -271,7 +271,7 @@ static VkResult anv_create_cmd_buffer(
    cmd_buffer = vk_alloc2(&device->vk.alloc, &pool->alloc, sizeof(*cmd_buffer),
                           8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
    if (result != VK_SUCCESS)
@@ -1268,7 +1268,7 @@ VkResult anv_CreateCommandPool(
    pool = vk_object_alloc(&device->vk, pAllocator, sizeof(*pool),
                           VK_OBJECT_TYPE_COMMAND_POOL);
    if (pool == NULL)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    assert(pCreateInfo->queueFamilyIndex < device->physical->queue.family_count);
    pool->queue_family =

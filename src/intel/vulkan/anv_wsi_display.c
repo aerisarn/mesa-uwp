@@ -257,7 +257,7 @@ anv_RegisterDeviceEventEXT(VkDevice _device,
    fence = vk_zalloc2(&device->vk.alloc, allocator, sizeof (*fence), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!fence)
-      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    fence->permanent.type = ANV_FENCE_TYPE_WSI;
 

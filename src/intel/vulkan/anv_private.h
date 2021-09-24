@@ -364,41 +364,6 @@ static inline uintptr_t anv_pack_ptr(void *ptr, int bits, int flags)
    return value | (mask & flags);
 }
 
-/* Whenever we generate an error, pass it through this function. Useful for
- * debugging, where we can break on it. Only call at error site, not when
- * propagating errors. Might be useful to plug in a stack trace here.
- */
-
-VkResult __anv_errorv(struct anv_instance *instance,
-                     const struct vk_object_base *object, VkResult error,
-                     const char *file, int line, const char *format,
-                     va_list args);
-
-VkResult __anv_errorf(struct anv_instance *instance,
-                     const struct vk_object_base *object, VkResult error,
-                     const char *file, int line, const char *format, ...)
-   anv_printflike(6, 7);
-
-#ifdef DEBUG
-#define anv_error(error) __anv_errorf(NULL, NULL, error, __FILE__, __LINE__, NULL)
-#define anv_errorfi(instance, obj, error, format, ...)\
-    __anv_errorf(instance, obj, error,\
-                __FILE__, __LINE__, format, ## __VA_ARGS__)
-#define anv_errorf(device, obj, error, format, ...)\
-   anv_errorfi(anv_device_instance_or_null(device),\
-              obj, error, format, ## __VA_ARGS__)
-#else
-
-static inline VkResult __dummy_anv_error(VkResult error, UNUSED const void *ignored)
-{
-   return error;
-}
-
-#define anv_error(error) __dummy_anv_error(error, NULL)
-#define anv_errorfi(instance, obj, error, format, ...) __dummy_anv_error(error, instance)
-#define anv_errorf(device, obj, error, format, ...) __dummy_anv_error(error, device)
-#endif
-
 /**
  * Warn on ignored extension structs.
  *
@@ -847,7 +812,8 @@ struct anv_bo_cache {
    pthread_mutex_t mutex;
 };
 
-VkResult anv_bo_cache_init(struct anv_bo_cache *cache);
+VkResult anv_bo_cache_init(struct anv_bo_cache *cache,
+                           struct anv_device *device);
 void anv_bo_cache_finish(struct anv_bo_cache *cache);
 
 struct anv_queue_family {
@@ -1292,12 +1258,6 @@ anv_use_softpin(const struct anv_physical_device *pdevice)
     */
    return pdevice->use_softpin;
 #endif
-}
-
-static inline struct anv_instance *
-anv_device_instance_or_null(const struct anv_device *device)
-{
-   return device ? device->physical->instance : NULL;
 }
 
 static inline struct anv_state_pool *
