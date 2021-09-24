@@ -3618,7 +3618,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
 
          pipeline->shaders[MESA_SHADER_FRAGMENT] = radv_shader_variant_compile(
             device, modules[MESA_SHADER_FRAGMENT], &nir[MESA_SHADER_FRAGMENT], 1, pipeline->layout,
-            keys + MESA_SHADER_FRAGMENT, infos + MESA_SHADER_FRAGMENT, keep_executable_info,
+            pipeline_key, infos + MESA_SHADER_FRAGMENT, keep_executable_info,
             keep_statistic_info, disable_optimizations, &binaries[MESA_SHADER_FRAGMENT]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT], false);
@@ -3634,7 +3634,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          radv_start_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL]);
 
          pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_variant_compile(
-            device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2, pipeline->layout, key,
+            device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2, pipeline->layout, pipeline_key,
             &infos[MESA_SHADER_TESS_CTRL], keep_executable_info, keep_statistic_info,
             disable_optimizations, &binaries[MESA_SHADER_TESS_CTRL]);
 
@@ -3652,8 +3652,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          radv_start_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY]);
 
          pipeline->shaders[MESA_SHADER_GEOMETRY] = radv_shader_variant_compile(
-            device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2, pipeline->layout,
-            &keys[pre_stage], &infos[MESA_SHADER_GEOMETRY], keep_executable_info,
+            device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2, pipeline->layout, pipeline_key,
+            &infos[MESA_SHADER_GEOMETRY], keep_executable_info,
             keep_statistic_info, disable_optimizations, &binaries[MESA_SHADER_GEOMETRY]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY], false);
@@ -3666,7 +3666,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          radv_start_feedback(stage_feedbacks[i]);
 
          pipeline->shaders[i] = radv_shader_variant_compile(
-            device, modules[i], &nir[i], 1, pipeline->layout, keys + i, infos + i,
+            device, modules[i], &nir[i], 1, pipeline->layout, pipeline_key, infos + i,
             keep_executable_info, keep_statistic_info, disable_optimizations, &binaries[i]);
 
          radv_stop_feedback(stage_feedbacks[i], false);

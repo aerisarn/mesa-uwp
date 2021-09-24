@@ -5022,7 +5022,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
       uint32_t attrib_stride = ctx->options->key.vs.vertex_attribute_strides[location];
       unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[location];
       unsigned binding_align = ctx->options->key.vs.vertex_binding_align[attrib_binding];
-      enum ac_fetch_format alpha_adjust = ctx->options->key.vs.alpha_adjust[location];
+      enum ac_fetch_format alpha_adjust = ctx->options->key.vs.vertex_alpha_adjust[location];
 
       unsigned dfmt = attrib_format & 0xf;
       unsigned nfmt = (attrib_format >> 4) & 0x7;
@@ -5030,7 +5030,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa) << component;
       unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
-      bool post_shuffle = ctx->options->key.vs.post_shuffle & (1 << location);
+      bool post_shuffle = ctx->options->key.vs.vertex_post_shuffle & (1 << location);
       if (post_shuffle)
          num_channels = MAX2(num_channels, 3);
 
@@ -7388,9 +7388,9 @@ visit_load_sample_mask_in(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    uint8_t log2_ps_iter_samples;
    if (ctx->program->info->ps.uses_sample_shading) {
-      log2_ps_iter_samples = util_logbase2(ctx->options->key.fs.num_samples);
+      log2_ps_iter_samples = util_logbase2(ctx->options->key.ps.num_samples);
    } else {
-      log2_ps_iter_samples = ctx->options->key.fs.log2_ps_iter_samples;
+      log2_ps_iter_samples = ctx->options->key.ps.log2_ps_iter_samples;
    }
 
    Builder bld(ctx->program, ctx->block);
@@ -8000,7 +8000,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_load_barycentric_at_sample: {
       uint32_t sample_pos_offset = RING_PS_SAMPLE_POSITIONS * 16;
-      switch (ctx->options->key.fs.num_samples) {
+      switch (ctx->options->key.ps.num_samples) {
       case 2: sample_pos_offset += 1 << 3; break;
       case 4: sample_pos_offset += 3 << 3; break;
       case 8: sample_pos_offset += 7 << 3; break;
@@ -8899,7 +8899,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
              ctx->shader->info.stage == MESA_SHADER_TESS_EVAL);
 
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), Operand::c32(ctx->args->options->key.tcs.input_vertices));
+      bld.copy(Definition(dst), Operand::c32(ctx->args->options->key.tcs.tess_input_vertices));
       break;
    }
    case nir_intrinsic_emit_vertex_with_counter: {
@@ -10987,10 +10987,10 @@ export_fs_mrt_color(isel_context* ctx, int slot)
 
    slot -= FRAG_RESULT_DATA0;
    target = V_008DFC_SQ_EXP_MRT + slot;
-   col_format = (ctx->options->key.fs.col_format >> (4 * slot)) & 0xf;
+   col_format = (ctx->options->key.ps.col_format >> (4 * slot)) & 0xf;
 
-   bool is_int8 = (ctx->options->key.fs.is_int8 >> slot) & 1;
-   bool is_int10 = (ctx->options->key.fs.is_int10 >> slot) & 1;
+   bool is_int8 = (ctx->options->key.ps.is_int8 >> slot) & 1;
+   bool is_int10 = (ctx->options->key.ps.is_int10 >> slot) & 1;
    bool is_16bit = values[0].regClass() == v2b;
 
    /* Replace NaN by zero (only 32-bit) to fix game bugs if requested. */

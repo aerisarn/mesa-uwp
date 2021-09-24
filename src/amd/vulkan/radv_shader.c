@@ -1633,7 +1633,7 @@ struct radv_shader_variant *
 radv_shader_variant_compile(struct radv_device *device, struct vk_shader_module *module,
                             struct nir_shader *const *shaders, int shader_count,
                             struct radv_pipeline_layout *layout,
-                            const struct radv_shader_variant_key *key,
+                            const struct radv_pipeline_key *key,
                             struct radv_shader_info *info, bool keep_shader_info,
                             bool keep_statistic_info, bool disable_optimizations,
                             struct radv_shader_binary **binary_out)

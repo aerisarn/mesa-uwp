@@ -347,45 +347,6 @@ struct radv_pipeline_cache {
    VkAllocationCallbacks alloc;
 };
 
-struct radv_pipeline_key {
-   uint32_t has_multiview_view_index : 1;
-   uint32_t optimisations_disabled : 1;
-
-   struct {
-      uint32_t instance_rate_inputs;
-      uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
-      uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
-      uint32_t vertex_attribute_bindings[MAX_VERTEX_ATTRIBS];
-      uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
-      uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
-      uint8_t vertex_binding_align[MAX_VBS];
-      enum ac_fetch_format vertex_alpha_adjust[MAX_VERTEX_ATTRIBS];
-      uint32_t vertex_post_shuffle;
-      uint32_t provoking_vtx_last : 1;
-      uint8_t topology;
-   } vs;
-
-   struct {
-      unsigned tess_input_vertices;
-   } tcs;
-
-   struct {
-      uint32_t col_format;
-      uint32_t is_int8;
-      uint32_t is_int10;
-      uint8_t log2_ps_iter_samples;
-      uint8_t num_samples;
-   } ps;
-
-   struct {
-      /* Non-zero if a required subgroup size is specified via
-       * VK_EXT_subgroup_size_control.
-       */
-      uint8_t compute_subgroup_size;
-      bool require_full_subgroups;
-   } cs;
-};
-
 struct radv_shader_binary;
 struct radv_shader_variant;
 struct radv_pipeline_shader_stack_size;
@@ -1697,6 +1658,8 @@ struct radv_event {
 #define RADV_HASH_SHADER_FORCE_NGG_CULLING (1 << 13)
 #define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS (1 << 14)
 #define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS2 (1 << 15)
+
+struct radv_pipeline_key;
 
 void radv_hash_shaders(unsigned char *hash, const VkPipelineShaderStageCreateInfo **stages,
                        const struct radv_pipeline_layout *layout,

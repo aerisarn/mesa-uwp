@@ -259,7 +259,7 @@ load_sample_position(struct ac_shader_abi *abi, LLVMValueRef sample_id)
 
    ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ac_array_in_const_addr_space(ctx->ac.v2f32), "");
 
-   uint32_t sample_pos_offset = radv_get_sample_pos_offset(ctx->args->options->key.fs.num_samples);
+   uint32_t sample_pos_offset = radv_get_sample_pos_offset(ctx->args->options->key.ps.num_samples);
 
    sample_id = LLVMBuildAdd(ctx->ac.builder, sample_id,
                             LLVMConstInt(ctx->ac.i32, sample_pos_offset, false), "");
@@ -275,9 +275,9 @@ load_sample_mask_in(struct ac_shader_abi *abi)
    uint8_t log2_ps_iter_samples;
 
    if (ctx->args->shader_info->ps.uses_sample_shading) {
-      log2_ps_iter_samples = util_logbase2(ctx->args->options->key.fs.num_samples);
+      log2_ps_iter_samples = util_logbase2(ctx->args->options->key.ps.num_samples);
    } else {
-      log2_ps_iter_samples = ctx->args->options->key.fs.log2_ps_iter_samples;
+      log2_ps_iter_samples = ctx->args->options->key.ps.log2_ps_iter_samples;
    }
 
    LLVMValueRef result, sample_id;
@@ -716,9 +716,9 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
    unsigned attrib_binding = ctx->args->options->key.vs.vertex_attribute_bindings[attrib_index];
    unsigned attrib_offset = ctx->args->options->key.vs.vertex_attribute_offsets[attrib_index];
    unsigned attrib_stride = ctx->args->options->key.vs.vertex_attribute_strides[attrib_index];
-   unsigned alpha_adjust = ctx->args->options->key.vs.alpha_adjust[attrib_index];
+   unsigned alpha_adjust = ctx->args->options->key.vs.vertex_alpha_adjust[attrib_index];
 
-   if (ctx->args->options->key.vs.post_shuffle & (1 << attrib_index)) {
+   if (ctx->args->options->key.vs.vertex_post_shuffle & (1 << attrib_index)) {
       /* Always load, at least, 3 channels for formats that need to be shuffled because X<->Z. */
       num_channels = MAX2(num_channels, 3);
    }
@@ -775,7 +775,7 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
          ctx->ac.i32_0, ctx->ac.i32_0, num_channels, data_format, num_format, 0, true);
    }
 
-   if (ctx->args->options->key.vs.post_shuffle & (1 << attrib_index)) {
+   if (ctx->args->options->key.vs.vertex_post_shuffle & (1 << attrib_index)) {
       LLVMValueRef c[4];
       c[0] = ac_llvm_extract_elem(&ctx->ac, input, 2);
       c[1] = ac_llvm_extract_elem(&ctx->ac, input, 1);
@@ -899,9 +899,9 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
    bool is_16bit = ac_get_type_size(LLVMTypeOf(values[0])) == 2;
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
       unsigned index = target - V_008DFC_SQ_EXP_MRT;
-      unsigned col_format = (ctx->args->options->key.fs.col_format >> (4 * index)) & 0xf;
-      bool is_int8 = (ctx->args->options->key.fs.is_int8 >> index) & 1;
-      bool is_int10 = (ctx->args->options->key.fs.is_int10 >> index) & 1;
+      unsigned col_format = (ctx->args->options->key.ps.col_format >> (4 * index)) & 0xf;
+      bool is_int8 = (ctx->args->options->key.ps.is_int8 >> index) & 1;
+      bool is_int10 = (ctx->args->options->key.ps.is_int10 >> index) & 1;
 
       LLVMValueRef (*packf)(struct ac_llvm_context * ctx, LLVMValueRef args[2]) = NULL;
       LLVMValueRef (*packi)(struct ac_llvm_context * ctx, LLVMValueRef args[2], unsigned bits,

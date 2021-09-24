@@ -113,6 +113,45 @@ struct radv_shader_variant_key {
    bool has_multiview_view_index;
 };
 
+struct radv_pipeline_key {
+   uint32_t has_multiview_view_index : 1;
+   uint32_t optimisations_disabled : 1;
+
+   struct {
+      uint32_t instance_rate_inputs;
+      uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
+      uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
+      uint32_t vertex_attribute_bindings[MAX_VERTEX_ATTRIBS];
+      uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
+      uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
+      uint8_t vertex_binding_align[MAX_VBS];
+      enum ac_fetch_format vertex_alpha_adjust[MAX_VERTEX_ATTRIBS];
+      uint32_t vertex_post_shuffle;
+      uint32_t provoking_vtx_last : 1;
+      uint8_t topology;
+   } vs;
+
+   struct {
+      unsigned tess_input_vertices;
+   } tcs;
+
+   struct {
+      uint32_t col_format;
+      uint32_t is_int8;
+      uint32_t is_int10;
+      uint8_t log2_ps_iter_samples;
+      uint8_t num_samples;
+   } ps;
+
+   struct {
+      /* Non-zero if a required subgroup size is specified via
+       * VK_EXT_subgroup_size_control.
+       */
+      uint8_t compute_subgroup_size;
+      bool require_full_subgroups;
+   } cs;
+};
+
 enum radv_compiler_debug_level {
    RADV_COMPILER_DEBUG_LEVEL_PERFWARN,
    RADV_COMPILER_DEBUG_LEVEL_ERROR,
@@ -120,7 +159,7 @@ enum radv_compiler_debug_level {
 
 struct radv_nir_compiler_options {
    struct radv_pipeline_layout *layout;
-   struct radv_shader_variant_key key;
+   struct radv_pipeline_key key;
    bool explicit_scratch_args;
    bool clamp_shadow_reference;
    bool robust_buffer_access;
@@ -455,7 +494,7 @@ struct radv_shader_variant *radv_shader_variant_create(struct radv_device *devic
                                                        bool keep_shader_info);
 struct radv_shader_variant *radv_shader_variant_compile(
    struct radv_device *device, struct vk_shader_module *module, struct nir_shader *const *shaders,
-   int shader_count, struct radv_pipeline_layout *layout, const struct radv_shader_variant_key *key,
+   int shader_count, struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
    struct radv_shader_info *info, bool keep_shader_info, bool keep_statistic_info,
    bool disable_optimizations, struct radv_shader_binary **binary_out);
 
