@@ -3,8 +3,6 @@ dEQP-VK.pipeline.sampler.exact_sampling.r16g16b16a16_sfloat.solid_color.normaliz
 dEQP-VK.pipeline.sampler.exact_sampling.r32g32_sfloat.solid_color.normalized_coords.centered,Fail
 dEQP-VK.pipeline.sampler.exact_sampling.r32g32_sfloat.solid_color.normalized_coords.edge_left,Fail
 dEQP-VK.pipeline.sampler.exact_sampling.r32g32_sfloat.solid_color.normalized_coords.edge_right,Fail
-dEQP-VK.pipeline.vertex_input.single_attribute.uvec4.as_a2r10g10b10_uint_pack32_rate_instance,Fail
-dEQP-VK.pipeline.vertex_input.single_attribute.uvec4.as_a2r10g10b10_uint_pack32_rate_vertex,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_unorm_pack32.r16_unorm.general_general_linear,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_unorm_pack32.r16_unorm.general_optimal_linear,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.2d.a8b8g8r8_unorm_pack32.r16g16_unorm.optimal_general_linear,Fail
