@@ -1625,13 +1625,18 @@ panvk_meta_copy_img2buf(struct panvk_cmd_buffer *cmdbuf,
       .buf.ptr = buf->bo->ptr.gpu + buf->bo_offset + region->bufferOffset,
       .buf.stride.line = (region->bufferRowLength ? : region->imageExtent.width) * buftexelsz,
       .img.offset.x = MAX2(region->imageOffset.x & ~15, 0),
-      .img.offset.y = MAX2(region->imageOffset.y & ~15, 0),
-      .img.offset.z = MAX2(region->imageOffset.z, 0),
       .img.extent.minx = MAX2(region->imageOffset.x, 0),
-      .img.extent.miny = MAX2(region->imageOffset.y, 0),
       .img.extent.maxx = MAX2(region->imageOffset.x + region->imageExtent.width - 1, 0),
-      .img.extent.maxy = MAX2(region->imageOffset.y + region->imageExtent.height - 1, 0),
    };
+
+   if (img->pimage.layout.dim == MALI_TEXTURE_DIMENSION_1D) {
+      info.img.extent.maxy = region->imageSubresource.layerCount - 1;
+   } else {
+      info.img.offset.y = MAX2(region->imageOffset.y & ~15, 0);
+      info.img.offset.z = MAX2(region->imageOffset.z, 0);
+      info.img.extent.miny = MAX2(region->imageOffset.y, 0);
+      info.img.extent.maxy = MAX2(region->imageOffset.y + region->imageExtent.height - 1, 0);
+   }
 
    info.buf.stride.surf = (region->bufferImageHeight ? : region->imageExtent.height) *
                           info.buf.stride.line;
@@ -1683,8 +1688,10 @@ panvk_meta_copy_img2buf(struct panvk_cmd_buffer *cmdbuf,
    struct pan_compute_dim num_wg = {
      (ALIGN_POT(info.img.extent.maxx + 1, 16) - info.img.offset.x) / 16,
      img->pimage.layout.dim == MALI_TEXTURE_DIMENSION_1D ?
-        1 : (ALIGN_POT(info.img.extent.maxy + 1, 16) - info.img.offset.y) / 16,
-     MAX2(region->imageSubresource.layerCount, region->imageExtent.depth),
+        region->imageSubresource.layerCount :
+        (ALIGN_POT(info.img.extent.maxy + 1, 16) - info.img.offset.y) / 16,
+     img->pimage.layout.dim != MALI_TEXTURE_DIMENSION_1D ?
+        MAX2(region->imageSubresource.layerCount, region->imageExtent.depth) : 1,
    };
 
    struct panfrost_ptr job =
