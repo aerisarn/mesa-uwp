@@ -67,9 +67,6 @@ dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_si
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
 
-# Broken on all drivers: https://gitlab.freedesktop.org/mesa/mesa/-/issues/4582
-dEQP-VK.wsi.display_control.register_device_event,Fail
-
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3052
 # fixed by https://gerrit.khronos.org/c/vk-gl-cts/+/7837
 bypass-dEQP-VK.renderpass.suballocation.subpass_dependencies.separate_channels.r8g8b8a8_unorm,Fail

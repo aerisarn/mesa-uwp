@@ -155,7 +155,13 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_timeline_semaphore = true,
 #endif
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
-      .EXT_display_control = true,
+      /* This extension is supported by common code across drivers, but it is
+       * missing some core functionality and fails
+       * dEQP-VK.wsi.display_control.register_device_event. Once some variant of
+       * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/12305 lands,
+       * then we can re-enable it.
+       */
+      /* .EXT_display_control = true, */
 #endif
       .EXT_external_memory_dma_buf = true,
       .EXT_image_drm_format_modifier = true,
