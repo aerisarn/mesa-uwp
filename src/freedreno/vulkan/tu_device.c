@@ -202,7 +202,16 @@ tu_physical_device_init(struct tu_physical_device *device,
 {
    VkResult result = VK_SUCCESS;
 
-   device->name = fd_dev_name(&device->dev_id);
+   const char *fd_name = fd_dev_name(&device->dev_id);
+   if (strncmp(fd_name, "FD", 2) == 0) {
+      device->name = vk_asprintf(&instance->vk.alloc,
+                                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE,
+                                 "Turnip Adreno (TM) %s", &fd_name[2]);
+   } else {
+      device->name = vk_strdup(&instance->vk.alloc, fd_name,
+                               VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+
+   }
 
    const struct fd_dev_info *info = fd_dev_info(&device->dev_id);
    if (!info) {
@@ -276,6 +285,8 @@ tu_physical_device_finish(struct tu_physical_device *device)
    close(device->local_fd);
    if (device->master_fd != -1)
       close(device->master_fd);
+
+   vk_free(&device->instance->vk.alloc, (void *)device->name);
 
    vk_physical_device_finish(&device->vk);
 }
