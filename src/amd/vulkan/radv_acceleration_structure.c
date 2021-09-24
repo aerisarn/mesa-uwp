@@ -97,7 +97,7 @@ radv_CreateAccelerationStructureKHR(VkDevice _device,
    accel = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*accel), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (accel == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &accel->base, VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR);
 
@@ -145,7 +145,7 @@ radv_WriteAccelerationStructuresPropertiesKHR(
       RADV_FROM_HANDLE(radv_acceleration_structure, accel, pAccelerationStructures[i]);
       const char *base_ptr = (const char *)device->ws->buffer_map(accel->bo);
       if (!base_ptr)
-         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
       const struct radv_accel_struct_header *header = (const void*)(base_ptr + accel->mem_offset);
       if (stride * i + sizeof(VkDeviceSize) <= dataSize) {
@@ -339,7 +339,7 @@ build_instances(struct radv_device *device, struct radv_bvh_build_ctx *ctx,
                        (VkAccelerationStructureKHR)instance->accelerationStructureReference);
       const void *src_base = device->ws->buffer_map(src_accel_struct->bo);
       if (!src_base)
-         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
       src_base = (const char *)src_base + src_accel_struct->mem_offset;
       const struct radv_accel_struct_header *src_header = src_base;
@@ -532,7 +532,7 @@ build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometry
 
    char *base_ptr = (char*)device->ws->buffer_map(accel->bo);
    if (!base_ptr)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    base_ptr = base_ptr + accel->mem_offset;
    struct radv_accel_struct_header *header = (void*)base_ptr;

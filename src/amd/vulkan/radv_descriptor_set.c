@@ -136,7 +136,7 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
    set_layout =
       vk_zalloc2(&device->vk.alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!set_layout)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &set_layout->base, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
 
@@ -166,7 +166,7 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
    if (result != VK_SUCCESS) {
       vk_object_base_finish(&set_layout->base);
       vk_free2(&device->vk.alloc, pAllocator, set_layout);
-      return vk_error(device->instance, result);
+      return vk_error(device, result);
    }
 
    set_layout->binding_count = num_bindings;
@@ -480,7 +480,7 @@ radv_CreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pC
    layout = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*layout), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (layout == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
 
@@ -572,7 +572,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
       set = vk_alloc2(&device->vk.alloc, NULL, mem_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       if (!set)
-         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    memset(set, 0, mem_size);
@@ -797,7 +797,7 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
 
    pool = vk_alloc2(&device->vk.alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pool)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    memset(pool, 0, sizeof(*pool));
 
@@ -817,19 +817,19 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
             RADV_BO_PRIORITY_DESCRIPTOR, 0, &pool->bo);
          if (result != VK_SUCCESS) {
             radv_destroy_descriptor_pool(device, pAllocator, pool);
-            return vk_error(device->instance, result);
+            return vk_error(device, result);
          }
          pool->mapped_ptr = (uint8_t *)device->ws->buffer_map(pool->bo);
          if (!pool->mapped_ptr) {
             radv_destroy_descriptor_pool(device, pAllocator, pool);
-            return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          }
       } else {
          pool->host_bo =
             vk_alloc2(&device->vk.alloc, pAllocator, bo_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
          if (!pool->host_bo) {
             radv_destroy_descriptor_pool(device, pAllocator, pool);
-            return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
          }
          pool->mapped_ptr = pool->host_bo;
       }
@@ -1313,7 +1313,7 @@ radv_CreateDescriptorUpdateTemplate(VkDevice _device,
 
    templ = vk_alloc2(&device->vk.alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!templ)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &templ->base, VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
 
@@ -1513,7 +1513,7 @@ radv_CreateSamplerYcbcrConversion(VkDevice _device,
                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (conversion == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &conversion->base, VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION);
 
