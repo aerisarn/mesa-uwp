@@ -1237,30 +1237,6 @@ si_conv_gl_prim_to_gs_out(unsigned gl_prim)
    }
 }
 
-static uint32_t
-si_conv_prim_to_gs_out(enum VkPrimitiveTopology topology)
-{
-   switch (topology) {
-   case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
-      return V_028A6C_POINTLIST;
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
-      return V_028A6C_LINESTRIP;
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
-      return V_028A6C_TRISTRIP;
-   default:
-      assert(0);
-      return 0;
-   }
-}
-
 static uint64_t
 radv_dynamic_state_mask(VkDynamicState state)
 {
@@ -2771,8 +2747,8 @@ radv_fill_shader_keys(struct radv_device *device, struct radv_shader_variant_key
    }
    for (unsigned i = 0; i < MAX_VBS; ++i)
       keys[MESA_SHADER_VERTEX].vs.vertex_binding_align[i] = key->vertex_binding_align[i];
-   keys[MESA_SHADER_VERTEX].vs.outprim = si_conv_prim_to_gs_out(key->topology);
    keys[MESA_SHADER_VERTEX].vs.provoking_vtx_last = key->provoking_vtx_last;
+   keys[MESA_SHADER_VERTEX].vs.topology = key->topology;
 
    if (nir[MESA_SHADER_TESS_CTRL]) {
       keys[MESA_SHADER_VERTEX].vs_common_out.as_ls = true;

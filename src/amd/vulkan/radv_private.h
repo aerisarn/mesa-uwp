@@ -2716,6 +2716,30 @@ si_conv_gl_prim_to_vertices(unsigned gl_prim)
    }
 }
 
+static inline uint32_t
+si_conv_prim_to_gs_out(enum VkPrimitiveTopology topology)
+{
+   switch (topology) {
+   case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+   case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+      return V_028A6C_POINTLIST;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+      return V_028A6C_LINESTRIP;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+      return V_028A6C_TRISTRIP;
+   default:
+      assert(0);
+      return 0;
+   }
+}
+
 struct radv_extra_render_pass_begin_info {
    bool disable_dcc;
 };

@@ -1617,8 +1617,10 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
       LLVMValueRef provoking_vtx_in_prim = LLVMConstInt(ctx->ac.i32, 0, false);
 
       /* For provoking vertex last mode, use num_vtx_in_prim - 1. */
-      if (ctx->args->options->key.vs.provoking_vtx_last)
-         provoking_vtx_in_prim = LLVMConstInt(ctx->ac.i32, ctx->args->options->key.vs.outprim, false);
+      if (ctx->args->options->key.vs.provoking_vtx_last) {
+         uint8_t outprim = si_conv_prim_to_gs_out(ctx->args->options->key.vs.topology);
+         provoking_vtx_in_prim = LLVMConstInt(ctx->ac.i32, outprim, false);
+      }
 
       /* provoking_vtx_index = vtxindex[provoking_vtx_in_prim]; */
       LLVMValueRef indices = ac_build_gather_values(&ctx->ac, vtxindex, 3);

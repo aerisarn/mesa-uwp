@@ -949,7 +949,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
       /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
-      num_vertices_per_prim = key->vs.outprim + 1;
+      num_vertices_per_prim = si_conv_prim_to_gs_out(pl_key->topology) + 1;
 
       /* Manually mark the instance ID used, so the shader can repack it. */
       if (key->vs.instance_rate_inputs)

@@ -76,8 +76,8 @@ struct radv_vs_variant_key {
    /* For some formats the channels have to be shuffled. */
    uint32_t post_shuffle;
 
-   /* Output primitive type. */
-   uint8_t outprim;
+   /* Topology. */
+   uint8_t topology;
 
    /* Provoking vertex mode. */
    bool provoking_vtx_last;
