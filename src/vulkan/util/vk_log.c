@@ -51,6 +51,7 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
    } else {
       objects = (struct vk_object_base **) objects_or_instance;
       instance = objects[0]->device->physical->instance;
+      assert(instance->base.client_visible);
    }
 
 #ifndef DEBUG
@@ -97,6 +98,14 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       return;
    }
 #endif
+
+   if (!instance->base.client_visible) {
+      vk_debug_message_instance(instance, severity, types,
+                                message_idname, 0, message);
+      ralloc_free(message);
+      ralloc_free(message_idname);
+      return;
+   }
 
    /* If VK_EXT_debug_utils messengers have been set up, form the
     * message */
