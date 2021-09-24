@@ -980,7 +980,7 @@ panvk_CreateDevice(VkPhysicalDevice physicalDevice,
                            pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
-      return vk_errorf(physical_device->instance, result, "vk_device_init failed");
+      return result;
    }
 
    device->instance = physical_device->instance;

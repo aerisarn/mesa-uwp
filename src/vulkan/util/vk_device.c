@@ -25,6 +25,7 @@
 
 #include "vk_common_entrypoints.h"
 #include "vk_instance.h"
+#include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_queue.h"
 #include "vk_util.h"
@@ -62,14 +63,20 @@ vk_device_init(struct vk_device *device,
       }
 
       if (idx >= VK_DEVICE_EXTENSION_COUNT)
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
+         return vk_errorf(physical_device, VK_ERROR_EXTENSION_NOT_PRESENT,
+                          "%s not supported",
+                          pCreateInfo->ppEnabledExtensionNames[i]);
 
       if (!physical_device->supported_extensions.extensions[idx])
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
+         return vk_errorf(physical_device, VK_ERROR_EXTENSION_NOT_PRESENT,
+                          "%s not supported",
+                          pCreateInfo->ppEnabledExtensionNames[i]);
 
 #ifdef ANDROID
       if (!vk_android_allowed_device_extensions.extensions[idx])
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
+         return vk_errorf(physical_device, VK_ERROR_EXTENSION_NOT_PRESENT,
+                          "%s not supported",
+                          pCreateInfo->ppEnabledExtensionNames[i]);
 #endif
 
       device->enabled_extensions.extensions[idx] = true;

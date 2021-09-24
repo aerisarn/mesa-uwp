@@ -2933,10 +2933,8 @@ VkResult anv_CreateDevice(
 
    result = vk_device_init(&device->vk, &physical_device->vk,
                            &dispatch_table, pCreateInfo, pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_error(physical_device, result);
+   if (result != VK_SUCCESS)
       goto fail_alloc;
-   }
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
       const unsigned decode_flags =
