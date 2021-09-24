@@ -72,7 +72,7 @@ __anv_perf_warn(struct anv_device *device,
 }
 
 VkResult
-__vk_errorv(struct anv_instance *instance,
+__anv_errorv(struct anv_instance *instance,
             const struct vk_object_base *object, VkResult error,
             const char *file, int line, const char *format, va_list ap)
 {
@@ -101,14 +101,14 @@ __vk_errorv(struct anv_instance *instance,
 }
 
 VkResult
-__vk_errorf(struct anv_instance *instance,
+__anv_errorf(struct anv_instance *instance,
             const struct vk_object_base *object, VkResult error,
             const char *file, int line, const char *format, ...)
 {
    va_list ap;
 
    va_start(ap, format);
-   __vk_errorv(instance, object, error, file, line, format, ap);
+   __anv_errorv(instance, object, error, file, line, format, ap);
    va_end(ap);
 
    return error;

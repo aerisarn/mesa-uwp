@@ -1589,7 +1589,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                                                  pipeline_ctx,
                                                  &stages[s]);
       if (stages[s].nir == NULL) {
-         result = vk_error(VK_ERROR_UNKNOWN);
+         result = anv_error(VK_ERROR_UNKNOWN);
          goto fail;
       }
 
@@ -1728,7 +1728,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       }
       if (stages[s].code == NULL) {
          ralloc_free(stage_ctx);
-         result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         result = anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
       }
 
@@ -1747,7 +1747,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                                   xfb_info, &stages[s].bind_map);
       if (!bin) {
          ralloc_free(stage_ctx);
-         result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         result = anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
       }
 
@@ -1886,7 +1886,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       stage.nir = anv_pipeline_stage_get_nir(&pipeline->base, cache, mem_ctx, &stage);
       if (stage.nir == NULL) {
          ralloc_free(mem_ctx);
-         return vk_error(VK_ERROR_UNKNOWN);
+         return anv_error(VK_ERROR_UNKNOWN);
       }
 
       NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id);
@@ -1908,7 +1908,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       stage.code = brw_compile_cs(compiler, mem_ctx, &params);
       if (stage.code == NULL) {
          ralloc_free(mem_ctx);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
       anv_nir_validate_push_layout(&stage.prog_data.base, &stage.bind_map);
@@ -1930,7 +1930,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                                      NULL, &stage.bind_map);
       if (!bin) {
          ralloc_free(mem_ctx);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
       stage.feedback.duration = os_time_get_nano() - stage_start;
@@ -2540,7 +2540,7 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
                      &stage->key.bs, &stage->prog_data.bs, nir,
                      num_resume_shaders, resume_shaders, stage->stats, NULL);
    if (stage->code == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Ray-tracing shaders don't have a "real" bind map */
    struct anv_pipeline_bind_map empty_bind_map = {};
@@ -2557,7 +2557,7 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
                                stage->stats, 1,
                                NULL, &empty_bind_map);
    if (bin == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* TODO: Figure out executables for resume shaders */
    anv_pipeline_add_executables(&pipeline->base, stage, bin);
@@ -2798,7 +2798,7 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
                                                  pipeline_ctx, &stages[i]);
       if (stages[i].nir == NULL) {
          ralloc_free(pipeline_ctx);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
       anv_pipeline_lower_nir(&pipeline->base, pipeline_ctx, &stages[i], layout);
@@ -3015,7 +3015,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
       ralloc_free(tmp_ctx);
 
       if (device->rt_trampoline == NULL)
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
    struct brw_rt_trivial_return {
@@ -3057,7 +3057,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
 
       if (device->rt_trivial_return == NULL) {
          anv_shader_bin_unref(device, device->rt_trampoline);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
    }
 
@@ -3335,7 +3335,7 @@ anv_GetRayTracingShaderGroupHandlesKHR(
 {
    ANV_FROM_HANDLE(anv_pipeline, pipeline, _pipeline);
    if (pipeline->type != ANV_PIPELINE_RAY_TRACING)
-      return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+      return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
 
    struct anv_ray_tracing_pipeline *rt_pipeline =
       anv_pipeline_to_ray_tracing(pipeline);
@@ -3359,7 +3359,7 @@ anv_GetRayTracingCaptureReplayShaderGroupHandlesKHR(
     void*                                       pData)
 {
    unreachable("Unimplemented");
-   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
 VkDeviceSize

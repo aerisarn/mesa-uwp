@@ -344,7 +344,7 @@ VkResult anv_CreateRenderPass2(
 
    if (!vk_object_multizalloc(&device->vk, &ma, pAllocator,
                               VK_OBJECT_TYPE_RENDER_PASS))
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Clear the subpasses along with the parent pass. This required because
     * each array member of anv_subpass must be a valid pointer if not NULL.

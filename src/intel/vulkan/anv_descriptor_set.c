@@ -391,7 +391,7 @@ VkResult anv_CreateDescriptorSetLayout(
 
    if (!vk_object_multizalloc(&device->vk, &ma, NULL,
                               VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT))
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    set_layout->ref_cnt = 1;
    set_layout->binding_count = num_bindings;
@@ -714,7 +714,7 @@ VkResult anv_CreatePipelineLayout(
    layout = vk_object_alloc(&device->vk, pAllocator, sizeof(*layout),
                             VK_OBJECT_TYPE_PIPELINE_LAYOUT);
    if (layout == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    layout->num_sets = pCreateInfo->setLayoutCount;
 
@@ -860,7 +860,7 @@ VkResult anv_CreateDescriptorPool(
    pool = vk_object_alloc(&device->vk, pAllocator, total_size,
                           VK_OBJECT_TYPE_DESCRIPTOR_POOL);
    if (!pool)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    pool->size = pool_size;
    pool->next = 0;
@@ -1071,7 +1071,7 @@ anv_descriptor_set_create(struct anv_device *device,
                              ANV_UBO_ALIGNMENT);
       if (pool_vma_offset == 0) {
          anv_descriptor_pool_free_set(pool, set);
-         return vk_error(VK_ERROR_FRAGMENTED_POOL);
+         return anv_error(VK_ERROR_FRAGMENTED_POOL);
       }
       assert(pool_vma_offset >= POOL_HEAP_OFFSET &&
              pool_vma_offset - POOL_HEAP_OFFSET <= INT32_MAX);
@@ -1811,7 +1811,7 @@ VkResult anv_CreateDescriptorUpdateTemplate(
    template = vk_object_alloc(&device->vk, pAllocator, size,
                               VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
    if (template == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    template->bind_point = pCreateInfo->pipelineBindPoint;
 

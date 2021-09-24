@@ -2473,7 +2473,7 @@ genX(graphics_pipeline_create)(
    pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pipeline == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = anv_graphics_pipeline_init(pipeline, device, cache,
                                        pCreateInfo, pAllocator);
@@ -2742,7 +2742,7 @@ compute_pipeline_create(
    pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pipeline == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = anv_pipeline_init(&pipeline->base, device,
                               ANV_PIPELINE_COMPUTE, pCreateInfo->flags,
@@ -2889,7 +2889,7 @@ ray_tracing_pipeline_create(
    VK_MULTIALLOC_DECL(&ma, struct anv_rt_shader_group, groups, pCreateInfo->groupCount);
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
                               VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = anv_pipeline_init(&pipeline->base, device,
                               ANV_PIPELINE_RAY_TRACING, pCreateInfo->flags,

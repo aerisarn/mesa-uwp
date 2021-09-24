@@ -341,7 +341,7 @@ genX(init_device_state)(struct anv_device *device)
          res = init_render_queue_state(queue);
          break;
       default:
-         res = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+         res = anv_error(VK_ERROR_INITIALIZATION_FAILED);
          break;
       }
       if (res != VK_SUCCESS)
@@ -708,7 +708,7 @@ VkResult genX(CreateSampler)(
    sampler = vk_object_zalloc(&device->vk, pAllocator, sizeof(*sampler),
                               VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    sampler->n_planes = 1;
 

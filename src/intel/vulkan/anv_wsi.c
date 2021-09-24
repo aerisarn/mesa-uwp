@@ -313,7 +313,7 @@ VkResult anv_QueuePresentKHR(
 
       if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
                                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
       uint32_t wait_count = 0;
       for (uint32_t i = 0; i < pPresentInfo->waitSemaphoreCount; i++) {
@@ -343,7 +343,7 @@ VkResult anv_QueuePresentKHR(
       vk_free(&device->vk.alloc, values);
 
       if (ret)
-         return vk_error(VK_ERROR_DEVICE_LOST);
+         return anv_error(VK_ERROR_DEVICE_LOST);
    }
 
    VkResult result = wsi_common_queue_present(&device->physical->wsi_device,

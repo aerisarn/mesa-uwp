@@ -156,14 +156,14 @@ anv_state_table_init(struct anv_state_table *table,
     */
    table->fd = os_create_anonymous_file(BLOCK_POOL_MEMFD_SIZE, "state table");
    if (table->fd == -1) {
-      result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
       goto fail_fd;
    }
 
    if (!u_vector_init(&table->cleanups,
                       round_to_power_of_two(sizeof(struct anv_state_table_cleanup)),
                       128)) {
-      result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
       goto fail_fd;
    }
 
@@ -197,11 +197,11 @@ anv_state_table_expand_range(struct anv_state_table *table, uint32_t size)
 
    /* Make sure that we don't go outside the bounds of the memfd */
    if (size > BLOCK_POOL_MEMFD_SIZE)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    cleanup = u_vector_add(&table->cleanups);
    if (!cleanup)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    *cleanup = ANV_STATE_TABLE_CLEANUP_INIT;
 
@@ -214,7 +214,7 @@ anv_state_table_expand_range(struct anv_state_table *table, uint32_t size)
    map = mmap(NULL, size, PROT_READ | PROT_WRITE,
               MAP_SHARED | MAP_POPULATE, table->fd, 0);
    if (map == MAP_FAILED) {
-      return vk_errorf(table->device, &table->device->vk.base,
+      return anv_errorf(table->device, &table->device->vk.base,
                        VK_ERROR_OUT_OF_HOST_MEMORY, "mmap failed: %m");
    }
 
@@ -395,7 +395,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
        */
       pool->fd = os_create_anonymous_file(BLOCK_POOL_MEMFD_SIZE, "block pool");
       if (pool->fd == -1)
-         return vk_error(VK_ERROR_INITIALIZATION_FAILED);
+         return anv_error(VK_ERROR_INITIALIZATION_FAILED);
 
       pool->wrapper_bo = (struct anv_bo) {
          .refcount = 1,
@@ -408,7 +408,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
    if (!u_vector_init(&pool->mmap_cleanups,
                       round_to_power_of_two(sizeof(struct anv_mmap_cleanup)),
                       128)) {
-      result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
+      result = anv_error(VK_ERROR_INITIALIZATION_FAILED);
       goto fail_fd;
    }
 
@@ -531,7 +531,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
                        MAP_SHARED | MAP_POPULATE, pool->fd,
                        BLOCK_POOL_MEMFD_CENTER - center_bo_offset);
       if (map == MAP_FAILED)
-         return vk_errorf(pool->device, &pool->device->vk.base,
+         return anv_errorf(pool->device, &pool->device->vk.base,
                           VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
 
       struct anv_bo *new_bo;
@@ -549,7 +549,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
       if (!cleanup) {
          munmap(map, size);
          anv_device_release_bo(pool->device, new_bo);
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+         return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
       cleanup->map = map;
       cleanup->size = size;
@@ -1553,7 +1553,7 @@ anv_bo_cache_init(struct anv_bo_cache *cache)
 
    if (pthread_mutex_init(&cache->mutex, NULL)) {
       util_sparse_array_finish(&cache->bo_map);
-      return vk_errorf(NULL, NULL, VK_ERROR_OUT_OF_HOST_MEMORY,
+      return anv_errorf(NULL, NULL, VK_ERROR_OUT_OF_HOST_MEMORY,
                        "pthread_mutex_init failed: %m");
    }
 
@@ -1672,7 +1672,7 @@ anv_device_alloc_bo(struct anv_device *device,
    }
 
    if (gem_handle == 0)
-      return vk_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    struct anv_bo new_bo = {
       .name = name,
@@ -1692,7 +1692,7 @@ anv_device_alloc_bo(struct anv_device *device,
       new_bo.map = anv_gem_mmap(device, new_bo.gem_handle, 0, size, 0);
       if (new_bo.map == MAP_FAILED) {
          anv_gem_close(device, new_bo.gem_handle);
-         return vk_errorf(device, &device->vk.base,
+         return anv_errorf(device, &device->vk.base,
                           VK_ERROR_OUT_OF_HOST_MEMORY,
                           "mmap failed: %m");
       }
@@ -1728,7 +1728,7 @@ anv_device_alloc_bo(struct anv_device *device,
          if (new_bo.map)
             anv_gem_munmap(device, new_bo.map, size);
          anv_gem_close(device, new_bo.gem_handle);
-         return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+         return anv_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "failed to allocate virtual address for BO");
       }
    } else {
@@ -1778,7 +1778,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
 
    uint32_t gem_handle = anv_gem_userptr(device, host_ptr, size);
    if (!gem_handle)
-      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+      return anv_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
    pthread_mutex_lock(&cache->mutex);
 
@@ -1791,21 +1791,21 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
       assert(bo->gem_handle == gem_handle);
       if (bo_flags != bo->flags) {
          pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return anv_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "same host pointer imported two different ways");
       }
 
       if (bo->has_client_visible_address !=
           ((alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0)) {
          pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return anv_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported with and without buffer "
                           "device address");
       }
 
       if (client_address && client_address != intel_48b_address(bo->offset)) {
          pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return anv_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported at two different "
                           "addresses");
       }
@@ -1836,7 +1836,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
          if (new_bo.offset == 0) {
             anv_gem_close(device, new_bo.gem_handle);
             pthread_mutex_unlock(&cache->mutex);
-            return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+            return anv_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                              "failed to allocate virtual address for BO");
          }
       } else {
@@ -1877,7 +1877,7 @@ anv_device_import_bo(struct anv_device *device,
    uint32_t gem_handle = anv_gem_fd_to_handle(device, fd);
    if (!gem_handle) {
       pthread_mutex_unlock(&cache->mutex);
-      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+      return anv_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 
    struct anv_bo *bo = anv_device_lookup_bo(device, gem_handle);
@@ -1902,7 +1902,7 @@ anv_device_import_bo(struct anv_device *device,
       if ((bo->flags & EXEC_OBJECT_PINNED) !=
           (bo_flags & EXEC_OBJECT_PINNED)) {
          pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return anv_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported two different ways");
       }
 
@@ -1917,21 +1917,21 @@ anv_device_import_bo(struct anv_device *device,
           (bo->flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS) !=
           (bo_flags & EXEC_OBJECT_SUPPORTS_48B_ADDRESS)) {
          pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return anv_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported on two different heaps");
       }
 
       if (bo->has_client_visible_address !=
           ((alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0)) {
          pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return anv_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported with and without buffer "
                           "device address");
       }
 
       if (client_address && client_address != intel_48b_address(bo->offset)) {
          pthread_mutex_unlock(&cache->mutex);
-         return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+         return anv_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported at two different "
                           "addresses");
       }
@@ -1944,7 +1944,7 @@ anv_device_import_bo(struct anv_device *device,
       if (size == (off_t)-1) {
          anv_gem_close(device, gem_handle);
          pthread_mutex_unlock(&cache->mutex);
-         return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+         return anv_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
       }
 
       struct anv_bo new_bo = {
@@ -1969,7 +1969,7 @@ anv_device_import_bo(struct anv_device *device,
          if (new_bo.offset == 0) {
             anv_gem_close(device, new_bo.gem_handle);
             pthread_mutex_unlock(&cache->mutex);
-            return vk_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+            return anv_errorf(device, NULL, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                              "failed to allocate virtual address for BO");
          }
       } else {
@@ -1999,7 +1999,7 @@ anv_device_export_bo(struct anv_device *device,
 
    int fd = anv_gem_handle_to_fd(device, bo->gem_handle);
    if (fd < 0)
-      return vk_error(VK_ERROR_TOO_MANY_OBJECTS);
+      return anv_error(VK_ERROR_TOO_MANY_OBJECTS);
 
    *fd_out = fd;
 

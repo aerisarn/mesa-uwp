@@ -369,34 +369,34 @@ static inline uintptr_t anv_pack_ptr(void *ptr, int bits, int flags)
  * propagating errors. Might be useful to plug in a stack trace here.
  */
 
-VkResult __vk_errorv(struct anv_instance *instance,
+VkResult __anv_errorv(struct anv_instance *instance,
                      const struct vk_object_base *object, VkResult error,
                      const char *file, int line, const char *format,
                      va_list args);
 
-VkResult __vk_errorf(struct anv_instance *instance,
+VkResult __anv_errorf(struct anv_instance *instance,
                      const struct vk_object_base *object, VkResult error,
                      const char *file, int line, const char *format, ...)
    anv_printflike(6, 7);
 
 #ifdef DEBUG
-#define vk_error(error) __vk_errorf(NULL, NULL, error, __FILE__, __LINE__, NULL)
-#define vk_errorfi(instance, obj, error, format, ...)\
-    __vk_errorf(instance, obj, error,\
+#define anv_error(error) __anv_errorf(NULL, NULL, error, __FILE__, __LINE__, NULL)
+#define anv_errorfi(instance, obj, error, format, ...)\
+    __anv_errorf(instance, obj, error,\
                 __FILE__, __LINE__, format, ## __VA_ARGS__)
-#define vk_errorf(device, obj, error, format, ...)\
-   vk_errorfi(anv_device_instance_or_null(device),\
+#define anv_errorf(device, obj, error, format, ...)\
+   anv_errorfi(anv_device_instance_or_null(device),\
               obj, error, format, ## __VA_ARGS__)
 #else
 
-static inline VkResult __dummy_vk_error(VkResult error, UNUSED const void *ignored)
+static inline VkResult __dummy_anv_error(VkResult error, UNUSED const void *ignored)
 {
    return error;
 }
 
-#define vk_error(error) __dummy_vk_error(error, NULL)
-#define vk_errorfi(instance, obj, error, format, ...) __dummy_vk_error(error, instance)
-#define vk_errorf(device, obj, error, format, ...) __dummy_vk_error(error, device)
+#define anv_error(error) __dummy_anv_error(error, NULL)
+#define anv_errorfi(instance, obj, error, format, ...) __dummy_anv_error(error, instance)
+#define anv_errorf(device, obj, error, format, ...) __dummy_anv_error(error, device)
 #endif
 
 /**

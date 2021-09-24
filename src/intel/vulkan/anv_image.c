@@ -132,7 +132,7 @@ image_binding_grow(const struct anv_device *device,
        * VkImageDrmFormatModifierExplicitCreateInfoEXT.
        */
       if (unlikely(!anv_is_aligned(offset, alignment))) {
-         return vk_errorf(device, &device->vk.base,
+         return anv_errorf(device, &device->vk.base,
                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
                           "pPlaneLayouts[]::offset is misaligned");
@@ -143,7 +143,7 @@ image_binding_grow(const struct anv_device *device,
        * VkImageDrmFormatModifierExplicitCreateInfoEXT,
        */
       if (unlikely(offset < container->size)) {
-         return vk_errorf(device, &device->vk.base,
+         return anv_errorf(device, &device->vk.base,
                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
                           "pPlaneLayouts[]::offset is too small");
@@ -153,11 +153,11 @@ image_binding_grow(const struct anv_device *device,
    if (__builtin_add_overflow(offset, size, &container->size)) {
       if (has_implicit_offset) {
          assert(!"overflow");
-         return vk_errorf(device, &device->vk.base,
+         return anv_errorf(device, &device->vk.base,
                           VK_ERROR_UNKNOWN,
                           "internal error: overflow in %s", __func__);
       } else {
-         return vk_errorf(device, &device->vk.base,
+         return anv_errorf(device, &device->vk.base,
                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
                           "pPlaneLayouts[]::offset is too large");
@@ -1000,7 +1000,7 @@ check_drm_format_mod(const struct anv_device *device,
           * usage, then we may enable a private aux surface.
           */
          if (plane->aux_usage != isl_mod_info->aux_usage) {
-            return vk_errorf(device, &image->vk.base, VK_ERROR_UNKNOWN,
+            return anv_errorf(device, &image->vk.base, VK_ERROR_UNKNOWN,
                              "image with modifier unexpectedly has wrong aux "
                              "usage");
          }
@@ -1132,14 +1132,14 @@ add_all_surfaces_explicit_layout(
    /* Reject special values in the app-provided plane layouts. */
    for (uint32_t i = 0; i < mod_plane_count; ++i) {
       if (drm_info->pPlaneLayouts[i].rowPitch == 0) {
-         return vk_errorf(device, &device->vk.base,
+         return anv_errorf(device, &device->vk.base,
                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
                           "pPlaneLayouts[%u]::rowPitch is 0", i);
       }
 
       if (drm_info->pPlaneLayouts[i].offset == ANV_OFFSET_IMPLICIT) {
-         return vk_errorf(device, &device->vk.base,
+         return anv_errorf(device, &device->vk.base,
                           VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT,
                           "VkImageDrmFormatModifierExplicitCreateInfoEXT::"
                           "pPlaneLayouts[%u]::offset is %" PRIu64,
@@ -1481,7 +1481,7 @@ VkResult anv_CreateImage(
       vk_object_zalloc(&device->vk, pAllocator, sizeof(*image),
                        VK_OBJECT_TYPE_IMAGE);
    if (!image)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result = anv_image_init_from_create_info(device, image,
                                                      pCreateInfo);
@@ -2520,7 +2520,7 @@ anv_CreateImageView(VkDevice _device,
    iview = vk_image_view_create(&device->vk, pCreateInfo,
                                 pAllocator, sizeof(*iview));
    if (iview == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    iview->image = image;
    iview->n_planes = anv_image_aspect_get_planes(iview->vk.aspects);
@@ -2721,7 +2721,7 @@ anv_CreateBufferView(VkDevice _device,
    view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
                           VK_OBJECT_TYPE_BUFFER_VIEW);
    if (!view)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* TODO: Handle the format swizzle? */
 

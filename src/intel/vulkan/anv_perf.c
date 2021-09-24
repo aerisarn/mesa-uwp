@@ -223,7 +223,7 @@ VkResult anv_AcquirePerformanceConfigurationINTEL(
    config = vk_object_alloc(&device->vk, NULL, sizeof(*config),
                             VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL);
    if (!config)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (!(INTEL_DEBUG & DEBUG_NO_OACONFIG)) {
       config->register_config =

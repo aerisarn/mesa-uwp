@@ -83,7 +83,7 @@ anv_CreateAccelerationStructureKHR(
    accel = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*accel), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (accel == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      return anv_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &accel->base,
                        VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR);
@@ -144,7 +144,7 @@ anv_BuildAccelerationStructuresKHR(
     const VkAccelerationStructureBuildRangeInfoKHR* const* ppBuildRangeInfos)
 {
    unreachable("Unimplemented");
-   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
 VkResult
@@ -154,7 +154,7 @@ anv_CopyAccelerationStructureKHR(
     const VkCopyAccelerationStructureInfoKHR*   pInfo)
 {
    unreachable("Unimplemented");
-   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
 VkResult
@@ -164,7 +164,7 @@ anv_CopyAccelerationStructureToMemoryKHR(
     const VkCopyAccelerationStructureToMemoryInfoKHR* pInfo)
 {
    unreachable("Unimplemented");
-   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
 VkResult
@@ -174,7 +174,7 @@ anv_CopyMemoryToAccelerationStructureKHR(
     const VkCopyMemoryToAccelerationStructureInfoKHR* pInfo)
 {
    unreachable("Unimplemented");
-   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
 VkResult
@@ -188,7 +188,7 @@ anv_WriteAccelerationStructuresPropertiesKHR(
     size_t                                      stride)
 {
    unreachable("Unimplemented");
-   return vk_error(VK_ERROR_FEATURE_NOT_PRESENT);
+   return anv_error(VK_ERROR_FEATURE_NOT_PRESENT);
 }
 
 void
