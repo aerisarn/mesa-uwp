@@ -1047,6 +1047,13 @@ system_value("printf_buffer_address", 1, bit_sizes=[32,64])
 system_value("mesh_view_count", 1)
 load("mesh_view_indices", [1], [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
 
+# Used to pass values from the preamble to the main shader.
+# This should use something similar to Vulkan push constants and load_preamble
+# should be relatively cheap.
+# For now we only support accesses with a constant offset.
+load("preamble", [], indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
+store("preamble", [], indices=[BASE])
+
 # IR3-specific version of most SSBO intrinsics. The only different
 # compare to the originals is that they add an extra source to hold
 # the dword-offset, which is needed by the backend code apart from

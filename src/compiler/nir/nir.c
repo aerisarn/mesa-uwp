@@ -426,6 +426,7 @@ nir_function_create(nir_shader *shader, const char *name)
    func->params = NULL;
    func->impl = NULL;
    func->is_entrypoint = false;
+   func->is_preamble = false;
 
    return func;
 }
@@ -541,6 +542,7 @@ nir_function_impl_create_bare(nir_shader *shader)
    nir_function_impl *impl = ralloc(shader, nir_function_impl);
 
    impl->function = NULL;
+   impl->preamble = NULL;
 
    cf_init(&impl->cf_node, nir_cf_node_function);
 

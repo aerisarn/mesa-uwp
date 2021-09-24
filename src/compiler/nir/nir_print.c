@@ -1600,6 +1600,10 @@ print_function_impl(nir_function_impl *impl, print_state *state)
 
    fprintf(fp, "{\n");
 
+   if (impl->preamble) {
+      fprintf(fp, "\tpreamble %s\n", impl->preamble->name);
+   }
+
    nir_foreach_function_temp_variable(var, impl) {
       fprintf(fp, "\t");
       print_var_decl(var, state);

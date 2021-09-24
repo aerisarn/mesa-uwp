@@ -2942,6 +2942,13 @@ typedef struct {
    /** pointer to the function of which this is an implementation */
    struct nir_function *function;
 
+   /**
+    * For entrypoints, a pointer to a nir_function_impl which runs before
+    * it, once per draw or dispatch, communicating via store_preamble and
+    * load_preamble intrinsics. If NULL then there is no preamble.
+    */
+   struct nir_function *preamble;
+
    struct exec_list body; /** < list of nir_cf_node */
 
    nir_block *end_block;
@@ -3114,6 +3121,7 @@ typedef struct nir_function {
    nir_function_impl *impl;
 
    bool is_entrypoint;
+   bool is_preamble;
 } nir_function;
 
 typedef enum {

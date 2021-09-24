@@ -1955,6 +1955,10 @@ static void
 write_function_impl(write_ctx *ctx, const nir_function_impl *fi)
 {
    blob_write_uint8(ctx->blob, fi->structured);
+   blob_write_uint8(ctx->blob, !!fi->preamble);
+
+   if (fi->preamble)
+      blob_write_uint32(ctx->blob, write_lookup_object(ctx, fi->preamble));
 
    write_var_list(ctx, &fi->locals);
    write_reg_list(ctx, &fi->registers);
@@ -1971,6 +1975,10 @@ read_function_impl(read_ctx *ctx, nir_function *fxn)
    fi->function = fxn;
 
    fi->structured = blob_read_uint8(ctx->blob);
+   bool preamble = blob_read_uint8(ctx->blob);
+
+   if (preamble)
+      fi->preamble = read_object(ctx);
 
    read_var_list(ctx, &fi->locals);
    read_reg_list(ctx, &fi->registers);
@@ -1987,11 +1995,15 @@ read_function_impl(read_ctx *ctx, nir_function *fxn)
 static void
 write_function(write_ctx *ctx, const nir_function *fxn)
 {
-   uint32_t flags = fxn->is_entrypoint;
-   if (fxn->name)
+   uint32_t flags = 0;
+   if (fxn->is_entrypoint)
+      flags |= 0x1;
+   if (fxn->is_preamble)
       flags |= 0x2;
-   if (fxn->impl)
+   if (fxn->name)
       flags |= 0x4;
+   if (fxn->impl)
+      flags |= 0x8;
    blob_write_uint32(ctx->blob, flags);
    if (fxn->name)
       blob_write_string(ctx->blob, fxn->name);
@@ -2017,7 +2029,7 @@ static void
 read_function(read_ctx *ctx)
 {
    uint32_t flags = blob_read_uint32(ctx->blob);
-   bool has_name = flags & 0x2;
+   bool has_name = flags & 0x4;
    char *name = has_name ? blob_read_string(ctx->blob) : NULL;
 
    nir_function *fxn = nir_function_create(ctx->nir, name);
@@ -2033,7 +2045,8 @@ read_function(read_ctx *ctx)
    }
 
    fxn->is_entrypoint = flags & 0x1;
-   if (flags & 0x4)
+   fxn->is_preamble = flags & 0x2;
+   if (flags & 0x8)
       fxn->impl = NIR_SERIALIZE_FUNC_HAS_IMPL;
 }
 

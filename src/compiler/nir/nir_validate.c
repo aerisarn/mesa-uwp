@@ -1619,6 +1619,11 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
    validate_assert(state, impl->function->impl == impl);
    validate_assert(state, impl->cf_node.parent == NULL);
 
+   if (impl->preamble) {
+      validate_assert(state, impl->function->is_entrypoint);
+      validate_assert(state, impl->preamble->is_preamble);
+   }
+
    validate_assert(state, exec_list_is_empty(&impl->end_block->instr_list));
    validate_assert(state, impl->end_block->successors[0] == NULL);
    validate_assert(state, impl->end_block->successors[1] == NULL);
