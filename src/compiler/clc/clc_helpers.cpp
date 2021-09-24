@@ -60,7 +60,10 @@
 
 #include "clc_helpers.h"
 
-constexpr spv_target_env spirv_target = SPV_ENV_UNIVERSAL_1_0;
+/* Use the highest version of SPIRV supported by SPIRV-Tools. */
+constexpr spv_target_env spirv_target = SPV_ENV_UNIVERSAL_1_5;
+
+constexpr SPIRV::VersionNumber invalid_spirv_trans_version = static_cast<SPIRV::VersionNumber>(0);
 
 using ::llvm::Function;
 using ::llvm::LLVMContext;
@@ -855,6 +858,22 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
    return { act.takeModule(), std::move(llvm_ctx) };
 }
 
+static SPIRV::VersionNumber
+spirv_version_to_llvm_spirv_translator_version(enum clc_spirv_version version)
+{
+   switch (version) {
+   case CLC_SPIRV_VERSION_MAX: return SPIRV::VersionNumber::MaximumVersion;
+   case CLC_SPIRV_VERSION_1_0: return SPIRV::VersionNumber::SPIRV_1_0;
+   case CLC_SPIRV_VERSION_1_1: return SPIRV::VersionNumber::SPIRV_1_1;
+   case CLC_SPIRV_VERSION_1_2: return SPIRV::VersionNumber::SPIRV_1_2;
+   case CLC_SPIRV_VERSION_1_3: return SPIRV::VersionNumber::SPIRV_1_3;
+#ifdef HAS_SPIRV_1_4
+   case CLC_SPIRV_VERSION_1_4: return SPIRV::VersionNumber::SPIRV_1_4;
+#endif
+   default:      return invalid_spirv_trans_version;
+   }
+}
+
 static int
 llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
                   std::unique_ptr<LLVMContext> context,
@@ -864,8 +883,16 @@ llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
 {
    std::string log;
 
+   SPIRV::VersionNumber version =
+      spirv_version_to_llvm_spirv_translator_version(args->spirv_version);
+   if (version == invalid_spirv_trans_version) {
+      clc_error(logger, "Invalid/unsupported SPIRV specified.\n");
+      return -1;
+   }
+
    SPIRV::TranslatorOpts spirv_opts;
    if (!args || !args->allowed_spirv_extensions) {
+      spirv_opts = SPIRV::TranslatorOpts(version);
       spirv_opts.enableAllExtensions();
    } else {
       SPIRV::TranslatorOpts::ExtensionsStatusMap ext_map;
@@ -876,7 +903,7 @@ llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
 #include "LLVMSPIRVLib/LLVMSPIRVExtensions.inc"
 #undef EXT
       }
-      spirv_opts = SPIRV::TranslatorOpts(SPIRV::VersionNumber::MaximumVersion, ext_map);
+      spirv_opts = SPIRV::TranslatorOpts(version, ext_map);
    }
 
    std::ostringstream spv_stream;

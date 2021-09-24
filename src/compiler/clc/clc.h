@@ -40,12 +40,24 @@ struct clc_named_value {
    const char *value;
 };
 
+enum clc_spirv_version {
+   CLC_SPIRV_VERSION_MAX = 0,
+   CLC_SPIRV_VERSION_1_0,
+   CLC_SPIRV_VERSION_1_1,
+   CLC_SPIRV_VERSION_1_2,
+   CLC_SPIRV_VERSION_1_3,
+   CLC_SPIRV_VERSION_1_4,
+};
+
 struct clc_compile_args {
    const struct clc_named_value *headers;
    unsigned num_headers;
    struct clc_named_value source;
    const char * const *args;
    unsigned num_args;
+
+   /* SPIRV version to target. */
+   enum clc_spirv_version spirv_version;
 
    /* Allowed extensions SPIRV extensions the OpenCL->SPIRV translation can
     * enable. A pointer to a NULL terminated array of strings, allow any
