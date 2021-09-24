@@ -171,10 +171,10 @@ wgl_add_config(_EGLDisplay *disp, const struct stw_pixelformat_info *stw_config,
 }
 
 static EGLBoolean
-wgl_add_configs(_EGLDisplay *disp, HDC hdc)
+wgl_add_configs(_EGLDisplay *disp)
 {
    unsigned int config_count = 0;
-   unsigned surface_type = EGL_PBUFFER_BIT | (hdc ? EGL_WINDOW_BIT : 0);
+   unsigned surface_type = EGL_PBUFFER_BIT | EGL_WINDOW_BIT;
 
    // This is already a filtered set of what the driver supports,
    // and there's no further filtering needed per-visual
@@ -256,7 +256,7 @@ wgl_initialize_impl(_EGLDisplay *disp, HDC hdc)
    }
 #endif
 
-   if (!wgl_add_configs(disp, hdc)) {
+   if (!wgl_add_configs(disp)) {
       err = "wgl: failed to add configs";
       goto cleanup;
    }
