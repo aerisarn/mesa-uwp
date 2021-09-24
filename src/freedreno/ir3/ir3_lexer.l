@@ -374,6 +374,7 @@ static int parse_reg(const char *str)
 "getspid"                         return TOKEN(T_OP_GETSPID);
 "getwid"                          return TOKEN(T_OP_GETWID);
 "getfiberid"                      return TOKEN(T_OP_GETFIBERID);
+"stc"                             return TOKEN(T_OP_STC);
 
                                   /* category 7: */
 "bar"                             return TOKEN(T_OP_BAR);

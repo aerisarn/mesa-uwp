@@ -325,21 +325,55 @@ SOFTWARE.
 	<pattern low="54" high="58">01011</pattern>  <!-- OPC -->
 </bitset>
 
+<bitset name="#stc-dst-imm" extends="#stc-dst">
+	<display>
+		{OFFSET}
+	</display>
+	<field name="OFFSET" low="0" high="7" type="uint"/>
+	<pattern pos="8">0</pattern>
+</bitset>
+
+<bitset name="#stc-dst-a1" extends="#stc-dst">
+	<display>
+		a1.x{OFFSET}
+	</display>
+	<field name="OFFSET" low="0" high="7" type="uoffset"/>
+	<pattern pos="8">1</pattern>
+</bitset>
+
+<bitset name="#stc-dst" size="9">
+	<doc>
+		Encoding for stc destination which can be constant or have an
+		offset of a1.x.
+	</doc>
+	<encode type="struct ir3_instruction *" case-prefix="">
+		<map name="OFFSET">extract_reg_uim(src->srcs[0])</map>
+	</encode>
+</bitset>
+
 <bitset name="stc" extends="#instruction-cat6-a3xx">
 	<doc>
 		STore Const - used for shader prolog (between shps and shpe)
 		to store "uniform folded" values into CONST file
 
 		NOTE: TYPE field actually seems to be set to different
-		values (ie f32 vs u32), but I *think* it does not matter.
-		(There is SP_MODE_CONTROL.CONSTANT_DEMOTION_ENABLE, but
-		I think float results are already converted to 32b)
+		values (ie f32 vs u32), but it seems that only the size (16b vs
+		32b) matters. Setting a 16-bit type (f16, u16, or s16) doesn't
+		cause any promotion to 32-bit, it causes the 16-bit sources to
+		be stored one after the other starting with the low half of the
+		constant. So e.g. "stc.f16 c[1], hr0.x, 1" copies hr0.x to the
+		bottom half of c0.y. There seems to be no way to set just the
+		upper half. In any case, the blob seems to only use the 32-bit
+		versions.
 
-		NOTE: this could be the "old" encoding, although it
-		would conflict with stgb from earlier gens
+		The blob disassembly doesn't include the type, but we still
+		display it so that we can preserve the different values the blob
+		sets when round-tripping.
+
+		NOTE: this conflicts with stgb from earlier gens
 	</doc>
 	<display>
-		{SY}{JP}{NAME} c[{DST}], {SRC}, {SIZE}
+		{SY}{JP}{NAME}.{TYPE} c[{DST}], {SRC}, {SIZE}
 	</display>
 	<gen min="600"/>
 	<pattern pos="0"           >x</pattern>
@@ -348,13 +382,14 @@ SOFTWARE.
 	<pattern pos="23"          >1</pattern>
 	<field   low="24" high="26" name="SIZE" type="uint"/>
 	<pattern low="27" high="31">xxxxx</pattern>
-	<field   low="32" high="39" name="DST" type="uint"/>
-	<pattern low="40" high="48">xxxxxxxxx</pattern>
+	<field   low="32" high="40" name="DST" type="#stc-dst"/>
+	<pattern low="41" high="48">xxxxxxxx</pattern>
 	<pattern low="52" high="53">xx</pattern>
 	<pattern low="54" high="58">11100</pattern>  <!-- OPC -->
 	<encode>
-		<map name="DST">extract_reg_uim(src->srcs[0])</map>
+		<map name="DST">src</map>
 		<map name="SRC">src->srcs[1]</map>
+		<map name="SIZE">src->cat6.iim_val</map>
 	</encode>
 </bitset>
 

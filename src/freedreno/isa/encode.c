@@ -308,6 +308,17 @@ __cat3_src_case(struct encode_state *s, struct ir3_register *reg)
 	}
 }
 
+typedef enum {
+   STC_DST_IMM,
+   STC_DST_A1
+} stc_dst_t;
+
+static inline stc_dst_t
+__stc_dst_case(struct encode_state *s, struct ir3_instruction *instr)
+{
+   return (instr->flags & IR3_INSTR_A1EN) ? STC_DST_A1 : STC_DST_IMM;
+}
+
 #include "encode.h"
 
 
