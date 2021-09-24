@@ -89,7 +89,6 @@ struct radv_tes_variant_key {
 
 struct radv_tcs_variant_key {
    struct radv_vs_variant_key vs_key;
-   unsigned primitive_mode;
    unsigned input_vertices;
 };
 
