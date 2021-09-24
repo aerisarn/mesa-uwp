@@ -133,6 +133,17 @@ panfrost-g52-vk:arm64:
     PAN_I_WANT_A_BROKEN_VULKAN_DRIVER: 1
     DEQP_SUITE: panfrost-g52-vk
 
+panfrost-g52-piglit-gl:arm64:
+  parallel: 2    # TODO: Reduce to a single job once all crashes are fixed
+  extends:
+    - .piglit-test
+    - .lava-test:arm64
+    - .lava-meson-g12b-a311d-khadas-vim3
+  variables:
+    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
+    HWCI_START_XORG: 1
+    PIGLIT_PROFILES: quick_gl
+
 .lava-mt8183-kukui-jacuzzi-juniper-sku16:
   extends:
     - .panfrost-bifrost-rules
