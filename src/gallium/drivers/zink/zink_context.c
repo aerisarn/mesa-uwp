@@ -1316,7 +1316,6 @@ zink_set_shader_images(struct pipe_context *pctx,
          } else {
             struct pipe_surface tmpl = {0};
             tmpl.format = images[i].format;
-            tmpl.nr_samples = 1;
             tmpl.u.tex.level = images[i].u.tex.level;
             tmpl.u.tex.first_layer = images[i].u.tex.first_layer;
             tmpl.u.tex.last_layer = images[i].u.tex.last_layer;
