@@ -274,9 +274,9 @@ vk_object_for_error(struct vk_object_base *obj, VkResult error)
 }
 
 VkResult
-__vk_errorv_impl(const void *_obj, VkResult error,
-                 const char *file, int line,
-                 const char *format, va_list va)
+__vk_errorv(const void *_obj, VkResult error,
+            const char *file, int line,
+            const char *format, va_list va)
 {
    struct vk_object_base *object = (struct vk_object_base *)_obj;
    struct vk_instance *instance = vk_object_to_instance(object);
@@ -324,14 +324,14 @@ __vk_errorv_impl(const void *_obj, VkResult error,
 }
 
 VkResult
-__vk_errorf_impl(const void *_obj, VkResult error,
-                 const char *file, int line,
-                 const char *format, ...)
+__vk_errorf(const void *_obj, VkResult error,
+            const char *file, int line,
+            const char *format, ...)
 {
    va_list va;
 
    va_start(va, format);
-   VkResult result = __vk_errorv_impl(_obj, error, file, line, format, va);
+   VkResult result = __vk_errorv(_obj, error, file, line, format, va);
    va_end(va);
 
    return result;
