@@ -4205,6 +4205,10 @@ char *nir_shader_as_str_annotated(nir_shader *nir, struct hash_table *annotation
 /** Shallow clone of a single instruction. */
 nir_instr *nir_instr_clone(nir_shader *s, const nir_instr *orig);
 
+/** Clone a single instruction, including a remap table to rewrite sources. */
+nir_instr *nir_instr_clone_deep(nir_shader *s, const nir_instr *orig,
+                                struct hash_table *remap_table);
+
 /** Shallow clone of a single ALU instruction. */
 nir_alu_instr *nir_alu_instr_clone(nir_shader *s, const nir_alu_instr *orig);
 
