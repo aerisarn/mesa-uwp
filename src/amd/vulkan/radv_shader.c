@@ -1291,13 +1291,14 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
       } else
          unreachable("Unexpected ES shader stage");
 
+      bool nggc = info->has_ngg_culling; /* Culling uses GS vertex offsets 0, 1, 2. */
       bool tes_triangles =
          stage == MESA_SHADER_TESS_EVAL && info->tes.primitive_mode >= 4; /* GL_TRIANGLES */
       if (info->uses_invocation_id) {
          gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
       } else if (info->uses_prim_id) {
          gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
-      } else if (info->gs.vertices_in >= 3 || tes_triangles) {
+      } else if (info->gs.vertices_in >= 3 || tes_triangles || nggc) {
          gs_vgpr_comp_cnt = 1; /* VGPR1 contains offsets 2, 3 */
       } else {
          gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
