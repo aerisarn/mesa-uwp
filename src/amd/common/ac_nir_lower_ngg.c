@@ -937,7 +937,23 @@ save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
       nir_cf_node *next_cf_node = nir_cf_node_next(&block->cf_node);
       if (next_cf_node) {
          /* It makes no sense to try to reuse things from within loops. */
-         if (next_cf_node->type == nir_cf_node_loop) {
+         bool next_is_loop = next_cf_node->type == nir_cf_node_loop;
+
+         /* Don't reuse if we're in divergent control flow.
+          *
+          * Thanks to vertex repacking, the same shader invocation may process a different vertex
+          * in the top and bottom part, and it's even possible that this different vertex was initially
+          * processed in a different wave. So the two parts may take a different divergent code path.
+          * Therefore, these variables in divergent control flow may stay undefined.
+          *
+          * Note that this problem doesn't exist if vertices are not repacked or if the
+          * workgroup only has a single wave.
+          */
+         bool next_is_divergent_if =
+            next_cf_node->type == nir_cf_node_if &&
+            nir_cf_node_as_if(next_cf_node)->condition.ssa->divergent;
+
+         if (next_is_loop || next_is_divergent_if) {
             block = nir_cf_node_cf_tree_next(next_cf_node);
             continue;
          }
