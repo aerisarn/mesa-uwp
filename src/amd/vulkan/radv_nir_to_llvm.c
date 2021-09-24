@@ -1671,8 +1671,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
       /* Exporting the primitive ID is handled below. */
       /* TODO: use the new VS export path */
-      handle_vs_outputs_post(ctx, false, ctx->args->options->key.vs_common_out.export_clip_dists,
-                             outinfo);
+      handle_vs_outputs_post(ctx, false, outinfo->export_clip_dists, outinfo);
 
       if (ctx->args->options->key.vs_common_out.export_prim_id) {
          unsigned param_count = outinfo->param_exports;
@@ -2011,8 +2010,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
          noutput++;
       }
 
-      radv_llvm_export_vs(ctx, outputs, noutput, outinfo,
-                          ctx->args->options->key.vs_common_out.export_clip_dists);
+      radv_llvm_export_vs(ctx, outputs, noutput, outinfo, outinfo->export_clip_dists);
       FREE(outputs);
    }
    ac_build_endif(&ctx->ac, 5145);
@@ -2200,7 +2198,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
          break;
       else
          handle_vs_outputs_post(ctx, ctx->args->options->key.vs_common_out.export_prim_id,
-                                ctx->args->options->key.vs_common_out.export_clip_dists,
+                                ctx->args->shader_info->vs.outinfo.export_clip_dists,
                                 &ctx->args->shader_info->vs.outinfo);
       break;
    case MESA_SHADER_FRAGMENT:
@@ -2218,7 +2216,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
          break;
       else
          handle_vs_outputs_post(ctx, ctx->args->options->key.vs_common_out.export_prim_id,
-                                ctx->args->options->key.vs_common_out.export_clip_dists,
+                                ctx->args->shader_info->tes.outinfo.export_clip_dists,
                                 &ctx->args->shader_info->tes.outinfo);
       break;
    default:
