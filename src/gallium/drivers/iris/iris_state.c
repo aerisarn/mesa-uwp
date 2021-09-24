@@ -925,6 +925,8 @@ gfx12_upload_pixel_hashing_tables(struct iris_batch *batch)
 static void
 iris_alloc_push_constants(struct iris_batch *batch)
 {
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
+
    /* For now, we set a static partitioning of the push constant area,
     * assuming that all stages could be in use.
     *
@@ -934,11 +936,17 @@ iris_alloc_push_constants(struct iris_batch *batch)
     *       enabling/disabling it like i965 does.  This would be more
     *       stalls and may not actually help; we don't know yet.
     */
+
+   /* Divide as equally as possible with any remainder given to FRAGMENT. */
+   const unsigned push_constant_kb = devinfo->max_constant_urb_size_kb;
+   const unsigned stage_size = push_constant_kb / 5;
+   const unsigned frag_size = push_constant_kb - 4 * stage_size;
+
    for (int i = 0; i <= MESA_SHADER_FRAGMENT; i++) {
       iris_emit_cmd(batch, GENX(3DSTATE_PUSH_CONSTANT_ALLOC_VS), alloc) {
          alloc._3DCommandSubOpcode = 18 + i;
-         alloc.ConstantBufferOffset = 6 * i;
-         alloc.ConstantBufferSize = i == MESA_SHADER_FRAGMENT ? 8 : 6;
+         alloc.ConstantBufferOffset = stage_size * i;
+         alloc.ConstantBufferSize = i == MESA_SHADER_FRAGMENT ? frag_size : stage_size;
       }
    }
 }
