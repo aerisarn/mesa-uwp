@@ -115,10 +115,16 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    _T_(L8A8_UINT,    8_8_UINT,                  WZYX),
    _T_(L8A8_SINT,    8_8_SINT,                  WZYX),
 
+   _TC(R5G6B5_UNORM,   5_6_5_UNORM,             WZYX),
    _TC(B5G6R5_UNORM,   5_6_5_UNORM,             WXYZ),
+
    _TC(B5G5R5A1_UNORM, 5_5_5_1_UNORM,           WXYZ),
    _TC(B5G5R5X1_UNORM, 5_5_5_1_UNORM,           WXYZ),
+
+   _TC(R4G4B4A4_UNORM, 4_4_4_4_UNORM,           WZYX),
    _TC(B4G4R4A4_UNORM, 4_4_4_4_UNORM,           WXYZ),
+   _TC(A4R4G4B4_UNORM, 4_4_4_4_UNORM,           ZYXW),
+   _TC(A4B4G4R4_UNORM, 4_4_4_4_UNORM,           XYZW),
 
    /* 24-bit */
    V__(R8G8B8_UNORM,   8_8_8_UNORM,             WZYX),
