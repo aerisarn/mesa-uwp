@@ -25,6 +25,7 @@
 
 #include "vk_alloc.h"
 #include "vk_common_entrypoints.h"
+#include "vk_log.h"
 #include "vk_util.h"
 #include "vk_debug_utils.h"
 
@@ -43,7 +44,8 @@ vk_instance_init(struct vk_instance *instance,
 
    /* VK_EXT_debug_utils */
    /* These messengers will only be used during vkCreateInstance or
-    * vkDestroyInstance calls.
+    * vkDestroyInstance calls.  We do this first so that it's safe to use
+    * vk_errorf and friends.
     */
    list_inithead(&instance->debug_utils.instance_callbacks);
    vk_foreach_struct_const(ext, pCreateInfo->pNext) {
@@ -56,7 +58,7 @@ vk_instance_init(struct vk_instance *instance,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
          if (!messenger)
-            return VK_ERROR_OUT_OF_HOST_MEMORY;
+            return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
          vk_object_base_init(NULL, &messenger->base,
                              VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT);
@@ -101,14 +103,20 @@ vk_instance_init(struct vk_instance *instance,
       }
 
       if (idx >= VK_INSTANCE_EXTENSION_COUNT)
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
+         return vk_errorf(instance, VK_ERROR_EXTENSION_NOT_PRESENT,
+                          "%s not supported",
+                          pCreateInfo->ppEnabledExtensionNames[i]);
 
       if (!supported_extensions->extensions[idx])
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
+         return vk_errorf(instance, VK_ERROR_EXTENSION_NOT_PRESENT,
+                          "%s not supported",
+                          pCreateInfo->ppEnabledExtensionNames[i]);
 
 #ifdef ANDROID
       if (!vk_android_allowed_instance_extensions.extensions[idx])
-         return VK_ERROR_EXTENSION_NOT_PRESENT;
+         return vk_errorf(instance, VK_ERROR_EXTENSION_NOT_PRESENT,
+                          "%s not supported",
+                          pCreateInfo->ppEnabledExtensionNames[i]);
 #endif
 
       instance->enabled_extensions.extensions[idx] = true;
@@ -121,13 +129,13 @@ vk_instance_init(struct vk_instance *instance,
       &instance->dispatch_table, &vk_common_instance_entrypoints, false);
 
    if (mtx_init(&instance->debug_report.callbacks_mutex, mtx_plain) != 0)
-      return VK_ERROR_INITIALIZATION_FAILED;
+      return vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
 
    list_inithead(&instance->debug_report.callbacks);
 
    if (mtx_init(&instance->debug_utils.callbacks_mutex, mtx_plain) != 0) {
       mtx_destroy(&instance->debug_report.callbacks_mutex);
-      return VK_ERROR_INITIALIZATION_FAILED;
+      return vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
    }
 
    list_inithead(&instance->debug_utils.callbacks);
