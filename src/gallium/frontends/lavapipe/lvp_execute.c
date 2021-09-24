@@ -3350,13 +3350,19 @@ static void handle_bind_transform_feedback_buffers(struct vk_cmd_queue_entry *cm
 
    for (unsigned i = 0; i < btfb->binding_count; i++) {
       int idx = i + btfb->first_binding;
+      uint32_t size;
+      if (btfb->sizes && btfb->sizes[i] != VK_WHOLE_SIZE)
+         size = btfb->sizes[i];
+      else
+         size = lvp_buffer_from_handle(btfb->buffers[i])->size - btfb->offsets[i];
+
       if (state->so_targets[idx])
          state->pctx->stream_output_target_destroy(state->pctx, state->so_targets[idx]);
 
       state->so_targets[idx] = state->pctx->create_stream_output_target(state->pctx,
                                                                         lvp_buffer_from_handle(btfb->buffers[i])->bo,
                                                                         btfb->offsets[i],
-                                                                        btfb->sizes[i]);
+                                                                        size);
    }
    state->num_so_targets = btfb->first_binding + btfb->binding_count;
 }
