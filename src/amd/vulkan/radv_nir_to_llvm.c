@@ -1649,7 +1649,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
    {
       struct ac_ngg_prim prim = {0};
 
-      if (ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
+      if (ctx->args->shader_info->is_ngg_passthrough) {
          prim.passthrough = ac_get_arg(&ctx->ac, ctx->args->ac.gs_vtx_offset[0]);
       } else {
          prim.num_vertices = num_vertices;
@@ -2464,7 +2464,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
        * Add an extra dword per vertex to ensure an odd stride, which
        * avoids bank conflicts for SoA accesses.
        */
-      if (!args->options->key.vs_common_out.as_ngg_passthrough)
+      if (!args->shader_info->is_ngg_passthrough)
          declare_esgs_ring(&ctx);
 
       /* GFX10 hang workaround - there needs to be an s_barrier before gs_alloc_req always */
