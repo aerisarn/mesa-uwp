@@ -420,8 +420,6 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
             if (!is_cat2_float(instr->opc) && !is_cat3_float(instr->opc))
                return false;
          } else if (src->cat1.dst_type == TYPE_U16) {
-            if (is_meta(instr))
-               return true;
             /* Since we set CONSTANT_DEMOTION_ENABLE, a float reference of
              * what was a U16 value read from the constbuf would incorrectly
              * do 32f->16f conversion, when we want to read a 16f value.
