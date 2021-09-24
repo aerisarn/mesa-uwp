@@ -1611,7 +1611,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
    /* Copy Primitive IDs from GS threads to the LDS address corresponding
     * to the ES thread of the provoking vertex.
     */
-   if (ctx->stage == MESA_SHADER_VERTEX && ctx->args->options->key.vs_common_out.export_prim_id) {
+   if (ctx->stage == MESA_SHADER_VERTEX && ctx->args->shader_info->vs.outinfo.export_prim_id) {
       ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
 
       LLVMValueRef provoking_vtx_in_prim = LLVMConstInt(ctx->ac.i32, 0, false);
@@ -1673,7 +1673,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
       /* TODO: use the new VS export path */
       handle_vs_outputs_post(ctx, false, outinfo->export_clip_dists, outinfo);
 
-      if (ctx->args->options->key.vs_common_out.export_prim_id) {
+      if (outinfo->export_prim_id) {
          unsigned param_count = outinfo->param_exports;
          LLVMValueRef values[4];
 
@@ -2197,7 +2197,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
       else if (ctx->args->shader_info->is_ngg)
          break;
       else
-         handle_vs_outputs_post(ctx, ctx->args->options->key.vs_common_out.export_prim_id,
+         handle_vs_outputs_post(ctx, ctx->args->shader_info->vs.outinfo.export_prim_id,
                                 ctx->args->shader_info->vs.outinfo.export_clip_dists,
                                 &ctx->args->shader_info->vs.outinfo);
       break;
@@ -2215,7 +2215,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi)
       else if (ctx->args->shader_info->is_ngg)
          break;
       else
-         handle_vs_outputs_post(ctx, ctx->args->options->key.vs_common_out.export_prim_id,
+         handle_vs_outputs_post(ctx, ctx->args->shader_info->tes.outinfo.export_prim_id,
                                 ctx->args->shader_info->tes.outinfo.export_clip_dists,
                                 &ctx->args->shader_info->tes.outinfo);
       break;
@@ -2509,7 +2509,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm, struct nir_shader *co
 
       if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX &&
           args->shader_info->is_ngg &&
-          args->options->key.vs_common_out.export_prim_id) {
+          args->shader_info->vs.outinfo.export_prim_id) {
          declare_esgs_ring(&ctx);
       }
 
