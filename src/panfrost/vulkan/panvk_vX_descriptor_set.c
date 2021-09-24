@@ -55,7 +55,7 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
                           sizeof(struct panvk_descriptor_set),
                           VK_OBJECT_TYPE_DESCRIPTOR_SET);
    if (!set)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    set->layout = layout;
    set->descs = vk_alloc(&device->vk.alloc,
@@ -109,7 +109,7 @@ err_free_set:
    vk_free(&device->vk.alloc, set->ubos);
    vk_free(&device->vk.alloc, set->descs);
    vk_object_free(&device->vk, NULL, set);
-   return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 }
 
 VkResult
