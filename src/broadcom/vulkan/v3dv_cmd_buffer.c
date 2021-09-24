@@ -98,7 +98,7 @@ v3dv_CreateCommandPool(VkDevice _device,
    pool = vk_object_zalloc(&device->vk, pAllocator, sizeof(*pool),
                            VK_OBJECT_TYPE_COMMAND_POOL);
    if (pool == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (pAllocator)
       pool->alloc = *pAllocator;
@@ -156,7 +156,7 @@ cmd_buffer_create(struct v3dv_device *device,
                            8,
                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result;
    result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk);

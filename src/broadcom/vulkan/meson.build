@@ -50,7 +50,6 @@ libv3dv_files = files(
   'v3dv_query.c',
   'v3dv_queue.c',
   'v3dv_uniforms.c',
-  'v3dv_util.c',
   'v3dv_wsi.c',
 )
 

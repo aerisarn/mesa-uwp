@@ -39,6 +39,7 @@
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_image.h"
+#include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_util.h"
@@ -1873,13 +1874,6 @@ const nir_shader_compiler_options *v3dv_pipeline_get_nir_options(void);
 
 uint32_t v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev);
 uint32_t v3dv_physical_device_device_id(struct v3dv_physical_device *dev);
-
-VkResult __vk_errorf(struct v3dv_instance *instance, VkResult error,
-                     const char *file, int line,
-                     const char *format, ...);
-
-#define vk_error(instance, error) __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
-#define vk_errorf(instance, error, format, ...) __vk_errorf(instance, error, __FILE__, __LINE__, format, ## __VA_ARGS__);
 
 #ifdef DEBUG
 #define v3dv_debug_ignored_stype(sType) \

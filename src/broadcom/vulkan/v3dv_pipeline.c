@@ -3049,7 +3049,7 @@ graphics_pipeline_create(VkDevice _device,
                                VK_OBJECT_TYPE_PIPELINE);
 
    if (pipeline == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = pipeline_init(pipeline, device, cache,
                           pCreateInfo,
@@ -3284,7 +3284,7 @@ compute_pipeline_create(VkDevice _device,
    pipeline = vk_object_zalloc(&device->vk, pAllocator, sizeof(*pipeline),
                                VK_OBJECT_TYPE_PIPELINE);
    if (pipeline == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    result = compute_pipeline_init(pipeline, device, cache,
                                   pCreateInfo, pAllocator);
