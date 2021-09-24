@@ -2617,6 +2617,35 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       array_insert(b, b->keeps, instr);
       break;
    }
+   case nir_intrinsic_store_uniform_ir3: {
+      unsigned components = nir_src_num_components(intr->src[0]);
+      unsigned dst = nir_intrinsic_base(intr);
+      unsigned dst_lo = dst & 0xff;
+      unsigned dst_hi = dst >> 8;
+
+      struct ir3_instruction *src =
+         ir3_create_collect(b, ir3_get_src(ctx, &intr->src[0]), components);
+      struct ir3_instruction *a1 = NULL;
+      if (dst_hi) {
+         /* Encode only the high part of the destination in a1.x to increase the
+          * chance that we can reuse the a1.x value in subsequent stc
+          * instructions.
+          */
+         a1 = ir3_get_addr1(ctx, dst_hi << 8);
+      }
+
+      struct ir3_instruction *stc =
+         ir3_STC(ctx->block, create_immed(b, dst_lo),  0, src, 0);
+      stc->cat6.iim_val = components;
+      stc->cat6.type = TYPE_U32;
+      stc->barrier_conflict = IR3_BARRIER_CONST_W;
+      if (a1) {
+         ir3_instr_set_address(stc, a1);
+         stc->flags |= IR3_INSTR_A1EN;
+      }
+      array_insert(b, b->keeps, stc);
+      break;
+   }
    default:
       ir3_context_error(ctx, "Unhandled intrinsic type: %s\n",
                         nir_intrinsic_infos[intr->intrinsic].name);

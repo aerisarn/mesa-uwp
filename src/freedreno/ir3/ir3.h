@@ -2071,21 +2071,23 @@ static inline struct ir3_instruction *ir3_##name(                              \
 #define INSTR1NODST(name) __INSTR1(0, 0, name, OPC_##name)
 
 /* clang-format off */
-#define __INSTR2(flag, name, opc)                                              \
+#define __INSTR2(flag, dst_count, name, opc)                                   \
 static inline struct ir3_instruction *ir3_##name(                              \
    struct ir3_block *block, struct ir3_instruction *a, unsigned aflags,        \
    struct ir3_instruction *b, unsigned bflags)                                 \
 {                                                                              \
-   struct ir3_instruction *instr = ir3_instr_create(block, opc, 1, 2);         \
-   __ssa_dst(instr);                                                           \
+   struct ir3_instruction *instr = ir3_instr_create(block, opc, dst_count, 2); \
+   for (unsigned i = 0; i < dst_count; i++)                                    \
+      __ssa_dst(instr);                                                        \
    __ssa_src(instr, a, aflags);                                                \
    __ssa_src(instr, b, bflags);                                                \
    instr->flags |= flag;                                                       \
    return instr;                                                               \
 }
 /* clang-format on */
-#define INSTR2F(f, name) __INSTR2(IR3_INSTR_##f, name##_##f, OPC_##name)
-#define INSTR2(name)     __INSTR2(0, name, OPC_##name)
+#define INSTR2F(f, name)   __INSTR2(IR3_INSTR_##f, 1, name##_##f, OPC_##name)
+#define INSTR2(name)       __INSTR2(0, 1, name, OPC_##name)
+#define INSTR2NODST(name)  __INSTR2(0, 0, name, OPC_##name)
 
 /* clang-format off */
 #define __INSTR3(flag, dst_count, name, opc)                                   \
@@ -2374,6 +2376,7 @@ INSTR2(QUAD_SHUFFLE_BRCST)
 INSTR1(QUAD_SHUFFLE_HORIZ)
 INSTR1(QUAD_SHUFFLE_VERT)
 INSTR1(QUAD_SHUFFLE_DIAG)
+INSTR2NODST(STC)
 #if GPU >= 600
 INSTR3NODST(STIB);
 INSTR2(LDIB);
