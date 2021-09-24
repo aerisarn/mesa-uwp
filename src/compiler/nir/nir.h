@@ -5486,6 +5486,53 @@ typedef enum {
    nir_ray_query_value_world_ray_origin,
 } nir_ray_query_value;
 
+typedef struct {
+   /* True if gl_DrawID is considered uniform, i.e. if the preamble is run
+    * at least once per "internal" draw rather than per user-visible draw.
+    */
+   bool drawid_uniform;
+
+   /* True if the subgroup size is uniform. */
+   bool subgroup_size_uniform;
+
+   /* size/align for load/store_preamble. */
+   void (*def_size)(nir_ssa_def *def, unsigned *size, unsigned *align);
+
+   /* Total available size for load/store_preamble storage, in units
+    * determined by def_size.
+    */
+   unsigned preamble_storage_size;
+
+   /* Give the cost for an instruction. nir_opt_preamble will prioritize
+    * instructions with higher costs. Instructions with cost 0 may still be
+    * lifted, but only when required to lift other instructions with non-0
+    * cost (e.g. a load_const source of an expression).
+    */
+   float (*instr_cost_cb)(nir_instr *instr, const void *data);
+
+   /* Give the cost of rewriting the instruction to use load_preamble. This
+    * may happen from inserting move instructions, etc. If the benefit doesn't
+    * exceed the cost here then we won't rewrite it.
+    */
+   float (*rewrite_cost_cb)(nir_ssa_def *def, const void *data);
+
+   /* Instructions whose definitions should not be rewritten. These could
+    * still be moved to the preamble, but they shouldn't be the root of a
+    * replacement expression. Instructions with cost 0 and derefs are
+    * automatically included by the pass.
+    */
+   nir_instr_filter_cb avoid_instr_cb;
+
+   const void *cb_data;
+} nir_opt_preamble_options;
+
+bool
+nir_opt_preamble(nir_shader *shader,
+                 const nir_opt_preamble_options *options,
+                 unsigned *size);
+
+nir_function_impl *nir_shader_get_preamble(nir_shader *shader);
+
 #include "nir_inline_helpers.h"
 
 #ifdef __cplusplus
