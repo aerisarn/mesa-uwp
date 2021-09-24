@@ -165,6 +165,26 @@ base = args.baseline
 skips = os.path.join(os.path.dirname(__file__), "skips.csv")
 
 env = os.environ.copy()
+
+if "DISPLAY" not in env:
+    print_red("DISPLAY environment variable missing.")
+    sys.exit(1)
+p = subprocess.run(
+    ["deqp-runner", "--version"],
+    capture_output="True",
+    check=True,
+    env=env
+)
+for line in p.stdout.decode().split("\n"):
+    if line.find("deqp-runner") >= 0:
+        s = line.split(" ")[1].split(".")
+        if args.verbose > 1:
+            print("Checking deqp-version ({})".format(s))
+        # We want at least 0.9.0
+        if not (int(s[0]) > 0 or int(s[1]) >= 9):
+            print("Expecting deqp-runner 0.9.0+ version (got {})".format(".".join(s)))
+            sys.exit(1)
+
 env["PIGLIT_PLATFORM"] = "gbm"
 
 if "DRI_PRIME" in env:
