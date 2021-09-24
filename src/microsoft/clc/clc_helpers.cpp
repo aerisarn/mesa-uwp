@@ -105,7 +105,7 @@ class SPIRVKernelParser {
 public:
    SPIRVKernelParser() : curKernel(NULL)
    {
-      ctx = spvContextCreate(SPV_ENV_UNIVERSAL_1_0);
+      ctx = spvContextCreate(spirv_target);
    }
 
    ~SPIRVKernelParser()
