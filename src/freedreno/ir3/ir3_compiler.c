@@ -45,6 +45,7 @@ static const struct debug_named_value shader_debug_options[] = {
    {"nofp16",     IR3_DBG_NOFP16,     "Don't lower mediump to fp16"},
    {"nocache",    IR3_DBG_NOCACHE,    "Disable shader cache"},
    {"spillall",   IR3_DBG_SPILLALL,   "Spill as much as possible to test the spiller"},
+   {"nopreamble", IR3_DBG_NOPREAMBLE, "Disable the preamble pass"},
 #ifdef DEBUG
    /* DEBUG-only options: */
    {"schedmsgs",  IR3_DBG_SCHEDMSGS,  "Enable scheduler debug messages"},
@@ -244,6 +245,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
 
       /* TODO: implement private memory on earlier gen's */
       compiler->has_pvtmem = true;
+
+      compiler->has_preamble = true;
 
       compiler->tess_use_shared = dev_info->a6xx.tess_use_shared;
 

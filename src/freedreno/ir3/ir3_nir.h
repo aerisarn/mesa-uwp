@@ -73,6 +73,8 @@ bool ir3_nir_lower_load_constant(nir_shader *nir, struct ir3_shader_variant *v);
 void ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v);
 bool ir3_nir_lower_ubo_loads(nir_shader *nir, struct ir3_shader_variant *v);
 bool ir3_nir_fixup_load_uniform(nir_shader *nir);
+bool ir3_nir_opt_preamble(nir_shader *nir, struct ir3_shader_variant *v);
+bool ir3_nir_lower_preamble(nir_shader *nir, struct ir3_shader_variant *v);
 
 nir_ssa_def *ir3_nir_try_propagate_bit_shift(nir_builder *b,
                                              nir_ssa_def *offset,

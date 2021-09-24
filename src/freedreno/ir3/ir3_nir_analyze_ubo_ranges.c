@@ -369,7 +369,9 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
     * allocation of the driver params' const space, because UBO pointers can
     * be driver params but this pass usually eliminatings them.
     */
-   struct ir3_const_state worst_case_const_state = {};
+   struct ir3_const_state worst_case_const_state = {
+      .preamble_size = const_state->preamble_size,
+   };
    ir3_setup_const_state(nir, v, &worst_case_const_state);
    const uint32_t max_upload =
       (ir3_max_const(v) - worst_case_const_state.offsets.immediate) * 16;
