@@ -56,6 +56,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_image.h"
+#include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_util.h"
@@ -97,19 +98,7 @@ bool lvp_device_entrypoint_is_enabled(int index, uint32_t core_version,
                                        const struct vk_instance_extension_table *instance,
                                        const struct vk_device_extension_table *device);
 
-
-/* Whenever we generate an error, pass it through this function. Useful for
- * debugging, where we can break on it. Only call at error site, not when
- * propagating errors. Might be useful to plug in a stack trace here.
- */
-
-struct lvp_instance;
-VkResult __vk_errorf(struct lvp_instance *instance, VkResult error, const char *file, int line, const char *format, ...);
-
 #define LVP_DEBUG_ALL_ENTRYPOINTS (1 << 0)
-
-#define vk_error(instance, error) __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
-#define vk_errorf(instance, error, format, ...) __vk_errorf(instance, error, __FILE__, __LINE__, format, ## __VA_ARGS__);
 
 void __lvp_finishme(const char *file, int line, const char *format, ...)
    lvp_printflike(3, 4);
