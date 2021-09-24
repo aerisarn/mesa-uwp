@@ -61,7 +61,7 @@ struct d3d12_format_info {
 };
 
 struct d3d12_format_info
-d3d12_get_format_info(enum pipe_format format, enum pipe_texture_target);
+d3d12_get_format_info(enum pipe_format resource_format, enum pipe_format format, enum pipe_texture_target);
 
 enum pipe_format
 d3d12_emulated_vtx_format(enum pipe_format fmt);

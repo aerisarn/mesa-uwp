@@ -302,7 +302,7 @@ d3d12_get_resource_srv_format(enum pipe_format f, enum pipe_texture_target targe
         PIPE_SWIZZLE_0, PIPE_SWIZZLE_1, PIPE_SWIZZLE_NONE }
 
 struct d3d12_format_info
-d3d12_get_format_info(enum pipe_format pformat, enum pipe_texture_target target)
+d3d12_get_format_info(enum pipe_format resource_format, enum pipe_format pformat, enum pipe_texture_target target)
 {
    DEF_SWIZZLE(IDENTITY, X, Y, Z, W);
    DEF_SWIZZLE(RGB1, X, Y, Z, 1);
@@ -323,9 +323,16 @@ d3d12_get_format_info(enum pipe_format pformat, enum pipe_texture_target target)
 
    const struct util_format_description
       *format_desc = util_format_description(pformat);
+   unsigned plane_count = util_format_get_num_planes(resource_format);
    if (!util_format_is_srgb(pformat)) {
       if (target == PIPE_BUFFER && util_format_is_alpha(pformat)) {
          swizzle = BUFFER_SWIZZLE;
+      } else if (plane_count > 1) {
+         for (plane_slice = 0; plane_slice < plane_count; ++plane_slice) {
+            if (util_format_get_plane_format(resource_format, plane_slice) == pformat)
+               break;
+         }
+         assert(plane_slice < plane_count);
       } else if (pformat == PIPE_FORMAT_A8_UNORM) {
          /* no need to swizzle, it's natively supported */
       } else if (util_format_is_intensity(pformat)) {

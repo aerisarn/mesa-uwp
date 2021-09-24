@@ -799,7 +799,7 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
    struct d3d12_resource *res = d3d12_resource(texture);
    struct d3d12_screen *screen = d3d12_screen(texture->screen);
 
-   struct d3d12_format_info format_info = d3d12_get_format_info(state->format, state->target);
+   struct d3d12_format_info format_info = d3d12_get_format_info(res->overall_format, state->format, state->target);
    D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
    desc.Format = d3d12_get_resource_srv_format(state->format, state->target);
    desc.ViewDimension = view_dimension(state->target, texture->nr_samples);
@@ -914,7 +914,7 @@ d3d12_create_sampler_view(struct pipe_context *pctx,
    sampler_view->array_size = texture->array_size;
    sampler_view->texture_generation_id = p_atomic_read(&res->generation_id);
 
-   struct d3d12_format_info format_info = d3d12_get_format_info(state->format, state->target);
+   struct d3d12_format_info format_info = d3d12_get_format_info(res->overall_format, state->format, state->target);
    pipe_swizzle swizzle[4] = {
       format_info.swizzle[sampler_view->base.swizzle_r],
       format_info.swizzle[sampler_view->base.swizzle_g],
