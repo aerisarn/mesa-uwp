@@ -136,11 +136,17 @@ tu6_texswiz(const VkComponentMapping *comps,
    case VK_FORMAT_D24_UNORM_S8_UINT:
       if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT) {
          if (!has_z24uint_s8uint) {
-            /* using FMT6_8_8_8_8_UINT */
+            /* using FMT6_8_8_8_8_UINT, so need to pick out the W channel and
+             * swizzle (0,0,1) in the rest (see "Conversion to RGBA").
+             */
             swiz[0] = A6XX_TEX_W;
             swiz[1] = A6XX_TEX_ZERO;
+            swiz[2] = A6XX_TEX_ZERO;
+            swiz[3] = A6XX_TEX_ONE;
          } else {
-            /* using FMT6_Z24_UINT_S8_UINT */
+            /* using FMT6_Z24_UINT_S8_UINT, which is (d, s, 0, 1), so need to
+             * swizzle away the d.
+             */
             swiz[0] = A6XX_TEX_Y;
             swiz[1] = A6XX_TEX_ZERO;
          }
