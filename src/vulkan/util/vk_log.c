@@ -26,6 +26,7 @@
 #include "vk_debug_report.h"
 
 #include "vk_command_buffer.h"
+#include "vk_enum_to_str.h"
 #include "vk_queue.h"
 #include "vk_device.h"
 #include "vk_physical_device.h"
@@ -246,4 +247,92 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 
    ralloc_free(message);
    ralloc_free(message_idname);
+}
+
+static struct vk_object_base *
+vk_object_for_error(struct vk_object_base *obj, VkResult error)
+{
+   if (obj == NULL)
+      return NULL;
+
+   switch (error) {
+   case VK_ERROR_OUT_OF_HOST_MEMORY:
+   case VK_ERROR_INITIALIZATION_FAILED:
+   case VK_ERROR_LAYER_NOT_PRESENT:
+   case VK_ERROR_UNKNOWN:
+      return &vk_object_to_instance(obj)->base;
+   case VK_ERROR_FEATURE_NOT_PRESENT:
+      return &vk_object_to_physical_device(obj)->base;
+   case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+   case VK_ERROR_MEMORY_MAP_FAILED:
+   case VK_ERROR_TOO_MANY_OBJECTS:
+      return &vk_object_to_device(obj)->base;
+   default:
+      assert(obj->client_visible);
+      return obj;
+   }
+}
+
+VkResult
+__vk_errorv_impl(const void *_obj, VkResult error,
+                 const char *file, int line,
+                 const char *format, va_list va)
+{
+   struct vk_object_base *object = (struct vk_object_base *)_obj;
+   struct vk_instance *instance = vk_object_to_instance(object);
+   object = vk_object_for_error(object, error);
+
+   /* If object->client_visible isn't set then the object hasn't been fully
+    * constructed and we shouldn't hand it back to the client.  This typically
+    * happens if an error is thrown during object construction.  This is safe
+    * to do as long as vk_object_base_init() has already been called.
+    */
+   if (object && !object->client_visible)
+      object = NULL;
+
+   const char *error_str = vk_Result_to_str(error);
+
+   if (format) {
+      char *message = ralloc_vasprintf(NULL, format, va);
+
+      if (object) {
+         __vk_log(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
+                  VK_LOG_OBJS(object), file, line,
+                  "%s (%s)", message, error_str);
+      } else {
+         __vk_log(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
+                  VK_LOG_NO_OBJS(instance), file, line,
+                  "%s (%s)", message, error_str);
+      }
+   } else {
+      if (object) {
+         __vk_log(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
+                  VK_LOG_OBJS(object), file, line,
+                  "%s", error_str);
+      } else {
+         __vk_log(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT,
+                  VK_LOG_NO_OBJS(instance), file, line,
+                  "%s", error_str);
+      }
+   }
+
+   return error;
+}
+
+VkResult
+__vk_errorf_impl(const void *_obj, VkResult error,
+                 const char *file, int line,
+                 const char *format, ...)
+{
+   va_list va;
+
+   va_start(va, format);
+   VkResult result = __vk_errorv_impl(_obj, error, file, line, format, va);
+   va_end(va);
+
+   return result;
 }

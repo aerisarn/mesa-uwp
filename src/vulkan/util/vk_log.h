@@ -71,3 +71,27 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
               int line,
               const char *format,
               ...);
+
+#define vk_error(obj, error) \
+   __vk_errorf_impl(obj, error, __FILE__, __LINE__, NULL)
+
+#define vk_errorf(obj, error, ...) \
+   __vk_errorf_impl(obj, error, __FILE__, __LINE__, __VA_ARGS__)
+
+/* For now, the function is named __vk_errorf_impl and we use a macro to
+ * re-name it for any drivers which include this header.  This is to prevent
+ * linking errors while we do the rework.  We'll drop it once everyone is
+ * using the common log function.
+ */
+#define __vk_errorf(...) __vk_errorf_impl(__VA_ARGS__)
+#define __vk_errorv(...) __vk_errorv_impl(__VA_ARGS__)
+
+VkResult
+__vk_errorv_impl(const void *_obj, VkResult error,
+                 const char *file, int line,
+                 const char *format, va_list va);
+
+VkResult PRINTFLIKE(5, 6)
+__vk_errorf_impl(const void *_obj, VkResult error,
+                 const char *file, int line,
+                 const char *format, ...);
