@@ -579,6 +579,9 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
          struct zink_fence *fence = he->data;
          struct zink_batch_state *bs = he->data;
          if (zink_check_batch_completion(ctx, fence->batch_id, true)) {
+            if (bs->fence.submitted && !bs->fence.completed)
+               /* this fence is already done, so we need vulkan to release the cmdbuf */
+               zink_vkfence_wait(screen, &bs->fence, PIPE_TIMEOUT_INFINITE);
             zink_reset_batch_state(ctx, he->data);
             _mesa_hash_table_remove(&ctx->batch_states, he);
             util_dynarray_append(&ctx->free_batch_states, struct zink_batch_state *, bs);
