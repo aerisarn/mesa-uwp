@@ -114,6 +114,7 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       ASSERTED int cmdbuf_n = 0, queue_n = 0;
       for (int i = 0; i < object_count; i++) {
          struct vk_object_base *base = objects[i];
+         assert(base->client_visible);
 
          switch (base->type) {
          case VK_OBJECT_TYPE_COMMAND_BUFFER: {
