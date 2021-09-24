@@ -4535,6 +4535,18 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(amd_shader_ballot, cap);
          break;
 
+      case SpvCapabilitySubgroupDispatch:
+         spv_check_supported(subgroup_dispatch, cap);
+         /* Missing :
+          *   - SpvOpGetKernelLocalSizeForSubgroupCount
+          *   - SpvOpGetKernelMaxNumSubgroups
+          *   - SpvExecutionModeSubgroupsPerWorkgroup
+          *   - SpvExecutionModeSubgroupsPerWorkgroupId
+          */
+         vtn_warn("Not fully supported capability: %s",
+                  spirv_capability_to_string(cap));
+         break;
+
       case SpvCapabilityVariablePointersStorageBuffer:
       case SpvCapabilityVariablePointers:
          spv_check_supported(variable_pointers, cap);

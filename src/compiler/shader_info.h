@@ -91,6 +91,7 @@ struct spirv_supported_capabilities {
    bool subgroup_arithmetic;
    bool subgroup_ballot;
    bool subgroup_basic;
+   bool subgroup_dispatch;
    bool subgroup_quad;
    bool subgroup_shuffle;
    bool subgroup_uniform_control_flow;
