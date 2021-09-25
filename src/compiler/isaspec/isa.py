@@ -248,6 +248,10 @@ class BitSet(object):
         self.xml = xml
         self.name = xml.attrib['name']
 
+        # Used for generated encoder, to de-duplicate encoding for
+        # similar instructions:
+        self.snippets = {}
+
         if 'size' in xml.attrib:
             assert('extends' not in xml.attrib)
             self.size = int(xml.attrib['size'])

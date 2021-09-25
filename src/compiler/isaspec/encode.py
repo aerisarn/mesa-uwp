@@ -467,6 +467,21 @@ ${s.expr_name(leaf.get_root(), expr)}(struct encode_state *s, struct bitset_para
  */
 
 %for root in s.encode_roots():
+%   for leaf in s.encode_leafs(root):
+<% snippet = encode_bitset.render(s=s, root=root, leaf=leaf) %>
+%      if snippet not in root.snippets.keys():
+<% snippet_name = "snippet" + root.get_c_name() + "_" + str(len(root.snippets)) %>
+static bitmask_t
+${snippet_name}(struct encode_state *s, struct bitset_params *p, ${root.encode.type} src)
+{
+   bitmask_t val = uint64_t_to_bitmask(0);
+${snippet}
+   return val;
+}
+<% root.snippets[snippet] = snippet_name %>
+%      endif
+%   endfor
+
 static bitmask_t
 encode${root.get_c_name()}(struct encode_state *s, struct bitset_params *p, ${root.encode.type} src)
 {
@@ -474,8 +489,10 @@ encode${root.get_c_name()}(struct encode_state *s, struct bitset_params *p, ${ro
    switch (${root.get_c_name()}_case(s, src)) {
 %      for leaf in s.encode_leafs(root):
    case ${s.case_name(root, leaf.name)}: {
+<% snippet = encode_bitset.render(s=s, root=root, leaf=leaf) %>
       bitmask_t val = uint64_t_to_bitmask(${hex(leaf.get_pattern().match)});
-       ${encode_bitset.render(s=s, root=root, leaf=leaf)}
+      BITSET_OR(val.bitset, val.bitset, ${root.snippets[snippet]}(s, p, src).bitset);
+      return val;
     }
 %      endfor
    default:
@@ -490,8 +507,10 @@ encode${root.get_c_name()}(struct encode_state *s, struct bitset_params *p, ${ro
    return uint64_t_to_bitmask(0);
 %   else: # single case bitset, no switch
 %      for leaf in s.encode_leafs(root):
+<% snippet = encode_bitset.render(s=s, root=root, leaf=leaf) %>
       bitmask_t val = uint64_t_to_bitmask(${hex(leaf.get_pattern().match)});
-       ${encode_bitset.render(s=s, root=root, leaf=leaf)}
+      BITSET_OR(val.bitset, val.bitset, ${root.snippets[snippet]}(s, p, src).bitset);
+      return val;
 %      endfor
 %   endif
 }
