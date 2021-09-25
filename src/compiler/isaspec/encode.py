@@ -298,13 +298,6 @@ class State(object):
     def expr_name(self, root, expr):
        return root.get_c_name() + '_' + expr.get_c_name()
 
-    def has_jmp(self, instructions):
-        # I'm sure there is some clever more pythony way to do this:
-        for instr in instructions:
-            if instr[0] == 'JMP':
-                return True
-        return False
-
 template = """\
 /* Copyright (C) 2020 Google, Inc.
  *
@@ -418,21 +411,6 @@ struct bitset_params {
 %endfor
 };
 
-#define push(v) do { \
-            assert(sp < ARRAY_SIZE(stack)); \
-            stack[sp] = (v); \
-            sp++; \
-        } while (0)
-#define peek() ({ \
-            assert(sp < ARRAY_SIZE(stack)); \
-            stack[sp - 1]; \
-        })
-#define pop() ({ \
-            assert(sp > 0); \
-            --sp; \
-            stack[sp]; \
-        })
-
 <%def name="render_expr(leaf, expr)">
 static inline int64_t
 ${s.expr_name(leaf.get_root(), expr)}(struct encode_state *s, struct bitset_params *p, ${leaf.get_root().encode.type} src)
@@ -473,10 +451,6 @@ ${s.expr_name(leaf.get_root(), expr)}(struct encode_state *s, struct bitset_para
 %      endfor
 %   endfor
 %endfor
-
-#undef pop
-#undef peek
-#undef push
 
 
 <%def name="case_pre(root, expr)">
