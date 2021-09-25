@@ -1814,6 +1814,7 @@ void si_vs_key_update_inputs(struct si_context *sctx)
 
    if (vs->info.base.vs.blit_sgprs_amd) {
       si_clear_vs_key_inputs(sctx, key, &key->part.vs.prolog);
+      key->opt.prefer_mono = 0;
       return;
    }
 
