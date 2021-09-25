@@ -374,6 +374,9 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    /* Apply a colormask */
    blended = nir_color_mask(b, options->rt[rt].colormask, blended, dst);
 
+   if (src_num_comps != 4)
+      blended = nir_channels(b, blended, BITFIELD_MASK(src_num_comps));
+
    /* Write out the final color instead of the input */
    nir_instr_rewrite_src_ssa(instr, &intr->src[1], blended);
    return true;
