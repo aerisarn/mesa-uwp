@@ -128,6 +128,15 @@ tc_set_resource_reference(struct pipe_resource **dst, struct pipe_resource *src)
    pipe_reference(NULL, &src->reference); /* only increment refcount */
 }
 
+/* Assign src to dst while dst is uninitialized. */
+static inline void
+tc_set_vertex_state_reference(struct pipe_vertex_state **dst,
+                              struct pipe_vertex_state *src)
+{
+   *dst = src;
+   pipe_reference(NULL, &src->reference); /* only increment refcount */
+}
+
 /* Unreference dst but don't touch the dst pointer. */
 static inline void
 tc_drop_resource_reference(struct pipe_resource *dst)
@@ -158,6 +167,20 @@ tc_drop_so_target_reference(struct pipe_stream_output_target *dst)
 {
    if (pipe_reference(&dst->reference, NULL)) /* only decrement refcount */
       dst->context->stream_output_target_destroy(dst->context, dst);
+}
+
+/**
+ * Subtract the given number of references.
+ */
+static inline void
+tc_drop_vertex_state_references(struct pipe_vertex_state *dst, int num_refs)
+{
+   int count = p_atomic_add_return(&dst->reference.count, -num_refs);
+
+   assert(count >= 0);
+   /* Underflows shouldn't happen, but let's be safe. */
+   if (count <= 0)
+      dst->screen->vertex_state_destroy(dst->screen, dst);
 }
 
 /* We don't want to read or write min_index and max_index, because
@@ -3306,6 +3329,165 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
    }
 }
 
+struct tc_draw_vstate_single {
+   struct tc_call_base base;
+   struct pipe_draw_start_count_bias draw;
+
+   /* The following states must be together without holes because they are
+    * compared by draw merging.
+    */
+   struct pipe_vertex_state *state;
+   uint32_t partial_velem_mask;
+   struct pipe_draw_vertex_state_info info;
+};
+
+static bool
+is_next_call_a_mergeable_draw_vstate(struct tc_draw_vstate_single *first,
+                                     struct tc_draw_vstate_single *next)
+{
+   if (next->base.call_id != TC_CALL_draw_vstate_single)
+      return false;
+
+   return !memcmp(&first->state, &next->state,
+                  offsetof(struct tc_draw_vstate_single, info) +
+                  sizeof(struct pipe_draw_vertex_state_info) -
+                  offsetof(struct tc_draw_vstate_single, state));
+}
+
+static uint16_t
+tc_call_draw_vstate_single(struct pipe_context *pipe, void *call, uint64_t *last_ptr)
+{
+   /* Draw call merging. */
+   struct tc_draw_vstate_single *first = to_call(call, tc_draw_vstate_single);
+   struct tc_draw_vstate_single *last = (struct tc_draw_vstate_single *)last_ptr;
+   struct tc_draw_vstate_single *next = get_next_call(first, tc_draw_vstate_single);
+
+   /* If at least 2 consecutive draw calls can be merged... */
+   if (next != last &&
+       is_next_call_a_mergeable_draw_vstate(first, next)) {
+      /* The maximum number of merged draws is given by the batch size. */
+      struct pipe_draw_start_count_bias draws[TC_SLOTS_PER_BATCH /
+                                              call_size(tc_draw_vstate_single)];
+      unsigned num_draws = 2;
+
+      draws[0] = first->draw;
+      draws[1] = next->draw;
+
+      /* Find how many other draws can be merged. */
+      next = get_next_call(next, tc_draw_vstate_single);
+      for (; next != last &&
+           is_next_call_a_mergeable_draw_vstate(first, next);
+           next = get_next_call(next, tc_draw_vstate_single),
+           num_draws++)
+         draws[num_draws] = next->draw;
+
+      pipe->draw_vertex_state(pipe, first->state, first->partial_velem_mask,
+                              first->info, draws, num_draws);
+      /* Since all draws use the same state, drop all references at once. */
+      tc_drop_vertex_state_references(first->state, num_draws);
+
+      return call_size(tc_draw_vstate_single) * num_draws;
+   }
+
+   pipe->draw_vertex_state(pipe, first->state, first->partial_velem_mask,
+                           first->info, &first->draw, 1);
+   tc_drop_vertex_state_references(first->state, 1);
+   return call_size(tc_draw_vstate_single);
+}
+
+struct tc_draw_vstate_multi {
+   struct tc_call_base base;
+   uint32_t partial_velem_mask;
+   struct pipe_draw_vertex_state_info info;
+   unsigned num_draws;
+   struct pipe_vertex_state *state;
+   struct pipe_draw_start_count_bias slot[0];
+};
+
+static uint16_t
+tc_call_draw_vstate_multi(struct pipe_context *pipe, void *call, uint64_t *last)
+{
+   struct tc_draw_vstate_multi *info = (struct tc_draw_vstate_multi*)call;
+
+   pipe->draw_vertex_state(pipe, info->state, info->partial_velem_mask,
+                           info->info, info->slot, info->num_draws);
+   tc_drop_vertex_state_references(info->state, 1);
+   return info->base.num_slots;
+}
+
+static void
+tc_draw_vertex_state(struct pipe_context *_pipe,
+                     struct pipe_vertex_state *state,
+                     uint32_t partial_velem_mask,
+                     struct pipe_draw_vertex_state_info info,
+                     const struct pipe_draw_start_count_bias *draws,
+                     unsigned num_draws)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+
+   if (unlikely(tc->add_all_gfx_bindings_to_buffer_list))
+      tc_add_all_gfx_bindings_to_buffer_list(tc);
+
+   if (num_draws == 1) {
+      /* Single draw. */
+      struct tc_draw_vstate_single *p =
+         tc_add_call(tc, TC_CALL_draw_vstate_single, tc_draw_vstate_single);
+      p->partial_velem_mask = partial_velem_mask;
+      p->draw = draws[0];
+      p->info.mode = info.mode;
+      p->info.take_vertex_state_ownership = false;
+
+      /* This should be always 0 for simplicity because we assume that
+       * index_bias doesn't vary.
+       */
+      assert(draws[0].index_bias == 0);
+
+      if (!info.take_vertex_state_ownership)
+         tc_set_vertex_state_reference(&p->state, state);
+      else
+         p->state = state;
+      return;
+   }
+
+   const int draw_overhead_bytes = sizeof(struct tc_draw_vstate_multi);
+   const int one_draw_slot_bytes = sizeof(((struct tc_draw_vstate_multi*)NULL)->slot[0]);
+   const int slots_for_one_draw = DIV_ROUND_UP(draw_overhead_bytes + one_draw_slot_bytes,
+                                               sizeof(struct tc_call_base));
+   /* Multi draw. */
+   int total_offset = 0;
+   bool take_vertex_state_ownership = info.take_vertex_state_ownership;
+   while (num_draws) {
+      struct tc_batch *next = &tc->batch_slots[tc->next];
+
+      int nb_slots_left = TC_SLOTS_PER_BATCH - next->num_total_slots;
+      /* If there isn't enough place for one draw, try to fill the next one */
+      if (nb_slots_left < slots_for_one_draw)
+         nb_slots_left = TC_SLOTS_PER_BATCH;
+      const int size_left_bytes = nb_slots_left * sizeof(struct tc_call_base);
+
+      /* How many draws can we fit in the current batch */
+      const int dr = MIN2(num_draws, (size_left_bytes - draw_overhead_bytes) / one_draw_slot_bytes);
+
+      /* Non-indexed call or indexed with a real index buffer. */
+      struct tc_draw_vstate_multi *p =
+         tc_add_slot_based_call(tc, TC_CALL_draw_vstate_multi, tc_draw_vstate_multi, dr);
+
+      if (!take_vertex_state_ownership)
+         tc_set_vertex_state_reference(&p->state, state);
+      else
+         p->state = state;
+
+      take_vertex_state_ownership = false;
+      p->info.mode = info.mode;
+      p->info.take_vertex_state_ownership = false;
+      p->num_draws = dr;
+      memcpy(p->slot, &draws[total_offset], sizeof(draws[0]) * dr);
+      num_draws -= dr;
+
+      total_offset += dr;
+   }
+}
+
 struct tc_launch_grid_call {
    struct tc_call_base base;
    struct pipe_grid_info info;
@@ -4102,6 +4284,7 @@ threaded_context_create(struct pipe_context *pipe,
 
    CTX_INIT(flush);
    CTX_INIT(draw_vbo);
+   CTX_INIT(draw_vertex_state);
    CTX_INIT(launch_grid);
    CTX_INIT(resource_copy_region);
    CTX_INIT(blit);
