@@ -44,8 +44,8 @@ import re
 #      ... encode field A ...
 #      ... encode field B ...
 #
-#      // Third level - each display field can be resolved in potentially
-#      // resolved by multiple different overrides, you can end up with
+#      // Third level - each display field can be potentially resolved
+#      // by multiple different overrides, you can end up with
 #      // an if/else ladder for an individual display field
 #      if (field_c_case1.expression()) {
 #         ... encode field C ...
