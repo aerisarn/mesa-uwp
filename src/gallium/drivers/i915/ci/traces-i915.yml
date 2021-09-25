@@ -8,7 +8,7 @@ traces:
   - path: glxgears/glxgears-2.trace
     expectations:
       - device: i915-g33
-        checksum: 83b1a41392bec71f7aeea6f1170cc23d
+        checksum: ee8dcdb3b9eaef2b32a2914b89373419
   - path: gputest/plot3d.trace
     expectations:
       - device: i915-g33
@@ -41,7 +41,7 @@ traces:
   - path: humus/Portals.trace
     expectations:
       - device: i915-g33
-        checksum: 4cb0eb98c89c4d7ff962a25cc7931d8c
+        checksum: f782469019417923831d5d53dbe6a507
   # The shadow raytracing shader fails to compile
   #- path: humus/RaytracedShadows.trace
   #  expectations:
@@ -55,9 +55,9 @@ traces:
   - path: neverball/neverball.trace
     expectations:
       - device: i915-g33
-        checksum: bb7f4ddd30c36418a94ad8f02fc6bd09
+        checksum: f925aa92da47ebc757285f826113f4db
   - path: valve/counterstrike-v2.trace
     # Tree foliage rendering is extra aliased.
     expectations:
       - device: i915-g33
-        checksum: 837c0aabe5d6bf75a071a3fa45cf448f
+        checksum: d17298ad3bb44b43b6c17e017f7c1e6a

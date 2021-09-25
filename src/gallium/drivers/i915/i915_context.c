@@ -27,6 +27,7 @@
 
 #include "i915_context.h"
 #include "i915_batch.h"
+#include "i915_debug.h"
 #include "i915_query.h"
 #include "i915_resource.h"
 #include "i915_screen.h"
@@ -41,8 +42,6 @@
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 #include "util/u_upload_mgr.h"
-
-DEBUG_GET_ONCE_BOOL_OPTION(i915_no_vbuf, "I915_NO_VBUF", false)
 
 /*
  * Draw functions
@@ -216,7 +215,7 @@ i915_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
     */
    i915->draw = draw_create(&i915->base);
    assert(i915->draw);
-   if (!debug_get_option_i915_no_vbuf()) {
+   if (i915_debug & DBG_VBUF) {
       draw_set_rasterize_stage(i915->draw, i915_draw_vbuf_stage(i915));
    } else {
       draw_set_rasterize_stage(i915->draw, i915_draw_render_stage(i915));

@@ -43,9 +43,6 @@ spec@!opengl 1.0@gl-1.0-bitmap-heart-dance,Fail
 # "MESA: error: Empty fragment shader"
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
 
-# "../src/gallium/drivers/i915/i915_prim_vbuf.c:470: draw_arrays_fallback: Assertion `0' failed."
-spec@!opengl 1.0@gl-1.0-long-line-loop,Crash
-
 # "Probe color at (74,4)
 #    Expected: 1.000000 1.000000 1.000000
 #    Observed: 0.000000 0.000000 0.000000
@@ -60,35 +57,11 @@ spec@!opengl 1.0@gl-1.0-long-line-loop,Crash
 #  Failure with Scissor Test set to fail mode."
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 
-# "../src/gallium/drivers/i915/i915_prim_vbuf.c:470: draw_arrays_fallback: Assertion `0' failed."
-spec@!opengl 1.0@gl-1.0-ortho-pos,Crash
-
 spec@!opengl 1.0@gl-1.0-scissor-offscreen,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 
-spec@!opengl 1.1@clipflat,Fail
-spec@!opengl 1.1@clipflat@glBegin/End(GL_TRIANGLE_FAN)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glBegin/End(GL_TRIANGLE_FAN)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glBegin/End(GL_QUADS)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glBegin/End(GL_QUADS)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glBegin/End(GL_QUAD_STRIP)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glBegin/End(GL_QUAD_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawArrays(GL_TRIANGLE_FAN)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawArrays(GL_TRIANGLE_FAN)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawArrays(GL_QUADS)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawArrays(GL_QUADS)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawArrays(GL_QUAD_STRIP)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawArrays(GL_QUAD_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawElements(GL_TRIANGLE_FAN)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawElements(GL_TRIANGLE_FAN)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawElements(GL_QUADS)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawElements(GL_QUADS)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawElements(GL_QUAD_STRIP)- glFrontFace(GL_CCW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
-spec@!opengl 1.1@clipflat@glDrawElements(GL_QUAD_STRIP)- glFrontFace(GL_CW)- glPolygonMode(GL_FILL)- quadrant: center middle PV: FIRST,Fail
 spec@!opengl 1.1@depthstencil-default_fb-clear,Fail
 spec@!opengl 1.1@getteximage-formats,Fail
-spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_quad_strip,Crash
-spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 vbo gl_quad_strip,Crash
 spec@!opengl 1.1@gl-1.2-texture-base-level,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
 spec@!opengl 1.1@linestipple,Fail
@@ -96,9 +69,6 @@ spec@!opengl 1.1@linestipple@Factor 2x,Fail
 spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple@Line loop,Fail
 spec@!opengl 1.1@linestipple@Line strip,Fail
-
-# longprim: ../src/gallium/drivers/i915/i915_prim_vbuf.c:470: draw_arrays_fallback: Assertion `0' failed.
-spec@!opengl 1.1@longprim,Crash
 
 # "../src/compiler/nir/nir_lower_int_to_float.c:102: lower_alu_instr: Assertion `nir_alu_type_get_base_type(info->output_type) != nir_type_int && nir_alu_type_get_base_type(info->output_type) != nir_type_uint' failed."
 spec@!opengl 1.1@point-line-no-cull,Crash
@@ -310,7 +280,6 @@ spec@arb_occlusion_query@occlusion_query_conform,Fail
 spec@arb_occlusion_query@occlusion_query_meta_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_no_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_save,Fail
-spec@arb_occlusion_query@occlusion_query_order,Crash
 
 spec@arb_pixel_buffer_object@cubemap npot pbo,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small,Fail

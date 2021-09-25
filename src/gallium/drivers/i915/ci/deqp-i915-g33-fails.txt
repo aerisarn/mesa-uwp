@@ -1,18 +1,3 @@
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4971
-# "../src/gallium/drivers/i915/i915_prim_vbuf.c:628: i915_vbuf_render_draw_elements: Assertion `0' failed."
-dEQP-GLES2.functional.buffer.write.random.0,Crash
-dEQP-GLES2.functional.buffer.write.random.1,Crash
-dEQP-GLES2.functional.buffer.write.random.2,Crash
-dEQP-GLES2.functional.buffer.write.random.3,Crash
-dEQP-GLES2.functional.buffer.write.random.4,Crash
-dEQP-GLES2.functional.buffer.write.random.5,Crash
-dEQP-GLES2.functional.buffer.write.random.8,Crash
-dEQP-GLES2.functional.buffer.write.random.9,Crash
-dEQP-GLES2.functional.buffer.write.recreate_store.random_1,Crash
-dEQP-GLES2.functional.buffer.write.recreate_store.random_2,Crash
-dEQP-GLES2.functional.buffer.write.recreate_store.random_3,Crash
-dEQP-GLES2.functional.buffer.write.recreate_store.random_4,Crash
-
 # Lines with the center outside the viewport clipped out when they shouldn't be?
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
