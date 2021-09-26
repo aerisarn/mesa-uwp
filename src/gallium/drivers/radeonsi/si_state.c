@@ -3588,14 +3588,15 @@ static void si_emit_msaa_config(struct si_context *sctx)
       }
    }
 
-   /* Required by OpenGL line rasterization.
+   /* The DX10 diamond test is optional in GL and decreases line rasterization
+    * performance, so don't use it.
     *
     * TODO: We should also enable perpendicular endcaps for AA lines,
     *       but that requires implementing line stippling in the pixel
     *       shader. SC can only do line stippling with axis-aligned
     *       endcaps.
     */
-   unsigned sc_line_cntl = S_028BDC_DX10_DIAMOND_TEST_ENA(1);
+   unsigned sc_line_cntl = 0;
    unsigned sc_aa_config = 0;
 
    if (coverage_samples > 1) {
