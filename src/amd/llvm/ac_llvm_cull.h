@@ -46,6 +46,8 @@ struct ac_cull_options {
    bool cull_w; /* cull primitives with all W < 0 */
 
    bool use_halfz_clip_space;
+
+   uint8_t num_vertices; /* 1..3 */
 };
 
 /* Callback invoked in the inner-most branch where the primitive is accepted. */

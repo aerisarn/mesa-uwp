@@ -1819,6 +1819,12 @@ static inline unsigned si_get_total_colormask(struct si_context *sctx)
    ((1 << PIPE_PRIM_LINES) | (1 << PIPE_PRIM_LINE_LOOP) | (1 << PIPE_PRIM_LINE_STRIP) |            \
     (1 << PIPE_PRIM_LINES_ADJACENCY) | (1 << PIPE_PRIM_LINE_STRIP_ADJACENCY))
 
+#define UTIL_ALL_PRIM_TRIANGLE_MODES \
+   ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP) | \
+    (1 << PIPE_PRIM_TRIANGLE_FAN) | (1 << PIPE_PRIM_QUADS) | (1 << PIPE_PRIM_QUAD_STRIP) | \
+    (1 << PIPE_PRIM_POLYGON) | (1 << PIPE_PRIM_TRIANGLES_ADJACENCY) | \
+    (1 << PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY))
+
 static inline bool util_prim_is_lines(unsigned prim)
 {
    return ((1 << prim) & UTIL_ALL_PRIM_LINE_MODES) != 0;
@@ -1831,11 +1837,12 @@ static inline bool util_prim_is_points_or_lines(unsigned prim)
 
 static inline bool util_rast_prim_is_triangles(unsigned prim)
 {
-   return ((1 << prim) &
-           ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP) |
-            (1 << PIPE_PRIM_TRIANGLE_FAN) | (1 << PIPE_PRIM_QUADS) | (1 << PIPE_PRIM_QUAD_STRIP) |
-            (1 << PIPE_PRIM_POLYGON) | (1 << PIPE_PRIM_TRIANGLES_ADJACENCY) |
-            (1 << PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY)));
+   return ((1 << prim) & UTIL_ALL_PRIM_TRIANGLE_MODES) != 0;
+}
+
+static inline bool util_rast_prim_is_lines_or_triangles(unsigned prim)
+{
+   return ((1 << prim) & (UTIL_ALL_PRIM_LINE_MODES | UTIL_ALL_PRIM_TRIANGLE_MODES)) != 0;
 }
 
 /**

@@ -1094,7 +1094,7 @@ static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx)
    gfx10_emit_shader_ngg_tail(sctx, shader);
 }
 
-unsigned si_get_input_prim(const struct si_shader_selector *gs)
+unsigned si_get_input_prim(const struct si_shader_selector *gs, const struct si_shader_key *key)
 {
    if (gs->info.stage == MESA_SHADER_GEOMETRY)
       return gs->info.base.gs.input_primitive;
@@ -1107,7 +1107,9 @@ unsigned si_get_input_prim(const struct si_shader_selector *gs)
       return PIPE_PRIM_TRIANGLES;
    }
 
-   /* TODO: Set this correctly if the primitive type is set in the shader key. */
+   if (key->opt.ngg_culling & SI_NGG_CULL_LINES)
+      return PIPE_PRIM_LINES;
+
    return PIPE_PRIM_TRIANGLES; /* worst case for all callers */
 }
 
@@ -1151,7 +1153,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                           gs_info->base.vs.window_space_position : 0;
    bool es_enable_prim_id = shader->key.mono.u.vs_export_prim_id || es_info->uses_primid;
    unsigned gs_num_invocations = MAX2(gs_sel->info.base.gs.invocations, 1);
-   unsigned input_prim = si_get_input_prim(gs_sel);
+   unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    bool break_wave_at_eoi = false;
    struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader);
    if (!pm4)
@@ -2987,7 +2989,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
             sel->ngg_cull_vert_threshold = 128;
          }
       } else if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
-         if (sel->rast_prim == PIPE_PRIM_TRIANGLES &&
+         if (sel->rast_prim != PIPE_PRIM_POINTS &&
              (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL) ||
               sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_TESS) ||
               sscreen->info.chip_class == GFX10_3))

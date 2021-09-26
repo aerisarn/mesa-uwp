@@ -83,6 +83,9 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
          /* Blits always use axis-aligned rectangles with 3 vertices. */
          *num_vertices = 3;
          return LLVMConstInt(ctx->ac.i32, 3, 0);
+      } else if (ctx->shader->key.opt.ngg_culling & SI_NGG_CULL_LINES) {
+         *num_vertices = 2;
+         return LLVMConstInt(ctx->ac.i32, 2, 0);
       } else {
          /* We always build up all three indices for the prim export
           * independent of the primitive type. The additional garbage
@@ -994,12 +997,22 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
 
       /* Execute culling code. */
       struct ac_cull_options options = {};
-      options.cull_front = shader->key.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE;
-      options.cull_back = shader->key.opt.ngg_culling & SI_NGG_CULL_BACK_FACE;
       options.cull_view_xy = true;
-      options.cull_small_prims = true; /* this would only be false with conservative rasterization */
-      options.cull_zero_area = options.cull_front || options.cull_back;
       options.cull_w = true;
+
+      if (shader->key.opt.ngg_culling & SI_NGG_CULL_LINES) {
+         options.num_vertices = 2;
+
+         assert(!(shader->key.opt.ngg_culling & SI_NGG_CULL_BACK_FACE));
+         assert(!(shader->key.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE));
+         assert(!(shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL));
+      } else {
+         options.num_vertices = 3;
+         options.cull_front = shader->key.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE;
+         options.cull_back = shader->key.opt.ngg_culling & SI_NGG_CULL_BACK_FACE;
+         options.cull_small_prims = true; /* this would only be false with conservative rasterization */
+         options.cull_zero_area = options.cull_front || options.cull_back;
+      }
 
       /* Tell ES threads whether their vertex survived. */
       LLVMValueRef params[] = {
@@ -1995,7 +2008,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
       shader->previous_stage_sel ? shader->previous_stage_sel : gs_sel;
    const gl_shader_stage gs_stage = gs_sel->info.stage;
    const unsigned gs_num_invocations = MAX2(gs_sel->info.base.gs.invocations, 1);
-   const unsigned input_prim = si_get_input_prim(gs_sel);
+   const unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    const bool use_adjacency =
       input_prim >= PIPE_PRIM_LINES_ADJACENCY && input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
    const unsigned max_verts_per_prim = u_vertices_per_prim(input_prim);

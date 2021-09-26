@@ -287,6 +287,7 @@ enum
 #define SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(x)     (((x) & 0x3) << 5) /* 0->0, 1->1, 2->2, 3->4 */
 #define SI_GET_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(x) (((x) >> 5) & 0x3)
 #define SI_NGG_CULL_GS_FAST_LAUNCH_ALL       (0xf << 3) /* GS fast launch (both prim types) */
+#define SI_NGG_CULL_LINES                    (1 << 7)   /* the primitive type is lines */
 
 /**
  * For VS shader keys, describe any fixups required for vertex fetch.
@@ -685,7 +686,7 @@ struct si_shader_key {
       unsigned kill_pointsize : 1;
 
       /* For NGG VS and TES. */
-      unsigned ngg_culling : 7; /* SI_NGG_CULL_* */
+      unsigned ngg_culling : 8; /* SI_NGG_CULL_* */
 
       /* For shaders where monolithic variants have better code.
        *
@@ -963,7 +964,8 @@ static inline bool si_shader_uses_bindless_images(struct si_shader_selector *sel
 static inline bool gfx10_edgeflags_have_effect(struct si_shader *shader)
 {
    if (shader->selector->info.stage == MESA_SHADER_VERTEX &&
-       !shader->selector->info.base.vs.blit_sgprs_amd)
+       !shader->selector->info.base.vs.blit_sgprs_amd &&
+       !(shader->key.opt.ngg_culling & SI_NGG_CULL_LINES))
       return true;
 
    return false;

@@ -587,7 +587,7 @@ void si_get_vs_key_inputs(struct si_context *sctx, struct si_shader_key *key,
 void si_update_ps_inputs_read_or_disabled(struct si_context *sctx);
 void si_update_ps_kill_enable(struct si_context *sctx);
 void si_update_vrs_flat_shading(struct si_context *sctx);
-unsigned si_get_input_prim(const struct si_shader_selector *gs);
+unsigned si_get_input_prim(const struct si_shader_selector *gs, const struct si_shader_key *key);
 bool si_update_ngg(struct si_context *sctx);
 void si_ps_key_update_framebuffer(struct si_context *sctx);
 void si_ps_key_update_framebuffer_blend(struct si_context *sctx);
