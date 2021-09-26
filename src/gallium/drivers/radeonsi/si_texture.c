@@ -1384,6 +1384,18 @@ si_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier,
    return planes;
 }
 
+static bool
+si_modifier_supports_resource(struct pipe_screen *screen,
+                              uint64_t modifier,
+                              const struct pipe_resource *templ)
+{
+   struct si_screen *sscreen = (struct si_screen *)screen;
+   uint32_t max_width, max_height;
+
+   ac_modifier_max_extent(&sscreen->info, modifier, &max_width, &max_height);
+   return templ->width0 <= max_width && templ->height0 <= max_height;
+}
+
 static struct pipe_resource *
 si_texture_create_with_modifiers(struct pipe_screen *screen,
                                  const struct pipe_resource *templ,
@@ -1413,7 +1425,7 @@ si_texture_create_with_modifiers(struct pipe_screen *screen,
    for (int i = 0; i < allowed_mod_count; ++i) {
       bool found = false;
       for (int j = 0; j < modifier_count && !found; ++j)
-         if (modifiers[j] == allowed_modifiers[i])
+         if (modifiers[j] == allowed_modifiers[i] && si_modifier_supports_resource(screen, modifiers[j], templ))
             found = true;
 
       if (found) {
