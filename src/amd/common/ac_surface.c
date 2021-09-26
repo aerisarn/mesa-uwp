@@ -1481,6 +1481,28 @@ static bool gfx10_DCN_requires_independent_64B_blocks(const struct radeon_info *
    return config->info.width > 2560 || config->info.height > 2560;
 }
 
+void ac_modifier_max_extent(const struct radeon_info *info,
+                            uint64_t modifier, uint32_t *width, uint32_t *height)
+{
+   if (ac_modifier_has_dcc(modifier)) {
+      bool independent_64B_blocks = AMD_FMT_MOD_GET(DCC_INDEPENDENT_64B, modifier);
+
+      if (info->chip_class >= GFX10 && !independent_64B_blocks) {
+         /* For 4K, DCN requires INDEPENDENT_64B_BLOCKS = 1 and MAX_COMPRESSED_BLOCK_SIZE = 64B. */
+         *width = 2560;
+         *height = 2560;
+      } else {
+         /* DCC is not supported on surfaces above resolutions af 5760. */
+         *width = 5760;
+         *height = 5760;
+      }
+   } else {
+      /* Non-dcc modifiers */
+      *width = 16384;
+      *height = 16384;
+   }
+}
+
 static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
                                     const struct ac_surf_config *config,
                                     const struct radeon_surf *surf, bool rb_aligned,
