@@ -3848,7 +3848,6 @@ spec/ext_direct_state_access/named-buffers 15/flushmappednamedbufferrangeext: sk
 spec/ext_direct_state_access/named-buffers 15/mapnamedbufferext: skip
 spec/ext_direct_state_access/named-buffers 15/mapnamedbufferrangeext: skip
 spec/ext_direct_state_access/named-buffers 15/namedcopybuffersubdataext: skip
-spec/ext_direct_state_access/renderbuffer/getnamedrenderbufferparameterivext: fail
 spec/ext_disjoint_timer_query/simple: skip
 spec/ext_draw_instanced/ext_draw_instanced-drawarrays: skip
 spec/ext_external_objects/memory-object-api-errors: skip
@@ -4747,8 +4746,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    13305
-       fail:      533
+       pass:    13306
+       fail:      532
       crash:       67
        skip:     4126
     timeout:        0
