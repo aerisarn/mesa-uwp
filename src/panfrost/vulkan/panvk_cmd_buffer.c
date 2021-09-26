@@ -393,7 +393,7 @@ panvk_cmd_fb_info_set_subpass(struct panvk_cmd_buffer *cmdbuf)
 
       if (util_format_has_stencil(fdesc)) {
          fbinfo->zs.clear.s = subpass->zs_attachment.clear;
-         fbinfo->zs.clear_value.stencil = clears[subpass->zs_attachment.idx].depth;
+         fbinfo->zs.clear_value.stencil = clears[subpass->zs_attachment.idx].stencil;
          if (!fbinfo->zs.view.zs)
             fbinfo->zs.view.s = &view->pview;
       }
