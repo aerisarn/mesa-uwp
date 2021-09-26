@@ -114,7 +114,8 @@ bool gfx10_ngg_export_prim_early(struct si_shader *shader)
 
    assert(shader->key.as_ngg && !shader->key.as_es);
 
-   return sel->info.stage != MESA_SHADER_GEOMETRY && !sel->info.writes_edgeflag;
+   return sel->info.stage != MESA_SHADER_GEOMETRY &&
+          !gfx10_ngg_writes_user_edgeflags(shader);
 }
 
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx)
@@ -146,7 +147,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
          /* This is only used with NGG culling, which returns the NGG
           * passthrough prim export encoding.
           */
-         if (ctx->shader->selector->info.writes_edgeflag) {
+         if (gfx10_ngg_writes_user_edgeflags(ctx->shader)) {
             unsigned all_bits_no_edgeflags = ~SI_NGG_PRIM_EDGE_FLAG_BITS;
             LLVMValueRef edgeflags = LLVMConstInt(ctx->ac.i32, all_bits_no_edgeflags, 0);
 
@@ -179,8 +180,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
 
       prim.isnull = ctx->ac.i1false;
 
-      if (ctx->stage == MESA_SHADER_VERTEX &&
-          !ctx->shader->selector->info.base.vs.blit_sgprs_amd)
+      if (gfx10_edgeflags_have_effect(ctx->shader))
          prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
       else
          prim.edgeflags = ctx->ac.i32_0;
@@ -188,7 +188,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
       for (unsigned i = 0; i < prim.num_vertices; ++i)
          prim.index[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
 
-      if (ctx->shader->selector->info.writes_edgeflag) {
+      if (gfx10_ngg_writes_user_edgeflags(ctx->shader)) {
          LLVMValueRef edgeflags = ctx->ac.i32_0;
 
          for (unsigned i = 0; i < prim.num_vertices; ++i) {
@@ -603,7 +603,7 @@ static unsigned ngg_nogs_vertex_size(struct si_shader *shader)
     * used for padding to reduce LDS bank conflicts. */
    if (shader->selector->so.num_outputs)
       lds_vertex_size = 4 * shader->selector->info.num_outputs + 1;
-   if (shader->selector->info.writes_edgeflag)
+   if (gfx10_ngg_writes_user_edgeflags(shader))
       lds_vertex_size = MAX2(lds_vertex_size, 1);
 
    /* LDS size for passing data from GS to ES.
@@ -1161,7 +1161,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       prim.num_vertices = num_vertices;
       prim.isnull = ctx->ac.i1false;
 
-      if (ctx->stage == MESA_SHADER_VERTEX)
+      if (gfx10_edgeflags_have_effect(shader))
          prim.edgeflags = ac_pack_edgeflags_for_export(&ctx->ac, &ctx->args);
       else
          prim.edgeflags = ctx->ac.i32_0;
@@ -1272,7 +1272,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
    }
 
    /* These two also use LDS. */
-   if (sel->info.writes_edgeflag ||
+   if (gfx10_ngg_writes_user_edgeflags(shader) ||
        (ctx->stage == MESA_SHADER_VERTEX && shader->key.mono.u.vs_export_prim_id))
       ac_build_s_barrier(&ctx->ac);
 
@@ -1297,7 +1297,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
 
    LLVMValueRef vertex_ptr = NULL;
 
-   if (sel->so.num_outputs || sel->info.writes_edgeflag)
+   if (sel->so.num_outputs || gfx10_ngg_writes_user_edgeflags(ctx->shader))
       vertex_ptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
@@ -1318,7 +1318,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
       }
 
       /* Store the edgeflag at the end (if streamout is enabled) */
-      if (info->output_semantic[i] == VARYING_SLOT_EDGE && sel->info.writes_edgeflag) {
+      if (info->output_semantic[i] == VARYING_SLOT_EDGE && gfx10_ngg_writes_user_edgeflags(ctx->shader)) {
          LLVMValueRef edgeflag = LLVMBuildLoad(builder, addrs[4 * i], "");
          /* The output is a float, but the hw expects a 1-bit integer. */
          edgeflag = LLVMBuildFPToUI(ctx->ac.builder, edgeflag, ctx->ac.i32, "");
@@ -1331,7 +1331,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
    }
 
    bool unterminated_es_if_block =
-      !sel->so.num_outputs && !sel->info.writes_edgeflag &&
+      !sel->so.num_outputs && !gfx10_ngg_writes_user_edgeflags(ctx->shader) &&
       !ctx->screen->use_ngg_streamout && /* no query buffer */
       (ctx->stage != MESA_SHADER_VERTEX || !ctx->shader->key.mono.u.vs_export_prim_id);
 
@@ -1373,7 +1373,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
 
    LLVMValueRef user_edgeflags[3] = {};
 
-   if (sel->info.writes_edgeflag) {
+   if (gfx10_ngg_writes_user_edgeflags(ctx->shader)) {
       assert(!unterminated_es_if_block);
 
       /* Streamout already inserted the barrier, so don't insert it again. */
@@ -1401,7 +1401,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
       assert(!unterminated_es_if_block);
 
       /* Streamout and edge flags use LDS. Make it idle, so that we can reuse it. */
-      if (sel->so.num_outputs || sel->info.writes_edgeflag)
+      if (sel->so.num_outputs || gfx10_ngg_writes_user_edgeflags(ctx->shader))
          ac_build_s_barrier(&ctx->ac);
 
       ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);

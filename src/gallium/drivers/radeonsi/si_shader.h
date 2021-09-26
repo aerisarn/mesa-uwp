@@ -960,6 +960,21 @@ static inline bool si_shader_uses_bindless_images(struct si_shader_selector *sel
    return selector ? selector->info.uses_bindless_images : false;
 }
 
+static inline bool gfx10_edgeflags_have_effect(struct si_shader *shader)
+{
+   if (shader->selector->info.stage == MESA_SHADER_VERTEX &&
+       !shader->selector->info.base.vs.blit_sgprs_amd)
+      return true;
+
+   return false;
+}
+
+static inline bool gfx10_ngg_writes_user_edgeflags(struct si_shader *shader)
+{
+   return gfx10_edgeflags_have_effect(shader) &&
+          shader->selector->info.writes_edgeflag;
+}
+
 #ifdef __cplusplus
 }
 #endif

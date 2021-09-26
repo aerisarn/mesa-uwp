@@ -1193,7 +1193,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
     * for the GL_LINE polygon mode to skip rendering lines on inner edges.
     */
    if (gs_info->uses_invocationid ||
-       (gs_stage == MESA_SHADER_VERTEX && !gfx10_is_ngg_passthrough(shader)))
+       (gfx10_edgeflags_have_effect(shader) && !gfx10_is_ngg_passthrough(shader)))
       gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID, edge flags. */
    else if ((gs_stage == MESA_SHADER_GEOMETRY && gs_info->uses_primid) ||
             (gs_stage == MESA_SHADER_VERTEX && shader->key.mono.u.vs_export_prim_id))
@@ -1276,13 +1276,12 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       S_028B90_CNT(gs_num_invocations) | S_028B90_ENABLE(gs_num_invocations > 1) |
       S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(shader->ngg.max_vert_out_per_gs_instance);
 
-   /* Always output hw-generated edge flags and pass them via the prim
+   /* Output hw-generated edge flags if needed and pass them via the prim
     * export to prevent drawing lines on internal edges of decomposed
-    * primitives (such as quads) with polygon mode = lines. Only VS needs
-    * this.
+    * primitives (such as quads) with polygon mode = lines.
     */
    shader->ctx_reg.ngg.pa_cl_ngg_cntl =
-      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_stage == MESA_SHADER_VERTEX) |
+      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gfx10_edgeflags_have_effect(shader)) |
       /* Reuse for NGG. */
       S_028838_VERTEX_REUSE_DEPTH(sscreen->info.chip_class >= GFX10_3 ? 30 : 0);
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, true);
