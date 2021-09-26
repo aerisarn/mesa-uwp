@@ -1601,7 +1601,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          }
       } else {
          /* Set the index buffer for fast launch. The VS prolog will load the indices. */
-         if (NGG && sctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(~0)) {
+         if (GFX_VERSION >= GFX10_3 && NGG &&
+             sctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(~0)) {
             index_max_size = (indexbuf->width0 - index_offset) >> util_logbase2(original_index_size);
 
             radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(indexbuf),
@@ -2173,11 +2174,14 @@ static void si_draw_vbo(struct pipe_context *ctx,
           * A draw must have at least 1 full primitive.
           * The fast launch doesn't work with tessellation.
           *
+          * Fast launch is disabled on Navi1x because enabling it requires VGT_FLUSH,
+          * which decreases performance by up to 10%. Only use fast launch on gfx10.3 and newer.
+          *
           * Since NGG fast launch is enabled by VGT_SHADER_STAGES_EN, which causes a context roll,
           * which decreases performance, decrease the frequency of switching it on/off using
           * a high vertex count threshold.
           */
-         if (!HAS_TESS && total_direct_count >= 8000 &&
+         if (GFX_VERSION >= GFX10_3 && !HAS_TESS && total_direct_count >= 8000 &&
              !(sctx->screen->debug_flags & DBG(NO_FAST_LAUNCH))) {
             if (prim == PIPE_PRIM_TRIANGLES && !index_size) {
                ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST;
@@ -2208,19 +2212,14 @@ static void si_draw_vbo(struct pipe_context *ctx,
          return;
       }
 
-      /* Insert a VGT_FLUSH when enabling fast launch changes to prevent hangs.
-       * See issues #2418, #2426, #2434
-       *
-       * This is the setting that is used by the draw.
+      /* si_update_shaders can clear the ngg_culling settings if the shader compilation hasn't
+       * finished.
        */
-      if (GFX_VERSION >= GFX10) {
+      if (GFX_VERSION >= GFX10 && NGG) {
          uint8_t ngg_culling = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->key.opt.ngg_culling;
-         if (GFX_VERSION == GFX10 &&
-             !(old_ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL) &&
-             ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
-            sctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
-         if (old_ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(~0) &&
+         if (GFX_VERSION >= GFX10_3 &&
+             old_ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(~0) &&
              !(ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(~0))) {
             /* Need to re-set these, because we have bound an index buffer there. */
             sctx->shader_pointers_dirty |=
@@ -2235,7 +2234,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
    }
 
    /* ngg_culling can be changed after si_update_shaders above, so determine index_size here. */
-   if (GFX_VERSION >= GFX10 && NGG &&
+   if (GFX_VERSION >= GFX10_3 && NGG &&
        sctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(~0))
       index_size = 0; /* The index buffer will be emulated. */
 

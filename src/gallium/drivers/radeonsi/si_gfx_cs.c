@@ -358,12 +358,10 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
                  SI_CONTEXT_INV_L2 | SI_CONTEXT_START_PIPELINE_STATS;
    ctx->pipeline_stats_enabled = -1;
 
-   /* We don't know if the last draw used NGG or NGG fast launch because it can be a different
-    * process. When switching NGG->legacy or NGG->FAST_LAUNCH, we need to flush VGT for certain
-    * hw generations.
+   /* We don't know if the last draw used NGG because it can be a different process.
+    * When switching NGG->legacy, we need to flush VGT for certain hw generations.
     */
-   if ((ctx->screen->info.has_vgt_flush_ngg_legacy_bug && !ctx->ngg) ||
-       (ctx->chip_class == GFX10 && ctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL))
+   if (ctx->screen->info.has_vgt_flush_ngg_legacy_bug && !ctx->ngg)
       ctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
    if (ctx->border_color_buffer) {
