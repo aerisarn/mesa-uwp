@@ -148,6 +148,7 @@ clover_files = files(
   'util/adaptor.hpp',
   'util/algebra.hpp',
   'util/algorithm.hpp',
+  'util/compat.hpp',
   'util/factor.hpp',
   'util/functional.hpp',
   'util/lazy.hpp',
