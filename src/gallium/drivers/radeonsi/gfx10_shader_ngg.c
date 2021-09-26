@@ -86,8 +86,7 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
       } else {
          /* We always build up all three indices for the prim export
           * independent of the primitive type. The additional garbage
-          * data shouldn't hurt. This number doesn't matter with
-          * NGG passthrough.
+          * data shouldn't hurt. This is used by exports and streamout.
           */
          *num_vertices = 3;
 
@@ -186,7 +185,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
       else
          prim.edgeflags = ctx->ac.i32_0;
 
-      for (unsigned i = 0; i < 3; ++i)
+      for (unsigned i = 0; i < prim.num_vertices; ++i)
          prim.index[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
 
       if (ctx->shader->selector->info.writes_edgeflag) {
@@ -793,9 +792,12 @@ static void gfx10_build_primitive_accepted(struct ac_llvm_context *ac, LLVMValue
    LLVMValueRef gs_accepted = params[0];
    LLVMValueRef *gs_vtxptr = (LLVMValueRef *)params[1];
 
+   unsigned num_vertices;
+   ngg_get_vertices_per_prim(ctx, &num_vertices);
+
    ac_build_ifcc(&ctx->ac, accepted, 0);
    LLVMBuildStore(ctx->ac.builder, ctx->ac.i32_1, gs_accepted);
-   for (unsigned vtx = 0; vtx < 3; vtx++) {
+   for (unsigned vtx = 0; vtx < num_vertices; vtx++) {
       LLVMBuildStore(ctx->ac.builder, ctx->ac.i8_1,
                      si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte0_accept_flag));
    }
@@ -872,6 +874,9 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
 
    LLVMValueRef tid = ac_get_thread_id(&ctx->ac);
 
+   unsigned num_vertices;
+   ngg_get_vertices_per_prim(ctx, &num_vertices);
+
    /* The hardware requires that there are no holes between unculled vertices,
     * which means we have to pack ES threads, i.e. reduce the ES thread count
     * and move ES input VGPRs to lower threads. The upside is that varyings
@@ -905,17 +910,16 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       /* For the GS fast launch, the VS prolog simply puts the Vertex IDs
        * into these VGPRs.
        */
-      for (unsigned i = 0; i < 3; ++i)
+      for (unsigned i = 0; i < num_vertices; ++i)
          vtxindex[i] = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[i]);
    } else {
-      for (unsigned i = 0; i < 3; ++i)
+      for (unsigned i = 0; i < num_vertices; ++i)
          vtxindex[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
    };
-   LLVMValueRef gs_vtxptr[] = {
-      ngg_nogs_vertex_ptr(ctx, vtxindex[0]),
-      ngg_nogs_vertex_ptr(ctx, vtxindex[1]),
-      ngg_nogs_vertex_ptr(ctx, vtxindex[2]),
-   };
+   LLVMValueRef gs_vtxptr[3];
+   for (unsigned i = 0; i < num_vertices; i++)
+      gs_vtxptr[i] = ngg_nogs_vertex_ptr(ctx, vtxindex[i]);
+
    es_vtxptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
    /* Adding these optimization barriers improves the generated code as follows. Crazy right?
@@ -943,9 +947,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
     * - v_mul_u32_u24_e32 v17, 28, v11
     * - v_mul_u32_u24_e32 v18, 28, v10
     */
-   ac_build_optimization_barrier(&ctx->ac, &gs_vtxptr[0], false);
-   ac_build_optimization_barrier(&ctx->ac, &gs_vtxptr[1], false);
-   ac_build_optimization_barrier(&ctx->ac, &gs_vtxptr[2], false);
+   for (unsigned i = 0; i < num_vertices; i++)
+      ac_build_optimization_barrier(&ctx->ac, &gs_vtxptr[i], false);
 
    LLVMValueRef gs_accepted = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
 
@@ -954,7 +957,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
    {
       /* Load positions. */
       LLVMValueRef pos[3][4] = {};
-      for (unsigned vtx = 0; vtx < 3; vtx++) {
+      for (unsigned vtx = 0; vtx < num_vertices; vtx++) {
          for (unsigned chan = 0; chan < 4; chan++) {
             unsigned index;
             if (chan == 0 || chan == 1)
@@ -1155,7 +1158,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
    ac_build_ifcc(&ctx->ac, LLVMBuildTrunc(builder, gs_accepted, ctx->ac.i1, ""), 16011);
    {
       struct ac_ngg_prim prim = {};
-      prim.num_vertices = 3;
+      prim.num_vertices = num_vertices;
       prim.isnull = ctx->ac.i1false;
 
       if (ctx->stage == MESA_SHADER_VERTEX)
@@ -1163,7 +1166,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       else
          prim.edgeflags = ctx->ac.i32_0;
 
-      for (unsigned vtx = 0; vtx < 3; vtx++) {
+      for (unsigned vtx = 0; vtx < num_vertices; vtx++) {
          prim.index[vtx] = LLVMBuildLoad(
             builder, si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte1_new_thread_id), "");
          prim.index[vtx] = LLVMBuildZExt(builder, prim.index[vtx], ctx->ac.i32, "");
