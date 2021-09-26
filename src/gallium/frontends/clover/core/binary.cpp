@@ -23,7 +23,7 @@
 #include <type_traits>
 #include <iostream>
 
-#include "core/module.hpp"
+#include "core/binary.hpp"
 
 using namespace clover;
 
@@ -56,7 +56,7 @@ namespace {
    /// Calculate the size of the specified object.
    template<typename T>
    void
-   _proc(module::size_t &sz, const T &x) {
+   _proc(binary::size_t &sz, const T &x) {
       _serializer<T>::proc(sz, x);
    }
 
@@ -75,7 +75,7 @@ namespace {
       }
 
       static void
-      proc(module::size_t &sz, const T &x) {
+      proc(binary::size_t &sz, const T &x) {
          sz += sizeof(x);
       }
    };
@@ -102,7 +102,7 @@ namespace {
       }
 
       static void
-      proc(module::size_t &sz, const std::vector<T> &v) {
+      proc(binary::size_t &sz, const std::vector<T> &v) {
          sz += sizeof(uint32_t);
 
          for (size_t i = 0; i < v.size(); i++)
@@ -129,7 +129,7 @@ namespace {
       }
 
       static void
-      proc(module::size_t &sz, const std::vector<T> &v) {
+      proc(binary::size_t &sz, const std::vector<T> &v) {
          sz += sizeof(uint32_t) + sizeof(T) * v.size();
       }
    };
@@ -150,14 +150,14 @@ namespace {
       }
 
       static void
-      proc(module::size_t &sz, const std::string &s) {
+      proc(binary::size_t &sz, const std::string &s) {
          sz += sizeof(uint32_t) + sizeof(std::string::value_type) * s.size();
       }
    };
 
    /// (De)serialize a printf format
    template<>
-   struct _serializer<module::printf_info> {
+   struct _serializer<binary::printf_info> {
       template<typename S, typename QT>
       static void
       proc(S & s, QT &x) {
@@ -166,9 +166,9 @@ namespace {
       }
    };
 
-   /// (De)serialize a module::section.
+   /// (De)serialize a binary::section.
    template<>
-   struct _serializer<module::section> {
+   struct _serializer<binary::section> {
       template<typename S, typename QT>
       static void
       proc(S &s, QT &x) {
@@ -179,9 +179,9 @@ namespace {
       }
    };
 
-   /// (De)serialize a module::argument.
+   /// (De)serialize a binary::argument.
    template<>
-   struct _serializer<module::argument> {
+   struct _serializer<binary::argument> {
       template<typename S, typename QT>
       static void
       proc(S &s, QT &x) {
@@ -194,9 +194,9 @@ namespace {
       }
    };
 
-   /// (De)serialize a module::symbol.
+   /// (De)serialize a binary::symbol.
    template<>
-   struct _serializer<module::symbol> {
+   struct _serializer<binary::symbol> {
       template<typename S, typename QT>
       static void
       proc(S &s, QT &x) {
@@ -209,9 +209,9 @@ namespace {
       }
    };
 
-   /// (De)serialize a module.
+   /// (De)serialize a binary.
    template<>
-   struct _serializer<module> {
+   struct _serializer<binary> {
       template<typename S, typename QT>
       static void
       proc(S &s, QT &x) {
@@ -225,17 +225,17 @@ namespace {
 
 namespace clover {
    void
-   module::serialize(std::ostream &os) const {
+   binary::serialize(std::ostream &os) const {
       _proc(os, *this);
    }
 
-   module
-   module::deserialize(std::istream &is) {
-      return _proc<module>(is);
+   binary
+   binary::deserialize(std::istream &is) {
+      return _proc<binary>(is);
    }
 
-   module::size_t
-   module::size() const {
+   binary::size_t
+   binary::size() const {
       size_t sz = 0;
       _proc(sz, *this);
       return sz;

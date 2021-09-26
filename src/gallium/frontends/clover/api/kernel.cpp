@@ -57,7 +57,7 @@ clCreateKernelsInProgram(cl_program d_prog, cl_uint count,
       throw error(CL_INVALID_VALUE);
 
    if (rd_kerns)
-      copy(map([&](const module::symbol &sym) {
+      copy(map([&](const binary::symbol &sym) {
                return desc(new kernel(prog,
                                       std::string(sym.name.begin(),
                                                   sym.name.end()),
@@ -257,9 +257,9 @@ namespace {
          throw error(CL_INVALID_KERNEL_ARGS);
 
       // If the command queue's device is not associated to the program, we get
-      // a module, with no sections, which will also fail the following test.
-      auto &m = kern.program().build(q.device()).binary;
-      if (!any_of(type_equals(module::section::text_executable), m.secs))
+      // a binary, with no sections, which will also fail the following test.
+      auto &b = kern.program().build(q.device()).bin;
+      if (!any_of(type_equals(binary::section::text_executable), b.secs))
          throw error(CL_INVALID_PROGRAM_EXECUTABLE);
    }
 
