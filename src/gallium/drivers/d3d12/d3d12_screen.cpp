@@ -503,10 +503,12 @@ d3d12_is_format_supported(struct pipe_screen *pscreen,
 
    /* Don't advertise alpha/luminance_alpha formats because they can't be used
     * for render targets (except A8_UNORM) and can't be emulated by R/RG formats.
-    * Let the state tracker choose an RGBA format instead. */
+    * Let the state tracker choose an RGBA format instead. For YUV formats, we
+    * want the state tracker to lower these to individual planes. */
    if (format != PIPE_FORMAT_A8_UNORM &&
        (util_format_is_alpha(format) ||
-        util_format_is_luminance_alpha(format)))
+        util_format_is_luminance_alpha(format) ||
+        util_format_is_yuv(format)))
       return false;
 
    DXGI_FORMAT dxgi_format = d3d12_get_format(format);
