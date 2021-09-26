@@ -1006,9 +1006,9 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
          gs_accepted,
          (void*)gs_vtxptr,
       };
-      ac_cull_triangle(&ctx->ac, pos, ctx->ac.i1true, vp_scale, vp_translate,
-                       small_prim_precision, &options,
-                       gfx10_build_primitive_accepted, params);
+      ac_cull_primitive(&ctx->ac, pos, ctx->ac.i1true, vp_scale, vp_translate,
+                        small_prim_precision, &options,
+                        gfx10_build_primitive_accepted, params);
    }
    ac_build_endif(&ctx->ac, 16002);
    ac_build_s_barrier(&ctx->ac);
