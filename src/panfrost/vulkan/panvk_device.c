@@ -1313,7 +1313,7 @@ panvk_GetBufferMemoryRequirements(VkDevice _device,
    pMemoryRequirements->memoryTypeBits = 1;
    pMemoryRequirements->alignment = 64;
    pMemoryRequirements->size =
-      align64(buffer->size, pMemoryRequirements->alignment);
+      MAX2(align64(buffer->size, pMemoryRequirements->alignment), buffer->size);
 }
 
 void
