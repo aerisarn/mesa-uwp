@@ -2167,6 +2167,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
          uint8_t ngg_culling = sctx->viewport0_y_inverted ? rs->ngg_cull_flags_y_inverted :
                                                             rs->ngg_cull_flags;
+         assert(ngg_culling); /* rasterizer state should always set this to non-zero */
 
          /* Use NGG fast launch for certain primitive types.
           * A draw must have at least 1 full primitive.
@@ -2176,7 +2177,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
           * which decreases performance, decrease the frequency of switching it on/off using
           * a high vertex count threshold.
           */
-         if (!HAS_TESS && ngg_culling && total_direct_count >= 8000 &&
+         if (!HAS_TESS && total_direct_count >= 8000 &&
              !(sctx->screen->debug_flags & DBG(NO_FAST_LAUNCH))) {
             if (prim == PIPE_PRIM_TRIANGLES && !index_size) {
                ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST;
