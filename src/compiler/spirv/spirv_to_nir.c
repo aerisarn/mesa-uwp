@@ -1587,6 +1587,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       if (opcode == SpvOpTypePointer)
          deref_type = vtn_get_type(b, w[3]);
 
+      bool has_forward_pointer = false;
       if (val->value_type == vtn_value_type_invalid) {
          val->value_type = vtn_value_type_type;
          val->type = rzalloc(b, struct vtn_type);
@@ -1617,6 +1618,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
                      "The storage classes of an OpTypePointer and any "
                      "OpTypeForwardPointers that provide forward "
                      "declarations of it must match.");
+         has_forward_pointer = true;
       }
 
       if (opcode == SpvOpTypePointer) {
@@ -1624,6 +1626,11 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
                      "While OpTypeForwardPointer can be used to provide a "
                      "forward declaration of a pointer, OpTypePointer can "
                      "only be used once for a given id.");
+
+         vtn_fail_if(has_forward_pointer &&
+                     deref_type->base_type != vtn_base_type_struct,
+                     "An OpTypePointer instruction must declare "
+                     "Pointer Type to be a pointer to an OpTypeStruct.");
 
          val->type->deref = deref_type;
 
