@@ -612,9 +612,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       case MESA_SHADER_TESS_EVAL:
          info->tes.outinfo.export_prim_id = true;
          break;
-      case MESA_SHADER_GEOMETRY:
-         info->vs.outinfo.export_prim_id = true;
-         break;
       default:
          break;
       }
