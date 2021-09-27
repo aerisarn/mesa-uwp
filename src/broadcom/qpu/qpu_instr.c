@@ -177,6 +177,8 @@ v3d_qpu_add_op_name(enum v3d_qpu_add_op op)
                 [V3D_QPU_A_ITOF] = "itof",
                 [V3D_QPU_A_CLZ] = "clz",
                 [V3D_QPU_A_UTOF] = "utof",
+                [V3D_QPU_A_MOV] = "mov",
+                [V3D_QPU_A_FMOV] = "fmov",
         };
 
         if (op >= ARRAY_SIZE(op_names))
@@ -458,6 +460,9 @@ static const uint8_t add_op_args[] = {
         [V3D_QPU_A_ITOF] = D | A,
         [V3D_QPU_A_CLZ] = D | A,
         [V3D_QPU_A_UTOF] = D | A,
+
+        [V3D_QPU_A_MOV] = D | A,
+        [V3D_QPU_A_FMOV] = D | A,
 };
 
 static const uint8_t mul_op_args[] = {

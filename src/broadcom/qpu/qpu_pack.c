@@ -779,6 +779,21 @@ static const struct opcode_desc add_ops_v71[] = {
 
         { 246, 246, .raddr_mask = OP_RANGE(32, 34), V3D_QPU_A_ITOF, 71 },
         { 246, 246, .raddr_mask = OP_RANGE(36, 38), V3D_QPU_A_UTOF, 71 },
+
+        { 249, 249, .raddr_mask = OP_RANGE(0, 2),   V3D_QPU_A_FMOV, 71 },
+        { 249, 249, .raddr_mask = OP_RANGE(4, 6),   V3D_QPU_A_FMOV, 71 },
+        { 249, 249, .raddr_mask = OP_RANGE(8, 10),  V3D_QPU_A_FMOV, 71 },
+        { 249, 249, .raddr_mask = OP_RANGE(12, 14), V3D_QPU_A_FMOV, 71 },
+        { 249, 249, .raddr_mask = OP_RANGE(16, 18), V3D_QPU_A_FMOV, 71 },
+        { 249, 249, .raddr_mask = OP_RANGE(20, 22), V3D_QPU_A_FMOV, 71 },
+        { 249, 249, .raddr_mask = OP_RANGE(24, 26), V3D_QPU_A_FMOV, 71 },
+
+        { 249, 249, .raddr_mask = OP_MASK(3),  V3D_QPU_A_MOV, 71 },
+        { 249, 249, .raddr_mask = OP_MASK(7),  V3D_QPU_A_MOV, 71 },
+        { 249, 249, .raddr_mask = OP_MASK(11), V3D_QPU_A_MOV, 71 },
+        { 249, 249, .raddr_mask = OP_MASK(15), V3D_QPU_A_MOV, 71 },
+        { 249, 249, .raddr_mask = OP_MASK(19), V3D_QPU_A_MOV, 71 },
+
 };
 
 static const struct opcode_desc mul_ops_v71[] = {

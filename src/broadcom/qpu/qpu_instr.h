@@ -227,6 +227,10 @@ enum v3d_qpu_add_op {
         V3D_QPU_A_ITOF,
         V3D_QPU_A_CLZ,
         V3D_QPU_A_UTOF,
+
+        /* V3D 7.x */
+        V3D_QPU_A_FMOV,
+        V3D_QPU_A_MOV,
 };
 
 enum v3d_qpu_mul_op {
