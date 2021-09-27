@@ -3604,7 +3604,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
 
          pipeline->gs_copy_shader = radv_create_gs_copy_shader(
             device, nir[MESA_SHADER_GEOMETRY], &info, &gs_copy_binary, keep_executable_info,
-            keep_statistic_info, keys[MESA_SHADER_GEOMETRY].has_multiview_view_index,
+            keep_statistic_info, pipeline_key->has_multiview_view_index,
             pipeline_key->optimisations_disabled);
       }
 

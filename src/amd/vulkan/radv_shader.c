@@ -951,7 +951,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
       num_vertices_per_prim = si_conv_prim_to_gs_out(pl_key->vs.topology) + 1;
 
       /* Manually mark the instance ID used, so the shader can repack it. */
-      if (key->vs.instance_rate_inputs)
+      if (pl_key->vs.instance_rate_inputs)
          BITSET_SET(nir->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
 
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
@@ -988,9 +988,9 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
             consider_culling,
             key->vs_common_out.as_ngg_passthrough,
             export_prim_id,
-            key->vs.provoking_vtx_last,
+            pl_key->vs.provoking_vtx_last,
             false,
-            key->vs.instance_rate_inputs);
+            pl_key->vs.instance_rate_inputs);
 
       info->has_ngg_culling = out_conf.can_cull;
       info->has_ngg_early_prim_export = out_conf.early_prim_export;
@@ -1003,7 +1003,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
          info->ngg_info.esgs_ring_size,
          info->gs.gsvs_vertex_size,
          info->ngg_info.ngg_emit_size * 4u,
-         key->vs.provoking_vtx_last);
+         pl_key->vs.provoking_vtx_last);
    } else {
       unreachable("invalid SW stage passed to radv_lower_ngg");
    }
