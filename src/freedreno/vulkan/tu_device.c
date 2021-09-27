@@ -1373,24 +1373,6 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    bool perf_query_pools = false;
    bool robust_buffer_access2 = false;
 
-   /* Check enabled features */
-   if (pCreateInfo->pEnabledFeatures) {
-      VkPhysicalDeviceFeatures2 supported_features = {
-         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-      };
-      tu_GetPhysicalDeviceFeatures2(physicalDevice, &supported_features);
-      VkBool32 *supported_feature = (VkBool32 *) &supported_features.features;
-      VkBool32 *enabled_feature = (VkBool32 *) pCreateInfo->pEnabledFeatures;
-      unsigned num_features =
-         sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32);
-      for (uint32_t i = 0; i < num_features; i++) {
-         if (enabled_feature[i] && !supported_feature[i])
-            return vk_startup_errorf(physical_device->instance,
-                                     VK_ERROR_FEATURE_NOT_PRESENT,
-                                     "Missing feature bit %d\n", i);
-      }
-   }
-
    vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
