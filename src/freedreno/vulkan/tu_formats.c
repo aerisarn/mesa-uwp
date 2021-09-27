@@ -226,7 +226,7 @@ static const struct tu_native_format tu6_format_table[] = {
    TU6_xTC(S8_UINT,                    8_UINT,                        WZYX), /* 127 */
    TU6_xxx(D16_UNORM_S8_UINT,          X8Z16_UNORM,                   WZYX), /* 128 */
    TU6_xTC(D24_UNORM_S8_UINT,          8_8_8_8_UNORM,                 WZYX), /* 129 */
-   TU6_xTC(D32_SFLOAT_S8_UINT,         NONE,                          WZYX), /* 130 */
+   TU6_xTC(D32_SFLOAT_S8_UINT,         32_FLOAT,                      WZYX), /* 130 */
 
    /* compressed */
    TU6_xTx(BC1_RGB_UNORM_BLOCK,        DXT1,              WZYX), /* 131 */
