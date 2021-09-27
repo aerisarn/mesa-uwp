@@ -321,7 +321,7 @@ gather_info_block(const nir_shader *nir, const nir_block *block, struct radv_sha
 
 static void
 gather_info_input_decl_vs(const nir_shader *nir, const nir_variable *var,
-                          struct radv_shader_info *info, const struct radv_shader_variant_key *key)
+                          const struct radv_pipeline_key *key, struct radv_shader_info *info)
 {
    unsigned attrib_count = glsl_count_attribute_slots(var->type, true);
 
@@ -409,11 +409,11 @@ gather_info_input_decl_ps(const nir_shader *nir, const nir_variable *var,
 
 static void
 gather_info_input_decl(const nir_shader *nir, const nir_variable *var,
-                       struct radv_shader_info *info, const struct radv_shader_variant_key *key)
+                       const struct radv_pipeline_key *key, struct radv_shader_info *info)
 {
    switch (nir->info.stage) {
    case MESA_SHADER_VERTEX:
-      gather_info_input_decl_vs(nir, var, info, key);
+      gather_info_input_decl_vs(nir, var, key, info);
       break;
    case MESA_SHADER_FRAGMENT:
       gather_info_input_decl_ps(nir, var, info);
@@ -556,6 +556,7 @@ radv_nir_shader_info_init(struct radv_shader_info *info)
 void
 radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
                           const struct radv_pipeline_layout *layout,
+                          const struct radv_pipeline_key *pipeline_key,
                           const struct radv_shader_variant_key *key, struct radv_shader_info *info)
 {
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
@@ -574,7 +575,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    }
 
    nir_foreach_shader_in_variable (variable, nir)
-      gather_info_input_decl(nir, variable, info, key);
+      gather_info_input_decl(nir, variable, pipeline_key, info);
 
    nir_foreach_block (block, func->impl) {
       gather_info_block(nir, block, info);
@@ -587,7 +588,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_xfb_info(nir, info);
 
    /* Make sure to export the LayerID if the subpass has multiviews. */
-   if (key->has_multiview_view_index) {
+   if (pipeline_key->has_multiview_view_index) {
       switch (nir->info.stage) {
       case MESA_SHADER_VERTEX:
          info->vs.outinfo.writes_layer = true;
