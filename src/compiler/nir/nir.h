@@ -5048,6 +5048,16 @@ typedef struct nir_lower_compute_system_values_options {
 bool nir_lower_compute_system_values(nir_shader *shader,
                                      const nir_lower_compute_system_values_options *options);
 
+struct nir_lower_sysvals_to_varyings_options {
+   bool frag_coord:1;
+   bool front_face:1;
+   bool point_coord:1;
+};
+
+bool
+nir_lower_sysvals_to_varyings(nir_shader *shader,
+                              const struct nir_lower_sysvals_to_varyings_options *options);
+
 enum PACKED nir_lower_tex_packing {
    /** No packing */
    nir_lower_tex_packing_none = 0,
