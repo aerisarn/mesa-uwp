@@ -909,9 +909,13 @@ if get_option('vmware-mks-stats')
 endif
 
 _opencl = get_option('gallium-opencl')
+_rtti = get_option('cpp_rtti')
 if _opencl != 'disabled'
   if not with_gallium
     error('OpenCL Clover implementation requires at least one gallium driver.')
+  endif
+  if not _rtti
+    error('The Clover OpenCL state tracker requires rtti')
   endif
 
   with_libclc = true
@@ -1738,19 +1742,16 @@ if with_llvm
   # builtin llvm-config based finder. A new generic variable getter method
   # has also been added, so we'll use that if we can, to cover the cmake case.
   if dep_llvm.type_name() == 'internal'
-    _rtti = subproject('llvm').get_variable('has_rtti', true)
+    _llvm_rtti = subproject('llvm').get_variable('has_rtti', true)
   else
     # The CMake finder will return 'ON', the llvm-config will return 'YES'
-    _rtti = ['ON', 'YES'].contains(dep_llvm.get_variable(cmake : 'LLVM_ENABLE_RTTI', configtool: 'has-rtti'))
+    _llvm_rtti = ['ON', 'YES'].contains(dep_llvm.get_variable(cmake : 'LLVM_ENABLE_RTTI', configtool: 'has-rtti'))
   endif
-  if not _rtti
-    if with_gallium_opencl
-      error('The Clover OpenCL state tracker requires rtti, you need to turn off clover or use an LLVM built with LLVM_ENABLE_RTTI.')
-    endif
-    if cc.get_id() == 'msvc'
-      cpp_args += '/GR-'
+  if _rtti != _llvm_rtti
+    if _llvm_rtti
+      error('LLVM was built with RTTI, cannot build Mesa with RTTI disabled. Remove cpp_rtti disable switch or use LLVM built without LLVM_ENABLE_RTTI.')
     else
-      cpp_args += '-fno-rtti'
+      error('LLVM was built without RTTI, so Mesa must also disable RTTI. Use an LLVM built with LLVM_ENABLE_RTTI or add cpp_rtti=false.')
     endif
   endif
 
