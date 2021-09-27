@@ -105,32 +105,38 @@ clover_nir_lower_images(nir_shader *shader)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
    ASSERTED int last_loc = -1;
-   int num_rd_images = 0, num_wr_images = 0, num_samplers = 0;
-   nir_foreach_uniform_variable(var, shader) {
-      if (glsl_type_is_image(var->type) || glsl_type_is_sampler(var->type)) {
-         /* Assume they come in order */
-         assert(var->data.location > last_loc);
-         last_loc = var->data.location;
-      }
+   int num_rd_images = 0, num_wr_images = 0;
+   nir_foreach_image_variable(var, shader) {
+      /* Assume they come in order */
+      assert(var->data.location > last_loc);
+      last_loc = var->data.location;
 
-      /* TODO: Constant samplers */
-      if (var->type == glsl_bare_sampler_type()) {
-         var->data.driver_location = num_samplers++;
-      } else if (glsl_type_is_image(var->type)) {
-         if (var->data.access & ACCESS_NON_WRITEABLE)
-            var->data.driver_location = num_rd_images++;
-         else
-            var->data.driver_location = num_wr_images++;
-      } else {
-         /* CL shouldn't have any sampled images */
-         assert(!glsl_type_is_sampler(var->type));
-      }
+      if (var->data.access & ACCESS_NON_WRITEABLE)
+         var->data.driver_location = num_rd_images++;
+      else
+         var->data.driver_location = num_wr_images++;
    }
    shader->info.num_textures = num_rd_images;
    BITSET_ZERO(shader->info.textures_used);
    if (num_rd_images)
       BITSET_SET_RANGE_INSIDE_WORD(shader->info.textures_used, 0, num_rd_images - 1);
    shader->info.num_images = num_wr_images;
+
+   last_loc = -1;
+   int num_samplers = 0;
+   nir_foreach_uniform_variable(var, shader) {
+      if (var->type == glsl_bare_sampler_type()) {
+         /* Assume they come in order */
+         assert(var->data.location > last_loc);
+         last_loc = var->data.location;
+
+         /* TODO: Constant samplers */
+         var->data.driver_location = num_samplers++;
+      } else {
+         /* CL shouldn't have any sampled images */
+         assert(!glsl_type_is_sampler(var->type));
+      }
+   }
 
    nir_builder b;
    nir_builder_init(&b, impl);
