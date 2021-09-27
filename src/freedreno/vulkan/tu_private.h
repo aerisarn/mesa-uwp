@@ -1365,18 +1365,11 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          uint32_t a,
                          uint32_t gmem_a);
 
-enum tu_supported_formats {
-   FMT_VERTEX = 1,
-   FMT_TEXTURE = 2,
-   FMT_COLOR = 4,
-};
-
 struct tu_native_format
 {
    enum a6xx_format fmt : 8;
    enum a3xx_color_swap swap : 8;
    enum a6xx_tile_mode tile_mode : 8;
-   enum tu_supported_formats supported : 8;
 };
 
 bool tu6_format_vtx_supported(VkFormat format);
