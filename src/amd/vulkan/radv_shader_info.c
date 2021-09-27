@@ -603,19 +603,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       }
    }
 
-   /* Make sure to export the PrimitiveID if the fragment shader needs it. */
-   if (key->vs_common_out.export_prim_id) {
-      switch (nir->info.stage) {
-      case MESA_SHADER_VERTEX:
-         info->vs.outinfo.export_prim_id = true;
-         break;
-      case MESA_SHADER_TESS_EVAL:
-         info->tes.outinfo.export_prim_id = true;
-         break;
-      default:
-         break;
-      }
-   }
 
    /* Make sure to export the clip/cull distances if the fragment shader needs it. */
    if (key->vs_common_out.export_clip_dists) {

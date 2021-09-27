@@ -943,7 +943,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
          num_vertices_per_prim = 2;
 
       /* Manually mark the primitive ID used, so the shader can repack it. */
-      if (key->vs_common_out.export_prim_id)
+      if (info->tes.outinfo.export_prim_id)
          BITSET_SET(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
 
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
@@ -965,10 +965,18 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      bool export_prim_id;
+
       assert(key->vs_common_out.as_ngg);
 
       if (consider_culling)
          radv_optimize_nir_algebraic(nir, false);
+
+      if (nir->info.stage == MESA_SHADER_VERTEX) {
+         export_prim_id = info->vs.outinfo.export_prim_id;
+      } else {
+         export_prim_id = info->tes.outinfo.export_prim_id;
+      }
 
       out_conf =
          ac_nir_lower_ngg_nogs(
@@ -979,7 +987,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
             info->wave_size,
             consider_culling,
             key->vs_common_out.as_ngg_passthrough,
-            key->vs_common_out.export_prim_id,
+            export_prim_id,
             key->vs.provoking_vtx_last,
             false,
             key->vs.instance_rate_inputs);

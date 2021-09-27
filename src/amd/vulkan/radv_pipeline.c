@@ -2865,22 +2865,27 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       radv_nir_shader_info_pass(pipeline->device, nir[MESA_SHADER_FRAGMENT], pipeline->layout,
                                 &keys[MESA_SHADER_FRAGMENT], &infos[MESA_SHADER_FRAGMENT]);
 
+      assert(pipeline->graphics.last_vgt_api_stage != MESA_SHADER_NONE);
+      if (infos[MESA_SHADER_FRAGMENT].ps.prim_id_input) {
+         if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX) {
+            infos[MESA_SHADER_VERTEX].vs.outinfo.export_prim_id = true;
+         } else if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
+            infos[MESA_SHADER_TESS_EVAL].tes.outinfo.export_prim_id = true;
+         } else {
+            assert(pipeline->graphics.last_vgt_api_stage == MESA_SHADER_GEOMETRY);
+         }
+      }
+
       /* TODO: These are no longer used as keys we should refactor this */
-      keys[MESA_SHADER_VERTEX].vs_common_out.export_prim_id =
-         infos[MESA_SHADER_FRAGMENT].ps.prim_id_input;
       keys[MESA_SHADER_VERTEX].vs_common_out.export_clip_dists =
          !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
-      keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_prim_id =
-         infos[MESA_SHADER_FRAGMENT].ps.prim_id_input;
       keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_clip_dists =
          !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
 
       /* NGG passthrough mode can't be enabled for vertex shaders
        * that export the primitive ID.
-       *
-       * TODO: I should really refactor the keys logic.
        */
-      if (nir[MESA_SHADER_VERTEX] && keys[MESA_SHADER_VERTEX].vs_common_out.export_prim_id) {
+      if (nir[MESA_SHADER_VERTEX] && infos[MESA_SHADER_VERTEX].vs.outinfo.export_prim_id) {
          keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg_passthrough = false;
       }
 
