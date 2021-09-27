@@ -65,6 +65,7 @@
 #include "vk_command_buffer.h"
 #include "vk_queue.h"
 #include "vk_util.h"
+#include "vk_image.h"
 
 #include "ac_binary.h"
 #include "ac_gpu_info.h"
