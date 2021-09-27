@@ -2081,8 +2081,9 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    bool dirty = false;
 
    for (int i = 0; i < count; i++) {
-      if (shs->samplers[start + i] != states[i]) {
-         shs->samplers[start + i] = states[i];
+      struct iris_sampler_state *state = states ? states[i] : NULL;
+      if (shs->samplers[start + i] != state) {
+         shs->samplers[start + i] = state;
          dirty = true;
       }
    }
