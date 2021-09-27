@@ -279,6 +279,14 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
 
    nir->info.separate_shader = linked_shader->Program->info.separate_shader;
 
+   /* Convert some sysvals to input varyings. */
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .frag_coord = !ctx->Const.GLSLFragCoordIsSysVal,
+      .point_coord = !ctx->Const.GLSLPointCoordIsSysVal,
+      .front_face = !ctx->Const.GLSLFrontFacingIsSysVal,
+   };
+   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+
    /* We have to lower away local constant initializers right before we
     * inline functions.  That way they get properly initialized at the top
     * of the function and not at the top of its caller.

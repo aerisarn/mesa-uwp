@@ -536,6 +536,11 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
 
       free(spec_entries);
 
+      const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+         .point_coord = true,
+      };
+      NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+
       /* We have to lower away local constant initializers right before we
        * inline functions.  That way they get properly initialized at the top
        * of the function and not at the top of its caller.

@@ -467,6 +467,12 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    }
    assert(nir->info.stage == broadcom_shader_stage_to_gl(stage->stage));
 
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .frag_coord = true,
+      .point_coord = true,
+   };
+   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+
    if (unlikely(V3D_DEBUG & (V3D_DEBUG_NIR |
                              v3d_debug_flag_for_shader_stage(
                                 broadcom_shader_stage_to_gl(stage->stage))))) {

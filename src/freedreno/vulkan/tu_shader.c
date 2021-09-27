@@ -112,6 +112,11 @@ tu_spirv_to_nir(struct tu_device *dev,
    assert(nir->info.stage == stage);
    nir_validate_shader(nir, "after spirv_to_nir");
 
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .point_coord = true,
+   };
+   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+
    if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_NIR)) {
       fprintf(stderr, "translated nir:\n");
       nir_print_shader(nir, stderr);
