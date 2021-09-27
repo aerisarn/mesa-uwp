@@ -1379,8 +1379,11 @@ struct tu_native_format
    enum tu_supported_formats supported : 8;
 };
 
+bool tu6_format_vtx_supported(VkFormat format);
 struct tu_native_format tu6_format_vtx(VkFormat format);
+bool tu6_format_color_supported(VkFormat format);
 struct tu_native_format tu6_format_color(VkFormat format, enum a6xx_tile_mode tile_mode);
+bool tu6_format_texture_supported(VkFormat format);
 struct tu_native_format tu6_format_texture(VkFormat format, enum a6xx_tile_mode tile_mode);
 
 static inline enum a6xx_format

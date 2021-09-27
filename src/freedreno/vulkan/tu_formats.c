@@ -27,6 +27,7 @@
 
 #include "adreno_common.xml.h"
 #include "a6xx.xml.h"
+#include "fdl/fd6_format_table.h"
 
 #include "vk_format.h"
 #include "vk_util.h"
@@ -330,11 +331,56 @@ tu6_format_vtx(VkFormat format)
    return fmt;
 }
 
-struct tu_native_format
-tu6_format_color(VkFormat format, enum a6xx_tile_mode tile_mode)
+bool
+tu6_format_vtx_supported(VkFormat vk_format)
 {
-   struct tu_native_format fmt = tu6_get_native_format(format);
-   assert(fmt.supported & FMT_COLOR);
+   enum pipe_format format = vk_format_to_pipe_format(vk_format);
+   return fd6_vertex_format(format) != FMT6_NONE;
+}
+
+/* Map non-colorspace-converted YUV formats to RGB pipe formats where we can,
+ * since our hardware doesn't support colorspace conversion.
+ *
+ * Really, we should probably be returning the RGB formats in
+ * vk_format_to_pipe_format, but we don't have all the equivalent pipe formats
+ * for VK RGB formats yet, and we'd have to switch all consumers of that
+ * function at once.
+ */
+static enum pipe_format
+tu_vk_format_to_pipe_format(VkFormat vk_format)
+{
+   switch (vk_format) {
+   case VK_FORMAT_G8B8G8R8_422_UNORM: /* YUYV */
+      return PIPE_FORMAT_R8G8_R8B8_UNORM;
+   case VK_FORMAT_B8G8R8G8_422_UNORM: /* UYVY */
+      return PIPE_FORMAT_G8R8_B8R8_UNORM;
+   case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+      return PIPE_FORMAT_R8_G8B8_420_UNORM;
+   case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+      return PIPE_FORMAT_R8_G8_B8_420_UNORM;
+   default:
+      return vk_format_to_pipe_format(vk_format);
+   }
+}
+
+static struct tu_native_format
+tu6_format_color_unchecked(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
+{
+   struct tu_native_format fmt = tu6_get_native_format(vk_format);
+
+   enum pipe_format format = tu_vk_format_to_pipe_format(vk_format);
+   enum a6xx_format fd_format = fd6_color_format(format, tile_mode);
+   enum a3xx_color_swap swap = fd6_color_swap(format, tile_mode);
+
+   switch (format) {
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      fd_format = FMT6_8_8_8_8_UNORM;
+      break;
+
+   default:
+      break;
+   }
 
    if (fmt.fmt == FMT6_10_10_10_2_UNORM)
       fmt.fmt = FMT6_10_10_10_2_UNORM_DEST;
@@ -342,15 +388,60 @@ tu6_format_color(VkFormat format, enum a6xx_tile_mode tile_mode)
    if (tile_mode)
       fmt.swap = WZYX;
 
+   if (fmt.supported & FMT_COLOR) {
+      assert(swap == fmt.swap);
+      assert(fd_format == fmt.fmt);
+   } else {
+      fmt.fmt = fd_format;
+   }
+
    return fmt;
 }
 
-struct tu_native_format
-tu6_format_texture(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
+bool
+tu6_format_color_supported(VkFormat vk_format)
 {
-   enum pipe_format format = vk_format_to_pipe_format(vk_format);
+   return tu6_format_color_unchecked(vk_format, TILE6_LINEAR).fmt != FMT6_NONE;
+}
+
+struct tu_native_format
+tu6_format_color(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
+{
+   struct tu_native_format fmt = tu6_format_color_unchecked(vk_format, tile_mode);
+   assert(fmt.supported & FMT_COLOR);
+   return fmt;
+}
+
+static struct tu_native_format
+tu6_format_texture_unchecked(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
+{
+   enum pipe_format format = tu_vk_format_to_pipe_format(vk_format);
    struct tu_native_format fmt = tu6_get_native_format(vk_format);
-   assert(fmt.supported & FMT_TEXTURE);
+
+   enum a6xx_format fd_format = fd6_texture_format(format, tile_mode);
+   enum a3xx_color_swap swap = fd6_texture_swap(format, tile_mode);
+
+   /* No texturing support for NPOT textures yet.  See
+    * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/5536
+    */
+   if (util_format_is_plain(format) &&
+       !util_is_power_of_two_nonzero(util_format_get_blocksize(format))) {
+      fd_format = FMT6_NONE;
+   }
+
+   switch (format) {
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      /* freedreno uses Z24_UNORM_S8_UINT (sampling) or
+       * FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 (blits) for this format, while we use
+       * FMT6_8_8_8_8_UNORM or FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8
+       */
+      fd_format = FMT6_8_8_8_8_UNORM;
+      break;
+
+   default:
+      break;
+   }
 
    if (!tile_mode) {
       /* different from format table when used as linear src */
@@ -362,7 +453,28 @@ tu6_format_texture(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
       fmt.swap = WZYX;
    }
 
+   if (fmt.supported & FMT_TEXTURE) {
+      assert(swap == fmt.swap);
+      assert(fd_format == fmt.fmt);
+   } else {
+      fmt.fmt = fd_format;
+   }
+
    return fmt;
+}
+
+struct tu_native_format
+tu6_format_texture(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
+{
+   struct tu_native_format fmt = tu6_format_texture_unchecked(vk_format, tile_mode);
+   assert(fmt.supported & FMT_TEXTURE);
+   return fmt;
+}
+
+bool
+tu6_format_texture_supported(VkFormat vk_format)
+{
+   return tu6_format_texture_unchecked(vk_format, TILE6_LINEAR).fmt != FMT6_NONE;
 }
 
 static void
@@ -372,9 +484,17 @@ tu_physical_device_get_format_properties(
    VkFormatProperties *out_properties)
 {
    VkFormatFeatureFlags linear = 0, optimal = 0, buffer = 0;
-   enum pipe_format format = vk_format_to_pipe_format(vk_format);
+   enum pipe_format format = tu_vk_format_to_pipe_format(vk_format);
    const struct util_format_description *desc = util_format_description(format);
    const struct tu_native_format native_fmt = tu6_get_native_format(vk_format);
+
+   bool supported_vtx = tu6_format_vtx_supported(vk_format);
+   bool supported_color = tu6_format_color_supported(vk_format);
+   bool supported_tex = tu6_format_texture_supported(vk_format);
+
+   assert(supported_vtx == !!(native_fmt.supported & FMT_VERTEX));
+   assert(supported_color == !!(native_fmt.supported & FMT_COLOR));
+   assert(supported_tex == !!(native_fmt.supported & FMT_TEXTURE));
    if (format == PIPE_FORMAT_NONE || !native_fmt.supported) {
       goto end;
    }
