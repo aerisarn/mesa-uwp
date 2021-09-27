@@ -1667,6 +1667,7 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
 
       /* count variables to be moved and check "avoid" */
       bool avoid = false;
+      bool linear_vgpr = false;
       for (PhysReg j : reg_win) {
          if (reg_file[j] != 0) {
             if (reg_file[j] == 0xF0000000) {
@@ -1677,17 +1678,20 @@ get_reg_create_vector(ra_ctx& ctx, RegisterFile& reg_file, Temp temp,
                   k += reg_file.test(reg, 1);
             } else {
                k += 4;
-               /* we cannot split live ranges of linear vgprs inside control flow */
-               if (ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
-                  if (ctx.block->kind & block_kind_top_level)
-                     avoid = true;
-                  else
-                     break;
-               }
+               linear_vgpr |= ctx.assignments[reg_file[j]].rc.is_linear_vgpr();
             }
          }
          avoid |= ctx.war_hint[j];
       }
+
+      if (linear_vgpr) {
+         /* we cannot split live ranges of linear vgprs inside control flow */
+         if (ctx.block->kind & block_kind_top_level)
+            avoid = true;
+         else
+            continue;
+      }
+
       if (avoid && !best_avoid)
          continue;
 
