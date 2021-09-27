@@ -108,7 +108,6 @@ anv_shader_compile_to_nir(struct anv_device *device,
       .module = module,
    };
    struct spirv_to_nir_options spirv_options = {
-      .frag_coord_is_sysval = true,
       .caps = {
          .demote_to_helper_invocation = true,
          .derivative_group = true,

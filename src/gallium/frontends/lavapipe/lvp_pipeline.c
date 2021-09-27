@@ -514,7 +514,6 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
       .push_const_addr_format = nir_address_format_logical,
       .shared_addr_format = nir_address_format_32bit_offset,
-      .frag_coord_is_sysval = false,
    };
 
    nir = spirv_to_nir(spirv, module->size / 4,

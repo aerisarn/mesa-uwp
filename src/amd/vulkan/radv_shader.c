@@ -521,7 +521,6 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
          .push_const_addr_format = nir_address_format_logical,
          .shared_addr_format = nir_address_format_32bit_offset,
          .constant_addr_format = nir_address_format_64bit_global,
-         .frag_coord_is_sysval = true,
          .use_deref_buffer_array_length = true,
          .debug =
             {

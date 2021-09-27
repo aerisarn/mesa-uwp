@@ -190,7 +190,6 @@ static const struct spirv_to_nir_options default_spirv_options =  {
    .phys_ssbo_addr_format = nir_address_format_64bit_global,
    .push_const_addr_format = nir_address_format_logical,
    .shared_addr_format = nir_address_format_32bit_offset,
-   .frag_coord_is_sysval = false,
 };
 
 const nir_shader_compiler_options v3dv_nir_options = {
