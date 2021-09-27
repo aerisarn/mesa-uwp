@@ -637,23 +637,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       }
    }
 
-   /* Make sure to export the ViewportIndex if the fragment shader needs it. */
-   if (key->vs_common_out.export_viewport_index) {
-      switch (nir->info.stage) {
-      case MESA_SHADER_VERTEX:
-         info->vs.output_usage_mask[VARYING_SLOT_VIEWPORT] |= 0x1;
-         break;
-      case MESA_SHADER_TESS_EVAL:
-         info->tes.output_usage_mask[VARYING_SLOT_VIEWPORT] |= 0x1;
-         break;
-      case MESA_SHADER_GEOMETRY:
-         info->gs.output_usage_mask[VARYING_SLOT_VIEWPORT] |= 0x1;
-         break;
-      default:
-         break;
-      }
-   }
-
    /* Make sure to export the clip/cull distances if the fragment shader needs it. */
    if (key->vs_common_out.export_clip_dists) {
       switch (nir->info.stage) {

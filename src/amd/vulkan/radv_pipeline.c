@@ -2872,16 +2872,12 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
          infos[MESA_SHADER_FRAGMENT].ps.layer_input;
       keys[MESA_SHADER_VERTEX].vs_common_out.export_clip_dists =
          !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
-      keys[MESA_SHADER_VERTEX].vs_common_out.export_viewport_index =
-         infos[MESA_SHADER_FRAGMENT].ps.viewport_index_input;
       keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_prim_id =
          infos[MESA_SHADER_FRAGMENT].ps.prim_id_input;
       keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_layer_id =
          infos[MESA_SHADER_FRAGMENT].ps.layer_input;
       keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_clip_dists =
          !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
-      keys[MESA_SHADER_TESS_EVAL].vs_common_out.export_viewport_index =
-         infos[MESA_SHADER_FRAGMENT].ps.viewport_index_input;
 
       /* NGG passthrough mode can't be enabled for vertex shaders
        * that export the primitive ID.
