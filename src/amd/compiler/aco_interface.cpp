@@ -107,7 +107,7 @@ aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
       validate(program.get());
 
       /* Optimization */
-      if (!args->options->disable_optimizations) {
+      if (!args->options->key.optimisations_disabled) {
          if (!(aco::debug_flags & aco::DEBUG_NO_VN))
             aco::value_numbering(program.get());
          if (!(aco::debug_flags & aco::DEBUG_NO_OPT))
@@ -147,7 +147,7 @@ aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
       aco_print_program(program.get(), stderr, live_vars, aco::print_live_vars | aco::print_kill);
 
    if (!args->is_trap_handler_shader) {
-      if (!args->options->disable_optimizations && !(aco::debug_flags & aco::DEBUG_NO_SCHED))
+      if (!args->options->key.optimisations_disabled && !(aco::debug_flags & aco::DEBUG_NO_SCHED))
          aco::schedule_program(program.get(), live_vars);
       validate(program.get());
 
@@ -164,7 +164,7 @@ aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
       validate(program.get());
 
       /* Optimization */
-      if (!args->options->disable_optimizations && !(aco::debug_flags & aco::DEBUG_NO_OPT)) {
+      if (!args->options->key.optimisations_disabled && !(aco::debug_flags & aco::DEBUG_NO_OPT)) {
          aco::optimize_postRA(program.get());
          validate(program.get());
       }

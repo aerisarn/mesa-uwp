@@ -3334,7 +3334,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
    bool keep_statistic_info = (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
                               (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
                               device->keep_shader_info;
-   bool disable_optimizations = flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
    struct radv_pipeline_shader_stack_size **stack_sizes =
       pipeline->type == RADV_PIPELINE_COMPUTE ? &pipeline->compute.rt_stack_sizes : NULL;
    uint32_t *num_stack_sizes = stack_sizes ? &pipeline->compute.group_count : NULL;
@@ -3402,7 +3401,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       radv_start_feedback(stage_feedbacks[i]);
 
       nir[i] = radv_shader_compile_to_nir(device, modules[i], stage ? stage->pName : "main", i,
-                                          stage ? stage->pSpecializationInfo : NULL, flags,
+                                          stage ? stage->pSpecializationInfo : NULL,
                                           pipeline->layout, pipeline_key);
 
       /* We don't want to alter meta shaders IR directly so clone it
@@ -3415,7 +3414,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       radv_stop_feedback(stage_feedbacks[i], false);
    }
 
-   bool optimize_conservatively = flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
+   bool optimize_conservatively = pipeline_key->optimisations_disabled;
 
    radv_link_shaders(pipeline, pipeline_key, nir, optimize_conservatively);
    radv_set_driver_locations(pipeline, nir, infos);
@@ -3594,7 +3593,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          pipeline->gs_copy_shader = radv_create_gs_copy_shader(
             device, nir[MESA_SHADER_GEOMETRY], &info, &gs_copy_binary, keep_executable_info,
             keep_statistic_info, keys[MESA_SHADER_GEOMETRY].has_multiview_view_index,
-            disable_optimizations);
+            pipeline_key->optimisations_disabled);
       }
 
       if (!keep_executable_info && pipeline->gs_copy_shader) {
@@ -3619,7 +3618,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          pipeline->shaders[MESA_SHADER_FRAGMENT] = radv_shader_variant_compile(
             device, modules[MESA_SHADER_FRAGMENT], &nir[MESA_SHADER_FRAGMENT], 1, pipeline->layout,
             pipeline_key, infos + MESA_SHADER_FRAGMENT, keep_executable_info,
-            keep_statistic_info, disable_optimizations, &binaries[MESA_SHADER_FRAGMENT]);
+            keep_statistic_info, &binaries[MESA_SHADER_FRAGMENT]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT], false);
       }
@@ -3636,7 +3635,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_variant_compile(
             device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2, pipeline->layout, pipeline_key,
             &infos[MESA_SHADER_TESS_CTRL], keep_executable_info, keep_statistic_info,
-            disable_optimizations, &binaries[MESA_SHADER_TESS_CTRL]);
+            &binaries[MESA_SHADER_TESS_CTRL]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL], false);
       }
@@ -3654,7 +3653,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          pipeline->shaders[MESA_SHADER_GEOMETRY] = radv_shader_variant_compile(
             device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2, pipeline->layout, pipeline_key,
             &infos[MESA_SHADER_GEOMETRY], keep_executable_info,
-            keep_statistic_info, disable_optimizations, &binaries[MESA_SHADER_GEOMETRY]);
+            keep_statistic_info, &binaries[MESA_SHADER_GEOMETRY]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY], false);
       }
@@ -3667,7 +3666,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
 
          pipeline->shaders[i] = radv_shader_variant_compile(
             device, modules[i], &nir[i], 1, pipeline->layout, pipeline_key, infos + i,
-            keep_executable_info, keep_statistic_info, disable_optimizations, &binaries[i]);
+            keep_executable_info, keep_statistic_info, &binaries[i]);
 
          radv_stop_feedback(stage_feedbacks[i], false);
       }

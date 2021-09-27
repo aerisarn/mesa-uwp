@@ -413,7 +413,7 @@ radv_lower_primitive_shading_rate(nir_shader *nir)
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *module,
                            const char *entrypoint_name, gl_shader_stage stage,
-                           const VkSpecializationInfo *spec_info, const VkPipelineCreateFlags flags,
+                           const VkSpecializationInfo *spec_info,
                            const struct radv_pipeline_layout *layout,
                            const struct radv_pipeline_key *key)
 {
@@ -674,7 +674,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
 
    nir_lower_load_const_to_scalar(nir);
 
-   if (!(flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT))
+   if (!key->optimisations_disabled)
       radv_optimize_nir(device, nir, false, true);
 
    /* call radv_nir_lower_ycbcr_textures() late as there might still be
@@ -743,8 +743,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
     * considered too large for unrolling.
     */
    if (ac_nir_lower_indirect_derefs(nir, device->physical_device->rad_info.chip_class) &&
-       !(flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT) &&
-       nir->info.stage != MESA_SHADER_COMPUTE) {
+       !key->optimisations_disabled && nir->info.stage != MESA_SHADER_COMPUTE) {
       /* Optimize the lowered code before the linking optimizations. */
       radv_optimize_nir(device, nir, false, false);
    }
@@ -1635,7 +1634,7 @@ radv_shader_variant_compile(struct radv_device *device, struct vk_shader_module 
                             struct radv_pipeline_layout *layout,
                             const struct radv_pipeline_key *key,
                             struct radv_shader_info *info, bool keep_shader_info,
-                            bool keep_statistic_info, bool disable_optimizations,
+                            bool keep_statistic_info,
                             struct radv_shader_binary **binary_out)
 {
    gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
@@ -1647,7 +1646,6 @@ radv_shader_variant_compile(struct radv_device *device, struct vk_shader_module 
 
    options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
    options.robust_buffer_access = device->robust_buffer_access;
-   options.disable_optimizations = disable_optimizations;
    options.wgp_mode = radv_should_use_wgp_mode(device, stage, info);
 
    return shader_variant_compile(device, module, shaders, shader_count, stage, info, &options,
@@ -1665,7 +1663,7 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader
 
    options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
    options.key.has_multiview_view_index = multiview;
-   options.disable_optimizations = disable_optimizations;
+   options.key.optimisations_disabled = disable_optimizations;
 
    return shader_variant_compile(device, NULL, &shader, 1, stage, info, &options, true, false,
                                  keep_shader_info, keep_statistic_info, binary_out);

@@ -172,7 +172,6 @@ struct radv_nir_compiler_options {
    bool has_ls_vgpr_init_bug;
    bool has_image_load_dcc_bug;
    bool enable_mrt_output_nan_fixup;
-   bool disable_optimizations; /* only used by ACO */
    bool wgp_mode;
    enum radeon_family family;
    enum chip_class chip_class;
@@ -476,7 +475,6 @@ bool radv_nir_lower_ycbcr_textures(nir_shader *shader, const struct radv_pipelin
 nir_shader *radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *module,
                                        const char *entrypoint_name, gl_shader_stage stage,
                                        const VkSpecializationInfo *spec_info,
-                                       const VkPipelineCreateFlags flags,
                                        const struct radv_pipeline_layout *layout,
                                        const struct radv_pipeline_key *key);
 
@@ -496,7 +494,7 @@ struct radv_shader_variant *radv_shader_variant_compile(
    struct radv_device *device, struct vk_shader_module *module, struct nir_shader *const *shaders,
    int shader_count, struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
    struct radv_shader_info *info, bool keep_shader_info, bool keep_statistic_info,
-   bool disable_optimizations, struct radv_shader_binary **binary_out);
+   struct radv_shader_binary **binary_out);
 
 struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
