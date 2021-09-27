@@ -347,7 +347,9 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    b->cursor = nir_before_instr(instr);
 
    /* Grab the input color */
-   nir_ssa_def *src = nir_ssa_for_src(b, intr->src[1], 4);
+   unsigned src_num_comps = nir_src_num_components(intr->src[1]);
+   nir_ssa_def *src =
+      nir_pad_vector(b, nir_ssa_for_src(b, intr->src[1], src_num_comps), 4);
 
    /* Grab the previous fragment color */
    var->data.fb_fetch_output = true;
