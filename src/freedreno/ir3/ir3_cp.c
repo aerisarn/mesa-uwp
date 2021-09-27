@@ -428,6 +428,8 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
              */
             if (is_cat2_float(instr->opc) || is_cat3_float(instr->opc))
                return false;
+            if (instr->opc == OPC_MOV && type_float(instr->cat1.src_type))
+               return false;
          }
 
          src_reg = ir3_reg_clone(instr->block->shader, src_reg);
