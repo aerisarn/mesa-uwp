@@ -829,8 +829,6 @@ spec@glsl-1.30@execution@tex-miplevel-selection textureprojoffset 2drect,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection textureprojoffset 2drect_projvec4,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection textureprojoffset 2drectshadow,Crash
 spec@glsl-es-3.00@execution@varying-struct-centroid_gles3,Fail
-spec@intel_blackhole_render@intel_blackhole-draw_gles2,Crash
-spec@intel_blackhole_render@intel_blackhole-draw_gles3,Crash
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@khr_texture_compression_astc@miptree-gles hdr,Fail
 spec@khr_texture_compression_astc@miptree-gles hdr@HDR Profile,Fail

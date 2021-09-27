@@ -645,7 +645,8 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                 if (dev->debug & PAN_DBG_TRACE)
                         pandecode_jc(submit.jc, dev->gpu_id);
 
-                if (dev->debug & PAN_DBG_SYNC)
+                /* Jobs won't be complete if blackhole rendering, that's ok */
+                if (!ctx->is_noop && dev->debug & PAN_DBG_SYNC)
                         pandecode_abort_on_fault(submit.jc, dev->gpu_id);
         }
 
