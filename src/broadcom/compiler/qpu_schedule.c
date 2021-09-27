@@ -1691,16 +1691,35 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
                 if (c->devinfo->ver < 40 && inst->alu.add.op == V3D_QPU_A_SETMSF)
                         return false;
 
-                /* RF0-2 might be overwritten during the delay slots by
-                 * fragment shader setup.
-                 */
-                if (inst->raddr_a < 3 && v3d_qpu_uses_mux(inst, V3D_QPU_MUX_A))
-                        return false;
+                if (c->devinfo->ver <= 42) {
+                        /* RF0-2 might be overwritten during the delay slots by
+                         * fragment shader setup.
+                         */
+                        if (inst->raddr_a < 3 && v3d_qpu_uses_mux(inst, V3D_QPU_MUX_A))
+                                return false;
 
-                if (inst->raddr_b < 3 &&
-                    !inst->sig.small_imm_b &&
-                    v3d_qpu_uses_mux(inst, V3D_QPU_MUX_B)) {
-                        return false;
+                        if (inst->raddr_b < 3 &&
+                            !inst->sig.small_imm_b &&
+                            v3d_qpu_uses_mux(inst, V3D_QPU_MUX_B)) {
+                                return false;
+                        }
+                }
+
+                if (c->devinfo->ver >= 71) {
+                        /* RF2-3 might be overwritten during the delay slots by
+                         * fragment shader setup.
+                         *
+                         * FIXME: handle small immediate cases
+                         */
+                        if (v3d71_qpu_reads_raddr(inst, 2) ||
+                            v3d71_qpu_reads_raddr(inst, 3)) {
+                                return false;
+                        }
+
+                        if (v3d71_qpu_writes_waddr_explicitly(c->devinfo, inst, 2) ||
+                            v3d71_qpu_writes_waddr_explicitly(c->devinfo, inst, 3)) {
+                                return false;
+                        }
                 }
         }
 
