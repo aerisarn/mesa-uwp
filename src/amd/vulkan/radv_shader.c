@@ -1544,7 +1544,6 @@ shader_variant_compile(struct radv_device *device, struct vk_shader_module *modu
    options->record_ir = keep_shader_info;
    options->record_stats = keep_statistic_info;
    options->check_ir = device->instance->debug_flags & RADV_DEBUG_CHECKIR;
-   options->tess_offchip_block_dw_size = device->tess_offchip_block_dw_size;
    options->address32_hi = device->physical_device->rad_info.address32_hi;
    options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
    options->enable_mrt_output_nan_fixup =

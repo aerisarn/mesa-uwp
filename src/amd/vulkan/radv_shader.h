@@ -161,7 +161,6 @@ struct radv_nir_compiler_options {
    struct radv_pipeline_layout *layout;
    struct radv_pipeline_key key;
    bool explicit_scratch_args;
-   bool clamp_shadow_reference;
    bool robust_buffer_access;
    bool adjust_frag_coord_z;
    bool dump_shader;
@@ -176,7 +175,6 @@ struct radv_nir_compiler_options {
    enum radeon_family family;
    enum chip_class chip_class;
    const struct radeon_info *info;
-   uint32_t tess_offchip_block_dw_size;
    uint32_t address32_hi;
    uint8_t force_vrs_rates;
 
