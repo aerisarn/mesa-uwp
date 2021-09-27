@@ -664,7 +664,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->tes.ccw = nir->info.tess.ccw;
       info->tes.point_mode = nir->info.tess.point_mode;
       info->tes.as_es = key->vs_common_out.as_es;
-      info->tes.export_prim_id = key->vs_common_out.export_prim_id;
       info->is_ngg = key->vs_common_out.as_ngg;
       info->is_ngg_passthrough = key->vs_common_out.as_ngg_passthrough;
       break;
@@ -674,7 +673,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    case MESA_SHADER_VERTEX:
       info->vs.as_es = key->vs_common_out.as_es;
       info->vs.as_ls = key->vs_common_out.as_ls;
-      info->vs.export_prim_id = key->vs_common_out.export_prim_id;
       info->is_ngg = key->vs_common_out.as_ngg;
       info->is_ngg_passthrough = key->vs_common_out.as_ngg_passthrough;
       break;

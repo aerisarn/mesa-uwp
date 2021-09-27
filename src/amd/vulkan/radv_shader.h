@@ -307,7 +307,6 @@ struct radv_shader_info {
       struct radv_es_output_info es_info;
       bool as_es;
       bool as_ls;
-      bool export_prim_id;
       bool tcs_in_out_eq;
       uint64_t tcs_temp_only_input_mask;
       uint8_t num_linked_outputs;
@@ -338,7 +337,6 @@ struct radv_shader_info {
       enum gl_tess_spacing spacing;
       bool ccw;
       bool point_mode;
-      bool export_prim_id;
       uint8_t num_linked_inputs;
       uint8_t num_linked_patch_inputs;
       uint8_t num_linked_outputs;
