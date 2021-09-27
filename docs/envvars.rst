@@ -581,6 +581,8 @@ RADV driver environment variables
       class of application bugs appearing as flickering.
    ``metashaders``
       dump internal meta shaders
+   ``noatocdithering``
+      disable dithering for alpha to coverage
    ``nobinning``
       disable primitive binning
    ``nocache``
