@@ -155,6 +155,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_variable_pointers = true,
       .KHR_vulkan_memory_model = true,
       .KHR_driver_properties = true,
+      .KHR_separate_depth_stencil_layouts = true,
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
@@ -556,7 +557,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->imagelessFramebuffer                = true;
    features->uniformBufferStandardLayout         = true;
    features->shaderSubgroupExtendedTypes         = true;
-   features->separateDepthStencilLayouts         = false;
+   features->separateDepthStencilLayouts         = true;
    features->hostQueryReset                      = true;
    features->timelineSemaphore                   = true;
    features->bufferDeviceAddress                 = false;

@@ -94,6 +94,7 @@ typedef uint32_t xcb_window_t;
 #include "tu_entrypoints.h"
 
 #include "vk_format.h"
+#include "vk_image.h"
 #include "vk_command_buffer.h"
 #include "vk_queue.h"
 
