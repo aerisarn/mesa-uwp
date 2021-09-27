@@ -295,7 +295,7 @@ GLES3.2, GLSL ES 3.2 -- all DONE: i965/gen9+, radeonsi, virgl, llvmpipe, zink
 
 Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES version:
 
-  GL_ARB_bindless_texture                               DONE (nvc0, radeonsi)
+  GL_ARB_bindless_texture                               DONE (nvc0, radeonsi, zink)
   GL_ARB_cl_event                                       not started
   GL_ARB_compute_variable_group_size                    DONE (i965/gen7+, nvc0, radeonsi, zink)
   GL_ARB_ES3_2_compatibility                            DONE (i965/gen8+, radeonsi, virgl, zink)
