@@ -53,7 +53,6 @@ struct radv_vs_out_key {
    uint32_t as_ngg : 1;
    uint32_t as_ngg_passthrough : 1;
    uint32_t export_prim_id : 1;
-   uint32_t export_layer_id : 1;
    uint32_t export_clip_dists : 1;
 };
 
