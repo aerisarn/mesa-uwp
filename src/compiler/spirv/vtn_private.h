@@ -604,6 +604,9 @@ struct vtn_value {
    /* Valid for vtn_value_type_constant to indicate the value is OpConstantNull. */
    bool is_null_constant:1;
 
+   /* Valid when all the members of the value are undef. */
+   bool is_undef_constant:1;
+
    const char *name;
    struct vtn_decoration *decoration;
    struct vtn_type *type;
