@@ -1734,28 +1734,29 @@ if with_llvm
     error('SWR requires LLVM draw support.')
   endif
 
-  # LLVM can be built without rtti, turning off rtti changes the ABI of C++
-  # programs, so we need to build all C++ code in mesa without rtti as well to
-  # ensure that linking works.
-  #
-  # In meson 0.51.0 we can use cmake to find LLVM in addittion to meson's
-  # builtin llvm-config based finder. A new generic variable getter method
-  # has also been added, so we'll use that if we can, to cover the cmake case.
-  if dep_llvm.type_name() == 'internal'
-    _llvm_rtti = subproject('llvm').get_variable('has_rtti', true)
-  else
-    # The CMake finder will return 'ON', the llvm-config will return 'YES'
-    _llvm_rtti = ['ON', 'YES'].contains(dep_llvm.get_variable(cmake : 'LLVM_ENABLE_RTTI', configtool: 'has-rtti'))
-  endif
-  if _rtti != _llvm_rtti
-    if _llvm_rtti
-      error('LLVM was built with RTTI, cannot build Mesa with RTTI disabled. Remove cpp_rtti disable switch or use LLVM built without LLVM_ENABLE_RTTI.')
+  if cc.get_id() != 'msvc'
+    # LLVM can be built without rtti, turning off rtti changes the ABI of C++
+    # programs, so we need to build all C++ code in mesa without rtti as well to
+    # ensure that linking works. Note that MSVC does handle mismatching RTTI
+    # without issues, so only apply this for other compilers.
+    #
+    # In meson 0.51.0 we can use cmake to find LLVM in addittion to meson's
+    # builtin llvm-config based finder. A new generic variable getter method
+    # has also been added, so we'll use that if we can, to cover the cmake case.
+    if dep_llvm.type_name() == 'internal'
+      _llvm_rtti = subproject('llvm').get_variable('has_rtti', true)
     else
-      error('LLVM was built without RTTI, so Mesa must also disable RTTI. Use an LLVM built with LLVM_ENABLE_RTTI or add cpp_rtti=false.')
+      # The CMake finder will return 'ON', the llvm-config will return 'YES'
+      _llvm_rtti = ['ON', 'YES'].contains(dep_llvm.get_variable(cmake : 'LLVM_ENABLE_RTTI', configtool: 'has-rtti'))
     endif
-  endif
-
-  if cc.get_id() == 'msvc'
+    if _rtti != _llvm_rtti
+      if _llvm_rtti
+        error('LLVM was built with RTTI, cannot build Mesa with RTTI disabled. Remove cpp_rtti disable switch or use LLVM built without LLVM_ENABLE_RTTI.')
+      else
+        error('LLVM was built without RTTI, so Mesa must also disable RTTI. Use an LLVM built with LLVM_ENABLE_RTTI or add cpp_rtti=false.')
+      endif
+    endif
+  else
     # Suppress "/DELAYLOAD:ole32.dll/shell32.dll ignored" warnings that LLVM adds
     add_project_link_arguments(
       '/ignore:4199',
