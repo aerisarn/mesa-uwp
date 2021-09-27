@@ -346,16 +346,17 @@ tu6_format_color(VkFormat format, enum a6xx_tile_mode tile_mode)
 }
 
 struct tu_native_format
-tu6_format_texture(VkFormat format, enum a6xx_tile_mode tile_mode)
+tu6_format_texture(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
 {
-   struct tu_native_format fmt = tu6_get_native_format(format);
+   enum pipe_format format = vk_format_to_pipe_format(vk_format);
+   struct tu_native_format fmt = tu6_get_native_format(vk_format);
    assert(fmt.supported & FMT_TEXTURE);
 
    if (!tile_mode) {
       /* different from format table when used as linear src */
-      if (format == VK_FORMAT_R5G5B5A1_UNORM_PACK16)
+      if (format == PIPE_FORMAT_A1B5G5R5_UNORM)
          fmt.fmt = FMT6_1_5_5_5_UNORM, fmt.swap = WXYZ;
-      if (format == VK_FORMAT_B5G5R5A1_UNORM_PACK16)
+      if (format == PIPE_FORMAT_A1R5G5B5_UNORM)
          fmt.fmt = FMT6_1_5_5_5_UNORM, fmt.swap = WZYX;
    } else {
       fmt.swap = WZYX;
@@ -367,13 +368,14 @@ tu6_format_texture(VkFormat format, enum a6xx_tile_mode tile_mode)
 static void
 tu_physical_device_get_format_properties(
    struct tu_physical_device *physical_device,
-   VkFormat format,
+   VkFormat vk_format,
    VkFormatProperties *out_properties)
 {
    VkFormatFeatureFlags linear = 0, optimal = 0, buffer = 0;
-   const struct util_format_description *desc = vk_format_description(format);
-   const struct tu_native_format native_fmt = tu6_get_native_format(format);
-   if (!desc || !native_fmt.supported) {
+   enum pipe_format format = vk_format_to_pipe_format(vk_format);
+   const struct util_format_description *desc = util_format_description(format);
+   const struct tu_native_format native_fmt = tu6_get_native_format(vk_format);
+   if (format == PIPE_FORMAT_NONE || !native_fmt.supported) {
       goto end;
    }
 
@@ -400,7 +402,7 @@ tu_physical_device_get_format_properties(
       if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED)
          optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT;
 
-      if (!vk_format_is_int(format)) {
+      if (!vk_format_is_int(vk_format)) {
          optimal |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
          if (physical_device->vk.supported_extensions.EXT_filter_cubic)
@@ -428,12 +430,12 @@ tu_physical_device_get_format_properties(
       /* TODO: The blob also exposes these for R16G16_UINT/R16G16_SINT, but we
        * don't have any tests for those.
        */
-      if (format == VK_FORMAT_R32_UINT || format == VK_FORMAT_R32_SINT) {
+      if (vk_format == VK_FORMAT_R32_UINT || vk_format == VK_FORMAT_R32_SINT) {
          optimal |= VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT;
          buffer |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
       }
 
-      if (!vk_format_is_int(format))
+      if (!util_format_is_pure_integer(format))
          optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
    }
 
@@ -447,13 +449,13 @@ tu_physical_device_get_format_properties(
     * DEPTH_STENCIL_ATTACHMENT_BIT for the optimal features.
     */
    linear = optimal;
-   if (tu6_pipe2depth(format) != (enum a6xx_depth_format)~0)
+   if (tu6_pipe2depth(vk_format) != (enum a6xx_depth_format)~0)
       optimal |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-   if (format == VK_FORMAT_G8B8G8R8_422_UNORM ||
-       format == VK_FORMAT_B8G8R8G8_422_UNORM ||
-       format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
-       format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+   if (vk_format == VK_FORMAT_G8B8G8R8_422_UNORM ||
+       vk_format == VK_FORMAT_B8G8R8G8_422_UNORM ||
+       vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
+       vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
       /* no tiling for special UBWC formats
        * TODO: NV12 can be UBWC but has a special UBWC format for accessing the Y plane aspect
        * for 3plane, tiling/UBWC might be supported, but the blob doesn't use tiling
@@ -473,7 +475,7 @@ tu_physical_device_get_format_properties(
    /* D32_SFLOAT_S8_UINT is tiled as two images, so no linear format
     * blob enables some linear features, but its not useful, so don't bother.
     */
-   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+   if (vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT)
       linear = 0;
 
 end:
