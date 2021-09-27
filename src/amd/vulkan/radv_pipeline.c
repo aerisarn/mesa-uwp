@@ -2740,39 +2740,6 @@ radv_nir_stage_uses_xfb(const nir_shader *nir)
    return uses_xfb;
 }
 
-static void
-radv_fill_shader_keys(struct radv_device *device, struct radv_shader_variant_key *keys,
-                      const struct radv_pipeline_key *key, nir_shader **nir)
-{
-   keys[MESA_SHADER_VERTEX].vs.instance_rate_inputs = key->vs.instance_rate_inputs;
-   keys[MESA_SHADER_VERTEX].vs.post_shuffle = key->vs.vertex_post_shuffle;
-   for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; ++i) {
-      keys[MESA_SHADER_VERTEX].vs.instance_rate_divisors[i] = key->vs.instance_rate_divisors[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_formats[i] = key->vs.vertex_attribute_formats[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_bindings[i] = key->vs.vertex_attribute_bindings[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_offsets[i] = key->vs.vertex_attribute_offsets[i];
-      keys[MESA_SHADER_VERTEX].vs.vertex_attribute_strides[i] = key->vs.vertex_attribute_strides[i];
-      keys[MESA_SHADER_VERTEX].vs.alpha_adjust[i] = key->vs.vertex_alpha_adjust[i];
-   }
-   for (unsigned i = 0; i < MAX_VBS; ++i)
-      keys[MESA_SHADER_VERTEX].vs.vertex_binding_align[i] = key->vs.vertex_binding_align[i];
-   keys[MESA_SHADER_VERTEX].vs.provoking_vtx_last = key->vs.provoking_vtx_last;
-   keys[MESA_SHADER_VERTEX].vs.topology = key->vs.topology;
-
-   if (nir[MESA_SHADER_TESS_CTRL]) {
-      keys[MESA_SHADER_TESS_CTRL].tcs.input_vertices = key->tcs.tess_input_vertices;
-   }
-
-   for (int i = 0; i < MESA_SHADER_STAGES; ++i)
-      keys[i].has_multiview_view_index = key->has_multiview_view_index;
-
-   keys[MESA_SHADER_FRAGMENT].fs.col_format = key->ps.col_format;
-   keys[MESA_SHADER_FRAGMENT].fs.is_int8 = key->ps.is_int8;
-   keys[MESA_SHADER_FRAGMENT].fs.is_int10 = key->ps.is_int10;
-   keys[MESA_SHADER_FRAGMENT].fs.log2_ps_iter_samples = key->ps.log2_ps_iter_samples;
-   keys[MESA_SHADER_FRAGMENT].fs.num_samples = key->ps.num_samples;
-}
-
 static uint8_t
 radv_get_wave_size(struct radv_device *device, const VkPipelineShaderStageCreateInfo *pStage,
                    gl_shader_stage stage, const struct radv_shader_info *info)
@@ -2800,8 +2767,7 @@ static void
 radv_fill_shader_info(struct radv_pipeline *pipeline,
                       const VkPipelineShaderStageCreateInfo **pStages,
                       const struct radv_pipeline_key *pipeline_key,
-                      struct radv_shader_variant_key *keys, struct radv_shader_info *infos,
-                      nir_shader **nir)
+                      struct radv_shader_info *infos, nir_shader **nir)
 {
    struct radv_device *device = pipeline->device;
    unsigned active_stages = 0;
@@ -2875,8 +2841,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    if (nir[MESA_SHADER_FRAGMENT]) {
       radv_nir_shader_info_init(&infos[MESA_SHADER_FRAGMENT]);
       radv_nir_shader_info_pass(pipeline->device, nir[MESA_SHADER_FRAGMENT], pipeline->layout,
-                                pipeline_key, &keys[MESA_SHADER_FRAGMENT],
-                                &infos[MESA_SHADER_FRAGMENT]);
+                                pipeline_key, &infos[MESA_SHADER_FRAGMENT]);
 
       assert(pipeline->graphics.last_vgt_api_stage != MESA_SHADER_NONE);
       if (infos[MESA_SHADER_FRAGMENT].ps.prim_id_input) {
@@ -2913,8 +2878,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX9 &&
        nir[MESA_SHADER_TESS_CTRL]) {
       struct nir_shader *combined_nir[] = {nir[MESA_SHADER_VERTEX], nir[MESA_SHADER_TESS_CTRL]};
-      struct radv_shader_variant_key *key = &keys[MESA_SHADER_TESS_CTRL];
-      key->tcs.vs_key = keys[MESA_SHADER_VERTEX].vs;
 
       radv_nir_shader_info_init(&infos[MESA_SHADER_TESS_CTRL]);
 
@@ -2923,7 +2886,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
       for (int i = 0; i < 2; i++) {
          radv_nir_shader_info_pass(pipeline->device, combined_nir[i], pipeline->layout, pipeline_key,
-                                   key, &infos[MESA_SHADER_TESS_CTRL]);
+                                   &infos[MESA_SHADER_TESS_CTRL]);
       }
 
       filled_stages |= (1 << MESA_SHADER_VERTEX);
@@ -2949,7 +2912,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
       for (int i = 0; i < 2; i++) {
          radv_nir_shader_info_pass(pipeline->device, combined_nir[i], pipeline->layout, pipeline_key,
-                                   &keys[pre_stage], &infos[MESA_SHADER_GEOMETRY]);
+                                   &infos[MESA_SHADER_GEOMETRY]);
       }
 
       filled_stages |= (1 << pre_stage);
@@ -2960,8 +2923,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
    while (active_stages) {
       int i = u_bit_scan(&active_stages);
       radv_nir_shader_info_init(&infos[i]);
-      radv_nir_shader_info_pass(pipeline->device, nir[i], pipeline->layout, pipeline_key, &keys[i],
-                                &infos[i]);
+      radv_nir_shader_info_pass(pipeline->device, nir[i], pipeline->layout, pipeline_key, &infos[i]);
    }
 
    if (nir[MESA_SHADER_COMPUTE]) {
@@ -3353,7 +3315,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
    };
    nir_shader *nir[MESA_SHADER_STAGES] = {0};
    struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
-   struct radv_shader_variant_key keys[MESA_SHADER_STAGES] = {{{{{0}}}}};
    struct radv_shader_info infos[MESA_SHADER_STAGES] = {0};
    unsigned char hash[20], gs_copy_hash[20];
    bool keep_executable_info =
@@ -3467,8 +3428,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       gather_tess_info(device, nir, infos, pipeline_key);
    }
 
-   radv_fill_shader_keys(device, keys, pipeline_key, nir);
-   radv_fill_shader_info(pipeline, pStages, pipeline_key, keys, infos, nir);
+   radv_fill_shader_info(pipeline, pStages, pipeline_key, infos, nir);
 
    bool pipeline_has_ngg = (nir[MESA_SHADER_VERTEX] && infos[MESA_SHADER_VERTEX].is_ngg) ||
                            (nir[MESA_SHADER_TESS_EVAL] && infos[MESA_SHADER_TESS_EVAL].is_ngg);
@@ -3561,7 +3521,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          if (lowered_ngg) {
             uint64_t ps_inputs_read = nir[MESA_SHADER_FRAGMENT] ? nir[MESA_SHADER_FRAGMENT]->info.inputs_read : 0;
             bool consider_culling = radv_consider_culling(device, nir[i], ps_inputs_read);
-            radv_lower_ngg(device, nir[i], &infos[i], pipeline_key, &keys[i], consider_culling);
+            radv_lower_ngg(device, nir[i], &infos[i], pipeline_key, consider_culling);
          }
 
          radv_optimize_nir_algebraic(nir[i], io_to_mem || lowered_ngg || i == MESA_SHADER_COMPUTE);
@@ -3604,10 +3564,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       struct radv_shader_binary *gs_copy_binary = NULL;
       if (!pipeline_has_ngg) {
          struct radv_shader_info info = {0};
-         struct radv_shader_variant_key key = {0};
 
          radv_nir_shader_info_pass(device, nir[MESA_SHADER_GEOMETRY], pipeline->layout, pipeline_key,
-                                   &key, &info);
+                                   &info);
          info.wave_size = 64; /* Wave32 not supported. */
          info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
          info.ballot_bit_size = 64;
@@ -3649,8 +3608,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
    if (device->physical_device->rad_info.chip_class >= GFX9 && modules[MESA_SHADER_TESS_CTRL]) {
       if (!pipeline->shaders[MESA_SHADER_TESS_CTRL]) {
          struct nir_shader *combined_nir[] = {nir[MESA_SHADER_VERTEX], nir[MESA_SHADER_TESS_CTRL]};
-         struct radv_shader_variant_key *key = &keys[MESA_SHADER_TESS_CTRL];
-         key->tcs.vs_key = keys[MESA_SHADER_VERTEX].vs;
 
          radv_start_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL]);
 

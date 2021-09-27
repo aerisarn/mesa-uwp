@@ -556,7 +556,7 @@ void
 radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
                           const struct radv_pipeline_layout *layout,
                           const struct radv_pipeline_key *pipeline_key,
-                          const struct radv_shader_variant_key *key, struct radv_shader_info *info)
+                          struct radv_shader_info *info)
 {
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 

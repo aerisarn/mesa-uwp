@@ -921,7 +921,6 @@ radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
 void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
                     struct radv_shader_info *info,
                     const struct radv_pipeline_key *pl_key,
-                    struct radv_shader_variant_key *key,
                     bool consider_culling)
 {
    /* TODO: support the LLVM backend with the NIR lowering */

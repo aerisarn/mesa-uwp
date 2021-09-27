@@ -47,69 +47,6 @@ struct radv_pipeline;
 struct radv_pipeline_cache;
 struct radv_pipeline_key;
 
-struct radv_vs_out_key {
-   uint32_t as_es : 1;
-   uint32_t as_ls : 1;
-   uint32_t as_ngg : 1;
-   uint32_t as_ngg_passthrough : 1;
-   uint32_t export_clip_dists : 1;
-};
-
-struct radv_vs_variant_key {
-   struct radv_vs_out_key out;
-
-   uint32_t instance_rate_inputs;
-   uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
-   uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
-   uint32_t vertex_attribute_bindings[MAX_VERTEX_ATTRIBS];
-   uint32_t vertex_attribute_offsets[MAX_VERTEX_ATTRIBS];
-   uint32_t vertex_attribute_strides[MAX_VERTEX_ATTRIBS];
-   uint8_t vertex_binding_align[MAX_VBS];
-
-   /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
-    * so we may need to fix it up. */
-   enum ac_fetch_format alpha_adjust[MAX_VERTEX_ATTRIBS];
-
-   /* For some formats the channels have to be shuffled. */
-   uint32_t post_shuffle;
-
-   /* Topology. */
-   uint8_t topology;
-
-   /* Provoking vertex mode. */
-   bool provoking_vtx_last;
-};
-
-struct radv_tes_variant_key {
-   struct radv_vs_out_key out;
-};
-
-struct radv_tcs_variant_key {
-   struct radv_vs_variant_key vs_key;
-   unsigned input_vertices;
-};
-
-struct radv_fs_variant_key {
-   uint32_t col_format;
-   uint8_t log2_ps_iter_samples;
-   uint8_t num_samples;
-   uint32_t is_int8;
-   uint32_t is_int10;
-};
-
-struct radv_shader_variant_key {
-   union {
-      struct radv_vs_variant_key vs;
-      struct radv_fs_variant_key fs;
-      struct radv_tes_variant_key tes;
-      struct radv_tcs_variant_key tcs;
-
-      /* A common prefix of the vs and tes keys. */
-      struct radv_vs_out_key vs_common_out;
-   };
-   bool has_multiview_view_index;
-};
-
 struct radv_pipeline_key {
    uint32_t has_multiview_view_index : 1;
    uint32_t optimisations_disabled : 1;
@@ -597,7 +534,6 @@ bool radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
 void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
                     struct radv_shader_info *info,
                     const struct radv_pipeline_key *pl_key,
-                    struct radv_shader_variant_key *key,
                     bool consider_culling);
 
 bool radv_consider_culling(struct radv_device *device, struct nir_shader *nir,

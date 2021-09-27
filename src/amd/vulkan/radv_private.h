@@ -2585,12 +2585,10 @@ void llvm_compile_shader(struct radv_device *device, unsigned shader_count,
 
 /* radv_shader_info.h */
 struct radv_shader_info;
-struct radv_shader_variant_key;
 
 void radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
                                const struct radv_pipeline_layout *layout,
                                const struct radv_pipeline_key *pipeline_key,
-                               const struct radv_shader_variant_key *key,
                                struct radv_shader_info *info);
 
 void radv_nir_shader_info_init(struct radv_shader_info *info);
