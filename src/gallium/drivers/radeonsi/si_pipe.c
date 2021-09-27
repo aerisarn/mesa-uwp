@@ -153,6 +153,20 @@ void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
       compiler->low_opt_passes = ac_create_llvm_passes(compiler->low_opt_tm);
 }
 
+void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
+{
+   assert(!sscreen->async_compute_context);
+   sscreen->async_compute_context = si_create_context(
+      &sscreen->b,
+      SI_CONTEXT_FLAG_AUX |
+         (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
+         PIPE_CONTEXT_COMPUTE_ONLY);
+
+   /* Limit the numbers of waves allocated for this context. */
+   if (sscreen->async_compute_context)
+      ((struct si_context*)sscreen->async_compute_context)->cs_max_waves_per_sh = 2;
+}
+
 static void si_destroy_compiler(struct ac_llvm_compiler *compiler)
 {
    ac_destroy_llvm_compiler(compiler);
@@ -784,6 +798,13 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
          sscreen->aux_context->set_log_context(sscreen->aux_context, aux_log);
       }
       simple_mtx_unlock(&sscreen->aux_context_lock);
+
+      simple_mtx_lock(&sscreen->async_compute_context_lock);
+      if (status != PIPE_NO_RESET && sscreen->async_compute_context) {
+         sscreen->async_compute_context->destroy(sscreen->async_compute_context);
+         sscreen->async_compute_context = NULL;
+      }
+      simple_mtx_unlock(&sscreen->async_compute_context_lock);
    }
 
    sctx->initial_gfx_cs_size = sctx->gfx_cs.current.cdw;
@@ -886,6 +907,11 @@ static void si_destroy_screen(struct pipe_screen *pscreen)
        }
 
        sscreen->aux_context->destroy(sscreen->aux_context);
+   }
+
+   simple_mtx_destroy(&sscreen->async_compute_context_lock);
+   if (sscreen->async_compute_context) {
+      sscreen->async_compute_context->destroy(sscreen->async_compute_context);
    }
 
    util_queue_destroy(&sscreen->shader_compiler_queue);
@@ -1120,6 +1146,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    }
 
    (void)simple_mtx_init(&sscreen->aux_context_lock, mtx_plain);
+   (void)simple_mtx_init(&sscreen->async_compute_context_lock, mtx_plain);
    (void)simple_mtx_init(&sscreen->gpu_load_mutex, mtx_plain);
 
    si_init_gs_info(sscreen);

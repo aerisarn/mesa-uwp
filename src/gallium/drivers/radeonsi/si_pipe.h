@@ -566,6 +566,10 @@ struct si_screen {
    struct pipe_context *aux_context;
    simple_mtx_t aux_context_lock;
 
+   /* Async compute context for DRI_PRIME copies. */
+   struct pipe_context *async_compute_context;
+   simple_mtx_t async_compute_context_lock;
+
    /* This must be in the screen, because UE4 uses one context for
     * compilation and another one for rendering.
     */
@@ -1459,6 +1463,7 @@ void si_init_compute_functions(struct si_context *sctx);
 
 /* si_pipe.c */
 void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler);
+void si_init_aux_async_compute_ctx(struct si_screen *sscreen);
 
 /* si_perfcounters.c */
 void si_init_perfcounters(struct si_screen *screen);
