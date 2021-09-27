@@ -72,14 +72,30 @@ static void debug_function(void *private_data,
 static void
 clover_arg_size_align(const glsl_type *type, unsigned *size, unsigned *align)
 {
-   if (type == glsl_type::sampler_type) {
+   if (type == glsl_type::sampler_type || type->is_image()) {
       *size = 0;
       *align = 1;
-   } else if (type->is_image()) {
-      *size = *align = sizeof(cl_mem);
    } else {
       *size = type->cl_size();
       *align = type->cl_alignment();
+   }
+}
+
+static void
+clover_nir_add_image_uniforms(nir_shader *shader)
+{
+   /* Clover expects each image variable to take up a cl_mem worth of space in
+    * the arguments data.  Add uniforms as needed to match this expectation.
+    */
+   nir_foreach_image_variable_safe(var, shader) {
+      nir_variable *uniform = rzalloc(shader, nir_variable);
+      uniform->name = ralloc_strdup(uniform, var->name);
+      uniform->type = glsl_uintN_t_type(sizeof(cl_mem) * 8);
+      uniform->data.mode = nir_var_uniform;
+      uniform->data.read_only = true;
+      uniform->data.location = var->data.location;
+
+      exec_node_insert_node_before(&var->node, &uniform->node);
    }
 }
 
@@ -502,6 +518,7 @@ binary clover::nir::spirv_to_nir(const binary &mod, const device &dev,
       NIR_PASS_V(nir, clover_lower_nir, args, dev.max_block_size().size(),
                  dev.address_bits());
 
+      NIR_PASS_V(nir, clover_nir_add_image_uniforms);
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
                  nir_var_uniform, clover_arg_size_align);
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
