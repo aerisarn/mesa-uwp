@@ -883,8 +883,9 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_FRAG_COORD;
       break;
    case SpvBuiltInPointCoord:
-      *location = VARYING_SLOT_PNTC;
       vtn_assert(*mode == nir_var_shader_in);
+      set_mode_system_value(b, mode);
+      *location = SYSTEM_VALUE_POINT_COORD;
       break;
    case SpvBuiltInFrontFacing:
       *location = SYSTEM_VALUE_FRONT_FACE;
