@@ -18,7 +18,6 @@ glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
-shaders@glsl-arb-fragment-coord-conventions,Fail
 shaders@glsl-bug-110796,Fail
 shaders@glsl-fs-pointcoord,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5,Crash
@@ -367,20 +366,6 @@ spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch@Texture type
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch@Texture type: GL_RGBA8,Fail
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch@Texture type: GL_RGBA8I,Fail
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch@Texture type: GL_SRGB8_ALPHA8,Fail
-spec@arb_texture_multisample@texelfetch@2-fs-sampler2dmsarray,Fail
-spec@arb_texture_multisample@texelfetch@2-fs-sampler2dms,Fail
-spec@arb_texture_multisample@texelfetch@2-vs-sampler2dmsarray,Fail
-spec@arb_texture_multisample@texelfetch@2-vs-sampler2dms,Fail
-spec@arb_texture_multisample@texelfetch@4-fs-sampler2dmsarray,Fail
-spec@arb_texture_multisample@texelfetch@4-fs-sampler2dms,Fail
-spec@arb_texture_multisample@texelfetch@4-vs-sampler2dmsarray,Fail
-spec@arb_texture_multisample@texelfetch@4-vs-sampler2dms,Fail
-spec@arb_texture_multisample@texelfetch fs sampler2dms 4 1x130-501x130,Fail
-spec@arb_texture_multisample@texelfetch fs sampler2dms 4 1x71-501x71,Fail
-spec@arb_texture_multisample@texelfetch fs sampler2dms 4 281x1-281x130,Fail
-spec@arb_texture_multisample@texelfetch fs sampler2dms 4 71x1-71x130,Fail
-spec@arb_texture_multisample@texelfetch fs sampler2dmsarray 4 1x129x9-98x129x9,Fail
-spec@arb_texture_multisample@texelfetch fs sampler2dmsarray 4 98x1x9-98x129x9,Fail
 spec@arb_texture_rectangle@1-1-linear-texture,Fail
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:texture() 2drect,Crash
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:texture() 2drectshadow,Crash
