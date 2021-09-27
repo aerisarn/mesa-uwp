@@ -92,7 +92,7 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
 {
         *varying_count = 0;
 
-        unsigned comps[MAX_VARYING] = { 0 };
+        unsigned comps[PAN_MAX_VARYINGS] = { 0 };
 
         nir_foreach_variable_with_modes(var, s, varying_mode) {
                 unsigned loc = var->data.driver_location;
@@ -142,6 +142,7 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                 assert(format != PIPE_FORMAT_NONE);
 
                 for (int c = 0; c < sz; ++c) {
+                        assert(loc + c < PAN_MAX_VARYINGS);
                         varyings[loc + c].location = var->data.location + c;
                         varyings[loc + c].format = format;
                 }

@@ -53,6 +53,11 @@ enum pan_special_varying {
         PAN_VARY_MAX,
 };
 
+/* Maximum number of attribute descriptors required for varyings. These include
+ * up to MAX_VARYING source level varyings plus a descriptor each non-GENERAL
+ * special varying */
+#define PAN_MAX_VARYINGS (MAX_VARYING + PAN_VARY_MAX - 1)
+
 /* Define the general compiler entry point */
 
 #define MAX_SYSVAL_COUNT 32
@@ -238,9 +243,9 @@ struct pan_shader_info {
 
         struct {
                 unsigned input_count;
-                struct pan_shader_varying input[MAX_VARYING];
+                struct pan_shader_varying input[PAN_MAX_VARYINGS];
                 unsigned output_count;
-                struct pan_shader_varying output[MAX_VARYING];
+                struct pan_shader_varying output[PAN_MAX_VARYINGS];
         } varyings;
 
         struct panfrost_sysvals sysvals;

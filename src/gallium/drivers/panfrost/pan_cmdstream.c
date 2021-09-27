@@ -2105,7 +2105,7 @@ panfrost_emit_varying_descs(
         unsigned consumer_count = consumer->info.varyings.input_count;
 
         /* Offsets within the general varying buffer, indexed by location */
-        signed offsets[PIPE_MAX_ATTRIBS];
+        signed offsets[PAN_MAX_VARYINGS];
         assert(producer_count <= ARRAY_SIZE(offsets));
         assert(consumer_count <= ARRAY_SIZE(offsets));
 

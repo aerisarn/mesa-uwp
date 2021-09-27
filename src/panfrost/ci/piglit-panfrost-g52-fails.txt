@@ -21,8 +21,6 @@ glx@glx-visuals-stencil -pixmap,Crash
 shaders@glsl-arb-fragment-coord-conventions,Fail
 shaders@glsl-bug-110796,Fail
 shaders@glsl-fs-pointcoord,Fail
-shaders@glsl-max-varyings,Crash
-shaders@glsl-max-varyings >max_varying_components,Crash
 shaders@glsl-uniform-interstage-limits@subdivide 5,Crash
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Crash
 shaders@glsl-vs-if-bool,Fail
@@ -739,19 +737,15 @@ spec@glsl-1.10@execution@clipping@clip-plane-transformation fixed,Fail
 spec@glsl-1.10@execution@clipping@clip-plane-transformation pos_clipvert,Fail
 spec@glsl-1.10@execution@varying-packing@simple float array,Fail
 spec@glsl-1.10@execution@varying-packing@simple float arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple float separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple int array,Fail
 spec@glsl-1.10@execution@varying-packing@simple int arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple int separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple ivec2 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple ivec2 arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple ivec2 separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple ivec3 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple ivec3 arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple ivec3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple ivec4 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple ivec4 arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple ivec4 separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple mat2 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple mat2 arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple mat2 separate,Fail
@@ -781,25 +775,20 @@ spec@glsl-1.10@execution@varying-packing@simple mat4x3 arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple mat4x3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple uint array,Fail
 spec@glsl-1.10@execution@varying-packing@simple uint arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple uint separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple uvec2 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple uvec2 arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple uvec2 separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple uvec3 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple uvec3 arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple uvec3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple uvec4 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple uvec4 arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple uvec4 separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple vec2 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec2 arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple vec2 separate,Crash
 spec@glsl-1.10@execution@varying-packing@simple vec3 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec3 arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple vec4 separate,Crash
 spec@glsl-1.30@execution@clipping@clip-plane-transformation pos,Fail
 spec@glsl-1.30@execution@texelfetch@fs-texelfetch-isampler1darray,Fail
 spec@glsl-1.30@execution@texelfetch@fs-texelfetch-sampler1darray,Fail

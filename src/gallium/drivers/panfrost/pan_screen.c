@@ -279,7 +279,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 4;
 
         case PIPE_CAP_MAX_VARYINGS:
-                return PIPE_MAX_ATTRIBS;
+                /* Return the GLSL maximum. The internal maximum
+                 * PAN_MAX_VARYINGS accommodates internal varyings. */
+                return MAX_VARYING;
 
         /* Removed in v6 (Bifrost) */
         case PIPE_CAP_ALPHA_TEST:
