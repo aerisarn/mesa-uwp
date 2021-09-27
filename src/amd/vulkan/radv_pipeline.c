@@ -4299,8 +4299,6 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
    const VkConservativeRasterizationModeEXT mode = radv_get_conservative_raster_mode(vkraster);
    uint32_t pa_sc_conservative_rast = S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1);
 
-   radeon_set_context_reg(ctx_cs, R_028BDC_PA_SC_LINE_CNTL, S_028BDC_DX10_DIAMOND_TEST_ENA(1));
-
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX9) {
       /* Conservative rasterization. */
       if (mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
