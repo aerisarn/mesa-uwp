@@ -236,11 +236,13 @@ v3dv_CreateRenderPass2(VkDevice _device,
 
          /* GFXH-1461: if depth is cleared but stencil is loaded (or vice versa),
           * the clear might get lost. If a subpass has this then we can't emit
-          * the clear using the TLB and we have to do it as a draw call.
+          * the clear using the TLB and we have to do it as a draw call. This
+          * issue is fixed since V3D 4.3.18.
           *
           * FIXME: separate stencil.
           */
-         if (subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED) {
+         if (device->devinfo.ver == 42 &&
+             subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED) {
             struct v3dv_render_pass_attachment *att =
                &pass->attachments[subpass->ds_attachment.attachment];
             if (att->desc.format == VK_FORMAT_D24_UNORM_S8_UINT) {
