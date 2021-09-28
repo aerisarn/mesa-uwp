@@ -2835,6 +2835,14 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
       radv_save_descriptors(cmd_buffer, bind_point);
 }
 
+static bool
+radv_shader_loads_push_constants(struct radv_pipeline *pipeline, gl_shader_stage stage)
+{
+   struct radv_userdata_info *loc =
+      radv_lookup_user_sgpr(pipeline, stage, AC_UD_PUSH_CONSTANTS);
+   return loc->sgpr_idx != -1;
+}
+
 static void
 radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stages,
                      struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
@@ -2875,7 +2883,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       if (!shader)
          continue;
 
-      need_push_constants |= shader->info.loads_push_constants;
+      need_push_constants |= radv_shader_loads_push_constants(pipeline, stage);
 
       uint8_t base = shader->info.base_inline_push_consts;
       uint8_t count = shader->info.num_inline_push_consts;
