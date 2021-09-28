@@ -64,19 +64,34 @@ lvp_image_create(VkDevice _device,
          break;
       }
 
-      if (pCreateInfo->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+      template.format = lvp_vk_format_to_pipe_format(pCreateInfo->format);
+
+      bool is_ds = util_format_is_depth_or_stencil(template.format);
+
+      if (pCreateInfo->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
          template.bind |= PIPE_BIND_RENDER_TARGET;
+         /* sampler view is needed for resolve blits */
+         if (pCreateInfo->samples > 1)
+            template.bind |= PIPE_BIND_SAMPLER_VIEW;
+      }
+
+      if (pCreateInfo->usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+         if (!is_ds)
+            template.bind |= PIPE_BIND_RENDER_TARGET;
+         else
+            template.bind |= PIPE_BIND_DEPTH_STENCIL;
+      }
 
       if (pCreateInfo->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
          template.bind |= PIPE_BIND_DEPTH_STENCIL;
 
-      if (pCreateInfo->usage & VK_IMAGE_USAGE_SAMPLED_BIT)
+      if (pCreateInfo->usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
          template.bind |= PIPE_BIND_SAMPLER_VIEW;
 
       if (pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT)
          template.bind |= PIPE_BIND_SHADER_IMAGE;
 
-      template.format = lvp_vk_format_to_pipe_format(pCreateInfo->format);
       template.width0 = pCreateInfo->extent.width;
       template.height0 = pCreateInfo->extent.height;
       template.depth0 = pCreateInfo->extent.depth;
