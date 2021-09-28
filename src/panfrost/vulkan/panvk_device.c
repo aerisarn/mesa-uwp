@@ -917,8 +917,6 @@ panvk_queue_init(struct panvk_device *device,
    if (result != VK_SUCCESS)
       return result;
    queue->device = device;
-   queue->queue_family_index = create_info->queueFamilyIndex;
-   queue->flags = create_info->flags;
 
    struct drm_syncobj_create create = {
       .flags = DRM_SYNCOBJ_CREATE_SIGNALED,
@@ -1081,7 +1079,7 @@ panvk_GetDeviceQueue2(VkDevice _device,
    struct panvk_queue *queue;
 
    queue = &device->queues[pQueueInfo->queueFamilyIndex][pQueueInfo->queueIndex];
-   if (pQueueInfo->flags != queue->flags) {
+   if (pQueueInfo->flags != queue->vk.flags) {
       /* From the Vulkan 1.1.70 spec:
        *
        * "The queue returned by vkGetDeviceQueue2 must have the same

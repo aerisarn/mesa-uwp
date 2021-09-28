@@ -254,8 +254,8 @@ panvk_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
    VK_FROM_HANDLE(panvk_queue, queue, _queue);
    return wsi_common_queue_present(
       &queue->device->physical_device->wsi_device,
-      panvk_device_to_handle(queue->device), _queue, queue->queue_family_index,
-      pPresentInfo);
+      panvk_device_to_handle(queue->device), _queue,
+      queue->vk.queue_family_index, pPresentInfo);
 }
 
 VkResult

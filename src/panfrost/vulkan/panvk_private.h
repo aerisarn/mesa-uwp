@@ -251,8 +251,6 @@ struct panvk_pipeline_cache {
 struct panvk_queue {
    struct vk_queue vk;
    struct panvk_device *device;
-   uint32_t queue_family_index;
-   VkDeviceQueueCreateFlags flags;
    uint32_t sync;
 };
 
