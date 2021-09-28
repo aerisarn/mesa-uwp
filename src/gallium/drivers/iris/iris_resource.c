@@ -412,7 +412,8 @@ iris_resource_disable_aux(struct iris_resource *res)
 
 static uint32_t
 iris_resource_alloc_flags(const struct iris_screen *screen,
-                          const struct pipe_resource *templ)
+                          const struct pipe_resource *templ,
+                          enum isl_aux_usage aux_usage)
 {
    if (templ->flags & IRIS_RESOURCE_FLAG_DEVICE_MEM)
       return 0;
@@ -442,6 +443,9 @@ iris_resource_alloc_flags(const struct iris_screen *screen,
    if (templ->flags & (PIPE_RESOURCE_FLAG_MAP_COHERENT |
                        PIPE_RESOURCE_FLAG_MAP_PERSISTENT))
       flags |= BO_ALLOC_SMEM;
+
+   if (screen->devinfo.verx10 >= 125 && isl_aux_usage_has_ccs(aux_usage))
+      flags |= BO_ALLOC_LMEM;
 
    if ((templ->bind & PIPE_BIND_SHARED) ||
        util_format_get_num_planes(templ->format) > 1)
@@ -1052,7 +1056,7 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
       name = "bindless surface state";
    }
 
-   unsigned flags = iris_resource_alloc_flags(screen, templ);
+   unsigned flags = iris_resource_alloc_flags(screen, templ, res->aux.usage);
 
    res->bo =
       iris_bo_alloc(screen->bufmgr, name, templ->width0, 1, memzone, flags);
@@ -1095,19 +1099,19 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       iris_resource_configure_main(screen, res, templ, modifier, 0);
    assert(isl_surf_created_successfully);
 
+   if (!iris_resource_configure_aux(screen, res, false))
+      goto fail;
+
    const char *name = "miptree";
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
 
-   unsigned int flags = iris_resource_alloc_flags(screen, templ);
+   unsigned flags = iris_resource_alloc_flags(screen, templ, res->aux.usage);
 
    /* These are for u_upload_mgr buffers only */
    assert(!(templ->flags & (IRIS_RESOURCE_FLAG_SHADER_MEMZONE |
                             IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
                             IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE |
                             IRIS_RESOURCE_FLAG_BINDLESS_MEMZONE)));
-
-   if (!iris_resource_configure_aux(screen, res, false))
-      goto fail;
 
    /* Modifiers require the aux data to be in the same buffer as the main
     * surface, but we combine them even when a modifier is not being used.
