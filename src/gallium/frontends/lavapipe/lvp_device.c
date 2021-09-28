@@ -1050,10 +1050,10 @@ lvp_get_physical_device_properties_1_2(struct lvp_physical_device *pdevice,
             );
 
    p->conformanceVersion = (VkConformanceVersion){
-      .major = 0,
-      .minor = 0,
-      .subminor = 0,
-      .patch = 0,
+      .major = 1,
+      .minor = 3,
+      .subminor = 1,
+      .patch = 1,
    };
 
    p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
@@ -1499,8 +1499,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    const VkAllocationCallbacks*                pAllocator,
    VkDevice*                                   pDevice)
 {
-   vk_warn_non_conformant_implementation("lavapipe");
-
    LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
    struct lvp_device *device;
    struct lvp_instance *instance = (struct lvp_instance *)physical_device->vk.instance;
