@@ -2256,6 +2256,9 @@ vn_GetPhysicalDeviceExternalBufferProperties(
       physical_dev->external_memory.renderer_handle_type;
    const VkExternalMemoryHandleTypeFlags supported_handle_types =
       physical_dev->external_memory.supported_handle_types;
+   const bool is_ahb =
+      pExternalBufferInfo->handleType ==
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
 
    VkExternalMemoryProperties *props =
       &pExternalBufferProperties->externalMemoryProperties;
@@ -2278,8 +2281,7 @@ vn_GetPhysicalDeviceExternalBufferProperties(
       physical_dev->instance, physicalDevice, pExternalBufferInfo,
       pExternalBufferProperties);
 
-   if (pExternalBufferInfo->handleType ==
-       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+   if (is_ahb) {
       props->compatibleHandleTypes =
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
       /* AHB backed buffer requires renderer to support import bit while it
