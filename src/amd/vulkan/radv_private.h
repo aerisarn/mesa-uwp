@@ -262,6 +262,9 @@ struct radv_physical_device {
    /* Whether to enable NGG. */
    bool use_ngg;
 
+   /* Whether to enable NGG culling. */
+   bool use_ngg_culling;
+
    /* Whether to enable NGG streamout. */
    bool use_ngg_streamout;
 
@@ -1649,7 +1652,7 @@ struct radv_event {
 #define RADV_HASH_SHADER_GE_WAVE32         (1 << 3)
 #define RADV_HASH_SHADER_LLVM              (1 << 4)
 #define RADV_HASH_SHADER_KEEP_STATISTICS   (1 << 8)
-#define RADV_HASH_SHADER_FORCE_NGG_CULLING (1 << 13)
+#define RADV_HASH_SHADER_USE_NGG_CULLING   (1 << 13)
 #define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS (1 << 14)
 #define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS2 (1 << 15)
 #define RADV_HASH_SHADER_FORCE_EMULATE_RT (1 << 16)

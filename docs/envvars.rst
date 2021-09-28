@@ -657,6 +657,8 @@ RADV driver environment variables
       disable memory shaders cache
    ``nongg``
       disable NGG for GFX10+
+   ``nonggc``
+      disable NGG culling on GPUs where it's enabled by default (GFX10.3+ only).
    ``nooutoforder``
       disable out-of-order rasterization
    ``notccompatcmask``
@@ -712,7 +714,7 @@ RADV driver environment variables
    ``pswave32``
       enable wave32 for pixel shaders (GFX10+)
    ``nggc``
-      enable NGG culling on GFX10+ GPUs.
+      enable NGG culling on GPUs where it's not enabled by default (GFX10.1 only).
    ``rt``
       enable rt extensions whose implementation is still experimental.
    ``sam``

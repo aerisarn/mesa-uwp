@@ -705,6 +705,13 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
                      device->rad_info.family != CHIP_NAVI14 &&
                      !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
 
+   device->use_ngg_culling =
+      device->use_ngg &&
+      device->rad_info.max_render_backends > 1 &&
+      (device->rad_info.chip_class >= GFX10_3 ||
+       (device->instance->perftest_flags & RADV_PERFTEST_NGGC)) &&
+      !(device->instance->debug_flags & RADV_DEBUG_NO_NGGC);
+
    device->use_ngg_streamout = false;
 
    /* Determine the number of threads per wave for all stages. */
@@ -841,6 +848,7 @@ static const struct debug_control radv_debug_options[] = {
    {"notccompatcmask", RADV_DEBUG_NO_TC_COMPAT_CMASK},
    {"novrsflatshading", RADV_DEBUG_NO_VRS_FLAT_SHADING},
    {"noatocdithering", RADV_DEBUG_NO_ATOC_DITHERING},
+   {"nonggc", RADV_DEBUG_NO_NGGC},
    {NULL, 0}};
 
 const char *

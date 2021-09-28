@@ -899,10 +899,7 @@ radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
    if (nir->info.outputs_written & (VARYING_BIT_VIEWPORT | VARYING_BIT_VIEWPORT_MASK))
       return false;
 
-   /* TODO: enable by default on GFX10.3 when we're confident about performance. */
-   bool culling_enabled = device->instance->perftest_flags & RADV_PERFTEST_NGGC;
-
-   if (!culling_enabled)
+   if (!device->physical_device->use_ngg_culling)
       return false;
 
    /* Shader based culling efficiency can depend on PS throughput.
@@ -912,9 +909,7 @@ radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
    unsigned max_render_backends = device->physical_device->rad_info.max_render_backends;
    unsigned max_se = device->physical_device->rad_info.max_se;
 
-   if (max_render_backends < 2)
-      return false; /* Don't use NGG culling on 1 RB chips. */
-   else if (max_render_backends / max_se == 4)
+   if (max_render_backends / max_se == 4)
       max_ps_params = 6; /* Sienna Cichlid and other GFX10.3 dGPUs. */
    else
       max_ps_params = 4; /* Navi 1x. */

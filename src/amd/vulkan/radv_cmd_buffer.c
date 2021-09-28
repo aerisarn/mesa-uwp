@@ -5927,7 +5927,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
        cmd_buffer->state.emitted_pipeline != cmd_buffer->state.pipeline)
       radv_emit_rbplus_state(cmd_buffer);
 
-   if ((cmd_buffer->device->instance->perftest_flags & RADV_PERFTEST_NGGC) &&
+   if (cmd_buffer->device->physical_device->use_ngg_culling &&
        cmd_buffer->state.pipeline->graphics.is_ngg)
       radv_emit_ngg_culling_state(cmd_buffer, info);
 
