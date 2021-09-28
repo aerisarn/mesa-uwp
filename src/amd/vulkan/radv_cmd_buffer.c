@@ -2870,7 +2870,6 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
          continue;
 
       need_push_constants |= shader->info.loads_push_constants;
-      need_push_constants |= shader->info.loads_dynamic_offsets;
 
       uint8_t base = shader->info.base_inline_push_consts;
       uint8_t count = shader->info.num_inline_push_consts;
