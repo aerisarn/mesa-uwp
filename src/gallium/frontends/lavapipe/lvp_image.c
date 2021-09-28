@@ -26,14 +26,13 @@
 #include "util/u_inlines.h"
 #include "pipe/p_state.h"
 
-VkResult
+static VkResult
 lvp_image_create(VkDevice _device,
-                 const struct lvp_image_create_info *create_info,
+                 const VkImageCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks* alloc,
                  VkImage *pImage)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
-   const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
    struct lvp_image *image;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
@@ -85,8 +84,6 @@ lvp_image_create(VkDevice _device,
       template.last_level = pCreateInfo->mipLevels - 1;
       template.nr_samples = pCreateInfo->samples;
       template.nr_storage_samples = pCreateInfo->samples;
-      if (create_info->bind_flags)
-         template.bind = create_info->bind_flags;
       image->bo = device->pscreen->resource_create_unbacked(device->pscreen,
                                                             &template,
                                                             &image->size);
@@ -138,12 +135,8 @@ lvp_image_from_swapchain(VkDevice device,
    local_create_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
    assert(!(local_create_info.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
-   return lvp_image_create(device,
-      &(struct lvp_image_create_info) {
-         .vk_info = &local_create_info,
-      },
-      pAllocator,
-      pImage);
+   return lvp_image_create(device, &local_create_info, pAllocator,
+                           pImage);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -157,13 +150,8 @@ lvp_CreateImage(VkDevice device,
    if (swapchain_info && swapchain_info->swapchain != VK_NULL_HANDLE)
       return lvp_image_from_swapchain(device, pCreateInfo, swapchain_info,
                                       pAllocator, pImage);
-   return lvp_image_create(device,
-      &(struct lvp_image_create_info) {
-         .vk_info = pCreateInfo,
-         .bind_flags = 0,
-      },
-      pAllocator,
-      pImage);
+   return lvp_image_create(device, pCreateInfo, pAllocator,
+                           pImage);
 }
 
 VKAPI_ATTR void VKAPI_CALL

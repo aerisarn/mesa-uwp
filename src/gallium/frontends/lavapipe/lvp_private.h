@@ -250,18 +250,6 @@ lvp_get_levelCount(const struct lvp_image *image,
       (image->bo->last_level + 1) - range->baseMipLevel : range->levelCount;
 }
 
-struct lvp_image_create_info {
-   const VkImageCreateInfo *vk_info;
-   uint32_t bind_flags;
-   uint32_t stride;
-};
-
-VkResult
-lvp_image_create(VkDevice _device,
-                 const struct lvp_image_create_info *create_info,
-                 const VkAllocationCallbacks* alloc,
-                 VkImage *pImage);
-
 struct lvp_image_view {
    struct vk_object_base base;
    const struct lvp_image *image; /**< VkImageViewCreateInfo::image */
