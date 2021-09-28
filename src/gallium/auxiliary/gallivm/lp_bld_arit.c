@@ -1357,8 +1357,21 @@ lp_build_lerp_simple(struct lp_build_context *bld,
          }
 
          /* (x * delta) >> n */
-         res = lp_build_mul(bld, x, delta);
-         res = lp_build_shr_imm(bld, res, half_width);
+	 /*
+	  * For this multiply, higher internal precision is required to pass CTS,
+	  * the most efficient path to that is pmulhrsw on ssse3 and above.
+	  * This could be opencoded on other arches if conformance was required.
+	  */
+         if (bld->type.width == 16 && bld->type.length == 8 && util_get_cpu_caps()->has_ssse3) {
+            res = lp_build_intrinsic_binary(builder, "llvm.x86.ssse3.pmul.hr.sw.128", bld->vec_type, x, lp_build_shl_imm(bld, delta, 7));
+            res = lp_build_and(bld, res, lp_build_const_int_vec(bld->gallivm, bld->type, 0xff));
+         } else if (bld->type.width == 16 && bld->type.length == 16 && util_get_cpu_caps()->has_avx2) {
+            res = lp_build_intrinsic_binary(builder, "llvm.x86.avx2.pmul.hr.sw", bld->vec_type, x, lp_build_shl_imm(bld, delta, 7));
+            res = lp_build_and(bld, res, lp_build_const_int_vec(bld->gallivm, bld->type, 0xff));
+         } else {
+            res = lp_build_mul(bld, x, delta);
+            res = lp_build_shr_imm(bld, res, half_width);
+         }
       } else {
          /*
           * The rescaling trick above doesn't work for signed numbers, so

@@ -269,7 +269,6 @@ spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params/dsa: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms2: skip
-spec/arb_framebuffer_object/fbo-blit-scaled-linear: fail
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_line_strip_adjacency: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_lines_adjacency: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_triangle_strip_adjacency: skip
