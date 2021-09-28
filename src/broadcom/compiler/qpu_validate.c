@@ -316,17 +316,48 @@ qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
             inst->type == V3D_QPU_INSTR_TYPE_ALU) {
                 if ((inst->alu.add.op != V3D_QPU_A_NOP &&
                      !inst->alu.add.magic_write)) {
-                        fail_instr(state, "RF write after THREND");
+                        if (devinfo->ver <= 42) {
+                                fail_instr(state, "RF write after THREND");
+                        } else if (devinfo->ver >= 71) {
+                                if (state->last_thrsw_ip - state->ip == 0) {
+                                        fail_instr(state,
+                                                   "ADD RF write at THREND");
+                                }
+                                if (inst->alu.add.waddr == 2 ||
+                                    inst->alu.add.waddr == 3) {
+                                        fail_instr(state,
+                                                   "RF2-3 write after THREND");
+                                }
+                        }
                 }
 
                 if ((inst->alu.mul.op != V3D_QPU_M_NOP &&
                      !inst->alu.mul.magic_write)) {
-                        fail_instr(state, "RF write after THREND");
+                        if (devinfo->ver <= 42) {
+                                fail_instr(state, "RF write after THREND");
+                        } else if (devinfo->ver >= 71) {
+                                if (state->last_thrsw_ip - state->ip == 0) {
+                                        fail_instr(state,
+                                                   "MUL RF write at THREND");
+                                }
+
+                                if (inst->alu.mul.waddr == 2 ||
+                                    inst->alu.mul.waddr == 3) {
+                                        fail_instr(state,
+                                                   "RF2-3 write after THREND");
+                                }
+                        }
                 }
 
                 if (v3d_qpu_sig_writes_address(devinfo, &inst->sig) &&
                     !inst->sig_magic) {
-                        fail_instr(state, "RF write after THREND");
+                        if (devinfo->ver <= 42) {
+                                fail_instr(state, "RF write after THREND");
+                        } else if (devinfo->ver >= 71 &&
+                                   (inst->sig_addr == 2 ||
+                                    inst->sig_addr == 3)) {
+                                fail_instr(state, "RF2-3 write after THREND");
+                        }
                 }
 
                 /* GFXH-1625: No TMUWT in the last instruction */
