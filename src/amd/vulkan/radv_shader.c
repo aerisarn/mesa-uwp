@@ -476,6 +476,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
                .float64 = true,
                .float64_atomic_min_max = true,
                .geometry_streams = true,
+               .groups = true,
                .image_atomic_int64 = true,
                .image_ms_array = true,
                .image_read_without_format = true,

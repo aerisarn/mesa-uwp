@@ -57,6 +57,7 @@ struct spirv_supported_capabilities {
    bool fragment_shading_rate;
    bool generic_pointers;
    bool geometry_streams;
+   bool groups;
    bool image_ms_array;
    bool image_read_without_format;
    bool image_write_without_format;
