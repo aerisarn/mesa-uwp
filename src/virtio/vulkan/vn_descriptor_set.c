@@ -40,6 +40,8 @@ vn_descriptor_set_destroy(struct vn_device *dev,
 {
    list_del(&set->head);
 
+   vn_descriptor_set_layout_unref(dev, set->layout);
+
    vn_object_base_fini(&set->base);
    vk_free(alloc, set);
 }
@@ -413,7 +415,7 @@ vn_AllocateDescriptorSets(VkDevice device,
       variable_info = NULL;
 
    for (uint32_t i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
-      const struct vn_descriptor_set_layout *layout =
+      struct vn_descriptor_set_layout *layout =
          vn_descriptor_set_layout_from_handle(pAllocateInfo->pSetLayouts[i]);
       uint32_t last_binding_descriptor_count = 0;
       struct vn_descriptor_set *set = NULL;
@@ -451,7 +453,21 @@ vn_AllocateDescriptorSets(VkDevice device,
       vn_object_base_init(&set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET,
                           &dev->base);
 
-      set->layout = layout;
+      /* We might reorder vkCmdBindDescriptorSets after
+       * vkDestroyDescriptorSetLayout due to batching.  The spec says
+       *
+       *   VkDescriptorSetLayout objects may be accessed by commands that
+       *   operate on descriptor sets allocated using that layout, and those
+       *   descriptor sets must not be updated with vkUpdateDescriptorSets
+       *   after the descriptor set layout has been destroyed. Otherwise, a
+       *   VkDescriptorSetLayout object passed as a parameter to create
+       *   another object is not further accessed by that object after the
+       *   duration of the command it is passed into.
+       *
+       * It is ambiguous but the reordering is likely invalid.  Let's keep the
+       * layout alive with the set to defer vkDestroyDescriptorSetLayout.
+       */
+      set->layout = vn_descriptor_set_layout_ref(dev, layout);
       set->last_binding_descriptor_count = last_binding_descriptor_count;
       list_addtail(&set->head, &pool->descriptor_sets);
 

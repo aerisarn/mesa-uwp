@@ -72,7 +72,7 @@ struct vn_update_descriptor_sets {
 struct vn_descriptor_set {
    struct vn_object_base base;
 
-   const struct vn_descriptor_set_layout *layout;
+   struct vn_descriptor_set_layout *layout;
    uint32_t last_binding_descriptor_count;
 
    struct list_head head;
