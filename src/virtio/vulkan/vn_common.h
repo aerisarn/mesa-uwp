@@ -118,6 +118,10 @@ struct vn_object_base {
    vn_object_id id;
 };
 
+struct vn_refcount {
+   atomic_int count;
+};
+
 extern uint64_t vn_debug;
 
 void
@@ -131,6 +135,55 @@ VkResult
 vn_log_result(struct vn_instance *instance,
               VkResult result,
               const char *where);
+
+#define VN_REFCOUNT_INIT(val)                                                \
+   (struct vn_refcount) { .count = (val) }
+
+static inline int
+vn_refcount_load_relaxed(const struct vn_refcount *ref)
+{
+   return atomic_load_explicit(&ref->count, memory_order_relaxed);
+}
+
+static inline int
+vn_refcount_fetch_add_relaxed(struct vn_refcount *ref, int val)
+{
+   return atomic_fetch_add_explicit(&ref->count, val, memory_order_relaxed);
+}
+
+static inline int
+vn_refcount_fetch_sub_release(struct vn_refcount *ref, int val)
+{
+   return atomic_fetch_sub_explicit(&ref->count, val, memory_order_release);
+}
+
+static inline bool
+vn_refcount_is_valid(const struct vn_refcount *ref)
+{
+   return vn_refcount_load_relaxed(ref) > 0;
+}
+
+static inline void
+vn_refcount_inc(struct vn_refcount *ref)
+{
+   /* no ordering imposed */
+   ASSERTED const int old = vn_refcount_fetch_add_relaxed(ref, 1);
+   assert(old >= 1);
+}
+
+static inline bool
+vn_refcount_dec(struct vn_refcount *ref)
+{
+   /* prior reads/writes cannot be reordered after this */
+   const int old = vn_refcount_fetch_sub_release(ref, 1);
+   assert(old >= 1);
+
+   /* subsequent free cannot be reordered before this */
+   if (old == 1)
+      atomic_thread_fence(memory_order_acquire);
+
+   return old == 1;
+}
 
 void
 vn_relax(uint32_t *iter, const char *reason);
