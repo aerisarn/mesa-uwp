@@ -1429,8 +1429,11 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                           SAMPLER);
         struct mali_sampler_packed *out = (struct mali_sampler_packed *) T.cpu;
 
-        for (unsigned i = 0; i < ctx->sampler_count[stage]; ++i)
-                out[i] = ctx->samplers[stage][i]->hw;
+        for (unsigned i = 0; i < ctx->sampler_count[stage]; ++i) {
+                struct panfrost_sampler_state *st = ctx->samplers[stage][i];
+
+                out[i] = st ? st->hw : (struct mali_sampler_packed){0};
+        }
 
         return T.gpu;
 }
