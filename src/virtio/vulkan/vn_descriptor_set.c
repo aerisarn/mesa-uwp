@@ -17,6 +17,22 @@
 
 #include "vn_device.h"
 
+void
+vn_descriptor_set_layout_destroy(struct vn_device *dev,
+                                 struct vn_descriptor_set_layout *layout)
+{
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   VkDescriptorSetLayout layout_handle =
+      vn_descriptor_set_layout_to_handle(layout);
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+
+   vn_async_vkDestroyDescriptorSetLayout(dev->instance, dev_handle,
+                                         layout_handle, NULL);
+
+   vn_object_base_fini(&layout->base);
+   vk_free(alloc, layout);
+}
+
 static void
 vn_descriptor_set_destroy(struct vn_device *dev,
                           struct vn_descriptor_set *set,
@@ -66,6 +82,7 @@ vn_descriptor_set_layout_init(
    if (binding_flags && !binding_flags->bindingCount)
       binding_flags = NULL;
 
+   layout->refcount = VN_REFCOUNT_INIT(1);
    layout->last_binding = last_binding;
 
    for (uint32_t i = 0; i < create_info->bindingCount; i++) {
@@ -120,8 +137,8 @@ vn_CreateDescriptorSetLayout(
    VkDescriptorSetLayout *pSetLayout)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   const VkAllocationCallbacks *alloc =
-      pAllocator ? pAllocator : &dev->base.base.alloc;
+   /* ignore pAllocator as the layout is reference-counted */
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
 
    uint32_t last_binding = 0;
    VkDescriptorSetLayoutBinding *local_bindings = NULL;
@@ -161,9 +178,10 @@ vn_CreateDescriptorSetLayout(
 
    const size_t layout_size =
       offsetof(struct vn_descriptor_set_layout, bindings[last_binding + 1]);
+   /* allocated with the device scope */
    struct vn_descriptor_set_layout *layout =
       vk_zalloc(alloc, layout_size, VN_DEFAULT_ALIGN,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+                VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!layout) {
       vk_free(alloc, local_bindings);
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -189,17 +207,11 @@ vn_DestroyDescriptorSetLayout(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_descriptor_set_layout *layout =
       vn_descriptor_set_layout_from_handle(descriptorSetLayout);
-   const VkAllocationCallbacks *alloc =
-      pAllocator ? pAllocator : &dev->base.base.alloc;
 
    if (!layout)
       return;
 
-   vn_async_vkDestroyDescriptorSetLayout(dev->instance, device,
-                                         descriptorSetLayout, NULL);
-
-   vn_object_base_fini(&layout->base);
-   vk_free(alloc, layout);
+   vn_descriptor_set_layout_unref(dev, layout);
 }
 
 /* descriptor pool commands */
