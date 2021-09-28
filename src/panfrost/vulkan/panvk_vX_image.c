@@ -113,13 +113,20 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
    else if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
       view->pview.format = util_format_stencil_only(view->pview.format);
 
+   unsigned level_count =
+      pCreateInfo->subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS ?
+      image->pimage.layout.nr_slices - pCreateInfo->subresourceRange.baseMipLevel :
+      pCreateInfo->subresourceRange.levelCount;
+   unsigned layer_count =
+      pCreateInfo->subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS ?
+      image->pimage.layout.array_size - pCreateInfo->subresourceRange.baseArrayLayer :
+      pCreateInfo->subresourceRange.layerCount;
+
    view->pview.dim = panvk_view_type_to_mali_tex_dim(pCreateInfo->viewType);
    view->pview.first_level = pCreateInfo->subresourceRange.baseMipLevel;
-   view->pview.last_level = pCreateInfo->subresourceRange.baseMipLevel +
-                            pCreateInfo->subresourceRange.levelCount - 1;
+   view->pview.last_level = pCreateInfo->subresourceRange.baseMipLevel + level_count - 1;
    view->pview.first_layer = pCreateInfo->subresourceRange.baseArrayLayer;
-   view->pview.last_layer = pCreateInfo->subresourceRange.baseArrayLayer +
-                            pCreateInfo->subresourceRange.layerCount - 1;
+   view->pview.last_layer = pCreateInfo->subresourceRange.baseArrayLayer + layer_count - 1;
    panvk_convert_swizzle(&pCreateInfo->components, view->pview.swizzle);
    view->pview.image = &image->pimage;
    view->pview.nr_samples = image->pimage.layout.nr_samples;
