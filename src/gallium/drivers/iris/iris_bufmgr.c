@@ -715,13 +715,24 @@ fail:
    return NULL;
 }
 
+static enum iris_heap
+flags_to_heap(struct iris_bufmgr *bufmgr, unsigned flags)
+{
+   if (bufmgr->vram.size > 0 &&
+       !(flags & BO_ALLOC_SMEM) &&
+       !(flags & BO_ALLOC_COHERENT)) {
+      return IRIS_HEAP_DEVICE_LOCAL;
+   } else {
+      return IRIS_HEAP_SYSTEM_MEMORY;
+   }
+}
+
 static struct iris_bo *
 alloc_bo_from_slabs(struct iris_bufmgr *bufmgr,
                     const char *name,
                     uint64_t size,
                     uint32_t alignment,
-                    unsigned flags,
-                    bool local)
+                    unsigned flags)
 {
    if (flags & BO_ALLOC_NO_SUBALLOC)
       return NULL;
@@ -735,8 +746,7 @@ alloc_bo_from_slabs(struct iris_bufmgr *bufmgr,
 
    struct pb_slab_entry *entry;
 
-   enum iris_heap heap =
-      local ? IRIS_HEAP_DEVICE_LOCAL : IRIS_HEAP_SYSTEM_MEMORY;
+   enum iris_heap heap = flags_to_heap(bufmgr, flags);
 
    unsigned alloc_size = size;
 
@@ -895,11 +905,13 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
 }
 
 static struct iris_bo *
-alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
+alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
 {
    struct iris_bo *bo = bo_calloc();
    if (!bo)
       return NULL;
+
+   bo->real.heap = flags_to_heap(bufmgr, flags);
 
    /* If we have vram size, we have multiple memory regions and should choose
     * one of them.
@@ -910,12 +922,17 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
        */
       struct drm_i915_gem_memory_class_instance regions[2];
       uint32_t nregions = 0;
-      if (local) {
+      switch (bo->real.heap) {
+      case IRIS_HEAP_DEVICE_LOCAL:
          /* For vram allocations, still use system memory as a fallback. */
          regions[nregions++] = bufmgr->vram.region;
          regions[nregions++] = bufmgr->sys.region;
-      } else {
+         break;
+      case IRIS_HEAP_SYSTEM_MEMORY:
          regions[nregions++] = bufmgr->sys.region;
+         break;
+      case IRIS_HEAP_MAX:
+         unreachable("invalid heap for BO");
       }
 
       struct drm_i915_gem_create_ext_memory_regions ext_regions = {
@@ -954,7 +971,6 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
    bo->bufmgr = bufmgr;
    bo->size = bo_size;
    bo->idle = true;
-   bo->real.heap = local ? IRIS_HEAP_DEVICE_LOCAL : IRIS_HEAP_SYSTEM_MEMORY;
 
    if (bufmgr->vram.size == 0) {
       /* Calling set_domain() will allocate pages for the BO outside of the
@@ -989,14 +1005,14 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
 {
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
-   bool local = bufmgr->vram.size > 0 &&
-      !(flags & BO_ALLOC_COHERENT || flags & BO_ALLOC_SMEM);
+   enum iris_heap heap = flags_to_heap(bufmgr, flags);
+   bool local = heap != IRIS_HEAP_SYSTEM_MEMORY;
    struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, local);
 
    if (memzone != IRIS_MEMZONE_OTHER || (flags & BO_ALLOC_COHERENT))
       flags |= BO_ALLOC_NO_SUBALLOC;
 
-   bo = alloc_bo_from_slabs(bufmgr, name, size, alignment, flags, local);
+   bo = alloc_bo_from_slabs(bufmgr, name, size, alignment, flags);
 
    if (bo)
       return bo;
@@ -1031,7 +1047,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    simple_mtx_unlock(&bufmgr->lock);
 
    if (!bo) {
-      bo = alloc_fresh_bo(bufmgr, bo_size, local);
+      bo = alloc_fresh_bo(bufmgr, bo_size, flags);
       if (!bo)
          return NULL;
    }
@@ -2141,11 +2157,10 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 
    struct iris_bufmgr *bufmgr = (struct iris_bufmgr *)driver_ctx;
 
-   bool local = bufmgr->vram.size > 0;
    unsigned int page_size = getpagesize();
    size = MAX2(ALIGN(size, page_size), page_size);
 
-   struct iris_bo *bo = alloc_fresh_bo(bufmgr, size, local);
+   struct iris_bo *bo = alloc_fresh_bo(bufmgr, size, 0);
 
    simple_mtx_lock(&bufmgr->lock);
    bo->address = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 64 * 1024);
@@ -2157,7 +2172,8 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
    bo->index = -1;
    bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED |
                      EXEC_OBJECT_CAPTURE;
-   bo->real.mmap_mode = local ? IRIS_MMAP_WC : IRIS_MMAP_WB;
+   bo->real.mmap_mode =
+      bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY ? IRIS_MMAP_WC : IRIS_MMAP_WB;
 
    buf->driver_bo = bo;
    buf->gpu = bo->address;
