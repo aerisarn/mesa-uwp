@@ -350,6 +350,7 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
+   NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
 
    struct panvk_lower_misc_ctx ctx = {
