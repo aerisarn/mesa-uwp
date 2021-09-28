@@ -874,7 +874,7 @@ clc_c_to_spir(const struct clc_compile_args *args,
    if (!pair.first)
       return -1;
 
-   ::llvm::SmallVector<char> buffer;
+   ::llvm::SmallVector<char, 0> buffer;
    ::llvm::BitcodeWriter writer(buffer);
    writer.writeModule(*pair.first);
 
