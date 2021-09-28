@@ -46,7 +46,8 @@ v3dX(job_emit_noop)(struct v3dv_job *job)
       config.maximum_bpp_of_all_render_targets = V3D_INTERNAL_BPP_32;
 #endif
 #if V3D_VERSION >= 71
-      unreachable("HW generation 71 not supported yet.");
+      config.log2_tile_width = 3; /* Tile size 64 */
+      config.log2_tile_height = 3; /* Tile size 64 */
 #endif
    }
 
@@ -58,9 +59,12 @@ v3dX(job_emit_noop)(struct v3dv_job *job)
    }
 #endif
 #if V3D_VERSION >= 71
-   unreachable("Hardware generation 71 not supported yet.");
+   cl_emit(rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART1, rt) {
+      rt.internal_bpp = V3D_INTERNAL_BPP_32;
+      rt.internal_type_and_clamping = V3D_RENDER_TARGET_TYPE_CLAMP_8;
+      rt.stride = 1; /* Unused RT */
+   }
 #endif
-
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_ZS_CLEAR_VALUES, clear) {
       clear.z_clear_value = 1.0f;
