@@ -1614,7 +1614,6 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
             att_state->clear_value = begin->pClearValues[i];
 
          struct anv_image_view *iview = state->attachments[i].image_view;
-         anv_assert(iview->vk.format == pass_att->format);
 
          const uint32_t num_layers = iview->planes[0].isl.array_len;
          att_state->pending_clear_views = (1 << num_layers) - 1;
