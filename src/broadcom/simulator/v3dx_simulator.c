@@ -227,6 +227,9 @@ v3dX(simulator_submit_csd_ioctl)(struct v3d_hw *v3d,
         V3D_WRITE(V3D_CSD_0_QUEUED_CFG4, args->cfg[4]);
         V3D_WRITE(V3D_CSD_0_QUEUED_CFG5, args->cfg[5]);
         V3D_WRITE(V3D_CSD_0_QUEUED_CFG6, args->cfg[6]);
+#if V3D_VERSION >= 71
+        V3D_WRITE(V3D_CSD_0_QUEUED_CFG7, 0);
+#endif
         /* CFG0 kicks off the job */
         V3D_WRITE(V3D_CSD_0_QUEUED_CFG0, args->cfg[0]);
 
