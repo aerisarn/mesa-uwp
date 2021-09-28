@@ -2512,8 +2512,7 @@ combine_add_bcnt(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    for (unsigned i = 0; i < 2; i++) {
       Instruction* op_instr = follow_operand(ctx, instr->operands[i]);
       if (op_instr && op_instr->opcode == aco_opcode::v_bcnt_u32_b32 &&
-          !op_instr->usesModifiers() &&
-          op_instr->operands[0].isTemp() &&
+          !op_instr->usesModifiers() && op_instr->operands[0].isTemp() &&
           op_instr->operands[0].getTemp().type() == RegType::vgpr &&
           op_instr->operands[1].constantEquals(0)) {
          aco_ptr<Instruction> new_instr{
@@ -3517,8 +3516,8 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
    } else if (instr->opcode == aco_opcode::v_sub_u32 || instr->opcode == aco_opcode::v_sub_co_u32 ||
               instr->opcode == aco_opcode::v_sub_co_u32_e64) {
-      bool carry_out = instr->opcode != aco_opcode::v_sub_u32 &&
-                       ctx.uses[instr->definitions[1].tempId()] > 0;
+      bool carry_out =
+         instr->opcode != aco_opcode::v_sub_u32 && ctx.uses[instr->definitions[1].tempId()] > 0;
       if (combine_add_sub_b2i(ctx, instr, aco_opcode::v_subbrev_co_u32, 2)) {
       } else if (!carry_out && combine_add_lshl(ctx, instr, true)) {
       }

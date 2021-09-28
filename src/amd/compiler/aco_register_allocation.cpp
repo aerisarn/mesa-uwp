@@ -1224,7 +1224,7 @@ get_reg_impl(ra_ctx& ctx, RegisterFile& reg_file,
          }
 
          /* we cannot split live ranges of linear vgprs inside control flow */
-         //TODO: ensure that live range splits inside control flow are never necessary
+         // TODO: ensure that live range splits inside control flow are never necessary
          if (!(ctx.block->kind & block_kind_top_level) &&
              ctx.assignments[reg_file[j]].rc.is_linear_vgpr()) {
             found = false;

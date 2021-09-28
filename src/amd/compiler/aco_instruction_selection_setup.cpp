@@ -339,8 +339,7 @@ setup_vs_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == vertex_vs || ctx->stage == vertex_ngg) {
       radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
-      setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
-                           outinfo->export_clip_dists, outinfo);
+      setup_vs_output_info(ctx, nir, outinfo->export_prim_id, outinfo->export_clip_dists, outinfo);
 
       /* TODO: NGG streamout */
       if (ctx->stage.hw == HWStage::NGG)
@@ -363,8 +362,7 @@ setup_gs_variables(isel_context* ctx, nir_shader* nir)
          ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
    } else if (ctx->stage == vertex_geometry_ngg || ctx->stage == tess_eval_geometry_ngg) {
       radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
-      setup_vs_output_info(ctx, nir, false, outinfo->export_clip_dists,
-                           outinfo);
+      setup_vs_output_info(ctx, nir, false, outinfo->export_clip_dists, outinfo);
 
       ctx->program->config->lds_size =
          DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
@@ -392,8 +390,7 @@ setup_tes_variables(isel_context* ctx, nir_shader* nir)
 
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {
       radv_vs_output_info* outinfo = &ctx->program->info->tes.outinfo;
-      setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
-                           outinfo->export_clip_dists, outinfo);
+      setup_vs_output_info(ctx, nir, outinfo->export_prim_id, outinfo->export_clip_dists, outinfo);
 
       /* TODO: NGG streamout */
       if (ctx->stage.hw == HWStage::NGG)
