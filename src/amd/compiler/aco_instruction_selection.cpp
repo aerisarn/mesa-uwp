@@ -5317,7 +5317,9 @@ visit_load_tess_coord(isel_context* ctx, nir_intrinsic_instr* instr)
 Temp
 load_desc_ptr(isel_context* ctx, unsigned desc_set)
 {
-   if (ctx->program->info->need_indirect_descriptor_sets) {
+   struct radv_userdata_locations *user_sgprs_locs = &ctx->program->info->user_sgprs_locs;
+
+   if (user_sgprs_locs->shader_data[AC_UD_INDIRECT_DESCRIPTOR_SETS].sgpr_idx != -1) {
       Builder bld(ctx->program, ctx->block);
       Temp ptr64 = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->descriptor_sets[0]));
       Operand off = bld.copy(bld.def(s1), Operand::c32(desc_set << 2));

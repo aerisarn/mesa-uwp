@@ -111,8 +111,10 @@ create_llvm_function(struct ac_llvm_context *ctx, LLVMModuleRef module, LLVMBuil
 static void
 load_descriptor_sets(struct radv_shader_context *ctx)
 {
+   struct radv_userdata_locations *user_sgprs_locs = &ctx->args->shader_info->user_sgprs_locs;
    uint32_t mask = ctx->args->shader_info->desc_set_used_mask;
-   if (ctx->args->shader_info->need_indirect_descriptor_sets) {
+
+   if (user_sgprs_locs->shader_data[AC_UD_INDIRECT_DESCRIPTOR_SETS].sgpr_idx != -1) {
       LLVMValueRef desc_sets = ac_get_arg(&ctx->ac, ctx->args->descriptor_sets[0]);
       while (mask) {
          int i = u_bit_scan(&mask);

@@ -231,7 +231,6 @@ struct radv_shader_info {
    unsigned num_user_sgprs;
    unsigned num_input_sgprs;
    unsigned num_input_vgprs;
-   bool need_indirect_descriptor_sets;
    bool is_ngg;
    bool is_ngg_passthrough;
    bool has_ngg_culling;

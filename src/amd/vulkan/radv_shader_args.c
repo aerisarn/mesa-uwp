@@ -393,8 +393,6 @@ set_global_input_locs(struct radv_shader_args *args, const struct user_sgpr_info
       }
    } else {
       set_loc_shader_ptr(args, AC_UD_INDIRECT_DESCRIPTOR_SETS, user_sgpr_idx);
-
-      args->shader_info->need_indirect_descriptor_sets = true;
    }
 
    if (args->ac.push_constants.used) {

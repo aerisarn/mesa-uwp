@@ -5449,6 +5449,14 @@ radv_pipeline_get_streamout_shader(struct radv_pipeline *pipeline)
    return NULL;
 }
 
+static bool
+radv_shader_need_indirect_descriptor_sets(struct radv_pipeline *pipeline, gl_shader_stage stage)
+{
+   struct radv_userdata_info *loc =
+      radv_lookup_user_sgpr(pipeline, stage, AC_UD_INDIRECT_DESCRIPTOR_SETS);
+   return loc->sgpr_idx != -1;
+}
+
 static void
 radv_pipeline_init_shader_stages_state(struct radv_pipeline *pipeline)
 {
@@ -5460,7 +5468,7 @@ radv_pipeline_init_shader_stages_state(struct radv_pipeline *pipeline)
 
       if (pipeline->shaders[i]) {
          pipeline->need_indirect_descriptor_sets |=
-            pipeline->shaders[i]->info.need_indirect_descriptor_sets;
+            radv_shader_need_indirect_descriptor_sets(pipeline, i);
       }
    }
 
@@ -5793,7 +5801,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    pipeline->user_data_0[MESA_SHADER_COMPUTE] = radv_pipeline_stage_to_user_data_0(
       pipeline, MESA_SHADER_COMPUTE, device->physical_device->rad_info.chip_class);
    pipeline->need_indirect_descriptor_sets |=
-      pipeline->shaders[MESA_SHADER_COMPUTE]->info.need_indirect_descriptor_sets;
+      radv_shader_need_indirect_descriptor_sets(pipeline, MESA_SHADER_COMPUTE);
    radv_pipeline_init_scratch(device, pipeline);
 
    radv_compute_generate_pm4(pipeline);
