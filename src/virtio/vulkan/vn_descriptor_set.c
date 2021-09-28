@@ -17,6 +17,17 @@
 
 #include "vn_device.h"
 
+static void
+vn_descriptor_set_destroy(struct vn_device *dev,
+                          struct vn_descriptor_set *set,
+                          const VkAllocationCallbacks *alloc)
+{
+   list_del(&set->head);
+
+   vn_object_base_fini(&set->base);
+   vk_free(alloc, set);
+}
+
 /* descriptor set layout commands */
 
 void
@@ -266,12 +277,8 @@ vn_DestroyDescriptorPool(VkDevice device,
                                     NULL);
 
    list_for_each_entry_safe(struct vn_descriptor_set, set,
-                            &pool->descriptor_sets, head) {
-      list_del(&set->head);
-
-      vn_object_base_fini(&set->base);
-      vk_free(alloc, set);
-   }
+                            &pool->descriptor_sets, head)
+      vn_descriptor_set_destroy(dev, set, alloc);
 
    vn_object_base_fini(&pool->base);
    vk_free(alloc, pool);
@@ -358,12 +365,8 @@ vn_ResetDescriptorPool(VkDevice device,
                                   flags);
 
    list_for_each_entry_safe(struct vn_descriptor_set, set,
-                            &pool->descriptor_sets, head) {
-      list_del(&set->head);
-
-      vn_object_base_fini(&set->base);
-      vk_free(alloc, set);
-   }
+                            &pool->descriptor_sets, head)
+      vn_descriptor_set_destroy(dev, set, alloc);
 
    vn_descriptor_pool_reset_descriptors(pool);
 
@@ -465,9 +468,8 @@ fail:
 
       vn_descriptor_pool_free_descriptors(pool, set->layout,
                                           set->last_binding_descriptor_count);
-      list_del(&set->head);
-      vn_object_base_fini(&set->base);
-      vk_free(alloc, set);
+
+      vn_descriptor_set_destroy(dev, set, alloc);
    }
 
    memset(pDescriptorSets, 0,
@@ -497,10 +499,7 @@ vn_FreeDescriptorSets(VkDevice device,
       if (!set)
          continue;
 
-      list_del(&set->head);
-
-      vn_object_base_fini(&set->base);
-      vk_free(alloc, set);
+      vn_descriptor_set_destroy(dev, set, alloc);
    }
 
    return VK_SUCCESS;
