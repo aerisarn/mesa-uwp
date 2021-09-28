@@ -275,6 +275,7 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
          .int64 = devinfo->ver >= 8,
          .int64_atomics = devinfo->ver >= 9,
          .kernel = true,
+         .linkage = true, /* We receive linked kernel from clc */
          .float_controls = devinfo->ver >= 8,
          .generic_pointers = true,
          .storage_8bit = devinfo->ver >= 8,
