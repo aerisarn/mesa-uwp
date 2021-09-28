@@ -4970,7 +4970,7 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs, const struct radv
       }
    }
 
-   if (ps->info.ps.layer_input || ps->info.needs_multiview_view_index) {
+   if (ps->info.ps.layer_input) {
       unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_LAYER];
       if (vs_offset != AC_EXP_PARAM_UNDEFINED)
          ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
