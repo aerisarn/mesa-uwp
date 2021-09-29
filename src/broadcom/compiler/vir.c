@@ -156,7 +156,8 @@ vir_is_tex(const struct v3d_device_info *devinfo, struct qinst *inst)
 }
 
 bool
-vir_writes_r3(const struct v3d_device_info *devinfo, struct qinst *inst)
+vir_writes_r3_implicitly(const struct v3d_device_info *devinfo,
+                         struct qinst *inst)
 {
         if (!devinfo->has_accumulators)
                 return false;
@@ -181,7 +182,8 @@ vir_writes_r3(const struct v3d_device_info *devinfo, struct qinst *inst)
 }
 
 bool
-vir_writes_r4(const struct v3d_device_info *devinfo, struct qinst *inst)
+vir_writes_r4_implicitly(const struct v3d_device_info *devinfo,
+                         struct qinst *inst)
 {
         if (!devinfo->has_accumulators)
                 return false;

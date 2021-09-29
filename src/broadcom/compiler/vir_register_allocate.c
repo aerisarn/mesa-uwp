@@ -988,7 +988,7 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c, int *acc_nodes,
          * result to a temp), nothing else can be stored in r3/r4 across
          * it.
          */
-        if (vir_writes_r3(c->devinfo, inst)) {
+        if (vir_writes_r3_implicitly(c->devinfo, inst)) {
                 for (int i = 0; i < c->num_temps; i++) {
                         if (c->temp_start[i] < ip && c->temp_end[i] > ip) {
                                 ra_add_node_interference(c->g,
@@ -998,7 +998,7 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c, int *acc_nodes,
                 }
         }
 
-        if (vir_writes_r4(c->devinfo, inst)) {
+        if (vir_writes_r4_implicitly(c->devinfo, inst)) {
                 for (int i = 0; i < c->num_temps; i++) {
                         if (c->temp_start[i] < ip && c->temp_end[i] > ip) {
                                 ra_add_node_interference(c->g,
