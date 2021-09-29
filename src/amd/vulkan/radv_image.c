@@ -2330,6 +2330,8 @@ radv_buffer_view_init(struct radv_buffer_view *view, struct radv_device *device,
 {
    RADV_FROM_HANDLE(radv_buffer, buffer, pCreateInfo->buffer);
 
+   vk_object_base_init(&device->vk, &view->base, VK_OBJECT_TYPE_BUFFER_VIEW);
+
    view->bo = buffer->bo;
    view->range =
       pCreateInfo->range == VK_WHOLE_SIZE ? buffer->size - pCreateInfo->offset : pCreateInfo->range;
@@ -2337,6 +2339,12 @@ radv_buffer_view_init(struct radv_buffer_view *view, struct radv_device *device,
 
    radv_make_buffer_descriptor(device, buffer, view->vk_format, pCreateInfo->offset, view->range,
                                view->state);
+}
+
+void
+radv_buffer_view_finish(struct radv_buffer_view *view)
+{
+   vk_object_base_finish(&view->base);
 }
 
 VkResult
@@ -2350,8 +2358,6 @@ radv_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInf
       vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*view), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!view)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &view->base, VK_OBJECT_TYPE_BUFFER_VIEW);
 
    radv_buffer_view_init(view, device, pCreateInfo);
 
@@ -2370,6 +2376,6 @@ radv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
    if (!view)
       return;
 
-   vk_object_base_finish(&view->base);
+   radv_buffer_view_finish(view);
    vk_free2(&device->vk.alloc, pAllocator, view);
 }

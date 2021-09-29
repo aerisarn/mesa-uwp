@@ -306,6 +306,9 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 
    radv_unaligned_dispatch(cmd_buffer, dcc_width, dcc_height, 1);
 
+   radv_buffer_view_finish(views);
+   radv_buffer_view_finish(views + 1);
+
    radv_meta_restore(&saved_state, cmd_buffer);
 
    state->flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |

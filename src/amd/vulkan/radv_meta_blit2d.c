@@ -395,6 +395,9 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
           */
          radv_DestroyFramebuffer(radv_device_to_handle(device), dst_temps.fb,
                                  &cmd_buffer->pool->alloc);
+
+         if (src_type == BLIT2D_SRC_TYPE_BUFFER)
+            radv_buffer_view_finish(&src_temps.bview);
       }
    }
 }

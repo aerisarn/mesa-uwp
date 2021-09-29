@@ -2320,6 +2320,7 @@ struct radv_buffer_view {
 };
 void radv_buffer_view_init(struct radv_buffer_view *view, struct radv_device *device,
                            const VkBufferViewCreateInfo *pCreateInfo);
+void radv_buffer_view_finish(struct radv_buffer_view *view);
 
 static inline struct VkExtent3D
 radv_sanitize_image_extent(const VkImageType imageType, const struct VkExtent3D imageExtent)
