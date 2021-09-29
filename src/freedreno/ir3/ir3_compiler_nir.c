@@ -1504,9 +1504,9 @@ get_barycentric(struct ir3_context *ctx, enum ir3_bary bary)
       struct ir3_instruction *ij;
 
       ij = create_sysval_input(ctx, sysval_base + bary, 0x3);
-      ir3_split_dest(ctx->block, xy, ij, 0, 2);
+      ir3_split_dest(ctx->in_block, xy, ij, 0, 2);
 
-      ctx->ij[bary] = ir3_create_collect(ctx->block, xy, 2);
+      ctx->ij[bary] = ir3_create_collect(ctx->in_block, xy, 2);
    }
 
    return ctx->ij[bary];
