@@ -217,8 +217,6 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
 {
    uint32_t hash_flags = 0;
 
-   if (device->instance->debug_flags & RADV_DEBUG_NO_NGG)
-      hash_flags |= RADV_HASH_SHADER_NO_NGG;
    if (device->instance->perftest_flags & RADV_PERFTEST_NGGC)
       hash_flags |= RADV_HASH_SHADER_FORCE_NGG_CULLING;
    if (device->physical_device->cs_wave_size == 32)
@@ -2727,6 +2725,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    if (pipeline->device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM)
       key.invariant_geom = true;
 
+   key.use_ngg = pipeline->device->physical_device->use_ngg;
+
    return key;
 }
 
@@ -2832,7 +2832,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
          infos[MESA_SHADER_VERTEX].vs.as_es = true;
    }
 
-   if (device->physical_device->use_ngg) {
+   if (pipeline_key->use_ngg) {
       if (nir[MESA_SHADER_TESS_CTRL]) {
          infos[MESA_SHADER_TESS_EVAL].is_ngg = true;
       } else {

@@ -1654,7 +1654,6 @@ struct radv_event {
    uint64_t *map;
 };
 
-#define RADV_HASH_SHADER_NO_NGG            (1 << 0)
 #define RADV_HASH_SHADER_CS_WAVE32         (1 << 1)
 #define RADV_HASH_SHADER_PS_WAVE32         (1 << 2)
 #define RADV_HASH_SHADER_GE_WAVE32         (1 << 3)
