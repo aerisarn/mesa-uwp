@@ -237,11 +237,11 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
       hash_flags |= RADV_HASH_SHADER_INVARIANT_GEOM;
    if (stats)
       hash_flags |= RADV_HASH_SHADER_KEEP_STATISTICS;
-   if (device->force_vrs != RADV_FORCE_VRS_2x2)
+   if (device->force_vrs == RADV_FORCE_VRS_2x2)
       hash_flags |= RADV_HASH_SHADER_FORCE_VRS_2x2;
-   if (device->force_vrs != RADV_FORCE_VRS_2x1)
+   if (device->force_vrs == RADV_FORCE_VRS_2x1)
       hash_flags |= RADV_HASH_SHADER_FORCE_VRS_2x1;
-   if (device->force_vrs != RADV_FORCE_VRS_1x2)
+   if (device->force_vrs == RADV_FORCE_VRS_1x2)
       hash_flags |= RADV_HASH_SHADER_FORCE_VRS_1x2;
    if (device->robust_buffer_access) /* forces per-attribute vertex descriptors */
       hash_flags |= RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS;
