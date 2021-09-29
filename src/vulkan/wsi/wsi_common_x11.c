@@ -1720,7 +1720,7 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    free(geometry);
 
    size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
-   chain = vk_alloc(pAllocator, size, 8,
+   chain = vk_zalloc(pAllocator, size, 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
