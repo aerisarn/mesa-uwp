@@ -1005,7 +1005,8 @@ can_replace_varying(nir_variable *out_var)
 }
 
 static bool
-replace_constant_input(nir_shader *shader, nir_intrinsic_instr *store_intr)
+replace_varying_input_by_constant_load(nir_shader *shader,
+                                       nir_intrinsic_instr *store_intr)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
@@ -1354,7 +1355,7 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
       nir_ssa_scalar uni_scalar;
       nir_ssa_def *ssa = intr->src[1].ssa;
       if (ssa->parent_instr->type == nir_instr_type_load_const) {
-         progress |= replace_constant_input(consumer, intr);
+         progress |= replace_varying_input_by_constant_load(consumer, intr);
       } else if (is_direct_uniform_load(ssa, &uni_scalar)) {
          progress |= replace_varying_input_by_uniform_load(consumer, intr,
                                                            &uni_scalar);
