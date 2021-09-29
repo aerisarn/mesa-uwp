@@ -1175,6 +1175,17 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
 #endif
    }
 
+#if V3D_VERSION >= 71
+   /* If we don't have any color RTs, we still need to emit one and flag
+    * it as not used using stride = 1.
+    */
+   if (subpass->color_count == 0) {
+      cl_emit(rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART1, rt) {
+         rt.stride = 1;
+      }
+   }
+#endif
+
 #if V3D_VERSION == 42
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
       cmd_buffer_render_pass_setup_render_target
