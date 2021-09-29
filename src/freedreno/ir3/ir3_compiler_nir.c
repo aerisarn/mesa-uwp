@@ -3171,7 +3171,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 
       compile_assert(ctx, tex->src[idx].src.is_ssa);
 
-      sam = ir3_SAM(b, opc, type, MASK(ncomp), 0, NULL,
+      sam = ir3_SAM(ctx->in_block, opc, type, MASK(ncomp), 0, NULL,
                     get_barycentric(ctx, IJ_PERSP_PIXEL), 0);
       sam->prefetch.input_offset = ir3_nir_coord_offset(tex->src[idx].src.ssa);
       /* make sure not to add irrelevant flags like S2EN */
