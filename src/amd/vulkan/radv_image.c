@@ -1918,6 +1918,8 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
    uint32_t plane_count = 1;
 
+   vk_object_base_init(&device->vk, &iview->base, VK_OBJECT_TYPE_IMAGE_VIEW);
+
    switch (image->type) {
    case VK_IMAGE_TYPE_1D:
    case VK_IMAGE_TYPE_2D:
@@ -2051,6 +2053,12 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
                                       disable_compression, enable_compression, iview->plane_id + i,
                                       i);
    }
+}
+
+void
+radv_image_view_finish(struct radv_image_view *iview)
+{
+   vk_object_base_finish(&iview->base);
 }
 
 bool
@@ -2302,8 +2310,6 @@ radv_CreateImageView(VkDevice _device, const VkImageViewCreateInfo *pCreateInfo,
    if (view == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &view->base, VK_OBJECT_TYPE_IMAGE_VIEW);
-
    radv_image_view_init(view, device, pCreateInfo, NULL);
 
    *pView = radv_image_view_to_handle(view);
@@ -2320,7 +2326,7 @@ radv_DestroyImageView(VkDevice _device, VkImageView _iview, const VkAllocationCa
    if (!iview)
       return;
 
-   vk_object_base_finish(&iview->base);
+   radv_image_view_finish(iview);
    vk_free2(&device->vk.alloc, pAllocator, iview);
 }
 

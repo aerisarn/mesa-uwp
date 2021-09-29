@@ -303,6 +303,8 @@ radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_i
 
    radv_unaligned_dispatch(cmd_buffer, width, height, 1);
 
+   radv_image_view_finish(&vrs_iview);
+
    radv_meta_restore(&saved_state, cmd_buffer);
 
    cmd_buffer->state.flush_bits |=

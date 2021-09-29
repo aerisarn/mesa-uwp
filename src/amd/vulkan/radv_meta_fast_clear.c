@@ -622,6 +622,7 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_i
 
    radv_cmd_buffer_end_render_pass(cmd_buffer);
 
+   radv_image_view_finish(&iview);
    radv_DestroyFramebuffer(radv_device_to_handle(device), fb_h, &cmd_buffer->pool->alloc);
 }
 
@@ -895,6 +896,9 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
                                       }}});
 
          radv_unaligned_dispatch(cmd_buffer, width, height, 1);
+
+         radv_image_view_finish(&load_iview);
+         radv_image_view_finish(&store_iview);
       }
    }
 

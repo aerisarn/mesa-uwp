@@ -600,6 +600,8 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 
       radv_cmd_buffer_end_render_pass(cmd_buffer);
 
+      radv_image_view_finish(&src_iview);
+      radv_image_view_finish(&dst_iview);
       radv_DestroyFramebuffer(radv_device_to_handle(device), fb_h, &cmd_buffer->pool->alloc);
    }
 

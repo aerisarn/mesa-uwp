@@ -758,6 +758,9 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
       emit_resolve(cmd_buffer, &src_iview, &dest_iview, &(VkOffset2D){srcOffset.x, srcOffset.y},
                    &(VkOffset2D){dstOffset.x, dstOffset.y},
                    &(VkExtent2D){extent.width, extent.height});
+
+      radv_image_view_finish(&src_iview);
+      radv_image_view_finish(&dest_iview);
    }
 
    radv_meta_restore(&saved_state, cmd_buffer);
@@ -944,6 +947,9 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 
       cmd_buffer->state.flush_bits |= radv_clear_htile(cmd_buffer, dst_image, &range, htile_value);
    }
+
+   radv_image_view_finish(&tsrc_iview);
+   radv_image_view_finish(&tdst_iview);
 
    radv_meta_restore(&saved_state, cmd_buffer);
 }

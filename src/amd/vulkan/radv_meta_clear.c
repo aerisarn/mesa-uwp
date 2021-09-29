@@ -1617,6 +1617,8 @@ radv_clear_dcc_comp_to_single(struct radv_cmd_buffer *cmd_buffer,
                             VK_SHADER_STAGE_COMPUTE_BIT, 0, 16, constants);
 
       radv_unaligned_dispatch(cmd_buffer, dcc_width, dcc_height, layer_count);
+
+      radv_image_view_finish(&iview);
    }
 
    radv_meta_restore(&saved_state, cmd_buffer);
@@ -2259,6 +2261,7 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
 
    emit_clear(cmd_buffer, &clear_att, &clear_rect, NULL, NULL, 0, false);
 
+   radv_image_view_finish(&iview);
    radv_cmd_buffer_end_render_pass(cmd_buffer);
    radv_DestroyRenderPass(device_h, pass, &cmd_buffer->pool->alloc);
    radv_DestroyFramebuffer(device_h, fb, &cmd_buffer->pool->alloc);
@@ -2273,6 +2276,7 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
                       const VkImageSubresourceRange *range, const VkClearValue *clear_val)
 {
    struct radv_image_view iview;
+   bool fast_cleared = false;
 
    radv_image_view_init(&iview, cmd_buffer->device,
                         &(VkImageViewCreateInfo){
@@ -2316,18 +2320,19 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
                                     clear_att.clearValue.color, 0)) {
          radv_fast_clear_color(cmd_buffer, &iview, &clear_att, clear_att.colorAttachment, NULL,
                                NULL);
-         return true;
+         fast_cleared = true;
       }
    } else {
       if (radv_can_fast_clear_depth(cmd_buffer, &iview, image_layout, in_render_loop,
                                     range->aspectMask, &clear_rect,
                                     clear_att.clearValue.depthStencil, 0)) {
          radv_fast_clear_depth(cmd_buffer, &iview, &clear_att, NULL, NULL);
-         return true;
+         fast_cleared = true;
       }
    }
 
-   return false;
+   radv_image_view_finish(&iview);
+   return fast_cleared;
 }
 
 static void

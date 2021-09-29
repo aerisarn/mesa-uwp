@@ -165,6 +165,8 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer, struct radv_
 
    radv_unaligned_dispatch(cmd_buffer, image->info.width, image->info.height, layer_count);
 
+   radv_image_view_finish(&iview);
+
    radv_meta_restore(&saved_state, cmd_buffer);
 
    cmd_buffer->state.flush_bits |=
