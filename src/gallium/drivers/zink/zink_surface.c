@@ -101,6 +101,18 @@ create_ivci(struct zink_screen *screen,
    return ivci;
 }
 
+static void
+init_surface_info(struct zink_surface *surface, struct zink_resource *res, VkImageViewCreateInfo *ivci)
+{
+   surface->info.flags = res->obj->vkflags;
+   surface->info.usage = res->obj->vkusage;
+   surface->info.width = surface->base.width;
+   surface->info.height = surface->base.height;
+   surface->info.layerCount = ivci->subresourceRange.layerCount;
+   surface->info.format = ivci->format;
+   surface->info_hash = _mesa_hash_data(&surface->info, sizeof(surface->info));
+}
+
 static struct zink_surface *
 create_surface(struct pipe_context *pctx,
                struct pipe_resource *pres,
@@ -131,13 +143,7 @@ create_surface(struct pipe_context *pctx,
    util_dynarray_init(&surface->framebuffer_refs, NULL);
    util_dynarray_init(&surface->desc_set_refs.refs, NULL);
 
-   surface->info.flags = res->obj->vkflags;
-   surface->info.usage = res->obj->vkusage;
-   surface->info.width = surface->base.width;
-   surface->info.height = surface->base.height;
-   surface->info.layerCount = ivci->subresourceRange.layerCount;
-   surface->info.format = ivci->format;
-   surface->info_hash = _mesa_hash_data(&surface->info, sizeof(surface->info));
+   init_surface_info(surface, res, ivci);
 
    if (VKSCR(CreateImageView)(screen->dev, ivci, NULL,
                          &surface->image_view) != VK_SUCCESS) {
