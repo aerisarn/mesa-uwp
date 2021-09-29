@@ -63,6 +63,8 @@ radv_pipeline_cache_unlock(struct radv_pipeline_cache *cache)
 void
 radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *device)
 {
+   vk_object_base_init(&device->vk, &cache->base, VK_OBJECT_TYPE_PIPELINE_CACHE);
+
    cache->device = device;
    mtx_init(&cache->mutex, mtx_plain);
    cache->flags = 0;
@@ -96,6 +98,8 @@ radv_pipeline_cache_finish(struct radv_pipeline_cache *cache)
       }
    mtx_destroy(&cache->mutex);
    free(cache->hash_table);
+
+   vk_object_base_finish(&cache->base);
 }
 
 static uint32_t
@@ -547,8 +551,6 @@ radv_CreatePipelineCache(VkDevice _device, const VkPipelineCacheCreateInfo *pCre
    if (cache == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &cache->base, VK_OBJECT_TYPE_PIPELINE_CACHE);
-
    if (pAllocator)
       cache->alloc = *pAllocator;
    else
@@ -575,9 +577,8 @@ radv_DestroyPipelineCache(VkDevice _device, VkPipelineCache _cache,
 
    if (!cache)
       return;
-   radv_pipeline_cache_finish(cache);
 
-   vk_object_base_finish(&cache->base);
+   radv_pipeline_cache_finish(cache);
    vk_free2(&device->vk.alloc, pAllocator, cache);
 }
 
