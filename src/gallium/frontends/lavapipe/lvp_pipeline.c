@@ -560,7 +560,8 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform, NULL);
+   NIR_PASS_V(nir, nir_remove_dead_variables,
+              nir_var_uniform | nir_var_mem_image, NULL);
 
    lvp_lower_pipeline_layout(pipeline->device, pipeline->layout, nir);
 

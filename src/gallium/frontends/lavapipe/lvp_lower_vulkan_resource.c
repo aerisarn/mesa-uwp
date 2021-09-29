@@ -210,7 +210,8 @@ void lvp_lower_pipeline_layout(const struct lvp_device *device,
                                nir_shader *shader)
 {
    nir_shader_lower_instructions(shader, lower_vulkan_resource_index, lower_vri_instr, layout);
-   nir_foreach_uniform_variable(var, shader) {
+   nir_foreach_variable_with_modes(var, shader, nir_var_uniform |
+                                                nir_var_mem_image) {
       const struct glsl_type *type = var->type;
       enum glsl_base_type base_type =
          glsl_get_base_type(glsl_without_array(type));
