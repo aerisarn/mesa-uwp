@@ -781,7 +781,7 @@ panvk_draw_prepare_vs_attribs(struct panvk_cmd_buffer *cmdbuf,
                                     cmdbuf->state.vb.bufs,
                                     cmdbuf->state.vb.count,
                                     draw, bufs.cpu);
-   panvk_per_arch(emit_attribs)(cmdbuf->device, &pipeline->attribs,
+   panvk_per_arch(emit_attribs)(cmdbuf->device, draw, &pipeline->attribs,
                                 cmdbuf->state.vb.bufs, cmdbuf->state.vb.count,
                                 attribs.cpu);
 

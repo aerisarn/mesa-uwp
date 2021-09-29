@@ -877,6 +877,9 @@ panvk_pipeline_builder_parse_vertex_input(struct panvk_pipeline_builder *builder
          &info->pVertexBindingDescriptions[i];
       attribs->buf_count = MAX2(desc->binding + 1, attribs->buf_count);
       attribs->buf[desc->binding].stride = desc->stride;
+      attribs->buf[desc->binding].per_instance =
+         desc->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE;
+      attribs->buf[desc->binding].instance_divisor = 1;
       attribs->buf[desc->binding].special = false;
    }
 

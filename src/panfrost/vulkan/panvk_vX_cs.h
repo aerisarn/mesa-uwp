@@ -57,6 +57,7 @@ panvk_per_arch(emit_attrib_bufs)(const struct panvk_attribs_info *info,
 
 void
 panvk_per_arch(emit_attribs)(const struct panvk_device *dev,
+                             const struct panvk_draw_info *draw,
                              const struct panvk_attribs_info *attribs,
                              const struct panvk_attrib_buf *bufs,
                              unsigned buf_count,

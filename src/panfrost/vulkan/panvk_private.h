@@ -580,6 +580,7 @@ struct panvk_attrib_buf_info {
       struct {
          unsigned stride;
          bool per_instance;
+         uint32_t instance_divisor;
       };
       unsigned special_id;
    };
