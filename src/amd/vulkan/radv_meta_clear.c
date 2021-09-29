@@ -826,12 +826,13 @@ clear_htile_mask(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
    struct radv_meta_state *state = &device->meta_state;
    uint64_t block_count = round_up_u64(size, 1024);
    struct radv_meta_saved_state saved_state;
+   struct radv_buffer dst_buffer;
 
    radv_meta_save(
       &saved_state, cmd_buffer,
       RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_CONSTANTS | RADV_META_SAVE_DESCRIPTORS);
 
-   struct radv_buffer dst_buffer = {.bo = bo, .offset = offset, .size = size};
+   radv_buffer_init(&dst_buffer, device, bo, size, offset);
 
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         state->clear_htile_mask_pipeline);
@@ -858,6 +859,8 @@ clear_htile_mask(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
                          VK_SHADER_STAGE_COMPUTE_BIT, 0, 8, constants);
 
    radv_CmdDispatch(radv_cmd_buffer_to_handle(cmd_buffer), block_count, 1, 1);
+
+   radv_buffer_finish(&dst_buffer);
 
    radv_meta_restore(&saved_state, cmd_buffer);
 

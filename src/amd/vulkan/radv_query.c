@@ -834,6 +834,7 @@ radv_query_shader(struct radv_cmd_buffer *cmd_buffer, VkPipeline *pipeline,
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_saved_state saved_state;
+   struct radv_buffer src_buffer, dst_buffer;
    bool old_predicating;
 
    if (!*pipeline) {
@@ -854,13 +855,11 @@ radv_query_shader(struct radv_cmd_buffer *cmd_buffer, VkPipeline *pipeline,
    old_predicating = cmd_buffer->state.predicating;
    cmd_buffer->state.predicating = false;
 
+   uint64_t src_buffer_size = MAX2(src_stride * count, avail_offset + 4 * count - src_offset);
    uint64_t dst_buffer_size = count == 1 ? src_stride : dst_stride * count;
-   struct radv_buffer dst_buffer = {.bo = dst_bo, .offset = dst_offset, .size = dst_buffer_size};
 
-   struct radv_buffer src_buffer = {
-      .bo = src_bo,
-      .offset = src_offset,
-      .size = MAX2(src_stride * count, avail_offset + 4 * count - src_offset)};
+   radv_buffer_init(&src_buffer, device, src_bo, src_buffer_size, src_offset);
+   radv_buffer_init(&dst_buffer, device, dst_bo, dst_buffer_size, dst_offset);
 
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         *pipeline);
@@ -911,6 +910,9 @@ radv_query_shader(struct radv_cmd_buffer *cmd_buffer, VkPipeline *pipeline,
 
    /* Restore conditional rendering. */
    cmd_buffer->state.predicating = old_predicating;
+
+   radv_buffer_finish(&src_buffer);
+   radv_buffer_finish(&dst_buffer);
 
    radv_meta_restore(&saved_state, cmd_buffer);
 }

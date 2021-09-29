@@ -6182,6 +6182,26 @@ radv_ResetEvent(VkDevice _device, VkEvent _event)
    return VK_SUCCESS;
 }
 
+void
+radv_buffer_init(struct radv_buffer *buffer, struct radv_device *device,
+                 struct radeon_winsys_bo *bo, uint64_t size,
+                 uint64_t offset)
+{
+   vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
+
+   buffer->usage = 0;
+   buffer->flags = 0;
+   buffer->bo = bo;
+   buffer->size = size;
+   buffer->offset = offset;
+}
+
+void
+radv_buffer_finish(struct radv_buffer *buffer)
+{
+   vk_object_base_finish(&buffer->base);
+}
+
 static void
 radv_destroy_buffer(struct radv_device *device, const VkAllocationCallbacks *pAllocator,
                     struct radv_buffer *buffer)
@@ -6189,7 +6209,7 @@ radv_destroy_buffer(struct radv_device *device, const VkAllocationCallbacks *pAl
    if ((buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) && buffer->bo)
       device->ws->buffer_destroy(device->ws, buffer->bo);
 
-   vk_object_base_finish(&buffer->base);
+   radv_buffer_finish(buffer);
    vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
@@ -6210,12 +6230,9 @@ radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
    if (buffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &buffer->base, VK_OBJECT_TYPE_BUFFER);
+   radv_buffer_init(buffer, device, NULL, pCreateInfo->size, 0);
 
-   buffer->size = pCreateInfo->size;
    buffer->usage = pCreateInfo->usage;
-   buffer->bo = NULL;
-   buffer->offset = 0;
    buffer->flags = pCreateInfo->flags;
 
    buffer->shareable =

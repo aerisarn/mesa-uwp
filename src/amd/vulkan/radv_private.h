@@ -963,6 +963,10 @@ struct radv_buffer {
    bool shareable;
 };
 
+void radv_buffer_init(struct radv_buffer *buffer, struct radv_device *device,
+                      struct radeon_winsys_bo *bo, uint64_t size, uint64_t offset);
+void radv_buffer_finish(struct radv_buffer *buffer);
+
 enum radv_dynamic_state_bits {
    RADV_DYNAMIC_VIEWPORT = 1ull << 0,
    RADV_DYNAMIC_SCISSOR = 1ull << 1,

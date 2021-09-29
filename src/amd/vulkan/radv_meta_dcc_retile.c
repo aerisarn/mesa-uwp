@@ -214,6 +214,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 {
    struct radv_meta_saved_state saved_state;
    struct radv_device *device = cmd_buffer->device;
+   struct radv_buffer buffer;
 
    assert(image->type == VK_IMAGE_TYPE_2D);
    assert(image->info.array_size == 1 && image->info.levels == 1);
@@ -242,7 +243,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         device->meta_state.dcc_retile.pipeline[swizzle_mode]);
 
-   struct radv_buffer buffer = {.size = image->size, .bo = image->bo, .offset = image->offset};
+   radv_buffer_init(&buffer, device, image->bo, image->size, image->offset);
 
    struct radv_buffer_view views[2];
    VkBufferView view_handles[2];
@@ -308,6 +309,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 
    radv_buffer_view_finish(views);
    radv_buffer_view_finish(views + 1);
+   radv_buffer_finish(&buffer);
 
    radv_meta_restore(&saved_state, cmd_buffer);
 

@@ -5183,12 +5183,14 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
          /* HTILE buffer */
          uint64_t htile_offset = ds_image->offset + ds_image->planes[0].surface.meta_offset;
          uint64_t htile_size = ds_image->planes[0].surface.meta_slice_size;
-         struct radv_buffer htile_buffer = {.bo = ds_image->bo,
-                                            .offset = htile_offset,
-                                            .size = htile_size};
+         struct radv_buffer htile_buffer;
+
+         radv_buffer_init(&htile_buffer, cmd_buffer->device, ds_image->bo, htile_size, htile_offset);
 
          /* Copy the VRS rates to the HTILE buffer. */
          radv_copy_vrs_htile(cmd_buffer, vrs_iview->image, &extent, ds_image, &htile_buffer, true);
+
+         radv_buffer_finish(&htile_buffer);
       } else {
          /* When a subpass uses a VRS attachment without binding a depth/stencil attachment, we have
           * to copy the VRS rates to our internal HTILE buffer.
