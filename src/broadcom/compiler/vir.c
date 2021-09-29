@@ -158,6 +158,9 @@ vir_is_tex(const struct v3d_device_info *devinfo, struct qinst *inst)
 bool
 vir_writes_r3(const struct v3d_device_info *devinfo, struct qinst *inst)
 {
+        if (!devinfo->has_accumulators)
+                return false;
+
         for (int i = 0; i < vir_get_nsrc(inst); i++) {
                 switch (inst->src[i].file) {
                 case QFILE_VPM:
@@ -180,6 +183,9 @@ vir_writes_r3(const struct v3d_device_info *devinfo, struct qinst *inst)
 bool
 vir_writes_r4(const struct v3d_device_info *devinfo, struct qinst *inst)
 {
+        if (!devinfo->has_accumulators)
+                return false;
+
         switch (inst->dst.file) {
         case QFILE_MAGIC:
                 switch (inst->dst.index) {
