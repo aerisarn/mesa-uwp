@@ -84,9 +84,9 @@ static void si_emit_spi_map(struct si_context *sctx)
       if (input.semantic == VARYING_SLOT_PNTC ||
           (input.semantic >= VARYING_SLOT_TEX0 && input.semantic <= VARYING_SLOT_TEX7 &&
            rs->sprite_coord_enable & (1 << (input.semantic - VARYING_SLOT_TEX0)))) {
-         /* Overwrite the whole value for sprite coordinates. */
-         ps_input_cntl = S_028644_OFFSET(0) |
-                         S_028644_PT_SPRITE_TEX(1);
+         /* Overwrite the whole value (except OFFSET) for sprite coordinates. */
+         ps_input_cntl &= ~C_028644_OFFSET;
+         ps_input_cntl |= S_028644_PT_SPRITE_TEX(1);
          if (input.fp16_lo_hi_valid & 0x1) {
             ps_input_cntl |= S_028644_FP16_INTERP_MODE(1) |
                              S_028644_ATTR0_VALID(1);
