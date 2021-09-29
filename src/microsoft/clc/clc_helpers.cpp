@@ -643,7 +643,7 @@ clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
                            const struct clc_logger *logger)
 {
    struct clc_kernel_info *kernels;
-   struct clc_parsed_spec_constant *spec_constants;
+   struct clc_parsed_spec_constant *spec_constants = NULL;
 
    SPIRVKernelParser parser;
 
