@@ -661,6 +661,19 @@ ir3_start_block(struct ir3 *ir)
    return list_first_entry(&ir->block_list, struct ir3_block, node);
 }
 
+static inline struct ir3_block *
+ir3_after_preamble(struct ir3 *ir)
+{
+   struct ir3_block *block = ir3_start_block(ir);
+   /* The preamble will have a usually-empty else branch, and we want to skip
+    * that to get to the block after the preamble.
+    */
+   if (block->brtype == IR3_BRANCH_SHPS)
+      return block->successors[1]->successors[0];
+   else
+      return block;
+}
+
 void ir3_block_add_predecessor(struct ir3_block *block, struct ir3_block *pred);
 void ir3_block_add_physical_predecessor(struct ir3_block *block,
                                         struct ir3_block *pred);
