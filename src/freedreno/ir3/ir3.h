@@ -1147,6 +1147,15 @@ is_reg_special(const struct ir3_register *reg)
           (reg_num(reg) == REG_P0);
 }
 
+/* Same as above but in cases where we don't have a register. r48.x and above
+ * are shared/special.
+ */
+static inline bool
+is_reg_num_special(unsigned num)
+{
+   return num >= 48 * 4;
+}
+
 /* returns defining instruction for reg */
 /* TODO better name */
 static inline struct ir3_instruction *
@@ -2214,9 +2223,12 @@ __regmask_get(regmask_t *regmask, bool half, unsigned n)
    if (regmask->mergedregs) {
       /* a6xx+ case, with merged register file, we track things in terms
        * of half-precision registers, with a full precisions register
-       * using two half-precision slots:
+       * using two half-precision slots.
+       *
+       * Pretend that special regs (a0.x, a1.x, etc.) are full registers to
+       * avoid having them alias normal full regs.
        */
-      if (half) {
+      if (half && !is_reg_num_special(n)) {
          return BITSET_TEST(regmask->mask, n);
       } else {
          n *= 2;
@@ -2241,7 +2253,7 @@ __regmask_set(regmask_t *regmask, bool half, unsigned n)
        * of half-precision registers, with a full precisions register
        * using two half-precision slots:
        */
-      if (half) {
+      if (half && !is_reg_num_special(n)) {
          BITSET_SET(regmask->mask, n);
       } else {
          n *= 2;
@@ -2266,7 +2278,7 @@ __regmask_clear(regmask_t *regmask, bool half, unsigned n)
        * of half-precision registers, with a full precisions register
        * using two half-precision slots:
        */
-      if (half) {
+      if (half && !is_reg_num_special(n)) {
          BITSET_CLEAR(regmask->mask, n);
       } else {
          n *= 2;
