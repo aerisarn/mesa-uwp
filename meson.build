@@ -616,7 +616,7 @@ dep_dxheaders = null_dep
 if with_gallium_d3d12 or with_microsoft_clc
   dep_dxheaders = dependency('DirectX-Headers', fallback : ['DirectX-Headers', 'dep_dxheaders'],
     required : with_gallium_d3d12
-  ) 
+  )
 endif
 
 if with_vulkan_overlay_layer or with_aco_tests
@@ -1755,6 +1755,13 @@ if with_opencl_spirv
 else
   dep_spirv_tools = null_dep
   dep_llvmspirvlib = null_dep
+endif
+
+# Be explicit about only using this lib on Windows, to avoid picking
+# up random libs with the generic name 'libversion'
+dep_version = null_dep
+if with_opencl_spirv and host_machine.system() == 'windows'
+  dep_version = cpp.find_library('version')
 endif
 
 with_opencl_native = _opencl != 'disabled' and get_option('opencl-native')
