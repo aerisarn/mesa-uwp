@@ -22,6 +22,18 @@
  */
 
 #include "ac_nir.h"
+#include "nir_builder.h"
+
+nir_ssa_def *
+ac_nir_load_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_arg arg)
+{
+   unsigned num_components = ac_args->args[arg.arg_index].size;
+
+   if (ac_args->args[arg.arg_index].file == AC_ARG_SGPR)
+      return nir_load_scalar_arg_amd(b, num_components, .base = arg.arg_index);
+   else
+      return nir_load_vector_arg_amd(b, num_components, .base = arg.arg_index);
+}
 
 bool
 ac_nir_lower_indirect_derefs(nir_shader *shader,
