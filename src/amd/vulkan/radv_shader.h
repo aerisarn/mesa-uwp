@@ -50,6 +50,7 @@ struct radv_pipeline_key;
 struct radv_pipeline_key {
    uint32_t has_multiview_view_index : 1;
    uint32_t optimisations_disabled : 1;
+   uint32_t invariant_geom : 1;
 
    struct {
       uint32_t instance_rate_inputs;

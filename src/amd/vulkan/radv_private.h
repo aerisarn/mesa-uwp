@@ -1660,7 +1660,6 @@ struct radv_event {
 #define RADV_HASH_SHADER_GE_WAVE32         (1 << 3)
 #define RADV_HASH_SHADER_LLVM              (1 << 4)
 #define RADV_HASH_SHADER_MRT_NAN_FIXUP     (1 << 6)
-#define RADV_HASH_SHADER_INVARIANT_GEOM    (1 << 7)
 #define RADV_HASH_SHADER_KEEP_STATISTICS   (1 << 8)
 #define RADV_HASH_SHADER_FORCE_VRS_2x2     (1 << 9)
 #define RADV_HASH_SHADER_FORCE_VRS_2x1     (1 << 10)

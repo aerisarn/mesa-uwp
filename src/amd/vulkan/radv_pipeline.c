@@ -231,8 +231,6 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
       hash_flags |= RADV_HASH_SHADER_LLVM;
    if (device->instance->enable_mrt_output_nan_fixup)
       hash_flags |= RADV_HASH_SHADER_MRT_NAN_FIXUP;
-   if (device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM)
-      hash_flags |= RADV_HASH_SHADER_INVARIANT_GEOM;
    if (stats)
       hash_flags |= RADV_HASH_SHADER_KEEP_STATISTICS;
    if (device->force_vrs == RADV_FORCE_VRS_2x2)
@@ -2728,6 +2726,9 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 
    if (pipeline->device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
       key.ps.lower_discard_to_demote = true;
+
+   if (pipeline->device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM)
+      key.invariant_geom = true;
 
    return key;
 }
