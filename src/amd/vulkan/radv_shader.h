@@ -78,6 +78,7 @@ struct radv_pipeline_key {
       uint8_t num_samples;
 
       bool lower_discard_to_demote;
+      bool enable_mrt_output_nan_fixup;
    } ps;
 
    struct {
