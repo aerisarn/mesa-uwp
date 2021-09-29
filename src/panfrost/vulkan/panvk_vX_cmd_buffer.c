@@ -618,9 +618,17 @@ panvk_draw_prepare_varyings(struct panvk_cmd_buffer *cmdbuf,
    unsigned buf_count = panvk_varyings_buf_count(varyings);
    struct panfrost_ptr bufs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
-                                buf_count, ATTRIBUTE_BUFFER);
+                                buf_count + (PAN_ARCH >= 6 ? 1 : 0),
+                                ATTRIBUTE_BUFFER);
 
    panvk_per_arch(emit_varying_bufs)(varyings, bufs.cpu);
+
+   /* We need an empty entry to stop prefetching on Bifrost */
+#if PAN_ARCH >= 6
+   memset(bufs.cpu + (pan_size(ATTRIBUTE_BUFFER) * buf_count), 0,
+          pan_size(ATTRIBUTE_BUFFER));
+#endif
+
    if (BITSET_TEST(varyings->active, VARYING_SLOT_POS)) {
       draw->position = varyings->buf[varyings->varying[VARYING_SLOT_POS].buf].address +
                        varyings->varying[VARYING_SLOT_POS].offset;
@@ -668,11 +676,11 @@ panvk_draw_prepare_attributes(struct panvk_cmd_buffer *cmdbuf,
       return;
    }
 
-   unsigned buf_count = pipeline->attribs.buf_count +
-                        (PAN_ARCH >= 6 ? 1 : 0);
+   unsigned buf_count = pipeline->attribs.buf_count * 2;
    struct panfrost_ptr bufs =
       pan_pool_alloc_desc_array(&cmdbuf->desc_pool.base,
-                                buf_count * 2, ATTRIBUTE_BUFFER);
+                                buf_count + (PAN_ARCH >= 6 ? 1 : 0),
+                                ATTRIBUTE_BUFFER);
 
    panvk_per_arch(emit_attrib_bufs)(&pipeline->attribs,
                                     cmdbuf->state.vb.bufs,
@@ -688,6 +696,13 @@ panvk_draw_prepare_attributes(struct panvk_cmd_buffer *cmdbuf,
    panvk_per_arch(emit_attribs)(cmdbuf->device, &pipeline->attribs,
                                 cmdbuf->state.vb.bufs, cmdbuf->state.vb.count,
                                 attribs.cpu);
+
+   /* A NULL entry is needed to stop prefecting on Bifrost */
+#if PAN_ARCH >= 6
+   memset(bufs.cpu + (pan_size(ATTRIBUTE_BUFFER) * buf_count), 0,
+          pan_size(ATTRIBUTE_BUFFER));
+#endif
+
    cmdbuf->state.vb.attribs = attribs.gpu;
    draw->stages[MESA_SHADER_VERTEX].attributes = cmdbuf->state.vb.attribs;
    draw->attribute_bufs = cmdbuf->state.vb.attrib_bufs;

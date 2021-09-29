@@ -202,11 +202,6 @@ panvk_per_arch(emit_varying_bufs)(const struct panvk_varyings_info *varyings,
       if (varyings->buf_mask & (1 << i))
          panvk_emit_varying_buf(varyings, i, buf++);
    }
-
-   /* We need an empty entry to stop prefetching on Bifrost */
-#if PAN_ARCH >= 6
-   memset(buf, 0, sizeof(*buf));
-#endif
 }
 
 static void
@@ -268,11 +263,6 @@ panvk_per_arch(emit_attrib_bufs)(const struct panvk_attribs_info *info,
 
    for (unsigned i = 0; i < info->buf_count; i++)
       panvk_emit_attrib_buf(info, draw, bufs, buf_count, i, buf++);
-
-   /* A NULL entry is needed to stop prefecting on Bifrost */
-#if PAN_ARCH >= 6
-   memset(buf, 0, sizeof(*buf));
-#endif
 }
 
 void
