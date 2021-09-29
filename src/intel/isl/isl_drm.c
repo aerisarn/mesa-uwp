@@ -160,6 +160,12 @@ isl_drm_modifier_get_score(const struct intel_device_info *devinfo,
          return 0;
 
       return 3;
+   case I915_FORMAT_MOD_4_TILED:
+      /* Gfx12.5 introduces Tile4. */
+      if (devinfo->verx10 < 125)
+         return 0;
+
+      return 3;
    case I915_FORMAT_MOD_Y_TILED_CCS:
       /* Gfx12's CCS layout differs from Gfx9-11. */
       if (devinfo->ver >= 12)
