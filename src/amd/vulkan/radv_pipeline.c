@@ -229,8 +229,6 @@ radv_get_hash_flags(const struct radv_device *device, bool stats)
       hash_flags |= RADV_HASH_SHADER_GE_WAVE32;
    if (device->physical_device->use_llvm)
       hash_flags |= RADV_HASH_SHADER_LLVM;
-   if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
-      hash_flags |= RADV_HASH_SHADER_DISCARD_TO_DEMOTE;
    if (device->instance->enable_mrt_output_nan_fixup)
       hash_flags |= RADV_HASH_SHADER_MRT_NAN_FIXUP;
    if (device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM)
@@ -2727,6 +2725,10 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
          key.vs.provoking_vtx_last = true;
       }
    }
+
+   if (pipeline->device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
+      key.ps.lower_discard_to_demote = true;
+
    return key;
 }
 

@@ -75,6 +75,8 @@ struct radv_pipeline_key {
       uint32_t is_int10;
       uint8_t log2_ps_iter_samples;
       uint8_t num_samples;
+
+      bool lower_discard_to_demote;
    } ps;
 
    struct {
