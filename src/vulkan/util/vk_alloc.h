@@ -83,7 +83,7 @@ vk_strdup(const VkAllocationCallbacks *alloc, const char *s,
       return NULL;
 
    size_t size = strlen(s) + 1;
-   char *copy = vk_alloc(alloc, size, 1, scope);
+   char *copy = (char *)vk_alloc(alloc, size, 1, scope);
    if (copy == NULL)
       return NULL;
 
@@ -98,7 +98,7 @@ vk_vasprintf(const VkAllocationCallbacks *alloc,
              const char *fmt, va_list args)
 {
    size_t size = u_printf_length(fmt, args) + 1;
-   char *ptr = vk_alloc(alloc, size, 1, scope);
+   char *ptr = (char *)vk_alloc(alloc, size, 1, scope);
    if (ptr != NULL)
       vsnprintf(ptr, size, fmt, args);
 
@@ -230,7 +230,7 @@ vk_multialloc_alloc(struct vk_multialloc *ma,
                     const VkAllocationCallbacks *alloc,
                     VkSystemAllocationScope scope)
 {
-   char *ptr = vk_alloc(alloc, ma->size, ma->align, scope);
+   char *ptr = (char *)vk_alloc(alloc, ma->size, ma->align, scope);
    if (!ptr)
       return NULL;
 
