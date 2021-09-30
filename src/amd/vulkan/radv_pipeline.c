@@ -2952,6 +2952,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
       }
       infos[MESA_SHADER_GEOMETRY].is_ngg = infos[pre_stage].is_ngg;
       infos[MESA_SHADER_GEOMETRY].is_ngg_passthrough = infos[pre_stage].is_ngg_passthrough;
+      infos[MESA_SHADER_GEOMETRY].gs.es_type = pre_stage;
 
       for (int i = 0; i < 2; i++) {
          radv_nir_shader_info_pass(pipeline->device, combined_nir[i], pipeline->layout, pipeline_key,

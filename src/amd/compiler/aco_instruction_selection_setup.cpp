@@ -326,11 +326,6 @@ setup_gs_variables(isel_context* ctx, nir_shader* nir)
       ctx->program->config->lds_size =
          DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
    }
-
-   if (ctx->stage.has(SWStage::VS))
-      ctx->program->info->gs.es_type = MESA_SHADER_VERTEX;
-   else if (ctx->stage.has(SWStage::TES))
-      ctx->program->info->gs.es_type = MESA_SHADER_TESS_EVAL;
 }
 
 void

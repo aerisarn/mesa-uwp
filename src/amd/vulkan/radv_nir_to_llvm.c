@@ -2681,13 +2681,6 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm, struct radv_shader_bin
    ac_compile_llvm_module(ac_llvm, llvm_module, rbinary, nir[nir_count - 1]->info.stage,
                           radv_get_shader_name(args->shader_info, nir[nir_count - 1]->info.stage),
                           args->options);
-
-   /* Determine the ES type (VS or TES) for the GS on GFX9. */
-   if (args->options->chip_class >= GFX9) {
-      if (nir_count == 2 && nir[1]->info.stage == MESA_SHADER_GEOMETRY) {
-         args->shader_info->gs.es_type = nir[0]->info.stage;
-      }
-   }
 }
 
 static void
