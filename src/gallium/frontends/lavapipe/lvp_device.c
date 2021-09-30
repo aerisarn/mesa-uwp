@@ -2089,7 +2089,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitForFences(
          struct lvp_fence *f = lvp_fence_from_handle(pFences[i]);
 
          /* this is an unsubmitted fence: immediately bail out */
-         if (!f->timeline)
+         if (!f->timeline && !f->signalled)
             return VK_TIMEOUT;
          if (!fence || f->timeline > fence->timeline)
             fence = f;
@@ -2098,6 +2098,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitForFences(
       /* find lowest timeline id */
       for (unsigned i = 0; i < fenceCount; i++) {
          struct lvp_fence *f = lvp_fence_from_handle(pFences[i]);
+         if (f->signalled)
+            return VK_SUCCESS;
          if (f->timeline && (!fence || f->timeline < fence->timeline))
             fence = f;
       }
