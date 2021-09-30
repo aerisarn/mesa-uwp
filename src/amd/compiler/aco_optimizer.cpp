@@ -854,6 +854,11 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
    SubdwordSel sel = parse_extract(info.instr);
    assert(sel);
 
+   instr->operands[idx].set16bit(false);
+   instr->operands[idx].set24bit(false);
+
+   ctx.info[tmp.id()].label &= ~label_insert;
+
    if (sel.size() == 4) {
       /* full dword selection */
    } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel.size() == 1 && !sel.sign_extend()) {
@@ -863,6 +868,12 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
       case 2: instr->opcode = aco_opcode::v_cvt_f32_ubyte2; break;
       case 3: instr->opcode = aco_opcode::v_cvt_f32_ubyte3; break;
       }
+   } else if (instr->opcode == aco_opcode::v_lshlrev_b32 && instr->operands[0].isConstant() &&
+              sel.offset() == 0 &&
+              ((sel.size() == 2 && instr->operands[0].constantValue() >= 16u) ||
+               (sel.size() == 1 && instr->operands[0].constantValue() >= 24u))) {
+      /* The undesireable upper bits are already shifted out. */
+      return;
    } else if (can_use_SDWA(ctx.program->chip_class, instr, true) &&
               (tmp.type() == RegType::vgpr || ctx.program->chip_class >= GFX9)) {
       to_SDWA(ctx, instr);
@@ -872,10 +883,6 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
          instr->vop3().opsel |= 1 << idx;
    }
 
-   instr->operands[idx].set16bit(false);
-   instr->operands[idx].set24bit(false);
-
-   ctx.info[tmp.id()].label &= ~label_insert;
    /* label_vopc seems to be the only one worth keeping at the moment */
    for (Definition& def : instr->definitions)
       ctx.info[def.tempId()].label &= label_vopc;
