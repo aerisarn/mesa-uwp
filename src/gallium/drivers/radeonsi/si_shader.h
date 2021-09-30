@@ -462,7 +462,6 @@ struct si_shader_selector {
    ubyte cs_num_images_in_user_sgprs;
    ubyte num_vs_inputs;
    ubyte num_vbos_in_user_sgprs;
-   unsigned pa_cl_vs_out_cntl;
    unsigned ngg_cull_vert_threshold; /* UINT32_MAX = disabled */
    ubyte clipdist_mask;
    ubyte culldist_mask;

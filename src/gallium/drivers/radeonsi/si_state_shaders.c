@@ -879,6 +879,9 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
    shader->ctx_reg.gs.vgt_gs_instance_cnt =
       S_028B90_CNT(MIN2(gs_num_invocations, 127)) | S_028B90_ENABLE(gs_num_invocations > 0);
 
+   /* Copy over fields from the GS copy shader to make them easily accessible from GS. */
+   shader->pa_cl_vs_out_cntl = sel->gs_copy_shader->pa_cl_vs_out_cntl;
+
    va = shader->bo->gpu_address;
 
    if (sscreen->info.chip_class >= GFX9) {
@@ -1022,9 +1025,6 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
    radeon_opt_set_context_reg(sctx, R_028838_PA_CL_NGG_CNTL, SI_TRACKED_PA_CL_NGG_CNTL,
                               shader->ctx_reg.ngg.pa_cl_ngg_cntl);
 
-   radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
-                                  SI_TRACKED_PA_CL_VS_OUT_CNTL__VS, shader->pa_cl_vs_out_cntl,
-                                  SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
    radeon_end_update_context_roll(sctx);
 
    /* These don't cause a context roll. */
@@ -1388,11 +1388,6 @@ static void si_emit_shader_vs(struct si_context *sctx)
                                  S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
    }
 
-   if (sctx->chip_class >= GFX10) {
-      radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
-                                     SI_TRACKED_PA_CL_VS_OUT_CNTL__VS, shader->pa_cl_vs_out_cntl,
-                                     SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
-   }
    radeon_end_update_context_roll(sctx);
 
    /* GE_PC_ALLOC is not a context register, so it doesn't cause a context roll. */
@@ -1920,9 +1915,7 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
       key->mono.u.vs_export_prim_id = 0;
    }
 
-   /* We need PKT3_CONTEXT_REG_RMW, which we currently only use on GFX10+. */
-   key->opt.kill_pointsize = sctx->chip_class >= GFX10 &&
-                             vs->info.writes_psize &&
+   key->opt.kill_pointsize = vs->info.writes_psize &&
                              sctx->current_rast_prim != PIPE_PRIM_POINTS &&
                              !sctx->queued.named.rasterizer->polygon_mode_is_points;
 }
@@ -3015,10 +3008,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       }
    }
 
-   /* PA_CL_VS_OUT_CNTL */
-   if (sctx->chip_class <= GFX9)
-      sel->pa_cl_vs_out_cntl = si_get_vs_out_cntl(sel, NULL, false);
-
    sel->clipdist_mask = sel->info.writes_clipvertex ? SIX_BITS :
                            u_bit_consecutive(0, sel->info.base.clip_distance_array_size);
    sel->culldist_mask = u_bit_consecutive(0, sel->info.base.cull_distance_array_size) <<
@@ -3126,11 +3115,11 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
        (!old_hw_vs ||
         (old_hw_vs->info.stage == MESA_SHADER_VERTEX && old_hw_vs->info.base.vs.window_space_position) !=
         (next_hw_vs->info.stage == MESA_SHADER_VERTEX && next_hw_vs->info.base.vs.window_space_position) ||
-        old_hw_vs->pa_cl_vs_out_cntl != next_hw_vs->pa_cl_vs_out_cntl ||
         old_hw_vs->clipdist_mask != next_hw_vs->clipdist_mask ||
         old_hw_vs->culldist_mask != next_hw_vs->culldist_mask || !old_hw_vs_variant ||
         !next_hw_vs_variant ||
-        old_hw_vs_variant->key.opt.kill_clip_distances != next_hw_vs_variant->key.opt.kill_clip_distances))
+        old_hw_vs_variant->key.opt.kill_clip_distances != next_hw_vs_variant->key.opt.kill_clip_distances ||
+        old_hw_vs_variant->pa_cl_vs_out_cntl != next_hw_vs_variant->pa_cl_vs_out_cntl))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 }
 

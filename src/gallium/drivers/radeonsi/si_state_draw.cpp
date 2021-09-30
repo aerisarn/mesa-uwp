@@ -111,6 +111,7 @@ static bool si_update_shaders(struct si_context *sctx)
    struct pipe_context *ctx = (struct pipe_context *)sctx;
    struct si_shader *old_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current;
    unsigned old_kill_clip_distances = old_vs ? old_vs->key.opt.kill_clip_distances : 0;
+   unsigned old_pa_cl_vs_out_cntl = old_vs ? old_vs->pa_cl_vs_out_cntl : 0;
    struct si_shader *old_ps = sctx->shader.ps.current;
    unsigned old_spi_shader_col_format =
       old_ps ? old_ps->key.part.ps.epilog.spi_shader_col_format : 0;
@@ -241,7 +242,10 @@ static bool si_update_shaders(struct si_context *sctx)
       *pm4 = si_build_vgt_shader_config(sctx->screen, key);
    si_pm4_bind_state(sctx, vgt_shader_config, *pm4);
 
-   if (old_kill_clip_distances != si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->key.opt.kill_clip_distances)
+   if (old_kill_clip_distances !=
+          si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->key.opt.kill_clip_distances ||
+       old_pa_cl_vs_out_cntl !=
+          si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->pa_cl_vs_out_cntl)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 
    r = si_shader_select(ctx, &sctx->shader.ps);

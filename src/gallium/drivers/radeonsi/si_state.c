@@ -856,15 +856,8 @@ static void si_emit_clip_regs(struct si_context *sctx)
                          clipdist_mask | (culldist_mask << 8);
 
    radeon_begin(&sctx->gfx_cs);
-
-   if (sctx->chip_class >= GFX10) {
-      radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
-                                     SI_TRACKED_PA_CL_VS_OUT_CNTL__CL, pa_cl_cntl,
-                                     ~SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
-   } else {
-      radeon_opt_set_context_reg(sctx, R_02881C_PA_CL_VS_OUT_CNTL, SI_TRACKED_PA_CL_VS_OUT_CNTL__CL,
-                                 vs_sel->pa_cl_vs_out_cntl | pa_cl_cntl);
-   }
+   radeon_opt_set_context_reg(sctx, R_02881C_PA_CL_VS_OUT_CNTL, SI_TRACKED_PA_CL_VS_OUT_CNTL,
+			      pa_cl_cntl | vs->pa_cl_vs_out_cntl);
    radeon_opt_set_context_reg(sctx, R_028810_PA_CL_CLIP_CNTL, SI_TRACKED_PA_CL_CLIP_CNTL,
                               rs->pa_cl_clip_cntl | ucp_mask | S_028810_CLIP_DISABLE(window_space));
    radeon_end_update_context_roll(sctx);
