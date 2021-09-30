@@ -97,9 +97,9 @@ traces:
       # - device: freedreno-a306
       #   checksum: bd6e158327d68e69ecf5edfacc368a7b
       - device: freedreno-a530
-        checksum: ccecf1479c9dd784ebfb4bbf19724640
+        checksum: 599b00e7a443a90b0edcd06fccd1a400
       - device: freedreno-a630
-        checksum: 4c1b94f65eaf1ae16b8465350f5840e0
+        checksum: a71da1e8c855209d79fa8a0b83a46775
   - path: neverball/neverball.trace
     expectations:
       # Skipped since it's long on a530.

@@ -538,8 +538,6 @@ ra_file_init(struct ra_file *file)
       BITSET_SET(file->available_to_evict, i);
    }
 
-   file->start = 0;
-
    rb_tree_init(&file->reg_ctx.intervals);
    rb_tree_init(&file->physreg_intervals);
 
@@ -2205,6 +2203,8 @@ ir3_ra(struct ir3_shader_variant *v)
       ctx->half.size = RA_HALF_SIZE;
 
    ctx->shared.size = RA_SHARED_SIZE;
+
+   ctx->full.start = ctx->half.start = ctx->shared.start = 0;
 
    foreach_block (block, &v->ir->block_list)
       handle_block(ctx, block);
