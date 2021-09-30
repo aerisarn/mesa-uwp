@@ -1197,12 +1197,7 @@ radv_build_param_exports(struct radv_shader_context *ctx, struct radv_shader_out
          continue;
 
       radv_export_param(ctx, param_count, outputs[i].values, usage_mask);
-
-      assert(i < ARRAY_SIZE(outinfo->vs_output_param_offset));
-      outinfo->vs_output_param_offset[slot_name] = param_count++;
    }
-
-   outinfo->param_exports = param_count;
 }
 
 /* Generate export instructions for hardware VS shader stage or NGG GS stage
@@ -1325,11 +1320,6 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
       }
    }
 
-   for (i = 0; i < 4; i++) {
-      if (pos_args[i].out[0])
-         outinfo->pos_exports++;
-   }
-
    /* GFX10 skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
     * Setting valid_mask=1 prevents it and has no other effect.
     */
@@ -1374,10 +1364,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx, bool export_prim_id, boo
       LLVMBuildStore(ctx->ac.builder, ac_to_float(&ctx->ac, view_index), *tmp_out);
       ctx->output_mask |= 1ull << VARYING_SLOT_LAYER;
    }
-
-   memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
-          sizeof(outinfo->vs_output_param_offset));
-   outinfo->pos_exports = 0;
 
    if (ctx->args->shader_info->so.num_outputs && !ctx->args->is_gs_copy_shader) {
       /* The GS copy shader emission already emits streamout. */
@@ -1695,9 +1681,6 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
             values[j] = ctx->ac.f32_0;
 
          radv_export_param(ctx, param_count, values, 0x1);
-
-         outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = param_count++;
-         outinfo->param_exports = param_count;
       }
    }
    ac_build_endif(&ctx->ac, 6002);
@@ -1956,10 +1939,6 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
       /* Allocate a temporary array for the output values. */
       unsigned num_outputs = util_bitcount64(ctx->output_mask) + export_view_index;
       outputs = calloc(num_outputs, sizeof(outputs[0]));
-
-      memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
-             sizeof(outinfo->vs_output_param_offset));
-      outinfo->pos_exports = 0;
 
       tmp = ngg_gs_vertex_ptr(ctx, tid);
       tmp = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, tmp, 1), "");

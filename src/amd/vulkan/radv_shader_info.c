@@ -25,6 +25,8 @@
 #include "radv_private.h"
 #include "radv_shader.h"
 
+#include "ac_exp_param.h"
+
 static void
 mark_sampler_desc(const nir_variable *var, struct radv_shader_info *info)
 {
@@ -459,30 +461,47 @@ gather_info_output_decl_gs(const nir_shader *nir, const nir_variable *var,
    info->gs.output_streams[idx] = stream;
 }
 
+static struct radv_vs_output_info *
+get_vs_output_info(const nir_shader *nir, struct radv_shader_info *info)
+{
+
+   switch (nir->info.stage) {
+   case MESA_SHADER_VERTEX:
+      if (!info->vs.as_ls && !info->vs.as_es)
+         return &info->vs.outinfo;
+      break;
+   case MESA_SHADER_GEOMETRY:
+      return &info->vs.outinfo;
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      if (!info->tes.as_es)
+         return &info->tes.outinfo;
+      break;
+   default:
+      break;
+   }
+
+   return NULL;
+}
+
 static void
 gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
                         struct radv_shader_info *info)
 {
-   struct radv_vs_output_info *vs_info = NULL;
+   struct radv_vs_output_info *vs_info = get_vs_output_info(nir, info);
 
    switch (nir->info.stage) {
    case MESA_SHADER_FRAGMENT:
       gather_info_output_decl_ps(nir, var, info);
       break;
    case MESA_SHADER_VERTEX:
-      if (!info->vs.as_ls && !info->vs.as_es)
-         vs_info = &info->vs.outinfo;
-
       if (!info->vs.as_ls && info->is_ngg)
          gather_info_output_decl_gs(nir, var, info);
       break;
    case MESA_SHADER_GEOMETRY:
-      vs_info = &info->vs.outinfo;
       gather_info_output_decl_gs(nir, var, info);
       break;
    case MESA_SHADER_TESS_EVAL:
-      if (!info->tes.as_es)
-         vs_info = &info->tes.outinfo;
       break;
    default:
       break;
@@ -600,6 +619,54 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
          break;
       default:
          break;
+      }
+   }
+
+   struct radv_vs_output_info *outinfo = get_vs_output_info(nir, info);
+   if (outinfo) {
+      bool writes_primitive_shading_rate =
+         outinfo->writes_primitive_shading_rate || device->force_vrs != RADV_FORCE_VRS_NONE;
+      int pos_written = 0x1;
+
+      if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer ||
+          writes_primitive_shading_rate)
+         pos_written |= 1 << 1;
+
+      unsigned num_clip_distances = util_bitcount(outinfo->clip_dist_mask);
+      unsigned num_cull_distances = util_bitcount(outinfo->cull_dist_mask);
+
+      if (num_clip_distances + num_cull_distances > 0)
+         pos_written |= 1 << 2;
+      if (num_clip_distances + num_cull_distances > 4)
+         pos_written |= 1 << 3;
+
+      outinfo->pos_exports = util_bitcount(pos_written);
+
+      memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
+             sizeof(outinfo->vs_output_param_offset));
+      outinfo->param_exports = 0;
+
+      uint64_t mask = nir->info.outputs_written;
+      while (mask) {
+         int idx = u_bit_scan64(&mask);
+         if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
+             idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT ||
+             ((idx == VARYING_SLOT_CLIP_DIST0 || idx == VARYING_SLOT_CLIP_DIST1) &&
+              outinfo->export_clip_dists)) {
+            if (outinfo->vs_output_param_offset[idx] == AC_EXP_PARAM_UNDEFINED)
+               outinfo->vs_output_param_offset[idx] = outinfo->param_exports++;
+         }
+      }
+      if (outinfo->writes_layer &&
+          outinfo->vs_output_param_offset[VARYING_SLOT_LAYER] == AC_EXP_PARAM_UNDEFINED) {
+         /* when ctx->options->key.has_multiview_view_index = true, the layer
+          * variable isn't declared in NIR and it's isel's job to get the layer */
+         outinfo->vs_output_param_offset[VARYING_SLOT_LAYER] = outinfo->param_exports++;
+      }
+
+      if (outinfo->export_prim_id) {
+         assert(outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] == AC_EXP_PARAM_UNDEFINED);
+         outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = outinfo->param_exports++;
       }
    }
 
