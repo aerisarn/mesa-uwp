@@ -95,10 +95,7 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
    struct panfrost_ptr rsd_ptr =
       pan_pool_alloc_desc_aggregate(desc_pool,
                                     PAN_DESC(RENDERER_STATE),
-                                    PAN_DESC(BLEND));
-
-   /* TODO: Support multiple render targets */
-   assert(rt == 0);
+                                    PAN_DESC_ARRAY(rt + 1, BLEND));
 
    pan_pack(rsd_ptr.cpu, RENDERER_STATE, cfg) {
       pan_shader_prepare_rsd(shader_info, shader, &cfg);
@@ -129,7 +126,21 @@ panvk_meta_clear_attachments_emit_rsd(struct panfrost_device *pdev,
 #endif
    }
 
-   pan_pack(rsd_ptr.cpu + pan_size(RENDERER_STATE), BLEND, cfg) {
+   void *bd = rsd_ptr.cpu + pan_size(RENDERER_STATE);
+
+   /* Disable all RTs except the one we're interested in. */
+   for (unsigned i = 0; i < rt; i++) {
+      pan_pack(bd, BLEND, cfg) {
+         cfg.enable = false;
+#if PAN_ARCH >= 6
+         cfg.internal.mode = MALI_BLEND_MODE_OFF;
+#endif
+      }
+
+      bd += pan_size(BLEND);
+   }
+
+   pan_pack(bd, BLEND, cfg) {
       cfg.round_to_fb_precision = true;
       cfg.load_destination = false;
       cfg.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
