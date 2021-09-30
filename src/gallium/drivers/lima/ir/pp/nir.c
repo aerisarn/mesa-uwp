@@ -473,8 +473,13 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
    for (int i = 0; i < instr->coord_components; i++)
          node->src[0].swizzle[i] = i;
 
+   bool perspective = false;
+
    for (int i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
+      case nir_tex_src_backend1:
+         perspective = true;
+         FALLTHROUGH;
       case nir_tex_src_coord: {
          nir_src *ns = &instr->src[i].src;
          if (ns->is_ssa) {
@@ -482,7 +487,8 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
             if (child->op == ppir_op_load_varying) {
                /* If the successor is load_texture, promote it to load_coords */
                nir_tex_src *nts = (nir_tex_src *)ns;
-               if (nts->src_type == nir_tex_src_coord)
+               if (nts->src_type == nir_tex_src_coord ||
+                   nts->src_type == nir_tex_src_backend1)
                   child->op = ppir_op_load_coords;
             }
          }
@@ -543,6 +549,14 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
    }
 
    assert(load);
+
+   if (perspective) {
+      if (instr->coord_components == 3)
+         load->perspective = ppir_perspective_z;
+      else
+         load->perspective = ppir_perspective_w;
+   }
+
    node->src[0].type = load->dest.type = ppir_target_pipeline;
    node->src[0].pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
 

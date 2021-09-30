@@ -216,6 +216,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s,
 	      nir_var_shader_in | nir_var_shader_out, type_size, 0);
    NIR_PASS_V(s, nir_lower_regs_to_ssa);
    NIR_PASS_V(s, nir_lower_tex, tex_options);
+   NIR_PASS_V(s, lima_nir_lower_txp);
 
    do {
       progress = false;
@@ -283,7 +284,6 @@ lima_fs_compile_shader(struct lima_context *ctx,
    nir_shader *nir = nir_shader_clone(fs, ufs->base.ir.nir);
 
    struct nir_lower_tex_options tex_options = {
-      .lower_txp = ~0u,
       .swizzle_result = ~0u,
    };
 

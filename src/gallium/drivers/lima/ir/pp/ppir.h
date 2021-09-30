@@ -252,6 +252,12 @@ typedef struct {
    ppir_dest dest;
 } ppir_const_node;
 
+typedef enum {
+   ppir_perspective_none = 0,
+   ppir_perspective_z,
+   ppir_perspective_w,
+} ppir_perspective;
+
 typedef struct {
    ppir_node node;
    int index;
@@ -259,6 +265,7 @@ typedef struct {
    ppir_dest dest;
    ppir_src src;
    int num_src;
+   ppir_perspective perspective;
 } ppir_load_node;
 
 typedef struct {
