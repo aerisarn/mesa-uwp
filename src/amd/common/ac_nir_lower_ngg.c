@@ -730,6 +730,12 @@ compact_vertices_after_culling(nir_builder *b,
          nir_store_var(b, repacked_arg_vars[i], arg_val, 0x1u);
       }
    }
+   nir_push_else(b, if_packed_es_thread);
+   {
+      nir_store_var(b, position_value_var, nir_ssa_undef(b, 4, 32), 0xfu);
+      for (unsigned i = 0; i < max_exported_args; ++i)
+         nir_store_var(b, repacked_arg_vars[i], nir_ssa_undef(b, 1, 32), 0x1u);
+   }
    nir_pop_if(b, if_packed_es_thread);
 
    nir_if *if_gs_accepted = nir_push_if(b, nir_load_var(b, gs_accepted_var));
