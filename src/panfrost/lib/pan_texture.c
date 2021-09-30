@@ -354,11 +354,18 @@ pan_iview_get_surface(const struct pan_image_view *iview,
  * 6-bit tag on the payload pointer. Map the block size for a single dimension.
  */
 
-static unsigned
-panfrost_astc_stretch(unsigned dim)
+static inline enum mali_astc_2d_dimension
+panfrost_astc_dim_2d(unsigned dim)
 {
-        assert(dim >= 4 && dim <= 12);
-        return MIN2(dim, 11) - 4;
+        switch (dim) {
+        case  4: return MALI_ASTC_2D_DIMENSION_4;
+        case  5: return MALI_ASTC_2D_DIMENSION_5;
+        case  6: return MALI_ASTC_2D_DIMENSION_6;
+        case  8: return MALI_ASTC_2D_DIMENSION_8;
+        case 10: return MALI_ASTC_2D_DIMENSION_10;
+        case 12: return MALI_ASTC_2D_DIMENSION_12;
+        default: unreachable("Invalid ASTC dimension");
+        }
 }
 
 /* Texture addresses are tagged with information about compressed formats.
@@ -397,8 +404,8 @@ panfrost_compression_tag(const struct util_format_description *desc,
 
                 return flags;
         } else if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
-                return (panfrost_astc_stretch(desc->block.height) << 3) |
-                        panfrost_astc_stretch(desc->block.width);
+                return (panfrost_astc_dim_2d(desc->block.height) << 3) |
+                        panfrost_astc_dim_2d(desc->block.width);
         } else {
                 return 0;
         }
