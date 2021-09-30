@@ -348,13 +348,10 @@ pan_iview_get_surface(const struct pan_image_view *iview,
 
 #else /* ifndef PAN_ARCH */
 
-/* A Scalable Texture Compression (ASTC) corresponds to just a few texture type
- * in the hardware, but in fact can be parametrized to have various widths and
- * heights for the so-called "stretch factor". It turns out these parameters
- * are stuffed in the bottom bits of the payload pointers. This functions
- * computes these magic stuffing constants based on the ASTC format in use. The
- * constant in a given dimension is 3-bits, and two are stored side-by-side for
- * each active dimension.
+#if PAN_ARCH >= 5
+/* Arm Scalable Texture Compression (ASTC) corresponds to just a few formats.
+ * The block dimension is not part of the format. Instead, it is encoded as a
+ * 6-bit tag on the payload pointer. Map the block size for a single dimension.
  */
 
 static unsigned
@@ -406,6 +403,7 @@ panfrost_compression_tag(const struct util_format_description *desc,
                 return 0;
         }
 }
+#endif
 
 /* Cubemaps have 6 faces as "layers" in between each actual layer. We
  * need to fix this up. TODO: logic wrong in the asserted out cases ...
@@ -574,7 +572,7 @@ panfrost_emit_texture_payload(const struct pan_image_view *iview,
                               void *payload)
 {
         const struct pan_image_layout *layout = &iview->image->layout;
-        const struct util_format_description *desc =
+        ASSERTED const struct util_format_description *desc =
                 util_format_description(format);
 
         mali_ptr base = iview->image->data.bo->ptr.gpu + iview->image->data.offset;
@@ -584,10 +582,15 @@ panfrost_emit_texture_payload(const struct pan_image_view *iview,
                 base += iview->buf.offset;
         }
 
+#if PAN_ARCH >= 5
         /* panfrost_compression_tag() wants the dimension of the resource, not the
          * one of the image view (those might differ).
          */
         base |= panfrost_compression_tag(desc, layout->dim, layout->modifier);
+#else
+        assert(!drm_is_afbc(layout->modifier) && "no AFBC on v4");
+        assert(desc->layout != UTIL_FORMAT_LAYOUT_ASTC && "no ASTC on v4");
+#endif
 
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
