@@ -2139,8 +2139,8 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
                surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
             }
 
-            if (info->chip_class >= GFX10_3 &&
-                gfx10_DCN_requires_independent_64B_blocks(info, config)) {
+            /* Use 64 && 128 for the non-modifier path for compatibility. */
+            if (info->chip_class >= GFX10_3) {
                surf->u.gfx9.color.dcc.independent_64B_blocks = 1;
                surf->u.gfx9.color.dcc.independent_128B_blocks = 1;
                surf->u.gfx9.color.dcc.max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
