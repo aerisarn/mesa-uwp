@@ -110,10 +110,19 @@ panvk_varying_hw_format(const struct panvk_device *dev,
    switch (loc) {
    case VARYING_SLOT_PNTC:
    case VARYING_SLOT_PSIZ:
+#if PAN_ARCH <= 6
       return (MALI_R16F << 12) | panfrost_get_default_swizzle(1);
+#else
+      return (MALI_R16F << 12) | MALI_RGB_COMPONENT_ORDER_R000;
+#endif
    case VARYING_SLOT_POS:
+#if PAN_ARCH <= 6
       return ((fs ? MALI_RGBA32F : MALI_SNAP_4) << 12) |
              panfrost_get_default_swizzle(4);
+#else
+      return ((fs ? MALI_RGBA32F : MALI_SNAP_4) << 12) |
+             MALI_RGB_COMPONENT_ORDER_RGBA;
+#endif
    default:
       assert(!panvk_varying_is_builtin(stage, loc));
       if (varyings->varying[loc].format != PIPE_FORMAT_NONE)
