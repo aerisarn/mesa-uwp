@@ -3992,6 +3992,13 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
    ir = so->ir = ctx->ir;
 
+   if (so->type == MESA_SHADER_COMPUTE) {
+      so->local_size[0] = ctx->s->info.workgroup_size[0];
+      so->local_size[1] = ctx->s->info.workgroup_size[1];
+      so->local_size[2] = ctx->s->info.workgroup_size[2];
+      so->local_size_variable = ctx->s->info.workgroup_size_variable;
+   }
+
    /* Vertex shaders in a tessellation or geometry pipeline treat END as a
     * NOP and has an epilogue that writes the VS outputs to local storage, to
     * be read by the HS.  Then it resets execution mask (chmask) and chains
@@ -4347,13 +4354,6 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
    if (so->type == MESA_SHADER_FRAGMENT &&
        ctx->s->info.fs.needs_quad_helper_invocations)
       so->need_pixlod = true;
-
-   if (so->type == MESA_SHADER_COMPUTE) {
-      so->local_size[0] = ctx->s->info.workgroup_size[0];
-      so->local_size[1] = ctx->s->info.workgroup_size[1];
-      so->local_size[2] = ctx->s->info.workgroup_size[2];
-      so->local_size_variable = ctx->s->info.workgroup_size_variable;
-   }
 
 out:
    if (ret) {
