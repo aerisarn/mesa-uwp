@@ -4703,7 +4703,7 @@ anv_add_pending_pipe_bits(struct anv_cmd_buffer* cmd_buffer,
                           const char* reason)
 {
    cmd_buffer->state.pending_pipe_bits |= bits;
-   if (unlikely(INTEL_DEBUG & DEBUG_PIPE_CONTROL) && bits)
+   if ((INTEL_DEBUG & DEBUG_PIPE_CONTROL) && bits)
    {
       fputs("pc: add ", stderr);
       anv_dump_pipe_bits(bits);
