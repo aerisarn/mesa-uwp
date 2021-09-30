@@ -1040,6 +1040,49 @@ trace_screen_get_dmabuf_modifier_planes(struct pipe_screen *_screen, uint64_t mo
    return ret;
 }
 
+static struct pipe_vertex_state *
+trace_screen_create_vertex_state(struct pipe_screen *_screen,
+                                 struct pipe_vertex_buffer *buffer,
+                                 const struct pipe_vertex_element *elements,
+                                 unsigned num_elements,
+                                 struct pipe_resource *indexbuf,
+                                 uint32_t full_velem_mask)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "create_vertex_state");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(ptr, buffer->buffer.resource);
+   trace_dump_arg(vertex_buffer, buffer);
+   trace_dump_struct_array(vertex_element, elements, num_elements);
+   trace_dump_arg(uint, num_elements);
+   trace_dump_arg(ptr, indexbuf);
+   trace_dump_arg(uint, full_velem_mask);
+
+   struct pipe_vertex_state *vstate =
+      screen->create_vertex_state(screen, buffer, elements, num_elements,
+                                  indexbuf, full_velem_mask);
+   trace_dump_ret(ptr, vstate);
+   trace_dump_call_end();
+   return vstate;
+}
+
+static void trace_screen_vertex_state_destroy(struct pipe_screen *_screen,
+                                              struct pipe_vertex_state *state)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "vertex_state_destroy");
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(ptr, state);
+   trace_dump_call_end();
+
+   screen->vertex_state_destroy(screen, state);
+}
+
 bool
 trace_enabled(void)
 {
@@ -1134,6 +1177,8 @@ trace_screen_create(struct pipe_screen *screen)
    SCR_INIT(get_driver_uuid);
    SCR_INIT(get_device_uuid);
    SCR_INIT(finalize_nir);
+   SCR_INIT(create_vertex_state);
+   SCR_INIT(vertex_state_destroy);
    tr_scr->base.transfer_helper = screen->transfer_helper;
 
    tr_scr->screen = screen;
