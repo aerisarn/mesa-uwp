@@ -754,7 +754,6 @@ debian-gallium:
   script:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/run-shader-db.sh
-    - src/freedreno/.gitlab-ci/run-fdtools.sh
 
 # Test a release build with -Werror so new warnings don't sneak in.
 debian-release:
