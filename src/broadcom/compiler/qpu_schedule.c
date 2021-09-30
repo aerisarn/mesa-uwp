@@ -906,8 +906,11 @@ qpu_raddrs_used(const struct v3d_qpu_instr *a,
 static bool
 qpu_merge_raddrs(struct v3d_qpu_instr *result,
                  const struct v3d_qpu_instr *add_instr,
-                 const struct v3d_qpu_instr *mul_instr)
+                 const struct v3d_qpu_instr *mul_instr,
+                 const struct v3d_device_info *devinfo)
 {
+        assert(devinfo->ver <= 42);
+
         uint64_t raddrs_used = qpu_raddrs_used(add_instr, mul_instr);
         int naddrs = util_bitcount64(raddrs_used);
 
@@ -1111,9 +1114,19 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
                 add_instr = a;
         }
 
-        if (add_instr && mul_instr &&
-            !qpu_merge_raddrs(&merge, add_instr, mul_instr)) {
-                        return false;
+        /* V3D 4.x and earlier use muxes to select the inputs for the ALUs and
+         * they have restrictions on the number of raddrs that can be adressed
+         * in a single instruction.
+         *
+         * FIXME: for V3D 7.x we can't merge instructions if they address more
+         * than one small immediate. For now, we don't support small immediates,
+         * so it is not a problem.
+         */
+        if (devinfo->ver <= 42) {
+                if (add_instr && mul_instr &&
+                    !qpu_merge_raddrs(&merge, add_instr, mul_instr, devinfo)) {
+                                return false;
+                }
         }
 
         merge.sig.thrsw |= b->sig.thrsw;
