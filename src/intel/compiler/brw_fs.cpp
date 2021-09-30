@@ -10431,7 +10431,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    bool has_spilled = false;
 
    uint8_t simd_size = 0;
-   if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
+   if (!(INTEL_DEBUG & DEBUG_NO8)) {
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base, shader,
                           8, -1 /* shader time */, debug_enabled);
@@ -10449,7 +10449,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   if (!has_spilled && likely(!(INTEL_DEBUG & DEBUG_NO16))) {
+   if (!has_spilled && !(INTEL_DEBUG & DEBUG_NO16)) {
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, shader,
                            16, -1 /* shader time */, debug_enabled);
