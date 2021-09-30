@@ -43,8 +43,7 @@
 #include "util/u_debug_symbol.h"
 #include "util/u_string.h"
 #include "util/u_hash_table.h"
-#include "os/os_thread.h"
-#include "pipe/p_config.h"
+#include "util/u_thread.h"
 
 int debug_refcnt_state;
 
