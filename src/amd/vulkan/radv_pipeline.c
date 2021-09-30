@@ -3565,6 +3565,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       if (!pipeline_has_ngg) {
          struct radv_shader_info info = {0};
 
+         if (infos[MESA_SHADER_GEOMETRY].vs.outinfo.export_clip_dists)
+            info.vs.outinfo.export_clip_dists = true;
+
          radv_nir_shader_info_pass(device, nir[MESA_SHADER_GEOMETRY], pipeline->layout, pipeline_key,
                                    &info);
          info.wave_size = 64; /* Wave32 not supported. */

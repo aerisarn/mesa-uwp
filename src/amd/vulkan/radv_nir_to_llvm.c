@@ -2786,7 +2786,8 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
          radv_emit_streamout(ctx, stream);
 
       if (stream == 0) {
-         handle_vs_outputs_post(ctx, false, true, &ctx->args->shader_info->vs.outinfo);
+         handle_vs_outputs_post(ctx, false, ctx->args->shader_info->vs.outinfo.export_clip_dists,
+                                &ctx->args->shader_info->vs.outinfo);
       }
 
       LLVMBuildBr(ctx->ac.builder, end_bb);

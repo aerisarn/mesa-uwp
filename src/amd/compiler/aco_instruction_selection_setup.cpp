@@ -1032,7 +1032,9 @@ setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* c
    unsigned scratch_size = 0;
    if (program->stage == gs_copy_vs) {
       assert(shader_count == 1);
-      setup_vs_output_info(&ctx, shaders[0], false, true, &args->shader_info->vs.outinfo);
+      setup_vs_output_info(&ctx, shaders[0], false,
+                           args->shader_info->vs.outinfo.export_clip_dists,
+                           &args->shader_info->vs.outinfo);
    } else {
       for (unsigned i = 0; i < shader_count; i++) {
          nir_shader* nir = shaders[i];
