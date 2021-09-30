@@ -83,6 +83,8 @@ zink_context_destroy(struct pipe_context *pctx)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
 
+   if (util_queue_is_initialized(&screen->flush_queue))
+      util_queue_finish(&screen->flush_queue);
    if (screen->queue && !screen->device_lost && VKSCR(QueueWaitIdle)(screen->queue) != VK_SUCCESS)
       debug_printf("vkQueueWaitIdle failed\n");
 
