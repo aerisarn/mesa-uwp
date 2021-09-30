@@ -65,6 +65,9 @@ fd6_tex_swiz(enum pipe_format format, unsigned char *swiz, unsigned swizzle_r,
       const unsigned char stencil_swiz[4] = {PIPE_SWIZZLE_W, PIPE_SWIZZLE_W,
                                              PIPE_SWIZZLE_W, PIPE_SWIZZLE_W};
       util_format_compose_swizzles(stencil_swiz, uswiz, swiz);
+   } else if (format == PIPE_FORMAT_R8G8_R8B8_UNORM || format == PIPE_FORMAT_G8R8_B8R8_UNORM) {
+      unsigned char fswiz[4] = {PIPE_SWIZZLE_Z, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_1};
+      util_format_compose_swizzles(fswiz, uswiz, swiz);
    } else if (fd6_pipe2swap(format) != WZYX) {
       /* Formats with a non-pass-through swap are permutations of RGBA
        * formats. We program the permutation using the swap and don't

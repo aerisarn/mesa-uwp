@@ -345,6 +345,9 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    _T_(ASTC_12x10_SRGB, ASTC_12x10,             WZYX),
    _T_(ASTC_12x12_SRGB, ASTC_12x12,             WZYX),
 
+   _T_(R8G8_R8B8_UNORM, R8G8R8B8_422_UNORM, WZYX), /* YUYV */
+   _T_(G8R8_B8R8_UNORM, G8R8B8R8_422_UNORM, WZYX), /* UYVY */
+
    _T_(R8_G8B8_420_UNORM, R8_G8B8_2PLANE_420_UNORM, WZYX),
 };
 /* clang-format on */
