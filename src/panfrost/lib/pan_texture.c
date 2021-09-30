@@ -368,6 +368,18 @@ panfrost_astc_dim_2d(unsigned dim)
         }
 }
 
+static inline enum mali_astc_3d_dimension
+panfrost_astc_dim_3d(unsigned dim)
+{
+        switch (dim) {
+        case  3: return MALI_ASTC_3D_DIMENSION_3;
+        case  4: return MALI_ASTC_3D_DIMENSION_4;
+        case  5: return MALI_ASTC_3D_DIMENSION_5;
+        case  6: return MALI_ASTC_3D_DIMENSION_6;
+        default: unreachable("Invalid ASTC dimension");
+        }
+}
+
 /* Texture addresses are tagged with information about compressed formats.
  * AFBC uses a bit for whether the colorspace transform is enabled (RGB and
  * RGBA only).
@@ -404,8 +416,14 @@ panfrost_compression_tag(const struct util_format_description *desc,
 
                 return flags;
         } else if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
-                return (panfrost_astc_dim_2d(desc->block.height) << 3) |
-                        panfrost_astc_dim_2d(desc->block.width);
+                if (desc->block.depth > 1) {
+                        return (panfrost_astc_dim_3d(desc->block.depth) << 4) |
+                               (panfrost_astc_dim_3d(desc->block.height) << 2) |
+                                panfrost_astc_dim_3d(desc->block.width);
+                } else {
+                        return (panfrost_astc_dim_2d(desc->block.height) << 3) |
+                                panfrost_astc_dim_2d(desc->block.width);
+                }
         } else {
                 return 0;
         }
