@@ -988,7 +988,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .lineWidthRange = { 1.0, 1.0 },
       .pointSizeGranularity = 	0.0625,
       .lineWidthGranularity = 0.0,
-      .strictLines = false, /* FINISHME */
+      .strictLines = true,
       .standardSampleLocations = true,
       .optimalBufferCopyOffsetAlignment = 128,
       .optimalBufferCopyRowPitchAlignment = 128,
