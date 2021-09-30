@@ -287,7 +287,7 @@ panvk_meta_get_format_type(enum pipe_format format)
 
 static void
 panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
-                            uint32_t attachment,
+                            unsigned attachment, unsigned rt,
                             VkImageAspectFlags mask,
                             const VkClearValue *clear_value,
                             const VkClearRect *clear_rect)
@@ -324,15 +324,14 @@ panvk_meta_clear_attachment(struct panvk_cmd_buffer *cmdbuf,
                                                   rect, sizeof(rect), 64);
 
    enum glsl_base_type base_type = panvk_meta_get_format_type(att->format);
-   mali_ptr shader = meta->clear_attachment[attachment][base_type].shader;
+   mali_ptr shader = meta->clear_attachment[rt][base_type].shader;
    struct pan_shader_info *shader_info =
-      &meta->clear_attachment[attachment][base_type].shader_info;
+      &meta->clear_attachment[rt][base_type].shader_info;
 
    mali_ptr rsd =
       panvk_meta_clear_attachments_emit_rsd(pdev,
                                             &cmdbuf->desc_pool.base,
-                                            att->format,
-                                            attachment,
+                                            att->format, rt,
                                             shader_info,
                                             shader);
 
@@ -514,10 +513,10 @@ panvk_per_arch(CmdClearAttachments)(VkCommandBuffer commandBuffer,
    for (unsigned i = 0; i < attachmentCount; i++) {
       for (unsigned j = 0; j < rectCount; j++) {
 
-         uint32_t attachment;
+         uint32_t attachment, rt = 0;
          if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-            unsigned idx = pAttachments[i].colorAttachment;
-            attachment = subpass->color_attachments[idx].idx;
+            rt = pAttachments[i].colorAttachment;
+            attachment = subpass->color_attachments[rt].idx;
          } else {
             attachment = subpass->zs_attachment.idx;
          }
@@ -525,7 +524,7 @@ panvk_per_arch(CmdClearAttachments)(VkCommandBuffer commandBuffer,
          if (attachment == VK_ATTACHMENT_UNUSED)
                continue;
 
-         panvk_meta_clear_attachment(cmdbuf, attachment,
+         panvk_meta_clear_attachment(cmdbuf, attachment, rt,
                                      pAttachments[i].aspectMask,
                                      &pAttachments[i].clearValue,
                                      &pRects[j]);
