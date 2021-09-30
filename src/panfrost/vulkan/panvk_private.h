@@ -159,9 +159,11 @@ struct panvk_meta {
    } blitter;
 
    struct {
-      mali_ptr shader;
-      struct pan_shader_info shader_info;
-   } clear_attachment[MAX_RTS][3]; /* 3 base types */
+      struct {
+         mali_ptr shader;
+         struct pan_shader_info shader_info;
+      } color[MAX_RTS][3], zs, z, s; /* 3 base types */
+   } clear_attachment;
 
    struct {
       struct {
