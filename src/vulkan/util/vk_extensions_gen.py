@@ -39,10 +39,6 @@ _TEMPLATE_H = Template(COPYRIGHT + """
 
 #include <stdbool.h>
 
-%for include in includes:
-#include "${include}"
-%endfor
-
 %if driver == 'vk':
 #define VK_INSTANCE_EXTENSION_COUNT ${len(instance_extensions)}
 
@@ -208,7 +204,7 @@ ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physic
 """)
 
 def gen_extensions(driver, xml_files, api_versions, max_api_version,
-                   extensions, out_c, out_h, includes = []):
+                   extensions, out_c, out_h):
     platform_defines = []
     for filename in xml_files:
         init_exts_from_xml(filename, extensions, platform_defines)
@@ -223,7 +219,6 @@ def gen_extensions(driver, xml_files, api_versions, max_api_version,
         'instance_extensions': [e for e in extensions if e.type == 'instance'],
         'device_extensions': [e for e in extensions if e.type == 'device'],
         'platform_defines': platform_defines,
-        'includes': includes,
     }
 
     if out_h:
@@ -251,4 +246,4 @@ if __name__ == '__main__':
         extensions += get_all_exts_from_xml(filename)
 
     gen_extensions('vk', args.xml_files, None, None,
-                   extensions, args.out_c, args.out_h, [])
+                   extensions, args.out_c, args.out_h)
