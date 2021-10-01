@@ -476,6 +476,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_DRAW_VERTEX_STATE:
       return 0;
 
+   case PIPE_CAP_PREFER_POT_ALIGNED_VARYINGS:
+      return 0;
+
    default:
       unreachable("bad PIPE_CAP_*");
    }

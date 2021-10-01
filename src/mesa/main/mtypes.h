@@ -4156,6 +4156,14 @@ struct gl_constants
    GLboolean DisableTransformFeedbackPacking;
 
    /**
+    * Align varyings to POT in a slot
+    *
+    * Drivers that prefer varyings to be aligned to POT must set this value to GL_TRUE
+    */
+   GLboolean PreferPOTAlignedVaryings;
+
+
+   /**
     * UBOs and SSBOs can be packed tightly by the OpenGL implementation when
     * layout is set as shared (the default) or packed. However most Mesa drivers
     * just use STD140 for these layouts. This flag allows drivers to use STD430
