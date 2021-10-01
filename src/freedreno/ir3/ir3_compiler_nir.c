@@ -1825,7 +1825,7 @@ static struct ir3_instruction *
 get_frag_coord(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
    if (!ctx->frag_coord) {
-      struct ir3_block *b = ctx->in_block;
+      struct ir3_block *b = ir3_after_preamble(ctx->ir);
       struct ir3_instruction *xyzw[4];
       struct ir3_instruction *hw_frag_coord;
 
