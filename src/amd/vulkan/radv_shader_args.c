@@ -194,7 +194,6 @@ allocate_user_sgprs(struct radv_shader_args *args, gl_shader_stage stage, bool h
          user_sgpr_count += 3;
       break;
    case MESA_SHADER_FRAGMENT:
-      user_sgpr_count += args->shader_info->ps.needs_sample_positions;
       break;
    case MESA_SHADER_VERTEX:
       if (!args->is_gs_copy_shader)
