@@ -295,8 +295,6 @@ struct lvp_render_pass_attachment {
    uint32_t                                     samples;
    VkAttachmentLoadOp                           load_op;
    VkAttachmentLoadOp                           stencil_load_op;
-   VkImageLayout                                initial_layout;
-   VkImageLayout                                final_layout;
 
    /* The subpass id in which the attachment will be used first/last. */
    uint32_t                                     first_subpass_idx;
