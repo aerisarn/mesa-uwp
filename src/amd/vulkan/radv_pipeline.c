@@ -2783,6 +2783,9 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
 
       infos[es_stage].has_ngg_culling =
          radv_consider_culling(device, nir[es_stage], ps_inputs_read, num_vertices_per_prim);
+
+      nir_function_impl *impl = nir_shader_get_entrypoint(nir[es_stage]);
+      infos[es_stage].has_ngg_early_prim_export = exec_list_is_singular(&impl->body);
    }
 }
 
