@@ -126,7 +126,7 @@ ok_dims(const struct pipe_resource *r, const struct pipe_box *b, int lvl)
 static bool
 ok_format(enum pipe_format pfmt)
 {
-   enum a6xx_format fmt = fd6_pipe2color(pfmt);
+   enum a6xx_format fmt = fd6_color_format(pfmt, TILE6_LINEAR);
 
    if (util_format_is_compressed(pfmt))
       return true;
@@ -252,7 +252,7 @@ static void
 emit_blit_setup(struct fd_ringbuffer *ring, enum pipe_format pfmt,
                 bool scissor_enable, union pipe_color_union *color)
 {
-   enum a6xx_format fmt = fd6_pipe2color(pfmt);
+   enum a6xx_format fmt = fd6_color_format(pfmt, TILE6_LINEAR);
    bool is_srgb = util_format_is_srgb(pfmt);
    enum a6xx_2d_ifmt ifmt = fd6_ifmt(fmt);
 
@@ -533,9 +533,9 @@ emit_blit_dst(struct fd_ringbuffer *ring, struct pipe_resource *prsc,
               enum pipe_format pfmt, unsigned level, unsigned layer)
 {
    struct fd_resource *dst = fd_resource(prsc);
-   enum a6xx_format fmt = fd6_pipe2color(pfmt);
+   enum a6xx_format fmt = fd6_color_format(pfmt, dst->layout.tile_mode);
    enum a6xx_tile_mode tile = fd_resource_tile_mode(prsc, level);
-   enum a3xx_color_swap swap = fd6_resource_swap(dst, pfmt);
+   enum a3xx_color_swap swap = fd6_color_swap(pfmt, dst->layout.tile_mode);
    uint32_t pitch = fd_resource_pitch(dst, level);
    bool ubwc_enabled = fd_resource_ubwc_enabled(dst, level);
    unsigned off = fd_resource_offset(dst, level, layer);
@@ -571,10 +571,10 @@ emit_blit_src(struct fd_ringbuffer *ring, const struct pipe_blit_info *info,
               unsigned layer, unsigned nr_samples)
 {
    struct fd_resource *src = fd_resource(info->src.resource);
-   enum a6xx_format sfmt = fd6_pipe2tex(info->src.format);
+   enum a6xx_format sfmt = fd6_texture_format(info->src.format, src->layout.tile_mode);
    enum a6xx_tile_mode stile =
       fd_resource_tile_mode(info->src.resource, info->src.level);
-   enum a3xx_color_swap sswap = fd6_resource_swap(src, info->src.format);
+   enum a3xx_color_swap sswap = fd6_texture_swap(info->src.format, src->layout.tile_mode);
    uint32_t pitch = fd_resource_pitch(src, info->src.level);
    bool subwc_enabled = fd_resource_ubwc_enabled(src, info->src.level);
    unsigned soff = fd_resource_offset(src, info->src.level, layer);
@@ -718,7 +718,7 @@ emit_clear_color(struct fd_ringbuffer *ring, enum pipe_format pfmt,
    }
 
    OUT_PKT4(ring, REG_A6XX_RB_2D_SRC_SOLID_C0, 4);
-   switch (fd6_ifmt(fd6_pipe2color(pfmt))) {
+   switch (fd6_ifmt(fd6_color_format(pfmt, TILE6_LINEAR))) {
    case R2D_UNORM8:
    case R2D_UNORM8_SRGB:
       /* The r2d ifmt is badly named, it also covers the signed case: */
@@ -856,7 +856,7 @@ fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
    emit_blit_dst(ring, psurf->texture, psurf->format, psurf->u.tex.level,
                  psurf->u.tex.first_layer);
 
-   enum a6xx_format sfmt = fd6_pipe2color(psurf->format);
+   enum a6xx_format sfmt = fd6_color_format(psurf->format, TILE6_LINEAR);
    enum a3xx_msaa_samples samples = fd_msaa_samples(batch->framebuffer.samples);
 
    OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 10);

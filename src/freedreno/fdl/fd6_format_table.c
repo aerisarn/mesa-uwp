@@ -353,27 +353,51 @@ static const struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 };
 /* clang-format on */
 
+static enum a3xx_color_swap
+fd6_pipe2swap(enum pipe_format format, enum a6xx_tile_mode tile_mode)
+{
+   if (!formats[format].present)
+      return WZYX;
+
+   if (tile_mode)
+      return WZYX;
+
+   return formats[format].swap;
+}
+
 /* convert pipe format to vertex buffer format: */
 enum a6xx_format
-fd6_pipe2vtx(enum pipe_format format)
+fd6_vertex_format(enum pipe_format format)
 {
    if (!formats[format].present)
       return FMT6_NONE;
    return formats[format].vtx;
 }
 
+enum a3xx_color_swap
+fd6_vertex_swap(enum pipe_format format)
+{
+   return fd6_pipe2swap(format, TILE6_LINEAR);
+}
+
 /* convert pipe format to texture sampler format: */
 enum a6xx_format
-fd6_pipe2tex(enum pipe_format format)
+fd6_texture_format(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
    if (!formats[format].present)
       return FMT6_NONE;
    return formats[format].tex;
 }
 
+enum a3xx_color_swap
+fd6_texture_swap(enum pipe_format format, enum a6xx_tile_mode tile_mode)
+{
+   return fd6_pipe2swap(format, tile_mode);
+}
+
 /* convert pipe format to MRT / copydest format used for render-target: */
 enum a6xx_format
-fd6_pipe2color(enum pipe_format format)
+fd6_color_format(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
    if (!formats[format].present)
       return FMT6_NONE;
@@ -381,11 +405,9 @@ fd6_pipe2color(enum pipe_format format)
 }
 
 enum a3xx_color_swap
-fd6_pipe2swap(enum pipe_format format)
+fd6_color_swap(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
-   if (!formats[format].present)
-      return WZYX;
-   return formats[format].swap;
+   return fd6_pipe2swap(format, tile_mode);
 }
 
 enum a6xx_depth_format

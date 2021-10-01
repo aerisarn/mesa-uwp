@@ -111,6 +111,7 @@ setup_border_colors(struct fd_texture_stateobj *tex,
       enum pipe_format format = view->format;
       const struct util_format_description *desc =
          util_format_description(format);
+      const struct fd_resource *rsc = fd_resource(view->texture);
 
       e->rgb565 = 0;
       e->rgb5a1 = 0;
@@ -120,7 +121,7 @@ setup_border_colors(struct fd_texture_stateobj *tex,
 
       unsigned char swiz[4];
 
-      fd6_tex_swiz(format, swiz, view->swizzle_r, view->swizzle_g,
+      fd6_tex_swiz(format, rsc->layout.tile_mode, swiz, view->swizzle_r, view->swizzle_g,
                    view->swizzle_b, view->swizzle_a);
 
       for (j = 0; j < 4; j++) {

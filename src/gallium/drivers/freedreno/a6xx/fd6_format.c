@@ -52,7 +52,7 @@ fd6_pipe2swiz(unsigned swiz)
 }
 
 void
-fd6_tex_swiz(enum pipe_format format, unsigned char *swiz, unsigned swizzle_r,
+fd6_tex_swiz(enum pipe_format format, enum a6xx_tile_mode tile_mode, unsigned char *swiz, unsigned swizzle_r,
              unsigned swizzle_g, unsigned swizzle_b, unsigned swizzle_a)
 {
    const struct util_format_description *desc = util_format_description(format);
@@ -68,7 +68,7 @@ fd6_tex_swiz(enum pipe_format format, unsigned char *swiz, unsigned swizzle_r,
    } else if (format == PIPE_FORMAT_R8G8_R8B8_UNORM || format == PIPE_FORMAT_G8R8_B8R8_UNORM) {
       unsigned char fswiz[4] = {PIPE_SWIZZLE_Z, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_1};
       util_format_compose_swizzles(fswiz, uswiz, swiz);
-   } else if (fd6_pipe2swap(format) != WZYX) {
+   } else if (fd6_texture_swap(format, TILE6_LINEAR) != WZYX) {
       /* Formats with a non-pass-through swap are permutations of RGBA
        * formats. We program the permutation using the swap and don't
        * need to compose the format swizzle with the user swizzle.
@@ -91,11 +91,11 @@ fd6_tex_const_0(struct pipe_resource *prsc, unsigned level,
    struct fd_resource *rsc = fd_resource(prsc);
    unsigned char swiz[4];
 
-   fd6_tex_swiz(format, swiz, swizzle_r, swizzle_g, swizzle_b, swizzle_a);
+   fd6_tex_swiz(format, rsc->layout.tile_mode, swiz, swizzle_r, swizzle_g, swizzle_b, swizzle_a);
 
-   return A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
+   return A6XX_TEX_CONST_0_FMT(fd6_texture_format(format, rsc->layout.tile_mode)) |
           A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
-          A6XX_TEX_CONST_0_SWAP(fd6_resource_swap(rsc, format)) |
+          A6XX_TEX_CONST_0_SWAP(fd6_texture_swap(format, rsc->layout.tile_mode)) |
           A6XX_TEX_CONST_0_TILE_MODE(fd_resource_tile_mode(prsc, level)) |
           COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
           A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swiz[0])) |

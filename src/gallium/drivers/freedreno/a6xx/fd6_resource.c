@@ -58,7 +58,7 @@ ok_ubwc_format(struct pipe_screen *pscreen, enum pipe_format pfmt)
       break;
    }
 
-   switch (fd6_pipe2color(pfmt)) {
+   switch (fd6_color_format(pfmt, TILE6_LINEAR)) {
    case FMT6_10_10_10_2_UINT:
    case FMT6_10_10_10_2_UNORM_DEST:
    case FMT6_11_11_10_FLOAT:
