@@ -840,7 +840,7 @@ radv_lower_io(struct radv_device *device, nir_shader *nir)
 
 bool
 radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
-                     struct radv_shader_info *info, const struct radv_pipeline_key *pl_key)
+                     const struct radv_shader_info *info, const struct radv_pipeline_key *pl_key)
 {
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       if (info->vs.as_ls) {
@@ -943,7 +943,7 @@ radv_consider_culling(struct radv_device *device, struct nir_shader *nir,
 }
 
 void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
-                    struct radv_shader_info *info,
+                    const struct radv_shader_info *info,
                     const struct radv_pipeline_key *pl_key)
 {
    /* TODO: support the LLVM backend with the NIR lowering */
