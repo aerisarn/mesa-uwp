@@ -3442,7 +3442,7 @@ struct gl_shared_state
    /* glCompileShaderInclude expects ShaderIncludes not to change while it is
     * in progress.
     */
-   mtx_t ShaderIncludeMutex;
+   simple_mtx_t ShaderIncludeMutex;
 
    /**
     * Some context in this share group was affected by a GPU reset
