@@ -198,7 +198,8 @@ struct zink_context {
    simple_mtx_t batch_mtx;
    struct zink_fence *deferred_fence;
    struct zink_fence *last_fence; //the last command buffer submitted
-   struct hash_table batch_states; //submitted batch states
+   struct zink_batch_state *batch_states; //list of submitted batch states: ordered by increasing timeline id
+   unsigned batch_states_count; //number of states in `batch_states`
    struct util_dynarray free_batch_states; //unused batch states
    bool oom_flush;
    bool oom_stall;

@@ -108,6 +108,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    bs->submit_count++;
    bs->fence.batch_id = 0;
    bs->usage.usage = 0;
+   bs->next = NULL;
 }
 
 static void
@@ -127,15 +128,25 @@ zink_clear_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    unref_resources(zink_screen(ctx->base.screen), bs);
 }
 
+static void
+pop_batch_state(struct zink_context *ctx)
+{
+   const struct zink_batch_state *bs = ctx->batch_states;
+   ctx->batch_states = bs->next;
+   ctx->batch_states_count--;
+   if (ctx->last_fence == &bs->fence)
+      ctx->last_fence = NULL;
+}
+
 void
 zink_batch_reset_all(struct zink_context *ctx)
 {
    simple_mtx_lock(&ctx->batch_mtx);
-   hash_table_foreach(&ctx->batch_states, entry) {
-      struct zink_batch_state *bs = entry->data;
+   while (ctx->batch_states) {
+      struct zink_batch_state *bs = ctx->batch_states;
       bs->fence.completed = true;
+      pop_batch_state(ctx);
       zink_reset_batch_state(ctx, bs);
-      _mesa_hash_table_remove(&ctx->batch_states, entry);
       util_dynarray_append(&ctx->free_batch_states, struct zink_batch_state *, bs);
    }
    simple_mtx_unlock(&ctx->batch_mtx);
@@ -239,9 +250,9 @@ fail:
 }
 
 static inline bool
-find_unused_state(struct hash_entry *entry)
+find_unused_state(struct zink_batch_state *bs)
 {
-   struct zink_fence *fence = entry->data;
+   struct zink_fence *fence = &bs->fence;
    /* we can't reset these from fence_finish because threads */
    bool completed = p_atomic_read(&fence->completed);
    bool submitted = p_atomic_read(&fence->submitted);
@@ -251,26 +262,25 @@ find_unused_state(struct hash_entry *entry)
 static struct zink_batch_state *
 get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = NULL;
 
    simple_mtx_lock(&ctx->batch_mtx);
    if (util_dynarray_num_elements(&ctx->free_batch_states, struct zink_batch_state*))
       bs = util_dynarray_pop(&ctx->free_batch_states, struct zink_batch_state*);
-   if (!bs) {
-      hash_table_foreach(&ctx->batch_states, he) {
-         struct zink_fence *fence = he->data;
-         if (zink_screen_check_last_finished(zink_screen(ctx->base.screen), fence->batch_id) || find_unused_state(he)) {
-            bs = he->data;
-            _mesa_hash_table_remove(&ctx->batch_states, he);
-            break;
-         }
+   if (!bs && ctx->batch_states) {
+      /* states are stored sequentially, so if the first one doesn't work, none of them will */
+      if (zink_screen_check_last_finished(screen, ctx->batch_states->fence.batch_id) ||
+          find_unused_state(ctx->batch_states)) {
+         bs = ctx->batch_states;
+         pop_batch_state(ctx);
       }
    }
    simple_mtx_unlock(&ctx->batch_mtx);
    if (bs) {
       if (bs->fence.submitted && !bs->fence.completed)
          /* this fence is already done, so we need vulkan to release the cmdbuf */
-         zink_vkfence_wait(zink_screen(ctx->base.screen), &bs->fence, PIPE_TIMEOUT_INFINITE);
+         zink_vkfence_wait(screen, &bs->fence, PIPE_TIMEOUT_INFINITE);
       zink_reset_batch_state(ctx, bs);
    } else {
       if (!batch->state) {
@@ -329,7 +339,7 @@ post_submit(void *data, void *gdata, int thread_index)
       if (bs->ctx->reset.reset)
          bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
       screen->device_lost = true;
-   } else if (_mesa_hash_table_num_entries(&bs->ctx->batch_states) > 5000) {
+   } else if (bs->ctx->batch_states_count > 5000) {
       zink_screen_batch_id_wait(screen, bs->fence.batch_id - 2500, PIPE_TIMEOUT_INFINITE);
    }
 }
@@ -342,13 +352,10 @@ submit_queue(void *data, void *gdata, int thread_index)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkSubmitInfo si = {0};
 
-   simple_mtx_lock(&ctx->batch_mtx);
    while (!bs->fence.batch_id)
       bs->fence.batch_id = p_atomic_inc_return(&screen->curr_batch);
-   _mesa_hash_table_insert_pre_hashed(&ctx->batch_states, bs->fence.batch_id, (void*)(uintptr_t)bs->fence.batch_id, bs);
    bs->usage.usage = bs->fence.batch_id;
    bs->usage.unflushed = false;
-   simple_mtx_unlock(&ctx->batch_mtx);
 
    if (ctx->have_timelines && screen->last_finished > bs->fence.batch_id && bs->fence.batch_id == 1) {
       if (!zink_screen_init_semaphore(screen)) {
@@ -571,39 +578,52 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    tc_driver_internal_flush_notify(ctx->tc);
 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_batch_state *bs;
 
-   ctx->last_fence = &batch->state->fence;
-   if (ctx->oom_flush || _mesa_hash_table_num_entries(&ctx->batch_states) > 10) {
-      simple_mtx_lock(&ctx->batch_mtx);
-      hash_table_foreach(&ctx->batch_states, he) {
-         struct zink_fence *fence = he->data;
-         struct zink_batch_state *bs = he->data;
-         if (zink_check_batch_completion(ctx, fence->batch_id, true)) {
-            if (bs->fence.submitted && !bs->fence.completed)
-               /* this fence is already done, so we need vulkan to release the cmdbuf */
-               zink_vkfence_wait(screen, &bs->fence, PIPE_TIMEOUT_INFINITE);
-            zink_reset_batch_state(ctx, he->data);
-            _mesa_hash_table_remove(&ctx->batch_states, he);
-            util_dynarray_append(&ctx->free_batch_states, struct zink_batch_state *, bs);
-         }
+   simple_mtx_lock(&ctx->batch_mtx);
+   if (ctx->oom_flush || ctx->batch_states_count > 10) {
+      assert(!ctx->batch_states_count || ctx->batch_states);
+      while (ctx->batch_states) {
+         bs = ctx->batch_states;
+         struct zink_fence *fence = &bs->fence;
+         /* once an incomplete state is reached, no more will be complete */
+         if (!zink_check_batch_completion(ctx, fence->batch_id, true))
+            break;
+
+         if (bs->fence.submitted && !bs->fence.completed)
+            /* this fence is already done, so we need vulkan to release the cmdbuf */
+            zink_vkfence_wait(screen, &bs->fence, PIPE_TIMEOUT_INFINITE);
+         pop_batch_state(ctx);
+         zink_reset_batch_state(ctx, bs);
+         util_dynarray_append(&ctx->free_batch_states, struct zink_batch_state *, bs);
       }
-      simple_mtx_unlock(&ctx->batch_mtx);
-      if (_mesa_hash_table_num_entries(&ctx->batch_states) > 50)
+      if (ctx->batch_states_count > 50)
          ctx->oom_flush = true;
    }
+
+   bs = batch->state;
+   if (ctx->last_fence)
+      zink_batch_state(ctx->last_fence)->next = bs;
+   else {
+      assert(!ctx->batch_states);
+      ctx->batch_states = bs;
+   }
+   ctx->last_fence = &bs->fence;
+   ctx->batch_states_count++;
+   simple_mtx_unlock(&ctx->batch_mtx);
    batch->work_count = 0;
 
    if (screen->device_lost)
       return;
 
    if (screen->threaded) {
-      batch->state->queue = screen->thread_queue;
-      util_queue_add_job(&screen->flush_queue, batch->state, &batch->state->flush_completed,
+      bs->queue = screen->thread_queue;
+      util_queue_add_job(&screen->flush_queue, bs, &bs->flush_completed,
                          submit_queue, post_submit, 0);
    } else {
-      batch->state->queue = screen->queue;
-      submit_queue(batch->state, NULL, 0);
-      post_submit(batch->state, NULL, 0);
+      bs->queue = screen->queue;
+      submit_queue(bs, NULL, 0);
+      post_submit(bs, NULL, 0);
    }
 }
 

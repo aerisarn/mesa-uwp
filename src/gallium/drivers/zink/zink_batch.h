@@ -61,6 +61,7 @@ batch_ptr_add_usage(struct zink_batch *batch, struct set *s, void *ptr);
 
 struct zink_batch_state {
    struct zink_fence fence;
+   struct zink_batch_state *next;
 
    struct zink_batch_usage usage;
    struct zink_context *ctx;

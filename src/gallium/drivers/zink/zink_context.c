@@ -105,8 +105,7 @@ zink_context_destroy(struct pipe_context *pctx)
    simple_mtx_destroy(&ctx->batch_mtx);
    zink_clear_batch_state(ctx, ctx->batch.state);
    zink_batch_state_destroy(screen, ctx->batch.state);
-   hash_table_foreach(&ctx->batch_states, entry) {
-      struct zink_batch_state *bs = entry->data;
+   for (struct zink_batch_state *bs = ctx->batch_states; bs; bs = bs->next) {
       zink_clear_batch_state(ctx, bs);
       zink_batch_state_destroy(screen, bs);
    }
@@ -3128,8 +3127,13 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
    if (ctx->last_fence && (!batch_id || batch_id == zink_batch_state(ctx->last_fence)->fence.batch_id))
       fence = ctx->last_fence;
    else {
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->batch_states, batch_id, (void*)(uintptr_t)batch_id);
-      if (!he) {
+      for (bs = ctx->batch_states; bs; bs = bs->next) {
+         if (bs->fence.batch_id < batch_id)
+            continue;
+         if (!bs->fence.batch_id || bs->fence.batch_id > batch_id)
+            break;
+      }
+      if (!bs || bs->fence.batch_id != batch_id) {
          simple_mtx_unlock(&ctx->batch_mtx);
          /* if we can't find it, it either must have finished already or is on a different context */
          if (!zink_screen_check_last_finished(zink_screen(ctx->base.screen), batch_id)) {
@@ -3139,7 +3143,7 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
          }
          return;
       }
-      fence = he->data;
+      fence = &bs->fence;
    }
    simple_mtx_unlock(&ctx->batch_mtx);
    assert(fence);
@@ -3172,15 +3176,20 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id, bool ha
    if (ctx->last_fence && batch_id == zink_batch_state(ctx->last_fence)->fence.batch_id)
       fence = ctx->last_fence;
    else {
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->batch_states, batch_id, (void*)(uintptr_t)batch_id);
-      /* if we can't find it, it either must have finished already or is on a different context */
-      if (!he) {
+      struct zink_batch_state *bs;
+      for (bs = ctx->batch_states; bs; bs = bs->next) {
+         if (bs->fence.batch_id < batch_id)
+            continue;
+         if (!bs->fence.batch_id || bs->fence.batch_id > batch_id)
+            break;
+      }
+      if (!bs || bs->fence.batch_id != batch_id) {
          if (!have_lock)
             simple_mtx_unlock(&ctx->batch_mtx);
          /* return compare against last_finished, since this has info from all contexts */
          return zink_screen_check_last_finished(zink_screen(ctx->base.screen), batch_id);
       }
-      fence = he->data;
+      fence = &bs->fence;
    }
    if (!have_lock)
       simple_mtx_unlock(&ctx->batch_mtx);
@@ -4106,7 +4115,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->need_barriers[1] = &ctx->update_barriers[1][0];
 
    util_dynarray_init(&ctx->free_batch_states, ctx);
-   _mesa_hash_table_init(&ctx->batch_states, ctx, NULL, _mesa_key_pointer_equal);
 
    ctx->gfx_pipeline_state.have_EXT_extended_dynamic_state = screen->info.have_EXT_extended_dynamic_state;
    ctx->gfx_pipeline_state.have_EXT_extended_dynamic_state2 = screen->info.have_EXT_extended_dynamic_state2;
