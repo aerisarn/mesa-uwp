@@ -176,7 +176,7 @@ static struct wsi_x11_connection *
 wsi_x11_connection_create(struct wsi_device *wsi_dev,
                           xcb_connection_t *conn)
 {
-   xcb_query_extension_cookie_t dri3_cookie, pres_cookie, randr_cookie, amd_cookie, nv_cookie, shm_cookie;
+   xcb_query_extension_cookie_t dri3_cookie, pres_cookie, randr_cookie, amd_cookie, nv_cookie, shm_cookie, sync_cookie;
    xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply, *amd_reply, *nv_reply, *shm_reply = NULL;
    bool has_dri3_v1_2 = false;
    bool has_present_v1_2 = false;
@@ -187,6 +187,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    if (!wsi_conn)
       return NULL;
 
+   sync_cookie = xcb_query_extension(conn, 4, "SYNC");
    dri3_cookie = xcb_query_extension(conn, 4, "DRI3");
    pres_cookie = xcb_query_extension(conn, 7, "Present");
    randr_cookie = xcb_query_extension(conn, 5, "RANDR");
@@ -206,6 +207,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    amd_cookie = xcb_query_extension(conn, 11, "ATIFGLRXDRI");
    nv_cookie = xcb_query_extension(conn, 10, "NV-CONTROL");
 
+   xcb_discard_reply(conn, sync_cookie.sequence);
    dri3_reply = xcb_query_extension_reply(conn, dri3_cookie, NULL);
    pres_reply = xcb_query_extension_reply(conn, pres_cookie, NULL);
    randr_reply = xcb_query_extension_reply(conn, randr_cookie, NULL);
