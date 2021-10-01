@@ -262,7 +262,6 @@ struct lvp_image_view {
 struct lvp_subpass_attachment {
    uint32_t         attachment;
    VkImageLayout    layout;
-   bool             in_render_loop;
 };
 
 struct lvp_subpass {
