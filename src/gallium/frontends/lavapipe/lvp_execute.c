@@ -1470,7 +1470,7 @@ static void render_subpass_clear(struct rendering_state *state)
       if (!attachment_needs_clear(state, ds))
          return;
 
-      struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
+      struct lvp_render_pass_attachment *att = subpass->depth_stencil_attachment[0];
       struct lvp_image_view *imgv = get_attachment(state, ds);
 
       assert (util_format_is_depth_or_stencil(imgv->surface->format));
@@ -1572,7 +1572,7 @@ static void render_subpass_clear_fast(struct rendering_state *state)
        attachment_needs_clear(state, subpass->depth_stencil_attachment[0]->attachment)) {
       uint32_t ds = subpass->depth_stencil_attachment[0]->attachment;
 
-      struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
+      struct lvp_render_pass_attachment *att = subpass->depth_stencil_attachment[0];
       struct lvp_image_view *imgv = get_attachment(state, ds);
       const struct util_format_description *desc = util_format_description(imgv->surface->format);
 
@@ -1702,7 +1702,7 @@ static void begin_render_subpass(struct rendering_state *state,
       struct lvp_render_pass_attachment *color_att = subpass->color_attachments[i];
       if (color_att) {
          struct lvp_image_view *imgv = get_attachment(state, color_att->attachment);
-         add_img_view_surface(state, imgv, state->pass->attachments[color_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
+         add_img_view_surface(state, imgv, color_att->format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.cbufs[state->framebuffer.nr_cbufs] = imgv->surface;
       } else
          state->framebuffer.cbufs[state->framebuffer.nr_cbufs] = NULL;
@@ -1714,7 +1714,7 @@ static void begin_render_subpass(struct rendering_state *state,
 
       if (ds_att) {
          struct lvp_image_view *imgv = get_attachment(state, ds_att->attachment);
-         add_img_view_surface(state, imgv, state->pass->attachments[ds_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
+         add_img_view_surface(state, imgv, ds_att->format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.zsbuf = imgv->surface;
       }
    }
