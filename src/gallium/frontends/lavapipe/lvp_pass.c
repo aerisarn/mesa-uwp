@@ -46,7 +46,6 @@ lvp_render_pass_compile(struct lvp_render_pass *pass)
 
    for (uint32_t i = 0; i < pass->subpass_count; i++) {
       struct lvp_subpass *subpass = &pass->subpasses[i];
-      uint32_t color_sample_count = 1, depth_sample_count = 1;
 
       /* We don't allow depth_stencil_attachment to be non-NULL and
        * be VK_ATTACHMENT_UNUSED.  This way something can just check
@@ -83,23 +82,7 @@ lvp_render_pass_compile(struct lvp_render_pass *pass)
             continue;
 
          subpass->has_color_att = true;
-
-         struct lvp_render_pass_attachment *pass_att =
-            &pass->attachments[subpass_att->attachment];
-
-         color_sample_count = pass_att->samples;
       }
-
-      if (subpass->depth_stencil_attachment) {
-         const uint32_t a =
-            subpass->depth_stencil_attachment->attachment;
-         struct lvp_render_pass_attachment *pass_att =
-            &pass->attachments[a];
-         depth_sample_count = pass_att->samples;
-      }
-
-      subpass->max_sample_count = MAX2(color_sample_count,
-                                       depth_sample_count);
 
       /* We have to handle resolve attachments specially */
       subpass->has_color_resolve = false;
