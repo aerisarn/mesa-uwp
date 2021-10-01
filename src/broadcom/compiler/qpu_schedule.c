@@ -297,6 +297,10 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
         /* If the input and output segments are shared, then all VPM reads to
          * a location need to happen before all writes.  We handle this by
          * serializing all VPM operations for now.
+         *
+         * FIXME: we are assuming that the segments are shared. That is
+         * correct right now as we are only using shared, but technically you
+         * can choose.
          */
         bool separate_vpm_segment = false;
 

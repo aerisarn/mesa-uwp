@@ -452,14 +452,25 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
          prog_data_vs_bin->separate_segments;
       shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
          prog_data_vs->separate_segments;
-#endif
-
       shader.coordinate_shader_input_vpm_segment_size =
          prog_data_vs_bin->separate_segments ?
          prog_data_vs_bin->vpm_input_size : 1;
       shader.vertex_shader_input_vpm_segment_size =
          prog_data_vs->separate_segments ?
          prog_data_vs->vpm_input_size : 1;
+#endif
+
+      /* On V3D 7.1 there isn't a specific flag to set if we are using
+       * shared/separate segments or not. We just set the value of
+       * vpm_input_size to 0, and set output to the max needed. That should be
+       * already properly set on prog_data_vs_bin
+       */
+#if V3D_VERSION == 71
+      shader.coordinate_shader_input_vpm_segment_size =
+         prog_data_vs_bin->vpm_input_size;
+      shader.vertex_shader_input_vpm_segment_size =
+         prog_data_vs->vpm_input_size;
+#endif
 
       shader.coordinate_shader_output_vpm_segment_size =
          prog_data_vs_bin->vpm_output_size;
