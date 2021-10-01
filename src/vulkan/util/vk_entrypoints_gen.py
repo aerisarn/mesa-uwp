@@ -29,7 +29,7 @@ from mako.template import Template
 
 # Mesa-local imports must be declared in meson variable
 # '{file_without_suffix}_depend_files'.
-from vk_dispatch_table_gen import get_entrypoints_from_xml
+from vk_entrypoints import get_entrypoints_from_xml
 
 TEMPLATE_H = Template(COPYRIGHT + """\
 /* This file generated from ${filename}, don't edit directly. */
