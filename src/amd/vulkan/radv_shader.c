@@ -953,7 +953,6 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
           nir->info.stage == MESA_SHADER_TESS_EVAL ||
           nir->info.stage == MESA_SHADER_GEOMETRY);
 
-   ac_nir_ngg_config out_conf = {0};
    const struct gfx10_ngg_info *ngg_info = &info->ngg_info;
    unsigned num_vertices_per_prim = 3;
 
@@ -1000,20 +999,19 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
          export_prim_id = info->tes.outinfo.export_prim_id;
       }
 
-      out_conf =
-         ac_nir_lower_ngg_nogs(
-            nir,
-            max_vtx_in,
-            num_vertices_per_prim,
-            info->workgroup_size,
-            info->wave_size,
-            info->has_ngg_culling,
-            info->has_ngg_early_prim_export,
-            info->is_ngg_passthrough,
-            export_prim_id,
-            pl_key->vs.provoking_vtx_last,
-            false,
-            pl_key->vs.instance_rate_inputs);
+      ac_nir_lower_ngg_nogs(
+         nir,
+         max_vtx_in,
+         num_vertices_per_prim,
+         info->workgroup_size,
+         info->wave_size,
+         info->has_ngg_culling,
+         info->has_ngg_early_prim_export,
+         info->is_ngg_passthrough,
+         export_prim_id,
+         pl_key->vs.provoking_vtx_last,
+         false,
+         pl_key->vs.instance_rate_inputs);
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       assert(info->is_ngg);
       ac_nir_lower_ngg_gs(

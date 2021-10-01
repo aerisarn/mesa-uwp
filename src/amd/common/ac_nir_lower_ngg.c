@@ -1254,7 +1254,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       unreachable("Should be VS or TES.");
 }
 
-ac_nir_ngg_config
+void
 ac_nir_lower_ngg_nogs(nir_shader *shader,
                       unsigned max_num_es_vertices,
                       unsigned num_vertices_per_primitives,
@@ -1411,13 +1411,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    } while (progress);
 
    shader->info.shared_size = state.total_lds_bytes;
-
-   ac_nir_ngg_config ret = {
-      .nggc_inputs_read_by_pos = state.inputs_needed_by_pos,
-      .nggc_inputs_read_by_others = state.inputs_needed_by_others,
-   };
-
-   return ret;
 }
 
 static nir_ssa_def *
