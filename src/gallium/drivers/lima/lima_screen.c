@@ -161,6 +161,13 @@ lima_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
       return 1;
 
+   /* Mali4x0 PP doesn't have a swizzle for load_input, so use POT-aligned
+    * varyings to avoid unnecessary movs for vec3 and precision downgrade
+    * in case if this vec3 is coordinates for a sampler
+    */
+   case PIPE_CAP_PREFER_POT_ALIGNED_VARYINGS:
+      return 1;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
