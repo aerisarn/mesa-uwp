@@ -289,6 +289,7 @@ struct lvp_subpass {
 };
 
 struct lvp_render_pass_attachment {
+   uint32_t                                     attachment; //index
    VkFormat                                     format;
    uint32_t                                     samples;
    VkAttachmentLoadOp                           load_op;

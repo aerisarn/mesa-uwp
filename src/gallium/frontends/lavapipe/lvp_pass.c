@@ -170,6 +170,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass2(
       att->load_op = pCreateInfo->pAttachments[i].loadOp;
       att->stencil_load_op = pCreateInfo->pAttachments[i].stencilLoadOp;
       att->first_subpass_idx = UINT32_MAX;
+      att->attachment = i;
 
       bool is_zs = util_format_is_depth_or_stencil(lvp_vk_format_to_pipe_format(att->format));
       pass->has_zs_attachment |= is_zs;
