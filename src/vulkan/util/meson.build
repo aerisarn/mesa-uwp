@@ -43,8 +43,6 @@ vk_commands_gen_depend_files = [
   vk_dispatch_table_gen_depend_files,
 ]
 vk_physical_device_features_gen_depend_files = [
-  files('vk_dispatch_table_gen.py'),
-  vk_dispatch_table_gen_depend_files,
 ]
 
 vk_entrypoints_gen = files('vk_entrypoints_gen.py')
