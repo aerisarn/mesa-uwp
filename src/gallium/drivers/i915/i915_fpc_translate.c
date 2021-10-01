@@ -521,7 +521,7 @@ i915_translate_instruction(struct i915_fp_compile *p,
                       0,                   /* sampler */
                       src0,                /* coord*/
                       T0_TEXKILL,          /* opcode */
-                      1);                  /* num_coord */
+                      4);                  /* num_coord */
       break;
 
    case TGSI_OPCODE_KILL:
