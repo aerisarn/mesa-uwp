@@ -644,6 +644,8 @@ iris_copy_region(struct blorp_context *blorp,
    if (dst->target == PIPE_BUFFER)
       util_range_add(&dst_res->base.b, &dst_res->valid_buffer_range, dstx, dstx + src_box->width);
 
+   blorp_batch_init(blorp, &blorp_batch, batch, 0);
+
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
       struct blorp_address src_addr = {
          .buffer = src_res->bo, .offset = src_box->x,
@@ -667,9 +669,7 @@ iris_copy_region(struct blorp_context *blorp,
       iris_batch_maybe_flush(batch, 1500);
 
       iris_batch_sync_region_start(batch);
-      blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
       blorp_buffer_copy(&blorp_batch, src_addr, dst_addr, src_box->width);
-      blorp_batch_finish(&blorp_batch);
       iris_batch_sync_region_end(batch);
    } else {
       // XXX: what about one surface being a buffer and not the other?
@@ -692,8 +692,6 @@ iris_copy_region(struct blorp_context *blorp,
       iris_emit_buffer_barrier_for(batch, dst_res->bo,
                                    IRIS_DOMAIN_RENDER_WRITE);
 
-      blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-
       for (int slice = 0; slice < src_box->depth; slice++) {
          iris_batch_maybe_flush(batch, 1500);
 
@@ -704,11 +702,12 @@ iris_copy_region(struct blorp_context *blorp,
                     src_box->width, src_box->height);
          iris_batch_sync_region_end(batch);
       }
-      blorp_batch_finish(&blorp_batch);
 
       iris_resource_finish_write(ice, dst_res, dst_level, dstz,
                                  src_box->depth, dst_aux_usage);
    }
+
+   blorp_batch_finish(&blorp_batch);
 
    tex_cache_flush_hack(batch, ISL_FORMAT_UNSUPPORTED, src_res->surf.format);
 }
