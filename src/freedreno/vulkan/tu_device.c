@@ -154,6 +154,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_uniform_buffer_standard_layout = true,
       .KHR_variable_pointers = true,
       .KHR_vulkan_memory_model = true,
+      .KHR_driver_properties = true,
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
