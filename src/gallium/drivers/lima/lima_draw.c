@@ -1180,10 +1180,12 @@ lima_draw_vbo(struct pipe_context *pctx,
    lima_dump_command_stream_print(
       job->dump, ctx->vs->bo->map, ctx->vs->state.shader_size, false,
       "add vs at va %x\n", ctx->vs->bo->va);
+   lima_dump_shader(job->dump, ctx->vs->bo->map, ctx->vs->state.shader_size, false);
 
    lima_dump_command_stream_print(
       job->dump, ctx->fs->bo->map, ctx->fs->state.shader_size, false,
       "add fs at va %x\n", ctx->fs->bo->va);
+   lima_dump_shader(job->dump, ctx->fs->bo->map, ctx->fs->state.shader_size, true);
 
    lima_job_add_bo(job, LIMA_PIPE_GP, ctx->vs->bo, LIMA_SUBMIT_BO_READ);
    lima_job_add_bo(job, LIMA_PIPE_PP, ctx->fs->bo, LIMA_SUBMIT_BO_READ);
