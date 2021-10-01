@@ -113,6 +113,28 @@ bool ac_modifier_supports_dcc_image_stores(uint64_t modifier)
           AMD_FMT_MOD_GET(DCC_MAX_COMPRESSED_BLOCK, modifier) == AMD_FMT_MOD_DCC_BLOCK_128B;
 }
 
+
+bool ac_surface_supports_dcc_image_stores(enum chip_class chip_class,
+                                          const struct radeon_surf *surf)
+{
+   /* DCC image stores is only available for GFX10+. */
+   if (chip_class < GFX10)
+      return false;
+
+   /* DCC image stores require the following settings:
+    * - INDEPENDENT_64B_BLOCKS = 0
+    * - INDEPENDENT_128B_BLOCKS = 1
+    * - MAX_COMPRESSED_BLOCK_SIZE = 128B
+    * - MAX_UNCOMPRESSED_BLOCK_SIZE = 256B (always used)
+    *
+    * The same limitations apply to SDMA compressed stores because
+    * SDMA uses the same DCC codec.
+    */
+   return !surf->u.gfx9.color.dcc.independent_64B_blocks  &&
+           surf->u.gfx9.color.dcc.independent_128B_blocks &&
+           surf->u.gfx9.color.dcc.max_compressed_block_size == V_028C78_MAX_BLOCK_SIZE_128B;
+}
+
 static
 AddrSwizzleMode ac_modifier_gfx9_swizzle_mode(uint64_t modifier)
 {

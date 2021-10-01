@@ -470,6 +470,9 @@ uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
 void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                            const struct radeon_surf *surf);
 
+bool ac_surface_supports_dcc_image_stores(enum chip_class chip_class,
+                                          const struct radeon_surf *surf);
+
 #ifdef AC_SURFACE_INCLUDE_NIR
 nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info *info,
                                         unsigned bpe, struct gfx9_meta_equation *equation,
