@@ -71,6 +71,7 @@ struct user_sgpr_info {
    bool indirect_all_descriptor_sets;
    uint8_t remaining_sgprs;
    unsigned num_inline_push_consts;
+   bool inlined_all_push_consts;
 };
 
 static bool
@@ -167,7 +168,7 @@ allocate_inline_push_consts(struct radv_shader_args *args, struct user_sgpr_info
       /* Disable the default push constants path if all constants are
        * inlined and if shaders don't use dynamic descriptors.
        */
-      args->shader_info->loads_push_constants = false;
+      user_sgpr_info->inlined_all_push_consts = true;
    }
 }
 
@@ -261,7 +262,7 @@ declare_global_input_sgprs(struct radv_shader_args *args,
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0]);
    }
 
-   if (args->shader_info->loads_push_constants) {
+   if (args->shader_info->loads_push_constants && !user_sgpr_info->inlined_all_push_consts) {
       /* 1 for push constants and dynamic descriptors */
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->ac.push_constants);
    }
