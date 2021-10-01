@@ -1368,12 +1368,14 @@ subpass_needs_clear(struct rendering_state *state)
    uint32_t a;
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
    for (uint32_t i = 0; i < subpass->color_count; i++) {
-      a = subpass->color_attachments[i].attachment;
+      if (!subpass->color_attachments[i])
+         continue;
+      a = subpass->color_attachments[i]->attachment;
       if (attachment_needs_clear(state, a))
          return true;
    }
-   if (subpass->depth_stencil_attachment) {
-      a = subpass->depth_stencil_attachment->attachment;
+   if (subpass->depth_stencil_attachment && *subpass->depth_stencil_attachment) {
+      a = subpass->depth_stencil_attachment[0]->attachment;
       if (attachment_needs_clear(state, a))
          return true;
    }
@@ -1429,7 +1431,9 @@ static void render_subpass_clear(struct rendering_state *state)
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
 
    for (unsigned i = 0; i < subpass->color_count; i++) {
-      uint32_t a = subpass->color_attachments[i].attachment;
+      if (!subpass->color_attachments[i])
+         continue;
+      uint32_t a = subpass->color_attachments[i]->attachment;
 
       if (!attachment_needs_clear(state, a))
          continue;
@@ -1461,8 +1465,8 @@ static void render_subpass_clear(struct rendering_state *state)
       }
    }
 
-   if (subpass->depth_stencil_attachment) {
-      uint32_t ds = subpass->depth_stencil_attachment->attachment;
+   if (subpass->depth_stencil_attachment && subpass->depth_stencil_attachment[0]) {
+      uint32_t ds = subpass->depth_stencil_attachment[0]->attachment;
 
       if (!attachment_needs_clear(state, ds))
          return;
@@ -1538,7 +1542,9 @@ static void render_subpass_clear_fast(struct rendering_state *state)
    if (subpass->view_mask)
       goto slow_clear;
    for (unsigned i = 0; i < subpass->color_count; i++) {
-      uint32_t a = subpass->color_attachments[i].attachment;
+      if (!subpass->color_attachments[i])
+         continue;
+      uint32_t a = subpass->color_attachments[i]->attachment;
 
       if (!attachment_needs_clear(state, a))
          continue;
@@ -1553,7 +1559,9 @@ static void render_subpass_clear_fast(struct rendering_state *state)
    }
 
    for (unsigned i = 0; i < subpass->color_count; i++) {
-      uint32_t a = subpass->color_attachments[i].attachment;
+      if (!subpass->color_attachments[i])
+         continue;
+      uint32_t a = subpass->color_attachments[i]->attachment;
 
       if (!attachment_needs_clear(state, a))
          continue;
@@ -1561,9 +1569,9 @@ static void render_subpass_clear_fast(struct rendering_state *state)
       state->pending_clear_aspects[a] = 0;
    }
 
-   if (subpass->depth_stencil_attachment &&
-       attachment_needs_clear(state, subpass->depth_stencil_attachment->attachment)) {
-      uint32_t ds = subpass->depth_stencil_attachment->attachment;
+   if (subpass->depth_stencil_attachment && *subpass->depth_stencil_attachment &&
+       attachment_needs_clear(state, subpass->depth_stencil_attachment[0]->attachment)) {
+      uint32_t ds = subpass->depth_stencil_attachment[0]->attachment;
 
       struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
       struct lvp_image_view *imgv = get_attachment(state, ds);
@@ -1597,70 +1605,69 @@ static void render_pass_resolve(struct rendering_state *state)
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
 
-   if (subpass->depth_stencil_attachment && subpass->ds_resolve_attachment) {
-      struct lvp_subpass_attachment src_att = *subpass->depth_stencil_attachment;
-      struct lvp_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
-      if (dst_att.attachment != VK_ATTACHMENT_UNUSED) {
-         int num_blits = 1;
-         if (subpass->depth_resolve_mode != subpass->stencil_resolve_mode)
-            num_blits = 2;
+   if (subpass->depth_stencil_attachment && *subpass->depth_stencil_attachment &&
+       subpass->ds_resolve_attachment && *subpass->ds_resolve_attachment) {
+      struct lvp_render_pass_attachment *src_att = *subpass->depth_stencil_attachment;
+      struct lvp_render_pass_attachment *dst_att = *subpass->ds_resolve_attachment;
+      int num_blits = 1;
+      if (subpass->depth_resolve_mode != subpass->stencil_resolve_mode)
+         num_blits = 2;
 
-         for (unsigned i = 0; i < num_blits; i++) {
+      for (unsigned i = 0; i < num_blits; i++) {
 
-            if (i == 0 && subpass->depth_resolve_mode == VK_RESOLVE_MODE_NONE)
-               continue;
+         if (i == 0 && subpass->depth_resolve_mode == VK_RESOLVE_MODE_NONE)
+            continue;
 
-            if (i == 1 && subpass->stencil_resolve_mode == VK_RESOLVE_MODE_NONE)
-               continue;
+         if (i == 1 && subpass->stencil_resolve_mode == VK_RESOLVE_MODE_NONE)
+            continue;
 
-            struct lvp_image_view *src_imgv = get_attachment(state, src_att.attachment);
-            struct lvp_image_view *dst_imgv = get_attachment(state, dst_att.attachment);
+         struct lvp_image_view *src_imgv = get_attachment(state, src_att->attachment);
+         struct lvp_image_view *dst_imgv = get_attachment(state, dst_att->attachment);
 
-            struct pipe_blit_info info;
-            memset(&info, 0, sizeof(info));
+         struct pipe_blit_info info;
+         memset(&info, 0, sizeof(info));
 
-            info.src.resource = src_imgv->image->bo;
-            info.dst.resource = dst_imgv->image->bo;
-            info.src.format = src_imgv->pformat;
-            info.dst.format = dst_imgv->pformat;
-            info.filter = PIPE_TEX_FILTER_NEAREST;
+         info.src.resource = src_imgv->image->bo;
+         info.dst.resource = dst_imgv->image->bo;
+         info.src.format = src_imgv->pformat;
+         info.dst.format = dst_imgv->pformat;
+         info.filter = PIPE_TEX_FILTER_NEAREST;
 
-            if (num_blits == 1)
-               info.mask = PIPE_MASK_ZS;
-            else if (i == 0)
-               info.mask = PIPE_MASK_Z;
-            else
-               info.mask = PIPE_MASK_S;
+         if (num_blits == 1)
+            info.mask = PIPE_MASK_ZS;
+         else if (i == 0)
+            info.mask = PIPE_MASK_Z;
+         else
+            info.mask = PIPE_MASK_S;
 
-            if (i == 0 && subpass->depth_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
-               info.sample0_only = true;
-            if (i == 1 && subpass->stencil_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
-               info.sample0_only = true;
+         if (i == 0 && subpass->depth_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+            info.sample0_only = true;
+         if (i == 1 && subpass->stencil_resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
+            info.sample0_only = true;
 
-            info.src.box.x = state->render_area.offset.x;
-            info.src.box.y = state->render_area.offset.y;
-            info.src.box.width = state->render_area.extent.width;
-            info.src.box.height = state->render_area.extent.height;
-            info.src.box.depth = state->vk_framebuffer->layers;
+         info.src.box.x = state->render_area.offset.x;
+         info.src.box.y = state->render_area.offset.y;
+         info.src.box.width = state->render_area.extent.width;
+         info.src.box.height = state->render_area.extent.height;
+         info.src.box.depth = state->vk_framebuffer->layers;
 
-            info.dst.box = info.src.box;
+         info.dst.box = info.src.box;
 
-            state->pctx->blit(state->pctx, &info);
-         }
+         state->pctx->blit(state->pctx, &info);
       }
    }
 
    if (!subpass->has_color_resolve)
       return;
    for (uint32_t i = 0; i < subpass->color_count; i++) {
-      struct lvp_subpass_attachment src_att = subpass->color_attachments[i];
-      struct lvp_subpass_attachment dst_att = subpass->resolve_attachments[i];
+      struct lvp_render_pass_attachment *src_att = subpass->color_attachments[i];
+      struct lvp_render_pass_attachment *dst_att = subpass->resolve_attachments[i];
 
-      if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
+      if (!src_att || !dst_att)
          continue;
 
-      struct lvp_image_view *src_imgv = get_attachment(state, src_att.attachment);
-      struct lvp_image_view *dst_imgv = get_attachment(state, dst_att.attachment);
+      struct lvp_image_view *src_imgv = get_attachment(state, src_att->attachment);
+      struct lvp_image_view *dst_imgv = get_attachment(state, dst_att->attachment);
 
       struct pipe_blit_info info;
       memset(&info, 0, sizeof(info));
@@ -1695,8 +1702,8 @@ static void begin_render_subpass(struct rendering_state *state,
 
    const struct lvp_subpass *subpass = &state->pass->subpasses[subpass_idx];
    for (unsigned i = 0; i < subpass->color_count; i++) {
-      struct lvp_subpass_attachment *color_att = &subpass->color_attachments[i];
-      if (color_att->attachment != VK_ATTACHMENT_UNUSED) {
+      struct lvp_render_pass_attachment *color_att = subpass->color_attachments[i];
+      if (color_att) {
          struct lvp_image_view *imgv = get_attachment(state, color_att->attachment);
          add_img_view_surface(state, imgv, state->pass->attachments[color_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.cbufs[state->framebuffer.nr_cbufs] = imgv->surface;
@@ -1706,9 +1713,9 @@ static void begin_render_subpass(struct rendering_state *state,
    }
 
    if (subpass->depth_stencil_attachment) {
-      struct lvp_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
+      struct lvp_render_pass_attachment *ds_att = *subpass->depth_stencil_attachment;
 
-      if (ds_att->attachment != VK_ATTACHMENT_UNUSED) {
+      if (ds_att) {
          struct lvp_image_view *imgv = get_attachment(state, ds_att->attachment);
          add_img_view_surface(state, imgv, state->pass->attachments[ds_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.zsbuf = imgv->surface;
@@ -2962,13 +2969,13 @@ static void handle_clear_attachments(struct vk_cmd_queue_entry *cmd,
       struct lvp_image_view *imgv;
 
       if (att->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
-         struct lvp_subpass_attachment *color_att = &subpass->color_attachments[att->colorAttachment];
-         if (!color_att || color_att->attachment == VK_ATTACHMENT_UNUSED)
+         struct lvp_render_pass_attachment *color_att = subpass->color_attachments[att->colorAttachment];
+         if (!color_att)
             continue;
          imgv = get_attachment(state, color_att->attachment);
       } else {
-         struct lvp_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
-         if (!ds_att || ds_att->attachment == VK_ATTACHMENT_UNUSED)
+         struct lvp_render_pass_attachment *ds_att = *subpass->depth_stencil_attachment;
+         if (!ds_att)
             continue;
          imgv = get_attachment(state, ds_att->attachment);
       }
