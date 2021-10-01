@@ -95,13 +95,11 @@ foreach arch : ['5', '6', '7']
 endforeach
 
 if system_has_kms_drm
-  panvk_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
   libpanvk_files += files('panvk_wsi_display.c')
 endif
 
 if with_platform_wayland
   panvk_deps += [dep_wayland_client, dep_wl_protocols]
-  panvk_flags += '-DVK_USE_PLATFORM_WAYLAND_KHR'
   libpanvk_files += files('panvk_wsi_wayland.c')
   libpanvk_files += [wayland_drm_client_protocol_h, wayland_drm_protocol_c]
 endif

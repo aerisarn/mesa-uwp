@@ -62,23 +62,17 @@ tu_wsi = false
 
 if with_platform_x11
   tu_deps += dep_xcb_dri3
-  tu_flags += [
-    '-DVK_USE_PLATFORM_XCB_KHR',
-    '-DVK_USE_PLATFORM_XLIB_KHR',
-  ]
   libtu_files += files('tu_wsi_x11.c')
   tu_wsi = true
 endif
 
 if with_platform_wayland
   tu_deps += dep_wayland_client
-  tu_flags += '-DVK_USE_PLATFORM_WAYLAND_KHR'
   libtu_files += files('tu_wsi_wayland.c')
   tu_wsi = true
 endif
 
 if system_has_kms_drm and not with_platform_android
-  tu_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
   libtu_files += files('tu_wsi_display.c')
   tu_wsi = true
 endif
@@ -89,14 +83,12 @@ if tu_wsi
 endif
 
 if with_platform_android
-  tu_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
   libtu_files += files('tu_android.c')
   tu_deps += [dep_android]
 endif
 
 if with_xlib_lease
   tu_deps += [dep_xlib_xrandr]
-  tu_flags += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
 endif
 
 if with_freedreno_kgsl

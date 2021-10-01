@@ -125,31 +125,23 @@ anv_flags = [
 
 if with_platform_x11
   anv_deps += dep_xcb_dri3
-  anv_flags += [
-    '-DVK_USE_PLATFORM_XCB_KHR',
-    '-DVK_USE_PLATFORM_XLIB_KHR',
-  ]
   libanv_files += files('anv_wsi_x11.c')
 endif
 
 if with_platform_wayland
   anv_deps += dep_wayland_client
-  anv_flags += '-DVK_USE_PLATFORM_WAYLAND_KHR'
   libanv_files += files('anv_wsi_wayland.c')
 endif
 
 if system_has_kms_drm and not with_platform_android
-  anv_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
   libanv_files += files('anv_wsi_display.c')
 endif
 
 if with_xlib_lease
   anv_deps += [dep_xlib_xrandr]
-  anv_flags += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
 endif
 
 if with_platform_android
-  anv_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
   libanv_files += files('anv_android.c')
 else
   libanv_files += files('anv_android_stubs.c')

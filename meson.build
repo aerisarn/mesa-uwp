@@ -414,6 +414,34 @@ else
   with_xlib_lease = _xlib_lease == 'enabled'
 endif
 
+if with_platform_wayland
+  c_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
+  cpp_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
+endif
+if with_platform_x11
+  c_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
+  #add this once aco and other places can build with it
+  #cpp_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
+endif
+if with_platform_windows
+  c_args += '-DVK_USE_PLATFORM_WIN32_KHR'
+  #add this once aco and other places can build with it
+  #cpp_args += '-DVK_USE_PLATFORM_WIN32_KHR'
+endif
+if with_platform_android
+  c_args += '-DVK_USE_PLATFORM_ANDROID_KHR'
+  cpp_args += '-DVK_USE_PLATFORM_ANDROID_KHR'
+endif
+if with_xlib_lease
+  c_args += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
+  #add this once aco and other places can build with it
+  #cpp_args += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
+endif
+if system_has_kms_drm and not with_platform_android
+  c_args += '-DVK_USE_PLATFORM_DISPLAY_KHR'
+  cpp_args += '-DVK_USE_PLATFORM_DISPLAY_KHR'
+endif
+
 _egl = get_option('egl')
 if _egl == 'true'
   _egl = 'enabled'

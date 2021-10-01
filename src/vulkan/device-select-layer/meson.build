@@ -28,14 +28,12 @@ vklayer_flags = []
 if with_platform_x11
    vklayer_files += files('device_select_x11.c')
    vklayer_deps += dep_xcb_dri3
-   vklayer_flags += [ '-DVK_USE_PLATFORM_XCB_KHR' ]
 endif
 
 if with_platform_wayland
    vklayer_files += files('device_select_wayland.c')
    vklayer_files += [ wayland_drm_client_protocol_h, wayland_drm_protocol_c ]
    vklayer_deps += [dep_wayland_client, dep_wl_protocols]
-   vklayer_flags += '-DVK_USE_PLATFORM_WAYLAND_KHR'
 endif
 
 vklayer_mesa_device_select = shared_library(

@@ -113,40 +113,24 @@ radv_flags = cc.get_supported_arguments(['-Wimplicit-fallthrough', '-Wshadow'])
 
 if with_platform_x11
   radv_deps += dep_xcb_dri3
-  radv_flags += [
-    '-DVK_USE_PLATFORM_XCB_KHR',
-    '-DVK_USE_PLATFORM_XLIB_KHR',
-  ]
   libradv_files += files('radv_wsi_x11.c')
 endif
 
 if with_platform_wayland
   radv_deps += dep_wayland_client
-  radv_flags += '-DVK_USE_PLATFORM_WAYLAND_KHR'
   libradv_files += files('radv_wsi_wayland.c')
 endif
 
 if system_has_kms_drm and not with_platform_android
-  radv_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
   libradv_files += files('radv_wsi_display.c')
 endif
 
 if with_xlib_lease
   radv_deps += [dep_xlib_xrandr]
-  radv_flags += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
 endif
 
 if with_platform_android
   radv_deps += dep_android
-  radv_flags += [
-    '-DVK_USE_PLATFORM_ANDROID_KHR'
-  ]
-endif
-
-if with_platform_windows
-  radv_flags += [
-    '-DVK_USE_PLATFORM_WIN32_KHR',
-  ]
 endif
 
 # When static linking LLVM, all its symbols are public API.

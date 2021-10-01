@@ -74,22 +74,16 @@ endif
 if with_platform_wayland
   libvn_files += files('vn_wsi_wayland.c')
   vn_deps += dep_wayland_client
-  vn_flags += '-DVK_USE_PLATFORM_WAYLAND_KHR'
 endif
 
 if with_platform_x11
   libvn_files += files('vn_wsi_x11.c')
   vn_deps += dep_xcb_dri3
-  vn_flags += [
-    '-DVK_USE_PLATFORM_XCB_KHR',
-    '-DVK_USE_PLATFORM_XLIB_KHR',
-  ]
 endif
 
 if with_platform_android
   libvn_files += files('vn_android.c')
   vn_deps += dep_android
-  vn_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
 endif
 
 libvulkan_virtio = shared_library(
