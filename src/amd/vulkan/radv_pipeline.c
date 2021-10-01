@@ -2798,6 +2798,11 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
       infos[es_stage].num_lds_blocks_when_not_culling =
          DIV_ROUND_UP(lds_bytes_if_culling_off,
                       device->physical_device->rad_info.lds_encode_granularity);
+
+      infos[es_stage].is_ngg_passthrough = infos[es_stage].is_ngg_passthrough &&
+                                           !infos[es_stage].has_ngg_culling &&
+                                           !(es_stage == MESA_SHADER_VERTEX &&
+                                             infos[es_stage].vs.outinfo.export_prim_id);
    }
 }
 

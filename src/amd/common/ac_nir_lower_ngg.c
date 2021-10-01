@@ -1262,7 +1262,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
                       unsigned wave_size,
                       bool can_cull,
                       bool early_prim_export,
-                      bool consider_passthrough,
+                      bool passthrough,
                       bool export_prim_id,
                       bool provoking_vtx_last,
                       bool use_edgeflags,
@@ -1271,9 +1271,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
    assert(max_num_es_vertices && max_workgroup_size && wave_size);
-
-   bool passthrough = consider_passthrough && !can_cull &&
-                      !(shader->info.stage == MESA_SHADER_VERTEX && export_prim_id);
+   assert(!(can_cull && passthrough));
 
    nir_variable *position_value_var = nir_local_variable_create(impl, glsl_vec4_type(), "position_value");
    nir_variable *prim_exp_arg_var = nir_local_variable_create(impl, glsl_uint_type(), "prim_exp_arg");
@@ -1415,7 +1413,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    shader->info.shared_size = state.total_lds_bytes;
 
    ac_nir_ngg_config ret = {
-      .passthrough = passthrough,
       .nggc_inputs_read_by_pos = state.inputs_needed_by_pos,
       .nggc_inputs_read_by_others = state.inputs_needed_by_others,
    };

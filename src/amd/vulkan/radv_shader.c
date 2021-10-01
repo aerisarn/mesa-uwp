@@ -1014,8 +1014,6 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
             pl_key->vs.provoking_vtx_last,
             false,
             pl_key->vs.instance_rate_inputs);
-
-      info->is_ngg_passthrough = out_conf.passthrough;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       assert(info->is_ngg);
       ac_nir_lower_ngg_gs(

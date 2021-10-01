@@ -93,7 +93,6 @@ ac_nir_lower_indirect_derefs(nir_shader *shader,
 
 typedef struct
 {
-   bool passthrough;
    uint64_t nggc_inputs_read_by_pos;
    uint64_t nggc_inputs_read_by_others;
 } ac_nir_ngg_config;
@@ -106,7 +105,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
                       unsigned wave_size,
                       bool can_cull,
                       bool early_prim_export,
-                      bool consider_passthrough,
+                      bool passthrough,
                       bool export_prim_id,
                       bool provoking_vtx_last,
                       bool use_edgeflags,
