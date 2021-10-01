@@ -554,7 +554,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->shaderInputAttachmentArrayNonUniformIndexing       = false;
    features->shaderUniformTexelBufferArrayNonUniformIndexing    = true;
    features->shaderStorageTexelBufferArrayNonUniformIndexing    = true;
-   features->descriptorBindingUniformBufferUpdateAfterBind      = false;
+   features->descriptorBindingUniformBufferUpdateAfterBind      = true;
    features->descriptorBindingSampledImageUpdateAfterBind       = true;
    features->descriptorBindingStorageImageUpdateAfterBind       = true;
    features->descriptorBindingStorageBufferUpdateAfterBind      = true;
