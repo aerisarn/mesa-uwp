@@ -1384,7 +1384,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          }
 
          /* TODO: check for image mode when it has a separate one */
-         if (modes & nir_var_mem_ssbo) {
+         if (modes & (nir_var_mem_ssbo | nir_var_mem_image)) {
             barrier->barrier_class |= IR3_BARRIER_IMAGE_W;
             barrier->barrier_conflict |=
                IR3_BARRIER_IMAGE_W | IR3_BARRIER_IMAGE_R;
