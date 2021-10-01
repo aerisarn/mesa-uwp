@@ -139,7 +139,6 @@ struct ac_shader_args {
    /* Vulkan only */
    struct ac_arg push_constants;
    struct ac_arg inline_push_consts[AC_MAX_INLINE_PUSH_CONSTS];
-   unsigned num_inline_push_consts;
    unsigned base_inline_push_consts;
    struct ac_arg view_index;
    struct ac_arg sbt_descriptors;

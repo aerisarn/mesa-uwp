@@ -70,6 +70,7 @@ set_loc_desc(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx)
 struct user_sgpr_info {
    bool indirect_all_descriptor_sets;
    uint8_t remaining_sgprs;
+   unsigned num_inline_push_consts;
 };
 
 static bool
@@ -152,16 +153,16 @@ allocate_inline_push_consts(struct radv_shader_args *args, struct user_sgpr_info
 
    /* Check if the number of user SGPRs is large enough. */
    if (num_push_consts < remaining_sgprs) {
-      args->shader_info->num_inline_push_consts = num_push_consts;
+      user_sgpr_info->num_inline_push_consts = num_push_consts;
    } else {
-      args->shader_info->num_inline_push_consts = remaining_sgprs;
+      user_sgpr_info->num_inline_push_consts = remaining_sgprs;
    }
 
    /* Clamp to the maximum number of allowed inlined push constants. */
-   if (args->shader_info->num_inline_push_consts > AC_MAX_INLINE_PUSH_CONSTS)
-      args->shader_info->num_inline_push_consts = AC_MAX_INLINE_PUSH_CONSTS;
+   if (user_sgpr_info->num_inline_push_consts > AC_MAX_INLINE_PUSH_CONSTS)
+      user_sgpr_info->num_inline_push_consts = AC_MAX_INLINE_PUSH_CONSTS;
 
-   if (args->shader_info->num_inline_push_consts == num_push_consts &&
+   if (user_sgpr_info->num_inline_push_consts == num_push_consts &&
        !args->shader_info->loads_dynamic_offsets) {
       /* Disable the default push constants path if all constants are
        * inlined and if shaders don't use dynamic descriptors.
@@ -265,10 +266,9 @@ declare_global_input_sgprs(struct radv_shader_args *args,
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->ac.push_constants);
    }
 
-   for (unsigned i = 0; i < args->shader_info->num_inline_push_consts; i++) {
+   for (unsigned i = 0; i < user_sgpr_info->num_inline_push_consts; i++) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.inline_push_consts[i]);
    }
-   args->ac.num_inline_push_consts = args->shader_info->num_inline_push_consts;
    args->ac.base_inline_push_consts = args->shader_info->min_push_constant_used / 4;
 
    if (args->shader_info->so.num_outputs) {

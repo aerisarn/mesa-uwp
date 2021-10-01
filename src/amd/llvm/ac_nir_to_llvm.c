@@ -1644,7 +1644,12 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
 
       offset -= ctx->args->base_inline_push_consts;
 
-      unsigned num_inline_push_consts = ctx->args->num_inline_push_consts;
+      unsigned num_inline_push_consts = 0;
+      for (unsigned i = 0; i < ARRAY_SIZE(ctx->args->inline_push_consts); i++) {
+         if (ctx->args->inline_push_consts[i].used)
+            num_inline_push_consts++;
+      }
+
       if (offset + count <= num_inline_push_consts) {
          LLVMValueRef *const push_constants = alloca(num_inline_push_consts * sizeof(LLVMValueRef));
          for (unsigned i = 0; i < num_inline_push_consts; i++)

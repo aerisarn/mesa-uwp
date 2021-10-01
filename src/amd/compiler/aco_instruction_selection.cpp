@@ -5490,9 +5490,13 @@ visit_load_push_constant(isel_context* ctx, nir_intrinsic_instr* instr)
    nir_const_value* index_cv = nir_src_as_const_value(instr->src[0]);
 
    if (index_cv && instr->dest.ssa.bit_size == 32) {
+      struct radv_userdata_info *loc =
+         &ctx->args->shader_info->user_sgprs_locs.shader_data[AC_UD_INLINE_PUSH_CONSTANTS];
       unsigned start = (offset + index_cv->u32) / 4u;
+      unsigned num_inline_push_consts = loc->sgpr_idx != -1 ? loc->num_sgprs : 0;
+
       start -= ctx->args->shader_info->min_push_constant_used / 4;
-      if (start + count <= ctx->args->ac.num_inline_push_consts) {
+      if (start + count <= num_inline_push_consts) {
          std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
             aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
