@@ -68,7 +68,7 @@ fd6_tex_swiz(enum pipe_format format, enum a6xx_tile_mode tile_mode, unsigned ch
    } else if (format == PIPE_FORMAT_R8G8_R8B8_UNORM || format == PIPE_FORMAT_G8R8_B8R8_UNORM) {
       unsigned char fswiz[4] = {PIPE_SWIZZLE_Z, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_1};
       util_format_compose_swizzles(fswiz, uswiz, swiz);
-   } else if (fd6_texture_swap(format, TILE6_LINEAR) != WZYX) {
+   } else if (fd6_texture_swap(format, TILE6_LINEAR) != WZYX || format == PIPE_FORMAT_A1R5G5B5_UNORM) {
       /* Formats with a non-pass-through swap are permutations of RGBA
        * formats. We program the permutation using the swap and don't
        * need to compose the format swizzle with the user swizzle.

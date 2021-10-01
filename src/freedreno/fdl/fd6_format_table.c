@@ -120,6 +120,8 @@ static const struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 
    _TC(B5G5R5A1_UNORM, 5_5_5_1_UNORM,           WXYZ),
    _TC(B5G5R5X1_UNORM, 5_5_5_1_UNORM,           WXYZ),
+   _TC(A1R5G5B5_UNORM, 5_5_5_1_UNORM,           ZYXW),
+   _TC(A1B5G5R5_UNORM, 5_5_5_1_UNORM,           XYZW),
 
    _TC(R4G4B4A4_UNORM, 4_4_4_4_UNORM,           WZYX),
    _TC(B4G4R4A4_UNORM, 4_4_4_4_UNORM,           WXYZ),
@@ -386,12 +388,37 @@ fd6_texture_format(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
    if (!formats[format].present)
       return FMT6_NONE;
+
+   /* Linear ARGB/ABGR1555 has a special format for sampling (tiled 1555/5551
+    * formats always have the same swizzle and layout).
+    */
+   if (!tile_mode) {
+      switch (format) {
+      case PIPE_FORMAT_A1R5G5B5_UNORM:
+      case PIPE_FORMAT_A1B5G5R5_UNORM:
+         return FMT6_1_5_5_5_UNORM;
+      default:
+         break;
+      }
+   }
+
    return formats[format].tex;
 }
 
 enum a3xx_color_swap
 fd6_texture_swap(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
+   if (!tile_mode) {
+      switch (format) {
+      case PIPE_FORMAT_A1R5G5B5_UNORM:
+         return WZYX;
+      case PIPE_FORMAT_A1B5G5R5_UNORM:
+         return WXYZ;
+      default:
+         break;
+      }
+   }
+
    return fd6_pipe2swap(format, tile_mode);
 }
 
