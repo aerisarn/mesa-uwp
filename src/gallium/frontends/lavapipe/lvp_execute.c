@@ -1681,7 +1681,7 @@ static void render_pass_resolve(struct rendering_state *state)
       info.src.box.y = state->render_area.offset.y;
       info.src.box.width = state->render_area.extent.width;
       info.src.box.height = state->render_area.extent.height;
-      info.src.box.depth = state->vk_framebuffer->layers;
+      info.src.box.depth = state->framebuffer.layers;
 
       info.dst.box = info.src.box;
 
