@@ -1015,7 +1015,6 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
             false,
             pl_key->vs.instance_rate_inputs);
 
-      info->num_lds_blocks_when_not_culling = DIV_ROUND_UP(out_conf.lds_bytes_if_culling_off, device->physical_device->rad_info.lds_encode_granularity);
       info->is_ngg_passthrough = out_conf.passthrough;
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       assert(info->is_ngg);

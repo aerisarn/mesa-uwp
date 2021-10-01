@@ -2786,6 +2786,18 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
 
       nir_function_impl *impl = nir_shader_get_entrypoint(nir[es_stage]);
       infos[es_stage].has_ngg_early_prim_export = exec_list_is_singular(&impl->body);
+
+      /* Invocations that process an input vertex */
+      const struct gfx10_ngg_info *ngg_info = &infos[es_stage].ngg_info;
+      unsigned max_vtx_in = MIN2(256, ngg_info->enable_vertex_grouping ? ngg_info->hw_max_esverts : num_vertices_per_prim * ngg_info->max_gsprims);
+
+      unsigned lds_bytes_if_culling_off = 0;
+      /* We need LDS space when VS needs to export the primitive ID. */
+      if (es_stage == MESA_SHADER_VERTEX && infos[es_stage].vs.outinfo.export_prim_id)
+         lds_bytes_if_culling_off = max_vtx_in * 4u;
+      infos[es_stage].num_lds_blocks_when_not_culling =
+         DIV_ROUND_UP(lds_bytes_if_culling_off,
+                      device->physical_device->rad_info.lds_encode_granularity);
    }
 }
 

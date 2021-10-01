@@ -1301,9 +1301,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    if (shader->info.stage == MESA_SHADER_VERTEX && export_prim_id)
       state.total_lds_bytes = max_num_es_vertices * 4u;
 
-   /* The shader only needs this much LDS when culling is turned off. */
-   unsigned lds_bytes_if_culling_off = state.total_lds_bytes;
-
    nir_builder builder;
    nir_builder *b = &builder; /* This is to avoid the & */
    nir_builder_init(b, impl);
@@ -1418,7 +1415,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader,
    shader->info.shared_size = state.total_lds_bytes;
 
    ac_nir_ngg_config ret = {
-      .lds_bytes_if_culling_off = lds_bytes_if_culling_off,
       .passthrough = passthrough,
       .nggc_inputs_read_by_pos = state.inputs_needed_by_pos,
       .nggc_inputs_read_by_others = state.inputs_needed_by_others,

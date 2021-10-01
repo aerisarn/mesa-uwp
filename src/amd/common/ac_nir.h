@@ -93,7 +93,6 @@ ac_nir_lower_indirect_derefs(nir_shader *shader,
 
 typedef struct
 {
-   unsigned lds_bytes_if_culling_off;
    bool passthrough;
    uint64_t nggc_inputs_read_by_pos;
    uint64_t nggc_inputs_read_by_others;
