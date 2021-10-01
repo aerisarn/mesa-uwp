@@ -143,10 +143,10 @@ vk_cmd_queue = custom_target(
 vk_physical_device_features = custom_target(
   'vk_physical_device_features',
   input : ['vk_physical_device_features.py', vk_api_xml],
-  output : ['vk_physical_device_features.c', 'vk_physical_device_features.h'],
+  output : ['vk_physical_device_features.c'],
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
-    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@'
+    '--out-c', '@OUTPUT0@'
   ],
   depend_files : vk_physical_device_features_gen_depend_files,
 )

@@ -52,6 +52,10 @@ vk_physical_device_init(struct vk_physical_device *physical_device,
 void
 vk_physical_device_finish(struct vk_physical_device *physical_device);
 
+VkResult
+vk_physical_device_check_device_features(struct vk_physical_device *physical_device,
+                                         const VkDeviceCreateInfo *pCreateInfo);
+
 #ifdef __cplusplus
 }
 #endif

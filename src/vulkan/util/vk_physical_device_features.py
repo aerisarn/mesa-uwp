@@ -30,37 +30,9 @@ import xml.etree.ElementTree as et
 
 from mako.template import Template
 
-TEMPLATE_H = Template(COPYRIGHT + """\
-/* This file generated from ${filename}, don't edit directly. */
-
-#pragma once
-
-#define VK_PROTOTYPES
-#include <vulkan/vulkan.h>
-#include "vk_physical_device.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-VkResult
-vk_physical_device_check_device_features(struct vk_physical_device *physical_device,
-                                         const VkDeviceCreateInfo *pCreateInfo);
-
-#ifdef __cplusplus
-}
-#endif
-""", output_encoding='utf-8')
-
 TEMPLATE_C = Template(COPYRIGHT + """
 /* This file generated from ${filename}, don't edit directly. */
 
-#include "${header}"
-
-#define VK_PROTOTYPES
-#include <vulkan/vulkan.h>
-
-#include "vk_dispatch_table.h"
 #include "vk_physical_device.h"
 #include "vk_util.h"
 
@@ -222,7 +194,6 @@ def get_features_from_xml(xml_files):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out-c', required=True, help='Output C file.')
-    parser.add_argument('--out-h', required=True, help='Output H file.')
     parser.add_argument('--xml',
                         help='Vulkan API XML file.',
                         required=True, action='append', dest='xml_files')
@@ -230,18 +201,12 @@ def main():
 
     features = get_features_from_xml(args.xml_files)
 
-    assert os.path.dirname(args.out_c) == os.path.dirname(args.out_h)
-
     environment = {
-        'header': os.path.basename(args.out_h),
         'filename': os.path.basename(__file__),
         'features': features,
     }
 
     try:
-        with open(args.out_h, 'wb') as f:
-            guard = os.path.basename(args.out_h).replace('.', '_').upper()
-            f.write(TEMPLATE_H.render(guard=guard, **environment))
         with open(args.out_c, 'wb') as f:
             f.write(TEMPLATE_C.render(**environment))
     except Exception:

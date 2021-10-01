@@ -26,7 +26,6 @@
 #include "vk_common_entrypoints.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
-#include "vk_physical_device_features.h"
 #include "vk_queue.h"
 #include "vk_util.h"
 #include "util/hash_table.h"
