@@ -58,7 +58,7 @@ struct fd6_format {
 #define V__(pipe, fmt, swapfmt) FMT(pipe, fmt, NONE, NONE, swapfmt)
 
 /* clang-format off */
-static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
+static const struct fd6_format formats[PIPE_FORMAT_COUNT] = {
    /* 8-bit */
    VTC(R8_UNORM,   8_UNORM,                     WZYX),
    VTC(R8_SNORM,   8_SNORM,                     WZYX),
