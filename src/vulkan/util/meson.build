@@ -42,6 +42,10 @@ vk_commands_gen_depend_files = [
   files('vk_dispatch_table_gen.py'),
   vk_dispatch_table_gen_depend_files,
 ]
+vk_physical_device_features_gen_depend_files = [
+  files('vk_dispatch_table_gen.py'),
+  vk_dispatch_table_gen_depend_files,
+]
 
 vk_entrypoints_gen = files('vk_entrypoints_gen.py')
 vk_extensions_gen = files('vk_extensions_gen.py')
@@ -138,10 +142,21 @@ vk_cmd_queue = custom_target(
   depend_files : vk_cmd_queue_gen_depend_files,
 )
 
+vk_physical_device_features = custom_target(
+  'vk_physical_device_features',
+  input : ['vk_physical_device_features.py', vk_api_xml],
+  output : ['vk_physical_device_features.c', 'vk_physical_device_features.h'],
+  command : [
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@',
+    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@'
+  ],
+  depend_files : vk_physical_device_features_gen_depend_files,
+)
+
 libvulkan_util = static_library(
   'vulkan_util',
   [files_vulkan_util, vk_common_entrypoints, vk_dispatch_table,
-   vk_enum_to_str, vk_extensions, vk_cmd_queue],
+   vk_enum_to_str, vk_extensions, vk_cmd_queue, vk_physical_device_features],
   include_directories : [inc_include, inc_src, inc_gallium],
   dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers],
   # For glsl_type_singleton

@@ -26,6 +26,7 @@
 #include "vk_common_entrypoints.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
+#include "vk_physical_device_features.h"
 #include "vk_queue.h"
 #include "vk_util.h"
 #include "util/hash_table.h"
@@ -74,6 +75,12 @@ vk_device_init(struct vk_device *device,
 
       device->enabled_extensions.extensions[idx] = true;
    }
+
+   VkResult result =
+      vk_physical_device_check_device_features(physical_device,
+                                               pCreateInfo);
+   if (result != VK_SUCCESS)
+      return result;
 
    p_atomic_set(&device->private_data_next_index, 0);
 
