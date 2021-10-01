@@ -34,3 +34,13 @@ gc2000_gles2:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_VER: gles2
+
+gc2000_piglit:
+  extends:
+    - .piglit-test
+    - .etnaviv-armhf-gc2000
+    - .test-manual-mr
+  variables:
+    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
+    PIGLIT_PLATFORM: gbm
+    PIGLIT_PROFILES: gpu
