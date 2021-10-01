@@ -1734,25 +1734,28 @@ static void begin_render_pass(const VkRenderPassBeginInfo *render_pass_begin,
    state->pass = pass;
    state->vk_framebuffer = framebuffer;
    state->render_area = render_pass_begin->renderArea;
+   unsigned attachment_count;
 
    if (attachment_info) {
       state->imageless_views = realloc(state->imageless_views, sizeof(*state->imageless_views) * attachment_info->attachmentCount);
       for (unsigned i = 0; i < attachment_info->attachmentCount; i++)
          state->imageless_views[i] = lvp_image_view_from_handle(attachment_info->pAttachments[i]);
-   }
+      attachment_count = attachment_info->attachmentCount;
+   } else
+      attachment_count = framebuffer->attachment_count;
 
    state->framebuffer.width = state->vk_framebuffer->width;
    state->framebuffer.height = state->vk_framebuffer->height;
    state->framebuffer.layers = state->vk_framebuffer->layers;
 
-   if (state->num_pending_aspects < state->pass->attachment_count) {
-      state->pending_clear_aspects = realloc(state->pending_clear_aspects, sizeof(VkImageAspectFlags) * state->pass->attachment_count);
-      state->cleared_views = realloc(state->cleared_views, sizeof(uint32_t) * state->pass->attachment_count);
-      state->num_pending_aspects = state->pass->attachment_count;
+   if (state->num_pending_aspects < attachment_count) {
+      state->pending_clear_aspects = realloc(state->pending_clear_aspects, sizeof(VkImageAspectFlags) * attachment_count);
+      state->cleared_views = realloc(state->cleared_views, sizeof(uint32_t) * attachment_count);
+      state->num_pending_aspects = attachment_count;
    }
 
-   state->attachments = realloc(state->attachments, sizeof(*state->attachments) * pass->attachment_count);
-   for (unsigned i = 0; i < state->pass->attachment_count; i++) {
+   state->attachments = realloc(state->attachments, sizeof(*state->attachments) * attachment_count);
+   for (unsigned i = 0; i < attachment_count; i++) {
       struct lvp_render_pass_attachment *att = &pass->attachments[i];
       VkImageAspectFlags att_aspects = vk_format_aspects(att->format);
       VkImageAspectFlags clear_aspects = 0;
