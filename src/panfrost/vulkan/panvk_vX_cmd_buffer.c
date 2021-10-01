@@ -889,6 +889,9 @@ panvk_per_arch(CmdDraw)(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
+   if (instanceCount == 0 || vertexCount == 0)
+      return;
+
    struct panvk_batch *batch = cmdbuf->state.batch;
    struct panvk_cmd_bind_point_state *bind_point_state =
       panvk_cmd_get_bind_point_state(cmdbuf, GRAPHICS);
