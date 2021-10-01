@@ -894,6 +894,17 @@ void iris_copy_region(struct blorp_context *blorp,
                       unsigned src_level,
                       const struct pipe_box *src_box);
 
+static inline enum blorp_batch_flags
+iris_blorp_flags_for_batch(struct iris_batch *batch)
+{
+   if (batch->name == IRIS_BATCH_COMPUTE)
+      return BLORP_BATCH_USE_COMPUTE;
+
+   if (batch->name == IRIS_BATCH_BLITTER)
+      return BLORP_BATCH_USE_BLITTER;
+
+   return 0;
+}
 
 /* iris_draw.c */
 

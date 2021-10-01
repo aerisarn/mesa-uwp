@@ -356,7 +356,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   enum blorp_batch_flags blorp_flags = 0;
+   enum blorp_batch_flags blorp_flags = iris_blorp_flags_for_batch(batch);
 
    /* We don't support color masking. */
    assert((info->mask & PIPE_MASK_RGBA) == PIPE_MASK_RGBA ||
@@ -644,7 +644,9 @@ iris_copy_region(struct blorp_context *blorp,
    if (dst->target == PIPE_BUFFER)
       util_range_add(&dst_res->base.b, &dst_res->valid_buffer_range, dstx, dstx + src_box->width);
 
-   blorp_batch_init(blorp, &blorp_batch, batch, 0);
+   enum blorp_batch_flags blorp_flags = iris_blorp_flags_for_batch(batch);
+
+   blorp_batch_init(blorp, &blorp_batch, batch, blorp_flags);
 
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
       struct blorp_address src_addr = {

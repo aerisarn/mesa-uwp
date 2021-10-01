@@ -315,7 +315,7 @@ clear_color(struct iris_context *ice,
 
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    const struct intel_device_info *devinfo = &batch->screen->devinfo;
-   enum blorp_batch_flags blorp_flags = 0;
+   enum blorp_batch_flags blorp_flags = iris_blorp_flags_for_batch(batch);
 
    if (render_condition_enabled) {
       if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
