@@ -5491,7 +5491,7 @@ visit_load_push_constant(isel_context* ctx, nir_intrinsic_instr* instr)
 
    if (index_cv && instr->dest.ssa.bit_size == 32) {
       unsigned start = (offset + index_cv->u32) / 4u;
-      start -= ctx->args->ac.base_inline_push_consts;
+      start -= ctx->args->shader_info->min_push_constant_used / 4;
       if (start + count <= ctx->args->ac.num_inline_push_consts) {
          std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(

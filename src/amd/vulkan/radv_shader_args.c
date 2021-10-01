@@ -168,8 +168,6 @@ allocate_inline_push_consts(struct radv_shader_args *args, struct user_sgpr_info
        */
       args->shader_info->loads_push_constants = false;
    }
-
-   args->shader_info->base_inline_push_consts = args->shader_info->min_push_constant_used / 4;
 }
 
 static void
@@ -271,7 +269,7 @@ declare_global_input_sgprs(struct radv_shader_args *args,
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.inline_push_consts[i]);
    }
    args->ac.num_inline_push_consts = args->shader_info->num_inline_push_consts;
-   args->ac.base_inline_push_consts = args->shader_info->base_inline_push_consts;
+   args->ac.base_inline_push_consts = args->shader_info->min_push_constant_used / 4;
 
    if (args->shader_info->so.num_outputs) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->streamout_buffers);

@@ -220,7 +220,6 @@ struct radv_shader_info {
    bool has_only_32bit_push_constants;
    bool has_indirect_push_constants;
    uint8_t num_inline_push_consts;
-   uint8_t base_inline_push_consts;
    uint32_t desc_set_used_mask;
    bool needs_multiview_view_index;
    bool uses_invocation_id;

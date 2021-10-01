@@ -2885,7 +2885,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
 
       need_push_constants |= radv_shader_loads_push_constants(pipeline, stage);
 
-      uint8_t base = shader->info.base_inline_push_consts;
+      uint8_t base = shader->info.min_push_constant_used / 4;
       uint8_t count = shader->info.num_inline_push_consts;
 
       radv_emit_inline_push_consts(cmd_buffer, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS, count,
