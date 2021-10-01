@@ -369,11 +369,8 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
                       * The same limitations apply to SDMA compressed stores because
                       * SDMA uses the same DCC codec.
                       */
-                     S_00A018_WRITE_COMPRESS_ENABLE(!tex->surface.u.gfx9.color.dcc.independent_64B_blocks &&
-                                                    tex->surface.u.gfx9.color.dcc.independent_128B_blocks &&
-                                                    tex->surface.u.gfx9.color.dcc.max_compressed_block_size ==
-                                                    V_028C78_MAX_BLOCK_SIZE_128B &&
-                                                    access & SI_IMAGE_ACCESS_ALLOW_DCC_STORE);
+                     S_00A018_WRITE_COMPRESS_ENABLE(ac_surface_supports_dcc_image_stores(sscreen->info.chip_class, &tex->surface) &&
+                                                    (access & SI_IMAGE_ACCESS_ALLOW_DCC_STORE));
       }
 
       state[7] = meta_va >> 16;
