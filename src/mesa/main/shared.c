@@ -128,7 +128,7 @@ _mesa_alloc_shared_state(struct gl_context *ctx)
    assert(shared->DefaultTex[TEXTURE_1D_INDEX]->RefCount == 1);
 
    /* Mutex and timestamp for texobj state validation */
-   mtx_init(&shared->TexMutex, mtx_recursive);
+   simple_mtx_init(&shared->TexMutex, mtx_plain);
    shared->TextureStateStamp = 0;
 
    shared->FrameBuffers = _mesa_NewHashTable();
@@ -459,7 +459,7 @@ free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared)
    }
 
    simple_mtx_destroy(&shared->Mutex);
-   mtx_destroy(&shared->TexMutex);
+   simple_mtx_destroy(&shared->TexMutex);
 
    free(shared);
 }
