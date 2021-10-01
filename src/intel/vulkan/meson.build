@@ -77,6 +77,7 @@ foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
     dependencies : [
       dep_libdrm, dep_valgrind, idep_nir_headers, idep_genxml,
       idep_vulkan_util_headers, idep_vulkan_wsi_headers,
+      idep_vulkan_runtime_headers,
     ],
   )
 endforeach
@@ -118,6 +119,7 @@ anv_deps = [
   idep_genxml,
   idep_nir_headers,
   idep_vulkan_util_headers,
+  idep_vulkan_runtime_headers,
   idep_vulkan_wsi_headers,
 ]
 anv_flags = [
@@ -175,7 +177,7 @@ libvulkan_intel = shared_library(
   dependencies : [
     dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
     idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
-    idep_mesautil, idep_xmlconfig,
+    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
   ],
   c_args : anv_flags,
   gnu_symbol_visibility : 'hidden',
@@ -210,7 +212,8 @@ if with_tests
     ],
     dependencies : [
       dep_thread, dep_dl, dep_m, anv_deps,
-      idep_nir, idep_vulkan_util, idep_vulkan_wsi, idep_mesautil,
+      idep_nir, idep_vulkan_util, idep_vulkan_wsi, idep_vulkan_runtime,
+      idep_mesautil,
     ],
     c_args : anv_flags,
     gnu_symbol_visibility : 'hidden',
@@ -229,6 +232,7 @@ if with_tests
         dependencies : [
           dep_libdrm, dep_thread, dep_m, dep_valgrind,
           idep_vulkan_util, idep_vulkan_wsi_headers,
+          idep_vulkan_runtime,
         ],
         include_directories : [
           inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
