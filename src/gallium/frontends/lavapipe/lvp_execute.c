@@ -1357,8 +1357,7 @@ attachment_needs_clear(struct rendering_state *state,
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
    uint32_t view_mask = subpass->view_mask;
-   return (a != VK_ATTACHMENT_UNUSED &&
-           state->pending_clear_aspects[a] &&
+   return (state->pending_clear_aspects[a] &&
            (!view_mask || (view_mask & ~state->cleared_views[a])));
 }
 
