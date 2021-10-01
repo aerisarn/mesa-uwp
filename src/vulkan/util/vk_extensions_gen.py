@@ -93,9 +93,8 @@ ${driver}_physical_device_get_supported_extensions(const struct ${driver}_physic
 """)
 
 _TEMPLATE_C = Template(COPYRIGHT + """
-%if driver == 'vk':
-#include "vk_object.h"
-%else:
+#include "vulkan/vulkan_core.h"
+%if driver != 'vk':
 #include "${driver}_private.h"
 %endif
 
