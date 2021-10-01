@@ -215,9 +215,6 @@ vk_device_dispatch_table_get_if_supported(
     const struct vk_instance_extension_table *instance_exts,
     const struct vk_device_extension_table *device_exts);
 
-extern struct vk_physical_device_dispatch_table vk_physical_device_trampolines;
-extern struct vk_device_dispatch_table vk_device_trampolines;
-
 #ifdef __cplusplus
 }
 #endif
@@ -228,11 +225,7 @@ extern struct vk_device_dispatch_table vk_device_trampolines;
 TEMPLATE_C = Template(COPYRIGHT + """\
 /* This file generated from ${filename}, don't edit directly. */
 
-#include "vk_device.h"
 #include "vk_dispatch_table.h"
-#include "vk_instance.h"
-#include "vk_object.h"
-#include "vk_physical_device.h"
 
 #include "util/macros.h"
 #include "string.h"
@@ -595,92 +588,6 @@ vk_device_dispatch_table_get_if_supported(
 
     return vk_device_dispatch_table_get_for_entry_index(table, entry_index);
 }
-
-% for e in physical_device_entrypoints:
-  % if e.alias:
-    <% continue %>
-  % endif
-  % if e.guard is not None:
-#ifdef ${e.guard}
-  % endif
-static VKAPI_ATTR ${e.return_type} VKAPI_CALL
-${e.prefixed_name('vk_tramp')}(${e.decl_params()})
-{
-    <% assert e.params[0].type == 'VkPhysicalDevice' %>
-    VK_FROM_HANDLE(vk_physical_device, vk_physical_device, ${e.params[0].name});
-  % if e.return_type == 'void':
-    vk_physical_device->dispatch_table.${e.name}(${e.call_params()});
-  % else:
-    return vk_physical_device->dispatch_table.${e.name}(${e.call_params()});
-  % endif
-}
-  % if e.guard is not None:
-#endif
-  % endif
-% endfor
-
-struct vk_physical_device_dispatch_table vk_physical_device_trampolines = {
-% for e in physical_device_entrypoints:
-  % if e.alias:
-    <% continue %>
-  % endif
-  % if e.guard is not None:
-#ifdef ${e.guard}
-  % endif
-    .${e.name} = ${e.prefixed_name('vk_tramp')},
-  % if e.guard is not None:
-#endif
-  % endif
-% endfor
-};
-
-% for e in device_entrypoints:
-  % if e.alias:
-    <% continue %>
-  % endif
-  % if e.guard is not None:
-#ifdef ${e.guard}
-  % endif
-static VKAPI_ATTR ${e.return_type} VKAPI_CALL
-${e.prefixed_name('vk_tramp')}(${e.decl_params()})
-{
-  % if e.params[0].type == 'VkDevice':
-    VK_FROM_HANDLE(vk_device, vk_device, ${e.params[0].name});
-    % if e.return_type == 'void':
-    vk_device->dispatch_table.${e.name}(${e.call_params()});
-    % else:
-    return vk_device->dispatch_table.${e.name}(${e.call_params()});
-    % endif
-  % elif e.params[0].type in ('VkCommandBuffer', 'VkQueue'):
-    struct vk_object_base *vk_object = (struct vk_object_base *)${e.params[0].name};
-    % if e.return_type == 'void':
-    vk_object->device->dispatch_table.${e.name}(${e.call_params()});
-    % else:
-    return vk_object->device->dispatch_table.${e.name}(${e.call_params()});
-    % endif
-  % else:
-    assert(!"Unhandled device child trampoline case: ${e.params[0].type}");
-  % endif
-}
-  % if e.guard is not None:
-#endif
-  % endif
-% endfor
-
-struct vk_device_dispatch_table vk_device_trampolines = {
-% for e in device_entrypoints:
-  % if e.alias:
-    <% continue %>
-  % endif
-  % if e.guard is not None:
-#ifdef ${e.guard}
-  % endif
-    .${e.name} = ${e.prefixed_name('vk_tramp')},
-  % if e.guard is not None:
-#endif
-  % endif
-% endfor
-};
 """)
 
 U32_MASK = 2**32 - 1

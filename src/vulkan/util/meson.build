@@ -34,6 +34,10 @@ vk_dispatch_table_gen_depend_files = [
   files('vk_entrypoints.py'),
   vk_entrypoints_depend_files,
 ]
+vk_dispatch_trampolines_gen_depend_files = [
+  files('vk_entrypoints.py'),
+  vk_entrypoints_depend_files,
+]
 vk_entrypoints_gen_depend_files = [
   files('vk_entrypoints.py'),
   vk_entrypoints_depend_files,
@@ -113,6 +117,17 @@ vk_dispatch_table = custom_target(
   depend_files : vk_dispatch_table_gen_depend_files,
 )
 
+vk_dispatch_trampolines = custom_target(
+  'vk_dispatch_trampolines',
+  input : ['vk_dispatch_trampolines_gen.py', vk_api_xml],
+  output : ['vk_dispatch_trampolines.c', 'vk_dispatch_trampolines.h'],
+  command : [
+    prog_python, '@INPUT0@', '--xml', '@INPUT1@',
+    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@'
+  ],
+  depend_files : vk_dispatch_trampolines_gen_depend_files,
+)
+
 vk_enum_to_str = custom_target(
   'vk_enum_to_str',
   input : ['gen_enum_to_str.py', vk_api_xml],
@@ -159,6 +174,7 @@ vk_physical_device_features = custom_target(
 libvulkan_util = static_library(
   'vulkan_util',
   [files_vulkan_util, vk_common_entrypoints, vk_dispatch_table,
+   vk_dispatch_trampolines,
    vk_enum_to_str, vk_extensions, vk_cmd_queue, vk_physical_device_features],
   include_directories : [inc_include, inc_src, inc_gallium],
   dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers],
@@ -170,7 +186,8 @@ libvulkan_util = static_library(
 )
 
 idep_vulkan_util_headers = declare_dependency(
-  sources : [vk_dispatch_table[1], vk_enum_to_str[1], vk_extensions[1]],
+  sources : [vk_dispatch_table[1], vk_dispatch_trampolines[1],
+             vk_enum_to_str[1], vk_extensions[1]],
   include_directories : include_directories('.')
 )
 
