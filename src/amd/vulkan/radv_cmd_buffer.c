@@ -6533,14 +6533,6 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
    return false;
 }
 
-enum {
-   ngg_cull_none = 0,
-   ngg_cull_front_face = 1,
-   ngg_cull_back_face = 2,
-   ngg_cull_face_is_ccw = 4,
-   ngg_cull_small_primitives = 8,
-};
-
 ALWAYS_INLINE static bool
 radv_skip_ngg_culling(bool has_tess, const unsigned vtx_cnt,
                       bool indirect)
@@ -6563,10 +6555,10 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
    /* Cull every triangle when rasterizer discard is enabled. */
    if (d->rasterizer_discard_enable ||
        G_028810_DX_RASTERIZATION_KILL(cmd_buffer->state.pipeline->graphics.pa_cl_clip_cntl))
-      return ngg_cull_front_face | ngg_cull_back_face;
+      return radv_nggc_front_face | radv_nggc_back_face;
 
    uint32_t pa_su_sc_mode_cntl = cmd_buffer->state.pipeline->graphics.pa_su_sc_mode_cntl;
-   uint32_t nggc_settings = ngg_cull_none;
+   uint32_t nggc_settings = radv_nggc_none;
 
    /* The culling code needs to know whether face is CW or CCW. */
    bool ccw = (pipeline->graphics.needed_dynamic_state & RADV_DYNAMIC_FRONT_FACE)
@@ -6577,21 +6569,21 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
    ccw ^= vp_y_inverted;
 
    if (ccw)
-      nggc_settings |= ngg_cull_face_is_ccw;
+      nggc_settings |= radv_nggc_face_is_ccw;
 
    /* Face culling settings. */
    if ((pipeline->graphics.needed_dynamic_state & RADV_DYNAMIC_CULL_MODE)
          ? (d->cull_mode & VK_CULL_MODE_FRONT_BIT)
          : G_028814_CULL_FRONT(pa_su_sc_mode_cntl))
-      nggc_settings |= ngg_cull_front_face;
+      nggc_settings |= radv_nggc_front_face;
    if ((pipeline->graphics.needed_dynamic_state & RADV_DYNAMIC_CULL_MODE)
          ? (d->cull_mode & VK_CULL_MODE_BACK_BIT)
          : G_028814_CULL_BACK(pa_su_sc_mode_cntl))
-      nggc_settings |= ngg_cull_back_face;
+      nggc_settings |= radv_nggc_back_face;
 
    /* Small primitive culling is only valid when conservative overestimation is not used. */
    if (!pipeline->graphics.uses_conservative_overestimate) {
-      nggc_settings |= ngg_cull_small_primitives;
+      nggc_settings |= radv_nggc_small_primitives;
 
       /* small_prim_precision = num_samples / 2^subpixel_bits
        * num_samples is also always a power of two, so the small prim precision can only be
@@ -6659,7 +6651,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
    /* Get current culling settings. */
    uint32_t nggc_settings = nggc_supported && !skip
                             ? radv_get_ngg_culling_settings(cmd_buffer, vp_y_inverted)
-                            : ngg_cull_none;
+                            : radv_nggc_none;
 
    bool emit_viewport = nggc_settings &&
                         (cmd_buffer->state.dirty & RADV_CMD_DIRTY_DYNAMIC_VIEWPORT ||

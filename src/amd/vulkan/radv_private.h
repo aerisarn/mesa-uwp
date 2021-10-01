@@ -1145,6 +1145,14 @@ enum radv_cmd_flush_bits {
        RADV_CMD_FLAG_FLUSH_AND_INV_DB | RADV_CMD_FLAG_FLUSH_AND_INV_DB_META)
 };
 
+enum radv_nggc_settings {
+   radv_nggc_none = 0,
+   radv_nggc_front_face = 1 << 0,
+   radv_nggc_back_face = 1 << 1,
+   radv_nggc_face_is_ccw = 1 << 2,
+   radv_nggc_small_primitives = 1 << 3,
+};
+
 struct radv_vertex_binding {
    struct radv_buffer *buffer;
    VkDeviceSize offset;
