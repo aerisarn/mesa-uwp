@@ -124,8 +124,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass2(
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
             CHECK_UNUSED_ATTACHMENT(pColorAttachments, color_attachments, j);
-            if (subpass->color_attachments[j])
-               subpass->has_color_att = true;
          }
       }
 
