@@ -37,14 +37,11 @@ lvp_image_create(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
 
-   image = vk_zalloc2(&device->vk.alloc, alloc, sizeof(*image), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   image = vk_image_create(&device->vk, pCreateInfo, alloc, sizeof(*image));
    if (image == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &image->base, VK_OBJECT_TYPE_IMAGE);
    image->alignment = 16;
-   image->type = pCreateInfo->imageType;
    {
       struct pipe_resource template;
 
@@ -139,7 +136,7 @@ lvp_image_from_swapchain(VkDevice device,
    ASSERTED struct lvp_image *swapchain_image = lvp_swapchain_get_image(swapchain_info->swapchain, 0);
    assert(swapchain_image);
 
-   assert(swapchain_image->type == pCreateInfo->imageType);
+   assert(swapchain_image->vk.image_type == pCreateInfo->imageType);
 
    VkImageCreateInfo local_create_info;
    local_create_info = *pCreateInfo;
@@ -179,8 +176,7 @@ lvp_DestroyImage(VkDevice _device, VkImage _image,
    if (!_image)
      return;
    pipe_resource_reference(&image->bo, NULL);
-   vk_object_base_finish(&image->base);
-   vk_free2(&device->vk.alloc, pAllocator, image);
+   vk_image_destroy(&device->vk, pAllocator, &image->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

@@ -55,6 +55,7 @@ typedef uint32_t xcb_window_t;
 #include "lvp_entrypoints.h"
 #include "vk_device.h"
 #include "vk_instance.h"
+#include "vk_image.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_util.h"
@@ -225,8 +226,7 @@ struct lvp_device_memory {
 };
 
 struct lvp_image {
-   struct vk_object_base base;
-   VkImageType type;
+   struct vk_image vk;
    VkDeviceSize size;
    uint32_t alignment;
    struct pipe_memory_allocation *pmem;
@@ -623,7 +623,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_device_memory, base, VkDeviceMemory,
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_framebuffer, base, VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image, base, VkImage, VK_OBJECT_TYPE_IMAGE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image_view, base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_cache, base, VkPipelineCache,

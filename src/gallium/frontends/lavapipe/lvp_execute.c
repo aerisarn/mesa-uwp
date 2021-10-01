@@ -2134,10 +2134,10 @@ static void handle_copy_image_to_buffer2_khr(struct vk_cmd_queue_entry *cmd,
 
       box.x = copycmd->pRegions[i].imageOffset.x;
       box.y = copycmd->pRegions[i].imageOffset.y;
-      box.z = src_image->type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
+      box.z = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
       box.width = copycmd->pRegions[i].imageExtent.width;
       box.height = copycmd->pRegions[i].imageExtent.height;
-      box.depth = src_image->type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : copycmd->pRegions[i].imageSubresource.layerCount;
+      box.depth = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : copycmd->pRegions[i].imageSubresource.layerCount;
 
       src_data = state->pctx->texture_map(state->pctx,
                                            src_image->bo,
@@ -2229,10 +2229,10 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
 
       box.x = copycmd->pRegions[i].imageOffset.x;
       box.y = copycmd->pRegions[i].imageOffset.y;
-      box.z = dst_image->type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
+      box.z = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageOffset.z : copycmd->pRegions[i].imageSubresource.baseArrayLayer;
       box.width = copycmd->pRegions[i].imageExtent.width;
       box.height = copycmd->pRegions[i].imageExtent.height;
-      box.depth = dst_image->type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : copycmd->pRegions[i].imageSubresource.layerCount;
+      box.depth = dst_image->vk.image_type == VK_IMAGE_TYPE_3D ? copycmd->pRegions[i].imageExtent.depth : copycmd->pRegions[i].imageSubresource.layerCount;
 
       dst_data = state->pctx->texture_map(state->pctx,
                                            dst_image->bo,
