@@ -210,7 +210,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass2(
          for (uint32_t j = 0; j < desc->inputAttachmentCount; j++) {
             subpass->input_attachments[j] = (struct lvp_subpass_attachment) {
                .attachment = desc->pInputAttachments[j].attachment,
-               .layout = desc->pInputAttachments[j].layout,
             };
          }
       }
@@ -222,7 +221,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass2(
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
             subpass->color_attachments[j] = (struct lvp_subpass_attachment) {
                .attachment = desc->pColorAttachments[j].attachment,
-               .layout = desc->pColorAttachments[j].layout,
             };
          }
       }
@@ -234,7 +232,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass2(
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
             subpass->resolve_attachments[j] = (struct lvp_subpass_attachment) {
                .attachment = desc->pResolveAttachments[j].attachment,
-               .layout = desc->pResolveAttachments[j].layout,
             };
          }
       }
@@ -244,7 +241,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass2(
 
          *subpass->depth_stencil_attachment = (struct lvp_subpass_attachment) {
             .attachment = desc->pDepthStencilAttachment->attachment,
-            .layout = desc->pDepthStencilAttachment->layout,
          };
       }
 
@@ -256,7 +252,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass2(
 
          *subpass->ds_resolve_attachment = (struct lvp_subpass_attachment){
             .attachment = ds_resolve->pDepthStencilResolveAttachment->attachment,
-            .layout = ds_resolve->pDepthStencilResolveAttachment->layout,
          };
 
          subpass->depth_resolve_mode = ds_resolve->depthResolveMode;
