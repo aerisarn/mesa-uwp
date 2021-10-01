@@ -140,7 +140,7 @@ struct rendering_state {
    uint8_t push_constants[128 * 4];
 
    const struct lvp_render_pass *pass;
-   uint32_t subpass;
+   struct lvp_subpass *subpass;
    const struct lvp_framebuffer *vk_framebuffer;
    VkRect2D render_area;
 
@@ -1355,7 +1355,7 @@ static inline bool
 attachment_needs_clear(struct rendering_state *state,
                        uint32_t a)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    uint32_t view_mask = subpass->view_mask;
    return (state->pending_clear_aspects[a] &&
            (!view_mask || (view_mask & ~state->cleared_views[a])));
@@ -1365,7 +1365,7 @@ static bool
 subpass_needs_clear(struct rendering_state *state)
 {
    uint32_t a;
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       if (!subpass->color_attachments[i])
          continue;
@@ -1427,7 +1427,7 @@ get_attachment(struct rendering_state *state,
 
 static void render_subpass_clear(struct rendering_state *state)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
 
    for (unsigned i = 0; i < subpass->color_count; i++) {
       if (!subpass->color_attachments[i])
@@ -1519,7 +1519,7 @@ static void render_subpass_clear(struct rendering_state *state)
 static void render_subpass_clear_fast(struct rendering_state *state)
 {
    /* attempt to use the clear interface first, then fallback to per-attchment clears */
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    bool has_color_value = false;
    uint32_t buffers = 0;
    VkClearValue color_value = {0};
@@ -1602,7 +1602,7 @@ slow_clear:
 
 static void render_pass_resolve(struct rendering_state *state)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
 
    if (subpass->depth_stencil_attachment && *subpass->depth_stencil_attachment &&
        subpass->ds_resolve_attachment && *subpass->ds_resolve_attachment) {
@@ -1693,13 +1693,11 @@ static void render_pass_resolve(struct rendering_state *state)
 }
 
 static void begin_render_subpass(struct rendering_state *state,
-                                 int subpass_idx)
+                                 const struct lvp_subpass *subpass)
 {
-   state->subpass = subpass_idx;
-
+   state->subpass = (void*)subpass;
    state->framebuffer.nr_cbufs = 0;
 
-   const struct lvp_subpass *subpass = &state->pass->subpasses[subpass_idx];
    for (unsigned i = 0; i < subpass->color_count; i++) {
       struct lvp_render_pass_attachment *color_att = subpass->color_attachments[i];
       if (color_att) {
@@ -1791,7 +1789,7 @@ static void begin_render_pass(const VkRenderPassBeginInfo *render_pass_begin,
       state->pending_clear_aspects[i] = state->attachments[i].pending_clear_aspects;
       state->cleared_views[i] = 0;
    }
-   begin_render_subpass(state, 0);
+   begin_render_subpass(state, state->pass->subpasses);
 }
 
 
@@ -1817,7 +1815,7 @@ static void handle_end_render_pass2(struct vk_cmd_queue_entry *cmd,
    free(state->attachments);
    state->attachments = NULL;
    state->pass = NULL;
-   state->subpass = 0;
+   state->subpass = NULL;
 }
 
 static void handle_next_subpass2(struct vk_cmd_queue_entry *cmd,
@@ -1832,7 +1830,7 @@ static void handle_next_subpass2(struct vk_cmd_queue_entry *cmd,
 static void handle_draw(struct vk_cmd_queue_entry *cmd,
                         struct rendering_state *state)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    struct pipe_draw_start_count_bias draw;
 
    state->info.index_size = 0;
@@ -1851,7 +1849,7 @@ static void handle_draw(struct vk_cmd_queue_entry *cmd,
 static void handle_draw_multi(struct vk_cmd_queue_entry *cmd,
                               struct rendering_state *state)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    struct pipe_draw_start_count_bias *draws = calloc(cmd->u.draw_multi_ext.draw_count,
                                                      sizeof(*draws));
 
@@ -2474,7 +2472,7 @@ static void handle_update_buffer(struct vk_cmd_queue_entry *cmd,
 static void handle_draw_indexed(struct vk_cmd_queue_entry *cmd,
                                 struct rendering_state *state)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    struct pipe_draw_start_count_bias draw = {0};
 
    state->info.index_bounds_valid = false;
@@ -2502,7 +2500,7 @@ static void handle_draw_indexed(struct vk_cmd_queue_entry *cmd,
 static void handle_draw_multi_indexed(struct vk_cmd_queue_entry *cmd,
                                       struct rendering_state *state)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    struct pipe_draw_start_count_bias *draws = calloc(cmd->u.draw_multi_indexed_ext.draw_count,
                                                      sizeof(*draws));
 
@@ -2544,7 +2542,7 @@ static void handle_draw_multi_indexed(struct vk_cmd_queue_entry *cmd,
 static void handle_draw_indirect(struct vk_cmd_queue_entry *cmd,
                                  struct rendering_state *state, bool indexed)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    struct pipe_draw_start_count_bias draw = {0};
    if (indexed) {
       state->info.index_bounds_valid = false;
@@ -2964,7 +2962,7 @@ static void handle_clear_attachments(struct vk_cmd_queue_entry *cmd,
 {
    for (uint32_t a = 0; a < cmd->u.clear_attachments.attachment_count; a++) {
       VkClearAttachment *att = &cmd->u.clear_attachments.attachments[a];
-      const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+      const struct lvp_subpass *subpass = state->subpass;
       struct lvp_image_view *imgv;
 
       if (att->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
@@ -3067,7 +3065,7 @@ static void handle_resolve_image(struct vk_cmd_queue_entry *cmd,
 static void handle_draw_indirect_count(struct vk_cmd_queue_entry *cmd,
                                        struct rendering_state *state, bool indexed)
 {
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    struct pipe_draw_start_count_bias draw = {0};
    if (indexed) {
       state->info.index_bounds_valid = false;
@@ -3425,7 +3423,7 @@ static void handle_draw_indirect_byte_count(struct vk_cmd_queue_entry *cmd,
                                             struct rendering_state *state)
 {
    struct vk_cmd_draw_indirect_byte_count_ext *dibc = &cmd->u.draw_indirect_byte_count_ext;
-   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   const struct lvp_subpass *subpass = state->subpass;
    struct pipe_draw_start_count_bias draw = {0};
 
    pipe_buffer_read(state->pctx,
