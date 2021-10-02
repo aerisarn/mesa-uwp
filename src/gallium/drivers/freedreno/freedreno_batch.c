@@ -135,6 +135,8 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
    batch->ctx = ctx;
    batch->nondraw = nondraw;
 
+   simple_mtx_init(&batch->submit_lock, mtx_plain);
+
    batch->resources =
       _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    batch->dependents =
@@ -318,6 +320,8 @@ __fd_batch_destroy(struct fd_batch *batch)
    _mesa_set_destroy(batch->dependents, NULL);
 
    batch_fini(batch);
+
+   simple_mtx_destroy(&batch->submit_lock);
 
    free(batch);
 }
