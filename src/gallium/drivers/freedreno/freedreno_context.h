@@ -37,7 +37,6 @@
 #include "util/perf/u_trace.h"
 
 #include "freedreno_autotune.h"
-#include "freedreno_batch_cache.h"
 #include "freedreno_gmem.h"
 #include "freedreno_perfetto.h"
 #include "freedreno_screen.h"
@@ -212,8 +211,6 @@ struct fd_context {
     * a ctxA batch
     */
    simple_mtx_t gmem_lock;
-
-   struct fd_batch_cache batch_cache;
 
    struct fd_device *dev;
    struct fd_screen *screen;

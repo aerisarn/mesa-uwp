@@ -353,7 +353,9 @@ fd_context_destroy(struct pipe_context *pctx)
 
    util_copy_framebuffer_state(&ctx->framebuffer, NULL);
    fd_batch_reference(&ctx->batch, NULL); /* unref current batch */
-   fd_bc_fini(ctx);
+
+   /* Make sure nothing in the batch cache references our context any more. */
+   fd_bc_flush(ctx, false);
 
    fd_prog_fini(pctx);
 
@@ -639,8 +641,6 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
    slab_create_child(&ctx->transfer_pool_unsync, &screen->transfer_pool);
-
-   fd_bc_init(ctx);
 
    fd_draw_init(pctx);
    fd_resource_context_init(pctx);
