@@ -45,6 +45,9 @@ vk_physical_device_init(struct vk_physical_device *pdevice,
    vk_physical_device_dispatch_table_from_entrypoints(
       &pdevice->dispatch_table, &vk_common_physical_device_entrypoints, false);
 
+   /* TODO */
+   pdevice->disk_cache = NULL;
+
    return VK_SUCCESS;
 }
 
