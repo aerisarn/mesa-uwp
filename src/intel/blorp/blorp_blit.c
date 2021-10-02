@@ -2198,8 +2198,23 @@ try_blorp_blit(struct blorp_batch *batch,
 
    const bool compute =
       key->base.shader_pipeline == BLORP_SHADER_PIPELINE_COMPUTE;
-   if (compute)
+   if (compute) {
       key->local_y = blorp_get_cs_local_y(params);
+
+      unsigned workgroup_width = 16 / key->local_y;
+      unsigned workgroup_height = key->local_y;
+
+      /* If the rectangle being drawn isn't an exact multiple of the
+       * workgroup size, we'll get extra invocations that should not
+       * perform blits.  We need to set use_kill to bounds check and
+       * prevent those invocations from blitting.
+       */
+      if ((params->x0 % workgroup_width) != 0 ||
+          (params->x1 % workgroup_width) != 0 ||
+          (params->y0 % workgroup_height) != 0 ||
+          (params->y1 % workgroup_height) != 0)
+         key->use_kill = true;
+   }
 
    if (compute) {
       if (!brw_blorp_get_blit_kernel_cs(batch, params, key))
