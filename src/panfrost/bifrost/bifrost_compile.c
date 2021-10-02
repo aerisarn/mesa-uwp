@@ -1696,6 +1696,23 @@ bi_lower_fsincos_32(bi_builder *b, bi_index dst, bi_index s0, bool cos)
         bi_fadd_f32_to(b, dst, I->dest[0], cos ? cosx : sinx, BI_ROUND_NONE);
 }
 
+/* The XOR lane op is useful for derivative calculation, but was added in v7.
+ * Add a safe helper that will do the appropriate lowering on v6 */
+
+static bi_index
+bi_clper_xor(bi_builder *b, bi_index s0, bi_index s1)
+{
+        if (b->shader->arch >= 7) {
+                return bi_clper_i32(b, s0, s1,
+                                BI_INACTIVE_RESULT_ZERO, BI_LANE_OP_XOR,
+                                BI_SUBGROUP_SUBGROUP4);
+        }
+
+        bi_index lane_id = bi_fau(BIR_FAU_LANE_ID, false);
+        bi_index lane = bi_lshift_xor_i32(b, lane_id, s1, bi_imm_u8(0));
+        return bi_clper_v6_i32(b, s0, lane);
+}
+
 static bi_instr *
 bi_emit_alu_bool(bi_builder *b, unsigned sz, nir_op op,
       bi_index dst, bi_index s0, bi_index s1, bi_index s2)
@@ -2010,6 +2027,14 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_csel_to(b, nir_op_infos[instr->op].input_types[0], sz, dst,
                                 s0, s1, s0, s1, BI_CMPF_GT);
                 break;
+
+        case nir_op_fddx_must_abs_mali:
+        case nir_op_fddy_must_abs_mali: {
+                bi_index bit = bi_imm_u32(instr->op == nir_op_fddx_must_abs_mali ? 1 : 2);
+                bi_index adjacent = bi_clper_xor(b, s0, bit);
+                bi_fadd_to(b, sz, dst, adjacent, bi_neg(s0), BI_ROUND_NONE);
+                break;
+        }
 
         case nir_op_fddx:
         case nir_op_fddy: {
