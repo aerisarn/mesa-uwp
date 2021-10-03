@@ -839,6 +839,7 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen, v
                               sscreen->info.is_amdgpu ? si_create_fence : NULL,
                               si_is_resource_busy,
                               true,
+                              false,
                               &((struct si_context *)ctx)->tc);
 
    if (tc && tc != ctx)

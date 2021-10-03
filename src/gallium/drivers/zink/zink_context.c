@@ -4215,7 +4215,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    struct threaded_context *tc = (struct threaded_context*)threaded_context_create(&ctx->base, &screen->transfer_pool,
                                                      zink_context_replace_buffer_storage,
                                                      zink_create_tc_fence_for_tc,
-                                                     zink_context_is_resource_busy, true, &ctx->tc);
+                                                     zink_context_is_resource_busy, true, false, &ctx->tc);
 
    if (tc && (struct zink_context*)tc != ctx) {
       threaded_context_init_bytes_mapped_limit(tc, 4);

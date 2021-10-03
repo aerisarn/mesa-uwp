@@ -2592,7 +2592,6 @@ tc_texture_subdata(struct pipe_context *_pipe,
       return pipe->func(pipe); \
    }
 
-TC_FUNC_SYNC_RET0(enum pipe_reset_status, get_device_reset_status)
 TC_FUNC_SYNC_RET0(uint64_t, get_timestamp)
 
 static void
@@ -2606,6 +2605,18 @@ tc_get_sample_position(struct pipe_context *_pipe,
    tc_sync(tc);
    pipe->get_sample_position(pipe, sample_count, sample_index,
                              out_value);
+}
+
+static enum pipe_reset_status
+tc_get_device_reset_status(struct pipe_context *_pipe)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct pipe_context *pipe = tc->pipe;
+
+   if (!tc->unsynchronized_get_device_reset_status)
+      tc_sync(tc);
+
+   return pipe->get_device_reset_status(pipe);
 }
 
 static void
@@ -4181,6 +4192,9 @@ void tc_driver_internal_flush_notify(struct threaded_context *tc)
  * \param driver_calls_flush_notify  whether the driver calls
  *                                   tc_driver_internal_flush_notify after every
  *                                   driver flush
+ * \param unsynchronized_get_device_reset_status  if true, get_device_reset_status()
+ *                                                calls will not be synchronized with
+ *                                                driver thread
  * \param out  if successful, the threaded_context will be returned here in
  *             addition to the return value if "out" != NULL
  */
@@ -4191,6 +4205,7 @@ threaded_context_create(struct pipe_context *pipe,
                         tc_create_fence_func create_fence,
                         tc_is_resource_busy is_resource_busy,
                         bool driver_calls_flush_notify,
+                        bool unsynchronized_get_device_reset_status,
                         struct threaded_context **out)
 {
    struct threaded_context *tc;
@@ -4219,6 +4234,7 @@ threaded_context_create(struct pipe_context *pipe,
    tc->create_fence = create_fence;
    tc->is_resource_busy = is_resource_busy;
    tc->driver_calls_flush_notify = driver_calls_flush_notify;
+   tc->unsynchronized_get_device_reset_status = unsynchronized_get_device_reset_status;
    tc->map_buffer_alignment =
       pipe->screen->get_param(pipe->screen, PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT);
    tc->ubo_alignment =

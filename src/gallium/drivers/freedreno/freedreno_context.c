@@ -701,6 +701,7 @@ fd_context_init_tc(struct pipe_context *pctx, unsigned flags)
       fd_fence_create_unflushed,
       fd_resource_busy,
       false,
+      false,
       &ctx->tc);
 
    if (tc && tc != pctx)

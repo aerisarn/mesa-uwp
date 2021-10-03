@@ -430,6 +430,14 @@ struct threaded_context {
    bool add_all_gfx_bindings_to_buffer_list;
    bool add_all_compute_bindings_to_buffer_list;
 
+   /**
+    * If true, ctx->get_device_reset_status() will be called without
+    * synchronizing with driver thread.  Drivers can enable this to avoid
+    * TC syncs if their implementation of get_device_reset_status() is
+    * safe to call without synchronizing with driver thread.
+    */
+   bool unsynchronized_get_device_reset_status;
+
    /* Estimation of how much vram/gtt bytes are mmap'd in
     * the current tc_batch.
     */
@@ -500,6 +508,7 @@ threaded_context_create(struct pipe_context *pipe,
                         tc_create_fence_func create_fence,
                         tc_is_resource_busy is_resource_busy,
                         bool driver_calls_flush_notify,
+                        bool unsynchronized_get_device_reset_status,
                         struct threaded_context **out);
 
 void

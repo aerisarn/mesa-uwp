@@ -381,5 +381,6 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                   NULL, /* TODO: asynchronous flushes? */
                                   NULL,
                                   false,
+                                  false,
                                   &ice->thrctx);
 }

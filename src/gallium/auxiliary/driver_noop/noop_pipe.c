@@ -459,7 +459,7 @@ static struct pipe_context *noop_create_context(struct pipe_screen *screen,
                               noop_replace_buffer_storage,
                               noop_create_fence,
                               noop_is_resource_busy,
-                              false, NULL);
+                              false, false, NULL);
 
    if (tc && tc != ctx)
       threaded_context_init_bytes_mapped_limit((struct threaded_context *)tc, 4);
