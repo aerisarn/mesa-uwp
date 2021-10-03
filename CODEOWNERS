@@ -121,6 +121,7 @@ meson.build @dbaker @eric
 
 # Panfrost
 /src/panfrost/ @alyssa
+/src/panfrost/vulkan/ @bbrezillon
 /src/gallium/drivers/panfrost/ @alyssa
 
 # SWR
