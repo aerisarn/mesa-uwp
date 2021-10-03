@@ -29,7 +29,7 @@ sh .gitlab-ci/container/create-android-cross-file.sh /$ndk arm-linux-androideabi
 
 # Not using build-libdrm.sh because we don't want its cleanup after building
 # each arch.  Fetch and extract now.
-export LIBDRM_VERSION=libdrm-2.4.102
+export LIBDRM_VERSION=libdrm-2.4.107
 wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.xz
 tar -xf $LIBDRM_VERSION.tar.xz && rm $LIBDRM_VERSION.tar.xz
 
@@ -50,7 +50,8 @@ for arch in \
           -Detnaviv=false \
           -Dfreedreno=false \
           -Dintel=false \
-          -Dcairo-tests=false
+          -Dcairo-tests=false \
+          -Dvalgrind=false
     ninja -C build-$arch install
     cd ..
 done

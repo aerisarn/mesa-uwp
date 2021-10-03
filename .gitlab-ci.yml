@@ -376,7 +376,7 @@ debian/android_build:
   extends:
     - .use-debian/x86_build-base
   variables:
-    MESA_IMAGE_TAG: &debian-android_build "2021-07-02-bump-libdrm"
+    MESA_IMAGE_TAG: &debian-android_build "2021-10-02-bump-libdrm-3"
 
 .use-debian/android_build:
   extends:
