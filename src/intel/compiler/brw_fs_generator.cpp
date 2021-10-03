@@ -2804,7 +2804,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                         "%d:%d spills:fills, %u sends, "
                         "scheduled with mode %s, "
                         "Promoted %u constants, "
-                        "compacted %d to %d bytes.",
+                        "compacted %d to %d bytes.\n",
                         _mesa_shader_stage_to_abbrev(stage),
                         dispatch_width, before_size / 16 - nop_count,
                         loop_count, perf.latency,

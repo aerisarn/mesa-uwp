@@ -2266,7 +2266,7 @@ generate_code(struct brw_codegen *p,
    brw_shader_debug_log(compiler, log_data,
                         "%s vec4 shader: %d inst, %d loops, %u cycles, "
                         "%d:%d spills:fills, %u sends, "
-                        "compacted %d to %d bytes.",
+                        "compacted %d to %d bytes.\n",
                         stage_abbrev, before_size / 16,
                         loop_count, perf.latency, spill_count,
                         fill_count, send_count, before_size, after_size);

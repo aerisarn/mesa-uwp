@@ -716,7 +716,7 @@ fs_visitor::limit_dispatch_width(unsigned n, const char *msg)
    } else {
       max_dispatch_width = MIN2(max_dispatch_width, n);
       brw_shader_perf_log(compiler, log_data,
-                          "Shader dispatch width limited to SIMD%d: %s",
+                          "Shader dispatch width limited to SIMD%d: %s\n",
                           n, msg);
    }
 }
@@ -9810,7 +9810,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
       v16->import_uniforms(v8);
       if (!v16->run_fs(allow_spilling, params->use_rep_send)) {
          brw_shader_perf_log(compiler, params->log_data,
-                             "SIMD16 shader failed to compile: %s",
+                             "SIMD16 shader failed to compile: %s\n",
                              v16->fail_msg);
       } else {
          simd16_cfg = v16->cfg;
@@ -9838,7 +9838,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
       v32->import_uniforms(v8);
       if (!v32->run_fs(allow_spilling, false)) {
          brw_shader_perf_log(compiler, params->log_data,
-                             "SIMD32 shader failed to compile: %s",
+                             "SIMD32 shader failed to compile: %s\n",
                              v32->fail_msg);
       } else {
          const performance &perf = v32->performance_analysis.require();
@@ -10212,7 +10212,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
       const bool allow_spilling = generate_all || v == NULL;
       if (!v16->run_cs(allow_spilling)) {
          brw_shader_perf_log(compiler, params->log_data,
-                             "SIMD16 shader failed to compile: %s",
+                             "SIMD16 shader failed to compile: %s\n",
                              v16->fail_msg);
          if (!v) {
             assert(v8 == NULL);
@@ -10260,7 +10260,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
       const bool allow_spilling = generate_all || v == NULL;
       if (!v32->run_cs(allow_spilling)) {
          brw_shader_perf_log(compiler, params->log_data,
-                             "SIMD32 shader failed to compile: %s",
+                             "SIMD32 shader failed to compile: %s\n",
                              v32->fail_msg);
          if (!v) {
             assert(v8 == NULL);
@@ -10456,7 +10456,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
       const bool allow_spilling = (v == NULL);
       if (!v16->run_bs(allow_spilling)) {
          brw_shader_perf_log(compiler, log_data,
-                             "SIMD16 shader failed to compile: %s",
+                             "SIMD16 shader failed to compile: %s\n",
                              v16->fail_msg);
          if (v == NULL) {
             assert(v8 == NULL);
