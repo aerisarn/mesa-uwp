@@ -136,7 +136,7 @@ endif
 libvulkan_radeon_ld_args = []
 libvulkan_radeon_link_depends = []
 
-if with_llvm and with_ld_version_script
+if with_ld_version_script
   libvulkan_radeon_ld_args += ['-Wl,--version-script', join_paths(meson.current_source_dir(), 'vulkan.sym')]
   libvulkan_radeon_link_depends += files('vulkan.sym')
 endif
