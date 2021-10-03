@@ -119,6 +119,10 @@ meson.build @dbaker @eric
 /src/mesa/drivers/dri/i965/ @kwg @llandwerlin @jekstrand @idr
 /doxygen/i965.doxy @kwg @llandwerlin @jekstrand @idr
 
+# Microsoft
+/src/microsoft/ @jenatali
+/src/gallium/drivers/d3d12/ @jenatali
+
 # Panfrost
 /src/panfrost/ @alyssa
 /src/panfrost/vulkan/ @bbrezillon
