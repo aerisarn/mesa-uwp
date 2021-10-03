@@ -271,6 +271,7 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
       }
       progress |= OPT(s, nir_opt_if, false);
       progress |= OPT(s, nir_opt_loop_unroll);
+      progress |= OPT(s, nir_lower_64bit_phis);
       progress |= OPT(s, nir_opt_remove_phis);
       progress |= OPT(s, nir_opt_undef);
    } while (progress);
