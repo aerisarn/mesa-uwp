@@ -2098,6 +2098,7 @@ static void
 blorp_exec_compute(struct blorp_batch *batch, const struct blorp_params *params)
 {
    assert(!(batch->flags & BLORP_BATCH_NO_UPDATE_CLEAR_COLOR));
+   assert(!(batch->flags & BLORP_BATCH_PREDICATE_ENABLE));
    assert(params->hiz_op == ISL_AUX_OP_NONE);
 
 #if GFX_VER >= 7
