@@ -524,12 +524,12 @@ handle_timestamp_query_cpu_job(struct v3dv_job *job)
 static VkResult
 handle_csd_job(struct v3dv_queue *queue,
                struct v3dv_job *job,
-               bool do_sem_wait);
+               struct v3dv_submit_info_semaphores *sems_info);
 
 static VkResult
 handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
                             struct v3dv_job *job,
-                            bool do_sem_wait)
+                            struct v3dv_submit_info_semaphores *sems_info)
 {
    assert(job->type == V3DV_JOB_TYPE_CPU_CSD_INDIRECT);
    struct v3dv_csd_indirect_cpu_job_info *info = &job->cpu.csd_indirect;
@@ -556,7 +556,7 @@ handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
       v3dv_cmd_buffer_rewrite_indirect_csd_job(info, group_counts);
    }
 
-   handle_csd_job(queue, info->csd_job, do_sem_wait);
+   handle_csd_job(queue, info->csd_job, sems_info);
 
    return VK_SUCCESS;
 }
@@ -887,7 +887,7 @@ handle_tfu_job(struct v3dv_queue *queue,
 static VkResult
 handle_csd_job(struct v3dv_queue *queue,
                struct v3dv_job *job,
-               bool do_sem_wait)
+               struct v3dv_submit_info_semaphores *sems_info)
 {
    struct v3dv_device *device = queue->device;
 
@@ -904,11 +904,29 @@ handle_csd_job(struct v3dv_queue *queue,
    assert(bo_idx == submit->bo_handle_count);
    submit->bo_handles = (uintptr_t)(void *)bo_handles;
 
-   const bool needs_sync = do_sem_wait || job->serialize;
+   const bool needs_sync = sems_info->sem_count || job->serialize;
+   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    mtx_lock(&queue->device->mutex);
-   submit->in_sync = needs_sync ? device->last_job_sync : 0;
-   submit->out_sync = device->last_job_sync;
+   /* Replace single semaphore settings whenever our kernel-driver supports
+    * multiple semaphore extension.
+    */
+   if (device->pdevice->caps.multisync) {
+      struct drm_v3d_multi_sync ms = { 0 };
+      set_multisync(&ms, sems_info, NULL, device, out_syncs, in_syncs,
+                    job->serialize, V3D_CSD);
+      if (!ms.base.id)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      submit->flags |= DRM_V3D_SUBMIT_EXTENSION;
+      submit->extensions = (uintptr_t)(void *)&ms;
+      /* Disable legacy sync interface when multisync extension is used */
+      submit->in_sync = 0;
+      submit->out_sync = 0;
+   } else {
+      submit->in_sync = needs_sync ? device->last_job_sync : 0;
+      submit->out_sync = device->last_job_sync;
+   }
    int ret = v3dv_ioctl(device->pdevice->render_fd,
                         DRM_IOCTL_V3D_SUBMIT_CSD, submit);
    mtx_unlock(&queue->device->mutex);
@@ -921,6 +939,9 @@ handle_csd_job(struct v3dv_queue *queue,
    }
 
    free(bo_handles);
+
+   if (device->pdevice->caps.multisync)
+      multisync_free(device, out_syncs, in_syncs);
 
    if (ret)
       return vk_error(device, VK_ERROR_DEVICE_LOST);
@@ -936,14 +957,13 @@ queue_submit_job(struct v3dv_queue *queue,
 {
    assert(job);
 
-   bool do_sem_wait = wait_sems_info->sem_count > 0;
    switch (job->type) {
    case V3DV_JOB_TYPE_GPU_CL:
       return handle_cl_job(queue, job, wait_sems_info);
    case V3DV_JOB_TYPE_GPU_TFU:
       return handle_tfu_job(queue, job, wait_sems_info);
    case V3DV_JOB_TYPE_GPU_CSD:
-      return handle_csd_job(queue, job, do_sem_wait);
+      return handle_csd_job(queue, job, wait_sems_info);
    case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
       return handle_reset_query_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_END_QUERY:
@@ -957,7 +977,7 @@ queue_submit_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE:
       return handle_copy_buffer_to_image_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
-      return handle_csd_indirect_cpu_job(queue, job, do_sem_wait);
+      return handle_csd_indirect_cpu_job(queue, job, wait_sems_info);
    case V3DV_JOB_TYPE_CPU_TIMESTAMP_QUERY:
       return handle_timestamp_query_cpu_job(job);
    default:
