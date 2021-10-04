@@ -1408,9 +1408,9 @@ v3d71_qpu_mul_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst
                 break;
 
         case V3D_QPU_M_FMOV:
-                instr->alu.mul.output_pack = (raddr_d >> 2) & 1;
+                instr->alu.mul.output_pack = raddr_d & 0x3;
 
-                if (!v3d_qpu_float32_unpack_unpack(raddr_d & 0x3,
+                if (!v3d_qpu_float32_unpack_unpack((raddr_d >> 2) & 0x7,
                                                    &instr->alu.mul.a.unpack)) {
                         return false;
                 }
@@ -2049,14 +2049,13 @@ v3d71_qpu_mul_pack(const struct v3d_device_info *devinfo,
                                                &packed)) {
                         return false;
                 }
-                opcode |= (packed >> 1) & 1;
-                raddr_d = (packed & 1) << 2;
+                raddr_d |= packed;
 
                 if (!v3d_qpu_float32_unpack_pack(instr->alu.mul.a.unpack,
                                                  &packed)) {
                         return false;
                 }
-                raddr_d |= packed;
+                raddr_d |= packed << 2;
                 break;
         }
 
