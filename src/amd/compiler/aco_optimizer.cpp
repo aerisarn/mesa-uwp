@@ -1030,9 +1030,9 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
          instr->vop3().opsel |= 1 << idx;
    }
 
-   /* label_vopc seems to be the only one worth keeping at the moment */
+   /* output modifier and label_vopc seem to be the only one worth keeping at the moment */
    for (Definition& def : instr->definitions)
-      ctx.info[def.tempId()].label &= label_vopc;
+      ctx.info[def.tempId()].label &= (label_vopc | instr_mod_labels);
 }
 
 void
