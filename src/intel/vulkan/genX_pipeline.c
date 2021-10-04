@@ -2012,7 +2012,6 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
 
       gs.OutputVertexSize        = gs_prog_data->output_vertex_size_hwords * 2 - 1;
       gs.OutputTopology          = gs_prog_data->output_topology;
-      gs.VertexURBEntryReadLength = gs_prog_data->base.urb_read_length;
       gs.ControlDataFormat       = gs_prog_data->control_data_format;
       gs.ControlDataHeaderSize   = gs_prog_data->control_data_header_size_hwords;
       gs.InstanceControl         = MAX2(gs_prog_data->invocations, 1) - 1;
