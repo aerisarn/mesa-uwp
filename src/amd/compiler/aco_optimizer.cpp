@@ -942,9 +942,14 @@ parse_extract(Instruction* instr)
       return SubdwordSel(size, offset, sext);
    } else if (instr->opcode == aco_opcode::p_insert && instr->operands[1].constantEquals(0)) {
       return instr->operands[2].constantEquals(8) ? SubdwordSel::ubyte : SubdwordSel::uword;
-   } else {
-      return SubdwordSel();
+   } else if (instr->opcode == aco_opcode::p_extract_vector) {
+      unsigned size = instr->definitions[0].bytes();
+      unsigned offset = instr->operands[1].constantValue() * size;
+      if (size <= 2)
+         return SubdwordSel(size, offset, false);
    }
+
+   return SubdwordSel();
 }
 
 SubdwordSel
@@ -1482,12 +1487,18 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          instr->operands[0] =
             Operand::get_const(ctx.program->chip_class, val, instr->definitions[0].bytes());
          ;
-      } else if (index == 0 && instr->operands[0].size() == instr->definitions[0].size()) {
-         ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
       }
 
-      if (instr->operands[0].bytes() != instr->definitions[0].bytes())
+      if (instr->operands[0].bytes() != instr->definitions[0].bytes()) {
+         if (instr->operands[0].size() != 1)
+            break;
+
+         if (index == 0)
+            ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
+         else
+            ctx.info[instr->definitions[0].tempId()].set_extract(instr.get());
          break;
+      }
 
       /* convert this extract into a copy instruction */
       instr->opcode = aco_opcode::p_parallelcopy;
