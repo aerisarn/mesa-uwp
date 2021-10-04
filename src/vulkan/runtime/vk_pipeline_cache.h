@@ -39,6 +39,10 @@ struct blob_reader;
 /* #include "util/set.h" */
 struct set;
 
+/* #include "compiler/nir/nir.h" */
+struct nir_shader;
+struct nir_shader_compiler_options;
+
 struct vk_pipeline_cache;
 struct vk_pipeline_cache_object;
 
@@ -235,6 +239,16 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
 struct vk_pipeline_cache_object * MUST_CHECK
 vk_pipeline_cache_add_object(struct vk_pipeline_cache *cache,
                              struct vk_pipeline_cache_object *object);
+
+struct nir_shader *
+vk_pipeline_cache_lookup_nir(struct vk_pipeline_cache *cache,
+                             const void *key_data, size_t key_size,
+                             const struct nir_shader_compiler_options *nir_options,
+                             bool *cache_hit, void *mem_ctx);
+void
+vk_pipeline_cache_add_nir(struct vk_pipeline_cache *cache,
+                          const void *key_data, size_t key_size,
+                          const struct nir_shader *nir);
 
 #ifdef __cplusplus
 }
