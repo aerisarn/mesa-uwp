@@ -2257,7 +2257,6 @@ static const __DRIextension *dri_screen_extensions_base[] = {
    &dri2ThrottleExtension.base,
    &dri2FenceExtension.base,
    &dri2InteropExtension.base,
-   &dri2NoErrorExtension.base,
    &driBlobExtension.base,
    &driMutableRenderBufferExtension.base,
 };
