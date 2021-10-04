@@ -1081,12 +1081,11 @@ write_combined_image_sampler_descriptor(struct radv_device *device,
                                         VkDescriptorType descriptor_type,
                                         const VkDescriptorImageInfo *image_info, bool has_sampler)
 {
-   RADV_FROM_HANDLE(radv_sampler, sampler, image_info->sampler);
-
    write_image_descriptor(device, cmd_buffer, sampler_offset, dst, buffer_list, descriptor_type,
                           image_info);
    /* copy over sampler state */
    if (has_sampler) {
+      RADV_FROM_HANDLE(radv_sampler, sampler, image_info->sampler);
       memcpy(dst + sampler_offset / sizeof(*dst), sampler->state, 16);
    }
 }
