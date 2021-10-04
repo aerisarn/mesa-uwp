@@ -1906,7 +1906,7 @@ try_blorp_blit(struct blorp_batch *batch,
       }
    } else if (params->dst.surf.usage & ISL_SURF_USAGE_STENCIL_BIT) {
       assert(params->dst.surf.format == ISL_FORMAT_R8_UINT);
-      if (devinfo->ver >= 9) {
+      if (devinfo->ver >= 9 && !(batch->flags & BLORP_BATCH_USE_COMPUTE)) {
          key->dst_usage = ISL_SURF_USAGE_STENCIL_BIT;
       } else {
          key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
