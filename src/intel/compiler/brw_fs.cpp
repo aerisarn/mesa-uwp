@@ -1590,9 +1590,9 @@ fs_visitor::assign_curb_setup()
    prog_data->curb_read_length = uniform_push_length + ubo_push_length;
 
    uint64_t used = 0;
+   bool is_compute = gl_shader_stage_is_compute(stage);
 
-   if (stage == MESA_SHADER_COMPUTE &&
-       brw_cs_prog_data(prog_data)->uses_inline_data) {
+   if (is_compute && brw_cs_prog_data(prog_data)->uses_inline_data) {
       /* With COMPUTE_WALKER, we can push up to one register worth of data via
        * the inline data parameter in the COMPUTE_WALKER command itself.
        *
@@ -1600,7 +1600,7 @@ fs_visitor::assign_curb_setup()
        */
       assert(devinfo->verx10 >= 125);
       assert(uniform_push_length <= 1);
-   } else if (stage == MESA_SHADER_COMPUTE && devinfo->verx10 >= 125) {
+   } else if (is_compute && devinfo->verx10 >= 125) {
       fs_builder ubld = bld.exec_all().group(8, 0).at(
          cfg->first_block(), cfg->first_block()->start());
 
