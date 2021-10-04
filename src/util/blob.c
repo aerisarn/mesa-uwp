@@ -82,9 +82,10 @@ grow_to_fit(struct blob *blob, size_t additional)
  *
  * \return True unless allocation fails
  */
-static bool
-align_blob(struct blob *blob, size_t alignment)
+bool
+blob_align(struct blob *blob, size_t alignment)
 {
+   assert(align64((uintptr_t)blob->data, alignment) == (uintptr_t)blob->data);
    const size_t new_size = align64(blob->size, alignment);
 
    if (blob->size < new_size) {
@@ -99,9 +100,10 @@ align_blob(struct blob *blob, size_t alignment)
    return true;
 }
 
-static void
-align_blob_reader(struct blob_reader *blob, size_t alignment)
+void
+blob_reader_align(struct blob_reader *blob, size_t alignment)
 {
+   assert(align64((uintptr_t)blob->data, alignment) == (uintptr_t)blob->data);
    blob->current = blob->data + align64(blob->current - blob->data, alignment);
 }
 
@@ -186,14 +188,14 @@ blob_reserve_bytes(struct blob *blob, size_t to_write)
 intptr_t
 blob_reserve_uint32(struct blob *blob)
 {
-   align_blob(blob, sizeof(uint32_t));
+   blob_align(blob, sizeof(uint32_t));
    return blob_reserve_bytes(blob, sizeof(uint32_t));
 }
 
 intptr_t
 blob_reserve_intptr(struct blob *blob)
 {
-   align_blob(blob, sizeof(intptr_t));
+   blob_align(blob, sizeof(intptr_t));
    return blob_reserve_bytes(blob, sizeof(intptr_t));
 }
 
@@ -201,7 +203,7 @@ blob_reserve_intptr(struct blob *blob)
 bool                                                     \
 name(struct blob *blob, type value)                      \
 {                                                        \
-   align_blob(blob, sizeof(value));                      \
+   blob_align(blob, sizeof(value));                      \
    return blob_write_bytes(blob, &value, sizeof(value)); \
 }
 
@@ -319,7 +321,7 @@ name(struct blob_reader *blob)             \
 {                                          \
    type ret;                               \
    int size = sizeof(ret);                 \
-   align_blob_reader(blob, size);          \
+   blob_reader_align(blob, size);          \
    if (! ensure_can_read(blob, size))      \
       return 0;                            \
    ret = *((type*) blob->current);         \
