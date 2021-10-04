@@ -294,63 +294,23 @@ anv_shader_bin_deserialize(struct vk_device *vk_device,
 }
 
 struct anv_shader_bin *
-anv_pipeline_cache_search(struct vk_pipeline_cache *cache,
-                          const void *key_data, uint32_t key_size)
-{
-   struct vk_pipeline_cache_object *object =
-      vk_pipeline_cache_lookup_object(cache, key_data, key_size,
-                                      &anv_shader_bin_ops, NULL);
-   if (object == NULL)
-      return NULL;
-
-   return container_of(object, struct anv_shader_bin, base);
-}
-
-struct anv_shader_bin *
-anv_pipeline_cache_upload_kernel(struct vk_pipeline_cache *cache,
-                                 gl_shader_stage stage,
-                                 const void *key_data, uint32_t key_size,
-                                 const void *kernel_data, uint32_t kernel_size,
-                                 const struct brw_stage_prog_data *prog_data,
-                                 uint32_t prog_data_size,
-                                 const struct brw_compile_stats *stats,
-                                 uint32_t num_stats,
-                                 const nir_xfb_info *xfb_info,
-                                 const struct anv_pipeline_bind_map *bind_map)
-{
-   struct anv_device *device =
-      container_of(cache->base.device, struct anv_device, vk);
-
-   struct anv_shader_bin *shader =
-      anv_shader_bin_create(device, stage,
-                            key_data, key_size,
-                            kernel_data, kernel_size,
-                            prog_data, prog_data_size,
-                            stats, num_stats,
-                            xfb_info, bind_map);
-   if (shader == NULL)
-      return NULL;
-
-   struct vk_pipeline_cache_object *cached =
-      vk_pipeline_cache_add_object(cache, &shader->base);
-
-   return container_of(cached, struct anv_shader_bin, base);
-}
-
-struct anv_shader_bin *
 anv_device_search_for_kernel(struct anv_device *device,
                              struct vk_pipeline_cache *cache,
                              const void *key_data, uint32_t key_size,
                              bool *user_cache_hit)
 {
-   *user_cache_hit = false;
-
+   /* Use the default pipeline cache if none is specified */
    if (cache == NULL)
-      return NULL;
+      cache = device->default_pipeline_cache;
 
+   bool cache_hit = false;
    struct vk_pipeline_cache_object *object =
       vk_pipeline_cache_lookup_object(cache, key_data, key_size,
-                                      &anv_shader_bin_ops, user_cache_hit);
+                                      &anv_shader_bin_ops, &cache_hit);
+   if (user_cache_hit != NULL) {
+      *user_cache_hit = object != NULL && cache_hit &&
+                        cache != device->default_pipeline_cache;
+   }
    if (object == NULL)
       return NULL;
 
@@ -370,25 +330,24 @@ anv_device_upload_kernel(struct anv_device *device,
                          const nir_xfb_info *xfb_info,
                          const struct anv_pipeline_bind_map *bind_map)
 {
-   struct anv_shader_bin *bin;
-   if (cache) {
-      bin = anv_pipeline_cache_upload_kernel(cache, stage, key_data, key_size,
-                                             kernel_data, kernel_size,
-                                             prog_data, prog_data_size,
-                                             stats, num_stats,
-                                             xfb_info, bind_map);
-   } else {
-      bin = anv_shader_bin_create(device, stage, key_data, key_size,
-                                  kernel_data, kernel_size,
-                                  prog_data, prog_data_size,
-                                  stats, num_stats,
-                                  xfb_info, bind_map);
-   }
+   /* Use the default pipeline cache if none is specified */
+   if (cache == NULL)
+      cache = device->default_pipeline_cache;
 
-   if (bin == NULL)
+   struct anv_shader_bin *shader =
+      anv_shader_bin_create(device, stage,
+                            key_data, key_size,
+                            kernel_data, kernel_size,
+                            prog_data, prog_data_size,
+                            stats, num_stats,
+                            xfb_info, bind_map);
+   if (shader == NULL)
       return NULL;
 
-   return bin;
+   struct vk_pipeline_cache_object *cached =
+      vk_pipeline_cache_add_object(cache, &shader->base);
+
+   return container_of(cached, struct anv_shader_bin, base);
 }
 
 #define SHA1_KEY_SIZE 20
@@ -401,7 +360,7 @@ anv_device_search_for_nir(struct anv_device *device,
                           void *mem_ctx)
 {
    if (cache == NULL)
-      return false;
+      cache = device->default_pipeline_cache;
 
    return vk_pipeline_cache_lookup_nir(cache, sha1_key, SHA1_KEY_SIZE,
                                        nir_options, NULL, mem_ctx);
@@ -414,7 +373,7 @@ anv_device_upload_nir(struct anv_device *device,
                       unsigned char sha1_key[SHA1_KEY_SIZE])
 {
    if (cache == NULL)
-      return;
+      cache = device->default_pipeline_cache;
 
    vk_pipeline_cache_add_nir(cache, sha1_key, SHA1_KEY_SIZE, nir);
 }

@@ -32,7 +32,8 @@ lookup_blorp_shader(struct blorp_batch *batch,
    struct anv_device *device = blorp->driver_ctx;
 
    struct anv_shader_bin *bin =
-      anv_pipeline_cache_search(device->blorp_cache, key, key_size);
+      anv_device_search_for_kernel(device, device->blorp_cache,
+                                   key, key_size, NULL);
    if (!bin)
       return false;
 
@@ -64,10 +65,10 @@ upload_blorp_shader(struct blorp_batch *batch, uint32_t stage,
    };
 
    struct anv_shader_bin *bin =
-      anv_pipeline_cache_upload_kernel(device->blorp_cache, stage,
-                                       key, key_size, kernel, kernel_size,
-                                       prog_data, prog_data_size,
-                                       NULL, 0, NULL, &bind_map);
+      anv_device_upload_kernel(device, device->blorp_cache, stage,
+                               key, key_size, kernel, kernel_size,
+                               prog_data, prog_data_size,
+                               NULL, 0, NULL, &bind_map);
 
    if (!bin)
       return false;

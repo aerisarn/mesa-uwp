@@ -1107,21 +1107,6 @@ struct anv_pipeline_bind_map;
 extern const struct vk_pipeline_cache_object_ops *const anv_cache_import_ops[2];
 
 struct anv_shader_bin *
-anv_pipeline_cache_search(struct vk_pipeline_cache *cache,
-                          const void *key, uint32_t key_size);
-struct anv_shader_bin *
-anv_pipeline_cache_upload_kernel(struct vk_pipeline_cache *cache,
-                                 gl_shader_stage stage,
-                                 const void *key_data, uint32_t key_size,
-                                 const void *kernel_data, uint32_t kernel_size,
-                                 const struct brw_stage_prog_data *prog_data,
-                                 uint32_t prog_data_size,
-                                 const struct brw_compile_stats *stats,
-                                 uint32_t num_stats,
-                                 const struct nir_xfb_info *xfb_info,
-                                 const struct anv_pipeline_bind_map *bind_map);
-
-struct anv_shader_bin *
 anv_device_search_for_kernel(struct anv_device *device,
                              struct vk_pipeline_cache *cache,
                              const void *key_data, uint32_t key_size,
