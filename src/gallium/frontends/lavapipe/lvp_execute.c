@@ -2996,6 +2996,9 @@ static void handle_clear_attachments(struct vk_cmd_queue_entry *cmd,
       for (uint32_t r = 0; r < cmd->u.clear_attachments.rect_count; r++) {
 
          VkClearRect *rect = &cmd->u.clear_attachments.rects[r];
+         /* avoid crashing on spec violations */
+         rect->rect.extent.width = MIN2(rect->rect.extent.width, state->framebuffer.width - rect->rect.offset.x);
+         rect->rect.extent.height = MIN2(rect->rect.extent.height, state->framebuffer.height - rect->rect.offset.y);
          if (subpass->view_mask) {
             u_foreach_bit(i, subpass->view_mask)
                clear_attachment_layers(state, imgv, &rect->rect,
