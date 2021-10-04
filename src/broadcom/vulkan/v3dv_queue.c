@@ -628,10 +628,110 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
    return ret ? VK_ERROR_OUT_OF_HOST_MEMORY : VK_SUCCESS;
 }
 
+static void
+multisync_free(struct v3dv_device *device,
+               struct drm_v3d_sem *out_syncs,
+               struct drm_v3d_sem *in_syncs)
+{
+   vk_free(&device->vk.alloc, out_syncs);
+   vk_free(&device->vk.alloc, in_syncs);
+}
+
+static struct drm_v3d_sem *
+set_syncs(struct v3dv_device *device,
+          uint32_t *count, VkSemaphore *sems,
+          uint32_t last_job_sync)
+{
+   uint32_t n_sem = *count;
+
+   if (last_job_sync)
+      (*count)++;
+
+   if (!*count)
+      return NULL;
+
+   struct drm_v3d_sem *syncs =
+      vk_zalloc(&device->vk.alloc, *count * sizeof(struct drm_v3d_sem),
+                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+
+   if (!syncs)
+      return NULL;
+
+   if (n_sem)
+      for (unsigned i = 0; i < n_sem; i++) {
+         struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
+         syncs[i].handle = sem->sync;
+      }
+
+   if (last_job_sync)
+      syncs[n_sem].handle = last_job_sync;
+
+   return syncs;
+}
+
+static void
+set_ext(struct drm_v3d_extension *ext,
+	struct drm_v3d_extension *next,
+	uint32_t id,
+	uintptr_t flags)
+{
+   ext->next = (uintptr_t)(void *)next;
+   ext->id = id;
+   ext->flags = flags;
+}
+
+/* This function sets the extension for multiple in/out syncobjs. When it is
+ * successful, it sets the extension id to DRM_V3D_EXT_ID_MULTI_SYNC.
+ * Otherwise, the extension id is 0, which means an out-of-memory error.
+ */
+static void
+set_multisync(struct drm_v3d_multi_sync *ms,
+              struct v3dv_submit_info_semaphores *sems_info,
+              struct drm_v3d_extension *next,
+              struct v3dv_device *device,
+              struct drm_v3d_sem *out_syncs,
+              struct drm_v3d_sem *in_syncs,
+              bool serialize,
+              enum v3d_queue queue)
+{
+   uint32_t out_sync_count = 0, in_sync_count = 0;
+
+   /* pSignalSemaphores are handled in the master thread (the reason for
+    * out_sync_count being initially zero), but we still want to always signal
+    * last_job_sync so we can serialize jobs when needed.
+    */
+   out_sync_count = 0;
+   out_syncs = set_syncs(device, &out_sync_count, NULL, device->last_job_sync);
+
+   assert(out_sync_count > 0);
+
+   if (!out_syncs)
+      return;
+
+   /* If we are serializing a job in a command buffer, we are already making
+    * it wait for completion of the last job submitted, so in that case we can
+    * skip waiting for any additional semaphores.
+    */
+   in_sync_count = serialize ? 0 : sems_info->sem_count;
+   in_syncs = set_syncs(device, &in_sync_count, sems_info->sems,
+                        (serialize ? device->last_job_sync : 0));
+   if (!in_syncs && in_sync_count) {
+      vk_free(&device->vk.alloc, out_syncs);
+      return;
+   }
+
+   set_ext(&ms->base, next, DRM_V3D_EXT_ID_MULTI_SYNC, 0);
+   ms->wait_stage = queue;
+   ms->out_sync_count = out_sync_count;
+   ms->out_syncs = (uintptr_t)(void *)out_syncs;
+   ms->in_sync_count = in_sync_count;
+   ms->in_syncs = (uintptr_t)(void *)in_syncs;
+}
+
 static VkResult
 handle_cl_job(struct v3dv_queue *queue,
               struct v3dv_job *job,
-              bool do_sem_wait)
+              struct v3dv_submit_info_semaphores *sems_info)
 {
    struct v3dv_device *device = queue->device;
 
@@ -673,8 +773,8 @@ handle_cl_job(struct v3dv_queue *queue,
    assert(bo_idx == submit.bo_handle_count);
    submit.bo_handles = (uintptr_t)(void *)bo_handles;
 
-   /* We need a binning sync if we are waiting on a sempahore (do_sem_wait) or
-    * if the job comes after a pipeline barrier than involves geometry stages
+   /* We need a binning sync if we are waiting on a semaphore or if the job
+    * comes after a pipeline barrier that involves geometry stages
     * (needs_bcl_sync).
     *
     * We need a render sync if the job doesn't need a binning sync but has
@@ -683,20 +783,39 @@ handle_cl_job(struct v3dv_queue *queue,
     * need to add a fence for those, however, we might need to wait on a CSD or
     * TFU job, which are not automatically serialized with CL jobs.
     *
-    * FIXME: for now, if we are asked to wait on any semaphores, we just wait
-    * on the last job we submitted. In the future we might want to pass the
-    * actual syncobj of the wait semaphores so we don't block on the last RCL
-    * if we only need to wait for a previous CSD or TFU, for example, but
-    * we would have to extend our kernel interface to support the case where
-    * we have more than one semaphore to wait on.
+    * FIXME: see if we can do better and avoid bcl syncs for any jobs in the
+    * command buffer after the first job where we should be able to track bcl
+    * dependencies strictly through barriers.
     */
-   const bool needs_bcl_sync = do_sem_wait || job->needs_bcl_sync;
+   const bool needs_bcl_sync =
+      sems_info->sem_count > 0 || job->needs_bcl_sync;
    const bool needs_rcl_sync = job->serialize && !needs_bcl_sync;
+   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    mtx_lock(&queue->device->mutex);
-   submit.in_sync_bcl = needs_bcl_sync ? device->last_job_sync : 0;
-   submit.in_sync_rcl = needs_rcl_sync ? device->last_job_sync : 0;
-   submit.out_sync = device->last_job_sync;
+
+   /* Replace single semaphore settings whenever our kernel-driver supports
+    * multiple semaphores extension.
+    */
+   if (device->pdevice->caps.multisync) {
+      struct drm_v3d_multi_sync ms = { 0 };
+      set_multisync(&ms, sems_info, NULL, device, out_syncs, in_syncs,
+                    job->serialize, needs_rcl_sync ? V3D_RENDER : V3D_BIN);
+      if (!ms.base.id)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      submit.flags |= DRM_V3D_SUBMIT_EXTENSION;
+      submit.extensions = (uintptr_t)(void *)&ms;
+      /* Disable legacy sync interface when multisync extension is used */
+      submit.in_sync_rcl = 0;
+      submit.in_sync_bcl = 0;
+      submit.out_sync = 0;
+   } else {
+      submit.in_sync_bcl = needs_bcl_sync ? device->last_job_sync : 0;
+      submit.in_sync_rcl = needs_rcl_sync ? device->last_job_sync : 0;
+      submit.out_sync = device->last_job_sync;
+   }
+
    v3dv_clif_dump(device, job, &submit);
    int ret = v3dv_ioctl(device->pdevice->render_fd,
                         DRM_IOCTL_V3D_SUBMIT_CL, &submit);
@@ -710,6 +829,8 @@ handle_cl_job(struct v3dv_queue *queue,
    }
 
    free(bo_handles);
+   if (device->pdevice->caps.multisync)
+      multisync_free(device, out_syncs, in_syncs);
 
    if (ret)
       return vk_error(device, VK_ERROR_DEVICE_LOST);
@@ -796,7 +917,7 @@ queue_submit_job(struct v3dv_queue *queue,
    bool do_sem_wait = wait_sems_info->sem_count > 0;
    switch (job->type) {
    case V3DV_JOB_TYPE_GPU_CL:
-      return handle_cl_job(queue, job, do_sem_wait);
+      return handle_cl_job(queue, job, wait_sems_info);
    case V3DV_JOB_TYPE_GPU_TFU:
       return handle_tfu_job(queue, job, do_sem_wait);
    case V3DV_JOB_TYPE_GPU_CSD:
