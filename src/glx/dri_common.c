@@ -460,7 +460,6 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
                         struct dri_ctx_attribs *dca)
 {
    unsigned i;
-   int no_error = 0;
    uint32_t profile = GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
 
    dca->major_ver = 1;
@@ -470,6 +469,7 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
    dca->release = __DRI_CTX_RELEASE_BEHAVIOR_FLUSH;
    dca->flags = 0;
    dca->api = __DRI_API_OPENGL;
+   dca->no_error = 0;
 
    if (num_attribs == 0)
       return __DRI_CTX_ERROR_SUCCESS;
@@ -490,7 +490,7 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
 	 dca->flags = attribs[i * 2 + 1];
 	 break;
       case GLX_CONTEXT_OPENGL_NO_ERROR_ARB:
-	 no_error = attribs[i * 2 + 1];
+	 dca->no_error = attribs[i * 2 + 1];
 	 break;
       case GLX_CONTEXT_PROFILE_MASK_ARB:
 	 profile = attribs[i * 2 + 1];
@@ -533,10 +533,6 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
       }
    }
 
-   if (no_error) {
-      dca->flags |= __DRI_CTX_FLAG_NO_ERROR;
-   }
-
    switch (profile) {
    case GLX_CONTEXT_CORE_PROFILE_BIT_ARB:
       /* This is the default value, but there are no profiles before OpenGL
@@ -571,7 +567,7 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
    if (dca->flags & ~(__DRI_CTX_FLAG_DEBUG |
                       __DRI_CTX_FLAG_FORWARD_COMPATIBLE |
                       __DRI_CTX_FLAG_ROBUST_BUFFER_ACCESS |
-                      __DRI_CTX_FLAG_NO_ERROR))
+                      __DRI_CTX_FLAG_RESET_ISOLATION))
       return __DRI_CTX_ERROR_UNKNOWN_FLAG;
 
    /* There are no forward-compatible contexts before OpenGL 3.0.  The
@@ -586,34 +582,12 @@ dri_convert_glx_attribs(unsigned num_attribs, const uint32_t *attribs,
    if (dca->major_ver >= 3 && dca->render_type == GLX_COLOR_INDEX_TYPE)
       return __DRI_CTX_ERROR_BAD_FLAG;
 
-   return __DRI_CTX_ERROR_SUCCESS;
-}
-
-_X_HIDDEN bool
-dri2_check_no_error(uint32_t flags, struct glx_context *share_context,
-                    int major, unsigned *error)
-{
-   Bool noError = flags & __DRI_CTX_FLAG_NO_ERROR;
-
    /* The KHR_no_error specs say:
     *
     *    Requires OpenGL ES 2.0 or OpenGL 2.0.
     */
-   if (noError && major < 2) {
-      *error = __DRI_CTX_ERROR_UNKNOWN_ATTRIBUTE;
-      return false;
-   }
-
-   /* The GLX_ARB_create_context_no_error specs say:
-    *
-    *    BadMatch is generated if the value of GLX_CONTEXT_OPENGL_NO_ERROR_ARB
-    *    used to create <share_context> does not match the value of
-    *    GLX_CONTEXT_OPENGL_NO_ERROR_ARB for the context being created.
-    */
-   if (share_context && !!share_context->noError != !!noError) {
-      *error = __DRI_CTX_ERROR_BAD_FLAG;
-      return false;
-   }
+   if (dca->no_error && dca->major_ver < 2)
+      return __DRI_CTX_ERROR_UNKNOWN_ATTRIBUTE;
 
    /* The GLX_ARB_create_context_no_error specs say:
     *
@@ -621,13 +595,11 @@ dri2_check_no_error(uint32_t flags, struct glx_context *share_context,
     *    the same time as a debug or robustness context is specified.
     *
     */
-   if (noError && ((flags & __DRI_CTX_FLAG_DEBUG) ||
-                   (flags & __DRI_CTX_FLAG_ROBUST_BUFFER_ACCESS))) {
-      *error = __DRI_CTX_ERROR_BAD_FLAG;
-      return false;
-   }
+   if (dca->no_error && ((dca->flags & __DRI_CTX_FLAG_DEBUG) ||
+                         (dca->flags & __DRI_CTX_FLAG_ROBUST_BUFFER_ACCESS)))
+      return __DRI_CTX_ERROR_BAD_FLAG;
 
-   return true;
+   return __DRI_CTX_ERROR_SUCCESS;
 }
 
 struct glx_context *

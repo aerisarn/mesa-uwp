@@ -523,9 +523,6 @@ drisw_create_context_attribs(struct glx_screen *base,
    if (*error != __DRI_CTX_ERROR_SUCCESS)
       return NULL;
 
-   if (!dri2_check_no_error(dca.flags, shareList, dca.major_ver, error))
-      return NULL;
-
    /* Check the renderType value */
    if (!validate_renderType_against_config(config_base, dca.render_type)) {
        return NULL;
@@ -535,6 +532,17 @@ drisw_create_context_attribs(struct glx_screen *base,
       /* We can't share with an indirect context */
       if (!shareList->isDirect)
          return NULL;
+
+      /* The GLX_ARB_create_context_no_error specs say:
+       *
+       *    BadMatch is generated if the value of GLX_CONTEXT_OPENGL_NO_ERROR_ARB
+       *    used to create <share_context> does not match the value of
+       *    GLX_CONTEXT_OPENGL_NO_ERROR_ARB for the context being created.
+       */
+      if (!!shareList->noError != !!dca.no_error) {
+         *error = __DRI_CTX_ERROR_BAD_FLAG;
+         return NULL;
+      }
 
       pcp_shared = (struct drisw_context *) shareList;
       shared = pcp_shared->driContext;
@@ -557,17 +565,15 @@ drisw_create_context_attribs(struct glx_screen *base,
        ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_RELEASE_BEHAVIOR;
        ctx_attribs[num_ctx_attribs++] = dca.release;
    }
+   if (dca.no_error) {
+       ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_NO_ERROR;
+       ctx_attribs[num_ctx_attribs++] = GL_TRUE;
+       pcp->base.noError = GL_TRUE;
+   }
 
    if (dca.flags != 0) {
       ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_FLAGS;
-
-      /* The current __DRI_CTX_FLAG_* values are identical to the
-       * GLX_CONTEXT_*_BIT values.
-       */
       ctx_attribs[num_ctx_attribs++] = dca.flags;
-
-      if (dca.flags & __DRI_CTX_FLAG_NO_ERROR)
-         pcp->base.noError = GL_TRUE;
    }
 
    pcp->base.renderType = dca.render_type;
@@ -768,6 +774,12 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
           && strcmp(extensions[i]->name, __DRI2_RENDERER_QUERY) == 0) {
          psc->rendererQuery = (__DRI2rendererQueryExtension *) extensions[i];
          __glXEnableDirectExtension(&psc->base, "GLX_MESA_query_renderer");
+         unsigned int no_error = 0;
+         if (psc->rendererQuery->queryInteger(psc->driScreen,
+                                              __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT,
+                                              &no_error) == 0 && no_error)
+             __glXEnableDirectExtension(&psc->base,
+                                        "GLX_ARB_create_context_no_error");
       }
 
       if (strcmp(extensions[i]->name, __DRI2_ROBUSTNESS) == 0)
@@ -778,10 +790,6 @@ driswBindExtensions(struct drisw_screen *psc, const __DRIextension **extensions)
 	  __glXEnableDirectExtension(&psc->base,
 				     "GLX_ARB_context_flush_control");
       }
-
-      if (strcmp(extensions[i]->name, __DRI2_NO_ERROR) == 0)
-         __glXEnableDirectExtension(&psc->base,
-                                    "GLX_ARB_create_context_no_error");
    }
 }
 
