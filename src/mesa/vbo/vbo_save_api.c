@@ -168,8 +168,13 @@ copy_vertices(struct gl_context *ctx,
    assert(save->copied.buffer == NULL);
    save->copied.buffer = malloc(sizeof(fi_type) * sz * prim->count);
 
-   return vbo_copy_vertices(ctx, prim->mode, prim->start, &prim->count,
-                            prim->begin, sz, true, save->copied.buffer, src);
+   unsigned r = vbo_copy_vertices(ctx, prim->mode, prim->start, &prim->count,
+                                  prim->begin, sz, true, save->copied.buffer, src);
+   if (!r) {
+      free(save->copied.buffer);
+      save->copied.buffer = NULL;
+   }
+   return r;
 }
 
 
