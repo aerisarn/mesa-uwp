@@ -914,6 +914,11 @@ llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
    }
    SPIRV::TranslatorOpts spirv_opts = SPIRV::TranslatorOpts(version, ext_map);
 
+#if LLVM_VERSION_MAJOR >= 13
+   /* This was the default in 12.0 and older, but currently we'll fail to parse without this */
+   spirv_opts.setPreserveOCLKernelArgTypeMetadataThroughString(true);
+#endif
+
    std::ostringstream spv_stream;
    if (!::llvm::writeSpirv(mod.get(), spirv_opts, spv_stream, log)) {
       clc_error(logger, "%sTranslation from LLVM IR to SPIR-V failed.\n",
