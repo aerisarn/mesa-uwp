@@ -145,6 +145,11 @@ class CrosServoRun:
                 self.print_error("Detected cheza power management bus error, restarting run...")
                 return 2
 
+            if re.search("coreboot.*bootblock starting", line):
+                self.print_error(
+                    "Detected spontaneous reboot, restarting run...")
+                return 2
+
             result = re.search("hwci: mesa: (\S*)", line)
             if result:
                 if result.group(1) == "pass":
