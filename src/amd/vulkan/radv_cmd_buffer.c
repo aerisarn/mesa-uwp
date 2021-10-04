@@ -405,8 +405,10 @@ radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->cs)
       cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
 
-   for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
+   for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
+      vk_object_base_finish(&cmd_buffer->descriptors[i].push_set.set.base);
+   }
 
    vk_object_base_finish(&cmd_buffer->meta_push_descriptors.base);
 
@@ -448,6 +450,10 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
 
    vk_object_base_init(&device->vk, &cmd_buffer->meta_push_descriptors.base,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET);
+
+   for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
+      vk_object_base_init(&device->vk, &cmd_buffer->descriptors[i].push_set.set.base,
+                          VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
    *pCommandBuffer = radv_cmd_buffer_to_handle(cmd_buffer);
 
