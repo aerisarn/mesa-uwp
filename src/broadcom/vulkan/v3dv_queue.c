@@ -841,18 +841,40 @@ handle_cl_job(struct v3dv_queue *queue,
 static VkResult
 handle_tfu_job(struct v3dv_queue *queue,
                struct v3dv_job *job,
-               bool do_sem_wait)
+               struct v3dv_submit_info_semaphores *sems_info)
 {
    struct v3dv_device *device = queue->device;
 
-   const bool needs_sync = do_sem_wait || job->serialize;
+   const bool needs_sync = sems_info->sem_count || job->serialize;
+   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    mtx_lock(&device->mutex);
-   job->tfu.in_sync = needs_sync ? device->last_job_sync : 0;
-   job->tfu.out_sync = device->last_job_sync;
+
+   /* Replace single semaphore settings whenever our kernel-driver supports
+    * multiple semaphore extension.
+    */
+   if (device->pdevice->caps.multisync) {
+      struct drm_v3d_multi_sync ms = { 0 };
+      set_multisync(&ms, sems_info, NULL, device, out_syncs, in_syncs,
+                    job->serialize, V3D_TFU);
+      if (!ms.base.id)
+         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      job->tfu.flags |= DRM_V3D_SUBMIT_EXTENSION;
+      job->tfu.extensions = (uintptr_t)(void *)&ms;
+      /* Disable legacy sync interface when multisync extension is used */
+      job->tfu.in_sync = 0;
+      job->tfu.out_sync = 0;
+   } else {
+      job->tfu.in_sync = needs_sync ? device->last_job_sync : 0;
+      job->tfu.out_sync = device->last_job_sync;
+   }
    int ret = v3dv_ioctl(device->pdevice->render_fd,
                         DRM_IOCTL_V3D_SUBMIT_TFU, &job->tfu);
    mtx_unlock(&device->mutex);
+
+   if (device->pdevice->caps.multisync)
+      multisync_free(device, out_syncs, in_syncs);
 
    if (ret != 0) {
       fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
@@ -919,7 +941,7 @@ queue_submit_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_GPU_CL:
       return handle_cl_job(queue, job, wait_sems_info);
    case V3DV_JOB_TYPE_GPU_TFU:
-      return handle_tfu_job(queue, job, do_sem_wait);
+      return handle_tfu_job(queue, job, wait_sems_info);
    case V3DV_JOB_TYPE_GPU_CSD:
       return handle_csd_job(queue, job, do_sem_wait);
    case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
