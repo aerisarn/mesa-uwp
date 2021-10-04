@@ -1022,6 +1022,7 @@ struct tu_cmd_state
    bool has_subpass_predication;
    bool predication_active;
    bool disable_gmem;
+   enum a5xx_line_mode line_mode;
 
    struct tu_lrz_state lrz;
 
@@ -1213,6 +1214,8 @@ struct tu_pipeline
 
    bool rb_depth_cntl_disable;
 
+   enum a5xx_line_mode line_mode;
+
    /* draw states for the pipeline */
    struct tu_draw_state load_state, rast_state, blend_state;
 
@@ -1282,7 +1285,8 @@ tu6_emit_depth_bias(struct tu_cs *cs,
                     float clamp,
                     float slope_factor);
 
-void tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits samples);
+void tu6_emit_msaa(struct tu_cs *cs, VkSampleCountFlagBits samples,
+                   enum a5xx_line_mode line_mode);
 
 void tu6_emit_window_scissor(struct tu_cs *cs, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2);
 

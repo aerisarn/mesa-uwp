@@ -696,7 +696,8 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
       }
    }
 
-   tu6_emit_msaa(cs, samples);
+   cmd->state.line_mode = RECTANGULAR;
+   tu6_emit_msaa(cs, samples, cmd->state.line_mode);
 }
 
 static void

@@ -190,6 +190,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_shader_viewport_index_layer = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_provoking_vertex = true,
+      .EXT_line_rasterization = true,
 #ifdef ANDROID
       .ANDROID_native_buffer = true,
 #endif
@@ -735,6 +736,17 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->mutableDescriptorType = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+         VkPhysicalDeviceLineRasterizationFeaturesEXT *features =
+            (VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
+         features->rectangularLines = true;
+         features->bresenhamLines = true;
+         features->smoothLines = false;
+         features->stippledRectangularLines = false;
+         features->stippledBresenhamLines = false;
+         features->stippledSmoothLines = false;
+         break;
+      }
 
       default:
          break;
@@ -1082,6 +1094,12 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceProvokingVertexPropertiesEXT *)ext;
          properties->provokingVertexModePerPipeline = true;
          properties->transformFeedbackPreservesTriangleFanProvokingVertex = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+         VkPhysicalDeviceLineRasterizationPropertiesEXT *props =
+            (VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
+         props->lineSubPixelPrecisionBits = 8;
          break;
       }
 
