@@ -892,7 +892,7 @@ SOFTWARE.
 		<display>
 			{IMMED}
 		</display>
-		<field name="IMMED" low="0" high="7" type="int"/>
+		<field name="IMMED" low="0" high="7" type="uint"/>
 	</override>
 	<display>
 		r{GPR}.{SWIZ}

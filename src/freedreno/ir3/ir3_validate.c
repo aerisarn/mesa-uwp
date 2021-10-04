@@ -72,6 +72,9 @@ static void
 validate_src(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr,
              struct ir3_register *reg)
 {
+   if (reg->flags & IR3_REG_IMMED)
+      validate_assert(ctx, ir3_valid_immediate(instr, reg->iim_val));
+
    if (!(reg->flags & IR3_REG_SSA) || !reg->def)
       return;
 

@@ -736,6 +736,8 @@ int ir3_flut(struct ir3_register *src_reg);
 
 bool ir3_valid_flags(struct ir3_instruction *instr, unsigned n, unsigned flags);
 
+bool ir3_valid_immediate(struct ir3_instruction *instr, int32_t immed);
+
 #include "util/set.h"
 #define foreach_ssa_use(__use, __instr)                                        \
    for (struct ir3_instruction *__use = (void *)~0; __use && (__instr)->uses;  \
