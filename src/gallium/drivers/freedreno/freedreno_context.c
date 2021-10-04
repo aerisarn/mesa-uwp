@@ -428,11 +428,6 @@ fd_get_device_reset_status(struct pipe_context *pctx)
    int global_faults = fd_get_reset_count(ctx, false);
    enum pipe_reset_status status;
 
-   /* Not called in driver thread, but threaded_context syncs
-    * before calling this:
-    */
-   fd_context_access_begin(ctx);
-
    if (context_faults != ctx->context_reset_count) {
       status = PIPE_GUILTY_CONTEXT_RESET;
    } else if (global_faults != ctx->global_reset_count) {
@@ -443,8 +438,6 @@ fd_get_device_reset_status(struct pipe_context *pctx)
 
    ctx->context_reset_count = context_faults;
    ctx->global_reset_count = global_faults;
-
-   fd_context_access_end(ctx);
 
    return status;
 }
@@ -701,7 +694,7 @@ fd_context_init_tc(struct pipe_context *pctx, unsigned flags)
       fd_fence_create_unflushed,
       fd_resource_busy,
       false,
-      false,
+      true,
       &ctx->tc);
 
    if (tc && tc != pctx)

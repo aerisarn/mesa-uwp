@@ -323,9 +323,12 @@ struct fd_context {
     * count increases, it means some other context crashed.  If
     * per-context reset count increases, it means we crashed the
     * gpu.
+    *
+    * Only accessed by front-end thread, never accessed by TC driver
+    * thread.
     */
-   uint32_t context_reset_count dt;
-   uint32_t global_reset_count dt;
+   uint32_t context_reset_count;
+   uint32_t global_reset_count;
 
    /* Context sequence #, used for batch-cache key: */
    uint16_t seqno;
