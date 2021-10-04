@@ -195,7 +195,7 @@ endif
 
 icd_command = [
   prog_python, '@INPUT0@',
-  '--api-version', '1.2', '--xml', '@INPUT1@',
+  '--api-version', '1.3', '--xml', '@INPUT1@',
   '--lib-path', join_paths(icd_lib_path, icd_file_name),
   '--out', '@OUTPUT@',
 ]
