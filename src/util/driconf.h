@@ -371,10 +371,6 @@
    DRI_CONF_OPT_B(allow_rgb565_configs, def, \
                   "Allow exposure of visuals and fbconfigs with rgb565 formats")
 
-#define DRI_CONF_ALLOW_FP16_CONFIGS(def) \
-   DRI_CONF_OPT_B(allow_fp16_configs, def, \
-                  "Allow exposure of visuals and fbconfigs with fp16 formats")
-
 #define DRI_CONF_FORCE_INTEGER_TEX_NEAREST(def) \
    DRI_CONF_OPT_B(force_integer_tex_nearest, def, \
                   "Force integer textures to use nearest filtering")

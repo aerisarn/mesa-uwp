@@ -98,7 +98,6 @@ static const driOptionDescription brw_driconf[] = {
       DRI_CONF_VS_POSITION_ALWAYS_PRECISE(false)
       DRI_CONF_ALLOW_RGB10_CONFIGS(false)
       DRI_CONF_ALLOW_RGB565_CONFIGS(true)
-      DRI_CONF_ALLOW_FP16_CONFIGS(false)
    DRI_CONF_SECTION_END
 };
 
@@ -2184,9 +2183,7 @@ brw_allowed_format(__DRIscreen *dri_screen, mesa_format format)
       return false;
 
    /* Shall we expose fp16 formats? */
-   bool allow_fp16_configs = driQueryOptionb(&screen->optionCache,
-                                             "allow_fp16_configs");
-   allow_fp16_configs &= brw_loader_get_cap(dri_screen, DRI_LOADER_CAP_FP16);
+   bool allow_fp16_configs = brw_loader_get_cap(dri_screen, DRI_LOADER_CAP_FP16);
    if (!allow_fp16_configs &&
        (format == MESA_FORMAT_RGBA_FLOAT16 ||
         format == MESA_FORMAT_RGBX_FLOAT16))
