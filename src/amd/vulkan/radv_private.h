@@ -867,6 +867,10 @@ struct radv_device_memory {
 #endif
 };
 
+void radv_device_memory_init(struct radv_device_memory *mem, struct radv_device *device,
+                             struct radeon_winsys_bo *bo);
+void radv_device_memory_finish(struct radv_device_memory *mem);
+
 struct radv_descriptor_range {
    uint64_t va;
    uint32_t size;

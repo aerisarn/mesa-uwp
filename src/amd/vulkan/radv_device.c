@@ -5046,6 +5046,22 @@ radv_get_memory_fd(struct radv_device *device, struct radv_device_memory *memory
 }
 
 void
+radv_device_memory_init(struct radv_device_memory *mem, struct radv_device *device,
+                        struct radeon_winsys_bo *bo)
+{
+   memset(mem, 0, sizeof(*mem));
+   vk_object_base_init(&device->vk, &mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY);
+
+   mem->bo = bo;
+}
+
+void
+radv_device_memory_finish(struct radv_device_memory *mem)
+{
+   vk_object_base_finish(&mem->base);
+}
+
+void
 radv_free_memory(struct radv_device *device, const VkAllocationCallbacks *pAllocator,
                  struct radv_device_memory *mem)
 {
@@ -5070,7 +5086,7 @@ radv_free_memory(struct radv_device *device, const VkAllocationCallbacks *pAlloc
       mem->bo = NULL;
    }
 
-   vk_object_base_finish(&mem->base);
+   radv_device_memory_finish(mem);
    vk_free2(&device->vk.alloc, pAllocator, mem);
 }
 
@@ -5108,11 +5124,11 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
    }
 
    mem =
-      vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (mem == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY);
+   radv_device_memory_init(mem, device, NULL);
 
    if (wsi_info) {
       if(wsi_info->implicit_sync)
@@ -5153,7 +5169,6 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
                             (int)(priority_float * RADV_BO_PRIORITY_APPLICATION_MAX));
 
    mem->user_ptr = NULL;
-   mem->bo = NULL;
 
 #if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
    mem->android_hardware_buffer = NULL;
