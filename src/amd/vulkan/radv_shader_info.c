@@ -130,26 +130,41 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    switch (instr->intrinsic) {
    case nir_intrinsic_load_barycentric_sample:
    case nir_intrinsic_load_barycentric_pixel:
-   case nir_intrinsic_load_barycentric_centroid: {
+   case nir_intrinsic_load_barycentric_centroid:
+   case nir_intrinsic_load_barycentric_at_sample:
+   case nir_intrinsic_load_barycentric_at_offset: {
       enum glsl_interp_mode mode = nir_intrinsic_interp_mode(instr);
       switch (mode) {
-      case INTERP_MODE_NONE:
       case INTERP_MODE_SMOOTH:
+      case INTERP_MODE_NONE:
+         if (instr->intrinsic == nir_intrinsic_load_barycentric_pixel ||
+             instr->intrinsic == nir_intrinsic_load_barycentric_at_sample ||
+             instr->intrinsic == nir_intrinsic_load_barycentric_at_offset)
+            info->ps.reads_persp_center = true;
+         else if (instr->intrinsic == nir_intrinsic_load_barycentric_centroid)
+            info->ps.reads_persp_centroid = true;
+         else if (instr->intrinsic == nir_intrinsic_load_barycentric_sample)
+            info->ps.reads_persp_sample = true;
+         break;
       case INTERP_MODE_NOPERSPECTIVE:
-         info->ps.uses_persp_or_linear_interp = true;
+         if (instr->intrinsic == nir_intrinsic_load_barycentric_pixel ||
+             instr->intrinsic == nir_intrinsic_load_barycentric_at_sample ||
+             instr->intrinsic == nir_intrinsic_load_barycentric_at_offset)
+            info->ps.reads_linear_center = true;
+         else if (instr->intrinsic == nir_intrinsic_load_barycentric_centroid)
+            info->ps.reads_linear_centroid = true;
+         else if (instr->intrinsic == nir_intrinsic_load_barycentric_sample)
+            info->ps.reads_linear_sample = true;
          break;
       default:
          break;
       }
-      break;
-   }
-   case nir_intrinsic_load_barycentric_at_offset:
-   case nir_intrinsic_load_barycentric_at_sample:
-      if (nir_intrinsic_interp_mode(instr) != INTERP_MODE_FLAT)
-         info->ps.uses_persp_or_linear_interp = true;
-
       if (instr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
          info->ps.needs_sample_positions = true;
+      break;
+   }
+   case nir_intrinsic_load_barycentric_model:
+      info->ps.reads_barycentric_model = true;
       break;
    case nir_intrinsic_load_draw_id:
       info->vs.needs_draw_id = true;
@@ -186,6 +201,21 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
       break;
    case nir_intrinsic_load_sample_mask_in:
       info->ps.reads_sample_mask_in = true;
+      break;
+   case nir_intrinsic_load_sample_id:
+      info->ps.reads_sample_id = true;
+      break;
+   case nir_intrinsic_load_frag_shading_rate:
+      info->ps.reads_frag_shading_rate = true;
+      break;
+   case nir_intrinsic_load_front_face:
+      info->ps.reads_front_face = true;
+      break;
+   case nir_intrinsic_load_frag_coord:
+      info->ps.reads_frag_coord_mask = nir_ssa_def_components_read(&instr->dest.ssa);
+      break;
+   case nir_intrinsic_load_sample_pos:
+      info->ps.reads_sample_pos_mask = nir_ssa_def_components_read(&instr->dest.ssa);
       break;
    case nir_intrinsic_load_view_index:
       info->needs_multiview_view_index = true;
@@ -725,8 +755,15 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
    }
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      bool uses_persp_or_linear_interp = info->ps.reads_persp_center ||
+                                         info->ps.reads_persp_centroid ||
+                                         info->ps.reads_persp_sample ||
+                                         info->ps.reads_linear_center ||
+                                         info->ps.reads_linear_centroid ||
+                                         info->ps.reads_linear_sample;
+
       info->ps.allow_flat_shading =
-         !(info->ps.uses_persp_or_linear_interp || info->ps.needs_sample_positions ||
+         !(uses_persp_or_linear_interp || info->ps.needs_sample_positions ||
            info->ps.writes_memory || nir->info.fs.needs_quad_helper_invocations ||
            BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) ||
            BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_POINT_COORD) ||

@@ -300,8 +300,19 @@ struct radv_shader_info {
       bool early_fragment_test;
       bool post_depth_coverage;
       bool reads_sample_mask_in;
+      bool reads_front_face;
+      bool reads_sample_id;
+      bool reads_frag_shading_rate;
+      bool reads_barycentric_model;
+      bool reads_persp_sample;
+      bool reads_persp_center;
+      bool reads_persp_centroid;
+      bool reads_linear_sample;
+      bool reads_linear_center;
+      bool reads_linear_centroid;
+      uint8_t reads_frag_coord_mask;
+      uint8_t reads_sample_pos_mask;
       uint8_t depth_layout;
-      bool uses_persp_or_linear_interp;
       bool allow_flat_shading;
    } ps;
    struct {
