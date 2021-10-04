@@ -1822,6 +1822,56 @@ radv_get_max_waves(const struct radv_device *device, struct radv_shader_variant 
    return chip_class >= GFX10 ? max_simd_waves * (wave_size / 32) : max_simd_waves;
 }
 
+unsigned
+radv_compute_spi_ps_input(const struct radv_device *device,
+                          const struct radv_shader_info *info)
+{
+   unsigned spi_ps_input;
+
+   spi_ps_input = S_0286CC_PERSP_CENTER_ENA(info->ps.reads_persp_center) |
+                  S_0286CC_PERSP_CENTROID_ENA(info->ps.reads_persp_centroid) |
+                  S_0286CC_PERSP_SAMPLE_ENA(info->ps.reads_persp_sample) |
+                  S_0286CC_LINEAR_CENTER_ENA(info->ps.reads_linear_center) |
+                  S_0286CC_LINEAR_CENTROID_ENA(info->ps.reads_linear_centroid) |
+                  S_0286CC_LINEAR_SAMPLE_ENA(info->ps.reads_linear_sample)|
+                  S_0286CC_PERSP_PULL_MODEL_ENA(info->ps.reads_barycentric_model) |
+                  S_0286CC_FRONT_FACE_ENA(info->ps.reads_front_face);
+
+   if (info->ps.reads_frag_coord_mask ||
+       info->ps.reads_sample_pos_mask) {
+      uint8_t mask = info->ps.reads_frag_coord_mask | info->ps.reads_sample_pos_mask;
+
+      for (unsigned i = 0; i < 4; i++) {
+         if (mask & (1 << i))
+            spi_ps_input |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
+      }
+
+      if (device->adjust_frag_coord_z && info->ps.reads_frag_coord_mask & (1 << 2)) {
+         spi_ps_input |= S_0286CC_ANCILLARY_ENA(1);
+      }
+   }
+
+   if (info->ps.reads_sample_id || info->ps.reads_frag_shading_rate || info->ps.reads_sample_mask_in) {
+      spi_ps_input |= S_0286CC_ANCILLARY_ENA(1);
+   }
+
+   if (info->ps.reads_sample_mask_in) {
+      spi_ps_input |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
+   }
+
+   if (G_0286CC_POS_W_FLOAT_ENA(spi_ps_input)) {
+      /* If POS_W_FLOAT (11) is enabled, at least one of PERSP_* must be enabled too */
+      spi_ps_input |= S_0286CC_PERSP_CENTER_ENA(1);
+   }
+
+   if (!(spi_ps_input & 0x7F)) {
+      /* At least one of PERSP_* (0xF) or LINEAR_* (0x70) must be enabled */
+      spi_ps_input |= S_0286CC_PERSP_CENTER_ENA(1);
+   }
+
+   return spi_ps_input;
+}
+
 VkResult
 radv_GetShaderInfoAMD(VkDevice _device, VkPipeline _pipeline, VkShaderStageFlagBits shaderStage,
                       VkShaderInfoTypeAMD infoType, size_t *pInfoSize, void *pInfo)

@@ -771,5 +771,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
            BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS) ||
            BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN) ||
            BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION));
+
+      info->ps.spi_ps_input = radv_compute_spi_ps_input(device, info);
    }
 }

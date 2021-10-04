@@ -36,36 +36,6 @@ namespace aco {
 
 namespace {
 
-unsigned
-get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
-{
-   switch (interp) {
-   case INTERP_MODE_SMOOTH:
-   case INTERP_MODE_NONE:
-      if (intrin == nir_intrinsic_load_barycentric_pixel ||
-          intrin == nir_intrinsic_load_barycentric_at_sample ||
-          intrin == nir_intrinsic_load_barycentric_at_offset)
-         return S_0286CC_PERSP_CENTER_ENA(1);
-      else if (intrin == nir_intrinsic_load_barycentric_centroid)
-         return S_0286CC_PERSP_CENTROID_ENA(1);
-      else if (intrin == nir_intrinsic_load_barycentric_sample)
-         return S_0286CC_PERSP_SAMPLE_ENA(1);
-      break;
-   case INTERP_MODE_NOPERSPECTIVE:
-      if (intrin == nir_intrinsic_load_barycentric_pixel ||
-          intrin == nir_intrinsic_load_barycentric_at_sample ||
-          intrin == nir_intrinsic_load_barycentric_at_offset)
-         return S_0286CC_LINEAR_CENTER_ENA(1);
-      else if (intrin == nir_intrinsic_load_barycentric_centroid)
-         return S_0286CC_LINEAR_CENTROID_ENA(1);
-      else if (intrin == nir_intrinsic_load_barycentric_sample)
-         return S_0286CC_LINEAR_SAMPLE_ENA(1);
-      break;
-   default: break;
-   }
-   return 0;
-}
-
 bool
 is_loop_header_block(nir_block* block)
 {
@@ -483,8 +453,6 @@ init_context(isel_context* ctx, nir_shader* shader)
    ctx->program->allocateRange(impl->ssa_alloc);
    RegClass* regclasses = ctx->program->temp_rc.data() + ctx->first_temp_id;
 
-   unsigned spi_ps_inputs = 0;
-
    std::unique_ptr<unsigned[]> nir_to_aco{new unsigned[impl->num_blocks]()};
 
    /* TODO: make this recursive to improve compile times */
@@ -777,51 +745,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                RegClass rc = get_reg_class(ctx, type, intrinsic->dest.ssa.num_components,
                                            intrinsic->dest.ssa.bit_size);
                regclasses[intrinsic->dest.ssa.index] = rc;
-
-               switch (intrinsic->intrinsic) {
-               case nir_intrinsic_load_barycentric_sample:
-               case nir_intrinsic_load_barycentric_pixel:
-               case nir_intrinsic_load_barycentric_centroid:
-               case nir_intrinsic_load_barycentric_at_sample:
-               case nir_intrinsic_load_barycentric_at_offset: {
-                  glsl_interp_mode mode = (glsl_interp_mode)nir_intrinsic_interp_mode(intrinsic);
-                  spi_ps_inputs |= get_interp_input(intrinsic->intrinsic, mode);
-                  break;
-               }
-               case nir_intrinsic_load_barycentric_model:
-                  spi_ps_inputs |= S_0286CC_PERSP_PULL_MODEL_ENA(1);
-                  break;
-               case nir_intrinsic_load_front_face:
-                  spi_ps_inputs |= S_0286CC_FRONT_FACE_ENA(1);
-                  break;
-               case nir_intrinsic_load_frag_coord:
-               case nir_intrinsic_load_sample_pos: {
-                  uint8_t mask = nir_ssa_def_components_read(&intrinsic->dest.ssa);
-                  for (unsigned i = 0; i < 4; i++) {
-                     if (mask & (1 << i))
-                        spi_ps_inputs |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
-                  }
-
-                  if (ctx->options->adjust_frag_coord_z &&
-                      intrinsic->intrinsic == nir_intrinsic_load_frag_coord &&
-                      G_0286CC_POS_Z_FLOAT_ENA(spi_ps_inputs)) {
-                     /* Enable ancillary for adjusting gl_FragCoord.z for
-                      * VRS due to a hw bug on some GFX10.3 chips.
-                      */
-                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                  }
-                  break;
-               }
-               case nir_intrinsic_load_sample_id:
-               case nir_intrinsic_load_frag_shading_rate:
-                  spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                  break;
-               case nir_intrinsic_load_sample_mask_in:
-                  spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                  spi_ps_inputs |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
-                  break;
-               default: break;
-               }
                break;
             }
             case nir_instr_type_tex: {
@@ -878,18 +801,8 @@ init_context(isel_context* ctx, nir_shader* shader)
       }
    }
 
-   if (G_0286CC_POS_W_FLOAT_ENA(spi_ps_inputs)) {
-      /* If POS_W_FLOAT (11) is enabled, at least one of PERSP_* must be enabled too */
-      spi_ps_inputs |= S_0286CC_PERSP_CENTER_ENA(1);
-   }
-
-   if (!(spi_ps_inputs & 0x7F)) {
-      /* At least one of PERSP_* (0xF) or LINEAR_* (0x70) must be enabled */
-      spi_ps_inputs |= S_0286CC_PERSP_CENTER_ENA(1);
-   }
-
-   ctx->program->config->spi_ps_input_ena = spi_ps_inputs;
-   ctx->program->config->spi_ps_input_addr = spi_ps_inputs;
+   ctx->program->config->spi_ps_input_ena = ctx->args->shader_info->ps.spi_ps_input;
+   ctx->program->config->spi_ps_input_addr = ctx->args->shader_info->ps.spi_ps_input;
 
    ctx->cf_info.nir_to_aco = std::move(nir_to_aco);
 
