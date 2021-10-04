@@ -174,6 +174,10 @@ struct v3dv_physical_device {
    struct {
       bool merge_jobs;
    } options;
+
+   struct {
+      bool multisync;
+   } caps;
 };
 
 VkResult v3dv_physical_device_acquire_display(struct v3dv_instance *instance,
