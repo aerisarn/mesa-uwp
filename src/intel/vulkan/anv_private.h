@@ -76,6 +76,7 @@
 #include "vk_framebuffer.h"
 #include "vk_image.h"
 #include "vk_instance.h"
+#include "vk_pipeline_cache.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_sync.h"
@@ -1047,8 +1048,6 @@ struct anv_physical_device {
     struct vk_sync_timeline_type                sync_timeline_type;
     const struct vk_sync_type *                 sync_types[4];
 
-    struct disk_cache *                         disk_cache;
-
     struct wsi_device                       wsi_device;
     int                                         local_fd;
     bool                                        has_local;
@@ -1078,8 +1077,6 @@ struct anv_instance {
     bool                                        physical_devices_enumerated;
     struct list_head                            physical_devices;
 
-    bool                                        pipeline_cache_enabled;
-
     struct driOptionCache                       dri_options;
     struct driOptionCache                       available_dri_options;
 };
@@ -1104,32 +1101,16 @@ struct anv_queue {
    struct intel_ds_queue *                   ds;
 };
 
-struct anv_pipeline_cache {
-   struct vk_object_base                        base;
-   struct anv_device *                          device;
-   pthread_mutex_t                              mutex;
-
-   struct hash_table *                          nir_cache;
-
-   struct hash_table *                          cache;
-
-   bool                                         external_sync;
-};
-
 struct nir_xfb_info;
 struct anv_pipeline_bind_map;
 
-void anv_pipeline_cache_init(struct anv_pipeline_cache *cache,
-                             struct anv_device *device,
-                             bool cache_enabled,
-                             bool external_sync);
-void anv_pipeline_cache_finish(struct anv_pipeline_cache *cache);
+extern const struct vk_pipeline_cache_object_ops *const anv_cache_import_ops[2];
 
 struct anv_shader_bin *
-anv_pipeline_cache_search(struct anv_pipeline_cache *cache,
+anv_pipeline_cache_search(struct vk_pipeline_cache *cache,
                           const void *key, uint32_t key_size);
 struct anv_shader_bin *
-anv_pipeline_cache_upload_kernel(struct anv_pipeline_cache *cache,
+anv_pipeline_cache_upload_kernel(struct vk_pipeline_cache *cache,
                                  gl_shader_stage stage,
                                  const void *key_data, uint32_t key_size,
                                  const void *kernel_data, uint32_t kernel_size,
@@ -1142,13 +1123,13 @@ anv_pipeline_cache_upload_kernel(struct anv_pipeline_cache *cache,
 
 struct anv_shader_bin *
 anv_device_search_for_kernel(struct anv_device *device,
-                             struct anv_pipeline_cache *cache,
+                             struct vk_pipeline_cache *cache,
                              const void *key_data, uint32_t key_size,
                              bool *user_cache_bit);
 
 struct anv_shader_bin *
 anv_device_upload_kernel(struct anv_device *device,
-                         struct anv_pipeline_cache *cache,
+                         struct vk_pipeline_cache *cache,
                          gl_shader_stage stage,
                          const void *key_data, uint32_t key_size,
                          const void *kernel_data, uint32_t kernel_size,
@@ -1164,14 +1145,14 @@ struct nir_shader_compiler_options;
 
 struct nir_shader *
 anv_device_search_for_nir(struct anv_device *device,
-                          struct anv_pipeline_cache *cache,
+                          struct vk_pipeline_cache *cache,
                           const struct nir_shader_compiler_options *nir_options,
                           unsigned char sha1_key[20],
                           void *mem_ctx);
 
 void
 anv_device_upload_nir(struct anv_device *device,
-                      struct anv_pipeline_cache *cache,
+                      struct vk_pipeline_cache *cache,
                       const struct nir_shader *nir,
                       unsigned char sha1_key[20]);
 
@@ -1221,7 +1202,8 @@ struct anv_device {
     struct anv_bo *                             trivial_batch_bo;
     struct anv_state                            null_surface_state;
 
-    struct anv_pipeline_cache                   default_pipeline_cache;
+    struct vk_pipeline_cache *                  default_pipeline_cache;
+    struct vk_pipeline_cache *                  blorp_cache;
     struct blorp_context                        blorp;
 
     struct anv_state                            border_colors;
@@ -1342,7 +1324,7 @@ anv_mocs(const struct anv_device *device,
    return isl_mocs(&device->isl_dev, usage, bo && bo->is_external);
 }
 
-void anv_device_init_blorp(struct anv_device *device);
+bool anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
 
 enum anv_bo_alloc_flags {
@@ -3251,17 +3233,10 @@ struct anv_pipeline_bind_map {
    struct anv_push_range                        push_ranges[4];
 };
 
-struct anv_shader_bin_key {
-   uint32_t size;
-   uint8_t data[0];
-};
-
 struct anv_shader_bin {
-   uint32_t ref_cnt;
+   struct vk_pipeline_cache_object base;
 
    gl_shader_stage stage;
-
-   const struct anv_shader_bin_key *key;
 
    struct anv_state kernel;
    uint32_t kernel_size;
@@ -3288,22 +3263,16 @@ anv_shader_bin_create(struct anv_device *device,
                       const struct nir_xfb_info *xfb_info,
                       const struct anv_pipeline_bind_map *bind_map);
 
-void
-anv_shader_bin_destroy(struct anv_device *device, struct anv_shader_bin *shader);
-
 static inline void
 anv_shader_bin_ref(struct anv_shader_bin *shader)
 {
-   assert(shader && shader->ref_cnt >= 1);
-   p_atomic_inc(&shader->ref_cnt);
+   vk_pipeline_cache_object_ref(&shader->base);
 }
 
 static inline void
 anv_shader_bin_unref(struct anv_device *device, struct anv_shader_bin *shader)
 {
-   assert(shader && shader->ref_cnt >= 1);
-   if (p_atomic_dec_zero(&shader->ref_cnt))
-      anv_shader_bin_destroy(device, shader);
+   vk_pipeline_cache_object_unref(&shader->base);
 }
 
 #define anv_shader_bin_get_bsr(bin, local_arg_offset) ({             \
@@ -3611,14 +3580,14 @@ anv_pipeline_finish(struct anv_pipeline *pipeline,
 
 VkResult
 anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline, struct anv_device *device,
-                           struct anv_pipeline_cache *cache,
+                           struct vk_pipeline_cache *cache,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const VkPipelineRenderingCreateInfo *rendering_info,
                            const VkAllocationCallbacks *alloc);
 
 VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
-                        struct anv_pipeline_cache *cache,
+                        struct vk_pipeline_cache *cache,
                         const VkComputePipelineCreateInfo *info,
                         const struct vk_shader_module *module,
                         const char *entrypoint,
@@ -3627,7 +3596,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 VkResult
 anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
                               struct anv_device *device,
-                              struct anv_pipeline_cache *cache,
+                              struct vk_pipeline_cache *cache,
                               const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                               const VkAllocationCallbacks *alloc);
 
@@ -4595,8 +4564,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_cache, base, VkPipelineCache,
-                               VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_pipeline_layout, base, VkPipelineLayout,

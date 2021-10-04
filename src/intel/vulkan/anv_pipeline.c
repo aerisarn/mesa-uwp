@@ -697,7 +697,7 @@ anv_pipeline_hash_ray_tracing_combined_shader(struct anv_ray_tracing_pipeline *p
 
 static nir_shader *
 anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
-                           struct anv_pipeline_cache *cache,
+                           struct vk_pipeline_cache *cache,
                            void *mem_ctx,
                            struct anv_pipeline_stage *stage)
 {
@@ -1418,7 +1418,7 @@ anv_pipeline_init_from_cached_graphics(struct anv_graphics_pipeline *pipeline)
 
 static VkResult
 anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
-                              struct anv_pipeline_cache *cache,
+                              struct vk_pipeline_cache *cache,
                               const VkGraphicsPipelineCreateInfo *info,
                               const VkPipelineRenderingCreateInfo *rendering_info)
 {
@@ -1586,7 +1586,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
           */
          assert(found < __builtin_popcount(pipeline->active_stages));
 
-         vk_perf(VK_LOG_OBJS(&cache->base),
+         vk_perf(VK_LOG_OBJS(cache ? &cache->base :
+                                     &pipeline->base.device->vk.base),
                  "Found a partial pipeline in the cache.  This is "
                  "most likely caused by an incomplete pipeline cache "
                  "import or export");
@@ -1903,7 +1904,7 @@ fail:
 
 VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
-                        struct anv_pipeline_cache *cache,
+                        struct vk_pipeline_cache *cache,
                         const VkComputePipelineCreateInfo *info,
                         const struct vk_shader_module *module,
                         const char *entrypoint,
@@ -2395,7 +2396,7 @@ vk_line_rasterization_mode(const VkPipelineRasterizationLineStateCreateInfoEXT *
 VkResult
 anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
                            struct anv_device *device,
-                           struct anv_pipeline_cache *cache,
+                           struct vk_pipeline_cache *cache,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const VkPipelineRenderingCreateInfo *rendering_info,
                            const VkAllocationCallbacks *alloc)
@@ -2568,7 +2569,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
 static VkResult
 compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
-                         struct anv_pipeline_cache *cache,
+                         struct vk_pipeline_cache *cache,
                          nir_shader *nir,
                          struct anv_pipeline_stage *stage,
                          struct anv_shader_bin **shader_out,
@@ -2777,7 +2778,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
 
 static bool
 anv_pipeline_load_cached_shaders(struct anv_ray_tracing_pipeline *pipeline,
-                                 struct anv_pipeline_cache *cache,
+                                 struct vk_pipeline_cache *cache,
                                  const VkRayTracingPipelineCreateInfoKHR *info,
                                  struct anv_pipeline_stage *stages,
                                  uint32_t *stack_max)
@@ -2820,7 +2821,7 @@ anv_pipeline_load_cached_shaders(struct anv_ray_tracing_pipeline *pipeline,
 
 static VkResult
 anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
-                                 struct anv_pipeline_cache *cache,
+                                 struct vk_pipeline_cache *cache,
                                  const VkRayTracingPipelineCreateInfoKHR *info)
 {
    const struct intel_device_info *devinfo = &pipeline->base.device->info;
@@ -3040,7 +3041,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
       },
    };
    device->rt_trampoline =
-      anv_device_search_for_kernel(device, &device->default_pipeline_cache,
+      anv_device_search_for_kernel(device, device->default_pipeline_cache,
                                    &trampoline_key, sizeof(trampoline_key),
                                    &cache_hit);
    if (device->rt_trampoline == NULL) {
@@ -3070,7 +3071,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
          brw_compile_cs(device->physical->compiler, tmp_ctx, &params);
 
       device->rt_trampoline =
-         anv_device_upload_kernel(device, &device->default_pipeline_cache,
+         anv_device_upload_kernel(device, device->default_pipeline_cache,
                                   MESA_SHADER_COMPUTE,
                                   &trampoline_key, sizeof(trampoline_key),
                                   tramp_data,
@@ -3092,7 +3093,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
       .name = "rt-trivial-ret",
    };
    device->rt_trivial_return =
-      anv_device_search_for_kernel(device, &device->default_pipeline_cache,
+      anv_device_search_for_kernel(device, device->default_pipeline_cache,
                                    &return_key, sizeof(return_key),
                                    &cache_hit);
    if (device->rt_trivial_return == NULL) {
@@ -3118,7 +3119,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
          brw_compile_bs(device->physical->compiler, tmp_ctx, &params);
 
       device->rt_trivial_return =
-         anv_device_upload_kernel(device, &device->default_pipeline_cache,
+         anv_device_upload_kernel(device, device->default_pipeline_cache,
                                   MESA_SHADER_CALLABLE,
                                   &return_key, sizeof(return_key),
                                   return_data, return_prog_data.base.program_size,
@@ -3148,7 +3149,7 @@ anv_device_finish_rt_shaders(struct anv_device *device)
 VkResult
 anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
                               struct anv_device *device,
-                              struct anv_pipeline_cache *cache,
+                              struct vk_pipeline_cache *cache,
                               const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                               const VkAllocationCallbacks *alloc)
 {
