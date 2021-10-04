@@ -890,21 +890,29 @@ llvm_mod_to_spirv(std::unique_ptr<::llvm::Module> mod,
       return -1;
    }
 
-   SPIRV::TranslatorOpts spirv_opts;
-   if (!args || !args->allowed_spirv_extensions) {
-      spirv_opts = SPIRV::TranslatorOpts(version);
-      spirv_opts.enableAllExtensions();
-   } else {
-      SPIRV::TranslatorOpts::ExtensionsStatusMap ext_map;
-      for (int i = 0; args->allowed_spirv_extensions[i]; i++) {
+   const char *const *extensions = NULL;
+   if (args)
+      extensions = args->allowed_spirv_extensions;
+   if (!extensions) {
+      /* The SPIR-V parser doesn't handle all extensions */
+      static const char *default_extensions[] = {
+         "SPV_EXT_shader_atomic_float_add",
+         "SPV_EXT_shader_atomic_float_min_max",
+         "SPV_KHR_float_controls",
+         NULL,
+      };
+      extensions = default_extensions;
+   }
+
+   SPIRV::TranslatorOpts::ExtensionsStatusMap ext_map;
+   for (int i = 0; extensions[i]; i++) {
 #define EXT(X) \
-         if (strcmp(#X, args->allowed_spirv_extensions[i]) == 0) \
-            ext_map.insert(std::make_pair(SPIRV::ExtensionID::X, true));
+      if (strcmp(#X, extensions[i]) == 0) \
+         ext_map.insert(std::make_pair(SPIRV::ExtensionID::X, true));
 #include "LLVMSPIRVLib/LLVMSPIRVExtensions.inc"
 #undef EXT
-      }
-      spirv_opts = SPIRV::TranslatorOpts(version, ext_map);
    }
+   SPIRV::TranslatorOpts spirv_opts = SPIRV::TranslatorOpts(version, ext_map);
 
    std::ostringstream spv_stream;
    if (!::llvm::writeSpirv(mod.get(), spirv_opts, spv_stream, log)) {
