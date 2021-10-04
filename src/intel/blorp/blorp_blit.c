@@ -2434,8 +2434,16 @@ do_blorp_blit(struct blorp_batch *batch,
 
 bool
 blorp_blit_supports_compute(struct blorp_context *blorp,
+                            const struct isl_surf *src_surf,
+                            const struct isl_surf *dst_surf,
                             enum isl_aux_usage dst_aux_usage)
 {
+   /* Our compiler doesn't currently support typed image writes with MSAA.
+    * Also, our BLORP compute shaders don't handle multisampling cases.
+    */
+   if (dst_surf->samples > 1 || src_surf->samples > 1)
+      return false;
+
    if (blorp->isl_dev->info->ver >= 12) {
       return dst_aux_usage == ISL_AUX_USAGE_GFX12_CCS_E ||
              dst_aux_usage == ISL_AUX_USAGE_CCS_E ||
@@ -2467,8 +2475,11 @@ blorp_blit(struct blorp_batch *batch,
    blorp_params_init(&params);
    params.snapshot_type = INTEL_SNAPSHOT_BLIT;
    const bool compute = batch->flags & BLORP_BATCH_USE_COMPUTE;
-   if (compute)
-      assert(blorp_blit_supports_compute(batch->blorp, dst_surf->aux_usage));
+   if (compute) {
+      assert(blorp_blit_supports_compute(batch->blorp,
+                                         src_surf->surf, dst_surf->surf,
+                                         dst_surf->aux_usage));
+   }
 
    /* We cannot handle combined depth and stencil. */
    if (src_surf->surf->usage & ISL_SURF_USAGE_STENCIL_BIT)
@@ -2775,9 +2786,11 @@ blorp_surf_convert_to_uncompressed(const struct isl_device *isl_dev,
 
 bool
 blorp_copy_supports_compute(struct blorp_context *blorp,
+                            const struct isl_surf *src_surf,
+                            const struct isl_surf *dst_surf,
                             enum isl_aux_usage dst_aux_usage)
 {
-   return blorp_blit_supports_compute(blorp, dst_aux_usage);
+   return blorp_blit_supports_compute(blorp, src_surf, dst_surf, dst_aux_usage);
 }
 
 void
@@ -2800,8 +2813,11 @@ blorp_copy(struct blorp_batch *batch,
    params.snapshot_type = INTEL_SNAPSHOT_COPY;
 
    const bool compute = batch->flags & BLORP_BATCH_USE_COMPUTE;
-   if (compute)
-      assert(blorp_copy_supports_compute(batch->blorp, dst_surf->aux_usage));
+   if (compute) {
+      assert(blorp_copy_supports_compute(batch->blorp,
+                                         src_surf->surf, dst_surf->surf,
+                                         dst_surf->aux_usage));
+   }
 
    brw_blorp_surface_info_init(batch, &params.src, src_surf, src_level,
                                src_layer, ISL_FORMAT_UNSUPPORTED, false);

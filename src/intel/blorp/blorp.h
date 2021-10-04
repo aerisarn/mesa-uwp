@@ -186,10 +186,14 @@ blorp_clear_supports_compute(struct blorp_context *blorp,
 
 bool
 blorp_copy_supports_compute(struct blorp_context *blorp,
+                            const struct isl_surf *src_surf,
+                            const struct isl_surf *dst_surf,
                             enum isl_aux_usage dst_aux_usage);
 
 bool
 blorp_blit_supports_compute(struct blorp_context *blorp,
+                            const struct isl_surf *src_surf,
+                            const struct isl_surf *dst_surf,
                             enum isl_aux_usage dst_aux_usage);
 
 void
