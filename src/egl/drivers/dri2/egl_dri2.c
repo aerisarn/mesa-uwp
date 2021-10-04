@@ -741,7 +741,6 @@ static const struct dri2_extension_match optional_driver_extensions[] = {
 
 static const struct dri2_extension_match optional_core_extensions[] = {
    { __DRI2_ROBUSTNESS, 1, offsetof(struct dri2_egl_display, robustness) },
-   { __DRI2_NO_ERROR, 1, offsetof(struct dri2_egl_display, no_error) },
    { __DRI2_CONFIG_QUERY, 1, offsetof(struct dri2_egl_display, config) },
    { __DRI2_FENCE, 1, offsetof(struct dri2_egl_display, fence) },
    { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage) },
@@ -950,7 +949,8 @@ dri2_setup_screen(_EGLDisplay *disp)
          disp->Extensions.EXT_create_context_robustness = EGL_TRUE;
    }
 
-   if (dri2_dpy->no_error)
+   if (dri2_renderer_query_integer(dri2_dpy,
+                                   __DRI2_RENDERER_HAS_NO_ERROR_CONTEXT))
       disp->Extensions.KHR_create_context_no_error = EGL_TRUE;
 
    if (dri2_dpy->fence) {
@@ -1408,7 +1408,7 @@ dri2_fill_context_attribs(struct dri2_egl_context *dri2_ctx,
    ctx_attribs[pos++] = __DRI_CTX_ATTRIB_MINOR_VERSION;
    ctx_attribs[pos++] = dri2_ctx->base.ClientMinorVersion;
 
-   if (dri2_ctx->base.Flags != 0 || dri2_ctx->base.NoError) {
+   if (dri2_ctx->base.Flags != 0) {
       /* If the implementation doesn't support the __DRI2_ROBUSTNESS
        * extension, don't even try to send it the robust-access flag.
        * It may explode.  Instead, generate the required EGL error here.
@@ -1420,8 +1420,7 @@ dri2_fill_context_attribs(struct dri2_egl_context *dri2_ctx,
       }
 
       ctx_attribs[pos++] = __DRI_CTX_ATTRIB_FLAGS;
-      ctx_attribs[pos++] = dri2_ctx->base.Flags |
-         (dri2_ctx->base.NoError ? __DRI_CTX_FLAG_NO_ERROR : 0);
+      ctx_attribs[pos++] = dri2_ctx->base.Flags;
    }
 
    if (dri2_ctx->base.ResetNotificationStrategy != EGL_NO_RESET_NOTIFICATION_KHR) {
@@ -1463,6 +1462,11 @@ dri2_fill_context_attribs(struct dri2_egl_context *dri2_ctx,
    if (dri2_ctx->base.ReleaseBehavior == EGL_CONTEXT_RELEASE_BEHAVIOR_NONE_KHR) {
       ctx_attribs[pos++] = __DRI_CTX_ATTRIB_RELEASE_BEHAVIOR;
       ctx_attribs[pos++] = __DRI_CTX_RELEASE_BEHAVIOR_NONE;
+   }
+
+   if (dri2_ctx->base.NoError) {
+      ctx_attribs[pos++] = __DRI_CTX_ATTRIB_NO_ERROR;
+      ctx_attribs[pos++] = true;
    }
 
    *num_attribs = pos;
