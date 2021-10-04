@@ -3441,7 +3441,7 @@ VkResult anv_CreateDevice(
 
    result = anv_device_init_rt_shaders(device);
    if (result != VK_SUCCESS)
-      goto fail_rt_trampoline;
+      goto fail_default_pipeline_cache;
 
    anv_device_init_blorp(device);
 
@@ -3455,7 +3455,7 @@ VkResult anv_CreateDevice(
 
    return VK_SUCCESS;
 
- fail_rt_trampoline:
+ fail_default_pipeline_cache:
    anv_pipeline_cache_finish(&device->default_pipeline_cache);
  fail_trivial_batch_bo_and_scratch_pool:
    anv_scratch_pool_finish(device, &device->scratch_pool);
