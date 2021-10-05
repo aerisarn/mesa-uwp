@@ -100,6 +100,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_RTS 8
 #define MAX_VSC_PIPES 32
 #define MAX_VIEWPORTS 16
+#define MAX_VIEWPORT_SIZE (1 << 14)
 #define MAX_SCISSORS 16
 #define MAX_DISCARD_RECTANGLES 4
 #define MAX_PUSH_CONSTANTS_SIZE 128

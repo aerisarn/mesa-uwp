@@ -609,8 +609,8 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 
    const uint32_t x1 = fb->tile0.width * tx;
    const uint32_t y1 = fb->tile0.height * ty;
-   const uint32_t x2 = x1 + fb->tile0.width - 1;
-   const uint32_t y2 = y1 + fb->tile0.height - 1;
+   const uint32_t x2 = MIN2(x1 + fb->tile0.width - 1, MAX_VIEWPORT_SIZE - 1);
+   const uint32_t y2 = MIN2(y1 + fb->tile0.height - 1, MAX_VIEWPORT_SIZE - 1);
    tu6_emit_window_scissor(cs, x1, y1, x2, y2);
    tu6_emit_window_offset(cs, x1, y1);
 

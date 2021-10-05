@@ -922,7 +922,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxSamplerLodBias = 4095.0 / 256.0, /* [-16, 15.99609375] */
       .maxSamplerAnisotropy = 16,
       .maxViewports = MAX_VIEWPORTS,
-      .maxViewportDimensions = { (1 << 14), (1 << 14) },
+      .maxViewportDimensions = { MAX_VIEWPORT_SIZE, MAX_VIEWPORT_SIZE },
       .viewportBoundsRange = { INT16_MIN, INT16_MAX },
       .viewportSubPixelBits = 8,
       .minMemoryMapAlignment = 4096, /* A page */
