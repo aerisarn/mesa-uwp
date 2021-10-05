@@ -160,6 +160,7 @@ generate_texture_mipmap(struct gl_context *ctx,
        */
       if (ctx->API == API_OPENGLES2 && ctx->Version < 30 &&
           _mesa_is_format_compressed(srcImage->TexFormat)) {
+         _mesa_unlock_texture(ctx, texObj);
          _mesa_error(ctx, GL_INVALID_OPERATION, "generate mipmaps on compressed texture");
          return;
       }
