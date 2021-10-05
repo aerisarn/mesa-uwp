@@ -622,8 +622,6 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
                b, state, location, nir_intrinsic_component(intr),
                intr->src[1].ssa);
 
-            debug_assert(nir_intrinsic_component(intr) == 0);
-
             replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3,
                               intr->src[0].ssa, address, offset);
          }
