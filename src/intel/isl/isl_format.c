@@ -721,12 +721,11 @@ isl_format_supports_sampling(const struct intel_device_info *devinfo,
       if (fmtl->txc == ISL_TXC_ETC1 || fmtl->txc == ISL_TXC_ETC2)
          return true;
    } else if (devinfo->is_cherryview) {
-      const struct isl_format_layout *fmtl = isl_format_get_layout(format);
-      /* Support for ASTC LDR exists on Cherry View even though big-core
-       * GPUs didn't get it until Skylake.
+      /* Support for ASTC LDR theoretically exists on Cherry View even though
+       * big-core GPUs didn't get it until Skylake.  However, it's fairly
+       * badly broken and requires some nasty workarounds which no Mesa driver
+       * has ever implemented.
        */
-      if (fmtl->txc == ISL_TXC_ASTC)
-         return format < ISL_FORMAT_ASTC_HDR_2D_4X4_FLT16;
    } else if (intel_device_info_is_9lp(devinfo)) {
       const struct isl_format_layout *fmtl = isl_format_get_layout(format);
       /* Support for ASTC HDR exists on Broxton even though big-core
