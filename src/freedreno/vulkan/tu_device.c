@@ -221,7 +221,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    if (!info) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "device %s is unsupported", device->name);
-      goto fail;
+      goto fail_free_name;
    }
    switch (fd_dev_gen(&device->dev_id)) {
    case 6:
@@ -233,12 +233,12 @@ tu_physical_device_init(struct tu_physical_device *device,
    default:
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "device %s is unsupported", device->name);
-      goto fail;
+      goto fail_free_name;
    }
    if (tu_device_get_cache_uuid(fd_dev_gpu_id(&device->dev_id), device->cache_uuid)) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "cannot generate UUID");
-      goto fail;
+      goto fail_free_name;
    }
 
    /* The gpu id is already embedded in the uuid so we just pass "tu"
@@ -264,20 +264,22 @@ tu_physical_device_init(struct tu_physical_device *device,
                                     &supported_extensions,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
-      goto fail;
+      goto fail_free_cache;
 
 #if TU_HAS_SURFACE
    result = tu_wsi_init(device);
    if (result != VK_SUCCESS) {
       vk_startup_errorf(instance, result, "WSI init failure");
       vk_physical_device_finish(&device->vk);
-      goto fail;
+      goto fail_free_cache;
    }
 #endif
 
    return VK_SUCCESS;
 
-fail:
+fail_free_cache:
+   disk_cache_destroy(device->disk_cache);
+fail_free_name:
    vk_free(&instance->vk.alloc, (void *)device->name);
    return result;
 }
