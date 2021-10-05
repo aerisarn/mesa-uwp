@@ -3753,6 +3753,35 @@ radv_stage_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags src_st
    }
 }
 
+/*
+ * In vulkan barriers have two kinds of operations:
+ *
+ * - visibility (implemented with radv_src_access_flush)
+ * - availability (implemented with radv_dst_access_flush)
+ *
+ * for a memory operation to observe the result of a previous memory operation
+ * one needs to do a visibility operation from the source memory and then an
+ * availability operation to the target memory.
+ *
+ * The complication is the availability and visibility operations do not need to
+ * be in the same barrier.
+ *
+ * The cleanest way to implement this is to define the visibility operation to
+ * bring the caches to a "state of rest", which none of the caches below that
+ * level dirty.
+ *
+ * For GFX8 and earlier this would be VRAM/GTT with none of the caches dirty.
+ *
+ * For GFX9+ we can define the state at rest to be L2 instead of VRAM for all
+ * buffers and for images marked as coherent, and VRAM/GTT for non-coherent
+ * images. However, given the existence of memory barriers which do not specify
+ * the image/buffer it often devolves to just VRAM/GTT anyway.
+ *
+ * In practice we can cheat a bit, since the INV_* operations include writebacks.
+ * If we know that all the destinations that need the WB do an INV, then we can
+ * skip the WB.
+ */
+
 enum radv_cmd_flush_bits
 radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags src_flags,
                       const struct radv_image *image)
