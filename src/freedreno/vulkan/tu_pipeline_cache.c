@@ -212,9 +212,9 @@ tu_pipeline_cache_load(struct tu_pipeline_cache *cache,
       return;
    if (header.header_version != VK_PIPELINE_CACHE_HEADER_VERSION_ONE)
       return;
-   if (header.vendor_id != 0 /* TODO */)
+   if (header.vendor_id != 0x5143)
       return;
-   if (header.device_id != 0 /* TODO */)
+   if (header.device_id != device->physical_device->dev_id.chip_id)
       return;
    if (memcmp(header.uuid, device->physical_device->cache_uuid,
               VK_UUID_SIZE) != 0)
@@ -319,8 +319,8 @@ tu_GetPipelineCacheData(VkDevice _device,
    header = p;
    header->header_size = sizeof(*header);
    header->header_version = VK_PIPELINE_CACHE_HEADER_VERSION_ONE;
-   header->vendor_id = 0 /* TODO */;
-   header->device_id = 0 /* TODO */;
+   header->vendor_id = 0x5143;
+   header->device_id = device->physical_device->dev_id.chip_id;
    memcpy(header->uuid, device->physical_device->cache_uuid, VK_UUID_SIZE);
    p += header->header_size;
 
