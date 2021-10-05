@@ -1564,16 +1564,12 @@ resolve_ahw_image(struct anv_device *device,
 #endif
 }
 
-void anv_GetImageMemoryRequirements2(
-    VkDevice                                    _device,
-    const VkImageMemoryRequirementsInfo2*       pInfo,
-    VkMemoryRequirements2*                      pMemoryRequirements)
+void
+anv_image_get_memory_requirements(struct anv_device *device,
+                                  struct anv_image *image,
+                                  VkImageAspectFlags aspects,
+                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_image, image, pInfo->image);
-
-   const VkImagePlaneMemoryRequirementsInfo *plane_reqs = NULL;
-
    /* The Vulkan spec (git aaed022) says:
     *
     *    memoryTypeBits is a bitfield and contains one bit set for every
@@ -1584,28 +1580,6 @@ void anv_GetImageMemoryRequirements2(
     * All types are currently supported for images.
     */
    uint32_t memory_types = (1ull << device->physical->memory.type_count) - 1;
-
-   vk_foreach_struct_const(ext, pInfo->pNext) {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
-         assert(image->disjoint);
-         plane_reqs = (const VkImagePlaneMemoryRequirementsInfo *) ext;
-         const struct anv_image_binding *binding =
-            image_aspect_to_binding(image, plane_reqs->planeAspect);
-
-         pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
-            .size = binding->memory_range.size,
-            .alignment = binding->memory_range.alignment,
-            .memoryTypeBits = memory_types,
-         };
-         break;
-      }
-
-      default:
-         anv_debug_ignored_stype(ext->sType);
-         break;
-      }
-   }
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
@@ -1642,18 +1616,51 @@ void anv_GetImageMemoryRequirements2(
     * and only if the image is disjoint (that is, multi-planar format and
     * VK_IMAGE_CREATE_DISJOINT_BIT).
     */
-   assert(image->disjoint == (plane_reqs != NULL));
-
-   if (!image->disjoint) {
-      const struct anv_image_binding *binding =
-         &image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN];
-
-      pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
-         .size = binding->memory_range.size,
-         .alignment = binding->memory_range.alignment,
-         .memoryTypeBits = memory_types,
-      };
+   const struct anv_image_binding *binding;
+   if (image->disjoint) {
+      assert(util_bitcount(aspects) == 1);
+      assert(aspects & image->vk.aspects);
+      binding = image_aspect_to_binding(image, aspects);
+   } else {
+      assert(aspects == image->vk.aspects);
+      binding = &image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN];
    }
+
+   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
+      .size = binding->memory_range.size,
+      .alignment = binding->memory_range.alignment,
+      .memoryTypeBits = memory_types,
+   };
+}
+
+void anv_GetImageMemoryRequirements2(
+    VkDevice                                    _device,
+    const VkImageMemoryRequirementsInfo2*       pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_image, image, pInfo->image);
+
+   VkImageAspectFlags aspects = image->vk.aspects;
+
+   vk_foreach_struct_const(ext, pInfo->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
+         assert(image->disjoint);
+         const VkImagePlaneMemoryRequirementsInfo *plane_reqs =
+            (const VkImagePlaneMemoryRequirementsInfo *) ext;
+         aspects = plane_reqs->planeAspect;
+         break;
+      }
+
+      default:
+         anv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+
+   anv_image_get_memory_requirements(device, image, aspects,
+                                     pMemoryRequirements);
 }
 
 void anv_GetImageSparseMemoryRequirements(

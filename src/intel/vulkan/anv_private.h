@@ -4420,6 +4420,11 @@ VkResult anv_image_create(VkDevice _device,
                           const VkAllocationCallbacks* alloc,
                           VkImage *pImage);
 
+void anv_image_get_memory_requirements(struct anv_device *device,
+                                       struct anv_image *image,
+                                       VkImageAspectFlags aspects,
+                                       VkMemoryRequirements2 *pMemoryRequirements);
+
 enum isl_format
 anv_isl_format_for_descriptor_type(const struct anv_device *device,
                                    VkDescriptorType type);

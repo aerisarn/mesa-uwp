@@ -537,16 +537,12 @@ anv_image_from_gralloc(VkDevice device_h,
    if (result != VK_SUCCESS)
       goto fail_create;
 
-   VkImageMemoryRequirementsInfo2 mem_reqs_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-      .image = image_h,
-   };
-
    VkMemoryRequirements2 mem_reqs = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
    };
 
-   anv_GetImageMemoryRequirements2(device_h, &mem_reqs_info, &mem_reqs);
+   anv_image_get_memory_requirements(device, image, image->vk.aspects,
+                                     &mem_reqs);
 
    VkDeviceSize aligned_image_size =
       align_u64(mem_reqs.memoryRequirements.size,
