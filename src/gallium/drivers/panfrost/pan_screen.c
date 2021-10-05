@@ -841,13 +841,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         if (dev->debug & PAN_DBG_NO_AFBC)
                 dev->has_afbc = false;
 
-        /* XXX: AFBC is currently broken on Bifrost
-         *
-         *  - Preload is broken if the effective tile size is not 16x16
-         */
-        if (dev->arch == 7)
-                dev->has_afbc = false;
-
         dev->ro = ro;
 
         /* Check if we're loading against a supported GPU model. */
