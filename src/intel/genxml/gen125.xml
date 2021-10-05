@@ -758,7 +758,7 @@
       <value name="VALIGN_8" value="2"/>
       <value name="VALIGN_16" value="3"/>
     </field>
-    <field name="Surface Format" start="18" end="27" type="uint"/>
+    <field name="Surface Format" start="18" end="26" type="uint"/>
     <field name="Surface Array" start="28" end="28" type="bool"/>
     <field name="Surface Type" start="29" end="31" type="uint">
       <value name="SURFTYPE_1D" value="0"/>
