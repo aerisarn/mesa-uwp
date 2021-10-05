@@ -66,6 +66,15 @@
  * 4 - *S_PARTIAL_FLUSH
  * 5 - TS events
  */
+#define PIXEL_PIPE_STATE_CNTL_COUNTER_ID(x)    ((x) << 3)
+#define PIXEL_PIPE_STATE_CNTL_STRIDE(x)        ((x) << 9)
+/* 0 - 32 bits
+ * 1 - 64 bits
+ * 2 - 128 bits
+ * 3 - 256 bits
+ */
+#define PIXEL_PIPE_STATE_CNTL_INSTANCE_EN_LO(x) ((x) << 11)
+#define PIXEL_PIPE_STATE_CNTL_INSTANCE_EN_HI(x) ((x) >> 21)
 
 /* EVENT_WRITE_EOP (SI-VI) & RELEASE_MEM (GFX9) */
 #define EVENT_TCL1_VOL_ACTION_ENA (1 << 12)
