@@ -2650,7 +2650,11 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
    const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
    const struct ir3_shader_variant *bs = builder->binning_variant;
 
-   pipeline->num_vbs = vi_info->vertexBindingDescriptionCount;
+   /* Bindings may contain holes */
+   for (unsigned i = 0; i < vi_info->vertexBindingDescriptionCount; i++) {
+      pipeline->num_vbs =
+         MAX2(pipeline->num_vbs, vi_info->pVertexBindingDescriptions[i].binding + 1);
+   }
 
    struct tu_cs vi_cs;
    tu_cs_begin_sub_stream(&pipeline->cs,
