@@ -1116,6 +1116,9 @@ unsigned si_get_input_prim(const struct si_shader_selector *gs, const struct si_
 static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
                                    const struct si_shader *shader, bool ngg)
 {
+   /* Clip distances can be killed, but cull distances can't. */
+   unsigned clipcull_mask = (sel->clipdist_mask & ~shader->key.opt.kill_clip_distances) |
+                            sel->culldist_mask;
    bool writes_psize = sel->info.writes_psize;
 
    if (shader)
@@ -1124,7 +1127,9 @@ static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
    bool misc_vec_ena = writes_psize || (sel->info.writes_edgeflag && !ngg) ||
                        sel->screen->options.vrs2x2 ||
                        sel->info.writes_layer || sel->info.writes_viewport_index;
-   return S_02881C_USE_VTX_POINT_SIZE(writes_psize) |
+   return S_02881C_VS_OUT_CCDIST0_VEC_ENA((clipcull_mask & 0x0F) != 0) |
+          S_02881C_VS_OUT_CCDIST1_VEC_ENA((clipcull_mask & 0xF0) != 0) |
+          S_02881C_USE_VTX_POINT_SIZE(writes_psize) |
           S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag && !ngg) |
           S_02881C_USE_VTX_VRS_RATE(sel->screen->options.vrs2x2) |
           S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
@@ -3118,7 +3123,6 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
         old_hw_vs->clipdist_mask != next_hw_vs->clipdist_mask ||
         old_hw_vs->culldist_mask != next_hw_vs->culldist_mask || !old_hw_vs_variant ||
         !next_hw_vs_variant ||
-        old_hw_vs_variant->key.opt.kill_clip_distances != next_hw_vs_variant->key.opt.kill_clip_distances ||
         old_hw_vs_variant->pa_cl_vs_out_cntl != next_hw_vs_variant->pa_cl_vs_out_cntl))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 }

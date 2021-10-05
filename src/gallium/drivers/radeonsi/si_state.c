@@ -837,7 +837,6 @@ static void si_emit_clip_regs(struct si_context *sctx)
    unsigned clipdist_mask = vs_sel->clipdist_mask;
    unsigned ucp_mask = clipdist_mask ? 0 : rs->clip_plane_enable & SIX_BITS;
    unsigned culldist_mask = vs_sel->culldist_mask;
-   unsigned vs_out_mask = (clipdist_mask & ~vs->key.opt.kill_clip_distances) | culldist_mask;
 
    /* Clip distances on points have no effect, so need to be implemented
     * as cull distances. This applies for the clipvertex case as well.
@@ -848,9 +847,7 @@ static void si_emit_clip_regs(struct si_context *sctx)
    clipdist_mask &= rs->clip_plane_enable;
    culldist_mask |= clipdist_mask;
 
-   unsigned pa_cl_cntl = S_02881C_VS_OUT_CCDIST0_VEC_ENA((vs_out_mask & 0x0F) != 0) |
-                         S_02881C_VS_OUT_CCDIST1_VEC_ENA((vs_out_mask & 0xF0) != 0) |
-                         S_02881C_BYPASS_VTX_RATE_COMBINER(sctx->chip_class >= GFX10_3 &&
+   unsigned pa_cl_cntl = S_02881C_BYPASS_VTX_RATE_COMBINER(sctx->chip_class >= GFX10_3 &&
                                                            !sctx->screen->options.vrs2x2) |
                          S_02881C_BYPASS_PRIM_RATE_COMBINER(sctx->chip_class >= GFX10_3) |
                          clipdist_mask | (culldist_mask << 8);
