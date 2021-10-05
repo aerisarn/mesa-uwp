@@ -269,6 +269,12 @@ build_triangles(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeo
             coords[2] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 4), 16);
             coords[3] = _mesa_snorm_to_float(*(const int16_t *)(v_data + 6), 16);
             break;
+         case VK_FORMAT_R16G16B16A16_UNORM:
+            coords[0] = _mesa_unorm_to_float(*(const uint16_t *)(v_data + 0), 16);
+            coords[1] = _mesa_unorm_to_float(*(const uint16_t *)(v_data + 2), 16);
+            coords[2] = _mesa_unorm_to_float(*(const uint16_t *)(v_data + 4), 16);
+            coords[3] = _mesa_unorm_to_float(*(const uint16_t *)(v_data + 6), 16);
+            break;
          default:
             unreachable("Unhandled vertex format in BVH build");
          }
@@ -764,7 +770,7 @@ get_vertices(nir_builder *b, nir_ssa_def *addresses, nir_ssa_def *format, nir_ss
    VkFormat formats[] = {
       VK_FORMAT_R32G32B32_SFLOAT,    VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R16G16B16_SFLOAT,
       VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R16G16_SFLOAT,       VK_FORMAT_R32G32_SFLOAT,
-      VK_FORMAT_R16G16_SNORM,        VK_FORMAT_R16G16B16A16_SNORM,
+      VK_FORMAT_R16G16_SNORM,        VK_FORMAT_R16G16B16A16_SNORM,  VK_FORMAT_R16G16B16A16_UNORM,
    };
 
    for (unsigned f = 0; f < ARRAY_SIZE(formats); ++f) {
@@ -785,7 +791,8 @@ get_vertices(nir_builder *b, nir_ssa_def *addresses, nir_ssa_def *format, nir_ss
          case VK_FORMAT_R16G16B16_SFLOAT:
          case VK_FORMAT_R16G16B16A16_SFLOAT:
          case VK_FORMAT_R16G16_SNORM:
-         case VK_FORMAT_R16G16B16A16_SNORM: {
+         case VK_FORMAT_R16G16B16A16_SNORM:
+         case VK_FORMAT_R16G16B16A16_UNORM: {
             unsigned components = MIN2(3, vk_format_get_nr_components(formats[f]));
             unsigned comp_bits =
                vk_format_get_blocksizebits(formats[f]) / vk_format_get_nr_components(formats[f]);
@@ -806,6 +813,13 @@ get_vertices(nir_builder *b, nir_ssa_def *addresses, nir_ssa_def *format, nir_ss
                   values[j] = nir_fdiv(b, nir_i2f32(b, values[j]),
                                        nir_imm_float(b, (1u << (comp_bits - 1)) - 1));
                   values[j] = nir_fmax(b, values[j], nir_imm_float(b, -1.0));
+               }
+               vec = nir_vec(b, values, 3);
+            } else if (util_format_is_unorm(vk_format_to_pipe_format(formats[f]))) {
+               for (unsigned j = 0; j < 3; ++j) {
+                  values[j] =
+                     nir_fdiv(b, nir_u2f32(b, values[j]), nir_imm_float(b, (1u << comp_bits) - 1));
+                  values[j] = nir_fmin(b, values[j], nir_imm_float(b, 1.0));
                }
                vec = nir_vec(b, values, 3);
             } else if (comp_bits == 16)
