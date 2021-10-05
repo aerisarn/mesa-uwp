@@ -1254,6 +1254,11 @@ void anv_GetPhysicalDeviceFeatures(
 {
    ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
 
+   /* Just pick one; they're all the same */
+   const bool has_astc_ldr =
+      isl_format_supports_sampling(&pdevice->info,
+                                   ISL_FORMAT_ASTC_LDR_2D_4X4_FLT16);
+
    *pFeatures = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess                       = true,
       .fullDrawIndexUint32                      = true,
@@ -1277,7 +1282,7 @@ void anv_GetPhysicalDeviceFeatures(
       .samplerAnisotropy                        = true,
       .textureCompressionETC2                   = pdevice->info.ver >= 8 ||
                                                   pdevice->info.is_baytrail,
-      .textureCompressionASTC_LDR               = pdevice->info.ver >= 9, /* FINISHME CHV */
+      .textureCompressionASTC_LDR               = has_astc_ldr,
       .textureCompressionBC                     = true,
       .occlusionQueryPrecise                    = true,
       .pipelineStatisticsQuery                  = true,
