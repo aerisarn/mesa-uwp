@@ -431,11 +431,7 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
 
         pan_rt_init_format(rt, cfg);
 
-#if PAN_ARCH <= 5
         cfg->writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
-#else
-        cfg->writeback_block_format = mod_to_block_fmt(rt->image->layout.modifier);
-#endif
 
         struct pan_surface surf;
         pan_iview_get_surface(rt, 0, 0, 0, &surf);
