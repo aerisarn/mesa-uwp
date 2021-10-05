@@ -629,7 +629,19 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
    /* Load/store is determined based on base format.  This prevents RGB
     * formats from showing up as load/store capable.
     */
+   if (isl_format_supports_typed_reads(devinfo, base_isl_format))
+      flags |= VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT_KHR;
    if (isl_format_supports_typed_writes(devinfo, base_isl_format))
+      flags |= VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
+
+   /* Keep this old behavior on VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT_KHR.
+    * When KHR_format_features2 is enabled, applications should only rely on
+    * it for the list of shader storage extended formats [1]. Before that,
+    * this applies to all VkFormats.
+    *
+    * [1] : https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#features-shaderStorageImageExtendedFormats
+    */
+   if (flags & VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR)
       flags |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT_KHR;
 
    if (base_isl_format == ISL_FORMAT_R32_SINT ||
