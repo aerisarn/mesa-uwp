@@ -733,6 +733,16 @@ isl_format_supports_sampling(const struct intel_device_info *devinfo,
        */
       if (fmtl->txc == ISL_TXC_ASTC)
          return true;
+   } else if (devinfo->verx10 >= 125) {
+      const struct isl_format_layout *fmtl = isl_format_get_layout(format);
+      /* ASTC support was removed from the hardware on Gfx12.5.  Annoyingly,
+       * our format_info table doesn't have a concept of things being removed
+       * so we handle it as yet another special case.
+       *
+       * See HSD 1408144932
+       */
+      if (fmtl->txc == ISL_TXC_ASTC)
+         return false;
    }
 
    return devinfo->verx10 >= format_info[format].sampling;
