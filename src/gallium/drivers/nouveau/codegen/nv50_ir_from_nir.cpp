@@ -30,6 +30,7 @@
 #include "codegen/nv50_ir.h"
 #include "codegen/nv50_ir_from_common.h"
 #include "codegen/nv50_ir_lowering_helper.h"
+#include "codegen/nv50_ir_target.h"
 #include "codegen/nv50_ir_util.h"
 #include "tgsi/tgsi_from_mesa.h"
 
@@ -1238,7 +1239,7 @@ Converter::loadFrom(DataFile file, uint8_t i, DataType ty, Value *def,
    unsigned int tySize = typeSizeof(ty);
 
    if (tySize == 8 &&
-       (file == FILE_MEMORY_CONST || file == FILE_MEMORY_BUFFER || indirect0)) {
+       (indirect0 || !prog->getTarget()->isAccessSupported(file, TYPE_U64))) {
       Value *lo = getSSA();
       Value *hi = getSSA();
 

@@ -2897,12 +2897,13 @@ NVC0LoweringPass::handleLDST(Instruction *i)
       i->setPredicate(CC_NOT_P, pred);
       if (i->defExists(0)) {
          Value *zero, *dst = i->getDef(0);
-         i->setDef(0, bld.getSSA());
+         uint8_t size = dst->reg.size;
+         i->setDef(0, bld.getSSA(size));
 
          bld.setPosition(i, true);
-         bld.mkMov((zero = bld.getSSA()), bld.mkImm(0))
+         bld.mkMov((zero = bld.getSSA(size)), bld.mkImm(0), i->dType)
             ->setPredicate(CC_P, pred);
-         bld.mkOp2(OP_UNION, TYPE_U32, dst, i->getDef(0), zero);
+         bld.mkOp2(OP_UNION, i->dType, dst, i->getDef(0), zero);
       }
    }
 }
