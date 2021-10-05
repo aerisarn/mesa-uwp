@@ -1676,6 +1676,7 @@ radv_shader_variant_compile(struct radv_device *device, struct vk_shader_module 
       options.key = *key;
 
    options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
+   options.remap_spi_ps_input = !radv_use_llvm_for_stage(device, stage);
    options.robust_buffer_access = device->robust_buffer_access;
    options.wgp_mode = radv_should_use_wgp_mode(device, stage, info);
 
@@ -1693,6 +1694,7 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader
    gl_shader_stage stage = MESA_SHADER_VERTEX;
 
    options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
+   options.remap_spi_ps_input = !radv_use_llvm_for_stage(device, stage);
    options.key.has_multiview_view_index = multiview;
    options.key.optimisations_disabled = disable_optimizations;
 
