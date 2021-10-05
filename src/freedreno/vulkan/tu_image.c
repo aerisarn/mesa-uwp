@@ -51,19 +51,19 @@ tu6_plane_count(VkFormat format)
    }
 }
 
-VkFormat
+enum pipe_format
 tu6_plane_format(VkFormat format, uint32_t plane)
 {
    switch (format) {
    case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
       /* note: with UBWC, and Y plane UBWC is different from R8_UNORM */
-      return plane ? VK_FORMAT_R8G8_UNORM : VK_FORMAT_R8_UNORM;
+      return plane ? PIPE_FORMAT_R8G8_UNORM : PIPE_FORMAT_R8_UNORM;
    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
-      return VK_FORMAT_R8_UNORM;
+      return PIPE_FORMAT_R8_UNORM;
    case VK_FORMAT_D32_SFLOAT_S8_UINT:
-      return plane ? VK_FORMAT_S8_UINT : VK_FORMAT_D32_SFLOAT;
+      return plane ? PIPE_FORMAT_S8_UINT : PIPE_FORMAT_Z32_FLOAT;
    default:
-      return format;
+      return tu_vk_format_to_pipe_format(format);
    }
 }
 
@@ -229,7 +229,7 @@ tu_image_view_init(struct tu_image_view *iview,
 {
    TU_FROM_HANDLE(tu_image, image, pCreateInfo->image);
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
-   VkFormat format = pCreateInfo->format;
+   VkFormat vk_format = pCreateInfo->format;
    VkImageAspectFlagBits aspect_mask = pCreateInfo->subresourceRange.aspectMask;
 
    const struct VkSamplerYcbcrConversionInfo *ycbcr_conversion =
@@ -243,12 +243,15 @@ tu_image_view_init(struct tu_image_view *iview,
 
    layouts[0] = &image->layout[tu6_plane_index(image->vk_format, aspect_mask)];
 
+   enum pipe_format format;
    if (aspect_mask != VK_IMAGE_ASPECT_COLOR_BIT)
-      format = tu6_plane_format(format, tu6_plane_index(format, aspect_mask));
+      format = tu6_plane_format(vk_format, tu6_plane_index(vk_format, aspect_mask));
+   else
+      format = tu_vk_format_to_pipe_format(vk_format);
 
    if (aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT &&
-       (format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
-        format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM)) {
+       (vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
+        vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM)) {
       layouts[1] = &image->layout[1];
       layouts[2] = &image->layout[2];
    }
@@ -259,8 +262,7 @@ tu_image_view_init(struct tu_image_view *iview,
    args.base_miplevel = range->baseMipLevel;
    args.layer_count = tu_get_layerCount(image, range);
    args.level_count = tu_get_levelCount(image, range);
-   args.format = tu_format_for_aspect(tu_vk_format_to_pipe_format(format),
-                                      aspect_mask);
+   args.format = tu_format_for_aspect(format, aspect_mask);
    vk_component_mapping_to_pipe_swizzle(pCreateInfo->components, args.swiz);
    if (conversion) {
       unsigned char conversion_swiz[4], create_swiz[4];
@@ -486,7 +488,7 @@ tu_CreateImage(VkDevice _device,
 
    for (uint32_t i = 0; i < tu6_plane_count(image->vk_format); i++) {
       struct fdl_layout *layout = &image->layout[i];
-      VkFormat format = tu6_plane_format(image->vk_format, i);
+      enum pipe_format format = tu6_plane_format(image->vk_format, i);
       uint32_t width0 = pCreateInfo->extent.width;
       uint32_t height0 = pCreateInfo->extent.height;
 
@@ -524,7 +526,7 @@ tu_CreateImage(VkDevice _device,
       layout->tile_mode = tile_mode;
       layout->ubwc = ubwc_enabled;
 
-      if (!fdl6_layout(layout, vk_format_to_pipe_format(format),
+      if (!fdl6_layout(layout, format,
                        pCreateInfo->samples,
                        width0, height0,
                        pCreateInfo->extent.depth,
