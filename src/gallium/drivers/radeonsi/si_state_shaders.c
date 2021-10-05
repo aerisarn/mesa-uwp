@@ -1119,14 +1119,11 @@ static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
    /* Clip distances can be killed, but cull distances can't. */
    unsigned clipcull_mask = (sel->clipdist_mask & ~shader->key.opt.kill_clip_distances) |
                             sel->culldist_mask;
-   bool writes_psize = sel->info.writes_psize;
-
-   if (shader)
-      writes_psize &= !shader->key.opt.kill_pointsize;
-
+   bool writes_psize = sel->info.writes_psize && !shader->key.opt.kill_pointsize;
    bool misc_vec_ena = writes_psize || (sel->info.writes_edgeflag && !ngg) ||
                        sel->screen->options.vrs2x2 ||
                        sel->info.writes_layer || sel->info.writes_viewport_index;
+
    return S_02881C_VS_OUT_CCDIST0_VEC_ENA((clipcull_mask & 0x0F) != 0) |
           S_02881C_VS_OUT_CCDIST1_VEC_ENA((clipcull_mask & 0xF0) != 0) |
           S_02881C_USE_VTX_POINT_SIZE(writes_psize) |
