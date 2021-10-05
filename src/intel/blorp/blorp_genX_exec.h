@@ -1559,7 +1559,7 @@ blorp_setup_binding_table(struct blorp_batch *batch,
                            const struct blorp_params *params)
 {
    const struct isl_device *isl_dev = batch->blorp->isl_dev;
-   uint32_t surface_offsets[2], bind_offset;
+   uint32_t surface_offsets[2], bind_offset = 0;
    void *surface_maps[2];
 
    UNUSED bool has_indirect_clear_color = false;
