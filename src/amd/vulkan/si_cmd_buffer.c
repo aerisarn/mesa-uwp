@@ -1357,6 +1357,9 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_cmd_buffer_trace_emit(cmd_buffer);
 
+   if (cmd_buffer->state.flush_bits & RADV_CMD_FLAG_INV_L2)
+      cmd_buffer->state.rb_noncoherent_dirty = false;
+
    /* Clear the caches that have been flushed to avoid syncing too much
     * when there is some pending active queries.
     */

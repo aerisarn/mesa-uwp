@@ -1396,6 +1396,9 @@ struct radv_cmd_state {
    /* Whether CP DMA is busy/idle. */
    bool dma_is_busy;
 
+   /* Whether any images that are not L2 coherent are dirty from the CB. */
+   bool rb_noncoherent_dirty;
+
    /* Conditional rendering info. */
    uint8_t predication_op; /* 32-bit or 64-bit predicate value */
    int predication_type;   /* -1: disabled, 0: normal, 1: inverted */

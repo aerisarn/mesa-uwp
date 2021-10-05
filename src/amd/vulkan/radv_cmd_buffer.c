@@ -3777,9 +3777,9 @@ radv_stage_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags src_st
  * images. However, given the existence of memory barriers which do not specify
  * the image/buffer it often devolves to just VRAM/GTT anyway.
  *
- * In practice we can cheat a bit, since the INV_* operations include writebacks.
- * If we know that all the destinations that need the WB do an INV, then we can
- * skip the WB.
+ * To help reducing the invalidations for GPUs that have L2 coherency between the
+ * RB and the shader caches, we always invalidate L2 on the src side, as we can
+ * use our knowledge of past usage to optimize flushes away.
  */
 
 enum radv_cmd_flush_bits
@@ -3811,6 +3811,10 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags src_flag
                flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
             }
          }
+
+         /* This is valid even for the rb_noncoherent_dirty case, because with how we account for
+          * dirtyness, if it isn't dirty it doesn't contain the data at all and hence doesn't need
+          * invalidating. */
          if (!image_is_coherent)
             flush_bits |= RADV_CMD_FLAG_WB_L2;
          break;
@@ -3877,6 +3881,11 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags dst_flag
       if (!radv_image_has_htile(image))
          has_DB_meta = false;
    }
+
+   /* All the L2 invalidations below are not the CB/DB. So if there are no incoherent images
+    * in the L2 cache in CB/DB mode then they are already usable from all the other L2 clients. */
+   image_is_coherent |= cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 &&
+                        !cmd_buffer->state.rb_noncoherent_dirty;
 
    u_foreach_bit(b, dst_flags)
    {
@@ -4740,6 +4749,16 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
        * command buffer.
        */
       cmd_buffer->state.flush_bits |= cmd_buffer->active_query_flush_bits;
+
+      /* Flush noncoherent images on GFX9+ so we can assume they're clean on the start of a
+       * command buffer.
+       */
+      if (cmd_buffer->state.rb_noncoherent_dirty &&
+          cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9)
+         cmd_buffer->state.flush_bits |= radv_src_access_flush(
+            cmd_buffer,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+            NULL);
 
       /* Since NGG streamout uses GDS, we need to make GDS idle when
        * we leave the IB, otherwise another process might overwrite
@@ -5735,10 +5754,37 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
    assert(cmd_buffer->cs->cdw <= cdw_max);
 }
 
+static void
+radv_mark_noncoherent_rb(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_subpass *subpass = cmd_buffer->state.subpass;
+
+   /* Have to be conservative in cmdbuffers with inherited attachments. */
+   if (!cmd_buffer->state.attachments) {
+      cmd_buffer->state.rb_noncoherent_dirty = true;
+      return;
+   }
+
+   for (uint32_t i = 0; i < subpass->color_count; ++i) {
+      const uint32_t a = subpass->color_attachments[i].attachment;
+      if (a == VK_ATTACHMENT_UNUSED)
+         continue;
+      if (!cmd_buffer->state.attachments[a].iview->image->l2_coherent) {
+         cmd_buffer->state.rb_noncoherent_dirty = true;
+         return;
+      }
+   }
+   if (subpass->depth_stencil_attachment &&
+       !cmd_buffer->state.attachments[subpass->depth_stencil_attachment->attachment]
+           .iview->image->l2_coherent)
+      cmd_buffer->state.rb_noncoherent_dirty = true;
+}
+
 void
 radv_cmd_buffer_restore_subpass(struct radv_cmd_buffer *cmd_buffer,
                                 const struct radv_subpass *subpass)
 {
+   radv_mark_noncoherent_rb(cmd_buffer);
    radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 }
 
@@ -5809,6 +5855,8 @@ radv_CmdNextSubpass2(VkCommandBuffer commandBuffer, const VkSubpassBeginInfo *pS
                      const VkSubpassEndInfo *pSubpassEndInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   radv_mark_noncoherent_rb(cmd_buffer);
 
    uint32_t prev_subpass = radv_get_subpass_id(cmd_buffer);
    radv_cmd_buffer_end_subpass(cmd_buffer);
@@ -7192,6 +7240,8 @@ radv_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pS
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   radv_mark_noncoherent_rb(cmd_buffer);
+
    radv_emit_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier);
 
    radv_cmd_buffer_end_subpass(cmd_buffer);
@@ -7573,6 +7623,9 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t memoryBarrierCount,
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    enum radv_cmd_flush_bits src_flush_bits = 0;
    enum radv_cmd_flush_bits dst_flush_bits = 0;
+
+   if (cmd_buffer->state.subpass)
+      radv_mark_noncoherent_rb(cmd_buffer);
 
    radv_describe_barrier_start(cmd_buffer, info->reason);
 
