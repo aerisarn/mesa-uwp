@@ -355,8 +355,8 @@ panfrost_should_afbc(struct panfrost_device *dev,
         if (pres->base.bind & ~valid_binding)
                 return false;
 
-        /* AFBC introduced with Mali T760 */
-        if (dev->quirks & MIDGARD_NO_AFBC)
+        /* AFBC support is optional */
+        if (!dev->has_afbc)
                 return false;
 
         /* AFBC<-->staging is expensive */
