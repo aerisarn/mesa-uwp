@@ -248,7 +248,7 @@ get_reg_class(isel_context* ctx, RegType type, unsigned components, unsigned bit
 
 void
 setup_vs_output_info(isel_context* ctx, nir_shader* nir, bool export_prim_id,
-                     bool export_clip_dists, radv_vs_output_info* outinfo)
+                     bool export_clip_dists, const radv_vs_output_info* outinfo)
 {
    ctx->export_clip_dists = export_clip_dists;
    ctx->num_clip_distances = util_bitcount(outinfo->clip_dist_mask);
@@ -269,7 +269,7 @@ void
 setup_vs_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == vertex_vs || ctx->stage == vertex_ngg) {
-      radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
+      const radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id, outinfo->export_clip_dists, outinfo);
 
       /* TODO: NGG streamout */
@@ -292,7 +292,7 @@ setup_gs_variables(isel_context* ctx, nir_shader* nir)
       ctx->program->config->lds_size =
          ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
    } else if (ctx->stage == vertex_geometry_ngg || ctx->stage == tess_eval_geometry_ngg) {
-      radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
+      const radv_vs_output_info* outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, false, outinfo->export_clip_dists, outinfo);
 
       ctx->program->config->lds_size =
@@ -315,7 +315,7 @@ setup_tes_variables(isel_context* ctx, nir_shader* nir)
    ctx->tcs_num_patches = ctx->args->shader_info->num_tess_patches;
 
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {
-      radv_vs_output_info* outinfo = &ctx->program->info->tes.outinfo;
+      const radv_vs_output_info* outinfo = &ctx->program->info->tes.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id, outinfo->export_clip_dists, outinfo);
 
       /* TODO: NGG streamout */
@@ -823,7 +823,7 @@ cleanup_context(isel_context* ctx)
 
 isel_context
 setup_isel_context(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
-                   ac_shader_config* config, struct radv_shader_args* args, bool is_gs_copy_shader)
+                   ac_shader_config* config, const struct radv_shader_args* args, bool is_gs_copy_shader)
 {
    SWStage sw_stage = SWStage::None;
    for (unsigned i = 0; i < shader_count; i++) {

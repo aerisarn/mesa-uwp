@@ -75,7 +75,7 @@ validate(aco::Program* program)
 
 void
 aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
-                   struct radv_shader_binary** binary, struct radv_shader_args* args)
+                   struct radv_shader_binary** binary, const struct radv_shader_args* args)
 {
    aco::init();
 

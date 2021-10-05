@@ -42,7 +42,7 @@ extern const unsigned aco_num_statistics;
 extern const struct aco_compiler_statistic_info* aco_statistic_infos;
 
 void aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
-                        struct radv_shader_binary** binary, struct radv_shader_args* args);
+                        struct radv_shader_binary** binary, const struct radv_shader_args* args);
 
 #ifdef __cplusplus
 }

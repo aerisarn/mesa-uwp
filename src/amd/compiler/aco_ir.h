@@ -2040,7 +2040,7 @@ public:
    uint16_t num_waves = 0;
    uint16_t max_waves = 0; /* maximum number of waves, regardless of register usage */
    ac_shader_config* config;
-   struct radv_shader_info* info;
+   const struct radv_shader_info* info;
    enum chip_class chip_class;
    enum radeon_family family;
    DeviceInfo dev;
@@ -2135,16 +2135,16 @@ struct ra_test_policy {
 
 void init();
 
-void init_program(Program* program, Stage stage, struct radv_shader_info* info,
+void init_program(Program* program, Stage stage, const struct radv_shader_info* info,
                   enum chip_class chip_class, enum radeon_family family, bool wgp_mode,
                   ac_shader_config* config);
 
 void select_program(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
-                    ac_shader_config* config, struct radv_shader_args* args);
+                    ac_shader_config* config, const struct radv_shader_args* args);
 void select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_config* config,
-                           struct radv_shader_args* args);
+                           const struct radv_shader_args* args);
 void select_trap_handler_shader(Program* program, struct nir_shader* shader,
-                                ac_shader_config* config, struct radv_shader_args* args);
+                                ac_shader_config* config, const struct radv_shader_args* args);
 
 void lower_phis(Program* program);
 void calc_min_waves(Program* program);
