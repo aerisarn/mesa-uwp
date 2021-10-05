@@ -746,27 +746,9 @@ isl_format_supports_filtering(const struct intel_device_info *devinfo,
    if (!format_info_exists(format))
       return false;
 
-   if (devinfo->is_baytrail) {
-      const struct isl_format_layout *fmtl = isl_format_get_layout(format);
-      /* Support for ETC1 and ETC2 exists on Bay Trail even though big-core
-       * GPUs didn't get it until Broadwell.
-       */
-      if (fmtl->txc == ISL_TXC_ETC1 || fmtl->txc == ISL_TXC_ETC2)
-         return true;
-   } else if (devinfo->is_cherryview) {
-      const struct isl_format_layout *fmtl = isl_format_get_layout(format);
-      /* Support for ASTC LDR exists on Cherry View even though big-core
-       * GPUs didn't get it until Skylake.
-       */
-      if (fmtl->txc == ISL_TXC_ASTC)
-         return format < ISL_FORMAT_ASTC_HDR_2D_4X4_FLT16;
-   } else if (intel_device_info_is_9lp(devinfo)) {
-      const struct isl_format_layout *fmtl = isl_format_get_layout(format);
-      /* Support for ASTC HDR exists on Broxton even though big-core
-       * GPUs didn't get it until Cannonlake.
-       */
-      if (fmtl->txc == ISL_TXC_ASTC)
-         return true;
+   if (isl_format_is_compressed(format)) {
+      assert(format_info[format].filtering == format_info[format].sampling);
+      return isl_format_supports_sampling(devinfo, format);
    }
 
    return devinfo->verx10 >= format_info[format].filtering;
