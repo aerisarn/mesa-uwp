@@ -4214,8 +4214,13 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    struct threaded_context *tc = (struct threaded_context*)threaded_context_create(&ctx->base, &screen->transfer_pool,
                                                      zink_context_replace_buffer_storage,
-                                                     zink_create_tc_fence_for_tc,
-                                                     zink_context_is_resource_busy, true, true, &ctx->tc);
+                                                     &(struct threaded_context_options){
+                                                        .create_fence = zink_create_tc_fence_for_tc,
+                                                        .is_resource_busy = zink_context_is_resource_busy,
+                                                        .driver_calls_flush_notify = true,
+                                                        .unsynchronized_get_device_reset_status = true,
+                                                     },
+                                                     &ctx->tc);
 
    if (tc && (struct zink_context*)tc != ctx) {
       threaded_context_init_bytes_mapped_limit(tc, 4);

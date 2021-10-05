@@ -862,10 +862,12 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen, v
    struct pipe_context *tc =
       threaded_context_create(ctx, &sscreen->pool_transfers,
                               si_replace_buffer_storage,
-                              sscreen->info.is_amdgpu ? si_create_fence : NULL,
-                              si_is_resource_busy,
-                              true,
-                              false,
+                              &(struct threaded_context_options){
+                                 .create_fence = sscreen->info.is_amdgpu ?
+                                       si_create_fence : NULL,
+                                 .is_resource_busy = si_is_resource_busy,
+                                 .driver_calls_flush_notify = true,
+                              },
                               &((struct si_context *)ctx)->tc);
 
    if (tc && tc != ctx)

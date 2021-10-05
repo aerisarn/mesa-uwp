@@ -221,7 +221,7 @@ tc_batch_execute(void *job, UNUSED void *gdata, int thread_index)
    struct util_queue_fence *fence =
       &tc->buffer_lists[batch->buffer_list_index].driver_flushed_fence;
 
-   if (tc->driver_calls_flush_notify) {
+   if (tc->options.driver_calls_flush_notify) {
       tc->signal_fences_next_flush[tc->num_signal_fences_next_flush++] = fence;
 
       /* Since our buffer lists are chained as a ring, we need to flush
@@ -649,7 +649,7 @@ static bool
 tc_is_buffer_busy(struct threaded_context *tc, struct threaded_resource *tbuf,
                   unsigned map_usage)
 {
-   if (!tc->is_resource_busy)
+   if (!tc->options.is_resource_busy)
       return true;
 
    uint32_t id_hash = tbuf->buffer_id_unique & TC_BUFFER_ID_MASK;
@@ -666,7 +666,7 @@ tc_is_buffer_busy(struct threaded_context *tc, struct threaded_resource *tbuf,
 
    /* The buffer isn't referenced by any unflushed batch: we can safely ask to the driver whether
     * this buffer is busy or not. */
-   return tc->is_resource_busy(tc->pipe->screen, tbuf->latest, map_usage);
+   return tc->options.is_resource_busy(tc->pipe->screen, tbuf->latest, map_usage);
 }
 
 void
@@ -2613,7 +2613,7 @@ tc_get_device_reset_status(struct pipe_context *_pipe)
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
 
-   if (!tc->unsynchronized_get_device_reset_status)
+   if (!tc->options.unsynchronized_get_device_reset_status)
       tc_sync(tc);
 
    return pipe->get_device_reset_status(pipe);
@@ -2883,7 +2883,7 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
    struct pipe_screen *screen = pipe->screen;
    bool async = flags & (PIPE_FLUSH_DEFERRED | PIPE_FLUSH_ASYNC);
 
-   if (async && tc->create_fence) {
+   if (async && tc->options.create_fence) {
       if (fence) {
          struct tc_batch *next = &tc->batch_slots[tc->next];
 
@@ -2896,7 +2896,8 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
             next->token->tc = tc;
          }
 
-         screen->fence_reference(screen, fence, tc->create_fence(pipe, next->token));
+         screen->fence_reference(screen, fence,
+                                 tc->options.create_fence(pipe, next->token));
          if (!*fence)
             goto out_of_memory;
       }
@@ -4186,15 +4187,7 @@ void tc_driver_internal_flush_notify(struct threaded_context *tc)
  *                             in pipe_screen.
  * \param replace_buffer  callback for replacing a pipe_resource's storage
  *                        with another pipe_resource's storage.
- * \param create_fence    optional callback to create a fence for async flush
- * \param is_resource_busy   optional callback to tell TC if transfer_map()/etc
- *                           with the given usage would stall
- * \param driver_calls_flush_notify  whether the driver calls
- *                                   tc_driver_internal_flush_notify after every
- *                                   driver flush
- * \param unsynchronized_get_device_reset_status  if true, get_device_reset_status()
- *                                                calls will not be synchronized with
- *                                                driver thread
+ * \param options         optional TC options/callbacks
  * \param out  if successful, the threaded_context will be returned here in
  *             addition to the return value if "out" != NULL
  */
@@ -4202,10 +4195,7 @@ struct pipe_context *
 threaded_context_create(struct pipe_context *pipe,
                         struct slab_parent_pool *parent_transfer_pool,
                         tc_replace_buffer_storage_func replace_buffer,
-                        tc_create_fence_func create_fence,
-                        tc_is_resource_busy is_resource_busy,
-                        bool driver_calls_flush_notify,
-                        bool unsynchronized_get_device_reset_status,
+                        const struct threaded_context_options *options,
                         struct threaded_context **out)
 {
    struct threaded_context *tc;
@@ -4224,17 +4214,16 @@ threaded_context_create(struct pipe_context *pipe,
       return NULL;
    }
 
-   pipe = trace_context_create_threaded(pipe->screen, pipe, &replace_buffer, &create_fence, &is_resource_busy);
+   if (options)
+      tc->options = *options;
+
+   pipe = trace_context_create_threaded(pipe->screen, pipe, &replace_buffer, &tc->options);
 
    /* The driver context isn't wrapped, so set its "priv" to NULL. */
    pipe->priv = NULL;
 
    tc->pipe = pipe;
    tc->replace_buffer_storage = replace_buffer;
-   tc->create_fence = create_fence;
-   tc->is_resource_busy = is_resource_busy;
-   tc->driver_calls_flush_notify = driver_calls_flush_notify;
-   tc->unsynchronized_get_device_reset_status = unsynchronized_get_device_reset_status;
    tc->map_buffer_alignment =
       pipe->screen->get_param(pipe->screen, PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT);
    tc->ubo_alignment =

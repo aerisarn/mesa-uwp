@@ -691,10 +691,11 @@ fd_context_init_tc(struct pipe_context *pctx, unsigned flags)
    struct pipe_context *tc = threaded_context_create(
       pctx, &ctx->screen->transfer_pool,
       fd_replace_buffer_storage,
-      fd_fence_create_unflushed,
-      fd_resource_busy,
-      false,
-      true,
+      &(struct threaded_context_options){
+         .create_fence = fd_fence_create_unflushed,
+         .is_resource_busy = fd_resource_busy,
+         .unsynchronized_get_device_reset_status = true,
+      },
       &ctx->tc);
 
    if (tc && tc != pctx)
