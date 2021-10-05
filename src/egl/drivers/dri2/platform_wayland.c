@@ -1506,7 +1506,7 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    if (!dri2_dpy->wl_modifiers)
       goto cleanup;
    for (int i = 0; i < ARRAY_SIZE(dri2_wl_visuals); i++) {
-      if (!u_vector_init(&dri2_dpy->wl_modifiers[i], sizeof(uint64_t), 32))
+      if (!u_vector_init_pow2(&dri2_dpy->wl_modifiers[i], 4, sizeof(uint64_t)))
          goto cleanup;
    }
 

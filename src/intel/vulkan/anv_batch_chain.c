@@ -861,18 +861,15 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    anv_batch_bo_start(batch_bo, &cmd_buffer->batch,
                       GFX8_MI_BATCH_BUFFER_START_length * 4);
 
-   int success = u_vector_init(&cmd_buffer->seen_bbos,
-                                 sizeof(struct anv_bo *),
-                                 8 * sizeof(struct anv_bo *));
+   int success = u_vector_init_pow2(&cmd_buffer->seen_bbos, 8,
+                                    sizeof(struct anv_bo *));
    if (!success)
       goto fail_batch_bo;
 
    *(struct anv_batch_bo **)u_vector_add(&cmd_buffer->seen_bbos) = batch_bo;
 
-   /* u_vector requires power-of-two size elements */
-   unsigned pow2_state_size = util_next_power_of_two(sizeof(struct anv_state));
-   success = u_vector_init(&cmd_buffer->bt_block_states,
-                           pow2_state_size, 8 * pow2_state_size);
+   success = u_vector_init(&cmd_buffer->bt_block_states, 8,
+                           sizeof(struct anv_state));
    if (!success)
       goto fail_seen_bbos;
 

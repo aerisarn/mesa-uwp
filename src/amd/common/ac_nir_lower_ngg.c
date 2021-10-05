@@ -847,7 +847,7 @@ analyze_shader_before_culling(nir_shader *shader, lower_ngg_nogs_state *nogs_sta
 static void
 save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
 {
-   ASSERTED int vec_ok = u_vector_init(&nogs_state->saved_uniforms, sizeof(saved_uniform), 4 * sizeof(saved_uniform));
+   ASSERTED int vec_ok = u_vector_init(&nogs_state->saved_uniforms, 4, sizeof(saved_uniform));
    assert(vec_ok);
 
    nir_block *block = nir_start_block(b->impl);

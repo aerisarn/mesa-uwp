@@ -160,9 +160,8 @@ anv_state_table_init(struct anv_state_table *table,
       goto fail_fd;
    }
 
-   if (!u_vector_init(&table->cleanups,
-                      round_to_power_of_two(sizeof(struct anv_state_table_cleanup)),
-                      128)) {
+   if (!u_vector_init(&table->cleanups, 8,
+                      sizeof(struct anv_state_table_cleanup))) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_fd;
    }
@@ -405,9 +404,8 @@ anv_block_pool_init(struct anv_block_pool *pool,
       pool->bo = &pool->wrapper_bo;
    }
 
-   if (!u_vector_init(&pool->mmap_cleanups,
-                      round_to_power_of_two(sizeof(struct anv_mmap_cleanup)),
-                      128)) {
+   if (!u_vector_init(&pool->mmap_cleanups, 8,
+                      sizeof(struct anv_mmap_cleanup))) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_fd;
    }

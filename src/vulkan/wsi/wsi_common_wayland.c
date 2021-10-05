@@ -113,7 +113,7 @@ wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
       return NULL;
 
    struct u_vector modifiers;
-   if (!u_vector_init(&modifiers, sizeof(uint64_t), 32))
+   if (!u_vector_init_pow2(&modifiers, 4, sizeof(uint64_t)))
       return NULL;
 
    f = u_vector_add(formats);
@@ -455,9 +455,7 @@ wsi_wl_display_init(struct wsi_wayland *wsi_wl,
    VkResult result = VK_SUCCESS;
    memset(display, 0, sizeof(*display));
 
-   const size_t elem_size =
-      util_next_power_of_two(sizeof(struct wsi_wl_format));
-   if (!u_vector_init(&display->formats, elem_size, 8 * elem_size))
+   if (!u_vector_init(&display->formats, 8, sizeof(struct wsi_wl_format)))
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    display->wsi_wl = wsi_wl;
