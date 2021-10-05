@@ -333,11 +333,14 @@ static void
 post_submit(void *data, void *gdata, int thread_index)
 {
    struct zink_batch_state *bs = data;
+   struct zink_screen *screen = zink_screen(bs->ctx->base.screen);
 
    if (bs->is_device_lost) {
       if (bs->ctx->reset.reset)
          bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
-      zink_screen(bs->ctx->base.screen)->device_lost = true;
+      screen->device_lost = true;
+   } else if (_mesa_hash_table_num_entries(&bs->ctx->batch_states) > 5000) {
+      zink_screen_batch_id_wait(screen, bs->fence.batch_id - 2500, PIPE_TIMEOUT_INFINITE);
    }
 }
 
