@@ -1197,6 +1197,7 @@ radv_build_param_exports(struct radv_shader_context *ctx, struct radv_shader_out
          continue;
 
       radv_export_param(ctx, param_count, outputs[i].values, usage_mask);
+      param_count++;
    }
 }
 
