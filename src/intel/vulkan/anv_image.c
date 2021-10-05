@@ -2053,7 +2053,7 @@ anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
        *
        * TODO: Should we be disabling this in more cases?
        */
-      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+      if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT && devinfo->ver <= 9) {
          aux_supported = false;
          clear_supported = false;
       }
