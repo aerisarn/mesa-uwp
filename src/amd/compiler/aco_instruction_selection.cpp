@@ -4797,8 +4797,12 @@ emit_load_frag_coord(isel_context* ctx, Temp dst, unsigned num_components)
 
    aco_ptr<Pseudo_instruction> vec(create_instruction<Pseudo_instruction>(
       aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1));
-   for (unsigned i = 0; i < num_components; i++)
-      vec->operands[i] = Operand(get_arg(ctx, ctx->args->ac.frag_pos[i]));
+   for (unsigned i = 0; i < num_components; i++) {
+      if (ctx->args->ac.frag_pos[i].used)
+         vec->operands[i] = Operand(get_arg(ctx, ctx->args->ac.frag_pos[i]));
+      else
+         vec->operands[i] = Operand(v1);
+   }
    if (G_0286CC_POS_W_FLOAT_ENA(ctx->program->config->spi_ps_input_ena)) {
       assert(num_components == 4);
       vec->operands[3] =
@@ -11360,15 +11364,19 @@ handle_bc_optimize(isel_context* ctx)
    uint32_t spi_ps_input_ena = ctx->program->config->spi_ps_input_ena;
    bool uses_center =
       G_0286CC_PERSP_CENTER_ENA(spi_ps_input_ena) || G_0286CC_LINEAR_CENTER_ENA(spi_ps_input_ena);
-   bool uses_centroid = G_0286CC_PERSP_CENTROID_ENA(spi_ps_input_ena) ||
-                        G_0286CC_LINEAR_CENTROID_ENA(spi_ps_input_ena);
-   ctx->persp_centroid = get_arg(ctx, ctx->args->ac.persp_centroid);
-   ctx->linear_centroid = get_arg(ctx, ctx->args->ac.linear_centroid);
-   if (uses_center && uses_centroid) {
+   bool uses_persp_centroid = G_0286CC_PERSP_CENTROID_ENA(spi_ps_input_ena);
+   bool uses_linear_centroid = G_0286CC_LINEAR_CENTROID_ENA(spi_ps_input_ena);
+
+   if (uses_persp_centroid)
+      ctx->persp_centroid = get_arg(ctx, ctx->args->ac.persp_centroid);
+   if (uses_linear_centroid)
+      ctx->linear_centroid = get_arg(ctx, ctx->args->ac.linear_centroid);
+
+   if (uses_center && (uses_persp_centroid || uses_linear_centroid)) {
       Temp sel = bld.vopc_e64(aco_opcode::v_cmp_lt_i32, bld.hint_vcc(bld.def(bld.lm)),
                               get_arg(ctx, ctx->args->ac.prim_mask), Operand::zero());
 
-      if (G_0286CC_PERSP_CENTROID_ENA(spi_ps_input_ena)) {
+      if (uses_persp_centroid) {
          Temp new_coord[2];
          for (unsigned i = 0; i < 2; i++) {
             Temp persp_centroid =
@@ -11384,7 +11392,7 @@ handle_bc_optimize(isel_context* ctx)
          emit_split_vector(ctx, ctx->persp_centroid, 2);
       }
 
-      if (G_0286CC_LINEAR_CENTROID_ENA(spi_ps_input_ena)) {
+      if (uses_linear_centroid) {
          Temp new_coord[2];
          for (unsigned i = 0; i < 2; i++) {
             Temp linear_centroid =
