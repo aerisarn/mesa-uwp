@@ -447,6 +447,7 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
    }
 
    switch (instr->sampler_dim) {
+   case GLSL_SAMPLER_DIM_1D:
    case GLSL_SAMPLER_DIM_2D:
    case GLSL_SAMPLER_DIM_3D:
    case GLSL_SAMPLER_DIM_CUBE:

@@ -27,6 +27,7 @@
 
 #define lima_min_tex_desc_size 64
 
+#define LIMA_SAMPLER_DIM_1D   0
 #define LIMA_SAMPLER_DIM_2D   1
 #define LIMA_SAMPLER_DIM_3D   2
 

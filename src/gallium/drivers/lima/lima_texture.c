@@ -131,6 +131,9 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    memset(desc, 0, desc_size);
 
    switch (texture->base.target) {
+   case PIPE_TEXTURE_1D:
+      desc->sampler_dim = LIMA_SAMPLER_DIM_1D;
+      break;
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_RECT:
       desc->sampler_dim = LIMA_SAMPLER_DIM_2D;
