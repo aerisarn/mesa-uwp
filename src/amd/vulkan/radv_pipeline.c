@@ -2295,6 +2295,39 @@ radv_nir_stage_uses_xfb(const nir_shader *nir)
    return uses_xfb;
 }
 
+static bool
+radv_lower_viewport_to_zero(nir_shader *nir)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   /* There should be only one deref load for VIEWPORT after lower_io_to_temporaries. */
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_load_deref)
+            continue;
+
+         nir_variable *var = nir_intrinsic_get_var(intr, 0);
+         if (var->data.mode != nir_var_shader_in ||
+             var->data.location != VARYING_SLOT_VIEWPORT)
+            continue;
+
+         b.cursor = nir_before_instr(instr);
+
+         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_imm_zero(&b, 1, 32));
+         return true;
+      }
+   }
+
+   return false;
+}
+
 static void
 radv_link_shaders(struct radv_pipeline *pipeline,
                   const struct radv_pipeline_key *pipeline_key,
@@ -2416,6 +2449,13 @@ radv_link_shaders(struct radv_pipeline *pipeline,
             nir_opt_dce(ordered_shaders[i]);
          }
       }
+   }
+
+   /* Lower the viewport index to zero when the last vertex stage doesn't export it. */
+   if (shaders[MESA_SHADER_FRAGMENT] &&
+       (shaders[MESA_SHADER_FRAGMENT]->info.inputs_read & VARYING_BIT_VIEWPORT) &&
+       !(shaders[pipeline->graphics.last_vgt_api_stage]->info.outputs_written & VARYING_BIT_VIEWPORT)) {
+      radv_lower_viewport_to_zero(shaders[MESA_SHADER_FRAGMENT]);
    }
 
    for (int i = 1; !optimize_conservatively && (i < shader_count); ++i) {
@@ -4955,11 +4995,8 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs, const struct radv
 
    if (ps->info.ps.viewport_index_input) {
       unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_VIEWPORT];
-      if (vs_offset != AC_EXP_PARAM_UNDEFINED)
-         ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
-      else
-         ps_input_cntl[ps_offset] =
-            offset_to_ps_input(AC_EXP_PARAM_DEFAULT_VAL_0000, true, false, false);
+      assert(vs_offset != AC_EXP_PARAM_UNDEFINED);
+      ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
       ++ps_offset;
    }
 
