@@ -50,7 +50,6 @@ libpanvk_files = files(
   'panvk_sync.c',
   'panvk_util.c',
   'panvk_wsi.c',
-  'panvk_wsi_display.c',
 )
 
 panvk_deps = []
@@ -94,13 +93,8 @@ foreach arch : ['5', '6', '7']
   )
 endforeach
 
-if system_has_kms_drm
-  libpanvk_files += files('panvk_wsi_display.c')
-endif
-
 if with_platform_wayland
   panvk_deps += [dep_wayland_client, dep_wl_protocols]
-  libpanvk_files += files('panvk_wsi_wayland.c')
   libpanvk_files += [wayland_drm_client_protocol_h, wayland_drm_protocol_c]
 endif
 
