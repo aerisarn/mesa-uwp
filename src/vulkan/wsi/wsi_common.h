@@ -27,8 +27,15 @@
 #include <stdbool.h>
 
 #include "vk_alloc.h"
+#include "vk_dispatch_table.h"
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
+
+#ifndef WSI_ENTRYPOINTS_H
+extern const struct vk_instance_entrypoint_table wsi_instance_entrypoints;
+extern const struct vk_physical_device_entrypoint_table wsi_physical_device_entrypoints;
+extern const struct vk_device_entrypoint_table wsi_device_entrypoints;
+#endif
 
 /* This is guaranteed to not collide with anything because it's in the
  * VK_KHR_swapchain namespace but not actually used by the extension.
