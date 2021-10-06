@@ -67,6 +67,7 @@ a306-traces:
 .a530-test:
   extends:
     - .freedreno-test
+    - .test-manual-mr
   variables:
     BM_KERNEL: /baremetal-files/Image.gz
     BM_DTB: /baremetal-files/apq8096-db820c.dtb
@@ -79,7 +80,6 @@ a530_gl:
   extends:
     - .baremetal-deqp-test
     - .a530-test
-    - .test-manual-mr
   variables:
     DEQP_VER: gles2
     DEQP_SUITE: freedreno-a530
