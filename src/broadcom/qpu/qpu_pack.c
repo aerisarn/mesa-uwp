@@ -926,6 +926,56 @@ v3d_qpu_float32_unpack_pack(enum v3d_qpu_input_unpack unpacked,
 }
 
 static bool
+v3d_qpu_int32_unpack_unpack(uint32_t packed,
+                            enum v3d_qpu_input_unpack *unpacked)
+{
+        switch (packed) {
+        case 0:
+                *unpacked = V3D_QPU_UNPACK_NONE;
+                return true;
+        case 1:
+                *unpacked = V3D_QPU_UNPACK_UL;
+                return true;
+        case 2:
+                *unpacked = V3D_QPU_UNPACK_UH;
+                return true;
+        case 3:
+                *unpacked = V3D_QPU_UNPACK_IL;
+                return true;
+        case 4:
+                *unpacked = V3D_QPU_UNPACK_IH;
+                return true;
+        default:
+                return false;
+        }
+}
+
+static bool
+v3d_qpu_int32_unpack_pack(enum v3d_qpu_input_unpack unpacked,
+                          uint32_t *packed)
+{
+        switch (unpacked) {
+        case V3D_QPU_UNPACK_NONE:
+                *packed = 0;
+                return true;
+        case V3D_QPU_UNPACK_UL:
+                *packed = 1;
+                return true;
+        case V3D_QPU_UNPACK_UH:
+                *packed = 2;
+                return true;
+        case V3D_QPU_UNPACK_IL:
+                *packed = 3;
+                return true;
+        case V3D_QPU_UNPACK_IH:
+                *packed = 4;
+                return true;
+        default:
+                return false;
+        }
+}
+
+static bool
 v3d_qpu_float16_unpack_unpack(uint32_t packed,
                               enum v3d_qpu_input_unpack *unpacked)
 {
@@ -1276,6 +1326,15 @@ v3d71_qpu_add_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst
                 instr->alu.add.b.unpack = V3D_QPU_UNPACK_NONE;
                 break;
 
+        case V3D_QPU_A_MOV:
+                instr->alu.add.output_pack = V3D_QPU_PACK_NONE;
+
+                if (!v3d_qpu_int32_unpack_unpack((raddr_b >> 2) & 0x7,
+                                                 &instr->alu.add.a.unpack)) {
+                        return false;
+                }
+                break;
+
         default:
                 instr->alu.add.output_pack = V3D_QPU_PACK_NONE;
                 instr->alu.add.a.unpack = V3D_QPU_UNPACK_NONE;
@@ -1450,6 +1509,15 @@ v3d71_qpu_mul_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst
 
                 instr->alu.mul.b.unpack = V3D_QPU_UNPACK_NONE;
 
+                break;
+
+        case V3D_QPU_M_MOV:
+                instr->alu.mul.output_pack = V3D_QPU_PACK_NONE;
+
+                if (!v3d_qpu_int32_unpack_unpack((raddr_d >> 2) & 0x7,
+                                                 &instr->alu.mul.a.unpack)) {
+                        return false;
+                }
                 break;
 
         default:
@@ -1912,6 +1980,21 @@ v3d71_qpu_add_pack(const struct v3d_device_info *devinfo,
                 opcode |= packed;
                 break;
 
+        case V3D_QPU_A_MOV: {
+                uint32_t packed;
+
+                if (instr->alu.add.output_pack != V3D_QPU_PACK_NONE)
+                        return false;
+
+                if (!v3d_qpu_int32_unpack_pack(instr->alu.add.a.unpack,
+                                               &packed)) {
+                        return false;
+                }
+
+                raddr_b |= packed << 2;
+                break;
+        }
+
         default:
                 if (instr->alu.add.op != V3D_QPU_A_NOP &&
                     (instr->alu.add.output_pack != V3D_QPU_PACK_NONE ||
@@ -2126,6 +2209,21 @@ v3d71_qpu_mul_pack(const struct v3d_device_info *devinfo,
                 if (instr->alu.mul.b.unpack != V3D_QPU_UNPACK_NONE)
                         return false;
 
+                break;
+        }
+
+        case V3D_QPU_M_MOV: {
+                uint32_t packed;
+
+                if (instr->alu.mul.output_pack != V3D_QPU_PACK_NONE)
+                        return false;
+
+                if (!v3d_qpu_int32_unpack_pack(instr->alu.mul.a.unpack,
+                                               &packed)) {
+                        return false;
+                }
+
+                raddr_d |= packed << 2;
                 break;
         }
 

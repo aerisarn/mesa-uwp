@@ -285,6 +285,15 @@ enum v3d_qpu_input_unpack {
 
         /** Swap high and low 16 bits */
         V3D_QPU_UNPACK_SWAP_16,
+
+        /** Convert low 16 bits from 16-bit integer to unsigned 32-bit int */
+        V3D_QPU_UNPACK_UL,
+        /** Convert high 16 bits from 16-bit integer to unsigned 32-bit int */
+        V3D_QPU_UNPACK_UH,
+        /** Convert low 16 bits from 16-bit integer to signed 32-bit int */
+        V3D_QPU_UNPACK_IL,
+        /** Convert high 16 bits from 16-bit integer to signed 32-bit int */
+        V3D_QPU_UNPACK_IH,
 };
 
 enum v3d_qpu_mux {
