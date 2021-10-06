@@ -194,7 +194,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    if (result != VK_SUCCESS) {
       vk_free(pAllocator, instance);
-      return vk_error(instance, result);
+      return vk_error(NULL, result);
    }
 
    v3d_process_debug_variable();
@@ -1754,7 +1754,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
                            &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
-      return vk_error(instance, result);
+      return vk_error(NULL, result);
    }
 
    device->instance = instance;
