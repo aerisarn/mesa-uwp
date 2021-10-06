@@ -127,12 +127,10 @@ anv_flags = [
 
 if with_platform_x11
   anv_deps += dep_xcb_dri3
-  libanv_files += files('anv_wsi_x11.c')
 endif
 
 if with_platform_wayland
   anv_deps += dep_wayland_client
-  libanv_files += files('anv_wsi_wayland.c')
 endif
 
 if system_has_kms_drm and not with_platform_android
