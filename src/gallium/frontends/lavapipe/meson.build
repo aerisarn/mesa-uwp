@@ -43,16 +43,10 @@ lvp_flags = []
 
 if with_platform_x11
   lvp_deps += dep_xcb_dri3
-  liblvp_files += files('lvp_wsi_x11.c')
 endif
 
 if with_platform_wayland
   lvp_deps += dep_wayland_client
-  liblvp_files += files('lvp_wsi_wayland.c')
-endif
-
-if with_platform_windows
-  liblvp_files += files('lvp_wsi_win32.c')
 endif
 
 liblavapipe_st = static_library(

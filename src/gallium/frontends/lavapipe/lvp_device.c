@@ -167,6 +167,8 @@ lvp_physical_device_init(struct lvp_physical_device *device,
    struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &lvp_physical_device_entrypoints, true);
+   vk_physical_device_dispatch_table_from_entrypoints(
+      &dispatch_table, &wsi_physical_device_entrypoints, false);
    result = vk_physical_device_init(&device->vk, &instance->vk,
                                     NULL, &dispatch_table);
    if (result != VK_SUCCESS) {
@@ -222,6 +224,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateInstance(
    struct vk_instance_dispatch_table dispatch_table;
    vk_instance_dispatch_table_from_entrypoints(
       &dispatch_table, &lvp_instance_entrypoints, true);
+   vk_instance_dispatch_table_from_entrypoints(
+      &dispatch_table, &wsi_instance_entrypoints, false);
 
    result = vk_instance_init(&instance->vk,
                              &lvp_instance_extensions_supported,
@@ -1419,6 +1423,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    struct vk_device_dispatch_table dispatch_table;
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
       &lvp_device_entrypoints, true);
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table,
+      &wsi_device_entrypoints, false);
    VkResult result = vk_device_init(&device->vk,
                                     &physical_device->vk,
                                     &dispatch_table, pCreateInfo,
