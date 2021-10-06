@@ -1264,7 +1264,7 @@ print_load_const_instr(nir_load_const_instr *instr, print_state *state)
 
       switch (instr->def.bit_size) {
       case 64:
-         fprintf(fp, "0x%16" PRIx64 " /* %f */", instr->value[i].u64,
+         fprintf(fp, "0x%016" PRIx64 " /* %f */", instr->value[i].u64,
                  instr->value[i].f64);
          break;
       case 32:
