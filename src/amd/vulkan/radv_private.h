@@ -1736,8 +1736,6 @@ struct radv_pipeline {
    struct radv_device *device;
    struct radv_dynamic_state dynamic_state;
 
-   struct radv_pipeline_layout *layout;
-
    bool need_indirect_descriptor_sets;
    struct radv_shader_variant *shaders[MESA_SHADER_STAGES];
    struct radv_shader_variant *gs_copy_shader;
@@ -1815,6 +1813,10 @@ struct radv_pipeline {
 
    /* Unique pipeline hash identifier. */
    uint64_t pipeline_hash;
+
+   /* Pipeline layout info. */
+   uint32_t push_constant_size;
+   uint32_t dynamic_offset_count;
 };
 
 static inline bool
