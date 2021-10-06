@@ -220,7 +220,7 @@ r2d_dst_stencil(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t la
 static void
 r2d_dst_buffer(struct tu_cs *cs, VkFormat vk_format, uint64_t va, uint32_t pitch)
 {
-   struct tu_native_format format = tu6_format_color(vk_format, TILE6_LINEAR);
+   struct tu_native_format format = tu6_format_color(tu_vk_format_to_pipe_format(vk_format), TILE6_LINEAR);
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_2D_DST_INFO(
@@ -241,13 +241,14 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
                  bool ubwc,
                  bool scissor)
 {
-   enum a6xx_format format = tu6_base_format(vk_format);
+   enum pipe_format format = tu_vk_format_to_pipe_format(vk_format);
+   enum a6xx_format fmt = tu6_base_format(format);
    enum a6xx_2d_ifmt ifmt = format_to_ifmt(vk_format);
    uint32_t unknown_8c01 = 0;
 
    if ((vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
         vk_format == VK_FORMAT_X8_D24_UNORM_PACK32) && ubwc) {
-      format = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+      fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
    }
 
    /* note: the only format with partial clearing is D24S8 */
@@ -267,8 +268,8 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
          .scissor = scissor,
          .rotate = blit_param,
          .solid_color = clear,
-         .d24s8 = format == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 && !clear,
-         .color_format = format,
+         .d24s8 = fmt == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 && !clear,
+         .color_format = fmt,
          .mask = 0xf,
          .ifmt = vk_format_is_srgb(vk_format) ? R2D_UNORM8_SRGB : ifmt,
       ).value;
@@ -279,13 +280,13 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
    tu_cs_emit(cs, blit_cntl);
 
-   if (format == FMT6_10_10_10_2_UNORM_DEST)
-      format = FMT6_16_16_16_16_FLOAT;
+   if (fmt == FMT6_10_10_10_2_UNORM_DEST)
+      fmt = FMT6_16_16_16_16_FLOAT;
 
    tu_cs_emit_regs(cs, A6XX_SP_2D_DST_FORMAT(
          .sint = vk_format_is_sint(vk_format),
          .uint = vk_format_is_uint(vk_format),
-         .color_format = format,
+         .color_format = fmt,
          .srgb = vk_format_is_srgb(vk_format),
          .mask = 0xf));
 }
@@ -955,7 +956,7 @@ r3d_dst_stencil(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t la
 static void
 r3d_dst_buffer(struct tu_cs *cs, VkFormat vk_format, uint64_t va, uint32_t pitch)
 {
-   struct tu_native_format format = tu6_format_color(vk_format, TILE6_LINEAR);
+   struct tu_native_format format = tu6_format_color(tu_vk_format_to_pipe_format(vk_format), TILE6_LINEAR);
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_MRT_BUF_INFO(0, .color_format = format.fmt, .color_swap = format.swap),
@@ -994,7 +995,7 @@ r3d_setup(struct tu_cmd_buffer *cmd,
           bool ubwc,
           VkSampleCountFlagBits samples)
 {
-   enum a6xx_format format = tu6_base_format(vk_format);
+   enum a6xx_format format = tu6_base_format(tu_vk_format_to_pipe_format(vk_format));
 
    if ((vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
         vk_format == VK_FORMAT_X8_D24_UNORM_PACK32) && ubwc) {
@@ -2448,7 +2449,7 @@ clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                       const VkClearValue *value)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(tu6_base_format(format)));
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(tu6_base_format(tu_vk_format_to_pipe_format(format))));
 
    tu_cs_emit_regs(cs, A6XX_RB_BLIT_INFO(.gmem = 1, .clear_mask = clear_mask));
 
