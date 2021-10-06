@@ -2600,6 +2600,9 @@ static void si_draw_vertex_state(struct pipe_context *ctx,
 
    si_draw<GFX_VERSION, HAS_TESS, HAS_GS, NGG, DRAW_VERTEX_STATE_ON, POPCNT>
       (ctx, &dinfo, 0, NULL, draws, num_draws, vstate, partial_velem_mask);
+
+   if (info.take_vertex_state_ownership)
+      pipe_vertex_state_reference(&vstate, NULL);
 }
 
 static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elements_cso,
