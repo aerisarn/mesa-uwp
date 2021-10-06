@@ -61,13 +61,11 @@ tu_wsi = false
 
 if with_platform_x11
   tu_deps += dep_xcb_dri3
-  libtu_files += files('tu_wsi_x11.c')
   tu_wsi = true
 endif
 
 if with_platform_wayland
   tu_deps += dep_wayland_client
-  libtu_files += files('tu_wsi_wayland.c')
   tu_wsi = true
 endif
 
