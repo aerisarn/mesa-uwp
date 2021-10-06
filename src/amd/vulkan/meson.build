@@ -113,12 +113,10 @@ radv_flags = cc.get_supported_arguments(['-Wimplicit-fallthrough', '-Wshadow'])
 
 if with_platform_x11
   radv_deps += dep_xcb_dri3
-  libradv_files += files('radv_wsi_x11.c')
 endif
 
 if with_platform_wayland
   radv_deps += dep_wayland_client
-  libradv_files += files('radv_wsi_wayland.c')
 endif
 
 if system_has_kms_drm and not with_platform_android

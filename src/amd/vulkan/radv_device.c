@@ -619,6 +619,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints(&dispatch_table,
                                                       &radv_physical_device_entrypoints, true);
+   vk_physical_device_dispatch_table_from_entrypoints(&dispatch_table,
+                                                      &wsi_physical_device_entrypoints, false);
 
    result = vk_physical_device_init(&device->vk, &instance->vk, NULL, &dispatch_table);
    if (result != VK_SUCCESS) {
@@ -965,6 +967,7 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    struct vk_instance_dispatch_table dispatch_table;
    vk_instance_dispatch_table_from_entrypoints(&dispatch_table, &radv_instance_entrypoints, true);
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table, &wsi_instance_entrypoints, false);
    result = vk_instance_init(&instance->vk, &radv_instance_extensions_supported, &dispatch_table,
                              pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
@@ -2868,6 +2871,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    } else {
       vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, true);
    }
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table, &wsi_device_entrypoints, false);
 
    result =
       vk_device_init(&device->vk, &physical_device->vk, &dispatch_table, pCreateInfo, pAllocator);
