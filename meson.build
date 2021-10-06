@@ -416,7 +416,8 @@ endif
 
 if with_platform_wayland
   c_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
-  cpp_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
+  #add this once aco and other places can build with it
+  #cpp_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
 endif
 if with_platform_x11
   c_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
