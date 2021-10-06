@@ -31,6 +31,15 @@
 #define LIMA_SAMPLER_DIM_2D   1
 #define LIMA_SAMPLER_DIM_3D   2
 
+#define LIMA_TEX_WRAP_REPEAT                 0
+#define LIMA_TEX_WRAP_CLAMP_TO_EDGE          1
+#define LIMA_TEX_WRAP_CLAMP                  2
+#define LIMA_TEX_WRAP_CLAMP_TO_BORDER        3
+#define LIMA_TEX_WRAP_MIRROR_REPEAT          4
+#define LIMA_TEX_WRAP_MIRROR_CLAMP_TO_EDGE   5
+#define LIMA_TEX_WRAP_MIRROR_CLAMP           6
+#define LIMA_TEX_WRAP_MIRROR_CLAMP_TO_BORDER 7
+
 typedef struct __attribute__((__packed__)) {
    /* Word 0 */
    uint32_t format : 6;
@@ -54,25 +63,20 @@ typedef struct __attribute__((__packed__)) {
    uint32_t min_mipfilter_2: 2; /* 0x3 for linear, 0x0 for nearest */
    uint32_t min_img_filter_nearest: 1;
    uint32_t mag_img_filter_nearest: 1;
-   uint32_t wrap_s_clamp_to_edge: 1;
-   uint32_t wrap_s_clamp: 1;
-   uint32_t wrap_s_mirror_repeat: 1;
-   uint32_t wrap_t_clamp_to_edge: 1;
-   uint32_t wrap_t_clamp: 1;
-   uint32_t wrap_t_mirror_repeat: 1;
-   uint32_t wrap_r_clamp_to_edge: 1;
-   uint32_t wrap_r_clamp: 1;
-   uint32_t wrap_r_mirror_repeat: 1;
+   uint32_t wrap_s: 3;
+   uint32_t wrap_t: 3;
+   uint32_t wrap_r: 3;
    uint32_t width: 13;
    uint32_t height: 13;
    uint32_t depth: 13;
-   uint32_t unknown_3_1: 3;
 
-   /* Word 4 */
-   uint32_t unknown_4;
+   uint32_t border_red: 16;
+   uint32_t border_green: 16;
+   uint32_t border_blue: 16;
+   uint32_t border_alpha: 16;
 
-   /* Word 5 */
-   uint32_t unknown_5;
+   /* Word 5 (last 3 bits) */
+   uint32_t unknown_5_1: 3;
 
    /* Word 6-15 */
    /* layout is in va[0] bit 13-14 */

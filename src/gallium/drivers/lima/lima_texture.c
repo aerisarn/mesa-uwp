@@ -115,6 +115,37 @@ lima_texture_desc_set_res(struct lima_context *ctx, lima_tex_desc *desc,
    }
 }
 
+static unsigned
+pipe_wrap_to_lima(unsigned pipe_wrap, bool using_nearest)
+{
+   switch (pipe_wrap) {
+   case PIPE_TEX_WRAP_REPEAT:
+      return LIMA_TEX_WRAP_REPEAT;
+   case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
+      return LIMA_TEX_WRAP_CLAMP_TO_EDGE;
+   case PIPE_TEX_WRAP_CLAMP:
+      if (using_nearest)
+         return LIMA_TEX_WRAP_CLAMP_TO_EDGE;
+      else
+         return LIMA_TEX_WRAP_CLAMP;
+   case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
+      return LIMA_TEX_WRAP_CLAMP_TO_BORDER;
+   case PIPE_TEX_WRAP_MIRROR_REPEAT:
+      return LIMA_TEX_WRAP_MIRROR_REPEAT;
+   case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE:
+      return LIMA_TEX_WRAP_MIRROR_CLAMP_TO_EDGE;
+   case PIPE_TEX_WRAP_MIRROR_CLAMP:
+      if (using_nearest)
+         return LIMA_TEX_WRAP_MIRROR_CLAMP_TO_EDGE;
+      else
+         return LIMA_TEX_WRAP_MIRROR_CLAMP;
+   case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER:
+      return LIMA_TEX_WRAP_MIRROR_CLAMP_TO_BORDER;
+   default:
+      return LIMA_TEX_WRAP_REPEAT;
+   }
+}
+
 static void
 lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sampler,
                      struct lima_sampler_view *texture, void *pdesc,
@@ -199,55 +230,19 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
       break;
    }
 
-   /* Only clamp, clamp to edge, repeat and mirror repeat are supported */
-   switch (sampler->base.wrap_s) {
-   case PIPE_TEX_WRAP_CLAMP:
-      desc->wrap_s_clamp = 1;
-      break;
-   case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-   case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-      desc->wrap_s_clamp_to_edge = 1;
-      break;
-   case PIPE_TEX_WRAP_MIRROR_REPEAT:
-      desc->wrap_s_mirror_repeat = 1;
-      break;
-   case PIPE_TEX_WRAP_REPEAT:
-   default:
-      break;
-   }
+   /* Panfrost mentions that GL_CLAMP is broken for NEAREST filter on Midgard,
+    * looks like it also broken on Utgard, since it fails in piglit
+    */
+   bool using_nearest = sampler->base.min_img_filter == PIPE_TEX_FILTER_NEAREST;
 
-   /* Only clamp, clamp to edge, repeat and mirror repeat are supported */
-   switch (sampler->base.wrap_t) {
-   case PIPE_TEX_WRAP_CLAMP:
-      desc->wrap_t_clamp = 1;
-      break;
-   case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-   case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-      desc->wrap_t_clamp_to_edge = 1;
-      break;
-   case PIPE_TEX_WRAP_MIRROR_REPEAT:
-      desc->wrap_t_mirror_repeat = 1;
-      break;
-   case PIPE_TEX_WRAP_REPEAT:
-   default:
-      break;
-   }
+   desc->wrap_s = pipe_wrap_to_lima(sampler->base.wrap_s, using_nearest);
+   desc->wrap_t = pipe_wrap_to_lima(sampler->base.wrap_t, using_nearest);
+   desc->wrap_r = pipe_wrap_to_lima(sampler->base.wrap_r, using_nearest);
 
-   switch (sampler->base.wrap_r) {
-   case PIPE_TEX_WRAP_CLAMP:
-      desc->wrap_r_clamp = 1;
-      break;
-   case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-   case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-      desc->wrap_r_clamp_to_edge = 1;
-      break;
-   case PIPE_TEX_WRAP_MIRROR_REPEAT:
-      desc->wrap_r_mirror_repeat = 1;
-      break;
-   case PIPE_TEX_WRAP_REPEAT:
-   default:
-      break;
-   }
+   desc->border_red = float_to_ushort(sampler->base.border_color.f[0]);
+   desc->border_green = float_to_ushort(sampler->base.border_color.f[1]);
+   desc->border_blue = float_to_ushort(sampler->base.border_color.f[2]);
+   desc->border_alpha = float_to_ushort(sampler->base.border_color.f[3]);
 
    if (desc->min_img_filter_nearest && desc->mag_img_filter_nearest &&
        desc->min_mipfilter_2 == 0 &&

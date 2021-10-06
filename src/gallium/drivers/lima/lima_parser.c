@@ -728,10 +728,11 @@ parse_texture(FILE *fp, uint32_t *data, uint32_t start, uint32_t offset)
    fprintf(fp, "\t stride: 0x%x (%d)\n", desc->stride, desc->stride);
    fprintf(fp, "\t unknown_0_2: 0x%x (%d)\n", desc->unknown_0_2, desc->unknown_0_2);
 
-   /* Word 1 - 3 */
-   fprintf(fp, "/* 0x%08x (0x%08x) */\t0x%08x 0x%08x 0x%08x\n",
-           start + i * 4, i * 4, *(&data[i + offset]), *(&data[i + 1 + offset]), *(&data[i + 2 + offset]));
-   i += 3;
+   /* Word 1 - 5 */
+   fprintf(fp, "/* 0x%08x (0x%08x) */\t0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
+           start + i * 4, i * 4, *(&data[i + offset]), *(&data[i + 1 + offset]),
+           *(&data[i + 2 + offset]), *(&data[i + 3 + offset]), *(&data[i + 4 + offset]));
+   i += 5;
    fprintf(fp, "\t unknown_1_1: 0x%x (%d)\n", desc->unknown_1_1, desc->unknown_1_1);
    fprintf(fp, "\t unnorm_coords: 0x%x (%d)\n", desc->unnorm_coords, desc->unnorm_coords);
    fprintf(fp, "\t unknown_1_2: 0x%x (%d)\n", desc->unknown_1_2, desc->unknown_1_2);
@@ -745,31 +746,20 @@ parse_texture(FILE *fp, uint32_t *data, uint32_t start, uint32_t offset)
    fprintf(fp, "\t min_mipfilter_2: 0x%x (%d)\n", desc->min_mipfilter_2, desc->min_mipfilter_2);
    fprintf(fp, "\t min_img_filter_nearest: 0x%x (%d)\n", desc->min_img_filter_nearest, desc->min_img_filter_nearest);
    fprintf(fp, "\t mag_img_filter_nearest: 0x%x (%d)\n", desc->mag_img_filter_nearest, desc->mag_img_filter_nearest);
-   fprintf(fp, "\t wrap_s_clamp_to_edge: 0x%x (%d)\n", desc->wrap_s_clamp_to_edge, desc->wrap_s_clamp_to_edge);
-   fprintf(fp, "\t wrap_s_clamp: 0x%x (%d)\n", desc->wrap_s_clamp, desc->wrap_s_clamp);
-   fprintf(fp, "\t wrap_s_mirror_repeat: 0x%x (%d)\n", desc->wrap_s_mirror_repeat, desc->wrap_s_mirror_repeat);
-   fprintf(fp, "\t wrap_t_clamp_to_edge: 0x%x (%d)\n", desc->wrap_t_clamp_to_edge, desc->wrap_t_clamp_to_edge);
-   fprintf(fp, "\t wrap_t_clamp: 0x%x (%d)\n", desc->wrap_t_clamp, desc->wrap_t_clamp);
-   fprintf(fp, "\t wrap_t_mirror_repeat: 0x%x (%d)\n", desc->wrap_t_mirror_repeat, desc->wrap_t_mirror_repeat);
-   fprintf(fp, "\t wrap_r_clamp_to_edge: 0x%x (%d)\n", desc->wrap_r_clamp_to_edge, desc->wrap_r_clamp_to_edge);
-   fprintf(fp, "\t wrap_r_clamp: 0x%x (%d)\n", desc->wrap_r_clamp, desc->wrap_r_clamp);
-   fprintf(fp, "\t wrap_r_mirror_repeat: 0x%x (%d)\n", desc->wrap_r_mirror_repeat, desc->wrap_r_mirror_repeat);
+   fprintf(fp, "\t wrap_s: %d (%s)\n", desc->wrap_s,
+           lima_get_wrap_mode_string(desc->wrap_s));
+   fprintf(fp, "\t wrap_t: %d (%s)\n", desc->wrap_t,
+           lima_get_wrap_mode_string(desc->wrap_t));
+   fprintf(fp, "\t wrap_r: %d (%s)\n", desc->wrap_r,
+           lima_get_wrap_mode_string(desc->wrap_r));
    fprintf(fp, "\t width: 0x%x (%d)\n", desc->width, desc->width);
    fprintf(fp, "\t height: 0x%x (%d)\n", desc->height, desc->height);
    fprintf(fp, "\t depth: 0x%x (%d)\n", desc->depth, desc->depth);
-   fprintf(fp, "\t unknown_3_1: 0x%x (%d)\n", desc->unknown_3_1, desc->unknown_3_1);
-
-   /* Word 4 */
-   fprintf(fp, "/* 0x%08x (0x%08x) */\t0x%08x\n",
-           start + i * 4, i * 4, *(&data[i + offset]));
-   i++;
-   fprintf(fp, "\t unknown_4: 0x%x (%d)\n", desc->unknown_4, desc->unknown_4);
-
-   /* Word 5 */
-   fprintf(fp, "/* 0x%08x (0x%08x) */\t0x%08x\n",
-           start + i * 4, i * 4, *(&data[i + offset]));
-   i++;
-   fprintf(fp, "\t unknown_5: 0x%x (%d)\n", desc->unknown_5, desc->unknown_5);
+   fprintf(fp, "\t border_red: 0x%x (%d)\n", desc->border_red, desc->border_red);
+   fprintf(fp, "\t border_green: 0x%x (%d)\n", desc->border_green, desc->border_green);
+   fprintf(fp, "\t border_blue: 0x%x (%d)\n", desc->border_blue, desc->border_blue);
+   fprintf(fp, "\t border_alpha: 0x%x (%d)\n", desc->border_alpha, desc->border_alpha);
+   fprintf(fp, "\t unknown_5_1: 0x%x (%d)\n", desc->unknown_5_1, desc->unknown_5_1);
 
    /* Word 6 - */
    fprintf(fp, "/* 0x%08x (0x%08x) */",
