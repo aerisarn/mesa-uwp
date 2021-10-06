@@ -1477,6 +1477,10 @@ static bool gfx10_DCN_requires_independent_64B_blocks(const struct radeon_info *
 {
    assert(info->chip_class >= GFX10);
 
+   /* Older kernels have buggy DAL. */
+   if (info->drm_minor <= 43)
+      return true;
+
    /* For 4K, DCN requires INDEPENDENT_64B_BLOCKS = 1 and MAX_COMPRESSED_BLOCK_SIZE = 64B. */
    return config->info.width > 2560 || config->info.height > 2560;
 }
