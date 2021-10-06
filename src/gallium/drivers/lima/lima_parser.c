@@ -735,7 +735,8 @@ parse_texture(FILE *fp, uint32_t *data, uint32_t start, uint32_t offset)
    fprintf(fp, "\t unknown_1_1: 0x%x (%d)\n", desc->unknown_1_1, desc->unknown_1_1);
    fprintf(fp, "\t unnorm_coords: 0x%x (%d)\n", desc->unnorm_coords, desc->unnorm_coords);
    fprintf(fp, "\t unknown_1_2: 0x%x (%d)\n", desc->unknown_1_2, desc->unknown_1_2);
-   fprintf(fp, "\t texture_type: 0x%x (%d)\n", desc->texture_type, desc->texture_type);
+   fprintf(fp, "\t cube_map: 0x%x (%d)\n", desc->cube_map, desc->cube_map);
+   fprintf(fp, "\t sampler_dim: 0x%x (%d)\n", desc->sampler_dim, desc->sampler_dim);
    fprintf(fp, "\t min_lod: 0x%x (%d) (%f)\n", desc->min_lod, desc->min_lod, lima_fixed8_to_float(desc->min_lod));
    fprintf(fp, "\t max_lod: 0x%x (%d) (%f)\n", desc->max_lod, desc->max_lod, lima_fixed8_to_float(desc->max_lod));
    fprintf(fp, "\t lod_bias: 0x%x (%d) (%f)\n", desc->lod_bias, desc->lod_bias, lima_fixed8_to_float(desc->lod_bias));
@@ -750,11 +751,13 @@ parse_texture(FILE *fp, uint32_t *data, uint32_t start, uint32_t offset)
    fprintf(fp, "\t wrap_t_clamp_to_edge: 0x%x (%d)\n", desc->wrap_t_clamp_to_edge, desc->wrap_t_clamp_to_edge);
    fprintf(fp, "\t wrap_t_clamp: 0x%x (%d)\n", desc->wrap_t_clamp, desc->wrap_t_clamp);
    fprintf(fp, "\t wrap_t_mirror_repeat: 0x%x (%d)\n", desc->wrap_t_mirror_repeat, desc->wrap_t_mirror_repeat);
-   fprintf(fp, "\t unknown_2_2: 0x%x (%d)\n", desc->unknown_2_2, desc->unknown_2_2);
+   fprintf(fp, "\t wrap_r_clamp_to_edge: 0x%x (%d)\n", desc->wrap_r_clamp_to_edge, desc->wrap_r_clamp_to_edge);
+   fprintf(fp, "\t wrap_r_clamp: 0x%x (%d)\n", desc->wrap_r_clamp, desc->wrap_r_clamp);
+   fprintf(fp, "\t wrap_r_mirror_repeat: 0x%x (%d)\n", desc->wrap_r_mirror_repeat, desc->wrap_r_mirror_repeat);
    fprintf(fp, "\t width: 0x%x (%d)\n", desc->width, desc->width);
    fprintf(fp, "\t height: 0x%x (%d)\n", desc->height, desc->height);
+   fprintf(fp, "\t depth: 0x%x (%d)\n", desc->depth, desc->depth);
    fprintf(fp, "\t unknown_3_1: 0x%x (%d)\n", desc->unknown_3_1, desc->unknown_3_1);
-   fprintf(fp, "\t unknown_3_2: 0x%x (%d)\n", desc->unknown_3_2, desc->unknown_3_2);
 
    /* Word 4 */
    fprintf(fp, "/* 0x%08x (0x%08x) */\t0x%08x\n",

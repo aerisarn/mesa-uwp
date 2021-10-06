@@ -23,6 +23,7 @@
  *
  */
 
+#include "util/compiler.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_math.h"
@@ -72,21 +73,23 @@ lima_texture_desc_set_res(struct lima_context *ctx, lima_tex_desc *desc,
                           struct pipe_resource *prsc,
                           unsigned first_level, unsigned last_level, unsigned first_layer)
 {
-   unsigned width, height, layout, i;
+   unsigned width, height, depth, layout, i;
    struct lima_resource *lima_res = lima_resource(prsc);
 
    width = prsc->width0;
    height = prsc->height0;
+   depth = prsc->depth0;
    if (first_level != 0) {
       width = u_minify(width, first_level);
       height = u_minify(height, first_level);
+      depth = u_minify(depth, first_level);
    }
 
    desc->format = lima_format_get_texel(prsc->format);
    desc->swap_r_b = lima_format_get_texel_swap_rb(prsc->format);
    desc->width  = width;
    desc->height = height;
-   desc->unknown_3_1 = 1;
+   desc->depth = depth;
 
    if (lima_res->tiled)
       layout = 3;
@@ -130,10 +133,13 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    switch (texture->base.target) {
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_RECT:
-      desc->texture_type = LIMA_TEXTURE_TYPE_2D;
+      desc->sampler_dim = LIMA_SAMPLER_DIM_2D;
       break;
    case PIPE_TEXTURE_CUBE:
-      desc->texture_type = LIMA_TEXTURE_TYPE_CUBE;
+      desc->cube_map = 1;
+      FALLTHROUGH;
+   case PIPE_TEXTURE_3D:
+      desc->sampler_dim = LIMA_SAMPLER_DIM_3D;
       break;
    default:
       break;
@@ -218,6 +224,22 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
       break;
    case PIPE_TEX_WRAP_MIRROR_REPEAT:
       desc->wrap_t_mirror_repeat = 1;
+      break;
+   case PIPE_TEX_WRAP_REPEAT:
+   default:
+      break;
+   }
+
+   switch (sampler->base.wrap_r) {
+   case PIPE_TEX_WRAP_CLAMP:
+      desc->wrap_r_clamp = 1;
+      break;
+   case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
+   case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
+      desc->wrap_r_clamp_to_edge = 1;
+      break;
+   case PIPE_TEX_WRAP_MIRROR_REPEAT:
+      desc->wrap_r_mirror_repeat = 1;
       break;
    case PIPE_TEX_WRAP_REPEAT:
    default:

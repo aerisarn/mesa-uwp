@@ -27,8 +27,8 @@
 
 #define lima_min_tex_desc_size 64
 
-#define LIMA_TEXTURE_TYPE_2D   2
-#define LIMA_TEXTURE_TYPE_CUBE 5
+#define LIMA_SAMPLER_DIM_2D   1
+#define LIMA_SAMPLER_DIM_3D   2
 
 typedef struct __attribute__((__packed__)) {
    /* Word 0 */
@@ -43,7 +43,8 @@ typedef struct __attribute__((__packed__)) {
    uint32_t unknown_1_1: 7;
    uint32_t unnorm_coords: 1;
    uint32_t unknown_1_2: 1;
-   uint32_t texture_type: 3;
+   uint32_t cube_map: 1;
+   uint32_t sampler_dim: 2;
    uint32_t min_lod: 8; /* Fixed point, 4.4, unsigned */
    uint32_t max_lod: 8; /* Fixed point, 4.4, unsigned */
    uint32_t lod_bias: 9; /* Fixed point, signed, 1.4.4 */
@@ -58,11 +59,13 @@ typedef struct __attribute__((__packed__)) {
    uint32_t wrap_t_clamp_to_edge: 1;
    uint32_t wrap_t_clamp: 1;
    uint32_t wrap_t_mirror_repeat: 1;
-   uint32_t unknown_2_2: 3;
+   uint32_t wrap_r_clamp_to_edge: 1;
+   uint32_t wrap_r_clamp: 1;
+   uint32_t wrap_r_mirror_repeat: 1;
    uint32_t width: 13;
    uint32_t height: 13;
-   uint32_t unknown_3_1: 1;
-   uint32_t unknown_3_2: 15;
+   uint32_t depth: 13;
+   uint32_t unknown_3_1: 3;
 
    /* Word 4 */
    uint32_t unknown_4;

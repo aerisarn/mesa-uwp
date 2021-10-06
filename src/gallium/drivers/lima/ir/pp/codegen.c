@@ -91,13 +91,8 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
             f->imm.perspective = 1;
             break;
          case ppir_op_load_coords:
-            /* num_components == 3 and no perspective implies cubemap
-             * as we don't support 3D textures */
-            if (num_components == 3 &&
-                load->perspective == ppir_perspective_none)
+            if (load->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
                f->imm.source_type = 2;
-            else
-               f->imm.source_type = 0;
 
             switch (load->perspective) {
             case ppir_perspective_none:
@@ -120,10 +115,7 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
       f->reg.mask = dest->write_mask << (index & 0x3);
 
       if (load->num_src) {
-         /* num_components == 3 and no perspective implies cubemap
-          * as we don't support 3D textures */
-         if (num_components == 3 &&
-             load->perspective == ppir_perspective_none) {
+         if (load->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
             f->reg.source_type = 2;
             f->reg.perspective = 1;
          } else {
@@ -164,9 +156,10 @@ static void ppir_codegen_encode_texld(ppir_node *node, void *code)
 
    switch (ldtex->sampler_dim) {
    case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_3D:
    case GLSL_SAMPLER_DIM_RECT:
    case GLSL_SAMPLER_DIM_EXTERNAL:
-      f->type = ppir_codegen_sampler_type_2d;
+      f->type = ppir_codegen_sampler_type_generic;
       break;
    case GLSL_SAMPLER_DIM_CUBE:
       f->type = ppir_codegen_sampler_type_cube;

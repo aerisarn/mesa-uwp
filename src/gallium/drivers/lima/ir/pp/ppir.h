@@ -266,6 +266,7 @@ typedef struct {
    ppir_src src;
    int num_src;
    ppir_perspective perspective;
+   int sampler_dim;
 } ppir_load_node;
 
 typedef struct {

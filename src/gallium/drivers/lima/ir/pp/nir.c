@@ -448,6 +448,7 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
 
    switch (instr->sampler_dim) {
    case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_3D:
    case GLSL_SAMPLER_DIM_CUBE:
    case GLSL_SAMPLER_DIM_RECT:
    case GLSL_SAMPLER_DIM_EXTERNAL:
@@ -532,10 +533,7 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
 
       load->src = node->src[0];
       load->num_src = 1;
-      if (node->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
-         load->num_components = 3;
-      else
-         load->num_components = 2;
+      load->num_components = instr->coord_components;
 
       ppir_debug("%s create load_coords node %d for %d\n",
                  __FUNCTION__, load->index, node->node.index);
@@ -557,6 +555,7 @@ static bool ppir_emit_tex(ppir_block *block, nir_instr *ni)
          load->perspective = ppir_perspective_w;
    }
 
+   load->sampler_dim = instr->sampler_dim;
    node->src[0].type = load->dest.type = ppir_target_pipeline;
    node->src[0].pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
 
