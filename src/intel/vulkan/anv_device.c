@@ -2922,7 +2922,7 @@ VkResult anv_CreateDevice(
       queue_priority ? queue_priority->globalPriority :
          VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT;
 
-   device = vk_alloc2(&physical_device->instance->vk.alloc, pAllocator,
+   device = vk_zalloc2(&physical_device->instance->vk.alloc, pAllocator,
                        sizeof(*device), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
