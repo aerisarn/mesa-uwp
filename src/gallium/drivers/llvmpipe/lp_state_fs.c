@@ -1091,7 +1091,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
       LLVMBuildStore(builder, out, ptr);
    }
 
-
+   bool has_cbuf0_write = false;
    /* Color write - per fragment sample */
    for (attrib = 0; attrib < shader->info.base.num_outputs; ++attrib)
    {
@@ -1099,6 +1099,21 @@ generate_fs_loop(struct gallivm_state *gallivm,
       if ((shader->info.base.output_semantic_name[attrib] == TGSI_SEMANTIC_COLOR) &&
            ((cbuf < key->nr_cbufs) || (cbuf == 1 && dual_source_blend)))
       {
+         if (cbuf == 0 && shader->info.base.properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS]) {
+            /* XXX: there is an edge case with FB fetch where gl_FragColor and gl_LastFragData[0]
+             * are used together. This creates both FRAG_RESULT_COLOR and FRAG_RESULT_DATA* output
+             * variables. This loop then writes to cbuf 0 twice, owerwriting the correct value
+             * from gl_FragColor with some garbage. This case is excercised in one of deqp tests.
+             * A similar bug can happen if gl_SecondaryFragColorEXT and gl_LastFragData[1]
+             * are mixed in the same fashion...
+             * This workaround will break if gl_LastFragData[0] goes in outputs list before
+             * gl_FragColor. This doesn't seem to happen though.
+             */
+            if (has_cbuf0_write)
+               continue;
+            has_cbuf0_write = true;
+         }
+
          for(chan = 0; chan < TGSI_NUM_CHANNELS; ++chan) {
             if(outputs[attrib][chan]) {
                /* XXX: just initialize outputs to point at colors[] and
