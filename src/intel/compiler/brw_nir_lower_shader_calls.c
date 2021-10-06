@@ -254,8 +254,25 @@ brw_nir_lower_shader_calls(nir_shader *shader)
 
 /** Creates a trivial return shader
  *
- * This is a callable shader that doesn't really do anything.  It just loads
- * the resume address from the stack and does a return.
+ * In most cases this shader doesn't actually do anything. It just needs to
+ * return to the caller.
+ *
+ * By default, our HW has the ability to handle the fact that a shader is not
+ * available and will execute the next folowing shader in the tracing call.
+ * For instance, a RAYGEN shader traces a ray, the tracing generates a hit,
+ * but there is no ANYHIT shader available. The HW should follow up by
+ * execution the CLOSESTHIT shader.
+ *
+ * This default behavior can be changed through the RT_CTRL register
+ * (privileged access) and when NULL shader checks are disabled, the HW will
+ * instead call the call stack handler (this shader). This is what i915 is
+ * doing as part of Wa_14013202645.
+ *
+ * In order to ensure the call to the CLOSESTHIT shader, this shader needs to
+ * commit the ray and will not proceed with the BTD return. Similarly when the
+ * same thing happen with the INTERSECTION shader, we should just carry on the
+ * ray traversal with the continue operation.
+ *
  */
 nir_shader *
 brw_nir_create_trivial_return_shader(const struct brw_compiler *compiler,
@@ -264,13 +281,63 @@ brw_nir_create_trivial_return_shader(const struct brw_compiler *compiler,
    const nir_shader_compiler_options *nir_options =
       compiler->nir_options[MESA_SHADER_CALLABLE];
 
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_CALLABLE,
-                                                  nir_options,
-                                                  "RT Trivial Return");
-   ralloc_steal(mem_ctx, b.shader);
-   nir_shader *nir = b.shader;
+   nir_builder _b = nir_builder_init_simple_shader(MESA_SHADER_CALLABLE,
+                                                   nir_options,
+                                                   "RT Trivial Return");
+   nir_builder *b = &_b;
 
-   NIR_PASS_V(nir, brw_nir_lower_shader_returns);
+   ralloc_steal(mem_ctx, b->shader);
+   nir_shader *nir = b->shader;
+
+   /* Workaround not needed on DG2-G10-C0+ & DG2-G11-B0+ */
+   if ((compiler->devinfo->platform == INTEL_PLATFORM_DG2_G10 &&
+        compiler->devinfo->revision < 8) ||
+       (compiler->devinfo->platform == INTEL_PLATFORM_DG2_G11 &&
+        compiler->devinfo->revision < 4)) {
+      /* Reserve scratch space at the start of the shader's per-thread scratch
+       * space for the return BINDLESS_SHADER_RECORD address and data payload.
+       * When a shader is called, the calling shader will write the return BSR
+       * address in this region of the callee's scratch space.
+       */
+      nir->scratch_size = BRW_BTD_STACK_CALLEE_DATA_SIZE;
+
+      nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+      b->cursor = nir_before_block(nir_start_block(impl));
+
+      nir_ssa_def *shader_type = nir_load_btd_shader_type_intel(b);
+
+      nir_ssa_def *is_intersection_shader =
+         nir_ieq_imm(b, shader_type, GEN_RT_BTD_SHADER_TYPE_INTERSECTION);
+      nir_ssa_def *is_anyhit_shader =
+         nir_ieq_imm(b, shader_type, GEN_RT_BTD_SHADER_TYPE_ANY_HIT);
+
+      nir_ssa_def *needs_commit_or_continue =
+         nir_ior(b, is_intersection_shader, is_anyhit_shader);
+
+      nir_push_if(b, needs_commit_or_continue);
+      {
+         struct brw_nir_rt_mem_hit_defs hit_in = {};
+         brw_nir_rt_load_mem_hit(b, &hit_in, false /* committed */);
+
+         nir_ssa_def *ray_op =
+            nir_bcsel(b, is_intersection_shader,
+                      nir_imm_int(b, GEN_RT_TRACE_RAY_CONTINUE),
+                      nir_imm_int(b, GEN_RT_TRACE_RAY_COMMIT));
+         nir_ssa_def *ray_level = hit_in.bvh_level;
+
+         nir_trace_ray_intel(b,
+                             nir_load_btd_global_arg_addr_intel(b),
+                             ray_level, ray_op);
+      }
+      nir_push_else(b, NULL);
+      {
+         brw_nir_btd_return(b);
+      }
+      nir_pop_if(b, NULL);
+   } else {
+      NIR_PASS_V(nir, brw_nir_lower_shader_returns);
+   }
 
    return nir;
 }
