@@ -1523,6 +1523,10 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
    if (info->use_display_dcc_unaligned && (rb_aligned || pipe_aligned))
       return false;
 
+   /* Big resolutions don't support DCC. */
+   if (config->info.width > 5760 || config->info.height > 5760)
+      return false;
+
    switch (info->chip_class) {
    case GFX9:
       /* There are more constraints, but we always set
