@@ -3490,6 +3490,7 @@ tc_draw_vertex_state(struct pipe_context *_pipe,
          p->state = state;
 
       take_vertex_state_ownership = false;
+      p->partial_velem_mask = partial_velem_mask;
       p->info.mode = info.mode;
       p->info.take_vertex_state_ownership = false;
       p->num_draws = dr;
