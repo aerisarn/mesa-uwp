@@ -62,4 +62,36 @@ intel_compute_pixel_hash_table(unsigned n, unsigned m,
    }
 }
 
+/**
+ * Compute an \p n x \p m pixel hashing table usable as slice,
+ * subslice or pixel pipe hashing table.  This generalizes the
+ * previous 3-way hash table function to an arbitrary number of ways
+ * given by the number of bits set in the \p mask argument, but
+ * doesn't allow the specification of different frequencies for
+ * different table indices.
+ */
+UNUSED static void
+intel_compute_pixel_hash_table_nway(unsigned n, unsigned m, uint32_t mask,
+                                    uint32_t *p)
+{
+   /* Construct a table mapping consecutive indices to the physical
+    * indices given by the bits set on the mask argument.
+    */
+   unsigned phys_ids[sizeof(mask) * CHAR_BIT];
+   unsigned num_ids = 0;
+
+   u_foreach_bit(i, mask)
+      phys_ids[num_ids++] = i;
+
+   assert(num_ids > 0);
+
+   /* Initialize the table with the cyclic repetition of a
+    * num_ids-periodic pattern.
+    */
+   for (unsigned i = 0; i < n; i++) {
+      for (unsigned j = 0; j < m; j++)
+         p[j + m * i] = phys_ids[(j + i) % num_ids];
+   }
+}
+
 #endif
