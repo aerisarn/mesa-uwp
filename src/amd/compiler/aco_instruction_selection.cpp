@@ -9741,7 +9741,10 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       Operand vdata = instr->is_sparse ? emit_tfe_init(bld, tmp_dst) : Operand(v1);
       MIMG_instruction* tex =
          emit_mimg(bld, op, Definition(tmp_dst), resource, Operand(s4), args, 0, vdata);
-      tex->dim = dim;
+      if (instr->op == nir_texop_fragment_mask_fetch_amd)
+         tex->dim = da ? ac_image_2darray : ac_image_2d;
+      else
+         tex->dim = dim;
       tex->dmask = dmask & 0xf;
       tex->unrm = true;
       tex->da = da;
