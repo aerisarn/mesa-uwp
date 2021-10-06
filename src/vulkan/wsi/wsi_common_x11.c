@@ -1512,7 +1512,7 @@ x11_image_finish(struct x11_swapchain *chain,
 {
    xcb_void_cookie_t cookie;
 
-   if (!chain->base.wsi->sw) {
+   if (!chain->base.wsi->sw || chain->has_mit_shm) {
       cookie = xcb_sync_destroy_fence(chain->conn, image->sync_fence);
       xcb_discard_reply(chain->conn, cookie.sequence);
       xshmfence_unmap_shm(image->shm_fence);
