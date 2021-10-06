@@ -288,15 +288,6 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
 void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-
-   if (ctx->have_timelines && screen->last_finished > ctx->curr_batch && ctx->curr_batch == 1) {
-      if (!zink_screen_init_semaphore(screen)) {
-         debug_printf("timeline init failed, things are about to go dramatically wrong.");
-         ctx->have_timelines = false;
-      }
-   }
-
    batch->state = get_batch_state(ctx, batch);
    assert(batch->state);
 
@@ -359,6 +350,13 @@ submit_queue(void *data, void *gdata, int thread_index)
    bs->usage.usage = bs->fence.batch_id;
    bs->usage.unflushed = false;
    simple_mtx_unlock(&ctx->batch_mtx);
+
+   if (ctx->have_timelines && screen->last_finished > bs->fence.batch_id && bs->fence.batch_id == 1) {
+      if (!zink_screen_init_semaphore(screen)) {
+         debug_printf("timeline init failed, things are about to go dramatically wrong.");
+         ctx->have_timelines = false;
+      }
+   }
 
    VKSCR(ResetFences)(screen->dev, 1, &bs->fence.fence);
 
