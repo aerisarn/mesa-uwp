@@ -195,8 +195,6 @@ struct zink_context {
 
    struct pipe_device_reset_callback reset;
 
-   uint32_t curr_batch; //the current batch id
-
    simple_mtx_t batch_mtx;
    struct zink_fence *deferred_fence;
    struct zink_fence *last_fence; //the last command buffer submitted

@@ -309,7 +309,6 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (VKCTX(BeginCommandBuffer)(batch->state->barrier_cmdbuf, &cbbi) != VK_SUCCESS)
       debug_printf("vkBeginCommandBuffer failed\n");
 
-   batch->state->fence.batch_id = ctx->curr_batch;
    batch->state->fence.completed = false;
    if (ctx->last_fence) {
       struct zink_batch_state *last_state = zink_batch_state(ctx->last_fence);
