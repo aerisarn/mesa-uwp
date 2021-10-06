@@ -2762,8 +2762,9 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             if (desc->image_view) {
-               struct anv_surface_state sstate = (binding->write_only)
-                  ? desc->image_view->planes[binding->plane].writeonly_storage_surface_state
+               struct anv_surface_state sstate =
+                  binding->lowered_storage_surface
+                  ? desc->image_view->planes[binding->plane].lowered_storage_surface_state
                   : desc->image_view->planes[binding->plane].storage_surface_state;
                surface_state = sstate.state;
                assert(surface_state.alloc_size);
@@ -2846,8 +2847,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             if (desc->buffer_view) {
-               surface_state = (binding->write_only)
-                  ? desc->buffer_view->writeonly_storage_surface_state
+               surface_state = binding->lowered_storage_surface
+                  ? desc->buffer_view->lowered_storage_surface_state
                   : desc->buffer_view->storage_surface_state;
                assert(surface_state.alloc_size);
                if (need_client_mem_relocs) {

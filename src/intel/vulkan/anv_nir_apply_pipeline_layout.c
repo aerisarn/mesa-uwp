@@ -1004,6 +1004,13 @@ lower_get_ssbo_size(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static bool
+image_binding_needs_lowered_surface(nir_variable *var)
+{
+   return !(var->data.access & ACCESS_NON_READABLE) &&
+          var->data.image.format != PIPE_FORMAT_NONE;
+}
+
+static bool
 lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
                       struct apply_pipeline_layout_state *state)
 {
@@ -1031,11 +1038,11 @@ lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
    } else if (binding_offset > MAX_BINDING_TABLE_SIZE) {
-      const bool write_only =
-         (var->data.access & ACCESS_NON_READABLE) != 0;
+      const unsigned desc_comp =
+         image_binding_needs_lowered_surface(var) ? 1 : 0;
       nir_ssa_def *desc =
          build_load_var_deref_descriptor_mem(b, deref, 0, 2, 32, state);
-      nir_ssa_def *handle = nir_channel(b, desc, write_only ? 1 : 0);
+      nir_ssa_def *handle = nir_channel(b, desc, desc_comp);
       nir_rewrite_image_intrinsic(intrin, handle, true);
    } else {
       unsigned array_size =
@@ -1609,9 +1616,8 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
              dim == GLSL_SAMPLER_DIM_SUBPASS_MS)
             pipe_binding[i].input_attachment_index = var->data.index + i;
 
-         /* NOTE: This is a uint8_t so we really do need to != 0 here */
-         pipe_binding[i].write_only =
-            (var->data.access & ACCESS_NON_READABLE) != 0;
+         pipe_binding[i].lowered_storage_surface =
+            image_binding_needs_lowered_surface(var);
       }
    }
 
