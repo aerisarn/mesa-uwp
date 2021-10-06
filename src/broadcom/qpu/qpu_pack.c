@@ -2109,6 +2109,12 @@ v3d33_qpu_mul_pack(const struct v3d_device_info *devinfo,
         }
 
         default:
+                if (instr->alu.mul.op != V3D_QPU_M_NOP &&
+                    (instr->alu.mul.output_pack != V3D_QPU_PACK_NONE ||
+                     instr->alu.mul.a.unpack != V3D_QPU_UNPACK_NONE ||
+                     instr->alu.mul.b.unpack != V3D_QPU_UNPACK_NONE)) {
+                        return false;
+                }
                 break;
         }
 
@@ -2228,6 +2234,12 @@ v3d71_qpu_mul_pack(const struct v3d_device_info *devinfo,
         }
 
         default:
+                if (instr->alu.mul.op != V3D_QPU_M_NOP &&
+                    (instr->alu.mul.output_pack != V3D_QPU_PACK_NONE ||
+                     instr->alu.mul.a.unpack != V3D_QPU_UNPACK_NONE ||
+                     instr->alu.mul.b.unpack != V3D_QPU_UNPACK_NONE)) {
+                        return false;
+                }
                 break;
         }
 
