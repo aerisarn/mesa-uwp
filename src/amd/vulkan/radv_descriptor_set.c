@@ -563,7 +563,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
 
    if (pool->host_memory_base) {
       if (pool->host_memory_end - pool->host_memory_ptr < mem_size)
-         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+         return VK_ERROR_OUT_OF_POOL_MEMORY;
 
       set = (struct radv_descriptor_set *)pool->host_memory_ptr;
       pool->host_memory_ptr += mem_size;
@@ -600,7 +600,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
 
    if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
       vk_free2(&device->vk.alloc, NULL, set);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+      return VK_ERROR_OUT_OF_POOL_MEMORY;
    }
 
    /* try to allocate linearly first, so that we don't spend
@@ -629,7 +629,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
 
       if (pool->size - offset < layout_size) {
          vk_free2(&device->vk.alloc, NULL, set);
-         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+         return VK_ERROR_OUT_OF_POOL_MEMORY;
       }
       set->header.bo = pool->bo;
       set->header.mapped_ptr = (uint32_t *)(pool->mapped_ptr + offset);
@@ -641,7 +641,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
       pool->entries[index].set = set;
       pool->entry_count++;
    } else
-      return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+      return VK_ERROR_OUT_OF_POOL_MEMORY;
 
    if (layout->has_immutable_samplers) {
       for (unsigned i = 0; i < layout->binding_count; ++i) {
