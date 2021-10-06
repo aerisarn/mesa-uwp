@@ -878,6 +878,68 @@ upload_pixel_hashing_tables(struct iris_batch *batch)
       p.SubsliceHashingTableEnable = true;
       p.SubsliceHashingTableEnableMask = true;
    }
+
+#elif GFX_VERx10 == 125
+   struct pipe_screen *pscreen = &batch->screen->base;
+   const unsigned size = GENX(SLICE_HASH_TABLE_length) * 4;
+   const struct pipe_resource tmpl = {
+     .target = PIPE_BUFFER,
+     .format = PIPE_FORMAT_R8_UNORM,
+     .bind = PIPE_BIND_CUSTOM,
+     .usage = PIPE_USAGE_IMMUTABLE,
+     .flags = IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE,
+     .width0 = size,
+     .height0 = 1,
+     .depth0 = 1,
+     .array_size = 1
+   };
+
+   pipe_resource_reference(&ice->state.pixel_hashing_tables, NULL);
+   ice->state.pixel_hashing_tables = pscreen->resource_create(pscreen, &tmpl);
+
+   struct iris_resource *res = (struct iris_resource *)ice->state.pixel_hashing_tables;
+   struct pipe_transfer *transfer = NULL;
+   uint32_t *map = pipe_buffer_map_range(&ice->ctx, ice->state.pixel_hashing_tables,
+                                         0, size, PIPE_MAP_WRITE,
+                                         &transfer);
+
+   uint32_t ppipe_mask = 0;
+   for (unsigned p = 0; p < ARRAY_SIZE(devinfo->ppipe_subslices); p++) {
+      if (devinfo->ppipe_subslices[p])
+         ppipe_mask |= (1u << p);
+   }
+   assert(ppipe_mask);
+
+   struct GENX(SLICE_HASH_TABLE) table;
+
+   /* Note that the hardware expects an array with 7 tables, each
+    * table is intended to specify the pixel pipe hashing behavior for
+    * every possible slice count between 2 and 8, however that doesn't
+    * actually work, among other reasons due to hardware bugs that
+    * will cause the GPU to erroneously access the table at the wrong
+    * index in some cases, so in practice all 7 tables need to be
+    * initialized to the same value.
+    */
+   for (unsigned i = 0; i < 7; i++)
+     intel_compute_pixel_hash_table_nway(16, 16, ppipe_mask, table.Entry[i][0]);
+
+   GENX(SLICE_HASH_TABLE_pack)(NULL, map, &table);
+
+   pipe_buffer_unmap(&ice->ctx, transfer);
+
+   iris_use_pinned_bo(batch, res->bo, false, IRIS_DOMAIN_NONE);
+   iris_record_state_size(batch->state_sizes, res->bo->address + res->offset, size);
+
+   iris_emit_cmd(batch, GENX(3DSTATE_SLICE_TABLE_STATE_POINTERS), ptr) {
+      ptr.SliceHashStatePointerValid = true;
+      ptr.SliceHashTableStatePointer = iris_bo_offset_from_base_address(res->bo) +
+                                       res->offset;
+   }
+
+   iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), mode) {
+      mode.SliceHashingTableEnable = true;
+      mode.SliceHashingTableEnableMask = true;
+   }
 #endif
 }
 
@@ -5249,6 +5311,13 @@ iris_restore_render_saved_bos(struct iris_context *ice,
                             IRIS_DOMAIN_VF_READ);
       }
    }
+
+#if GFX_VERx10 == 125
+   iris_use_pinned_bo(batch, iris_resource_bo(ice->state.pixel_hashing_tables),
+                      false, IRIS_DOMAIN_NONE);
+#else
+   assert(!ice->state.pixel_hashing_tables);
+#endif
 }
 
 static void
@@ -7216,6 +7285,8 @@ static void
 iris_destroy_state(struct iris_context *ice)
 {
    struct iris_genx_state *genx = ice->state.genx;
+
+   pipe_resource_reference(&ice->state.pixel_hashing_tables, NULL);
 
    pipe_resource_reference(&ice->draw.draw_params.res, NULL);
    pipe_resource_reference(&ice->draw.derived_draw_params.res, NULL);

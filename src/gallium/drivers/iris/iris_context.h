@@ -837,6 +837,9 @@ struct iris_context {
 
       /** Last rendering scale argument provided to genX(emit_hashing_mode). */
       unsigned current_hash_scale;
+
+      /** Resource holding the pixel pipe hashing tables. */
+      struct pipe_resource *pixel_hashing_tables;
    } state;
 };
 

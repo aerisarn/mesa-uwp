@@ -310,6 +310,13 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                               params->y1 - params->y0, scale);
    }
 
+#if GFX_VERx10 == 125
+   iris_use_pinned_bo(batch, iris_resource_bo(ice->state.pixel_hashing_tables),
+                      false, IRIS_DOMAIN_NONE);
+#else
+   assert(!ice->state.pixel_hashing_tables);
+#endif
+
 #if GFX_VER >= 12
    genX(invalidate_aux_map_state)(batch);
 #endif
