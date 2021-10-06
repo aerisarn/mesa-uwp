@@ -707,6 +707,8 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    struct vk_instance_dispatch_table dispatch_table;
    vk_instance_dispatch_table_from_entrypoints(
       &dispatch_table, &vn_instance_entrypoints, true);
+   vk_instance_dispatch_table_from_entrypoints(
+      &dispatch_table, &wsi_instance_entrypoints, false);
    result = vn_instance_base_init(&instance->base,
                                   &vn_instance_supported_extensions,
                                   &dispatch_table, pCreateInfo, alloc);

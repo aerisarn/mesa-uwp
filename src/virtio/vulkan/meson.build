@@ -72,12 +72,10 @@ if with_platform_wayland or with_platform_x11
 endif
 
 if with_platform_wayland
-  libvn_files += files('vn_wsi_wayland.c')
   vn_deps += dep_wayland_client
 endif
 
 if with_platform_x11
-  libvn_files += files('vn_wsi_x11.c')
   vn_deps += dep_xcb_dri3
 endif
 
