@@ -80,13 +80,13 @@ foreach arch : ['5', '6', '7']
       inc_compiler,
       inc_gallium, # XXX: pipe/p_format.h
       inc_gallium_aux, # XXX: renderonly
-      inc_vulkan_wsi,
       inc_panfrost,
     ],
     dependencies : [
       idep_nir_headers,
       idep_pan_packers,
       idep_vulkan_util_headers,
+      idep_vulkan_wsi_headers,
       dep_libdrm,
       dep_valgrind,
     ],
@@ -113,12 +113,10 @@ libvulkan_panfrost = shared_library(
     inc_compiler,
     inc_gallium, # XXX: pipe/p_format.h
     inc_gallium_aux, # XXX: renderonly
-    inc_vulkan_wsi,
     inc_panfrost,
   ],
   link_whole : [panvk_per_arch_libs],
   link_with : [
-    libvulkan_wsi,
     libpanfrost_shared,
     libpanfrost_midgard,
     libpanfrost_bifrost,
@@ -137,6 +135,7 @@ libvulkan_panfrost = shared_library(
     idep_pan_packers,
     panvk_deps,
     idep_vulkan_util,
+    idep_vulkan_wsi,
     idep_mesautil,
   ],
   c_args : [no_override_init_args, panvk_flags],

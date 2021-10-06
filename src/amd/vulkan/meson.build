@@ -150,15 +150,16 @@ libvulkan_radeon = shared_library(
   [libradv_files, radv_entrypoints, sha1_h],
   vs_module_defs : vulkan_radv_def,
   include_directories : [
-    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_amd, inc_amd_common, inc_amd_common_llvm, inc_compiler, inc_util, inc_vulkan_wsi,
+    inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_amd, inc_amd_common, inc_amd_common_llvm, inc_compiler, inc_util,
   ],
   link_with : [
-    libamd_common, libamd_common_llvm, libamdgpu_addrlib, libvulkan_wsi,
+    libamd_common, libamd_common_llvm, libamdgpu_addrlib,
   ],
   dependencies : [
     dep_llvm, dep_libdrm_amdgpu, dep_thread, dep_elf, dep_dl, dep_m,
     dep_valgrind, radv_deps, idep_aco,
-    idep_mesautil, idep_nir, idep_vulkan_util, idep_amdgfxregs_h, idep_xmlconfig,
+    idep_mesautil, idep_nir, idep_vulkan_util, idep_vulkan_wsi,
+    idep_amdgfxregs_h, idep_xmlconfig,
   ],
   c_args : [no_override_init_args, radv_flags, c_msvc_compat_args],
   cpp_args : [radv_flags, cpp_msvc_compat_args],

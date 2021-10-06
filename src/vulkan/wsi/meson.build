@@ -53,3 +53,12 @@ libvulkan_wsi = static_library(
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )
+
+idep_vulkan_wsi_headers = declare_dependency(
+  include_directories : include_directories('.')
+)
+
+idep_vulkan_wsi = declare_dependency(
+  link_with : libvulkan_wsi,
+  dependencies : idep_vulkan_wsi_headers
+)
