@@ -631,7 +631,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_frag_coord:
                case nir_intrinsic_load_frag_shading_rate:
                case nir_intrinsic_load_sample_pos:
-               case nir_intrinsic_load_layer_id:
                case nir_intrinsic_load_local_invocation_id:
                case nir_intrinsic_load_local_invocation_index:
                case nir_intrinsic_load_subgroup_invocation:

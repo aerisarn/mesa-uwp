@@ -8023,18 +8023,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_load_view_index: {
-      if (ctx->stage.has(SWStage::VS) || ctx->stage.has(SWStage::GS) ||
-          ctx->stage.has(SWStage::TCS) || ctx->stage.has(SWStage::TES)) {
-         Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-         bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.view_index)));
-         break;
-      }
-      FALLTHROUGH;
-   }
-   case nir_intrinsic_load_layer_id: {
-      unsigned idx = nir_intrinsic_base(instr);
-      bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-                 Operand::c32(2u), bld.m0(get_arg(ctx, ctx->args->ac.prim_mask)), idx, 0);
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.view_index)));
       break;
    }
    case nir_intrinsic_load_frag_coord: {
