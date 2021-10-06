@@ -969,6 +969,34 @@ v3d71_qpu_reads_raddr(const struct v3d_qpu_instr *inst, uint8_t raddr)
 }
 
 bool
+v3d71_qpu_writes_waddr_explicitly(const struct v3d_device_info *devinfo,
+                                  const struct v3d_qpu_instr *inst,
+                                  uint8_t waddr)
+{
+        if (inst->type != V3D_QPU_INSTR_TYPE_ALU)
+                return false;
+
+        if (v3d_qpu_add_op_has_dst(inst->alu.add.op) &&
+            !inst->alu.add.magic_write &&
+            inst->alu.add.waddr == waddr) {
+                return true;
+        }
+
+        if (v3d_qpu_mul_op_has_dst(inst->alu.mul.op) &&
+            !inst->alu.mul.magic_write &&
+            inst->alu.mul.waddr == waddr) {
+                return true;
+        }
+
+        if (v3d_qpu_sig_writes_address(devinfo, &inst->sig) &&
+            !inst->sig_magic && inst->sig_addr == waddr) {
+                return true;
+        }
+
+        return false;
+}
+
+bool
 v3d_qpu_sig_writes_address(const struct v3d_device_info *devinfo,
                            const struct v3d_qpu_sig *sig)
 {
