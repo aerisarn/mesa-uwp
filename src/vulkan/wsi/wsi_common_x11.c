@@ -43,8 +43,11 @@
 #include "util/u_thread.h"
 #include "util/xmlconfig.h"
 
+#include "vk_instance.h"
+#include "vk_physical_device.h"
 #include "vk_util.h"
 #include "vk_enum_to_str.h"
+#include "wsi_common_entrypoints.h"
 #include "wsi_common_private.h"
 #include "wsi_common_x11.h"
 #include "wsi_common_queue.h"
@@ -495,6 +498,34 @@ VkBool32 wsi_get_physical_device_xcb_presentation_support(
    return true;
 }
 
+VKAPI_ATTR VkBool32 VKAPI_CALL
+wsi_GetPhysicalDeviceXcbPresentationSupportKHR(VkPhysicalDevice physicalDevice,
+                                               uint32_t queueFamilyIndex,
+                                               xcb_connection_t *connection,
+                                               xcb_visualid_t visual_id)
+{
+   VK_FROM_HANDLE(vk_physical_device, device, physicalDevice);
+
+   return wsi_get_physical_device_xcb_presentation_support(device->wsi_device,
+                                                           queueFamilyIndex,
+                                                           connection,
+                                                           visual_id);
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL
+wsi_GetPhysicalDeviceXlibPresentationSupportKHR(VkPhysicalDevice physicalDevice,
+                                                uint32_t queueFamilyIndex,
+                                                Display *dpy,
+                                                VisualID visualID)
+{
+   VK_FROM_HANDLE(vk_physical_device, device, physicalDevice);
+
+   return wsi_get_physical_device_xcb_presentation_support(device->wsi_device,
+                                                           queueFamilyIndex,
+                                                           XGetXCBConnection(dpy),
+                                                           visualID);
+}
+
 static xcb_connection_t*
 x11_surface_get_connection(VkIcdSurfaceBase *icd_surface)
 {
@@ -794,6 +825,25 @@ VkResult wsi_create_xcb_surface(const VkAllocationCallbacks *pAllocator,
    return VK_SUCCESS;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL
+wsi_CreateXcbSurfaceKHR(VkInstance _instance,
+                        const VkXcbSurfaceCreateInfoKHR *pCreateInfo,
+                        const VkAllocationCallbacks *pAllocator,
+                        VkSurfaceKHR *pSurface)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   const VkAllocationCallbacks *alloc;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR);
+
+   if (pAllocator)
+     alloc = pAllocator;
+   else
+     alloc = &instance->alloc;
+
+   return wsi_create_xcb_surface(alloc, pCreateInfo, pSurface);
+}
+
 VkResult wsi_create_xlib_surface(const VkAllocationCallbacks *pAllocator,
 				 const VkXlibSurfaceCreateInfoKHR *pCreateInfo,
 				 VkSurfaceKHR *pSurface)
@@ -811,6 +861,25 @@ VkResult wsi_create_xlib_surface(const VkAllocationCallbacks *pAllocator,
 
    *pSurface = VkIcdSurfaceBase_to_handle(&surface->base);
    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+wsi_CreateXlibSurfaceKHR(VkInstance _instance,
+                         const VkXlibSurfaceCreateInfoKHR *pCreateInfo,
+                         const VkAllocationCallbacks *pAllocator,
+                         VkSurfaceKHR *pSurface)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   const VkAllocationCallbacks *alloc;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR);
+
+   if (pAllocator)
+     alloc = pAllocator;
+   else
+     alloc = &instance->alloc;
+
+   return wsi_create_xlib_surface(alloc, pCreateInfo, pSurface);
 }
 
 struct x11_image {

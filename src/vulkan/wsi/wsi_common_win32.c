@@ -26,7 +26,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "vk_instance.h"
+#include "vk_physical_device.h"
 #include "vk_util.h"
+#include "wsi_common_entrypoints.h"
 #include "wsi_common_private.h"
 #include "wsi_common_win32.h"
 
@@ -73,6 +76,15 @@ wsi_win32_get_presentation_support(struct wsi_device *wsi_device)
    return TRUE;
 }
 
+VKAPI_ATTR VkBool32 VKAPI_CALL
+wsi_GetPhysicalDeviceWin32PresentationSupportKHR(VkPhysicalDevice physicalDevice,
+                                                 uint32_t queueFamilyIndex)
+{
+   VK_FROM_HANDLE(vk_physical_device, device, physicalDevice);
+
+   return wsi_win32_get_presentation_support(device->wsi_device);
+}
+
 VkResult
 wsi_create_win32_surface(VkInstance instance,
                            const VkAllocationCallbacks *allocator,
@@ -92,6 +104,25 @@ wsi_create_win32_surface(VkInstance instance,
 
    *surface_khr = VkIcdSurfaceBase_to_handle(&surface->base);
    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+wsi_CreateWin32SurfaceKHR(VkInstance _instance,
+                          const VkWin32SurfaceCreateInfoKHR *pCreateInfo,
+                          const VkAllocationCallbacks *pAllocator,
+                          VkSurfaceKHR *pSurface)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   const VkAllocationCallbacks *alloc;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR);
+
+   if (pAllocator)
+      alloc = pAllocator;
+   else
+      alloc = &instance->alloc;
+
+   return wsi_create_win32_surface(_instance, alloc, pCreateInfo, pSurface);
 }
 
 static VkResult

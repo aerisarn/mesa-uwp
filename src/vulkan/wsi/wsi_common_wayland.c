@@ -35,7 +35,10 @@
 
 #include "drm-uapi/drm_fourcc.h"
 
+#include "vk_instance.h"
+#include "vk_physical_device.h"
 #include "vk_util.h"
+#include "wsi_common_entrypoints.h"
 #include "wsi_common_private.h"
 #include "wsi_common_wayland.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
@@ -589,6 +592,16 @@ wsi_wl_get_presentation_support(struct wsi_device *wsi_device,
    return ret == VK_SUCCESS;
 }
 
+VKAPI_ATTR VkBool32 VKAPI_CALL
+wsi_GetPhysicalDeviceWaylandPresentationSupportKHR(VkPhysicalDevice physicalDevice,
+                                                   uint32_t queueFamilyIndex,
+                                                   struct wl_display *display)
+{
+   VK_FROM_HANDLE(vk_physical_device, device, physicalDevice);
+
+   return wsi_wl_get_presentation_support(device->wsi_device, display);
+}
+
 static VkResult
 wsi_wl_surface_get_support(VkIcdSurfaceBase *surface,
                            struct wsi_device *wsi_device,
@@ -791,6 +804,25 @@ VkResult wsi_create_wl_surface(const VkAllocationCallbacks *pAllocator,
    *pSurface = VkIcdSurfaceBase_to_handle(&surface->base);
 
    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+wsi_CreateWaylandSurfaceKHR(VkInstance _instance,
+                            const VkWaylandSurfaceCreateInfoKHR *pCreateInfo,
+                            const VkAllocationCallbacks *pAllocator,
+                            VkSurfaceKHR *pSurface)
+{
+   VK_FROM_HANDLE(vk_instance, instance, _instance);
+   const VkAllocationCallbacks *alloc;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR);
+
+   if (pAllocator)
+      alloc = pAllocator;
+   else
+      alloc = &instance->alloc;
+
+   return wsi_create_wl_surface(alloc, pCreateInfo, pSurface);
 }
 
 struct wsi_wl_image {
