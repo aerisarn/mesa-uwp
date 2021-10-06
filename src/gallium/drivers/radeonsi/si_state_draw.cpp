@@ -1841,11 +1841,10 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
       }
 
       if (IS_DRAW_VERTEX_STATE) {
-         unsigned partial_count = bitcount_asm<POPCNT>(partial_velem_mask);
          unsigned i = 0;
 
          if (num_vbos_in_user_sgprs) {
-            unsigned num_vb_sgprs = MIN2(partial_count, num_vbos_in_user_sgprs) * 4;
+            unsigned num_vb_sgprs = MIN2(count, num_vbos_in_user_sgprs) * 4;
 
             radeon_begin(&sctx->gfx_cs);
             radeon_set_sh_reg_seq(sh_base + SI_SGPR_VS_VB_DESCRIPTOR_FIRST * 4, num_vb_sgprs);
