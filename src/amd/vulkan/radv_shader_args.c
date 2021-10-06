@@ -79,22 +79,22 @@ needs_view_index_sgpr(struct radv_shader_args *args, gl_shader_stage stage)
 {
    switch (stage) {
    case MESA_SHADER_VERTEX:
-      if (args->shader_info->needs_multiview_view_index ||
+      if (args->shader_info->uses_view_index ||
           (!args->shader_info->vs.as_es && !args->shader_info->vs.as_ls &&
            args->options->key.has_multiview_view_index))
          return true;
       break;
    case MESA_SHADER_TESS_EVAL:
-      if (args->shader_info->needs_multiview_view_index ||
+      if (args->shader_info->uses_view_index ||
           (!args->shader_info->tes.as_es && args->options->key.has_multiview_view_index))
          return true;
       break;
    case MESA_SHADER_TESS_CTRL:
-      if (args->shader_info->needs_multiview_view_index)
+      if (args->shader_info->uses_view_index)
          return true;
       break;
    case MESA_SHADER_GEOMETRY:
-      if (args->shader_info->needs_multiview_view_index ||
+      if (args->shader_info->uses_view_index ||
           (args->shader_info->is_ngg && args->options->key.has_multiview_view_index))
          return true;
       break;
