@@ -187,8 +187,6 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
             const struct tu_subpass *subpass,
             struct tu_cs *cs)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
-
    const uint32_t a = subpass->depth_stencil_attachment.attachment;
    if (a == VK_ATTACHMENT_UNUSED) {
       tu_cs_emit_regs(cs,
@@ -211,7 +209,7 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
       return;
    }
 
-   const struct tu_image_view *iview = fb->attachments[a].attachment;
+   const struct tu_image_view *iview = cmd->state.attachments[a];
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
    enum a6xx_depth_format fmt = tu6_pipe2depth(attachment->format);
@@ -262,7 +260,7 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
       if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
-      const struct tu_image_view *iview = fb->attachments[a].attachment;
+      const struct tu_image_view *iview = cmd->state.attachments[a];
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
       tu_cs_emit(cs, iview->RB_MRT_BUF_INFO);
@@ -356,7 +354,6 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      bool binning)
 {
-   const struct tu_framebuffer *fb = cmd->state.framebuffer;
    /* doesn't RB_RENDER_CNTL set differently for binning pass: */
    bool no_track = !cmd->device->physical_device->info->a6xx.has_cp_reg_write;
    uint32_t cntl = 0;
@@ -372,7 +369,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
 
-         const struct tu_image_view *iview = fb->attachments[a].attachment;
+         const struct tu_image_view *iview = cmd->state.attachments[a];
          if (iview->ubwc_enabled)
             mrts_ubwc_enable |= 1 << i;
       }
@@ -381,7 +378,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
 
       const uint32_t a = subpass->depth_stencil_attachment.attachment;
       if (a != VK_ATTACHMENT_UNUSED) {
-         const struct tu_image_view *iview = fb->attachments[a].attachment;
+         const struct tu_image_view *iview = cmd->state.attachments[a];
          if (iview->ubwc_enabled)
             cntl |= A6XX_RB_RENDER_CNTL_FLAG_DEPTH;
       }
@@ -651,8 +648,8 @@ tu6_emit_sysmem_resolve(struct tu_cmd_buffer *cmd,
                         uint32_t gmem_a)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   struct tu_image_view *dst = fb->attachments[a].attachment;
-   struct tu_image_view *src = fb->attachments[gmem_a].attachment;
+   const struct tu_image_view *dst = cmd->state.attachments[a];
+   const struct tu_image_view *src = cmd->state.attachments[gmem_a];
 
    tu_resolve_sysmem(cmd, cs, src, dst, layer_mask, fb->layers, &cmd->state.render_area);
 }
@@ -1068,8 +1065,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
-      struct tu_image_view *iview =
-         cmd->state.framebuffer->attachments[a].attachment;
+      const struct tu_image_view *iview = cmd->state.attachments[a];
       const struct tu_render_pass_attachment *att =
          &cmd->state.pass->attachments[a];
       uint32_t *dst = &texture.map[A6XX_TEX_CONST_DWORDS * i];
@@ -3118,10 +3114,30 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_render_pass, pass, pRenderPassBegin->renderPass);
    TU_FROM_HANDLE(tu_framebuffer, fb, pRenderPassBegin->framebuffer);
 
+   const struct VkRenderPassAttachmentBeginInfo *pAttachmentInfo =
+      vk_find_struct_const(pRenderPassBegin->pNext,
+                           RENDER_PASS_ATTACHMENT_BEGIN_INFO);
+
    cmd->state.pass = pass;
    cmd->state.subpass = pass->subpasses;
    cmd->state.framebuffer = fb;
    cmd->state.render_area = pRenderPassBegin->renderArea;
+
+   cmd->state.attachments =
+      vk_alloc(&cmd->pool->alloc, pass->attachment_count *
+               sizeof(cmd->state.attachments[0]), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   if (!cmd->state.attachments) {
+      cmd->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return;
+   }
+
+   for (unsigned i = 0; i < pass->attachment_count; i++) {
+      cmd->state.attachments[i] = pAttachmentInfo ?
+         tu_image_view_from_handle(pAttachmentInfo->pAttachments[i]) :
+         cmd->state.framebuffer->attachments[i].attachment;
+   }
 
    trace_start_render_pass(&cmd->trace, &cmd->cs);
 
@@ -3141,7 +3157,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
    if (a != VK_ATTACHMENT_UNUSED) {
       const struct tu_render_pass_attachment *att = &cmd->state.pass->attachments[a];
-      struct tu_image *image = fb->attachments[a].attachment->image;
+      struct tu_image *image = cmd->state.attachments[a]->image;
       /* if image has lrz and it isn't a stencil-only clear: */
       if (image->lrz_height &&
           (att->clear_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT))) {
@@ -4642,9 +4658,12 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
       cmd_buffer->state.renderpass_cache.pending_flush_bits;
    tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
 
+   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;
    cmd_buffer->state.framebuffer = NULL;
+   cmd_buffer->state.attachments = NULL;
    cmd_buffer->state.has_tess = false;
    cmd_buffer->state.has_subpass_predication = false;
    cmd_buffer->state.disable_gmem = false;

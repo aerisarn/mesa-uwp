@@ -129,6 +129,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_external_semaphore = true,
       .KHR_external_semaphore_fd = true,
       .KHR_get_memory_requirements2 = true,
+      .KHR_imageless_framebuffer = true,
       .KHR_incremental_present = TU_HAS_SURFACE,
       .KHR_image_format_list = true,
       .KHR_maintenance1 = true,
@@ -513,7 +514,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
 
    features->samplerFilterMinmax                 = true;
    features->scalarBlockLayout                   = true;
-   features->imagelessFramebuffer                = false;
+   features->imagelessFramebuffer                = true;
    features->uniformBufferStandardLayout         = true;
    features->shaderSubgroupExtendedTypes         = false;
    features->separateDepthStencilLayouts         = false;
@@ -2229,8 +2230,11 @@ tu_CreateFramebuffer(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
 
-   size_t size = sizeof(*framebuffer) + sizeof(struct tu_attachment_info) *
-                                           pCreateInfo->attachmentCount;
+   bool imageless = pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
+
+   size_t size = sizeof(*framebuffer);
+   if (!imageless)
+      size += sizeof(struct tu_attachment_info) * pCreateInfo->attachmentCount;
    framebuffer = vk_object_alloc(&device->vk, pAllocator, size,
                                  VK_OBJECT_TYPE_FRAMEBUFFER);
    if (framebuffer == NULL)
@@ -2240,10 +2244,13 @@ tu_CreateFramebuffer(VkDevice _device,
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
-   for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-      VkImageView _iview = pCreateInfo->pAttachments[i];
-      struct tu_image_view *iview = tu_image_view_from_handle(_iview);
-      framebuffer->attachments[i].attachment = iview;
+
+   if (!imageless) {
+      for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+         VkImageView _iview = pCreateInfo->pAttachments[i];
+         struct tu_image_view *iview = tu_image_view_from_handle(_iview);
+         framebuffer->attachments[i].attachment = iview;
+      }
    }
 
    tu_framebuffer_tiling_config(framebuffer, device, pass);

@@ -1015,6 +1015,8 @@ struct tu_cmd_state
    const struct tu_framebuffer *framebuffer;
    VkRect2D render_area;
 
+   const struct tu_image_view **attachments;
+
    bool xfb_used;
    bool has_tess;
    bool has_subpass_predication;

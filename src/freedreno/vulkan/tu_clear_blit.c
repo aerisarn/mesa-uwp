@@ -2560,7 +2560,7 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
                         bool separate_stencil)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
-   const struct tu_image_view *iview = fb->attachments[a].attachment;
+   const struct tu_image_view *iview = cmd->state.attachments[a];
    const uint32_t clear_views = cmd->state.pass->attachments[a].clear_views;
    const struct blit_ops *ops = &r2d_ops;
    if (cmd->state.pass->attachments[a].samples > 1)
@@ -2737,8 +2737,7 @@ tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
                         uint32_t a,
                         bool force_load)
 {
-   const struct tu_image_view *iview =
-      cmd->state.framebuffer->attachments[a].attachment;
+   const struct tu_image_view *iview = cmd->state.attachments[a];
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
 
@@ -2846,7 +2845,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
    struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const VkRect2D *render_area = &cmd->state.render_area;
    struct tu_render_pass_attachment *dst = &cmd->state.pass->attachments[a];
-   struct tu_image_view *iview = cmd->state.framebuffer->attachments[a].attachment;
+   const struct tu_image_view *iview = cmd->state.attachments[a];
    struct tu_render_pass_attachment *src = &cmd->state.pass->attachments[gmem_a];
 
    if (!dst->store && !dst->store_stencil)
