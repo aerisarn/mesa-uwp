@@ -980,9 +980,9 @@ anv_descriptor_pool_alloc_set(struct anv_descriptor_pool *pool,
       }
 
       if (pool->free_list != EMPTY) {
-         return vk_error(VK_ERROR_FRAGMENTED_POOL);
+         return VK_ERROR_FRAGMENTED_POOL;
       } else {
-         return vk_error(VK_ERROR_OUT_OF_POOL_MEMORY);
+         return VK_ERROR_OUT_OF_POOL_MEMORY;
       }
    }
 }
