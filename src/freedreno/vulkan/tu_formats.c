@@ -114,9 +114,8 @@ tu6_format_color(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
 }
 
 static struct tu_native_format
-tu6_format_texture_unchecked(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
+tu6_format_texture_unchecked(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
-   enum pipe_format format = tu_vk_format_to_pipe_format(vk_format);
    struct tu_native_format fmt = {
       .fmt = fd6_texture_format(format, tile_mode),
       .swap = fd6_texture_swap(format, tile_mode),
@@ -148,17 +147,17 @@ tu6_format_texture_unchecked(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
 }
 
 struct tu_native_format
-tu6_format_texture(VkFormat vk_format, enum a6xx_tile_mode tile_mode)
+tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
-   struct tu_native_format fmt = tu6_format_texture_unchecked(vk_format, tile_mode);
+   struct tu_native_format fmt = tu6_format_texture_unchecked(format, tile_mode);
    assert(fmt.fmt != FMT6_NONE);
    return fmt;
 }
 
 bool
-tu6_format_texture_supported(VkFormat vk_format)
+tu6_format_texture_supported(enum pipe_format format)
 {
-   return tu6_format_texture_unchecked(vk_format, TILE6_LINEAR).fmt != FMT6_NONE;
+   return tu6_format_texture_unchecked(format, TILE6_LINEAR).fmt != FMT6_NONE;
 }
 
 static void
@@ -173,7 +172,7 @@ tu_physical_device_get_format_properties(
 
    bool supported_vtx = tu6_format_vtx_supported(vk_format);
    bool supported_color = tu6_format_color_supported(vk_format);
-   bool supported_tex = tu6_format_texture_supported(vk_format);
+   bool supported_tex = tu6_format_texture_supported(format);
 
    if (format == PIPE_FORMAT_NONE ||
        !(supported_vtx || supported_color || supported_tex)) {
@@ -223,7 +222,7 @@ tu_physical_device_get_format_properties(
        * after we enable shaderStorageImageReadWithoutFormat and there are
        * tests for these formats.
        */
-      struct tu_native_format tex = tu6_format_texture(vk_format, TILE6_LINEAR);
+      struct tu_native_format tex = tu6_format_texture(format, TILE6_LINEAR);
       if (tex.swap == WZYX && tex.fmt != FMT6_1_5_5_5_UNORM) {
          optimal |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
          buffer |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;

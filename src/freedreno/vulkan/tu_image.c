@@ -462,7 +462,7 @@ tu_CreateImage(VkDevice _device,
       if (fmt_list) {
          may_be_swapped = false;
          for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
-            if (tu6_format_texture(fmt_list->pViewFormats[i], TILE6_LINEAR).swap) {
+            if (tu6_format_texture(tu_vk_format_to_pipe_format(fmt_list->pViewFormats[i]), TILE6_LINEAR).swap) {
                may_be_swapped = true;
                break;
             }
@@ -706,8 +706,8 @@ tu_buffer_view_init(struct tu_buffer_view *view,
    view->buffer = buffer;
 
    enum VkFormat vfmt = pCreateInfo->format;
-   enum pipe_format pfmt = vk_format_to_pipe_format(vfmt);
-   const struct tu_native_format fmt = tu6_format_texture(vfmt, TILE6_LINEAR);
+   enum pipe_format pfmt = tu_vk_format_to_pipe_format(vfmt);
+   const struct tu_native_format fmt = tu6_format_texture(pfmt, TILE6_LINEAR);
 
    uint32_t range;
    if (pCreateInfo->range == VK_WHOLE_SIZE)

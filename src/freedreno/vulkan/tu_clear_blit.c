@@ -183,7 +183,7 @@ r2d_src_buffer(struct tu_cmd_buffer *cmd,
                uint64_t va, uint32_t pitch,
                uint32_t width, uint32_t height)
 {
-   struct tu_native_format format = tu6_format_texture(vk_format, TILE6_LINEAR);
+   struct tu_native_format format = tu6_format_texture(tu_vk_format_to_pipe_format(vk_format), TILE6_LINEAR);
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_PS_2D_SRC_INFO(
@@ -873,7 +873,7 @@ r3d_src_buffer(struct tu_cmd_buffer *cmd,
 {
    uint32_t desc[A6XX_TEX_CONST_DWORDS];
 
-   struct tu_native_format format = tu6_format_texture(vk_format, TILE6_LINEAR);
+   struct tu_native_format format = tu6_format_texture(tu_vk_format_to_pipe_format(vk_format), TILE6_LINEAR);
 
    desc[0] =
       COND(vk_format_is_srgb(vk_format), A6XX_TEX_CONST_0_SRGB) |
@@ -910,7 +910,7 @@ r3d_src_gmem(struct tu_cmd_buffer *cmd,
 
    /* patch the format so that depth/stencil get the right format */
    desc[0] &= ~A6XX_TEX_CONST_0_FMT__MASK;
-   desc[0] |= A6XX_TEX_CONST_0_FMT(tu6_format_texture(format, TILE6_2).fmt);
+   desc[0] |= A6XX_TEX_CONST_0_FMT(tu6_format_texture(tu_vk_format_to_pipe_format(format), TILE6_2).fmt);
 
    /* patched for gmem */
    desc[0] &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
@@ -1670,8 +1670,8 @@ tu_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
 static bool
 is_swapped_format(VkFormat format)
 {
-   struct tu_native_format linear = tu6_format_texture(format, TILE6_LINEAR);
-   struct tu_native_format tiled = tu6_format_texture(format, TILE6_3);
+   struct tu_native_format linear = tu6_format_texture(tu_vk_format_to_pipe_format(format), TILE6_LINEAR);
+   struct tu_native_format tiled = tu6_format_texture(tu_vk_format_to_pipe_format(format), TILE6_3);
    return linear.fmt != tiled.fmt || linear.swap != tiled.swap;
 }
 
@@ -2797,7 +2797,7 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_PS_2D_SRC_INFO(
-                      .color_format = tu6_format_texture(format, TILE6_2).fmt,
+                      .color_format = tu6_format_texture(tu_vk_format_to_pipe_format(format), TILE6_2).fmt,
                       .tile_mode = TILE6_2,
                       .srgb = vk_format_is_srgb(format),
                       .samples = tu_msaa_samples(samples),

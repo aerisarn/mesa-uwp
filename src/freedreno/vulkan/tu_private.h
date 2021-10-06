@@ -1382,12 +1382,13 @@ struct tu_native_format
    enum a6xx_tile_mode tile_mode : 8;
 };
 
+enum pipe_format tu_vk_format_to_pipe_format(VkFormat vk_format);
 bool tu6_format_vtx_supported(VkFormat format);
 struct tu_native_format tu6_format_vtx(VkFormat format);
 bool tu6_format_color_supported(VkFormat format);
 struct tu_native_format tu6_format_color(VkFormat format, enum a6xx_tile_mode tile_mode);
-bool tu6_format_texture_supported(VkFormat format);
-struct tu_native_format tu6_format_texture(VkFormat format, enum a6xx_tile_mode tile_mode);
+bool tu6_format_texture_supported(enum pipe_format format);
+struct tu_native_format tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode);
 
 static inline enum a6xx_format
 tu6_base_format(VkFormat format)
