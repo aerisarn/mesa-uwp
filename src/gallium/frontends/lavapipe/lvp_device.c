@@ -2089,7 +2089,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitForFences(
          struct lvp_fence *f = lvp_fence_from_handle(pFences[i]);
 
          /* this is an unsubmitted fence: immediately bail out */
-         if (!f->timeline && !f->signalled)
+         if (!f->timeline && !f->signalled && !f->handle)
             return VK_TIMEOUT;
          if (!fence || f->timeline > fence->timeline)
             fence = f;
