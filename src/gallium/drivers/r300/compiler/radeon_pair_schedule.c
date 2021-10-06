@@ -367,45 +367,41 @@ static void calc_score_readers(struct schedule_instruction * sinst)
  */
 static void commit_update_reads(struct schedule_state * s,
 					struct schedule_instruction * sinst){
-	unsigned int i;
-	for(i = 0; i < sinst->NumReadValues; ++i) {
-		struct reg_value * v = sinst->ReadValues[i];
-		assert(v->NumReaders > 0);
-		v->NumReaders--;
-		if (!v->NumReaders) {
-			if (v->Next) {
-				decrease_dependencies(s, v->Next->Writer);
+	do {
+		for(unsigned int i = 0; i < sinst->NumReadValues; ++i) {
+			struct reg_value * v = sinst->ReadValues[i];
+			assert(v->NumReaders > 0);
+			v->NumReaders--;
+			if (!v->NumReaders) {
+				if (v->Next) {
+					decrease_dependencies(s, v->Next->Writer);
+				}
 			}
 		}
-	}
-	if (sinst->PairedInst) {
-		commit_update_reads(s, sinst->PairedInst);
-	}
+	} while ((sinst = sinst->PairedInst));
 }
 
 static void commit_update_writes(struct schedule_state * s,
 					struct schedule_instruction * sinst){
-	unsigned int i;
-	for(i = 0; i < sinst->NumWriteValues; ++i) {
-		struct reg_value * v = sinst->WriteValues[i];
-		if (v->NumReaders) {
-			for(struct reg_value_reader * r = v->Readers; r; r = r->Next) {
-				decrease_dependencies(s, r->Reader);
+	do {
+		for(unsigned int i = 0; i < sinst->NumWriteValues; ++i) {
+			struct reg_value * v = sinst->WriteValues[i];
+			if (v->NumReaders) {
+				for(struct reg_value_reader * r = v->Readers; r; r = r->Next) {
+					decrease_dependencies(s, r->Reader);
+				}
+			} else {
+				/* This happens in instruction sequences of the type
+				 *  OP r.x, ...;
+				 *  OP r.x, r.x, ...;
+				 * See also the subtlety in how instructions that both
+				 * read and write the same register are scanned.
+				 */
+				if (v->Next)
+					decrease_dependencies(s, v->Next->Writer);
 			}
-		} else {
-			/* This happens in instruction sequences of the type
-			 *  OP r.x, ...;
-			 *  OP r.x, r.x, ...;
-			 * See also the subtlety in how instructions that both
-			 * read and write the same register are scanned.
-			 */
-			if (v->Next)
-				decrease_dependencies(s, v->Next->Writer);
 		}
-	}
-	if (sinst->PairedInst) {
-		commit_update_writes(s, sinst->PairedInst);
-	}
+	} while ((sinst = sinst->PairedInst));
 }
 
 static void notify_sem_wait(struct schedule_state *s)
