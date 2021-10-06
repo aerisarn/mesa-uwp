@@ -4039,6 +4039,13 @@ fs_visitor::nir_emit_bs_intrinsic(const fs_builder &bld,
       bld.MOV(dest, retype(brw_vec1_grf(2, 2), dest.type));
       break;
 
+   case nir_intrinsic_load_btd_shader_type_intel: {
+      fs_reg ud_dest = retype(dest, BRW_REGISTER_TYPE_UD);
+      bld.MOV(ud_dest, retype(brw_vec1_grf(0, 3), ud_dest.type));
+      bld.AND(ud_dest, ud_dest, brw_imm_ud(0xf));
+      break;
+   }
+
    default:
       nir_emit_intrinsic(bld, instr);
       break;

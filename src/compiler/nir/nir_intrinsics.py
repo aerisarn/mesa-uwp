@@ -1386,3 +1386,9 @@ system_value("callable_sbt_addr_intel", 1, bit_sizes=[64])
 system_value("callable_sbt_stride_intel", 1, bit_sizes=[16])
 system_value("leaf_opaque_intel", 1, bit_sizes=[1])
 system_value("leaf_procedural_intel", 1, bit_sizes=[1])
+# Values :
+#  0: AnyHit
+#  1: ClosestHit
+#  2: Miss
+#  3: Intersection
+system_value("btd_shader_type_intel", 1)
