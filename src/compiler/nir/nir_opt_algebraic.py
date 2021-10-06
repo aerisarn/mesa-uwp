@@ -1813,6 +1813,16 @@ optimizations.extend([
    (('bfm', 'bits', ('iand', 31, 'offset')), ('bfm', 'bits', 'offset')),
    (('bfm', ('iand', 31, 'bits'), 'offset'), ('bfm', 'bits', 'offset')),
 
+   # Optimizations for ubitfield_extract(value, offset, umin(bits, 32-(offset&0x1f))) and such
+   (('ult', a, ('umin', ('iand', a, b), c)), False),
+   (('ult', 31, ('umin', '#bits(is_ult_32)', a)), False),
+   (('ubfe', 'value', 'offset', ('umin', 'width', ('iadd', 32, ('ineg', ('iand', 31, 'offset'))))),
+    ('ubfe', 'value', 'offset', 'width')),
+   (('ibfe', 'value', 'offset', ('umin', 'width', ('iadd', 32, ('ineg', ('iand', 31, 'offset'))))),
+    ('ibfe', 'value', 'offset', 'width')),
+   (('bfm', ('umin', 'width', ('iadd', 32, ('ineg', ('iand', 31, 'offset')))), 'offset'),
+    ('bfm', 'width', 'offset')),
+
    # Section 8.8 (Integer Functions) of the GLSL 4.60 spec says:
    #
    #    If bits is zero, the result will be zero.
