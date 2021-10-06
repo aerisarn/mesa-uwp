@@ -4483,6 +4483,10 @@ static void
 tu_dispatch(struct tu_cmd_buffer *cmd,
             const struct tu_dispatch_info *info)
 {
+   if (!info->indirect &&
+       (info->blocks[0] == 0 || info->blocks[1] == 0 || info->blocks[2] == 0))
+      return;
+
    struct tu_cs *cs = &cmd->cs;
    struct tu_pipeline *pipeline = cmd->state.compute_pipeline;
    struct tu_descriptor_state *descriptors_state =
