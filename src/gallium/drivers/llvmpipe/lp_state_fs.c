@@ -4257,7 +4257,30 @@ make_variant_key(struct llvmpipe_context *lp,
    if (key->multisample) {
       key->coverage_samples =
          util_framebuffer_get_num_samples(&lp->framebuffer);
-      key->min_samples = lp->min_samples == 1 ? 1 : key->coverage_samples;
+      /* Per EXT_shader_framebuffer_fetch spec:
+       *
+       *   "1. How is framebuffer data treated during multisample rendering?
+       *
+       *    RESOLVED: Reading the value of gl_LastFragData produces a different
+       *    result for each sample. This implies that all or part of the shader be
+       *    run once for each sample, but has no additional implications on fragment
+       *    shader input variables which may still be interpolated per pixel by the
+       *    implementation."
+       *
+       * ARM_shader_framebuffer_fetch_depth_stencil spec further says:
+       *
+       *   "(1) When multisampling is enabled, does the shader run per sample?
+       *
+       *    RESOLVED.
+       *
+       *    This behavior is inherited from either EXT_shader_framebuffer_fetch or
+       *    ARM_shader_framebuffer_fetch as described in the interactions section.
+       *    If neither extension is supported, the shader runs once per fragment."
+       *
+       * Therefore we should always enable per-sample shading when FB fetch is used.
+       */
+      if (lp->min_samples > 1 || shader->info.base.uses_fbfetch)
+         key->min_samples = key->coverage_samples;
    }
    key->nr_cbufs = lp->framebuffer.nr_cbufs;
 
