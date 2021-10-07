@@ -118,7 +118,11 @@ static union pipe_color_union encode_border_color(
                              (1 << (desc->channel[i].size - 1)) - 1);
    }
 
-   /* convert from float to expected format */
+#if V3D_VERSION <= 42
+   /* The TMU in V3D 7.x always takes 32-bit floats and handles conversions
+    * for us. In V3D 4.x we need to manually convert floating point color
+    * values to the expected format.
+    */
    if (vk_format_is_srgb(bc_info->format) ||
        vk_format_is_compressed(bc_info->format)) {
       for (int i = 0; i < 4; i++)
@@ -170,6 +174,7 @@ static union pipe_color_union encode_border_color(
          }
       }
    }
+#endif
 
    return border;
 }
