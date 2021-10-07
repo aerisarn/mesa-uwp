@@ -818,7 +818,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &occlusion_vk_pipeline_info, NULL, &device->meta_state.query.occlusion_query_pipeline);
    if (result != VK_SUCCESS)
       goto fail;
@@ -839,7 +839,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &pipeline_statistics_vk_pipeline_info, NULL,
       &device->meta_state.query.pipeline_statistics_query_pipeline);
    if (result != VK_SUCCESS)
@@ -861,7 +861,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &tfb_pipeline_info, NULL, &device->meta_state.query.tfb_query_pipeline);
    if (result != VK_SUCCESS)
       goto fail;
@@ -882,7 +882,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &timestamp_pipeline_info, NULL, &device->meta_state.query.timestamp_query_pipeline);
    if (result != VK_SUCCESS)
       goto fail;
@@ -903,7 +903,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &pg_pipeline_info, NULL, &device->meta_state.query.pg_query_pipeline);
 
 fail:

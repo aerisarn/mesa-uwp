@@ -136,7 +136,7 @@ create_dcc_compress_compute(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &vk_pipeline_info, NULL,
       &device->meta_state.fast_clear_flush.dcc_decompress_compute_pipeline);
    if (result != VK_SUCCESS)
@@ -230,7 +230,7 @@ create_pipeline(struct radv_device *device, VkShaderModule vs_module_h, VkPipeli
    };
 
    result = radv_graphics_pipeline_create(
-      device_h, radv_pipeline_cache_to_handle(&device->meta_state.cache),
+      device_h, device->meta_state.cache,
       &(VkGraphicsPipelineCreateInfo){
          .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
          .pNext = &rendering_create_info,
@@ -280,7 +280,7 @@ create_pipeline(struct radv_device *device, VkShaderModule vs_module_h, VkPipeli
       goto cleanup;
 
    result = radv_graphics_pipeline_create(
-      device_h, radv_pipeline_cache_to_handle(&device->meta_state.cache),
+      device_h, device->meta_state.cache,
       &(VkGraphicsPipelineCreateInfo){
          .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
          .pNext = &rendering_create_info,
@@ -330,7 +330,7 @@ create_pipeline(struct radv_device *device, VkShaderModule vs_module_h, VkPipeli
       goto cleanup;
 
    result = radv_graphics_pipeline_create(
-      device_h, radv_pipeline_cache_to_handle(&device->meta_state.cache),
+      device_h, device->meta_state.cache,
       &(VkGraphicsPipelineCreateInfo){
          .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
          .pNext = &rendering_create_info,

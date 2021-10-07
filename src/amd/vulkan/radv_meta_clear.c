@@ -88,7 +88,7 @@ create_pipeline(struct radv_device *device, uint32_t samples,
    VkResult result;
 
    result = radv_graphics_pipeline_create(
-      device_h, radv_pipeline_cache_to_handle(&device->meta_state.cache),
+      device_h, device->meta_state.cache,
       &(VkGraphicsPipelineCreateInfo){
          .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
          .pNext = dyn_state,
@@ -953,7 +953,7 @@ init_meta_clear_htile_mask_state(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(radv_device_to_handle(device),
-                                        radv_pipeline_cache_to_handle(&state->cache), 1,
+                                        state->cache, 1,
                                         &pipeline_info, NULL, &state->clear_htile_mask_pipeline);
 
 fail:
@@ -1033,7 +1033,7 @@ create_dcc_comp_to_single_pipeline(struct radv_device *device, bool is_msaa, VkP
    };
 
    result = radv_CreateComputePipelines(radv_device_to_handle(device),
-                                        radv_pipeline_cache_to_handle(&state->cache), 1,
+                                        state->cache, 1,
                                         &pipeline_info, NULL, pipeline);
 
    ralloc_free(cs);

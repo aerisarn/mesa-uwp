@@ -386,10 +386,6 @@ struct radv_shader_binary;
 struct radv_shader;
 struct radv_pipeline_shader_stack_size;
 
-void radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *device);
-void radv_pipeline_cache_finish(struct radv_pipeline_cache *cache);
-bool radv_pipeline_cache_load(struct radv_pipeline_cache *cache, const void *data, size_t size);
-
 bool radv_create_shaders_from_pipeline_cache(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
    struct radv_pipeline *pipeline, struct radv_pipeline_shader_stack_size **stack_sizes,
@@ -445,7 +441,7 @@ radv_meta_dst_layout_to_layout(enum radv_meta_dst_layout layout)
 struct radv_meta_state {
    VkAllocationCallbacks alloc;
 
-   struct radv_pipeline_cache cache;
+   VkPipelineCache cache;
 
    /*
     * For on-demand pipeline creation, makes sure that

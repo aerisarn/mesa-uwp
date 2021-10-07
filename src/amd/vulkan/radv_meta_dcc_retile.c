@@ -167,7 +167,7 @@ radv_device_init_meta_dcc_retile_state(struct radv_device *device, struct radeon
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &vk_pipeline_info, NULL, &device->meta_state.dcc_retile.pipeline[surf->u.gfx9.swizzle_mode]);
    if (result != VK_SUCCESS)
       goto cleanup;

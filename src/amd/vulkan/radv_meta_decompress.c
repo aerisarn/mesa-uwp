@@ -137,7 +137,7 @@ create_expand_depth_stencil_compute(struct radv_device *device)
    };
 
    result = radv_CreateComputePipelines(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      radv_device_to_handle(device), device->meta_state.cache, 1,
       &vk_pipeline_info, NULL,
       &device->meta_state.expand_depth_stencil_compute_pipeline);
    if (result != VK_SUCCESS)
@@ -291,7 +291,7 @@ create_pipeline(struct radv_device *device, uint32_t samples, VkPipelineLayout l
    };
 
    result = radv_graphics_pipeline_create(
-      device_h, radv_pipeline_cache_to_handle(&device->meta_state.cache), &pipeline_create_info,
+      device_h, device->meta_state.cache, &pipeline_create_info,
       &extra, &device->meta_state.alloc, pipeline);
 
 cleanup:

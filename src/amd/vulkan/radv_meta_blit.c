@@ -816,7 +816,7 @@ build_pipeline(struct radv_device *device, VkImageAspectFlagBits aspect,
    const struct radv_graphics_pipeline_create_info radv_pipeline_info = {.use_rectlist = true};
 
    result = radv_graphics_pipeline_create(
-      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache),
+      radv_device_to_handle(device), device->meta_state.cache,
       &vk_pipeline_info, &radv_pipeline_info, &device->meta_state.alloc, pipeline);
    ralloc_free(vs);
    ralloc_free(fs);

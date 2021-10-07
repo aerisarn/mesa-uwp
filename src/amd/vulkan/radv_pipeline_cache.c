@@ -73,7 +73,7 @@ radv_is_cache_disabled(struct radv_device *device)
           (device->physical_device->use_llvm ? 0 : aco_get_codegen_flags());
 }
 
-void
+static void
 radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *device)
 {
    vk_object_base_init(&device->vk, &cache->base, VK_OBJECT_TYPE_PIPELINE_CACHE);
@@ -98,7 +98,7 @@ radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *
       memset(cache->hash_table, 0, byte_size);
 }
 
-void
+static void
 radv_pipeline_cache_finish(struct radv_pipeline_cache *cache)
 {
    for (unsigned i = 0; i < cache->table_size; ++i)
@@ -541,7 +541,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
     *
     * Make sure to exclude meta shaders because they are stored in a different cache file.
     */
-   if (device->physical_device->vk.disk_cache && cache != &device->meta_state.cache) {
+   if (device->physical_device->vk.disk_cache && cache != radv_pipeline_cache_from_handle(device->meta_state.cache)) {
       uint8_t disk_sha1[SHA1_DIGEST_LENGTH];
       disk_cache_compute_key(device->physical_device->vk.disk_cache, sha1, SHA1_DIGEST_LENGTH, disk_sha1);
 
@@ -576,7 +576,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    return;
 }
 
-bool
+static bool
 radv_pipeline_cache_load(struct radv_pipeline_cache *cache, const void *data, size_t size)
 {
    struct radv_device *device = cache->device;

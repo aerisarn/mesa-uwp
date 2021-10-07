@@ -84,7 +84,7 @@ create_pipeline(struct radv_device *device, VkShaderModule vs_module_h, VkFormat
    };
 
    result = radv_graphics_pipeline_create(
-      device_h, radv_pipeline_cache_to_handle(&device->meta_state.cache),
+      device_h, device->meta_state.cache,
       &(VkGraphicsPipelineCreateInfo){
          .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
          .pNext = &rendering_create_info,

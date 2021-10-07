@@ -595,7 +595,7 @@ create_decode_pipeline(struct radv_device *device, VkPipeline *pipeline)
    };
 
    result = radv_CreateComputePipelines(radv_device_to_handle(device),
-                                        radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+                                        device->meta_state.cache, 1,
                                         &vk_pipeline_info, NULL, pipeline);
    if (result != VK_SUCCESS)
       goto fail;
