@@ -519,8 +519,6 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
       gather_info_output_decl_ps(nir, var, info);
       break;
    case MESA_SHADER_VERTEX:
-      if (!info->vs.as_ls && info->is_ngg)
-         gather_info_output_decl_gs(nir, var, info);
       break;
    case MESA_SHADER_GEOMETRY:
       gather_info_output_decl_gs(nir, var, info);
