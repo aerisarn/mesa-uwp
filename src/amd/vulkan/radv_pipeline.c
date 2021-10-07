@@ -2801,6 +2801,9 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
          DIV_ROUND_UP(lds_bytes_if_culling_off,
                       device->physical_device->rad_info.lds_encode_granularity);
 
+      /* NGG passthrough mode should be disabled when culling and when the vertex shader exports the
+       * primitive ID.
+       */
       infos[es_stage].is_ngg_passthrough = infos[es_stage].is_ngg_passthrough &&
                                            !infos[es_stage].has_ngg_culling &&
                                            !(es_stage == MESA_SHADER_VERTEX &&
@@ -2909,13 +2912,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
             assert(pipeline->graphics.last_vgt_api_stage == MESA_SHADER_GEOMETRY);
             infos[MESA_SHADER_GEOMETRY].vs.outinfo.export_clip_dists = true;
          }
-      }
-
-      /* NGG passthrough mode can't be enabled for vertex shaders
-       * that export the primitive ID.
-       */
-      if (nir[MESA_SHADER_VERTEX] && infos[MESA_SHADER_VERTEX].vs.outinfo.export_prim_id) {
-         infos[MESA_SHADER_VERTEX].is_ngg_passthrough = false;
       }
 
       filled_stages |= (1 << MESA_SHADER_FRAGMENT);
