@@ -735,13 +735,14 @@ isl_format_supports_sampling(const struct intel_device_info *devinfo,
          return true;
    } else if (devinfo->verx10 >= 125) {
       const struct isl_format_layout *fmtl = isl_format_get_layout(format);
-      /* ASTC support was removed from the hardware on Gfx12.5.  Annoyingly,
-       * our format_info table doesn't have a concept of things being removed
-       * so we handle it as yet another special case.
+      /* ASTC & FXT1 support was removed from the hardware on Gfx12.5.
+       * Annoyingly, our format_info table doesn't have a concept of things
+       * being removed so we handle it as yet another special case.
        *
-       * See HSD 1408144932
+       * See HSD 1408144932 (ASTC), 1407633611 (FXT1)
+       *
        */
-      if (fmtl->txc == ISL_TXC_ASTC)
+      if (fmtl->txc == ISL_TXC_ASTC || fmtl->txc == ISL_TXC_FXT1)
          return false;
    }
 
