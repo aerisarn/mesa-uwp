@@ -49,6 +49,49 @@
 #define vn_result(instance, result)                                          \
    ((result) >= VK_SUCCESS ? (result) : vn_error((instance), (result)))
 
+#ifdef ANDROID
+
+#include <cutils/trace.h>
+
+#define VN_TRACE_BEGIN(name) atrace_begin(ATRACE_TAG_GRAPHICS, name)
+#define VN_TRACE_END() atrace_end(ATRACE_TAG_GRAPHICS)
+
+#else
+
+/* XXX we would like to use perfetto, but it lacks a C header */
+#define VN_TRACE_BEGIN(name)
+#define VN_TRACE_END()
+
+#endif /* ANDROID */
+
+#if __has_attribute(cleanup) && __has_attribute(unused)
+
+#define VN_TRACE_SCOPE(name)                                                 \
+   int _vn_trace_scope_##__LINE__                                            \
+      __attribute__((cleanup(vn_trace_scope_end), unused)) =                 \
+         vn_trace_scope_begin(name)
+
+static inline int
+vn_trace_scope_begin(const char *name)
+{
+   VN_TRACE_BEGIN(name);
+   return 0;
+}
+
+static inline void
+vn_trace_scope_end(int *scope)
+{
+   VN_TRACE_END();
+}
+
+#else
+
+#define VN_TRACE_SCOPE(name)
+
+#endif /* __has_attribute(cleanup) && __has_attribute(unused) */
+
+#define VN_TRACE_FUNC() VN_TRACE_SCOPE(__func__)
+
 struct vn_instance;
 struct vn_physical_device;
 struct vn_device;
@@ -126,6 +169,9 @@ extern uint64_t vn_debug;
 
 void
 vn_debug_init(void);
+
+void
+vn_trace_init(void);
 
 void
 vn_log(struct vn_instance *instance, const char *format, ...)
