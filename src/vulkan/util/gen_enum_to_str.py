@@ -201,8 +201,8 @@ H_DEFINE_TEMPLATE = Template(textwrap.dedent(u"""\
       % if enum.guard:
 #ifdef ${enum.guard}
       % endif
-      % for v in enum.values.keys():
-    #define ${enum.values[v]} (${hex(v)}ULL)
+      % for n, v in enum.name_to_value.items():
+    #define ${n} (${hex(v)}ULL)
       % endfor
       % if enum.guard:
 #endif
