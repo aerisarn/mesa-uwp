@@ -277,7 +277,7 @@ class VkEnum(object):
             if alias not in self.name_to_value:
                 # We don't have this alias yet.  Just record the alias and
                 # we'll deal with it later.
-                alias_list = self.name_to_alias_list.get(alias, [])
+                alias_list = self.name_to_alias_list.setdefault(alias, [])
                 alias_list.append(name);
                 return
 
@@ -299,7 +299,7 @@ class VkEnum(object):
         # Now that the value has been fully added, resolve aliases, if any.
         if name in self.name_to_alias_list:
             for alias in self.name_to_alias_list[name]:
-                add_value(alias, value)
+                self.add_value(alias, value)
             del self.name_to_alias_list[name]
 
     def add_value_from_xml(self, elem, extension=None):
