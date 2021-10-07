@@ -616,6 +616,9 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
    if (cmd->state.disable_gmem)
       return true;
 
+   if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_GMEM))
+      return false;
+
    bool use_sysmem = tu_autotune_use_bypass(&cmd->device->autotune,
                                             cmd, autotune_result);
    if (*autotune_result) {

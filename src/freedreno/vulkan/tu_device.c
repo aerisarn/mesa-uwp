@@ -317,6 +317,7 @@ static const struct debug_control tu_debug_options[] = {
    { "nir", TU_DEBUG_NIR },
    { "nobin", TU_DEBUG_NOBIN },
    { "sysmem", TU_DEBUG_SYSMEM },
+   { "gmem", TU_DEBUG_GMEM },
    { "forcebin", TU_DEBUG_FORCEBIN },
    { "noubwc", TU_DEBUG_NOUBWC },
    { "nomultipos", TU_DEBUG_NOMULTIPOS },
