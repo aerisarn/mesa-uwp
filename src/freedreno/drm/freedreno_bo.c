@@ -320,7 +320,8 @@ cleanup_fences(struct fd_bo *bo, bool expired)
       if (expired && fd_fence_before(f->pipe->control->fence, f->fence))
          continue;
 
-      fd_pipe_del_locked(f->pipe);
+      struct fd_pipe *pipe = f->pipe;
+
       bo->nr_fences--;
 
       if (bo->nr_fences > 0) {
@@ -328,6 +329,8 @@ cleanup_fences(struct fd_bo *bo, bool expired)
          bo->fences[i] = bo->fences[bo->nr_fences];
          i--;
       }
+
+      fd_pipe_del_locked(pipe);
    }
 }
 
