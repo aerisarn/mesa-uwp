@@ -866,16 +866,18 @@ get_drm_format_modifier_properties_list(const struct anv_physical_device *physic
    }
 }
 
-void anv_GetPhysicalDeviceFormatProperties(
+void anv_GetPhysicalDeviceFormatProperties2(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    vk_format,
-    VkFormatProperties*                         pFormatProperties)
+    VkFormatProperties2*                        pFormatProperties)
 {
    ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
    const struct intel_device_info *devinfo = &physical_device->info;
    const struct anv_format *anv_format = anv_get_format(vk_format);
 
-   *pFormatProperties = (VkFormatProperties) {
+   assert(pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2);
+
+   pFormatProperties->formatProperties = (VkFormatProperties) {
       .linearTilingFeatures =
          anv_get_image_format_features(devinfo, vk_format, anv_format,
                                        VK_IMAGE_TILING_LINEAR, NULL),
@@ -885,22 +887,12 @@ void anv_GetPhysicalDeviceFormatProperties(
       .bufferFeatures =
          get_buffer_format_features(devinfo, vk_format, anv_format),
    };
-}
-
-void anv_GetPhysicalDeviceFormatProperties2(
-    VkPhysicalDevice                            physicalDevice,
-    VkFormat                                    format,
-    VkFormatProperties2*                        pFormatProperties)
-{
-   ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
-   anv_GetPhysicalDeviceFormatProperties(physicalDevice, format,
-                                         &pFormatProperties->formatProperties);
 
    vk_foreach_struct(ext, pFormatProperties->pNext) {
       /* Use unsigned since some cases are not in the VkStructureType enum. */
       switch ((unsigned)ext->sType) {
       case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT:
-         get_drm_format_modifier_properties_list(physical_device, format,
+         get_drm_format_modifier_properties_list(physical_device, vk_format,
                                                  (void *)ext);
          break;
       default:
