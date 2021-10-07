@@ -2522,6 +2522,16 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_fabs: {
+      if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
+         Temp src = get_alu_src_vop3p(ctx, instr->src[0]);
+         Instruction* vop3p =
+            bld.vop3p(aco_opcode::v_pk_max_f16, Definition(dst), src, src,
+                      instr->src[0].swizzle[0] & 1 ? 3 : 0, instr->src[0].swizzle[1] & 1 ? 3 : 0)
+               .instr;
+         vop3p->vop3p().neg_lo[1] = true;
+         vop3p->vop3p().neg_hi[1] = true;
+         break;
+      }
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (dst.regClass() == v2b) {
          Instruction* mul = bld.vop2_e64(aco_opcode::v_mul_f16, Definition(dst),
