@@ -36,6 +36,7 @@
 #include "brw_vec4_gs_visitor.h"
 #include "brw_cfg.h"
 #include "brw_dead_control_flow.h"
+#include "brw_private.h"
 #include "dev/intel_debug.h"
 #include "compiler/glsl_types.h"
 #include "compiler/nir/nir_builder.h"
@@ -10068,29 +10069,6 @@ brw_nir_lower_simd(nir_shader *nir, unsigned dispatch_width)
                                  (void *)(uintptr_t)dispatch_width);
 }
 
-static nir_shader *
-compile_cs_to_nir(const struct brw_compiler *compiler,
-                  void *mem_ctx,
-                  const struct brw_cs_prog_key *key,
-                  const nir_shader *src_shader,
-                  unsigned dispatch_width,
-                  bool debug_enabled)
-{
-   nir_shader *shader = nir_shader_clone(mem_ctx, src_shader);
-   brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true);
-
-   NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
-
-   /* Clean up after the local index and ID calculations. */
-   NIR_PASS_V(shader, nir_opt_constant_folding);
-   NIR_PASS_V(shader, nir_opt_dce);
-
-   brw_postprocess_nir(shader, compiler, true, debug_enabled,
-                       key->base.robust_buffer_access);
-
-   return shader;
-}
-
 const unsigned *
 brw_compile_cs(const struct brw_compiler *compiler,
                void *mem_ctx,
@@ -10107,184 +10085,84 @@ brw_compile_cs(const struct brw_compiler *compiler,
    prog_data->base.stage = MESA_SHADER_COMPUTE;
    prog_data->base.total_shared = nir->info.shared_size;
 
-   /* Generate code for all the possible SIMD variants. */
-   bool generate_all;
-
-   unsigned min_dispatch_width;
-   unsigned max_dispatch_width;
-
-   if (nir->info.workgroup_size_variable) {
-      generate_all = true;
-      min_dispatch_width = 8;
-      max_dispatch_width = 32;
-   } else {
-      generate_all = false;
+   if (!nir->info.workgroup_size_variable) {
       prog_data->local_size[0] = nir->info.workgroup_size[0];
       prog_data->local_size[1] = nir->info.workgroup_size[1];
       prog_data->local_size[2] = nir->info.workgroup_size[2];
-      unsigned local_workgroup_size = prog_data->local_size[0] *
-                                      prog_data->local_size[1] *
-                                      prog_data->local_size[2];
-
-      /* Limit max_threads to 64 for the GPGPU_WALKER command */
-      const uint32_t max_threads = compiler->devinfo->max_cs_workgroup_threads;
-      min_dispatch_width = util_next_power_of_two(
-         MAX2(8, DIV_ROUND_UP(local_workgroup_size, max_threads)));
-      assert(min_dispatch_width <= 32);
-      max_dispatch_width = 32;
    }
 
-   unsigned required_dispatch_width = 0;
-   if ((int)key->base.subgroup_size_type >= (int)BRW_SUBGROUP_SIZE_REQUIRE_8) {
-      /* These enum values are expressly chosen to be equal to the subgroup
-       * size that they require.
-       */
-      required_dispatch_width = (unsigned)key->base.subgroup_size_type;
-   }
+   const unsigned required_dispatch_width =
+      brw_required_dispatch_width(&nir->info, key->base.subgroup_size_type);
 
-   if (nir->info.cs.subgroup_size > 0) {
-      assert(required_dispatch_width == 0 ||
-             required_dispatch_width == nir->info.cs.subgroup_size);
-      required_dispatch_width = nir->info.cs.subgroup_size;
-   }
+   fs_visitor *v[3]     = {0};
+   const char *error[3] = {0};
 
-   if (required_dispatch_width > 0) {
-      assert(required_dispatch_width == 8 ||
-             required_dispatch_width == 16 ||
-             required_dispatch_width == 32);
-      if (required_dispatch_width < min_dispatch_width ||
-          required_dispatch_width > max_dispatch_width) {
-         params->error_str = ralloc_strdup(mem_ctx,
-                                           "Cannot satisfy explicit subgroup size");
-         return NULL;
-      }
-      min_dispatch_width = max_dispatch_width = required_dispatch_width;
-   }
+   for (unsigned simd = 0; simd < 3; simd++) {
+      if (!brw_simd_should_compile(mem_ctx, simd, compiler->devinfo, prog_data,
+                                   required_dispatch_width, &error[simd]))
+         continue;
 
-   assert(min_dispatch_width <= max_dispatch_width);
+      const unsigned dispatch_width = 8u << simd;
 
-   fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
-   fs_visitor *v = NULL;
+      nir_shader *shader = nir_shader_clone(mem_ctx, nir);
+      brw_nir_apply_key(shader, compiler, &key->base,
+                        dispatch_width, true /* is_scalar */);
 
-   if (!INTEL_DEBUG(DEBUG_NO8) &&
-       min_dispatch_width <= 8 && max_dispatch_width >= 8) {
-      nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
-                                           nir, 8, debug_enabled);
-      v8 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                          &prog_data->base,
-                          nir8, 8, shader_time_index, debug_enabled);
-      if (!v8->run_cs(true /* allow_spilling */)) {
-         params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
-         delete v8;
-         return NULL;
+      NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
+
+      /* Clean up after the local index and ID calculations. */
+      NIR_PASS_V(shader, nir_opt_constant_folding);
+      NIR_PASS_V(shader, nir_opt_dce);
+
+      brw_postprocess_nir(shader, compiler, true, debug_enabled,
+                          key->base.robust_buffer_access);
+
+      v[simd] = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
+                               &prog_data->base, shader, dispatch_width,
+                               shader_time_index, debug_enabled);
+
+      if (prog_data->prog_mask) {
+         unsigned first = ffs(prog_data->prog_mask) - 1;
+         v[simd]->import_uniforms(v[first]);
       }
 
-      /* We should always be able to do SIMD32 for compute shaders */
-      assert(v8->max_dispatch_width >= 32);
+      const bool allow_spilling = !prog_data->prog_mask ||
+                                  nir->info.workgroup_size_variable;
 
-      v = v8;
-      prog_data->prog_mask |= 1 << 0;
-      if (v8->spilled_any_registers)
-         prog_data->prog_spilled |= 1 << 0;
-      cs_fill_push_const_info(compiler->devinfo, prog_data);
-   }
+      if (v[simd]->run_cs(allow_spilling)) {
+         /* We should always be able to do SIMD32 for compute shaders. */
+         assert(v[simd]->max_dispatch_width >= 32);
 
-   if (!INTEL_DEBUG(DEBUG_NO16) &&
-       (generate_all || !prog_data->prog_spilled) &&
-       min_dispatch_width <= 16 && max_dispatch_width >= 16) {
-      /* Try a SIMD16 compile */
-      nir_shader *nir16 = compile_cs_to_nir(compiler, mem_ctx, key,
-                                            nir, 16, debug_enabled);
-      v16 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                           &prog_data->base,
-                           nir16, 16, shader_time_index, debug_enabled);
-      if (v8)
-         v16->import_uniforms(v8);
-
-      const bool allow_spilling = generate_all || v == NULL;
-      if (!v16->run_cs(allow_spilling)) {
-         brw_shader_perf_log(compiler, params->log_data,
-                             "SIMD16 shader failed to compile: %s\n",
-                             v16->fail_msg);
-         if (!v) {
-            assert(v8 == NULL);
-            params->error_str = ralloc_asprintf(
-               mem_ctx, "Not enough threads for SIMD8 and "
-               "couldn't generate SIMD16: %s", v16->fail_msg);
-            delete v16;
-            return NULL;
-         }
-      } else {
-         /* We should always be able to do SIMD32 for compute shaders */
-         assert(v16->max_dispatch_width >= 32);
-
-         v = v16;
-         prog_data->prog_mask |= 1 << 1;
-         if (v16->spilled_any_registers)
-            prog_data->prog_spilled |= 1 << 1;
          cs_fill_push_const_info(compiler->devinfo, prog_data);
-      }
-   }
 
-   /* The SIMD32 is only enabled for cases it is needed unless forced.
-    *
-    * TODO: Use performance_analysis and drop this boolean.
-    */
-   const bool needs_32 = v == NULL ||
-                         INTEL_DEBUG(DEBUG_DO32) ||
-                         generate_all;
-
-   if (!INTEL_DEBUG(DEBUG_NO32) &&
-       (generate_all || !prog_data->prog_spilled) &&
-       needs_32 &&
-       min_dispatch_width <= 32 && max_dispatch_width >= 32) {
-      /* Try a SIMD32 compile */
-      nir_shader *nir32 = compile_cs_to_nir(compiler, mem_ctx, key,
-                                            nir, 32, debug_enabled);
-      v32 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
-                           &prog_data->base,
-                           nir32, 32, shader_time_index, debug_enabled);
-      if (v8)
-         v32->import_uniforms(v8);
-      else if (v16)
-         v32->import_uniforms(v16);
-
-      const bool allow_spilling = generate_all || v == NULL;
-      if (!v32->run_cs(allow_spilling)) {
-         brw_shader_perf_log(compiler, params->log_data,
-                             "SIMD32 shader failed to compile: %s\n",
-                             v32->fail_msg);
-         if (!v) {
-            assert(v8 == NULL);
-            assert(v16 == NULL);
-            params->error_str = ralloc_asprintf(
-               mem_ctx, "Not enough threads for SIMD16 and "
-               "couldn't generate SIMD32: %s", v32->fail_msg);
-            delete v32;
-            return NULL;
-         }
+         brw_simd_mark_compiled(simd, prog_data, v[simd]->spilled_any_registers);
       } else {
-         v = v32;
-         prog_data->prog_mask |= 1 << 2;
-         if (v32->spilled_any_registers)
-            prog_data->prog_spilled |= 1 << 2;
-         cs_fill_push_const_info(compiler->devinfo, prog_data);
+         error[simd] = ralloc_strdup(mem_ctx, v[simd]->fail_msg);
+         if (simd > 0) {
+            brw_shader_perf_log(compiler, params->log_data,
+                                "SIMD%u shader failed to compile: %s\n",
+                                dispatch_width, v[simd]->fail_msg);
+         }
       }
    }
 
-   if (unlikely(!v) && INTEL_DEBUG(DEBUG_NO8 | DEBUG_NO16 | DEBUG_NO32)) {
-      params->error_str =
-         ralloc_strdup(mem_ctx,
-                       "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
+   const unsigned selected_simd = brw_simd_select(prog_data);
+   if (selected_simd < 0) {
+      params->error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s, %s and %s.\n",
+                                          error[0], error[1], error[2]);;
       return NULL;
    }
 
-   assert(v);
+   assert(selected_simd < 3);
+   fs_visitor *selected = v[selected_simd];
+
+   if (!nir->info.workgroup_size_variable)
+      prog_data->prog_mask = 1 << selected_simd;
 
    const unsigned *ret = NULL;
 
    fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
-                  v->runtime_check_aads_emit, MESA_SHADER_COMPUTE);
+                  selected->runtime_check_aads_emit, MESA_SHADER_COMPUTE);
    if (unlikely(debug_enabled)) {
       char *name = ralloc_asprintf(mem_ctx, "%s compute shader %s",
                                    nir->info.label ?
@@ -10294,46 +10172,23 @@ brw_compile_cs(const struct brw_compiler *compiler,
    }
 
    struct brw_compile_stats *stats = params->stats;
-   if (generate_all) {
-      if (prog_data->prog_mask & (1 << 0)) {
-         assert(v8);
-         prog_data->prog_offset[0] =
-            g.generate_code(v8->cfg, 8, v8->shader_stats,
-                            v8->performance_analysis.require(), stats);
+   for (unsigned simd = 0; simd < 3; simd++) {
+      if (prog_data->prog_mask & (1u << simd)) {
+         assert(v[simd]);
+         prog_data->prog_offset[simd] =
+            g.generate_code(v[simd]->cfg, 8u << simd, v[simd]->shader_stats,
+                            v[simd]->performance_analysis.require(), stats);
          stats = stats ? stats + 1 : NULL;
       }
-
-      if (prog_data->prog_mask & (1 << 1)) {
-         assert(v16);
-         prog_data->prog_offset[1] =
-            g.generate_code(v16->cfg, 16, v16->shader_stats,
-                            v16->performance_analysis.require(), stats);
-         stats = stats ? stats + 1 : NULL;
-      }
-
-      if (prog_data->prog_mask & (1 << 2)) {
-         assert(v32);
-         prog_data->prog_offset[2] =
-            g.generate_code(v32->cfg, 32, v32->shader_stats,
-                            v32->performance_analysis.require(), stats);
-         stats = stats ? stats + 1 : NULL;
-      }
-   } else {
-      /* Only one dispatch width will be valid, and will be at offset 0,
-       * which is already the default value of prog_offset_* fields.
-       */
-      prog_data->prog_mask = 1 << (v->dispatch_width / 16);
-      g.generate_code(v->cfg, v->dispatch_width, v->shader_stats,
-                      v->performance_analysis.require(), stats);
    }
 
    g.add_const_data(nir->constant_data, nir->constant_data_size);
 
    ret = g.get_assembly();
 
-   delete v8;
-   delete v16;
-   delete v32;
+   delete v[0];
+   delete v[1];
+   delete v[2];
 
    return ret;
 }
@@ -10357,7 +10212,7 @@ brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
 
    if ((mask & simd8) && group_size <= 8 * max_threads) {
       /* Prefer SIMD16 if can do without spilling.  Matches logic in
-       * brw_compile_cs.
+       * brw_simd_selection.cpp.
        */
       if ((mask & simd16) && (~cs_prog_data->prog_spilled & simd16))
          return 16;
