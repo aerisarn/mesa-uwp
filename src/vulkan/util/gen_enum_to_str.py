@@ -179,6 +179,9 @@ H_DEFINE_TEMPLATE = Template(textwrap.dedent(u"""\
     % endfor
 
     % for enum in bitmasks:
+      % if enum.bitwidth < 64:
+        <% continue %>
+      % endif
     /* Redefine bitmask values of ${enum.name} */
       % if enum.guard:
 #ifdef ${enum.guard}
@@ -228,8 +231,9 @@ class VkExtension(object):
 class VkEnum(object):
     """Simple struct-like class representing a single Vulkan Enum."""
 
-    def __init__(self, name, values=None):
+    def __init__(self, name, bitwidth=32, values=None):
         self.name = name
+        self.bitwidth = bitwidth
         self.extension = None
         # Maps numbers to names
         self.values = values or dict()
@@ -334,10 +338,10 @@ def parse_xml(enum_factory, ext_factory, struct_factory, bitmask_factory,
 
     # For bitmask we only add the Enum selected for convenience.
     for enum_type in xml.findall('./enums[@type="bitmask"]'):
-        enum = bitmask_factory.get(enum_type.attrib['name'])
-        if enum is not None:
-            for value in enum_type.findall('./enum'):
-                enum.add_value_from_xml(value)
+        bitwidth = int(enum_type.attrib.get('bitwidth', 32))
+        enum = bitmask_factory(enum_type.attrib['name'], bitwidth=bitwidth)
+        for value in enum_type.findall('./enum'):
+            enum.add_value_from_xml(value)
 
     for value in xml.findall('./feature/require/enum[@extends]'):
         extends = value.attrib['extends']
@@ -412,11 +416,7 @@ def main():
     ext_factory = NamedFactory(VkExtension)
     struct_factory = NamedFactory(VkChainStruct)
     obj_type_factory = NamedFactory(VkObjectType)
-
-    # Only treat this bitmask for now
     bitmask_factory = NamedFactory(VkEnum)
-    bitmask_factory('VkAccessFlagBits2KHR')
-    bitmask_factory('VkPipelineStageFlagBits2KHR')
 
     for filename in args.xml_files:
         parse_xml(enum_factory, ext_factory, struct_factory, bitmask_factory,
