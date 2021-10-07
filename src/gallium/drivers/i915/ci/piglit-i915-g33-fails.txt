@@ -36,10 +36,6 @@ shaders@ssa@fs-lost-copy-problem,Fail
 shaders@ssa@fs-swap-problem,Fail
 shaders@ssa@fs-while-loop-rotate-value,Fail
 
-# "Failed to compile fragment shader: 0:1(10): error: GLSL 1.30 is not supported. Supported versions are: 1.10, 1.20, and 1.00 ES"
-# not much of a gl-1.0 test.
-spec@!opengl 1.0@gl-1.0-bitmap-heart-dance,Fail
-
 # "MESA: error: Empty fragment shader"
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
 
@@ -84,9 +80,6 @@ spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on right edg
 spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on top edge,Fail
 spec@!opengl 1.1@read-front,Fail
 spec@!opengl 1.1@read-front clear-front-first,Fail
-
-# testcase bug: Requests a 64x64 level 6, which would be a 4k texture.
-spec@!opengl 1.1@tex-upside-down-miptree,Fail
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@!opengl 1.1@texwrap 1d bordercolor,Fail
@@ -133,12 +126,6 @@ spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA8- border color only,Fail
 
 spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.2@levelclamp,Fail
-
-# "Mesa: User error: GL_INVALID_ENUM in glBindTexture(target = GL_TEXTURE_2D_ARRAY)
-#  Unexpected GL error: GL_INVALID_ENUM 0x500
-#  (Error at tests/texturing/teximage-errors.c:261)"
-# testcase bug, using array textures without corresponding ext.
-spec@!opengl 1.2@teximage-errors,Fail
 
 spec@!opengl 1.2@texwrap 3d,Fail
 spec@!opengl 1.2@texwrap 3d@GL_RGBA8- NPOT,Fail
@@ -206,12 +193,6 @@ spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 
-# testcase bug:
-# "Mesa: User error: GL_INVALID_VALUE in glDrawBuffers(n > maximum number of draw buffers)
-#  Unexpected GL error: GL_INVALID_VALUE 0x501
-#  (Error at tests/spec/gles-2.0/draw-buffers.c:170)"
-spec@!opengl es 2.0@draw_buffers_gles2,Fail
-
 spec@arb_arrays_of_arrays@execution@glsl-arrays-copy-size-mismatch,Fail
 spec@arb_depth_texture@depth-level-clamp,Fail
 spec@arb_depth_texture@fbo-clear-formats,Fail
@@ -235,12 +216,6 @@ spec@arb_depth_texture@texwrap formats bordercolor,Fail
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT16- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT24- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT32- border color only,Fail
-
-# testcase bug:
-# "Mesa: User error: GL_INVALID_OPERATION in glDrawBuffer(invalid buffer GL_COLOR_ATTACHMENT1)
-#  Unexpected GL error: GL_INVALID_OPERATION 0x502
-#  (Error at tests/spec/arb_es2_compatibility/arb_es2_compatibility-drawbuffers.c:110)"
-spec@arb_es2_compatibility@arb_es2_compatibility-drawbuffers,Fail
 
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
@@ -349,33 +324,6 @@ spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_rgba,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
 
-# testcase bug: Uses array textures without checking for support.
-spec@ext_direct_state_access@indexed-state-queries 12,Fail
-spec@ext_direct_state_access@indexed-state-queries 12@GetIntegerIndexedvEXT,Fail
-spec@ext_direct_state_access@multi-texture,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameterfEXT,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameterfEXT + display list GL_COMPILE,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameterfEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameteriEXT,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameteriEXT + display list GL_COMPILE,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameteriEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameterivEXT,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameterivEXT + display list GL_COMPILE,Fail
-spec@ext_direct_state_access@multi-texture@MultiTexParameterivEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures,Fail
-spec@ext_direct_state_access@textures@TextureImage2DEXT,Fail
-spec@ext_direct_state_access@textures@TextureImage2DEXT + display list GL_COMPILE,Fail
-spec@ext_direct_state_access@textures@TextureImage2DEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureParameterfEXT,Fail
-spec@ext_direct_state_access@textures@TextureParameterfEXT + display list GL_COMPILE,Fail
-spec@ext_direct_state_access@textures@TextureParameterfEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureParameteriEXT,Fail
-spec@ext_direct_state_access@textures@TextureParameteriEXT + display list GL_COMPILE,Fail
-spec@ext_direct_state_access@textures@TextureParameteriEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-spec@ext_direct_state_access@textures@TextureParameterivEXT,Fail
-spec@ext_direct_state_access@textures@TextureParameterivEXT + display list GL_COMPILE,Fail
-spec@ext_direct_state_access@textures@TextureParameterivEXT + display list GL_COMPILE_AND_EXECUTE,Fail
-
 # "Mesa: User error: GL_INVALID_OPERATION in unsupported function called (unsupported extension or deprecated function?)"
 spec@ext_draw_instanced@ext_draw_instanced-drawarrays,Fail
 
@@ -412,11 +360,6 @@ spec@ext_framebuffer_multisample@accuracy all_samples stencil_draw depthstencil,
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_draw small depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve small depthstencil,Fail
-
-# testcase bug:
-# "Mesa: User error: GL_INVALID_OPERATION in glFramebufferTexture2D(invalid color attachment GL_COLOR_ATTACHMENT1)
-#  Unexpected GL error: GL_INVALID_OPERATION 0x502"
-spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
 # "Probe color at (192,0)
@@ -560,10 +503,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
-
-# test checks for required ext (which we don't have) after compiling the shader
-# that uses dynamic loops
-spec@ext_timer_query@time-elapsed,Fail
 
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-float,Fail
 spec@glsl-1.10@execution@built-in-functions@fs-degrees-vec2,Fail
@@ -788,6 +727,7 @@ spec@glsl-1.10@execution@loops@glsl-fs-loop-300,Fail
 
 spec@glsl-1.10@execution@loops@glsl-fs-loop-continue,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-loop-redundant-condition,Fail
+spec@glsl-1.10@execution@loops@glsl-fs-loop-shadow-variables,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-unroll-out-param,Fail
 spec@glsl-1.10@execution@loops@glsl-fs-unroll-side-effect,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d,Fail
