@@ -3958,13 +3958,11 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    assert(d->obj);
    assert(s->obj);
    util_idalloc_mt_free(&screen->buffer_ids, delete_buffer_id);
-   zink_resource_object_reference(screen, NULL, s->obj);
-   if (zink_resource_has_unflushed_usage(d) ||
-       (zink_resource_has_usage(d) && zink_resource_has_binds(d)))
-      zink_batch_reference_resource_move(&ctx->batch, d);
-   else
-      zink_resource_object_reference(screen, &d->obj, NULL);
-   d->obj = s->obj;
+   /* add a ref just like check_resource_for_batch_ref() would've */
+   if (zink_resource_has_binds(d) && zink_resource_has_usage(d))
+      zink_batch_reference_resource(&ctx->batch, d);
+   /* don't be too creative */
+   zink_resource_object_reference(screen, &d->obj, s->obj);
    /* force counter buffer reset */
    d->so_valid = false;
    if (num_rebinds && rebind_buffer(ctx, d, rebind_mask, num_rebinds) < num_rebinds)
