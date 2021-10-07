@@ -41,7 +41,7 @@ spec@arb_texture_gather@texturegather@fs-rgba-green-uint-cubearray
 spec@arb_texture_gather@texturegather@vs-rgb-none-float-cubearray
 
 # First appeared in https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/11511
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) cubearray
+spec@glsl-1.30@execution@tex-miplevel-selection texture\(bias\) cubearray
 
 # First appeared on 2021-05-14 on tc-merge-index-unrefs, but not obviously related.
 spec@!opengl 1.0@rasterpos@glsl_vs_tex1D
