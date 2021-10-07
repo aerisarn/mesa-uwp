@@ -623,11 +623,12 @@ zink_batch_resource_usage_set(struct zink_batch *batch, struct zink_resource *re
 void
 zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource *res, bool write)
 {
-   /* if the resource already has usage of any sort set for this batch, we can skip hashing */
-   if (!zink_batch_usage_matches(res->obj->reads, batch->state) &&
-       !zink_batch_usage_matches(res->obj->writes, batch->state)) {
+   /* if the resource already has usage of any sort set for this batch, */
+   if (!zink_resource_usage_matches(res, batch->state) ||
+       /* or if it's bound somewhere */
+       !zink_resource_has_binds(res))
+      /* then it already has a batch ref and doesn't need one here */
       zink_batch_reference_resource(batch, res);
-   }
    zink_batch_resource_usage_set(batch, res, write);
 }
 
