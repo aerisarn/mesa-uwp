@@ -470,6 +470,11 @@ static void fs_fb_fetch(const struct lp_build_fs_iface *iface,
    LLVMValueRef dst[4 * 4];
    enum pipe_format cbuf_format = key->cbuf_format[cbuf];
    const struct util_format_description* out_format_desc = util_format_description(cbuf_format);
+   if (out_format_desc->format == PIPE_FORMAT_NONE) {
+      result[0] = result[1] = result[2] = result[3] = bld->undef;
+      return;
+   }
+
    struct lp_type dst_type;
    unsigned block_size = bld->type.length;
    unsigned block_height = key->resource_1d ? 1 : 2;
