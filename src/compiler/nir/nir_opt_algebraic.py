@@ -2492,6 +2492,10 @@ late_optimizations = [
    (('iadd', ('isub(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), 'c(is_not_const)'), ('iadd3', a, ('ineg', b), c), 'options->has_iadd3'),
    (('isub', ('isub(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), 'c(is_not_const)'), ('iadd3', a, ('ineg', b), ('ineg', c)), 'options->has_iadd3'),
 
+    # fneg_lo / fneg_hi
+   (('vec2(is_only_used_as_float)', ('fneg@16', a), b), ('fmul', ('vec2', a, b), ('vec2', -1.0, 1.0)), 'options->vectorize_vec2_16bit'),
+   (('vec2(is_only_used_as_float)', a, ('fneg@16', b)), ('fmul', ('vec2', a, b), ('vec2', 1.0, -1.0)), 'options->vectorize_vec2_16bit'),
+
    # These are duplicated from the main optimizations table.  The late
    # patterns that rearrange expressions like x - .5 < 0 to x < .5 can create
    # new patterns like these.  The patterns that compare with zero are removed
