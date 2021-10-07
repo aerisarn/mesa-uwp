@@ -55,7 +55,7 @@ glthread_unmarshal_batch(void *job, void *gdata, int thread_index)
 
    _mesa_HashLockMutex(ctx->Shared->BufferObjects);
    ctx->BufferObjectsLocked = true;
-   simple_mtx_lock(&ctx->Shared->TexMutex);
+   mtx_lock(&ctx->Shared->TexMutex);
    ctx->TexturesLocked = true;
 
    while (pos < used) {
@@ -66,7 +66,7 @@ glthread_unmarshal_batch(void *job, void *gdata, int thread_index)
    }
 
    ctx->TexturesLocked = false;
-   simple_mtx_unlock(&ctx->Shared->TexMutex);
+   mtx_unlock(&ctx->Shared->TexMutex);
    ctx->BufferObjectsLocked = false;
    _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);
 

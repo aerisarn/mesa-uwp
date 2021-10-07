@@ -3387,7 +3387,7 @@ struct gl_shared_state
     * \todo Improve the granularity of locking.
     */
    /*@{*/
-   simple_mtx_t TexMutex;		/**< texobj thread safety */
+   mtx_t TexMutex;		/**< texobj thread safety */
    GLuint TextureStateStamp;	        /**< state notification for shared tex */
    /*@}*/
 
