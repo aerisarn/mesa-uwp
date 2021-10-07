@@ -122,10 +122,7 @@ load_unswizzled_block(struct gallivm_state *gallivm,
                       LLVMValueRef* dst,
                       struct lp_type dst_type,
                       unsigned dst_count,
-                      unsigned dst_alignment,
-                      LLVMValueRef x_offset,
-                      LLVMValueRef y_offset,
-                      bool fb_fetch_twiddle);
+                      unsigned dst_alignment);
 /**
  * Checks if a format description is an arithmetic format
  *
@@ -1527,10 +1524,7 @@ load_unswizzled_block(struct gallivm_state *gallivm,
                       LLVMValueRef* dst,
                       struct lp_type dst_type,
                       unsigned dst_count,
-                      unsigned dst_alignment,
-                      LLVMValueRef x_offset,
-                      LLVMValueRef y_offset,
-                      bool fb_fetch_twiddle)
+                      unsigned dst_alignment)
 {
    LLVMBuilderRef builder = gallivm->builder;
    unsigned row_size = dst_count / block_height;
@@ -1543,28 +1537,8 @@ load_unswizzled_block(struct gallivm_state *gallivm,
       unsigned x = i % row_size;
       unsigned y = i / row_size;
 
-      if (block_height == 2 && dst_count == 8 && fb_fetch_twiddle) {
-         /* remap the raw slots into the fragment shader execution mode. */
-         /* this math took me way too long to work out, I'm sure it's overkill. */
-         x = (i & 1) + ((i >> 2) << 1);
-         y = (i & 2) >> 1;
-      }
-
-      LLVMValueRef x_val;
-      if (x_offset) {
-         x_val = lp_build_const_int32(gallivm, x);
-         if (x_offset)
-            x_val = LLVMBuildAdd(builder, x_val, x_offset, "");
-         x_val = LLVMBuildMul(builder, x_val, lp_build_const_int32(gallivm, (dst_type.width / 8) * dst_type.length), "");
-      } else
-         x_val = lp_build_const_int32(gallivm, x * (dst_type.width / 8) * dst_type.length);
-
-      LLVMValueRef bx = x_val;
-
-      LLVMValueRef y_val = lp_build_const_int32(gallivm, y);
-      if (y_offset)
-         y_val = LLVMBuildAdd(builder, y_val, y_offset, "");
-      LLVMValueRef by = LLVMBuildMul(builder, y_val, stride, "");
+      LLVMValueRef bx = lp_build_const_int32(gallivm, x * (dst_type.width / 8) * dst_type.length);
+      LLVMValueRef by = LLVMBuildMul(builder, lp_build_const_int32(gallivm, y), stride, "");
 
       LLVMValueRef gep[2];
       LLVMValueRef dst_ptr;
@@ -2854,7 +2828,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
 
    if (is_1d) {
       load_unswizzled_block(gallivm, color_ptr, stride, block_width, 1,
-                            dst, ls_type, dst_count / 4, dst_alignment, NULL, NULL, false);
+                            dst, ls_type, dst_count / 4, dst_alignment);
       for (i = dst_count / 4; i < dst_count; i++) {
          dst[i] = lp_build_undef(gallivm, ls_type);
       }
@@ -2862,7 +2836,7 @@ generate_unswizzled_blend(struct gallivm_state *gallivm,
    }
    else {
       load_unswizzled_block(gallivm, color_ptr, stride, block_width, block_height,
-                            dst, ls_type, dst_count, dst_alignment, NULL, NULL, false);
+                            dst, ls_type, dst_count, dst_alignment);
    }
 
 
