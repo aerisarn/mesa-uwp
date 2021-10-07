@@ -1274,7 +1274,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
    case MESA_SHADER_FRAGMENT:
       config_out->rsrc1 |= S_00B028_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
       config_out->rsrc2 |= S_00B02C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) |
-                           S_00B02C_TRAP_PRESENT(1) | S_00B02C_EXCP_EN(excp_en);
+                           S_00B02C_EXCP_EN(excp_en);
       break;
    case MESA_SHADER_GEOMETRY:
       config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
