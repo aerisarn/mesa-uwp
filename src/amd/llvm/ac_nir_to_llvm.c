@@ -2837,6 +2837,18 @@ static LLVMValueRef visit_image_samples(struct ac_nir_context *ctx, nir_intrinsi
    LLVMValueRef rsrc = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, false);
 
    LLVMValueRef ret = ac_build_image_get_sample_count(&ctx->ac, rsrc);
+   if (ctx->abi->robust_buffer_access) {
+      LLVMValueRef dword1, is_null_descriptor;
+
+      /* Extract the second dword of the descriptor, if it's
+       * all zero, then it's a null descriptor.
+       */
+      dword1 =
+         LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 1, false), "");
+      is_null_descriptor = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, dword1,
+                                         LLVMConstInt(ctx->ac.i32, 0, false), "");
+      ret = LLVMBuildSelect(ctx->ac.builder, is_null_descriptor, ctx->ac.i32_0, ret, "");
+   }
 
    return exit_waterfall(ctx, &wctx, ret);
 }
