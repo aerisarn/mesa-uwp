@@ -234,6 +234,10 @@
    DRI_CONF_OPT_B(force_compat_profile, def, \
                   "Force an OpenGL compatibility context")
 
+#define DRI_CONF_FORCE_DIRECT_GLX_CONTEXT(def) \
+   DRI_CONF_OPT_B(force_direct_glx_context, def, \
+                  "Force direct GLX context (even if indirect is requested)")
+
 #define DRI_CONF_OVERRIDE_VRAM_SIZE() \
    DRI_CONF_OPT_I(override_vram_size, -1, -1, 2147483647, \
                   "Override the VRAM size advertised to the application in MiB (-1 = default)")

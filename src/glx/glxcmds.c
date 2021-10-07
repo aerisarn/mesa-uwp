@@ -339,6 +339,14 @@ CreateContext(Display *dpy, int generic_id, struct glx_config *config,
    if (generic_id == None)
       return NULL;
 
+   /* Some application may request an indirect context but we may want to force a direct
+    * one because Xorg only allows indirect contexts if they were enabled.
+    */
+   if (!allowDirect &&
+       psc->force_direct_context) {
+      allowDirect = 1;
+   }
+
    gc = NULL;
 #ifdef GLX_USE_APPLEGL
    gc = applegl_create_context(psc, config, shareList, renderType);

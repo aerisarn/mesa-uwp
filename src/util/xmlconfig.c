@@ -320,7 +320,7 @@ driParseOptionInfo(driOptionCache *info,
    /* Make the hash table big enough to fit more than the maximum number of
     * config options we've ever seen in a driver.
     */
-   info->tableSize = 6;
+   info->tableSize = 7;
    info->info = calloc((size_t)1 << info->tableSize, sizeof(driOptionInfo));
    info->values = calloc((size_t)1 << info->tableSize, sizeof(driOptionValue));
    if (info->info == NULL || info->values == NULL) {

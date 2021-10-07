@@ -521,6 +521,7 @@ struct glx_screen
 
    Display *dpy;
    int scr;
+   bool force_direct_context;
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
     /**
