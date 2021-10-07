@@ -1184,8 +1184,6 @@ radv_build_param_exports(struct radv_shader_context *ctx, struct radv_shader_out
                          unsigned noutput, struct radv_vs_output_info *outinfo,
                          bool export_clip_dists)
 {
-   unsigned param_count = 0;
-
    for (unsigned i = 0; i < noutput; i++) {
       unsigned slot_name = outputs[i].slot_name;
       unsigned usage_mask = outputs[i].usage_mask;
@@ -1199,8 +1197,8 @@ radv_build_param_exports(struct radv_shader_context *ctx, struct radv_shader_out
           !export_clip_dists)
          continue;
 
-      radv_export_param(ctx, param_count, outputs[i].values, usage_mask);
-      param_count++;
+      radv_export_param(ctx, outinfo->vs_output_param_offset[slot_name], outputs[i].values,
+                        usage_mask);
    }
 }
 
@@ -1666,7 +1664,6 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
       handle_vs_outputs_post(ctx, false, outinfo->export_clip_dists, outinfo);
 
       if (outinfo->export_prim_id) {
-         unsigned param_count = outinfo->param_exports;
          LLVMValueRef values[4];
 
          if (ctx->stage == MESA_SHADER_VERTEX) {
@@ -1684,7 +1681,8 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
          for (unsigned j = 1; j < 4; j++)
             values[j] = ctx->ac.f32_0;
 
-         radv_export_param(ctx, param_count, values, 0x1);
+         radv_export_param(ctx, outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID], values,
+                           0x1);
       }
    }
    ac_build_endif(&ctx->ac, 6002);
