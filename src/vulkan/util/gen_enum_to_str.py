@@ -22,7 +22,9 @@
 """Create enum to string functions for vulkan using vk.xml."""
 
 import argparse
+import functools
 import os
+import re
 import textwrap
 import xml.etree.ElementTree as et
 
@@ -179,6 +181,19 @@ H_DEFINE_TEMPLATE = Template(textwrap.dedent(u"""\
     % endfor
 
     % for enum in bitmasks:
+      % if enum.bitwidth > 32:
+        <% continue %>
+      % endif
+      % if enum.guard:
+#ifdef ${enum.guard}
+      % endif
+    #define ${enum.all_bits_name()} ${hex(enum.all_bits_value())}u
+      % if enum.guard:
+#endif
+      % endif
+    % endfor
+
+    % for enum in bitmasks:
       % if enum.bitwidth < 64:
         <% continue %>
       % endif
@@ -228,6 +243,10 @@ class VkExtension(object):
         self.define = define
 
 
+def CamelCase_to_SHOUT_CASE(s):
+   return (s[:1] + re.sub(r'(?<![A-Z])([A-Z])', r'_\1', s[1:])).upper()
+
+
 class VkEnum(object):
     """Simple struct-like class representing a single Vulkan Enum."""
 
@@ -240,6 +259,15 @@ class VkEnum(object):
         self.name_to_value = dict()
         self.guard = None
         self.name_to_alias_list = {}
+
+    def all_bits_name(self):
+        assert self.name.startswith('Vk')
+        assert re.search(r'FlagBits[A-Z]*$', self.name)
+
+        return 'VK_ALL_' + CamelCase_to_SHOUT_CASE(self.name[2:])
+
+    def all_bits_value(self):
+        return functools.reduce(lambda a,b: a | b, self.values.keys(), 0)
 
     def add_value(self, name, value=None,
                   extnum=None, offset=None, alias=None,
