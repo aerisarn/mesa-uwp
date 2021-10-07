@@ -382,8 +382,6 @@ emit_state(struct iris_batch *batch,
 static void
 flush_before_state_base_change(struct iris_batch *batch)
 {
-   const struct intel_device_info *devinfo = &batch->screen->devinfo;
-
    /* Flush before emitting STATE_BASE_ADDRESS.
     *
     * This isn't documented anywhere in the PRM.  However, it seems to be
@@ -409,18 +407,7 @@ flush_before_state_base_change(struct iris_batch *batch)
                               "change STATE_BASE_ADDRESS (flushes)",
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
                               PIPE_CONTROL_DEPTH_CACHE_FLUSH |
-                              PIPE_CONTROL_DATA_CACHE_FLUSH |
-                              /* Wa_1606662791:
-                               *
-                               *   Software must program PIPE_CONTROL command
-                               *   with "HDC Pipeline Flush" prior to
-                               *   programming of the below two non-pipeline
-                               *   state :
-                               *      * STATE_BASE_ADDRESS
-                               *      * 3DSTATE_BINDING_TABLE_POOL_ALLOC
-                               */
-                              ((GFX_VER == 12 && devinfo->revision == 0 /* A0 */ ?
-                                PIPE_CONTROL_FLUSH_HDC : 0)));
+                              PIPE_CONTROL_DATA_CACHE_FLUSH);
 }
 
 static void
@@ -7560,8 +7547,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
                                  imm);
    }
 
-   if ((GFX_VER == 9 || (GFX_VER == 12 && devinfo->revision == 0 /* A0*/)) &&
-        IS_COMPUTE_PIPELINE(batch) && post_sync_flags) {
+   if (GFX_VER == 9 && IS_COMPUTE_PIPELINE(batch) && post_sync_flags) {
       /* Project: SKL / Argument: LRI Post Sync Operation [23]
        *
        * "PIPECONTROL command with “Command Streamer Stall Enable” must be
@@ -7570,8 +7556,6 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
        *  PIPELINE_SELECT command is set to GPGPU mode of operation)."
        *
        * The same text exists a few rows below for Post Sync Op.
-       *
-       * On Gfx12 this is Wa_1607156449.
        */
       iris_emit_raw_pipe_control(batch,
                                  "workaround: CS stall before gpgpu post-sync",
