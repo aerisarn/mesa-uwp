@@ -188,7 +188,7 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
             else
                validate_assert(ctx, reg->flags & IR3_REG_HALF);
          }
-      } else if (opc_cat(instr->opc) == 6) {
+      } else if (opc_cat(instr->opc) == 1 || opc_cat(instr->opc) == 6) {
          /* handled below */
       } else if (opc_cat(instr->opc) == 0) {
          /* end/chmask/etc are allowed to have different size sources */
