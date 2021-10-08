@@ -5004,7 +5004,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    nir_src offset = *nir_get_io_offset_src(instr);
 
-   if (ctx->shader->info.stage == MESA_SHADER_VERTEX && ctx->args->shader_info->vs.dynamic_inputs) {
+   if (ctx->shader->info.stage == MESA_SHADER_VERTEX && ctx->program->info->vs.dynamic_inputs) {
       if (!nir_src_is_const(offset) || nir_src_as_uint(offset))
          isel_err(offset.ssa->parent_instr,
                   "Unimplemented non-zero nir_intrinsic_load_input offset");
@@ -5530,12 +5530,12 @@ visit_load_push_constant(isel_context* ctx, nir_intrinsic_instr* instr)
    nir_const_value* index_cv = nir_src_as_const_value(instr->src[0]);
 
    if (index_cv && instr->dest.ssa.bit_size == 32) {
-      struct radv_userdata_info *loc =
-         &ctx->args->shader_info->user_sgprs_locs.shader_data[AC_UD_INLINE_PUSH_CONSTANTS];
+      const struct radv_userdata_info *loc =
+         &ctx->program->info->user_sgprs_locs.shader_data[AC_UD_INLINE_PUSH_CONSTANTS];
       unsigned start = (offset + index_cv->u32) / 4u;
       unsigned num_inline_push_consts = loc->sgpr_idx != -1 ? loc->num_sgprs : 0;
 
-      start -= ctx->args->shader_info->min_push_constant_used / 4;
+      start -= ctx->program->info->min_push_constant_used / 4;
       if (start + count <= num_inline_push_consts) {
          std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
@@ -8841,7 +8841,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
              ctx->shader->info.stage == MESA_SHADER_TESS_EVAL);
 
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), Operand::c32(ctx->args->options->key.tcs.tess_input_vertices));
+      bld.copy(Definition(dst), Operand::c32(ctx->options->key.tcs.tess_input_vertices));
       break;
    }
    case nir_intrinsic_emit_vertex_with_counter: {
@@ -11574,9 +11574,11 @@ ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt)
 
 void
 select_program(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
-               ac_shader_config* config, const struct radv_shader_args* args)
+               ac_shader_config* config, const struct radv_nir_compiler_options* options,
+               const struct radv_shader_info* info,
+               const struct radv_shader_args* args)
 {
-   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
+   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, options, info, args, false);
    if_context ic_merged_wave_info;
    bool ngg_gs = ctx.stage.hw == HWStage::NGG && ctx.stage.has(SWStage::GS);
 
@@ -11591,12 +11593,12 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
          Pseudo_instruction* startpgm = add_startpgm(&ctx);
          append_logical_start(ctx.block);
 
-         if (unlikely(args->options->has_ls_vgpr_init_bug && ctx.stage == vertex_tess_control_hs))
+         if (unlikely(ctx.options->has_ls_vgpr_init_bug && ctx.stage == vertex_tess_control_hs))
             fix_ls_vgpr_init_bug(&ctx, startpgm);
 
          split_arguments(&ctx, startpgm);
 
-         if (!args->shader_info->vs.has_prolog &&
+         if (!info->vs.has_prolog &&
              (program->stage.has(SWStage::VS) || program->stage.has(SWStage::TES))) {
             Builder(ctx.program, ctx.block).sopp(aco_opcode::s_setprio, -1u, 0x3u);
          }
@@ -11693,9 +11695,11 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 
 void
 select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_config* config,
+                      const struct radv_nir_compiler_options* options,
+                      const struct radv_shader_info* info,
                       const struct radv_shader_args* args)
 {
-   isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, args, true);
+   isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, options, info, args, true);
 
    ctx.block->fp_mode = program->next_fp_mode;
 
@@ -11708,7 +11712,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
                              program->private_segment_buffer, Operand::c32(RING_GSVS_VS * 16u));
 
    Operand stream_id = Operand::zero();
-   if (args->shader_info->so.num_outputs)
+   if (program->info->so.num_outputs)
       stream_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
                            get_arg(&ctx, ctx.args->ac.streamout_config), Operand::c32(0x20018u));
 
@@ -11721,8 +11725,8 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
       if (stream_id.isConstant() && stream != stream_id.constantValue())
          continue;
 
-      unsigned num_components = args->shader_info->gs.num_stream_output_components[stream];
-      if (stream > 0 && (!num_components || !args->shader_info->so.num_outputs))
+      unsigned num_components = program->info->gs.num_stream_output_components[stream];
+      if (stream > 0 && (!num_components || !program->info->so.num_outputs))
          continue;
 
       memset(ctx.outputs.mask, 0, sizeof(ctx.outputs.mask));
@@ -11737,17 +11741,17 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
 
       unsigned offset = 0;
       for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
-         if (args->shader_info->gs.output_streams[i] != stream)
+         if (program->info->gs.output_streams[i] != stream)
             continue;
 
-         unsigned output_usage_mask = args->shader_info->gs.output_usage_mask[i];
+         unsigned output_usage_mask = program->info->gs.output_usage_mask[i];
          unsigned length = util_last_bit(output_usage_mask);
          for (unsigned j = 0; j < length; ++j) {
             if (!(output_usage_mask & (1 << j)))
                continue;
 
             Temp val = bld.tmp(v1);
-            unsigned const_offset = offset * args->shader_info->gs.vertices_out * 16 * 4;
+            unsigned const_offset = offset * program->info->gs.vertices_out * 16 * 4;
             load_vmem_mubuf(&ctx, val, gsvs_ring, vtx_offset, Temp(), const_offset, 4, 1, 0u, true,
                             true, true);
 
@@ -11758,7 +11762,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
          }
       }
 
-      if (args->shader_info->so.num_outputs) {
+      if (program->info->so.num_outputs) {
          emit_streamout(&ctx, stream);
          bld.reset(ctx.block);
       }
@@ -11790,17 +11794,19 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
 
 void
 select_trap_handler_shader(Program* program, struct nir_shader* shader, ac_shader_config* config,
+                           const struct radv_nir_compiler_options* options,
+                           const struct radv_shader_info* info,
                            const struct radv_shader_args* args)
 {
-   assert(args->options->chip_class == GFX8);
+   assert(options->chip_class == GFX8);
 
-   init_program(program, compute_cs, args->shader_info, args->options->chip_class,
-                args->options->family, args->options->wgp_mode, config);
+   init_program(program, compute_cs, info, options->chip_class,
+                options->family, options->wgp_mode, config);
 
    isel_context ctx = {};
    ctx.program = program;
    ctx.args = args;
-   ctx.options = args->options;
+   ctx.options = options;
    ctx.stage = program->stage;
 
    ctx.block = ctx.program->create_and_insert_block();
@@ -11952,16 +11958,18 @@ calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, u
 
 void
 select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shader_config* config,
+                 const struct radv_nir_compiler_options* options,
+                 const struct radv_shader_info* info,
                  const struct radv_shader_args* args, unsigned* num_preserved_sgprs)
 {
    assert(key->num_attributes > 0);
 
    /* This should be enough for any shader/stage. */
-   unsigned max_user_sgprs = args->options->chip_class >= GFX9 ? 32 : 16;
+   unsigned max_user_sgprs = options->chip_class >= GFX9 ? 32 : 16;
    *num_preserved_sgprs = max_user_sgprs + 14;
 
-   init_program(program, compute_cs, args->shader_info, args->options->chip_class,
-                args->options->family, args->options->wgp_mode, config);
+   init_program(program, compute_cs, info, options->chip_class,
+                options->family, options->wgp_mode, config);
 
    Block* block = program->create_and_insert_block();
    block->kind = block_kind_top_level;
@@ -12001,7 +12009,7 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
    bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers, s1),
             get_arg_fixed(args, args->ac.vertex_buffers));
    bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers.advance(4), s1),
-            Operand::c32((unsigned)args->options->address32_hi));
+            Operand::c32((unsigned)options->address32_hi));
 
    /* calculate vgpr requirements */
    unsigned num_vgprs = attributes_start.reg() - 256;
