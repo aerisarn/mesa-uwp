@@ -3589,8 +3589,14 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                nir_opt_remove_phis(nir[i]); /* cleanup LCSSA phis */
          }
          if (((nir[i]->info.bit_sizes_int | nir[i]->info.bit_sizes_float) & 16) &&
-             device->physical_device->rad_info.chip_class >= GFX9)
+             device->physical_device->rad_info.chip_class >= GFX9) {
+            // TODO: also optimize the tex srcs. see radeonSI for reference */
+            /* Skip if there are potentially conflicting rounding modes */
+            if (!nir_has_any_rounding_mode_enabled(nir[i]->info.float_controls_execution_mode))
+               NIR_PASS_V(nir[i], nir_fold_16bit_sampler_conversions, 0);
+
             NIR_PASS_V(nir[i], nir_opt_vectorize, opt_vectorize_callback, NULL);
+          }
 
          /* cleanup passes */
          nir_lower_load_const_to_scalar(nir[i]);
