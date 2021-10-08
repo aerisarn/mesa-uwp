@@ -93,7 +93,13 @@ brw_simd_should_compile(void *mem_ctx,
          return false;
       }
 
-      /* TODO: Ignore SIMD larger than workgroup if previous SIMD already passed. */
+      if (simd > 0 && test_bit(prog_data->prog_mask, simd - 1) &&
+          workgroup_size <= (width / 2)) {
+         *error = ralloc_asprintf(
+            mem_ctx, "SIMD%u skipped because workgroup size %u already fits in SIMD%u",
+            width, workgroup_size, width / 2);
+         return false;
+      }
 
       if (DIV_ROUND_UP(workgroup_size, width) > max_threads) {
          *error = ralloc_asprintf(
