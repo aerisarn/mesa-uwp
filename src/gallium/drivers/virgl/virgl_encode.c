@@ -552,6 +552,13 @@ int virgl_encode_shader_state(struct virgl_context *ctx,
    if (virgl_debug & VIRGL_DEBUG_TGSI)
       debug_printf("TGSI:\n---8<---\n%s\n---8<---\n", str);
 
+   /* virglrenderer before addbd9c5058dcc9d561b20ab747aed58c53499da mis-counts
+    * the tokens needed for a BARRIER, so ask it to allocate some more space.
+    */
+   const char *barrier = str;
+   while ((barrier = strstr(barrier + 1, "BARRIER")))
+      num_tokens++;
+
    shader_len = strlen(str) + 1;
 
    left_bytes = shader_len;
