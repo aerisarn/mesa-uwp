@@ -2990,14 +2990,18 @@ ntt_should_vectorize_instr(const nir_instr *instr, void *data)
       break;
    }
 
-   unsigned num_components = alu->dest.dest.ssa.num_components;
-
    int src_bit_size = nir_src_bit_size(alu->src[0].src);
    int dst_bit_size = nir_dest_bit_size(alu->dest.dest);
 
    if (src_bit_size == 64 || dst_bit_size == 64) {
-      if (num_components > 1)
-         return false;
+      /* Avoid vectorizing 64-bit instructions at all.  Despite tgsi.rst
+       * claiming support, virglrenderer generates bad shaders on the host when
+       * presented with them.  Maybe we can make virgl avoid tickling the
+       * virglrenderer bugs, but given that glsl-to-TGSI didn't generate vector
+       * 64-bit instrs in the first place, I don't see much reason to care about
+       * this.
+       */
+      return false;
    }
 
    return true;
