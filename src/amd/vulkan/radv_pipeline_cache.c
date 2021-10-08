@@ -118,7 +118,7 @@ radv_pipeline_cache_finish(struct radv_pipeline_cache *cache)
 }
 
 static uint32_t
-entry_size(struct cache_entry *entry)
+entry_size(const struct cache_entry *entry)
 {
    size_t ret = sizeof(*entry);
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i)
