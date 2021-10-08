@@ -56,9 +56,12 @@ struct virgl_transform_context {
    struct tgsi_transform_context base;
    bool cull_enabled;
    bool has_precise;
+   bool has_textures;
    bool fake_fp64;
 
    unsigned next_temp;
+
+   unsigned tex_temp;
 
    unsigned writemask_fixup_outs[5];
    unsigned writemask_fixup_temps;
@@ -125,6 +128,10 @@ virgl_tgsi_transform_declaration(struct tgsi_transform_context *ctx,
    case TGSI_FILE_TEMPORARY:
       vtctx->next_temp = MAX2(vtctx->next_temp, decl->Range.Last + 1);
       break;
+   case TGSI_FILE_SAMPLER:
+   case TGSI_FILE_SAMPLER_VIEW:
+      vtctx->has_textures = true;
+      break;
    default:
       break;
    }
@@ -181,6 +188,11 @@ static void
 virgl_tgsi_transform_prolog(struct tgsi_transform_context * ctx)
 {
    struct virgl_transform_context *vtctx = (struct virgl_transform_context *)ctx;
+
+   if (vtctx->has_textures) {
+      vtctx->tex_temp = vtctx->next_temp++;
+      tgsi_transform_temp_decl(ctx, vtctx->tex_temp);
+   }
 
    if (vtctx->num_writemask_fixups) {
       vtctx->writemask_fixup_temps = vtctx->next_temp;
@@ -259,6 +271,24 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
 
    if (!vtctx->has_precise && inst->Instruction.Precise)
       inst->Instruction.Precise = 0;
+
+   /* virglrenderer can run out of space in internal buffers for immediates as
+    * tex operands.  Move the first immediate tex arg to a temp to save space in
+    * the buffer.
+    *
+    * https://gitlab.freedesktop.org/virgl/virglrenderer/-/merge_requests/582
+    */
+   if (tgsi_get_opcode_info(inst->Instruction.Opcode)->is_tex &&
+       inst->Src[0].Register.File == TGSI_FILE_IMMEDIATE) {
+      assert(vtctx->has_textures);
+      tgsi_transform_op1_inst(ctx, TGSI_OPCODE_MOV,
+                              TGSI_FILE_TEMPORARY, vtctx->tex_temp,
+                              TGSI_WRITEMASK_XYZW,
+                              inst->Src[0].Register.File,
+                              inst->Src[0].Register.Index);
+      inst->Src[0].Register.File = TGSI_FILE_TEMPORARY;
+      inst->Src[0].Register.Index = vtctx->tex_temp;
+   }
 
    for (unsigned i = 0; i < inst->Instruction.NumDstRegs; i++) {
       /* virglrenderer would fail to compile on clipdist, clipvertex, and some
