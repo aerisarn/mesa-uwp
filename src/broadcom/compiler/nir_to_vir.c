@@ -4533,8 +4533,8 @@ vir_check_payload_w(struct v3d_compile *c)
 
         vir_for_each_inst_inorder(inst, c) {
                 for (int i = 0; i < vir_get_nsrc(inst); i++) {
-                        if (inst->src[i].file == QFILE_REG &&
-                            inst->src[i].index == 0) {
+                        if (inst->src[i].file == c->payload_w.file &&
+                            inst->src[i].index == c->payload_w.index) {
                                 c->uses_center_w = true;
                                 return;
                         }
