@@ -63,6 +63,15 @@ DEBUG_GET_ONCE_FLAGS_OPTION(debug_dxil, "DXIL_DEBUG", dxil_debug_options, 0)
       fprintf(stderr, "\n"); \
    } while (0)
 
+static void
+default_logger_func(void *priv, const char *msg)
+{
+   fprintf(stderr, "%s", msg);
+   unreachable("Unhandled error");
+}
+
+static const struct dxil_logger default_logger = { .priv = NULL, .log = default_logger_func };
+
 #define TRACE_CONVERSION(instr) \
    if (debug_dxil & DXIL_DEBUG_TRACE) \
       do { \
@@ -487,6 +496,8 @@ struct ntd_context {
    struct dxil_func_def *main_func_def;
    struct dxil_func_def *tess_ctrl_patch_constant_func_def;
    unsigned unnamed_ubo_count;
+
+   const struct dxil_logger *logger;
 };
 
 static const char*
@@ -5797,7 +5808,7 @@ static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_7;
 
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
-            struct blob *blob)
+            const struct dxil_logger *logger, struct blob *blob)
 {
    assert(opts);
    bool retval = true;
@@ -5831,6 +5842,7 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
 
    ctx->opts = opts;
    ctx->shader = s;
+   ctx->logger = logger ? logger : &default_logger;
 
    ctx->ralloc_ctx = ralloc_context(NULL);
    if (!ctx->ralloc_ctx) {
