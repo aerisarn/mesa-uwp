@@ -455,6 +455,8 @@ uint32_t iris_clone_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 #define IRIS_CONTEXT_MEDIUM_PRIORITY (I915_CONTEXT_DEFAULT_PRIORITY)
 #define IRIS_CONTEXT_HIGH_PRIORITY   ((I915_CONTEXT_MAX_USER_PRIORITY+1)/2)
 
+void iris_hw_context_set_unrecoverable(struct iris_bufmgr *bufmgr,
+                                       uint32_t ctx_id);
 int iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
                                  uint32_t ctx_id, int priority);
 
