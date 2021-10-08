@@ -1,7 +1,6 @@
 glx@glx-copy-sub-buffer,Fail
 glx@glx-copy-sub-buffer samples=2,Fail
 glx@glx-copy-sub-buffer samples=4,Fail
-glx@glx-multi-window-single-context,Fail
 glx@glx-multithread-texture,Fail
 glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
