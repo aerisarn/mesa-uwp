@@ -145,6 +145,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_shader_draw_parameters = true,
       .KHR_shader_float_controls = true,
       .KHR_shader_float16_int8 = true,
+      .KHR_shader_subgroup_extended_types = true,
       .KHR_shader_terminate_invocation = true,
       .KHR_spirv_1_4 = true,
       .KHR_storage_buffer_storage_class = true,
@@ -516,7 +517,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->scalarBlockLayout                   = true;
    features->imagelessFramebuffer                = true;
    features->uniformBufferStandardLayout         = true;
-   features->shaderSubgroupExtendedTypes         = false;
+   features->shaderSubgroupExtendedTypes         = true;
    features->separateDepthStencilLayouts         = false;
    features->hostQueryReset                      = true;
    features->timelineSemaphore                   = true;
