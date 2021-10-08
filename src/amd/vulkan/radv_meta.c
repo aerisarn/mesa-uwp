@@ -322,7 +322,8 @@ radv_load_meta_pipeline(struct radv_device *device)
 fail:
    result = radv_CreatePipelineCache(radv_device_to_handle(device), &create_info, NULL, &device->meta_state.cache);
    if (result == VK_SUCCESS) {
-      ret = radv_pipeline_cache_from_handle(device->meta_state.cache)->kernel_count > 0;
+      device->meta_state.initial_cache_entries = radv_pipeline_cache_from_handle(device->meta_state.cache)->kernel_count;
+      ret = device->meta_state.initial_cache_entries > 0;
    }
 
    free(data);
@@ -340,7 +341,11 @@ radv_store_meta_pipeline(struct radv_device *device)
    size_t size;
    void *data = NULL;
 
-   if (!radv_pipeline_cache_from_handle(device->meta_state.cache)->modified)
+   if (device->meta_state.cache == VK_NULL_HANDLE)
+      return;
+
+   /* Skip serialization if no entries were added. */
+   if (radv_pipeline_cache_from_handle(device->meta_state.cache)->kernel_count <= device->meta_state.initial_cache_entries)
       return;
 
    if (radv_GetPipelineCacheData(radv_device_to_handle(device),

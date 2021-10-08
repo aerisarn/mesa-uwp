@@ -377,7 +377,6 @@ struct radv_pipeline_cache {
    uint32_t table_size;
    uint32_t kernel_count;
    struct cache_entry **hash_table;
-   bool modified;
 
    VkAllocationCallbacks alloc;
 };
@@ -442,6 +441,7 @@ struct radv_meta_state {
    VkAllocationCallbacks alloc;
 
    VkPipelineCache cache;
+   uint32_t initial_cache_entries;
 
    /*
     * For on-demand pipeline creation, makes sure that

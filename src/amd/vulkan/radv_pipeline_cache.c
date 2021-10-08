@@ -82,7 +82,6 @@ radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *
    mtx_init(&cache->mutex, mtx_plain);
    cache->flags = 0;
 
-   cache->modified = false;
    cache->kernel_count = 0;
    cache->total_size = 0;
    cache->table_size = 1024;
@@ -571,7 +570,6 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
 
    radv_pipeline_cache_add_entry(cache, entry);
 
-   cache->modified = true;
    radv_pipeline_cache_unlock(cache);
    return;
 }
