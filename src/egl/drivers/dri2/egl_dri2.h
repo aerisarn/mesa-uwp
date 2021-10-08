@@ -302,6 +302,7 @@ struct dri2_egl_surface
    struct wl_drm         *wl_drm_wrapper;
    struct wl_callback    *throttle_callback;
    int                    format;
+   bool                   resized;
 #endif
 
 #ifdef HAVE_DRM_PLATFORM
