@@ -405,12 +405,22 @@ emit_split_vector(isel_context* ctx, Temp vec_src, unsigned num_components)
 void
 expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_components, unsigned mask)
 {
+   assert(vec_src.type() == RegType::vgpr);
+   Builder bld(ctx->program, ctx->block);
+
+   if (dst.type() == RegType::sgpr && num_components > dst.size()) {
+      Temp tmp_dst = bld.tmp(RegClass::get(RegType::vgpr, 2 * num_components));
+      expand_vector(ctx, vec_src, tmp_dst, num_components, mask);
+      bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), tmp_dst);
+      ctx->allocated_vec[dst.id()] = ctx->allocated_vec[tmp_dst.id()];
+      return;
+   }
+
    emit_split_vector(ctx, vec_src, util_bitcount(mask));
 
    if (vec_src == dst)
       return;
 
-   Builder bld(ctx->program, ctx->block);
    if (num_components == 1) {
       if (dst.type() == RegType::sgpr)
          bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec_src);
@@ -419,7 +429,9 @@ expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_components
       return;
    }
 
-   unsigned component_size = dst.size() / num_components;
+   unsigned component_bytes = dst.bytes() / num_components;
+   RegClass rc = RegClass::get(RegType::vgpr, component_bytes);
+   assert(dst.type() == RegType::vgpr || !rc.is_subdword());
    std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
 
    aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
@@ -428,13 +440,12 @@ expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_components
    unsigned k = 0;
    for (unsigned i = 0; i < num_components; i++) {
       if (mask & (1 << i)) {
-         Temp src =
-            emit_extract_vector(ctx, vec_src, k++, RegClass(vec_src.type(), component_size));
+         Temp src = emit_extract_vector(ctx, vec_src, k++, rc);
          if (dst.type() == RegType::sgpr)
             src = bld.as_uniform(src);
          vec->operands[i] = Operand(src);
       } else {
-         vec->operands[i] = Operand::zero(component_size == 2 ? 8 : 4);
+         vec->operands[i] = Operand::zero(component_bytes);
       }
       elems[i] = vec->operands[i].getTemp();
    }
@@ -9472,6 +9483,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       ctx->options->chip_class >= GFX10 && instr->sampler_dim != GLSL_SAMPLER_DIM_BUF
          ? ac_get_sampler_dim(ctx->options->chip_class, instr->sampler_dim, instr->is_array)
          : 0;
+   bool d16 = instr->dest.ssa.bit_size == 16;
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    Temp tmp_dst = dst;
 
@@ -9483,12 +9495,13 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       else
          dmask = 1 << instr->component;
       if (tg4_integer_cube_workaround || dst.type() == RegType::sgpr)
-         tmp_dst = bld.tmp(instr->is_sparse ? v5 : v4);
+         tmp_dst = bld.tmp(instr->is_sparse ? v5 : (d16 ? v2 : v4));
    } else if (instr->op == nir_texop_fragment_mask_fetch_amd) {
       tmp_dst = bld.tmp(v1);
    } else if (util_bitcount(dmask) != instr->dest.ssa.num_components ||
               dst.type() == RegType::sgpr) {
-      tmp_dst = bld.tmp(RegClass(RegType::vgpr, util_bitcount(dmask)));
+      unsigned bytes = util_bitcount(dmask) * instr->dest.ssa.bit_size / 8;
+      tmp_dst = bld.tmp(RegClass::get(RegType::vgpr, bytes));
    }
 
    if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
@@ -9615,12 +9628,22 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
 
       assert(coords.size() == 1);
       aco_opcode op;
-      switch (util_last_bit(dmask & 0xf)) {
-      case 1: op = aco_opcode::buffer_load_format_x; break;
-      case 2: op = aco_opcode::buffer_load_format_xy; break;
-      case 3: op = aco_opcode::buffer_load_format_xyz; break;
-      case 4: op = aco_opcode::buffer_load_format_xyzw; break;
-      default: unreachable("Tex instruction loads more than 4 components.");
+      if (d16) {
+         switch (util_last_bit(dmask & 0xf)) {
+         case 1: op = aco_opcode::buffer_load_format_d16_x; break;
+         case 2: op = aco_opcode::buffer_load_format_d16_xy; break;
+         case 3: op = aco_opcode::buffer_load_format_d16_xyz; break;
+         case 4: op = aco_opcode::buffer_load_format_d16_xyzw; break;
+         default: unreachable("Tex instruction loads more than 4 components.");
+         }
+      } else {
+         switch (util_last_bit(dmask & 0xf)) {
+         case 1: op = aco_opcode::buffer_load_format_x; break;
+         case 2: op = aco_opcode::buffer_load_format_xy; break;
+         case 3: op = aco_opcode::buffer_load_format_xyz; break;
+         case 4: op = aco_opcode::buffer_load_format_xyzw; break;
+         default: unreachable("Tex instruction loads more than 4 components.");
+         }
       }
 
       aco_ptr<MUBUF_instruction> mubuf{
@@ -9680,6 +9703,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       tex->unrm = true;
       tex->da = da;
       tex->tfe = instr->is_sparse;
+      tex->d16 = d16;
 
       if (instr->op == nir_texop_fragment_mask_fetch_amd) {
          /* Use 0x76543210 if the image doesn't have FMASK. */
@@ -9828,6 +9852,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    tex->dmask = dmask & 0xf;
    tex->da = da;
    tex->tfe = instr->is_sparse;
+   tex->d16 = d16;
 
    if (tg4_integer_cube_workaround) {
       assert(tmp_dst.id() != dst.id());
