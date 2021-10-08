@@ -260,7 +260,8 @@ fast_clear_color(struct iris_context *ice,
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
                               PIPE_CONTROL_TILE_CACHE_FLUSH |
                               (devinfo->verx10 == 120 ?
-                                 PIPE_CONTROL_DEPTH_STALL : 0));
+                                 PIPE_CONTROL_DEPTH_STALL : 0) |
+                              PIPE_CONTROL_PSS_STALL_SYNC);
 
    iris_batch_sync_region_start(batch);
 
@@ -287,7 +288,8 @@ fast_clear_color(struct iris_context *ice,
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
                               (devinfo->verx10 == 120 ?
                                  PIPE_CONTROL_TILE_CACHE_FLUSH |
-                                 PIPE_CONTROL_DEPTH_STALL : 0));
+                                 PIPE_CONTROL_DEPTH_STALL : 0) |
+                              PIPE_CONTROL_PSS_STALL_SYNC);
    iris_batch_sync_region_end(batch);
 
    iris_resource_set_aux_state(ice, res, level, box->z,

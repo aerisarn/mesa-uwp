@@ -2346,6 +2346,7 @@ enum anv_pipe_bits {
     * must reinterpret this flush as ANV_PIPE_DATA_CACHE_FLUSH_BIT.
     */
    ANV_PIPE_HDC_PIPELINE_FLUSH_BIT           = (1 << 14),
+   ANV_PIPE_PSS_STALL_SYNC_BIT               = (1 << 15),
    ANV_PIPE_CS_STALL_BIT                     = (1 << 20),
    ANV_PIPE_END_OF_PIPE_SYNC_BIT             = (1 << 21),
 
