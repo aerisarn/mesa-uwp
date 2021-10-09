@@ -706,6 +706,9 @@ ir3_set_dst_type(struct ir3_instruction *instr, bool half)
 void
 ir3_fixup_src_type(struct ir3_instruction *instr)
 {
+   if (instr->srcs_count == 0)
+      return;
+
    switch (opc_cat(instr->opc)) {
    case 1: /* move instructions */
       if (instr->srcs[0]->flags & IR3_REG_HALF) {
