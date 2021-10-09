@@ -487,11 +487,7 @@ if with_egl
 
   egl_native_platform = get_option('egl-native-platform')
   if egl_native_platform.contains('auto')
-    if _platforms.length() != 0
-      egl_native_platform = _platforms[0]
-    else
-      egl_native_platform = 'surfaceless'
-    endif
+    egl_native_platform = _platforms[0]
   endif
 endif
 
