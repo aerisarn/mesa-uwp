@@ -2265,10 +2265,6 @@ if with_egl
   lines += 'EGL drivers:     ' + ' '.join(egl_drivers)
 endif
 if with_egl or with_any_vk
-  _platforms += 'surfaceless'
-  if with_gbm and not with_platform_android
-    _platforms += 'drm'
-  endif
   lines += 'EGL/Vulkan/VL platforms:   ' + ' '.join(_platforms)
 endif
 lines += 'GBM:             ' + (with_gbm ? 'yes' : 'no')
