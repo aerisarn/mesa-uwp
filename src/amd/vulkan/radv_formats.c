@@ -1218,6 +1218,8 @@ radv_check_modifier_support(struct radv_physical_device *dev,
                             const VkPhysicalDeviceImageFormatInfo2 *info,
                             VkImageFormatProperties *props, VkFormat format, uint64_t modifier)
 {
+   uint32_t max_width, max_height;
+
    if (info->type != VK_IMAGE_TYPE_2D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
@@ -1278,6 +1280,11 @@ radv_check_modifier_support(struct radv_physical_device *dev,
       props->maxMipLevels = 1;
       props->maxArrayLayers = 1;
    }
+
+   ac_modifier_max_extent(&dev->rad_info, modifier, &max_width, &max_height);
+   props->maxExtent.width = MIN2(props->maxExtent.width, max_width);
+   props->maxExtent.height = MIN2(props->maxExtent.width, max_height);
+
    /* We don't support MSAA for modifiers */
    props->sampleCounts &= VK_SAMPLE_COUNT_1_BIT;
    return VK_SUCCESS;
