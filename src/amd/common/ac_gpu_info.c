@@ -935,6 +935,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    default:
       info->l2_cache_size = info->num_tcc_blocks * 256 * 1024;
       break;
+   case CHIP_YELLOW_CARP:
+      info->l2_cache_size = info->num_tcc_blocks * 512 * 1024;
+      break;
    }
 
    info->l1_cache_size = 16384;
