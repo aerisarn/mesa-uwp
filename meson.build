@@ -484,14 +484,14 @@ if with_egl
   if with_gbm and not with_platform_android
     _platforms += 'drm'
   endif
-endif
 
-egl_native_platform = get_option('egl-native-platform')
-if egl_native_platform.contains('auto')
-  if _platforms.length() != 0
-    egl_native_platform = _platforms[0]
-  else
-    egl_native_platform = 'surfaceless'
+  egl_native_platform = get_option('egl-native-platform')
+  if egl_native_platform.contains('auto')
+    if _platforms.length() != 0
+      egl_native_platform = _platforms[0]
+    else
+      egl_native_platform = 'surfaceless'
+    endif
   endif
 endif
 
