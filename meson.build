@@ -495,6 +495,14 @@ if with_egl and not _platforms.contains(egl_native_platform)
   error('-Degl-native-platform does not specify an enabled platform')
 endif
 
+if 'x11' in _platforms
+  _platforms += 'xcb'
+endif
+
+foreach platform : _platforms
+  pre_args += '-DHAVE_@0@_PLATFORM'.format(platform.to_upper())
+endforeach
+
 # Android uses emutls for versions <= P/28. For USE_ELF_TLS we need ELF TLS.
 use_elf_tls = false
 if (not ['freebsd', 'openbsd', 'haiku'].contains(host_machine.system()) and
@@ -916,8 +924,6 @@ endif
 
 gl_pkgconfig_c_flags = []
 if with_platform_x11
-  pre_args += '-DHAVE_X11_PLATFORM'
-  pre_args += '-DHAVE_XCB_PLATFORM'
   if with_glx == 'xlib' or with_glx == 'gallium-xlib'
     pre_args += '-DUSE_XSHM'
   else
@@ -936,12 +942,6 @@ if with_platform_x11
 else
   pre_args += '-DEGL_NO_X11'
   gl_pkgconfig_c_flags += '-DEGL_NO_X11'
-endif
-if with_gbm and not with_platform_android
-  pre_args += '-DHAVE_DRM_PLATFORM'
-endif
-if with_platform_windows
-  pre_args += '-DHAVE_WINDOWS_PLATFORM'
 endif
 
 with_android_stub = get_option('android-stub')
@@ -966,13 +966,9 @@ if with_platform_android
     endif
   endif
   pre_args += [
-    '-DHAVE_ANDROID_PLATFORM',
     '-DANDROID',
     '-DANDROID_API_LEVEL=' + get_option('platform-sdk-version').to_string()
   ]
-endif
-if with_platform_haiku
-  pre_args += '-DHAVE_HAIKU_PLATFORM'
 endif
 
 prog_python = import('python').find_installation('python3')
@@ -1986,7 +1982,7 @@ if with_platform_wayland
     dep_wl_protocols.get_pkgconfig_variable('pkgdatadir'), 'unstable',
     'linux-dmabuf', 'linux-dmabuf-unstable-v1.xml'
   )
-  pre_args += ['-DHAVE_WAYLAND_PLATFORM', '-DWL_HIDE_DEPRECATED']
+  pre_args += '-DWL_HIDE_DEPRECATED'
 endif
 
 dep_x11 = null_dep
