@@ -916,10 +916,8 @@ endif
 
 gl_pkgconfig_c_flags = []
 if with_platform_x11
-  if with_any_vk or with_egl or (with_glx == 'dri' and with_dri_platform == 'drm')
-    pre_args += '-DHAVE_X11_PLATFORM'
-    pre_args += '-DHAVE_XCB_PLATFORM'
-  endif
+  pre_args += '-DHAVE_X11_PLATFORM'
+  pre_args += '-DHAVE_XCB_PLATFORM'
   if with_glx == 'xlib' or with_glx == 'gallium-xlib'
     pre_args += '-DUSE_XSHM'
   else
