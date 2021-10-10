@@ -137,6 +137,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_uniform_buffer_standard_layout  = true,
 #ifdef V3DV_HAS_SURFACE
       .KHR_swapchain                       = true,
+      .KHR_swapchain_mutable_format        = true,
       .KHR_incremental_present             = true,
 #endif
       .KHR_variable_pointers               = true,
