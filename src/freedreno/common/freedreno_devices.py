@@ -202,7 +202,7 @@ add_gpus([
 # info parameters are keyed to the sub-generation.  These templates reduce
 # the copypaste
 
-# a615, a618, a630:
+# a615, a616, a618, a619, a620 and a630:
 a6xx_gen1 = dict(
         fibers_per_sp = 128 * 16,
         reg_size_vec4 = 96,
@@ -285,6 +285,7 @@ add_gpus([
         GPUId(615),
         GPUId(616),
         GPUId(618),
+        GPUId(619),
         GPUId(620),
     ], A6xxGPUInfo(
         a6xx_gen1,
