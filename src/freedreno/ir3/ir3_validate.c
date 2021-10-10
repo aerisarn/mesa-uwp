@@ -199,6 +199,10 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
          /* pcopy sources have to match with their destination but can have
           * different sizes from each other.
           */
+      } else if (instr->opc == OPC_ANY_MACRO || instr->opc == OPC_ALL_MACRO ||
+                 instr->opc == OPC_READ_FIRST_MACRO ||
+                 instr->opc == OPC_READ_COND_MACRO) {
+         /* nothing yet */
       } else if (n > 0) {
          validate_assert(ctx, (last_reg->flags & IR3_REG_HALF) ==
                                  (reg->flags & IR3_REG_HALF));
