@@ -94,6 +94,7 @@ static const struct vk_instance_extension_table instance_extensions = {
 #ifdef V3DV_HAS_SURFACE
    .KHR_get_surface_capabilities2       = true,
    .KHR_surface                         = true,
+   .KHR_surface_protected_capabilities  = true,
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
    .KHR_wayland_surface                 = true,
