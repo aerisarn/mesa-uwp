@@ -4812,6 +4812,8 @@ bool nir_lower_bool_to_bitsize(nir_shader *shader);
 bool nir_lower_bool_to_float(nir_shader *shader);
 bool nir_lower_bool_to_int32(nir_shader *shader);
 bool nir_opt_simplify_convert_alu_types(nir_shader *shader);
+bool nir_lower_const_arrays_to_uniforms(nir_shader *shader,
+                                        unsigned max_uniform_components);
 bool nir_lower_convert_alu_types(nir_shader *shader,
                                  bool (*should_lower)(nir_intrinsic_instr *));
 bool nir_lower_constant_convert_alu_types(nir_shader *shader);
