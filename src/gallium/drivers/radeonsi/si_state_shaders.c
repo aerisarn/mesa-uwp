@@ -70,7 +70,7 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       shader_variant_flags |= 1 << 0;
    if (sel->nir)
       shader_variant_flags |= 1 << 1;
-   if (si_get_wave_size(sel->screen, sel->info.stage, ngg, es, false) == 32)
+   if (si_get_wave_size(sel->screen, sel->info.stage, ngg, es) == 32)
       shader_variant_flags |= 1 << 2;
    if (sel->info.stage == MESA_SHADER_FRAGMENT &&
        /* Derivatives imply helper invocations so check for needs_quad_helper_invocations. */
@@ -1306,33 +1306,27 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) |
                                      S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
 
-   if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST ||
-       shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
-      shader->ge_cntl = S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
-                        S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts);
-   } else {
-      shader->ge_cntl = S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
-                        S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
-                        S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+   shader->ge_cntl = S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
+                     S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
+                     S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
-      /* On gfx10, the GE only checks against the maximum number of ES verts after
-       * allocating a full GS primitive. So we need to ensure that whenever
-       * this check passes, there is enough space for a full primitive without
-       * vertex reuse. VERT_GRP_SIZE=256 doesn't need this. We should always get 256
-       * if we have enough LDS.
-       *
-       * Tessellation is unaffected because it always sets GE_CNTL.VERT_GRP_SIZE = 0.
+   /* On gfx10, the GE only checks against the maximum number of ES verts after
+    * allocating a full GS primitive. So we need to ensure that whenever
+    * this check passes, there is enough space for a full primitive without
+    * vertex reuse. VERT_GRP_SIZE=256 doesn't need this. We should always get 256
+    * if we have enough LDS.
+    *
+    * Tessellation is unaffected because it always sets GE_CNTL.VERT_GRP_SIZE = 0.
+    */
+   if ((sscreen->info.chip_class == GFX10) &&
+       (es_stage == MESA_SHADER_VERTEX || gs_stage == MESA_SHADER_VERTEX) && /* = no tess */
+       shader->ngg.hw_max_esverts != 256 &&
+       shader->ngg.hw_max_esverts > 5) {
+      /* This could be based on the input primitive type. 5 is the worst case
+       * for primitive types with adjacency.
        */
-      if ((sscreen->info.chip_class == GFX10) &&
-          (es_stage == MESA_SHADER_VERTEX || gs_stage == MESA_SHADER_VERTEX) && /* = no tess */
-          shader->ngg.hw_max_esverts != 256 &&
-          shader->ngg.hw_max_esverts > 5) {
-         /* This could be based on the input primitive type. 5 is the worst case
-          * for primitive types with adjacency.
-          */
-         shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
-         shader->ge_cntl |= S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
-      }
+      shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
+      shader->ge_cntl |= S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
    }
 
    if (window_space) {
@@ -1347,8 +1341,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.vgt_stages.u.ngg = 1;
    shader->ctx_reg.ngg.vgt_stages.u.streamout = gs_sel->so.num_outputs;
    shader->ctx_reg.ngg.vgt_stages.u.ngg_passthrough = gfx10_is_ngg_passthrough(shader);
-   shader->ctx_reg.ngg.vgt_stages.u.ngg_gs_fast_launch =
-      !!(shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
 }
 
 static void si_emit_shader_vs(struct si_context *sctx)
@@ -4025,7 +4017,7 @@ struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union 
    }
 
    if (key.u.ngg) {
-      stages |= S_028B54_PRIMGEN_EN(1) | S_028B54_GS_FAST_LAUNCH(key.u.ngg_gs_fast_launch) |
+      stages |= S_028B54_PRIMGEN_EN(1) |
                 S_028B54_NGG_WAVE_ID_EN(key.u.streamout) |
                 S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough) |
                 S_028B54_PRIMGEN_PASSTHRU_NO_MSG(key.u.ngg_passthrough &&
@@ -4036,9 +4028,7 @@ struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union 
    if (screen->info.chip_class >= GFX9)
       stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
 
-   if (screen->info.chip_class >= GFX10 &&
-       /* GS fast launch hangs with Wave64, so always use Wave32. */
-       (screen->ge_wave_size == 32 || (key.u.ngg && key.u.ngg_gs_fast_launch))) {
+   if (screen->info.chip_class >= GFX10 && screen->ge_wave_size == 32) {
       stages |= S_028B54_HS_W32_EN(1) |
                 S_028B54_GS_W32_EN(key.u.ngg) | /* legacy GS only supports Wave64 */
                 S_028B54_VS_W32_EN(1);

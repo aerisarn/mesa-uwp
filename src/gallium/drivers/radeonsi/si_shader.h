@@ -282,12 +282,7 @@ enum
 #define SI_NGG_CULL_ENABLED                  (1 << 0)   /* this implies W, view.xy, and small prim culling */
 #define SI_NGG_CULL_BACK_FACE                (1 << 1)   /* back faces */
 #define SI_NGG_CULL_FRONT_FACE               (1 << 2)   /* front faces */
-#define SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST  (1 << 3)   /* GS fast launch: triangles */
-#define SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP (1 << 4)   /* GS fast launch: triangle strip */
-#define SI_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(x)     (((x) & 0x3) << 5) /* 0->0, 1->1, 2->2, 3->4 */
-#define SI_GET_NGG_CULL_GS_FAST_LAUNCH_INDEX_SIZE_PACKED(x) (((x) >> 5) & 0x3)
-#define SI_NGG_CULL_GS_FAST_LAUNCH_ALL       (0xf << 3) /* GS fast launch (both prim types) */
-#define SI_NGG_CULL_LINES                    (1 << 7)   /* the primitive type is lines */
+#define SI_NGG_CULL_LINES                    (1 << 3)   /* the primitive type is lines */
 
 /**
  * For VS shader keys, describe any fixups required for vertex fetch.
@@ -590,9 +585,6 @@ union si_shader_part_key {
       unsigned as_ls : 1;
       unsigned as_es : 1;
       unsigned as_ngg : 1;
-      unsigned gs_fast_launch_tri_list : 1;  /* for NGG culling */
-      unsigned gs_fast_launch_tri_strip : 1; /* for NGG culling */
-      unsigned gs_fast_launch_index_size_packed : 2;
       unsigned load_vgprs_after_culling : 1;
       /* Prologs for monolithic shaders shouldn't set EXEC. */
       unsigned is_monolithic : 1;
@@ -686,7 +678,7 @@ struct si_shader_key {
       unsigned kill_pointsize : 1;
 
       /* For NGG VS and TES. */
-      unsigned ngg_culling : 8; /* SI_NGG_CULL_* */
+      unsigned ngg_culling : 4; /* SI_NGG_CULL_* */
 
       /* For shaders where monolithic variants have better code.
        *
@@ -744,7 +736,7 @@ struct gfx9_gs_info {
    unsigned esgs_ring_size; /* in bytes */
 };
 
-#define SI_NUM_VGT_STAGES_KEY_BITS 6
+#define SI_NUM_VGT_STAGES_KEY_BITS 5
 #define SI_NUM_VGT_STAGES_STATES   (1 << SI_NUM_VGT_STAGES_KEY_BITS)
 
 /* The VGT_SHADER_STAGES key used to index the table of precomputed values.
@@ -755,7 +747,6 @@ union si_vgt_stages_key {
 #if UTIL_ARCH_LITTLE_ENDIAN
       uint8_t tess : 1;
       uint8_t gs : 1;
-      uint8_t ngg_gs_fast_launch : 1;
       uint8_t ngg_passthrough : 1;
       uint8_t ngg : 1;       /* gfx10+ */
       uint8_t streamout : 1; /* only used with NGG */
@@ -765,7 +756,6 @@ union si_vgt_stages_key {
       uint8_t streamout : 1;
       uint8_t ngg : 1;
       uint8_t ngg_passthrough : 1;
-      uint8_t ngg_gs_fast_launch : 1;
       uint8_t gs : 1;
       uint8_t tess : 1;
 #endif

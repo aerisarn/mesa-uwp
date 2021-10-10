@@ -909,16 +909,9 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
     */
 
    LLVMValueRef vtxindex[3];
-   if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL) {
-      /* For the GS fast launch, the VS prolog simply puts the Vertex IDs
-       * into these VGPRs.
-       */
-      for (unsigned i = 0; i < num_vertices; ++i)
-         vtxindex[i] = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[i]);
-   } else {
-      for (unsigned i = 0; i < num_vertices; ++i)
-         vtxindex[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
-   };
+   for (unsigned i = 0; i < num_vertices; ++i)
+      vtxindex[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
+
    LLVMValueRef gs_vtxptr[3];
    for (unsigned i = 0; i < num_vertices; i++)
       gs_vtxptr[i] = ngg_nogs_vertex_ptr(ctx, vtxindex[i]);
@@ -1005,7 +998,6 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
 
          assert(!(shader->key.opt.ngg_culling & SI_NGG_CULL_BACK_FACE));
          assert(!(shader->key.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE));
-         assert(!(shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL));
       } else {
          options.num_vertices = 3;
          options.cull_front = shader->key.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE;
@@ -2028,14 +2020,6 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    unsigned max_gsprims_base = gs_sel->screen->ngg_subgroup_size; /* default prim group size clamp */
    unsigned max_esverts_base = gs_sel->screen->ngg_subgroup_size;
 
-   if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
-      /* All lanes are filled in wave32. */
-      max_gsprims_base = ROUND_DOWN_TO(max_gsprims_base / 3, 32);
-      max_esverts_base = max_gsprims_base * 3;
-   } else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
-      max_gsprims_base = max_esverts_base - 2;
-   }
-
    if (gs_stage == MESA_SHADER_GEOMETRY) {
       bool force_multi_cycling = false;
       unsigned max_out_verts_per_gsprim = gs_sel->info.base.gs.vertices_out * gs_num_invocations;
@@ -2163,28 +2147,6 @@ retry_select_mode:
       /* Number of output primitives per GS input primitive after
        * GS instancing. */
       prim_amp_factor = gs_sel->info.base.gs.vertices_out;
-   }
-
-   /* Fix up the thread counts for fast launch. */
-   if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST) {
-      /* The vertex count must be a multiple of 3. */
-      max_esverts -= max_esverts % 3;
-      /* We can only decrease the size, not increase it. */
-      if (max_gsprims * 3 < max_esverts) {
-         max_esverts = max_gsprims * 3;
-      } else {
-         max_gsprims = max_esverts / 3;
-      }
-   } else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP) {
-      /* The primitive count must be even to get correct winding for triangle strips. */
-      max_gsprims &= ~1;
-      if (max_gsprims - 2 < max_esverts) {
-         max_esverts = max_gsprims + 2;
-      } else {
-         max_gsprims = max_esverts - 2;
-         max_gsprims &= ~1;
-         max_esverts = max_gsprims + 2;
-      }
    }
 
    shader->ngg.hw_max_esverts = max_esverts;

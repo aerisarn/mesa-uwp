@@ -219,7 +219,6 @@ enum
    DBG_ALWAYS_NGG_CULLING_ALL,
    DBG_ALWAYS_NGG_CULLING_TESS,
    DBG_NO_NGG_CULLING,
-   DBG_NO_FAST_LAUNCH,
    DBG_SWITCH_ON_EOP,
    DBG_NO_OUT_OF_ORDER,
    DBG_NO_DPBB,
@@ -1953,15 +1952,12 @@ static inline void radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sc
 }
 
 static inline unsigned si_get_wave_size(struct si_screen *sscreen,
-                                        gl_shader_stage stage, bool ngg, bool es,
-                                        bool gs_fast_launch)
+                                        gl_shader_stage stage, bool ngg, bool es)
 {
    if (stage == MESA_SHADER_COMPUTE)
       return sscreen->compute_wave_size;
    else if (stage == MESA_SHADER_FRAGMENT)
       return sscreen->ps_wave_size;
-   else if (gs_fast_launch)
-      return 32; /* GS fast launch hangs with Wave64, so always use Wave32. */
    else if ((stage == MESA_SHADER_VERTEX && es && !ngg) ||
             (stage == MESA_SHADER_TESS_EVAL && es && !ngg) ||
             (stage == MESA_SHADER_GEOMETRY && !ngg)) /* legacy GS only supports Wave64 */
@@ -1974,8 +1970,7 @@ static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
 {
    return si_get_wave_size(shader->selector->screen, shader->selector->info.stage,
                            shader->key.as_ngg,
-                           shader->key.as_es,
-                           shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL);
+                           shader->key.as_es);
 }
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
