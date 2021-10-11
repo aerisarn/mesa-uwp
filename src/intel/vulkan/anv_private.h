@@ -2499,7 +2499,7 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
    enum anv_pipe_bits pipe_bits = 0;
 
    u_foreach_bit64(b, flags) {
-      switch ((VkAccessFlags2KHR)(1 << b)) {
+      switch ((VkAccessFlags2KHR)BITFIELD64_BIT(b)) {
       case VK_ACCESS_2_SHADER_WRITE_BIT_KHR:
       case VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT_KHR:
          /* We're transitioning a buffer that was previously used as write
@@ -2576,7 +2576,7 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
    enum anv_pipe_bits pipe_bits = 0;
 
    u_foreach_bit64(b, flags) {
-      switch ((VkAccessFlags2KHR)(1 << b)) {
+      switch ((VkAccessFlags2KHR)BITFIELD64_BIT(b)) {
       case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR:
          /* Indirect draw commands take a buffer as input that we're going to
           * read from the command streamer to load some of the HW registers
