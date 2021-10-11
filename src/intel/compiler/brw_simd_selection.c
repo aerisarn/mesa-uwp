@@ -161,3 +161,42 @@ brw_simd_select(const struct brw_cs_prog_data *prog_data)
    else
       return -1;
 }
+
+int
+brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
+                                   const struct brw_cs_prog_data *prog_data,
+                                   const unsigned *sizes)
+{
+   assert(sizes);
+
+   if (prog_data->local_size[0] == sizes[0] &&
+       prog_data->local_size[1] == sizes[1] &&
+       prog_data->local_size[2] == sizes[2])
+      return brw_simd_select(prog_data);
+
+   void *mem_ctx = ralloc_context(NULL);
+
+   struct brw_cs_prog_data cloned = *prog_data;
+   for (unsigned i = 0; i < 3; i++)
+      cloned.local_size[i] = sizes[i];
+
+   cloned.prog_mask = 0;
+   cloned.prog_spilled = 0;
+
+   const char *error[3] = {0};
+
+   for (unsigned simd = 0; simd < 3; simd++) {
+      /* We are not recompiling, so use original results of prog_mask and
+       * prog_spilled as they will already contain all possible compilations.
+       */
+      if (brw_simd_should_compile(mem_ctx, simd, devinfo, &cloned,
+                                  0 /* required_dispatch_width */, &error[simd]) &&
+          test_bit(prog_data->prog_mask, simd)) {
+         brw_simd_mark_compiled(simd, &cloned, test_bit(prog_data->prog_spilled, simd));
+      }
+   }
+
+   ralloc_free(mem_ctx);
+
+   return brw_simd_select(&cloned);
+}

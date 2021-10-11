@@ -10193,40 +10193,6 @@ brw_compile_cs(const struct brw_compiler *compiler,
    return ret;
 }
 
-static unsigned
-brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
-                                const struct brw_cs_prog_data *cs_prog_data,
-                                unsigned group_size)
-{
-   const unsigned mask = cs_prog_data->prog_mask;
-   assert(mask != 0);
-
-   static const unsigned simd8  = 1 << 0;
-   static const unsigned simd16 = 1 << 1;
-   static const unsigned simd32 = 1 << 2;
-
-   if (INTEL_DEBUG(DEBUG_DO32) && (mask & simd32))
-      return 32;
-
-   const uint32_t max_threads = devinfo->max_cs_workgroup_threads;
-
-   if ((mask & simd8) && group_size <= 8 * max_threads) {
-      /* Prefer SIMD16 if can do without spilling.  Matches logic in
-       * brw_simd_selection.cpp.
-       */
-      if ((mask & simd16) && (~cs_prog_data->prog_spilled & simd16))
-         return 16;
-      return 8;
-   }
-
-   if ((mask & simd16) && group_size <= 16 * max_threads)
-      return 16;
-
-   assert(mask & simd32);
-   assert(group_size <= 32 * max_threads);
-   return 32;
-}
-
 struct brw_cs_dispatch_info
 brw_cs_get_dispatch_info(const struct intel_device_info *devinfo,
                          const struct brw_cs_prog_data *prog_data,
@@ -10238,9 +10204,13 @@ brw_cs_get_dispatch_info(const struct intel_device_info *devinfo,
       override_local_size ? override_local_size :
                             prog_data->local_size;
 
+   const int simd =
+      override_local_size ? brw_simd_select_for_workgroup_size(devinfo, prog_data, sizes) :
+                            brw_simd_select(prog_data);
+   assert(simd >= 0 && simd < 3);
+
    info.group_size = sizes[0] * sizes[1] * sizes[2];
-   info.simd_size =
-      brw_cs_simd_size_for_group_size(devinfo, prog_data, info.group_size);
+   info.simd_size = 8u << simd;
    info.threads = DIV_ROUND_UP(info.group_size, info.simd_size);
 
    const uint32_t remainder = info.group_size & (info.simd_size - 1);

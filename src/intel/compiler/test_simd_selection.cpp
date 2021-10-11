@@ -145,6 +145,15 @@ TEST_F(SIMDSelectionCS, WorkgroupSizeVariable)
    brw_simd_mark_compiled(SIMD32, prog_data, not_spilled);
 
    ASSERT_EQ(prog_data->prog_mask, 1u << SIMD8 | 1u << SIMD16 | 1u << SIMD32);
+
+   const unsigned wg_8_1_1[] = { 8, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_8_1_1), SIMD16);
+
+   const unsigned wg_16_1_1[] = { 16, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_16_1_1), SIMD16);
+
+   const unsigned wg_32_1_1[] = { 32, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_32_1_1), SIMD16);
 }
 
 TEST_F(SIMDSelectionCS, WorkgroupSizeVariableSpilled)
@@ -161,6 +170,86 @@ TEST_F(SIMDSelectionCS, WorkgroupSizeVariableSpilled)
    brw_simd_mark_compiled(SIMD32, prog_data, spilled);
 
    ASSERT_EQ(prog_data->prog_mask, 1u << SIMD8 | 1u << SIMD16 | 1u << SIMD32);
+
+   const unsigned wg_8_1_1[] = { 8, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_8_1_1), SIMD8);
+
+   const unsigned wg_16_1_1[] = { 16, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_16_1_1), SIMD8);
+
+   const unsigned wg_32_1_1[] = { 32, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_32_1_1), SIMD8);
+}
+
+TEST_F(SIMDSelectionCS, WorkgroupSizeVariableNoSIMD8)
+{
+   prog_data->local_size[0] = 0;
+   prog_data->local_size[1] = 0;
+   prog_data->local_size[2] = 0;
+
+   ASSERT_TRUE(should_compile(SIMD8));
+   ASSERT_TRUE(should_compile(SIMD16));
+   brw_simd_mark_compiled(SIMD16, prog_data, not_spilled);
+   ASSERT_TRUE(should_compile(SIMD32));
+   brw_simd_mark_compiled(SIMD32, prog_data, not_spilled);
+
+   ASSERT_EQ(prog_data->prog_mask, 1u << SIMD16 | 1u << SIMD32);
+
+   const unsigned wg_8_1_1[] = { 8, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_8_1_1), SIMD16);
+
+   const unsigned wg_16_1_1[] = { 16, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_16_1_1), SIMD16);
+
+   const unsigned wg_32_1_1[] = { 32, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_32_1_1), SIMD16);
+}
+
+TEST_F(SIMDSelectionCS, WorkgroupSizeVariableNoSIMD16)
+{
+   prog_data->local_size[0] = 0;
+   prog_data->local_size[1] = 0;
+   prog_data->local_size[2] = 0;
+
+   ASSERT_TRUE(should_compile(SIMD8));
+   brw_simd_mark_compiled(SIMD8, prog_data, not_spilled);
+   ASSERT_TRUE(should_compile(SIMD16));
+   ASSERT_TRUE(should_compile(SIMD32));
+   brw_simd_mark_compiled(SIMD32, prog_data, not_spilled);
+
+   ASSERT_EQ(prog_data->prog_mask, 1u << SIMD8 | 1u << SIMD32);
+
+   const unsigned wg_8_1_1[] = { 8, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_8_1_1), SIMD8);
+
+   const unsigned wg_16_1_1[] = { 16, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_16_1_1), SIMD8);
+
+   const unsigned wg_32_1_1[] = { 32, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_32_1_1), SIMD8);
+}
+
+TEST_F(SIMDSelectionCS, WorkgroupSizeVariableNoSIMD8NoSIMD16)
+{
+   prog_data->local_size[0] = 0;
+   prog_data->local_size[1] = 0;
+   prog_data->local_size[2] = 0;
+
+   ASSERT_TRUE(should_compile(SIMD8));
+   ASSERT_TRUE(should_compile(SIMD16));
+   ASSERT_TRUE(should_compile(SIMD32));
+   brw_simd_mark_compiled(SIMD32, prog_data, not_spilled);
+
+   ASSERT_EQ(prog_data->prog_mask, 1u << SIMD32);
+
+   const unsigned wg_8_1_1[] = { 8, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_8_1_1), SIMD32);
+
+   const unsigned wg_16_1_1[] = { 16, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_16_1_1), SIMD32);
+
+   const unsigned wg_32_1_1[] = { 32, 1, 1 };
+   ASSERT_EQ(brw_simd_select_for_workgroup_size(devinfo, prog_data, wg_32_1_1), SIMD32);
 }
 
 TEST_F(SIMDSelectionCS, SpillAtSIMD8)

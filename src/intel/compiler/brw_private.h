@@ -47,6 +47,10 @@ void brw_simd_mark_compiled(unsigned simd,
 
 int brw_simd_select(const struct brw_cs_prog_data *prog_data);
 
+int brw_simd_select_for_workgroup_size(const struct intel_device_info *devinfo,
+                                       const struct brw_cs_prog_data *prog_data,
+                                       const unsigned *sizes);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
