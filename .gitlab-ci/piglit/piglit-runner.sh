@@ -53,14 +53,6 @@ fi
 
 set +e
 
-if [ -n "$PIGLIT_PARALLEL" ]; then
-   PIGLIT_RUNNER_OPTIONS="$PIGLIT_RUNNER_OPTIONS --jobs $PIGLIT_PARALLEL"
-elif [ -n "$FDO_CI_CONCURRENT" ]; then
-   PIGLIT_RUNNER_OPTIONS="$PIGLIT_RUNNER_OPTIONS --jobs $FDO_CI_CONCURRENT"
-else
-   PIGLIT_RUNNER_OPTIONS="$PIGLIT_RUNNER_OPTIONS --jobs 4"
-fi
-
 RESULTS_CSV=$RESULTS/results.csv
 FAILURES_CSV=$RESULTS/failures.csv
 
@@ -70,6 +62,7 @@ export LD_PRELOAD=$TEST_LD_PRELOAD
         run \
         --piglit-folder /piglit \
         --output $RESULTS \
+        --jobs ${FDO_CI_CONCURRENT:-4} \
         --skips $INSTALL/piglit/piglit-all-skips.txt $PIGLIT_SKIPS \
         --flakes $INSTALL/piglit-$GPU_VERSION-flakes.txt \
         --profile $PIGLIT_PROFILES \

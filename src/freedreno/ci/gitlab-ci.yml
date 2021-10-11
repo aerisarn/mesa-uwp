@@ -121,7 +121,7 @@ a530-traces:
   extends:
     - .freedreno-test
   variables:
-    DEQP_PARALLEL: 10
+    FDO_CI_CONCURRENT: 10
     BM_KERNEL: /baremetal-files/cheza-kernel
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     GPU_VERSION: freedreno-a630
@@ -190,7 +190,7 @@ a630_vk_asan:
     - .test-manual
   variables:
     DEQP_FRACTION: 100
-    DEQP_PARALLEL: 4 # We get OOMkills if we go too wide with asan enabled
+    FDO_CI_CONCURRENT: 4 # We get OOMkills if we go too wide with asan enabled
     TU_DEBUG: forcebin
     # Disable the leak checks, since the library gets dlclose()d and thus get
     # totally useless leak reports.  We can still catch buffer overflows.

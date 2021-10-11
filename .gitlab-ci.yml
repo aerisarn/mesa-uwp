@@ -1347,4 +1347,4 @@ debian-mingw32-x86_64:
 .baremetal-deqp-test:
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
-    DEQP_PARALLEL: 0 # Default to number of CPUs
+    FDO_CI_CONCURRENT: 0 # Default to number of CPUs

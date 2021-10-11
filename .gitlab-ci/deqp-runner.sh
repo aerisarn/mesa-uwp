@@ -120,14 +120,6 @@ fi
 
 set +e
 
-if [ -n "$DEQP_PARALLEL" ]; then
-   JOB="--jobs $DEQP_PARALLEL"
-elif [ -n "$FDO_CI_CONCURRENT" ]; then
-   JOB="--jobs $FDO_CI_CONCURRENT"
-else
-   JOB="--jobs 4"
-fi
-
 parse_renderer() {
     RENDERER=`grep -A1 TestCaseResult.\*info.renderer $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
     VERSION=`grep -A1 TestCaseResult.\*info.version $RESULTS/deqp-info.qpa | grep '<Text' | sed 's|.*<Text>||g' | sed 's|</Text>||g'`
@@ -216,7 +208,7 @@ if [ -z "$DEQP_SUITE" ]; then
         --skips $INSTALL/deqp-all-skips.txt $DEQP_SKIPS \
         --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
         --testlog-to-xml /deqp/executor/testlog-to-xml \
-        $JOB \
+        --jobs ${FDO_CI_CONCURRENT:-4} \
 	$DEQP_RUNNER_OPTIONS \
         -- \
         $DEQP_OPTIONS
@@ -230,7 +222,7 @@ else
         --testlog-to-xml /deqp/executor/testlog-to-xml \
         --fraction-start $CI_NODE_INDEX \
         --fraction $CI_NODE_TOTAL \
-        $JOB \
+        --jobs ${FDO_CI_CONCURRENT:-4} \
 	$DEQP_RUNNER_OPTIONS
 fi
 
