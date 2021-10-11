@@ -173,3 +173,44 @@ ir3_nir_lower_64b_intrinsics(nir_shader *shader)
          shader, lower_64b_intrinsics_filter,
          lower_64b_intrinsics, NULL);
 }
+
+/*
+ * Lowering for 64b undef instructions, splitting into a two 32b undefs
+ */
+
+static nir_ssa_def *
+lower_64b_undef(nir_builder *b, nir_instr *instr, void *unused)
+{
+   (void)unused;
+
+   nir_ssa_undef_instr *undef = nir_instr_as_ssa_undef(instr);
+   unsigned num_comp = undef->def.num_components;
+   nir_ssa_def *components[num_comp];
+
+   for (unsigned i = 0; i < num_comp; i++) {
+      nir_ssa_def *lowered = nir_ssa_undef(b, 2, 32);
+
+      components[i] = nir_pack_64_2x32_split(b,
+                                             nir_channel(b, lowered, 0),
+                                             nir_channel(b, lowered, 1));
+   }
+
+   return nir_build_alu_src_arr(b, nir_op_vec(num_comp), components);
+}
+
+static bool
+lower_64b_undef_filter(const nir_instr *instr, const void *unused)
+{
+   (void)unused;
+
+   return instr->type == nir_instr_type_ssa_undef &&
+      nir_instr_as_ssa_undef(instr)->def.bit_size == 64;
+}
+
+bool
+ir3_nir_lower_64b_undef(nir_shader *shader)
+{
+   return nir_shader_lower_instructions(
+         shader, lower_64b_undef_filter,
+         lower_64b_undef, NULL);
+}

@@ -58,6 +58,7 @@ void ir3_nir_lower_gs(nir_shader *shader);
  * 64b related lowering:
  */
 bool ir3_nir_lower_64b_intrinsics(nir_shader *shader);
+bool ir3_nir_lower_64b_undef(nir_shader *shader);
 
 const nir_shader_compiler_options *
 ir3_get_compiler_options(struct ir3_compiler *compiler);
