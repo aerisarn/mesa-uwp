@@ -217,7 +217,6 @@ if [ -z "$DEQP_SUITE" ]; then
         --flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
         --testlog-to-xml /deqp/executor/testlog-to-xml \
         $JOB \
-        $SUMMARY_LIMIT \
 	$DEQP_RUNNER_OPTIONS \
         -- \
         $DEQP_OPTIONS
@@ -232,7 +231,6 @@ else
         --fraction-start $CI_NODE_INDEX \
         --fraction $CI_NODE_TOTAL \
         $JOB \
-        $SUMMARY_LIMIT \
 	$DEQP_RUNNER_OPTIONS
 fi
 
