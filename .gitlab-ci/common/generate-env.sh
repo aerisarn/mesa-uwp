@@ -74,7 +74,6 @@ for var in \
     PIGLIT_RESULTS \
     PIGLIT_TESTS \
     PIPELINE_ARTIFACTS_BASE \
-    TEST_LD_PRELOAD \
     TU_DEBUG \
     VK_CPU \
     VK_DRIVER \

@@ -145,8 +145,6 @@ if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     sleep 1
 fi
 
-export LD_PRELOAD=$TEST_LD_PRELOAD
-
 if [ -z "$DEQP_SUITE" ]; then
     if [ -n "$DEQP_EXPECTED_RENDERER" ]; then
         export DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --renderer-check "$DEQP_EXPECTED_RENDERER""
@@ -183,7 +181,6 @@ fi
 
 DEQP_EXITCODE=$?
 
-export LD_PRELOAD=
 quiet report_load
 
 # Remove all but the first 50 individual XML files uploaded as artifacts, to

@@ -53,8 +53,6 @@ fi
 
 set +e
 
-export LD_PRELOAD=$TEST_LD_PRELOAD
-
     piglit-runner \
         run \
         --piglit-folder /piglit \
@@ -68,8 +66,6 @@ export LD_PRELOAD=$TEST_LD_PRELOAD
         -v -v
 
 PIGLIT_EXITCODE=$?
-
-export LD_PRELOAD=
 
 deqp-runner junit \
    --testsuite $PIGLIT_PROFILES \
