@@ -1078,7 +1078,7 @@ radv_cmd_buffer_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer)
    barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
    barrier.src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
    barrier.dst_access_mask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-   radv_emit_subpass_barrier(cmd_buffer, &barrier);
+   radv_emit_subpass_barrier(cmd_buffer, subpass, &barrier);
 
    radv_decompress_resolve_subpass_src(cmd_buffer);
 
@@ -1131,7 +1131,7 @@ radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
    barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
    barrier.src_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
    barrier.dst_access_mask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-   radv_emit_subpass_barrier(cmd_buffer, &barrier);
+   radv_emit_subpass_barrier(cmd_buffer, subpass, &barrier);
 
    struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
    struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;

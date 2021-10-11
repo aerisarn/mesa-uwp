@@ -2410,7 +2410,6 @@ struct radv_framebuffer {
    uint32_t height;
    uint32_t layers;
 
-   bool imageless;
 
    uint32_t attachment_count;
    struct radv_image_view *attachments[0];
@@ -2423,7 +2422,8 @@ struct radv_subpass_barrier {
 };
 
 void radv_emit_subpass_barrier(struct radv_cmd_buffer *cmd_buffer,
-                          const struct radv_subpass_barrier *barrier);
+                               const struct radv_subpass *subpass,
+                               const struct radv_subpass_barrier *barrier);
 
 struct radv_subpass_attachment {
    uint32_t attachment;

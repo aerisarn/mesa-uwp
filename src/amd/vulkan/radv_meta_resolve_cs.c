@@ -795,7 +795,7 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
    barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
    barrier.src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
    barrier.dst_access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-   radv_emit_subpass_barrier(cmd_buffer, &barrier);
+   radv_emit_subpass_barrier(cmd_buffer, subpass, &barrier);
 
    for (uint32_t i = 0; i < subpass->color_count; ++i) {
       struct radv_subpass_attachment src_att = subpass->color_attachments[i];

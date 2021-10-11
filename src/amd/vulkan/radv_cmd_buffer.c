@@ -3961,29 +3961,25 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags dst_flag
 }
 
 void
-radv_emit_subpass_barrier(struct radv_cmd_buffer *cmd_buffer, const struct radv_subpass_barrier *barrier)
+radv_emit_subpass_barrier(struct radv_cmd_buffer *cmd_buffer, const struct radv_subpass *subpass,
+                         const struct radv_subpass_barrier *barrier)
 {
-   struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
-   if (fb && !fb->imageless) {
-      for (int i = 0; i < fb->attachment_count; ++i) {
-         cmd_buffer->state.flush_bits |=
-            radv_src_access_flush(cmd_buffer, barrier->src_access_mask, fb->attachments[i]->image);
-      }
-   } else {
+   struct radv_render_pass *pass = cmd_buffer->state.pass;
+
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      struct radv_image_view *iview = cmd_buffer->state.attachments[i].iview;
+
       cmd_buffer->state.flush_bits |=
-         radv_src_access_flush(cmd_buffer, barrier->src_access_mask, NULL);
+         radv_src_access_flush(cmd_buffer, barrier->src_access_mask, iview->image);
    }
 
    radv_stage_flush(cmd_buffer, barrier->src_stage_mask);
 
-   if (fb && !fb->imageless) {
-      for (int i = 0; i < fb->attachment_count; ++i) {
-         cmd_buffer->state.flush_bits |=
-            radv_dst_access_flush(cmd_buffer, barrier->dst_access_mask, fb->attachments[i]->image);
-      }
-   } else {
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      struct radv_image_view *iview = cmd_buffer->state.attachments[i].iview;
+
       cmd_buffer->state.flush_bits |=
-         radv_dst_access_flush(cmd_buffer, barrier->dst_access_mask, NULL);
+         radv_dst_access_flush(cmd_buffer, barrier->dst_access_mask, iview->image);
    }
 }
 
@@ -5725,7 +5721,7 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
 
    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4096);
 
-   radv_emit_subpass_barrier(cmd_buffer, &subpass->start_barrier);
+   radv_emit_subpass_barrier(cmd_buffer, subpass, &subpass->start_barrier);
 
    radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 
@@ -7284,7 +7280,8 @@ radv_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pS
 
    radv_mark_noncoherent_rb(cmd_buffer);
 
-   radv_emit_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier);
+   radv_emit_subpass_barrier(cmd_buffer, cmd_buffer->state.subpass,
+                             &cmd_buffer->state.pass->end_barrier);
 
    radv_cmd_buffer_end_subpass(cmd_buffer);
 

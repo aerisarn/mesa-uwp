@@ -7054,7 +7054,6 @@ radv_CreateFramebuffer(VkDevice _device, const VkFramebufferCreateInfo *pCreateI
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
-   framebuffer->imageless = !!imageless_create_info;
 
    if (!imageless_create_info) {
       for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
