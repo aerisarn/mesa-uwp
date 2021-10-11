@@ -487,12 +487,9 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
    key->ignore_sample_mask_out = false;
 
    assert(rendering_info->colorAttachmentCount <= MAX_RTS);
-   for (uint32_t i = 0; i < rendering_info->colorAttachmentCount; i++) {
-      if (rendering_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED)
-         key->color_outputs_valid |= (1 << i);
-   }
-
-   key->nr_color_regions = rendering_info->colorAttachmentCount;
+   /* Consider all inputs as valid until look at the NIR variables. */
+   key->color_outputs_valid = (1u << MAX_RTS) - 1;
+   key->nr_color_regions = MAX_RTS;
 
    /* To reduce possible shader recompilations we would need to know if
     * there is a SampleMask output variable to compute if we should emit
@@ -1119,6 +1116,26 @@ static void
 anv_pipeline_link_fs(const struct brw_compiler *compiler,
                      struct anv_pipeline_stage *stage)
 {
+   /* Initially the valid outputs value is set to all possible render targets
+    * valid (see populate_wm_prog_key()), before we look at the shader
+    * variables. Here we look at the output variables of the shader an compute
+    * a correct number of render target outputs.
+    */
+   stage->key.wm.color_outputs_valid = 0;
+   nir_foreach_shader_out_variable_safe(var, stage->nir) {
+      if (var->data.location < FRAG_RESULT_DATA0)
+         continue;
+
+      const unsigned rt = var->data.location - FRAG_RESULT_DATA0;
+      const unsigned array_len =
+         glsl_type_is_array(var->type) ? glsl_get_length(var->type) : 1;
+      assert(rt + array_len <= MAX_RTS);
+
+      stage->key.wm.color_outputs_valid |= BITFIELD_RANGE(rt, array_len);
+   }
+   stage->key.wm.nr_color_regions =
+      util_last_bit(stage->key.wm.color_outputs_valid);
+
    unsigned num_rt_bindings;
    struct anv_pipeline_binding rt_bindings[MAX_RTS];
    if (stage->key.wm.nr_color_regions > 0) {
@@ -1152,71 +1169,6 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
    typed_memcpy(stage->bind_map.surface_to_descriptor,
                 rt_bindings, num_rt_bindings);
    stage->bind_map.surface_count += num_rt_bindings;
-
-   /* Now that we've set up the color attachments, we can go through and
-    * eliminate any shader outputs that map to VK_ATTACHMENT_UNUSED in the
-    * hopes that dead code can clean them up in this and any earlier shader
-    * stages.
-    */
-   nir_function_impl *impl = nir_shader_get_entrypoint(stage->nir);
-   bool deleted_output = false;
-   nir_foreach_shader_out_variable_safe(var, stage->nir) {
-      /* TODO: We don't delete depth/stencil writes.  We probably could if the
-       * subpass doesn't have a depth/stencil attachment.
-       */
-      if (var->data.location < FRAG_RESULT_DATA0)
-         continue;
-
-      const unsigned rt = var->data.location - FRAG_RESULT_DATA0;
-
-      /* If this is the RT at location 0 and we have alpha to coverage
-       * enabled we still need that write because it will affect the coverage
-       * mask even if it's never written to a color target.
-       */
-      if (rt == 0 && stage->key.wm.alpha_to_coverage)
-         continue;
-
-      const unsigned array_len =
-         glsl_type_is_array(var->type) ? glsl_get_length(var->type) : 1;
-      assert(rt + array_len <= MAX_RTS);
-
-      if (rt >= MAX_RTS || !(stage->key.wm.color_outputs_valid &
-                             BITFIELD_RANGE(rt, array_len))) {
-         deleted_output = true;
-         var->data.mode = nir_var_function_temp;
-         exec_node_remove(&var->node);
-         exec_list_push_tail(&impl->locals, &var->node);
-      }
-   }
-
-   if (deleted_output)
-      nir_fixup_deref_modes(stage->nir);
-
-   /* Initially the valid outputs value is based off the renderpass color
-    * attachments (see populate_wm_prog_key()), now that we've potentially
-    * deleted variables that map to unused attachments, we need to update the
-    * valid outputs for the backend compiler based on what output variables
-    * are actually used. */
-   stage->key.wm.color_outputs_valid = 0;
-   nir_foreach_shader_out_variable_safe(var, stage->nir) {
-      if (var->data.location < FRAG_RESULT_DATA0)
-         continue;
-
-      const unsigned rt = var->data.location - FRAG_RESULT_DATA0;
-      const unsigned array_len =
-         glsl_type_is_array(var->type) ? glsl_get_length(var->type) : 1;
-      assert(rt + array_len <= MAX_RTS);
-
-      stage->key.wm.color_outputs_valid |= BITFIELD_RANGE(rt, array_len);
-   }
-
-   /* We stored the number of subpass color attachments in nr_color_regions
-    * when calculating the key for caching.  Now that we've computed the bind
-    * map, we can reduce this to the actual max before we go into the back-end
-    * compiler.
-    */
-   stage->key.wm.nr_color_regions =
-      util_last_bit(stage->key.wm.color_outputs_valid);
 }
 
 static void
@@ -2368,10 +2320,12 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
                                  PIPELINE_COLOR_WRITE_CREATE_INFO_EXT);
 
          if (color_write_info) {
-            dynamic->color_writes = 0;
+            dynamic->color_writes = (1u << MAX_RTS) - 1;
             for (uint32_t i = 0; i < color_write_info->attachmentCount; i++) {
-               dynamic->color_writes |=
-                  color_write_info->pColorWriteEnables[i] ? (1u << i) : 0;
+               if (color_write_info->pColorWriteEnables[i])
+                  dynamic->color_writes |= BITFIELD_BIT(i);
+               else
+                  dynamic->color_writes &= ~BITFIELD_BIT(i);
             }
          }
       }

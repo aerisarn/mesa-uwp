@@ -642,43 +642,32 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                           ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
                                           ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
       const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
+
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
-      bool dirty_color_blend =
-         cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;
+      uint32_t wm_dwords[GENX(3DSTATE_WM_length)];
+      struct GENX(3DSTATE_WM) wm = {
+         GENX(3DSTATE_WM_header),
 
-      if (dirty_color_blend) {
-         uint32_t dwords[MAX2(GENX(3DSTATE_WM_length),
-                              GENX(3DSTATE_PS_BLEND_length))];
-         struct GENX(3DSTATE_WM) wm = {
-            GENX(3DSTATE_WM_header),
+         .ForceThreadDispatchEnable = (pipeline->force_fragment_thread_dispatch ||
+                                       !color_writes) ? ForceON : 0,
+      };
+      GENX(3DSTATE_WM_pack)(NULL, wm_dwords, &wm);
 
-            .ForceThreadDispatchEnable = (pipeline->force_fragment_thread_dispatch ||
-                                          !color_writes) ? ForceON : 0,
-         };
-         GENX(3DSTATE_WM_pack)(NULL, dwords, &wm);
+      anv_batch_emit_merge(&cmd_buffer->batch, wm_dwords, pipeline->gfx8.wm);
 
-         anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.wm);
-
-         /* 3DSTATE_PS_BLEND to be consistent with the rest of the
-          * BLEND_STATE_ENTRY.
-          */
-         struct GENX(3DSTATE_PS_BLEND) ps_blend = {
-            GENX(3DSTATE_PS_BLEND_header),
-            .HasWriteableRT = color_writes != 0,
-         };
-         GENX(3DSTATE_PS_BLEND_pack)(NULL, dwords, &ps_blend);
-         anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.ps_blend);
-      }
-
-      /* Blend states of each RT */
-      uint32_t surface_count = 0;
-      struct anv_pipeline_bind_map *map;
-      if (anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT)) {
-         map = &pipeline->shaders[MESA_SHADER_FRAGMENT]->bind_map;
-         surface_count = map->surface_count;
-      }
+      /* 3DSTATE_PS_BLEND to be consistent with the rest of the
+       * BLEND_STATE_ENTRY.
+       */
+      uint32_t ps_blend_dwords[GENX(3DSTATE_PS_BLEND_length)];
+      struct GENX(3DSTATE_PS_BLEND) ps_blend = {
+         GENX(3DSTATE_PS_BLEND_header),
+         .HasWriteableRT = color_writes != 0,
+      };
+      GENX(3DSTATE_PS_BLEND_pack)(NULL, ps_blend_dwords, &ps_blend);
+      anv_batch_emit_merge(&cmd_buffer->batch, ps_blend_dwords,
+                           pipeline->gfx8.ps_blend);
 
       uint32_t blend_dws[GENX(BLEND_STATE_length) +
                          MAX_RTS * GENX(BLEND_STATE_ENTRY_length)];
@@ -691,10 +680,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       bool dirty_logic_op =
          cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
 
-      for (uint32_t i = 0; i < surface_count; i++) {
-         struct anv_pipeline_binding *binding = &map->surface_to_descriptor[i];
-         bool write_disabled =
-            dirty_color_blend && (color_writes & (1u << binding->index)) == 0;
+      for (uint32_t i = 0; i < MAX_RTS; i++) {
+         bool write_disabled = (color_writes & BITFIELD_BIT(i)) == 0;
          struct GENX(BLEND_STATE_ENTRY) entry = {
             .WriteDisableAlpha = write_disabled,
             .WriteDisableRed   = write_disabled,
@@ -708,7 +695,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
 
       uint32_t num_dwords = GENX(BLEND_STATE_length) +
-         GENX(BLEND_STATE_ENTRY_length) * surface_count;
+         GENX(BLEND_STATE_ENTRY_length) * MAX_RTS;
 
       struct anv_state blend_states =
          anv_cmd_buffer_merge_dynamic(cmd_buffer, blend_dws,

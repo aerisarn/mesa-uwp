@@ -1434,10 +1434,18 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          .SourceAlphaBlendFactor = vk_to_intel_blend[a->srcAlphaBlendFactor],
          .DestinationAlphaBlendFactor = vk_to_intel_blend[a->dstAlphaBlendFactor],
          .AlphaBlendFunction = vk_to_intel_blend_op[a->alphaBlendOp],
-         .WriteDisableAlpha = !(a->colorWriteMask & VK_COLOR_COMPONENT_A_BIT),
-         .WriteDisableRed = !(a->colorWriteMask & VK_COLOR_COMPONENT_R_BIT),
-         .WriteDisableGreen = !(a->colorWriteMask & VK_COLOR_COMPONENT_G_BIT),
-         .WriteDisableBlue = !(a->colorWriteMask & VK_COLOR_COMPONENT_B_BIT),
+         .WriteDisableAlpha =
+            (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
+            !(a->colorWriteMask & VK_COLOR_COMPONENT_A_BIT),
+         .WriteDisableRed =
+            (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
+            !(a->colorWriteMask & VK_COLOR_COMPONENT_R_BIT),
+         .WriteDisableGreen =
+             (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
+             !(a->colorWriteMask & VK_COLOR_COMPONENT_G_BIT),
+         .WriteDisableBlue =
+             (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
+             !(a->colorWriteMask & VK_COLOR_COMPONENT_B_BIT),
       };
 
       if (a->srcColorBlendFactor != a->srcAlphaBlendFactor ||
@@ -2253,7 +2261,8 @@ has_color_buffer_write_enabled(const struct anv_graphics_pipeline *pipeline,
       if (binding->index == UINT32_MAX)
          continue;
 
-      if (blend && blend->pAttachments[binding->index].colorWriteMask != 0)
+      if (blend && binding->index < blend->attachmentCount &&
+          blend->pAttachments[binding->index].colorWriteMask != 0)
          return true;
    }
 
