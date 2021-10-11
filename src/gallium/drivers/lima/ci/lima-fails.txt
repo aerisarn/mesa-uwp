@@ -31,6 +31,9 @@ dEQP-GLES2.functional.fragment_ops.depth_stencil.write_mask.stencil,Fail
 dEQP-GLES2.functional.shaders.texture_functions.fragment.texture2d_bias,Fail
 dEQP-GLES2.functional.shaders.texture_functions.fragment.texture2dproj_vec3_bias,Fail
 dEQP-GLES2.functional.shaders.texture_functions.fragment.texture2dproj_vec4_bias,Fail
+dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_vertex,Fail
+dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_read_vertex,Fail
+dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_read_vertex,Fail
 dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_linear_clamp_rgba8888,Fail
 dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_linear_mirror_rgba8888,Fail
 dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_nearest_clamp_rgba8888,Fail

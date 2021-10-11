@@ -968,6 +968,11 @@ gl_nir_link_glsl(const struct gl_constants *consts,
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       struct gl_linked_shader *shader = prog->_LinkedShaders[i];
       if (shader) {
+         if (consts->GLSLLowerConstArrays) {
+            nir_lower_const_arrays_to_uniforms(shader->Program->nir,
+                                               consts->Program[i].MaxUniformComponents);
+         }
+
          const nir_remove_dead_variables_options opts = {
             .can_remove_var = can_remove_uniform,
          };

@@ -3915,13 +3915,6 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
        * propagate any elements accessed directly.
        */
       linker_optimisation_loop(consts, prog->_LinkedShaders[i]->ir, i);
-
-      /* Call opts after lowering const arrays to copy propagate things. */
-      if (consts->GLSLLowerConstArrays &&
-          lower_const_arrays_to_uniforms(prog->_LinkedShaders[i]->ir, i,
-                                         consts->Program[i].MaxUniformComponents))
-         linker_optimisation_loop(consts, prog->_LinkedShaders[i]->ir, i);
-
    }
 
    /* Check and validate stream emissions in geometry shaders */
