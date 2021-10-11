@@ -124,8 +124,8 @@ radv_surface_has_scanout(struct radv_device *device, const struct radv_image_cre
 }
 
 static bool
-radv_image_use_fast_clear_for_image(const struct radv_device *device,
-                                    const struct radv_image *image)
+radv_image_use_fast_clear_for_image_early(const struct radv_device *device,
+                                          const struct radv_image *image)
 {
    if (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS)
       return true;
@@ -139,7 +139,17 @@ radv_image_use_fast_clear_for_image(const struct radv_device *device,
       return false;
    }
 
-   return image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT &&
+   return !!(image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+}
+
+static bool
+radv_image_use_fast_clear_for_image(const struct radv_device *device,
+                                    const struct radv_image *image)
+{
+   if (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS)
+      return true;
+
+   return radv_image_use_fast_clear_for_image_early(device, image) &&
           (image->exclusive ||
            /* Enable DCC for concurrent images if stores are
             * supported because that means we can keep DCC compressed on
@@ -219,9 +229,9 @@ radv_formats_is_atomic_allowed(struct radv_device *device, const void *pNext, Vk
 }
 
 static bool
-radv_use_dcc_for_image(struct radv_device *device, struct radv_image *image,
-                       const VkImageCreateInfo *pCreateInfo, VkFormat format,
-                       bool *sign_reinterpret)
+radv_use_dcc_for_image_early(struct radv_device *device, struct radv_image *image,
+                             const VkImageCreateInfo *pCreateInfo, VkFormat format,
+                             bool *sign_reinterpret)
 {
    /* DCC (Delta Color Compression) is only available for GFX8+. */
    if (device->physical_device->rad_info.chip_class < GFX8)
@@ -255,7 +265,7 @@ radv_use_dcc_for_image(struct radv_device *device, struct radv_image *image,
    if (vk_format_is_subsampled(format) || vk_format_get_plane_count(format) > 1)
       return false;
 
-   if (!radv_image_use_fast_clear_for_image(device, image) &&
+   if (!radv_image_use_fast_clear_for_image_early(device, image) &&
        image->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
       return false;
 
@@ -276,6 +286,26 @@ radv_use_dcc_for_image(struct radv_device *device, struct radv_image *image,
 
    return radv_are_formats_dcc_compatible(device->physical_device, pCreateInfo->pNext, format,
                                           pCreateInfo->flags, sign_reinterpret);
+}
+
+static bool
+radv_use_dcc_for_image_late(struct radv_device *device, struct radv_image *image)
+{
+   if (!radv_image_has_dcc(image))
+      return false;
+
+   if (image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+      return true;
+
+   if (!radv_image_use_fast_clear_for_image(device, image))
+      return false;
+
+   /* TODO: Fix storage images with DCC without DCC image stores.
+    * Disabling it for now. */
+   if ((image->usage & VK_IMAGE_USAGE_STORAGE_BIT) && !radv_image_use_dcc_image_stores(device, image))
+      return false;
+
+   return true;
 }
 
 /*
@@ -553,8 +583,8 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
        vk_format_get_blocksizebits(image_format) == 128 && vk_format_is_compressed(image_format))
       flags |= RADEON_SURF_NO_RENDER_TARGET;
 
-   if (!radv_use_dcc_for_image(device, image, pCreateInfo, image_format,
-                               &image->dcc_sign_reinterpret))
+   if (!radv_use_dcc_for_image_early(device, image, pCreateInfo, image_format,
+                                     &image->dcc_sign_reinterpret))
       flags |= RADEON_SURF_DISABLE_DCC;
 
    if (!radv_use_fmask_for_image(device, image))
@@ -1509,12 +1539,8 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
       device->ws->surface_init(device->ws, &info, &image->planes[plane].surface);
 
       if (plane == 0) {
-        /* TODO: Fix storage images with DCC without DCC image stores.
-         * Disabling it for now. */
-         if(radv_image_has_dcc(image) && (image->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
-            !radv_image_use_dcc_image_stores(device, image)) {
+         if (!radv_use_dcc_for_image_late(device, image))
             ac_surface_zero_dcc_fields(&image->planes[0].surface);
-         }
       }
 
       if (create_info.bo_metadata && !mod_info &&
