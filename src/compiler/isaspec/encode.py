@@ -69,12 +69,20 @@ class FieldCase(object):
         if case.expr is not None:
             self.expr = isa.expressions[case.expr]
 
+    def signed(self):
+        if self.field.type in ['int', 'offset', 'branch']:
+            return 'true'
+        return 'false'
+
 class AssertField(object):
     def __init__(self, field, case):
         self.field = field
         self.expr  = None
         if case.expr is not None:
             self.expr = isa.expressions[case.expr]
+
+    def signed(self):
+        return 'false'
 
 # Represents a field to be encoded:
 class DisplayField(object):
@@ -369,9 +377,20 @@ struct encode_state;
 struct bitset_params;
 
 static bitmask_t
-pack_field(unsigned low, unsigned high, uint64_t val)
+pack_field(unsigned low, unsigned high, int64_t val, bool is_signed)
 {
    bitmask_t field, mask;
+
+   if (is_signed) {
+      /* NOTE: Don't assume val is already sign-extended to 64b,
+       * just check that the bits above the valid range are either
+       * all zero or all one:
+       */
+      assert(!(( val & ~BITFIELD64_MASK(1 + high - low)) &&
+               (~val & ~BITFIELD64_MASK(1 + high - low))));
+   } else {
+      assert(!(val & ~BITFIELD64_MASK(1 + high - low)));
+   }
 
    BITSET_ZERO(field.bitset);
 
@@ -593,7 +612,7 @@ isa = s.isa
 %         else:
              fld = ${s.extractor(leaf, f.field.name)};
 %         endif
-             const bitmask_t packed = pack_field(${f.field.low}, ${f.field.high}, fld);  /* ${f.field.name} */
+             const bitmask_t packed = pack_field(${f.field.low}, ${f.field.high}, fld, ${f.signed()});  /* ${f.field.name} */
              BITSET_OR(val.bitset, val.bitset, packed.bitset);
              ${case_post(root, expr)}
 %       endfor
@@ -613,7 +632,7 @@ isa = s.isa
           continue
 %>
        ${case_pre(root, expr)}
-       const bitmask_t packed = pack_field(${f.field.low}, ${f.field.high}, ${f.field.val});
+       const bitmask_t packed = pack_field(${f.field.low}, ${f.field.high}, ${f.field.val}, ${f.signed()});
        BITSET_OR(val.bitset, val.bitset, packed.bitset);
        ${case_post(root, None)}
 %   endfor
