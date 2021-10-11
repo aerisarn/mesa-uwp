@@ -29,4 +29,4 @@ KHR-GLES31.core.shader_image_load_store.basic-allFormats-store-fs
 # causes a hangcheck timeout on a630:
 # msm ae00000.mdss: [drm:hangcheck_handler] *ERROR* A630: hangcheck detected gpu lockup rb 0!
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
-dEQP-VK.graphicsfuzz.spv-stable-pillars-volatile-nontemporal-store
+spill-dEQP-VK.graphicsfuzz.spv-stable-pillars-volatile-nontemporal-store

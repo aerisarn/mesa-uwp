@@ -1064,6 +1064,28 @@ emit_intrinsic_atomic_shared(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    return atomic;
 }
 
+static void
+stp_ldp_offset(struct ir3_context *ctx, nir_src *src,
+               struct ir3_instruction **offset, int32_t *base)
+{
+   struct ir3_block *b = ctx->block;
+
+   if (nir_src_is_const(*src)) {
+      unsigned src_offset = nir_src_as_uint(*src);
+      /* The base offset field is only 13 bits, and it's signed. Try to make the
+       * offset constant whenever the original offsets are similar, to avoid
+       * creating too many constants in the final shader.
+       */
+      *base = ((int32_t) src_offset << (32 - 13)) >> (32 - 13);
+      uint32_t offset_val = src_offset - *base;
+      *offset = create_immed(b, offset_val);
+   } else {
+      /* TODO: match on nir_iadd with a constant that fits */
+      *base = 0;
+      *offset = ir3_get_src(ctx, src)[0];
+   }
+}
+
 /* src[] = { offset }. */
 static void
 emit_intrinsic_load_scratch(struct ir3_context *ctx, nir_intrinsic_instr *intr,
@@ -1071,10 +1093,11 @@ emit_intrinsic_load_scratch(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
    struct ir3_block *b = ctx->block;
    struct ir3_instruction *ldp, *offset;
+   int32_t base;
 
-   offset = ir3_get_src(ctx, &intr->src[0])[0];
+   stp_ldp_offset(ctx, &intr->src[0], &offset, &base);
 
-   ldp = ir3_LDP(b, offset, 0, create_immed(b, 0), 0,
+   ldp = ir3_LDP(b, offset, 0, create_immed(b, base), 0,
                  create_immed(b, intr->num_components), 0);
 
    ldp->cat6.type = utype_dst(intr->dest);
@@ -1094,9 +1117,11 @@ emit_intrinsic_store_scratch(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    struct ir3_instruction *stp, *offset;
    struct ir3_instruction *const *value;
    unsigned wrmask, ncomp;
+   int32_t base;
 
    value = ir3_get_src(ctx, &intr->src[0]);
-   offset = ir3_get_src(ctx, &intr->src[1])[0];
+
+   stp_ldp_offset(ctx, &intr->src[1], &offset, &base);
 
    wrmask = nir_intrinsic_write_mask(intr);
    ncomp = ffs(~wrmask) - 1;
@@ -1105,7 +1130,7 @@ emit_intrinsic_store_scratch(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 
    stp = ir3_STP(b, offset, 0, ir3_create_collect(b, value, ncomp), 0,
                  create_immed(b, ncomp), 0);
-   stp->cat6.dst_offset = 0;
+   stp->cat6.dst_offset = base;
    stp->cat6.type = utype_src(intr->src[0]);
    stp->barrier_class = IR3_BARRIER_PRIVATE_W;
    stp->barrier_conflict = IR3_BARRIER_PRIVATE_R | IR3_BARRIER_PRIVATE_W;
