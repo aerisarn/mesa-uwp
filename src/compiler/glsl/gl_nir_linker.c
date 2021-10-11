@@ -142,8 +142,11 @@ can_remove_uniform(nir_variable *var, UNUSED void *data)
        GLSL_TYPE_SUBROUTINE)
       return false;
 
-   /* Uniform initializers could get used by another stage */
-   if (var->constant_initializer)
+   /* Uniform initializers could get used by another stage. However if its a
+    * hidden uniform then it should be safe to remove as this was a constant
+    * variable that has been lowered to a uniform.
+    */
+   if (var->constant_initializer && var->data.how_declared != nir_var_hidden)
       return false;
 
    return true;
