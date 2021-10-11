@@ -15,7 +15,6 @@ panfrost-t720-gles2:arm64:
     GPU_VERSION: panfrost-t720
     DEQP_SUITE: panfrost-t720
     FDO_CI_CONCURRENT: 6
-    DEQP_EXPECTED_RENDERER: T720
   tags:
     - mesa-ci-x86-64-lava-sun50i-h6-pine-h64
 
@@ -30,9 +29,8 @@ panfrost-t760-gles2:armhf:
     GPU_VERSION: panfrost-t760
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
-    DEQP_SUITE: panfrost-t720
+    DEQP_SUITE: panfrost-t760
     FDO_CI_CONCURRENT: 6
-    DEQP_EXPECTED_RENDERER: T760
   tags:
     - mesa-ci-x86-64-lava-rk3288-veyron-jaq
 
@@ -81,7 +79,6 @@ panfrost-t860-gl:arm64:
     - .lava-rk3399-gru-kevin
   variables:
     FDO_CI_CONCURRENT: 6
-    DEQP_EXPECTED_RENDERER: T860
     DEQP_SUITE: panfrost-t860
 
 panfrost-t860-traces:arm64:
@@ -118,7 +115,6 @@ panfrost-g52-gl:arm64:
   variables:
     FDO_CI_CONCURRENT: 6
     DEQP_SUITE: panfrost-g52
-    DEQP_EXPECTED_RENDERER: G52
     PAN_MESA_DEBUG: "deqp,sync,indirect"
 
 panfrost-g52-vk:arm64:
@@ -126,8 +122,6 @@ panfrost-g52-vk:arm64:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
   variables:
-    DEQP_VER: vk
-    DEQP_EXPECTED_RENDERER: G52
     VK_DRIVER: panfrost
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
     PAN_I_WANT_A_BROKEN_VULKAN_DRIVER: 1
@@ -164,7 +158,6 @@ panfrost-g72-gl:arm64:
     - .lava-test:arm64
     - .lava-mt8183-kukui-jacuzzi-juniper-sku16
   variables:
-    DEQP_EXPECTED_RENDERER: G72
     DEQP_SUITE: panfrost-g72
 
 .panfrost-t820-gles2:arm64:
@@ -177,7 +170,6 @@ panfrost-g72-gl:arm64:
     DTB: $DEVICE_TYPE
     GPU_VERSION: panfrost-t820
     FDO_CI_CONCURRENT: 6
-    DEQP_EXPECTED_RENDERER: T820
     DEQP_SUITE: panfrost-t720
   tags:
     - mesa-ci-aarch64-lava-baylibre

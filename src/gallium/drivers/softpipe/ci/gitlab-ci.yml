@@ -13,7 +13,6 @@
 
 softpipe-deqp:
   variables:
-    DEQP_VER: gles2 # for the renderer check
     DEQP_SUITE: softpipe
   parallel: 2
   extends: .softpipe-deqp-test

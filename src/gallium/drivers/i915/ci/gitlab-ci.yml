@@ -7,7 +7,6 @@
   tags:
     - anholt-g33
   variables:
-    DEQP_EXPECTED_RENDERER: i915
     GPU_VERSION: i915-g33
 
 i915-g33-deqp:
@@ -15,7 +14,6 @@ i915-g33-deqp:
     - .anholt-g33-test
     - .deqp-test
   variables:
-    DEQP_VER: gles2
     DEQP_SUITE: i915g
 
 i915-g33-piglit:

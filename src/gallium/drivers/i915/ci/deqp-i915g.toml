@@ -8,6 +8,8 @@ deqp_args = [
     "--deqp-gl-config-name=rgba8888d24s8ms0",
     "--deqp-visibility=hidden"
 ]
+version_check = "GL ES 2.0.*git"
+renderer_check = "i915"
 
 [[deqp]]
 deqp = "/deqp/external/openglcts/modules/glcts"
