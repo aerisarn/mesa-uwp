@@ -131,8 +131,14 @@ _eglCreateThreadInfo(void)
 static void
 _eglDestroyThreadInfo(_EGLThreadInfo *t)
 {
-   if (t != &dummy_thread)
+   if (t != &dummy_thread) {
       free(t);
+#ifdef USE_ELF_TLS
+      /* Reset the TLS also here, otherwise
+       * it will be having a dangling pointer */
+      _egl_TLS = NULL;
+#endif
+   }
 }
 
 
