@@ -500,6 +500,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_shared_presentable_image                       not started
   VK_KHR_surface                                        DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_surface_protected_capabilities                 DONE (anv, lvp, radv, v3dv, vn)
+  VK_KHR_synchronization2                               DONE (anv, radv)
   VK_KHR_swapchain                                      DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_KHR_swapchain_mutable_format                       DONE (anv, radv, v3dv, vn)
   VK_KHR_wayland_surface                                DONE (anv, lvp, radv, tu, v3dv, vn)
