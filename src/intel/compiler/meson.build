@@ -158,7 +158,6 @@ libintel_compiler = static_library(
 )
 
 if with_tests
-  # The last two tests are not C++ or gtest, pre comment in autotools make
   foreach t : ['fs_cmod_propagation', 'fs_copy_propagation',
                'fs_saturate_propagation', 'vf_float_conversions',
                'vec4_register_coalesce', 'vec4_copy_propagation',
