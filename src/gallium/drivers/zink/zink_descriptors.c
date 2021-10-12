@@ -723,8 +723,10 @@ populate_zds_key(struct zink_context *ctx, enum zink_descriptor_type type, bool 
       key->exists[0] = true;
       if (type == ZINK_DESCRIPTOR_TYPES)
          key->state[0] = ctx->dd->push_state[is_compute];
-      else
+      else {
+         assert(ctx->dd->descriptor_states[is_compute].valid[type]);
          key->state[0] = ctx->dd->descriptor_states[is_compute].state[type];
+      }
    } else if (type == ZINK_DESCRIPTOR_TYPES) {
       /* gfx only */
       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
