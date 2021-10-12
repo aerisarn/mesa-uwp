@@ -643,6 +643,7 @@ void si_destroy_perfcounters(struct si_screen *screen)
       return;
 
    ac_destroy_perfcounters(&pc->base);
+   FREE(pc);
    screen->perfcounters = NULL;
 }
 
