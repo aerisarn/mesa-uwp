@@ -63,6 +63,7 @@ static const struct test {
    INSTR_6XX(00000200_00000000, "(rpt2)nop"),
    INSTR_6XX(03000000_00000000, "end"),
    INSTR_6XX(00800000_00000004, "br p0.x, #4"),
+   INSTR_6XX(00800000_fffffffc, "br p0.x, #-4"),
    INSTR_6XX(00900000_00000003, "br !p0.x, #3"),
    INSTR_6XX(03820000_00000015, "shps #21"), /* emit */
    INSTR_6XX(04021000_00000000, "(ss)shpe"), /* cut */
@@ -149,6 +150,8 @@ static const struct test {
    /* dEQP-GLES31.functional.texture.texture_buffer.render.as_fragment_texture.buffer_size_65536 */
    INSTR_5XX(a2c03102_00000000, "getbuf (u32)(x)r0.z, t#0"),
    INSTR_6XX(a0c81f00_e0200005, "sam.base0 (f32)(xyzw)r0.x, r0.z, s#1, a1.x"),
+   INSTR_6XX(a0c81108_e2000001, "sam.base0 (f32)(x)r2.x, r0.x, s#16, a1.x"),
+   INSTR_6XX(a048d107_cc080a07, "isaml.base3 (s32)(x)r1.w, r0.w, r1.y, s#0, t#6"),
 
 
    /* cat6 */
