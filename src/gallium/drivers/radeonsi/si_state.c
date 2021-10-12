@@ -5052,11 +5052,11 @@ si_create_vertex_state(struct pipe_screen *screen,
    /* Initialize the vertex element state in state->element.
     * Do it by creating a vertex element state object and copying it there.
     */
-   struct pipe_context ctx = {};
-   ctx.screen = screen;
-   struct si_vertex_elements *velems = si_create_vertex_elements(&ctx, num_elements, elements);
+   struct si_context ctx = {};
+   ctx.b.screen = screen;
+   struct si_vertex_elements *velems = si_create_vertex_elements(&ctx.b, num_elements, elements);
    state->velems = *velems;
-   si_delete_vertex_element(&ctx, velems);
+   si_delete_vertex_element(&ctx.b, velems);
 
    assert(!state->velems.instance_divisor_is_one);
    assert(!state->velems.instance_divisor_is_fetched);
