@@ -338,7 +338,7 @@ struct ir3_instruction {
           * handled.
           */
          int dst_offset;
-         int iim_val   : 3; /* for ldgb/stgb, # of components */
+         int iim_val;       /* for ldgb/stgb, # of components */
          unsigned d    : 3; /* for ldc, component offset */
          bool typed    : 1;
          unsigned base : 3;

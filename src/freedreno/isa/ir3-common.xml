@@ -149,7 +149,7 @@ SOFTWARE.
 	<pattern low="11" high="13">100</pattern>
 	<field name="ABSNEG" low="14" high="15" type="#absneg"/>
 	<encode>
-		<map name="IMMED">src->uim_val</map>
+		<map name="IMMED">src->iim_val</map>
 	</encode>
 </bitset>
 
