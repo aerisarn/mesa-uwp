@@ -1117,7 +1117,7 @@ struct tex_src_info {
    /* For prefetch */
    unsigned tex_base, samp_base, tex_idx, samp_idx;
    /* For normal tex instructions */
-   unsigned base, combined_idx, a1_val, flags;
+   unsigned base, a1_val, flags;
    struct ir3_instruction *samp_tex;
 };
 
@@ -1150,11 +1150,9 @@ get_image_samp_tex_src(struct ir3_context *ctx, nir_intrinsic_instr *intr)
          if (info.tex_idx < 16) {
             /* Everything fits within the instruction */
             info.base = info.tex_base;
-            info.combined_idx = info.samp_idx | (info.tex_idx << 4);
          } else {
             info.base = info.tex_base;
             info.a1_val = info.tex_idx << 3;
-            info.combined_idx = 0;
             info.flags |= IR3_INSTR_A1EN;
          }
          info.samp_tex = NULL;
@@ -1200,7 +1198,8 @@ emit_sam(struct ir3_context *ctx, opc_t opc, struct tex_src_info info,
    }
    if (info.flags & IR3_INSTR_B) {
       sam->cat5.tex_base = info.base;
-      sam->cat5.samp = info.combined_idx;
+      sam->cat5.samp = info.samp_idx;
+      sam->cat5.tex  = info.tex_idx;
    }
    return sam;
 }
@@ -2305,11 +2304,9 @@ get_tex_samp_tex_src(struct ir3_context *ctx, nir_tex_instr *tex)
               info.tex_base == info.samp_base)) {
             /* Everything fits within the instruction */
             info.base = info.tex_base;
-            info.combined_idx = info.samp_idx | (info.tex_idx << 4);
          } else {
             info.base = info.tex_base;
             info.a1_val = info.tex_idx << 3 | info.samp_base;
-            info.combined_idx = info.samp_idx;
             info.flags |= IR3_INSTR_A1EN;
          }
          info.samp_tex = NULL;

@@ -481,12 +481,7 @@ SOFTWARE.
 	<display/>
 	<assert low="0" high="3">0000</assert>
 	<encode type="struct ir3_instruction *">
-		<!--
-			TODO properly decouple the encoding from ir3 IR in this
-			case.. the IR has no business knowing how this gets
-			encoded into "SRC3"..
-		 -->
-		<map name="TEX">src->cat5.samp >> 4</map>
+		<map name="TEX">src->cat5.tex</map>
 	</encode>
 </bitset>
 
