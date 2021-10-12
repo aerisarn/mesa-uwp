@@ -865,6 +865,7 @@ emit_intrinsic_ssbo_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    /* resinfo has no writemask and always writes out 3 components */
    resinfo->dsts[0]->wrmask = MASK(3);
    ir3_handle_bindless_cat6(resinfo, intr->src[0]);
+   ir3_handle_nonuniform(resinfo, intr);
 
    if (ctx->compiler->gen >= 6) {
       ir3_split_dest(b, dst, resinfo, 0, 1);
