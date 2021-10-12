@@ -145,10 +145,6 @@ if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     sleep 1
 fi
 
-
-RESULTS_CSV=$RESULTS/results.csv
-FAILURES_CSV=$RESULTS/failures.csv
-
 export LD_PRELOAD=$TEST_LD_PRELOAD
 
 if [ -z "$DEQP_SUITE" ]; then
@@ -214,7 +210,7 @@ if [ -n "$FLAKES_CHANNEL" ]; then
   python3 $INSTALL/report-flakes.py \
          --host irc.oftc.net \
          --port 6667 \
-         --results $RESULTS_CSV \
+         --results $RESULTS/results.csv \
          --known-flakes $INSTALL/deqp-$GPU_VERSION-flakes.txt \
          --channel "$FLAKES_CHANNEL" \
          --runner "$CI_RUNNER_DESCRIPTION" \

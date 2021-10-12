@@ -53,9 +53,6 @@ fi
 
 set +e
 
-RESULTS_CSV=$RESULTS/results.csv
-FAILURES_CSV=$RESULTS/failures.csv
-
 export LD_PRELOAD=$TEST_LD_PRELOAD
 
     piglit-runner \
@@ -86,7 +83,7 @@ if [ -n "$FLAKES_CHANNEL" ]; then
   python3 $INSTALL/report-flakes.py \
          --host irc.oftc.net \
          --port 6667 \
-         --results $RESULTS_CSV \
+         --results $RESULTS/results.csv \
          --known-flakes $INSTALL/piglit-$GPU_VERSION-flakes.txt \
          --channel "$FLAKES_CHANNEL" \
          --runner "$CI_RUNNER_DESCRIPTION" \
