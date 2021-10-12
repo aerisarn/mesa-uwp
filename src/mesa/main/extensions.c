@@ -333,6 +333,14 @@ _mesa_init_extensions(struct gl_extensions *extensions)
 
    /* Then, selectively turn default extensions on. */
    extensions->dummy_true = GL_TRUE;
+
+   /* Always enable these extensions for all drivers.
+    * We can't use dummy_true in extensions_table.h for these
+    * because this would make them non-disablable using
+    * _mesa_override_extensions.
+    */
+   extensions->MESA_pack_invert = GL_TRUE;
+   extensions->MESA_window_pos = GL_TRUE;
 }
 
 
