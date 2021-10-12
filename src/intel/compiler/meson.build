@@ -158,23 +158,30 @@ libintel_compiler = static_library(
 )
 
 if with_tests
-  foreach t : ['fs_cmod_propagation', 'fs_copy_propagation',
-               'fs_saturate_propagation', 'vf_float_conversions',
-               'vec4_register_coalesce', 'vec4_copy_propagation',
-               'vec4_cmod_propagation', 'vec4_dead_code_eliminate',
-               'eu_compact', 'eu_validate', 'fs_scoreboard']
-    test(
-      t,
-      executable(
-        [t, ir_expression_operation_h],
-        'test_@0@.cpp'.format(t),
-        include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel],
-        link_with : [
-          libintel_compiler, libintel_common, libintel_dev, libisl,
-        ],
-        dependencies : [idep_gtest, idep_nir, idep_mesautil],
+  test(
+    'intel_compiler_tests',
+    executable(
+      'intel_compiler_tests',
+      files(
+        'test_eu_compact.cpp',
+        'test_eu_validate.cpp',
+        'test_fs_cmod_propagation.cpp',
+        'test_fs_copy_propagation.cpp',
+        'test_fs_saturate_propagation.cpp',
+        'test_fs_scoreboard.cpp',
+        'test_vec4_cmod_propagation.cpp',
+        'test_vec4_copy_propagation.cpp',
+        'test_vec4_dead_code_eliminate.cpp',
+        'test_vec4_register_coalesce.cpp',
+        'test_vf_float_conversions.cpp',
       ),
-      suite : ['intel'],
-    )
-  endforeach
+      ir_expression_operation_h,
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel],
+      link_with : [
+        libintel_compiler, libintel_common, libintel_dev, libisl,
+      ],
+      dependencies : [idep_gtest, idep_nir, idep_mesautil],
+    ),
+    suite : ['intel'],
+  )
 endif
