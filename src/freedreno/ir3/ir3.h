@@ -1462,6 +1462,10 @@ ir3_output_conv_src_type(struct ir3_instruction *instr, type_t base_type)
        */
       return TYPE_F32;
 
+   case OPC_FLAT_B:
+      /* Treat the input data as u32 if not interpolating. */
+      return TYPE_U32;
+
    default:
       return (instr->srcs[0]->flags & IR3_REG_HALF) ? half_type(base_type)
                                                     : full_type(base_type);
