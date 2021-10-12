@@ -903,7 +903,7 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
       return NULL;
    }
 
-   _mesa_initialize();
+   _mesa_initialize(attribs->options.mesa_extension_override);
 
    /* Create a hash table for the framebuffer interface objects
     * if it has not been created for this st manager.

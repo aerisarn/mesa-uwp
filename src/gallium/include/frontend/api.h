@@ -243,6 +243,7 @@ struct st_config_options
    bool transcode_astc;
    char *force_gl_vendor;
    char *force_gl_renderer;
+   char *mesa_extension_override;
    unsigned char config_options_sha1[20];
 };
 

@@ -251,6 +251,10 @@
 #define DRI_CONF_TRANSCODE_ASTC(def) \
    DRI_CONF_OPT_B(transcode_astc, def, "Transcode ASTC formats to DXTC if unsupported")
 
+#define DRI_CONF_MESA_EXTENSION_OVERRIDE() \
+   DRI_CONF_OPT_S_NODEF(mesa_extension_override, \
+                  "Allow enabling/disabling a list of extensions")
+
 #define DRI_CONF_GLX_EXTENSION_OVERRIDE() \
    DRI_CONF_OPT_S_NODEF(glx_extension_override, \
                   "Allow enabling/disabling a list of GLX extensions")

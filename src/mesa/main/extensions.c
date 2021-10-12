@@ -223,11 +223,11 @@ free_unknown_extensions_strings(void)
 
 
 /**
- * \brief Initialize extension override tables based on \c MESA_EXTENSION_OVERRIDE
+ * \brief Initialize extension override tables based on \c override
  *
  * This should be called one time early during first context initialization.
 
- * \c MESA_EXTENSION_OVERRIDE is a space-separated list of extensions to
+ * \c override is a space-separated list of extensions to
  * enable or disable. The list is processed thus:
  *    - Enable recognized extension names that are prefixed with '+'.
  *    - Disable recognized extension names that are prefixed with '-'.
@@ -235,9 +235,8 @@ free_unknown_extensions_strings(void)
  *    - Collect unrecognized extension names in a new string.
  */
 void
-_mesa_one_time_init_extension_overrides(void)
+_mesa_one_time_init_extension_overrides(const char *override)
 {
-   const char *env_const = os_get_option("MESA_EXTENSION_OVERRIDE");
    char *env;
    char *ext;
    size_t offset;
@@ -246,12 +245,12 @@ _mesa_one_time_init_extension_overrides(void)
    memset(&_mesa_extension_override_enables, 0, sizeof(struct gl_extensions));
    memset(&_mesa_extension_override_disables, 0, sizeof(struct gl_extensions));
 
-   if (env_const == NULL) {
+   if (override == NULL || override[0] == '\0') {
       return;
    }
 
-   /* Copy env_const because strtok() is destructive. */
-   env = strdup(env_const);
+   /* Copy 'override' because strtok() is destructive. */
+   env = strdup(override);
 
    if (env == NULL)
       return;

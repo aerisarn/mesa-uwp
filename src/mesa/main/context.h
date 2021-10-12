@@ -90,7 +90,7 @@ _mesa_initialize_visual( struct gl_config *v,
 /*@{*/
 
 extern void
-_mesa_initialize(void);
+_mesa_initialize(const char *extensions_override);
 
 extern GLboolean
 _mesa_initialize_context( struct gl_context *ctx,

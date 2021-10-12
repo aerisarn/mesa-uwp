@@ -66,6 +66,7 @@ u_driconf_fill_st_options(struct st_config_options *options,
    query_bool_option(transcode_astc);
    query_string_option(force_gl_vendor);
    query_string_option(force_gl_renderer);
+   query_string_option(mesa_extension_override);
 
    driComputeOptionsSha1(optionCache, options->config_options_sha1);
 }

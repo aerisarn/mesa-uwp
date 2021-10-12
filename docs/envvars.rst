@@ -78,7 +78,8 @@ Core Mesa environment variables
 :envvar:`MESA_EXTENSION_OVERRIDE`
    can be used to enable/disable extensions. A value such as
    ``GL_EXT_foo -GL_EXT_bar`` will enable the ``GL_EXT_foo`` extension
-   and disable the ``GL_EXT_bar`` extension.
+   and disable the ``GL_EXT_bar`` extension. Note that this will override
+   extensions override configured using driconf.
 :envvar:`MESA_EXTENSION_MAX_YEAR`
    The ``GL_EXTENSIONS`` string returned by Mesa is sorted by extension
    year. If this variable is set to year X, only extensions defined on
