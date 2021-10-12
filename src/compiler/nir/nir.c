@@ -376,7 +376,7 @@ void nir_src_copy(nir_src *dest, const nir_src *src)
       dest->reg.base_offset = src->reg.base_offset;
       dest->reg.reg = src->reg.reg;
       if (src->reg.indirect) {
-         dest->reg.indirect = malloc(sizeof(nir_src));
+         dest->reg.indirect = calloc(1, sizeof(nir_src));
          nir_src_copy(dest->reg.indirect, src->reg.indirect);
       } else {
          dest->reg.indirect = NULL;
@@ -396,7 +396,7 @@ void nir_dest_copy(nir_dest *dest, const nir_dest *src)
    dest->reg.base_offset = src->reg.base_offset;
    dest->reg.reg = src->reg.reg;
    if (src->reg.indirect) {
-      dest->reg.indirect = malloc(sizeof(nir_src));
+      dest->reg.indirect = calloc(1, sizeof(nir_src));
       nir_src_copy(dest->reg.indirect, src->reg.indirect);
    } else {
       dest->reg.indirect = NULL;
