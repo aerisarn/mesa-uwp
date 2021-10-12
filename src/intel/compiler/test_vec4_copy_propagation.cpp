@@ -27,7 +27,7 @@
 
 using namespace brw;
 
-class copy_propagation_test : public ::testing::Test {
+class copy_propagation_vec4_test : public ::testing::Test {
    virtual void SetUp();
    virtual void TearDown();
 
@@ -86,7 +86,7 @@ protected:
 };
 
 
-void copy_propagation_test::SetUp()
+void copy_propagation_vec4_test::SetUp()
 {
    ctx = ralloc_context(NULL);
    compiler = rzalloc(ctx, struct brw_compiler);
@@ -103,7 +103,7 @@ void copy_propagation_test::SetUp()
    devinfo->verx10 = devinfo->ver * 10;
 }
 
-void copy_propagation_test::TearDown()
+void copy_propagation_vec4_test::TearDown()
 {
    delete v;
    v = NULL;
@@ -132,7 +132,7 @@ copy_propagation(vec4_visitor *v)
    }
 }
 
-TEST_F(copy_propagation_test, test_swizzle_swizzle)
+TEST_F(copy_propagation_vec4_test, test_swizzle_swizzle)
 {
    dst_reg a = dst_reg(v, glsl_type::vec4_type);
    dst_reg b = dst_reg(v, glsl_type::vec4_type);
@@ -161,7 +161,7 @@ TEST_F(copy_propagation_test, test_swizzle_swizzle)
                                                     SWIZZLE_Y));
 }
 
-TEST_F(copy_propagation_test, test_swizzle_writemask)
+TEST_F(copy_propagation_vec4_test, test_swizzle_writemask)
 {
    dst_reg a = dst_reg(v, glsl_type::vec4_type);
    dst_reg b = dst_reg(v, glsl_type::vec4_type);
