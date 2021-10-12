@@ -28,7 +28,6 @@
 ///
 
 #include <llvm/Target/TargetMachine.h>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
 #include "llvm/codegen.hpp"
