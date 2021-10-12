@@ -165,7 +165,7 @@ class BitSetDerivedField(BitSetField):
         # where sign extension is needed.  We just repurpose the 'high'
         # field for that to make '1 + high - low' work out
         if 'width' in xml.attrib:
-            self.high = xml.attrib['width'] + ' - 1'
+            self.high = int(xml.attrib['width']) - 1
         self.name = xml.attrib['name']
         self.type = xml.attrib['type']
         if 'expr' in xml.attrib:
