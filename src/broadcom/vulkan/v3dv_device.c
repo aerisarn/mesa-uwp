@@ -143,6 +143,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_color_write_enable              = true,
       .EXT_custom_border_color             = true,
       .EXT_external_memory_dma_buf         = true,
+      .EXT_host_query_reset                = true,
       .EXT_index_type_uint8                = true,
       .EXT_physical_device_drm             = true,
       .EXT_pipeline_creation_cache_control = true,
@@ -1134,6 +1135,14 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (void *) ext;
          features->vertexAttributeInstanceRateDivisor = true;
          features->vertexAttributeInstanceRateZeroDivisor = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
+         VkPhysicalDeviceHostQueryResetFeatures *features =
+            (void *) ext;
+
+         features->hostQueryReset = true;
          break;
       }
 
