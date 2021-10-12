@@ -3973,6 +3973,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    assert(d->obj);
    assert(s->obj);
    util_idalloc_mt_free(&screen->buffer_ids, delete_buffer_id);
+   zink_descriptor_set_refs_clear(&d->obj->desc_set_refs, d->obj);
    /* add a ref just like check_resource_for_batch_ref() would've */
    if (zink_resource_has_binds(d) && zink_resource_has_usage(d))
       zink_batch_reference_resource(&ctx->batch, d);
