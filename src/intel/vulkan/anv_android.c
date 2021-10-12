@@ -904,6 +904,9 @@ anv_QueueSignalReleaseImageANDROID(
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .waitSemaphoreCount = 1,
             .pWaitSemaphores = pWaitSemaphores,
+            .pWaitDstStageMask = &(VkPipelineStageFlags) {
+               VK_PIPELINE_STAGE_ALL_COMMANDS_BIT
+            },
       },
       (VkFence) VK_NULL_HANDLE);
    if (result != VK_SUCCESS)
