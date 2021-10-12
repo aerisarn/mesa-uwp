@@ -666,10 +666,10 @@ sqtt_CmdEndQuery(VkCommandBuffer commandBuffer, VkQueryPool queryPool, uint32_t 
 }
 
 VKAPI_ATTR void VKAPI_CALL
-sqtt_CmdWriteTimestamp(VkCommandBuffer commandBuffer, VkPipelineStageFlagBits pipelineStage,
-                       VkQueryPool queryPool, uint32_t flags)
+sqtt_CmdWriteTimestamp2KHR(VkCommandBuffer commandBuffer, VkPipelineStageFlags2KHR stage,
+                           VkQueryPool queryPool, uint32_t query)
 {
-   API_MARKER(WriteTimestamp, commandBuffer, pipelineStage, queryPool, flags);
+   API_MARKER_ALIAS(WriteTimestamp2KHR, WriteTimestamp, commandBuffer, stage, queryPool, query);
 }
 
 VKAPI_ATTR void VKAPI_CALL
