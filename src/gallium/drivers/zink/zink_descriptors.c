@@ -285,6 +285,16 @@ descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *po
    ralloc_free(pool);
 }
 
+static void
+descriptor_pool_delete(struct zink_context *ctx, struct zink_descriptor_pool *pool)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (!pool)
+      return;
+   _mesa_hash_table_remove_key(ctx->dd->descriptor_pools[pool->type], &pool->key);
+   descriptor_pool_free(screen, pool);
+}
+
 static struct zink_descriptor_pool *
 descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type type,
                        struct zink_descriptor_layout_key *layout_key, VkDescriptorPoolSize *sizes, unsigned num_type_sizes)
@@ -975,7 +985,7 @@ zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr)
 }
 
 static inline void
-zink_descriptor_pool_reference(struct zink_screen *screen,
+zink_descriptor_pool_reference(struct zink_context *ctx,
                                struct zink_descriptor_pool **dst,
                                struct zink_descriptor_pool *src)
 {
@@ -983,7 +993,7 @@ zink_descriptor_pool_reference(struct zink_screen *screen,
 
    if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
                                 (debug_reference_descriptor)debug_describe_zink_descriptor_pool))
-      descriptor_pool_free(screen, old_dst);
+      descriptor_pool_delete(ctx, old_dst);
    if (dst) *dst = src;
 }
 
@@ -1076,7 +1086,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       struct zink_descriptor_pool *pool = descriptor_pool_get(ctx, i, pg->dd->layout_key[i], size, num_sizes);
       if (!pool)
          return false;
-      zink_descriptor_pool_reference(screen, &pdd_cached(pg)->pool[i], pool);
+      zink_descriptor_pool_reference(ctx, &pdd_cached(pg)->pool[i], pool);
 
       if (screen->info.have_KHR_descriptor_update_template &&
           screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
@@ -1089,11 +1099,10 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
 void
 zink_descriptor_program_deinit(struct zink_context *ctx, struct zink_program *pg)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (!pg->dd)
       return;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      zink_descriptor_pool_reference(screen, &pdd_cached(pg)->pool[i], NULL);
+      zink_descriptor_pool_reference(ctx, &pdd_cached(pg)->pool[i], NULL);
 
    zink_descriptor_program_deinit_lazy(ctx, pg);
 }
@@ -1101,11 +1110,10 @@ zink_descriptor_program_deinit(struct zink_context *ctx, struct zink_program *pg
 static void
 zink_descriptor_pool_deinit(struct zink_context *ctx)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       hash_table_foreach(ctx->dd->descriptor_pools[i], entry) {
          struct zink_descriptor_pool *pool = (void*)entry->data;
-         zink_descriptor_pool_reference(screen, &pool, NULL);
+         zink_descriptor_pool_reference(ctx, &pool, NULL);
       }
       _mesa_hash_table_destroy(ctx->dd->descriptor_pools[i], NULL);
    }
