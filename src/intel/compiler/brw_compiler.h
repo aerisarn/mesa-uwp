@@ -1103,6 +1103,9 @@ struct brw_bs_prog_data {
 
    /** Offset into the shader where the resume SBT is located */
    uint32_t resume_sbt_offset;
+
+   /** Number of resume shaders */
+   uint32_t num_resume_shaders;
 };
 
 struct brw_ff_gs_prog_data {

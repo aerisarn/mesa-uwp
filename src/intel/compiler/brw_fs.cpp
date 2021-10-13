@@ -8041,6 +8041,7 @@ brw_compile_bs(const struct brw_compiler *compiler,
    prog_data->base.total_scratch = 0;
 
    prog_data->max_stack_size = 0;
+   prog_data->num_resume_shaders = num_resume_shaders;
 
    fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
                   false, shader->info.stage);
