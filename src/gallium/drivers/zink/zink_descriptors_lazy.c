@@ -495,7 +495,6 @@ zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, u
                               pg->layout, type + 1, 1, &bdd->sets[is_compute][type + 1],
                               0, NULL);
    }
-   dd_lazy(ctx)->state_changed[is_compute] = false;
 }
 
 void
@@ -583,6 +582,7 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    bdd->pg[is_compute] = pg;
    ctx->dd->pg[is_compute] = pg;
    bdd->compat_id[is_compute] = pg->compat_id;
+   dd_lazy(ctx)->state_changed[is_compute] = false;
 }
 
 void
