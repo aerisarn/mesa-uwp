@@ -213,11 +213,12 @@ aco_compile_shader(unsigned shader_count, struct nir_shader* const* shaders,
          size += disasm_size;
          free(data);
       } else {
-         fprintf(stderr, "Shader disassembly is not supported in the current configuration"
+         disasm = "Shader disassembly is not supported in the current configuration"
 #ifndef LLVM_AVAILABLE
-                         " (LLVM not available)"
+                  " (LLVM not available)"
 #endif
-                         ".\n");
+                  ".\n";
+         size += disasm.length();
       }
    }
 
