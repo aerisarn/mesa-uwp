@@ -935,7 +935,7 @@ radv_FreeDescriptorSets(VkDevice _device, VkDescriptorPool descriptorPool, uint3
    return VK_SUCCESS;
 }
 
-static void
+static ALWAYS_INLINE void
 write_texel_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
                               unsigned *dst, struct radeon_winsys_bo **buffer_list,
                               const VkBufferView _buffer_view)
@@ -957,7 +957,7 @@ write_texel_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer
       *buffer_list = buffer_view->bo;
 }
 
-static void
+static ALWAYS_INLINE void
 write_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
                         unsigned *dst, struct radeon_winsys_bo **buffer_list,
                         const VkDescriptorBufferInfo *buffer_info)
@@ -1009,7 +1009,7 @@ write_buffer_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_
       *buffer_list = buffer->bo;
 }
 
-static void
+static ALWAYS_INLINE void
 write_block_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer, void *dst,
                        const VkWriteDescriptorSet *writeset)
 {
@@ -1019,7 +1019,7 @@ write_block_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_b
    memcpy(dst, inline_ub->pData, inline_ub->dataSize);
 }
 
-static void
+static ALWAYS_INLINE void
 write_dynamic_buffer_descriptor(struct radv_device *device, struct radv_descriptor_range *range,
                                 struct radeon_winsys_bo **buffer_list,
                                 const VkDescriptorBufferInfo *buffer_info)
@@ -1054,7 +1054,7 @@ write_dynamic_buffer_descriptor(struct radv_device *device, struct radv_descript
    *buffer_list = buffer->bo;
 }
 
-static void
+static ALWAYS_INLINE void
 write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
                        unsigned size, unsigned *dst, struct radeon_winsys_bo **buffer_list,
                        VkDescriptorType descriptor_type, const VkDescriptorImageInfo *image_info)
@@ -1084,7 +1084,7 @@ write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_b
       *buffer_list = iview->image->bo;
 }
 
-static void
+static ALWAYS_INLINE void
 write_combined_image_sampler_descriptor(struct radv_device *device,
                                         struct radv_cmd_buffer *cmd_buffer, unsigned sampler_offset,
                                         unsigned *dst, struct radeon_winsys_bo **buffer_list,
@@ -1100,7 +1100,7 @@ write_combined_image_sampler_descriptor(struct radv_device *device,
    }
 }
 
-static void
+static ALWAYS_INLINE void
 write_sampler_descriptor(struct radv_device *device, unsigned *dst,
                          const VkDescriptorImageInfo *image_info)
 {
@@ -1109,7 +1109,7 @@ write_sampler_descriptor(struct radv_device *device, unsigned *dst,
    memcpy(dst, sampler->state, 16);
 }
 
-static void
+static ALWAYS_INLINE void
 write_accel_struct(void *ptr, VkAccelerationStructureKHR _accel_struct)
 {
    RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct, _accel_struct);
