@@ -106,6 +106,7 @@ batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
        !batch_ptr_add_usage(batch, batch->state->dd->desc_sets, zds))
       return false;
    pipe_reference(NULL, &zds->reference);
+   pipe_reference(NULL, &zds->pool->reference);
    zink_batch_usage_set(&zds->batch_uses, batch->state);
    return true;
 }
@@ -1471,6 +1472,8 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, bp,
                                             pg->layout, h + 1, 1, &desc_set,
                                             0, NULL);
+               if (pdd_cached(pg)->cache_misses[h] == MAX_CACHE_MISSES)
+                  zink_descriptor_pool_reference(ctx, &pdd_cached(pg)->pool[h], NULL);
             }
          } else {
             zink_descriptors_update_lazy_masked(ctx, is_compute, BITFIELD_BIT(h), 0);
@@ -1508,6 +1511,10 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
        */
       pipe_reference(&zds->reference, NULL);
       zink_descriptor_set_recycle(zds);
+      if (zds->reference.count == 1) {
+         struct zink_descriptor_pool *pool = zds->pool;
+         zink_descriptor_pool_reference(bs->ctx, &pool, NULL);
+      }
       _mesa_set_remove(bs->dd->desc_sets, entry);
    }
    zink_batch_descriptor_reset_lazy(screen, bs);
