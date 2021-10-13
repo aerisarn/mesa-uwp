@@ -554,6 +554,13 @@ isa = s.isa
 <%
     if case.expr is not None:
         visited_exprs.append(case.expr)
+
+    # per-expression-case track display-field-names that we have
+    # already emitted encoding for.  It is possible that an
+    # <override> case overrides a given field (for ex. #cat5-src3)
+    # and we don't want to emit encoding for both the override and
+    # the fallback
+    seen_fields = {}
 %>
     ${case_pre(root, case.expr)}
 %   for df in case.display_fields():
@@ -569,6 +576,13 @@ isa = s.isa
               # We are in an 'else'/'else-if' leg that we wouldn't
               # go down due to passing an earlier if()
               continue
+
+          if not expr in seen_fields.keys():
+              seen_fields[expr] = []
+
+          if f.field.name in seen_fields[expr]:
+              continue
+          seen_fields[expr].append(f.field.name)
 %>
            ${case_pre(root, expr)}
 %         if f.field.get_c_typename() == 'TYPE_BITSET':
