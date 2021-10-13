@@ -2657,7 +2657,7 @@ anv_CreateImageView(VkDevice _device,
              */
             assert(isl_format_supports_typed_writes(&device->info,
                                                     format.isl_format));
-            iview->planes[vplane].storage_surface_state.state =
+            iview->planes[vplane].lowered_storage_surface_state.state =
                device->null_surface_state;
          }
       }
