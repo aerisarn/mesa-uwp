@@ -941,11 +941,16 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
       import_aux_info(r[0], r[1]);
       map_aux_addresses(screen, r[0], format, 0);
 
-      /* Add on a clear color BO. */
+      /* Add on a clear color BO.
+       *
+       * Also add some padding to make sure the fast clear color state buffer
+       * starts at a 4K alignment to avoid some unknown issues.  See the
+       * matching comment in iris_resource_create_with_modifiers().
+       */
       if (iris_get_aux_clear_color_state_size(screen) > 0) {
          res->aux.clear_color_bo =
             iris_bo_alloc(screen->bufmgr, "clear color_buffer",
-                          iris_get_aux_clear_color_state_size(screen), 1,
+                          iris_get_aux_clear_color_state_size(screen), 4096,
                           IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
       }
       break;
