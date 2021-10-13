@@ -1087,14 +1087,15 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
 }
 
 void
-zink_descriptor_program_deinit(struct zink_screen *screen, struct zink_program *pg)
+zink_descriptor_program_deinit(struct zink_context *ctx, struct zink_program *pg)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (!pg->dd)
       return;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
       zink_descriptor_pool_reference(screen, &pdd_cached(pg)->pool[i], NULL);
 
-   zink_descriptor_program_deinit_lazy(screen, pg);
+   zink_descriptor_program_deinit_lazy(ctx, pg);
 }
 
 static void

@@ -304,8 +304,9 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
 }
 
 void
-zink_descriptor_program_deinit_lazy(struct zink_screen *screen, struct zink_program *pg)
+zink_descriptor_program_deinit_lazy(struct zink_context *ctx, struct zink_program *pg)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    for (unsigned i = 0; pg->num_dsl && i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (pg->dd->layout_key[i])
          pg->dd->layout_key[i]->use_count--;
