@@ -577,31 +577,24 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
       fd = open(path, O_RDWR | O_CLOEXEC);
       if (fd < 0) {
-         if (instance->debug_flags & RADV_DEBUG_STARTUP)
-            radv_logi("Could not open device '%s'", path);
-
-         return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+         return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                          "Could not open device %s: %m", path);
       }
 
       version = drmGetVersion(fd);
       if (!version) {
          close(fd);
 
-         if (instance->debug_flags & RADV_DEBUG_STARTUP)
-            radv_logi("Could not get the kernel driver version for device '%s'", path);
-
-         return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER, "failed to get version %s: %m",
-                          path);
+         return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                          "Could not get the kernel driver version for device %s: %m", path);
       }
 
       if (strcmp(version->name, "amdgpu")) {
          drmFreeVersion(version);
          close(fd);
 
-         if (instance->debug_flags & RADV_DEBUG_STARTUP)
-            radv_logi("Device '%s' is not using the amdgpu kernel driver.", path);
-
-         return VK_ERROR_INCOMPATIBLE_DRIVER;
+         return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                          "Device '%s' is not using the AMDGPU kernel driver: %m", path);
       }
       drmFreeVersion(version);
 
