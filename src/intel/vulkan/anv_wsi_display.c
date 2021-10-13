@@ -37,8 +37,8 @@ anv_RegisterDeviceEventEXT(VkDevice _device,
    struct anv_fence *fence;
    VkResult ret;
 
-   fence = vk_zalloc2(&device->vk.alloc, allocator, sizeof (*fence), 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   fence = vk_object_zalloc(&device->vk, allocator, sizeof (*fence),
+                            VK_OBJECT_TYPE_FENCE);
    if (!fence)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -68,8 +68,8 @@ anv_RegisterDisplayEventEXT(VkDevice _device,
    struct anv_fence *fence;
    VkResult ret;
 
-   fence = vk_zalloc2(&device->vk.alloc, allocator, sizeof (*fence), 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   fence = vk_object_zalloc(&device->vk, allocator, sizeof (*fence),
+                            VK_OBJECT_TYPE_FENCE);
    if (!fence)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
