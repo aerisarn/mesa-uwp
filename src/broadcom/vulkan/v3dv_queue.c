@@ -226,7 +226,7 @@ handle_copy_query_results_cpu_job(struct v3dv_job *job)
 }
 
 static VkResult
-handle_set_event_cpu_job(struct v3dv_job *job, bool is_wait_thread)
+handle_set_event_cpu_job(struct v3dv_job *job)
 {
    /* From the Vulkan 1.0 spec:
     *
@@ -739,7 +739,7 @@ queue_submit_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_CPU_COPY_QUERY_RESULTS:
       return handle_copy_query_results_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_SET_EVENT:
-      return handle_set_event_cpu_job(job, wait_thread != NULL);
+      return handle_set_event_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
       return handle_wait_events_cpu_job(job, do_sem_wait, wait_thread);
    case V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE:
