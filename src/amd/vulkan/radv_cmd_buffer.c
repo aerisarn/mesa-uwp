@@ -4445,7 +4445,7 @@ radv_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer, uint32_t firstBindi
 
       /* pSizes and pStrides are optional. */
       if (!changed && (vb[idx].buffer != buffer || vb[idx].offset != pOffsets[i] ||
-                       vb[idx].size != size || vb[idx].stride != stride)) {
+                       vb[idx].size != size || (pStrides && vb[idx].stride != stride))) {
          changed = true;
       }
 
