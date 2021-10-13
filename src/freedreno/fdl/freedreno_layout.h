@@ -252,7 +252,7 @@ fdl_set_pitchalign(struct fdl_layout *layout, unsigned pitchalign)
 
 void fdl_dump_layout(struct fdl_layout *layout);
 
-void fdl6_get_ubwc_blockwidth(struct fdl_layout *layout, uint32_t *blockwidth,
-                              uint32_t *blockheight);
+void fdl6_get_ubwc_blockwidth(const struct fdl_layout *layout,
+                              uint32_t *blockwidth, uint32_t *blockheight);
 
 #endif /* FREEDRENO_LAYOUT_H_ */

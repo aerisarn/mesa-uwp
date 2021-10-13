@@ -30,15 +30,15 @@
 #include "freedreno_layout.h"
 
 static bool
-is_r8g8(struct fdl_layout *layout)
+is_r8g8(const struct fdl_layout *layout)
 {
    return layout->cpp == 2 &&
           util_format_get_nr_components(layout->format) == 2;
 }
 
 void
-fdl6_get_ubwc_blockwidth(struct fdl_layout *layout, uint32_t *blockwidth,
-                         uint32_t *blockheight)
+fdl6_get_ubwc_blockwidth(const struct fdl_layout *layout,
+                         uint32_t *blockwidth, uint32_t *blockheight)
 {
    static const struct {
       uint8_t width;
