@@ -124,6 +124,7 @@ struct fdl_layout {
    uint8_t cpp_shift;
 
    uint32_t width0, height0, depth0;
+   uint32_t mip_levels;
    uint32_t nr_samples;
    enum pipe_format format;
 

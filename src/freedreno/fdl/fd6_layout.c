@@ -107,6 +107,7 @@ fdl6_layout(struct fdl_layout *layout, enum pipe_format format,
    layout->width0 = width0;
    layout->height0 = height0;
    layout->depth0 = depth0;
+   layout->mip_levels = mip_levels;
 
    layout->cpp = util_format_get_blocksize(format);
    layout->cpp *= nr_samples;
