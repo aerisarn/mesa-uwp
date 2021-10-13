@@ -1464,7 +1464,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                                             0, NULL);
             }
          } else {
-            zink_descriptors_update_lazy_masked(ctx, is_compute, BITFIELD_BIT(h), false, false);
+            zink_descriptors_update_lazy_masked(ctx, is_compute, BITFIELD_BIT(h), 0);
          }
          ctx->dd->changed[is_compute][h] = false;
       }
