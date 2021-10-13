@@ -745,10 +745,7 @@ static std::pair<std::unique_ptr<::llvm::Module>, std::unique_ptr<LLVMContext>>
 clc_compile_to_llvm_module(const struct clc_compile_args *args,
                            const struct clc_logger *logger)
 {
-   LLVMInitializeAllTargets();
-   LLVMInitializeAllTargetInfos();
-   LLVMInitializeAllTargetMCs();
-   LLVMInitializeAllAsmPrinters();
+   clc_initialize_llvm();
 
    std::string log;
    std::unique_ptr<LLVMContext> llvm_ctx { new LLVMContext };
@@ -991,10 +988,7 @@ clc_spir_to_spirv(const struct clc_binary *in_spir,
                   const struct clc_logger *logger,
                   struct clc_binary *out_spirv)
 {
-   LLVMInitializeAllTargets();
-   LLVMInitializeAllTargetInfos();
-   LLVMInitializeAllTargetMCs();
-   LLVMInitializeAllAsmPrinters();
+   clc_initialize_llvm();
 
    std::unique_ptr<LLVMContext> llvm_ctx{ new LLVMContext };
    ::llvm::StringRef spir_ref(static_cast<const char*>(in_spir->data), in_spir->size);
@@ -1151,4 +1145,13 @@ void
 clc_free_spirv_binary(struct clc_binary *spvbin)
 {
    free(spvbin->data);
+}
+
+void
+clc_initialize_llvm(void)
+{
+   LLVMInitializeAllTargets();
+   LLVMInitializeAllTargetInfos();
+   LLVMInitializeAllTargetMCs();
+   LLVMInitializeAllAsmPrinters();
 }
