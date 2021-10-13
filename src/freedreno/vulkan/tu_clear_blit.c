@@ -148,13 +148,13 @@ r2d_src(struct tu_cmd_buffer *cmd,
         uint32_t layer,
         VkFilter filter)
 {
-   uint32_t src_info = iview->SP_PS_2D_SRC_INFO;
+   uint32_t src_info = iview->view.SP_PS_2D_SRC_INFO;
    if (filter != VK_FILTER_NEAREST)
       src_info |= A6XX_SP_PS_2D_SRC_INFO_FILTER;
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 5);
    tu_cs_emit(cs, src_info);
-   tu_cs_emit(cs, iview->SP_PS_2D_SRC_SIZE);
+   tu_cs_emit(cs, iview->view.SP_PS_2D_SRC_SIZE);
    tu_cs_image_ref_2d(cs, iview, layer, true);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_FLAGS, 3);
@@ -170,7 +170,7 @@ r2d_src_stencil(struct tu_cmd_buffer *cmd,
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 5);
    tu_cs_emit(cs, tu_image_view_stencil(iview, SP_PS_2D_SRC_INFO) & ~A6XX_SP_PS_2D_SRC_INFO_FLAGS);
-   tu_cs_emit(cs, iview->SP_PS_2D_SRC_SIZE);
+   tu_cs_emit(cs, iview->view.SP_PS_2D_SRC_SIZE);
    tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * layer);
    /* SP_PS_2D_SRC_PITCH has shifted pitch field */
    tu_cs_emit(cs, iview->stencil_PITCH << 9);
@@ -201,7 +201,7 @@ static void
 r2d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_INFO, 4);
-   tu_cs_emit(cs, iview->RB_2D_DST_INFO);
+   tu_cs_emit(cs, iview->view.RB_2D_DST_INFO);
    tu_cs_image_ref_2d(cs, iview, layer, false);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_FLAGS, 3);
@@ -858,9 +858,9 @@ r3d_src(struct tu_cmd_buffer *cmd,
         uint32_t layer,
         VkFilter filter)
 {
-   r3d_src_common(cmd, cs, iview->descriptor,
-                  iview->layer_size * layer,
-                  iview->ubwc_layer_size * layer,
+   r3d_src_common(cmd, cs, iview->view.descriptor,
+                  iview->view.layer_size * layer,
+                  iview->view.ubwc_layer_size * layer,
                   filter);
 }
 
@@ -906,7 +906,7 @@ r3d_src_gmem(struct tu_cmd_buffer *cmd,
              uint32_t cpp)
 {
    uint32_t desc[A6XX_TEX_CONST_DWORDS];
-   memcpy(desc, iview->descriptor, sizeof(desc));
+   memcpy(desc, iview->view.descriptor, sizeof(desc));
 
    /* patch the format so that depth/stencil get the right format */
    desc[0] &= ~A6XX_TEX_CONST_0_FMT__MASK;
@@ -931,14 +931,14 @@ static void
 r3d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(0), 6);
-   tu_cs_emit(cs, iview->RB_MRT_BUF_INFO);
+   tu_cs_emit(cs, iview->view.RB_MRT_BUF_INFO);
    tu_cs_image_ref(cs, iview, layer);
    tu_cs_emit(cs, 0);
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_FLAG_BUFFER(0), 3);
    tu_cs_image_flag_ref(cs, iview, layer);
 
-   tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL(.flag_mrts = iview->ubwc_enabled));
+   tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL(.flag_mrts = iview->view.ubwc_enabled));
 }
 
 static void
@@ -2047,7 +2047,7 @@ resolve_sysmem(struct tu_cmd_buffer *cmd,
    trace_start_sysmem_resolve(&cmd->trace, cs);
 
    ops->setup(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT,
-              0, false, dst->ubwc_enabled, VK_SAMPLE_COUNT_1_BIT);
+              0, false, dst->view.ubwc_enabled, VK_SAMPLE_COUNT_1_BIT);
    ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
 
    for_each_layer(i, layer_mask, layers) {
@@ -2569,7 +2569,7 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
 
    trace_start_sysmem_clear(&cmd->trace, cs);
 
-   ops->setup(cmd, cs, format, clear_mask, 0, true, iview->ubwc_enabled,
+   ops->setup(cmd, cs, format, clear_mask, 0, true, iview->view.ubwc_enabled,
               cmd->state.pass->attachments[a].samples);
    ops->coords(cs, &info->renderArea.offset, NULL, &info->renderArea.extent);
    ops->clear_value(cs, format, &info->pClearValues[a]);
@@ -2684,7 +2684,7 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
       tu_cs_emit_regs(cs,
                       A6XX_RB_BLIT_BASE_GMEM(attachment->gmem_offset_stencil));
    } else {
-      tu_cs_emit(cs, iview->RB_BLIT_DST_INFO);
+      tu_cs_emit(cs, iview->view.RB_BLIT_DST_INFO);
       tu_cs_image_ref_2d(cs, iview, 0, false);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_FLAG_DST, 3);
@@ -2764,7 +2764,7 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
               uint32_t cpp)
 {
    r2d_setup_common(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false,
-                    iview->ubwc_enabled, true);
+                    iview->view.ubwc_enabled, true);
    if (separate_stencil)
       r2d_dst_stencil(cs, iview, 0);
    else
@@ -2813,7 +2813,7 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
               uint32_t cpp)
 {
    r3d_setup(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false,
-             iview->ubwc_enabled, dst_samples);
+             iview->view.ubwc_enabled, dst_samples);
 
    r3d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
 
@@ -2862,11 +2862,11 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
     * required y padding in the layout (except for the last level)
     */
    bool need_y2_align =
-      y2 != iview->extent.height || iview->need_y2_align;
+      y2 != iview->view.height || iview->view.need_y2_align;
 
    bool unaligned =
       x1 % phys_dev->info->gmem_align_w ||
-      (x2 % phys_dev->info->gmem_align_w && x2 != iview->extent.width) ||
+      (x2 % phys_dev->info->gmem_align_w && x2 != iview->view.width) ||
       y1 % phys_dev->info->gmem_align_h || (y2 % phys_dev->info->gmem_align_h && need_y2_align);
 
    /* D32_SFLOAT_S8_UINT is quite special format: it has two planes,

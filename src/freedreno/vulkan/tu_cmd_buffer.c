@@ -263,12 +263,12 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
       const struct tu_image_view *iview = cmd->state.attachments[a];
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
-      tu_cs_emit(cs, iview->RB_MRT_BUF_INFO);
+      tu_cs_emit(cs, iview->view.RB_MRT_BUF_INFO);
       tu_cs_image_ref(cs, iview, 0);
       tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
 
       tu_cs_emit_regs(cs,
-                      A6XX_SP_FS_MRT_REG(i, .dword = iview->SP_FS_MRT_REG));
+                      A6XX_SP_FS_MRT_REG(i, .dword = iview->view.SP_FS_MRT_REG));
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_FLAG_BUFFER_ADDR(i), 3);
       tu_cs_image_flag_ref(cs, iview, 0);
@@ -371,7 +371,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
             continue;
 
          const struct tu_image_view *iview = cmd->state.attachments[a];
-         if (iview->ubwc_enabled)
+         if (iview->view.ubwc_enabled)
             mrts_ubwc_enable |= 1 << i;
       }
 
@@ -380,7 +380,7 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
       const uint32_t a = subpass->depth_stencil_attachment.attachment;
       if (a != VK_ATTACHMENT_UNUSED) {
          const struct tu_image_view *iview = cmd->state.attachments[a];
-         if (iview->ubwc_enabled)
+         if (iview->view.ubwc_enabled)
             cntl |= A6XX_RB_RENDER_CNTL_FLAG_DEPTH;
       }
 
@@ -1073,7 +1073,7 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
       uint32_t gmem_offset = att->gmem_offset;
       uint32_t cpp = att->cpp;
 
-      memcpy(dst, iview->descriptor, A6XX_TEX_CONST_DWORDS * 4);
+      memcpy(dst, iview->view.descriptor, A6XX_TEX_CONST_DWORDS * 4);
 
       if (i % 2 == 1 && att->format == VK_FORMAT_D24_UNORM_S8_UINT) {
          /* note this works because spec says fb and input attachments

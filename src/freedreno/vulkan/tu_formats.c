@@ -60,7 +60,7 @@ tu6_format_vtx_supported(VkFormat vk_format)
  * for VK RGB formats yet, and we'd have to switch all consumers of that
  * function at once.
  */
-static enum pipe_format
+enum pipe_format
 tu_vk_format_to_pipe_format(VkFormat vk_format)
 {
    switch (vk_format) {

@@ -82,6 +82,30 @@ tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask)
    }
 }
 
+static enum pipe_format
+tu_format_for_aspect(enum pipe_format format, VkImageAspectFlags aspect_mask)
+{
+   switch (format) {
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      if (aspect_mask & VK_IMAGE_ASPECT_COLOR_BIT)
+         return PIPE_FORMAT_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+      if (aspect_mask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         if (aspect_mask & VK_IMAGE_ASPECT_DEPTH_BIT)
+            return PIPE_FORMAT_Z24_UNORM_S8_UINT;
+         else
+            return PIPE_FORMAT_X24S8_UINT;
+      } else {
+         return PIPE_FORMAT_Z24X8_UNORM;
+      }
+   case PIPE_FORMAT_Z24X8_UNORM:
+      if (aspect_mask & VK_IMAGE_ASPECT_COLOR_BIT)
+         return PIPE_FORMAT_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+      return PIPE_FORMAT_Z24X8_UNORM;
+   default:
+      return format;
+   }
+}
+
 static void
 compose_swizzle(unsigned char *swiz, const VkComponentMapping *mapping)
 {
@@ -170,9 +194,9 @@ tu6_texswiz(const VkComponentMapping *comps,
 void
 tu_cs_image_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   tu_cs_emit(cs, iview->PITCH);
-   tu_cs_emit(cs, iview->layer_size >> 6);
-   tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
+   tu_cs_emit(cs, iview->view.PITCH);
+   tu_cs_emit(cs, iview->view.layer_size >> 6);
+   tu_cs_emit_qw(cs, iview->view.base_addr + iview->view.layer_size * layer);
 }
 
 void
@@ -186,16 +210,16 @@ tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uin
 void
 tu_cs_image_ref_2d(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer, bool src)
 {
-   tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
+   tu_cs_emit_qw(cs, iview->view.base_addr + iview->view.layer_size * layer);
    /* SP_PS_2D_SRC_PITCH has shifted pitch field */
-   tu_cs_emit(cs, iview->PITCH << (src ? 9 : 0));
+   tu_cs_emit(cs, iview->view.PITCH << (src ? 9 : 0));
 }
 
 void
 tu_cs_image_flag_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   tu_cs_emit_qw(cs, iview->ubwc_addr + iview->ubwc_layer_size * layer);
-   tu_cs_emit(cs, iview->FLAG_BUFFER_PITCH);
+   tu_cs_emit_qw(cs, iview->view.ubwc_addr + iview->view.ubwc_layer_size * layer);
+   tu_cs_emit(cs, iview->view.FLAG_BUFFER_PITCH);
 }
 
 void
@@ -215,10 +239,72 @@ tu_image_view_init(struct tu_image_view *iview,
 
    iview->image = image;
 
-   memset(iview->descriptor, 0, sizeof(iview->descriptor));
+   const struct fdl_layout *layouts[3];
 
-   struct fdl_layout *layout =
-      &image->layout[tu6_plane_index(image->vk_format, aspect_mask)];
+   layouts[0] = &image->layout[tu6_plane_index(image->vk_format, aspect_mask)];
+
+   if (aspect_mask != VK_IMAGE_ASPECT_COLOR_BIT)
+      format = tu6_plane_format(format, tu6_plane_index(format, aspect_mask));
+
+   if (aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT &&
+       (format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
+        format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM)) {
+      layouts[1] = &image->layout[1];
+      layouts[2] = &image->layout[2];
+   }
+
+   struct fdl_view_args args = {};
+   args.iova = image->bo->iova + image->bo_offset;
+   args.base_array_layer = range->baseArrayLayer;
+   args.base_miplevel = range->baseMipLevel;
+   args.layer_count = tu_get_layerCount(image, range);
+   args.level_count = tu_get_levelCount(image, range);
+   args.format = tu_format_for_aspect(tu_vk_format_to_pipe_format(format),
+                                      aspect_mask);
+   vk_component_mapping_to_pipe_swizzle(pCreateInfo->components, args.swiz);
+   if (conversion) {
+      unsigned char conversion_swiz[4], create_swiz[4];
+      memcpy(create_swiz, args.swiz, sizeof(create_swiz));
+      vk_component_mapping_to_pipe_swizzle(conversion->components,
+                                           conversion_swiz);
+      util_format_compose_swizzles(create_swiz, conversion_swiz, args.swiz);
+   }
+
+   switch (pCreateInfo->viewType) {
+   case VK_IMAGE_VIEW_TYPE_1D:
+   case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+      args.type = FDL_VIEW_TYPE_1D;
+      break;
+   case VK_IMAGE_VIEW_TYPE_2D:
+   case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+      args.type = FDL_VIEW_TYPE_2D;
+      break;
+   case VK_IMAGE_VIEW_TYPE_CUBE:
+   case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+      args.type = FDL_VIEW_TYPE_CUBE;
+      break;
+   case VK_IMAGE_VIEW_TYPE_3D:
+      args.type = FDL_VIEW_TYPE_3D;
+      break;
+   default:
+      unreachable("unknown view type");
+   }
+
+   STATIC_ASSERT((unsigned)VK_CHROMA_LOCATION_COSITED_EVEN == (unsigned)FDL_CHROMA_LOCATION_COSITED_EVEN);
+   STATIC_ASSERT((unsigned)VK_CHROMA_LOCATION_MIDPOINT == (unsigned)FDL_CHROMA_LOCATION_MIDPOINT);
+   if (conversion) {
+      args.chroma_offsets[0] = (enum fdl_chroma_location) conversion->chroma_offsets[0];
+      args.chroma_offsets[1] = (enum fdl_chroma_location) conversion->chroma_offsets[1];
+   }
+
+   struct fdl6_view temp_view;
+   fdl6_view_init(&temp_view, layouts, &args, has_z24uint_s8uint);
+
+   memset(&iview->view, 0, sizeof(iview->view));
+
+   memset(iview->view.descriptor, 0, sizeof(iview->view.descriptor)); 
+
+   const struct fdl_layout *layout = layouts[0];
 
    uint32_t width = u_minify(layout->width0, range->baseMipLevel);
    uint32_t height = u_minify(layout->height0, range->baseMipLevel);
@@ -272,7 +358,7 @@ tu_image_view_init(struct tu_image_view *iview,
       /* TODO: also use this format with storage descriptor ? */
    }
 
-   iview->descriptor[0] =
+   iview->view.descriptor[0] =
       A6XX_TEX_CONST_0_TILE_MODE(fmt.tile_mode) |
       COND(vk_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
       A6XX_TEX_CONST_0_FMT(fmt_tex) |
@@ -280,17 +366,17 @@ tu_image_view_init(struct tu_image_view *iview,
       A6XX_TEX_CONST_0_SWAP(fmt.swap) |
       tu6_texswiz(&pCreateInfo->components, conversion, format, aspect_mask, has_z24uint_s8uint) |
       A6XX_TEX_CONST_0_MIPLVLS(tu_get_levelCount(image, range) - 1);
-   iview->descriptor[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
-   iview->descriptor[2] =
+   iview->view.descriptor[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
+   iview->view.descriptor[2] =
       A6XX_TEX_CONST_2_PITCHALIGN(layout->pitchalign - 6) |
       A6XX_TEX_CONST_2_PITCH(pitch) |
       A6XX_TEX_CONST_2_TYPE(tu6_tex_type(pCreateInfo->viewType, false));
-   iview->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(layer_size);
-   iview->descriptor[4] = base_addr;
-   iview->descriptor[5] = (base_addr >> 32) | A6XX_TEX_CONST_5_DEPTH(depth);
+   iview->view.descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(layer_size);
+   iview->view.descriptor[4] = base_addr;
+   iview->view.descriptor[5] = (base_addr >> 32) | A6XX_TEX_CONST_5_DEPTH(depth);
 
    if (layout->tile_all)
-      iview->descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
+      iview->view.descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
 
    if (format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
        format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
@@ -298,16 +384,16 @@ tu_image_view_init(struct tu_image_view *iview,
       assert(tu_get_levelCount(image, range) == 1);
       if (conversion) {
          if (conversion->chroma_offsets[0] == VK_CHROMA_LOCATION_MIDPOINT)
-            iview->descriptor[0] |= A6XX_TEX_CONST_0_CHROMA_MIDPOINT_X;
+            iview->view.descriptor[0] |= A6XX_TEX_CONST_0_CHROMA_MIDPOINT_X;
          if (conversion->chroma_offsets[1] == VK_CHROMA_LOCATION_MIDPOINT)
-            iview->descriptor[0] |= A6XX_TEX_CONST_0_CHROMA_MIDPOINT_Y;
+            iview->view.descriptor[0] |= A6XX_TEX_CONST_0_CHROMA_MIDPOINT_Y;
       }
 
       uint64_t base_addr[3];
 
-      iview->descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
+      iview->view.descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
       if (ubwc_enabled) {
-         iview->descriptor[3] |= A6XX_TEX_CONST_3_FLAG;
+         iview->view.descriptor[3] |= A6XX_TEX_CONST_3_FLAG;
          /* no separate ubwc base, image must have the expected layout */
          for (uint32_t i = 0; i < 3; i++) {
             base_addr[i] = image->bo->iova + image->bo_offset +
@@ -320,16 +406,17 @@ tu_image_view_init(struct tu_image_view *iview,
          }
       }
 
-      iview->descriptor[4] = base_addr[0];
-      iview->descriptor[5] |= base_addr[0] >> 32;
-      iview->descriptor[6] =
+      iview->view.descriptor[4] = base_addr[0];
+      iview->view.descriptor[5] |= base_addr[0] >> 32;
+      iview->view.descriptor[6] =
          A6XX_TEX_CONST_6_PLANE_PITCH(fdl_pitch(&image->layout[1], range->baseMipLevel));
-      iview->descriptor[7] = base_addr[1];
-      iview->descriptor[8] = base_addr[1] >> 32;
-      iview->descriptor[9] = base_addr[2];
-      iview->descriptor[10] = base_addr[2] >> 32;
+      iview->view.descriptor[7] = base_addr[1];
+      iview->view.descriptor[8] = base_addr[1] >> 32;
+      iview->view.descriptor[9] = base_addr[2];
+      iview->view.descriptor[10] = base_addr[2] >> 32;
 
       assert(pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_3D);
+      assert(memcmp(&temp_view, &iview->view, sizeof(temp_view)) == 0);
       return;
    }
 
@@ -337,22 +424,22 @@ tu_image_view_init(struct tu_image_view *iview,
       uint32_t block_width, block_height;
       fdl6_get_ubwc_blockwidth(layout, &block_width, &block_height);
 
-      iview->descriptor[3] |= A6XX_TEX_CONST_3_FLAG;
-      iview->descriptor[7] = ubwc_addr;
-      iview->descriptor[8] = ubwc_addr >> 32;
-      iview->descriptor[9] |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(layout->ubwc_layer_size >> 2);
-      iview->descriptor[10] |=
+      iview->view.descriptor[3] |= A6XX_TEX_CONST_3_FLAG;
+      iview->view.descriptor[7] = ubwc_addr;
+      iview->view.descriptor[8] = ubwc_addr >> 32;
+      iview->view.descriptor[9] |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(layout->ubwc_layer_size >> 2);
+      iview->view.descriptor[10] |=
          A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(ubwc_pitch) |
          A6XX_TEX_CONST_10_FLAG_BUFFER_LOGW(util_logbase2_ceil(DIV_ROUND_UP(width, block_width))) |
          A6XX_TEX_CONST_10_FLAG_BUFFER_LOGH(util_logbase2_ceil(DIV_ROUND_UP(height, block_height)));
    }
 
    if (pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_3D) {
-      iview->descriptor[3] |=
+      iview->view.descriptor[3] |=
          A6XX_TEX_CONST_3_MIN_LAYERSZ(layout->slices[image->level_count - 1].size0);
    }
 
-   iview->SP_PS_2D_SRC_INFO = A6XX_SP_PS_2D_SRC_INFO(
+   iview->view.SP_PS_2D_SRC_INFO = A6XX_SP_PS_2D_SRC_INFO(
       .color_format = fmt.fmt,
       .tile_mode = fmt.tile_mode,
       .color_swap = fmt.swap,
@@ -364,18 +451,18 @@ tu_image_view_init(struct tu_image_view *iview,
                            !vk_format_is_depth_or_stencil(format),
       .unk20 = 1,
       .unk22 = 1).value;
-   iview->SP_PS_2D_SRC_SIZE =
+   iview->view.SP_PS_2D_SRC_SIZE =
       A6XX_SP_PS_2D_SRC_SIZE(.width = width, .height = height).value;
 
    /* note: these have same encoding for MRT and 2D (except 2D PITCH src) */
-   iview->PITCH = A6XX_RB_DEPTH_BUFFER_PITCH(pitch).value;
-   iview->FLAG_BUFFER_PITCH = A6XX_RB_DEPTH_FLAG_BUFFER_PITCH(
+   iview->view.PITCH = A6XX_RB_DEPTH_BUFFER_PITCH(pitch).value;
+   iview->view.FLAG_BUFFER_PITCH = A6XX_RB_DEPTH_FLAG_BUFFER_PITCH(
       .pitch = ubwc_pitch, .array_pitch = layout->ubwc_layer_size >> 2).value;
 
-   iview->base_addr = base_addr;
-   iview->ubwc_addr = ubwc_addr;
-   iview->layer_size = layer_size;
-   iview->ubwc_layer_size = layout->ubwc_layer_size;
+   iview->view.base_addr = base_addr;
+   iview->view.ubwc_addr = ubwc_addr;
+   iview->view.layer_size = layer_size;
+   iview->view.ubwc_layer_size = layout->ubwc_layer_size;
 
    /* Don't set fields that are only used for attachments/blit dest if COLOR
     * is unsupported.
@@ -389,56 +476,56 @@ tu_image_view_init(struct tu_image_view *iview,
    if (is_d24s8 && ubwc_enabled)
       cfmt.fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 
-   memset(iview->storage_descriptor, 0, sizeof(iview->storage_descriptor));
+   memset(iview->view.storage_descriptor, 0, sizeof(iview->view.storage_descriptor));
 
-   iview->storage_descriptor[0] =
+   iview->view.storage_descriptor[0] =
       A6XX_IBO_0_FMT(fmt.fmt) |
       A6XX_IBO_0_TILE_MODE(fmt.tile_mode);
-   iview->storage_descriptor[1] =
+   iview->view.storage_descriptor[1] =
       A6XX_IBO_1_WIDTH(width) |
       A6XX_IBO_1_HEIGHT(height);
-   iview->storage_descriptor[2] =
+   iview->view.storage_descriptor[2] =
       A6XX_IBO_2_PITCH(pitch) |
       A6XX_IBO_2_TYPE(tu6_tex_type(pCreateInfo->viewType, true));
-   iview->storage_descriptor[3] = A6XX_IBO_3_ARRAY_PITCH(layer_size);
+   iview->view.storage_descriptor[3] = A6XX_IBO_3_ARRAY_PITCH(layer_size);
 
-   iview->storage_descriptor[4] = base_addr;
-   iview->storage_descriptor[5] = (base_addr >> 32) | A6XX_IBO_5_DEPTH(storage_depth);
+   iview->view.storage_descriptor[4] = base_addr;
+   iview->view.storage_descriptor[5] = (base_addr >> 32) | A6XX_IBO_5_DEPTH(storage_depth);
 
    if (ubwc_enabled) {
-      iview->storage_descriptor[3] |= A6XX_IBO_3_FLAG | A6XX_IBO_3_UNK27;
-      iview->storage_descriptor[7] |= ubwc_addr;
-      iview->storage_descriptor[8] |= ubwc_addr >> 32;
-      iview->storage_descriptor[9] = A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(layout->ubwc_layer_size >> 2);
-      iview->storage_descriptor[10] =
+      iview->view.storage_descriptor[3] |= A6XX_IBO_3_FLAG | A6XX_IBO_3_UNK27;
+      iview->view.storage_descriptor[7] |= ubwc_addr;
+      iview->view.storage_descriptor[8] |= ubwc_addr >> 32;
+      iview->view.storage_descriptor[9] = A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(layout->ubwc_layer_size >> 2);
+      iview->view.storage_descriptor[10] =
          A6XX_IBO_10_FLAG_BUFFER_PITCH(ubwc_pitch);
    }
 
-   iview->extent.width = width;
-   iview->extent.height = height;
-   iview->need_y2_align =
+   iview->view.width = width;
+   iview->view.height = height;
+   iview->view.need_y2_align =
       (fmt.tile_mode == TILE6_LINEAR && range->baseMipLevel != image->level_count - 1);
 
-   iview->ubwc_enabled = ubwc_enabled;
+   iview->view.ubwc_enabled = ubwc_enabled;
 
-   iview->RB_MRT_BUF_INFO = A6XX_RB_MRT_BUF_INFO(0,
+   iview->view.RB_MRT_BUF_INFO = A6XX_RB_MRT_BUF_INFO(0,
                               .color_tile_mode = cfmt.tile_mode,
                               .color_format = cfmt.fmt,
                               .color_swap = cfmt.swap).value;
 
-   iview->SP_FS_MRT_REG = A6XX_SP_FS_MRT_REG(0,
+   iview->view.SP_FS_MRT_REG = A6XX_SP_FS_MRT_REG(0,
                               .color_format = cfmt.fmt,
                               .color_sint = vk_format_is_sint(format),
                               .color_uint = vk_format_is_uint(format)).value;
 
-   iview->RB_2D_DST_INFO = A6XX_RB_2D_DST_INFO(
+   iview->view.RB_2D_DST_INFO = A6XX_RB_2D_DST_INFO(
       .color_format = cfmt.fmt,
       .tile_mode = cfmt.tile_mode,
       .color_swap = cfmt.swap,
       .flags = ubwc_enabled,
       .srgb = vk_format_is_srgb(format)).value;
 
-   iview->RB_BLIT_DST_INFO = A6XX_RB_BLIT_DST_INFO(
+   iview->view.RB_BLIT_DST_INFO = A6XX_RB_BLIT_DST_INFO(
       .tile_mode = cfmt.tile_mode,
       .samples = tu_msaa_samples(layout->nr_samples),
       .color_format = cfmt.fmt,
@@ -452,6 +539,8 @@ tu_image_view_init(struct tu_image_view *iview,
       iview->stencil_layer_size = fdl_layer_stride(layout, range->baseMipLevel);
       iview->stencil_PITCH = A6XX_RB_STENCIL_BUFFER_PITCH(fdl_pitch(layout, range->baseMipLevel)).value;
    }
+
+   assert(memcmp(&temp_view, &iview->view, sizeof(temp_view)) == 0);
 }
 
 bool

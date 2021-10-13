@@ -108,6 +108,7 @@ void
 fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
                const struct fdl_view_args *args, bool has_z24uint_s8uint)
 {
+   memset(view, 0, sizeof(*view));
    const struct fdl_layout *layout = layouts[0];
    uint32_t width = u_minify(layout->width0, args->base_miplevel);
    uint32_t height = u_minify(layout->height0, args->base_miplevel);
