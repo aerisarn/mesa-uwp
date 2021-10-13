@@ -464,6 +464,13 @@ vk_device_entrypoint_is_enabled(int index, uint32_t core_version,
    }
 }
 
+#ifdef _MSC_VER
+void vk_entrypoint_stub(void)
+{
+   unreachable(!"Entrypoint not implemented");
+}
+#endif
+
 <%def name="dispatch_table_from_entrypoints(type)">
 void vk_${type}_dispatch_table_from_entrypoints(
     struct vk_${type}_dispatch_table *dispatch_table,
@@ -477,8 +484,8 @@ void vk_${type}_dispatch_table_from_entrypoints(
         memset(dispatch_table, 0, sizeof(*dispatch_table));
         for (unsigned i = 0; i < ARRAY_SIZE(${type}_compaction_table); i++) {
 #ifdef _MSC_VER
-            const uintptr_t zero = 0;
-            if (entry[i] == NULL || memcmp(entry[i], &zero, sizeof(zero)) == 0)
+            assert(entry[i] != NULL);
+            if (entry[i] == vk_entrypoint_stub)
 #else
             if (entry[i] == NULL)
 #endif
@@ -490,7 +497,12 @@ void vk_${type}_dispatch_table_from_entrypoints(
     } else {
         for (unsigned i = 0; i < ARRAY_SIZE(${type}_compaction_table); i++) {
             unsigned disp_index = ${type}_compaction_table[i];
+#ifdef _MSC_VER
+            assert(entry[i] != NULL);
+            if (disp[disp_index] == NULL && entry[i] != vk_entrypoint_stub)
+#else
             if (disp[disp_index] == NULL)
+#endif
                 disp[disp_index] = entry[i];
         }
     }
