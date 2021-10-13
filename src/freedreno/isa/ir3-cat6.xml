@@ -66,8 +66,8 @@ SOFTWARE.
 	<pattern pos="22"          >0</pattern> <!-- Imm offset ldg form -->
 
 	<encode>
-		<map name="OFF">src->srcs[1]->iim_val</map>
-		<map name="SIZE">src->srcs[2]->uim_val</map>
+		<map name="OFF">extract_reg_iim(src->srcs[1])</map>
+		<map name="SIZE">extract_reg_uim(src->srcs[2])</map>
 	</encode>
 </bitset>
 
@@ -101,9 +101,9 @@ SOFTWARE.
 
 	<encode>
 		<map name="SRC2">src->srcs[1]</map>
-		<map name="SRC2_ADD_DWORD_SHIFT">src->srcs[2]->uim_val</map>
-		<map name="OFF">src->srcs[3]->uim_val</map>
-		<map name="SIZE">src->srcs[4]->uim_val</map>
+		<map name="SRC2_ADD_DWORD_SHIFT">extract_reg_uim(src->srcs[2])</map>
+		<map name="OFF">extract_reg_uim(src->srcs[3])</map>
+		<map name="SIZE">extract_reg_uim(src->srcs[4])</map>
 	</encode>
 </bitset>
 
@@ -141,10 +141,10 @@ SOFTWARE.
 	<pattern pos="52" >0</pattern> <!-- Imm offset stg form -->
 
 	<encode>
-		<map name="OFF_LO">src->srcs[1]->iim_val &amp; 0xff</map>
-		<map name="OFF_HI">src->srcs[1]->iim_val >> 8</map>
+		<map name="OFF_LO">extract_reg_iim(src->srcs[1]) &amp; 0xff</map>
+		<map name="OFF_HI">extract_reg_iim(src->srcs[1]) >> 8</map>
 		<map name="SRC3">src->srcs[2]</map>
-		<map name="SIZE">src->srcs[3]->uim_val</map>
+		<map name="SIZE">extract_reg_uim(src->srcs[3])</map>
 	</encode>
 </bitset>
 
@@ -178,10 +178,10 @@ SOFTWARE.
 
 	<encode>
 		<map name="SRC2">src->srcs[1]</map>
-		<map name="SRC2_ADD_DWORD_SHIFT">src->srcs[2]->uim_val</map>
-		<map name="OFF">src->srcs[3]->uim_val</map>
+		<map name="SRC2_ADD_DWORD_SHIFT">extract_reg_uim(src->srcs[2])</map>
+		<map name="OFF">extract_reg_uim(src->srcs[3])</map>
 		<map name="SRC3">src->srcs[4]</map>
-		<map name="SIZE">src->srcs[5]->uim_val</map>
+		<map name="SIZE">extract_reg_uim(src->srcs[5])</map>
 	</encode>
 </bitset>
 
@@ -196,9 +196,9 @@ SOFTWARE.
 	<pattern low="40" high="48">xxxxxxxxx</pattern>
 	<pattern low="52" high="53">xx</pattern>
 	<encode>
-		<map name="OFF">src->srcs[1]->uim_val</map>
+		<map name="OFF">extract_reg_uim(src->srcs[1])</map>
 		<map name="SRC">src->srcs[0]</map>
-		<map name="SIZE">src->srcs[2]->uim_val</map>
+		<map name="SIZE">extract_reg_uim(src->srcs[2])</map>
 	</encode>
 </bitset>
 
@@ -249,8 +249,8 @@ SOFTWARE.
 	<pattern low="52" high="53">xx</pattern>
 	<pattern low="54" high="58">11111</pattern>  <!-- OPC -->
 	<encode>
-		<map name="SIZE">src->srcs[1]->uim_val</map>
-		<map name="OFF">src->srcs[0]->uim_val</map>
+		<map name="SIZE">extract_reg_uim(src->srcs[1])</map>
+		<map name="OFF">extract_reg_uim(src->srcs[0])</map>
 	</encode>
 </bitset>
 
@@ -278,7 +278,7 @@ SOFTWARE.
 		<map name="OFF_LO">src->cat6.dst_offset &amp; 0xff</map>
 		<map name="SRC">src->srcs[1]</map>
 		<map name="DST">src->srcs[0]</map>"
-		<map name="SIZE">src->srcs[2]->uim_val</map>
+		<map name="SIZE">extract_reg_uim(src->srcs[2])</map>
 	</encode>
 </bitset>
 
@@ -343,7 +343,7 @@ SOFTWARE.
 	<pattern low="52" high="53">xx</pattern>
 	<pattern low="54" high="58">11100</pattern>  <!-- OPC -->
 	<encode>
-		<map name="DST">src->srcs[0]->uim_val</map>
+		<map name="DST">extract_reg_uim(src->srcs[0])</map>
 		<map name="SRC">src->srcs[1]</map>
 	</encode>
 </bitset>
@@ -902,7 +902,7 @@ SOFTWARE.
 	<encode type="struct ir3_register *">
 		<map name="GPR">src->num >> 2</map>
 		<map name="SWIZ">src->num &amp; 0x3</map>
-		<map name="IMMED">src->iim_val</map>
+		<map name="IMMED">extract_reg_iim(src)</map>
 	</encode>
 </bitset>
 
