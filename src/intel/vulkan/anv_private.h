@@ -880,6 +880,8 @@ struct anv_physical_device {
     struct brw_compiler *                       compiler;
     struct isl_device                           isl_dev;
     struct intel_perf_config *                    perf;
+   /* True if hardware support is incomplete/alpha */
+    bool                                        is_alpha;
     /*
      * Number of commands required to implement a performance query begin +
      * end.
