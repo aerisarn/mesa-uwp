@@ -5735,6 +5735,13 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
    assert(cmd_buffer->cs->cdw <= cdw_max);
 }
 
+void
+radv_cmd_buffer_restore_subpass(struct radv_cmd_buffer *cmd_buffer,
+                                const struct radv_subpass *subpass)
+{
+   radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
+}
+
 static void
 radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
 {
