@@ -1063,6 +1063,9 @@ fs_generator::generate_get_buffer_size(fs_inst *inst,
       dst = vec16(dst);
    }
 
+   uint32_t return_format =
+      devinfo->ver >= 8 ? GFX8_SAMPLER_RETURN_FORMAT_32BITS :
+                          BRW_SAMPLER_RETURN_FORMAT_SINT32;
    brw_SAMPLE(p,
               retype(dst, BRW_REGISTER_TYPE_UW),
               inst->base_mrf,
@@ -1074,7 +1077,7 @@ fs_generator::generate_get_buffer_size(fs_inst *inst,
               inst->mlen,
               inst->header_size > 0,
               simd_mode,
-              BRW_SAMPLER_RETURN_FORMAT_SINT32);
+              return_format);
 }
 
 void
