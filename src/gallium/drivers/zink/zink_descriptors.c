@@ -598,8 +598,11 @@ descriptor_pool_get(struct zink_context *ctx, enum zink_descriptor_type type,
 
       hash = hash_descriptor_pool(&key);
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(ctx->dd->descriptor_pools[type], hash, &key);
-      if (he)
-         return (void*)he->data;
+      if (he) {
+         struct zink_descriptor_pool *pool = he->data;
+         pipe_reference(NULL, &pool->reference);
+         return pool;
+      }
    }
    struct zink_descriptor_pool *pool = descriptor_pool_create(zink_screen(ctx->base.screen), type, layout_key, sizes, num_type_sizes);
    if (type != ZINK_DESCRIPTOR_TYPES)
@@ -1086,7 +1089,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       struct zink_descriptor_pool *pool = descriptor_pool_get(ctx, i, pg->dd->layout_key[i], size, num_sizes);
       if (!pool)
          return false;
-      zink_descriptor_pool_reference(ctx, &pdd_cached(pg)->pool[i], pool);
+      pdd_cached(pg)->pool[i] = pool;
 
       if (screen->info.have_KHR_descriptor_update_template &&
           screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOTEMPLATES)
