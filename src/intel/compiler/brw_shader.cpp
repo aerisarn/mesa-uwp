@@ -1294,14 +1294,14 @@ backend_shader::dump_instructions(const char *name) const
    if (cfg) {
       int ip = 0;
       foreach_block_and_inst(block, backend_instruction, inst, cfg) {
-         if (!(INTEL_DEBUG & DEBUG_OPTIMIZER))
+         if (!INTEL_DEBUG(DEBUG_OPTIMIZER))
             fprintf(file, "%4d: ", ip++);
          dump_instruction(inst, file);
       }
    } else {
       int ip = 0;
       foreach_in_list(backend_instruction, inst, &instructions) {
-         if (!(INTEL_DEBUG & DEBUG_OPTIMIZER))
+         if (!INTEL_DEBUG(DEBUG_OPTIMIZER))
             fprintf(file, "%4d: ", ip++);
          dump_instruction(inst, file);
       }
@@ -1340,7 +1340,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 {
    const struct intel_device_info *devinfo = compiler->devinfo;
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_EVAL];
-   const bool debug_enabled = INTEL_DEBUG & DEBUG_TES;
+   const bool debug_enabled = INTEL_DEBUG(DEBUG_TES);
    const unsigned *assembly;
 
    prog_data->base.base.stage = MESA_SHADER_TESS_EVAL;

@@ -4273,7 +4273,7 @@ genX(upload_cs_state)(struct brw_context *brw)
    const struct brw_cs_dispatch_info dispatch =
       brw_cs_get_dispatch_info(devinfo, cs_prog_data, brw->compute.group_size);
 
-   if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
+   if (INTEL_DEBUG(DEBUG_SHADER_TIME)) {
       brw_emit_buffer_surface_state(
          brw, &stage_state->surf_offset[
                  prog_data->binding_table.shader_time_start],

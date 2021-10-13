@@ -8489,7 +8489,7 @@ fs_visitor::optimize()
       pass_num++;                                                       \
       bool this_progress = pass(args);                                  \
                                                                         \
-      if ((INTEL_DEBUG & DEBUG_OPTIMIZER) && this_progress) {           \
+      if (INTEL_DEBUG(DEBUG_OPTIMIZER) && this_progress) {              \
          char filename[64];                                             \
          snprintf(filename, 64, "%s%d-%s-%02d-%02d-" #pass,              \
                   stage_abbrev, dispatch_width, nir->info.name, iteration, pass_num); \
@@ -8503,7 +8503,7 @@ fs_visitor::optimize()
       this_progress;                                                    \
    })
 
-   if (INTEL_DEBUG & DEBUG_OPTIMIZER) {
+   if (INTEL_DEBUG(DEBUG_OPTIMIZER)) {
       char filename[64];
       snprintf(filename, 64, "%s%d-%s-00-00-start",
                stage_abbrev, dispatch_width, nir->info.name);
@@ -8862,7 +8862,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
       "lifo"
    };
 
-   bool spill_all = allow_spilling && (INTEL_DEBUG & DEBUG_SPILL_FS);
+   bool spill_all = allow_spilling && INTEL_DEBUG(DEBUG_SPILL_FS);
 
    /* Try each scheduling heuristic to see if it can successfully register
     * allocate without spilling.  They should be ordered by decreasing
@@ -9714,7 +9714,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    struct brw_wm_prog_data *prog_data = params->prog_data;
    bool allow_spilling = params->allow_spilling;
    const bool debug_enabled =
-      INTEL_DEBUG & (params->debug_flag ? params->debug_flag : DEBUG_WM);
+      INTEL_DEBUG(params->debug_flag ? params->debug_flag : DEBUG_WM);
 
    prog_data->base.stage = MESA_SHADER_FRAGMENT;
 
@@ -9762,7 +9762,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
       params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
       delete v8;
       return NULL;
-   } else if (!(INTEL_DEBUG & DEBUG_NO8)) {
+   } else if (!INTEL_DEBUG(DEBUG_NO8)) {
       simd8_cfg = v8->cfg;
       prog_data->base.dispatch_grf_start_reg = v8->payload.num_regs;
       prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
@@ -9776,7 +9776,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
     * See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1917
     */
    if (devinfo->ver == 8 && prog_data->dual_src_blend &&
-       !(INTEL_DEBUG & DEBUG_NO8)) {
+       !INTEL_DEBUG(DEBUG_NO8)) {
       assert(!params->use_rep_send);
       v8->limit_dispatch_width(8, "gfx8 workaround: "
                                "using SIMD8 when dual src blending.\n");
@@ -9793,7 +9793,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
 
    if (!has_spilled &&
        v8->max_dispatch_width >= 16 &&
-       (!(INTEL_DEBUG & DEBUG_NO16) || params->use_rep_send)) {
+       (!INTEL_DEBUG(DEBUG_NO16) || params->use_rep_send)) {
       /* Try a SIMD16 compile */
       v16 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base, nir, 16,
@@ -9821,7 +9821,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    if (!has_spilled &&
        v8->max_dispatch_width >= 32 && !params->use_rep_send &&
        devinfo->ver >= 6 && !simd16_failed &&
-       !(INTEL_DEBUG & DEBUG_NO32)) {
+       !INTEL_DEBUG(DEBUG_NO32)) {
       /* Try a SIMD32 compile */
       v32 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base, nir, 32,
@@ -9835,7 +9835,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
       } else {
          const performance &perf = v32->performance_analysis.require();
 
-         if (!(INTEL_DEBUG & DEBUG_DO32) && throughput >= perf.throughput) {
+         if (!INTEL_DEBUG(DEBUG_DO32) && throughput >= perf.throughput) {
             brw_shader_perf_log(compiler, params->log_data,
                                 "SIMD32 shader inefficient\n");
          } else {
@@ -10102,7 +10102,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
    int shader_time_index = params->shader_time ? params->shader_time_index : -1;
 
    const bool debug_enabled =
-      INTEL_DEBUG & (params->debug_flag ? params->debug_flag : DEBUG_CS);
+      INTEL_DEBUG(params->debug_flag ? params->debug_flag : DEBUG_CS);
 
    prog_data->base.stage = MESA_SHADER_COMPUTE;
    prog_data->base.total_shared = nir->info.shared_size;
@@ -10166,7 +10166,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    fs_visitor *v = NULL;
 
-   if (!(INTEL_DEBUG & DEBUG_NO8) &&
+   if (!INTEL_DEBUG(DEBUG_NO8) &&
        min_dispatch_width <= 8 && max_dispatch_width >= 8) {
       nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
                                            nir, 8, debug_enabled);
@@ -10189,7 +10189,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
       cs_fill_push_const_info(compiler->devinfo, prog_data);
    }
 
-   if (!(INTEL_DEBUG & DEBUG_NO16) &&
+   if (!INTEL_DEBUG(DEBUG_NO16) &&
        (generate_all || !prog_data->prog_spilled) &&
        min_dispatch_width <= 16 && max_dispatch_width >= 16) {
       /* Try a SIMD16 compile */
@@ -10231,10 +10231,10 @@ brw_compile_cs(const struct brw_compiler *compiler,
     * TODO: Use performance_analysis and drop this boolean.
     */
    const bool needs_32 = v == NULL ||
-                         (INTEL_DEBUG & DEBUG_DO32) ||
+                         INTEL_DEBUG(DEBUG_DO32) ||
                          generate_all;
 
-   if (!(INTEL_DEBUG & DEBUG_NO32) &&
+   if (!INTEL_DEBUG(DEBUG_NO32) &&
        (generate_all || !prog_data->prog_spilled) &&
        needs_32 &&
        min_dispatch_width <= 32 && max_dispatch_width >= 32) {
@@ -10272,7 +10272,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
       }
    }
 
-   if (unlikely(!v) && (INTEL_DEBUG & (DEBUG_NO8 | DEBUG_NO16 | DEBUG_NO32))) {
+   if (unlikely(!v) && INTEL_DEBUG(DEBUG_NO8 | DEBUG_NO16 | DEBUG_NO32)) {
       params->error_str =
          ralloc_strdup(mem_ctx,
                        "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
@@ -10350,7 +10350,7 @@ brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
    static const unsigned simd16 = 1 << 1;
    static const unsigned simd32 = 1 << 2;
 
-   if ((INTEL_DEBUG & DEBUG_DO32) && (mask & simd32))
+   if (INTEL_DEBUG(DEBUG_DO32) && (mask & simd32))
       return 32;
 
    const uint32_t max_threads = devinfo->max_cs_workgroup_threads;
@@ -10408,7 +10408,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
                   int *prog_offset,
                   char **error_str)
 {
-   const bool debug_enabled = INTEL_DEBUG & DEBUG_RT;
+   const bool debug_enabled = INTEL_DEBUG(DEBUG_RT);
 
    prog_data->base.stage = shader->info.stage;
    prog_data->max_stack_size = MAX2(prog_data->max_stack_size,
@@ -10423,7 +10423,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    bool has_spilled = false;
 
    uint8_t simd_size = 0;
-   if (!(INTEL_DEBUG & DEBUG_NO8)) {
+   if (!INTEL_DEBUG(DEBUG_NO8)) {
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base, shader,
                           8, -1 /* shader time */, debug_enabled);
@@ -10441,7 +10441,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   if (!has_spilled && !(INTEL_DEBUG & DEBUG_NO16)) {
+   if (!has_spilled && !INTEL_DEBUG(DEBUG_NO16)) {
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, shader,
                            16, -1 /* shader time */, debug_enabled);
@@ -10469,7 +10469,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    }
 
    if (unlikely(v == NULL)) {
-      assert(INTEL_DEBUG & (DEBUG_NO8 | DEBUG_NO16));
+      assert(INTEL_DEBUG(DEBUG_NO8 | DEBUG_NO16));
       if (error_str) {
          *error_str = ralloc_strdup(mem_ctx,
             "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
@@ -10516,7 +10516,7 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
                struct brw_compile_stats *stats,
                char **error_str)
 {
-   const bool debug_enabled = INTEL_DEBUG & DEBUG_RT;
+   const bool debug_enabled = INTEL_DEBUG(DEBUG_RT);
 
    prog_data->base.stage = shader->info.stage;
    prog_data->max_stack_size = 0;
@@ -10540,7 +10540,7 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
 
    uint64_t *resume_sbt = ralloc_array(mem_ctx, uint64_t, num_resume_shaders);
    for (unsigned i = 0; i < num_resume_shaders; i++) {
-      if (INTEL_DEBUG & DEBUG_RT) {
+      if (INTEL_DEBUG(DEBUG_RT)) {
          char *name = ralloc_asprintf(mem_ctx, "%s %s resume(%u) shader %s",
                                       shader->info.label ?
                                          shader->info.label : "unnamed",

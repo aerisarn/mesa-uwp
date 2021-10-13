@@ -126,7 +126,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS: {
-      if (INTEL_DEBUG & DEBUG_NO_RBC)
+      if (INTEL_DEBUG(DEBUG_NO_RBC))
          return false;
 
       enum isl_format rt_format =
@@ -739,11 +739,11 @@ iris_resource_configure_aux(struct iris_screen *screen,
    const bool has_mcs = !res->mod_info &&
       isl_surf_get_mcs_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
 
-   const bool has_hiz = !res->mod_info && !(INTEL_DEBUG & DEBUG_NO_HIZ) &&
+   const bool has_hiz = !res->mod_info && !INTEL_DEBUG(DEBUG_NO_HIZ) &&
       isl_surf_get_hiz_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
 
    const bool has_ccs =
-      ((!res->mod_info && !(INTEL_DEBUG & DEBUG_NO_RBC)) ||
+      ((!res->mod_info && !INTEL_DEBUG(DEBUG_NO_RBC)) ||
        (res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE)) &&
       iris_get_ccs_surf(&screen->isl_dev, &res->surf, &res->aux.surf,
                         &res->aux.extra_aux.surf, 0);

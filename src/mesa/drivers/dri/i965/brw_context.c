@@ -885,7 +885,7 @@ brw_process_driconf_options(struct brw_context *brw)
    struct gl_context *ctx = &brw->ctx;
    const driOptionCache *const options = &brw->screen->optionCache;
 
-   if (INTEL_DEBUG & DEBUG_NO_HIZ) {
+   if (INTEL_DEBUG(DEBUG_NO_HIZ)) {
        brw->has_hiz = false;
        /* On gfx6, you can only do separate stencil with HIZ. */
        if (devinfo->ver == 6)
@@ -1074,7 +1074,7 @@ brw_create_context(gl_api api,
 
    _mesa_meta_init(ctx);
 
-   if (INTEL_DEBUG & DEBUG_PERF)
+   if (INTEL_DEBUG(DEBUG_PERF))
       brw->perf_debug = true;
 
    brw_initialize_cs_context_constants(brw);
@@ -1172,7 +1172,7 @@ brw_create_context(gl_api api,
       ctx->Const.RobustAccess = GL_TRUE;
    }
 
-   if (INTEL_DEBUG & DEBUG_SHADER_TIME)
+   if (INTEL_DEBUG(DEBUG_SHADER_TIME))
       brw_init_shader_time(brw);
 
    _mesa_override_extensions(ctx);
@@ -1251,7 +1251,7 @@ brw_destroy_context(__DRIcontext *driContextPriv)
 
    _mesa_meta_free(&brw->ctx);
 
-   if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
+   if (INTEL_DEBUG(DEBUG_SHADER_TIME)) {
       /* Force a report. */
       brw->shader_time.report_time = 0;
 
@@ -1510,7 +1510,7 @@ brw_update_dri2_buffers(struct brw_context *brw, __DRIdrawable *drawable)
     * thus ignore the invalidate. */
    drawable->lastStamp = drawable->dri2.stamp;
 
-   if (INTEL_DEBUG & DEBUG_DRI)
+   if (INTEL_DEBUG(DEBUG_DRI))
       fprintf(stderr, "enter %s, drawable %p\n", __func__, drawable);
 
    brw_query_dri2_buffers(brw, drawable, &buffers, &count);
@@ -1563,7 +1563,7 @@ brw_update_renderbuffers(__DRIcontext *context, __DRIdrawable *drawable)
     * thus ignore the invalidate. */
    drawable->lastStamp = drawable->dri2.stamp;
 
-   if (INTEL_DEBUG & DEBUG_DRI)
+   if (INTEL_DEBUG(DEBUG_DRI))
       fprintf(stderr, "enter %s, drawable %p\n", __func__, drawable);
 
    if (dri_screen->image.loader)
@@ -1742,7 +1742,7 @@ brw_process_dri2_buffer(struct brw_context *brw,
    if (old_name == buffer->name)
       return;
 
-   if (INTEL_DEBUG & DEBUG_DRI) {
+   if (INTEL_DEBUG(DEBUG_DRI)) {
       fprintf(stderr,
               "attaching buffer %d, at %d, cpp %d, pitch %d\n",
               buffer->name, buffer->attachment,

@@ -78,7 +78,7 @@ get_sysfs_dev_dir(struct intel_perf_config *perf, int fd)
 
    perf->sysfs_dev_dir[0] = '\0';
 
-   if (INTEL_DEBUG & DEBUG_NO_OACONFIG)
+   if (INTEL_DEBUG(DEBUG_NO_OACONFIG))
       return true;
 
    if (fstat(fd, &sb)) {
@@ -389,7 +389,7 @@ init_oa_sys_vars(struct intel_perf_config *perf,
 {
    uint64_t min_freq_mhz = 0, max_freq_mhz = 0;
 
-   if (!(INTEL_DEBUG & DEBUG_NO_OACONFIG)) {
+   if (!INTEL_DEBUG(DEBUG_NO_OACONFIG)) {
       if (!read_sysfs_drm_device_file_uint64(perf, "gt_min_freq_mhz", &min_freq_mhz))
          return false;
 
@@ -750,7 +750,7 @@ load_oa_metrics(struct intel_perf_config *perf, int fd,
     */
    oa_register(perf);
 
-   if (!(INTEL_DEBUG & DEBUG_NO_OACONFIG)) {
+   if (!INTEL_DEBUG(DEBUG_NO_OACONFIG)) {
       if (kernel_has_dynamic_config_support(perf, fd))
          init_oa_configs(perf, fd, devinfo);
       else

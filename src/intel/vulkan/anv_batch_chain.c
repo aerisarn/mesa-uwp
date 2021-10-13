@@ -1929,7 +1929,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
       submit->cmd_buffer_count &&
       submit->perf_query_pool;
 
-   if (INTEL_DEBUG & DEBUG_SUBMIT) {
+   if (INTEL_DEBUG(DEBUG_SUBMIT)) {
       fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0\n",
               execbuf.execbuf.batch_start_offset, execbuf.execbuf.batch_len);
       for (uint32_t i = 0; i < execbuf.bo_count; i++) {
@@ -1940,7 +1940,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
       }
    }
 
-   if (INTEL_DEBUG & DEBUG_BATCH) {
+   if (INTEL_DEBUG(DEBUG_BATCH)) {
       fprintf(stderr, "Batch on queue %d\n", (int)(queue - device->queues));
       if (submit->cmd_buffer_count) {
          if (has_perf_query) {
@@ -2009,7 +2009,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
       /* Some performance queries just the pipeline statistic HW, no need for
        * OA in that case, so no need to reconfigure.
        */
-      if ((INTEL_DEBUG & DEBUG_NO_OACONFIG) == 0 &&
+      if (!INTEL_DEBUG(DEBUG_NO_OACONFIG) &&
           (query_info->kind == INTEL_PERF_QUERY_TYPE_OA ||
            query_info->kind == INTEL_PERF_QUERY_TYPE_RAW)) {
          int ret = intel_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,

@@ -110,7 +110,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
 
    compiler->use_tcs_8_patch =
       devinfo->ver >= 12 ||
-      (devinfo->ver >= 9 && (INTEL_DEBUG & DEBUG_TCS_EIGHT_PATCH));
+      (devinfo->ver >= 9 && INTEL_DEBUG(DEBUG_TCS_EIGHT_PATCH));
 
    /* Default to the sampler since that's what we've done since forever */
    compiler->indirect_ubos_use_sampler = true;
@@ -142,7 +142,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
       nir_lower_dsub |
       nir_lower_ddiv;
 
-   if (!devinfo->has_64bit_float || (INTEL_DEBUG & DEBUG_SOFT64)) {
+   if (!devinfo->has_64bit_float || INTEL_DEBUG(DEBUG_SOFT64)) {
       int64_options |= (nir_lower_int64_options)~0;
       fp64_options |= nir_lower_fp64_full_software;
    }
@@ -226,11 +226,10 @@ brw_get_compiler_config_value(const struct brw_compiler *compiler)
       insert_u64_bit(&config, compiler->scalar_stage[MESA_SHADER_TESS_EVAL]);
       insert_u64_bit(&config, compiler->scalar_stage[MESA_SHADER_GEOMETRY]);
    }
-   uint64_t debug_bits = INTEL_DEBUG;
    uint64_t mask = DEBUG_DISK_CACHE_MASK;
    while (mask != 0) {
       const uint64_t bit = 1ULL << (ffsll(mask) - 1);
-      insert_u64_bit(&config, (debug_bits & bit) != 0);
+      insert_u64_bit(&config, INTEL_DEBUG(bit));
       mask &= ~bit;
    }
    return config;

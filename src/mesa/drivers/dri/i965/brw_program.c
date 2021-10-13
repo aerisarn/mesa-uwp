@@ -791,7 +791,7 @@ brw_assign_common_binding_table_offsets(const struct intel_device_info *devinfo,
       stage_prog_data->binding_table.ssbo_start = 0xd0d0d0d0;
    }
 
-   if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
+   if (INTEL_DEBUG(DEBUG_SHADER_TIME)) {
       stage_prog_data->binding_table.shader_time_start = next_binding_table_offset;
       next_binding_table_offset++;
    } else {

@@ -106,7 +106,7 @@ compiler_perf_log(UNUSED void *data, UNUSED unsigned *id, const char *fmt, ...)
    va_list args;
    va_start(args, fmt);
 
-   if (INTEL_DEBUG & DEBUG_PERF)
+   if (INTEL_DEBUG(DEBUG_PERF))
       mesa_logd_v(fmt, args);
 
    va_end(args);
@@ -206,7 +206,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_performance_query =
          device->use_softpin && device->perf &&
          (device->perf->i915_perf_version >= 3 ||
-          INTEL_DEBUG & DEBUG_NO_OACONFIG) &&
+          INTEL_DEBUG(DEBUG_NO_OACONFIG)) &&
          device->use_call_secondary,
       .KHR_pipeline_executable_properties    = true,
       .KHR_push_descriptor                   = true,
@@ -924,7 +924,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->has_reg_timestamp = anv_gem_reg_read(fd, TIMESTAMP | I915_REG_READ_8B_WA,
                                                 &u64_ignore) == 0;
 
-   device->always_flush_cache = (INTEL_DEBUG & DEBUG_SYNC) ||
+   device->always_flush_cache = INTEL_DEBUG(DEBUG_SYNC) ||
       driQueryOptionb(&instance->dri_options, "always_flush_cache");
 
    device->has_mmap_offset =
@@ -2960,10 +2960,10 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   if (INTEL_DEBUG & DEBUG_BATCH) {
+   if (INTEL_DEBUG(DEBUG_BATCH)) {
       const unsigned decode_flags =
          INTEL_BATCH_DECODE_FULL |
-         ((INTEL_DEBUG & DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
+         (INTEL_DEBUG(DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
          INTEL_BATCH_DECODE_OFFSETS |
          INTEL_BATCH_DECODE_FLOATS;
 
@@ -3381,7 +3381,7 @@ void anv_DestroyDevice(
 
    anv_gem_destroy_context(device, device->context_id);
 
-   if (INTEL_DEBUG & DEBUG_BATCH)
+   if (INTEL_DEBUG(DEBUG_BATCH))
       intel_batch_decode_ctx_finish(&device->decoder_ctx);
 
    close(device->fd);

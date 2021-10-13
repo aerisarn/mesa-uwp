@@ -248,7 +248,7 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
       prog->ShadowSamplers = shader->shadow_samplers;
 
       bool debug_enabled =
-         (INTEL_DEBUG & intel_debug_flag_for_shader_stage(shader->Stage));
+         INTEL_DEBUG(intel_debug_flag_for_shader_stage(shader->Stage));
 
       if (debug_enabled && shader->ir) {
          fprintf(stderr, "GLSL IR for native %s shader %d:\n",

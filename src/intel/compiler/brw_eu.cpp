@@ -529,7 +529,7 @@ brw_disassemble(const struct intel_device_info *devinfo,
                 const void *assembly, int start, int end,
                 const struct brw_label *root_label, FILE *out)
 {
-   bool dump_hex = (INTEL_DEBUG & DEBUG_HEX) != 0;
+   bool dump_hex = INTEL_DEBUG(DEBUG_HEX);
 
    for (int offset = start; offset < end;) {
       const brw_inst *insn = (const brw_inst *)((char *)assembly + offset);

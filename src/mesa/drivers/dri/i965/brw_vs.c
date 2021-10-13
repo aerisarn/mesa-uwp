@@ -172,7 +172,7 @@ brw_codegen_vs_prog(struct brw_context *brw,
       start_time = get_time();
    }
 
-   if (INTEL_DEBUG & DEBUG_VS) {
+   if (INTEL_DEBUG(DEBUG_VS)) {
       if (vp->program.info.is_arb_asm)
          brw_dump_arb_asm("vertex", &vp->program);
    }
@@ -187,7 +187,7 @@ brw_codegen_vs_prog(struct brw_context *brw,
       .log_data = brw,
    };
 
-   if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
+   if (INTEL_DEBUG(DEBUG_SHADER_TIME)) {
       params.shader_time = true;
       params.shader_time_index =
          brw_get_shader_time_index(brw, &vp->program, ST_VS,

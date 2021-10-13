@@ -1209,7 +1209,7 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
 
    bool can_fast_clear = !partial_clear;
 
-   if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
+   if (INTEL_DEBUG(DEBUG_NO_FAST_CLEAR))
       can_fast_clear = false;
 
    uint8_t color_write_disable = 0;

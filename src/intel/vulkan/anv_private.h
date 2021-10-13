@@ -406,7 +406,7 @@ void __anv_perf_warn(struct anv_device *device,
 #define anv_perf_warn(objects_macro, format, ...)   \
    do { \
       static bool reported = false; \
-      if (!reported && (INTEL_DEBUG & DEBUG_PERF)) { \
+      if (!reported && INTEL_DEBUG(DEBUG_PERF)) { \
          __vk_log(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,      \
                   VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,      \
                   objects_macro, __FILE__, __LINE__,                    \
@@ -4684,7 +4684,7 @@ anv_add_pending_pipe_bits(struct anv_cmd_buffer* cmd_buffer,
                           const char* reason)
 {
    cmd_buffer->state.pending_pipe_bits |= bits;
-   if ((INTEL_DEBUG & DEBUG_PIPE_CONTROL) && bits)
+   if (INTEL_DEBUG(DEBUG_PIPE_CONTROL) && bits)
    {
       fputs("pc: add ", stderr);
       anv_dump_pipe_bits(bits);
