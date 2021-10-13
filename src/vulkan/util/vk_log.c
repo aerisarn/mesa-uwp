@@ -257,8 +257,8 @@ vk_object_for_error(struct vk_object_base *obj, VkResult error)
 
    switch (error) {
    case VK_ERROR_OUT_OF_HOST_MEMORY:
-   case VK_ERROR_INITIALIZATION_FAILED:
    case VK_ERROR_LAYER_NOT_PRESENT:
+   case VK_ERROR_EXTENSION_NOT_PRESENT:
    case VK_ERROR_UNKNOWN:
       return &vk_object_to_instance(obj)->base;
    case VK_ERROR_FEATURE_NOT_PRESENT:
