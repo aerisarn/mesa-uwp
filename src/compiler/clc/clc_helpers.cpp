@@ -1153,5 +1153,6 @@ clc_initialize_llvm(void)
    LLVMInitializeAllTargets();
    LLVMInitializeAllTargetInfos();
    LLVMInitializeAllTargetMCs();
+   LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
 }
