@@ -1219,10 +1219,9 @@ features2_to_features(VkFormatFeatureFlags2KHR features2)
 
 static void
 radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format,
-                               VkFormatProperties2 *pFormatProperties)
+                               const VkFormatProperties3KHR *format_props,
+                               VkDrmFormatModifierPropertiesListEXT *mod_list)
 {
-   VkDrmFormatModifierPropertiesListEXT *mod_list =
-      vk_find_struct(pFormatProperties, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT);
    unsigned mod_count;
 
    if (!mod_list)
@@ -1253,9 +1252,8 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
 
    mod_list->drmFormatModifierCount = 0;
    for (unsigned i = 0; i < mod_count; ++i) {
-      VkFormatProperties3KHR format_props;
       VkFormatFeatureFlags2KHR features =
-         radv_get_modifier_flags(dev, format, mods[i], &format_props);
+         radv_get_modifier_flags(dev, format, mods[i], format_props);
       unsigned planes = vk_format_get_plane_count(format);
       if (planes == 1) {
          if (ac_modifier_has_dcc_retile(mods[i]))
@@ -1263,13 +1261,6 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
          else if (ac_modifier_has_dcc(mods[i]))
             planes = 2;
       }
-
-      pFormatProperties->formatProperties.linearTilingFeatures =
-         features2_to_features(format_props.linearTilingFeatures);
-      pFormatProperties->formatProperties.optimalTilingFeatures =
-         features2_to_features(format_props.optimalTilingFeatures);
-      pFormatProperties->formatProperties.bufferFeatures =
-         features2_to_features(format_props.bufferFeatures);
 
       if (!features)
          continue;
@@ -1289,10 +1280,9 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
 
 static void
 radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat format,
-                                 VkFormatProperties2 *pFormatProperties)
+                                 const VkFormatProperties3KHR *format_props,
+                                 VkDrmFormatModifierPropertiesList2EXT *mod_list)
 {
-   VkDrmFormatModifierPropertiesList2EXT *mod_list =
-      vk_find_struct(pFormatProperties, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_2_EXT);
    unsigned mod_count;
 
    if (!mod_list)
@@ -1323,9 +1313,8 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
 
    mod_list->drmFormatModifierCount = 0;
    for (unsigned i = 0; i < mod_count; ++i) {
-      VkFormatProperties3KHR format_props;
       VkFormatFeatureFlags2KHR features =
-         radv_get_modifier_flags(dev, format, mods[i], &format_props);
+         radv_get_modifier_flags(dev, format, mods[i], format_props);
       unsigned planes = vk_format_get_plane_count(format);
       if (planes == 1) {
          if (ac_modifier_has_dcc_retile(mods[i]))
@@ -1333,10 +1322,6 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
          else if (ac_modifier_has_dcc(mods[i]))
             planes = 2;
       }
-
-      pFormatProperties->formatProperties.linearTilingFeatures = format_props.linearTilingFeatures;
-      pFormatProperties->formatProperties.optimalTilingFeatures = format_props.optimalTilingFeatures;
-      pFormatProperties->formatProperties.bufferFeatures = format_props.bufferFeatures;
 
       if (!features)
          continue;
@@ -1455,8 +1440,12 @@ radv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice, VkForma
       format_props_extended->bufferFeatures = format_props.bufferFeatures;
    }
 
-   radv_list_drm_format_modifiers(physical_device, format, pFormatProperties);
-   radv_list_drm_format_modifiers_2(physical_device, format, pFormatProperties);
+   radv_list_drm_format_modifiers(
+      physical_device, format, &format_props,
+      vk_find_struct(pFormatProperties, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT));
+   radv_list_drm_format_modifiers_2(
+      physical_device, format, &format_props,
+      vk_find_struct(pFormatProperties, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_2_EXT));
 }
 
 static VkResult
