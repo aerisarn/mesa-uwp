@@ -151,6 +151,9 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
    anv_batch_emit(batch, GENX(3DSTATE_3D_MODE), mode) {
       mode.SliceHashingTableEnable = true;
       mode.SliceHashingTableEnableMask = true;
+      mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask) > 1 ?
+				    hashing32x32 : NormalMode);
+      mode.CrossSliceHashingModeMask = -1;
    }
 #endif
 }

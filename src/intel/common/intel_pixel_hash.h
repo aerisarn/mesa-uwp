@@ -85,12 +85,54 @@ intel_compute_pixel_hash_table_nway(unsigned n, unsigned m, uint32_t mask,
 
    assert(num_ids > 0);
 
+   /* Compute a permutation of the above indices that assigns indices
+    * as far as possible to adjacent entries.  This permutation is
+    * designed to be equivalent to the bit reversal of each index in
+    * cases where num_ids is a power of two, but doesn't actually
+    * require it to be a power of two in order to satisfy the required
+    * properties (which is necessary to handle configurations with
+    * arbitrary non-power of two fusing).  By construction, flipping
+    * bit l of its input will lead to a change in its result of the
+    * order of num_ids/2^(l+1) (see variable t below).  The
+    * bijectivity of this permutation can be verified easily by
+    * induction.
+    */
+   const unsigned bits = util_logbase2_ceil(num_ids);
+   unsigned swz[ARRAY_SIZE(phys_ids)];
+
+   for (unsigned k = 0; k < num_ids; k++) {
+      unsigned t = num_ids;
+      unsigned s = 0;
+
+      for (unsigned l = 0; l < bits; l++) {
+         if (k & (1u << l)) {
+            s += (t + 1) >> 1;
+            t >>= 1;
+         } else {
+            t = (t + 1) >> 1;
+         }
+      }
+
+      swz[k] = s;
+   }
+
    /* Initialize the table with the cyclic repetition of a
     * num_ids-periodic pattern.
+    *
+    * Note that the swz permutation only affects the ordering of rows.
+    * This is intentional in order to minimize the size of the
+    * contiguous area that needs to be rendered in parallel in order
+    * to utilize the whole GPU: A rendering rectangle of width W will
+    * need to be at least H blocks high, where H is bounded by
+    * 2^ceil(log2(num_ids/W)) thanks to the above definition of the swz
+    * permutation.
     */
    for (unsigned i = 0; i < n; i++) {
-      for (unsigned j = 0; j < m; j++)
-         p[j + m * i] = phys_ids[(j + i) % num_ids];
+      const unsigned k = i % num_ids;
+      assert(swz[k] < num_ids);
+      for (unsigned j = 0; j < m; j++) {
+         p[j + m * i] = phys_ids[(j + swz[k]) % num_ids];
+      }
    }
 }
 

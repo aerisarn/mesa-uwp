@@ -939,6 +939,9 @@ upload_pixel_hashing_tables(struct iris_batch *batch)
    iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), mode) {
       mode.SliceHashingTableEnable = true;
       mode.SliceHashingTableEnableMask = true;
+      mode.CrossSliceHashingMode = (util_bitcount(ppipe_mask) > 1 ?
+                                    hashing32x32 : NormalMode);
+      mode.CrossSliceHashingModeMask = -1;
    }
 #endif
 }
