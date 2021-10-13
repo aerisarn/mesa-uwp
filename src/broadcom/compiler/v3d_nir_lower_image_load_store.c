@@ -88,6 +88,7 @@ static void
 v3d_nir_lower_image_store(nir_builder *b, nir_intrinsic_instr *instr)
 {
         enum pipe_format format = nir_intrinsic_format(instr);
+        assert(format != PIPE_FORMAT_NONE);
         const struct util_format_description *desc =
                 util_format_description(format);
         const struct util_format_channel_description *r_chan = &desc->channel[0];
