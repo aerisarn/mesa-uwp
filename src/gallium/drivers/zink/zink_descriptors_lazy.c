@@ -463,6 +463,9 @@ zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, u
    struct zink_batch_descriptor_data_lazy *bdd = bdd_lazy(bs);
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
    VkDescriptorSet desc_sets[ZINK_DESCRIPTOR_TYPES];
+   if (!pg->dd->binding_usage || (!changed_sets && !bind_sets))
+      return;
+
    if (!populate_sets(ctx, bdd, pg, &changed_sets, desc_sets)) {
       debug_printf("ZINK: couldn't get descriptor sets!\n");
       return;
@@ -470,31 +473,29 @@ zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, u
    /* no flushing allowed */
    assert(ctx->batch.state == bs);
 
-   if (pg->dd->binding_usage && (changed_sets || bind_sets)) {
-      u_foreach_bit(type, changed_sets) {
-         assert(type + 1 < pg->num_dsl);
-         if (pg->dd->layout_key[type]) {
-            VKSCR(UpdateDescriptorSetWithTemplate)(screen->dev, desc_sets[type], pg->dd->layouts[type + 1]->desc_template, ctx);
-            VKSCR(CmdBindDescriptorSets)(bs->cmdbuf,
-                                    is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    /* set index incremented by 1 to account for push set */
-                                    pg->layout, type + 1, 1, &desc_sets[type],
-                                    0, NULL);
-            bdd->sets[is_compute][type + 1] = desc_sets[type];
-         }
-      }
-      u_foreach_bit(type, bind_sets & ~changed_sets) {
-         if (!pg->dd->layout_key[type])
-            bdd->sets[is_compute][type + 1] = ctx->dd->dummy_set;
-         assert(bdd->sets[is_compute][type + 1]);
+   u_foreach_bit(type, changed_sets) {
+      assert(type + 1 < pg->num_dsl);
+      if (pg->dd->layout_key[type]) {
+         VKSCR(UpdateDescriptorSetWithTemplate)(screen->dev, desc_sets[type], pg->dd->layouts[type + 1]->desc_template, ctx);
          VKSCR(CmdBindDescriptorSets)(bs->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                                  /* set index incremented by 1 to account for push set */
-                                 pg->layout, type + 1, 1, &bdd->sets[is_compute][type + 1],
+                                 pg->layout, type + 1, 1, &desc_sets[type],
                                  0, NULL);
+         bdd->sets[is_compute][type + 1] = desc_sets[type];
       }
-      dd_lazy(ctx)->state_changed[is_compute] = false;
    }
+   u_foreach_bit(type, bind_sets & ~changed_sets) {
+      if (!pg->dd->layout_key[type])
+         bdd->sets[is_compute][type + 1] = ctx->dd->dummy_set;
+      assert(bdd->sets[is_compute][type + 1]);
+      VKSCR(CmdBindDescriptorSets)(bs->cmdbuf,
+                              is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              /* set index incremented by 1 to account for push set */
+                              pg->layout, type + 1, 1, &bdd->sets[is_compute][type + 1],
+                              0, NULL);
+   }
+   dd_lazy(ctx)->state_changed[is_compute] = false;
 }
 
 void
