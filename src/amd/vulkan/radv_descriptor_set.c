@@ -1420,12 +1420,12 @@ radv_DestroyDescriptorUpdateTemplate(VkDevice _device,
    vk_free2(&device->vk.alloc, pAllocator, templ);
 }
 
-void
-radv_update_descriptor_set_with_template(struct radv_device *device,
-                                         struct radv_cmd_buffer *cmd_buffer,
-                                         struct radv_descriptor_set *set,
-                                         VkDescriptorUpdateTemplate descriptorUpdateTemplate,
-                                         const void *pData)
+static ALWAYS_INLINE void
+radv_update_descriptor_set_with_template_impl(struct radv_device *device,
+                                              struct radv_cmd_buffer *cmd_buffer,
+                                              struct radv_descriptor_set *set,
+                                              VkDescriptorUpdateTemplate descriptorUpdateTemplate,
+                                              const void *pData)
 {
    RADV_FROM_HANDLE(radv_descriptor_update_template, templ, descriptorUpdateTemplate);
    uint32_t i;
@@ -1503,6 +1503,18 @@ radv_update_descriptor_set_with_template(struct radv_device *device,
 }
 
 void
+radv_cmd_update_descriptor_set_with_template(struct radv_device *device,
+                                             struct radv_cmd_buffer *cmd_buffer,
+                                             struct radv_descriptor_set *set,
+                                             VkDescriptorUpdateTemplate descriptorUpdateTemplate,
+                                             const void *pData)
+{
+   /* Assume cmd_buffer != NULL to optimize out cmd_buffer checks in generic code above. */
+   assume(cmd_buffer != NULL);
+   radv_update_descriptor_set_with_template_impl(device, cmd_buffer, set, descriptorUpdateTemplate, pData);
+}
+
+void
 radv_UpdateDescriptorSetWithTemplate(VkDevice _device, VkDescriptorSet descriptorSet,
                                      VkDescriptorUpdateTemplate descriptorUpdateTemplate,
                                      const void *pData)
@@ -1510,7 +1522,7 @@ radv_UpdateDescriptorSetWithTemplate(VkDevice _device, VkDescriptorSet descripto
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_descriptor_set, set, descriptorSet);
 
-   radv_update_descriptor_set_with_template(device, NULL, set, descriptorUpdateTemplate, pData);
+   radv_update_descriptor_set_with_template_impl(device, NULL, set, descriptorUpdateTemplate, pData);
 }
 
 VkResult

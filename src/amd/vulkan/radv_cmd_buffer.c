@@ -4732,8 +4732,8 @@ radv_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
                                       templ->bind_point))
       return;
 
-   radv_update_descriptor_set_with_template(cmd_buffer->device, cmd_buffer, push_set,
-                                            descriptorUpdateTemplate, pData);
+   radv_cmd_update_descriptor_set_with_template(cmd_buffer->device, cmd_buffer, push_set,
+                                                descriptorUpdateTemplate, pData);
 
    radv_set_descriptor_set(cmd_buffer, templ->bind_point, push_set, set);
    descriptors_state->push_dirty = true;

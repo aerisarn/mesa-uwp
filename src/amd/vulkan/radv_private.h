@@ -2583,11 +2583,11 @@ void radv_cmd_update_descriptor_sets(struct radv_device *device, struct radv_cmd
                                      uint32_t descriptorCopyCount,
                                      const VkCopyDescriptorSet *pDescriptorCopies);
 
-void radv_update_descriptor_set_with_template(struct radv_device *device,
-                                              struct radv_cmd_buffer *cmd_buffer,
-                                              struct radv_descriptor_set *set,
-                                              VkDescriptorUpdateTemplate descriptorUpdateTemplate,
-                                              const void *pData);
+void radv_cmd_update_descriptor_set_with_template(struct radv_device *device,
+                                                  struct radv_cmd_buffer *cmd_buffer,
+                                                  struct radv_descriptor_set *set,
+                                                  VkDescriptorUpdateTemplate descriptorUpdateTemplate,
+                                                  const void *pData);
 
 void radv_meta_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
                                    VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout _layout,
