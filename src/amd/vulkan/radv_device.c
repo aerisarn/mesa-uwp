@@ -6296,27 +6296,41 @@ radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator, VkEvent *pEvent)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   struct radv_event *event = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*event), 8,
-                                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   enum radeon_bo_domain bo_domain;
+   enum radeon_bo_flag bo_flags;
+   struct radv_event *event;
+   VkResult result;
 
+   event = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*event), 8,
+                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!event)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &event->base, VK_OBJECT_TYPE_EVENT);
 
-   VkResult result = device->ws->buffer_create(
-      device->ws, 8, 8, RADEON_DOMAIN_GTT,
-      RADEON_FLAG_VA_UNCACHED | RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
+   if (pCreateInfo->flags & VK_EVENT_CREATE_DEVICE_ONLY_BIT_KHR) {
+      bo_domain = RADEON_DOMAIN_VRAM;
+      bo_flags = RADEON_FLAG_NO_CPU_ACCESS;
+   } else {
+      bo_domain = RADEON_DOMAIN_GTT;
+      bo_flags = RADEON_FLAG_CPU_ACCESS;
+   }
+
+   result = device->ws->buffer_create(
+      device->ws, 8, 8, bo_domain,
+      RADEON_FLAG_VA_UNCACHED | RADEON_FLAG_NO_INTERPROCESS_SHARING | bo_flags,
       RADV_BO_PRIORITY_FENCE, 0, &event->bo);
    if (result != VK_SUCCESS) {
       radv_destroy_event(device, pAllocator, event);
       return vk_error(device, result);
    }
 
-   event->map = (uint64_t *)device->ws->buffer_map(event->bo);
-   if (!event->map) {
-      radv_destroy_event(device, pAllocator, event);
-      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   if (!(pCreateInfo->flags & VK_EVENT_CREATE_DEVICE_ONLY_BIT_KHR)) {
+      event->map = (uint64_t *)device->ws->buffer_map(event->bo);
+      if (!event->map) {
+         radv_destroy_event(device, pAllocator, event);
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
    }
 
    *pEvent = radv_event_to_handle(event);
