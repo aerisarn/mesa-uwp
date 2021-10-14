@@ -203,6 +203,15 @@ wsi_DestroySurfaceKHR(VkInstance _instance,
    vk_free2(&instance->alloc, pAllocator, surface);
 }
 
+void
+wsi_device_setup_syncobj_fd(struct wsi_device *wsi_device,
+                            int fd)
+{
+#ifdef VK_USE_PLATFORM_DISPLAY_KHR
+   wsi_display_setup_syncobj_fd(wsi_device, fd);
+#endif
+}
+
 VkResult
 wsi_swapchain_init(const struct wsi_device *wsi,
                    struct wsi_swapchain *chain,

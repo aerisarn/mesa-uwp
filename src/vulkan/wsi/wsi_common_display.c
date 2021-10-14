@@ -96,6 +96,9 @@ struct wsi_display {
 
    int                          fd;
 
+   /* Used with syncobj imported from driver side. */
+   int                          syncobj_fd;
+
    pthread_mutex_t              wait_mutex;
    pthread_cond_t               wait_cond;
    pthread_t                    wait_thread;
@@ -1542,8 +1545,8 @@ static void wsi_display_fence_event_handler(struct wsi_display_fence *fence)
       (struct wsi_display *) fence->base.wsi_device->wsi[VK_ICD_WSI_PLATFORM_DISPLAY];
 
    if (fence->syncobj) {
-      (void) drmSyncobjSignal(wsi->fd, &fence->syncobj, 1);
-      (void) drmSyncobjDestroy(wsi->fd, fence->syncobj);
+      (void) drmSyncobjSignal(wsi->syncobj_fd, &fence->syncobj, 1);
+      (void) drmSyncobjDestroy(wsi->syncobj_fd, fence->syncobj);
    }
 
    fence->event_received = true;
@@ -1577,7 +1580,8 @@ wsi_display_fence_alloc(VkDevice device,
       return NULL;
 
    if (sync_fd >= 0) {
-      int ret = drmSyncobjFDToHandle(wsi->fd, sync_fd, &fence->syncobj);
+      int ret = drmSyncobjFDToHandle(wsi->syncobj_fd, sync_fd, &fence->syncobj);
+
       if (ret) {
          vk_free2(wsi->alloc, allocator, fence);
          return NULL;
@@ -1925,6 +1929,8 @@ wsi_display_init_wsi(struct wsi_device *wsi_device,
    wsi->fd = display_fd;
    if (wsi->fd != -1 && !local_drmIsMaster(wsi->fd))
       wsi->fd = -1;
+
+   wsi->syncobj_fd = wsi->fd;
 
    wsi->alloc = alloc;
 
@@ -2579,7 +2585,7 @@ wsi_register_display_event(VkDevice device,
             fence->base.destroy(&fence->base);
       } else if (fence != NULL) {
          if (fence->syncobj)
-            drmSyncobjDestroy(wsi->fd, fence->syncobj);
+            drmSyncobjDestroy(wsi->syncobj_fd, fence->syncobj);
          vk_free2(wsi->alloc, allocator, fence);
       }
 
@@ -2600,6 +2606,15 @@ wsi_RegisterDisplayEventEXT(VkDevice device,
                             VkFence *pFence)
 {
    unreachable("Not enough common infrastructure to implement this yet");
+}
+
+void
+wsi_display_setup_syncobj_fd(struct wsi_device *wsi_device,
+                             int fd)
+{
+   struct wsi_display *wsi =
+      (struct wsi_display *) wsi_device->wsi[VK_ICD_WSI_PLATFORM_DISPLAY];
+   wsi->syncobj_fd = fd;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

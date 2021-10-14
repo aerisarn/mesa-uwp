@@ -226,6 +226,11 @@ void
 wsi_device_finish(struct wsi_device *wsi,
                   const VkAllocationCallbacks *alloc);
 
+/* Setup file descriptor to be used with imported sync_fd's in wsi fences. */
+void
+wsi_device_setup_syncobj_fd(struct wsi_device *wsi_device,
+                            int fd);
+
 #define ICD_DEFINE_NONDISP_HANDLE_CASTS(__VkIcdType, __VkType)             \
                                                                            \
    static inline __VkIcdType *                                             \
