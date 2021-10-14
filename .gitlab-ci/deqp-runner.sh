@@ -2,28 +2,6 @@
 
 set -ex
 
-DEQP_WIDTH=${DEQP_WIDTH:-256}
-DEQP_HEIGHT=${DEQP_HEIGHT:-256}
-DEQP_CONFIG=${DEQP_CONFIG:-rgba8888d24s8ms0}
-DEQP_VARIANT=${DEQP_VARIANT:-master}
-
-DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-width=$DEQP_WIDTH --deqp-surface-height=$DEQP_HEIGHT"
-DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=${DEQP_SURFACE_TYPE:-pbuffer}"
-DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=$DEQP_CONFIG"
-DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
-
-if [ -z "$DEQP_VER" -a -z "$DEQP_SUITE" ]; then
-   echo 'DEQP_SUITE must be set to the name of your deqp-gpu_version.toml, or DEQP_VER must be set to something like "gles2", "gles31-khr" or "vk" for the test run'
-   exit 1
-fi
-
-if [ "$DEQP_VER" = "vk" ]; then
-   if [ -z "$VK_DRIVER" ]; then
-      echo 'VK_DRIVER must be to something like "radeon" or "intel" for the test run'
-      exit 1
-   fi
-fi
-
 if [ -z "$GPU_VERSION" ]; then
    echo 'GPU_VERSION must be set to something like "llvmpipe" or "freedreno-a630" (the name used in .gitlab-ci/deqp-gpu-version-*.txt)'
    exit 1
@@ -42,6 +20,26 @@ mkdir -p $RESULTS
 HANG_DETECTION_CMD=""
 
 if [ -z "$DEQP_SUITE" ]; then
+    if [ -z "$DEQP_VER" ]; then
+        echo 'DEQP_SUITE must be set to the name of your deqp-gpu_version.toml, or DEQP_VER must be set to something like "gles2", "gles31-khr" or "vk" for the test run'
+        exit 1
+    fi
+
+    DEQP_WIDTH=${DEQP_WIDTH:-256}
+    DEQP_HEIGHT=${DEQP_HEIGHT:-256}
+    DEQP_CONFIG=${DEQP_CONFIG:-rgba8888d24s8ms0}
+    DEQP_VARIANT=${DEQP_VARIANT:-master}
+
+    DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-width=$DEQP_WIDTH --deqp-surface-height=$DEQP_HEIGHT"
+    DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=${DEQP_SURFACE_TYPE:-pbuffer}"
+    DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=$DEQP_CONFIG"
+    DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
+
+    if [ "$DEQP_VER" = "vk" -a -z "$VK_DRIVER" ]; then
+        echo 'VK_DRIVER must be to something like "radeon" or "intel" for the test run'
+        exit 1
+    fi
+
     # Generate test case list file.
     if [ "$DEQP_VER" = "vk" ]; then
        MUSTPASS=/deqp/mustpass/vk-$DEQP_VARIANT.txt
