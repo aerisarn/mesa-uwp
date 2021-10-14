@@ -152,6 +152,121 @@ dxil_spirv_nir_lower_shader_system_values(nir_shader *shader,
                                        &data);
 }
 
+struct lower_yz_flip_data {
+   bool *reads_sysval_ubo;
+   const struct dxil_spirv_runtime_conf *rt_conf;
+};
+
+static bool
+lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
+              void *cb_data)
+{
+   struct lower_yz_flip_data *data =
+      (struct lower_yz_flip_data *)cb_data;
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_store_deref)
+      return false;
+
+   nir_variable *var = nir_intrinsic_get_var(intrin, 0);
+   if (var->data.mode != nir_var_shader_out ||
+       var->data.location != VARYING_SLOT_POS)
+      return false;
+
+   builder->cursor = nir_before_instr(instr);
+
+   const struct dxil_spirv_runtime_conf *rt_conf = data->rt_conf;
+
+   nir_ssa_def *pos = nir_ssa_for_src(builder, intrin->src[1], 4);
+   nir_ssa_def *y_pos = nir_channel(builder, pos, 1);
+   nir_ssa_def *z_pos = nir_channel(builder, pos, 2);
+   nir_ssa_def *y_flip_mask = NULL, *z_flip_mask = NULL, *dyn_yz_flip_mask;
+
+   if (rt_conf->yz_flip.mode & DXIL_SPIRV_YZ_FLIP_CONDITIONAL) {
+      // conditional YZ-flip. The flip bitmask is passed through the vertex
+      // runtime data UBO.
+      unsigned offset =
+         offsetof(struct dxil_spirv_vertex_runtime_data, yz_flip_mask);
+      nir_address_format ubo_format = nir_address_format_32bit_index_offset;
+
+      nir_ssa_def *index = nir_vulkan_resource_index(
+         builder, nir_address_format_num_components(ubo_format),
+         nir_address_format_bit_size(ubo_format),
+         nir_imm_int(builder, 0),
+         .desc_set = rt_conf->runtime_data_cbv.register_space,
+         .binding = rt_conf->runtime_data_cbv.base_shader_register,
+         .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+      nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
+         builder, nir_address_format_num_components(ubo_format),
+         nir_address_format_bit_size(ubo_format),
+         index, .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+      dyn_yz_flip_mask =
+         build_load_ubo_dxil(builder,
+                             nir_channel(builder, load_desc, 0),
+                             nir_imm_int(builder, offset), 1, 32);
+      *data->reads_sysval_ubo = true;
+   }
+
+   if (rt_conf->yz_flip.mode & DXIL_SPIRV_Y_FLIP_UNCONDITIONAL)
+      y_flip_mask = nir_imm_int(builder, rt_conf->yz_flip.y_mask);
+   else if (rt_conf->yz_flip.mode & DXIL_SPIRV_Y_FLIP_CONDITIONAL)
+      y_flip_mask = nir_iand_imm(builder, dyn_yz_flip_mask, DXIL_SPIRV_Y_FLIP_MASK);
+
+   if (rt_conf->yz_flip.mode & DXIL_SPIRV_Z_FLIP_UNCONDITIONAL)
+      z_flip_mask = nir_imm_int(builder, rt_conf->yz_flip.z_mask);
+   else if (rt_conf->yz_flip.mode & DXIL_SPIRV_Z_FLIP_CONDITIONAL)
+      z_flip_mask = nir_ushr_imm(builder, dyn_yz_flip_mask, DXIL_SPIRV_Z_FLIP_SHIFT);
+
+   /* TODO: Multi-viewport */
+
+   if (y_flip_mask) {
+      nir_ssa_def *flip = nir_ieq_imm(builder, nir_iand_imm(builder, y_flip_mask, 1), 1);
+
+      // Z-flip => pos.y = -pos.y
+      y_pos = nir_bcsel(builder, flip, nir_fneg(builder, y_pos), y_pos);
+   }
+
+   if (z_flip_mask) {
+      nir_ssa_def *flip = nir_ieq_imm(builder, nir_iand_imm(builder, z_flip_mask, 1), 1);
+
+      // Z-flip => pos.z = -pos.z + 1.0f
+      z_pos = nir_bcsel(builder, flip,
+                        nir_fadd_imm(builder, nir_fneg(builder, z_pos), 1.0f),
+                        z_pos);
+   }
+
+   nir_ssa_def *def = nir_vec4(builder,
+                               nir_channel(builder, pos, 0),
+                               y_pos,
+                               z_pos,
+                               nir_channel(builder, pos, 3));
+   nir_instr_rewrite_src(&intrin->instr, &intrin->src[1], nir_src_for_ssa(def));
+   return true;
+}
+
+static bool
+dxil_spirv_nir_lower_yz_flip(nir_shader *shader,
+                             const struct dxil_spirv_runtime_conf *rt_conf,
+                             bool *reads_sysval_ubo)
+{
+   struct lower_yz_flip_data data = {
+      .rt_conf = rt_conf,
+      .reads_sysval_ubo = reads_sysval_ubo,
+   };
+
+   return nir_shader_instructions_pass(shader, lower_yz_flip,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance |
+                                       nir_metadata_loop_analysis,
+                                       &data);
+}
+
 bool
 spirv_to_dxil(const uint32_t *words, size_t word_count,
               struct dxil_spirv_specialization *specializations,
@@ -220,10 +335,6 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
             spirv_opts.ubo_addr_format,
             conf->runtime_data_cbv.register_space,
             conf->runtime_data_cbv.base_shader_register);
-   if (requires_runtime_data) {
-      add_runtime_data_var(nir, conf->runtime_data_cbv.register_space,
-                           conf->runtime_data_cbv.base_shader_register);
-   }
 
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
@@ -268,6 +379,19 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
+
+
+   if (conf->yz_flip.mode != DXIL_SPIRV_YZ_FLIP_NONE) {
+      assert(stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_GEOMETRY);
+      NIR_PASS_V(nir,
+                 dxil_spirv_nir_lower_yz_flip,
+                 conf, &requires_runtime_data);
+   }
+
+   if (requires_runtime_data) {
+      add_runtime_data_var(nir, conf->runtime_data_cbv.register_space,
+                           conf->runtime_data_cbv.base_shader_register);
+   }
 
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_opt_dce);
