@@ -252,13 +252,14 @@ descriptor_set_invalidate(struct zink_descriptor_set *zds)
    }
 }
 
-#ifndef NDEBUG
 static void
 descriptor_pool_clear(struct hash_table *ht)
 {
-   _mesa_hash_table_clear(ht, NULL);
+   hash_table_foreach(ht, entry) {
+      struct zink_descriptor_set *zds = entry->data;
+      descriptor_set_invalidate(zds);
+   }
 }
-#endif
 
 static void
 descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *pool)
@@ -269,12 +270,10 @@ descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *po
       VKSCR(DestroyDescriptorPool)(screen->dev, pool->descpool, NULL);
 
    simple_mtx_lock(&pool->mtx);
-#ifndef NDEBUG
    if (pool->desc_sets)
       descriptor_pool_clear(pool->desc_sets);
    if (pool->free_desc_sets)
       descriptor_pool_clear(pool->free_desc_sets);
-#endif
    if (pool->desc_sets)
       _mesa_hash_table_destroy(pool->desc_sets, NULL);
    if (pool->free_desc_sets)
