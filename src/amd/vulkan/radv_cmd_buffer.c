@@ -4672,9 +4672,9 @@ radv_meta_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
    push_set->header.va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
    push_set->header.va += bo_offset;
 
-   radv_update_descriptor_sets(cmd_buffer->device, cmd_buffer,
-                               radv_descriptor_set_to_handle(push_set), descriptorWriteCount,
-                               pDescriptorWrites, 0, NULL);
+   radv_cmd_update_descriptor_sets(cmd_buffer->device, cmd_buffer,
+                                   radv_descriptor_set_to_handle(push_set), descriptorWriteCount,
+                                   pDescriptorWrites, 0, NULL);
 
    radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, push_set, set);
 }
@@ -4705,9 +4705,9 @@ radv_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer, VkPipelineBindPoint 
       assert(writeset->descriptorType != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
    }
 
-   radv_update_descriptor_sets(cmd_buffer->device, cmd_buffer,
-                               radv_descriptor_set_to_handle(push_set), descriptorWriteCount,
-                               pDescriptorWrites, 0, NULL);
+   radv_cmd_update_descriptor_sets(cmd_buffer->device, cmd_buffer,
+                                   radv_descriptor_set_to_handle(push_set), descriptorWriteCount,
+                                   pDescriptorWrites, 0, NULL);
 
    radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, push_set, set);
    descriptors_state->push_dirty = true;

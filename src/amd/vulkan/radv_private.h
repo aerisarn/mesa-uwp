@@ -2577,11 +2577,11 @@ bool radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *
 void radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point,
                              struct radv_descriptor_set *set, unsigned idx);
 
-void radv_update_descriptor_sets(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
-                                 VkDescriptorSet overrideSet, uint32_t descriptorWriteCount,
-                                 const VkWriteDescriptorSet *pDescriptorWrites,
-                                 uint32_t descriptorCopyCount,
-                                 const VkCopyDescriptorSet *pDescriptorCopies);
+void radv_cmd_update_descriptor_sets(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
+                                     VkDescriptorSet overrideSet, uint32_t descriptorWriteCount,
+                                     const VkWriteDescriptorSet *pDescriptorWrites,
+                                     uint32_t descriptorCopyCount,
+                                     const VkCopyDescriptorSet *pDescriptorCopies);
 
 void radv_update_descriptor_set_with_template(struct radv_device *device,
                                               struct radv_cmd_buffer *cmd_buffer,

@@ -1117,12 +1117,12 @@ write_accel_struct(void *ptr, VkAccelerationStructureKHR _accel_struct)
    memcpy(ptr, &va, sizeof(va));
 }
 
-void
-radv_update_descriptor_sets(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
-                            VkDescriptorSet dstSetOverride, uint32_t descriptorWriteCount,
-                            const VkWriteDescriptorSet *pDescriptorWrites,
-                            uint32_t descriptorCopyCount,
-                            const VkCopyDescriptorSet *pDescriptorCopies)
+static ALWAYS_INLINE void
+radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
+                                 VkDescriptorSet dstSetOverride, uint32_t descriptorWriteCount,
+                                 const VkWriteDescriptorSet *pDescriptorWrites,
+                                 uint32_t descriptorCopyCount,
+                                 const VkCopyDescriptorSet *pDescriptorCopies)
 {
    uint32_t i, j;
    for (i = 0; i < descriptorWriteCount; i++) {
@@ -1293,8 +1293,21 @@ radv_UpdateDescriptorSets(VkDevice _device, uint32_t descriptorWriteCount,
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
 
-   radv_update_descriptor_sets(device, NULL, VK_NULL_HANDLE, descriptorWriteCount,
-                               pDescriptorWrites, descriptorCopyCount, pDescriptorCopies);
+   radv_update_descriptor_sets_impl(device, NULL, VK_NULL_HANDLE, descriptorWriteCount,
+                                    pDescriptorWrites, descriptorCopyCount, pDescriptorCopies);
+}
+
+void
+radv_cmd_update_descriptor_sets(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer,
+                                VkDescriptorSet dstSetOverride, uint32_t descriptorWriteCount,
+                                const VkWriteDescriptorSet *pDescriptorWrites,
+                                uint32_t descriptorCopyCount,
+                                const VkCopyDescriptorSet *pDescriptorCopies)
+{
+   /* Assume cmd_buffer != NULL to optimize out cmd_buffer checks in generic code above. */
+   assume(cmd_buffer != NULL);
+   radv_update_descriptor_sets_impl(device, cmd_buffer, dstSetOverride, descriptorWriteCount,
+                                    pDescriptorWrites, descriptorCopyCount, pDescriptorCopies);
 }
 
 VkResult
