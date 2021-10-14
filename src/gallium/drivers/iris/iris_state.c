@@ -4425,8 +4425,20 @@ iris_store_tes_state(const struct intel_device_info *devinfo,
    struct brw_vue_prog_data *vue_prog_data = (void *) prog_data;
    struct brw_tes_prog_data *tes_prog_data = (void *) prog_data;
 
-   uint32_t *te_state = (void *) shader->derived_data;
-   uint32_t *ds_state = te_state + GENX(3DSTATE_TE_length);
+   uint32_t *ds_state = (void *) shader->derived_data;
+   uint32_t *te_state = ds_state + GENX(3DSTATE_DS_length);
+
+   iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
+      INIT_THREAD_DISPATCH_FIELDS(ds, Patch, MESA_SHADER_TESS_EVAL);
+
+      ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
+      ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
+      ds.ComputeWCoordinateEnable =
+         tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
+
+      ds.UserClipDistanceCullTestEnableBitmask =
+         vue_prog_data->cull_distance_mask;
+   }
 
    iris_pack_command(GENX(3DSTATE_TE), te_state, te) {
       te.Partitioning = tes_prog_data->partitioning;
@@ -4446,19 +4458,6 @@ iris_store_tes_state(const struct intel_device_info *devinfo,
       te.LocalBOPAccumulatorThreshold = 1;
 #endif
    }
-
-   iris_pack_command(GENX(3DSTATE_DS), ds_state, ds) {
-      INIT_THREAD_DISPATCH_FIELDS(ds, Patch, MESA_SHADER_TESS_EVAL);
-
-      ds.DispatchMode = DISPATCH_MODE_SIMD8_SINGLE_PATCH;
-      ds.MaximumNumberofThreads = devinfo->max_tes_threads - 1;
-      ds.ComputeWCoordinateEnable =
-         tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
-
-      ds.UserClipDistanceCullTestEnableBitmask =
-         vue_prog_data->cull_distance_mask;
-   }
-
 }
 
 /**
