@@ -1761,48 +1761,45 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu_image_view_copy(&dst, dst_image, dst_format, &info->dstSubresource, dst_offset.z, false);
       tu_image_view_copy(&src, src_image, src_format, &info->srcSubresource, src_offset.z, false);
 
-      struct tu_image staging_image = {
-         .base.type = VK_OBJECT_TYPE_IMAGE,
-         .vk_format = src_format,
-         .level_count = 1,
-         .layer_count = info->srcSubresource.layerCount,
-         .bo_offset = 0,
-      };
-
-      VkImageSubresourceLayers staging_subresource = {
-         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-         .mipLevel = 0,
-         .baseArrayLayer = 0,
-         .layerCount = info->srcSubresource.layerCount,
-      };
-
+      struct fdl_layout staging_layout = { 0 };
       VkOffset3D staging_offset = { 0 };
 
-      staging_image.layout[0].tile_mode = TILE6_LINEAR;
-      staging_image.layout[0].ubwc = false;
+      staging_layout.tile_mode = TILE6_LINEAR;
+      staging_layout.ubwc = false;
 
-      fdl6_layout(&staging_image.layout[0],
-                  vk_format_to_pipe_format(staging_image.vk_format),
+      fdl6_layout(&staging_layout,
+                  vk_format_to_pipe_format(src_format),
                   src_image->layout[0].nr_samples,
                   extent.width,
                   extent.height,
                   extent.depth,
-                  staging_image.level_count,
-                  staging_image.layer_count,
+                  1,
+                  info->srcSubresource.layerCount,
                   extent.depth > 1,
                   NULL);
 
+      struct tu_bo *staging_bo;
       VkResult result = tu_get_scratch_bo(cmd->device,
-                                          staging_image.layout[0].size,
-                                          &staging_image.bo);
+                                          staging_layout.size,
+                                          &staging_bo);
       if (result != VK_SUCCESS) {
          cmd->record_result = result;
          return;
       }
 
       struct fdl6_view staging;
-      tu_image_view_copy(&staging, &staging_image, src_format,
-                         &staging_subresource, 0, false);
+      const struct fdl_layout *staging_layout_ptr = &staging_layout;
+      fdl6_view_init(&staging, &staging_layout_ptr, &(struct fdl_view_args) {
+         .iova = staging_bo->iova,
+         .base_array_layer = 0,
+         .layer_count = 1,
+         .base_miplevel = 0,
+         .level_count = info->srcSubresource.layerCount,
+         .format = tu_format_for_aspect(vk_format_to_pipe_format(src_format),
+                                        VK_IMAGE_ASPECT_COLOR_BIT),
+         .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
+         .type = FDL_VIEW_TYPE_2D,
+      }, false);
 
       ops->setup(cmd, cs, src_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false, false,
                  dst_image->layout[0].nr_samples);
@@ -1821,8 +1818,17 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
       tu_cs_emit_wfi(cs);
 
-      tu_image_view_copy(&staging, &staging_image, dst_format,
-                         &staging_subresource, 0, false);
+      fdl6_view_init(&staging, &staging_layout_ptr, &(struct fdl_view_args) {
+         .iova = staging_bo->iova,
+         .base_array_layer = 0,
+         .layer_count = 1,
+         .base_miplevel = 0,
+         .level_count = info->srcSubresource.layerCount,
+         .format = tu_format_for_aspect(vk_format_to_pipe_format(dst_format),
+                                        VK_IMAGE_ASPECT_COLOR_BIT),
+         .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
+         .type = FDL_VIEW_TYPE_2D,
+      }, false);
 
       ops->setup(cmd, cs, dst_format, info->dstSubresource.aspectMask,
                  0, false, dst_image->layout[0].ubwc,
