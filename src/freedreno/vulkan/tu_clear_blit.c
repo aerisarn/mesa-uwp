@@ -1262,22 +1262,6 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
       aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
    }
 
-   struct tu_image_view iview2;
-   tu_image_view_init(&iview2, &(VkImageViewCreateInfo) {
-      .image = tu_image_to_handle(image),
-      .viewType = z_scale ? VK_IMAGE_VIEW_TYPE_3D : VK_IMAGE_VIEW_TYPE_2D,
-      .format = format,
-      /* image_to_buffer from d24s8 with stencil aspect mask writes out to r8 */
-      .components.r = stencil_read ? VK_COMPONENT_SWIZZLE_A : VK_COMPONENT_SWIZZLE_R,
-      .subresourceRange = {
-         .aspectMask = aspect_mask,
-         .baseMipLevel = subres->mipLevel,
-         .levelCount = 1,
-         .baseArrayLayer = subres->baseArrayLayer + layer,
-         .layerCount = 1,
-      },
-   }, false);
-
    const struct fdl_layout *layout =
       &image->layout[tu6_plane_index(image->vk_format, aspect_mask)];
 
@@ -1299,8 +1283,6 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
       },
       .type = z_scale ? FDL_VIEW_TYPE_3D : FDL_VIEW_TYPE_2D,
    }, false);
-
-   assert(memcmp(iview, &iview2.view, sizeof(iview2.view)) == 0);
 }
 
 static void
