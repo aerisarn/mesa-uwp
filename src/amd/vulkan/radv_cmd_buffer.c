@@ -1611,6 +1611,8 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    uint32_t vertex_comb_mode = d->fragment_shading_rate.combiner_ops[0];
    uint32_t htile_comb_mode = d->fragment_shading_rate.combiner_ops[1];
 
+   assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10_3);
+
    if (subpass && !subpass->vrs_attachment) {
       /* When the current subpass has no VRS attachment, the VRS rates are expected to be 1x1, so we
        * can cheat by tweaking the different combiner modes.
