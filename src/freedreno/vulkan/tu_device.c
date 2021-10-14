@@ -319,6 +319,7 @@ static const struct debug_control tu_debug_options[] = {
    { "perfc", TU_DEBUG_PERFC },
    { "flushall", TU_DEBUG_FLUSHALL },
    { "syncdraw", TU_DEBUG_SYNCDRAW },
+   { "dontcare_as_load", TU_DEBUG_DONT_CARE_AS_LOAD },
    { NULL, 0 }
 };
 
@@ -339,6 +340,7 @@ static const driOptionDescription tu_dri_options[] = {
 
    DRI_CONF_SECTION_DEBUG
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
+      DRI_CONF_VK_DONT_CARE_AS_LOAD(false)
    DRI_CONF_SECTION_END
 };
 
@@ -350,6 +352,9 @@ tu_init_dri_options(struct tu_instance *instance)
    driParseConfigFiles(&instance->dri_options, &instance->available_dri_options, 0, "turnip", NULL, NULL,
                        instance->vk.app_info.app_name, instance->vk.app_info.app_version,
                        instance->vk.app_info.engine_name, instance->vk.app_info.engine_version);
+
+   if (driQueryOptionb(&instance->dri_options, "vk_dont_care_as_load"))
+      instance->debug_flags |= TU_DEBUG_DONT_CARE_AS_LOAD;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
