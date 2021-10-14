@@ -626,7 +626,10 @@ static VkBufferViewCreateInfo
 create_bvci(struct zink_context *ctx, struct zink_resource *res, enum pipe_format format, uint32_t offset, uint32_t range)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkBufferViewCreateInfo bvci = {0};
+   VkBufferViewCreateInfo bvci;
+   // Zero whole struct (including alignment holes), so hash_bufferview
+   // does not access potentially uninitialized data.
+   memset(&bvci, 0, sizeof(bvci));
    bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
    bvci.pNext = NULL;
    bvci.buffer = res->obj->buffer;
