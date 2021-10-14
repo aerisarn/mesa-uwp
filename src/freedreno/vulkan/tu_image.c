@@ -51,7 +51,7 @@ tu6_plane_count(VkFormat format)
    }
 }
 
-static VkFormat
+VkFormat
 tu6_plane_format(VkFormat format, uint32_t plane)
 {
    switch (format) {
@@ -67,7 +67,7 @@ tu6_plane_format(VkFormat format, uint32_t plane)
    }
 }
 
-static uint32_t
+uint32_t
 tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask)
 {
    switch (aspect_mask) {
@@ -82,7 +82,7 @@ tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask)
    }
 }
 
-static enum pipe_format
+enum pipe_format
 tu_format_for_aspect(enum pipe_format format, VkImageAspectFlags aspect_mask)
 {
    switch (format) {
@@ -192,11 +192,11 @@ tu6_texswiz(const VkComponentMapping *comps,
 }
 
 void
-tu_cs_image_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
+tu_cs_image_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer)
 {
-   tu_cs_emit(cs, iview->view.PITCH);
-   tu_cs_emit(cs, iview->view.layer_size >> 6);
-   tu_cs_emit_qw(cs, iview->view.base_addr + iview->view.layer_size * layer);
+   tu_cs_emit(cs, iview->PITCH);
+   tu_cs_emit(cs, iview->layer_size >> 6);
+   tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
 }
 
 void
@@ -208,18 +208,18 @@ tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uin
 }
 
 void
-tu_cs_image_ref_2d(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer, bool src)
+tu_cs_image_ref_2d(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer, bool src)
 {
-   tu_cs_emit_qw(cs, iview->view.base_addr + iview->view.layer_size * layer);
+   tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
    /* SP_PS_2D_SRC_PITCH has shifted pitch field */
-   tu_cs_emit(cs, iview->view.PITCH << (src ? 9 : 0));
+   tu_cs_emit(cs, iview->PITCH << (src ? 9 : 0));
 }
 
 void
-tu_cs_image_flag_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
+tu_cs_image_flag_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer)
 {
-   tu_cs_emit_qw(cs, iview->view.ubwc_addr + iview->view.ubwc_layer_size * layer);
-   tu_cs_emit(cs, iview->view.FLAG_BUFFER_PITCH);
+   tu_cs_emit_qw(cs, iview->ubwc_addr + iview->ubwc_layer_size * layer);
+   tu_cs_emit(cs, iview->FLAG_BUFFER_PITCH);
 }
 
 void

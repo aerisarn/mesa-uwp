@@ -216,14 +216,14 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt).value);
-   tu_cs_image_ref(cs, iview, 0);
+   tu_cs_image_ref(cs, &iview->view, 0);
    tu_cs_emit(cs, attachment->gmem_offset);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = fmt));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE, 3);
-   tu_cs_image_flag_ref(cs, iview, 0);
+   tu_cs_image_flag_ref(cs, &iview->view, 0);
 
    tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_BUFFER_BASE(.bo = iview->image->bo,
                                                  .bo_offset = iview->image->bo_offset + iview->image->lrz_offset),
@@ -239,7 +239,7 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
          tu_cs_image_stencil_ref(cs, iview, 0);
          tu_cs_emit(cs, attachment->gmem_offset_stencil);
       } else {
-         tu_cs_image_ref(cs, iview, 0);
+         tu_cs_image_ref(cs, &iview->view, 0);
          tu_cs_emit(cs, attachment->gmem_offset);
       }
    } else {
@@ -264,14 +264,14 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(i), 6);
       tu_cs_emit(cs, iview->view.RB_MRT_BUF_INFO);
-      tu_cs_image_ref(cs, iview, 0);
+      tu_cs_image_ref(cs, &iview->view, 0);
       tu_cs_emit(cs, cmd->state.pass->attachments[a].gmem_offset);
 
       tu_cs_emit_regs(cs,
                       A6XX_SP_FS_MRT_REG(i, .dword = iview->view.SP_FS_MRT_REG));
 
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_FLAG_BUFFER_ADDR(i), 3);
-      tu_cs_image_flag_ref(cs, iview, 0);
+      tu_cs_image_flag_ref(cs, &iview->view, 0);
    }
 
    tu_cs_emit_regs(cs,

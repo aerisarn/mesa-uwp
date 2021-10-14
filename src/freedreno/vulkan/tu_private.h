@@ -1439,6 +1439,13 @@ tu_get_levelCount(const struct tu_image *image,
              : range->levelCount;
 }
 
+VkFormat tu6_plane_format(VkFormat format, uint32_t plane);
+
+uint32_t tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask);
+
+enum pipe_format tu_format_for_aspect(enum pipe_format format,
+                                      VkImageAspectFlags aspect_mask);
+
 struct tu_image_view
 {
    struct vk_object_base base;
@@ -1472,13 +1479,13 @@ struct tu_sampler {
 };
 
 void
-tu_cs_image_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
+tu_cs_image_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer);
 
 void
-tu_cs_image_ref_2d(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer, bool src);
+tu_cs_image_ref_2d(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer, bool src);
 
 void
-tu_cs_image_flag_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
+tu_cs_image_flag_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer);
 
 void
 tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
