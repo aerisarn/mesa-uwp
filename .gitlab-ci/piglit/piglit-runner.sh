@@ -53,17 +53,17 @@ fi
 
 set +e
 
-    piglit-runner \
-        run \
-        --piglit-folder /piglit \
-        --output $RESULTS \
-        --jobs ${FDO_CI_CONCURRENT:-4} \
-        --skips $INSTALL/piglit/piglit-all-skips.txt $PIGLIT_SKIPS \
-        --flakes $INSTALL/piglit-$GPU_VERSION-flakes.txt \
-        --profile $PIGLIT_PROFILES \
-        --process-isolation \
-	$PIGLIT_RUNNER_OPTIONS \
-        -v -v
+piglit-runner \
+    run \
+    --piglit-folder /piglit \
+    --output $RESULTS \
+    --jobs ${FDO_CI_CONCURRENT:-4} \
+    --skips $INSTALL/piglit/piglit-all-skips.txt $PIGLIT_SKIPS \
+    --flakes $INSTALL/piglit-$GPU_VERSION-flakes.txt \
+    --profile $PIGLIT_PROFILES \
+    --process-isolation \
+    $PIGLIT_RUNNER_OPTIONS \
+    -v -v
 
 PIGLIT_EXITCODE=$?
 
