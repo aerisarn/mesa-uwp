@@ -627,11 +627,15 @@ panfrost_set_sampler_views(
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->dirty_shader[shader] |= PAN_DIRTY_STAGE_TEXTURE;
 
+        unsigned new_nr = 0;
         unsigned i;
 
         for (i = 0; i < num_views; ++i) {
                 struct pipe_sampler_view *view = views ? views[i] : NULL;
                 unsigned p = i + start_slot;
+
+                if (view)
+                        new_nr = p + 1;
 
                 if (take_ownership) {
                         pipe_sampler_view_reference((struct pipe_sampler_view **)&ctx->sampler_views[shader][p],
@@ -649,13 +653,21 @@ panfrost_set_sampler_views(
 		                            NULL);
         }
 
-        /* Recalculate sampler view count */
-        ctx->sampler_view_count[shader] = 0;
+        /* If the sampler view count is higher than the greatest sampler view
+         * we touch, it can't change */
+        if (ctx->sampler_view_count[shader] > start_slot + num_views + unbind_num_trailing_slots)
+                return;
 
-        for (i = 0; i < ARRAY_SIZE(ctx->sampler_views[shader]); ++i) {
-                if (ctx->sampler_views[shader][i])
-                        ctx->sampler_view_count[shader] = i + 1;
+        /* If we haven't set any sampler views here, search lower numbers for
+         * set sampler views */
+        if (new_nr == 0) {
+                for (i = 0; i < start_slot; ++i) {
+                        if (ctx->sampler_views[shader][i])
+                                new_nr = i + 1;
+                }
         }
+
+        ctx->sampler_view_count[shader] = new_nr;
 }
 
 static void
