@@ -1411,6 +1411,7 @@ enum __DRIChromaSiting {
  * Flags for createImageFromDmaBufs3 and createImageFromFds2
  */
 #define __DRI_IMAGE_PROTECTED_CONTENT_FLAG 0x00000001
+#define __DRI_IMAGE_PRIME_LINEAR_BUFFER    0x00000002
 
 /**
  * queryDmaBufFormatModifierAttribs attributes

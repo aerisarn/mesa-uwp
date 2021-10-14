@@ -514,6 +514,7 @@ enum pipe_flush_flags
 #define PIPE_BIND_LINEAR      (1 << 21)
 #define PIPE_BIND_PROTECTED   (1 << 22) /* Resource will be protected/encrypted */
 #define PIPE_BIND_SAMPLER_REDUCTION_MINMAX (1 << 23) /* PIPE_CAP_SAMPLER_REDUCTION_MINMAX */
+#define PIPE_BIND_DRI_PRIME   (1 << 24)
 
 
 /**

@@ -1526,6 +1526,8 @@ dri2_from_fds2(__DRIscreen *screen, int width, int height, int fourcc,
    unsigned bind = 0;
    if (flags & __DRI_IMAGE_PROTECTED_CONTENT_FLAG)
       bind |= PIPE_BIND_PROTECTED;
+   if (flags & __DRI_IMAGE_PRIME_LINEAR_BUFFER)
+      bind |= PIPE_BIND_DRI_PRIME;
 
    return dri2_create_image_from_fd(screen, width, height, fourcc,
                                    DRM_FORMAT_MOD_INVALID, fds, num_fds,
