@@ -1579,7 +1579,9 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
        templ->last_level != 0)
       return NULL;
 
-   buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle, sscreen->info.max_alignment);
+   buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle,
+                                         sscreen->info.max_alignment,
+                                         templ->bind & PIPE_BIND_DRI_PRIME);
    if (!buf)
       return NULL;
 
@@ -2127,7 +2129,7 @@ si_memobj_from_handle(struct pipe_screen *screen, struct winsys_handle *whandle,
    if (!memobj)
       return NULL;
 
-   buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle, sscreen->info.max_alignment);
+   buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle, sscreen->info.max_alignment, false);
    if (!buf) {
       free(memobj);
       return NULL;

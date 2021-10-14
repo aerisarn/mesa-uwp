@@ -383,7 +383,7 @@ struct radeon_winsys {
     *                  tracker.
     */
    struct pb_buffer *(*buffer_from_handle)(struct radeon_winsys *ws, struct winsys_handle *whandle,
-                                           unsigned vm_alignment);
+                                           unsigned vm_alignment, bool is_prime_linear_buffer);
 
    /**
     * Get a winsys buffer from a user pointer. The resulting buffer can't
