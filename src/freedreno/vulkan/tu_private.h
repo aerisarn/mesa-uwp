@@ -53,6 +53,7 @@
 #include "util/macros.h"
 #include "util/u_atomic.h"
 #include "util/u_dynarray.h"
+#include "util/xmlconfig.h"
 #include "util/perf/u_trace.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
@@ -247,6 +248,9 @@ struct tu_instance
    uint32_t api_version;
    int physical_device_count;
    struct tu_physical_device physical_devices[TU_MAX_DRM_DEVICES];
+
+   struct driOptionCache dri_options;
+   struct driOptionCache available_dri_options;
 
    enum tu_debug_flags debug_flags;
 };

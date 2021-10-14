@@ -38,6 +38,7 @@
 
 #include "util/debug.h"
 #include "util/disk_cache.h"
+#include "util/driconf.h"
 #include "util/u_atomic.h"
 #include "vk_format.h"
 #include "vk_util.h"
@@ -328,6 +329,29 @@ tu_get_debug_option_name(int id)
    return tu_debug_options[id].string;
 }
 
+static const driOptionDescription tu_dri_options[] = {
+   DRI_CONF_SECTION_PERFORMANCE
+      DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
+      DRI_CONF_VK_X11_STRICT_IMAGE_COUNT(false)
+      DRI_CONF_VK_X11_ENSURE_MIN_IMAGE_COUNT(false)
+      DRI_CONF_VK_XWAYLAND_WAIT_READY(true)
+   DRI_CONF_SECTION_END
+
+   DRI_CONF_SECTION_DEBUG
+      DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
+   DRI_CONF_SECTION_END
+};
+
+static void
+tu_init_dri_options(struct tu_instance *instance)
+{
+   driParseOptionInfo(&instance->available_dri_options, tu_dri_options,
+                      ARRAY_SIZE(tu_dri_options));
+   driParseConfigFiles(&instance->dri_options, &instance->available_dri_options, 0, "turnip", NULL, NULL,
+                       instance->vk.app_info.app_name, instance->vk.app_info.app_version,
+                       instance->vk.app_info.engine_name, instance->vk.app_info.engine_version);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
@@ -380,6 +404,8 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
+   tu_init_dri_options(instance);
+
    *pInstance = tu_instance_to_handle(instance);
 
 #ifdef HAVE_PERFETTO
@@ -403,6 +429,9 @@ tu_DestroyInstance(VkInstance _instance,
    }
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
+
+   driDestroyOptionCache(&instance->dri_options);
+   driDestroyOptionInfo(&instance->available_dri_options);
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);
