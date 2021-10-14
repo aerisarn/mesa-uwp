@@ -4716,7 +4716,7 @@ load_input_from_temps(isel_context* ctx, nir_intrinsic_instr* instr, Temp dst)
       return false;
 
    nir_src* off_src = nir_get_io_offset_src(instr);
-   nir_src* vertex_index_src = nir_get_io_vertex_index_src(instr);
+   nir_src* vertex_index_src = nir_get_io_arrayed_index_src(instr);
    nir_instr* vertex_index_instr = vertex_index_src->ssa->parent_instr;
    bool can_use_temps =
       nir_src_is_const(*off_src) && vertex_index_instr->type == nir_instr_type_intrinsic &&

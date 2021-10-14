@@ -128,7 +128,7 @@ remap_patch_urb_offsets(nir_block *block, nir_builder *b,
          assert(vue_slot != -1);
          intrin->const_index[0] = vue_slot;
 
-         nir_src *vertex = nir_get_io_vertex_index_src(intrin);
+         nir_src *vertex = nir_get_io_arrayed_index_src(intrin);
          if (vertex) {
             if (nir_src_is_const(*vertex)) {
                intrin->const_index[0] += nir_src_as_uint(*vertex) *

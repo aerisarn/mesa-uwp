@@ -2323,7 +2323,7 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
    writemask <<= component;
 
    if (ctx->stage == MESA_SHADER_TESS_CTRL) {
-      nir_src *vertex_index_src = nir_get_io_vertex_index_src(instr);
+      nir_src *vertex_index_src = nir_get_io_arrayed_index_src(instr);
       LLVMValueRef vertex_index = vertex_index_src ? get_src(ctx, *vertex_index_src) : NULL;
       unsigned location = nir_intrinsic_io_semantics(instr).location;
 
@@ -3379,7 +3379,7 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    unsigned base = nir_intrinsic_base(instr);
    unsigned component = nir_intrinsic_component(instr);
    unsigned count = instr->dest.ssa.num_components;
-   nir_src *vertex_index_src = nir_get_io_vertex_index_src(instr);
+   nir_src *vertex_index_src = nir_get_io_arrayed_index_src(instr);
    LLVMValueRef vertex_index = vertex_index_src ? get_src(ctx, *vertex_index_src) : NULL;
    nir_src offset = *nir_get_io_offset_src(instr);
    LLVMValueRef indir_index = NULL;

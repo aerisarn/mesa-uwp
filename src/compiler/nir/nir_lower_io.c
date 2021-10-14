@@ -2513,13 +2513,15 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
  * Return the vertex index source for a load/store per_vertex intrinsic.
  */
 nir_src *
-nir_get_io_vertex_index_src(nir_intrinsic_instr *instr)
+nir_get_io_arrayed_index_src(nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_per_vertex_input:
    case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_load_per_primitive_output:
       return &instr->src[0];
    case nir_intrinsic_store_per_vertex_output:
+   case nir_intrinsic_store_per_primitive_output:
       return &instr->src[1];
    default:
       return NULL;

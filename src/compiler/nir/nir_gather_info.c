@@ -527,7 +527,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 
       if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
           instr->intrinsic == nir_intrinsic_load_per_vertex_input &&
-          !src_is_invocation_id(nir_get_io_vertex_index_src(instr)))
+          !src_is_invocation_id(nir_get_io_arrayed_index_src(instr)))
          shader->info.tess.tcs_cross_invocation_inputs_read |= slot_mask;
       break;
 
@@ -550,7 +550,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 
       if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
           instr->intrinsic == nir_intrinsic_load_per_vertex_output &&
-          !src_is_invocation_id(nir_get_io_vertex_index_src(instr)))
+          !src_is_invocation_id(nir_get_io_arrayed_index_src(instr)))
          shader->info.tess.tcs_cross_invocation_outputs_read |= slot_mask;
 
       if (shader->info.stage == MESA_SHADER_FRAGMENT &&
