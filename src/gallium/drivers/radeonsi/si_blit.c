@@ -1222,8 +1222,7 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                         info->src.box.height == info->dst.resource->height0 &&
                         info->src.box.depth == 1 && util_can_blit_via_copy_region(info, true);
       /* Try SDMA first... */
-      /* TODO: figure out why SDMA copies are slow on GFX10_3 */
-      if (async_copy && sctx->chip_class < GFX10_3 && si_sdma_copy_image(sctx, sdst, ssrc))
+      if (async_copy && si_sdma_copy_image(sctx, sdst, ssrc))
          return;
 
       /* ... and use async compute as the fallback. */
