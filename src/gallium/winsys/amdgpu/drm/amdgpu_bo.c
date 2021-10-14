@@ -1558,7 +1558,11 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    if (!bo)
       goto error;
 
-   r = amdgpu_bo_va_op(result.buf_handle, 0, result.alloc_size, va, 0, AMDGPU_VA_OP_MAP);
+   r = amdgpu_bo_va_op_raw(ws->dev, result.buf_handle, 0, result.alloc_size, va,
+                           AMDGPU_VM_PAGE_READABLE | AMDGPU_VM_PAGE_WRITEABLE |
+                           AMDGPU_VM_PAGE_EXECUTABLE |
+                           (is_prime_linear_buffer ? AMDGPU_VM_MTYPE_UC : 0),
+                           AMDGPU_VA_OP_MAP);
    if (r)
       goto error;
 
