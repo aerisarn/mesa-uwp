@@ -1518,6 +1518,20 @@ dri2_from_fds(__DRIscreen *screen, int width, int height, int fourcc,
                                    strides, offsets, 0, NULL, loaderPrivate);
 }
 
+static __DRIimage *
+dri2_from_fds2(__DRIscreen *screen, int width, int height, int fourcc,
+              int *fds, int num_fds, uint32_t flags, int *strides,
+              int *offsets, void *loaderPrivate)
+{
+   unsigned bind = 0;
+   if (flags & __DRI_IMAGE_PROTECTED_CONTENT_FLAG)
+      bind |= PIPE_BIND_PROTECTED;
+
+   return dri2_create_image_from_fd(screen, width, height, fourcc,
+                                   DRM_FORMAT_MOD_INVALID, fds, num_fds,
+                                   strides, offsets, bind, NULL, loaderPrivate);
+}
+
 static boolean
 dri2_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
                              uint64_t *modifiers, unsigned int *external_only,
@@ -1774,7 +1788,7 @@ dri2_get_capabilities(__DRIscreen *_screen)
 
 /* The extension is modified during runtime if DRI_PRIME is detected */
 static const __DRIimageExtension dri2ImageExtensionTempl = {
-    .base = { __DRI_IMAGE, 19 },
+    .base = { __DRI_IMAGE, 20 },
 
     .createImageFromName          = dri2_create_image_from_name,
     .createImageFromRenderbuffer  = dri2_create_image_from_renderbuffer,
@@ -1787,6 +1801,7 @@ static const __DRIimageExtension dri2ImageExtensionTempl = {
     .fromPlanar                   = dri2_from_planar,
     .createImageFromTexture       = dri2_create_from_texture,
     .createImageFromFds           = NULL,
+    .createImageFromFds2          = NULL,
     .createImageFromDmaBufs       = NULL,
     .blitImage                    = dri2_blit_image,
     .getCapabilities              = dri2_get_capabilities,
@@ -2279,6 +2294,7 @@ dri2_init_screen_extensions(struct dri_screen *screen,
       if (drmGetCap(screen->sPriv->fd, DRM_CAP_PRIME, &cap) == 0 &&
           (cap & DRM_PRIME_CAP_IMPORT)) {
          screen->image_extension.createImageFromFds = dri2_from_fds;
+         screen->image_extension.createImageFromFds2 = dri2_from_fds2;
          screen->image_extension.createImageFromDmaBufs = dri2_from_dma_bufs;
          screen->image_extension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
          screen->image_extension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
