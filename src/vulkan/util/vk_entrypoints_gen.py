@@ -148,6 +148,8 @@ const struct vk_${type}_entrypoint_table ${p}_${type}_entrypoints = {
     % endif
     .${e.name} = ${p}_${e.name},
     % if e.guard is not None:
+#elif defined(_MSC_VER)
+    .${e.name} = (PFN_vkVoidFunction)vk_entrypoint_stub,
 #endif // ${e.guard}
     % endif
   % endfor

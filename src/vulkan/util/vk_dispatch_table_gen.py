@@ -68,6 +68,10 @@ TEMPLATE_H = Template(COPYRIGHT + """\
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+void vk_entrypoint_stub(void);
+#endif
+
 <%def name="dispatch_table(entrypoints)">
 % for e in entrypoints:
   % if e.alias:
