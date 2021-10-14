@@ -1401,13 +1401,15 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
 
         return T.gpu;
 #else
-        uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS] = { 0 };
+        uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
         for (int i = 0; i < ctx->sampler_view_count[stage]; ++i) {
                 struct panfrost_sampler_view *view = ctx->sampler_views[stage][i];
 
-                if (!view)
+                if (!view) {
+                        trampolines[i] = 0;
                         continue;
+                }
 
                 panfrost_update_sampler_view(view, &ctx->base);
 
