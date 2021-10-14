@@ -105,9 +105,12 @@ zink_context_destroy(struct pipe_context *pctx)
    simple_mtx_destroy(&ctx->batch_mtx);
    zink_clear_batch_state(ctx, ctx->batch.state);
    zink_batch_state_destroy(screen, ctx->batch.state);
-   for (struct zink_batch_state *bs = ctx->batch_states; bs; bs = bs->next) {
+   struct zink_batch_state *bs = ctx->batch_states;
+   while (bs) {
+      struct zink_batch_state *bs_next = bs->next;
       zink_clear_batch_state(ctx, bs);
       zink_batch_state_destroy(screen, bs);
+      bs = bs_next;
    }
    util_dynarray_foreach(&ctx->free_batch_states, struct zink_batch_state*, bs) {
       zink_clear_batch_state(ctx, *bs);
