@@ -191,7 +191,7 @@ find $RESULTS -name \*.xml \
     -exec cp /deqp/testlog.css /deqp/testlog.xsl "$RESULTS/" ";" \
     -quit
 
-$HANG_DETECTION_CMD deqp-runner junit \
+deqp-runner junit \
    --testsuite dEQP \
    --results $RESULTS/failures.csv \
    --output $RESULTS/junit.xml \
