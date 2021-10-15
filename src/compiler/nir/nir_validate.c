@@ -889,6 +889,7 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
             break;
 
          validate_assert(state, glsl_type_is_image(deref->type) ||
+                                glsl_type_is_texture(deref->type) ||
                                 glsl_type_is_sampler(deref->type));
          break;
       }
