@@ -436,6 +436,7 @@ struct radv_prolog_binary {
    uint8_t num_vgprs;
    uint8_t num_preserved_sgprs;
    unsigned code_size;
+   unsigned disasm_size;
    uint8_t data[0];
 };
 
@@ -487,6 +488,9 @@ struct radv_shader_prolog {
    uint32_t rsrc1;
    uint8_t num_preserved_sgprs;
    bool nontrivial_divisors;
+
+   /* debug only */
+   char *disasm_string;
 };
 
 void radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
