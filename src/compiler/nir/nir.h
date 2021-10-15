@@ -120,27 +120,33 @@ typedef struct {
 } nir_state_slot;
 
 typedef enum {
-   nir_var_shader_in       = (1 << 0),
-   nir_var_shader_out      = (1 << 1),
-   nir_var_shader_temp     = (1 << 2),
-   nir_var_function_temp   = (1 << 3),
-   nir_var_uniform         = (1 << 4),
-   nir_var_mem_ubo         = (1 << 5),
-   nir_var_system_value    = (1 << 6),
-   nir_var_mem_ssbo        = (1 << 7),
-   nir_var_mem_shared      = (1 << 8),
-   nir_var_mem_global      = (1 << 9),
+   nir_var_system_value    = (1 << 0),
+   nir_var_uniform         = (1 << 1),
+   nir_var_shader_in       = (1 << 2),
+   nir_var_shader_out      = (1 << 3),
+   nir_var_image           = (1 << 4),
+   /** Incoming call or ray payload data for ray-tracing shaders */
+   nir_var_shader_call_data = (1 << 5),
+   /** Ray hit attributes */
+   nir_var_ray_hit_attrib  = (1 << 6),
+
+   /* Modes named nir_var_mem_* have explicit data layout */
+   nir_var_mem_ubo         = (1 << 7),
+   nir_var_mem_push_const  = (1 << 8),
+   nir_var_mem_ssbo        = (1 << 9),
+   nir_var_mem_constant    = (1 << 10),
+
+   /* Generic modes intentionally come last. */
+   nir_var_shader_temp     = (1 << 11),
+   nir_var_function_temp   = (1 << 12),
+   nir_var_mem_shared      = (1 << 13),
+   nir_var_mem_global      = (1 << 14),
+
    nir_var_mem_generic     = (nir_var_shader_temp |
                               nir_var_function_temp |
                               nir_var_mem_shared |
                               nir_var_mem_global),
-   nir_var_mem_push_const  = (1 << 10), /* not actually used for variables */
-   nir_var_mem_constant    = (1 << 11),
-   /** Incoming call or ray payload data for ray-tracing shaders */
-   nir_var_shader_call_data = (1 << 12),
-   /** Ray hit attributes */
-   nir_var_ray_hit_attrib  = (1 << 13),
-   nir_var_image           = (1 << 14),
+
    nir_var_read_only_modes = nir_var_shader_in | nir_var_uniform |
                              nir_var_system_value | nir_var_mem_constant |
                              nir_var_mem_ubo,
