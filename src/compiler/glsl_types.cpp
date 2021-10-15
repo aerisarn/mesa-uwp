@@ -3022,8 +3022,12 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
          blob_write_uint32(blob, type->explicit_alignment);
       return;
    case GLSL_TYPE_SAMPLER:
+   case GLSL_TYPE_IMAGE:
       encoded.sampler.dimensionality = type->sampler_dimensionality;
-      encoded.sampler.shadow = type->sampler_shadow;
+      if (type->base_type == GLSL_TYPE_SAMPLER)
+         encoded.sampler.shadow = type->sampler_shadow;
+      else
+         assert(!type->sampler_shadow);
       encoded.sampler.array = type->sampler_array;
       encoded.sampler.sampled_type = type->sampled_type;
       break;
@@ -3031,11 +3035,6 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
       blob_write_uint32(blob, encoded.u32);
       blob_write_string(blob, type->name);
       return;
-   case GLSL_TYPE_IMAGE:
-      encoded.sampler.dimensionality = type->sampler_dimensionality;
-      encoded.sampler.array = type->sampler_array;
-      encoded.sampler.sampled_type = type->sampled_type;
-      break;
    case GLSL_TYPE_ATOMIC_UINT:
       break;
    case GLSL_TYPE_ARRAY:
