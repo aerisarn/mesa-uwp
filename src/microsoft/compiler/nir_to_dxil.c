@@ -3745,7 +3745,8 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
    assert(var);
 
    if (!glsl_type_is_sampler(glsl_without_array(var->type)) &&
-       !glsl_type_is_image(glsl_without_array(var->type)))
+       !glsl_type_is_image(glsl_without_array(var->type)) &&
+       !glsl_type_is_texture(glsl_without_array(var->type)))
       return true;
 
    const struct glsl_type *type = instr->type;
@@ -3771,11 +3772,11 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
       return true;
    }
 
-   assert(glsl_type_is_sampler(type) || glsl_type_is_image(type));
+   assert(glsl_type_is_sampler(type) || glsl_type_is_image(type) || glsl_type_is_texture(type));
    enum dxil_resource_class res_class;
    if (glsl_type_is_image(type))
       res_class = DXIL_RESOURCE_CLASS_UAV;
-   else if (glsl_get_sampler_result_type(type) == GLSL_TYPE_VOID)
+   else if (glsl_type_is_sampler(type))
       res_class = DXIL_RESOURCE_CLASS_SAMPLER;
    else
       res_class = DXIL_RESOURCE_CLASS_SRV;
@@ -4528,24 +4529,19 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    /* Samplers */
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_sampler_count(var->type);
-      const struct glsl_type *without_array = glsl_without_array(var->type);
-      if (var->data.mode == nir_var_uniform && glsl_type_is_sampler(without_array) &&
-          glsl_get_sampler_result_type(without_array) == GLSL_TYPE_VOID) {
-         if (!emit_sampler(ctx, var, count))
-            return false;
-      }
+      assert(count == 0 || glsl_type_is_bare_sampler(glsl_without_array(var->type)));
+      if (count > 0 && !emit_sampler(ctx, var, count))
+         return false;
    }
 
    /* SRVs */
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
-      unsigned count = glsl_type_get_sampler_count(var->type);
-      const struct glsl_type *without_array = glsl_without_array(var->type);
-      if (var->data.mode == nir_var_uniform && glsl_type_is_sampler(without_array) &&
-          glsl_get_sampler_result_type(without_array) != GLSL_TYPE_VOID) {
-         if (!emit_srv(ctx, var, count))
-            return false;
-      }
+      unsigned count = glsl_type_get_texture_count(var->type);
+      assert(count == 0 || glsl_type_is_texture(glsl_without_array(var->type)));
+      if (count > 0 && !emit_srv(ctx, var, count))
+         return false;
    }
+
    /* Handle read-only SSBOs as SRVs */
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
       if ((var->data.access & ACCESS_NON_WRITEABLE) != 0) {
