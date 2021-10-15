@@ -48,8 +48,6 @@ typedef unsigned int drm_drawable_t;
 typedef struct drm_clip_rect drm_clip_rect_t;
 #endif
 
-#include <GL/gl.h>
-
 #include <stdint.h>
 
 /**
@@ -199,7 +197,7 @@ struct __DRItexBufferExtensionRec {
      * setTexBuffer2 in version 2 of this interface
      */
     void (*setTexBuffer)(__DRIcontext *pDRICtx,
-			 GLint target,
+			 int target,
 			 __DRIdrawable *pDraw);
 
     /**
@@ -211,8 +209,8 @@ struct __DRItexBufferExtensionRec {
      * \since 2
      */
     void (*setTexBuffer2)(__DRIcontext *pDRICtx,
-			  GLint target,
-			  GLint format,
+			  int target,
+			  int format,
 			  __DRIdrawable *pDraw);
     /**
      * Method to release texture buffer in case some special platform
@@ -223,7 +221,7 @@ struct __DRItexBufferExtensionRec {
      * \since 3
      */
     void (*releaseTexBuffer)(__DRIcontext *pDRICtx,
-			GLint target,
+			int target,
 			__DRIdrawable *pDraw);
 };
 
@@ -366,8 +364,8 @@ struct __DRI2fenceExtensionRec {
     * \param flags   a combination of __DRI2_FENCE_FLAG_xxx flags
     * \param timeout the timeout in ns or __DRI2_FENCE_TIMEOUT_INFINITE
     */
-   GLboolean (*client_wait_sync)(__DRIcontext *ctx, void *fence,
-                                 unsigned flags, uint64_t timeout);
+   unsigned char (*client_wait_sync)(__DRIcontext *ctx, void *fence,
+                                     unsigned flags, uint64_t timeout);
 
    /**
     * This function enqueues a wait command into the command stream of
@@ -525,7 +523,7 @@ struct __DRIsystemTimeExtensionRec {
      * the rate of the "media stream counter".  In practical terms, this is
      * the frame refresh rate of the display.
      */
-    GLboolean (*getMSCRate)(__DRIdrawable *draw,
+    unsigned char (*getMSCRate)(__DRIdrawable *draw,
 			    int32_t * numerator, int32_t * denominator,
 			    void *loaderPrivate);
 };
@@ -556,7 +554,7 @@ struct __DRIdamageExtensionRec {
     void (*reportDamage)(__DRIdrawable *draw,
 			 int x, int y,
 			 drm_clip_rect_t *rects, int num_rects,
-			 GLboolean front_buffer,
+			 unsigned char front_buffer,
 			 void *loaderPrivate);
 };
 
@@ -655,9 +653,9 @@ struct __DRIswrastLoaderExtensionRec {
      *
      * \since 6
      */
-    GLboolean (*getImageShm2)(__DRIdrawable *readable,
-                              int x, int y, int width, int height,
-                              int shmid, void *loaderPrivate);
+    unsigned char (*getImageShm2)(__DRIdrawable *readable,
+                                  int x, int y, int width, int height,
+                                  int shmid, void *loaderPrivate);
 };
 
 /**
@@ -1443,7 +1441,7 @@ struct __DRIimageExtensionRec {
 			       unsigned int use,
 			       void *loaderPrivate);
 
-   GLboolean (*queryImage)(__DRIimage *image, int attrib, int *value);
+   unsigned char (*queryImage)(__DRIimage *image, int attrib, int *value);
 
    /**
     * The new __DRIimage will share the content with the old one, see dup(2).
@@ -1455,7 +1453,7 @@ struct __DRIimageExtensionRec {
     *
     * \since 2
     */
-   GLboolean (*validateUsage)(__DRIimage *image, unsigned int use);
+   unsigned char (*validateUsage)(__DRIimage *image, unsigned int use);
 
    /**
     * Unlike createImageFromName __DRI_IMAGE_FORMAT is not used but instead
@@ -1636,8 +1634,8 @@ struct __DRIimageExtensionRec {
     *
     * \since 15
     */
-   GLboolean (*queryDmaBufFormats)(__DRIscreen *screen, int max,
-                                   int *formats, int *count);
+   unsigned char (*queryDmaBufFormats)(__DRIscreen *screen, int max,
+                                       int *formats, int *count);
 
    /*
     * dmabuf format modifier query for a given format to support
@@ -1658,10 +1656,10 @@ struct __DRIimageExtensionRec {
     *
     * \since 15
     */
-   GLboolean (*queryDmaBufModifiers)(__DRIscreen *screen, int fourcc,
-                                     int max, uint64_t *modifiers,
-                                     unsigned int *external_only,
-                                     int *count);
+   unsigned char (*queryDmaBufModifiers)(__DRIscreen *screen, int fourcc,
+                                         int max, uint64_t *modifiers,
+                                         unsigned int *external_only,
+                                         int *count);
 
    /**
     * dmabuf format modifier attribute query for a given format and modifier.
@@ -1677,9 +1675,11 @@ struct __DRIimageExtensionRec {
     *
     * \since 16
     */
-   GLboolean (*queryDmaBufFormatModifierAttribs)(__DRIscreen *screen,
-                                                 uint32_t fourcc, uint64_t modifier,
-                                                 int attrib, uint64_t *value);
+   unsigned char (*queryDmaBufFormatModifierAttribs)(__DRIscreen *screen,
+                                                     uint32_t fourcc,
+                                                     uint64_t modifier,
+                                                     int attrib,
+                                                     uint64_t *value);
 
    /**
     * Create a DRI image from the given renderbuffer.
@@ -1773,7 +1773,7 @@ struct __DRIimageLookupExtensionRec {
      *
      * \since 2
      */
-    GLboolean (*validateEGLImage)(void *image, void *loaderPrivate);
+    unsigned char (*validateEGLImage)(void *image, void *loaderPrivate);
 
     /**
      * Lookup EGLImage after validateEGLImage(). No lock in this function.
@@ -2135,7 +2135,7 @@ struct __DRIbackgroundCallableExtensionRec {
     * the context was created.  This can be used by the loader to identify
     * which context any callbacks are associated with.
     */
-   GLboolean (*isThreadSafe)(void *loaderPrivate);
+   unsigned char (*isThreadSafe)(void *loaderPrivate);
 };
 
 /**
