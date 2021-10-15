@@ -1518,9 +1518,6 @@ validate_var_decl(nir_variable *var, nir_variable_mode valid_modes,
    if (var->constant_initializer)
       validate_constant(var->constant_initializer, var->type, state);
 
-   if (glsl_type_contains_image(var->type) && !var->data.bindless)
-      validate_assert(state, var->data.mode == nir_var_mem_image);
-
    if (var->data.mode == nir_var_mem_image) {
       validate_assert(state, !var->data.bindless);
       validate_assert(state, glsl_type_is_image(glsl_without_array(var->type)));
