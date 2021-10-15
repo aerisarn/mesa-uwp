@@ -1973,11 +1973,12 @@ radv_create_trap_handler_shader(struct radv_device *device)
 static struct radv_shader_prolog *
 upload_vs_prolog(struct radv_device *device, struct radv_prolog_binary *bin, unsigned wave_size)
 {
+   uint32_t code_size = radv_get_shader_binary_size(bin->code_size);
    struct radv_shader_prolog *prolog = malloc(sizeof(struct radv_shader_prolog));
    if (!prolog)
       return NULL;
 
-   prolog->alloc = radv_alloc_shader_memory(device, bin->code_size, NULL);
+   prolog->alloc = radv_alloc_shader_memory(device, code_size, NULL);
    if (!prolog->alloc) {
       free(prolog);
       return NULL;
@@ -1987,6 +1988,11 @@ upload_vs_prolog(struct radv_device *device, struct radv_prolog_binary *bin, uns
    char *dest_ptr = prolog->alloc->arena->ptr + prolog->alloc->offset;
 
    memcpy(dest_ptr, bin->data, bin->code_size);
+
+   /* Add end-of-code markers for the UMR disassembler. */
+   uint32_t *ptr32 = (uint32_t *)dest_ptr + bin->code_size / 4;
+   for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
+      ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
    prolog->rsrc1 = S_00B848_VGPRS((bin->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
                    S_00B228_SGPRS((bin->num_sgprs - 1) / 8);
