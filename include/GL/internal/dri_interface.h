@@ -154,32 +154,6 @@ struct __DRIswapControlExtensionRec {
 };
 
 /**
- * Used by drivers that implement the GLX_MESA_swap_frame_usage extension.
- */
-#define __DRI_FRAME_TRACKING "DRI_FrameTracking"
-#define __DRI_FRAME_TRACKING_VERSION 1
-struct __DRIframeTrackingExtensionRec {
-    __DRIextension base;
-
-    /**
-     * Enable or disable frame usage tracking.
-     * 
-     * \since Internal API version 20030317.
-     */
-    int (*frameTracking)(__DRIdrawable *drawable, GLboolean enable);
-
-    /**
-     * Retrieve frame usage information.
-     * 
-     * \since Internal API version 20030317.
-     */
-    int (*queryFrameTracking)(__DRIdrawable *drawable,
-			      int64_t * sbc, int64_t * missedFrames,
-			      float * lastMissedUsage, float * usage);
-};
-
-
-/**
  * Used by drivers that implement the GLX_SGI_video_sync extension.
  */
 #define __DRI_MEDIA_STREAM_COUNTER "DRI_MediaStreamCounter"
@@ -204,24 +178,6 @@ struct __DRImediaStreamCounterExtensionRec {
     int (*getDrawableMSC)(__DRIscreen *screen, __DRIdrawable *drawable,
 			  int64_t *msc);
 };
-
-
-#define __DRI_TEX_OFFSET "DRI_TexOffset"
-#define __DRI_TEX_OFFSET_VERSION 1
-struct __DRItexOffsetExtensionRec {
-    __DRIextension base;
-
-    /**
-     * Method to override base texture image with a driver specific 'offset'.
-     * The depth passed in allows e.g. to ignore the alpha channel of texture
-     * images where the non-alpha components don't occupy a whole texel.
-     *
-     * For GLX_EXT_texture_from_pixmap with AIGLX.
-     */
-    void (*setTexOffset)(__DRIcontext *pDRICtx, GLint texname,
-			 unsigned long long offset, GLint depth, GLuint pitch);
-};
-
 
 /* Valid values for format in the setTexBuffer2 function below.  These
  * values match the GLX tokens for compatibility reasons, but we
@@ -548,28 +504,6 @@ typedef struct __DRIsystemTimeExtensionRec __DRIsystemTimeExtension;
 typedef struct __DRIdamageExtensionRec __DRIdamageExtension;
 typedef struct __DRIloaderExtensionRec __DRIloaderExtension;
 typedef struct __DRIswrastLoaderExtensionRec __DRIswrastLoaderExtension;
-
-
-/**
- * Callback to getDrawableInfo protocol
- */
-#define __DRI_GET_DRAWABLE_INFO "DRI_GetDrawableInfo"
-#define __DRI_GET_DRAWABLE_INFO_VERSION 1
-struct __DRIgetDrawableInfoExtensionRec {
-    __DRIextension base;
-
-    /**
-     * This function is used to get information about the position, size, and
-     * clip rects of a drawable.
-     */
-    GLboolean (* getDrawableInfo) ( __DRIdrawable *drawable,
-	unsigned int * index, unsigned int * stamp,
-        int * x, int * y, int * width, int * height,
-        int * numClipRects, drm_clip_rect_t ** pClipRects,
-        int * backX, int * backY,
-	int * numBackClipRects, drm_clip_rect_t ** pBackClipRects,
-	void *loaderPrivate);
-};
 
 /**
  * Callback to get system time for media stream counter extensions.
