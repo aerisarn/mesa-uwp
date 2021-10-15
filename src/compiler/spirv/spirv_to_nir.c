@@ -950,14 +950,15 @@ vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
       }
 
       case vtn_base_type_image:
-         vtn_assert(glsl_type_is_sampler(type->glsl_image));
+         vtn_assert(glsl_type_is_texture(type->glsl_image));
          return type->glsl_image;
 
       case vtn_base_type_sampler:
          return glsl_bare_sampler_type();
 
       case vtn_base_type_sampled_image:
-         return type->image->glsl_image;
+         return glsl_texture_type_to_sampler(type->image->glsl_image,
+                                             false /* is_shadow */);
 
       default:
          return type->type;
@@ -1744,7 +1745,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       enum glsl_base_type sampled_base_type =
          glsl_get_base_type(sampled_type->type);
       if (sampled == 1) {
-         val->type->glsl_image = glsl_sampler_type(dim, false, is_array,
+         val->type->glsl_image = glsl_texture_type(dim, is_array,
                                                    sampled_base_type);
       } else if (sampled == 2) {
          val->type->glsl_image = glsl_image_type(dim, is_array,
@@ -5651,7 +5652,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       if (glsl_type_is_image(image_type->glsl_image)) {
          vtn_handle_image(b, opcode, w, count);
       } else {
-         vtn_assert(glsl_type_is_sampler(image_type->glsl_image));
+         vtn_assert(glsl_type_is_texture(image_type->glsl_image));
          vtn_handle_texture(b, opcode, w, count);
       }
       break;
