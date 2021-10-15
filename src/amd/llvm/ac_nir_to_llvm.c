@@ -3863,7 +3863,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
 
       unsigned wait_flags = 0;
-      if (modes & (nir_var_mem_global | nir_var_mem_ssbo | nir_var_mem_image))
+      if (modes & (nir_var_mem_global | nir_var_mem_ssbo | nir_var_image))
          wait_flags |= AC_WAIT_VLOAD | AC_WAIT_VSTORE;
       if (modes & nir_var_mem_shared)
          wait_flags |= AC_WAIT_LGKM;

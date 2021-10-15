@@ -1064,7 +1064,7 @@ create_bindless_image(nir_shader *nir, enum glsl_sampler_dim dim)
    nir_variable *var;
 
    const struct glsl_type *image_type = glsl_image_type(dim, false, GLSL_TYPE_FLOAT);
-   var = nir_variable_create(nir, nir_var_mem_image, glsl_array_type(image_type, ZINK_MAX_BINDLESS_HANDLES, 0), "bindless_image");
+   var = nir_variable_create(nir, nir_var_image, glsl_array_type(image_type, ZINK_MAX_BINDLESS_HANDLES, 0), "bindless_image");
    var->data.descriptor_set = ZINK_DESCRIPTOR_BINDLESS;
    var->data.driver_location = var->data.binding = binding;
    var->data.image.format = PIPE_FORMAT_R8G8B8A8_UNORM;
@@ -1364,7 +1364,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    foreach_list_typed_reverse_safe(nir_variable, var, node, &nir->variables) {
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
-                                        nir_var_mem_image |
+                                        nir_var_image |
                                         nir_var_mem_ubo |
                                         nir_var_mem_ssbo)) {
          enum zink_descriptor_type ztype;
@@ -1401,7 +1401,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             ret->num_bindings[ztype]++;
          } else {
             assert(var->data.mode == nir_var_uniform ||
-                   var->data.mode == nir_var_mem_image);
+                   var->data.mode == nir_var_image);
             if (var->data.bindless) {
                ret->bindless = true;
                handle_bindless_var(nir, var, type, bindless);

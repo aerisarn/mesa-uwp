@@ -368,7 +368,7 @@ vtn_get_image(struct vtn_builder *b, uint32_t value_id,
    if (access)
       *access |= spirv_to_gl_access_qualifier(b, type->access_qualifier);
    nir_variable_mode mode = glsl_type_is_image(type->glsl_image) ?
-                            nir_var_mem_image : nir_var_uniform;
+                            nir_var_image : nir_var_uniform;
    return nir_build_deref_cast(&b->nb, vtn_get_nir_ssa(b, value_id),
                                mode, type->glsl_image, 0);
 }
@@ -422,7 +422,7 @@ vtn_get_sampled_image(struct vtn_builder *b, uint32_t value_id)
     */
    const struct glsl_type *image_type = type->image->glsl_image;
    nir_variable_mode image_mode = glsl_type_is_image(image_type) ?
-                                  nir_var_mem_image : nir_var_uniform;
+                                  nir_var_image : nir_var_uniform;
 
    struct vtn_sampled_image si = { NULL, };
    si.image = nir_build_deref_cast(&b->nb, nir_channel(&b->nb, si_vec2, 0),
@@ -2420,7 +2420,7 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
                nir_var_mem_global;
    }
    if (semantics & SpvMemorySemanticsImageMemoryMask)
-      modes |= nir_var_mem_image;
+      modes |= nir_var_image;
    if (semantics & SpvMemorySemanticsWorkgroupMemoryMask)
       modes |= nir_var_mem_shared;
    if (semantics & SpvMemorySemanticsCrossWorkgroupMemoryMask)
@@ -6138,7 +6138,7 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
          in_var->data.mode = nir_var_uniform;
          in_var->type = param_type->deref->type;
       } else if (param_type->base_type == vtn_base_type_image) {
-         in_var->data.mode = nir_var_mem_image;
+         in_var->data.mode = nir_var_image;
          in_var->type = param_type->glsl_image;
          in_var->data.access =
             spirv_to_gl_access_qualifier(b, param_type->access_qualifier);

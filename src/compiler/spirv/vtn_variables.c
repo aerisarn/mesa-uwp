@@ -1511,7 +1511,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
           interface_type->base_type == vtn_base_type_image &&
           glsl_type_is_image(interface_type->glsl_image)) {
          mode = vtn_variable_mode_image;
-         nir_mode = nir_var_mem_image;
+         nir_mode = nir_var_image;
       } else if (b->shader->info.stage == MESA_SHADER_KERNEL) {
          mode = vtn_variable_mode_constant;
          nir_mode = nir_var_mem_constant;
@@ -1564,7 +1564,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassImage:
       mode = vtn_variable_mode_image;
-      nir_mode = nir_var_mem_image;
+      nir_mode = nir_var_image;
       break;
    case SpvStorageClassCallableDataKHR:
       mode = vtn_variable_mode_call_data;

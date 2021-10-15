@@ -93,7 +93,7 @@ lower_read_write_image_deref(nir_builder *b, struct clc_image_lower_context *con
       glsl_image_type(glsl_get_sampler_dim(in_var->type),
          glsl_sampler_type_is_array(in_var->type),
          nir_get_glsl_base_type_for_nir_type(image_type | 32));
-   return lower_image_deref_impl(b, context, new_var_type, nir_var_mem_image, context->num_uavs);
+   return lower_image_deref_impl(b, context, new_var_type, nir_var_image, context->num_uavs);
 }
 
 static void

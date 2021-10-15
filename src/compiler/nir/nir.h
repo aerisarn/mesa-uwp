@@ -140,7 +140,7 @@ typedef enum {
    nir_var_shader_call_data = (1 << 12),
    /** Ray hit attributes */
    nir_var_ray_hit_attrib  = (1 << 13),
-   nir_var_mem_image       = (1 << 14),
+   nir_var_image           = (1 << 14),
    nir_var_read_only_modes = nir_var_shader_in | nir_var_uniform |
                              nir_var_system_value | nir_var_mem_constant |
                              nir_var_mem_ubo,
@@ -716,10 +716,10 @@ _nir_shader_variable_has_mode(nir_variable *var, unsigned modes)
    nir_foreach_variable_with_modes_safe(var, shader, nir_var_uniform)
 
 #define nir_foreach_image_variable(var, shader) \
-   nir_foreach_variable_with_modes(var, shader, nir_var_mem_image)
+   nir_foreach_variable_with_modes(var, shader, nir_var_image)
 
 #define nir_foreach_image_variable_safe(var, shader) \
-   nir_foreach_variable_with_modes_safe(var, shader, nir_var_mem_image)
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_image)
 
 static inline bool
 nir_variable_is_global(const nir_variable *var)

@@ -1382,7 +1382,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
                IR3_BARRIER_BUFFER_R | IR3_BARRIER_BUFFER_W;
          }
 
-         if (modes & nir_var_mem_image) {
+         if (modes & nir_var_image) {
             barrier->barrier_class |= IR3_BARRIER_IMAGE_W;
             barrier->barrier_conflict |=
                IR3_BARRIER_IMAGE_W | IR3_BARRIER_IMAGE_R;
