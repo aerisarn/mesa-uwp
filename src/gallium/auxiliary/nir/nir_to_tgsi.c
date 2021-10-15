@@ -471,12 +471,14 @@ static void
 ntt_setup_uniforms(struct ntt_compile *c)
 {
    nir_foreach_uniform_variable(var, c->s) {
-      if (glsl_type_is_sampler(glsl_without_array(var->type))) {
+      if (glsl_type_is_sampler(glsl_without_array(var->type)) ||
+          glsl_type_is_texture(glsl_without_array(var->type))) {
          /* Don't use this size for the check for samplers -- arrays of structs
           * containing samplers should be ignored, and just the separate lowered
           * sampler uniform decl used.
           */
-         int size = glsl_type_get_sampler_count(var->type);
+         int size = glsl_type_get_sampler_count(var->type) +
+                    glsl_type_get_texture_count(var->type);
 
          const struct glsl_type *stype = glsl_without_array(var->type);
          enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(glsl_get_sampler_dim(stype),

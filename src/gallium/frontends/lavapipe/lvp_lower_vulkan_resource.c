@@ -220,7 +220,7 @@ void lvp_lower_pipeline_layout(const struct lvp_device *device,
       struct lvp_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
       int value = 0;
       var->data.descriptor_set = 0;
-      if (base_type == GLSL_TYPE_SAMPLER) {
+      if (base_type == GLSL_TYPE_SAMPLER || base_type == GLSL_TYPE_TEXTURE) {
          if (binding->type == VK_DESCRIPTOR_TYPE_SAMPLER) {
             for (unsigned s = 0; s < desc_set_idx; s++)
                value += layout->set[s].layout->stage[shader->info.stage].sampler_count;
