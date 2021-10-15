@@ -421,7 +421,9 @@ nir_shader *clover::nir::load_libclc_nir(const device &dev, std::string &r_log)
 static bool
 can_remove_var(nir_variable *var, void *data)
 {
-   return !(var->type->is_sampler() || var->type->is_image());
+   return !(var->type->is_sampler() ||
+            var->type->is_texture() ||
+            var->type->is_image());
 }
 
 binary clover::nir::spirv_to_nir(const binary &mod, const device &dev,
