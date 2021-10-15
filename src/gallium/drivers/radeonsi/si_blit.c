@@ -1211,7 +1211,7 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       return;
    }
 
-   if (info->is_dri_blit_image && sdst->surface.is_linear &&
+   if ((info->dst.resource->bind & PIPE_BIND_DRI_PRIME) && sdst->surface.is_linear &&
        sctx->chip_class >= GFX7 && sdst->surface.flags & RADEON_SURF_IMPORTED) {
       struct si_texture *ssrc = (struct si_texture *)info->src.resource;
       /* Use SDMA or async compute when copying to a DRI_PRIME imported linear surface. */
