@@ -2894,9 +2894,7 @@ emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
       rsrc1_reg = R_00B328_SPI_SHADER_PGM_RSRC1_ES;
    }
 
-   radeon_set_sh_reg_seq(cmd_buffer->cs, pgm_lo_reg, 2);
-   radeon_emit(cmd_buffer->cs, prolog_va >> 8);
-   radeon_emit(cmd_buffer->cs, S_00B124_MEM_BASE(prolog_va >> 40));
+   radeon_set_sh_reg(cmd_buffer->cs, pgm_lo_reg, prolog_va >> 8);
 
    if (chip < GFX10)
       radeon_set_sh_reg(cmd_buffer->cs, rsrc1_reg, rsrc1);

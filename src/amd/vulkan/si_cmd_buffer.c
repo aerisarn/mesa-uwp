@@ -310,6 +310,9 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
                         S_00B324_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
    }
 
+   radeon_set_sh_reg(cs, R_00B124_SPI_SHADER_PGM_HI_VS,
+                     S_00B124_MEM_BASE(device->physical_device->rad_info.address32_hi >> 8));
+
    unsigned cu_mask_ps = 0xffffffff;
 
    /* It's wasteful to enable all CUs for PS if shader arrays have a
