@@ -148,7 +148,8 @@ is_zero_to_one(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
       return false;
 
    for (unsigned i = 0; i < num_components; i++) {
-      switch (nir_op_infos[instr->op].input_types[src]) {
+      nir_alu_type type = nir_op_infos[instr->op].input_types[src];
+      switch (nir_alu_type_get_base_type(type)) {
       case nir_type_float: {
          double val = nir_src_comp_as_float(instr->src[src].src, swizzle[i]);
          if (isnan(val) || val < 0.0f || val > 1.0f)
@@ -179,7 +180,8 @@ is_gt_0_and_lt_1(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
       return false;
 
    for (unsigned i = 0; i < num_components; i++) {
-      switch (nir_op_infos[instr->op].input_types[src]) {
+      nir_alu_type type = nir_op_infos[instr->op].input_types[src];
+      switch (nir_alu_type_get_base_type(type)) {
       case nir_type_float: {
          double val = nir_src_comp_as_float(instr->src[src].src, swizzle[i]);
          if (isnan(val) || val <= 0.0f || val >= 1.0f)
@@ -395,7 +397,8 @@ is_only_used_as_float(nir_alu_instr *instr)
       assert(instr != user_alu);
 
       unsigned index = (nir_alu_src*)container_of(src, nir_alu_src, src) - user_alu->src;
-      if (nir_op_infos[user_alu->op].input_types[index] != nir_type_float)
+      nir_alu_type type = nir_op_infos[user_alu->op].input_types[index];
+      if (nir_alu_type_get_base_type(type) != nir_type_float)
          return false;
    }
 
