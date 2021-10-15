@@ -1718,7 +1718,6 @@ dri2_blit_image(__DRIcontext *context, __DRIimage *dst, __DRIimage *src,
    blit.src.format = src->texture->format;
    blit.mask = PIPE_MASK_RGBA;
    blit.filter = PIPE_TEX_FILTER_NEAREST;
-   blit.is_dri_blit_image = true;
 
    pipe->blit(pipe, &blit);
 
