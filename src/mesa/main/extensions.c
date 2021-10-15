@@ -282,6 +282,11 @@ _mesa_one_time_init_extension_overrides(void)
       else
          recognized = false;
 
+      if (!enable && recognized && offset <= 1) {
+         printf("Warning: extension '%s' cannot be disabled\n", ext);
+         offset = set_extension(&_mesa_extension_override_disables, i, 0);
+      }
+
       if (!recognized && enable) {
          if (unknown_ext >= MAX_UNRECOGNIZED_EXTENSIONS) {
             static bool warned;
