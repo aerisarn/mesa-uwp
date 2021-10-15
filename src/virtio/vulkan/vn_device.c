@@ -302,16 +302,9 @@ vn_device_init(struct vn_device *dev,
       mtx_init(&pool->mutex, mtx_plain);
    }
 
-   if (dev->base.base.enabled_extensions
-          .ANDROID_external_memory_android_hardware_buffer) {
-      uint32_t mem_type_bits = 0;
-      result =
-         vn_android_get_ahb_buffer_memory_type_bits(dev, &mem_type_bits);
-      if (result != VK_SUCCESS)
-         goto fail;
-
-      dev->ahb_buffer_memory_type_bits = mem_type_bits;
-   }
+   result = vn_buffer_cache_init(dev);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    return VK_SUCCESS;
 
@@ -380,6 +373,8 @@ vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
 
    if (!dev)
       return;
+
+   vn_buffer_cache_fini(dev);
 
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++)
       vn_device_memory_pool_fini(dev, i);

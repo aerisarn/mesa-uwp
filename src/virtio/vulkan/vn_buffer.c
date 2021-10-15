@@ -20,6 +20,81 @@
 /* buffer commands */
 
 static VkResult
+vn_buffer_cache_entries_create(struct vn_device *dev,
+                               struct vn_buffer_cache_entry **out_entries,
+                               uint32_t *out_entry_count)
+{
+   *out_entries = NULL;
+   *out_entry_count = 0;
+   return VK_SUCCESS;
+}
+
+static void
+vn_buffer_cache_entries_destroy(struct vn_device *dev,
+                                struct vn_buffer_cache_entry *entries)
+{
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+
+   if (entries)
+      vk_free(alloc, entries);
+}
+
+static VkResult
+vn_buffer_get_max_buffer_size(struct vn_device *dev,
+                              uint64_t *out_max_buffer_size)
+{
+   *out_max_buffer_size = 0;
+   return VK_SUCCESS;
+}
+
+VkResult
+vn_buffer_cache_init(struct vn_device *dev)
+{
+   uint32_t ahb_mem_type_bits = 0;
+   uint64_t max_buffer_size = 0;
+   struct vn_buffer_cache_entry *entries = NULL;
+   uint32_t entry_count = 0;
+   VkResult result;
+
+   if (dev->base.base.enabled_extensions
+          .ANDROID_external_memory_android_hardware_buffer) {
+      result =
+         vn_android_get_ahb_buffer_memory_type_bits(dev, &ahb_mem_type_bits);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   result = vn_buffer_get_max_buffer_size(dev, &max_buffer_size);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = vn_buffer_cache_entries_create(dev, &entries, &entry_count);
+   if (result != VK_SUCCESS)
+      return result;
+
+   dev->buffer_cache.ahb_mem_type_bits = ahb_mem_type_bits;
+   dev->buffer_cache.max_buffer_size = max_buffer_size;
+   dev->buffer_cache.entries = entries;
+   dev->buffer_cache.entry_count = entry_count;
+   return VK_SUCCESS;
+}
+
+void
+vn_buffer_cache_fini(struct vn_device *dev)
+{
+   vn_buffer_cache_entries_destroy(dev, dev->buffer_cache.entries);
+}
+
+static bool
+vn_buffer_cache_get_memory_requirements(
+   struct vn_buffer_cache *cache,
+   const VkBufferCreateInfo *create_info,
+   struct vn_buffer_memory_requirements *out)
+{
+   return false;
+}
+
+static VkResult
 vn_buffer_init(struct vn_device *dev,
                const VkBufferCreateInfo *create_info,
                struct vn_buffer *buf)
@@ -27,6 +102,13 @@ vn_buffer_init(struct vn_device *dev,
    VkDevice dev_handle = vn_device_to_handle(dev);
    VkBuffer buf_handle = vn_buffer_to_handle(buf);
    VkResult result;
+
+   if (vn_buffer_cache_get_memory_requirements(
+          &dev->buffer_cache, create_info, &buf->requirements)) {
+      vn_async_vkCreateBuffer(dev->instance, dev_handle, create_info, NULL,
+                              &buf_handle);
+      return VK_SUCCESS;
+   }
 
    result = vn_call_vkCreateBuffer(dev->instance, dev_handle, create_info,
                                    NULL, &buf_handle);
