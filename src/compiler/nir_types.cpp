@@ -883,12 +883,12 @@ glsl_get_cl_type_size_align(const struct glsl_type *type,
    *align = glsl_get_cl_alignment(type);
 }
 
-unsigned
-glsl_type_get_sampler_count(const struct glsl_type *type)
+static unsigned
+glsl_type_count(const glsl_type *type, glsl_base_type base_type)
 {
    if (glsl_type_is_array(type)) {
-      return (glsl_get_aoa_size(type) *
-              glsl_type_get_sampler_count(glsl_without_array(type)));
+      return glsl_get_length(type) *
+             glsl_type_count(glsl_get_array_element(type), base_type);
    }
 
    /* Ignore interface blocks - they can only contain bindless samplers,
@@ -897,38 +897,26 @@ glsl_type_get_sampler_count(const struct glsl_type *type)
    if (glsl_type_is_struct(type)) {
       unsigned count = 0;
       for (unsigned i = 0; i < glsl_get_length(type); i++)
-         count += glsl_type_get_sampler_count(glsl_get_struct_field(type, i));
+         count += glsl_type_count(glsl_get_struct_field(type, i), base_type);
       return count;
    }
 
-   if (glsl_type_is_sampler(type))
+   if (glsl_get_base_type(type) == base_type)
       return 1;
 
    return 0;
 }
 
 unsigned
+glsl_type_get_sampler_count(const struct glsl_type *type)
+{
+   return glsl_type_count(type, GLSL_TYPE_SAMPLER);
+}
+
+unsigned
 glsl_type_get_image_count(const struct glsl_type *type)
 {
-   if (glsl_type_is_array(type)) {
-      return (glsl_get_aoa_size(type) *
-              glsl_type_get_image_count(glsl_without_array(type)));
-   }
-
-   /* Ignore interface blocks - they can only contain bindless images,
-    * which we shouldn't count.
-    */
-   if (glsl_type_is_struct(type)) {
-      unsigned count = 0;
-      for (unsigned i = 0; i < glsl_get_length(type); i++)
-         count += glsl_type_get_image_count(glsl_get_struct_field(type, i));
-      return count;
-   }
-
-   if (glsl_type_is_image(type))
-      return 1;
-
-   return 0;
+   return glsl_type_count(type, GLSL_TYPE_IMAGE);
 }
 
 enum glsl_interface_packing
