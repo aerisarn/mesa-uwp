@@ -1185,6 +1185,7 @@ nir_get_nir_type_for_glsl_base_type(enum glsl_base_type base_type)
       break;
 
    case GLSL_TYPE_SAMPLER:
+   case GLSL_TYPE_TEXTURE:
    case GLSL_TYPE_IMAGE:
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_STRUCT:

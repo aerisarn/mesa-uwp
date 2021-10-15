@@ -110,6 +110,24 @@ glsl_get_function_param(const glsl_type *type, unsigned index)
    return &type->fields.parameters[index + 1];
 }
 
+const glsl_type *
+glsl_texture_type_to_sampler(const glsl_type *type, bool is_shadow)
+{
+   assert(glsl_type_is_texture(type));
+   return glsl_sampler_type((glsl_sampler_dim)type->sampler_dimensionality,
+                            is_shadow, type->sampler_array,
+                            (glsl_base_type)type->sampled_type);
+}
+
+const glsl_type *
+glsl_sampler_type_to_texture(const glsl_type *type)
+{
+   assert(glsl_type_is_sampler(type) && !glsl_type_is_bare_sampler(type));
+   return glsl_texture_type((glsl_sampler_dim)type->sampler_dimensionality,
+                            type->sampler_array,
+                            (glsl_base_type)type->sampled_type);
+}
+
 const struct glsl_type *
 glsl_get_column_type(const struct glsl_type *type)
 {
@@ -199,14 +217,18 @@ glsl_get_struct_elem_name(const struct glsl_type *type, unsigned index)
 glsl_sampler_dim
 glsl_get_sampler_dim(const struct glsl_type *type)
 {
-   assert(glsl_type_is_sampler(type) || glsl_type_is_image(type));
+   assert(glsl_type_is_sampler(type) ||
+          glsl_type_is_texture(type) ||
+          glsl_type_is_image(type));
    return (glsl_sampler_dim)type->sampler_dimensionality;
 }
 
 glsl_base_type
 glsl_get_sampler_result_type(const struct glsl_type *type)
 {
-   assert(glsl_type_is_sampler(type) || glsl_type_is_image(type));
+   assert(glsl_type_is_sampler(type) ||
+          glsl_type_is_texture(type) ||
+          glsl_type_is_image(type));
    return (glsl_base_type)type->sampled_type;
 }
 
@@ -220,7 +242,9 @@ glsl_get_sampler_target(const struct glsl_type *type)
 int
 glsl_get_sampler_coordinate_components(const struct glsl_type *type)
 {
-   assert(glsl_type_is_sampler(type) || glsl_type_is_image(type));
+   assert(glsl_type_is_sampler(type) ||
+          glsl_type_is_texture(type) ||
+          glsl_type_is_image(type));
    return type->coordinate_components();
 }
 
@@ -341,6 +365,18 @@ glsl_type_is_sampler(const struct glsl_type *type)
 }
 
 bool
+glsl_type_is_bare_sampler(const struct glsl_type *type)
+{
+   return type->is_sampler() && type->sampled_type == GLSL_TYPE_VOID;
+}
+
+bool
+glsl_type_is_texture(const struct glsl_type *type)
+{
+   return type->is_texture();
+}
+
+bool
 glsl_type_is_image(const struct glsl_type *type)
 {
    return type->is_image();
@@ -356,7 +392,9 @@ glsl_sampler_type_is_shadow(const struct glsl_type *type)
 bool
 glsl_sampler_type_is_array(const struct glsl_type *type)
 {
-   assert(glsl_type_is_sampler(type) || glsl_type_is_image(type));
+   assert(glsl_type_is_sampler(type) ||
+          glsl_type_is_texture(type) ||
+          glsl_type_is_image(type));
    return type->sampler_array;
 }
 
@@ -643,6 +681,13 @@ glsl_bare_shadow_sampler_type()
 }
 
 const struct glsl_type *
+glsl_texture_type(enum glsl_sampler_dim dim, bool is_array,
+                  enum glsl_base_type base_type)
+{
+   return glsl_type::get_texture_instance(dim, is_array, base_type);
+}
+
+const struct glsl_type *
 glsl_image_type(enum glsl_sampler_dim dim, bool is_array,
                 enum glsl_base_type base_type)
 {
@@ -771,6 +816,7 @@ glsl_get_natural_size_align_bytes(const struct glsl_type *type,
       break;
 
    case GLSL_TYPE_SAMPLER:
+   case GLSL_TYPE_TEXTURE:
    case GLSL_TYPE_IMAGE:
       /* Bindless samplers and images. */
       *size = 8;
@@ -829,6 +875,7 @@ glsl_get_vec4_size_align_bytes(const struct glsl_type *type,
       break;
 
    case GLSL_TYPE_SAMPLER:
+   case GLSL_TYPE_TEXTURE:
    case GLSL_TYPE_IMAGE:
    case GLSL_TYPE_ATOMIC_UINT:
    case GLSL_TYPE_SUBROUTINE:
@@ -911,6 +958,12 @@ unsigned
 glsl_type_get_sampler_count(const struct glsl_type *type)
 {
    return glsl_type_count(type, GLSL_TYPE_SAMPLER);
+}
+
+unsigned
+glsl_type_get_texture_count(const struct glsl_type *type)
+{
+   return glsl_type_count(type, GLSL_TYPE_TEXTURE);
 }
 
 unsigned

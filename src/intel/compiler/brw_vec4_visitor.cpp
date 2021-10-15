@@ -610,8 +610,9 @@ type_size_xvec4(const struct glsl_type *type, bool as_vec4, bool bindless)
       return 1;
 
    case GLSL_TYPE_SAMPLER:
-      /* Samplers take up no register space, since they're baked in at
-       * link time.
+   case GLSL_TYPE_TEXTURE:
+      /* Samplers and textures take up no register space, since they're baked
+       * in at link time.
        */
       return bindless ? 1 : 0;
    case GLSL_TYPE_ATOMIC_UINT:
