@@ -340,6 +340,14 @@ vn_CreateDevice(VkPhysicalDevice physicalDevice,
 fail:
    if (pCreateInfo == &local_create_info)
       vk_free(alloc, (void *)pCreateInfo->ppEnabledExtensionNames);
+
+   if (dev->queues) {
+      for (uint32_t i = 0; i < dev->queue_count; i++)
+         vn_queue_fini(&dev->queues[i]);
+
+      vk_free(alloc, dev->queues);
+   }
+
    vn_device_base_fini(&dev->base);
    vk_free(alloc, dev);
    return vn_error(instance, result);
