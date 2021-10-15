@@ -109,6 +109,14 @@ static LLVMValueRef ac_cull_face(struct ac_llvm_context *ctx, LLVMValueRef pos[3
    } else if (cull_zero_area) {
       accepted = LLVMBuildFCmp(builder, LLVMRealONE, det, ctx->f32_0, "");
    }
+
+   if (accepted) {
+      /* Don't reject NaN and +/-infinity, these are tricky.
+       * Just trust fixed-function HW to handle these cases correctly.
+       */
+      accepted = LLVMBuildOr(builder, accepted, ac_build_is_inf_or_nan(ctx, det), "");
+   }
+
    return accepted;
 }
 
