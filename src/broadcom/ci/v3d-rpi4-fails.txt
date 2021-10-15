@@ -329,3 +329,23 @@ spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 
 # Seems a bug in the test; it works if overriding GL version to 2.1
 spec@arb_texture_buffer_range@ranges-2 compat,Fail
+
+# Precission differences between expected and obtained; works if
+# exporting V3D_DEBUG=tmu32.
+spec@oes_texture_view@rendering-formats,Fail
+spec@oes_texture_view@rendering-formats@clear GL_R8 as GL_R8I,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RG8 as GL_R16F,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RG8 as GL_R16I,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RG8 as GL_RG8I,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_R32F,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_R32I,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_RG16F,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_RG16I,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_RGBA8I,Fail
+
+# Also related with precission issues
+spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_R32F,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_R32I,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RG16F,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RG16I,Fail
+spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RGBA8I,Fail
