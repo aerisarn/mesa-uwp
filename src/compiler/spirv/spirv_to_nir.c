@@ -853,19 +853,6 @@ vtn_type_copy(struct vtn_builder *b, struct vtn_type *src)
    return dest;
 }
 
-static const struct glsl_type *
-wrap_type_in_array(const struct glsl_type *type,
-                   const struct glsl_type *array_type)
-{
-   if (!glsl_type_is_array(array_type))
-      return type;
-
-   const struct glsl_type *elem_type =
-      wrap_type_in_array(type, glsl_get_array_element(array_type));
-   return glsl_array_type(elem_type, glsl_get_length(array_type),
-                          glsl_get_explicit_stride(array_type));
-}
-
 static bool
 vtn_type_needs_explicit_layout(struct vtn_builder *b, struct vtn_type *type,
                                enum vtn_variable_mode mode)
@@ -907,7 +894,7 @@ vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
       vtn_fail_if(glsl_without_array(type->type) != glsl_uint_type(),
                   "Variables in the AtomicCounter storage class should be "
                   "(possibly arrays of arrays of) uint.");
-      return wrap_type_in_array(glsl_atomic_uint_type(), type->type);
+      return glsl_type_wrap_in_arrays(glsl_atomic_uint_type(), type->type);
    }
 
    if (mode == vtn_variable_mode_uniform) {
@@ -968,7 +955,7 @@ vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
    if (mode == vtn_variable_mode_image) {
       struct vtn_type *image_type = vtn_type_without_array(type);
       vtn_assert(image_type->base_type == vtn_base_type_image);
-      return wrap_type_in_array(image_type->glsl_image, type->type);
+      return glsl_type_wrap_in_arrays(image_type->glsl_image, type->type);
    }
 
    /* Layout decorations are allowed but ignored in certain conditions,

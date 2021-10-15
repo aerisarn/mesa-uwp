@@ -1049,6 +1049,19 @@ glsl_get_explicit_type_for_size_align(const struct glsl_type *type,
 }
 
 const struct glsl_type *
+glsl_type_wrap_in_arrays(const struct glsl_type *type,
+                         const struct glsl_type *arrays)
+{
+   if (!glsl_type_is_array(arrays))
+      return type;
+
+   const glsl_type *elem_type =
+      glsl_type_wrap_in_arrays(type, glsl_get_array_element(arrays));
+   return glsl_array_type(elem_type, glsl_get_length(arrays),
+                          glsl_get_explicit_stride(arrays));
+}
+
+const struct glsl_type *
 glsl_type_replace_vec3_with_vec4(const struct glsl_type *type)
 {
    return type->replace_vec3_with_vec4();
