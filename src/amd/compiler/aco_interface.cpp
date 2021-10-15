@@ -298,8 +298,16 @@ aco_compile_vs_prolog(const struct radv_nir_compiler_options* options,
    unsigned exec_size = aco::emit_program(program.get(), code);
 
    if (options->dump_shader) {
-      aco::print_asm(program.get(), code, exec_size / 4u, stderr);
-      fprintf(stderr, "\n");
+      if (check_print_asm_support(program.get())) {
+         aco::print_asm(program.get(), code, exec_size / 4u, stderr);
+         fprintf(stderr, "\n");
+      } else {
+         fprintf(stderr, "Shader disassembly is not supported in the current configuration"
+#ifndef LLVM_AVAILABLE
+                         " (LLVM not available)"
+#endif
+                         ".\n");
+      }
    }
 
    /* copy into binary */
