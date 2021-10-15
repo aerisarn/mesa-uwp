@@ -2390,10 +2390,11 @@ radv_link_shaders(struct radv_pipeline *pipeline,
              (info->stage == MESA_SHADER_TESS_EVAL && info->tess.point_mode) ||
              (info->stage == MESA_SHADER_GEOMETRY && info->gs.output_primitive == GL_POINTS));
 
-         if (!next_stage_needs_psiz && !topology_uses_psiz) {
-            /* Change PSIZ to a global variable which allows it to be DCE'd. */
-            nir_variable *psiz_var =
+         nir_variable *psiz_var =
                nir_find_variable_with_location(ordered_shaders[i], nir_var_shader_out, VARYING_SLOT_PSIZ);
+
+         if (!next_stage_needs_psiz && !topology_uses_psiz && psiz_var) {
+            /* Change PSIZ to a global variable which allows it to be DCE'd. */
             psiz_var->data.location = 0;
             psiz_var->data.mode = nir_var_shader_temp;
 
