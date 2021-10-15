@@ -89,7 +89,7 @@ pb_slabs_reclaim_locked(struct pb_slabs *slabs)
        * the driver should not walk the entire list, as this is likely to
        * result in zero reclaims if the first few entries fail to reclaim
        */
-      } else if (num_failed_reclaims++ > MAX_FAILED_RECLAIMS) {
+      } else if (++num_failed_reclaims >= MAX_FAILED_RECLAIMS) {
          break;
       }
    }
