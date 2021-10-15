@@ -1265,9 +1265,6 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
    const struct fdl_layout *layout =
       &image->layout[tu6_plane_index(image->vk_format, aspect_mask)];
 
-   if (aspect_mask != VK_IMAGE_ASPECT_COLOR_BIT)
-      format = tu6_plane_format(format, tu6_plane_index(format, aspect_mask));
-
    fdl6_view_init(iview, &layout, &(struct fdl_view_args) {
       .iova = image->bo->iova + image->bo_offset,
       .base_array_layer = subres->baseArrayLayer + layer,
@@ -1293,7 +1290,6 @@ tu_image_view_copy(struct fdl6_view *iview,
                    uint32_t layer,
                    bool stencil_read)
 {
-   format = copy_format(format, subres->aspectMask, false);
    tu_image_view_copy_blit(iview, image, format, subres, layer, stencil_read, false);
 }
 
@@ -1303,7 +1299,10 @@ tu_image_view_blit(struct fdl6_view *iview,
                    const VkImageSubresourceLayers *subres,
                    uint32_t layer)
 {
-   tu_image_view_copy_blit(iview, image, image->vk_format, subres, layer, false, false);
+   VkFormat format =
+      tu6_plane_format(image->vk_format, tu6_plane_index(image->vk_format,
+                                                         subres->aspectMask));
+   tu_image_view_copy_blit(iview, image, format, subres, layer, false, false);
 }
 
 static void
@@ -1411,7 +1410,11 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
                       MIN2(info->dstOffsets[0].z, info->dstOffsets[1].z));
 
    if (z_scale) {
-      tu_image_view_copy_blit(&src, src_image, src_image->vk_format,
+      VkFormat src_format =
+         tu6_plane_format(src_image->vk_format,
+                          tu6_plane_index(src_image->vk_format,
+                                          info->srcSubresource.aspectMask));
+      tu_image_view_copy_blit(&src, src_image, src_format,
                               &info->srcSubresource, 0, false, true);
       ops->src(cmd, cs, &src, 0, filter);
    } else {
@@ -1535,7 +1538,9 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
               dst_image->layout[0].nr_samples);
 
    struct fdl6_view dst;
-   tu_image_view_copy(&dst, dst_image, dst_image->vk_format, &info->imageSubresource, offset.z, false);
+   VkFormat dst_format =
+      copy_format(dst_image->vk_format, info->imageSubresource.aspectMask, false);
+   tu_image_view_copy(&dst, dst_image, dst_format, &info->imageSubresource, offset.z, false);
 
    for (uint32_t i = 0; i < layers; i++) {
       ops->dst(cs, &dst, i);
@@ -1609,7 +1614,9 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
               VK_SAMPLE_COUNT_1_BIT);
 
    struct fdl6_view src;
-   tu_image_view_copy(&src, src_image, src_image->vk_format, &info->imageSubresource, offset.z, stencil_read);
+   VkFormat src_format =
+      copy_format(src_image->vk_format, info->imageSubresource.aspectMask, false);
+   tu_image_view_copy(&src, src_image, src_format, &info->imageSubresource, offset.z, stencil_read);
 
    for (uint32_t i = 0; i < layers; i++) {
       ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST);
@@ -2111,9 +2118,14 @@ clear_image(struct tu_cmd_buffer *cmd,
    uint32_t level_count = tu_get_levelCount(image, range);
    uint32_t layer_count = tu_get_layerCount(image, range);
    struct tu_cs *cs = &cmd->cs;
-   VkFormat format = image->vk_format;
-   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
-      format = copy_format(format, aspect_mask, false);
+   VkFormat format;
+   if (image->vk_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) {
+      format = VK_FORMAT_R32_UINT;
+   } else {
+      format = tu6_plane_format(image->vk_format,
+                                tu6_plane_index(image->vk_format,
+                                                aspect_mask));
+   }
 
    if (image->layout[0].depth0 > 1) {
       assert(layer_count == 1);
