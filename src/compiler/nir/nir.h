@@ -136,7 +136,9 @@ typedef enum {
    nir_var_mem_ssbo        = (1 << 9),
    nir_var_mem_constant    = (1 << 10),
 
-   /* Generic modes intentionally come last. */
+   /* Generic modes intentionally come last. See encode_dref_modes() in
+    * nir_serialize.c for more details.
+    */
    nir_var_shader_temp     = (1 << 11),
    nir_var_function_temp   = (1 << 12),
    nir_var_mem_shared      = (1 << 13),
