@@ -758,6 +758,23 @@ radv_save_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, uint64_t vb_ptr
    radv_emit_write_data_packet(cmd_buffer, V_370_ME, va, 2, data);
 }
 
+static void
+radv_save_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader_prolog *prolog)
+{
+   struct radv_device *device = cmd_buffer->device;
+   uint32_t data[2];
+   uint64_t va;
+
+   va = radv_buffer_get_va(device->trace_bo);
+   va += 32;
+
+   uint64_t prolog_address = (uintptr_t)prolog;
+   data[0] = prolog_address;
+   data[1] = prolog_address >> 32;
+
+   radv_emit_write_data_packet(cmd_buffer, V_370_ME, va, 2, data);
+}
+
 void
 radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point,
                         struct radv_descriptor_set *set, unsigned idx)
@@ -779,7 +796,7 @@ radv_save_descriptors(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bi
    struct radv_device *device = cmd_buffer->device;
    uint32_t data[MAX_SETS * 2] = {0};
    uint64_t va;
-   va = radv_buffer_get_va(device->trace_bo) + 32;
+   va = radv_buffer_get_va(device->trace_bo) + 40;
 
    u_foreach_bit(i, descriptors_state->valid)
    {
@@ -3006,6 +3023,9 @@ radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirt
    emit_prolog_inputs(cmd_buffer, vs_shader, nontrivial_divisors, pipeline_is_dirty);
 
    cmd_buffer->state.emitted_vs_prolog = prolog;
+
+   if (unlikely(cmd_buffer->device->trace_bo))
+      radv_save_vs_prolog(cmd_buffer, prolog);
 }
 
 static void

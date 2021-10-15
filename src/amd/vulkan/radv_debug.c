@@ -56,9 +56,10 @@
  * [2-3]: 64-bit GFX ring pipeline pointer
  * [4-5]: 64-bit COMPUTE ring pipeline pointer
  * [6-7]: Vertex descriptors pointer
- * [8-9]: 64-bit descriptor set #0 pointer
+ * [8-9]: 64-bit Vertex prolog pointer
+ * [10-11]: 64-bit descriptor set #0 pointer
  * ...
- * [68-69]: 64-bit descriptor set #31 pointer
+ * [72-73]: 64-bit descriptor set #31 pointer
  */
 
 bool
@@ -245,7 +246,7 @@ radv_dump_descriptors(struct radv_device *device, FILE *f)
 
    fprintf(f, "Descriptors:\n");
    for (i = 0; i < MAX_SETS; i++) {
-      struct radv_descriptor_set *set = *(struct radv_descriptor_set **)(ptr + i + 4);
+      struct radv_descriptor_set *set = *(struct radv_descriptor_set **)(ptr + i + 5);
 
       radv_dump_descriptor_set(device, set, i, f);
    }
