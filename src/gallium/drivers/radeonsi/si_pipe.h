@@ -1367,6 +1367,7 @@ void si_init_clear_functions(struct si_context *sctx);
 #define SI_OP_CS_IMAGE                    (1 << 5)
 #define SI_OP_CS_RENDER_COND_ENABLE       (1 << 6)
 #define SI_OP_CPDMA_SKIP_CHECK_CS_SPACE   (1 << 7) /* don't call need_cs_space */
+#define SI_OP_SYNC_GE_BEFORE              (1 << 8) /* only sync VS, TCS, TES, GS */
 
 unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
                             enum si_cache_policy cache_policy);
