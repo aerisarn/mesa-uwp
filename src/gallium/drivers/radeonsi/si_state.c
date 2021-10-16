@@ -4977,7 +4977,7 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
 
             si_context_add_resource_size(sctx, buf);
             if (buf)
-               si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+               si_resource(buf)->bind_history |= SI_BIND_VERTEX_BUFFER;
          }
          /* take_ownership allows us to copy pipe_resource pointers without refcounting. */
          memcpy(dst, buffers, count * sizeof(struct pipe_vertex_buffer));
@@ -4997,7 +4997,7 @@ static void si_set_vertex_buffers(struct pipe_context *ctx, unsigned start_slot,
 
             si_context_add_resource_size(sctx, buf);
             if (buf)
-               si_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+               si_resource(buf)->bind_history |= SI_BIND_VERTEX_BUFFER;
          }
       }
    } else {

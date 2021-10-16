@@ -281,6 +281,25 @@ enum si_coherency
    SI_COHERENCY_CP,
 };
 
+#define SI_BIND_CONSTANT_BUFFER_SHIFT     0
+#define SI_BIND_SHADER_BUFFER_SHIFT       6
+#define SI_BIND_IMAGE_BUFFER_SHIFT        12
+#define SI_BIND_SAMPLER_BUFFER_SHIFT      18
+#define SI_BIND_OTHER_BUFFER_SHIFT        24
+
+/* Bind masks for all 6 shader stages. */
+#define SI_BIND_CONSTANT_BUFFER_ALL       (0x3f << SI_BIND_CONSTANT_BUFFER_SHIFT)
+#define SI_BIND_SHADER_BUFFER_ALL         (0x3f << SI_BIND_SHADER_BUFFER_SHIFT)
+#define SI_BIND_IMAGE_BUFFER_ALL          (0x3f << SI_BIND_IMAGE_BUFFER_SHIFT)
+#define SI_BIND_SAMPLER_BUFFER_ALL        (0x3f << SI_BIND_SAMPLER_BUFFER_SHIFT)
+
+#define SI_BIND_CONSTANT_BUFFER(shader)   ((1 << (shader)) << SI_BIND_CONSTANT_BUFFER_SHIFT)
+#define SI_BIND_SHADER_BUFFER(shader)     ((1 << (shader)) << SI_BIND_SHADER_BUFFER_SHIFT)
+#define SI_BIND_IMAGE_BUFFER(shader)      ((1 << (shader)) << SI_BIND_IMAGE_BUFFER_SHIFT)
+#define SI_BIND_SAMPLER_BUFFER(shader)    ((1 << (shader)) << SI_BIND_SAMPLER_BUFFER_SHIFT)
+#define SI_BIND_VERTEX_BUFFER             (1 << (SI_BIND_OTHER_BUFFER_SHIFT + 0))
+#define SI_BIND_STREAMOUT_BUFFER          (1 << (SI_BIND_OTHER_BUFFER_SHIFT + 1))
+
 struct si_compute;
 struct si_shader_context;
 struct hash_table;
@@ -302,7 +321,7 @@ struct si_resource {
    uint8_t bo_alignment_log2;
    enum radeon_bo_domain domains:8;
    enum radeon_bo_flag flags:16;
-   unsigned bind_history;
+   unsigned bind_history; /* bitmask of SI_BIND_xxx_BUFFER */
 
    /* The buffer range which is initialized (with a write transfer,
     * streamout, DMA, or as a random access target). The rest of

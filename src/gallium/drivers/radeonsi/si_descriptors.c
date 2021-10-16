@@ -544,7 +544,7 @@ static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
             si_set_sampler_view_desc(sctx, sview, samplers->sampler_states[slot], desc);
 
             if (tex->buffer.b.b.target == PIPE_BUFFER) {
-               tex->buffer.bind_history |= PIPE_BIND_SAMPLER_VIEW;
+               tex->buffer.bind_history |= SI_BIND_SAMPLER_BUFFER(shader);
                samplers->needs_depth_decompress_mask &= ~(1u << slot);
                samplers->needs_color_decompress_mask &= ~(1u << slot);
             } else {
@@ -819,7 +819,7 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
    if (res->b.b.target == PIPE_BUFFER) {
       images->needs_color_decompress_mask &= ~(1 << slot);
       images->display_dcc_store_mask &= ~(1u << slot);
-      res->bind_history |= PIPE_BIND_SHADER_IMAGE;
+      res->bind_history |= SI_BIND_IMAGE_BUFFER(shader);
    } else {
       struct si_texture *tex = (struct si_texture *)res;
       unsigned level = view->u.tex.level;
@@ -1270,7 +1270,7 @@ static void si_pipe_set_constant_buffer(struct pipe_context *ctx, enum pipe_shad
             assert(!"constant buffer 0 must have a 32-bit VM address, use const_uploader");
             return;
          }
-         si_resource(input->buffer)->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
+         si_resource(input->buffer)->bind_history |= SI_BIND_CONSTANT_BUFFER(shader);
       }
 
       if (slot == 0)
@@ -1391,7 +1391,7 @@ static void si_set_shader_buffers(struct pipe_context *ctx, enum pipe_shader_typ
       unsigned slot = si_get_shaderbuf_slot(start_slot + i);
 
       if (sbuffer && sbuffer->buffer)
-         si_resource(sbuffer->buffer)->bind_history |= PIPE_BIND_SHADER_BUFFER;
+         si_resource(sbuffer->buffer)->bind_history |= SI_BIND_SHADER_BUFFER(shader);
 
       si_set_shader_buffer(sctx, buffers, descriptors_idx, slot, sbuffer,
                            !!(writable_bitmask & (1u << i)), buffers->priority);
@@ -1642,7 +1642,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
    /* Vertex buffers. */
    if (!buffer) {
       sctx->vertex_buffers_dirty = num_elems > 0;
-   } else if (buffer->bind_history & PIPE_BIND_VERTEX_BUFFER) {
+   } else if (buffer->bind_history & SI_BIND_VERTEX_BUFFER) {
       for (i = 0; i < num_elems; i++) {
          int vb = sctx->vertex_elements->vertex_buffer_index[i];
 
@@ -1659,7 +1659,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
    }
 
    /* Streamout buffers. (other internal buffers can't be invalidated) */
-   if (!buffer || buffer->bind_history & PIPE_BIND_STREAM_OUTPUT) {
+   if (!buffer || buffer->bind_history & SI_BIND_STREAMOUT_BUFFER) {
       for (i = SI_VS_STREAMOUT_BUF0; i <= SI_VS_STREAMOUT_BUF3; i++) {
          struct si_buffer_resources *buffers = &sctx->internal_bindings;
          struct si_descriptors *descs = &sctx->descriptors[SI_DESCS_INTERNAL];
@@ -1683,7 +1683,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
    }
 
    /* Constant and shader buffers. */
-   if (!buffer || buffer->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
+   if (!buffer || buffer->bind_history & SI_BIND_CONSTANT_BUFFER_ALL) {
       for (shader = 0; shader < SI_NUM_SHADERS; shader++)
          si_reset_buffer_resources(sctx, &sctx->const_and_shader_buffers[shader],
                                    si_const_and_shader_buffer_descriptors_idx(shader),
@@ -1691,7 +1691,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
                                    buf, sctx->const_and_shader_buffers[shader].priority_constbuf);
    }
 
-   if (!buffer || buffer->bind_history & PIPE_BIND_SHADER_BUFFER) {
+   if (!buffer || buffer->bind_history & SI_BIND_SHADER_BUFFER_ALL) {
       for (shader = 0; shader < SI_NUM_SHADERS; shader++) {
          if (si_reset_buffer_resources(sctx, &sctx->const_and_shader_buffers[shader],
                                        si_const_and_shader_buffer_descriptors_idx(shader),
@@ -1703,7 +1703,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
       }
    }
 
-   if (!buffer || buffer->bind_history & PIPE_BIND_SAMPLER_VIEW) {
+   if (!buffer || buffer->bind_history & SI_BIND_SAMPLER_BUFFER_ALL) {
       /* Texture buffers - update bindings. */
       for (shader = 0; shader < SI_NUM_SHADERS; shader++) {
          struct si_samplers *samplers = &sctx->samplers[shader];
@@ -1729,7 +1729,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
    }
 
    /* Shader images */
-   if (!buffer || buffer->bind_history & PIPE_BIND_SHADER_IMAGE) {
+   if (!buffer || buffer->bind_history & SI_BIND_IMAGE_BUFFER_ALL) {
       for (shader = 0; shader < SI_NUM_SHADERS; ++shader) {
          struct si_images *images = &sctx->images[shader];
          struct si_descriptors *descs = si_sampler_and_image_descriptors(sctx, shader);
