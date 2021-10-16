@@ -947,7 +947,7 @@ static void si_init_renderer_string(struct si_screen *sscreen)
 
    if (sscreen->info.marketing_name) {
       snprintf(first_name, sizeof(first_name), "%s", sscreen->info.marketing_name);
-      snprintf(second_name, sizeof(second_name), "%s, ", sscreen->info.name);
+      snprintf(second_name, sizeof(second_name), "%s, ", sscreen->info.lowercase_name);
    } else {
       snprintf(first_name, sizeof(first_name), "AMD %s", sscreen->info.name);
    }
