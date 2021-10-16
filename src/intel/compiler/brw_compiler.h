@@ -1945,7 +1945,7 @@ brw_stage_has_packed_dispatch(ASSERTED const struct intel_device_info *devinfo,
        */
       const struct brw_wm_prog_data *wm_prog_data =
          (const struct brw_wm_prog_data *)prog_data;
-      return !wm_prog_data->persample_dispatch;
+      return devinfo->verx10 < 125 && !wm_prog_data->persample_dispatch;
    }
    case MESA_SHADER_COMPUTE:
       /* Compute shaders will be spawned with either a fully enabled dispatch
