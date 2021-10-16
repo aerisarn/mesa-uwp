@@ -3039,17 +3039,10 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       if (sel->info.stage == MESA_SHADER_VERTEX) {
          if (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL))
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
-         else if (sscreen->options.shader_culling ||
-                  sscreen->info.chip_class == GFX10_3 ||
-                  (sscreen->info.chip_class == GFX10 &&
-                   sscreen->info.is_pro_graphics)) {
+         else
             sel->ngg_cull_vert_threshold = 128;
-         }
       } else if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
-         if (sel->rast_prim != PIPE_PRIM_POINTS &&
-             (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL) ||
-              sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_TESS) ||
-              sscreen->info.chip_class == GFX10_3))
+         if (sel->rast_prim != PIPE_PRIM_POINTS)
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
       }
    }
