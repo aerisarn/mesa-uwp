@@ -956,9 +956,8 @@ static void si_init_renderer_string(struct si_screen *sscreen)
       snprintf(kernel_version, sizeof(kernel_version), ", %s", uname_data.release);
 
    snprintf(sscreen->renderer_string, sizeof(sscreen->renderer_string),
-            "%s (%sDRM %i.%i.%i%s, LLVM " MESA_LLVM_VERSION_STRING ")", first_name, second_name,
-            sscreen->info.drm_major, sscreen->info.drm_minor, sscreen->info.drm_patchlevel,
-            kernel_version);
+            "%s (%sLLVM " MESA_LLVM_VERSION_STRING ", DRM %i.%i%s)", first_name, second_name,
+            sscreen->info.drm_major, sscreen->info.drm_minor, kernel_version);
 }
 
 void si_init_screen_get_functions(struct si_screen *sscreen)
