@@ -1151,13 +1151,17 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 
          /* VS as LS main part */
          ctx.next_shader_sel = ctx.shader->selector;
-         nir = si_get_nir_shader(ls, NULL, &free_nir);
+
          struct si_shader shader_ls = {};
          shader_ls.selector = ls;
+         shader_ls.key.ge.part.vs.prolog = shader->key.ge.part.tcs.ls_prolog;
          shader_ls.key.ge.as_ls = 1;
          shader_ls.key.ge.mono = shader->key.ge.mono;
          shader_ls.key.ge.opt = shader->key.ge.opt;
+         shader_ls.key.ge.opt.inline_uniforms = false; /* only TCS can inline uniforms */
          shader_ls.is_monolithic = true;
+
+         nir = si_get_nir_shader(ls, &shader_ls.key, &free_nir);
 
          if (!si_llvm_translate_nir(&ctx, &shader_ls, nir, free_nir, false)) {
             si_llvm_dispose(&ctx);
@@ -1213,14 +1217,17 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          gs_prolog = ctx.main_fn;
 
          /* ES main part */
-         nir = si_get_nir_shader(es, NULL, &free_nir);
          struct si_shader shader_es = {};
          shader_es.selector = es;
+         shader_es.key.ge.part.vs.prolog = shader->key.ge.part.gs.vs_prolog;
          shader_es.key.ge.as_es = 1;
          shader_es.key.ge.as_ngg = shader->key.ge.as_ngg;
          shader_es.key.ge.mono = shader->key.ge.mono;
          shader_es.key.ge.opt = shader->key.ge.opt;
+         shader_es.key.ge.opt.inline_uniforms = false; /* only GS can inline uniforms */
          shader_es.is_monolithic = true;
+
+         nir = si_get_nir_shader(es, &shader_es.key, &free_nir);
 
          if (!si_llvm_translate_nir(&ctx, &shader_es, nir, free_nir, false)) {
             si_llvm_dispose(&ctx);

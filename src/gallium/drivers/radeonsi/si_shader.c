@@ -1369,10 +1369,8 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
 
    bool inline_uniforms = false;
    uint32_t *inlined_uniform_values;
-   if (key) {
-      si_get_inline_uniform_state((union si_shader_key*)key, sel->pipe_shader_type,
-                                  &inline_uniforms, &inlined_uniform_values);
-   }
+   si_get_inline_uniform_state((union si_shader_key*)key, sel->pipe_shader_type,
+                               &inline_uniforms, &inlined_uniform_values);
 
    if (inline_uniforms) {
       assert(*free_nir);
