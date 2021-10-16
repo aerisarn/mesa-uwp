@@ -140,6 +140,9 @@ struct si_shader_context {
 
    struct ac_llvm_compiler *compiler;
 
+   /* GS vertex offsets unpacked with the gfx6-9 tristrip_adj bug workaround. */
+   LLVMValueRef gs_vtx_offset[6];
+
    /* Preloaded descriptors. */
    LLVMValueRef esgs_ring;
    LLVMValueRef gsvs_ring[4];
@@ -236,7 +239,6 @@ LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx);
 void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi);
 void si_preload_esgs_ring(struct si_shader_context *ctx);
 void si_preload_gs_rings(struct si_shader_context *ctx);
-void si_llvm_build_gs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);
 void si_llvm_init_gs_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_tess.c */

@@ -544,10 +544,6 @@ struct si_tcs_epilog_bits {
    unsigned tes_reads_tess_factors : 1;
 };
 
-struct si_gs_prolog_bits {
-   unsigned tri_strip_adj_fix : 1;
-};
-
 /* Common PS bits between the shader key and the prolog key. */
 struct si_ps_prolog_bits {
    unsigned color_two_side : 1;
@@ -592,10 +588,6 @@ union si_shader_part_key {
       struct si_tcs_epilog_bits states;
    } tcs_epilog;
    struct {
-      struct si_gs_prolog_bits states;
-      unsigned as_ngg : 1;
-   } gs_prolog;
-   struct {
       struct si_ps_prolog_bits states;
       unsigned num_input_sgprs : 6;
       unsigned num_input_vgprs : 5;
@@ -633,7 +625,6 @@ struct si_shader_key_ge {
       struct {
          struct si_vs_prolog_bits vs_prolog; /* for merged ES-GS */
          struct si_shader_selector *es;      /* for merged ES-GS */
-         struct si_gs_prolog_bits prolog;
       } gs;
    } part;
 
@@ -654,9 +645,10 @@ struct si_shader_key_ge {
       union si_vs_fix_fetch vs_fix_fetch[SI_MAX_ATTRIBS];
 
       union {
-         uint64_t ff_tcs_inputs_to_copy; /* for fixed-func TCS */
+         uint64_t ff_tcs_inputs_to_copy; /* fixed-func TCS only */
          /* When PS needs PrimID and GS is disabled. */
-         unsigned vs_export_prim_id : 1;
+         unsigned vs_export_prim_id : 1;    /* VS and TES only */
+         unsigned gs_tri_strip_adj_fix : 1; /* GS only */
       } u;
    } mono;
 

@@ -1207,8 +1207,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
           key->ge.part.gs.es->info.stage == MESA_SHADER_VERTEX) {
          si_dump_shader_key_vs(key, &key->ge.part.gs.vs_prolog, "part.gs.vs_prolog", f);
       }
-      fprintf(f, "  part.gs.prolog.tri_strip_adj_fix = %u\n",
-              key->ge.part.gs.prolog.tri_strip_adj_fix);
+      fprintf(f, "  mono.u.gs_tri_strip_adj_fix = %u\n", key->ge.mono.u.gs_tri_strip_adj_fix);
       fprintf(f, "  as_ngg = %u\n", key->ge.as_ngg);
       break;
 
@@ -1593,10 +1592,6 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
       assert(!prolog);
       shader.key.ge.part.tcs.epilog = key->tcs_epilog.states;
       break;
-   case MESA_SHADER_GEOMETRY:
-      assert(prolog);
-      shader.key.ge.as_ngg = key->gs_prolog.as_ngg;
-      break;
    case MESA_SHADER_FRAGMENT:
       if (prolog)
          shader.key.ps.part.prolog = key->ps_prolog.states;
@@ -1719,18 +1714,7 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen, struct ac_llvm_
       shader->previous_stage = es_main_part;
    }
 
-   if (!shader->key.ge.part.gs.prolog.tri_strip_adj_fix)
-      return true;
-
-   union si_shader_part_key prolog_key;
-   memset(&prolog_key, 0, sizeof(prolog_key));
-   prolog_key.gs_prolog.states = shader->key.ge.part.gs.prolog;
-   prolog_key.gs_prolog.as_ngg = shader->key.ge.as_ngg;
-
-   shader->prolog2 =
-      si_get_shader_part(sscreen, &sscreen->gs_prologs, MESA_SHADER_GEOMETRY, true, &prolog_key,
-                         compiler, debug, si_llvm_build_gs_prolog, "Geometry Shader Prolog");
-   return shader->prolog2 != NULL;
+   return true;
 }
 
 /**
