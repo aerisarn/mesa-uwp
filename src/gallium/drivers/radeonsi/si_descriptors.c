@@ -1630,7 +1630,7 @@ static bool si_reset_buffer_resources(struct si_context *sctx, struct si_buffer_
 void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 {
    struct si_resource *buffer = si_resource(buf);
-   unsigned i, shader;
+   unsigned i;
    unsigned num_elems = sctx->num_vertex_elements;
 
    /* We changed the buffer, now we need to bind it where the old one
@@ -1684,15 +1684,20 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 
    /* Constant and shader buffers. */
    if (!buffer || buffer->bind_history & SI_BIND_CONSTANT_BUFFER_ALL) {
-      for (shader = 0; shader < SI_NUM_SHADERS; shader++)
+      unsigned mask = buffer ? (buffer->bind_history & SI_BIND_CONSTANT_BUFFER_ALL) >>
+                               SI_BIND_CONSTANT_BUFFER_SHIFT : BITFIELD_MASK(SI_NUM_SHADERS);
+      u_foreach_bit(shader, mask) {
          si_reset_buffer_resources(sctx, &sctx->const_and_shader_buffers[shader],
                                    si_const_and_shader_buffer_descriptors_idx(shader),
                                    u_bit_consecutive64(SI_NUM_SHADER_BUFFERS, SI_NUM_CONST_BUFFERS),
                                    buf, sctx->const_and_shader_buffers[shader].priority_constbuf);
+      }
    }
 
    if (!buffer || buffer->bind_history & SI_BIND_SHADER_BUFFER_ALL) {
-      for (shader = 0; shader < SI_NUM_SHADERS; shader++) {
+      unsigned mask = buffer ? (buffer->bind_history & SI_BIND_SHADER_BUFFER_ALL) >>
+                               SI_BIND_SHADER_BUFFER_SHIFT : BITFIELD_MASK(SI_NUM_SHADERS);
+      u_foreach_bit(shader, mask) {
          if (si_reset_buffer_resources(sctx, &sctx->const_and_shader_buffers[shader],
                                        si_const_and_shader_buffer_descriptors_idx(shader),
                                        u_bit_consecutive64(0, SI_NUM_SHADER_BUFFERS), buf,
@@ -1704,8 +1709,10 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
    }
 
    if (!buffer || buffer->bind_history & SI_BIND_SAMPLER_BUFFER_ALL) {
+      unsigned mask = buffer ? (buffer->bind_history & SI_BIND_SAMPLER_BUFFER_ALL) >>
+                               SI_BIND_SAMPLER_BUFFER_SHIFT : BITFIELD_MASK(SI_NUM_SHADERS);
       /* Texture buffers - update bindings. */
-      for (shader = 0; shader < SI_NUM_SHADERS; shader++) {
+      u_foreach_bit(shader, mask) {
          struct si_samplers *samplers = &sctx->samplers[shader];
          struct si_descriptors *descs = si_sampler_and_image_descriptors(sctx, shader);
          unsigned mask = samplers->enabled_mask;
@@ -1730,7 +1737,9 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 
    /* Shader images */
    if (!buffer || buffer->bind_history & SI_BIND_IMAGE_BUFFER_ALL) {
-      for (shader = 0; shader < SI_NUM_SHADERS; ++shader) {
+      unsigned mask = buffer ? (buffer->bind_history & SI_BIND_IMAGE_BUFFER_SHIFT) >>
+                               SI_BIND_IMAGE_BUFFER_SHIFT : BITFIELD_MASK(SI_NUM_SHADERS);
+      u_foreach_bit(shader, mask) {
          struct si_images *images = &sctx->images[shader];
          struct si_descriptors *descs = si_sampler_and_image_descriptors(sctx, shader);
          unsigned mask = images->enabled_mask;
