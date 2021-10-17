@@ -591,13 +591,13 @@ static struct pipe_resource *si_buffer_create(struct pipe_screen *screen,
    if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
       buf->flags |= RADEON_FLAG_SPARSE;
 
+   buf->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
+
    if (!si_alloc_resource(sscreen, buf)) {
-      threaded_resource_deinit(&buf->b.b);
-      FREE_CL(buf);
+      si_resource_destroy(screen, &buf->b.b);
       return NULL;
    }
 
-   buf->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
    return &buf->b.b;
 }
 
@@ -639,17 +639,17 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
    util_range_add(&buf->b.b, &buf->valid_buffer_range, 0, templ->width0);
    util_range_add(&buf->b.b, &buf->b.valid_buffer_range, 0, templ->width0);
 
+   buf->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
+
    /* Convert a user pointer to a buffer. */
    buf->buf = ws->buffer_from_ptr(ws, user_memory, templ->width0);
    if (!buf->buf) {
-      threaded_resource_deinit(&buf->b.b);
-      FREE_CL(buf);
+      si_resource_destroy(screen, &buf->b.b);
       return NULL;
    }
 
    buf->gpu_address = ws->buffer_get_virtual_address(buf->buf);
    buf->memory_usage_kb = templ->width0 / 1024;
-   buf->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
    return &buf->b.b;
 }
 
