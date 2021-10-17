@@ -61,6 +61,15 @@ extern "C" {
 /* Alignment for optimal CP DMA performance. */
 #define SI_CPDMA_ALIGNMENT 32
 
+/* We don't want to evict buffers from VRAM by mapping them for CPU access,
+ * because they might never be moved back again. If a buffer is large enough,
+ * upload data by copying from a temporary GTT buffer. 8K might not seem much,
+ * but there can be 100000 buffers.
+ *
+ * This tweak improves performance for viewperf creo & snx.
+ */
+#define SI_MAX_VRAM_MAP_SIZE     8196
+
 /* Tunables for compute-based clear_buffer and copy_buffer: */
 #define SI_COMPUTE_CLEAR_DW_PER_THREAD 4
 #define SI_COMPUTE_COPY_DW_PER_THREAD  4

@@ -150,14 +150,11 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    if (res->domains & RADEON_DOMAIN_VRAM) {
       /* We don't want to evict buffers from VRAM by mapping them for CPU access,
        * because they might never be moved back again. If a buffer is large enough,
-       * upload data by copying from a temporary GTT buffer. 8K might not seem much,
-       * but there can be 100000 buffers.
-       *
-       * This tweak improves performance for viewperf creo & snx.
+       * upload data by copying from a temporary GTT buffer.
        */
       if (!sscreen->info.smart_access_memory &&
           sscreen->info.has_dedicated_vram &&
-          size >= 8196)
+          size >= SI_MAX_VRAM_MAP_SIZE)
          res->b.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
    }
 }
