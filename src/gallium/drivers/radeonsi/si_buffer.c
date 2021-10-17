@@ -567,7 +567,7 @@ static struct si_resource *si_alloc_buffer_struct(struct pipe_screen *screen,
    pipe_reference_init(&buf->b.b.reference, 1);
    buf->b.b.screen = screen;
 
-   threaded_resource_init(&buf->b.b);
+   threaded_resource_init(&buf->b.b, false, 0);
 
    buf->buf = NULL;
    buf->bind_history = 0;
