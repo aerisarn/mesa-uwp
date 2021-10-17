@@ -930,7 +930,7 @@ void anv_GetPhysicalDeviceFormatProperties2(
    const struct intel_device_info *devinfo = &physical_device->info;
    const struct anv_format *anv_format = anv_get_format(vk_format);
 
-   assert(pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2);
+   assert(pFormatProperties->sType == VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2);
 
    VkFormatFeatureFlags2KHR linear2, optimal2, buffer2;
    linear2 = anv_get_image_format_features2(devinfo, vk_format, anv_format,
