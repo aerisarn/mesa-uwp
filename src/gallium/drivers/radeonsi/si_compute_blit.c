@@ -59,11 +59,26 @@ unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
    }
 }
 
+static bool si_is_buffer_idle(struct si_context *sctx, struct si_resource *buf,
+                              enum radeon_bo_usage usage)
+{
+   return !si_cs_is_buffer_referenced(sctx, buf->buf, usage) &&
+          sctx->ws->buffer_wait(sctx->ws, buf->buf, 0, usage);
+}
+
 static void si_improve_sync_flags(struct si_context *sctx, struct pipe_resource *dst,
                                   struct pipe_resource *src, unsigned *flags)
 {
    if (dst->target != PIPE_BUFFER || (src && src->target != PIPE_BUFFER))
       return;
+
+   if (si_is_buffer_idle(sctx, si_resource(dst), RADEON_USAGE_READWRITE) &&
+       (!src || si_is_buffer_idle(sctx, si_resource(src), RADEON_USAGE_WRITE))) {
+      /* Idle buffers don't have to sync. */
+      *flags &= ~(SI_OP_SYNC_GE_BEFORE | SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_CS_BEFORE |
+                  SI_OP_SYNC_CPDMA_BEFORE);
+      return;
+   }
 
    const unsigned cs_mask = SI_BIND_CONSTANT_BUFFER(PIPE_SHADER_COMPUTE) |
                             SI_BIND_SHADER_BUFFER(PIPE_SHADER_COMPUTE) |
