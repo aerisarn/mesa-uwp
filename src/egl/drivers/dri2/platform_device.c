@@ -352,6 +352,7 @@ dri2_initialize_device(_EGLDisplay *disp)
    dev = disp->PlatformDisplay;
 
    dri2_dpy->fd = -1;
+   dri2_dpy->fd_display_gpu = -1;
    disp->Device = dev;
    disp->DriverData = (void *) dri2_dpy;
    err = "DRI2: failed to load driver";

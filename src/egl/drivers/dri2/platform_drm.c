@@ -692,6 +692,7 @@ dri2_initialize_drm(_EGLDisplay *disp)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
    dri2_dpy->fd = -1;
+   dri2_dpy->fd_display_gpu = -1;
    disp->DriverData = (void *) dri2_dpy;
 
    gbm = disp->PlatformDisplay;

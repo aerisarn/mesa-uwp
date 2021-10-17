@@ -334,6 +334,7 @@ dri2_initialize_surfaceless(_EGLDisplay *disp)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
    dri2_dpy->fd = -1;
+   dri2_dpy->fd_display_gpu = -1;
    disp->DriverData = (void *) dri2_dpy;
 
    /* When ForceSoftware is false, we try the HW driver.  When ForceSoftware

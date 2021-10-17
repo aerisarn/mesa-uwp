@@ -1676,6 +1676,7 @@ dri2_initialize_android(_EGLDisplay *disp)
       return _eglError(EGL_BAD_ALLOC, "eglInitialize");
 
    dri2_dpy->fd = -1;
+   dri2_dpy->fd_display_gpu = -1;
    ret = hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
                        (const hw_module_t **)&dri2_dpy->gralloc);
    if (ret) {
