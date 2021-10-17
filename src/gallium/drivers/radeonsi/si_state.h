@@ -489,6 +489,10 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx);
 void si_invalidate_inlinable_uniforms(struct si_context *sctx, enum pipe_shader_type shader);
 void si_get_pipe_constant_buffer(struct si_context *sctx, uint shader, uint slot,
                                  struct pipe_constant_buffer *cbuf);
+void si_set_shader_buffers(struct pipe_context *ctx, enum pipe_shader_type shader,
+                           unsigned start_slot, unsigned count,
+                           const struct pipe_shader_buffer *sbuffers,
+                           unsigned writable_bitmask, bool internal_blit);
 void si_get_shader_buffers(struct si_context *sctx, enum pipe_shader_type shader, uint start_slot,
                            uint count, struct pipe_shader_buffer *sbuf);
 void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource *buffer,

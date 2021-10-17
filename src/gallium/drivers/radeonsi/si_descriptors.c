@@ -1369,10 +1369,10 @@ static void si_set_shader_buffer(struct si_context *sctx, struct si_buffer_resou
                   sbuffer->buffer_offset + sbuffer->buffer_size);
 }
 
-static void si_set_shader_buffers(struct pipe_context *ctx, enum pipe_shader_type shader,
-                                  unsigned start_slot, unsigned count,
-                                  const struct pipe_shader_buffer *sbuffers,
-                                  unsigned writable_bitmask)
+void si_set_shader_buffers(struct pipe_context *ctx, enum pipe_shader_type shader,
+                           unsigned start_slot, unsigned count,
+                           const struct pipe_shader_buffer *sbuffers,
+                           unsigned writable_bitmask, bool internal_blit)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_buffer_resources *buffers = &sctx->const_and_shader_buffers[shader];
@@ -1390,12 +1390,23 @@ static void si_set_shader_buffers(struct pipe_context *ctx, enum pipe_shader_typ
       const struct pipe_shader_buffer *sbuffer = sbuffers ? &sbuffers[i] : NULL;
       unsigned slot = si_get_shaderbuf_slot(start_slot + i);
 
-      if (sbuffer && sbuffer->buffer)
+      /* Don't track bind history for internal blits, such as clear_buffer and copy_buffer
+       * to prevent unnecessary synchronization before compute blits later.
+       */
+      if (!internal_blit && sbuffer && sbuffer->buffer)
          si_resource(sbuffer->buffer)->bind_history |= SI_BIND_SHADER_BUFFER(shader);
 
       si_set_shader_buffer(sctx, buffers, descriptors_idx, slot, sbuffer,
                            !!(writable_bitmask & (1u << i)), buffers->priority);
    }
+}
+
+static void si_pipe_set_shader_buffers(struct pipe_context *ctx, enum pipe_shader_type shader,
+                                       unsigned start_slot, unsigned count,
+                                       const struct pipe_shader_buffer *sbuffers,
+                                       unsigned writable_bitmask)
+{
+   si_set_shader_buffers(ctx, shader, start_slot, count, sbuffers, writable_bitmask, false);
 }
 
 void si_get_shader_buffers(struct si_context *sctx, enum pipe_shader_type shader, uint start_slot,
@@ -2699,7 +2710,7 @@ void si_init_all_descriptors(struct si_context *sctx)
    sctx->b.set_shader_images = si_set_shader_images;
    sctx->b.set_constant_buffer = si_pipe_set_constant_buffer;
    sctx->b.set_inlinable_constants = si_set_inlinable_constants;
-   sctx->b.set_shader_buffers = si_set_shader_buffers;
+   sctx->b.set_shader_buffers = si_pipe_set_shader_buffers;
    sctx->b.set_sampler_views = si_pipe_set_sampler_views;
    sctx->b.create_texture_handle = si_create_texture_handle;
    sctx->b.delete_texture_handle = si_delete_texture_handle;

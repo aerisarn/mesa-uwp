@@ -168,8 +168,9 @@ void si_launch_grid_internal_ssbos(struct si_context *sctx, struct pipe_grid_inf
    }
 
    /* Bind buffers and launch compute. */
-   sctx->b.set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, num_buffers, buffers,
-                              writeable_bitmask);
+   si_set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, num_buffers, buffers,
+                         writeable_bitmask,
+                         true /* don't update bind_history to prevent unnecessary syncs later */);
    si_launch_grid_internal(sctx, info, shader, flags);
 
    /* Do cache flushing at the end. */
