@@ -733,6 +733,8 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
 
       modifier = tex->surface.modifier;
    } else {
+      tc_buffer_disable_cpu_storage(&res->b.b);
+
       /* Buffer exports are for the OpenCL interop. */
       /* Move a suballocated buffer into a non-suballocated allocation. */
       if (sscreen->ws->buffer_is_suballocated(res->buf) ||

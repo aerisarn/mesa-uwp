@@ -556,6 +556,7 @@ struct si_screen {
 
    struct {
 #define OPT_BOOL(name, dflt, description) bool name : 1;
+#define OPT_INT(name, dflt, description) int name;
 #include "si_debug_options.h"
    } options;
 

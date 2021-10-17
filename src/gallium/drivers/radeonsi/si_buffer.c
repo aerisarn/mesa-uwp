@@ -154,6 +154,7 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
        */
       if (!sscreen->info.smart_access_memory &&
           sscreen->info.has_dedicated_vram &&
+          !res->b.cpu_storage && /* TODO: The CPU storage breaks this. */
           size >= SI_MAX_VRAM_MAP_SIZE)
          res->b.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
    }
@@ -555,7 +556,8 @@ static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *bu
 }
 
 static struct si_resource *si_alloc_buffer_struct(struct pipe_screen *screen,
-                                                  const struct pipe_resource *templ)
+                                                  const struct pipe_resource *templ,
+                                                  bool allow_cpu_storage)
 {
    struct si_resource *buf = MALLOC_STRUCT_CL(si_resource);
 
@@ -564,7 +566,7 @@ static struct si_resource *si_alloc_buffer_struct(struct pipe_screen *screen,
    pipe_reference_init(&buf->b.b.reference, 1);
    buf->b.b.screen = screen;
 
-   threaded_resource_init(&buf->b.b, false, 0);
+   threaded_resource_init(&buf->b.b, allow_cpu_storage, SI_MAP_BUFFER_ALIGNMENT);
 
    buf->buf = NULL;
    buf->bind_history = 0;
@@ -577,7 +579,9 @@ static struct pipe_resource *si_buffer_create(struct pipe_screen *screen,
                                               const struct pipe_resource *templ, unsigned alignment)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
-   struct si_resource *buf = si_alloc_buffer_struct(screen, templ);
+   struct si_resource *buf =
+      si_alloc_buffer_struct(screen, templ,
+                             templ->width0 <= sscreen->options.tc_max_cpu_storage_size);
 
    if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
       buf->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
@@ -627,7 +631,7 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct radeon_winsys *ws = sscreen->ws;
-   struct si_resource *buf = si_alloc_buffer_struct(screen, templ);
+   struct si_resource *buf = si_alloc_buffer_struct(screen, templ, false);
 
    buf->domains = RADEON_DOMAIN_GTT;
    buf->flags = 0;
@@ -655,7 +659,7 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
                                                    bool dedicated)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
-   struct si_resource *res = si_alloc_buffer_struct(screen, templ);
+   struct si_resource *res = si_alloc_buffer_struct(screen, templ, false);
 
    if (!res)
       return 0;

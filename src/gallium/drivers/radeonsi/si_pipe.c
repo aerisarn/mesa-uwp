@@ -1073,6 +1073,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    {
 #define OPT_BOOL(name, dflt, description)                                                          \
    sscreen->options.name = driQueryOptionb(config->options, "radeonsi_" #name);
+#define OPT_INT(name, dflt, description)                                                           \
+   sscreen->options.name = driQueryOptioni(config->options, "radeonsi_" #name);
 #include "si_debug_options.h"
    }
 
