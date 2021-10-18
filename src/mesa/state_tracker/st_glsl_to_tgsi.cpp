@@ -6686,7 +6686,9 @@ st_translate_program(
 
    if (proginfo->DualSlotInputs != 0) {
       /* adjust attrToIndex to include placeholder for second
-       * part of a double attribute
+       * part of a double attribute.
+       * Following code is basically matching behavior of
+       * util_lower_uint64_vertex_elements
        */
       numInputs = 0;
       for (unsigned attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
