@@ -539,8 +539,7 @@ create_aux_state_map(struct iris_resource *res, enum isl_aux_state initial)
 static unsigned
 iris_get_aux_clear_color_state_size(struct iris_screen *screen)
 {
-   const struct intel_device_info *devinfo = &screen->devinfo;
-   return devinfo->ver >= 10 ? screen->isl_dev.ss.clear_color_state_size : 0;
+   return screen->isl_dev.ss.clear_color_state_size;
 }
 
 static void
