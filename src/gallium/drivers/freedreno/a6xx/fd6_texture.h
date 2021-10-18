@@ -77,28 +77,6 @@ void fd6_sampler_view_update(struct fd_context *ctx,
 void fd6_texture_init(struct pipe_context *pctx);
 void fd6_texture_fini(struct pipe_context *pctx);
 
-static inline enum a6xx_tex_type
-fd6_tex_type(unsigned target)
-{
-   switch (target) {
-   default:
-      assert(0);
-   case PIPE_BUFFER:
-   case PIPE_TEXTURE_1D:
-   case PIPE_TEXTURE_1D_ARRAY:
-      return A6XX_TEX_1D;
-   case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_2D:
-   case PIPE_TEXTURE_2D_ARRAY:
-      return A6XX_TEX_2D;
-   case PIPE_TEXTURE_3D:
-      return A6XX_TEX_3D;
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-      return A6XX_TEX_CUBE;
-   }
-}
-
 static inline unsigned
 fd6_border_color_offset(struct fd_context *ctx, enum pipe_shader_type type,
                         struct fd_texture_stateobj *tex) assert_dt

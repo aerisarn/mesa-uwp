@@ -434,7 +434,7 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
             if (idx & IBO_SSBO) {
                fd6_emit_ssbo_tex(ctx, state, &buf->sb[idx & ~IBO_SSBO]);
             } else {
-               fd6_emit_image_tex(state, &img->si[idx]);
+               fd6_emit_image_tex(ctx, state, &img->si[idx]);
             }
          }
 
