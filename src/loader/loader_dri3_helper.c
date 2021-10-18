@@ -378,6 +378,7 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
                           xcb_drawable_t drawable,
                           enum loader_dri3_drawable_type type,
                           __DRIscreen *dri_screen,
+                          __DRIscreen *dri_screen_display_gpu,
                           bool is_different_gpu,
                           bool multiplanes_available,
                           bool prefer_back_buffer_reuse,
@@ -397,6 +398,7 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
    draw->type = type;
    draw->region = 0;
    draw->dri_screen = dri_screen;
+   draw->dri_screen_display_gpu = dri_screen_display_gpu;
    draw->is_different_gpu = is_different_gpu;
    draw->multiplanes_available = multiplanes_available;
    draw->prefer_back_buffer_reuse = prefer_back_buffer_reuse;

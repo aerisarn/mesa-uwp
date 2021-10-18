@@ -364,7 +364,7 @@ dri3_create_drawable(struct glx_screen *base, XID xDrawable,
    if (loader_dri3_drawable_init(XGetXCBConnection(base->dpy),
                                  xDrawable,
                                  glx_to_loader_dri3_drawable_type(type),
-                                 psc->driScreen,
+                                 psc->driScreen, psc->driScreenDisplayGPU,
                                  psc->is_different_gpu, has_multibuffer,
                                  psc->prefer_back_buffer_reuse,
                                  config->driConfig,
@@ -374,7 +374,6 @@ dri3_create_drawable(struct glx_screen *base, XID xDrawable,
       return NULL;
    }
 
-   pdraw->loader_drawable.dri_screen_display_gpu = psc->driScreenDisplayGPU;
    return &pdraw->base;
 }
 
