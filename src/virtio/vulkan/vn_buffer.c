@@ -19,6 +19,14 @@
 
 /* buffer commands */
 
+static inline bool
+vn_buffer_create_info_can_be_cached(const VkBufferCreateInfo *create_info)
+{
+   /* cache only VK_SHARING_MODE_EXCLUSIVE and without pNext for simplicity */
+   return (create_info->pNext == NULL) &&
+          (create_info->sharingMode == VK_SHARING_MODE_EXCLUSIVE);
+}
+
 static VkResult
 vn_buffer_cache_entries_create(struct vn_device *dev,
                                struct vn_buffer_cache_entry **out_entries,
@@ -117,6 +125,44 @@ vn_buffer_cache_get_memory_requirements(
    const VkBufferCreateInfo *create_info,
    struct vn_buffer_memory_requirements *out)
 {
+   if (create_info->size > cache->max_buffer_size)
+      return false;
+
+   if (!vn_buffer_create_info_can_be_cached(create_info))
+      return false;
+
+   /* 12.7. Resource Memory Association
+    *
+    * The memoryTypeBits member is identical for all VkBuffer objects created
+    * with the same value for the flags and usage members in the
+    * VkBufferCreateInfo structure and the handleTypes member of the
+    * VkExternalMemoryBufferCreateInfo structure passed to vkCreateBuffer.
+    * Further, if usage1 and usage2 of type VkBufferUsageFlags are such that
+    * the bits set in usage2 are a subset of the bits set in usage1, and they
+    * have the same flags and VkExternalMemoryBufferCreateInfo::handleTypes,
+    * then the bits set in memoryTypeBits returned for usage1 must be a subset
+    * of the bits set in memoryTypeBits returned for usage2, for all values of
+    * flags.
+    */
+   for (uint32_t i = 0; i < cache->entry_count; i++) {
+      const struct vn_buffer_cache_entry *entry = &cache->entries[i];
+      if ((entry->create_info->flags == create_info->flags) &&
+          ((entry->create_info->usage & create_info->usage) ==
+           create_info->usage)) {
+         *out = entry->requirements;
+
+         /* XXX This is based on below implementation defined behavior:
+          *
+          *    req.size <= align64(info.size, req.alignment)
+          *
+          * TODO Fix the spec to guarantee above.
+          */
+         out->memory.memoryRequirements.size = align64(
+            create_info->size, out->memory.memoryRequirements.alignment);
+         return true;
+      }
+   }
+
    return false;
 }
 
