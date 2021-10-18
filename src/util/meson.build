@@ -362,11 +362,11 @@ if with_tests
     'bitset_test.cpp',
     'register_allocate_test.cpp',
     'tests/dag_test.cpp',
-    'tests/fast_idiv_by_const/fast_idiv_by_const_test.cpp',
-    'tests/fast_urem_by_const/fast_urem_by_const_test.cpp',
+    'tests/fast_idiv_by_const_test.cpp',
+    'tests/fast_urem_by_const_test.cpp',
     'tests/int_min_max.cpp',
-    'tests/set/set_test.cpp',
-    'tests/vector/vector_test.cpp',
+    'tests/set_test.cpp',
+    'tests/vector_test.cpp',
     'u_debug_stack_test.cpp',
     'u_qsort_test.cpp',
   )
@@ -374,13 +374,13 @@ if with_tests
   if not (host_machine.system() == 'windows' and cc.get_id() == 'gcc')
     # FIXME: These tests fail with mingw, but not with msvc.
     files_util_tests += files(
-      'tests/string_buffer/string_buffer_test.cpp',
+      'tests/string_buffer_test.cpp',
     )
   endif
 
   if cc.has_header('sys/time.h')  # MinGW has this, but Vanilla windows doesn't
     files_util_tests += files(
-      'tests/timespec/timespec_test.cpp'
+      'tests/timespec_test.cpp'
     )
   endif
 
