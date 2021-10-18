@@ -37,7 +37,9 @@ create_ivci(struct zink_screen *screen,
             const struct pipe_surface *templ,
             enum pipe_texture_target target)
 {
-   VkImageViewCreateInfo ivci = {0};
+   VkImageViewCreateInfo ivci;
+   /* zero holes since this is hashed */
+   memset(&ivci, 0, sizeof(VkImageViewCreateInfo));
    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
    ivci.image = res->obj->image;
 
