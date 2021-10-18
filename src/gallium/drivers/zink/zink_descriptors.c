@@ -213,7 +213,7 @@ static void
 descriptor_set_invalidate(struct zink_descriptor_set *zds)
 {
    zds->invalid = true;
-   for (unsigned i = 0; i < zds->pool->key.layout->num_descriptors; i++) {
+   for (unsigned i = 0; i < zds->pool->key.layout->num_bindings; i++) {
       switch (zds->pool->type) {
       case ZINK_DESCRIPTOR_TYPE_UBO:
       case ZINK_DESCRIPTOR_TYPE_SSBO:
@@ -314,7 +314,7 @@ descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type typ
    }
    memcpy(pool->key.sizes, sizes, types_size);
    simple_mtx_init(&pool->mtx, mtx_plain);
-   for (unsigned i = 0; i < layout_key->num_descriptors; i++) {
+   for (unsigned i = 0; i < layout_key->num_bindings; i++) {
        pool->num_resources += layout_key->bindings[i].descriptorCount;
    }
    pool->desc_sets = _mesa_hash_table_create(NULL, desc_state_hash, desc_state_equal);
@@ -387,8 +387,8 @@ hash_descriptor_layout(const void *key)
 {
    uint32_t hash = 0;
    const struct zink_descriptor_layout_key *k = key;
-   hash = XXH32(&k->num_descriptors, sizeof(unsigned), hash);
-   hash = XXH32(k->bindings, k->num_descriptors * sizeof(VkDescriptorSetLayoutBinding), hash);
+   hash = XXH32(&k->num_bindings, sizeof(unsigned), hash);
+   hash = XXH32(k->bindings, k->num_bindings * sizeof(VkDescriptorSetLayoutBinding), hash);
 
    return hash;
 }
@@ -398,8 +398,8 @@ equals_descriptor_layout(const void *a, const void *b)
 {
    const struct zink_descriptor_layout_key *a_k = a;
    const struct zink_descriptor_layout_key *b_k = b;
-   return a_k->num_descriptors == b_k->num_descriptors &&
-          !memcmp(a_k->bindings, b_k->bindings, a_k->num_descriptors * sizeof(VkDescriptorSetLayoutBinding));
+   return a_k->num_bindings == b_k->num_bindings &&
+          !memcmp(a_k->bindings, b_k->bindings, a_k->num_bindings * sizeof(VkDescriptorSetLayoutBinding));
 }
 
 static struct zink_descriptor_layout *
@@ -414,7 +414,7 @@ create_layout(struct zink_context *ctx, enum zink_descriptor_type type,
 
    struct zink_descriptor_layout_key *k = ralloc(ctx, struct zink_descriptor_layout_key);
    k->use_count = 0;
-   k->num_descriptors = num_bindings;
+   k->num_bindings = num_bindings;
    size_t bindings_size = MAX2(num_bindings, 1) * sizeof(VkDescriptorSetLayoutBinding);
    k->bindings = ralloc_size(k, bindings_size);
    if (!k->bindings) {
@@ -437,7 +437,7 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
 {
    uint32_t hash = 0;
    struct zink_descriptor_layout_key key = {
-      .num_descriptors = num_bindings,
+      .num_bindings = num_bindings,
       .bindings = bindings,
    };
 
@@ -665,8 +665,8 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
    bool push_set = type == ZINK_DESCRIPTOR_TYPES;
    struct zink_descriptor_pool *pool = push_set ? ctx->dd->push_pool[is_compute] : pdd_cached(pg)->pool[type];
 #define DESC_BUCKET_FACTOR 10
-   unsigned bucket_size = pool->key.layout->num_descriptors ? DESC_BUCKET_FACTOR : 1;
-   if (pool->key.layout->num_descriptors) {
+   unsigned bucket_size = pool->key.layout->num_bindings ? DESC_BUCKET_FACTOR : 1;
+   if (pool->key.layout->num_bindings) {
       for (unsigned desc_factor = DESC_BUCKET_FACTOR; desc_factor < descs_used; desc_factor *= DESC_BUCKET_FACTOR)
          bucket_size = desc_factor;
    }
@@ -709,13 +709,13 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
 #endif
       switch (type) {
       case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-         zds->sampler_states = (struct zink_sampler_state**)&samplers[i * pool->key.layout->num_descriptors];
+         zds->sampler_states = (struct zink_sampler_state**)&samplers[i * pool->key.layout->num_bindings];
          FALLTHROUGH;
       case ZINK_DESCRIPTOR_TYPE_IMAGE:
-         zds->surfaces = &surfaces[i * pool->key.layout->num_descriptors];
+         zds->surfaces = &surfaces[i * pool->key.layout->num_bindings];
          break;
       default:
-         zds->res_objs = (struct zink_resource_object**)&res_objs[i * pool->key.layout->num_descriptors];
+         zds->res_objs = (struct zink_resource_object**)&res_objs[i * pool->key.layout->num_bindings];
          break;
       }
       zds->desc_set = desc_set[i];
@@ -783,7 +783,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
    unsigned descs_used = 1;
    assert(type <= ZINK_DESCRIPTOR_TYPES);
 
-   assert(pool->key.layout->num_descriptors);
+   assert(pool->key.layout->num_bindings);
    uint32_t hash = push_set ? ctx->dd->push_state[is_compute] :
                               ctx->dd->descriptor_states[is_compute].state[type];
 
@@ -901,7 +901,7 @@ zink_descriptor_set_recycle(struct zink_descriptor_set *zds)
    if (refcount != 1)
       return;
    /* this is a null set */
-   if (!pool->key.layout->num_descriptors)
+   if (!pool->key.layout->num_bindings)
       return;
    simple_mtx_lock(&pool->mtx);
    if (zds->punted)

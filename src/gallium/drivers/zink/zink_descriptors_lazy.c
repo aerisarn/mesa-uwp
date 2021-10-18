@@ -267,7 +267,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    if (push_count)
       wd_count[0] = pg->is_compute ? 1 : (ZINK_SHADER_COUNT + !!ctx->dd->has_fbfetch);
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      wd_count[i + 1] = pg->dd->layout_key[i] ? pg->dd->layout_key[i]->num_descriptors : 0;
+      wd_count[i + 1] = pg->dd->layout_key[i] ? pg->dd->layout_key[i]->num_bindings : 0;
 
    VkDescriptorUpdateTemplateEntry *push_entries[2] = {
       dd_lazy(ctx)->push_entries,
