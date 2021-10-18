@@ -358,19 +358,44 @@ if with_tests
     )
   endif
 
-  foreach t: ['bitset', 'register_allocate', 'u_debug_stack', 'u_qsort']
-    test(
-      t,
-      executable(
-        t + '_test',
-        files(t + '_test.cpp'),
-        include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-        dependencies : [idep_mesautil, idep_gtest],
-      ),
-      suite : ['util'],
-      protocol : gtest_test_protocol,
+  files_util_tests = files(
+    'bitset_test.cpp',
+    'register_allocate_test.cpp',
+    'tests/dag_test.cpp',
+    'tests/fast_idiv_by_const/fast_idiv_by_const_test.cpp',
+    'tests/fast_urem_by_const/fast_urem_by_const_test.cpp',
+    'tests/int_min_max.cpp',
+    'tests/set/set_test.cpp',
+    'tests/vector/vector_test.cpp',
+    'u_debug_stack_test.cpp',
+    'u_qsort_test.cpp',
+  )
+
+  if not (host_machine.system() == 'windows' and cc.get_id() == 'gcc')
+    # FIXME: These tests fail with mingw, but not with msvc.
+    files_util_tests += files(
+      'tests/string_buffer/string_buffer_test.cpp',
     )
-  endforeach
+  endif
+
+  if cc.has_header('sys/time.h')  # MinGW has this, but Vanilla windows doesn't
+    files_util_tests += files(
+      'tests/timespec/timespec_test.cpp'
+    )
+  endif
+
+  test(
+    'util_tests',
+    executable(
+      'util_tests',
+      files_util_tests,
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+      dependencies : [idep_mesautil, idep_gtest],
+    ),
+    suite : ['util'],
+    protocol : gtest_test_protocol,
+    timeout : 180,
+  )
 
   process_test_exe = executable(
     'process_test',
@@ -398,42 +423,9 @@ if with_tests
     env: ['BUILD_FULL_PATH='+process_test_exe_full_path]
   )
 
-  test('int_min_max',
-    executable('int_min_max_test',
-    files('tests/int_min_max.cpp'),
-      include_directories : [inc_include, inc_src],
-      dependencies : [idep_mesautil, idep_gtest],
-    ),
-    suite : ['util'],
-    protocol : gtest_test_protocol,
-  )
-
-  test(
-    'dag',
-    executable(
-      'dag_test',
-      'tests/dag_test.cpp',
-      dependencies : [idep_mesautil, idep_gtest],
-      include_directories : [inc_include, inc_src],
-    ),
-    suite : ['util'],
-    protocol : gtest_test_protocol,
-  )
-
   subdir('tests/cache')
-  subdir('tests/fast_idiv_by_const')
-  subdir('tests/fast_urem_by_const')
   subdir('tests/hash_table')
-  if not (host_machine.system() == 'windows' and cc.get_id() == 'gcc')
-    # FIXME: These tests fail with mingw, but not with msvc.
-    subdir('tests/string_buffer')
-  endif
-  if cc.has_header('sys/time.h')  # MinGW has this, but Vanilla windows doesn't
-    subdir('tests/timespec')
-  endif
   subdir('tests/vma')
-  subdir('tests/set')
   subdir('tests/sparse_array')
   subdir('tests/format')
-  subdir('tests/vector')
 endif
