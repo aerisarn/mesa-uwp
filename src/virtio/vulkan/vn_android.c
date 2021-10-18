@@ -1181,7 +1181,8 @@ vn_android_fix_buffer_create_info(
 }
 
 VkResult
-vn_android_init_ahb_buffer_memory_type_bits(struct vn_device *dev)
+vn_android_get_ahb_buffer_memory_type_bits(struct vn_device *dev,
+                                           uint32_t *out_mem_type_bits)
 {
    const uint32_t format = AHARDWAREBUFFER_FORMAT_BLOB;
    /* ensure dma_buf_memory_type_bits covers host visible usage */
@@ -1213,7 +1214,7 @@ vn_android_init_ahb_buffer_memory_type_bits(struct vn_device *dev)
    if (result != VK_SUCCESS)
       return result;
 
-   dev->ahb_buffer_memory_type_bits = mem_type_bits;
+   *out_mem_type_bits = mem_type_bits;
 
    return VK_SUCCESS;
 }

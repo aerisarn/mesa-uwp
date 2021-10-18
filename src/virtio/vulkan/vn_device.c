@@ -304,9 +304,13 @@ vn_device_init(struct vn_device *dev,
 
    if (dev->base.base.enabled_extensions
           .ANDROID_external_memory_android_hardware_buffer) {
-      result = vn_android_init_ahb_buffer_memory_type_bits(dev);
+      uint32_t mem_type_bits = 0;
+      result =
+         vn_android_get_ahb_buffer_memory_type_bits(dev, &mem_type_bits);
       if (result != VK_SUCCESS)
          goto fail;
+
+      dev->ahb_buffer_memory_type_bits = mem_type_bits;
    }
 
    return VK_SUCCESS;
