@@ -388,7 +388,9 @@ hash_descriptor_layout(const void *key)
    uint32_t hash = 0;
    const struct zink_descriptor_layout_key *k = key;
    hash = XXH32(&k->num_bindings, sizeof(unsigned), hash);
-   hash = XXH32(k->bindings, k->num_bindings * sizeof(VkDescriptorSetLayoutBinding), hash);
+   /* only hash first 3 members: no holes and the rest are always constant */
+   for (unsigned i = 0; i < k->num_bindings; i++)
+      hash = XXH32(&k->bindings[i], offsetof(VkDescriptorSetLayoutBinding, stageFlags), hash);
 
    return hash;
 }
