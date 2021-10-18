@@ -219,7 +219,6 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
 
       uint64_t base_addr[3];
 
-      view->descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
       if (ubwc_enabled) {
          view->descriptor[3] |= A6XX_TEX_CONST_3_FLAG;
          /* no separate ubwc base, image must have the expected layout */
