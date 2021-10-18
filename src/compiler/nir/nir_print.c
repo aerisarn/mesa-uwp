@@ -964,28 +964,29 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          break;
       }
 
-      case NIR_INTRINSIC_IO_SEMANTICS:
-         fprintf(fp, " location=%u slots=%u",
-                 nir_intrinsic_io_semantics(instr).location,
-                 nir_intrinsic_io_semantics(instr).num_slots);
+      case NIR_INTRINSIC_IO_SEMANTICS: {
+         struct nir_io_semantics io = nir_intrinsic_io_semantics(instr);
+         fprintf(fp, " io location=%u slots=%u", io.location, io.num_slots);
+
+         if (io.dual_source_blend_index)
+            fprintf(fp, " dualsrc");
+
+         if (io.fb_fetch_output)
+            fprintf(fp, " fbfetch");
+
+         if (io.per_view)
+            fprintf(fp, " perview");
+
+         if (io.medium_precision)
+            fprintf(fp, " mediump");
+
+         if (io.high_16bits)
+            fprintf(fp, " high_16bits");
+
          if (state->shader) {
-            if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
-                instr->intrinsic == nir_intrinsic_store_output &&
-                nir_intrinsic_io_semantics(instr).dual_source_blend_index) {
-               fprintf(fp, " dualsrc=1");
-            }
-            if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
-                instr->intrinsic == nir_intrinsic_load_output &&
-                nir_intrinsic_io_semantics(instr).fb_fetch_output) {
-               fprintf(fp, " fbfetch=1");
-            }
-            if (instr->intrinsic == nir_intrinsic_store_output &&
-                nir_intrinsic_io_semantics(instr).per_view) {
-               fprintf(fp, " perview=1");
-            }
             if (state->shader->info.stage == MESA_SHADER_GEOMETRY &&
                 instr->intrinsic == nir_intrinsic_store_output) {
-               unsigned gs_streams = nir_intrinsic_io_semantics(instr).gs_streams;
+               unsigned gs_streams = io.gs_streams;
                fprintf(fp, " gs_streams(");
                for (unsigned i = 0; i < 4; i++) {
                   fprintf(fp, "%s%c=%u", i ? " " : "", "xyzw"[i],
@@ -993,14 +994,10 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
                }
                fprintf(fp, ")");
             }
-            if (nir_intrinsic_io_semantics(instr).medium_precision) {
-               fprintf(fp, " mediump");
-            }
-            if (nir_intrinsic_io_semantics(instr).high_16bits) {
-               fprintf(fp, " high_16bits");
-            }
          }
+
          break;
+      }
 
       case NIR_INTRINSIC_ROUNDING_MODE: {
          fprintf(fp, " rounding_mode=");
