@@ -537,8 +537,22 @@ create_aux_state_map(struct iris_resource *res, enum isl_aux_state initial)
 }
 
 static unsigned
-iris_get_aux_clear_color_state_size(struct iris_screen *screen)
+iris_get_aux_clear_color_state_size(struct iris_screen *screen,
+                                    struct iris_resource *res)
 {
+   if (!isl_aux_usage_has_fast_clears(res->aux.usage))
+      return 0;
+
+   assert(!isl_surf_usage_is_stencil(res->surf.usage));
+
+   /* Depth packets can't specify indirect clear values. The only time depth
+    * buffers can use indirect clear values is when they're accessed by the
+    * sampler via render surface state objects.
+    */
+   if (isl_surf_usage_is_depth(res->surf.usage) &&
+       res->aux.sampler_usages == 1 << ISL_AUX_USAGE_NONE)
+      return 0;
+
    return screen->isl_dev.ss.clear_color_state_size;
 }
 
@@ -872,7 +886,7 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
 
    /* Zero the indirect clear color to match ::fast_clear_color. */
    memset((char *)map + res->aux.clear_color_offset, 0,
-          iris_get_aux_clear_color_state_size(screen));
+          iris_get_aux_clear_color_state_size(screen, res));
 
    iris_bo_unmap(res->bo);
 
@@ -882,7 +896,7 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
       map_aux_addresses(screen, res, res->surf.format, 0);
    }
 
-   if (iris_get_aux_clear_color_state_size(screen) > 0) {
+   if (iris_get_aux_clear_color_state_size(screen, res) > 0) {
       res->aux.clear_color_bo = res->bo;
       iris_bo_reference(res->aux.clear_color_bo);
    }
@@ -945,11 +959,11 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
        * starts at a 4K alignment to avoid some unknown issues.  See the
        * matching comment in iris_resource_create_with_modifiers().
        */
-      if (iris_get_aux_clear_color_state_size(screen) > 0) {
+      if (iris_get_aux_clear_color_state_size(screen, res) > 0) {
          res->aux.clear_color_bo =
             iris_bo_alloc(screen->bufmgr, "clear color_buffer",
-                          iris_get_aux_clear_color_state_size(screen), 4096,
-                          IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
+                          iris_get_aux_clear_color_state_size(screen, res),
+                          4096, IRIS_MEMZONE_OTHER, BO_ALLOC_ZEROED);
       }
       break;
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
@@ -1101,10 +1115,10 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
     * starts at a 4K alignment. We believe that 256B might be enough, but due
     * to lack of testing we will leave this as 4K for now.
     */
-   if (res->aux.surf.size_B > 0) {
+   if (iris_get_aux_clear_color_state_size(screen, res) > 0) {
       res->aux.clear_color_offset = ALIGN(bo_size, 4096);
       bo_size = res->aux.clear_color_offset +
-                iris_get_aux_clear_color_state_size(screen);
+                iris_get_aux_clear_color_state_size(screen, res);
    }
 
    uint32_t alignment = MAX2(4096, res->surf.alignment_B);
