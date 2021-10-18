@@ -174,9 +174,12 @@ static const struct test {
    /* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
    INSTR_6XX(c0d20906_02800004, "stg.a.f32 g[r1.x+(r1.z)<<2], r0.z, 2"), /* stg.a.f32 g[r1.x+(r1.z<<2)], r0.z, 2 */
    INSTR_6XX(c0da052e_01800042, "stg.a.s32 g[r0.z+(r11.z)<<2], r8.y, 1"), /* stg.a.s32 g[r0.z+(r11.z<<2)], r8.y, 1 */
+   INSTR_6XX(c0dc052e_01800042, "stg.a.u8 g[r0.z+(r11.z)<<2], hr8.y, 1"),
    INSTR_6XX(c0ca0505_03800042, "stg.s32 g[r0.z+5], r8.y, 3"),
    INSTR_6XX(c0ca0500_03800042, "stg.s32 g[r0.z], r8.y, 3"),
    INSTR_6XX(c0ca0531_03800242, "stg.s32 g[r0.z+305], r8.y, 3"),
+   INSTR_5XX(c0ce0100_02800000, "stg.s8 g[r0.x], hr0.x, 2"),
+   INSTR_5XX(c0c00100_02800000, "stg.f16 g[r0.x], hr0.x, 2"),
 
    /* Customely crafted */
    INSTR_6XX(c0d61104_01800228, "stg.a.u32 g[r2.x+(r1.x+1)<<2], r5.x, 1"),
@@ -187,6 +190,7 @@ static const struct test {
    INSTR_6XX(c0060006_0181800f, "ldg.u32 r1.z, g[r1.z+7], 1"),
    INSTR_6XX(c0060006_01818001, "ldg.u32 r1.z, g[r1.z], 1"),
    INSTR_6XX(c0060003_0180c269, "ldg.u32 r0.w, g[r0.w+308], 1"),
+   INSTR_6XX(c0040003_0180c269, "ldg.u16 hr0.w, g[r0.w+308], 1"),
 
    /* Found in TCS/TES shaders of GTA V */
    INSTR_6XX(c0020007_03c1420f, "ldg.a.f32 r1.w, g[r1.y+(r1.w+1)<<2], 3"), /* ldg.a.f32 r1.w, g[r1.y+((r1.w+1)<<2)], 3 */
@@ -196,6 +200,7 @@ static const struct test {
 
    INSTR_6XX(c0020011_04c08023, "ldg.a.f32 r4.y, g[r0.z+(r4.y)<<2], 4"), /* ldg.a.f32 r4.y, g[r0.z+(r4.y<<2)], 4 */
    INSTR_6XX(c0060006_01c18017, "ldg.a.u32 r1.z, g[r1.z+(r2.w)<<2], 1"), /* ldg.a.u32 r1.z, g[r1.z+(r2.w<<2)], 1 */
+   INSTR_6XX(c0000006_01c18017, "ldg.a.f16 hr1.z, g[r1.z+(r2.w)<<2], 1"),
    INSTR_6XX(c0060006_0181800f, "ldg.u32 r1.z, g[r1.z+7], 1"),
    INSTR_6XX(c0060006_01818001, "ldg.u32 r1.z, g[r1.z], 1"),
 
