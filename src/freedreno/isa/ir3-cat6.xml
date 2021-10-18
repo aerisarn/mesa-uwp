@@ -32,6 +32,8 @@ SOFTWARE.
 	<field   pos="59"          name="JP" type="bool" display="(jp)"/>
 	<field   pos="60"          name="SY" type="bool" display="(sy)"/>
 	<pattern low="61" high="63">110</pattern>  <!-- cat6 -->
+	<!-- is load dst / store src a half-reg? -->
+	<derived name="TYPE_HALF" expr="#type-half" type="bool" display="h"/>
 	<encode>
 		<map name="TYPE">src->cat6.type</map>
 	</encode>
@@ -59,7 +61,7 @@ SOFTWARE.
 	</doc>
 
 	<display>
-		{SY}{JP}{NAME}.{TYPE} {DST}, g[{SRC1}{OFF}], {SIZE}
+		{SY}{JP}{NAME}.{TYPE} {TYPE_HALF}{DST}, g[{SRC1}{OFF}], {SIZE}
 	</display>
 
 	<field low="1" high="13" name="OFF" type="offset"/>
@@ -79,12 +81,12 @@ SOFTWARE.
 	<gen min="600"/>
 
 	<display>
-		{SY}{JP}{NAME}.{TYPE} {DST}, g[{SRC1}+({SRC2}{OFF})&lt;&lt;{SRC2_BYTE_SHIFT}], {SIZE}
+		{SY}{JP}{NAME}.{TYPE} {TYPE_HALF}{DST}, g[{SRC1}+({SRC2}{OFF})&lt;&lt;{SRC2_BYTE_SHIFT}], {SIZE}
 	</display>
 
 	<override>
 		<display>
-			{SY}{JP}{NAME}.{TYPE} {DST}, g[{SRC1}+{SRC2}&lt;&lt;{SRC2_BYTE_SHIFT}{OFF}&lt;&lt;2], {SIZE}
+			{SY}{JP}{NAME}.{TYPE} {TYPE_HALF}{DST}, g[{SRC1}+{SRC2}&lt;&lt;{SRC2_BYTE_SHIFT}{OFF}&lt;&lt;2], {SIZE}
 		</display>
 		<expr>{SRC2_ADD_DWORD_SHIFT} > 0</expr>
 	</override>
@@ -129,7 +131,7 @@ SOFTWARE.
 	</doc>
 
 	<display>
-		{SY}{JP}{NAME}.{TYPE} g[{SRC1}{OFF}], {SRC3}, {SIZE}
+		{SY}{JP}{NAME}.{TYPE} g[{SRC1}{OFF}], {TYPE_HALF}{SRC3}, {SIZE}
 	</display>
 
 	<derived name="OFF" width="13" type="offset">
@@ -156,12 +158,12 @@ SOFTWARE.
 	<gen min="600"/>
 
 	<display>
-		{SY}{JP}{NAME}.{TYPE} g[{SRC1}+({SRC2}{OFF})&lt;&lt;{DST_BYTE_SHIFT}], {SRC3}, {SIZE}
+		{SY}{JP}{NAME}.{TYPE} g[{SRC1}+({SRC2}{OFF})&lt;&lt;{DST_BYTE_SHIFT}], {TYPE_HALF}{SRC3}, {SIZE}
 	</display>
 
 	<override>
 		<display>
-			{SY}{JP}{NAME}.{TYPE} g[{SRC1}+{SRC2}&lt;&lt;{DST_BYTE_SHIFT}{OFF}&lt;&lt;2], {SRC3}, {SIZE}
+			{SY}{JP}{NAME}.{TYPE} g[{SRC1}+{SRC2}&lt;&lt;{DST_BYTE_SHIFT}{OFF}&lt;&lt;2], {TYPE_HALF}{SRC3}, {SIZE}
 		</display>
 		<expr>{SRC2_ADD_DWORD_SHIFT} > 0</expr>
 	</override>

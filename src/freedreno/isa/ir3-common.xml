@@ -308,6 +308,14 @@ SOFTWARE.
 	<value val="7" display="s8"/>
 </enum>
 
+<expr name="#type-half">
+	({TYPE} == 0) /* f16 */ ||
+	({TYPE} == 2) /* u16 */ ||
+	({TYPE} == 4) /* s16 */ ||
+	({TYPE} == 6) /* u8 */  ||
+	({TYPE} == 7) /* s8 */
+</expr>
+
 <enum name="#absneg">
 	<value val="0" display=""/>
 	<value val="1" display="(neg)"/>
