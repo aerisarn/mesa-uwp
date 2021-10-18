@@ -295,18 +295,6 @@ if with_tests
   endif
 
   test(
-    'u_atomic',
-    executable(
-      'u_atomic_test',
-      files('u_atomic_test.c'),
-      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-      dependencies : idep_mesautil,
-      c_args : [c_msvc_compat_args],
-    ),
-    suite : ['util'],
-  )
-
-  test(
     'blob',
     executable(
       'blob_test',
@@ -367,6 +355,7 @@ if with_tests
     'tests/int_min_max.cpp',
     'tests/set_test.cpp',
     'tests/vector_test.cpp',
+    'u_atomic_test.cpp',
     'u_debug_stack_test.cpp',
     'u_qsort_test.cpp',
   )
