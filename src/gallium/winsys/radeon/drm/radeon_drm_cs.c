@@ -452,8 +452,7 @@ static bool radeon_drm_cs_validate(struct radeon_cmdbuf *rcs)
    return status;
 }
 
-static bool radeon_drm_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
-                                      bool force_chaining)
+static bool radeon_drm_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
 {
    assert(rcs->current.cdw <= rcs->current.max_dw);
    return rcs->current.max_dw - rcs->current.cdw >= dw;

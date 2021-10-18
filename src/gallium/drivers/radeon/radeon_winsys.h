@@ -569,11 +569,9 @@ struct radeon_winsys {
     *
     * \param cs        A command stream.
     * \param dw        Number of CS dwords requested by the caller.
-    * \param force_chaining  Chain the IB into a new buffer now to discard
-    *                        the CP prefetch cache (to emulate PKT3_REWIND)
     * \return true if there is enough space
     */
-   bool (*cs_check_space)(struct radeon_cmdbuf *cs, unsigned dw, bool force_chaining);
+   bool (*cs_check_space)(struct radeon_cmdbuf *cs, unsigned dw);
 
    /**
     * Return the buffer list.
