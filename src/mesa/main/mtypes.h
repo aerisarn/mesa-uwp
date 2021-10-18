@@ -4305,6 +4305,13 @@ struct gl_constants
     *  produce 0 instead of leaving the texture content undefined).
     */
    bool NoClippingOnCopyTex;
+
+   /**
+    * Force glthread to always return GL_FRAMEBUFFER_COMPLETE to prevent
+    * synchronization. Used for apps that call it every frame or multiple times
+    * a frame, but always getting framebuffer completeness.
+    */
+   bool GLThreadNopCheckFramebufferStatus;
 };
 
 
