@@ -19,6 +19,36 @@
 
 /* buffer commands */
 
+/* mandatory buffer create infos to cache */
+static const VkBufferCreateInfo cache_infos[] = {
+   {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = 1,
+      .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+   },
+   {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = 1,
+      .usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+   },
+   {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = 1,
+      .usage =
+         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+   },
+   {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = 1,
+      .usage =
+         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+   },
+};
+
 static inline bool
 vn_buffer_create_info_can_be_cached(const VkBufferCreateInfo *create_info)
 {
@@ -32,8 +62,50 @@ vn_buffer_cache_entries_create(struct vn_device *dev,
                                struct vn_buffer_cache_entry **out_entries,
                                uint32_t *out_entry_count)
 {
-   *out_entries = NULL;
-   *out_entry_count = 0;
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   struct vn_buffer_cache_entry *entries;
+   const uint32_t entry_count = ARRAY_SIZE(cache_infos);
+   VkResult result;
+
+   entries = vk_zalloc(alloc, sizeof(*entries) * entry_count,
+                       VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!entries)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   for (uint32_t i = 0; i < entry_count; i++) {
+      VkBuffer buf_handle = VK_NULL_HANDLE;
+      struct vn_buffer *buf = NULL;
+
+      assert(vn_buffer_create_info_can_be_cached(&cache_infos[i]));
+
+      result =
+         vn_CreateBuffer(dev_handle, &cache_infos[i], alloc, &buf_handle);
+      if (result != VK_SUCCESS) {
+         vk_free(alloc, entries);
+         return result;
+      }
+
+      buf = vn_buffer_from_handle(buf_handle);
+
+      /* XXX remove the check after guaranteed by the spec */
+      if (buf->requirements.memory.memoryRequirements.alignment <
+          buf->requirements.memory.memoryRequirements.size) {
+         vk_free(alloc, entries);
+         *out_entries = entries;
+         *out_entry_count = entry_count;
+         return VK_SUCCESS;
+      }
+
+      entries[i].create_info = &cache_infos[i];
+      entries[i].requirements.memory = buf->requirements.memory;
+      entries[i].requirements.dedicated = buf->requirements.dedicated;
+
+      vn_DestroyBuffer(dev_handle, buf_handle, alloc);
+   }
+
+   *out_entries = entries;
+   *out_entry_count = entry_count;
    return VK_SUCCESS;
 }
 
