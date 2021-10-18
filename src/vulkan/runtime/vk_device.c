@@ -93,6 +93,8 @@ vk_device_init(struct vk_device *device,
 
    list_inithead(&device->queues);
 
+   device->drm_fd = -1;
+
 #ifdef ANDROID
    mtx_init(&device->swapchain_private_mtx, mtx_plain);
    device->swapchain_private = NULL;

@@ -65,6 +65,9 @@ struct vk_device {
     */
    VkResult (*check_status)(struct vk_device *device);
 
+   /* Set by vk_device_set_drm_fd() */
+   int drm_fd;
+
 #ifdef ANDROID
    mtx_t swapchain_private_mtx;
    struct hash_table *swapchain_private;
@@ -80,6 +83,12 @@ vk_device_init(struct vk_device *device,
                const struct vk_device_dispatch_table *dispatch_table,
                const VkDeviceCreateInfo *pCreateInfo,
                const VkAllocationCallbacks *alloc);
+
+static inline void
+vk_device_set_drm_fd(struct vk_device *device, int drm_fd)
+{
+   device->drm_fd = drm_fd;
+}
 
 void
 vk_device_finish(struct vk_device *device);
