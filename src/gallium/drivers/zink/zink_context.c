@@ -711,7 +711,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
-   struct zink_sampler_view *sampler_view = CALLOC_STRUCT(zink_sampler_view);
+   struct zink_sampler_view *sampler_view = CALLOC_STRUCT_CL(zink_sampler_view);
    bool err;
 
    sampler_view->base = *state;
@@ -766,7 +766,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       err = !sampler_view->buffer_view;
    }
    if (err) {
-      FREE(sampler_view);
+      FREE_CL(sampler_view);
       return NULL;
    }
    return &sampler_view->base;
@@ -798,7 +798,7 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
       zink_surface_reference(zink_screen(pctx->screen), &view->image_view, NULL);
    }
    pipe_resource_reference(&pview->texture, NULL);
-   FREE(view);
+   FREE_CL(view);
 }
 
 static void

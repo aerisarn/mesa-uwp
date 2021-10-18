@@ -121,7 +121,7 @@ zink_resource_destroy(struct pipe_screen *pscreen,
    zink_resource_object_reference(screen, &res->obj, NULL);
    zink_resource_object_reference(screen, &res->scanout_obj, NULL);
    threaded_resource_deinit(pres);
-   FREE(res);
+   FREE_CL(res);
 }
 
 static VkImageAspectFlags
@@ -735,14 +735,14 @@ resource_create(struct pipe_screen *pscreen,
                 const uint64_t *modifiers, int modifiers_count)
 {
    struct zink_screen *screen = zink_screen(pscreen);
-   struct zink_resource *res = CALLOC_STRUCT(zink_resource);
+   struct zink_resource *res = CALLOC_STRUCT_CL(zink_resource);
 
    if (modifiers_count > 0) {
       /* for rebinds */
       res->modifiers_count = modifiers_count;
       res->modifiers = mem_dup(modifiers, modifiers_count * sizeof(uint64_t));
       if (!res->modifiers) {
-         FREE(res);
+         FREE_CL(res);
          return NULL;
       }
       /* TODO: remove this when multi-plane modifiers are supported */
@@ -772,7 +772,7 @@ resource_create(struct pipe_screen *pscreen,
    res->obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, NULL, 0);
    if (!res->obj) {
       free(res->modifiers);
-      FREE(res);
+      FREE_CL(res);
       return NULL;
    }
 
