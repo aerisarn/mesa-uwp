@@ -236,6 +236,58 @@ class TestRE:
             assert revert_of is not None
             assert revert_of.group(1) == '2ca8629fa9b303e24783b76a7b3b0c2513e32fbd'
 
+    class TestBackportTo:
+
+        def test_single_release(self):
+            """Tests commit meant for a single branch, ie, 19.1"""
+            message = textwrap.dedent("""\
+                radv: fix DCC fast clear code for intensity formats
+
+                This fixes a rendering issue with DiRT 4 on GFX10. Only GFX10 was
+                affected because intensity formats are different.
+
+                Backport-to: 19.2
+                Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1923
+                Signed-off-by: Samuel Pitoiset <samuel.pitoiset@gmail.com>
+                Reviewed-by: Bas Nieuwenhuizen <bas@basnieuwenhuizen.nl>
+            """)
+
+            backport_to = core.IS_BACKPORT.search(message)
+            assert backport_to is not None
+            assert backport_to.groups() == ('19.2', None)
+
+        def test_multiple_release_space(self):
+            """Tests commit with more than one branch specified"""
+            message = textwrap.dedent("""\
+                radeonsi: enable zerovram for Rocket League
+
+                Fixes corruption on game startup.
+                Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1888
+
+                Backport-to: 19.1 19.2
+                Reviewed-by: Pierre-Eric Pelloux-Prayer <pierre-eric.pelloux-prayer@amd.com>
+            """)
+
+            backport_to = core.IS_BACKPORT.search(message)
+            assert backport_to is not None
+            assert backport_to.groups() == ('19.1', '19.2')
+
+        def test_multiple_release_comma(self):
+            """Tests commit with more than one branch specified"""
+            message = textwrap.dedent("""\
+                radeonsi: enable zerovram for Rocket League
+
+                Fixes corruption on game startup.
+                Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1888
+
+                Backport-to: 19.1, 19.2
+                Reviewed-by: Pierre-Eric Pelloux-Prayer <pierre-eric.pelloux-prayer@amd.com>
+            """)
+
+            backport_to = core.IS_BACKPORT.search(message)
+            assert backport_to is not None
+            assert backport_to.groups() == ('19.1', '19.2')
+
 
 class TestResolveNomination:
 
@@ -324,6 +376,28 @@ class TestResolveNomination:
         assert c.nomination_type is None
 
     @pytest.mark.asyncio
+    async def test_backport_is_nominated(self):
+        s = self.FakeSubprocess(b'Backport-to: 16.2')
+        c = core.Commit('abcdef1234567890', 'a commit')
+
+        with mock.patch('bin.pick.core.asyncio.create_subprocess_exec', s.mock):
+            await core.resolve_nomination(c, '16.2')
+
+        assert c.nominated
+        assert c.nomination_type is core.NominationType.BACKPORT
+
+    @pytest.mark.asyncio
+    async def test_backport_is_not_nominated(self):
+        s = self.FakeSubprocess(b'Backport-to: 16.2')
+        c = core.Commit('abcdef1234567890', 'a commit')
+
+        with mock.patch('bin.pick.core.asyncio.create_subprocess_exec', s.mock):
+            await core.resolve_nomination(c, '16.1')
+
+        assert not c.nominated
+        assert c.nomination_type is None
+
+    @pytest.mark.asyncio
     async def test_revert_is_nominated(self):
         s = self.FakeSubprocess(b'This reverts commit 1234567890123456789012345678901234567890.')
         c = core.Commit('abcdef1234567890', 'a commit')
@@ -346,6 +420,21 @@ class TestResolveNomination:
 
         assert not c.nominated
         assert c.nomination_type is core.NominationType.REVERT
+
+    @pytest.mark.asyncio
+    async def test_is_fix_and_backport(self):
+        s = self.FakeSubprocess(
+            b'Fixes: 3d09bb390a39 (etnaviv: GC7000: State changes for HALTI3..5)\n'
+            b'Backport-to: 16.1'
+        )
+        c = core.Commit('abcdef1234567890', 'a commit')
+
+        with mock.patch('bin.pick.core.asyncio.create_subprocess_exec', s.mock):
+            with mock.patch('bin.pick.core.is_commit_in_branch', self.return_true):
+                await core.resolve_nomination(c, '16.1')
+
+        assert c.nominated
+        assert c.nomination_type is core.NominationType.FIXES
 
     @pytest.mark.asyncio
     async def test_is_fix_and_cc(self):

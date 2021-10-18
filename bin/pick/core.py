@@ -51,6 +51,8 @@ IS_FIX = re.compile(r'^\s*fixes:\s*([a-f0-9]{6,40})', flags=re.MULTILINE | re.IG
 IS_CC = re.compile(r'^\s*cc:\s*["\']?([0-9]{2}\.[0-9])?["\']?\s*["\']?([0-9]{2}\.[0-9])?["\']?\s*\<?mesa-stable',
                    flags=re.MULTILINE | re.IGNORECASE)
 IS_REVERT = re.compile(r'This reverts commit ([0-9a-f]{40})')
+IS_BACKPORT = re.compile(r'^\s*backport-to:\s*(\d{2}\.\d),?\s*(\d{2}\.\d)?',
+                         flags=re.MULTILINE | re.IGNORECASE)
 
 # XXX: hack
 SEM = asyncio.Semaphore(50)
@@ -73,6 +75,7 @@ class NominationType(enum.Enum):
     FIXES = 1
     REVERT = 2
     NONE = 3
+    BACKPORT = 4
 
 
 @enum.unique
@@ -288,6 +291,12 @@ async def resolve_nomination(commit: 'Commit', version: str) -> 'Commit':
             if await is_commit_in_branch(fixed):
                 commit.nominated = True
                 return commit
+
+    if backport_to := IS_BACKPORT.search(out):
+        if version in backport_to.groups():
+            commit.nominated = True
+            commit.nomination_type = NominationType.BACKPORT
+            return commit
 
     if cc_to := IS_CC.search(out):
         if cc_to.groups() == (None, None) or version in cc_to.groups():
