@@ -419,7 +419,6 @@ main(int argc, char **argv)
          printf("  Got:      \"%s\"\n", disasm_output);
          retval = 1;
          decode_fails++;
-         continue;
       }
 
       /*
