@@ -2285,6 +2285,16 @@ get_vs_output_info(const struct radv_pipeline *pipeline)
       return &pipeline->shaders[MESA_SHADER_VERTEX]->info.vs.outinfo;
 }
 
+static bool
+radv_nir_stage_uses_xfb(const nir_shader *nir)
+{
+   nir_xfb_info *xfb = nir_gather_xfb_info(nir, NULL);
+   bool uses_xfb = !!xfb;
+
+   ralloc_free(xfb);
+   return uses_xfb;
+}
+
 static void
 radv_link_shaders(struct radv_pipeline *pipeline,
                   const struct radv_pipeline_key *pipeline_key,
@@ -2372,7 +2382,9 @@ radv_link_shaders(struct radv_pipeline *pipeline,
       }
    }
 
-   if (!optimize_conservatively) {
+   bool uses_xfb = pipeline->graphics.last_vgt_api_stage != -1 &&
+                   radv_nir_stage_uses_xfb(shaders[pipeline->graphics.last_vgt_api_stage]);
+   if (!uses_xfb && !optimize_conservatively) {
       /* Remove PSIZ from shaders when it's not needed.
        * This is typically produced by translation layers like Zink or D9VK.
        */
@@ -2701,16 +2713,6 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    key.use_ngg = pipeline->device->physical_device->use_ngg;
 
    return key;
-}
-
-static bool
-radv_nir_stage_uses_xfb(const nir_shader *nir)
-{
-   nir_xfb_info *xfb = nir_gather_xfb_info(nir, NULL);
-   bool uses_xfb = !!xfb;
-
-   ralloc_free(xfb);
-   return uses_xfb;
 }
 
 static uint8_t
