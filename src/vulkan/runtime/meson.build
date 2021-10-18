@@ -52,6 +52,8 @@ files_vulkan_runtime = files(
   'vk_render_pass.c',
   'vk_shader_module.c',
   'vk_shader_module.h',
+  'vk_sync.c',
+  'vk_sync.h',
   'vk_synchronization2.c',
 )
 
