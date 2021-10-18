@@ -980,6 +980,25 @@ EGLBoolean
 dri2_create_screen(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   char *driver_name_display_gpu;
+
+   if (dri2_dpy->fd_display_gpu >= 0) {
+      driver_name_display_gpu = loader_get_driver_for_fd(dri2_dpy->fd_display_gpu);
+      if (driver_name_display_gpu) {
+         /* check if driver name is matching so that non mesa drivers
+          * will not crash.
+          */
+         if (strcmp(dri2_dpy->driver_name, driver_name_display_gpu) == 0) {
+            dri2_dpy->dri_screen_display_gpu =
+               dri2_dpy->mesa->createNewScreen(0, dri2_dpy->fd_display_gpu,
+                                               dri2_dpy->loader_extensions,
+                                               dri2_dpy->driver_extensions,
+                                               &dri2_dpy->driver_configs,
+                                               disp);
+         }
+         free(driver_name_display_gpu);
+      }
+   }
 
    int screen_fd = dri2_dpy->swrast ? -1 : dri2_dpy->fd;
    dri2_dpy->dri_screen = dri2_dpy->mesa->createNewScreen(0, screen_fd,
@@ -1123,7 +1142,11 @@ dri2_display_destroy(_EGLDisplay *disp)
    if (dri2_dpy->own_dri_screen) {
       if (dri2_dpy->vtbl && dri2_dpy->vtbl->close_screen_notify)
          dri2_dpy->vtbl->close_screen_notify(disp);
+
       dri2_dpy->core->destroyScreen(dri2_dpy->dri_screen);
+
+      if (dri2_dpy->dri_screen_display_gpu)
+         dri2_dpy->core->destroyScreen(dri2_dpy->dri_screen_display_gpu);
    }
    if (dri2_dpy->fd >= 0)
       close(dri2_dpy->fd);

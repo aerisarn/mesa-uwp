@@ -223,6 +223,7 @@ struct dri2_egl_display
    int dri2_major;
    int dri2_minor;
    __DRIscreen *dri_screen;
+   __DRIscreen *dri_screen_display_gpu;
    bool own_dri_screen;
    const __DRIconfig **driver_configs;
    void *driver;
