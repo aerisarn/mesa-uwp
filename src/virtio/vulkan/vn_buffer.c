@@ -43,7 +43,33 @@ static VkResult
 vn_buffer_get_max_buffer_size(struct vn_device *dev,
                               uint64_t *out_max_buffer_size)
 {
-   *out_max_buffer_size = 0;
+   /* XXX use VK_KHR_maintenance4 when available */
+   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   VkBuffer buf_handle;
+   VkBufferCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+   };
+   uint64_t max_buffer_size = 0;
+   uint8_t begin = 0;
+   uint8_t end = 64;
+
+   while (begin <= end) {
+      uint8_t mid = (begin + end) >> 1;
+      create_info.size = 1 << mid;
+      if (vn_CreateBuffer(dev_handle, &create_info, alloc, &buf_handle) ==
+          VK_SUCCESS) {
+         vn_DestroyBuffer(dev_handle, buf_handle, alloc);
+         max_buffer_size = create_info.size;
+         begin = mid + 1;
+      } else {
+         end = mid - 1;
+      }
+   }
+
+   *out_max_buffer_size = max_buffer_size;
    return VK_SUCCESS;
 }
 
