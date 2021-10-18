@@ -51,9 +51,6 @@ fd6_sampler_stateobj(struct pipe_sampler_state *samp)
 
 struct fd6_pipe_sampler_view {
    struct pipe_sampler_view base;
-   uint32_t texconst0, texconst1, texconst2, texconst3, texconst5;
-   uint32_t texconst6, texconst7, texconst8, texconst9, texconst10, texconst11;
-   uint32_t offset1, offset2;
    struct fd_resource *ptr1, *ptr2;
    uint16_t seqno;
 

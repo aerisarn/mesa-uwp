@@ -213,8 +213,6 @@ fd6_sampler_view_update(struct fd_context *ctx,
    struct pipe_resource *prsc = cso->texture;
    struct fd_resource *rsc = fd_resource(prsc);
    enum pipe_format format = cso->format;
-   bool ubwc_enabled = false;
-   unsigned lvl, layers = 0;
 
    fd6_validate_format(ctx, rsc, cso->format);
 
@@ -236,14 +234,6 @@ fd6_sampler_view_update(struct fd_context *ctx,
 
       fdl6_buffer_view_init(so->descriptor, cso->format, swiz, iova,
                             cso->u.buf.size);
-
-      unsigned elements = cso->u.buf.size / util_format_get_blocksize(format);
-
-      lvl = 0;
-      so->texconst1 = A6XX_TEX_CONST_1_WIDTH(elements & MASK(15)) |
-                      A6XX_TEX_CONST_1_HEIGHT(elements >> 15);
-      so->texconst2 = A6XX_TEX_CONST_2_UNK4 | A6XX_TEX_CONST_2_UNK31;
-      so->offset1 = cso->u.buf.offset;
    } else {
       struct fdl_view_args args = {
          /* Using relocs for addresses still */
@@ -278,141 +268,17 @@ fd6_sampler_view_update(struct fd_context *ctx,
                      ctx->screen->info->a6xx.has_z24uint_s8uint);
       memcpy(so->descriptor, view.descriptor, sizeof(so->descriptor));
 
-      unsigned miplevels;
-
-      lvl = fd_sampler_first_level(cso);
-      miplevels = fd_sampler_last_level(cso) - lvl;
-      layers = cso->u.tex.last_layer - cso->u.tex.first_layer + 1;
-
-      so->texconst0 |= A6XX_TEX_CONST_0_MIPLVLS(miplevels);
-      so->texconst1 = A6XX_TEX_CONST_1_WIDTH(u_minify(prsc->width0, lvl)) |
-                      A6XX_TEX_CONST_1_HEIGHT(u_minify(prsc->height0, lvl));
-      so->texconst2 = A6XX_TEX_CONST_2_PITCHALIGN(rsc->layout.pitchalign - 6) |
-                      A6XX_TEX_CONST_2_PITCH(fd_resource_pitch(rsc, lvl));
-
-      ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
-
       if (rsc->b.b.format == PIPE_FORMAT_R8_G8B8_420_UNORM) {
          /* In case of biplanar R8_G8B8, the UBWC metadata address in
           * dwords 7 and 8, is instead the pointer to the second plane.
           */
          so->ptr2 = plane1;
-         so->texconst6 =
-            A6XX_TEX_CONST_6_PLANE_PITCH(fd_resource_pitch(plane1, lvl));
-
-         if (ubwc_enabled) {
-            /* Further, if using UBWC with R8_G8B8, we only point to the
-             * UBWC header and the color data is expected to follow immediately.
-             */
-            so->offset1 =
-               fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
-            so->offset2 =
-               fd_resource_ubwc_offset(plane1, lvl, cso->u.tex.first_layer);
-         } else {
-            so->offset1 = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
-            so->offset2 =
-               fd_resource_offset(plane1, lvl, cso->u.tex.first_layer);
-         }
       } else {
-         so->offset1 = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
-         if (ubwc_enabled) {
+         if (fd_resource_ubwc_enabled(rsc, fd_sampler_first_level(cso))) {
             so->ptr2 = rsc;
-            so->offset2 =
-               fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
          }
       }
    }
-
-   so->texconst0 |=
-      fd6_tex_const_0(prsc, lvl, cso->format, cso->swizzle_r, cso->swizzle_g,
-                      cso->swizzle_b, cso->swizzle_a);
-
-   so->texconst2 |= A6XX_TEX_CONST_2_TYPE(fd6_tex_type(cso->target));
-
-   switch (cso->target) {
-   case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_1D:
-   case PIPE_TEXTURE_2D:
-      so->texconst3 = A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
-      so->texconst5 = A6XX_TEX_CONST_5_DEPTH(1);
-      break;
-   case PIPE_TEXTURE_1D_ARRAY:
-   case PIPE_TEXTURE_2D_ARRAY:
-      so->texconst3 = A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
-      so->texconst5 = A6XX_TEX_CONST_5_DEPTH(layers);
-      break;
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-      so->texconst3 = A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
-      so->texconst5 = A6XX_TEX_CONST_5_DEPTH(layers / 6);
-      break;
-   case PIPE_TEXTURE_3D:
-      so->texconst3 =
-         A6XX_TEX_CONST_3_MIN_LAYERSZ(
-            fd_resource_slice(rsc, prsc->last_level)->size0) |
-         A6XX_TEX_CONST_3_ARRAY_PITCH(fd_resource_slice(rsc, lvl)->size0);
-      so->texconst5 = A6XX_TEX_CONST_5_DEPTH(u_minify(prsc->depth0, lvl));
-      break;
-   default:
-      break;
-   }
-
-   if (rsc->layout.tile_all)
-      so->texconst3 |= A6XX_TEX_CONST_3_TILE_ALL;
-
-   if (ubwc_enabled) {
-      uint32_t block_width, block_height;
-      fdl6_get_ubwc_blockwidth(&rsc->layout, &block_width, &block_height);
-
-      so->texconst3 |= A6XX_TEX_CONST_3_FLAG;
-      so->texconst9 |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(
-         rsc->layout.ubwc_layer_size >> 2);
-      so->texconst10 |=
-         A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(
-            fdl_ubwc_pitch(&rsc->layout, lvl)) |
-         A6XX_TEX_CONST_10_FLAG_BUFFER_LOGW(util_logbase2_ceil(
-            DIV_ROUND_UP(u_minify(prsc->width0, lvl), block_width))) |
-         A6XX_TEX_CONST_10_FLAG_BUFFER_LOGH(util_logbase2_ceil(
-            DIV_ROUND_UP(u_minify(prsc->height0, lvl), block_height)));
-   }
-
-   const uint32_t swiz_mask =
-      (A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
-       A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK);
-
-   /* Sanity check that fdl6_view_init matched previous behavior. */
-   uint32_t so_descriptor[16] = {
-      /* fd6_view applies format swizzles more, and that's fine. */
-      so->texconst0 & ~swiz_mask,
-      so->texconst1,
-      so->texconst2,
-      so->texconst3,
-      so->offset1,
-      so->texconst5,
-      so->texconst6,
-      so->offset2,
-      0,
-      so->texconst9,
-      so->texconst10,
-      so->texconst11,
-   };
-   bool diff = false;
-   for (int i = 0; i < ARRAY_SIZE(so_descriptor); i++) {
-      int view_desc = so->descriptor[i];
-      if (i == 0)
-         view_desc &= ~swiz_mask;
-      if (so_descriptor[i] != view_desc) {
-         if (!diff) {
-            char view_desc[500] = {0};
-            debug_describe_sampler_view(view_desc, cso);
-            mesa_loge("view mismatch for %s:", view_desc);
-            diff = true;
-         }
-         mesa_loge("TEXCONST[%d] = 0x%08x vs 0x%08x", i, so_descriptor[i],
-                   view_desc);
-      }
-   }
-   assert(!diff);
 }
 
 /* NOTE this can be called in either driver thread or frontend thread

@@ -393,35 +393,35 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
             view = &dummy_view;
          }
 
-         OUT_RING(state, view->texconst0);
-         OUT_RING(state, view->texconst1);
-         OUT_RING(state, view->texconst2);
-         OUT_RING(state, view->texconst3);
+         OUT_RING(state, view->descriptor[0]);
+         OUT_RING(state, view->descriptor[1]);
+         OUT_RING(state, view->descriptor[2]);
+         OUT_RING(state, view->descriptor[3]);
 
          if (view->ptr1) {
-            OUT_RELOC(state, view->ptr1->bo, view->offset1,
-                      (uint64_t)view->texconst5 << 32, 0);
+            OUT_RELOC(state, view->ptr1->bo, view->descriptor[4],
+                      (uint64_t)view->descriptor[5] << 32, 0);
          } else {
-            OUT_RING(state, 0x00000000);
-            OUT_RING(state, view->texconst5);
+            OUT_RING(state, view->descriptor[4]);
+            OUT_RING(state, view->descriptor[5]);
          }
 
-         OUT_RING(state, view->texconst6);
+         OUT_RING(state, view->descriptor[6]);
 
          if (view->ptr2) {
-            OUT_RELOC(state, view->ptr2->bo, view->offset2, 0, 0);
+            OUT_RELOC(state, view->ptr2->bo, view->descriptor[7], 0, 0);
          } else {
-            OUT_RING(state, 0);
-            OUT_RING(state, 0);
+            OUT_RING(state, view->descriptor[7]);
+            OUT_RING(state, view->descriptor[8]);
          }
 
-         OUT_RING(state, view->texconst9);
-         OUT_RING(state, view->texconst10);
-         OUT_RING(state, view->texconst11);
-         OUT_RING(state, 0);
-         OUT_RING(state, 0);
-         OUT_RING(state, 0);
-         OUT_RING(state, 0);
+         OUT_RING(state, view->descriptor[9]);
+         OUT_RING(state, view->descriptor[10]);
+         OUT_RING(state, view->descriptor[11]);
+         OUT_RING(state, view->descriptor[12]);
+         OUT_RING(state, view->descriptor[13]);
+         OUT_RING(state, view->descriptor[14]);
+         OUT_RING(state, view->descriptor[15]);
       }
 
       if (v) {
