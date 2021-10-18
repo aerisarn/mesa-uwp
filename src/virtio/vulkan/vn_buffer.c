@@ -19,15 +19,44 @@
 
 /* buffer commands */
 
+static VkResult
+vn_buffer_init(struct vn_device *dev,
+               const VkBufferCreateInfo *create_info,
+               struct vn_buffer *buf)
+{
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   VkBuffer buf_handle = vn_buffer_to_handle(buf);
+   VkResult result;
+
+   result = vn_call_vkCreateBuffer(dev->instance, dev_handle, create_info,
+                                   NULL, &buf_handle);
+   if (result != VK_SUCCESS)
+      return result;
+
+   buf->memory_requirements.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+   buf->memory_requirements.pNext = &buf->dedicated_requirements;
+   buf->dedicated_requirements.sType =
+      VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
+   buf->dedicated_requirements.pNext = NULL;
+
+   vn_call_vkGetBufferMemoryRequirements2(
+      dev->instance, dev_handle,
+      &(VkBufferMemoryRequirementsInfo2){
+         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+         .buffer = buf_handle,
+      },
+      &buf->memory_requirements);
+
+   return VK_SUCCESS;
+}
+
 VkResult
 vn_buffer_create(struct vn_device *dev,
                  const VkBufferCreateInfo *create_info,
                  const VkAllocationCallbacks *alloc,
                  struct vn_buffer **out_buf)
 {
-   VkDevice device = vn_device_to_handle(dev);
    struct vn_buffer *buf = NULL;
-   VkBuffer buffer = VK_NULL_HANDLE;
    VkResult result;
 
    buf = vk_zalloc(alloc, sizeof(*buf), VN_DEFAULT_ALIGN,
@@ -37,30 +66,12 @@ vn_buffer_create(struct vn_device *dev,
 
    vn_object_base_init(&buf->base, VK_OBJECT_TYPE_BUFFER, &dev->base);
 
-   buffer = vn_buffer_to_handle(buf);
-   /* TODO async */
-   result = vn_call_vkCreateBuffer(dev->instance, device, create_info, NULL,
-                                   &buffer);
+   result = vn_buffer_init(dev, create_info, buf);
    if (result != VK_SUCCESS) {
       vn_object_base_fini(&buf->base);
       vk_free(alloc, buf);
       return result;
    }
-
-   /* TODO add a per-device cache for the requirements */
-   buf->memory_requirements.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-   buf->memory_requirements.pNext = &buf->dedicated_requirements;
-   buf->dedicated_requirements.sType =
-      VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-   buf->dedicated_requirements.pNext = NULL;
-
-   vn_call_vkGetBufferMemoryRequirements2(
-      dev->instance, device,
-      &(VkBufferMemoryRequirementsInfo2){
-         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-         .buffer = buffer,
-      },
-      &buf->memory_requirements);
 
    *out_buf = buf;
 
