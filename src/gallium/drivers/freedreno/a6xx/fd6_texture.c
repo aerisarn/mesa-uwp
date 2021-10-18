@@ -32,6 +32,7 @@
 #include "util/u_memory.h"
 #include "util/u_string.h"
 
+#include "freedreno_dev_info.h"
 #include "fd6_emit.h"
 #include "fd6_format.h"
 #include "fd6_resource.h"
@@ -227,6 +228,15 @@ fd6_sampler_view_update(struct fd_context *ctx,
    so->rsc_seqno = rsc->seqno;
 
    if (cso->target == PIPE_BUFFER) {
+      uint8_t swiz[4] = {cso->swizzle_r, cso->swizzle_g, cso->swizzle_b,
+                         cso->swizzle_a};
+
+      /* Using relocs for addresses still */
+      uint64_t iova = cso->u.buf.offset;
+
+      fdl6_buffer_view_init(so->descriptor, cso->format, swiz, iova,
+                            cso->u.buf.size);
+
       unsigned elements = cso->u.buf.size / util_format_get_blocksize(format);
 
       lvl = 0;
@@ -235,6 +245,39 @@ fd6_sampler_view_update(struct fd_context *ctx,
       so->texconst2 = A6XX_TEX_CONST_2_UNK4 | A6XX_TEX_CONST_2_UNK31;
       so->offset1 = cso->u.buf.offset;
    } else {
+      struct fdl_view_args args = {
+         /* Using relocs for addresses still */
+         .iova = 0,
+
+         .base_miplevel = fd_sampler_first_level(cso),
+         .level_count =
+            fd_sampler_last_level(cso) - fd_sampler_first_level(cso) + 1,
+
+         .base_array_layer = cso->u.tex.first_layer,
+         .layer_count = cso->u.tex.last_layer - cso->u.tex.first_layer + 1,
+
+         .format = format,
+         .swiz = {cso->swizzle_r, cso->swizzle_g, cso->swizzle_b,
+                  cso->swizzle_a},
+
+         .type = fdl_type_from_pipe_target(cso->target),
+         .chroma_offsets = {FDL_CHROMA_LOCATION_COSITED_EVEN,
+                            FDL_CHROMA_LOCATION_COSITED_EVEN},
+      };
+      struct fd_resource *plane1 = fd_resource(rsc->b.b.next);
+      struct fd_resource *plane2 =
+         plane1 ? fd_resource(plane1->b.b.next) : NULL;
+      static const struct fdl_layout dummy_layout = {0};
+      const struct fdl_layout *layouts[3] = {
+         &rsc->layout,
+         plane1 ? &plane1->layout : &dummy_layout,
+         plane2 ? &plane2->layout : &dummy_layout,
+      };
+      struct fdl6_view view;
+      fdl6_view_init(&view, layouts, &args,
+                     ctx->screen->info->a6xx.has_z24uint_s8uint);
+      memcpy(so->descriptor, view.descriptor, sizeof(so->descriptor));
+
       unsigned miplevels;
 
       lvl = fd_sampler_first_level(cso);
@@ -250,14 +293,12 @@ fd6_sampler_view_update(struct fd_context *ctx,
       ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
 
       if (rsc->b.b.format == PIPE_FORMAT_R8_G8B8_420_UNORM) {
-         struct fd_resource *next = fd_resource(rsc->b.b.next);
-
          /* In case of biplanar R8_G8B8, the UBWC metadata address in
           * dwords 7 and 8, is instead the pointer to the second plane.
           */
-         so->ptr2 = next;
+         so->ptr2 = plane1;
          so->texconst6 =
-            A6XX_TEX_CONST_6_PLANE_PITCH(fd_resource_pitch(next, lvl));
+            A6XX_TEX_CONST_6_PLANE_PITCH(fd_resource_pitch(plane1, lvl));
 
          if (ubwc_enabled) {
             /* Further, if using UBWC with R8_G8B8, we only point to the
@@ -266,10 +307,11 @@ fd6_sampler_view_update(struct fd_context *ctx,
             so->offset1 =
                fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
             so->offset2 =
-               fd_resource_ubwc_offset(next, lvl, cso->u.tex.first_layer);
+               fd_resource_ubwc_offset(plane1, lvl, cso->u.tex.first_layer);
          } else {
             so->offset1 = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
-            so->offset2 = fd_resource_offset(next, lvl, cso->u.tex.first_layer);
+            so->offset2 =
+               fd_resource_offset(plane1, lvl, cso->u.tex.first_layer);
          }
       } else {
          so->offset1 = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
@@ -333,6 +375,44 @@ fd6_sampler_view_update(struct fd_context *ctx,
          A6XX_TEX_CONST_10_FLAG_BUFFER_LOGH(util_logbase2_ceil(
             DIV_ROUND_UP(u_minify(prsc->height0, lvl), block_height)));
    }
+
+   const uint32_t swiz_mask =
+      (A6XX_TEX_CONST_0_SWIZ_X__MASK | A6XX_TEX_CONST_0_SWIZ_Y__MASK |
+       A6XX_TEX_CONST_0_SWIZ_Z__MASK | A6XX_TEX_CONST_0_SWIZ_W__MASK);
+
+   /* Sanity check that fdl6_view_init matched previous behavior. */
+   uint32_t so_descriptor[16] = {
+      /* fd6_view applies format swizzles more, and that's fine. */
+      so->texconst0 & ~swiz_mask,
+      so->texconst1,
+      so->texconst2,
+      so->texconst3,
+      so->offset1,
+      so->texconst5,
+      so->texconst6,
+      so->offset2,
+      0,
+      so->texconst9,
+      so->texconst10,
+      so->texconst11,
+   };
+   bool diff = false;
+   for (int i = 0; i < ARRAY_SIZE(so_descriptor); i++) {
+      int view_desc = so->descriptor[i];
+      if (i == 0)
+         view_desc &= ~swiz_mask;
+      if (so_descriptor[i] != view_desc) {
+         if (!diff) {
+            char view_desc[500] = {0};
+            debug_describe_sampler_view(view_desc, cso);
+            mesa_loge("view mismatch for %s:", view_desc);
+            diff = true;
+         }
+         mesa_loge("TEXCONST[%d] = 0x%08x vs 0x%08x", i, so_descriptor[i],
+                   view_desc);
+      }
+   }
+   assert(!diff);
 }
 
 /* NOTE this can be called in either driver thread or frontend thread

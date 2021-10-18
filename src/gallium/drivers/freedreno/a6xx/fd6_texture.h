@@ -57,6 +57,9 @@ struct fd6_pipe_sampler_view {
    struct fd_resource *ptr1, *ptr2;
    uint16_t seqno;
 
+   /* TEX_CONST descriptor, with just offsets from the BOs in the iova dwords. */
+   uint32_t descriptor[FDL6_TEX_CONST_DWORDS];
+
    /* For detecting when a resource has transitioned from UBWC compressed
     * to uncompressed, which means the sampler state needs to be updated
     */
