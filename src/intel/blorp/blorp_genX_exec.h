@@ -1321,20 +1321,31 @@ blorp_emit_pipeline(struct blorp_batch *batch,
    (void)depth_stencil_state_offset;
 #endif
 
+   UNUSED uint32_t mocs = isl_mocs(batch->blorp->isl_dev, 0, false);
+
 #if GFX_VER >= 12
    blorp_emit(batch, GENX(3DSTATE_CONSTANT_ALL), pc) {
       /* Update empty push constants for all stages (bitmask = 11111b) */
       pc.ShaderUpdateEnable = 0x1f;
+      pc.MOCS = mocs;
    }
 #else
-   blorp_emit(batch, GENX(3DSTATE_CONSTANT_VS), vs);
+#if GFX_VER >= 9
+#define CONSTANT_MOCS xs.MOCS = mocs
+#elif GFX_VER == 7
+#define CONSTANT_MOCS xs.ConstantBody.MOCS = mocs
+#else
+#define CONSTANT_MOCS
+#endif
+   blorp_emit(batch, GENX(3DSTATE_CONSTANT_VS), xs) { CONSTANT_MOCS; }
 #if GFX_VER >= 7
-   blorp_emit(batch, GENX(3DSTATE_CONSTANT_HS), hs);
-   blorp_emit(batch, GENX(3DSTATE_CONSTANT_DS), DS);
+   blorp_emit(batch, GENX(3DSTATE_CONSTANT_HS), xs) { CONSTANT_MOCS; }
+   blorp_emit(batch, GENX(3DSTATE_CONSTANT_DS), xs) { CONSTANT_MOCS; }
 #endif
-   blorp_emit(batch, GENX(3DSTATE_CONSTANT_GS), gs);
-   blorp_emit(batch, GENX(3DSTATE_CONSTANT_PS), ps);
+   blorp_emit(batch, GENX(3DSTATE_CONSTANT_GS), xs) { CONSTANT_MOCS; }
+   blorp_emit(batch, GENX(3DSTATE_CONSTANT_PS), xs) { CONSTANT_MOCS; }
 #endif
+#undef CONSTANT_MOCS
 
    if (params->src.enabled)
       blorp_emit_sampler_state_ps(batch);
