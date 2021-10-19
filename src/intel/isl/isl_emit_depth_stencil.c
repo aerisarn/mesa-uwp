@@ -71,6 +71,9 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 {
    struct GENX(3DSTATE_DEPTH_BUFFER) db = {
       GENX(3DSTATE_DEPTH_BUFFER_header),
+#if GFX_VER >= 6
+      .MOCS = info->mocs,
+#endif
    };
 
    if (info->depth_surf) {
@@ -118,9 +121,6 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       db.DepthWriteEnable = true;
 #endif
       db.SurfaceBaseAddress = info->depth_address;
-#if GFX_VER >= 6
-      db.MOCS = info->mocs;
-#endif
 
 #if GFX_VERx10 >= 125
       db.TiledMode = isl_encode_tiling[info->depth_surf->tiling];
@@ -160,6 +160,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 #if GFX_VER >= 6
    struct GENX(3DSTATE_STENCIL_BUFFER) sb = {
       GENX(3DSTATE_STENCIL_BUFFER_header),
+      sb.MOCS = info->mocs,
    };
 #else
 #  define sb db
@@ -193,9 +194,6 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       sb.StencilBufferEnable = true;
 #endif
       sb.SurfaceBaseAddress = info->stencil_address;
-#if GFX_VER >= 6
-      sb.MOCS = info->mocs;
-#endif
       sb.SurfacePitch = info->stencil_surf->row_pitch_B - 1;
 #if GFX_VER >= 8
       sb.SurfaceQPitch =
@@ -219,6 +217,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 #if GFX_VER >= 6
    struct GENX(3DSTATE_HIER_DEPTH_BUFFER) hiz = {
       GENX(3DSTATE_HIER_DEPTH_BUFFER_header),
+      .MOCS = info->mocs,
    };
    struct GENX(3DSTATE_CLEAR_PARAMS) clear = {
       GENX(3DSTATE_CLEAR_PARAMS_header),
@@ -231,7 +230,6 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       db.HierarchicalDepthBufferEnable = true;
 
       hiz.SurfaceBaseAddress = info->hiz_address;
-      hiz.MOCS = info->mocs;
       hiz.SurfacePitch = info->hiz_surf->row_pitch_B - 1;
 
 #if GFX_VERx10 >= 125
