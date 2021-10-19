@@ -1049,7 +1049,7 @@
 
   <instruction name="3DSTATE_CONSTANT_DS" bias="2" length="11" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
-    <field name="MOCS" start="8" end="14" type="uint"/>
+    <field name="MOCS" start="8" end="14" type="mbz"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="26"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
@@ -1059,7 +1059,7 @@
 
   <instruction name="3DSTATE_CONSTANT_GS" bias="2" length="11" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
-    <field name="MOCS" start="8" end="14" type="uint"/>
+    <field name="MOCS" start="8" end="14" type="mbz"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="22"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
@@ -1069,7 +1069,7 @@
 
   <instruction name="3DSTATE_CONSTANT_HS" bias="2" length="11" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
-    <field name="MOCS" start="8" end="14" type="uint"/>
+    <field name="MOCS" start="8" end="14" type="mbz"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="25"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
@@ -1079,7 +1079,7 @@
 
   <instruction name="3DSTATE_CONSTANT_PS" bias="2" length="11" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
-    <field name="MOCS" start="8" end="14" type="uint"/>
+    <field name="MOCS" start="8" end="14" type="mbz"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="23"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
@@ -1089,7 +1089,7 @@
 
   <instruction name="3DSTATE_CONSTANT_VS" bias="2" length="11" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="9"/>
-    <field name="MOCS" start="8" end="14" type="uint"/>
+    <field name="MOCS" start="8" end="14" type="mbz"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="21"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
