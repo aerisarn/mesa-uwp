@@ -3141,7 +3141,7 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
       radv_flush_indirect_descriptor_sets(cmd_buffer, pipeline, bind_point);
 
    ASSERTED unsigned cdw_max =
-      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SETS * MESA_SHADER_STAGES * 4);
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SETS * MESA_VULKAN_SHADER_STAGES * 4);
 
    if (pipeline) {
       if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
@@ -3236,7 +3236,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       va += offset;
 
       ASSERTED unsigned cdw_max =
-         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MESA_SHADER_STAGES * 4);
+         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MESA_VULKAN_SHADER_STAGES * 4);
 
       prev_shader = NULL;
       radv_foreach_stage(stage, internal_stages)
@@ -3457,7 +3457,7 @@ radv_emit_streamout_buffers(struct radv_cmd_buffer *cmd_buffer, uint64_t va)
    struct radv_userdata_info *loc;
    uint32_t base_reg;
 
-   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; ++stage) {
+   for (unsigned stage = 0; stage < MESA_VULKAN_SHADER_STAGES; ++stage) {
       if (!radv_get_shader(pipeline, stage))
          continue;
 
@@ -5905,7 +5905,7 @@ static void
 radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
 {
    struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
-   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; ++stage) {
+   for (unsigned stage = 0; stage < MESA_VULKAN_SHADER_STAGES; ++stage) {
       if (!radv_get_shader(pipeline, stage))
          continue;
 

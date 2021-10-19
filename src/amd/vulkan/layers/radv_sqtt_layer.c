@@ -869,7 +869,7 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
    record->pipeline_hash[0] = pipeline->pipeline_hash;
    record->pipeline_hash[1] = pipeline->pipeline_hash;
 
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       struct radv_shader *shader = pipeline->shaders[i];
       uint8_t *code;
       uint64_t va;
@@ -922,7 +922,7 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    /* Find the lowest shader BO VA. */
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       struct radv_shader *shader = pipeline->shaders[i];
       uint64_t va;
 

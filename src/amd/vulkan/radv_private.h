@@ -1701,7 +1701,7 @@ uint32_t radv_get_hash_flags(const struct radv_device *device, bool stats);
 
 bool radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo);
 
-#define RADV_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
+#define RADV_STAGE_MASK ((1 << MESA_VULKAN_SHADER_STAGES) - 1)
 
 #define radv_foreach_stage(stage, stage_bits)                                                      \
    for (gl_shader_stage stage, __tmp = (gl_shader_stage)((stage_bits)&RADV_STAGE_MASK);            \
@@ -1768,7 +1768,7 @@ struct radv_pipeline {
    struct radv_dynamic_state dynamic_state;
 
    bool need_indirect_descriptor_sets;
-   struct radv_shader *shaders[MESA_SHADER_STAGES];
+   struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
    struct radv_shader *gs_copy_shader;
    VkShaderStageFlags active_stages;
 
@@ -1789,7 +1789,7 @@ struct radv_pipeline {
    uint32_t vb_desc_usage_mask;
    uint32_t vb_desc_alloc_size;
 
-   uint32_t user_data_0[MESA_SHADER_STAGES];
+   uint32_t user_data_0[MESA_VULKAN_SHADER_STAGES];
    union {
       struct {
          struct radv_multisample_state ms;
