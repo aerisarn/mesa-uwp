@@ -11174,7 +11174,7 @@ emit_stream_output(isel_context* ctx, Temp const* so_buffers, Temp const* so_wri
          aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
       for (int i = 0; i < count; ++i)
          vec->operands[i] =
-            (ctx->outputs.mask[loc] & 1 << (start + i)) ? Operand(out[start + i]) : Operand::zero();
+            (ctx->outputs.mask[loc] & 1 << (start + first_comp + i)) ? Operand(out[start + i]) : Operand::zero();
       vec->definitions[0] = Definition(write_data);
       ctx->block->instructions.emplace_back(std::move(vec));
 
