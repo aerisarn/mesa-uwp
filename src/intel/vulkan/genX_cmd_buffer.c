@@ -3599,6 +3599,8 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
             state = (struct GENX(VERTEX_BUFFER_STATE)) {
                .VertexBufferIndex = vb,
                .NullVertexBuffer = true,
+               .MOCS = anv_mocs(cmd_buffer->device, NULL,
+                                ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
             };
          }
 
@@ -3773,8 +3775,8 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .VertexBufferIndex = index,
          .AddressModifyEnable = true,
          .BufferPitch = 0,
-         .MOCS = addr.bo ? anv_mocs(cmd_buffer->device, addr.bo,
-                                    ISL_SURF_USAGE_VERTEX_BUFFER_BIT) : 0,
+         .MOCS = anv_mocs(cmd_buffer->device, addr.bo,
+                          ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
          .NullVertexBuffer = size == 0,
 #if GFX_VER >= 12
          .L3BypassDisable = true,
