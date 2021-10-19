@@ -25,6 +25,7 @@
 #include "rb_tree.h"
 
 #include <assert.h>
+#include <gtest/gtest.h>
 #include <limits.h>
 
 /* A list of 100 random numbers from 1 to 100.  The number 30 is explicitly
@@ -204,8 +205,7 @@ validate_search(struct rb_tree *tree, int first_number,
     }
 }
 
-int
-main()
+TEST(RBTreeTest, InsertAndSearch)
 {
     struct rb_test_node nodes[ARRAY_SIZE(test_numbers)];
     struct rb_tree tree;
