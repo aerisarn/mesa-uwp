@@ -29,7 +29,9 @@
 #include "macros.h"
 #include "rounding.h"
 
-int main(int argc, char *argv[])
+#include <gtest/gtest.h>
+
+TEST(Rounding, RoundevenFloat)
 {
    const struct {
       float input, expected;
@@ -48,6 +50,25 @@ int main(int argc, char *argv[])
       { nextafterf(2.5, 3.0), 3.0 },
    };
 
+   for (unsigned i = 0; i < ARRAY_SIZE(float_data); i++) {
+      float output = _mesa_roundevenf(float_data[i].input);
+      EXPECT_TRUE(memcmp(&float_data[i].expected, &output, sizeof(float)) == 0)
+         << "Subtest " << i << " float value: expected " << float_data[i].expected << " from "
+         << "_mesa_roundevenf(" << float_data[i].input << " but got " << output << "\n";
+   }
+
+   // Test negated values.
+   for (unsigned i = 0; i < ARRAY_SIZE(float_data); i++) {
+      float output = _mesa_roundevenf(-float_data[i].input);
+      float negated_expected = -float_data[i].expected;
+      EXPECT_TRUE(memcmp(&negated_expected, &output, sizeof(float)) == 0)
+         << "Subtest " << i << " float value: expected " << negated_expected << " from "
+         << "_mesa_roundevenf(" << -float_data[i].input << " but got " << output << "\n";
+   }
+}
+
+TEST(Rounding, RoundevenDouble)
+{
    const struct {
       double input, expected;
    } double_data[] = {
@@ -65,76 +86,19 @@ int main(int argc, char *argv[])
       { nextafter(2.5, 3.0), 3.0 },
    };
 
-   bool failed = false;
-   int i;
-
-   for (i = 0; i < ARRAY_SIZE(float_data); i++) {
-      float output = _mesa_roundevenf(float_data[i].input);
-      if (memcmp(&float_data[i].expected, &output, sizeof(float))) {
-         fprintf(stderr, "%d float: expected %f (%a) from "
-                         "_mesa_roundevenf(%f (%a)) but got %f (%a)\n",
-                 i,
-                 float_data[i].expected,
-                 float_data[i].expected,
-                 float_data[i].input,
-                 float_data[i].input,
-                 output,
-                 output);
-         failed = true;
-      }
-   }
-
-   /* Test negated values */
-   for (i = 0; i < ARRAY_SIZE(float_data); i++) {
-      float output = _mesa_roundevenf(-float_data[i].input);
-      float negated_expected = -float_data[i].expected;
-      if (memcmp(&negated_expected, &output, sizeof(float))) {
-         fprintf(stderr, "%d float: expected %f (%a) from "
-                         "_mesa_roundevenf(%f (%a)) but got %f (%a)\n",
-                 i,
-                 negated_expected,
-                 negated_expected,
-                 -float_data[i].input,
-                 -float_data[i].input,
-                 output,
-                 output);
-         failed = true;
-      }
-   }
-
-   for (i = 0; i < ARRAY_SIZE(double_data); i++) {
+   for (unsigned i = 0; i < ARRAY_SIZE(double_data); i++) {
       double output = _mesa_roundeven(double_data[i].input);
-      if (memcmp(&double_data[i].expected, &output, sizeof(double))) {
-         fprintf(stderr, "%d double: expected %f (%a) from "
-                         "_mesa_roundeven(%f (%a)) but got %f (%a)\n",
-                 i,
-                 double_data[i].expected,
-                 double_data[i].expected,
-                 double_data[i].input,
-                 double_data[i].input,
-                 output,
-                 output);
-         failed = true;
-      }
+      EXPECT_TRUE(memcmp(&double_data[i].expected, &output, sizeof(double)) == 0)
+         << "Subtest " << i << " double value: expected " << double_data[i].expected << " from "
+         << "_mesa_roundeven(" << double_data[i].input << " but got " << output << "\n";
    }
 
-   /* Test negated values */
-   for (i = 0; i < ARRAY_SIZE(double_data); i++) {
+   // Test negated values.
+   for (unsigned i = 0; i < ARRAY_SIZE(double_data); i++) {
       double output = _mesa_roundeven(-double_data[i].input);
       double negated_expected = -double_data[i].expected;
-      if (memcmp(&negated_expected, &output, sizeof(double))) {
-         fprintf(stderr, "%d double: expected %f (%a) from "
-                         "_mesa_roundeven(%f (%a)) but got %f (%a)\n",
-                 i,
-                 negated_expected,
-                 negated_expected,
-                 -double_data[i].input,
-                 -double_data[i].input,
-                 output,
-                 output);
-         failed = true;
-      }
+      EXPECT_TRUE(memcmp(&negated_expected, &output, sizeof(double)) == 0)
+         << "Subtest " << i << " double value: expected " << negated_expected << " from "
+         << "_mesa_roundeven(" << -double_data[i].input << " but got " << output << "\n";
    }
-
-   return failed;
 }

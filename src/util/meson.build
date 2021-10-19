@@ -294,23 +294,11 @@ if with_tests
     )
   endif
 
-  test(
-    'roundeven',
-    executable(
-      'roundeven_test',
-      files('roundeven_test.c'),
-      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-      c_args : [c_msvc_compat_args],
-      dependencies : [dep_m],
-    ),
-    suite : ['util'],
-    should_fail : meson.get_cross_property('xfail', '').contains('roundeven'),
-  )
-
   files_util_tests = files(
     'bitset_test.cpp',
     'blob_test.cpp',
     'rb_tree_test.cpp',
+    'roundeven_test.cpp',
     'register_allocate_test.cpp',
     'tests/dag_test.cpp',
     'tests/fast_idiv_by_const_test.cpp',
