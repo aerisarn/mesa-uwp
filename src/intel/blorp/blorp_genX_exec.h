@@ -1661,6 +1661,8 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
    } else if (params->stencil.enabled) {
       info.view = &params->stencil.view;
       info.mocs = params->stencil.addr.mocs;
+   } else {
+      info.mocs = isl_mocs(isl_dev, 0, false);
    }
 
    if (params->depth.enabled) {
