@@ -830,22 +830,15 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
    fprintf(fp, ") (");
 
    for (unsigned i = 0; i < info->num_indices; i++) {
+      unsigned idx = info->indices[i];
+      bool print_raw = true;
       if (i != 0)
          fprintf(fp, ", ");
-
-      fprintf(fp, "%d", instr->const_index[i]);
-   }
-
-   fprintf(fp, ")");
-
-   for (unsigned i = 0; i < info->num_indices; i++) {
-      unsigned idx = info->indices[i];
-      fprintf(fp, " /*");
       switch (idx) {
       case NIR_INTRINSIC_WRITE_MASK: {
          /* special case wrmask to show it as a writemask.. */
          unsigned wrmask = nir_intrinsic_write_mask(instr);
-         fprintf(fp, " wrmask=");
+         fprintf(fp, "wrmask=");
          for (unsigned i = 0; i < instr->num_components; i++)
             if ((wrmask >> i) & 1)
                fprintf(fp, "%c", comp_mask_string(instr->num_components)[i]);
@@ -854,7 +847,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       case NIR_INTRINSIC_REDUCTION_OP: {
          nir_op reduction_op = nir_intrinsic_reduction_op(instr);
-         fprintf(fp, " reduction_op=%s", nir_op_infos[reduction_op].name);
+         fprintf(fp, "reduction_op=%s", nir_op_infos[reduction_op].name);
          break;
       }
 
@@ -872,42 +865,42 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          };
          enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
          assert(dim < ARRAY_SIZE(dim_name) && dim_name[dim]);
-         fprintf(fp, " image_dim=%s", dim_name[dim]);
+         fprintf(fp, "image_dim=%s", dim_name[dim]);
          break;
       }
 
       case NIR_INTRINSIC_IMAGE_ARRAY: {
          bool array = nir_intrinsic_image_array(instr);
-         fprintf(fp, " image_array=%s", array ? "true" : "false");
+         fprintf(fp, "image_array=%s", array ? "true" : "false");
          break;
       }
 
       case NIR_INTRINSIC_FORMAT: {
          enum pipe_format format = nir_intrinsic_format(instr);
-         fprintf(fp, " format=%s ", util_format_short_name(format));
+         fprintf(fp, "format=%s", util_format_short_name(format));
          break;
       }
 
       case NIR_INTRINSIC_DESC_TYPE: {
          VkDescriptorType desc_type = nir_intrinsic_desc_type(instr);
-         fprintf(fp, " desc_type=%s", vulkan_descriptor_type_name(desc_type));
+         fprintf(fp, "desc_type=%s", vulkan_descriptor_type_name(desc_type));
          break;
       }
 
       case NIR_INTRINSIC_SRC_TYPE: {
-         fprintf(fp, " src_type=");
+         fprintf(fp, "src_type=");
          print_alu_type(nir_intrinsic_src_type(instr), state);
          break;
       }
 
       case NIR_INTRINSIC_DEST_TYPE: {
-         fprintf(fp, " dest_type=");
+         fprintf(fp, "dest_type=");
          print_alu_type(nir_intrinsic_dest_type(instr), state);
          break;
       }
 
       case NIR_INTRINSIC_SWIZZLE_MASK: {
-         fprintf(fp, " swizzle_mask=");
+         fprintf(fp, "swizzle_mask=");
          unsigned mask = nir_intrinsic_swizzle_mask(instr);
          if (instr->intrinsic == nir_intrinsic_quad_swizzle_amd) {
             for (unsigned i = 0; i < 4; i++)
@@ -924,7 +917,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       case NIR_INTRINSIC_MEMORY_SEMANTICS: {
          nir_memory_semantics semantics = nir_intrinsic_memory_semantics(instr);
-         fprintf(fp, " mem_semantics=");
+         fprintf(fp, "mem_semantics=");
          switch (semantics & (NIR_MEMORY_ACQUIRE | NIR_MEMORY_RELEASE)) {
          case 0:                  fprintf(fp, "NONE");    break;
          case NIR_MEMORY_ACQUIRE: fprintf(fp, "ACQ");     break;
@@ -937,7 +930,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       }
 
       case NIR_INTRINSIC_MEMORY_MODES: {
-         fprintf(fp, " mem_modes=");
+         fprintf(fp, "mem_modes=");
          unsigned int modes = nir_intrinsic_memory_modes(instr);
          while (modes) {
             nir_variable_mode m = u_bit_scan(&modes);
@@ -948,7 +941,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       case NIR_INTRINSIC_EXECUTION_SCOPE:
       case NIR_INTRINSIC_MEMORY_SCOPE: {
-         fprintf(fp, " %s=", nir_intrinsic_index_names[idx]);
+         fprintf(fp, "%s=", nir_intrinsic_index_names[idx]);
          nir_scope scope =
             idx == NIR_INTRINSIC_MEMORY_SCOPE ? nir_intrinsic_memory_scope(instr)
                                               : nir_intrinsic_execution_scope(instr);
@@ -966,7 +959,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       case NIR_INTRINSIC_IO_SEMANTICS: {
          struct nir_io_semantics io = nir_intrinsic_io_semantics(instr);
-         fprintf(fp, " io location=%u slots=%u", io.location, io.num_slots);
+         fprintf(fp, "io location=%u slots=%u", io.location, io.num_slots);
 
          if (io.dual_source_blend_index)
             fprintf(fp, " dualsrc");
@@ -1001,7 +994,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       }
 
       case NIR_INTRINSIC_ROUNDING_MODE: {
-         fprintf(fp, " rounding_mode=");
+         fprintf(fp, "rounding_mode=");
          switch (nir_intrinsic_rounding_mode(instr)) {
          case nir_rounding_mode_undef: fprintf(fp, "undef");   break;
          case nir_rounding_mode_rtne:  fprintf(fp, "rtne");    break;
@@ -1015,12 +1008,15 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       default: {
          unsigned off = info->index_map[idx] - 1;
-         fprintf(fp, " %s=%d", nir_intrinsic_index_names[idx], instr->const_index[off]);
+         fprintf(fp, "%s=%d", nir_intrinsic_index_names[idx], instr->const_index[off]);
+         print_raw = false;
          break;
       }
       }
-      fprintf(fp, " */");
+      if (print_raw)
+         fprintf(fp, " /*%d*/", instr->const_index[i]);
    }
+   fprintf(fp, ")");
 
    if (!state->shader)
       return;
