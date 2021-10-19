@@ -853,8 +853,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
  * Returns false on unexpected error (e.g. mapping a BO failed).
  */
 static bool
-iris_resource_init_aux_buf(struct iris_resource *res,
-                           unsigned clear_color_state_size)
+iris_resource_init_aux_buf(struct iris_screen *screen,
+                           struct iris_resource *res)
 {
    void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
 
@@ -873,11 +873,11 @@ iris_resource_init_aux_buf(struct iris_resource *res,
 
    /* Zero the indirect clear color to match ::fast_clear_color. */
    memset((char *)map + res->aux.clear_color_offset, 0,
-          clear_color_state_size);
+          iris_get_aux_clear_color_state_size(screen));
 
    iris_bo_unmap(res->aux.bo);
 
-   if (clear_color_state_size > 0) {
+   if (iris_get_aux_clear_color_state_size(screen) > 0) {
       res->aux.clear_color_bo = res->aux.bo;
       iris_bo_reference(res->aux.clear_color_bo);
    }
@@ -1112,9 +1112,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (res->aux.surf.size_B > 0) {
       res->aux.bo = res->bo;
       iris_bo_reference(res->aux.bo);
-      unsigned clear_color_state_size =
-         iris_get_aux_clear_color_state_size(screen);
-      if (!iris_resource_init_aux_buf(res, clear_color_state_size))
+      if (!iris_resource_init_aux_buf(screen, res))
          goto fail;
       map_aux_addresses(screen, res, res->surf.format, 0);
    }
