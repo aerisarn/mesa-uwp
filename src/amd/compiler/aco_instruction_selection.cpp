@@ -11137,27 +11137,12 @@ static void
 emit_stream_output(isel_context* ctx, Temp const* so_buffers, Temp const* so_write_offset,
                    const struct radv_stream_output* output)
 {
-   unsigned num_comps = util_bitcount(output->component_mask);
-   unsigned writemask = (1 << num_comps) - 1;
+   assert(ctx->stage.hw == HWStage::VS);
+
    unsigned loc = output->location;
    unsigned buf = output->buffer;
 
-   assert(num_comps && num_comps <= 4);
-   if (!num_comps || num_comps > 4)
-      return;
-
-   unsigned first_comp = ffs(output->component_mask) - 1;
-
-   Temp out[4];
-   bool all_undef = true;
-   assert(ctx->stage.hw == HWStage::VS);
-   for (unsigned i = 0; i < num_comps; i++) {
-      out[i] = ctx->outputs.temps[loc * 4 + first_comp + i];
-      all_undef = all_undef && !out[i].id();
-   }
-   if (all_undef)
-      return;
-
+   unsigned writemask = output->component_mask & ctx->outputs.mask[loc];
    while (writemask) {
       int start, count;
       u_bit_scan_consecutive_range(&writemask, &start, &count);
@@ -11167,26 +11152,17 @@ emit_stream_output(isel_context* ctx, Temp const* so_buffers, Temp const* so_wri
          count = 2;
       }
 
-      unsigned offset = output->offset + start * 4;
+      unsigned offset = output->offset + (start - (ffs(output->component_mask) - 1)) * 4;
 
       Temp write_data = ctx->program->allocateTmp(RegClass(RegType::vgpr, count));
       aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
          aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
       for (int i = 0; i < count; ++i)
-         vec->operands[i] =
-            (ctx->outputs.mask[loc] & 1 << (start + first_comp + i)) ? Operand(out[start + i]) : Operand::zero();
+         vec->operands[i] = Operand(ctx->outputs.temps[loc * 4 + start + i]);
       vec->definitions[0] = Definition(write_data);
       ctx->block->instructions.emplace_back(std::move(vec));
 
-      aco_opcode opcode;
-      switch (count) {
-      case 1: opcode = aco_opcode::buffer_store_dword; break;
-      case 2: opcode = aco_opcode::buffer_store_dwordx2; break;
-      case 3: opcode = aco_opcode::buffer_store_dwordx3; break;
-      case 4: opcode = aco_opcode::buffer_store_dwordx4; break;
-      default: unreachable("Unsupported dword count.");
-      }
-
+      aco_opcode opcode = get_buffer_store_op(count * 4);
       aco_ptr<MUBUF_instruction> store{
          create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 4, 0)};
       store->operands[0] = Operand(so_buffers[buf]);
@@ -11196,7 +11172,7 @@ emit_stream_output(isel_context* ctx, Temp const* so_buffers, Temp const* so_wri
       if (offset > 4095) {
          /* Don't think this can happen in RADV, but maybe GL? It's easy to do this anyway. */
          Builder bld(ctx->program, ctx->block);
-         store->operands[0] =
+         store->operands[1] =
             bld.vadd32(bld.def(v1), Operand::c32(offset), Operand(so_write_offset[buf]));
       } else {
          store->offset = offset;
