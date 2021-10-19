@@ -7431,7 +7431,10 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
                               .array_len = 1,
                               .swizzle = ISL_SWIZZLE_IDENTITY,
       };
-      struct isl_depth_stencil_hiz_emit_info info = { .view = &view };
+      struct isl_depth_stencil_hiz_emit_info info = {
+         .view = &view,
+         .mocs = crocus_mocs(NULL, isl_dev),
+      };
 
       if (cso->zsbuf) {
          crocus_get_depth_stencil_resources(&batch->screen->devinfo, cso->zsbuf->texture, &zres, &sres);
