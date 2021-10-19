@@ -3010,7 +3010,6 @@ VkResult anv_CreateDevice(
    }
 
    device->physical = physical_device;
-   device->_lost = false;
 
    /* XXX(chadv): Can we dup() physicalDevice->fd here? */
    device->fd = open(physical_device->path, O_RDWR | O_CLOEXEC);
@@ -3439,74 +3438,6 @@ VkResult anv_EnumerateInstanceLayerProperties(
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-void
-_anv_device_report_lost(struct anv_device *device)
-{
-   assert(p_atomic_read(&device->_lost) > 0);
-
-   device->lost_reported = true;
-
-   for (uint32_t i = 0; i < device->queue_count; i++) {
-      struct anv_queue *queue = &device->queues[i];
-      if (queue->lost) {
-         __vk_errorf(queue, VK_ERROR_DEVICE_LOST,
-                     queue->error_file, queue->error_line,
-                     "%s", queue->error_msg);
-      }
-   }
-}
-
-VkResult
-_anv_device_set_lost(struct anv_device *device,
-                     const char *file, int line,
-                     const char *msg, ...)
-{
-   VkResult err;
-   va_list ap;
-
-   if (p_atomic_read(&device->_lost) > 0)
-      return VK_ERROR_DEVICE_LOST;
-
-   p_atomic_inc(&device->_lost);
-   device->lost_reported = true;
-
-   va_start(ap, msg);
-   err = __vk_errorv(device, VK_ERROR_DEVICE_LOST, file, line, msg, ap);
-   va_end(ap);
-
-   if (env_var_as_boolean("ANV_ABORT_ON_DEVICE_LOSS", false))
-      abort();
-
-   return err;
-}
-
-VkResult
-_anv_queue_set_lost(struct anv_queue *queue,
-                     const char *file, int line,
-                     const char *msg, ...)
-{
-   va_list ap;
-
-   if (queue->lost)
-      return VK_ERROR_DEVICE_LOST;
-
-   queue->lost = true;
-
-   queue->error_file = file;
-   queue->error_line = line;
-   va_start(ap, msg);
-   vsnprintf(queue->error_msg, sizeof(queue->error_msg),
-             msg, ap);
-   va_end(ap);
-
-   p_atomic_inc(&queue->device->_lost);
-
-   if (env_var_as_boolean("ANV_ABORT_ON_DEVICE_LOSS", false))
-      abort();
-
-   return VK_ERROR_DEVICE_LOST;
-}
-
 VkResult
 anv_device_query_status(struct anv_device *device)
 {
@@ -3514,7 +3445,7 @@ anv_device_query_status(struct anv_device *device)
     * for it.  However, it doesn't hurt to check and it potentially lets us
     * avoid an ioctl.
     */
-   if (anv_device_is_lost(device))
+   if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
 
    uint32_t active, pending;
@@ -3522,13 +3453,13 @@ anv_device_query_status(struct anv_device *device)
                                              &active, &pending);
    if (ret == -1) {
       /* We don't know the real error. */
-      return anv_device_set_lost(device, "get_reset_stats failed: %m");
+      return vk_device_set_lost(&device->vk, "get_reset_stats failed: %m");
    }
 
    if (active) {
-      return anv_device_set_lost(device, "GPU hung on one of our command buffers");
+      return vk_device_set_lost(&device->vk, "GPU hung on one of our command buffers");
    } else if (pending) {
-      return anv_device_set_lost(device, "GPU hung with commands in-flight");
+      return vk_device_set_lost(&device->vk, "GPU hung with commands in-flight");
    }
 
    return VK_SUCCESS;
@@ -3546,7 +3477,7 @@ anv_device_bo_busy(struct anv_device *device, struct anv_bo *bo)
       return VK_NOT_READY;
    } else if (ret == -1) {
       /* We don't know the real error. */
-      return anv_device_set_lost(device, "gem wait failed: %m");
+      return vk_device_set_lost(&device->vk, "gem wait failed: %m");
    }
 
    /* Query for device status after the busy call.  If the BO we're checking
@@ -3567,7 +3498,7 @@ anv_device_wait(struct anv_device *device, struct anv_bo *bo,
       return VK_TIMEOUT;
    } else if (ret == -1) {
       /* We don't know the real error. */
-      return anv_device_set_lost(device, "gem wait failed: %m");
+      return vk_device_set_lost(&device->vk, "gem wait failed: %m");
    }
 
    /* Query for device status after the wait.  If the BO we're waiting on got
@@ -4198,7 +4129,7 @@ VkResult anv_QueueBindSparse(
     VkFence                                     fence)
 {
    ANV_FROM_HANDLE(anv_queue, queue, _queue);
-   if (anv_device_is_lost(queue->device))
+   if (vk_device_is_lost(&queue->device->vk))
       return VK_ERROR_DEVICE_LOST;
 
    return vk_error(queue, VK_ERROR_FEATURE_NOT_PRESENT);
@@ -4254,7 +4185,7 @@ VkResult anv_GetEventStatus(
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_event, event, _event);
 
-   if (anv_device_is_lost(device))
+   if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
 
    return *(uint64_t *)event->state.map;
@@ -4609,8 +4540,8 @@ VkResult anv_GetCalibratedTimestampsEXT(
                                 &pTimestamps[d]);
 
          if (ret != 0) {
-            return anv_device_set_lost(device, "Failed to read the TIMESTAMP "
-                                               "register: %m");
+            return vk_device_set_lost(&device->vk, "Failed to read the "
+                                      "TIMESTAMP register: %m");
          }
          uint64_t device_period = DIV_ROUND_UP(1000000000, timestamp_frequency);
          max_clock_period = MAX2(max_clock_period, device_period);

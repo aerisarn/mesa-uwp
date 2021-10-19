@@ -1074,15 +1074,6 @@ struct anv_queue {
 
    uint32_t                                  exec_flags;
 
-   /* Set once from the device api calls. */
-   bool                                      lost_signaled;
-
-   /* Only set once atomically by the queue */
-   int                                       lost;
-   int                                       error_line;
-   const char *                              error_file;
-   char                                      error_msg[80];
-
    /*
     * This mutext protects the variables below.
     */
@@ -1241,8 +1232,6 @@ struct anv_device {
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
-    int                                         _lost;
-    int                                         lost_reported;
 
     struct intel_batch_decode_ctx               decoder_ctx;
     /*
@@ -1321,31 +1310,6 @@ anv_mocs(const struct anv_device *device,
 
 void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
-
-void _anv_device_report_lost(struct anv_device *device);
-VkResult _anv_device_set_lost(struct anv_device *device,
-                              const char *file, int line,
-                              const char *msg, ...)
-   anv_printflike(4, 5);
-VkResult _anv_queue_set_lost(struct anv_queue *queue,
-                              const char *file, int line,
-                              const char *msg, ...)
-   anv_printflike(4, 5);
-#define anv_device_set_lost(dev, ...) \
-   _anv_device_set_lost(dev, __FILE__, __LINE__, __VA_ARGS__)
-#define anv_queue_set_lost(queue, ...) \
-   (queue)->device->has_thread_submit ? \
-   _anv_queue_set_lost(queue, __FILE__, __LINE__, __VA_ARGS__) : \
-   _anv_device_set_lost(queue->device, __FILE__, __LINE__, __VA_ARGS__)
-
-static inline bool
-anv_device_is_lost(struct anv_device *device)
-{
-   int lost = p_atomic_read(&device->_lost);
-   if (unlikely(lost && !device->lost_reported))
-      _anv_device_report_lost(device);
-   return lost;
-}
 
 VkResult anv_device_query_status(struct anv_device *device);
 

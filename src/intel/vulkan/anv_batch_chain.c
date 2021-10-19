@@ -2018,9 +2018,9 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
          int ret = intel_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,
                                (void *)(uintptr_t) query_info->oa_metrics_set_id);
          if (ret < 0) {
-            result = anv_device_set_lost(device,
-                                         "i915-perf config failed: %s",
-                                         strerror(errno));
+            result = vk_device_set_lost(&device->vk,
+                                        "i915-perf config failed: %s",
+                                        strerror(errno));
          }
       }
 
@@ -2043,13 +2043,13 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
       int ret = queue->device->info.no_hw ? 0 :
          anv_gem_execbuffer(queue->device, &query_pass_execbuf);
       if (ret)
-         result = anv_queue_set_lost(queue, "execbuf2 failed: %m");
+         result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
    }
 
    int ret = queue->device->info.no_hw ? 0 :
       anv_gem_execbuffer(queue->device, &execbuf.execbuf);
    if (ret)
-      result = anv_queue_set_lost(queue, "execbuf2 failed: %m");
+      result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
 
    struct drm_i915_gem_exec_object2 *objects = execbuf.objects;
    for (uint32_t k = 0; k < execbuf.bo_count; k++) {

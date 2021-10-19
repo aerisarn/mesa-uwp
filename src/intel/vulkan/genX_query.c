@@ -425,7 +425,7 @@ wait_for_available(struct anv_device *device,
          return status;
    }
 
-   return anv_device_set_lost(device, "query timeout");
+   return vk_device_set_lost(&device->vk, "query timeout");
 }
 
 VkResult genX(GetQueryPoolResults)(
@@ -448,7 +448,7 @@ VkResult genX(GetQueryPoolResults)(
           pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR ||
           pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL);
 
-   if (anv_device_is_lost(device))
+   if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
 
    if (pData == NULL)
