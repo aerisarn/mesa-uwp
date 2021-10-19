@@ -295,18 +295,6 @@ if with_tests
   endif
 
   test(
-    'blob',
-    executable(
-      'blob_test',
-      files('blob_test.c'),
-      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-      dependencies : idep_mesautil,
-      c_args : [c_msvc_compat_args],
-    ),
-    suite : ['util'],
-  )
-
-  test(
     'rb_tree',
     executable(
       'rb_tree_test',
@@ -348,6 +336,7 @@ if with_tests
 
   files_util_tests = files(
     'bitset_test.cpp',
+    'blob_test.cpp',
     'register_allocate_test.cpp',
     'tests/dag_test.cpp',
     'tests/fast_idiv_by_const_test.cpp',
