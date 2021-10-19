@@ -773,6 +773,31 @@ tu_buffer_view_init(struct tu_buffer_view *view,
       A6XX_TEX_CONST_2_UNK31;
    view->descriptor[4] = iova;
    view->descriptor[5] = iova >> 32;
+
+   uint32_t old_descriptor[FDL6_TEX_CONST_DWORDS];
+   memcpy(old_descriptor, view->descriptor, sizeof(old_descriptor));
+
+   uint8_t swiz[4] = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z,
+                       PIPE_SWIZZLE_W };
+
+   fdl6_buffer_view_init(
+      view->descriptor, tu_vk_format_to_pipe_format(pCreateInfo->format),
+      swiz, tu_buffer_iova(buffer) + pCreateInfo->offset, range);
+
+   bool diff = false;
+   for (int i = 0; i < ARRAY_SIZE(view->descriptor); i++) {
+      if (view->descriptor[i] != old_descriptor[i]) {
+         if (!diff) {
+            mesa_loge("Mismatch on buffer view %s",
+                      util_format_name(
+                         tu_vk_format_to_pipe_format(pCreateInfo->format)));
+            diff = true;
+         }
+         mesa_loge("CONST[%d] 0x%08x vs 0x%08x", i, old_descriptor[i],
+                   view->descriptor[i]);
+      }
+   }
+   assert(!diff);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
