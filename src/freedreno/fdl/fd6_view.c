@@ -89,7 +89,33 @@ fdl6_texswiz(const struct fdl_view_args *args, bool has_z24uint_s8uint)
          format_swiz[1] = PIPE_SWIZZLE_0;
       }
       break;
+
    default:
+      /* Our I, L, A, and LA formats use R or RG HW formats. */
+      if (util_format_is_alpha(args->format)) {
+         format_swiz[0] = PIPE_SWIZZLE_0;
+         format_swiz[1] = PIPE_SWIZZLE_0;
+         format_swiz[2] = PIPE_SWIZZLE_0;
+         format_swiz[3] = PIPE_SWIZZLE_X;
+      } else if (util_format_is_luminance(args->format)) {
+         format_swiz[0] = PIPE_SWIZZLE_X;
+         format_swiz[1] = PIPE_SWIZZLE_X;
+         format_swiz[2] = PIPE_SWIZZLE_X;
+         format_swiz[3] = PIPE_SWIZZLE_1;
+      } else if (util_format_is_intensity(args->format)) {
+         format_swiz[0] = PIPE_SWIZZLE_X;
+         format_swiz[1] = PIPE_SWIZZLE_X;
+         format_swiz[2] = PIPE_SWIZZLE_X;
+         format_swiz[3] = PIPE_SWIZZLE_X;
+      } else if (util_format_is_luminance_alpha(args->format)) {
+         format_swiz[0] = PIPE_SWIZZLE_X;
+         format_swiz[1] = PIPE_SWIZZLE_X;
+         format_swiz[2] = PIPE_SWIZZLE_X;
+         format_swiz[3] = PIPE_SWIZZLE_Y;
+      } else if (!util_format_has_alpha(args->format)) {
+         /* for rgbx, force A to 1.  Harmless for R/RG, where we already get 1. */
+         format_swiz[3] = PIPE_SWIZZLE_1;
+      }
       break;
    }
 
