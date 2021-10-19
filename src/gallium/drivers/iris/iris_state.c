@@ -3758,6 +3758,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
             sob._3DCommandOpcode = 0;
             sob._3DCommandSubOpcode = SO_BUFFER_INDEX_0_CMD + i;
 #endif
+            sob.MOCS = iris_mocs(NULL, &screen->isl_dev, 0);
          }
          continue;
       }
