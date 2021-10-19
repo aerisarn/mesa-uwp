@@ -1355,6 +1355,7 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
        */
       bool flushed = false;
       bool any_changed = false;
+      bool samplers_validated = shProg->SamplersValidated;
 
       shProg->SamplersValidated = GL_TRUE;
 
@@ -1409,6 +1410,8 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
 
       if (any_changed)
          _mesa_update_valid_to_render_state(ctx);
+      else
+         shProg->SamplersValidated = samplers_validated;
    }
 
    /* If the uniform is an image, update the mapping from image
