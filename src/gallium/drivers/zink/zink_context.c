@@ -777,6 +777,11 @@ zink_destroy_buffer_view(struct zink_screen *screen, struct zink_buffer_view *bu
 {
    struct zink_resource *res = zink_resource(buffer_view->pres);
    simple_mtx_lock(&res->bufferview_mtx);
+   if (buffer_view->reference.count) {
+      /* got a cache hit during deletion */
+      simple_mtx_unlock(&res->bufferview_mtx);
+      return;
+   }
    struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&res->bufferview_cache, buffer_view->hash, &buffer_view->bvci);
    assert(he);
    _mesa_hash_table_remove(&res->bufferview_cache, he);

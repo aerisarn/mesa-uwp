@@ -281,6 +281,11 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
    struct zink_resource *res = zink_resource(psurface->texture);
    if (!psurface->nr_samples) {
       simple_mtx_lock(&res->surface_mtx);
+      if (psurface->reference.count) {
+         /* got a cache hit during deletion */
+         simple_mtx_unlock(&res->surface_mtx);
+         return;
+      }
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&res->surface_cache, surface->hash, &surface->ivci);
       assert(he);
       assert(he->data == surface);
