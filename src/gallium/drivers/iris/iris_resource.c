@@ -856,7 +856,7 @@ static bool
 iris_resource_init_aux_buf(struct iris_screen *screen,
                            struct iris_resource *res)
 {
-   void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
+   void *map = iris_bo_map(NULL, res->bo, MAP_WRITE | MAP_RAW);
 
    if (!map)
       return false;
@@ -875,10 +875,10 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
    memset((char *)map + res->aux.clear_color_offset, 0,
           iris_get_aux_clear_color_state_size(screen));
 
-   iris_bo_unmap(res->aux.bo);
+   iris_bo_unmap(res->bo);
 
    if (iris_get_aux_clear_color_state_size(screen) > 0) {
-      res->aux.clear_color_bo = res->aux.bo;
+      res->aux.clear_color_bo = res->bo;
       iris_bo_reference(res->aux.clear_color_bo);
    }
 
@@ -1109,11 +1109,13 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!res->bo)
       goto fail;
 
+   if (res->aux.usage != ISL_AUX_USAGE_NONE &&
+       !iris_resource_init_aux_buf(screen, res))
+      goto fail;
+
    if (res->aux.surf.size_B > 0) {
       res->aux.bo = res->bo;
       iris_bo_reference(res->aux.bo);
-      if (!iris_resource_init_aux_buf(screen, res))
-         goto fail;
       map_aux_addresses(screen, res, res->surf.format, 0);
    }
 
