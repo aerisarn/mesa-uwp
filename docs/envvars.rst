@@ -193,6 +193,10 @@ Core Mesa environment variables
    causes the Vulkan driver to call abort() immediately after detecting a
    lost device.  This is extremely useful when testing as it prevents the
    test suite from continuing on with a lost device.
+:envvar:`MESA_VK_ENABLE_SUBMIT_THREAD`
+   for Vulkan drivers which support real timeline semaphores, this forces
+   them to use a submit thread from the beginning, regardless of whether or
+   not they ever see a wait-before-signal condition.
 :envvar:`MESA_LOADER_DRIVER_OVERRIDE`
    chooses a different driver binary such as ``etnaviv`` or ``zink``.
 

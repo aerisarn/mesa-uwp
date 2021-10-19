@@ -297,6 +297,13 @@ struct vk_sync_wait {
    uint64_t wait_value;
 };
 
+/* See VkSemaphoreSubmitInfoKHR */
+struct vk_sync_signal {
+   struct vk_sync *sync;
+   VkPipelineStageFlags2KHR stage_mask;
+   uint64_t signal_value;
+};
+
 VkResult MUST_CHECK vk_sync_init(struct vk_device *device,
                                  struct vk_sync *sync,
                                  const struct vk_sync_type *type,

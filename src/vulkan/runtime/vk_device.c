@@ -28,10 +28,52 @@
 #include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_queue.h"
+#include "vk_sync.h"
+#include "vk_sync_timeline.h"
 #include "vk_util.h"
 #include "util/debug.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
+
+static enum vk_device_timeline_mode
+get_timeline_mode(struct vk_physical_device *physical_device)
+{
+   if (physical_device->supported_sync_types == NULL)
+      return VK_DEVICE_TIMELINE_MODE_NONE;
+
+   const struct vk_sync_type *timeline_type = NULL;
+   for (const struct vk_sync_type *const *t =
+        physical_device->supported_sync_types; *t; t++) {
+      if ((*t)->features & VK_SYNC_FEATURE_TIMELINE) {
+         /* We can only have one timeline mode */
+         assert(timeline_type == NULL);
+         timeline_type = *t;
+      }
+   }
+
+   if (timeline_type == NULL)
+      return VK_DEVICE_TIMELINE_MODE_NONE;
+
+   if (vk_sync_type_is_vk_sync_timeline(timeline_type))
+      return VK_DEVICE_TIMELINE_MODE_EMULATED;
+
+   if (timeline_type->features & VK_SYNC_FEATURE_WAIT_BEFORE_SIGNAL)
+      return VK_DEVICE_TIMELINE_MODE_NATIVE;
+
+   /* For assisted mode, we require a few additional things of all sync types
+    * which may be used as semaphores.
+    */
+   for (const struct vk_sync_type *const *t =
+        physical_device->supported_sync_types; *t; t++) {
+      if ((*t)->features & VK_SYNC_FEATURE_GPU_WAIT) {
+         assert((*t)->features & VK_SYNC_FEATURE_WAIT_PENDING);
+         if ((*t)->features & VK_SYNC_FEATURE_BINARY)
+            assert((*t)->features & VK_SYNC_FEATURE_CPU_RESET);
+      }
+   }
+
+   return VK_DEVICE_TIMELINE_MODE_ASSISTED;
+}
 
 VkResult
 vk_device_init(struct vk_device *device,
@@ -95,6 +137,8 @@ vk_device_init(struct vk_device *device,
 
    device->drm_fd = -1;
 
+   device->timeline_mode = get_timeline_mode(physical_device);
+
 #ifdef ANDROID
    mtx_init(&device->swapchain_private_mtx, mtx_plain);
    device->swapchain_private = NULL;
@@ -118,6 +162,30 @@ vk_device_finish(UNUSED struct vk_device *device)
 #endif /* ANDROID */
 
    vk_object_base_finish(&device->base);
+}
+
+VkResult
+vk_device_flush(struct vk_device *device)
+{
+   if (device->timeline_mode != VK_DEVICE_TIMELINE_MODE_EMULATED)
+      return VK_SUCCESS;
+
+   bool progress;
+   do {
+      progress = false;
+
+      vk_foreach_queue(queue, device) {
+         uint32_t queue_submit_count;
+         VkResult result = vk_queue_flush(queue, &queue_submit_count);
+         if (unlikely(result != VK_SUCCESS))
+            return result;
+
+         if (queue_submit_count)
+            progress = true;
+      }
+   } while (progress);
+
+   return VK_SUCCESS;
 }
 
 void

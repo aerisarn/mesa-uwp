@@ -68,6 +68,61 @@ struct vk_device {
    /* Set by vk_device_set_drm_fd() */
    int drm_fd;
 
+   /** An enum describing how timeline semaphores work */
+   enum vk_device_timeline_mode {
+      /** Timeline semaphores are not supported */
+      VK_DEVICE_TIMELINE_MODE_NONE,
+
+      /** Timeline semaphores are emulated with vk_timeline
+       *
+       * In this mode, timeline semaphores are emulated using vk_timeline
+       * which is a collection of binary semaphores, one per time point.
+       * These timeline semaphores cannot be shared because the data structure
+       * exists entirely in userspace.  These timelines are virtually
+       * invisible to the driver; all it sees are the binary vk_syncs, one per
+       * time point.
+       *
+       * To handle wait-before-signal, we place all vk_queue_submits in the
+       * queue's submit list in vkQueueSubmit() and call vk_device_flush() at
+       * key points such as the end of vkQueueSubmit() and vkSemaphoreSignal().
+       * This ensures that, as soon as a given submit's dependencies are fully
+       * resolvable, it gets submitted to the driver.
+       */
+      VK_DEVICE_TIMELINE_MODE_EMULATED,
+
+      /** Timeline semaphores are a kernel-assisted emulation
+       *
+       * In this mode, timeline semaphores are still technically an emulation
+       * in the sense that they don't support wait-before-signal natively.
+       * Instead, all GPU-waitable objects support a CPU wait-for-pending
+       * operation which lets the userspace driver wait until a given event
+       * on the (possibly shared) vk_sync is pending.  The event is "pending"
+       * if a job has been submitted to the kernel (possibly from a different
+       * process) which will signal it.  In vkQueueSubit, we use this wait
+       * mode to detect waits which are not yet pending and, the first time we
+       * do, spawn a thread to manage the queue.  That thread waits for each
+       * submit's waits to all be pending before submitting to the driver
+       * queue.
+       *
+       * We have to be a bit more careful about a few things in this mode.
+       * In particular, we can never assume that any given wait operation is
+       * pending.  For instance, when we go to export a sync file from a
+       * binary semaphore, we need to first wait for it to be pending.  The
+       * spec guarantees that the vast majority of these waits return almost
+       * immediately, but we do need to insert them for correctness.
+       */
+      VK_DEVICE_TIMELINE_MODE_ASSISTED,
+
+      /** Timeline semaphores are 100% native
+       *
+       * In this mode, wait-before-signal is natively supported by the
+       * underlying timeline implementation.  We can submit-and-forget and
+       * assume that dependencies will get resolved for us by the kernel.
+       * Currently, this isn't supported by any Linux primitives.
+       */
+      VK_DEVICE_TIMELINE_MODE_NATIVE,
+   } timeline_mode;
+
 #ifdef ANDROID
    mtx_t swapchain_private_mtx;
    struct hash_table *swapchain_private;
@@ -92,6 +147,8 @@ vk_device_set_drm_fd(struct vk_device *device, int drm_fd)
 
 void
 vk_device_finish(struct vk_device *device);
+
+VkResult vk_device_flush(struct vk_device *device);
 
 VkResult PRINTFLIKE(4, 5)
 _vk_device_set_lost(struct vk_device *device,

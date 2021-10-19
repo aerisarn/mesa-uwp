@@ -434,6 +434,18 @@ vk_common_GetFenceFdKHR(VkDevice _device,
       break;
 
    case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT:
+      /* There's no direct spec quote for this but the same rules as for
+       * semaphore export apply.  We can't export a sync file from a fence
+       * if the fence event hasn't been submitted to the kernel yet.
+       */
+      if (device->timeline_mode == VK_DEVICE_TIMELINE_MODE_ASSISTED) {
+         result = vk_sync_wait(device, sync, 0,
+                               VK_SYNC_WAIT_PENDING,
+                               UINT64_MAX);
+         if (unlikely(result != VK_SUCCESS))
+            return result;
+      }
+
       result = vk_sync_export_sync_file(device, sync, pFd);
       if (unlikely(result != VK_SUCCESS))
          return result;
