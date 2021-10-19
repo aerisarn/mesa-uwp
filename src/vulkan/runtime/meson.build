@@ -37,6 +37,8 @@ vulkan_runtime_files = files(
   'vk_descriptors.h',
   'vk_device.c',
   'vk_device.h',
+  'vk_fence.c',
+  'vk_fence.h',
   'vk_image.c',
   'vk_image.h',
   'vk_instance.c',
