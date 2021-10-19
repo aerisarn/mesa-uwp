@@ -3173,6 +3173,8 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
    assert(stage < ARRAY_SIZE(push_constant_opcodes));
    assert(push_constant_opcodes[stage] > 0);
 
+   UNUSED uint32_t mocs = anv_mocs(cmd_buffer->device, NULL, 0);
+
    anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_VS), c) {
       c._3DCommandSubOpcode = push_constant_opcodes[stage];
 
@@ -3180,8 +3182,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
 
-#if GFX_VER >= 9
-         /* This field exists since Gfx8.  However, the Broadwell PRM says:
+         /* Set MOCS, except on Gfx8, because the Broadwell PRM says:
           *
           *    "Constant Buffer Object Control State must be always programmed
           *    to zero."
@@ -3195,7 +3196,10 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
           * same bit of memory for both scanout and a UBO is nuts.  Let's not
           * bother and assume it's all internal.
           */
-         c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0, false);
+#if GFX_VER >= 9
+         c.MOCS = mocs;
+#elif GFX_VER < 8
+         c.ConstantBody.MOCS = mocs;
 #endif
 
 #if GFX_VERx10 >= 75
