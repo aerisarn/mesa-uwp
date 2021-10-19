@@ -344,3 +344,29 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
       A6XX_RB_BLIT_DST_INFO_COLOR_SWAP(color_swap) |
       COND(ubwc_enabled, A6XX_RB_BLIT_DST_INFO_FLAGS);
 }
+
+void
+fdl6_buffer_view_init(uint32_t *descriptor, enum pipe_format format,
+                      const uint8_t *swiz, uint64_t iova, uint32_t size)
+{
+   unsigned elements = size / util_format_get_blocksize(format);
+
+   struct fdl_view_args args = {
+      .format = format,
+      .swiz = {swiz[0], swiz[1], swiz[2], swiz[3]},
+   };
+
+   memset(descriptor, 0, 4 * FDL6_TEX_CONST_DWORDS);
+
+   descriptor[0] =
+      A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) |
+      A6XX_TEX_CONST_0_SWAP(fd6_texture_swap(format, TILE6_LINEAR)) |
+      A6XX_TEX_CONST_0_FMT(fd6_texture_format(format, TILE6_LINEAR)) |
+      A6XX_TEX_CONST_0_MIPLVLS(0) | fdl6_texswiz(&args, false) |
+      COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB);
+   descriptor[1] = A6XX_TEX_CONST_1_WIDTH(elements & ((1 << 15) - 1)) |
+                   A6XX_TEX_CONST_1_HEIGHT(elements >> 15);
+   descriptor[2] = A6XX_TEX_CONST_2_UNK4 | A6XX_TEX_CONST_2_UNK31;
+   descriptor[4] = iova;
+   descriptor[5] = iova >> 32;
+}

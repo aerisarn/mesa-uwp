@@ -316,5 +316,8 @@ struct fdl6_view {
 void
 fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
                const struct fdl_view_args *args, bool has_z24uint_s8uint);
+void
+fdl6_buffer_view_init(uint32_t *descriptor, enum pipe_format format,
+                      const uint8_t *swiz, uint64_t iova, uint32_t size);
 
 #endif /* FREEDRENO_LAYOUT_H_ */
