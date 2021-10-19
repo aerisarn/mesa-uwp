@@ -274,6 +274,15 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
       tu_cs_image_flag_ref(cs, &iview->view, 0);
    }
 
+   if (subpass->color_count) {
+      uint32_t a = subpass->color_attachments[0].attachment;
+      if (a != VK_ATTACHMENT_UNUSED) {
+         const struct tu_image_view *iview = cmd->state.attachments[a];
+         enum a6xx_format fmt = iview->view.RB_MRT_BUF_INFO & 0xff;
+         tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_MRT_BUF_INFO_0(.color_format = fmt));
+      }
+   }
+
    tu_cs_emit_regs(cs,
                    A6XX_RB_SRGB_CNTL(.dword = subpass->srgb_cntl));
    tu_cs_emit_regs(cs,

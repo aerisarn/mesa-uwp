@@ -939,6 +939,11 @@ r3d_dst(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer)
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_FLAG_BUFFER(0), 3);
    tu_cs_image_flag_ref(cs, iview, layer);
 
+   /* Use color format from RB_MRT_BUF_INFO. This register is relevant for
+    * FMT6_NV12_Y.
+    */
+   tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_MRT_BUF_INFO_0(.color_format = iview->RB_MRT_BUF_INFO & 0xff));
+
    tu_cs_emit_regs(cs, A6XX_RB_RENDER_CNTL(.flag_mrts = iview->ubwc_enabled));
 }
 
