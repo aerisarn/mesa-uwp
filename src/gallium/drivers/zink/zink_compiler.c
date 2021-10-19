@@ -787,6 +787,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
    VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = NULL;
    nir_shader *nir = nir_shader_clone(NULL, base_nir);
+   bool need_optimize = false;
+   bool inlined_uniforms = false;
 
    if (key) {
       if (key->inline_uniforms) {
@@ -795,11 +797,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
                     key->base.inlined_uniform_values,
                     nir->info.inlinable_uniform_dw_offsets);
 
-         optimize_nir(nir);
-
-         /* This must be done again. */
-         NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
-                                                          nir_var_shader_out);
+         inlined_uniforms = true;
       }
 
       /* TODO: use a separate mem ctx here for ralloc */
@@ -852,7 +850,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             }
             nir_fixup_deref_modes(nir);
             NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-            optimize_nir(nir);
+            need_optimize = true;
          }
          if (zink_fs_key(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
             NIR_PASS_V(nir, lower_dual_blend);
@@ -868,12 +866,21 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             fbfetch->data.mode = nir_var_shader_temp;
             nir_fixup_deref_modes(nir);
             NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
-            optimize_nir(nir);
+            need_optimize = true;
          }
          break;
       default: break;
       }
    }
+   if (inlined_uniforms) {
+      optimize_nir(nir);
+
+      /* This must be done again. */
+      NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
+                                                       nir_var_shader_out);
+   } else if (need_optimize)
+      optimize_nir(nir);
+
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    struct spirv_shader *spirv = nir_to_spirv(nir, streamout, screen->spirv_version);
