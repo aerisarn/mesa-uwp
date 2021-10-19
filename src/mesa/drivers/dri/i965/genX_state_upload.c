@@ -3689,6 +3689,7 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
       if (!bufferobj || !size) {
          brw_batch_emit(brw, GENX(3DSTATE_SO_BUFFER), sob) {
             sob.SOBufferIndex = i;
+            sob.MOCS = brw_mocs(&brw->isl_dev, NULL);
          }
          continue;
       }
