@@ -3038,7 +3038,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          bld.sop2(aco_opcode::s_cselect_b64, Definition(dst), Operand::c32(0x3f800000u),
                   Operand::zero(), bld.scc(src));
       } else if (dst.regClass() == v2) {
-         Temp one = bld.copy(bld.def(v2), Operand::c32(0x3FF00000u));
+         Temp one = bld.copy(bld.def(v1), Operand::c32(0x3FF00000u));
          Temp upper =
             bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand::zero(), one, src);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), Operand::zero(), upper);
