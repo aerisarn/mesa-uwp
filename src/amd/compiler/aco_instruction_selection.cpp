@@ -5284,16 +5284,22 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          }
       }
 
-      if (instr->dest.ssa.num_components == 1) {
+      if (instr->dest.ssa.num_components == 1 &&
+          instr->dest.ssa.bit_size != 64) {
          bld.vintrp(aco_opcode::v_interp_mov_f32, Definition(dst), Operand::c32(vertex_id),
                     bld.m0(prim_mask), idx, component);
       } else {
+         unsigned num_components = instr->dest.ssa.num_components;
+         if (instr->dest.ssa.bit_size == 64)
+            num_components *= 2;
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
-            aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.ssa.num_components, 1)};
-         for (unsigned i = 0; i < instr->dest.ssa.num_components; i++) {
+            aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
+         for (unsigned i = 0; i < num_components; i++) {
+            unsigned chan_component = (component + i) % 4;
+            unsigned chan_idx = idx + (component + i) / 4;
             vec->operands[i] = bld.vintrp(
                aco_opcode::v_interp_mov_f32, bld.def(instr->dest.ssa.bit_size == 16 ? v2b : v1),
-               Operand::c32(vertex_id), bld.m0(prim_mask), idx, component + i);
+               Operand::c32(vertex_id), bld.m0(prim_mask), chan_idx, chan_component);
          }
          vec->definitions[0] = Definition(dst);
          bld.insert(std::move(vec));
