@@ -1111,10 +1111,7 @@ static void
 zink_descriptor_pool_deinit(struct zink_context *ctx)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      hash_table_foreach(ctx->dd->descriptor_pools[i], entry) {
-         struct zink_descriptor_pool *pool = (void*)entry->data;
-         zink_descriptor_pool_reference(ctx, &pool, NULL);
-      }
+      /* do not free: programs own these pools */
       _mesa_hash_table_destroy(ctx->dd->descriptor_pools[i], NULL);
    }
 }
