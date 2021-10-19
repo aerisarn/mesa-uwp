@@ -87,14 +87,7 @@ create_frag_input(struct ir3_context *ctx, struct ir3_instruction *coord,
       instr = ir3_BARY_F(block, inloc, 0, coord, 0);
    } else if (ctx->compiler->flat_bypass) {
       if (ctx->compiler->gen >= 6) {
-         struct ir3_instruction *ij[2];
-
-         for (int i = 0; i < 2; i++) {
-            ij[i] = create_immed(block, fui(0.0));
-         }
-
-         instr = ir3_FLAT_B(block, inloc, 0, ir3_create_collect(block, ij, 2), 0);
-         instr->srcs[1]->wrmask = 0x3;
+         instr = ir3_FLAT_B(block, inloc, 0, inloc, 0);
       } else {
          instr = ir3_LDLV(block, inloc, 0, create_immed(block, 1), 0);
          instr->cat6.type = TYPE_U32;
