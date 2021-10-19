@@ -6543,6 +6543,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             if (!tgt) {
                crocus_emit_cmd(batch, GENX(3DSTATE_SO_BUFFER), sob) {
                   sob.SOBufferIndex = i;
+                  sob.MOCS = crocus_mocs(NULL, &batch->screen->isl_dev);
                }
                continue;
             }
