@@ -1534,6 +1534,7 @@ blorp_emit_null_surface_state(struct blorp_batch *batch,
       .RenderTargetViewExtent = surface->view.array_len - 1,
 #if GFX_VER >= 6
       .NumberofMultisamples = ffs(surface->surf.samples) - 1,
+      .MOCS = isl_mocs(batch->blorp->isl_dev, 0, false),
 #endif
 
 #if GFX_VER >= 7
