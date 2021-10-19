@@ -3178,29 +3178,30 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_VS), c) {
       c._3DCommandSubOpcode = push_constant_opcodes[stage];
 
+      /* Set MOCS, except on Gfx8, because the Broadwell PRM says:
+       *
+       *    "Constant Buffer Object Control State must be always
+       *     programmed to zero."
+       *
+       * This restriction does not exist on any newer platforms.
+       *
+       * We only have one MOCS field for the whole packet, not one per
+       * buffer.  We could go out of our way here to walk over all of
+       * the buffers and see if any of them are used externally and use
+       * the external MOCS.  However, the notion that someone would use
+       * the same bit of memory for both scanout and a UBO is nuts.
+       *
+       * Let's not bother and assume it's all internal.
+       */
+#if GFX_VER >= 9
+      c.MOCS = mocs;
+#elif GFX_VER < 8
+      c.ConstantBody.MOCS = mocs;
+#endif
+
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
-
-         /* Set MOCS, except on Gfx8, because the Broadwell PRM says:
-          *
-          *    "Constant Buffer Object Control State must be always programmed
-          *    to zero."
-          *
-          * This restriction does not exist on any newer platforms.
-          *
-          * We only have one MOCS field for the whole packet, not one per
-          * buffer.  We could go out of our way here to walk over all of the
-          * buffers and see if any of them are used externally and use the
-          * external MOCS.  However, the notion that someone would use the
-          * same bit of memory for both scanout and a UBO is nuts.  Let's not
-          * bother and assume it's all internal.
-          */
-#if GFX_VER >= 9
-         c.MOCS = mocs;
-#elif GFX_VER < 8
-         c.ConstantBody.MOCS = mocs;
-#endif
 
 #if GFX_VERx10 >= 75
          /* The Skylake PRM contains the following restriction:
