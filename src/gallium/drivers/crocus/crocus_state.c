@@ -5700,6 +5700,7 @@ emit_push_constant_packets(struct crocus_context *ice,
 {
    struct crocus_compiled_shader *shader = ice->shaders.prog[stage];
    struct brw_stage_prog_data *prog_data = shader ? (void *) shader->prog_data : NULL;
+   UNUSED uint32_t mocs = crocus_mocs(NULL, &batch->screen->isl_dev);
 
 #if GFX_VER == 7
    if (stage == MESA_SHADER_VERTEX) {
@@ -5710,6 +5711,11 @@ emit_push_constant_packets(struct crocus_context *ice,
    crocus_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
       pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
 #if GFX_VER >= 7
+#if GFX_VER != 8
+      /* MOCS is MBZ on Gen8 so we skip it there */
+      pkt.ConstantBody.MOCS = mocs;
+#endif
+
       if (prog_data) {
          /* The Skylake PRM contains the following restriction:
           *
