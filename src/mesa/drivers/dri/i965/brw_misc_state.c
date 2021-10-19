@@ -365,6 +365,7 @@ brw_emit_depthbuffer(struct brw_context *brw)
 
    struct isl_depth_stencil_hiz_emit_info info = {
       .view = &view,
+      .mocs = brw_mocs(&brw->isl_dev, NULL),
    };
 
    if (depth_mt) {
