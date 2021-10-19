@@ -3097,6 +3097,12 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
 
       brw_batch_emit(brw, GENX(3DSTATE_CONSTANT_VS), pkt) {
          pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
+#if GFX_VER >= 9
+         pkt.MOCS = mocs;
+#elif GFX_VER < 8
+         /* MOCS is MBZ on Gfx8 so we skip it there */
+         pkt.ConstantBody.MOCS = mocs;
+#endif
          if (stage_state->prog_data) {
 #if GFX_VERx10 >= 75
             /* The Skylake PRM contains the following restriction:
@@ -3157,8 +3163,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
             }
 #else
             pkt.ConstantBody.ReadLength[0] = stage_state->push_const_size;
-            pkt.ConstantBody.Buffer[0].offset =
-               stage_state->push_const_offset | mocs;
+            pkt.ConstantBody.Buffer[0].offset = stage_state->push_const_offset;
 #endif
          }
       }
