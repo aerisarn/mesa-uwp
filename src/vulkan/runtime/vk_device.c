@@ -29,6 +29,7 @@
 #include "vk_physical_device.h"
 #include "vk_queue.h"
 #include "vk_util.h"
+#include "util/debug.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 
@@ -115,6 +116,45 @@ vk_device_finish(UNUSED struct vk_device *device)
 #endif /* ANDROID */
 
    vk_object_base_finish(&device->base);
+}
+
+void
+_vk_device_report_lost(struct vk_device *device)
+{
+   assert(p_atomic_read(&device->_lost.lost) > 0);
+
+   device->_lost.reported = true;
+
+   vk_foreach_queue(queue, device) {
+      if (queue->_lost.lost) {
+         __vk_errorf(queue, VK_ERROR_DEVICE_LOST,
+                     queue->_lost.error_file, queue->_lost.error_line,
+                     "%s", queue->_lost.error_msg);
+      }
+   }
+}
+
+VkResult
+_vk_device_set_lost(struct vk_device *device,
+                    const char *file, int line,
+                    const char *msg, ...)
+{
+   /* This flushes out any per-queue device lost messages */
+   if (vk_device_is_lost(device))
+      return VK_ERROR_DEVICE_LOST;
+
+   p_atomic_inc(&device->_lost.lost);
+   device->_lost.reported = true;
+
+   va_list ap;
+   va_start(ap, msg);
+   __vk_errorv(device, VK_ERROR_DEVICE_LOST, file, line, msg, ap);
+   va_end(ap);
+
+   if (env_var_as_boolean("MESA_VK_ABORT_ON_DEVICE_LOSS", false))
+      abort();
+
+   return VK_ERROR_DEVICE_LOST;
 }
 
 PFN_vkVoidFunction

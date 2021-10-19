@@ -48,6 +48,14 @@ struct vk_queue {
    /* Which queue this is within the queue family */
    uint32_t index_in_family;
 
+   struct {
+      /* Only set once atomically by the queue */
+      int lost;
+      int error_line;
+      const char *error_file;
+      char error_msg[80];
+   } _lost;
+
    /**
     * VK_EXT_debug_utils
     *
@@ -98,6 +106,20 @@ vk_queue_init(struct vk_queue *queue, struct vk_device *device,
 
 void
 vk_queue_finish(struct vk_queue *queue);
+
+VkResult PRINTFLIKE(4, 5)
+_vk_queue_set_lost(struct vk_queue *queue,
+                   const char *file, int line,
+                   const char *msg, ...);
+
+#define vk_queue_set_lost(queue, ...) \
+   _vk_queue_set_lost(queue, __FILE__, __LINE__, __VA_ARGS__)
+
+static inline bool
+vk_queue_is_lost(struct vk_queue *queue)
+{
+   return queue->_lost.lost;
+}
 
 #define vk_foreach_queue(queue, device) \
    list_for_each_entry(struct vk_queue, queue, &(device)->queues, link)

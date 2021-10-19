@@ -23,6 +23,8 @@
 
 #include "vk_queue.h"
 
+#include "util/debug.h"
+
 #include "vk_device.h"
 
 VkResult
@@ -53,4 +55,31 @@ vk_queue_finish(struct vk_queue *queue)
    util_dynarray_fini(&queue->labels);
    list_del(&queue->link);
    vk_object_base_finish(&queue->base);
+}
+
+VkResult
+_vk_queue_set_lost(struct vk_queue *queue,
+                   const char *file, int line,
+                   const char *msg, ...)
+{
+   if (queue->_lost.lost)
+      return VK_ERROR_DEVICE_LOST;
+
+   queue->_lost.lost = true;
+   queue->_lost.error_file = file;
+   queue->_lost.error_line = line;
+
+   va_list ap;
+   va_start(ap, msg);
+   vsnprintf(queue->_lost.error_msg, sizeof(queue->_lost.error_msg), msg, ap);
+   va_end(ap);
+
+   p_atomic_inc(&queue->base.device->_lost.lost);
+
+   if (env_var_as_boolean("MESA_VK_ABORT_ON_DEVICE_LOSS", false)) {
+      _vk_device_report_lost(queue->base.device);
+      abort();
+   }
+
+   return VK_ERROR_DEVICE_LOST;
 }

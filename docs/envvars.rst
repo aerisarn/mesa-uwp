@@ -189,6 +189,10 @@ Core Mesa environment variables
    overrides the WSI present mode clients specify in
    ``VkSwapchainCreateInfoKHR::presentMode``. Values can be ``fifo``,
    ``relaxed``, ``mailbox`` or ``immediate``.
+:envvar:`MESA_VK_ABORT_ON_DEVICE_LOSS`
+   causes the Vulkan driver to call abort() immediately after detecting a
+   lost device.  This is extremely useful when testing as it prevents the
+   test suite from continuing on with a lost device.
 :envvar:`MESA_LOADER_DRIVER_OVERRIDE`
    chooses a different driver binary such as ``etnaviv`` or ``zink``.
 

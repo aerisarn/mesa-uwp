@@ -28,6 +28,7 @@
 #include "vk_object.h"
 
 #include "util/list.h"
+#include "util/u_atomic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,6 +48,11 @@ struct vk_device {
 
    struct list_head queues;
 
+   struct {
+      int lost;
+      bool reported;
+   } _lost;
+
 #ifdef ANDROID
    mtx_t swapchain_private_mtx;
    struct hash_table *swapchain_private;
@@ -65,6 +71,31 @@ vk_device_init(struct vk_device *device,
 
 void
 vk_device_finish(struct vk_device *device);
+
+VkResult PRINTFLIKE(4, 5)
+_vk_device_set_lost(struct vk_device *device,
+                    const char *file, int line,
+                    const char *msg, ...);
+
+#define vk_device_set_lost(device, ...) \
+   _vk_device_set_lost(device, __FILE__, __LINE__, __VA_ARGS__)
+
+void _vk_device_report_lost(struct vk_device *device);
+
+static inline bool
+vk_device_is_lost_no_report(struct vk_device *device)
+{
+   return p_atomic_read(&device->_lost.lost) > 0;
+}
+
+static inline bool
+vk_device_is_lost(struct vk_device *device)
+{
+   int lost = vk_device_is_lost_no_report(device);
+   if (unlikely(lost && !device->_lost.reported))
+      _vk_device_report_lost(device);
+   return lost;
+}
 
 PFN_vkVoidFunction
 vk_device_get_proc_addr(const struct vk_device *device,
