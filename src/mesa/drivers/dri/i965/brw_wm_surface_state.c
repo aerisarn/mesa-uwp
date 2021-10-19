@@ -55,28 +55,6 @@
 #include "brw_defines.h"
 #include "brw_wm.h"
 
-static const uint32_t wb_mocs[] = {
-   [7] = GFX7_MOCS_L3,
-   [8] = BDW_MOCS_WB,
-   [9] = SKL_MOCS_WB,
-   [10] = CNL_MOCS_WB,
-   [11] = ICL_MOCS_WB,
-};
-
-static const uint32_t pte_mocs[] = {
-   [7] = GFX7_MOCS_L3,
-   [8] = BDW_MOCS_PTE,
-   [9] = SKL_MOCS_PTE,
-   [10] = CNL_MOCS_PTE,
-   [11] = ICL_MOCS_PTE,
-};
-
-uint32_t
-brw_get_bo_mocs(const struct intel_device_info *devinfo, struct brw_bo *bo)
-{
-   return (bo && bo->external ? pte_mocs : wb_mocs)[devinfo->ver];
-}
-
 static void
 get_isl_surf(struct brw_context *brw, struct brw_mipmap_tree *mt,
              GLenum target, struct isl_view *view,
@@ -180,7 +158,7 @@ brw_emit_surface_state(struct brw_context *brw,
                                                   mt->bo, offset, reloc_flags),
                        .aux_surf = aux_surf, .aux_usage = aux_usage,
                        .aux_address = aux_offset,
-                       .mocs = brw_get_bo_mocs(devinfo, mt->bo),
+                       .mocs = brw_mocs(&brw->isl_dev, mt->bo),
                        .clear_color = clear_color,
                        .use_clear_address = clear_bo != NULL,
                        .clear_address = clear_offset,
@@ -630,7 +608,6 @@ brw_emit_buffer_surface_state(struct brw_context *brw,
                               unsigned pitch,
                               unsigned reloc_flags)
 {
-   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    uint32_t *dw = brw_state_batch(brw,
                                   brw->isl_dev.ss.size,
                                   brw->isl_dev.ss.align,
@@ -646,7 +623,7 @@ brw_emit_buffer_surface_state(struct brw_context *brw,
                          .format = format,
                          .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = pitch,
-                         .mocs = brw_get_bo_mocs(devinfo, bo));
+                         .mocs = brw_mocs(&brw->isl_dev, bo));
 }
 
 static unsigned

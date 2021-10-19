@@ -254,24 +254,16 @@ genX(emit_vertex_buffer_state)(struct brw_context *brw,
       .AddressModifyEnable = true,
 #endif
 
+#if GFX_VER >= 6
+      .MOCS = brw_mocs(&brw->isl_dev, bo),
+#endif
+
 #if GFX_VER < 8
       .BufferAccessType = step_rate ? INSTANCEDATA : VERTEXDATA,
       .InstanceDataStepRate = step_rate,
 #if GFX_VER >= 5
       .EndAddress = ro_bo(bo, end_offset - 1),
 #endif
-#endif
-
-#if GFX_VER == 11
-      .MOCS = ICL_MOCS_WB,
-#elif GFX_VER == 10
-      .MOCS = CNL_MOCS_WB,
-#elif GFX_VER == 9
-      .MOCS = SKL_MOCS_WB,
-#elif GFX_VER == 8
-      .MOCS = BDW_MOCS_WB,
-#elif GFX_VER == 7
-      .MOCS = GFX7_MOCS_L3,
 #endif
    };
 
@@ -879,7 +871,7 @@ genX(emit_index_buffer)(struct brw_context *brw)
        */
       ib.BufferStartingAddress = ro_32_bo(brw->ib.bo, 0);
 #if GFX_VER >= 8
-      ib.MOCS = GFX_VER >= 9 ? SKL_MOCS_WB : BDW_MOCS_WB;
+      ib.MOCS = brw_mocs(&brw->isl_dev, brw->ib.bo);
       ib.BufferSize = brw->ib.size;
 #else
       ib.BufferEndingAddress = ro_bo(brw->ib.bo, brw->ib.size - 1);
@@ -3082,7 +3074,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
    const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
 
-   UNUSED uint32_t mocs = GFX_VER < 8 ? GFX7_MOCS_L3 : 0;
+   UNUSED uint32_t mocs = brw_mocs(&brw->isl_dev, NULL);
 
    struct brw_stage_state *stage_states[] = {
       &brw->vs.base,
@@ -3677,7 +3669,6 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
 #else
    struct brw_transform_feedback_object *brw_obj =
       (struct brw_transform_feedback_object *) xfb_obj;
-   uint32_t mocs_wb = GFX_VER >= 9 ? SKL_MOCS_WB : BDW_MOCS_WB;
 #endif
 
    /* Set up the up to 4 output buffers.  These are the ranges defined in the
@@ -3713,7 +3704,7 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
          sob.SOBufferEnable = true;
          sob.StreamOffsetWriteEnable = true;
          sob.StreamOutputBufferOffsetAddressEnable = true;
-         sob.MOCS = mocs_wb;
+         sob.MOCS = brw_mocs(&brw->isl_dev, bo);
 
          sob.SurfaceSize = MAX2(xfb_obj->Size[i] / 4, 1) - 1;
          sob.StreamOutputBufferOffsetAddress =

@@ -376,7 +376,7 @@ brw_emit_depthbuffer(struct brw_context *brw)
                          ds_offset + brw->isl_dev.ds.depth_offset,
                          depth_mt->bo, depth_mt->offset, RELOC_WRITE);
 
-      info.mocs = brw_get_bo_mocs(devinfo, depth_mt->bo);
+      info.mocs = brw_mocs(&brw->isl_dev, depth_mt->bo);
       view.base_level = depth_irb->mt_level - depth_irb->mt->first_level;
       view.base_array_layer = depth_irb->mt_layer;
       view.array_len = MAX2(depth_irb->layer_count, 1);
@@ -421,7 +421,7 @@ brw_emit_depthbuffer(struct brw_context *brw)
       info.stencil_surf = &stencil_mt->surf;
 
       if (!depth_mt) {
-         info.mocs = brw_get_bo_mocs(devinfo, stencil_mt->bo);
+         info.mocs = brw_mocs(&brw->isl_dev, stencil_mt->bo);
          view.base_level = stencil_irb->mt_level - stencil_irb->mt->first_level;
          view.base_array_layer = stencil_irb->mt_layer;
          view.array_len = MAX2(stencil_irb->layer_count, 1);
@@ -753,6 +753,8 @@ brw_upload_state_base_address(struct brw_context *brw)
     * maybe this isn't required for us in particular.
     */
 
+   uint32_t mocs = brw_mocs(&brw->isl_dev, NULL);
+
    if (devinfo->ver >= 6) {
       const unsigned dc_flush =
          devinfo->ver >= 7 ? PIPE_CONTROL_DATA_CACHE_FLUSH : 0;
@@ -791,24 +793,23 @@ brw_upload_state_base_address(struct brw_context *brw)
        * of bounds and returns zero.  To work around this, we pin all SBAs
        * to the bottom 4GB.
        */
-      uint32_t mocs_wb = devinfo->ver >= 9 ? SKL_MOCS_WB : BDW_MOCS_WB;
       int pkt_len = devinfo->ver >= 10 ? 22 : (devinfo->ver >= 9 ? 19 : 16);
 
       BEGIN_BATCH(pkt_len);
       OUT_BATCH(CMD_STATE_BASE_ADDRESS << 16 | (pkt_len - 2));
       /* General state base address: stateless DP read/write requests */
-      OUT_BATCH(mocs_wb << 4 | 1);
+      OUT_BATCH(mocs << 4 | 1);
       OUT_BATCH(0);
-      OUT_BATCH(mocs_wb << 16);
+      OUT_BATCH(mocs << 16);
       /* Surface state base address: */
-      OUT_RELOC64(brw->batch.state.bo, RELOC_32BIT, mocs_wb << 4 | 1);
+      OUT_RELOC64(brw->batch.state.bo, RELOC_32BIT, mocs << 4 | 1);
       /* Dynamic state base address: */
-      OUT_RELOC64(brw->batch.state.bo, RELOC_32BIT, mocs_wb << 4 | 1);
+      OUT_RELOC64(brw->batch.state.bo, RELOC_32BIT, mocs << 4 | 1);
       /* Indirect object base address: MEDIA_OBJECT data */
-      OUT_BATCH(mocs_wb << 4 | 1);
+      OUT_BATCH(mocs << 4 | 1);
       OUT_BATCH(0);
       /* Instruction base address: shader kernels (incl. SIP) */
-      OUT_RELOC64(brw->cache.bo, RELOC_32BIT, mocs_wb << 4 | 1);
+      OUT_RELOC64(brw->cache.bo, RELOC_32BIT, mocs << 4 | 1);
       /* General state buffer size */
       OUT_BATCH(0xfffff001);
       /* Dynamic state buffer size */
@@ -829,8 +830,6 @@ brw_upload_state_base_address(struct brw_context *brw)
       }
       ADVANCE_BATCH();
    } else if (devinfo->ver >= 6) {
-      uint8_t mocs = devinfo->ver == 7 ? GFX7_MOCS_L3 : 0;
-
        BEGIN_BATCH(10);
        OUT_BATCH(CMD_STATE_BASE_ADDRESS << 16 | (10 - 2));
        OUT_BATCH(mocs << 8 | /* General State Memory Object Control State */

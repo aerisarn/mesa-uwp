@@ -124,8 +124,6 @@ blorp_surf_for_miptree(struct brw_context *brw,
                        unsigned *level,
                        unsigned start_layer, unsigned num_layers)
 {
-   const struct intel_device_info *devinfo = &brw->screen->devinfo;
-
    if (mt->surf.msaa_layout == ISL_MSAA_LAYOUT_ARRAY) {
       const unsigned num_samples = mt->surf.samples;
       for (unsigned i = 0; i < num_layers; i++) {
@@ -145,7 +143,7 @@ blorp_surf_for_miptree(struct brw_context *brw,
          .buffer = mt->bo,
          .offset = mt->offset,
          .reloc_flags = is_render_target ? EXEC_OBJECT_WRITE : 0,
-         .mocs = brw_get_bo_mocs(devinfo, mt->bo),
+         .mocs = brw_mocs(&brw->isl_dev, mt->bo),
       },
       .aux_usage = aux_usage,
       .tile_x_sa = mt->level[*level].level_x,
