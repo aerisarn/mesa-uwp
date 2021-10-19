@@ -319,21 +319,6 @@ if with_tests
     should_fail : meson.get_cross_property('xfail', '').contains('roundeven'),
   )
 
-  # FIXME: this test crashes on windows
-  if host_machine.system() != 'windows'
-    test(
-      'mesa-sha1',
-      executable(
-        'mesa-sha1_test',
-        files('mesa-sha1_test.c'),
-        include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-        link_with : _libmesa_util,
-        c_args : [c_msvc_compat_args],
-      ),
-      suite : ['util'],
-    )
-  endif
-
   files_util_tests = files(
     'bitset_test.cpp',
     'blob_test.cpp',
@@ -359,6 +344,13 @@ if with_tests
   if cc.has_header('sys/time.h')  # MinGW has this, but Vanilla windows doesn't
     files_util_tests += files(
       'tests/timespec_test.cpp'
+    )
+  endif
+
+  # FIXME: this test crashes on windows
+  if host_machine.system() != 'windows'
+    files_util_tests += files(
+      'mesa-sha1_test.cpp',
     )
   endif
 

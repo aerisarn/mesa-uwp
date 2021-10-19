@@ -21,45 +21,39 @@
  * IN THE SOFTWARE.
  */
 
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-
-#include "macros.h"
 #include "mesa-sha1.h"
+
+#include <gtest/gtest.h>
 
 #define SHA1_LENGTH 40
 
-int main(int argc, char *argv[])
+struct Params {
+   const char *string;
+   const char *expected_sha1;
+};
+
+static const Params test_data[] = {
+   {"Mesa Rocks! 273", "7fb99737373d65a73f049cdabc01e73aa6bc60f3"},
+   {"Mesa Rocks! 300", "b2180263e37d3bed6a4be0afe41b1a82ebbcf4c3"},
+   {"Mesa Rocks! 583", "7fb9734108a62503e8a149c1051facd7fb112d05"},
+};
+
+class MesaSHA1TestFixture : public testing::TestWithParam<Params> {};
+INSTANTIATE_TEST_CASE_P(MesaSHA1Test, MesaSHA1TestFixture,
+                        testing::ValuesIn(test_data));
+
+TEST_P(MesaSHA1TestFixture, Match)
 {
-   static const struct {
-      const char *string;
-      const char *sha1;
-   } test_data[] = {
-      {"Mesa Rocks! 273", "7fb99737373d65a73f049cdabc01e73aa6bc60f3"},
-      {"Mesa Rocks! 300", "b2180263e37d3bed6a4be0afe41b1a82ebbcf4c3"},
-      {"Mesa Rocks! 583", "7fb9734108a62503e8a149c1051facd7fb112d05"},
-   };
+   Params p = GetParam();
 
-   bool failed = false;
-   int i;
+   unsigned char sha1[20];
+   _mesa_sha1_compute(p.string, strlen(p.string), sha1);
 
-   for (i = 0; i < ARRAY_SIZE(test_data); i++) {
-      unsigned char sha1[20];
-      _mesa_sha1_compute(test_data[i].string, strlen(test_data[i].string),
-                         sha1);
+   char buf[41];
+   _mesa_sha1_format(buf, sha1);
 
-      char buf[41];
-      _mesa_sha1_format(buf, sha1);
-
-      if (memcmp(test_data[i].sha1, buf, SHA1_LENGTH) != 0) {
-         printf("For string \"%s\", length %zu:\n"
-                "\tExpected: %s\n\t     Got: %s\n",
-                test_data[i].string, strlen(test_data[i].string),
-                test_data[i].sha1, buf);
-         failed = true;
-      }
-   }
-
-   return failed;
+   ASSERT_TRUE(memcmp(buf, p.expected_sha1, SHA1_LENGTH) == 0)
+      << "For string \"" << p.string << "\", length " << strlen(p.string) << ":\n"
+      << "\t  Actual: " << buf << "\n"
+      << "\tExpected: " << p.expected_sha1 << "\n";
 }
