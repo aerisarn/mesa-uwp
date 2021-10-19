@@ -305,6 +305,7 @@ if with_tests
     'tests/fast_urem_by_const_test.cpp',
     'tests/int_min_max.cpp',
     'tests/set_test.cpp',
+    'tests/sparse_array_test.cpp',
     'tests/vector_test.cpp',
     'u_atomic_test.cpp',
     'u_debug_stack_test.cpp',
@@ -373,6 +374,5 @@ if with_tests
   subdir('tests/cache')
   subdir('tests/hash_table')
   subdir('tests/vma')
-  subdir('tests/sparse_array')
   subdir('tests/format')
 endif
