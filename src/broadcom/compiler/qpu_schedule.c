@@ -1234,10 +1234,11 @@ retry:
                 if (pixel_scoreboard_too_soon(c, scoreboard, inst))
                         continue;
 
-                /* ldunif and ldvary both write r5, but ldunif does so a tick
-                 * sooner.  If the ldvary's r5 wasn't used, then ldunif might
+                /* ldunif and ldvary both write the same register (r5 for v42
+                 * and below, rf0 for v71), but ldunif does so a tick sooner.
+                 * If the ldvary's register wasn't used, then ldunif might
                  * otherwise get scheduled so ldunif and ldvary try to update
-                 * r5 in the same tick.
+                 * the register in the same tick.
                  */
                 if ((inst->sig.ldunif || inst->sig.ldunifa) &&
                     scoreboard->tick == scoreboard->last_ldvary_tick + 1) {
