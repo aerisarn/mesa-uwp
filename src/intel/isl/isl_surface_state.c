@@ -986,7 +986,7 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
 }
 
 void
-isl_genX(null_fill_state)(void *state,
+isl_genX(null_fill_state)(const struct isl_device *dev, void *state,
                           const struct isl_null_fill_state_info *restrict info)
 {
    struct GENX(RENDER_SURFACE_STATE) s = {
@@ -1007,6 +1007,9 @@ isl_genX(null_fill_state)(void *state,
 #else
       .TiledSurface = true,
       .TileWalk = TILEWALK_YMAJOR,
+#endif
+#if GFX_VER >= 6
+      .MOCS = isl_mocs(dev, 0, false),
 #endif
 #if GFX_VER == 7
       /* According to PRMs: "Volume 4 Part 1: Subsystem and Cores – Shared

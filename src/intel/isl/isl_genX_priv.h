@@ -45,5 +45,5 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
                                    const struct isl_depth_stencil_hiz_emit_info *restrict info);
 
 void
-isl_genX(null_fill_state)(void *state,
+isl_genX(null_fill_state)(const struct isl_device *dev, void *state,
                           const struct isl_null_fill_state_info *restrict info);
