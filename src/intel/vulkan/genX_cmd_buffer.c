@@ -5795,7 +5795,9 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
    if (dw == NULL)
       return;
 
-   struct isl_depth_stencil_hiz_emit_info info = { };
+   struct isl_depth_stencil_hiz_emit_info info = {
+      .mocs = anv_mocs(device, NULL, ISL_SURF_USAGE_DEPTH_BIT),
+   };
 
    if (iview)
       info.view = &iview->planes[0].isl;
