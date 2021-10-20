@@ -1127,10 +1127,6 @@ bind_buffer_object(struct gl_context *ctx,
       if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
                                         &newBufObj, "glBindBuffer"))
          return;
-
-      /* record usage history */
-      if (bindTarget == &ctx->Pack.BufferObj)
-         newBufObj->UsageHistory |= USAGE_PIXEL_PACK_BUFFER;
    }
 
    /* bind new buffer */
