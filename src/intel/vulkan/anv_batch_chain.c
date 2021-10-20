@@ -1992,17 +1992,6 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
       }
    }
 
-   if (submit->in_fence != -1) {
-      assert(!device->has_thread_submit);
-      execbuf.execbuf.flags |= I915_EXEC_FENCE_IN;
-      execbuf.execbuf.rsvd2 |= (uint32_t)submit->in_fence;
-   }
-
-   if (submit->need_out_fence) {
-      assert(!device->has_thread_submit);
-      execbuf.execbuf.flags |= I915_EXEC_FENCE_OUT;
-   }
-
    if (has_perf_query) {
       struct anv_query_pool *query_pool = submit->perf_query_pool;
       assert(submit->perf_query_pass < query_pool->n_passes);
@@ -2057,9 +2046,6 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
          assert(execbuf.bos[k]->offset == objects[k].offset);
       execbuf.bos[k]->offset = objects[k].offset;
    }
-
-   if (result == VK_SUCCESS && submit->need_out_fence)
-      submit->out_fence = execbuf.execbuf.rsvd2 >> 32;
 
  error:
    pthread_cond_broadcast(&device->queue_submit);

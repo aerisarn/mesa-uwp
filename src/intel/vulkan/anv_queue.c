@@ -91,15 +91,6 @@ anv_queue_submit_free(struct anv_device *device,
 
    for (uint32_t i = 0; i < submit->temporary_semaphore_count; i++)
       anv_semaphore_impl_cleanup(device, &submit->temporary_semaphores[i]);
-   /* Execbuf does not consume the in_fence.  It's our job to close it. */
-   if (submit->in_fence != -1) {
-      assert(!device->has_thread_submit);
-      close(submit->in_fence);
-   }
-   if (submit->out_fence != -1) {
-      assert(!device->has_thread_submit);
-      close(submit->out_fence);
-   }
    vk_free(alloc, submit->fences);
    vk_free(alloc, submit->fence_values);
    vk_free(alloc, submit->temporary_semaphores);
@@ -730,8 +721,6 @@ anv_queue_submit_alloc(struct anv_device *device)
 
    submit->alloc = alloc;
    submit->alloc_scope = alloc_scope;
-   submit->in_fence = -1;
-   submit->out_fence = -1;
    submit->perf_query_pass = -1;
 
    return submit;
