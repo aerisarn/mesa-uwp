@@ -22,6 +22,9 @@
 #ifndef U_PRINTF_H
 #define U_PRINTF_H
 
+#include <stdarg.h>
+#include <stddef.h>
+
 #ifdef __cplusplus
 
 #include <string>
