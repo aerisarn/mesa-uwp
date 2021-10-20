@@ -692,11 +692,31 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       break;
    case nir_intrinsic_store_ssbo:
       b->cursor = nir_before_instr(instr);
-      nir_instr_rewrite_src_ssa(instr, &intr->src[2], nir_udiv_imm(b, intr->src[2].ssa, MIN2(nir_src_bit_size(intr->src[0]), 32) / 8));
+      nir_instr_rewrite_src_ssa(instr, &intr->src[2], nir_udiv_imm(b, intr->src[2].ssa, nir_src_bit_size(intr->src[0]) / 8));
+      /* if 64bit isn't supported, 64bit loads definitely aren't supported, so rewrite as 2x32 with cast and pray */
+      if (nir_src_bit_size(intr->src[0]) == 64 && !has_int64) {
+         /* this is always scalarized */
+         assert(intr->src[0].ssa->num_components == 1);
+         /* cast to 32bit: nir_unpack_64_2x32 not supported by ntv */
+         nir_ssa_def *casted = nir_vec2(b, nir_u2u32(b, intr->src[0].ssa), nir_u2u32(b, nir_ushr_imm(b, intr->src[0].ssa, 32)));
+         /* rewrite as 2x32 */
+         nir_store_ssbo(b, casted, intr->src[1].ssa, intr->src[2].ssa, .align_mul = 4, .align_offset = 0);
+         nir_instr_remove(instr);
+      }
       return true;
    case nir_intrinsic_store_shared:
       b->cursor = nir_before_instr(instr);
-      nir_instr_rewrite_src_ssa(instr, &intr->src[1], nir_udiv_imm(b, intr->src[1].ssa, MIN2(nir_src_bit_size(intr->src[0]), 32) / 8));
+      nir_instr_rewrite_src_ssa(instr, &intr->src[1], nir_udiv_imm(b, intr->src[1].ssa, nir_src_bit_size(intr->src[0]) / 8));
+      /* if 64bit isn't supported, 64bit loads definitely aren't supported, so rewrite as 2x32 with cast and pray */
+      if (nir_src_bit_size(intr->src[0]) == 64 && !has_int64) {
+         /* this is always scalarized */
+         assert(intr->src[0].ssa->num_components == 1);
+         /* cast to 32bit: nir_unpack_64_2x32 not supported by ntv */
+         nir_ssa_def *casted = nir_vec2(b, nir_u2u32(b, intr->src[0].ssa), nir_u2u32(b, nir_ushr_imm(b, intr->src[0].ssa, 32)));
+         /* rewrite as 2x32 */
+         nir_store_shared(b, casted, intr->src[1].ssa, .align_mul = 4, .align_offset = 0);
+         nir_instr_remove(instr);
+      }
       return true;
    default:
       break;

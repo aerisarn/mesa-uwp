@@ -2006,7 +2006,7 @@ emit_store_ssbo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    nir_const_value *const_block_index = nir_src_as_const_value(intr->src[1]);
    assert(const_block_index);
 
-   unsigned idx = MIN2(nir_src_bit_size(intr->src[0]), 32) >> 4;
+   unsigned idx = nir_src_bit_size(intr->src[0]) >> 4;
    assert(idx < ARRAY_SIZE(ctx->ssbos[0]));
    if (!ctx->ssbos[const_block_index->u32][idx])
       emit_bo(ctx, ctx->ssbo_vars[const_block_index->u32], nir_src_bit_size(intr->src[0]));
@@ -2020,18 +2020,15 @@ emit_store_ssbo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    unsigned wrmask = nir_intrinsic_write_mask(intr);
    unsigned num_components = util_bitcount(wrmask);
 
-   /* we need to grab 2x32 to fill the 64bit value */
-   bool is_64bit = bit_size == 64;
-
    /* we grab a single array member at a time, so it's a pointer to a uint */
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassStorageBuffer,
-                                                   get_uvec_type(ctx, MIN2(bit_size, 32), 1));
+                                                   get_uvec_type(ctx, bit_size, 1));
 
    /* our generated uniform has a memory layout like
     *
     * struct {
-    *    uint base[array_size];
+    *    uintN base[array_size];
     * };
     *
     * where 'array_size' is set as though every member of the ubo takes up a vec4,
@@ -2055,34 +2052,19 @@ emit_store_ssbo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
     * no other spirv method for using an id to access a member of a composite, as
     * (composite|vector)_extract both take literals
     */
-   unsigned write_count = 0;
    SpvId src_base_type = get_uvec_type(ctx, bit_size, 1);
-   for (unsigned i = 0; write_count < num_components; i++) {
-      if (wrmask & (1 << i)) {
-         SpvId component = nir_src_num_components(intr->src[0]) > 1 ?
-                           spirv_builder_emit_composite_extract(&ctx->builder, src_base_type, value, &i, 1) :
-                           value;
-         SpvId component_split;
-         if (is_64bit)
-            component_split = emit_bitcast(ctx, get_uvec_type(ctx, 32, 2), component);
-         for (unsigned j = 0; j < 1 + !!is_64bit; j++) {
-            if (j)
-               offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
-            SpvId indices[] = { member, offset };
-            SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
-                                                         bo, indices,
-                                                         ARRAY_SIZE(indices));
-            if (is_64bit)
-               component = spirv_builder_emit_composite_extract(&ctx->builder, uint_type, component_split, &j, 1);
-            if (nir_intrinsic_access(intr) & ACCESS_COHERENT)
-               spirv_builder_emit_atomic_store(&ctx->builder, ptr, SpvScopeWorkgroup, 0, component);
-            else
-               spirv_builder_emit_store(&ctx->builder, ptr, component);
-         }
-         write_count++;
-      } else if (is_64bit)
-         /* we're doing 32bit stores here, so we need to increment correctly here */
-         offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
+   for (unsigned i = 0; i < num_components; i++) {
+      SpvId component = nir_src_num_components(intr->src[0]) > 1 ?
+                        spirv_builder_emit_composite_extract(&ctx->builder, src_base_type, value, &i, 1) :
+                        value;
+      SpvId indices[] = { member, offset };
+      SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
+                                                   bo, indices,
+                                                   ARRAY_SIZE(indices));
+      if (nir_intrinsic_access(intr) & ACCESS_COHERENT)
+         spirv_builder_emit_atomic_store(&ctx->builder, ptr, SpvScopeWorkgroup, 0, component);
+      else
+         spirv_builder_emit_store(&ctx->builder, ptr, component);
 
       /* increment to the next vec4 member index for the next store */
       offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
