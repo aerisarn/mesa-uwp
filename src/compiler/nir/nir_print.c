@@ -494,8 +494,9 @@ print_var_decl(nir_variable *var, print_state *state)
    const char *const inv = (var->data.invariant) ? "invariant " : "";
    const char *const per_view = (var->data.per_view) ? "per_view " : "";
    const char *const per_primitive = (var->data.per_primitive) ? "per_primitive " : "";
-   fprintf(fp, "%s%s%s%s%s%s%s%s %s ",
-           bindless, cent, samp, patch, inv, per_view, per_primitive,
+   const char *const ray_query = (var->data.ray_query) ? "ray_query " : "";
+   fprintf(fp, "%s%s%s%s%s%s%s%s%s %s ",
+           bindless, cent, samp, patch, inv, per_view, per_primitive, ray_query,
            get_variable_mode_str(var->data.mode, false),
            glsl_interp_mode_name(var->data.interpolation));
 
@@ -1637,6 +1638,7 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
    if (shader->info.num_ubos)
       fprintf(fp, "ubos: %u\n", shader->info.num_ubos);
    fprintf(fp, "shared: %u\n", shader->info.shared_size);
+   fprintf(fp, "ray queries: %u\n", shader->info.ray_queries);
    if (shader->scratch_size)
       fprintf(fp, "scratch: %u\n", shader->scratch_size);
    if (shader->constant_data_size)

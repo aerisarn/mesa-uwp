@@ -953,4 +953,22 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
          }
       }
    }
+
+   shader->info.ray_queries = 0;
+   nir_foreach_variable_in_shader(var, shader) {
+      if (!var->data.ray_query)
+         continue;
+
+      shader->info.ray_queries += MAX2(glsl_get_aoa_size(var->type), 1);
+   }
+   nir_foreach_function(func, shader) {
+      if (!func->impl)
+         continue;
+      nir_foreach_function_temp_variable(var, func->impl) {
+         if (!var->data.ray_query)
+            continue;
+
+         shader->info.ray_queries += MAX2(glsl_get_aoa_size(var->type), 1);
+      }
+   }
 }

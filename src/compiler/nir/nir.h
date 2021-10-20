@@ -425,6 +425,11 @@ typedef struct nir_variable {
       unsigned patch:1;
       unsigned invariant:1;
 
+      /**
+       * Is the variable a ray query?
+       */
+      unsigned ray_query:1;
+
      /**
        * Precision qualifier.
        *
