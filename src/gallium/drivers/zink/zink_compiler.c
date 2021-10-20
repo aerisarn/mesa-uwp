@@ -898,8 +898,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       default: break;
       }
    }
-   if (screen->driconf.inline_uniforms)
+   if (screen->driconf.inline_uniforms) {
+      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access);
+   }
    if (inlined_uniforms) {
       optimize_nir(nir);
 
@@ -1413,8 +1415,10 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
    NIR_PASS_V(nir, unbreak_bos);
    /* run in compile if there could be inlined uniforms */
-   if (!screen->driconf.inline_uniforms)
+   if (!screen->driconf.inline_uniforms) {
+      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access);
+   }
 
    if (zink_debug & ZINK_DEBUG_NIR) {
       fprintf(stderr, "NIR shader:\n---8<---\n");
