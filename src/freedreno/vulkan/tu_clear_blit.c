@@ -1189,7 +1189,7 @@ copy_format(VkFormat vk_format, VkImageAspectFlags aspect_mask, bool copy_buffer
          return PIPE_FORMAT_R8G8_UNORM;
       else
          return PIPE_FORMAT_Y8_UNORM;
-   case PIPE_FORMAT_R8_G8_B8_420_UNORM:
+   case PIPE_FORMAT_G8_B8_R8_420_UNORM:
       return PIPE_FORMAT_R8_UNORM;
 
    case PIPE_FORMAT_Z24_UNORM_S8_UINT:

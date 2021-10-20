@@ -62,7 +62,7 @@ fdl6_texswiz(const struct fdl_view_args *args, bool has_z24uint_s8uint)
    case PIPE_FORMAT_R8G8_R8B8_UNORM:
    case PIPE_FORMAT_G8R8_B8R8_UNORM:
    case PIPE_FORMAT_R8_G8B8_420_UNORM:
-   case PIPE_FORMAT_R8_G8_B8_420_UNORM:
+   case PIPE_FORMAT_G8_B8_R8_420_UNORM:
       format_swiz[0] = PIPE_SWIZZLE_Z;
       format_swiz[1] = PIPE_SWIZZLE_X;
       format_swiz[2] = PIPE_SWIZZLE_Y;
@@ -208,7 +208,7 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
       view->descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
 
    if (args->format == PIPE_FORMAT_R8_G8B8_420_UNORM ||
-       args->format == PIPE_FORMAT_R8_G8_B8_420_UNORM) {
+       args->format == PIPE_FORMAT_G8_B8_R8_420_UNORM) {
       /* chroma offset re-uses MIPLVLS bits */
       assert(args->level_count == 1);
       if (args->chroma_offsets[0] == FDL_CHROMA_LOCATION_MIDPOINT)
