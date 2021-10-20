@@ -707,10 +707,10 @@ iris_resource_configure_main(const struct iris_screen *screen,
 }
 
 static bool
-iris_get_ccs_surf(const struct isl_device *dev,
-                  const struct isl_surf *surf,
-                  struct isl_surf *aux_surf,
-                  struct isl_surf *extra_aux_surf)
+iris_get_ccs_surf_or_support(const struct isl_device *dev,
+                             const struct isl_surf *surf,
+                             struct isl_surf *aux_surf,
+                             struct isl_surf *extra_aux_surf)
 {
    assert(extra_aux_surf->size_B == 0);
 
@@ -726,7 +726,15 @@ iris_get_ccs_surf(const struct isl_device *dev,
       ccs_surf = aux_surf;
    }
 
-   return isl_surf_get_ccs_surf(dev, surf, hiz_or_mcs_surf, ccs_surf, 0);
+   if (dev->info->verx10 >= 125) {
+      /* CCS doesn't require VMA on XeHP. So, instead of creating a separate
+       * surface, we can just return whether CCS is supported for the given
+       * input surfaces.
+       */
+      return isl_surf_supports_ccs(dev, surf, hiz_or_mcs_surf);
+   } else  {
+      return isl_surf_get_ccs_surf(dev, surf, hiz_or_mcs_surf, ccs_surf, 0);
+   }
 }
 
 /**
@@ -750,8 +758,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
       isl_surf_get_hiz_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
 
    const bool has_ccs = !INTEL_DEBUG(DEBUG_NO_RBC) &&
-      iris_get_ccs_surf(&screen->isl_dev, &res->surf, &res->aux.surf,
-                        &res->aux.extra_aux.surf);
+      iris_get_ccs_surf_or_support(&screen->isl_dev, &res->surf,
+                                   &res->aux.surf, &res->aux.extra_aux.surf);
 
    if (has_mcs) {
       assert(!res->mod_info);
