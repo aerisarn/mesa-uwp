@@ -862,6 +862,10 @@ genX(emit_index_buffer)(struct brw_context *brw)
 #endif
       ib.IndexFormat = brw_get_index_type(1 << index_buffer->index_size_shift);
 
+#if GFX_VER >= 6
+      ib.MOCS = brw_mocs(&brw->isl_dev, brw->ib.bo);
+#endif
+
       /* The VF cache designers apparently cut corners, and made the cache
        * only consider the bottom 32 bits of memory addresses.  If you happen
        * to have two index buffers which get placed exactly 4 GiB apart and
@@ -871,7 +875,6 @@ genX(emit_index_buffer)(struct brw_context *brw)
        */
       ib.BufferStartingAddress = ro_32_bo(brw->ib.bo, 0);
 #if GFX_VER >= 8
-      ib.MOCS = brw_mocs(&brw->isl_dev, brw->ib.bo);
       ib.BufferSize = brw->ib.size;
 #else
       ib.BufferEndingAddress = ro_bo(brw->ib.bo, brw->ib.size - 1);
