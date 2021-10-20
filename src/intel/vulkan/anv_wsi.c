@@ -149,8 +149,6 @@ VkResult anv_QueuePresentKHR(
             semaphore->temporary.type != ANV_SEMAPHORE_TYPE_NONE ?
             &semaphore->temporary : &semaphore->permanent;
 
-         if (impl->type == ANV_SEMAPHORE_TYPE_DUMMY)
-            continue;
          assert(impl->type == ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ);
          syncobjs[wait_count] = impl->syncobj;
          values[wait_count] = 0;
