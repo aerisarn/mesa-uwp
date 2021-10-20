@@ -177,8 +177,7 @@ radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *c
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
 
    /* Start the thread trace with a different event based on the queue. */
-   if (queue_family_index == RADV_QUEUE_COMPUTE &&
-       device->physical_device->rad_info.chip_class >= GFX7) {
+   if (queue_family_index == RADV_QUEUE_COMPUTE) {
       radeon_set_sh_reg(cs, R_00B878_COMPUTE_THREAD_TRACE_ENABLE, S_00B878_THREAD_TRACE_ENABLE(1));
    } else {
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
@@ -242,8 +241,7 @@ radv_emit_thread_trace_stop(struct radv_device *device, struct radeon_cmdbuf *cs
    unsigned max_se = device->physical_device->rad_info.max_se;
 
    /* Stop the thread trace with a different event based on the queue. */
-   if (queue_family_index == RADV_QUEUE_COMPUTE &&
-       device->physical_device->rad_info.chip_class >= GFX7) {
+   if (queue_family_index == RADV_QUEUE_COMPUTE) {
       radeon_set_sh_reg(cs, R_00B878_COMPUTE_THREAD_TRACE_ENABLE, S_00B878_THREAD_TRACE_ENABLE(0));
    } else {
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
