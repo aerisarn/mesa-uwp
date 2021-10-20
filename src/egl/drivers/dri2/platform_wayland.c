@@ -886,26 +886,6 @@ dri2_wl_release_buffers(struct dri2_egl_surface *dri2_surf)
 }
 
 static void
-create_dri_image_diff_gpu(struct dri2_egl_surface *dri2_surf,
-                          unsigned int linear_dri_image_format, uint32_t use_flags)
-{
-   struct dri2_egl_display *dri2_dpy =
-      dri2_egl_display(dri2_surf->base.Resource.Display);
-   uint64_t linear_mod;
-
-   /* The LINEAR modifier should be a perfect alias of the LINEAR use flag */
-   linear_mod = DRM_FORMAT_MOD_LINEAR;
-
-   dri2_surf->back->linear_copy =
-      loader_dri_create_image(dri2_dpy->dri_screen, dri2_dpy->image,
-                              dri2_surf->base.Width,
-                              dri2_surf->base.Height,
-                              linear_dri_image_format,
-                              use_flags | __DRI_IMAGE_USE_LINEAR,
-                              &linear_mod, 1, NULL);
-}
-
-static void
 create_dri_image_from_dmabuf_feedback(struct dri2_egl_surface *dri2_surf,
                                       unsigned int dri_image_format, uint32_t use_flags)
 {
@@ -1072,9 +1052,93 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
    }
 
    if (dri2_dpy->is_different_gpu && dri2_surf->back->linear_copy == NULL) {
-      create_dri_image_diff_gpu(dri2_surf, linear_dri_image_format, use_flags);
+      uint64_t linear_mod = DRM_FORMAT_MOD_LINEAR;
+      __DRIimage *linear_copy_display_gpu_image = NULL;
+
+      if (dri2_dpy->dri_screen_display_gpu) {
+         linear_copy_display_gpu_image =
+               loader_dri_create_image(dri2_dpy->dri_screen_display_gpu,
+                                       dri2_dpy->image,
+                                       dri2_surf->base.Width,
+                                       dri2_surf->base.Height,
+                                       linear_dri_image_format,
+                                       use_flags | __DRI_IMAGE_USE_LINEAR,
+                                       &linear_mod, 1, NULL);
+
+         if (linear_copy_display_gpu_image) {
+            int i, ret;
+            int num_planes = 0;
+            int buffer_fds[4];
+            int strides[4];
+            int offsets[4];
+
+            if (!dri2_dpy->image->queryImage(linear_copy_display_gpu_image,
+                                             __DRI_IMAGE_ATTRIB_NUM_PLANES, &num_planes))
+               num_planes = 1;
+
+            for (i = 0; i < num_planes; i++) {
+               __DRIimage *image = dri2_dpy->image->fromPlanar(
+                                      linear_copy_display_gpu_image, i, NULL);
+
+               if (!image) {
+                  assert(i == 0);
+                  image = linear_copy_display_gpu_image;
+               }
+
+               buffer_fds[i] = -1;
+               ret = dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_FD,
+                                                 &buffer_fds[i]);
+               ret &= dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_STRIDE,
+                                                  &strides[i]);
+               ret &= dri2_dpy->image->queryImage(image, __DRI_IMAGE_ATTRIB_OFFSET,
+                                                  &offsets[i]);
+
+               if (image != linear_copy_display_gpu_image)
+                  dri2_dpy->image->destroyImage(image);
+
+               if (!ret) {
+                  do {
+                     if (buffer_fds[i] != -1)
+                        close(buffer_fds[i]);
+                  } while (--i >= 0);
+                  dri2_dpy->image->destroyImage(linear_copy_display_gpu_image);
+                  return -1;
+               }
+            }
+
+            /* The linear buffer was created in the display GPU's vram, so we
+             * need to make it visible to render GPU
+             */
+            dri2_surf->back->linear_copy =
+               dri2_dpy->image->createImageFromFds(dri2_dpy->dri_screen,
+                                                   dri2_surf->base.Width,
+                                                   dri2_surf->base.Height,
+                                                   loader_image_format_to_fourcc(
+                                                      linear_dri_image_format),
+                                                   &buffer_fds[0], num_planes,
+                                                   &strides[0],
+                                                   &offsets[0],
+                                                   dri2_surf->back);
+            do {
+               if (buffer_fds[i] != -1)
+                  close(buffer_fds[i]);
+            } while (--i >= 0);
+            dri2_dpy->image->destroyImage(linear_copy_display_gpu_image);
+         }
+      }
+
+      if (!dri2_surf->back->linear_copy) {
+         dri2_surf->back->linear_copy =
+               loader_dri_create_image(dri2_dpy->dri_screen, dri2_dpy->image,
+                                       dri2_surf->base.Width,
+                                       dri2_surf->base.Height,
+                                       linear_dri_image_format,
+                                       use_flags | __DRI_IMAGE_USE_LINEAR,
+                                       &linear_mod, 1, NULL);
+      }
+
       if (dri2_surf->back->linear_copy == NULL)
-          return -1;
+         return -1;
    }
 
    if (dri2_surf->back->dri_image == NULL) {
