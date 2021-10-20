@@ -71,6 +71,8 @@
 #include "vk_instance.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
+#include "vk_sync.h"
+#include "vk_timeline.h"
 #include "vk_util.h"
 #include "vk_command_buffer.h"
 #include "vk_queue.h"
@@ -3245,6 +3247,38 @@ anv_cmd_buffer_alloc_blorp_binding_table(struct anv_cmd_buffer *cmd_buffer,
 void anv_cmd_buffer_dump(struct anv_cmd_buffer *cmd_buffer);
 
 void anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer);
+
+enum anv_bo_sync_state {
+   /** Indicates that this is a new (or newly reset fence) */
+   ANV_BO_SYNC_STATE_RESET,
+
+   /** Indicates that this fence has been submitted to the GPU but is still
+    * (as far as we know) in use by the GPU.
+    */
+   ANV_BO_SYNC_STATE_SUBMITTED,
+
+   ANV_BO_SYNC_STATE_SIGNALED,
+};
+
+struct anv_bo_sync {
+   struct vk_sync sync;
+
+   enum anv_bo_sync_state state;
+   struct anv_bo *bo;
+};
+
+extern const struct vk_sync_type anv_bo_sync_type;
+extern const struct vk_timeline_type anv_bo_timeline_type;
+
+static inline bool
+vk_sync_is_anv_bo_sync(const struct vk_sync *sync)
+{
+   return sync->type == &anv_bo_sync_type;
+}
+
+VkResult anv_sync_create_for_bo(struct anv_device *device,
+                                struct anv_bo *bo,
+                                struct vk_sync **sync_out);
 
 enum anv_fence_type {
    ANV_FENCE_TYPE_NONE = 0,
