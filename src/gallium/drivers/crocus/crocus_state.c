@@ -5540,11 +5540,11 @@ crocus_update_surface_base_address(struct crocus_batch *batch)
        */
       sba.GeneralStateMOCS            = mocs;
       sba.StatelessDataPortAccessMOCS = mocs;
-#if GFX_VER == 8
       sba.DynamicStateMOCS            = mocs;
       sba.IndirectObjectMOCS          = mocs;
       sba.InstructionMOCS             = mocs;
       sba.SurfaceStateMOCS            = mocs;
+#if GFX_VER == 8
       sba.GeneralStateBufferSize   = 0xfffff;
       sba.IndirectObjectBufferSize = 0xfffff;
       sba.InstructionBufferSize    = 0xfffff;
