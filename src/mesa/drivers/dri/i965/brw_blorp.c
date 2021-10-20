@@ -535,8 +535,14 @@ brw_blorp_copy_buffers(struct brw_context *brw,
        __func__, size, src_bo, src_offset, dst_bo, dst_offset);
 
    struct blorp_batch batch;
-   struct blorp_address src = { .buffer = src_bo, .offset = src_offset };
-   struct blorp_address dst = { .buffer = dst_bo, .offset = dst_offset };
+   struct blorp_address src = {
+      .buffer = src_bo, .offset = src_offset,
+      .mocs = brw_mocs(&brw->isl_dev, src_bo),
+   };
+   struct blorp_address dst = {
+      .buffer = dst_bo, .offset = dst_offset,
+      .mocs = brw_mocs(&brw->isl_dev, dst_bo),
+   };
 
    blorp_batch_init(&brw->blorp, &batch, brw, 0);
    blorp_buffer_copy(&batch, src, dst, size);
