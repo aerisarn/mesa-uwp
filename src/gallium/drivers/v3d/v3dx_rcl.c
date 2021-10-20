@@ -491,10 +491,88 @@ v3d_rcl_emit_generic_per_tile_list(struct v3d_job *job, int layer)
         }
 }
 
+#if V3D_VERSION > 33
+/* Note that for v71, render target cfg packets has just one field that
+ * combined the internal type and clamp mode. For simplicity we keep just one
+ * helper.
+ *
+ * Note: rt_type is in fact a "enum V3DX(Internal_Type)".
+ *
+ */
+static uint32_t
+v3dX(clamp_for_format_and_type)(uint32_t rt_type,
+                                enum pipe_format format)
+{
+#if V3D_VERSION >= 40 && V3D_VERSION <= 42
+        if (util_format_is_srgb(format)) {
+                return V3D_RENDER_TARGET_CLAMP_NORM;
+#if V3D_VERSION >= 42
+        } else if (util_format_is_pure_integer(format)) {
+                return V3D_RENDER_TARGET_CLAMP_INT;
+#endif
+        } else {
+                return V3D_RENDER_TARGET_CLAMP_NONE;
+        }
+#endif
+#if V3D_VERSION >= 71
+        switch (rt_type) {
+        case V3D_INTERNAL_TYPE_8I:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_8I_CLAMPED;
+        case V3D_INTERNAL_TYPE_8UI:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_8UI_CLAMPED;
+        case V3D_INTERNAL_TYPE_8:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_8;
+        case V3D_INTERNAL_TYPE_16I:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_16I_CLAMPED;
+        case V3D_INTERNAL_TYPE_16UI:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_16UI_CLAMPED;
+        case V3D_INTERNAL_TYPE_16F:
+                return util_format_is_srgb(format) ?
+                        V3D_RENDER_TARGET_TYPE_CLAMP_16F_CLAMP_NORM :
+                        V3D_RENDER_TARGET_TYPE_CLAMP_16F;
+        case V3D_INTERNAL_TYPE_32I:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_32I_CLAMPED;
+        case V3D_INTERNAL_TYPE_32UI:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_32UI_CLAMPED;
+        case V3D_INTERNAL_TYPE_32F:
+                return V3D_RENDER_TARGET_TYPE_CLAMP_32F;
+        default:
+                unreachable("Unknown internal render target type");
+        }
+        return V3D_RENDER_TARGET_TYPE_CLAMP_INVALID;
+#endif
+        return 0;
+}
+#endif
+
+#if V3D_VERSION >= 71
+static void
+v3d_setup_render_target(struct v3d_job *job,
+                        int cbuf,
+                        uint32_t *rt_bpp,
+                        uint32_t *rt_type_clamp)
+{
+        if (!job->cbufs[cbuf])
+                return;
+
+        struct v3d_surface *surf = v3d_surface(job->cbufs[cbuf]);
+        *rt_bpp = surf->internal_bpp;
+        if (job->bbuf) {
+           struct v3d_surface *bsurf = v3d_surface(job->bbuf);
+           *rt_bpp = MAX2(*rt_bpp, bsurf->internal_bpp);
+        }
+        *rt_type_clamp = v3dX(clamp_for_format_and_type)(surf->internal_type,
+                                                         surf->base.format);
+}
+#endif
+
 #if V3D_VERSION >= 40 && V3D_VERSION <= 42
 static void
-v3d_setup_render_target(struct v3d_job *job, int cbuf,
-                        uint32_t *rt_bpp, uint32_t *rt_type, uint32_t *rt_clamp)
+v3d_setup_render_target(struct v3d_job *job,
+                        int cbuf,
+                        uint32_t *rt_bpp,
+                        uint32_t *rt_type,
+                        uint32_t *rt_clamp)
 {
         if (!job->cbufs[cbuf])
                 return;
@@ -506,14 +584,8 @@ v3d_setup_render_target(struct v3d_job *job, int cbuf,
            *rt_bpp = MAX2(*rt_bpp, bsurf->internal_bpp);
         }
         *rt_type = surf->internal_type;
-        if (util_format_is_srgb(surf->base.format))
-                *rt_clamp = V3D_RENDER_TARGET_CLAMP_NORM;
-#if V3D_VERSION >= 42
-        else if (util_format_is_pure_integer(surf->base.format))
-                *rt_clamp = V3D_RENDER_TARGET_CLAMP_INT;
-#endif
-        else
-                *rt_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
+        *rt_clamp = v3dX(clamp_for_format_and_type)(surf->internal_type,
+                                                    surf->base.format);
 }
 #endif
 
@@ -803,10 +875,30 @@ v3dX(emit_rcl)(struct v3d_job *job)
 
         }
 
+#if V3D_VERSION >= 71
+        uint32_t base_addr = 0;
+
+        /* If we don't have any color RTs, we sill need to emit one and flag
+         * it as not used using stride = 1
+         */
+        if (job->nr_cbufs == 0) {
+           cl_emit(&job->rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART1, rt) {
+              rt.stride = 1; /* Unused */
+           }
+        }
+#endif
         for (int i = 0; i < job->nr_cbufs; i++) {
                 struct pipe_surface *psurf = job->cbufs[i];
-                if (!psurf)
+                if (!psurf) {
+#if V3D_VERSION >= 71
+                        cl_emit(&job->rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART1, rt) {
+                                rt.render_target_number = i;
+                                rt.stride = 1; /* Unused */
+                        }
+#endif
                         continue;
+                }
+
                 struct v3d_surface *surf = v3d_surface(psurf);
                 struct v3d_resource *rsc = v3d_resource(psurf->texture);
 
@@ -874,6 +966,20 @@ v3dX(emit_rcl)(struct v3d_job *job)
                         };
                 }
 #endif
+#if V3D_VERSION >= 71
+                cl_emit(&job->rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART1, rt) {
+                        rt.clear_color_low_bits = job->clear_color[i][0];
+                        v3d_setup_render_target(job, i, &rt.internal_bpp,
+                                                &rt.internal_type_and_clamping);
+                        rt.stride =
+                                v3d_compute_rt_row_row_stride_128_bits(job->tile_width,
+                                                                       v3d_internal_bpp_words(rt.internal_bpp));
+                        rt.base_address = base_addr;
+                        rt.render_target_number = i;
+
+                        base_addr += (job->tile_height * rt.stride) / 8;
+                }
+#endif
         }
 
 #if V3D_VERSION >= 40 && V3D_VERSION <= 42
@@ -895,10 +1001,6 @@ v3dX(emit_rcl)(struct v3d_job *job)
                                         &rt.render_target_3_internal_type,
                                         &rt.render_target_3_clamp);
         }
-#endif
-
-#if V3D_VERSION >= 71
-        unreachable("HW generation 71 not supported yet.");
 #endif
 
 #if V3D_VERSION < 40
