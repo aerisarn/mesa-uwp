@@ -675,6 +675,8 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       return true;
    }
    case nir_intrinsic_load_shared:
+      b->cursor = nir_before_instr(instr);
+      nir_instr_rewrite_src_ssa(instr, &intr->src[0], nir_udiv_imm(b, intr->src[0].ssa, nir_dest_bit_size(intr->dest) / 8));
       /* if 64bit isn't supported, 64bit loads definitely aren't supported, so rewrite as 2x32 with cast and pray */
       if (nir_dest_bit_size(intr->dest) == 64 && !has_int64) {
          /* this is always scalarized */
@@ -691,6 +693,10 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
    case nir_intrinsic_store_ssbo:
       b->cursor = nir_before_instr(instr);
       nir_instr_rewrite_src_ssa(instr, &intr->src[2], nir_udiv_imm(b, intr->src[2].ssa, MIN2(nir_src_bit_size(intr->src[0]), 32) / 8));
+      return true;
+   case nir_intrinsic_store_shared:
+      b->cursor = nir_before_instr(instr);
+      nir_instr_rewrite_src_ssa(instr, &intr->src[1], nir_udiv_imm(b, intr->src[1].ssa, MIN2(nir_src_bit_size(intr->src[0]), 32) / 8));
       return true;
    default:
       break;

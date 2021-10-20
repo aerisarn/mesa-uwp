@@ -2179,7 +2179,7 @@ emit_load_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                SpvStorageClassWorkgroup,
                                                uint_type);
-   SpvId offset = emit_binop(ctx, SpvOpUDiv, uint_type, get_src(ctx, &intr->src[0]), emit_uint_const(ctx, 32, 4));
+   SpvId offset = get_src(ctx, &intr->src[0]);
    SpvId constituents[NIR_MAX_VEC_COMPONENTS];
    /* need to convert array -> vec */
    for (unsigned i = 0; i < num_components; i++) {
@@ -2209,7 +2209,7 @@ emit_store_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                SpvStorageClassWorkgroup,
                                                uint_type);
-   SpvId offset = emit_binop(ctx, SpvOpUDiv, uint_type, get_src(ctx, &intr->src[1]), emit_uint_const(ctx, 32, 4));
+   SpvId offset = get_src(ctx, &intr->src[1]);
 
    for (unsigned i = 0; num_writes; i++) {
       if ((wrmask >> i) & 1) {
