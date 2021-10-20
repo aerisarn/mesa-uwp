@@ -347,6 +347,15 @@ get_glsl_basetype(struct ntv_context *ctx, enum glsl_base_type type)
 
    case GLSL_TYPE_UINT64:
       return spirv_builder_type_uint(&ctx->builder, 64);
+
+   case GLSL_TYPE_UINT16:
+      return spirv_builder_type_uint(&ctx->builder, 16);
+   case GLSL_TYPE_INT16:
+      return spirv_builder_type_int(&ctx->builder, 16);
+   case GLSL_TYPE_INT8:
+      return spirv_builder_type_int(&ctx->builder, 8);
+   case GLSL_TYPE_UINT8:
+      return spirv_builder_type_uint(&ctx->builder, 8);
    /* TODO: handle more types */
 
    default:
