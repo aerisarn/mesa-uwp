@@ -3100,10 +3100,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    }
 
    if (radv_thread_trace_enabled()) {
-      fprintf(stderr, "*************************************************\n");
-      fprintf(stderr, "* WARNING: Thread trace support is experimental *\n");
-      fprintf(stderr, "*************************************************\n");
-
       if (device->physical_device->rad_info.chip_class < GFX8 ||
           device->physical_device->rad_info.chip_class > GFX10_3) {
          fprintf(stderr, "GPU hardware not supported: refer to "
@@ -3114,6 +3110,11 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
       if (!radv_thread_trace_init(device))
          goto fail;
+
+      fprintf(stderr, "radv: Thread trace support is enabled (initial buffer size: %u MiB, "
+                      "instruction timing: %s).\n",
+              device->thread_trace.buffer_size / (1024 * 1024),
+              radv_is_instruction_timing_enabled() ? "enabled" : "disabled");
    }
 
    if (getenv("RADV_TRAP_HANDLER")) {
