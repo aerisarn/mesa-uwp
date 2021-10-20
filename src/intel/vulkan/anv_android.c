@@ -845,7 +845,7 @@ anv_AcquireImageANDROID(
          .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
          .fd = semaphore_fd,
       };
-      result = anv_ImportSemaphoreFdKHR(device_h, &info);
+      result = vk_common_ImportSemaphoreFdKHR(device_h, &info);
       if (result == VK_SUCCESS)
          semaphore_fd = -1; /* ANV took ownership */
    }
@@ -858,7 +858,7 @@ anv_AcquireImageANDROID(
          .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
          .fd = fence_fd,
       };
-      result = anv_ImportFenceFdKHR(device_h, &info);
+      result = vk_common_ImportFenceFdKHR(device_h, &info);
       if (result == VK_SUCCESS)
          fence_fd = -1; /* ANV took ownership */
    }

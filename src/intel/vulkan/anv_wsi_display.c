@@ -22,6 +22,7 @@
 
 #include "anv_private.h"
 #include "wsi_common.h"
+#include "vk_fence.h"
 #include "vk_util.h"
 #include "wsi_common_display.h"
 
@@ -34,26 +35,27 @@ anv_RegisterDeviceEventEXT(VkDevice _device,
                             VkFence *_fence)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_fence *fence;
+   struct vk_fence *fence;
    VkResult ret;
 
-   fence = vk_object_zalloc(&device->vk, allocator, sizeof (*fence),
-                            VK_OBJECT_TYPE_FENCE);
-   if (!fence)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   fence->permanent.type = ANV_FENCE_TYPE_WSI;
+   const VkFenceCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .flags = 0,
+   };
+   ret = vk_fence_create(&device->vk, &info, allocator, &fence);
+   if (ret != VK_SUCCESS)
+      return ret;
 
    ret = wsi_register_device_event(_device,
                                    &device->physical->wsi_device,
                                    device_event_info,
                                    allocator,
-                                   &fence->permanent.sync_wsi,
+                                   &fence->temporary,
                                    -1);
    if (ret == VK_SUCCESS)
-      *_fence = anv_fence_to_handle(fence);
+      *_fence = vk_fence_to_handle(fence);
    else
-      vk_free2(&device->vk.alloc, allocator, fence);
+      vk_fence_destroy(&device->vk, fence, allocator);
    return ret;
 }
 
@@ -65,23 +67,24 @@ anv_RegisterDisplayEventEXT(VkDevice _device,
                              VkFence *_fence)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_fence *fence;
+   struct vk_fence *fence;
    VkResult ret;
 
-   fence = vk_object_zalloc(&device->vk, allocator, sizeof (*fence),
-                            VK_OBJECT_TYPE_FENCE);
-   if (!fence)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   fence->permanent.type = ANV_FENCE_TYPE_WSI;
+   const VkFenceCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .flags = 0,
+   };
+   ret = vk_fence_create(&device->vk, &info, allocator, &fence);
+   if (ret != VK_SUCCESS)
+      return ret;
 
    ret = wsi_register_display_event(
       _device, &device->physical->wsi_device,
-      display, display_event_info, allocator, &fence->permanent.sync_wsi, -1);
+      display, display_event_info, allocator, &fence->temporary, -1);
 
    if (ret == VK_SUCCESS)
-      *_fence = anv_fence_to_handle(fence);
+      *_fence = vk_fence_to_handle(fence);
    else
-      vk_free2(&device->vk.alloc, allocator, fence);
+      vk_fence_destroy(&device->vk, fence, allocator);
    return ret;
 }

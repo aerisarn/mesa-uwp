@@ -211,7 +211,6 @@ const struct vk_sync_type anv_bo_sync_type = {
    .reset = anv_bo_sync_reset,
    .wait_many = anv_bo_sync_wait,
 };
-VK_DECL_TIMELINE_TYPE(anv_bo_timeline_type, &anv_bo_sync_type);
 
 VkResult
 anv_sync_create_for_bo(struct anv_device *device,

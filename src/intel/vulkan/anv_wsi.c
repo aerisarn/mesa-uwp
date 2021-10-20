@@ -24,6 +24,9 @@
 #include "anv_private.h"
 #include "anv_measure.h"
 #include "wsi_common.h"
+#include "vk_fence.h"
+#include "vk_queue.h"
+#include "vk_semaphore.h"
 #include "vk_util.h"
 
 static PFN_vkVoidFunction
@@ -39,19 +42,19 @@ anv_wsi_signal_semaphore_for_memory(VkDevice _device,
                                     VkDeviceMemory _memory)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_semaphore, semaphore, _semaphore);
+   VK_FROM_HANDLE(vk_semaphore, semaphore, _semaphore);
    ANV_FROM_HANDLE(anv_device_memory, memory, _memory);
+   ASSERTED VkResult result;
 
    /* Put a BO semaphore with the image BO in the temporary.  For BO binary
     * semaphores, we always set EXEC_OBJECT_WRITE so this creates a WaR
     * hazard with the display engine's read to ensure that no one writes to
     * the image before the read is complete.
     */
-   anv_semaphore_reset_temporary(device, semaphore);
+   vk_semaphore_reset_temporary(&device->vk, semaphore);
 
-   struct anv_semaphore_impl *impl = &semaphore->temporary;
-   impl->type = ANV_SEMAPHORE_TYPE_WSI_BO;
-   impl->bo = anv_bo_ref(memory->bo);
+   result = anv_sync_create_for_bo(device, memory->bo, &semaphore->temporary);
+   assert(result == VK_SUCCESS);
 }
 
 static void
@@ -60,19 +63,18 @@ anv_wsi_signal_fence_for_memory(VkDevice _device,
                                 VkDeviceMemory _memory)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_fence, fence, _fence);
+   VK_FROM_HANDLE(vk_fence, fence, _fence);
    ANV_FROM_HANDLE(anv_device_memory, memory, _memory);
+   ASSERTED VkResult result;
 
    /* Put a BO fence with the image BO in the temporary.  For BO fences, we
     * always just wait until the BO isn't busy and reads from the BO should
     * count as busy.
     */
-   anv_fence_reset_temporary(device, fence);
+   vk_fence_reset_temporary(&device->vk, fence);
 
-   struct anv_fence_impl *impl = &fence->temporary;
-   impl->type = ANV_FENCE_TYPE_WSI_BO;
-   impl->bo.bo = anv_bo_ref(memory->bo);
-   impl->bo.state = ANV_BO_FENCE_STATE_SUBMITTED;
+   result = anv_sync_create_for_bo(device, memory->bo, &fence->temporary);
+   assert(result == VK_SUCCESS);
 }
 
 VkResult
@@ -118,6 +120,7 @@ VkResult anv_QueuePresentKHR(
 {
    ANV_FROM_HANDLE(anv_queue, queue, _queue);
    struct anv_device *device = queue->device;
+   VkResult result;
 
    if (device->debug_frame_desc) {
       device->debug_frame_desc->frame_id++;
@@ -127,64 +130,24 @@ VkResult anv_QueuePresentKHR(
       }
    }
 
-   if (device->has_thread_submit &&
-       pPresentInfo->waitSemaphoreCount > 0) {
-      /* Make sure all of the dependency semaphores have materialized when
-       * using a threaded submission.
-       */
-      VK_MULTIALLOC(ma);
-      VK_MULTIALLOC_DECL(&ma, uint64_t, values,
-                              pPresentInfo->waitSemaphoreCount);
-      VK_MULTIALLOC_DECL(&ma, uint32_t, syncobjs,
-                              pPresentInfo->waitSemaphoreCount);
+   result = vk_queue_wait_before_present(&queue->vk, pPresentInfo);
+   if (result != VK_SUCCESS)
+      return result;
 
-      if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
-                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
-         return vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      uint32_t wait_count = 0;
-      for (uint32_t i = 0; i < pPresentInfo->waitSemaphoreCount; i++) {
-         ANV_FROM_HANDLE(anv_semaphore, semaphore, pPresentInfo->pWaitSemaphores[i]);
-         struct anv_semaphore_impl *impl =
-            semaphore->temporary.type != ANV_SEMAPHORE_TYPE_NONE ?
-            &semaphore->temporary : &semaphore->permanent;
-
-         assert(impl->type == ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ);
-         syncobjs[wait_count] = impl->syncobj;
-         values[wait_count] = 0;
-         wait_count++;
-      }
-
-      int ret = 0;
-      if (wait_count > 0) {
-         ret =
-            anv_gem_syncobj_timeline_wait(device,
-                                          syncobjs, values, wait_count,
-                                          anv_get_absolute_timeout(INT64_MAX),
-                                          true /* wait_all */,
-                                          true /* wait_materialize */);
-      }
-
-      vk_free(&device->vk.alloc, values);
-
-      if (ret)
-         return vk_error(queue, VK_ERROR_DEVICE_LOST);
-   }
-
-   VkResult result = wsi_common_queue_present(&device->physical->wsi_device,
-                                              anv_device_to_handle(queue->device),
-                                              _queue, 0,
-                                              pPresentInfo);
+   result = wsi_common_queue_present(&device->physical->wsi_device,
+                                     anv_device_to_handle(queue->device),
+                                     _queue, 0,
+                                     pPresentInfo);
 
    for (uint32_t i = 0; i < pPresentInfo->waitSemaphoreCount; i++) {
-      ANV_FROM_HANDLE(anv_semaphore, semaphore, pPresentInfo->pWaitSemaphores[i]);
+      VK_FROM_HANDLE(vk_semaphore, semaphore, pPresentInfo->pWaitSemaphores[i]);
       /* From the Vulkan 1.0.53 spec:
        *
        *    "If the import is temporary, the implementation must restore the
        *    semaphore to its prior permanent state after submitting the next
        *    semaphore wait operation."
        */
-      anv_semaphore_reset_temporary(queue->device, semaphore);
+      vk_semaphore_reset_temporary(&queue->device->vk, semaphore);
    }
 
    return result;
