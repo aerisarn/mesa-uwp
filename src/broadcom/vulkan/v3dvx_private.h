@@ -339,3 +339,8 @@ v3dX(clamp_for_format_and_type)(uint32_t rt_type,
 uint32_t
 v3dX(clamp_for_format_and_type)(uint32_t rt_type,
                                 VkFormat vk_format);
+
+void
+v3dX(viewport_compute_xform)(const VkViewport *viewport,
+                             float scale[3],
+                             float translate[3]);

@@ -2132,39 +2132,6 @@ v3dv_CmdBindPipeline(VkCommandBuffer commandBuffer,
    }
 }
 
-/* FIXME: C&P from radv. tu has similar code. Perhaps common place? */
-void
-v3dv_viewport_compute_xform(const VkViewport *viewport,
-                            float scale[3],
-                            float translate[3])
-{
-   float x = viewport->x;
-   float y = viewport->y;
-   float half_width = 0.5f * viewport->width;
-   float half_height = 0.5f * viewport->height;
-   double n = viewport->minDepth;
-   double f = viewport->maxDepth;
-
-   scale[0] = half_width;
-   translate[0] = half_width + x;
-   scale[1] = half_height;
-   translate[1] = half_height + y;
-
-   scale[2] = (f - n);
-   translate[2] = n;
-
-   /* It seems that if the scale is small enough the hardware won't clip
-    * correctly so we work around this my choosing the smallest scale that
-    * seems to work.
-    *
-    * This case is exercised by CTS:
-    * dEQP-VK.draw.inverted_depth_ranges.nodepthclamp_deltazero
-    */
-   const float min_abs_scale = 0.000009f;
-   if (fabs(scale[2]) < min_abs_scale)
-      scale[2] = scale[2] < 0 ? -min_abs_scale : min_abs_scale;
-}
-
 /* Considers the pipeline's negative_one_to_one state and applies it to the
  * current viewport transform if needed to produce the resulting Z translate
  * and scale parameters.
@@ -2217,9 +2184,10 @@ v3dv_CmdSetViewport(VkCommandBuffer commandBuffer,
           viewportCount * sizeof(*pViewports));
 
    for (uint32_t i = firstViewport; i < total_count; i++) {
-      v3dv_viewport_compute_xform(&state->dynamic.viewport.viewports[i],
-                                  state->dynamic.viewport.scale[i],
-                                  state->dynamic.viewport.translate[i]);
+      v3dv_X(cmd_buffer->device, viewport_compute_xform)
+         (&state->dynamic.viewport.viewports[i],
+          state->dynamic.viewport.scale[i],
+          state->dynamic.viewport.translate[i]);
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VIEWPORT;

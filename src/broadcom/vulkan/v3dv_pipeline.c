@@ -2686,9 +2686,10 @@ pipeline_init_dynamic_state(
                       pViewportState->viewportCount);
 
          for (uint32_t i = 0; i < dynamic->viewport.count; i++) {
-            v3dv_viewport_compute_xform(&dynamic->viewport.viewports[i],
-                                        dynamic->viewport.scale[i],
-                                        dynamic->viewport.translate[i]);
+            v3dv_X(pipeline->device, viewport_compute_xform)
+               (&dynamic->viewport.viewports[i],
+                dynamic->viewport.scale[i],
+                dynamic->viewport.translate[i]);
          }
       }
 

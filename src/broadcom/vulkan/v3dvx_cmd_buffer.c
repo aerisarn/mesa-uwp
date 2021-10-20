@@ -1286,6 +1286,43 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 void
+v3dX(viewport_compute_xform)(const VkViewport *viewport,
+                            float scale[3],
+                            float translate[3])
+{
+   float x = viewport->x;
+   float y = viewport->y;
+   float half_width = 0.5f * viewport->width;
+   float half_height = 0.5f * viewport->height;
+   double n = viewport->minDepth;
+   double f = viewport->maxDepth;
+
+   scale[0] = half_width;
+   translate[0] = half_width + x;
+   scale[1] = half_height;
+   translate[1] = half_height + y;
+
+   scale[2] = (f - n);
+   translate[2] = n;
+
+   /* It seems that if the scale is small enough the hardware won't clip
+    * correctly so we work around this my choosing the smallest scale that
+    * seems to work.
+    *
+    * This case is exercised by CTS:
+    * dEQP-VK.draw.renderpass.inverted_depth_ranges.nodepthclamp_deltazero
+    *
+    * V3D 7.x fixes this by using the new
+    * CLIPPER_Z_SCALE_AND_OFFSET_NO_GUARDBAND.
+    */
+#if V3D_VERSION <= 42
+   const float min_abs_scale = 0.0005f;
+   if (fabs(scale[2]) < min_abs_scale)
+      scale[2] = scale[2] < 0 ? -min_abs_scale : min_abs_scale;
+#endif
+}
+
+void
 v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
