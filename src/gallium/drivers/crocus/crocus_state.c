@@ -7820,10 +7820,12 @@ crocus_upload_render_state(struct crocus_context *ice,
             ib.IndexFormat = draw->index_size >> 1;
             ib.BufferStartingAddress = ro_bo(bo, offset);
 #if GFX_VER >= 8
-            ib.MOCS = crocus_mocs(bo, &batch->screen->isl_dev);
             ib.BufferSize = bo->size - offset;
 #else
             ib.BufferEndingAddress = ro_bo(bo, offset + size - 1);
+#endif
+#if GFX_VER >= 6
+            ib.MOCS = crocus_mocs(bo, &batch->screen->isl_dev);
 #endif
          }
          ice->state.index_buffer.size = size;
