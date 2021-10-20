@@ -3703,6 +3703,7 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
          sob.SOBufferIndex = i;
 
          sob.SurfaceBaseAddress = rw_bo(bo, start);
+         sob.MOCS = brw_mocs(&brw->isl_dev, bo);
 #if GFX_VER < 8
          sob.SurfacePitch = linked_xfb_info->Buffers[i].Stride * 4;
          sob.SurfaceEndAddress = rw_bo(bo, end);
@@ -3710,7 +3711,6 @@ genX(upload_3dstate_so_buffers)(struct brw_context *brw)
          sob.SOBufferEnable = true;
          sob.StreamOffsetWriteEnable = true;
          sob.StreamOutputBufferOffsetAddressEnable = true;
-         sob.MOCS = brw_mocs(&brw->isl_dev, bo);
 
          sob.SurfaceSize = MAX2(xfb_obj->Size[i] / 4, 1) - 1;
          sob.StreamOutputBufferOffsetAddress =
