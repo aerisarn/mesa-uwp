@@ -877,6 +877,12 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
 
    iris_bo_unmap(res->bo);
 
+   if (res->aux.surf.size_B > 0) {
+      res->aux.bo = res->bo;
+      iris_bo_reference(res->aux.bo);
+      map_aux_addresses(screen, res, res->surf.format, 0);
+   }
+
    if (iris_get_aux_clear_color_state_size(screen) > 0) {
       res->aux.clear_color_bo = res->bo;
       iris_bo_reference(res->aux.clear_color_bo);
@@ -1112,12 +1118,6 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (res->aux.usage != ISL_AUX_USAGE_NONE &&
        !iris_resource_init_aux_buf(screen, res))
       goto fail;
-
-   if (res->aux.surf.size_B > 0) {
-      res->aux.bo = res->bo;
-      iris_bo_reference(res->aux.bo);
-      map_aux_addresses(screen, res, res->surf.format, 0);
-   }
 
    if (templ->bind & PIPE_BIND_SHARED) {
       iris_bo_mark_exported(res->bo);
