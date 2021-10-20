@@ -29,6 +29,8 @@
 
 #include "anv_private.h"
 
+#include "util/os_time.h"
+
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
@@ -415,9 +417,9 @@ static VkResult
 wait_for_available(struct anv_device *device,
                    struct anv_query_pool *pool, uint32_t query)
 {
-   uint64_t abs_timeout = anv_get_absolute_timeout(2 * NSEC_PER_SEC);
+   uint64_t abs_timeout_ns = os_time_get_absolute_timeout(2 * NSEC_PER_SEC);
 
-   while (anv_gettime_ns() < abs_timeout) {
+   while (os_time_get_nano() < abs_timeout_ns) {
       if (query_is_available(pool, query))
          return VK_SUCCESS;
       VkResult status = vk_device_check_status(&device->vk);
