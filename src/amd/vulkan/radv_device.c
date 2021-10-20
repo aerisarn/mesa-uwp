@@ -31,7 +31,11 @@
 
 #ifdef __FreeBSD__
 #include <sys/types.h>
-#elif !defined(_WIN32)
+#endif
+#ifdef MAJOR_IN_MKDEV
+#include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
 #include <sys/sysmacros.h>
 #endif
 
