@@ -3082,19 +3082,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->tess_offchip_block_dw_size =
       device->physical_device->rad_info.family == CHIP_HAWAII ? 4096 : 8192;
 
-   if (getenv("RADV_TRACE_FILE")) {
-      fprintf(
-         stderr,
-         "***********************************************************************************\n");
-      fprintf(
-         stderr,
-         "* WARNING: RADV_TRACE_FILE=<file> is deprecated and replaced by RADV_DEBUG=hang *\n");
-      fprintf(
-         stderr,
-         "***********************************************************************************\n");
-      abort();
-   }
-
    if (device->instance->debug_flags & RADV_DEBUG_HANG) {
       /* Enable GPU hangs detection and dump logs if a GPU hang is
        * detected.
