@@ -689,6 +689,9 @@ rewrite_bo_access_instr(nir_builder *b, nir_instr *instr, void *data)
       }
       break;
    case nir_intrinsic_store_ssbo:
+      b->cursor = nir_before_instr(instr);
+      nir_instr_rewrite_src_ssa(instr, &intr->src[2], nir_udiv_imm(b, intr->src[2].ssa, MIN2(nir_src_bit_size(intr->src[0]), 32) / 8));
+      return true;
    default:
       break;
    }

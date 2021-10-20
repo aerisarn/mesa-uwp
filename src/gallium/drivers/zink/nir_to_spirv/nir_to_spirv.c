@@ -2023,8 +2023,6 @@ emit_store_ssbo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    /* we need to grab 2x32 to fill the 64bit value */
    bool is_64bit = bit_size == 64;
 
-   /* an id of an array member in bytes */
-   SpvId uint_size = emit_uint_const(ctx, 32, MIN2(bit_size, 32) / 8);
    /* we grab a single array member at a time, so it's a pointer to a uint */
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassStorageBuffer,
@@ -2046,8 +2044,6 @@ emit_store_ssbo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
     * it may be a const value or it may be dynamic in the shader
     */
    SpvId offset = get_src(ctx, &intr->src[2]);
-   /* calculate byte offset */
-   SpvId vec_offset = emit_binop(ctx, SpvOpUDiv, uint_type, offset, uint_size);
 
    SpvId value = get_src(ctx, &intr->src[0]);
    /* OpAccessChain takes an array of indices that drill into a hierarchy based on the type:
@@ -2071,8 +2067,8 @@ emit_store_ssbo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
             component_split = emit_bitcast(ctx, get_uvec_type(ctx, 32, 2), component);
          for (unsigned j = 0; j < 1 + !!is_64bit; j++) {
             if (j)
-               vec_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_offset, one);
-            SpvId indices[] = { member, vec_offset };
+               offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
+            SpvId indices[] = { member, offset };
             SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
                                                          bo, indices,
                                                          ARRAY_SIZE(indices));
@@ -2086,10 +2082,10 @@ emit_store_ssbo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
          write_count++;
       } else if (is_64bit)
          /* we're doing 32bit stores here, so we need to increment correctly here */
-         vec_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_offset, one);
+         offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
 
       /* increment to the next vec4 member index for the next store */
-      vec_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_offset, one);
+      offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
    }
 }
 
