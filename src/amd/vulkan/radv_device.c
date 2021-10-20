@@ -3234,7 +3234,6 @@ fail_meta:
    radv_device_finish_meta(device);
 fail:
    radv_thread_trace_finish(device);
-   free(device->thread_trace.trigger_file);
 
    radv_trap_handler_finish(device);
    radv_finish_trace(device);
@@ -3303,7 +3302,6 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    u_cnd_monotonic_destroy(&device->timeline_cond);
 
-   free(device->thread_trace.trigger_file);
    radv_thread_trace_finish(device);
 
    vk_device_finish(&device->vk);

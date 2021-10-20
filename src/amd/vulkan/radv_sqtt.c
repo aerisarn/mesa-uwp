@@ -466,6 +466,8 @@ radv_thread_trace_finish(struct radv_device *device)
    struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
    struct radeon_winsys *ws = device->ws;
 
+   free(device->thread_trace.trigger_file);
+
    radv_thread_trace_finish_bo(device);
 
    for (unsigned i = 0; i < 2; i++) {
