@@ -24,8 +24,9 @@
 #include "util/format/u_format.h"
 #include "util/macros.h"
 #include "v3d_context.h"
-#include "broadcom/common/v3d_tiling.h"
 #include "broadcom/common/v3d_macros.h"
+#include "broadcom/common/v3d_tiling.h"
+#include "broadcom/common/v3d_util.h"
 #include "broadcom/cle/v3dx_pack.h"
 
 #define PIPE_CLEAR_COLOR_BUFFERS (PIPE_CLEAR_COLOR0 |                   \
@@ -789,7 +790,15 @@ v3dX(emit_rcl)(struct v3d_job *job)
                 config.maximum_bpp_of_all_render_targets = job->internal_bpp;
 #endif
 #if V3D_VERSION >= 71
-                unreachable("HW generation 71 not supported yet.");
+                config.log2_tile_width = log2_tile_size(job->tile_width);
+                config.log2_tile_height = log2_tile_size(job->tile_height);
+
+                /* FIXME: ideallly we would like next assert on the packet header (as is
+                 * general, so also applies to GL). We would need to expand
+                 * gen_pack_header for that.
+                 */
+                assert(config.log2_tile_width == config.log2_tile_height ||
+                       config.log2_tile_width == config.log2_tile_height + 1);
 #endif
 
         }
