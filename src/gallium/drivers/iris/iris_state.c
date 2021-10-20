@@ -2004,38 +2004,20 @@ struct iris_sampler_state {
    bool needs_border_color;
 
    uint32_t sampler_state[GENX(SAMPLER_STATE_length)];
+
+#if GFX_VERx10 == 125
+   /* Sampler state structure to use for 3D textures in order to
+    * implement Wa_14014414195.
+    */
+   uint32_t sampler_state_3d[GENX(SAMPLER_STATE_length)];
+#endif
 };
 
-/**
- * The pipe->create_sampler_state() driver hook.
- *
- * We fill out SAMPLER_STATE (except for the border color pointer), and
- * store that on the CPU.  It doesn't make sense to upload it to a GPU
- * buffer object yet, because 3DSTATE_SAMPLER_STATE_POINTERS requires
- * all bound sampler states to be in contiguous memor.
- */
-static void *
-iris_create_sampler_state(struct pipe_context *ctx,
-                          const struct pipe_sampler_state *state)
+static void
+fill_sampler_state(uint32_t *sampler_state,
+                   const struct pipe_sampler_state *state,
+                   unsigned max_anisotropy)
 {
-   struct iris_sampler_state *cso = CALLOC_STRUCT(iris_sampler_state);
-
-   if (!cso)
-      return NULL;
-
-   STATIC_ASSERT(PIPE_TEX_FILTER_NEAREST == MAPFILTER_NEAREST);
-   STATIC_ASSERT(PIPE_TEX_FILTER_LINEAR == MAPFILTER_LINEAR);
-
-   unsigned wrap_s = translate_wrap(state->wrap_s);
-   unsigned wrap_t = translate_wrap(state->wrap_t);
-   unsigned wrap_r = translate_wrap(state->wrap_r);
-
-   memcpy(&cso->border_color, &state->border_color, sizeof(cso->border_color));
-
-   cso->needs_border_color = wrap_mode_needs_border_color(wrap_s) ||
-                             wrap_mode_needs_border_color(wrap_t) ||
-                             wrap_mode_needs_border_color(wrap_r);
-
    float min_lod = state->min_lod;
    unsigned mag_img_filter = state->mag_img_filter;
 
@@ -2046,10 +2028,10 @@ iris_create_sampler_state(struct pipe_context *ctx,
       mag_img_filter = state->min_img_filter;
    }
 
-   iris_pack_state(GENX(SAMPLER_STATE), cso->sampler_state, samp) {
-      samp.TCXAddressControlMode = wrap_s;
-      samp.TCYAddressControlMode = wrap_t;
-      samp.TCZAddressControlMode = wrap_r;
+   iris_pack_state(GENX(SAMPLER_STATE), sampler_state, samp) {
+      samp.TCXAddressControlMode = translate_wrap(state->wrap_s);
+      samp.TCYAddressControlMode = translate_wrap(state->wrap_t);
+      samp.TCZAddressControlMode = translate_wrap(state->wrap_r);
       samp.CubeSurfaceControlMode = state->seamless_cube_map;
       samp.NonnormalizedCoordinateEnable = !state->normalized_coords;
       samp.MinModeFilter = state->min_img_filter;
@@ -2057,7 +2039,7 @@ iris_create_sampler_state(struct pipe_context *ctx,
       samp.MipModeFilter = translate_mip_filter(state->min_mip_filter);
       samp.MaximumAnisotropy = RATIO21;
 
-      if (state->max_anisotropy >= 2) {
+      if (max_anisotropy >= 2) {
          if (state->min_img_filter == PIPE_TEX_FILTER_LINEAR) {
             samp.MinModeFilter = MAPFILTER_ANISOTROPIC;
             samp.AnisotropicAlgorithm = EWAApproximation;
@@ -2067,7 +2049,7 @@ iris_create_sampler_state(struct pipe_context *ctx,
             samp.MagModeFilter = MAPFILTER_ANISOTROPIC;
 
          samp.MaximumAnisotropy =
-            MIN2((state->max_anisotropy - 2) / 2, RATIO161);
+            MIN2((max_anisotropy - 2) / 2, RATIO161);
       }
 
       /* Set address rounding bits if not using nearest filtering. */
@@ -2095,6 +2077,48 @@ iris_create_sampler_state(struct pipe_context *ctx,
 
       /* .BorderColorPointer is filled in by iris_bind_sampler_states. */
    }
+}
+
+/**
+ * The pipe->create_sampler_state() driver hook.
+ *
+ * We fill out SAMPLER_STATE (except for the border color pointer), and
+ * store that on the CPU.  It doesn't make sense to upload it to a GPU
+ * buffer object yet, because 3DSTATE_SAMPLER_STATE_POINTERS requires
+ * all bound sampler states to be in contiguous memor.
+ */
+static void *
+iris_create_sampler_state(struct pipe_context *ctx,
+                          const struct pipe_sampler_state *state)
+{
+   UNUSED struct iris_screen *screen = (void *)ctx->screen;
+   UNUSED const struct intel_device_info *devinfo = &screen->devinfo;
+   struct iris_sampler_state *cso = CALLOC_STRUCT(iris_sampler_state);
+
+   if (!cso)
+      return NULL;
+
+   STATIC_ASSERT(PIPE_TEX_FILTER_NEAREST == MAPFILTER_NEAREST);
+   STATIC_ASSERT(PIPE_TEX_FILTER_LINEAR == MAPFILTER_LINEAR);
+
+   unsigned wrap_s = translate_wrap(state->wrap_s);
+   unsigned wrap_t = translate_wrap(state->wrap_t);
+   unsigned wrap_r = translate_wrap(state->wrap_r);
+
+   memcpy(&cso->border_color, &state->border_color, sizeof(cso->border_color));
+
+   cso->needs_border_color = wrap_mode_needs_border_color(wrap_s) ||
+                             wrap_mode_needs_border_color(wrap_t) ||
+                             wrap_mode_needs_border_color(wrap_r);
+
+   fill_sampler_state(cso->sampler_state, state, state->max_anisotropy);
+
+#if GFX_VERx10 == 125
+   /* Fill an extra sampler state structure with anisotropic filtering
+    * disabled used to implement Wa_14014414195.
+    */
+   fill_sampler_state(cso->sampler_state_3d, state, 0);
+#endif
 
    return cso;
 }
@@ -2137,6 +2161,8 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 static void
 iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
 {
+   UNUSED struct iris_screen *screen = (void *) ice->ctx.screen;
+   UNUSED const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    const struct shader_info *info = iris_get_shader_info(ice, stage);
 
@@ -2177,50 +2203,58 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
 
       if (!state) {
          memset(map, 0, 4 * GENX(SAMPLER_STATE_length));
-      } else if (!state->needs_border_color) {
-         memcpy(map, state->sampler_state, 4 * GENX(SAMPLER_STATE_length));
       } else {
-         ice->state.need_border_colors |= 1 << stage;
+         const uint32_t *sampler_state = state->sampler_state;
+#if GFX_VERx10 == 125
+         if (tex && tex->res->base.b.target == PIPE_TEXTURE_3D)
+            sampler_state = state->sampler_state_3d;
+#endif
 
-         /* We may need to swizzle the border color for format faking.
-          * A/LA formats are faked as R/RG with 000R or R00G swizzles.
-          * This means we need to move the border color's A channel into
-          * the R or G channels so that those read swizzles will move it
-          * back into A.
-          */
-         union pipe_color_union *color = &state->border_color;
-         union pipe_color_union tmp;
-         if (tex) {
-            enum pipe_format internal_format = tex->res->internal_format;
+         if (!state->needs_border_color) {
+            memcpy(map, sampler_state, 4 * GENX(SAMPLER_STATE_length));
+         } else {
+            ice->state.need_border_colors |= 1 << stage;
 
-            if (util_format_is_alpha(internal_format)) {
-               unsigned char swz[4] = {
-                  PIPE_SWIZZLE_W, PIPE_SWIZZLE_0,
-                  PIPE_SWIZZLE_0, PIPE_SWIZZLE_0
-               };
-               util_format_apply_color_swizzle(&tmp, color, swz, true);
-               color = &tmp;
-            } else if (util_format_is_luminance_alpha(internal_format) &&
-                       internal_format != PIPE_FORMAT_L8A8_SRGB) {
-               unsigned char swz[4] = {
-                  PIPE_SWIZZLE_X, PIPE_SWIZZLE_W,
-                  PIPE_SWIZZLE_0, PIPE_SWIZZLE_0
-               };
-               util_format_apply_color_swizzle(&tmp, color, swz, true);
-               color = &tmp;
+            /* We may need to swizzle the border color for format faking.
+             * A/LA formats are faked as R/RG with 000R or R00G swizzles.
+             * This means we need to move the border color's A channel into
+             * the R or G channels so that those read swizzles will move it
+             * back into A.
+             */
+            union pipe_color_union *color = &state->border_color;
+            union pipe_color_union tmp;
+            if (tex) {
+               enum pipe_format internal_format = tex->res->internal_format;
+
+               if (util_format_is_alpha(internal_format)) {
+                  unsigned char swz[4] = {
+                     PIPE_SWIZZLE_W, PIPE_SWIZZLE_0,
+                     PIPE_SWIZZLE_0, PIPE_SWIZZLE_0
+                  };
+                  util_format_apply_color_swizzle(&tmp, color, swz, true);
+                  color = &tmp;
+               } else if (util_format_is_luminance_alpha(internal_format) &&
+                          internal_format != PIPE_FORMAT_L8A8_SRGB) {
+                  unsigned char swz[4] = {
+                     PIPE_SWIZZLE_X, PIPE_SWIZZLE_W,
+                     PIPE_SWIZZLE_0, PIPE_SWIZZLE_0
+                  };
+                  util_format_apply_color_swizzle(&tmp, color, swz, true);
+                  color = &tmp;
+               }
             }
+
+            /* Stream out the border color and merge the pointer. */
+            uint32_t offset = iris_upload_border_color(ice, color);
+
+            uint32_t dynamic[GENX(SAMPLER_STATE_length)];
+            iris_pack_state(GENX(SAMPLER_STATE), dynamic, dyns) {
+               dyns.BorderColorPointer = offset;
+            }
+
+            for (uint32_t j = 0; j < GENX(SAMPLER_STATE_length); j++)
+               map[j] = sampler_state[j] | dynamic[j];
          }
-
-         /* Stream out the border color and merge the pointer. */
-         uint32_t offset = iris_upload_border_color(ice, color);
-
-         uint32_t dynamic[GENX(SAMPLER_STATE_length)];
-         iris_pack_state(GENX(SAMPLER_STATE), dynamic, dyns) {
-            dyns.BorderColorPointer = offset;
-         }
-
-         for (uint32_t j = 0; j < GENX(SAMPLER_STATE_length); j++)
-            map[j] = state->sampler_state[j] | dynamic[j];
       }
 
       map += GENX(SAMPLER_STATE_length);
@@ -2850,6 +2884,11 @@ iris_set_shader_images(struct pipe_context *ctx,
    }
 }
 
+UNUSED static bool
+is_sampler_view_3d(const struct iris_sampler_view *view)
+{
+   return view && view->res->base.b.target == PIPE_TEXTURE_3D;
+}
 
 /**
  * The pipe->set_sampler_views() driver hook.
@@ -2863,6 +2902,8 @@ iris_set_sampler_views(struct pipe_context *ctx,
                        struct pipe_sampler_view **views)
 {
    struct iris_context *ice = (struct iris_context *) ctx;
+   UNUSED struct iris_screen *screen = (void *) ctx->screen;
+   UNUSED const struct intel_device_info *devinfo = &screen->devinfo;
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    unsigned i;
@@ -2872,6 +2913,13 @@ iris_set_sampler_views(struct pipe_context *ctx,
 
    for (i = 0; i < count; i++) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
+      struct iris_sampler_view *view = (void *) pview;
+
+#if GFX_VERx10 == 125
+      if (is_sampler_view_3d(shs->textures[start + i]) !=
+          is_sampler_view_3d(view))
+         ice->state.stage_dirty |= IRIS_STAGE_DIRTY_SAMPLER_STATES_VS << stage;
+#endif
 
       if (take_ownership) {
          pipe_sampler_view_reference((struct pipe_sampler_view **)
@@ -2881,7 +2929,6 @@ iris_set_sampler_views(struct pipe_context *ctx,
          pipe_sampler_view_reference((struct pipe_sampler_view **)
                                      &shs->textures[start + i], pview);
       }
-      struct iris_sampler_view *view = (void *) pview;
       if (view) {
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
          view->res->bind_stages |= 1 << stage;
