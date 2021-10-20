@@ -710,6 +710,7 @@ struct brw_context
       void (*emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
                                     struct brw_bo *bo, uint32_t offset,
                                     uint64_t imm);
+      void (*emit_state_base_address)(struct brw_context *brw);
    } vtbl;
 
    struct brw_bufmgr *bufmgr;

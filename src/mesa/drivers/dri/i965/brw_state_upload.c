@@ -683,7 +683,7 @@ brw_upload_pipeline_state(struct brw_context *brw,
    brw_upload_programs(brw, pipeline);
    merge_ctx_state(brw, &state);
 
-   brw_upload_state_base_address(brw);
+   brw->vtbl.emit_state_base_address(brw);
 
    const struct brw_tracked_state *atoms =
       brw_get_pipeline_atoms(brw, pipeline);

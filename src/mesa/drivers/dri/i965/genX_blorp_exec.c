@@ -337,7 +337,7 @@ retry:
    brw_emit_post_sync_nonzero_flush(brw);
 #endif
 
-   brw_upload_state_base_address(brw);
+   brw->vtbl.emit_state_base_address(brw);
 
 #if GFX_VER >= 8
    gfx7_l3_state.emit(brw);

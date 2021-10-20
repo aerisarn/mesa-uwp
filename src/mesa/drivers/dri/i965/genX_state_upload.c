@@ -98,6 +98,162 @@ emit_lri(struct brw_context *brw, uint32_t reg, uint32_t imm)
 #endif
 
 /**
+ * Define the base addresses which some state is referenced from.
+ *
+ * This allows us to avoid having to emit relocations for the objects,
+ * and is actually required for binding table pointers on Gfx6.
+ *
+ * Surface state base address covers binding table pointers and surface state
+ * objects, but not the surfaces that the surface state objects point to.
+ */
+static void
+genX(emit_state_base_address)(struct brw_context *brw)
+{
+   if (brw->batch.state_base_address_emitted)
+      return;
+
+   /* FINISHME: According to section 3.6.1 "STATE_BASE_ADDRESS" of
+    * vol1a of the G45 PRM, MI_FLUSH with the ISC invalidate should be
+    * programmed prior to STATE_BASE_ADDRESS.
+    *
+    * However, given that the instruction SBA (general state base
+    * address) on this chipset is always set to 0 across X and GL,
+    * maybe this isn't required for us in particular.
+    */
+
+   UNUSED uint32_t mocs = brw_mocs(&brw->isl_dev, NULL);
+
+   /* Flush before updating STATE_BASE_ADDRESS */
+#if GFX_VER >= 6
+   const unsigned dc_flush =
+      GFX_VER >= 7 ? PIPE_CONTROL_DATA_CACHE_FLUSH : 0;
+
+   /* Emit a render target cache flush.
+    *
+    * This isn't documented anywhere in the PRM.  However, it seems to be
+    * necessary prior to changing the surface state base adress.  We've
+    * seen issues in Vulkan where we get GPU hangs when using multi-level
+    * command buffers which clear depth, reset state base address, and then
+    * go render stuff.
+    *
+    * Normally, in GL, we would trust the kernel to do sufficient stalls
+    * and flushes prior to executing our batch.  However, it doesn't seem
+    * as if the kernel's flushing is always sufficient and we don't want to
+    * rely on it.
+    *
+    * We make this an end-of-pipe sync instead of a normal flush because we
+    * do not know the current status of the GPU.  On Haswell at least,
+    * having a fast-clear operation in flight at the same time as a normal
+    * rendering operation can cause hangs.  Since the kernel's flushing is
+    * insufficient, we need to ensure that any rendering operations from
+    * other processes are definitely complete before we try to do our own
+    * rendering.  It's a bit of a big hammer but it appears to work.
+    */
+   brw_emit_end_of_pipe_sync(brw,
+                             PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                             PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                             dc_flush);
+#endif
+
+   brw_batch_emit(brw, GENX(STATE_BASE_ADDRESS), sba) {
+      /* Set base addresses */
+      sba.GeneralStateBaseAddressModifyEnable = true;
+
+#if GFX_VER >= 6
+      sba.DynamicStateBaseAddressModifyEnable = true;
+      sba.DynamicStateBaseAddress = ro_bo(brw->batch.state.bo, 0);
+#endif
+
+      sba.SurfaceStateBaseAddressModifyEnable = true;
+      sba.SurfaceStateBaseAddress = ro_bo(brw->batch.state.bo, 0);
+
+      sba.IndirectObjectBaseAddressModifyEnable = true;
+
+#if GFX_VER >= 5
+      sba.InstructionBaseAddressModifyEnable = true;
+      sba.InstructionBaseAddress = ro_bo(brw->cache.bo, 0);
+#endif
+
+      /* Set buffer sizes on Gfx8+ or upper bounds on Gfx4-7 */
+#if GFX_VER >= 8
+      sba.GeneralStateBufferSize   = 0xfffff;
+      sba.IndirectObjectBufferSize = 0xfffff;
+      sba.InstructionBufferSize    = 0xfffff;
+      sba.DynamicStateBufferSize   = MAX_STATE_SIZE;
+
+      sba.GeneralStateBufferSizeModifyEnable    = true;
+      sba.DynamicStateBufferSizeModifyEnable    = true;
+      sba.IndirectObjectBufferSizeModifyEnable  = true;
+      sba.InstructionBuffersizeModifyEnable     = true;
+#else
+      sba.GeneralStateAccessUpperBoundModifyEnable = true;
+      sba.IndirectObjectAccessUpperBoundModifyEnable = true;
+
+#if GFX_VER >= 5
+      sba.InstructionAccessUpperBoundModifyEnable = true;
+#endif
+
+#if GFX_VER >= 6
+      /* Dynamic state upper bound.  Although the documentation says that
+       * programming it to zero will cause it to be ignored, that is a lie.
+       * If this isn't programmed to a real bound, the sampler border color
+       * pointer is rejected, causing border color to mysteriously fail.
+       */
+      sba.DynamicStateAccessUpperBound = ro_bo(NULL, 0xfffff000);
+      sba.DynamicStateAccessUpperBoundModifyEnable = true;
+#else
+      /* Same idea but using General State Base Address on Gfx4-5 */
+      sba.GeneralStateAccessUpperBound = ro_bo(NULL, 0xfffff000);
+#endif
+#endif
+
+#if GFX_VER >= 6
+      /* The hardware appears to pay attention to the MOCS fields even
+       * if you don't set the "Address Modify Enable" bit for the base.
+       */
+      sba.GeneralStateMOCS            = mocs;
+      sba.StatelessDataPortAccessMOCS = mocs;
+      sba.DynamicStateMOCS            = mocs;
+      sba.IndirectObjectMOCS          = mocs;
+      sba.InstructionMOCS             = mocs;
+      sba.SurfaceStateMOCS            = mocs;
+#endif
+   }
+
+   /* Flush after updating STATE_BASE_ADDRESS */
+#if GFX_VER >= 6
+   brw_emit_pipe_control_flush(brw,
+                               PIPE_CONTROL_INSTRUCTION_INVALIDATE |
+                               PIPE_CONTROL_STATE_CACHE_INVALIDATE |
+                               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
+#endif
+
+   /* According to section 3.6.1 of VOL1 of the 965 PRM,
+    * STATE_BASE_ADDRESS updates require a reissue of:
+    *
+    * 3DSTATE_PIPELINE_POINTERS
+    * 3DSTATE_BINDING_TABLE_POINTERS
+    * MEDIA_STATE_POINTERS
+    *
+    * and this continues through Ironlake.  The Sandy Bridge PRM, vol
+    * 1 part 1 says that the folowing packets must be reissued:
+    *
+    * 3DSTATE_CC_POINTERS
+    * 3DSTATE_BINDING_TABLE_POINTERS
+    * 3DSTATE_SAMPLER_STATE_POINTERS
+    * 3DSTATE_VIEWPORT_STATE_POINTERS
+    * MEDIA_STATE_POINTERS
+    *
+    * Those are always reissued following SBA updates anyway (new
+    * batch time), except in the case of the program cache BO
+    * changing.  Having a separate state flag makes the sequence more
+    * obvious.
+    */
+   brw->ctx.NewDriverState |= BRW_NEW_STATE_BASE_ADDRESS;
+   brw->batch.state_base_address_emitted = true;
+}
+
+/**
  * Polygon stipple packet
  */
 static void
@@ -5917,6 +6073,8 @@ genX(init_atoms)(struct brw_context *brw)
    brw->vtbl.emit_mi_report_perf_count = genX(emit_mi_report_perf_count);
    brw->vtbl.emit_compute_walker = genX(emit_gpgpu_walker);
 #endif
+
+   brw->vtbl.emit_state_base_address = genX(emit_state_base_address);
 
    assert(brw->screen->devinfo.verx10 == GFX_VERx10);
 }
