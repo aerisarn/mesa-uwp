@@ -428,7 +428,7 @@ v3d_rcl_emit_stores(struct v3d_job *job, struct v3d_cl *cl, int layer)
                 }
 #endif
 #if V3D_VERSION >= 71
-                unreachable("HW generation 71 not supported yet.");
+                cl_emit(cl, CLEAR_RENDER_TARGETS, clear);
 #endif
 
         }
@@ -735,7 +735,7 @@ emit_render_layer(struct v3d_job *job, uint32_t layer)
                 store.buffer_to_store = NONE;
         }
 #endif
-#if V3D_VERSION >= 40 && V3D_VERSION <= 42
+#if V3D_VERSION >= 40
         for (int i = 0; i < 2; i++) {
                 if (i > 0)
                         cl_emit(&job->rcl, TILE_COORDINATES, coords);
@@ -743,20 +743,20 @@ emit_render_layer(struct v3d_job *job, uint32_t layer)
                 cl_emit(&job->rcl, STORE_TILE_BUFFER_GENERAL, store) {
                         store.buffer_to_store = NONE;
                 }
+
                 if (i == 0 || do_double_initial_tile_clear(job)) {
+#if V3D_VERSION < 71
                         cl_emit(&job->rcl, CLEAR_TILE_BUFFERS, clear) {
                                 clear.clear_z_stencil_buffer = !job->early_zs_clear;
                                 clear.clear_all_render_targets = true;
                         }
+#else
+                        cl_emit(&job->rcl, CLEAR_RENDER_TARGETS, clear);
+#endif
                 }
                 cl_emit(&job->rcl, END_OF_TILE_MARKER, end);
         }
 #endif
-#if V3D_VERSION >= 71
-        unreachable("HW generation 71 not supported yet.");
-#endif
-
-
         cl_emit(&job->rcl, FLUSH_VCD_CACHE, flush);
 
         v3d_rcl_emit_generic_per_tile_list(job, layer);
