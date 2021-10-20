@@ -2161,7 +2161,7 @@ v3dv_viewport_compute_xform(const VkViewport *viewport,
     */
    const float min_abs_scale = 0.000009f;
    if (fabs(scale[2]) < min_abs_scale)
-      scale[2] = min_abs_scale * (scale[2] < 0 ? -1.0f : 1.0f);
+      scale[2] = scale[2] < 0 ? -min_abs_scale : min_abs_scale;
 }
 
 /* Considers the pipeline's negative_one_to_one state and applies it to the
