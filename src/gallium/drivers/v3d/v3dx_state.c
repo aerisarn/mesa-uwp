@@ -1008,12 +1008,12 @@ v3dX(create_texture_shader_state_bo)(struct v3d_context *v3d,
                                                                    cso->u.buf.size);
                 }
 
+                bool is_srgb = util_format_is_srgb(cso->format);
 #if V3D_VERSION <= 42
-                tex.srgb = util_format_is_srgb(cso->format);
+                tex.srgb = is_srgb;
 #endif
-
 #if V3D_VERSION >= 71
-                unreachable("HW generation 71 not supported yet.");
+                tex.transfer_func = is_srgb ? TRANSFER_FUNC_SRGB : TRANSFER_FUNC_NONE;
 #endif
 
 #if V3D_VERSION >= 40
@@ -1066,9 +1066,6 @@ v3dX(create_texture_shader_state_bo)(struct v3d_context *v3d,
                          */
 #if V3D_VERSION <= 42
                         tex.srgb = false;
-#endif
-#if V3D_VERSION >= 71
-                        unreachable("HW generation 71 not supported yet.");
 #endif
 
                 } else {
