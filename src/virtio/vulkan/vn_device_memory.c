@@ -205,9 +205,8 @@ vn_device_memory_should_suballocate(const VkMemoryAllocateInfo *alloc_info,
 
       const struct vn_image *img = vn_image_from_handle(dedicated->image);
       if (img) {
-         for (uint32_t i = 0; i < ARRAY_SIZE(img->dedicated_requirements);
-              i++) {
-            if (img->dedicated_requirements[i].requiresDedicatedAllocation)
+         for (uint32_t i = 0; i < ARRAY_SIZE(img->requirements); i++) {
+            if (img->requirements[i].dedicated.requiresDedicatedAllocation)
                return false;
          }
       }
