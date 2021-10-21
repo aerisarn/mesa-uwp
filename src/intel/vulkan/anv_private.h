@@ -74,6 +74,7 @@
 #include "vk_util.h"
 #include "vk_command_buffer.h"
 #include "vk_queue.h"
+#include "vk_sync.h"
 #include "vk_log.h"
 
 /* Pre-declarations needed for WSI entrypoints */
@@ -3287,7 +3288,7 @@ struct anv_fence_impl {
       uint32_t syncobj;
 
       /** WSI fence */
-      struct wsi_fence *fence_wsi;
+      struct vk_sync *sync_wsi;
    };
 };
 

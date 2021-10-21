@@ -1543,7 +1543,7 @@ anv_fence_impl_cleanup(struct anv_device *device,
       break;
 
    case ANV_FENCE_TYPE_WSI:
-      impl->fence_wsi->destroy(impl->fence_wsi);
+      vk_sync_destroy(&device->vk, impl->sync_wsi);
       break;
 
    default:
@@ -1860,7 +1860,8 @@ anv_wait_for_wsi_fence(struct anv_device *device,
                        struct anv_fence_impl *impl,
                        uint64_t abs_timeout)
 {
-   return impl->fence_wsi->wait(impl->fence_wsi, abs_timeout);
+   return vk_sync_wait(&device->vk, impl->sync_wsi, 0,
+                       VK_SYNC_WAIT_COMPLETE, abs_timeout);
 }
 
 static VkResult
