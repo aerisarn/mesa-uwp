@@ -795,6 +795,10 @@ print_stage(Stage stage, FILE* output)
       fprintf(output, "vertex_geometry_ngg");
    else if (stage == tess_eval_geometry_ngg)
       fprintf(output, "tess_eval_geometry_ngg");
+   else if (stage == mesh_ngg)
+      fprintf(output, "mesh_ngg");
+   else if (stage == task_cs)
+      fprintf(output, "task_cs");
    else
       fprintf(output, "unknown");
 

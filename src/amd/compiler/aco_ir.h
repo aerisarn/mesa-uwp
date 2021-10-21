@@ -1904,7 +1904,7 @@ struct Block {
 /*
  * Shader stages as provided in Vulkan by the application. Contrast this to HWStage.
  */
-enum class SWStage : uint8_t {
+enum class SWStage : uint16_t {
    None = 0,
    VS = 1 << 0,     /* Vertex Shader */
    GS = 1 << 1,     /* Geometry Shader */
@@ -1912,7 +1912,9 @@ enum class SWStage : uint8_t {
    TES = 1 << 3,    /* Tessellation Evaluation aka Domain Shader */
    FS = 1 << 4,     /* Fragment aka Pixel Shader */
    CS = 1 << 5,     /* Compute Shader */
-   GSCopy = 1 << 6, /* GS Copy Shader (internal) */
+   TS = 1 << 6,     /* Task Shader */
+   MS = 1 << 7,     /* Mesh Shader */
+   GSCopy = 1 << 8, /* GS Copy Shader (internal) */
 
    /* Stage combinations merged to run on a single HWStage */
    VS_GS = VS | GS,
@@ -1923,7 +1925,7 @@ enum class SWStage : uint8_t {
 constexpr SWStage
 operator|(SWStage a, SWStage b)
 {
-   return static_cast<SWStage>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+   return static_cast<SWStage>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
 }
 
 /*
@@ -1956,10 +1958,10 @@ struct Stage {
    /* Check if the given SWStage is included */
    constexpr bool has(SWStage stage) const
    {
-      return (static_cast<uint8_t>(sw) & static_cast<uint8_t>(stage));
+      return (static_cast<uint16_t>(sw) & static_cast<uint16_t>(stage));
    }
 
-   unsigned num_sw_stages() const { return util_bitcount(static_cast<uint8_t>(sw)); }
+   unsigned num_sw_stages() const { return util_bitcount(static_cast<uint16_t>(sw)); }
 
    constexpr bool operator==(const Stage& other) const { return sw == other.sw && hw == other.hw; }
 
@@ -1978,6 +1980,9 @@ static constexpr Stage fragment_fs(HWStage::FS, SWStage::FS);
 static constexpr Stage compute_cs(HWStage::CS, SWStage::CS);
 static constexpr Stage tess_eval_vs(HWStage::VS, SWStage::TES);
 static constexpr Stage gs_copy_vs(HWStage::VS, SWStage::GSCopy);
+/* Mesh shading pipeline */
+static constexpr Stage task_cs(HWStage::CS, SWStage::TS);
+static constexpr Stage mesh_ngg(HWStage::NGG, SWStage::MS);
 /* GFX10/NGG */
 static constexpr Stage vertex_ngg(HWStage::NGG, SWStage::VS);
 static constexpr Stage vertex_geometry_ngg(HWStage::NGG, SWStage::VS_GS);
