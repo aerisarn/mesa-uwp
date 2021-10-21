@@ -412,6 +412,9 @@ iris_batch_reset(struct iris_batch *batch)
    create_batch(batch);
    assert(batch->bo->index == 0);
 
+   memset(batch->bos_written, 0,
+          sizeof(BITSET_WORD) * BITSET_WORDS(batch->exec_array_size));
+
    struct iris_syncobj *syncobj = iris_create_syncobj(bufmgr);
    iris_batch_add_syncobj(batch, syncobj, I915_EXEC_FENCE_SIGNAL);
    iris_syncobj_reference(bufmgr, &syncobj, NULL);
