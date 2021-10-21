@@ -577,7 +577,12 @@ v3dX(emit_state)(struct pipe_context *pctx)
                 }
 #endif
 #if V3D_VERSION >= 71
-                unreachable("HW generation 71 not supported yet.");
+                cl_emit(&job->bcl, CLIPPER_XY_SCALING, clip) {
+                        clip.viewport_half_width_in_1_64th_of_pixel =
+                                v3d->viewport.scale[0] * 64.0f;
+                        clip.viewport_half_height_in_1_64th_of_pixel =
+                                v3d->viewport.scale[1] * 64.0f;
+                }
 #endif
 
 
