@@ -336,6 +336,20 @@ v3d_zsa_state_bind(struct pipe_context *pctx, void *hwcso)
         v3d->dirty |= V3D_DIRTY_ZSA;
 }
 
+
+static bool
+needs_default_attribute_values(void)
+{
+#if V3D_VERSION <= 42
+        /* FIXME: on vulkan we are able to refine even further, as we know in
+         * advance when we create the pipeline if we have an integer vertex
+         * attrib. Pending to check if we could do something similar here.
+         */
+        return true;
+#endif
+        return false;
+}
+
 static void *
 v3d_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
                         const struct pipe_vertex_element *elements)
@@ -413,24 +427,29 @@ v3d_vertex_state_create(struct pipe_context *pctx, unsigned num_elements,
                 }
         }
 
-        /* Set up the default attribute values in case any of the vertex
-         * elements use them.
-         */
-        uint32_t *attrs;
-        u_upload_alloc(v3d->state_uploader, 0,
-                       V3D_MAX_VS_INPUTS * sizeof(float), 16,
-                       &so->defaults_offset, &so->defaults, (void **)&attrs);
+        if (needs_default_attribute_values()) {
+                /* Set up the default attribute values in case any of the vertex
+                 * elements use them.
+                 */
+                uint32_t *attrs;
+                u_upload_alloc(v3d->state_uploader, 0,
+                               V3D_MAX_VS_INPUTS * sizeof(float), 16,
+                               &so->defaults_offset, &so->defaults, (void **)&attrs);
 
-        for (int i = 0; i < V3D_MAX_VS_INPUTS / 4; i++) {
-                attrs[i * 4 + 0] = 0;
-                attrs[i * 4 + 1] = 0;
-                attrs[i * 4 + 2] = 0;
-                if (i < so->num_elements &&
-                    util_format_is_pure_integer(so->pipe[i].src_format)) {
-                        attrs[i * 4 + 3] = 1;
-                } else {
-                        attrs[i * 4 + 3] = fui(1.0);
+                for (int i = 0; i < V3D_MAX_VS_INPUTS / 4; i++) {
+                        attrs[i * 4 + 0] = 0;
+                        attrs[i * 4 + 1] = 0;
+                        attrs[i * 4 + 2] = 0;
+                        if (i < so->num_elements &&
+                            util_format_is_pure_integer(so->pipe[i].src_format)) {
+                                attrs[i * 4 + 3] = 1;
+                        } else {
+                                attrs[i * 4 + 3] = fui(1.0);
+                        }
                 }
+        } else {
+                so->defaults = NULL;
+                so->defaults_offset = 0;
         }
 
         u_upload_unmap(v3d->state_uploader);

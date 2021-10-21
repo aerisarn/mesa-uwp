@@ -268,6 +268,7 @@ struct v3d_vertex_stateobj {
         unsigned num_elements;
 
         uint8_t attrs[16 * (V3D_MAX_VS_INPUTS / 4)];
+        /* defaults can be NULL for some hw generation */
         struct pipe_resource *defaults;
         uint32_t defaults_offset;
 };

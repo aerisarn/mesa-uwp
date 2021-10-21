@@ -760,9 +760,6 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         cl_address(v3d_resource(vtx->defaults)->bo,
                                    vtx->defaults_offset);
 #endif
-#if V3D_VERSION >= 71
-                unreachable("HW generation 71 not supported yet.");
-#endif
         }
 
         bool cs_loaded_any = false;
