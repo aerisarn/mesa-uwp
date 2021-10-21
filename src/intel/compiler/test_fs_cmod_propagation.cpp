@@ -251,6 +251,38 @@ TEST_F(cmod_propagation_test, non_cmod_instruction)
    EXPECT_EQ(BRW_CONDITIONAL_GE, instruction(block0, 1)->conditional_mod);
 }
 
+TEST_F(cmod_propagation_test, non_cmod_livechannel)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::uint_type);
+   fs_reg zero(brw_imm_d(0));
+   bld.emit(SHADER_OPCODE_FIND_LIVE_CHANNEL, dest)->exec_size = 32;
+   bld.CMP(bld.null_reg_d(), dest, zero, BRW_CONDITIONAL_Z)->exec_size = 32;
+
+   /* = Before =
+    *
+    * 0: find_live_channel(32) dest
+    * 1: cmp.z.f0.0(32)   null dest 0d
+    *
+    *
+    * = After =
+    * (no changes)
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(SHADER_OPCODE_FIND_LIVE_CHANNEL, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_OPCODE_CMP, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_Z, instruction(block0, 1)->conditional_mod);
+}
+
 TEST_F(cmod_propagation_test, intervening_flag_write)
 {
    const fs_builder &bld = v->bld;

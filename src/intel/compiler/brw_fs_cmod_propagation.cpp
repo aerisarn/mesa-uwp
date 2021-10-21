@@ -135,6 +135,7 @@ cmod_propagate_cmp_to_add(const intel_device_info *devinfo, bblock_t *block,
              ((!read_flag && scan_inst->conditional_mod == BRW_CONDITIONAL_NONE) ||
               scan_inst->conditional_mod == cond)) {
             scan_inst->conditional_mod = cond;
+            scan_inst->flag_subreg = inst->flag_subreg;
             inst->remove(block, true);
             return true;
          }
@@ -203,6 +204,7 @@ cmod_propagate_not(const intel_device_info *devinfo, bblock_t *block,
              ((!read_flag && scan_inst->conditional_mod == BRW_CONDITIONAL_NONE) ||
               scan_inst->conditional_mod == cond)) {
             scan_inst->conditional_mod = cond;
+            scan_inst->flag_subreg = inst->flag_subreg;
             inst->remove(block, true);
             return true;
          }
@@ -458,8 +460,9 @@ opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
                   }
 
                   break;
-               } else if (!read_flag) {
+               } else if (!read_flag && scan_inst->can_do_cmod()) {
                   scan_inst->conditional_mod = inst->conditional_mod;
+                  scan_inst->flag_subreg = inst->flag_subreg;
                   inst->remove(block, true);
                   progress = true;
                   break;
