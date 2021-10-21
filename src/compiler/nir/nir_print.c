@@ -1638,6 +1638,10 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
       fprintf(fp, "output primitive: %s\n", primitive_name(shader->info.gs.output_primitive));
       fprintf(fp, "active_stream_mask: 0x%x\n", shader->info.gs.active_stream_mask);
       fprintf(fp, "uses_end_primitive: %u\n", shader->info.gs.uses_end_primitive);
+   } else if (shader->info.stage == MESA_SHADER_MESH) {
+      fprintf(fp, "output primitive: %s\n", primitive_name(shader->info.mesh.primitive_type));
+      fprintf(fp, "max primitives out: %u\n", shader->info.mesh.max_primitives_out);
+      fprintf(fp, "max vertices out: %u\n", shader->info.mesh.max_vertices_out);
    }
 
    nir_foreach_variable_in_shader(var, shader)
