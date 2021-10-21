@@ -1329,19 +1329,6 @@ gather_var_kind_cb(struct vtn_builder *b, struct vtn_value *val, int member,
    case SpvDecorationPerPrimitiveNV:
       vtn_var->var->data.per_primitive = true;
       break;
-   case SpvDecorationBuiltIn:
-      if (b->shader->info.stage == MESA_SHADER_MESH) {
-         SpvBuiltIn builtin = dec->operands[0];
-         switch (builtin) {
-         case SpvBuiltInPrimitiveIndicesNV:
-            vtn_var->var->data.per_primitive = true;
-            break;
-         default:
-            /* Nothing to do. */
-            break;
-         }
-      }
-      break;
    default:
       /* Nothing to do. */
       break;
