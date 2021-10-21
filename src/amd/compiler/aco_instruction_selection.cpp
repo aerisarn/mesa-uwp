@@ -7934,6 +7934,7 @@ emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
 
 Temp merged_wave_info_to_mask(isel_context* ctx, unsigned i);
 void ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt);
+static void create_primitive_exports(isel_context *ctx, Temp prim_ch1);
 static void create_vs_exports(isel_context* ctx);
 
 Temp
@@ -8955,11 +8956,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       break;
    }
    case nir_intrinsic_export_primitive_amd: {
-      assert(ctx->stage.hw == HWStage::NGG);
-      Temp prim_exp_arg = get_ssa_temp(ctx, instr->src[0].ssa);
-      bld.exp(aco_opcode::exp, prim_exp_arg, Operand(v1), Operand(v1), Operand(v1),
-              1 /* enabled mask */, V_008DFC_SQ_EXP_PRIM /* dest */, false /* compressed */,
-              true /* done */, false /* valid mask */);
+      Temp prim_ch1 = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+      create_primitive_exports(ctx, prim_ch1);
       break;
    }
    case nir_intrinsic_alloc_vertices_and_primitives_amd: {
@@ -10723,7 +10721,8 @@ export_vs_varying(isel_context* ctx, int slot, bool is_pos, int* next_pos)
 }
 
 static void
-export_vs_psiz_layer_viewport_vrs(isel_context* ctx, int* next_pos)
+export_vs_psiz_layer_viewport_vrs(isel_context* ctx, int* next_pos,
+                                  const radv_vs_output_info* outinfo)
 {
    aco_ptr<Export_instruction> exp{
       create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
@@ -10734,11 +10733,11 @@ export_vs_psiz_layer_viewport_vrs(isel_context* ctx, int* next_pos)
       exp->operands[0] = Operand(ctx->outputs.temps[VARYING_SLOT_PSIZ * 4u]);
       exp->enabled_mask |= 0x1;
    }
-   if (ctx->outputs.mask[VARYING_SLOT_LAYER]) {
+   if (ctx->outputs.mask[VARYING_SLOT_LAYER] && !outinfo->writes_layer_per_primitive) {
       exp->operands[2] = Operand(ctx->outputs.temps[VARYING_SLOT_LAYER * 4u]);
       exp->enabled_mask |= 0x4;
    }
-   if (ctx->outputs.mask[VARYING_SLOT_VIEWPORT]) {
+   if (ctx->outputs.mask[VARYING_SLOT_VIEWPORT] && !outinfo->writes_viewport_index_per_primitive) {
       if (ctx->options->chip_class < GFX9) {
          exp->operands[3] = Operand(ctx->outputs.temps[VARYING_SLOT_VIEWPORT * 4u]);
          exp->enabled_mask |= 0x8;
@@ -10814,6 +10813,7 @@ create_vs_exports(isel_context* ctx)
    }
 
    if (ctx->options->key.has_multiview_view_index) {
+      assert(!outinfo->writes_layer_per_primitive);
       ctx->outputs.mask[VARYING_SLOT_LAYER] |= 0x1;
       ctx->outputs.temps[VARYING_SLOT_LAYER * 4u] =
          as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
@@ -10832,7 +10832,7 @@ create_vs_exports(isel_context* ctx)
       outinfo->writes_primitive_shading_rate || ctx->options->force_vrs_rates;
    if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index ||
        writes_primitive_shading_rate) {
-      export_vs_psiz_layer_viewport_vrs(ctx, &next_pos);
+      export_vs_psiz_layer_viewport_vrs(ctx, &next_pos, outinfo);
    }
    if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
       export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, true, &next_pos);
@@ -10849,6 +10849,64 @@ create_vs_exports(isel_context* ctx)
    for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
       if (i < VARYING_SLOT_VAR0 && i != VARYING_SLOT_LAYER && i != VARYING_SLOT_PRIMITIVE_ID &&
           i != VARYING_SLOT_VIEWPORT)
+         continue;
+      if (ctx->shader && ctx->shader->info.per_primitive_outputs & BITFIELD64_BIT(i))
+         continue;
+
+      export_vs_varying(ctx, i, false, NULL);
+   }
+}
+
+static void
+create_primitive_exports(isel_context *ctx, Temp prim_ch1)
+{
+   assert(ctx->stage.hw == HWStage::NGG);
+   const radv_vs_output_info* outinfo =
+      ctx->stage.has(SWStage::GS) ? &ctx->program->info->vs.outinfo :
+      ctx->stage.has(SWStage::TES) ? &ctx->program->info->tes.outinfo :
+      ctx->stage.has(SWStage::MS) ? &ctx->program->info->ms.outinfo :
+      &ctx->program->info->vs.outinfo;
+
+   Builder bld(ctx->program, ctx->block);
+
+   /* Use zeroes if the shader doesn't write these but they are needed by eg. PS. */
+   if (outinfo->writes_layer_per_primitive && !ctx->outputs.mask[VARYING_SLOT_LAYER])
+      ctx->outputs.temps[VARYING_SLOT_LAYER * 4u] = bld.copy(bld.def(v1), Operand::c32(0));
+   if (outinfo->writes_viewport_index_per_primitive && !ctx->outputs.mask[VARYING_SLOT_VIEWPORT])
+      ctx->outputs.temps[VARYING_SLOT_VIEWPORT * 4u] = bld.copy(bld.def(v1), Operand::c32(0));
+   if (outinfo->export_prim_id_per_primitive && !ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID])
+      ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = bld.copy(bld.def(v1), Operand::c32(0));
+
+   /* When layer, viewport etc. are per-primitive, they need to be encoded in
+    * the primitive export instruction's second channel. The encoding is:
+    * bits 31..30: VRS rate Y
+    * bits 29..28: VRS rate X
+    * bits 23..20: viewport
+    * bits 19..17: layer
+    */
+   Temp ch2 = bld.copy(bld.def(v1), Operand::c32(0));
+   uint en_mask = 1;
+
+   if (outinfo->writes_layer_per_primitive) {
+      en_mask |= 2;
+      Temp tmp = ctx->outputs.temps[VARYING_SLOT_LAYER * 4u];
+      ch2 = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), tmp, Operand::c32(17), ch2);
+   }
+   if (outinfo->writes_viewport_index_per_primitive) {
+      en_mask |= 2;
+      Temp tmp = ctx->outputs.temps[VARYING_SLOT_VIEWPORT * 4u];
+      ch2 = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), tmp, Operand::c32(20), ch2);
+   }
+
+   Operand prim_ch2 = (en_mask & 2) ? Operand(ch2) : Operand(v1);
+
+   bld.exp(aco_opcode::exp, prim_ch1, prim_ch2, Operand(v1), Operand(v1),
+           en_mask /* enabled mask */, V_008DFC_SQ_EXP_PRIM /* dest */, false /* compressed */,
+           true /* done */, false /* valid mask */);
+
+   /* Export generic per-primitive attributes. */
+   for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
+      if (!(ctx->shader->info.per_primitive_outputs & BITFIELD64_BIT(i)))
          continue;
 
       export_vs_varying(ctx, i, false, NULL);
