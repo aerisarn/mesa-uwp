@@ -4423,6 +4423,9 @@ iris_store_tes_state(const struct intel_device_info *devinfo,
       ds.ComputeWCoordinateEnable =
          tes_prog_data->domain == BRW_TESS_DOMAIN_TRI;
 
+#if GFX_VER >= 12
+      ds.PrimitiveIDNotRequired = !tes_prog_data->include_primitive_id;
+#endif
       ds.UserClipDistanceCullTestEnableBitmask =
          vue_prog_data->cull_distance_mask;
    }
