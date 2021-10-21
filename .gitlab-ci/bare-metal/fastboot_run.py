@@ -36,6 +36,9 @@ class FastbootRun:
         self.ser = SerialBuffer(args.dev, "results/serial-output.txt", "R SERIAL> ", timeout=600)
         self.fastboot="fastboot boot -s {ser} artifacts/fastboot.img".format(ser=args.fbserial)
 
+    def close(self):
+        self.ser.close()
+
     def print_error(self, message):
         RED = '\033[0;31m'
         NO_COLOR = '\033[0m'
@@ -111,6 +114,7 @@ def main():
 
     while True:
         retval = fastboot.run()
+        fastboot.close()
         if retval != 2:
             break
 

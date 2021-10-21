@@ -39,12 +39,14 @@ class SerialBuffer:
             self.serial = serial.Serial(dev, 115200, timeout=timeout if timeout else 10)
         else:
             self.f = open(filename, "rb")
+            self.serial = None
 
         self.byte_queue = queue.Queue()
         self.line_queue = queue.Queue()
         self.prefix = prefix
         self.timeout = timeout
         self.sentinel = object()
+        self.closing = False
 
         if self.dev:
             self.read_thread = threading.Thread(
@@ -57,6 +59,13 @@ class SerialBuffer:
         self.lines_thread = threading.Thread(
             target=self.serial_lines_thread_loop, daemon=True)
         self.lines_thread.start()
+
+    def close(self):
+        self.closing = True
+        if self.serial:
+            self.serial.close()
+        self.read_thread.join()
+        self.lines_thread.join()
 
     # Thread that just reads the bytes from the serial device to try to keep from
     # buffer overflowing it. If nothing is received in 1 minute, it finalizes.
@@ -83,12 +92,13 @@ class SerialBuffer:
         greet = "Serial thread reading from %s\n" % self.filename
         self.byte_queue.put(greet.encode())
 
-        while True:
+        while not self.closing:
             line = self.f.readline()
             if line:
                 self.byte_queue.put(line)
             else:
                 time.sleep(0.1)
+        self.byte_queue.put(self.sentinel)
 
     # Thread that processes the stream of bytes to 1) log to stdout, 2) log to
     # file, 3) add to the queue of lines to be read by program logic
