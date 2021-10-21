@@ -151,6 +151,7 @@ struct wsi_display_swapchain {
 struct wsi_display_fence {
    struct wsi_fence             base;
    struct list_head             link;
+   struct wsi_display           *wsi;
    bool                         event_received;
    bool                         destroyed;
    uint32_t                     syncobj; /* syncobj to signal on event */
@@ -1511,16 +1512,13 @@ bail:
 static VkResult
 wsi_display_fence_wait(struct wsi_fence *fence_wsi, uint64_t timeout)
 {
-   const struct wsi_device *wsi_device = fence_wsi->wsi_device;
-   struct wsi_display *wsi =
-      (struct wsi_display *) wsi_device->wsi[VK_ICD_WSI_PLATFORM_DISPLAY];
    struct wsi_display_fence *fence = (struct wsi_display_fence *) fence_wsi;
 
    wsi_display_debug("%9lu wait fence %lu %ld\n",
                      pthread_self(), fence->sequence,
                      (int64_t) (timeout - os_time_get_nano()));
    wsi_display_debug_code(uint64_t start_ns = os_time_get_nano());
-   pthread_mutex_lock(&wsi->wait_mutex);
+   pthread_mutex_lock(&fence->wsi->wait_mutex);
 
    VkResult result;
    int ret = 0;
@@ -1540,9 +1538,9 @@ wsi_display_fence_wait(struct wsi_fence *fence_wsi, uint64_t timeout)
       }
 
       if (fence->device_event)
-         ret = wsi_device_wait_for_event(wsi, timeout);
+         ret = wsi_device_wait_for_event(fence->wsi, timeout);
       else
-         ret = wsi_display_wait_for_event(wsi, timeout);
+         ret = wsi_display_wait_for_event(fence->wsi, timeout);
 
       if (ret && ret != ETIMEDOUT) {
          wsi_display_debug("%9lu fence %lu error\n",
@@ -1551,7 +1549,7 @@ wsi_display_fence_wait(struct wsi_fence *fence_wsi, uint64_t timeout)
          break;
       }
    }
-   pthread_mutex_unlock(&wsi->wait_mutex);
+   pthread_mutex_unlock(&fence->wsi->wait_mutex);
    wsi_display_debug("%9lu fence wait %f ms\n",
                      pthread_self(),
                      ((int64_t) (os_time_get_nano() - start_ns)) /
@@ -1563,17 +1561,14 @@ static void
 wsi_display_fence_check_free(struct wsi_display_fence *fence)
 {
    if (fence->event_received && fence->destroyed)
-      vk_free(fence->base.alloc, fence);
+      vk_free(fence->wsi->alloc, fence);
 }
 
 static void wsi_display_fence_event_handler(struct wsi_display_fence *fence)
 {
-   struct wsi_display *wsi =
-      (struct wsi_display *) fence->base.wsi_device->wsi[VK_ICD_WSI_PLATFORM_DISPLAY];
-
    if (fence->syncobj) {
-      (void) drmSyncobjSignal(wsi->syncobj_fd, &fence->syncobj, 1);
-      (void) drmSyncobjDestroy(wsi->syncobj_fd, fence->syncobj);
+      (void) drmSyncobjSignal(fence->wsi->syncobj_fd, &fence->syncobj, 1);
+      (void) drmSyncobjDestroy(fence->wsi->syncobj_fd, fence->syncobj);
    }
 
    fence->event_received = true;
@@ -1585,15 +1580,11 @@ wsi_display_fence_destroy(struct wsi_fence *fence_wsi)
 {
    struct wsi_display_fence *fence = (struct wsi_display_fence *) fence_wsi;
 
-   const struct wsi_device *wsi_device = fence->base.wsi_device;
-   struct wsi_display *wsi =
-      (struct wsi_display *) wsi_device->wsi[VK_ICD_WSI_PLATFORM_DISPLAY];
-
    /* Destroy hotplug fence list. */
    if (fence->device_event) {
-      mtx_lock(&wsi->wait_mutex);
+      mtx_lock(&fence->wsi->wait_mutex);
       list_del(&fence->link);
-      mtx_unlock(&wsi->wait_mutex);
+      mtx_unlock(&fence->wsi->wait_mutex);
       fence->event_received = true;
    }
 
@@ -1603,17 +1594,11 @@ wsi_display_fence_destroy(struct wsi_fence *fence_wsi)
 }
 
 static struct wsi_display_fence *
-wsi_display_fence_alloc(VkDevice device,
-                        const struct wsi_device *wsi_device,
-                        VkDisplayKHR display,
-                        const VkAllocationCallbacks *allocator,
-                        int sync_fd)
+wsi_display_fence_alloc(struct wsi_display *wsi, int sync_fd)
 {
-   struct wsi_display *wsi =
-      (struct wsi_display *) wsi_device->wsi[VK_ICD_WSI_PLATFORM_DISPLAY];
    struct wsi_display_fence *fence =
-      vk_zalloc2(wsi->alloc, allocator, sizeof (*fence),
-                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      vk_zalloc(wsi->alloc, sizeof (*fence),
+               8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 
    if (!fence)
       return NULL;
@@ -1622,17 +1607,14 @@ wsi_display_fence_alloc(VkDevice device,
       int ret = drmSyncobjFDToHandle(wsi->syncobj_fd, sync_fd, &fence->syncobj);
 
       if (ret) {
-         vk_free2(wsi->alloc, allocator, fence);
+         vk_free(wsi->alloc, fence);
          return NULL;
       }
    }
 
-   fence->base.device = device;
-   fence->base.display = display;
-   fence->base.wsi_device = wsi_device;
-   fence->base.alloc = allocator ? allocator : wsi->alloc;
    fence->base.wait = wsi_display_fence_wait;
    fence->base.destroy = wsi_display_fence_destroy;
+   fence->wsi = wsi;
    fence->event_received = false;
    fence->destroyed = false;
    fence->sequence = ++fence_sequence;
@@ -2696,7 +2678,7 @@ wsi_register_device_event(VkDevice device,
    assert(device_event_info->deviceEvent ==
           VK_DEVICE_EVENT_TYPE_DISPLAY_HOTPLUG_EXT);
 
-   fence = wsi_display_fence_alloc(device, wsi_device, 0, allocator, sync_fd);
+   fence = wsi_display_fence_alloc(wsi, sync_fd);
 
    if (!fence)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -2741,7 +2723,7 @@ wsi_register_display_event(VkDevice device,
    switch (display_event_info->displayEvent) {
    case VK_DISPLAY_EVENT_TYPE_FIRST_PIXEL_OUT_EXT:
 
-      fence = wsi_display_fence_alloc(device, wsi_device, display, allocator, sync_fd);
+      fence = wsi_display_fence_alloc(wsi, sync_fd);
 
       if (!fence)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
