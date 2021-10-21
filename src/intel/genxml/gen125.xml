@@ -1772,6 +1772,7 @@
       <value name="SIMD8_SINGLE_PATCH" value="1"/>
       <value name="SIMD8_SINGLE_OR_DUAL_PATCH" value="2"/>
     </field>
+    <field name="Primitive ID Not Required" start="233" end="233" type="bool"/>
     <field name="Statistics Enable" start="234" end="234" type="bool"/>
     <field name="Maximum Number of Threads" start="245" end="254" type="uint"/>
     <field name="User Clip Distance Cull Test Enable Bitmask" start="256" end="263" type="uint"/>
