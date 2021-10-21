@@ -1975,6 +1975,9 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
          tes_prog_data->base.cull_distance_mask;
 #endif
 
+#if GFX_VER >= 12
+      ds.PrimitiveIDNotRequired = !tes_prog_data->include_primitive_id;
+#endif
 #if GFX_VERx10 >= 125
       ds.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, tes_bin);
 #else
