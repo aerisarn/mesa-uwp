@@ -515,20 +515,19 @@ v3dX(emit_state)(struct pipe_context *pctx)
 #if V3D_VERSION <= 42
                         config.early_z_updates_enable =
                                 (job->ez_state != V3D_EZ_DISABLED);
+#endif
                         if (v3d->zsa->base.depth_enabled) {
                                 config.z_updates_enable =
                                         v3d->zsa->base.depth_writemask;
+#if V3D_VERSION <= 42
                                 config.early_z_enable =
                                         config.early_z_updates_enable;
+#endif
                                 config.depth_test_function =
                                         v3d->zsa->base.depth_func;
                         } else {
                                 config.depth_test_function = PIPE_FUNC_ALWAYS;
                         }
-#endif
-#if V3D_VERSION >= 71
-                        unreachable("HW generation 71 not supported yet.");
-#endif
 
                         config.stencil_enable =
                                 v3d->zsa->base.stencil[0].enabled;
