@@ -6562,6 +6562,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
                sob.SOBufferIndex = i;
 
                sob.SurfaceBaseAddress = rw_bo(res->bo, start);
+               sob.MOCS = crocus_mocs(res->bo, &batch->screen->isl_dev);
 #if GFX_VER < 8
                sob.SurfacePitch = tgt->stride;
                sob.SurfaceEndAddress = rw_bo(res->bo, end);
@@ -6569,7 +6570,6 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
                sob.SOBufferEnable = true;
                sob.StreamOffsetWriteEnable = true;
                sob.StreamOutputBufferOffsetAddressEnable = true;
-               sob.MOCS = crocus_mocs(res->bo, &batch->screen->isl_dev);
 
                sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
                sob.StreamOutputBufferOffsetAddress =
