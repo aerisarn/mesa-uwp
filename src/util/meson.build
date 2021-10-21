@@ -295,21 +295,21 @@ if with_tests
   endif
 
   files_util_tests = files(
-    'bitset_test.cpp',
-    'blob_test.cpp',
-    'rb_tree_test.cpp',
-    'roundeven_test.cpp',
-    'register_allocate_test.cpp',
+    'tests/bitset_test.cpp',
+    'tests/blob_test.cpp',
     'tests/dag_test.cpp',
     'tests/fast_idiv_by_const_test.cpp',
     'tests/fast_urem_by_const_test.cpp',
     'tests/int_min_max.cpp',
+    'tests/rb_tree_test.cpp',
+    'tests/register_allocate_test.cpp',
+    'tests/roundeven_test.cpp',
     'tests/set_test.cpp',
     'tests/sparse_array_test.cpp',
+    'tests/u_atomic_test.cpp',
+    'tests/u_debug_stack_test.cpp',
+    'tests/u_qsort_test.cpp',
     'tests/vector_test.cpp',
-    'u_atomic_test.cpp',
-    'u_debug_stack_test.cpp',
-    'u_qsort_test.cpp',
   )
 
   if not (host_machine.system() == 'windows' and cc.get_id() == 'gcc')
@@ -328,7 +328,7 @@ if with_tests
   # FIXME: this test crashes on windows
   if host_machine.system() != 'windows'
     files_util_tests += files(
-      'mesa-sha1_test.cpp',
+      'tests/mesa-sha1_test.cpp',
     )
   endif
 
@@ -347,7 +347,7 @@ if with_tests
 
   process_test_exe = executable(
     'process_test',
-    files('process_test.c'),
+    files('tests/process_test.c'),
     include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
     dependencies : idep_mesautil,
     c_args : [c_msvc_compat_args],
