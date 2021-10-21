@@ -2652,7 +2652,8 @@ is_output(nir_intrinsic_instr *intrin)
 static bool is_dual_slot(nir_intrinsic_instr *intrin)
 {
    if (intrin->intrinsic == nir_intrinsic_store_output ||
-       intrin->intrinsic == nir_intrinsic_store_per_vertex_output) {
+       intrin->intrinsic == nir_intrinsic_store_per_vertex_output ||
+       intrin->intrinsic == nir_intrinsic_store_per_primitive_output) {
       return nir_src_bit_size(intrin->src[0]) == 64 &&
              nir_src_num_components(intrin->src[0]) >= 3;
    }
