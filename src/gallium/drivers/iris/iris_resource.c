@@ -831,18 +831,15 @@ iris_resource_configure_aux(struct iris_screen *screen,
    case ISL_AUX_USAGE_GFX12_CCS_E:
    case ISL_AUX_USAGE_STC_CCS:
    case ISL_AUX_USAGE_MC:
-      /* When CCS_E is used, we need to ensure that the CCS starts off in
-       * a valid state.  From the Sky Lake PRM, "MCS Buffer for Render
-       * Target(s)":
+      /* When CCS is used, we need to ensure that it starts off in a valid
+       * state. From the Sky Lake PRM, "MCS Buffer for Render Target(s)":
        *
        *    "If Software wants to enable Color Compression without Fast
        *     clear, Software needs to initialize MCS with zeros."
        *
-       * A CCS value of 0 indicates that the corresponding block is in the
-       * pass-through state which is what we want.
-       *
-       * For CCS_D, do the same thing.  On Gfx9+, this avoids having any
-       * undefined bits in the aux buffer.
+       * A CCS surface initialized to zero is in the pass-through state. This
+       * state can avoid the need to ambiguate in some cases. We'll map and
+       * zero the CCS later on in iris_resource_init_aux_buf.
        */
       if (imported) {
          assert(res->aux.usage != ISL_AUX_USAGE_STC_CCS);
