@@ -679,17 +679,24 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         v3d->prog.cs->prog_data.vs->separate_segments;
                 shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
                         v3d->prog.vs->prog_data.vs->separate_segments;
-#endif
-#if V3D_VERSION >= 71
-                unreachable("HW generation 71 not supported yet.");
-#endif
-
                 shader.coordinate_shader_input_vpm_segment_size =
                         v3d->prog.cs->prog_data.vs->separate_segments ?
                         v3d->prog.cs->prog_data.vs->vpm_input_size : 1;
                 shader.vertex_shader_input_vpm_segment_size =
                         v3d->prog.vs->prog_data.vs->separate_segments ?
                         v3d->prog.vs->prog_data.vs->vpm_input_size : 1;
+#endif
+                /* On V3D 7.1 there isn't a specific flag to set if we are using
+                 * shared/separate segments or not. We just set the value of
+                 * vpm_input_size to 0, and set output to the max needed. That should be
+                 * already properly set on prog_data_vs_bin
+                 */
+#if V3D_VERSION == 71
+                shader.coordinate_shader_input_vpm_segment_size =
+                        v3d->prog.cs->prog_data.vs->vpm_input_size;
+                shader.vertex_shader_input_vpm_segment_size =
+                        v3d->prog.vs->prog_data.vs->vpm_input_size;
+#endif
 
                 shader.coordinate_shader_output_vpm_segment_size =
                         v3d->prog.cs->prog_data.vs->vpm_output_size;
