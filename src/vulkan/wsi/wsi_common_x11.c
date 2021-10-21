@@ -39,6 +39,7 @@
 #include <xf86drm.h>
 #include "drm-uapi/drm_fourcc.h"
 #include "util/hash_table.h"
+#include "util/os_time.h"
 #include "util/u_debug.h"
 #include "util/u_thread.h"
 #include "util/xmlconfig.h"
@@ -1050,7 +1051,7 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
 
 static uint64_t wsi_get_absolute_timeout(uint64_t timeout)
 {
-   uint64_t current_time = wsi_common_get_current_time();
+   uint64_t current_time = os_time_get_nano();
 
    timeout = MIN2(UINT64_MAX - current_time, timeout);
 
@@ -1101,7 +1102,7 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
             /* If a non-special event happens, the fd will still
              * poll. So recalculate the timeout now just in case.
              */
-            uint64_t current_time = wsi_common_get_current_time();
+            uint64_t current_time = os_time_get_nano();
             if (atimeout > current_time)
                timeout = atimeout - current_time;
             else

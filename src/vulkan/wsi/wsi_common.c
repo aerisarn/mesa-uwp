@@ -25,7 +25,6 @@
 #include "wsi_common_entrypoints.h"
 #include "util/macros.h"
 #include "util/os_file.h"
-#include "util/os_time.h"
 #include "util/xmlconfig.h"
 #include "vk_device.h"
 #include "vk_instance.h"
@@ -800,12 +799,6 @@ wsi_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
                                    _queue,
                                    queue->queue_family_index,
                                    pPresentInfo);
-}
-
-uint64_t
-wsi_common_get_current_time(void)
-{
-   return os_time_get_nano();
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

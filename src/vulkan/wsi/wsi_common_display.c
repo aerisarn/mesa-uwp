@@ -43,6 +43,7 @@
 #endif
 #include "util/hash_table.h"
 #include "util/list.h"
+#include "util/os_time.h"
 
 #include "vk_device.h"
 #include "vk_instance.h"
@@ -190,7 +191,7 @@ wsi_display_mode_refresh(struct wsi_display_mode *wsi)
 
 static uint64_t wsi_rel_to_abs_time(uint64_t rel_time)
 {
-   uint64_t current_time = wsi_common_get_current_time();
+   uint64_t current_time = os_time_get_nano();
 
    /* check for overflow */
    if (rel_time > UINT64_MAX - current_time)
@@ -1517,8 +1518,8 @@ wsi_display_fence_wait(struct wsi_fence *fence_wsi, uint64_t timeout)
 
    wsi_display_debug("%9lu wait fence %lu %ld\n",
                      pthread_self(), fence->sequence,
-                     (int64_t) (timeout - wsi_common_get_current_time()));
-   wsi_display_debug_code(uint64_t start_ns = wsi_common_get_current_time());
+                     (int64_t) (timeout - os_time_get_nano()));
+   wsi_display_debug_code(uint64_t start_ns = os_time_get_nano());
    pthread_mutex_lock(&wsi->wait_mutex);
 
    VkResult result;
@@ -1553,7 +1554,7 @@ wsi_display_fence_wait(struct wsi_fence *fence_wsi, uint64_t timeout)
    pthread_mutex_unlock(&wsi->wait_mutex);
    wsi_display_debug("%9lu fence wait %f ms\n",
                      pthread_self(),
-                     ((int64_t) (wsi_common_get_current_time() - start_ns)) /
+                     ((int64_t) (os_time_get_nano() - start_ns)) /
                      1.0e6);
    return result;
 }
