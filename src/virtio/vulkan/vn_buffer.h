@@ -13,11 +13,15 @@
 
 #include "vn_common.h"
 
+struct vn_buffer_memory_requirements {
+   VkMemoryRequirements2 memory;
+   VkMemoryDedicatedRequirements dedicated;
+};
+
 struct vn_buffer {
    struct vn_object_base base;
 
-   VkMemoryRequirements2 memory_requirements;
-   VkMemoryDedicatedRequirements dedicated_requirements;
+   struct vn_buffer_memory_requirements requirements;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_buffer,
                                base.base,

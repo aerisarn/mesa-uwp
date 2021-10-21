@@ -213,7 +213,7 @@ vn_device_memory_should_suballocate(const VkMemoryAllocateInfo *alloc_info,
       }
 
       const struct vn_buffer *buf = vn_buffer_from_handle(dedicated->buffer);
-      if (buf && buf->dedicated_requirements.requiresDedicatedAllocation)
+      if (buf && buf->requirements.dedicated.requiresDedicatedAllocation)
          return false;
    }
 

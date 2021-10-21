@@ -1237,10 +1237,10 @@ vn_android_buffer_from_ahb(struct vn_device *dev,
     * queried type bits from both buffer memory requirement and dma_buf fd
     * properties.
     */
-   (*out_buf)->memory_requirements.memoryRequirements.memoryTypeBits &=
+   (*out_buf)->requirements.memory.memoryRequirements.memoryTypeBits &=
       dev->ahb_buffer_memory_type_bits;
 
-   assert((*out_buf)->memory_requirements.memoryRequirements.memoryTypeBits);
+   assert((*out_buf)->requirements.memory.memoryRequirements.memoryTypeBits);
 
    return VK_SUCCESS;
 }

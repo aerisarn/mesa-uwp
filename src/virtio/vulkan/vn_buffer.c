@@ -33,11 +33,11 @@ vn_buffer_init(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
-   buf->memory_requirements.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-   buf->memory_requirements.pNext = &buf->dedicated_requirements;
-   buf->dedicated_requirements.sType =
+   buf->requirements.memory.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+   buf->requirements.memory.pNext = &buf->requirements.dedicated;
+   buf->requirements.dedicated.sType =
       VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-   buf->dedicated_requirements.pNext = NULL;
+   buf->requirements.dedicated.pNext = NULL;
 
    vn_call_vkGetBufferMemoryRequirements2(
       dev->instance, dev_handle,
@@ -45,7 +45,7 @@ vn_buffer_init(struct vn_device *dev,
          .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
          .buffer = buf_handle,
       },
-      &buf->memory_requirements);
+      &buf->requirements.memory);
 
    return VK_SUCCESS;
 }
@@ -156,7 +156,7 @@ vn_GetBufferMemoryRequirements(VkDevice device,
 {
    const struct vn_buffer *buf = vn_buffer_from_handle(buffer);
 
-   *pMemoryRequirements = buf->memory_requirements.memoryRequirements;
+   *pMemoryRequirements = buf->requirements.memory.memoryRequirements;
 }
 
 void
@@ -175,13 +175,13 @@ vn_GetBufferMemoryRequirements2(VkDevice device,
       switch (u.pnext->sType) {
       case VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2:
          u.two->memoryRequirements =
-            buf->memory_requirements.memoryRequirements;
+            buf->requirements.memory.memoryRequirements;
          break;
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS:
          u.dedicated->prefersDedicatedAllocation =
-            buf->dedicated_requirements.prefersDedicatedAllocation;
+            buf->requirements.dedicated.prefersDedicatedAllocation;
          u.dedicated->requiresDedicatedAllocation =
-            buf->dedicated_requirements.requiresDedicatedAllocation;
+            buf->requirements.dedicated.requiresDedicatedAllocation;
          break;
       default:
          break;
