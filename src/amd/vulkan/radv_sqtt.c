@@ -32,7 +32,7 @@
 bool
 radv_is_instruction_timing_enabled(void)
 {
-   return getenv("RADV_THREAD_TRACE_PIPELINE");
+   return debug_get_bool_option("RADV_THREAD_TRACE_INSTRUCTION_TIMING", true);
 }
 
 static bool
