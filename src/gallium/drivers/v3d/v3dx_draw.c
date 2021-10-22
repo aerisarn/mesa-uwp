@@ -1593,9 +1593,10 @@ v3d_tlb_clear(struct v3d_job *job, unsigned buffers,
         /* GFXH-1461: If we were to emit a load of just depth or just stencil,
          * then the clear for the other may get lost.  We need to decide now
          * if it would be possible to need to emit a load of just one after
-         * we've set up our TLB clears.
+         * we've set up our TLB clears. This issue is fixed since V3D 4.3.18.
          */
-        if (buffers & PIPE_CLEAR_DEPTHSTENCIL &&
+        if (v3d->screen->devinfo.ver <= 42 &&
+            buffers & PIPE_CLEAR_DEPTHSTENCIL &&
             (buffers & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL &&
             job->zsbuf &&
             util_format_is_depth_and_stencil(job->zsbuf->texture->format)) {
