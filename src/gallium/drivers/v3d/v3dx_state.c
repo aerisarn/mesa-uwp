@@ -935,17 +935,26 @@ v3d_setup_texture_shader_state(struct V3DX(TEXTURE_SHADER_STATE) *tex,
         }
 
         tex->base_level = base_level;
+
 #if V3D_VERSION >= 40
         tex->max_level = last_level;
         /* Note that we don't have a job to reference the texture's sBO
          * at state create time, so any time this sampler view is used
          * we need to add the texture to the job.
          */
-        tex->texture_base_pointer =
-                cl_address(NULL,
-                           rsc->bo->offset +
-                           v3d_layer_offset(prsc, 0, first_layer));
+        const uint32_t base_offset = rsc->bo->offset +
+                v3d_layer_offset(prsc, 0, first_layer);
+
+        tex->texture_base_pointer = cl_address(NULL, base_offset);
 #endif
+#if V3D_VERSION >= 71
+        tex->chroma_offset_x = 1;
+        tex->chroma_offset_y = 1;
+        /* See comment in XML field definition for rationale of the shifts */
+        tex->texture_base_pointer_cb = base_offset >> 6;
+        tex->texture_base_pointer_cr = base_offset >> 6;
+#endif
+
         tex->array_stride_64_byte_aligned = rsc->cube_map_stride / 64;
 
         /* Since other platform devices may produce UIF images even
