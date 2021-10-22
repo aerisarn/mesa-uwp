@@ -36,8 +36,7 @@
 /* FENCES */
 
 static struct pipe_fence_handle *
-amdgpu_fence_create(struct amdgpu_ctx *ctx, unsigned ip_type,
-                    unsigned ip_instance, unsigned ring)
+amdgpu_fence_create(struct amdgpu_ctx *ctx, unsigned ip_type)
 {
    struct amdgpu_fence *fence = CALLOC_STRUCT(amdgpu_fence);
 
@@ -46,8 +45,6 @@ amdgpu_fence_create(struct amdgpu_ctx *ctx, unsigned ip_type,
    fence->ctx = ctx;
    fence->fence.context = ctx->ctx;
    fence->fence.ip_type = ip_type;
-   fence->fence.ip_instance = ip_instance;
-   fence->fence.ring = ring;
    util_queue_fence_init(&fence->submitted);
    util_queue_fence_reset(&fence->submitted);
    p_atomic_inc(&ctx->refcount);
@@ -266,9 +263,7 @@ amdgpu_cs_get_next_fence(struct radeon_cmdbuf *rcs)
    }
 
    fence = amdgpu_fence_create(cs->ctx,
-                               cs->csc->ib[IB_MAIN].ip_type,
-                               cs->csc->ib[IB_MAIN].ip_instance,
-                               cs->csc->ib[IB_MAIN].ring);
+                               cs->csc->ib[IB_MAIN].ip_type);
    if (!fence)
       return NULL;
 
@@ -1203,9 +1198,7 @@ static bool is_noop_fence_dependency(struct amdgpu_cs *acs,
         acs->ws->info.num_rings[acs->ring_type] == 1) &&
        !amdgpu_fence_is_syncobj(fence) &&
        fence->ctx == acs->ctx &&
-       fence->fence.ip_type == cs->ib[IB_MAIN].ip_type &&
-       fence->fence.ip_instance == cs->ib[IB_MAIN].ip_instance &&
-       fence->fence.ring == cs->ib[IB_MAIN].ring)
+       fence->fence.ip_type == cs->ib[IB_MAIN].ip_type)
       return true;
 
    return amdgpu_fence_wait((void *)fence, 0, false);
@@ -1715,9 +1708,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
          cs->next_fence = NULL;
       } else {
          cur->fence = amdgpu_fence_create(cs->ctx,
-                                          cur->ib[IB_MAIN].ip_type,
-                                          cur->ib[IB_MAIN].ip_instance,
-                                          cur->ib[IB_MAIN].ring);
+                                          cur->ib[IB_MAIN].ip_type);
       }
       if (fence)
          amdgpu_fence_reference(fence, cur->fence);
