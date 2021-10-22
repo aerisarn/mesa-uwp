@@ -143,48 +143,41 @@ enum radeon_value_id
 };
 
 /* Each group of two has the same priority. */
-#define RADEON_PRIO_FENCE (1 << 0)
-#define RADEON_PRIO_TRACE (1 << 1)
+#define RADEON_PRIO_FENCE_TRACE (1 << 0)
+#define RADEON_PRIO_SO_FILLED_SIZE (1 << 1)
 
-#define RADEON_PRIO_SO_FILLED_SIZE (1 << 2)
-#define RADEON_PRIO_QUERY (1 << 3)
+#define RADEON_PRIO_QUERY (1 << 2)
+#define RADEON_PRIO_IB (1 << 3)
 
-#define RADEON_PRIO_IB1 (1 << 4) /* main IB submitted to the kernel */
-#define RADEON_PRIO_IB2 (1 << 5)     /* IB executed with INDIRECT_BUFFER */
+#define RADEON_PRIO_DRAW_INDIRECT (1 << 4)
+#define RADEON_PRIO_INDEX_BUFFER (1 << 5)
 
-#define RADEON_PRIO_DRAW_INDIRECT (1 << 6)
-#define RADEON_PRIO_INDEX_BUFFER (1 << 7)
+#define RADEON_PRIO_CP_DMA (1 << 6)
+#define RADEON_PRIO_BORDER_COLORS (1 << 7)
 
-#define RADEON_PRIO_CP_DMA (1 << 8)
-#define RADEON_PRIO_BORDER_COLORS (1 << 9)
+#define RADEON_PRIO_CONST_BUFFER (1 << 8)
+#define RADEON_PRIO_DESCRIPTORS (1 << 9)
 
-#define RADEON_PRIO_CONST_BUFFER (1 << 10)
-#define RADEON_PRIO_DESCRIPTORS (1 << 11)
+#define RADEON_PRIO_SAMPLER_BUFFER (1 << 10)
+#define RADEON_PRIO_VERTEX_BUFFER (1 << 11)
 
-#define RADEON_PRIO_SAMPLER_BUFFER (1 << 12)
-#define RADEON_PRIO_VERTEX_BUFFER (1 << 13)
+#define RADEON_PRIO_SHADER_RW_BUFFER (1 << 12)
+#define RADEON_PRIO_SAMPLER_TEXTURE (1 << 13)
 
-#define RADEON_PRIO_SHADER_RW_BUFFER (1 << 14)
-#define RADEON_PRIO_COMPUTE_GLOBAL (1 << 15)
+#define RADEON_PRIO_SHADER_RW_IMAGE (1 << 14)
+#define RADEON_PRIO_SAMPLER_TEXTURE_MSAA (1 << 15)
 
-#define RADEON_PRIO_SAMPLER_TEXTURE (1 << 16)
-#define RADEON_PRIO_SHADER_RW_IMAGE (1 << 17)
+#define RADEON_PRIO_COLOR_BUFFER (1 << 16)
+#define RADEON_PRIO_DEPTH_BUFFER (1 << 17)
 
-#define RADEON_PRIO_SAMPLER_TEXTURE_MSAA (1 << 18)
-#define RADEON_PRIO_COLOR_BUFFER (1 << 19)
+#define RADEON_PRIO_COLOR_BUFFER_MSAA (1 << 18)
+#define RADEON_PRIO_DEPTH_BUFFER_MSAA (1 << 19)
 
-#define RADEON_PRIO_DEPTH_BUFFER (1 << 20)
+#define RADEON_PRIO_SEPARATE_META (1 << 20)
+#define RADEON_PRIO_SHADER_BINARY (1 << 21) /* the hw can't hide instruction cache misses */
 
-#define RADEON_PRIO_COLOR_BUFFER_MSAA (1 << 22)
-
-#define RADEON_PRIO_DEPTH_BUFFER_MSAA (1 << 24)
-
-#define RADEON_PRIO_SEPARATE_META (1 << 26)
-#define RADEON_PRIO_SHADER_BINARY (1 << 27) /* the hw can't hide instruction cache misses */
-
-#define RADEON_PRIO_SHADER_RINGS (1 << 28)
-
-#define RADEON_PRIO_SCRATCH_BUFFER (1 << 30)
+#define RADEON_PRIO_SHADER_RINGS (1 << 22)
+#define RADEON_PRIO_SCRATCH_BUFFER (1 << 23)
 
 struct winsys_handle;
 struct radeon_winsys_ctx;

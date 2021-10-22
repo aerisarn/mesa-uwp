@@ -501,22 +501,19 @@ void si_log_hw_flush(struct si_context *sctx)
 static const char *priority_to_string(unsigned priority)
 {
 #define ITEM(x) if (priority == RADEON_PRIO_##x) return #x
-   ITEM(FENCE);
-   ITEM(TRACE);
+   ITEM(FENCE_TRACE);
    ITEM(SO_FILLED_SIZE);
    ITEM(QUERY);
-   ITEM(IB1);
-   ITEM(IB2);
+   ITEM(IB);
    ITEM(DRAW_INDIRECT);
    ITEM(INDEX_BUFFER);
    ITEM(CP_DMA);
+   ITEM(BORDER_COLORS);
    ITEM(CONST_BUFFER);
    ITEM(DESCRIPTORS);
-   ITEM(BORDER_COLORS);
    ITEM(SAMPLER_BUFFER);
    ITEM(VERTEX_BUFFER);
    ITEM(SHADER_RW_BUFFER);
-   ITEM(COMPUTE_GLOBAL);
    ITEM(SAMPLER_TEXTURE);
    ITEM(SHADER_RW_IMAGE);
    ITEM(SAMPLER_TEXTURE_MSAA);

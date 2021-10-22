@@ -977,7 +977,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
          continue;
       }
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, buffer, RADEON_USAGE_READWRITE,
-                                RADEON_PRIO_COMPUTE_GLOBAL);
+                                RADEON_PRIO_SHADER_RW_BUFFER);
    }
 
    /* Registers that are not read from memory should be set before this: */

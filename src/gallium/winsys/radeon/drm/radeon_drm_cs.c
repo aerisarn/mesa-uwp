@@ -793,7 +793,7 @@ static struct pipe_fence_handle *radeon_cs_create_fence(struct radeon_cmdbuf *rc
    /* Add the fence as a dummy relocation. */
    cs->ws->base.cs_add_buffer(rcs, fence,
                               RADEON_USAGE_READWRITE, RADEON_DOMAIN_GTT,
-                              RADEON_PRIO_FENCE);
+                              RADEON_PRIO_FENCE_TRACE);
    return (struct pipe_fence_handle*)fence;
 }
 

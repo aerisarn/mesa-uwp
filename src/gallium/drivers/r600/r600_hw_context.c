@@ -461,7 +461,7 @@ void r600_emit_pfp_sync_me(struct r600_context *rctx)
 
 		reloc = radeon_add_to_buffer_list(&rctx->b, &rctx->b.gfx, buf,
 						  RADEON_USAGE_READWRITE,
-						  RADEON_PRIO_FENCE);
+						  RADEON_PRIO_FENCE_TRACE);
 
 		va = buf->gpu_address + offset;
 		assert(va % 16 == 0);

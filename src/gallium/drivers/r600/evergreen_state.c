@@ -4789,7 +4789,7 @@ void eg_trace_emit(struct r600_context *rctx)
 
 	rctx->trace_id++;
 	radeon_add_to_buffer_list(&rctx->b, &rctx->b.gfx, rctx->trace_buf,
-			      RADEON_USAGE_READWRITE, RADEON_PRIO_TRACE);
+			      RADEON_USAGE_READWRITE, RADEON_PRIO_FENCE_TRACE);
 	radeon_emit(cs, PKT3(PKT3_MEM_WRITE, 3, 0));
 	radeon_emit(cs, rctx->trace_buf->gpu_address);
 	radeon_emit(cs, rctx->trace_buf->gpu_address >> 32 | MEM_WRITE_32_BITS | MEM_WRITE_CONFIRM);

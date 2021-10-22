@@ -807,7 +807,7 @@ static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws,
    ib->ptr_ib_size_inside_ib = false;
 
    amdgpu_cs_add_buffer(cs->main.rcs, ib->big_ib_buffer,
-                        RADEON_USAGE_READ, 0, RADEON_PRIO_IB1);
+                        RADEON_USAGE_READ, 0, RADEON_PRIO_IB);
 
    rcs->current.buf = (uint32_t*)(ib->ib_mapped + ib->used_ib_space);
 
@@ -1061,7 +1061,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    cs->preamble_ib_bo = preamble_bo;
 
    amdgpu_cs_add_buffer(rcs, cs->preamble_ib_bo, RADEON_USAGE_READ, 0,
-                        RADEON_PRIO_IB1);
+                        RADEON_PRIO_IB);
    return true;
 }
 
@@ -1152,7 +1152,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    rcs->gpu_address = va;
 
    amdgpu_cs_add_buffer(cs->main.rcs, ib->big_ib_buffer,
-                        RADEON_USAGE_READ, 0, RADEON_PRIO_IB1);
+                        RADEON_USAGE_READ, 0, RADEON_PRIO_IB);
 
    return true;
 }
@@ -1773,7 +1773,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
 
    if (cs->preamble_ib_bo) {
       amdgpu_cs_add_buffer(rcs, cs->preamble_ib_bo, RADEON_USAGE_READ, 0,
-                           RADEON_PRIO_IB1);
+                           RADEON_PRIO_IB);
    }
 
    rcs->used_gart_kb = 0;
