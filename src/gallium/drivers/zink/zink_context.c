@@ -3768,6 +3768,9 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uint32_t rebi
    unsigned num_rebinds = 0;
    bool has_write = false;
 
+   if (!zink_resource_has_binds(res))
+      return 0;
+
    assert(!res->bindless[1]); //TODO
    if ((rebind_mask & BITFIELD_BIT(TC_BINDING_STREAMOUT_BUFFER)) || (!rebind_mask && res->so_bind_count && ctx->num_so_targets)) {
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
@@ -3919,8 +3922,6 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
 bool
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 {
-   if (!zink_resource_has_binds(res))
-      return 0;
    if (res->base.b.target == PIPE_BUFFER) {
       /* force counter buffer reset */
       res->so_valid = false;
