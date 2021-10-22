@@ -78,14 +78,6 @@ enum radeon_bo_flag
   RADEON_FLAG_DRIVER_INTERNAL = (1 << 9),
 };
 
-enum radeon_dependency_flag
-{
-   /* Instead of waiting for a job to finish execution, the dependency will
-    * be signaled when the job starts execution.
-    */
-   RADEON_DEPENDENCY_START_FENCE = 1 << 1,
-};
-
 enum radeon_bo_usage
 { /* bitfield */
   RADEON_USAGE_READ = 2,

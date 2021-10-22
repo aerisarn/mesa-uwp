@@ -1225,9 +1225,6 @@ static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
 
    util_queue_fence_wait(&fence->submitted);
 
-   /* Start fences are not needed here. */
-   assert(!(dependency_flags & RADEON_DEPENDENCY_START_FENCE));
-
    if (is_noop_fence_dependency(acs, fence))
       return;
 
