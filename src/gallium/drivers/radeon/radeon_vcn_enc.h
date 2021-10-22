@@ -556,7 +556,7 @@ struct radeon_encoder {
 };
 
 void radeon_enc_add_buffer(struct radeon_encoder *enc, struct pb_buffer *buf,
-                           enum radeon_bo_usage usage, enum radeon_bo_domain domain, signed offset);
+                           unsigned usage, enum radeon_bo_domain domain, signed offset);
 
 void radeon_enc_set_emulation_prevention(struct radeon_encoder *enc, bool set);
 

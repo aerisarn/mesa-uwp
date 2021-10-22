@@ -78,23 +78,6 @@ enum radeon_bo_flag
   RADEON_FLAG_DRIVER_INTERNAL = (1 << 9),
 };
 
-enum radeon_bo_usage
-{ /* bitfield */
-  RADEON_USAGE_READ = 2,
-  RADEON_USAGE_WRITE = 4,
-  RADEON_USAGE_READWRITE = RADEON_USAGE_READ | RADEON_USAGE_WRITE,
-
-  /* The winsys ensures that the CS submission will be scheduled after
-   * previously flushed CSs referencing this BO in a conflicting way.
-   */
-  RADEON_USAGE_SYNCHRONIZED = 8,
-
-  /* When used, an implicit sync is done to make sure a compute shader
-   * will read the written values from a previous draw.
-   */
-  RADEON_USAGE_NEEDS_IMPLICIT_SYNC = 16,
-};
-
 enum radeon_map_flags
 {
    /* Indicates that the caller will unmap the buffer.
@@ -170,6 +153,23 @@ enum radeon_value_id
 
 #define RADEON_PRIO_SHADER_RINGS (1 << 22)
 #define RADEON_PRIO_SCRATCH_BUFFER (1 << 23)
+
+#define RADEON_ALL_PRIORITIES (RADEON_USAGE_READ - 1)
+
+/* Upper bits of priorities are used by usage flags. */
+#define RADEON_USAGE_READ (1 << 28)
+#define RADEON_USAGE_WRITE (1 << 29)
+#define RADEON_USAGE_READWRITE (RADEON_USAGE_READ | RADEON_USAGE_WRITE)
+
+/* The winsys ensures that the CS submission will be scheduled after
+ * previously flushed CSs referencing this BO in a conflicting way.
+ */
+#define RADEON_USAGE_SYNCHRONIZED (1 << 30)
+
+/* When used, an implicit sync is done to make sure a compute shader
+ * will read the written values from a previous draw.
+ */
+#define RADEON_USAGE_NEEDS_IMPLICIT_SYNC (1u << 31)
 
 struct winsys_handle;
 struct radeon_winsys_ctx;
@@ -333,7 +333,7 @@ struct radeon_winsys {
     * is idle.
     */
    bool (*buffer_wait)(struct radeon_winsys *ws, struct pb_buffer *buf,
-                       uint64_t timeout, enum radeon_bo_usage usage);
+                       uint64_t timeout, unsigned usage);
 
    /**
     * Return buffer metadata.
@@ -512,15 +512,12 @@ struct radeon_winsys {
     *
     * \param cs      Command stream
     * \param buf     Buffer
-    * \param usage   Whether the buffer is used for read and/or write.
+    * \param usage   Usage
     * \param domain  Bitmask of the RADEON_DOMAIN_* flags.
-    * \param priority  A higher number means a greater chance of being
-    *                  placed in the requested domain. 15 is the maximum.
     * \return Buffer index.
     */
    unsigned (*cs_add_buffer)(struct radeon_cmdbuf *cs, struct pb_buffer *buf,
-                             enum radeon_bo_usage usage, enum radeon_bo_domain domain,
-                             unsigned priority);
+                             unsigned usage, enum radeon_bo_domain domain);
 
    /**
     * Return the index of an already-added buffer.
@@ -594,7 +591,7 @@ struct radeon_winsys {
     * \param buf       A winsys buffer.
     */
    bool (*cs_is_buffer_referenced)(struct radeon_cmdbuf *cs, struct pb_buffer *buf,
-                                   enum radeon_bo_usage usage);
+                                   unsigned usage);
 
    /**
     * Request access to a feature for a command stream.

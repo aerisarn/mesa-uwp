@@ -163,8 +163,8 @@ static bool si_upload_descriptors(struct si_context *sctx, struct si_descriptors
    util_memcpy_cpu_to_le32(ptr, (char *)desc->list + first_slot_offset, upload_size);
    desc->gpu_list = ptr - first_slot_offset / 4;
 
-   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, desc->buffer, RADEON_USAGE_READ,
-                             RADEON_PRIO_DESCRIPTORS);
+   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, desc->buffer,
+                             RADEON_USAGE_READ | RADEON_PRIO_DESCRIPTORS);
 
    /* The shader pointer should point to slot 0. */
    buffer_offset -= first_slot_offset;
@@ -182,8 +182,8 @@ si_add_descriptors_to_bo_list(struct si_context *sctx, struct si_descriptors *de
    if (!desc->buffer)
       return;
 
-   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, desc->buffer, RADEON_USAGE_READ,
-                             RADEON_PRIO_DESCRIPTORS);
+   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, desc->buffer,
+                             RADEON_USAGE_READ | RADEON_PRIO_DESCRIPTORS);
 }
 
 /* SAMPLER VIEWS */
@@ -215,7 +215,7 @@ static void si_release_sampler_views(struct si_samplers *samplers)
 }
 
 static void si_sampler_view_add_buffer(struct si_context *sctx, struct pipe_resource *resource,
-                                       enum radeon_bo_usage usage, bool is_stencil_sampler,
+                                       unsigned usage, bool is_stencil_sampler,
                                        bool check_mem)
 {
    struct si_texture *tex = (struct si_texture *)resource;
@@ -230,7 +230,7 @@ static void si_sampler_view_add_buffer(struct si_context *sctx, struct pipe_reso
       tex = tex->flushed_depth_texture;
 
    priority = si_get_sampler_view_priority(&tex->buffer);
-   radeon_add_to_gfx_buffer_list_check_mem(sctx, &tex->buffer, usage, priority, check_mem);
+   radeon_add_to_gfx_buffer_list_check_mem(sctx, &tex->buffer, usage | priority, check_mem);
 }
 
 static void si_sampler_views_begin_new_cs(struct si_context *sctx, struct si_samplers *samplers)
@@ -963,8 +963,8 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
       si_set_shader_image_desc(sctx, &view, true, desc, desc + 8);
 
       pipe_resource_reference(&buffers->buffers[slot], &tex->buffer.b.b);
-      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, &tex->buffer, RADEON_USAGE_READ,
-                                RADEON_PRIO_SHADER_RW_IMAGE);
+      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, &tex->buffer,
+                                RADEON_USAGE_READ | RADEON_PRIO_SHADER_RW_IMAGE);
       buffers->enabled_mask |= 1llu << slot;
    } else {
       /* Clear the descriptor. */
@@ -1078,8 +1078,8 @@ static void si_buffer_resources_begin_new_cs(struct si_context *sctx,
 
       radeon_add_to_buffer_list(
          sctx, &sctx->gfx_cs, si_resource(buffers->buffers[i]),
-         buffers->writable_mask & (1llu << i) ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ,
-         i < SI_NUM_SHADER_BUFFERS ? buffers->priority : buffers->priority_constbuf);
+         (buffers->writable_mask & (1llu << i) ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ) |
+         (i < SI_NUM_SHADER_BUFFERS ? buffers->priority : buffers->priority_constbuf));
    }
 }
 
@@ -1136,13 +1136,13 @@ static void si_vertex_buffers_begin_new_cs(struct si_context *sctx)
 
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs,
                                 si_resource(sctx->vertex_buffer[vb].buffer.resource),
-                                RADEON_USAGE_READ, RADEON_PRIO_VERTEX_BUFFER);
+                                RADEON_USAGE_READ | RADEON_PRIO_VERTEX_BUFFER);
    }
 
    if (!sctx->vb_descriptors_buffer)
       return;
-   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->vb_descriptors_buffer, RADEON_USAGE_READ,
-                             RADEON_PRIO_DESCRIPTORS);
+   radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->vb_descriptors_buffer,
+                             RADEON_USAGE_READ | RADEON_PRIO_DESCRIPTORS);
 }
 
 /* CONSTANT BUFFERS */
@@ -1210,8 +1210,8 @@ static void si_set_constant_buffer(struct si_context *sctx, struct si_buffer_res
 
       buffers->buffers[slot] = buffer;
       buffers->offsets[slot] = buffer_offset;
-      radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_READ,
-                                              buffers->priority_constbuf, true);
+      radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer),
+                                              RADEON_USAGE_READ | buffers->priority_constbuf, true);
       buffers->enabled_mask |= 1llu << slot;
    } else {
       /* Clear the descriptor. Only 3 dwords are cleared. The 4th dword is immutable. */
@@ -1356,7 +1356,7 @@ static void si_set_shader_buffer(struct si_context *sctx, struct si_buffer_resou
    pipe_resource_reference(&buffers->buffers[slot], &buf->b.b);
    buffers->offsets[slot] = sbuffer->buffer_offset;
    radeon_add_to_gfx_buffer_list_check_mem(
-      sctx, buf, writable ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ, priority, true);
+      sctx, buf, (writable ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ) | priority, true);
    if (writable)
       buffers->writable_mask |= 1llu << slot;
    else
@@ -1517,8 +1517,8 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
       }
 
       pipe_resource_reference(&buffers->buffers[slot], buffer);
-      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(buffer), RADEON_USAGE_READWRITE,
-                                buffers->priority);
+      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(buffer),
+                                RADEON_USAGE_READWRITE | buffers->priority);
       buffers->enabled_mask |= 1llu << slot;
    } else {
       /* Clear the descriptor. */
@@ -1624,7 +1624,7 @@ static bool si_reset_buffer_resources(struct si_context *sctx, struct si_buffer_
 
          radeon_add_to_gfx_buffer_list_check_mem(
             sctx, si_resource(buffer),
-            buffers->writable_mask & (1llu << i) ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ,
+            (buffers->writable_mask & (1llu << i) ? RADEON_USAGE_READWRITE : RADEON_USAGE_READ) |
             priority, true);
          noop = false;
       }
@@ -1682,7 +1682,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
          si_set_buf_desc_address(si_resource(buffer), buffers->offsets[i], descs->list + i * 4);
          sctx->descriptors_dirty |= 1u << SI_DESCS_INTERNAL;
 
-         radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_WRITE,
+         radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_WRITE |
                                                  RADEON_PRIO_SHADER_RW_BUFFER, true);
 
          /* Update the streamout state. */
@@ -1739,7 +1739,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
                                        descs->list + desc_slot * 16 + 4);
                sctx->descriptors_dirty |= 1u << si_sampler_and_image_descriptors_idx(shader);
 
-               radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_READ,
+               radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_READ |
                                                        RADEON_PRIO_SAMPLER_BUFFER, true);
             }
          }
@@ -1770,7 +1770,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
                sctx->descriptors_dirty |= 1u << si_sampler_and_image_descriptors_idx(shader);
 
                radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer),
-                                                       RADEON_USAGE_READWRITE,
+                                                       RADEON_USAGE_READWRITE |
                                                        RADEON_PRIO_SAMPLER_BUFFER, true);
 
                if (shader == PIPE_SHADER_COMPUTE)
@@ -1796,7 +1796,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
             (*tex_handle)->desc_dirty = true;
             sctx->bindless_descriptors_dirty = true;
 
-            radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_READ,
+            radeon_add_to_gfx_buffer_list_check_mem(sctx, si_resource(buffer), RADEON_USAGE_READ |
                                                     RADEON_PRIO_SAMPLER_BUFFER, true);
          }
       }
@@ -1822,7 +1822,7 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
             sctx->bindless_descriptors_dirty = true;
 
             radeon_add_to_gfx_buffer_list_check_mem(
-               sctx, si_resource(buffer), RADEON_USAGE_READWRITE, RADEON_PRIO_SAMPLER_BUFFER, true);
+               sctx, si_resource(buffer), RADEON_USAGE_READWRITE | RADEON_PRIO_SAMPLER_BUFFER, true);
          }
       }
    }

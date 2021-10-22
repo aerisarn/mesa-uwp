@@ -50,15 +50,8 @@ struct amdgpu_ctx {
 
 struct amdgpu_cs_buffer {
    struct amdgpu_winsys_bo *bo;
-   union {
-      struct {
-         uint32_t priority_usage;
-      } real;
-      struct {
-         uint32_t real_idx; /* index of underlying real BO */
-      } slab;
-   } u;
-   enum radeon_bo_usage usage;
+   unsigned slab_real_idx; /* index of underlying real BO, used by slab buffers only */
+   unsigned usage;
 };
 
 enum ib_type {
@@ -115,7 +108,6 @@ struct amdgpu_cs_context {
    struct amdgpu_winsys_bo     *last_added_bo;
    unsigned                    last_added_bo_index;
    unsigned                    last_added_bo_usage;
-   uint32_t                    last_added_bo_priority_usage;
 
    struct amdgpu_fence_list    fence_dependencies;
    struct amdgpu_fence_list    syncobj_dependencies;
@@ -243,7 +235,7 @@ amdgpu_bo_is_referenced_by_cs(struct amdgpu_cs *cs,
 static inline bool
 amdgpu_bo_is_referenced_by_cs_with_usage(struct amdgpu_cs *cs,
                                          struct amdgpu_winsys_bo *bo,
-                                         enum radeon_bo_usage usage)
+                                         unsigned usage)
 {
    int index;
    struct amdgpu_cs_buffer *buffer;

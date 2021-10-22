@@ -131,7 +131,7 @@ static void radeon_bo_wait_idle(struct radeon_bo *bo)
 
 static bool radeon_bo_wait(struct radeon_winsys *rws,
                            struct pb_buffer *_buf, uint64_t timeout,
-                           enum radeon_bo_usage usage)
+                           unsigned usage)
 {
    struct radeon_bo *bo = radeon_bo(_buf);
    int64_t abs_timeout;

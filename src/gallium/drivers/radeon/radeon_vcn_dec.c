@@ -1414,7 +1414,7 @@ static unsigned rvcn_dec_dynamic_dpb_t2_message(struct radeon_decoder *dec, rvcn
    }
 
    dec->ws->cs_add_buffer(&dec->cs, dpb->dpb.res->buf,
-      RADEON_USAGE_READWRITE | RADEON_USAGE_SYNCHRONIZED, RADEON_DOMAIN_VRAM, 0);
+      RADEON_USAGE_READWRITE | RADEON_USAGE_SYNCHRONIZED, RADEON_DOMAIN_VRAM);
    addr = dec->ws->buffer_get_virtual_address(dpb->dpb.res->buf);
    dynamic_dpb_t2->dpbCurrLo = addr;
    dynamic_dpb_t2->dpbCurrHi = addr >> 32;
@@ -1863,11 +1863,11 @@ static void set_reg(struct radeon_decoder *dec, unsigned reg, uint32_t val)
 
 /* send a command to the VCPU through the GPCOM registers */
 static void send_cmd(struct radeon_decoder *dec, unsigned cmd, struct pb_buffer *buf, uint32_t off,
-                     enum radeon_bo_usage usage, enum radeon_bo_domain domain)
+                     unsigned usage, enum radeon_bo_domain domain)
 {
    uint64_t addr;
 
-   dec->ws->cs_add_buffer(&dec->cs, buf, usage | RADEON_USAGE_SYNCHRONIZED, domain, 0);
+   dec->ws->cs_add_buffer(&dec->cs, buf, usage | RADEON_USAGE_SYNCHRONIZED, domain);
    addr = dec->ws->buffer_get_virtual_address(buf);
    addr = addr + off;
 
