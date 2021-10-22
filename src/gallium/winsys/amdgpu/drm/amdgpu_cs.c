@@ -1229,8 +1229,9 @@ static void amdgpu_add_bo_fence_dependencies(struct amdgpu_cs *acs,
 {
    struct amdgpu_winsys_bo *bo = buffer->bo;
    unsigned new_num_fences = 0;
+   const unsigned num_fences = bo->num_fences;
 
-   for (unsigned j = 0; j < bo->num_fences; ++j) {
+   for (unsigned j = 0; j < num_fences; ++j) {
       struct amdgpu_fence *bo_fence = (void *)bo->fences[j];
 
       if (is_noop_fence_dependency(acs, bo_fence))
@@ -1245,7 +1246,7 @@ static void amdgpu_add_bo_fence_dependencies(struct amdgpu_cs *acs,
       add_fence_to_list(&cs->fence_dependencies, bo_fence);
    }
 
-   for (unsigned j = new_num_fences; j < bo->num_fences; ++j)
+   for (unsigned j = new_num_fences; j < num_fences; ++j)
       amdgpu_fence_reference(&bo->fences[j], NULL);
 
    bo->num_fences = new_num_fences;
@@ -1287,11 +1288,14 @@ void amdgpu_add_fences(struct amdgpu_winsys_bo *bo,
       }
    }
 
+   unsigned bo_num_fences = bo->num_fences;
+
    for (unsigned i = 0; i < num_fences; ++i) {
-      bo->fences[bo->num_fences] = NULL;
-      amdgpu_fence_reference(&bo->fences[bo->num_fences], fences[i]);
-      bo->num_fences++;
+      bo->fences[bo_num_fences] = NULL;
+      amdgpu_fence_reference(&bo->fences[bo_num_fences], fences[i]);
+      bo_num_fences++;
    }
+   bo->num_fences = bo_num_fences;
 }
 
 static void amdgpu_inc_bo_num_active_ioctls(unsigned num_buffers,
