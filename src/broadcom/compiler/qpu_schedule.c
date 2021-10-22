@@ -652,6 +652,21 @@ writes_too_soon_after_write(const struct v3d_device_info *devinfo,
             v3d_qpu_writes_r4(devinfo, inst))
                 return true;
 
+        if (devinfo->ver <= 42)
+           return false;
+
+        /* Don't schedule anything that writes rf0 right after ldvary, since
+         * that would clash with the ldvary's delayed rf0 write (the exception
+         * is another ldvary, since its implicit rf0 write would also have
+         * one cycle of delay and would not clash).
+         */
+        if (scoreboard->last_ldvary_tick + 1 == scoreboard->tick &&
+            (v3d71_qpu_writes_waddr_explicitly(devinfo, inst, 0) ||
+             (v3d_qpu_writes_rf0_implicitly(devinfo, inst) &&
+              !inst->sig.ldvary))) {
+            return true;
+       }
+
         return false;
 }
 
