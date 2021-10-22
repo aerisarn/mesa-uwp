@@ -3919,12 +3919,13 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
 bool
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 {
-   /* force counter buffer reset */
-   res->so_valid = false;
    if (!zink_resource_has_binds(res))
-      return true;
-   if (res->base.b.target == PIPE_BUFFER)
+      return 0;
+   if (res->base.b.target == PIPE_BUFFER) {
+      /* force counter buffer reset */
+      res->so_valid = false;
       return rebind_buffer(ctx, res, 0, 0) == res->bind_count[0] + res->bind_count[1];
+   }
    rebind_image(ctx, res);
    return false;
 }
