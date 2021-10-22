@@ -804,8 +804,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
       res->aux.sampler_usages = res->aux.possible_usages;
 
    enum isl_aux_state initial_state;
-   assert(!res->aux.bo);
-
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_NONE:
       /* Having no aux buffer is only okay if there's no modifier with aux. */
