@@ -2671,6 +2671,21 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
    surf->depth_initialized = true;
 }
 
+void si_set_sampler_depth_decompress_mask(struct si_context *sctx, struct si_texture *tex)
+{
+   /* Check all sampler bindings in all shaders where depth textures are bound, and update
+    * which samplers should be decompressed.
+    */
+   u_foreach_bit(sh, sctx->shader_has_depth_tex) {
+      u_foreach_bit(i, sctx->samplers[sh].has_depth_tex_mask) {
+         if (sctx->samplers[sh].views[i]->texture == &tex->buffer.b.b) {
+            sctx->samplers[sh].needs_depth_decompress_mask |= 1 << i;
+            sctx->shader_needs_decompress_mask |= 1 << sh;
+         }
+      }
+   }
+}
+
 void si_update_fb_dirtiness_after_rendering(struct si_context *sctx)
 {
    if (sctx->decompression_enabled)
@@ -2684,6 +2699,8 @@ void si_update_fb_dirtiness_after_rendering(struct si_context *sctx)
 
       if (tex->surface.has_stencil)
          tex->stencil_dirty_level_mask |= 1 << surf->u.tex.level;
+
+      si_set_sampler_depth_decompress_mask(sctx, tex);
    }
 
    unsigned compressed_cb_mask = sctx->framebuffer.compressed_cb_mask;

@@ -732,6 +732,7 @@ struct si_samplers {
 
    /* The i-th bit is set if that element is enabled (non-NULL resource). */
    unsigned enabled_mask;
+   uint32_t has_depth_tex_mask;
    uint32_t needs_depth_decompress_mask;
    uint32_t needs_color_decompress_mask;
 };
@@ -1072,6 +1073,7 @@ struct si_context {
    unsigned descriptors_dirty;
    unsigned shader_pointers_dirty;
    unsigned shader_needs_decompress_mask;
+   unsigned shader_has_depth_tex;
    struct si_buffer_resources internal_bindings;
    struct si_buffer_resources const_and_shader_buffers[SI_NUM_SHADERS];
    struct si_samplers samplers[SI_NUM_SHADERS];

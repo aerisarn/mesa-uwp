@@ -490,14 +490,14 @@ static bool color_needs_decompression(struct si_texture *tex)
           (tex->dirty_level_mask && (tex->cmask_buffer || tex->surface.meta_offset));
 }
 
-static bool depth_needs_decompression(struct si_texture *tex)
+static bool depth_needs_decompression(struct si_texture *tex, bool is_stencil)
 {
    /* If the depth/stencil texture is TC-compatible, no decompression
     * will be done. The decompression function will only flush DB caches
     * to make it coherent with shaders. That's necessary because the driver
     * doesn't flush DB caches in any other case.
     */
-   return tex->db_compatible;
+   return tex->db_compatible && (tex->dirty_level_mask || (is_stencil && tex->stencil_dirty_level_mask));
 }
 
 static void si_reset_sampler_view_slot(struct si_samplers *samplers, unsigned slot,
@@ -548,15 +548,24 @@ static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
                samplers->needs_depth_decompress_mask &= ~(1u << slot);
                samplers->needs_color_decompress_mask &= ~(1u << slot);
             } else {
-               if (depth_needs_decompression(tex)) {
-                  samplers->needs_depth_decompress_mask |= 1u << slot;
-               } else {
-                  samplers->needs_depth_decompress_mask &= ~(1u << slot);
-               }
-               if (color_needs_decompression(tex)) {
-                  samplers->needs_color_decompress_mask |= 1u << slot;
-               } else {
+               if (tex->is_depth) {
+                  samplers->has_depth_tex_mask |= 1u << slot;
                   samplers->needs_color_decompress_mask &= ~(1u << slot);
+
+                  if (depth_needs_decompression(tex, sview->is_stencil_sampler)) {
+                     samplers->needs_depth_decompress_mask |= 1u << slot;
+                  } else {
+                     samplers->needs_depth_decompress_mask &= ~(1u << slot);
+                  }
+               } else {
+                  samplers->has_depth_tex_mask &= ~(1u << slot);
+                  samplers->needs_depth_decompress_mask &= ~(1u << slot);
+
+                  if (color_needs_decompression(tex)) {
+                     samplers->needs_color_decompress_mask |= 1u << slot;
+                  } else {
+                     samplers->needs_color_decompress_mask &= ~(1u << slot);
+                  }
                }
 
                if (vi_dcc_enabled(tex, sview->base.u.tex.first_level) &&
@@ -597,6 +606,7 @@ static void si_set_sampler_views(struct si_context *sctx, unsigned shader,
 
    unbound_mask |= BITFIELD_RANGE(start_slot + count, unbind_num_trailing_slots);
    samplers->enabled_mask &= ~unbound_mask;
+   samplers->has_depth_tex_mask &= ~unbound_mask;
    samplers->needs_depth_decompress_mask &= ~unbound_mask;
    samplers->needs_color_decompress_mask &= ~unbound_mask;
 
@@ -613,6 +623,11 @@ static void si_update_shader_needs_decompress_mask(struct si_context *sctx, unsi
       sctx->shader_needs_decompress_mask |= shader_bit;
    else
       sctx->shader_needs_decompress_mask &= ~shader_bit;
+
+   if (samplers->has_depth_tex_mask)
+      sctx->shader_has_depth_tex |= shader_bit;
+   else
+      sctx->shader_has_depth_tex &= ~shader_bit;
 }
 
 static void si_pipe_set_sampler_views(struct pipe_context *ctx, enum pipe_shader_type shader,
@@ -2434,7 +2449,7 @@ static void si_make_texture_handle_resident(struct pipe_context *ctx, uint64_t h
       if (sview->base.texture->target != PIPE_BUFFER) {
          struct si_texture *tex = (struct si_texture *)sview->base.texture;
 
-         if (depth_needs_decompression(tex)) {
+         if (depth_needs_decompression(tex, sview->is_stencil_sampler)) {
             util_dynarray_append(&sctx->resident_tex_needs_depth_decompress,
                                  struct si_texture_handle *, tex_handle);
          }

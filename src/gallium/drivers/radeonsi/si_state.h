@@ -539,6 +539,7 @@ struct pipe_sampler_view *si_create_sampler_view_custom(struct pipe_context *ctx
                                                         const struct pipe_sampler_view *state,
                                                         unsigned width0, unsigned height0,
                                                         unsigned force_level);
+void si_set_sampler_depth_decompress_mask(struct si_context *sctx, struct si_texture *tex);
 void si_update_fb_dirtiness_after_rendering(struct si_context *sctx);
 void si_mark_display_dcc_dirty(struct si_context *sctx, struct si_texture *tex);
 void si_update_ps_iter_samples(struct si_context *sctx);
