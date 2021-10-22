@@ -4696,6 +4696,7 @@ union gl_dlist_node;
 struct gl_display_list
 {
    GLuint Name;
+   bool execute_glthread;
    bool small_list;
    /* If small_list and begins_with_a_nop are true, this means
     * the 'start' has been incremented to skip a NOP at the

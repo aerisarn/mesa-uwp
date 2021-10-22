@@ -78,6 +78,10 @@
 
 #define USE_BITMAP_ATLAS 1
 
+static bool
+_mesa_glthread_should_execute_list(struct gl_context *ctx,
+                                   struct gl_display_list *dlist);
+
 /**
  * Flush vertices.
  *
@@ -13743,6 +13747,8 @@ _mesa_EndList(void)
       replace_op_vertex_list_recursively(ctx, ctx->ListState.CurrentList);
 
    struct gl_dlist_state *list = &ctx->ListState;
+   list->CurrentList->execute_glthread =
+      _mesa_glthread_should_execute_list(ctx, list->CurrentList);
 
    if ((list->CurrentList->Head == list->CurrentBlock) &&
        (list->CurrentPos < BLOCK_SIZE)) {
@@ -15036,7 +15042,8 @@ _mesa_glthread_execute_list(struct gl_context *ctx, GLuint list)
    struct gl_display_list *dlist;
 
    if (list == 0 ||
-       !_mesa_get_list(ctx, list, &dlist, true))
+       !_mesa_get_list(ctx, list, &dlist, true) ||
+       !dlist->execute_glthread)
       return;
 
    Node *n = get_list_head(ctx, dlist);
@@ -15108,6 +15115,47 @@ _mesa_glthread_execute_list(struct gl_context *ctx, GLuint list)
       assert(n[0].InstSize > 0);
       n += n[0].InstSize;
    }
+}
+
+static bool
+_mesa_glthread_should_execute_list(struct gl_context *ctx,
+                                   struct gl_display_list *dlist)
+{
+   Node *n = get_list_head(ctx, dlist);
+
+   while (1) {
+      const OpCode opcode = n[0].opcode;
+
+      switch (opcode) {
+      case OPCODE_CALL_LIST:
+      case OPCODE_CALL_LISTS:
+      case OPCODE_DISABLE:
+      case OPCODE_ENABLE:
+      case OPCODE_LIST_BASE:
+      case OPCODE_MATRIX_MODE:
+      case OPCODE_POP_ATTRIB:
+      case OPCODE_POP_MATRIX:
+      case OPCODE_PUSH_ATTRIB:
+      case OPCODE_PUSH_MATRIX:
+      case OPCODE_ACTIVE_TEXTURE:   /* GL_ARB_multitexture */
+      case OPCODE_MATRIX_PUSH:
+      case OPCODE_MATRIX_POP:
+         return true;
+      case OPCODE_CONTINUE:
+         n = (Node *)get_pointer(&n[1]);
+         continue;
+      case OPCODE_END_OF_LIST:
+         return false;
+      default:
+         /* ignore */
+         break;
+      }
+
+      /* increment n to point to next compiled command */
+      assert(n[0].InstSize > 0);
+      n += n[0].InstSize;
+   }
+   return false;
 }
 
 
