@@ -5504,46 +5504,31 @@ crocus_update_surface_base_address(struct crocus_batch *batch)
 {
    if (batch->state_base_address_emitted)
       return;
-#if GFX_VER >= 6
-   uint32_t mocs = batch->screen->isl_dev.mocs.internal;
-#endif
+
+   UNUSED uint32_t mocs = batch->screen->isl_dev.mocs.internal;
+
    flush_before_state_base_change(batch);
 
    crocus_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
+      /* Set base addresses */
+      sba.GeneralStateBaseAddressModifyEnable = true;
+
+#if GFX_VER >= 6
+      sba.DynamicStateBaseAddressModifyEnable = true;
+      sba.DynamicStateBaseAddress = ro_bo(batch->state.bo, 0);
+#endif
 
       sba.SurfaceStateBaseAddressModifyEnable = true;
       sba.SurfaceStateBaseAddress = ro_bo(batch->state.bo, 0);
 
+      sba.IndirectObjectBaseAddressModifyEnable = true;
+
 #if GFX_VER >= 5
+      sba.InstructionBaseAddressModifyEnable = true;
       sba.InstructionBaseAddress = ro_bo(batch->ice->shaders.cache_bo, 0); // TODO!
 #endif
 
-      sba.GeneralStateBaseAddressModifyEnable   = true;
-      sba.IndirectObjectBaseAddressModifyEnable = true;
-#if GFX_VER >= 5
-      sba.InstructionBaseAddressModifyEnable    = true;
-#endif
-
-#if GFX_VER < 8
-      sba.GeneralStateAccessUpperBoundModifyEnable = true;
-#endif
-#if GFX_VER >= 5 && GFX_VER < 8
-      sba.IndirectObjectAccessUpperBoundModifyEnable = true;
-      sba.InstructionAccessUpperBoundModifyEnable = true;
-#endif
-#if GFX_VER <= 5
-      sba.GeneralStateAccessUpperBound = ro_bo(NULL, 0xfffff000);
-#endif
-#if GFX_VER >= 6
-      /* The hardware appears to pay attention to the MOCS fields even
-       * if you don't set the "Address Modify Enable" bit for the base.
-       */
-      sba.GeneralStateMOCS            = mocs;
-      sba.StatelessDataPortAccessMOCS = mocs;
-      sba.DynamicStateMOCS            = mocs;
-      sba.IndirectObjectMOCS          = mocs;
-      sba.InstructionMOCS             = mocs;
-      sba.SurfaceStateMOCS            = mocs;
+      /* Set buffer sizes on Gen8+ or upper bounds on Gen4-7 */
 #if GFX_VER == 8
       sba.GeneralStateBufferSize   = 0xfffff;
       sba.IndirectObjectBufferSize = 0xfffff;
@@ -5554,22 +5539,38 @@ crocus_update_surface_base_address(struct crocus_batch *batch)
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.InstructionBuffersizeModifyEnable     = true;
+#else
+      sba.GeneralStateAccessUpperBoundModifyEnable = true;
+      sba.IndirectObjectAccessUpperBoundModifyEnable = true;
+
+#if GFX_VER >= 5
+      sba.InstructionAccessUpperBoundModifyEnable = true;
 #endif
 
-      sba.DynamicStateBaseAddressModifyEnable   = true;
-
-      sba.DynamicStateBaseAddress = ro_bo(batch->state.bo, 0);
-
+#if GFX_VER >= 6
       /* Dynamic state upper bound.  Although the documentation says that
        * programming it to zero will cause it to be ignored, that is a lie.
        * If this isn't programmed to a real bound, the sampler border color
        * pointer is rejected, causing border color to mysteriously fail.
        */
-#if GFX_VER < 8
-      sba.DynamicStateAccessUpperBoundModifyEnable = true;
       sba.DynamicStateAccessUpperBound = ro_bo(NULL, 0xfffff000);
+      sba.DynamicStateAccessUpperBoundModifyEnable = true;
+#else
+      /* Same idea but using General State Base Address on Gen4-5 */
+      sba.GeneralStateAccessUpperBound = ro_bo(NULL, 0xfffff000);
+#endif
 #endif
 
+#if GFX_VER >= 6
+      /* The hardware appears to pay attention to the MOCS fields even
+       * if you don't set the "Address Modify Enable" bit for the base.
+       */
+      sba.GeneralStateMOCS            = mocs;
+      sba.StatelessDataPortAccessMOCS = mocs;
+      sba.DynamicStateMOCS            = mocs;
+      sba.IndirectObjectMOCS          = mocs;
+      sba.InstructionMOCS             = mocs;
+      sba.SurfaceStateMOCS            = mocs;
 #endif
    }
 
