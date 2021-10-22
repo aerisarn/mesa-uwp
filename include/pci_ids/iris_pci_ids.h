@@ -14,8 +14,6 @@ CHIPSET(0x4690, adl_gt1, "ADL-S GT1", "Intel(R) Graphics")
 CHIPSET(0x4691, adl_gt1, "ADL-S GT1", "Intel(R) Graphics")
 CHIPSET(0x4692, adl_gt1, "ADL-S GT1", "Intel(R) Graphics")
 CHIPSET(0x4693, adl_gt05, "ADL-S GT0.5", "Intel(R) Graphics")
-CHIPSET(0x4698, adl_gt1, "ADL-S GT1", "Intel(R) Graphics")
-CHIPSET(0x4699, adl_gt1, "ADL-S GT1", "Intel(R) Graphics")
 
 CHIPSET(0x4626, adl_gt2, "ADL GT2", "Intel(R) Graphics")
 CHIPSET(0x4628, adl_gt2, "ADL GT2", "Intel(R) Graphics")
