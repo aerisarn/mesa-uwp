@@ -194,6 +194,7 @@ struct radeon_cmdbuf {
 
    /* Private winsys data. */
    void *priv;
+   void *csc; /* amdgpu_cs_context */
 };
 
 /* Tiling info for display code, DRI sharing, and other data. */

@@ -644,7 +644,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
    /* Don't use the "domains" parameter. Amdgpu doesn't support changing
     * the buffer placement during command submission.
     */
-   struct amdgpu_cs_context *cs = amdgpu_cs(rcs)->csc;
+   struct amdgpu_cs_context *cs = (struct amdgpu_cs_context*)rcs->csc;
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_cs_buffer *buffer;
    int index;
@@ -980,7 +980,7 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    memset(cs->buffer_indices_hashlist, -1, sizeof(cs->buffer_indices_hashlist));
 
    /* Set the first submission context as current. */
-   cs->csc = &cs->csc1;
+   rcs->csc = cs->csc = &cs->csc1;
    cs->cst = &cs->csc2;
 
    /* Assign to both amdgpu_cs_context; only csc will use it. */
@@ -1731,7 +1731,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       amdgpu_add_fence_dependencies_bo_lists(cs);
 
       /* Swap command streams. "cst" is going to be submitted. */
-      cs->csc = cs->cst;
+      rcs->csc = cs->csc = cs->cst;
       cs->cst = cur;
 
       /* Submit. */
