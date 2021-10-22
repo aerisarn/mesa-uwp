@@ -979,6 +979,24 @@ v3dX(emit_rcl)(struct v3d_job *job)
 
                         base_addr += (job->tile_height * rt.stride) / 8;
                 }
+
+                if (surf->internal_bpp >= V3D_INTERNAL_BPP_64) {
+                        cl_emit(&job->rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART2, rt) {
+                                rt.clear_color_mid_bits = /* 40 bits (32 + 8)  */
+                                        ((uint64_t) job->clear_color[i][1]) |
+                                        (((uint64_t) (job->clear_color[i][2] & 0xff)) << 32);
+                                rt.render_target_number = i;
+                        }
+                }
+
+                if (surf->internal_bpp >= V3D_INTERNAL_BPP_128) {
+                        cl_emit(&job->rcl, TILE_RENDERING_MODE_CFG_RENDER_TARGET_PART3, rt) {
+                                rt.clear_color_top_bits = /* 56 bits (24 + 32) */
+                                        (((uint64_t) (job->clear_color[i][2] & 0xffffff00)) >> 8) |
+                                        (((uint64_t) (job->clear_color[i][3])) << 24);
+                                rt.render_target_number = i;
+                        }
+                }
 #endif
         }
 
