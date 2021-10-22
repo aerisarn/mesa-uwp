@@ -51,6 +51,7 @@ STABLE_EPHEMERAL=" \
 
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
+      libepoxy0 \
       libxcb-shm0 \
       pciutils \
       python3-lxml \
