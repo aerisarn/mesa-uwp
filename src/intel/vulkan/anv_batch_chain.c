@@ -2163,8 +2163,9 @@ anv_queue_exec_locked(struct anv_queue *queue,
       for (uint32_t i = 0; i < execbuf.bo_count; i++) {
          const struct anv_bo *bo = execbuf.bos[i];
 
-         fprintf(stderr, "   BO: addr=0x%016"PRIx64" size=%010"PRIx64" handle=%05u name=%s\n",
-                 bo->offset, bo->size, bo->gem_handle, bo->name);
+         fprintf(stderr, "   BO: addr=0x%016"PRIx64"-0x%016"PRIx64" size=0x%010"PRIx64
+                 " handle=%05u name=%s\n",
+                 bo->offset, bo->offset + bo->size - 1, bo->size, bo->gem_handle, bo->name);
       }
    }
 
