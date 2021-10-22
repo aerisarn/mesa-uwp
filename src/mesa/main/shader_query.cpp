@@ -195,7 +195,7 @@ _mesa_GetActiveAttrib(GLuint program, GLuint desired_index,
 
    const gl_shader_variable *const var = RESOURCE_VAR(res);
 
-   const char *var_name = var->name;
+   const char *var_name = var->name.string;
 
    _mesa_copy_string(name, maxLength, length, var_name);
 
@@ -286,8 +286,8 @@ _mesa_longest_attribute_name_length(struct gl_shader_program *shProg)
           *    returned.  If no active attributes exist, zero is returned. If
           *    no name reflection information is available, one is returned."
           */
-         const size_t length = RESOURCE_VAR(res)->name != NULL ?
-            strlen(RESOURCE_VAR(res)->name) : 0;
+         const size_t length = RESOURCE_VAR(res)->name.string != NULL ?
+            strlen(RESOURCE_VAR(res)->name.string) : 0;
 
          if (length >= longest)
             longest = length + 1;
@@ -460,29 +460,29 @@ _mesa_program_resource_name(struct gl_program_resource *res)
    switch (res->Type) {
    case GL_UNIFORM_BLOCK:
    case GL_SHADER_STORAGE_BLOCK:
-      return RESOURCE_UBO(res)->Name;
+      return RESOURCE_UBO(res)->name.string;
    case GL_TRANSFORM_FEEDBACK_VARYING:
-      return RESOURCE_XFV(res)->Name;
+      return RESOURCE_XFV(res)->name.string;
    case GL_PROGRAM_INPUT:
    case GL_PROGRAM_OUTPUT:
-      return RESOURCE_VAR(res)->name;
+      return RESOURCE_VAR(res)->name.string;
    case GL_UNIFORM:
    case GL_BUFFER_VARIABLE:
-      return RESOURCE_UNI(res)->name;
+      return RESOURCE_UNI(res)->name.string;
    case GL_VERTEX_SUBROUTINE_UNIFORM:
    case GL_GEOMETRY_SUBROUTINE_UNIFORM:
    case GL_FRAGMENT_SUBROUTINE_UNIFORM:
    case GL_COMPUTE_SUBROUTINE_UNIFORM:
    case GL_TESS_CONTROL_SUBROUTINE_UNIFORM:
    case GL_TESS_EVALUATION_SUBROUTINE_UNIFORM:
-      return RESOURCE_UNI(res)->name + MESA_SUBROUTINE_PREFIX_LEN;
+      return RESOURCE_UNI(res)->name.string + MESA_SUBROUTINE_PREFIX_LEN;
    case GL_VERTEX_SUBROUTINE:
    case GL_GEOMETRY_SUBROUTINE:
    case GL_FRAGMENT_SUBROUTINE:
    case GL_COMPUTE_SUBROUTINE:
    case GL_TESS_CONTROL_SUBROUTINE:
    case GL_TESS_EVALUATION_SUBROUTINE:
-      return RESOURCE_SUB(res)->name;
+      return RESOURCE_SUB(res)->name.string;
    default:
       break;
    }
@@ -1718,7 +1718,7 @@ validate_io(struct gl_program *producer, struct gl_program *consumer)
        *
        *    Built-in inputs or outputs do not affect interface matching.
        */
-      if (is_gl_identifier(var->name))
+      if (is_gl_identifier(var->name.string))
          continue;
 
       outputs[num_outputs++] = var;
@@ -1735,7 +1735,7 @@ validate_io(struct gl_program *producer, struct gl_program *consumer)
       gl_shader_variable const *const consumer_var = RESOURCE_VAR(res);
       gl_shader_variable const *producer_var = NULL;
 
-      if (is_gl_identifier(consumer_var->name))
+      if (is_gl_identifier(consumer_var->name.string))
          continue;
 
       /* Inputs with explicit locations match other outputs with explicit
@@ -1757,7 +1757,7 @@ validate_io(struct gl_program *producer, struct gl_program *consumer)
             const gl_shader_variable *const var = outputs[j];
 
             if (!var->explicit_location &&
-                strcmp(consumer_var->name, var->name) == 0) {
+                strcmp(consumer_var->name.string, var->name.string) == 0) {
                producer_var = var;
                match_index = j;
                break;

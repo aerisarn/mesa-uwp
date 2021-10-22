@@ -48,6 +48,7 @@
 #include "compiler/shader_info.h"
 #include "main/formats.h"       /* MESA_FORMAT_COUNT */
 #include "compiler/glsl/list.h"
+#include "compiler/glsl/ir_uniform.h"
 #include "util/u_idalloc.h"
 #include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
@@ -1808,7 +1809,7 @@ struct gl_evaluators
 
 struct gl_transform_feedback_varying_info
 {
-   char *Name;
+   struct gl_resource_name name;
    GLenum16 Type;
    GLint BufferIndex;
    GLint Size;
@@ -2497,7 +2498,7 @@ struct gl_ati_fragment_shader_state
  */
 struct gl_subroutine_function
 {
-   char *name;
+   struct gl_resource_name name;
    int index;
    int num_compat_types;
    const struct glsl_type **types;
@@ -2767,7 +2768,7 @@ struct gl_uniform_buffer_variable
 struct gl_uniform_block
 {
    /** Declared name of the uniform block */
-   char *Name;
+   struct gl_resource_name name;
 
    /** Array of supplemental information about UBO ir_variables. */
    struct gl_uniform_buffer_variable *Uniforms;
@@ -2858,7 +2859,7 @@ struct gl_shader_variable
    /**
     * Declared name of the variable
     */
-   char *name;
+   struct gl_resource_name name;
 
    /**
     * Storage location of the base of this variable

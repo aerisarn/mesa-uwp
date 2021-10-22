@@ -796,7 +796,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
           * We are setting 0 here, as below it will add 1 for the NUL character.
           */
          const GLint base_len =
-            strlen_or_zero(shProg->data->UniformStorage[i].name);
+            strlen_or_zero(shProg->data->UniformStorage[i].name.string);
 
 	 /* Add one for the terminating NUL character for a non-array, and
 	  * 4 for the "[0]" and the NUL for an array.
@@ -848,7 +848,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
 
       for (i = 0; i < num_varying; i++) {
          const char *name = in_shader_varyings ?
-            shProg->last_vert_prog->sh.LinkedTransformFeedback->Varyings[i].Name
+            shProg->last_vert_prog->sh.LinkedTransformFeedback->Varyings[i].name.string
             : shProg->TransformFeedback.VaryingNames[i];
 
          /* Add one for the terminating NUL character. We have to use
@@ -920,7 +920,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
           *    available, one is returned."
 	  */
          const GLint len =
-            strlen_or_zero(shProg->data->UniformBlocks[i].Name) + 1;
+            strlen_or_zero(shProg->data->UniformBlocks[i].name.string) + 1;
 
 	 if (len > max_len)
 	    max_len = len;
