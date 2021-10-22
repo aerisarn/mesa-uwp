@@ -1292,6 +1292,7 @@ debian-mingw32-x86_64:
     - when: never
   variables:
     GIT_STRATEGY: none
+    JOB_TIMEOUT: 80
 
 # The above .test-manual rules doesn't allow the jobs to be available for MRs
 # but we should have an option to have manual jobs in MRs as well.
@@ -1305,6 +1306,7 @@ debian-mingw32-x86_64:
     - when: never
   variables:
     GIT_STRATEGY: none
+    JOB_TIMEOUT: 80
 
 .baremetal-test:
   extends:
