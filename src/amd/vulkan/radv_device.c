@@ -1248,7 +1248,7 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
    f->hostQueryReset = true;
    f->timelineSemaphore = true, f->bufferDeviceAddress = true;
    f->bufferDeviceAddressCaptureReplay = true;
-   f->bufferDeviceAddressMultiDevice = false;
+   f->bufferDeviceAddressMultiDevice = true;
    f->vulkanMemoryModel = true;
    f->vulkanMemoryModelDeviceScope = true;
    f->vulkanMemoryModelAvailabilityVisibilityChains = false;
