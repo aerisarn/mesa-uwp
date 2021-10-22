@@ -1332,6 +1332,7 @@ struct brw_tes_prog_data
    enum brw_tess_partitioning partitioning;
    enum brw_tess_output_topology output_topology;
    enum brw_tess_domain domain;
+   bool include_primitive_id;
 };
 
 struct brw_gs_prog_data

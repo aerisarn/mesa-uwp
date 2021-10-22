@@ -1374,6 +1374,9 @@ brw_compile_tes(const struct brw_compiler *compiler,
       ((1 << nir->info.cull_distance_array_size) - 1) <<
       nir->info.clip_distance_array_size;
 
+   prog_data->include_primitive_id =
+      BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
+
    /* URB entry sizes are stored as a multiple of 64 bytes. */
    prog_data->base.urb_entry_size = ALIGN(output_size_bytes, 64) / 64;
 
