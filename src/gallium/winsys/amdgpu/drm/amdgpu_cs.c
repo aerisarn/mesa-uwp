@@ -665,29 +665,32 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
 
          buffer = &cs->slab_buffers[index];
          buffer->usage |= usage;
+         cs->last_added_bo_usage = buffer->usage;
 
-         usage &= ~RADEON_USAGE_SYNCHRONIZED;
          index = buffer->slab_real_idx;
+         buffer = &cs->real_buffers[index];
+         buffer->usage |= usage & ~RADEON_USAGE_SYNCHRONIZED;
       } else {
          index = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo);
          if (index < 0)
             return 0;
-      }
 
-      buffer = &cs->real_buffers[index];
+         buffer = &cs->real_buffers[index];
+         buffer->usage |= usage;
+         cs->last_added_bo_usage = buffer->usage;
+      }
    } else {
       index = amdgpu_lookup_or_add_sparse_buffer(rcs, cs, bo);
       if (index < 0)
          return 0;
 
       buffer = &cs->sparse_buffers[index];
+      buffer->usage |= usage;
+      cs->last_added_bo_usage = buffer->usage;
    }
-
-   buffer->usage |= usage;
 
    cs->last_added_bo = bo;
    cs->last_added_bo_index = index;
-   cs->last_added_bo_usage = buffer->usage;
    return index;
 }
 
