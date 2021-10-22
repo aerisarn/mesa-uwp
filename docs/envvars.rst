@@ -725,6 +725,22 @@ RADV driver environment variables
 :envvar:`RADV_TEX_ANISO`
    force anisotropy filter (up to 16)
 
+:envvar:`RADV_THREAD_TRACE`
+   enable frame based SQTT/RGP captures (eg. `export RADV_THREAD_TRACE=100`
+   will capture the frame #100)
+
+:envvar:`RADV_THREAD_TRACE_BUFFER_SIZE`
+   set the SQTT/RGP buffer size in bytes (default value is 32MiB, the buffer is
+   automatically resized if too small)
+
+:envvar:`RADV_THREAD_TRACE_INSTRUCTION_TIMING`
+   enable/disable SQTT/RGP instruction timing (enabled by default)
+
+:envvar:`RADV_THREAD_TRACE_TRIGGER`
+   enable trigger file based SQTT/RGP captures (eg.
+   `export RADV_THREAD_TRACE_TRIGGER=/tmp/radv_sqtt_trigger` and then
+   `touch /tmp/radv_sqtt_trigger` to capture a frame)
+
 :envvar:`ACO_DEBUG`
    a comma-separated list of named flags, which do various things:
 
