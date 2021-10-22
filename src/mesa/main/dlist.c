@@ -1453,7 +1453,7 @@ destroy_list(struct gl_context *ctx, GLuint list)
    if (list == 0)
       return;
 
-   dlist = _mesa_lookup_list(ctx, list, false);
+   dlist = _mesa_lookup_list(ctx, list, true);
    if (!dlist)
       return;
 
@@ -1467,10 +1467,8 @@ destroy_list(struct gl_context *ctx, GLuint list)
                      check_atlas_for_deleted_list, &list);
    }
 
-   _mesa_HashLockMutex(ctx->Shared->DisplayList);
    _mesa_delete_list(ctx, dlist);
    _mesa_HashRemoveLocked(ctx->Shared->DisplayList, list);
-   _mesa_HashUnlockMutex(ctx->Shared->DisplayList);
 }
 
 
@@ -13487,9 +13485,11 @@ _mesa_DeleteLists(GLuint list, GLsizei range)
       }
    }
 
+   _mesa_HashLockMutex(ctx->Shared->DisplayList);
    for (i = list; i < list + range; i++) {
       destroy_list(ctx, i);
    }
+   _mesa_HashUnlockMutex(ctx->Shared->DisplayList);
 }
 
 
@@ -13798,8 +13798,6 @@ _mesa_EndList(void)
       list->CurrentList->begins_with_a_nop = false;
    }
 
-   _mesa_HashUnlockMutex(ctx->Shared->DisplayList);
-
    /* Destroy old list, if any */
    destroy_list(ctx, ctx->ListState.CurrentList->Name);
 
@@ -13808,9 +13806,10 @@ _mesa_EndList(void)
                           ctx->ListState.CurrentList->Name,
                           ctx->ListState.CurrentList, true);
 
-
    if (MESA_VERBOSE & VERBOSE_DISPLAY_LIST)
       mesa_print_display_list(ctx->ListState.CurrentList->Name);
+
+   _mesa_HashUnlockMutex(ctx->Shared->DisplayList);
 
    ctx->ListState.CurrentList = NULL;
    ctx->ListState.CurrentBlock = NULL;
