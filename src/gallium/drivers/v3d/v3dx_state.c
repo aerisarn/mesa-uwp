@@ -717,21 +717,22 @@ v3d_upload_sampler_state_variant(void *map,
                                 break;
                         }
 
-                        if (variant >= V3D_SAMPLER_STATE_32) {
-                                sampler.border_color_word_0 = border.ui[0];
-                                sampler.border_color_word_1 = border.ui[1];
-                                sampler.border_color_word_2 = border.ui[2];
-                                sampler.border_color_word_3 = border.ui[3];
-                        } else {
-                                sampler.border_color_word_0 =
-                                        _mesa_float_to_half(border.f[0]);
-                                sampler.border_color_word_1 =
-                                        _mesa_float_to_half(border.f[1]);
-                                sampler.border_color_word_2 =
-                                        _mesa_float_to_half(border.f[2]);
-                                sampler.border_color_word_3 =
-                                        _mesa_float_to_half(border.f[3]);
+#if V3D_VERSION <= 42
+                        /* The TMU in V3D 7.x always takes 32-bit floats and handles conversions
+                         * for us. In V3D 4.x we need to manually convert floating point color
+                         * values to the expected format.
+                         */
+                        if (variant < V3D_SAMPLER_STATE_32) {
+                                border.ui[0] = _mesa_float_to_half(border.f[0]);
+                                border.ui[1] = _mesa_float_to_half(border.f[1]);
+                                border.ui[2] = _mesa_float_to_half(border.f[2]);
+                                border.ui[3] = _mesa_float_to_half(border.f[3]);
                         }
+#endif
+                        sampler.border_color_word_0 = border.ui[0];
+                        sampler.border_color_word_1 = border.ui[1];
+                        sampler.border_color_word_2 = border.ui[2];
+                        sampler.border_color_word_3 = border.ui[3];
                 }
         }
 }
