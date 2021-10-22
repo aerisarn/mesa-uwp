@@ -471,7 +471,7 @@ int amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_wi
 }
 
 static int
-amdgpu_do_add_real_buffer(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs,
+amdgpu_do_add_real_buffer(struct amdgpu_cs_context *cs,
                           struct amdgpu_winsys_bo *bo)
 {
    struct amdgpu_cs_buffer *buffer;
@@ -503,24 +503,23 @@ amdgpu_do_add_real_buffer(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs
    buffer = &cs->real_buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(ws, &buffer->bo, bo);
+   amdgpu_winsys_bo_reference(cs->ws, &buffer->bo, bo);
    cs->num_real_buffers++;
 
    return idx;
 }
 
 static int
-amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs *acs,
+amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs_context *cs,
                                  struct amdgpu_winsys_bo *bo)
 {
-   struct amdgpu_cs_context *cs = acs->csc;
    unsigned hash;
    int idx = amdgpu_lookup_buffer(cs, bo, cs->real_buffers, cs->num_real_buffers);
 
    if (idx >= 0)
       return idx;
 
-   idx = amdgpu_do_add_real_buffer(acs->ws, cs, bo);
+   idx = amdgpu_do_add_real_buffer(cs, bo);
 
    hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
    cs->buffer_indices_hashlist[hash] = idx & 0x7fff;
@@ -533,12 +532,10 @@ amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs *ac
    return idx;
 }
 
-static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_winsys *ws,
-                                            struct radeon_cmdbuf *rcs,
-                                            struct amdgpu_cs *acs,
+static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
+                                            struct amdgpu_cs_context *cs,
                                             struct amdgpu_winsys_bo *bo)
 {
-   struct amdgpu_cs_context *cs = acs->csc;
    struct amdgpu_cs_buffer *buffer;
    unsigned hash;
    int idx = amdgpu_lookup_buffer(cs, bo, cs->slab_buffers, cs->num_slab_buffers);
@@ -547,7 +544,7 @@ static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_winsys *ws,
    if (idx >= 0)
       return idx;
 
-   real_idx = amdgpu_lookup_or_add_real_buffer(rcs, acs, bo->u.slab.real);
+   real_idx = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo->u.slab.real);
    if (real_idx < 0)
       return -1;
 
@@ -573,7 +570,7 @@ static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_winsys *ws,
    buffer = &cs->slab_buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(ws, &buffer->bo, bo);
+   amdgpu_winsys_bo_reference(cs->ws, &buffer->bo, bo);
    buffer->slab_real_idx = real_idx;
    cs->num_slab_buffers++;
 
@@ -583,12 +580,10 @@ static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_winsys *ws,
    return idx;
 }
 
-static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_winsys *ws,
-                                              struct radeon_cmdbuf *rcs,
-                                              struct amdgpu_cs *acs,
+static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
+                                              struct amdgpu_cs_context *cs,
                                               struct amdgpu_winsys_bo *bo)
 {
-   struct amdgpu_cs_context *cs = acs->csc;
    struct amdgpu_cs_buffer *buffer;
    unsigned hash;
    int idx = amdgpu_lookup_buffer(cs, bo, cs->sparse_buffers, cs->num_sparse_buffers);
@@ -618,7 +613,7 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_winsys *ws,
    buffer = &cs->sparse_buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(ws, &buffer->bo, bo);
+   amdgpu_winsys_bo_reference(cs->ws, &buffer->bo, bo);
    cs->num_sparse_buffers++;
 
    hash = bo->unique_id & (BUFFER_HASHLIST_SIZE-1);
@@ -649,8 +644,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
    /* Don't use the "domains" parameter. Amdgpu doesn't support changing
     * the buffer placement during command submission.
     */
-   struct amdgpu_cs *acs = amdgpu_cs(rcs);
-   struct amdgpu_cs_context *cs = acs->csc;
+   struct amdgpu_cs_context *cs = amdgpu_cs(rcs)->csc;
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_cs_buffer *buffer;
    int index;
@@ -665,7 +659,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
 
    if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
       if (!bo->bo) {
-         index = amdgpu_lookup_or_add_slab_buffer(acs->ws, rcs, acs, bo);
+         index = amdgpu_lookup_or_add_slab_buffer(rcs, cs, bo);
          if (index < 0)
             return 0;
 
@@ -675,14 +669,14 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
          usage &= ~RADEON_USAGE_SYNCHRONIZED;
          index = buffer->slab_real_idx;
       } else {
-         index = amdgpu_lookup_or_add_real_buffer(rcs, acs, bo);
+         index = amdgpu_lookup_or_add_real_buffer(rcs, cs, bo);
          if (index < 0)
             return 0;
       }
 
       buffer = &cs->real_buffers[index];
    } else {
-      index = amdgpu_lookup_or_add_sparse_buffer(acs->ws, rcs, acs, bo);
+      index = amdgpu_lookup_or_add_sparse_buffer(rcs, cs, bo);
       if (index < 0)
          return 0;
 
@@ -992,6 +986,9 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    /* Assign to both amdgpu_cs_context; only csc will use it. */
    cs->csc1.buffer_indices_hashlist = cs->buffer_indices_hashlist;
    cs->csc2.buffer_indices_hashlist = cs->buffer_indices_hashlist;
+
+   cs->csc1.ws = ctx->ws;
+   cs->csc2.ws = ctx->ws;
 
    cs->main.rcs = rcs;
    rcs->priv = cs;
@@ -1344,8 +1341,7 @@ static void amdgpu_cs_add_syncobj_signal(struct radeon_cmdbuf *rws,
  * This is done late, during submission, to keep the buffer list short before
  * submit, and to avoid managing fences for the backing buffers.
  */
-static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_winsys *ws,
-                                              struct amdgpu_cs_context *cs)
+static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
 {
    for (unsigned i = 0; i < cs->num_sparse_buffers; ++i) {
       struct amdgpu_cs_buffer *buffer = &cs->sparse_buffers[i];
@@ -1357,7 +1353,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_winsys *ws,
          /* We can directly add the buffer here, because we know that each
           * backing buffer occurs only once.
           */
-         int idx = amdgpu_do_add_real_buffer(ws, cs, backing->bo);
+         int idx = amdgpu_do_add_real_buffer(cs, backing->bo);
          if (idx < 0) {
             fprintf(stderr, "%s: failed to add buffer\n", __FUNCTION__);
             simple_mtx_unlock(&bo->lock);
@@ -1413,7 +1409,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
    } else
 #endif
    {
-      if (!amdgpu_add_sparse_backing_buffers(ws, cs)) {
+      if (!amdgpu_add_sparse_backing_buffers(cs)) {
          fprintf(stderr, "amdgpu: amdgpu_add_sparse_backing_buffers failed\n");
          r = -ENOMEM;
          goto cleanup;
