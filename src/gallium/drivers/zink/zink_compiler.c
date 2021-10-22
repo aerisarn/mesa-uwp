@@ -1292,6 +1292,38 @@ handle_bindless_var(nir_shader *nir, nir_variable *var, const struct glsl_type *
    var->data.mode = nir_var_shader_temp;
 }
 
+static enum pipe_prim_type
+gl_prim_to_pipe(unsigned primitive_type)
+{
+   switch (primitive_type) {
+   case GL_POINTS:
+      return PIPE_PRIM_POINTS;
+   case GL_LINES:
+   case GL_LINE_LOOP:
+   case GL_LINE_STRIP:
+   case GL_LINES_ADJACENCY:
+   case GL_LINE_STRIP_ADJACENCY:
+   case GL_ISOLINES:
+      return PIPE_PRIM_LINES;
+   default:
+      return PIPE_PRIM_TRIANGLES;
+   }
+}
+
+static enum pipe_prim_type
+get_shader_base_prim_type(struct nir_shader *nir)
+{
+   switch (nir->info.stage) {
+   case MESA_SHADER_GEOMETRY:
+      return gl_prim_to_pipe(nir->info.gs.output_primitive);
+   case MESA_SHADER_TESS_EVAL:
+      return nir->info.tess.point_mode ? PIPE_PRIM_POINTS : gl_prim_to_pipe(nir->info.tess.primitive_mode);
+   default:
+      break;
+   }
+   return PIPE_PRIM_MAX;
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -1300,6 +1332,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    bool have_psiz = false;
 
    ret->hash = _mesa_hash_pointer(ret);
+   ret->reduced_prim = get_shader_base_prim_type(nir);
 
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);
