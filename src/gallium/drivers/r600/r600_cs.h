@@ -70,7 +70,7 @@ static inline unsigned radeon_add_to_buffer_list(struct r600_common_context *rct
 						 struct r600_ring *ring,
 						 struct r600_resource *rbo,
 						 enum radeon_bo_usage usage,
-						 enum radeon_bo_priority priority)
+						 unsigned priority)
 {
 	assert(usage);
 	return rctx->ws->cs_add_buffer(
@@ -101,7 +101,7 @@ radeon_add_to_buffer_list_check_mem(struct r600_common_context *rctx,
 				    struct r600_ring *ring,
 				    struct r600_resource *rbo,
 				    enum radeon_bo_usage usage,
-				    enum radeon_bo_priority priority,
+				    unsigned priority,
 				    bool check_mem)
 {
 	if (check_mem &&
@@ -116,7 +116,7 @@ radeon_add_to_buffer_list_check_mem(struct r600_common_context *rctx,
 static inline void r600_emit_reloc(struct r600_common_context *rctx,
 				   struct r600_ring *ring, struct r600_resource *rbo,
 				   enum radeon_bo_usage usage,
-				   enum radeon_bo_priority priority)
+				   unsigned priority)
 {
 	struct radeon_cmdbuf *cs = &ring->cs;
 	bool has_vm = ((struct r600_common_screen*)rctx->b.screen)->info.r600_has_virtual_memory;

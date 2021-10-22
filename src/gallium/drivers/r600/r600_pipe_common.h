@@ -900,7 +900,7 @@ static inline unsigned r600_wavefront_size(enum radeon_family family)
 	}
 }
 
-static inline enum radeon_bo_priority
+static inline unsigned
 r600_get_sampler_view_priority(struct r600_resource *res)
 {
 	if (res->b.b.target == PIPE_BUFFER)

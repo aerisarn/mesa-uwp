@@ -142,53 +142,49 @@ enum radeon_value_id
    RADEON_CS_THREAD_TIME,
 };
 
-enum radeon_bo_priority
-{
-   /* Each group of two has the same priority. */
-   RADEON_PRIO_FENCE = 0,
-   RADEON_PRIO_TRACE,
+/* Each group of two has the same priority. */
+#define RADEON_PRIO_FENCE (1 << 0)
+#define RADEON_PRIO_TRACE (1 << 1)
 
-   RADEON_PRIO_SO_FILLED_SIZE = 2,
-   RADEON_PRIO_QUERY,
+#define RADEON_PRIO_SO_FILLED_SIZE (1 << 2)
+#define RADEON_PRIO_QUERY (1 << 3)
 
-   RADEON_PRIO_IB1 = 4, /* main IB submitted to the kernel */
-   RADEON_PRIO_IB2,     /* IB executed with INDIRECT_BUFFER */
+#define RADEON_PRIO_IB1 (1 << 4) /* main IB submitted to the kernel */
+#define RADEON_PRIO_IB2 (1 << 5)     /* IB executed with INDIRECT_BUFFER */
 
-   RADEON_PRIO_DRAW_INDIRECT = 6,
-   RADEON_PRIO_INDEX_BUFFER,
+#define RADEON_PRIO_DRAW_INDIRECT (1 << 6)
+#define RADEON_PRIO_INDEX_BUFFER (1 << 7)
 
-   RADEON_PRIO_CP_DMA = 8,
-   RADEON_PRIO_BORDER_COLORS,
+#define RADEON_PRIO_CP_DMA (1 << 8)
+#define RADEON_PRIO_BORDER_COLORS (1 << 9)
 
-   RADEON_PRIO_CONST_BUFFER = 10,
-   RADEON_PRIO_DESCRIPTORS,
+#define RADEON_PRIO_CONST_BUFFER (1 << 10)
+#define RADEON_PRIO_DESCRIPTORS (1 << 11)
 
-   RADEON_PRIO_SAMPLER_BUFFER = 12,
-   RADEON_PRIO_VERTEX_BUFFER,
+#define RADEON_PRIO_SAMPLER_BUFFER (1 << 12)
+#define RADEON_PRIO_VERTEX_BUFFER (1 << 13)
 
-   RADEON_PRIO_SHADER_RW_BUFFER = 14,
-   RADEON_PRIO_COMPUTE_GLOBAL,
+#define RADEON_PRIO_SHADER_RW_BUFFER (1 << 14)
+#define RADEON_PRIO_COMPUTE_GLOBAL (1 << 15)
 
-   RADEON_PRIO_SAMPLER_TEXTURE = 16,
-   RADEON_PRIO_SHADER_RW_IMAGE,
+#define RADEON_PRIO_SAMPLER_TEXTURE (1 << 16)
+#define RADEON_PRIO_SHADER_RW_IMAGE (1 << 17)
 
-   RADEON_PRIO_SAMPLER_TEXTURE_MSAA = 18,
-   RADEON_PRIO_COLOR_BUFFER,
+#define RADEON_PRIO_SAMPLER_TEXTURE_MSAA (1 << 18)
+#define RADEON_PRIO_COLOR_BUFFER (1 << 19)
 
-   RADEON_PRIO_DEPTH_BUFFER = 20,
+#define RADEON_PRIO_DEPTH_BUFFER (1 << 20)
 
-   RADEON_PRIO_COLOR_BUFFER_MSAA = 22,
+#define RADEON_PRIO_COLOR_BUFFER_MSAA (1 << 22)
 
-   RADEON_PRIO_DEPTH_BUFFER_MSAA = 24,
+#define RADEON_PRIO_DEPTH_BUFFER_MSAA (1 << 24)
 
-   RADEON_PRIO_SEPARATE_META = 26,
-   RADEON_PRIO_SHADER_BINARY, /* the hw can't hide instruction cache misses */
+#define RADEON_PRIO_SEPARATE_META (1 << 26)
+#define RADEON_PRIO_SHADER_BINARY (1 << 27) /* the hw can't hide instruction cache misses */
 
-   RADEON_PRIO_SHADER_RINGS = 28,
+#define RADEON_PRIO_SHADER_RINGS (1 << 28)
 
-   RADEON_PRIO_SCRATCH_BUFFER = 30,
-   /* 31 is the maximum value */
-};
+#define RADEON_PRIO_SCRATCH_BUFFER (1 << 30)
 
 struct winsys_handle;
 struct radeon_winsys_ctx;
@@ -539,7 +535,7 @@ struct radeon_winsys {
     */
    unsigned (*cs_add_buffer)(struct radeon_cmdbuf *cs, struct pb_buffer *buf,
                              enum radeon_bo_usage usage, enum radeon_bo_domain domain,
-                             enum radeon_bo_priority priority);
+                             unsigned priority);
 
    /**
     * Return the index of an already-added buffer.

@@ -188,7 +188,7 @@ si_add_descriptors_to_bo_list(struct si_context *sctx, struct si_descriptors *de
 
 /* SAMPLER VIEWS */
 
-static inline enum radeon_bo_priority si_get_sampler_view_priority(struct si_resource *res)
+static inline unsigned si_get_sampler_view_priority(struct si_resource *res)
 {
    if (res->b.b.target == PIPE_BUFFER)
       return RADEON_PRIO_SAMPLER_BUFFER;
@@ -219,7 +219,7 @@ static void si_sampler_view_add_buffer(struct si_context *sctx, struct pipe_reso
                                        bool check_mem)
 {
    struct si_texture *tex = (struct si_texture *)resource;
-   enum radeon_bo_priority priority;
+   unsigned priority;
 
    if (!resource)
       return;
@@ -1027,8 +1027,8 @@ static void si_init_buffer_resources(struct si_context *sctx,
                                      struct si_buffer_resources *buffers,
                                      struct si_descriptors *descs, unsigned num_buffers,
                                      short shader_userdata_rel_index,
-                                     enum radeon_bo_priority priority,
-                                     enum radeon_bo_priority priority_constbuf)
+                                     unsigned priority,
+                                     unsigned priority_constbuf)
 {
    buffers->priority = priority;
    buffers->priority_constbuf = priority_constbuf;
@@ -1331,7 +1331,7 @@ void si_get_pipe_constant_buffer(struct si_context *sctx, uint shader, uint slot
 static void si_set_shader_buffer(struct si_context *sctx, struct si_buffer_resources *buffers,
                                  unsigned descriptors_idx, uint slot,
                                  const struct pipe_shader_buffer *sbuffer, bool writable,
-                                 enum radeon_bo_priority priority)
+                                 unsigned priority)
 {
    struct si_descriptors *descs = &sctx->descriptors[descriptors_idx];
    uint32_t *desc = descs->list + slot * 4;
@@ -1608,7 +1608,7 @@ void si_update_needs_color_decompress_masks(struct si_context *sctx)
  */
 static bool si_reset_buffer_resources(struct si_context *sctx, struct si_buffer_resources *buffers,
                                       unsigned descriptors_idx, uint64_t slot_mask,
-                                      struct pipe_resource *buf, enum radeon_bo_priority priority)
+                                      struct pipe_resource *buf, unsigned priority)
 {
    struct si_descriptors *descs = &sctx->descriptors[descriptors_idx];
    bool noop = true;

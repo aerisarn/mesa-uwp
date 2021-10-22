@@ -645,7 +645,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
                                     struct pb_buffer *buf,
                                     enum radeon_bo_usage usage,
                                     enum radeon_bo_domain domains,
-                                    enum radeon_bo_priority priority)
+                                    unsigned priority)
 {
    /* Don't use the "domains" parameter. Amdgpu doesn't support changing
     * the buffer placement during command submission.
@@ -662,7 +662,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
     */
    if (bo == cs->last_added_bo &&
        (usage & cs->last_added_bo_usage) == usage &&
-       (1u << priority) & cs->last_added_bo_priority_usage)
+       priority & cs->last_added_bo_priority_usage)
       return cs->last_added_bo_index;
 
    if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
@@ -691,7 +691,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
       buffer = &cs->sparse_buffers[index];
    }
 
-   buffer->u.real.priority_usage |= 1u << priority;
+   buffer->u.real.priority_usage |= priority;
    buffer->usage |= usage;
 
    cs->last_added_bo = bo;

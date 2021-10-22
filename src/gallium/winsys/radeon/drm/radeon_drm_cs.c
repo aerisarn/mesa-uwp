@@ -362,7 +362,7 @@ static unsigned radeon_drm_cs_add_buffer(struct radeon_cmdbuf *rcs,
                                          struct pb_buffer *buf,
                                          enum radeon_bo_usage usage,
                                          enum radeon_bo_domain domains,
-                                         enum radeon_bo_priority priority)
+                                         unsigned priority)
 {
    struct radeon_drm_cs *cs = radeon_drm_cs(rcs);
    struct radeon_bo *bo = (struct radeon_bo*)buf;
@@ -394,8 +394,11 @@ static unsigned radeon_drm_cs_add_buffer(struct radeon_cmdbuf *rcs,
    added_domains = (rd | wd) & ~(reloc->read_domains | reloc->write_domain);
    reloc->read_domains |= rd;
    reloc->write_domain |= wd;
-   reloc->flags = MAX2(reloc->flags, priority);
-   cs->csc->relocs_bo[index].u.real.priority_usage |= 1u << priority;
+
+   /* The priority must be in [0, 15]. It's used by the kernel memory management. */
+   unsigned bo_priority = util_last_bit(priority) / 2;
+   reloc->flags = MAX2(reloc->flags, bo_priority);
+   cs->csc->relocs_bo[index].u.real.priority_usage |= priority;
 
    if (added_domains & RADEON_DOMAIN_VRAM)
       rcs->used_vram_kb += bo->base.size / 1024;

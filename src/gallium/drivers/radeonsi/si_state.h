@@ -454,8 +454,8 @@ struct si_buffer_resources {
    struct pipe_resource **buffers; /* this has num_buffers elements */
    unsigned *offsets;              /* this has num_buffers elements */
 
-   enum radeon_bo_priority priority : 6;
-   enum radeon_bo_priority priority_constbuf : 6;
+   unsigned priority;
+   unsigned priority_constbuf;
 
    /* The i-th bit is set if that element is enabled (non-NULL resource). */
    uint64_t enabled_mask;

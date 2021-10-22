@@ -1941,7 +1941,7 @@ static inline void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_dra
  */
 static inline void radeon_add_to_buffer_list(struct si_context *sctx, struct radeon_cmdbuf *cs,
                                              struct si_resource *bo, enum radeon_bo_usage usage,
-                                             enum radeon_bo_priority priority)
+                                             unsigned priority)
 {
    assert(usage);
    sctx->ws->cs_add_buffer(cs, bo->buf, (enum radeon_bo_usage)(usage | RADEON_USAGE_SYNCHRONIZED),
@@ -1966,7 +1966,7 @@ static inline void radeon_add_to_buffer_list(struct si_context *sctx, struct rad
 static inline void radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sctx,
                                                            struct si_resource *bo,
                                                            enum radeon_bo_usage usage,
-                                                           enum radeon_bo_priority priority,
+                                                           unsigned priority,
                                                            bool check_mem)
 {
    if (check_mem &&
