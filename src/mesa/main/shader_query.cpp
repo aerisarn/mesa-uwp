@@ -568,7 +568,7 @@ search_resource_hash(struct gl_shader_program *shProg,
 
    /* If dealing with array, we need to get the basename. */
    if (index >= 0) {
-      name_copy = (char *) malloc(base_name_end - name + 1);
+      name_copy = (char *) alloca(base_name_end - name + 1);
       memcpy(name_copy, name, base_name_end - name);
       name_copy[base_name_end - name] = '\0';
       len = base_name_end - name;
@@ -579,9 +579,6 @@ search_resource_hash(struct gl_shader_program *shProg,
    uint32_t key = compute_resource_key(programInterface, name_copy, len);
    struct gl_program_resource *res = (struct gl_program_resource *)
       _mesa_hash_table_u64_search(shProg->data->ProgramResourceHash, key);
-
-   if (name_copy != name)
-      free(name_copy);
 
    if (res && array_index)
       *array_index = index >= 0 ? index : 0;
