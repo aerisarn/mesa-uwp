@@ -124,7 +124,8 @@ struct amdgpu_cs_context {
    bool secure;
 };
 
-#define BUFFER_HASHLIST_SIZE 4096
+/* This high limit is needed for viewperf2020/catia. */
+#define BUFFER_HASHLIST_SIZE 32768
 
 struct amdgpu_cs {
    struct amdgpu_ib main; /* must be first because this is inherited */
