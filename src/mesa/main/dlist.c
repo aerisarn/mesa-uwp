@@ -640,10 +640,14 @@ typedef enum
    /* The following three are meta instructions */
    OPCODE_ERROR,                /* raise compiled-in error */
    OPCODE_CONTINUE,
-   OPCODE_NOP,                  /* No-op (used for 8-byte alignment */
    OPCODE_END_OF_LIST
 } OpCode;
 
+/* We want the vertex list payload to start at offset 8 on x86_64 because it
+ * contains pointers. The header node has 4 bytes, so add 1 more node to get
+ * 8 bytes.
+ */
+#define PADDING_64BIT (sizeof(void*) == 8 ? 1 : 0)
 
 
 /**
@@ -1383,7 +1387,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
          case OPCODE_VERTEX_LIST:
          case OPCODE_VERTEX_LIST_LOOPBACK:
          case OPCODE_VERTEX_LIST_COPY_CURRENT:
-            vbo_destroy_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1]);
+            vbo_destroy_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1 + PADDING_64BIT]);
             break;
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
@@ -1393,8 +1397,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             continue;
          case OPCODE_END_OF_LIST:
             if (dlist->small_list) {
-               unsigned start = dlist->begins_with_a_nop ? dlist->start - 1 :
-                                                           dlist->start;
+               unsigned start = dlist->start;
                for (int i = 0; i < dlist->count; i++) {
                   util_idalloc_free(&ctx->Shared->small_dlist_store.free_idx,
                                     start + i);
@@ -1563,28 +1566,23 @@ dlist_alloc(struct gl_context *ctx, OpCode opcode, GLuint bytes, bool align8)
 {
    const GLuint numNodes = 1 + (bytes + sizeof(Node) - 1) / sizeof(Node);
    const GLuint contNodes = 1 + POINTER_DWORDS;  /* size of continue info */
-   GLuint nopNode;
-   Node *n;
 
    assert(bytes <= BLOCK_SIZE * sizeof(Node));
 
-   if (sizeof(void *) > sizeof(Node) && align8
-       && ctx->ListState.CurrentPos % 2 == 0) {
-      /* The opcode would get placed at node[0] and the payload would start
-       * at node[1].  But the payload needs to be at an even offset (8-byte
-       * multiple).
-       */
-      nopNode = 1;
-   }
-   else {
-      nopNode = 0;
+   /* If this node needs to start on an 8-byte boundary, pad the last node. */
+   if (sizeof(void *) == 8 && align8 &&
+       ctx->ListState.CurrentPos % 2 == 1 &&
+       ctx->ListState.CurrentPos + 1 + numNodes + contNodes <= BLOCK_SIZE) {
+      Node *last = ctx->ListState.CurrentBlock + ctx->ListState.CurrentPos -
+                   ctx->ListState.LastInstSize;
+      last->InstSize++;
+      ctx->ListState.CurrentPos++;
    }
 
-   if (ctx->ListState.CurrentPos + nopNode + numNodes + contNodes
-       > BLOCK_SIZE) {
+   if (ctx->ListState.CurrentPos + numNodes + contNodes > BLOCK_SIZE) {
       /* This block is full.  Allocate a new block and chain to it */
       Node *newblock;
-      n = ctx->ListState.CurrentBlock + ctx->ListState.CurrentPos;
+      Node *n = ctx->ListState.CurrentBlock + ctx->ListState.CurrentPos;
       n[0].opcode = OPCODE_CONTINUE;
       newblock = malloc(sizeof(Node) * BLOCK_SIZE);
       if (!newblock) {
@@ -1598,31 +1596,14 @@ dlist_alloc(struct gl_context *ctx, OpCode opcode, GLuint bytes, bool align8)
       save_pointer(&n[1], newblock);
       ctx->ListState.CurrentBlock = newblock;
       ctx->ListState.CurrentPos = 0;
-
-      /* Display list nodes are always 4 bytes.  If we need 8-byte alignment
-       * we have to insert a NOP so that the payload of the real opcode lands
-       * on an even location:
-       *   node[0] = OPCODE_NOP
-       *   node[1] = OPCODE_x;
-       *   node[2] = start of payload
-       */
-      nopNode = sizeof(void *) > sizeof(Node) && align8;
    }
 
-   n = ctx->ListState.CurrentBlock + ctx->ListState.CurrentPos;
-   if (nopNode) {
-      assert(ctx->ListState.CurrentPos % 2 == 0); /* even value */
-      n[0].opcode = OPCODE_NOP;
-      n[0].InstSize = 1;
-      n++;
-      /* The "real" opcode will now be at an odd location and the payload
-       * will be at an even location.
-       */
-   }
-   ctx->ListState.CurrentPos += nopNode + numNodes;
+   Node *n = ctx->ListState.CurrentBlock + ctx->ListState.CurrentPos;
+   ctx->ListState.CurrentPos += numNodes;
 
    n[0].opcode = opcode;
    n[0].InstSize = numNodes;
+   ctx->ListState.LastInstSize = numNodes;
 
    return n;
 }
@@ -1634,10 +1615,10 @@ _mesa_dlist_alloc_vertex_list(struct gl_context *ctx, bool copy_to_current)
    Node *n =  dlist_alloc(ctx,
                           copy_to_current ? OPCODE_VERTEX_LIST_COPY_CURRENT :
                                             OPCODE_VERTEX_LIST,
-                          sizeof(struct vbo_save_vertex_list),
+                          PADDING_64BIT * 4 + sizeof(struct vbo_save_vertex_list),
                           true);
    if (n)
-      return n + 1;  /* return pointer to payload area, after opcode */
+      return n + 1 + PADDING_64BIT; /* return pointer to payload area, after opcode */
    else
       return NULL;
 }
@@ -13404,23 +13385,20 @@ execute_list(struct gl_context *ctx, GLuint list)
                                        n[5].f, n[6].f, n[7].f, n[8].f));
             break;
          case OPCODE_VERTEX_LIST:
-            vbo_save_playback_vertex_list(ctx, &n[1], false);
+            vbo_save_playback_vertex_list(ctx, &n[1 + PADDING_64BIT], false);
             break;
 
          case OPCODE_VERTEX_LIST_COPY_CURRENT:
-            vbo_save_playback_vertex_list(ctx, &n[1], true);
+            vbo_save_playback_vertex_list(ctx, &n[1 + PADDING_64BIT], true);
             break;
 
          case OPCODE_VERTEX_LIST_LOOPBACK:
-            vbo_save_playback_vertex_list_loopback(ctx, &n[1]);
+            vbo_save_playback_vertex_list_loopback(ctx, &n[1 + PADDING_64BIT]);
             break;
 
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
             continue;
-         case OPCODE_NOP:
-            /* no-op */
-            break;
          default:
             {
                char msg[1000];
@@ -13593,6 +13571,7 @@ _mesa_NewList(GLuint name, GLenum mode)
    ctx->ListState.CurrentList = make_list(name, BLOCK_SIZE);
    ctx->ListState.CurrentBlock = ctx->ListState.CurrentList->Head;
    ctx->ListState.CurrentPos = 0;
+   ctx->ListState.LastInstSize = 0;
    ctx->ListState.Current.UseLoopback = false;
 
    vbo_save_NewList(ctx, name, mode);
@@ -13783,19 +13762,10 @@ _mesa_EndList(void)
 
       assert (ctx->Shared->small_dlist_store.ptr[start + list->CurrentList->count - 1].opcode == OPCODE_END_OF_LIST);
 
-      /* If the first opcode is a NOP, adjust start */
-      if (ctx->Shared->small_dlist_store.ptr[start].opcode == OPCODE_NOP) {
-         list->CurrentList->start++;
-         list->CurrentList->begins_with_a_nop = true;
-      } else {
-         list->CurrentList->begins_with_a_nop = false;
-      }
-
       free(list->CurrentBlock);
    } else {
       /* Keep the mallocated storage */
       list->CurrentList->small_list = false;
-      list->CurrentList->begins_with_a_nop = false;
    }
 
    /* Destroy old list, if any */
@@ -13814,6 +13784,7 @@ _mesa_EndList(void)
    ctx->ListState.CurrentList = NULL;
    ctx->ListState.CurrentBlock = NULL;
    ctx->ListState.CurrentPos = 0;
+   ctx->ListState.LastInstSize = 0;
    ctx->ExecuteFlag = GL_TRUE;
    ctx->CompileFlag = GL_FALSE;
 
@@ -15002,13 +14973,10 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
             fprintf(f, "DISPLAY-LIST-CONTINUE\n");
             n = (Node *) get_pointer(&n[1]);
             continue;
-         case OPCODE_NOP:
-            fprintf(f, "NOP\n");
-            break;
          case OPCODE_VERTEX_LIST:
          case OPCODE_VERTEX_LIST_LOOPBACK:
          case OPCODE_VERTEX_LIST_COPY_CURRENT:
-            vbo_print_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1], opcode, f);
+            vbo_print_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1 + PADDING_64BIT], opcode, f);
             break;
          default:
             if (opcode < 0 || opcode > OPCODE_END_OF_LIST) {
@@ -15199,6 +15167,7 @@ _mesa_init_display_list(struct gl_context *ctx)
    ctx->CompileFlag = GL_FALSE;
    ctx->ListState.CurrentBlock = NULL;
    ctx->ListState.CurrentPos = 0;
+   ctx->ListState.LastInstSize = 0;
 
    /* Display List group */
    ctx->List.ListBase = 0;
