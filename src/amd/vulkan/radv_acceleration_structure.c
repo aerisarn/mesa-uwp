@@ -473,6 +473,9 @@ bvh_opt_compare(const void *_a, const void *_b)
 static void
 optimize_bvh(const char *base_ptr, uint32_t *node_ids, uint32_t node_count)
 {
+   if (node_count == 0)
+      return;
+
    float bounds[6];
    for (unsigned i = 0; i < 3; ++i)
       bounds[i] = INFINITY;
