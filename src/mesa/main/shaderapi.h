@@ -36,7 +36,7 @@
 extern "C" {
 #endif
 
-
+struct hash_entry;
 struct _glapi_table;
 struct gl_context;
 struct gl_linked_shader;
@@ -340,6 +340,9 @@ _mesa_get_program_resourceiv(struct gl_shader_program *shProg,
                              GLsizei propCount, const GLenum *props,
                              GLsizei bufSize, GLsizei *length,
                              GLint *params);
+
+extern void
+_mesa_program_resource_key_delete(struct hash_entry *entry);
 
 extern void
 _mesa_create_program_resource_hash(struct gl_shader_program *shProg);

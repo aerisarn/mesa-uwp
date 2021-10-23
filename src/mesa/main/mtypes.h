@@ -2993,7 +2993,7 @@ struct gl_shader_program_data
    union gl_constant_value *UniformDataDefaults;
 
    /** Hash for quick search by name. */
-   struct hash_table_u64 *ProgramResourceHash;
+   struct hash_table *ProgramResourceHash;
 
    GLboolean Validated;
 

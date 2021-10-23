@@ -39,6 +39,11 @@
 #include "compiler/glsl/string_to_uint_map.h"
 #include "util/mesa-sha1.h"
 
+struct program_resource_key {
+   const char *name;
+   GLenum type;
+};
+
 static GLint
 program_resource_location(struct gl_program_resource *res,
                           unsigned array_index);
@@ -627,12 +632,6 @@ valid_array_index(const GLchar *name, int len, unsigned *array_index)
    return true;
 }
 
-static uint32_t
-compute_resource_key(GLenum programInterface, const char *name, size_t len)
-{
-   return _mesa_hash_data_with_seed(name, len, programInterface + len);
-}
-
 static struct gl_program_resource *
 search_resource_hash(struct gl_shader_program *shProg,
                      GLenum programInterface, const char *name, int len,
@@ -652,14 +651,19 @@ search_resource_hash(struct gl_shader_program *shProg,
       name_copy = (char*) name;
    }
 
-   uint32_t key = compute_resource_key(programInterface, name_copy, len);
-   struct gl_program_resource *res = (struct gl_program_resource *)
-      _mesa_hash_table_u64_search(shProg->data->ProgramResourceHash, key);
+   struct program_resource_key key;
+   key.name = name_copy;
+   key.type = programInterface;
 
-   if (res && array_index)
+   struct hash_entry *entry =
+      _mesa_hash_table_search(shProg->data->ProgramResourceHash, &key);
+   if (!entry)
+      return NULL;
+
+   if (array_index)
       *array_index = index >= 0 ? index : 0;
 
-   return res;
+   return (struct gl_program_resource *)entry->data;
 }
 
 /* Find a program resource with specific name in given interface.
@@ -2002,22 +2006,52 @@ _mesa_validate_pipeline_io(struct gl_pipeline_object *pipeline)
    return true;
 }
 
+static uint32_t
+hash_resource_key(const void *_key)
+{
+   struct program_resource_key *key = (struct program_resource_key *)_key;
+
+   return _mesa_hash_data_with_seed(key->name, strlen(key->name), key->type);
+}
+
+static bool
+resource_key_equal(const void *a, const void *b)
+{
+   struct program_resource_key *keya = (struct program_resource_key *)a;
+   struct program_resource_key *keyb = (struct program_resource_key *)b;
+
+   return keya->type == keyb->type && strcmp(keya->name, keyb->name) == 0;
+}
+
+extern "C" void
+_mesa_program_resource_key_delete(struct hash_entry *entry)
+{
+   free((void*)entry->key);
+}
+
 extern "C" void
 _mesa_create_program_resource_hash(struct gl_shader_program *shProg)
 {
    /* Rebuild resource hash. */
    if (shProg->data->ProgramResourceHash)
-      _mesa_hash_table_u64_destroy(shProg->data->ProgramResourceHash);
+      _mesa_hash_table_destroy(shProg->data->ProgramResourceHash,
+                               _mesa_program_resource_key_delete);
 
-   shProg->data->ProgramResourceHash = _mesa_hash_table_u64_create(shProg);
+   shProg->data->ProgramResourceHash =
+      _mesa_hash_table_create(shProg, hash_resource_key,
+                              resource_key_equal);
 
    struct gl_program_resource *res = shProg->data->ProgramResourceList;
    for (unsigned i = 0; i < shProg->data->NumProgramResourceList; i++, res++) {
       struct gl_resource_name name;
       if (_mesa_program_get_resource_name(res, &name)) {
-         uint32_t key = compute_resource_key(res->Type, name.string, name.length);
-         _mesa_hash_table_u64_insert(shProg->data->ProgramResourceHash, key,
-                                     res);
+         struct program_resource_key *key =
+            (struct program_resource_key *)malloc(sizeof(*key));
+         key->name = name.string;
+         key->type = res->Type;
+
+         _mesa_hash_table_insert(shProg->data->ProgramResourceHash,
+                                 key, res);
       }
    }
 }
