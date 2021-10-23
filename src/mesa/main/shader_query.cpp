@@ -694,10 +694,8 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
       if (!_mesa_program_get_resource_name(res, &rname))
          continue;
 
-      int length_without_array_index = rname.length;
-      const char *rname_last_square_bracket = strrchr(rname.string, '[');
       bool found = false;
-      bool rname_has_array_index_zero = false;
+
       /* From ARB_program_interface_query spec:
        *
        * "uint GetProgramResourceIndex(uint program, enum programInterface,
@@ -723,12 +721,10 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
        * array's index is zero and the resulting string length is the same
        * than the provided name's length.
        */
-      if (rname_last_square_bracket) {
-         length_without_array_index -= rname_last_square_bracket - rname.string;
-         rname_has_array_index_zero =
-            (strcmp(rname_last_square_bracket, "[0]") == 0) &&
-            (length_without_array_index == len);
-      }
+      int length_without_array_index =
+         rname.last_square_bracket >= 0 ? rname.last_square_bracket : rname.length;
+      bool rname_has_array_index_zero = rname.suffix_is_zero_square_bracketed &&
+                                        rname.last_square_bracket == len;
 
       if (len >= rname.length && strncmp(rname.string, name, rname.length) == 0)
          found = true;

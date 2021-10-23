@@ -92,6 +92,8 @@ struct gl_resource_name
 {
    char *string;
    int length;              /* strlen(string) or 0 */
+   int last_square_bracket; /* (strrchr(name, '[') - name) or -1 */
+   bool suffix_is_zero_square_bracketed; /* suffix is [0] */
 };
 
 struct gl_uniform_storage {
