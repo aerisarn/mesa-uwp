@@ -39,11 +39,6 @@
 #include "compiler/glsl/string_to_uint_map.h"
 #include "util/mesa-sha1.h"
 
-struct program_resource_key {
-   const char *name;
-   GLenum type;
-};
-
 static GLint
 program_resource_location(struct gl_program_resource *res,
                           unsigned array_index);
@@ -637,6 +632,12 @@ search_resource_hash(struct gl_shader_program *shProg,
                      GLenum programInterface, const char *name, int len,
                      unsigned *array_index)
 {
+   unsigned type = GET_PROGRAM_RESOURCE_TYPE_FROM_GLENUM(programInterface);
+   assert(type < ARRAY_SIZE(shProg->data->ProgramResourceHash));
+
+   if (!shProg->data->ProgramResourceHash[type])
+      return NULL;
+
    const char *base_name_end;
    long index = parse_program_resource_name(name, len, &base_name_end);
    char *name_copy;
@@ -651,12 +652,10 @@ search_resource_hash(struct gl_shader_program *shProg,
       name_copy = (char*) name;
    }
 
-   struct program_resource_key key;
-   key.name = name_copy;
-   key.type = programInterface;
-
+   uint32_t hash = _mesa_hash_string(name_copy);
    struct hash_entry *entry =
-      _mesa_hash_table_search(shProg->data->ProgramResourceHash, &key);
+      _mesa_hash_table_search_pre_hashed(shProg->data->ProgramResourceHash[type],
+                                         hash, name_copy);
    if (!entry)
       return NULL;
 
@@ -673,16 +672,14 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
                                  GLenum programInterface, const char *name,
                                  unsigned *array_index)
 {
-   struct gl_program_resource *res = NULL;
-
    if (name == NULL)
       return NULL;
 
    int len = strlen(name);
 
    /* If we have a name, try the ProgramResourceHash first. */
-   if (shProg->data->ProgramResourceHash)
-      res = search_resource_hash(shProg, programInterface, name, len, array_index);
+   struct gl_program_resource *res =
+      search_resource_hash(shProg, programInterface, name, len, array_index);
 
    if (res)
       return res;
@@ -2006,52 +2003,38 @@ _mesa_validate_pipeline_io(struct gl_pipeline_object *pipeline)
    return true;
 }
 
-static uint32_t
-hash_resource_key(const void *_key)
-{
-   struct program_resource_key *key = (struct program_resource_key *)_key;
-
-   return _mesa_hash_data_with_seed(key->name, strlen(key->name), key->type);
-}
-
-static bool
-resource_key_equal(const void *a, const void *b)
-{
-   struct program_resource_key *keya = (struct program_resource_key *)a;
-   struct program_resource_key *keyb = (struct program_resource_key *)b;
-
-   return keya->type == keyb->type && strcmp(keya->name, keyb->name) == 0;
-}
-
 extern "C" void
-_mesa_program_resource_key_delete(struct hash_entry *entry)
+_mesa_program_resource_hash_destroy(struct gl_shader_program *shProg)
 {
-   free((void*)entry->key);
+   for (unsigned i = 0; i < ARRAY_SIZE(shProg->data->ProgramResourceHash); i++) {
+      if (shProg->data->ProgramResourceHash[i]) {
+         _mesa_hash_table_destroy(shProg->data->ProgramResourceHash[i], NULL);
+         shProg->data->ProgramResourceHash[i] = NULL;
+      }
+   }
 }
 
 extern "C" void
 _mesa_create_program_resource_hash(struct gl_shader_program *shProg)
 {
    /* Rebuild resource hash. */
-   if (shProg->data->ProgramResourceHash)
-      _mesa_hash_table_destroy(shProg->data->ProgramResourceHash,
-                               _mesa_program_resource_key_delete);
-
-   shProg->data->ProgramResourceHash =
-      _mesa_hash_table_create(shProg, hash_resource_key,
-                              resource_key_equal);
+   _mesa_program_resource_hash_destroy(shProg);
 
    struct gl_program_resource *res = shProg->data->ProgramResourceList;
    for (unsigned i = 0; i < shProg->data->NumProgramResourceList; i++, res++) {
       struct gl_resource_name name;
       if (_mesa_program_get_resource_name(res, &name)) {
-         struct program_resource_key *key =
-            (struct program_resource_key *)malloc(sizeof(*key));
-         key->name = name.string;
-         key->type = res->Type;
+         unsigned type = GET_PROGRAM_RESOURCE_TYPE_FROM_GLENUM(res->Type);
+         assert(type < ARRAY_SIZE(shProg->data->ProgramResourceHash));
 
-         _mesa_hash_table_insert(shProg->data->ProgramResourceHash,
-                                 key, res);
+         if (!shProg->data->ProgramResourceHash[type]) {
+            shProg->data->ProgramResourceHash[type] =
+               _mesa_hash_table_create(shProg, _mesa_hash_string,
+                                       _mesa_key_string_equal);
+         }
+
+         _mesa_hash_table_insert(shProg->data->ProgramResourceHash[type],
+                                 name.string, res);
       }
    }
 }

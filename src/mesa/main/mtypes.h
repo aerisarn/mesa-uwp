@@ -2954,6 +2954,12 @@ enum gl_link_status
    LINKING_SKIPPED
 };
 
+/* All GLSL program resource types are next to each other, so we can use that
+ * to make them 0-based like this:
+ */
+#define GET_PROGRAM_RESOURCE_TYPE_FROM_GLENUM(x) ((x) - GL_UNIFORM)
+#define NUM_PROGRAM_RESOURCE_TYPES (GL_TRANSFORM_FEEDBACK_VARYING - GL_UNIFORM + 1)
+
 /**
  * A data structure to be shared by gl_shader_program and gl_program.
  */
@@ -2993,7 +2999,7 @@ struct gl_shader_program_data
    union gl_constant_value *UniformDataDefaults;
 
    /** Hash for quick search by name. */
-   struct hash_table *ProgramResourceHash;
+   struct hash_table *ProgramResourceHash[NUM_PROGRAM_RESOURCE_TYPES];
 
    GLboolean Validated;
 

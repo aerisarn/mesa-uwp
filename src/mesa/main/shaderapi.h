@@ -342,7 +342,7 @@ _mesa_get_program_resourceiv(struct gl_shader_program *shProg,
                              GLint *params);
 
 extern void
-_mesa_program_resource_key_delete(struct hash_entry *entry);
+_mesa_program_resource_hash_destroy(struct gl_shader_program *shProg);
 
 extern void
 _mesa_create_program_resource_hash(struct gl_shader_program *shProg);
