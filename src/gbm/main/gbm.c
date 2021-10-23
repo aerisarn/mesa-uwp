@@ -251,6 +251,8 @@ gbm_bo_get_bpp(struct gbm_bo *bo)
       case GBM_FORMAT_RGB888:
       case GBM_FORMAT_BGR888:
          return 24;
+      case GBM_FORMAT_RG1616:
+      case GBM_FORMAT_GR1616:
       case GBM_FORMAT_XRGB8888:
       case GBM_FORMAT_XBGR8888:
       case GBM_FORMAT_RGBX8888:
