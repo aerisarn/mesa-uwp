@@ -78,7 +78,6 @@ spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT24
 spec@arb_depth_texture@texwrap formats bordercolor-swizzled@GL_DEPTH_COMPONENT32- swizzled- border color only,Fail
 spec@arb_direct_state_access@gettextureimage-formats,Fail
 spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
-spec@arb_direct_state_access@texture-buffer,Fail
 spec@arb_draw_buffers@fbo-mrt-new-bind,Crash
 spec@arb_es2_compatibility@fbo-blending-formats,Fail
 spec@arb_es2_compatibility@fbo-blending-formats@GL_RGB565,Fail
@@ -124,7 +123,6 @@ spec@arb_sample_shading@samplemask 4 all@sample mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4,Fail
 spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
-spec@arb_shader_atomic_counters@respecify-buffer,Fail
 spec@arb_shader_draw_parameters@drawid-indirect-baseinstance,Fail
 spec@arb_shader_draw_parameters@drawid-indirect-basevertex,Fail
 spec@arb_shader_draw_parameters@drawid-indirect,Fail
@@ -136,11 +134,9 @@ spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2drect
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2drect_projvec4,Crash
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2drectshadow,Crash
 spec@arb_shading_language_420pack@active sampler conflict,Crash
-spec@arb_texture_buffer_object@data-sync,Fail
 spec@arb_texture_buffer_object@formats (fs- arb),Crash
 spec@arb_texture_buffer_object@formats (vs- arb),Crash
 spec@arb_texture_buffer_object@render-no-bo,Crash
-spec@arb_texture_buffer_object@subdata-sync,Fail
 spec@arb_texture_compression@texwrap formats bordercolor,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_ALPHA- border color only,Fail
 spec@arb_texture_compression@texwrap formats bordercolor@GL_COMPRESSED_LUMINANCE_ALPHA- border color only,Fail
