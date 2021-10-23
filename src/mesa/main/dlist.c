@@ -761,18 +761,18 @@ static void
 vbo_destroy_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *node)
 {
    for (gl_vertex_processing_mode mode = VP_MODE_FF; mode < VP_MODE_MAX; ++mode) {
-      _mesa_reference_vao(ctx, &node->VAO[mode], NULL);
-      if (node->merged.gallium.private_refcount[mode]) {
-         assert(node->merged.gallium.private_refcount[mode] > 0);
-         p_atomic_add(&node->merged.gallium.state[mode]->reference.count,
-                      -node->merged.gallium.private_refcount[mode]);
+      _mesa_reference_vao(ctx, &node->cold->VAO[mode], NULL);
+      if (node->private_refcount[mode]) {
+         assert(node->private_refcount[mode] > 0);
+         p_atomic_add(&node->state[mode]->reference.count,
+                      -node->private_refcount[mode]);
       }
-      pipe_vertex_state_reference(&node->merged.gallium.state[mode], NULL);
+      pipe_vertex_state_reference(&node->state[mode], NULL);
    }
 
-   if (node->merged.mode) {
-      free(node->merged.mode);
-      free(node->merged.start_counts);
+   if (node->modes) {
+      free(node->modes);
+      free(node->start_counts);
    }
 
    _mesa_reference_buffer_object(ctx, &node->cold->ib.obj, NULL);
@@ -786,7 +786,7 @@ static void
 vbo_print_vertex_list(struct gl_context *ctx, struct vbo_save_vertex_list *node, OpCode op, FILE *f)
 {
    GLuint i;
-   struct gl_buffer_object *buffer = node->VAO[0]->BufferBinding[0].BufferObj;
+   struct gl_buffer_object *buffer = node->cold->VAO[0]->BufferBinding[0].BufferObj;
    const GLuint vertex_size = _vbo_save_get_stride(node)/sizeof(GLfloat);
    (void) ctx;
 
