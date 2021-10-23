@@ -526,7 +526,6 @@ compile_vertex_list(struct gl_context *ctx)
    if (!node)
       return;
 
-   memset(node, 0, sizeof(struct vbo_save_vertex_list));
    node->cold = calloc(1, sizeof(*node->cold));
 
    /* Make sure the pointer is aligned to the size of a pointer */

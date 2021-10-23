@@ -34,6 +34,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef VBO_SAVE_H
 #define VBO_SAVE_H
 
+#include "dlist.h"
 #include "vbo.h"
 #include "vbo_attrib.h"
 
@@ -53,6 +54,8 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
  * compiled using the fallback opcode mechanism provided by dlist.c.
  */
 struct vbo_save_vertex_list {
+   union gl_dlist_node header;
+
    /* Data used in vbo_save_playback_vertex_list */
    struct gl_vertex_array_object *VAO[VP_MODE_MAX];
 

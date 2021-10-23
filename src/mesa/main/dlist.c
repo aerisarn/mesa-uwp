@@ -643,51 +643,6 @@ typedef enum
    OPCODE_END_OF_LIST
 } OpCode;
 
-/* We want the vertex list payload to start at offset 8 on x86_64 because it
- * contains pointers. The header node has 4 bytes, so add 1 more node to get
- * 8 bytes.
- */
-#define PADDING_64BIT (sizeof(void*) == 8 ? 1 : 0)
-
-
-/**
- * Display list node.
- *
- * Display list instructions are stored as sequences of "nodes".  Nodes
- * are allocated in blocks.  Each block has BLOCK_SIZE nodes.  Blocks
- * are linked together with a pointer.
- *
- * Each instruction in the display list is stored as a sequence of
- * contiguous nodes in memory.
- * Each node is the union of a variety of data types.
- *
- * Note, all of these members should be 4 bytes in size or less for the
- * sake of compact display lists.  We store 8-byte pointers in a pair of
- * these nodes using the save/get_pointer() functions below.
- */
-union gl_dlist_node
-{
-   struct {
-#if !DETECT_OS_WINDOWS
-      OpCode opcode:16;
-#else
-      /* sizeof(Node) is 8 with MSVC/mingw, so use an explicit 16 bits type. */
-      uint16_t opcode;
-#endif
-      uint16_t InstSize;
-   };
-   GLboolean b;
-   GLbitfield bf;
-   GLubyte ub;
-   GLshort s;
-   GLushort us;
-   GLint i;
-   GLuint ui;
-   GLenum e;
-   GLfloat f;
-   GLsizei si;
-};
-
 
 typedef union gl_dlist_node Node;
 
@@ -1387,7 +1342,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
          case OPCODE_VERTEX_LIST:
          case OPCODE_VERTEX_LIST_LOOPBACK:
          case OPCODE_VERTEX_LIST_COPY_CURRENT:
-            vbo_destroy_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1 + PADDING_64BIT]);
+            vbo_destroy_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[0]);
             break;
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
@@ -1615,12 +1570,14 @@ _mesa_dlist_alloc_vertex_list(struct gl_context *ctx, bool copy_to_current)
    Node *n =  dlist_alloc(ctx,
                           copy_to_current ? OPCODE_VERTEX_LIST_COPY_CURRENT :
                                             OPCODE_VERTEX_LIST,
-                          PADDING_64BIT * 4 + sizeof(struct vbo_save_vertex_list),
+                          sizeof(struct vbo_save_vertex_list) - sizeof(Node),
                           true);
-   if (n)
-      return n + 1 + PADDING_64BIT; /* return pointer to payload area, after opcode */
-   else
+   if (!n)
       return NULL;
+
+   /* Clear all nodes except the header */
+   memset(n + 1, 0, sizeof(struct vbo_save_vertex_list) - sizeof(Node));
+   return n;
 }
 
 
@@ -13385,15 +13342,15 @@ execute_list(struct gl_context *ctx, GLuint list)
                                        n[5].f, n[6].f, n[7].f, n[8].f));
             break;
          case OPCODE_VERTEX_LIST:
-            vbo_save_playback_vertex_list(ctx, &n[1 + PADDING_64BIT], false);
+            vbo_save_playback_vertex_list(ctx, &n[0], false);
             break;
 
          case OPCODE_VERTEX_LIST_COPY_CURRENT:
-            vbo_save_playback_vertex_list(ctx, &n[1 + PADDING_64BIT], true);
+            vbo_save_playback_vertex_list(ctx, &n[0], true);
             break;
 
          case OPCODE_VERTEX_LIST_LOOPBACK:
-            vbo_save_playback_vertex_list_loopback(ctx, &n[1 + PADDING_64BIT]);
+            vbo_save_playback_vertex_list_loopback(ctx, &n[0]);
             break;
 
          case OPCODE_CONTINUE:
@@ -14976,7 +14933,7 @@ print_list(struct gl_context *ctx, GLuint list, const char *fname)
          case OPCODE_VERTEX_LIST:
          case OPCODE_VERTEX_LIST_LOOPBACK:
          case OPCODE_VERTEX_LIST_COPY_CURRENT:
-            vbo_print_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[1 + PADDING_64BIT], opcode, f);
+            vbo_print_vertex_list(ctx, (struct vbo_save_vertex_list *) &n[0], opcode, f);
             break;
          default:
             if (opcode < 0 || opcode > OPCODE_END_OF_LIST) {
