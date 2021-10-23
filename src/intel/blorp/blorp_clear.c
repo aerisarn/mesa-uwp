@@ -1197,38 +1197,45 @@ blorp_ccs_resolve(struct blorp_batch *batch,
    brw_blorp_surface_info_init(batch, &params.dst, surf,
                                level, start_layer, format, true);
 
-   /* From the Ivy Bridge PRM, Vol2 Part1 11.9 "Render Target Resolve":
-    *
-    *     A rectangle primitive must be scaled down by the following factors
-    *     with respect to render target being resolved.
-    *
-    * The scaledown factors in the table that follows are related to the block
-    * size of the CCS format.  For IVB and HSW, we divide by two, for BDW we
-    * multiply by 8 and 16. On Sky Lake, we multiply by 8.
-    */
-   const struct isl_format_layout *aux_fmtl =
-      isl_format_get_layout(params.dst.aux_surf.format);
-   assert(aux_fmtl->txc == ISL_TXC_CCS);
-
-   unsigned x_scaledown, y_scaledown;
-   if (ISL_GFX_VER(batch->blorp->isl_dev) >= 12) {
-      x_scaledown = aux_fmtl->bw * 8;
-      y_scaledown = aux_fmtl->bh * 4;
-   } else if (ISL_GFX_VER(batch->blorp->isl_dev) >= 9) {
-      x_scaledown = aux_fmtl->bw * 8;
-      y_scaledown = aux_fmtl->bh * 8;
-   } else if (ISL_GFX_VER(batch->blorp->isl_dev) >= 8) {
-      x_scaledown = aux_fmtl->bw * 8;
-      y_scaledown = aux_fmtl->bh * 16;
-   } else {
-      x_scaledown = aux_fmtl->bw / 2;
-      y_scaledown = aux_fmtl->bh / 2;
-   }
    params.x0 = params.y0 = 0;
    params.x1 = u_minify(params.dst.surf.logical_level0_px.width, level);
    params.y1 = u_minify(params.dst.surf.logical_level0_px.height, level);
-   params.x1 = ALIGN(params.x1, x_scaledown) / x_scaledown;
-   params.y1 = ALIGN(params.y1, y_scaledown) / y_scaledown;
+   if (ISL_GFX_VER(batch->blorp->isl_dev) >= 9) {
+      /* From Bspec 2424, "Render Target Resolve":
+       *
+       *    The Resolve Rectangle size is same as Clear Rectangle size from
+       *    SKL+.
+       *
+       * Note that this differs from Vol7 of the Sky Lake PRM, which only
+       * specifies aligning by the scaledown factors.
+       */
+      get_fast_clear_rect(batch->blorp->isl_dev, surf->aux_surf,
+                          &params.x0, &params.y0, &params.x1, &params.y1);
+   } else {
+      /* From the Ivy Bridge PRM, Vol2 Part1 11.9 "Render Target Resolve":
+       *
+       *    A rectangle primitive must be scaled down by the following factors
+       *    with respect to render target being resolved.
+       *
+       * The scaledown factors in the table that follows are related to the
+       * block size of the CCS format. For IVB and HSW, we divide by two, for
+       * BDW we multiply by 8 and 16.
+       */
+      const struct isl_format_layout *aux_fmtl =
+         isl_format_get_layout(params.dst.aux_surf.format);
+      assert(aux_fmtl->txc == ISL_TXC_CCS);
+
+      unsigned x_scaledown, y_scaledown;
+      if (ISL_GFX_VER(batch->blorp->isl_dev) >= 8) {
+         x_scaledown = aux_fmtl->bw * 8;
+         y_scaledown = aux_fmtl->bh * 16;
+      } else {
+         x_scaledown = aux_fmtl->bw / 2;
+         y_scaledown = aux_fmtl->bh / 2;
+      }
+      params.x1 = ALIGN(params.x1, x_scaledown) / x_scaledown;
+      params.y1 = ALIGN(params.y1, y_scaledown) / y_scaledown;
+   }
 
    if (batch->blorp->isl_dev->info->ver >= 10) {
       assert(resolve_op == ISL_AUX_OP_FULL_RESOLVE ||
