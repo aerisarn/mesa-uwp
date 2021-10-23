@@ -248,7 +248,7 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
        * possibly turn a million atomic increments into 1 add and 1 subtract
        * atomic op over the whole lifetime of an app.
        */
-      int * const private_refcount = (int*)&node->merged.gallium.private_refcount[mode];
+      int16_t * const private_refcount = (int16_t*)&node->merged.gallium.private_refcount[mode];
       assert(*private_refcount >= 0);
 
       if (unlikely(*private_refcount == 0)) {
@@ -260,7 +260,7 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
           * lists, so one display list can only increment it by
           * INT_MAX / N.
           */
-         const int add_refs = INT_MAX / 500000;
+         const int16_t add_refs = INT_MAX / 500000;
          p_atomic_add(&state->reference.count, add_refs);
          *private_refcount = add_refs;
       }

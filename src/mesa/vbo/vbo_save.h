@@ -71,7 +71,7 @@ struct vbo_save_vertex_list {
       struct {
          struct gl_context *ctx;
          struct pipe_vertex_state *state[VP_MODE_MAX];
-         int private_refcount[VP_MODE_MAX];
+         int16_t private_refcount[VP_MODE_MAX];
          GLbitfield enabled_attribs[VP_MODE_MAX];
          struct pipe_draw_vertex_state_info info;
       } gallium;
