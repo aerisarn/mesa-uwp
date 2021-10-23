@@ -3369,6 +3369,8 @@ struct gl_shared_state
 {
    simple_mtx_t Mutex;		   /**< for thread safety */
    GLint RefCount;			   /**< Reference count */
+   bool DisplayListsAffectGLThread;
+
    struct _mesa_HashTable *DisplayList;	   /**< Display lists hash table */
    struct _mesa_HashTable *BitmapAtlas;    /**< For optimized glBitmap text */
    struct _mesa_HashTable *TexObjects;	   /**< Texture objects hash table */

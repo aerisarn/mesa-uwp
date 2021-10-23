@@ -612,6 +612,9 @@ _mesa_glthread_CallList(struct gl_context *ctx, GLuint list)
       p_atomic_set(&ctx->GLThread.LastDListChangeBatchIndex, -1);
    }
 
+   if (!ctx->Shared->DisplayListsAffectGLThread)
+      return;
+
    /* Clear GL_COMPILE_AND_EXECUTE if needed. We only execute here. */
    unsigned saved_mode = ctx->GLThread.ListMode;
    ctx->GLThread.ListMode = 0;

@@ -13749,6 +13749,7 @@ _mesa_EndList(void)
    struct gl_dlist_state *list = &ctx->ListState;
    list->CurrentList->execute_glthread =
       _mesa_glthread_should_execute_list(ctx, list->CurrentList);
+   ctx->Shared->DisplayListsAffectGLThread |= list->CurrentList->execute_glthread;
 
    if ((list->CurrentList->Head == list->CurrentBlock) &&
        (list->CurrentPos < BLOCK_SIZE)) {
