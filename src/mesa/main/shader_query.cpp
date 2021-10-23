@@ -694,8 +694,7 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
       if (!_mesa_program_get_resource_name(res, &rname))
          continue;
 
-      int baselen = rname.length;
-      int baselen_without_array_index = baselen;
+      int length_without_array_index = rname.length;
       const char *rname_last_square_bracket = strrchr(rname.string, '[');
       bool found = false;
       bool rname_has_array_index_zero = false;
@@ -725,16 +724,16 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
        * than the provided name's length.
        */
       if (rname_last_square_bracket) {
-         baselen_without_array_index -= rname_last_square_bracket - rname.string;
+         length_without_array_index -= rname_last_square_bracket - rname.string;
          rname_has_array_index_zero =
             (strcmp(rname_last_square_bracket, "[0]") == 0) &&
-            (baselen_without_array_index == len);
+            (length_without_array_index == len);
       }
 
-      if (len >= baselen && strncmp(rname.string, name, baselen) == 0)
+      if (len >= rname.length && strncmp(rname.string, name, rname.length) == 0)
          found = true;
       else if (rname_has_array_index_zero &&
-               strncmp(rname.string, name, baselen_without_array_index) == 0)
+               strncmp(rname.string, name, length_without_array_index) == 0)
          found = true;
 
       if (found) {
@@ -743,9 +742,9 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
          case GL_SHADER_STORAGE_BLOCK:
             /* Basename match, check if array or struct. */
             if (rname_has_array_index_zero ||
-                name[baselen] == '\0' ||
-                name[baselen] == '[' ||
-                name[baselen] == '.') {
+                name[rname.length] == '\0' ||
+                name[rname.length] == '[' ||
+                name[rname.length] == '.') {
                return res;
             }
             break;
@@ -764,15 +763,15 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
          case GL_COMPUTE_SUBROUTINE:
          case GL_TESS_CONTROL_SUBROUTINE:
          case GL_TESS_EVALUATION_SUBROUTINE:
-            if (name[baselen] == '.') {
+            if (name[rname.length] == '.') {
                return res;
             }
             FALLTHROUGH;
          case GL_PROGRAM_INPUT:
          case GL_PROGRAM_OUTPUT:
-            if (name[baselen] == '\0') {
+            if (name[rname.length] == '\0') {
                return res;
-            } else if (name[baselen] == '[' &&
+            } else if (name[rname.length] == '[' &&
                 valid_array_index(name, len, array_index)) {
                return res;
             }
