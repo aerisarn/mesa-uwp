@@ -208,6 +208,12 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
    if (ctx->NewState)
       _mesa_update_state(ctx);
 
+   /* Return precomputed GL errors such as invalid shaders. */
+   if (!ctx->ValidPrimMask) {
+      _mesa_error(ctx, ctx->DrawGLError, "glCallList");
+      return DONE;
+   }
+
    /* Use the slow path when there are vertex inputs without vertex
     * elements. This happens with zero-stride attribs and non-fixed-func
     * shaders.
@@ -224,12 +230,6 @@ vbo_save_playback_vertex_list_gallium(struct gl_context *ctx,
 
    struct pipe_vertex_state *state = node->merged.gallium.state[mode];
    struct pipe_draw_vertex_state_info info = node->merged.gallium.info;
-
-   /* Return precomputed GL errors such as invalid shaders. */
-   if (!ctx->ValidPrimMask) {
-      _mesa_error(ctx, ctx->DrawGLError, "glCallList");
-      return DONE;
-   }
 
    if (node->merged.gallium.ctx == ctx) {
       /* This mechanism allows passing references to the driver without
