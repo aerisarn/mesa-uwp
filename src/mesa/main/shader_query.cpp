@@ -535,12 +535,12 @@ _mesa_program_resource_array_size(struct gl_program_resource *res)
  * Checks if array subscript is valid and if so sets array_index.
  */
 static bool
-valid_array_index(const GLchar *name, unsigned *array_index)
+valid_array_index(const GLchar *name, int len, unsigned *array_index)
 {
    long idx = 0;
    const GLchar *out_base_name_end;
 
-   idx = parse_program_resource_name(name, strlen(name), &out_base_name_end);
+   idx = parse_program_resource_name(name, len, &out_base_name_end);
    if (idx < 0)
       return false;
 
@@ -558,11 +558,10 @@ compute_resource_key(GLenum programInterface, const char *name, size_t len)
 
 static struct gl_program_resource *
 search_resource_hash(struct gl_shader_program *shProg,
-                     GLenum programInterface, const char *name,
+                     GLenum programInterface, const char *name, int len,
                      unsigned *array_index)
 {
    const char *base_name_end;
-   size_t len = strlen(name);
    long index = parse_program_resource_name(name, len, &base_name_end);
    char *name_copy;
 
@@ -598,9 +597,11 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
    if (name == NULL)
       return NULL;
 
+   int len = strlen(name);
+
    /* If we have a name, try the ProgramResourceHash first. */
    if (shProg->data->ProgramResourceHash)
-      res = search_resource_hash(shProg, programInterface, name, array_index);
+      res = search_resource_hash(shProg, programInterface, name, len, array_index);
 
    if (res)
       return res;
@@ -618,7 +619,7 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
          continue;
 
       unsigned baselen = strlen(rname);
-      unsigned baselen_without_array_index = baselen;
+      int baselen_without_array_index = baselen;
       const char *rname_last_square_bracket = strrchr(rname, '[');
       bool found = false;
       bool rname_has_array_index_zero = false;
@@ -651,7 +652,7 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
          baselen_without_array_index -= strlen(rname_last_square_bracket);
          rname_has_array_index_zero =
             (strcmp(rname_last_square_bracket, "[0]") == 0) &&
-            (baselen_without_array_index == strlen(name));
+            (baselen_without_array_index == len);
       }
 
       if (strncmp(rname, name, baselen) == 0)
@@ -696,7 +697,7 @@ _mesa_program_resource_find_name(struct gl_shader_program *shProg,
             if (name[baselen] == '\0') {
                return res;
             } else if (name[baselen] == '[' &&
-                valid_array_index(name, array_index)) {
+                valid_array_index(name, len, array_index)) {
                return res;
             }
             break;
