@@ -129,6 +129,14 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
             v3dv_layer_offset(image, 0, image_view->vk.base_array_layer,
                               iplane);
          tex.texture_base_pointer = v3dv_cl_address(NULL, base_offset);
+
+#if V3D_VERSION >= 71
+         tex.chroma_offset_x = 1;
+         tex.chroma_offset_y = 1;
+         /* See comment in XML field definition for rationale of the shifts */
+         tex.texture_base_pointer_cb = base_offset >> 6;
+         tex.texture_base_pointer_cr = base_offset >> 6;
+#endif
       }
    }
 }
@@ -191,5 +199,13 @@ v3dX(pack_texture_shader_state_from_buffer_view)(struct v3dv_device *device,
          buffer_view->offset;
 
       tex.texture_base_pointer = v3dv_cl_address(NULL, base_offset);
+
+#if V3D_VERSION >= 71
+      tex.chroma_offset_x = 1;
+      tex.chroma_offset_y = 1;
+      /* See comment in XML field definition for rationale of the shifts */
+      tex.texture_base_pointer_cb = base_offset >> 6;
+      tex.texture_base_pointer_cr = base_offset >> 6;
+#endif
    }
 }
