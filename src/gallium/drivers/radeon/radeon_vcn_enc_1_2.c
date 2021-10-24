@@ -35,7 +35,7 @@
 #include <stdio.h>
 
 #define RENCODE_FW_INTERFACE_MAJOR_VERSION 1
-#define RENCODE_FW_INTERFACE_MINOR_VERSION 2
+#define RENCODE_FW_INTERFACE_MINOR_VERSION 9
 
 #define RENCODE_IB_PARAM_SESSION_INFO              0x00000001
 #define RENCODE_IB_PARAM_TASK_INFO                 0x00000002
@@ -99,6 +99,7 @@ static void radeon_enc_session_init(struct radeon_encoder *enc)
       enc->enc_pic.session_init.aligned_picture_height - enc->base.height;
    enc->enc_pic.session_init.pre_encode_mode = RENCODE_PREENCODE_MODE_NONE;
    enc->enc_pic.session_init.pre_encode_chroma_enabled = false;
+   enc->enc_pic.session_init.display_remote = 0;
 
    RADEON_ENC_BEGIN(enc->cmd.session_init);
    RADEON_ENC_CS(enc->enc_pic.session_init.encode_standard);
@@ -108,6 +109,7 @@ static void radeon_enc_session_init(struct radeon_encoder *enc)
    RADEON_ENC_CS(enc->enc_pic.session_init.padding_height);
    RADEON_ENC_CS(enc->enc_pic.session_init.pre_encode_mode);
    RADEON_ENC_CS(enc->enc_pic.session_init.pre_encode_chroma_enabled);
+   RADEON_ENC_CS(enc->enc_pic.session_init.display_remote);
    RADEON_ENC_END();
 }
 
@@ -122,6 +124,7 @@ static void radeon_enc_session_init_hevc(struct radeon_encoder *enc)
       enc->enc_pic.session_init.aligned_picture_height - enc->base.height;
    enc->enc_pic.session_init.pre_encode_mode = RENCODE_PREENCODE_MODE_NONE;
    enc->enc_pic.session_init.pre_encode_chroma_enabled = false;
+   enc->enc_pic.session_init.display_remote = 0;
 
    RADEON_ENC_BEGIN(enc->cmd.session_init);
    RADEON_ENC_CS(enc->enc_pic.session_init.encode_standard);
@@ -131,6 +134,7 @@ static void radeon_enc_session_init_hevc(struct radeon_encoder *enc)
    RADEON_ENC_CS(enc->enc_pic.session_init.padding_height);
    RADEON_ENC_CS(enc->enc_pic.session_init.pre_encode_mode);
    RADEON_ENC_CS(enc->enc_pic.session_init.pre_encode_chroma_enabled);
+   RADEON_ENC_CS(enc->enc_pic.session_init.display_remote);
    RADEON_ENC_END();
 }
 
@@ -272,11 +276,13 @@ static void radeon_enc_quality_params(struct radeon_encoder *enc)
    enc->enc_pic.quality_params.vbaq_mode = 0;
    enc->enc_pic.quality_params.scene_change_sensitivity = 0;
    enc->enc_pic.quality_params.scene_change_min_idr_interval = 0;
+   enc->enc_pic.quality_params.two_pass_search_center_map_mode = 0;
 
    RADEON_ENC_BEGIN(enc->cmd.quality_params);
    RADEON_ENC_CS(enc->enc_pic.quality_params.vbaq_mode);
    RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_sensitivity);
    RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_min_idr_interval);
+   RADEON_ENC_CS(enc->enc_pic.quality_params.two_pass_search_center_map_mode);
    RADEON_ENC_END();
 }
 
@@ -1051,6 +1057,7 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
    enc->enc_pic.ctx_buf.rec_luma_pitch = align(enc->base.width, enc->alignment);
    enc->enc_pic.ctx_buf.rec_chroma_pitch = align(enc->base.width, enc->alignment);
    enc->enc_pic.ctx_buf.num_reconstructed_pictures = 2;
+   enc->enc_pic.ctx_buf.two_pass_search_center_map_offset = 0;
 
    RADEON_ENC_BEGIN(enc->cmd.ctx);
    RADEON_ENC_READWRITE(enc->cpb.res->buf, enc->cpb.res->domains, 0);
@@ -1070,6 +1077,7 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
    for (int i = 0; i < 136; i++)
       RADEON_ENC_CS(0x00000000);
 
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.two_pass_search_center_map_offset);
    RADEON_ENC_END();
 }
 

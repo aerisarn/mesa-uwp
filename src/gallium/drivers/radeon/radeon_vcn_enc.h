@@ -164,6 +164,7 @@ typedef struct rvcn_enc_session_init_s {
    uint32_t padding_height;
    uint32_t pre_encode_mode;
    uint32_t pre_encode_chroma_enabled;
+   uint32_t display_remote;
 } rvcn_enc_session_init_t;
 
 typedef struct rvcn_enc_layer_control_s {
@@ -356,6 +357,7 @@ typedef struct rvcn_enc_encode_context_buffer_s {
    rvcn_enc_reconstructed_picture_t
       pre_encode_reconstructed_pictures[RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES];
    rvcn_enc_reconstructed_picture_t pre_encode_input_picture;
+   uint32_t two_pass_search_center_map_offset;
 } rvcn_enc_encode_context_buffer_t;
 
 typedef struct rvcn_enc_video_bitstream_buffer_s {
