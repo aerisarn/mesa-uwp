@@ -1360,7 +1360,8 @@ copy_array_object(struct gl_context *ctx,
    dest->VertexAttribBufferMask = src->VertexAttribBufferMask;
    dest->NonZeroDivisorMask = src->NonZeroDivisorMask;
    dest->_AttributeMapMode = src->_AttributeMapMode;
-   dest->NewArrays = src->NewArrays;
+   dest->NewVertexBuffers = src->NewVertexBuffers;
+   dest->NewVertexElements = src->NewVertexElements;
    /* skip NumUpdates and IsDynamic because they can only increase, not decrease */
 }
 

@@ -104,18 +104,20 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
                    GLbitfield filter)
 {
    struct gl_vertex_array_object **ptr = &ctx->Array._DrawVAO;
-   bool new_array = false;
+   bool new_vertex_buffers = false, new_vertex_elements = false;
+
    if (*ptr != vao) {
       _mesa_reference_vao_(ctx, ptr, vao);
-
-      new_array = true;
+      new_vertex_buffers = true;
+      new_vertex_elements = true;
    }
 
-   if (vao->NewArrays) {
+   if (vao->NewVertexBuffers || vao->NewVertexElements) {
       _mesa_update_vao_derived_arrays(ctx, vao);
-      vao->NewArrays = false;
-
-      new_array = true;
+      new_vertex_buffers |= vao->NewVertexBuffers;
+      new_vertex_elements |= vao->NewVertexElements;
+      vao->NewVertexBuffers = false;
+      vao->NewVertexElements = false;
    }
 
    assert(vao->_EnabledWithMapMode ==
@@ -125,11 +127,14 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
    const GLbitfield enabled = filter & vao->_EnabledWithMapMode;
    if (ctx->Array._DrawVAOEnabledAttribs != enabled) {
       ctx->Array._DrawVAOEnabledAttribs = enabled;
-      new_array = true;
+      new_vertex_buffers = true;
+      new_vertex_elements = true;
    }
 
-   if (new_array)
+   if (new_vertex_buffers || new_vertex_elements) {
       ctx->NewDriverState |= ctx->DriverFlags.NewArray;
+      ctx->Array.NewVertexElements |= new_vertex_elements;
+   }
 
    _mesa_set_varying_vp_inputs(ctx, enabled);
 }

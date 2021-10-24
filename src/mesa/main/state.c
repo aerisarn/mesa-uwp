@@ -531,6 +531,7 @@ set_vertex_processing_mode(struct gl_context *ctx, gl_vertex_processing_mode m)
 
    /* On change we may get new maps into the current values */
    ctx->NewDriverState |= ctx->DriverFlags.NewArray;
+   ctx->Array.NewVertexElements = true;
 
    /* Finally memorize the value */
    ctx->VertexProgram._VPMode = m;

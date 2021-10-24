@@ -518,7 +518,7 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
                                 struct gl_vertex_array_object *vao)
 {
    /* Make sure we do not run into problems with shared objects */
-   assert(!vao->SharedAndImmutable || !vao->NewArrays);
+   assert(!vao->SharedAndImmutable || (!vao->NewVertexBuffers && !vao->NewVertexElements));
 
    /* Limit used for common binding scanning below. */
    const GLsizeiptr MaxRelativeOffset =
@@ -555,6 +555,8 @@ _mesa_update_vao_derived_arrays(struct gl_context *ctx,
    /* More than 4 updates turn the VAO to dynamic. */
    if (ctx->Const.AllowDynamicVAOFastPath && ++vao->NumUpdates > 4) {
       vao->IsDynamic = true;
+      /* IsDynamic changes how vertex elements map to vertex buffers. */
+      vao->NewVertexElements = true;
       return;
    }
 
@@ -810,7 +812,8 @@ _mesa_set_vao_immutable(struct gl_context *ctx,
                         struct gl_vertex_array_object *vao)
 {
    _mesa_update_vao_derived_arrays(ctx, vao);
-   vao->NewArrays = false;
+   vao->NewVertexBuffers = false;
+   vao->NewVertexElements = false;
    vao->SharedAndImmutable = true;
 }
 
