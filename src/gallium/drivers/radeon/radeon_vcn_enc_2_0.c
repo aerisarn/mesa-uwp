@@ -214,21 +214,6 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
    RADEON_ENC_END();
 }
 
-static void radeon_enc_quality_params(struct radeon_encoder *enc)
-{
-   enc->enc_pic.quality_params.vbaq_mode = 0;
-   enc->enc_pic.quality_params.scene_change_sensitivity = 0;
-   enc->enc_pic.quality_params.scene_change_min_idr_interval = 0;
-   enc->enc_pic.quality_params.two_pass_search_center_map_mode = 0;
-
-   RADEON_ENC_BEGIN(enc->cmd.quality_params);
-   RADEON_ENC_CS(enc->enc_pic.quality_params.vbaq_mode);
-   RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_sensitivity);
-   RADEON_ENC_CS(enc->enc_pic.quality_params.scene_change_min_idr_interval);
-   RADEON_ENC_CS(enc->enc_pic.quality_params.two_pass_search_center_map_mode);
-   RADEON_ENC_END();
-}
-
 static void radeon_enc_loop_filter_hevc(struct radeon_encoder *enc)
 {
    RADEON_ENC_BEGIN(enc->cmd.deblocking_filter_hevc);
@@ -511,7 +496,6 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc)
    radeon_enc_1_2_init(enc);
    enc->encode = encode;
    enc->ctx = radeon_enc_ctx;
-   enc->quality_params = radeon_enc_quality_params;
    enc->input_format = radeon_enc_input_format;
    enc->output_format = radeon_enc_output_format;
 
