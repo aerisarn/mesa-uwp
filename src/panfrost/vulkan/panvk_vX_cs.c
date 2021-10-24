@@ -770,8 +770,8 @@ panvk_per_arch(emit_base_fs_rsd)(const struct panvk_device *dev,
       cfg.stencil_mask_misc.stencil_enable = pipeline->zs.s_test;
       cfg.stencil_mask_misc.alpha_to_coverage = pipeline->ms.alpha_to_coverage;
       cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
-      cfg.stencil_mask_misc.depth_range_1 = pipeline->rast.depth_bias.enable;
-      cfg.stencil_mask_misc.depth_range_2 = pipeline->rast.depth_bias.enable;
+      cfg.stencil_mask_misc.front_facing_depth_bias = pipeline->rast.depth_bias.enable;
+      cfg.stencil_mask_misc.back_facing_depth_bias = pipeline->rast.depth_bias.enable;
       cfg.stencil_mask_misc.single_sampled_lines = pipeline->ms.rast_samples <= 1;
 
       if (!(pipeline->dynamic_state_mask & (1 << VK_DYNAMIC_STATE_DEPTH_BIAS))) {

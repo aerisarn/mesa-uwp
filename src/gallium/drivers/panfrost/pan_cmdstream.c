@@ -3214,8 +3214,8 @@ panfrost_create_rasterizer_state(
         }
 
         pan_pack(&so->stencil_misc, STENCIL_MASK_MISC, cfg) {
-                cfg.depth_range_1 = cso->offset_tri;
-                cfg.depth_range_2 = cso->offset_tri;
+                cfg.front_facing_depth_bias = cso->offset_tri;
+                cfg.back_facing_depth_bias = cso->offset_tri;
                 cfg.single_sampled_lines = !cso->multisample;
         }
 
