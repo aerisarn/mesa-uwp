@@ -280,6 +280,7 @@ restore_render_state(struct gl_context *ctx)
    cso_restore_state(cso, CSO_UNBIND_FS_SAMPLERVIEWS);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
+   ctx->Array.NewVertexElements = true;
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
                 ST_NEW_FS_SAMPLER_VIEWS;
 }

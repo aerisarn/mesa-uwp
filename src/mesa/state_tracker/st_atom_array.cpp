@@ -50,6 +50,11 @@
 #include "main/varray.h"
 #include "main/arrayobj.h"
 
+enum st_update_flag {
+   UPDATE_ALL,
+   UPDATE_BUFFERS_ONLY,
+};
+
 /* Always inline the non-64bit element code, so that the compiler can see
  * that velements is on the stack.
  */
@@ -70,7 +75,7 @@ init_velement(struct pipe_vertex_element *velements,
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
  * on the stack.
  */
-template<util_popcnt POPCNT> static void ALWAYS_INLINE
+template<util_popcnt POPCNT, st_update_flag UPDATE> void ALWAYS_INLINE
 setup_arrays(struct st_context *st,
              const struct gl_vertex_array_object *vao,
              const GLbitfield dual_slot_inputs,
@@ -115,6 +120,9 @@ setup_arrays(struct st_context *st,
          }
          vbuffer[bufidx].stride = binding->Stride; /* in bytes */
 
+         if (UPDATE == UPDATE_BUFFERS_ONLY)
+            continue;
+
          /* Set the vertex element. */
          init_velement(velements->velems, &attrib->Format, 0,
                        binding->InstanceDivisor, bufidx,
@@ -152,6 +160,10 @@ setup_arrays(struct st_context *st,
       mask &= ~boundmask;
       /* We can assume that we have array for the binding */
       assert(attrmask);
+
+      if (UPDATE == UPDATE_BUFFERS_ONLY)
+         continue;
+
       /* Walk attributes belonging to the binding */
       do {
          const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&attrmask);
@@ -177,11 +189,11 @@ st_setup_arrays(struct st_context *st,
 {
    struct gl_context *ctx = st->ctx;
 
-   setup_arrays<POPCNT_NO>(st, ctx->Array._DrawVAO, vp->Base.Base.DualSlotInputs,
-                           vp_variant->vert_attrib_mask,
-                           _mesa_draw_nonzero_divisor_bits(ctx),
-                           _mesa_draw_array_bits(ctx), _mesa_draw_user_array_bits(ctx),
-                           velements, vbuffer, num_vbuffers, has_user_vertex_buffers);
+   setup_arrays<POPCNT_NO, UPDATE_ALL>
+      (st, ctx->Array._DrawVAO, vp->Base.Base.DualSlotInputs,
+       vp_variant->vert_attrib_mask, _mesa_draw_nonzero_divisor_bits(ctx),
+       _mesa_draw_array_bits(ctx), _mesa_draw_user_array_bits(ctx),
+       velements, vbuffer, num_vbuffers, has_user_vertex_buffers);
 }
 
 /* ALWAYS_INLINE helps the compiler realize that most of the parameters are
@@ -190,7 +202,7 @@ st_setup_arrays(struct st_context *st,
  * Return the index of the vertex buffer where current attribs have been
  * uploaded.
  */
-template<util_popcnt POPCNT> static void ALWAYS_INLINE
+template<util_popcnt POPCNT, st_update_flag UPDATE> void ALWAYS_INLINE
 st_setup_current(struct st_context *st,
                  const struct st_vertex_program *vp,
                  const struct st_common_variant *vp_variant,
@@ -221,9 +233,11 @@ st_setup_current(struct st_context *st,
          if (alignment != size)
             memset(cursor + size, 0, alignment - size);
 
-         init_velement(velements->velems, &attrib->Format, cursor - data,
-                       0, bufidx, dual_slot_inputs & BITFIELD_BIT(attr),
-                       util_bitcount_fast<POPCNT>(inputs_read & BITFIELD_MASK(attr)));
+         if (UPDATE == UPDATE_ALL) {
+            init_velement(velements->velems, &attrib->Format, cursor - data,
+                          0, bufidx, dual_slot_inputs & BITFIELD_BIT(attr),
+                          util_bitcount_fast<POPCNT>(inputs_read & BITFIELD_MASK(attr)));
+         }
 
          cursor += alignment;
       } while (curmask);
@@ -283,10 +297,11 @@ st_setup_current_user(struct st_context *st,
    }
 }
 
-template<util_popcnt POPCNT> inline void
+template<util_popcnt POPCNT, st_update_flag UPDATE> void ALWAYS_INLINE
 st_update_array_templ(struct st_context *st)
 {
    struct gl_context *ctx = st->ctx;
+
    /* vertex program validation must be done before this */
    /* _NEW_PROGRAM, ST_NEW_VS_STATE */
    const struct st_vertex_program *vp = (struct st_vertex_program *)st->vp;
@@ -299,44 +314,74 @@ st_update_array_templ(struct st_context *st)
 
    /* ST_NEW_VERTEX_ARRAYS alias ctx->DriverFlags.NewArray */
    /* Setup arrays */
-   setup_arrays<POPCNT>(st, ctx->Array._DrawVAO, vp->Base.Base.DualSlotInputs,
-                        vp_variant->vert_attrib_mask,
-                        _mesa_draw_nonzero_divisor_bits(ctx),
-                        _mesa_draw_array_bits(ctx),
-                        _mesa_draw_user_array_bits(ctx), &velements, vbuffer,
-                        &num_vbuffers, &uses_user_vertex_buffers);
+   setup_arrays<POPCNT, UPDATE>
+      (st, ctx->Array._DrawVAO, vp->Base.Base.DualSlotInputs,
+       vp_variant->vert_attrib_mask, _mesa_draw_nonzero_divisor_bits(ctx),
+       _mesa_draw_array_bits(ctx), _mesa_draw_user_array_bits(ctx),
+       &velements, vbuffer, &num_vbuffers, &uses_user_vertex_buffers);
 
    /* _NEW_CURRENT_ATTRIB */
    /* Setup zero-stride attribs. */
-   st_setup_current<POPCNT>(st, vp, vp_variant, &velements, vbuffer,
-                            &num_vbuffers);
+   st_setup_current<POPCNT, UPDATE>(st, vp, vp_variant, &velements, vbuffer,
+                                    &num_vbuffers);
 
-   velements.count = vp->num_inputs + vp_variant->key.passthrough_edgeflags;
-
-   /* Set vertex buffers and elements. */
-   struct cso_context *cso = st->cso_context;
    unsigned unbind_trailing_vbuffers =
       st->last_num_vbuffers > num_vbuffers ?
          st->last_num_vbuffers - num_vbuffers : 0;
-   cso_set_vertex_buffers_and_elements(cso, &velements,
-                                       num_vbuffers,
-                                       unbind_trailing_vbuffers,
-                                       true,
-                                       uses_user_vertex_buffers,
-                                       vbuffer);
    st->last_num_vbuffers = num_vbuffers;
+
+   struct cso_context *cso = st->cso_context;
+
+   if (UPDATE == UPDATE_ALL) {
+      velements.count = vp->num_inputs + vp_variant->key.passthrough_edgeflags;
+
+      /* Set vertex buffers and elements. */
+      cso_set_vertex_buffers_and_elements(cso, &velements,
+                                          num_vbuffers,
+                                          unbind_trailing_vbuffers,
+                                          true,
+                                          uses_user_vertex_buffers,
+                                          vbuffer);
+      /* The driver should clear this after it has processed the update. */
+      ctx->Array.NewVertexElements = false;
+      st->uses_user_vertex_buffers = uses_user_vertex_buffers;
+   } else {
+      /* Only vertex buffers. */
+      cso_set_vertex_buffers(cso, 0, num_vbuffers, unbind_trailing_vbuffers,
+                             true, vbuffer);
+      /* This can change only when we update vertex elements. */
+      assert(st->uses_user_vertex_buffers == uses_user_vertex_buffers);
+   }
+}
+
+template<util_popcnt POPCNT> void ALWAYS_INLINE
+st_update_array_impl(struct st_context *st)
+{
+   struct gl_context *ctx = st->ctx;
+
+   /* Changing from user to non-user buffers and vice versa can switch between
+    * cso and u_vbuf, which means that we need to update vertex elements even
+    * when they have not changed.
+    */
+   if (ctx->Array.NewVertexElements ||
+       st->uses_user_vertex_buffers !=
+       !!(st->vp_variant->vert_attrib_mask & _mesa_draw_user_array_bits(ctx))) {
+      st_update_array_templ<POPCNT, UPDATE_ALL>(st);
+   } else {
+      st_update_array_templ<POPCNT, UPDATE_BUFFERS_ONLY>(st);
+   }
 }
 
 void
 st_update_array(struct st_context *st)
 {
-   st_update_array_templ<POPCNT_NO>(st);
+   st_update_array_impl<POPCNT_NO>(st);
 }
 
 void
 st_update_array_with_popcnt(struct st_context *st)
 {
-   st_update_array_templ<POPCNT_YES>(st);
+   st_update_array_impl<POPCNT_YES>(st);
 }
 
 struct pipe_vertex_state *
@@ -353,9 +398,9 @@ st_create_gallium_vertex_state(struct gl_context *ctx,
    struct cso_velems_state velements;
    bool uses_user_vertex_buffers;
 
-   setup_arrays<POPCNT_NO>(st, vao, dual_slot_inputs, inputs_read, 0,
-                           inputs_read, 0, &velements, vbuffer, &num_vbuffers,
-                           &uses_user_vertex_buffers);
+   setup_arrays<POPCNT_NO, UPDATE_ALL>(st, vao, dual_slot_inputs, inputs_read, 0,
+                                inputs_read, 0, &velements, vbuffer, &num_vbuffers,
+                                &uses_user_vertex_buffers);
 
    if (num_vbuffers != 1 || uses_user_vertex_buffers) {
       assert(!"this should never happen with display lists");

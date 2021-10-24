@@ -241,8 +241,11 @@ st_invalidate_state(struct gl_context *ctx)
    if (new_state & _NEW_PIXEL)
       st->dirty |= ST_NEW_PIXEL_TRANSFER;
 
-   if (new_state & _NEW_CURRENT_ATTRIB && st_vp_uses_current_values(ctx))
+   if (new_state & _NEW_CURRENT_ATTRIB && st_vp_uses_current_values(ctx)) {
       st->dirty |= ST_NEW_VERTEX_ARRAYS;
+      /* glColor3f -> glColor4f changes the vertex format. */
+      ctx->Array.NewVertexElements = true;
+   }
 
    if (st->clamp_frag_depth_in_shader && (new_state & _NEW_VIEWPORT)) {
       if (ctx->GeometryProgram._Current)

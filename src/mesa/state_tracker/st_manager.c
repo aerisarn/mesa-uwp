@@ -847,8 +847,10 @@ st_context_invalidate_state(struct st_context_iface *stctxi,
       st->dirty |= ST_NEW_FS_CONSTANTS;
    if (flags & ST_INVALIDATE_VS_CONSTBUF0)
       st->dirty |= ST_NEW_VS_CONSTANTS;
-   if (flags & ST_INVALIDATE_VERTEX_BUFFERS)
+   if (flags & ST_INVALIDATE_VERTEX_BUFFERS) {
+      st->ctx->Array.NewVertexElements = true;
       st->dirty |= ST_NEW_VERTEX_ARRAYS;
+   }
 }
 
 

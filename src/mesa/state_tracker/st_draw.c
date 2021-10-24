@@ -362,8 +362,10 @@ st_draw_gallium_vertex_state(struct gl_context *ctx,
     *  just flag ST_NEW_VERTEX_ARRAY, which will also completely revalidate
     * edge flags in st_validate_state.
     */
-   if (st->vertdata_edgeflags != old_vertdata_edgeflags)
+   if (st->vertdata_edgeflags != old_vertdata_edgeflags) {
+      ctx->Array.NewVertexElements = true;
       st->dirty |= ST_NEW_VERTEX_ARRAYS;
+   }
 }
 
 void

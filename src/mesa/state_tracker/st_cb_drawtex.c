@@ -349,6 +349,7 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
 
    /* restore state */
    cso_restore_state(cso, 0);
+   ctx->Array.NewVertexElements = true;
    st->dirty |= ST_NEW_VERTEX_ARRAYS;
 }
 

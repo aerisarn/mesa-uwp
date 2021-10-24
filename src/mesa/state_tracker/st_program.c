@@ -2022,10 +2022,12 @@ void
 st_finalize_program(struct st_context *st, struct gl_program *prog)
 {
    if (st->current_program[prog->info.stage] == prog) {
-      if (prog->info.stage == MESA_SHADER_VERTEX)
+      if (prog->info.stage == MESA_SHADER_VERTEX) {
+         st->ctx->Array.NewVertexElements = true;
          st->dirty |= ST_NEW_VERTEX_PROGRAM(st, (struct st_program *)prog);
-      else
+      } else {
          st->dirty |= ((struct st_program *)prog)->affected_states;
+      }
    }
 
    if (prog->nir) {

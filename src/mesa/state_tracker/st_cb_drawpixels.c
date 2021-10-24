@@ -949,6 +949,7 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
    cso_restore_state(cso, CSO_UNBIND_FS_SAMPLERVIEWS);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
+   ctx->Array.NewVertexElements = true;
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
                 ST_NEW_FS_SAMPLER_VIEWS;
 }

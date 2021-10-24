@@ -1661,6 +1661,7 @@ fail:
    cso_restore_state(cso, CSO_UNBIND_FS_SAMPLERVIEWS);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
+   ctx->Array.NewVertexElements = true;
    st->dirty |= ST_NEW_VERTEX_ARRAYS |
                 ST_NEW_FS_CONSTANTS |
                 ST_NEW_FS_SAMPLER_VIEWS;
@@ -1951,6 +1952,7 @@ fail:
    cso_restore_state(cso, CSO_UNBIND_FS_SAMPLERVIEWS | CSO_UNBIND_FS_IMAGE0);
    st->state.num_sampler_views[PIPE_SHADER_FRAGMENT] = 0;
 
+   st->ctx->Array.NewVertexElements = true;
    st->dirty |= ST_NEW_FS_CONSTANTS |
                 ST_NEW_FS_IMAGES |
                 ST_NEW_FS_SAMPLER_VIEWS |

@@ -95,6 +95,7 @@ static void check_program_state( struct st_context *st )
     * properly when transitioning to shaders that don't use them.
     */
    if (unlikely(new_vp != (old_vp ? &old_vp->Base : NULL))) {
+      ctx->Array.NewVertexElements = true;
       if (old_vp)
          dirty |= old_vp->affected_states;
       if (new_vp)
