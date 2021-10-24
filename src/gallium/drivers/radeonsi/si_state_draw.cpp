@@ -1728,41 +1728,24 @@ void si_set_vertex_buffer_descriptor(struct si_screen *sscreen, struct si_vertex
 
 #endif
 
-/* util_bitcount has large measurable overhead (~2% difference in viewperf),  so we use
- * the POPCNT x86 instruction via inline assembly if the CPU supports it.
- */
-enum si_has_popcnt {
-   POPCNT_NO,
-   POPCNT_YES,
-};
-
-template<si_has_popcnt POPCNT>
-unsigned bitcount_asm(unsigned n)
-{
-   if (POPCNT == POPCNT_YES)
-      return util_popcnt_inline_asm(n);
-   else
-      return util_bitcount(n);
-}
-
-template<si_has_popcnt POPCNT>
+template<util_popcnt POPCNT>
 static ALWAYS_INLINE unsigned get_next_vertex_state_elem(struct pipe_vertex_state *state,
                                                          uint32_t *partial_velem_mask)
 {
    unsigned semantic_index = u_bit_scan(partial_velem_mask);
    assert(state->input.full_velem_mask & BITFIELD_BIT(semantic_index));
    /* A prefix mask of the full mask gives us the index in pipe_vertex_state. */
-   return bitcount_asm<POPCNT>(state->input.full_velem_mask & BITFIELD_MASK(semantic_index));
+   return util_bitcount_fast<POPCNT>(state->input.full_velem_mask & BITFIELD_MASK(semantic_index));
 }
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, si_has_popcnt POPCNT> ALWAYS_INLINE
+          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, util_popcnt POPCNT> ALWAYS_INLINE
 static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
                                                   struct pipe_vertex_state *state,
                                                   uint32_t partial_velem_mask)
 {
    struct si_vertex_state *vstate = (struct si_vertex_state *)state;
-   unsigned count = IS_DRAW_VERTEX_STATE ? bitcount_asm<POPCNT>(partial_velem_mask) :
+   unsigned count = IS_DRAW_VERTEX_STATE ? util_bitcount_fast<POPCNT>(partial_velem_mask) :
                                            sctx->num_vertex_elements;
    unsigned sh_base = si_get_user_data_base(GFX_VERSION, HAS_TESS, HAS_GS, NGG,
                                             PIPE_SHADER_VERTEX);
@@ -2031,7 +2014,7 @@ static void si_emit_all_states(struct si_context *sctx, const struct pipe_draw_i
    } while (0)
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, si_has_popcnt POPCNT> ALWAYS_INLINE
+          si_is_draw_vertex_state IS_DRAW_VERTEX_STATE, util_popcnt POPCNT> ALWAYS_INLINE
 static void si_draw(struct pipe_context *ctx,
                     const struct pipe_draw_info *info,
                     unsigned drawid_offset,
@@ -2501,7 +2484,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
 }
 
 template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has_ngg NGG,
-          si_has_popcnt POPCNT>
+          util_popcnt POPCNT>
 static void si_draw_vertex_state(struct pipe_context *ctx,
                                  struct pipe_vertex_state *vstate,
                                  uint32_t partial_velem_mask,

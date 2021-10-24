@@ -351,6 +351,28 @@ util_bitcount64(uint64_t n)
 
 #ifdef __cplusplus
 }
-#endif
+
+/* util_bitcount has large measurable overhead (~2%), so it's recommended to
+ * use the POPCNT instruction via inline assembly if the CPU supports it.
+ */
+enum util_popcnt {
+   POPCNT_NO,
+   POPCNT_YES,
+};
+
+/* Convenient function to select popcnt through a C++ template argument.
+ * This should be used as part of larger functions that are optimized
+ * as a whole.
+ */
+template<util_popcnt POPCNT> inline unsigned
+util_bitcount_fast(unsigned n)
+{
+   if (POPCNT == POPCNT_YES)
+      return util_popcnt_inline_asm(n);
+   else
+      return util_bitcount(n);
+}
+
+#endif /* __cplusplus */
 
 #endif /* BITSCAN_H */
