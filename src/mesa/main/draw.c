@@ -113,7 +113,7 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
 
    if (vao->NewArrays) {
       _mesa_update_vao_derived_arrays(ctx, vao);
-      vao->NewArrays = 0;
+      vao->NewArrays = false;
 
       new_array = true;
    }

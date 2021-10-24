@@ -1639,8 +1639,8 @@ struct gl_vertex_array_object
    /** "Enabled" with the position/generic0 attribute aliasing resolved */
    GLbitfield _EnabledWithMapMode;
 
-   /** Mask of VERT_BIT_* values indicating changed/dirty arrays */
-   GLbitfield NewArrays;
+   /** Whether the VAO has been changed. */
+   bool NewArrays;
 
    /** The index buffer (also known as the element array buffer in OpenGL). */
    struct gl_buffer_object *IndexBufferObj;

@@ -188,7 +188,7 @@ static inline GLbitfield
 _mesa_draw_vbo_array_bits(const struct gl_context *ctx)
 {
    const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
-   assert(vao->NewArrays == 0);
+   assert(!vao->NewArrays);
    return vao->_EffEnabledVBO & ctx->Array._DrawVAOEnabledAttribs;
 }
 
@@ -202,7 +202,7 @@ static inline GLbitfield
 _mesa_draw_user_array_bits(const struct gl_context *ctx)
 {
    const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
-   assert(vao->NewArrays == 0);
+   assert(!vao->NewArrays);
    return ~vao->_EffEnabledVBO & ctx->Array._DrawVAOEnabledAttribs;
 }
 
@@ -216,7 +216,7 @@ static inline GLbitfield
 _mesa_draw_nonzero_divisor_bits(const struct gl_context *ctx)
 {
    const struct gl_vertex_array_object *const vao = ctx->Array._DrawVAO;
-   assert(vao->NewArrays == 0);
+   assert(!vao->NewArrays);
    return vao->_EffEnabledNonZeroDivisor & ctx->Array._DrawVAOEnabledAttribs;
 }
 
@@ -240,7 +240,7 @@ static inline const struct gl_vertex_buffer_binding*
 _mesa_draw_buffer_binding_from_attrib(const struct gl_vertex_array_object *vao,
                                       const struct gl_array_attributes *attrib)
 {
-   assert(vao->NewArrays == 0);
+   assert(!vao->NewArrays);
    return &vao->BufferBinding[attrib->_EffBufferBindingIndex];
 }
 
@@ -252,7 +252,7 @@ static inline const struct gl_array_attributes*
 _mesa_draw_array_attrib(const struct gl_vertex_array_object *vao,
                         gl_vert_attrib attr)
 {
-   assert(vao->NewArrays == 0);
+   assert(!vao->NewArrays);
    const gl_attribute_map_mode map_mode = vao->_AttributeMapMode;
    return &vao->VertexAttrib[_mesa_vao_attribute_map[map_mode][attr]];
 }
