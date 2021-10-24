@@ -466,6 +466,7 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
       enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset = offset;
       offset += chroma_size;
    }
+   enc->enc_pic.ctx_buf.two_pass_search_center_map_offset = 0;
 
    RADEON_ENC_BEGIN(enc->cmd.ctx);
    RADEON_ENC_READWRITE(enc->cpb.res->buf, enc->cpb.res->domains, 0);
@@ -482,6 +483,7 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
    for (int i = 0; i < 136; i++)
       RADEON_ENC_CS(0x00000000);
 
+   RADEON_ENC_CS(enc->enc_pic.ctx_buf.two_pass_search_center_map_offset);
    RADEON_ENC_END();
 }
 
