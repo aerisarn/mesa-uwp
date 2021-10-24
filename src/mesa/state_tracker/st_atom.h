@@ -36,6 +36,10 @@
 
 #include "main/glheader.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct st_context;
 struct st_vertex_program;
 struct st_common_variant;
@@ -180,5 +184,9 @@ enum {
 
 #define ST_ALL_STATES_MASK (ST_PIPELINE_RENDER_STATE_MASK | \
                             ST_PIPELINE_COMPUTE_STATE_MASK)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

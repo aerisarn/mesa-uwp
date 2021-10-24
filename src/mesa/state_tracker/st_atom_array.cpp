@@ -94,7 +94,7 @@ setup_arrays(struct st_context *st,
 
    if (vao->IsDynamic) {
       while (mask) {
-         const gl_vert_attrib attr = u_bit_scan(&mask);
+         const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&mask);
          const struct gl_array_attributes *const attrib =
             _mesa_draw_array_attrib(vao, attr);
          const struct gl_vertex_buffer_binding *const binding =
@@ -126,7 +126,7 @@ setup_arrays(struct st_context *st,
 
    while (mask) {
       /* The attribute index to start pulling a binding */
-      const gl_vert_attrib i = ffs(mask) - 1;
+      const gl_vert_attrib i = (gl_vert_attrib)(ffs(mask) - 1);
       const struct gl_vertex_buffer_binding *const binding
          = _mesa_draw_buffer_binding(vao, i);
       const unsigned bufidx = (*num_vbuffers)++;
@@ -154,7 +154,7 @@ setup_arrays(struct st_context *st,
       assert(attrmask);
       /* Walk attributes belonging to the binding */
       do {
-         const gl_vert_attrib attr = u_bit_scan(&attrmask);
+         const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&attrmask);
          const struct gl_array_attributes *const attrib
             = _mesa_draw_array_attrib(vao, attr);
          const GLuint off = _mesa_draw_attributes_relative_offset(attrib);
@@ -210,7 +210,7 @@ st_setup_current(struct st_context *st,
       unsigned max_alignment = 1;
 
       do {
-         const gl_vert_attrib attr = u_bit_scan(&curmask);
+         const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&curmask);
          const struct gl_array_attributes *const attrib
             = _mesa_draw_current_attrib(ctx, attr);
          const unsigned size = attrib->Format._ElementSize;
@@ -265,7 +265,7 @@ st_setup_current_user(struct st_context *st,
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
    /* For each attribute, make an own user buffer binding. */
    while (curmask) {
-      const gl_vert_attrib attr = u_bit_scan(&curmask);
+      const gl_vert_attrib attr = (gl_vert_attrib)u_bit_scan(&curmask);
       const struct gl_array_attributes *const attrib
          = _mesa_draw_current_attrib(ctx, attr);
       const unsigned bufidx = (*num_vbuffers)++;

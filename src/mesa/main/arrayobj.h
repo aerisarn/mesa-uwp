@@ -32,6 +32,10 @@
 #include "glformats.h"
 #include "vbo/vbo.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct gl_context;
 
 /**
@@ -377,5 +381,9 @@ _mesa_VertexArrayElementBuffer_no_error(GLuint vaobj, GLuint buffer);
 void GLAPIENTRY _mesa_VertexArrayElementBuffer(GLuint vaobj, GLuint buffer);
 
 void GLAPIENTRY _mesa_GetVertexArrayiv(GLuint vaobj, GLenum pname, GLint *param);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ARRAYOBJ_H */
