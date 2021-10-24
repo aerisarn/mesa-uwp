@@ -634,10 +634,16 @@ panvk_per_arch(emit_blend)(const struct panvk_device *dev,
       constant <<= 16 - chan_size;
       cfg.constant = constant;
 
-      if (pan_blend_is_opaque(blend->rts[rt].equation))
+      if (pan_blend_is_opaque(blend->rts[rt].equation)) {
          cfg.internal.mode = MALI_BLEND_MODE_OPAQUE;
-      else
+      } else {
          cfg.internal.mode = MALI_BLEND_MODE_FIXED_FUNCTION;
+
+         cfg.internal.fixed_function.alpha_zero_nop =
+                 pan_blend_alpha_zero_nop(blend->rts[rt].equation);
+         cfg.internal.fixed_function.alpha_one_store =
+                 pan_blend_alpha_one_store(blend->rts[rt].equation);
+      }
 
       /* If we want the conversion to work properly,
        * num_comps must be set to 4
