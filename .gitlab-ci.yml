@@ -376,7 +376,7 @@ debian/android_build:
   extends:
     - .use-debian/x86_build-base
   variables:
-    MESA_IMAGE_TAG: &debian-android_build "2021-10-02-libelf-2"
+    MESA_IMAGE_TAG: &debian-android_build "2021-10-26-static-libstdcxx"
 
 .use-debian/android_build:
   extends:

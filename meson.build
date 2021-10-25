@@ -1213,11 +1213,22 @@ if host_machine.system() == 'windows'
     endif
   else
     add_project_link_arguments(
-      '-Wl,--nxcompat',
-      '-Wl,--dynamicbase',
-      '-static-libgcc',
-      '-static-libstdc++',
-      language : ['c', 'cpp'],
+      cc.get_supported_arguments(
+        '-Wl,--nxcompat',
+        '-Wl,--dynamicbase',
+        '-static-libgcc',
+        '-static-libstdc++',
+      ),
+      language : ['c'],
+    )
+    add_project_link_arguments(
+      cpp.get_supported_arguments(
+        '-Wl,--nxcompat',
+        '-Wl,--dynamicbase',
+        '-static-libgcc',
+        '-static-libstdc++',
+      ),
+      language : ['cpp'],
     )
   endif
 endif
