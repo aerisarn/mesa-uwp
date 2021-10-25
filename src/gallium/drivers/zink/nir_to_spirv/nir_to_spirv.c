@@ -3646,18 +3646,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
    }
 
-   if (s->info.bit_sizes_int & 8)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityInt8);
-   if (s->info.bit_sizes_int & 16)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityInt16);
-   if (s->info.bit_sizes_int & 64)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityInt64);
-
-   if (s->info.bit_sizes_float & 16)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityFloat16);
-   if (s->info.bit_sizes_float & 64)
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityFloat64);
-
    ctx.stage = s->info.stage;
    ctx.so_info = so_info;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
