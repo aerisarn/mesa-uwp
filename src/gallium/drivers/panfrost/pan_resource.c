@@ -204,6 +204,8 @@ panfrost_resource_get_param(struct pipe_screen *pscreen,
                             unsigned usage, uint64_t *value)
 {
         struct panfrost_resource *rsrc = (struct panfrost_resource *) prsc;
+        struct pipe_resource *cur;
+        unsigned count;
 
         switch (param) {
         case PIPE_RESOURCE_PARAM_STRIDE:
@@ -214,6 +216,16 @@ panfrost_resource_get_param(struct pipe_screen *pscreen,
                 return true;
         case PIPE_RESOURCE_PARAM_MODIFIER:
                 *value = rsrc->image.layout.modifier;
+                return true;
+        case PIPE_RESOURCE_PARAM_NPLANES:
+                /* Panfrost doesn't directly support multi-planar formats,
+                 * but we should still handle this case for gbm users
+                 * that might want to use resources shared with panfrost
+                 * on video processing hardware that does.
+                 */
+                for (count = 0, cur = prsc; cur; cur = cur->next)
+                        count++;
+                *value = count;
                 return true;
         default:
                 return false;
