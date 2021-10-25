@@ -948,6 +948,9 @@ parse_extract(Instruction* instr)
       unsigned offset = instr->operands[1].constantValue() * size;
       if (size <= 2)
          return SubdwordSel(size, offset, false);
+   } else if (instr->opcode == aco_opcode::p_split_vector) {
+      assert(instr->operands[0].bytes() == 4 && instr->definitions[1].bytes() == 2);
+      return SubdwordSel(2, 2, false);
    }
 
    return SubdwordSel();
@@ -1456,6 +1459,12 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          }
          break;
       } else if (!info.is_vec()) {
+         if (instr->operands[0].bytes() == 4 && instr->definitions.size() == 2) {
+            /* D16 subdword split */
+            ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
+            if (instr->definitions[1].bytes() == 2)
+               ctx.info[instr->definitions[1].tempId()].set_extract(instr.get());
+         }
          break;
       }
 
