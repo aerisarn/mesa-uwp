@@ -5,3 +5,10 @@
 KHR-GLES2.texture_3d.filtering.combinations.*
 KHR-GLES2.texture_3d.filtering.formats.*
 KHR-GLES2.texture_3d.filtering.sizes.*
+
+# Timeout
+spec@arb_internalformat_query2@all internalformat_.*_type
+spec@!opengl 1.0@gl-1.0-blend-func
+
+# We aren't running an X server.
+glx.*
