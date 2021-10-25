@@ -135,8 +135,21 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
                              unsigned usage)
 {
         struct panfrost_device *dev = pan_device(pscreen);
-        struct panfrost_resource *rsrc = (struct panfrost_resource *) pt;
-        struct renderonly_scanout *scanout = rsrc->scanout;
+        struct panfrost_resource *rsrc;
+        struct renderonly_scanout *scanout;
+        struct pipe_resource *cur = pt;
+
+        /* Even though panfrost doesn't support multi-planar formats, we
+         * can get here through GBM, which does. Walk the list of planes
+         * to find the right one.
+         */
+        for (int i = 0; i < handle->plane; i++) {
+                cur = cur->next;
+                if (!cur)
+                        return false;
+        }
+        rsrc = pan_resource(cur);
+        scanout = rsrc->scanout;
 
         handle->modifier = rsrc->image.layout.modifier;
         rsrc->modifier_constant = true;
