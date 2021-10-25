@@ -34,7 +34,7 @@ cp -Rp .gitlab-ci/fossilize-runner.sh install/
 cp -Rp .gitlab-ci/deqp-runner.sh install/
 cp -Rp .gitlab-ci/crosvm-runner.sh install/
 cp -Rp .gitlab-ci/crosvm-init.sh install/
-cp -Rp .gitlab-ci/deqp-*.txt install/
+cp -Rp .gitlab-ci/*.txt install/
 cp -Rp .gitlab-ci/report-flakes.py install/
 cp -Rp .gitlab-ci/vkd3d-proton install/
 find . -path \*/ci/\*.txt \
