@@ -174,6 +174,12 @@ translate_buf(struct fd6_image *img, const struct pipe_shader_buffer *pimg)
 static void
 emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
+   if (!img->prsc) {
+      for (int i = 0; i < FDL6_TEX_CONST_DWORDS; i++)
+         OUT_RING(ring, 0);
+      return;
+   }
+
    struct fd_resource *rsc = fd_resource(img->prsc);
    bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, img->level);
 
