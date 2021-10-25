@@ -237,6 +237,43 @@ lower_64bit_vertex_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
+/* mesa/gallium always provides UINT versions of 64bit formats:
+ * - rewrite loads as 32bit vec loads
+ * - cast back to 64bit
+ */
+static bool
+lower_64bit_uint_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_deref)
+      return false;
+   nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(intr->src[0].ssa->parent_instr));
+   if (var->data.mode != nir_var_shader_in)
+      return false;
+   if (glsl_get_bit_size(var->type) != 64)
+      return false;
+
+   unsigned num_components = glsl_get_vector_elements(var->type);
+   var->type = glsl_vector_type(GLSL_TYPE_UINT, num_components * 2);
+
+   b->cursor = nir_after_instr(instr);
+
+   nir_ssa_def *load = nir_load_var(b, var);
+   nir_ssa_def *casted[2];
+   for (unsigned i = 0; i < num_components; i++)
+     casted[i] = nir_pack_64_2x32(b, nir_channels(b, load, BITFIELD_RANGE(i * 2, 2)));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_vec(b, casted, num_components));
+
+   /* remove the original instr and its deref chain */
+   nir_instr *parent = intr->src[0].ssa->parent_instr;
+   nir_instr_remove(instr);
+   nir_deref_instr_remove_if_unused(nir_instr_as_deref(parent));
+
+   return true;
+}
+
 /* "64-bit three- and four-component vectors consume two consecutive locations."
  *  - 14.1.4. Location Assignment
  *
@@ -250,7 +287,10 @@ lower_64bit_vertex_attribs(nir_shader *shader)
    if (shader->info.stage != MESA_SHADER_VERTEX)
       return false;
 
-   return nir_shader_instructions_pass(shader, lower_64bit_vertex_attribs_instr, nir_metadata_dominance, NULL);
+   bool progress = nir_shader_instructions_pass(shader, lower_64bit_vertex_attribs_instr, nir_metadata_dominance, NULL);
+   if (progress)
+      nir_shader_instructions_pass(shader, lower_64bit_uint_attribs_instr, nir_metadata_dominance, NULL);
+   return progress;
 }
 
 static bool
