@@ -295,6 +295,7 @@ blorp_params_get_layer_offset_vs(struct blorp_batch *batch,
  */
 static void
 get_fast_clear_rect(const struct isl_device *dev,
+                    const struct isl_surf *surf,
                     const struct isl_surf *aux_surf,
                     unsigned *x0, unsigned *y0,
                     unsigned *x1, unsigned *y1)
@@ -303,50 +304,68 @@ get_fast_clear_rect(const struct isl_device *dev,
    unsigned int x_scaledown, y_scaledown;
 
    /* Only single sampled surfaces need to (and actually can) be resolved. */
-   if (aux_surf->usage == ISL_SURF_USAGE_CCS_BIT) {
-      /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
-       * Target(s)", beneath the "Fast Color Clear" bullet (p327):
-       *
-       *     Clear pass must have a clear rectangle that must follow
-       *     alignment rules in terms of pixels and lines as shown in the
-       *     table below. Further, the clear-rectangle height and width
-       *     must be multiple of the following dimensions. If the height
-       *     and width of the render target being cleared do not meet these
-       *     requirements, an MCS buffer can be created such that it
-       *     follows the requirement and covers the RT.
-       *
-       * The alignment size in the table that follows is related to the
-       * alignment size that is baked into the CCS surface format but with X
-       * alignment multiplied by 16 and Y alignment multiplied by 32.
-       */
-      x_align = isl_format_get_layout(aux_surf->format)->bw;
-      y_align = isl_format_get_layout(aux_surf->format)->bh;
+   if (surf->samples == 1) {
+      if (dev->info->verx10 >= 125) {
+         assert(surf->tiling == ISL_TILING_4);
+         /* From Bspec 47709, "MCS/CCS Buffer for Render Target(s)":
+          *
+          *    SW must ensure that clearing rectangle dimensions cover the
+          *    entire area desired, to accomplish this task initial X/Y
+          *    dimensions need to be rounded up to next multiple of scaledown
+          *    factor before dividing by scale down factor:
+          *
+          * The X and Y scale down factors in the table that follows are used
+          * for both alignment and scaling down.
+          */
+         const uint32_t bs = isl_format_get_layout(surf->format)->bpb / 8;
+         x_align = x_scaledown = 1024 / bs;
+         y_align = y_scaledown = 16;
+      } else {
+         assert(aux_surf->usage == ISL_SURF_USAGE_CCS_BIT);
+         /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
+          * Target(s)", beneath the "Fast Color Clear" bullet (p327):
+          *
+          *     Clear pass must have a clear rectangle that must follow
+          *     alignment rules in terms of pixels and lines as shown in the
+          *     table below. Further, the clear-rectangle height and width
+          *     must be multiple of the following dimensions. If the height
+          *     and width of the render target being cleared do not meet these
+          *     requirements, an MCS buffer can be created such that it
+          *     follows the requirement and covers the RT.
+          *
+          * The alignment size in the table that follows is related to the
+          * alignment size that is baked into the CCS surface format but with X
+          * alignment multiplied by 16 and Y alignment multiplied by 32.
+          */
+         x_align = isl_format_get_layout(aux_surf->format)->bw;
+         y_align = isl_format_get_layout(aux_surf->format)->bh;
 
-      x_align *= 16;
+         x_align *= 16;
 
-      /* The line alignment requirement for Y-tiled is halved at SKL and again
-       * at TGL.
-       */
-      if (dev->info->ver >= 12)
-         y_align *= 8;
-      else if (dev->info->ver >= 9)
-         y_align *= 16;
-      else
-         y_align *= 32;
+         /* The line alignment requirement for Y-tiled is halved at SKL and again
+          * at TGL.
+          */
+         if (dev->info->ver >= 12)
+            y_align *= 8;
+         else if (dev->info->ver >= 9)
+            y_align *= 16;
+         else
+            y_align *= 32;
 
-      /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
-       * Target(s)", beneath the "Fast Color Clear" bullet (p327):
-       *
-       *     In order to optimize the performance MCS buffer (when bound to
-       *     1X RT) clear similarly to MCS buffer clear for MSRT case,
-       *     clear rect is required to be scaled by the following factors
-       *     in the horizontal and vertical directions:
-       *
-       * The X and Y scale down factors in the table that follows are each
-       * equal to half the alignment value computed above.
-       */
-      x_scaledown = x_align / 2;
-      y_scaledown = y_align / 2;
+         /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
+          * Target(s)", beneath the "Fast Color Clear" bullet (p327):
+          *
+          *     In order to optimize the performance MCS buffer (when bound to
+          *     1X RT) clear similarly to MCS buffer clear for MSRT case,
+          *     clear rect is required to be scaled by the following factors
+          *     in the horizontal and vertical directions:
+          *
+          * The X and Y scale down factors in the table that follows are each
+          * equal to half the alignment value computed above.
+          */
+         x_scaledown = x_align / 2;
+         y_scaledown = y_align / 2;
+      }
 
       if (ISL_DEV_IS_HASWELL(dev)) {
          /* From BSpec: 3D-Media-GPGPU Engine > 3D Pipeline > Pixel > Pixel
@@ -439,7 +458,7 @@ blorp_fast_clear(struct blorp_batch *batch,
    memset(&params.wm_inputs.clear_color, 0xff, 4*sizeof(float));
    params.fast_clear_op = ISL_AUX_OP_FAST_CLEAR;
 
-   get_fast_clear_rect(batch->blorp->isl_dev, surf->aux_surf,
+   get_fast_clear_rect(batch->blorp->isl_dev, surf->surf, surf->aux_surf,
                        &params.x0, &params.y0, &params.x1, &params.y1);
 
    if (!blorp_params_get_clear_kernel(batch, &params, true, false))
@@ -1209,7 +1228,7 @@ blorp_ccs_resolve(struct blorp_batch *batch,
        * Note that this differs from Vol7 of the Sky Lake PRM, which only
        * specifies aligning by the scaledown factors.
        */
-      get_fast_clear_rect(batch->blorp->isl_dev, surf->aux_surf,
+      get_fast_clear_rect(batch->blorp->isl_dev, surf->surf, surf->aux_surf,
                           &params.x0, &params.y0, &params.x1, &params.y1);
    } else {
       /* From the Ivy Bridge PRM, Vol2 Part1 11.9 "Render Target Resolve":
