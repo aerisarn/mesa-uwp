@@ -187,12 +187,12 @@ lower_work_dim(nir_shader *shader)
 static bool
 lower_64bit_vertex_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
 {
-   if (instr->type != nir_instr_type_deref)
+   if (instr->type != nir_instr_type_intrinsic)
       return false;
-   nir_deref_instr *deref = nir_instr_as_deref(instr);
-   if (deref->deref_type != nir_deref_type_var)
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_deref)
       return false;
-   nir_variable *var = nir_deref_instr_get_variable(deref);
+   nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(intr->src[0].ssa->parent_instr));
    if (var->data.mode != nir_var_shader_in)
       return false;
    if (!glsl_type_is_64bit(var->type) || !glsl_type_is_vector(var->type) || glsl_get_vector_elements(var->type) < 3)
@@ -208,42 +208,31 @@ lower_64bit_vertex_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
    /* new variable is the second half of the dvec */
    var2->type = glsl_vector_type(glsl_get_base_type(var->type), glsl_get_vector_elements(var->type) - 2);
    /* clamp original variable to a dvec2 */
-   deref->type = var->type = glsl_vector_type(glsl_get_base_type(var->type), 2);
+   var->type = glsl_vector_type(glsl_get_base_type(var->type), 2);
 
-   /* create deref instr for new variable */
    b->cursor = nir_after_instr(instr);
-   nir_deref_instr *deref2 = nir_build_deref_var(b, var2);
 
-   nir_foreach_use_safe(use_src, &deref->dest.ssa) {
-      nir_instr *use_instr = use_src->parent_instr;
-      assert(use_instr->type == nir_instr_type_intrinsic &&
-             nir_instr_as_intrinsic(use_instr)->intrinsic == nir_intrinsic_load_deref);
+   /* this is the first load instruction for the first half of the dvec3/4 components */
+   nir_ssa_def *load = nir_load_var(b, var);
+   /* this is the second load instruction for the second half of the dvec3/4 components */
+   nir_ssa_def *load2 = nir_load_var(b, var2);
 
-      /* this is a load instruction for the deref, and we need to split it into two instructions that we can
-       * then zip back into a single ssa def */
-      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(use_instr);
-      /* clamp the first load to 2 64bit components */
-      intr->num_components = intr->dest.ssa.num_components = 2;
-      b->cursor = nir_after_instr(use_instr);
-      /* this is the second load instruction for the second half of the dvec3/4 components */
-      nir_intrinsic_instr *intr2 = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_deref);
-      intr2->src[0] = nir_src_for_ssa(&deref2->dest.ssa);
-      intr2->num_components = total_num_components - 2;
-      nir_ssa_dest_init(&intr2->instr, &intr2->dest, intr2->num_components, 64, NULL);
-      nir_builder_instr_insert(b, &intr2->instr);
+   nir_ssa_def *def[4];
+   /* create a new dvec3/4 comprised of all the loaded components from both variables */
+   def[0] = nir_vector_extract(b, load, nir_imm_int(b, 0));
+   def[1] = nir_vector_extract(b, load, nir_imm_int(b, 1));
+   def[2] = nir_vector_extract(b, load2, nir_imm_int(b, 0));
+   if (total_num_components == 4)
+      def[3] = nir_vector_extract(b, load2, nir_imm_int(b, 1));
+   nir_ssa_def *new_vec = nir_vec(b, def, total_num_components);
+   /* use the assembled dvec3/4 for all other uses of the load */
+   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, new_vec,
+                                  new_vec->parent_instr);
 
-      nir_ssa_def *def[4];
-      /* create a new dvec3/4 comprised of all the loaded components from both variables */
-      def[0] = nir_vector_extract(b, &intr->dest.ssa, nir_imm_int(b, 0));
-      def[1] = nir_vector_extract(b, &intr->dest.ssa, nir_imm_int(b, 1));
-      def[2] = nir_vector_extract(b, &intr2->dest.ssa, nir_imm_int(b, 0));
-      if (total_num_components == 4)
-         def[3] = nir_vector_extract(b, &intr2->dest.ssa, nir_imm_int(b, 1));
-      nir_ssa_def *new_vec = nir_vec(b, def, total_num_components);
-      /* use the assembled dvec3/4 for all other uses of the load */
-      nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, new_vec,
-                                     new_vec->parent_instr);
-   }
+   /* remove the original instr and its deref chain */
+   nir_instr *parent = intr->src[0].ssa->parent_instr;
+   nir_instr_remove(instr);
+   nir_deref_instr_remove_if_unused(nir_instr_as_deref(parent));
 
    return true;
 }
