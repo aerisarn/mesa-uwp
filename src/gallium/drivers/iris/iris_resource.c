@@ -710,8 +710,7 @@ static bool
 iris_get_ccs_surf(const struct isl_device *dev,
                   const struct isl_surf *surf,
                   struct isl_surf *aux_surf,
-                  struct isl_surf *extra_aux_surf,
-                  uint32_t row_pitch_B)
+                  struct isl_surf *extra_aux_surf)
 {
    assert(extra_aux_surf->size_B == 0);
 
@@ -727,8 +726,7 @@ iris_get_ccs_surf(const struct isl_device *dev,
       ccs_surf = aux_surf;
    }
 
-   return isl_surf_get_ccs_surf(dev, surf, hiz_or_mcs_surf,
-                                ccs_surf, row_pitch_B);
+   return isl_surf_get_ccs_surf(dev, surf, hiz_or_mcs_surf, ccs_surf, 0);
 }
 
 /**
@@ -753,7 +751,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
 
    const bool has_ccs = !INTEL_DEBUG(DEBUG_NO_RBC) &&
       iris_get_ccs_surf(&screen->isl_dev, &res->surf, &res->aux.surf,
-                        &res->aux.extra_aux.surf, 0);
+                        &res->aux.extra_aux.surf);
 
    if (has_mcs) {
       assert(!res->mod_info);
