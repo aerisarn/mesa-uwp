@@ -125,7 +125,7 @@ TEMPLATE_C = Template(COPYRIGHT + """
 #ifdef _MSC_VER
 #ifdef _M_IX86
       % for args_size in [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 60, 104]:
-    #pragma comment(linker, "/alternatename:_${p}_${e.name}@${args_size}=_vk_entrypoint_stub")
+    #pragma comment(linker, "/alternatename:_${p}_${e.name}@${args_size}=_vk_entrypoint_stub@0")
       % endfor
 #else
     #pragma comment(linker, "/alternatename:${p}_${e.name}=vk_entrypoint_stub")
