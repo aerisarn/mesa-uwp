@@ -11912,7 +11912,7 @@ calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, u
          div_info = Operand(tmp_vgpr1, v1);
       }
 
-      bld.vop2(aco_opcode::v_lshrrev_b32, fetch_index_def, div_info, instance_id).instr;
+      bld.vop2(aco_opcode::v_lshrrev_b32, fetch_index_def, div_info, instance_id);
 
       Instruction* instr;
       if (bld.program->chip_class >= GFX9)
