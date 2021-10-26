@@ -60,9 +60,9 @@ static void anv_spirv_nir_debug(void *private_data,
 
    switch (level) {
    case NIR_SPIRV_DEBUG_LEVEL_INFO:
-      vk_logi(VK_LOG_OBJS(&debug_data->module->base),
-              "SPIR-V offset %lu: %s",
-              (unsigned long) spirv_offset, message);
+      //vk_logi(VK_LOG_OBJS(&debug_data->module->base),
+              //"SPIR-V offset %lu: %s",
+              //(unsigned long) spirv_offset, message);
       break;
    case NIR_SPIRV_DEBUG_LEVEL_WARNING:
       vk_logw(VK_LOG_OBJS(&debug_data->module->base),
