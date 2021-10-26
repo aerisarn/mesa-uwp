@@ -23,7 +23,6 @@
 
 #include "util/u_pack_color.h"
 #include "util/u_upload_mgr.h"
-#include "util/format_srgb.h"
 
 #include "v3d_context.h"
 #include "compiler/v3d_compiler.h"
