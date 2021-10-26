@@ -227,7 +227,7 @@ qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
             vpm_writes +
             tlb_writes +
             tsy_writes +
-            inst->sig.ldtmu +
+            (devinfo->ver <= 42 ? inst->sig.ldtmu : 0) +
             inst->sig.ldtlb +
             inst->sig.ldvpm +
             inst->sig.ldtlbu > 1) {

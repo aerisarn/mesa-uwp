@@ -790,7 +790,8 @@ enum {
         V3D_PERIPHERAL_TMU_WAIT           = (1 << 6),
         V3D_PERIPHERAL_TMU_WRTMUC_SIG     = (1 << 7),
         V3D_PERIPHERAL_TSY                = (1 << 8),
-        V3D_PERIPHERAL_TLB                = (1 << 9),
+        V3D_PERIPHERAL_TLB_READ           = (1 << 9),
+        V3D_PERIPHERAL_TLB_WRITE          = (1 << 10),
 };
 
 static uint32_t
@@ -815,8 +816,10 @@ qpu_peripherals(const struct v3d_device_info *devinfo,
         if (v3d_qpu_uses_sfu(inst))
                 result |= V3D_PERIPHERAL_SFU;
 
-        if (v3d_qpu_uses_tlb(inst))
-                result |= V3D_PERIPHERAL_TLB;
+        if (v3d_qpu_reads_tlb(inst))
+                result |= V3D_PERIPHERAL_TLB_READ;
+        if (v3d_qpu_writes_tlb(inst))
+                result |= V3D_PERIPHERAL_TLB_WRITE;
 
         if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
                 if (inst->alu.add.op != V3D_QPU_A_NOP &&
@@ -847,32 +850,75 @@ qpu_compatible_peripheral_access(const struct v3d_device_info *devinfo,
         if (devinfo->ver < 41)
                 return false;
 
-        /* V3D 4.1+ allow WRTMUC signal with TMU register write (other than
-         * tmuc).
+        /* V3D 4.x can't do more than one peripheral access except in a
+         * few cases:
          */
-        if (a_peripherals == V3D_PERIPHERAL_TMU_WRTMUC_SIG &&
-            b_peripherals == V3D_PERIPHERAL_TMU_WRITE) {
-                return v3d_qpu_writes_tmu_not_tmuc(devinfo, b);
+        if (devinfo->ver <= 42) {
+                /* WRTMUC signal with TMU register write (other than tmuc). */
+                if (a_peripherals == V3D_PERIPHERAL_TMU_WRTMUC_SIG &&
+                    b_peripherals == V3D_PERIPHERAL_TMU_WRITE) {
+                        return v3d_qpu_writes_tmu_not_tmuc(devinfo, b);
+                }
+                if (b_peripherals == V3D_PERIPHERAL_TMU_WRTMUC_SIG &&
+                    a_peripherals == V3D_PERIPHERAL_TMU_WRITE) {
+                        return v3d_qpu_writes_tmu_not_tmuc(devinfo, a);
+                }
+
+                /* TMU read with VPM read/write. */
+                if (a_peripherals == V3D_PERIPHERAL_TMU_READ &&
+                    (b_peripherals == V3D_PERIPHERAL_VPM_READ ||
+                     b_peripherals == V3D_PERIPHERAL_VPM_WRITE)) {
+                        return true;
+                }
+                if (b_peripherals == V3D_PERIPHERAL_TMU_READ &&
+                    (a_peripherals == V3D_PERIPHERAL_VPM_READ ||
+                     a_peripherals == V3D_PERIPHERAL_VPM_WRITE)) {
+                        return true;
+                }
+
+                return false;
         }
 
-        if (a_peripherals == V3D_PERIPHERAL_TMU_WRITE &&
-            b_peripherals == V3D_PERIPHERAL_TMU_WRTMUC_SIG) {
-                return v3d_qpu_writes_tmu_not_tmuc(devinfo, a);
+        /* V3D 7.x can't have more than one of these restricted peripherals */
+        const uint32_t restricted = V3D_PERIPHERAL_TMU_WRITE |
+                                    V3D_PERIPHERAL_TMU_WRTMUC_SIG |
+                                    V3D_PERIPHERAL_TSY |
+                                    V3D_PERIPHERAL_TLB_READ |
+                                    V3D_PERIPHERAL_SFU |
+                                    V3D_PERIPHERAL_VPM_READ |
+                                    V3D_PERIPHERAL_VPM_WRITE;
+
+        const uint32_t a_restricted = a_peripherals & restricted;
+        const uint32_t b_restricted = b_peripherals & restricted;
+        if (a_restricted && b_restricted) {
+                /* WRTMUC signal with TMU register write (other than tmuc) is
+                 * allowed though.
+                 */
+                if (!((a_restricted == V3D_PERIPHERAL_TMU_WRTMUC_SIG &&
+                       b_restricted == V3D_PERIPHERAL_TMU_WRITE &&
+                       v3d_qpu_writes_tmu_not_tmuc(devinfo, b)) ||
+                      (b_restricted == V3D_PERIPHERAL_TMU_WRTMUC_SIG &&
+                       a_restricted == V3D_PERIPHERAL_TMU_WRITE &&
+                       v3d_qpu_writes_tmu_not_tmuc(devinfo, a)))) {
+                        return false;
+                }
         }
 
-        /* V3D 4.1+ allows TMU read with VPM read/write. */
-        if (a_peripherals == V3D_PERIPHERAL_TMU_READ &&
-            (b_peripherals == V3D_PERIPHERAL_VPM_READ ||
-             b_peripherals == V3D_PERIPHERAL_VPM_WRITE)) {
-                return true;
-        }
-        if (b_peripherals == V3D_PERIPHERAL_TMU_READ &&
-            (a_peripherals == V3D_PERIPHERAL_VPM_READ ||
-             a_peripherals == V3D_PERIPHERAL_VPM_WRITE)) {
-                return true;
+        /* Only one TMU read per instruction */
+        if ((a_peripherals & V3D_PERIPHERAL_TMU_READ) &&
+            (b_peripherals & V3D_PERIPHERAL_TMU_READ)) {
+                return false;
         }
 
-        return false;
+        /* Only one TLB access per instruction */
+        if ((a_peripherals & (V3D_PERIPHERAL_TLB_WRITE |
+                              V3D_PERIPHERAL_TLB_READ)) &&
+            (b_peripherals & (V3D_PERIPHERAL_TLB_WRITE |
+                              V3D_PERIPHERAL_TLB_READ))) {
+                return false;
+        }
+
+        return true;
 }
 
 /* Compute a bitmask of which rf registers are used between

@@ -649,12 +649,14 @@ v3d_qpu_add_op_writes_vpm(enum  v3d_qpu_add_op op)
 }
 
 bool
-v3d_qpu_uses_tlb(const struct v3d_qpu_instr *inst)
+v3d_qpu_reads_tlb(const struct v3d_qpu_instr *inst)
 {
-        if (inst->sig.ldtlb ||
-            inst->sig.ldtlbu)
-                return true;
+        return inst->sig.ldtlb || inst->sig.ldtlbu;
+}
 
+bool
+v3d_qpu_writes_tlb(const struct v3d_qpu_instr *inst)
+{
         if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
                 if (inst->alu.add.op != V3D_QPU_A_NOP &&
                     inst->alu.add.magic_write &&
@@ -670,6 +672,12 @@ v3d_qpu_uses_tlb(const struct v3d_qpu_instr *inst)
         }
 
         return false;
+}
+
+bool
+v3d_qpu_uses_tlb(const struct v3d_qpu_instr *inst)
+{
+        return  v3d_qpu_writes_tlb(inst) || v3d_qpu_reads_tlb(inst);
 }
 
 bool
