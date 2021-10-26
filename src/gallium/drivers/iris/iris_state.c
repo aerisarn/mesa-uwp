@@ -110,6 +110,7 @@
 
 #include "iris_genx_macros.h"
 #include "intel/common/intel_guardband.h"
+#include "intel/common/intel_pixel_hash.h"
 
 /**
  * Statically assert that PIPE_* enums match the hardware packets.
@@ -795,45 +796,6 @@ iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
 }
 #endif
 
-/**
- * Compute an \p n x \p m pixel hashing table usable as slice, subslice or
- * pixel pipe hashing table.  The resulting table is the cyclic repetition of
- * a fixed pattern with periodicity equal to \p period.
- *
- * If \p index is specified to be equal to \p period, a 2-way hashing table
- * will be generated such that indices 0 and 1 are returned for the following
- * fractions of entries respectively:
- *
- *   p_0 = ceil(period / 2) / period
- *   p_1 = floor(period / 2) / period
- *
- * If \p index is even and less than \p period, a 3-way hashing table will be
- * generated such that indices 0, 1 and 2 are returned for the following
- * fractions of entries:
- *
- *   p_0 = (ceil(period / 2) - 1) / period
- *   p_1 = floor(period / 2) / period
- *   p_2 = 1 / period
- *
- * The equations above apply if \p flip is equal to 0, if it is equal to 1 p_0
- * and p_1 will be swapped for the result.  Note that in the context of pixel
- * pipe hashing this can be always 0 on Gfx12 platforms, since the hardware
- * transparently remaps logical indices found on the table to physical pixel
- * pipe indices from the highest to lowest EU count.
- */
-UNUSED static void
-calculate_pixel_hashing_table(unsigned n, unsigned m,
-                              unsigned period, unsigned index, bool flip,
-                              uint32_t *p)
-{
-   for (unsigned i = 0; i < n; i++) {
-      for (unsigned j = 0; j < m; j++) {
-         const unsigned k = (i + j) % period;
-         p[j + m * i] = (k == index ? 2 : (k & 1) ^ flip);
-      }
-   }
-}
-
 static void
 upload_pixel_hashing_tables(struct iris_batch *batch)
 {
@@ -859,7 +821,7 @@ upload_pixel_hashing_tables(struct iris_batch *batch)
 
    const bool flip = devinfo->ppipe_subslices[0] < devinfo->ppipe_subslices[1];
    struct GENX(SLICE_HASH_TABLE) table;
-   calculate_pixel_hashing_table(16, 16, 3, 3, flip, table.Entry[0]);
+   intel_compute_pixel_hash_table(16, 16, 3, 3, flip, table.Entry[0]);
 
    GENX(SLICE_HASH_TABLE_pack)(NULL, map, &table);
 
@@ -898,16 +860,16 @@ upload_pixel_hashing_tables(struct iris_batch *batch)
       p.SliceHashControl[0] = TABLE_0;
 
       if (ppipes_of[2] == 2 && ppipes_of[0] == 1)
-         calculate_pixel_hashing_table(8, 16, 2, 2, 0, p.TwoWayTableEntry[0]);
+         intel_compute_pixel_hash_table(8, 16, 2, 2, 0, p.TwoWayTableEntry[0]);
       else if (ppipes_of[2] == 1 && ppipes_of[1] == 1 && ppipes_of[0] == 1)
-         calculate_pixel_hashing_table(8, 16, 3, 3, 0, p.TwoWayTableEntry[0]);
+         intel_compute_pixel_hash_table(8, 16, 3, 3, 0, p.TwoWayTableEntry[0]);
 
       if (ppipes_of[2] == 2 && ppipes_of[1] == 1)
-         calculate_pixel_hashing_table(8, 16, 5, 4, 0, p.ThreeWayTableEntry[0]);
+         intel_compute_pixel_hash_table(8, 16, 5, 4, 0, p.ThreeWayTableEntry[0]);
       else if (ppipes_of[2] == 2 && ppipes_of[0] == 1)
-         calculate_pixel_hashing_table(8, 16, 2, 2, 0, p.ThreeWayTableEntry[0]);
+         intel_compute_pixel_hash_table(8, 16, 2, 2, 0, p.ThreeWayTableEntry[0]);
       else if (ppipes_of[2] == 1 && ppipes_of[1] == 1 && ppipes_of[0] == 1)
-         calculate_pixel_hashing_table(8, 16, 3, 3, 0, p.ThreeWayTableEntry[0]);
+         intel_compute_pixel_hash_table(8, 16, 3, 3, 0, p.ThreeWayTableEntry[0]);
       else
          unreachable("Illegal fusing.");
    }
