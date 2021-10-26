@@ -780,7 +780,16 @@ get_alu_src_vop3p(struct isel_context* ctx, nir_alu_src src)
 
    /* extract a full dword if possible */
    if (tmp.bytes() >= (dword + 1) * 4) {
-      return emit_extract_vector(ctx, tmp, dword, RegClass(tmp.type(), 1));
+      /* if the source is splitted into components, use p_create_vector */
+      auto it = ctx->allocated_vec.find(tmp.id());
+      if (it != ctx->allocated_vec.end()) {
+         unsigned index = dword << 1;
+         Builder bld(ctx->program, ctx->block);
+         if (it->second[index].regClass() == v2b)
+            return bld.pseudo(aco_opcode::p_create_vector, bld.def(v1), it->second[index],
+                              it->second[index + 1]);
+      }
+      return emit_extract_vector(ctx, tmp, dword, v1);
    } else {
       /* This must be a swizzled access to %a.zz where %a is v6b */
       assert(((src.swizzle[0] | src.swizzle[1]) & 1) == 0);
