@@ -1335,6 +1335,20 @@ v3d71_qpu_add_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst
                 }
                 break;
 
+        case V3D_QPU_A_FMOV:
+                instr->alu.add.output_pack = raddr_b & 0x3;
+
+                /* Mul alu FMOV has one additional variant */
+                int32_t unpack = (raddr_b >> 2) & 0x7;
+                if (unpack == 7)
+                        return false;
+
+                if (!v3d_qpu_float32_unpack_unpack(unpack,
+                                                   &instr->alu.add.a.unpack)) {
+                        return false;
+                }
+                break;
+
         default:
                 instr->alu.add.output_pack = V3D_QPU_PACK_NONE;
                 instr->alu.add.a.unpack = V3D_QPU_UNPACK_NONE;
@@ -1991,6 +2005,23 @@ v3d71_qpu_add_pack(const struct v3d_device_info *devinfo,
                         return false;
                 }
 
+                raddr_b |= packed << 2;
+                break;
+        }
+
+        case V3D_QPU_A_FMOV: {
+                uint32_t packed;
+
+                if (!v3d_qpu_float32_pack_pack(instr->alu.add.output_pack,
+                                               &packed)) {
+                        return false;
+                }
+                raddr_b = packed;
+
+                if (!v3d_qpu_float32_unpack_pack(instr->alu.add.a.unpack,
+                                                 &packed)) {
+                        return false;
+                }
                 raddr_b |= packed << 2;
                 break;
         }
