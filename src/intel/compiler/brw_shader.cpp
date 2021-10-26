@@ -1342,6 +1342,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
    const unsigned *assembly;
 
    prog_data->base.base.stage = MESA_SHADER_TESS_EVAL;
+   prog_data->base.base.ray_queries = nir->info.ray_queries;
 
    nir->info.inputs_read = key->inputs_read;
    nir->info.patch_inputs_read = key->patch_inputs_read;
