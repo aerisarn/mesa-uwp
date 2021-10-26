@@ -24,6 +24,7 @@ main(int argc, char *argv[])
       assert(intel_get_device_info_from_pci_id(chipsets[i].pci_id, &devinfo));
 
       assert(devinfo.ver != 0);
+      assert((devinfo.verx10 / 10) == devinfo.ver);
       assert(devinfo.num_eu_per_subslice != 0);
       assert(devinfo.num_thread_per_eu != 0);
       assert(devinfo.timestamp_frequency != 0);
