@@ -108,7 +108,6 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
                       uint max_tokens_out,
                       struct tgsi_transform_context *ctx)
 {
-   uint procType;
    boolean first_instruction = TRUE;
    boolean epilog_emitted = FALSE;
    int cond_stack = 0;
@@ -139,7 +138,7 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
       debug_printf("tgsi_parse_init() failed in tgsi_transform_shader()!\n");
       return -1;
    }
-   procType = parse.FullHeader.Processor.Processor;
+   ctx->processor = parse.FullHeader.Processor.Processor;
 
    /**
     **  Setup output shader
@@ -148,7 +147,7 @@ tgsi_transform_shader(const struct tgsi_token *tokens_in,
    *ctx->header = tgsi_build_header();
 
    processor = (struct tgsi_processor *) (tokens_out + 1);
-   *processor = tgsi_build_processor( procType, ctx->header );
+   *processor = tgsi_build_processor( ctx->processor, ctx->header );
 
    ctx->ti = 2;
 

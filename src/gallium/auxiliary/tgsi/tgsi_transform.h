@@ -29,6 +29,7 @@
 #define TGSI_TRANSFORM_H
 
 
+#include "pipe/p_defines.h"
 #include "pipe/p_shader_tokens.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_build.h"
@@ -68,6 +69,7 @@ struct tgsi_transform_context
     */
    void (*epilog)(struct tgsi_transform_context *ctx);
 
+   enum pipe_shader_type processor;
 
 /*** PRIVATE ***/
 
