@@ -652,7 +652,7 @@ search_resource_hash(struct gl_shader_program *shProg,
       name_copy = (char*) name;
    }
 
-   uint32_t hash = _mesa_hash_string(name_copy);
+   uint32_t hash = _mesa_hash_string_with_length(name_copy, len);
    struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(shProg->data->ProgramResourceHash[type],
                                          hash, name_copy);
