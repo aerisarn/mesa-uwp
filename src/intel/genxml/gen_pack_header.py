@@ -245,7 +245,8 @@ class Field(object):
 
     def is_builtin_type(self):
         builtins =  [ 'address', 'bool', 'float', 'ufixed',
-                      'offset', 'sfixed', 'offset', 'int', 'uint', 'mbo' ]
+                      'offset', 'sfixed', 'offset', 'int', 'uint',
+                      'mbo', 'mbz' ]
         return self.type in builtins
 
     def is_struct_type(self):
@@ -277,7 +278,7 @@ class Field(object):
             type = 'struct ' + self.parser.gen_prefix(safe_name(self.type))
         elif self.is_enum_type():
             type = 'enum ' + self.parser.gen_prefix(safe_name(self.type))
-        elif self.type == 'mbo':
+        elif self.type == 'mbo' or self.type == 'mbz':
             return
         else:
             print("#error unhandled type: %s" % self.type)
@@ -431,12 +432,14 @@ class Group(object):
             field_index = 0
             non_address_fields = []
             for field in dw.fields:
-                if field.type != "mbo":
+                if field.type != "mbo" and field.type != "mbz":
                     name = field.name + field.dim
 
                 if field.type == "mbo":
                     non_address_fields.append("__gen_mbo(%d, %d)" % \
                         (field.start - dword_start, field.end - dword_start))
+                elif field.type == "mbz":
+                    pass
                 elif field.type == "address":
                     pass
                 elif field.type == "uint":
