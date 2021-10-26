@@ -50,9 +50,9 @@
  * pipe indices from the highest to lowest EU count.
  */
 UNUSED static void
-intel_compute_pixel_hash_table(unsigned n, unsigned m,
-                               unsigned period, unsigned index, bool flip,
-                               uint32_t *p)
+intel_compute_pixel_hash_table_3way(unsigned n, unsigned m,
+                                    unsigned period, unsigned index, bool flip,
+                                    uint32_t *p)
 {
    for (unsigned i = 0; i < n; i++) {
       for (unsigned j = 0; j < m; j++) {
