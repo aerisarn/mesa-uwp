@@ -354,7 +354,7 @@ vn_AllocateMemory(VkDevice device,
    VkResult result;
    if (import_ahb_info) {
       result = vn_android_device_import_ahb(dev, mem, pAllocateInfo, alloc,
-                                            import_ahb_info->buffer);
+                                            import_ahb_info->buffer, false);
    } else if (export_ahb) {
       result = vn_android_device_allocate_ahb(dev, mem, pAllocateInfo, alloc);
    } else if (import_fd_info) {
