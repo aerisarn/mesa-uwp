@@ -99,7 +99,7 @@ static void
 isl_device_setup_mocs(struct isl_device *dev)
 {
    if (dev->info->ver >= 12) {
-      if (dev->info->platform == INTEL_PLATFORM_DG2) {
+      if (intel_device_info_is_dg2(dev->info)) {
          /* L3CC=WB; BSpec: 45101 */
          dev->mocs.internal = 3 << 1;
          dev->mocs.external = 3 << 1;

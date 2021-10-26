@@ -180,7 +180,7 @@ get_l3_list(const struct intel_device_info *devinfo)
 
    case 12:
       if (devinfo->platform == INTEL_PLATFORM_DG1 ||
-          devinfo->platform == INTEL_PLATFORM_DG2)
+          intel_device_info_is_dg2(devinfo))
          return &empty_l3_list;
       else
          return &tgl_l3_list;

@@ -43,6 +43,11 @@ struct drm_i915_query_topology_info;
 #define INTEL_DEVICE_MAX_EUS_PER_SUBSLICE (16) /* Maximum on gfx12 */
 #define INTEL_DEVICE_MAX_PIXEL_PIPES      (3)  /* Maximum on gfx12 */
 
+#define INTEL_PLATFORM_GROUP_START(group, new_enum) \
+   new_enum, INTEL_PLATFORM_ ## group ## _START = new_enum
+#define INTEL_PLATFORM_GROUP_END(group, new_enum) \
+   new_enum, INTEL_PLATFORM_ ## group ## _END = new_enum
+
 enum intel_platform {
    INTEL_PLATFORM_GFX3 = 1,
    INTEL_PLATFORM_I965,
@@ -65,8 +70,19 @@ enum intel_platform {
    INTEL_PLATFORM_RKL,
    INTEL_PLATFORM_DG1,
    INTEL_PLATFORM_ADL,
-   INTEL_PLATFORM_DG2,
+   INTEL_PLATFORM_GROUP_START(DG2, INTEL_PLATFORM_DG2_G10),
+   INTEL_PLATFORM_GROUP_END(DG2, INTEL_PLATFORM_DG2_G11),
 };
+
+#undef INTEL_PLATFORM_GROUP_START
+#undef INTEL_PLATFORM_GROUP_END
+
+#define intel_platform_in_range(platform, platform_range) \
+   (((platform) >= INTEL_PLATFORM_ ## platform_range ## _START) && \
+    ((platform) <= INTEL_PLATFORM_ ## platform_range ## _END))
+
+#define intel_device_info_is_dg2(devinfo) \
+   intel_platform_in_range((devinfo)->platform, DG2)
 
 /**
  * Intel hardware information and quirks
