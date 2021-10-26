@@ -107,7 +107,11 @@ anv_render_pass_compile(struct anv_render_pass *pass)
 
          all_usage |= subpass_att->usage;
 
-         if (pass_att->first_subpass_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
+         /* first_subpass_layout only applies to color and depth.
+          * See genX(cmd_buffer_setup_attachments)
+          */
+         if (vk_format_aspects(pass_att->format) != VK_IMAGE_ASPECT_STENCIL_BIT &&
+             pass_att->first_subpass_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
             pass_att->first_subpass_layout = subpass_att->layout;
             assert(pass_att->first_subpass_layout != VK_IMAGE_LAYOUT_UNDEFINED);
          }
