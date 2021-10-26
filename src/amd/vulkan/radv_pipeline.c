@@ -3371,8 +3371,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    };
    nir_shader *nir[MESA_SHADER_STAGES] = {0};
    struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
+   struct radv_shader_binary *gs_copy_binary = NULL;
    struct radv_shader_info infos[MESA_SHADER_STAGES] = {0};
-   unsigned char hash[20], gs_copy_hash[20];
+   unsigned char hash[20];
    bool keep_executable_info =
       (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
       device->keep_shader_info;
@@ -3404,25 +3405,19 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       radv_hash_shaders(hash, pStages, pipeline_layout, pipeline_key,
                         radv_get_hash_flags(device, keep_statistic_info));
    }
-   memcpy(gs_copy_hash, hash, 20);
-   gs_copy_hash[0] ^= 1;
 
    pipeline->pipeline_hash = *(uint64_t *)hash;
 
    bool found_in_application_cache = true;
-   if (modules[MESA_SHADER_GEOMETRY] && !keep_executable_info) {
-      struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
-      radv_create_shader_variants_from_pipeline_cache(device, cache, gs_copy_hash, variants, NULL,
-                                                      NULL, &found_in_application_cache);
-      pipeline->gs_copy_shader = variants[MESA_SHADER_GEOMETRY];
-   }
-
    if (!keep_executable_info &&
        radv_create_shader_variants_from_pipeline_cache(device, cache, hash, pipeline->shaders,
                                                        stack_sizes, num_stack_sizes,
-                                                       &found_in_application_cache) &&
-       (!modules[MESA_SHADER_GEOMETRY] || pipeline->gs_copy_shader ||
-        pipeline->shaders[MESA_SHADER_GEOMETRY]->info.is_ngg)) {
+                                                       &found_in_application_cache)) {
+      if (modules[MESA_SHADER_GEOMETRY] && !pipeline->shaders[MESA_SHADER_GEOMETRY]->info.is_ngg) {
+         /* We use the CS slot because graphics pipelines might use all the other ones. */
+         pipeline->gs_copy_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+         pipeline->shaders[MESA_SHADER_COMPUTE] = NULL;
+      }
       radv_stop_feedback(pipeline_feedback, found_in_application_cache);
       return VK_SUCCESS;
    }
@@ -3615,39 +3610,22 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          nir_print_shader(nir[i], stderr);
    }
 
-   if (modules[MESA_SHADER_GEOMETRY]) {
-      struct radv_shader_binary *gs_copy_binary = NULL;
-      if (!pipeline_has_ngg) {
-         struct radv_shader_info info = {0};
+   if (modules[MESA_SHADER_GEOMETRY] && !pipeline_has_ngg) {
+      struct radv_shader_info info = {0};
 
-         if (infos[MESA_SHADER_GEOMETRY].vs.outinfo.export_clip_dists)
-            info.vs.outinfo.export_clip_dists = true;
+      if (infos[MESA_SHADER_GEOMETRY].vs.outinfo.export_clip_dists)
+         info.vs.outinfo.export_clip_dists = true;
 
-         radv_nir_shader_info_pass(device, nir[MESA_SHADER_GEOMETRY], pipeline_layout, pipeline_key,
-                                   &info);
-         info.wave_size = 64; /* Wave32 not supported. */
-         info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
-         info.ballot_bit_size = 64;
+      radv_nir_shader_info_pass(device, nir[MESA_SHADER_GEOMETRY], pipeline_layout, pipeline_key,
+                                &info);
+      info.wave_size = 64; /* Wave32 not supported. */
+      info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
+      info.ballot_bit_size = 64;
 
-         pipeline->gs_copy_shader = radv_create_gs_copy_shader(
-            device, nir[MESA_SHADER_GEOMETRY], &info, &gs_copy_binary, keep_executable_info,
-            keep_statistic_info, pipeline_key->has_multiview_view_index,
-            pipeline_key->optimisations_disabled);
-      }
-
-      if (!keep_executable_info && pipeline->gs_copy_shader) {
-         struct radv_shader_binary *gs_binaries[MESA_SHADER_STAGES] = {NULL};
-         struct radv_shader_variant *gs_variants[MESA_SHADER_STAGES] = {0};
-
-         gs_binaries[MESA_SHADER_GEOMETRY] = gs_copy_binary;
-         gs_variants[MESA_SHADER_GEOMETRY] = pipeline->gs_copy_shader;
-
-         radv_pipeline_cache_insert_shaders(device, cache, gs_copy_hash, gs_variants, gs_binaries,
-                                            NULL, 0);
-
-         pipeline->gs_copy_shader = gs_variants[MESA_SHADER_GEOMETRY];
-      }
-      free(gs_copy_binary);
+      pipeline->gs_copy_shader = radv_create_gs_copy_shader(
+         device, nir[MESA_SHADER_GEOMETRY], &info, &gs_copy_binary, keep_executable_info,
+         keep_statistic_info, pipeline_key->has_multiview_view_index,
+         pipeline_key->optimisations_disabled);
    }
 
    if (nir[MESA_SHADER_FRAGMENT]) {
@@ -3710,11 +3688,24 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    if (!keep_executable_info) {
+      if (pipeline->gs_copy_shader) {
+         assert(!binaries[MESA_SHADER_COMPUTE] && !pipeline->shaders[MESA_SHADER_COMPUTE]);
+         binaries[MESA_SHADER_COMPUTE] = gs_copy_binary;
+         pipeline->shaders[MESA_SHADER_COMPUTE] = pipeline->gs_copy_shader;
+      }
+
       radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline->shaders, binaries,
                                          stack_sizes ? *stack_sizes : NULL,
                                          num_stack_sizes ? *num_stack_sizes : 0);
+
+      if (pipeline->gs_copy_shader) {
+         pipeline->gs_copy_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+         pipeline->shaders[MESA_SHADER_COMPUTE] = NULL;
+         binaries[MESA_SHADER_COMPUTE] = NULL;
+      }
    }
 
+   free(gs_copy_binary);
    for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
       free(binaries[i]);
       if (nir[i]) {
