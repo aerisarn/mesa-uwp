@@ -690,7 +690,8 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (device->info.ver >= 12 && image->vk.array_layers > 1) {
+      if (device->info.ver >= 12 &&
+          (image->vk.array_layers > 1 || image->vk.mip_levels)) {
          /* HSD 14010672564: On TGL, if a block of fragment shader outputs
           * match the surface's clear color, the HW may convert them to
           * fast-clears. Anv only does clear color tracking for the first
