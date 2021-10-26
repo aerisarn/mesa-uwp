@@ -2573,15 +2573,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    update_framebuffer_state(ctx, w, h);
 
    uint8_t rast_samples = ctx->fb_state.samples - 1;
-   /* update the shader key if applicable:
-    * if gl_SampleMask[] is written to, we have to ensure that we get a shader with the same sample count:
-    * in GL, rast_samples==1 means ignore gl_SampleMask[]
-    * in VK, gl_SampleMask[] is never ignored
-    */
-   if (rast_samples != ctx->gfx_pipeline_state.rast_samples &&
-       (!ctx->gfx_stages[PIPE_SHADER_FRAGMENT] ||
-        ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir->info.outputs_written & (1 << FRAG_RESULT_SAMPLE_MASK)))
-      zink_set_fs_key(ctx)->samples = ctx->fb_state.samples > 0;
+   if (rast_samples != ctx->gfx_pipeline_state.rast_samples)
+      zink_update_fs_key_samples(ctx);
    if (ctx->gfx_pipeline_state.rast_samples != rast_samples) {
       ctx->sample_locations_changed |= ctx->gfx_pipeline_state.sample_locations_enabled;
       ctx->gfx_pipeline_state.dirty = true;
