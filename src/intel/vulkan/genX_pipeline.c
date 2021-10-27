@@ -1743,8 +1743,18 @@ get_scratch_space(const struct anv_shader_bin *bin)
 
 static UNUSED uint32_t
 get_scratch_surf(struct anv_pipeline *pipeline,
+                 gl_shader_stage stage,
                  const struct anv_shader_bin *bin)
 {
+   if (bin->prog_data->total_scratch == 0)
+      return 0;
+
+   struct anv_bo *bo =
+      anv_scratch_pool_alloc(pipeline->device,
+                             &pipeline->device->scratch_pool,
+                             stage, bin->prog_data->total_scratch);
+   anv_reloc_list_add_bo(pipeline->batch.relocs,
+                         pipeline->batch.alloc, bo);
    return anv_scratch_pool_get_surf(pipeline->device,
                                     &pipeline->device->scratch_pool,
                                     bin->prog_data->total_scratch) >> 4;
@@ -1821,7 +1831,8 @@ emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
 #endif
 
 #if GFX_VERx10 >= 125
-      vs.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, vs_bin);
+      vs.ScratchSpaceBuffer =
+         get_scratch_surf(&pipeline->base, MESA_SHADER_VERTEX, vs_bin);
 #else
       vs.PerThreadScratchSpace   = get_scratch_space(vs_bin);
       vs.ScratchSpaceBasePointer =
@@ -1882,7 +1893,8 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
 #endif
 
 #if GFX_VERx10 >= 125
-      hs.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, tcs_bin);
+      hs.ScratchSpaceBuffer =
+         get_scratch_surf(&pipeline->base, MESA_SHADER_TESS_CTRL, tcs_bin);
 #else
       hs.PerThreadScratchSpace = get_scratch_space(tcs_bin);
       hs.ScratchSpaceBasePointer =
@@ -1979,7 +1991,8 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
       ds.PrimitiveIDNotRequired = !tes_prog_data->include_primitive_id;
 #endif
 #if GFX_VERx10 >= 125
-      ds.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, tes_bin);
+      ds.ScratchSpaceBuffer =
+         get_scratch_surf(&pipeline->base, MESA_SHADER_TESS_EVAL, tes_bin);
 #else
       ds.PerThreadScratchSpace = get_scratch_space(tes_bin);
       ds.ScratchSpaceBasePointer =
@@ -2050,7 +2063,8 @@ emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
 #endif
 
 #if GFX_VERx10 >= 125
-      gs.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, gs_bin);
+      gs.ScratchSpaceBuffer =
+         get_scratch_surf(&pipeline->base, MESA_SHADER_GEOMETRY, gs_bin);
 #else
       gs.PerThreadScratchSpace   = get_scratch_space(gs_bin);
       gs.ScratchSpaceBasePointer =
@@ -2322,7 +2336,8 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
 
 #if GFX_VERx10 >= 125
-      ps.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, fs_bin);
+      ps.ScratchSpaceBuffer =
+         get_scratch_surf(&pipeline->base, MESA_SHADER_FRAGMENT, fs_bin);
 #else
       ps.PerThreadScratchSpace   = get_scratch_space(fs_bin);
       ps.ScratchSpaceBasePointer =
@@ -2623,7 +2638,8 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
       cfe.MaximumNumberofThreads =
          devinfo->max_cs_threads * devinfo->subslice_total - 1;
-      cfe.ScratchSpaceBuffer = get_scratch_surf(&pipeline->base, cs_bin);
+      cfe.ScratchSpaceBuffer =
+         get_scratch_surf(&pipeline->base, MESA_SHADER_COMPUTE, cs_bin);
    }
 }
 
