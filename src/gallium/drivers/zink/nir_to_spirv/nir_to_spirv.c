@@ -1226,10 +1226,18 @@ store_dest(struct ntv_context *ctx, nir_dest *dest, SpvId result, nir_alu_type t
          break;
 
       case nir_type_uint:
+      case nir_type_uint8:
+      case nir_type_uint16:
+      case nir_type_uint64:
          break; /* nothing to do! */
 
       case nir_type_int:
+      case nir_type_int8:
+      case nir_type_int16:
+      case nir_type_int64:
       case nir_type_float:
+      case nir_type_float16:
+      case nir_type_float64:
          result = bitcast_to_uvec(ctx, result, bit_size, num_components);
          break;
 
@@ -1569,12 +1577,20 @@ get_dest_type(struct ntv_context *ctx, nir_dest *dest, nir_alu_type type)
       unreachable("bool should have bit-size 1");
 
    case nir_type_int:
+   case nir_type_int8:
+   case nir_type_int16:
+   case nir_type_int64:
       return get_ivec_type(ctx, bit_size, num_components);
 
    case nir_type_uint:
+   case nir_type_uint8:
+   case nir_type_uint16:
+   case nir_type_uint64:
       return get_uvec_type(ctx, bit_size, num_components);
 
    case nir_type_float:
+   case nir_type_float16:
+   case nir_type_float64:
       return get_fvec_type(ctx, bit_size, num_components);
 
    default:
