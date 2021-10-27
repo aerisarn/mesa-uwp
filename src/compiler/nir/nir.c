@@ -51,6 +51,8 @@ static const struct debug_named_value nir_debug_control[] = {
      "Disable shader validation at each successful lowering/optimization call" },
    { "validate_ssa_dominance", NIR_DEBUG_VALIDATE_SSA_DOMINANCE,
      "Validate SSA dominance in shader at each successful lowering/optimization call" },
+   { "validate_gc_list", NIR_DEBUG_VALIDATE_GC_LIST,
+     "Validate the instruction GC list at each successful lowering/optimization call" },
    { "tgsi", NIR_DEBUG_TGSI,
      "Dump NIR/TGSI shaders when doing a NIR<->TGSI translation" },
    { "print", NIR_DEBUG_PRINT,
