@@ -43,6 +43,7 @@ struct ntv_context {
    struct spirv_builder builder;
 
    struct hash_table *glsl_types;
+   struct hash_table *bo_types;
 
    SpvId GLSL_std_450;
 
@@ -920,6 +921,9 @@ get_sized_uint_array_type(struct ntv_context *ctx, unsigned array_size, unsigned
 static SpvId
 get_bo_array_type(struct ntv_context *ctx, struct nir_variable *var)
 {
+   struct hash_entry *he = _mesa_hash_table_search(ctx->bo_types, var);
+   if (he)
+      return (SpvId)(uintptr_t)he->data;
    unsigned bitsize = glsl_get_bit_size(glsl_get_array_element(glsl_get_struct_field(var->type, 0)));
    assert(bitsize);
    SpvId array_type;
@@ -943,6 +947,7 @@ get_bo_struct_type(struct ntv_context *ctx, struct nir_variable *var)
 {
    unsigned bitsize = glsl_get_bit_size(glsl_get_array_element(glsl_get_struct_field(var->type, 0)));
    SpvId array_type = get_bo_array_type(ctx, var);
+   _mesa_hash_table_insert(ctx->bo_types, var, (void *)(uintptr_t)array_type);
    bool ssbo = var->data.mode == nir_var_mem_ssbo;
 
    // wrap UBO-array in a struct
@@ -3524,7 +3529,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    ctx.spirv_1_4_interfaces = spirv_version >= SPIRV_VERSION(1, 4);
 
    ctx.glsl_types = _mesa_pointer_hash_table_create(ctx.mem_ctx);
-   if (!ctx.glsl_types)
+   ctx.bo_types = _mesa_pointer_hash_table_create(ctx.mem_ctx);
+   if (!ctx.glsl_types || !ctx.bo_types)
       goto fail;
 
    spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShader);
