@@ -1310,10 +1310,9 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
                                  unsigned drawid_base,
                                  const struct pipe_draw_indirect_info *indirect,
                                  const struct pipe_draw_start_count_bias *draws,
-                                 unsigned num_draws, unsigned total_count,
+                                 unsigned num_draws,
                                  struct pipe_resource *indexbuf, unsigned index_size,
-                                 unsigned index_offset, unsigned instance_count,
-                                 unsigned original_index_size)
+                                 unsigned index_offset, unsigned instance_count)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -1472,7 +1471,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       }
 
       /* Base vertex and start instance. */
-      int base_vertex = original_index_size ? draws[0].index_bias : draws[0].start;
+      int base_vertex = index_size ? draws[0].index_bias : draws[0].start;
 
       bool set_draw_id = !IS_DRAW_VERTEX_STATE && sctx->vs_uses_draw_id;
       bool set_base_instance = sctx->vs_uses_base_instance;
@@ -2227,7 +2226,6 @@ static void si_draw(struct pipe_context *ctx,
       info->primitive_restart &&
       (!sctx->screen->options.prim_restart_tri_strips_only ||
        (prim != PIPE_PRIM_TRIANGLE_STRIP && prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
-   unsigned original_index_size = index_size;
 
    /* Set the rasterization primitive type.
     *
@@ -2407,8 +2405,8 @@ static void si_draw(struct pipe_context *ctx,
       assert(sctx->dirty_atoms == 0);
 
       si_emit_draw_packets<GFX_VERSION, NGG, IS_DRAW_VERTEX_STATE>
-            (sctx, info, drawid_offset, indirect, draws, num_draws, total_direct_count, indexbuf,
-             index_size, index_offset, instance_count, original_index_size);
+            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf,
+             index_size, index_offset, instance_count);
       /* <-- CUs are busy here. */
 
       /* Start prefetches after the draw has been started. Both will run
@@ -2447,8 +2445,8 @@ static void si_draw(struct pipe_context *ctx,
       assert(sctx->dirty_atoms == 0);
 
       si_emit_draw_packets<GFX_VERSION, NGG, IS_DRAW_VERTEX_STATE>
-            (sctx, info, drawid_offset, indirect, draws, num_draws, total_direct_count, indexbuf,
-             index_size, index_offset, instance_count, original_index_size);
+            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf,
+             index_size, index_offset, instance_count);
 
       /* Prefetch the remaining shaders after the draw has been
        * started. */
