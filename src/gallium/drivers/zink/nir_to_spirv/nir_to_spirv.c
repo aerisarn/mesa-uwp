@@ -1556,11 +1556,11 @@ get_alu_src(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
 }
 
 static SpvId
-store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result)
+store_alu_result(struct ntv_context *ctx, nir_alu_instr *alu, SpvId result, bool force_float)
 {
    assert(!alu->dest.saturate);
    return store_dest(ctx, &alu->dest.dest, result,
-                     nir_op_infos[alu->op].output_type);
+                     force_float ? nir_type_float : nir_op_infos[alu->op].output_type);
 }
 
 static SpvId
@@ -1622,6 +1622,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 
    SpvId dest_type = get_dest_type(ctx, &alu->dest.dest,
                                    nir_op_infos[alu->op].output_type);
+   bool force_float = false;
    unsigned bit_size = nir_dest_bit_size(alu->dest.dest);
    unsigned num_components = nir_dest_num_components(alu->dest.dest);
 
@@ -1706,6 +1707,13 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_builtin_unop(ctx, spirv_op, dest_type, src[0]); \
       break;
 
+#define BUILTIN_UNOPF(nir_op, spirv_op) \
+   case nir_op: \
+      assert(nir_op_infos[alu->op].num_inputs == 1); \
+      result = emit_builtin_unop(ctx, spirv_op, get_dest_type(ctx, &alu->dest.dest, nir_type_float), src[0]); \
+      force_float = true; \
+      break;
+
    BUILTIN_UNOP(nir_op_iabs, GLSLstd450SAbs)
    BUILTIN_UNOP(nir_op_fabs, GLSLstd450FAbs)
    BUILTIN_UNOP(nir_op_fsqrt, GLSLstd450Sqrt)
@@ -1724,10 +1732,11 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BUILTIN_UNOP(nir_op_ufind_msb, GLSLstd450FindUMsb)
    BUILTIN_UNOP(nir_op_find_lsb, GLSLstd450FindILsb)
    BUILTIN_UNOP(nir_op_ifind_msb, GLSLstd450FindSMsb)
-   BUILTIN_UNOP(nir_op_pack_half_2x16, GLSLstd450PackHalf2x16)
-   BUILTIN_UNOP(nir_op_unpack_half_2x16, GLSLstd450UnpackHalf2x16)
-   BUILTIN_UNOP(nir_op_pack_64_2x32, GLSLstd450PackDouble2x32)
+   BUILTIN_UNOPF(nir_op_pack_half_2x16, GLSLstd450PackHalf2x16)
+   BUILTIN_UNOPF(nir_op_unpack_half_2x16, GLSLstd450UnpackHalf2x16)
+   BUILTIN_UNOPF(nir_op_pack_64_2x32, GLSLstd450PackDouble2x32)
 #undef BUILTIN_UNOP
+#undef BUILTIN_UNOPF
 
    case nir_op_frcp:
       assert(nir_op_infos[alu->op].num_inputs == 1);
@@ -1879,7 +1888,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    if (alu->exact)
       spirv_builder_emit_decoration(&ctx->builder, result, SpvDecorationNoContraction);
 
-   store_alu_result(ctx, alu, result);
+   store_alu_result(ctx, alu, result, force_float);
 }
 
 static void
