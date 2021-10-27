@@ -2049,7 +2049,7 @@ radv_find_shader(struct radv_device *device, uint64_t pc)
 }
 
 const char *
-radv_get_shader_name(struct radv_shader_info *info, gl_shader_stage stage)
+radv_get_shader_name(const struct radv_shader_info *info, gl_shader_stage stage)
 {
    switch (stage) {
    case MESA_SHADER_VERTEX:
