@@ -580,7 +580,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_NV_compute_shader_derivatives                      DONE (anv, radv)
   VK_EXT_acquire_drm_display                            DONE (radv, anv)
   VK_VALVE_mutable_descriptor_type                      DONE (anv, radv, tu)
-  VK_AMD_buffer_marker                                  DONE (radv)
+  VK_AMD_buffer_marker                                  DONE (radv, tu)
   VK_AMD_device_coherent_memory                         DONE (radv)
   VK_AMD_draw_indirect_count                            DONE (radv)
   VK_AMD_gcn_shader                                     DONE (radv)

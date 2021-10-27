@@ -5007,3 +5007,73 @@ tu_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
    tu_cs_emit(cs, 0);
 }
 
+void
+tu_CmdWriteBufferMarkerAMD(VkCommandBuffer commandBuffer,
+                           VkPipelineStageFlagBits pipelineStage,
+                           VkBuffer dstBuffer,
+                           VkDeviceSize dstOffset,
+                           uint32_t marker)
+{
+   /* Almost the same as write_event, but also allowed in renderpass */
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buffer, dstBuffer);
+
+   uint64_t va = buffer->bo->iova + dstOffset;
+
+   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
+   struct tu_cache_state *cache =
+      cmd->state.pass ? &cmd->state.renderpass_cache : &cmd->state.cache;
+
+   /* From the Vulkan 1.2.203 spec:
+    *
+    *    The access scope for buffer marker writes falls under
+    *    the VK_ACCESS_TRANSFER_WRITE_BIT, and the pipeline stages for
+    *    identifying the synchronization scope must include both pipelineStage
+    *    and VK_PIPELINE_STAGE_TRANSFER_BIT.
+    *
+    * Transfer operations use CCU however here we write via CP.
+    * Flush CCU in order to make the results of previous transfer
+    * operation visible to CP.
+    */
+   tu_flush_for_access(cache, 0, TU_ACCESS_SYSMEM_WRITE);
+
+   /* Flags that only require a top-of-pipe event. DrawIndirect parameters are
+    * read by the CP, so the draw indirect stage counts as top-of-pipe too.
+    */
+   VkPipelineStageFlags top_of_pipe_flags =
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+
+   bool is_top_of_pipe = !(pipelineStage & ~top_of_pipe_flags);
+
+   /* We have to WFI only if we flushed CCU here and are using CP_MEM_WRITE.
+    * Otherwise:
+    * - We do CP_EVENT_WRITE(RB_DONE_TS) which should wait for flushes;
+    * - There was a barrier to synchronize other writes with WriteBufferMarkerAMD
+    *   and they had to include our pipelineStage which forces the WFI.
+    */
+   if (cache->flush_bits != 0 && is_top_of_pipe) {
+      cache->flush_bits |= TU_CMD_FLAG_WAIT_FOR_IDLE;
+   }
+
+   if (cmd->state.pass) {
+      tu_emit_cache_flush_renderpass(cmd, cs);
+   } else {
+      tu_emit_cache_flush(cmd, cs);
+   }
+
+   if (is_top_of_pipe) {
+      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
+      tu_cs_emit_qw(cs, va); /* ADDR_LO/HI */
+      tu_cs_emit(cs, marker);
+   } else {
+      /* Use a RB_DONE_TS event to wait for everything to complete. */
+      tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 4);
+      tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS));
+      tu_cs_emit_qw(cs, va);
+      tu_cs_emit(cs, marker);
+   }
+
+   /* Make sure the result of this write is visible to others. */
+   tu_flush_for_access(cache, TU_ACCESS_CP_WRITE, 0);
+}
