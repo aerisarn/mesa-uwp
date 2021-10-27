@@ -767,7 +767,7 @@ radv_save_descriptors(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bi
 struct radv_userdata_info *
 radv_lookup_user_sgpr(struct radv_pipeline *pipeline, gl_shader_stage stage, int idx)
 {
-   struct radv_shader_variant *shader = radv_get_shader(pipeline, stage);
+   struct radv_shader *shader = radv_get_shader(pipeline, stage);
    return &shader->info.user_sgprs_locs.shader_data[idx];
 }
 
@@ -1056,14 +1056,14 @@ radv_update_binning_state(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeli
 }
 
 static void
-radv_emit_shader_prefetch(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant *shader)
+radv_emit_shader_prefetch(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *shader)
 {
    uint64_t va;
 
    if (!shader)
       return;
 
-   va = radv_shader_variant_get_va(shader);
+   va = radv_shader_get_va(shader);
 
    si_cp_dma_prefetch(cmd_buffer, va, shader->code_size);
 }
@@ -1357,7 +1357,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
        * Culling is currently disabled, so re-emit RSRC2 to reduce LDS usage.
        * API GS always needs LDS, so this isn't useful there.
        */
-      struct radv_shader_variant *v = pipeline->shaders[pipeline->graphics.last_vgt_api_stage];
+      struct radv_shader *v = pipeline->shaders[pipeline->graphics.last_vgt_api_stage];
       radeon_set_sh_reg(cmd_buffer->cs, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
                         (v->config.rsrc2 & C_00B22C_LDS_SIZE) |
                         S_00B22C_LDS_SIZE(v->info.num_lds_blocks_when_not_culling));
@@ -2723,7 +2723,7 @@ radv_cmp_vs_prolog(const void *a_, const void *b_)
 }
 
 static struct radv_shader_prolog *
-lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant *vs_shader,
+lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shader,
                  uint32_t *nontrivial_divisors)
 {
    STATIC_ASSERT(sizeof(union vs_prolog_key_header) == 4);
@@ -2855,7 +2855,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant 
 }
 
 static void
-emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant *vs_shader,
+emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shader,
                  struct radv_shader_prolog *prolog, bool pipeline_is_dirty)
 {
    /* no need to re-emit anything in this case */
@@ -2907,7 +2907,7 @@ emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant 
 }
 
 static void
-emit_prolog_inputs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_variant *vs_shader,
+emit_prolog_inputs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shader,
                    uint32_t nontrivial_divisors, bool pipeline_is_dirty)
 {
    /* no need to re-emit anything in this case */
@@ -2916,7 +2916,7 @@ emit_prolog_inputs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader_varian
       return;
 
    struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
-   uint64_t input_va = radv_shader_variant_get_va(vs_shader);
+   uint64_t input_va = radv_shader_get_va(vs_shader);
 
    if (nontrivial_divisors) {
       unsigned inputs_offset;
@@ -2960,7 +2960,7 @@ static void
 radv_emit_vertex_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
-   struct radv_shader_variant *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
+   struct radv_shader *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
 
    if (!vs_shader->info.vs.has_prolog)
       return;
@@ -3181,7 +3181,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
 {
    struct radv_descriptor_state *descriptors_state =
       radv_get_descriptors_state(cmd_buffer, bind_point);
-   struct radv_shader_variant *shader, *prev_shader;
+   struct radv_shader *shader, *prev_shader;
    bool need_push_constants = false;
    unsigned offset;
    void *ptr;
@@ -3296,7 +3296,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
    if ((pipeline_is_dirty || (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)) &&
        cmd_buffer->state.pipeline->vb_desc_usage_mask) {
       struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
-      struct radv_shader_variant *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
+      struct radv_shader *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
       enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
       unsigned vb_offset;
       void *vb_ptr;
@@ -6432,7 +6432,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
 
    /* Remember small draw state. */
    cmd_buffer->state.last_nggc_skip = skip;
-   const struct radv_shader_variant *v = pipeline->shaders[stage];
+   const struct radv_shader *v = pipeline->shaders[stage];
    assert(v->info.has_ngg_culling == nggc_supported);
 
    /* Find the user SGPR. */
@@ -6879,7 +6879,7 @@ static void
 radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline,
                            const struct radv_dispatch_info *info)
 {
-   struct radv_shader_variant *compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+   struct radv_shader *compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
    unsigned dispatch_initiator = cmd_buffer->device->dispatch_initiator;
    struct radeon_winsys *ws = cmd_buffer->device->ws;
    bool predicating = cmd_buffer->state.predicating;

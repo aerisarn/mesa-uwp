@@ -343,21 +343,21 @@ struct radv_pipeline_cache {
 };
 
 struct radv_shader_binary;
-struct radv_shader_variant;
+struct radv_shader;
 struct radv_pipeline_shader_stack_size;
 
 void radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *device);
 void radv_pipeline_cache_finish(struct radv_pipeline_cache *cache);
 bool radv_pipeline_cache_load(struct radv_pipeline_cache *cache, const void *data, size_t size);
 
-bool radv_create_shader_variants_from_pipeline_cache(
+bool radv_create_shaders_from_pipeline_cache(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_shader_variant **variants, struct radv_pipeline_shader_stack_size **stack_sizes,
+   struct radv_shader **shaders, struct radv_pipeline_shader_stack_size **stack_sizes,
    uint32_t *num_stack_sizes, bool *found_in_application_cache);
 
 void radv_pipeline_cache_insert_shaders(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_shader_variant **variants, struct radv_shader_binary *const *binaries,
+   struct radv_shader **shaders, struct radv_shader_binary *const *binaries,
    const struct radv_pipeline_shader_stack_size *stack_sizes, uint32_t num_stack_sizes);
 
 enum radv_blit_ds_layout {
@@ -811,7 +811,7 @@ struct radv_device {
    struct ac_thread_trace_data thread_trace;
 
    /* Trap handler. */
-   struct radv_shader_variant *trap_handler_shader;
+   struct radv_shader *trap_handler_shader;
    struct radeon_winsys_bo *tma_bo; /* Trap Memory Address */
    uint32_t *tma_ptr;
 
@@ -1768,8 +1768,8 @@ struct radv_pipeline {
    struct radv_dynamic_state dynamic_state;
 
    bool need_indirect_descriptor_sets;
-   struct radv_shader_variant *shaders[MESA_SHADER_STAGES];
-   struct radv_shader_variant *gs_copy_shader;
+   struct radv_shader *shaders[MESA_SHADER_STAGES];
+   struct radv_shader *gs_copy_shader;
    VkShaderStageFlags active_stages;
 
    struct radeon_cmdbuf cs;
@@ -1843,7 +1843,7 @@ struct radv_pipeline {
    unsigned scratch_bytes_per_wave;
 
    /* Not NULL if graphics pipeline uses streamout. */
-   struct radv_shader_variant *streamout_shader;
+   struct radv_shader *streamout_shader;
 
    /* Unique pipeline hash identifier. */
    uint64_t pipeline_hash;
@@ -1872,8 +1872,7 @@ bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline);
 struct radv_userdata_info *radv_lookup_user_sgpr(struct radv_pipeline *pipeline,
                                                  gl_shader_stage stage, int idx);
 
-struct radv_shader_variant *radv_get_shader(const struct radv_pipeline *pipeline,
-                                            gl_shader_stage stage);
+struct radv_shader *radv_get_shader(const struct radv_pipeline *pipeline, gl_shader_stage stage);
 
 struct radv_graphics_pipeline_create_info {
    bool use_rectlist;

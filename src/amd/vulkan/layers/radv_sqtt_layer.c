@@ -821,7 +821,7 @@ sqtt_DebugMarkerSetObjectTagEXT(VkDevice device, const VkDebugMarkerObjectTagInf
 static enum rgp_hardware_stages
 radv_mesa_to_rgp_shader_stage(struct radv_pipeline *pipeline, gl_shader_stage stage)
 {
-   struct radv_shader_variant *shader = pipeline->shaders[stage];
+   struct radv_shader *shader = pipeline->shaders[stage];
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
@@ -870,7 +870,7 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
    record->pipeline_hash[1] = pipeline->pipeline_hash;
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      struct radv_shader_variant *shader = pipeline->shaders[i];
+      struct radv_shader *shader = pipeline->shaders[i];
       uint8_t *code;
       uint64_t va;
 
@@ -884,7 +884,7 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
       }
       memcpy(code, shader->code_ptr, shader->code_size);
 
-      va = radv_shader_variant_get_va(shader);
+      va = radv_shader_get_va(shader);
 
       record->shader_data[i].hash[0] = (uint64_t)(uintptr_t)shader;
       record->shader_data[i].hash[1] = (uint64_t)(uintptr_t)shader >> 32;
@@ -923,13 +923,13 @@ radv_register_pipeline(struct radv_device *device, struct radv_pipeline *pipelin
 
    /* Find the lowest shader BO VA. */
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      struct radv_shader_variant *shader = pipeline->shaders[i];
+      struct radv_shader *shader = pipeline->shaders[i];
       uint64_t va;
 
       if (!shader)
          continue;
 
-      va = radv_shader_variant_get_va(shader);
+      va = radv_shader_get_va(shader);
       base_va = MIN2(base_va, va);
    }
 
