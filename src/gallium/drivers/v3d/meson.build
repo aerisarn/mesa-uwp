@@ -49,6 +49,7 @@ files_per_version = files(
   'v3dx_job.c',
   'v3dx_rcl.c',
   'v3dx_state.c',
+  'v3dx_tfu.c',
 )
 
 v3d_args = ['-DV3D_BUILD_NEON']
