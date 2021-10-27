@@ -527,7 +527,8 @@ iris_get_compute_param(struct pipe_screen *pscreen,
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    const struct intel_device_info *devinfo = &screen->devinfo;
 
-   const uint32_t max_invocations = 32 * devinfo->max_cs_workgroup_threads;
+   const uint32_t max_invocations =
+      MIN2(1024, 32 * devinfo->max_cs_workgroup_threads);
 
 #define RET(x) do {                  \
    if (ret)                          \
