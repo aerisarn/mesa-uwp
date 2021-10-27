@@ -3598,7 +3598,7 @@ dri2_client_wait_sync(_EGLDisplay *disp, _EGLSync *sync,
             ret = cnd_timedwait(&dri2_sync->cond, &dri2_sync->mutex, &expire);
             mtx_unlock(&dri2_sync->mutex);
 
-            if (ret == thrd_busy) {
+            if (ret == thrd_timedout) {
                if (dri2_sync->base.SyncStatus == EGL_UNSIGNALED_KHR) {
                   ret = EGL_TIMEOUT_EXPIRED_KHR;
                } else {
