@@ -51,6 +51,7 @@ static const struct debug_named_value virgl_debug_options[] = {
    { "nobgraswz", VIRGL_DEBUG_NO_BGRA_DEST_SWIZZLE,"Disable tweak to swizzle emulated BGRA on GLES hosts" },
    { "sync",      VIRGL_DEBUG_SYNC,                "Sync after every flush" },
    { "xfer",      VIRGL_DEBUG_XFER,                "Do not optimize for transfers" },
+   { "r8srgb-readback",   VIRGL_DEBUG_L8_SRGB_ENABLE_READBACK, "Enable redaback for L8 sRGB textures" },
    { "nocoherent", VIRGL_DEBUG_NO_COHERENT,        "Disable coherent memory"},
    DEBUG_NAMED_VALUE_END
 };
@@ -542,8 +543,15 @@ virgl_has_readback_format(struct pipe_screen *screen,
                           enum virgl_formats fmt)
 {
    struct virgl_screen *vscreen = virgl_screen(screen);
-   return has_format_bit(&vscreen->caps.caps.v2.supported_readback_formats,
-                         fmt);
+   if (has_format_bit(&vscreen->caps.caps.v2.supported_readback_formats,
+                         fmt))
+      return true;
+
+   if (fmt == VIRGL_FORMAT_L8_SRGB && vscreen->tweak_l8_srgb_readback) {
+      return true;
+   }
+
+   return false;
 }
 
 static bool
@@ -956,6 +964,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    const char *VIRGL_GLES_EMULATE_BGRA = "gles_emulate_bgra";
    const char *VIRGL_GLES_APPLY_BGRA_DEST_SWIZZLE = "gles_apply_bgra_dest_swizzle";
    const char *VIRGL_GLES_SAMPLES_PASSED_VALUE = "gles_samples_passed_value";
+   const char *VIRGL_FORMAT_L8_SRGB_ENABLE_READBACK = "format_l8_srgb_enable_readback";
 
    if (!screen)
       return NULL;
@@ -972,10 +981,13 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
             driQueryOptionb(config->options, VIRGL_GLES_APPLY_BGRA_DEST_SWIZZLE);
       screen->tweak_gles_tf3_value =
             driQueryOptioni(config->options, VIRGL_GLES_SAMPLES_PASSED_VALUE);
+      screen->tweak_l8_srgb_readback =
+            driQueryOptionb(config->options, VIRGL_FORMAT_L8_SRGB_ENABLE_READBACK);
    }
    screen->tweak_gles_emulate_bgra &= !(virgl_debug & VIRGL_DEBUG_NO_EMULATE_BGRA);
    screen->tweak_gles_apply_bgra_dest_swizzle &= !(virgl_debug & VIRGL_DEBUG_NO_BGRA_DEST_SWIZZLE);
    screen->no_coherent = virgl_debug & VIRGL_DEBUG_NO_COHERENT;
+   screen->tweak_l8_srgb_readback |= !!(virgl_debug & VIRGL_DEBUG_L8_SRGB_ENABLE_READBACK);
 
    screen->vws = vws;
    screen->base.get_name = virgl_get_name;

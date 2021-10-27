@@ -480,6 +480,10 @@
    DRI_CONF_OPT_I(gles_samples_passed_value, def, minimum, maximum, \
                   "GL_SAMPLES_PASSED value when emulated by GL_ANY_SAMPLES_PASSED")
 
+#define DRI_CONF_FORMAT_L8_SRGB_ENABLE_READBACK(def) \
+   DRI_CONF_OPT_B(format_l8_srgb_enable_readback, def, \
+                  "Force-enable reading back L8_SRGB textures")
+
 /**
  * \brief RADV specific configuration options
  */
