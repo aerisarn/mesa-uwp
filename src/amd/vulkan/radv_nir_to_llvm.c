@@ -2221,36 +2221,6 @@ ac_llvm_finalize_module(struct radv_shader_context *ctx, LLVMPassManagerRef pass
 }
 
 static void
-ac_nir_eliminate_const_vs_outputs(struct radv_shader_context *ctx)
-{
-   struct radv_vs_output_info *outinfo;
-
-   switch (ctx->stage) {
-   case MESA_SHADER_FRAGMENT:
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_TESS_CTRL:
-   case MESA_SHADER_GEOMETRY:
-      return;
-   case MESA_SHADER_VERTEX:
-      if (ctx->shader_info->vs.as_ls ||
-          ctx->shader_info->vs.as_es)
-         return;
-      outinfo = &ctx->shader_info->vs.outinfo;
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      if (ctx->shader_info->tes.as_es)
-         return;
-      outinfo = &ctx->shader_info->tes.outinfo;
-      break;
-   default:
-      unreachable("Unhandled shader type");
-   }
-
-   ac_optimize_vs_outputs(&ctx->ac, ctx->main_function, outinfo->vs_output_param_offset,
-                          VARYING_SLOT_MAX, 0, &outinfo->param_exports);
-}
-
-static void
 ac_setup_rings(struct radv_shader_context *ctx)
 {
    if (ctx->options->chip_class <= GFX8 &&
@@ -2586,9 +2556,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    }
 
    ac_llvm_finalize_module(&ctx, ac_llvm->passmgr);
-
-   if (shader_count == 1)
-      ac_nir_eliminate_const_vs_outputs(&ctx);
 
    return ctx.ac.module;
 }
