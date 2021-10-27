@@ -2880,7 +2880,6 @@ emit_prolog_regs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
    uint64_t prolog_va = radv_buffer_get_va(prolog->bo) + prolog->alloc->offset;
 
    assert(cmd_buffer->state.emitted_pipeline == cmd_buffer->state.pipeline);
-   assert(vs_shader->info.num_input_sgprs <= prolog->num_preserved_sgprs);
 
    uint32_t rsrc1 = vs_shader->config.rsrc1;
    if (chip < GFX10 && G_00B228_SGPRS(prolog->rsrc1) > G_00B228_SGPRS(vs_shader->config.rsrc1))

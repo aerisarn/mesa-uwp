@@ -1325,21 +1325,22 @@ radv_should_use_wgp_mode(const struct radv_device *device, gl_shader_stage stage
 static void
 radv_postprocess_config(const struct radv_device *device, const struct ac_shader_config *config_in,
                         const struct radv_shader_info *info, gl_shader_stage stage,
+                        const struct radv_shader_args *args,
                         struct ac_shader_config *config_out)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
    bool scratch_enabled = config_in->scratch_bytes_per_wave > 0;
    bool trap_enabled = !!device->trap_handler_shader;
    unsigned vgpr_comp_cnt = 0;
-   unsigned num_input_vgprs = info->num_input_vgprs;
+   unsigned num_input_vgprs = args->ac.num_vgprs_used;
 
    if (stage == MESA_SHADER_FRAGMENT) {
       num_input_vgprs = ac_get_fs_input_vgpr_cnt(config_in, NULL, NULL);
    }
 
    unsigned num_vgprs = MAX2(config_in->num_vgprs, num_input_vgprs);
-   /* +3 for scratch wave offset and VCC */
-   unsigned num_sgprs = MAX2(config_in->num_sgprs, info->num_input_sgprs + 3);
+   /* +2 for the ring offsets, +3 for scratch wave offset and VCC */
+   unsigned num_sgprs = MAX2(config_in->num_sgprs, args->ac.num_sgprs_used + 2 + 3);
    unsigned num_shared_vgprs = config_in->num_shared_vgprs;
    /* shared VGPRs are introduced in Navi and are allocated in blocks of 8 (RDNA ref 3.6.5) */
    assert((pdevice->rad_info.chip_class >= GFX10 && num_shared_vgprs % 8 == 0) ||
@@ -1352,7 +1353,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
    config_out->num_sgprs = num_sgprs;
    config_out->num_shared_vgprs = num_shared_vgprs;
 
-   config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
+   config_out->rsrc2 = S_00B12C_USER_SGPR(args->num_user_sgprs) |
                        S_00B12C_SCRATCH_EN(scratch_enabled) | S_00B12C_TRAP_PRESENT(trap_enabled);
 
    if (trap_enabled) {
@@ -1373,10 +1374,10 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
                        S_00B848_DX10_CLAMP(1) | S_00B848_FLOAT_MODE(config_out->float_mode);
 
    if (pdevice->rad_info.chip_class >= GFX10) {
-      config_out->rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX10(info->num_user_sgprs >> 5);
+      config_out->rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX10(args->num_user_sgprs >> 5);
    } else {
       config_out->rsrc1 |= S_00B228_SGPRS((num_sgprs - 1) / 8);
-      config_out->rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX9(info->num_user_sgprs >> 5);
+      config_out->rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX9(args->num_user_sgprs >> 5);
    }
 
    bool wgp_mode = radv_should_use_wgp_mode(device, stage, info);
@@ -1568,7 +1569,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
 
 struct radv_shader *
 radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary,
-                   bool keep_shader_info, bool from_cache)
+                   bool keep_shader_info, bool from_cache, const struct radv_shader_args *args)
 {
    struct ac_shader_config config = {0};
    struct ac_rtld_binary rtld_binary = {0};
@@ -1647,7 +1648,8 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
       /* Copy the shader binary configuration from the cache. */
       memcpy(&shader->config, &binary->config, sizeof(shader->config));
    } else {
-      radv_postprocess_config(device, &config, &binary->info, binary->stage, &shader->config);
+      assert(args);
+      radv_postprocess_config(device, &config, &binary->info, binary->stage, args, &shader->config);
    }
 
    void *dest_ptr = radv_alloc_shader_memory(device, shader);
@@ -1810,7 +1812,7 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
 
    binary->info = *info;
 
-   struct radv_shader *shader = radv_shader_create(device, binary, keep_shader_info, false);
+   struct radv_shader *shader = radv_shader_create(device, binary, keep_shader_info, false, &args);
    if (!shader) {
       free(binary);
       return NULL;

@@ -743,11 +743,6 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
       unreachable("Shader stage not implemented");
    }
 
-   info->num_input_vgprs = 0;
-   info->num_input_sgprs = 2;
-   info->num_input_sgprs += args->ac.num_sgprs_used;
-   info->num_input_vgprs = args->ac.num_vgprs_used;
-
    uint8_t user_sgpr_idx = 0;
 
    set_loc_shader_ptr(info, AC_UD_SCRATCH_RING_OFFSETS, &user_sgpr_idx);
@@ -811,5 +806,5 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
       unreachable("Shader stage not implemented");
    }
 
-   info->num_user_sgprs = user_sgpr_idx;
+   args->num_user_sgprs = user_sgpr_idx;
 }

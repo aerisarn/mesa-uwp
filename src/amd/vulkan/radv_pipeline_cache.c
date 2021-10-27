@@ -354,7 +354,7 @@ radv_create_shaders_from_pipeline_cache(
          memcpy(binary, p, entry->binary_sizes[i]);
          p += entry->binary_sizes[i];
 
-         entry->shaders[i] = radv_shader_create(device, binary, false, true);
+         entry->shaders[i] = radv_shader_create(device, binary, false, true, NULL);
          free(binary);
       } else if (entry->binary_sizes[i]) {
          p += entry->binary_sizes[i];

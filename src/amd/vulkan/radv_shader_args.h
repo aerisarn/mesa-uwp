@@ -46,6 +46,8 @@ struct radv_shader_args {
    struct ac_arg prolog_inputs;
    struct ac_arg vs_inputs[MAX_VERTEX_ATTRIBS];
 
+   unsigned num_user_sgprs;
+
    bool is_gs_copy_shader;
    bool is_trap_handler_shader;
 };

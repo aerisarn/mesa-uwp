@@ -237,9 +237,6 @@ struct radv_shader_info {
    uint8_t wave_size;
    uint8_t ballot_bit_size;
    struct radv_userdata_locations user_sgprs_locs;
-   unsigned num_user_sgprs;
-   unsigned num_input_sgprs;
-   unsigned num_input_vgprs;
    bool is_ngg;
    bool is_ngg_passthrough;
    bool has_ngg_culling;
@@ -505,9 +502,12 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
                              VkPipelineCreationFeedbackEXT *pipeline_feedback,
                              VkPipelineCreationFeedbackEXT **stage_feedbacks);
 
+struct radv_shader_args;
+
 struct radv_shader *radv_shader_create(struct radv_device *device,
                                        const struct radv_shader_binary *binary,
-                                       bool keep_shader_info, bool from_cache);
+                                       bool keep_shader_info, bool from_cache,
+                                       const struct radv_shader_args *args);
 struct radv_shader *radv_shader_compile(
    struct radv_device *device, struct vk_shader_module *module, struct nir_shader *const *shaders,
    int shader_count, struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
