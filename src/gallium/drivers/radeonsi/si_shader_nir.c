@@ -245,6 +245,9 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
             if (!nir_src_is_const(intr->src[1]))
                info->uses_vmem_return_type_other = true;
             break;
+         case nir_intrinsic_load_constant:
+            info->uses_vmem_return_type_other = true;
+            break;
 
          case nir_intrinsic_load_barycentric_at_sample: /* This loads sample positions. */
          case nir_intrinsic_load_tess_level_outer: /* TES input read from memory */
