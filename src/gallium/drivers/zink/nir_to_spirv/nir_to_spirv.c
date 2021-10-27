@@ -40,6 +40,8 @@ struct ntv_context {
     */
    bool spirv_1_4_interfaces;
 
+   bool explicit_lod; //whether to set lod=0 for texture()
+
    struct spirv_builder builder;
 
    struct hash_table *glsl_types;
@@ -2973,6 +2975,9 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    if (!tex_instr_is_lod_allowed(tex))
       lod = 0;
+   else if (ctx->stage != MESA_SHADER_FRAGMENT &&
+            tex->op == nir_texop_tex && ctx->explicit_lod && !lod && !proj && !bias && !dref && !dx && !dy)
+      lod = emit_float_const(ctx, 32, 0.0);
    if (tex->op == nir_texop_txs) {
       SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
       SpvId result = spirv_builder_emit_image_query_size(&ctx->builder,
@@ -3623,6 +3628,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    ctx.stage = s->info.stage;
    ctx.so_info = so_info;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
+   ctx.explicit_lod = true;
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageUnknown, 0);
 
    if (s->info.stage == MESA_SHADER_COMPUTE) {
