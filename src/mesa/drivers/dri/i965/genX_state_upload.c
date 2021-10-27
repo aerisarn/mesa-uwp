@@ -218,6 +218,12 @@ genX(emit_state_base_address)(struct brw_context *brw)
       sba.InstructionMOCS             = mocs;
       sba.SurfaceStateMOCS            = mocs;
 #endif
+#if GFX_VER >= 9
+      sba.BindlessSurfaceStateMOCS    = mocs;
+#endif
+#if GFX_VER >= 11
+      sba.BindlessSamplerStateMOCS    = mocs;
+#endif
    }
 
    /* Flush after updating STATE_BASE_ADDRESS */
