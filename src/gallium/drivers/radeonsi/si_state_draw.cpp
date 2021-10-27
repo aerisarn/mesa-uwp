@@ -2210,6 +2210,7 @@ static void si_draw(struct pipe_context *ctx,
             si_resource(indirect->indirect_draw_count)->TC_L2_dirty = false;
          }
       }
+      total_direct_count = INT_MAX; /* just set something other than 0 to enable shader culling */
    } else {
       total_direct_count = min_direct_count = draws[0].count;
 
