@@ -1371,25 +1371,67 @@ x11_manage_fifo_queues(void *state)
          goto fail;
 
       if (chain->has_acquire_queue) {
-         /* Wait for our presentation to occur and ensure we have at least one
-          * image that can be acquired by the client afterwards. This ensures we
-          * can pull on the present-queue on the next loop.
-          */
-         while (chain->images[image_index].present_queued ||
-                chain->sent_image_count == chain->base.image_count) {
-            xcb_generic_event_t *event =
-               xcb_wait_for_special_event(chain->conn, chain->special_event);
-            if (!event) {
+         bool desperate = false;
+
+         while (1) {
+            /* Run the event queue and ensure we have at least one image
+             * available for the next AcquireNextImage.
+             */
+            xcb_generic_event_t *event = NULL;
+            while ((event = xcb_poll_for_special_event(chain->conn, chain->special_event))) {
+               result = x11_handle_dri3_present_event(chain, (void *)event);
+               /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
+               result = x11_swapchain_result(chain, result);
+               free(event);
+               if (result < 0)
+                  goto fail;
+            }
+
+            /* event could have been NULL because the display was closed, not
+             * just because there are no more Present events in the queue.
+             */
+            if (xcb_connection_has_error(chain->conn)) {
                result = VK_ERROR_OUT_OF_DATE_KHR;
                goto fail;
             }
 
-            result = x11_handle_dri3_present_event(chain, (void *)event);
-            /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
-            result = x11_swapchain_result(chain, result);
-            free(event);
-            if (result < 0)
+            /* If we have at least one image available to acquire, go back to
+             * awaiting the next QueuePresent.
+             */
+            if (chain->sent_image_count != chain->base.image_count)
+               break;
+
+            /* Still no image. Make a note of it, and pause if we're
+             * busy-looping. If your frame timing is affected by this delay,
+             * please note that to get here your swapchain is already too
+             * short: you have presented every image, and are waiting for the
+             * server to release one instead of drawing to the next image.
+             */
+            if (desperate) {
+               struct pollfd pfd;
+               pfd.fd = xcb_get_file_descriptor(chain->conn);
+               pfd.events = POLLIN;
+               poll(&pfd, 1, 1);
+            }
+            desperate = true;
+
+            /* Send a PresentSelectInput request to the server to ensure our
+             * window still exists, and to force a round trip so our next pass
+             * at xcb_poll_for_special_event might have work to do. If you find
+             * yourself blocked in this xcb_request_check it's because the
+             * server is actually stuck.
+             */
+            xcb_void_cookie_t cookie =
+               xcb_present_select_input_checked(chain->conn, chain->event_id, chain->window,
+                                                XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY |
+                                                XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
+                                                XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY);
+            xcb_generic_error_t *error = xcb_request_check(chain->conn, cookie);
+            if (error) {
+               free(error);
+               result = VK_ERROR_OUT_OF_DATE_KHR;
                goto fail;
+            }
          }
       }
    }
