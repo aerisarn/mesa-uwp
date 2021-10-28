@@ -384,6 +384,7 @@ add_node(struct v3d_compile *c, uint32_t temp, uint8_t class_bits)
         /* We fill the node priority after we are done inserting spills */
         c->nodes.info[node].class_bits = class_bits;
         c->nodes.info[node].priority = 0;
+        c->nodes.info[node].is_ldunif_dst = false;
 }
 
 /* The spill offset for this thread takes a bit of setup, so do it once at
@@ -899,9 +900,22 @@ v3d_ra_select_accum(struct v3d_ra_select_callback_data *v3d_ra,
 
 static bool
 v3d_ra_select_rf(struct v3d_ra_select_callback_data *v3d_ra,
+                 unsigned int node,
                  BITSET_WORD *regs,
                  unsigned int *out)
 {
+        /* In V3D 7.x, try to assign rf0 to temps used as ldunif's dst
+         * so we can avoid turning them into ldunifrf (which uses the
+         * cond field to encode the dst and would prevent merge with
+         * instructions that use cond flags).
+         */
+        if (v3d_ra->nodes->info[node].is_ldunif_dst &&
+            BITSET_TEST(regs, v3d_ra->phys_index)) {
+                assert(v3d_ra->devinfo->ver >= 71);
+                *out = v3d_ra->phys_index;
+                return true;
+        }
+
         for (int i = 0; i < PHYS_COUNT; i++) {
                 int phys_off = (v3d_ra->next_phys + i) % PHYS_COUNT;
                 int phys = v3d_ra->phys_index + phys_off;
@@ -927,7 +941,7 @@ v3d_ra_select_callback(unsigned int n, BITSET_WORD *regs, void *data)
                 return reg;
         }
 
-        if (v3d_ra_select_rf(v3d_ra, regs, &reg))
+        if (v3d_ra_select_rf(v3d_ra, n, regs, &reg))
                 return reg;
 
         /* If we ran out of physical registers try to assign an accumulator
@@ -1139,14 +1153,23 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c,
                                 }
                         }
                 } else {
-                        /* If the instruction has an implicit write
-                         * we can't allocate its dest to the same
-                         * register.
+                        /* Make sure we don't allocate the ldvary's
+                         * destination to rf0, since it would clash
+                         * with its implicit write to that register.
                          */
-                        if (v3d_qpu_writes_rf0_implicitly(c->devinfo, &inst->qpu)) {
+                        if (inst->qpu.sig.ldvary) {
                                 ra_add_node_interference(c->g,
                                                          temp_to_node(c, inst->dst.index),
                                                          implicit_rf_nodes[0]);
+                        }
+                        /* Flag dst temps from ldunif(a) instructions
+                         * so we can try to assign rf0 to them and avoid
+                         * converting these to ldunif(a)rf.
+                         */
+                        if (inst->qpu.sig.ldunif || inst->qpu.sig.ldunifa) {
+                                const uint32_t dst_n =
+                                        temp_to_node(c, inst->dst.index);
+                                c->nodes.info[dst_n].is_ldunif_dst = true;
                         }
                 }
         }
@@ -1222,6 +1245,7 @@ v3d_register_allocate(struct v3d_compile *c)
          * without accumulators that can have implicit writes to phys regs.
          */
         for (uint32_t i = 0; i < num_ra_nodes; i++) {
+                c->nodes.info[i].is_ldunif_dst = false;
                 if (c->devinfo->has_accumulators && i < ACC_COUNT) {
                         acc_nodes[i] = i;
                         ra_set_node_reg(c->g, acc_nodes[i], ACC_INDEX + i);

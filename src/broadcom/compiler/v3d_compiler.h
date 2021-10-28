@@ -605,6 +605,9 @@ struct v3d_ra_node_info {
         struct {
                 uint32_t priority;
                 uint8_t class_bits;
+
+                /* V3D 7.x */
+                bool is_ldunif_dst;
         } *info;
         uint32_t alloc_count;
 };

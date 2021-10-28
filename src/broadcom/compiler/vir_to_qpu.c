@@ -345,8 +345,15 @@ v3d_generate_code_block(struct v3d_compile *c,
                                 assert(qinst->qpu.alu.add.op == V3D_QPU_A_NOP);
                                 assert(qinst->qpu.alu.mul.op == V3D_QPU_M_NOP);
 
-                                if (!dst.magic ||
-                                    dst.index != V3D_QPU_WADDR_R5) {
+                                bool use_rf;
+                                if (c->devinfo->has_accumulators) {
+                                        use_rf = !dst.magic ||
+                                                 dst.index != V3D_QPU_WADDR_R5;
+                                } else {
+                                        use_rf = dst.magic || dst.index != 0;
+                                }
+
+                                if (use_rf) {
                                         assert(c->devinfo->ver >= 40);
 
                                         if (qinst->qpu.sig.ldunif) {
