@@ -191,11 +191,15 @@ struct radv_vs_output_info {
    uint8_t clip_dist_mask;
    uint8_t cull_dist_mask;
    uint8_t param_exports;
+   uint8_t prim_param_exports;
    bool writes_pointsize;
    bool writes_layer;
+   bool writes_layer_per_primitive;
    bool writes_viewport_index;
+   bool writes_viewport_index_per_primitive;
    bool writes_primitive_shading_rate;
    bool export_prim_id;
+   bool export_prim_id_per_primitive;
    bool export_clip_dists;
    unsigned pos_exports;
 };
@@ -302,10 +306,12 @@ struct radv_shader_info {
       bool viewport_index_input;
       uint8_t num_input_clips_culls;
       uint32_t input_mask;
+      uint32_t input_per_primitive_mask;
       uint32_t flat_shaded_mask;
       uint32_t explicit_shaded_mask;
       uint32_t float16_shaded_mask;
       uint32_t num_interp;
+      uint32_t num_prim_interp;
       bool can_discard;
       bool early_fragment_test;
       bool post_depth_coverage;

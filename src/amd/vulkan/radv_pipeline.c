@@ -2426,6 +2426,18 @@ radv_link_shaders(struct radv_pipeline *pipeline,
       ordered_shaders[shader_count++] = shaders[MESA_SHADER_COMPUTE];
    }
 
+   if (shaders[MESA_SHADER_MESH] && shaders[MESA_SHADER_FRAGMENT]) {
+      nir_shader *ps = shaders[MESA_SHADER_FRAGMENT];
+
+      nir_foreach_shader_in_variable(var, ps) {
+         /* These variables are per-primitive when used with a mesh shader. */
+         if (var->data.location == VARYING_SLOT_PRIMITIVE_ID ||
+             var->data.location == VARYING_SLOT_VIEWPORT ||
+             var->data.location == VARYING_SLOT_LAYER)
+            var->data.per_primitive = true;
+      }
+   }
+
    bool has_geom_tess = shaders[MESA_SHADER_GEOMETRY] || shaders[MESA_SHADER_TESS_CTRL];
    bool merged_gs = shaders[MESA_SHADER_GEOMETRY] &&
                     pipeline->device->physical_device->rad_info.chip_class >= GFX9;
@@ -2976,25 +2988,28 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
                                 pipeline_key, &infos[MESA_SHADER_FRAGMENT]);
 
       assert(pipeline->graphics.last_vgt_api_stage != MESA_SHADER_NONE);
-      if (infos[MESA_SHADER_FRAGMENT].ps.prim_id_input) {
-         if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX) {
-            infos[MESA_SHADER_VERTEX].vs.outinfo.export_prim_id = true;
-         } else if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
-            infos[MESA_SHADER_TESS_EVAL].tes.outinfo.export_prim_id = true;
-         } else {
-            assert(pipeline->graphics.last_vgt_api_stage == MESA_SHADER_GEOMETRY);
-         }
+      struct radv_shader_info *pre_ps_info = &infos[pipeline->graphics.last_vgt_api_stage];
+      struct radv_vs_output_info *outinfo = NULL;
+      if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX ||
+          pipeline->graphics.last_vgt_api_stage == MESA_SHADER_GEOMETRY) {
+         outinfo = &pre_ps_info->vs.outinfo;
+      } else if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
+         outinfo = &pre_ps_info->tes.outinfo;
+      } else if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_MESH) {
+         outinfo = &pre_ps_info->ms.outinfo;
       }
 
-      if (!!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls) {
-         if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX) {
-            infos[MESA_SHADER_VERTEX].vs.outinfo.export_clip_dists = true;
-         } else if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
-            infos[MESA_SHADER_TESS_EVAL].tes.outinfo.export_clip_dists = true;
-         } else {
-            assert(pipeline->graphics.last_vgt_api_stage == MESA_SHADER_GEOMETRY);
-            infos[MESA_SHADER_GEOMETRY].vs.outinfo.export_clip_dists = true;
-         }
+      /* Add PS input requirements to the output of the pre-PS stage. */
+      bool ps_prim_id_in = infos[MESA_SHADER_FRAGMENT].ps.prim_id_input;
+      bool ps_clip_dists_in = !!infos[MESA_SHADER_FRAGMENT].ps.num_input_clips_culls;
+
+      assert(outinfo);
+      outinfo->export_clip_dists |= ps_clip_dists_in;
+      if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_MESH) {
+         outinfo->export_prim_id_per_primitive |= ps_prim_id_in;
+      } else if (pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX ||
+                 pipeline->graphics.last_vgt_api_stage == MESA_SHADER_TESS_EVAL) {
+         outinfo->export_prim_id |= ps_prim_id_in;
       }
 
       filled_stages |= (1 << MESA_SHADER_FRAGMENT);
@@ -4687,7 +4702,6 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
    bool es_enable_prim_id = outinfo->export_prim_id || (es && es->info.uses_prim_id);
    bool break_wave_at_eoi = false;
    unsigned ge_cntl;
-   unsigned nparams;
 
    if (es_type == MESA_SHADER_TESS_EVAL) {
       struct radv_shader *gs = pipeline->shaders[MESA_SHADER_GEOMETRY];
@@ -4696,13 +4710,22 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
          break_wave_at_eoi = true;
    }
 
-   nparams = MAX2(outinfo->param_exports, 1);
+   bool no_pc_export = outinfo->param_exports == 0 && outinfo->prim_param_exports == 0;
+   unsigned num_params = MAX2(outinfo->param_exports, 1);
+   unsigned num_prim_params = outinfo->prim_param_exports;
    radeon_set_context_reg(
       ctx_cs, R_0286C4_SPI_VS_OUT_CONFIG,
-      S_0286C4_VS_EXPORT_COUNT(nparams - 1) | S_0286C4_NO_PC_EXPORT(outinfo->param_exports == 0));
+      S_0286C4_VS_EXPORT_COUNT(num_params - 1) |
+      S_0286C4_PRIM_EXPORT_COUNT(num_prim_params) |
+      S_0286C4_NO_PC_EXPORT(no_pc_export));
+
+   unsigned idx_format = V_028708_SPI_SHADER_1COMP;
+   if (outinfo->writes_layer_per_primitive ||
+       outinfo->writes_viewport_index_per_primitive)
+      idx_format = V_028708_SPI_SHADER_2COMP;
 
    radeon_set_context_reg(ctx_cs, R_028708_SPI_SHADER_IDX_FORMAT,
-                          S_028708_IDX0_EXPORT_FORMAT(V_028708_SPI_SHADER_1COMP));
+                          S_028708_IDX0_EXPORT_FORMAT(idx_format));
    radeon_set_context_reg(
       ctx_cs, R_02870C_SPI_SHADER_POS_FORMAT,
       S_02870C_POS0_EXPORT_FORMAT(V_02870C_SPI_SHADER_4COMP) |
@@ -5126,19 +5149,20 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs, const struct radv
 {
    struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
    const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
+   bool mesh = radv_pipeline_has_mesh(pipeline);
    uint32_t ps_input_cntl[32];
 
    unsigned ps_offset = 0;
 
-   if (ps->info.ps.prim_id_input)
+   if (ps->info.ps.prim_id_input && !mesh)
       single_slot_to_ps_input(outinfo, VARYING_SLOT_PRIMITIVE_ID, ps_input_cntl, &ps_offset,
                               true, false, true);
 
-   if (ps->info.ps.layer_input)
+   if (ps->info.ps.layer_input && !mesh)
       single_slot_to_ps_input(outinfo, VARYING_SLOT_LAYER, ps_input_cntl, &ps_offset,
                               false, true, true);
 
-   if (ps->info.ps.viewport_index_input)
+   if (ps->info.ps.viewport_index_input && !mesh)
       single_slot_to_ps_input(outinfo, VARYING_SLOT_VIEWPORT, ps_input_cntl, &ps_offset,
                               false, false, true);
 
@@ -5155,6 +5179,23 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs, const struct radv
    }
 
    input_mask_to_ps_inputs(outinfo, ps, ps->info.ps.input_mask,
+                           ps_input_cntl, &ps_offset);
+
+   /* Per-primitive PS inputs: the HW needs these to be last. */
+
+   if (ps->info.ps.prim_id_input && mesh)
+      single_slot_to_ps_input(outinfo, VARYING_SLOT_PRIMITIVE_ID, ps_input_cntl, &ps_offset,
+                              true, false, false);
+
+   if (ps->info.ps.layer_input && mesh)
+      single_slot_to_ps_input(outinfo, VARYING_SLOT_LAYER, ps_input_cntl, &ps_offset,
+                              false, true, false);
+
+   if (ps->info.ps.viewport_index_input && mesh)
+      single_slot_to_ps_input(outinfo, VARYING_SLOT_VIEWPORT, ps_input_cntl, &ps_offset,
+                              false, false, false);
+
+   input_mask_to_ps_inputs(outinfo, ps, ps->info.ps.input_per_primitive_mask,
                            ps_input_cntl, &ps_offset);
 
    if (ps_offset) {
@@ -5229,7 +5270,9 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct rade
 
    radeon_set_context_reg(
       ctx_cs, R_0286D8_SPI_PS_IN_CONTROL,
-      S_0286D8_NUM_INTERP(ps->info.ps.num_interp) | S_0286D8_PS_W32_EN(ps->info.wave_size == 32));
+      S_0286D8_NUM_INTERP(ps->info.ps.num_interp) |
+      S_0286D8_NUM_PRIM_INTERP(ps->info.ps.num_prim_interp) |
+      S_0286D8_PS_W32_EN(ps->info.wave_size == 32));
 
    radeon_set_context_reg(ctx_cs, R_0286E0_SPI_BARYC_CNTL, pipeline->graphics.spi_baryc_cntl);
 
@@ -5417,6 +5460,30 @@ radv_pipeline_generate_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
    radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
 }
 
+static void
+gfx103_pipeline_generate_vgt_draw_payload_cntl(struct radeon_cmdbuf *ctx_cs,
+                                               const struct radv_pipeline *pipeline,
+                                               const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
+
+   bool enable_vrs =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
+      radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
+
+   /* Enables the second channel of the primitive export instruction.
+    * This channel contains: VRS rate x, y, viewport and layer.
+    */
+   bool enable_prim_payload =
+      outinfo &&
+      (outinfo->writes_viewport_index_per_primitive ||
+       outinfo->writes_layer_per_primitive);
+
+   radeon_set_context_reg(ctx_cs, R_028A98_VGT_DRAW_PAYLOAD_CNTL,
+                          S_028A98_EN_VRS_RATE(enable_vrs) |
+                          S_028A98_EN_PRIM_PAYLOAD(enable_prim_payload));
+}
+
 static bool
 gfx103_pipeline_vrs_coarse_shading(const struct radv_pipeline *pipeline)
 {
@@ -5439,36 +5506,33 @@ gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
 {
    uint32_t mode = V_028064_VRS_COMB_MODE_PASSTHRU;
    uint8_t rate_x = 0, rate_y = 0;
-   bool enable_vrs = false;
+   bool enable_vrs =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
+      radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
 
-   if (vk_find_struct_const(pCreateInfo->pNext,
-                            PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
-       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR)) {
-      /* Enable draw call VRS because it's explicitly requested.  */
-      enable_vrs = true;
-   } else if (gfx103_pipeline_vrs_coarse_shading(pipeline)) {
-      /* Enable VRS coarse shading 2x2 if the driver determined that
-       * it's safe to enable.
-       */
-      mode = V_028064_VRS_COMB_MODE_OVERRIDE;
-      rate_x = rate_y = 1;
-   } else if (pipeline->device->force_vrs != RADV_FORCE_VRS_NONE) {
-      /* Force enable vertex VRS if requested by the user. */
-      radeon_set_context_reg(
-         ctx_cs, R_028848_PA_CL_VRS_CNTL,
-         S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE) |
-            S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
+   if (!enable_vrs) {
+      if (gfx103_pipeline_vrs_coarse_shading(pipeline)) {
+         /* Enable VRS coarse shading 2x2 if the driver determined that
+          * it's safe to enable.
+          */
+         mode = V_028064_VRS_COMB_MODE_OVERRIDE;
+         rate_x = rate_y = 1;
+      } else if (pipeline->device->force_vrs != RADV_FORCE_VRS_NONE) {
+         /* Force enable vertex VRS if requested by the user. */
+         radeon_set_context_reg(
+            ctx_cs, R_028848_PA_CL_VRS_CNTL,
+            S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE) |
+               S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
 
-      /* If the shader is using discard, turn off coarse shading
-       * because discard at 2x2 pixel granularity degrades quality
-       * too much. MIN allows sample shading but not coarse shading.
-       */
-      struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+         /* If the shader is using discard, turn off coarse shading
+         * because discard at 2x2 pixel granularity degrades quality
+         * too much. MIN allows sample shading but not coarse shading.
+         */
+         struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
 
-      mode = ps->info.ps.can_discard ? V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
+         mode = ps->info.ps.can_discard ? V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
+      }
    }
-
-   radeon_set_context_reg(ctx_cs, R_028A98_VGT_DRAW_PAYLOAD_CNTL, S_028A98_EN_VRS_RATE(enable_vrs));
 
    radeon_set_context_reg(ctx_cs, R_028064_DB_VRS_OVERRIDE_CNTL,
                           S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
@@ -5514,8 +5578,10 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
        !radv_pipeline_has_ngg(pipeline))
       gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline);
 
-   if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
+   if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) {
+      gfx103_pipeline_generate_vgt_draw_payload_cntl(ctx_cs, pipeline, pCreateInfo);
       gfx103_pipeline_generate_vrs_state(ctx_cs, pipeline, pCreateInfo);
+   }
 
    pipeline->ctx_cs_hash = _mesa_hash_data(ctx_cs->buf, ctx_cs->cdw * 4);
 
