@@ -275,7 +275,8 @@ lower_compute_system_value_instr(nir_builder *b,
       /* If lower_cs_local_id_from_index is true, then we derive the local
        * index from the local id.
        */
-      if (b->shader->options->lower_cs_local_id_from_index) {
+      if (b->shader->options->lower_cs_local_id_from_index ||
+          (options && options->lower_cs_local_id_from_index)) {
          /* We lower gl_LocalInvocationID from gl_LocalInvocationIndex based
           * on this formula:
           *
