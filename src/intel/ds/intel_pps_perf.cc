@@ -129,28 +129,12 @@ std::vector<struct intel_perf_query_info *> IntelPerf::get_queries() const
    return queries;
 }
 
-static uint64_t query_timestamp_frequency(const int drm_fd)
-{
-   int timestamp_frequency;
-
-   drm_i915_getparam_t gp = {};
-   gp.param = I915_PARAM_CS_TIMESTAMP_FREQUENCY;
-   gp.value = &timestamp_frequency;
-   if (perf_ioctl(drm_fd, DRM_IOCTL_I915_GETPARAM, &gp) == 0) {
-      return timestamp_frequency;
-   }
-
-   PPS_LOG_ERROR("Unable to query timestamp frequency from i915, guessing values...");
-   return 12000000;
-}
-
 // The period_exponent gives a sampling period as follows:
 // sample_period = timestamp_period * 2^(period_exponent + 1)
 // where timestamp_period is 80ns for Haswell+
-static uint32_t get_oa_exponent(const int drm_fd, const uint64_t sampling_period_ns)
+static uint32_t get_oa_exponent(const intel_device_info *devinfo, const uint64_t sampling_period_ns)
 {
-   uint64_t timestamp_frequency = query_timestamp_frequency(drm_fd);
-   return static_cast<uint32_t>(log2(sampling_period_ns * timestamp_frequency / 1000000000ull)) - 1;
+   return static_cast<uint32_t>(log2(sampling_period_ns * devinfo->timestamp_frequency / 1000000000ull)) - 1;
 }
 
 bool IntelPerf::open(const uint64_t sampling_period_ns)
@@ -160,7 +144,7 @@ bool IntelPerf::open(const uint64_t sampling_period_ns)
    ctx = intel_perf_new_context(ralloc_ctx);
    intel_perf_init_context(ctx, cfg, nullptr, nullptr, nullptr, &devinfo, 0, drm_fd);
 
-   auto oa_exponent = get_oa_exponent(drm_fd, sampling_period_ns);
+   auto oa_exponent = get_oa_exponent(&devinfo, sampling_period_ns);
 
    return intel_perf_open(ctx,
       query->oa_metrics_set_id,
