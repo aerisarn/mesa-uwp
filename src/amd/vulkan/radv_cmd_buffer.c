@@ -6230,7 +6230,7 @@ radv_emit_draw_packets_indexed(struct radv_cmd_buffer *cmd_buffer,
                                uint32_t drawCount, const VkMultiDrawIndexedInfoEXT *minfo,
                                uint32_t stride,
                                const int32_t *vertexOffset)
- 
+
 {
    struct radv_cmd_state *state = &cmd_buffer->state;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
@@ -6830,6 +6830,88 @@ radv_after_draw(struct radv_cmd_buffer *cmd_buffer)
    radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_PS_PARTIAL_FLUSH);
 }
 
+static struct radv_buffer
+radv_nv_mesh_indirect_bo(struct radv_cmd_buffer *cmd_buffer,
+                         struct radv_buffer *buffer, VkDeviceSize offset,
+                         uint32_t draw_count, uint32_t stride)
+{
+   /* Translates the indirect BO format used by NV_mesh_shader API
+    * to the BO format used by DRAW_INDIRECT / DRAW_INDIRECT_MULTI.
+    */
+
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   struct radeon_winsys *ws = cmd_buffer->device->ws;
+
+   const size_t src_stride = MAX2(stride, sizeof(VkDrawMeshTasksIndirectCommandNV));
+   const size_t dst_stride = sizeof(VkDrawIndirectCommand);
+   const size_t src_off_task_count = offsetof(VkDrawMeshTasksIndirectCommandNV, taskCount);
+   const size_t src_off_first_task = offsetof(VkDrawMeshTasksIndirectCommandNV, firstTask);
+   const size_t dst_off_vertex_count = offsetof(VkDrawIndirectCommand, vertexCount);
+   const size_t dst_off_first_vertex = offsetof(VkDrawIndirectCommand, firstVertex);
+
+   /* Fill the buffer with all zeroes except instanceCount = 1.
+    * This helps emit fewer copy packets below.
+    */
+   VkDrawIndirectCommand *fill_data = (VkDrawIndirectCommand *) alloca(dst_stride * draw_count);
+   const VkDrawIndirectCommand filler = { .instanceCount = 1 };
+   for (unsigned i = 0; i < draw_count; ++i)
+      fill_data[i] = filler;
+
+   /* We'll have to copy data from the API BO. */
+   uint64_t va = radv_buffer_get_va(buffer->bo) + buffer->offset + offset;
+   radv_cs_add_buffer(ws, cs, buffer->bo);
+
+   /* Allocate some space in the upload BO. */
+   unsigned out_offset;
+   radv_cmd_buffer_upload_data(cmd_buffer, dst_stride * draw_count, fill_data, &out_offset);
+   const uint64_t new_va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + out_offset;
+
+   ASSERTED unsigned cdw_max = radeon_check_space(ws, cs, 12 * draw_count + 2);
+
+   /* Copy data from the API BO so that the format is suitable for the
+    * indirect draw packet:
+    * - vertexCount = taskCount (copied here)
+    * - instanceCount = 1 (filled by CPU above)
+    * - firstVertex = firstTask (copied here)
+    * - firstInstance = 0 (filled by CPU above)
+    */
+   for (unsigned i = 0; i < draw_count; ++i) {
+      const uint64_t src_task_count = va + i * src_stride + src_off_task_count;
+      const uint64_t src_first_task = va + i * src_stride + src_off_first_task;
+      const uint64_t dst_vertex_count = new_va + i * dst_stride + dst_off_vertex_count;
+      const uint64_t dst_first_vertex = new_va + i * dst_stride + dst_off_first_vertex;
+
+      radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, cmd_buffer->state.predicating));
+      radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                      COPY_DATA_WR_CONFIRM);
+      radeon_emit(cs, src_task_count);
+      radeon_emit(cs, src_task_count >> 32);
+      radeon_emit(cs, dst_vertex_count);
+      radeon_emit(cs, dst_vertex_count >> 32);
+
+      radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, cmd_buffer->state.predicating));
+      radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                      COPY_DATA_WR_CONFIRM);
+      radeon_emit(cs, src_first_task);
+      radeon_emit(cs, src_first_task >> 32);
+      radeon_emit(cs, dst_first_vertex);
+      radeon_emit(cs, dst_first_vertex >> 32);
+   }
+
+   /* Wait for the copies to finish */
+   radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
+   radeon_emit(cs, 0);
+
+   /* The draw packet can now use this buffer: */
+   struct radv_buffer buf = *buffer;
+   buf.bo = cmd_buffer->upload.upload_bo;
+   buf.offset = out_offset;
+
+   assert(cmd_buffer->cs->cdw <= cdw_max);
+
+   return buf;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdDraw(VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t instanceCount,
              uint32_t firstVertex, uint32_t firstInstance)
@@ -7013,6 +7095,115 @@ radv_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer
    info.instance_count = 0;
 
    if (!radv_before_draw(cmd_buffer, &info, 1))
+      return;
+   radv_emit_indirect_draw_packets(cmd_buffer, &info);
+   radv_after_draw(cmd_buffer);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdDrawMeshTasksNV(VkCommandBuffer commandBuffer, uint32_t taskCount, uint32_t firstTask)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   ASSERTED struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(!pipeline->shaders[MESA_SHADER_TASK]);
+
+   /* Direct draw with mesh shader only.
+    *
+    * Use a non-indexed direct draw packet: DRAW_INDEX_AUTO.
+    * As far as the HW is concerned: 1 input vertex = 1 mesh shader workgroup.
+    */
+
+   struct radv_draw_info info;
+
+   info.count = taskCount;
+   info.instance_count = 1;
+   info.first_instance = 0;
+   info.stride = 0;
+   info.indexed = false;
+   info.strmout_buffer = NULL;
+   info.count_buffer = NULL;
+   info.indirect = NULL;
+
+   if (!radv_before_draw(cmd_buffer, &info, 1))
+      return;
+
+   const VkMultiDrawInfoEXT minfo = { firstTask, taskCount };
+   radv_emit_direct_draw_packets(cmd_buffer, &info, 1, &minfo, 0, 0);
+   radv_after_draw(cmd_buffer);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdDrawMeshTasksIndirectNV(VkCommandBuffer commandBuffer, VkBuffer _buffer,
+                                VkDeviceSize offset, uint32_t drawCount, uint32_t stride)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_buffer, buffer, _buffer);
+
+   ASSERTED struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(!pipeline->shaders[MESA_SHADER_TASK]);
+
+   if (!drawCount)
+      return;
+
+   /* Indirect draw with mesh shader only.
+    *
+    * Use DRAW_INDIRECT / DRAW_INDIRECT_MULTI like normal indirect draws.
+    * We must use these draw commands for NV_mesh_shader because these
+    * have firstVertex while the new DISPATCH_MESH_INDIRECT_MULTI
+    * command doesn't have that.
+    *
+    * The indirect BO layout from the NV_mesh_shader API is not directly
+    * compatible with AMD HW. To make it work, we allocate some space
+    * in the upload buffer and copy the data to it.
+    */
+   struct radv_buffer buf = radv_nv_mesh_indirect_bo(cmd_buffer, buffer, offset,
+                                                      drawCount, stride);
+   struct radv_draw_info info;
+
+   info.count = drawCount;
+   info.indirect = &buf;
+   info.indirect_offset = 0;
+   info.stride = sizeof(VkDrawIndirectCommand);
+   info.strmout_buffer = NULL;
+   info.count_buffer = NULL;
+   info.indexed = false;
+   info.instance_count = 0;
+
+   if (!radv_before_draw(cmd_buffer, &info, drawCount))
+      return;
+   radv_emit_indirect_draw_packets(cmd_buffer, &info);
+   radv_after_draw(cmd_buffer);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdDrawMeshTasksIndirectCountNV(VkCommandBuffer commandBuffer, VkBuffer _buffer,
+                                     VkDeviceSize offset, VkBuffer _countBuffer,
+                                     VkDeviceSize countBufferOffset, uint32_t maxDrawCount,
+                                     uint32_t stride)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_buffer, buffer, _buffer);
+   RADV_FROM_HANDLE(radv_buffer, count_buffer, _countBuffer);
+
+   ASSERTED struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(!pipeline->shaders[MESA_SHADER_TASK]);
+
+   struct radv_buffer buf = radv_nv_mesh_indirect_bo(cmd_buffer, buffer, offset,
+                                                      maxDrawCount, stride);
+   struct radv_draw_info info;
+
+   info.count = maxDrawCount;
+   info.indirect = &buf;
+   info.indirect_offset = 0;
+   info.stride = sizeof(VkDrawIndirectCommand);
+   info.strmout_buffer = NULL;
+   info.count_buffer = count_buffer;
+   info.count_buffer_offset = countBufferOffset;
+   info.indexed = false;
+   info.instance_count = 0;
+
+   if (!radv_before_draw(cmd_buffer, &info, maxDrawCount))
       return;
    radv_emit_indirect_draw_packets(cmd_buffer, &info);
    radv_after_draw(cmd_buffer);
