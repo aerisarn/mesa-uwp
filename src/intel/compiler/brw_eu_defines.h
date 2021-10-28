@@ -940,6 +940,17 @@ enum surface_logical_srcs {
    SURFACE_LOGICAL_NUM_SRCS
 };
 
+enum a64_logical_srcs {
+   /** Address the A64 message operates on */
+   A64_LOGICAL_ADDRESS,
+   /** Source for the operation (unused of LOAD ops) */
+   A64_LOGICAL_SRC,
+   /** Per-opcode immediate argument. Number of dwords, bit size, or atomic op. */
+   A64_LOGICAL_ARG,
+
+   A64_LOGICAL_NUM_SRCS
+};
+
 #ifdef __cplusplus
 /**
  * Allow brw_urb_write_flags enums to be ORed together.

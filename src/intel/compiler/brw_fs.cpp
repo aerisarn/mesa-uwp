@@ -6074,13 +6074,13 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    const intel_device_info *devinfo = bld.shader->devinfo;
 
    /* Get the logical send arguments. */
-   const fs_reg &addr = inst->src[0];
-   const fs_reg &src = inst->src[1];
+   const fs_reg &addr = inst->src[A64_LOGICAL_ADDRESS];
+   const fs_reg &src = inst->src[A64_LOGICAL_SRC];
    const unsigned src_sz = type_sz(src.type);
 
    const unsigned src_comps = inst->components_read(1);
-   assert(inst->src[2].file == IMM);
-   const unsigned arg = inst->src[2].ud;
+   assert(inst->src[A64_LOGICAL_ARG].file == IMM);
+   const unsigned arg = inst->src[A64_LOGICAL_ARG].ud;
    const bool has_side_effects = inst->has_side_effects();
 
    /* If the surface message has side effects and we're a fragment shader, we
@@ -6186,11 +6186,11 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
 
-   const fs_reg &addr = inst->src[0];
-   const fs_reg &src = inst->src[1];
+   const fs_reg &addr = inst->src[A64_LOGICAL_ADDRESS];
+   const fs_reg &src = inst->src[A64_LOGICAL_SRC];
    const unsigned src_comps = inst->components_read(1);
-   assert(inst->src[2].file == IMM);
-   const unsigned arg = inst->src[2].ud;
+   assert(inst->src[A64_LOGICAL_ARG].file == IMM);
+   const unsigned arg = inst->src[A64_LOGICAL_ARG].ud;
    const bool has_side_effects = inst->has_side_effects();
 
    /* If the surface message has side effects and we're a fragment shader, we
