@@ -126,6 +126,7 @@ struct zink_screen {
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;
    bool have_triangle_fans;
+   bool need_2D_zs;
 
    uint32_t gfx_queue;
    uint32_t max_queues;

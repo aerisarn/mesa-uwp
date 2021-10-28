@@ -1571,6 +1571,13 @@ populate_format_props(struct zink_screen *screen)
       } else
          VKSCR(GetPhysicalDeviceFormatProperties)(screen->pdev, format, &screen->format_props[i]);
    }
+   VkImageFormatProperties image_props;
+   VkResult ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, VK_FORMAT_D32_SFLOAT,
+                                                                VK_IMAGE_TYPE_1D,
+                                                                VK_IMAGE_TILING_OPTIMAL,
+                                                                VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                                                0, &image_props);
+   screen->need_2D_zs = ret != VK_SUCCESS;
 }
 
 bool

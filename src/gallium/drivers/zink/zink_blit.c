@@ -176,7 +176,10 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.srcOffsets[1].x = info->src.box.x + info->src.box.width;
    region.srcOffsets[1].y = info->src.box.y + info->src.box.height;
 
-   switch (src->base.b.target) {
+   enum pipe_texture_target src_target = src->base.b.target;
+   if (src->need_2D_zs)
+      src_target = src_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
+   switch (src_target) {
    case PIPE_TEXTURE_CUBE:
    case PIPE_TEXTURE_CUBE_ARRAY:
    case PIPE_TEXTURE_2D_ARRAY:
@@ -211,7 +214,10 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    assert(region.dstOffsets[0].x != region.dstOffsets[1].x);
    assert(region.dstOffsets[0].y != region.dstOffsets[1].y);
 
-   switch (dst->base.b.target) {
+   enum pipe_texture_target dst_target = dst->base.b.target;
+   if (dst->need_2D_zs)
+      dst_target = dst_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
+   switch (dst_target) {
    case PIPE_TEXTURE_CUBE:
    case PIPE_TEXTURE_CUBE_ARRAY:
    case PIPE_TEXTURE_2D_ARRAY:
