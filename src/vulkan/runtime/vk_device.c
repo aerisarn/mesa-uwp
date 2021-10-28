@@ -188,6 +188,20 @@ vk_device_flush(struct vk_device *device)
    return VK_SUCCESS;
 }
 
+static const char *
+timeline_mode_str(struct vk_device *device)
+{
+   switch (device->timeline_mode) {
+#define CASE(X) case VK_DEVICE_TIMELINE_MODE_##X: return #X;
+   CASE(NONE)
+   CASE(EMULATED)
+   CASE(ASSISTED)
+   CASE(NATIVE)
+#undef CASE
+   default: return "UNKNOWN";
+   }
+}
+
 void
 _vk_device_report_lost(struct vk_device *device)
 {
@@ -202,6 +216,9 @@ _vk_device_report_lost(struct vk_device *device)
                      "%s", queue->_lost.error_msg);
       }
    }
+
+   vk_logd(VK_LOG_OBJS(device), "Timeline mode is %s.",
+           timeline_mode_str(device));
 }
 
 VkResult
@@ -220,6 +237,9 @@ _vk_device_set_lost(struct vk_device *device,
    va_start(ap, msg);
    __vk_errorv(device, VK_ERROR_DEVICE_LOST, file, line, msg, ap);
    va_end(ap);
+
+   vk_logd(VK_LOG_OBJS(device), "Timeline mode is %s.",
+           timeline_mode_str(device));
 
    if (env_var_as_boolean("MESA_VK_ABORT_ON_DEVICE_LOSS", false))
       abort();
