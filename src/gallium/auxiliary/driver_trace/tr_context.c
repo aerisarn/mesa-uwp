@@ -47,6 +47,7 @@ struct trace_query
 {
    struct threaded_query base;
    unsigned type;
+   unsigned index;
 
    struct pipe_query *query;
 };
@@ -201,6 +202,7 @@ trace_context_create_query(struct pipe_context *_pipe,
       if (tr_query) {
          tr_query->type = query_type;
          tr_query->query = query;
+         tr_query->index = index;
          query = (struct pipe_query *)tr_query;
       } else {
          pipe->destroy_query(pipe, query);
@@ -305,7 +307,7 @@ trace_context_get_query_result(struct pipe_context *_pipe,
 
    trace_dump_arg_begin("result");
    if (ret) {
-      trace_dump_query_result(tr_query->type, result);
+      trace_dump_query_result(tr_query->type, tr_query->index, result);
    } else {
       trace_dump_null();
    }
