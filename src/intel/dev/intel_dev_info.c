@@ -110,7 +110,8 @@ main(int argc, char *argv[])
       fprintf(stdout, "   max GS  threads: %u\n", devinfo.max_gs_threads);
       fprintf(stdout, "   max WM  threads: %u\n", devinfo.max_wm_threads);
       fprintf(stdout, "   max CS  threads: %u\n", devinfo.max_cs_threads);
-      fprintf(stdout, "   timestamp frequency: %" PRIu64 "\n", devinfo.timestamp_frequency);
+      fprintf(stdout, "   timestamp frequency: %" PRIu64 " / %.4f ns\n",
+              devinfo.timestamp_frequency, 1000000000.0 / devinfo.timestamp_frequency);
    }
 
    return EXIT_SUCCESS;
