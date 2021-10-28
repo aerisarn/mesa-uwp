@@ -1319,9 +1319,9 @@ cmd_buffer_ensure_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffe
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
-                        const VkRenderPassBeginInfo *pRenderPassBegin,
-                        VkSubpassContents contents)
+v3dv_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
+                         const VkRenderPassBeginInfo *pRenderPassBegin,
+                         const VkSubpassBeginInfo *pSubpassBeginInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_render_pass, pass, pRenderPassBegin->renderPass);
@@ -1359,7 +1359,9 @@ v3dv_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
+v3dv_CmdNextSubpass2(VkCommandBuffer commandBuffer,
+                     const VkSubpassBeginInfo *pSubpassBeginInfo,
+                     const VkSubpassEndInfo *pSubpassEndInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -1622,7 +1624,8 @@ v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
+v3dv_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
+                       const VkSubpassEndInfo *pSubpassEndInfo)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
