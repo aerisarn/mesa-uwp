@@ -1920,6 +1920,12 @@ radv_pipeline_has_tess(const struct radv_pipeline *pipeline)
    return pipeline->shaders[MESA_SHADER_TESS_CTRL] ? true : false;
 }
 
+static inline bool
+radv_pipeline_has_mesh(const struct radv_pipeline *pipeline)
+{
+   return !!pipeline->shaders[MESA_SHADER_MESH];
+}
+
 bool radv_pipeline_has_ngg_passthrough(const struct radv_pipeline *pipeline);
 
 bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline);
