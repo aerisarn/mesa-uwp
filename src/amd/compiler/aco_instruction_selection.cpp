@@ -8707,7 +8707,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       /* load_helper() after demote() get lowered to is_helper().
        * Otherwise, these two behave the same. */
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.pseudo(aco_opcode::p_is_helper, Definition(dst));
+      bld.pseudo(aco_opcode::p_is_helper, Definition(dst), Operand(exec, bld.lm));
       ctx->block->kind |= block_kind_needs_lowering;
       ctx->program->needs_exact = true;
       break;
