@@ -26,9 +26,15 @@
 
 namespace pps
 {
+
+// The HW sampling period is programmed using period_exponent following this
+// formula:
+//    sample_period = timestamp_period * 2^(period_exponent + 1)
+// So our minimum sampling period is twice the timestamp period
+
 uint64_t IntelDriver::get_min_sampling_period_ns()
 {
-   return 500000;
+   return (2.f * perf->devinfo.timestamp_frequency) / 1000000000ull;
 }
 
 void IntelDriver::enable_counter(uint32_t counter_id)
