@@ -279,6 +279,23 @@ zink_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
    }
 }
 
+static uint32_t
+get_smallest_buffer_heap(struct zink_screen *screen)
+{
+   enum zink_heap heaps[] = {
+      ZINK_HEAP_DEVICE_LOCAL,
+      ZINK_HEAP_DEVICE_LOCAL_VISIBLE,
+      ZINK_HEAP_HOST_VISIBLE_COHERENT,
+      ZINK_HEAP_HOST_VISIBLE_COHERENT
+   };
+   unsigned size = UINT32_MAX;
+   for (unsigned i = 0; i < ARRAY_SIZE(heaps); i++) {
+      unsigned heap_idx = screen->info.mem_props.memoryTypes[screen->heap_map[i]].heapIndex;
+      size = MIN2(screen->info.mem_props.memoryHeaps[heap_idx].size, size);
+   }
+   return size;
+}
+
 static int
 zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
@@ -525,7 +542,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
-      return screen->info.props.limits.maxTexelBufferElements;
+      return MIN2(get_smallest_buffer_heap(screen),
+                  screen->info.props.limits.maxTexelBufferElements);
 
    case PIPE_CAP_ENDIANNESS:
       return PIPE_ENDIAN_NATIVE; /* unsure */
@@ -620,7 +638,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       /* 1<<27 is required by VK spec */
       assert(screen->info.props.limits.maxStorageBufferRange >= 1 << 27);
       /* but Gallium can't handle values that are too big, so clamp to VK spec minimum */
-      return 1 << 27;
+      return MIN2(get_smallest_buffer_heap(screen), 1 << 27);
 
    case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
    case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
@@ -800,7 +818,8 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       /* At least 16384 is guaranteed by VK spec */
       assert(screen->info.props.limits.maxUniformBufferRange >= 16384);
       /* but Gallium can't handle values that are too big */
-      return MIN2(screen->info.props.limits.maxUniformBufferRange, 1 << 31);
+      return MIN3(get_smallest_buffer_heap(screen),
+                  screen->info.props.limits.maxUniformBufferRange, 1 << 31);
 
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
       return  MIN2(screen->info.props.limits.maxPerStageDescriptorUniformBuffers,
