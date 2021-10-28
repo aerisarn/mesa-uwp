@@ -667,21 +667,15 @@ radv_blend_check_commutativity(struct radv_blend_state *blend, VkBlendOp op, VkB
 
 static struct radv_blend_state
 radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
-                               const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                               const struct radv_graphics_pipeline_create_info *extra)
+                               const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineColorBlendStateCreateInfo *vkblend =
       radv_pipeline_get_color_blend_state(pCreateInfo);
    const VkPipelineMultisampleStateCreateInfo *vkms =
       radv_pipeline_get_multisample_state(pCreateInfo);
    struct radv_blend_state blend = {0};
-   unsigned mode = V_028808_CB_NORMAL;
    unsigned cb_color_control = 0;
    int i;
-
-   if (extra && extra->custom_blend_mode) {
-      mode = extra->custom_blend_mode;
-   }
 
    if (vkblend) {
       if (vkblend->logicOpEnable)
@@ -835,13 +829,12 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
       /* RB+ doesn't work with dual source blending, logic op and
        * RESOLVE.
        */
-      if (blend.mrt0_is_dual_src || (vkblend && vkblend->logicOpEnable) ||
-          mode == V_028808_CB_RESOLVE)
+      if (blend.mrt0_is_dual_src || (vkblend && vkblend->logicOpEnable))
          cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
    }
 
    if (blend.cb_target_mask)
-      cb_color_control |= S_028808_MODE(mode);
+      cb_color_control |= S_028808_MODE(V_028808_CB_NORMAL);
    else
       cb_color_control |= S_028808_MODE(V_028808_CB_DISABLE);
 
@@ -1571,8 +1564,7 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline)
 
 static void
 radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
-                                        const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                        const struct radv_graphics_pipeline_create_info *extra)
+                                        const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineInputAssemblyStateCreateInfo *ia_state = pCreateInfo->pInputAssemblyState;
    struct radv_shader *tes = pipeline->shaders[MESA_SHADER_TESS_EVAL];
@@ -1589,17 +1581,12 @@ radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
          pipeline->graphics.can_use_guardband = true;
    }
 
-   if (extra && extra->use_rectlist) {
-      pipeline->graphics.can_use_guardband = true;
-   }
-
    pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline);
 }
 
 static void
 radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
-                                 const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                 const struct radv_graphics_pipeline_create_info *extra)
+                                 const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, pCreateInfo);
    uint64_t states = needed_states;
@@ -1670,10 +1657,6 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
       dynamic->primitive_topology = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
-
-      if (extra && extra->use_rectlist) {
-         dynamic->primitive_topology = V_008958_DI_PT_RECTLIST;
-      }
    }
 
    /* If there is no depthstencil attachment, then don't read
@@ -1888,8 +1871,7 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
 
 static struct radv_depth_stencil_state
 radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
-                                       const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                       const struct radv_graphics_pipeline_create_info *extra)
+                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
       radv_pipeline_get_depth_stencil_state(pCreateInfo);
@@ -1925,15 +1907,6 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
          db_depth_control |= S_028800_STENCILFUNC(ds_info->front.compareOp);
          db_depth_control |= S_028800_STENCILFUNC_BF(ds_info->back.compareOp);
       }
-   }
-
-   if (render_create_info && (has_depth_attachment || has_stencil_attachment) && extra) {
-      ds_state.db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
-      ds_state.db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
-
-      ds_state.db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
-      ds_state.db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(extra->depth_compress_disable);
-      ds_state.db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(extra->stencil_compress_disable);
    }
 
    ds_state.db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
@@ -6016,8 +5989,7 @@ radv_pipeline_init_shader_stages_state(struct radv_pipeline *pipeline)
 
 static uint32_t
 radv_pipeline_init_vgt_gs_out(struct radv_pipeline *pipeline,
-                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                              const struct radv_graphics_pipeline_create_info *extra)
+                              const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    uint32_t gs_out;
 
@@ -6038,13 +6010,59 @@ radv_pipeline_init_vgt_gs_out(struct radv_pipeline *pipeline,
       gs_out = si_conv_prim_to_gs_out(pCreateInfo->pInputAssemblyState->topology);
    }
 
-   if (extra && extra->use_rectlist) {
-      gs_out = V_028A6C_TRISTRIP;
-      if (radv_pipeline_has_ngg(pipeline))
-         gs_out = V_028A6C_RECTLIST;
+   return gs_out;
+}
+
+static void
+radv_pipeline_init_extra(struct radv_pipeline *pipeline,
+                         const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                         const struct radv_graphics_pipeline_create_info *extra,
+                         struct radv_blend_state *blend_state,
+                         struct radv_depth_stencil_state *ds_state,
+                         uint32_t *vgt_gs_out_prim_type)
+{
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+
+   bool has_depth_attachment =
+      render_create_info && render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
+   bool has_stencil_attachment =
+      render_create_info && render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
+
+   if (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||
+       extra->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS ||
+       extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS ||
+       extra->custom_blend_mode == V_028808_CB_RESOLVE) {
+      /* According to the CB spec states, CB_SHADER_MASK should be set to enable writes to all four
+       * channels of MRT0.
+       */
+      blend_state->cb_shader_mask = 0xf;
+
+      if (extra->custom_blend_mode == V_028808_CB_RESOLVE)
+         pipeline->graphics.cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
+
+      pipeline->graphics.cb_color_control &= C_028808_MODE;
+      pipeline->graphics.cb_color_control |= S_028808_MODE(extra->custom_blend_mode);
    }
 
-   return gs_out;
+   if (extra->use_rectlist) {
+      struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
+      dynamic->primitive_topology = V_008958_DI_PT_RECTLIST;
+
+      pipeline->graphics.can_use_guardband = true;
+
+      *vgt_gs_out_prim_type = V_028A6C_TRISTRIP;
+      if (radv_pipeline_has_ngg(pipeline))
+         *vgt_gs_out_prim_type = V_028A6C_RECTLIST;
+   }
+
+   if (render_create_info && (has_depth_attachment || has_stencil_attachment)) {
+      ds_state->db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
+      ds_state->db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
+      ds_state->db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
+      ds_state->db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(extra->depth_compress_disable);
+      ds_state->db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(extra->stencil_compress_disable);
+   }
 }
 
 static VkResult
@@ -6059,7 +6077,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    pipeline->device = device;
    pipeline->graphics.last_vgt_api_stage = MESA_SHADER_NONE;
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo, extra);
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo);
 
    const VkPipelineCreationFeedbackCreateInfoEXT *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
@@ -6090,12 +6108,12 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    pipeline->graphics.spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
    radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo);
    if (!radv_pipeline_has_mesh(pipeline))
-      radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo, extra);
-   radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, extra);
+      radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo);
+   radv_pipeline_init_dynamic_state(pipeline, pCreateInfo);
    radv_pipeline_init_raster_state(pipeline, pCreateInfo);
 
    struct radv_depth_stencil_state ds_state =
-      radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo, extra);
+      radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, pCreateInfo);
@@ -6123,16 +6141,6 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
          blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
    }
 
-   if (extra && (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||
-                 extra->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS ||
-                 extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS ||
-                 extra->custom_blend_mode == V_028808_CB_RESOLVE)) {
-      /* According to the CB spec states, CB_SHADER_MASK should be
-       * set to enable writes to all four channels of MRT0.
-       */
-      blend.cb_shader_mask = 0xf;
-   }
-
    pipeline->graphics.col_format = blend.spi_shader_col_format;
    pipeline->graphics.cb_target_mask = blend.cb_target_mask;
 
@@ -6150,7 +6158,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    if (!radv_pipeline_has_mesh(pipeline))
       radv_pipeline_init_vertex_input_state(pipeline, pCreateInfo, &key);
 
-   uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, pCreateInfo, extra);
+   uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, pCreateInfo);
 
    radv_pipeline_init_binning_state(pipeline, pCreateInfo, &blend);
    radv_pipeline_init_shader_stages_state(pipeline);
@@ -6168,6 +6176,10 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
 
    pipeline->push_constant_size = pipeline_layout->push_constant_size;
    pipeline->dynamic_offset_count = pipeline_layout->dynamic_offset_count;
+
+   if (extra) {
+      radv_pipeline_init_extra(pipeline, pCreateInfo, extra, &blend, &ds_state, &vgt_gs_out_prim_type);
+   }
 
    radv_pipeline_generate_pm4(pipeline, pCreateInfo, &blend, &ds_state, vgt_gs_out_prim_type);
 
