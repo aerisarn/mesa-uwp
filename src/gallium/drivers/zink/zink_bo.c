@@ -243,6 +243,21 @@ bo_create_internal(struct zink_screen *screen,
 
    alignment = get_optimal_alignment(screen, size, alignment);
 
+   VkMemoryAllocateInfo mai;
+   mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+   mai.pNext = pNext;
+   mai.allocationSize = size;
+   mai.memoryTypeIndex = screen->heap_map[heap];
+   if (screen->info.mem_props.memoryTypes[mai.memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      alignment = MAX2(alignment, screen->info.props.limits.minMemoryMapAlignment);
+      mai.allocationSize = align64(mai.allocationSize, screen->info.props.limits.minMemoryMapAlignment);
+   }
+   unsigned heap_idx = screen->info.mem_props.memoryTypes[screen->heap_map[heap]].heapIndex;
+   if (mai.allocationSize > screen->info.mem_props.memoryHeaps[heap_idx].size) {
+      mesa_loge("zink: can't allocate %"PRIu64" bytes from heap that's only %"PRIu64" bytes!\n", mai.allocationSize, screen->info.mem_props.memoryHeaps[heap_idx].size);
+      return NULL;
+   }
+
    /* all non-suballocated bo can cache */
    init_pb_cache = true;
 
@@ -256,15 +271,6 @@ bo_create_internal(struct zink_screen *screen,
       pb_cache_init_entry(&screen->pb.bo_cache, bo->cache_entry, &bo->base, heap);
    }
 
-   VkMemoryAllocateInfo mai;
-   mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-   mai.pNext = pNext;
-   mai.allocationSize = size;
-   mai.memoryTypeIndex = screen->heap_map[heap];
-   if (screen->info.mem_props.memoryTypes[mai.memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-      alignment = MAX2(alignment, screen->info.props.limits.minMemoryMapAlignment);
-      mai.allocationSize = align64(mai.allocationSize, screen->info.props.limits.minMemoryMapAlignment);
-   }
    VkResult ret = VKSCR(AllocateMemory)(screen->dev, &mai, NULL, &bo->mem);
    if (!zink_screen_handle_vkresult(screen, ret))
       goto fail;
