@@ -14,7 +14,7 @@
     MINIO_ARTIFACT_NAME: mesa-armhf
   needs:
     - debian/arm_test
-    - job: debian-arm64
+    - job: debian-armhf
       artifacts: false
 
 .etnaviv-armhf-gc2000:
