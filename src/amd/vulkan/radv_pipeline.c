@@ -68,6 +68,12 @@ struct radv_blend_state {
    bool mrt0_is_dual_src;
 };
 
+struct radv_depth_stencil_state {
+   uint32_t db_render_control;
+   uint32_t db_render_override;
+   uint32_t db_render_override2;
+};
+
 struct radv_dsa_order_invariance {
    /* Whether the final result in Z/S buffers is guaranteed to be
     * invariant under changes to the order in which fragments arrive.
@@ -1883,14 +1889,17 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
          VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
 }
 
-static void
+static struct radv_depth_stencil_state
 radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
-                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                       const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                       const struct radv_graphics_pipeline_create_info *extra)
 {
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
       radv_pipeline_get_depth_stencil_state(pCreateInfo);
    const VkPipelineRenderingCreateInfoKHR *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+   struct radv_depth_stencil_state ds_state = {0};
    uint32_t db_depth_control = 0;
 
    bool has_depth_attachment =
@@ -1900,6 +1909,14 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
 
    if (ds_info) {
       if (has_depth_attachment) {
+         const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
+
+         /* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
+         ds_state.db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(vkms && vkms->rasterizationSamples > 2);
+
+         if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
+            ds_state.db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(1);
+
          db_depth_control = S_028800_Z_ENABLE(ds_info->depthTestEnable ? 1 : 0) |
                             S_028800_Z_WRITE_ENABLE(ds_info->depthWriteEnable ? 1 : 0) |
                             S_028800_ZFUNC(ds_info->depthCompareOp) |
@@ -1913,7 +1930,35 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
       }
    }
 
+   if (render_create_info && (has_depth_attachment || has_stencil_attachment) && extra) {
+      ds_state.db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
+      ds_state.db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
+
+      ds_state.db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
+      ds_state.db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(extra->depth_compress_disable);
+      ds_state.db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(extra->stencil_compress_disable);
+   }
+
+   ds_state.db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
+                                  S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE);
+
+   if (!pCreateInfo->pRasterizationState->depthClampEnable && ps->info.ps.writes_z) {
+      /* From VK_EXT_depth_range_unrestricted spec:
+       *
+       * "The behavior described in Primitive Clipping still applies.
+       *  If depth clamping is disabled the depth values are still
+       *  clipped to 0 ≤ zc ≤ wc before the viewport transform. If
+       *  depth clamping is enabled the above equation is ignored and
+       *  the depth values are instead clamped to the VkViewport
+       *  minDepth and maxDepth values, which in the case of this
+       *  extension can be outside of the 0.0 to 1.0 range."
+       */
+      ds_state.db_render_override |= S_02800C_DISABLE_VIEWPORT_CLAMP(1);
+   }
+
    pipeline->graphics.db_depth_control = db_depth_control;
+
+   return ds_state;
 }
 
 static void
@@ -4695,65 +4740,13 @@ radv_pipeline_init_binning_state(struct radv_pipeline *pipeline,
 
 static void
 radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
-                                           const struct radv_pipeline *pipeline,
-                                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                           const struct radv_graphics_pipeline_create_info *extra)
+                                           const struct radv_depth_stencil_state *ds_state)
 {
-   const VkPipelineDepthStencilStateCreateInfo *vkds =
-      radv_pipeline_get_depth_stencil_state(pCreateInfo);
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
-   struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
-   uint32_t db_render_control = 0, db_render_override2 = 0;
-   uint32_t db_render_override = 0;
-
-   bool has_depth_attachment =
-      render_create_info && render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
-
-   if (vkds && has_depth_attachment) {
-      const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
-
-      /* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
-      db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(vkms && vkms->rasterizationSamples > 2);
-
-      if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
-         db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(1);
-   }
-
-   if (render_create_info &&
-       (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
-        render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED) &&
-       extra) {
-      db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
-      db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
-
-      db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
-      db_render_control |= S_028000_DEPTH_COMPRESS_DISABLE(extra->depth_compress_disable);
-      db_render_control |= S_028000_STENCIL_COMPRESS_DISABLE(extra->stencil_compress_disable);
-   }
-
-   db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
-                         S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE);
-
-   if (!pCreateInfo->pRasterizationState->depthClampEnable && ps->info.ps.writes_z) {
-      /* From VK_EXT_depth_range_unrestricted spec:
-       *
-       * "The behavior described in Primitive Clipping still applies.
-       *  If depth clamping is disabled the depth values are still
-       *  clipped to 0 ≤ zc ≤ wc before the viewport transform. If
-       *  depth clamping is enabled the above equation is ignored and
-       *  the depth values are instead clamped to the VkViewport
-       *  minDepth and maxDepth values, which in the case of this
-       *  extension can be outside of the 0.0 to 1.0 range."
-       */
-      db_render_override |= S_02800C_DISABLE_VIEWPORT_CLAMP(1);
-   }
-
-   radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, db_render_control);
+   radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, ds_state->db_render_control);
 
    radeon_set_context_reg_seq(ctx_cs, R_02800C_DB_RENDER_OVERRIDE, 2);
-   radeon_emit(ctx_cs, db_render_override);
-   radeon_emit(ctx_cs, db_render_override2);
+   radeon_emit(ctx_cs, ds_state->db_render_override);
+   radeon_emit(ctx_cs, ds_state->db_render_override2);
 }
 
 static void
@@ -5895,7 +5888,8 @@ static void
 radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const struct radv_graphics_pipeline_create_info *extra,
-                           const struct radv_blend_state *blend)
+                           const struct radv_blend_state *blend,
+                           const struct radv_depth_stencil_state *ds_state)
 {
    struct radeon_cmdbuf *ctx_cs = &pipeline->ctx_cs;
    struct radeon_cmdbuf *cs = &pipeline->cs;
@@ -5905,7 +5899,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
    cs->buf = malloc(4 * (cs->max_dw + ctx_cs->max_dw));
    ctx_cs->buf = cs->buf + cs->max_dw;
 
-   radv_pipeline_generate_depth_stencil_state(ctx_cs, pipeline, pCreateInfo, extra);
+   radv_pipeline_generate_depth_stencil_state(ctx_cs, ds_state);
    radv_pipeline_generate_blend_state(ctx_cs, pipeline, blend);
    radv_pipeline_generate_raster_state(ctx_cs, pipeline, pCreateInfo);
    radv_pipeline_generate_multisample_state(ctx_cs, pipeline);
@@ -6095,7 +6089,9 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
       radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo, extra);
    radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, extra);
    radv_pipeline_init_raster_state(pipeline, pCreateInfo);
-   radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo);
+
+   struct radv_depth_stencil_state ds_state =
+      radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo, extra);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, pCreateInfo);
@@ -6167,7 +6163,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    pipeline->push_constant_size = pipeline_layout->push_constant_size;
    pipeline->dynamic_offset_count = pipeline_layout->dynamic_offset_count;
 
-   radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend);
+   radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &ds_state);
 
    return result;
 }
