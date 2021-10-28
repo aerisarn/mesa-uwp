@@ -497,6 +497,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
                .int16 = true,
                .int64 = true,
                .int64_atomics = true,
+               .mesh_shading_nv = true,
                .min_lod = true,
                .multiview = true,
                .physical_storage_buffer_address = true,
@@ -626,7 +627,12 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
 
    NIR_PASS_V(nir, nir_lower_system_values);
    nir_lower_compute_system_values_options csv_options = {
-      .lower_local_invocation_index = ((nir->info.workgroup_size[0] == 1) +
+      /* Mesh shaders run as NGG which can implement local_invocation_index from
+       * the wave ID in merged_wave_info, but they don't have local_invocation_ids.
+       */
+      .lower_cs_local_id_from_index = nir->info.stage == MESA_SHADER_MESH,
+      .lower_local_invocation_index = nir->info.stage == MESA_SHADER_COMPUTE &&
+                                      ((nir->info.workgroup_size[0] == 1) +
                                        (nir->info.workgroup_size[1] == 1) +
                                        (nir->info.workgroup_size[2] == 1)) == 2,
    };
@@ -730,7 +736,8 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    NIR_PASS_V(nir, lower_intrinsics, key, layout, device->physical_device);
 
    /* Lower deref operations for compute shared memory. */
-   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+   if (nir->info.stage == MESA_SHADER_COMPUTE ||
+       nir->info.stage == MESA_SHADER_MESH) {
       if (!nir->info.shared_memory_explicit_layout) {
          NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared, shared_var_info);
       }
@@ -969,7 +976,8 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
    assert(nir->info.stage == MESA_SHADER_VERTEX ||
           nir->info.stage == MESA_SHADER_TESS_EVAL ||
-          nir->info.stage == MESA_SHADER_GEOMETRY);
+          nir->info.stage == MESA_SHADER_GEOMETRY ||
+          nir->info.stage == MESA_SHADER_MESH);
 
    const struct gfx10_ngg_info *ngg_info = &info->ngg_info;
    unsigned num_vertices_per_prim = 3;
@@ -995,6 +1003,13 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
 
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       num_vertices_per_prim = nir->info.gs.vertices_in;
+   } else if (nir->info.stage == MESA_SHADER_MESH) {
+      if (nir->info.mesh.primitive_type == GL_POINTS)
+         num_vertices_per_prim = 1;
+      else if (nir->info.mesh.primitive_type == GL_LINES)
+         num_vertices_per_prim = 2;
+      else
+         assert(nir->info.mesh.primitive_type == GL_TRIANGLES);
    } else {
       unreachable("NGG needs to be VS, TES or GS.");
    }
@@ -1038,6 +1053,8 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
          info->gs.gsvs_vertex_size,
          info->ngg_info.ngg_emit_size * 4u,
          pl_key->vs.provoking_vtx_last);
+   } else if (nir->info.stage == MESA_SHADER_MESH) {
+      ac_nir_lower_ngg_ms(nir, info->wave_size);
    } else {
       unreachable("invalid SW stage passed to radv_lower_ngg");
    }
@@ -1458,6 +1475,11 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
       config_out->rsrc2 |=
          S_00B12C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) | S_00B12C_EXCP_EN(excp_en);
       break;
+   case MESA_SHADER_MESH:
+      config_out->rsrc1 |= S_00B228_MEM_ORDERED(1);
+      config_out->rsrc2 |=
+         S_00B12C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) | S_00B12C_EXCP_EN(excp_en);
+      break;
    case MESA_SHADER_FRAGMENT:
       config_out->rsrc1 |= S_00B028_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
       config_out->rsrc2 |= S_00B02C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) |
@@ -1489,7 +1511,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
 
    if (pdevice->rad_info.chip_class >= GFX10 && info->is_ngg &&
        (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL ||
-        stage == MESA_SHADER_GEOMETRY)) {
+        stage == MESA_SHADER_GEOMETRY || stage == MESA_SHADER_MESH)) {
       unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
       gl_shader_stage es_stage = stage;
       if (stage == MESA_SHADER_GEOMETRY)
@@ -1501,8 +1523,11 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
       } else if (es_stage == MESA_SHADER_TESS_EVAL) {
          bool enable_prim_id = info->tes.outinfo.export_prim_id || info->uses_prim_id;
          es_vgpr_comp_cnt = enable_prim_id ? 3 : 2;
-      } else
+      } else if (es_stage == MESA_SHADER_MESH) {
+         es_vgpr_comp_cnt = 0;
+      } else {
          unreachable("Unexpected ES shader stage");
+      }
 
       bool nggc = info->has_ngg_culling; /* Culling uses GS vertex offsets 0, 1, 2. */
       bool tes_triangles =
@@ -2099,6 +2124,8 @@ radv_get_shader_name(const struct radv_shader_info *info, gl_shader_stage stage)
       return "Pixel Shader";
    case MESA_SHADER_COMPUTE:
       return "Compute Shader";
+   case MESA_SHADER_MESH:
+      return "Mesh Shader as NGG";
    default:
       return "Unknown shader";
    };
