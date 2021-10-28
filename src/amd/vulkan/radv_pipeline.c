@@ -2553,6 +2553,10 @@ radv_link_shaders(struct radv_pipeline *pipeline,
       bool progress = nir_remove_unused_varyings(ordered_shaders[i], ordered_shaders[i - 1]);
 
       nir_compact_varyings(ordered_shaders[i], ordered_shaders[i - 1], true);
+      if (ordered_shaders[i]->info.stage == MESA_SHADER_MESH) {
+         /* nir_compact_varyings can change the location of per-vertex and per-primitive outputs */
+         nir_shader_gather_info(ordered_shaders[i], nir_shader_get_entrypoint(ordered_shaders[i]));
+      }
 
       if (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_CTRL ||
           (ordered_shaders[i]->info.stage == MESA_SHADER_VERTEX && has_geom_tess) ||
@@ -2594,6 +2598,38 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
       {
          var->data.driver_location = var->data.location + var->data.index;
       }
+   }
+
+   if (shaders[MESA_SHADER_MESH]) {
+      nir_shader *ms = shaders[MESA_SHADER_MESH];
+
+      /* Mesh shader output driver locations are set separately for per-vertex
+       * and per-primitive outputs, because they are stored in separate LDS regions.
+       */
+      uint64_t per_vertex_mask = ms->info.outputs_written & ~ms->info.per_primitive_outputs
+                                 & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT)
+                                 & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
+      uint64_t per_primitive_mask = ms->info.per_primitive_outputs & ms->info.outputs_written;
+
+      nir_foreach_shader_out_variable(var, shaders[MESA_SHADER_MESH])
+      {
+         /* NV_mesh_shader:
+          * These are not real outputs of the shader and require special handling.
+          * So it doesn't make sense to assign a driver location to them.
+          */
+         if (var->data.location == VARYING_SLOT_PRIMITIVE_COUNT ||
+             var->data.location == VARYING_SLOT_PRIMITIVE_INDICES)
+            continue;
+
+         uint64_t loc_mask = u_bit_consecutive64(0, var->data.location);
+
+         if (var->data.per_primitive)
+            var->data.driver_location = util_bitcount64(per_primitive_mask & loc_mask);
+         else
+            var->data.driver_location = util_bitcount64(per_vertex_mask & loc_mask);
+      }
+
+      return;
    }
 
    if (!shaders[MESA_SHADER_VERTEX])
