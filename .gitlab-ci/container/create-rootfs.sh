@@ -12,10 +12,17 @@ if [ $DEBIAN_ARCH = arm64 ]; then
     "
 elif [ $DEBIAN_ARCH = amd64 ]; then
     ARCH_PACKAGES="firmware-amd-graphics
+                   inetutils-syslogd
+                   iptables
+                   libcap2
                    libelf1
+                   libfdt1
                    libllvm11
                    libva2
                    libva-drm2
+                   socat
+                   spirv-tools
+                   sysvinit-core
                   "
 fi
 
