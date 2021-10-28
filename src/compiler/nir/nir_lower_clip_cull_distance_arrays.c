@@ -124,7 +124,8 @@ nir_lower_clip_cull_distance_arrays(nir_shader *nir)
 {
    bool progress = false;
 
-   if (nir->info.stage <= MESA_SHADER_GEOMETRY)
+   if (nir->info.stage <= MESA_SHADER_GEOMETRY ||
+       nir->info.stage == MESA_SHADER_MESH)
       progress |= combine_clip_cull(nir, nir_var_shader_out, true);
 
    if (nir->info.stage > MESA_SHADER_VERTEX) {
