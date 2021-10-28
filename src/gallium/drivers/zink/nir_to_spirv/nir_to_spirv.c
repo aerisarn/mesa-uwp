@@ -2976,7 +2976,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    if (!tex_instr_is_lod_allowed(tex))
       lod = 0;
    else if (ctx->stage != MESA_SHADER_FRAGMENT &&
-            tex->op == nir_texop_tex && ctx->explicit_lod && !lod && !proj && !bias && !dref && !dx && !dy)
+            tex->op == nir_texop_tex && ctx->explicit_lod && !lod)
       lod = emit_float_const(ctx, 32, 0.0);
    if (tex->op == nir_texop_txs) {
       SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
