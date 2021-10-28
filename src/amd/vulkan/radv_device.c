@@ -568,6 +568,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .GOOGLE_hlsl_functionality1 = true,
       .GOOGLE_user_type = true,
       .NV_compute_shader_derivatives = true,
+      .NV_mesh_shader = device->use_ngg && device->rad_info.chip_class >= GFX10_3 &&
+                        device->instance->perftest_flags & RADV_PERFTEST_NV_MS && !device->use_llvm,
       .VALVE_mutable_descriptor_type = true,
    };
 }
@@ -896,6 +898,7 @@ static const struct debug_control radv_perftest_options[] = {{"localbos", RADV_P
                                                              {"rt", RADV_PERFTEST_RT},
                                                              {"nggc", RADV_PERFTEST_NGGC},
                                                              {"force_emulate_rt", RADV_PERFTEST_FORCE_EMULATE_RT},
+                                                             {"nv_ms", RADV_PERFTEST_NV_MS},
                                                              {NULL, 0}};
 
 const char *
@@ -1674,6 +1677,13 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->dynamicRendering = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV: {
+         VkPhysicalDeviceMeshShaderFeaturesNV *features =
+            (VkPhysicalDeviceMeshShaderFeaturesNV *)ext;
+         features->meshShader = true;
+         features->taskShader = false; /* TODO */
+         break;
+      }
       default:
          break;
       }
@@ -2321,6 +2331,37 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceMaintenance4PropertiesKHR *properties =
             (VkPhysicalDeviceMaintenance4PropertiesKHR *)ext;
          properties->maxBufferSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV: {
+         VkPhysicalDeviceMeshShaderPropertiesNV *properties =
+            (VkPhysicalDeviceMeshShaderPropertiesNV *)ext;
+
+         /* Task shader limitations:
+          * Same as compute, because TS are compiled to CS.
+          */
+         properties->maxDrawMeshTasksCount = 65535;
+         properties->maxTaskTotalMemorySize = 65536;
+         properties->maxTaskWorkGroupInvocations = 1024;
+         properties->maxTaskWorkGroupSize[0] = 1024;
+         properties->maxTaskWorkGroupSize[1] = 1024;
+         properties->maxTaskWorkGroupSize[2] = 1024;
+         properties->maxTaskOutputCount = 1024;
+
+         /* Mesh shader limitations:
+          * Same as NGG, because MS are compiled to NGG.
+          */
+         properties->maxMeshMultiviewViewCount = MAX_VIEWS;
+         properties->maxMeshOutputPrimitives = 256;
+         properties->maxMeshOutputVertices = 256;
+         properties->maxMeshTotalMemorySize = 31 * 1024; /* Reserve 1K for prim indices, etc. */
+         properties->maxMeshWorkGroupInvocations = 256;
+         properties->maxMeshWorkGroupSize[0] = 256;
+         properties->maxMeshWorkGroupSize[1] = 256;
+         properties->maxMeshWorkGroupSize[2] = 256;
+         properties->meshOutputPerPrimitiveGranularity = 1;
+         properties->meshOutputPerVertexGranularity = 1;
+
          break;
       }
       default:

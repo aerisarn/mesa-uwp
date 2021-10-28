@@ -686,6 +686,8 @@ RADV driver environment variables
       enable local BOs
    ``nosam``
       disable optimizations that get enabled when all VRAM is CPU visible.
+   ``nv_ms``
+      enable unofficial experimental support for NV_mesh_shader.
    ``pswave32``
       enable wave32 for pixel shaders (GFX10+)
    ``nggc``
