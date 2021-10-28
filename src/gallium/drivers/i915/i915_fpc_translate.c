@@ -364,10 +364,9 @@ emit_tex(struct i915_fp_compile *p, const struct i915_full_instruction *inst,
    uint32_t sampler = i915_emit_decl(p, REG_TYPE_S, unit, tex);
    uint32_t coord = src_vector(p, &inst->Src[0], fs);
 
-   /* For 1D textures, make sure that the Y coordinate is actually
-    * initialized. It seems that if the channel is never written during the
-    * program, texturing returns undefined results (even if the Y wrap is
-    * REPEAT).
+   /* For 1D textures, set the Y coord to the same as X.  Otherwise, we could
+    * select the wrong LOD based on the uninitialized Y coord when we sample our
+    * 1D textures as 2D.
     */
    if (texture == TGSI_TEXTURE_1D || texture == TGSI_TEXTURE_SHADOW1D)
       coord = swizzle(coord, X, X, Z, W);
