@@ -23,7 +23,7 @@
 vk_physical_device_features_gen_depend_files = [
 ]
 
-files_vulkan_runtime = files(
+vulkan_runtime_files = files(
   'vk_cmd_copy.c',
   'vk_command_buffer.c',
   'vk_command_buffer.h',
@@ -56,6 +56,13 @@ files_vulkan_runtime = files(
   'vk_sync.h',
   'vk_synchronization2.c',
 )
+
+vulkan_runtime_deps = [
+  vulkan_wsi_deps,
+  idep_mesautil,
+  idep_nir_headers,
+  idep_vulkan_util,
+]
 
 vk_common_entrypoints = custom_target(
   'vk_common_entrypoints',
@@ -103,11 +110,10 @@ vk_physical_device_features = custom_target(
 
 libvulkan_runtime = static_library(
   'vulkan_runtime',
-  [files_vulkan_runtime, vk_common_entrypoints, vk_cmd_queue,
+  [vulkan_runtime_files, vk_common_entrypoints, vk_cmd_queue,
    vk_dispatch_trampolines, vk_physical_device_features],
   include_directories : [inc_include, inc_src, inc_gallium],
-  dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers,
-                  idep_vulkan_util],
+  dependencies : vulkan_runtime_deps,
   # For glsl_type_singleton
   link_with : libcompiler,
   c_args : [vulkan_wsi_args],
