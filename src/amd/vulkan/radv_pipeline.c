@@ -2349,6 +2349,8 @@ get_vs_output_info(const struct radv_pipeline *pipeline)
          return &pipeline->gs_copy_shader->info.vs.outinfo;
    else if (radv_pipeline_has_tess(pipeline))
       return &pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.outinfo;
+   else if (radv_pipeline_has_mesh(pipeline))
+      return &pipeline->shaders[MESA_SHADER_MESH]->info.ms.outinfo;
    else
       return &pipeline->shaders[MESA_SHADER_VERTEX]->info.vs.outinfo;
 }

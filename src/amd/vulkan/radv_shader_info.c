@@ -493,6 +493,8 @@ get_vs_output_info(const nir_shader *nir, struct radv_shader_info *info)
       if (!info->tes.as_es)
          return &info->tes.outinfo;
       break;
+   case MESA_SHADER_MESH:
+      return &info->ms.outinfo;
    default:
       break;
    }
@@ -726,6 +728,9 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
       break;
    case MESA_SHADER_VERTEX:
+      break;
+   case MESA_SHADER_MESH:
+      info->ms.output_prim = nir->info.mesh.primitive_type;
       break;
    default:
       break;
