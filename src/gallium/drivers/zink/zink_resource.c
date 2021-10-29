@@ -225,10 +225,9 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
       if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && (bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
          usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-      if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
-          (bind & PIPE_BIND_SHADER_IMAGE)) {
-         if (feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)
-            usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+      if ((feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) && (bind & PIPE_BIND_SHADER_IMAGE)) {
+         assert(templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample);
+         usage |= VK_IMAGE_USAGE_STORAGE_BIT;
       }
    }
 

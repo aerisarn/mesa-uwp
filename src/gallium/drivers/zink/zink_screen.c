@@ -951,6 +951,9 @@ zink_is_format_supported(struct pipe_screen *pscreen,
 {
    struct zink_screen *screen = zink_screen(pscreen);
 
+   if (storage_sample_count && !screen->info.feats.features.shaderStorageImageMultisample && bind & PIPE_BIND_SHADER_IMAGE)
+      return false;
+
    if (format == PIPE_FORMAT_NONE)
       return screen->info.props.limits.framebufferNoAttachmentsSampleCounts &
              vk_sample_count_flags(sample_count);
