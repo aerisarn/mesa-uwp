@@ -470,12 +470,11 @@ typedef enum {
  * for the texture.
  */
 typedef enum {
-   /* Use traditional GL binding model, get texture and sampler index
-    * from src3 which is not presumed to be uniform. This is
-    * backwards-compatible with earlier generations, where this field was
-    * always 0 and nonuniform-indexed sampling always worked.
+   /* Use traditional GL binding model, get texture and sampler index from src3
+    * which is presumed to be uniform on a4xx+ (a3xx doesn't have the other
+    * modes, but does handle non-uniform indexing).
     */
-   CAT5_NONUNIFORM = 0,
+   CAT5_UNIFORM = 0,
 
    /* The sampler base comes from the low 3 bits of a1.x, and the sampler
     * and texture index come from src3 which is presumed to be uniform.
@@ -494,9 +493,9 @@ typedef enum {
    CAT5_BINDLESS_A1_NONUNIFORM = 3,
 
    /* Use traditional GL binding model, get texture and sampler index
-    * from src3 which is presumed to be uniform.
+    * from src3 which is *not* presumed to be uniform.
     */
-   CAT5_UNIFORM = 4,
+   CAT5_NONUNIFORM = 4,
 
    /* The texture and sampler share the same base, and the sampler and
     * texture index come from src3 which is presumed to be uniform.

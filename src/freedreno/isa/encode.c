@@ -204,12 +204,10 @@ extract_cat5_DESC_MODE(struct ir3_instruction *instr)
 				return CAT5_BINDLESS_UNIFORM;
 			}
 		} else {
-			/* TODO: This should probably be CAT5_UNIFORM, at least on a6xx,
-			 * as this is what the blob does and it is presumably faster, but
-			 * first we should confirm it is actually nonuniform and figure
-			 * out when the whole descriptor mode mechanism was introduced.
-			 */
-			return CAT5_NONUNIFORM;
+			if (instr->flags & IR3_INSTR_NONUNIF)
+				return CAT5_NONUNIFORM;
+			else
+				return CAT5_UNIFORM;
 		}
 		assert(!(instr->cat5.samp | instr->cat5.tex));
 	} else if (instr->flags & IR3_INSTR_B) {

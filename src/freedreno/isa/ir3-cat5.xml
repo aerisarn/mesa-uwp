@@ -509,12 +509,11 @@ SOFTWARE.
 		display strings, but which have 'C' names that can be used
 		to generate header that the compiler can use
 	</doc>
-	<value val="0" display="CAT5_NONUNIFORM">
+	<value val="0" display="CAT5_UNIFORM">
 		<doc>
 			Use traditional GL binding model, get texture and sampler index
-			from src3 which is not presumed to be uniform. This is
-			backwards-compatible with earlier generations, where this field was
-			always 0 and nonuniform-indexed sampling always worked.
+			from src3 which is presumed to be uniform on a4xx+ (a3xx doesn't
+			have the other modes, but does handle non-uniform indexing).
 		</doc>
 	</value>
 	<value val="1" display="CAT5_BINDLESS_A1_UNIFORM">
@@ -536,10 +535,10 @@ SOFTWARE.
 			uniform.
 		</doc>
 	</value>
-	<value val="4" display="CAT5_UNIFORM">
+	<value val="4" display="CAT5_NONUNIFORM">
 		<doc>
 			Use traditional GL binding model, get texture and sampler index
-			from src3 which is presumed to be uniform.
+			from src3 which is *not* presumed to be uniform.
 		</doc>
 	</value>
 	<value val="5" display="CAT5_BINDLESS_UNIFORM">
@@ -587,17 +586,16 @@ SOFTWARE.
 
 <!-- Helper to map s2en/bindless DESC_MODE to whether it is uniform (flow control) mode -->
 <expr name="#cat5-s2enb-is-uniform">
+	({DESC_MODE} == 0) /* CAT5_UNIFORM */ ||
 	({DESC_MODE} == 1) /* CAT5_BINDLESS_A1_UNIFORM */ ||
-	({DESC_MODE} == 4) /* CAT5_UNIFORM */ ||
 	({DESC_MODE} == 5) /* CAT5_BINDLESS_UNIFORM */
 </expr>
 
-<!-- Helper to map s2en/bindless DESC_MODE to whether it is non-uniform mode
-	 Note that it returns only for bindless for now, since we need to figure out bindful
-	 uniform/nonuniform mode correctly. See TODO in extract_cat5_DESC_MODE in encode.c -->
+<!-- Helper to map s2en/bindless DESC_MODE to whether it is non-uniform mode. -->
 <expr name="#cat5-s2enb-is-nonuniform">
 	({DESC_MODE} == 2) /* CAT5_BINDLESS_NONUNIFORM */ ||
-	({DESC_MODE} == 3) /* CAT5_BINDLESS_A1_NONUNIFORM */
+	({DESC_MODE} == 3) /* CAT5_BINDLESS_A1_NONUNIFORM */ ||
+	({DESC_MODE} == 4) /* CAT5_NONUNIFORM */
 </expr>
 
 <bitset name="#cat5-src3" size="8">

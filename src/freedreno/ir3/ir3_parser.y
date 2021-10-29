@@ -980,6 +980,7 @@ cat5_flag:         '.' T_3D       { instr->flags |= IR3_INSTR_3D; }
 |                  '.' 'p'        { instr->flags |= IR3_INSTR_P; }
 |                  '.' 's'        { instr->flags |= IR3_INSTR_S; }
 |                  '.' T_S2EN     { instr->flags |= IR3_INSTR_S2EN; }
+|                  '.' T_UNIFORM  { }
 |                  '.' T_NONUNIFORM  { instr->flags |= IR3_INSTR_NONUNIF; }
 |                  '.' T_BASE     { instr->flags |= IR3_INSTR_B; instr->cat5.tex_base = $2; }
 cat5_flags:

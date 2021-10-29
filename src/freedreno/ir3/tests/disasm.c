@@ -43,6 +43,8 @@
 #include "isa/isa.h"
 
 /* clang-format off */
+/* Note: @anholt's 4xx disasm was done on an a418 Nexus 5x */
+#define INSTR_4XX(i, d, ...) { .gpu_id = 420, .instr = #i, .expected = d, __VA_ARGS__ }
 #define INSTR_5XX(i, d, ...) { .gpu_id = 540, .instr = #i, .expected = d, __VA_ARGS__ }
 #define INSTR_6XX(i, d, ...) { .gpu_id = 630, .instr = #i, .expected = d, __VA_ARGS__ }
 /* clang-format on */
@@ -307,6 +309,13 @@ static const struct test {
    INSTR_6XX(c0260000_00c78080, "ldc.offset0.1.nonuniform r0.x, 0, r0.x"), /* ldc.1.mode2.base0 r0.x, 0, r0.x */
    INSTR_6XX(c0260201_00c78080, "ldc.offset0.1.nonuniform r0.y, 0, r0.y"), /* ldc.1.mode2.base0 r0.y, 0, r0.y */
 
+   /* a4xx-a5xx has the exact same instrs in
+    * dEQP-GLES31.functional.shaders.opaque_type_indexing.ubo.(dynamically_)uniform_fragment
+    * with no change based on the mode. Note that we can't decode this yet.
+    */
+   /* INSTR_4XX(c7860000_00810001), */ /* ldc.1 r0.x, g[r1.x], 0, r0.x */
+   /* INSTR_5XX(c7860000_00800000), */ /* ldc.a.1 r0.x, g[r0.x], 0, r0.x */
+
    /* custom */
    INSTR_6XX(c0260201_ffc78080, "ldc.offset0.1.nonuniform r0.y, 255, r0.y"), /* ldc.1.mode2.base0 r0.y, 255, r0.y */
 
@@ -342,10 +351,14 @@ static const struct test {
 
    /* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
    INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),
-   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.uniform.fragment.sampler2d (looks like maybe the compiler didn't figure out */
-   INSTR_6XX(a0c81f07_0100000b, "sam.s2en (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode0 (f32)(xyzw)r1.w, r1.y, hr2.x */
+
+   /* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.uniform.fragment.sampler2d */
+   INSTR_4XX(a0c81f02_00800001, "sam.s2en.uniform (f32)(xyzw)r0.z, r0.x, hr1.x"), /* sam.s2en.mode0 (f32)(xyzw)r0.z, r0.x, hr1.x */ /* same for 5xx */
+   INSTR_6XX(a0c81f07_0100000b, "sam.s2en.uniform (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode0 (f32)(xyzw)r1.w, r1.y, hr2.x */
+
    /* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.dynamically_uniform.fragment.sampler2d */
-   INSTR_6XX(a0c81f07_8100000b, "sam.s2en.uniform (f32)(xyzw)r1.w, r1.y, hr2.x", .parse_fail=true), /* sam.s2en.mode4 (f32)(xyzw)r1.w, r1.y, hr2.x */
+   INSTR_4XX(a0c81f02_80800001, "sam.s2en.nonuniform (f32)(xyzw)r0.z, r0.x, hr1.x"), /* sam.s2en.uniform (f32)(xyzw)r0.z, r0.x, hr1.x */ /* same for 5xx */
+   INSTR_6XX(a0c81f07_8100000b, "sam.s2en.nonuniform (f32)(xyzw)r1.w, r1.y, hr2.x"), /* sam.s2en.mode4 (f32)(xyzw)r1.w, r1.y, hr2.x */
 
    /* NonUniform: */
    /* dEQP-VK.descriptor_indexing.storage_buffer */
