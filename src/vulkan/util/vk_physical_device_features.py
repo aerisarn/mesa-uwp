@@ -239,12 +239,10 @@ def main():
         # to print a useful stack trace and prints it, then exits with
         # status 1, if python is run with debug; otherwise it just raises
         # the exception
-        if __debug__:
-            import sys
-            from mako import exceptions
-            sys.stderr.write(exceptions.text_error_template().render() + '\n')
-            sys.exit(1)
-        raise
+        import sys
+        from mako import exceptions
+        print(exceptions.text_error_template().render(), file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
