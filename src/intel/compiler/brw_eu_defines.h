@@ -947,6 +947,10 @@ enum a64_logical_srcs {
    A64_LOGICAL_SRC,
    /** Per-opcode immediate argument. Number of dwords, bit size, or atomic op. */
    A64_LOGICAL_ARG,
+   /**
+    * Some instructions do want to run on helper lanes (like ray queries).
+    */
+   A64_LOGICAL_ENABLE_HELPERS,
 
    A64_LOGICAL_NUM_SRCS
 };

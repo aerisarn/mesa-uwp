@@ -5475,6 +5475,40 @@ emit_predicate_on_sample_mask(const fs_builder &bld, fs_inst *inst)
    }
 }
 
+/**
+ * Predicate the specified instruction on the vector mask.
+ */
+static void
+emit_predicate_on_vector_mask(const fs_builder &bld, fs_inst *inst)
+{
+   assert(bld.shader->stage == MESA_SHADER_FRAGMENT &&
+          bld.group() == inst->group &&
+          bld.dispatch_width() == inst->exec_size);
+
+   const fs_builder ubld = bld.exec_all().group(1, 0);
+
+   const fs_visitor *v = static_cast<const fs_visitor *>(bld.shader);
+   const fs_reg vector_mask = ubld.vgrf(BRW_REGISTER_TYPE_UW);
+   ubld.emit(SHADER_OPCODE_READ_SR_REG, vector_mask, brw_imm_ud(3));
+   const unsigned subreg = sample_mask_flag_subreg(v);
+
+   ubld.MOV(brw_flag_subreg(subreg + inst->group / 16), vector_mask);
+
+   if (inst->predicate) {
+      assert(inst->predicate == BRW_PREDICATE_NORMAL);
+      assert(!inst->predicate_inverse);
+      assert(inst->flag_subreg == 0);
+      /* Combine the vector mask with the existing predicate by using a
+       * vertical predication mode.
+       */
+      inst->predicate = BRW_PREDICATE_ALIGN1_ALLV;
+   } else {
+      inst->flag_subreg = subreg;
+      inst->predicate = BRW_PREDICATE_NORMAL;
+      inst->predicate_inverse = false;
+   }
+}
+
 static void
 setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
                           const fs_reg &surface, const fs_reg &surface_handle)
@@ -6069,6 +6103,26 @@ emit_a64_oword_block_header(const fs_builder &bld, const fs_reg &addr)
 }
 
 static void
+emit_fragment_mask(const fs_builder &bld, fs_inst *inst)
+{
+   assert(inst->src[A64_LOGICAL_ENABLE_HELPERS].file == IMM);
+   const bool enable_helpers = inst->src[A64_LOGICAL_ENABLE_HELPERS].ud;
+
+   /* If we're a fragment shader, we have to predicate with the sample mask to
+    * avoid helper invocations to avoid helper invocations in instructions
+    * with side effects, unless they are explicitly required.
+    *
+    * There are also special cases when we actually want to run on helpers
+    * (ray queries).
+    */
+   assert(bld.shader->stage == MESA_SHADER_FRAGMENT);
+   if (enable_helpers)
+      emit_predicate_on_vector_mask(bld, inst);
+   else if (inst->has_side_effects())
+      emit_predicate_on_sample_mask(bld, inst);
+}
+
+static void
 lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -6082,12 +6136,6 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    assert(inst->src[A64_LOGICAL_ARG].file == IMM);
    const unsigned arg = inst->src[A64_LOGICAL_ARG].ud;
    const bool has_side_effects = inst->has_side_effects();
-
-   /* If the surface message has side effects and we're a fragment shader, we
-    * have to predicate with the sample mask to avoid helper invocations.
-    */
-   if (has_side_effects && bld.shader->stage == MESA_SHADER_FRAGMENT)
-      emit_predicate_on_sample_mask(bld, inst);
 
    fs_reg payload = retype(bld.move_to_vgrf(addr, 1), BRW_REGISTER_TYPE_UD);
    fs_reg payload2 = retype(bld.move_to_vgrf(src, src_comps),
@@ -6164,6 +6212,9 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
       unreachable("Unknown A64 logical instruction");
    }
 
+   if (bld.shader->stage == MESA_SHADER_FRAGMENT)
+      emit_fragment_mask(bld, inst);
+
    /* Update the original instruction. */
    inst->opcode = SHADER_OPCODE_SEND;
    inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
@@ -6192,12 +6243,6 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    assert(inst->src[A64_LOGICAL_ARG].file == IMM);
    const unsigned arg = inst->src[A64_LOGICAL_ARG].ud;
    const bool has_side_effects = inst->has_side_effects();
-
-   /* If the surface message has side effects and we're a fragment shader, we
-    * have to predicate with the sample mask to avoid helper invocations.
-    */
-   if (has_side_effects && bld.shader->stage == MESA_SHADER_FRAGMENT)
-      emit_predicate_on_sample_mask(bld, inst);
 
    fs_reg payload, payload2;
    unsigned mlen, ex_mlen = 0, header_size = 0;
@@ -6321,6 +6366,9 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
    default:
       unreachable("Unknown A64 logical instruction");
    }
+
+   if (bld.shader->stage == MESA_SHADER_FRAGMENT)
+      emit_fragment_mask(bld, inst);
 
    /* Update the original instruction. */
    inst->opcode = SHADER_OPCODE_SEND;
