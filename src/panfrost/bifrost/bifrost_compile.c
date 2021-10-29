@@ -3738,8 +3738,6 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         }
 
         bi_optimize_nir(nir, gpu_id, is_blend);
-
-        NIR_PASS_V(nir, pan_nir_reorder_writeout);
 }
 
 static bi_context *

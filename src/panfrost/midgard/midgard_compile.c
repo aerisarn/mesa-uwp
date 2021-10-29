@@ -3107,8 +3107,6 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         optimise_nir(nir, ctx->quirks, inputs->is_blend);
 
-        NIR_PASS_V(nir, pan_nir_reorder_writeout);
-
         if ((midgard_debug & MIDGARD_DBG_SHADERS) &&
             ((midgard_debug & MIDGARD_DBG_INTERNAL) || !nir->info.internal)) {
                 nir_print_shader(nir, stdout);
