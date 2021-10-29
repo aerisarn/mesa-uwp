@@ -166,7 +166,7 @@ vbo_save_playback_vertex_list_loopback(struct gl_context *ctx, void *data)
 
    FLUSH_FOR_DRAW(ctx);
 
-   if (_mesa_inside_begin_end(ctx) && node->cold->prims[0].begin) {
+   if (_mesa_inside_begin_end(ctx) && node->draw_begins) {
       /* Error: we're about to begin a new primitive but we're already
        * inside a glBegin/End pair.
        */
@@ -304,7 +304,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
 
    FLUSH_FOR_DRAW(ctx);
 
-   if (_mesa_inside_begin_end(ctx) && node->cold->prims[0].begin) {
+   if (_mesa_inside_begin_end(ctx) && node->draw_begins) {
       /* Error: we're about to begin a new primitive but we're already
        * inside a glBegin/End pair.
        */

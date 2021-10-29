@@ -874,6 +874,7 @@ compile_vertex_list(struct gl_context *ctx)
    free(merged_prims);
 
 end:
+   node->draw_begins = node->cold->prims[0].begin;
 
    if (!save->current_bo) {
       save->current_bo = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
