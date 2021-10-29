@@ -387,6 +387,16 @@ struct brw_gs_prog_key
    unsigned nr_userclip_plane_consts:4;
 };
 
+struct brw_task_prog_key
+{
+   struct brw_base_prog_key base;
+};
+
+struct brw_mesh_prog_key
+{
+   struct brw_base_prog_key base;
+};
+
 enum brw_sf_primitive {
    BRW_SF_PRIM_POINTS = 0,
    BRW_SF_PRIM_LINES = 1,
@@ -547,6 +557,8 @@ union brw_any_prog_key {
    struct brw_wm_prog_key wm;
    struct brw_cs_prog_key cs;
    struct brw_bs_prog_key bs;
+   struct brw_task_prog_key task;
+   struct brw_mesh_prog_key mesh;
 };
 
 /*
@@ -1444,6 +1456,24 @@ struct brw_mue_map {
    uint32_t per_vertex_pitch_dw;
 };
 
+struct brw_task_prog_data {
+   struct brw_cs_prog_data base;
+   struct brw_tue_map map;
+};
+
+enum brw_mesh_index_format {
+   BRW_INDEX_FORMAT_U32,
+};
+
+struct brw_mesh_prog_data {
+   struct brw_cs_prog_data base;
+   struct brw_mue_map map;
+
+   uint16_t primitive_type;
+
+   enum brw_mesh_index_format index_format;
+};
+
 /* brw_any_prog_data is prog_data for any stage that maps to an API stage */
 union brw_any_prog_data {
    struct brw_stage_prog_data base;
@@ -1455,6 +1485,8 @@ union brw_any_prog_data {
    struct brw_wm_prog_data wm;
    struct brw_cs_prog_data cs;
    struct brw_bs_prog_data bs;
+   struct brw_task_prog_data task;
+   struct brw_mesh_prog_data mesh;
 };
 
 #define DEFINE_PROG_DATA_DOWNCAST(STAGE, CHECK)                            \
@@ -1485,6 +1517,9 @@ DEFINE_PROG_DATA_DOWNCAST(vue, prog_data->stage == MESA_SHADER_VERTEX ||
                                prog_data->stage == MESA_SHADER_TESS_CTRL ||
                                prog_data->stage == MESA_SHADER_TESS_EVAL ||
                                prog_data->stage == MESA_SHADER_GEOMETRY)
+
+DEFINE_PROG_DATA_DOWNCAST(task, prog_data->stage == MESA_SHADER_TASK)
+DEFINE_PROG_DATA_DOWNCAST(mesh, prog_data->stage == MESA_SHADER_MESH)
 
 /* These are not really brw_stage_prog_data. */
 DEFINE_PROG_DATA_DOWNCAST(ff_gs, true)
@@ -1641,6 +1676,41 @@ brw_compile_clip(const struct brw_compiler *compiler,
                  struct brw_clip_prog_data *prog_data,
                  struct brw_vue_map *vue_map,
                  unsigned *final_assembly_size);
+
+struct brw_compile_task_params {
+   struct nir_shader *nir;
+
+   const struct brw_task_prog_key *key;
+   struct brw_task_prog_data *prog_data;
+
+   struct brw_compile_stats *stats;
+
+   char *error_str;
+   void *log_data;
+};
+
+const unsigned *
+brw_compile_task(const struct brw_compiler *compiler,
+                 void *mem_ctx,
+                 struct brw_compile_task_params *params);
+
+struct brw_compile_mesh_params {
+   struct nir_shader *nir;
+
+   const struct brw_mesh_prog_key *key;
+   struct brw_mesh_prog_data *prog_data;
+   const struct brw_tue_map *tue_map;
+
+   struct brw_compile_stats *stats;
+
+   char *error_str;
+   void *log_data;
+};
+
+const unsigned *
+brw_compile_mesh(const struct brw_compiler *compiler,
+                 void *mem_ctx,
+                 struct brw_compile_mesh_params *params);
 
 /**
  * Parameters for compiling a fragment shader.

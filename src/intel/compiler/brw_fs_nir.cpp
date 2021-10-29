@@ -453,6 +453,12 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
       case MESA_SHADER_CALLABLE:
          nir_emit_bs_intrinsic(abld, nir_instr_as_intrinsic(instr));
          break;
+      case MESA_SHADER_TASK:
+         nir_emit_task_intrinsic(abld, nir_instr_as_intrinsic(instr));
+         break;
+      case MESA_SHADER_MESH:
+         nir_emit_mesh_intrinsic(abld, nir_instr_as_intrinsic(instr));
+         break;
       default:
          unreachable("unsupported shader stage");
       }

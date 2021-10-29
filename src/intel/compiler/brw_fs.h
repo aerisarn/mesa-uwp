@@ -127,6 +127,8 @@ public:
    bool run_gs();
    bool run_cs(bool allow_spilling);
    bool run_bs(bool allow_spilling);
+   bool run_task(bool allow_spilling);
+   bool run_mesh(bool allow_spilling);
    void optimize();
    void allocate_registers(bool allow_spilling);
    void setup_fs_payload_gfx4();
@@ -254,6 +256,12 @@ public:
                               nir_intrinsic_instr *instr);
    void nir_emit_bs_intrinsic(const brw::fs_builder &bld,
                               nir_intrinsic_instr *instr);
+   void nir_emit_task_intrinsic(const brw::fs_builder &bld,
+                                nir_intrinsic_instr *instr);
+   void nir_emit_mesh_intrinsic(const brw::fs_builder &bld,
+                                nir_intrinsic_instr *instr);
+   void nir_emit_task_mesh_intrinsic(const brw::fs_builder &bld,
+                                     nir_intrinsic_instr *instr);
    fs_reg get_nir_image_intrinsic_image(const brw::fs_builder &bld,
                                         nir_intrinsic_instr *instr);
    fs_reg get_nir_ssbo_intrinsic_index(const brw::fs_builder &bld,
