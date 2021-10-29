@@ -1428,21 +1428,22 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       assert(!(modes & nir_var_shader_out));
 
       if ((modes &
-           (nir_var_mem_shared | nir_var_mem_ssbo | nir_var_mem_global))) {
+           (nir_var_mem_shared | nir_var_mem_ssbo | nir_var_mem_global |
+            nir_var_image))) {
          barrier = ir3_FENCE(b);
          barrier->cat7.r = true;
          barrier->cat7.w = true;
 
-         if (modes & (nir_var_mem_ssbo | nir_var_mem_global)) {
+         if (modes & (nir_var_mem_ssbo | nir_var_image | nir_var_mem_global)) {
             barrier->cat7.g = true;
          }
 
          if (ctx->compiler->gen >= 6) {
-            if (modes & nir_var_mem_ssbo) {
+            if (modes & (nir_var_mem_ssbo | nir_var_image)) {
                barrier->cat7.l = true;
             }
          } else {
-            if (modes & (nir_var_mem_shared | nir_var_mem_ssbo)) {
+            if (modes & (nir_var_mem_shared | nir_var_mem_ssbo | nir_var_image)) {
                barrier->cat7.l = true;
             }
          }
