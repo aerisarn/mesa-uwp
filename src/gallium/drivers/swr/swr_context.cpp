@@ -334,7 +334,7 @@ swr_blit(struct pipe_context *pipe, const struct pipe_blit_info *blit_info)
    util_blitter_save_depth_stencil_alpha(ctx->blitter,
                                          (void *)ctx->depth_stencil);
    util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
-   util_blitter_save_sample_mask(ctx->blitter, ctx->sample_mask);
+   util_blitter_save_sample_mask(ctx->blitter, ctx->sample_mask, 0);
    util_blitter_save_framebuffer(ctx->blitter, &ctx->framebuffer);
    util_blitter_save_fragment_sampler_states(
       ctx->blitter,

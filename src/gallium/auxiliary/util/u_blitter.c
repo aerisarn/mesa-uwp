@@ -711,6 +711,10 @@ void util_blitter_restore_fragment_states(struct blitter_context *blitter)
       ctx->base.is_sample_mask_saved = false;
    }
 
+   if (ctx->base.saved_min_samples != ~0 && pipe->set_min_samples)
+      pipe->set_min_samples(pipe, ctx->base.saved_min_samples);
+   ctx->base.saved_min_samples = ~0;
+
    /* Miscellaneous states. */
    /* XXX check whether these are saved and whether they need to be restored
     * (depending on the operation) */
@@ -1479,6 +1483,8 @@ void util_blitter_common_clear_setup(struct blitter_context *blitter,
    }
 
    pipe->set_sample_mask(pipe, ~0);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
    blitter_set_dst_dimensions(ctx, width, height);
 }
 
@@ -1816,6 +1822,8 @@ static void do_blits(struct blitter_context_priv *ctx,
 
       /* Draw. */
       pipe->set_sample_mask(pipe, ~0);
+      if (pipe->set_min_samples)
+         pipe->set_min_samples(pipe, 1);
       blitter_draw_tex(ctx, dstbox->x, dstbox->y,
                        dstbox->x + dstbox->width,
                        dstbox->y + dstbox->height,
@@ -1871,6 +1879,9 @@ static void do_blits(struct blitter_context_priv *ctx,
             /* MSAA copy. */
             unsigned i, max_sample = sample0_only ? 0 : dst_samples - 1;
 
+            if (pipe->set_min_samples)
+               pipe->set_min_samples(pipe, 1);
+
             for (i = 0; i <= max_sample; i++) {
                pipe->set_sample_mask(pipe, 1 << i);
                blitter_draw_tex(ctx, dstbox->x, dstbox->y,
@@ -1886,6 +1897,8 @@ static void do_blits(struct blitter_context_priv *ctx,
          } else {
             /* Normal copy, MSAA upsampling, or MSAA resolve. */
             pipe->set_sample_mask(pipe, ~0);
+            if (pipe->set_min_samples)
+               pipe->set_min_samples(pipe, 1);
             blitter_draw_tex(ctx, dstbox->x, dstbox->y,
                              dstbox->x + dstbox->width,
                              dstbox->y + dstbox->height,
@@ -2312,6 +2325,8 @@ void util_blitter_clear_render_target(struct blitter_context *blitter,
    fb_state.zsbuf = 0;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
    msaa = util_framebuffer_get_num_samples(&fb_state) > 1;
 
    blitter_set_dst_dimensions(ctx, dstsurf->width, dstsurf->height);
@@ -2395,6 +2410,8 @@ void util_blitter_clear_depth_stencil(struct blitter_context *blitter,
    fb_state.zsbuf = dstsurf;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
 
    blitter_set_dst_dimensions(ctx, dstsurf->width, dstsurf->height);
 
@@ -2464,6 +2481,8 @@ void util_blitter_custom_depth_stencil(struct blitter_context *blitter,
    fb_state.zsbuf = zsurf;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, sample_mask);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
 
    blitter_set_common_draw_rect_state(ctx, false,
       util_framebuffer_get_num_samples(&fb_state) > 1);
@@ -2642,6 +2661,8 @@ void util_blitter_custom_resolve_color(struct blitter_context *blitter,
    pipe->bind_depth_stencil_alpha_state(pipe, ctx->dsa_keep_depth_stencil);
    bind_fs_write_one_cbuf(ctx);
    pipe->set_sample_mask(pipe, sample_mask);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
 
    memset(&surf_tmpl, 0, sizeof(surf_tmpl));
    surf_tmpl.format = format;
@@ -2715,6 +2736,8 @@ void util_blitter_custom_color(struct blitter_context *blitter,
    fb_state.zsbuf = 0;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
 
    blitter_set_common_draw_rect_state(ctx, false,
       util_framebuffer_get_num_samples(&fb_state) > 1);
@@ -2776,6 +2799,8 @@ void util_blitter_custom_shader(struct blitter_context *blitter,
    fb_state.cbufs[0] = dstsurf;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
 
    blitter_set_common_draw_rect_state(ctx, false,
       util_framebuffer_get_num_samples(&fb_state) > 1);
@@ -2870,6 +2895,8 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
    fb_state.zsbuf = dst_view;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
+   if (pipe->set_min_samples)
+      pipe->set_min_samples(pipe, 1);
 
    blitter_set_common_draw_rect_state(ctx, scissor != NULL,
       util_framebuffer_get_num_samples(&fb_state) > 1);

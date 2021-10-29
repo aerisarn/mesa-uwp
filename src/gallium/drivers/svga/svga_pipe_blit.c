@@ -634,7 +634,7 @@ try_blit(struct svga_context *svga, const struct pipe_blit_info *blit_info)
    util_blitter_save_depth_stencil_alpha(svga->blitter,
                                          (void*)svga->curr.depth);
    util_blitter_save_stencil_ref(svga->blitter, &svga->curr.stencil_ref);
-   util_blitter_save_sample_mask(svga->blitter, svga->curr.sample_mask);
+   util_blitter_save_sample_mask(svga->blitter, svga->curr.sample_mask, 0);
    util_blitter_save_framebuffer(svga->blitter, &svga->curr.framebuffer);
    util_blitter_save_fragment_sampler_states(svga->blitter,
                      svga->curr.num_samplers[PIPE_SHADER_FRAGMENT],

@@ -46,7 +46,7 @@ v3d_blitter_save(struct v3d_context *v3d)
         util_blitter_save_blend(v3d->blitter, v3d->blend);
         util_blitter_save_depth_stencil_alpha(v3d->blitter, v3d->zsa);
         util_blitter_save_stencil_ref(v3d->blitter, &v3d->stencil_ref);
-        util_blitter_save_sample_mask(v3d->blitter, v3d->sample_mask);
+        util_blitter_save_sample_mask(v3d->blitter, v3d->sample_mask, 0);
         util_blitter_save_framebuffer(v3d->blitter, &v3d->framebuffer);
         util_blitter_save_fragment_sampler_states(v3d->blitter,
                         v3d->tex[PIPE_SHADER_FRAGMENT].num_samplers,

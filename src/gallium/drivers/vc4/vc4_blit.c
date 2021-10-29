@@ -177,7 +177,7 @@ vc4_blitter_save(struct vc4_context *vc4)
         util_blitter_save_blend(vc4->blitter, vc4->blend);
         util_blitter_save_depth_stencil_alpha(vc4->blitter, vc4->zsa);
         util_blitter_save_stencil_ref(vc4->blitter, &vc4->stencil_ref);
-        util_blitter_save_sample_mask(vc4->blitter, vc4->sample_mask);
+        util_blitter_save_sample_mask(vc4->blitter, vc4->sample_mask, 0);
         util_blitter_save_framebuffer(vc4->blitter, &vc4->framebuffer);
         util_blitter_save_fragment_sampler_states(vc4->blitter,
                         vc4->fragtex.num_samplers,
