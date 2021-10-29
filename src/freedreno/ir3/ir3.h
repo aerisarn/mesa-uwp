@@ -1632,8 +1632,6 @@ void ir3_print_instr_stream(struct log_stream *stream, struct ir3_instruction *i
 /* delay calculation: */
 int ir3_delayslots(struct ir3_instruction *assigner,
                    struct ir3_instruction *consumer, unsigned n, bool soft);
-unsigned ir3_delay_calc_prera(struct ir3_block *block,
-                              struct ir3_instruction *instr);
 unsigned ir3_delay_calc_postra(struct ir3_block *block,
                                struct ir3_instruction *instr, bool soft,
                                bool mergedregs);
