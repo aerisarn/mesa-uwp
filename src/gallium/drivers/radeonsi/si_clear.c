@@ -814,7 +814,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                   *buffers &= ~PIPE_CLEAR_DEPTHSTENCIL;
                   zstex->depth_cleared_level_mask_once |= BITFIELD_BIT(level);
                   zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
-                  zstex->stencil_cleared_level_mask |= BITFIELD_BIT(level);
+                  zstex->stencil_cleared_level_mask_once |= BITFIELD_BIT(level);
                   update_db_depth_clear = true;
                   update_db_stencil_clear = true;
                }
@@ -893,7 +893,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                *buffers &= ~PIPE_CLEAR_DEPTHSTENCIL;
                zstex->depth_cleared_level_mask_once |= BITFIELD_BIT(level);
                zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
-               zstex->stencil_cleared_level_mask |= BITFIELD_BIT(level);
+               zstex->stencil_cleared_level_mask_once |= BITFIELD_BIT(level);
                update_db_depth_clear = true;
                update_db_stencil_clear = true;
             }
@@ -930,7 +930,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                                         htile_stencil_writemask);
                clear_types |= SI_CLEAR_TYPE_HTILE;
                *buffers &= ~PIPE_CLEAR_STENCIL;
-               zstex->stencil_cleared_level_mask |= BITFIELD_BIT(level);
+               zstex->stencil_cleared_level_mask_once |= BITFIELD_BIT(level);
                update_db_stencil_clear = true;
             }
          }
@@ -1023,7 +1023,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 
          /* Need to disable EXPCLEAR temporarily if clearing
           * to a new value. */
-         if (!(zstex->stencil_cleared_level_mask & BITFIELD_BIT(level)) ||
+         if (!(zstex->stencil_cleared_level_mask_once & BITFIELD_BIT(level)) ||
              zstex->stencil_clear_value[level] != stencil) {
             sctx->db_stencil_disable_expclear = true;
          }
@@ -1065,7 +1065,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
    if (sctx->db_stencil_clear) {
       sctx->db_stencil_clear = false;
       sctx->db_stencil_disable_expclear = false;
-      zstex->stencil_cleared_level_mask |= BITFIELD_BIT(zsbuf->u.tex.level);
+      zstex->stencil_cleared_level_mask_once |= BITFIELD_BIT(zsbuf->u.tex.level);
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
    }
 }
