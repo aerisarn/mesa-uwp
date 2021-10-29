@@ -152,7 +152,8 @@ brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
       break;
    }
 
-   if (is_scalar && stage != MESA_SHADER_TESS_CTRL)
+   if (is_scalar && stage != MESA_SHADER_TESS_CTRL &&
+                    stage != MESA_SHADER_TASK)
       indirect_mask |= nir_var_shader_out;
 
    /* On HSW+, we allow indirects in scalar shaders.  They get implemented
