@@ -68,6 +68,14 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
 
       case nir_intrinsic_load_local_invocation_index:
       case nir_intrinsic_load_local_invocation_id: {
+         if (nir->info.stage == MESA_SHADER_TASK ||
+             nir->info.stage == MESA_SHADER_MESH) {
+            /* Will be lowered by nir_emit_task_mesh_intrinsic() using
+             * information from the payload.
+             */
+            continue;
+         }
+
          /* First time we are using those, so let's calculate them. */
          if (!local_index) {
             assert(!local_id);

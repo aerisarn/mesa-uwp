@@ -255,7 +255,23 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
 {
    assert(stage == MESA_SHADER_MESH || stage == MESA_SHADER_TASK);
 
+   fs_reg dest;
+   if (nir_intrinsic_infos[instr->intrinsic].has_dest)
+      dest = get_nir_dest(instr->dest);
+
    switch (instr->intrinsic) {
+   case nir_intrinsic_load_local_invocation_index:
+   case nir_intrinsic_load_local_invocation_id:
+      /* Local_ID.X is given by the HW in the shader payload. */
+      dest = retype(dest, BRW_REGISTER_TYPE_UD);
+      bld.MOV(dest, retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW));
+      /* Task/Mesh only use one dimension. */
+      if (instr->intrinsic == nir_intrinsic_load_local_invocation_id) {
+         bld.MOV(offset(dest, bld, 1), brw_imm_uw(0));
+         bld.MOV(offset(dest, bld, 2), brw_imm_uw(0));
+      }
+      break;
+
    default:
       nir_emit_cs_intrinsic(bld, instr);
       break;
