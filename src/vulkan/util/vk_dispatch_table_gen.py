@@ -743,7 +743,7 @@ class StringIntMap(object):
 
 EntrypointParam = namedtuple('EntrypointParam', 'type name decl len')
 
-class EntrypointBase(object):
+class EntrypointBase:
     def __init__(self, name):
         assert name.startswith('vk')
         self.name = name[2:]
