@@ -387,7 +387,7 @@ struct si_texture {
    float depth_clear_value[RADEON_SURF_MAX_LEVELS];
    uint8_t stencil_clear_value[RADEON_SURF_MAX_LEVELS];
    uint16_t depth_cleared_level_mask_once; /* if it was cleared at least once */
-   uint16_t depth_cleared_level_mask;     /* track if it was cleared (not 100% accurate) */
+   uint16_t depth_cleared_level_mask;     /* track if it's cleared (can be false negative) */
    uint16_t stencil_cleared_level_mask; /* if it was cleared at least once */
    uint16_t dirty_level_mask;         /* each bit says if that mipmap is compressed */
    uint16_t stencil_dirty_level_mask; /* each bit says if that mipmap is compressed */

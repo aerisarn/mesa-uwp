@@ -2463,7 +2463,7 @@ static void si_draw(struct pipe_context *ctx,
          sctx->num_prim_restart_calls += num_draws;
    }
 
-   if (!sctx->blitter_running && sctx->framebuffer.state.zsbuf) {
+   if (sctx->framebuffer.state.zsbuf) {
       struct si_texture *zstex = (struct si_texture *)sctx->framebuffer.state.zsbuf->texture;
       zstex->depth_cleared_level_mask &= ~BITFIELD_BIT(sctx->framebuffer.state.zsbuf->u.tex.level);
    }
