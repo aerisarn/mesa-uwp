@@ -133,6 +133,7 @@ struct zink_screen {
    VkDevice dev;
    VkQueue queue; //gfx+compute
    VkQueue thread_queue; //gfx+compute
+   simple_mtx_t queue_lock;
    VkDebugUtilsMessengerEXT debugUtilsCallbackHandle;
 
    uint32_t cur_custom_border_color_samplers;

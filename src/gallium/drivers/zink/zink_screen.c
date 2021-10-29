@@ -1122,6 +1122,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->threaded)
       util_queue_destroy(&screen->flush_queue);
 
+   simple_mtx_destroy(&screen->queue_lock);
    VKSCR(DestroyDevice)(screen->dev, NULL);
    vkDestroyInstance(screen->instance, NULL);
    util_idalloc_mt_fini(&screen->buffer_ids);
@@ -1208,6 +1209,7 @@ update_queue_props(struct zink_screen *screen)
 static void
 init_queue(struct zink_screen *screen)
 {
+   simple_mtx_init(&screen->queue_lock, mtx_plain);
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &screen->queue);
    if (screen->threaded && screen->max_queues > 1)
       vkGetDeviceQueue(screen->dev, screen->gfx_queue, 1, &screen->thread_queue);
@@ -1601,11 +1603,13 @@ noop_submit(void *data, void *gdata, int thread_index)
    struct noop_submit_info *n = data;
    VkSubmitInfo si = {0};
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   simple_mtx_lock(&n->screen->queue_lock);
    if (n->VKSCR(QueueSubmit)(n->screen->threaded ? n->screen->thread_queue : n->screen->queue,
                      1, &si, n->fence) != VK_SUCCESS) {
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       n->screen->device_lost = true;
    }
+   simple_mtx_unlock(&n->screen->queue_lock);
 }
 
 bool

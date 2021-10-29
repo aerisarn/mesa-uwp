@@ -418,10 +418,12 @@ submit_queue(void *data, void *gdata, int thread_index)
        VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
    }
 
+   simple_mtx_lock(&screen->queue_lock);
    if (VKSCR(QueueSubmit)(bs->queue, 1, &si, bs->fence.fence) != VK_SUCCESS) {
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       bs->is_device_lost = true;
    }
+   simple_mtx_unlock(&screen->queue_lock);
    bs->submit_count++;
 end:
    cnd_broadcast(&bs->usage.flush);

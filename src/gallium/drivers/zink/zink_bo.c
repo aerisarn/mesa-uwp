@@ -675,72 +675,32 @@ zink_bo_unmap(struct zink_screen *screen, struct zink_bo *bo)
    }
 }
 
-
-static inline struct zink_screen **
-get_screen_ptr_for_commit(uint8_t *mem)
-{
-   return (struct zink_screen**)(mem + sizeof(VkBindSparseInfo) + sizeof(VkSparseBufferMemoryBindInfo) + sizeof(VkSparseMemoryBind));
-}
-
-static bool
-resource_commit(struct zink_screen *screen, VkBindSparseInfo *sparse)
-{
-   VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
-
-   VkResult ret = VKSCR(QueueBindSparse)(queue, 1, sparse, VK_NULL_HANDLE);
-   return zink_screen_handle_vkresult(screen, ret);
-}
-
-static void
-submit_resource_commit(void *data, void *gdata, int thread_index)
-{
-   struct zink_screen **screen = get_screen_ptr_for_commit(data);
-   resource_commit(*screen, data);
-   free(data);
-}
-
 static bool
 do_commit_single(struct zink_screen *screen, struct zink_resource *res, struct zink_bo *bo, uint32_t offset, uint32_t size, bool commit)
 {
+   VkBindSparseInfo sparse = {0};
+   sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
+   sparse.bufferBindCount = 1;
 
-   uint8_t *mem = malloc(sizeof(VkBindSparseInfo) + sizeof(VkSparseBufferMemoryBindInfo) + sizeof(VkSparseMemoryBind) + sizeof(void*));
-   if (!mem)
-      return false;
-   VkBindSparseInfo *sparse = (void*)mem;
-   sparse->sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
-   sparse->pNext = NULL;
-   sparse->waitSemaphoreCount = 0;
-   sparse->bufferBindCount = 1;
-   sparse->imageOpaqueBindCount = 0;
-   sparse->imageBindCount = 0;
-   sparse->signalSemaphoreCount = 0;
+   VkSparseBufferMemoryBindInfo sparse_bind;
+   sparse_bind.buffer = res->obj->buffer;
+   sparse_bind.bindCount = 1;
+   sparse.pBufferBinds = &sparse_bind;
 
-   VkSparseBufferMemoryBindInfo *sparse_bind = (void*)(mem + sizeof(VkBindSparseInfo));
-   sparse_bind->buffer = res->obj->buffer;
-   sparse_bind->bindCount = 1;
-   sparse->pBufferBinds = sparse_bind;
+   VkSparseMemoryBind mem_bind;
+   mem_bind.resourceOffset = offset;
+   mem_bind.size = MIN2(res->base.b.width0 - offset, size);
+   mem_bind.memory = commit ? bo->mem : VK_NULL_HANDLE;
+   mem_bind.memoryOffset = 0;
+   mem_bind.flags = 0;
+   sparse_bind.pBinds = &mem_bind;
 
-   VkSparseMemoryBind *mem_bind = (void*)(mem + sizeof(VkBindSparseInfo) + sizeof(VkSparseBufferMemoryBindInfo));
-   mem_bind->resourceOffset = offset;
-   mem_bind->size = MIN2(res->base.b.width0 - offset, size);
-   mem_bind->memory = commit ? bo->mem : VK_NULL_HANDLE;
-   mem_bind->memoryOffset = 0;
-   mem_bind->flags = 0;
-   sparse_bind->pBinds = mem_bind;
+   VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
 
-   struct zink_screen **ptr = get_screen_ptr_for_commit(mem);
-   *ptr = screen;
-
-   if (screen->threaded) {
-      /* this doesn't need any kind of fencing because any access to this resource
-       * will be automagically synchronized by queue dispatch */
-      util_queue_add_job(&screen->flush_queue, mem, NULL, submit_resource_commit, NULL, 0);
-   } else {
-      bool ret = resource_commit(screen, sparse);
-      free(sparse);
-      return ret;
-   }
-   return true;
+   simple_mtx_lock(&screen->queue_lock);
+   VkResult ret = VKSCR(QueueBindSparse)(queue, 1, &sparse, VK_NULL_HANDLE);
+   simple_mtx_unlock(&screen->queue_lock);
+   return zink_screen_handle_vkresult(screen, ret);
 }
 
 bool
