@@ -352,8 +352,7 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
 
    case PIPE_TEXTURE_3D:
       ici->imageType = VK_IMAGE_TYPE_3D;
-      if (bind & PIPE_BIND_RENDER_TARGET)
-         ici->flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+      ici->flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
       break;
 
    case PIPE_BUFFER:
