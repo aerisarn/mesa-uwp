@@ -520,11 +520,35 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       nir_ssa_def *x = nir_fclamp(nb, src[0],
                                   nir_imm_floatN_t(nb, -clamped_x, bit_size),
                                   nir_imm_floatN_t(nb, clamped_x, bit_size));
-      dest->def =
-         nir_fdiv(nb, nir_fsub(nb, nir_fexp(nb, x),
-                               nir_fexp(nb, nir_fneg(nb, x))),
-                  nir_fadd(nb, nir_fexp(nb, x),
-                           nir_fexp(nb, nir_fneg(nb, x))));
+
+      /* The clamping will filter out NaN values causing an incorrect result.
+       * The comparison is carefully structured to get NaN result for NaN and
+       * get -0 for -0.
+       *
+       *    result = abs(s) > 0.0 ? ... : s;
+       */
+      const bool exact = nb->exact;
+
+      nb->exact = true;
+      nir_ssa_def *is_regular = nir_flt(nb,
+                                        nir_imm_floatN_t(nb, 0, bit_size),
+                                        nir_fabs(nb, src[0]));
+
+      /* The extra 1.0*s ensures that subnormal inputs are flushed to zero
+       * when that is selected by the shader.
+       */
+      nir_ssa_def *flushed = nir_fmul(nb,
+                                      src[0],
+                                      nir_imm_floatN_t(nb, 1.0, bit_size));
+      nb->exact = exact;
+
+      dest->def = nir_bcsel(nb,
+                            is_regular,
+                            nir_fdiv(nb, nir_fsub(nb, nir_fexp(nb, x),
+                                                  nir_fexp(nb, nir_fneg(nb, x))),
+                                     nir_fadd(nb, nir_fexp(nb, x),
+                                              nir_fexp(nb, nir_fneg(nb, x)))),
+                            flushed);
       break;
    }
 
