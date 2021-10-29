@@ -66,6 +66,7 @@ pan_nir_emit_combined_store(nir_builder *b,
                 rt0_store ? rt0_store->src[1].ssa : zero,
                 stores[0] ? stores[0]->src[0].ssa : zero,
                 stores[1] ? stores[1]->src[0].ssa : zero,
+                zero4,
         };
 
         for (int i = 0; i < ARRAY_SIZE(src); ++i)
