@@ -903,6 +903,9 @@ enum gl_access_qualifier
 
    /** Use as little cache space as possible. */
    ACCESS_STREAM_CACHE_POLICY = (1 << 7),
+
+   /** Execute instruction also in helpers. */
+   ACCESS_INCLUDE_HELPERS = (1 << 8),
 };
 
 /**

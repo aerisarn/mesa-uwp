@@ -577,7 +577,7 @@ typedef struct nir_variable {
        * Access flags for memory variables (SSBO/global), image uniforms, and
        * bindless images in uniforms/inputs/outputs.
        */
-      unsigned access:8;
+      unsigned access:9;
 
       /**
        * Descriptor set binding for sampler or UBO.
