@@ -1019,6 +1019,7 @@ static void
 update_graph_and_reg_classes_for_inst(struct v3d_compile *c,
                                       int *acc_nodes,
                                       int *implicit_rf_nodes,
+                                      int last_ldvary_ip,
                                       struct qinst *inst)
 {
         int32_t ip = inst->ip;
@@ -1122,6 +1123,25 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c,
                                         inst->src[0].index);
                         break;
                 }
+                }
+        }
+
+        /* Don't allocate rf0 to temps that cross ranges where we have
+         * live implicit rf0 writes from ldvary. We can identify these
+         * by tracking the last ldvary instruction and explicit reads
+         * of rf0.
+         */
+        if (c->devinfo->ver >= 71 &&
+            ((inst->src[0].file == QFILE_REG && inst->src[0].index == 0) ||
+              (vir_get_nsrc(inst) > 1 &&
+               inst->src[1].file == QFILE_REG && inst->src[1].index == 0))) {
+                for (int i = 0; i < c->num_temps; i++) {
+                        if (c->temp_start[i] < ip &&
+                            c->temp_end[i] > last_ldvary_ip) {
+                                        ra_add_node_interference(c->g,
+                                                                 temp_to_node(c, i),
+                                                                 implicit_rf_nodes[0]);
+                        }
                 }
         }
 
@@ -1270,10 +1290,27 @@ v3d_register_allocate(struct v3d_compile *c)
          * interferences.
          */
         int ip = 0;
+        int last_ldvary_ip = -1;
         vir_for_each_inst_inorder(inst, c) {
                 inst->ip = ip++;
+
+                /* ldunif(a) always write to a temporary, so we have
+                 * liveness info available to decide if rf0 is
+                 * available for them, however, ldvary is different:
+                 * it always writes to rf0 directly so we don't have
+                 * liveness information for its implicit rf0 write.
+                 *
+                 * That means the allocator may assign rf0 to a temp
+                 * that is defined while an implicit rf0 write from
+                 * ldvary is still live. We fix that by manually
+                 * tracking rf0 live ranges from ldvary instructions.
+                 */
+                if (inst->qpu.sig.ldvary)
+                        last_ldvary_ip = ip;
+
                 update_graph_and_reg_classes_for_inst(c, acc_nodes,
-                                                      implicit_rf_nodes, inst);
+                                                      implicit_rf_nodes,
+                                                      last_ldvary_ip, inst);
         }
 
         /* Set the register classes for all our temporaries in the graph */
