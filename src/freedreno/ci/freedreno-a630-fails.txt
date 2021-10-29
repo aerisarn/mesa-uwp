@@ -77,11 +77,6 @@ shaders@point-vertex-id gl_vertexid divisor,Crash
 shaders@point-vertex-id gl_vertexid gl_instanceid,Crash
 shaders@point-vertex-id gl_vertexid gl_instanceid divisor,Crash
 
-# "nir_src_comp_as_uint: Assertion `nir_src_is_const(src)' failed." looking up image
-spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non-const-uniform-index2,Crash
-spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non-const-uniform-index,Crash
-spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-non-const-uniform-index,Crash
-
 spec@arb_compute_shader@execution@border-color,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
@@ -144,9 +139,6 @@ spec@arb_sample_shading@samplemask 4 all@sample mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4,Fail
 spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
-
-# "nir_src_comp_as_uint: Assertion `nir_src_is_const(src)' failed." looking up image
-spec@arb_shader_image_load_store@indexing,Crash
 
 spec@arb_shader_storage_buffer_object@array-ssbo-auto-binding,Fail
 spec@arb_shader_storage_buffer_object@linker@instance-matching-shader-storage-blocks-member-array-size-mismatch,Fail

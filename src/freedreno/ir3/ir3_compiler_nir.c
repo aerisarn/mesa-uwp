@@ -1301,6 +1301,16 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
       return;
    }
 
+   /* The sparse set of texture descriptors for non-coherent load_images means we can't do indirection, so
+    * fall back to coherent load.
+    */
+   if (ctx->compiler->gen >= 5 &&
+       !ir3_bindless_resource(intr->src[0]) &&
+       !nir_src_is_const(intr->src[0])) {
+      ctx->funcs->emit_intrinsic_load_image(ctx, intr, dst);
+      return;
+   }
+
    struct ir3_block *b = ctx->block;
    struct tex_src_info info = get_image_samp_tex_src(ctx, intr);
    struct ir3_instruction *sam;
