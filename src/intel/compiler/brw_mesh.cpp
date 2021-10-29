@@ -224,6 +224,261 @@ brw_nir_lower_tue_inputs(nir_shader *nir, const brw_tue_map *map)
                 nir_lower_io_lower_64bit_to_32);
 }
 
+/* Mesh URB Entry consists of an initial section
+ *
+ *  - Primitive Count
+ *  - Primitive Indices (from 0 to Max-1)
+ *  - Padding to 32B if needed
+ *
+ * optionally followed by a section for per-primitive data,
+ * in which each primitive (from 0 to Max-1) gets
+ *
+ *  - Primitive Header (e.g. ViewportIndex)
+ *  - Primitive Custom Attributes
+ *
+ * then followed by a section for per-vertex data
+ *
+ *  - Vertex Header (e.g. Position)
+ *  - Vertex Custom Attributes
+ *
+ * Each per-element section has a pitch and a starting offset.  All the
+ * individual attributes offsets in start_dw are considering the first entry
+ * of the section (i.e. where the Position for first vertex, or ViewportIndex
+ * for first primitive).  Attributes for other elements are calculated using
+ * the pitch.
+ */
+static void
+brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
+{
+   memset(map, 0, sizeof(*map));
+
+   for (int i = 0; i < VARYING_SLOT_MAX; i++)
+      map->start_dw[i] = -1;
+
+   unsigned vertices_per_primitive = 0;
+   switch (nir->info.mesh.primitive_type) {
+   case GL_POINTS:
+      vertices_per_primitive = 1;
+      break;
+   case GL_LINES:
+      vertices_per_primitive = 2;
+      break;
+   case GL_TRIANGLES:
+      vertices_per_primitive = 3;
+      break;
+   default:
+      unreachable("invalid primitive type");
+   }
+
+   map->max_primitives = nir->info.mesh.max_primitives_out;
+   map->max_vertices = nir->info.mesh.max_vertices_out;
+
+   uint64_t outputs_written = nir->info.outputs_written;
+
+   /* Assign initial section. */
+   if (BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) & outputs_written) {
+      map->start_dw[VARYING_SLOT_PRIMITIVE_COUNT] = 0;
+      outputs_written &= ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT);
+   }
+   if (BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES) & outputs_written) {
+      map->start_dw[VARYING_SLOT_PRIMITIVE_INDICES] = 1;
+      outputs_written &= ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
+   }
+
+   /* One dword for primitives count then K extra dwords for each
+    * primitive. Note this should change when we implement other index types.
+    */
+   const unsigned primitive_list_size_dw = 1 + vertices_per_primitive * map->max_primitives;
+
+   /* TODO(mesh): Multiview. */
+   map->per_primitive_header_size_dw = 0;
+
+   map->per_primitive_start_dw = ALIGN(primitive_list_size_dw, 8);
+
+   unsigned next_primitive = map->per_primitive_start_dw +
+                             map->per_primitive_header_size_dw;
+   u_foreach_bit64(location, outputs_written & nir->info.per_primitive_outputs) {
+      assert(map->start_dw[location] == -1);
+
+      assert(location >= VARYING_SLOT_VAR0);
+      map->start_dw[location] = next_primitive;
+      next_primitive += 4;
+   }
+
+   map->per_primitive_data_size_dw = next_primitive -
+                                     map->per_primitive_start_dw -
+                                     map->per_primitive_header_size_dw;
+   map->per_primitive_pitch_dw = ALIGN(map->per_primitive_header_size_dw +
+                                       map->per_primitive_data_size_dw, 8);
+
+   /* TODO(mesh): Multiview. */
+   map->per_vertex_header_size_dw = 8;
+   map->per_vertex_start_dw = ALIGN(map->per_primitive_start_dw +
+                                    map->per_primitive_pitch_dw * map->max_primitives, 8);
+
+   unsigned next_vertex = map->per_vertex_start_dw +
+                          map->per_vertex_header_size_dw;
+   u_foreach_bit64(location, outputs_written & ~nir->info.per_primitive_outputs) {
+      assert(map->start_dw[location] == -1);
+
+      unsigned start;
+      switch (location) {
+      case VARYING_SLOT_PSIZ:
+         start = map->per_vertex_start_dw + 3;
+         break;
+      case VARYING_SLOT_POS:
+         start = map->per_vertex_start_dw + 4;
+         break;
+      default:
+         assert(location >= VARYING_SLOT_VAR0);
+         start = next_vertex;
+         next_vertex += 4;
+         break;
+      }
+      map->start_dw[location] = start;
+   }
+
+   map->per_vertex_data_size_dw = next_vertex -
+                                  map->per_vertex_start_dw -
+                                  map->per_vertex_header_size_dw;
+   map->per_vertex_pitch_dw = ALIGN(map->per_vertex_header_size_dw +
+                                    map->per_vertex_data_size_dw, 8);
+
+   map->size_dw =
+      map->per_vertex_start_dw + map->per_vertex_pitch_dw * map->max_vertices;
+
+   assert(map->size_dw % 8 == 0);
+}
+
+static void
+brw_print_mue_map(FILE *fp, const struct brw_mue_map *map)
+{
+   fprintf(fp, "MUE map (%d dwords, %d primitives, %d vertices)\n",
+           map->size_dw, map->max_primitives, map->max_vertices);
+   fprintf(fp, "  %4d: VARYING_SLOT_PRIMITIVE_COUNT\n",
+           map->start_dw[VARYING_SLOT_PRIMITIVE_COUNT]);
+   fprintf(fp, "  %4d: VARYING_SLOT_PRIMITIVE_INDICES\n",
+           map->start_dw[VARYING_SLOT_PRIMITIVE_INDICES]);
+
+   fprintf(fp, "  ----- per primitive (start %d, header_size %d, data_size %d, pitch %d)\n",
+           map->per_primitive_start_dw,
+           map->per_primitive_header_size_dw,
+           map->per_primitive_data_size_dw,
+           map->per_primitive_pitch_dw);
+
+   for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
+      if (map->start_dw[i] < 0)
+         continue;
+      const unsigned offset = map->start_dw[i];
+      if (offset >= map->per_primitive_start_dw &&
+          offset < map->per_primitive_start_dw + map->per_primitive_pitch_dw) {
+         fprintf(fp, "  %4d: %s\n", offset,
+                 gl_varying_slot_name_for_stage((gl_varying_slot)i,
+                                                MESA_SHADER_MESH));
+      }
+   }
+
+   fprintf(fp, "  ----- per vertex (start %d, header_size %d, data_size %d, pitch %d)\n",
+           map->per_vertex_start_dw,
+           map->per_vertex_header_size_dw,
+           map->per_vertex_data_size_dw,
+           map->per_vertex_pitch_dw);
+
+   for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
+      if (map->start_dw[i] < 0)
+         continue;
+      const unsigned offset = map->start_dw[i];
+      if (offset >= map->per_vertex_start_dw &&
+          offset < map->per_vertex_start_dw + map->per_vertex_pitch_dw) {
+         fprintf(fp, "  %4d: %s\n", offset,
+                 gl_varying_slot_name_for_stage((gl_varying_slot)i,
+                                                MESA_SHADER_MESH));
+      }
+   }
+
+   fprintf(fp, "\n");
+}
+
+static void
+brw_nir_lower_mue_outputs(nir_shader *nir, const struct brw_mue_map *map)
+{
+   nir_foreach_shader_out_variable(var, nir) {
+      int location = var->data.location;
+      assert(location >= 0);
+      assert(map->start_dw[location] != -1);
+      var->data.driver_location = map->start_dw[location];
+   }
+
+   nir_lower_io(nir, nir_var_shader_out, type_size_vec4,
+                nir_lower_io_lower_64bit_to_32);
+}
+
+static void
+brw_nir_adjust_offset_for_arrayed_indices(nir_shader *nir, const struct brw_mue_map *map)
+{
+   /* TODO(mesh): Check if we need to inject extra vertex header / primitive
+    * setup.  If so, we should add them together some required value for
+    * vertex/primitive.
+    */
+
+   /* Remap per_vertex and per_primitive offsets using the extra source and the pitch. */
+   nir_foreach_function(function, nir) {
+      if (function->impl) {
+         nir_builder b;
+         nir_builder_init(&b, function->impl);
+
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type != nir_instr_type_intrinsic)
+                  continue;
+               nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+               switch (intrin->intrinsic) {
+               case nir_intrinsic_load_per_vertex_output:
+               case nir_intrinsic_store_per_vertex_output: {
+                  const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_vertex_output;
+                  nir_src *index_src = &intrin->src[is_load ? 0 : 1];
+                  nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
+
+                  assert(index_src->is_ssa);
+                  b.cursor = nir_before_instr(&intrin->instr);
+                  nir_ssa_def *offset =
+                     nir_iadd(&b,
+                              offset_src->ssa,
+                              nir_imul_imm(&b, index_src->ssa, map->per_vertex_pitch_dw));
+                  nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+                  break;
+               }
+
+               case nir_intrinsic_load_per_primitive_output:
+               case nir_intrinsic_store_per_primitive_output: {
+                  const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_primitive_output;
+                  nir_src *index_src = &intrin->src[is_load ? 0 : 1];
+                  nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
+
+                  assert(index_src->is_ssa);
+                  b.cursor = nir_before_instr(&intrin->instr);
+
+                  assert(index_src->is_ssa);
+                  nir_ssa_def *offset =
+                     nir_iadd(&b,
+                              offset_src->ssa,
+                              nir_imul_imm(&b, index_src->ssa, map->per_primitive_pitch_dw));
+                  nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+                  break;
+               }
+
+               default:
+                  /* Nothing to do. */
+                  break;
+               }
+            }
+         }
+         nir_metadata_preserve(function->impl, nir_metadata_none);
+      }
+   }
+}
+
 const unsigned *
 brw_compile_mesh(const struct brw_compiler *compiler,
                  void *mem_ctx,
@@ -246,6 +501,8 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    /* TODO(mesh): Use other index formats (that are more compact) for optimization. */
    prog_data->index_format = BRW_INDEX_FORMAT_U32;
 
+   brw_compute_mue_map(nir, &prog_data->map);
+
    const unsigned required_dispatch_width =
       brw_required_dispatch_width(&nir->info, key->base.subgroup_size_type);
 
@@ -263,6 +520,8 @@ brw_compile_mesh(const struct brw_compiler *compiler,
       brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true /* is_scalar */);
 
       NIR_PASS_V(shader, brw_nir_lower_tue_inputs, params->tue_map);
+      NIR_PASS_V(shader, brw_nir_lower_mue_outputs, &prog_data->map);
+      NIR_PASS_V(shader, brw_nir_adjust_offset_for_arrayed_indices, &prog_data->map);
       NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
 
       brw_postprocess_nir(shader, compiler, true /* is_scalar */, debug_enabled,
@@ -300,6 +559,8 @@ brw_compile_mesh(const struct brw_compiler *compiler,
          fprintf(stderr, "Mesh Input ");
          brw_print_tue_map(stderr, params->tue_map);
       }
+      fprintf(stderr, "Mesh Output ");
+      brw_print_mue_map(stderr, &prog_data->map);
    }
 
    fs_generator g(compiler, params->log_data, mem_ctx,
@@ -590,6 +851,11 @@ fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *ins
    fs_reg src = get_nir_src(instr->src[0]);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
 
+   /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
+    * the non-array-index offset, we could use to decide if we can perform
+    * either one or (at most) two writes instead one per component.
+    */
+
    if (nir_src_is_const(*offset_nir_src))
       emit_urb_direct_writes(bld, instr, src);
    else
@@ -601,6 +867,11 @@ fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *inst
 {
    fs_reg dest = get_nir_dest(instr->dest);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
+
+   /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
+    * the non-array-index offset, we could use to decide if we can perform
+    * a single large aligned read instead one per component.
+    */
 
    if (nir_src_is_const(*offset_nir_src))
       emit_urb_direct_reads(bld, instr, dest);
@@ -639,13 +910,13 @@ fs_visitor::nir_emit_mesh_intrinsic(const fs_builder &bld,
    case nir_intrinsic_store_per_primitive_output:
    case nir_intrinsic_store_per_vertex_output:
    case nir_intrinsic_store_output:
-   case nir_intrinsic_load_per_vertex_output:
-   case nir_intrinsic_load_per_primitive_output:
-   case nir_intrinsic_load_output:
-      /* TODO(mesh): Mesh Output. */
+      emit_task_mesh_store(bld, instr);
       break;
 
    case nir_intrinsic_load_input:
+   case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_load_per_primitive_output:
+   case nir_intrinsic_load_output:
       emit_task_mesh_load(bld, instr);
       break;
 

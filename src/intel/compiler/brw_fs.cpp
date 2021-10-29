@@ -1850,6 +1850,10 @@ fs_visitor::assign_curb_setup()
 void
 brw_compute_urb_setup_index(struct brw_wm_prog_data *wm_prog_data)
 {
+   /* TODO(mesh): Review usage of this in the context of Mesh, we may want to
+    * skip per-primitive attributes here.
+    */
+
    /* Make sure uint8_t is sufficient */
    STATIC_ASSERT(VARYING_SLOT_MAX <= 0xff);
    uint8_t index = 0;
