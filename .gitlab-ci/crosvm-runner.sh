@@ -19,7 +19,7 @@ echo $@ > $DEQP_TEMP_DIR/crosvm-script.sh
 unset DISPLAY
 unset XDG_RUNTIME_DIR
 
-/usr/sbin/iptables-legacy  -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+/usr/sbin/iptables-legacy -w -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # Send output from guest to host

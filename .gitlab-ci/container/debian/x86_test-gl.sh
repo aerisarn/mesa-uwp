@@ -58,6 +58,7 @@ apt-get install -y --no-remove \
       libclang-cpp11 \
       libcap2 \
       libegl1 \
+      libepoxy-dev \
       libfdt1 \
       libllvmspirvlib11 \
       libxcb-shm0 \
@@ -71,6 +72,16 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/container/container_pre_build.sh
 
+############### Build libdrm
+
+. .gitlab-ci/container/build-libdrm.sh
+
+############### Build Crosvm
+
+. .gitlab-ci/container/build-rust.sh
+. .gitlab-ci/container/build-crosvm.sh
+rm -rf /root/.cargo
+
 ############### Build kernel
 
 export DEFCONFIG="arch/x86/configs/x86_64_defconfig"
@@ -81,27 +92,13 @@ export DEBIAN_ARCH=amd64
 mkdir -p /lava-files/
 . .gitlab-ci/container/build-kernel.sh
 
-############### Build libdrm
-
-. .gitlab-ci/container/build-libdrm.sh
-
 ############### Build libclc
 
 . .gitlab-ci/container/build-libclc.sh
 
-############### Build virglrenderer
-
-. .gitlab-ci/container/build-virglrenderer.sh
-
 ############### Build piglit
 
 PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON -DPIGLIT_BUILD_DMA_BUF_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
-
-############### Build Crosvm
-
-. .gitlab-ci/container/build-rust.sh
-. .gitlab-ci/container/build-crosvm.sh
-rm -rf /root/.cargo
 
 ############### Build dEQP GL
 
