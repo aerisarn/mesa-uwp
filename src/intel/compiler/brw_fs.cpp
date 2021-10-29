@@ -2572,6 +2572,9 @@ fs_visitor::opt_algebraic()
          if (inst->src[1].file != IMM)
             continue;
 
+         if (brw_reg_type_is_floating_point(inst->src[1].type))
+            break;
+
          /* a * 1.0 = a */
          if (inst->src[1].is_one()) {
             inst->opcode = BRW_OPCODE_MOV;
