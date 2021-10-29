@@ -295,7 +295,7 @@ swr_blit(struct pipe_context *pipe, const struct pipe_blit_info *blit_info)
       info.src.resource = resolve_target;
    }
 
-   if (util_try_blit_via_copy_region(pipe, &info)) {
+   if (util_try_blit_via_copy_region(pipe, &info, ctx->render_cond_query != NULL)) {
       return; /* done */
    }
 

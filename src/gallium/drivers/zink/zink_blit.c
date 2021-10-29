@@ -285,7 +285,7 @@ zink_blit(struct pipe_context *pctx,
           !ctx->render_condition_active)
          new_info.render_condition_enable = false;
 
-      if (util_try_blit_via_copy_region(pctx, &new_info))
+      if (util_try_blit_via_copy_region(pctx, &new_info, ctx->render_condition_active))
          return;
    }
 

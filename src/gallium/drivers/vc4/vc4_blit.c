@@ -402,7 +402,7 @@ fallback:
         /* Do an immediate SW fallback, since the render blit path
          * would just recurse.
          */
-        ok = util_try_blit_via_copy_region(pctx, info);
+        ok = util_try_blit_via_copy_region(pctx, info, false);
         assert(ok); (void)ok;
 
         return true;
@@ -450,7 +450,7 @@ vc4_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
                 return;
 
         if (info.mask & PIPE_MASK_S) {
-                if (util_try_blit_via_copy_region(pctx, &info))
+                if (util_try_blit_via_copy_region(pctx, &info, false))
                         return;
 
                 info.mask &= ~PIPE_MASK_S;

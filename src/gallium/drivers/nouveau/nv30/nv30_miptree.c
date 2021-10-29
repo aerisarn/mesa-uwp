@@ -229,7 +229,7 @@ nv30_blit(struct pipe_context *pipe,
       return;
    }
 
-   if (util_try_blit_via_copy_region(pipe, &info)) {
+   if (util_try_blit_via_copy_region(pipe, &info, nv30->render_cond_query != NULL)) {
       return; /* done */
    }
 

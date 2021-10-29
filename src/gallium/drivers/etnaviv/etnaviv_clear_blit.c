@@ -100,7 +100,7 @@ etna_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
    if (ctx->blit(pctx, &info))
       return;
 
-   if (util_try_blit_via_copy_region(pctx, &info))
+   if (util_try_blit_via_copy_region(pctx, &info, false))
       return;
 
    if (info.mask & PIPE_MASK_S) {

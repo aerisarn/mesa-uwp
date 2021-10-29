@@ -122,7 +122,7 @@ static void lp_blit(struct pipe_context *pipe,
    if (blit_info->render_condition_enable && !llvmpipe_check_render_cond(lp))
       return;
 
-   if (util_try_blit_via_copy_region(pipe, &info)) {
+   if (util_try_blit_via_copy_region(pipe, &info, lp->render_cond_query != NULL)) {
       return; /* done */
    }
 

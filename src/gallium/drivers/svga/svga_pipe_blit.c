@@ -322,7 +322,7 @@ can_blit_via_svga_copy_region(struct svga_context *svga,
    local_blit.dst.format = local_blit.src.format;
    if (local_blit.filter == PIPE_TEX_FILTER_LINEAR)
       local_blit.filter = PIPE_TEX_FILTER_NEAREST;
-   if (!util_can_blit_via_copy_region(&local_blit, TRUE))
+   if (!util_can_blit_via_copy_region(&local_blit, TRUE, svga->render_condition))
       return false;
 
    /* For depth+stencil formats, copy with mask != PIPE_MASK_ZS is not
@@ -752,8 +752,8 @@ static bool
 try_cpu_copy_region(struct svga_context *svga,
                     const struct pipe_blit_info *blit)
 {
-   if (util_can_blit_via_copy_region(blit, TRUE) ||
-       util_can_blit_via_copy_region(blit, FALSE)) {
+   if (util_can_blit_via_copy_region(blit, TRUE, svga->render_condition) ||
+       util_can_blit_via_copy_region(blit, FALSE, svga->render_condition)) {
 
       if (svga->render_condition && blit->render_condition_enable) {
          debug_warning("CPU copy_region doesn't support "
