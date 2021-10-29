@@ -252,6 +252,7 @@ trace_screen_is_format_supported(struct pipe_screen *_screen,
    trace_dump_arg(format, format);
    trace_dump_arg(int, target);
    trace_dump_arg(uint, sample_count);
+   trace_dump_arg(uint, storage_sample_count);
    trace_dump_arg(uint, tex_usage);
 
    result = screen->is_format_supported(screen, format, target, sample_count,
