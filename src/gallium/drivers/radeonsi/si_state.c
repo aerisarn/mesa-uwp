@@ -4509,9 +4509,13 @@ static uint32_t si_translate_border_color(struct si_context *sctx,
 
    if (i >= SI_MAX_BORDER_COLORS) {
       /* Getting 4096 unique border colors is very unlikely. */
-      fprintf(stderr, "radeonsi: The border color table is full. "
-                      "Any new border colors will be just black. "
-                      "Please file a bug.\n");
+      static bool printed;
+      if (!printed) {
+         fprintf(stderr, "radeonsi: The border color table is full. "
+                         "Any new border colors will be just black. "
+                         "This is a hardware limitation.\n");
+         printed = true;
+      }
       return S_008F3C_BORDER_COLOR_TYPE(V_008F3C_SQ_TEX_BORDER_COLOR_TRANS_BLACK);
    }
 
