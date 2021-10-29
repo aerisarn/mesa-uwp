@@ -352,9 +352,28 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       break;
    }
 
-   case GLSLstd450Step:
-      dest->def = nir_sge(nb, src[1], src[0]);
+   case GLSLstd450Step: {
+      /* The SPIR-V Extended Instructions for GLSL spec says:
+       *
+       *    Result is 0.0 if x < edge; otherwise result is 1.0.
+       *
+       * Here src[1] is x, and src[0] is edge.  The direct implementation is
+       *
+       *    bcsel(src[1] < src[0], 0.0, 1.0)
+       *
+       * This is effectively b2f(!(src1 < src0)).  Previously this was
+       * implemented using sge(src1, src0), but that produces incorrect
+       * results for NaN.  Instead, we use the identity b2f(!x) = 1 - b2f(x).
+       */
+      const bool exact = nb->exact;
+      nb->exact = true;
+
+      nir_ssa_def *cmp = nir_slt(nb, src[1], src[0]);
+
+      nb->exact = exact;
+      dest->def = nir_fsub(nb, nir_imm_floatN_t(nb, 1.0f, cmp->bit_size), cmp);
       break;
+   }
 
    case GLSLstd450Length:
       dest->def = nir_fast_length(nb, src[0]);
