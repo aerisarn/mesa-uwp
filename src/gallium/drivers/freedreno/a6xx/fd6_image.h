@@ -32,7 +32,7 @@
 
 void fd6_emit_image_tex(struct fd_ringbuffer *ring,
                         const struct pipe_image_view *pimg) assert_dt;
-void fd6_emit_ssbo_tex(struct fd_ringbuffer *ring,
+void fd6_emit_ssbo_tex(struct fd_context *ctx, struct fd_ringbuffer *ring,
                        const struct pipe_shader_buffer *pbuf) assert_dt;
 
 struct ir3_shader_variant;

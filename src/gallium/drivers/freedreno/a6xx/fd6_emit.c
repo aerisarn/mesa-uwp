@@ -432,7 +432,7 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
          for (unsigned i = 0; i < mapping->num_tex; i++) {
             unsigned idx = mapping->tex_to_image[i];
             if (idx & IBO_SSBO) {
-               fd6_emit_ssbo_tex(state, &buf->sb[idx & ~IBO_SSBO]);
+               fd6_emit_ssbo_tex(ctx, state, &buf->sb[idx & ~IBO_SSBO]);
             } else {
                fd6_emit_image_tex(state, &img->si[idx]);
             }
