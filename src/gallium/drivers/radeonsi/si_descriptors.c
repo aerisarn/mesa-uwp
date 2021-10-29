@@ -371,6 +371,10 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
                       */
                      S_00A018_WRITE_COMPRESS_ENABLE(ac_surface_supports_dcc_image_stores(sscreen->info.chip_class, &tex->surface) &&
                                                     (access & SI_IMAGE_ACCESS_ALLOW_DCC_STORE));
+
+         /* TC-compatible MSAA HTILE requires ITERATE_256. */
+         if (tex->is_depth && tex->buffer.b.b.nr_samples >= 2)
+            state[6] |= S_00A018_ITERATE_256(1);
       }
 
       state[7] = meta_va >> 16;

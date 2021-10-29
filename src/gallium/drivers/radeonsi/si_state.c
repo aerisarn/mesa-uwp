@@ -3293,10 +3293,10 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, &tex->buffer, RADEON_USAGE_READWRITE |
                                 (zb->base.texture->nr_samples > 1 ? RADEON_PRIO_DEPTH_BUFFER_MSAA
                                                                   : RADEON_PRIO_DEPTH_BUFFER));
+      bool tc_compat_htile = vi_tc_compat_htile_enabled(tex, zb->base.u.tex.level, PIPE_MASK_ZS);
 
       /* Set fields dependent on tc_compatile_htile. */
-      if (sctx->chip_class >= GFX9 &&
-          vi_tc_compat_htile_enabled(tex, zb->base.u.tex.level, PIPE_MASK_ZS)) {
+      if (sctx->chip_class >= GFX9 && tc_compat_htile) {
          unsigned max_zplanes = 4;
 
          if (tex->db_render_format == PIPE_FORMAT_Z16_UNORM && tex->buffer.b.b.nr_samples > 1)
@@ -3305,8 +3305,17 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          db_z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes + 1);
 
          if (sctx->chip_class >= GFX10) {
-            db_z_info |= S_028040_ITERATE_FLUSH(1);
-            db_stencil_info |= S_028044_ITERATE_FLUSH(!tex->htile_stencil_disabled);
+            bool iterate256 = tex->buffer.b.b.nr_samples >= 2;
+            db_z_info |= S_028040_ITERATE_FLUSH(1) |
+                         S_028040_ITERATE_256(iterate256);
+            db_stencil_info |= S_028044_ITERATE_FLUSH(!tex->htile_stencil_disabled) |
+                               S_028044_ITERATE_256(iterate256);
+
+            /* Workaround for a DB hang when ITERATE_256 is set to 1. Only affects 4X MSAA D/S images. */
+            if (sctx->screen->info.has_two_planes_iterate256_bug && iterate256 &&
+                !tex->htile_stencil_disabled && tex->buffer.b.b.nr_samples == 4) {
+               max_zplanes = 1;
+            }
          } else {
             db_z_info |= S_028038_ITERATE_FLUSH(1);
             db_stencil_info |= S_02803C_ITERATE_FLUSH(1);

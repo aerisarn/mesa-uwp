@@ -1232,7 +1232,6 @@ si_texture_create_with_modifier(struct pipe_screen *screen,
       sscreen->info.family != CHIP_TONGA && sscreen->info.family != CHIP_ICELAND &&
       (templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY) &&
       !(sscreen->debug_flags & DBG(NO_HYPERZ)) && !is_flushed_depth &&
-      templ->nr_samples <= 1 && /* TC-compat HTILE is less efficient with MSAA */
       is_zs;
    enum radeon_surf_mode tile_mode = si_choose_tiling(sscreen, templ, tc_compatible_htile);
 
