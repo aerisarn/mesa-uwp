@@ -1875,13 +1875,15 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         enum midgard_rt_id rt;
 
-                        unsigned reg_z = ~0, reg_s = ~0;
+                        unsigned reg_z = ~0, reg_s = ~0, reg_2 = ~0;
                         if (combined) {
                                 unsigned writeout = nir_intrinsic_component(instr);
                                 if (writeout & PAN_WRITEOUT_Z)
                                         reg_z = nir_src_index(ctx, &instr->src[2]);
                                 if (writeout & PAN_WRITEOUT_S)
                                         reg_s = nir_src_index(ctx, &instr->src[3]);
+                                if (writeout & PAN_WRITEOUT_2)
+                                        reg_2 = nir_src_index(ctx, &instr->src[4]);
 
                                 if (writeout & PAN_WRITEOUT_C)
                                         rt = MIDGARD_COLOR_RT0;
@@ -1897,24 +1899,22 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                                 rt = MIDGARD_COLOR_RT0 + var->data.location -
                                      FRAG_RESULT_DATA0;
+                        }
 
-                                /* Dual-source blend writeout is done by leaving the
-                                 * value in r2 for the blend shader to use. */
-                                if (var->data.index) {
-                                        if (instr->src[0].is_ssa) {
-                                                emit_explicit_constant(ctx, reg, reg);
+                        /* Dual-source blend writeout is done by leaving the
+                         * value in r2 for the blend shader to use. */
+                        if (~reg_2) {
+                                if (instr->src[4].is_ssa) {
+                                        emit_explicit_constant(ctx, reg_2, reg_2);
 
-                                                unsigned out = make_compiler_temp(ctx);
+                                        unsigned out = make_compiler_temp(ctx);
 
-                                                midgard_instruction ins = v_mov(reg, out);
-                                                emit_mir_instruction(ctx, ins);
+                                        midgard_instruction ins = v_mov(reg_2, out);
+                                        emit_mir_instruction(ctx, ins);
 
-                                                ctx->blend_src1 = out;
-                                        } else {
-                                                ctx->blend_src1 = reg;
-                                        }
-
-                                        break;
+                                        ctx->blend_src1 = out;
+                                } else {
+                                        ctx->blend_src1 = reg_2;
                                 }
                         }
 

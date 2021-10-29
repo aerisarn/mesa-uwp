@@ -574,11 +574,11 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         bool emit_blend = writeout & (PAN_WRITEOUT_C);
         bool emit_zs = writeout & (PAN_WRITEOUT_Z | PAN_WRITEOUT_S);
 
-        const nir_variable *var = NULL;
         unsigned loc = ~0;
 
         if (!combined) {
-                var = nir_find_variable_with_driver_location(b->shader->nir,
+                const nir_variable *var =
+                        nir_find_variable_with_driver_location(b->shader->nir,
                                         nir_var_shader_out, nir_intrinsic_base(instr));
                 assert(var);
 
@@ -586,6 +586,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         }
 
         bi_index src0 = bi_src_index(&instr->src[0]);
+        bi_index src1 = combined ? bi_src_index(&instr->src[4]) : bi_null();
 
         /* By ISA convention, the coverage mask is stored in R60. The store
          * itself will be handled by a subsequent ATEST instruction */
@@ -600,16 +601,14 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
 
         /* Dual-source blending is implemented by putting the color in
          * registers r4-r7. */
-        if (var && var->data.index) {
-                unsigned count = nir_src_num_components(instr->src[0]);
+        if (writeout & PAN_WRITEOUT_2) {
+                unsigned count = nir_src_num_components(instr->src[4]);
 
                 for (unsigned i = 0; i < count; ++i)
-                        bi_mov_i32_to(b, bi_register(4 + i), bi_word(src0, i));
+                        bi_mov_i32_to(b, bi_register(4 + i), bi_word(src1, i));
 
                 b->shader->info.bifrost->blend_src1_type =
-                        nir_intrinsic_src_type(instr);
-
-                return;
+                        nir_intrinsic_dest_type(instr);
         }
 
         /* Emit ATEST if we have to, note ATEST requires a floating-point alpha
