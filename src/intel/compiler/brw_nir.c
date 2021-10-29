@@ -921,12 +921,18 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
    NIR_PASS_V(producer, nir_opt_combine_stores, nir_var_shader_out);
    NIR_PASS_V(consumer, nir_lower_io_to_vector, nir_var_shader_in);
 
-   if (producer->info.stage != MESA_SHADER_TESS_CTRL) {
+   if (producer->info.stage != MESA_SHADER_TESS_CTRL &&
+       producer->info.stage != MESA_SHADER_MESH &&
+       producer->info.stage != MESA_SHADER_TASK) {
       /* Calling lower_io_to_vector creates output variable writes with
        * write-masks.  On non-TCS outputs, the back-end can't handle it and we
        * need to call nir_lower_io_to_temporaries to get rid of them.  This,
        * in turn, creates temporary variables and extra copy_deref intrinsics
        * that we need to clean up.
+       *
+       * Note Mesh/Task don't support I/O as temporaries (I/O is shared
+       * between whole workgroup, possibly using multiple HW threads). For
+       * those write-mask in output is handled by I/O lowering.
        */
       NIR_PASS_V(producer, nir_lower_io_to_temporaries,
                  nir_shader_get_entrypoint(producer), true, false);
