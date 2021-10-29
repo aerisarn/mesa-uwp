@@ -1,4 +1,3 @@
-# coding=utf-8
 COPYRIGHT = """\
 /*
  * Copyright 2020 Intel Corporation

@@ -1,4 +1,3 @@
-# coding=utf-8
 COPYRIGHT=u"""
 /* Copyright © 2021 Intel Corporation
  *

@@ -1,4 +1,3 @@
-# coding=utf-8
 COPYRIGHT=u"""
 /* Copyright © 2015-2021 Intel Corporation
  * Copyright © 2021 Collabora, Ltd.
