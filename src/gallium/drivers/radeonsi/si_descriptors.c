@@ -931,8 +931,11 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
    struct pipe_surface *surf = NULL;
 
    /* si_texture_disable_dcc can get us here again. */
-   if (sctx->blitter_running)
+   if (sctx->in_update_ps_colorbuf0_slot) {
+      assert(!sctx->ps_uses_fbfetch || sctx->framebuffer.state.cbufs[0]);
       return;
+   }
+   sctx->in_update_ps_colorbuf0_slot = true;
 
    /* See whether FBFETCH is used and color buffer 0 is set. */
    if (sctx->shader.ps.cso && sctx->shader.ps.cso->info.base.fs.uses_fbfetch_output &&
@@ -940,8 +943,11 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
       surf = sctx->framebuffer.state.cbufs[0];
 
    /* Return if FBFETCH transitions from disabled to disabled. */
-   if (!buffers->buffers[slot] && !surf)
+   if (!buffers->buffers[slot] && !surf) {
+      assert(!sctx->ps_uses_fbfetch);
+      sctx->in_update_ps_colorbuf0_slot = false;
       return;
+   }
 
    sctx->ps_uses_fbfetch = surf != NULL;
    si_update_ps_iter_samples(sctx);
@@ -989,6 +995,7 @@ void si_update_ps_colorbuf0_slot(struct si_context *sctx)
    }
 
    sctx->descriptors_dirty |= 1u << SI_DESCS_INTERNAL;
+   sctx->in_update_ps_colorbuf0_slot = false;
 }
 
 /* SAMPLER STATES */
