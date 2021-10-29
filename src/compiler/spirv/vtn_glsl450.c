@@ -332,9 +332,22 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       break;
 
    case GLSLstd450Modf: {
+      nir_ssa_def *inf = nir_imm_floatN_t(&b->nb, INFINITY, src[0]->bit_size);
+      nir_ssa_def *sign_bit =
+         nir_imm_intN_t(&b->nb, (uint64_t)1 << (src[0]->bit_size - 1),
+                        src[0]->bit_size);
       nir_ssa_def *sign = nir_fsign(nb, src[0]);
       nir_ssa_def *abs = nir_fabs(nb, src[0]);
-      dest->def = nir_fmul(nb, sign, nir_ffract(nb, abs));
+
+      /* NaN input should produce a NaN results, and ±Inf input should provide
+       * ±0 result.  The fmul(sign(x), ffract(x)) calculation will already
+       * produce the expected NaN.  To get ±0, directly compare for equality
+       * with Inf instead of using fisfinite (which is false for NaN).
+       */
+      dest->def = nir_bcsel(nb,
+                            nir_ieq(nb, abs, inf),
+                            nir_iand(nb, src[0], sign_bit),
+                            nir_fmul(nb, sign, nir_ffract(nb, abs)));
 
       struct vtn_pointer *i_ptr = vtn_value(b, w[6], vtn_value_type_pointer)->pointer;
       struct vtn_ssa_value *whole = vtn_create_ssa_value(b, i_ptr->type->type);
@@ -344,10 +357,19 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    }
 
    case GLSLstd450ModfStruct: {
+      nir_ssa_def *inf = nir_imm_floatN_t(&b->nb, INFINITY, src[0]->bit_size);
+      nir_ssa_def *sign_bit =
+         nir_imm_intN_t(&b->nb, (uint64_t)1 << (src[0]->bit_size - 1),
+                        src[0]->bit_size);
       nir_ssa_def *sign = nir_fsign(nb, src[0]);
       nir_ssa_def *abs = nir_fabs(nb, src[0]);
       vtn_assert(glsl_type_is_struct_or_ifc(dest_type));
-      dest->elems[0]->def = nir_fmul(nb, sign, nir_ffract(nb, abs));
+
+      /* See GLSLstd450Modf for explanation of the Inf and NaN handling. */
+      dest->elems[0]->def = nir_bcsel(nb,
+                                      nir_ieq(nb, abs, inf),
+                                      nir_iand(nb, src[0], sign_bit),
+                                      nir_fmul(nb, sign, nir_ffract(nb, abs)));
       dest->elems[1]->def = nir_fmul(nb, sign, nir_ffloor(nb, abs));
       break;
    }
