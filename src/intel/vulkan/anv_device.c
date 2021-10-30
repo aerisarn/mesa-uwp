@@ -4073,8 +4073,9 @@ VkResult anv_MapMemory(
 
    mem->map = map;
    mem->map_size = map_size;
+   mem->map_delta = (offset - map_offset);
 
-   *ppData = mem->map + (offset - map_offset);
+   *ppData = mem->map + mem->map_delta;
 
    return VK_SUCCESS;
 }
@@ -4093,6 +4094,7 @@ void anv_UnmapMemory(
 
    mem->map = NULL;
    mem->map_size = 0;
+   mem->map_delta = 0;
 }
 
 static void
@@ -4102,14 +4104,15 @@ clflush_mapped_ranges(struct anv_device         *device,
 {
    for (uint32_t i = 0; i < count; i++) {
       ANV_FROM_HANDLE(anv_device_memory, mem, ranges[i].memory);
-      if (ranges[i].offset >= mem->map_size)
+      uint64_t map_offset = ranges[i].offset + mem->map_delta;
+      if (map_offset >= mem->map_size)
          continue;
 
       if (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
          continue;
 
-      intel_clflush_range(mem->map + ranges[i].offset,
-                        MIN2(ranges[i].size, mem->map_size - ranges[i].offset));
+      intel_clflush_range(mem->map + map_offset,
+                          MIN2(ranges[i].size, mem->map_size - map_offset));
    }
 }
 
