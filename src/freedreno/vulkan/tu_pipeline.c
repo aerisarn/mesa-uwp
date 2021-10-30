@@ -774,7 +774,7 @@ tu6_setup_streamout(struct tu_cs *cs,
        * a bit less ideal here..
        */
       for (idx = 0; idx < l->cnt; idx++)
-         if (l->var[idx].regid == v->outputs[k].regid)
+         if (l->var[idx].slot == v->outputs[k].slot)
             break;
 
       debug_assert(idx < l->cnt);
@@ -1006,12 +1006,12 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    if (layer_regid != regid(63, 0)) {
       layer_loc = linkage.max_loc;
-      ir3_link_add(&linkage, layer_regid, 0x1, linkage.max_loc);
+      ir3_link_add(&linkage, VARYING_SLOT_LAYER, layer_regid, 0x1, linkage.max_loc);
    }
 
    if (view_regid != regid(63, 0)) {
       view_loc = linkage.max_loc;
-      ir3_link_add(&linkage, view_regid, 0x1, linkage.max_loc);
+      ir3_link_add(&linkage, VARYING_SLOT_VIEWPORT, view_regid, 0x1, linkage.max_loc);
    }
 
    unsigned extra_pos = 0;
@@ -1023,14 +1023,15 @@ tu6_emit_vpc(struct tu_cs *cs,
       if (position_loc == 0xff)
          position_loc = linkage.max_loc;
 
-      ir3_link_add(&linkage, last_shader->outputs[i].regid,
+      ir3_link_add(&linkage, last_shader->outputs[i].slot,
+                   last_shader->outputs[i].regid,
                    0xf, position_loc + 4 * last_shader->outputs[i].view);
       extra_pos = MAX2(extra_pos, last_shader->outputs[i].view);
    }
 
    if (pointsize_regid != regid(63, 0)) {
       pointsize_loc = linkage.max_loc;
-      ir3_link_add(&linkage, pointsize_regid, 0x1, linkage.max_loc);
+      ir3_link_add(&linkage, VARYING_SLOT_PSIZ, pointsize_regid, 0x1, linkage.max_loc);
    }
 
    uint8_t clip_cull_mask = last_shader->clip_mask | last_shader->cull_mask;
@@ -1039,11 +1040,13 @@ tu6_emit_vpc(struct tu_cs *cs,
    uint32_t clip0_loc = linkage.clip0_loc, clip1_loc = linkage.clip1_loc;
    if (clip0_loc == 0xff && clip0_regid != regid(63, 0)) {
       clip0_loc = linkage.max_loc;
-      ir3_link_add(&linkage, clip0_regid, clip_cull_mask & 0xf, linkage.max_loc);
+      ir3_link_add(&linkage, VARYING_SLOT_CLIP_DIST0, clip0_regid,
+                   clip_cull_mask & 0xf, linkage.max_loc);
    }
    if (clip1_loc == 0xff && clip1_regid != regid(63, 0)) {
       clip1_loc = linkage.max_loc;
-      ir3_link_add(&linkage, clip1_regid, clip_cull_mask >> 4, linkage.max_loc);
+      ir3_link_add(&linkage, VARYING_SLOT_CLIP_DIST1, clip1_regid,
+                   clip_cull_mask >> 4, linkage.max_loc);
    }
 
    tu6_setup_streamout(cs, last_shader, &linkage);
@@ -1054,7 +1057,7 @@ tu6_emit_vpc(struct tu_cs *cs,
     * any unused code and make sure that optimizations don't remove it.
     */
    if (linkage.cnt == 0)
-      ir3_link_add(&linkage, 0, 0x1, linkage.max_loc);
+      ir3_link_add(&linkage, 0, 0, 0x1, linkage.max_loc);
 
    /* map outputs of the last shader to VPC */
    assert(linkage.cnt <= 32);

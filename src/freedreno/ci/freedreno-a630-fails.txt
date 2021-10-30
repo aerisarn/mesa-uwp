@@ -14,12 +14,6 @@ KHR-GL33.transform_feedback.query_vertex_separate_test,Fail
 # "*** Color comparison failed"
 KHR-GLES3.packed_depth_stencil.verify_read_pixels.depth24_stencil8,Fail
 
-# "The values of resultStd[i] & 0xFFFFFFFE and resultFma[i] & 0xFFFFFFFE and resultCPU[i] & 0xFFFFFFFE are not bitwise equal for i = 0..99 "
-KHR-GLES31.core.gpu_shader5.fma_precision_float,Fail
-KHR-GLES31.core.gpu_shader5.fma_precision_vec2,Fail
-KHR-GLES31.core.gpu_shader5.fma_precision_vec3,Fail
-KHR-GLES31.core.gpu_shader5.fma_precision_vec4,Fail
-
 # Lots of errors like "[279] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
 KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support,Fail
 

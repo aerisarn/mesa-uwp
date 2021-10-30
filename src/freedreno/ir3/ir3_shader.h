@@ -891,6 +891,7 @@ struct ir3_shader_linkage {
 
    /* Map from VS output to location. */
    struct {
+      uint8_t slot;
       uint8_t regid;
       uint8_t compmask;
       uint8_t loc;
@@ -907,8 +908,8 @@ struct ir3_shader_linkage {
 };
 
 static inline void
-ir3_link_add(struct ir3_shader_linkage *l, uint8_t regid_, uint8_t compmask,
-             uint8_t loc)
+ir3_link_add(struct ir3_shader_linkage *l, uint8_t slot, uint8_t regid_,
+             uint8_t compmask, uint8_t loc)
 {
    for (int j = 0; j < util_last_bit(compmask); j++) {
       uint8_t comploc = loc + j;
@@ -921,6 +922,7 @@ ir3_link_add(struct ir3_shader_linkage *l, uint8_t regid_, uint8_t compmask,
       int i = l->cnt++;
       debug_assert(i < ARRAY_SIZE(l->var));
 
+      l->var[i].slot = slot;
       l->var[i].regid = regid_;
       l->var[i].compmask = compmask;
       l->var[i].loc = loc;
@@ -974,7 +976,8 @@ ir3_link_shaders(struct ir3_shader_linkage *l,
       if (fs->inputs[j].slot == VARYING_SLOT_CLIP_DIST1)
          l->clip1_loc = fs->inputs[j].inloc;
 
-      ir3_link_add(l, k >= 0 ? vs->outputs[k].regid : default_regid,
+      ir3_link_add(l, fs->inputs[j].slot,
+                   k >= 0 ? vs->outputs[k].regid : default_regid,
                    fs->inputs[j].compmask, fs->inputs[j].inloc);
    }
 }
