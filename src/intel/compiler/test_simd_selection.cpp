@@ -41,7 +41,7 @@ const bool not_spilled = false;
 
 class SIMDSelectionTest : public ::testing::Test {
 protected:
-   SIMDSelectionTest() {
+   SIMDSelectionTest() : error{NULL, NULL, NULL} {
       mem_ctx = ralloc_context(NULL);
       devinfo = rzalloc(mem_ctx, intel_device_info);
       prog_data = rzalloc(mem_ctx, struct brw_cs_prog_data);
