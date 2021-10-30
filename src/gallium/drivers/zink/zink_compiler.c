@@ -751,7 +751,7 @@ get_bo_var(nir_shader *shader, struct bo_vars *bo, bool ssbo, unsigned idx, unsi
       fields[1].name = ralloc_strdup(shader, "unsized");
       const struct glsl_type *array_type = glsl_get_struct_field(var->type, 0);
       const struct glsl_type *type;
-      const struct glsl_type *unsized = unsized = glsl_array_type(glsl_uintN_t_type(bit_size), 0, bit_size / 8);
+      const struct glsl_type *unsized = glsl_array_type(glsl_uintN_t_type(bit_size), 0, bit_size / 8);
       if (bit_size > 32) {
          assert(bit_size == 64);
          type = glsl_array_type(glsl_uintN_t_type(bit_size), glsl_get_length(array_type) / 2, bit_size / 8);
