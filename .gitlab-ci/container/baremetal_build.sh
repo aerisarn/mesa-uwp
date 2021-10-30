@@ -30,6 +30,7 @@ if [[ $arch == "arm64" ]]; then
     DEVICE_TREES="$DEVICE_TREES apq8016-sbc.dtb"
     DEVICE_TREES="$DEVICE_TREES apq8096-db820c.dtb"
     DEVICE_TREES="$DEVICE_TREES tegra210-p3450-0000.dtb"
+    DEVICE_TREES="$DEVICE_TREES imx8mq-nitrogen.dtb"
 
     for DTB in $DEVICE_TREES; do
         wget "${ARTIFACTS_URL}/$DTB"
