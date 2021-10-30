@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "drm-uapi/i915_drm.h"
 #include "intel_device_info.h"
 #include "intel_hwconfig.h"
 #include "intel_hwconfig_types.h"
@@ -271,7 +272,7 @@ apply_hwconfig_item(struct intel_device_info *devinfo,
    }
 }
 
-void
+static void
 intel_apply_hwconfig_table(struct intel_device_info *devinfo,
                            const struct hwconfig *hwconfig,
                            int32_t hwconfig_len)
@@ -283,6 +284,20 @@ intel_apply_hwconfig_table(struct intel_device_info *devinfo,
    if (devinfo->apply_hwconfig) {
       devinfo->max_cs_threads =
          devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
+   }
+}
+
+void
+intel_get_and_process_hwconfig_table(int fd,
+                                     struct intel_device_info *devinfo)
+{
+   struct hwconfig *hwconfig;
+   int32_t hwconfig_len = 0;
+   hwconfig = intel_i915_query_alloc(fd, DRM_I915_QUERY_HWCONFIG_BLOB,
+                                     &hwconfig_len);
+   if (hwconfig) {
+      intel_apply_hwconfig_table(devinfo, hwconfig, hwconfig_len);
+      free(hwconfig);
    }
 }
 

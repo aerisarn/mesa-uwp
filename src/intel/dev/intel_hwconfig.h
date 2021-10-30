@@ -36,9 +36,8 @@ struct hwconfig;
 struct intel_device_info;
 
 void
-intel_apply_hwconfig_table(struct intel_device_info *devinfo,
-                           const struct hwconfig *hwconfig,
-                           int32_t hwconfig_len);
+intel_get_and_process_hwconfig_table(int fd,
+                                     struct intel_device_info *devinfo);
 void
 intel_print_hwconfig_table(const struct hwconfig *hwconfig,
                            int32_t hwconfig_len);
