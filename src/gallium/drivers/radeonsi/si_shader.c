@@ -1426,6 +1426,11 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
                                                        nir_var_shader_out);
    }
 
+   /* This helps LLVM form VMEM clauses and thus get more GPU cache hits.
+    * 200 is tuned for Viewperf. It should be done last.
+    */
+   NIR_PASS_V(nir, nir_group_loads, nir_group_same_resource_only, 200);
+
    return nir;
 }
 
