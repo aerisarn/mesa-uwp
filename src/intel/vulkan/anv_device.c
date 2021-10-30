@@ -3866,15 +3866,12 @@ VkResult anv_AllocateMemory(
        * the BO.  In this case, we have a dedicated allocation.
        */
       if (image->vk.wsi_legacy_scanout) {
-         const uint32_t i915_tiling =
-            isl_tiling_to_i915_tiling(image->planes[0].primary_surface.isl.tiling);
-         int ret = anv_gem_set_tiling(device, mem->bo->gem_handle,
-                                      image->planes[0].primary_surface.isl.row_pitch_B,
-                                      i915_tiling);
-         if (ret) {
+         const struct isl_surf *surf = &image->planes[0].primary_surface.isl;
+         result = anv_device_set_bo_tiling(device, mem->bo,
+                                           surf->row_pitch_B,
+                                           surf->tiling);
+         if (result != VK_SUCCESS) {
             anv_device_release_bo(device, mem->bo);
-            result = vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                               "failed to set BO tiling: %m");
             goto fail;
          }
       }

@@ -1390,6 +1390,13 @@ VkResult anv_device_import_bo(struct anv_device *device, int fd,
                               struct anv_bo **bo);
 VkResult anv_device_export_bo(struct anv_device *device,
                               struct anv_bo *bo, int *fd_out);
+VkResult anv_device_get_bo_tiling(struct anv_device *device,
+                                  struct anv_bo *bo,
+                                  enum isl_tiling *tiling_out);
+VkResult anv_device_set_bo_tiling(struct anv_device *device,
+                                  struct anv_bo *bo,
+                                  uint32_t row_pitch_B,
+                                  enum isl_tiling tiling);
 void anv_device_release_bo(struct anv_device *device,
                            struct anv_bo *bo);
 

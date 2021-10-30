@@ -522,28 +522,13 @@ anv_image_init_from_gralloc(struct anv_device *device,
                        "failed to import dma-buf from VkNativeBufferANDROID");
    }
 
-   int i915_tiling = anv_gem_get_tiling(device, bo->gem_handle);
-   switch (i915_tiling) {
-   case I915_TILING_NONE:
-      anv_info.isl_tiling_flags = ISL_TILING_LINEAR_BIT;
-      break;
-   case I915_TILING_X:
-      anv_info.isl_tiling_flags = ISL_TILING_X_BIT;
-      break;
-   case I915_TILING_Y:
-      anv_info.isl_tiling_flags = ISL_TILING_Y0_BIT;
-      break;
-   case -1:
-      result = vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
-                         "DRM_IOCTL_I915_GEM_GET_TILING failed for "
-                         "VkNativeBufferANDROID");
-      goto fail_tiling;
-   default:
-      result = vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
-                         "DRM_IOCTL_I915_GEM_GET_TILING returned unknown "
-                         "tiling %d for VkNativeBufferANDROID", i915_tiling);
-      goto fail_tiling;
+   enum isl_tiling tiling;
+   result = anv_device_get_bo_tiling(device, bo, &tiling);
+   if (result != VK_SUCCESS) {
+      return vk_errorf(device, result,
+                       "failed to get tiling from VkNativeBufferANDROID");
    }
+   anv_info.isl_tiling_flags = 1u << tiling;
 
    enum isl_format format = anv_get_isl_format(&device->info,
                                                base_info->format,

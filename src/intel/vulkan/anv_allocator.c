@@ -2019,6 +2019,38 @@ anv_device_export_bo(struct anv_device *device,
    return VK_SUCCESS;
 }
 
+VkResult
+anv_device_get_bo_tiling(struct anv_device *device,
+                         struct anv_bo *bo,
+                         enum isl_tiling *tiling_out)
+{
+   int i915_tiling = anv_gem_get_tiling(device, bo->gem_handle);
+   if (i915_tiling < 0) {
+      return vk_errorf(device, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                       "failed to get BO tiling: %m");
+   }
+
+   *tiling_out = isl_tiling_from_i915_tiling(i915_tiling);
+
+   return VK_SUCCESS;
+}
+
+VkResult
+anv_device_set_bo_tiling(struct anv_device *device,
+                         struct anv_bo *bo,
+                         uint32_t row_pitch_B,
+                         enum isl_tiling tiling)
+{
+   int ret = anv_gem_set_tiling(device, bo->gem_handle, row_pitch_B,
+                                isl_tiling_to_i915_tiling(tiling));
+   if (ret) {
+      return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                       "failed to set BO tiling: %m");
+   }
+
+   return VK_SUCCESS;
+}
+
 static bool
 atomic_dec_not_one(uint32_t *counter)
 {
