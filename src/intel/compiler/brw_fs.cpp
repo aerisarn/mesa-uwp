@@ -10146,7 +10146,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
       }
    }
 
-   const unsigned selected_simd = brw_simd_select(prog_data);
+   const int selected_simd = brw_simd_select(prog_data);
    if (selected_simd < 0) {
       params->error_str = ralloc_asprintf(mem_ctx, "Can't compile shader: %s, %s and %s.\n",
                                           error[0], error[1], error[2]);;
