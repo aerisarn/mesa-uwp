@@ -265,7 +265,7 @@ iris_create_engines_context(struct iris_context *ice, int priority)
    int fd = iris_bufmgr_get_fd(screen->bufmgr);
 
    struct drm_i915_query_engine_info *engines_info =
-      intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO);
+      intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO, NULL);
 
    if (!engines_info)
       return -1;

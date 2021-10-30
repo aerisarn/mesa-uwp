@@ -135,8 +135,11 @@ intel_i915_query(int fd, uint64_t query_id, void *buffer,
  * The caller is responsible for freeing the returned pointer.
  */
 static inline void *
-intel_i915_query_alloc(int fd, uint64_t query_id)
+intel_i915_query_alloc(int fd, uint64_t query_id, int32_t *query_length)
 {
+   if (query_length)
+      *query_length = 0;
+
    int32_t length = 0;
    int ret = intel_i915_query(fd, query_id, NULL, &length);
    if (ret < 0)
@@ -153,6 +156,9 @@ intel_i915_query_alloc(int fd, uint64_t query_id)
       free(data);
       return NULL;
    }
+
+   if (query_length)
+      *query_length = length;
 
    return data;
 }

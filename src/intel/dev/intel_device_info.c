@@ -1528,7 +1528,7 @@ static bool
 query_topology(struct intel_device_info *devinfo, int fd)
 {
    struct drm_i915_query_topology_info *topo_info =
-      intel_i915_query_alloc(fd, DRM_I915_QUERY_TOPOLOGY_INFO);
+      intel_i915_query_alloc(fd, DRM_I915_QUERY_TOPOLOGY_INFO, NULL);
    if (topo_info == NULL)
       return false;
 

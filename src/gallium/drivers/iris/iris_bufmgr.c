@@ -2272,7 +2272,7 @@ static bool
 iris_bufmgr_query_meminfo(struct iris_bufmgr *bufmgr)
 {
    struct drm_i915_query_memory_regions *meminfo =
-      intel_i915_query_alloc(bufmgr->fd, DRM_I915_QUERY_MEMORY_REGIONS);
+      intel_i915_query_alloc(bufmgr->fd, DRM_I915_QUERY_MEMORY_REGIONS, NULL);
    if (meminfo == NULL)
       return false;
 

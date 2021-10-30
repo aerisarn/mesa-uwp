@@ -424,5 +424,5 @@ anv_gem_reg_read(int fd, uint32_t offset, uint64_t *result)
 struct drm_i915_query_engine_info *
 anv_gem_get_engine_info(int fd)
 {
-   return intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO);
+   return intel_i915_query_alloc(fd, DRM_I915_QUERY_ENGINE_INFO, NULL);
 }
