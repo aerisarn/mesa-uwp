@@ -4033,11 +4033,20 @@ VkResult anv_MapMemory(
    assert(size > 0);
    assert(offset + size <= mem->bo->size);
 
-   /* FIXME: Is this supposed to be thread safe? Since vkUnmapMemory() only
-    * takes a VkDeviceMemory pointer, it seems like only one map of the memory
-    * at a time is valid. We could just mmap up front and return an offset
-    * pointer here, but that may exhaust virtual memory on 32 bit
-    * userspace. */
+   if (size != (size_t)size) {
+      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+                       "requested size 0x%"PRIx64" does not fit in %u bits",
+                       size, (unsigned)(sizeof(size_t) * 8));
+   }
+
+   /* From the Vulkan 1.2.194 spec:
+    *
+    *    "memory must not be currently host mapped"
+    */
+   if (mem->bo->map != NULL) {
+      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+                       "Memory object already mapped.");
+   }
 
    uint32_t gem_flags = 0;
 
