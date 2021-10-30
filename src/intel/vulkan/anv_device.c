@@ -22,6 +22,7 @@
  */
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <string.h>
 #ifdef MAJOR_IN_MKDEV
@@ -3678,8 +3679,6 @@ VkResult anv_AllocateMemory(
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    mem->type = mem_type;
-   mem->map = NULL;
-   mem->map_size = 0;
    mem->ahw = NULL;
    mem->host_ptr = NULL;
 
@@ -3983,9 +3982,6 @@ void anv_FreeMemory(
    list_del(&mem->link);
    pthread_mutex_unlock(&device->mutex);
 
-   if (mem->map)
-      anv_UnmapMemory(_device, _mem);
-
    p_atomic_add(&device->physical->memory.heaps[mem->type->heapIndex].used,
                 -mem->bo->size);
 
@@ -4066,16 +4062,14 @@ VkResult anv_MapMemory(
    /* Let's map whole pages */
    map_size = align_u64(map_size, 4096);
 
-   void *map = anv_gem_mmap(device, mem->bo->gem_handle,
-                            map_offset, map_size, gem_flags);
-   if (map == MAP_FAILED)
-      return vk_error(device, VK_ERROR_MEMORY_MAP_FAILED);
+   void *map;
+   VkResult result = anv_device_map_bo(device, mem->bo, map_offset,
+                                       map_size, gem_flags, &map);
+   if (result != VK_SUCCESS)
+      return result;
 
-   mem->map = map;
-   mem->map_size = map_size;
    mem->map_delta = (offset - map_offset);
-
-   *ppData = mem->map + mem->map_delta;
+   *ppData = map + mem->map_delta;
 
    return VK_SUCCESS;
 }
@@ -4090,10 +4084,8 @@ void anv_UnmapMemory(
    if (mem == NULL || mem->host_ptr)
       return;
 
-   anv_gem_munmap(device, mem->map, mem->map_size);
+   anv_device_unmap_bo(device, mem->bo);
 
-   mem->map = NULL;
-   mem->map_size = 0;
    mem->map_delta = 0;
 }
 
@@ -4105,14 +4097,14 @@ clflush_mapped_ranges(struct anv_device         *device,
    for (uint32_t i = 0; i < count; i++) {
       ANV_FROM_HANDLE(anv_device_memory, mem, ranges[i].memory);
       uint64_t map_offset = ranges[i].offset + mem->map_delta;
-      if (map_offset >= mem->map_size)
+      if (map_offset >= mem->bo->map_size)
          continue;
 
       if (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
          continue;
 
-      intel_clflush_range(mem->map + map_offset,
-                          MIN2(ranges[i].size, mem->map_size - map_offset));
+      intel_clflush_range(mem->bo->map + map_offset,
+                          MIN2(ranges[i].size, mem->bo->map_size - map_offset));
    }
 }
 

@@ -1608,7 +1608,7 @@ anv_bo_finish(struct anv_device *device, struct anv_bo *bo)
       anv_vma_free(device, bo->offset, bo->size + bo->_ccs_size);
 
    if (bo->map && !bo->from_host_ptr)
-      anv_gem_munmap(device, bo->map, bo->size);
+      anv_device_unmap_bo(device, bo);
 
    assert(bo->gem_handle != 0);
    anv_gem_close(device, bo->gem_handle);
@@ -1719,11 +1719,10 @@ anv_device_alloc_bo(struct anv_device *device,
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
-      new_bo.map = anv_gem_mmap(device, new_bo.gem_handle, 0, size, 0);
-      if (new_bo.map == MAP_FAILED) {
+      VkResult result = anv_device_map_bo(device, &new_bo, 0, size, 0, NULL);
+      if (unlikely(result != VK_SUCCESS)) {
          anv_gem_close(device, new_bo.gem_handle);
-         return vk_errorf(device, VK_ERROR_OUT_OF_HOST_MEMORY,
-                          "mmap failed: %m");
+         return result;
       }
    }
 
@@ -1776,6 +1775,46 @@ anv_device_alloc_bo(struct anv_device *device,
    *bo_out = bo;
 
    return VK_SUCCESS;
+}
+
+VkResult
+anv_device_map_bo(struct anv_device *device,
+                  struct anv_bo *bo,
+                  uint64_t offset,
+                  size_t size,
+                  uint32_t gem_flags,
+                  void **map_out)
+{
+   assert(!bo->is_wrapper && !bo->from_host_ptr);
+   assert(size > 0);
+   assert(bo->map == NULL && bo->map_size == 0);
+
+   void *map = anv_gem_mmap(device, bo->gem_handle, offset, size, gem_flags);
+   if (unlikely(map == MAP_FAILED))
+      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
+
+   assert(map != NULL);
+
+   bo->map = map;
+   bo->map_size = size;
+
+   if (map_out)
+      *map_out = map;
+
+   return VK_SUCCESS;
+}
+
+void
+anv_device_unmap_bo(struct anv_device *device,
+                    struct anv_bo *bo)
+{
+   assert(!bo->is_wrapper && !bo->from_host_ptr);
+   assert(bo->map != NULL && bo->map_size > 0);
+
+   anv_gem_munmap(device, bo->map, bo->map_size);
+
+   bo->map = NULL;
+   bo->map_size = 0;
 }
 
 VkResult
