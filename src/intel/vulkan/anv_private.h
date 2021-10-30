@@ -438,7 +438,7 @@ struct anv_bo {
     * validation list building alrogithm to track which buffers are already
     * in the validation list so that we can ensure uniqueness.
     */
-   uint32_t index;
+   uint32_t exec_obj_index;
 
    /* Index for use with util_sparse_array_free_list */
    uint32_t free_index;

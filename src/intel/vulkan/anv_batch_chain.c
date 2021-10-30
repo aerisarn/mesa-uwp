@@ -1248,8 +1248,9 @@ anv_execbuf_add_bo(struct anv_device *device,
 
    bo = anv_bo_unwrap(bo);
 
-   if (bo->index < exec->bo_count && exec->bos[bo->index] == bo)
-      obj = &exec->objects[bo->index];
+   if (bo->exec_obj_index < exec->bo_count &&
+       exec->bos[bo->exec_obj_index] == bo)
+      obj = &exec->objects[bo->exec_obj_index];
 
    if (obj == NULL) {
       /* We've never seen this one before.  Add it to the list and assign
@@ -1287,9 +1288,9 @@ anv_execbuf_add_bo(struct anv_device *device,
 
       assert(exec->bo_count < exec->array_length);
 
-      bo->index = exec->bo_count++;
-      obj = &exec->objects[bo->index];
-      exec->bos[bo->index] = bo;
+      bo->exec_obj_index = exec->bo_count++;
+      obj = &exec->objects[bo->exec_obj_index];
+      exec->bos[bo->exec_obj_index] = bo;
 
       obj->handle = bo->gem_handle;
       obj->relocation_count = 0;
@@ -1366,8 +1367,10 @@ static void
 anv_cmd_buffer_process_relocs(struct anv_cmd_buffer *cmd_buffer,
                               struct anv_reloc_list *list)
 {
-   for (size_t i = 0; i < list->num_relocs; i++)
-      list->relocs[i].target_handle = anv_bo_unwrap(list->reloc_bos[i])->index;
+   for (size_t i = 0; i < list->num_relocs; i++) {
+      list->relocs[i].target_handle =
+         anv_bo_unwrap(list->reloc_bos[i])->exec_obj_index;
+   }
 }
 
 static void
@@ -1757,8 +1760,8 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
     * corresponding to the first batch_bo in the chain with the last
     * element in the list.
     */
-   if (first_batch_bo->bo->index != execbuf->bo_count - 1) {
-      uint32_t idx = first_batch_bo->bo->index;
+   if (first_batch_bo->bo->exec_obj_index != execbuf->bo_count - 1) {
+      uint32_t idx = first_batch_bo->bo->exec_obj_index;
       uint32_t last_idx = execbuf->bo_count - 1;
 
       struct drm_i915_gem_exec_object2 tmp_obj = execbuf->objects[idx];
@@ -1766,11 +1769,11 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
 
       execbuf->objects[idx] = execbuf->objects[last_idx];
       execbuf->bos[idx] = execbuf->bos[last_idx];
-      execbuf->bos[idx]->index = idx;
+      execbuf->bos[idx]->exec_obj_index = idx;
 
       execbuf->objects[last_idx] = tmp_obj;
       execbuf->bos[last_idx] = first_batch_bo->bo;
-      first_batch_bo->bo->index = last_idx;
+      first_batch_bo->bo->exec_obj_index = last_idx;
    }
 
    /* If we are pinning our BOs, we shouldn't have to relocate anything */
