@@ -441,10 +441,11 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       anv_perf_warn(VK_LOG_NO_OBJS(&device->instance->vk),
                     "Failed to get I915_CONTEXT_PARAM_GTT_SIZE: %m");
 
-      if (intel_get_aperture_size(fd, &device->gtt_size) == -1) {
+      if (device->info.aperture_bytes == 0) {
          return vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                           "failed to get aperture size: %m");
       }
+      device->gtt_size = device->info.aperture_bytes;
    }
 
    /* We only allow 48-bit addresses with softpin because knowing the actual

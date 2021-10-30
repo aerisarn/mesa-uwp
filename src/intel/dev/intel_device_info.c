@@ -1372,7 +1372,7 @@ query_topology(struct intel_device_info *devinfo, int fd)
 
 }
 
-int
+static int
 intel_get_aperture_size(int fd, uint64_t *size)
 {
    struct drm_i915_gem_get_aperture aperture = { 0 };
