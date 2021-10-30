@@ -806,7 +806,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                   zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
                   update_db_depth_clear = true;
                }
-            } else if ((*buffers & PIPE_BIND_DEPTH_STENCIL) == PIPE_BIND_DEPTH_STENCIL) {
+            } else if ((*buffers & PIPE_CLEAR_DEPTHSTENCIL) == PIPE_CLEAR_DEPTHSTENCIL) {
                if (si_can_fast_clear_depth(zstex, level, depth, *buffers) &&
                    si_can_fast_clear_stencil(zstex, level, stencil, *buffers)) {
                   /* Combined Z+S clear. */
@@ -881,7 +881,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
                update_db_depth_clear = true;
             }
-         } else if ((*buffers & PIPE_BIND_DEPTH_STENCIL) == PIPE_BIND_DEPTH_STENCIL) {
+         } else if ((*buffers & PIPE_CLEAR_DEPTHSTENCIL) == PIPE_CLEAR_DEPTHSTENCIL) {
             if (htile_size &&
                 si_can_fast_clear_depth(zstex, level, depth, *buffers) &&
                 si_can_fast_clear_stencil(zstex, level, stencil, *buffers)) {
