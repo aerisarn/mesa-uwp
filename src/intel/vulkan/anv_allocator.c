@@ -439,9 +439,8 @@ void
 anv_block_pool_finish(struct anv_block_pool *pool)
 {
    anv_block_pool_foreach_bo(bo, pool) {
-      if (bo->map)
-         anv_gem_munmap(pool->device, bo->map, bo->size);
-      anv_gem_close(pool->device, bo->gem_handle);
+      assert(bo->refcount == 1);
+      anv_device_release_bo(pool->device, bo);
    }
 
    struct anv_mmap_cleanup *cleanup;
