@@ -1406,7 +1406,16 @@ static void
 insert_sorted(struct exec_list *var_list, nir_variable *new_var)
 {
    nir_foreach_variable_in_list(var, var_list) {
-      if (var->data.location > new_var->data.location) {
+      /* Use the `per_primitive` bool to sort per-primitive variables
+       * to the end of the list, so they get the last driver locations
+       * by nir_assign_io_var_locations.
+       *
+       * This is done because AMD HW requires that per-primitive outputs
+       * are the last params.
+       * In the future we can add an option for this, if needed by other HW.
+       */
+      if (new_var->data.per_primitive < var->data.per_primitive ||
+          var->data.location > new_var->data.location) {
          exec_node_insert_node_before(&var->node, &new_var->node);
          return;
       }
