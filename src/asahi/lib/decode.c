@@ -562,7 +562,7 @@ agxdecode_dump_file_open(void)
    /* This does a getenv every frame, so it is possible to use
     * setenv to change the base at runtime.
     */
-   const char *dump_file_base = getenv("PANDECODE_DUMP_FILE") ?: "agxdecode.dump";
+   const char *dump_file_base = getenv("AGXDECODE_DUMP_FILE") ?: "agxdecode.dump";
    if (!strcmp(dump_file_base, "stderr"))
       agxdecode_dump_stream = stderr;
    else {
