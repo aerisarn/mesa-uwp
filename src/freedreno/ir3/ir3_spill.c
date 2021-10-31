@@ -520,14 +520,14 @@ insert_src(struct ra_spill_ctx *ctx, struct ir3_register *src)
 {
    struct ra_spill_interval *interval = ctx->intervals[src->def->name];
 
+   if (!interval->interval.inserted) {
+      ra_spill_ctx_insert(ctx, interval);
+      interval->needs_reload = true;
+      interval->already_spilled = true;
+   }
+
    ra_spill_interval_root(interval)->cant_spill = true;
 
-   if (interval->interval.inserted)
-      return;
-
-   ra_spill_ctx_insert(ctx, interval);
-   interval->needs_reload = true;
-   interval->already_spilled = true;
 }
 
 static void
