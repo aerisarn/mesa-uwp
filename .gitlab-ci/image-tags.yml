@@ -3,7 +3,7 @@ variables:
    DEBIAN_BASE_TAG: "2022-10-04-vn-render-server"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-09-26-clc"
+   DEBIAN_BUILD_TAG: "2022-09-30-mkbootimg"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
    DEBIAN_BUILD_MINGW_TAG: "2022-08-25-shellcheck"

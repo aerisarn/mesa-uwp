@@ -9,7 +9,6 @@ sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 apt-get update
 
 apt-get install -y --no-remove \
-        abootimg \
         cpio \
         fastboot \
         netcat \

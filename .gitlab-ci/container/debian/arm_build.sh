@@ -18,7 +18,6 @@ STABLE_EPHEMERAL=" \
 apt-get -y install \
 	${EXTRA_LOCAL_PACKAGES} \
 	${STABLE_EPHEMERAL} \
-	abootimg \
 	autoconf \
 	automake \
 	bc \
