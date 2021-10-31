@@ -116,26 +116,49 @@ radv_pipeline_get_tessellation_state(const VkGraphicsPipelineCreateInfo *pCreate
    return NULL;
 }
 
+static bool
+radv_pipeline_has_ds_attachments(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   return render_create_info &&
+          (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
+           render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED);
+}
+
 static const VkPipelineDepthStencilStateCreateInfo *
 radv_pipeline_get_depth_stencil_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   bool has_ds_att = radv_pipeline_has_ds_attachments(pCreateInfo);
 
-   if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
-        subpass->depth_stencil_attachment) ||
+   if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable && has_ds_att) ||
        radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
       return pCreateInfo->pDepthStencilState;
    return NULL;
 }
 
+static bool
+radv_pipeline_has_color_attachments(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+
+   if (render_create_info) {
+      for (uint32_t i = 0; i < render_create_info->colorAttachmentCount; ++i) {
+         if (render_create_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED)
+            return true;
+      }
+   }
+
+   return false;
+}
+
 static const VkPipelineColorBlendStateCreateInfo *
 radv_pipeline_get_color_blend_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   bool has_color_att = radv_pipeline_has_color_attachments(pCreateInfo);
 
-   if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable && subpass->has_color_att) ||
+   if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable && has_color_att) ||
        radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
       return pCreateInfo->pColorBlendState;
    return NULL;
@@ -502,32 +525,33 @@ radv_pipeline_compute_spi_color_formats(const struct radv_pipeline *pipeline,
                                         const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                         struct radv_blend_state *blend)
 {
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
    unsigned col_format = 0, is_int8 = 0, is_int10 = 0;
    unsigned num_targets;
 
-   for (unsigned i = 0; i < (blend->single_cb_enable ? 1 : subpass->color_count); ++i) {
-      unsigned cf;
+   if (render_create_info) {
+      for (unsigned i = 0;
+           i < (blend->single_cb_enable ? 1 : render_create_info->colorAttachmentCount); ++i) {
+         unsigned cf;
+         VkFormat fmt = render_create_info->pColorAttachmentFormats[i];
 
-      if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED ||
-          !(blend->cb_target_mask & (0xfu << (i * 4)))) {
-         cf = V_028714_SPI_SHADER_ZERO;
-      } else {
-         struct radv_render_pass_attachment *attachment =
-            pass->attachments + subpass->color_attachments[i].attachment;
-         bool blend_enable = blend->blend_enable_4bit & (0xfu << (i * 4));
+         if (fmt == VK_FORMAT_UNDEFINED || !(blend->cb_target_mask & (0xfu << (i * 4)))) {
+            cf = V_028714_SPI_SHADER_ZERO;
+         } else {
+            bool blend_enable = blend->blend_enable_4bit & (0xfu << (i * 4));
 
-         cf = radv_choose_spi_color_format(pipeline->device, attachment->format, blend_enable,
-                                           blend->need_src_alpha & (1 << i));
+            cf = radv_choose_spi_color_format(pipeline->device, fmt, blend_enable,
+                                              blend->need_src_alpha & (1 << i));
 
-         if (format_is_int8(attachment->format))
-            is_int8 |= 1 << i;
-         if (format_is_int10(attachment->format))
-            is_int10 |= 1 << i;
+            if (format_is_int8(fmt))
+               is_int8 |= 1 << i;
+            if (format_is_int10(fmt))
+               is_int10 |= 1 << i;
+         }
+
+         col_format |= cf << (4 * i);
       }
-
-      col_format |= cf << (4 * i);
    }
 
    if (!(col_format & 0xf) && blend->need_src_alpha & (1 << 0)) {
@@ -837,28 +861,49 @@ si_translate_fill(VkPolygonMode func)
    }
 }
 
+static unsigned
+radv_pipeline_color_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const VkAttachmentSampleCountInfoAMD *sample_info =
+      vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   if (sample_info && render_create_info) {
+      unsigned samples = 1;
+      for (uint32_t i = 0; i < sample_info->colorAttachmentCount; ++i) {
+         if (render_create_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED) {
+            samples = MAX2(samples, sample_info->pColorAttachmentSamples[i]);
+         }
+      }
+      return samples;
+   }
+   const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
+   return vkms ? vkms->rasterizationSamples : 1;
+}
+
+static unsigned
+radv_pipeline_depth_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   const VkAttachmentSampleCountInfoAMD *sample_info =
+      vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   if (sample_info && render_create_info) {
+      if (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
+          render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED) {
+         return sample_info->depthStencilAttachmentSamples;
+      }
+   }
+   const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
+   return vkms ? vkms->rasterizationSamples : 1;
+}
+
 static uint8_t
 radv_pipeline_get_ps_iter_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
    uint32_t ps_iter_samples = 1;
-   uint32_t num_samples;
-
-   /* From the Vulkan 1.1.129 spec, 26.7. Sample Shading:
-    *
-    * "If the VK_AMD_mixed_attachment_samples extension is enabled and the
-    *  subpass uses color attachments, totalSamples is the number of
-    *  samples of the color attachments. Otherwise, totalSamples is the
-    *  value of VkPipelineMultisampleStateCreateInfo::rasterizationSamples
-    *  specified at pipeline creation time."
-    */
-   if (subpass->has_color_att) {
-      num_samples = subpass->color_sample_count;
-   } else {
-      num_samples = vkms->rasterizationSamples;
-   }
+   uint32_t num_samples = radv_pipeline_color_samples(pCreateInfo);
 
    if (vkms->sampleShadingEnable) {
       ps_iter_samples = ceilf(vkms->minSampleShading * num_samples);
@@ -945,8 +990,8 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
                                 const struct radv_blend_state *blend,
                                 const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
    const VkPipelineDepthStencilStateCreateInfo *vkds =
       radv_pipeline_get_depth_stencil_state(pCreateInfo);
    const VkPipelineColorBlendStateCreateInfo *vkblend =
@@ -971,9 +1016,8 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
    struct radv_dsa_order_invariance dsa_order_invariant = {.zs = true, .pass_set = true};
 
    if (vkds) {
-      struct radv_render_pass_attachment *attachment =
-         pass->attachments + subpass->depth_stencil_attachment->attachment;
-      bool has_stencil = vk_format_has_stencil(attachment->format);
+      bool has_stencil =
+         render_create_info && render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
       struct radv_dsa_order_invariance order_invariance[2];
       struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
 
@@ -1153,10 +1197,7 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
    }
 
    if (ms->num_samples > 1) {
-      RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-      struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
-      uint32_t z_samples =
-         subpass->depth_stencil_attachment ? subpass->depth_sample_count : ms->num_samples;
+      uint32_t z_samples = radv_pipeline_depth_samples(pCreateInfo);
       unsigned log_samples = util_logbase2(ms->num_samples);
       unsigned log_z_samples = util_logbase2(z_samples);
       unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
@@ -1356,8 +1397,7 @@ radv_pipeline_is_blend_enabled(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 static uint64_t
 radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
+   bool has_color_att = radv_pipeline_has_color_attachments(pCreateInfo);
    uint64_t states = RADV_DYNAMIC_ALL;
 
    /* If rasterization is disabled we do not care about any of the
@@ -1409,11 +1449,10 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
-   if (!subpass->has_color_att ||
-       !radv_pipeline_is_blend_enabled(pCreateInfo))
+   if (!has_color_att || !radv_pipeline_is_blend_enabled(pCreateInfo))
       states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
 
-   if (!subpass->has_color_att)
+   if (!has_color_att)
       states &= ~RADV_DYNAMIC_COLOR_WRITE_ENABLE;
 
    return states;
@@ -1534,8 +1573,6 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 {
    uint64_t needed_states = radv_pipeline_needed_dynamic_state(pCreateInfo);
    uint64_t states = needed_states;
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
 
    pipeline->dynamic_state = default_dynamic_state;
    pipeline->graphics.needed_dynamic_state = needed_states;
@@ -1620,7 +1657,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
     *    disabled or if the subpass of the render pass the pipeline is created
     *    against does not use a depth/stencil attachment.
     */
-   if (needed_states && subpass->depth_stencil_attachment) {
+   if (needed_states && radv_pipeline_has_ds_attachments(pCreateInfo)) {
       if (states & RADV_DYNAMIC_DEPTH_BOUNDS) {
          dynamic->depth_bounds.min = pCreateInfo->pDepthStencilState->minDepthBounds;
          dynamic->depth_bounds.max = pCreateInfo->pDepthStencilState->maxDepthBounds;
@@ -1742,7 +1779,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
          pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
    }
 
-   if (subpass->has_color_att && states & RADV_DYNAMIC_LOGIC_OP) {
+   if (radv_pipeline_has_color_attachments(pCreateInfo) && states & RADV_DYNAMIC_LOGIC_OP) {
       if (pCreateInfo->pColorBlendState->logicOpEnable) {
          dynamic->logic_op = si_translate_blend_logic_op(pCreateInfo->pColorBlendState->logicOp);
       } else {
@@ -1824,16 +1861,14 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
 {
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
       radv_pipeline_get_depth_stencil_state(pCreateInfo);
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
-   struct radv_render_pass_attachment *attachment = NULL;
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
    uint32_t db_depth_control = 0;
 
-   if (subpass->depth_stencil_attachment)
-      attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
-
-   bool has_depth_attachment = attachment && vk_format_has_depth(attachment->format);
-   bool has_stencil_attachment = attachment && vk_format_has_stencil(attachment->format);
+   bool has_depth_attachment =
+      render_create_info && render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
+   bool has_stencil_attachment =
+      render_create_info && render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
 
    if (ds_info) {
       if (has_depth_attachment) {
@@ -2632,8 +2667,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct radv_blend_state *blend)
 {
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
    bool uses_dynamic_stride = false;
 
    struct radv_pipeline_key key;
@@ -2642,7 +2677,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
       key.optimisations_disabled = 1;
 
-   key.has_multiview_view_index = !!subpass->view_mask;
+   key.has_multiview_view_index = render_create_info && !!render_create_info->viewMask;
 
    if (pCreateInfo->pDynamicState) {
       uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
@@ -4090,8 +4125,8 @@ radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline,
       },
    };
 
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
    VkExtent2D extent = {512, 512};
 
    unsigned log_num_rb_per_se =
@@ -4107,15 +4142,15 @@ radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline,
    const VkPipelineColorBlendStateCreateInfo *vkblend =
       radv_pipeline_get_color_blend_state(pCreateInfo);
    if (vkblend) {
-      for (unsigned i = 0; i < subpass->color_count; i++) {
+      for (unsigned i = 0; i < render_create_info->colorAttachmentCount; i++) {
          if (!vkblend->pAttachments[i].colorWriteMask)
             continue;
 
-         if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED)
+         if (render_create_info->pColorAttachmentFormats[i] == VK_FORMAT_UNDEFINED)
             continue;
 
-         VkFormat format = pass->attachments[subpass->color_attachments[i].attachment].format;
-         color_bytes_per_pixel += vk_format_get_blocksize(format);
+         color_bytes_per_pixel +=
+            vk_format_get_blocksize(render_create_info->pColorAttachmentFormats[i]);
       }
 
       /* MSAA images typically don't use all samples all the time. */
@@ -4130,13 +4165,12 @@ radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline,
 
    extent = color_entry->extent;
 
-   if (subpass->depth_stencil_attachment) {
-      struct radv_render_pass_attachment *attachment =
-         pass->attachments + subpass->depth_stencil_attachment->attachment;
-
+   if (radv_pipeline_has_ds_attachments(pCreateInfo)) {
       /* Coefficients taken from AMDVLK */
-      unsigned depth_coeff = vk_format_has_depth(attachment->format) ? 5 : 0;
-      unsigned stencil_coeff = vk_format_has_stencil(attachment->format) ? 1 : 0;
+      unsigned depth_coeff =
+         render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ? 5 : 0;
+      unsigned stencil_coeff =
+         render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED ? 1 : 0;
       unsigned ds_bytes_per_pixel = 4 * (depth_coeff + stencil_coeff) * total_samples;
 
       const struct radv_bin_size_entry *ds_entry = ds_size_table[log_num_rb_per_se][log_num_se];
@@ -4154,8 +4188,8 @@ static VkExtent2D
 radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline,
                             const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
    VkExtent2D extent = {512, 512};
 
    const unsigned db_tag_size = 64;
@@ -4184,16 +4218,16 @@ radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline,
 
    const VkPipelineColorBlendStateCreateInfo *vkblend =
       radv_pipeline_get_color_blend_state(pCreateInfo);
-   if (vkblend) {
-      for (unsigned i = 0; i < subpass->color_count; i++) {
+   if (vkblend && render_create_info) {
+      for (unsigned i = 0; i < render_create_info->colorAttachmentCount; i++) {
          if (!vkblend->pAttachments[i].colorWriteMask)
             continue;
 
-         if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED)
+         if (render_create_info->pColorAttachmentFormats[i] == VK_FORMAT_UNDEFINED)
             continue;
 
-         VkFormat format = pass->attachments[subpass->color_attachments[i].attachment].format;
-         color_bytes_per_pixel += vk_format_get_blocksize(format);
+         color_bytes_per_pixel +=
+            vk_format_get_blocksize(render_create_info->pColorAttachmentFormats[i]);
 
          if (total_samples > 1) {
             assert(samples_log <= 3);
@@ -4221,13 +4255,12 @@ radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline,
          extent = fmask_extent;
    }
 
-   if (subpass->depth_stencil_attachment) {
-      struct radv_render_pass_attachment *attachment =
-         pass->attachments + subpass->depth_stencil_attachment->attachment;
-
+   if (radv_pipeline_has_ds_attachments(pCreateInfo)) {
       /* Coefficients taken from AMDVLK */
-      unsigned depth_coeff = vk_format_has_depth(attachment->format) ? 5 : 0;
-      unsigned stencil_coeff = vk_format_has_stencil(attachment->format) ? 1 : 0;
+      unsigned depth_coeff =
+         render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ? 5 : 0;
+      unsigned stencil_coeff =
+         render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED ? 1 : 0;
       unsigned db_bytes_per_pixel = (depth_coeff + stencil_coeff) * total_samples;
 
       const unsigned db_pixel_count_log = util_logbase2(db_tag_part / db_bytes_per_pixel);
@@ -4253,22 +4286,22 @@ radv_pipeline_init_disabled_binning_state(struct radv_pipeline *pipeline,
                                   S_028C44_DISABLE_START_OF_PRIM(1);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
-      RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-      struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+      const VkPipelineRenderingCreateInfoKHR *render_create_info =
+         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
       const VkPipelineColorBlendStateCreateInfo *vkblend =
          radv_pipeline_get_color_blend_state(pCreateInfo);
       unsigned min_bytes_per_pixel = 0;
 
-      if (vkblend) {
-         for (unsigned i = 0; i < subpass->color_count; i++) {
+      if (vkblend && render_create_info) {
+         for (unsigned i = 0; i < render_create_info->colorAttachmentCount; i++) {
             if (!vkblend->pAttachments[i].colorWriteMask)
                continue;
 
-            if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED)
+            if (render_create_info->pColorAttachmentFormats[i] == VK_FORMAT_UNDEFINED)
                continue;
 
-            VkFormat format = pass->attachments[subpass->color_attachments[i].attachment].format;
-            unsigned bytes = vk_format_get_blocksize(format);
+            unsigned bytes =
+               vk_format_get_blocksize(render_create_info->pColorAttachmentFormats[i]);
             if (!min_bytes_per_pixel || bytes < min_bytes_per_pixel)
                min_bytes_per_pixel = bytes;
          }
@@ -4354,27 +4387,29 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 {
    const VkPipelineDepthStencilStateCreateInfo *vkds =
       radv_pipeline_get_depth_stencil_state(pCreateInfo);
-   RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-   struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+   const VkPipelineRenderingCreateInfoKHR *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
    struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
-   struct radv_render_pass_attachment *attachment = NULL;
    uint32_t db_render_control = 0, db_render_override2 = 0;
    uint32_t db_render_override = 0;
 
-   if (subpass->depth_stencil_attachment)
-      attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
-
-   bool has_depth_attachment = attachment && vk_format_has_depth(attachment->format);
+   bool has_depth_attachment =
+      render_create_info && render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
 
    if (vkds && has_depth_attachment) {
+      const VkPipelineMultisampleStateCreateInfo *vkms = pCreateInfo->pMultisampleState;
+
       /* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
-      db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(attachment->samples > 2);
+      db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(vkms && vkms->rasterizationSamples > 2);
 
       if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
          db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(1);
    }
 
-   if (attachment && extra) {
+   if (render_create_info &&
+       (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
+        render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED) &&
+       extra) {
       db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
       db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
 
@@ -5715,11 +5750,12 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    return result;
 }
 
-VkResult
-radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
-                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                              const struct radv_graphics_pipeline_create_info *extra,
-                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
+static VkResult
+radv_graphics_pipeline_create_nonlegacy(VkDevice _device, VkPipelineCache _cache,
+                                        const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                        const struct radv_graphics_pipeline_create_info *extra,
+                                        const VkAllocationCallbacks *pAllocator,
+                                        VkPipeline *pPipeline)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
@@ -5743,6 +5779,70 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    *pPipeline = radv_pipeline_to_handle(pipeline);
 
    return VK_SUCCESS;
+}
+
+/* This is a wrapper for radv_graphics_pipeline_create_nonlegacy that does all legacy conversions
+ * for the VkGraphicsPipelineCreateInfo data. */
+VkResult
+radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
+                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                              const struct radv_graphics_pipeline_create_info *extra,
+                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
+{
+   VkGraphicsPipelineCreateInfo create_info = *pCreateInfo;
+
+   VkPipelineRenderingCreateInfoKHR rendering_create_info;
+   VkFormat color_formats[MAX_RTS];
+   VkAttachmentSampleCountInfoAMD sample_info;
+   VkSampleCountFlagBits samples[MAX_RTS];
+   if (pCreateInfo->renderPass != VK_NULL_HANDLE) {
+      RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+      struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+
+      rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+      rendering_create_info.pNext = create_info.pNext;
+      create_info.pNext = &rendering_create_info;
+
+      rendering_create_info.viewMask = subpass->view_mask;
+
+      VkFormat ds_format =
+         subpass->depth_stencil_attachment
+            ? pass->attachments[subpass->depth_stencil_attachment->attachment].format
+            : VK_FORMAT_UNDEFINED;
+
+      rendering_create_info.depthAttachmentFormat =
+         vk_format_has_depth(ds_format) ? ds_format : VK_FORMAT_UNDEFINED;
+      rendering_create_info.stencilAttachmentFormat =
+         vk_format_has_stencil(ds_format) ? ds_format : VK_FORMAT_UNDEFINED;
+
+      rendering_create_info.colorAttachmentCount = subpass->color_count;
+      rendering_create_info.pColorAttachmentFormats = color_formats;
+      for (unsigned i = 0; i < rendering_create_info.colorAttachmentCount; ++i) {
+         if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)
+            color_formats[i] = pass->attachments[subpass->color_attachments[i].attachment].format;
+         else
+            color_formats[i] = VK_FORMAT_UNDEFINED;
+      }
+
+      create_info.renderPass = VK_NULL_HANDLE;
+
+      sample_info.sType = VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD;
+      sample_info.pNext = create_info.pNext;
+      create_info.pNext = &sample_info;
+
+      sample_info.colorAttachmentCount = rendering_create_info.colorAttachmentCount;
+      sample_info.pColorAttachmentSamples = samples;
+      for (unsigned i = 0; i < sample_info.colorAttachmentCount; ++i) {
+         if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED) {
+            samples[i] = pass->attachments[subpass->color_attachments[i].attachment].samples;
+         } else
+            samples[i] = 1;
+      }
+      sample_info.depthStencilAttachmentSamples = subpass->depth_sample_count;
+   }
+
+   return radv_graphics_pipeline_create_nonlegacy(_device, _cache, &create_info, extra, pAllocator,
+                                                  pPipeline);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
