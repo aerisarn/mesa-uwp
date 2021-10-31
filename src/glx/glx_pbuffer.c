@@ -394,6 +394,12 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
    return found;
 }
 
+static int dummyErrorHandler(Display *display, xError *err, XExtCodes *codes,
+                             int *ret_code)
+{
+    return 1; /* do nothing */
+}
+
 static void
 protocolDestroyDrawable(Display *dpy, GLXDrawable drawable, CARD32 glxCode)
 {
@@ -413,6 +419,19 @@ protocolDestroyDrawable(Display *dpy, GLXDrawable drawable, CARD32 glxCode)
 
    UnlockDisplay(dpy);
    SyncHandle();
+
+   /* Viewperf2020/Sw calls XDestroyWindow(win) and then glXDestroyWindow(win),
+    * causing an X error and abort. This is the workaround.
+    */
+   struct glx_display *priv = __glXInitialize(dpy);
+
+   if (priv->screens[0] &&
+       priv->screens[0]->allow_invalid_glx_destroy_window) {
+      void *old = XESetError(priv->dpy, priv->codes.extension,
+                             dummyErrorHandler);
+      XSync(dpy, false);
+      XESetError(priv->dpy, priv->codes.extension, old);
+   }
 }
 
 /**

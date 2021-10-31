@@ -1286,6 +1286,13 @@ dri2CreateScreen(int screen, struct glx_display * priv)
                                     &force) == 0) {
          psc->base.force_direct_context = force;
       }
+
+      uint8_t invalid_glx_destroy_window = false;
+      if (psc->config->configQueryb(psc->driScreen,
+                                    "allow_invalid_glx_destroy_window",
+                                    &invalid_glx_destroy_window) == 0) {
+         psc->base.allow_invalid_glx_destroy_window = invalid_glx_destroy_window;
+      }
    }
 
    /* DRI2 supports SubBuffer through DRI2CopyRegion, so it's always

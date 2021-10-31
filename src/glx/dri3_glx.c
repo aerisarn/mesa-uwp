@@ -1020,6 +1020,13 @@ dri3_create_screen(int screen, struct glx_display * priv)
                                     &force) == 0) {
          psc->base.force_direct_context = force;
       }
+
+      uint8_t invalid_glx_destroy_window = false;
+      if (psc->config->configQueryb(psc->driScreen,
+                                    "allow_invalid_glx_destroy_window",
+                                    &invalid_glx_destroy_window) == 0) {
+         psc->base.allow_invalid_glx_destroy_window = invalid_glx_destroy_window;
+      }
    }
 
    free(driverName);

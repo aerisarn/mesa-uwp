@@ -522,6 +522,7 @@ struct glx_screen
    Display *dpy;
    int scr;
    bool force_direct_context;
+   bool allow_invalid_glx_destroy_window;
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
     /**
