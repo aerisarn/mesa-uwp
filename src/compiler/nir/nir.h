@@ -1981,7 +1981,10 @@ typedef enum {
     *
     * This is added to nir_tex_instr::sampler_index.  Unless
     * nir_tex_instr::sampler_non_uniform is set, this is guaranteed to be
-    * dynamically uniform.
+    * dynamically uniform.  This should not be present until GLSL ES 3.20, GLSL
+    * 4.00, or ARB_gpu_shader5, because in ES 3.10 and GL 3.30 samplers said
+    * "When aggregated into arrays within a shader, samplers can only be indexed
+    * with a constant integral expression."
     */
    nir_tex_src_sampler_offset,
 
@@ -2144,7 +2147,18 @@ typedef struct {
    /** True if the texture index or handle is not dynamically uniform */
    bool texture_non_uniform;
 
-   /** True if the sampler index or handle is not dynamically uniform */
+   /** True if the sampler index or handle is not dynamically uniform.
+    *
+    * This may be set when VK_EXT_descriptor_indexing is supported and the
+    * appropriate capability is enabled.
+    *
+    * This should always be false in GLSL (GLSL ES 3.20 says "When aggregated
+    * into arrays within a shader, opaque types can only be indexed with a
+    * dynamically uniform integral expression", and GLSL 4.60 says "When
+    * aggregated into arrays within a shader, [texture, sampler, and
+    * samplerShadow] types can only be indexed with a dynamically uniform
+    * expression, or texture lookup will result in undefined values.").
+    */
    bool sampler_non_uniform;
 
    /** The texture index

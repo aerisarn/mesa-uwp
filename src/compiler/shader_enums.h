@@ -944,7 +944,32 @@ enum gl_access_qualifier
    /* The memory used by the access/variable is not written. */
    ACCESS_NON_WRITEABLE = (1 << 4),
 
-   /** The access may use a non-uniform buffer or image index */
+   /**
+    * The access may use a non-uniform buffer or image index.
+    *
+    * This is not allowed in either OpenGL or OpenGL ES, or Vulkan unless
+    * VK_EXT_descriptor_indexing is supported and the appropriate capability is
+    * enabled.
+    *
+    * Some GL spec archaeology justifying this:
+    *
+    * Up through at least GLSL ES 3.20 and GLSL 4.50,  "Opaque Types" says "When
+    * aggregated into arrays within a shader, opaque types can only be indexed
+    * with a dynamically uniform integral expression (see section 3.9.3) unless
+    * otherwise noted; otherwise, results are undefined."
+    *
+    * The original GL_AB_shader_image_load_store specification for desktop GL
+    * didn't have this restriction ("Images may be aggregated into arrays within
+    * a shader (using square brackets [ ]) and can be indexed with general
+    * integer expressions.")  At the same time,
+    * GL_ARB_shader_storage_buffer_objects *did* have the uniform restriction
+    * ("A uniform or shader storage block array can only be indexed with a
+    * dynamically uniform integral expression, otherwise results are
+    * undefined"), just like ARB_gpu_shader5 did when it first introduced a
+    * non-constant indexing of an opaque type with samplers.  So, we assume that
+    * this was an oversight in the original image_load_store spec, and was
+    * considered a correction in the merge to core.
+    */
    ACCESS_NON_UNIFORM   = (1 << 5),
 
    /* This has the same semantics as NIR_INTRINSIC_CAN_REORDER, only to be
