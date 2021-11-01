@@ -165,6 +165,8 @@ bool glsl_sampler_type_is_shadow(const struct glsl_type *type);
 bool glsl_sampler_type_is_array(const struct glsl_type *type);
 bool glsl_struct_type_is_packed(const struct glsl_type *type);
 bool glsl_contains_atomic(const struct glsl_type *type);
+bool glsl_contains_double(const struct glsl_type *type);
+bool glsl_contains_integer(const struct glsl_type *type);
 bool glsl_contains_opaque(const struct glsl_type *type);
 bool glsl_record_compare(const struct glsl_type *a, const struct glsl_type *b,
                          bool match_name, bool match_locations,

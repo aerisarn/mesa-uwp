@@ -442,6 +442,18 @@ glsl_type_contains_image(const struct glsl_type *type)
 }
 
 bool
+glsl_contains_double(const struct glsl_type *type)
+{
+   return type->contains_double();
+}
+
+bool
+glsl_contains_integer(const struct glsl_type *type)
+{
+   return type->contains_integer();
+}
+
+bool
 glsl_record_compare(const struct glsl_type *a, const struct glsl_type *b,
                     bool match_name, bool match_locations, bool match_precision)
 {
