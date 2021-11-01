@@ -3742,6 +3742,14 @@ radv_stage_flush(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageFlags src_st
    }
 }
 
+static bool
+can_skip_buffer_l2_flushes(struct radv_device *device)
+{
+   return device->physical_device->rad_info.chip_class == GFX9 ||
+          (device->physical_device->rad_info.chip_class >= GFX10 &&
+           !device->physical_device->rad_info.tcc_rb_non_coherent);
+}
+
 /*
  * In vulkan barriers have two kinds of operations:
  *
@@ -3873,8 +3881,8 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags dst_flag
 
    /* All the L2 invalidations below are not the CB/DB. So if there are no incoherent images
     * in the L2 cache in CB/DB mode then they are already usable from all the other L2 clients. */
-   image_is_coherent |= cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 &&
-                        !cmd_buffer->state.rb_noncoherent_dirty;
+   image_is_coherent |=
+      can_skip_buffer_l2_flushes(cmd_buffer->device) && !cmd_buffer->state.rb_noncoherent_dirty;
 
    u_foreach_bit(b, dst_flags)
    {
@@ -4765,8 +4773,7 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
       /* Flush noncoherent images on GFX9+ so we can assume they're clean on the start of a
        * command buffer.
        */
-      if (cmd_buffer->state.rb_noncoherent_dirty &&
-          cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9)
+      if (cmd_buffer->state.rb_noncoherent_dirty && can_skip_buffer_l2_flushes(cmd_buffer->device))
          cmd_buffer->state.flush_bits |= radv_src_access_flush(
             cmd_buffer,
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
