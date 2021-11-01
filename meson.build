@@ -1620,6 +1620,11 @@ if dep_libdrm.found()
   endif
 endif
 
+dep_libudev = dependency('libudev', required : false)
+if dep_libudev.found()
+  pre_args += '-DHAVE_LIBUDEV'
+endif
+
 llvm_modules = ['bitwriter', 'engine', 'mcdisassembler', 'mcjit', 'core', 'executionengine', 'scalaropts', 'transformutils', 'instcombine']
 llvm_optional_modules = ['coroutines']
 if with_amd_vk or with_gallium_radeonsi or with_gallium_r600

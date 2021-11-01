@@ -75,6 +75,8 @@ wsi_device_init(struct wsi_device *wsi,
    GetPhysicalDeviceMemoryProperties(pdevice, &wsi->memory_props);
    GetPhysicalDeviceQueueFamilyProperties(pdevice, &wsi->queue_family_count, NULL);
 
+   list_inithead(&wsi->hotplug_fences);
+
 #define WSI_GET_CB(func) \
    wsi->func = (PFN_vk##func)proc_addr(pdevice, "vk" #func)
    WSI_GET_CB(AllocateMemory);
