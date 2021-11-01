@@ -4874,6 +4874,7 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
       cw.ThreadGroupIDYDimension        = groupCountY;
       cw.ThreadGroupIDZDimension        = groupCountZ;
       cw.ExecutionMask                  = dispatch.right_mask;
+      cw.PostSync.MOCS                  = anv_mocs(pipeline->base.device, NULL, 0);
 
       cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
          .KernelStartPointer = cs_bin->kernel.offset,
@@ -5291,6 +5292,7 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       cw.ThreadGroupIDZDimension        = global_size[2];
       cw.ExecutionMask                  = 0xff;
       cw.EmitInlineParameter            = true;
+      cw.PostSync.MOCS                  = anv_mocs(pipeline->base.device, NULL, 0);
 
       const gl_shader_stage s = MESA_SHADER_RAYGEN;
       struct anv_device *device = cmd_buffer->device;

@@ -6982,6 +6982,7 @@ iris_upload_compute_walker(struct iris_context *ice,
       cw.ThreadGroupIDYDimension        = grid->grid[1];
       cw.ThreadGroupIDZDimension        = grid->grid[2];
       cw.ExecutionMask                  = dispatch.right_mask;
+      cw.PostSync.MOCS                  = iris_mocs(NULL, &screen->isl_dev, 0);
 
       cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
          .KernelStartPointer = KSP(shader),
