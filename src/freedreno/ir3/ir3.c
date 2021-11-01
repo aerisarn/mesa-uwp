@@ -275,7 +275,8 @@ ir3_collect_info(struct ir3_shader_variant *v)
                info->ldp_count += components;
          }
 
-         if ((instr->opc == OPC_BARY_F) && (instr->dsts[0]->flags & IR3_REG_EI))
+         if ((instr->opc == OPC_BARY_F || instr->opc == OPC_FLAT_B) &&
+             (instr->dsts[0]->flags & IR3_REG_EI))
             info->last_baryf = info->instrs_count;
 
          unsigned instrs_count = 1 + instr->repeat + instr->nop;
