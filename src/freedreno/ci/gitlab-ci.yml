@@ -8,7 +8,7 @@
     BM_ROOTFS: /rootfs-arm64
     FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_PLATFORM: mixed_glx_egl
-    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
+    BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 $BM_KERNEL_EXTRA_ARGS root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
   script:
     - ./install/bare-metal/fastboot.sh
   needs:
@@ -67,6 +67,7 @@ a306-traces:
     - .test-manual-mr
   variables:
     BM_KERNEL: /baremetal-files/Image.gz
+    BM_KERNEL_EXTRA_ARGS: maxcpus=2
     BM_DTB: /baremetal-files/apq8096-db820c.dtb
     GPU_VERSION: freedreno-a530
   tags:
