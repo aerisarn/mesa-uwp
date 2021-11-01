@@ -790,6 +790,14 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       default:
          return 0; /* unsupported stage */
       }
+      switch (shader) {
+      case PIPE_SHADER_VERTEX:
+      case PIPE_SHADER_TESS_EVAL:
+      case PIPE_SHADER_GEOMETRY:
+         /* last vertex stage must support streamout, and this is capped in glsl compiler */
+         return MIN2(max, MAX_VARYING);
+      default: break;
+      }
       return MIN2(max, 64); // prevent overflowing struct shader_info::inputs_read
    }
 
