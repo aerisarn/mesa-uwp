@@ -1428,7 +1428,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
                                     pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
-      return vk_error(instance, result);
+      return result;
    }
 
    device->instance = (struct lvp_instance *)physical_device->vk.instance;
