@@ -43,6 +43,7 @@ spec@!opengl 2.0@tex3d-npot
 spec@!opengl 2.1@pbo@test_draw_pixels
 spec@arb_depth_texture@depth-level-clamp
 spec@arb_depth_texture@fbo-depth-gl_depth_component16-copypixels
+spec@arb_depth_texture@fbo-depth-gl_depth_component24-blit
 spec@arb_es2_compatibility@texwrap formats
 spec@arb_pixel_buffer_object@texsubimage pbo manual gl_texture_2d gl_rgb8 6 10 0 94 53 0
 spec@arb_pixel_buffer_object@texsubimage-depth-formats pbo
@@ -51,6 +52,7 @@ spec@arb_texture_rectangle@texrect-many
 spec@arb_texture_storage@texture-storage
 spec@arb_texture_storage@texture-storage@2D mipmap rendering
 spec@arb_texture_storage@texture-storage@cube array texture
+spec@ext_framebuffer_object@fbo-generatemipmap-viewport
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-copypixels
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-blit

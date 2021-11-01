@@ -51,10 +51,6 @@ bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.softlight,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
 
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3052
-# fixed by https://gerrit.khronos.org/c/vk-gl-cts/+/7837
-bypass-dEQP-VK.renderpass.suballocation.subpass_dependencies.separate_channels.r8g8b8a8_unorm,Fail
-
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 glx@glx_arb_create_context_no_error@no error,Fail
 glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail

@@ -24,9 +24,6 @@ KHR-GLES31.core.shader_image_load_store.basic-allFormats-store-fs
 # msm ae00000.mdss: [drm:hangcheck_handler] *ERROR* A618: hangcheck detected gpu lockup rb 0!
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
 spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
-spill-dEQP-VK.graphicsfuzz.spv-access-chains
-spill-dEQP-VK.graphicsfuzz.spv-copy-object
-spill-dEQP-VK.graphicsfuzz.spv-dead-break-and-unroll
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
 spill-dEQP-VK.graphicsfuzz.spv-stable-pillars-volatile-nontemporal-store
 

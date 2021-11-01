@@ -936,6 +936,7 @@ spec@nv_copy_image@nv_copy_image-formats@Source: GL_COMPRESSED_SRGB_ALPHA_S3TC_D
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT/Destination: GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_COMPRESSED_SRGB_S3TC_DXT1_EXT/Destination: GL_COMPRESSED_SRGB_S3TC_DXT1_EXT,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
+spec@oes_point_sprite@arb_point_sprite-checkerboard_gles1,Fail
 spec@oes_texture_view@sampling-2d-array-as-cubemap,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-const,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag,Fail
