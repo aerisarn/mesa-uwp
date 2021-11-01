@@ -992,6 +992,12 @@ glsl_type_get_image_count(const struct glsl_type *type)
    return glsl_type_count(type, GLSL_TYPE_IMAGE);
 }
 
+int
+glsl_get_field_index(const struct glsl_type *type, const char *name)
+{
+   return type->field_index(name);
+}
+
 enum glsl_interface_packing
 glsl_get_internal_ifc_packing(const struct glsl_type *type,
                               bool std430_supported)
