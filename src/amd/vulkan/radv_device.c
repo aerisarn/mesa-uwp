@@ -418,6 +418,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_device_group = true,
       .KHR_draw_indirect_count = true,
       .KHR_driver_properties = true,
+      .KHR_dynamic_rendering = true,
       .KHR_external_fence = true,
       .KHR_external_fence_fd = true,
       .KHR_external_memory = true,
@@ -438,9 +439,11 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_maintenance4 = true,
       .KHR_multiview = true,
       .KHR_pipeline_executable_properties = true,
-      .KHR_pipeline_library = (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
+      .KHR_pipeline_library =
+         (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
       .KHR_push_descriptor = true,
-      .KHR_ray_tracing_pipeline = (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
+      .KHR_ray_tracing_pipeline =
+         (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
       .KHR_sampler_ycbcr_conversion = true,
@@ -1642,6 +1645,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceSynchronization2FeaturesKHR *features =
             (VkPhysicalDeviceSynchronization2FeaturesKHR *)ext;
          features->synchronization2 = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR: {
+         VkPhysicalDeviceDynamicRenderingFeaturesKHR *features =
+            (VkPhysicalDeviceDynamicRenderingFeaturesKHR *)ext;
+         features->dynamicRendering = true;
          break;
       }
       default:
