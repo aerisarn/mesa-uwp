@@ -939,8 +939,7 @@ static struct ureg calculate_light_attenuation( struct tnl_program *p,
 						struct ureg VPpli,
 						struct ureg dist )
 {
-   struct ureg attenuation = register_param3(p, STATE_LIGHT, i,
-					     STATE_ATTENUATION);
+   struct ureg attenuation = undef;
    struct ureg att = undef;
 
    /* Calculate spot attenuation:
@@ -950,6 +949,7 @@ static struct ureg calculate_light_attenuation( struct tnl_program *p,
       struct ureg spot = get_temp(p);
       struct ureg slt = get_temp(p);
 
+      attenuation = register_param3(p, STATE_LIGHT, i, STATE_ATTENUATION);
       att = get_temp(p);
 
       emit_op2(p, OPCODE_DP3, spot, 0, negate(VPpli), spot_dir_norm);
@@ -969,6 +969,10 @@ static struct ureg calculate_light_attenuation( struct tnl_program *p,
    if (p->state->unit[i].light_attenuated && !is_undef(dist)) {
       if (is_undef(att))
          att = get_temp(p);
+
+      if (is_undef(attenuation))
+         attenuation = register_param3(p, STATE_LIGHT, i, STATE_ATTENUATION);
+
       /* 1/d,d,d,1/d */
       emit_op1(p, OPCODE_RCP, dist, WRITEMASK_YZ, dist);
       /* 1,d,d*d,1/d */
@@ -1141,7 +1145,10 @@ static void build_lighting( struct tnl_program *p )
       }
    }
    for (i = 0; i < MAX_LIGHTS; i++) {
-      if (p->state->unit[i].light_enabled)
+      if (p->state->unit[i].light_enabled &&
+          (!p->state->unit[i].light_spotcutoff_is_180 ||
+           (p->state->unit[i].light_attenuated &&
+            !p->state->unit[i].light_eyepos3_is_zero)))
          register_param3(p, STATE_LIGHT, i, STATE_ATTENUATION);
    }
 
