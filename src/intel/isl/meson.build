@@ -186,7 +186,6 @@ if with_tests
     suite : ['intel'],
     protocol : 'gtest',
   )
-
   test(
     'isl_tile_std_y',
     executable(
@@ -195,6 +194,21 @@ if with_tests
       dependencies : dep_m,
       include_directories : [inc_include, inc_src, inc_gallium, inc_intel],
       link_with : [libisl, libintel_dev],
+    ),
+    suite : ['intel'],
+  )
+  test(
+    'isl_tilememcpy',
+    executable(
+      'isl_tilememcpy_test',
+      [
+        'tests/isl_tilememcpy_tiled_unittest.cpp',
+      ],
+      dependencies : [dep_m, idep_gtest, idep_mesautil, idep_intel_dev],
+      include_directories : [inc_include, inc_src, inc_gallium, inc_intel],
+      link_with : libisl,
+      c_args : '-DIN_UNIT_TEST',
+      cpp_args : ['-std=c++17', '-DIN_UNIT_TEST'],
     ),
     suite : ['intel'],
   )
