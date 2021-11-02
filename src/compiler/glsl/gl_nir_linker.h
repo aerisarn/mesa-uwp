@@ -25,6 +25,7 @@
 #define GL_NIR_LINKER_H
 
 #include "main/glheader.h"
+#include "main/menums.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +58,10 @@ bool gl_nir_link_glsl(const struct gl_constants *consts,
 bool gl_nir_link_uniforms(const struct gl_constants *consts,
                           struct gl_shader_program *prog,
                           bool fill_parameters);
+
+bool gl_nir_link_varyings(const struct gl_constants *consts,
+                          const struct gl_extensions *exts,
+                          gl_api api, struct gl_shader_program *prog);
 
 void gl_nir_set_uniform_initializers(const struct gl_constants *consts,
                                      struct gl_shader_program *prog);

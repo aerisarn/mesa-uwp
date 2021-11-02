@@ -93,6 +93,8 @@ files_libglsl = files(
   'gl_nir_link_uniform_blocks.c',
   'gl_nir_link_uniform_initializers.c',
   'gl_nir_link_uniforms.c',
+  'gl_nir_link_varyings.c',
+  'gl_nir_link_varyings.h',
   'gl_nir_link_xfb.c',
   'gl_nir_linker.c',
   'gl_nir_linker.h',
