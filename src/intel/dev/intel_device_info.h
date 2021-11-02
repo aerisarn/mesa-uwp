@@ -268,6 +268,8 @@ struct intel_device_info
     */
    unsigned max_wm_threads;
 
+   unsigned max_threads_per_psd;
+
    /**
     * Maximum Compute Shader threads.
     *

@@ -31,6 +31,7 @@ main(int argc, char *argv[])
       assert(devinfo.cs_prefetch_size > 0);
 
       assert(devinfo.ver < 7 || devinfo.max_constant_urb_size_kb > 0);
+      assert(devinfo.ver < 8 || devinfo.max_threads_per_psd > 0);
 
       assert(devinfo.platform >= 1);
 
