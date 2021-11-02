@@ -59,13 +59,6 @@
 
 
 /**
- * State changes which we care about for glCopyTex[Sub]Image() calls.
- * In particular, we care about pixel transfer state and buffer state
- * (such as glReadBuffer to make sure we read from the right renderbuffer).
- */
-#define NEW_COPY_TEX_STATE (_NEW_BUFFERS | _NEW_PIXEL)
-
-/**
  * Returns a corresponding internal floating point format for a given base
  * format as specifed by OES_texture_float. In case of GL_FLOAT, the internal
  * format needs to be a 32 bit component and in case of GL_HALF_FLOAT_OES it
@@ -4271,7 +4264,7 @@ copy_texture_sub_image_err(struct gl_context *ctx, GLuint dims,
 
    _mesa_update_pixel(ctx);
 
-   if (ctx->NewState & NEW_COPY_TEX_STATE)
+   if (ctx->NewState & _NEW_BUFFERS)
       _mesa_update_state(ctx);
 
    if (copytexsubimage_error_check(ctx, dims, texObj, target, level,
@@ -4296,7 +4289,7 @@ copy_texture_sub_image_no_error(struct gl_context *ctx, GLuint dims,
 
    _mesa_update_pixel(ctx);
 
-   if (ctx->NewState & NEW_COPY_TEX_STATE)
+   if (ctx->NewState & _NEW_BUFFERS)
       _mesa_update_state(ctx);
 
    copy_texture_sub_image(ctx, dims, texObj, target, level, xoffset, yoffset,
@@ -4327,7 +4320,7 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
 
    _mesa_update_pixel(ctx);
 
-   if (ctx->NewState & NEW_COPY_TEX_STATE)
+   if (ctx->NewState & _NEW_BUFFERS)
       _mesa_update_state(ctx);
 
    if (!no_error) {
