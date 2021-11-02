@@ -508,42 +508,47 @@ foreach platform : _platforms
   pre_args += '-DHAVE_@0@_PLATFORM'.format(platform.to_upper())
 endforeach
 
-use_elf_tls = false
-if not with_platform_windows or not with_shared_glapi
-  pre_args += '-DUSE_ELF_TLS'
-  use_elf_tls = true
+use_elf_tls = true
+pre_args += '-DUSE_ELF_TLS'
 
-  if with_platform_android and get_option('platform-sdk-version') >= 29
-    # By default the NDK compiler, at least, emits emutls references instead of
-    # ELF TLS, even when building targeting newer API levels.  Make it actually do
-    # ELF TLS instead.
-    c_args += '-fno-emulated-tls'
-    cpp_args += '-fno-emulated-tls'
+if with_platform_android and get_option('platform-sdk-version') >= 29
+  # By default the NDK compiler, at least, emits emutls references instead of
+  # ELF TLS, even when building targeting newer API levels.  Make it actually do
+  # ELF TLS instead.
+  c_args += '-fno-emulated-tls'
+  cpp_args += '-fno-emulated-tls'
+endif
+
+# -mtls-dialect=gnu2 speeds up non-initial-exec TLS significantly but requires
+# full toolchain (including libc) support.
+have_mtls_dialect = false
+foreach c_arg : get_option('c_args')
+  if c_arg.startswith('-mtls-dialect=')
+    have_mtls_dialect = true
+    break
   endif
-
-  # -mtls-dialect=gnu2 speeds up non-initial-exec TLS significantly but requires
-  # full toolchain (including libc) support.
-  have_mtls_dialect = false
-  foreach c_arg : get_option('c_args')
-    if c_arg.startswith('-mtls-dialect=')
-      have_mtls_dialect = true
-      break
-    endif
-  endforeach
-  if not have_mtls_dialect
-    # need .run to check libc support. meson aborts when calling .run when
-    # cross-compiling, but because this is just an optimization we can skip it
-    if meson.is_cross_build()
-      warning('cannot auto-detect -mtls-dialect when cross-compiling, using compiler default')
-    else
-      # -fpic to force dynamic tls, otherwise TLS relaxation defeats check
-      gnu2_test = cc.run('int __thread x; int main() { return x; }', args: ['-mtls-dialect=gnu2', '-fpic'], name: '-mtls-dialect=gnu2')
-      if gnu2_test.returncode() == 0
-        c_args += '-mtls-dialect=gnu2'
-        cpp_args += '-mtls-dialect=gnu2'
-      endif
+endforeach
+if not have_mtls_dialect
+  # need .run to check libc support. meson aborts when calling .run when
+  # cross-compiling, but because this is just an optimization we can skip it
+  if meson.is_cross_build()
+    warning('cannot auto-detect -mtls-dialect when cross-compiling, using compiler default')
+  else
+    # -fpic to force dynamic tls, otherwise TLS relaxation defeats check
+    gnu2_test = cc.run('int __thread x; int main() { return x; }', args: ['-mtls-dialect=gnu2', '-fpic'], name: '-mtls-dialect=gnu2')
+    if gnu2_test.returncode() == 0
+      c_args += '-mtls-dialect=gnu2'
+      cpp_args += '-mtls-dialect=gnu2'
     endif
   endif
+endif
+
+if with_platform_windows and with_shared_glapi
+  # Windows doesn't support DLL exports/imports being TLS variables. When using shared
+  # glapi, libglapi.dll hosts the TLS, but other DLLs need to use them. Instead of falling
+  # all the way back to using globals and manual per-thread data, keep using TLS but just
+  # put accesses to it behind a function so the variable doesn't need to be exported.
+  pre_args += '-DUSE_TLS_BEHIND_FUNCTIONS'
 endif
 
 if with_glx != 'disabled'
