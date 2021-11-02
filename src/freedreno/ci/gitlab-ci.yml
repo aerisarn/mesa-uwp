@@ -24,7 +24,6 @@
   variables:
     DEQP_VER: vk
     VK_DRIVER: freedreno
-    MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
 
 .freedreno-test-traces:
   extends:
