@@ -377,14 +377,14 @@ anv_block_pool_init(struct anv_block_pool *pool,
 
    pool->name = name;
    pool->device = device;
-   pool->use_softpin = device->physical->use_softpin;
+   pool->use_relocations = anv_use_relocations(device->physical);
    pool->nbos = 0;
    pool->size = 0;
    pool->center_bo_offset = 0;
    pool->start_address = intel_canonical_address(start_address);
    pool->map = NULL;
 
-   if (pool->use_softpin) {
+   if (!pool->use_relocations) {
       pool->bo = NULL;
       pool->fd = -1;
    } else {
@@ -462,7 +462,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 
    /* Assert that we don't go outside the bounds of the memfd */
    assert(center_bo_offset <= BLOCK_POOL_MEMFD_CENTER);
-   assert(pool->use_softpin ||
+   assert(!pool->use_relocations ||
           size - center_bo_offset <=
           BLOCK_POOL_MEMFD_SIZE - BLOCK_POOL_MEMFD_CENTER);
 
@@ -493,10 +493,10 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
     * addresses we choose are fine for base addresses.
     */
    enum anv_bo_alloc_flags bo_alloc_flags = ANV_BO_ALLOC_CAPTURE;
-   if (!pool->use_softpin)
+   if (pool->use_relocations)
       bo_alloc_flags |= ANV_BO_ALLOC_32BIT_ADDRESS;
 
-   if (pool->use_softpin) {
+   if (!pool->use_relocations) {
       uint32_t new_bo_size = size - pool->size;
       struct anv_bo *new_bo;
       assert(center_bo_offset == 0);
@@ -575,7 +575,7 @@ anv_block_pool_expand_range(struct anv_block_pool *pool,
 void*
 anv_block_pool_map(struct anv_block_pool *pool, int32_t offset, uint32_t size)
 {
-   if (pool->use_softpin) {
+   if (!pool->use_relocations) {
       struct anv_bo *bo = NULL;
       int32_t bo_offset = 0;
       anv_block_pool_foreach_bo(iter_bo, pool) {
@@ -662,7 +662,7 @@ anv_block_pool_grow(struct anv_block_pool *pool, struct anv_block_state *state,
    uint32_t back_required = MAX2(back_used, old_back);
    uint32_t front_required = MAX2(front_used, old_front);
 
-   if (pool->use_softpin) {
+   if (!pool->use_relocations) {
       /* With softpin, the pool is made up of a bunch of buffers with separate
        * maps.  Make sure we have enough contiguous space that we can get a
        * properly contiguous map for the next chunk.
@@ -755,7 +755,7 @@ anv_block_pool_alloc_new(struct anv_block_pool *pool,
       if (state.next + block_size <= state.end) {
          return state.next;
       } else if (state.next <= state.end) {
-         if (pool->use_softpin && state.next < state.end) {
+         if (!pool->use_relocations && state.next < state.end) {
             /* We need to grow the block pool, but still have some leftover
              * space that can't be used by that particular allocation. So we
              * add that as a "padding", and return it.

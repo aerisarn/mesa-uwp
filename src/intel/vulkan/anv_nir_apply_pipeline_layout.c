@@ -1079,7 +1079,7 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
                                       nir_intrinsic_base(intrin));
 
    nir_ssa_def *data;
-   if (state->pdevice->use_softpin) {
+   if (!anv_use_relocations(state->pdevice)) {
       unsigned load_size = intrin->dest.ssa.num_components *
                            intrin->dest.ssa.bit_size / 8;
       unsigned load_align = intrin->dest.ssa.bit_size / 8;
@@ -1445,7 +1445,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       }
    }
 
-   if (state.uses_constants && !pdevice->use_softpin) {
+   if (state.uses_constants && anv_use_relocations(pdevice)) {
       state.constants_offset = map->surface_count;
       map->surface_to_descriptor[map->surface_count].set =
          ANV_DESCRIPTOR_SET_SHADER_CONSTANTS;

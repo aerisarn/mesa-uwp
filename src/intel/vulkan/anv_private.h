@@ -573,7 +573,7 @@ struct anv_block_pool {
    const char *name;
 
    struct anv_device *device;
-   bool use_softpin;
+   bool use_relocations;
 
    /* Wrapper BO for use in relocation lists.  This BO is simply a wrapper
     * around the actual BO so that we grow the pool after the wrapper BO has
@@ -1250,42 +1250,42 @@ struct anv_device {
 #endif
 
 static inline bool
-anv_use_softpin(const struct anv_physical_device *pdevice)
+anv_use_relocations(const struct anv_physical_device *pdevice)
 {
 #if defined(GFX_VERx10) && GFX_VERx10 >= 90
    /* Sky Lake and later always uses softpin */
    assert(pdevice->use_softpin);
-   return true;
+   return false;
 #elif defined(GFX_VERx10) && GFX_VERx10 < 80
    /* Haswell and earlier never use softpin */
    assert(!pdevice->use_softpin);
-   return false;
+   return true;
 #else
    /* If we don't have a GFX_VERx10 #define, we need to look at the physical
     * device.  Also, for GFX version 8, we need to look at the physical
     * device because Broadwell softpins but Cherryview doesn't.
     */
-   return pdevice->use_softpin;
+   return !pdevice->use_softpin;
 #endif
 }
 
 static inline struct anv_state_pool *
 anv_binding_table_pool(struct anv_device *device)
 {
-   if (anv_use_softpin(device->physical))
-      return &device->binding_table_pool;
-   else
+   if (anv_use_relocations(device->physical))
       return &device->surface_state_pool;
+   else
+      return &device->binding_table_pool;
 }
 
 static inline struct anv_state
 anv_binding_table_pool_alloc(struct anv_device *device)
 {
-   if (anv_use_softpin(device->physical))
+   if (anv_use_relocations(device->physical))
+      return anv_state_pool_alloc_back(&device->surface_state_pool);
+   else
       return anv_state_pool_alloc(&device->binding_table_pool,
                                   device->binding_table_pool.block_size, 0);
-   else
-      return anv_state_pool_alloc_back(&device->surface_state_pool);
 }
 
 static inline void
@@ -3190,7 +3190,7 @@ struct anv_cmd_buffer {
 static inline bool
 anv_cmd_buffer_is_chainable(struct anv_cmd_buffer *cmd_buffer)
 {
-   return anv_use_softpin(cmd_buffer->device->physical) &&
+   return !anv_use_relocations(cmd_buffer->device->physical) &&
       !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 }
 

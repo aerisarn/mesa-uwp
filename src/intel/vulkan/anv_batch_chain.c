@@ -482,14 +482,7 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
    assert(((*bb_start >> 29) & 0x07) == 0);
    assert(((*bb_start >> 23) & 0x3f) == 49);
 
-   if (cmd_buffer->device->physical->use_softpin) {
-      assert(prev_bbo->bo->flags & EXEC_OBJECT_PINNED);
-      assert(next_bbo->bo->flags & EXEC_OBJECT_PINNED);
-
-      write_reloc(cmd_buffer->device,
-                  prev_bbo->bo->map + bb_start_offset + 4,
-                  next_bbo->bo->offset + next_bbo_offset, true);
-   } else {
+   if (anv_use_relocations(cmd_buffer->device->physical)) {
       uint32_t reloc_idx = prev_bbo->relocs.num_relocs - 1;
       assert(prev_bbo->relocs.relocs[reloc_idx].offset == bb_start_offset + 4);
 
@@ -498,6 +491,13 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
 
       /* Use a bogus presumed offset to force a relocation */
       prev_bbo->relocs.relocs[reloc_idx].presumed_offset = -1;
+   } else {
+      assert(prev_bbo->bo->flags & EXEC_OBJECT_PINNED);
+      assert(next_bbo->bo->flags & EXEC_OBJECT_PINNED);
+
+      write_reloc(cmd_buffer->device,
+                  prev_bbo->bo->map + bb_start_offset + 4,
+                  next_bbo->bo->offset + next_bbo_offset, true);
    }
 }
 
@@ -617,7 +617,7 @@ static void
 anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
                                    struct anv_cmd_buffer *cmd_buffer_to)
 {
-   assert(cmd_buffer_from->device->physical->use_softpin);
+   assert(!anv_use_relocations(cmd_buffer_from->device->physical));
 
    uint32_t *bb_start = cmd_buffer_from->batch_end;
 
@@ -647,7 +647,7 @@ anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
 static void
 anv_cmd_buffer_record_end_submit(struct anv_cmd_buffer *cmd_buffer)
 {
-   assert(cmd_buffer->device->physical->use_softpin);
+   assert(!anv_use_relocations(cmd_buffer->device->physical));
 
    struct anv_batch_bo *last_bbo =
       list_last_entry(&cmd_buffer->batch_bos, struct anv_batch_bo, link);
@@ -1569,12 +1569,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
    adjust_relocations_from_state_pool(ss_pool, &cmd_buffer->surface_relocs,
                                       cmd_buffer->last_ss_pool_center);
    VkResult result;
-   if (cmd_buffer->device->physical->use_softpin) {
-      /* Add surface dependencies (BOs) to the execbuf */
-      anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
-                                cmd_buffer->surface_relocs.dep_words,
-                                cmd_buffer->surface_relocs.deps, 0);
-   } else {
+   if (anv_use_relocations(cmd_buffer->device->physical)) {
       /* Since we aren't in the softpin case, all of our STATE_BASE_ADDRESS BOs
        * will get added automatically by processing relocations on the batch
        * buffer.  We have to add the surface state BO manually because it has
@@ -1585,6 +1580,11 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
                                   &cmd_buffer->surface_relocs, 0);
       if (result != VK_SUCCESS)
          return result;
+   } else {
+      /* Add surface dependencies (BOs) to the execbuf */
+      anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
+                                cmd_buffer->surface_relocs.dep_words,
+                                cmd_buffer->surface_relocs.deps, 0);
    }
 
    /* First, we walk over all of the bos we've seen and add them and their
@@ -1649,7 +1649,7 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    }
 
    /* Add all the global BOs to the object list for softpin case. */
-   if (device->physical->use_softpin) {
+   if (!anv_use_relocations(device->physical)) {
       anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
          result = anv_execbuf_add_bo(device, execbuf, bo, NULL, 0);
          if (result != VK_SUCCESS)
@@ -1777,7 +1777,7 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    }
 
    /* If we are pinning our BOs, we shouldn't have to relocate anything */
-   if (device->physical->use_softpin)
+   if (!anv_use_relocations(device->physical))
       assert(!execbuf->has_relocs);
 
    /* Now we go through and fixup all of the relocation lists to point to the

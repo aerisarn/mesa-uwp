@@ -157,15 +157,15 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
        */
       sba.GeneralStateBufferSize       = 0xfffff;
       sba.IndirectObjectBufferSize     = 0xfffff;
-      if (anv_use_softpin(device->physical)) {
+      if (anv_use_relocations(device->physical)) {
+         sba.DynamicStateBufferSize    = 0xfffff;
+         sba.InstructionBufferSize     = 0xfffff;
+      } else {
          /* With softpin, we use fixed addresses so we actually know how big
           * our base addresses are.
           */
          sba.DynamicStateBufferSize    = DYNAMIC_STATE_POOL_SIZE / 4096;
          sba.InstructionBufferSize     = INSTRUCTION_STATE_POOL_SIZE / 4096;
-      } else {
-         sba.DynamicStateBufferSize    = 0xfffff;
-         sba.InstructionBufferSize     = 0xfffff;
       }
       sba.GeneralStateBufferSizeModifyEnable    = true;
       sba.IndirectObjectBufferSizeModifyEnable  = true;
@@ -264,16 +264,16 @@ add_surface_reloc(struct anv_cmd_buffer *cmd_buffer,
 {
    VkResult result;
 
-   if (anv_use_softpin(cmd_buffer->device->physical)) {
-      result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                                     &cmd_buffer->pool->alloc,
-                                     addr.bo);
-   } else {
+   if (anv_use_relocations(cmd_buffer->device->physical)) {
       const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
       result = anv_reloc_list_add(&cmd_buffer->surface_relocs,
                                   &cmd_buffer->pool->alloc,
                                   state.offset + isl_dev->ss.addr_offset,
                                   addr.bo, addr.offset, NULL);
+   } else {
+      result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
+                                     &cmd_buffer->pool->alloc,
+                                     addr.bo);
    }
 
    if (unlikely(result != VK_SUCCESS))
@@ -552,7 +552,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
          aux_entry_map = intel_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
                                                  address, &aux_entry_addr64);
 
-         assert(anv_use_softpin(cmd_buffer->device->physical));
+         assert(!anv_use_relocations(cmd_buffer->device->physical));
          struct anv_address aux_entry_address = {
             .bo = NULL,
             .offset = aux_entry_addr64,
@@ -2556,7 +2556,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
     * softpin then we always keep all user-allocated memory objects resident.
     */
    const bool need_client_mem_relocs =
-      !anv_use_softpin(cmd_buffer->device->physical);
+      anv_use_relocations(cmd_buffer->device->physical);
    struct anv_push_constants *push = &pipe_state->push_constants;
 
    for (uint32_t s = 0; s < map->surface_count; s++) {
@@ -5610,7 +5610,7 @@ genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
                                                uint32_t vb_size)
 {
    if (GFX_VER < 8 || GFX_VER > 9 ||
-       !anv_use_softpin(cmd_buffer->device->physical))
+       anv_use_relocations(cmd_buffer->device->physical))
       return;
 
    struct anv_vb_cache_range *bound, *dirty;
@@ -5660,7 +5660,7 @@ genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_b
                                                     uint64_t vb_used)
 {
    if (GFX_VER < 8 || GFX_VER > 9 ||
-       !anv_use_softpin(cmd_buffer->device->physical))
+       anv_use_relocations(cmd_buffer->device->physical))
       return;
 
    if (access_type == RANDOM) {

@@ -205,7 +205,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_maintenance4                      = true,
       .KHR_multiview                         = true,
       .KHR_performance_query =
-         device->use_softpin && device->perf &&
+         !anv_use_relocations(device) && device->perf &&
          (device->perf->i915_perf_version >= 3 ||
           INTEL_DEBUG(DEBUG_NO_OACONFIG)) &&
          device->use_call_secondary,
@@ -3094,7 +3094,7 @@ VkResult anv_CreateDevice(
       }
    }
 
-   if (physical_device->use_softpin) {
+   if (!anv_use_relocations(physical_device)) {
       if (pthread_mutex_init(&device->vma_mutex, NULL) != 0) {
          result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
          goto fail_queues;
@@ -3214,7 +3214,7 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_instruction_state_pool;
 
-   if (physical_device->use_softpin) {
+   if (!anv_use_relocations(physical_device)) {
       int64_t bt_pool_offset = (int64_t)BINDING_TABLE_POOL_MIN_ADDRESS -
                                (int64_t)SURFACE_STATE_POOL_MIN_ADDRESS;
       assert(INT32_MIN < bt_pool_offset && bt_pool_offset < 0);
@@ -3310,7 +3310,7 @@ VkResult anv_CreateDevice(
       device->aux_map_ctx = NULL;
    }
  fail_binding_table_pool:
-   if (physical_device->use_softpin)
+   if (!anv_use_relocations(physical_device))
       anv_state_pool_finish(&device->binding_table_pool);
  fail_surface_state_pool:
    anv_state_pool_finish(&device->surface_state_pool);
@@ -3330,7 +3330,7 @@ VkResult anv_CreateDevice(
  fail_mutex:
    pthread_mutex_destroy(&device->mutex);
  fail_vmas:
-   if (physical_device->use_softpin) {
+   if (!anv_use_relocations(physical_device)) {
       util_vma_heap_finish(&device->vma_hi);
       util_vma_heap_finish(&device->vma_cva);
       util_vma_heap_finish(&device->vma_lo);
@@ -3391,7 +3391,7 @@ void anv_DestroyDevice(
       device->aux_map_ctx = NULL;
    }
 
-   if (device->physical->use_softpin)
+   if (!anv_use_relocations(device->physical))
       anv_state_pool_finish(&device->binding_table_pool);
    anv_state_pool_finish(&device->surface_state_pool);
    anv_state_pool_finish(&device->instruction_state_pool);
@@ -3402,7 +3402,7 @@ void anv_DestroyDevice(
 
    anv_bo_cache_finish(&device->bo_cache);
 
-   if (device->physical->use_softpin) {
+   if (!anv_use_relocations(device->physical)) {
       util_vma_heap_finish(&device->vma_hi);
       util_vma_heap_finish(&device->vma_cva);
       util_vma_heap_finish(&device->vma_lo);
