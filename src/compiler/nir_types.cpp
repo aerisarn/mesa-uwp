@@ -204,6 +204,12 @@ glsl_get_component_slots(const struct glsl_type *type)
 }
 
 unsigned
+glsl_get_component_slots_aligned(const struct glsl_type *type, unsigned offset)
+{
+   return type->component_slots_aligned(offset);
+}
+
+unsigned
 glsl_varying_count(const struct glsl_type *type)
 {
    return type->varying_count();

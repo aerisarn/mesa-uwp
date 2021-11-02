@@ -102,6 +102,8 @@ unsigned glsl_count_dword_slots(const struct glsl_type *type, bool is_bindless);
 unsigned glsl_count_attribute_slots(const struct glsl_type *type,
                                     bool is_gl_vertex_input);
 unsigned glsl_get_component_slots(const struct glsl_type *type);
+unsigned glsl_get_component_slots_aligned(const struct glsl_type *type,
+                                          unsigned offset);
 unsigned glsl_varying_count(const struct glsl_type *type);
 
 const char *glsl_get_struct_elem_name(const struct glsl_type *type,
