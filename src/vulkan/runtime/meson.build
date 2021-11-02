@@ -58,6 +58,8 @@ vulkan_runtime_files = files(
   'vk_shader_module.h',
   'vk_sync.c',
   'vk_sync.h',
+  'vk_sync_binary.c',
+  'vk_sync_binary.h',
   'vk_sync_timeline.c',
   'vk_sync_timeline.h',
   'vk_synchronization2.c',

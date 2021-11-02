@@ -35,6 +35,7 @@
 #include "vk_physical_device.h"
 #include "vk_semaphore.h"
 #include "vk_sync.h"
+#include "vk_sync_binary.h"
 #include "vk_sync_timeline.h"
 #include "vk_util.h"
 
@@ -281,6 +282,13 @@ vk_queue_submit_final(struct vk_queue *queue,
          submit->waits[i].wait_value = 0;
       }
 
+      struct vk_sync_binary *binary =
+         vk_sync_as_binary(submit->waits[i].sync);
+      if (binary) {
+         submit->waits[i].sync = &binary->timeline;
+         submit->waits[i].wait_value = binary->next_point;
+      }
+
       assert((submit->waits[i].sync->flags & VK_SYNC_IS_TIMELINE) ||
              submit->waits[i].wait_value == 0);
 
@@ -300,6 +308,13 @@ vk_queue_submit_final(struct vk_queue *queue,
    for (uint32_t i = 0; i < submit->signal_count; i++) {
       assert((submit->signals[i].sync->flags & VK_SYNC_IS_TIMELINE) ||
              submit->signals[i].signal_value == 0);
+
+      struct vk_sync_binary *binary =
+         vk_sync_as_binary(submit->signals[i].sync);
+      if (binary) {
+         submit->signals[i].sync = &binary->timeline;
+         submit->signals[i].signal_value = ++binary->next_point;
+      }
    }
 
    result = queue->driver_submit(queue, submit);
