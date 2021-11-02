@@ -457,6 +457,16 @@ typedef struct nir_variable {
       unsigned precision:2;
 
       /**
+       * Has this variable been statically assigned?
+       *
+       * This answers whether the variable was assigned in any path of
+       * the shader during ast_to_hir.  This doesn't answer whether it is
+       * still written after dead code removal, nor is it maintained in
+       * non-ast_to_hir.cpp (GLSL parsing) paths.
+       */
+      unsigned assigned:1;
+
+      /**
        * Can this variable be coalesced with another?
        *
        * This is set by nir_lower_io_to_temporaries to say that any
@@ -528,6 +538,20 @@ typedef struct nir_variable {
       unsigned explicit_location:1;
 
       /**
+       * Is this varying used by transform feedback?
+       *
+       * This is used by the linker to decide if it's safe to pack the varying.
+       */
+      unsigned is_xfb:1;
+
+      /**
+       * Is this varying used only by transform feedback?
+       *
+       * This is used by the linker to decide if its safe to pack the varying.
+       */
+      unsigned is_xfb_only:1;
+
+      /**
        * Was a transfer feedback buffer set in the shader?
        */
       unsigned explicit_xfb_buffer:1;
@@ -552,6 +576,12 @@ typedef struct nir_variable {
        * block.
        */
       unsigned from_named_ifc_block:1;
+
+      /**
+       * Non-zero if the variable must be a shader input. This is useful for
+       * constraints on function parameters.
+       */
+      unsigned must_be_shader_input:1;
 
       /**
        * How the variable was declared.  See nir_var_declaration_type.

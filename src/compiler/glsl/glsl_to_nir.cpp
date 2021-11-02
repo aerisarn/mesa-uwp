@@ -496,6 +496,7 @@ nir_visitor::visit(ir_variable *ir)
    var->type = ir->type;
    var->name = ralloc_strdup(var, ir->name);
 
+   var->data.assigned = ir->data.assigned;
    var->data.always_active_io = ir->data.always_active_io;
    var->data.read_only = ir->data.read_only;
    var->data.centroid = ir->data.centroid;
@@ -504,6 +505,7 @@ nir_visitor::visit(ir_variable *ir)
    var->data.how_declared = get_nir_how_declared(ir->data.how_declared);
    var->data.invariant = ir->data.invariant;
    var->data.location = ir->data.location;
+   var->data.must_be_shader_input = ir->data.must_be_shader_input;
    var->data.stream = ir->data.stream;
    if (ir->data.stream & (1u << 31))
       var->data.stream |= NIR_STREAM_PACKED;
@@ -668,6 +670,7 @@ nir_visitor::visit(ir_variable *ir)
    var->data.descriptor_set = 0;
    var->data.binding = ir->data.binding;
    var->data.explicit_binding = ir->data.explicit_binding;
+   var->data.explicit_offset = ir->data.explicit_xfb_offset;
    var->data.bindless = ir->data.bindless;
    var->data.offset = ir->data.offset;
    var->data.access = (gl_access_qualifier)mem_access;
