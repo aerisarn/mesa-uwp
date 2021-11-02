@@ -1766,8 +1766,7 @@ extern const uint16_t isl_format_name_offsets[];
 
 void
 isl_device_init(struct isl_device *dev,
-                const struct intel_device_info *info,
-                bool has_bit6_swizzling);
+                const struct intel_device_info *info);
 
 isl_sample_count_mask_t ATTRIBUTE_CONST
 isl_device_get_sample_counts(struct isl_device *dev);

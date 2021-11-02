@@ -961,21 +961,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->compiler->compact_params = false;
    device->compiler->indirect_ubos_use_sampler = device->info.ver < 12;
 
-   /* Broadwell PRM says:
-    *
-    *   "Before Gfx8, there was a historical configuration control field to
-    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
-    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
-    *    DISP_ARB_CTL[14:13].
-    *
-    *    For Gfx8 and subsequent generations, the swizzle fields are all
-    *    reserved, and the CPU's memory controller performs all address
-    *    swizzling modifications."
-    */
-   bool swizzled =
-      device->info.ver < 8 && anv_gem_get_bit6_swizzle(fd, I915_TILING_X);
-
-   isl_device_init(&device->isl_dev, &device->info, swizzled);
+   isl_device_init(&device->isl_dev, &device->info);
 
    result = anv_physical_device_init_uuids(device);
    if (result != VK_SUCCESS)

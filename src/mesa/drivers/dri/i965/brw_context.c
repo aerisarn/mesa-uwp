@@ -1011,8 +1011,6 @@ brw_create_context(gl_api api,
    brw->has_hiz = devinfo->has_hiz_and_separate_stencil;
    brw->has_separate_stencil = devinfo->has_hiz_and_separate_stencil;
 
-   brw->has_swizzling = screen->hw_has_swizzling;
-
    /* We don't push UBOs on IVB and earlier because the restrictions on
     * 3DSTATE_CONSTANT_* make it really annoying to use push constants
     * without dynamic state base address.

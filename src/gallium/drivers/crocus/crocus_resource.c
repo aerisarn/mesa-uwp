@@ -1643,7 +1643,7 @@ crocus_transfer_map(struct pipe_context *ctx,
    memset(map, 0, sizeof(*map));
    map->dbg = &ice->dbg;
 
-   map->has_swizzling = ((struct crocus_screen *)ctx->screen)->has_swizzling;
+   map->has_swizzling = screen->devinfo.has_bit6_swizzle;
    pipe_resource_reference(&xfer->resource, resource);
    xfer->level = level;
    xfer->usage = usage;

@@ -825,7 +825,6 @@ struct brw_context
 
    bool has_hiz;
    bool has_separate_stencil;
-   bool has_swizzling;
 
    bool can_push_ubos;
 

@@ -1915,37 +1915,6 @@ brw_init_bufmgr(struct brw_screen *screen)
    return true;
 }
 
-static bool
-brw_detect_swizzling(struct brw_screen *screen)
-{
-   /* Broadwell PRM says:
-    *
-    *   "Before Gfx8, there was a historical configuration control field to
-    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
-    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
-    *    DISP_ARB_CTL[14:13].
-    *
-    *    For Gfx8 and subsequent generations, the swizzle fields are all
-    *    reserved, and the CPU's memory controller performs all address
-    *    swizzling modifications."
-    */
-   if (screen->devinfo.ver >= 8)
-      return false;
-
-   uint32_t tiling = I915_TILING_X;
-   uint32_t swizzle_mode = 0;
-   struct brw_bo *buffer =
-      brw_bo_alloc_tiled(screen->bufmgr, "swizzle test", 32768,
-                         BRW_MEMZONE_OTHER, tiling, 512, 0);
-   if (buffer == NULL)
-      return false;
-
-   brw_bo_get_tiling(buffer, &tiling, &swizzle_mode);
-   brw_bo_unreference(buffer);
-
-   return swizzle_mode != I915_BIT_6_SWIZZLE_NONE;
-}
-
 static int
 brw_detect_timestamp(struct brw_screen *screen)
 {
@@ -2603,11 +2572,9 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
 
    screen->aperture_threshold = devinfo->aperture_bytes * 3 / 4;
 
-   screen->hw_has_swizzling = brw_detect_swizzling(screen);
    screen->hw_has_timestamp = brw_detect_timestamp(screen);
 
-   isl_device_init(&screen->isl_dev, &screen->devinfo,
-                   screen->hw_has_swizzling);
+   isl_device_init(&screen->isl_dev, &screen->devinfo);
 
    /* Gfx7-7.5 kernel requirements / command parser saga:
     *

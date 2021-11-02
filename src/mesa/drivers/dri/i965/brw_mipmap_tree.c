@@ -2484,6 +2484,8 @@ brw_miptree_unmap_tiled_memcpy(struct brw_context *brw,
                                unsigned int level,
                                unsigned int slice)
 {
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
+
    if (map->mode & GL_MAP_WRITE_BIT) {
       unsigned int x1, x2, y1, y2;
       tile_extents(mt, map, level, slice, &x1, &x2, &y1, &y2);
@@ -2493,7 +2495,7 @@ brw_miptree_unmap_tiled_memcpy(struct brw_context *brw,
 
       isl_memcpy_linear_to_tiled(
          x1, x2, y1, y2, dst, map->ptr, mt->surf.row_pitch_B, map->stride,
-         brw->has_swizzling, mt->surf.tiling, ISL_MEMCPY);
+         devinfo->has_bit6_swizzle, mt->surf.tiling, ISL_MEMCPY);
 
       brw_miptree_unmap_raw(mt);
    }
@@ -2567,6 +2569,8 @@ brw_miptree_map_tiled_memcpy(struct brw_context *brw,
                              struct brw_miptree_map *map,
                              unsigned int level, unsigned int slice)
 {
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
+
    brw_miptree_access_raw(brw, mt, level, slice,
                           map->mode & GL_MAP_WRITE_BIT);
 
@@ -2595,7 +2599,7 @@ brw_miptree_map_tiled_memcpy(struct brw_context *brw,
 
       isl_memcpy_tiled_to_linear(
          x1, x2, y1, y2, map->ptr, src, map->stride,
-         mt->surf.row_pitch_B, brw->has_swizzling, mt->surf.tiling,
+         mt->surf.row_pitch_B, devinfo->has_bit6_swizzle, mt->surf.tiling,
          copy_type);
 
       brw_miptree_unmap_raw(mt);
@@ -2748,6 +2752,8 @@ brw_miptree_unmap_s8(struct brw_context *brw,
                      unsigned int level,
                      unsigned int slice)
 {
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
+
    if (map->mode & GL_MAP_WRITE_BIT) {
       unsigned int image_x, image_y;
       uint8_t *untiled_s8_map = map->ptr;
@@ -2760,7 +2766,7 @@ brw_miptree_unmap_s8(struct brw_context *brw,
             ptrdiff_t offset = brw_offset_S8(mt->surf.row_pitch_B,
                                              image_x + x + map->x,
                                              image_y + y + map->y,
-                                             brw->has_swizzling);
+                                             devinfo->has_bit6_swizzle);
             tiled_s8_map[offset] = untiled_s8_map[y * map->w + x];
          }
       }
@@ -2777,6 +2783,8 @@ brw_miptree_map_s8(struct brw_context *brw,
                    struct brw_miptree_map *map,
                    unsigned int level, unsigned int slice)
 {
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
+
    map->stride = map->w;
    map->buffer = map->ptr = malloc(map->stride * map->h);
    if (!map->buffer)
@@ -2802,7 +2810,7 @@ brw_miptree_map_s8(struct brw_context *brw,
             ptrdiff_t offset = brw_offset_S8(mt->surf.row_pitch_B,
                                              x + image_x + map->x,
                                              y + image_y + map->y,
-                                             brw->has_swizzling);
+                                             devinfo->has_bit6_swizzle);
             untiled_s8_map[y * map->w + x] = tiled_s8_map[offset];
          }
       }
@@ -2839,6 +2847,7 @@ brw_miptree_unmap_depthstencil(struct brw_context *brw,
                                unsigned int level,
                                unsigned int slice)
 {
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct brw_mipmap_tree *z_mt = mt;
    struct brw_mipmap_tree *s_mt = mt->stencil_mt;
    bool map_z32f_x24s8 = mt->format == MESA_FORMAT_Z_FLOAT32;
@@ -2860,7 +2869,7 @@ brw_miptree_unmap_depthstencil(struct brw_context *brw,
             ptrdiff_t s_offset = brw_offset_S8(s_mt->surf.row_pitch_B,
                                                x + s_image_x + map->x,
                                                y + s_image_y + map->y,
-                                               brw->has_swizzling);
+                                               devinfo->has_bit6_swizzle);
             ptrdiff_t z_offset = ((y + z_image_y + map->y) *
                                   (z_mt->surf.row_pitch_B / 4) +
                                   (x + z_image_x + map->x));
@@ -2897,6 +2906,7 @@ brw_miptree_map_depthstencil(struct brw_context *brw,
                              struct brw_miptree_map *map,
                              unsigned int level, unsigned int slice)
 {
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct brw_mipmap_tree *z_mt = mt;
    struct brw_mipmap_tree *s_mt = mt->stencil_mt;
    bool map_z32f_x24s8 = mt->format == MESA_FORMAT_Z_FLOAT32;
@@ -2935,7 +2945,7 @@ brw_miptree_map_depthstencil(struct brw_context *brw,
             ptrdiff_t s_offset = brw_offset_S8(s_mt->surf.row_pitch_B,
                                                  map_x + s_image_x,
                                                  map_y + s_image_y,
-                                                 brw->has_swizzling);
+                                                 devinfo->has_bit6_swizzle);
             ptrdiff_t z_offset = ((map_y + z_image_y) *
                                   (z_mt->surf.row_pitch_B / 4) +
                                   (map_x + z_image_x));

@@ -208,7 +208,6 @@ struct crocus_screen {
    struct crocus_bufmgr *bufmgr;
    struct brw_compiler *compiler;
    struct crocus_monitor_config *monitor_cfg;
-   bool has_swizzling;
 
    const struct intel_l3_config *l3_config_3d;
    const struct intel_l3_config *l3_config_cs;

@@ -1398,6 +1398,61 @@ intel_get_aperture_size(int fd, uint64_t *size)
 }
 
 static bool
+has_bit6_swizzle(int fd)
+{
+   struct drm_gem_close close;
+   int ret;
+
+   struct drm_i915_gem_create gem_create = {
+      .size = 4096,
+   };
+
+   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create)) {
+      unreachable("Failed to create GEM BO");
+      return false;
+   }
+
+   bool swizzled = false;
+
+   /* set_tiling overwrites the input on the error path, so we have to open
+    * code intel_ioctl.
+    */
+   do {
+      struct drm_i915_gem_set_tiling set_tiling = {
+         .handle = gem_create.handle,
+         .tiling_mode = I915_TILING_X,
+         .stride = 512,
+      };
+
+      ret = ioctl(fd, DRM_IOCTL_I915_GEM_SET_TILING, &set_tiling);
+   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
+
+   if (ret != 0) {
+      unreachable("Failed to set BO tiling");
+      goto close_and_return;
+   }
+
+   struct drm_i915_gem_get_tiling get_tiling = {
+      .handle = gem_create.handle,
+   };
+
+   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling)) {
+      unreachable("Failed to get BO tiling");
+      goto close_and_return;
+   }
+
+   assert(get_tiling.tiling_mode == I915_TILING_X);
+   swizzled = get_tiling.swizzle_mode != I915_BIT_6_SWIZZLE_NONE;
+
+close_and_return:
+   memset(&close, 0, sizeof(close));
+   close.handle = gem_create.handle;
+   intel_ioctl(fd, DRM_IOCTL_GEM_CLOSE, &close);
+
+   return swizzled;
+}
+
+static bool
 has_get_tiling(int fd)
 {
    int ret;
@@ -1644,6 +1699,19 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 
    if (devinfo->is_cherryview)
       fixup_chv_device_info(devinfo);
+
+   /* Broadwell PRM says:
+    *
+    *   "Before Gfx8, there was a historical configuration control field to
+    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
+    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
+    *    DISP_ARB_CTL[14:13].
+    *
+    *    For Gfx8 and subsequent generations, the swizzle fields are all
+    *    reserved, and the CPU's memory controller performs all address
+    *    swizzling modifications."
+    */
+   devinfo->has_bit6_swizzle = devinfo->ver < 8 && has_bit6_swizzle(fd);
 
    intel_get_aperture_size(fd, &devinfo->aperture_bytes);
    devinfo->has_tiling_uapi = has_get_tiling(fd);

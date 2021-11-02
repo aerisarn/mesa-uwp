@@ -708,34 +708,6 @@ crocus_shader_perf_log(void *data, unsigned *id, const char *fmt, ...)
    va_end(args);
 }
 
-static bool
-crocus_detect_swizzling(struct crocus_screen *screen)
-{
-   /* Broadwell PRM says:
-    *
-    *   "Before Gen8, there was a historical configuration control field to
-    *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
-    *    different places: TILECTL[1:0], ARB_MODE[5:4], and
-    *    DISP_ARB_CTL[14:13].
-    *
-    *    For Gen8 and subsequent generations, the swizzle fields are all
-    *    reserved, and the CPU's memory controller performs all address
-    *    swizzling modifications."
-    */
-   uint32_t tiling = I915_TILING_X;
-   uint32_t swizzle_mode = 0;
-   struct crocus_bo *buffer =
-      crocus_bo_alloc_tiled(screen->bufmgr, "swizzle test", 32768,
-                            0, tiling, 512, 0);
-   if (buffer == NULL)
-      return false;
-
-   crocus_bo_get_tiling(buffer, &tiling, &swizzle_mode);
-   crocus_bo_unreference(buffer);
-
-   return swizzle_mode != I915_BIT_6_SWIZZLE_NONE;
-}
-
 struct pipe_screen *
 crocus_screen_create(int fd, const struct pipe_screen_config *config)
 {
@@ -780,7 +752,6 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
    screen->fd = crocus_bufmgr_get_fd(screen->bufmgr);
    screen->winsys_fd = fd;
 
-   screen->has_swizzling = crocus_detect_swizzling(screen);
    brw_process_intel_debug_variable();
 
    screen->driconf.dual_color_blend_by_location =
@@ -792,8 +763,7 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
 
    screen->precompile = env_var_as_boolean("shader_precompile", true);
 
-   isl_device_init(&screen->isl_dev, &screen->devinfo,
-                   screen->has_swizzling);
+   isl_device_init(&screen->isl_dev, &screen->devinfo);
 
    screen->compiler = brw_compiler_create(screen, &screen->devinfo);
    screen->compiler->shader_debug_log = crocus_shader_debug_log;

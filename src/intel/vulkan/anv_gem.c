@@ -331,61 +331,6 @@ anv_gem_get_drm_cap(int fd, uint32_t capability)
 }
 
 bool
-anv_gem_get_bit6_swizzle(int fd, uint32_t tiling)
-{
-   struct drm_gem_close close;
-   int ret;
-
-   struct drm_i915_gem_create gem_create = {
-      .size = 4096,
-   };
-
-   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create)) {
-      assert(!"Failed to create GEM BO");
-      return false;
-   }
-
-   bool swizzled = false;
-
-   /* set_tiling overwrites the input on the error path, so we have to open
-    * code intel_ioctl.
-    */
-   do {
-      struct drm_i915_gem_set_tiling set_tiling = {
-         .handle = gem_create.handle,
-         .tiling_mode = tiling,
-         .stride = tiling == I915_TILING_X ? 512 : 128,
-      };
-
-      ret = ioctl(fd, DRM_IOCTL_I915_GEM_SET_TILING, &set_tiling);
-   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
-
-   if (ret != 0) {
-      assert(!"Failed to set BO tiling");
-      goto close_and_return;
-   }
-
-   struct drm_i915_gem_get_tiling get_tiling = {
-      .handle = gem_create.handle,
-   };
-
-   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling)) {
-      assert(!"Failed to get BO tiling");
-      goto close_and_return;
-   }
-
-   swizzled = get_tiling.swizzle_mode != I915_BIT_6_SWIZZLE_NONE;
-
-close_and_return:
-
-   memset(&close, 0, sizeof(close));
-   close.handle = gem_create.handle;
-   intel_ioctl(fd, DRM_IOCTL_GEM_CLOSE, &close);
-
-   return swizzled;
-}
-
-bool
 anv_gem_has_context_priority(int fd, int priority)
 {
    return !anv_gem_set_context_param(fd, 0, I915_CONTEXT_PARAM_PRIORITY,

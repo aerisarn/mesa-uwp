@@ -143,12 +143,6 @@ anv_gem_get_drm_cap(int fd, uint32_t capability)
    return 0;
 }
 
-bool
-anv_gem_get_bit6_swizzle(int fd, uint32_t tiling)
-{
-   unreachable("Unused");
-}
-
 int
 anv_gem_create_context(struct anv_device *device)
 {

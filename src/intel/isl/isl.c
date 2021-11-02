@@ -193,15 +193,14 @@ isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage,
 
 void
 isl_device_init(struct isl_device *dev,
-                const struct intel_device_info *info,
-                bool has_bit6_swizzling)
+                const struct intel_device_info *info)
 {
    /* Gfx8+ don't have bit6 swizzling, ensure callsite is not confused. */
-   assert(!(has_bit6_swizzling && info->ver >= 8));
+   assert(!(info->has_bit6_swizzle && info->ver >= 8));
 
    dev->info = info;
    dev->use_separate_stencil = ISL_GFX_VER(dev) >= 6;
-   dev->has_bit6_swizzling = has_bit6_swizzling;
+   dev->has_bit6_swizzling = info->has_bit6_swizzle;
 
    /* The ISL_DEV macros may be defined in the CFLAGS, thus hardcoding some
     * device properties at buildtime. Verify that the macros with the device

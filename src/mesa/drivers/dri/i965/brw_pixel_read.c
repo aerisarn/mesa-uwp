@@ -143,7 +143,7 @@ brw_readpixels_tiled_memcpy(struct gl_context *ctx,
     * parts of the memory aren't swizzled at all. Userspace just can't handle
     * that.
     */
-   if (devinfo->ver < 5 && brw->has_swizzling)
+   if (devinfo->ver < 5 && devinfo->has_bit6_swizzle)
       return false;
 
    /* Since we are going to read raw data to the miptree, we need to resolve
@@ -204,7 +204,7 @@ brw_readpixels_tiled_memcpy(struct gl_context *ctx,
       pixels,
       map + irb->mt->offset,
       dst_pitch, irb->mt->surf.row_pitch_B,
-      brw->has_swizzling,
+      devinfo->has_bit6_swizzle,
       irb->mt->surf.tiling,
       copy_type
    );

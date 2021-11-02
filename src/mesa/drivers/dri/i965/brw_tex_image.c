@@ -246,7 +246,7 @@ brw_texsubimage_tiled_memcpy(struct gl_context * ctx,
     * parts of the memory aren't swizzled at all. Userspace just can't handle
     * that.
     */
-   if (devinfo->ver < 5 && brw->has_swizzling)
+   if (devinfo->ver < 5 && devinfo->has_bit6_swizzle)
       return false;
 
    int level = texImage->Level + texImage->TexObject->Attrib.MinLevel;
@@ -297,7 +297,7 @@ brw_texsubimage_tiled_memcpy(struct gl_context * ctx,
       map,
       pixels,
       image->mt->surf.row_pitch_B, src_pitch,
-      brw->has_swizzling,
+      devinfo->has_bit6_swizzle,
       image->mt->surf.tiling,
       copy_type
    );
@@ -798,7 +798,7 @@ brw_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
     * parts of the memory aren't swizzled at all. Userspace just can't handle
     * that.
     */
-   if (devinfo->ver < 5 && brw->has_swizzling)
+   if (devinfo->ver < 5 && devinfo->has_bit6_swizzle)
       return false;
 
    int level = texImage->Level + texImage->TexObject->Attrib.MinLevel;
@@ -846,7 +846,7 @@ brw_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
       pixels,
       map,
       dst_pitch, image->mt->surf.row_pitch_B,
-      brw->has_swizzling,
+      devinfo->has_bit6_swizzle,
       image->mt->surf.tiling,
       copy_type
    );

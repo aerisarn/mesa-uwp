@@ -825,7 +825,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    screen->precompile = env_var_as_boolean("shader_precompile", true);
 
-   isl_device_init(&screen->isl_dev, &screen->devinfo, false);
+   isl_device_init(&screen->isl_dev, &screen->devinfo);
 
    screen->compiler = brw_compiler_create(screen, &screen->devinfo);
    screen->compiler->shader_debug_log = iris_shader_debug_log;
