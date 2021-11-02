@@ -1,4 +1,6 @@
 #!/bin/bash
+# The relative paths in this file only become valid at runtime.
+# shellcheck disable=SC1091
 
 set -e
 set -o xtrace
