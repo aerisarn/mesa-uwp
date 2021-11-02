@@ -6464,7 +6464,8 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          ps.BindingTableEntryCount = shader->bt.size_bytes / 4;
          ps.FloatingPointMode = prog_data->use_alt_mode;
 #if GFX_VER >= 8
-         ps.MaximumNumberofThreadsPerPSD = 64 - 2;
+         ps.MaximumNumberofThreadsPerPSD =
+            batch->screen->devinfo.max_threads_per_psd - 2;
 #else
          ps.MaximumNumberofThreads = batch->screen->devinfo.max_wm_threads - 1;
 #endif

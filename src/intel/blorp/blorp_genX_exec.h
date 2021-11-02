@@ -890,12 +890,9 @@ blorp_emit_ps_config(struct blorp_batch *batch,
        *
        * In Gfx8 the format is U8-2 whereas in Gfx9+ it is U9-1.
        */
-      if (GFX_VERx10 >= 125)
-         ps.MaximumNumberofThreadsPerPSD = 96 - 1;
-      else if (GFX_VER >= 9)
-         ps.MaximumNumberofThreadsPerPSD = 64 - 1;
-      else
-         ps.MaximumNumberofThreadsPerPSD = 64 - 2;
+      const struct intel_device_info *devinfo = batch->blorp->compiler->devinfo;
+      ps.MaximumNumberofThreadsPerPSD =
+         devinfo->max_threads_per_psd - (GFX_VER == 8 ? 2 : 1);
 
       switch (params->fast_clear_op) {
       case ISL_AUX_OP_NONE:

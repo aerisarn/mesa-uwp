@@ -4567,9 +4567,8 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
       ps.VectorMaskEnable = true;
       ps.BindingTableEntryCount = shader->bt.size_bytes / 4;
       ps.FloatingPointMode = prog_data->use_alt_mode;
-      ps.MaximumNumberofThreadsPerPSD = (GFX_VERx10 >= 125 ? 96 - 1 :
-                                         GFX_VER == 8 ? 64 - 2 :
-                                         64 - 1);
+      ps.MaximumNumberofThreadsPerPSD =
+         devinfo->max_threads_per_psd - (GFX_VER == 8 ? 2 : 1);
 
       ps.PushConstantEnable = prog_data->ubo_ranges[0].length > 0;
 
