@@ -190,16 +190,9 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.InstructionAccessUpperBoundModifyEnable = true;
 #  endif
 #  if (GFX_VER >= 9)
-      if (anv_use_softpin(device->physical)) {
-         sba.BindlessSurfaceStateBaseAddress = (struct anv_address) {
-            .bo = device->surface_state_pool.block_pool.bo,
-            .offset = 0,
-         };
-         sba.BindlessSurfaceStateSize = (1 << 20) - 1;
-      } else {
-         sba.BindlessSurfaceStateBaseAddress = ANV_NULL_ADDRESS;
-         sba.BindlessSurfaceStateSize = 0;
-      }
+      sba.BindlessSurfaceStateBaseAddress =
+         (struct anv_address) { device->surface_state_pool.block_pool.bo, 0 };
+      sba.BindlessSurfaceStateSize = (1 << 20) - 1;
       sba.BindlessSurfaceStateMOCS = mocs;
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
 #  endif
