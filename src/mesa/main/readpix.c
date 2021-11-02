@@ -1056,8 +1056,7 @@ read_pixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format,
       return;
    }
 
-   if (ctx->NewState & _NEW_PIXEL)
-      _mesa_update_pixel(ctx);
+   _mesa_update_pixel(ctx);
 
    if (ctx->NewState)
       _mesa_update_state(ctx);
