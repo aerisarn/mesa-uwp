@@ -1186,6 +1186,25 @@ int r300_transform_trig_scale_vertex(struct radeon_compiler *c,
 }
 
 /**
+ * Replaces DDX/DDY instructions with MOV 0 to avoid using dummy shaders on r300/r400.
+ *
+ * @warning This explicitly changes the form of DDX and DDY!
+ */
+
+int radeonStubDeriv(struct radeon_compiler* c,
+	struct rc_instruction* inst,
+	void* unused)
+{
+	if (inst->U.I.Opcode != RC_OPCODE_DDX && inst->U.I.Opcode != RC_OPCODE_DDY)
+		return 0;
+
+	inst->U.I.Opcode = RC_OPCODE_MOV;
+	inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_0000;
+
+	return 1;
+}
+
+/**
  * Rewrite DDX/DDY instructions to properly work with r5xx shaders.
  * The r5xx MDH/MDV instruction provides per-quad partial derivatives.
  * It takes the form A*B+C. A and C are set by setting src0. B should be -1.

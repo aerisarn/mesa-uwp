@@ -109,6 +109,7 @@ void r3xx_compile_fragment_program(struct r300_fragment_program_compiler* c)
 
 	struct radeon_program_transformation native_rewrite_r300[] = {
 		{ &radeonTransformALU, 0 },
+		{ &radeonStubDeriv, 0 },
 		{ &r300_transform_trig_simple, 0 },
 		{ 0, 0 }
 	};
