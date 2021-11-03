@@ -393,7 +393,7 @@ transition_surface_subresources_state(struct d3d12_context *ctx,
 {
    struct d3d12_resource *res = d3d12_resource(pres);
    unsigned start_layer, num_layers;
-   if (!d3d12_subresource_id_uses_layer(res->base.target)) {
+   if (!d3d12_subresource_id_uses_layer(res->base.b.target)) {
       start_layer = 0;
       num_layers = 1;
    } else {
@@ -657,7 +657,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       D3D12_INDEX_BUFFER_VIEW ibv;
       struct d3d12_resource *res = d3d12_resource(index_buffer);
       ibv.BufferLocation = d3d12_resource_gpu_virtual_address(res) + index_offset;
-      ibv.SizeInBytes = res->base.width0 - index_offset;
+      ibv.SizeInBytes = res->base.b.width0 - index_offset;
       ibv.Format = ib_format(dinfo->index_size);
       d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_INDEX_BUFFER, D3D12_BIND_INVALIDATE_NONE);
       if (ctx->cmdlist_dirty & D3D12_DIRTY_INDEX_BUFFER ||

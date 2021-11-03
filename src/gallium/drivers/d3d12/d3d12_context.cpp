@@ -1176,7 +1176,7 @@ d3d12_set_vertex_buffers(struct pipe_context *pctx,
       struct d3d12_resource *res = d3d12_resource(buf->buffer.resource);
       ctx->vbvs[i].BufferLocation = d3d12_resource_gpu_virtual_address(res) + buf->buffer_offset;
       ctx->vbvs[i].StrideInBytes = buf->stride;
-      ctx->vbvs[i].SizeInBytes = res->base.width0 - buf->buffer_offset;
+      ctx->vbvs[i].SizeInBytes = res->base.b.width0 - buf->buffer_offset;
    }
    ctx->state_dirty |= D3D12_DIRTY_VERTEX_BUFFERS;
 }
@@ -1634,7 +1634,7 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
          const uint32_t layer = start_layer + a;
          for( uint32_t p = 0; p < num_planes; p++) {
             const uint32_t plane = start_plane + p;
-            uint32_t subres_id = level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.array_size);
+            uint32_t subres_id = level + (layer * res->mip_levels) + plane * (res->mip_levels * res->base.b.array_size);
             assert(subres_id < xres->NumSubresources());
             ctx->resource_state_manager->TransitionSubresource(xres, subres_id, state);
          }

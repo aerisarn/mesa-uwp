@@ -342,7 +342,7 @@ d3d12_surface_update_pre_draw(struct d3d12_surface *surface,
    }
 
    if (!d3d12_descriptor_handle_is_allocated(&surface->uint_rtv_handle)) {
-      initialize_rtv(surface->base.context, &res->base, &surface->base,
+      initialize_rtv(surface->base.context, &res->base.b, &surface->base,
                      &surface->uint_rtv_handle, DXGI_FORMAT_R8G8B8A8_UINT);
    }
 

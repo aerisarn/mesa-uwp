@@ -36,6 +36,7 @@
 #include "util/list.h"
 #include "util/slab.h"
 #include "util/u_suballoc.h"
+#include "util/u_threaded_context.h"
 
 #include <directx/d3d12.h>
 

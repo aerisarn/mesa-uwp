@@ -161,7 +161,7 @@ d3d12_destroy_query(struct pipe_context *pctx,
                     struct pipe_query *q)
 {
    struct d3d12_query *query = (struct d3d12_query *)q;
-   pipe_resource *predicate = &query->predicate->base;
+   pipe_resource *predicate = &query->predicate->base.b;
    if (query->subquery)
       d3d12_destroy_query(pctx, (struct pipe_query *)query->subquery);
    pipe_resource_reference(&predicate, NULL);

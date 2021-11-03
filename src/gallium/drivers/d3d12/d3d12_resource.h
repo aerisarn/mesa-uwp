@@ -28,6 +28,7 @@ struct pipe_screen;
 #include "d3d12_bufmgr.h"
 #include "util/u_range.h"
 #include "util/u_transfer.h"
+#include "util/u_threaded_context.h"
 
 #include <directx/d3d12.h>
 
@@ -38,7 +39,7 @@ enum d3d12_resource_binding_type {
 };
 
 struct d3d12_resource {
-   struct pipe_resource base;
+   struct threaded_resource base;
    struct d3d12_bo *bo;
    DXGI_FORMAT dxgi_format;
    unsigned mip_levels;
