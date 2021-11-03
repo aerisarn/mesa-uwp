@@ -116,8 +116,24 @@ qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
                 return;
 
         if (devinfo->ver < 71) {
-           if (inst->sig.small_imm_a || inst->sig.small_imm_c || inst->sig.small_imm_d)
-              fail_instr(state, "small imm a/c/d added after V3D 7.1");
+                if (inst->sig.small_imm_a || inst->sig.small_imm_c ||
+                    inst->sig.small_imm_d) {
+                        fail_instr(state, "small imm a/c/d added after V3D 7.1");
+                }
+        } else {
+                if ((inst->sig.small_imm_a || inst->sig.small_imm_b) &&
+                    !vir_is_add(qinst)) {
+                        fail_instr(state, "small imm a/b used but no ADD inst");
+                }
+                if ((inst->sig.small_imm_c || inst->sig.small_imm_d) &&
+                    !vir_is_mul(qinst)) {
+                        fail_instr(state, "small imm c/d used but no MUL inst");
+                }
+                if (inst->sig.small_imm_a + inst->sig.small_imm_b +
+                    inst->sig.small_imm_c + inst->sig.small_imm_d > 1) {
+                        fail_instr(state, "only one small immediate can be "
+                                   "enabled per instruction");
+                }
         }
 
         /* LDVARY writes r5 two instructions later and LDUNIF writes

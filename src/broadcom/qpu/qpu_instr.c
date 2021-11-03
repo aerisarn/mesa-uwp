@@ -975,10 +975,10 @@ v3d71_qpu_reads_raddr(const struct v3d_qpu_instr *inst, uint8_t raddr)
         int add_nsrc = v3d_qpu_add_op_num_src(inst->alu.add.op);
         int mul_nsrc = v3d_qpu_mul_op_num_src(inst->alu.mul.op);
 
-        return (add_nsrc > 0 && inst->alu.add.a.raddr == raddr) ||
-               (add_nsrc > 1 && inst->alu.add.b.raddr == raddr) ||
-               (mul_nsrc > 0 && inst->alu.mul.a.raddr == raddr) ||
-               (mul_nsrc > 1 && inst->alu.mul.b.raddr == raddr);
+        return (add_nsrc > 0 && !inst->sig.small_imm_a && inst->alu.add.a.raddr == raddr) ||
+               (add_nsrc > 1 && !inst->sig.small_imm_b && inst->alu.add.b.raddr == raddr) ||
+               (mul_nsrc > 0 && !inst->sig.small_imm_c && inst->alu.mul.a.raddr == raddr) ||
+               (mul_nsrc > 1 && !inst->sig.small_imm_d && inst->alu.mul.b.raddr == raddr);
 }
 
 bool

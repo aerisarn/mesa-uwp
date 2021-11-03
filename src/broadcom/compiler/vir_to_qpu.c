@@ -89,8 +89,15 @@ new_qpu_nop_before(struct qinst *inst)
 static void
 v3d71_set_src(struct v3d_qpu_instr *instr, uint8_t *raddr, struct qpu_reg src)
 {
-        if (src.smimm)
-                unreachable("v3d71_set_src: pending handling small immediates");
+        /* If we have a small immediate move it from inst->raddr_b to the
+         * corresponding raddr.
+         */
+        if (src.smimm) {
+                assert(instr->sig.small_imm_a || instr->sig.small_imm_b ||
+                       instr->sig.small_imm_c || instr->sig.small_imm_d);
+                *raddr = instr->raddr_b;
+                return;
+        }
 
         assert(!src.magic);
         *raddr = src.index;

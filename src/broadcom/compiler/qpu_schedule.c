@@ -714,7 +714,6 @@ qpu_instruction_uses_rf(const struct v3d_device_info *devinfo,
                     !inst->sig.small_imm_b && (inst->raddr_b == waddr))
                         return true;
         } else {
-                /* FIXME: skip if small immediate */
                 if (v3d71_qpu_reads_raddr(inst, waddr))
                         return true;
         }
@@ -948,10 +947,11 @@ qpu_raddrs_used(const struct v3d_qpu_instr *a,
         return raddrs_used;
 }
 
-/* Take two instructions and attempt to merge their raddr fields
- * into one merged instruction. Returns false if the two instructions
- * access more than two different rf registers between them, or more
- * than one rf register and one small immediate.
+/* Takes two instructions and attempts to merge their raddr fields (including
+ * small immediates) into one merged instruction. For V3D 4.x, returns false
+ * if the two instructions access more than two different rf registers between
+ * them, or more than one rf register and one small immediate. For 7.x returns
+ * false if both instructions use small immediates.
  */
 static bool
 qpu_merge_raddrs(struct v3d_qpu_instr *result,
@@ -959,6 +959,27 @@ qpu_merge_raddrs(struct v3d_qpu_instr *result,
                  const struct v3d_qpu_instr *mul_instr,
                  const struct v3d_device_info *devinfo)
 {
+        if (devinfo->ver >= 71) {
+                assert(add_instr->sig.small_imm_a +
+                       add_instr->sig.small_imm_b <= 1);
+                assert(add_instr->sig.small_imm_c +
+                       add_instr->sig.small_imm_d == 0);
+                assert(mul_instr->sig.small_imm_a +
+                       mul_instr->sig.small_imm_b == 0);
+                assert(mul_instr->sig.small_imm_c +
+                       mul_instr->sig.small_imm_d <= 1);
+
+                result->sig.small_imm_a = add_instr->sig.small_imm_a;
+                result->sig.small_imm_b = add_instr->sig.small_imm_b;
+                result->sig.small_imm_c = mul_instr->sig.small_imm_c;
+                result->sig.small_imm_d = mul_instr->sig.small_imm_d;
+
+                return (result->sig.small_imm_a +
+                        result->sig.small_imm_b +
+                        result->sig.small_imm_c +
+                        result->sig.small_imm_d) <= 1;
+        }
+
         assert(devinfo->ver <= 42);
 
         uint64_t raddrs_used = qpu_raddrs_used(add_instr, mul_instr);
@@ -1060,7 +1081,8 @@ add_op_as_mul_op(enum v3d_qpu_add_op op)
 }
 
 static void
-qpu_convert_add_to_mul(struct v3d_qpu_instr *inst)
+qpu_convert_add_to_mul(const struct v3d_device_info *devinfo,
+                       struct v3d_qpu_instr *inst)
 {
         STATIC_ASSERT(sizeof(inst->alu.mul) == sizeof(inst->alu.add));
         assert(inst->alu.add.op != V3D_QPU_A_NOP);
@@ -1084,6 +1106,18 @@ qpu_convert_add_to_mul(struct v3d_qpu_instr *inst)
         inst->alu.add.output_pack = V3D_QPU_PACK_NONE;
         inst->alu.add.a.unpack = V3D_QPU_UNPACK_NONE;
         inst->alu.add.b.unpack = V3D_QPU_UNPACK_NONE;
+
+        if (devinfo->ver >= 71) {
+                assert(!inst->sig.small_imm_c && !inst->sig.small_imm_d);
+                assert(inst->sig.small_imm_a + inst->sig.small_imm_b <= 1);
+                if (inst->sig.small_imm_a) {
+                        inst->sig.small_imm_c = true;
+                        inst->sig.small_imm_a = false;
+                } else if (inst->sig.small_imm_b) {
+                        inst->sig.small_imm_d = true;
+                        inst->sig.small_imm_b = false;
+                }
+        }
 }
 
 static bool
@@ -1135,6 +1169,16 @@ qpu_convert_mul_to_add(struct v3d_qpu_instr *inst)
         inst->alu.mul.output_pack = V3D_QPU_PACK_NONE;
         inst->alu.mul.a.unpack = V3D_QPU_UNPACK_NONE;
         inst->alu.mul.b.unpack = V3D_QPU_UNPACK_NONE;
+
+        assert(!inst->sig.small_imm_a && !inst->sig.small_imm_b);
+        assert(inst->sig.small_imm_c + inst->sig.small_imm_d <= 1);
+        if (inst->sig.small_imm_c) {
+                inst->sig.small_imm_a = true;
+                inst->sig.small_imm_c = false;
+        } else if (inst->sig.small_imm_d) {
+                inst->sig.small_imm_b = true;
+                inst->sig.small_imm_d = false;
+        }
 }
 
 static bool
@@ -1173,20 +1217,20 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
                 else if (a->alu.mul.op == V3D_QPU_M_NOP &&
                          can_do_add_as_mul(b->alu.add.op)) {
                         mul_inst = *b;
-                        qpu_convert_add_to_mul(&mul_inst);
+                        qpu_convert_add_to_mul(devinfo, &mul_inst);
 
                         merge.alu.mul = mul_inst.alu.mul;
 
-                        merge.flags.mc = b->flags.ac;
-                        merge.flags.mpf = b->flags.apf;
-                        merge.flags.muf = b->flags.auf;
+                        merge.flags.mc = mul_inst.flags.mc;
+                        merge.flags.mpf = mul_inst.flags.mpf;
+                        merge.flags.muf = mul_inst.flags.muf;
 
                         add_instr = a;
                         mul_instr = &mul_inst;
                 } else if (a->alu.mul.op == V3D_QPU_M_NOP &&
                            can_do_add_as_mul(a->alu.add.op)) {
                         mul_inst = *a;
-                        qpu_convert_add_to_mul(&mul_inst);
+                        qpu_convert_add_to_mul(devinfo, &mul_inst);
 
                         merge = mul_inst;
                         merge.alu.add = b->alu.add;
@@ -1225,9 +1269,9 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
 
                         merge.alu.add = add_inst.alu.add;
 
-                        merge.flags.ac = b->flags.mc;
-                        merge.flags.apf = b->flags.mpf;
-                        merge.flags.auf = b->flags.muf;
+                        merge.flags.ac = add_inst.flags.ac;
+                        merge.flags.apf = add_inst.flags.apf;
+                        merge.flags.auf = add_inst.flags.auf;
 
                         mul_instr = a;
                         add_instr = &add_inst;
@@ -1252,17 +1296,12 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
 
         /* V3D 4.x and earlier use muxes to select the inputs for the ALUs and
          * they have restrictions on the number of raddrs that can be adressed
-         * in a single instruction.
-         *
-         * FIXME: for V3D 7.x we can't merge instructions if they address more
-         * than one small immediate. For now, we don't support small immediates,
-         * so it is not a problem.
+         * in a single instruction. In V3D 7.x, we don't have that restriction,
+         * but we are still limited to a single small immediate per instruction.
          */
-        if (devinfo->ver <= 42) {
-                if (add_instr && mul_instr &&
-                    !qpu_merge_raddrs(&merge, add_instr, mul_instr, devinfo)) {
-                                return false;
-                }
+        if (add_instr && mul_instr &&
+            !qpu_merge_raddrs(&merge, add_instr, mul_instr, devinfo)) {
+                return false;
         }
 
         merge.sig.thrsw |= b->sig.thrsw;
@@ -1273,7 +1312,6 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
         merge.sig.ldtmu |= b->sig.ldtmu;
         merge.sig.ldvary |= b->sig.ldvary;
         merge.sig.ldvpm |= b->sig.ldvpm;
-        merge.sig.small_imm_b |= b->sig.small_imm_b;
         merge.sig.ldtlb |= b->sig.ldtlb;
         merge.sig.ldtlbu |= b->sig.ldtlbu;
         merge.sig.ucb |= b->sig.ucb;
@@ -1933,8 +1971,6 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
                 if (c->devinfo->ver >= 71) {
                         /* RF2-3 might be overwritten during the delay slots by
                          * fragment shader setup.
-                         *
-                         * FIXME: handle small immediate cases
                          */
                         if (v3d71_qpu_reads_raddr(inst, 2) ||
                             v3d71_qpu_reads_raddr(inst, 3)) {

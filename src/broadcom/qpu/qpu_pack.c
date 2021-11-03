@@ -1224,13 +1224,8 @@ v3d71_qpu_add_unpack(const struct v3d_device_info *devinfo, uint64_t packed_inst
         /* FADD/FADDNF and FMIN/FMAX are determined by the order of the
          * operands.
          */
-        /* FIXME: for now hardcoded values, until we get the small_imm support
-         * in place
-         */
-        uint32_t small_imm_a = 0;
-        uint32_t small_imm_b = 0;
-        if (small_imm_a * 256 + ((op >> 2) & 3) * 64 + raddr_a >
-            small_imm_b * 256 + (op & 3) * 64 + raddr_b) {
+        if (instr->sig.small_imm_a * 256 + ((op >> 2) & 3) * 64 + raddr_a >
+            instr->sig.small_imm_b * 256 + (op & 3) * 64 + raddr_b) {
                 if (instr->alu.add.op == V3D_QPU_A_FMIN)
                         instr->alu.add.op = V3D_QPU_A_FMAX;
                 if (instr->alu.add.op == V3D_QPU_A_FADD)
@@ -1861,11 +1856,6 @@ v3d71_qpu_add_pack(const struct v3d_device_info *devinfo,
                 uint32_t output_pack;
                 uint32_t a_unpack;
                 uint32_t b_unpack;
-                /* FIXME: for now hardcoded values, until we get the small_imm
-                 * support in place
-                 */
-                uint32_t small_imm_a = 0;
-                uint32_t small_imm_b = 0;
 
                 if (instr->alu.add.op != V3D_QPU_A_FCMP) {
                         if (!v3d_qpu_float32_pack_pack(instr->alu.add.output_pack,
@@ -1889,8 +1879,8 @@ v3d71_qpu_add_pack(const struct v3d_device_info *devinfo,
                  * distinguished by the order of the operands come in.
                  */
                 bool ordering =
-                        small_imm_a * 256 + a_unpack * 64 + raddr_a >
-                        small_imm_b * 256 + b_unpack * 64 + raddr_b;
+                        instr->sig.small_imm_a * 256 + a_unpack * 64 + raddr_a >
+                        instr->sig.small_imm_b * 256 + b_unpack * 64 + raddr_b;
                 if (((instr->alu.add.op == V3D_QPU_A_FMIN ||
                       instr->alu.add.op == V3D_QPU_A_FADD) && ordering) ||
                     ((instr->alu.add.op == V3D_QPU_A_FMAX ||
@@ -1904,6 +1894,22 @@ v3d71_qpu_add_pack(const struct v3d_device_info *devinfo,
                         temp = raddr_a;
                         raddr_a = raddr_b;
                         raddr_b = temp;
+
+                        /* If we are swapping raddr_a/b we also need to swap
+                         * small_imm_a/b.
+                         */
+                        if (instr->sig.small_imm_a || instr->sig.small_imm_b) {
+                                assert(instr->sig.small_imm_a !=
+                                       instr->sig.small_imm_b);
+                                struct v3d_qpu_sig new_sig = instr->sig;
+                                new_sig.small_imm_a = !instr->sig.small_imm_a;
+                                new_sig.small_imm_b = !instr->sig.small_imm_b;
+                                uint32_t sig;
+                                if (!v3d_qpu_sig_pack(devinfo, &new_sig, &sig))
+                                    return false;
+                            *packed_instr &= ~V3D_QPU_SIG_MASK;
+                            *packed_instr |= QPU_SET_FIELD(sig, V3D_QPU_SIG);
+                        }
                 }
 
                 opcode |= a_unpack << 2;

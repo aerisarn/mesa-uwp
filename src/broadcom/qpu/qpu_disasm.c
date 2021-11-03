@@ -113,7 +113,6 @@ v3d71_qpu_disasm_raddr(struct disasm_state *disasm,
         }
 
         if (is_small_imm) {
-                unreachable("Pending handling small immediates");
                 uint32_t val;
                 ASSERTED bool ok =
                         v3d_qpu_small_imm_unpack(disasm->devinfo,
