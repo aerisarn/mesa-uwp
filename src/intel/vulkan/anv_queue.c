@@ -896,12 +896,14 @@ anv_queue_submit_add_in_semaphore(struct anv_queue *queue,
                                   const uint64_t value)
 {
    ANV_FROM_HANDLE(anv_semaphore, semaphore, _semaphore);
-   struct anv_semaphore_impl *impl;
+   struct anv_semaphore_impl *impl = NULL;
    VkResult result;
 
    result = maybe_transfer_temporary_semaphore(queue, submit, semaphore, &impl);
    if (result != VK_SUCCESS)
       return result;
+
+   assert(impl);
 
    switch (impl->type) {
    case ANV_SEMAPHORE_TYPE_WSI_BO:
