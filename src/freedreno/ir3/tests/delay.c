@@ -183,7 +183,7 @@ main(int argc, char **argv)
        */
       list_delinit(&last->node);
 
-      unsigned n = ir3_delay_calc_exact(block, last, true);
+      unsigned n = ir3_delay_calc(block, last, true);
 
       if (n != test->expected_delay) {
          printf("%d: FAIL: Expected delay %u, but got %u, for:\n%s\n", i,

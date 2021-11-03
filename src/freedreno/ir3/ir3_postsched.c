@@ -68,6 +68,8 @@ struct ir3_postsched_ctx {
 
    struct list_head unscheduled_list; /* unscheduled instructions */
 
+   unsigned ip;
+
    int sfu_delay;
    int tex_delay;
 };
@@ -76,6 +78,8 @@ struct ir3_postsched_node {
    struct dag_node dag; /* must be first for util_dynarray_foreach */
    struct ir3_instruction *instr;
    bool partially_evaluated_path;
+
+   unsigned earliest_ip;
 
    bool has_tex_src, has_sfu_src;
 
@@ -111,9 +115,26 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
 
    di(instr, "schedule");
 
-   list_addtail(&instr->node, &instr->block->instr_list);
+   bool counts_for_delay = is_alu(instr) || is_flow(instr);
+
+   unsigned delay_cycles = counts_for_delay ? 1 + instr->repeat : 0;
 
    struct ir3_postsched_node *n = instr->data;
+
+   /* We insert any nop's needed to get to earliest_ip, then advance
+    * delay_cycles by scheduling the instruction.
+    */
+   ctx->ip = MAX2(ctx->ip, n->earliest_ip) + delay_cycles;
+
+   util_dynarray_foreach (&n->dag.edges, struct dag_edge, edge) {
+      unsigned delay = (unsigned)(uintptr_t)edge->data;
+      struct ir3_postsched_node *child =
+         container_of(edge->child, struct ir3_postsched_node, dag);
+      child->earliest_ip = MAX2(child->earliest_ip, ctx->ip + delay);
+   }
+
+   list_addtail(&instr->node, &instr->block->instr_list);
+
    dag_prune_head(ctx->dag, &n->dag);
 
    if (is_meta(instr) && (instr->opc != OPC_META_TEX_PREFETCH))
@@ -157,7 +178,7 @@ dump_state(struct ir3_postsched_ctx *ctx)
 static unsigned
 node_delay(struct ir3_postsched_ctx *ctx, struct ir3_postsched_node *n)
 {
-   return ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
+   return MAX2(n->earliest_ip, ctx->ip) - ctx->ip;
 }
 
 static unsigned
@@ -339,6 +360,7 @@ struct ir3_postsched_deps_state {
     * for full precision and 2nd half for half-precision.
     */
    struct ir3_postsched_node *regs[2 * 256];
+   unsigned dst_n[2 * 256];
 };
 
 /* bounds checking read/write accessors, since OoB access to stuff on
@@ -352,7 +374,8 @@ struct ir3_postsched_deps_state {
 
 static void
 add_dep(struct ir3_postsched_deps_state *state,
-        struct ir3_postsched_node *before, struct ir3_postsched_node *after)
+        struct ir3_postsched_node *before, struct ir3_postsched_node *after,
+        unsigned d)
 {
    if (!before || !after)
       return;
@@ -360,30 +383,36 @@ add_dep(struct ir3_postsched_deps_state *state,
    assert(before != after);
 
    if (state->direction == F) {
-      dag_add_edge(&before->dag, &after->dag, 0);
+      dag_add_edge_max_data(&before->dag, &after->dag, (uintptr_t)d);
    } else {
-      dag_add_edge(&after->dag, &before->dag, 0);
+      dag_add_edge_max_data(&after->dag, &before->dag, 0);
    }
 }
 
 static void
 add_single_reg_dep(struct ir3_postsched_deps_state *state,
-                   struct ir3_postsched_node *node, unsigned num, int src_n)
+                   struct ir3_postsched_node *node, unsigned num, int src_n,
+                   int dst_n)
 {
    struct ir3_postsched_node *dep = dep_reg(state, num);
 
+   unsigned d = 0;
    if (src_n >= 0 && dep && state->direction == F) {
-      unsigned d = ir3_delayslots(dep->instr, node->instr, src_n, true);
-      node->delay = MAX2(node->delay, d);
+      /* get the dst_n this corresponds to */
+      unsigned dst_n = state->dst_n[num];
+      unsigned d_soft = ir3_delayslots(dep->instr, node->instr, src_n, true);
+      d = ir3_delayslots_with_repeat(dep->instr, node->instr, dst_n, src_n);
+      node->delay = MAX2(node->delay, d_soft);
       if (is_tex_or_prefetch(dep->instr))
          node->has_tex_src = true;
       if (is_sfu(dep->instr))
          node->has_sfu_src = true;
    }
 
-   add_dep(state, dep, node);
+   add_dep(state, dep, node, d);
    if (src_n < 0) {
       dep_reg(state, num) = node;
+      state->dst_n[num] = dst_n;
    }
 }
 
@@ -391,15 +420,15 @@ add_single_reg_dep(struct ir3_postsched_deps_state *state,
  * between half and full precision that result in additional dependencies.
  * The 'reg' arg is really just to know half vs full precision.
  *
- * If non-negative, then this adds a dependency on a source register, and
+ * If src_n is positive, then this adds a dependency on a source register, and
  * src_n is the index passed into ir3_delayslots() for calculating the delay:
- * If positive, corresponds to node->instr->regs[src_n]. If negative, then
- * this is for a destination register.
+ * it corresponds to node->instr->srcs[src_n]. If src_n is negative, then
+ * this is for the destination register corresponding to dst_n.
  */
 static void
 add_reg_dep(struct ir3_postsched_deps_state *state,
             struct ir3_postsched_node *node, const struct ir3_register *reg,
-            unsigned num, int src_n)
+            unsigned num, int src_n, int dst_n)
 {
    if (state->merged) {
       /* Make sure that special registers like a0.x that are written as
@@ -408,16 +437,16 @@ add_reg_dep(struct ir3_postsched_deps_state *state,
        */
       if ((reg->flags & IR3_REG_HALF) && !is_reg_special(reg)) {
          /* single conflict in half-reg space: */
-         add_single_reg_dep(state, node, num, src_n);
+         add_single_reg_dep(state, node, num, src_n, dst_n);
       } else {
          /* two conflicts in half-reg space: */
-         add_single_reg_dep(state, node, 2 * num + 0, src_n);
-         add_single_reg_dep(state, node, 2 * num + 1, src_n);
+         add_single_reg_dep(state, node, 2 * num + 0, src_n, dst_n);
+         add_single_reg_dep(state, node, 2 * num + 1, src_n, dst_n);
       }
    } else {
       if (reg->flags & IR3_REG_HALF)
          num += ARRAY_SIZE(state->regs) / 2;
-      add_single_reg_dep(state, node, num, src_n);
+      add_single_reg_dep(state, node, num, src_n, dst_n);
    }
 }
 
@@ -435,12 +464,12 @@ calculate_deps(struct ir3_postsched_deps_state *state,
       if (reg->flags & IR3_REG_RELATIV) {
          /* mark entire array as read: */
          for (unsigned j = 0; j < reg->size; j++) {
-            add_reg_dep(state, node, reg, reg->array.base + j, i);
+            add_reg_dep(state, node, reg, reg->array.base + j, i, -1);
          }
       } else {
          assert(reg->wrmask >= 1);
          u_foreach_bit (b, reg->wrmask) {
-            add_reg_dep(state, node, reg, reg->num + b, i);
+            add_reg_dep(state, node, reg, reg->num + b, i, -1);
          }
       }
    }
@@ -448,18 +477,18 @@ calculate_deps(struct ir3_postsched_deps_state *state,
    /* And then after we update the state for what this instruction
     * wrote:
     */
-   foreach_dst (reg, node->instr) {
+   foreach_dst_n (reg, i, node->instr) {
       if (reg->wrmask == 0)
          continue;
       if (reg->flags & IR3_REG_RELATIV) {
          /* mark the entire array as written: */
-         for (unsigned i = 0; i < reg->size; i++) {
-            add_reg_dep(state, node, reg, reg->array.base + i, -1);
+         for (unsigned j = 0; j < reg->size; j++) {
+            add_reg_dep(state, node, reg, reg->array.base + j, -1, i);
          }
       } else {
          assert(reg->wrmask >= 1);
          u_foreach_bit (b, reg->wrmask) {
-            add_reg_dep(state, node, reg, reg->num + b, -1);
+            add_reg_dep(state, node, reg, reg->num + b, -1, i);
          }
       }
    }
@@ -571,7 +600,7 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
          if (src->block != instr->block)
             continue;
 
-         dag_add_edge(&sn->dag, &n->dag, 0);
+         dag_add_edge_max_data(&sn->dag, &n->dag, 0);
       }
 
       if (is_input(instr)) {
@@ -580,14 +609,14 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
          util_dynarray_foreach (&inputs, struct ir3_instruction *, instrp) {
             struct ir3_instruction *input = *instrp;
             struct ir3_postsched_node *in = input->data;
-            dag_add_edge(&in->dag, &n->dag, 0);
+            dag_add_edge_max_data(&in->dag, &n->dag, 0);
          }
          util_dynarray_append(&kills, struct ir3_instruction *, instr);
       } else if (is_tex(instr) || is_mem(instr)) {
          util_dynarray_foreach (&kills, struct ir3_instruction *, instrp) {
             struct ir3_instruction *kill = *instrp;
             struct ir3_postsched_node *kn = kill->data;
-            dag_add_edge(&kn->dag, &n->dag, 0);
+            dag_add_edge_max_data(&kn->dag, &n->dag, 0);
          }
       }
    }
@@ -655,8 +684,7 @@ sched_block(struct ir3_postsched_ctx *ctx, struct ir3_block *block)
    while (!list_is_empty(&ctx->unscheduled_list)) {
       struct ir3_instruction *instr = choose_instr(ctx);
 
-      unsigned delay =
-         ir3_delay_calc_postra(ctx->block, instr, false, ctx->v->mergedregs);
+      unsigned delay = node_delay(ctx, instr->data);
       d("delay=%u", delay);
 
       /* and if we run out of instructions that can be scheduled,

@@ -1632,11 +1632,11 @@ void ir3_print_instr_stream(struct log_stream *stream, struct ir3_instruction *i
 /* delay calculation: */
 int ir3_delayslots(struct ir3_instruction *assigner,
                    struct ir3_instruction *consumer, unsigned n, bool soft);
-unsigned ir3_delay_calc_postra(struct ir3_block *block,
-                               struct ir3_instruction *instr, bool soft,
-                               bool mergedregs);
-unsigned ir3_delay_calc_exact(struct ir3_block *block,
-                              struct ir3_instruction *instr, bool mergedregs);
+unsigned ir3_delayslots_with_repeat(struct ir3_instruction *assigner,
+                                    struct ir3_instruction *consumer,
+                                    unsigned assigner_n, unsigned consumer_n);
+unsigned ir3_delay_calc(struct ir3_block *block,
+                        struct ir3_instruction *instr, bool mergedregs);
 void ir3_remove_nops(struct ir3 *ir);
 
 /* unreachable block elimination: */

@@ -804,7 +804,7 @@ nop_sched(struct ir3 *ir, struct ir3_shader_variant *so)
       list_inithead(&block->instr_list);
 
       foreach_instr_safe (instr, &instr_list) {
-         unsigned delay = ir3_delay_calc_exact(block, instr, so->mergedregs);
+         unsigned delay = ir3_delay_calc(block, instr, so->mergedregs);
 
          /* NOTE: I think the nopN encoding works for a5xx and
           * probably a4xx, but not a3xx.  So far only tested on
