@@ -110,7 +110,9 @@ static void validate_monotonic(int32_t **blocks)
 
 static void run_test()
 {
-   struct anv_physical_device physical_device = { };
+   struct anv_physical_device physical_device = {
+      .use_relocations = true,
+   };
    struct anv_device device = {
       .physical = &physical_device,
    };

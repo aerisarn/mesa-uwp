@@ -907,6 +907,7 @@ struct anv_physical_device {
     bool                                        has_userptr_probe;
     uint64_t                                    gtt_size;
 
+    bool                                        use_relocations;
     bool                                        use_softpin;
     bool                                        always_use_bindless;
     bool                                        use_call_secondary;
@@ -1254,18 +1255,18 @@ anv_use_relocations(const struct anv_physical_device *pdevice)
 {
 #if defined(GFX_VERx10) && GFX_VERx10 >= 90
    /* Sky Lake and later always uses softpin */
-   assert(pdevice->use_softpin);
+   assert(!pdevice->use_relocations);
    return false;
 #elif defined(GFX_VERx10) && GFX_VERx10 < 80
    /* Haswell and earlier never use softpin */
-   assert(!pdevice->use_softpin);
+   assert(pdevice->use_relocations);
    return true;
 #else
    /* If we don't have a GFX_VERx10 #define, we need to look at the physical
     * device.  Also, for GFX version 8, we need to look at the physical
     * device because Broadwell softpins but Cherryview doesn't.
     */
-   return !pdevice->use_softpin;
+   return pdevice->use_relocations;
 #endif
 }
 

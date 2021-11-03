@@ -852,8 +852,10 @@ anv_physical_device_try_create(struct anv_instance *instance,
       goto fail_base;
    }
 
-   if (device->info.ver >= 8 &&
-       device->info.platform != INTEL_PLATFORM_CHV &&
+   device->use_relocations = device->info.ver < 8 ||
+                             device->info.platform == INTEL_PLATFORM_CHV;
+
+   if (!device->use_relocations &&
        !anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_SOFTPIN)) {
       result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
                          "kernel missing softpin");
@@ -894,9 +896,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
    if (result != VK_SUCCESS)
       goto fail_base;
 
-   device->use_softpin = device->info.ver >= 8 &&
-                         device->info.platform != INTEL_PLATFORM_CHV;
-   assert(device->use_softpin == device->supports_48bit_addresses);
+   assert(device->supports_48bit_addresses == !device->use_relocations);
+   device->use_softpin = !device->use_relocations;
 
    device->has_context_isolation =
       anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
