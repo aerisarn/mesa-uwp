@@ -2261,8 +2261,6 @@ void anv_GetPhysicalDeviceExternalSemaphoreProperties(
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
       if (sem_type == VK_SEMAPHORE_TYPE_TIMELINE_KHR)
          break;
-      if (!device->has_exec_fence)
-         break;
       pExternalSemaphoreProperties->exportFromImportedHandleTypes =
          VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
       pExternalSemaphoreProperties->compatibleHandleTypes =

@@ -897,7 +897,6 @@ struct anv_physical_device {
     int                                         cmd_parser_version;
     bool                                        has_exec_async;
     bool                                        has_exec_capture;
-    bool                                        has_exec_fence;
     bool                                        has_syncobj_wait;
     bool                                        has_syncobj_wait_available;
     int                                         max_context_priority;
