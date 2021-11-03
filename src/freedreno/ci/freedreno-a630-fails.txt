@@ -82,9 +82,6 @@ spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-mixed-const-non-const-uniform-index,Crash
 spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-non-const-uniform-index,Crash
 
-# "shader_runner: ../src/freedreno/ir3/ir3_compiler_nir.c:3928: collect_tex_prefetches: Assertion `fetch->samp_id < 0xf' failed."
-spec@arb_arrays_of_arrays@execution@sampler@fs-struct-const-index-sampler-const-index,Crash
-
 spec@arb_compute_shader@execution@border-color,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail

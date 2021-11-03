@@ -4053,7 +4053,7 @@ collect_tex_prefetches(struct ir3_context *ctx, struct ir3 *ir)
              */
             assert(fetch->dst <= 0x3f);
             assert(fetch->tex_id <= 0x1f);
-            assert(fetch->samp_id < 0xf);
+            assert(fetch->samp_id <= 0xf);
 
             ctx->so->total_in =
                MAX2(ctx->so->total_in, instr->prefetch.input_offset + 2);
