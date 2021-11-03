@@ -276,11 +276,11 @@ async def resolve_nomination(commit: 'Commit', version: str) -> 'Commit':
     out = _out.decode()
 
     # We give precedence to fixes and cc tags over revert tags.
-    if m := IS_FIX.search(out):
+    if fix_for_commit := IS_FIX.search(out):
         # We set the nomination_type and because_sha here so that we can later
         # check to see if this fixes another staged commit.
         try:
-            commit.because_sha = fixed = await full_sha(m.group(1))
+            commit.because_sha = fixed = await full_sha(fix_for_commit.group(1))
         except PickUIException:
             pass
         else:
@@ -289,16 +289,16 @@ async def resolve_nomination(commit: 'Commit', version: str) -> 'Commit':
                 commit.nominated = True
                 return commit
 
-    if m := IS_CC.search(out):
-        if m.groups() == (None, None) or version in m.groups():
+    if cc_to := IS_CC.search(out):
+        if cc_to.groups() == (None, None) or version in cc_to.groups():
             commit.nominated = True
             commit.nomination_type = NominationType.CC
             return commit
 
-    if m := IS_REVERT.search(out):
+    if revert_of := IS_REVERT.search(out):
         # See comment for IS_FIX path
         try:
-            commit.because_sha = reverted = await full_sha(m.group(1))
+            commit.because_sha = reverted = await full_sha(revert_of.group(1))
         except PickUIException:
             pass
         else:

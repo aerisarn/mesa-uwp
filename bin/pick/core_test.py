@@ -94,9 +94,9 @@ class TestRE:
                 Reviewed-by: Jonathan Marek <jonathan@marek.ca>
             """)
 
-            m = core.IS_FIX.search(message)
-            assert m is not None
-            assert m.group(1) == '3d09bb390a39'
+            fix_for_commit = core.IS_FIX.search(message)
+            assert fix_for_commit is not None
+            assert fix_for_commit.group(1) == '3d09bb390a39'
 
     class TestCC:
 
@@ -114,9 +114,9 @@ class TestRE:
                 Reviewed-by: Bas Nieuwenhuizen <bas@basnieuwenhuizen.nl>
             """)
 
-            m = core.IS_CC.search(message)
-            assert m is not None
-            assert m.group(1) == '19.2'
+            cc_to = core.IS_CC.search(message)
+            assert cc_to is not None
+            assert cc_to.group(1) == '19.2'
 
         def test_multiple_branches(self):
             """Tests commit with more than one branch specified"""
@@ -130,10 +130,10 @@ class TestRE:
                 Reviewed-by: Pierre-Eric Pelloux-Prayer <pierre-eric.pelloux-prayer@amd.com>
             """)
 
-            m = core.IS_CC.search(message)
-            assert m is not None
-            assert m.group(1) == '19.1'
-            assert m.group(2) == '19.2'
+            cc_to = core.IS_CC.search(message)
+            assert cc_to is not None
+            assert cc_to.group(1) == '19.1'
+            assert cc_to.group(2) == '19.2'
 
         def test_no_branch(self):
             """Tests commit with no branch specification"""
@@ -148,8 +148,8 @@ class TestRE:
                 Reviewed-by: Lionel Landwerlin <lionel.g.landwerlin@intel.com>
             """)
 
-            m = core.IS_CC.search(message)
-            assert m is not None
+            cc_to = core.IS_CC.search(message)
+            assert cc_to is not None
 
         def test_quotes(self):
             """Tests commit with quotes around the versions"""
@@ -162,9 +162,9 @@ class TestRE:
                  Part-of: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/3454>
             """)
 
-            m = core.IS_CC.search(message)
-            assert m is not None
-            assert m.group(1) == '20.0'
+            cc_to = core.IS_CC.search(message)
+            assert cc_to is not None
+            assert cc_to.group(1) == '20.0'
 
         def test_multiple_quotes(self):
             """Tests commit with quotes around the versions"""
@@ -177,10 +177,10 @@ class TestRE:
                  Part-of: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/3454>
             """)
 
-            m = core.IS_CC.search(message)
-            assert m is not None
-            assert m.group(1) == '20.0'
-            assert m.group(2) == '20.1'
+            cc_to = core.IS_CC.search(message)
+            assert cc_to is not None
+            assert cc_to.group(1) == '20.0'
+            assert cc_to.group(2) == '20.1'
 
         def test_single_quotes(self):
             """Tests commit with quotes around the versions"""
@@ -193,9 +193,9 @@ class TestRE:
                  Part-of: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/3454>
             """)
 
-            m = core.IS_CC.search(message)
-            assert m is not None
-            assert m.group(1) == '20.0'
+            cc_to = core.IS_CC.search(message)
+            assert cc_to is not None
+            assert cc_to.group(1) == '20.0'
 
         def test_multiple_single_quotes(self):
             """Tests commit with quotes around the versions"""
@@ -208,10 +208,10 @@ class TestRE:
                  Part-of: <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/3454>
             """)
 
-            m = core.IS_CC.search(message)
-            assert m is not None
-            assert m.group(1) == '20.0'
-            assert m.group(2) == '20.1'
+            cc_to = core.IS_CC.search(message)
+            assert cc_to is not None
+            assert cc_to.group(1) == '20.0'
+            assert cc_to.group(2) == '20.1'
 
     class TestRevert:
 
@@ -232,9 +232,9 @@ class TestRE:
                 Reviewed-by: Bas Nieuwenhuizen <bas@basnieuwenhuizen.nl>
             """)
 
-            m = core.IS_REVERT.search(message)
-            assert m is not None
-            assert m.group(1) == '2ca8629fa9b303e24783b76a7b3b0c2513e32fbd'
+            revert_of = core.IS_REVERT.search(message)
+            assert revert_of is not None
+            assert revert_of.group(1) == '2ca8629fa9b303e24783b76a7b3b0c2513e32fbd'
 
 
 class TestResolveNomination:
