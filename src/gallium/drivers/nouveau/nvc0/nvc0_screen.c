@@ -883,6 +883,7 @@ static int
 nvc0_screen_init_compute(struct nvc0_screen *screen)
 {
    const struct nouveau_mclass computes[] = {
+      { GA102_COMPUTE_CLASS, -1 },
       { TU102_COMPUTE_CLASS, -1 },
       { GV100_COMPUTE_CLASS, -1 },
       { GP104_COMPUTE_CLASS, -1 },
@@ -1073,6 +1074,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    case 0x130:
    case 0x140:
    case 0x160:
+   case 0x170:
       break;
    default:
       return NULL;
@@ -1171,6 +1173,8 @@ nvc0_screen_create(struct nouveau_device *dev)
 
    if (screen->m2mf->oclass >= NVE4_P2MF_CLASS) {
       const struct nouveau_mclass copys[] = {
+         {  AMPERE_DMA_COPY_B, -1 },
+         {  AMPERE_DMA_COPY_A, -1 },
          {  TURING_DMA_COPY_A, -1 },
          {   VOLTA_DMA_COPY_A, -1 },
          {  PASCAL_DMA_COPY_B, -1 },
@@ -1219,6 +1223,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    PUSH_DATA (push, screen->fence.bo->offset + 16);
 
    const struct nouveau_mclass threeds[] = {
+      { GA102_3D_CLASS, -1 },
       { TU102_3D_CLASS, -1 },
       { GV100_3D_CLASS, -1 },
       { GP102_3D_CLASS, -1 },
