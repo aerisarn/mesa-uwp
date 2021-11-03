@@ -29,10 +29,12 @@
 #include "util/u_dump.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "util/u_threaded_context.h"
 
 #include <dxguids/dxguids.h>
 
 struct d3d12_query {
+   struct threaded_query base;
    enum pipe_query_type type;
 
    ID3D12QueryHeap *query_heap;
