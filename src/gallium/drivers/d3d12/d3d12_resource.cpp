@@ -358,7 +358,7 @@ fill_texture_location(struct d3d12_resource *res,
                       struct d3d12_transfer *trans, unsigned resid, unsigned z)
 {
    D3D12_TEXTURE_COPY_LOCATION tex_loc = {0};
-   int subres = get_subresource_id(res, resid, z, trans->base.level);
+   int subres = get_subresource_id(res, resid, z, trans->base.b.level);
 
    tex_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
    tex_loc.SubresourceIndex = subres;
@@ -380,7 +380,7 @@ fill_buffer_location(struct d3d12_context *ctx,
    auto descr = d3d12_resource_underlying(res, &offset)->GetDesc();
    ID3D12Device* dev = d3d12_screen(ctx->base.screen)->dev;
 
-   unsigned sub_resid = get_subresource_id(res, resid, z, trans->base.level);
+   unsigned sub_resid = get_subresource_id(res, resid, z, trans->base.b.level);
    dev->GetCopyableFootprints(&descr, sub_resid, 1, 0, &footprint, nullptr, nullptr, nullptr);
 
    buf_loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
@@ -388,14 +388,14 @@ fill_buffer_location(struct d3d12_context *ctx,
    buf_loc.PlacedFootprint = footprint;
    buf_loc.PlacedFootprint.Offset += offset;
 
-   buf_loc.PlacedFootprint.Footprint.Width = ALIGN(trans->base.box.width,
+   buf_loc.PlacedFootprint.Footprint.Width = ALIGN(trans->base.b.box.width,
                                                    util_format_get_blockwidth(res->base.b.format));
-   buf_loc.PlacedFootprint.Footprint.Height = ALIGN(trans->base.box.height,
+   buf_loc.PlacedFootprint.Footprint.Height = ALIGN(trans->base.b.box.height,
                                                     util_format_get_blockheight(res->base.b.format));
    buf_loc.PlacedFootprint.Footprint.Depth = ALIGN(depth,
                                                    util_format_get_blockdepth(res->base.b.format));
 
-   buf_loc.PlacedFootprint.Footprint.RowPitch = trans->base.stride;
+   buf_loc.PlacedFootprint.Footprint.RowPitch = trans->base.b.stride;
 
    return buf_loc;
 }
@@ -435,8 +435,8 @@ transfer_buf_to_image_part(struct d3d12_context *ctx,
 {
    if (D3D12_DEBUG_RESOURCE & d3d12_debug) {
       debug_printf("D3D12: Copy %dx%dx%d + %dx%dx%d from buffer %s to image %s\n",
-                   trans->base.box.x, trans->base.box.y, trans->base.box.z,
-                   trans->base.box.width, trans->base.box.height, trans->base.box.depth,
+                   trans->base.b.box.x, trans->base.b.box.y, trans->base.b.box.z,
+                   trans->base.b.box.width, trans->base.b.box.height, trans->base.b.box.depth,
                    util_format_name(staging_res->base.b.format),
                    util_format_name(res->base.b.format));
    }
@@ -444,12 +444,12 @@ transfer_buf_to_image_part(struct d3d12_context *ctx,
    struct copy_info copy_info;
    copy_info.src = staging_res;
    copy_info.src_loc = fill_buffer_location(ctx, res, staging_res, trans, depth, resid, z);
-   copy_info.src_loc.PlacedFootprint.Offset = (z  - start_z) * trans->base.layer_stride;
+   copy_info.src_loc.PlacedFootprint.Offset = (z  - start_z) * trans->base.b.layer_stride;
    copy_info.src_box = nullptr;
    copy_info.dst = res;
    copy_info.dst_loc = fill_texture_location(res, trans, resid, z);
-   copy_info.dst_x = trans->base.box.x;
-   copy_info.dst_y = trans->base.box.y;
+   copy_info.dst_x = trans->base.b.box.x;
+   copy_info.dst_y = trans->base.b.box.y;
    copy_info.dst_z = res->base.b.target == PIPE_TEXTURE_CUBE ? 0 : dest_z;
    copy_info.src_box = nullptr;
 
@@ -465,11 +465,11 @@ transfer_buf_to_image(struct d3d12_context *ctx,
    if (res->base.b.target == PIPE_TEXTURE_3D) {
       assert(resid == 0);
       transfer_buf_to_image_part(ctx, res, staging_res, trans,
-                                 0, trans->base.box.depth, 0,
-                                 trans->base.box.z, 0);
+                                 0, trans->base.b.box.depth, 0,
+                                 trans->base.b.box.z, 0);
    } else {
-      int num_layers = trans->base.box.depth;
-      int start_z = trans->base.box.z;
+      int num_layers = trans->base.b.box.depth;
+      int start_z = trans->base.b.box.z;
 
       for (int z = start_z; z < start_z + num_layers; ++z) {
          transfer_buf_to_image_part(ctx, res, staging_res, trans,
@@ -487,7 +487,7 @@ transfer_image_part_to_buf(struct d3d12_context *ctx,
                            unsigned resid, int z, int start_layer,
                            int start_box_z, int depth)
 {
-   struct pipe_box *box = &trans->base.box;
+   struct pipe_box *box = &trans->base.b.box;
    D3D12_BOX src_box = {};
 
    struct copy_info copy_info;
@@ -497,10 +497,10 @@ transfer_image_part_to_buf(struct d3d12_context *ctx,
    copy_info.dst = staging_res;
    copy_info.dst_loc = fill_buffer_location(ctx, res, staging_res, trans,
                                             depth, resid, z);
-   copy_info.dst_loc.PlacedFootprint.Offset = (z  - start_layer) * trans->base.layer_stride;
+   copy_info.dst_loc.PlacedFootprint.Offset = (z  - start_layer) * trans->base.b.layer_stride;
    copy_info.dst_x = copy_info.dst_y = copy_info.dst_z = 0;
 
-   if (!util_texrange_covers_whole_level(&res->base.b, trans->base.level,
+   if (!util_texrange_covers_whole_level(&res->base.b, trans->base.b.level,
                                          box->x, box->y, start_box_z,
                                          box->width, box->height, depth)) {
       src_box.left = box->x;
@@ -526,12 +526,12 @@ transfer_image_to_buf(struct d3d12_context *ctx,
    /* We only suppport loading from either an texture array
     * or a ZS texture, so either resid is zero, or num_layers == 1)
     */
-   assert(resid == 0 || trans->base.box.depth == 1);
+   assert(resid == 0 || trans->base.b.box.depth == 1);
 
    if (D3D12_DEBUG_RESOURCE & d3d12_debug) {
       debug_printf("D3D12: Copy %dx%dx%d + %dx%dx%d from %s@%d to %s\n",
-                   trans->base.box.x, trans->base.box.y, trans->base.box.z,
-                   trans->base.box.width, trans->base.box.height, trans->base.box.depth,
+                   trans->base.b.box.x, trans->base.b.box.y, trans->base.b.box.z,
+                   trans->base.b.box.width, trans->base.b.box.height, trans->base.b.box.depth,
                    util_format_name(res->base.b.format), resid,
                    util_format_name(staging_res->base.b.format));
    }
@@ -561,10 +561,10 @@ transfer_image_to_buf(struct d3d12_context *ctx,
 
    if (res->base.b.target == PIPE_TEXTURE_3D) {
       transfer_image_part_to_buf(ctx, res, staging_res, trans, resid,
-                                 0, 0, trans->base.box.z, trans->base.box.depth);
+                                 0, 0, trans->base.b.box.z, trans->base.b.box.depth);
    } else {
-      int start_layer = trans->base.box.z;
-      for (int z = start_layer; z < start_layer + trans->base.box.depth; ++z) {
+      int start_layer = trans->base.b.box.z;
+      for (int z = start_layer; z < start_layer + trans->base.b.box.depth; ++z) {
          transfer_image_part_to_buf(ctx, res, staging_res, trans, resid,
                                     z, start_layer, 0, 1);
       }
@@ -712,10 +712,10 @@ prepare_zs_layer_strides(struct d3d12_resource *res,
                          const struct pipe_box *box,
                          struct d3d12_transfer *trans)
 {
-   trans->base.stride = align(util_format_get_stride(res->base.b.format, box->width),
+   trans->base.b.stride = align(util_format_get_stride(res->base.b.format, box->width),
                               D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-   trans->base.layer_stride = util_format_get_2d_size(res->base.b.format,
-                                                      trans->base.stride,
+   trans->base.b.layer_stride = util_format_get_2d_size(res->base.b.format,
+                                                      trans->base.b.stride,
                                                       box->height);
 }
 
@@ -735,7 +735,7 @@ read_zs_surface(struct d3d12_context *ctx, struct d3d12_resource *res,
    tmpl.bind = 0;
    tmpl.usage = PIPE_USAGE_STAGING;
    tmpl.flags = 0;
-   tmpl.width0 = trans->base.layer_stride;
+   tmpl.width0 = trans->base.b.layer_stride;
    tmpl.height0 = 1;
    tmpl.depth0 = 1;
    tmpl.array_size = 1;
@@ -774,7 +774,7 @@ read_zs_surface(struct d3d12_context *ctx, struct d3d12_resource *res,
       return NULL;
    }
 
-   uint8_t *buf = (uint8_t *)malloc(trans->base.layer_stride);
+   uint8_t *buf = (uint8_t *)malloc(trans->base.b.layer_stride);
    if (!buf)
       return NULL;
 
@@ -782,18 +782,18 @@ read_zs_surface(struct d3d12_context *ctx, struct d3d12_resource *res,
 
    switch (res->base.b.format) {
    case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-      util_format_z24_unorm_s8_uint_pack_separate(buf, trans->base.stride,
-                                                  (uint32_t *)depth_ptr, trans->base.stride,
-                                                  stencil_ptr, trans->base.stride,
-                                                  trans->base.box.width, trans->base.box.height);
+      util_format_z24_unorm_s8_uint_pack_separate(buf, trans->base.b.stride,
+                                                  (uint32_t *)depth_ptr, trans->base.b.stride,
+                                                  stencil_ptr, trans->base.b.stride,
+                                                  trans->base.b.box.width, trans->base.b.box.height);
       break;
    case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-      util_format_z32_float_s8x24_uint_pack_z_float(buf, trans->base.stride,
-                                                    (float *)depth_ptr, trans->base.stride,
-                                                    trans->base.box.width, trans->base.box.height);
-      util_format_z32_float_s8x24_uint_pack_s_8uint(buf, trans->base.stride,
-                                                    stencil_ptr, trans->base.stride,
-                                                    trans->base.box.width, trans->base.box.height);
+      util_format_z32_float_s8x24_uint_pack_z_float(buf, trans->base.b.stride,
+                                                    (float *)depth_ptr, trans->base.b.stride,
+                                                    trans->base.b.box.width, trans->base.b.box.height);
+      util_format_z32_float_s8x24_uint_pack_s_8uint(buf, trans->base.b.stride,
+                                                    stencil_ptr, trans->base.b.stride,
+                                                    trans->base.b.box.width, trans->base.b.box.height);
       break;
    default:
       unreachable("Unsupported depth steancil format");
@@ -808,7 +808,7 @@ prepare_write_zs_surface(struct d3d12_resource *res,
                          struct d3d12_transfer *trans)
 {
    prepare_zs_layer_strides(res, box, trans);
-   uint32_t *buf = (uint32_t *)malloc(trans->base.layer_stride);
+   uint32_t *buf = (uint32_t *)malloc(trans->base.b.layer_stride);
    if (!buf)
       return NULL;
 
@@ -827,7 +827,7 @@ write_zs_surface(struct pipe_context *pctx, struct d3d12_resource *res,
    tmpl.bind = 0;
    tmpl.usage = PIPE_USAGE_STAGING;
    tmpl.flags = 0;
-   tmpl.width0 = trans->base.layer_stride;
+   tmpl.width0 = trans->base.b.layer_stride;
    tmpl.height0 = 1;
    tmpl.depth0 = 1;
    tmpl.array_size = 1;
@@ -858,20 +858,20 @@ write_zs_surface(struct pipe_context *pctx, struct d3d12_resource *res,
 
    switch (res->base.b.format) {
    case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-      util_format_z32_unorm_unpack_z_32unorm((uint32_t *)depth_ptr, trans->base.stride, (uint8_t*)trans->data,
-                                             trans->base.stride, trans->base.box.width,
-                                             trans->base.box.height);
-      util_format_z24_unorm_s8_uint_unpack_s_8uint(stencil_ptr, trans->base.stride, (uint8_t*)trans->data,
-                                                   trans->base.stride, trans->base.box.width,
-                                                   trans->base.box.height);
+      util_format_z32_unorm_unpack_z_32unorm((uint32_t *)depth_ptr, trans->base.b.stride, (uint8_t*)trans->data,
+                                             trans->base.b.stride, trans->base.b.box.width,
+                                             trans->base.b.box.height);
+      util_format_z24_unorm_s8_uint_unpack_s_8uint(stencil_ptr, trans->base.b.stride, (uint8_t*)trans->data,
+                                                   trans->base.b.stride, trans->base.b.box.width,
+                                                   trans->base.b.box.height);
       break;
    case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-      util_format_z32_float_s8x24_uint_unpack_z_float((float *)depth_ptr, trans->base.stride, (uint8_t*)trans->data,
-                                                      trans->base.stride, trans->base.box.width,
-                                                      trans->base.box.height);
-      util_format_z32_float_s8x24_uint_unpack_s_8uint(stencil_ptr, trans->base.stride, (uint8_t*)trans->data,
-                                                      trans->base.stride, trans->base.box.width,
-                                                      trans->base.box.height);
+      util_format_z32_float_s8x24_uint_unpack_z_float((float *)depth_ptr, trans->base.b.stride, (uint8_t*)trans->data,
+                                                      trans->base.b.stride, trans->base.b.box.width,
+                                                      trans->base.b.box.height);
+      util_format_z32_float_s8x24_uint_unpack_s_8uint(stencil_ptr, trans->base.b.stride, (uint8_t*)trans->data,
+                                                      trans->base.b.stride, trans->base.b.box.width,
+                                                      trans->base.b.box.height);
       break;
    default:
       unreachable("Unsupported depth steancil format");
@@ -901,7 +901,7 @@ d3d12_transfer_map(struct pipe_context *pctx,
       return NULL;
 
    struct d3d12_transfer *trans = (struct d3d12_transfer *)slab_alloc(&ctx->transfer_pool);
-   struct pipe_transfer *ptrans = &trans->base;
+   struct pipe_transfer *ptrans = &trans->base.b;
    if (!trans)
       return NULL;
 
@@ -1006,13 +1006,13 @@ d3d12_transfer_unmap(struct pipe_context *pctx,
    D3D12_RANGE range = { 0, 0 };
 
    if (trans->data != nullptr) {
-      if (trans->base.usage & PIPE_MAP_WRITE)
+      if (trans->base.b.usage & PIPE_MAP_WRITE)
          write_zs_surface(pctx, res, trans);
       free(trans->data);
    } else if (trans->staging_res) {
       struct d3d12_resource *staging_res = d3d12_resource(trans->staging_res);
 
-      if (trans->base.usage & PIPE_MAP_WRITE) {
+      if (trans->base.b.usage & PIPE_MAP_WRITE) {
          assert(ptrans->box.x >= 0);
          range.Begin = res->base.b.target == PIPE_BUFFER ?
             (unsigned)ptrans->box.x % BUFFER_MAP_ALIGNMENT : 0;
@@ -1020,10 +1020,10 @@ d3d12_transfer_unmap(struct pipe_context *pctx,
       }
       d3d12_bo_unmap(staging_res->bo, &range);
 
-      if (trans->base.usage & PIPE_MAP_WRITE) {
+      if (trans->base.b.usage & PIPE_MAP_WRITE) {
          struct d3d12_context *ctx = d3d12_context(pctx);
          if (res->base.b.target == PIPE_BUFFER) {
-            uint64_t dst_offset = trans->base.box.x;
+            uint64_t dst_offset = trans->base.b.box.x;
             uint64_t src_offset = dst_offset % BUFFER_MAP_ALIGNMENT;
             transfer_buf_to_buf(ctx, staging_res, res, src_offset, dst_offset, ptrans->box.width);
          } else
@@ -1032,7 +1032,7 @@ d3d12_transfer_unmap(struct pipe_context *pctx,
 
       pipe_resource_reference(&trans->staging_res, NULL);
    } else {
-      if (trans->base.usage & PIPE_MAP_WRITE) {
+      if (trans->base.b.usage & PIPE_MAP_WRITE) {
          range.Begin = ptrans->box.x;
          range.End = ptrans->box.x + ptrans->box.width;
       }
