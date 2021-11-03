@@ -161,8 +161,8 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
    if (zsbuf) {
       struct fd_resource *rsc = fd_resource(zsbuf->texture);
       enum a6xx_depth_format fmt = fd6_pipe2depth(zsbuf->format);
-      uint32_t stride = fd_resource_pitch(rsc, 0);
-      uint32_t array_stride = fd_resource_layer_stride(rsc, 0);
+      uint32_t stride = fd_resource_pitch(rsc, zsbuf->u.tex.level);
+      uint32_t array_stride = fd_resource_layer_stride(rsc, zsbuf->u.tex.level);
       uint32_t base = gmem ? gmem->zsbuf_base[0] : 0;
       uint32_t offset =
          fd_resource_offset(rsc, zsbuf->u.tex.level, zsbuf->u.tex.first_layer);
@@ -203,16 +203,18 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
       OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(UNK_25));
 
       if (rsc->stencil) {
-         stride = fd_resource_pitch(rsc->stencil, 0);
-         array_stride = fd_resource_layer_stride(rsc->stencil, 0);
+         stride = fd_resource_pitch(rsc->stencil, zsbuf->u.tex.level);
+         array_stride = fd_resource_layer_stride(rsc->stencil, zsbuf->u.tex.level);
          uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
+         uint32_t offset =
+            fd_resource_offset(rsc->stencil, zsbuf->u.tex.level, zsbuf->u.tex.first_layer);
 
          OUT_REG(ring, A6XX_RB_STENCIL_INFO(.separate_stencil = true),
                  A6XX_RB_STENCIL_BUFFER_PITCH(.a6xx_rb_stencil_buffer_pitch =
                                                  stride),
                  A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(
                        .a6xx_rb_stencil_buffer_array_pitch = array_stride),
-                 A6XX_RB_STENCIL_BUFFER_BASE(.bo = rsc->stencil->bo),
+                 A6XX_RB_STENCIL_BUFFER_BASE(.bo = rsc->stencil->bo, .bo_offset = offset),
                  A6XX_RB_STENCIL_BUFFER_BASE_GMEM(.dword = base));
       } else {
          OUT_REG(ring, A6XX_RB_STENCIL_INFO(0));
@@ -1000,7 +1002,7 @@ emit_blit(struct fd_batch *batch, struct fd_ringbuffer *ring, uint32_t base,
    uint32_t tile_mode = fd_resource_tile_mode(&rsc->b.b, psurf->u.tex.level);
    enum a6xx_format format = fd6_color_format(pfmt, tile_mode);
    uint32_t stride = fd_resource_pitch(rsc, psurf->u.tex.level);
-   uint32_t size = fd_resource_slice(rsc, psurf->u.tex.level)->size0;
+   uint32_t array_stride = fd_resource_layer_stride(rsc, psurf->u.tex.level);
    enum a3xx_color_swap swap = fd6_color_swap(pfmt, rsc->layout.tile_mode);
    enum a3xx_msaa_samples samples = fd_msaa_samples(rsc->b.b.nr_samples);
 
@@ -1010,7 +1012,7 @@ emit_blit(struct fd_batch *batch, struct fd_ringbuffer *ring, uint32_t base,
                                  .flags = ubwc_enabled),
            A6XX_RB_BLIT_DST(.bo = rsc->bo, .bo_offset = offset),
            A6XX_RB_BLIT_DST_PITCH(.a6xx_rb_blit_dst_pitch = stride),
-           A6XX_RB_BLIT_DST_ARRAY_PITCH(.a6xx_rb_blit_dst_array_pitch = size));
+           A6XX_RB_BLIT_DST_ARRAY_PITCH(.a6xx_rb_blit_dst_array_pitch = array_stride));
 
    OUT_REG(ring, A6XX_RB_BLIT_BASE_GMEM(.dword = base));
 
