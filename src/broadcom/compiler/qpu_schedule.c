@@ -2034,6 +2034,12 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
         if (v3d_qpu_sig_writes_address(c->devinfo, &prev->qpu.sig))
                 return false;
 
+        uint32_t sig;
+        struct v3d_qpu_sig new_sig = prev->qpu.sig;
+        new_sig.ldvary = true;
+        if (!v3d_qpu_sig_pack(c->devinfo, &new_sig, &sig))
+                return false;
+
         /* The previous instruction cannot use flags since ldvary uses the
          * 'cond' instruction field to store the destination.
          */
