@@ -1271,8 +1271,9 @@ update_push_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set
          wds[i].pBufferInfo = &buffer_infos[i];
       }
    }
-   if (unlikely(!cache_hit && !is_compute && ctx->fbfetch_outputs)) {
-      struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[0]->texture);
+   if (unlikely(!cache_hit && !is_compute && ctx->dd->has_fbfetch)) {
+      assert(!pg->dd->fbfetch);
+      struct zink_resource *res = zink_resource(ctx->dummy_surface[0]->texture);
       init_write_descriptor(NULL, zds, 0, MESA_SHADER_STAGES, &wds[ZINK_SHADER_COUNT], 0);
       desc_set_res_add(zds, res, ZINK_SHADER_COUNT, cache_hit);
       wds[ZINK_SHADER_COUNT].pImageInfo = &ctx->di.fbfetch;
@@ -1414,7 +1415,10 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
    struct zink_batch *batch = &ctx->batch;
    VkPipelineBindPoint bp = is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-   {
+   if (unlikely(pg->dd->fbfetch)) {
+      /* this is not cacheable */
+      zink_descriptors_update_lazy_push(ctx);
+   } else {
       uint32_t dynamic_offsets[PIPE_MAX_CONSTANT_BUFFERS];
       unsigned dynamic_offset_idx = 0;
 
