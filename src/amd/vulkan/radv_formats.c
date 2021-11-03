@@ -708,7 +708,8 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
       return;
    }
 
-   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC && !radv_device_supports_etc(physical_device)) {
+   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC && !radv_device_supports_etc(physical_device) &&
+       !physical_device->emulate_etc2) {
       out_properties->linearTilingFeatures = linear;
       out_properties->optimalTilingFeatures = tiled;
       out_properties->bufferFeatures = buffer;
@@ -1349,9 +1350,13 @@ radv_check_modifier_support(struct radv_physical_device *dev,
                             const VkPhysicalDeviceImageFormatInfo2 *info,
                             VkImageFormatProperties *props, VkFormat format, uint64_t modifier)
 {
+   const struct util_format_description *desc = vk_format_description(format);
    uint32_t max_width, max_height;
 
    if (info->type != VK_IMAGE_TYPE_2D)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+   if (!desc || (desc->layout == UTIL_FORMAT_LAYOUT_ETC && dev->emulate_etc2))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    /* We did not add modifiers for sparse textures. */
@@ -1617,6 +1622,12 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
          goto unsupported;
    }
 
+   if ((info->flags &
+        (VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT | VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) &&
+       (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2)) {
+      goto unsupported;
+   }
+
    *pImageFormatProperties = (VkImageFormatProperties){
       .maxExtent = maxExtent,
       .maxMipLevels = maxMipLevels,
@@ -1659,6 +1670,10 @@ get_external_image_format_properties(struct radv_physical_device *physical_devic
    VkExternalMemoryFeatureFlagBits flags = 0;
    VkExternalMemoryHandleTypeFlags export_flags = 0;
    VkExternalMemoryHandleTypeFlags compat_flags = 0;
+   const struct util_format_description *desc = vk_format_description(pImageFormatInfo->format);
+
+   if (!desc || (desc->layout == UTIL_FORMAT_LAYOUT_ETC && physical_device->emulate_etc2))
+      return;
 
    if (pImageFormatInfo->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)
       return;
