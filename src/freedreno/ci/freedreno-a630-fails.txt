@@ -313,10 +313,6 @@ spec@ext_packed_float@query-rgba-signed-components,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled@GL_R11F_G11F_B10F- swizzled- border color only,Fail
 
-# "../src/gallium/drivers/freedreno/a6xx/fd6_gmem.c:976:emit_blit: Assertion `psurf->u.tex.first_layer == psurf->u.tex.last_layer' failed."
-spec@ext_texture_array@fbo-depth-array depth-layered-clear,Crash
-spec@ext_texture_array@fbo-depth-array stencil-layered-clear,Crash
-
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RED_RGTC1- swizzled- border color only,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RG_RGTC2- swizzled- border color only,Fail
@@ -606,6 +602,3 @@ spec@!opengl 3.0@clearbuffer-depth-cs-probe,Timeout
 spec@!opengl 3.0@clearbuffer-depth,Fail
 spec@!opengl 3.0@clearbuffer-stencil,Fail
 spec@!opengl 3.1@primitive-restart-xfb generated,Fail
-
-# "../src/gallium/drivers/freedreno/a6xx/fd6_gmem.c:976:emit_blit: Assertion `psurf->u.tex.first_layer == psurf->u.tex.last_layer' failed."
-spec@!opengl 3.2@layered-rendering@clear-depth,Crash

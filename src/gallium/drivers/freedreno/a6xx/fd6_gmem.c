@@ -78,6 +78,10 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
    unsigned srgb_cntl = 0;
    unsigned i;
 
+   /* Note, GLES 3.2 says "If the fragment’s layer number is negative, or
+    * greater than or equal to the minimum number of layers of any attachment,
+    * the effects of the fragment on the framebuffer contents are undefined."
+    */
    unsigned max_layer_index = 0;
    enum a6xx_format mrt0_format = 0;
 
@@ -139,6 +143,8 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
       if (i == 0)
          mrt0_format = format;
    }
+   if (pfb->zsbuf)
+      max_layer_index = pfb->zsbuf->u.tex.last_layer - pfb->zsbuf->u.tex.first_layer;
 
    OUT_REG(ring, A6XX_GRAS_LRZ_MRT_BUF_INFO_0(.color_format = mrt0_format));
 
