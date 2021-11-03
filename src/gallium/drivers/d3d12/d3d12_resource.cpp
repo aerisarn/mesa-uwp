@@ -900,7 +900,9 @@ d3d12_transfer_map(struct pipe_context *pctx,
    if (usage & PIPE_MAP_DIRECTLY || !res->bo)
       return NULL;
 
-   struct d3d12_transfer *trans = (struct d3d12_transfer *)slab_alloc(&ctx->transfer_pool);
+   slab_child_pool* transfer_pool = (usage & TC_TRANSFER_MAP_THREADED_UNSYNC) ?
+      &ctx->transfer_pool_unsync : &ctx->transfer_pool;
+   struct d3d12_transfer *trans = (struct d3d12_transfer *)slab_alloc(transfer_pool);
    struct pipe_transfer *ptrans = &trans->base.b;
    if (!trans)
       return NULL;

@@ -73,6 +73,7 @@ d3d12_context_destroy(struct pipe_context *pctx)
    d3d12_descriptor_pool_free(ctx->sampler_pool);
    util_primconvert_destroy(ctx->primconvert);
    slab_destroy_child(&ctx->transfer_pool);
+   slab_destroy_child(&ctx->transfer_pool_unsync);
    d3d12_gs_variant_cache_destroy(ctx);
    d3d12_gfx_pipeline_state_cache_destroy(ctx);
    d3d12_root_signature_cache_destroy(ctx);
@@ -1915,6 +1916,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
 
    slab_create_child(&ctx->transfer_pool, &d3d12_screen(pscreen)->transfer_pool);
+   slab_create_child(&ctx->transfer_pool_unsync, &d3d12_screen(pscreen)->transfer_pool);
 
    ctx->base.stream_uploader = u_upload_create_default(&ctx->base);
    ctx->base.const_uploader = u_upload_create_default(&ctx->base);

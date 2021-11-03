@@ -149,6 +149,7 @@ class ResourceStateManager;
 struct d3d12_context {
    struct pipe_context base;
    struct slab_child_pool transfer_pool;
+   struct slab_child_pool transfer_pool_unsync;
    struct primconvert_context *primconvert;
    struct blitter_context *blitter;
    struct u_suballocator query_allocator;
