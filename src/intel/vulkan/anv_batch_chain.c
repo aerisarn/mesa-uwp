@@ -27,6 +27,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <xf86drm.h>
+
 #include "anv_private.h"
 #include "anv_measure.h"
 
@@ -2266,6 +2268,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 {
    struct anv_device *device = queue->device;
    VkResult result = VK_SUCCESS;
+   int err;
 
    if (queue->device->info.no_hw)
       return VK_SUCCESS;
@@ -2307,9 +2310,10 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 
    struct drm_i915_gem_exec_fence fence = {};
    if (device->physical->has_syncobj_wait) {
-      fence.handle = anv_gem_syncobj_create(device, 0);
-      if (fence.handle == 0) {
-         result = vk_error(queue, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      err = drmSyncobjCreate(device->fd, 0, &fence.handle);
+      if (err != 0) {
+         result = vk_errorf(queue, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                            "drmSyncobjCreate failed: %m");
          goto fail;
       }
 
@@ -2320,17 +2324,17 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
       execbuf.execbuf.cliprects_ptr = (uintptr_t)&fence;
    }
 
-   int err = anv_gem_execbuffer(device, &execbuf.execbuf);
+   err = anv_gem_execbuffer(device, &execbuf.execbuf);
    if (err) {
       result = vk_device_set_lost(&device->vk, "anv_gem_execbuffer failed: %m");
       goto fail;
    }
 
    if (fence.handle) {
-      err = anv_gem_syncobj_wait(device, &fence.handle, 1, INT64_MAX, true);
+      err = drmSyncobjWait(device->fd, &fence.handle, 1, INT64_MAX, 0, NULL);
       if (err) {
          result = vk_device_set_lost(&device->vk,
-                                     "anv_gem_syncobj_wait failed: %m");
+                                     "drmSyncobjWait failed: %m");
          goto fail;
       }
    } else {
@@ -2345,7 +2349,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 fail:
    anv_execbuf_finish(&execbuf);
    if (fence.handle)
-      anv_gem_syncobj_destroy(device, fence.handle);
+      drmSyncobjDestroy(device->fd, fence.handle);
    anv_bo_pool_free(&device->batch_bo_pool, batch_bo);
 
    return result;
