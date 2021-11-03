@@ -90,9 +90,11 @@ d3d12_resource_wait_idle(struct d3d12_context *ctx,
       d3d12_flush_cmdlist_and_wait(ctx);
    } else {
       d3d12_foreach_submitted_batch(ctx, batch) {
-         d3d12_reset_batch(ctx, batch, PIPE_TIMEOUT_INFINITE);
-         if (!resource_is_busy(ctx, res))
-            break;
+         if (d3d12_batch_has_references(batch, res->bo)) {
+            d3d12_reset_batch(ctx, batch, PIPE_TIMEOUT_INFINITE);
+            if (!resource_is_busy(ctx, res))
+               break;
+         }
       }
    }
 }
