@@ -158,7 +158,6 @@ KHR-GLES3.copy_tex_image_conversions.required.texture3d_texture2d,Fail
 
 KHR-GLES3.packed_depth_stencil.blit.depth24_stencil8,Fail
 KHR-GLES3.packed_depth_stencil.blit.depth32f_stencil8,Fail
-KHR-GLES3.packed_depth_stencil.verify_read_pixels.depth24_stencil8,Fail
 
 # "Non-integer comparison: 1, 0, 18, 1e-05: 0.142857 == 0: not equal.
 #  Copy stage: Gradient comparison failed during ReadPixels for input = [GL_RG, GL_FLOAT] output = [GL_RED, GL_FLOAT]"
