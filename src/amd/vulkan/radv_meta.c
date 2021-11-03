@@ -495,8 +495,14 @@ radv_device_init_meta(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_fmask_copy;
 
+   result = radv_device_init_meta_etc_decode_state(device, on_demand);
+   if (result != VK_SUCCESS)
+      goto fail_etc_decode;
+
    return VK_SUCCESS;
 
+fail_etc_decode:
+   radv_device_finish_meta_fmask_copy_state(device);
 fail_fmask_copy:
    radv_device_finish_accel_struct_build_state(device);
 fail_accel_struct_build:
@@ -532,6 +538,7 @@ fail_clear:
 void
 radv_device_finish_meta(struct radv_device *device)
 {
+   radv_device_finish_meta_etc_decode_state(device);
    radv_device_finish_accel_struct_build_state(device);
    radv_device_finish_meta_clear_state(device);
    radv_device_finish_meta_resolve_state(device);

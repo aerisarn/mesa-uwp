@@ -62,6 +62,7 @@ libradv_files = files(
   'radv_meta_copy_vrs_htile.c',
   'radv_meta_dcc_retile.c',
   'radv_meta_decompress.c',
+  'radv_meta_etc_decode.c',
   'radv_meta_fast_clear.c',
   'radv_meta_fmask_copy.c',
   'radv_meta_fmask_expand.c',
