@@ -2815,8 +2815,6 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
 
 0x2184 0x9 for copy, 0x1 for blit (maybe bitmask of enabled src/dst???)
  -->
-	<reg32 offset="0x2100" name="UNKNOWN_2100"/>
-	<reg32 offset="0x2180" name="UNKNOWN_2180"/>
 	<reg32 offset="0x2184" name="UNKNOWN_2184"/>
 </domain>
 
