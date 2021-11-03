@@ -276,9 +276,7 @@ async def resolve_nomination(commit: 'Commit', version: str) -> 'Commit':
     out = _out.decode()
 
     # We give precedence to fixes and cc tags over revert tags.
-    # XXX: not having the walrus operator available makes me sad :=
-    m = IS_FIX.search(out)
-    if m:
+    if m := IS_FIX.search(out):
         # We set the nomination_type and because_sha here so that we can later
         # check to see if this fixes another staged commit.
         try:
@@ -291,15 +289,13 @@ async def resolve_nomination(commit: 'Commit', version: str) -> 'Commit':
                 commit.nominated = True
                 return commit
 
-    m = IS_CC.search(out)
-    if m:
+    if m := IS_CC.search(out):
         if m.groups() == (None, None) or version in m.groups():
             commit.nominated = True
             commit.nomination_type = NominationType.CC
             return commit
 
-    m = IS_REVERT.search(out)
-    if m:
+    if m := IS_REVERT.search(out):
         # See comment for IS_FIX path
         try:
             commit.because_sha = reverted = await full_sha(m.group(1))
