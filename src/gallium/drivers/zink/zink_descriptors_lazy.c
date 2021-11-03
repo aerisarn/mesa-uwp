@@ -414,6 +414,7 @@ check_push_pool_alloc(struct zink_context *ctx, struct zink_descriptor_pool *poo
          /* overflowed pool: queue for deletion on next reset */
          util_dynarray_append(&bdd->overflowed_pools, struct zink_descriptor_pool*, pool);
          bdd->push_pool[is_compute] = create_push_pool(screen, bdd, is_compute, ctx->dd->has_fbfetch);
+         bdd->has_fbfetch = ctx->dd->has_fbfetch;
          return check_push_pool_alloc(ctx, bdd->push_pool[is_compute], bdd, is_compute);
       }
       if (!zink_descriptor_util_alloc_sets(screen, ctx->dd->push_dsl[is_compute]->layout,
