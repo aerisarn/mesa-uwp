@@ -53,8 +53,7 @@ struct virgl_rasterizer_state {
 };
 
 struct virgl_shader_binding_state {
-   struct pipe_sampler_view *views[16];
-   uint32_t view_enabled_mask;
+   struct pipe_sampler_view *views[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
    struct pipe_constant_buffer ubos[PIPE_MAX_CONSTANT_BUFFERS];
    uint32_t ubo_enabled_mask;
