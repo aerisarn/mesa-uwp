@@ -2121,21 +2121,6 @@ iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *result)
    return ret;
 }
 
-static uint64_t
-iris_gtt_size(int fd)
-{
-   /* We use the default (already allocated) context to determine
-    * the default configuration of the virtual address space.
-    */
-   struct drm_i915_gem_context_param p = {
-      .param = I915_CONTEXT_PARAM_GTT_SIZE,
-   };
-   if (!intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p))
-      return p.value;
-
-   return 0;
-}
-
 static struct intel_buffer *
 intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 {
@@ -2232,8 +2217,7 @@ iris_bufmgr_query_meminfo(struct iris_bufmgr *bufmgr)
 static struct iris_bufmgr *
 iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 {
-   uint64_t gtt_size = iris_gtt_size(fd);
-   if (gtt_size <= IRIS_MEMZONE_OTHER_START)
+   if (devinfo->gtt_size <= IRIS_MEMZONE_OTHER_START)
       return NULL;
 
    struct iris_bufmgr *bufmgr = calloc(1, sizeof(*bufmgr));
@@ -2298,7 +2282,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
     */
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
                       IRIS_MEMZONE_OTHER_START,
-                      (gtt_size - _4GB) - IRIS_MEMZONE_OTHER_START);
+                      (devinfo->gtt_size - _4GB) - IRIS_MEMZONE_OTHER_START);
 
    init_cache_buckets(bufmgr, false);
    init_cache_buckets(bufmgr, true);

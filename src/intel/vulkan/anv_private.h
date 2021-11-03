@@ -1369,8 +1369,6 @@ bool anv_gem_has_context_priority(int fd, int priority);
 int anv_gem_destroy_context(struct anv_device *device, int context);
 int anv_gem_set_context_param(int fd, int context, uint32_t param,
                               uint64_t value);
-int anv_gem_get_context_param(int fd, int context, uint32_t param,
-                              uint64_t *value);
 int anv_gem_get_param(int fd, uint32_t param);
 int anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle);
 int anv_gem_context_get_reset_stats(int fd, int context,

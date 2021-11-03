@@ -155,12 +155,6 @@ anv_gem_set_context_param(int fd, int context, uint32_t param, uint64_t value)
    unreachable("Unused");
 }
 
-int
-anv_gem_get_context_param(int fd, int context, uint32_t param, uint64_t *value)
-{
-   unreachable("Unused");
-}
-
 bool
 anv_gem_has_context_priority(int fd, int priority)
 {

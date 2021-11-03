@@ -363,22 +363,6 @@ anv_gem_set_context_param(int fd, int context, uint32_t param, uint64_t value)
 }
 
 int
-anv_gem_get_context_param(int fd, int context, uint32_t param, uint64_t *value)
-{
-   struct drm_i915_gem_context_param gp = {
-      .ctx_id = context,
-      .param = param,
-   };
-
-   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &gp);
-   if (ret == -1)
-      return -1;
-
-   *value = gp.value;
-   return 0;
-}
-
-int
 anv_gem_context_get_reset_stats(int fd, int context,
                                 uint32_t *active, uint32_t *pending)
 {

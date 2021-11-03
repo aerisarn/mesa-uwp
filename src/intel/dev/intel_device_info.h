@@ -347,6 +347,7 @@ struct intel_device_info
    uint64_t timestamp_frequency;
 
    uint64_t aperture_bytes;
+   uint64_t gtt_size;
 
    /**
     * ID to put into the .aub files.
