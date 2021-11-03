@@ -111,7 +111,7 @@ files_llvmpipe = files(
 
 libllvmpipe = static_library(
   'llvmpipe',
-  files_llvmpipe,
+  [files_llvmpipe, sha1_h],
   c_args : [c_msvc_compat_args],
   cpp_args : [cpp_msvc_compat_args],
   gnu_symbol_visibility : 'hidden',
