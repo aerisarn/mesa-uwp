@@ -23,7 +23,7 @@
 
 from mako.template import Template
 from collections import namedtuple
-from enum import Flag, auto
+from enum import IntEnum
 import os
 
 TRACEPOINTS = {}
@@ -101,9 +101,9 @@ class TracepointArg(object):
 
 HEADERS = []
 
-class HeaderScope(Flag):
-   HEADER = auto()
-   SOURCE = auto()
+class HeaderScope(IntEnum):
+   HEADER = (1 << 0)
+   SOURCE = (1 << 1)
 
 class Header(object):
     """Class that represents a header file dependency of generated tracepoints
