@@ -2304,7 +2304,9 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
        !(surf->flags & (RADEON_SURF_DISABLE_DCC | RADEON_SURF_FORCE_SWIZZLE_MODE |
                         RADEON_SURF_FORCE_MICRO_TILE_MODE)) &&
        (surf->modifier == DRM_FORMAT_MOD_INVALID ||
-        ac_modifier_has_dcc(surf->modifier))) {
+        ac_modifier_has_dcc(surf->modifier)) &&
+       is_dcc_supported_by_DCN(info, config, surf, surf->u.gfx9.color.dcc.rb_aligned,
+                               surf->u.gfx9.color.dcc.pipe_aligned)) {
       /* Validate that DCC is enabled if DCN can do it. */
       if ((info->use_display_dcc_unaligned || info->use_display_dcc_with_retile_blit) &&
           AddrSurfInfoIn.flags.display && surf->bpe == 4) {
