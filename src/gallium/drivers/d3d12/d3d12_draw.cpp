@@ -105,6 +105,13 @@ fill_srv_descriptors(struct d3d12_context *ctx,
          descs[desc_idx] = view->handle.cpu_handle;
          d3d12_batch_reference_sampler_view(batch, view);
 
+         struct d3d12_resource *res = d3d12_resource(view->base.texture);
+         /* If this is a buffer that's been replaced, re-create the descriptor */
+         if (view->texture_generation_id != res->generation_id) {
+            d3d12_init_sampler_view_descriptor(view);
+            view->texture_generation_id = res->generation_id;
+         }
+
          D3D12_RESOURCE_STATES state = (stage == PIPE_SHADER_FRAGMENT) ?
                                        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE :
                                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;

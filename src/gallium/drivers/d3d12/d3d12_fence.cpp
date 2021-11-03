@@ -145,6 +145,7 @@ fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
 {
    bool ret = d3d12_fence_finish(d3d12_fence(pfence), timeout_ns);
    if (ret && pctx) {
+      pctx = threaded_context_unwrap_sync(pctx);
       struct d3d12_context *ctx = d3d12_context(pctx);
       d3d12_foreach_submitted_batch(ctx, batch)
          d3d12_reset_batch(ctx, batch, 0);

@@ -623,7 +623,6 @@ spec/arb_direct_state_access/create-transformfeedbacks: skip
 spec/arb_direct_state_access/getcompressedtextureimage: skip
 spec/arb_direct_state_access/gettextureimage-formats: crash
 spec/arb_direct_state_access/gettransformfeedback: skip
-spec/arb_direct_state_access/texture-buffer: fail
 spec/arb_direct_state_access/textures-storage/cube array texture: skip
 spec/arb_direct_state_access/transformfeedback-bufferbase: skip
 spec/arb_direct_state_access/transformfeedback-bufferrange: skip
@@ -2388,7 +2387,6 @@ spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 4: sk
 spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 7: skip
 spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 8: skip
 spec/arb_texture_buffer_object/bufferstorage: skip
-spec/arb_texture_buffer_object/data-sync: fail
 spec/arb_texture_buffer_object/indexed: skip
 spec/arb_texture_buffer_object/negative-unsupported: skip
 spec/arb_texture_buffer_object/subdata-sync: fail
@@ -4749,8 +4747,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    13303
-       fail:      535
+       pass:    13305
+       fail:      533
       crash:       67
        skip:     4126
     timeout:        0

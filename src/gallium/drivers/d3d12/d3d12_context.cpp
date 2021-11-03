@@ -33,6 +33,7 @@
 #include "d3d12_screen.h"
 #include "d3d12_surface.h"
 
+#include "util/u_atomic.h"
 #include "util/u_blitter.h"
 #include "util/u_dual_blend.h"
 #include "util/u_framebuffer.h"
@@ -790,37 +791,16 @@ component_mapping(enum pipe_swizzle swizzle, D3D12_SHADER_COMPONENT_MAPPING id)
    }
 }
 
-static struct pipe_sampler_view *
-d3d12_create_sampler_view(struct pipe_context *pctx,
-                          struct pipe_resource *texture,
-                          const struct pipe_sampler_view *state)
+void
+d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
 {
-   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
+   struct pipe_sampler_view *state = &sampler_view->base;
+   struct pipe_resource *texture = state->texture;
    struct d3d12_resource *res = d3d12_resource(texture);
-   struct d3d12_sampler_view *sampler_view = CALLOC_STRUCT(d3d12_sampler_view);
+   struct d3d12_screen *screen = d3d12_screen(texture->screen);
 
-   sampler_view->base = *state;
-   sampler_view->base.texture = NULL;
-   pipe_resource_reference(&sampler_view->base.texture, texture);
-   sampler_view->base.reference.count = 1;
-   sampler_view->base.context = pctx;
-   sampler_view->mip_levels = state->u.tex.last_level - state->u.tex.first_level + 1;
-   sampler_view->array_size = texture->array_size;
-
-   D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
    struct d3d12_format_info format_info = d3d12_get_format_info(state->format, state->target);
-   pipe_swizzle swizzle[4] = {
-      format_info.swizzle[sampler_view->base.swizzle_r],
-      format_info.swizzle[sampler_view->base.swizzle_g],
-      format_info.swizzle[sampler_view->base.swizzle_b],
-      format_info.swizzle[sampler_view->base.swizzle_a]
-   };
-
-   sampler_view->swizzle_override_r = swizzle[0];
-   sampler_view->swizzle_override_g = swizzle[1];
-   sampler_view->swizzle_override_b = swizzle[2];
-   sampler_view->swizzle_override_a = swizzle[3];
-
+   D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
    desc.Format = d3d12_get_resource_srv_format(state->format, state->target);
    desc.ViewDimension = view_dimension(state->target, texture->nr_samples);
 
@@ -828,17 +808,17 @@ d3d12_create_sampler_view(struct pipe_context *pctx,
     * for cube maps, and we sampling is not supported for integer textures, so we have to
     * handle this SRV as if it were a 2D texture array */
    if ((desc.ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBE ||
-        desc.ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBEARRAY) &&
-       util_format_is_pure_integer(state->format)) {
+      desc.ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBEARRAY) &&
+      util_format_is_pure_integer(state->format)) {
       desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
    }
 
    desc.Shader4ComponentMapping = D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(
-         component_mapping(swizzle[0], D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0),
-         component_mapping(swizzle[1], D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1),
-         component_mapping(swizzle[2], D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2),
-         component_mapping(swizzle[3], D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3)
-         );
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_r, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0),
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_g, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1),
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_b, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2),
+      component_mapping((pipe_swizzle)sampler_view->swizzle_override_a, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3)
+   );
 
    unsigned array_size = state->u.tex.last_layer - state->u.tex.first_layer + 1;
    switch (desc.ViewDimension) {
@@ -912,12 +892,46 @@ d3d12_create_sampler_view(struct pipe_context *pctx,
       unreachable("Invalid SRV dimension");
    }
 
+   screen->dev->CreateShaderResourceView(d3d12_resource_resource(res), &desc,
+      sampler_view->handle.cpu_handle);
+}
+
+static struct pipe_sampler_view *
+d3d12_create_sampler_view(struct pipe_context *pctx,
+                          struct pipe_resource *texture,
+                          const struct pipe_sampler_view *state)
+{
+   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
+   struct d3d12_resource *res = d3d12_resource(texture);
+   struct d3d12_sampler_view *sampler_view = CALLOC_STRUCT(d3d12_sampler_view);
+
+   sampler_view->base = *state;
+   sampler_view->base.texture = NULL;
+   pipe_resource_reference(&sampler_view->base.texture, texture);
+   sampler_view->base.reference.count = 1;
+   sampler_view->base.context = pctx;
+   sampler_view->mip_levels = state->u.tex.last_level - state->u.tex.first_level + 1;
+   sampler_view->array_size = texture->array_size;
+   sampler_view->texture_generation_id = p_atomic_read(&res->generation_id);
+
+   struct d3d12_format_info format_info = d3d12_get_format_info(state->format, state->target);
+   pipe_swizzle swizzle[4] = {
+      format_info.swizzle[sampler_view->base.swizzle_r],
+      format_info.swizzle[sampler_view->base.swizzle_g],
+      format_info.swizzle[sampler_view->base.swizzle_b],
+      format_info.swizzle[sampler_view->base.swizzle_a]
+   };
+
+   sampler_view->swizzle_override_r = swizzle[0];
+   sampler_view->swizzle_override_g = swizzle[1];
+   sampler_view->swizzle_override_b = swizzle[2];
+   sampler_view->swizzle_override_a = swizzle[3];
+
    mtx_lock(&screen->descriptor_pool_mutex);
    d3d12_descriptor_pool_alloc_handle(screen->view_pool, &sampler_view->handle);
    mtx_unlock(&screen->descriptor_pool_mutex);
 
-   screen->dev->CreateShaderResourceView(d3d12_resource_resource(res), &desc,
-                                         sampler_view->handle.cpu_handle);
+   d3d12_init_sampler_view_descriptor(sampler_view);
 
    return &sampler_view->base;
 }
@@ -1833,6 +1847,56 @@ d3d12_get_timestamp(struct pipe_context *pctx)
    return result.u64;
 }
 
+static void
+d3d12_rebind_buffer(struct d3d12_context *ctx, struct d3d12_resource *res)
+{
+   if (res->base.b.bind & PIPE_BIND_VERTEX_BUFFER) {
+      for (unsigned i = 0; i < ctx->num_vbs; ++i) {
+         struct pipe_vertex_buffer *buf = &ctx->vbs[i];
+
+         if (!buf->is_user_buffer && &res->base.b == buf->buffer.resource) {
+            ctx->vbvs[i].BufferLocation = d3d12_resource_gpu_virtual_address(res) + buf->buffer_offset;
+            ctx->state_dirty |= D3D12_DIRTY_VERTEX_BUFFERS;
+         }
+      }
+   }
+
+   if (res->base.b.bind & PIPE_BIND_STREAM_OUTPUT) {
+      for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_so_targets; ++i) {
+         struct d3d12_stream_output_target *target = (struct d3d12_stream_output_target *)ctx->so_targets[i];
+         assert(!target || target->fill_buffer != &res->base.b);
+         if (target && target->base.buffer == &res->base.b) {
+            fill_stream_output_buffer_view(&ctx->so_buffer_views[i], target);
+            ctx->state_dirty |= D3D12_DIRTY_STREAM_OUTPUT;
+         }
+
+         assert(!ctx->fake_so_targets[i] || ctx->fake_so_targets[i]->buffer != &res->base.b);
+      }
+   }
+
+   d3d12_invalidate_context_bindings(ctx, res);
+}
+
+static void
+d3d12_replace_buffer_storage(struct pipe_context *pctx,
+   struct pipe_resource *pdst,
+   struct pipe_resource *psrc,
+   unsigned minimum_num_rebinds,
+   uint32_t rebind_mask,
+   uint32_t delete_buffer_id)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+   struct d3d12_resource *dst = d3d12_resource(pdst);
+   struct d3d12_resource *src = d3d12_resource(psrc);
+
+   struct d3d12_bo *old_bo = dst->bo;
+   d3d12_bo_reference(src->bo);
+   dst->bo = src->bo;
+   p_atomic_inc(&dst->generation_id);
+   d3d12_rebind_buffer(ctx, dst);
+   d3d12_bo_unreference(old_bo);
+}
+
 struct pipe_context *
 d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -1985,6 +2049,13 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       FREE(ctx);
       return NULL;
    }
+
+   if (flags & PIPE_CONTEXT_PREFER_THREADED)
+      return threaded_context_create(&ctx->base,
+         &screen->transfer_pool,
+         d3d12_replace_buffer_storage,
+         NULL,
+         &ctx->threaded_context);
 
    return &ctx->base;
 }

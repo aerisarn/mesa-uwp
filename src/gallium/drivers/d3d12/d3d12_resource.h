@@ -47,6 +47,7 @@ struct d3d12_resource {
    unsigned dt_stride;
    struct util_range valid_buffer_range;
    uint32_t bind_counts[PIPE_SHADER_TYPES][D3D12_RESOURCE_BINDING_TYPES];
+   unsigned generation_id;
 };
 
 struct d3d12_transfer {

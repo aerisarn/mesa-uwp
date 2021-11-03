@@ -647,6 +647,7 @@ d3d12_flush_frontbuffer(struct pipe_screen * pscreen,
    void *map = winsys->displaytarget_map(winsys, res->dt, 0);
 
    if (map) {
+      pctx = threaded_context_unwrap_sync(pctx);
       pipe_transfer *transfer = nullptr;
       void *res_map = pipe_texture_map(pctx, pres, level, layer, PIPE_MAP_READ, 0, 0,
                                         u_minify(pres->width0, level),
