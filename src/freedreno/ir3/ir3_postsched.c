@@ -154,25 +154,26 @@ dump_state(struct ir3_postsched_ctx *ctx)
    }
 }
 
-/* Determine if this is an instruction that we'd prefer not to schedule
- * yet, in order to avoid an (ss) sync.  This is limited by the sfu_delay
- * counter, ie. the more cycles it has been since the last SFU, the less
- * costly a sync would be.
- */
-static bool
-would_sync(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
+static unsigned
+node_delay(struct ir3_postsched_ctx *ctx, struct ir3_postsched_node *n)
 {
-   if (ctx->sfu_delay) {
-      if (has_sfu_src(instr))
-         return true;
-   }
+   return ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
+}
 
-   if (ctx->tex_delay) {
-      if (has_tex_src(instr))
-         return true;
-   }
+static unsigned
+node_delay_soft(struct ir3_postsched_ctx *ctx, struct ir3_postsched_node *n)
+{
+   unsigned delay = node_delay(ctx, n);
 
-   return false;
+   /* This takes into account that as when we schedule multiple tex or sfu, the
+    * first user has to wait for all of them to complete.
+    */
+   if (n->has_sfu_src)
+      delay = MAX2(delay, ctx->sfu_delay);
+   if (n->has_tex_src)
+      delay = MAX2(delay, ctx->tex_delay);
+
+   return delay;
 }
 
 /* find instruction to schedule: */
@@ -215,8 +216,7 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 
    /* Next prioritize discards: */
    foreach_sched_node (n, &ctx->dag->heads) {
-      unsigned d =
-         ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
+      unsigned d = node_delay(ctx, n);
 
       if (d > 0)
          continue;
@@ -235,8 +235,7 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 
    /* Next prioritize expensive instructions: */
    foreach_sched_node (n, &ctx->dag->heads) {
-      unsigned d =
-         ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
+      unsigned d = node_delay(ctx, n);
 
       if (d > 0)
          continue;
@@ -253,49 +252,32 @@ choose_instr(struct ir3_postsched_ctx *ctx)
       return chosen->instr;
    }
 
-   /*
-    * Sometimes be better to take a nop, rather than scheduling an
-    * instruction that would require an (ss) shortly after another
-    * SFU..  ie. if last SFU was just one or two instr ago, and we
-    * could choose between taking a nop and then scheduling
-    * something else, vs scheduling the immed avail instruction that
-    * would require (ss), we are better with the nop.
-    */
-   for (unsigned delay = 0; delay < 4; delay++) {
-      foreach_sched_node (n, &ctx->dag->heads) {
-         if (would_sync(ctx, n->instr))
-            continue;
-
-         unsigned d = ir3_delay_calc_postra(ctx->block, n->instr, true,
-                                            ctx->v->mergedregs);
-
-         if (d > delay)
-            continue;
-
-         if (!chosen || (chosen->max_delay < n->max_delay))
-            chosen = n;
-      }
-
-      if (chosen) {
-         di(chosen->instr, "csp: chose (soft ready, delay=%u)", delay);
-         return chosen->instr;
-      }
-   }
-
    /* Next try to find a ready leader w/ soft delay (ie. including extra
     * delay for things like tex fetch which can be synchronized w/ sync
     * bit (but we probably do want to schedule some other instructions
-    * while we wait)
+    * while we wait). We also allow a small amount of nops, to prefer now-nops
+    * over future-nops up to a point, as that gives better results.
     */
+   unsigned chosen_delay = 0;
    foreach_sched_node (n, &ctx->dag->heads) {
-      unsigned d =
-         ir3_delay_calc_postra(ctx->block, n->instr, true, ctx->v->mergedregs);
+      unsigned d = node_delay_soft(ctx, n);
 
-      if (d > 0)
+      if (d > 3)
          continue;
 
-      if (!chosen || (chosen->max_delay < n->max_delay))
+      if (!chosen || d < chosen_delay) {
          chosen = n;
+         chosen_delay = d;
+         continue;
+      }
+
+      if (d > chosen_delay)
+         continue;
+
+      if (chosen->max_delay < n->max_delay) {
+         chosen = n;
+         chosen_delay = d;
+      }
    }
 
    if (chosen) {
@@ -308,8 +290,7 @@ choose_instr(struct ir3_postsched_ctx *ctx)
     * stalls.. but we've already decided there is not a better option.
     */
    foreach_sched_node (n, &ctx->dag->heads) {
-      unsigned d =
-         ir3_delay_calc_postra(ctx->block, n->instr, false, ctx->v->mergedregs);
+      unsigned d = node_delay(ctx, n);
 
       if (d > 0)
          continue;
@@ -324,9 +305,6 @@ choose_instr(struct ir3_postsched_ctx *ctx)
    }
 
    /* Otherwise choose leader with maximum cost:
-    *
-    * TODO should we try to balance cost and delays?  I guess it is
-    * a balance between now-nop's and future-nop's?
     */
    foreach_sched_node (n, &ctx->dag->heads) {
       if (!chosen || chosen->max_delay < n->max_delay)
