@@ -599,6 +599,4 @@ spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl 3.0@clearbuffer-depth-cs-probe,Timeout
-spec@!opengl 3.0@clearbuffer-depth,Fail
-spec@!opengl 3.0@clearbuffer-stencil,Fail
 spec@!opengl 3.1@primitive-restart-xfb generated,Fail

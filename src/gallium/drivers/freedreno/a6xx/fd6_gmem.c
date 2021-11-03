@@ -1311,6 +1311,22 @@ needs_resolve(struct pipe_surface *psurf)
           (psurf->nr_samples != psurf->texture->nr_samples);
 }
 
+/**
+ * Returns the UNKNOWN_8C01 value for handling partial depth/stencil
+ * clear/stores to Z24S8.
+ */
+static uint32_t
+fd6_unknown_8c01(enum pipe_format format, unsigned buffers)
+{
+   if (format == PIPE_FORMAT_Z24_UNORM_S8_UINT) {
+      if (buffers == FD_BUFFER_DEPTH)
+         return 0x08000041;
+      else if (buffers == FD_BUFFER_STENCIL)
+         return 0x00084001;
+   }
+   return 0;
+}
+
 static void
 emit_resolve_blit(struct fd_batch *batch, struct fd_ringbuffer *ring,
                   uint32_t base, struct pipe_surface *psurf,
@@ -1330,7 +1346,12 @@ emit_resolve_blit(struct fd_batch *batch, struct fd_ringbuffer *ring,
     */
    if (needs_resolve(psurf) && !blit_can_resolve(psurf->format) &&
        (buffer != FD_BUFFER_STENCIL)) {
-      fd6_resolve_tile(batch, ring, base, psurf);
+      /* We could potentially use fd6_unknown_8c01() to handle partial z/s
+       * resolve to packed z/s, but we would need a corresponding ability in the
+       * !resolve case below, so batch_draw_tracking_for_dirty_bits() has us
+       * just do a restore of the other channel for partial packed z/s writes.
+       */
+      fd6_resolve_tile(batch, ring, base, psurf, 0);
       return;
    }
 
@@ -1489,7 +1510,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
             continue;
 
          fd6_clear_surface(ctx, ring, pfb->cbufs[i], pfb->width, pfb->height,
-                           &color);
+                           &color, 0);
       }
    }
    if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
@@ -1501,12 +1522,11 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
             ? &fd_resource(pfb->zsbuf->texture)->stencil->b.b
             : NULL;
 
-      if ((has_depth && (buffers & PIPE_CLEAR_DEPTH)) ||
-          (!separate_stencil && (buffers & PIPE_CLEAR_STENCIL))) {
+      if ((buffers & PIPE_CLEAR_DEPTH) || (!separate_stencil && (buffers & PIPE_CLEAR_STENCIL))) {
          value.f[0] = batch->clear_depth;
          value.ui[1] = batch->clear_stencil;
          fd6_clear_surface(ctx, ring, pfb->zsbuf, pfb->width, pfb->height,
-                           &value);
+                           &value, fd6_unknown_8c01(pfb->zsbuf->format, buffers));
       }
 
       if (separate_stencil && (buffers & PIPE_CLEAR_STENCIL)) {
@@ -1517,7 +1537,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
          stencil_surf.texture = separate_stencil;
 
          fd6_clear_surface(ctx, ring, &stencil_surf, pfb->width, pfb->height,
-                           &value);
+                           &value, 0);
       }
    }
 

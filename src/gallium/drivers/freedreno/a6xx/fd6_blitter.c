@@ -250,7 +250,8 @@ emit_setup(struct fd_batch *batch)
 
 static void
 emit_blit_setup(struct fd_ringbuffer *ring, enum pipe_format pfmt,
-                bool scissor_enable, union pipe_color_union *color)
+                bool scissor_enable, union pipe_color_union *color,
+                uint32_t unknown_8c01)
 {
    enum a6xx_format fmt = fd6_color_format(pfmt, TILE6_LINEAR);
    bool is_srgb = util_format_is_srgb(pfmt);
@@ -290,7 +291,7 @@ emit_blit_setup(struct fd_ringbuffer *ring, enum pipe_format pfmt,
          A6XX_SP_2D_DST_FORMAT_MASK(0xf));
 
    OUT_PKT4(ring, REG_A6XX_RB_2D_UNKNOWN_8C01, 1);
-   OUT_RING(ring, 0);
+   OUT_RING(ring, unknown_8c01);
 }
 
 /* buffers need to be handled specially since x/width can exceed the bounds
@@ -345,7 +346,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
    sshift = sbox->x & 0x3f;
    dshift = dbox->x & 0x3f;
 
-   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, NULL);
+   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, NULL, 0);
 
    for (unsigned off = 0; off < sbox->width; off += (0x4000 - 0x40)) {
       unsigned soff, doff, w, p;
@@ -430,7 +431,7 @@ fd6_clear_ubwc(struct fd_batch *batch, struct fd_resource *rsc) assert_dt
    struct fd_ringbuffer *ring = fd_batch_get_prologue(batch);
    union pipe_color_union color = {};
 
-   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, &color);
+   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, &color, 0);
 
    OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 13);
    OUT_RING(ring, 0x00000000);
@@ -669,7 +670,7 @@ emit_blit_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
                         A6XX_GRAS_2D_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
    }
 
-   emit_blit_setup(ring, info->dst.format, info->scissor_enable, NULL);
+   emit_blit_setup(ring, info->dst.format, info->scissor_enable, NULL, 0);
 
    for (unsigned i = 0; i < info->dst.box.depth; i++) {
 
@@ -782,7 +783,7 @@ convert_color(enum pipe_format format, union pipe_color_union *pcolor)
 void
 fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
                   struct pipe_surface *psurf, uint32_t width, uint32_t height,
-                  union pipe_color_union *color)
+                  union pipe_color_union *color, uint32_t unknown_8c01)
 {
    if (DEBUG_BLIT) {
       fprintf(stderr, "surface clear:\ndst resource: ");
@@ -799,7 +800,7 @@ fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
    union pipe_color_union clear_color = convert_color(psurf->format, color);
 
    emit_clear_color(ring, psurf->format, &clear_color);
-   emit_blit_setup(ring, psurf->format, false, &clear_color);
+   emit_blit_setup(ring, psurf->format, false, &clear_color, unknown_8c01);
 
    for (unsigned i = psurf->u.tex.first_layer; i <= psurf->u.tex.last_layer;
         i++) {
@@ -827,7 +828,7 @@ fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 void
 fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
-                 uint32_t base, struct pipe_surface *psurf)
+                 uint32_t base, struct pipe_surface *psurf, uint32_t unknown_8c01)
 {
    const struct fd_gmem_stateobj *gmem = batch->gmem_state;
    uint64_t gmem_base = batch->ctx->screen->gmem_base + base;
@@ -848,7 +849,7 @@ fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
    /* Enable scissor bit, which will take into account the window scissor
     * which is set per-tile
     */
-   emit_blit_setup(ring, psurf->format, true, NULL);
+   emit_blit_setup(ring, psurf->format, true, NULL, unknown_8c01);
 
    /* We shouldn't be using GMEM in the layered rendering case: */
    assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
