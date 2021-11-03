@@ -181,26 +181,6 @@ spec@arb_tessellation_shader@execution@vs-tes-max-in-out-components,Fail
 spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-quads,Fail
 spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-tris,Fail
 spec@arb_tessellation_shader@execution@vs-tes-vertex,Fail
-spec@arb_texture_buffer_object@formats (fs- arb),Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA32F_ARB,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_INTENSITY16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_INTENSITY32F_ARB,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE32F_ARB,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE8_ALPHA8,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE_ALPHA16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE_ALPHA32F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb),Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA32F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_INTENSITY16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_INTENSITY32F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE32F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE8_ALPHA8,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE_ALPHA16F_ARB,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE_ALPHA32F_ARB,Fail
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGBA_BPTC_UNORM- swizzled- border color only,Fail
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT- swizzled- border color only,Fail
@@ -209,11 +189,6 @@ spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRE
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGBA- swizzled- border color only,Fail
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGB- swizzled- border color only,Fail
-spec@arb_texture_float@fbo-blending-formats,Fail
-spec@arb_texture_float@fbo-blending-formats@GL_INTENSITY16F_ARB,Fail
-spec@arb_texture_float@fbo-blending-formats@GL_INTENSITY32F_ARB,Fail
-spec@arb_texture_float@fbo-blending-formats@GL_LUMINANCE16F_ARB,Fail
-spec@arb_texture_float@fbo-blending-formats@GL_LUMINANCE32F_ARB,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled@GL_RGB16F- swizzled- border color only,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled@GL_RGB32F- swizzled- border color only,Fail
@@ -338,20 +313,23 @@ spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGBA8I- swizzle
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGBA8UI- swizzled- border color only,Fail
 spec@ext_texture_shared_exponent@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_shared_exponent@texwrap formats bordercolor-swizzled@GL_RGB9_E5- swizzled- border color only,Fail
-spec@ext_texture_snorm@fbo-blending-formats,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_SNORM,Fail
+
+# These failures go away with FD_MESA_DEBUG=noblit, but don't seem to be related
+# to the actual mipmap generation blits (which we do fall back on)
 spec@ext_texture_snorm@fbo-generatemipmap-formats,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_ALPHA16_SNORM,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_ALPHA16_SNORM NPOT,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY_SNORM,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY_SNORM NPOT,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY8_SNORM,Fail
+spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY8_SNORM NPOT,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY16_SNORM,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_INTENSITY16_SNORM NPOT,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_ALPHA16_SNORM,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_ALPHA16_SNORM NPOT,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_SNORM,Fail
 spec@ext_texture_snorm@fbo-generatemipmap-formats@GL_LUMINANCE16_SNORM NPOT,Fail
+
 spec@ext_texture_snorm@multisample-formats 2 gl_ext_texture_snorm,Fail
 spec@ext_texture_snorm@multisample-formats 4 gl_ext_texture_snorm,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled,Fail
