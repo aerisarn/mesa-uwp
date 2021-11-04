@@ -637,10 +637,16 @@ PIPE_CAPF_*
 
 The floating-point capabilities are:
 
+* ``PIPE_CAPF_MIN_LINE_WIDTH``: The minimum width of a regular line.
+* ``PIPE_CAPF_MIN_LINE_WIDTH_AA``: The minimum width of a smoothed line.
 * ``PIPE_CAPF_MAX_LINE_WIDTH``: The maximum width of a regular line.
 * ``PIPE_CAPF_MAX_LINE_WIDTH_AA``: The maximum width of a smoothed line.
+* ``PIPE_CAPF_LINE_WIDTH_GRANULARITY``: The line width is rounded to a multiple of this number.
+* ``PIPE_CAPF_MIN_POINT_SIZE``: The minimum width and height of a point.
+* ``PIPE_CAPF_MIN_POINT_SIZE_AA``: The minimum width and height of a smoothed point.
 * ``PIPE_CAPF_MAX_POINT_SIZE``: The maximum width and height of a point.
 * ``PIPE_CAPF_MAX_POINT_SIZE_AA``: The maximum width and height of a smoothed point.
+* ``PIPE_CAPF_POINT_SIZE_GRANULARITY``: The point size is rounded to a multiple of this number.
 * ``PIPE_CAPF_MAX_TEXTURE_ANISOTROPY``: The maximum level of anisotropy that can be
   applied to anisotropically filtered textures.
 * ``PIPE_CAPF_MAX_TEXTURE_LOD_BIAS``: The maximum :term:`LOD` bias that may be applied
