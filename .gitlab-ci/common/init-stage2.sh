@@ -91,11 +91,12 @@ if [ -n "$HWCI_START_XORG" ]; then
   export DISPLAY=:0
 fi
 
-RESULT=fail
-if sh $HWCI_TEST_SCRIPT; then
-  RESULT=pass
-  rm -rf results/trace/$PIGLIT_REPLAY_DEVICE_NAME
-fi
+sh "$HWCI_TEST_SCRIPT" && RESULT=pass || RESULT=fail
+
+# Let's make sure the results are always stored in current working directory
+mv -f ${CI_PROJECT_DIR}/results ./ 2>/dev/null || true
+
+[ "${RESULT}" = "fail" ] || rm -rf results/trace/$PIGLIT_REPLAY_DEVICE_NAME
 
 # upload artifacts
 MINIO=$(cat /proc/cmdline | tr ' ' '\n' | grep minio_results | cut -d '=' -f 2 || true)
