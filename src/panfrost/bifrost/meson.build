@@ -143,20 +143,6 @@ libpanfrost_bifrost = static_library(
 
 if with_tests
   test(
-    'bifrost_packing',
-    executable(
-      'bifrost_packing_test',
-      files('test/test-packing.c'),
-      c_args : [c_msvc_compat_args, no_override_init_args],
-      gnu_symbol_visibility : 'hidden',
-      include_directories : [inc_include, inc_src, inc_mesa],
-      dependencies: [idep_nir, idep_bi_opcodes_h, idep_bi_builder_h],
-      link_with : [libpanfrost_bifrost],
-    ),
-    suite : ['panfrost'],
-  )
-
-  test(
     'bifrost_pack_formats',
     executable(
       'bifrost_pack_formats_test',
@@ -203,6 +189,7 @@ if with_tests
     executable(
       'bifrost_tests',
       files(
+	'test/test-packing.cpp',
 	'test/test-scheduler-predicates.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],

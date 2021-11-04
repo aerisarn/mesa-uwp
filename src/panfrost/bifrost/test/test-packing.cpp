@@ -22,20 +22,21 @@
  */
 
 #include "compiler.h"
-#include "bi_test.h"
 
-unsigned nr_pass = 0;
-unsigned nr_fail = 0;
+#include <gtest/gtest.h>
 
-static void
-bi_test_pack_literal(void)
+#define L(x) ((enum bi_clause_subword)(BI_CLAUSE_SUBWORD_LITERAL_0 + x))
+#define U(x) ((enum bi_clause_subword)(BI_CLAUSE_SUBWORD_UPPER_0 + x))
+#define T(x) ((enum bi_clause_subword)(BI_CLAUSE_SUBWORD_TUPLE_0 + x))
+#define Z    BI_CLAUSE_SUBWORD_Z
+
+TEST(Packing, PackLiteral)
 {
    for (unsigned x = 0; x <= 7; ++x)
-      BIT_ASSERT(bi_pack_literal(BI_CLAUSE_SUBWORD_LITERAL_0 + x) == x);
+      EXPECT_EQ(bi_pack_literal(L(x)), x);
 }
 
-static void
-bi_test_pack_upper(void)
+TEST(Packing, PackUpper)
 {
    struct bi_packed_tuple tuples[] = {
       { 0, 0x3 << (75 - 64) },
@@ -48,18 +49,17 @@ bi_test_pack_upper(void)
       { 0, 0x4 << (75 - 64) },
    };
 
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 0, tuples, 8) == 3);
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 1, tuples, 8) == 1);
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 2, tuples, 8) == 7);
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 3, tuples, 8) == 0);
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 4, tuples, 8) == 2);
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 5, tuples, 8) == 6);
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 6, tuples, 8) == 5);
-   BIT_ASSERT(bi_pack_upper(BI_CLAUSE_SUBWORD_UPPER_0 + 7, tuples, 8) == 4);
+   EXPECT_EQ(bi_pack_upper(U(0), tuples, 8), 3);
+   EXPECT_EQ(bi_pack_upper(U(1), tuples, 8), 1);
+   EXPECT_EQ(bi_pack_upper(U(2), tuples, 8), 7);
+   EXPECT_EQ(bi_pack_upper(U(3), tuples, 8), 0);
+   EXPECT_EQ(bi_pack_upper(U(4), tuples, 8), 2);
+   EXPECT_EQ(bi_pack_upper(U(5), tuples, 8), 6);
+   EXPECT_EQ(bi_pack_upper(U(6), tuples, 8), 5);
+   EXPECT_EQ(bi_pack_upper(U(7), tuples, 8), 4);
 }
 
-static void
-bi_test_pack_tuple_bits(void)
+TEST(Packing, PackTupleBits)
 {
    struct bi_packed_tuple tuples[] = {
       { 0x1234567801234567, 0x3A },
@@ -67,17 +67,12 @@ bi_test_pack_tuple_bits(void)
       { 0xABCDEF0101234567, 0x7C },
    };
 
-   BIT_ASSERT(bi_pack_tuple_bits(BI_CLAUSE_SUBWORD_TUPLE_0 + 0, tuples, 8, 0, 30) == 0x01234567);
-   BIT_ASSERT(bi_pack_tuple_bits(BI_CLAUSE_SUBWORD_TUPLE_0 + 1, tuples, 8, 10, 30) == 0xca66666);
-   BIT_ASSERT(bi_pack_tuple_bits(BI_CLAUSE_SUBWORD_TUPLE_0 + 2, tuples, 8, 40, 15) == 0x4def);
+   EXPECT_EQ(bi_pack_tuple_bits(T(0), tuples, 8, 0, 30), 0x01234567);
+   EXPECT_EQ(bi_pack_tuple_bits(T(1), tuples, 8, 10, 30), 0xca66666);
+   EXPECT_EQ(bi_pack_tuple_bits(T(2), tuples, 8, 40, 15), 0x4def);
 }
 
-#define L(x) (BI_CLAUSE_SUBWORD_LITERAL_0 + x)
-#define U(x) (BI_CLAUSE_SUBWORD_UPPER_0 + x)
-#define Z    BI_CLAUSE_SUBWORD_Z
-
-static void
-bi_test_pack_sync(void)
+TEST(Packing, PackSync)
 {
    struct bi_packed_tuple tuples[] = {
       { 0, 0x3 << (75 - 64) },
@@ -90,20 +85,9 @@ bi_test_pack_sync(void)
       { 0, 0x4 << (75 - 64) },
    };
 
-   BIT_ASSERT(bi_pack_sync(L(3), L(1), L(7), tuples, 8, false) == 0xCF);
-   BIT_ASSERT(bi_pack_sync(L(3), L(1), U(7), tuples, 8, false) == 0xCC);
-   BIT_ASSERT(bi_pack_sync(L(3), U(1), U(7), tuples, 8, false) == 0xEC);
-   BIT_ASSERT(bi_pack_sync(Z,    U(1), U(7), tuples, 8, false) == 0x2C);
-   BIT_ASSERT(bi_pack_sync(Z,    U(1), U(7), tuples, 8, true)  == 0x6C);
-}
-
-int
-main(int argc, const char **argv)
-{
-   bi_test_pack_literal();
-   bi_test_pack_upper();
-   bi_test_pack_tuple_bits();
-   bi_test_pack_sync();
-
-   TEST_END(nr_pass, nr_fail);
+   EXPECT_EQ(bi_pack_sync(L(3), L(1), L(7), tuples, 8, false), 0xCF);
+   EXPECT_EQ(bi_pack_sync(L(3), L(1), U(7), tuples, 8, false), 0xCC);
+   EXPECT_EQ(bi_pack_sync(L(3), U(1), U(7), tuples, 8, false), 0xEC);
+   EXPECT_EQ(bi_pack_sync(Z,    U(1), U(7), tuples, 8, false), 0x2C);
+   EXPECT_EQ(bi_pack_sync(Z,    U(1), U(7), tuples, 8, true) , 0x6C);
 }
