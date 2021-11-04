@@ -44,48 +44,9 @@ int
 nve4_screen_compute_setup(struct nvc0_screen *screen,
                           struct nouveau_pushbuf *push)
 {
-   struct nouveau_device *dev = screen->base.device;
-   struct nouveau_object *chan = screen->base.channel;
    int i;
-   int ret;
-   uint32_t obj_class;
+   uint32_t obj_class = screen->compute->oclass;
    uint64_t address;
-
-   switch (dev->chipset & ~0xf) {
-   case 0x160:
-      obj_class = TU102_COMPUTE_CLASS;
-      break;
-   case 0x140:
-      obj_class = GV100_COMPUTE_CLASS;
-      break;
-   case 0x100:
-   case 0xf0:
-      obj_class = NVF0_COMPUTE_CLASS; /* GK110 */
-      break;
-   case 0xe0:
-      obj_class = NVE4_COMPUTE_CLASS; /* GK104 */
-      break;
-   case 0x110:
-      obj_class = GM107_COMPUTE_CLASS;
-      break;
-   case 0x120:
-      obj_class = GM200_COMPUTE_CLASS;
-      break;
-   case 0x130:
-      obj_class = (dev->chipset == 0x130 || dev->chipset == 0x13b) ?
-                      GP100_COMPUTE_CLASS : GP104_COMPUTE_CLASS;
-      break;
-   default:
-      NOUVEAU_ERR("unsupported chipset: NV%02x\n", dev->chipset);
-      return -1;
-   }
-
-   ret = nouveau_object_new(chan, 0xbeef00c0, obj_class, NULL, 0,
-                            &screen->compute);
-   if (ret) {
-      NOUVEAU_ERR("Failed to allocate compute object: %d\n", ret);
-      return ret;
-   }
 
    BEGIN_NVC0(push, SUBC_CP(NV01_SUBCHAN_OBJECT), 1);
    PUSH_DATA (push, screen->compute->oclass);

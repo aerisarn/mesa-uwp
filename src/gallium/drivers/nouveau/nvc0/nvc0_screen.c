@@ -881,24 +881,42 @@ nvc0_screen_fence_update(struct pipe_screen *pscreen)
 static int
 nvc0_screen_init_compute(struct nvc0_screen *screen)
 {
+   const struct nouveau_mclass computes[] = {
+      { TU102_COMPUTE_CLASS, -1 },
+      { GV100_COMPUTE_CLASS, -1 },
+      { GP104_COMPUTE_CLASS, -1 },
+      { GP100_COMPUTE_CLASS, -1 },
+      { GM200_COMPUTE_CLASS, -1 },
+      { GM107_COMPUTE_CLASS, -1 },
+      {  NVF0_COMPUTE_CLASS, -1 },
+      {  NVE4_COMPUTE_CLASS, -1 },
+      /* In theory, GF110+ should also support NVC8_COMPUTE_CLASS but,
+       * in practice, a ILLEGAL_CLASS dmesg fail appears when using it. */
+//      {  NVC8_COMPUTE_CLASS, -1 },
+      {  NVC0_COMPUTE_CLASS, -1 },
+      {}
+   };
+   struct nouveau_object *chan = screen->base.channel;
+   int ret;
+
    screen->base.base.get_compute_param = nvc0_screen_get_compute_param;
 
-   switch (screen->base.device->chipset & ~0xf) {
-   case 0xc0:
-   case 0xd0:
-      return nvc0_screen_compute_setup(screen, screen->base.pushbuf);
-   case 0xe0:
-   case 0xf0:
-   case 0x100:
-   case 0x110:
-   case 0x120:
-   case 0x130:
-   case 0x140:
-   case 0x160:
-      return nve4_screen_compute_setup(screen, screen->base.pushbuf);
-   default:
-      return -1;
+   ret = nouveau_object_mclass(chan, computes);
+   if (ret < 0) {
+      NOUVEAU_ERR("No supported compute class: %d\n", ret);
+      return ret;
    }
+
+   ret = nouveau_object_new(chan, 0xbeef00c0, computes[ret].oclass, NULL, 0, &screen->compute);
+   if (ret) {
+      NOUVEAU_ERR("Failed to allocate compute class: %d\n", ret);
+      return ret;
+   }
+
+   if (screen->compute->oclass < NVE4_COMPUTE_CLASS)
+      return nvc0_screen_compute_setup(screen, screen->base.pushbuf);
+
+   return nve4_screen_compute_setup(screen, screen->base.pushbuf);
 }
 
 static int
@@ -1036,9 +1054,9 @@ nvc0_screen_create(struct nouveau_device *dev)
    struct nvc0_screen *screen;
    struct pipe_screen *pscreen;
    struct nouveau_object *chan;
+
    struct nouveau_pushbuf *push;
    uint64_t value;
-   uint32_t obj_class;
    uint32_t flags;
    int ret;
    unsigned i;
@@ -1131,24 +1149,18 @@ nvc0_screen_create(struct nouveau_device *dev)
       PUSH_DATA (push, screen->nvsw->handle);
    }
 
-   switch (dev->chipset & ~0xf) {
-   case 0x160:
-   case 0x140:
-   case 0x130:
-   case 0x120:
-   case 0x110:
-   case 0x100:
-   case 0xf0:
-      obj_class = NVF0_P2MF_CLASS;
-      break;
-   case 0xe0:
-      obj_class = NVE4_P2MF_CLASS;
-      break;
-   default:
-      obj_class = NVC0_M2MF_CLASS;
-      break;
-   }
-   ret = nouveau_object_new(chan, 0xbeef323f, obj_class, NULL, 0,
+   const struct nouveau_mclass m2mfs[] = {
+      { NVF0_P2MF_CLASS, -1 },
+      { NVE4_P2MF_CLASS, -1 },
+      { NVC0_M2MF_CLASS, -1 },
+      {}
+   };
+
+   ret = nouveau_object_mclass(chan, m2mfs);
+   if (ret < 0)
+      FAIL_SCREEN_INIT("No supported m2mf class: %d\n", ret);
+
+   ret = nouveau_object_new(chan, 0xbeef323f, m2mfs[ret].oclass, NULL, 0,
                             &screen->m2mf);
    if (ret)
       FAIL_SCREEN_INIT("Error allocating PGRAPH context for M2MF: %d\n", ret);
@@ -1186,67 +1198,31 @@ nvc0_screen_create(struct nouveau_device *dev)
    PUSH_DATAh(push, screen->fence.bo->offset + 16);
    PUSH_DATA (push, screen->fence.bo->offset + 16);
 
-   switch (dev->chipset & ~0xf) {
-   case 0x160:
-      obj_class = TU102_3D_CLASS;
-      break;
-   case 0x140:
-      obj_class = GV100_3D_CLASS;
-      break;
-   case 0x130:
-      switch (dev->chipset) {
-      case 0x130:
-      case 0x13b:
-         obj_class = GP100_3D_CLASS;
-         break;
-      default:
-         obj_class = GP102_3D_CLASS;
-         break;
-      }
-      break;
-   case 0x120:
-      obj_class = GM200_3D_CLASS;
-      break;
-   case 0x110:
-      obj_class = GM107_3D_CLASS;
-      break;
-   case 0x100:
-   case 0xf0:
-      obj_class = NVF0_3D_CLASS;
-      break;
-   case 0xe0:
-      switch (dev->chipset) {
-      case 0xea:
-         obj_class = NVEA_3D_CLASS;
-         break;
-      default:
-         obj_class = NVE4_3D_CLASS;
-         break;
-      }
-      break;
-   case 0xd0:
-      obj_class = NVC8_3D_CLASS;
-      break;
-   case 0xc0:
-   default:
-      switch (dev->chipset) {
-      case 0xc8:
-         obj_class = NVC8_3D_CLASS;
-         break;
-      case 0xc1:
-         obj_class = NVC1_3D_CLASS;
-         break;
-      default:
-         obj_class = NVC0_3D_CLASS;
-         break;
-      }
-      break;
-   }
-   ret = nouveau_object_new(chan, 0xbeef003d, obj_class, NULL, 0,
+   const struct nouveau_mclass threeds[] = {
+      { TU102_3D_CLASS, -1 },
+      { GV100_3D_CLASS, -1 },
+      { GP102_3D_CLASS, -1 },
+      { GP100_3D_CLASS, -1 },
+      { GM200_3D_CLASS, -1 },
+      { GM107_3D_CLASS, -1 },
+      {  NVF0_3D_CLASS, -1 },
+      {  NVEA_3D_CLASS, -1 },
+      {  NVE4_3D_CLASS, -1 },
+      {  NVC8_3D_CLASS, -1 },
+      {  NVC1_3D_CLASS, -1 },
+      {  NVC0_3D_CLASS, -1 },
+      {}
+   };
+
+   ret = nouveau_object_mclass(chan, threeds);
+   if (ret < 0)
+      FAIL_SCREEN_INIT("No supported 3d class: %d\n", ret);
+
+   ret = nouveau_object_new(chan, 0xbeef003d, threeds[ret].oclass, NULL, 0,
                             &screen->eng3d);
    if (ret)
       FAIL_SCREEN_INIT("Error allocating PGRAPH context for 3D: %d\n", ret);
-   screen->base.class_3d = obj_class;
+   screen->base.class_3d = screen->eng3d->oclass;
 
    BEGIN_NVC0(push, SUBC_3D(NV01_SUBCHAN_OBJECT), 1);
    PUSH_DATA (push, screen->eng3d->oclass);
