@@ -25,65 +25,85 @@
 #include "bi_test.h"
 #include "bi_builder.h"
 
-#define TMP() bi_temp(b->shader)
+#include <gtest/gtest.h>
 
-int main(int argc, char **argv)
+class SchedulerPredicates : public testing::Test {
+protected:
+   SchedulerPredicates() {
+      mem_ctx = ralloc_context(NULL);
+      b = bit_builder(mem_ctx);
+   }
+   ~SchedulerPredicates() {
+      ralloc_free(mem_ctx);
+   }
+
+   bi_index TMP() { return bi_temp(b->shader); }
+
+   void *mem_ctx;
+   bi_builder *b;
+};
+
+TEST_F(SchedulerPredicates, MOV)
 {
-   unsigned nr_fail = 0, nr_pass = 0;
-   void *ralloc_ctx = ralloc_context(NULL);
-   bi_builder *b = bit_builder(ralloc_ctx);
-
    bi_instr *mov = bi_mov_i32_to(b, TMP(), TMP());
-   BIT_ASSERT(bi_can_fma(mov));
-   BIT_ASSERT(bi_can_add(mov));
-   BIT_ASSERT(!bi_must_message(mov));
-   BIT_ASSERT(bi_reads_zero(mov));
-   BIT_ASSERT(bi_reads_temps(mov, 0));
-   BIT_ASSERT(bi_reads_t(mov, 0));
+   ASSERT_TRUE(bi_can_fma(mov));
+   ASSERT_TRUE(bi_can_add(mov));
+   ASSERT_FALSE(bi_must_message(mov));
+   ASSERT_TRUE(bi_reads_zero(mov));
+   ASSERT_TRUE(bi_reads_temps(mov, 0));
+   ASSERT_TRUE(bi_reads_t(mov, 0));
+}
 
+TEST_F(SchedulerPredicates, FMA)
+{
    bi_instr *fma = bi_fma_f32_to(b, TMP(), TMP(), TMP(), bi_zero(), BI_ROUND_NONE);
-   BIT_ASSERT(bi_can_fma(fma));
-   BIT_ASSERT(!bi_can_add(fma));
-   BIT_ASSERT(!bi_must_message(fma));
-   BIT_ASSERT(bi_reads_zero(fma));
+   ASSERT_TRUE(bi_can_fma(fma));
+   ASSERT_FALSE(bi_can_add(fma));
+   ASSERT_FALSE(bi_must_message(fma));
+   ASSERT_TRUE(bi_reads_zero(fma));
    for (unsigned i = 0; i < 3; ++i) {
-      BIT_ASSERT(bi_reads_temps(fma, i));
-      BIT_ASSERT(bi_reads_t(fma, i));
+      ASSERT_TRUE(bi_reads_temps(fma, i));
+      ASSERT_TRUE(bi_reads_t(fma, i));
    }
+}
 
+TEST_F(SchedulerPredicates, LOAD)
+{
    bi_instr *load = bi_load_i128_to(b, TMP(), TMP(), TMP(), BI_SEG_UBO);
-   BIT_ASSERT(!bi_can_fma(load));
-   BIT_ASSERT(bi_can_add(load));
-   BIT_ASSERT(bi_must_message(load));
+   ASSERT_FALSE(bi_can_fma(load));
+   ASSERT_TRUE(bi_can_add(load));
+   ASSERT_TRUE(bi_must_message(load));
    for (unsigned i = 0; i < 2; ++i) {
-      BIT_ASSERT(bi_reads_temps(load, i));
-      BIT_ASSERT(bi_reads_t(load, i));
+      ASSERT_TRUE(bi_reads_temps(load, i));
+      ASSERT_TRUE(bi_reads_t(load, i));
    }
+}
 
+TEST_F(SchedulerPredicates, BLEND)
+{
    bi_instr *blend = bi_blend_to(b, TMP(), TMP(), TMP(), TMP(), TMP(), 4);
-   BIT_ASSERT(!bi_can_fma(load));
-   BIT_ASSERT(bi_can_add(load));
-   BIT_ASSERT(bi_must_message(blend));
+   ASSERT_FALSE(bi_can_fma(blend));
+   ASSERT_TRUE(bi_can_add(blend));
+   ASSERT_TRUE(bi_must_message(blend));
    for (unsigned i = 0; i < 4; ++i)
-      BIT_ASSERT(bi_reads_temps(blend, i));
-   BIT_ASSERT(!bi_reads_t(blend, 0));
-   BIT_ASSERT(bi_reads_t(blend, 1));
-   BIT_ASSERT(!bi_reads_t(blend, 2));
-   BIT_ASSERT(!bi_reads_t(blend, 3));
+      ASSERT_TRUE(bi_reads_temps(blend, i));
+   ASSERT_FALSE(bi_reads_t(blend, 0));
+   ASSERT_TRUE(bi_reads_t(blend, 1));
+   ASSERT_FALSE(bi_reads_t(blend, 2));
+   ASSERT_FALSE(bi_reads_t(blend, 3));
+}
 
-   /* Test restrictions on modifiers of same cycle temporaries */
+TEST_F(SchedulerPredicates, RestrictionsOnModifiersOfSameCycleTemporaries)
+{
    bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP(), BI_ROUND_NONE);
-   BIT_ASSERT(bi_reads_t(fadd, 0));
+   ASSERT_TRUE(bi_reads_t(fadd, 0));
 
    for (unsigned i = 0; i < 2; ++i) {
       for (unsigned j = 0; j < 2; ++j) {
          bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP(), BI_ROUND_NONE);
          fadd->src[i] = bi_swz_16(TMP(), j, j);
-         BIT_ASSERT(bi_reads_t(fadd, 1 - i));
-         BIT_ASSERT(!bi_reads_t(fadd, i));
+         ASSERT_TRUE(bi_reads_t(fadd, 1 - i));
+         ASSERT_FALSE(bi_reads_t(fadd, i));
       }
    }
-
-   ralloc_free(ralloc_ctx);
-   TEST_END(nr_pass, nr_fail);
 }
