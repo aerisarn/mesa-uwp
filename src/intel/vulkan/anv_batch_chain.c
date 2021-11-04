@@ -181,7 +181,7 @@ anv_reloc_list_add_bo(struct anv_reloc_list *list,
                       struct anv_bo *target_bo)
 {
    assert(!target_bo->is_wrapper);
-   assert(target_bo->flags & EXEC_OBJECT_PINNED);
+   assert(anv_bo_is_pinned(target_bo));
 
    uint32_t idx = target_bo->gem_handle;
    VkResult result = anv_reloc_list_grow_deps(list, alloc,
@@ -211,7 +211,7 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    assert(unwrapped_target_bo->gem_handle > 0);
    assert(unwrapped_target_bo->refcount > 0);
 
-   if (unwrapped_target_bo->flags & EXEC_OBJECT_PINNED)
+   if (anv_bo_is_pinned(unwrapped_target_bo))
       return anv_reloc_list_add_bo(list, alloc, unwrapped_target_bo);
 
    VkResult result = anv_reloc_list_grow(list, alloc, 1);
@@ -492,8 +492,8 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
       /* Use a bogus presumed offset to force a relocation */
       prev_bbo->relocs.relocs[reloc_idx].presumed_offset = -1;
    } else {
-      assert(prev_bbo->bo->flags & EXEC_OBJECT_PINNED);
-      assert(next_bbo->bo->flags & EXEC_OBJECT_PINNED);
+      assert(anv_bo_is_pinned(prev_bbo->bo));
+      assert(anv_bo_is_pinned(next_bbo->bo));
 
       write_reloc(cmd_buffer->device,
                   prev_bbo->bo->map + bb_start_offset + 4,
@@ -2053,7 +2053,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
 
    struct drm_i915_gem_exec_object2 *objects = execbuf.objects;
    for (uint32_t k = 0; k < execbuf.bo_count; k++) {
-      if (execbuf.bos[k]->flags & EXEC_OBJECT_PINNED)
+      if (anv_bo_is_pinned(execbuf.bos[k]))
          assert(execbuf.bos[k]->offset == objects[k].offset);
       execbuf.bos[k]->offset = objects[k].offset;
    }

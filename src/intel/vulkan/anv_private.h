@@ -530,6 +530,28 @@ anv_bo_unwrap(struct anv_bo *bo)
    return bo;
 }
 
+static inline bool
+anv_bo_is_pinned(struct anv_bo *bo)
+{
+#if defined(GFX_VERx10) && GFX_VERx10 >= 90
+   /* Sky Lake and later always uses softpin */
+   assert(bo->flags & EXEC_OBJECT_PINNED);
+   return true;
+#elif defined(GFX_VERx10) && GFX_VERx10 < 80
+   /* Haswell and earlier never use softpin */
+   assert(!(bo->flags & EXEC_OBJECT_PINNED));
+   assert(!bo->has_fixed_address);
+   return false;
+#else
+   /* If we don't have a GFX_VERx10 #define, we need to look at the BO.  Also,
+    * for GFX version 8, we need to look at the BO because Broadwell softpins
+    * but Cherryview doesn't.
+    */
+   assert((bo->flags & EXEC_OBJECT_PINNED) || !bo->has_fixed_address);
+   return (bo->flags & EXEC_OBJECT_PINNED) != 0;
+#endif
+}
+
 /* Represents a lock-free linked list of "free" things.  This is used by
  * both the block pool and the state pools.  Unfortunately, in order to
  * solve the ABA problem, we can't use a single uint32_t head.
@@ -1653,9 +1675,7 @@ anv_address_is_null(struct anv_address addr)
 static inline uint64_t
 anv_address_physical(struct anv_address addr)
 {
-   if (addr.bo && (ANV_ALWAYS_SOFTPIN ||
-                   (addr.bo->flags & EXEC_OBJECT_PINNED))) {
-      assert(addr.bo->flags & EXEC_OBJECT_PINNED);
+   if (addr.bo && anv_bo_is_pinned(addr.bo)) {
       return intel_canonical_address(addr.bo->offset + addr.offset);
    } else {
       return intel_canonical_address(addr.offset);
@@ -1692,7 +1712,7 @@ _anv_combine_address(struct anv_batch *batch, void *location,
    if (address.bo == NULL) {
       return address.offset + delta;
    } else if (batch == NULL) {
-      assert(address.bo->flags & EXEC_OBJECT_PINNED);
+      assert(anv_bo_is_pinned(address.bo));
       return anv_address_physical(anv_address_add(address, delta));
    } else {
       assert(batch->start <= location && location < batch->end);

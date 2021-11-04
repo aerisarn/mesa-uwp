@@ -121,7 +121,7 @@ anv_GetAccelerationStructureDeviceAddressKHR(
                    pInfo->accelerationStructure);
 
    assert(!anv_address_is_null(accel->address));
-   assert(accel->address.bo->flags & EXEC_OBJECT_PINNED);
+   assert(anv_bo_is_pinned(accel->address.bo));
 
    return anv_address_physical(accel->address);
 }

@@ -4408,7 +4408,7 @@ VkDeviceAddress anv_GetBufferDeviceAddress(
    ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
 
    assert(!anv_address_is_null(buffer->address));
-   assert(buffer->address.bo->flags & EXEC_OBJECT_PINNED);
+   assert(anv_bo_is_pinned(buffer->address.bo));
 
    return anv_address_physical(buffer->address);
 }
@@ -4426,7 +4426,7 @@ uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
 {
    ANV_FROM_HANDLE(anv_device_memory, memory, pInfo->memory);
 
-   assert(memory->bo->flags & EXEC_OBJECT_PINNED);
+   assert(anv_bo_is_pinned(memory->bo));
    assert(memory->bo->has_client_visible_address);
 
    return intel_48b_address(memory->bo->offset);

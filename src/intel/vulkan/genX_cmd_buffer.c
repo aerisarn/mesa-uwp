@@ -5631,7 +5631,7 @@ genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
       return;
    }
 
-   assert(vb_address.bo && (vb_address.bo->flags & EXEC_OBJECT_PINNED));
+   assert(vb_address.bo && anv_bo_is_pinned(vb_address.bo));
    bound->start = intel_48b_address(anv_address_physical(vb_address));
    bound->end = bound->start + vb_size;
    assert(bound->end > bound->start); /* No overflow */
