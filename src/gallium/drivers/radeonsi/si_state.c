@@ -949,6 +949,11 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                                ? S_028A0C_LINE_PATTERN(state->line_stipple_pattern) |
                                     S_028A0C_REPEAT_COUNT(state->line_stipple_factor)
                                : 0;
+   /* TODO: implement line stippling with perpendicular end caps. */
+   /* Line width > 2 is an internal recommendation. */
+   rs->perpendicular_end_caps = (state->multisample || state->line_smooth) &&
+                                state->line_width > 2 && !state->line_stipple_enable;
+
    rs->pa_cl_clip_cntl = S_028810_DX_CLIP_SPACE_DEF(state->clip_halfz) |
                          S_028810_ZCLIP_NEAR_DISABLE(!state->depth_clip_near) |
                          S_028810_ZCLIP_FAR_DISABLE(!state->depth_clip_far) |
@@ -1038,7 +1043,9 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                      S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
                      S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)) |
                      /* this must be set if POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set */
-                     S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.chip_class >= GFX10 ? polygon_mode_enabled : 0));
+                     S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.chip_class >= GFX10 ?
+                                                      polygon_mode_enabled ||
+                                                      rs->perpendicular_end_caps : 0));
 
    if (!rs->uses_poly_offset)
       return rs;
@@ -1096,7 +1103,6 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 
    if (old_rs->multisample_enable != rs->multisample_enable) {
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
-
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
 
       /* Update the small primitive filter workaround if necessary. */
@@ -1107,6 +1113,9 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
       if (sctx->screen->use_ngg_culling)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.ngg_cull_state);
    }
+
+   if (old_rs->perpendicular_end_caps != rs->perpendicular_end_caps)
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
 
    if (sctx->screen->use_ngg_culling &&
        (old_rs->half_pixel_center != rs->half_pixel_center ||
@@ -3633,13 +3642,8 @@ static void si_emit_msaa_config(struct si_context *sctx)
       }
    }
 
-   /* The DX10 diamond test is optional in GL and decreases line rasterization
+   /* The DX10 diamond test is not required by GL and decreases line rasterization
     * performance, so don't use it.
-    *
-    * TODO: We should also enable perpendicular endcaps for AA lines,
-    *       but that requires implementing line stippling in the pixel
-    *       shader. SC can only do line stippling with axis-aligned
-    *       endcaps.
     */
    unsigned sc_line_cntl = 0;
    unsigned sc_aa_config = 0;
@@ -3658,7 +3662,8 @@ static void si_emit_msaa_config(struct si_context *sctx)
       unsigned ps_iter_samples = si_get_ps_iter_samples(sctx);
       unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
 
-      sc_line_cntl |= S_028BDC_EXPAND_LINE_WIDTH(1);
+      sc_line_cntl |= S_028BDC_EXPAND_LINE_WIDTH(1) |
+                      S_028BDC_PERPENDICULAR_ENDCAP_ENA(rs->perpendicular_end_caps);
       sc_aa_config = S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
                      S_028BE0_MAX_SAMPLE_DIST(max_dist[log_samples]) |
                      S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
