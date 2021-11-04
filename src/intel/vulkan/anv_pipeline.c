@@ -2332,10 +2332,11 @@ anv_pipeline_validate_create_info(const VkGraphicsPipelineCreateInfo *info)
    assert(info->sType == VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
 
    renderpass = anv_render_pass_from_handle(info->renderPass);
-   assert(renderpass);
 
-   assert(info->subpass < renderpass->subpass_count);
-   subpass = &renderpass->subpasses[info->subpass];
+   if (renderpass) {
+      assert(info->subpass < renderpass->subpass_count);
+      subpass = &renderpass->subpasses[info->subpass];
+   }
 
    assert(info->stageCount >= 1);
    assert(info->pRasterizationState);
@@ -2435,8 +2436,36 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
                          pipeline->batch_data, sizeof(pipeline->batch_data));
 
    ANV_FROM_HANDLE(anv_render_pass, render_pass, pCreateInfo->renderPass);
-   assert(pCreateInfo->subpass < render_pass->subpass_count);
-   pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
+
+   if (render_pass) {
+      assert(pCreateInfo->subpass < render_pass->subpass_count);
+      pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
+      pipeline->pass = render_pass;
+   } else {
+      const VkPipelineRenderingCreateInfoKHR *rendering_create_info =
+         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+
+      /* These should be zeroed already. */
+      pipeline->pass = &pipeline->dynamic_render_pass.pass;
+      pipeline->subpass = &pipeline->dynamic_render_pass.subpass;
+
+      if (rendering_create_info) {
+         struct anv_dynamic_pass_create_info info = {
+            .viewMask = rendering_create_info->viewMask,
+            .colorAttachmentCount =
+               rendering_create_info->colorAttachmentCount,
+            .pColorAttachmentFormats =
+               rendering_create_info->pColorAttachmentFormats,
+            .depthAttachmentFormat =
+               rendering_create_info->depthAttachmentFormat,
+            .stencilAttachmentFormat =
+               rendering_create_info->stencilAttachmentFormat,
+         };
+
+         anv_dynamic_pass_init(&pipeline->dynamic_render_pass, &info);
+      }
+   }
+
 
    assert(pCreateInfo->pRasterizationState);
 

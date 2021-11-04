@@ -2495,8 +2495,6 @@ genX(graphics_pipeline_create)(
     VkPipeline*                                 pPipeline)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_render_pass, pass, pCreateInfo->renderPass);
-   struct anv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
    struct anv_graphics_pipeline *pipeline;
    VkResult result;
 
@@ -2519,6 +2517,9 @@ genX(graphics_pipeline_create)(
          *pPipeline = VK_NULL_HANDLE;
       return result;
    }
+
+   struct anv_render_pass *pass = pipeline->pass;
+   struct anv_subpass *subpass = pipeline->subpass;
 
    /* Information on which states are considered dynamic. */
    const VkPipelineDynamicStateCreateInfo *dyn_info =
