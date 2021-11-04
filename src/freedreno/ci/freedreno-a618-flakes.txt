@@ -9,5 +9,8 @@ dEQP-VK.pipeline.multisample.alpha_to_coverage_unused_attachment.samples_4.alpha
 dEQP-VK.api.command_buffers.record_many_draws_primary_2
 dEQP-VK.api.command_buffers.record_many_draws_secondary_2
 
+# Sometimes hangchecks
+spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
+
 # "dEQP-VK.wsi.display_control.register_display_event: vkRegisterDisplayEventEXT returned invalid result (Fail)"
 dEQP-VK.wsi.display_control.register_display_event
