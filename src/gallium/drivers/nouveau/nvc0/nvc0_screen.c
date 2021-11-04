@@ -734,6 +734,7 @@ nvc0_screen_destroy(struct pipe_screen *pscreen)
    nouveau_object_del(&screen->eng3d);
    nouveau_object_del(&screen->eng2d);
    nouveau_object_del(&screen->m2mf);
+   nouveau_object_del(&screen->copy);
    nouveau_object_del(&screen->compute);
    nouveau_object_del(&screen->nvsw);
 
@@ -1167,9 +1168,28 @@ nvc0_screen_create(struct nouveau_device *dev)
 
    BEGIN_NVC0(push, SUBC_M2MF(NV01_SUBCHAN_OBJECT), 1);
    PUSH_DATA (push, screen->m2mf->oclass);
-   if (screen->m2mf->oclass == NVE4_P2MF_CLASS) {
+
+   if (screen->m2mf->oclass >= NVE4_P2MF_CLASS) {
+      const struct nouveau_mclass copys[] = {
+         {  TURING_DMA_COPY_A, -1 },
+         {   VOLTA_DMA_COPY_A, -1 },
+         {  PASCAL_DMA_COPY_B, -1 },
+         {  PASCAL_DMA_COPY_A, -1 },
+         { MAXWELL_DMA_COPY_A, -1 },
+         {  KEPLER_DMA_COPY_A, -1 },
+         {}
+      };
+
+      ret = nouveau_object_mclass(chan, copys);
+      if (ret < 0)
+         FAIL_SCREEN_INIT("No supported copy engine class: %d\n", ret);
+
+      ret = nouveau_object_new(chan, 0, copys[ret].oclass, NULL, 0, &screen->copy);
+      if (ret)
+         FAIL_SCREEN_INIT("Error allocating copy engine class: %d\n", ret);
+
       BEGIN_NVC0(push, SUBC_COPY(NV01_SUBCHAN_OBJECT), 1);
-      PUSH_DATA (push, NVE4_COPY_CLASS);
+      PUSH_DATA (push, screen->copy->oclass);
    }
 
    ret = nouveau_object_new(chan, 0xbeef902d, NVC0_2D_CLASS, NULL, 0,
