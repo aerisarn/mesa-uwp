@@ -190,6 +190,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_device_group                      = true,
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
+      .KHR_dynamic_rendering                 = true,
       .KHR_external_fence                    = has_syncobj_wait,
       .KHR_external_fence_fd                 = has_syncobj_wait,
       .KHR_external_memory                   = true,
@@ -1492,6 +1493,13 @@ void anv_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceDepthClipEnableFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipEnableFeaturesEXT *)ext;
          features->depthClipEnable = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR: {
+         VkPhysicalDeviceDynamicRenderingFeaturesKHR *features =
+            (VkPhysicalDeviceDynamicRenderingFeaturesKHR *)ext;
+         features->dynamicRendering = true;
          break;
       }
 
