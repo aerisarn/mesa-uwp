@@ -130,13 +130,18 @@ void st_init_limits(struct pipe_screen *screen,
    c->MaxLineWidthAA =
       _maxf(1.0f, screen->get_paramf(screen, PIPE_CAPF_MAX_LINE_WIDTH_AA));
 
+   c->MinLineWidth = screen->get_paramf(screen, PIPE_CAPF_MIN_LINE_WIDTH);
+   c->MinLineWidthAA = screen->get_paramf(screen, PIPE_CAPF_MIN_LINE_WIDTH_AA);
+   c->LineWidthGranularity = screen->get_paramf(screen, PIPE_CAPF_LINE_WIDTH_GRANULARITY);
+
    c->MaxPointSize =
       _maxf(1.0f, screen->get_paramf(screen, PIPE_CAPF_MAX_POINT_SIZE));
    c->MaxPointSizeAA =
       _maxf(1.0f, screen->get_paramf(screen, PIPE_CAPF_MAX_POINT_SIZE_AA));
 
-   c->MinPointSize = 1.0f;
-   c->MinPointSizeAA = 1.0f;
+   c->MinPointSize = screen->get_paramf(screen, PIPE_CAPF_MIN_POINT_SIZE);
+   c->MinPointSizeAA = screen->get_paramf(screen, PIPE_CAPF_MIN_POINT_SIZE_AA);
+   c->PointSizeGranularity = screen->get_paramf(screen, PIPE_CAPF_POINT_SIZE_GRANULARITY);
 
    c->MaxTextureMaxAnisotropy =
       _maxf(2.0f,
