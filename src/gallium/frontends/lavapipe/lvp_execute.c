@@ -1285,6 +1285,12 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
 
    for (i = 0; i < bds->descriptor_set_count; i++) {
       const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
+      /* verify that there's enough total offsets */
+      assert(set->layout->dynamic_offset_count <= dyn_info.dynamic_offset_count);
+      /* verify there's either no offsets... */
+      assert(!dyn_info.dynamic_offset_count ||
+             /* or that the total number of offsets required is <= the number remaining */
+             set->layout->dynamic_offset_count <= dyn_info.dynamic_offset_count - dyn_info.dyn_index);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_VERTEX, PIPE_SHADER_VERTEX);
