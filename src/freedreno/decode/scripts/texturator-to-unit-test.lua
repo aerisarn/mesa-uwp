@@ -17,12 +17,12 @@ local found_tex = 0
 local allblits = {}
 local nallblits = 0
 
-function get_first_blit(base, width, height)
+function get_next_blit(base, width, height, prev_blit)
   local first_blit = nil
 
   for n = 0,nallblits-1 do
     local blit = allblits[n]
-    if blit.base == base and blit.width == width and blit.height == height then
+    if blit.base == base and blit.width == width and blit.height == height and (not prev_blit or prev_blit.addr < blit.addr) then
       if not first_blit or blit.addr < first_blit.addr then
         first_blit = blit
       end
@@ -30,6 +30,10 @@ function get_first_blit(base, width, height)
   end
 
   return first_blit
+end
+
+function get_first_blit(base, width, height)
+  return get_next_blit(base, width, height, nil);
 end
 
 function minify(val, lvls)
@@ -153,7 +157,7 @@ function A6XX_TEX_CONST(pkt, size)
   end
 
   if (tostring(pkt[2].TYPE) == "A6XX_TEX_3D") then
-    printf("			.width0 = %d, .height0 = %d, .depth = %d,\n", width0, height0, depth0)
+    printf("			.width0 = %d, .height0 = %d, .depth0 = %d,\n", width0, height0, depth0)
   else
     printf("			.width0 = %d, .height0 = %d,\n", width0, height0)
   end
@@ -167,9 +171,16 @@ function A6XX_TEX_CONST(pkt, size)
     local h = minify(height0, level)
     local blit = get_first_blit(basebase, w, h)
     if blit then
-      printf("				{ .offset = %d, .pitch = %u },\n",
+      printf("				{ .offset = %d, .pitch = %u",
           blit.addr - base,
           blit.pitch);
+      if (tostring(pkt[2].TYPE) == "A6XX_TEX_3D") then
+        local second = get_next_blit(basebase, w, h, blit);
+        if second then
+          printf(", .size0 = %u", second.addr - blit.addr);
+        end
+      end
+      printf(" },\n");
     end
     level = level + 1
   until w == 1 and h == 1

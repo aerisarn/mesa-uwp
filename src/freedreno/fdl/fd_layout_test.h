@@ -36,6 +36,7 @@ struct testcase {
       struct {
          uint32_t offset;
          uint32_t pitch;
+         uint32_t size0;
       } slices[FDL_MAX_MIP_LEVELS];
       struct {
          uint32_t offset;
