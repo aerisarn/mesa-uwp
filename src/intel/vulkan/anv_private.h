@@ -3086,6 +3086,8 @@ struct anv_cmd_state {
     * is one of the states in attachment_states.
     */
    struct anv_state                             null_surface_state;
+
+   struct anv_dynamic_render_pass               dynamic_render_pass;
 };
 
 struct anv_cmd_pool {

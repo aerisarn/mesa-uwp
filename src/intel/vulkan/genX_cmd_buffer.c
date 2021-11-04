@@ -1817,43 +1817,75 @@ genX(BeginCommandBuffer)(
       assert(pBeginInfo->pInheritanceInfo);
       ANV_FROM_HANDLE(anv_render_pass, pass,
                       pBeginInfo->pInheritanceInfo->renderPass);
-      struct anv_subpass *subpass =
-         &pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
-      ANV_FROM_HANDLE(anv_framebuffer, framebuffer,
-                      pBeginInfo->pInheritanceInfo->framebuffer);
+      struct anv_subpass *subpass;
+      if (!pass) {
+         const VkCommandBufferInheritanceRenderingInfoKHR *inheritance_info =
+            vk_find_struct_const(pBeginInfo->pInheritanceInfo->pNext,
+                                 COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR);
+         assert(inheritance_info);
+         struct anv_dynamic_pass_create_info info = {
+            .viewMask = inheritance_info->viewMask,
+            .colorAttachmentCount = inheritance_info->colorAttachmentCount,
+            .pColorAttachmentFormats = inheritance_info->pColorAttachmentFormats,
+            .depthAttachmentFormat = inheritance_info->depthAttachmentFormat,
+            .stencilAttachmentFormat = inheritance_info->stencilAttachmentFormat,
+            .rasterizationSamples = inheritance_info->rasterizationSamples,
+         };
+         anv_dynamic_pass_init(&cmd_buffer->state.dynamic_render_pass, &info);
+         pass = &cmd_buffer->state.dynamic_render_pass.pass;
+         subpass = &cmd_buffer->state.dynamic_render_pass.subpass;
 
-      cmd_buffer->state.pass = pass;
-      cmd_buffer->state.subpass = subpass;
+         result = cmd_buffer_alloc_state_attachments(cmd_buffer,
+                                                     pass->attachment_count);
+         if (result != VK_SUCCESS)
+            return result;
 
-      /* This is optional in the inheritance info. */
-      cmd_buffer->state.framebuffer = framebuffer;
+         result = genX(cmd_buffer_alloc_att_surf_states)(cmd_buffer, pass,
+                                                         subpass);
+         if (result != VK_SUCCESS)
+            return result;
 
-      result = genX(cmd_buffer_setup_attachments)(cmd_buffer, pass,
-                                                  framebuffer, NULL);
-      if (result != VK_SUCCESS)
-         return result;
+         cmd_buffer->state.pass = pass;
+         cmd_buffer->state.subpass = subpass;
+      } else {
+         subpass = &pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
 
-      result = genX(cmd_buffer_alloc_att_surf_states)(cmd_buffer, pass,
-                                                      subpass);
-      if (result != VK_SUCCESS)
-         return result;
+         ANV_FROM_HANDLE(anv_framebuffer, framebuffer,
+                         pBeginInfo->pInheritanceInfo->framebuffer);
 
-      /* Record that HiZ is enabled if we can. */
-      if (cmd_buffer->state.framebuffer) {
-         const struct anv_image_view * const iview =
-            anv_cmd_buffer_get_depth_stencil_view(cmd_buffer);
+         cmd_buffer->state.pass = pass;
+         cmd_buffer->state.subpass = subpass;
 
-         if (iview) {
-            VkImageLayout layout =
-                cmd_buffer->state.subpass->depth_stencil_attachment->layout;
+         /* This is optional in the inheritance info. */
+         cmd_buffer->state.framebuffer = framebuffer;
 
-            enum isl_aux_usage aux_usage =
-               anv_layout_to_aux_usage(&cmd_buffer->device->info, iview->image,
-                                       VK_IMAGE_ASPECT_DEPTH_BIT,
-                                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                       layout);
+         result = genX(cmd_buffer_setup_attachments)(cmd_buffer, pass,
+                                                     framebuffer, NULL);
+         if (result != VK_SUCCESS)
+            return result;
 
-            cmd_buffer->state.hiz_enabled = isl_aux_usage_has_hiz(aux_usage);
+         result = genX(cmd_buffer_alloc_att_surf_states)(cmd_buffer, pass,
+                                                         subpass);
+         if (result != VK_SUCCESS)
+            return result;
+
+         /* Record that HiZ is enabled if we can. */
+         if (cmd_buffer->state.framebuffer) {
+            const struct anv_image_view * const iview =
+               anv_cmd_buffer_get_depth_stencil_view(cmd_buffer);
+
+            if (iview) {
+               VkImageLayout layout =
+                  cmd_buffer->state.subpass->depth_stencil_attachment->layout;
+
+               enum isl_aux_usage aux_usage =
+                  anv_layout_to_aux_usage(&cmd_buffer->device->info, iview->image,
+                                          VK_IMAGE_ASPECT_DEPTH_BIT,
+                                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                          layout);
+
+               cmd_buffer->state.hiz_enabled = isl_aux_usage_has_hiz(aux_usage);
+            }
          }
       }
 
