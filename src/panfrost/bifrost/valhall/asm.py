@@ -221,6 +221,8 @@ def parse_asm(line):
         base = regs[0]
         die_if(any([reg != (base + i) for i, reg in enumerate(regs)]),
                 'Expected consecutive staging registers, got {op}')
+        die_if(sr_count > 1 and (base % 2) != 0,
+                'Consecutive staging registers must be aligned to a register pair')
 
         if sr.count == 0:
             modifier_map["staging_register_count"] = sr_count
