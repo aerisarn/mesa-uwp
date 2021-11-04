@@ -3312,16 +3312,19 @@ static struct lvp_cmd_push_descriptor_set *create_push_descriptor_set(struct vk_
    LVP_FROM_HANDLE(lvp_pipeline_layout, layout, in_cmd->layout);
    struct lvp_cmd_push_descriptor_set *out_cmd;
    int count_descriptors = 0;
-   int cmd_size = sizeof(*out_cmd);
 
    for (unsigned i = 0; i < in_cmd->descriptor_write_count; i++) {
       count_descriptors += in_cmd->descriptor_writes[i].descriptorCount;
    }
-   cmd_size += count_descriptors * sizeof(union lvp_descriptor_info);
 
-   cmd_size += in_cmd->descriptor_write_count * sizeof(struct lvp_write_descriptor);
-
-   out_cmd = calloc(1, cmd_size);
+   void *descriptors;
+   void *infos;
+   void **ptrs[] = {&descriptors, &infos};
+   size_t sizes[] = {
+      in_cmd->descriptor_write_count * sizeof(struct lvp_write_descriptor),
+      count_descriptors * sizeof(union lvp_descriptor_info),
+   };
+   out_cmd = ptrzalloc(sizeof(struct lvp_cmd_push_descriptor_set), 2, sizes, ptrs);
    if (!out_cmd)
       return NULL;
 
@@ -3329,8 +3332,8 @@ static struct lvp_cmd_push_descriptor_set *create_push_descriptor_set(struct vk_
    out_cmd->layout = layout;
    out_cmd->set = in_cmd->set;
    out_cmd->descriptor_write_count = in_cmd->descriptor_write_count;
-   out_cmd->descriptors = (struct lvp_write_descriptor *)(out_cmd + 1);
-   out_cmd->infos = (union lvp_descriptor_info *)(out_cmd->descriptors + in_cmd->descriptor_write_count);
+   out_cmd->descriptors = descriptors;
+   out_cmd->infos = infos;
 
    unsigned descriptor_index = 0;
 
