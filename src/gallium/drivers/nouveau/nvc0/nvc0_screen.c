@@ -1290,7 +1290,7 @@ nvc0_screen_create(struct nouveau_device *dev)
    PUSH_DATA (push, NVC0_3D_SHADE_MODEL_SMOOTH);
    if (screen->eng3d->oclass < NVE4_3D_CLASS) {
       IMMED_NVC0(push, NVC0_3D(TEX_MISC), 0);
-   } else {
+   } else if (screen->eng3d->oclass < GA102_3D_CLASS) {
       BEGIN_NVC0(push, NVE4_3D(TEX_CB_INDEX), 1);
       PUSH_DATA (push, 15);
    }
