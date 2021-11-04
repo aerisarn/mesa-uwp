@@ -2195,7 +2195,7 @@ optimizations += [
 ]
 
 # Unreal Engine 4 demo applications open-codes bitfieldReverse()
-def bitfield_reverse(u):
+def bitfield_reverse_ue4(u):
     step1 = ('ior', ('ishl', u, 16), ('ushr', u, 16))
     step2 = ('ior', ('ishl', ('iand', step1, 0x00ff00ff), 8), ('ushr', ('iand', step1, 0xff00ff00), 8))
     step3 = ('ior', ('ishl', ('iand', step2, 0x0f0f0f0f), 4), ('ushr', ('iand', step2, 0xf0f0f0f0), 4))
@@ -2204,7 +2204,18 @@ def bitfield_reverse(u):
 
     return step5
 
-optimizations += [(bitfield_reverse('x@32'), ('bitfield_reverse', 'x'), '!options->lower_bitfield_reverse')]
+# Cyberpunk 2077 open-codes bitfieldReverse()
+def bitfield_reverse_cp2077(u):
+    step1 = ('ior', ('ishl', u, 16), ('ushr', u, 16))
+    step2 = ('ior', ('iand', ('ishl', step1, 1), 0xaaaaaaaa), ('iand', ('ushr', step1, 1), 0x55555555))
+    step3 = ('ior', ('iand', ('ishl', step2, 2), 0xcccccccc), ('iand', ('ushr', step2, 2), 0x33333333))
+    step4 = ('ior', ('iand', ('ishl', step3, 4), 0xf0f0f0f0), ('iand', ('ushr', step3, 4), 0x0f0f0f0f))
+    step5 = ('ior(many-comm-expr)', ('iand', ('ishl', step4, 8), 0xff00ff00), ('iand', ('ushr', step4, 8), 0x00ff00ff))
+
+    return step5
+
+optimizations += [(bitfield_reverse_ue4('x@32'), ('bitfield_reverse', 'x'), '!options->lower_bitfield_reverse')]
+optimizations += [(bitfield_reverse_cp2077('x@32'), ('bitfield_reverse', 'x'), '!options->lower_bitfield_reverse')]
 
 # "all_equal(eq(a, b), vec(~0))" is the same as "all_equal(a, b)"
 # "any_nequal(neq(a, b), vec(0))" is the same as "any_nequal(a, b)"
