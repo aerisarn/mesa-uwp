@@ -463,9 +463,9 @@ virgl_get_paramf(struct pipe_screen *screen, enum pipe_capf param)
       return vscreen->caps.caps.v2.max_aliased_line_width;
    case PIPE_CAPF_MAX_LINE_WIDTH_AA:
       return vscreen->caps.caps.v2.max_smooth_line_width;
-   case PIPE_CAPF_MAX_POINT_WIDTH:
+   case PIPE_CAPF_MAX_POINT_SIZE:
       return vscreen->caps.caps.v2.max_aliased_point_size;
-   case PIPE_CAPF_MAX_POINT_WIDTH_AA:
+   case PIPE_CAPF_MAX_POINT_SIZE_AA:
       return vscreen->caps.caps.v2.max_smooth_point_size;
    case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:
       return vscreen->caps.caps.v2.max_anisotropy;

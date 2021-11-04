@@ -866,8 +866,8 @@ agx_get_paramf(struct pipe_screen* pscreen,
    case PIPE_CAPF_MAX_LINE_WIDTH_AA:
       return 16.0; /* Off-by-one fixed point 4:4 encoding */
 
-   case PIPE_CAPF_MAX_POINT_WIDTH:
-   case PIPE_CAPF_MAX_POINT_WIDTH_AA:
+   case PIPE_CAPF_MAX_POINT_SIZE:
+   case PIPE_CAPF_MAX_POINT_SIZE_AA:
       return 511.95f;
 
    case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:

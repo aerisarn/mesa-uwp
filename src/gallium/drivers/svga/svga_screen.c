@@ -158,9 +158,9 @@ svga_get_paramf(struct pipe_screen *screen, enum pipe_capf param)
    case PIPE_CAPF_MAX_LINE_WIDTH_AA:
       return svgascreen->maxLineWidthAA;
 
-   case PIPE_CAPF_MAX_POINT_WIDTH:
+   case PIPE_CAPF_MAX_POINT_SIZE:
       FALLTHROUGH;
-   case PIPE_CAPF_MAX_POINT_WIDTH_AA:
+   case PIPE_CAPF_MAX_POINT_SIZE_AA:
       return svgascreen->maxPointSize;
 
    case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:

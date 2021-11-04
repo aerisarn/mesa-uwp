@@ -503,9 +503,9 @@ i915_get_paramf(struct pipe_screen *screen, enum pipe_capf cap)
    case PIPE_CAPF_MAX_LINE_WIDTH_AA:
       return 7.5;
 
-   case PIPE_CAPF_MAX_POINT_WIDTH:
+   case PIPE_CAPF_MAX_POINT_SIZE:
       FALLTHROUGH;
-   case PIPE_CAPF_MAX_POINT_WIDTH_AA:
+   case PIPE_CAPF_MAX_POINT_SIZE_AA:
       return 255.0;
 
    case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:

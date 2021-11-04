@@ -639,8 +639,8 @@ The floating-point capabilities are:
 
 * ``PIPE_CAPF_MAX_LINE_WIDTH``: The maximum width of a regular line.
 * ``PIPE_CAPF_MAX_LINE_WIDTH_AA``: The maximum width of a smoothed line.
-* ``PIPE_CAPF_MAX_POINT_WIDTH``: The maximum width and height of a point.
-* ``PIPE_CAPF_MAX_POINT_WIDTH_AA``: The maximum width and height of a smoothed point.
+* ``PIPE_CAPF_MAX_POINT_SIZE``: The maximum width and height of a point.
+* ``PIPE_CAPF_MAX_POINT_SIZE_AA``: The maximum width and height of a smoothed point.
 * ``PIPE_CAPF_MAX_TEXTURE_ANISOTROPY``: The maximum level of anisotropy that can be
   applied to anisotropically filtered textures.
 * ``PIPE_CAPF_MAX_TEXTURE_LOD_BIAS``: The maximum :term:`LOD` bias that may be applied

@@ -702,8 +702,8 @@ zink_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
          return 1.0f;
       return screen->info.props.limits.lineWidthRange[1];
 
-   case PIPE_CAPF_MAX_POINT_WIDTH:
-   case PIPE_CAPF_MAX_POINT_WIDTH_AA:
+   case PIPE_CAPF_MAX_POINT_SIZE:
+   case PIPE_CAPF_MAX_POINT_SIZE_AA:
       if (!screen->info.feats.features.largePoints)
          return 1.0f;
       return screen->info.props.limits.pointSizeRange[1];
