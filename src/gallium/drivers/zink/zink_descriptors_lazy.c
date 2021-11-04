@@ -526,12 +526,11 @@ zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, u
 }
 
 /* only called by cached manager for fbfetch handling */
-void
-zink_descriptors_update_lazy_push(struct zink_context *ctx)
+VkDescriptorSet
+zink_descriptors_alloc_lazy_push(struct zink_context *ctx)
 {
    struct zink_batch_state *bs = ctx->batch.state;
    struct zink_batch_descriptor_data_lazy *bdd = bdd_lazy(bs);
-   struct zink_program *pg = &ctx->curr_program->base;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VkDescriptorSet push_set = VK_NULL_HANDLE;
    if (!bdd->push_pool[0]) {
@@ -540,16 +539,9 @@ zink_descriptors_update_lazy_push(struct zink_context *ctx)
    }
    struct zink_descriptor_pool *pool = check_push_pool_alloc(ctx, bdd->push_pool[0], bdd, false);
    push_set = get_descriptor_set_lazy(pool);
-   if (!push_set) {
+   if (!push_set)
       mesa_loge("ZINK: failed to get push descriptor set!");
-      /* just jam something in to avoid a hang */
-      push_set = ctx->dd->dummy_set;
-   }
-   VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, push_set, pg->dd->push_template, ctx);
-   VKCTX(CmdBindDescriptorSets)(bs->cmdbuf,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                pg->layout, 0, 1, push_set ? &push_set : &bdd->sets[0][0],
-                                0, NULL);
+   return push_set;
 }
 
 void

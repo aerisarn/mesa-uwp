@@ -300,8 +300,8 @@ void
 zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set);
 void
 zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, uint8_t changed_sets, uint8_t bind_sets);
-void
-zink_descriptors_update_lazy_push(struct zink_context *ctx);
+VkDescriptorSet
+zink_descriptors_alloc_lazy_push(struct zink_context *ctx);
 #ifdef __cplusplus
 }
 #endif
