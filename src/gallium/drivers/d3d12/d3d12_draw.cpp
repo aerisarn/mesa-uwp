@@ -479,7 +479,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    for (int i = 0; i < ctx->fb.nr_cbufs; ++i) {
       if (ctx->fb.cbufs[i]) {
          struct d3d12_surface *surface = d3d12_surface(ctx->fb.cbufs[i]);
-         conversion_modes[i] = d3d12_surface_update_pre_draw(surface, d3d12_rtv_format(ctx, i));
+         conversion_modes[i] = d3d12_surface_update_pre_draw(pctx, surface, d3d12_rtv_format(ctx, i));
          if (conversion_modes[i] != D3D12_SURFACE_CONVERSION_NONE)
             ctx->cmdlist_dirty |= D3D12_DIRTY_FRAMEBUFFER;
       }
@@ -759,7 +759,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    for (int i = 0; i < ctx->fb.nr_cbufs; ++i) {
       if (ctx->fb.cbufs[i]) {
          struct d3d12_surface *surface = d3d12_surface(ctx->fb.cbufs[i]);
-         d3d12_surface_update_post_draw(surface, conversion_modes[i]);
+         d3d12_surface_update_post_draw(pctx, surface, conversion_modes[i]);
       }
    }
 }
