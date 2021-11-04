@@ -1535,6 +1535,15 @@ static void virgl_send_tweaks(struct virgl_context *vctx, struct virgl_screen *r
                          rs->tweak_gles_tf3_value);
 }
 
+static void virgl_link_shader(struct pipe_context *ctx, void **handles)
+{
+   struct virgl_context *vctx = virgl_context(ctx);
+   uint32_t shader_handles[PIPE_SHADER_TYPES];
+   for (uint32_t i = 0; i < PIPE_SHADER_TYPES; ++i)
+      shader_handles[i] = (uintptr_t)handles[i];
+   virgl_encode_link_shader(vctx, shader_handles);
+}
+
 struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
                                           void *priv,
                                           unsigned flags)
@@ -1632,6 +1641,9 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    vctx->base.set_shader_images = virgl_set_shader_images;
    vctx->base.memory_barrier = virgl_memory_barrier;
    vctx->base.emit_string_marker = virgl_emit_string_marker;
+
+   if (rs->caps.caps.v2.host_feature_check_version >= 7)
+      vctx->base.link_shader = virgl_link_shader;
 
    virgl_init_context_resource_functions(&vctx->base);
    virgl_init_query_functions(vctx);

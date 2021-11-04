@@ -1281,6 +1281,18 @@ int virgl_encoder_destroy_sub_ctx(struct virgl_context *ctx, uint32_t sub_ctx_id
    return 0;
 }
 
+int virgl_encode_link_shader(struct virgl_context *ctx, uint32_t *handles)
+{
+   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_LINK_SHADER, 0, VIRGL_LINK_SHADER_SIZE));
+   virgl_encoder_write_dword(ctx->cbuf, handles[PIPE_SHADER_VERTEX]);
+   virgl_encoder_write_dword(ctx->cbuf, handles[PIPE_SHADER_FRAGMENT]);
+   virgl_encoder_write_dword(ctx->cbuf, handles[PIPE_SHADER_GEOMETRY]);
+   virgl_encoder_write_dword(ctx->cbuf, handles[PIPE_SHADER_TESS_CTRL]);
+   virgl_encoder_write_dword(ctx->cbuf, handles[PIPE_SHADER_TESS_EVAL]);
+   virgl_encoder_write_dword(ctx->cbuf, handles[PIPE_SHADER_COMPUTE]);
+   return 0;
+}
+
 int virgl_encode_bind_shader(struct virgl_context *ctx,
                              uint32_t handle, uint32_t type)
 {
