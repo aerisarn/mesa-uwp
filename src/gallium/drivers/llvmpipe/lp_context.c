@@ -268,7 +268,6 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
       goto fail;
    }
 
-   util_blitter_sample_shading_force_off(llvmpipe->blitter);
    /* must be done before installing Draw stages */
    util_blitter_cache_all_shaders(llvmpipe->blitter);
 
