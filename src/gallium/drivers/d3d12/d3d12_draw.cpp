@@ -67,7 +67,7 @@ fill_cbv_descriptors(struct d3d12_context *ctx,
          cbv_desc.BufferLocation = d3d12_resource_gpu_virtual_address(res) + buffer->buffer_offset;
          cbv_desc.SizeInBytes = MIN2(D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16,
             align(buffer->buffer_size, 256));
-         d3d12_batch_reference_resource(batch, res);
+         d3d12_batch_reference_resource(batch, res, false);
       }
 
       struct d3d12_descriptor_handle handle;
@@ -654,7 +654,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
          struct d3d12_resource *res = d3d12_resource(ctx->vbs[i].buffer.resource);
          d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_BIND_INVALIDATE_NONE);
          if (ctx->cmdlist_dirty & D3D12_DIRTY_VERTEX_BUFFERS)
-            d3d12_batch_reference_resource(batch, res);
+            d3d12_batch_reference_resource(batch, res, false);
       }
    }
    if (ctx->cmdlist_dirty & D3D12_DIRTY_VERTEX_BUFFERS)
@@ -670,7 +670,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       if (ctx->cmdlist_dirty & D3D12_DIRTY_INDEX_BUFFER ||
           memcmp(&ctx->ibv, &ibv, sizeof(D3D12_INDEX_BUFFER_VIEW)) != 0) {
          ctx->ibv = ibv;
-         d3d12_batch_reference_resource(batch, res);
+         d3d12_batch_reference_resource(batch, res, false);
          ctx->cmdlist->IASetIndexBuffer(&ibv);
       }
 
@@ -714,8 +714,8 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       d3d12_resource_make_writeable(pctx, target->base.buffer);
 
       if (ctx->cmdlist_dirty & D3D12_DIRTY_STREAM_OUTPUT) {
-         d3d12_batch_reference_resource(batch, so_buffer);
-         d3d12_batch_reference_resource(batch, fill_buffer);
+         d3d12_batch_reference_resource(batch, so_buffer, true);
+         d3d12_batch_reference_resource(batch, fill_buffer, true);
       }
 
       d3d12_transition_resource_state(ctx, so_buffer, D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_BIND_INVALIDATE_NONE);

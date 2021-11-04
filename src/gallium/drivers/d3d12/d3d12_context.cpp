@@ -1493,7 +1493,7 @@ d3d12_enable_fake_so_buffers(struct d3d12_context *ctx, unsigned factor)
       pipe_reference_init(&fake_target->base.reference, 1);
       fake_target->base.context = &ctx->base;
 
-      d3d12_resource_wait_idle(ctx, d3d12_resource(target->base.buffer));
+      d3d12_resource_wait_idle(ctx, d3d12_resource(target->base.buffer), false);
 
       /* Check if another target is using the same buffer */
       for (unsigned j = 0; j < i; ++j) {

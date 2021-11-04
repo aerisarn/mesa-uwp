@@ -123,8 +123,8 @@ blit_resolve(struct d3d12_context *ctx, const struct pipe_blit_info *info)
 
    d3d12_apply_resource_states(ctx);
 
-   d3d12_batch_reference_resource(batch, src);
-   d3d12_batch_reference_resource(batch, dst);
+   d3d12_batch_reference_resource(batch, src, false);
+   d3d12_batch_reference_resource(batch, dst, true);
 
    DXGI_FORMAT dxgi_format = d3d12_get_resource_srv_format(src->base.b.format, src->base.b.target);
 
@@ -434,8 +434,8 @@ d3d12_direct_copy(struct d3d12_context *ctx,
 
    d3d12_apply_resource_states(ctx);
 
-   d3d12_batch_reference_resource(batch, src);
-   d3d12_batch_reference_resource(batch, dst);
+   d3d12_batch_reference_resource(batch, src, false);
+   d3d12_batch_reference_resource(batch, dst, true);
 
    if (src->base.b.target == PIPE_BUFFER) {
       copy_buffer_region_no_barriers(ctx, dst, pdst_box->x,
@@ -827,8 +827,8 @@ blit_resolve_stencil(struct d3d12_context *ctx,
    d3d12_apply_resource_states(ctx);
 
    struct d3d12_batch *batch = d3d12_current_batch(ctx);
-   d3d12_batch_reference_resource(batch, d3d12_resource(tmp));
-   d3d12_batch_reference_resource(batch, dst);
+   d3d12_batch_reference_resource(batch, d3d12_resource(tmp), false);
+   d3d12_batch_reference_resource(batch, dst, true);
 
    D3D12_BOX src_box;
    src_box.left = src_box.top = src_box.front = 0;

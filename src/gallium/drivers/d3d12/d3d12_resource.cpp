@@ -72,27 +72,29 @@ d3d12_resource_destroy(struct pipe_screen *pscreen,
 
 static bool
 resource_is_busy(struct d3d12_context *ctx,
-                 struct d3d12_resource *res)
+                 struct d3d12_resource *res,
+                 bool want_to_write)
 {
    bool busy = false;
 
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); i++)
-      busy |= d3d12_batch_has_references(&ctx->batches[i], res->bo);
+      busy |= d3d12_batch_has_references(&ctx->batches[i], res->bo, want_to_write);
 
    return busy;
 }
 
 void
 d3d12_resource_wait_idle(struct d3d12_context *ctx,
-                         struct d3d12_resource *res)
+                         struct d3d12_resource *res,
+                         bool want_to_write)
 {
-   if (d3d12_batch_has_references(d3d12_current_batch(ctx), res->bo)) {
+   if (d3d12_batch_has_references(d3d12_current_batch(ctx), res->bo, want_to_write)) {
       d3d12_flush_cmdlist_and_wait(ctx);
    } else {
       d3d12_foreach_submitted_batch(ctx, batch) {
-         if (d3d12_batch_has_references(batch, res->bo)) {
+         if (d3d12_batch_has_references(batch, res->bo, want_to_write)) {
             d3d12_reset_batch(ctx, batch, PIPE_TIMEOUT_INFINITE);
-            if (!resource_is_busy(ctx, res))
+            if (!resource_is_busy(ctx, res, want_to_write))
                break;
          }
       }
@@ -418,8 +420,8 @@ copy_texture_region(struct d3d12_context *ctx,
 {
    auto batch = d3d12_current_batch(ctx);
 
-   d3d12_batch_reference_resource(batch, info.src);
-   d3d12_batch_reference_resource(batch, info.dst);
+   d3d12_batch_reference_resource(batch, info.src, false);
+   d3d12_batch_reference_resource(batch, info.dst, true);
    d3d12_transition_resource_state(ctx, info.src, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_BIND_INVALIDATE_FULL);
    d3d12_transition_resource_state(ctx, info.dst, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_BIND_INVALIDATE_FULL);
    d3d12_apply_resource_states(ctx);
@@ -587,8 +589,8 @@ transfer_buf_to_buf(struct d3d12_context *ctx,
 {
    auto batch = d3d12_current_batch(ctx);
 
-   d3d12_batch_reference_resource(batch, src);
-   d3d12_batch_reference_resource(batch, dst);
+   d3d12_batch_reference_resource(batch, src, false);
+   d3d12_batch_reference_resource(batch, dst, true);
 
    uint64_t src_offset_suballoc = 0;
    uint64_t dst_offset_suballoc = 0;
@@ -645,11 +647,11 @@ synchronize(struct d3d12_context *ctx,
       usage |= PIPE_MAP_UNSYNCHRONIZED;
    }
 
-   if (!(usage & PIPE_MAP_UNSYNCHRONIZED) && resource_is_busy(ctx, res)) {
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED) && resource_is_busy(ctx, res, usage & PIPE_MAP_WRITE)) {
       if (usage & PIPE_MAP_DONTBLOCK)
          return false;
 
-      d3d12_resource_wait_idle(ctx, res);
+      d3d12_resource_wait_idle(ctx, res, usage & PIPE_MAP_WRITE);
    }
 
    if (usage & PIPE_MAP_WRITE)

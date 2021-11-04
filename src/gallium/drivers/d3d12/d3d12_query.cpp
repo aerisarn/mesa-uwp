@@ -382,7 +382,7 @@ end_query(struct d3d12_context *ctx, struct d3d12_query *q)
                                   resolve_count, d3d12_res, offset);
 
    d3d12_batch_reference_object(batch, q->query_heap);
-   d3d12_batch_reference_resource(batch, res);
+   d3d12_batch_reference_resource(batch, res, true);
 
    assert(q->curr_query < q->num_queries);
    q->curr_query++;
