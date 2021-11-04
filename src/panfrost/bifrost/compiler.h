@@ -34,6 +34,10 @@
 #include "util/u_math.h"
 #include "util/half_float.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Swizzles across bytes in a 32-bit word. Expresses swz in the XML directly.
  * To express widen, use the correpsonding replicated form, i.e. H01 = identity
  * for widen = none, H00 for widen = h0, B1111 for widen = b1. For lane, also
@@ -134,11 +138,11 @@ static inline bi_index
 bi_get_index(unsigned value, bool is_reg, unsigned offset)
 {
         return (bi_index) {
-                .type = BI_INDEX_NORMAL,
                 .value = value,
                 .swizzle = BI_SWIZZLE_H01,
                 .offset = offset,
                 .reg = is_reg,
+                .type = BI_INDEX_NORMAL,
         };
 }
 
@@ -148,9 +152,9 @@ bi_register(unsigned reg)
         assert(reg < 64);
 
         return (bi_index) {
-                .type = BI_INDEX_REGISTER,
+                .value = reg,
                 .swizzle = BI_SWIZZLE_H01,
-                .value = reg
+                .type = BI_INDEX_REGISTER,
         };
 }
 
@@ -158,9 +162,9 @@ static inline bi_index
 bi_imm_u32(uint32_t imm)
 {
         return (bi_index) {
-                .type = BI_INDEX_CONSTANT,
+                .value = imm,
                 .swizzle = BI_SWIZZLE_H01,
-                .value = imm
+                .type = BI_INDEX_CONSTANT,
         };
 }
 
@@ -186,9 +190,9 @@ static inline bi_index
 bi_passthrough(enum bifrost_packed_src value)
 {
         return (bi_index) {
-                .type = BI_INDEX_PASS,
+                .value = value,
                 .swizzle = BI_SWIZZLE_H01,
-                .value = value
+                .type = BI_INDEX_PASS,
         };
 }
 
@@ -212,7 +216,7 @@ static inline bi_index
 bi_swz_16(bi_index idx, bool x, bool y)
 {
         assert(idx.swizzle == BI_SWIZZLE_H01);
-        idx.swizzle = BI_SWIZZLE_H00 | (x << 1) | y;
+        idx.swizzle = (enum bi_swizzle)(BI_SWIZZLE_H00 | (x << 1) | y);
         return idx;
 }
 
@@ -227,7 +231,7 @@ bi_byte(bi_index idx, unsigned lane)
 {
         assert(idx.swizzle == BI_SWIZZLE_H01);
         assert(lane < 4);
-        idx.swizzle = BI_SWIZZLE_B0000 + lane;
+        idx.swizzle = (enum bi_swizzle)(BI_SWIZZLE_B0000 + lane);
         return idx;
 }
 
@@ -676,10 +680,10 @@ static inline bi_index
 bi_fau(enum bir_fau value, bool hi)
 {
         return (bi_index) {
-                .type = BI_INDEX_FAU,
                 .value = value,
                 .swizzle = BI_SWIZZLE_H01,
-                .offset = hi ? 1 : 0
+                .offset = hi ? 1u : 0u,
+                .type = BI_INDEX_FAU,
         };
 }
 
@@ -742,7 +746,7 @@ static inline bi_index
 bi_node_to_index(unsigned node, unsigned node_count)
 {
         assert(node < node_count);
-        assert(node_count < ~0);
+        assert(node_count < ~0u);
 
         return bi_get_index(node >> 1, node & PAN_IS_REG, 0);
 }
@@ -1161,5 +1165,9 @@ bi_word_node(bi_index idx)
 /* NIR passes */
 
 bool bi_lower_divergent_indirects(nir_shader *shader, unsigned lanes);
+
+#ifdef __cplusplus
+} /* extern C */
+#endif
 
 #endif

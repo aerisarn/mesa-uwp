@@ -30,6 +30,10 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BIFROST_DBG_MSGS        0x0001
 #define BIFROST_DBG_SHADERS     0x0002
 #define BIFROST_DBG_SHADERDB    0x0004
@@ -270,9 +274,9 @@ enum bi_clause_subword {
         BI_CLAUSE_SUBWORD_UPPER_56 = BI_CLAUSE_SUBWORD_UPPER_0 + 56,
 };
 
-#define L(x) (BI_CLAUSE_SUBWORD_LITERAL_0 + x)
-#define U(x) (BI_CLAUSE_SUBWORD_UPPER_0 + x)
-#define T(x) (BI_CLAUSE_SUBWORD_TUPLE_0 + x)
+#define L(x) ((enum bi_clause_subword)(BI_CLAUSE_SUBWORD_LITERAL_0 + x))
+#define U(x) ((enum bi_clause_subword)(BI_CLAUSE_SUBWORD_UPPER_0 + x))
+#define T(x) ((enum bi_clause_subword)(BI_CLAUSE_SUBWORD_TUPLE_0 + x))
 #define EC   BI_CLAUSE_SUBWORD_CONSTANT
 #define M    BI_CLAUSE_SUBWORD_M
 #define Z    BI_CLAUSE_SUBWORD_Z
@@ -371,6 +375,7 @@ struct bifrost_reg_ctrl_23 {
         bool slot3_fma;
 };
 
+#ifndef __cplusplus
 static const struct bifrost_reg_ctrl_23 bifrost_reg_ctrl_lut[32] = {
         [BIFROST_R_WL_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_LO, true },
         [BIFROST_R_WH_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_HI, true },
@@ -399,6 +404,7 @@ static const struct bifrost_reg_ctrl_23 bifrost_reg_ctrl_lut[32] = {
         [BIFROST_WH_WL_MIX] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_LO, false },
         [BIFROST_IDLE]      = { BIFROST_OP_IDLE,     BIFROST_OP_IDLE,     true },
 };
+#endif
 
 /* Texture operator descriptors in various states. Usually packed in the
  * compiler and stored as a constant */
@@ -575,5 +581,9 @@ bi_constant_field(unsigned idx)
         assert(idx <= 5);
         return values[idx] << 4;
 }
+
+#ifdef __cplusplus
+} /* extern C */
+#endif
 
 #endif
