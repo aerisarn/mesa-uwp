@@ -477,10 +477,10 @@
     <reserved/>
     <value desc="32-bit floats">f32</value>
     <value desc="16-bit floats">f16</value>
+    <value desc="32-bit signed integers">s32</value>
+    <value desc="16-bit signed integers">s16</value>
     <value desc="32-bit unsigned integers">u32</value>
-    <reserved/>
-    <reserved/>
-    <reserved/>
+    <value desc="16-bit unsigned integers">u16</value>
   </enum>
 
   <enum name="Staging register count" implied="true">
@@ -719,12 +719,35 @@
     <imm name="index" start="20" size="4"/>
   </ins>
 
-  <ins name="LD_ATTR" title="Load indirect attribute" opcode="0x67" unit="LS">
+  <ins name="LEA_IMAGE_IMM" title="Load effective address of image texel" opcode="0x67" unit="LS">
+    <desc>
+      Load the effective address of a texel from the image specified with the
+      given immediate index. Returns three staging register: the low/high
+      32-bits of the address and the internal conversion descriptor. The format
+      of the internal conversion descriptor is compatible with Bifrost but
+      omits the register format, as this is specified with the ST_CVT
+      instruction on Valhall.
+
+      Coordinates are specified as 16-bit integers, packed into 32-bit sources.
+    </desc>
+    <vecsize/>
+    <slot/>
+    <sr_count/>
+    <sr write="true"/>
+    <imm name="unk" start="36" size="4"/>
+    <src>X/Y coordinates (16:16)</src>
+    <src>Z/W coordinates (16:16)</src>
+    <imm name="index" start="20" size="4"/>
+    <imm name="unk2" start="16" size="4"/>
+  </ins>
+
+  <ins name="LD_ATTR" title="Load indirect attribute" opcode="0x76" unit="LS">
+    <!-- TODO: for some reason, blob is using index (1<<24)|x for [x] -->
     <desc>The index must not diverge within a warp.</desc>
+    <sr_count/>
     <vecsize/>
     <regfmt/>
     <slot/>
-    <sr_count/>
     <sr write="true"/>
     <src>Vertex ID</src>
     <src>Instance ID</src>
@@ -856,12 +879,26 @@
     <imm name="offset" start="8" size="16" signed="true"/>
   </group>
 
-  <ins name="ST_IMAGE" title="Image store" opcode="0x71" unit="LS">
-    <desc>Stores to images</desc>
+  <ins name="ST_CVT" title="Store with conversion" opcode="0x71" unit="LS">
+    <desc>
+      Store to memory with data conversion. The address to store to is given in
+      the first source, which must be a 64-bit register (a pair of 32-bit
+      registers). For backwards compatibility with Bifrost, there is a second
+      source which should be the high 32-bits of the register. However, on
+      Valhall the first source is 64-bit so the second source is unused. The
+      third source is the conversion descriptor used for the store.
+
+      Used with LEA_IMAGE_IMM to implement image stores.
+    </desc>
     <sr read="true"/>
     <sr_count/>
+    <vecsize/>
+    <regfmt/>
     <slot/>
-    <src>Address to store to after adding offset</src>
+    <src>64-bit address to store to (low)</src>
+    <src>64-bit address to store to (high)</src>
+    <src>Internal conversion descriptor</src>
+    <imm name="unk" start="36" size="4"/>
   </ins>
 
   <ins name="LD_TILE" title="Load from tilebuffer" opcode="0x78" unit="NONE">
