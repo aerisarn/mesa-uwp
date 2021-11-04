@@ -349,6 +349,13 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    return &ctx->base;
 }
 
+void util_blitter_sample_shading_force_off(struct blitter_context *blitter)
+{
+   struct blitter_context_priv *ctx = (struct blitter_context_priv*)blitter;
+
+   ctx->has_sample_shading = false;
+}
+
 void *util_blitter_get_noop_blend_state(struct blitter_context *blitter)
 {
    struct blitter_context_priv *ctx = (struct blitter_context_priv*)blitter;

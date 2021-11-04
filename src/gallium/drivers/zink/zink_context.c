@@ -4153,6 +4153,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->blitter)
       goto fail;
 
+   util_blitter_sample_shading_force_off(ctx->blitter);
+
    ctx->gfx_pipeline_state.shader_keys.last_vertex.key.vs_base.last_vertex_stage = true;
    ctx->last_vertex_stage_dirty = true;
    ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_VERTEX].size = sizeof(struct zink_vs_key_base);
