@@ -2230,8 +2230,11 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_fneg: {
       if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
          Temp src = get_alu_src_vop3p(ctx, instr->src[0]);
-         bld.vop3p(aco_opcode::v_pk_mul_f16, Definition(dst), src, Operand::c16(0xBC00),
-                   instr->src[0].swizzle[0] & 1, instr->src[0].swizzle[1] & 1);
+         Instruction* vop3p =
+            bld.vop3p(aco_opcode::v_pk_mul_f16, Definition(dst), src, Operand::c16(0x3C00),
+                      instr->src[0].swizzle[0] & 1, instr->src[0].swizzle[1] & 1);
+         vop3p->vop3p().neg_lo[0] = true;
+         vop3p->vop3p().neg_hi[0] = true;
          emit_split_vector(ctx, dst, 2);
          break;
       }
