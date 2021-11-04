@@ -445,3 +445,196 @@ void anv_GetRenderAreaGranularity(
 
    *pGranularity = (VkExtent2D) { 1, 1 };
 }
+
+void
+anv_dynamic_pass_init(struct anv_dynamic_render_pass *dyn_render_pass,
+                      const struct anv_dynamic_pass_create_info *info)
+{
+   uint32_t att_count;
+
+   att_count = info->colorAttachmentCount;
+   if ((info->depthAttachmentFormat != VK_FORMAT_UNDEFINED) ||
+       (info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED))
+      att_count++;
+
+   struct anv_render_pass *pass = &dyn_render_pass->pass;
+   pass->attachment_count = att_count;
+   pass->subpass_count = 1;
+   pass->attachments = dyn_render_pass->rp_attachments;
+
+   struct anv_subpass *subpass = &dyn_render_pass->subpass;
+   subpass->attachment_count = att_count;
+   subpass->attachments = dyn_render_pass->sp_attachments;
+   if (info->colorAttachmentCount > 0) {
+      subpass->color_count = info->colorAttachmentCount;
+      subpass->color_attachments = dyn_render_pass->sp_attachments;
+   }
+   subpass->view_mask = info->viewMask;
+
+   uint32_t att;
+   for (att = 0; att < info->colorAttachmentCount; att++) {
+      if (info->pColorAttachmentFormats[att] == VK_FORMAT_UNDEFINED)
+         continue;
+      pass->attachments[att].format = info->pColorAttachmentFormats[att];
+      pass->attachments[att].samples = info->rasterizationSamples;
+      subpass->attachments[att].attachment = att;
+      subpass->attachments[att].usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+   }
+
+   if ((info->depthAttachmentFormat != VK_FORMAT_UNDEFINED) ||
+       (info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)) {
+      pass->attachments[att].format = (info->depthAttachmentFormat != VK_FORMAT_UNDEFINED) ? info->depthAttachmentFormat : info->stencilAttachmentFormat;
+      pass->attachments[att].samples = info->rasterizationSamples;
+      subpass->attachments[att].attachment = att;
+      subpass->attachments[att].usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      subpass->depth_stencil_attachment = &subpass->attachments[att];
+
+      att++;
+   }
+}
+
+void
+anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
+                           const VkRenderingInfoKHR *info)
+{
+   uint32_t att_count;
+   uint32_t color_count = 0, ds_count = 0;
+   uint32_t color_resolve_idx, ds_idx;
+   bool has_color_resolve, has_ds_resolve;
+
+   struct anv_render_pass *pass = &dyn_render_pass->pass;
+   struct anv_subpass *subpass = &dyn_render_pass->subpass;
+
+   /* We set some of the fields conditionally below, like
+    * subpass->ds_resolve_attachment. But the value of this field is used to
+    * trigger depth/stencil resolve, so clear things to make sure we don't
+    * leave stale values.
+    */
+   memset(pass, 0, sizeof(*pass));
+   memset(subpass, 0, sizeof(*subpass));
+
+   dyn_render_pass->suspending = info->flags & VK_RENDERING_SUSPENDING_BIT_KHR;
+   dyn_render_pass->resuming = info->flags & VK_RENDERING_RESUMING_BIT_KHR;
+
+   color_count = info->colorAttachmentCount;
+   if ((info->pDepthAttachment && info->pDepthAttachment->imageView) ||
+       (info->pStencilAttachment && info->pStencilAttachment->imageView))
+      ds_count = 1;
+
+   has_color_resolve = false;
+   has_ds_resolve = false;
+   for (uint32_t i = 0; i < info->colorAttachmentCount; i++) {
+      if (info->pColorAttachments[i].resolveMode != VK_RESOLVE_MODE_NONE) {
+         has_color_resolve = true;
+         break;
+      }
+   }
+   if (has_color_resolve)
+      color_count *= 2;
+
+   has_ds_resolve =
+      ((info->pDepthAttachment &&
+        info->pDepthAttachment->resolveMode != VK_RESOLVE_MODE_NONE) ||
+       (info->pStencilAttachment &&
+        info->pStencilAttachment->resolveMode != VK_RESOLVE_MODE_NONE));
+   if (has_ds_resolve)
+      ds_count *= 2;
+
+   att_count = color_count + ds_count;
+   color_resolve_idx = info->colorAttachmentCount;
+   ds_idx = color_count;
+
+   pass->subpass_count = 1;
+   pass->attachments = dyn_render_pass->rp_attachments;
+   pass->attachment_count = att_count;
+
+   struct anv_subpass_attachment *subpass_attachments =
+      dyn_render_pass->sp_attachments;
+   subpass->attachment_count = att_count;
+   subpass->attachments = subpass_attachments;
+   subpass->color_count = info->colorAttachmentCount;
+   subpass->color_attachments = subpass_attachments;
+   subpass->has_color_resolve = has_color_resolve;
+   subpass->resolve_attachments =
+      subpass_attachments + subpass->color_count;
+   /* The depth field presence is used to trigger resolve/shadow-buffer-copy,
+    * only set them if needed.
+    */
+   if (ds_count > 0) {
+      subpass->depth_stencil_attachment = &subpass_attachments[ds_idx];
+      if (has_ds_resolve)
+         subpass->ds_resolve_attachment = &subpass_attachments[ds_idx + 1];
+   }
+   subpass->view_mask = info->viewMask;
+
+   for (uint32_t att = 0; att < info->colorAttachmentCount; att++) {
+      if (info->pColorAttachments[att].imageView == VK_NULL_HANDLE) {
+         subpass->color_attachments[att].attachment = VK_ATTACHMENT_UNUSED;
+         continue;
+      }
+
+      ANV_FROM_HANDLE(anv_image_view, iview, info->pColorAttachments[att].imageView);
+
+      pass->attachments[att]     = (struct anv_render_pass_attachment) {
+         .format                 = iview->vk.format,
+         .samples                = iview->vk.image->samples,
+      };
+
+      subpass->color_attachments[att] = (struct anv_subpass_attachment) {
+         .usage      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+         .attachment = att,
+      };
+
+      if (has_color_resolve) {
+         if (info->pColorAttachments[att].resolveMode == VK_RESOLVE_MODE_NONE) {
+            subpass->resolve_attachments[att].attachment = VK_ATTACHMENT_UNUSED;
+            continue;
+         }
+
+         subpass->resolve_attachments[att] = (struct anv_subpass_attachment) {
+            .usage      = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .attachment = att + color_resolve_idx,
+         };
+      }
+   }
+
+   if (ds_count) {
+      /* Easier to reference for the stuff both have in common. */
+      const VkRenderingAttachmentInfoKHR *d_att = info->pDepthAttachment;
+      const VkRenderingAttachmentInfoKHR *s_att = info->pStencilAttachment;
+      const VkRenderingAttachmentInfoKHR *d_or_s_att = d_att ? d_att : s_att;
+      VkResolveModeFlagBits depth_resolve_mode = VK_RESOLVE_MODE_NONE;
+      VkResolveModeFlagBits stencil_resolve_mode = VK_RESOLVE_MODE_NONE;
+
+      ANV_FROM_HANDLE(anv_image_view, iview, d_or_s_att->imageView);
+
+      pass->attachments[ds_idx]  = (struct anv_render_pass_attachment) {
+         .format                 = iview->vk.format,
+         .samples                = iview->vk.image->samples,
+      };
+
+      *subpass->depth_stencil_attachment = (struct anv_subpass_attachment) {
+         .usage            = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+         .attachment       = ds_idx,
+      };
+
+      if (d_att && d_att->imageView) {
+         depth_resolve_mode = d_att->resolveMode;
+      }
+      if (s_att && s_att->imageView) {
+         stencil_resolve_mode = s_att->resolveMode;
+      }
+
+      if (has_ds_resolve) {
+         uint32_t ds_res_idx = ds_idx + 1;
+
+         *subpass->ds_resolve_attachment = (struct anv_subpass_attachment) {
+            .usage            = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .attachment       = ds_res_idx,
+         };
+
+         subpass->depth_resolve_mode = depth_resolve_mode;
+         subpass->stencil_resolve_mode = stencil_resolve_mode;
+      }
+   }
+}
