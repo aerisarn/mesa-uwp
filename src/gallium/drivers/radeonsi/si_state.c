@@ -3663,7 +3663,10 @@ static void si_emit_msaa_config(struct si_context *sctx)
       unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
 
       sc_line_cntl |= S_028BDC_EXPAND_LINE_WIDTH(1) |
-                      S_028BDC_PERPENDICULAR_ENDCAP_ENA(rs->perpendicular_end_caps);
+                      S_028BDC_PERPENDICULAR_ENDCAP_ENA(rs->perpendicular_end_caps) |
+                      S_028BDC_EXTRA_DX_DY_PRECISION(rs->perpendicular_end_caps &&
+                                                     (sctx->family == CHIP_VEGA20 ||
+                                                      sctx->chip_class >= GFX10));
       sc_aa_config = S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
                      S_028BE0_MAX_SAMPLE_DIST(max_dist[log_samples]) |
                      S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
