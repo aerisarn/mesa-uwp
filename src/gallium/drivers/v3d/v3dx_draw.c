@@ -37,8 +37,8 @@
 #include "broadcom/common/v3d_util.h"
 #include "broadcom/cle/v3dx_pack.h"
 
-static void
-v3d_start_binning(struct v3d_context *v3d, struct v3d_job *job)
+void
+v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
 {
         assert(job->needs_flush);
 
@@ -159,7 +159,7 @@ v3d_start_draw(struct v3d_context *v3d)
         job->draw_height = v3d->framebuffer.height;
         job->num_layers = util_framebuffer_get_num_layers(&v3d->framebuffer);
 
-        v3d_start_binning(v3d, job);
+        v3dX(start_binning)(v3d, job);
 }
 
 static void
@@ -1652,12 +1652,6 @@ v3d_clear_depth_stencil(struct pipe_context *pctx, struct pipe_surface *ps,
                         bool render_condition_enabled)
 {
         fprintf(stderr, "unimpl: clear DS\n");
-}
-
-void
-v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
-{
-        v3d_start_binning(v3d, job);
 }
 
 void
