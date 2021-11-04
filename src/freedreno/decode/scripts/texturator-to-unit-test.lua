@@ -64,16 +64,16 @@ function draw(primtype, nindx)
     blit.width   = r.GRAS_2D_DST_BR.X + 1
     blit.height  = r.GRAS_2D_DST_BR.Y + 1
     blit.pitch   = r.RB_2D_DST_PITCH
-    blit.addr    = r.RB_2D_DST_LO | (r.RB_2D_DST_HI << 32)
-    blit.ubwc_addr = r.RB_2D_DST_FLAGS_LO | (r.RB_2D_DST_FLAGS_HI << 32)
+    blit.addr    = r.RB_2D_DST
+    blit.ubwc_addr = r.RB_2D_DST_FLAGS
     blit.ubwc_pitch = r.RB_2D_DST_FLAGS_PITCH
     type="blit";
   else
     blit.width   = r.GRAS_SC_WINDOW_SCISSOR_BR.X + 1
     blit.height  = r.GRAS_SC_WINDOW_SCISSOR_BR.Y + 1
     blit.pitch = r.RB_MRT[0].PITCH
-    blit.addr = r.RB_MRT[0].BASE_LO | (r.RB_MRT[0].BASE_HI << 32);
-    blit.ubwc_addr = r.RB_MRT_FLAG_BUFFER[0].ADDR_LO | (r.RB_MRT_FLAG_BUFFER[0].ADDR_HI << 32)
+    blit.addr = r.RB_MRT[0].BASE
+    blit.ubwc_addr = r.RB_MRT_FLAG_BUFFER[0].ADDR
     blit.ubwc_pitch = r.RB_MRT_FLAG_BUFFER[0].PITCH.PITCH
     type="draw"
   end
