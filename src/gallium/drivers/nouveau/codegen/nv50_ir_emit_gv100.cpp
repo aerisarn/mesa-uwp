@@ -1117,8 +1117,11 @@ CodeEmitterGV100::emitOUT()
 
    if (insn->op != OP_FINAL)
       emitFormA(0x124, FA_RRR | FA_RIR, __(0), __(1), EMPTY);
-   else
+   else {
       emitFormA(0x124, FA_RRR | FA_RIR, __(0), EMPTY, EMPTY);
+      if (targ->getChipset() >= 0x170)
+         emitGPR(32);
+   }
    emitField(78, 2, (cut << 1) | emit);
 }
 
