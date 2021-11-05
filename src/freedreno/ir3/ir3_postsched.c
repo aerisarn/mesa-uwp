@@ -399,7 +399,7 @@ add_single_reg_dep(struct ir3_postsched_deps_state *state,
       node->delay = MAX2(node->delay, d);
       if (is_tex_or_prefetch(dep->instr))
          node->has_tex_src = true;
-      if (is_tex_or_prefetch(dep->instr))
+      if (is_sfu(dep->instr))
          node->has_sfu_src = true;
    }
 
