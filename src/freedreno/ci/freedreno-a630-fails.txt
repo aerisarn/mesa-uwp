@@ -377,7 +377,6 @@ spec@ext_transform_feedback@structs struct-array-elem run interface,Fail
 spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 spec@ext_transform_feedback@tessellation triangle_strip flat_first,Fail
 spec@glsl-1.30@execution@texelfetch fs sampler3d 1x129x9-98x129x9,Fail
-spec@glsl-1.30@execution@texelfetch fs sampler3d 98x129x1-98x129x9,Fail
 spec@glsl-1.30@execution@texelfetch fs sampler3d 98x1x9-98x129x9,Fail
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-const-accept,Fail
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-different-from-position,Fail
