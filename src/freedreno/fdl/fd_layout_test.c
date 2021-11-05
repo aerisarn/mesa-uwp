@@ -106,8 +106,10 @@ fdl_test_layout(const struct testcase *testcase, int gpu_id)
       }
    }
 
-   if (!ok)
+   if (!ok) {
+      fdl_dump_layout(&layout);
       fprintf(stderr, "\n");
+   }
 
    return ok;
 }
