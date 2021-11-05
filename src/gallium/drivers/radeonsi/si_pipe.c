@@ -1289,8 +1289,11 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    /* Only set this for the cases that are known to work, which are:
     * - GFX9 if bpp >= 4 (in bytes)
     */
-   if (sscreen->info.chip_class == GFX9) {
-      for (unsigned bpp_log2 = util_logbase2(4); bpp_log2 <= util_logbase2(16); bpp_log2++)
+   if (sscreen->info.chip_class >= GFX10) {
+      memset(sscreen->allow_dcc_msaa_clear_to_reg_for_bpp, true,
+             sizeof(sscreen->allow_dcc_msaa_clear_to_reg_for_bpp));
+   } else if (sscreen->info.chip_class == GFX9) {
+      for (unsigned bpp_log2 = util_logbase2(1); bpp_log2 <= util_logbase2(16); bpp_log2++)
          sscreen->allow_dcc_msaa_clear_to_reg_for_bpp[bpp_log2] = true;
    }
 

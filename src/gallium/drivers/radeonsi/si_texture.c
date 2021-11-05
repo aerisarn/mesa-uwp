@@ -243,8 +243,7 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
 
       case GFX10:
       case GFX10_3:
-         /* DCC causes corruption with MSAA. */
-         if (ptex->nr_storage_samples >= 2)
+         if (ptex->nr_storage_samples >= 2 && !sscreen->options.dcc_msaa)
             flags |= RADEON_SURF_DISABLE_DCC;
          break;
 
