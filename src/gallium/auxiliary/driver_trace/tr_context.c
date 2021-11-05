@@ -1958,6 +1958,27 @@ trace_context_render_condition(struct pipe_context *_context,
    context->render_condition(context, query, condition, mode);
 }
 
+static void
+trace_context_render_condition_mem(struct pipe_context *_context,
+                                    struct pipe_resource *buffer,
+                                    uint32_t offset,
+                                    bool condition)
+{
+   struct trace_context *tr_context = trace_context(_context);
+   struct pipe_context *context = tr_context->pipe;
+
+   trace_dump_call_begin("pipe_context", "render_condition_mem");
+
+   trace_dump_arg(ptr, context);
+   trace_dump_arg(ptr, buffer);
+   trace_dump_arg(uint, offset);
+   trace_dump_arg(bool, condition);
+
+   trace_dump_call_end();
+
+   context->render_condition_mem(context, buffer, offset, condition);
+}
+
 
 static void
 trace_context_texture_barrier(struct pipe_context *_context, unsigned flags)
@@ -2246,6 +2267,7 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(draw_vbo);
    TR_CTX_INIT(draw_vertex_state);
    TR_CTX_INIT(render_condition);
+   TR_CTX_INIT(render_condition_mem);
    TR_CTX_INIT(create_query);
    TR_CTX_INIT(destroy_query);
    TR_CTX_INIT(begin_query);
