@@ -363,6 +363,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
       return 1;
 
+   case PIPE_CAP_DRAW_VERTEX_STATE:
+      return screen->info.have_EXT_vertex_input_dynamic_state;
+
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
       return screen->vk_version >= VK_MAKE_VERSION(1,2,0);
 
@@ -2067,6 +2070,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_screen_init_descriptor_funcs(screen, false);
    util_idalloc_mt_init_tc(&screen->buffer_ids);
+
+   util_vertex_state_cache_init(&screen->vertex_state_cache,
+                                zink_create_vertex_state, zink_vertex_state_destroy);
+   screen->base.create_vertex_state = zink_cache_create_vertex_state;
+   screen->base.vertex_state_destroy = zink_cache_vertex_state_destroy;
 
    return screen;
 

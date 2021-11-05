@@ -37,6 +37,7 @@
 #include "util/simple_mtx.h"
 #include "util/u_queue.h"
 #include "util/u_live_shader_cache.h"
+#include "util/u_vertex_state_cache.h"
 #include "pipebuffer/pb_cache.h"
 #include "pipebuffer/pb_slab.h"
 #include <vulkan/vulkan.h>
@@ -120,6 +121,7 @@ struct zink_screen {
    VkPhysicalDevice pdev;
    uint32_t vk_version, spirv_version;
    struct util_idalloc_mt buffer_ids;
+   struct util_vertex_state_cache vertex_state_cache;
 
    struct zink_device_info info;
    struct nir_shader_compiler_options nir_options;
