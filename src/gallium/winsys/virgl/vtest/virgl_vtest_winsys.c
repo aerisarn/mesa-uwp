@@ -564,9 +564,14 @@ static int virgl_vtest_get_caps(struct virgl_winsys *vws,
                                 struct virgl_drm_caps *caps)
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
+   int ret;
 
    virgl_ws_fill_new_caps_defaults(caps);
-   return virgl_vtest_send_get_caps(vtws, caps);
+   ret = virgl_vtest_send_get_caps(vtws, caps);
+   // vtest doesn't support that
+   if (caps->caps.v2.capability_bits_v2 & VIRGL_CAP_V2_COPY_TRANSFER_BOTH_DIRECTIONS)
+      caps->caps.v2.capability_bits_v2 &= ~VIRGL_CAP_V2_COPY_TRANSFER_BOTH_DIRECTIONS;
+   return ret;
 }
 
 static struct pipe_fence_handle *
