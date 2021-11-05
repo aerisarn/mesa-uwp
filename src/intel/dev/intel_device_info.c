@@ -88,6 +88,11 @@ static const struct intel_device_info intel_device_info_gfx3 = {
    .ver = 3,
    .platform = INTEL_PLATFORM_GFX3,
    .simulator_id = -1,
+   .num_slices = 1,
+   .num_subslices = { 1, },
+   .num_eu_per_subslice = 8,
+   .num_thread_per_eu = 4,
+   .timestamp_frequency = 12500000,
    .cs_prefetch_size = 512,
 };
 
