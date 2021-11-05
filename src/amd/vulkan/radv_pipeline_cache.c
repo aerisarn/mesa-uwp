@@ -294,7 +294,7 @@ radv_is_cache_disabled(struct radv_device *device)
 bool
 radv_create_shaders_from_pipeline_cache(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_shader **shaders, struct radv_pipeline_shader_stack_size **stack_sizes,
+   struct radv_pipeline *pipeline, struct radv_pipeline_shader_stack_size **stack_sizes,
    uint32_t *num_stack_sizes, bool *found_in_application_cache)
 {
    struct cache_entry *entry;
@@ -368,7 +368,7 @@ radv_create_shaders_from_pipeline_cache(
       }
    }
 
-   memcpy(shaders, entry->shaders, sizeof(entry->shaders));
+   memcpy(pipeline->shaders, entry->shaders, sizeof(entry->shaders));
 
    if (num_stack_sizes) {
       *num_stack_sizes = entry->num_stack_sizes;
@@ -397,7 +397,7 @@ radv_create_shaders_from_pipeline_cache(
 
 void
 radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipeline_cache *cache,
-                                   const unsigned char *sha1, struct radv_shader **shaders,
+                                   const unsigned char *sha1, struct radv_pipeline *pipeline,
                                    struct radv_shader_binary *const *binaries,
                                    const struct radv_pipeline_shader_stack_size *stack_sizes,
                                    uint32_t num_stack_sizes)
@@ -412,10 +412,10 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
          if (!entry->shaders[i])
             continue;
 
-         radv_shader_destroy(cache->device, shaders[i]);
+         radv_shader_destroy(cache->device, pipeline->shaders[i]);
 
-         shaders[i] = entry->shaders[i];
-         p_atomic_inc(&shaders[i]->ref_count);
+         pipeline->shaders[i] = entry->shaders[i];
+         p_atomic_inc(&pipeline->shaders[i]->ref_count);
       }
       radv_pipeline_cache_unlock(cache);
       return;
@@ -431,7 +431,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
 
    size_t size = sizeof(*entry) + sizeof(*stack_sizes) * num_stack_sizes;
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i)
-      if (shaders[i])
+      if (pipeline->shaders[i])
          size += binaries[i]->total_size;
    const size_t size_without_align = size;
    size = align(size_without_align, alignof(struct cache_entry));
@@ -448,7 +448,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    char *p = entry->code;
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (!shaders[i])
+      if (!pipeline->shaders[i])
          continue;
 
       entry->binary_sizes[i] = binaries[i]->total_size;
@@ -492,11 +492,11 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
     * items.
     */
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (!shaders[i])
+      if (!pipeline->shaders[i])
          continue;
 
-      entry->shaders[i] = shaders[i];
-      p_atomic_inc(&shaders[i]->ref_count);
+      entry->shaders[i] = pipeline->shaders[i];
+      p_atomic_inc(&pipeline->shaders[i]->ref_count);
    }
 
    radv_pipeline_cache_add_entry(cache, entry);

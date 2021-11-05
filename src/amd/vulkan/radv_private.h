@@ -365,12 +365,12 @@ bool radv_pipeline_cache_load(struct radv_pipeline_cache *cache, const void *dat
 
 bool radv_create_shaders_from_pipeline_cache(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_shader **shaders, struct radv_pipeline_shader_stack_size **stack_sizes,
+   struct radv_pipeline *pipeline, struct radv_pipeline_shader_stack_size **stack_sizes,
    uint32_t *num_stack_sizes, bool *found_in_application_cache);
 
 void radv_pipeline_cache_insert_shaders(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_shader **shaders, struct radv_shader_binary *const *binaries,
+   struct radv_pipeline *pipeline, struct radv_shader_binary *const *binaries,
    const struct radv_pipeline_shader_stack_size *stack_sizes, uint32_t num_stack_sizes);
 
 enum radv_blit_ds_layout {

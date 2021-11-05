@@ -3408,7 +3408,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
    bool found_in_application_cache = true;
    if (!keep_executable_info &&
-       radv_create_shaders_from_pipeline_cache(device, cache, hash, pipeline->shaders,
+       radv_create_shaders_from_pipeline_cache(device, cache, hash, pipeline,
                                                stack_sizes, num_stack_sizes,
                                                &found_in_application_cache)) {
       if (modules[MESA_SHADER_GEOMETRY] && !pipeline->shaders[MESA_SHADER_GEOMETRY]->info.is_ngg) {
@@ -3713,7 +3713,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          pipeline->shaders[MESA_SHADER_COMPUTE] = pipeline->gs_copy_shader;
       }
 
-      radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline->shaders, binaries,
+      radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline, binaries,
                                          stack_sizes ? *stack_sizes : NULL,
                                          num_stack_sizes ? *num_stack_sizes : 0);
 
