@@ -6863,6 +6863,9 @@ iris_upload_render_state(struct iris_context *ice,
 #define _3DPRIM_START_INSTANCE      0x243C
 #define _3DPRIM_BASE_VERTEX         0x2440
 
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+
    if (indirect && !indirect->count_from_stream_output) {
       if (indirect->indirect_draw_count) {
          use_predicate = true;
@@ -6873,9 +6876,6 @@ iris_upload_render_state(struct iris_context *ice,
             indirect->indirect_draw_count_offset;
 
          if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
-            struct mi_builder b;
-            mi_builder_init(&b, &batch->screen->devinfo, batch);
-
             /* comparison = draw id < draw count */
             struct mi_value comparison =
                mi_ult(&b, mi_imm(drawid_offset),
@@ -6888,14 +6888,13 @@ iris_upload_render_state(struct iris_context *ice,
             uint32_t mi_predicate;
 
             /* Upload the id of the current primitive to MI_PREDICATE_SRC1. */
-            iris_load_register_imm64(batch, MI_PREDICATE_SRC1, drawid_offset);
+            mi_store(&b, mi_reg64(MI_PREDICATE_SRC1), mi_imm(drawid_offset));
             /* Upload the current draw count from the draw parameters buffer
-             * to MI_PREDICATE_SRC0.
+             * to MI_PREDICATE_SRC0. Zero the top 32-bits of
+             * MI_PREDICATE_SRC0.
              */
-            iris_load_register_mem32(batch, MI_PREDICATE_SRC0,
-                                     draw_count_bo, draw_count_offset);
-            /* Zero the top 32-bits of MI_PREDICATE_SRC0 */
-            iris_load_register_imm32(batch, MI_PREDICATE_SRC0 + 4, 0);
+            mi_store(&b, mi_reg64(MI_PREDICATE_SRC0),
+                     mi_mem32(ro_bo(draw_count_bo, draw_count_offset)));
 
             if (drawid_offset == 0) {
                mi_predicate = MI_PREDICATE | MI_PREDICATE_LOADOP_LOADINV |
@@ -6919,36 +6918,21 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_bo *bo = iris_resource_bo(indirect->buffer);
       assert(bo);
 
-      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-         lrm.RegisterAddress = _3DPRIM_VERTEX_COUNT;
-         lrm.MemoryAddress = ro_bo(bo, indirect->offset + 0);
-      }
-      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-         lrm.RegisterAddress = _3DPRIM_INSTANCE_COUNT;
-         lrm.MemoryAddress = ro_bo(bo, indirect->offset + 4);
-      }
-      iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-         lrm.RegisterAddress = _3DPRIM_START_VERTEX;
-         lrm.MemoryAddress = ro_bo(bo, indirect->offset + 8);
-      }
+      mi_store(&b, mi_reg32(_3DPRIM_VERTEX_COUNT),
+               mi_mem32(ro_bo(bo, indirect->offset + 0)));
+      mi_store(&b, mi_reg32(_3DPRIM_INSTANCE_COUNT),
+               mi_mem32(ro_bo(bo, indirect->offset + 4)));
+      mi_store(&b, mi_reg32(_3DPRIM_START_VERTEX),
+               mi_mem32(ro_bo(bo, indirect->offset + 8)));
       if (draw->index_size) {
-         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-            lrm.RegisterAddress = _3DPRIM_BASE_VERTEX;
-            lrm.MemoryAddress = ro_bo(bo, indirect->offset + 12);
-         }
-         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-            lrm.RegisterAddress = _3DPRIM_START_INSTANCE;
-            lrm.MemoryAddress = ro_bo(bo, indirect->offset + 16);
-         }
+         mi_store(&b, mi_reg32(_3DPRIM_BASE_VERTEX),
+                  mi_mem32(ro_bo(bo, indirect->offset + 12)));
+         mi_store(&b, mi_reg32(_3DPRIM_START_INSTANCE),
+                  mi_mem32(ro_bo(bo, indirect->offset + 16)));
       } else {
-         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-            lrm.RegisterAddress = _3DPRIM_START_INSTANCE;
-            lrm.MemoryAddress = ro_bo(bo, indirect->offset + 12);
-         }
-         iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-            lri.RegisterOffset = _3DPRIM_BASE_VERTEX;
-            lri.DataDWord = 0;
-         }
+         mi_store(&b, mi_reg32(_3DPRIM_START_INSTANCE),
+                  mi_mem32(ro_bo(bo, indirect->offset + 12)));
+         mi_store(&b, mi_reg32(_3DPRIM_BASE_VERTEX), mi_imm(0));
       }
    } else if (indirect && indirect->count_from_stream_output) {
       struct iris_stream_output_target *so =
@@ -6959,21 +6943,17 @@ iris_upload_render_state(struct iris_context *ice,
                                    "draw count from stream output stall",
                                    PIPE_CONTROL_CS_STALL);
 
-      struct mi_builder b;
-      mi_builder_init(&b, &batch->screen->devinfo, batch);
-
       struct iris_address addr =
          ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
       struct mi_value offset =
          mi_iadd_imm(&b, mi_mem32(addr), -so->base.buffer_offset);
-
       mi_store(&b, mi_reg32(_3DPRIM_VERTEX_COUNT),
                    mi_udiv32_imm(&b, offset, so->stride));
-
-      _iris_emit_lri(batch, _3DPRIM_START_VERTEX, 0);
-      _iris_emit_lri(batch, _3DPRIM_BASE_VERTEX, 0);
-      _iris_emit_lri(batch, _3DPRIM_START_INSTANCE, 0);
-      _iris_emit_lri(batch, _3DPRIM_INSTANCE_COUNT, draw->instance_count);
+      mi_store(&b, mi_reg32(_3DPRIM_START_VERTEX), mi_imm(0));
+      mi_store(&b, mi_reg32(_3DPRIM_BASE_VERTEX), mi_imm(0));
+      mi_store(&b, mi_reg32(_3DPRIM_START_INSTANCE), mi_imm(0));
+      mi_store(&b, mi_reg32(_3DPRIM_INSTANCE_COUNT),
+               mi_imm(draw->instance_count));
    }
 
    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_DRAW, draw, indirect, sc);
