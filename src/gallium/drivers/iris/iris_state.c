@@ -470,52 +470,39 @@ flush_after_state_base_change(struct iris_batch *batch)
 }
 
 static void
-_iris_emit_lri(struct iris_batch *batch, uint32_t reg, uint32_t val)
-{
-   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = reg;
-      lri.DataDWord      = val;
-   }
-}
-#define iris_emit_lri(b, r, v) _iris_emit_lri(b, GENX(r##_num), v)
-
-static void
-_iris_emit_lrr(struct iris_batch *batch, uint32_t dst, uint32_t src)
-{
-   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_REG), lrr) {
-      lrr.SourceRegisterAddress = src;
-      lrr.DestinationRegisterAddress = dst;
-   }
-}
-
-static void
 iris_load_register_reg32(struct iris_batch *batch, uint32_t dst,
                          uint32_t src)
 {
-   _iris_emit_lrr(batch, dst, src);
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   mi_store(&b, mi_reg32(dst), mi_reg32(src));
 }
 
 static void
 iris_load_register_reg64(struct iris_batch *batch, uint32_t dst,
                          uint32_t src)
 {
-   _iris_emit_lrr(batch, dst, src);
-   _iris_emit_lrr(batch, dst + 4, src + 4);
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   mi_store(&b, mi_reg64(dst), mi_reg64(src));
 }
 
 static void
 iris_load_register_imm32(struct iris_batch *batch, uint32_t reg,
                          uint32_t val)
 {
-   _iris_emit_lri(batch, reg, val);
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   mi_store(&b, mi_reg32(reg), mi_imm(val));
 }
 
 static void
 iris_load_register_imm64(struct iris_batch *batch, uint32_t reg,
                          uint64_t val)
 {
-   _iris_emit_lri(batch, reg + 0, val & 0xffffffff);
-   _iris_emit_lri(batch, reg + 4, val >> 32);
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   mi_store(&b, mi_reg64(reg), mi_imm(val));
 }
 
 /**
@@ -526,10 +513,10 @@ iris_load_register_mem32(struct iris_batch *batch, uint32_t reg,
                          struct iris_bo *bo, uint32_t offset)
 {
    iris_batch_sync_region_start(batch);
-   iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-      lrm.RegisterAddress = reg;
-      lrm.MemoryAddress = ro_bo(bo, offset);
-   }
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   struct mi_value src = mi_mem32(ro_bo(bo, offset));
+   mi_store(&b, mi_reg32(reg), src);
    iris_batch_sync_region_end(batch);
 }
 
@@ -541,8 +528,12 @@ static void
 iris_load_register_mem64(struct iris_batch *batch, uint32_t reg,
                          struct iris_bo *bo, uint32_t offset)
 {
-   iris_load_register_mem32(batch, reg + 0, bo, offset + 0);
-   iris_load_register_mem32(batch, reg + 4, bo, offset + 4);
+   iris_batch_sync_region_start(batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   struct mi_value src = mi_mem64(ro_bo(bo, offset));
+   mi_store(&b, mi_reg64(reg), src);
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -551,11 +542,14 @@ iris_store_register_mem32(struct iris_batch *batch, uint32_t reg,
                           bool predicated)
 {
    iris_batch_sync_region_start(batch);
-   iris_emit_cmd(batch, GENX(MI_STORE_REGISTER_MEM), srm) {
-      srm.RegisterAddress = reg;
-      srm.MemoryAddress = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
-      srm.PredicateEnable = predicated;
-   }
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   struct mi_value dst = mi_mem32(rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE));
+   struct mi_value src = mi_reg32(reg);
+   if (predicated)
+      mi_store_if(&b, dst, src);
+   else
+      mi_store(&b, dst, src);
    iris_batch_sync_region_end(batch);
 }
 
@@ -564,8 +558,16 @@ iris_store_register_mem64(struct iris_batch *batch, uint32_t reg,
                           struct iris_bo *bo, uint32_t offset,
                           bool predicated)
 {
-   iris_store_register_mem32(batch, reg + 0, bo, offset + 0, predicated);
-   iris_store_register_mem32(batch, reg + 4, bo, offset + 4, predicated);
+   iris_batch_sync_region_start(batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   struct mi_value dst = mi_mem64(rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE));
+   struct mi_value src = mi_reg64(reg);
+   if (predicated)
+      mi_store_if(&b, dst, src);
+   else
+      mi_store(&b, dst, src);
+   iris_batch_sync_region_end(batch);
 }
 
 static void
@@ -574,10 +576,11 @@ iris_store_data_imm32(struct iris_batch *batch,
                       uint32_t imm)
 {
    iris_batch_sync_region_start(batch);
-   iris_emit_cmd(batch, GENX(MI_STORE_DATA_IMM), sdi) {
-      sdi.Address = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
-      sdi.ImmediateData = imm;
-   }
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   struct mi_value dst = mi_mem32(rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE));
+   struct mi_value src = mi_imm(imm);
+   mi_store(&b, dst, src);
    iris_batch_sync_region_end(batch);
 }
 
@@ -586,16 +589,12 @@ iris_store_data_imm64(struct iris_batch *batch,
                       struct iris_bo *bo, uint32_t offset,
                       uint64_t imm)
 {
-   /* Can't use iris_emit_cmd because MI_STORE_DATA_IMM has a length of
-    * 2 in genxml but it's actually variable length and we need 5 DWords.
-    */
-   void *map = iris_get_command_space(batch, 4 * 5);
    iris_batch_sync_region_start(batch);
-   _iris_pack_command(batch, GENX(MI_STORE_DATA_IMM), map, sdi) {
-      sdi.DWordLength = 5 - 2;
-      sdi.Address = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
-      sdi.ImmediateData = imm;
-   }
+   struct mi_builder b;
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
+   struct mi_value dst = mi_mem64(rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE));
+   struct mi_value src = mi_imm(imm);
+   mi_store(&b, dst, src);
    iris_batch_sync_region_end(batch);
 }
 
