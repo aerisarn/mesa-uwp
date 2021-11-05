@@ -120,6 +120,7 @@ mkbootimg.py \
   --ramdisk rootfs.cpio.gz \
   --dtb dtb \
   --cmdline "$BM_CMDLINE" \
+  $BM_MKBOOT_PARAMS \
   --header_version 2 \
   -o artifacts/fastboot.img
 
