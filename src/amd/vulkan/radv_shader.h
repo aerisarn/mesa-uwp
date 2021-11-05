@@ -514,6 +514,9 @@ struct radv_shader *radv_shader_compile(
    struct radv_shader_info *info, bool keep_shader_info, bool keep_statistic_info,
    struct radv_shader_binary **binary_out);
 
+bool radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
+                               struct radv_shader *shader);
+
 struct radv_shader *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
                            struct radv_shader_info *info, struct radv_shader_binary **binary_out,

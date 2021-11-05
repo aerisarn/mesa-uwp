@@ -1606,7 +1606,7 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shad
    return ac_rtld_open(rtld_binary, open_info);
 }
 
-static bool
+bool
 radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                           struct radv_shader *shader)
 {
@@ -1709,9 +1709,6 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
       assert(args);
       radv_postprocess_config(device, &config, &binary->info, binary->stage, args, &shader->config);
    }
-
-   if (!radv_shader_binary_upload(device, binary, shader))
-      return NULL;
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
       struct radv_shader_binary_rtld *bin = (struct radv_shader_binary_rtld *)binary;

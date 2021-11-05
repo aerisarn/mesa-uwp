@@ -3691,6 +3691,21 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       }
    }
 
+   /* Upload shader binaries. */
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+      struct radv_shader *shader = pipeline->shaders[i];
+      if (!shader)
+         continue;
+
+      if (!radv_shader_binary_upload(device, binaries[i], shader))
+         return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+      if (i == MESA_SHADER_GEOMETRY && pipeline->gs_copy_shader) {
+         if (!radv_shader_binary_upload(device, gs_copy_binary, pipeline->gs_copy_shader))
+            return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      }
+   }
+
    if (!keep_executable_info) {
       if (pipeline->gs_copy_shader) {
          assert(!binaries[MESA_SHADER_COMPUTE] && !pipeline->shaders[MESA_SHADER_COMPUTE]);
