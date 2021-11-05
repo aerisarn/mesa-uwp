@@ -25,9 +25,11 @@
 #include "bi_test.h"
 #include "bi_builder.h"
 
+#include <gtest/gtest.h>
+
 #define CASE(instr, expected) do { \
-   bi_builder *A = bit_builder(ralloc_ctx); \
-   bi_builder *B = bit_builder(ralloc_ctx); \
+   bi_builder *A = bit_builder(mem_ctx); \
+   bi_builder *B = bit_builder(mem_ctx); \
    { \
       bi_builder *b = A; \
       instr; \
@@ -39,33 +41,44 @@
    bi_opt_mod_prop_forward(A->shader); \
    bi_opt_mod_prop_backward(A->shader); \
    bi_opt_dead_code_eliminate(A->shader); \
-   if (bit_shader_equal(A->shader, B->shader)) { \
-      nr_pass++; \
-   } else { \
-      fprintf(stderr, "Got:\n"); \
+   if (!bit_shader_equal(A->shader, B->shader)) { \
+      ADD_FAILURE(); \
+      fprintf(stderr, "Optimization produce unexpected result"); \
+      fprintf(stderr, "  Actual:\n"); \
       bi_print_shader(A->shader, stderr); \
       fprintf(stderr, "Expected:\n"); \
       bi_print_shader(B->shader, stderr); \
       fprintf(stderr, "\n"); \
-      nr_fail++; \
    } \
 } while(0)
 
 #define NEGCASE(instr) CASE(instr, instr)
 
-int
-main(int argc, const char **argv)
+class Optimizer : public testing::Test {
+protected:
+   Optimizer() {
+      mem_ctx = ralloc_context(NULL);
+
+      reg     = bi_register(0);
+      x       = bi_register(1);
+      y       = bi_register(2);
+      negabsx = bi_neg(bi_abs(x));
+   }
+
+   ~Optimizer() {
+      ralloc_free(mem_ctx);
+   }
+
+   void *mem_ctx;
+
+   bi_index reg;
+   bi_index x;
+   bi_index y;
+   bi_index negabsx;
+};
+
+TEST_F(Optimizer, FusedFABSNEG)
 {
-   unsigned nr_fail = 0, nr_pass = 0;
-   void *ralloc_ctx = ralloc_context(NULL);
-   bi_index zero = bi_zero();
-   bi_index reg = bi_register(0);
-   bi_index x = bi_register(1);
-   bi_index y = bi_register(2);
-   bi_index negabsx = bi_neg(bi_abs(x));
-
-   /* Check absneg is fused */
-
    CASE(bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, bi_abs(x)), y, BI_ROUND_NONE),
         bi_fadd_f32_to(b, reg, bi_abs(x), y, BI_ROUND_NONE));
 
@@ -78,24 +91,24 @@ main(int argc, const char **argv)
    CASE(bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, x), y, BI_ROUND_NONE),
         bi_fadd_f32_to(b, reg, x, y, BI_ROUND_NONE));
 
-   /* Check absneg is fused on a variety of instructions */
-
    CASE(bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, negabsx), y, BI_ROUND_RTP),
         bi_fadd_f32_to(b, reg, negabsx, y, BI_ROUND_RTP));
 
    CASE(bi_fmin_f32_to(b, reg, bi_fabsneg_f32(b, negabsx), bi_neg(y)),
         bi_fmin_f32_to(b, reg, negabsx, bi_neg(y)));
+}
 
-   /* Check absneg is fused on fp16 */
-
+TEST_F(Optimizer, FusedFABSNEGForFP16)
+{
    CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, negabsx), y, BI_ROUND_RTP),
         bi_fadd_v2f16_to(b, reg, negabsx, y, BI_ROUND_RTP));
 
    CASE(bi_fmin_v2f16_to(b, reg, bi_fabsneg_v2f16(b, negabsx), bi_neg(y)),
         bi_fmin_v2f16_to(b, reg, negabsx, bi_neg(y)));
+}
 
-   /* Check that swizzles are composed for fp16 */
-
+TEST_F(Optimizer, SwizzlesComposedForFP16)
+{
    CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, bi_swz_16(negabsx, true, false)), y, BI_ROUND_RTP),
         bi_fadd_v2f16_to(b, reg, bi_swz_16(negabsx, true, false), y, BI_ROUND_RTP));
 
@@ -110,9 +123,11 @@ main(int argc, const char **argv)
 
    CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, bi_half(negabsx, true)), true, false), y, BI_ROUND_RTP),
         bi_fadd_v2f16_to(b, reg, bi_half(negabsx, true), y, BI_ROUND_RTP));
+}
 
+TEST_F(Optimizer, PreserveWidens)
+{
    /* Check that widens are passed through */
-
    CASE(bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, bi_half(negabsx, false)), y, BI_ROUND_NONE),
         bi_fadd_f32_to(b, reg, bi_half(negabsx, false), y, BI_ROUND_NONE));
 
@@ -121,22 +136,31 @@ main(int argc, const char **argv)
 
    CASE(bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, bi_half(x, true)), bi_fabsneg_f32(b, bi_half(x, false)), BI_ROUND_NONE),
         bi_fadd_f32_to(b, reg, bi_half(x, true), bi_half(x, false), BI_ROUND_NONE));
+}
 
+TEST_F(Optimizer, DoNotMixSizesForFABSNEG)
+{
    /* Refuse to mix sizes for fabsneg, that's wrong */
-
    NEGCASE(bi_fadd_f32_to(b, reg, bi_fabsneg_v2f16(b, negabsx), y, BI_ROUND_NONE));
    NEGCASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_f32(b, negabsx), y, BI_ROUND_NONE));
+}
 
+TEST_F(Optimizer, AvoidZeroAndFABSNEGFootguns)
+{
    /* It's tempting to use addition by 0.0 as the absneg primitive, but that
     * has footguns around signed zero and round modes. Check we don't
     * incorrectly fuse these rules. */
+
+   bi_index zero = bi_zero();
 
    NEGCASE(bi_fadd_f32_to(b, reg, bi_fadd_f32(b, bi_abs(x), zero, BI_ROUND_NONE), y, BI_ROUND_NONE));
    NEGCASE(bi_fadd_f32_to(b, reg, bi_fadd_f32(b, bi_neg(x), zero, BI_ROUND_NONE), y, BI_ROUND_NONE));
    NEGCASE(bi_fadd_f32_to(b, reg, bi_fadd_f32(b, bi_neg(bi_abs(x)), zero, BI_ROUND_NONE), y, BI_ROUND_NONE));
    NEGCASE(bi_fadd_f32_to(b, reg, bi_fadd_f32(b, x, zero, BI_ROUND_NONE), y, BI_ROUND_NONE));
+}
 
-   /* Check clamps are propagated */
+TEST_F(Optimizer, ClampsPropagated)
+{
    CASE({
       bi_instr *I = bi_fclamp_f32_to(b, reg, bi_fadd_f32(b, x, y, BI_ROUND_NONE));
       I->clamp = BI_CLAMP_CLAMP_0_INF;
@@ -152,8 +176,11 @@ main(int argc, const char **argv)
       bi_instr *I = bi_fadd_v2f16_to(b, reg, x, y, BI_ROUND_NONE);
       I->clamp = BI_CLAMP_CLAMP_0_1;
    });
+}
 
-   /* Check clamps are composed */
+
+TEST_F(Optimizer, ClampsComposed)
+{
    CASE({
       bi_instr *I = bi_fadd_f32_to(b, bi_temp(b->shader), x, y, BI_ROUND_NONE);
       bi_instr *J = bi_fclamp_f32_to(b, reg, I->dest[0]);
@@ -213,9 +240,10 @@ main(int argc, const char **argv)
       bi_instr *I = bi_fadd_v2f16_to(b, reg, x, y, BI_ROUND_NONE);
       I->clamp = BI_CLAMP_CLAMP_0_INF;
    });
+}
 
-   /* We can't mix sizes */
-
+TEST_F(Optimizer, DoNotMixSizesWhenClamping)
+{
    NEGCASE({
       bi_instr *I = bi_fclamp_f32_to(b, reg, bi_fadd_v2f16(b, x, y, BI_ROUND_NONE));
       I->clamp = BI_CLAMP_CLAMP_0_1;
@@ -225,6 +253,11 @@ main(int argc, const char **argv)
       bi_instr *I = bi_fclamp_v2f16_to(b, reg, bi_fadd_f32(b, x, y, BI_ROUND_NONE));
       I->clamp = BI_CLAMP_CLAMP_0_1;
    });
+}
+
+TEST_F(Optimizer, DoNotUseAdditionByZeroForClamps)
+{
+   bi_index zero = bi_zero();
 
    /* We can't use addition by 0.0 for clamps due to signed zeros. */
    NEGCASE({
@@ -236,9 +269,10 @@ main(int argc, const char **argv)
       bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_fadd_v2f16(b, x, y, BI_ROUND_NONE), zero, BI_ROUND_NONE);
       I->clamp = BI_CLAMP_CLAMP_0_1;
    });
+}
 
-   /* Check that we fuse comparisons with DISCARD */
-
+TEST_F(Optimizer, FuseComparisonsWithDISCARD)
+{
    CASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_LE, BI_RESULT_TYPE_F1)),
         bi_discard_f32(b, x, y, BI_CMPF_LE));
 
@@ -258,11 +292,10 @@ main(int argc, const char **argv)
       CASE(bi_discard_b32(b, bi_half(bi_fcmp_v2f16(b, x, y, BI_CMPF_EQ, BI_RESULT_TYPE_M1), h)),
            bi_discard_f32(b, bi_half(x, h), bi_half(y, h), BI_CMPF_EQ));
    }
+}
 
-   /* Refuse to fuse special comparisons */
+TEST_F(Optimizer, DoNotFuseSpecialComparisons)
+{
    NEGCASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_GTLT, BI_RESULT_TYPE_F1)));
    NEGCASE(bi_discard_b32(b, bi_fcmp_f32(b, x, y, BI_CMPF_TOTAL, BI_RESULT_TYPE_F1)));
-
-   ralloc_free(ralloc_ctx);
-   TEST_END(nr_pass, nr_fail);
 }
