@@ -627,7 +627,10 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    device->ws = radv_null_winsys_create();
 #else
    if (drm_device) {
-      device->ws = radv_amdgpu_winsys_create(fd, instance->debug_flags, instance->perftest_flags, false);
+      bool reserve_vmid = radv_thread_trace_enabled();
+
+      device->ws = radv_amdgpu_winsys_create(fd, instance->debug_flags, instance->perftest_flags,
+                                             reserve_vmid);
    } else {
       device->ws = radv_null_winsys_create();
    }
