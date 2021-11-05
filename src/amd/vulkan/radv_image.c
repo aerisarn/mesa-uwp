@@ -1833,7 +1833,8 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
              pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_FOREIGN_EXT)
             image->queue_family_mask |= (1u << RADV_MAX_QUEUE_FAMILIES) - 1u;
          else
-            image->queue_family_mask |= 1u << pCreateInfo->pQueueFamilyIndices[i];
+            image->queue_family_mask |= 1u << vk_queue_to_radv(device->physical_device,
+                                                               pCreateInfo->pQueueFamilyIndices[i]);
    }
 
    const VkExternalMemoryImageCreateInfo *external_info =
@@ -2301,7 +2302,9 @@ radv_layout_fmask_compressed(const struct radv_device *device, const struct radv
 }
 
 unsigned
-radv_image_queue_family_mask(const struct radv_image *image, uint32_t family, uint32_t queue_family)
+radv_image_queue_family_mask(const struct radv_image *image,
+                             enum radv_queue_family family,
+                             enum radv_queue_family queue_family)
 {
    if (!image->exclusive)
       return image->queue_family_mask;

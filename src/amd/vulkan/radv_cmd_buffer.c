@@ -61,8 +61,8 @@ enum {
 static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
                                          struct radv_image *image, VkImageLayout src_layout,
                                          bool src_render_loop, VkImageLayout dst_layout,
-                                         bool dst_render_loop, uint32_t src_family,
-                                         uint32_t dst_family, const VkImageSubresourceRange *range,
+                                         bool dst_render_loop, uint32_t src_family_index,
+                                         uint32_t dst_family_index, const VkImageSubresourceRange *range,
                                          struct radv_sample_locations_state *sample_locs);
 
 static void radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size);
@@ -356,12 +356,13 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 bool
 radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer)
 {
-   return cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE &&
+   return cmd_buffer->qf == RADV_QUEUE_COMPUTE &&
           cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7;
 }
 
 enum ring_type
-radv_queue_family_to_ring(int f)
+radv_queue_family_to_ring(struct radv_physical_device *physical_device,
+                          enum radv_queue_family f)
 {
    switch (f) {
    case RADV_QUEUE_GENERAL:
@@ -459,9 +460,9 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
    cmd_buffer->pool = pool;
 
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-   cmd_buffer->queue_family_index = pool->vk.queue_family_index;
+   cmd_buffer->qf = vk_queue_to_radv(device->physical_device, pool->vk.queue_family_index);
 
-   ring = radv_queue_family_to_ring(cmd_buffer->queue_family_index);
+   ring = radv_queue_family_to_ring(device->physical_device, cmd_buffer->qf);
 
    cmd_buffer->cs = device->ws->cs_create(device->ws, ring);
    if (!cmd_buffer->cs) {
@@ -530,7 +531,7 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    }
 
    if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 &&
-       cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL) {
+       cmd_buffer->qf == RADV_QUEUE_GENERAL) {
       unsigned num_db = cmd_buffer->device->physical_device->rad_info.max_render_backends;
       unsigned fence_offset, eop_bug_offset;
       void *fence_ptr;
@@ -709,7 +710,7 @@ radv_save_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pip
 
    va = radv_buffer_get_va(device->trace_bo);
 
-   ring = radv_queue_family_to_ring(cmd_buffer->queue_family_index);
+   ring = radv_queue_family_to_ring(device->physical_device, cmd_buffer->qf);
 
    switch (ring) {
    case RING_GFX:
@@ -1752,16 +1753,16 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
 
    if (!radv_layout_dcc_compressed(
           cmd_buffer->device, image, iview->base_mip, layout, in_render_loop,
-          radv_image_queue_family_mask(image, cmd_buffer->queue_family_index,
-                                       cmd_buffer->queue_family_index)) ||
+          radv_image_queue_family_mask(image, cmd_buffer->qf,
+                                       cmd_buffer->qf)) ||
        disable_dcc) {
       cb_color_info &= C_028C70_DCC_ENABLE;
    }
 
    if (!radv_layout_fmask_compressed(
           cmd_buffer->device, image, layout,
-          radv_image_queue_family_mask(image, cmd_buffer->queue_family_index,
-                                       cmd_buffer->queue_family_index))) {
+          radv_image_queue_family_mask(image, cmd_buffer->qf,
+                                       cmd_buffer->qf))) {
       cb_color_info &= C_028C70_COMPRESSION;
    }
 
@@ -1870,8 +1871,8 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_
 
    if (!radv_layout_is_htile_compressed(
           cmd_buffer->device, image, layout, in_render_loop,
-          radv_image_queue_family_mask(image, cmd_buffer->queue_family_index,
-                                       cmd_buffer->queue_family_index))) {
+          radv_image_queue_family_mask(image, cmd_buffer->qf,
+                                       cmd_buffer->qf))) {
       db_z_info &= C_028040_TILE_SURFACE_ENABLE;
    }
 
@@ -1911,8 +1912,8 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
 
    if (!radv_layout_is_htile_compressed(
           cmd_buffer->device, image, layout, in_render_loop,
-          radv_image_queue_family_mask(image, cmd_buffer->queue_family_index,
-                                       cmd_buffer->queue_family_index))) {
+          radv_image_queue_family_mask(image, cmd_buffer->qf,
+                                       cmd_buffer->qf))) {
       db_z_info &= C_028040_TILE_SURFACE_ENABLE;
       db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
    }
@@ -2539,8 +2540,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
       if (radv_layout_is_htile_compressed(
              cmd_buffer->device, iview->image, layout, in_render_loop,
-             radv_image_queue_family_mask(iview->image, cmd_buffer->queue_family_index,
-                                          cmd_buffer->queue_family_index))) {
+             radv_image_queue_family_mask(iview->image, cmd_buffer->qf,
+                                          cmd_buffer->qf))) {
          /* Only load the depth/stencil fast clear values when
           * compressed rendering is enabled.
           */
@@ -4972,7 +4973,7 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    radv_emit_mip_change_flush_default(cmd_buffer);
 
-   if (cmd_buffer->queue_family_index != RADV_QUEUE_TRANSFER) {
+   if (cmd_buffer->qf != RADV_QUEUE_TRANSFER) {
       if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX6)
          cmd_buffer->state.flush_bits |=
             RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_WB_L2;
@@ -5647,7 +5648,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
          allow_ib2 = false;
       }
 
-      if (secondary->queue_family_index == RADV_QUEUE_COMPUTE) {
+      if (secondary->qf == RADV_QUEUE_COMPUTE) {
          /* IB2 packets are not supported on compute queues according to PAL. */
          allow_ib2 = false;
       }
@@ -8291,33 +8292,35 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
 static void
 radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                              VkImageLayout src_layout, bool src_render_loop,
-                             VkImageLayout dst_layout, bool dst_render_loop, uint32_t src_family,
-                             uint32_t dst_family, const VkImageSubresourceRange *range,
+                             VkImageLayout dst_layout, bool dst_render_loop, uint32_t src_family_index,
+                             uint32_t dst_family_index, const VkImageSubresourceRange *range,
                              struct radv_sample_locations_state *sample_locs)
 {
-   if (image->exclusive && src_family != dst_family) {
+   enum radv_queue_family src_qf = vk_queue_to_radv(cmd_buffer->device->physical_device, src_family_index);
+   enum radv_queue_family dst_qf = vk_queue_to_radv(cmd_buffer->device->physical_device, dst_family_index);
+   if (image->exclusive && src_family_index != dst_family_index) {
       /* This is an acquire or a release operation and there will be
        * a corresponding release/acquire. Do the transition in the
        * most flexible queue. */
 
-      assert(src_family == cmd_buffer->queue_family_index ||
-             dst_family == cmd_buffer->queue_family_index);
+      assert(src_qf == cmd_buffer->qf ||
+             dst_qf == cmd_buffer->qf);
 
-      if (src_family == VK_QUEUE_FAMILY_EXTERNAL || src_family == VK_QUEUE_FAMILY_FOREIGN_EXT)
+      if (src_family_index == VK_QUEUE_FAMILY_EXTERNAL || src_family_index == VK_QUEUE_FAMILY_FOREIGN_EXT)
          return;
 
-      if (cmd_buffer->queue_family_index == RADV_QUEUE_TRANSFER)
+      if (cmd_buffer->qf == RADV_QUEUE_TRANSFER)
          return;
 
-      if (cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE &&
-          (src_family == RADV_QUEUE_GENERAL || dst_family == RADV_QUEUE_GENERAL))
+      if (cmd_buffer->qf == RADV_QUEUE_COMPUTE &&
+          (src_qf == RADV_QUEUE_GENERAL || dst_qf == RADV_QUEUE_GENERAL))
          return;
    }
 
    unsigned src_queue_mask =
-      radv_image_queue_family_mask(image, src_family, cmd_buffer->queue_family_index);
+      radv_image_queue_family_mask(image, src_qf, cmd_buffer->qf);
    unsigned dst_queue_mask =
-      radv_image_queue_family_mask(image, dst_family, cmd_buffer->queue_family_index);
+      radv_image_queue_family_mask(image, dst_qf, cmd_buffer->qf);
 
    if (src_layout == dst_layout && src_render_loop == dst_render_loop && src_queue_mask == dst_queue_mask)
       return;
@@ -8628,7 +8631,7 @@ radv_CmdBeginConditionalRenderingEXT(
 
    si_emit_cache_flush(cmd_buffer);
 
-   if (cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL &&
+   if (cmd_buffer->qf == RADV_QUEUE_GENERAL &&
        !cmd_buffer->device->physical_device->rad_info.has_32bit_predication) {
       uint64_t pred_value = 0, pred_va;
       unsigned pred_offset;

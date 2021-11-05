@@ -666,8 +666,8 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
    /* For partial resolves, DCC should be decompressed before resolving
     * because the metadata is re-initialized to the uncompressed after.
     */
-   uint32_t queue_mask = radv_image_queue_family_mask(dest_image, cmd_buffer->queue_family_index,
-                                                      cmd_buffer->queue_family_index);
+   uint32_t queue_mask = radv_image_queue_family_mask(dest_image, cmd_buffer->qf,
+                                                      cmd_buffer->qf);
 
    if (!radv_image_use_dcc_image_stores(cmd_buffer->device, dest_image) &&
        radv_layout_dcc_compressed(cmd_buffer->device, dest_image, region->dstSubresource.mipLevel,
@@ -921,8 +921,8 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
       radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT_KHR, NULL);
 
    VkImageLayout layout = cmd_buffer->state.attachments[dest_att.attachment].current_layout;
-   uint32_t queue_mask = radv_image_queue_family_mask(dst_image, cmd_buffer->queue_family_index,
-                                                      cmd_buffer->queue_family_index);
+   uint32_t queue_mask = radv_image_queue_family_mask(dst_image, cmd_buffer->qf,
+                                                      cmd_buffer->qf);
 
    if (radv_layout_is_htile_compressed(cmd_buffer->device, dst_image, layout, false, queue_mask)) {
       VkImageSubresourceRange range = {0};

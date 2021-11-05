@@ -1354,7 +1354,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum chip_class chip_class, uin
 void
 si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 {
-   bool is_compute = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE;
+   bool is_compute = cmd_buffer->qf == RADV_QUEUE_COMPUTE;
 
    if (is_compute)
       cmd_buffer->state.flush_bits &=
@@ -1522,7 +1522,7 @@ si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src
     * should precede it.
     */
    if (flags & CP_DMA_SYNC) {
-      if (cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL) {
+      if (cmd_buffer->qf == RADV_QUEUE_GENERAL) {
          radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, cmd_buffer->state.predicating));
          radeon_emit(cs, 0);
       }

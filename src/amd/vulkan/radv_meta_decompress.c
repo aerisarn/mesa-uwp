@@ -727,7 +727,7 @@ radv_expand_depth_stencil(struct radv_cmd_buffer *cmd_buffer, struct radv_image 
    barrier.layout_transitions.depth_stencil_expand = 1;
    radv_describe_layout_transition(cmd_buffer, &barrier);
 
-   if (cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL) {
+   if (cmd_buffer->qf == RADV_QUEUE_GENERAL) {
       radv_process_depth_stencil(cmd_buffer, image, subresourceRange, sample_locs, DEPTH_DECOMPRESS);
    } else {
       radv_expand_depth_stencil_compute(cmd_buffer, image, subresourceRange);
@@ -744,6 +744,6 @@ radv_resummarize_depth_stencil(struct radv_cmd_buffer *cmd_buffer, struct radv_i
    barrier.layout_transitions.depth_stencil_resummarize = 1;
    radv_describe_layout_transition(cmd_buffer, &barrier);
 
-   assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
+   assert(cmd_buffer->qf == RADV_QUEUE_GENERAL);
    radv_process_depth_stencil(cmd_buffer, image, subresourceRange, sample_locs, DEPTH_RESUMMARIZE);
 }
