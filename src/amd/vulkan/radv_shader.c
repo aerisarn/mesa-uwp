@@ -1846,11 +1846,7 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
    /* Copy the shader binary configuration to store it in the cache. */
    memcpy(&binary->config, &shader->config, sizeof(binary->config));
 
-   if (binary_out)
-      *binary_out = binary;
-   else
-      free(binary);
-
+   *binary_out = binary;
    return shader;
 }
 
