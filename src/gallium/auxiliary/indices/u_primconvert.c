@@ -102,16 +102,14 @@ util_primconvert_save_flatshade_first(struct primconvert_context *pc, bool flats
    pc->api_pv = flatshade_first ? PV_FIRST : PV_LAST;
 }
 
-void
-util_primconvert_draw_vbo(struct primconvert_context *pc,
-                          const struct pipe_draw_info *info,
-                          unsigned drawid_offset,
-                          const struct pipe_draw_indirect_info *indirect,
-                          const struct pipe_draw_start_count_bias *draws,
-                          unsigned num_draws)
+static bool
+primconvert_init_draw(struct primconvert_context *pc,
+                      const struct pipe_draw_info *info,
+                      const struct pipe_draw_indirect_info *indirect,
+                      const struct pipe_draw_start_count_bias *draws,
+                      struct pipe_draw_info *new_info,
+                      struct pipe_draw_start_count_bias *new_draw)
 {
-   struct pipe_draw_info new_info;
-   struct pipe_draw_start_count_bias new_draw;
    struct pipe_draw_start_count_bias *direct_draws = NULL;
    unsigned num_direct_draws = 0;
    struct pipe_transfer *src_transfer = NULL;
@@ -122,6 +120,158 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    unsigned ib_offset;
    unsigned total_index_count = draws->count;
    void *rewrite_buffer = NULL;
+
+   const struct pipe_draw_start_count_bias *draw = &draws[0];
+
+   /* Filter out degenerate primitives, u_upload_alloc() will assert
+    * on size==0 so just bail:
+    */
+   if (!info->primitive_restart &&
+       !u_trim_pipe_prim(info->mode, (unsigned*)&draw->count))
+      return false;
+
+   util_draw_init_info(new_info);
+   new_info->index_bounds_valid = info->index_bounds_valid;
+   new_info->min_index = info->min_index;
+   new_info->max_index = info->max_index;
+   new_info->start_instance = info->start_instance;
+   new_info->instance_count = info->instance_count;
+   new_info->primitive_restart = info->primitive_restart;
+   new_info->restart_index = info->restart_index;
+   if (info->index_size) {
+      enum pipe_prim_type mode = new_info->mode = u_index_prim_type_convert(pc->cfg.primtypes_mask, info->mode, true);
+      unsigned index_size = info->index_size;
+      new_info->index_size = u_index_size_convert(info->index_size);
+
+      src = info->has_user_indices ? info->index.user : NULL;
+      if (!src) {
+         src = pipe_buffer_map(pc->pipe, info->index.resource,
+                               PIPE_MAP_READ, &src_transfer);
+      }
+      src = (const uint8_t *)src;
+
+      /* if the resulting primitive type is not supported by the driver for primitive restart,
+       * or if the original primitive type was not supported by the driver,
+       * the draw needs to be rewritten to not use primitive restart
+       */
+      if (info->primitive_restart &&
+          (!(pc->cfg.restart_primtypes_mask & BITFIELD_BIT(mode)) ||
+           !(pc->cfg.primtypes_mask & BITFIELD_BIT(info->mode)))) {
+         /* step 1: rewrite draw to not use primitive primitive restart;
+          *         this pre-filters degenerate primitives
+          */
+         direct_draws = util_prim_restart_convert_to_direct(src, info, draw, &num_direct_draws,
+                                                            &new_info->min_index, &new_info->max_index, &total_index_count);
+         new_info->primitive_restart = false;
+         /* step 2: get a translator function which does nothing but handle any index size conversions
+          * which may or may not occur (8bit -> 16bit)
+          */
+         u_index_translator(0xffff,
+                            info->mode, index_size, total_index_count,
+                            pc->api_pv, pc->api_pv,
+                            PR_DISABLE,
+                            &mode, &index_size, &new_draw->count,
+                            &direct_draw_func);
+         /* this should always be a direct translation */
+         assert(new_draw->count == total_index_count);
+         /* step 3: allocate a temp buffer for an intermediate rewrite step
+          *         if no indices were found, this was a single incomplete restart and can be discarded
+          */
+         if (total_index_count)
+            rewrite_buffer = malloc(index_size * total_index_count);
+         if (!rewrite_buffer) {
+            if (src_transfer)
+               pipe_buffer_unmap(pc->pipe, src_transfer);
+            return false;
+         }
+      }
+      /* (step 4: get the actual primitive conversion translator function) */
+      u_index_translator(pc->cfg.primtypes_mask,
+                         info->mode, index_size, total_index_count,
+                         pc->api_pv, pc->api_pv,
+                         new_info->primitive_restart ? PR_ENABLE : PR_DISABLE,
+                         &mode, &index_size, &new_draw->count,
+                         &trans_func);
+      assert(new_info->mode == mode);
+      assert(new_info->index_size == index_size);
+   }
+   else {
+      enum pipe_prim_type mode = 0;
+      unsigned index_size;
+
+      u_index_generator(pc->cfg.primtypes_mask,
+                        info->mode, draw->start, draw->count,
+                        pc->api_pv, pc->api_pv,
+                        &mode, &index_size, &new_draw->count,
+                        &gen_func);
+      new_info->mode = mode;
+      new_info->index_size = index_size;
+   }
+
+   /* (step 5: allocate gpu memory sized for the FINAL index count) */
+   u_upload_alloc(pc->pipe->stream_uploader, 0, new_info->index_size * new_draw->count, 4,
+                  &ib_offset, &new_info->index.resource, &dst);
+   new_draw->start = ib_offset / new_info->index_size;
+   new_draw->index_bias = info->index_size ? draw->index_bias : 0;
+
+   if (info->index_size) {
+      if (num_direct_draws) {
+         uint8_t *ptr = rewrite_buffer;
+         uint8_t *dst_ptr = dst;
+         /* step 6: if rewriting a prim-restart draw to direct draws,
+          * loop over all the direct draws in order to rewrite them into a single index buffer
+          * and draw in order to match the original call
+          */
+         for (unsigned i = 0; i < num_direct_draws; i++) {
+            /* step 6a: get the index count for this draw, once converted */
+            unsigned tmp_count = u_index_count_converted_indices(pc->cfg.primtypes_mask, true, info->mode, direct_draws[i].count);
+            /* step 6b: handle index size conversion using the temp buffer; no change in index count
+             * TODO: this step can be optimized out if the index size is known to not change
+             */
+            direct_draw_func(src, direct_draws[i].start, direct_draws[i].count, direct_draws[i].count, info->restart_index, ptr);
+            /* step 6c: handle the primitive type conversion rewriting to the converted index count */
+            trans_func(ptr, 0, direct_draws[i].count, tmp_count, info->restart_index, dst_ptr);
+            /* step 6d: increment the temp buffer and mapped final index buffer pointers */
+            ptr += new_info->index_size * direct_draws[i].count;
+            dst_ptr += new_info->index_size * tmp_count;
+         }
+         /* step 7: set the final index count, which is the converted total index count from the original draw rewrite */
+         new_draw->count = u_index_count_converted_indices(pc->cfg.primtypes_mask, true, info->mode, total_index_count);
+      } else
+         trans_func(src, draw->start, draw->count, new_draw->count, info->restart_index, dst);
+
+      if (pc->cfg.fixed_prim_restart && new_info->primitive_restart) {
+         new_info->restart_index = (1ull << (new_info->index_size * 8)) - 1;
+         if (info->restart_index != new_info->restart_index)
+            util_translate_prim_restart_data(new_info->index_size, dst, dst,
+                                             new_draw->count,
+                                             info->restart_index);
+      }
+   }
+   else {
+      gen_func(draw->start, new_draw->count, dst);
+   }
+
+   if (src_transfer)
+      pipe_buffer_unmap(pc->pipe, src_transfer);
+
+   u_upload_unmap(pc->pipe->stream_uploader);
+
+   free(direct_draws);
+   free(rewrite_buffer);
+   return true;
+}
+
+void
+util_primconvert_draw_vbo(struct primconvert_context *pc,
+                          const struct pipe_draw_info *info,
+                          unsigned drawid_offset,
+                          const struct pipe_draw_indirect_info *indirect,
+                          const struct pipe_draw_start_count_bias *draws,
+                          unsigned num_draws)
+{
+   struct pipe_draw_info new_info;
+   struct pipe_draw_start_count_bias new_draw;
 
    if (indirect && indirect->buffer) {
       /* this is stupid, but we're already doing a readback,
@@ -149,146 +299,10 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
       return;
    }
 
-   const struct pipe_draw_start_count_bias *draw = &draws[0];
-
-   /* Filter out degenerate primitives, u_upload_alloc() will assert
-    * on size==0 so just bail:
-    */
-   if (!info->primitive_restart &&
-       !u_trim_pipe_prim(info->mode, (unsigned*)&draw->count))
+   if (!primconvert_init_draw(pc, info, indirect, draws, &new_info, &new_draw))
       return;
-
-   util_draw_init_info(&new_info);
-   new_info.index_bounds_valid = info->index_bounds_valid;
-   new_info.min_index = info->min_index;
-   new_info.max_index = info->max_index;
-   new_info.start_instance = info->start_instance;
-   new_info.instance_count = info->instance_count;
-   new_info.primitive_restart = info->primitive_restart;
-   new_info.restart_index = info->restart_index;
-   if (info->index_size) {
-      enum pipe_prim_type mode = new_info.mode = u_index_prim_type_convert(pc->cfg.primtypes_mask, info->mode, true);
-      unsigned index_size = info->index_size;
-      new_info.index_size = u_index_size_convert(info->index_size);
-
-      src = info->has_user_indices ? info->index.user : NULL;
-      if (!src) {
-         src = pipe_buffer_map(pc->pipe, info->index.resource,
-                               PIPE_MAP_READ, &src_transfer);
-      }
-      src = (const uint8_t *)src;
-
-      /* if the resulting primitive type is not supported by the driver for primitive restart,
-       * or if the original primitive type was not supported by the driver,
-       * the draw needs to be rewritten to not use primitive restart
-       */
-      if (info->primitive_restart &&
-          (!(pc->cfg.restart_primtypes_mask & BITFIELD_BIT(mode)) ||
-           !(pc->cfg.primtypes_mask & BITFIELD_BIT(info->mode)))) {
-         /* step 1: rewrite draw to not use primitive primitive restart;
-          *         this pre-filters degenerate primitives
-          */
-         direct_draws = util_prim_restart_convert_to_direct(src, info, draw, &num_direct_draws,
-                                                            &new_info.min_index, &new_info.max_index, &total_index_count);
-         new_info.primitive_restart = false;
-         /* step 2: get a translator function which does nothing but handle any index size conversions
-          * which may or may not occur (8bit -> 16bit)
-          */
-         u_index_translator(0xffff,
-                            info->mode, index_size, total_index_count,
-                            pc->api_pv, pc->api_pv,
-                            PR_DISABLE,
-                            &mode, &index_size, &new_draw.count,
-                            &direct_draw_func);
-         /* this should always be a direct translation */
-         assert(new_draw.count == total_index_count);
-         /* step 3: allocate a temp buffer for an intermediate rewrite step
-          *         if no indices were found, this was a single incomplete restart and can be discarded
-          */
-         if (total_index_count)
-            rewrite_buffer = malloc(index_size * total_index_count);
-         if (!rewrite_buffer) {
-            if (src_transfer)
-               pipe_buffer_unmap(pc->pipe, src_transfer);
-            return;
-         }
-      }
-      /* (step 4: get the actual primitive conversion translator function) */
-      u_index_translator(pc->cfg.primtypes_mask,
-                         info->mode, index_size, total_index_count,
-                         pc->api_pv, pc->api_pv,
-                         new_info.primitive_restart ? PR_ENABLE : PR_DISABLE,
-                         &mode, &index_size, &new_draw.count,
-                         &trans_func);
-      assert(new_info.mode == mode);
-      assert(new_info.index_size == index_size);
-   }
-   else {
-      enum pipe_prim_type mode = 0;
-      unsigned index_size;
-
-      u_index_generator(pc->cfg.primtypes_mask,
-                        info->mode, draw->start, draw->count,
-                        pc->api_pv, pc->api_pv,
-                        &mode, &index_size, &new_draw.count,
-                        &gen_func);
-      new_info.mode = mode;
-      new_info.index_size = index_size;
-   }
-
-   /* (step 5: allocate gpu memory sized for the FINAL index count) */
-   u_upload_alloc(pc->pipe->stream_uploader, 0, new_info.index_size * new_draw.count, 4,
-                  &ib_offset, &new_info.index.resource, &dst);
-   new_draw.start = ib_offset / new_info.index_size;
-   new_draw.index_bias = info->index_size ? draw->index_bias : 0;
-
-   if (info->index_size) {
-      if (num_direct_draws) {
-         uint8_t *ptr = rewrite_buffer;
-         uint8_t *dst_ptr = dst;
-         /* step 6: if rewriting a prim-restart draw to direct draws,
-          * loop over all the direct draws in order to rewrite them into a single index buffer
-          * and draw in order to match the original call
-          */
-         for (unsigned i = 0; i < num_direct_draws; i++) {
-            /* step 6a: get the index count for this draw, once converted */
-            unsigned tmp_count = u_index_count_converted_indices(pc->cfg.primtypes_mask, true, info->mode, direct_draws[i].count);
-            /* step 6b: handle index size conversion using the temp buffer; no change in index count
-             * TODO: this step can be optimized out if the index size is known to not change
-             */
-            direct_draw_func(src, direct_draws[i].start, direct_draws[i].count, direct_draws[i].count, info->restart_index, ptr);
-            /* step 6c: handle the primitive type conversion rewriting to the converted index count */
-            trans_func(ptr, 0, direct_draws[i].count, tmp_count, info->restart_index, dst_ptr);
-            /* step 6d: increment the temp buffer and mapped final index buffer pointers */
-            ptr += new_info.index_size * direct_draws[i].count;
-            dst_ptr += new_info.index_size * tmp_count;
-         }
-         /* step 7: set the final index count, which is the converted total index count from the original draw rewrite */
-         new_draw.count = u_index_count_converted_indices(pc->cfg.primtypes_mask, true, info->mode, total_index_count);
-      } else
-         trans_func(src, draw->start, draw->count, new_draw.count, info->restart_index, dst);
-
-      if (pc->cfg.fixed_prim_restart && new_info.primitive_restart) {
-         new_info.restart_index = (1ull << (new_info.index_size * 8)) - 1;
-         if (info->restart_index != new_info.restart_index)
-            util_translate_prim_restart_data(new_info.index_size, dst, dst,
-                                             new_draw.count,
-                                             info->restart_index);
-      }
-   }
-   else {
-      gen_func(draw->start, new_draw.count, dst);
-   }
-
-   if (src_transfer)
-      pipe_buffer_unmap(pc->pipe, src_transfer);
-
-   u_upload_unmap(pc->pipe->stream_uploader);
-
    /* to the translated draw: */
    pc->pipe->draw_vbo(pc->pipe, &new_info, drawid_offset, NULL, &new_draw, 1);
-   free(direct_draws);
-   free(rewrite_buffer);
 
    pipe_resource_reference(&new_info.index.resource, NULL);
 }
