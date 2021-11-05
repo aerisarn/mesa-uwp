@@ -780,6 +780,67 @@ static void ac_sqtt_fill_sqtt_data(struct sqtt_file_chunk_sqtt_data *chunk, int3
    chunk->size = size;
 }
 
+/**
+ * SQTT queue event timings info.
+ */
+struct sqtt_file_chunk_queue_event_timings {
+   struct sqtt_file_chunk_header header;
+   uint32_t queue_info_table_record_count;
+   uint32_t queue_info_table_size;
+   uint32_t queue_event_table_record_count;
+   uint32_t queue_event_table_size;
+};
+
+static_assert(sizeof(struct sqtt_file_chunk_queue_event_timings) == 32,
+	      "sqtt_file_chunk_queue_event_timings doesn't match RGP spec");
+
+struct sqtt_queue_info_record {
+   uint64_t queue_id;
+   uint64_t queue_context;
+   struct sqtt_queue_hardware_info hardware_info;
+   uint32_t reserved;
+};
+
+static_assert(sizeof(struct sqtt_queue_info_record) == 24,
+	      "sqtt_queue_info_record doesn't match RGP spec");
+
+struct sqtt_queue_event_record {
+   enum sqtt_queue_event_type event_type;
+   uint32_t sqtt_cb_id;
+   uint64_t frame_index;
+   uint32_t queue_info_index;
+   uint32_t submit_sub_index;
+   uint64_t api_id;
+   uint64_t cpu_timestamp;
+   uint64_t gpu_timestamps[2];
+};
+
+static_assert(sizeof(struct sqtt_queue_event_record) == 56,
+	      "sqtt_queue_event_record doesn't match RGP spec");
+
+static void
+ac_sqtt_fill_queue_event_timings(struct rgp_queue_info *rgp_queue_info,
+                                 struct rgp_queue_event *rgp_queue_event,
+                                 struct sqtt_file_chunk_queue_event_timings *chunk)
+{
+   unsigned queue_info_size =
+      rgp_queue_info->record_count * sizeof(struct sqtt_queue_info_record);
+   unsigned queue_event_size =
+      rgp_queue_event->record_count * sizeof(struct sqtt_queue_event_record);
+
+   chunk->header.chunk_id.type = SQTT_FILE_CHUNK_TYPE_QUEUE_EVENT_TIMINGS;
+   chunk->header.chunk_id.index = 0;
+   chunk->header.major_version = 1;
+   chunk->header.minor_version = 1;
+   chunk->header.size_in_bytes = queue_info_size + queue_event_size +
+                                 sizeof(*chunk);
+
+   chunk->queue_info_table_record_count = rgp_queue_info->record_count;
+   chunk->queue_info_table_size = queue_info_size;
+   chunk->queue_event_table_record_count = rgp_queue_event->record_count;
+   chunk->queue_event_table_size = queue_event_size;
+}
+
 /* Below values are from from llvm project
  * llvm/include/llvm/BinaryFormat/ELF.h
  */
@@ -823,6 +884,8 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
                                         &thread_trace_data->rgp_loader_events;
    struct rgp_pso_correlation *rgp_pso_correlation =
                                       &thread_trace_data->rgp_pso_correlation;
+   struct rgp_queue_info *rgp_queue_info = &thread_trace_data->rgp_queue_info;
+   struct rgp_queue_event *rgp_queue_event = &thread_trace_data->rgp_queue_event;
 
    /* SQTT header file. */
    ac_sqtt_fill_header(&header);
@@ -910,6 +973,33 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
       }
       file_offset += (rgp_pso_correlation->record_count *
                       sizeof(struct sqtt_pso_correlation_record));
+   }
+
+   /* SQTT queue event timings. */
+   if (rgp_queue_info->record_count || rgp_queue_event->record_count) {
+      struct sqtt_file_chunk_queue_event_timings queue_event_timings;
+
+      ac_sqtt_fill_queue_event_timings(rgp_queue_info, rgp_queue_event,
+                                       &queue_event_timings);
+      fwrite(&queue_event_timings, sizeof(struct sqtt_file_chunk_queue_event_timings), 1,
+             output);
+      file_offset += sizeof(struct sqtt_file_chunk_queue_event_timings);
+
+      /* Queue info. */
+      list_for_each_entry_safe(struct rgp_queue_info_record, record,
+                               &rgp_queue_info->record, list) {
+         fwrite(record, sizeof(struct sqtt_queue_info_record), 1, output);
+      }
+      file_offset += (rgp_queue_info->record_count *
+                      sizeof(struct sqtt_queue_info_record));
+
+      /* Queue event. */
+      list_for_each_entry_safe(struct rgp_queue_event_record, record,
+                               &rgp_queue_event->record, list) {
+         fwrite(record, sizeof(struct sqtt_queue_event_record), 1, output);
+      }
+      file_offset += (rgp_queue_event->record_count *
+                      sizeof(struct sqtt_queue_event_record));
    }
 
    if (thread_trace) {
