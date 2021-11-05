@@ -136,33 +136,36 @@ function A6XX_TEX_CONST(pkt, size)
     end
   end
 
-  printf("	{\n")
-  printf("		.format = %s,\n", pkt[0].FMT)
+  printf("         {\n")
+  printf("            .format = %s,\n", pkt[0].FMT)
   if (tostring(pkt[2].TYPE) == "A6XX_TEX_3D") then
-    printf("		.is_3d = true,\n")
+    printf("            .is_3d = true,\n")
   end
 
-  printf("		.layout = {\n")
-  printf("			.tile_mode = %s,\n", pkt[0].TILE_MODE)
-  printf("			.ubwc = %s,\n", tostring(pkt[3].FLAG))
+  printf("            .layout =\n");
+  printf("               {\n");
+  printf("                  .tile_mode = %s,\n", pkt[0].TILE_MODE)
+  printf("                  .ubwc = %s,\n", tostring(pkt[3].FLAG))
 
   if (tostring(pkt[0].SAMPLES) == "MSAA_ONE") then
     -- Ignore it, 1 is the default
   elseif (tostring(pkt[0].SAMPLES) == "MSAA_TWO") then
-    printf("			.nr_samples = 2,\n")
+    printf("                  .nr_samples = 2,\n")
   elseif (tostring(pkt[0].SAMPLES) == "MSAA_FOUR") then
-    printf("			.nr_samples = 4,\n")
+    printf("                  .nr_samples = 4,\n")
   else
-    printf("			.nr_samples = XXX,\n")
+    printf("                  .nr_samples = XXX,\n")
   end
+
+  printf("                  .width0 = %d,\n", width0)
+  printf("                  .height0 = %d,\n", height0)
 
   if (tostring(pkt[2].TYPE) == "A6XX_TEX_3D") then
-    printf("			.width0 = %d, .height0 = %d, .depth0 = %d,\n", width0, height0, depth0)
-  else
-    printf("			.width0 = %d, .height0 = %d,\n", width0, height0)
+    printf("                  .depth0 = %d,\n", depth0)
   end
 
-  printf("			.slices = {\n")
+  printf("                  .slices =\n")
+  printf("                     {\n")
   local w = 0
   local h = 0
   local level = 0
@@ -171,7 +174,7 @@ function A6XX_TEX_CONST(pkt, size)
     local h = minify(height0, level)
     local blit = get_first_blit(basebase, w, h)
     if blit then
-      printf("				{ .offset = %d, .pitch = %u",
+      printf("                        {.offset = %d, .pitch = %u",
           blit.addr - base,
           blit.pitch);
       if (tostring(pkt[2].TYPE) == "A6XX_TEX_3D") then
@@ -180,31 +183,32 @@ function A6XX_TEX_CONST(pkt, size)
           printf(", .size0 = %u", second.addr - blit.addr);
         end
       end
-      printf(" },\n");
+      printf("},\n");
     end
     level = level + 1
   until w == 1 and h == 1
-  printf("			},\n")
+  printf("                     },\n")
 
   if pkt[3].FLAG then
-    printf("			.ubwc_slices = {\n")
+    printf("                  .ubwc_slices =\n")
+    printf("                     {\n")
     level = 0
     repeat
       local w = minify(width0, level)
       local h = minify(height0, level)
       local blit = get_first_blit(basebase, w, h)
       if blit then
-        printf("				{ .offset = %d, .pitch = %u },\n",
+        printf("                        {.offset = %d, .pitch = %u},\n",
             blit.ubwc_addr - ubwc_base,
             blit.ubwc_pitch);
       end
       level = level + 1
     until w == 1 and h == 1
-    printf("			},\n")
+    printf("                     },\n")
   end
 
-  printf("		},\n")
-  printf("	},\n")
+  printf("               },\n")
+  printf("         },\n")
   printf("\n\n")
 end
 
