@@ -832,10 +832,6 @@ radv_trap_handler_init(struct radv_device *device)
       return false;
    }
 
-   result = ws->buffer_make_resident(ws, device->trap_handler_shader->bo, true);
-   if (result != VK_SUCCESS)
-      return false;
-
    result = ws->buffer_create(ws, TMA_BO_SIZE, 256, RADEON_DOMAIN_VRAM,
                               RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
                                  RADEON_FLAG_ZERO_VRAM | RADEON_FLAG_32BIT,
@@ -873,7 +869,6 @@ radv_trap_handler_finish(struct radv_device *device)
    struct radeon_winsys *ws = device->ws;
 
    if (unlikely(device->trap_handler_shader)) {
-      ws->buffer_make_resident(ws, device->trap_handler_shader->bo, false);
       radv_shader_destroy(device, device->trap_handler_shader);
    }
 

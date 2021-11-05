@@ -171,6 +171,37 @@ radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline)
    return !!pipeline->gs_copy_shader;
 }
 
+static struct radv_pipeline_slab *
+radv_pipeline_slab_create(struct radv_device *device, struct radv_pipeline *pipeline,
+                          uint32_t code_size)
+{
+   struct radv_pipeline_slab *slab;
+
+   slab = calloc(1, sizeof(*slab));
+   if (!slab)
+      return NULL;
+
+   slab->ref_count = 1;
+
+   slab->alloc = radv_alloc_shader_memory(device, code_size, pipeline);
+   if (!slab->alloc) {
+      free(slab);
+      return NULL;
+   }
+
+   return slab;
+}
+
+void
+radv_pipeline_slab_destroy(struct radv_device *device, struct radv_pipeline_slab *slab)
+{
+   if (!p_atomic_dec_zero(&slab->ref_count))
+      return;
+
+   radv_free_shader_memory(device, slab->alloc);
+   free(slab);
+}
+
 void
 radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                       const VkAllocationCallbacks *allocator)
@@ -182,6 +213,9 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
       free(pipeline->library.groups);
       free(pipeline->library.stages);
    }
+
+   if (pipeline->slab)
+      radv_pipeline_slab_destroy(device, pipeline->slab);
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i)
       if (pipeline->shaders[i])
@@ -3354,6 +3388,61 @@ non_uniform_access_callback(const nir_src *src, void *_)
    return nir_chase_binding(*src).success ? 0x2 : 0x3;
 }
 
+
+VkResult
+radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
+                    struct radv_shader_binary **binaries, struct radv_shader_binary *gs_copy_binary)
+{
+   uint32_t code_size = 0;
+
+   /* Compute the total code size. */
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      struct radv_shader *shader = pipeline->shaders[i];
+      if (!shader)
+         continue;
+
+      code_size += align(shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
+   }
+
+   if (pipeline->gs_copy_shader) {
+      code_size += align(pipeline->gs_copy_shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
+   }
+
+   /* Allocate memory for all shader binaries. */
+   pipeline->slab = radv_pipeline_slab_create(device, pipeline, code_size);
+   if (!pipeline->slab)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+   /* Upload shader binaries. */
+   uint64_t slab_va = radv_buffer_get_va(pipeline->slab->alloc->arena->bo);
+   uint32_t slab_offset = pipeline->slab->alloc->offset;
+   char *slab_ptr = pipeline->slab->alloc->arena->ptr;
+
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+      struct radv_shader *shader = pipeline->shaders[i];
+      if (!shader)
+         continue;
+
+      shader->va = slab_va + slab_offset;
+
+      void *dest_ptr = slab_ptr + slab_offset;
+      if (!radv_shader_binary_upload(device, binaries[i], shader, dest_ptr))
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+      slab_offset += align(shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
+   }
+
+   if (pipeline->gs_copy_shader) {
+      pipeline->gs_copy_shader->va = slab_va + slab_offset;
+
+      void *dest_ptr = slab_ptr + slab_offset;
+      if (!radv_shader_binary_upload(device, gs_copy_binary, pipeline->gs_copy_shader, dest_ptr))
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   return VK_SUCCESS;
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -3411,11 +3500,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
        radv_create_shaders_from_pipeline_cache(device, cache, hash, pipeline,
                                                stack_sizes, num_stack_sizes,
                                                &found_in_application_cache)) {
-      if (modules[MESA_SHADER_GEOMETRY] && !pipeline->shaders[MESA_SHADER_GEOMETRY]->info.is_ngg) {
-         /* We use the CS slot because graphics pipelines might use all the other ones. */
-         pipeline->gs_copy_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
-         pipeline->shaders[MESA_SHADER_COMPUTE] = NULL;
-      }
       radv_stop_feedback(pipeline_feedback, found_in_application_cache);
       return VK_SUCCESS;
    }
@@ -3692,19 +3776,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    /* Upload shader binaries. */
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      struct radv_shader *shader = pipeline->shaders[i];
-      if (!shader)
-         continue;
-
-      if (!radv_shader_binary_upload(device, binaries[i], shader))
-         return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-
-      if (i == MESA_SHADER_GEOMETRY && pipeline->gs_copy_shader) {
-         if (!radv_shader_binary_upload(device, gs_copy_binary, pipeline->gs_copy_shader))
-            return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-      }
-   }
+   radv_upload_shaders(device, pipeline, binaries, gs_copy_binary);
 
    if (!keep_executable_info) {
       if (pipeline->gs_copy_shader) {

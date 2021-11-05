@@ -1089,8 +1089,8 @@ free_block_obj(struct radv_device *device, union radv_shader_arena_block *block)
  * this should allocate blocks for shaders fast and with no fragmentation, while still allowing
  * free'd memory to be re-used.
  */
-static union radv_shader_arena_block *
-alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
+union radv_shader_arena_block *
+radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
 {
    size = align(size, RADV_SHADER_ALLOC_ALIGNMENT);
 
@@ -1209,8 +1209,8 @@ get_hole(struct radv_shader_arena *arena, struct list_head *head)
    return hole->freelist.prev ? hole : NULL;
 }
 
-static void
-free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc)
+void
+radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc)
 {
    mtx_lock(&device->shader_arena_mutex);
 
@@ -1254,16 +1254,6 @@ free_shader_memory(struct radv_device *device, union radv_shader_arena_block *al
    }
 
    mtx_unlock(&device->shader_arena_mutex);
-}
-
-static void *
-radv_alloc_shader_memory(struct radv_device *device, struct radv_shader *shader)
-{
-   shader->alloc = alloc_shader_memory(device, shader->code_size, shader);
-   if (!shader->alloc)
-      return NULL;
-   shader->bo = shader->alloc->arena->bo;
-   return shader->alloc->arena->ptr + shader->alloc->offset;
 }
 
 void
@@ -1608,16 +1598,8 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shad
 
 bool
 radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
-                          struct radv_shader *shader)
+                          struct radv_shader *shader, void *dest_ptr)
 {
-   void *dest_ptr;
-
-   dest_ptr = radv_alloc_shader_memory(device, shader);
-   if (!dest_ptr) {
-      free(shader);
-      return false;
-   }
-
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
       struct ac_rtld_binary rtld_binary = {0};
 
@@ -1959,7 +1941,7 @@ upload_vs_prolog(struct radv_device *device, struct radv_prolog_binary *bin, uns
    if (!prolog)
       return NULL;
 
-   prolog->alloc = alloc_shader_memory(device, bin->code_size, NULL);
+   prolog->alloc = radv_alloc_shader_memory(device, bin->code_size, NULL);
    if (!prolog->alloc) {
       free(prolog);
       return NULL;
@@ -2027,8 +2009,6 @@ radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
    if (!p_atomic_dec_zero(&shader->ref_count))
       return;
 
-   free_shader_memory(device, shader->alloc);
-
    free(shader->spirv);
    free(shader->nir_string);
    free(shader->disasm_string);
@@ -2043,14 +2023,14 @@ radv_prolog_destroy(struct radv_device *device, struct radv_shader_prolog *prolo
    if (!prolog)
       return;
 
-   free_shader_memory(device, prolog->alloc);
+   radv_free_shader_memory(device, prolog->alloc);
    free(prolog);
 }
 
 uint64_t
 radv_shader_get_va(const struct radv_shader *shader)
 {
-   return radv_buffer_get_va(shader->bo) + shader->alloc->offset;
+   return shader->va;
 }
 
 struct radv_shader *

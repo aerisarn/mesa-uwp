@@ -1391,15 +1391,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
    radv_emit_batch_break_on_new_ps(cmd_buffer);
 
-   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
-      if (!pipeline->shaders[i])
-         continue;
-
-      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->shaders[i]->bo);
-   }
-
-   if (radv_pipeline_has_gs_copy_shader(pipeline))
-      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->gs_copy_shader->bo);
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->slab->alloc->arena->bo);
 
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_save_pipeline(cmd_buffer, pipeline);
@@ -4848,8 +4840,7 @@ radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_pipel
    cmd_buffer->compute_scratch_waves_wanted =
       MAX2(cmd_buffer->compute_scratch_waves_wanted, pipeline->max_waves);
 
-   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
-                      pipeline->shaders[MESA_SHADER_COMPUTE]->bo);
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->slab->alloc->arena->bo);
 
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_save_pipeline(cmd_buffer, pipeline);

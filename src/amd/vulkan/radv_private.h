@@ -373,6 +373,10 @@ void radv_pipeline_cache_insert_shaders(
    struct radv_pipeline *pipeline, struct radv_shader_binary *const *binaries,
    const struct radv_pipeline_shader_stack_size *stack_sizes, uint32_t num_stack_sizes);
 
+VkResult radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
+                             struct radv_shader_binary **binaries,
+                             struct radv_shader_binary *gs_copy_binary);
+
 enum radv_blit_ds_layout {
    RADV_BLIT_DS_LAYOUT_TILE_ENABLE,
    RADV_BLIT_DS_LAYOUT_TILE_DISABLE,
@@ -1783,12 +1787,22 @@ struct radv_pipeline_shader_stack_size {
    uint32_t non_recursive_size;
 };
 
+struct radv_pipeline_slab {
+   uint32_t ref_count;
+
+   union radv_shader_arena_block *alloc;
+};
+
+void radv_pipeline_slab_destroy(struct radv_device *device, struct radv_pipeline_slab *slab);
+
 struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
 
    struct radv_device *device;
    struct radv_dynamic_state dynamic_state;
+
+   struct radv_pipeline_slab *slab;
 
    bool need_indirect_descriptor_sets;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
