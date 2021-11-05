@@ -146,6 +146,10 @@ function A6XX_TEX_CONST(pkt, size)
   printf("               {\n");
   printf("                  .tile_mode = %s,\n", pkt[0].TILE_MODE)
   printf("                  .ubwc = %s,\n", tostring(pkt[3].FLAG))
+  if (pkt[3].TILE_ALL) then
+    printf("                  .tile_all = true,\n")
+  end
+
 
   if (tostring(pkt[0].SAMPLES) == "MSAA_ONE") then
     -- Ignore it, 1 is the default

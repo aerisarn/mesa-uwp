@@ -35,6 +35,7 @@ fdl_test_layout(const struct testcase *testcase, int gpu_id)
    struct fdl_layout layout = {
       .ubwc = testcase->layout.ubwc,
       .tile_mode = testcase->layout.tile_mode,
+      .tile_all = testcase->layout.tile_all,
    };
    bool ok = true;
 

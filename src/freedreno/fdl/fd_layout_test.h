@@ -30,6 +30,7 @@ struct testcase {
    /* Partially filled layout of input parameters and expected results. */
    struct {
       uint32_t tile_mode : 2;
+      bool tile_all : 1;
       bool ubwc : 1;
       uint32_t width0, height0, depth0;
       uint32_t nr_samples;
