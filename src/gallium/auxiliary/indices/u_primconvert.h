@@ -58,6 +58,13 @@ void util_primconvert_draw_vbo(struct primconvert_context *pc,
                                const struct pipe_draw_indirect_info *indirect,
                                const struct pipe_draw_start_count_bias *draws,
                                unsigned num_draws);
+void
+util_primconvert_draw_vertex_state(struct primconvert_context *pc,
+                                   struct pipe_vertex_state *state,
+                                   uint32_t partial_velem_mask,
+                                   struct pipe_draw_vertex_state_info info,
+                                   const struct pipe_draw_start_count_bias *draws,
+                                   unsigned num_draws);
 
 #ifdef __cplusplus
 }

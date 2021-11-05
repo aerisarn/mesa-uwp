@@ -306,3 +306,54 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
 
    pipe_resource_reference(&new_info.index.resource, NULL);
 }
+
+void
+util_primconvert_draw_vertex_state(struct primconvert_context *pc,
+                                   struct pipe_vertex_state *vstate,
+                                   uint32_t partial_velem_mask,
+                                   struct pipe_draw_vertex_state_info info,
+                                   const struct pipe_draw_start_count_bias *draws,
+                                   unsigned num_draws)
+{
+   struct pipe_draw_info new_info;
+   struct pipe_draw_start_count_bias new_draw;
+
+   if (pc->cfg.primtypes_mask & BITFIELD_BIT(info.mode)) {
+      pc->pipe->draw_vertex_state(pc->pipe, vstate, partial_velem_mask, info, draws, num_draws);
+      return;
+   }
+
+   if (num_draws > 1) {
+      for (unsigned i = 0; i < num_draws; i++) {
+         if (draws[i].count)
+            util_primconvert_draw_vertex_state(pc, vstate, partial_velem_mask, info, &draws[i], 1);
+      }
+      return;
+   }
+
+   struct pipe_draw_info dinfo = {0};
+   dinfo.mode = info.mode;
+   dinfo.index_size = 4;
+   dinfo.instance_count = 1;
+   dinfo.index.resource = vstate->input.indexbuf;
+   if (!primconvert_init_draw(pc, &dinfo, NULL, draws, &new_info, &new_draw))
+      return;
+
+   struct pipe_vertex_state *new_state = pc->pipe->screen->create_vertex_state(pc->pipe->screen,
+                                                                               &vstate->input.vbuffer,
+                                                                               vstate->input.elements,
+                                                                               vstate->input.num_elements,
+                                                                               new_info.index.resource,
+                                                                               vstate->input.full_velem_mask);
+   if (new_state) {
+      struct pipe_draw_vertex_state_info new_vinfo;
+      new_vinfo.mode = new_info.mode;
+      new_vinfo.take_vertex_state_ownership = true;
+      /* to the translated draw: */
+      pc->pipe->draw_vertex_state(pc->pipe, new_state, partial_velem_mask, new_vinfo, &new_draw, 1);
+   }
+   if (info.take_vertex_state_ownership)
+      pipe_vertex_state_reference(&vstate, NULL);
+
+   pipe_resource_reference(&new_info.index.resource, NULL);
+}
