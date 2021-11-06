@@ -28,7 +28,7 @@
 
 #define SI_MAX_SCISSOR 16384
 
-void si_get_small_prim_cull_info(struct si_context *sctx, struct si_small_prim_cull_info *out)
+static void si_get_small_prim_cull_info(struct si_context *sctx, struct si_small_prim_cull_info *out)
 {
    /* This is needed by the small primitive culling, because it's done
     * in screen space.
