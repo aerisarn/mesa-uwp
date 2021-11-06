@@ -2683,8 +2683,10 @@ wsi_register_device_event(VkDevice device,
    mtx_lock(&wsi->wait_mutex);
    if (!wsi->hotplug_thread) {
       if (pthread_create(&wsi->hotplug_thread, NULL, udev_event_listener_thread,
-                         wsi_device))
+                         wsi_device)) {
+         mtx_unlock(&wsi->wait_mutex);
          return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
    }
    mtx_unlock(&wsi->wait_mutex);
 #endif
