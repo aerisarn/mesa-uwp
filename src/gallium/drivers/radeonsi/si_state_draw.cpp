@@ -1862,7 +1862,7 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
          if (GFX_VERSION >= GFX9) {
             if (HAS_TESS)
                sh_dw_offset = GFX9_TCS_NUM_USER_SGPR;
-            else if (HAS_GS)
+            else if (HAS_GS || NGG)
                sh_dw_offset = GFX9_GS_NUM_USER_SGPR;
          }
 

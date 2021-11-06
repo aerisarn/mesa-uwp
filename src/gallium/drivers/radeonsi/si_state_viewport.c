@@ -105,6 +105,7 @@ static void si_emit_cull_state(struct si_context *sctx)
 {
    assert(sctx->screen->use_ngg_culling);
 
+   const unsigned upload_size = offsetof(struct si_small_prim_cull_info, small_prim_precision);
    struct si_small_prim_cull_info info;
    si_get_small_prim_cull_info(sctx, &info);
 
@@ -112,8 +113,8 @@ static void si_emit_cull_state(struct si_context *sctx)
        memcmp(&info, &sctx->last_small_prim_cull_info, sizeof(info))) {
       unsigned offset = 0;
 
-      /* Align to 256, because the address is shifted by 8 bits. */
-      u_upload_data(sctx->b.const_uploader, 0, sizeof(info), 256, &info, &offset,
+      u_upload_data(sctx->b.const_uploader, 0, upload_size,
+                    si_optimal_tcc_alignment(sctx, upload_size), &info, &offset,
                     (struct pipe_resource **)&sctx->small_prim_cull_info_buf);
 
       sctx->small_prim_cull_info_address = sctx->small_prim_cull_info_buf->gpu_address + offset;
@@ -124,8 +125,8 @@ static void si_emit_cull_state(struct si_context *sctx)
    radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, sctx->small_prim_cull_info_buf,
                              RADEON_USAGE_READ | RADEON_PRIO_CONST_BUFFER);
    radeon_begin(&sctx->gfx_cs);
-   radeon_set_sh_reg(R_00B220_SPI_SHADER_PGM_LO_GS,
-                     sctx->small_prim_cull_info_address >> 8);
+   radeon_set_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 + GFX9_SGPR_SMALL_PRIM_CULL_INFO * 4,
+                     sctx->small_prim_cull_info_address);
    radeon_end();
 
    /* Set VS_STATE.SMALL_PRIM_PRECISION for NGG culling.
