@@ -1109,7 +1109,8 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
    }
 
    if (sctx->screen->use_ngg_culling &&
-       old_rs->half_pixel_center != rs->half_pixel_center)
+       (old_rs->half_pixel_center != rs->half_pixel_center ||
+        old_rs->line_width != rs->line_width))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.ngg_cull_state);
 
    sctx->current_vs_state &= C_VS_STATE_CLAMP_VERTEX_COLOR;

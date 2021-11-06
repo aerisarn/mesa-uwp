@@ -45,6 +45,15 @@ void si_get_small_prim_cull_info(struct si_context *sctx, struct si_small_prim_c
    /* The viewport shouldn't flip the X axis for the small prim culling to work. */
    assert(-info.scale[0] + info.translate[0] <= info.scale[0] + info.translate[0]);
 
+   /* Compute the line width used by the rasterizer. */
+   float line_width = sctx->queued.named.rasterizer->line_width;
+   if (num_samples == 1)
+      line_width = roundf(line_width);
+   line_width = MAX2(line_width, 1);
+
+   info.clip_half_line_width[0] = line_width * 0.5 / fabs(info.scale[0]);
+   info.clip_half_line_width[1] = line_width * 0.5 / fabs(info.scale[1]);
+
    /* If the Y axis is inverted (OpenGL default framebuffer), reverse it.
     * This is because the viewport transformation inverts the clip space
     * bounding box, so min becomes max, which breaks small primitive

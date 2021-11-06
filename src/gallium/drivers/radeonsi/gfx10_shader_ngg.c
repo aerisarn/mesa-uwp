@@ -970,9 +970,11 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
          }
       }
 
+      LLVMValueRef clip_half_line_width[2] = {};
+
       /* Load the viewport state for small prim culling. */
-      LLVMValueRef vp = ac_build_load_invariant(
-         &ctx->ac, ac_get_arg(&ctx->ac, ctx->small_prim_cull_info), ctx->ac.i32_0);
+      LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->small_prim_cull_info);
+      LLVMValueRef vp = ac_build_load_invariant(&ctx->ac, ptr, ctx->ac.i32_0);
       vp = LLVMBuildBitCast(builder, vp, ctx->ac.v4f32, "");
       LLVMValueRef vp_scale[2], vp_translate[2];
       vp_scale[0] = ac_llvm_extract_elem(&ctx->ac, vp, 0);
@@ -994,6 +996,13 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       options.cull_w = true;
 
       if (shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES) {
+         ptr = LLVMBuildPointerCast(builder, ptr,
+                                    LLVMPointerType(ctx->ac.v2i32, AC_ADDR_SPACE_CONST_32BIT), "");
+         LLVMValueRef terms = ac_build_load_to_sgpr(&ctx->ac, ptr, LLVMConstInt(ctx->ac.i32, 2, 0));
+         terms = LLVMBuildBitCast(builder, terms, ctx->ac.v2f32, "");
+         clip_half_line_width[0] = ac_llvm_extract_elem(&ctx->ac, terms, 0);
+         clip_half_line_width[1] = ac_llvm_extract_elem(&ctx->ac, terms, 1);
+
          options.num_vertices = 2;
 
          assert(!(shader->key.ge.opt.ngg_culling & SI_NGG_CULL_BACK_FACE));
@@ -1012,8 +1021,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
          (void*)gs_vtxptr,
       };
       ac_cull_primitive(&ctx->ac, pos, ctx->ac.i1true, vp_scale, vp_translate,
-                        small_prim_precision, &options,
-                        gfx10_build_primitive_accepted, params);
+                        small_prim_precision, clip_half_line_width,
+                        &options, gfx10_build_primitive_accepted, params);
    }
    ac_build_endif(&ctx->ac, 16002);
    ac_build_s_barrier(&ctx->ac);
