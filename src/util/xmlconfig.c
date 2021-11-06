@@ -1009,7 +1009,10 @@ scandir_filter(const struct dirent *ent)
        (!S_ISREG(st.st_mode) && !S_ISLNK(st.st_mode)))
       return 0;
 #else
-   if (ent->d_type != DT_REG && ent->d_type != DT_LNK)
+   /* Allow through unknown file types for filesystems that don't support d_type
+    * The full filepath isn't available here to stat the file
+    */
+   if (ent->d_type != DT_REG && ent->d_type != DT_LNK && ent->d_type != DT_UNKNOWN)
       return 0;
 #endif
 
@@ -1033,9 +1036,25 @@ parseConfigDir(struct OptConfData *data, const char *dirname)
 
    for (i = 0; i < count; i++) {
       char filename[PATH_MAX];
+#ifdef DT_REG
+      unsigned char d_type = entries[i]->d_type;
+#endif
 
       snprintf(filename, PATH_MAX, "%s/%s", dirname, entries[i]->d_name);
       free(entries[i]);
+
+#ifdef DT_REG
+      /* In the case of unknown d_type, ensure it is a regular file
+       * This can be accomplished with stat on the full filepath
+       */
+      if (d_type == DT_UNKNOWN) {
+         struct stat st;
+         if (stat(filename, &st) != 0 ||
+             !S_ISREG(st.st_mode)) {
+            continue;
+         }
+      }
+#endif
 
       parseOneConfigFile(data, filename);
    }
