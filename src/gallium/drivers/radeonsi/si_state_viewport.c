@@ -70,6 +70,9 @@ static void si_get_small_prim_cull_info(struct si_context *sctx, struct si_small
       info.translate[1] += 0.5;
    }
 
+   memcpy(info.scale_no_aa, info.scale, sizeof(info.scale));
+   memcpy(info.translate_no_aa, info.translate, sizeof(info.translate));
+
    /* Scale the framebuffer up, so that samples become pixels and small
     * primitive culling is the same for all sample counts.
     * This only works with the standard DX sample positions, because
@@ -87,11 +90,13 @@ static void si_get_small_prim_cull_info(struct si_context *sctx, struct si_small
    unsigned quant_mode = sctx->viewports.as_scissor[0].quant_mode;
 
    if (quant_mode == SI_QUANT_MODE_12_12_FIXED_POINT_1_4096TH)
-      info.small_prim_precision = num_samples / 4096.0;
+      info.small_prim_precision_no_aa = 1.0 / 4096.0;
    else if (quant_mode == SI_QUANT_MODE_14_10_FIXED_POINT_1_1024TH)
-      info.small_prim_precision = num_samples / 1024.0;
+      info.small_prim_precision_no_aa = 1.0 / 1024.0;
    else
-      info.small_prim_precision = num_samples / 256.0;
+      info.small_prim_precision_no_aa = 1.0 / 256.0;
+
+   info.small_prim_precision = num_samples * info.small_prim_precision_no_aa;
 
    *out = info;
 }

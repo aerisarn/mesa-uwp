@@ -970,44 +970,47 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
          }
       }
 
+      LLVMValueRef vp_scale[2] = {}, vp_translate[2] = {}, small_prim_precision = NULL;
       LLVMValueRef clip_half_line_width[2] = {};
 
       /* Load the viewport state for small prim culling. */
+      bool prim_is_lines = shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES;
       LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->small_prim_cull_info);
-      LLVMValueRef vp = ac_build_load_to_sgpr(&ctx->ac, ptr, ctx->ac.i32_0);
+      /* Lines will always use the non-AA viewport transformation. */
+      LLVMValueRef vp = ac_build_load_to_sgpr(&ctx->ac, ptr,
+                                              prim_is_lines ? ctx->ac.i32_1 : ctx->ac.i32_0);
       vp = LLVMBuildBitCast(builder, vp, ctx->ac.v4f32, "");
-      LLVMValueRef vp_scale[2], vp_translate[2];
       vp_scale[0] = ac_llvm_extract_elem(&ctx->ac, vp, 0);
       vp_scale[1] = ac_llvm_extract_elem(&ctx->ac, vp, 1);
       vp_translate[0] = ac_llvm_extract_elem(&ctx->ac, vp, 2);
       vp_translate[1] = ac_llvm_extract_elem(&ctx->ac, vp, 3);
-
-      /* Get the small prim filter precision. */
-      LLVMValueRef small_prim_precision = si_unpack_param(ctx, ctx->vs_state_bits, 7, 4);
-      small_prim_precision =
-         LLVMBuildOr(builder, small_prim_precision, LLVMConstInt(ctx->ac.i32, 0x70, 0), "");
-      small_prim_precision =
-         LLVMBuildShl(builder, small_prim_precision, LLVMConstInt(ctx->ac.i32, 23, 0), "");
-      small_prim_precision = LLVMBuildBitCast(builder, small_prim_precision, ctx->ac.f32, "");
 
       /* Execute culling code. */
       struct ac_cull_options options = {};
       options.cull_view_xy = true;
       options.cull_w = true;
 
-      if (shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES) {
-         ptr = LLVMBuildPointerCast(builder, ptr,
-                                    LLVMPointerType(ctx->ac.v2i32, AC_ADDR_SPACE_CONST_32BIT), "");
+      if (prim_is_lines) {
          LLVMValueRef terms = ac_build_load_to_sgpr(&ctx->ac, ptr, LLVMConstInt(ctx->ac.i32, 2, 0));
-         terms = LLVMBuildBitCast(builder, terms, ctx->ac.v2f32, "");
+         terms = LLVMBuildBitCast(builder, terms, ctx->ac.v4f32, "");
          clip_half_line_width[0] = ac_llvm_extract_elem(&ctx->ac, terms, 0);
          clip_half_line_width[1] = ac_llvm_extract_elem(&ctx->ac, terms, 1);
+         small_prim_precision = ac_llvm_extract_elem(&ctx->ac, terms, 2);
 
          options.num_vertices = 2;
+         options.cull_small_prims = shader->key.ge.opt.ngg_culling & SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT;
 
          assert(!(shader->key.ge.opt.ngg_culling & SI_NGG_CULL_BACK_FACE));
          assert(!(shader->key.ge.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE));
       } else {
+         /* Get the small prim filter precision. */
+         small_prim_precision = si_unpack_param(ctx, ctx->vs_state_bits, 7, 4);
+         small_prim_precision =
+            LLVMBuildOr(builder, small_prim_precision, LLVMConstInt(ctx->ac.i32, 0x70, 0), "");
+         small_prim_precision =
+            LLVMBuildShl(builder, small_prim_precision, LLVMConstInt(ctx->ac.i32, 23, 0), "");
+         small_prim_precision = LLVMBuildBitCast(builder, small_prim_precision, ctx->ac.f32, "");
+
          options.num_vertices = 3;
          options.cull_front = shader->key.ge.opt.ngg_culling & SI_NGG_CULL_FRONT_FACE;
          options.cull_back = shader->key.ge.opt.ngg_culling & SI_NGG_CULL_BACK_FACE;
