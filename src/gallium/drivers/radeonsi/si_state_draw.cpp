@@ -2278,13 +2278,15 @@ static void si_draw(struct pipe_context *ctx,
          /* Check that the current shader allows culling. */
          assert(hw_vs->ngg_cull_vert_threshold != UINT_MAX);
 
-         uint8_t ngg_culling = sctx->viewport0_y_inverted ? rs->ngg_cull_flags_y_inverted :
-                                                            rs->ngg_cull_flags;
-         assert(ngg_culling); /* rasterizer state should always set this to non-zero */
+         uint8_t ngg_culling;
 
          if (util_prim_is_lines(sctx->current_rast_prim)) {
             /* Overwrite it to mask out face cull flags. */
-            ngg_culling = SI_NGG_CULL_ENABLED | SI_NGG_CULL_LINES;
+            ngg_culling = rs->ngg_cull_flags_lines;
+         } else {
+            ngg_culling = sctx->viewport0_y_inverted ? rs->ngg_cull_flags_tris_y_inverted :
+                                                       rs->ngg_cull_flags_tris;
+            assert(ngg_culling); /* rasterizer state should always set this to non-zero */
          }
 
          if (ngg_culling != old_ngg_culling) {
