@@ -55,6 +55,12 @@ void si_get_small_prim_cull_info(struct si_context *sctx, struct si_small_prim_c
       info.translate[1] = -info.translate[1];
    }
 
+   /* This is what the hardware does. */
+   if (!sctx->queued.named.rasterizer->half_pixel_center) {
+      info.translate[0] += 0.5;
+      info.translate[1] += 0.5;
+   }
+
    /* Scale the framebuffer up, so that samples become pixels and small
     * primitive culling is the same for all sample counts.
     * This only works with the standard DX sample positions, because
