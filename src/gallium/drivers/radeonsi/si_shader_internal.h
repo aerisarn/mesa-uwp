@@ -259,6 +259,8 @@ void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
 void si_llvm_init_resource_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_vs.c */
+void si_llvm_clipvertex_to_clipdist(struct si_shader_context *ctx,
+                                    struct ac_export_args clipdist[2], LLVMValueRef clipvertex[4]);
 void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef const *so_buffers,
                                     LLVMValueRef const *so_write_offsets,
                                     struct pipe_stream_output *stream_out,
