@@ -910,9 +910,9 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
       unsigned num_user_sgprs;
       if (es_stage == MESA_SHADER_VERTEX)
-         num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_VSGS_NUM_USER_SGPR);
+         num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_GS_NUM_USER_SGPR);
       else
-         num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
+         num_user_sgprs = GFX9_GS_NUM_USER_SGPR;
 
       if (sscreen->info.chip_class >= GFX10) {
          si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
@@ -1178,12 +1178,12 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
          num_user_sgprs =
             SI_SGPR_VS_BLIT_DATA + es_info->base.vs.blit_sgprs_amd;
       } else {
-         num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_VSGS_NUM_USER_SGPR);
+         num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_GS_NUM_USER_SGPR);
       }
    } else {
       assert(es_stage == MESA_SHADER_TESS_EVAL);
       es_vgpr_comp_cnt = es_enable_prim_id ? 3 : 2;
-      num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
+      num_user_sgprs = GFX9_GS_NUM_USER_SGPR;
 
       if (es_enable_prim_id || gs_info->uses_primid)
          break_wave_at_eoi = true;

@@ -571,7 +571,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
             /* For the NGG cull shader, add 1 SGPR to hold
              * the vertex buffer pointer.
              */
-            num_user_sgprs = GFX9_VSGS_NUM_USER_SGPR + 1;
+            num_user_sgprs = GFX9_GS_NUM_USER_SGPR + 1;
 
             if (shader->selector->num_vbos_in_user_sgprs) {
                assert(num_user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
@@ -579,7 +579,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
                   SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->num_vbos_in_user_sgprs * 4;
             }
          } else if (ctx->stage == MESA_SHADER_TESS_EVAL && ngg_cull_shader) {
-            num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
+            num_user_sgprs = GFX9_GS_NUM_USER_SGPR;
          } else {
             num_user_sgprs = SI_NUM_VS_STATE_RESOURCE_SGPRS;
          }

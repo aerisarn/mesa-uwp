@@ -1248,10 +1248,10 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       if (shader->selector->num_vbos_in_user_sgprs) {
          vgpr = 8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->num_vbos_in_user_sgprs * 4;
       } else {
-         vgpr = 8 + GFX9_VSGS_NUM_USER_SGPR + 1;
+         vgpr = 8 + GFX9_GS_NUM_USER_SGPR + 1;
       }
    } else {
-      vgpr = 8 + GFX9_TESGS_NUM_USER_SGPR;
+      vgpr = 8 + GFX9_GS_NUM_USER_SGPR;
    }
 
    val = LLVMBuildLoad(builder, new_vgpr0, "");

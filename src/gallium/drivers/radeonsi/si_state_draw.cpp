@@ -1863,7 +1863,7 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx,
             if (HAS_TESS)
                sh_dw_offset = GFX9_TCS_NUM_USER_SGPR;
             else if (HAS_GS)
-               sh_dw_offset = GFX9_VSGS_NUM_USER_SGPR;
+               sh_dw_offset = GFX9_GS_NUM_USER_SGPR;
          }
 
          radeon_set_sh_reg(sh_base + sh_dw_offset * 4,
