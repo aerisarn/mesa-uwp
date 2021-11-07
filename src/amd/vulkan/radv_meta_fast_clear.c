@@ -159,7 +159,7 @@ create_pass(struct radv_device *device)
 
    attachment.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
    attachment.pNext = NULL;
-   attachment.format = VK_FORMAT_UNDEFINED;
+   attachment.format = VK_FORMAT_R8_UNORM;
    attachment.samples = 1;
    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
