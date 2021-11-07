@@ -1027,6 +1027,13 @@ can_use_mi_rpc_bc_counters(const struct intel_device_info *devinfo)
    return devinfo->ver <= 11;
 }
 
+uint64_t
+intel_perf_report_timestamp(const struct intel_perf_query_info *query,
+                            const uint32_t *report)
+{
+   return report[1];
+}
+
 void
 intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
                                    const struct intel_perf_query_info *query,
@@ -1040,13 +1047,15 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
        start[2] != INTEL_PERF_INVALID_CTX_ID)
       result->hw_id = start[2];
    if (result->reports_accumulated == 0)
-      result->begin_timestamp = start[1];
+      result->begin_timestamp = intel_perf_report_timestamp(query, start);
    result->reports_accumulated++;
 
    switch (query->oa_format) {
    case I915_OA_FORMAT_A32u40_A4u32_B8_C8:
-      accumulate_uint32(start + 1, end + 1,
-                        result->accumulator + query->gpu_time_offset); /* timestamp */
+      result->accumulator[query->gpu_time_offset] =
+         intel_perf_report_timestamp(query, end) -
+         intel_perf_report_timestamp(query, start);
+
       accumulate_uint32(start + 3, end + 3,
                         result->accumulator + query->gpu_clock_offset); /* clock */
 
@@ -1078,7 +1087,9 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
       break;
 
    case I915_OA_FORMAT_A45_B8_C8:
-      accumulate_uint32(start + 1, end + 1, result->accumulator); /* timestamp */
+      result->accumulator[query->gpu_time_offset] =
+         intel_perf_report_timestamp(query, end) -
+         intel_perf_report_timestamp(query, start);
 
       for (i = 0; i < 61; i++) {
          accumulate_uint32(start + 3 + i, end + 3 + i,
