@@ -960,18 +960,17 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                          S_028810_DX_RASTERIZATION_KILL(state->rasterizer_discard) |
                          S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
-   if (rs->rasterizer_discard) {
-      rs->ngg_cull_flags_tris = rs->ngg_cull_flags_tris_y_inverted = SI_NGG_CULL_ENABLED |
-                                                                     SI_NGG_CULL_FRONT_FACE |
-                                                                     SI_NGG_CULL_BACK_FACE;
-      rs->ngg_cull_flags_lines = SI_NGG_CULL_ENABLED |
-                                 SI_NGG_CULL_LINES;
-   } else {
-      rs->ngg_cull_flags_tris = rs->ngg_cull_flags_tris_y_inverted = SI_NGG_CULL_ENABLED;
-      rs->ngg_cull_flags_lines = SI_NGG_CULL_ENABLED |
-                                 SI_NGG_CULL_LINES |
-                                 (!rs->perpendicular_end_caps ? SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT : 0);
+   rs->ngg_cull_flags_tris = SI_NGG_CULL_TRIANGLES;
+   rs->ngg_cull_flags_tris_y_inverted = rs->ngg_cull_flags_tris;
 
+   rs->ngg_cull_flags_lines = SI_NGG_CULL_LINES |
+                              (!rs->perpendicular_end_caps ? SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT : 0);
+
+   if (rs->rasterizer_discard) {
+      rs->ngg_cull_flags_tris |= SI_NGG_CULL_FRONT_FACE |
+                                 SI_NGG_CULL_BACK_FACE;
+      rs->ngg_cull_flags_tris_y_inverted = rs->ngg_cull_flags_tris;
+   } else {
       bool cull_front, cull_back;
 
       if (!state->front_ccw) {

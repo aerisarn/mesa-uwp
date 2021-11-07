@@ -278,7 +278,7 @@ enum
    SI_VS_BLIT_SGPRS_POS_TEXCOORD = 9,
 };
 
-#define SI_NGG_CULL_ENABLED                  (1 << 0)   /* this implies W, view.xy, and small prim culling */
+#define SI_NGG_CULL_TRIANGLES                (1 << 0)   /* this implies W, view.xy, and small prim culling */
 #define SI_NGG_CULL_BACK_FACE                (1 << 1)   /* back faces */
 #define SI_NGG_CULL_FRONT_FACE               (1 << 2)   /* front faces */
 #define SI_NGG_CULL_LINES                    (1 << 3)   /* the primitive type is lines */
