@@ -36,8 +36,8 @@ build_color_shaders(struct nir_shader **out_vs, struct nir_shader **out_fs, uint
 {
    nir_builder vs_b =
       nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL, "meta_clear_color_vs");
-   nir_builder fs_b =
-      nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "meta_clear_color_fs");
+   nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
+                                                     "meta_clear_color_fs-%d", frag_output);
 
    const struct glsl_type *position_type = glsl_vec4_type();
    const struct glsl_type *color_type = glsl_vec4_type();
@@ -175,12 +175,21 @@ create_pipeline(struct radv_device *device, struct radv_render_pass *render_pass
 
 static VkResult
 create_color_renderpass(struct radv_device *device, VkFormat vk_format, uint32_t samples,
-                        VkRenderPass *pass)
+                        unsigned attachment_index, VkRenderPass *pass)
 {
    mtx_lock(&device->meta_state.mtx);
    if (*pass) {
       mtx_unlock(&device->meta_state.mtx);
       return VK_SUCCESS;
+   }
+
+   VkAttachmentReference2 color_refs[MAX_RTS];
+   for (unsigned i = 0; i < MAX_RTS; ++i) {
+      color_refs[i] = (VkAttachmentReference2){
+         .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+         .attachment = i == attachment_index ? 0 : VK_ATTACHMENT_UNUSED,
+         .layout = VK_IMAGE_LAYOUT_GENERAL,
+      };
    }
 
    VkResult result = radv_CreateRenderPass2(
@@ -204,13 +213,8 @@ create_color_renderpass(struct radv_device *device, VkFormat vk_format, uint32_t
                .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
                .inputAttachmentCount = 0,
-               .colorAttachmentCount = 1,
-               .pColorAttachments =
-                  &(VkAttachmentReference2){
-                     .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-                     .attachment = 0,
-                     .layout = VK_IMAGE_LAYOUT_GENERAL,
-                  },
+               .colorAttachmentCount = MAX_RTS,
+               .pColorAttachments = color_refs,
                .pResolveAttachments = NULL,
                .pDepthStencilAttachment =
                   &(VkAttachmentReference2){
@@ -333,30 +337,36 @@ radv_device_finish_meta_clear_state(struct radv_device *device)
 {
    struct radv_meta_state *state = &device->meta_state;
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(state->clear); ++i) {
-      for (uint32_t j = 0; j < ARRAY_SIZE(state->clear[i].color_pipelines); ++j) {
-         radv_DestroyPipeline(radv_device_to_handle(device), state->clear[i].color_pipelines[j],
-                              &state->alloc);
-         radv_DestroyRenderPass(radv_device_to_handle(device), state->clear[i].render_pass[j],
-                                &state->alloc);
+   for (uint32_t i = 0; i < ARRAY_SIZE(state->color_clear); ++i) {
+      for (uint32_t j = 0; j < ARRAY_SIZE(state->color_clear[0]); ++j) {
+         for (uint32_t k = 0; k < ARRAY_SIZE(state->color_clear[i][j].color_pipelines); ++k) {
+            radv_DestroyPipeline(radv_device_to_handle(device),
+                                 state->color_clear[i][j].color_pipelines[k], &state->alloc);
+            radv_DestroyRenderPass(radv_device_to_handle(device),
+                                   state->color_clear[i][j].render_pass[k], &state->alloc);
+         }
       }
-
+   }
+   for (uint32_t i = 0; i < ARRAY_SIZE(state->ds_clear); ++i) {
       for (uint32_t j = 0; j < NUM_DEPTH_CLEAR_PIPELINES; j++) {
-         radv_DestroyPipeline(radv_device_to_handle(device), state->clear[i].depth_only_pipeline[j],
-                              &state->alloc);
          radv_DestroyPipeline(radv_device_to_handle(device),
-                              state->clear[i].stencil_only_pipeline[j], &state->alloc);
+                              state->ds_clear[i].depth_only_pipeline[j], &state->alloc);
          radv_DestroyPipeline(radv_device_to_handle(device),
-                              state->clear[i].depthstencil_pipeline[j], &state->alloc);
+                              state->ds_clear[i].stencil_only_pipeline[j], &state->alloc);
+         radv_DestroyPipeline(radv_device_to_handle(device),
+                              state->ds_clear[i].depthstencil_pipeline[j], &state->alloc);
 
          radv_DestroyPipeline(radv_device_to_handle(device),
-                              state->clear[i].depth_only_unrestricted_pipeline[j], &state->alloc);
+                              state->ds_clear[i].depth_only_unrestricted_pipeline[j],
+                              &state->alloc);
          radv_DestroyPipeline(radv_device_to_handle(device),
-                              state->clear[i].stencil_only_unrestricted_pipeline[j], &state->alloc);
+                              state->ds_clear[i].stencil_only_unrestricted_pipeline[j],
+                              &state->alloc);
          radv_DestroyPipeline(radv_device_to_handle(device),
-                              state->clear[i].depthstencil_unrestricted_pipeline[j], &state->alloc);
+                              state->ds_clear[i].depthstencil_unrestricted_pipeline[j],
+                              &state->alloc);
       }
-      radv_DestroyRenderPass(radv_device_to_handle(device), state->clear[i].depthstencil_rp,
+      radv_DestroyRenderPass(radv_device_to_handle(device), state->ds_clear[i].depthstencil_rp,
                              &state->alloc);
    }
    radv_DestroyPipelineLayout(radv_device_to_handle(device), state->clear_color_p_layout,
@@ -403,29 +413,36 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
    fs_key = radv_format_meta_fs_key(device, format);
    assert(fs_key != -1);
 
-   if (device->meta_state.clear[samples_log2].render_pass[fs_key] == VK_NULL_HANDLE) {
-      VkResult ret =
-         create_color_renderpass(device, radv_fs_key_format_exemplars[fs_key], samples,
-                                 &device->meta_state.clear[samples_log2].render_pass[fs_key]);
+   if (device->meta_state.color_clear[samples_log2][clear_att->colorAttachment]
+          .render_pass[fs_key] == VK_NULL_HANDLE) {
+      VkResult ret = create_color_renderpass(
+         device, radv_fs_key_format_exemplars[fs_key], samples, clear_att->colorAttachment,
+         &device->meta_state.color_clear[samples_log2][clear_att->colorAttachment]
+             .render_pass[fs_key]);
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          return;
       }
    }
 
-   if (device->meta_state.clear[samples_log2].color_pipelines[fs_key] == VK_NULL_HANDLE) {
+   if (device->meta_state.color_clear[samples_log2][clear_att->colorAttachment]
+          .color_pipelines[fs_key] == VK_NULL_HANDLE) {
       VkResult ret = create_color_pipeline(
-         device, samples, 0, &device->meta_state.clear[samples_log2].color_pipelines[fs_key],
-         device->meta_state.clear[samples_log2].render_pass[fs_key]);
+         device, samples, clear_att->colorAttachment,
+         &device->meta_state.color_clear[samples_log2][clear_att->colorAttachment]
+             .color_pipelines[fs_key],
+         device->meta_state.color_clear[samples_log2][clear_att->colorAttachment]
+            .render_pass[fs_key]);
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          return;
       }
    }
 
-   pipeline = device->meta_state.clear[samples_log2].color_pipelines[fs_key];
+   pipeline = device->meta_state.color_clear[samples_log2][clear_att->colorAttachment]
+                 .color_pipelines[fs_key];
 
-   assert(samples_log2 < ARRAY_SIZE(device->meta_state.clear));
+   assert(samples_log2 < ARRAY_SIZE(device->meta_state.color_clear));
    assert(pipeline);
    assert(clear_att->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
    assert(clear_att->colorAttachment < subpass->color_count);
@@ -433,15 +450,6 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
    radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
                          device->meta_state.clear_color_p_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                          16, &clear_value);
-
-   struct radv_subpass clear_subpass = {
-      .color_count = 1,
-      .color_attachments =
-         (struct radv_subpass_attachment[]){subpass->color_attachments[clear_att->colorAttachment]},
-      .depth_stencil_attachment = NULL,
-   };
-
-   radv_cmd_buffer_set_subpass(cmd_buffer, &clear_subpass);
 
    radv_CmdBindPipeline(cmd_buffer_h, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -460,8 +468,6 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
    } else {
       radv_CmdDraw(cmd_buffer_h, 3, clear_rect->layerCount, 0, clear_rect->baseArrayLayer);
    }
-
-   radv_cmd_buffer_restore_subpass(cmd_buffer, subpass);
 }
 
 static void
@@ -687,27 +693,27 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_
    switch (aspects) {
    case VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT:
       pipeline = unrestricted
-                    ? &meta_state->clear[samples_log2].depthstencil_unrestricted_pipeline[index]
-                    : &meta_state->clear[samples_log2].depthstencil_pipeline[index];
+                    ? &meta_state->ds_clear[samples_log2].depthstencil_unrestricted_pipeline[index]
+                    : &meta_state->ds_clear[samples_log2].depthstencil_pipeline[index];
       break;
    case VK_IMAGE_ASPECT_DEPTH_BIT:
       pipeline = unrestricted
-                    ? &meta_state->clear[samples_log2].depth_only_unrestricted_pipeline[index]
-                    : &meta_state->clear[samples_log2].depth_only_pipeline[index];
+                    ? &meta_state->ds_clear[samples_log2].depth_only_unrestricted_pipeline[index]
+                    : &meta_state->ds_clear[samples_log2].depth_only_pipeline[index];
       break;
    case VK_IMAGE_ASPECT_STENCIL_BIT:
       pipeline = unrestricted
-                    ? &meta_state->clear[samples_log2].stencil_only_unrestricted_pipeline[index]
-                    : &meta_state->clear[samples_log2].stencil_only_pipeline[index];
+                    ? &meta_state->ds_clear[samples_log2].stencil_only_unrestricted_pipeline[index]
+                    : &meta_state->ds_clear[samples_log2].stencil_only_pipeline[index];
       break;
    default:
       unreachable("expected depth or stencil aspect");
    }
 
-   if (cmd_buffer->device->meta_state.clear[samples_log2].depthstencil_rp == VK_NULL_HANDLE) {
+   if (cmd_buffer->device->meta_state.ds_clear[samples_log2].depthstencil_rp == VK_NULL_HANDLE) {
       VkResult ret = create_depthstencil_renderpass(
          cmd_buffer->device, 1u << samples_log2,
-         &cmd_buffer->device->meta_state.clear[samples_log2].depthstencil_rp);
+         &cmd_buffer->device->meta_state.ds_clear[samples_log2].depthstencil_rp);
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          return VK_NULL_HANDLE;
@@ -717,7 +723,7 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_
    if (*pipeline == VK_NULL_HANDLE) {
       VkResult ret = create_depthstencil_pipeline(
          cmd_buffer->device, aspects, 1u << samples_log2, index, unrestricted, pipeline,
-         cmd_buffer->device->meta_state.clear[samples_log2].depthstencil_rp);
+         cmd_buffer->device->meta_state.ds_clear[samples_log2].depthstencil_rp);
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          return VK_NULL_HANDLE;
@@ -1336,63 +1342,70 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
    if (on_demand)
       return VK_SUCCESS;
 
-   for (uint32_t i = 0; i < ARRAY_SIZE(state->clear); ++i) {
+   for (uint32_t i = 0; i < ARRAY_SIZE(state->color_clear); ++i) {
       uint32_t samples = 1 << i;
+
+      /* Only precompile meta pipelines for attachment 0 as other are uncommon. */
       for (uint32_t j = 0; j < NUM_META_FS_KEYS; ++j) {
          VkFormat format = radv_fs_key_format_exemplars[j];
          unsigned fs_key = radv_format_meta_fs_key(device, format);
-         assert(!state->clear[i].color_pipelines[fs_key]);
+         assert(!state->color_clear[i][0].color_pipelines[fs_key]);
 
-         res =
-            create_color_renderpass(device, format, samples, &state->clear[i].render_pass[fs_key]);
+         res = create_color_renderpass(device, format, samples, 0,
+                                       &state->color_clear[i][0].render_pass[fs_key]);
          if (res != VK_SUCCESS)
             goto fail;
 
-         res = create_color_pipeline(device, samples, 0, &state->clear[i].color_pipelines[fs_key],
-                                     state->clear[i].render_pass[fs_key]);
+         res = create_color_pipeline(device, samples, 0,
+                                     &state->color_clear[i][0].color_pipelines[fs_key],
+                                     state->color_clear[i][0].render_pass[fs_key]);
          if (res != VK_SUCCESS)
             goto fail;
       }
+   }
+   for (uint32_t i = 0; i < ARRAY_SIZE(state->ds_clear); ++i) {
+      uint32_t samples = 1 << i;
 
-      res = create_depthstencil_renderpass(device, samples, &state->clear[i].depthstencil_rp);
+      res = create_depthstencil_renderpass(device, samples, &state->ds_clear[i].depthstencil_rp);
       if (res != VK_SUCCESS)
          goto fail;
 
       for (uint32_t j = 0; j < NUM_DEPTH_CLEAR_PIPELINES; j++) {
          res = create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_DEPTH_BIT, samples, j, false,
-                                            &state->clear[i].depth_only_pipeline[j],
-                                            state->clear[i].depthstencil_rp);
+                                            &state->ds_clear[i].depth_only_pipeline[j],
+                                            state->ds_clear[i].depthstencil_rp);
          if (res != VK_SUCCESS)
             goto fail;
 
          res = create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, false,
-                                            &state->clear[i].stencil_only_pipeline[j],
-                                            state->clear[i].depthstencil_rp);
+                                            &state->ds_clear[i].stencil_only_pipeline[j],
+                                            state->ds_clear[i].depthstencil_rp);
          if (res != VK_SUCCESS)
             goto fail;
 
          res = create_depthstencil_pipeline(
             device, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, false,
-            &state->clear[i].depthstencil_pipeline[j], state->clear[i].depthstencil_rp);
+            &state->ds_clear[i].depthstencil_pipeline[j], state->ds_clear[i].depthstencil_rp);
          if (res != VK_SUCCESS)
             goto fail;
 
          res = create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_DEPTH_BIT, samples, j, true,
-                                            &state->clear[i].depth_only_unrestricted_pipeline[j],
-                                            state->clear[i].depthstencil_rp);
+                                            &state->ds_clear[i].depth_only_unrestricted_pipeline[j],
+                                            state->ds_clear[i].depthstencil_rp);
          if (res != VK_SUCCESS)
             goto fail;
 
-         res = create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, true,
-                                            &state->clear[i].stencil_only_unrestricted_pipeline[j],
-                                            state->clear[i].depthstencil_rp);
+         res =
+            create_depthstencil_pipeline(device, VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, true,
+                                         &state->ds_clear[i].stencil_only_unrestricted_pipeline[j],
+                                         state->ds_clear[i].depthstencil_rp);
          if (res != VK_SUCCESS)
             goto fail;
 
          res = create_depthstencil_pipeline(
             device, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, samples, j, true,
-            &state->clear[i].depthstencil_unrestricted_pipeline[j],
-            state->clear[i].depthstencil_rp);
+            &state->ds_clear[i].depthstencil_unrestricted_pipeline[j],
+            state->ds_clear[i].depthstencil_rp);
          if (res != VK_SUCCESS)
             goto fail;
       }

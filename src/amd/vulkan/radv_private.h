@@ -430,7 +430,9 @@ struct radv_meta_state {
    struct {
       VkRenderPass render_pass[NUM_META_FS_KEYS];
       VkPipeline color_pipelines[NUM_META_FS_KEYS];
+   } color_clear[MAX_SAMPLES_LOG2][MAX_RTS];
 
+   struct {
       VkRenderPass depthstencil_rp;
       VkPipeline depth_only_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
       VkPipeline stencil_only_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
@@ -439,7 +441,7 @@ struct radv_meta_state {
       VkPipeline depth_only_unrestricted_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
       VkPipeline stencil_only_unrestricted_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
       VkPipeline depthstencil_unrestricted_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
-   } clear[MAX_SAMPLES_LOG2];
+   } ds_clear[MAX_SAMPLES_LOG2];
 
    VkPipelineLayout clear_color_p_layout;
    VkPipelineLayout clear_depth_p_layout;
