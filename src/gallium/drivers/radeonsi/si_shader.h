@@ -283,6 +283,8 @@ enum
 #define SI_NGG_CULL_FRONT_FACE               (1 << 2)   /* front faces */
 #define SI_NGG_CULL_LINES                    (1 << 3)   /* the primitive type is lines */
 #define SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT (1 << 4)   /* cull small lines according to the diamond exit rule */
+#define SI_NGG_CULL_CLIP_PLANE_ENABLE(enable) (((enable) & 0xff) << 5)
+#define SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(x)  (((x) >> 5) & 0xff)
 
 /**
  * For VS shader keys, describe any fixups required for vertex fetch.
@@ -660,7 +662,7 @@ struct si_shader_key_ge {
       unsigned kill_pointsize : 1;
 
       /* For NGG VS and TES. */
-      unsigned ngg_culling : 5; /* SI_NGG_CULL_* */
+      unsigned ngg_culling : 13; /* SI_NGG_CULL_* */
 
       /* For shaders where monolithic variants have better code.
        *

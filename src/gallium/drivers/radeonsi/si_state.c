@@ -960,11 +960,13 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                          S_028810_DX_RASTERIZATION_KILL(state->rasterizer_discard) |
                          S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 
-   rs->ngg_cull_flags_tris = SI_NGG_CULL_TRIANGLES;
+   rs->ngg_cull_flags_tris = SI_NGG_CULL_TRIANGLES |
+                             SI_NGG_CULL_CLIP_PLANE_ENABLE(state->clip_plane_enable);
    rs->ngg_cull_flags_tris_y_inverted = rs->ngg_cull_flags_tris;
 
    rs->ngg_cull_flags_lines = SI_NGG_CULL_LINES |
-                              (!rs->perpendicular_end_caps ? SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT : 0);
+                              (!rs->perpendicular_end_caps ? SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT : 0) |
+                              SI_NGG_CULL_CLIP_PLANE_ENABLE(state->clip_plane_enable);
 
    if (rs->rasterizer_discard) {
       rs->ngg_cull_flags_tris |= SI_NGG_CULL_FRONT_FACE |

@@ -2263,7 +2263,7 @@ static void si_draw(struct pipe_context *ctx,
    }
 
    /* Update NGG culling settings. */
-   uint8_t old_ngg_culling = sctx->ngg_culling;
+   uint16_t old_ngg_culling = sctx->ngg_culling;
    if (GFX_VERSION >= GFX10) {
       struct si_shader_selector *hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->cso;
 
@@ -2278,7 +2278,7 @@ static void si_draw(struct pipe_context *ctx,
          /* Check that the current shader allows culling. */
          assert(hw_vs->ngg_cull_vert_threshold != UINT_MAX);
 
-         uint8_t ngg_culling;
+         uint16_t ngg_culling;
 
          if (util_prim_is_lines(sctx->current_rast_prim)) {
             /* Overwrite it to mask out face cull flags. */

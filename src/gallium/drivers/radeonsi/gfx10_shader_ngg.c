@@ -554,12 +554,14 @@ enum
    /* Byte 0: Boolean ES thread accepted (unculled) flag.
     * Byte 1: New ES thread ID, loaded by GS to prepare the prim export value.
     * Byte 2: TES rel patch ID
-    * Byte 3: Unused
+    * Byte 3: 8-bit clip distance mask: 1 means the clip distance is negative.
+    *         The mask from all vertices is AND'ed. If the result is non-zero,
+    *         the primitive is culled.
     */
    lds_byte0_accept_flag = 0,
    lds_byte1_new_thread_id,
    lds_byte2_tes_rel_patch_id,
-   lds_byte3_unused,
+   lds_byte3_clipdist_neg_mask,
 
    lds_packed_data = 0, /* lds_byteN_... */
    lds_pos_cull_x_div_w,
@@ -804,6 +806,37 @@ static void gfx10_build_primitive_accepted(struct ac_llvm_context *ac, LLVMValue
    ac_build_endif(&ctx->ac, 0);
 }
 
+static void add_clipdist_bit(struct si_shader_context *ctx, LLVMValueRef distance, unsigned i,
+                             LLVMValueRef *packed_data)
+{
+   LLVMValueRef neg = LLVMBuildFCmp(ctx->ac.builder, LLVMRealOLT, distance, ctx->ac.f32_0, "");
+   neg = LLVMBuildZExt(ctx->ac.builder, neg, ctx->ac.i32, "");
+   /* Put the negative distance flag into lds_byte3_clipdist_neg_mask. */
+   neg = LLVMBuildShl(ctx->ac.builder, neg, LLVMConstInt(ctx->ac.i32, 24 + i, 0), "");
+   *packed_data = LLVMBuildOr(ctx->ac.builder, *packed_data, neg, "");
+}
+
+static bool add_clipdist_bits_for_clipvertex(struct si_shader_context *ctx,
+                                             unsigned clipdist_enable,
+                                             LLVMValueRef clipvertex[4],
+                                             LLVMValueRef *packed_data)
+{
+   struct ac_export_args clipdist[2];
+   bool added = false;
+
+   si_llvm_clipvertex_to_clipdist(ctx, clipdist, clipvertex);
+
+   for (unsigned j = 0; j < 8; j++) {
+      if (!(clipdist_enable & BITFIELD_BIT(j)))
+         continue;
+
+      LLVMValueRef distance = clipdist[j / 4].out[j % 4];
+      add_clipdist_bit(ctx, distance, j, packed_data);
+      added = true;
+   }
+   return added;
+}
+
 /**
  * Cull primitives for NGG VS or TES, then compact vertices, which happens
  * before the VS or TES main function. Return values for the main function.
@@ -826,10 +859,16 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
           (sel->info.stage == MESA_SHADER_TESS_EVAL && !shader->key.ge.as_es));
 
    LLVMValueRef es_vtxptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
+   LLVMValueRef packed_data = ctx->ac.i32_0;
+   LLVMValueRef position[4] = {};
    unsigned pos_index = 0;
+   unsigned clip_plane_enable = SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(shader->key.ge.opt.ngg_culling);
+   unsigned clipdist_enable = (sel->clipdist_mask & clip_plane_enable) | sel->culldist_mask;
+   bool has_clipdist_mask = false;
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
-      LLVMValueRef position[4];
+      LLVMValueRef clipvertex[4];
+      unsigned base;
 
       switch (info->output_semantic[i]) {
       case VARYING_SLOT_POS:
@@ -862,12 +901,45 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
                ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_cull_x_div_w + chan, 0)));
          }
          break;
+
+      case VARYING_SLOT_CLIP_DIST0:
+      case VARYING_SLOT_CLIP_DIST1:
+         base = info->output_semantic[i] == VARYING_SLOT_CLIP_DIST1 ? 4 : 0;
+
+         for (unsigned j = 0; j < 4; j++) {
+            unsigned index = base + j;
+
+            if (!(clipdist_enable & BITFIELD_BIT(index)))
+               continue;
+
+            LLVMValueRef distance = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
+            add_clipdist_bit(ctx, distance, index, &packed_data);
+            has_clipdist_mask = true;
+         }
+         break;
+
+      case VARYING_SLOT_CLIP_VERTEX:
+         for (unsigned j = 0; j < 4; j++)
+            clipvertex[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
+
+         if (add_clipdist_bits_for_clipvertex(ctx, clipdist_enable, clipvertex, &packed_data))
+            has_clipdist_mask = true;
+         break;
       }
+   }
+
+   if (clip_plane_enable && !sel->clipdist_mask) {
+      /* When clip planes are enabled and there are no clip distance outputs,
+       * we should use user clip planes and cull against the position.
+       */
+      assert(!has_clipdist_mask);
+      if (add_clipdist_bits_for_clipvertex(ctx, clipdist_enable, position, &packed_data))
+         has_clipdist_mask = true;
    }
 
    /* Initialize the packed data. */
    LLVMBuildStore(
-      builder, ctx->ac.i32_0,
+      builder, packed_data,
       ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_packed_data, 0)));
    ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
    ac_build_s_barrier(&ctx->ac);
@@ -950,6 +1022,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
    {
       /* Load positions. */
       LLVMValueRef pos[3][4] = {};
+      LLVMValueRef clipdist_neg_mask = NULL;
+
       for (unsigned vtx = 0; vtx < num_vertices; vtx++) {
          for (unsigned chan = 0; chan < 4; chan++) {
             unsigned index;
@@ -965,7 +1039,24 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
             pos[vtx][chan] = LLVMBuildLoad(builder, addr, "");
             pos[vtx][chan] = ac_to_float(&ctx->ac, pos[vtx][chan]);
          }
+
+         if (has_clipdist_mask) {
+            /* Load and AND clip distance masks. Each bit means whether that clip distance is
+             * negative. If all masks are AND'ed and the result is 0, the primitive isn't culled
+             * by clip distances.
+             */
+            LLVMValueRef addr = si_build_gep_i8(ctx, gs_vtxptr[vtx], lds_byte3_clipdist_neg_mask);
+            LLVMValueRef mask = LLVMBuildLoad(builder, addr, "");
+            if (!clipdist_neg_mask)
+               clipdist_neg_mask = mask;
+            else
+               clipdist_neg_mask = LLVMBuildAnd(builder, clipdist_neg_mask, mask, "");
+         }
       }
+
+      LLVMValueRef clipdist_accepted =
+         has_clipdist_mask ? LLVMBuildICmp(builder, LLVMIntEQ, clipdist_neg_mask, ctx->ac.i8_0, "")
+                           : ctx->ac.i1true;
 
       LLVMValueRef vp_scale[2] = {}, vp_translate[2] = {}, small_prim_precision = NULL;
       LLVMValueRef clip_half_line_width[2] = {};
@@ -1020,7 +1111,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
          gs_accepted,
          (void*)gs_vtxptr,
       };
-      ac_cull_primitive(&ctx->ac, pos, ctx->ac.i1true, vp_scale, vp_translate,
+      ac_cull_primitive(&ctx->ac, pos, clipdist_accepted, vp_scale, vp_translate,
                         small_prim_precision, clip_half_line_width,
                         &options, gfx10_build_primitive_accepted, params);
    }
