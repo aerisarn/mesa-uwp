@@ -551,10 +551,7 @@ static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout 
 /* LDS layout of ES vertex data for NGG culling. */
 enum
 {
-   /* Byte 0: Boolean ES thread accepted (unculled) flag, and later the old
-    *         ES thread ID. After vertex compaction, compacted ES threads
-    *         store the old thread ID here to copy input VGPRs from uncompacted
-    *         ES threads.
+   /* Byte 0: Boolean ES thread accepted (unculled) flag.
     * Byte 1: New ES thread ID, loaded by GS to prepare the prim export value.
     * Byte 2: TES rel patch ID
     * Byte 3: Unused
