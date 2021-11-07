@@ -235,8 +235,8 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
       const char *intr_name = nir_intrinsic_infos[intr->intrinsic].name;
       bool is_ssbo = strstr(intr_name, "ssbo");
-      bool is_image = strstr(intr_name, "image_deref");
-      bool is_bindless_image = strstr(intr_name, "bindless_image");
+      bool is_image = strstr(intr_name, "image") == intr_name;
+      bool is_bindless_image = strstr(intr_name, "bindless_image") == intr_name;
 
       /* Gather the types of used VMEM instructions that return something. */
       if (nir_intrinsic_infos[intr->intrinsic].has_dest) {
@@ -267,7 +267,9 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
             if (is_image ||
                 is_bindless_image ||
                 is_ssbo ||
-                strstr(intr_name, "global") ||
+                (strstr(intr_name, "global") == intr_name ||
+                 intr->intrinsic == nir_intrinsic_load_global ||
+                 intr->intrinsic == nir_intrinsic_store_global) ||
                 strstr(intr_name, "scratch"))
                info->uses_vmem_return_type_other = true;
             break;
@@ -277,14 +279,8 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       if (is_bindless_image)
          info->uses_bindless_images = true;
 
-      if (strstr(intr_name, "image_atomic") ||
-          strstr(intr_name, "image_store") ||
-          strstr(intr_name, "image_deref_atomic") ||
-          strstr(intr_name, "image_deref_store") ||
-          strstr(intr_name, "ssbo_atomic") ||
-          intr->intrinsic == nir_intrinsic_store_ssbo)
+      if (nir_intrinsic_writes_external_memory(intr))
          info->num_memory_stores++;
-
 
       if (is_image && nir_deref_instr_has_indirect(nir_src_as_deref(intr->src[0])))
          info->uses_indirect_descriptor = true;
