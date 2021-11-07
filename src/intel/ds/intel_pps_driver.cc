@@ -400,4 +400,14 @@ uint64_t IntelDriver::next()
    return cpu_next();
 }
 
+uint32_t IntelDriver::gpu_clock_id() const
+{
+   return perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME;
+}
+
+uint64_t IntelDriver::gpu_timestamp() const
+{
+   return perfetto::base::GetBootTimeNs().count();
+}
+
 } // namespace pps
