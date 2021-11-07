@@ -267,16 +267,6 @@ static void declare_global_desc_pointers(struct si_shader_context *ctx)
               &ctx->bindless_samplers_and_images);
 }
 
-static void declare_vs_specific_input_sgprs(struct si_shader_context *ctx)
-{
-   ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
-   if (!ctx->shader->is_gs_copy_shader) {
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
-      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
-   }
-}
-
 static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
 {
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->args.vertex_buffers);
@@ -408,16 +398,25 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
       }
 
       declare_per_stage_desc_pointers(ctx, true);
-      declare_vs_specific_input_sgprs(ctx);
-      if (!shader->is_gs_copy_shader)
-         declare_vb_descriptor_input_sgprs(ctx);
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
+
+      if (ctx->shader->is_gs_copy_shader) {
+         declare_streamout_params(ctx, &shader->selector->so);
+         /* VGPRs */
+         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
+         break;
+      }
+
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
+      declare_vb_descriptor_input_sgprs(ctx);
 
       if (shader->key.ge.as_es) {
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.es2gs_offset);
       } else if (shader->key.ge.as_ls) {
          /* no extra parameters */
       } else {
-         /* The locations of the other parameters are assigned dynamically. */
          declare_streamout_params(ctx, &shader->selector->so);
       }
 
@@ -461,8 +460,11 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
       declare_global_desc_pointers(ctx);
       declare_per_stage_desc_pointers(ctx, ctx->stage == MESA_SHADER_VERTEX);
-      declare_vs_specific_input_sgprs(ctx);
 
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
+      ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_offsets);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_out_lds_layout);
@@ -534,10 +536,14 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
       }
 
       if (ctx->stage == MESA_SHADER_VERTEX) {
-         if (shader->selector->info.base.vs.blit_sgprs_amd)
+         if (shader->selector->info.base.vs.blit_sgprs_amd) {
             declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
-         else
-            declare_vs_specific_input_sgprs(ctx);
+         } else {
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
+         }
       } else {
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
 
