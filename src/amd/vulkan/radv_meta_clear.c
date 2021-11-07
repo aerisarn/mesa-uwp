@@ -729,7 +729,7 @@ pick_depthstencil_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_
 static void
 emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *clear_att,
                         const VkClearRect *clear_rect, struct radv_subpass_attachment *ds_att,
-                        uint32_t view_mask)
+                        uint32_t view_mask, bool ds_resolve_clear)
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_state *meta_state = &device->meta_state;
@@ -786,7 +786,8 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
       .depth_stencil_attachment = ds_att,
    };
 
-   radv_cmd_buffer_set_subpass(cmd_buffer, &clear_subpass);
+   if (ds_resolve_clear)
+      radv_cmd_buffer_set_subpass(cmd_buffer, &clear_subpass);
 
    radv_CmdBindPipeline(cmd_buffer_h, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -814,7 +815,8 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachm
       radv_CmdSetStencilReference(cmd_buffer_h, VK_STENCIL_FACE_FRONT_BIT, prev_reference);
    }
 
-   radv_cmd_buffer_restore_subpass(cmd_buffer, subpass);
+   if (ds_resolve_clear)
+      radv_cmd_buffer_restore_subpass(cmd_buffer, subpass);
 }
 
 static uint32_t
@@ -1969,7 +1971,8 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *clear_at
                                     clear_rect, clear_value, view_mask)) {
          radv_fast_clear_depth(cmd_buffer, iview, clear_att, pre_flush, post_flush);
       } else {
-         emit_depthstencil_clear(cmd_buffer, clear_att, clear_rect, ds_att, view_mask);
+         emit_depthstencil_clear(cmd_buffer, clear_att, clear_rect, ds_att, view_mask,
+                                 ds_resolve_clear);
       }
    }
 }
