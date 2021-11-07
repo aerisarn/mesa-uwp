@@ -1048,6 +1048,7 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
       result->hw_id = start[2];
    if (result->reports_accumulated == 0)
       result->begin_timestamp = intel_perf_report_timestamp(query, start);
+   result->end_timestamp = intel_perf_report_timestamp(query, end);
    result->reports_accumulated++;
 
    switch (query->oa_format) {

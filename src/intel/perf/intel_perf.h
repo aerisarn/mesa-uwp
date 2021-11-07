@@ -169,6 +169,11 @@ struct intel_perf_query_result {
    uint64_t begin_timestamp;
 
    /**
+    * Timestamp of the query.
+    */
+   uint64_t end_timestamp;
+
+   /**
     * Whether the query was interrupted by another workload (aka preemption).
     */
    bool query_disjoint;
