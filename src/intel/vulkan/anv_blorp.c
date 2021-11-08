@@ -1880,6 +1880,8 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
                              ANV_PIPE_TILE_CACHE_FLUSH_BIT |
                              (devinfo->verx10 == 120 ?
                                 ANV_PIPE_DEPTH_STALL_BIT : 0) |
+                             (devinfo->verx10 == 125 ?
+                                ANV_PIPE_HDC_PIPELINE_FLUSH_BIT : 0) |
                              ANV_PIPE_PSS_STALL_SYNC_BIT |
                              ANV_PIPE_END_OF_PIPE_SYNC_BIT,
                              "before fast clear mcs");
@@ -1974,6 +1976,8 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
                              ANV_PIPE_TILE_CACHE_FLUSH_BIT |
                              (devinfo->verx10 == 120 ?
                                 ANV_PIPE_DEPTH_STALL_BIT : 0) |
+                             (devinfo->verx10 == 125 ?
+                                ANV_PIPE_HDC_PIPELINE_FLUSH_BIT : 0) |
                              ANV_PIPE_PSS_STALL_SYNC_BIT |
                              ANV_PIPE_END_OF_PIPE_SYNC_BIT,
                              "before fast clear ccs");
