@@ -3806,6 +3806,13 @@ bifrost_compile_shader_nir(nir_shader *nir,
          * skip bit is a function of only the data flow graph and is invariant
          * under valid scheduling. */
         bi_analyze_helper_requirements(ctx);
+
+        /* Fuse TEXC after analyzing helper requirements so the analysis
+         * doesn't have to know about dual textures */
+        if (likely(optimize)) {
+                bi_opt_fuse_dual_texture(ctx);
+        }
+
         bi_validate(ctx, "Late lowering");
 
         bi_register_allocate(ctx);
