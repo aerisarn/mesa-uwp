@@ -1678,7 +1678,7 @@ nir_addition_might_overflow(nir_shader *shader, struct hash_table *range_ht,
 }
 
 static uint64_t
-ssa_def_bits_used(nir_ssa_def *def, int recur)
+ssa_def_bits_used(const nir_ssa_def *def, int recur)
 {
    uint64_t bits_used = 0;
    uint64_t all_bits = BITFIELD64_MASK(def->bit_size);
@@ -1871,7 +1871,7 @@ ssa_def_bits_used(nir_ssa_def *def, int recur)
 }
 
 uint64_t
-nir_ssa_def_bits_used(nir_ssa_def *def)
+nir_ssa_def_bits_used(const nir_ssa_def *def)
 {
    return ssa_def_bits_used(def, 2);
 }
