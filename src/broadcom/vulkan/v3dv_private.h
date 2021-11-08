@@ -951,6 +951,12 @@ struct v3dv_copy_query_results_cpu_job_info {
    VkQueryResultFlags flags;
 };
 
+struct v3dv_submit_info_semaphores {
+   /* List of semaphores to wait before running a job */
+   uint32_t sem_count;
+   VkSemaphore *sems;
+};
+
 struct v3dv_event_set_cpu_job_info {
    struct v3dv_event *event;
    int state;

@@ -769,7 +769,8 @@ queue_create_noop_job(struct v3dv_queue *queue)
 }
 
 static VkResult
-queue_submit_noop_job(struct v3dv_queue *queue, const VkSubmitInfo *pSubmit)
+queue_submit_noop_job(struct v3dv_queue *queue,
+                      struct v3dv_submit_info_semaphores *wait_sems_info)
 {
    /* VkQueue host access is externally synchronized so we don't need to lock
     * here for the static variable.
@@ -781,25 +782,25 @@ queue_submit_noop_job(struct v3dv_queue *queue, const VkSubmitInfo *pSubmit)
    }
 
    return queue_submit_job(queue, queue->noop_job,
-                           pSubmit->waitSemaphoreCount > 0, NULL);
+                           wait_sems_info->sem_count > 0, NULL);
 }
 
 static VkResult
 queue_submit_cmd_buffer(struct v3dv_queue *queue,
                         struct v3dv_cmd_buffer *cmd_buffer,
-                        const VkSubmitInfo *pSubmit,
+                        struct v3dv_submit_info_semaphores *wait_sems_info,
                         pthread_t *wait_thread)
 {
    assert(cmd_buffer);
    assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_EXECUTABLE);
 
    if (list_is_empty(&cmd_buffer->jobs))
-      return queue_submit_noop_job(queue, pSubmit);
+      return queue_submit_noop_job(queue, wait_sems_info);
 
    list_for_each_entry_safe(struct v3dv_job, job,
                             &cmd_buffer->jobs, list_link) {
       VkResult result = queue_submit_job(queue, job,
-                                         pSubmit->waitSemaphoreCount > 0,
+                                         wait_sems_info->sem_count > 0,
                                          wait_thread);
       if (result != VK_SUCCESS)
          return result;
@@ -884,19 +885,27 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
    VkResult result = VK_SUCCESS;
    bool has_wait_threads = false;
 
+   /* Wrap wait semaphores info from VkSubmitInfo to use it whenever we need
+    * the data to submit all jobs in the same command buffer batch.
+    */
+   struct v3dv_submit_info_semaphores wait_sems_info = {
+      .sem_count = pSubmit->waitSemaphoreCount,
+      .sems = (VkSemaphore *) pSubmit->pWaitSemaphores,
+   };
+
    /* Even if we don't have any actual work to submit we still need to wait
     * on the wait semaphores and signal the signal semaphores and fence, so
     * in this scenario we just submit a trivial no-op job so we don't have
     * to do anything special, it should not be a common case anyway.
     */
    if (pSubmit->commandBufferCount == 0) {
-      result = queue_submit_noop_job(queue, pSubmit);
+      result = queue_submit_noop_job(queue, &wait_sems_info);
    } else {
       for (uint32_t i = 0; i < pSubmit->commandBufferCount; i++) {
          pthread_t wait_thread;
          struct v3dv_cmd_buffer *cmd_buffer =
             v3dv_cmd_buffer_from_handle(pSubmit->pCommandBuffers[i]);
-         result = queue_submit_cmd_buffer(queue, cmd_buffer, pSubmit,
+         result = queue_submit_cmd_buffer(queue, cmd_buffer, &wait_sems_info,
                                           &wait_thread);
 
          /* We get VK_NOT_READY if we had to spawn a wait thread for the
