@@ -741,6 +741,142 @@
     <imm name="unk2" start="16" size="4"/>
   </ins>
 
+  <ins name="LD_BUFFER.i8" title="Global memory load" opcode="0x6a" opcode2="0" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_8_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Address to load from after adding offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
+  <ins name="LD_BUFFER.i16" title="Global memory load" opcode="0x6a" opcode2="1" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_16_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Byte offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
+  <ins name="LD_BUFFER.i24" title="Global memory load" opcode="0x6a" opcode2="2" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_24_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Byte offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
+  <ins name="LD_BUFFER.i32" title="Global memory load" opcode="0x6a" opcode2="3" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_32_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Byte offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
+  <ins name="LD_BUFFER.i48" title="Global memory load" opcode="0x6a" opcode2="4" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_48_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Byte offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
+  <ins name="LD_BUFFER.i64" title="Global memory load" opcode="0x6a" opcode2="5" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_64_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Byte offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
+  <ins name="LD_BUFFER.i96" title="Global memory load" opcode="0x6a" opcode2="6" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_96_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Byte offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
+  <ins name="LD_BUFFER.i128" title="Global memory load" opcode="0x6a" opcode2="7" unit="LS">
+    <desc>
+      Loads a buffer descriptor. If bits 25...31 of the mode descriptor are
+      all-ones, load from the buffer descriptors in the table indexed by the
+      bottom byte of the mode descriptor. If they are all zeroes, load the
+      contents of the buffer in the first table indexed by the bottom byte of
+      the mode descriptor.
+    </desc>
+    <sr write="true"/>
+    <sr_count/>
+    <mod name="load_lane_128_bit" start="36" size="3"/>
+    <mod name="unsigned" start="39" size="1"/>
+    <slot/>
+    <src>Byte offset</src>
+    <src>Mode descriptor</src>
+  </ins>
+
   <ins name="LD_ATTR" title="Load indirect attribute" opcode="0x76" unit="LS">
     <!-- TODO: for some reason, blob is using index (1<<24)|x for [x] -->
     <desc>The index must not diverge within a warp.</desc>

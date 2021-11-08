@@ -188,7 +188,7 @@ class Instruction:
         if opcode == 0x90:
             # XXX: XMLify this, but disambiguates sign of conversions
             self.secondary_mask |= 0x10
-        if name.startswith("LOAD.i") or name.startswith("STORE.i"):
+        if name.startswith("LOAD.i") or name.startswith("STORE.i") or name.startswith("LD_BUFFER.i"):
             self.secondary_shift = 27 # Alias with memory_size
             self.secondary_mask = 0x7
 
