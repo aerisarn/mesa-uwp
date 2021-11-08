@@ -74,6 +74,8 @@ enum intel_platform {
    INTEL_PLATFORM_GROUP_START(DG2, INTEL_PLATFORM_DG2_G10),
    INTEL_PLATFORM_DG2_G11,
    INTEL_PLATFORM_GROUP_END(DG2, INTEL_PLATFORM_DG2_G12),
+   INTEL_PLATFORM_GROUP_START(MTL, INTEL_PLATFORM_MTL_M),
+   INTEL_PLATFORM_GROUP_END(MTL, INTEL_PLATFORM_MTL_P),
 };
 
 #undef INTEL_PLATFORM_GROUP_START
@@ -85,6 +87,9 @@ enum intel_platform {
 
 #define intel_device_info_is_dg2(devinfo) \
    intel_platform_in_range((devinfo)->platform, DG2)
+
+#define intel_device_info_is_mtl(devinfo) \
+   intel_platform_in_range((devinfo)->platform, MTL)
 
 /**
  * Intel hardware information and quirks
