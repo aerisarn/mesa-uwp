@@ -99,6 +99,21 @@ ring_to_hw_ip(enum ring_type ring)
    }
 }
 
+static enum ring_type
+hw_ip_to_ring(int hw_ip)
+{
+   switch (hw_ip) {
+   case AMDGPU_HW_IP_GFX:
+      return RING_GFX;
+   case AMDGPU_HW_IP_DMA:
+      return RING_DMA;
+   case AMDGPU_HW_IP_COMPUTE:
+      return RING_COMPUTE;
+   default:
+      unreachable("unsupported hw ip");
+   }
+}
+
 struct radv_amdgpu_cs_request {
    /** Specify HW IP block type to which to send the IB. */
    unsigned ip_type;
@@ -308,7 +323,9 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    /* max that fits in the chain size field. */
    ib_size = MIN2(ib_size, 0xfffff);
 
-   while (!cs->base.cdw || (cs->base.cdw & 7) != 4)
+   enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
+   uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[ring_type];
+   while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
       radeon_emit(&cs->base, PKT3_NOP_PAD);
 
    *cs->ib_size_ptr |= cs->base.cdw + 4;
@@ -370,7 +387,10 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
    struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
 
    if (cs->ws->use_ib_bos) {
-      while (!cs->base.cdw || (cs->base.cdw & 7) != 0)
+      enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
+      uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[ring_type];
+
+      while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != 0)
          radeon_emit(&cs->base, PKT3_NOP_PAD);
 
       *cs->ib_size_ptr |= cs->base.cdw;
@@ -967,6 +987,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
    struct radv_amdgpu_winsys *aws = cs0->ws;
    struct radv_amdgpu_cs_request request;
    uint32_t pad_word = PKT3_NOP_PAD;
+   enum ring_type ring_type = hw_ip_to_ring(cs0->hw_ip);
+   uint32_t ib_pad_dw_mask = cs0->ws->info.ib_pad_dw_mask[ring_type];
    bool emit_signal_sem = sem_info->cs_emit_signal;
    VkResult result;
 
@@ -1026,7 +1048,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
 
             assert(size < GFX6_MAX_CS_SIZE);
 
-            while (!size || (size & 7)) {
+            while (!size || (size & ib_pad_dw_mask)) {
                size++;
                pad_words++;
             }
@@ -1068,7 +1090,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
             ++cnt;
          }
 
-         while (!size || (size & 7)) {
+         while (!size || (size & ib_pad_dw_mask)) {
             size++;
             pad_words++;
          }
