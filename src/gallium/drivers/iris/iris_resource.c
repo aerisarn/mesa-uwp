@@ -2406,7 +2406,7 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
  * The pipe->texture_subdata() driver hook.
  *
  * Mesa's state tracker takes this path whenever possible, even with
- * PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER set.
+ * PIPE_CAP_TEXTURE_TRANSFER_MODES set.
  */
 static void
 iris_texture_subdata(struct pipe_context *ctx,

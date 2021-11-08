@@ -313,8 +313,8 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CLEAR_SCISSORED:
    case PIPE_CAP_GL_CLAMP:
       return 1;
-   case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
-      return nouveau_screen(pscreen)->vram_domain & NOUVEAU_BO_VRAM ? 1 : 0;
+   case PIPE_CAP_TEXTURE_TRANSFER_MODES:
+      return nouveau_screen(pscreen)->vram_domain & NOUVEAU_BO_VRAM ? PIPE_TEXTURE_TRANSFER_BLIT : 0;
    case PIPE_CAP_FBFETCH:
       return class_3d >= NVE4_3D_CLASS ? 1 : 0; /* needs testing on fermi */
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:

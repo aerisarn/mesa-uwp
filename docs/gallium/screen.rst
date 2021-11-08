@@ -177,10 +177,11 @@ The integer capabilities:
 * ``PIPE_CAP_TEXTURE_BUFFER_SAMPLER``: Whether a sampler should still
   be used for PIPE_BUFFER resources (normally a sampler is only used
   if the texture target is PIPE_TEXTURE_*).
-* ``PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER``: Whether it is preferable
-  to use a blit to implement a texture transfer which needs format conversions
+* ``PIPE_CAP_TEXTURE_TRANSFER_MODES``: The ``pipe_texture_transfer_mode`` modes
+  that are supported for implementing a texture transfer which needs format conversions
   and swizzling in gallium frontends. Generally, all hardware drivers with
-  dedicated memory should return 1 and all software rasterizers should return 0.
+  dedicated memory should return PIPE_TEXTURE_TRANSFER_BLIT and all software rasterizers
+  should return PIPE_TEXTURE_TRANSFER_DEFAULT.
 * ``PIPE_CAP_QUERY_PIPELINE_STATISTICS``: Whether PIPE_QUERY_PIPELINE_STATISTICS
   is supported.
 * ``PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK``: Bitmask indicating whether special

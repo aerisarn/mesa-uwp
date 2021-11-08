@@ -303,8 +303,8 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1 << 27;
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return 16; // XXX: u_screen says 256 is the minimum value...
-   case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
-      return true;
+   case PIPE_CAP_TEXTURE_TRANSFER_MODES:
+      return PIPE_TEXTURE_TRANSFER_BLIT;
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
       return IRIS_MAX_TEXTURE_BUFFER_SIZE;
    case PIPE_CAP_MAX_VIEWPORTS:

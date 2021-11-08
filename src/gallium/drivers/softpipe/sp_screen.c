@@ -219,7 +219,7 @@ softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 65536;
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return 16;
-   case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
+   case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return 0;
    case PIPE_CAP_MAX_VIEWPORTS:
       return PIPE_MAX_VIEWPORTS;

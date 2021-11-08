@@ -237,7 +237,7 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return VIV_FEATURE(screen, chipMinorFeatures1, HALTI0);
 
    /* Preferences */
-   case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
+   case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return 0;
    case PIPE_CAP_MAX_TEXTURE_UPLOAD_MEMORY_BUDGET: {
       /* etnaviv is being run on systems as small as 256MB total RAM so

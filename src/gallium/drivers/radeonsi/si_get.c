@@ -84,7 +84,6 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
    case PIPE_CAP_VERTEX_COLOR_CLAMPED:
    case PIPE_CAP_FRAGMENT_COLOR_CLAMPED:
-   case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
    case PIPE_CAP_TGSI_INSTANCEID:
    case PIPE_CAP_COMPUTE:
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
@@ -163,6 +162,9 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_COMPUTE_SHADER_DERIVATIVES:
    case PIPE_CAP_TGSI_ATOMINC_WRAP:
       return 1;
+
+   case PIPE_CAP_TEXTURE_TRANSFER_MODES:
+      return PIPE_TEXTURE_TRANSFER_BLIT;
 
    case PIPE_CAP_DRAW_VERTEX_STATE:
       return !(sscreen->debug_flags & DBG(NO_FAST_DISPLAY_LIST));
