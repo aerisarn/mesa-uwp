@@ -286,6 +286,7 @@ struct brw_nir_rt_mem_hit_defs {
    nir_ssa_def *valid;
    nir_ssa_def *leaf_type;
    nir_ssa_def *prim_leaf_index;
+   nir_ssa_def *bvh_level;
    nir_ssa_def *front_face;
    nir_ssa_def *prim_leaf_ptr;
    nir_ssa_def *inst_leaf_ptr;
@@ -309,6 +310,8 @@ brw_nir_rt_load_mem_hit(nir_builder *b,
       nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 17), nir_imm_int(b, 3));
    defs->prim_leaf_index =
       nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 20), nir_imm_int(b, 4));
+   defs->bvh_level =
+      nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 24), nir_imm_int(b, 3));
    defs->front_face = nir_i2b(b, nir_iand_imm(b, bitfield, 1 << 27));
 
    data = nir_load_global(b, nir_iadd_imm(b, hit_addr, 16), 16, 4, 32);
