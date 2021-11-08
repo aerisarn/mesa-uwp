@@ -534,8 +534,6 @@ radv_begin_thread_trace(struct radv_queue *queue)
       break;
    }
 
-   radv_cs_add_buffer(ws, cs, device->thread_trace.bo);
-
    /* Make sure to wait-for-idle before starting SQTT. */
    radv_emit_wait_for_idle(device, cs, family);
 
@@ -589,8 +587,6 @@ radv_end_thread_trace(struct radv_queue *queue)
       radeon_emit(cs, 0);
       break;
    }
-
-   radv_cs_add_buffer(ws, cs, device->thread_trace.bo);
 
    /* Make sure to wait-for-idle before stopping SQTT. */
    radv_emit_wait_for_idle(device, cs, family);
