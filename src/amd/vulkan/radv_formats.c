@@ -868,6 +868,11 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
       tiled |= VK_FORMAT_FEATURE_2_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
    }
 
+   /* It's invalid to expose buffer features with depth/stencil formats. */
+   if (vk_format_is_depth_or_stencil(format)) {
+      buffer = 0;
+   }
+
    out_properties->linearTilingFeatures = linear;
    out_properties->optimalTilingFeatures = tiled;
    out_properties->bufferFeatures = buffer;
