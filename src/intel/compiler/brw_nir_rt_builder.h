@@ -27,6 +27,37 @@
 #include "brw_rt.h"
 #include "nir_builder.h"
 
+#define is_access_for_builder(b) \
+   ((b)->shader->info.stage == MESA_SHADER_FRAGMENT ? \
+    ACCESS_INCLUDE_HELPERS : 0)
+
+static inline nir_ssa_def *
+brw_nir_rt_load(nir_builder *b, nir_ssa_def *addr, unsigned align,
+                unsigned components, unsigned bit_size)
+{
+   return nir_build_load_global(b, components, bit_size, addr,
+                                .align_mul = align,
+                                .access = is_access_for_builder(b));
+}
+
+static inline void
+brw_nir_rt_store(nir_builder *b, nir_ssa_def *addr, unsigned align,
+                 nir_ssa_def *value, unsigned write_mask)
+{
+   nir_build_store_global(b, value, addr,
+                          .align_mul = align,
+                          .write_mask = (write_mask) &
+                                        BITFIELD_MASK(value->num_components),
+                          .access = is_access_for_builder(b));
+}
+
+static inline nir_ssa_def *
+brw_nir_rt_load_const(nir_builder *b, unsigned components,
+                      nir_ssa_def *addr, nir_ssa_def *pred)
+{
+   return nir_build_load_global_const_block_intel(b, components, addr, pred);
+}
+
 static inline nir_ssa_def *
 brw_load_btd_dss_id(nir_builder *b)
 {
@@ -52,8 +83,8 @@ brw_nir_rt_load_scratch(nir_builder *b, uint32_t offset, unsigned align,
 {
    nir_ssa_def *addr =
       nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 64, 1), offset);
-   return nir_load_global(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
-                          num_components, bit_size);
+   return brw_nir_rt_load(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
+                             num_components, bit_size);
 }
 
 static inline void
@@ -62,7 +93,7 @@ brw_nir_rt_store_scratch(nir_builder *b, uint32_t offset, unsigned align,
 {
    nir_ssa_def *addr =
       nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 64, 1), offset);
-   nir_store_global(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
+   brw_nir_rt_store(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
                     value, write_mask);
 }
 
@@ -226,7 +257,7 @@ brw_nir_rt_load_globals(nir_builder *b,
    nir_ssa_def *addr = nir_load_btd_global_arg_addr_intel(b);
 
    nir_ssa_def *data;
-   data = nir_load_global_const_block_intel(b, 16, addr, nir_imm_true(b));
+   data = brw_nir_rt_load_const(b, 16, addr, nir_imm_true(b));
    defs->base_mem_addr = nir_pack_64_2x32(b, nir_channels(b, data, 0x3));
 
    defs->call_stack_handler_addr =
@@ -249,8 +280,7 @@ brw_nir_rt_load_globals(nir_builder *b,
    defs->sw_stack_size = nir_channel(b, data, 12);
    defs->launch_size = nir_channels(b, data, 0x7u << 13);
 
-   data = nir_load_global_const_block_intel(b, 8, nir_iadd_imm(b, addr, 64),
-                                                  nir_imm_true(b));
+   data = brw_nir_rt_load_const(b, 8, nir_iadd_imm(b, addr, 64), nir_imm_true(b));
    defs->call_sbt_addr =
       nir_pack_64_2x32_split(b, nir_channel(b, data, 0),
                                 nir_extract_i16(b, nir_channel(b, data, 1),
@@ -299,7 +329,7 @@ brw_nir_rt_load_mem_hit(nir_builder *b,
 {
    nir_ssa_def *hit_addr = brw_nir_rt_mem_hit_addr(b, committed);
 
-   nir_ssa_def *data = nir_load_global(b, hit_addr, 16, 4, 32);
+   nir_ssa_def *data = brw_nir_rt_load(b, hit_addr, 16, 4, 32);
    defs->t = nir_channel(b, data, 0);
    defs->aabb_hit_kind = nir_channel(b, data, 1);
    defs->tri_bary = nir_channels(b, data, 0x6);
@@ -314,7 +344,7 @@ brw_nir_rt_load_mem_hit(nir_builder *b,
       nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 24), nir_imm_int(b, 3));
    defs->front_face = nir_i2b(b, nir_iand_imm(b, bitfield, 1 << 27));
 
-   data = nir_load_global(b, nir_iadd_imm(b, hit_addr, 16), 16, 4, 32);
+   data = brw_nir_rt_load(b, nir_iadd_imm(b, hit_addr, 16), 16, 4, 32);
    defs->prim_leaf_ptr =
       brw_nir_rt_unpack_leaf_ptr(b, nir_channels(b, data, 0x3 << 0));
    defs->inst_leaf_ptr =
@@ -334,9 +364,9 @@ brw_nir_memcpy_global(nir_builder *b,
 
    for (unsigned offset = 0; offset < size; offset += 16) {
       nir_ssa_def *data =
-         nir_load_global(b, nir_iadd_imm(b, src_addr, offset), src_align,
+         brw_nir_rt_load(b, nir_iadd_imm(b, src_addr, offset), src_align,
                          4, 32);
-      nir_store_global(b, nir_iadd_imm(b, dst_addr, offset), dst_align,
+      brw_nir_rt_store(b, nir_iadd_imm(b, dst_addr, offset), dst_align,
                        data, 0xf /* write_mask */);
    }
 }
@@ -373,7 +403,7 @@ brw_nir_rt_store_mem_ray(nir_builder *b,
 
    assert_def_size(defs->orig, 3, 32);
    assert_def_size(defs->dir, 3, 32);
-   nir_store_global(b, nir_iadd_imm(b, ray_addr, 0), 16,
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 0), 16,
       nir_vec4(b, nir_channel(b, defs->orig, 0),
                   nir_channel(b, defs->orig, 1),
                   nir_channel(b, defs->orig, 2),
@@ -382,7 +412,7 @@ brw_nir_rt_store_mem_ray(nir_builder *b,
 
    assert_def_size(defs->t_near, 1, 32);
    assert_def_size(defs->t_far, 1, 32);
-   nir_store_global(b, nir_iadd_imm(b, ray_addr, 16), 16,
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 16), 16,
       nir_vec4(b, nir_channel(b, defs->dir, 1),
                   nir_channel(b, defs->dir, 2),
                   defs->t_near,
@@ -393,7 +423,7 @@ brw_nir_rt_store_mem_ray(nir_builder *b,
    assert_def_size(defs->ray_flags, 1, 16);
    assert_def_size(defs->hit_group_sr_base_ptr, 1, 64);
    assert_def_size(defs->hit_group_sr_stride, 1, 16);
-   nir_store_global(b, nir_iadd_imm(b, ray_addr, 32), 16,
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 32), 16,
       nir_vec4(b, nir_unpack_64_2x32_split_x(b, defs->root_node_ptr),
                   nir_pack_32_2x16_split(b,
                      nir_unpack_64_4x16_split_z(b, defs->root_node_ptr),
@@ -416,7 +446,7 @@ brw_nir_rt_store_mem_ray(nir_builder *b,
    assert_def_size(defs->shader_index_multiplier, 1, 32);
    assert_def_size(inst_leaf_ptr, 1, 64);
    assert_def_size(defs->ray_mask, 1, 32);
-   nir_store_global(b, nir_iadd_imm(b, ray_addr, 48), 16,
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 48), 16,
       nir_vec4(b, nir_unpack_64_2x32_split_x(b, defs->miss_sr_ptr),
                   nir_pack_32_2x16_split(b,
                      nir_unpack_64_4x16_split_z(b, defs->miss_sr_ptr),
@@ -438,10 +468,10 @@ brw_nir_rt_load_mem_ray(nir_builder *b,
    nir_ssa_def *ray_addr = brw_nir_rt_mem_ray_addr(b, bvh_level);
 
    nir_ssa_def *data[4] = {
-      nir_load_global(b, nir_iadd_imm(b, ray_addr,  0), 16, 4, 32),
-      nir_load_global(b, nir_iadd_imm(b, ray_addr, 16), 16, 4, 32),
-      nir_load_global(b, nir_iadd_imm(b, ray_addr, 32), 16, 4, 32),
-      nir_load_global(b, nir_iadd_imm(b, ray_addr, 48), 16, 4, 32),
+      brw_nir_rt_load(b, nir_iadd_imm(b, ray_addr,  0), 16, 4, 32),
+      brw_nir_rt_load(b, nir_iadd_imm(b, ray_addr, 16), 16, 4, 32),
+      brw_nir_rt_load(b, nir_iadd_imm(b, ray_addr, 32), 16, 4, 32),
+      brw_nir_rt_load(b, nir_iadd_imm(b, ray_addr, 48), 16, 4, 32),
    };
 
    defs->orig = nir_channels(b, data[0], 0x7);
@@ -492,37 +522,37 @@ brw_nir_rt_load_bvh_instance_leaf(nir_builder *b,
                                   nir_ssa_def *leaf_addr)
 {
    defs->shader_index =
-      nir_iand_imm(b, nir_load_global(b, leaf_addr, 4, 1, 32), (1 << 24) - 1);
+      nir_iand_imm(b, brw_nir_rt_load(b, leaf_addr, 4, 1, 32), (1 << 24) - 1);
    defs->contribution_to_hit_group_index =
       nir_iand_imm(b,
-                   nir_load_global(b, nir_iadd_imm(b, leaf_addr, 4), 4, 1, 32),
+                   brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 4), 4, 1, 32),
                    (1 << 24) - 1);
 
    defs->world_to_object[0] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 16), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 16), 4, 3, 32);
    defs->world_to_object[1] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 28), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 28), 4, 3, 32);
    defs->world_to_object[2] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 40), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 40), 4, 3, 32);
    /* The last column of the matrices is swapped between the two probably
     * because it makes it easier/faster for hardware somehow.
     */
    defs->object_to_world[3] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 52), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 52), 4, 3, 32);
 
    nir_ssa_def *data =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 64), 4, 4, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 64), 4, 4, 32);
    defs->instance_id = nir_channel(b, data, 2);
    defs->instance_index = nir_channel(b, data, 3);
 
    defs->object_to_world[0] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 80), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 80), 4, 3, 32);
    defs->object_to_world[1] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 92), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 92), 4, 3, 32);
    defs->object_to_world[2] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 104), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 104), 4, 3, 32);
    defs->world_to_object[3] =
-      nir_load_global(b, nir_iadd_imm(b, leaf_addr, 116), 4, 3, 32);
+      brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 116), 4, 3, 32);
 }
 
 #endif /* BRW_NIR_RT_BUILDER_H */
