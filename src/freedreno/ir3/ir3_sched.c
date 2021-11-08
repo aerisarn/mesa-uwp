@@ -994,7 +994,7 @@ sched_node_add_dep(struct ir3_instruction *instr, struct ir3_instruction *src,
    if (instr->opc == OPC_META_COLLECT)
       sn->collect = instr;
 
-   dag_add_edge(&sn->dag, &n->dag, NULL);
+   dag_add_edge(&sn->dag, &n->dag, 0);
 
    unsigned d = ir3_delayslots(src, instr, i, true);
 

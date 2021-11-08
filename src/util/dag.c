@@ -31,7 +31,7 @@
  * list may contain multiple edges to the same child with different data.
  */
 void
-dag_add_edge(struct dag_node *parent, struct dag_node *child, void *data)
+dag_add_edge(struct dag_node *parent, struct dag_node *child, uintptr_t data)
 {
    util_dynarray_foreach(&parent->edges, struct dag_edge, edge) {
       if (edge->child == child && edge->data == data)
@@ -67,7 +67,7 @@ dag_remove_edge(struct dag *dag, struct dag_edge *edge)
       list_addtail(&child->link, &dag->heads);
 
    edge->child = NULL;
-   edge->data = NULL;
+   edge->data = 0;
 }
 
 /**

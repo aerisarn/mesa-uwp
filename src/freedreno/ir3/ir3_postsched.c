@@ -382,9 +382,9 @@ add_dep(struct ir3_postsched_deps_state *state,
    assert(before != after);
 
    if (state->direction == F) {
-      dag_add_edge(&before->dag, &after->dag, NULL);
+      dag_add_edge(&before->dag, &after->dag, 0);
    } else {
-      dag_add_edge(&after->dag, &before->dag, NULL);
+      dag_add_edge(&after->dag, &before->dag, 0);
    }
 }
 
@@ -593,7 +593,7 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
          if (src->block != instr->block)
             continue;
 
-         dag_add_edge(&sn->dag, &n->dag, NULL);
+         dag_add_edge(&sn->dag, &n->dag, 0);
       }
 
       if (is_input(instr)) {
@@ -602,14 +602,14 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
          util_dynarray_foreach (&inputs, struct ir3_instruction *, instrp) {
             struct ir3_instruction *input = *instrp;
             struct ir3_postsched_node *in = input->data;
-            dag_add_edge(&in->dag, &n->dag, NULL);
+            dag_add_edge(&in->dag, &n->dag, 0);
          }
          util_dynarray_append(&kills, struct ir3_instruction *, instr);
       } else if (is_tex(instr) || is_mem(instr)) {
          util_dynarray_foreach (&kills, struct ir3_instruction *, instrp) {
             struct ir3_instruction *kill = *instrp;
             struct ir3_postsched_node *kn = kill->data;
-            dag_add_edge(&kn->dag, &n->dag, NULL);
+            dag_add_edge(&kn->dag, &n->dag, 0);
          }
       }
    }

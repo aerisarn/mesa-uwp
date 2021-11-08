@@ -53,7 +53,7 @@ struct node: public dag_node {
    /* Overload >> to make describing our test case graphs easier to read */
    struct node &operator>>(struct node &child) {
       dag_add_edge(static_cast<struct dag_node *>(this),
-                   static_cast<struct dag_node *>(&child), NULL);
+                   static_cast<struct dag_node *>(&child), 0);
       return child;
    }
 };
