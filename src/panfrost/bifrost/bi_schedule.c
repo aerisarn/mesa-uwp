@@ -1199,21 +1199,21 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
 }
 
 /* Variant of bi_rewrite_index_src_single that uses word-equivalence, rewriting
- * to a passthrough register. If except_zero is true, the zeroth (first) source
- * is skipped, so staging register reads are not accidentally encoded as
+ * to a passthrough register. If except_sr is true, the staging sources are
+ * skipped, so staging register reads are not accidentally encoded as
  * passthrough (which is impossible) */
 
 static void
 bi_use_passthrough(bi_instr *ins, bi_index old,
                 enum bifrost_packed_src new,
-                bool except_zero)
+                bool except_sr)
 {
         /* Optional for convenience */
         if (!ins || bi_is_null(old))
                 return;
 
         bi_foreach_src(ins, i) {
-                if (i == 0 && except_zero)
+                if ((i == 0 || i == 4) && except_sr)
                         continue;
 
                 if (bi_is_word_equiv(ins->src[i], old)) {

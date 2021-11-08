@@ -356,7 +356,7 @@ bi_is_word_equiv(bi_index left, bi_index right)
 }
 
 #define BI_MAX_DESTS 2
-#define BI_MAX_SRCS 4
+#define BI_MAX_SRCS 5
 
 typedef struct {
         /* Must be first */
@@ -500,7 +500,7 @@ typedef struct {
 static inline bool
 bi_is_staging_src(bi_instr *I, unsigned s)
 {
-        return (s == 0) && bi_opcode_props[I->op].sr_read;
+        return (s == 0 || s == 4) && bi_opcode_props[I->op].sr_read;
 }
 
 /* Represents the assignment of slots for a given bi_tuple */
