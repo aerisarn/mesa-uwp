@@ -17,7 +17,10 @@
 #include <unistd.h>
 
 #include <i915_drm.h>
-#include <intel/perf/intel_perf_query.h>
+
+#include "dev/intel_device_info.h"
+#include "perf/intel_perf.h"
+#include "perf/intel_perf_query.h"
 
 #include <pps/pps.h>
 #include <pps/pps_algorithm.h>
@@ -140,11 +143,11 @@ bool IntelDriver::init_perfcnt()
             case INTEL_PERF_COUNTER_DATA_TYPE_UINT64:
             case INTEL_PERF_COUNTER_DATA_TYPE_UINT32:
             case INTEL_PERF_COUNTER_DATA_TYPE_BOOL32:
-               return (int64_t)counter.oa_counter_read_uint64(perf->cfg, query, &result);
+               return (int64_t)counter.oa_counter_read_uint64(perf->cfg, query, &perf->result);
                break;
             case INTEL_PERF_COUNTER_DATA_TYPE_DOUBLE:
             case INTEL_PERF_COUNTER_DATA_TYPE_FLOAT:
-               return counter.oa_counter_read_float(perf->cfg, query, &result);
+               return counter.oa_counter_read_float(perf->cfg, query, &perf->result);
                break;
             }
 
@@ -166,7 +169,7 @@ bool IntelDriver::init_perfcnt()
    assert(counters.size() && "Failed to query counters");
 
    // Clear accumulations
-   intel_perf_query_result_clear(&result);
+   intel_perf_query_result_clear(&perf->result);
 
    return true;
 }
@@ -314,7 +317,7 @@ uint64_t IntelDriver::gpu_next()
    auto record_a = reinterpret_cast<const drm_i915_perf_record_header *>(records[0].data.data());
    auto record_b = reinterpret_cast<const drm_i915_perf_record_header *>(records[1].data.data());
 
-   intel_perf_query_result_accumulate_fields(&result,
+   intel_perf_query_result_accumulate_fields(&perf->result,
       &perf->query.value(),
       &perf->devinfo,
       record_a + 1,
@@ -333,7 +336,7 @@ uint64_t IntelDriver::gpu_next()
 uint64_t IntelDriver::next()
 {
    // Reset accumulation
-   intel_perf_query_result_clear(&result);
+   intel_perf_query_result_clear(&perf->result);
    return gpu_next();
 }
 

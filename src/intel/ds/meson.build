@@ -12,7 +12,7 @@ pps_intel_sources = [
 pps_intel_lib = static_library(
   'pps-intel',
   sources: pps_intel_sources,
-  include_directories: [inc_tool, inc_src, inc_include],
+  include_directories: [inc_tool, inc_src, inc_include, inc_intel],
   link_with: [libintel_perf, libintel_dev],
   dependencies: [dep_perfetto, dep_libdrm, idep_mesautil],
   cpp_args: '-std=c++17'
