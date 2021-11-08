@@ -52,6 +52,8 @@ struct ac_thread_trace_data {
 
    struct rgp_queue_info rgp_queue_info;
    struct rgp_queue_event rgp_queue_event;
+
+   struct rgp_clock_calibration rgp_clock_calibration;
 };
 
 #define SQTT_BUFFER_ALIGN_SHIFT 12

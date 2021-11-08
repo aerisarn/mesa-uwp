@@ -175,6 +175,18 @@ struct rgp_queue_event {
    simple_mtx_t lock;
 };
 
+struct rgp_clock_calibration_record {
+   uint64_t cpu_timestamp;
+   uint64_t gpu_timestamp;
+   struct list_head list;
+};
+
+struct rgp_clock_calibration {
+   uint32_t record_count;
+   struct list_head record;
+   simple_mtx_t lock;
+};
+
 int
 ac_dump_rgp_capture(struct radeon_info *info,
                     struct ac_thread_trace *thread_trace);
