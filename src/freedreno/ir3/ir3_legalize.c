@@ -862,8 +862,6 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
       block->data = bd;
    }
 
-   ir3_remove_nops(ir);
-
    /* We may have failed to pull all input loads into the first block.
     * In such case at the moment we aren't able to find a better place
     * to for (ei) than the end of the program.

@@ -1211,14 +1211,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
          unsigned delay = node_delay(ctx, instr->data);
          d("delay=%u", delay);
 
-         /* and if we run out of instructions that can be scheduled,
-          * then it is time for nop's:
-          */
          debug_assert(delay <= 6);
-         while (delay > 0) {
-            ir3_NOP(block);
-            delay--;
-         }
 
          schedule(ctx, instr);
 

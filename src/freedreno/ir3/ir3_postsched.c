@@ -687,14 +687,7 @@ sched_block(struct ir3_postsched_ctx *ctx, struct ir3_block *block)
       unsigned delay = node_delay(ctx, instr->data);
       d("delay=%u", delay);
 
-      /* and if we run out of instructions that can be scheduled,
-       * then it is time for nop's:
-       */
       debug_assert(delay <= 6);
-      while (delay > 0) {
-         ir3_NOP(block);
-         delay--;
-      }
 
       schedule(ctx, instr);
    }
@@ -756,7 +749,6 @@ ir3_postsched(struct ir3 *ir, struct ir3_shader_variant *v)
       .v = v,
    };
 
-   ir3_remove_nops(ir);
    cleanup_self_movs(ir);
 
    foreach_block (block, &ir->block_list) {

@@ -1637,7 +1637,6 @@ unsigned ir3_delayslots_with_repeat(struct ir3_instruction *assigner,
                                     unsigned assigner_n, unsigned consumer_n);
 unsigned ir3_delay_calc(struct ir3_block *block,
                         struct ir3_instruction *instr, bool mergedregs);
-void ir3_remove_nops(struct ir3 *ir);
 
 /* unreachable block elimination: */
 bool ir3_remove_unreachable(struct ir3 *ir);
