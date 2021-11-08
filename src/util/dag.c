@@ -24,6 +24,21 @@
 #include "util/set.h"
 #include "util/dag.h"
 
+static void
+append_edge(struct dag_node *parent, struct dag_node *child, uintptr_t data)
+{
+   /* Remove the child as a DAG head. */
+   list_delinit(&child->link);
+
+   struct dag_edge edge = {
+      .child = child,
+      .data = data,
+   };
+
+   util_dynarray_append(&parent->edges, struct dag_edge, edge);
+   child->parent_count++;
+}
+
 /**
  * Adds a directed edge from the parent node to the child.
  *
@@ -37,16 +52,30 @@ dag_add_edge(struct dag_node *parent, struct dag_node *child, uintptr_t data)
       if (edge->child == child && edge->data == data)
          return;
    }
-   /* Remove the child as a DAG head. */
-   list_delinit(&child->link);
 
-   struct dag_edge edge = {
-      .child = child,
-      .data = data,
-   };
+   append_edge(parent, child, data);
+}
 
-   util_dynarray_append(&parent->edges, struct dag_edge, edge);
-   child->parent_count++;
+/**
+ * Adds a directed edge from the parent node to the child.
+ *
+ * Both nodes should have been initialized with dag_init_node(). If there is
+ * already an existing edge, the data is updated to the maximum of the
+ * previous data and the new data. This is useful if the data represents a
+ * delay.
+ */
+void
+dag_add_edge_max_data(struct dag_node *parent, struct dag_node *child,
+                      uintptr_t data)
+{
+   util_dynarray_foreach(&parent->edges, struct dag_edge, edge) {
+      if (edge->child == child) {
+         edge->data = MAX2(edge->data, data);
+         return;
+      }
+   }
+
+   append_edge(parent, child, data);
 }
 
 /* Removes a single edge from the graph, promoting the child to a DAG head.
