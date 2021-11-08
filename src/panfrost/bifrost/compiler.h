@@ -497,6 +497,12 @@ typedef struct {
         };
 } bi_instr;
 
+static inline bool
+bi_is_staging_src(bi_instr *I, unsigned s)
+{
+        return (s == 0) && bi_opcode_props[I->op].sr_read;
+}
+
 /* Represents the assignment of slots for a given bi_tuple */
 
 typedef struct {
