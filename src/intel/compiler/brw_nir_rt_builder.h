@@ -73,6 +73,28 @@ brw_nir_rt_load_num_simd_lanes_per_dss(nir_builder *b,
                          16 /* The RT computation is based off SIMD16 */);
 }
 
+static inline nir_ssa_def *
+brw_load_eu_thread_simd(nir_builder *b)
+{
+   return nir_build_load_topology_id_intel(b, .base = BRW_TOPOLOGY_ID_EU_THREAD_SIMD);
+}
+
+static inline nir_ssa_def *
+brw_nir_rt_async_stack_id(nir_builder *b)
+{
+   assert(gl_shader_stage_is_callable(b->shader->info.stage) ||
+          b->shader->info.stage == MESA_SHADER_RAYGEN);
+   return nir_iadd(b, nir_umul_32x16(b, nir_load_ray_num_dss_rt_stacks_intel(b),
+                                        brw_load_btd_dss_id(b)),
+                      nir_load_btd_stack_id_intel(b));
+}
+
+static inline nir_ssa_def *
+brw_nir_rt_sync_stack_id(nir_builder *b)
+{
+   return brw_load_eu_thread_simd(b);
+}
+
 /* We have our own load/store scratch helpers because they emit a global
  * memory read or write based on the scratch_base_ptr system value rather
  * than a load/store_scratch intrinsic.
@@ -140,19 +162,12 @@ brw_nir_num_rt_stacks(nir_builder *b,
 }
 
 static inline nir_ssa_def *
-brw_nir_rt_stack_id(nir_builder *b)
-{
-   return nir_iadd(b, nir_umul_32x16(b, nir_load_ray_num_dss_rt_stacks_intel(b),
-                                        brw_load_btd_dss_id(b)),
-                      nir_load_btd_stack_id_intel(b));
-}
-
-static inline nir_ssa_def *
 brw_nir_rt_sw_hotzone_addr(nir_builder *b,
                            const struct intel_device_info *devinfo)
 {
    nir_ssa_def *offset32 =
-      nir_imul_imm(b, brw_nir_rt_stack_id(b), BRW_RT_SIZEOF_HOTZONE);
+      nir_imul_imm(b, brw_nir_rt_async_stack_id(b),
+                      BRW_RT_SIZEOF_HOTZONE);
 
    offset32 = nir_iadd(b, offset32, nir_ineg(b,
       nir_imul_imm(b, brw_nir_num_rt_stacks(b, devinfo),
@@ -163,7 +178,32 @@ brw_nir_rt_sw_hotzone_addr(nir_builder *b,
 }
 
 static inline nir_ssa_def *
-brw_nir_rt_ray_addr(nir_builder *b)
+brw_nir_rt_sync_stack_addr(nir_builder *b,
+                           nir_ssa_def *base_mem_addr,
+                           const struct intel_device_info *devinfo)
+{
+   /* For Ray queries (Synchronous Ray Tracing), the formula is similar but
+    * goes down from rtMemBasePtr :
+    *
+    *    syncBase  = RTDispatchGlobals.rtMemBasePtr
+    *              - (DSSID * NUM_SIMD_LANES_PER_DSS + SyncStackID + 1)
+    *              * syncStackSize
+    *
+    * We assume that we can calculate a 32-bit offset first and then add it
+    * to the 64-bit base address at the end.
+    */
+   nir_ssa_def *offset32 =
+      nir_imul(b,
+               nir_iadd(b,
+                        nir_imul(b, brw_load_btd_dss_id(b),
+                                    brw_nir_rt_load_num_simd_lanes_per_dss(b, devinfo)),
+                        nir_iadd_imm(b, brw_nir_rt_sync_stack_id(b), 1)),
+               nir_imm_int(b, BRW_RT_SIZEOF_RAY_QUERY));
+   return nir_isub(b, base_mem_addr, nir_u2u64(b, offset32));
+}
+
+static inline nir_ssa_def *
+brw_nir_rt_stack_addr(nir_builder *b)
 {
    /* From the BSpec "Address Computation for Memory Based Data Structures:
     * Ray and TraversalStack (Async Ray Tracing)":
@@ -176,28 +216,37 @@ brw_nir_rt_ray_addr(nir_builder *b)
     * to the 64-bit base address at the end.
     */
    nir_ssa_def *offset32 =
-      nir_imul(b, brw_nir_rt_stack_id(b),
+      nir_imul(b, brw_nir_rt_async_stack_id(b),
                   nir_load_ray_hw_stack_size_intel(b));
    return nir_iadd(b, nir_load_ray_base_mem_addr_intel(b),
                       nir_u2u64(b, offset32));
 }
 
 static inline nir_ssa_def *
+brw_nir_rt_mem_hit_addr_from_addr(nir_builder *b,
+                        nir_ssa_def *stack_addr,
+                        bool committed)
+{
+   return nir_iadd_imm(b, stack_addr, committed ? 0 : BRW_RT_SIZEOF_HIT_INFO);
+}
+
+static inline nir_ssa_def *
 brw_nir_rt_mem_hit_addr(nir_builder *b, bool committed)
 {
-   return nir_iadd_imm(b, brw_nir_rt_ray_addr(b),
+   return nir_iadd_imm(b, brw_nir_rt_stack_addr(b),
                           committed ? 0 : BRW_RT_SIZEOF_HIT_INFO);
 }
 
 static inline nir_ssa_def *
 brw_nir_rt_hit_attrib_data_addr(nir_builder *b)
 {
-   return nir_iadd_imm(b, brw_nir_rt_ray_addr(b),
+   return nir_iadd_imm(b, brw_nir_rt_stack_addr(b),
                           BRW_RT_OFFSETOF_HIT_ATTRIB_DATA);
 }
 
 static inline nir_ssa_def *
 brw_nir_rt_mem_ray_addr(nir_builder *b,
+                        nir_ssa_def *stack_addr,
                         enum brw_rt_bvh_level bvh_level)
 {
    /* From the BSpec "Address Computation for Memory Based Data Structures:
@@ -210,7 +259,7 @@ brw_nir_rt_mem_ray_addr(nir_builder *b,
     */
    uint32_t offset = BRW_RT_SIZEOF_HIT_INFO * 2 +
                      bvh_level * BRW_RT_SIZEOF_RAY;
-   return nir_iadd_imm(b, brw_nir_rt_ray_addr(b), offset);
+   return nir_iadd_imm(b, stack_addr, offset);
 }
 
 static inline nir_ssa_def *
@@ -223,9 +272,11 @@ brw_nir_rt_sw_stack_addr(nir_builder *b,
                                        nir_load_ray_hw_stack_size_intel(b));
    addr = nir_iadd(b, addr, nir_u2u64(b, offset32));
 
-   return nir_iadd(b, addr,
-      nir_imul(b, nir_u2u64(b, brw_nir_rt_stack_id(b)),
-                  nir_u2u64(b, nir_load_ray_sw_stack_size_intel(b))));
+   nir_ssa_def *offset_in_stack =
+      nir_imul(b, nir_u2u64(b, brw_nir_rt_async_stack_id(b)),
+                  nir_u2u64(b, nir_load_ray_sw_stack_size_intel(b)));
+
+   return nir_iadd(b, addr, offset_in_stack);
 }
 
 static inline nir_ssa_def *
@@ -251,11 +302,10 @@ struct brw_nir_rt_globals_defs {
 };
 
 static inline void
-brw_nir_rt_load_globals(nir_builder *b,
-                        struct brw_nir_rt_globals_defs *defs)
+brw_nir_rt_load_globals_addr(nir_builder *b,
+                             struct brw_nir_rt_globals_defs *defs,
+                             nir_ssa_def *addr)
 {
-   nir_ssa_def *addr = nir_load_btd_global_arg_addr_intel(b);
-
    nir_ssa_def *data;
    data = brw_nir_rt_load_const(b, 16, addr, nir_imm_true(b));
    defs->base_mem_addr = nir_pack_64_2x32(b, nir_channels(b, data, 0x3));
@@ -292,6 +342,13 @@ brw_nir_rt_load_globals(nir_builder *b,
       nir_pack_64_2x32(b, nir_channels(b, data, 0x3 << 2));
 }
 
+static inline void
+brw_nir_rt_load_globals(nir_builder *b,
+                        struct brw_nir_rt_globals_defs *defs)
+{
+   brw_nir_rt_load_globals_addr(b, defs, nir_load_btd_global_arg_addr_intel(b));
+}
+
 static inline nir_ssa_def *
 brw_nir_rt_unpack_leaf_ptr(nir_builder *b, nir_ssa_def *vec2)
 {
@@ -318,24 +375,26 @@ struct brw_nir_rt_mem_hit_defs {
    nir_ssa_def *prim_leaf_index;
    nir_ssa_def *bvh_level;
    nir_ssa_def *front_face;
+   nir_ssa_def *done; /**< Only for ray queries */
    nir_ssa_def *prim_leaf_ptr;
    nir_ssa_def *inst_leaf_ptr;
 };
 
 static inline void
-brw_nir_rt_load_mem_hit(nir_builder *b,
-                        struct brw_nir_rt_mem_hit_defs *defs,
-                        bool committed)
+brw_nir_rt_load_mem_hit_from_addr(nir_builder *b,
+                                  struct brw_nir_rt_mem_hit_defs *defs,
+                                  nir_ssa_def *stack_addr,
+                                  bool committed)
 {
-   nir_ssa_def *hit_addr = brw_nir_rt_mem_hit_addr(b, committed);
+   nir_ssa_def *hit_addr =
+      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr, committed);
 
    nir_ssa_def *data = brw_nir_rt_load(b, hit_addr, 16, 4, 32);
    defs->t = nir_channel(b, data, 0);
    defs->aabb_hit_kind = nir_channel(b, data, 1);
    defs->tri_bary = nir_channels(b, data, 0x6);
    nir_ssa_def *bitfield = nir_channel(b, data, 3);
-   defs->valid =
-      nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 16), nir_imm_int(b, 1));
+   defs->valid = nir_i2b(b, nir_iand_imm(b, bitfield, 1u << 16));
    defs->leaf_type =
       nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 17), nir_imm_int(b, 3));
    defs->prim_leaf_index =
@@ -343,12 +402,40 @@ brw_nir_rt_load_mem_hit(nir_builder *b,
    defs->bvh_level =
       nir_ubitfield_extract(b, bitfield, nir_imm_int(b, 24), nir_imm_int(b, 3));
    defs->front_face = nir_i2b(b, nir_iand_imm(b, bitfield, 1 << 27));
+   defs->done = nir_i2b(b, nir_iand_imm(b, bitfield, 1 << 28));
 
    data = brw_nir_rt_load(b, nir_iadd_imm(b, hit_addr, 16), 16, 4, 32);
    defs->prim_leaf_ptr =
       brw_nir_rt_unpack_leaf_ptr(b, nir_channels(b, data, 0x3 << 0));
    defs->inst_leaf_ptr =
       brw_nir_rt_unpack_leaf_ptr(b, nir_channels(b, data, 0x3 << 2));
+}
+
+static inline void
+brw_nir_rt_init_mem_hit_at_addr(nir_builder *b,
+                                nir_ssa_def *stack_addr,
+                                bool committed,
+                                nir_ssa_def *t_max)
+{
+   nir_ssa_def *mem_hit_addr =
+      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr, committed);
+
+   /* Set the t_max value from the ray initialization */
+   nir_ssa_def *hit_t_addr = mem_hit_addr;
+   brw_nir_rt_store(b, hit_t_addr, 4, t_max, 0x1);
+
+   /* Clear all the flags packed behind primIndexDelta */
+   nir_ssa_def *state_addr = nir_iadd_imm(b, mem_hit_addr, 12);
+   brw_nir_rt_store(b, state_addr, 4, nir_imm_int(b, 0), 0x1);
+}
+
+static inline void
+brw_nir_rt_load_mem_hit(nir_builder *b,
+                        struct brw_nir_rt_mem_hit_defs *defs,
+                        bool committed)
+{
+   brw_nir_rt_load_mem_hit_from_addr(b, defs, brw_nir_rt_stack_addr(b),
+                                     committed);
 }
 
 static inline void
@@ -372,11 +459,148 @@ brw_nir_memcpy_global(nir_builder *b,
 }
 
 static inline void
+brw_nir_memclear_global(nir_builder *b,
+                        nir_ssa_def *dst_addr, uint32_t dst_align,
+                        uint32_t size)
+{
+   /* We're going to copy in 16B chunks */
+   assert(size % 16 == 0);
+   dst_align = MIN2(dst_align, 16);
+
+   nir_ssa_def *zero = nir_imm_ivec4(b, 0, 0, 0, 0);
+   for (unsigned offset = 0; offset < size; offset += 16) {
+      brw_nir_rt_store(b, nir_iadd_imm(b, dst_addr, offset), dst_align,
+                       zero, 0xf /* write_mask */);
+   }
+}
+
+static inline nir_ssa_def *
+brw_nir_rt_query_done(nir_builder *b, nir_ssa_def *stack_addr)
+{
+   struct brw_nir_rt_mem_hit_defs hit_in = {};
+   brw_nir_rt_load_mem_hit_from_addr(b, &hit_in, stack_addr,
+                                     false /* committed */);
+
+   return hit_in.done;
+}
+
+static inline void
+brw_nir_rt_set_dword_bit_at(nir_builder *b,
+                            nir_ssa_def *addr,
+                            uint32_t addr_offset,
+                            uint32_t bit)
+{
+   nir_ssa_def *dword_addr = nir_iadd_imm(b, addr, addr_offset);
+   nir_ssa_def *dword = brw_nir_rt_load(b, dword_addr, 4, 1, 32);
+   brw_nir_rt_store(b, dword_addr, 4, nir_ior_imm(b, dword, 1u << bit), 0x1);
+}
+
+static inline void
+brw_nir_rt_query_mark_done(nir_builder *b, nir_ssa_def *stack_addr)
+{
+   brw_nir_rt_set_dword_bit_at(b,
+                               brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr,
+                                                                 false /* committed */),
+                               4 * 3 /* dword offset */, 28 /* bit */);
+}
+
+/* This helper clears the 3rd dword of the MemHit structure where the valid
+ * bit is located.
+ */
+static inline void
+brw_nir_rt_query_mark_init(nir_builder *b, nir_ssa_def *stack_addr)
+{
+   nir_ssa_def *dword_addr;
+
+   for (uint32_t i = 0; i < 2; i++) {
+      dword_addr =
+         nir_iadd_imm(b,
+                      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr,
+                                                        i == 0 /* committed */),
+                      4 * 3 /* dword offset */);
+      brw_nir_rt_store(b, dword_addr, 4, nir_imm_int(b, 0), 0x1);
+   }
+}
+
+/* This helper is pretty much a memcpy of uncommitted into committed hit
+ * structure, just adding the valid bit.
+ */
+static inline void
+brw_nir_rt_commit_hit_addr(nir_builder *b, nir_ssa_def *stack_addr)
+{
+   nir_ssa_def *dst_addr =
+      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr, true /* committed */);
+   nir_ssa_def *src_addr =
+      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr, false /* committed */);
+
+   for (unsigned offset = 0; offset < BRW_RT_SIZEOF_HIT_INFO; offset += 16) {
+      nir_ssa_def *data =
+         brw_nir_rt_load(b, nir_iadd_imm(b, src_addr, offset), 16, 4, 32);
+
+      if (offset == 0) {
+         data = nir_vec4(b,
+                         nir_channel(b, data, 0),
+                         nir_channel(b, data, 1),
+                         nir_channel(b, data, 2),
+                         nir_ior_imm(b,
+                                     nir_channel(b, data, 3),
+                                     0x1 << 16 /* valid */));
+
+         /* Also write the potential hit as we change it. */
+         brw_nir_rt_store(b, nir_iadd_imm(b, src_addr, offset), 16,
+                          data, 0xf /* write_mask */);
+      }
+
+      brw_nir_rt_store(b, nir_iadd_imm(b, dst_addr, offset), 16,
+                       data, 0xf /* write_mask */);
+   }
+}
+
+static inline void
 brw_nir_rt_commit_hit(nir_builder *b)
 {
-   brw_nir_memcpy_global(b, brw_nir_rt_mem_hit_addr(b, true /* committed */), 16,
-                            brw_nir_rt_mem_hit_addr(b, false /* committed */), 16,
-                            BRW_RT_SIZEOF_HIT_INFO);
+   nir_ssa_def *stack_addr = brw_nir_rt_stack_addr(b);
+   brw_nir_rt_commit_hit_addr(b, stack_addr);
+}
+
+static inline void
+brw_nir_rt_generate_hit_addr(nir_builder *b, nir_ssa_def *stack_addr, nir_ssa_def *t_val)
+{
+   nir_ssa_def *dst_addr =
+      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr, true /* committed */);
+   nir_ssa_def *src_addr =
+      brw_nir_rt_mem_hit_addr_from_addr(b, stack_addr, false /* committed */);
+
+   /* Load 2 vec4 */
+   nir_ssa_def *potential_data[2] = {
+      brw_nir_rt_load(b, src_addr, 16, 4, 32),
+      brw_nir_rt_load(b, nir_iadd_imm(b, src_addr, 16), 16, 4, 32),
+   };
+
+   /* Update the potential hit distance */
+   brw_nir_rt_store(b, src_addr, 4, t_val, 0x1);
+   /* Also mark the potential hit as valid */
+   brw_nir_rt_store(b, nir_iadd_imm(b, src_addr, 12), 4,
+                    nir_ior_imm(b, nir_channel(b, potential_data[0], 3),
+                                   (0x1 << 16) /* valid */), 0x1);
+
+   /* Now write the committed hit. */
+   nir_ssa_def *committed_data[2] = {
+      nir_vec4(b,
+               t_val,
+               nir_imm_float(b, 0.0f), /* barycentric */
+               nir_imm_float(b, 0.0f), /* barycentric */
+               nir_ior_imm(b,
+                           /* Just keep leaf_type */
+                           nir_iand_imm(b, nir_channel(b, potential_data[0], 3), 0x0000e000),
+                           (0x1 << 16) /* valid */ |
+                           (BRW_RT_BVH_LEVEL_OBJECT << 5))),
+      potential_data[1],
+   };
+
+   brw_nir_rt_store(b, dst_addr, 16, committed_data[0], 0xf /* write_mask */);
+   brw_nir_rt_store(b, nir_iadd_imm(b, dst_addr, 16), 16,
+                    committed_data[1], 0xf /* write_mask */);
 }
 
 struct brw_nir_rt_mem_ray_defs {
@@ -395,11 +619,62 @@ struct brw_nir_rt_mem_ray_defs {
 };
 
 static inline void
+brw_nir_rt_store_mem_ray_query_at_addr(nir_builder *b,
+                                       nir_ssa_def *ray_addr,
+                                       const struct brw_nir_rt_mem_ray_defs *defs)
+{
+   assert_def_size(defs->orig, 3, 32);
+   assert_def_size(defs->dir, 3, 32);
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 0), 16,
+      nir_vec4(b, nir_channel(b, defs->orig, 0),
+                  nir_channel(b, defs->orig, 1),
+                  nir_channel(b, defs->orig, 2),
+                  nir_channel(b, defs->dir, 0)),
+      ~0 /* write mask */);
+
+   assert_def_size(defs->t_near, 1, 32);
+   assert_def_size(defs->t_far, 1, 32);
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 16), 16,
+      nir_vec4(b, nir_channel(b, defs->dir, 1),
+                  nir_channel(b, defs->dir, 2),
+                  defs->t_near,
+                  defs->t_far),
+      ~0 /* write mask */);
+
+   assert_def_size(defs->root_node_ptr, 1, 64);
+   assert_def_size(defs->ray_flags, 1, 16);
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 32), 16,
+      nir_vec2(b, nir_unpack_64_2x32_split_x(b, defs->root_node_ptr),
+                  nir_pack_32_2x16_split(b,
+                     nir_unpack_64_4x16_split_z(b, defs->root_node_ptr),
+                     defs->ray_flags)),
+      0x3 /* write mask */);
+
+   /* leaf_ptr is optional */
+   nir_ssa_def *inst_leaf_ptr;
+   if (defs->inst_leaf_ptr) {
+      inst_leaf_ptr = defs->inst_leaf_ptr;
+   } else {
+      inst_leaf_ptr = nir_imm_int64(b, 0);
+   }
+
+   assert_def_size(inst_leaf_ptr, 1, 64);
+   assert_def_size(defs->ray_mask, 1, 32);
+   brw_nir_rt_store(b, nir_iadd_imm(b, ray_addr, 56), 8,
+      nir_vec2(b, nir_unpack_64_2x32_split_x(b, inst_leaf_ptr),
+                  nir_pack_32_2x16_split(b,
+                     nir_unpack_64_4x16_split_z(b, inst_leaf_ptr),
+                     nir_unpack_32_2x16_split_x(b, defs->ray_mask))),
+      ~0 /* write mask */);
+}
+
+static inline void
 brw_nir_rt_store_mem_ray(nir_builder *b,
                          const struct brw_nir_rt_mem_ray_defs *defs,
                          enum brw_rt_bvh_level bvh_level)
 {
-   nir_ssa_def *ray_addr = brw_nir_rt_mem_ray_addr(b, bvh_level);
+   nir_ssa_def *ray_addr =
+      brw_nir_rt_mem_ray_addr(b, brw_nir_rt_stack_addr(b), bvh_level);
 
    assert_def_size(defs->orig, 3, 32);
    assert_def_size(defs->dir, 3, 32);
@@ -461,11 +736,14 @@ brw_nir_rt_store_mem_ray(nir_builder *b,
 }
 
 static inline void
-brw_nir_rt_load_mem_ray(nir_builder *b,
-                        struct brw_nir_rt_mem_ray_defs *defs,
-                        enum brw_rt_bvh_level bvh_level)
+brw_nir_rt_load_mem_ray_from_addr(nir_builder *b,
+                                  struct brw_nir_rt_mem_ray_defs *defs,
+                                  nir_ssa_def *ray_base_addr,
+                                  enum brw_rt_bvh_level bvh_level)
 {
-   nir_ssa_def *ray_addr = brw_nir_rt_mem_ray_addr(b, bvh_level);
+   nir_ssa_def *ray_addr = brw_nir_rt_mem_ray_addr(b,
+                                                   ray_base_addr,
+                                                   bvh_level);
 
    nir_ssa_def *data[4] = {
       brw_nir_rt_load(b, nir_iadd_imm(b, ray_addr,  0), 16, 4, 32),
@@ -505,6 +783,15 @@ brw_nir_rt_load_mem_ray(nir_builder *b,
                                                    nir_imm_int(b, 0)));
    defs->ray_mask =
       nir_unpack_32_2x16_split_y(b, nir_channel(b, data[3], 3));
+}
+
+static inline void
+brw_nir_rt_load_mem_ray(nir_builder *b,
+                        struct brw_nir_rt_mem_ray_defs *defs,
+                        enum brw_rt_bvh_level bvh_level)
+{
+   brw_nir_rt_load_mem_ray_from_addr(b, defs, brw_nir_rt_stack_addr(b),
+                                     bvh_level);
 }
 
 struct brw_nir_rt_bvh_instance_leaf_defs {
@@ -553,6 +840,63 @@ brw_nir_rt_load_bvh_instance_leaf(nir_builder *b,
       brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 104), 4, 3, 32);
    defs->world_to_object[3] =
       brw_nir_rt_load(b, nir_iadd_imm(b, leaf_addr, 116), 4, 3, 32);
+}
+
+struct brw_nir_rt_bvh_primitive_leaf_defs {
+   nir_ssa_def *shader_index;
+   nir_ssa_def *geom_mask;
+   nir_ssa_def *geom_index;
+   nir_ssa_def *type;
+   nir_ssa_def *geom_flags;
+};
+
+static inline void
+brw_nir_rt_load_bvh_primitive_leaf(nir_builder *b,
+                                   struct brw_nir_rt_bvh_primitive_leaf_defs *defs,
+                                   nir_ssa_def *leaf_addr)
+{
+   nir_ssa_def *desc = brw_nir_rt_load(b, leaf_addr, 4, 2, 32);
+
+   defs->shader_index =
+      nir_ubitfield_extract(b, nir_channel(b, desc, 0),
+                            nir_imm_int(b, 23), nir_imm_int(b, 0));
+   defs->geom_mask =
+      nir_ubitfield_extract(b, nir_channel(b, desc, 0),
+                            nir_imm_int(b, 31), nir_imm_int(b, 24));
+
+   defs->geom_index =
+      nir_ubitfield_extract(b, nir_channel(b, desc, 1),
+                            nir_imm_int(b, 28), nir_imm_int(b, 0));
+   defs->type =
+      nir_ubitfield_extract(b, nir_channel(b, desc, 1),
+                            nir_imm_int(b, 29), nir_imm_int(b, 29));
+   defs->geom_flags =
+      nir_ubitfield_extract(b, nir_channel(b, desc, 1),
+                            nir_imm_int(b, 31), nir_imm_int(b, 30));
+}
+
+static inline nir_ssa_def *
+brw_nir_rt_load_primitive_id_from_hit(nir_builder *b,
+                                      nir_ssa_def *is_procedural,
+                                      const struct brw_nir_rt_mem_hit_defs *defs)
+{
+   if (!is_procedural) {
+      is_procedural =
+         nir_ieq(b, defs->leaf_type,
+                    nir_imm_int(b, BRW_RT_BVH_NODE_TYPE_PROCEDURAL));
+   }
+
+   /* The IDs are located in the leaf. Take the index of the hit.
+    *
+    * The index in dw[3] for procedural and dw[2] for quad.
+    */
+   nir_ssa_def *offset =
+      nir_bcsel(b, is_procedural,
+                   nir_iadd_imm(b, nir_ishl_imm(b, defs->prim_leaf_index, 2), 12),
+                   nir_imm_int(b, 8));
+   return nir_load_global(b, nir_iadd(b, defs->prim_leaf_ptr,
+                                         nir_u2u64(b, offset)),
+                             4, /* align */ 1, 32);
 }
 
 #endif /* BRW_NIR_RT_BUILDER_H */
