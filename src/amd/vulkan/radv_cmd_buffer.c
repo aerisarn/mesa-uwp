@@ -1131,10 +1131,9 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
    unsigned sx_blend_opt_epsilon = 0;
    unsigned sx_blend_opt_control = 0;
 
-   if (!cmd_buffer->state.attachments || !subpass)
-      return;
-
    for (unsigned i = 0; i < subpass->color_count; ++i) {
+      unsigned format, swap;
+      bool has_alpha, has_rgb;
       if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED) {
          /* We don't set the DISABLE bits, because the HW can't have holes,
           * so the SPI color format is set to 32-bit 1-component. */
@@ -1143,17 +1142,21 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
       }
 
       int idx = subpass->color_attachments[i].attachment;
-      struct radv_color_buffer_info *cb = &cmd_buffer->state.attachments[idx].cb;
+      if (cmd_buffer->state.attachments) {
+         struct radv_color_buffer_info *cb = &cmd_buffer->state.attachments[idx].cb;
 
-      unsigned format = G_028C70_FORMAT(cb->cb_color_info);
-      unsigned swap = G_028C70_COMP_SWAP(cb->cb_color_info);
+         format = G_028C70_FORMAT(cb->cb_color_info);
+         swap = G_028C70_COMP_SWAP(cb->cb_color_info);
+         has_alpha = !G_028C74_FORCE_DST_ALPHA_1(cb->cb_color_attrib);
+      } else {
+         VkFormat fmt = cmd_buffer->state.pass->attachments[idx].format;
+         format = radv_translate_colorformat(fmt);
+         swap = radv_translate_colorswap(fmt, false);
+         has_alpha = vk_format_description(fmt)->swizzle[3] != PIPE_SWIZZLE_1;
+      }
+
       uint32_t spi_format = (pipeline->graphics.col_format >> (i * 4)) & 0xf;
       uint32_t colormask = (pipeline->graphics.cb_target_mask >> (i * 4)) & 0xf;
-
-      bool has_alpha, has_rgb;
-
-      /* Set if RGB and A are present. */
-      has_alpha = !G_028C74_FORCE_DST_ALPHA_1(cb->cb_color_attrib);
 
       if (format == V_028C70_COLOR_8 || format == V_028C70_COLOR_16 || format == V_028C70_COLOR_32)
          has_rgb = !has_alpha;
