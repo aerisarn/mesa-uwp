@@ -1456,6 +1456,9 @@ struct radv_cmd_state {
    uint32_t emitted_vs_prolog_key_hash;
    uint32_t vbo_misaligned_mask;
    uint32_t vbo_bound_mask;
+
+   /* Whether the cmdbuffer owns the current render pass rather than the app. */
+   bool own_render_pass;
 };
 
 struct radv_cmd_pool {
