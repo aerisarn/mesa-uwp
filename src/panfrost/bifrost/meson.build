@@ -149,6 +149,7 @@ if with_tests
       'bifrost_tests',
       files(
         'test/test-constant-fold.cpp',
+        'test/test-dual-texture.cpp',
 	'test/test-optimizer.cpp',
 	'test/test-pack-formats.cpp',
 	'test/test-packing.cpp',
