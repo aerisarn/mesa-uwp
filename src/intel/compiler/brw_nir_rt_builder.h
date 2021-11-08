@@ -344,8 +344,8 @@ brw_nir_memcpy_global(nir_builder *b,
 static inline void
 brw_nir_rt_commit_hit(nir_builder *b)
 {
-   brw_nir_memcpy_global(b, brw_nir_rt_mem_hit_addr(b, true), 16,
-                            brw_nir_rt_mem_hit_addr(b, false), 16,
+   brw_nir_memcpy_global(b, brw_nir_rt_mem_hit_addr(b, true /* committed */), 16,
+                            brw_nir_rt_mem_hit_addr(b, false /* committed */), 16,
                             BRW_RT_SIZEOF_HIT_INFO);
 }
 
