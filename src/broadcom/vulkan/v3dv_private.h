@@ -968,7 +968,7 @@ struct v3dv_event_wait_cpu_job_info {
    struct v3dv_event **events;
 
    /* Whether any postponed jobs after the wait should wait on semaphores */
-   bool sem_wait;
+   struct v3dv_submit_info_semaphores *sems_info;
 };
 
 struct v3dv_copy_buffer_to_image_cpu_job_info {
