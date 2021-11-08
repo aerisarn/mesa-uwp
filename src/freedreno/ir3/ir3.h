@@ -2341,6 +2341,20 @@ regmask_set(regmask_t *regmask, struct ir3_register *reg)
    }
 }
 
+static inline void
+regmask_clear(regmask_t *regmask, struct ir3_register *reg)
+{
+   bool half = reg->flags & IR3_REG_HALF;
+   if (reg->flags & IR3_REG_RELATIV) {
+      for (unsigned i = 0; i < reg->size; i++)
+         __regmask_clear(regmask, half, reg->array.base + i);
+   } else {
+      for (unsigned mask = reg->wrmask, n = reg->num; mask; mask >>= 1, n++)
+         if (mask & 1)
+            __regmask_clear(regmask, half, n);
+   }
+}
+
 static inline bool
 regmask_get(regmask_t *regmask, struct ir3_register *reg)
 {

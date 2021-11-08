@@ -237,8 +237,11 @@ delay_calc_srcn_postra(struct ir3_instruction *assigner,
 static unsigned
 delay_calc_postra(struct ir3_block *block, struct ir3_instruction *start,
                   struct ir3_instruction *consumer, unsigned distance,
-                  bool soft, bool pred, bool mergedregs)
+                  bool soft, bool pred, regmask_t *in_mask, bool mergedregs)
 {
+   regmask_t mask;
+   memcpy(&mask, in_mask, sizeof(mask));
+
    unsigned delay = 0;
    /* Search backwards starting at the instruction before start, unless it's
     * NULL then search backwards from the block end.
@@ -261,6 +264,8 @@ delay_calc_postra(struct ir3_block *block, struct ir3_instruction *start,
       foreach_dst_n (dst, dst_n, assigner) {
          if (dst->wrmask == 0)
             continue;
+         if (!regmask_get(&mask, dst))
+            continue;
          foreach_src_n (src, src_n, consumer) {
             if (src->flags & (IR3_REG_IMMED | IR3_REG_CONST))
                continue;
@@ -269,6 +274,7 @@ delay_calc_postra(struct ir3_block *block, struct ir3_instruction *start,
                assigner, consumer, dst_n, src_n, soft, mergedregs);
             new_delay = MAX2(new_delay, src_delay);
          }
+         regmask_clear(&mask, dst);
       }
 
       new_delay = new_delay > distance ? new_delay - distance : 0;
@@ -298,7 +304,7 @@ delay_calc_postra(struct ir3_block *block, struct ir3_instruction *start,
       for (unsigned i = 0; i < block->predecessors_count; i++) {
          struct ir3_block *pred = block->predecessors[i];
          unsigned pred_delay = delay_calc_postra(pred, NULL, consumer, distance,
-                                                 soft, pred, mergedregs);
+                                                 soft, pred, &mask, mergedregs);
          delay = MAX2(delay, pred_delay);
       }
 
@@ -323,7 +329,14 @@ unsigned
 ir3_delay_calc_postra(struct ir3_block *block, struct ir3_instruction *instr,
                       bool soft, bool mergedregs)
 {
-   return delay_calc_postra(block, NULL, instr, 0, soft, false, mergedregs);
+   regmask_t mask;
+   regmask_init(&mask, mergedregs);
+   foreach_src (src, instr) {
+      if (!(src->flags & (IR3_REG_IMMED | IR3_REG_CONST)))
+         regmask_set(&mask, src);
+   }
+
+   return delay_calc_postra(block, NULL, instr, 0, soft, false, &mask, mergedregs);
 }
 
 /**
@@ -334,7 +347,14 @@ unsigned
 ir3_delay_calc_exact(struct ir3_block *block, struct ir3_instruction *instr,
                      bool mergedregs)
 {
-   return delay_calc_postra(block, NULL, instr, 0, false, true, mergedregs);
+   regmask_t mask;
+   regmask_init(&mask, mergedregs);
+   foreach_src (src, instr) {
+      if (!(src->flags & (IR3_REG_IMMED | IR3_REG_CONST)))
+         regmask_set(&mask, src);
+   }
+
+   return delay_calc_postra(block, NULL, instr, 0, false, true, &mask, mergedregs);
 }
 
 /**
