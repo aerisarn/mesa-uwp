@@ -3416,6 +3416,7 @@ NVC0LoweringPass::visit(Instruction *i)
       addr->reg.data.offset = 0;
       i->setSrc(0, addr);
       i->setIndirect(0, 0, afetch->getDef(0));
+      i->subOp = NV50_IR_SUBOP_VFETCH_PHYS;
    }
 
    return ret;

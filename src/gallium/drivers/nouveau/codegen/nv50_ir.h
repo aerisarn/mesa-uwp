@@ -284,6 +284,8 @@ enum operation
 #define NV50_IR_SUBOP_SHF_C  (0 << 2)
 #define NV50_IR_SUBOP_SHF_W  (1 << 2)
 
+#define NV50_IR_SUBOP_VFETCH_PHYS 1
+
 // xmad(src0, src1, 0) << 16 + src2
 #define NV50_IR_SUBOP_XMAD_PSL (1 << 0)
 // (xmad(src0, src1, src2) & 0xffff) | (src1 << 16)

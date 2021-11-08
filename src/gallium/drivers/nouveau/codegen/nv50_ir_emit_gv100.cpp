@@ -843,6 +843,7 @@ CodeEmitterGV100::emitALD()
    emitField(74, 2, (insn->getDef(0)->reg.size / 4) - 1);
    emitGPR  (32, insn->src(0).getIndirect(1));
    emitO    (79);
+   emitField(77, 1, insn->subOp); // .PHYS
    emitP    (76);
    emitADDR (24, 40, 10, 0, insn->src(0));
    emitGPR  (16, insn->def(0));
@@ -854,6 +855,7 @@ CodeEmitterGV100::emitAST()
    emitInsn (0x322);
    emitField(74, 2, (typeSizeof(insn->dType) / 4) - 1);
    emitGPR  (64, insn->src(0).getIndirect(1));
+   emitField(77, 1, insn->subOp); // .PHYS
    emitP    (76);
    emitADDR (24, 40, 10, 0, insn->src(0));
    emitGPR  (32, insn->src(1));
