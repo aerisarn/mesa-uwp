@@ -550,6 +550,28 @@ struct bifrost_texture_operation {
         unsigned mask : 4;
 } __attribute__((packed));
 
+struct bifrost_dual_texture_operation {
+        unsigned primary_sampler_index : 2;
+        unsigned mode : 2; /* 0x1 for dual */
+        unsigned primary_texture_index : 2;
+        unsigned secondary_sampler_index : 2;
+        unsigned secondary_texture_index : 2;
+
+        /* Leave zero for dual texturing */
+        unsigned reserved : 1;
+        unsigned index_mode_zero : 1;
+
+        /* Base staging register to write the secondary results to */
+        unsigned secondary_register : 6;
+
+        /* Format/mask for each texture */
+        enum bifrost_texture_format secondary_format : 3;
+        unsigned secondary_mask : 4;
+
+        enum bifrost_texture_format primary_format : 3;
+        unsigned primary_mask : 4;
+} __attribute__((packed));
+
 #define BIFROST_MEGA_SAMPLE 128
 #define BIFROST_ALL_SAMPLES 255
 #define BIFROST_CURRENT_PIXEL 255
