@@ -2769,9 +2769,9 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
 
         uint32_t desc_u = 0;
         memcpy(&desc_u, &desc, sizeof(desc_u));
-        bi_texc_to(b, sr_count ? idx : bi_dest_index(&instr->dest),
+        bi_texc_to(b, sr_count ? idx : bi_dest_index(&instr->dest), bi_null(),
                         idx, cx, cy, bi_imm_u32(desc_u), !computed_lod,
-                        sr_count);
+                        sr_count, 0);
 
         /* Explicit copy to facilitate tied operands */
         if (sr_count) {
