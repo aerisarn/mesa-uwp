@@ -409,7 +409,10 @@ typedef struct {
                 };
 
                 /* TEXC, ATOM_CX: # of staging registers used */
-                uint32_t sr_count;
+                struct {
+                        uint32_t sr_count;
+                        uint32_t sr_count_2;
+                };
         };
 
         /* Modifiers specific to particular instructions are thrown in a union */
