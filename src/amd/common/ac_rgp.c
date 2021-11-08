@@ -860,12 +860,13 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
          ac_rgp_file_write_elf_object(output, file_offset +
                                       sizeof(struct sqtt_code_object_database_record),
                                       record, &elf_size_calc, flags);
-         code_object_record.size = elf_size_calc;
+         /* Align to 4 bytes per the RGP file spec. */
+         code_object_record.size = ALIGN(elf_size_calc, 4);
          fseek(output, file_offset, SEEK_SET);
          fwrite(&code_object_record, sizeof(struct sqtt_code_object_database_record),
                 1, output);
          file_offset += (sizeof(struct sqtt_code_object_database_record) +
-                         elf_size_calc);
+                         code_object_record.size);
          fseek(output, file_offset, SEEK_SET);
       }
       ac_sqtt_fill_code_object(rgp_code_object, &code_object,
