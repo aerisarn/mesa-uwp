@@ -409,6 +409,14 @@ static const struct bifrost_reg_ctrl_23 bifrost_reg_ctrl_lut[32] = {
 /* Texture operator descriptors in various states. Usually packed in the
  * compiler and stored as a constant */
 
+enum bifrost_texture_operation_mode {
+        /* Dual texturing */
+        BIFROST_TEXTURE_OPERATION_DUAL = 1,
+
+        /* Single texturing */
+        BIFROST_TEXTURE_OPERATION_SINGLE = 3,
+};
+
 enum bifrost_index {
         /* Both texture/sampler index immediate */
         BIFROST_INDEX_IMMEDIATE_SHARED = 0,
