@@ -34,6 +34,7 @@ libpanfrost_bifrost_files = files(
   'bi_opt_cse.c',
   'bi_opt_push_ubo.c',
   'bi_opt_mod_props.c',
+  'bi_opt_dual_tex.c',
   'bi_pack.c',
   'bi_ra.c',
   'bi_schedule.c',
