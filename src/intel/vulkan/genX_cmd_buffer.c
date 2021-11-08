@@ -6485,13 +6485,8 @@ vk_to_blorp_resolve_mode(VkResolveModeFlagBitsKHR vk_mode)
 }
 
 static void
-cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
+cmd_buffer_clear_state_pointers(struct anv_cmd_state *cmd_state)
 {
-   struct anv_cmd_state *cmd_state = &cmd_buffer->state;
-   struct anv_subpass *subpass = cmd_state->subpass;
-   uint32_t subpass_id = anv_get_subpass_id(&cmd_buffer->state);
-   struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
-
    /* We are done with the previous subpass and all rendering directly to that
     * subpass is now complete.  Zero out all the surface states so we don't
     * accidentally use them between now and the next subpass.
@@ -6504,7 +6499,14 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
    }
    cmd_state->null_surface_state = ANV_STATE_NULL;
    cmd_state->attachment_states = ANV_STATE_NULL;
+}
 
+static void
+cmd_buffer_mark_images_written(struct anv_cmd_buffer *cmd_buffer,
+                               struct anv_cmd_state *cmd_state,
+                               struct anv_subpass *subpass,
+                               struct anv_framebuffer *fb)
+{
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
       const uint32_t a = subpass->attachments[i].attachment;
       if (a == VK_ATTACHMENT_UNUSED)
@@ -6557,7 +6559,15 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          }
       }
    }
+}
 
+static void
+cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
+                               struct anv_cmd_state *cmd_state,
+                               struct anv_subpass *subpass,
+                               struct anv_framebuffer *fb,
+                               uint32_t subpass_id)
+{
    if (subpass->has_color_resolve) {
       /* We are about to do some MSAA resolves.  We need to flush so that the
        * result of writes to the MSAA color attachments show up in the sampler
@@ -6793,7 +6803,15 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 #endif /* GFX_VER == 7 */
+}
 
+static void
+cmd_buffer_do_layout_transitions(struct anv_cmd_buffer *cmd_buffer,
+                                 struct anv_cmd_state *cmd_state,
+                                 struct anv_subpass *subpass,
+                                 struct anv_framebuffer *fb,
+                                 uint32_t subpass_id)
+{
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
       const uint32_t a = subpass->attachments[i].attachment;
       if (a == VK_ATTACHMENT_UNUSED)
@@ -6850,6 +6868,23 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                    false /* will_full_fast_clear */);
       }
    }
+}
+
+static void
+cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_cmd_state *cmd_state = &cmd_buffer->state;
+   struct anv_subpass *subpass = cmd_state->subpass;
+   uint32_t subpass_id = anv_get_subpass_id(&cmd_buffer->state);
+   struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+
+   cmd_buffer_clear_state_pointers(cmd_state);
+
+   cmd_buffer_mark_images_written(cmd_buffer, cmd_state, subpass, fb);
+
+   cmd_buffer_resolve_attachments(cmd_buffer, cmd_state, subpass, fb, subpass_id);
+
+   cmd_buffer_do_layout_transitions(cmd_buffer, cmd_state, subpass, fb, subpass_id);
 
    /* Accumulate any subpass flushes that need to happen after the subpass.
     * Yes, they do get accumulated twice in the NextSubpass case but since
