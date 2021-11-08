@@ -1344,7 +1344,7 @@ VkResult anv_QueueSubmit2KHR(
     * the kernel to kick us or we'll have to wait until the client waits on a
     * fence before we actually know whether or not we've hung.
     */
-   VkResult result = anv_device_query_status(device);
+   VkResult result = vk_device_check_status(&device->vk);
    if (result != VK_SUCCESS)
       return result;
 

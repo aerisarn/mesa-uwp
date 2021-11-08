@@ -1311,9 +1311,6 @@ anv_mocs(const struct anv_device *device,
 void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
 
-VkResult anv_device_query_status(struct anv_device *device);
-
-
 enum anv_bo_alloc_flags {
    /** Specifies that the BO must have a 32-bit address
     *
