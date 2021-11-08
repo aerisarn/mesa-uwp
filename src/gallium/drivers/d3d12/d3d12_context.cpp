@@ -1988,12 +1988,13 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                        PIPE_USAGE_DEFAULT,
                        0, true);
 
-   struct primconvert_config cfg;
+   struct primconvert_config cfg = {};
    cfg.primtypes_mask = 1 << PIPE_PRIM_POINTS |
                         1 << PIPE_PRIM_LINES |
                         1 << PIPE_PRIM_LINE_STRIP |
                         1 << PIPE_PRIM_TRIANGLES |
                         1 << PIPE_PRIM_TRIANGLE_STRIP;
+   cfg.restart_primtypes_mask = cfg.primtypes_mask;
    cfg.fixed_prim_restart = true;
    ctx->primconvert = util_primconvert_create_config(&ctx->base, &cfg);
    if (!ctx->primconvert) {
