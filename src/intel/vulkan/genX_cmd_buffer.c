@@ -1540,18 +1540,16 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static VkResult
-genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
-                                   const struct anv_render_pass *pass,
-                                   const struct anv_framebuffer *framebuffer,
-                                   const VkRenderPassBeginInfo *begin)
+cmd_buffer_alloc_state_attachments(struct anv_cmd_buffer *cmd_buffer,
+                                   uint32_t attachment_count)
 {
    struct anv_cmd_state *state = &cmd_buffer->state;
 
    vk_free(&cmd_buffer->pool->alloc, state->attachments);
 
-   if (pass->attachment_count > 0) {
+   if (attachment_count > 0) {
       state->attachments = vk_zalloc(&cmd_buffer->pool->alloc,
-                                     pass->attachment_count *
+                                     attachment_count *
                                           sizeof(state->attachments[0]),
                                      8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (state->attachments == NULL) {
@@ -1562,6 +1560,23 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
    } else {
       state->attachments = NULL;
    }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
+                                   const struct anv_render_pass *pass,
+                                   const struct anv_framebuffer *framebuffer,
+                                   const VkRenderPassBeginInfo *begin)
+{
+   struct anv_cmd_state *state = &cmd_buffer->state;
+   VkResult result;
+
+   result = cmd_buffer_alloc_state_attachments(cmd_buffer,
+                                               pass->attachment_count);
+   if (result != VK_SUCCESS)
+      return result;
 
    const VkRenderPassAttachmentBeginInfoKHR *attach_begin =
       vk_find_struct_const(begin, RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR);
