@@ -1034,10 +1034,26 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
 static void radeon_enc_ctx(struct radeon_encoder *enc)
 {
    enc->enc_pic.ctx_buf.swizzle_mode = 0;
-   enc->enc_pic.ctx_buf.rec_luma_pitch = align(enc->base.width, enc->alignment);
-   enc->enc_pic.ctx_buf.rec_chroma_pitch = align(enc->base.width, enc->alignment);
-   enc->enc_pic.ctx_buf.num_reconstructed_pictures = 2;
    enc->enc_pic.ctx_buf.two_pass_search_center_map_offset = 0;
+
+   uint32_t aligned_width = enc->enc_pic.session_init.aligned_picture_width;
+   uint32_t aligned_height = enc->enc_pic.session_init.aligned_picture_height;
+
+   enc->enc_pic.ctx_buf.rec_luma_pitch = align(aligned_width, enc->alignment);
+   enc->enc_pic.ctx_buf.rec_chroma_pitch = align(aligned_width, enc->alignment);
+
+   int luma_size = enc->enc_pic.ctx_buf.rec_luma_pitch * align(aligned_height, enc->alignment);
+   if (enc->enc_pic.bit_depth_luma_minus8 == 2)
+      luma_size *= 2;
+   int chroma_size = align(luma_size / 2, enc->alignment);
+   int offset = 0;
+
+   for (int i = 0; i < enc->enc_pic.ctx_buf.num_reconstructed_pictures; i++) {
+      offset += luma_size;
+      offset += chroma_size;
+   }
+
+   assert(offset == enc->dpb_size);
 
    RADEON_ENC_BEGIN(enc->cmd.ctx);
    RADEON_ENC_READWRITE(enc->cpb.res->buf, enc->cpb.res->domains, 0);
@@ -1045,16 +1061,19 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_luma_pitch);
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_chroma_pitch);
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.num_reconstructed_pictures);
-   /* reconstructed_picture_1_luma_offset */
-   RADEON_ENC_CS(0x00000000);
-   /* reconstructed_picture_1_chroma_offset */
-   RADEON_ENC_CS(align(enc->base.width, enc->alignment) * align(enc->base.height, 16));
-   /* reconstructed_picture_2_luma_offset */
-   RADEON_ENC_CS(align(enc->base.width, enc->alignment) * align(enc->base.height, 16) * 3 / 2);
-   /* reconstructed_picture_2_chroma_offset */
-   RADEON_ENC_CS(align(enc->base.width, enc->alignment) * align(enc->base.height, 16) * 5 / 2);
 
-   for (int i = 0; i < 136; i++)
+   for (int i = 0; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset);
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset);
+   }
+
+   //  2: 1 pre encode pitch * 2 (luma + chroma)
+   // 68: 34 pre encode reconstructed pics * 2 (luma + chroma offsets)
+   //  2: 1 pre encode input pic * 2 (luma + chroma)
+   //----
+   // 72
+
+   for (int i = 0; i < 72; i++)
       RADEON_ENC_CS(0x00000000);
 
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.two_pass_search_center_map_offset);

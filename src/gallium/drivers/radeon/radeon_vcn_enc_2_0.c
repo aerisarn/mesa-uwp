@@ -428,50 +428,6 @@ static void radeon_enc_output_format(struct radeon_encoder *enc)
    RADEON_ENC_END();
 }
 
-static void radeon_enc_ctx(struct radeon_encoder *enc)
-{
-   enc->enc_pic.ctx_buf.swizzle_mode = 0;
-
-   uint32_t aligned_width = enc->enc_pic.session_init.aligned_picture_width;
-   uint32_t aligned_height = enc->enc_pic.session_init.aligned_picture_height;
-
-   enc->enc_pic.ctx_buf.rec_luma_pitch = align(aligned_width, enc->alignment);
-   enc->enc_pic.ctx_buf.rec_chroma_pitch = align(aligned_width, enc->alignment);
-
-   int luma_size = enc->enc_pic.ctx_buf.rec_luma_pitch * align(aligned_height, enc->alignment);
-   if (enc->enc_pic.bit_depth_luma_minus8 == 2)
-      luma_size *= 2;
-   int chroma_size = align(luma_size / 2, enc->alignment);
-   int offset = 0;
-
-   enc->enc_pic.ctx_buf.num_reconstructed_pictures = 2;
-   for (int i = 0; i < enc->enc_pic.ctx_buf.num_reconstructed_pictures; i++) {
-      enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset = offset;
-      offset += luma_size;
-      enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset = offset;
-      offset += chroma_size;
-   }
-   enc->enc_pic.ctx_buf.two_pass_search_center_map_offset = 0;
-
-   RADEON_ENC_BEGIN(enc->cmd.ctx);
-   RADEON_ENC_READWRITE(enc->cpb.res->buf, enc->cpb.res->domains, 0);
-   RADEON_ENC_CS(enc->enc_pic.ctx_buf.swizzle_mode);
-   RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_luma_pitch);
-   RADEON_ENC_CS(enc->enc_pic.ctx_buf.rec_chroma_pitch);
-   RADEON_ENC_CS(enc->enc_pic.ctx_buf.num_reconstructed_pictures);
-
-   for (int i = 0; i < enc->enc_pic.ctx_buf.num_reconstructed_pictures; i++) {
-      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset);
-      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset);
-   }
-
-   for (int i = 0; i < 136; i++)
-      RADEON_ENC_CS(0x00000000);
-
-   RADEON_ENC_CS(enc->enc_pic.ctx_buf.two_pass_search_center_map_offset);
-   RADEON_ENC_END();
-}
-
 static void encode(struct radeon_encoder *enc)
 {
    enc->session_info(enc);
@@ -495,7 +451,6 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc)
 {
    radeon_enc_1_2_init(enc);
    enc->encode = encode;
-   enc->ctx = radeon_enc_ctx;
    enc->input_format = radeon_enc_input_format;
    enc->output_format = radeon_enc_output_format;
 

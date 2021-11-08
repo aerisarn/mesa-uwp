@@ -553,6 +553,7 @@ struct radeon_encoder {
 
    bool emulation_prevention;
    bool need_feedback;
+   unsigned dpb_size;
 };
 
 void radeon_enc_add_buffer(struct radeon_encoder *enc, struct pb_buffer *buf,
