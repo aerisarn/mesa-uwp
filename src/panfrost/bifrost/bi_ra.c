@@ -318,6 +318,11 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
                                 unsigned node = bi_get_node(ins->src[0]);
                                 assert(node < node_count);
                                 l->solutions[node] = 0;
+
+                                /* Dual source blend input in r4-r7 */
+                                node = bi_get_node(ins->src[4]);
+                                if (node < node_count)
+                                        l->solutions[node] = 4;
                         }
 
                         if (dest < node_count)

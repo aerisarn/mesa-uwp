@@ -29,13 +29,6 @@ shaders@point-vertex-id gl_vertexid gl_instanceid divisor,Fail
 shaders@point-vertex-id gl_vertexid gl_instanceid,Fail
 spec@arb_base_instance@arb_base_instance-drawarrays,Fail
 spec@arb_blend_func_extended@arb_blend_func_extended-dual-src-blending-issue-1917_gles3,Crash
-spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend-explicit,Fail
-spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend-explicit_gles3,Fail
-spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend,Fail
-spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend_gles3,Fail
-spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend-pattern,Fail
-spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend-pattern_gles2,Crash
-spec@arb_blend_func_extended@arb_blend_func_extended-fbo-extended-blend-pattern_gles3,Fail
 spec@arb_color_buffer_float@gl_rgba16f-render,Fail
 spec@arb_color_buffer_float@gl_rgba16f-render-fog,Fail
 spec@arb_color_buffer_float@gl_rgba16f-render-sanity,Fail

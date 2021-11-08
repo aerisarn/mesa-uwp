@@ -504,11 +504,14 @@ bi_emit_load_blend_input(bi_builder *b, nir_intrinsic_instr *instr)
 }
 
 static void
-bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
+bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
+                 bi_index rgba2, nir_alu_type T2, unsigned rt)
 {
         /* Reads 2 or 4 staging registers to cover the input */
         unsigned size = nir_alu_type_get_type_size(T);
+        unsigned size_2 = nir_alu_type_get_type_size(T2);
         unsigned sr_count = (size <= 16) ? 2 : 4;
+        unsigned sr_count_2 = (size_2 <= 16) ? 2 : 4;
         const struct panfrost_compile_inputs *inputs = b->shader->inputs;
         uint64_t blend_desc = inputs->blend.bifrost_blend_desc;
 
@@ -523,7 +526,8 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
                 bi_blend_to(b, bi_register(0), rgba,
                                 bi_register(60),
                                 bi_imm_u32(blend_desc & 0xffffffff),
-                                bi_imm_u32(blend_desc >> 32), sr_count);
+                                bi_imm_u32(blend_desc >> 32),
+                                bi_null(), sr_count, 0);
         } else {
                 /* Blend descriptor comes from the FAU RAM. By convention, the
                  * return address is stored in r48 and will be used by the
@@ -531,11 +535,15 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
                 bi_blend_to(b, bi_register(48), rgba,
                                 bi_register(60),
                                 bi_fau(BIR_FAU_BLEND_0 + rt, false),
-                                bi_fau(BIR_FAU_BLEND_0 + rt, true), sr_count);
+                                bi_fau(BIR_FAU_BLEND_0 + rt, true),
+                                rgba2, sr_count, sr_count_2);
         }
 
         assert(rt < 8);
         b->shader->info.bifrost->blend[rt].type = T;
+
+        if (T2)
+                b->shader->info.bifrost->blend_src1_type = T2;
 }
 
 /* Blend shaders do not need to run ATEST since they are dependent on a
@@ -586,7 +594,6 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         }
 
         bi_index src0 = bi_src_index(&instr->src[0]);
-        bi_index src1 = combined ? bi_src_index(&instr->src[4]) : bi_null();
 
         /* By ISA convention, the coverage mask is stored in R60. The store
          * itself will be handled by a subsequent ATEST instruction */
@@ -596,19 +603,6 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_index new = bi_lshift_and_i32(b, orig, src0, bi_imm_u8(0));
                 bi_mux_i32_to(b, orig, orig, new, msaa, BI_MUX_INT_ZERO);
                 return;
-        }
-
-
-        /* Dual-source blending is implemented by putting the color in
-         * registers r4-r7. */
-        if (writeout & PAN_WRITEOUT_2) {
-                unsigned count = nir_src_num_components(instr->src[4]);
-
-                for (unsigned i = 0; i < count; ++i)
-                        bi_mov_i32_to(b, bi_register(4 + i), bi_word(src1, i));
-
-                b->shader->info.bifrost->blend_src1_type =
-                        nir_intrinsic_dest_type(instr);
         }
 
         /* Emit ATEST if we have to, note ATEST requires a floating-point alpha
@@ -648,7 +642,10 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
 
         if (emit_blend) {
                 unsigned rt = combined ? 0 : (loc - FRAG_RESULT_DATA0);
+                bool dual = (writeout & PAN_WRITEOUT_2);
                 bi_index color = bi_src_index(&instr->src[0]);
+                bi_index color2 = dual ? bi_src_index(&instr->src[4]) : bi_null();
+                nir_alu_type T2 = dual ? nir_intrinsic_dest_type(instr) : 0;
 
                 /* Explicit copy since BLEND inputs are precoloured to R0-R3,
                  * TODO: maybe schedule around this or implement in RA as a
@@ -667,7 +664,8 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                                        nir_alu_type_get_type_size(nir_intrinsic_src_type(instr)));
                 }
 
-                bi_emit_blend_op(b, color, nir_intrinsic_src_type(instr), rt);
+                bi_emit_blend_op(b, color, nir_intrinsic_src_type(instr),
+                                    color2, T2, rt);
         }
 
         if (b->shader->inputs->is_blend) {
