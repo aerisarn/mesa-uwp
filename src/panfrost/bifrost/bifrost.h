@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include <assert.h>
 
 #ifdef __cplusplus
@@ -571,6 +572,15 @@ struct bifrost_dual_texture_operation {
         enum bifrost_texture_format primary_format : 3;
         unsigned primary_mask : 4;
 } __attribute__((packed));
+
+static inline uint32_t
+bi_dual_tex_as_u32(struct bifrost_dual_texture_operation desc)
+{
+        uint32_t desc_u;
+        memcpy(&desc_u, &desc, sizeof(desc));
+
+        return desc_u;
+}
 
 #define BIFROST_MEGA_SAMPLE 128
 #define BIFROST_ALL_SAMPLES 255
