@@ -1082,6 +1082,11 @@ UNUSED static const struct intel_device_info intel_device_info_dg2_g11 = {
    .platform = INTEL_PLATFORM_DG2_G11,
 };
 
+UNUSED static const struct intel_device_info intel_device_info_dg2_g12 = {
+   DG2_FEATURES,
+   .platform = INTEL_PLATFORM_DG2_G12,
+};
+
 static void
 reset_masks(struct intel_device_info *devinfo)
 {
