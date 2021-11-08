@@ -418,6 +418,63 @@ dxil_spirv_nir_adjust_var_bindings(nir_shader *shader,
                                        nir_metadata_all, (void *)conf);
 }
 
+static bool
+discard_psiz_access(struct nir_builder *builder, nir_instr *instr,
+                    void *cb_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_store_deref &&
+       intrin->intrinsic != nir_intrinsic_load_deref)
+      return false;
+
+   nir_variable *var = nir_intrinsic_get_var(intrin, 0);
+   if (!var || var->data.mode != nir_var_shader_out ||
+       var->data.location != VARYING_SLOT_PSIZ)
+      return false;
+
+   builder->cursor = nir_before_instr(instr);
+
+   if (intrin->intrinsic == nir_intrinsic_load_deref)
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_imm_float(builder, 1.0));
+
+   nir_instr_remove(instr);
+   return true;
+}
+
+static bool
+dxil_spirv_nir_discard_point_size_var(nir_shader *shader)
+{
+   if (shader->info.stage != MESA_SHADER_VERTEX &&
+       shader->info.stage != MESA_SHADER_TESS_EVAL &&
+       shader->info.stage != MESA_SHADER_GEOMETRY)
+      return false;
+
+   nir_variable *psiz = NULL;
+   nir_foreach_shader_out_variable(var, shader) {
+      if (var->data.location == VARYING_SLOT_PSIZ) {
+         psiz = var;
+         break;
+      }
+   }
+
+   if (!psiz)
+      return false;
+
+   if (!nir_shader_instructions_pass(shader, discard_psiz_access,
+                                     nir_metadata_block_index |
+                                     nir_metadata_dominance |
+                                     nir_metadata_loop_analysis,
+                                     NULL))
+      return false;
+
+   nir_remove_dead_derefs(shader);
+   return true;
+}
+
 bool
 spirv_to_dxil(const uint32_t *words, size_t word_count,
               struct dxil_spirv_specialization *specializations,
@@ -509,6 +566,8 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    }
 
    NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   NIR_PASS_V(nir, dxil_spirv_nir_discard_point_size_var);
 
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_shader_in | nir_var_shader_out |
