@@ -53,6 +53,18 @@ struct vk_device {
       bool reported;
    } _lost;
 
+   /** Checks the status of this device
+    *
+    * This is expected to return either VK_SUCCESS or VK_ERROR_DEVICE_LOST.
+    * It is called before vk_queue::driver_submit and after every non-trivial
+    * wait operation to ensure the device is still around.  This gives the
+    * driver a hook to ask the kernel if its device is still valid.  If the
+    * kernel says the device has been lost, it MUST call vk_device_set_lost().
+    *
+    * This function may be called from any thread at any time.
+    */
+   VkResult (*check_status)(struct vk_device *device);
+
 #ifdef ANDROID
    mtx_t swapchain_private_mtx;
    struct hash_table *swapchain_private;
@@ -95,6 +107,24 @@ vk_device_is_lost(struct vk_device *device)
    if (unlikely(lost && !device->_lost.reported))
       _vk_device_report_lost(device);
    return lost;
+}
+
+static inline VkResult
+vk_device_check_status(struct vk_device *device)
+{
+   if (vk_device_is_lost(device))
+      return VK_ERROR_DEVICE_LOST;
+
+   if (!device->check_status)
+      return VK_SUCCESS;
+
+   VkResult result = device->check_status(device);
+
+   assert(result == VK_SUCCESS || result == VK_ERROR_DEVICE_LOST);
+   if (result == VK_ERROR_DEVICE_LOST)
+      assert(vk_device_is_lost_no_report(device));
+
+   return result;
 }
 
 PFN_vkVoidFunction
