@@ -1538,8 +1538,7 @@
     <src absneg="true">Z coordinate as 32-bit floating point</src>
   </ins>
 
-  <group name="IDP" title="8-bit dot product" dests="1" opcode="0xC2" unit="SFU">
-    <!-- TODO: confirm unit -->
+  <group name="IDP" title="8-bit dot product" dests="1" opcode="0xC2" unit="FMA">
     <desc>
       8-bit integer dot product between 4 channel vectors, intended for machine
       learning. Available in both unsigned and signed variants, controlling
