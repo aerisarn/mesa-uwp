@@ -883,8 +883,14 @@ nve4_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    PUSH_REF1(push, screen->text, NV_VRAM_DOMAIN(&screen->base) | NOUVEAU_BO_RD);
    BEGIN_NVC0(push, NVE4_CP(LAUNCH_DESC_ADDRESS), 1);
    PUSH_DATA (push, desc_gpuaddr >> 8);
-   BEGIN_NVC0(push, NVE4_CP(LAUNCH), 1);
-   PUSH_DATA (push, 0x3);
+   if (screen->compute->oclass < GA102_COMPUTE_CLASS) {
+      BEGIN_NVC0(push, NVE4_CP(LAUNCH), 1);
+      PUSH_DATA (push, 0x3);
+   } else {
+      BEGIN_NIC0(push, SUBC_CP(0x02c0), 2);
+      PUSH_DATA (push, 1);
+      PUSH_DATA (push, 2);
+   }
    BEGIN_NVC0(push, SUBC_CP(NV50_GRAPH_SERIALIZE), 1);
    PUSH_DATA (push, 0);
 
