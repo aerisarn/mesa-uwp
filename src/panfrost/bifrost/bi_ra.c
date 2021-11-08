@@ -364,6 +364,25 @@ bi_reg_from_index(bi_context *ctx, struct lcra_state *l, bi_index index)
         return new_index;
 }
 
+/* Dual texture instructions write to two sets of staging registers, modeled as
+ * two destinations in the IR. The first set is communicated with the usual
+ * staging register mechanism. The second set is encoded in the texture
+ * operation descriptor. This is quite unusual, and requires the following late
+ * fixup.
+ */
+static void
+bi_fixup_dual_tex_register(bi_instr *I)
+{
+        assert(I->dest[1].type == BI_INDEX_REGISTER);
+        assert(I->src[3].type == BI_INDEX_CONSTANT);
+
+        struct bifrost_dual_texture_operation desc = {
+                .secondary_register = I->dest[1].value
+        };
+
+        I->src[3].value |= bi_dual_tex_as_u32(desc);
+}
+
 static void
 bi_install_registers(bi_context *ctx, struct lcra_state *l)
 {
@@ -373,6 +392,9 @@ bi_install_registers(bi_context *ctx, struct lcra_state *l)
 
                 bi_foreach_src(ins, s)
                         ins->src[s] = bi_reg_from_index(ctx, l, ins->src[s]);
+
+                if (ins->op == BI_OPCODE_TEXC && !bi_is_null(ins->dest[1]))
+                        bi_fixup_dual_tex_register(ins);
         }
 }
 
