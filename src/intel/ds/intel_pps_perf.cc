@@ -56,34 +56,6 @@ IntelPerf::IntelPerf(const int drm_fd)
    }
 }
 
-IntelPerf::IntelPerf(IntelPerf &&o)
-   : drm_fd {o.drm_fd}
-   , ralloc_ctx {o.ralloc_ctx}
-   , ralloc_cfg {o.ralloc_cfg}
-   , ctx {o.ctx}
-   , cfg {o.cfg}
-   , devinfo {std::move(o.devinfo)}
-   , query {std::move(o.query)}
-{
-   o.drm_fd = -1;
-   o.ralloc_ctx = nullptr;
-   o.ralloc_cfg = nullptr;
-   o.ctx = nullptr;
-   o.cfg = nullptr;
-}
-
-IntelPerf &IntelPerf::operator=(IntelPerf &&o) noexcept
-{
-   std::swap(drm_fd, o.drm_fd);
-   std::swap(ralloc_ctx, o.ralloc_ctx);
-   std::swap(ralloc_cfg, o.ralloc_cfg);
-   std::swap(ctx, o.ctx);
-   std::swap(cfg, o.cfg);
-   std::swap(devinfo, o.devinfo);
-   std::swap(query, o.query);
-   return *this;
-}
-
 IntelPerf::~IntelPerf()
 {
    close();

@@ -23,13 +23,6 @@ class IntelPerf
 {
    public:
    IntelPerf(int drm_fd);
-
-   IntelPerf(const IntelPerf &) = delete;
-   IntelPerf &operator=(const IntelPerf &) = delete;
-
-   IntelPerf(IntelPerf &&);
-   IntelPerf &operator=(IntelPerf &&) noexcept;
-
    ~IntelPerf();
 
    std::optional<struct intel_perf_query_info> find_query_by_name(const std::string &name) const;
