@@ -256,7 +256,7 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 
    /* Next prioritize expensive instructions: */
    foreach_sched_node (n, &ctx->dag->heads) {
-      unsigned d = node_delay(ctx, n);
+      unsigned d = node_delay_soft(ctx, n);
 
       if (d > 0)
          continue;
@@ -269,7 +269,7 @@ choose_instr(struct ir3_postsched_ctx *ctx)
    }
 
    if (chosen) {
-      di(chosen->instr, "csp: chose (sfu/tex, hard ready)");
+      di(chosen->instr, "csp: chose (sfu/tex, soft ready)");
       return chosen->instr;
    }
 
