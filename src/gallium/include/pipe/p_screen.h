@@ -180,6 +180,19 @@ struct pipe_screen {
 					   void *priv, unsigned flags);
 
    /**
+    * Check if the given image copy will be faster on compute
+    * \param cpu If true, this is checking against CPU fallback,
+    *            otherwise the copy will be on GFX
+    */
+   bool (*is_compute_copy_faster)( struct pipe_screen *,
+                                   enum pipe_format src_format,
+                                   enum pipe_format dst_format,
+                                   unsigned width,
+                                   unsigned height,
+                                   unsigned depth,
+                                   bool cpu );
+
+   /**
     * Check if the given pipe_format is supported as a texture or
     * drawing surface.
     * \param bindings  bitmask of PIPE_BIND_*
