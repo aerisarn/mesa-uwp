@@ -2727,7 +2727,7 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                 desc.sampler_index_or_mode = instr->sampler_index;
                 desc.index = instr->texture_index;
         } else {
-                enum bifrost_index mode = 0;
+                unsigned mode = 0;
 
                 if (direct && instr->sampler_index == instr->texture_index) {
                         mode = BIFROST_INDEX_IMMEDIATE_SHARED;
@@ -2749,7 +2749,8 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                         mode = BIFROST_INDEX_REGISTER;
                 }
 
-                desc.sampler_index_or_mode = mode | (0x3 << 2);
+                mode |= (BIFROST_TEXTURE_OPERATION_SINGLE << 2);
+                desc.sampler_index_or_mode = mode;
         }
 
         /* Allocate staging registers contiguously by compacting the array.
