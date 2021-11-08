@@ -321,7 +321,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
          radeon_emit(R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
          radeon_emit(0);
          radeon_emit(0); /* reference value */
-         radeon_emit(S_008D20_FINISH_DONE(1)); /* mask */
+         radeon_emit(~C_008D20_FINISH_DONE); /* mask */
          radeon_emit(4); /* poll interval */
 
          /* Disable the thread trace mode. */
@@ -334,7 +334,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
          radeon_emit(R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
          radeon_emit(0);
          radeon_emit(0); /* reference value */
-         radeon_emit(S_008D20_BUSY(1)); /* mask */
+         radeon_emit(~C_008D20_BUSY); /* mask */
          radeon_emit(4); /* poll interval */
       } else {
          /* Disable the thread trace mode. */
@@ -347,7 +347,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
          radeon_emit(R_030CE8_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
          radeon_emit(0);
          radeon_emit(0); /* reference value */
-         radeon_emit(S_030CE8_BUSY(1)); /* mask */
+         radeon_emit(~C_030CE8_BUSY); /* mask */
          radeon_emit(4); /* poll interval */
       }
       radeon_end();
