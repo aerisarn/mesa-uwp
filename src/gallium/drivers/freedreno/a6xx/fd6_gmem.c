@@ -265,14 +265,23 @@ patch_fb_read_gmem(struct fd_batch *batch)
    const struct fd_gmem_stateobj *gmem = batch->gmem_state;
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
    struct pipe_surface *psurf = pfb->cbufs[0];
-   uint32_t texconst0 = fd6_tex_const_0(
-      psurf->texture, psurf->u.tex.level, psurf->format, PIPE_SWIZZLE_X,
-      PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+   struct pipe_resource *prsc = psurf->texture;
+   struct fd_resource *rsc = fd_resource(prsc);
+   enum pipe_format format = psurf->format;
 
-   /* always TILE6_2 mode in GMEM.. which also means no swap: */
-   texconst0 &=
-      ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
-   texconst0 |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
+   uint8_t swiz[4];
+   fd6_tex_swiz(psurf->format, swiz, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+
+   /* always TILE6_2 mode in GMEM, which also means no swap: */
+   uint32_t texconst0 = A6XX_TEX_CONST_0_FMT(fd6_texture_format(format, rsc->layout.tile_mode)) |
+          A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
+          A6XX_TEX_CONST_0_SWAP(WZYX) |
+          A6XX_TEX_CONST_0_TILE_MODE(TILE6_2) |
+          COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
+          A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swiz[0])) |
+          A6XX_TEX_CONST_0_SWIZ_Y(fd6_pipe2swiz(swiz[1])) |
+          A6XX_TEX_CONST_0_SWIZ_Z(fd6_pipe2swiz(swiz[2])) |
+          A6XX_TEX_CONST_0_SWIZ_W(fd6_pipe2swiz(swiz[3]));
 
    for (unsigned i = 0; i < num_patches; i++) {
       struct fd_cs_patch *patch = fd_patch_element(&batch->fb_read_patches, i);
