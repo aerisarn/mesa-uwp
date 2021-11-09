@@ -26,6 +26,8 @@
 #include "register_allocate.h"
 #include "register_allocate_internal.h"
 
+#include "util/blob.h"
+
 class ra_test : public ::testing::Test {
 public:
    void *mem_ctx;
@@ -209,3 +211,71 @@ TEST_F(ra_test, aligned_contigregs)
       }
    }
 }
+
+TEST_F(ra_test, DISABLED_serialization_roundtrip)
+{
+   struct blob blob;
+   blob_init(&blob);
+
+   for (int i = 0; i < 2; i++) {
+      void *mem_ctx = ralloc_context(this->mem_ctx);
+      struct ra_regs *regs;
+
+      if (i == 0) {
+         /* Build a register set and serialize it. */
+         regs = ra_alloc_reg_set(mem_ctx, 4 + 4 + 4, true);
+
+         struct ra_class *reg8_low = ra_alloc_reg_class(regs);
+         struct ra_class *reg8_high = ra_alloc_reg_class(regs);
+         struct ra_class *reg16 = ra_alloc_reg_class(regs);
+
+         for (int i = 0; i < 4; i++) {
+            const unsigned low = 2 * i;
+            const unsigned high = low + 1;
+            ra_class_add_reg(reg8_low, low);
+            ra_class_add_reg(reg8_high, high);
+
+            const unsigned both = 8 + i;
+            ra_class_add_reg(reg16, 8 + i);
+
+            ra_add_reg_conflict(regs, low, both);
+            ra_add_reg_conflict(regs, high, both);
+         }
+
+         ra_set_finalize(regs, NULL);
+
+         assert(blob.size == 0);
+         ra_set_serialize(regs, &blob);
+      } else {
+         /* Deserialize the register set. */
+         assert(blob.size > 0);
+
+         struct blob_reader reader;
+         blob_reader_init(&reader, blob.data, blob.size);
+
+         regs = ra_set_deserialize(mem_ctx, &reader);
+      }
+
+      /* Verify the register set for each case. */
+      {
+         struct ra_class *reg8_low = ra_get_class_from_index(regs, 0);
+         ASSERT_EQ(ra_class_index(reg8_low), 0);
+
+         struct ra_class *reg8_high = ra_get_class_from_index(regs, 1);
+         ASSERT_EQ(ra_class_index(reg8_high), 1);
+
+         struct ra_class *reg16 = ra_get_class_from_index(regs, 2);
+         ASSERT_EQ(ra_class_index(reg16), 2);
+
+         for (int i = 0; i < 4; i++) {
+            EXPECT_TRUE(ra_class_allocations_conflict(reg8_low, 2 * i, reg16, 8 + i));
+            EXPECT_TRUE(ra_class_allocations_conflict(reg8_high, (2 * i) + 1, reg16, 8 + i));
+         }
+      }
+
+      ralloc_free(mem_ctx);
+   }
+
+   blob_finish(&blob);
+}
+
