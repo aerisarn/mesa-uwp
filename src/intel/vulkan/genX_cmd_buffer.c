@@ -6049,6 +6049,180 @@ current_subpass_is_last_for_attachment(const struct anv_cmd_state *cmd_state,
 }
 
 static void
+clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
+                       struct anv_attachment_state *att_state,
+                       uint32_t level,
+                       uint32_t base_layer)
+{
+   struct anv_cmd_state *cmd_state = &cmd_buffer->state;
+   struct anv_framebuffer *fb = cmd_state->framebuffer;
+   VkRect2D render_area = cmd_state->render_area;
+   bool is_multiview = cmd_state->subpass->view_mask != 0;
+
+   struct anv_image_view *iview = att_state->image_view;
+   const struct anv_image *image = iview->image;
+
+   /* Multi-planar images are not supported as attachments */
+   assert(image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+   assert(image->n_planes == 1);
+
+   uint32_t base_clear_layer = iview->planes[0].isl.base_array_layer;
+   uint32_t clear_layer_count = fb->layers;
+
+   if (att_state->fast_clear &&
+       do_first_layer_clear(cmd_state, att_state)) {
+      /* We only support fast-clears on the first layer */
+      assert(level == 0 && base_layer == 0);
+
+      union isl_color_value clear_color = {};
+      anv_clear_color_from_att_state(&clear_color, att_state, iview);
+      if (iview->image->vk.samples == 1) {
+         anv_image_ccs_op(cmd_buffer, image,
+                          iview->planes[0].isl.format,
+                          iview->planes[0].isl.swizzle,
+                          VK_IMAGE_ASPECT_COLOR_BIT,
+                          0, 0, 1, ISL_AUX_OP_FAST_CLEAR,
+                          &clear_color,
+                          false);
+      } else {
+         anv_image_mcs_op(cmd_buffer, image,
+                          iview->planes[0].isl.format,
+                          iview->planes[0].isl.swizzle,
+                          VK_IMAGE_ASPECT_COLOR_BIT,
+                          0, 1, ISL_AUX_OP_FAST_CLEAR,
+                          &clear_color,
+                          false);
+      }
+      base_clear_layer++;
+      clear_layer_count--;
+      if (is_multiview)
+         att_state->pending_clear_views &= ~1;
+
+      if (isl_color_value_is_zero(clear_color,
+                                  iview->planes[0].isl.format)) {
+         /* This image has the auxiliary buffer enabled. We can mark the
+          * subresource as not needing a resolve because the clear color
+          * will match what's in every RENDER_SURFACE_STATE object when
+          * it's being used for sampling.
+          */
+         set_image_fast_clear_state(cmd_buffer, iview->image,
+                                    VK_IMAGE_ASPECT_COLOR_BIT,
+                                    ANV_FAST_CLEAR_DEFAULT_VALUE);
+      } else {
+         set_image_fast_clear_state(cmd_buffer, iview->image,
+                                    VK_IMAGE_ASPECT_COLOR_BIT,
+                                    ANV_FAST_CLEAR_ANY);
+      }
+   }
+
+   /* From the VkFramebufferCreateInfo spec:
+    *
+    * "If the render pass uses multiview, then layers must be one and each
+    *  attachment requires a number of layers that is greater than the
+    *  maximum bit index set in the view mask in the subpasses in which it
+    *  is used."
+    *
+    * So if multiview is active we ignore the number of layers in the
+    * framebuffer and instead we honor the view mask from the subpass.
+    */
+   if (is_multiview) {
+      assert(image->n_planes == 1);
+      uint32_t pending_clear_mask =
+         get_multiview_subpass_clear_mask(cmd_state, att_state);
+
+      u_foreach_bit(layer_idx, pending_clear_mask) {
+         uint32_t layer =
+            iview->planes[0].isl.base_array_layer + layer_idx;
+
+         anv_image_clear_color(cmd_buffer, image,
+                               VK_IMAGE_ASPECT_COLOR_BIT,
+                               att_state->aux_usage,
+                               iview->planes[0].isl.format,
+                               iview->planes[0].isl.swizzle,
+                               level, layer, 1,
+                               render_area,
+                               vk_to_isl_color(att_state->clear_value.color));
+      }
+
+      att_state->pending_clear_views &= ~pending_clear_mask;
+   } else if (clear_layer_count > 0) {
+      assert(image->n_planes == 1);
+      anv_image_clear_color(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT,
+                            att_state->aux_usage,
+                            iview->planes[0].isl.format,
+                            iview->planes[0].isl.swizzle,
+                            level, base_clear_layer, clear_layer_count,
+                            render_area,
+                            vk_to_isl_color(att_state->clear_value.color));
+   }
+}
+
+static void
+clear_depth_stencil_attachment(struct anv_cmd_buffer *cmd_buffer,
+                               struct anv_attachment_state *att_state,
+                               uint32_t level,
+                               uint32_t base_layer,
+                               uint32_t layer_count)
+{
+   struct anv_cmd_state *cmd_state = &cmd_buffer->state;
+   VkRect2D render_area = cmd_state->render_area;
+   bool is_multiview = cmd_state->subpass->view_mask != 0;
+
+   struct anv_image_view *iview = att_state->image_view;
+   const struct anv_image *image = iview->image;
+
+   if (att_state->fast_clear &&
+       (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
+      /* We currently only support HiZ for single-LOD images */
+      assert(isl_aux_usage_has_hiz(iview->image->planes[0].aux_usage));
+      assert(iview->planes[0].isl.base_level == 0);
+      assert(iview->planes[0].isl.levels == 1);
+   }
+
+   if (is_multiview) {
+      uint32_t pending_clear_mask =
+         get_multiview_subpass_clear_mask(cmd_state, att_state);
+
+      u_foreach_bit(layer_idx, pending_clear_mask) {
+         uint32_t layer =
+            iview->planes[0].isl.base_array_layer + layer_idx;
+
+         if (att_state->fast_clear) {
+            anv_image_hiz_clear(cmd_buffer, image,
+                                att_state->pending_clear_aspects,
+                                level, layer, 1, render_area,
+                                att_state->clear_value.depthStencil.stencil);
+         } else {
+            anv_image_clear_depth_stencil(cmd_buffer, image,
+                                          att_state->pending_clear_aspects,
+                                          att_state->aux_usage,
+                                          level, layer, 1, render_area,
+                                          att_state->clear_value.depthStencil.depth,
+                                          att_state->clear_value.depthStencil.stencil);
+         }
+      }
+
+      att_state->pending_clear_views &= ~pending_clear_mask;
+   } else {
+      if (att_state->fast_clear) {
+         anv_image_hiz_clear(cmd_buffer, image,
+                             att_state->pending_clear_aspects,
+                             level, base_layer, layer_count,
+                             render_area,
+                             att_state->clear_value.depthStencil.stencil);
+      } else {
+         anv_image_clear_depth_stencil(cmd_buffer, image,
+                                       att_state->pending_clear_aspects,
+                                       att_state->aux_usage,
+                                       level, base_layer, layer_count,
+                                       render_area,
+                                       att_state->clear_value.depthStencil.depth,
+                                       att_state->clear_value.depthStencil.stencil);
+      }
+   }
+}
+
+static void
 cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                          uint32_t subpass_id)
 {
@@ -6173,151 +6347,12 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
 
       if (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
          assert(att_state->pending_clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-
-         /* Multi-planar images are not supported as attachments */
-         assert(image->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
-         assert(image->n_planes == 1);
-
-         uint32_t base_clear_layer = iview->planes[0].isl.base_array_layer;
-         uint32_t clear_layer_count = fb->layers;
-
-         if (att_state->fast_clear &&
-             do_first_layer_clear(cmd_state, att_state)) {
-            /* We only support fast-clears on the first layer */
-            assert(level == 0 && base_layer == 0);
-
-            union isl_color_value clear_color = {};
-            anv_clear_color_from_att_state(&clear_color, att_state, iview);
-            if (iview->image->vk.samples == 1) {
-               anv_image_ccs_op(cmd_buffer, image,
-                                iview->planes[0].isl.format,
-                                iview->planes[0].isl.swizzle,
-                                VK_IMAGE_ASPECT_COLOR_BIT,
-                                0, 0, 1, ISL_AUX_OP_FAST_CLEAR,
-                                &clear_color,
-                                false);
-            } else {
-               anv_image_mcs_op(cmd_buffer, image,
-                                iview->planes[0].isl.format,
-                                iview->planes[0].isl.swizzle,
-                                VK_IMAGE_ASPECT_COLOR_BIT,
-                                0, 1, ISL_AUX_OP_FAST_CLEAR,
-                                &clear_color,
-                                false);
-            }
-            base_clear_layer++;
-            clear_layer_count--;
-            if (is_multiview)
-               att_state->pending_clear_views &= ~1;
-
-            if (isl_color_value_is_zero(clear_color,
-                                        iview->planes[0].isl.format)) {
-               /* This image has the auxiliary buffer enabled. We can mark the
-                * subresource as not needing a resolve because the clear color
-                * will match what's in every RENDER_SURFACE_STATE object when
-                * it's being used for sampling.
-                */
-               set_image_fast_clear_state(cmd_buffer, iview->image,
-                                          VK_IMAGE_ASPECT_COLOR_BIT,
-                                          ANV_FAST_CLEAR_DEFAULT_VALUE);
-            } else {
-               set_image_fast_clear_state(cmd_buffer, iview->image,
-                                          VK_IMAGE_ASPECT_COLOR_BIT,
-                                          ANV_FAST_CLEAR_ANY);
-            }
-         }
-
-         /* From the VkFramebufferCreateInfo spec:
-          *
-          * "If the render pass uses multiview, then layers must be one and each
-          *  attachment requires a number of layers that is greater than the
-          *  maximum bit index set in the view mask in the subpasses in which it
-          *  is used."
-          *
-          * So if multiview is active we ignore the number of layers in the
-          * framebuffer and instead we honor the view mask from the subpass.
-          */
-         if (is_multiview) {
-            assert(image->n_planes == 1);
-            uint32_t pending_clear_mask =
-               get_multiview_subpass_clear_mask(cmd_state, att_state);
-
-            u_foreach_bit(layer_idx, pending_clear_mask) {
-               uint32_t layer =
-                  iview->planes[0].isl.base_array_layer + layer_idx;
-
-               anv_image_clear_color(cmd_buffer, image,
-                                     VK_IMAGE_ASPECT_COLOR_BIT,
-                                     att_state->aux_usage,
-                                     iview->planes[0].isl.format,
-                                     iview->planes[0].isl.swizzle,
-                                     level, layer, 1,
-                                     render_area,
-                                     vk_to_isl_color(att_state->clear_value.color));
-            }
-
-            att_state->pending_clear_views &= ~pending_clear_mask;
-         } else if (clear_layer_count > 0) {
-            assert(image->n_planes == 1);
-            anv_image_clear_color(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT,
-                                  att_state->aux_usage,
-                                  iview->planes[0].isl.format,
-                                  iview->planes[0].isl.swizzle,
-                                  level, base_clear_layer, clear_layer_count,
-                                  render_area,
-                                  vk_to_isl_color(att_state->clear_value.color));
-         }
+         clear_color_attachment(cmd_buffer, att_state, level,
+                                base_layer);
       } else if (att_state->pending_clear_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
                                                      VK_IMAGE_ASPECT_STENCIL_BIT)) {
-         if (att_state->fast_clear &&
-             (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
-            /* We currently only support HiZ for single-LOD images */
-            assert(isl_aux_usage_has_hiz(iview->image->planes[0].aux_usage));
-            assert(iview->planes[0].isl.base_level == 0);
-            assert(iview->planes[0].isl.levels == 1);
-         }
-
-         if (is_multiview) {
-            uint32_t pending_clear_mask =
-              get_multiview_subpass_clear_mask(cmd_state, att_state);
-
-            u_foreach_bit(layer_idx, pending_clear_mask) {
-               uint32_t layer =
-                  iview->planes[0].isl.base_array_layer + layer_idx;
-
-               if (att_state->fast_clear) {
-                  anv_image_hiz_clear(cmd_buffer, image,
-                                      att_state->pending_clear_aspects,
-                                      level, layer, 1, render_area,
-                                      att_state->clear_value.depthStencil.stencil);
-               } else {
-                  anv_image_clear_depth_stencil(cmd_buffer, image,
-                                                att_state->pending_clear_aspects,
-                                                att_state->aux_usage,
-                                                level, layer, 1, render_area,
-                                                att_state->clear_value.depthStencil.depth,
-                                                att_state->clear_value.depthStencil.stencil);
-               }
-            }
-
-            att_state->pending_clear_views &= ~pending_clear_mask;
-         } else {
-            if (att_state->fast_clear) {
-               anv_image_hiz_clear(cmd_buffer, image,
-                                   att_state->pending_clear_aspects,
-                                   level, base_layer, layer_count,
-                                   render_area,
-                                   att_state->clear_value.depthStencil.stencil);
-            } else {
-               anv_image_clear_depth_stencil(cmd_buffer, image,
-                                             att_state->pending_clear_aspects,
-                                             att_state->aux_usage,
-                                             level, base_layer, layer_count,
-                                             render_area,
-                                             att_state->clear_value.depthStencil.depth,
-                                             att_state->clear_value.depthStencil.stencil);
-            }
-         }
+         clear_depth_stencil_attachment(cmd_buffer, att_state, level,
+                                        base_layer, layer_count);
       } else  {
          assert(att_state->pending_clear_aspects == 0);
       }
