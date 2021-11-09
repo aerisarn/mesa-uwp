@@ -394,6 +394,14 @@ radv_handle_thread_trace(VkQueue _queue)
 #endif
 
       if (frame_trigger || file_trigger || resize_trigger) {
+         if (ac_check_profile_state(&queue->device->physical_device->rad_info)) {
+            fprintf(stderr, "radv: Canceling RGP trace request as a hang condition has been "
+                            "detected. Force the GPU into a profiling mode with e.g. "
+                            "\"echo profile_peak  > "
+                            "/sys/class/drm/card0/device/power_dpm_force_performance_level\"\n");
+            return;
+         }
+
          radv_begin_thread_trace(queue);
          assert(!thread_trace_enabled);
          thread_trace_enabled = true;

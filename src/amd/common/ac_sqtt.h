@@ -498,4 +498,6 @@ bool ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_tr
                                           uint64_t pipeline_hash,
                                           uint64_t base_address);
 
+bool ac_check_profile_state(const struct radeon_info *info);
+
 #endif
