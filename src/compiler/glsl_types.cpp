@@ -3242,7 +3242,7 @@ decode_type_from_blob(struct blob_reader *blob)
          vector_elements = 8;
       else if (vector_elements == 6)
          vector_elements = 16;
-      return glsl_type::get_instance(base_type, encoded.basic.vector_elements,
+      return glsl_type::get_instance(base_type, vector_elements,
                                      encoded.basic.matrix_columns,
                                      explicit_stride,
                                      encoded.basic.interface_row_major,
