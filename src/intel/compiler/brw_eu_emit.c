@@ -2992,9 +2992,9 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
       brw_inst *insn = store + offset;
       assert(brw_inst_cmpt_control(devinfo, insn) == 0);
 
-      int block_end_offset = brw_find_next_block_end(p, offset);
       switch (brw_inst_opcode(devinfo, insn)) {
-      case BRW_OPCODE_BREAK:
+      case BRW_OPCODE_BREAK: {
+         int block_end_offset = brw_find_next_block_end(p, offset);
          assert(block_end_offset != 0);
          brw_inst_set_jip(devinfo, insn, (block_end_offset - offset) / scale);
 	 /* Gfx7 UIP points to WHILE; Gfx6 points just after it */
@@ -3002,7 +3002,10 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
 	    (brw_find_loop_end(p, offset) - offset +
              (devinfo->ver == 6 ? 16 : 0)) / scale);
 	 break;
-      case BRW_OPCODE_CONTINUE:
+      }
+
+      case BRW_OPCODE_CONTINUE: {
+         int block_end_offset = brw_find_next_block_end(p, offset);
          assert(block_end_offset != 0);
          brw_inst_set_jip(devinfo, insn, (block_end_offset - offset) / scale);
          brw_inst_set_uip(devinfo, insn,
@@ -3011,8 +3014,10 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
          assert(brw_inst_uip(devinfo, insn) != 0);
          assert(brw_inst_jip(devinfo, insn) != 0);
 	 break;
+      }
 
       case BRW_OPCODE_ENDIF: {
+         int block_end_offset = brw_find_next_block_end(p, offset);
          int32_t jump = (block_end_offset == 0) ?
                         1 * br : (block_end_offset - offset) / scale;
          if (devinfo->ver >= 7)
@@ -3022,7 +3027,7 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
 	 break;
       }
 
-      case BRW_OPCODE_HALT:
+      case BRW_OPCODE_HALT: {
 	 /* From the Sandy Bridge PRM (volume 4, part 2, section 8.3.19):
 	  *
 	  *    "In case of the halt instruction not inside any conditional
@@ -3034,6 +3039,7 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
 	  * The uip will have already been set by whoever set up the
 	  * instruction.
 	  */
+         int block_end_offset = brw_find_next_block_end(p, offset);
 	 if (block_end_offset == 0) {
             brw_inst_set_jip(devinfo, insn, brw_inst_uip(devinfo, insn));
 	 } else {
@@ -3042,6 +3048,7 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
          assert(brw_inst_uip(devinfo, insn) != 0);
          assert(brw_inst_jip(devinfo, insn) != 0);
 	 break;
+      }
 
       default:
          break;
