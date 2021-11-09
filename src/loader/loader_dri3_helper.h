@@ -147,10 +147,6 @@ struct loader_dri3_drawable {
    /* DRI screen created for display GPU in case of prime */
    __DRIscreen *dri_screen_display_gpu;
 
-   /* Present extension capabilities
-    */
-   uint32_t present_capabilities;
-
    /* SBC numbers are tracked by using the serial numbers
     * in the present request and complete events
     */

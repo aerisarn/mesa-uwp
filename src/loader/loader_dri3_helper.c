@@ -1660,8 +1660,6 @@ dri3_update_drawable(struct loader_dri3_drawable *draw)
       xcb_get_geometry_reply_t                  *geom_reply;
       xcb_void_cookie_t                         cookie;
       xcb_generic_error_t                       *error;
-      xcb_present_query_capabilities_cookie_t   present_capabilities_cookie;
-      xcb_present_query_capabilities_reply_t    *present_capabilities_reply;
       xcb_window_t                               root_win;
 
       draw->first_init = false;
@@ -1681,9 +1679,6 @@ dri3_update_drawable(struct loader_dri3_drawable *draw)
                                           XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY |
                                           XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
                                           XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY);
-
-      present_capabilities_cookie =
-         xcb_present_query_capabilities(draw->conn, draw->drawable);
 
       /* Create an XCB event queue to hold present events outside of the usual
        * application event queue
@@ -1716,17 +1711,6 @@ dri3_update_drawable(struct loader_dri3_drawable *draw)
        */
 
       error = xcb_request_check(draw->conn, cookie);
-
-      present_capabilities_reply =
-          xcb_present_query_capabilities_reply(draw->conn,
-                                               present_capabilities_cookie,
-                                               NULL);
-
-      if (present_capabilities_reply) {
-         draw->present_capabilities = present_capabilities_reply->capabilities;
-         free(present_capabilities_reply);
-      } else
-         draw->present_capabilities = 0;
 
       if (error) {
          if (error->error_code != BadWindow) {
