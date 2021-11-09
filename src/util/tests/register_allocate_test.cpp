@@ -212,7 +212,7 @@ TEST_F(ra_test, aligned_contigregs)
    }
 }
 
-TEST_F(ra_test, DISABLED_serialization_roundtrip)
+TEST_F(ra_test, serialization_roundtrip)
 {
    struct blob blob;
    blob_init(&blob);
