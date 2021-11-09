@@ -1047,18 +1047,17 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
    struct zink_shader_key *key = NULL;
 
    if (shader == PIPE_SHADER_COMPUTE) {
-      inlinable_uniforms = ctx->compute_inlinable_uniforms;
+      key = &ctx->compute_pipeline_state.key;
    } else {
       key = &ctx->gfx_pipeline_state.shader_keys.key[shader];
-      inlinable_uniforms = key->base.inlined_uniform_values;
    }
+   inlinable_uniforms = key->base.inlined_uniform_values;
    if (!(ctx->inlinable_uniforms_valid_mask & bit) ||
        memcmp(inlinable_uniforms, values, num_values * 4)) {
       memcpy(inlinable_uniforms, values, num_values * 4);
       ctx->dirty_shader_stages |= bit;
       ctx->inlinable_uniforms_valid_mask |= bit;
-      if (key)
-         key->inline_uniforms = true;
+      key->inline_uniforms = true;
    }
 }
 

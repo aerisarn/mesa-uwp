@@ -882,6 +882,12 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
    }
 
+   if (ctx->dirty_shader_stages & BITFIELD_BIT(PIPE_SHADER_COMPUTE)) {
+      /* update inlinable constants */
+      zink_update_compute_program(ctx);
+      ctx->dirty_shader_stages &= ~BITFIELD_BIT(PIPE_SHADER_COMPUTE);
+   }
+
    if (prev_pipeline != pipeline || BATCH_CHANGED)
       VKCTX(CmdBindPipeline)(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
    if (BATCH_CHANGED) {
