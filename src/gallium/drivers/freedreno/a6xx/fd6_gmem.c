@@ -299,45 +299,39 @@ patch_fb_read_sysmem(struct fd_batch *batch)
       return;
 
    struct fd_resource *rsc = fd_resource(psurf->texture);
-   unsigned lvl = psurf->u.tex.level;
-   unsigned layer = psurf->u.tex.first_layer;
-   bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
-   uint64_t iova = fd_bo_get_iova(rsc->bo) + fd_resource_offset(rsc, lvl, layer);
-   uint64_t ubwc_iova = fd_bo_get_iova(rsc->bo) + fd_resource_ubwc_offset(rsc, lvl, layer);
-   uint32_t texconst0 = fd6_tex_const_0(
-      psurf->texture, psurf->u.tex.level, psurf->format, PIPE_SWIZZLE_X,
-      PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+
    uint32_t block_width, block_height;
    fdl6_get_ubwc_blockwidth(&rsc->layout, &block_width, &block_height);
 
+   struct fdl_view_args args = {
+      .iova = fd_bo_get_iova(rsc->bo),
+
+      .base_miplevel = psurf->u.tex.level,
+      .level_count = 1,
+
+      .base_array_layer = psurf->u.tex.first_layer,
+      .layer_count = 1,
+
+      .format = psurf->format,
+      .swiz = {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W},
+
+      .type = FDL_VIEW_TYPE_2D,
+      .chroma_offsets = {FDL_CHROMA_LOCATION_COSITED_EVEN,
+                         FDL_CHROMA_LOCATION_COSITED_EVEN},
+   };
+   const struct fdl_layout *layouts[3] = {&rsc->layout, NULL, NULL};
+   struct fdl6_view view;
+   fdl6_view_init(&view, layouts, &args,
+                  batch->ctx->screen->info->a6xx.has_z24uint_s8uint);
+
    for (unsigned i = 0; i < num_patches; i++) {
       struct fd_cs_patch *patch = fd_patch_element(&batch->fb_read_patches, i);
-      patch->cs[0] = texconst0;
-      patch->cs[2] = A6XX_TEX_CONST_2_PITCH(fd_resource_pitch(rsc, lvl)) |
-                     A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
+
       /* This is cheating a bit, since we can't use OUT_RELOC() here.. but
        * the render target will already have a reloc emitted for RB_MRT state,
        * so we can get away with manually patching in the address here:
        */
-      patch->cs[4] = A6XX_TEX_CONST_4_BASE_LO(iova);
-      patch->cs[5] = A6XX_TEX_CONST_5_BASE_HI(iova >> 32) |
-                     A6XX_TEX_CONST_5_DEPTH(1);
-
-      if (!ubwc_enabled)
-         continue;
-
-      patch->cs[3] |= A6XX_TEX_CONST_3_FLAG;
-      patch->cs[7] = A6XX_TEX_CONST_7_FLAG_LO(ubwc_iova);
-      patch->cs[8] = A6XX_TEX_CONST_8_FLAG_HI(ubwc_iova >> 32);
-      patch->cs[9] = A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(
-            rsc->layout.ubwc_layer_size >> 2);
-      patch->cs[10] =
-            A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(
-               fdl_ubwc_pitch(&rsc->layout, lvl)) |
-            A6XX_TEX_CONST_10_FLAG_BUFFER_LOGW(util_logbase2_ceil(
-               DIV_ROUND_UP(u_minify(psurf->texture->width0, lvl), block_width))) |
-            A6XX_TEX_CONST_10_FLAG_BUFFER_LOGH(util_logbase2_ceil(
-               DIV_ROUND_UP(u_minify(psurf->texture->height0, lvl), block_height)));
+      memcpy(patch->cs, view.descriptor, FDL6_TEX_CONST_DWORDS * 4);
    }
    util_dynarray_clear(&batch->fb_read_patches);
 }
