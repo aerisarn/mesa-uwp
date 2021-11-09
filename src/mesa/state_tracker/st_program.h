@@ -157,9 +157,6 @@ struct st_fp_variant_key
    /** needed for ATI_fragment_shader */
    GLuint fog:2;
 
-   /** for ARB_depth_clamp */
-   GLuint lower_depth_clamp:1;
-
    /** for OpenGL 1.0 on modern hardware */
    GLuint lower_two_sided_color:1;
 
@@ -220,10 +217,6 @@ struct st_common_variant_key
 
    /** for ARB_color_buffer_float */
    bool clamp_color;
-
-   /** both for ARB_depth_clamp */
-   bool lower_depth_clamp;
-   bool clip_negative_one_to_one;
 
    /** lower glPointSize to gl_PointSize */
    boolean export_point_size;

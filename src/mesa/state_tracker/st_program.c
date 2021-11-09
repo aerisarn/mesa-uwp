@@ -61,7 +61,6 @@
 #include "st_cb_bitmap.h"
 #include "st_cb_drawpixels.h"
 #include "st_context.h"
-#include "st_tgsi_lower_depth_clamp.h"
 #include "st_tgsi_lower_yuv.h"
 #include "st_program.h"
 #include "st_atifs_to_nir.h"
@@ -756,9 +755,6 @@ lower_ucp(struct st_context *st,
    }
 }
 
-static const gl_state_index16 depth_range_state[STATE_LENGTH] =
-   { STATE_DEPTH_RANGE };
-
 static struct st_common_variant *
 st_create_common_variant(struct st_context *st,
                      struct st_program *stp,
@@ -881,18 +877,6 @@ st_create_common_variant(struct st_context *st,
       }
    }
 
-   if (key->lower_depth_clamp) {
-      unsigned depth_range_const =
-            _mesa_add_state_reference(params, depth_range_state);
-
-      const struct tgsi_token *tokens;
-      tokens = st_tgsi_lower_depth_clamp(state.tokens, depth_range_const,
-                                         key->clip_negative_one_to_one);
-      if (tokens != state.tokens)
-         tgsi_free_tokens(state.tokens);
-      state.tokens = tokens;
-   }
-
    if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(state.tokens, 0);
 
@@ -975,12 +959,10 @@ st_get_common_variant(struct st_context *st,
    if (!v) {
       if (stp->variants != NULL) {
          _mesa_perf_debug(st->ctx, MESA_DEBUG_SEVERITY_MEDIUM,
-                          "Compiling %s shader variant (%s%s%s%s%s%s%s%s)",
+                          "Compiling %s shader variant (%s%s%s%s%s%s)",
                           _mesa_shader_stage_to_string(stp->Base.info.stage),
                           key->passthrough_edgeflags ? "edgeflags," : "",
                           key->clamp_color ? "clamp_color," : "",
-                          key->lower_depth_clamp ? "depth_clamp," : "",
-                          key->clip_negative_one_to_one ? "clip_negative_one," : "",
                           key->export_point_size ? "point_size," : "",
                           key->lower_ucp ? "ucp," : "",
                           key->is_draw_shader ? "draw," : "",
@@ -1634,15 +1616,6 @@ st_create_fp_variant(struct st_context *st,
       }
    }
 
-   if (key->lower_depth_clamp) {
-      unsigned depth_range_const = _mesa_add_state_reference(params, depth_range_state);
-
-      const struct tgsi_token *tokens;
-      tokens = st_tgsi_lower_depth_clamp_fs(state.tokens, depth_range_const);
-      if (state.tokens != stfp->state.tokens)
-         tgsi_free_tokens(state.tokens);
-      state.tokens = tokens;
-   }
 
    if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(state.tokens, 0);
@@ -1679,7 +1652,7 @@ st_get_fp_variant(struct st_context *st,
 
       if (stfp->variants != NULL) {
          _mesa_perf_debug(st->ctx, MESA_DEBUG_SEVERITY_MEDIUM,
-                          "Compiling fragment shader variant (%s%s%s%s%s%s%s%s%s%s%s%s%s%s)",
+                          "Compiling fragment shader variant (%s%s%s%s%s%s%s%s%s%s%s%s%s)",
                           key->bitmap ? "bitmap," : "",
                           key->drawpixels ? "drawpixels," : "",
                           key->scaleAndBias ? "scale_bias," : "",
@@ -1687,7 +1660,6 @@ st_get_fp_variant(struct st_context *st,
                           key->clamp_color ? "clamp_color," : "",
                           key->persample_shading ? "persample_shading," : "",
                           key->fog ? "fog," : "",
-                          key->lower_depth_clamp ? "depth_clamp," : "",
                           key->lower_two_sided_color ? "twoside," : "",
                           key->lower_flatshade ? "flatshade," : "",
                           key->lower_texcoord_replace ? "texcoord_replace," : "",

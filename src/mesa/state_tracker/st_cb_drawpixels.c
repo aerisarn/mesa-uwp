@@ -785,10 +785,8 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
                                         ctx->Color._ClampFragmentColor;
       rasterizer.half_pixel_center = 1;
       rasterizer.bottom_edge_rule = 1;
-      rasterizer.depth_clip_near = st->clamp_frag_depth_in_shader ||
-                                   !ctx->Transform.DepthClampNear;
-      rasterizer.depth_clip_far = st->clamp_frag_depth_in_shader ||
-                                  !ctx->Transform.DepthClampFar;
+      rasterizer.depth_clip_near = !ctx->Transform.DepthClampNear;
+      rasterizer.depth_clip_far = !ctx->Transform.DepthClampFar;
       rasterizer.depth_clamp = !rasterizer.depth_clip_far;
       rasterizer.scissor = ctx->Scissor.EnableFlags;
       cso_set_rasterizer(cso, &rasterizer);
@@ -1276,34 +1274,6 @@ setup_sampler_swizzle(struct pipe_sampler_view *sv, GLenum format, GLenum type)
 
 
 /**
- * Compute the effective raster z position. This performs depth-clamping
- * if needed.
- */
-static float
-get_effective_raster_z(struct gl_context *ctx)
-{
-   float z = ctx->Current.RasterPos[2];
-   if (st_context(ctx)->clamp_frag_depth_in_shader) {
-      GLfloat depth_near;
-      GLfloat depth_far;
-      if (ctx->ViewportArray[0].Near < ctx->ViewportArray[0].Far) {
-         depth_near = ctx->ViewportArray[0].Near;
-         depth_far = ctx->ViewportArray[0].Far;
-      } else {
-         depth_near = ctx->ViewportArray[0].Far;
-         depth_far = ctx->ViewportArray[0].Near;
-      }
-
-      if (ctx->Transform.DepthClampNear)
-         z = MAX2(z, depth_near);
-      if (ctx->Transform.DepthClampFar)
-         z = MIN2(z, depth_far);
-   }
-   return z;
-}
-
-
-/**
  * Called via ctx->Driver.DrawPixels()
  */
 static void
@@ -1429,7 +1399,7 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
       num_sampler_view++;
    }
 
-   draw_textured_quad(ctx, x, y, get_effective_raster_z(ctx),
+   draw_textured_quad(ctx, x, y, ctx->Current.RasterPos[2],
                       width, height,
                       ctx->Pixel.ZoomX, ctx->Pixel.ZoomY,
                       sv,
@@ -1965,7 +1935,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
     * textured quad with that texture.
     */
 
-   draw_textured_quad(ctx, dstx, dsty, get_effective_raster_z(ctx),
+   draw_textured_quad(ctx, dstx, dsty, ctx->Current.RasterPos[2],
                       width, height, ctx->Pixel.ZoomX, ctx->Pixel.ZoomY,
                       sv,
                       num_sampler_view,

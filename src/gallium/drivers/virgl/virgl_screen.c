@@ -127,8 +127,6 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_DEPTH_CLIP_DISABLE:
       if (vscreen->caps.caps.v1.bset.depth_clip_disable)
          return 1;
-      if (vscreen->caps.caps.v2.host_feature_check_version >= 3)
-         return 2;
       return 0;
    case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
       return vscreen->caps.caps.v1.max_streamout_buffers;

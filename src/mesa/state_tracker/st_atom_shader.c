@@ -168,11 +168,6 @@ st_update_fp( struct st_context *st )
          st->ctx->Multisample.MinSampleShadingValue *
          _mesa_geometric_samples(st->ctx->DrawBuffer) > 1;
 
-      key.lower_depth_clamp =
-         st->clamp_frag_depth_in_shader &&
-         (st->ctx->Transform.DepthClampNear ||
-          st->ctx->Transform.DepthClampFar);
-
       if (stfp->ati_fs) {
          key.fog = st->ctx->Fog._PackedEnabledMode;
 
@@ -237,16 +232,6 @@ st_update_vp( struct st_context *st )
                           VARYING_SLOT_BFC0 |
                           VARYING_SLOT_BFC1));
 
-      key.lower_depth_clamp =
-            !st->gp && !st->tep &&
-            st->clamp_frag_depth_in_shader &&
-            (st->ctx->Transform.DepthClampNear ||
-             st->ctx->Transform.DepthClampFar);
-
-      if (key.lower_depth_clamp)
-         key.clip_negative_one_to_one =
-               st->ctx->Transform.ClipDepthMode == GL_NEGATIVE_ONE_TO_ONE;
-
       if (!st->ctx->GeometryProgram._Current &&
           !st->ctx->TessEvalProgram._Current) {
          /* _NEW_POINT */
@@ -309,16 +294,6 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
                           VARYING_SLOT_COL1 |
                           VARYING_SLOT_BFC0 |
                           VARYING_SLOT_BFC1));
-
-      key.lower_depth_clamp =
-            (pipe_shader == PIPE_SHADER_GEOMETRY || !st->gp) &&
-            st->clamp_frag_depth_in_shader &&
-            (st->ctx->Transform.DepthClampNear ||
-             st->ctx->Transform.DepthClampFar);
-
-      if (key.lower_depth_clamp)
-         key.clip_negative_one_to_one =
-               st->ctx->Transform.ClipDepthMode == GL_NEGATIVE_ONE_TO_ONE;
 
       if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx) &&
           pipe_shader == PIPE_SHADER_GEOMETRY)

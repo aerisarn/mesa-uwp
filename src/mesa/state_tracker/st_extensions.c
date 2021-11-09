@@ -237,14 +237,7 @@ void st_init_limits(struct pipe_screen *screen,
 
          if (!screen->get_param(screen, PIPE_CAP_POINT_SIZE_FIXED))
             pc->MaxUniformComponents -= 4;
-
-         if (screen->get_param(screen, PIPE_CAP_DEPTH_CLIP_DISABLE) == 2)
-            pc->MaxUniformComponents -= 4;
-
       } else if (sh == PIPE_SHADER_FRAGMENT) {
-         if (screen->get_param(screen, PIPE_CAP_DEPTH_CLIP_DISABLE) == 2)
-            pc->MaxUniformComponents -= 4;
-
          if (!screen->get_param(screen, PIPE_CAP_ALPHA_TEST))
             pc->MaxUniformComponents -= 4;
       }
