@@ -309,7 +309,8 @@ dri2DestroyDrawable(__GLXDRIdrawable *base)
 
 static __GLXDRIdrawable *
 dri2CreateDrawable(struct glx_screen *base, XID xDrawable,
-		   GLXDrawable drawable, struct glx_config *config_base)
+                   GLXDrawable drawable, int type,
+                   struct glx_config *config_base)
 {
    struct dri2_drawable *pdraw;
    struct dri2_screen *psc = (struct dri2_screen *) base;

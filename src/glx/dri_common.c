@@ -405,7 +405,7 @@ driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
    }
 
    pdraw = psc->driScreen->createDrawable(psc, glxDrawable, glxDrawable,
-                                          config);
+                                          type, config);
 
    if (pdraw == NULL) {
       ErrorMessageF("failed to create drawable\n");
