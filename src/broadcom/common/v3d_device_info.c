@@ -36,6 +36,9 @@ v3d_get_device_info(int fd, struct v3d_device_info* devinfo, v3d_ioctl_fun drm_i
     struct drm_v3d_get_param ident1 = {
             .param = DRM_V3D_PARAM_V3D_CORE0_IDENT1,
     };
+    struct drm_v3d_get_param hub_ident3 = {
+            .param = DRM_V3D_PARAM_V3D_HUB_IDENT3,
+    };
     int ret;
 
     ret = drm_ioctl(fd, DRM_IOCTL_V3D_GET_PARAM, &ident0);
@@ -76,5 +79,14 @@ v3d_get_device_info(int fd, struct v3d_device_info* devinfo, v3d_ioctl_fun drm_i
                 return false;
     }
 
-    return true;
+    ret = drm_ioctl(fd, DRM_IOCTL_V3D_GET_PARAM, &hub_ident3);
+    if (ret != 0) {
+            fprintf(stderr, "Couldn't get V3D core HUB IDENT3: %s\n",
+                    strerror(errno));
+            return false;
+    }
+
+   devinfo->rev = (hub_ident3.value >> 8) & 0xff;
+
+   return true;
 }

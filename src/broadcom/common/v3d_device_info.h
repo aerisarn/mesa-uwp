@@ -34,6 +34,9 @@ struct v3d_device_info {
         /** Simple V3D version: major * 10 + minor */
         uint8_t ver;
 
+        /** V3D revision number */
+        uint8_t rev;
+
         /** Size of the VPM, in bytes. */
         int vpm_size;
 
