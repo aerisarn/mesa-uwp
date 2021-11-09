@@ -62,7 +62,8 @@ else
 endif
 
 foreach w : ['-Wno-unused-variable', '-Wno-unused-local-typedefs',
-             '-Wno-unused-but-set-variable', '-Wno-maybe-uninitialized']
+             '-Wno-unused-but-set-variable', '-Wno-maybe-uninitialized',
+             '-Wno-self-assign']
   if cpp.has_argument(w)
     cpp_args_addrlib += w
   endif
