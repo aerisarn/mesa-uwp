@@ -76,6 +76,7 @@ struct zink_modifier_prop {
 struct zink_screen {
    struct pipe_screen base;
    bool threaded;
+   bool is_cpu;
    uint32_t curr_batch; //the current batch id
    uint32_t last_finished; //this is racy but ultimately doesn't matter
    VkSemaphore sem;

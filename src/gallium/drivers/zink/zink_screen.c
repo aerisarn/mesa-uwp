@@ -1166,14 +1166,15 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    ralloc_free(screen);
 }
 
-static void
+static bool
 choose_pdev(struct zink_screen *screen)
 {
    uint32_t i, pdev_count;
    VkPhysicalDevice *pdevs;
+   bool is_cpu = false;
    VkResult result = vkEnumeratePhysicalDevices(screen->instance, &pdev_count, NULL);
    if (result != VK_SUCCESS)
-      return;
+      return is_cpu;
 
    assert(pdev_count > 0);
 
@@ -1192,6 +1193,7 @@ choose_pdev(struct zink_screen *screen)
          if (props->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
             screen->pdev = pdevs[i];
             screen->info.device_version = props->apiVersion;
+            is_cpu = true;
             break;
          }
          continue;
@@ -1215,6 +1217,7 @@ choose_pdev(struct zink_screen *screen)
       screen->spirv_version = SPIRV_VERSION(1, 3);
    else
       screen->spirv_version = SPIRV_VERSION(1, 0);
+   return is_cpu;
 }
 
 static void
@@ -1913,7 +1916,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       (zink_debug & ZINK_DEBUG_VALIDATION) && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
 
-   choose_pdev(screen);
+   screen->is_cpu = choose_pdev(screen);
    if (screen->pdev == VK_NULL_HANDLE)
       goto fail;
 
@@ -2015,7 +2018,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       //screen->driconf.inline_uniforms = driQueryOptionb(config->options, "radeonsi_inline_uniforms");
    }
 #endif
-   screen->driconf.inline_uniforms = debug_get_bool_option("ZINK_INLINE_UNIFORMS", false);
+   screen->driconf.inline_uniforms = debug_get_bool_option("ZINK_INLINE_UNIFORMS", screen->is_cpu);
 
    screen->total_video_mem = get_video_mem(screen);
    screen->clamp_video_mem = screen->total_video_mem * 0.8;

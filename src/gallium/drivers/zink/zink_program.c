@@ -96,7 +96,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
-      if (prog->inlined_variant_count[pstage] < ZINK_MAX_INLINED_VARIANTS)
+      if (screen->is_cpu || prog->inlined_variant_count[pstage] < ZINK_MAX_INLINED_VARIANTS)
          base_size = zs->nir->info.num_inlinable_uniforms;
       else
          key->inline_uniforms = false;
@@ -264,6 +264,7 @@ cs_module_hash(const struct zink_shader_module *zm)
 static void
 update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *comp)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_shader *zs = comp->shader;
    VkShaderModule mod;
    struct zink_shader_module *zm = NULL;
@@ -272,7 +273,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(PIPE_SHADER_COMPUTE)) {
-      if (comp->inlined_variant_count < ZINK_MAX_INLINED_VARIANTS)
+      if (screen->is_cpu || comp->inlined_variant_count < ZINK_MAX_INLINED_VARIANTS)
          base_size = zs->nir->info.num_inlinable_uniforms;
       else
          key->inline_uniforms = false;
@@ -296,7 +297,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       if (!zm) {
          return;
       }
-      mod = zink_shader_compile(zink_screen(ctx->base.screen), zs, comp->shader->nir, key);
+      mod = zink_shader_compile(screen, zs, comp->shader->nir, key);
       if (!mod) {
          FREE(zm);
          return;
