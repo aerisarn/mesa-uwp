@@ -205,19 +205,15 @@ CreateDRIDrawable(Display *dpy, struct glx_config *config,
 }
 
 static void
-DestroyDRIDrawable(Display *dpy, GLXDrawable drawable, int destroy_xdrawable)
+DestroyDRIDrawable(Display *dpy, GLXDrawable drawable)
 {
 #ifdef GLX_DIRECT_RENDERING
    struct glx_display *const priv = __glXInitialize(dpy);
    __GLXDRIdrawable *pdraw = GetGLXDRIDrawable(dpy, drawable);
-   XID xid;
 
    if (priv != NULL && pdraw != NULL) {
-      xid = pdraw->xDrawable;
       (*pdraw->destroyDrawable) (pdraw);
       __glxHashDelete(priv->drawHash, drawable);
-      if (destroy_xdrawable)
-         XFreePixmap(priv->dpy, xid);
    }
 #endif
 }
@@ -514,7 +510,7 @@ DestroyDrawable(Display * dpy, GLXDrawable drawable, CARD32 glxCode)
    protocolDestroyDrawable(dpy, drawable, glxCode);
 
    DestroyGLXDrawable(dpy, drawable);
-   DestroyDRIDrawable(dpy, drawable, GL_FALSE);
+   DestroyDRIDrawable(dpy, drawable);
 
    return;
 }
@@ -540,9 +536,7 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
    CARD32 *data;
    CARD8 opcode;
    unsigned int i;
-   Pixmap pixmap;
    GLboolean glx_1_3 = GL_FALSE;
-   int depth = config->rgbBits;
 
    if (priv == NULL)
       return None;
@@ -607,15 +601,9 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
    UnlockDisplay(dpy);
    SyncHandle();
 
-   if (depth == 30)
-      depth = 32;
-
-   pixmap = XCreatePixmap(dpy, RootWindow(dpy, config->screen),
-			  width, height, depth);
-
-   if (!CreateDRIDrawable(dpy, config, pixmap, id, attrib_list, i)) {
+   /* xserver created a pixmap with the same id as pbuffer */
+   if (!CreateDRIDrawable(dpy, config, id, id, attrib_list, i)) {
       CARD32 o = glx_1_3 ? X_GLXDestroyPbuffer : X_GLXvop_DestroyGLXPbufferSGIX;
-      XFreePixmap(dpy, pixmap);
       protocolDestroyDrawable(dpy, id, o);
       id = None;
    }
@@ -674,7 +662,7 @@ DestroyPbuffer(Display * dpy, GLXDrawable drawable)
    UnlockDisplay(dpy);
    SyncHandle();
 
-   DestroyDRIDrawable(dpy, drawable, GL_TRUE);
+   DestroyDRIDrawable(dpy, drawable);
 
    return;
 }
