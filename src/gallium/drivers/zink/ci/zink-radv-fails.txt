@@ -553,8 +553,6 @@ KHR-GL46.direct_state_access.queries_functional,Fail
 KHR-GL46.direct_state_access.vertex_arrays_attribute_format,Fail
 KHR-GL46.geometry_shader.adjacency.adjacency_indiced_triangle_strip,Fail
 KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
-KHR-GL46.layout_location.sampler_1d_array_shadow,Fail
-KHR-GL46.layout_location.sampler_1d_shadow,Fail
 KHR-GL46.packed_depth_stencil.blit.depth24_stencil8,Fail
 KHR-GL46.packed_depth_stencil.blit.depth32f_stencil8,Fail
 KHR-GL46.packed_depth_stencil.clear_buffer.depth24_stencil8,Fail
@@ -1345,14 +1343,9 @@ spec@arb_cull_distance@basic-cull-2,Fail
 spec@arb_cull_distance@clip-cull-3,Fail
 spec@arb_cull_distance@clip-cull-4,Fail
 spec@arb_cull_distance@fs-cull-distance-interpolated,Fail
-spec@arb_depth_buffer_float@fbo-depth-gl_depth32f_stencil8-tex1d,Fail
-spec@arb_depth_buffer_float@fbo-depth-gl_depth_component32f-tex1d,Fail
 spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-drawpixels-24_8,Fail
 spec@arb_depth_texture@depth-level-clamp,Fail
 spec@arb_depth_texture@depth-tex-modes,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component16-tex1d,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component24-tex1d,Fail
-spec@arb_depth_texture@fbo-depth-gl_depth_component32-tex1d,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT24,Fail
 spec@arb_depth_texture@fbo-generatemipmap-formats@GL_DEPTH_COMPONENT24 NPOT,Fail
@@ -1501,17 +1494,6 @@ spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr-loop,Fail
 spec@arb_indirect_parameters@conditional-render,Fail
 spec@arb_indirect_parameters@conditional-render@Query result: Pass. Inverted mode: No.  Points drawn: 0,Fail
 spec@arb_indirect_parameters@conditional-render@Query result: Pass. Inverted mode: Yes.  Points drawn: 4,Fail
-spec@arb_internalformat_query2@all internalformat_<x>_size pname checks,Fail
-spec@arb_internalformat_query2@all internalformat_<x>_size pname checks@GL_INTERNALFORMAT_DEPTH_SIZE,Fail
-spec@arb_internalformat_query2@all internalformat_<x>_type pname checks,Fail
-spec@arb_internalformat_query2@all internalformat_<x>_type pname checks@GL_INTERNALFORMAT_DEPTH_TYPE,Fail
-spec@arb_internalformat_query2@image_format_compatibility_type pname checks,Fail
-spec@arb_internalformat_query2@image_format_compatibility_type pname checks@GL_IMAGE_FORMAT_COMPATIBILITY_TYPE,Fail
-spec@arb_internalformat_query2@max dimensions related pname checks,Fail
-spec@arb_internalformat_query2@max dimensions related pname checks@GL_MAX_COMBINED_DIMENSIONS,Fail
-spec@arb_internalformat_query2@max dimensions related pname checks@GL_MAX_HEIGHT,Fail
-spec@arb_internalformat_query2@max dimensions related pname checks@GL_MAX_LAYERS,Fail
-spec@arb_internalformat_query2@max dimensions related pname checks@GL_MAX_WIDTH,Fail
 spec@arb_occlusion_query@occlusion_query_meta_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_no_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_save,Fail
@@ -1615,18 +1597,12 @@ spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-04,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-07,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-08,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 1dshadow,Fail
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *lod 1dshadow,Fail
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 1dshadow,Fail
-spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projlod 1dshadow,Fail
 spec@arb_shading_language_packing@execution@built-in-functions@fs-packhalf2x16,Fail
 spec@arb_shading_language_packing@execution@built-in-functions@vs-packhalf2x16,Fail
 spec@arb_sparse_buffer@basic,Crash
 spec@arb_sparse_buffer@buffer-data,Crash
 spec@arb_sparse_buffer@commit,Crash
 spec@arb_stencil_texturing@draw,Fail
-spec@arb_stencil_texturing@glblitframebuffer corrupts state@gl_texture_1d_array,Crash
-spec@arb_stencil_texturing@glblitframebuffer corrupts state@gl_texture_1d,Crash
 spec@arb_tessellation_shader@arb_tessellation_shader-tes-gs-max-output -small -scan 1 50,Crash
 spec@arb_tessellation_shader@execution@compatibility@tes-clip-vertex-different-from-position,Fail
 spec@arb_tessellation_shader@execution@compatibility@vs-tcs-tes-clip-vertex-different-from-position,Fail
@@ -1696,7 +1672,6 @@ spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32I- swizzled-
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32UI- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8I- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8UI- swizzled- border color only,Fail
-spec@arb_texture_stencil8@stencil-texture,Fail
 spec@arb_texture_view@rendering-formats@clear GL_R16 as GL_R16F,Fail
 spec@arb_texture_view@rendering-formats@clear GL_R16 as GL_R16I,Fail
 spec@arb_texture_view@rendering-formats@clear GL_R16 as GL_R16_SNORM,Fail
@@ -2023,7 +1998,6 @@ spec@ext_framebuffer_multisample@sample-coverage 2 non-inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 4 non-inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 6 non-inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 8 non-inverted,Fail
-spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY12,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY16,Fail
@@ -2047,8 +2021,6 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p016,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuv420,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Fail
-spec@ext_packed_depth_stencil@depth_stencil texture,Fail
-spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-tex1d,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-drawpixels-32f_24_8_rev,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-readpixels-24_8,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-readpixels-32f_24_8_rev,Fail
@@ -2070,16 +2042,9 @@ spec@ext_packed_depth_stencil@texwrap formats offset@GL_DEPTH24_STENCIL8- swizzl
 spec@ext_packed_float@query-rgba-signed-components,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled@GL_R11F_G11F_B10F- swizzled- border color only,Fail
-spec@ext_texture_array@copyteximage 1d_array,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=2,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=4,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=6,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=8,Fail
 spec@ext_texture_array@glsl-fs-shadow1darray-01,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-02,Fail
 spec@ext_texture_array@glsl-fs-shadow1darray-03,Fail
 spec@ext_texture_array@glsl-fs-shadow1darray-04,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-05,Fail
 spec@ext_texture_array@glsl-fs-shadow1darray-07,Fail
 spec@ext_texture_array@glsl-fs-shadow1darray-08,Fail
 spec@ext_texture_array@glsl-fs-shadow1darray-bias,Fail
@@ -2150,10 +2115,8 @@ spec@glsl-1.10@execution@glsl-vs-inline-explosion,Crash
 spec@glsl-1.10@execution@loops@glsl-fs-unroll-explosion,Crash
 spec@glsl-1.10@execution@loops@glsl-vs-unroll-explosion,Crash
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-01,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-02,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-03,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-04,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-05,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-07,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-08,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-bias,Fail
@@ -2174,49 +2137,13 @@ spec@glsl-1.10@execution@temp-array-indexing@glsl-fs-giant-temp-array,Crash
 spec@glsl-1.10@execution@temp-array-indexing@glsl-vs-giant-temp-array,Crash
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1dshadow,Fail
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture(bias) 1dshadow,Fail
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 1dshadow,Fail
-spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj(bias) 1dshadow,Fail
 spec@glsl-1.30@execution@clipping@vs-clip-distance-primitives,Fail
 spec@glsl-1.30@execution@fs-texture-sampler2dshadow-01,Fail
 spec@glsl-1.30@execution@fs-texture-sampler2dshadow-04,Fail
 spec@glsl-1.30@execution@fs-texture-sampler2dshadow-07,Fail
 spec@glsl-1.30@execution@fs-texture-sampler2dshadow-10,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureproj(bias) 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgrad 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojgradoffset 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlod 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojlodoffset 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojoffset 1dshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureprojoffset(bias) 1dshadow,Fail
-spec@glsl-1.30@execution@texturesize@fs-texturesize-sampler1darrayshadow,Fail
-spec@glsl-1.30@execution@texturesize@fs-texturesize-sampler1dshadow,Fail
-spec@glsl-1.30@execution@texturesize@vs-texturesize-sampler1darrayshadow,Fail
-spec@glsl-1.30@execution@texturesize@vs-texturesize-sampler1dshadow,Fail
 spec@glsl-1.40@execution@glsl-fs-shadow2drect,Fail
 spec@glsl-1.40@execution@glsl-fs-shadow2drectproj,Fail
-spec@glsl-1.40@execution@texturesize@fs-texturesize-sampler1darrayshadow,Fail
-spec@glsl-1.40@execution@texturesize@fs-texturesize-sampler1dshadow,Fail
-spec@glsl-1.40@execution@texturesize@vs-texturesize-sampler1darrayshadow,Fail
-spec@glsl-1.40@execution@texturesize@vs-texturesize-sampler1dshadow,Fail
 spec@glsl-1.50@execution@compatibility@clipping@gs-clip-vertex-primitives-points,Fail
 spec@glsl-1.50@execution@geometry@primitive-types gl_triangle_fan,Fail
 spec@glsl-1.50@execution@geometry@primitive-types gl_triangle_strip_adjacency,Fail
@@ -2227,10 +2154,6 @@ spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triang
 spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triangle_strip other,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
-spec@glsl-1.50@execution@texturesize@gs-texturesize-sampler1darrayshadow,Fail
-spec@glsl-1.50@execution@texturesize@gs-texturesize-sampler1dshadow,Fail
-spec@glsl-1.50@execution@texturesize@tes-texturesize-sampler1darrayshadow,Fail
-spec@glsl-1.50@execution@texturesize@tes-texturesize-sampler1dshadow,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2-mat2,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2x3-mat2x3,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2x4-mat2x4,Fail
@@ -2547,7 +2470,6 @@ spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 spec@!opengl 1.0@gl-1.0-readpixsanity,Fail
 spec@!opengl 1.0@gl-1.0-rendermode-feedback,Crash
 spec@!opengl 1.0@rasterpos,Crash
-spec@!opengl 1.1@copyteximage 1d,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=4,Fail
@@ -2566,23 +2488,15 @@ spec@!opengl 1.1@depthstencil-default_fb-readpixels-32f_24_8_rev samples=8,Fail
 spec@!opengl 1.1@draw-pixels,Fail
 spec@!opengl 1.1@getteximage-depth,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH24_STENCIL8,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH32F_STENCIL8,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT16,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT24,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT32,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT32F,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_STENCIL,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_STENCIL_INDEX8,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH24_STENCIL8,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH32F_STENCIL8,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH_COMPONENT16,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH_COMPONENT24,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH_COMPONENT32,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH_COMPONENT32F,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH_COMPONENT,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_DEPTH_STENCIL,Fail
-spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D-GL_STENCIL_INDEX8,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_2D_ARRAY-GL_DEPTH24_STENCIL8,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_2D_ARRAY-GL_DEPTH_COMPONENT24,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_2D_ARRAY-GL_DEPTH_COMPONENT32,Fail
@@ -2650,7 +2564,6 @@ spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA2- swizzled- border
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA4- swizzled- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA8- swizzled- border color only,Fail
 spec@!opengl 1.1@windowoverlap,Fail
-spec@!opengl 1.2@teximage-errors,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 spec@!opengl 1.5@depth-tex-compare,Fail
 spec@!opengl 2.0@depth-tex-modes-glsl,Fail
