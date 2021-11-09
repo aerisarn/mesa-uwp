@@ -1586,29 +1586,22 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          struct anv_attachment_state *att_state = &state->attachments[i];
          VkImageAspectFlags att_aspects = vk_format_aspects(pass_att->format);
          VkImageAspectFlags clear_aspects = 0;
-         VkImageAspectFlags load_aspects = 0;
 
          if (att_aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
             /* color attachment */
             if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
                clear_aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-            } else if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
-               load_aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
             }
          } else {
             /* depthstencil attachment */
             if (att_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
                if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
                   clear_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-               } else if (pass_att->load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
-                  load_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
                }
             }
             if (att_aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
                if (pass_att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
                   clear_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-               } else if (pass_att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
-                  load_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
                }
             }
          }
@@ -1616,7 +1609,6 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          att_state->current_layout = pass_att->initial_layout;
          att_state->current_stencil_layout = pass_att->stencil_initial_layout;
          att_state->pending_clear_aspects = clear_aspects;
-         att_state->pending_load_aspects = load_aspects;
          if (clear_aspects)
             att_state->clear_value = begin->pClearValues[i];
 
@@ -6292,8 +6284,6 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
           current_subpass_is_last_for_attachment(cmd_state, a)) {
          att_state->pending_clear_aspects = 0;
       }
-
-      att_state->pending_load_aspects = 0;
    }
 
    /* We've transitioned all our images possibly fast clearing them.  Now we
