@@ -32,6 +32,7 @@ dEQP-GLES2.functional.uniform_api.random.54
 dEQP-GLES2.functional.uniform_api.random.55
 dEQP-GLES2.functional.uniform_api.value.*sampler.*
 
+spec@!opengl 1.0@gl-1.0-textured-triangle
 spec@!opengl 1.1@depthstencil-default_fb-copypixels
 spec@!opengl 1.1@draw-pixels
 spec@!opengl 1.1@texgen
@@ -53,6 +54,7 @@ spec@ext_framebuffer_object@fbo-generatemipmap-viewport
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-copypixels
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-blit
+spec@ext_texture_compression_s3tc@s3tc-texsubimage
 spec@ext_texture_compression_s3tc@s3tc-texsubimage_gles2
 spec@ext_texture_lod_bias@lodbias
 spec@nv_copy_image@nv_copy_image-simple --tex-to-tex
