@@ -18,10 +18,7 @@ dEQP-GLES2.functional.rasterization.culling.both_triangle_strip
 dEQP-GLES2.functional.rasterization.culling.both_triangle_strip_reverse
 dEQP-GLES2.functional.rasterization.culling.both_triangles
 dEQP-GLES2.functional.rasterization.culling.both_triangles_reverse
-dEQP-GLES2.functional.shaders.random.all_features.fragment.24
-dEQP-GLES2.functional.shaders.random.all_features.fragment.45
-dEQP-GLES2.functional.shaders.random.all_features.fragment.74
-dEQP-GLES2.functional.shaders.random.all_features.fragment.95
+dEQP-GLES2.functional.shaders.random.all_features.fragment.*
 dEQP-GLES2.functional.shaders.random.texture.fragment.*
 dEQP-GLES2.functional.shaders.random.texture.vertex.*
 dEQP-GLES2.functional.texture.filtering.2d.linear_linear_clamp_rgba8888_npot
