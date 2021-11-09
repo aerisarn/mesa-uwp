@@ -148,7 +148,7 @@ public:
    void assign_regs_trivial();
    void calculate_payload_ranges(int payload_node_count,
                                  int *payload_last_use_ip) const;
-   void split_virtual_grfs();
+   bool split_virtual_grfs();
    bool compact_virtual_grfs();
    void assign_constant_locations();
    bool get_pull_locs(const fs_reg &src, unsigned *out_surf_index,
