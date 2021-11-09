@@ -339,10 +339,12 @@ driInferDrawableConfig(struct glx_screen *psc, GLXDrawable draw)
 _X_HIDDEN __GLXDRIdrawable *
 driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
 {
-   struct glx_display *const priv = __glXInitialize(gc->psc->dpy);
+   Display *dpy = gc->psc->dpy;
+   struct glx_display *const priv = __glXInitialize(dpy);
    __GLXDRIdrawable *pdraw;
    struct glx_screen *psc;
    struct glx_config *config = gc->config;
+   unsigned int type;
 
    if (priv == NULL)
       return NULL;
@@ -364,6 +366,43 @@ driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
       config = driInferDrawableConfig(gc->psc, glxDrawable);
    if (config == NULL)
       return NULL;
+
+   /* We can't find this GLX drawable above because it's either:
+    *
+    * 1. An X window ID instead of a GLX window ID. This could happend when
+    *    glXMakeCurrent() is passed an X window directly instead of creating
+    *    GLXWindow with glXCreateWindow() first.
+    *
+    * 2. A GLXPbuffer created on other display:
+    *
+    *    From the GLX spec:
+    *
+    *      Like other drawable types, GLXPbuffers are shared; any client which
+    *      knows the associated XID can use a GLXPbuffer.
+    *
+    *    So client other than the creator of this GLXPbuffer could use its
+    *    XID to do something like glXMakeCurrent(). I can't find explicite
+    *    statement in GLX spec that also allow GLXWindow and GLXPixmap.
+    *
+    *    But even GLXWindow and GLXPixmap is allowed, currently client other
+    *    than the GLX drawable creator has no way to find which X drawable
+    *    (window or pixmap) this GLX drawable uses, except the GLXPbuffer
+    *    case which use the same XID for both X pixmap and GLX drawable.
+    */
+
+   /* Infer the GLX drawable type. */
+   if (__glXGetDrawableAttribute(dpy, glxDrawable, GLX_DRAWABLE_TYPE, &type)) {
+      if (type != GLX_PBUFFER_BIT) {
+         ErrorMessageF("GLX drawable type is not supported\n");
+         return NULL;
+      }
+   } else {
+      /* Xserver may not implement GLX_DRAWABLE_TYPE query yet, or glxDrawable
+       * is a X window. Assume it's a GLXPbuffer in former case, because we don't
+       * know GLXPixmap and GLXWindow's X drawable ID anyway.
+       */
+      type = GLX_PBUFFER_BIT | GLX_WINDOW_BIT;
+   }
 
    pdraw = psc->driScreen->createDrawable(psc, glxDrawable, glxDrawable,
                                           config);
