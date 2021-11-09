@@ -52,7 +52,7 @@ fd6_pipe2swiz(unsigned swiz)
 }
 
 void
-fd6_tex_swiz(enum pipe_format format, enum a6xx_tile_mode tile_mode, unsigned char *swiz, unsigned swizzle_r,
+fd6_tex_swiz(enum pipe_format format, unsigned char *swiz, unsigned swizzle_r,
              unsigned swizzle_g, unsigned swizzle_b, unsigned swizzle_a)
 {
    const struct util_format_description *desc = util_format_description(format);
@@ -91,7 +91,7 @@ fd6_tex_const_0(struct pipe_resource *prsc, unsigned level,
    struct fd_resource *rsc = fd_resource(prsc);
    unsigned char swiz[4];
 
-   fd6_tex_swiz(format, rsc->layout.tile_mode, swiz, swizzle_r, swizzle_g, swizzle_b, swizzle_a);
+   fd6_tex_swiz(format, swiz, swizzle_r, swizzle_g, swizzle_b, swizzle_a);
 
    return A6XX_TEX_CONST_0_FMT(fd6_texture_format(format, rsc->layout.tile_mode)) |
           A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
