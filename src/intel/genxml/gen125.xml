@@ -7418,8 +7418,17 @@
     <field name="Destination LOD" start="544" end="547" type="uint"/>
     <field name="Destination Surface QPitch" start="548" end="562" type="uint"/>
     <field name="Destination Surface Depth" start="565" end="575" type="uint"/>
-    <field name="Destination Horizontal Align" start="576" end="577" type="uint"/>
-    <field name="Destination Vertical Align" start="579" end="580" type="uint"/>
+    <field name="Destination Horizontal Align" start="576" end="577" type="uint">
+      <value name="HALIGN_16" value="0"/>
+      <value name="HALIGN_32" value="1"/>
+      <value name="HALIGN_64" value="2"/>
+      <value name="HALIGN_128" value="3"/>
+    </field>
+    <field name="Destination Vertical Align" start="579" end="580" type="uint">
+      <value name="VALIGN_4" value="1"/>
+      <value name="VALIGN_8" value="2"/>
+      <value name="VALIGN_16" value="3"/>
+    </field>
     <field name="Destination Mip Tail Start LOD" start="584" end="587" type="uint"/>
     <field name="Destination Depth/Stencil Resource" start="594" end="594" type="bool"/>
     <field name="Destination Array Index" start="597" end="607" type="uint"/>
@@ -7435,8 +7444,17 @@
     <field name="Source LOD" start="640" end="643" type="uint"/>
     <field name="Source Surface QPitch" start="644" end="658" type="uint"/>
     <field name="Source Surface Depth" start="661" end="671" type="uint"/>
-    <field name="Source Horizontal Align" start="672" end="673" type="uint"/>
-    <field name="Source Vertical Align" start="675" end="676" type="uint"/>
+    <field name="Source Horizontal Align" start="672" end="673" type="uint">
+      <value name="HALIGN_16" value="0"/>
+      <value name="HALIGN_32" value="1"/>
+      <value name="HALIGN_64" value="2"/>
+      <value name="HALIGN_128" value="3"/>
+    </field>
+    <field name="Source Vertical Align" start="675" end="676" type="uint">
+      <value name="VALIGN_4" value="1"/>
+      <value name="VALIGN_8" value="2"/>
+      <value name="VALIGN_16" value="3"/>
+    </field>
     <field name="Source Mip Tail Start LOD" start="680" end="683" type="uint"/>
     <field name="Source Depth/Stencil Resource" start="690" end="690" type="bool"/>
     <field name="Source Array Index" start="693" end="703" type="uint"/>
