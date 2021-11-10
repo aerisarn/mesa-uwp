@@ -150,6 +150,10 @@ files_mesa_util = files(
   'vma.c',
   'vma.h',
   'xxhash.h',
+  'indices/u_indices.h',
+  'indices/u_indices_priv.h',
+  'indices/u_primconvert.c',
+  'indices/u_primconvert.h',
 )
 
 files_drirc = files('00-mesa-defaults.conf')
@@ -227,9 +231,25 @@ endif
 
 u_trace_py = files('perf/u_trace.py')
 
+u_indices_gen_c = custom_target(
+  'u_indices_gen.c',
+  input : 'indices/u_indices_gen.py',
+  output : 'u_indices_gen.c',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+)
+
+u_unfilled_gen_c = custom_target(
+  'u_unfilled_gen.c',
+  input : 'indices/u_unfilled_gen.py',
+  output : 'u_unfilled_gen.c',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+)
+
 _libmesa_util = static_library(
   'mesa_util',
-  [files_mesa_util, files_debug_stack, format_srgb],
+  [files_mesa_util, files_debug_stack, format_srgb, u_indices_gen_c, u_unfilled_gen_c],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   dependencies : deps_for_libmesa_util,
   link_with: libmesa_format,

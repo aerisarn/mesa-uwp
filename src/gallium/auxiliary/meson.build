@@ -120,10 +120,6 @@ files_libgallium = files(
   'hud/hud_driver_query.c',
   'hud/hud_fps.c',
   'hud/hud_private.h',
-  'indices/u_indices.h',
-  'indices/u_indices_priv.h',
-  'indices/u_primconvert.c',
-  'indices/u_primconvert.h',
   'os/os_mman.h',
   'os/os_process.c',
   'os/os_process.h',
@@ -506,29 +502,13 @@ idep_u_tracepoints = declare_dependency(
   sources: files_u_tracepoints,
 )
 
-u_indices_gen_c = custom_target(
-  'u_indices_gen.c',
-  input : 'indices/u_indices_gen.py',
-  output : 'u_indices_gen.c',
-  command : [prog_python, '@INPUT@'],
-  capture : true,
-)
-
-u_unfilled_gen_c = custom_target(
-  'u_unfilled_gen.c',
-  input : 'indices/u_unfilled_gen.py',
-  output : 'u_unfilled_gen.c',
-  command : [prog_python, '@INPUT@'],
-  capture : true,
-)
-
 libgallium_extra_c_args = []
 if with_swrast_vk and with_gallium_zink
   libgallium_extra_c_args += '-DZINK_WITH_SWRAST_VK'
 endif
 libgallium = static_library(
   'gallium',
-  [files_libgallium, u_indices_gen_c, u_unfilled_gen_c],
+  [files_libgallium],
   include_directories : [
     inc_loader, inc_gallium, inc_src, inc_include, include_directories('util')
   ],
