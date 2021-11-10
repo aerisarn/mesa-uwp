@@ -207,7 +207,11 @@ update_gfx_program(struct zink_context *ctx)
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       ctx->gfx_dirty = false;
    } else if (ctx->dirty_shader_stages & bits) {
+      /* remove old hash */
+      ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       zink_update_gfx_program(ctx, ctx->curr_program);
+      /* apply new hash */
+      ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
    }
    ctx->dirty_shader_stages &= ~bits;
 }

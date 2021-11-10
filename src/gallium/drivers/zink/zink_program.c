@@ -179,9 +179,6 @@ update_gfx_shader_modules(struct zink_context *ctx,
    }
 
    if (hash_changed && state) {
-      if (!first && likely(state->pipeline)) //avoid on first hash
-         state->final_hash ^= prog->last_variant_hash;
-
       if (default_variants && !first)
          prog->last_variant_hash = prog->default_variant_hash;
       else {
@@ -192,7 +189,6 @@ update_gfx_shader_modules(struct zink_context *ctx,
          }
       }
 
-      state->final_hash ^= prog->last_variant_hash;
       state->modules_changed = true;
    }
 }
