@@ -38,6 +38,7 @@ enum instruction_scheduler_mode {
    SCHEDULE_PRE_NON_LIFO,
    SCHEDULE_PRE_LIFO,
    SCHEDULE_POST,
+   SCHEDULE_NONE,
 };
 
 #define UBO_START ((1 << 16) - 4)
