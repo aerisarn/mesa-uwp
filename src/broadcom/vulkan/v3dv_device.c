@@ -1127,8 +1127,10 @@ create_physical_device(struct v3dv_instance *instance,
    device->next_program_id = 0;
 
    ASSERTED int len =
-      asprintf(&device->name, "V3D %d.%d",
-               device->devinfo.ver / 10, device->devinfo.ver % 10);
+      asprintf(&device->name, "V3D %d.%d.%d",
+               device->devinfo.ver / 10,
+               device->devinfo.ver % 10,
+               device->devinfo.rev);
    assert(len != -1);
 
    v3dv_physical_device_init_disk_cache(device);
