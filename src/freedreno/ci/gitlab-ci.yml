@@ -1,11 +1,9 @@
 .freedreno-test:
   extends:
-    - .baremetal-test
+    - .baremetal-test-arm64
     - .use-debian/arm_test
     - .freedreno-rules
   variables:
-    MINIO_ARTIFACT_NAME: mesa-arm64
-    BM_ROOTFS: /rootfs-arm64
     FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_PLATFORM: mixed_glx_egl
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 $BM_KERNEL_EXTRA_ARGS root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
