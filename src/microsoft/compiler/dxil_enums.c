@@ -89,6 +89,7 @@ enum dxil_resource_kind dxil_get_resource_kind(const struct glsl_type *type)
                             : DXIL_RESOURCE_KIND_TEXTURE1D;
          case GLSL_SAMPLER_DIM_2D:
          case GLSL_SAMPLER_DIM_EXTERNAL:
+         case GLSL_SAMPLER_DIM_SUBPASS:
             return is_array ? DXIL_RESOURCE_KIND_TEXTURE2D_ARRAY
                             : DXIL_RESOURCE_KIND_TEXTURE2D;
          case GLSL_SAMPLER_DIM_3D:
@@ -101,6 +102,7 @@ enum dxil_resource_kind dxil_get_resource_kind(const struct glsl_type *type)
          case GLSL_SAMPLER_DIM_BUF:
             return DXIL_RESOURCE_KIND_TYPED_BUFFER;
          case GLSL_SAMPLER_DIM_MS:
+         case GLSL_SAMPLER_DIM_SUBPASS_MS:
             return is_array ? DXIL_RESOURCE_KIND_TEXTURE2DMS_ARRAY
                             : DXIL_RESOURCE_KIND_TEXTURE2DMS;
 
