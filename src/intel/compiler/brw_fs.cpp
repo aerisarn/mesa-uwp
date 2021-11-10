@@ -8677,23 +8677,6 @@ fs_visitor::allocate_registers(bool allow_spilling)
          break;
       }
 
-      /* Scheduling may create additional opportunities for CMOD propagation,
-       * so let's do it again.  If CMOD propagation made any progress,
-       * eliminate dead code one more time.
-       */
-      bool progress = false;
-      const int iteration = 99;
-      int pass_num = 0;
-
-      if (OPT(opt_cmod_propagation)) {
-         /* dead_code_eliminate "undoes" the fixing done by
-          * fixup_3src_null_dest, so we have to do it again if
-          * dead_code_eliminiate makes any progress.
-          */
-         if (OPT(dead_code_eliminate))
-            fixup_3src_null_dest();
-      }
-
       bool can_spill = allow_spilling &&
                        (i == ARRAY_SIZE(pre_modes) - 1);
 
