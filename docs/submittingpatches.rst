@@ -280,7 +280,7 @@ branch and release. In order or preference:
   a specific commit.
 - By adding the ``Cc: mesa-stable`` tag in the commit message as described above.
 - By submitting a merge request against the ``staging/year.quarter``
-  branch on GitLab.
+  branch on GitLab. Refer to the :ref:`instructions below <backports>`.
 
 Please **DO NOT** send patches to mesa-stable@lists.freedesktop.org, it
 is not monitored actively and is a historical artifact.
