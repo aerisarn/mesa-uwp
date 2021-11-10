@@ -1198,8 +1198,9 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
        */
       if (key->logicop_func != PIPE_LOGICOP_COPY) {
          key->color_fmt[i].format = fb_pipe_format;
-         key->color_fmt[i].swizzle =
-            v3dv_get_format_swizzle(p_stage->pipeline->device, fb_format);
+         memcpy(key->color_fmt[i].swizzle,
+                v3dv_get_format_swizzle(p_stage->pipeline->device, fb_format),
+                sizeof(key->color_fmt[i].swizzle));
       }
 
       const struct util_format_description *desc =
@@ -2039,8 +2040,9 @@ pipeline_populate_graphics_key(struct v3dv_pipeline *pipeline,
        */
       if (key->logicop_func != PIPE_LOGICOP_COPY) {
          key->color_fmt[i].format = fb_pipe_format;
-         key->color_fmt[i].swizzle = v3dv_get_format_swizzle(pipeline->device,
-                                                             fb_format);
+         memcpy(key->color_fmt[i].swizzle,
+                v3dv_get_format_swizzle(pipeline->device, fb_format),
+                sizeof(key->color_fmt[i].swizzle));
       }
 
       const struct util_format_description *desc =

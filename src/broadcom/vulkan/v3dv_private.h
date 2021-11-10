@@ -274,7 +274,7 @@ struct v3dv_pipeline_key {
    uint8_t cbufs;
    struct {
       enum pipe_format format;
-      const uint8_t *swizzle;
+      uint8_t swizzle[4];
    } color_fmt[V3D_MAX_DRAW_BUFFERS];
    uint8_t f32_color_rb;
    uint32_t va_swap_rb_mask;
