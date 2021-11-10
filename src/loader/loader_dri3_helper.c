@@ -773,7 +773,7 @@ dri3_back_buffer(struct loader_dri3_drawable *draw)
 }
 
 static struct loader_dri3_buffer *
-dri3_fake_front_buffer(struct loader_dri3_drawable *draw)
+dri3_front_buffer(struct loader_dri3_drawable *draw)
 {
    return draw->buffers[LOADER_DRI3_FRONT_ID];
 }
@@ -872,19 +872,19 @@ loader_dri3_copy_sub_buffer(struct loader_dri3_drawable *draw,
     */
    if (draw->have_fake_front &&
        !loader_dri3_blit_image(draw,
-                               dri3_fake_front_buffer(draw)->image,
+                               dri3_front_buffer(draw)->image,
                                back->image,
                                x, y, width, height,
                                x, y, __BLIT_FLAG_FLUSH) &&
        !draw->is_different_gpu) {
-      dri3_fence_reset(draw->conn, dri3_fake_front_buffer(draw));
+      dri3_fence_reset(draw->conn, dri3_front_buffer(draw));
       dri3_copy_area(draw->conn,
                      back->pixmap,
-                     dri3_fake_front_buffer(draw)->pixmap,
+                     dri3_front_buffer(draw)->pixmap,
                      dri3_drawable_gc(draw),
                      x, y, x, y, width, height);
-      dri3_fence_trigger(draw->conn, dri3_fake_front_buffer(draw));
-      dri3_fence_await(draw->conn, NULL, dri3_fake_front_buffer(draw));
+      dri3_fence_trigger(draw->conn, dri3_front_buffer(draw));
+      dri3_fence_await(draw->conn, NULL, dri3_front_buffer(draw));
    }
    dri3_fence_await(draw->conn, draw, back);
 }
@@ -896,7 +896,7 @@ loader_dri3_copy_drawable(struct loader_dri3_drawable *draw,
 {
    loader_dri3_flush(draw, __DRI2_FLUSH_DRAWABLE, __DRI2_THROTTLE_COPYSUBBUFFER);
 
-   struct loader_dri3_buffer *front = dri3_fake_front_buffer(draw);
+   struct loader_dri3_buffer *front = dri3_front_buffer(draw);
    if (front)
       dri3_fence_reset(draw->conn, front);
 
@@ -919,7 +919,7 @@ loader_dri3_wait_x(struct loader_dri3_drawable *draw)
    if (draw == NULL || !draw->have_fake_front)
       return;
 
-   front = dri3_fake_front_buffer(draw);
+   front = dri3_front_buffer(draw);
 
    loader_dri3_copy_drawable(draw, front->pixmap, draw->drawable);
 
@@ -944,7 +944,7 @@ loader_dri3_wait_gl(struct loader_dri3_drawable *draw)
    if (draw == NULL || !draw->have_fake_front)
       return;
 
-   front = dri3_fake_front_buffer(draw);
+   front = dri3_front_buffer(draw);
 
    /* In the psc->is_different_gpu case, we update the linear_buffer
     * before updating the real front.
@@ -1031,7 +1031,7 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
    if (back && draw->have_fake_front) {
       struct loader_dri3_buffer *tmp;
 
-      tmp = dri3_fake_front_buffer(draw);
+      tmp = dri3_front_buffer(draw);
       draw->buffers[LOADER_DRI3_FRONT_ID] = back;
       draw->buffers[LOADER_DRI3_BACK_ID(draw->cur_back)] = tmp;
 
