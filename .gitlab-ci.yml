@@ -1360,6 +1360,13 @@ debian-mingw32-x86_64:
     BM_ROOTFS: /rootfs-armhf
     MINIO_ARTIFACT_NAME: mesa-armhf
 
+.baremetal-test-arm64:
+  extends:
+    - .baremetal-test
+  variables:
+    BM_ROOTFS: /rootfs-arm64
+    MINIO_ARTIFACT_NAME: mesa-arm64
+
 .baremetal-arm64-asan-test:
   variables:
     DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.6"
