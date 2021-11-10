@@ -336,6 +336,14 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
             conf->runtime_data_cbv.register_space,
             conf->runtime_data_cbv.base_shader_register);
 
+   if (stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, nir_lower_input_attachments,
+                 &(nir_input_attachment_options){
+                     .use_fragcoord_sysval = false,
+                     .use_layer_id_sysval = true,
+                 });
+   }
+
    NIR_PASS_V(nir, nir_opt_deref);
 
    if (conf->read_only_images_as_srvs) {
