@@ -3717,7 +3717,7 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    }
 
    so->outputs_count = MAX2(so->outputs_count, n + 1);
-   compile_assert(ctx, so->outputs_count < ARRAY_SIZE(so->outputs));
+   compile_assert(ctx, so->outputs_count <= ARRAY_SIZE(so->outputs));
 
    so->outputs[n].slot = slot;
    if (io.per_view)

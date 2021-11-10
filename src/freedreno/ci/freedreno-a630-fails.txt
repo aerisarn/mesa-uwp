@@ -457,7 +457,7 @@ spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triang
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 
-# "failed assert: so->outputs_count < ARRAY_SIZE(so->outputs)"
+# "ir3_shader.h:923:ir3_link_add: Assertion `i < ARRAY_SIZE(l->var)' failed"
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec4-index-wr,Crash
 
 spec@glsl-1.50@gs-max-output-components,Fail
