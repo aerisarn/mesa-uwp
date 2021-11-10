@@ -4289,12 +4289,17 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
 
    assert(glsl_type_is_sampler(type) || glsl_type_is_image(type) || glsl_type_is_texture(type));
    enum dxil_resource_class res_class;
-   if (glsl_type_is_image(type))
-      res_class = DXIL_RESOURCE_CLASS_UAV;
-   else if (glsl_type_is_sampler(type))
+   if (glsl_type_is_image(type)) {
+      if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN &&
+          (var->data.access & ACCESS_NON_WRITEABLE))
+         res_class = DXIL_RESOURCE_CLASS_SRV;
+      else
+         res_class = DXIL_RESOURCE_CLASS_UAV;
+   } else if (glsl_type_is_sampler(type)) {
       res_class = DXIL_RESOURCE_CLASS_SAMPLER;
-   else
+   } else {
       res_class = DXIL_RESOURCE_CLASS_SRV;
+   }
    
    unsigned descriptor_set = ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN ?
       var->data.descriptor_set : (glsl_type_is_image(type) ? 1 : 0);
@@ -5171,10 +5176,17 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
 
    /* SRVs */
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
-      unsigned count = glsl_type_get_texture_count(var->type);
-      assert(count == 0 || glsl_type_is_texture(glsl_without_array(var->type)));
-      if (count > 0 && !emit_srv(ctx, var, count))
+      if (glsl_type_is_texture(glsl_without_array(var->type)) &&
+          !emit_srv(ctx, var, glsl_type_get_texture_count(var->type)))
          return false;
+   }
+
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
+      nir_foreach_image_variable(var, ctx->shader) {
+         if ((var->data.access & ACCESS_NON_WRITEABLE) &&
+             !emit_srv(ctx, var, glsl_type_get_image_count(var->type)))
+            return false;
+      }
    }
 
    /* Handle read-only SSBOs as SRVs */
@@ -5258,6 +5270,10 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    }
 
    nir_foreach_image_variable(var, ctx->shader) {
+      if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN &&
+          var && (var->data.access & ACCESS_NON_WRITEABLE))
+         continue; // already handled in SRV
+
       if (!emit_uav_var(ctx, var, glsl_type_get_image_count(var->type)))
          return false;
    }
