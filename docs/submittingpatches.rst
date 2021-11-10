@@ -360,6 +360,12 @@ appropriate. The MR should be based on and target the
 per the stable branch policy. Assigning the MR to release maintainer for
 said branch or mentioning them is helpful, but not required.
 
+Make sure to use ``git cherry-pick -x`` when cherry-picking the commits
+from the main branch. This adds the "cherry picked from commit ..." line
+to the commit message, to allow the release maintainters to mark those
+as backported, which in turn allows the tools to correctly report any
+future ``Fixes:`` affecting the commits you backported.
+
 Documentation patches
 ---------------------
 
