@@ -21,11 +21,12 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <cstdio>
+
 #include "dxil_validation.h"
 
 #if DETECT_OS_WINDOWS
 
-#include <cstdio>
 #include <windows.h>
 #include <wrl/client.h>
 
