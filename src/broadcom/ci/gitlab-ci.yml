@@ -5,7 +5,6 @@
     - .use-debian/arm_test
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
-    BM_ROOTFS: /rootfs-armhf
     GPU_VERSION: vc4-rpi3
     HWCI_KERNEL_MODULES: vc4
     FLAKES_CHANNEL: "#videocore-ci"
@@ -71,7 +70,6 @@ vc4-rpi3-piglit-quick_shader:armhf:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     BM_BOOTFS: /boot/raspberrypi_armhf
     BM_POE_TIMEOUT: 300
-    BM_ROOTFS: /rootfs-armhf
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: v3d-rpi4
     HWCI_KERNEL_MODULES: v3d,vc4

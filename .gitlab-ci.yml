@@ -1357,6 +1357,7 @@ debian-mingw32-x86_64:
   extends:
     - .baremetal-test
   variables:
+    BM_ROOTFS: /rootfs-armhf
     MINIO_ARTIFACT_NAME: mesa-armhf
 
 .baremetal-arm64-asan-test:
