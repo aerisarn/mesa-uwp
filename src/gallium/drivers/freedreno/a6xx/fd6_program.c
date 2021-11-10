@@ -188,16 +188,16 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
 {
    const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
 
+   /* Note: 64 here comes from the HW layout of the program RAM. The program
+    * for stream N is at DWORD 64 * N.
+    */
+#define A6XX_SO_PROG_DWORDS 64
+   uint32_t prog[A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS] = {};
+   BITSET_DECLARE(valid_dwords, A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) = {0};
    uint32_t ncomp[PIPE_MAX_SO_BUFFERS];
-   uint32_t prog[256 / 2];
-   uint32_t prog_count;
 
    memset(ncomp, 0, sizeof(ncomp));
    memset(prog, 0, sizeof(prog));
-
-   prog_count = align(l->max_loc, 2) / 2;
-
-   debug_assert(prog_count < ARRAY_SIZE(prog));
 
    for (unsigned i = 0; i < strmout->num_outputs; i++) {
       const struct ir3_stream_output *out = &strmout->output[i];
@@ -220,19 +220,28 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
          unsigned loc = l->var[idx].loc + c;
          unsigned off = j + out->dst_offset; /* in dwords */
 
+         unsigned dword = out->stream * A6XX_SO_PROG_DWORDS + loc/2;
          if (loc & 1) {
-            prog[loc / 2] |= A6XX_VPC_SO_PROG_B_EN |
-                             A6XX_VPC_SO_PROG_B_BUF(out->output_buffer) |
-                             A6XX_VPC_SO_PROG_B_OFF(off * 4);
+            prog[dword] |= A6XX_VPC_SO_PROG_B_EN |
+                           A6XX_VPC_SO_PROG_B_BUF(out->output_buffer) |
+                           A6XX_VPC_SO_PROG_B_OFF(off * 4);
          } else {
-            prog[loc / 2] |= A6XX_VPC_SO_PROG_A_EN |
-                             A6XX_VPC_SO_PROG_A_BUF(out->output_buffer) |
-                             A6XX_VPC_SO_PROG_A_OFF(off * 4);
+            prog[dword] |= A6XX_VPC_SO_PROG_A_EN |
+                           A6XX_VPC_SO_PROG_A_BUF(out->output_buffer) |
+                           A6XX_VPC_SO_PROG_A_OFF(off * 4);
          }
+         BITSET_SET(valid_dwords, dword);
       }
    }
 
-   unsigned sizedw = 12 + (2 * prog_count);
+   unsigned prog_count = 0;
+   unsigned start, end;
+   BITSET_FOREACH_RANGE (start, end, valid_dwords,
+                         A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) {
+      prog_count += end - start + 1;
+   }
+
+   unsigned sizedw = 10 + (2 * prog_count);
    if (ctx->screen->info->a6xx.tess_use_shared)
       sizedw += 2;
 
@@ -255,12 +264,20 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
    OUT_RING(ring, ncomp[2]);
    OUT_RING(ring, REG_A6XX_VPC_SO_NCOMP(3));
    OUT_RING(ring, ncomp[3]);
-   OUT_RING(ring, REG_A6XX_VPC_SO_CNTL);
-   OUT_RING(ring, A6XX_VPC_SO_CNTL_RESET);
-   for (unsigned i = 0; i < prog_count; i++) {
-      OUT_RING(ring, REG_A6XX_VPC_SO_PROG);
-      OUT_RING(ring, prog[i]);
+
+   bool first = true;
+   BITSET_FOREACH_RANGE (start, end, valid_dwords,
+                         A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) {
+      OUT_RING(ring, REG_A6XX_VPC_SO_CNTL);
+      OUT_RING(ring, COND(first, A6XX_VPC_SO_CNTL_RESET) |
+                     A6XX_VPC_SO_CNTL_ADDR(start));
+      for (unsigned i = start; i < end; i++) {
+         OUT_RING(ring, REG_A6XX_VPC_SO_PROG);
+         OUT_RING(ring, prog[i]);
+      }
+      first = false;
    }
+
    if (ctx->screen->info->a6xx.tess_use_shared) {
       /* Possibly not tess_use_shared related, but the combination of
        * tess + xfb fails some tests if we don't emit this.
