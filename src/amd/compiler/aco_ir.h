@@ -1515,8 +1515,8 @@ static_assert(sizeof(Interp_instruction) == sizeof(Instruction) + 4, "Unexpected
 struct DS_instruction : public Instruction {
    memory_sync_info sync;
    bool gds;
-   int16_t offset0;
-   int8_t offset1;
+   uint16_t offset0;
+   uint8_t offset1;
    uint8_t padding;
 };
 static_assert(sizeof(DS_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
