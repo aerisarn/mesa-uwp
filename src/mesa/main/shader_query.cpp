@@ -38,6 +38,7 @@
 #include "compiler/glsl/program.h"
 #include "compiler/glsl/string_to_uint_map.h"
 #include "util/mesa-sha1.h"
+#include "c99_alloca.h"
 
 static GLint
 program_resource_location(struct gl_program_resource *res,
