@@ -8663,11 +8663,40 @@ fs_visitor::allocate_registers(bool allow_spilling)
 
    bool spill_all = allow_spilling && INTEL_DEBUG(DEBUG_SPILL_FS);
 
+   /* Before we schedule anything, stash off the instruction order as an array
+    * of fs_inst *.  This way, we can reset it between scheduling passes to
+    * prevent dependencies between the different scheduling modes.
+    */
+   int num_insts = cfg->last_block()->end_ip + 1;
+   fs_inst **inst_arr = ralloc_array(mem_ctx, fs_inst *, num_insts);
+
+   int ip = 0;
+   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      assert(ip >= block->start_ip && ip <= block->end_ip);
+      inst_arr[ip++] = inst;
+   }
+   assert(ip == num_insts);
+
    /* Try each scheduling heuristic to see if it can successfully register
     * allocate without spilling.  They should be ordered by decreasing
     * performance but increasing likelihood of allocating.
     */
    for (unsigned i = 0; i < ARRAY_SIZE(pre_modes); i++) {
+      if (i > 0) {
+         /* Unless we're the first pass, reset back to the original order */
+         ip = 0;
+         foreach_block (block, cfg) {
+            block->instructions.make_empty();
+
+            assert(ip == block->start_ip);
+            for (; ip <= block->end_ip; ip++)
+               block->instructions.push_tail(inst_arr[ip]);
+         }
+         assert(ip == num_insts);
+
+         invalidate_analysis(DEPENDENCY_INSTRUCTIONS);
+      }
+
       schedule_instructions(pre_modes[i]);
       this->shader_stats.scheduler_mode = scheduler_mode_name[i];
 
