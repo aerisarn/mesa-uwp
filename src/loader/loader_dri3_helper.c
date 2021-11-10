@@ -996,7 +996,6 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
 {
    struct loader_dri3_buffer *back;
    int64_t ret = 0;
-   uint32_t options = XCB_PRESENT_OPTION_NONE;
 
    /* GLX spec:
     *   void glXSwapBuffers(Display *dpy, GLXDrawable draw);
@@ -1114,8 +1113,9 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
        * behaviour by not using XCB_PRESENT_OPTION_ASYNC, but this should not be
        * the default.
        */
+      uint32_t options = XCB_PRESENT_OPTION_NONE;
       if (draw->swap_interval <= 0)
-          options |= XCB_PRESENT_OPTION_ASYNC;
+         options |= XCB_PRESENT_OPTION_ASYNC;
 
       /* If we need to populate the new back, but need to reuse the back
        * buffer slot due to lack of local blit capabilities, make sure
@@ -1166,32 +1166,59 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
                          target_msc,
                          divisor,
                          remainder, 0, NULL);
-      ret = (int64_t) draw->send_sbc;
+   } else {
+      /* This can only be reached by double buffered GLXPbuffer. */
+      assert(draw->type == LOADER_DRI3_DRAWABLE_PBUFFER);
+      /* GLX does not have damage regions. */
+      assert(n_rects == 0);
 
-      /* Schedule a server-side back-preserving blit if necessary.
-       * This happens iff all conditions below are satisfied:
-       * a) We have a fake front,
-       * b) We need to preserve the back buffer,
-       * c) We don't have local blit capabilities.
+      /* For wait and buffer age usage. */
+      draw->send_sbc++;
+      draw->recv_sbc = back->last_swap = draw->send_sbc;
+
+      /* Pixmap is imported as front buffer image when same GPU case, so just
+       * locally blit back buffer image to it is enough. Otherwise front buffer
+       * is a fake one which needs to be synced with pixmap by xserver remotely.
        */
-      if (!loader_dri3_have_image_blit(draw) && draw->cur_blit_source != -1 &&
-          draw->cur_blit_source != LOADER_DRI3_BACK_ID(draw->cur_back)) {
-         struct loader_dri3_buffer *new_back = dri3_back_buffer(draw);
-         struct loader_dri3_buffer *src = draw->buffers[draw->cur_blit_source];
-
-         dri3_fence_reset(draw->conn, new_back);
-         dri3_copy_area(draw->conn, src->pixmap,
-                        new_back->pixmap,
+      if (draw->is_different_gpu ||
+          !loader_dri3_blit_image(draw,
+                                  dri3_front_buffer(draw)->image,
+                                  back->image,
+                                  0, 0, draw->width, draw->height,
+                                  0, 0, __BLIT_FLAG_FLUSH)) {
+         dri3_copy_area(draw->conn, back->pixmap,
+                        draw->drawable,
                         dri3_drawable_gc(draw),
                         0, 0, 0, 0, draw->width, draw->height);
-         dri3_fence_trigger(draw->conn, new_back);
-         new_back->last_swap = src->last_swap;
       }
-
-      xcb_flush(draw->conn);
-      if (draw->stamp)
-         ++(*draw->stamp);
    }
+
+   ret = (int64_t) draw->send_sbc;
+
+   /* Schedule a server-side back-preserving blit if necessary.
+    * This happens iff all conditions below are satisfied:
+    * a) We have a fake front,
+    * b) We need to preserve the back buffer,
+    * c) We don't have local blit capabilities.
+    */
+   if (!loader_dri3_have_image_blit(draw) && draw->cur_blit_source != -1 &&
+       draw->cur_blit_source != LOADER_DRI3_BACK_ID(draw->cur_back)) {
+      struct loader_dri3_buffer *new_back = dri3_back_buffer(draw);
+      struct loader_dri3_buffer *src = draw->buffers[draw->cur_blit_source];
+
+      dri3_fence_reset(draw->conn, new_back);
+      dri3_copy_area(draw->conn, src->pixmap,
+                     new_back->pixmap,
+                     dri3_drawable_gc(draw),
+                     0, 0, 0, 0, draw->width, draw->height);
+      dri3_fence_trigger(draw->conn, new_back);
+      new_back->last_swap = src->last_swap;
+   }
+
+   xcb_flush(draw->conn);
+   if (draw->stamp)
+      ++(*draw->stamp);
+
    mtx_unlock(&draw->mtx);
 
    draw->ext->flush->invalidate(draw->dri_drawable);
