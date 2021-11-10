@@ -998,9 +998,40 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
    int64_t ret = 0;
    uint32_t options = XCB_PRESENT_OPTION_NONE;
 
+   /* GLX spec:
+    *   void glXSwapBuffers(Display *dpy, GLXDrawable draw);
+    *   This operation is a no-op if draw was created with a non-double-buffered
+    *   GLXFBConfig, or if draw is a GLXPixmap.
+    *   ...
+    *   GLX pixmaps may be created with a config that includes back buffers and
+    *   stereoscopic buffers. However, glXSwapBuffers is ignored for these pixmaps.
+    *   ...
+    *   It is possible to create a pbuffer with back buffers and to swap the
+    *   front and back buffers by calling glXSwapBuffers.
+    *
+    * EGL spec:
+    *   EGLBoolean eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
+    *   If surface is a back-buffered window surface, then the color buffer is
+    *   copied to the native window associated with that surface. If surface is
+    *   a single-buffered window, pixmap, or pbuffer surface, eglSwapBuffers has
+    *   no effect.
+    *
+    * SwapBuffer effect:
+    *       |           GLX             |           EGL            |
+    *       | window | pixmap | pbuffer | window | pixmap | pbuffer|
+    *-------+--------+--------+---------+--------+--------+--------+
+    * single|  nop   |  nop   |   nop   |  nop   |  nop   |   nop  |
+    * double|  swap  |  nop   |   swap  |  swap  |  NA    |   NA   |
+    */
+   if (!draw->have_back || draw->type == LOADER_DRI3_DRAWABLE_PIXMAP)
+      return ret;
+
    draw->vtable->flush_drawable(draw, flush_flags);
 
    back = dri3_find_back_alloc(draw);
+   /* Could only happen when error case, like display is already closed. */
+   if (!back)
+      return ret;
 
    mtx_lock(&draw->mtx);
 
@@ -1009,7 +1040,7 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
       draw->adaptive_sync_active = true;
    }
 
-   if (draw->is_different_gpu && back) {
+   if (draw->is_different_gpu) {
       /* Update the linear buffer before presenting the pixmap */
       (void) loader_dri3_blit_image(draw,
                                     back->linear_buffer,
@@ -1028,7 +1059,7 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
    /* Exchange the back and fake front. Even though the server knows about these
     * buffers, it has no notion of back and fake front.
     */
-   if (back && draw->have_fake_front) {
+   if (draw->have_fake_front) {
       struct loader_dri3_buffer *tmp;
 
       tmp = dri3_front_buffer(draw);
@@ -1041,7 +1072,7 @@ loader_dri3_swap_buffers_msc(struct loader_dri3_drawable *draw,
 
    dri3_flush_present_events(draw);
 
-   if (back && draw->type == LOADER_DRI3_DRAWABLE_WINDOW) {
+   if (draw->type == LOADER_DRI3_DRAWABLE_WINDOW) {
       dri3_fence_reset(draw->conn, back);
 
       /* Compute when we want the frame shown by taking the last known
