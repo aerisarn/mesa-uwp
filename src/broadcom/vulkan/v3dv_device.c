@@ -1255,7 +1255,8 @@ enumerate_devices(struct vk_instance *vk_instance)
       if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER) {
          char **compat = devices[i]->deviceinfo.platform->compatible;
          while (*compat) {
-            if (strncmp(*compat, "brcm,2711-v3d", 13) == 0) {
+            if (strncmp(*compat, "brcm,2711-v3d", 13) == 0 ||
+                strncmp(*compat, "brcm,2712-v3d", 13) == 0) {
                v3d_idx = i;
                break;
             }
@@ -1264,8 +1265,9 @@ enumerate_devices(struct vk_instance *vk_instance)
       } else if (devices[i]->available_nodes & 1 << DRM_NODE_PRIMARY) {
          char **compat = devices[i]->deviceinfo.platform->compatible;
          while (*compat) {
-            if (strncmp(*compat, "brcm,bcm2711-vc5", 16) == 0 ||
-                strncmp(*compat, "brcm,bcm2835-vc4", 16) == 0 ) {
+            if (strncmp(*compat, "brcm,bcm2712-vc6", 16) == 0 ||
+                strncmp(*compat, "brcm,bcm2711-vc5", 16) == 0 ||
+                strncmp(*compat, "brcm,bcm2835-vc4", 16) == 0) {
                vc4_idx = i;
                break;
             }
@@ -1303,6 +1305,8 @@ v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
    switch (dev->devinfo.ver) {
    case 42:
       return 0xBE485FD3; /* Broadcom deviceID for 2711 */
+   case 71:
+      return 0x55701C33; /* Broadcom deviceID for 2712 */
    default:
       unreachable("Unsupported V3D version");
    }
