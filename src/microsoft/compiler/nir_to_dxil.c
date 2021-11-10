@@ -3993,6 +3993,15 @@ emit_load_sample_pos_from_id(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
+emit_load_layer_id(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   const struct dxil_value *layer_id = dxil_module_get_int32_const(&ctx->mod, 0);
+   /* TODO: Properly implement this once multi-view is supported */
+   store_dest_value(ctx, &intr->dest, 0, layer_id);
+   return true;
+}
+
+static bool
 emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -4173,6 +4182,8 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_vulkan_resource_index(ctx, intr);
    case nir_intrinsic_load_vulkan_descriptor:
       return emit_load_vulkan_descriptor(ctx, intr);
+   case nir_intrinsic_load_layer_id:
+      return emit_load_layer_id(ctx, intr);
 
    case nir_intrinsic_load_sample_pos_from_id:
       return emit_load_sample_pos_from_id(ctx, intr);
