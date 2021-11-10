@@ -553,8 +553,6 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
             (ms_info->minSampleShading * ms_info->rasterizationSamples) > 1;
          key->multisample_fbo = true;
       }
-
-      key->frag_coord_adds_sample_pos = key->persample_interp;
    }
 
    key->coarse_pixel =

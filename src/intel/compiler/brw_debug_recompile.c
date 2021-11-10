@@ -177,7 +177,6 @@ debug_fs_recompile(const struct brw_compiler *c, void *log,
    found |= check("fragment color clamping", clamp_fragment_color);
    found |= check("per-sample interpolation", persample_interp);
    found |= check("multisampled FBO", multisample_fbo);
-   found |= check("frag coord adds sample pos", frag_coord_adds_sample_pos);
    found |= check("line smoothing", line_aa);
    found |= check("high quality derivatives", high_quality_derivatives);
    found |= check("force dual color blending", force_dual_color_blend);
