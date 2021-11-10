@@ -506,7 +506,10 @@ print_var_decl(nir_variable *var, print_state *state)
    const char *const ronly = (access & ACCESS_NON_WRITEABLE) ? "readonly " : "";
    const char *const wonly = (access & ACCESS_NON_READABLE) ? "writeonly " : "";
    const char *const reorder = (access & ACCESS_CAN_REORDER) ? "reorderable " : "";
-   fprintf(fp, "%s%s%s%s%s%s", coher, volat, restr, ronly, wonly, reorder);
+   const char *const stream_cache_policy = (access & ACCESS_STREAM_CACHE_POLICY) ?
+                                           "stream-cache-policy " : "";
+   fprintf(fp, "%s%s%s%s%s%s%s", coher, volat, restr, ronly, wonly, reorder,
+           stream_cache_policy);
 
    if (glsl_get_base_type(glsl_without_array(var->type)) == GLSL_TYPE_IMAGE) {
       fprintf(fp, "%s ", util_format_short_name(var->data.image.format));
