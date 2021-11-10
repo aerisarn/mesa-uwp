@@ -899,6 +899,10 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    list_inithead(&st->zombie_shaders.list.node);
    simple_mtx_init(&st->zombie_shaders.mutex, mtx_plain);
 
+   ctx->Const.DriverSupportedPrimMask = screen->get_param(screen, PIPE_CAP_SUPPORTED_PRIM_MODES) |
+                                        /* patches is always supported */
+                                        BITFIELD_BIT(PIPE_PRIM_PATCHES);
+
    return st;
 }
 

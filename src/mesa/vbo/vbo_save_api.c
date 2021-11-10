@@ -117,6 +117,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "util/bitscan.h"
 #include "util/u_memory.h"
 #include "util/hash_table.h"
+#include "util/indices/u_indices.h"
 
 #include "gallium/include/pipe/p_state.h"
 
@@ -605,10 +606,13 @@ compile_vertex_list(struct gl_context *ctx)
    node->cold->min_index = node->cold->prims[0].start;
    node->cold->max_index = end - 1;
 
-   int max_index_count = total_vert_count * 2;
+   /* converting primitive types may result in many more indices */
+   bool all_prims_supported = (ctx->Const.DriverSupportedPrimMask & BITFIELD_MASK(PIPE_PRIM_MAX)) == BITFIELD_MASK(PIPE_PRIM_MAX);
+   int max_index_count = total_vert_count * (all_prims_supported ? 2 : 3);
 
    int size = max_index_count * sizeof(uint32_t);
    uint32_t* indices = (uint32_t*) malloc(size);
+   void *tmp_indices = all_prims_supported ? NULL : malloc(size);
    struct _mesa_prim *merged_prims = NULL;
 
    int idx = 0;
@@ -630,6 +634,8 @@ compile_vertex_list(struct gl_context *ctx)
    for (unsigned i = 0; i < node->cold->prim_count; i++) {
       assert(original_prims[i].basevertex == 0);
       GLubyte mode = original_prims[i].mode;
+      bool converted_prim = false;
+      unsigned index_size;
 
       int vertex_count = original_prims[i].count;
       if (!vertex_count) {
@@ -640,6 +646,23 @@ compile_vertex_list(struct gl_context *ctx)
       if (mode == GL_LINE_STRIP)
          mode = GL_LINES;
 
+      if (!(ctx->Const.DriverSupportedPrimMask & BITFIELD_BIT(mode))) {
+         unsigned new_count;
+         u_generate_func trans_func;
+         enum pipe_prim_type pmode = (enum pipe_prim_type)mode;
+         u_index_generator(ctx->Const.DriverSupportedPrimMask,
+                           pmode, original_prims[i].start, vertex_count,
+                           PV_LAST, PV_LAST,
+                           &pmode, &index_size, &new_count,
+                           &trans_func);
+         if (new_count > 0) {
+            trans_func(original_prims[i].start, new_count, tmp_indices);
+            vertex_count = new_count;
+            mode = (GLubyte)pmode;
+            converted_prim = true;
+         }
+      }
+
       /* If 2 consecutive prims use the same mode => merge them. */
       bool merge_prims = last_valid_prim >= 0 &&
                          mode == merged_prims[last_valid_prim].mode &&
@@ -647,6 +670,8 @@ compile_vertex_list(struct gl_context *ctx)
                          mode != GL_QUAD_STRIP && mode != GL_POLYGON &&
                          mode != GL_PATCHES;
 
+/* index generation uses uint16_t if the index count is small enough */
+#define CAST_INDEX(BASE, SIZE, IDX) ((SIZE == 2 ? (uint32_t)(((uint16_t*)BASE)[IDX]) : ((uint32_t*)BASE)[IDX]))
       /* To be able to merge consecutive triangle strips we need to insert
        * a degenerate triangle.
        */
@@ -657,14 +682,16 @@ compile_vertex_list(struct gl_context *ctx)
          unsigned tri_count = merged_prims[last_valid_prim].count - 2;
 
          indices[idx] = indices[idx - 1];
-         indices[idx + 1] = add_vertex(save, vertex_to_index, original_prims[i].start,
+         indices[idx + 1] = add_vertex(save, vertex_to_index,
+                                       converted_prim ? CAST_INDEX(tmp_indices, index_size, 0) : original_prims[i].start,
                                        temp_vertices_buffer, &max_index);
          idx += 2;
          merged_prims[last_valid_prim].count += 2;
 
          if (tri_count % 2) {
             /* Add another index to preserve winding order */
-            indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start,
+            indices[idx++] = add_vertex(save, vertex_to_index,
+                                        converted_prim ? CAST_INDEX(tmp_indices, index_size, 0) : original_prims[i].start,
                                         temp_vertices_buffer, &max_index);
             merged_prims[last_valid_prim].count++;
          }
@@ -682,24 +709,28 @@ compile_vertex_list(struct gl_context *ctx)
             (original_prims[i + 1].mode == GL_LINE_STRIP ||
              original_prims[i + 1].mode == GL_LINES)))) {
          for (unsigned j = 0; j < vertex_count; j++) {
-            indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start + j,
+            indices[idx++] = add_vertex(save, vertex_to_index,
+                                        converted_prim ? CAST_INDEX(tmp_indices, index_size, j) : original_prims[i].start + j,
                                         temp_vertices_buffer, &max_index);
             /* Repeat all but the first/last indices. */
             if (j && j != vertex_count - 1) {
-               indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start + j,
+               indices[idx++] = add_vertex(save, vertex_to_index,
+                                           converted_prim ? CAST_INDEX(tmp_indices, index_size, j) : original_prims[i].start + j,
                                            temp_vertices_buffer, &max_index);
             }
          }
       } else {
          /* We didn't convert to LINES, so restore the original mode */
-         mode = original_prims[i].mode;
+         if (!converted_prim)
+            mode = original_prims[i].mode;
 
          for (unsigned j = 0; j < vertex_count; j++) {
-            indices[idx++] = add_vertex(save, vertex_to_index, original_prims[i].start + j,
+            indices[idx++] = add_vertex(save, vertex_to_index,
+                                        converted_prim ? CAST_INDEX(tmp_indices, index_size, j) : original_prims[i].start + j,
                                         temp_vertices_buffer, &max_index);
          }
       }
-
+#undef CAST_INDEX
       if (merge_prims) {
          /* Update vertex count. */
          merged_prims[last_valid_prim].count += idx - start;
@@ -871,6 +902,7 @@ compile_vertex_list(struct gl_context *ctx)
    }
 
    free(indices);
+   free(tmp_indices);
    free(merged_prims);
 
 end:

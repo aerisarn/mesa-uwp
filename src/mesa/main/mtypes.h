@@ -3804,6 +3804,11 @@ struct gl_program_constants
  */
 struct gl_constants
 {
+   /**
+    * Bitmask of valid primitive types supported by the driver,
+    */
+   GLbitfield DriverSupportedPrimMask;
+
    GLuint MaxTextureMbytes;      /**< Max memory per image, in MB */
    GLuint MaxTextureSize;        /**< Max 1D/2D texture size, in pixels*/
    GLuint Max3DTextureLevels;    /**< Max mipmap levels for 3D textures */

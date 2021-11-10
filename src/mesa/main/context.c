@@ -1149,6 +1149,9 @@ _mesa_initialize_context(struct gl_context *ctx,
          return GL_FALSE;
    }
 
+   /* all supported by default */
+   ctx->Const.DriverSupportedPrimMask = 0xffffffff;
+
    _mesa_reference_shared_state(ctx, &ctx->Shared, shared);
 
    if (!init_attrib_groups( ctx ))
