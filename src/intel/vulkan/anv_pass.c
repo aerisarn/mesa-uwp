@@ -326,7 +326,8 @@ VkResult anv_CreateRenderPass2(
                .usage =          VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
                .attachment =     desc->pInputAttachments[j].attachment,
                .layout =         desc->pInputAttachments[j].layout,
-               .stencil_layout = vk_att_ref_stencil_layout(&desc->pInputAttachments[j]),
+               .stencil_layout = vk_att_ref_stencil_layout(&desc->pInputAttachments[j],
+                                                           pCreateInfo->pAttachments),
             };
          }
       }
@@ -364,7 +365,8 @@ VkResult anv_CreateRenderPass2(
             .usage =          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             .attachment =     desc->pDepthStencilAttachment->attachment,
             .layout =         desc->pDepthStencilAttachment->layout,
-            .stencil_layout = vk_att_ref_stencil_layout(desc->pDepthStencilAttachment),
+            .stencil_layout = vk_att_ref_stencil_layout(desc->pDepthStencilAttachment,
+                                                        pCreateInfo->pAttachments),
          };
       }
 
@@ -379,7 +381,8 @@ VkResult anv_CreateRenderPass2(
             .usage =          VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .attachment =     ds_resolve->pDepthStencilResolveAttachment->attachment,
             .layout =         ds_resolve->pDepthStencilResolveAttachment->layout,
-            .stencil_layout = vk_att_ref_stencil_layout(ds_resolve->pDepthStencilResolveAttachment),
+            .stencil_layout = vk_att_ref_stencil_layout(ds_resolve->pDepthStencilResolveAttachment,
+                                                        pCreateInfo->pAttachments),
          };
          subpass->depth_resolve_mode = ds_resolve->depthResolveMode;
          subpass->stencil_resolve_mode = ds_resolve->stencilResolveMode;

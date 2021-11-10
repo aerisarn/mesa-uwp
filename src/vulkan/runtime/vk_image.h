@@ -226,7 +226,8 @@ bool vk_image_layout_is_depth_only(VkImageLayout layout);
 VkImageUsageFlags vk_image_layout_to_usage_flags(VkImageLayout layout,
                                                  VkImageAspectFlagBits aspect);
 
-VkImageLayout vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref);
+VkImageLayout vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref,
+                                        const VkAttachmentDescription2 *attachments);
 VkImageLayout vk_att_desc_stencil_layout(const VkAttachmentDescription2KHR *att_desc,
                                            bool final);
 

@@ -389,7 +389,8 @@ radv_CreateRenderPass2(VkDevice _device, const VkRenderPassCreateInfo2 *pCreateI
             subpass->input_attachments[j] = (struct radv_subpass_attachment){
                .attachment = desc->pInputAttachments[j].attachment,
                .layout = desc->pInputAttachments[j].layout,
-               .stencil_layout = vk_att_ref_stencil_layout(&desc->pInputAttachments[j]),
+               .stencil_layout = vk_att_ref_stencil_layout(&desc->pInputAttachments[j],
+                                                           pCreateInfo->pAttachments),
             };
          }
       }
@@ -424,7 +425,8 @@ radv_CreateRenderPass2(VkDevice _device, const VkRenderPassCreateInfo2 *pCreateI
          *subpass->depth_stencil_attachment = (struct radv_subpass_attachment){
             .attachment = desc->pDepthStencilAttachment->attachment,
             .layout = desc->pDepthStencilAttachment->layout,
-            .stencil_layout = vk_att_ref_stencil_layout(desc->pDepthStencilAttachment),
+            .stencil_layout = vk_att_ref_stencil_layout(desc->pDepthStencilAttachment,
+                                                        pCreateInfo->pAttachments),
          };
       }
 
@@ -437,7 +439,8 @@ radv_CreateRenderPass2(VkDevice _device, const VkRenderPassCreateInfo2 *pCreateI
          *subpass->ds_resolve_attachment = (struct radv_subpass_attachment){
             .attachment = ds_resolve->pDepthStencilResolveAttachment->attachment,
             .layout = ds_resolve->pDepthStencilResolveAttachment->layout,
-            .stencil_layout = vk_att_ref_stencil_layout(ds_resolve->pDepthStencilResolveAttachment),
+            .stencil_layout = vk_att_ref_stencil_layout(ds_resolve->pDepthStencilResolveAttachment,
+                                                        pCreateInfo->pAttachments),
          };
 
          subpass->depth_resolve_mode = ds_resolve->depthResolveMode;

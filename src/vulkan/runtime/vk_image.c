@@ -525,8 +525,18 @@ vk_image_layout_is_depth_only(VkImageLayout layout)
  *    all relevant image aspects."
  */
 VkImageLayout
-vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref)
+vk_att_ref_stencil_layout(const VkAttachmentReference2KHR *att_ref,
+                          const VkAttachmentDescription2 *attachments)
 {
+   /* From VUID-VkAttachmentReference2-attachment-04755:
+    *  "If attachment is not VK_ATTACHMENT_UNUSED, and the format of the
+    *   referenced attachment is a depth/stencil format which includes both
+    *   depth and stencil aspects [...]
+    */
+   if (att_ref->attachment == VK_ATTACHMENT_UNUSED ||
+       !vk_format_has_stencil(attachments[att_ref->attachment].format))
+      return VK_IMAGE_LAYOUT_UNDEFINED;
+
    const VkAttachmentReferenceStencilLayoutKHR *stencil_ref =
       vk_find_struct_const(att_ref->pNext, ATTACHMENT_REFERENCE_STENCIL_LAYOUT_KHR);
 
