@@ -8,7 +8,6 @@
   variables:
     BM_CMDLINE: "ip=dhcp console=ttymxc0,115200n8 root=/dev/nfs rw nfsrootdebug init=/init $BM_KERNELARGS"
     BM_KERNEL: /baremetal-files/zImage
-    ETNA_MESA_DEBUG: nir
     FLAKES_CHANNEL: "#etnaviv-ci"
   needs:
     - debian/arm_test
