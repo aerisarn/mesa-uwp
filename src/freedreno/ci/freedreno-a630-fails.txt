@@ -176,19 +176,14 @@ spec@arb_tessellation_shader@execution@trivial-tess-gs,Fail
 spec@arb_tessellation_shader@execution@trivial-tess-gs_no-gs-inputs,Fail
 spec@arb_tessellation_shader@execution@trivial-tess-gs_no-tes-inputs,Fail
 
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-float-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-vec2-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-vec3-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-vec4-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-patch-vec4-index-wr,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-patch-vec4-swiz-index-wr,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-float-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-vec2-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-vec3-index-rd,Crash
-spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-vec4-index-rd,Crash
+# ir3_nir_lower_tess.c:251: lower_block_to_explicit_output: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed.
+spec@arb_tessellation_shader@execution@tcs-input-read-mat,Crash
 
 # "ir3_nir_lower_tess.c:585: lower_tess_ctrl_block: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed."
+spec@arb_tessellation_shader@execution@variable-indexing@tcs-patch-vec4-index-wr,Crash
+spec@arb_tessellation_shader@execution@variable-indexing@tcs-patch-vec4-swiz-index-wr,Crash
 spec@arb_tessellation_shader@execution@vertex-partial-write,Crash
+
 
 spec@arb_tessellation_shader@execution@vs-tes-max-in-out-components,Fail
 spec@arb_tessellation_shader@execution@vs-tes-tessinner-tessouter-inputs-quads,Fail

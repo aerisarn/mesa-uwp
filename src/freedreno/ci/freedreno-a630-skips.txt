@@ -44,10 +44,6 @@ spec@arb_gpu_shader5.*
 spec@arb_gpu_shader_fp64.*
 spec@arb_gpu_shader_int64.*
 
-# These are so flaky I don't want to spam our CI flakes channel
-.*tcs-input.*
-.*tes-input.*
-
 # TC Timeouts
 spec@arb_sync@clientwaitsync-timeout
 spec@arb_texture_buffer_object@bufferstorage
