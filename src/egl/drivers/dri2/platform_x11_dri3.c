@@ -427,7 +427,7 @@ dri3_flush_front_buffer(__DRIdrawable *driDrawable, void *loaderPrivate)
     * support front-buffer rendering or not:
     * http://lists.freedesktop.org/archives/mesa-dev/2013-June/040129.html
     */
-   if (!draw->is_pixmap)
+   if (draw->type == LOADER_DRI3_DRAWABLE_WINDOW)
       _eglLog(_EGL_WARNING, "FIXME: egl/x11 doesn't support front buffer rendering.");
 }
 

@@ -135,7 +135,6 @@ struct loader_dri3_drawable {
    int depth;
    uint8_t have_back;
    uint8_t have_fake_front;
-   uint8_t is_pixmap;
    enum loader_dri3_drawable_type type;
 
    /* Information about the GPU owning the buffer */
