@@ -2308,48 +2308,21 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
       .rsvd2 = 0,
    };
 
-   struct drm_i915_gem_exec_fence fence = {};
-   if (device->physical->has_syncobj_wait) {
-      err = drmSyncobjCreate(device->fd, 0, &fence.handle);
-      if (err != 0) {
-         result = vk_errorf(queue, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                            "drmSyncobjCreate failed: %m");
-         goto fail;
-      }
-
-      fence.flags = I915_EXEC_FENCE_SIGNAL;
-
-      execbuf.execbuf.flags |= I915_EXEC_FENCE_ARRAY;
-      execbuf.execbuf.num_cliprects = 1;
-      execbuf.execbuf.cliprects_ptr = (uintptr_t)&fence;
-   }
-
    err = anv_gem_execbuffer(device, &execbuf.execbuf);
    if (err) {
       result = vk_device_set_lost(&device->vk, "anv_gem_execbuffer failed: %m");
       goto fail;
    }
 
-   if (fence.handle) {
-      err = drmSyncobjWait(device->fd, &fence.handle, 1, INT64_MAX, 0, NULL);
-      if (err) {
-         result = vk_device_set_lost(&device->vk,
-                                     "drmSyncobjWait failed: %m");
-         goto fail;
-      }
-   } else {
-      result = anv_device_wait(device, batch_bo, INT64_MAX);
-      if (result != VK_SUCCESS) {
-         result = vk_device_set_lost(&device->vk,
-                                     "anv_device_wait failed: %m");
-         goto fail;
-      }
+   result = anv_device_wait(device, batch_bo, INT64_MAX);
+   if (result != VK_SUCCESS) {
+      result = vk_device_set_lost(&device->vk,
+                                  "anv_device_wait failed: %m");
+      goto fail;
    }
 
 fail:
    anv_execbuf_finish(&execbuf);
-   if (fence.handle)
-      drmSyncobjDestroy(device->fd, fence.handle);
    anv_bo_pool_free(&device->batch_bo_pool, batch_bo);
 
    return result;
