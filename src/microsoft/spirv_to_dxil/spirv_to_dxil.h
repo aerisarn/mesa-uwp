@@ -144,6 +144,10 @@ struct dxil_spirv_runtime_conf {
       uint16_t y_mask;
       uint16_t z_mask;
    } yz_flip;
+
+   // The caller supports read-only images to be turned into SRV accesses,
+   // which allows us to run the nir_opt_access() pass
+   bool read_only_images_as_srvs;
 };
 
 struct dxil_spirv_debug_options {

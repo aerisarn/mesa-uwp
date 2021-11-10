@@ -336,6 +336,16 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
             conf->runtime_data_cbv.register_space,
             conf->runtime_data_cbv.base_shader_register);
 
+   NIR_PASS_V(nir, nir_opt_deref);
+
+   if (conf->read_only_images_as_srvs) {
+      const nir_opt_access_options opt_access_options = {
+         .is_vulkan = true,
+         .infer_non_readable = true,
+      };
+      NIR_PASS_V(nir, nir_opt_access, &opt_access_options);
+   }
+
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
    NIR_PASS_V(nir, nir_remove_dead_variables,
