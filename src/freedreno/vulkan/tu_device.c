@@ -568,7 +568,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->vulkanMemoryModelAvailabilityVisibilityChains = true;
    features->shaderOutputViewportIndex           = true;
    features->shaderOutputLayer                   = true;
-   features->subgroupBroadcastDynamicId          = false;
+   features->subgroupBroadcastDynamicId          = true;
 }
 
 void
