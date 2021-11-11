@@ -1191,35 +1191,35 @@ static bool
 vectorize_sorted_entries(struct vectorize_ctx *ctx, nir_function_impl *impl,
                          struct util_dynarray *arr)
 {
-      unsigned num_entries = util_dynarray_num_elements(arr, struct entry *);
+   unsigned num_entries = util_dynarray_num_elements(arr, struct entry *);
 
    bool progress = false;
-      for (unsigned first_idx = 0; first_idx < num_entries; first_idx++) {
-         struct entry *low = *util_dynarray_element(arr, struct entry *, first_idx);
-         if (!low)
+   for (unsigned first_idx = 0; first_idx < num_entries; first_idx++) {
+      struct entry *low = *util_dynarray_element(arr, struct entry *, first_idx);
+      if (!low)
+         continue;
+
+      for (unsigned second_idx = first_idx + 1; second_idx < num_entries; second_idx++) {
+         struct entry *high = *util_dynarray_element(arr, struct entry *, second_idx);
+         if (!high)
             continue;
 
-         for (unsigned second_idx = first_idx + 1; second_idx < num_entries; second_idx++) {
-            struct entry *high = *util_dynarray_element(arr, struct entry *, second_idx);
-            if (!high)
-               continue;
+         uint64_t diff = high->offset_signed - low->offset_signed;
+         if (diff > get_bit_size(low) / 8u * low->intrin->num_components)
+            break;
 
-            uint64_t diff = high->offset_signed - low->offset_signed;
-            if (diff > get_bit_size(low) / 8u * low->intrin->num_components)
-               break;
+         struct entry *first = low->index < high->index ? low : high;
+         struct entry *second = low->index < high->index ? high : low;
 
-            struct entry *first = low->index < high->index ? low : high;
-            struct entry *second = low->index < high->index ? high : low;
-
-            if (try_vectorize(impl, ctx, low, high, first, second)) {
-               low = low->is_store ? second : first;
-               *util_dynarray_element(arr, struct entry *, second_idx) = NULL;
-               progress = true;
-            }
+         if (try_vectorize(impl, ctx, low, high, first, second)) {
+            low = low->is_store ? second : first;
+            *util_dynarray_element(arr, struct entry *, second_idx) = NULL;
+            progress = true;
          }
-
-         *util_dynarray_element(arr, struct entry *, first_idx) = low;
       }
+
+      *util_dynarray_element(arr, struct entry *, first_idx) = low;
+   }
 
    return progress;
 }
