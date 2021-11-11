@@ -1645,6 +1645,64 @@ no_shm_fence:
    return NULL;
 }
 
+static bool
+dri3_detect_drawable_is_window(struct loader_dri3_drawable *draw)
+{
+   /* Try to select for input on the window.
+    *
+    * If the drawable is a window, this will get our events
+    * delivered.
+    *
+    * Otherwise, we'll get a BadWindow error back from this request which
+    * will let us know that the drawable is a pixmap instead.
+    */
+
+   xcb_void_cookie_t cookie =
+      xcb_present_select_input_checked(draw->conn, draw->eid, draw->drawable,
+                                       XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY |
+                                       XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
+                                       XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY);
+
+   /* Check to see if our select input call failed. If it failed with a
+    * BadWindow error, then assume the drawable is a pixmap.
+    */
+   xcb_generic_error_t *error = xcb_request_check(draw->conn, cookie);
+
+   if (error) {
+      if (error->error_code != BadWindow) {
+         free(error);
+         return false;
+      }
+      free(error);
+      draw->is_pixmap = true;
+      return true;
+   }
+
+   draw->is_pixmap = false;
+   return true;
+}
+
+static bool
+dri3_setup_present_event(struct loader_dri3_drawable *draw)
+{
+   draw->eid = xcb_generate_id(draw->conn);
+
+   if (!dri3_detect_drawable_is_window(draw))
+      return false;
+
+   if (draw->is_pixmap)
+      return true;
+
+   /* Create an XCB event queue to hold present events outside of the usual
+    * application event queue
+    */
+   draw->special_event = xcb_register_for_special_xge(draw->conn,
+                                                      &xcb_present_id,
+                                                      draw->eid,
+                                                      draw->stamp);
+   return true;
+}
+
 /** loader_dri3_update_drawable
  *
  * Called the first time we use the drawable and then
@@ -1658,35 +1716,15 @@ dri3_update_drawable(struct loader_dri3_drawable *draw)
    if (draw->first_init) {
       xcb_get_geometry_cookie_t                 geom_cookie;
       xcb_get_geometry_reply_t                  *geom_reply;
-      xcb_void_cookie_t                         cookie;
-      xcb_generic_error_t                       *error;
       xcb_window_t                               root_win;
 
       draw->first_init = false;
 
-      /* Try to select for input on the window.
-       *
-       * If the drawable is a window, this will get our events
-       * delivered.
-       *
-       * Otherwise, we'll get a BadWindow error back from this request which
-       * will let us know that the drawable is a pixmap instead.
-       */
+      if (!dri3_setup_present_event(draw)) {
+         mtx_unlock(&draw->mtx);
+         return false;
+      }
 
-      draw->eid = xcb_generate_id(draw->conn);
-      cookie =
-         xcb_present_select_input_checked(draw->conn, draw->eid, draw->drawable,
-                                          XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY |
-                                          XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
-                                          XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY);
-
-      /* Create an XCB event queue to hold present events outside of the usual
-       * application event queue
-       */
-      draw->special_event = xcb_register_for_special_xge(draw->conn,
-                                                         &xcb_present_id,
-                                                         draw->eid,
-                                                         draw->stamp);
       geom_cookie = xcb_get_geometry(draw->conn, draw->drawable);
 
       geom_reply = xcb_get_geometry_reply(draw->conn, geom_cookie, NULL);
@@ -1702,27 +1740,6 @@ dri3_update_drawable(struct loader_dri3_drawable *draw)
       root_win = geom_reply->root;
 
       free(geom_reply);
-
-      draw->is_pixmap = false;
-
-      /* Check to see if our select input call failed. If it failed with a
-       * BadWindow error, then assume the drawable is a pixmap. Destroy the
-       * special event queue created above and mark the drawable as a pixmap
-       */
-
-      error = xcb_request_check(draw->conn, cookie);
-
-      if (error) {
-         if (error->error_code != BadWindow) {
-            free(error);
-            mtx_unlock(&draw->mtx);
-            return false;
-         }
-         free(error);
-         draw->is_pixmap = true;
-         xcb_unregister_for_special_event(draw->conn, draw->special_event);
-         draw->special_event = NULL;
-      }
 
       if (draw->is_pixmap)
          draw->window = root_win;
