@@ -72,7 +72,7 @@ tu_device_get_cache_uuid(uint16_t family, void *uuid)
    return 0;
 }
 
-#define TU_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#define TU_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
 
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_EnumerateInstanceVersion(uint32_t *pApiVersion)
