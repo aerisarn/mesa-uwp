@@ -562,9 +562,9 @@ ir3_update_max_tf_vtx(struct fd_context *ctx,
    uint32_t maxvtxcnt = 0x7fffffff;
 
    if (v->shader->stream_output.num_outputs == 0)
-      ctx->streamout.max_tf_vtx = 0;
+      maxvtxcnt = 0;
    if (so->num_targets == 0)
-      ctx->streamout.max_tf_vtx = 0;
+      maxvtxcnt = 0;
 
    /* offset to write to is:
     *
