@@ -450,21 +450,20 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    VkMemoryRequirements reqs;
    VkMemoryPropertyFlags flags;
    bool need_dedicated = false;
+   bool shared = templ->bind & PIPE_BIND_SHARED;
    VkExternalMemoryHandleTypeFlags export_types = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
 
    VkExternalMemoryHandleTypeFlags external = 0;
    if (whandle) {
-      if (whandle->type == WINSYS_HANDLE_TYPE_FD)
+      if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
          external = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-      else
+         export_types |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+      } else
          unreachable("unknown handle type");
    }
 
    /* TODO: remove linear for wsi */
    bool scanout = templ->bind & PIPE_BIND_SCANOUT;
-   bool shared = templ->bind & PIPE_BIND_SHARED;
-   if (shared && screen->info.have_EXT_external_memory_dma_buf)
-      export_types |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
 
    pipe_reference_init(&obj->reference, 1);
    util_dynarray_init(&obj->tmp, NULL);
