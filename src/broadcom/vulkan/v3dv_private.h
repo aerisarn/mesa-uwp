@@ -957,8 +957,12 @@ struct v3dv_copy_query_results_cpu_job_info {
 
 struct v3dv_submit_info_semaphores {
    /* List of semaphores to wait before running a job */
-   uint32_t sem_count;
-   VkSemaphore *sems;
+   uint32_t wait_sem_count;
+   VkSemaphore *wait_sems;
+
+   /* List of semaphores to signal when all jobs complete */
+   uint32_t signal_sem_count;
+   VkSemaphore *signal_sems;
 };
 
 struct v3dv_event_set_cpu_job_info {
