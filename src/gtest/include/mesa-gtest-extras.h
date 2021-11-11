@@ -57,7 +57,7 @@ array_equal_pred(const char *a_expr,
             result << "\n  [" << std::dec << std::setw(3) << i << "]";
          result << " "
                 << (a[i] == b[i] ? ' ' : '*')
-                << std::hex << std::setw(2) << +a[i];
+                << std::hex << std::setw(sizeof(T) * 2) << +a[i];
       }
       result << "\n\n";
 
