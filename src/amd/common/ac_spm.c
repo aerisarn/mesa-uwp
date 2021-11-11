@@ -103,7 +103,7 @@ ac_spm_map_counter(struct ac_spm_trace_data *spm_trace,
       /* Generic blocks. */
       for (unsigned i = 0; i < block_sel->num_counters; i++) {
          struct ac_spm_counter_select *cntr_sel = &block_sel->counters[i];
-         int index = ffs(~cntr_sel->active);
+         int index = ffs(~cntr_sel->active) - 1;
 
          switch (index) {
          case 0: /* use S_037004_PERF_SEL */
