@@ -615,7 +615,12 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    }
 
    NIR_PASS_V(nir, nir_lower_system_values);
-   NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
+   nir_lower_compute_system_values_options csv_options = {
+      .lower_local_invocation_index = ((nir->info.workgroup_size[0] == 1) +
+                                       (nir->info.workgroup_size[1] == 1) +
+                                       (nir->info.workgroup_size[2] == 1)) == 2,
+   };
+   NIR_PASS_V(nir, nir_lower_compute_system_values, &csv_options);
 
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
