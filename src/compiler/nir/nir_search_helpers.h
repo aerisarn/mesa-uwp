@@ -226,6 +226,27 @@ is_ult_0xfffc07fc(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
    return true;
 }
 
+/** Is the first 5 bits of value unsigned greater than or equal 2? */
+static inline bool
+is_first_5_bits_uge_2(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
+                      unsigned src, unsigned num_components,
+                      const uint8_t *swizzle)
+{
+   /* only constant srcs: */
+   if (!nir_src_is_const(instr->src[src].src))
+      return false;
+
+   for (unsigned i = 0; i < num_components; i++) {
+      const unsigned val =
+         nir_src_comp_as_uint(instr->src[src].src, swizzle[i]);
+
+      if ((val & 0x1f) < 2)
+         return false;
+   }
+
+   return true;
+}
+
 static inline bool
 is_not_const(UNUSED struct hash_table *ht, const nir_alu_instr *instr,
              unsigned src, UNUSED unsigned num_components,

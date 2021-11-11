@@ -408,6 +408,11 @@ for size, mask in ((8, 0xff), (16, 0xffff), (32, 0xffffffff), (64, 0xfffffffffff
        (('ushr', ('ishl', a_sz, '#b'), b), ('iand', a, ('ushr', mask, b))),
     ])
 
+optimizations.extend([
+    (('iand', ('ishl', 'a@32', '#b(is_first_5_bits_uge_2)'), -4), ('ishl', a, b)),
+    (('iand', ('imul', a, '#b(is_unsigned_multiple_of_4)'), -4), ('imul', a, b)),
+])
+
 for log2 in range(1, 7): # powers of two from 2 to 64
    v = 1 << log2
    mask = 0xffffffff & ~(v - 1)
