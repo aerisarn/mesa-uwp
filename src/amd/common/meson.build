@@ -111,6 +111,7 @@ libamd_common = static_library(
     idep_mesautil, idep_nir_headers, idep_nir
   ],
   gnu_symbol_visibility : 'hidden',
+  c_args : ['-DADDR_FASTCALL=']
 )
 
 idep_amdgfxregs_h = declare_dependency(sources : [amdgfxregs_h])
