@@ -757,6 +757,32 @@ parse_base_offset(opt_ctx& ctx, Instruction* instr, unsigned op_index, Temp* bas
    return false;
 }
 
+void
+skip_smem_offset_align(opt_ctx& ctx, SMEM_instruction* smem)
+{
+   bool soe = smem->operands.size() >= (!smem->definitions.empty() ? 3 : 4);
+   if (soe && !smem->operands[1].isConstant())
+      return;
+   /* We don't need to check the constant offset because the address seems to be calculated with
+    * (offset&-4 + const_offset&-4), not (offset+const_offset)&-4.
+    */
+
+   Operand& op = smem->operands[soe ? smem->operands.size() - 1 : 1];
+   if (!op.isTemp() || !ctx.info[op.tempId()].is_bitwise())
+      return;
+
+   Instruction* bitwise_instr = ctx.info[op.tempId()].instr;
+   if (bitwise_instr->opcode != aco_opcode::s_and_b32)
+      return;
+
+   if (bitwise_instr->operands[0].constantEquals(-4) &&
+       bitwise_instr->operands[1].isOfType(op.regClass().type()))
+      op.setTemp(bitwise_instr->operands[1].getTemp());
+   else if (bitwise_instr->operands[1].constantEquals(-4) &&
+            bitwise_instr->operands[0].isOfType(op.regClass().type()))
+      op.setTemp(bitwise_instr->operands[0].getTemp());
+}
+
 unsigned
 get_operand_size(aco_ptr<Instruction>& instr, unsigned index)
 {
@@ -975,6 +1001,10 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       perfwarn(ctx.program, is_copy && !instr->usesModifiers(), "Use p_parallelcopy instead",
                instr.get());
    }
+
+   /* skip &-4 before offset additions: load((a + 16) & -4, 0) */
+   if (instr->isSMEM() && !instr->operands.empty())
+      skip_smem_offset_align(ctx, &instr->smem());
 
    for (unsigned i = 0; i < instr->operands.size(); i++) {
       if (!instr->operands[i].isTemp())
@@ -1229,6 +1259,10 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          }
       }
    }
+
+   /* skip &-4 after offset additions: load(a & -4, 16) */
+   if (instr->isSMEM() && !instr->operands.empty())
+      skip_smem_offset_align(ctx, &instr->smem());
 
    /* if this instruction doesn't define anything, return */
    if (instr->definitions.empty()) {
