@@ -550,9 +550,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (ici.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
          obj->transfer_dst = true;
 
-      if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
-         obj->modifier_aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
-
       struct wsi_image_create_info image_wsi_info = {
          VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
          NULL,
@@ -569,6 +566,26 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (result != VK_SUCCESS) {
          debug_printf("vkCreateImage failed\n");
          goto fail1;
+      }
+
+      if (ici.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+         VkImageDrmFormatModifierPropertiesEXT modprops = {0};
+         modprops.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
+         result = VKSCR(GetImageDrmFormatModifierPropertiesEXT)(screen->dev, obj->image, &modprops);
+         if (result != VK_SUCCESS) {
+            debug_printf("GetImageDrmFormatModifierPropertiesEXT failed\n");
+            goto fail1;
+         }
+         obj->modifier = modprops.drmFormatModifier;
+         unsigned num_planes = screen->base.get_dmabuf_modifier_planes(&screen->base, obj->modifier, templ->format);
+         obj->modifier_aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
+         if (num_planes > 1)
+            obj->modifier_aspect |= VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT;
+         if (num_planes > 2)
+            obj->modifier_aspect |= VK_IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT;
+         if (num_planes > 3)
+            obj->modifier_aspect |= VK_IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT;
+         assert(num_planes <= 4);
       }
 
       if (VKSCR(GetImageMemoryRequirements2)) {
@@ -741,17 +758,6 @@ resource_create(struct pipe_screen *pscreen,
          FREE_CL(res);
          return NULL;
       }
-      /* TODO: remove this when multi-plane modifiers are supported */
-      const struct zink_modifier_prop *prop = &screen->modifier_props[templ->format];
-      for (unsigned i = 0; i < modifiers_count; i++) {
-         for (unsigned j = 0; j < prop->drmFormatModifierCount; j++) {
-            if (prop->pDrmFormatModifierProperties[j].drmFormatModifier == modifiers[i]) {
-               if (prop->pDrmFormatModifierProperties[j].drmFormatModifierPlaneCount != 1)
-                  res->modifiers[i] = DRM_FORMAT_MOD_INVALID;
-               break;
-            }
-         }
-      }
    }
 
    res->base.b = *templ;
@@ -851,12 +857,31 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
    struct zink_resource *res = zink_resource(pres);
    //TODO: remove for wsi
    struct zink_resource_object *obj = res->scanout_obj ? res->scanout_obj : res->obj;
-   VkImageAspectFlags aspect = obj->modifier_aspect ? obj->modifier_aspect : res->aspect;
    struct winsys_handle whandle;
+   VkImageAspectFlags aspect;
+   if (res->modifiers) {
+      switch (plane) {
+      case 0:
+         aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
+         break;
+      case 1:
+         aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT;
+         break;
+      case 2:
+         aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT;
+         break;
+      case 3:
+         aspect = VK_IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT;
+         break;
+      default:
+         unreachable("how many planes you got in this thing?");
+      }
+   } else
+      aspect = res->aspect;
    switch (param) {
    case PIPE_RESOURCE_PARAM_NPLANES:
       /* not yet implemented */
-      *value = 1;
+      *value = pscreen->get_dmabuf_modifier_planes(pscreen, res->obj->modifier, pres->format);
       break;
 
    case PIPE_RESOURCE_PARAM_STRIDE: {
@@ -884,16 +909,7 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
    }
 
    case PIPE_RESOURCE_PARAM_MODIFIER: {
-      *value = DRM_FORMAT_MOD_INVALID;
-      if (!screen->info.have_EXT_image_drm_format_modifier)
-         return false;
-      if (!res->modifiers)
-         return false;
-      VkImageDrmFormatModifierPropertiesEXT prop;
-      prop.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
-      prop.pNext = NULL;
-      if (VKSCR(GetImageDrmFormatModifierPropertiesEXT)(screen->dev, obj->image, &prop) == VK_SUCCESS)
-         *value = prop.drmFormatModifier;
+      *value = res->obj->modifier;
       break;
    }
 
@@ -993,10 +1009,9 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
        !zink_screen(pscreen)->info.have_EXT_image_drm_format_modifier)
       return NULL;
 
-   /* ignore any AUX planes, as well as planar formats */
-   if (templ->format == PIPE_FORMAT_NONE ||
-       util_format_get_num_planes(templ->format) != 1)
-      return NULL;
+   struct pipe_resource templ2 = *templ;
+   if (templ->format == PIPE_FORMAT_NONE)
+      templ2.format = whandle->format;
 
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
    int modifier_count = 0;
@@ -1004,7 +1019,7 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
       modifier = whandle->modifier;
       modifier_count = 1;
    }
-   return resource_create(pscreen, templ, whandle, usage, &modifier, modifier_count);
+   return resource_create(pscreen, &templ2, whandle, usage, &modifier, modifier_count);
 #else
    return NULL;
 #endif
@@ -1401,7 +1416,7 @@ zink_image_map(struct pipe_context *pctx,
             zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
       }
       VkImageSubresource isr = {
-         res->obj->modifier_aspect ? res->obj->modifier_aspect : res->aspect,
+         res->modifiers ? res->obj->modifier_aspect : res->aspect,
          level,
          0
       };
