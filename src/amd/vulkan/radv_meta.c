@@ -288,7 +288,7 @@ radv_meta_get_iview_layer(const struct radv_image *dest_image,
    }
 }
 
-static void *
+static VKAPI_ATTR void * VKAPI_CALL
 meta_alloc(void *_device, size_t size, size_t alignment, VkSystemAllocationScope allocationScope)
 {
    struct radv_device *device = _device;
@@ -296,7 +296,7 @@ meta_alloc(void *_device, size_t size, size_t alignment, VkSystemAllocationScope
                                          VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 }
 
-static void *
+static VKAPI_ATTR void * VKAPI_CALL
 meta_realloc(void *_device, void *original, size_t size, size_t alignment,
              VkSystemAllocationScope allocationScope)
 {
@@ -305,7 +305,7 @@ meta_realloc(void *_device, void *original, size_t size, size_t alignment,
                                            VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 }
 
-static void
+static VKAPI_ATTR void VKAPI_CALL
 meta_free(void *_device, void *data)
 {
    struct radv_device *device = _device;

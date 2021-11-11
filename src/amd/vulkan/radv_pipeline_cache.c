@@ -537,7 +537,7 @@ radv_pipeline_cache_load(struct radv_pipeline_cache *cache, const void *data, si
    return true;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreatePipelineCache(VkDevice _device, const VkPipelineCacheCreateInfo *pCreateInfo,
                          const VkAllocationCallbacks *pAllocator, VkPipelineCache *pPipelineCache)
 {
@@ -568,7 +568,7 @@ radv_CreatePipelineCache(VkDevice _device, const VkPipelineCacheCreateInfo *pCre
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyPipelineCache(VkDevice _device, VkPipelineCache _cache,
                           const VkAllocationCallbacks *pAllocator)
 {
@@ -582,7 +582,7 @@ radv_DestroyPipelineCache(VkDevice _device, VkPipelineCache _cache,
    vk_free2(&device->vk.alloc, pAllocator, cache);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetPipelineCacheData(VkDevice _device, VkPipelineCache _cache, size_t *pDataSize, void *pData)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -648,7 +648,7 @@ radv_pipeline_cache_merge(struct radv_pipeline_cache *dst, struct radv_pipeline_
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_MergePipelineCaches(VkDevice _device, VkPipelineCache destCache, uint32_t srcCacheCount,
                          const VkPipelineCache *pSrcCaches)
 {

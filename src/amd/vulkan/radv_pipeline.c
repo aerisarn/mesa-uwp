@@ -197,7 +197,7 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
    vk_free2(&device->vk.alloc, allocator, pipeline);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyPipeline(VkDevice _device, VkPipeline _pipeline,
                      const VkAllocationCallbacks *pAllocator)
 {
@@ -5652,7 +5652,7 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t count,
                              const VkGraphicsPipelineCreateInfo *pCreateInfos,
                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
@@ -5834,7 +5834,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t count,
                             const VkComputePipelineCreateInfo *pCreateInfos,
                             const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
@@ -5916,7 +5916,7 @@ desc_copy(char *desc, const char *src)
    memset(desc + len, 0, VK_MAX_DESCRIPTION_SIZE - len);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKHR *pPipelineInfo,
                                         uint32_t *pExecutableCount,
                                         VkPipelineExecutablePropertiesKHR *pProperties)
@@ -6004,7 +6004,7 @@ radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKH
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetPipelineExecutableStatisticsKHR(VkDevice _device,
                                         const VkPipelineExecutableInfoKHR *pExecutableInfo,
                                         uint32_t *pStatisticCount,
@@ -6131,7 +6131,7 @@ radv_copy_representation(void *data, size_t *data_size, const char *src)
    return size < total_size ? VK_INCOMPLETE : VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetPipelineExecutableInternalRepresentationsKHR(
    VkDevice device, const VkPipelineExecutableInfoKHR *pExecutableInfo,
    uint32_t *pInternalRepresentationCount,

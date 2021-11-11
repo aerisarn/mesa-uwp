@@ -632,7 +632,7 @@ resolve_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
                          const VkResolveImageInfo2KHR *pResolveImageInfo)
 {

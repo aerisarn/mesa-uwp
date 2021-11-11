@@ -358,7 +358,7 @@ radv_thread_trace_enabled()
 #define RADV_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
 #endif
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_EnumerateInstanceVersion(uint32_t *pApiVersion)
 {
    *pApiVersion = RADV_API_VERSION;
@@ -949,7 +949,7 @@ radv_init_dri_options(struct radv_instance *instance)
       driQueryOptionb(&instance->dri_options, "radv_report_apu_as_dgpu");
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                     const VkAllocationCallbacks *pAllocator, VkInstance *pInstance)
 {
@@ -991,7 +991,7 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyInstance(VkInstance _instance, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_instance, instance, _instance);
@@ -1076,7 +1076,7 @@ radv_enumerate_physical_devices(struct radv_instance *instance)
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_EnumeratePhysicalDevices(VkInstance _instance, uint32_t *pPhysicalDeviceCount,
                               VkPhysicalDevice *pPhysicalDevices)
 {
@@ -1098,7 +1098,7 @@ radv_EnumeratePhysicalDevices(VkInstance _instance, uint32_t *pPhysicalDeviceCou
    return vk_outarray_status(&out);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_EnumeratePhysicalDeviceGroups(VkInstance _instance, uint32_t *pPhysicalDeviceGroupCount,
                                    VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
 {
@@ -1124,7 +1124,7 @@ radv_EnumeratePhysicalDeviceGroups(VkInstance _instance, uint32_t *pPhysicalDevi
    return vk_outarray_status(&out);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures *pFeatures)
 {
    RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
@@ -1260,7 +1260,7 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
    f->subgroupBroadcastDynamicId = true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                                 VkPhysicalDeviceFeatures2 *pFeatures)
 {
@@ -1670,7 +1670,7 @@ radv_uniform_buffer_offset_alignment(const struct radv_physical_device *pdevice)
    return MAX2(uniform_offset_alignment, 4);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                  VkPhysicalDeviceProperties *pProperties)
 {
@@ -1951,7 +1951,7 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
    p->framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                   VkPhysicalDeviceProperties2 *pProperties)
 {
@@ -2322,7 +2322,7 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
    *pCount = idx;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice, uint32_t *pCount,
                                             VkQueueFamilyProperties *pQueueFamilyProperties)
 {
@@ -2347,7 +2347,7 @@ static const VkQueueGlobalPriorityEXT radv_global_queue_priorities[] = {
    VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT,
 };
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice, uint32_t *pCount,
                                              VkQueueFamilyProperties2 *pQueueFamilyProperties)
 {
@@ -2383,7 +2383,7 @@ radv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice, ui
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
                                        VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
@@ -2497,7 +2497,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
                                         VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
 {
@@ -2509,7 +2509,7 @@ radv_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
       radv_get_memory_budget_properties(physicalDevice, memory_budget);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetMemoryHostPointerPropertiesEXT(
    VkDevice _device, VkExternalMemoryHandleTypeFlagBits handleType, const void *pHostPointer,
    VkMemoryHostPointerPropertiesEXT *pMemoryHostPointerProperties)
@@ -2873,7 +2873,7 @@ _radv_device_set_lost(struct radv_device *device, const char *file, int line, co
    return err;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkDevice *pDevice)
 {
@@ -3265,7 +3265,7 @@ fail:
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -3312,7 +3312,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    vk_free(&device->vk.alloc, device);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProperties)
 {
    if (pProperties == NULL) {
@@ -3324,7 +3324,7 @@ radv_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount, VkLayerPropertie
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount,
                                     VkLayerProperties *pProperties)
 {
@@ -4970,7 +4970,7 @@ radv_submit_has_effects(const VkSubmitInfo *info)
    return info->commandBufferCount || info->waitSemaphoreCount || info->signalSemaphoreCount;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_QueueSubmit(VkQueue _queue, uint32_t submitCount, const VkSubmitInfo *pSubmits, VkFence fence)
 {
    RADV_FROM_HANDLE(radv_queue, queue, _queue);
@@ -5050,7 +5050,7 @@ radv_get_queue_family_name(struct radv_queue *queue)
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_QueueWaitIdle(VkQueue _queue)
 {
    RADV_FROM_HANDLE(radv_queue, queue, _queue);
@@ -5076,7 +5076,7 @@ radv_QueueWaitIdle(VkQueue _queue)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_EnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pPropertyCount,
                                           VkExtensionProperties *pProperties)
 {
@@ -5087,7 +5087,7 @@ radv_EnumerateInstanceExtensionProperties(const char *pLayerName, uint32_t *pPro
                                                      pPropertyCount, pProperties);
 }
 
-PFN_vkVoidFunction
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 radv_GetInstanceProcAddr(VkInstance _instance, const char *pName)
 {
    RADV_FROM_HANDLE(radv_instance, instance, _instance);
@@ -5403,7 +5403,7 @@ fail:
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_AllocateMemory(VkDevice _device, const VkMemoryAllocateInfo *pAllocateInfo,
                     const VkAllocationCallbacks *pAllocator, VkDeviceMemory *pMem)
 {
@@ -5411,7 +5411,7 @@ radv_AllocateMemory(VkDevice _device, const VkMemoryAllocateInfo *pAllocateInfo,
    return radv_alloc_memory(device, pAllocateInfo, pAllocator, pMem);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_FreeMemory(VkDevice _device, VkDeviceMemory _mem, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -5420,7 +5420,7 @@ radv_FreeMemory(VkDevice _device, VkDeviceMemory _mem, const VkAllocationCallbac
    radv_free_memory(device, pAllocator, mem);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_MapMemory(VkDevice _device, VkDeviceMemory _memory, VkDeviceSize offset, VkDeviceSize size,
                VkMemoryMapFlags flags, void **ppData)
 {
@@ -5445,7 +5445,7 @@ radv_MapMemory(VkDevice _device, VkDeviceMemory _memory, VkDeviceSize offset, Vk
    return vk_error(device, VK_ERROR_MEMORY_MAP_FAILED);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_UnmapMemory(VkDevice _device, VkDeviceMemory _memory)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -5458,14 +5458,14 @@ radv_UnmapMemory(VkDevice _device, VkDeviceMemory _memory)
       device->ws->buffer_unmap(mem->bo);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_FlushMappedMemoryRanges(VkDevice _device, uint32_t memoryRangeCount,
                              const VkMappedMemoryRange *pMemoryRanges)
 {
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_InvalidateMappedMemoryRanges(VkDevice _device, uint32_t memoryRangeCount,
                                   const VkMappedMemoryRange *pMemoryRanges)
 {
@@ -5504,7 +5504,7 @@ radv_get_buffer_memory_requirements(struct radv_device *device,
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirementsInfo2 *pInfo,
                                   VkMemoryRequirements2 *pMemoryRequirements)
 {
@@ -5514,7 +5514,7 @@ radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirem
    radv_get_buffer_memory_requirements(device, buffer->size, buffer->flags, pMemoryRequirements);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetDeviceBufferMemoryRequirementsKHR(VkDevice _device,
                                           const VkDeviceBufferMemoryRequirementsKHR* pInfo,
                                           VkMemoryRequirements2 *pMemoryRequirements)
@@ -5525,7 +5525,7 @@ radv_GetDeviceBufferMemoryRequirementsKHR(VkDevice _device,
                                        pMemoryRequirements);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetImageMemoryRequirements2(VkDevice _device, const VkImageMemoryRequirementsInfo2 *pInfo,
                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
@@ -5554,7 +5554,7 @@ radv_GetImageMemoryRequirements2(VkDevice _device, const VkImageMemoryRequiremen
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetDeviceImageMemoryRequirementsKHR(VkDevice device,
                                          const VkDeviceImageMemoryRequirementsKHR *pInfo,
                                          VkMemoryRequirements2 *pMemoryRequirements)
@@ -5579,14 +5579,14 @@ radv_GetDeviceImageMemoryRequirementsKHR(VkDevice device,
    radv_DestroyImage(device, image, NULL);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetDeviceMemoryCommitment(VkDevice device, VkDeviceMemory memory,
                                VkDeviceSize *pCommittedMemoryInBytes)
 {
    *pCommittedMemoryInBytes = 0;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_BindBufferMemory2(VkDevice _device, uint32_t bindInfoCount,
                        const VkBindBufferMemoryInfo *pBindInfos)
 {
@@ -5623,7 +5623,7 @@ radv_BindBufferMemory2(VkDevice _device, uint32_t bindInfoCount,
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount,
                       const VkBindImageMemoryInfo *pBindInfos)
 {
@@ -5668,7 +5668,7 @@ radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
           info->waitSemaphoreCount || info->signalSemaphoreCount;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_QueueBindSparse(VkQueue _queue, uint32_t bindInfoCount, const VkBindSparseInfo *pBindInfo,
                      VkFence fence)
 {
@@ -5747,7 +5747,7 @@ radv_destroy_fence(struct radv_device *device, const VkAllocationCallbacks *pAll
    vk_free2(&device->vk.alloc, pAllocator, fence);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateFence(VkDevice _device, const VkFenceCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator, VkFence *pFence)
 {
@@ -5779,7 +5779,7 @@ radv_CreateFence(VkDevice _device, const VkFenceCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyFence(VkDevice _device, VkFence _fence, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -5791,7 +5791,7 @@ radv_DestroyFence(VkDevice _device, VkFence _fence, const VkAllocationCallbacks 
    radv_destroy_fence(device, pAllocator, fence);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_WaitForFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences, VkBool32 waitAll,
                    uint64_t timeout)
 {
@@ -5822,7 +5822,7 @@ radv_WaitForFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences
    return success ? VK_SUCCESS : VK_TIMEOUT;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -5847,7 +5847,7 @@ radv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetFenceStatus(VkDevice _device, VkFence _fence)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -6064,7 +6064,7 @@ radv_destroy_semaphore(struct radv_device *device, const VkAllocationCallbacks *
    vk_free2(&device->vk.alloc, pAllocator, sem);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateSemaphore(VkDevice _device, const VkSemaphoreCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator, VkSemaphore *pSemaphore)
 {
@@ -6108,7 +6108,7 @@ radv_CreateSemaphore(VkDevice _device, const VkSemaphoreCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroySemaphore(VkDevice _device, VkSemaphore _semaphore,
                       const VkAllocationCallbacks *pAllocator)
 {
@@ -6120,7 +6120,7 @@ radv_DestroySemaphore(VkDevice _device, VkSemaphore _semaphore,
    radv_destroy_semaphore(device, pAllocator, sem);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetSemaphoreCounterValue(VkDevice _device, VkSemaphore _semaphore, uint64_t *pValue)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -6180,7 +6180,7 @@ radv_wait_timelines(struct radv_device *device, const VkSemaphoreWaitInfo *pWait
    }
    return VK_SUCCESS;
 }
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_WaitSemaphores(VkDevice _device, const VkSemaphoreWaitInfo *pWaitInfo, uint64_t timeout)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -6215,7 +6215,7 @@ radv_WaitSemaphores(VkDevice _device, const VkSemaphoreWaitInfo *pWaitInfo, uint
    return success ? VK_SUCCESS : VK_TIMEOUT;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_SignalSemaphore(VkDevice _device, const VkSemaphoreSignalInfo *pSignalInfo)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -6271,7 +6271,7 @@ radv_destroy_event(struct radv_device *device, const VkAllocationCallbacks *pAll
    vk_free2(&device->vk.alloc, pAllocator, event);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator, VkEvent *pEvent)
 {
@@ -6304,7 +6304,7 @@ radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyEvent(VkDevice _device, VkEvent _event, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -6316,7 +6316,7 @@ radv_DestroyEvent(VkDevice _device, VkEvent _event, const VkAllocationCallbacks 
    radv_destroy_event(device, pAllocator, event);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetEventStatus(VkDevice _device, VkEvent _event)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -6330,7 +6330,7 @@ radv_GetEventStatus(VkDevice _device, VkEvent _event)
    return VK_EVENT_RESET;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_SetEvent(VkDevice _device, VkEvent _event)
 {
    RADV_FROM_HANDLE(radv_event, event, _event);
@@ -6339,7 +6339,7 @@ radv_SetEvent(VkDevice _device, VkEvent _event)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_ResetEvent(VkDevice _device, VkEvent _event)
 {
    RADV_FROM_HANDLE(radv_event, event, _event);
@@ -6379,7 +6379,7 @@ radv_destroy_buffer(struct radv_device *device, const VkAllocationCallbacks *pAl
    vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkBuffer *pBuffer)
 {
@@ -6429,7 +6429,7 @@ radv_CreateBuffer(VkDevice _device, const VkBufferCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyBuffer(VkDevice _device, VkBuffer _buffer, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -6441,21 +6441,21 @@ radv_DestroyBuffer(VkDevice _device, VkBuffer _buffer, const VkAllocationCallbac
    radv_destroy_buffer(device, pAllocator, buffer);
 }
 
-VkDeviceAddress
+VKAPI_ATTR VkDeviceAddress VKAPI_CALL
 radv_GetBufferDeviceAddress(VkDevice device, const VkBufferDeviceAddressInfo *pInfo)
 {
    RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
    return radv_buffer_get_va(buffer->bo) + buffer->offset;
 }
 
-uint64_t
+VKAPI_ATTR uint64_t VKAPI_CALL
 radv_GetBufferOpaqueCaptureAddress(VkDevice device, const VkBufferDeviceAddressInfo *pInfo)
 {
    RADV_FROM_HANDLE(radv_buffer, buffer, pInfo->buffer);
    return buffer->bo ? radv_buffer_get_va(buffer->bo) + buffer->offset : 0;
 }
 
-uint64_t
+VKAPI_ATTR uint64_t VKAPI_CALL
 radv_GetDeviceMemoryOpaqueCaptureAddress(VkDevice device,
                                          const VkDeviceMemoryOpaqueCaptureAddressInfo *pInfo)
 {
@@ -7023,7 +7023,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    ds->db_stencil_read_base = ds->db_stencil_write_base = s_offs >> 8;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateFramebuffer(VkDevice _device, const VkFramebufferCreateInfo *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator, VkFramebuffer *pFramebuffer)
 {
@@ -7061,7 +7061,7 @@ radv_CreateFramebuffer(VkDevice _device, const VkFramebufferCreateInfo *pCreateI
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyFramebuffer(VkDevice _device, VkFramebuffer _fb,
                         const VkAllocationCallbacks *pAllocator)
 {
@@ -7333,7 +7333,7 @@ radv_init_sampler(struct radv_device *device, struct radv_sampler *sampler,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateSampler(VkDevice _device, const VkSamplerCreateInfo *pCreateInfo,
                    const VkAllocationCallbacks *pAllocator, VkSampler *pSampler)
 {
@@ -7362,7 +7362,7 @@ radv_CreateSampler(VkDevice _device, const VkSamplerCreateInfo *pCreateInfo,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroySampler(VkDevice _device, VkSampler _sampler, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -7416,7 +7416,7 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetMemoryFdKHR(VkDevice _device, const VkMemoryGetFdInfoKHR *pGetFdInfo, int *pFD)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -7479,7 +7479,7 @@ radv_compute_valid_memory_types(struct radv_physical_device *dev, enum radeon_bo
 
    return bits;
 }
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetMemoryFdPropertiesKHR(VkDevice _device, VkExternalMemoryHandleTypeFlagBits handleType,
                               int fd, VkMemoryFdPropertiesKHR *pMemoryFdProperties)
 {
@@ -7555,7 +7555,7 @@ radv_import_sync_fd(struct radv_device *device, int fd, uint32_t *syncobj)
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_ImportSemaphoreFdKHR(VkDevice _device,
                           const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
 {
@@ -7601,7 +7601,7 @@ radv_ImportSemaphoreFdKHR(VkDevice _device,
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetSemaphoreFdKHR(VkDevice _device, const VkSemaphoreGetFdInfoKHR *pGetFdInfo, int *pFd)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -7643,7 +7643,7 @@ radv_GetSemaphoreFdKHR(VkDevice _device, const VkSemaphoreGetFdInfoKHR *pGetFdIn
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceExternalSemaphoreProperties(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
@@ -7693,7 +7693,7 @@ radv_GetPhysicalDeviceExternalSemaphoreProperties(
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_ImportFenceFdKHR(VkDevice _device, const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -7728,7 +7728,7 @@ radv_ImportFenceFdKHR(VkDevice _device, const VkImportFenceFdInfoKHR *pImportFen
    return result;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetFenceFdKHR(VkDevice _device, const VkFenceGetFdInfoKHR *pGetFdInfo, int *pFd)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
@@ -7762,7 +7762,7 @@ radv_GetFenceFdKHR(VkDevice _device, const VkFenceGetFdInfoKHR *pGetFdInfo, int 
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceExternalFenceProperties(
    VkPhysicalDevice physicalDevice, const VkPhysicalDeviceExternalFenceInfo *pExternalFenceInfo,
    VkExternalFenceProperties *pExternalFenceProperties)
@@ -7782,7 +7782,7 @@ radv_GetPhysicalDeviceExternalFenceProperties(
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetDeviceGroupPeerMemoryFeatures(VkDevice device, uint32_t heapIndex,
                                       uint32_t localDeviceIndex, uint32_t remoteDeviceIndex,
                                       VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
@@ -7802,7 +7802,7 @@ static const VkTimeDomainEXT radv_time_domains[] = {
 #endif
 };
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetPhysicalDeviceCalibrateableTimeDomainsEXT(VkPhysicalDevice physicalDevice,
                                                   uint32_t *pTimeDomainCount,
                                                   VkTimeDomainEXT *pTimeDomains)
@@ -7838,7 +7838,7 @@ radv_clock_gettime(clockid_t clock_id)
    return (uint64_t)current.tv_sec * 1000000000ULL + current.tv_nsec;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
                                 const VkCalibratedTimestampInfoEXT *pTimestampInfos,
                                 uint64_t *pTimestamps, uint64_t *pMaxDeviation)
@@ -7927,7 +7927,7 @@ radv_GetCalibratedTimestampsEXT(VkDevice _device, uint32_t timestampCount,
 }
 #endif
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetPhysicalDeviceMultisamplePropertiesEXT(VkPhysicalDevice physicalDevice,
                                                VkSampleCountFlagBits samples,
                                                VkMultisamplePropertiesEXT *pMultisampleProperties)
@@ -7942,7 +7942,7 @@ radv_GetPhysicalDeviceMultisamplePropertiesEXT(VkPhysicalDevice physicalDevice,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetPhysicalDeviceFragmentShadingRatesKHR(
    VkPhysicalDevice physicalDevice, uint32_t *pFragmentShadingRateCount,
    VkPhysicalDeviceFragmentShadingRateKHR *pFragmentShadingRates)

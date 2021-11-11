@@ -4265,7 +4265,7 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_AllocateCommandBuffers(VkDevice _device, const VkCommandBufferAllocateInfo *pAllocateInfo,
                             VkCommandBuffer *pCommandBuffers)
 {
@@ -4318,7 +4318,7 @@ radv_AllocateCommandBuffers(VkDevice _device, const VkCommandBufferAllocateInfo 
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_FreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCommandBuffers)
 {
@@ -4335,14 +4335,14 @@ radv_FreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t com
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_ResetCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferResetFlags flags)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    return radv_reset_cmd_buffer(cmd_buffer);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -4405,7 +4405,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    return result;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer, uint32_t firstBinding,
                           uint32_t bindingCount, const VkBuffer *pBuffers,
                           const VkDeviceSize *pOffsets)
@@ -4414,7 +4414,7 @@ radv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer, uint32_t firstBinding,
                                  NULL, NULL);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer, uint32_t firstBinding,
                               uint32_t bindingCount, const VkBuffer *pBuffers,
                               const VkDeviceSize *pOffsets, const VkDeviceSize *pSizes,
@@ -4513,7 +4513,7 @@ radv_get_vgt_index_size(uint32_t type)
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset,
                         VkIndexType indexType)
 {
@@ -4559,7 +4559,7 @@ radv_bind_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint
       radv_cs_add_buffer(ws, cmd_buffer->cs, set->header.bo);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
                            VkPipelineLayout _layout, uint32_t firstSet, uint32_t descriptorSetCount,
                            const VkDescriptorSet *pDescriptorSets, uint32_t dynamicOffsetCount,
@@ -4677,7 +4677,7 @@ radv_meta_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
    radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, push_set, set);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
                              VkPipelineLayout _layout, uint32_t set, uint32_t descriptorWriteCount,
                              const VkWriteDescriptorSet *pDescriptorWrites)
@@ -4711,7 +4711,7 @@ radv_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer, VkPipelineBindPoint 
    descriptors_state->push_dirty = true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
                                          VkDescriptorUpdateTemplate descriptorUpdateTemplate,
                                          VkPipelineLayout _layout, uint32_t set, const void *pData)
@@ -4737,7 +4737,7 @@ radv_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
    descriptors_state->push_dirty = true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
                       VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size,
                       const void *pValues)
@@ -4747,7 +4747,7 @@ radv_CmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
    cmd_buffer->push_constant_stages |= stageFlags;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -4836,7 +4836,7 @@ radv_mark_descriptor_sets_dirty(struct radv_cmd_buffer *cmd_buffer, VkPipelineBi
    descriptors_state->dirty |= descriptors_state->valid;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
                      VkPipeline _pipeline)
 {
@@ -4919,7 +4919,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetViewport(VkCommandBuffer commandBuffer, uint32_t firstViewport, uint32_t viewportCount,
                     const VkViewport *pViewports)
 {
@@ -4950,7 +4950,7 @@ radv_CmdSetViewport(VkCommandBuffer commandBuffer, uint32_t firstViewport, uint3
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetScissor(VkCommandBuffer commandBuffer, uint32_t firstScissor, uint32_t scissorCount,
                    const VkRect2D *pScissors)
 {
@@ -4976,7 +4976,7 @@ radv_CmdSetScissor(VkCommandBuffer commandBuffer, uint32_t firstScissor, uint32_
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -4988,7 +4988,7 @@ radv_CmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth)
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDepthBias(VkCommandBuffer commandBuffer, float depthBiasConstantFactor,
                      float depthBiasClamp, float depthBiasSlopeFactor)
 {
@@ -5008,7 +5008,7 @@ radv_CmdSetDepthBias(VkCommandBuffer commandBuffer, float depthBiasConstantFacto
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetBlendConstants(VkCommandBuffer commandBuffer, const float blendConstants[4])
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5022,7 +5022,7 @@ radv_CmdSetBlendConstants(VkCommandBuffer commandBuffer, const float blendConsta
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDepthBounds(VkCommandBuffer commandBuffer, float minDepthBounds, float maxDepthBounds)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5039,7 +5039,7 @@ radv_CmdSetDepthBounds(VkCommandBuffer commandBuffer, float minDepthBounds, floa
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer, VkStencilFaceFlags faceMask,
                               uint32_t compareMask)
 {
@@ -5061,7 +5061,7 @@ radv_CmdSetStencilCompareMask(VkCommandBuffer commandBuffer, VkStencilFaceFlags 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer, VkStencilFaceFlags faceMask,
                             uint32_t writeMask)
 {
@@ -5083,7 +5083,7 @@ radv_CmdSetStencilWriteMask(VkCommandBuffer commandBuffer, VkStencilFaceFlags fa
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetStencilReference(VkCommandBuffer commandBuffer, VkStencilFaceFlags faceMask,
                             uint32_t reference)
 {
@@ -5105,7 +5105,7 @@ radv_CmdSetStencilReference(VkCommandBuffer commandBuffer, VkStencilFaceFlags fa
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDiscardRectangleEXT(VkCommandBuffer commandBuffer, uint32_t firstDiscardRectangle,
                                uint32_t discardRectangleCount, const VkRect2D *pDiscardRectangles)
 {
@@ -5127,7 +5127,7 @@ radv_CmdSetDiscardRectangleEXT(VkCommandBuffer commandBuffer, uint32_t firstDisc
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
                               const VkSampleLocationsInfoEXT *pSampleLocationsInfo)
 {
@@ -5145,7 +5145,7 @@ radv_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetLineStippleEXT(VkCommandBuffer commandBuffer, uint32_t lineStippleFactor,
                           uint16_t lineStipplePattern)
 {
@@ -5162,7 +5162,7 @@ radv_CmdSetLineStippleEXT(VkCommandBuffer commandBuffer, uint32_t lineStippleFac
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetCullModeEXT(VkCommandBuffer commandBuffer, VkCullModeFlags cullMode)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5176,7 +5176,7 @@ radv_CmdSetCullModeEXT(VkCommandBuffer commandBuffer, VkCullModeFlags cullMode)
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_CULL_MODE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetFrontFaceEXT(VkCommandBuffer commandBuffer, VkFrontFace frontFace)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5190,7 +5190,7 @@ radv_CmdSetFrontFaceEXT(VkCommandBuffer commandBuffer, VkFrontFace frontFace)
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetPrimitiveTopologyEXT(VkCommandBuffer commandBuffer,
                                 VkPrimitiveTopology primitiveTopology)
 {
@@ -5206,21 +5206,21 @@ radv_CmdSetPrimitiveTopologyEXT(VkCommandBuffer commandBuffer,
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetViewportWithCountEXT(VkCommandBuffer commandBuffer, uint32_t viewportCount,
                                 const VkViewport *pViewports)
 {
    radv_CmdSetViewport(commandBuffer, 0, viewportCount, pViewports);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetScissorWithCountEXT(VkCommandBuffer commandBuffer, uint32_t scissorCount,
                                const VkRect2D *pScissors)
 {
    radv_CmdSetScissor(commandBuffer, 0, scissorCount, pScissors);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDepthTestEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthTestEnable)
 
 {
@@ -5235,7 +5235,7 @@ radv_CmdSetDepthTestEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthTestE
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDepthWriteEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthWriteEnable)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5249,7 +5249,7 @@ radv_CmdSetDepthWriteEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthWrit
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDepthCompareOpEXT(VkCommandBuffer commandBuffer, VkCompareOp depthCompareOp)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5263,7 +5263,7 @@ radv_CmdSetDepthCompareOpEXT(VkCommandBuffer commandBuffer, VkCompareOp depthCom
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDepthBoundsTestEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthBoundsTestEnable)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5277,7 +5277,7 @@ radv_CmdSetDepthBoundsTestEnableEXT(VkCommandBuffer commandBuffer, VkBool32 dept
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetStencilTestEnableEXT(VkCommandBuffer commandBuffer, VkBool32 stencilTestEnable)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5291,7 +5291,7 @@ radv_CmdSetStencilTestEnableEXT(VkCommandBuffer commandBuffer, VkBool32 stencilT
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetStencilOpEXT(VkCommandBuffer commandBuffer, VkStencilFaceFlags faceMask,
                         VkStencilOp failOp, VkStencilOp passOp, VkStencilOp depthFailOp,
                         VkCompareOp compareOp)
@@ -5328,7 +5328,7 @@ radv_CmdSetStencilOpEXT(VkCommandBuffer commandBuffer, VkStencilFaceFlags faceMa
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetFragmentShadingRateKHR(VkCommandBuffer commandBuffer, const VkExtent2D *pFragmentSize,
                                   const VkFragmentShadingRateCombinerOpKHR combinerOps[2])
 {
@@ -5348,7 +5348,7 @@ radv_CmdSetFragmentShadingRateKHR(VkCommandBuffer commandBuffer, const VkExtent2
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDepthBiasEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthBiasEnable)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5362,7 +5362,7 @@ radv_CmdSetDepthBiasEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthBiasE
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer, VkBool32 primitiveRestartEnable)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5376,7 +5376,7 @@ radv_CmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer, VkBool32 pri
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
                                       VkBool32 rasterizerDiscardEnable)
 {
@@ -5391,13 +5391,13 @@ radv_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer, uint32_t patchControlPoints)
 {
    /* not implemented */
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer, VkLogicOp logicOp)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -5412,7 +5412,7 @@ radv_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer, VkLogicOp logicOp)
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmentCount,
                                const VkBool32 *pColorWriteEnables)
 {
@@ -5434,7 +5434,7 @@ radv_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmen
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingDescriptionCount,
                           const VkVertexInputBindingDescription2EXT *pVertexBindingDescriptions,
                           uint32_t vertexAttributeDescriptionCount,
@@ -5515,7 +5515,7 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_STATE;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCmdBuffers)
 {
@@ -5628,7 +5628,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_COMPUTE);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateCommandPool(VkDevice _device, const VkCommandPoolCreateInfo *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator, VkCommandPool *pCmdPool)
 {
@@ -5657,7 +5657,7 @@ radv_CreateCommandPool(VkDevice _device, const VkCommandPoolCreateInfo *pCreateI
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyCommandPool(VkDevice _device, VkCommandPool commandPool,
                         const VkAllocationCallbacks *pAllocator)
 {
@@ -5681,7 +5681,7 @@ radv_DestroyCommandPool(VkDevice _device, VkCommandPool commandPool,
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_ResetCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolResetFlags flags)
 {
    RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
@@ -5697,7 +5697,7 @@ radv_ResetCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolR
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_TrimCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolTrimFlags flags)
 {
    RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
@@ -5874,7 +5874,7 @@ radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
       return;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                          const VkRenderPassBeginInfo *pRenderPassBeginInfo,
                          const VkSubpassBeginInfo *pSubpassBeginInfo)
@@ -5886,7 +5886,7 @@ radv_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdNextSubpass2(VkCommandBuffer commandBuffer, const VkSubpassBeginInfo *pSubpassBeginInfo,
                      const VkSubpassEndInfo *pSubpassEndInfo)
 {
@@ -6666,7 +6666,7 @@ radv_after_draw(struct radv_cmd_buffer *cmd_buffer)
    radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_PS_PARTIAL_FLUSH);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDraw(VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t instanceCount,
              uint32_t firstVertex, uint32_t firstInstance)
 {
@@ -6687,7 +6687,7 @@ radv_CmdDraw(VkCommandBuffer commandBuffer, uint32_t vertexCount, uint32_t insta
    radv_after_draw(cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawMultiEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawInfoEXT *pVertexInfo,
                           uint32_t instanceCount, uint32_t firstInstance, uint32_t stride)
 {
@@ -6710,7 +6710,7 @@ radv_CmdDrawMultiEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const Vk
    radv_after_draw(cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t instanceCount,
                     uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
 {
@@ -6731,8 +6731,9 @@ radv_CmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t
    radv_after_draw(cmd_buffer);
 }
 
-void radv_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT *pIndexInfo,
-                                  uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t *pVertexOffset)
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT *pIndexInfo,
+                            uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t *pVertexOffset)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_draw_info info;
@@ -6754,7 +6755,7 @@ void radv_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCou
    radv_after_draw(cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDeviceSize offset,
                      uint32_t drawCount, uint32_t stride)
 {
@@ -6777,7 +6778,7 @@ radv_CmdDrawIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDeviceSi
    radv_after_draw(cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDeviceSize offset,
                             uint32_t drawCount, uint32_t stride)
 {
@@ -6800,7 +6801,7 @@ radv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkD
    radv_after_draw(cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDeviceSize offset,
                           VkBuffer _countBuffer, VkDeviceSize countBufferOffset,
                           uint32_t maxDrawCount, uint32_t stride)
@@ -6826,7 +6827,7 @@ radv_CmdDrawIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDev
    radv_after_draw(cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer, VkBuffer _buffer,
                                  VkDeviceSize offset, VkBuffer _countBuffer,
                                  VkDeviceSize countBufferOffset, uint32_t maxDrawCount,
@@ -7089,7 +7090,7 @@ radv_compute_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_disp
                  VK_PIPELINE_BIND_POINT_COMPUTE);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDispatchBase(VkCommandBuffer commandBuffer, uint32_t base_x, uint32_t base_y,
                      uint32_t base_z, uint32_t x, uint32_t y, uint32_t z)
 {
@@ -7106,13 +7107,13 @@ radv_CmdDispatchBase(VkCommandBuffer commandBuffer, uint32_t base_x, uint32_t ba
    radv_compute_dispatch(cmd_buffer, &info);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDispatch(VkCommandBuffer commandBuffer, uint32_t x, uint32_t y, uint32_t z)
 {
    radv_CmdDispatchBase(commandBuffer, 0, 0, 0, x, y, z);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer _buffer, VkDeviceSize offset)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -7189,7 +7190,7 @@ radv_rt_bind_tables(struct radv_cmd_buffer *cmd_buffer,
    return true;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdTraceRaysKHR(VkCommandBuffer commandBuffer,
                      const VkStridedDeviceAddressRegionKHR *pRaygenShaderBindingTable,
                      const VkStridedDeviceAddressRegionKHR *pMissShaderBindingTable,
@@ -7249,7 +7250,7 @@ radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size)
       MAX2(cmd_buffer->compute_scratch_size_per_wave_needed, scratch_bytes_per_wave);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetRayTracingPipelineStackSizeKHR(VkCommandBuffer commandBuffer, uint32_t size)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -7271,7 +7272,7 @@ radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.subpass_sample_locs = NULL;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pSubpassEndInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -7749,7 +7750,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, uint32_t memoryBarrierCount,
    radv_describe_barrier_end(cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
                         VkPipelineStageFlags destStageMask, VkBool32 byRegion,
                         uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
@@ -7846,7 +7847,7 @@ write_event(struct radv_cmd_buffer *cmd_buffer, struct radv_event *event,
    assert(cmd_buffer->cs->cdw <= cdw_max);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetEvent(VkCommandBuffer commandBuffer, VkEvent _event, VkPipelineStageFlags stageMask)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -7855,7 +7856,7 @@ radv_CmdSetEvent(VkCommandBuffer commandBuffer, VkEvent _event, VkPipelineStageF
    write_event(cmd_buffer, event, stageMask, 1);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdResetEvent(VkCommandBuffer commandBuffer, VkEvent _event, VkPipelineStageFlags stageMask)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -7864,7 +7865,7 @@ radv_CmdResetEvent(VkCommandBuffer commandBuffer, VkEvent _event, VkPipelineStag
    write_event(cmd_buffer, event, stageMask, 0);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdWaitEvents(VkCommandBuffer commandBuffer, uint32_t eventCount, const VkEvent *pEvents,
                    VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
                    uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
@@ -7885,14 +7886,14 @@ radv_CmdWaitEvents(VkCommandBuffer commandBuffer, uint32_t eventCount, const VkE
                 pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers, &info);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetDeviceMask(VkCommandBuffer commandBuffer, uint32_t deviceMask)
 {
    /* No-op */
 }
 
 /* VK_EXT_conditional_rendering */
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBeginConditionalRenderingEXT(
    VkCommandBuffer commandBuffer,
    const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
@@ -7977,7 +7978,7 @@ radv_CmdBeginConditionalRenderingEXT(
    cmd_buffer->state.predication_va = va;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -7993,7 +7994,7 @@ radv_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
 }
 
 /* VK_EXT_transform_feedback */
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer, uint32_t firstBinding,
                                         uint32_t bindingCount, const VkBuffer *pBuffers,
                                         const VkDeviceSize *pOffsets, const VkDeviceSize *pSizes)
@@ -8213,7 +8214,7 @@ gfx10_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer, uint32_t firstCou
    radv_set_streamout_enable(cmd_buffer, true);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCounterBuffer,
                                   uint32_t counterBufferCount, const VkBuffer *pCounterBuffers,
                                   const VkDeviceSize *pCounterBufferOffsets)
@@ -8321,7 +8322,7 @@ gfx10_emit_streamout_end(struct radv_cmd_buffer *cmd_buffer, uint32_t firstCount
    radv_set_streamout_enable(cmd_buffer, false);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCounterBuffer,
                                 uint32_t counterBufferCount, const VkBuffer *pCounterBuffers,
                                 const VkDeviceSize *pCounterBufferOffsets)
@@ -8337,7 +8338,7 @@ radv_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstCou
    }
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer, uint32_t instanceCount,
                                  uint32_t firstInstance, VkBuffer _counterBuffer,
                                  VkDeviceSize counterBufferOffset, uint32_t counterOffset,
@@ -8364,7 +8365,7 @@ radv_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer, uint32_t instanc
 }
 
 /* VK_AMD_buffer_marker */
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdWriteBufferMarkerAMD(VkCommandBuffer commandBuffer, VkPipelineStageFlagBits pipelineStage,
                              VkBuffer dstBuffer, VkDeviceSize dstOffset, uint32_t marker)
 {

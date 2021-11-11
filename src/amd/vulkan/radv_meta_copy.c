@@ -243,7 +243,7 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
    radv_meta_restore(&saved_state, cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
                               const VkCopyBufferToImageInfo2KHR *pCopyBufferToImageInfo)
 {
@@ -361,7 +361,7 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
    radv_meta_restore(&saved_state, cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
                               const VkCopyImageToBufferInfo2KHR *pCopyImageToBufferInfo)
 {
@@ -577,7 +577,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    radv_meta_restore(&saved_state, cmd_buffer);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdCopyImage2KHR(VkCommandBuffer commandBuffer, const VkCopyImageInfo2KHR *pCopyImageInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);

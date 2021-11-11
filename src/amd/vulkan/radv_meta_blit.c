@@ -626,7 +626,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    radv_DestroySampler(radv_device_to_handle(device), sampler, &cmd_buffer->pool->alloc);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdBlitImage2KHR(VkCommandBuffer commandBuffer, const VkBlitImageInfo2KHR *pBlitImageInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);

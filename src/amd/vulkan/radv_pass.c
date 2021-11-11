@@ -310,7 +310,7 @@ radv_num_subpass_attachments2(const VkSubpassDescription2 *desc)
           (vrs && vrs->pFragmentShadingRateAttachment);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateRenderPass2(VkDevice _device, const VkRenderPassCreateInfo2 *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator, VkRenderPass *pRenderPass)
 {
@@ -486,7 +486,7 @@ radv_CreateRenderPass2(VkDevice _device, const VkRenderPassCreateInfo2 *pCreateI
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_DestroyRenderPass(VkDevice _device, VkRenderPass _pass,
                        const VkAllocationCallbacks *pAllocator)
 {
@@ -499,7 +499,7 @@ radv_DestroyRenderPass(VkDevice _device, VkRenderPass _pass,
    radv_destroy_render_pass(device, pAllocator, pass);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 radv_GetRenderAreaGranularity(VkDevice device, VkRenderPass renderPass, VkExtent2D *pGranularity)
 {
    pGranularity->width = 1;

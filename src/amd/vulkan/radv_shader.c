@@ -2168,7 +2168,7 @@ radv_compute_spi_ps_input(const struct radv_device *device,
    return spi_ps_input;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetShaderInfoAMD(VkDevice _device, VkPipeline _pipeline, VkShaderStageFlagBits shaderStage,
                       VkShaderInfoTypeAMD infoType, size_t *pInfoSize, void *pInfo)
 {
