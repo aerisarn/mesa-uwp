@@ -1424,8 +1424,16 @@ void util_blitter_draw_rectangle(struct blitter_context *blitter,
             ctx->vertices[i][1][2] = attrib->texcoord.z;
             ctx->vertices[i][1][3] = attrib->texcoord.w;
          }
-         FALLTHROUGH;
+         set_texcoords_in_vertices(attrib, &ctx->vertices[0][1][0], 8);
+         break;
       case UTIL_BLITTER_ATTRIB_TEXCOORD_XY:
+         /* We clean-up the ZW components, just in case we used before XYZW,
+          * to avoid feeding in the shader with wrong values (like on the lod)
+          */
+         for (i = 0; i < 4; i++) {
+            ctx->vertices[i][1][2] = 0;
+            ctx->vertices[i][1][3] = 0;
+         }
          set_texcoords_in_vertices(attrib, &ctx->vertices[0][1][0], 8);
          break;
 
