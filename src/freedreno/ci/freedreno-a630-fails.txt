@@ -1,6 +1,9 @@
-# New in VK-GL-CTS 1.2.7.0
+# Test bug, using GLSL 4.20 on a 3.3 context.
+# Broken in VK-GL-CTS e5c45899ed7e90fb616ccd1d3c66e6eded120684
 KHR-GL33.cull_distance.coverage,Fail
 
+# Framework bug, missing getProcAddress method.
+# https://gerrit.khronos.org/c/vk-gl-cts/+/8405
 KHR-GL33.transform_feedback.capture_vertex_interleaved_test,Fail
 KHR-GL33.transform_feedback.capture_vertex_separate_test,Fail
 KHR-GL33.transform_feedback.discard_vertex_test,Fail
