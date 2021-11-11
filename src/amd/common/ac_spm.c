@@ -133,8 +133,8 @@ ac_spm_map_counter(struct ac_spm_trace_data *spm_trace,
          /* Determine if the counter is even or odd. */
          counter->is_even = !(index % 2);
 
-         /* Determine the SPM wire (lower 16-bits for even, upper for odd). */
-         *spm_wire = !counter->is_even + i;
+         /* Determine the SPM wire (one wire holds two 16-bit counters). */
+         *spm_wire = !!(index >= 2);
 
          return true;
       }
