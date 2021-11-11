@@ -8198,6 +8198,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       } else if (ctx->stage.hw == HWStage::GS || ctx->stage.hw == HWStage::NGG) {
          bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), thread_id_in_threadgroup(ctx));
          break;
+      } else if (ctx->program->workgroup_size <= ctx->program->wave_size) {
+         emit_mbcnt(ctx, get_ssa_temp(ctx, &instr->dest.ssa));
+         break;
       }
 
       Temp id = emit_mbcnt(ctx, bld.tmp(v1));
