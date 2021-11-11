@@ -25,7 +25,7 @@ KHR-GLES31.core.tessellation_shader.tessellation_shader_point_mode.point_renderi
 #  Invalid rendering result at esextcTessellationShaderBarrier.cpp:504"
 KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guarded_read_calls,Fail
 
-# no debug info in the qpa
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/5582
 KHR-GLES31.core.texture_cube_map_array.color_depth_attachments,Fail
 
 # rendering errors in ~4x4 blocks around the bottom side of the diagonal for the quad
