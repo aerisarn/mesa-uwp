@@ -26,38 +26,6 @@
 #include "vk_format_info.h"
 #include "vk_util.h"
 
-const struct v3dv_dynamic_state default_dynamic_state = {
-   .viewport = {
-      .count = 0,
-   },
-   .scissor = {
-      .count = 0,
-   },
-   .stencil_compare_mask =
-   {
-     .front = ~0u,
-     .back = ~0u,
-   },
-   .stencil_write_mask =
-   {
-     .front = ~0u,
-     .back = ~0u,
-   },
-   .stencil_reference =
-   {
-     .front = 0u,
-     .back = 0u,
-   },
-   .blend_constants = { 0.0f, 0.0f, 0.0f, 0.0f },
-   .depth_bias = {
-      .constant_factor = 0.0f,
-      .depth_bias_clamp = 0.0f,
-      .slope_factor = 0.0f,
-   },
-   .line_width = 1.0f,
-   .color_write_enable = (1ull << (4 * V3D_MAX_DRAW_BUFFERS)) - 1,
-};
-
 void
 v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
 {

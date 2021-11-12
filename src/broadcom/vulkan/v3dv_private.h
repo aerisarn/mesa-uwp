@@ -843,8 +843,6 @@ struct v3dv_dynamic_state {
    uint32_t color_write_enable;
 };
 
-extern const struct v3dv_dynamic_state default_dynamic_state;
-
 void v3dv_viewport_compute_xform(const VkViewport *viewport,
                                  float scale[3],
                                  float translate[3]);
