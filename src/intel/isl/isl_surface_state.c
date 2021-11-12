@@ -532,6 +532,14 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
 #if GFX_VER >= 8
    assert(GFX_VER < 12 || info->surf->tiling != ISL_TILING_W);
+
+   /* From the SKL+ PRMs, RENDER_SURFACE_STATE:TileMode,
+    *
+    *    If Surface Format is ASTC*, this field must be TILEMODE_YMAJOR.
+    */
+   if (isl_format_get_layout(info->view->format)->txc == ISL_TXC_ASTC)
+      assert(info->surf->tiling == ISL_TILING_Y0);
+
    s.TileMode = isl_encode_tiling[info->surf->tiling];
 #else
    s.TiledSurface = info->surf->tiling != ISL_TILING_LINEAR,
