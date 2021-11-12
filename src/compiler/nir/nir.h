@@ -5426,6 +5426,7 @@ typedef struct {
    nir_variable_mode modes;
    nir_variable_mode robust_modes;
    void *cb_data;
+   bool has_shared2_amd;
 } nir_load_store_vectorize_options;
 
 bool nir_opt_load_store_vectorize(nir_shader *shader, const nir_load_store_vectorize_options *options);
