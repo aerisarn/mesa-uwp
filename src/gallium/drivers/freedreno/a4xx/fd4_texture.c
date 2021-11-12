@@ -96,6 +96,7 @@ fd4_sampler_state_create(struct pipe_context *pctx,
       A4XX_TEX_SAMP_0_XY_MAG(tex_filter(cso->mag_img_filter, aniso)) |
       A4XX_TEX_SAMP_0_XY_MIN(tex_filter(cso->min_img_filter, aniso)) |
       A4XX_TEX_SAMP_0_ANISO(aniso) |
+      A4XX_TEX_SAMP_0_LOD_BIAS(cso->lod_bias) |
       A4XX_TEX_SAMP_0_WRAP_S(tex_clamp(cso->wrap_s, &so->needs_border)) |
       A4XX_TEX_SAMP_0_WRAP_T(tex_clamp(cso->wrap_t, &so->needs_border)) |
       A4XX_TEX_SAMP_0_WRAP_R(tex_clamp(cso->wrap_r, &so->needs_border));
@@ -106,9 +107,15 @@ fd4_sampler_state_create(struct pipe_context *pctx,
       COND(!cso->normalized_coords, A4XX_TEX_SAMP_1_UNNORM_COORDS);
 
    if (cso->min_mip_filter != PIPE_TEX_MIPFILTER_NONE) {
-      so->texsamp0 |= A4XX_TEX_SAMP_0_LOD_BIAS(cso->lod_bias);
       so->texsamp1 |= A4XX_TEX_SAMP_1_MIN_LOD(cso->min_lod) |
                       A4XX_TEX_SAMP_1_MAX_LOD(cso->max_lod);
+   } else {
+      /* If we're not doing mipmap filtering, we still need a slightly > 0
+       * LOD clamp so the HW can decide between min and mag filtering of
+       * level 0.
+       */
+      so->texsamp1 |= A4XX_TEX_SAMP_1_MIN_LOD(MIN2(cso->min_lod, 0.125)) |
+                      A4XX_TEX_SAMP_1_MAX_LOD(MIN2(cso->max_lod, 0.125));
    }
 
    if (cso->compare_mode)
