@@ -3152,6 +3152,38 @@ static void visit_store_shared(struct ac_nir_context *ctx, const nir_intrinsic_i
    }
 }
 
+static LLVMValueRef visit_load_shared2_amd(struct ac_nir_context *ctx,
+                                           const nir_intrinsic_instr *instr)
+{
+   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0], instr->dest.ssa.bit_size, 0);
+
+   LLVMValueRef values[2];
+   uint8_t offsets[] = {nir_intrinsic_offset0(instr), nir_intrinsic_offset1(instr)};
+   unsigned stride = nir_intrinsic_st64(instr) ? 64 : 1;
+   for (unsigned i = 0; i < 2; i++) {
+      LLVMValueRef index = LLVMConstInt(ctx->ac.i32, offsets[i] * stride, 0);
+      LLVMValueRef derived_ptr = LLVMBuildGEP(ctx->ac.builder, ptr, &index, 1, "");
+      values[i] = LLVMBuildLoad(ctx->ac.builder, derived_ptr, "");
+   }
+
+   LLVMValueRef ret = ac_build_gather_values(&ctx->ac, values, 2);
+   return LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->dest.ssa), "");
+}
+
+static void visit_store_shared2_amd(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
+{
+   LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[1], instr->src[0].ssa->bit_size, 0);
+   LLVMValueRef src = get_src(ctx, instr->src[0]);
+
+   uint8_t offsets[] = {nir_intrinsic_offset0(instr), nir_intrinsic_offset1(instr)};
+   unsigned stride = nir_intrinsic_st64(instr) ? 64 : 1;
+   for (unsigned i = 0; i < 2; i++) {
+      LLVMValueRef index = LLVMConstInt(ctx->ac.i32, offsets[i] * stride, 0);
+      LLVMValueRef derived_ptr = LLVMBuildGEP(ctx->ac.builder, ptr, &index, 1, "");
+      LLVMBuildStore(ctx->ac.builder, ac_llvm_extract_elem(&ctx->ac, src, i), derived_ptr);
+   }
+}
+
 static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr,
                                      LLVMValueRef ptr, int src_idx)
 {
@@ -3819,6 +3851,12 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_store_shared:
       visit_store_shared(ctx, instr);
+      break;
+   case nir_intrinsic_load_shared2_amd:
+      result = visit_load_shared2_amd(ctx, instr);
+      break;
+   case nir_intrinsic_store_shared2_amd:
+      visit_store_shared2_amd(ctx, instr);
       break;
    case nir_intrinsic_bindless_image_samples:
    case nir_intrinsic_image_deref_samples:
