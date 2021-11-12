@@ -600,14 +600,16 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
 
    enum isl_format base_isl_format = base_plane_format.isl_format;
 
-   /* ASTC textures must be in Y-tiled memory, and we reject compressed formats
-    * with modifiers.
-    */
-   if (vk_tiling != VK_IMAGE_TILING_OPTIMAL &&
-       isl_format_get_layout(plane_format.isl_format)->txc == ISL_TXC_ASTC)
-      return 0;
-
    if (isl_format_supports_sampling(devinfo, plane_format.isl_format)) {
+      /* ASTC textures must be in Y-tiled memory, and we reject compressed
+       * formats with modifiers. We do however interpret ASTC textures with
+       * uncompressed formats during data transfers.
+       */
+      if (vk_tiling != VK_IMAGE_TILING_OPTIMAL &&
+          isl_format_get_layout(plane_format.isl_format)->txc == ISL_TXC_ASTC)
+         return VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT_KHR |
+                VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT_KHR;
+
       flags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT_KHR;
 
       if (devinfo->ver >= 9)

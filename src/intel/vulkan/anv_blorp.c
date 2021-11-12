@@ -546,10 +546,8 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
       buffer_row_pitch;
 
    /* Some formats have additional restrictions which may cause ISL to
-    * fail to create a surface for us.  Some examples include:
-    *
-    *    1. ASTC formats are not allowed to be LINEAR and must be tiled
-    *    2. YCbCr formats have to have 2-pixel aligned strides
+    * fail to create a surface for us.  For example, YCbCr formats
+    * have to have 2-pixel aligned strides.
     *
     * To avoid these issues, we always bind the buffer as if it's a
     * "normal" format like RGBA32_UINT.  Since we're using blorp_copy,
