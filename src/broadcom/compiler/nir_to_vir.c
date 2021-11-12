@@ -2417,15 +2417,17 @@ ntq_setup_outputs(struct v3d_compile *c)
 
                 switch (var->data.location) {
                 case FRAG_RESULT_COLOR:
-                        c->output_color_var[0] = var;
-                        c->output_color_var[1] = var;
-                        c->output_color_var[2] = var;
-                        c->output_color_var[3] = var;
+                        for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++)
+                                c->output_color_var[i] = var;
                         break;
                 case FRAG_RESULT_DATA0:
                 case FRAG_RESULT_DATA1:
                 case FRAG_RESULT_DATA2:
                 case FRAG_RESULT_DATA3:
+                case FRAG_RESULT_DATA4:
+                case FRAG_RESULT_DATA5:
+                case FRAG_RESULT_DATA6:
+                case FRAG_RESULT_DATA7:
                         c->output_color_var[var->data.location -
                                             FRAG_RESULT_DATA0] = var;
                         break;

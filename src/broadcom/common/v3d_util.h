@@ -38,8 +38,10 @@ v3d_csd_choose_workgroups_per_supergroup(struct v3d_device_info *devinfo,
                                          uint32_t wg_size);
 
 void
-v3d_choose_tile_size(uint32_t color_attachment_count, uint32_t max_color_bpp,
-                     bool msaa, bool double_buffer,
+v3d_choose_tile_size(const struct v3d_device_info *devinfo,
+                     uint32_t color_attachment_count,
+                     uint32_t max_color_bpp, bool msaa,
+                     bool double_buffer,
                      uint32_t *width, uint32_t *height);
 
 uint32_t

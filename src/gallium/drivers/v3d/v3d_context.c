@@ -220,7 +220,8 @@ v3d_flag_dirty_sampler_state(struct v3d_context *v3d,
 }
 
 void
-v3d_get_tile_buffer_size(bool is_msaa,
+v3d_get_tile_buffer_size(const struct v3d_device_info *devinfo,
+                         bool is_msaa,
                          bool double_buffer,
                          uint32_t nr_cbufs,
                          struct pipe_surface **cbufs,
@@ -247,7 +248,7 @@ v3d_get_tile_buffer_size(bool is_msaa,
                 *max_bpp = MAX2(*max_bpp, bsurf->internal_bpp);
         }
 
-        v3d_choose_tile_size(max_cbuf_idx + 1, *max_bpp,
+        v3d_choose_tile_size(devinfo, max_cbuf_idx + 1, *max_bpp,
                              is_msaa, double_buffer,
                              tile_width, tile_height);
 }

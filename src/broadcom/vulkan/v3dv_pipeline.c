@@ -2657,6 +2657,7 @@ pipeline_init_dynamic_state(
    const VkPipelineColorWriteCreateInfoEXT *pColorWriteState)
 {
    /* Initialize to default values */
+   const struct v3d_device_info *devinfo = &pipeline->device->devinfo;
    struct v3dv_dynamic_state *dynamic = &pipeline->dynamic_state;
    memset(dynamic, 0, sizeof(*dynamic));
    dynamic->stencil_compare_mask.front = ~0;
@@ -2664,7 +2665,8 @@ pipeline_init_dynamic_state(
    dynamic->stencil_write_mask.front = ~0;
    dynamic->stencil_write_mask.back = ~0;
    dynamic->line_width = 1.0f;
-   dynamic->color_write_enable = (1ull << (4 * V3D_MAX_DRAW_BUFFERS)) - 1;
+   dynamic->color_write_enable =
+      (1ull << (4 * V3D_MAX_RENDER_TARGETS(devinfo->ver))) - 1;
 
    /* Create a mask of enabled dynamic states */
    uint32_t dynamic_states = 0;

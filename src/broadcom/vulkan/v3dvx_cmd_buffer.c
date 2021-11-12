@@ -1550,10 +1550,13 @@ v3dX(cmd_buffer_emit_blend)(struct v3dv_cmd_buffer *cmd_buffer)
    struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
+   const struct v3d_device_info *devinfo = &cmd_buffer->device->devinfo;
+   const uint32_t max_color_rts = V3D_MAX_RENDER_TARGETS(devinfo->ver);
+
    const uint32_t blend_packets_size =
       cl_packet_length(BLEND_ENABLES) +
       cl_packet_length(BLEND_CONSTANT_COLOR) +
-      cl_packet_length(BLEND_CFG) * V3D_MAX_DRAW_BUFFERS;
+      cl_packet_length(BLEND_CFG) * max_color_rts;
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, blend_packets_size);
    v3dv_return_if_oom(cmd_buffer, NULL);
@@ -1565,7 +1568,7 @@ v3dX(cmd_buffer_emit_blend)(struct v3dv_cmd_buffer *cmd_buffer)
          }
       }
 
-      for (uint32_t i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+      for (uint32_t i = 0; i < max_color_rts; i++) {
          if (pipeline->blend.enables & (1 << i))
             cl_emit_prepacked(&job->bcl, &pipeline->blend.cfg[i]);
       }

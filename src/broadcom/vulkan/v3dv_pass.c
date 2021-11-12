@@ -322,11 +322,11 @@ subpass_get_granularity(struct v3dv_device *device,
    /* Granularity is defined by the tile size */
    assert(subpass_idx < pass->subpass_count);
    struct v3dv_subpass *subpass = &pass->subpasses[subpass_idx];
-   const uint32_t color_attachment_count = subpass->color_count;
+   const uint32_t color_count = subpass->color_count;
 
    bool msaa = false;
    uint32_t max_bpp = 0;
-   for (uint32_t i = 0; i < color_attachment_count; i++) {
+   for (uint32_t i = 0; i < color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
       if (attachment_idx == VK_ATTACHMENT_UNUSED)
          continue;
@@ -349,7 +349,7 @@ subpass_get_granularity(struct v3dv_device *device,
     * heuristics so we choose a conservative granularity here, with it disabled.
     */
    uint32_t width, height;
-   v3d_choose_tile_size(color_attachment_count, max_bpp, msaa,
+   v3d_choose_tile_size(&device->devinfo, color_count, max_bpp, msaa,
                         false /* double-buffer */, &width, &height);
    *granularity = (VkExtent2D) {
       .width = width,

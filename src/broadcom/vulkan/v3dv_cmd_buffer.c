@@ -366,7 +366,8 @@ job_compute_frame_tiling(struct v3dv_job *job,
    /* Double-buffer is incompatible with MSAA */
    assert(!tiling->msaa || !tiling->double_buffer);
 
-   v3d_choose_tile_size(render_target_count, max_internal_bpp,
+   v3d_choose_tile_size(&job->device->devinfo,
+                        render_target_count, max_internal_bpp,
                         tiling->msaa, tiling->double_buffer,
                         &tiling->tile_width, &tiling->tile_height);
 
@@ -1375,7 +1376,7 @@ cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
    }
 
    uint32_t att_count = 0;
-   VkClearAttachment atts[V3D_MAX_DRAW_BUFFERS + 1]; /* 4 color + D/S */
+   VkClearAttachment atts[V3D_MAX_DRAW_BUFFERS + 1]; /* +1 for D/S */
 
    /* We only need to emit subpass clears as draw calls for color attachments
     * if the render area is not aligned to tile boundaries.

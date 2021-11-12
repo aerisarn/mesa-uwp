@@ -49,7 +49,6 @@ vk_to_v3d_compare_func[] = {
    [VK_COMPARE_OP_ALWAYS]                       = V3D_COMPARE_FUNC_ALWAYS,
 };
 
-
 static union pipe_color_union encode_border_color(
    const VkSamplerCustomBorderColorCreateInfoEXT *bc_info)
 {

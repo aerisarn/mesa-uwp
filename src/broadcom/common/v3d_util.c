@@ -88,8 +88,10 @@ v3d_csd_choose_workgroups_per_supergroup(struct v3d_device_info *devinfo,
 }
 
 void
-v3d_choose_tile_size(uint32_t color_attachment_count, uint32_t max_color_bpp,
-                     bool msaa, bool double_buffer,
+v3d_choose_tile_size(const struct v3d_device_info *devinfo,
+                     uint32_t color_attachment_count,
+                     uint32_t max_color_bpp, bool msaa,
+                     bool double_buffer,
                      uint32_t *width, uint32_t *height)
 {
    static const uint8_t tile_sizes[] = {
@@ -103,7 +105,9 @@ v3d_choose_tile_size(uint32_t color_attachment_count, uint32_t max_color_bpp,
    };
 
    uint32_t idx = 0;
-   if (color_attachment_count > 2)
+   if (color_attachment_count > 4)
+      idx += 3;
+   else if (color_attachment_count > 2)
       idx += 2;
    else if (color_attachment_count > 1)
       idx += 1;
@@ -116,6 +120,45 @@ v3d_choose_tile_size(uint32_t color_attachment_count, uint32_t max_color_bpp,
       idx += 1;
 
    idx += max_color_bpp;
+
+   if (devinfo->ver >= 71) {
+      /* In V3D 7.x the TLB has an auxiliary buffer of 8KB that will be
+       * automatically used for depth instead of the main 16KB depth TLB buffer
+       * when the depth tile fits in the auxiliary buffer, allowing the hardware
+       * to allocate the 16KB from the main depth TLB to the color TLB. If
+       * we can do that, then we are effectively doubling the memory we have
+       * for color and we can increase our tile dimensions by a factor of 2
+       * (reduce idx by 1).
+       *
+       * If we have computed a tile size that would be smaller than the minimum
+       * of 8x8, then it is certain that depth will fit in the aux depth TLB
+       * (even in MSAA mode).
+       *
+       * Otherwise, we need check if we can fit depth in the aux TLB buffer
+       * using a larger tile size.
+       *
+       * FIXME: the docs state that depth TLB memory can be used for color
+       * if depth testing is not used by setting the 'depth disable' bit in the
+       * rendering configuration. However, this comes with a requirement that
+       * occlussion queries must not be active. We need to clarify if this means
+       * active at the point at which we emit a tile rendering configuration
+       * item, meaning that the we have a query spanning a full render pass
+       * (this is something we can tell before we emit the rendering
+       * configuration item) or active in the subpass for which we are enabling
+       * the bit (which we can't tell until later, when we record commands for
+       * the subpass). If it is the latter, then we cannot use this feature.
+       */
+      if (idx >= ARRAY_SIZE(tile_sizes) / 2) {
+         idx--;
+      } else if (idx > 0) {
+         /* Depth is always 32bpp (4x32bpp for 4x MSAA) */
+         uint32_t depth_bpp = !msaa ? 4 : 16;
+         uint32_t tile_w = tile_sizes[(idx - 1) * 2];
+         uint32_t tile_h = tile_sizes[(idx - 1) * 2 + 1];
+         if (tile_w * tile_h * depth_bpp <= 8192)
+            idx--;
+      }
+   }
 
    assert(idx < ARRAY_SIZE(tile_sizes) / 2);
 

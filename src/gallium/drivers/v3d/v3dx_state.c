@@ -138,8 +138,9 @@ v3d_create_blend_state(struct pipe_context *pctx,
 
         so->base = *cso;
 
+        uint32_t max_rts = V3D_MAX_RENDER_TARGETS(V3D_VERSION);
         if (cso->independent_blend_enable) {
-                for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
+                for (int i = 0; i < max_rts; i++) {
                         so->blend_enables |= cso->rt[i].blend_enable << i;
 
                         /* V3D 4.x is when we got independent blend enables. */
@@ -148,7 +149,7 @@ v3d_create_blend_state(struct pipe_context *pctx,
                 }
         } else {
                 if (cso->rt[0].blend_enable)
-                        so->blend_enables = (1 << V3D_MAX_DRAW_BUFFERS) - 1;
+                        so->blend_enables = (1 << max_rts) - 1;
         }
 
         return so;

@@ -369,7 +369,7 @@ v3d_tlb_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
         bool double_buffer = V3D_DBG(DOUBLE_BUFFER) && !msaa;
 
         uint32_t tile_width, tile_height, max_bpp;
-        v3d_get_tile_buffer_size(msaa, double_buffer,
+        v3d_get_tile_buffer_size(devinfo, msaa, double_buffer,
                                  is_color_blit ? 1 : 0, surfaces, src_surf,
                                  &tile_width, &tile_height, &max_bpp);
 

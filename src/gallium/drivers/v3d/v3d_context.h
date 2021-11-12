@@ -798,7 +798,8 @@ void v3d_ensure_prim_counts_allocated(struct v3d_context *ctx);
 void v3d_flag_dirty_sampler_state(struct v3d_context *v3d,
                                   enum pipe_shader_type shader);
 
-void v3d_get_tile_buffer_size(bool is_msaa,
+void v3d_get_tile_buffer_size(const struct v3d_device_info *devinfo,
+                              bool is_msaa,
                               bool double_buffer,
                               uint32_t nr_cbufs,
                               struct pipe_surface **cbufs,
