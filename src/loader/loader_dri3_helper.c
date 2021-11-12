@@ -384,6 +384,7 @@ loader_dri3_drawable_fini(struct loader_dri3_drawable *draw)
 int
 loader_dri3_drawable_init(xcb_connection_t *conn,
                           xcb_drawable_t drawable,
+                          enum loader_dri3_drawable_type type,
                           __DRIscreen *dri_screen,
                           bool is_different_gpu,
                           bool multiplanes_available,
@@ -403,6 +404,7 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
    draw->ext = ext;
    draw->vtable = vtable;
    draw->drawable = drawable;
+   draw->type = type;
    draw->region = 0;
    draw->dri_screen = dri_screen;
    draw->is_different_gpu = is_different_gpu;

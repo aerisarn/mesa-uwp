@@ -342,6 +342,21 @@ dri3_destroy_drawable(__GLXDRIdrawable *base)
    free(pdraw);
 }
 
+static enum loader_dri3_drawable_type
+glx_to_loader_dri3_drawable_type(int type)
+{
+   switch (type) {
+   case GLX_WINDOW_BIT:
+      return LOADER_DRI3_DRAWABLE_WINDOW;
+   case GLX_PIXMAP_BIT:
+      return LOADER_DRI3_DRAWABLE_PIXMAP;
+   case GLX_PBUFFER_BIT:
+      return LOADER_DRI3_DRAWABLE_PBUFFER;
+   default:
+      return LOADER_DRI3_DRAWABLE_UNKNOWN;
+   }
+}
+
 static __GLXDRIdrawable *
 dri3_create_drawable(struct glx_screen *base, XID xDrawable,
                      GLXDrawable drawable, int type,
@@ -376,7 +391,9 @@ dri3_create_drawable(struct glx_screen *base, XID xDrawable,
    (void) __glXInitialize(psc->base.dpy);
 
    if (loader_dri3_drawable_init(XGetXCBConnection(base->dpy),
-                                 xDrawable, psc->driScreen,
+                                 xDrawable,
+                                 glx_to_loader_dri3_drawable_type(type),
+                                 psc->driScreen,
                                  psc->is_different_gpu, has_multibuffer,
                                  psc->prefer_back_buffer_reuse,
                                  config->driConfig,

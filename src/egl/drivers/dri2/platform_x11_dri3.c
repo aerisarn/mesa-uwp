@@ -133,6 +133,21 @@ dri3_set_swap_interval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
    return EGL_TRUE;
 }
 
+static enum loader_dri3_drawable_type
+egl_to_loader_dri3_drawable_type(EGLint type)
+{
+   switch (type) {
+   case EGL_WINDOW_BIT:
+      return LOADER_DRI3_DRAWABLE_WINDOW;
+   case EGL_PIXMAP_BIT:
+      return LOADER_DRI3_DRAWABLE_PIXMAP;
+   case EGL_PBUFFER_BIT:
+      return LOADER_DRI3_DRAWABLE_PBUFFER;
+   default:
+      return LOADER_DRI3_DRAWABLE_UNKNOWN;
+   }
+}
+
 static _EGLSurface *
 dri3_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
                     void *native_surface, const EGLint *attrib_list)
@@ -172,6 +187,7 @@ dri3_create_surface(_EGLDisplay *disp, EGLint type, _EGLConfig *conf,
    }
 
    if (loader_dri3_drawable_init(dri2_dpy->conn, drawable,
+                                 egl_to_loader_dri3_drawable_type(type),
                                  dri2_dpy->dri_screen,
                                  dri2_dpy->is_different_gpu,
                                  dri2_dpy->multibuffers_available,
