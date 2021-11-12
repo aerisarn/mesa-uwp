@@ -391,6 +391,7 @@ nir_schedule_intrinsic_deps(nir_deps_state *state,
       break;
 
    case nir_intrinsic_load_shared:
+   case nir_intrinsic_load_shared2_amd:
       /* Don't move load_shared beyond a following store_shared, as it could
        * change their value
        */
@@ -398,6 +399,7 @@ nir_schedule_intrinsic_deps(nir_deps_state *state,
       break;
 
    case nir_intrinsic_store_shared:
+   case nir_intrinsic_store_shared2_amd:
       add_write_dep(state, &state->store_shared, n);
       break;
 
