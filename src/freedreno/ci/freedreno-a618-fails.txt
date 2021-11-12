@@ -1,3 +1,50 @@
+# Missing 16-bit storage access at vktAmberTestCase.cpp:422 (InternalError)
+# Possibly fixed by VK-GL-CTS 54c075fd1cdb ("Fix amber vs cts device feature requirements")
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat3,Fail
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat4,Fail
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat3,Fail
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat4,Fail
+
+# Appeared with CTS 1.2.8.0
+# depth_stencil probably fixed by VK-GL-CTS fed96746e59f ("Fix post-clear barrier in depth/stencil descriptor tests")\
+dEQP-VK.api.descriptor_pool.out_of_pool_memory,Crash
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d24_unorm_s8_uint.depth_rw_stencil_att_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d24_unorm_s8_uint.depth_rw_stencil_att,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d24_unorm_s8_uint.depth_rw_stencil_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d32_sfloat_s8_uint.depth_rw_stencil_att_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d32_sfloat_s8_uint.depth_rw_stencil_att,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d32_sfloat_s8_uint.depth_rw_stencil_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_att_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_att_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_ia_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_ia_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_att_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_att_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_ia_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_ia_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_att_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_att_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_ia_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_ia_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d24_unorm_s8_uint.depth_att_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d24_unorm_s8_uint.depth_att_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d24_unorm_s8_uint.depth_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d32_sfloat_s8_uint.depth_att_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d32_sfloat_s8_uint.depth_att_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d32_sfloat_s8_uint.depth_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_att_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_att,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_ia_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_ia,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_sampled,Fail
+
 # Fails when TU_DEBUG=forcebin is set
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
+
+# Looks like a segfault, not assertion failure
+spill-dEQP-VK.graphicsfuzz.cov-nested-loops-float-bits-to-int-increment-array,Crash
+spill-dEQP-VK.graphicsfuzz.cov-two-nested-loops-switch-case-matrix-array-increment,Crash

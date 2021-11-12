@@ -331,9 +331,6 @@ KHR-GLES2.texture_3d.filtering.combinations.nearest_nearest_repeat_repeat_clamp,
 KHR-GLES2.texture_3d.filtering.combinations.nearest_nearest_repeat_repeat_mirror,Fail
 KHR-GLES2.texture_3d.filtering.combinations.nearest_nearest_repeat_repeat_repeat,Fail
 
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3134
-KHR-GLES2.texture_3d.filtering.combinations.negative,Fail
-
 KHR-GLES2.texture_3d.filtering.formats.rgba8_linear,Fail
 KHR-GLES2.texture_3d.filtering.formats.rgba8_linear_mipmap_linear,Fail
 KHR-GLES2.texture_3d.filtering.formats.rgba8_linear_mipmap_nearest,Fail

@@ -2,15 +2,8 @@
 # Broken in VK-GL-CTS e5c45899ed7e90fb616ccd1d3c66e6eded120684
 KHR-GL33.cull_distance.coverage,Fail
 
-# Framework bug, missing getProcAddress method.
-# https://gerrit.khronos.org/c/vk-gl-cts/+/8405
-KHR-GL33.transform_feedback.capture_vertex_interleaved_test,Fail
-KHR-GL33.transform_feedback.capture_vertex_separate_test,Fail
-KHR-GL33.transform_feedback.discard_vertex_test,Fail
-KHR-GL33.transform_feedback.draw_xfb_instanced_test,Crash
-KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test,Crash
-KHR-GL33.transform_feedback.query_vertex_interleaved_test,Fail
-KHR-GL33.transform_feedback.query_vertex_separate_test,Fail
+# Got wrong error code: GL_INVALID_OPERATION, expected: GL_INVALID_VALUE after step 0 at glcCompressedFormatTests.cpp:1463
+KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
 
 # Lots of errors like "[279] Check failed. Received: [3,0,0,2] instead of: [5,0,0,2]"
 KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support,Fail
@@ -41,9 +34,55 @@ bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.overlay,Fail
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.screen,Fail
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.softlight,Fail
 
+# Missing 16-bit storage access at vktAmberTestCase.cpp:422 (InternalError)
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat3,Fail
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat4,Fail
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat3,Fail
+dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat4,Fail
+
+# Showed up with VK-GL-CTS 1.2.8.0:
+# depth_stencil probably fixed by VK-GL-CTS fed96746e59f ("Fix post-clear barrier in depth/stencil descriptor tests")\
+dEQP-VK.api.descriptor_pool.out_of_pool_memory,Crash
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d24_unorm_s8_uint.depth_rw_stencil_att_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d24_unorm_s8_uint.depth_rw_stencil_att,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d24_unorm_s8_uint.depth_rw_stencil_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d32_sfloat_s8_uint.depth_rw_stencil_att_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d32_sfloat_s8_uint.depth_rw_stencil_att,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_attachment_stencil_read_only_optimal.d32_sfloat_s8_uint.depth_rw_stencil_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_att_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_att_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_ia_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_ia_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d16_unorm.depth_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_att_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_att_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_ia_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_ia_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_att_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_att_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_ia_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_ia_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.x8_d24_unorm_pack32.depth_sampled_stencil_none,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d24_unorm_s8_uint.depth_att_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d24_unorm_s8_uint.depth_att_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d24_unorm_s8_uint.depth_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d32_sfloat_s8_uint.depth_att_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d32_sfloat_s8_uint.depth_att_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optimal.d32_sfloat_s8_uint.depth_sampled_stencil_rw,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_att_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_att,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_ia_sampled,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_ia,Fail
+dEQP-VK.image.depth_stencil_descriptor.stencil_read_only_optimal.s8_uint.depth_none_stencil_sampled,Fail
+
 # Fails when TU_DEBUG=forcebin is set
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
+
+# Looks like a segfault, not assertion failure
+spill-dEQP-VK.graphicsfuzz.cov-nested-loops-float-bits-to-int-increment-array,Crash
+spill-dEQP-VK.graphicsfuzz.cov-two-nested-loops-switch-case-matrix-array-increment,Crash
 
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 glx@glx_arb_create_context_no_error@no error,Fail

@@ -791,9 +791,7 @@ KHR-GL33.transform_feedback.capture_geometry_interleaved_test,Fail
 KHR-GL33.transform_feedback.capture_geometry_separate_test,Fail
 KHR-GL33.transform_feedback.capture_vertex_interleaved_test,Fail
 KHR-GL33.transform_feedback.capture_vertex_separate_test,Fail
-KHR-GL33.transform_feedback.discard_vertex_test,Fail
-KHR-GL33.transform_feedback.draw_xfb_instanced_test,Crash
-KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test,Crash
+KHR-GL33.transform_feedback.draw_xfb_stream_instanced_test,Fail
 KHR-GL33.transform_feedback.draw_xfb_stream_test,Fail
 KHR-GL33.transform_feedback.query_geometry_interleaved_test,Fail
 KHR-GL33.transform_feedback.query_geometry_separate_test,Fail
@@ -877,6 +875,7 @@ KHR-GLES2.texture_3d.filtering.sizes.63x63x63_nearest_mipmap_nearest,Fail
 KHR-GLES3.framebuffer_completeness.all_rbos_expect_same_numsamples,Fail
 KHR-GLES3.framebuffer_completeness.rbo_and_texture_expect_zero_numsamples,Fail
 KHR-GLES3.shaders.indexing.tmp_array.vertexid,Fail
+KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
 KHR-GLES31.core.draw_buffers_indexed.blending,Fail
 KHR-GLES31.core.draw_buffers_indexed.color_masks,Fail
 KHR-GLES31.core.framebuffer_completeness.all_rbos_expect_same_numsamples,Fail

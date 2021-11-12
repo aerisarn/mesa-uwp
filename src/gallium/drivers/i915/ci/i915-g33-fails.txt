@@ -51,7 +51,7 @@ dEQP-GLES2.functional.shaders.random.all_features.fragment.32,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.34,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.38,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.5,Fail
-dEQP-GLES2.functional.shaders.random.all_features.fragment.53,Fail
+dEQP-GLES2.functional.shaders.random.all_features.fragment.79,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.80,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.86,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.89,Fail
