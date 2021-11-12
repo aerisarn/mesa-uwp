@@ -302,6 +302,7 @@ subpass_get_granularity(struct v3dv_device *device,
    struct v3dv_subpass *subpass = &pass->subpasses[subpass_idx];
    const uint32_t color_attachment_count = subpass->color_count;
 
+   bool msaa = false;
    uint32_t max_internal_bpp = 0;
    for (uint32_t i = 0; i < color_attachment_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
@@ -315,6 +316,9 @@ subpass_get_granularity(struct v3dv_device *device,
          (format->rt_type, &internal_type, &internal_bpp);
 
       max_internal_bpp = MAX2(max_internal_bpp, internal_bpp);
+
+      if (desc->samples > VK_SAMPLE_COUNT_1_BIT)
+         msaa = true;
    }
 
    uint32_t idx = 0;
@@ -322,6 +326,9 @@ subpass_get_granularity(struct v3dv_device *device,
       idx += 2;
    else if (color_attachment_count > 1)
       idx += 1;
+
+   if (msaa)
+      idx += 2;
 
    idx += max_internal_bpp;
 
