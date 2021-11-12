@@ -161,22 +161,7 @@ get_blorp_surf_for_anv_buffer(struct anv_device *device,
                               struct blorp_surf *blorp_surf,
                               struct isl_surf *isl_surf)
 {
-   const struct isl_format_layout *fmtl =
-      isl_format_get_layout(format);
    bool ok UNUSED;
-
-   /* ASTC is the only format which doesn't support linear layouts.
-    * Create an equivalently sized surface with ISL to get around this.
-    */
-   if (fmtl->txc == ISL_TXC_ASTC) {
-      /* Use an equivalently sized format */
-      format = ISL_FORMAT_R32G32B32A32_UINT;
-      assert(fmtl->bpb == isl_format_get_layout(format)->bpb);
-
-      /* Shrink the dimensions for the new format */
-      width = DIV_ROUND_UP(width, fmtl->bw);
-      height = DIV_ROUND_UP(height, fmtl->bh);
-   }
 
    *blorp_surf = (struct blorp_surf) {
       .surf = isl_surf,
