@@ -32,7 +32,7 @@
 #include "util/u_video.h"
 #include "util/u_memory.h"
 
-#include "vl/vl_vlc.h"
+#include "util/vl_vlc.h"
 #include "vl/vl_winsys.h"
 
 #include "va_private.h"

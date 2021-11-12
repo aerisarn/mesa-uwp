@@ -32,11 +32,7 @@
 #ifndef vl_vlc_h
 #define vl_vlc_h
 
-#include "pipe/p_compiler.h"
-
 #include "util/u_math.h"
-#include "util/u_pointer.h"
-#include "util/u_debug.h"
 
 struct vl_vlc
 {
@@ -116,7 +112,7 @@ static inline void
 vl_vlc_align_data_ptr(struct vl_vlc *vlc)
 {
    /* align the data pointer */
-   while (vlc->data != vlc->end && pointer_to_uintptr(vlc->data) & 3) {
+   while (vlc->data != vlc->end && ((uintptr_t)vlc->data) & 3) {
       vlc->buffer |= (uint64_t)*vlc->data << (24 + vlc->invalid_bits);
       ++vlc->data;
       vlc->invalid_bits -= 8;
@@ -288,7 +284,7 @@ vl_vlc_get_vlclbf(struct vl_vlc *vlc, const struct vl_vlc_entry *tbl, unsigned n
 /**
  * fast forward search for a specific byte value
  */
-static inline boolean
+static inline bool
 vl_vlc_search_byte(struct vl_vlc *vlc, unsigned num_bits, uint8_t value)
 {
    /* make sure we are on a byte boundary */
@@ -300,7 +296,7 @@ vl_vlc_search_byte(struct vl_vlc *vlc, unsigned num_bits, uint8_t value)
 
       if (vl_vlc_peekbits(vlc, 8) == value) {
          vl_vlc_fillbits(vlc);
-         return TRUE;
+         return true;
       }
 
       vl_vlc_eatbits(vlc, 8);
@@ -308,7 +304,7 @@ vl_vlc_search_byte(struct vl_vlc *vlc, unsigned num_bits, uint8_t value)
       if (num_bits != ~0u) {
          num_bits -= 8;
          if (num_bits == 0)
-            return FALSE;
+            return false;
       }
    }
 
@@ -322,13 +318,13 @@ vl_vlc_search_byte(struct vl_vlc *vlc, unsigned num_bits, uint8_t value)
             vl_vlc_next_input(vlc);
          else
             /* or give up since we don't have anymore inputs */
-            return FALSE;
+            return false;
       }
 
       if (*vlc->data == value) {
          vl_vlc_align_data_ptr(vlc);
          vl_vlc_fillbits(vlc);
-         return TRUE;
+         return true;
       }
 
       ++vlc->data;
@@ -336,7 +332,7 @@ vl_vlc_search_byte(struct vl_vlc *vlc, unsigned num_bits, uint8_t value)
          num_bits -= 8;
          if (num_bits == 0) {
             vl_vlc_align_data_ptr(vlc);
-            return FALSE;
+            return false;
          }
       }
    }

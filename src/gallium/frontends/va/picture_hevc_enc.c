@@ -29,8 +29,7 @@
 #include "util/u_video.h"
 #include "va_private.h"
 
-#include "vl/vl_vlc.h"
-#include "vl/vl_rbsp.h"
+#include "util/vl_rbsp.h"
 
 enum HEVCNALUnitType {
     HEVC_NAL_VPS        = 32,
