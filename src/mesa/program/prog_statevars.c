@@ -1344,7 +1344,7 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       append(str, "not_state");
       break;
    default:
-      _mesa_problem(NULL, "Invalid state in _mesa_program_state_string");
+      _mesa_problem(NULL, "Invalid state in _mesa_program_state_string: %d", state[0]);
       break;
    }
 

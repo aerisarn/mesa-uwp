@@ -215,7 +215,7 @@ _mesa_get_current_tex_object(struct gl_context *ctx, GLenum target)
          return ctx->Extensions.ARB_texture_multisample
             ? ctx->Texture.ProxyTex[TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX] : NULL;
       default:
-         _mesa_problem(NULL, "bad target in _mesa_get_current_tex_object()");
+         _mesa_problem(NULL, "bad target in _mesa_get_current_tex_object(): 0x%04x", target);
          return NULL;
    }
 }
