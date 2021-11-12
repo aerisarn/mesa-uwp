@@ -725,6 +725,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_cull_small_prim_precision_amd:
                case nir_intrinsic_load_vector_arg_amd: type = RegType::vgpr; break;
                case nir_intrinsic_load_shared:
+               case nir_intrinsic_load_shared2_amd:
                   /* When the result of these loads is only used by cross-lane instructions,
                    * it is beneficial to use a VGPR destination. This is because this allows
                    * to put the s_waitcnt further down, which decreases latency.

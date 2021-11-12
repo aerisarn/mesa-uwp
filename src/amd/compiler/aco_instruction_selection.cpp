@@ -7200,6 +7200,66 @@ visit_shared_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    ctx->block->instructions.emplace_back(std::move(ds));
 }
 
+void
+visit_access_shared2_amd(isel_context* ctx, nir_intrinsic_instr* instr)
+{
+   bool is_store = instr->intrinsic == nir_intrinsic_store_shared2_amd;
+   Temp address = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[is_store].ssa));
+   Builder bld(ctx->program, ctx->block);
+
+   assert(bld.program->chip_class >= GFX7);
+
+   bool is64bit = (is_store ? instr->src[0].ssa->bit_size : instr->dest.ssa.bit_size) == 64;
+   uint8_t offset0 = nir_intrinsic_offset0(instr);
+   uint8_t offset1 = nir_intrinsic_offset1(instr);
+   bool st64 = nir_intrinsic_st64(instr);
+
+   Operand m = load_lds_size_m0(bld);
+   Instruction* ds;
+   if (is_store) {
+      aco_opcode op = st64
+                         ? (is64bit ? aco_opcode::ds_write2st64_b64 : aco_opcode::ds_write2st64_b32)
+                         : (is64bit ? aco_opcode::ds_write2_b64 : aco_opcode::ds_write2_b32);
+      Temp data = get_ssa_temp(ctx, instr->src[0].ssa);
+      RegClass comp_rc = is64bit ? v2 : v1;
+      Temp data0 = emit_extract_vector(ctx, data, 0, comp_rc);
+      Temp data1 = emit_extract_vector(ctx, data, 1, comp_rc);
+      ds = bld.ds(op, address, data0, data1, m, offset0, offset1);
+   } else {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      Definition tmp_dst(dst.type() == RegType::vgpr ? dst : bld.tmp(is64bit ? v4 : v2));
+      aco_opcode op = st64 ? (is64bit ? aco_opcode::ds_read2st64_b64 : aco_opcode::ds_read2st64_b32)
+                           : (is64bit ? aco_opcode::ds_read2_b64 : aco_opcode::ds_read2_b32);
+      ds = bld.ds(op, tmp_dst, address, m, offset0, offset1);
+   }
+   ds->ds().sync = memory_sync_info(storage_shared);
+   if (m.isUndefined())
+      ds->operands.pop_back();
+
+   if (!is_store) {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      if (dst.type() == RegType::sgpr) {
+         emit_split_vector(ctx, ds->definitions[0].getTemp(), dst.size());
+         Temp comp[4];
+         /* Use scalar v_readfirstlane_b32 for better 32-bit copy propagation */
+         for (unsigned i = 0; i < dst.size(); i++)
+            comp[i] = bld.as_uniform(emit_extract_vector(ctx, ds->definitions[0].getTemp(), i, v1));
+         if (is64bit) {
+            Temp comp0 = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), comp[0], comp[1]);
+            Temp comp1 = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), comp[2], comp[3]);
+            ctx->allocated_vec[comp0.id()] = {comp[0], comp[1]};
+            ctx->allocated_vec[comp1.id()] = {comp[2], comp[3]};
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), comp0, comp1);
+            ctx->allocated_vec[dst.id()] = {comp0, comp1};
+         } else {
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), comp[0], comp[1]);
+         }
+      }
+
+      emit_split_vector(ctx, dst, 2);
+   }
+}
+
 Temp
 get_scratch_resource(isel_context* ctx)
 {
@@ -8013,6 +8073,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_shared_atomic_fadd:
    case nir_intrinsic_shared_atomic_fmin:
    case nir_intrinsic_shared_atomic_fmax: visit_shared_atomic(ctx, instr); break;
+   case nir_intrinsic_load_shared2_amd:
+   case nir_intrinsic_store_shared2_amd: visit_access_shared2_amd(ctx, instr); break;
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_sparse_load: visit_image_load(ctx, instr); break;
    case nir_intrinsic_bindless_image_store: visit_image_store(ctx, instr); break;
