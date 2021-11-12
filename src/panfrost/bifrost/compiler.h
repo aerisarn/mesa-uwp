@@ -132,6 +132,9 @@ typedef struct {
         uint32_t offset : 2;
         bool reg : 1;
         enum bi_index_type type : 3;
+
+        /* Must be zeroed so we can hash the whole 64-bits at a time */
+        unsigned padding : (32 - 13);
 } bi_index;
 
 static inline bi_index
