@@ -48,11 +48,12 @@
  * This is a bit different than legal_teximage_target() when it comes
  * to cube maps.
  */
-static bool
-legal_texobj_target(const struct gl_context *ctx, GLuint dims, GLenum target)
+bool
+_mesa_is_legal_tex_storage_target(const struct gl_context *ctx,
+                                  GLuint dims, GLenum target)
 {
    if (dims < 1 || dims > 3) {
-      _mesa_problem(ctx, "invalid dims=%u in legal_texobj_target()", dims);
+      _mesa_problem(ctx, "invalid dims=%u in _mesa_is_legal_tex_storage_target()", dims);
       return false;
    }
 
@@ -530,7 +531,7 @@ texstorage_error(GLuint dims, GLenum target, GLsizei levels,
    /* Check target.  This is done here so that texture_storage
     * can receive unsized formats.
     */
-   if (!legal_texobj_target(ctx, dims, target)) {
+   if (!_mesa_is_legal_tex_storage_target(ctx, dims, target)) {
       _mesa_error(ctx, GL_INVALID_ENUM,
                   "%s(illegal target=%s)",
                   caller, _mesa_enum_to_string(target));
@@ -605,7 +606,7 @@ texturestorage_error(GLuint dims, GLuint texture, GLsizei levels,
    /* Check target.  This is done here so that texture_storage
     * can receive unsized formats.
     */
-   if (!legal_texobj_target(ctx, dims, texObj->Target)) {
+   if (!_mesa_is_legal_tex_storage_target(ctx, dims, texObj->Target)) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "%s(illegal target=%s)", caller,
                   _mesa_enum_to_string(texObj->Target));

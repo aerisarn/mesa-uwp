@@ -131,6 +131,10 @@ extern GLboolean
 _mesa_is_legal_tex_storage_format(const struct gl_context *ctx,
                                   GLenum internalformat);
 
+extern bool
+_mesa_is_legal_tex_storage_target(const struct gl_context *ctx,
+                                  GLuint dims, GLenum target);
+
 extern GLboolean
 _mesa_AllocTextureStorage_sw(struct gl_context *ctx,
                              struct gl_texture_object *texObj,

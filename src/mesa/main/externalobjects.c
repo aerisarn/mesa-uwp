@@ -25,6 +25,7 @@
 #include "mtypes.h"
 #include "bufferobj.h"
 #include "context.h"
+#include "enums.h"
 #include "externalobjects.h"
 #include "teximage.h"
 #include "texobj.h"
@@ -302,6 +303,21 @@ texstorage_memory(GLuint dims, GLenum target, GLsizei levels,
       return;
    }
 
+   if (!_mesa_is_legal_tex_storage_target(ctx, dims, target)) {
+      _mesa_error(ctx, GL_INVALID_ENUM,
+                  "%s(illegal target=%s)",
+                  func, _mesa_enum_to_string(target));
+      return;
+   }
+
+   /* Check the format to make sure it is sized. */
+   if (!_mesa_is_legal_tex_storage_format(ctx, internalFormat)) {
+      _mesa_error(ctx, GL_INVALID_ENUM,
+                  "%s(internalformat = %s)", func,
+                  _mesa_enum_to_string(internalFormat));
+      return;
+   }
+
    texObj = _mesa_get_current_tex_object(ctx, target);
    if (!texObj)
       return;
@@ -363,9 +379,24 @@ texturestorage_memory(GLuint dims, GLuint texture, GLsizei levels,
       return;
    }
 
+   /* Check the format to make sure it is sized. */
+   if (!_mesa_is_legal_tex_storage_format(ctx, internalFormat)) {
+      _mesa_error(ctx, GL_INVALID_ENUM,
+                  "%s(internalformat = %s)", func,
+                  _mesa_enum_to_string(internalFormat));
+      return;
+   }
+
    texObj = _mesa_lookup_texture(ctx, texture);
    if (!texObj)
       return;
+
+   if (!_mesa_is_legal_tex_storage_target(ctx, dims, texObj->Target)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(illegal target=%s)", func,
+                  _mesa_enum_to_string(texObj->Target));
+      return;
+   }
 
    memObj = lookup_memory_object_err(ctx, memory, func);
    if (!memObj)
