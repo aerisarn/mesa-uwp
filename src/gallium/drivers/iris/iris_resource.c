@@ -2280,11 +2280,6 @@ iris_transfer_map(struct pipe_context *ctx,
          usage |= PIPE_MAP_DIRECTLY;
       }
 
-      const struct isl_format_layout *fmtl =
-         isl_format_get_layout(surf->format);
-      if (fmtl->txc == ISL_TXC_ASTC)
-         usage |= PIPE_MAP_DIRECTLY;
-
       /* We can map directly if it wouldn't stall, there's no compression,
        * and we aren't doing an uncached read.
        */
