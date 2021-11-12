@@ -4351,6 +4351,10 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                      nir_var_mem_shared | nir_var_mem_global,
             .callback = mem_vectorize_callback,
             .robust_modes = 0,
+            /* On GFX6, read2/write2 is out-of-bounds if the offset register is negative, even if
+             * the final offset is not.
+             */
+            .has_shared2_amd = device->physical_device->rad_info.chip_class >= GFX7,
          };
 
          if (device->robust_buffer_access2) {
