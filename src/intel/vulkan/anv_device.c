@@ -172,6 +172,9 @@ static void
 get_device_extensions(const struct anv_physical_device *device,
                       struct vk_device_extension_table *ext)
 {
+   const bool has_syncobj_wait =
+      (device->sync_syncobj_type.features & VK_SYNC_FEATURE_CPU_WAIT) != 0;
+
    *ext = (struct vk_device_extension_table) {
       .KHR_8bit_storage                      = device->info.ver >= 8,
       .KHR_16bit_storage                     = device->info.ver >= 8,
@@ -186,8 +189,8 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_device_group                      = true,
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
-      .KHR_external_fence                    = device->has_syncobj_wait,
-      .KHR_external_fence_fd                 = device->has_syncobj_wait,
+      .KHR_external_fence                    = has_syncobj_wait,
+      .KHR_external_fence_fd                 = has_syncobj_wait,
       .KHR_external_memory                   = true,
       .KHR_external_memory_fd                = true,
       .KHR_external_semaphore                = true,
@@ -871,9 +874,6 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    device->has_exec_async = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_ASYNC);
    device->has_exec_capture = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_CAPTURE);
-   device->has_syncobj_wait = intel_gem_supports_syncobj_wait(fd);
-   device->has_syncobj_wait_available =
-      anv_gem_get_drm_cap(fd, DRM_CAP_SYNCOBJ_TIMELINE) != 0;
 
    /* Start with medium; sorted low to high */
    const int priorities[] = {
@@ -908,19 +908,20 @@ anv_physical_device_try_create(struct anv_instance *instance,
       device->has_exec_timeline = false;
 
    unsigned st_idx = 0;
-   if (device->has_syncobj_wait) {
-      device->sync_types[st_idx++] = &vk_drm_binary_syncobj_type;
-   } else {
-      device->sync_types[st_idx++] = &vk_drm_binary_syncobj_no_wait_type;
-      device->sync_types[st_idx++] = &anv_bo_sync_type;
-   }
 
-   if (device->has_syncobj_wait_available && device->has_exec_timeline) {
-      device->sync_types[st_idx++] = &vk_drm_timeline_syncobj_type;
-   } else {
+   device->sync_syncobj_type = vk_drm_syncobj_get_type(fd);
+   if (!device->has_exec_timeline)
+      device->sync_syncobj_type.features &= ~VK_SYNC_FEATURE_TIMELINE;
+   device->sync_types[st_idx++] = &device->sync_syncobj_type;
+
+   if (!(device->sync_syncobj_type.features & VK_SYNC_FEATURE_CPU_WAIT))
+      device->sync_types[st_idx++] = &anv_bo_sync_type;
+
+   if (!(device->sync_syncobj_type.features & VK_SYNC_FEATURE_TIMELINE)) {
       device->sync_timeline_type = vk_sync_timeline_get_type(&anv_bo_sync_type);
       device->sync_types[st_idx++] = &device->sync_timeline_type.sync;
    }
+
    device->sync_types[st_idx++] = NULL;
    assert(st_idx <= ARRAY_SIZE(device->sync_types));
    device->vk.supported_sync_types = device->sync_types;

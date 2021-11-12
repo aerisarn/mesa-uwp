@@ -137,12 +137,6 @@ anv_gem_get_param(int fd, uint32_t param)
    unreachable("Unused");
 }
 
-uint64_t
-anv_gem_get_drm_cap(int fd, uint32_t capability)
-{
-   return 0;
-}
-
 int
 anv_gem_create_context(struct anv_device *device)
 {

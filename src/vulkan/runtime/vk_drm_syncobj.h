@@ -31,21 +31,18 @@
 extern "C" {
 #endif
 
-extern const struct vk_sync_type vk_drm_binary_syncobj_no_wait_type;
-extern const struct vk_sync_type vk_drm_binary_syncobj_type;
-extern const struct vk_sync_type vk_drm_timeline_syncobj_type;
-
 struct vk_drm_syncobj {
    struct vk_sync base;
    uint32_t syncobj;
 };
 
+void vk_drm_syncobj_finish(struct vk_device *device,
+                           struct vk_sync *sync);
+
 static inline bool
 vk_sync_type_is_drm_syncobj(const struct vk_sync_type *type)
 {
-   return type == &vk_drm_binary_syncobj_no_wait_type ||
-          type == &vk_drm_binary_syncobj_type ||
-          type == &vk_drm_timeline_syncobj_type;
+   return type->finish == vk_drm_syncobj_finish;
 }
 
 static inline struct vk_drm_syncobj *
@@ -56,6 +53,8 @@ vk_sync_as_drm_syncobj(struct vk_sync *sync)
 
    return container_of(sync, struct vk_drm_syncobj, base);
 }
+
+struct vk_sync_type vk_drm_syncobj_get_type(int drm_fd);
 
 #ifdef __cplusplus
 }

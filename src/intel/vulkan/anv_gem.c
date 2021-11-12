@@ -318,17 +318,6 @@ anv_gem_get_param(int fd, uint32_t param)
    return 0;
 }
 
-uint64_t
-anv_gem_get_drm_cap(int fd, uint32_t capability)
-{
-   struct drm_get_cap cap = {
-      .capability = capability,
-   };
-
-   intel_ioctl(fd, DRM_IOCTL_GET_CAP, &cap);
-   return cap.value;
-}
-
 bool
 anv_gem_has_context_priority(int fd, int priority)
 {
