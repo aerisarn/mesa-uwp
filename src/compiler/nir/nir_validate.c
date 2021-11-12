@@ -838,29 +838,14 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
                    0, nir_tex_instr_src_size(instr, i));
 
       switch (instr->src[i].src_type) {
-      case nir_tex_src_coord:
-         validate_assert(state, nir_src_num_components(instr->src[i].src) ==
-                                instr->coord_components);
-         break;
-
-      case nir_tex_src_projector:
-         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
-         break;
 
       case nir_tex_src_comparator:
          validate_assert(state, instr->is_shadow);
-         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
-         break;
-
-      case nir_tex_src_offset:
-         validate_assert(state, nir_src_num_components(instr->src[i].src) ==
-                                instr->coord_components - instr->is_array);
          break;
 
       case nir_tex_src_bias:
          validate_assert(state, instr->op == nir_texop_txb ||
                                 instr->op == nir_texop_tg4);
-         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
          break;
 
       case nir_tex_src_lod:
@@ -868,19 +853,11 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
                                 instr->op != nir_texop_txb &&
                                 instr->op != nir_texop_txd &&
                                 instr->op != nir_texop_lod);
-         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
-         break;
-
-      case nir_tex_src_min_lod:
-      case nir_tex_src_ms_index:
-         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
          break;
 
       case nir_tex_src_ddx:
       case nir_tex_src_ddy:
          validate_assert(state, instr->op == nir_texop_txd);
-         validate_assert(state, nir_src_num_components(instr->src[i].src) ==
-                                instr->coord_components - instr->is_array);
          break;
 
       case nir_tex_src_texture_deref: {
@@ -903,12 +880,14 @@ validate_tex_instr(nir_tex_instr *instr, validate_state *state)
          break;
       }
 
+      case nir_tex_src_coord:
+      case nir_tex_src_projector:
+      case nir_tex_src_offset:
+      case nir_tex_src_min_lod:
+      case nir_tex_src_ms_index:
       case nir_tex_src_texture_offset:
       case nir_tex_src_sampler_offset:
       case nir_tex_src_plane:
-         validate_assert(state, nir_src_num_components(instr->src[i].src) == 1);
-         break;
-
       case nir_tex_src_texture_handle:
       case nir_tex_src_sampler_handle:
          break;
