@@ -2287,13 +2287,6 @@ copytexture_error_check( struct gl_context *ctx, GLuint dimensions,
    struct gl_renderbuffer *rb;
    GLenum rb_internal_format;
 
-   /* check target */
-   if (!legal_texsubimage_target(ctx, dimensions, target, false)) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "glCopyTexImage%uD(target=%s)",
-                  dimensions, _mesa_enum_to_string(target));
-      return GL_TRUE;
-   }
-
    /* level check */
    if (level < 0 || level >= _mesa_max_texture_levels(ctx, target)) {
       _mesa_error(ctx, GL_INVALID_VALUE,
@@ -3418,8 +3411,7 @@ egl_image_target_texture(struct gl_context *ctx,
                      (tex_storage && _mesa_has_EXT_EGL_image_storage(ctx));
       break;
    case GL_TEXTURE_EXTERNAL_OES:
-      valid_target =
-         _mesa_is_gles(ctx) ? _mesa_has_OES_EGL_image_external(ctx) : false;
+      valid_target = _mesa_has_OES_EGL_image_external(ctx);
       break;
    default:
       valid_target = false;
@@ -3427,9 +3419,14 @@ egl_image_target_texture(struct gl_context *ctx,
    }
 
    if (!valid_target) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target=%d)", caller, target);
+      _mesa_error(ctx, tex_storage ? GL_INVALID_OPERATION : GL_INVALID_ENUM, "%s(target=%d)", caller, target);
       return;
    }
+
+   if (!texObj)
+      texObj = _mesa_get_current_tex_object(ctx, target);
+   if (!texObj)
+      return;
 
    if (!image || (ctx->Driver.ValidateEGLImage &&
                   !ctx->Driver.ValidateEGLImage(ctx, image))) {
@@ -3475,17 +3472,10 @@ egl_image_target_texture(struct gl_context *ctx,
 void GLAPIENTRY
 _mesa_EGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
 {
-   struct gl_texture_object *texObj;
    const char *func = "glEGLImageTargetTexture2D";
    GET_CURRENT_CONTEXT(ctx);
 
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   if (!texObj) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target=%d)", func, target);
-      return;
-   }
-
-   egl_image_target_texture(ctx, texObj, target, image, false, func);
+   egl_image_target_texture(ctx, NULL, target, image, false, func);
 }
 
 static void
@@ -3504,21 +3494,6 @@ egl_image_target_texture_storage(struct gl_context *ctx,
       return;
    }
 
-   switch (target) {
-   case GL_TEXTURE_2D:
-   case GL_TEXTURE_EXTERNAL_OES:
-      break;
-   default:
-    /*
-     * The EXT_EGL_image_storage spec allows for many other targets besides
-     * GL_TEXTURE_2D and GL_TEXTURE_EXTERNAL_OES, however these are complicated
-     * to implement.
-     */
-     _mesa_error(ctx, GL_INVALID_OPERATION, "%s(unsupported target=%d)",
-                 caller, target);
-     return;
-   }
-
    egl_image_target_texture(ctx, texObj, target, image, true, caller);
 }
 
@@ -3527,17 +3502,10 @@ void GLAPIENTRY
 _mesa_EGLImageTargetTexStorageEXT(GLenum target, GLeglImageOES image,
                                   const GLint *attrib_list)
 {
-   struct gl_texture_object *texObj;
    const char *func = "glEGLImageTargetTexStorageEXT";
    GET_CURRENT_CONTEXT(ctx);
 
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   if (!texObj) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target=%d)", func, target);
-      return;
-   }
-
-   egl_image_target_texture_storage(ctx, texObj, target, image, attrib_list,
+   egl_image_target_texture_storage(ctx, NULL, target, image, attrib_list,
                                     func);
 }
 
@@ -4323,6 +4291,16 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
    if (ctx->NewState & _NEW_BUFFERS)
       _mesa_update_state(ctx);
 
+   /* check target */
+   if (!no_error && !legal_texsubimage_target(ctx, dims, target, false)) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "glCopyTexImage%uD(target=%s)",
+                  dims, _mesa_enum_to_string(target));
+      return;
+   }
+
+   if (!texObj)
+      texObj = _mesa_get_current_tex_object(ctx, target);
+
    if (!no_error) {
       if (copytexture_error_check(ctx, dims, target, texObj, level,
                                   internalFormat, border))
@@ -4470,8 +4448,7 @@ copyteximage_err(struct gl_context *ctx, GLuint dims,
                  GLint level, GLenum internalFormat, GLint x, GLint y,
                  GLsizei width, GLsizei height, GLint border)
 {
-   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
-   copyteximage(ctx, dims, texObj, target, level, internalFormat, x, y, width, height,
+   copyteximage(ctx, dims, NULL, target, level, internalFormat, x, y, width, height,
                 border, false);
 }
 
@@ -4481,8 +4458,7 @@ copyteximage_no_error(struct gl_context *ctx, GLuint dims, GLenum target,
                       GLint level, GLenum internalFormat, GLint x, GLint y,
                       GLsizei width, GLsizei height, GLint border)
 {
-   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
-   copyteximage(ctx, dims, texObj, target, level, internalFormat, x, y, width, height,
+   copyteximage(ctx, dims, NULL, target, level, internalFormat, x, y, width, height,
                 border, true);
 }
 
@@ -6843,7 +6819,13 @@ texture_image_multisample(struct gl_context *ctx, GLuint dims,
       return;
    }
 
-   if (immutable && (!texObj || (texObj->Name == 0))) {
+   if (!texObj) {
+      texObj = _mesa_get_current_tex_object(ctx, target);
+      if (!texObj)
+         return;
+   }
+
+   if (immutable && texObj->Name == 0) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
             "%s(texture object 0)",
             func);
@@ -6942,14 +6924,9 @@ _mesa_TexImage2DMultisample(GLenum target, GLsizei samples,
                             GLenum internalformat, GLsizei width,
                             GLsizei height, GLboolean fixedsamplelocations)
 {
-   struct gl_texture_object *texObj;
    GET_CURRENT_CONTEXT(ctx);
 
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   if (!texObj)
-      return;
-
-   texture_image_multisample(ctx, 2, texObj, NULL, target, samples,
+   texture_image_multisample(ctx, 2, NULL, NULL, target, samples,
                              internalformat, width, height, 1,
                              fixedsamplelocations, GL_FALSE, 0,
                              "glTexImage2DMultisample");
@@ -6962,14 +6939,9 @@ _mesa_TexImage3DMultisample(GLenum target, GLsizei samples,
                             GLsizei height, GLsizei depth,
                             GLboolean fixedsamplelocations)
 {
-   struct gl_texture_object *texObj;
    GET_CURRENT_CONTEXT(ctx);
 
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   if (!texObj)
-      return;
-
-   texture_image_multisample(ctx, 3, texObj, NULL, target, samples,
+   texture_image_multisample(ctx, 3, NULL, NULL, target, samples,
                              internalformat, width, height, depth,
                              fixedsamplelocations, GL_FALSE, 0,
                              "glTexImage3DMultisample");
@@ -6995,17 +6967,12 @@ _mesa_TexStorage2DMultisample(GLenum target, GLsizei samples,
                               GLenum internalformat, GLsizei width,
                               GLsizei height, GLboolean fixedsamplelocations)
 {
-   struct gl_texture_object *texObj;
    GET_CURRENT_CONTEXT(ctx);
-
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   if (!texObj)
-      return;
 
    if (!valid_texstorage_ms_parameters(width, height, 1, 2))
       return;
 
-   texture_image_multisample(ctx, 2, texObj, NULL, target, samples,
+   texture_image_multisample(ctx, 2, NULL, NULL, target, samples,
                              internalformat, width, height, 1,
                              fixedsamplelocations, GL_TRUE, 0,
                              "glTexStorage2DMultisample");
@@ -7017,17 +6984,12 @@ _mesa_TexStorage3DMultisample(GLenum target, GLsizei samples,
                               GLsizei height, GLsizei depth,
                               GLboolean fixedsamplelocations)
 {
-   struct gl_texture_object *texObj;
    GET_CURRENT_CONTEXT(ctx);
-
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   if (!texObj)
-      return;
 
    if (!valid_texstorage_ms_parameters(width, height, depth, 3))
       return;
 
-   texture_image_multisample(ctx, 3, texObj, NULL, target, samples,
+   texture_image_multisample(ctx, 3, NULL, NULL, target, samples,
                              internalformat, width, height, depth,
                              fixedsamplelocations, GL_TRUE, 0,
                              "glTexStorage3DMultisample");
