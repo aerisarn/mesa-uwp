@@ -1685,13 +1685,29 @@ dri3_detect_drawable_is_window(struct loader_dri3_drawable *draw)
 static bool
 dri3_setup_present_event(struct loader_dri3_drawable *draw)
 {
+   /* No need to setup for pixmap drawable. */
+   if (draw->type == LOADER_DRI3_DRAWABLE_PIXMAP ||
+       draw->type == LOADER_DRI3_DRAWABLE_PBUFFER) {
+      draw->is_pixmap = true;
+      return true;
+   }
+
    draw->eid = xcb_generate_id(draw->conn);
 
-   if (!dri3_detect_drawable_is_window(draw))
-      return false;
+   if (draw->type == LOADER_DRI3_DRAWABLE_WINDOW) {
+      xcb_present_select_input(draw->conn, draw->eid, draw->drawable,
+                               XCB_PRESENT_EVENT_MASK_CONFIGURE_NOTIFY |
+                               XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY |
+                               XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY);
+   } else {
+      assert(draw->type == LOADER_DRI3_DRAWABLE_UNKNOWN);
 
-   if (draw->is_pixmap)
-      return true;
+      if (!dri3_detect_drawable_is_window(draw))
+         return false;
+
+      if (draw->is_pixmap)
+         return true;
+   }
 
    /* Create an XCB event queue to hold present events outside of the usual
     * application event queue
