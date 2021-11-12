@@ -196,7 +196,7 @@ setup_border_colors(struct fd_texture_stateobj *tex,
             else if (c < 3)
                e->rgb565 |= (int)(f_u * 0x1f) << (c ? 11 : 0);
             if (c == 3)
-               e->rgb5a1 |= (f_u > 0.5) ? 0x8000 : 0;
+               e->rgb5a1 |= (f_u > 0.5f) ? 0x8000 : 0;
             else
                e->rgb5a1 |= (int)(f_u * 0x1f) << (c * 5);
             if (c == 3)

@@ -183,7 +183,7 @@ fd5_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 
    OUT_PKT4(ring, REG_A5XX_GRAS_SU_CNTL, 1);
    OUT_RING(ring,
-            A5XX_GRAS_SU_CNTL_LINEHALFWIDTH(0.0) |
+            A5XX_GRAS_SU_CNTL_LINEHALFWIDTH(0.0f) |
                A5XX_GRAS_SU_CNTL_LINE_MODE(zsbuf->b.b.nr_samples  > 1 ?
                                            RECTANGULAR : BRESENHAM));
 

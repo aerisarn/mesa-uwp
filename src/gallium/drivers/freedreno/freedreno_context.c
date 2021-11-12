@@ -508,7 +508,7 @@ static struct pipe_resource *
 create_solid_vertexbuf(struct pipe_context *pctx)
 {
    static const float init_shader_const[] = {
-      -1.000000, +1.000000, +1.000000, +1.000000, -1.000000, +1.000000,
+      -1.000000f, +1.000000f, +1.000000f, +1.000000f, -1.000000f, +1.000000f,
    };
    struct pipe_resource *prsc =
       pipe_buffer_create(pctx->screen, PIPE_BIND_CUSTOM, PIPE_USAGE_IMMUTABLE,

@@ -114,8 +114,8 @@ fd5_sampler_state_create(struct pipe_context *pctx,
        * LOD clamp so the HW can decide between min and mag filtering of
        * level 0.
        */
-      so->texsamp1 |= A5XX_TEX_SAMP_1_MIN_LOD(MIN2(cso->min_lod, 0.125)) |
-                      A5XX_TEX_SAMP_1_MAX_LOD(MIN2(cso->max_lod, 0.125));
+      so->texsamp1 |= A5XX_TEX_SAMP_1_MIN_LOD(MIN2(cso->min_lod, 0.125f)) |
+                      A5XX_TEX_SAMP_1_MAX_LOD(MIN2(cso->max_lod, 0.125f));
    }
 
    if (cso->compare_mode)

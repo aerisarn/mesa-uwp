@@ -292,7 +292,7 @@ setup_border_colors(struct fd_texture_stateobj *tex,
             else if (c < 3)
                e->rgb565 |= (int)(f_u * 0x1f) << (c ? 11 : 0);
             if (c == 3)
-               e->rgb5a1 |= (f_u > 0.5) ? 0x8000 : 0;
+               e->rgb5a1 |= (f_u > 0.5f) ? 0x8000 : 0;
             else
                e->rgb5a1 |= (int)(f_u * 0x1f) << (c * 5);
             if (c == 3)
@@ -959,9 +959,9 @@ fd5_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
    OUT_RING(ring, 0x00000012);
 
    OUT_PKT4(ring, REG_A5XX_GRAS_SU_POINT_MINMAX, 2);
-   OUT_RING(ring, A5XX_GRAS_SU_POINT_MINMAX_MIN(1.0) |
-                     A5XX_GRAS_SU_POINT_MINMAX_MAX(4092.0));
-   OUT_RING(ring, A5XX_GRAS_SU_POINT_SIZE(0.5));
+   OUT_RING(ring, A5XX_GRAS_SU_POINT_MINMAX_MIN(1.0f) |
+                     A5XX_GRAS_SU_POINT_MINMAX_MAX(4092.0f));
+   OUT_RING(ring, A5XX_GRAS_SU_POINT_SIZE(0.5f));
 
    OUT_PKT4(ring, REG_A5XX_GRAS_SU_CONSERVATIVE_RAS_CNTL, 1);
    OUT_RING(ring, 0x00000000); /* GRAS_SU_CONSERVATIVE_RAS_CNTL */
