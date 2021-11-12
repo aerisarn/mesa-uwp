@@ -1110,12 +1110,16 @@ anv_get_image_format_properties(
       sampleCounts = isl_device_get_sample_counts(&physical_device->isl_dev);
    }
 
-   if (info->usage & (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                      VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
-      /* Accept transfers on anything we can sample from or renderer to. */
-      if (!(format_feature_flags & (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT_KHR |
-                                    VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT_KHR |
-                                    VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT_KHR))) {
+   if (info->usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
+      if (!(format_feature_flags & (VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT_KHR |
+                                    VK_FORMAT_FEATURE_2_BLIT_SRC_BIT_KHR))) {
+         goto unsupported;
+      }
+   }
+
+   if (info->usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+      if (!(format_feature_flags & (VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT_KHR |
+                                    VK_FORMAT_FEATURE_2_BLIT_DST_BIT_KHR))) {
          goto unsupported;
       }
    }
