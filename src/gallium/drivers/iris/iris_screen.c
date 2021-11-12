@@ -802,6 +802,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
       break;
    }
 
+   brw_process_intel_debug_variable();
+
    screen->bufmgr = iris_bufmgr_get_for_fd(&screen->devinfo, fd, bo_reuse);
    if (!screen->bufmgr)
       return NULL;
@@ -819,8 +821,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    if (!iris_init_identifier_bo(screen))
       return NULL;
-
-   brw_process_intel_debug_variable();
 
    screen->driconf.dual_color_blend_by_location =
       driQueryOptionb(config->options, "dual_color_blend_by_location");
