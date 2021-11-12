@@ -67,6 +67,7 @@ struct fd3_format {
 static struct fd3_format formats[PIPE_FORMAT_COUNT] = {
    /* 8-bit */
    VT(R8_UNORM,   8_UNORM, R8_UNORM, WZYX),
+   _T(R8_SRGB,    8_UNORM, R8_UNORM, WZYX),
    VT(R8_SNORM,   8_SNORM, NONE,     WZYX),
    VT(R8_UINT,    8_UINT,  NONE,     WZYX),
    VT(R8_SINT,    8_SINT,  NONE,     WZYX),
@@ -103,6 +104,7 @@ static struct fd3_format formats[PIPE_FORMAT_COUNT] = {
    _T(I16_SINT,    16_SINT,  NONE,     WZYX),
 
    VT(R8G8_UNORM,   8_8_UNORM, R8G8_UNORM, WZYX),
+   _T(R8G8_SRGB,    8_8_UNORM, R8G8_UNORM, WZYX),
    VT(R8G8_SNORM,   8_8_SNORM, R8G8_SNORM, WZYX),
    VT(R8G8_UINT,    8_8_UINT,  R8G8_UINT,  WZYX),
    VT(R8G8_SINT,    8_8_SINT,  R8G8_SINT,  WZYX),
