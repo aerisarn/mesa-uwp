@@ -2100,14 +2100,16 @@ perhaps they should be taken with a grain of salt
 	<reg32 offset="0x23d3" name="HLSQ_CL_NDRANGE_6"/>
 	<reg32 offset="0x23d4" name="HLSQ_CL_CONTROL_0">
 		<bitfield name="WGIDCONSTID" low="0" high="11" type="a3xx_regid"/>
-		<bitfield name="UNK12CONSTID" low="12" high="23" type="a3xx_regid"/>
+		<bitfield name="KERNELDIMCONSTID" low="12" high="23" type="a3xx_regid"/>
 		<bitfield name="LOCALIDREGID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0x23d5" name="HLSQ_CL_CONTROL_1">
+		<!-- GLOBALSIZECONSTID? "kernel size" -->
 		<bitfield name="UNK0CONSTID" low="0" high="11" type="a3xx_regid"/>
-		<bitfield name="UNK12CONSTID" low="12" high="23" type="a3xx_regid"/>
+		<bitfield name="WORKGROUPSIZECONSTID" low="12" high="23" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0x23d6" name="HLSQ_CL_KERNEL_CONST">
+		<!-- GLOBALOFFSETCONSTID -->
 		<bitfield name="UNK0CONSTID" low="0" high="11" type="a3xx_regid"/>
 		<bitfield name="NUMWGCONSTID" low="12" high="23" type="a3xx_regid"/>
 	</reg32>
@@ -2115,6 +2117,7 @@ perhaps they should be taken with a grain of salt
 	<reg32 offset="0x23d8" name="HLSQ_CL_KERNEL_GROUP_Y"/>
 	<reg32 offset="0x23d9" name="HLSQ_CL_KERNEL_GROUP_Z"/>
 	<reg32 offset="0x23da" name="HLSQ_CL_WG_OFFSET">
+		<!-- WGOFFSETCONSTID -->
 		<bitfield name="UNK0CONSTID" low="0" high="11" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0x23db" name="HLSQ_UPDATE_CONTROL"/>
