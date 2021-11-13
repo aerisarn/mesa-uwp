@@ -479,7 +479,7 @@
     <value name="Depth" value="0xC"/>
   </enum>
 
-  <struct name="IOGPU Header" size="64">
+  <struct name="IOGPU Header" size="192">
     <field name="Unk 0" start="0:0" size="32" default="0x10000" type="hex"/>
     <field name="Total size" start="1:0" size="32" type="uint"/>
     <field name="Unk 2" start="2:0" size="32" default="0x7" type="hex"/>
@@ -490,6 +490,10 @@
     <field name="Unk 4" start="12:0" size="32" default="0x30" type="hex"/>
     <field name="Unk 5" start="13:0" size="32" default="0x01" type="hex"/>
     <field name="Encoder" start="14:0" size="64" type="address"/>
+    <!-- if either deflake address is null, rendering gets flaky for high
+         geometry counts -->
+    <field name="Deflake 1" start="38:0" size="64" type="address"/>
+    <field name="Deflake 2" start="40:0" size="64" type="address"/>
   </struct>
 
   <struct name="IOGPU Attachment" size="24">
