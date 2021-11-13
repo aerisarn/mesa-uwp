@@ -190,14 +190,14 @@ demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
    struct agx_map_entry *end = (struct agx_map_entry *) (((uint8_t *) map) + size);
 
    /* Header precedes the entry */
-   *header = demo_map_header(cmdbuf_id, encoder_id, cmdbuf_size, count + 1);
+   *header = demo_map_header(cmdbuf_id, encoder_id, cmdbuf_size, count);
 
    /* Add an entry for each BO mapped */
-   for (unsigned i = 0; i < count + 1; ++i) {
+   for (unsigned i = 0; i < count; ++i) {
 	   assert((entries + i) < end);
       entries[i] = (struct agx_map_entry) {
-         .indices = {(i == 0) ? 0x0b : handles[i - 1]},
-         .unkAAA = i == count ? 0x40 : 0x20,
+         .indices = {handles[i]},
+         .unkAAA = 0x20,
          .unkBBB = 0x1,
          .unka = 0x1ffff,
       };
