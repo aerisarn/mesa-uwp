@@ -156,6 +156,9 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.attachment_length = nr_attachments * AGX_IOGPU_ATTACHMENT_LENGTH;
       cfg.unknown_offset = offset_unk;
       cfg.encoder = encoder_ptr;
+
+      cfg.deflake_1 = demo_zero(pool, 0x540);
+      cfg.deflake_2 = demo_zero(pool, 0x280);
    }
 
    return total_size;
