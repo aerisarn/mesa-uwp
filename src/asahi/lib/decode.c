@@ -130,20 +130,12 @@ agxdecode_validate_map(void *map)
       return;
    }
 
-   for (unsigned i = 0; i < 6; ++i) {
-      unsigned handle = hdr->indices[i];
-      if (handle) {
-         agxdecode_mark_mapped(handle);
-         nr_handles++;
-      }
-   }
-
    /* Check the entries */
-   struct agx_map_entry *entries = (struct agx_map_entry *) (&hdr[1]);
-   for (unsigned i = 0; i < hdr->nr_entries - 1; ++i) {
+   struct agx_map_entry *entries = ((void *) hdr) + sizeof(*hdr);
+   for (unsigned i = 0; i < hdr->nr_entries; ++i) {
       struct agx_map_entry entry = entries[i];
       
-      for (unsigned j = 0; j < 6; ++j) {
+      for (unsigned j = 0; j < ARRAY_SIZE(entry.indices); ++j) {
          unsigned handle = entry.indices[j];
          if (handle) {
             agxdecode_mark_mapped(handle);
@@ -152,16 +144,10 @@ agxdecode_validate_map(void *map)
       }
    }
 
-   /* Check the sentinel */
-   if (entries[hdr->nr_entries - 1].indices[0]) {
-      fprintf(stderr, "ERROR - last entry nonzero %u\n", entries[hdr->nr_entries - 1].indices[0]);
-      return;
-   }
-
    /* Check the handle count */
    if (nr_handles != hdr->nr_handles) {
-      fprintf(stderr, "ERROR - wrong handle count, got %u, expected %u\n",
-            nr_handles, hdr->nr_handles);
+      fprintf(stderr, "ERROR - wrong handle count, got %u, expected %u (%u entries)\n",
+            nr_handles, hdr->nr_handles, hdr->nr_entries);
    }
 }
 

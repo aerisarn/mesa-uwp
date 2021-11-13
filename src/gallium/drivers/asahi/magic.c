@@ -176,9 +176,8 @@ demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size, u
       .cmdbuf_size = cmdbuf_size,
 
       /* +1 for the sentinel ending */
-      .nr_entries = count + 1,
-      .nr_handles = count + 1,
-      .indices = {0x0b},
+      .nr_entries = count,
+      .nr_handles = count,
    };
 }
 
@@ -187,28 +186,20 @@ demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
              uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size)
 {
    struct agx_map_header *header = map;
-   struct agx_map_entry *entries = (struct agx_map_entry *) (((uint8_t *) map) + 0x40);
+   struct agx_map_entry *entries = (struct agx_map_entry *) (((uint8_t *) map) + sizeof(*header));
    struct agx_map_entry *end = (struct agx_map_entry *) (((uint8_t *) map) + size);
 
    /* Header precedes the entry */
-   *header = demo_map_header(cmdbuf_id, encoder_id, cmdbuf_size, count);
+   *header = demo_map_header(cmdbuf_id, encoder_id, cmdbuf_size, count + 1);
 
    /* Add an entry for each BO mapped */
-   for (unsigned i = 0; i < count; ++i) {
+   for (unsigned i = 0; i < count + 1; ++i) {
 	   assert((entries + i) < end);
       entries[i] = (struct agx_map_entry) {
-         .unkAAA = 0x20,
+         .indices = {(i == 0) ? 0x0b : handles[i - 1]},
+         .unkAAA = i == count ? 0x40 : 0x20,
          .unkBBB = 0x1,
          .unka = 0x1ffff,
-         .indices = {handles[i]}
       };
    }
-
-   /* Final entry is a sentinel */
-   assert((entries + count) < end);
-   entries[count] = (struct agx_map_entry) {
-      .unkAAA = 0x40,
-      .unkBBB = 0x1,
-      .unka = 0x1ffff,
-   };
 }
