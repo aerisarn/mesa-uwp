@@ -125,12 +125,6 @@ fd5_sampler_state_create(struct pipe_context *pctx,
    return so;
 }
 
-static bool
-use_astc_srgb_workaround(struct pipe_context *pctx, enum pipe_format format)
-{
-   return false; // TODO check if this is still needed on a5xx
-}
-
 static struct pipe_sampler_view *
 fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
                         const struct pipe_sampler_view *cso)
@@ -173,8 +167,6 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
    }
 
    if (util_format_is_srgb(format)) {
-      if (use_astc_srgb_workaround(pctx, format))
-         so->astc_srgb = true;
       so->texconst0 |= A5XX_TEX_CONST_0_SRGB;
    }
 
@@ -235,41 +227,11 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
    return &so->base;
 }
 
-static void
-fd5_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
-                      unsigned start, unsigned nr,
-                      unsigned unbind_num_trailing_slots,
-                      bool take_ownership,
-                      struct pipe_sampler_view **views)
-{
-   struct fd_context *ctx = fd_context(pctx);
-   struct fd5_context *fd5_ctx = fd5_context(ctx);
-   uint16_t astc_srgb = 0;
-   unsigned i;
-
-   for (i = 0; i < nr; i++) {
-      if (views[i]) {
-         struct fd5_pipe_sampler_view *view = fd5_pipe_sampler_view(views[i]);
-         if (view->astc_srgb)
-            astc_srgb |= (1 << i);
-      }
-   }
-
-   fd_set_sampler_views(pctx, shader, start, nr, unbind_num_trailing_slots,
-                        take_ownership, views);
-
-   if (shader == PIPE_SHADER_FRAGMENT) {
-      fd5_ctx->fastc_srgb = astc_srgb;
-   } else if (shader == PIPE_SHADER_VERTEX) {
-      fd5_ctx->vastc_srgb = astc_srgb;
-   }
-}
-
 void
 fd5_texture_init(struct pipe_context *pctx)
 {
    pctx->create_sampler_state = fd5_sampler_state_create;
    pctx->bind_sampler_states = fd_sampler_states_bind;
    pctx->create_sampler_view = fd5_sampler_view_create;
-   pctx->set_sampler_views = fd5_set_sampler_views;
+   pctx->set_sampler_views = fd_set_sampler_views;
 }
