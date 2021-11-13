@@ -156,7 +156,8 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit, int nr,
 {
    struct stage s[MAX_STAGES];
    uint32_t pos_regid, posz_regid, psize_regid, color_regid[8];
-   uint32_t face_regid, coord_regid, zwcoord_regid, ij_regid[IJ_COUNT];
+   uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid,
+      samp_mask_regid, ij_regid[IJ_COUNT];
    enum a3xx_threadsize fssz;
    int constmode;
    int i, j;
@@ -198,6 +199,9 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit, int nr,
       color_regid[7] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA7);
    }
 
+   samp_id_regid = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_ID);
+   samp_mask_regid =
+      ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_MASK_IN);
    face_regid = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRONT_FACE);
    coord_regid = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRAG_COORD);
    zwcoord_regid =
@@ -228,7 +232,8 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit, int nr,
                      A4XX_HLSQ_CONTROL_1_REG_COORDREGID(coord_regid) |
                      A4XX_HLSQ_CONTROL_1_REG_ZWCOORDREGID(zwcoord_regid));
    OUT_RING(ring, A4XX_HLSQ_CONTROL_2_REG_PRIMALLOCTHRESHOLD(63) |
-                     0x3f3f000 | /* XXX */
+                     A4XX_HLSQ_CONTROL_2_REG_SAMPLEID_REGID(samp_id_regid) |
+                     A4XX_HLSQ_CONTROL_2_REG_SAMPLEMASK_REGID(samp_mask_regid) |
                      A4XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid));
    /* XXX left out centroid/sample for now */
    OUT_RING(
@@ -417,7 +422,9 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit, int nr,
          CONDREG(ij_regid[IJ_PERSP_CENTROID],
                  A4XX_RB_RENDER_CONTROL2_IJ_PERSP_CENTROID) |
          CONDREG(ij_regid[IJ_LINEAR_PIXEL], A4XX_RB_RENDER_CONTROL2_SIZE) |
+         CONDREG(samp_id_regid, A4XX_RB_RENDER_CONTROL2_SAMPLEID) |
          COND(s[FS].v->frag_face, A4XX_RB_RENDER_CONTROL2_FACENESS) |
+         CONDREG(samp_mask_regid, A4XX_RB_RENDER_CONTROL2_SAMPLEMASK) |
          COND(s[FS].v->fragcoord_compmask != 0,
               A4XX_RB_RENDER_CONTROL2_COORD_MASK(s[FS].v->fragcoord_compmask)));
 
