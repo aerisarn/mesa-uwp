@@ -1796,6 +1796,13 @@ radv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
     *    present and VkExternalImageFormatProperties will be ignored.
     */
    if (external_info && external_info->handleType != 0) {
+      VkExternalImageFormatProperties fallback_external_props;
+
+      if (!external_props) {
+         memset(&fallback_external_props, 0, sizeof(fallback_external_props));
+         external_props = &fallback_external_props;
+      }
+
       get_external_image_format_properties(physical_device, base_info, external_info->handleType,
                                            &external_props->externalMemoryProperties,
                                            &base_props->imageFormatProperties);
