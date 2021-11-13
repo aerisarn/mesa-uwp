@@ -1145,6 +1145,7 @@ static void ac_sqtt_dump_data(struct radeon_info *rad_info,
       list_for_each_entry_safe(struct rgp_clock_calibration_record, record,
                                &rgp_clock_calibration->record, list) {
          struct sqtt_file_chunk_clock_calibration clock_calibration;
+         memset(&clock_calibration, 0, sizeof(clock_calibration));
 
          ac_sqtt_fill_clock_calibration(&clock_calibration, num_records);
 
