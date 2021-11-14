@@ -369,7 +369,11 @@ radv_create_shaders_from_pipeline_cache(
          *stack_sizes = malloc(entry->num_stack_sizes * sizeof(**stack_sizes));
          memcpy(*stack_sizes, p, entry->num_stack_sizes * sizeof(**stack_sizes));
       }
+   } else {
+      assert(!entry->num_stack_sizes);
    }
+
+   p += entry->num_stack_sizes * sizeof(**stack_sizes);
 
    if (device->instance->debug_flags & RADV_DEBUG_NO_MEMORY_CACHE && cache == device->mem_cache)
       vk_free(&cache->alloc, entry);
@@ -379,6 +383,7 @@ radv_create_shaders_from_pipeline_cache(
             p_atomic_inc(&entry->shaders[i]->ref_count);
    }
 
+   assert((uintptr_t)p <= (uintptr_t)entry + entry_size(entry));
    radv_pipeline_cache_unlock(cache);
    return true;
 }
