@@ -128,6 +128,8 @@ files_libfreedreno = files(
   'a4xx/fd4_format.h',
   'a4xx/fd4_gmem.c',
   'a4xx/fd4_gmem.h',
+  'a4xx/fd4_image.c',
+  'a4xx/fd4_image.h',
   'a4xx/fd4_program.c',
   'a4xx/fd4_program.h',
   'a4xx/fd4_query.c',
