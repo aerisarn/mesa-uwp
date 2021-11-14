@@ -297,8 +297,6 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 
    OPT_V(s, nir_lower_tex, &tex_options);
    OPT_V(s, nir_lower_load_const_to_scalar);
-   if (compiler->gen < 5)
-      OPT_V(s, ir3_nir_lower_tg4_to_tex);
 
    ir3_optimize_loop(compiler, s);
 
