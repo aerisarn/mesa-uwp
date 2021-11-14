@@ -507,6 +507,11 @@ struct ir3 {
     */
    DECLARE_ARRAY(struct ir3_instruction *, astc_srgb);
 
+   /* Track tg4 instructions which need texture state patched in (for tg4
+    * swizzling workaround):
+    */
+   DECLARE_ARRAY(struct ir3_instruction *, tg4);
+
    /* List of blocks: */
    struct list_head block_list;
 

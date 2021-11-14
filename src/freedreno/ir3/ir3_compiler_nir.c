@@ -2754,10 +2754,6 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
       opc = OPC_GETLOD;
       break;
    case nir_texop_tg4:
-      /* NOTE: a4xx might need to emulate gather w/ txf (this is
-       * what blob does, seems gather  is broken?), and a3xx did
-       * not support it (but probably could also emulate).
-       */
       switch (tex->component) {
       case 0:
          opc = OPC_GATHER4R;
@@ -2915,6 +2911,27 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
       info = get_tex_samp_tex_src(ctx, tex);
    }
 
+   bool tg4_swizzle_fixup = false;
+   if (tex->op == nir_texop_tg4 && ctx->compiler->gen == 4 &&
+         ctx->sampler_swizzles[tex->texture_index] != 0x688 /* rgba */) {
+      /* XXX fix-up ASTC alpha as well? */
+      uint16_t swizzles = ctx->sampler_swizzles[tex->texture_index];
+      uint16_t swizzle = (swizzles >> (tex->component * 3)) & 7;
+      if (swizzle > 3) {
+         /* this would mean that we can just return 0 / 1, no texturing
+          * necessary
+          */
+         struct ir3_instruction *imm = create_immed(b,
+               type_float(type) ? fui(swizzle - 4) : (swizzle - 4));
+         for (int i = 0; i < 4; i++)
+            dst[i] = imm;
+         ir3_put_dst(ctx, &tex->dest);
+         return;
+      }
+      opc = OPC_GATHER4R + swizzle;
+      tg4_swizzle_fixup = true;
+   }
+
    struct ir3_instruction *col0 = ir3_create_collect(b, src0, nsrc0);
    struct ir3_instruction *col1 = ir3_create_collect(b, src1, nsrc1);
 
@@ -2937,7 +2954,11 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
       sam = emit_sam(ctx, opc, info, type, MASK(ncomp), col0, col1);
    }
 
+   if (tg4_swizzle_fixup)
+      array_insert(ctx->ir, ctx->ir->tg4, sam);
+
    if ((ctx->astc_srgb & (1 << tex->texture_index)) &&
+       tex->op != nir_texop_tg4 && /* leave out tg4, unless it's on alpha? */
        !nir_tex_instr_is_query(tex)) {
       assert(opc != OPC_META_TEX_PREFETCH);
 
@@ -2945,7 +2966,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
       sam->dsts[0]->wrmask = 0x7;
       ir3_split_dest(b, dst, sam, 0, 3);
 
-      /* we need to sample the alpha separately with a non-ASTC
+      /* we need to sample the alpha separately with a non-SRGB
        * texture state:
        */
       sam = ir3_SAM(b, opc, type, 0b1000, flags | info.flags, info.samp_tex,
@@ -4119,6 +4140,40 @@ fixup_astc_srgb(struct ir3_context *ctx)
    }
 }
 
+/* Fixup tex sampler state for tg4 workaround instructions.  We
+ * need to assign the tex state indexes for these after we know the
+ * max tex index.
+ */
+static void
+fixup_tg4(struct ir3_context *ctx)
+{
+   struct ir3_shader_variant *so = ctx->so;
+   /* indexed by original tex idx, value is newly assigned alpha sampler
+    * state tex idx.  Zero is invalid since there is at least one sampler
+    * if we get here.
+    */
+   unsigned alt_tex_state[16] = {0};
+   unsigned tex_idx = ctx->max_texture_index + so->astc_srgb.count + 1;
+   unsigned idx = 0;
+
+   so->tg4.base = tex_idx;
+
+   for (unsigned i = 0; i < ctx->ir->tg4_count; i++) {
+      struct ir3_instruction *sam = ctx->ir->tg4[i];
+
+      compile_assert(ctx, sam->cat5.tex < ARRAY_SIZE(alt_tex_state));
+
+      if (alt_tex_state[sam->cat5.tex] == 0) {
+         /* assign new alternate/alpha tex state slot: */
+         alt_tex_state[sam->cat5.tex] = tex_idx++;
+         so->tg4.orig_idx[idx++] = sam->cat5.tex;
+         so->tg4.count++;
+      }
+
+      sam->cat5.tex = alt_tex_state[sam->cat5.tex];
+   }
+}
+
 static bool
 output_slot_used_for_binning(gl_varying_slot slot)
 {
@@ -4588,6 +4643,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
    if (ctx->astc_srgb)
       fixup_astc_srgb(ctx);
+
+   if (ctx->compiler->gen == 4 && ctx->s->info.uses_texture_gather)
+      fixup_tg4(ctx);
 
    /* We need to do legalize after (for frag shader's) the "bary.f"
     * offsets (inloc) have been assigned.

@@ -342,6 +342,10 @@ struct ir3_shader_key {
 
    /* bitmask of samplers which need astc srgb workaround (a4xx): */
    uint16_t vastc_srgb, fastc_srgb;
+
+   /* per-component (3-bit) swizzles of each sampler (a4xx tg4): */
+   uint16_t vsampler_swizzles[16];
+   uint16_t fsampler_swizzles[16];
 };
 
 static inline unsigned
@@ -392,7 +396,9 @@ ir3_shader_key_changes_fs(struct ir3_shader_key *key,
 {
    if (last_key->has_per_samp || key->has_per_samp) {
       if ((last_key->fsamples != key->fsamples) ||
-          (last_key->fastc_srgb != key->fastc_srgb))
+          (last_key->fastc_srgb != key->fastc_srgb) ||
+          memcmp(last_key->fsampler_swizzles, key->fsampler_swizzles,
+                sizeof(key->fsampler_swizzles)))
          return true;
    }
 
@@ -418,7 +424,9 @@ ir3_shader_key_changes_vs(struct ir3_shader_key *key,
 {
    if (last_key->has_per_samp || key->has_per_samp) {
       if ((last_key->vsamples != key->vsamples) ||
-          (last_key->vastc_srgb != key->vastc_srgb))
+          (last_key->vastc_srgb != key->vastc_srgb) ||
+          memcmp(last_key->vsampler_swizzles, key->vsampler_swizzles,
+                sizeof(key->vsampler_swizzles)))
          return true;
    }
 
@@ -698,6 +706,14 @@ struct ir3_shader_variant {
       unsigned base, count;
       unsigned orig_idx[16];
    } astc_srgb;
+
+   /* for tg4 workaround, the number/base of additional
+    * unswizzled tex states we need, and index of original tex states
+    */
+   struct {
+      unsigned base, count;
+      unsigned orig_idx[16];
+   } tg4;
 
    /* texture sampler pre-dispatches */
    uint32_t num_sampler_prefetch;

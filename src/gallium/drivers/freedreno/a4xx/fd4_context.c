@@ -110,5 +110,10 @@ fd4_context_create(struct pipe_screen *pscreen, void *priv,
    fd4_ctx->border_color_uploader =
       u_upload_create(pctx, 4096, 0, PIPE_USAGE_STREAM, 0);
 
+   for (int i = 0; i < 16; i++) {
+      fd4_ctx->vsampler_swizzles[i] = 0x688;
+      fd4_ctx->fsampler_swizzles[i] = 0x688;
+   }
+
    return pctx;
 }

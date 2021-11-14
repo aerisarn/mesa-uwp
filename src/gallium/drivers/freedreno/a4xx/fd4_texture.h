@@ -52,6 +52,7 @@ struct fd4_pipe_sampler_view {
    uint32_t texconst0, texconst1, texconst2, texconst3, texconst4;
    uint32_t offset;
    bool astc_srgb;
+   uint32_t swizzle;
 };
 
 static inline struct fd4_pipe_sampler_view *

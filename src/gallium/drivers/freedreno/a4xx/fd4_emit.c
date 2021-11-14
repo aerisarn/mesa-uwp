@@ -190,7 +190,7 @@ emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
    }
 
    if (tex->num_textures > 0) {
-      unsigned num_textures = tex->num_textures + v->astc_srgb.count;
+      unsigned num_textures = tex->num_textures + v->astc_srgb.count + v->tg4.count;
 
       /* emit texture state: */
       OUT_PKT3(ring, CP_LOAD_STATE4, 2 + (8 * num_textures));
@@ -247,8 +247,38 @@ emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
          OUT_RING(ring, 0x00000000);
          OUT_RING(ring, 0x00000000);
       }
+
+      for (i = 0; i < v->tg4.count; i++) {
+         static const struct fd4_pipe_sampler_view dummy_view = {};
+         const struct fd4_pipe_sampler_view *view;
+         unsigned idx = v->tg4.orig_idx[i];
+
+         view = tex->textures[idx] ? fd4_pipe_sampler_view(tex->textures[idx])
+                                   : &dummy_view;
+
+         unsigned texconst0 = view->texconst0 & ~(0xfff << 4);
+         texconst0 |= A4XX_TEX_CONST_0_SWIZ_X(A4XX_TEX_X) |
+            A4XX_TEX_CONST_0_SWIZ_Y(A4XX_TEX_Y) |
+            A4XX_TEX_CONST_0_SWIZ_Z(A4XX_TEX_Z) |
+            A4XX_TEX_CONST_0_SWIZ_W(A4XX_TEX_W);
+
+         OUT_RING(ring, texconst0);
+         OUT_RING(ring, view->texconst1);
+         OUT_RING(ring, view->texconst2);
+         OUT_RING(ring, view->texconst3);
+         if (view->base.texture) {
+            struct fd_resource *rsc = fd_resource(view->base.texture);
+            OUT_RELOC(ring, rsc->bo, view->offset, view->texconst4, 0);
+         } else {
+            OUT_RING(ring, 0x00000000);
+         }
+         OUT_RING(ring, 0x00000000);
+         OUT_RING(ring, 0x00000000);
+         OUT_RING(ring, 0x00000000);
+      }
    } else {
       debug_assert(v->astc_srgb.count == 0);
+      debug_assert(v->tg4.count == 0);
    }
 
    if (needs_border) {

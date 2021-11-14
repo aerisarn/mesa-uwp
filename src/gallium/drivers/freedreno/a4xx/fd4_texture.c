@@ -155,10 +155,12 @@ fd4_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
    so->base.reference.count = 1;
    so->base.context = pctx;
 
+   so->swizzle = fd4_tex_swiz(format, cso->swizzle_r, cso->swizzle_g,
+         cso->swizzle_b, cso->swizzle_a);
+
    so->texconst0 = A4XX_TEX_CONST_0_TYPE(fd4_tex_type(cso->target)) |
                    A4XX_TEX_CONST_0_FMT(fd4_pipe2tex(format)) |
-                   fd4_tex_swiz(format, cso->swizzle_r, cso->swizzle_g,
-                                cso->swizzle_b, cso->swizzle_a);
+                   so->swizzle;
 
    if (util_format_is_srgb(format)) {
       if (use_astc_srgb_workaround(pctx, format))
@@ -238,18 +240,34 @@ fd4_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
    struct fd_context *ctx = fd_context(pctx);
    struct fd4_context *fd4_ctx = fd4_context(ctx);
    uint16_t astc_srgb = 0;
+   uint16_t *sampler_swizzles;
    unsigned i;
+
+   if (shader == PIPE_SHADER_FRAGMENT) {
+      sampler_swizzles = fd4_ctx->fsampler_swizzles;
+   } else if (shader == PIPE_SHADER_VERTEX) {
+      sampler_swizzles = fd4_ctx->vsampler_swizzles;
+   } else {
+      debug_assert(0);
+      sampler_swizzles = fd4_ctx->fsampler_swizzles;
+   }
 
    for (i = 0; i < nr; i++) {
       if (views[i]) {
          struct fd4_pipe_sampler_view *view = fd4_pipe_sampler_view(views[i]);
          if (view->astc_srgb)
-            astc_srgb |= (1 << i);
+            astc_srgb |= (1 << (start + i));
+         sampler_swizzles[start + i] = view->swizzle >> 4;
       }
    }
 
    fd_set_sampler_views(pctx, shader, start, nr, unbind_num_trailing_slots,
                         take_ownership, views);
+
+   for (i = 0; i < unbind_num_trailing_slots; i++) {
+      astc_srgb &= ~(1 << (start + nr + i));
+      sampler_swizzles[start + nr + i] = 0x688;
+   }
 
    if (shader == PIPE_SHADER_FRAGMENT) {
       fd4_ctx->fastc_srgb = astc_srgb;
