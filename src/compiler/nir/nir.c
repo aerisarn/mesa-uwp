@@ -3365,13 +3365,8 @@ nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
          return instr->coord_components;
    }
 
-   /* Usual APIs don't allow cube + offset, but we allow it, with 2 coords for
-    * the offset, since a cube maps to a single face.
-    */
    if (instr->src[src].src_type == nir_tex_src_offset) {
-      if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
-         return 2;
-      else if (instr->is_array)
+      if (instr->is_array)
          return instr->coord_components - 1;
       else
          return instr->coord_components;
