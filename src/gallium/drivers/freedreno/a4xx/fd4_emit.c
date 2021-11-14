@@ -148,14 +148,21 @@ emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
    bool needs_border = false;
    unsigned i;
 
-   if (tex->num_samplers > 0) {
-      int num_samplers;
+   if (tex->num_samplers > 0 || tex->num_textures > 0) {
+      int num_samplers = tex->num_samplers;
+
+      /* We want to always make sure that there's at least one sampler if
+       * there are going to be texture accesses. Gallium might not upload a
+       * sampler for e.g. buffer textures.
+       */
+      if (num_samplers == 0)
+         num_samplers++;
 
       /* not sure if this is an a420.0 workaround, but we seem
        * to need to emit these in pairs.. emit a final dummy
        * entry if odd # of samplers:
        */
-      num_samplers = align(tex->num_samplers, 2);
+      num_samplers = align(num_samplers, 2);
 
       /* output sampler state: */
       OUT_PKT3(ring, CP_LOAD_STATE4, 2 + (2 * num_samplers));
