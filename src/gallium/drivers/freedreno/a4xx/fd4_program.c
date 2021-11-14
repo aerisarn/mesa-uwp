@@ -37,8 +37,8 @@
 #include "fd4_program.h"
 #include "fd4_texture.h"
 
-static void
-emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
+void
+fd4_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 {
    const struct ir3_info *si = &so->info;
    enum a4xx_state_block sb = fd4_stage2shadersb(so->type);
@@ -570,11 +570,11 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit, int nr,
    }
 
    if (s[VS].instrlen)
-      emit_shader(ring, s[VS].v);
+      fd4_emit_shader(ring, s[VS].v);
 
    if (!emit->binning_pass)
       if (s[FS].instrlen)
-         emit_shader(ring, s[FS].v);
+         fd4_emit_shader(ring, s[FS].v);
 }
 
 static struct ir3_program_state *

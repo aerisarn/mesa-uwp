@@ -136,6 +136,14 @@ emit_const_ptrs(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v,
    fd4_emit_const_ptrs(ring, v->type, dst_offset, num, bos, offsets);
 }
 
+void
+fd4_emit_cs_consts(const struct ir3_shader_variant *v,
+                   struct fd_ringbuffer *ring, struct fd_context *ctx,
+                   const struct pipe_grid_info *info)
+{
+   ir3_emit_cs_consts(v, ring, ctx, info);
+}
+
 static void
 emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
               enum a4xx_state_block sb, struct fd_texture_stateobj *tex,
@@ -144,6 +152,7 @@ emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
    static const uint32_t bcolor_reg[] = {
       [SB4_VS_TEX] = REG_A4XX_TPL1_TP_VS_BORDER_COLOR_BASE_ADDR,
       [SB4_FS_TEX] = REG_A4XX_TPL1_TP_FS_BORDER_COLOR_BASE_ADDR,
+      [SB4_CS_TEX] = REG_A4XX_TPL1_TP_CS_BORDER_COLOR_BASE_ADDR,
    };
    struct fd4_context *fd4_ctx = fd4_context(ctx);
    bool needs_border = false;
@@ -907,6 +916,32 @@ fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
       if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & FD_DIRTY_SHADER_IMAGE)
          fd4_emit_images(ctx, ring, PIPE_SHADER_FRAGMENT, fp);
    }
+}
+
+void
+fd4_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
+                  struct ir3_shader_variant *cp)
+{
+   enum fd_dirty_shader_state dirty = ctx->dirty_shader[PIPE_SHADER_COMPUTE];
+
+   if (dirty & FD_DIRTY_SHADER_TEX) {
+      emit_textures(ctx, ring, SB4_CS_TEX, &ctx->tex[PIPE_SHADER_COMPUTE], cp);
+
+      OUT_PKT0(ring, REG_A4XX_TPL1_TP_TEX_COUNT, 1);
+      OUT_RING(ring, 0);
+   }
+
+   OUT_PKT0(ring, REG_A4XX_TPL1_TP_FS_TEX_COUNT, 1);
+   OUT_RING(ring, A4XX_TPL1_TP_FS_TEX_COUNT_CS(
+               ctx->shaderimg[PIPE_SHADER_COMPUTE].enabled_mask
+               ? 0x80
+               : ctx->tex[PIPE_SHADER_COMPUTE].num_textures));
+
+   if (dirty & FD_DIRTY_SHADER_SSBO)
+      emit_ssbos(ctx, ring, SB4_CS_SSBO, &ctx->shaderbuf[PIPE_SHADER_COMPUTE]);
+
+   if (dirty & FD_DIRTY_SHADER_IMAGE)
+      fd4_emit_images(ctx, ring, PIPE_SHADER_COMPUTE, cp);
 }
 
 /* emit setup at begin of new cmdstream buffer (don't rely on previous

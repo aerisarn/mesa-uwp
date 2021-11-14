@@ -118,6 +118,8 @@ files_libfreedreno = files(
   'a3xx/fd3_zsa.h',
   'a4xx/fd4_blend.c',
   'a4xx/fd4_blend.h',
+  'a4xx/fd4_compute.c',
+  'a4xx/fd4_compute.h',
   'a4xx/fd4_context.c',
   'a4xx/fd4_context.h',
   'a4xx/fd4_draw.c',

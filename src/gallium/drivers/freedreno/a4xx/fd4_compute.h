@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Rob Clark <robclark@freedesktop.org>
+ * Copyright (C) 2021 Ilia Mirkin <imirkin@alum.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,39 +21,14 @@
  * SOFTWARE.
  *
  * Authors:
- *    Rob Clark <robclark@freedesktop.org>
+ *    Ilia Mirkin <imirkin@alum.mit.edu>
  */
 
-#ifndef FD4_PROGRAM_H_
-#define FD4_PROGRAM_H_
+#ifndef FD4_COMPUTE_H_
+#define FD4_COMPUTE_H_
 
 #include "pipe/p_context.h"
-#include "freedreno_context.h"
 
-#include "ir3/ir3_cache.h"
-#include "ir3/ir3_shader.h"
+void fd4_compute_init(struct pipe_context *pctx);
 
-struct fd4_emit;
-
-struct fd4_program_state {
-   struct ir3_program_state base;
-   struct ir3_shader_variant *bs; /* VS for when emit->binning */
-   struct ir3_shader_variant *vs;
-   struct ir3_shader_variant *fs; /* FS for when !emit->binning */
-};
-
-static inline struct fd4_program_state *
-fd4_program_state(struct ir3_program_state *state)
-{
-   return (struct fd4_program_state *)state;
-}
-
-void fd4_emit_shader(struct fd_ringbuffer *ring,
-                     const struct ir3_shader_variant *so);
-
-void fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit, int nr,
-                      struct pipe_surface **bufs);
-
-void fd4_prog_init(struct pipe_context *pctx);
-
-#endif /* FD4_PROGRAM_H_ */
+#endif /* FD4_COMPUTE_H_ */

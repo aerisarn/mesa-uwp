@@ -27,6 +27,7 @@
 #include "freedreno_query_hw.h"
 
 #include "fd4_blend.h"
+#include "fd4_compute.h"
 #include "fd4_context.h"
 #include "fd4_draw.h"
 #include "fd4_emit.h"
@@ -83,6 +84,7 @@ fd4_context_create(struct pipe_screen *pscreen, void *priv,
    pctx->create_depth_stencil_alpha_state = fd4_zsa_state_create;
 
    fd4_draw_init(pctx);
+   fd4_compute_init(pctx);
    fd4_gmem_init(pctx);
    fd4_texture_init(pctx);
    fd4_prog_init(pctx);

@@ -101,6 +101,12 @@ void fd4_emit_vertex_bufs(struct fd_ringbuffer *ring,
 void fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
                     struct fd4_emit *emit) assert_dt;
 
+void fd4_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
+                       struct ir3_shader_variant *cp) assert_dt;
+void fd4_emit_cs_consts(const struct ir3_shader_variant *v,
+                        struct fd_ringbuffer *ring, struct fd_context *ctx,
+                        const struct pipe_grid_info *info) assert_dt;
+
 void fd4_emit_restore(struct fd_batch *batch,
                       struct fd_ringbuffer *ring) assert_dt;
 
