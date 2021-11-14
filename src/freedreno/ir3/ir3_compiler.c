@@ -309,6 +309,7 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    }
 
    compiler->bool_type = (compiler->gen >= 5) ? TYPE_U16 : TYPE_U32;
+   compiler->has_shared_regfile = compiler->gen >= 5;
 
    if (compiler->gen >= 6) {
       compiler->nir_options = options_a6xx;

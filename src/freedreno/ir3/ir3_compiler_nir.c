@@ -2183,12 +2183,19 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       break;
    case nir_intrinsic_load_workgroup_id:
    case nir_intrinsic_load_workgroup_id_zero_base:
-      if (!ctx->work_group_id) {
-         ctx->work_group_id =
-            create_sysval_input(ctx, SYSTEM_VALUE_WORKGROUP_ID, 0x7);
-         ctx->work_group_id->dsts[0]->flags |= IR3_REG_SHARED;
+      if (ctx->compiler->has_shared_regfile) {
+         if (!ctx->work_group_id) {
+            ctx->work_group_id =
+               create_sysval_input(ctx, SYSTEM_VALUE_WORKGROUP_ID, 0x7);
+            ctx->work_group_id->dsts[0]->flags |= IR3_REG_SHARED;
+         }
+         ir3_split_dest(b, dst, ctx->work_group_id, 0, 3);
+      } else {
+         /* For a3xx/a4xx, this comes in via const injection by the hw */
+         for (int i = 0; i < dest_components; i++) {
+            dst[i] = create_driver_param(ctx, IR3_DP_WORKGROUP_ID_X + i);
+         }
       }
-      ir3_split_dest(b, dst, ctx->work_group_id, 0, 3);
       break;
    case nir_intrinsic_load_base_workgroup_id:
       for (int i = 0; i < dest_components; i++) {

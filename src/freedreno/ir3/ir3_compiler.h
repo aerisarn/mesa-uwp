@@ -177,6 +177,11 @@ struct ir3_compiler {
 
    /* Type to use for 1b nir bools: */
    type_t bool_type;
+
+   /* Whether compute invocation params are passed in via shared regfile or
+    * constbuf. a5xx+ has the shared regfile.
+    */
+   bool has_shared_regfile;
 };
 
 void ir3_compiler_destroy(struct ir3_compiler *compiler);

@@ -756,6 +756,12 @@ ir3_nir_scan_driver_consts(struct ir3_compiler *compiler, nir_shader *shader, st
                layout->num_driver_params =
                   MAX2(layout->num_driver_params, IR3_DP_NUM_WORK_GROUPS_Z + 1);
                break;
+            case nir_intrinsic_load_workgroup_id:
+               if (!compiler->has_shared_regfile) {
+                  layout->num_driver_params =
+                     MAX2(layout->num_driver_params, IR3_DP_WORKGROUP_ID_Z + 1);
+               }
+               break;
             case nir_intrinsic_load_workgroup_size:
                layout->num_driver_params = MAX2(layout->num_driver_params,
                                                 IR3_DP_LOCAL_GROUP_SIZE_Z + 1);
@@ -782,6 +788,17 @@ ir3_nir_scan_driver_consts(struct ir3_compiler *compiler, nir_shader *shader, st
             }
          }
       }
+   }
+
+   /* TODO: Provide a spot somewhere to safely upload unwanted values, and a way
+    * to determine if they're wanted or not. For now we always make the whole
+    * driver param range available, since the driver will always instruct the
+    * hardware to upload these.
+    */
+   if (!compiler->has_shared_regfile &&
+         shader->info.stage == MESA_SHADER_COMPUTE) {
+      layout->num_driver_params =
+         MAX2(layout->num_driver_params, IR3_DP_WORKGROUP_ID_Z + 1);
    }
 }
 
