@@ -90,6 +90,7 @@
 #include "vk_queue.h"
 #include "vk_log.h"
 #include "vk_ycbcr_conversion.h"
+#include "vk_video.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -2770,6 +2771,11 @@ struct anv_cmd_buffer {
     * Structure holding tracepoints recorded in the command buffer.
     */
    struct u_trace                               trace;
+
+   struct {
+      struct anv_video_session *vid;
+      struct anv_video_session_params *params;
+   } video;
 };
 
 extern const struct vk_command_buffer_ops anv_cmd_buffer_ops;
@@ -4089,8 +4095,34 @@ struct anv_acceleration_structure {
    struct anv_address                           address;
 };
 
+struct anv_vid_mem {
+   struct anv_device_memory *mem;
+   VkDeviceSize       offset;
+   VkDeviceSize       size;
+};
+
+#define ANV_VIDEO_MEM_REQS_H264 4
 #define ANV_MB_WIDTH 16
 #define ANV_MB_HEIGHT 16
+
+enum {
+   ANV_VID_MEM_H264_INTRA_ROW_STORE,
+   ANV_VID_MEM_H264_DEBLOCK_FILTER_ROW_STORE,
+   ANV_VID_MEM_H264_BSD_MPC_ROW_SCRATCH,
+   ANV_VID_MEM_H264_MPR_ROW_SCRATCH,
+   ANV_VID_MEM_H264_MAX,
+};
+
+struct anv_video_session {
+   struct vk_video_session vk;
+
+   /* the decoder needs some private memory allocations */
+   struct anv_vid_mem vid_mem[ANV_VID_MEM_H264_MAX];
+};
+
+struct anv_video_session_params {
+   struct vk_video_session_parameters vk;
+};
 
 void
 anv_dump_pipe_bits(enum anv_pipe_bits bits);
@@ -4238,6 +4270,12 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_sampler, base, VkSampler,
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
                                VkPerformanceConfigurationINTEL,
                                VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_video_session, vk.base,
+                               VkVideoSessionKHR,
+                               VK_OBJECT_TYPE_VIDEO_SESSION_KHR)
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_video_session_params, vk.base,
+                               VkVideoSessionParametersKHR,
+                               VK_OBJECT_TYPE_VIDEO_SESSION_PARAMETERS_KHR)
 
 #define anv_genX(devinfo, thing) ({             \
    __typeof(&gfx9_##thing) genX_thing;          \
