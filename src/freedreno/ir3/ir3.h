@@ -888,7 +888,7 @@ is_alu(struct ir3_instruction *instr)
 static inline bool
 is_sfu(struct ir3_instruction *instr)
 {
-   return (opc_cat(instr->opc) == 4);
+   return (opc_cat(instr->opc) == 4) || instr->opc == OPC_GETFIBERID;
 }
 
 static inline bool
@@ -906,7 +906,7 @@ is_tex_or_prefetch(struct ir3_instruction *instr)
 static inline bool
 is_mem(struct ir3_instruction *instr)
 {
-   return (opc_cat(instr->opc) == 6);
+   return (opc_cat(instr->opc) == 6) && instr->opc != OPC_GETFIBERID;
 }
 
 static inline bool

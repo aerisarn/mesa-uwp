@@ -2110,6 +2110,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_work_dim:
       dst[0] = create_driver_param(ctx, IR3_DP_WORK_DIM);
       break;
+   case nir_intrinsic_load_subgroup_invocation:
+      assert(ctx->compiler->has_getfiberid);
+      dst[0] = ir3_GETFIBERID(b);
+      dst[0]->cat6.type = TYPE_U32;
+      __ssa_dst(dst[0]);
+      break;
    case nir_intrinsic_discard_if:
    case nir_intrinsic_discard:
    case nir_intrinsic_demote:
