@@ -1390,15 +1390,21 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             if (instr->opcode == aco_opcode::ds_write2_b32 ||
                 instr->opcode == aco_opcode::ds_read2_b32 ||
                 instr->opcode == aco_opcode::ds_write2_b64 ||
-                instr->opcode == aco_opcode::ds_read2_b64) {
-               unsigned mask = (instr->opcode == aco_opcode::ds_write2_b64 ||
-                                instr->opcode == aco_opcode::ds_read2_b64)
-                                  ? 0x7
-                                  : 0x3;
-               unsigned shifts = (instr->opcode == aco_opcode::ds_write2_b64 ||
-                                  instr->opcode == aco_opcode::ds_read2_b64)
-                                    ? 3
-                                    : 2;
+                instr->opcode == aco_opcode::ds_read2_b64 ||
+                instr->opcode == aco_opcode::ds_write2st64_b32 ||
+                instr->opcode == aco_opcode::ds_read2st64_b32 ||
+                instr->opcode == aco_opcode::ds_write2st64_b64 ||
+                instr->opcode == aco_opcode::ds_read2st64_b64) {
+               bool is64bit = instr->opcode == aco_opcode::ds_write2_b64 ||
+                              instr->opcode == aco_opcode::ds_read2_b64 ||
+                              instr->opcode == aco_opcode::ds_write2st64_b64 ||
+                              instr->opcode == aco_opcode::ds_read2st64_b64;
+               bool st64 = instr->opcode == aco_opcode::ds_write2st64_b32 ||
+                           instr->opcode == aco_opcode::ds_read2st64_b32 ||
+                           instr->opcode == aco_opcode::ds_write2st64_b64 ||
+                           instr->opcode == aco_opcode::ds_read2st64_b64;
+               unsigned shifts = (is64bit ? 3 : 2) + (st64 ? 6 : 0);
+               unsigned mask = BITFIELD_MASK(shifts);
 
                if ((offset & mask) == 0 && ds.offset0 + (offset >> shifts) <= 255 &&
                    ds.offset1 + (offset >> shifts) <= 255) {
