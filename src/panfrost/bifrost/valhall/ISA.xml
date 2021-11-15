@@ -1733,4 +1733,51 @@
     <src>D</src>
   </ins>
 
+  <ins name="FMA_RSCALE_N.f32" title="Fused floating-point multiply add with exponent bias and zero override" dests="1" opcode="0x161" unit="FMA">
+    <desc>
+      First calculates $A \cdot B + C$ and then biases the exponent by D. If $A
+      = 0$ or $B = 0$, the multiply $A \cdot B$ is treated as zero even if an
+      ordinary multiply would return NaN. Used in special transcendental
+      function sequences. It should not be used for general code as its special
+      case handling differs from two back-to-back `FMA.f32` operations.
+      Equivalent to `FMA.f32` back-to-back with `RSCALE.f32`
+    </desc>
+    <clamp/>
+    <src absneg="true">A</src>
+    <src absneg="true">B</src>
+    <src absneg="true">C</src>
+    <src>D</src>
+  </ins>
+
+  <ins name="FMA_RSCALE_LEFT.f32" title="Fused floating-point multiply add with exponent bias and asymmetric zero handling" dests="1" opcode="0x162" unit="FMA">
+    <desc>
+      First calculates $A \cdot B + C$ and then biases the exponent by D. If $A
+      = 0$ or $B = 0$, the multiply is treated as $A$ even if an
+      ordinary multiply would return NaN. Used in special transcendental
+      function sequences. It should not be used for general code as its special
+      case handling differs from two back-to-back `FMA.f32` operations.
+      Equivalent to `FMA.f32` back-to-back with `RSCALE.f32`
+    </desc>
+    <clamp/>
+    <src absneg="true">A</src>
+    <src absneg="true">B</src>
+    <src absneg="true">C</src>
+    <src>D</src>
+  </ins>
+
+  <ins name="FMA_RSCALE_SCALE16.f32" title="Fused floating-point multiply add with 16-bit exponent bias" dests="1" opcode="0x163" unit="FMA">
+    <desc>
+      First calculates $A \cdot B + C$ and then biases the exponent by D,
+      interpreted as a 16-bit value. Used in special transcendental function
+      sequences. It should not be used for general code as its special case
+      handling differs from two back-to-back `FMA.f32` operations.  Equivalent
+      to `FMA.f32` back-to-back with `RSCALE.f32`
+    </desc>
+    <clamp/>
+    <src absneg="true">A</src>
+    <src absneg="true">B</src>
+    <src absneg="true">C</src>
+    <src>D</src>
+  </ins>
+
 </valhall>
