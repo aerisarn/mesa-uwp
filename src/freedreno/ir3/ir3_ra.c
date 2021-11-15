@@ -718,6 +718,10 @@ ra_push_interval(struct ra_ctx *ctx, struct ra_file *file,
    interval->physreg_start = dst;
    interval->physreg_end = dst + removed->size;
 
+   assert(interval->physreg_end <= file->size);
+   if (interval->interval.reg->flags & IR3_REG_HALF)
+      assert(interval->physreg_end <= RA_HALF_SIZE);
+
    ir3_reg_interval_reinsert(&file->reg_ctx, &interval->interval);
 }
 
