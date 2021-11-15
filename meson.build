@@ -1584,7 +1584,7 @@ _drm_amdgpu_ver = '2.4.107'
 _drm_radeon_ver = '2.4.71'
 _drm_nouveau_ver = '2.4.102'
 _drm_intel_ver = '2.4.75'
-_drm_ver = '2.4.81'
+_drm_ver = '2.4.109'
 
 _libdrm_checks = [
   ['intel', with_dri_i915 or with_gallium_i915],
@@ -1593,17 +1593,6 @@ _libdrm_checks = [
               with_gallium_r300 or with_gallium_r600)],
   ['nouveau', (with_gallium_nouveau or with_dri_nouveau)],
 ]
-
-# VC4 only needs core libdrm support of this version, not a libdrm_vc4
-# library.
-if with_gallium_vc4
-  _drm_ver = '2.4.89'
-endif
-
-# etnaviv only needs core libdrm
-if with_gallium_etnaviv
-  _drm_ver = '2.4.89'
-endif
 
 # Loop over the enables versions and get the highest libdrm requirement for all
 # active drivers.
