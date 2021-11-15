@@ -319,6 +319,64 @@ err:
 }
 
 static void
+dmabuf_feedback_format_table_fini(struct dmabuf_feedback_format_table *format_table)
+{
+   if (format_table->data && format_table->data != MAP_FAILED)
+      munmap(format_table->data, format_table->size);
+}
+
+static void
+dmabuf_feedback_format_table_init(struct dmabuf_feedback_format_table *format_table)
+{
+   memset(format_table, 0, sizeof(*format_table));
+}
+
+static void
+dmabuf_feedback_tranche_fini(struct dmabuf_feedback_tranche *tranche)
+{
+   dri2_wl_formats_fini(&tranche->formats);
+}
+
+static int
+dmabuf_feedback_tranche_init(struct dmabuf_feedback_tranche *tranche)
+{
+   memset(tranche, 0, sizeof(*tranche));
+
+   if (dri2_wl_formats_init(&tranche->formats) < 0)
+      return -1;
+
+   return 0;
+}
+
+static void
+dmabuf_feedback_fini(struct dmabuf_feedback *dmabuf_feedback)
+{
+   dmabuf_feedback_tranche_fini(&dmabuf_feedback->pending_tranche);
+
+   util_dynarray_foreach(&dmabuf_feedback->tranches,
+                         struct dmabuf_feedback_tranche, tranche)
+      dmabuf_feedback_tranche_fini(tranche);
+   util_dynarray_fini(&dmabuf_feedback->tranches);
+
+   dmabuf_feedback_format_table_fini(&dmabuf_feedback->format_table);
+}
+
+static int
+dmabuf_feedback_init(struct dmabuf_feedback *dmabuf_feedback)
+{
+   memset(dmabuf_feedback, 0, sizeof(*dmabuf_feedback));
+
+   if (dmabuf_feedback_tranche_init(&dmabuf_feedback->pending_tranche) < 0)
+      return -1;
+
+   util_dynarray_init(&dmabuf_feedback->tranches, NULL);
+
+   dmabuf_feedback_format_table_init(&dmabuf_feedback->format_table);
+
+   return 0;
+}
+
+static void
 resize_callback(struct wl_egl_window *wl_win, void *data)
 {
    struct dri2_egl_surface *dri2_surf = data;
@@ -365,6 +423,157 @@ get_wl_surface_proxy(struct wl_egl_window *window)
    return wl_proxy_create_wrapper(window->surface);
 }
 
+static void
+surface_dmabuf_feedback_format_table(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *zwp_linux_dmabuf_feedback_v1,
+                                     int32_t fd, uint32_t size)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   struct dmabuf_feedback *feedback = &dri2_surf->pending_dmabuf_feedback;
+
+   feedback->format_table.size = size;
+   feedback->format_table.data = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+   close(fd);
+}
+
+static void
+surface_dmabuf_feedback_main_device(void *data,
+                                    struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                    struct wl_array *device)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   struct dmabuf_feedback *feedback = &dri2_surf->pending_dmabuf_feedback;
+
+   memcpy(&feedback->main_device, device->data, sizeof(feedback->main_device));
+
+   /* Compositors may support switching render devices and change the main
+    * device of the dma-buf feedback. In this case, when we reallocate the
+    * buffers of the surface we must ensure that it is not allocated in memory
+    * that is only visible to the GPU that EGL is using, as the compositor will
+    * have to import them to the render device it is using.
+    *
+    * TODO: we still don't know how to allocate such buffers.
+    */
+   if (dri2_surf->dmabuf_feedback.main_device != 0 &&
+       (feedback->main_device != dri2_surf->dmabuf_feedback.main_device))
+      dri2_surf->compositor_using_another_device = true;
+   else
+      dri2_surf->compositor_using_another_device = false;
+}
+
+static void
+surface_dmabuf_feedback_tranche_target_device(void *data,
+                                              struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                              struct wl_array *device)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   struct dmabuf_feedback *feedback = &dri2_surf->pending_dmabuf_feedback;
+
+   memcpy(&feedback->pending_tranche.target_device, device->data,
+          sizeof(feedback->pending_tranche.target_device));
+}
+
+static void
+surface_dmabuf_feedback_tranche_flags(void *data,
+                                      struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                      uint32_t flags)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   struct dmabuf_feedback *feedback = &dri2_surf->pending_dmabuf_feedback;
+
+   feedback->pending_tranche.flags = flags;
+}
+
+static void
+surface_dmabuf_feedback_tranche_formats(void *data,
+                                        struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                        struct wl_array *indices)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   struct dmabuf_feedback *feedback = &dri2_surf->pending_dmabuf_feedback;
+   uint64_t *modifier_ptr, modifier;
+   uint32_t format;
+   uint16_t *index;
+   int visual_idx;
+
+   /* Compositor may advertise or not a format table. If it does, we use it.
+    * Otherwise, we steal the most recent advertised format table. If we don't have
+    * a most recent advertised format table, compositor did something wrong. */
+   if (feedback->format_table.data == NULL) {
+      feedback->format_table = dri2_surf->dmabuf_feedback.format_table;
+      dmabuf_feedback_format_table_init(&dri2_surf->dmabuf_feedback.format_table);
+   }
+   if (feedback->format_table.data == MAP_FAILED) {
+      _eglLog(_EGL_WARNING, "wayland-egl: we could not map the format table "
+                            "so we won't be able to use this batch of dma-buf "
+                            "feedback events.");
+      return;
+   }
+   if (feedback->format_table.data == NULL) {
+      _eglLog(_EGL_WARNING, "wayland-egl: compositor didn't advertise a format "
+                            "table, so we won't be able to use this batch of dma-buf "
+                            "feedback events.");
+      return;
+   }
+
+   wl_array_for_each(index, indices) {
+      format = feedback->format_table.data[*index].format;
+      modifier = feedback->format_table.data[*index].modifier;
+
+      /* Skip formats that are not the one the surface is already using. We
+       * can't switch to another format. */
+      if (format != dri2_surf->format)
+         continue;
+
+      /* We are sure that the format is supported because of the check above. */
+      visual_idx = dri2_wl_visual_idx_from_fourcc(format);
+      assert(visual_idx != -1);
+
+      BITSET_SET(feedback->pending_tranche.formats.formats_bitmap, visual_idx);
+      modifier_ptr =
+         u_vector_add(&feedback->pending_tranche.formats.modifiers[visual_idx]);
+      if (modifier_ptr)
+         *modifier_ptr = modifier;
+   }
+}
+
+static void
+surface_dmabuf_feedback_tranche_done(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+   struct dmabuf_feedback *feedback = &dri2_surf->pending_dmabuf_feedback;
+
+   /* Add tranche to array of tranches. */
+   util_dynarray_append(&feedback->tranches, struct dmabuf_feedback_tranche,
+                        feedback->pending_tranche);
+
+   dmabuf_feedback_tranche_init(&feedback->pending_tranche);
+}
+
+static void
+surface_dmabuf_feedback_done(void *data,
+                             struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   struct dri2_egl_surface *dri2_surf = data;
+
+   dmabuf_feedback_fini(&dri2_surf->dmabuf_feedback);
+   dri2_surf->dmabuf_feedback = dri2_surf->pending_dmabuf_feedback;
+   dmabuf_feedback_init(&dri2_surf->pending_dmabuf_feedback);
+}
+
+static const struct zwp_linux_dmabuf_feedback_v1_listener
+surface_dmabuf_feedback_listener = {
+   .format_table = surface_dmabuf_feedback_format_table,
+   .main_device = surface_dmabuf_feedback_main_device,
+   .tranche_target_device = surface_dmabuf_feedback_tranche_target_device,
+   .tranche_flags = surface_dmabuf_feedback_tranche_flags,
+   .tranche_formats = surface_dmabuf_feedback_tranche_formats,
+   .tranche_done = surface_dmabuf_feedback_tranche_done,
+   .done = surface_dmabuf_feedback_done,
+};
+
 /**
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
@@ -376,6 +585,7 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
    struct dri2_egl_config *dri2_conf = dri2_egl_config(conf);
    struct wl_egl_window *window = native_window;
    struct dri2_egl_surface *dri2_surf;
+   struct zwp_linux_dmabuf_v1 *dmabuf_wrapper;
    int visual_idx;
    const __DRIconfig *config;
 
@@ -487,6 +697,33 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
    wl_proxy_set_queue((struct wl_proxy *)dri2_surf->wl_surface_wrapper,
                       dri2_surf->wl_queue);
 
+   if (dri2_dpy->wl_dmabuf && zwp_linux_dmabuf_v1_get_version(dri2_dpy->wl_dmabuf) >=
+                              ZWP_LINUX_DMABUF_V1_GET_SURFACE_FEEDBACK_SINCE_VERSION) {
+      dmabuf_wrapper = wl_proxy_create_wrapper(dri2_dpy->wl_dmabuf);
+      if (!dmabuf_wrapper) {
+         _eglError(EGL_BAD_ALLOC, "dri2_create_surface");
+         goto cleanup_surf_wrapper;
+      }
+      wl_proxy_set_queue((struct wl_proxy *)dmabuf_wrapper,
+                         dri2_surf->wl_queue);
+      dri2_surf->wl_dmabuf_feedback =
+         zwp_linux_dmabuf_v1_get_surface_feedback(dmabuf_wrapper,
+                                                  dri2_surf->wl_surface_wrapper);
+      wl_proxy_wrapper_destroy(dmabuf_wrapper);
+
+      zwp_linux_dmabuf_feedback_v1_add_listener(dri2_surf->wl_dmabuf_feedback,
+                                                &surface_dmabuf_feedback_listener,
+                                                dri2_surf);
+
+      if (dmabuf_feedback_init(&dri2_surf->pending_dmabuf_feedback) < 0)
+         goto cleanup_surf_wrapper;
+      if (dmabuf_feedback_init(&dri2_surf->dmabuf_feedback) < 0)
+         goto cleanup_pending_dmabuf_feedback;
+
+      if (roundtrip(dri2_dpy) < 0)
+         goto cleanup_dmabuf_feedback;
+   }
+
    dri2_surf->wl_win = window;
    dri2_surf->wl_win->driver_private = dri2_surf;
    dri2_surf->wl_win->destroy_window_callback = destroy_window_callback;
@@ -494,12 +731,19 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
       dri2_surf->wl_win->resize_callback = resize_callback;
 
    if (!dri2_create_drawable(dri2_dpy, config, dri2_surf, dri2_surf))
-       goto cleanup_surf_wrapper;
+       goto cleanup_dmabuf_feedback;
 
    dri2_surf->base.SwapInterval = dri2_dpy->default_swap_interval;
 
    return &dri2_surf->base;
 
+ cleanup_dmabuf_feedback:
+   if (dri2_surf->wl_dmabuf_feedback) {
+      zwp_linux_dmabuf_feedback_v1_destroy(dri2_surf->wl_dmabuf_feedback);
+      dmabuf_feedback_fini(&dri2_surf->dmabuf_feedback);
+ cleanup_pending_dmabuf_feedback:
+      dmabuf_feedback_fini(&dri2_surf->pending_dmabuf_feedback);
+   }
  cleanup_surf_wrapper:
    wl_proxy_wrapper_destroy(dri2_surf->wl_surface_wrapper);
  cleanup_dpy_wrapper:
@@ -569,6 +813,11 @@ dri2_wl_destroy_surface(_EGLDisplay *disp, _EGLSurface *surf)
    wl_proxy_wrapper_destroy(dri2_surf->wl_dpy_wrapper);
    if (dri2_surf->wl_drm_wrapper)
       wl_proxy_wrapper_destroy(dri2_surf->wl_drm_wrapper);
+   if (dri2_surf->wl_dmabuf_feedback) {
+      zwp_linux_dmabuf_feedback_v1_destroy(dri2_surf->wl_dmabuf_feedback);
+      dmabuf_feedback_fini(&dri2_surf->dmabuf_feedback);
+      dmabuf_feedback_fini(&dri2_surf->pending_dmabuf_feedback);
+   }
    wl_event_queue_destroy(dri2_surf->wl_queue);
 
    dri2_fini_surface(surf);
@@ -1382,6 +1631,12 @@ dmabuf_handle_modifier(void *data, struct zwp_linux_dmabuf_v1 *dmabuf,
    int visual_idx = dri2_wl_visual_idx_from_fourcc(format);
    uint64_t *mod;
 
+   /* Ignore this if the compositor advertised dma-buf feedback. From version 4
+    * onwards (when dma-buf feedback was introduced), the compositor should not
+    * advertise this event anymore, but let's keep this for safety. */
+   if (dri2_dpy->wl_dmabuf_feedback)
+      return;
+
    if (visual_idx == -1)
       return;
 
@@ -1398,6 +1653,134 @@ static const struct zwp_linux_dmabuf_v1_listener dmabuf_listener = {
 };
 
 static void
+wl_drm_bind(struct dri2_egl_display *dri2_dpy)
+{
+   dri2_dpy->wl_drm = wl_registry_bind(dri2_dpy->wl_registry, dri2_dpy->wl_drm_name,
+                                       &wl_drm_interface, dri2_dpy->wl_drm_version);
+   wl_drm_add_listener(dri2_dpy->wl_drm, &drm_listener, dri2_dpy);
+}
+
+static void
+default_dmabuf_feedback_format_table(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *zwp_linux_dmabuf_feedback_v1,
+                                     int32_t fd, uint32_t size)
+{
+   struct dri2_egl_display *dri2_dpy = data;
+
+   dri2_dpy->format_table.size = size;
+   dri2_dpy->format_table.data = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+   close(fd);
+}
+
+static void
+default_dmabuf_feedback_main_device(void *data,
+                                    struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                    struct wl_array *device)
+{
+   struct dri2_egl_display *dri2_dpy = data;
+   char *node;
+   int fd;
+   dev_t dev;
+
+   /* Given the device, look for a render node and try to open it. */
+   memcpy(&dev, device->data, sizeof(dev));
+   node = loader_get_render_node(dev);
+   if (!node)
+      return;
+   fd = loader_open_device(node);
+   if (fd == -1) {
+      free(node);
+      return;
+   }
+
+   dri2_dpy->device_name = node;
+   dri2_dpy->fd = fd;
+   dri2_dpy->authenticated = true;
+}
+
+static void
+default_dmabuf_feedback_tranche_target_device(void *data,
+                                              struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                              struct wl_array *device)
+{
+   /* ignore this event */
+}
+
+static void
+default_dmabuf_feedback_tranche_flags(void *data,
+                                      struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                      uint32_t flags)
+{
+   /* ignore this event */
+}
+
+static void
+default_dmabuf_feedback_tranche_formats(void *data,
+                                        struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback,
+                                        struct wl_array *indices)
+{
+   struct dri2_egl_display *dri2_dpy = data;
+   uint64_t *modifier_ptr, modifier;
+   uint32_t format;
+   uint16_t *index;
+   int visual_idx;
+
+   if (dri2_dpy->format_table.data == MAP_FAILED) {
+      _eglLog(_EGL_WARNING, "wayland-egl: we could not map the format table "
+                            "so we won't be able to use this batch of dma-buf "
+                            "feedback events.");
+      return;
+   }
+   if (dri2_dpy->format_table.data == NULL) {
+      _eglLog(_EGL_WARNING, "wayland-egl: compositor didn't advertise a format "
+                            "table, so we won't be able to use this batch of dma-buf "
+                            "feedback events.");
+      return;
+   }
+
+   wl_array_for_each(index, indices) {
+      format = dri2_dpy->format_table.data[*index].format;
+      modifier = dri2_dpy->format_table.data[*index].modifier;
+
+      /* skip formats that we don't support */
+      visual_idx = dri2_wl_visual_idx_from_fourcc(format);
+      if (visual_idx == -1)
+         continue;
+
+      BITSET_SET(dri2_dpy->formats.formats_bitmap, visual_idx);
+      modifier_ptr = u_vector_add(&dri2_dpy->formats.modifiers[visual_idx]);
+      if (modifier_ptr)
+         *modifier_ptr = modifier;
+   }
+}
+
+static void
+default_dmabuf_feedback_tranche_done(void *data,
+                                     struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   /* ignore this event */
+}
+
+static void
+default_dmabuf_feedback_done(void *data,
+                             struct zwp_linux_dmabuf_feedback_v1 *dmabuf_feedback)
+{
+   /* ignore this event */
+}
+
+static const struct zwp_linux_dmabuf_feedback_v1_listener
+dmabuf_feedback_listener = {
+   .format_table = default_dmabuf_feedback_format_table,
+   .main_device = default_dmabuf_feedback_main_device,
+   .tranche_target_device = default_dmabuf_feedback_tranche_target_device,
+   .tranche_flags = default_dmabuf_feedback_tranche_flags,
+   .tranche_formats = default_dmabuf_feedback_tranche_formats,
+   .tranche_done = default_dmabuf_feedback_tranche_done,
+   .done = default_dmabuf_feedback_done,
+};
+
+static void
 registry_handle_global_drm(void *data, struct wl_registry *registry,
                            uint32_t name, const char *interface,
                            uint32_t version)
@@ -1405,13 +1788,12 @@ registry_handle_global_drm(void *data, struct wl_registry *registry,
    struct dri2_egl_display *dri2_dpy = data;
 
    if (strcmp(interface, "wl_drm") == 0) {
-      dri2_dpy->wl_drm =
-         wl_registry_bind(registry, name, &wl_drm_interface, MIN2(version, 2));
-      wl_drm_add_listener(dri2_dpy->wl_drm, &drm_listener, dri2_dpy);
+      dri2_dpy->wl_drm_version = MIN2(version, 2);
+      dri2_dpy->wl_drm_name = name;
    } else if (strcmp(interface, "zwp_linux_dmabuf_v1") == 0 && version >= 3) {
       dri2_dpy->wl_dmabuf =
          wl_registry_bind(registry, name, &zwp_linux_dmabuf_v1_interface,
-                          MIN2(version, 3));
+                          MIN2(version, ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION));
       zwp_linux_dmabuf_v1_add_listener(dri2_dpy->wl_dmabuf, &dmabuf_listener,
                                        dri2_dpy);
    }
@@ -1582,18 +1964,46 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    dri2_dpy->wl_registry = wl_display_get_registry(dri2_dpy->wl_dpy_wrapper);
    wl_registry_add_listener(dri2_dpy->wl_registry,
                             &registry_listener_drm, dri2_dpy);
+
+   /* The compositor must expose the dma-buf interface. */
+   if (roundtrip(dri2_dpy) < 0 || dri2_dpy->wl_dmabuf == NULL)
+      goto cleanup;
+
+   /* Get default dma-buf feedback */
+   if (zwp_linux_dmabuf_v1_get_version(dri2_dpy->wl_dmabuf) >=
+       ZWP_LINUX_DMABUF_V1_GET_DEFAULT_FEEDBACK_SINCE_VERSION) {
+      dmabuf_feedback_format_table_init(&dri2_dpy->format_table);
+      dri2_dpy->wl_dmabuf_feedback =
+         zwp_linux_dmabuf_v1_get_default_feedback(dri2_dpy->wl_dmabuf);
+      zwp_linux_dmabuf_feedback_v1_add_listener(dri2_dpy->wl_dmabuf_feedback,
+                                                &dmabuf_feedback_listener, dri2_dpy);
+   }
+
+   /* Receive events from the interfaces */
    if (roundtrip(dri2_dpy) < 0)
       goto cleanup;
 
-   if (dri2_dpy->wl_drm == NULL || dri2_dpy->wl_dmabuf == NULL)
-      goto cleanup;
+   /* Destroy the default dma-buf feedback and the format table. */
+   if (dri2_dpy->wl_dmabuf_feedback) {
+      zwp_linux_dmabuf_feedback_v1_destroy(dri2_dpy->wl_dmabuf_feedback);
+      dri2_dpy->wl_dmabuf_feedback = NULL;
+      dmabuf_feedback_format_table_fini(&dri2_dpy->format_table);
+   }
 
-   if (roundtrip(dri2_dpy) < 0 || dri2_dpy->fd == -1)
-      goto cleanup;
+   /* We couldn't retrieve a render node from the dma-buf feedback (or the
+    * feedback was not advertised at all), so we must fallback to wl_drm. */
+   if (dri2_dpy->fd == -1) {
+      wl_drm_bind(dri2_dpy);
 
-   if (!dri2_dpy->authenticated &&
-       (roundtrip(dri2_dpy) < 0 || !dri2_dpy->authenticated))
-      goto cleanup;
+      if (dri2_dpy->wl_drm == NULL)
+         goto cleanup;
+      if (roundtrip(dri2_dpy) < 0 || dri2_dpy->fd == -1)
+         goto cleanup;
+
+      if (!dri2_dpy->authenticated &&
+          (roundtrip(dri2_dpy) < 0 || !dri2_dpy->authenticated))
+         goto cleanup;
+   }
 
    dri2_dpy->fd = loader_get_user_preferred_fd(dri2_dpy->fd,
                                                &dri2_dpy->is_different_gpu);

@@ -53,6 +53,7 @@ struct wl_registry;
 struct wl_shm;
 struct wl_surface;
 struct zwp_linux_dmabuf_v1;
+struct zwp_linux_dmabuf_feedback_v1;
 #endif
 
 #include <GL/gl.h>
@@ -87,6 +88,7 @@ struct zwp_linux_dmabuf_v1;
 #include "eglsync.h"
 
 #include "util/u_vector.h"
+#include "util/u_dynarray.h"
 #include "util/bitset.h"
 
 struct wl_buffer;
@@ -181,6 +183,28 @@ struct dri2_wl_formats {
    /* Array of vectors. Contains one modifier vector per format */
    struct u_vector *modifiers;
 };
+
+struct dmabuf_feedback_format_table {
+   unsigned int size;
+   struct {
+      uint32_t format;
+      uint32_t padding; /* unused */
+      uint64_t modifier;
+   } *data;
+};
+
+struct dmabuf_feedback_tranche {
+   dev_t target_device;
+   uint32_t flags;
+   struct dri2_wl_formats formats;
+};
+
+struct dmabuf_feedback {
+   dev_t main_device;
+   struct dmabuf_feedback_format_table format_table;
+   struct util_dynarray tranches;
+   struct dmabuf_feedback_tranche pending_tranche;
+};
 #endif
 
 struct dri2_egl_display
@@ -251,10 +275,13 @@ struct dri2_egl_display
    struct wl_registry *wl_registry;
    struct wl_drm *wl_server_drm;
    struct wl_drm *wl_drm;
+   uint32_t wl_drm_version, wl_drm_name;
    struct wl_shm *wl_shm;
    struct wl_event_queue *wl_queue;
    struct zwp_linux_dmabuf_v1 *wl_dmabuf;
    struct dri2_wl_formats formats;
+   struct zwp_linux_dmabuf_feedback_v1 *wl_dmabuf_feedback;
+   struct dmabuf_feedback_format_table format_table;
    bool authenticated;
    char *device_name;
 #endif
@@ -300,6 +327,9 @@ struct dri2_egl_surface
    struct wl_display *wl_dpy_wrapper;
    struct wl_drm *wl_drm_wrapper;
    struct wl_callback *throttle_callback;
+   struct zwp_linux_dmabuf_feedback_v1 *wl_dmabuf_feedback;
+   struct dmabuf_feedback dmabuf_feedback, pending_dmabuf_feedback;
+   bool compositor_using_another_device;
    int format;
    bool resized;
 #endif
