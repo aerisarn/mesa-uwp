@@ -576,6 +576,20 @@
     <value name="0x7C007C00">v2inf</value>
   </enum>
 
+  <enum name="Mux">
+    <desc>
+      Condition to use for a `MUX` instruction. `neg` checks the sign bit,
+      `int_zero` compares to `0x00000000`, `fp_zero` compares to $\pm 0.0$ as
+      an IEEE 754 float, and `bit` checks each bit separately. The `bit` mode
+      acts like an imaginary `CSEL.v32i1` instruction, and implements
+      `bitselect()` in OpenCL.
+    </desc>
+    <value desc="Negative">neg</value>
+    <value desc="Integer zero" default="true">int_zero</value>
+    <value desc="Floating point zero">fp_zero</value>
+    <value desc="Bitwise">bit</value>
+  </enum>
+
   <ins name="NOP" title="No operation" dests="0" opcode="0x00" unit="CVT">
     <desc>
       Do nothing. Useful at the start of a block for waiting on slots required
@@ -1430,9 +1444,13 @@
 
   <ins name="MUX.i32" title="Mux" dests="1" opcode="0xB8" unit="SFU">
     <desc>
-      Mux between A and B based on the provided mask. Equivalent to
-      `bitselect()` in OpenCL. `(A &amp; mask) | (A &amp; ~mask)`
+      Mux between A and B based on the provided mask. The condition specified
+      as the `mux` modifier is evaluated on the mask. If true, `A` is chosen,
+      else `B` is chosen. The `bit` modifier acts bitwise, equivalent to
+      `bitselect()` in OpenCL, so `MUX.i32.bit A, B, mask` calculates
+      `(A &amp; mask) | (A &amp; ~mask)`.
     </desc>
+    <mod name="mux" start="32" size="2"/>
     <src>A</src>
     <src>B</src>
     <src>Mask</src>
