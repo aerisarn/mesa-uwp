@@ -827,6 +827,29 @@ SOFTWARE.
 	<pattern low="52" high="53">1x</pattern>
 </bitset>
 
+<bitset name="getfiberid" extends="#instruction-cat6-a6xx">
+	<doc>
+		GET Fiber ID (gl_SubgroupID)
+	</doc>
+
+	<gen min="600"/>
+
+	<display>
+		{SY}{JP}{NAME}.{TYPE} {DST}
+	</display>
+
+	<pattern pos="0"           >0</pattern>
+	<pattern low="9"  high="10">xx</pattern>   <!-- D_MINUS_ONE -->
+	<pattern pos="11"          >x</pattern>    <!-- TYPED -->
+	<pattern low="14" high="19">100110</pattern>   <!-- OPC -->
+	<pattern low="20" high="23">11xx</pattern>
+	<pattern low="24" high="31">xxxxxxxx</pattern>    <!-- SRC2 -->
+	<field   low="32" high="39" name="DST" type="#reg-gpr"/>
+	<pattern low="41" high="48">xxxxxxxx</pattern>  <!-- SSBO/image binding point -->
+	<field   low="49" high="51" name="TYPE" type="#type"/>
+	<pattern low="52" high="53">1x</pattern>
+</bitset>
+
 <bitset name="resinfo.b" extends="#instruction-cat6-a6xx">
 	<doc>
 		RESourceINFO - returns image/ssbo dimensions (3 components)

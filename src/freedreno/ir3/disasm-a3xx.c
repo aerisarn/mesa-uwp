@@ -173,6 +173,7 @@ static const struct opc_info {
    OPC(0, OPC_STKR,         stkr),
    OPC(0, OPC_XSET,         xset),
    OPC(0, OPC_XCLR,         xclr),
+   OPC(0, OPC_GETLAST,      getlast),
    OPC(0, OPC_GETONE,       getone),
    OPC(0, OPC_DBG,          dbg),
    OPC(0, OPC_SHPS,         shps),
@@ -300,6 +301,11 @@ static const struct opc_info {
    OPC(5, OPC_DSYPP_1,      dsypp.1),
    OPC(5, OPC_RGETPOS,      rgetpos),
    OPC(5, OPC_RGETINFO,     rgetinfo),
+   OPC(5, OPC_BRCST_ACTIVE, brcst.active),
+   OPC(5, OPC_QUAD_SHUFFLE_BRCST, quad_shuffle.brcst),
+   OPC(5, OPC_QUAD_SHUFFLE_HORIZ, quad_shuffle.horiz),
+   OPC(5, OPC_QUAD_SHUFFLE_VERT,  quad_shuffle.vert),
+   OPC(5, OPC_QUAD_SHUFFLE_DIAG,  quad_shuffle.diag),
    /* macros are needed here for ir3_print */
    OPC(5, OPC_DSXPP_MACRO,  dsxpp.macro),
    OPC(5, OPC_DSYPP_MACRO,  dsypp.macro),
@@ -377,6 +383,7 @@ static const struct opc_info {
    OPC(6, OPC_ENDLS,        endls),
    OPC(6, OPC_GETSPID,      getspid),
    OPC(6, OPC_GETWID,       getwid),
+   OPC(6, OPC_GETFIBERID,   getfiberid),
 
    OPC(6, OPC_SPILL_MACRO,  spill.macro),
    OPC(6, OPC_RELOAD_MACRO, reload.macro),

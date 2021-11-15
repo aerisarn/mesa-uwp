@@ -69,6 +69,7 @@ static const struct test {
    INSTR_6XX(00900000_00000003, "br !p0.x, #3"),
    INSTR_6XX(03820000_00000015, "shps #21"), /* emit */
    INSTR_6XX(04021000_00000000, "(ss)shpe"), /* cut */
+   INSTR_6XX(02220000_00000004, "getlast.w8 #4"),
    INSTR_6XX(02820000_00000014, "getone #20"), /* kill p0.x */
    INSTR_6XX(00906020_00000007, "brao !p0.x, !p0.y, #7"),
    INSTR_6XX(00804040_00000003, "braa p0.x, p0.y, #3"),
@@ -156,6 +157,13 @@ static const struct test {
    INSTR_6XX(a0c81108_e2000001, "sam.base0 (f32)(x)r2.x, r0.x, s#16, a1.x"),
    INSTR_6XX(a048d107_cc080a07, "isaml.base3 (s32)(x)r1.w, r0.w, r1.y, s#0, t#6"),
 
+
+   /* dEQP-VK.subgroups.arithmetic.compute.subgroupadd_float */
+   INSTR_6XX(a7c03102_00100003, "brcst.active.w8 (u32)(x)r0.z, r0.y"), /* brcst.active.w8 (u32)(xOOO)r0.z, r0.y */
+   /* dEQP-VK.subgroups.quad.graphics.subgroupquadbroadcast_int */
+   INSTR_6XX(b7e03107_00000401, "(sy)quad_shuffle.brcst (u32)(x)r1.w, r0.x, r0.z"), /* (sy)quad_shuffle.brcst (u32)(xOOO)r1.w, r0.x, r0.z */
+   /* dEQP-VK.subgroups.quad.graphics.subgroupquadswapdiagonal_int */
+   INSTR_6XX(b7e03104_00180001, "(sy)quad_shuffle.diag (u32)(x)r1.x, r0.x"), /* (sy)quad_shuffle.diag (u32)(xOOO)r1.x, r0.x */
 
    /* cat6 */
 
@@ -373,6 +381,9 @@ static const struct test {
    INSTR_6XX(d0360c04_02640b80, "(sy)atomic.b.add.typed.2d.u32.1.nonuniform.base0 r1.x, r0.z, r1.z"),
    /* dEQP-VK.descriptor_indexing.sampler */
    INSTR_6XX(a0c81f00_40000005, "sam.s2en.nonuniform.base0 (f32)(xyzw)r0.x, r0.z, r0.x"),
+
+   /* dEQP-VK.subgroups.quad.graphics.subgroupquadbroadcast_int */
+   INSTR_6XX(c0260001_00c98000, "getfiberid.u32 r0.y"),
 
    /* Custom test since we've never seen the blob emit these. */
    INSTR_6XX(c0260004_00490000, "getspid.u32 r1.x"),

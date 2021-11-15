@@ -80,6 +80,7 @@ typedef enum {
    OPC_DBG             = _OPC(0, 22),
    OPC_SHPS            = _OPC(0, 23),   /* shader prologue start */
    OPC_SHPE            = _OPC(0, 24),   /* shader prologue end */
+   OPC_GETLAST         = _OPC(0, 25),
 
    OPC_PREDT           = _OPC(0, 29),   /* predicated true */
    OPC_PREDF           = _OPC(0, 30),   /* predicated false */
@@ -245,9 +246,14 @@ typedef enum {
    OPC_DSYPP_1         = _OPC(5, 25),
    OPC_RGETPOS         = _OPC(5, 26),
    OPC_RGETINFO        = _OPC(5, 27),
+   OPC_BRCST_ACTIVE    = _OPC(5, 28),
+   OPC_QUAD_SHUFFLE_BRCST  = _OPC(5, 29),
+   OPC_QUAD_SHUFFLE_HORIZ  = _OPC(5, 30),
+   OPC_QUAD_SHUFFLE_VERT   = _OPC(5, 31),
+   OPC_QUAD_SHUFFLE_DIAG   = _OPC(5, 32),
    /* cat5 meta instructions, placed above the cat5 opc field's size */
-   OPC_DSXPP_MACRO     = _OPC(5, 32),
-   OPC_DSYPP_MACRO     = _OPC(5, 33),
+   OPC_DSXPP_MACRO     = _OPC(5, 35),
+   OPC_DSYPP_MACRO     = _OPC(5, 36),
 
    /* category 6: */
    OPC_LDG             = _OPC(6, 0),        /* load-global */
@@ -286,6 +292,7 @@ typedef enum {
    OPC_ENDLS           = _OPC(6, 35), /* ??? */
    OPC_GETSPID         = _OPC(6, 36), /* SP ID */
    OPC_GETWID          = _OPC(6, 37), /* wavefront ID */
+   OPC_GETFIBERID      = _OPC(6, 38), /* fiber ID */
 
    /* Logical opcodes for things that differ in a6xx+ */
    OPC_STC             = _OPC(6, 40),

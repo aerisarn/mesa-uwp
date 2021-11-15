@@ -399,6 +399,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_STKR
 %token <tok> T_OP_XSET
 %token <tok> T_OP_XCLR
+%token <tok> T_OP_GETLAST
 %token <tok> T_OP_GETONE
 %token <tok> T_OP_DBG
 %token <tok> T_OP_SHPS
@@ -526,6 +527,11 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_DSYPP_1
 %token <tok> T_OP_RGETPOS
 %token <tok> T_OP_RGETINFO
+%token <tok> T_OP_BRCST_A
+%token <tok> T_OP_QSHUFFLE_BRCST
+%token <tok> T_OP_QSHUFFLE_H
+%token <tok> T_OP_QSHUFFLE_V
+%token <tok> T_OP_QSHUFFLE_DIAG
 
 /* category 6: */
 %token <tok> T_OP_LDG
@@ -598,6 +604,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_LDLV
 %token <tok> T_OP_GETSPID
 %token <tok> T_OP_GETWID
+%token <tok> T_OP_GETFIBERID
 
 /* category 7: */
 %token <tok> T_OP_BAR
@@ -822,6 +829,7 @@ cat0_instr:        T_OP_NOP        { new_instr(OPC_NOP); }
 |                  T_OP_PREDT      { new_instr(OPC_PREDT); }    cat0_src1
 |                  T_OP_PREDF      { new_instr(OPC_PREDF); }    cat0_src1
 |                  T_OP_PREDE      { new_instr(OPC_PREDE); }
+|                  T_OP_GETLAST '.' T_W { new_instr(OPC_GETLAST); }   cat0_immed
 
 cat1_opc:          T_OP_MOV '.' T_CAT1_TYPE_TYPE {
                        parse_type_type(new_instr(OPC_MOV), $3);
@@ -837,9 +845,16 @@ cat1_movmsk:       T_OP_MOVMSK '.' T_W {
                        new_instr(OPC_MOVMSK);
                        instr->cat1.src_type = TYPE_U32;
                        instr->cat1.dst_type = TYPE_U32;
-                       instr->repeat = $3 - 1;
                    } dst_reg {
-                       instr->dsts[0]->wrmask = (1 << $3) - 1;
+                       if (($3 % 32) != 0)
+                          yyerror("w# must be multiple of 32");
+                       if ($3 < 32)
+                          yyerror("w# must be at least 32");
+
+                       int num = $3 / 32;
+
+                       instr->repeat = num - 1;
+                       instr->dsts[0]->wrmask = (1 << num) - 1;
                    }
 
 cat1_mova1:        T_OP_MOVA1 T_A1 ',' {
@@ -995,6 +1010,11 @@ cat5_opc:          T_OP_ISAM      { new_instr(OPC_ISAM); }
 |                  T_OP_SAMGP3    { new_instr(OPC_SAMGP3); }
 |                  T_OP_RGETPOS   { new_instr(OPC_RGETPOS); }
 |                  T_OP_RGETINFO  { new_instr(OPC_RGETINFO); }
+|                  T_OP_BRCST_A   { new_instr(OPC_BRCST_ACTIVE); }
+|                  T_OP_QSHUFFLE_BRCST { new_instr(OPC_QUAD_SHUFFLE_BRCST); }
+|                  T_OP_QSHUFFLE_H     { new_instr(OPC_QUAD_SHUFFLE_HORIZ); }
+|                  T_OP_QSHUFFLE_V     { new_instr(OPC_QUAD_SHUFFLE_VERT); }
+|                  T_OP_QSHUFFLE_DIAG  { new_instr(OPC_QUAD_SHUFFLE_DIAG); }
 
 cat5_flag:         '.' T_3D       { instr->flags |= IR3_INSTR_3D; }
 |                  '.' 'a'        { instr->flags |= IR3_INSTR_A; }
@@ -1005,6 +1025,7 @@ cat5_flag:         '.' T_3D       { instr->flags |= IR3_INSTR_3D; }
 |                  '.' T_UNIFORM  { }
 |                  '.' T_NONUNIFORM  { instr->flags |= IR3_INSTR_NONUNIF; }
 |                  '.' T_BASE     { instr->flags |= IR3_INSTR_B; instr->cat5.tex_base = $2; }
+|                  '.' T_W        { instr->cat5.cluster_size = $2; }
 cat5_flags:
 |                  cat5_flag cat5_flags
 
@@ -1136,6 +1157,7 @@ cat6_ibo:          cat6_ibo_opc_1src cat6_type cat6_dim dst_reg ',' 'g' '[' cat6
 cat6_id_opc:
                    T_OP_GETSPID { new_instr(OPC_GETSPID); }
 |                  T_OP_GETWID  { new_instr(OPC_GETWID); }
+|                  T_OP_GETFIBERID { new_instr(OPC_GETFIBERID); }
 
 cat6_id:           cat6_id_opc cat6_type dst_reg
 

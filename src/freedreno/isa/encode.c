@@ -22,6 +22,7 @@
  */
 
 #include "util/log.h"
+#include "util/u_math.h"
 
 #include "ir3/ir3.h"
 #include "ir3/ir3_shader.h"
