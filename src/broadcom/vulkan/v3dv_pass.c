@@ -285,25 +285,13 @@ subpass_get_granularity(struct v3dv_device *device,
                         uint32_t subpass_idx,
                         VkExtent2D *granularity)
 {
-   static const uint8_t tile_sizes[] = {
-      64, 64,
-      64, 32,
-      32, 32,
-      32, 16,
-      16, 16,
-      16,  8,
-       8,  8
-   };
-
-   /* Our tile size depends on the number of color attachments and the maximum
-    * bpp across them.
-    */
+   /* Granularity is defined by the tile size */
    assert(subpass_idx < pass->subpass_count);
    struct v3dv_subpass *subpass = &pass->subpasses[subpass_idx];
    const uint32_t color_attachment_count = subpass->color_count;
 
    bool msaa = false;
-   uint32_t max_internal_bpp = 0;
+   uint32_t max_bpp = 0;
    for (uint32_t i = 0; i < color_attachment_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
       if (attachment_idx == VK_ATTACHMENT_UNUSED)
@@ -315,27 +303,17 @@ subpass_get_granularity(struct v3dv_device *device,
       v3dv_X(device, get_internal_type_bpp_for_output_format)
          (format->rt_type, &internal_type, &internal_bpp);
 
-      max_internal_bpp = MAX2(max_internal_bpp, internal_bpp);
+      max_bpp = MAX2(max_bpp, internal_bpp);
 
       if (desc->samples > VK_SAMPLE_COUNT_1_BIT)
          msaa = true;
    }
 
-   uint32_t idx = 0;
-   if (color_attachment_count > 2)
-      idx += 2;
-   else if (color_attachment_count > 1)
-      idx += 1;
-
-   if (msaa)
-      idx += 2;
-
-   idx += max_internal_bpp;
-
-   assert(idx < ARRAY_SIZE(tile_sizes));
+   uint32_t width, height;
+   v3d_choose_tile_size(color_attachment_count, max_bpp, msaa, &width, &height);
    *granularity = (VkExtent2D) {
-      .width = tile_sizes[idx * 2],
-      .height = tile_sizes[idx * 2 + 1]
+      .width = width,
+      .height = height
    };
 }
 

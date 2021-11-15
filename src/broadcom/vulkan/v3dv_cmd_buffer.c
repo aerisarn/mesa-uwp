@@ -432,16 +432,6 @@ job_compute_frame_tiling(struct v3dv_job *job,
                          uint8_t max_internal_bpp,
                          bool msaa)
 {
-   static const uint8_t tile_sizes[] = {
-      64, 64,
-      64, 32,
-      32, 32,
-      32, 16,
-      16, 16,
-      16,  8,
-       8,  8
-   };
-
    assert(job);
    struct v3dv_frame_tiling *tiling = &job->frame_tiling;
 
@@ -450,23 +440,10 @@ job_compute_frame_tiling(struct v3dv_job *job,
    tiling->layers = layers;
    tiling->render_target_count = render_target_count;
    tiling->msaa = msaa;
-
-   uint32_t tile_size_index = 0;
-
-   if (render_target_count > 2)
-      tile_size_index += 2;
-   else if (render_target_count > 1)
-      tile_size_index += 1;
-
-   if (msaa)
-      tile_size_index += 2;
-
    tiling->internal_bpp = max_internal_bpp;
-   tile_size_index += tiling->internal_bpp;
-   assert(tile_size_index < ARRAY_SIZE(tile_sizes) / 2);
 
-   tiling->tile_width = tile_sizes[tile_size_index * 2];
-   tiling->tile_height = tile_sizes[tile_size_index * 2 + 1];
+   v3d_choose_tile_size(render_target_count, max_internal_bpp, msaa,
+                         &tiling->tile_width, &tiling->tile_height);
 
    tiling->draw_tiles_x = DIV_ROUND_UP(width, tiling->tile_width);
    tiling->draw_tiles_y = DIV_ROUND_UP(height, tiling->tile_height);
