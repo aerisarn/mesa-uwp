@@ -69,6 +69,7 @@ fd5_tex_type(unsigned target)
    default:
       assert(0);
    case PIPE_BUFFER:
+      return A5XX_TEX_BUFFER;
    case PIPE_TEXTURE_1D:
    case PIPE_TEXTURE_1D_ARRAY:
       return A5XX_TEX_1D;
