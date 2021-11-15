@@ -1666,6 +1666,8 @@ perhaps they should be taken with a grain of salt
 		<reg32 offset="0x0" name="REG">
 			<bitfield name="REGID" low="0" high="7" type="a3xx_regid"/>
 			<bitfield name="HALF_PRECISION" pos="8" type="boolean"/>
+			<bitfield name="COLOR_SINT" pos="10" type="boolean"/>
+			<bitfield name="COLOR_UINT" pos="11" type="boolean"/>
 			<bitfield name="MRTFORMAT" low="12" high="17" type="a4xx_color_fmt"/>
 			<bitfield name="COLOR_SRGB" pos="18" type="boolean"/>
 		</reg32>
