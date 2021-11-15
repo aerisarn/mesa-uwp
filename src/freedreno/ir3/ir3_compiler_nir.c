@@ -1319,13 +1319,6 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    unsigned flags, ncoords = ir3_get_image_coords(intr, &flags);
    type_t type = ir3_get_type_for_image_intrinsic(intr);
 
-   /* hmm, this seems a bit odd, but it is what blob does and (at least
-    * a5xx) just faults on bogus addresses otherwise:
-    */
-   if (flags & IR3_INSTR_3D) {
-      flags &= ~IR3_INSTR_3D;
-      flags |= IR3_INSTR_A;
-   }
    info.flags |= flags;
 
    for (unsigned i = 0; i < ncoords; i++)

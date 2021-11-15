@@ -97,14 +97,14 @@ ir3_image_to_tex(struct ir3_ibo_mapping *mapping, unsigned image)
 unsigned
 ir3_get_image_coords(const nir_intrinsic_instr *instr, unsigned *flagsp)
 {
+   enum glsl_sampler_dim dim = nir_intrinsic_image_dim(instr);
    unsigned coords = nir_image_intrinsic_coord_components(instr);
    unsigned flags = 0;
 
-   if (coords == 3)
-      flags |= IR3_INSTR_3D;
-
-   if (nir_intrinsic_image_array(instr))
+   if (dim == GLSL_SAMPLER_DIM_CUBE || nir_intrinsic_image_array(instr))
       flags |= IR3_INSTR_A;
+   else if (dim == GLSL_SAMPLER_DIM_3D)
+      flags |= IR3_INSTR_3D;
 
    if (flagsp)
       *flagsp = flags;
