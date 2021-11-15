@@ -1117,9 +1117,11 @@
     <desc>
       Breaks up the floating-point input into its fractional (mantissa) and
       exponent parts. By default, this is compatible with the `frexp()` function
-      in APIs. With the log modifier, the floating point format is adjusted to
-      be compatible with Valhall's argument reduction for logarithm computation.
+      in APIs. With the log/sqrt modifiers, the floating point format is
+      adjusted to be compatible with Valhall's argument reduction for logarithm
+      and square root computation respectively.
     </desc>
+    <mod name="sqrt" start="24" size="1"/>
     <mod name="log" start="25" size="1"/>
     <src float="true" swizzle="true"/>
   </group>
