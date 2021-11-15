@@ -266,8 +266,8 @@ blorp_get_l3_config(struct blorp_batch *blorp_batch)
 }
 
 static void
-iris_blorp_exec(struct blorp_batch *blorp_batch,
-                const struct blorp_params *params)
+iris_blorp_exec_render(struct blorp_batch *blorp_batch,
+                       const struct blorp_params *params)
 {
    struct iris_context *ice = blorp_batch->blorp->driver_ctx;
    struct iris_batch *batch = blorp_batch->driver_batch;
@@ -397,6 +397,40 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
    if (params->stencil.enabled)
       iris_bo_bump_seqno(params->stencil.addr.buffer, batch->next_seqno,
                          IRIS_DOMAIN_DEPTH_WRITE);
+}
+
+static void
+iris_blorp_exec_blitter(struct blorp_batch *blorp_batch,
+                        const struct blorp_params *params)
+{
+   struct iris_batch *batch = blorp_batch->driver_batch;
+
+   /* Around the length of a XY_BLOCK_COPY_BLT and MI_FLUSH_DW */
+   iris_require_command_space(batch, 108);
+
+   iris_handle_always_flush_cache(batch);
+
+   blorp_exec(blorp_batch, params);
+
+   iris_handle_always_flush_cache(batch);
+
+   if (params->src.enabled) {
+      iris_bo_bump_seqno(params->src.addr.buffer, batch->next_seqno,
+                         IRIS_DOMAIN_OTHER_READ);
+   }
+
+   iris_bo_bump_seqno(params->dst.addr.buffer, batch->next_seqno,
+                      IRIS_DOMAIN_OTHER_WRITE);
+}
+
+static void
+iris_blorp_exec(struct blorp_batch *blorp_batch,
+                const struct blorp_params *params)
+{
+   if (blorp_batch->flags & BLORP_BATCH_USE_BLITTER)
+      iris_blorp_exec_blitter(blorp_batch, params);
+   else
+      iris_blorp_exec_render(blorp_batch, params);
 }
 
 static void
