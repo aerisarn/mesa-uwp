@@ -36,6 +36,7 @@
 #include "vk_semaphore.h"
 #include "vk_sync.h"
 #include "vk_sync_binary.h"
+#include "vk_sync_dummy.h"
 #include "vk_sync_timeline.h"
 #include "vk_util.h"
 
@@ -255,6 +256,10 @@ vk_queue_submit_final(struct vk_queue *queue,
       /* A timeline wait on 0 is always a no-op */
       if ((submit->waits[i].sync->flags & VK_SYNC_IS_TIMELINE) &&
           submit->waits[i].wait_value == 0)
+         continue;
+
+      /* Waits on dummy vk_syncs are no-ops */
+      if (vk_sync_type_is_dummy(submit->waits[i].sync->type))
          continue;
 
       /* For emulated timelines, we have a binary vk_sync associated with
