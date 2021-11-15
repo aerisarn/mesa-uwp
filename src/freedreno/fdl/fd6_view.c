@@ -48,6 +48,7 @@ fdl6_tex_type(enum fdl_view_type type, bool storage)
    STATIC_ASSERT((unsigned) FDL_VIEW_TYPE_2D == (unsigned) A6XX_TEX_2D);
    STATIC_ASSERT((unsigned) FDL_VIEW_TYPE_CUBE == (unsigned) A6XX_TEX_CUBE);
    STATIC_ASSERT((unsigned) FDL_VIEW_TYPE_3D == (unsigned) A6XX_TEX_3D);
+   STATIC_ASSERT((unsigned) FDL_VIEW_TYPE_BUFFER == (unsigned) A6XX_TEX_BUFFER);
 
    return (storage && type == FDL_VIEW_TYPE_CUBE) ?
       A6XX_TEX_2D : (enum a6xx_tex_type) type;
@@ -392,7 +393,8 @@ fdl6_buffer_view_init(uint32_t *descriptor, enum pipe_format format,
       COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB);
    descriptor[1] = A6XX_TEX_CONST_1_WIDTH(elements & ((1 << 15) - 1)) |
                    A6XX_TEX_CONST_1_HEIGHT(elements >> 15);
-   descriptor[2] = A6XX_TEX_CONST_2_UNK4 | A6XX_TEX_CONST_2_UNK31;
+   descriptor[2] = A6XX_TEX_CONST_2_BUFFER |
+                   A6XX_TEX_CONST_2_TYPE(A6XX_TEX_BUFFER);
    descriptor[4] = iova;
    descriptor[5] = iova >> 32;
 }

@@ -261,6 +261,7 @@ enum fdl_view_type {
    FDL_VIEW_TYPE_2D = 1,
    FDL_VIEW_TYPE_CUBE = 2,
    FDL_VIEW_TYPE_3D = 3,
+   FDL_VIEW_TYPE_BUFFER = 4,
 };
 
 enum fdl_chroma_location {
