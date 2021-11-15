@@ -452,16 +452,12 @@ struct anv_bo {
    /** Size of the buffer not including implicit aux */
    uint64_t size;
 
-   /* Map for mapped BOs.
+   /* Map for internally mapped BOs.
     *
     * If ANV_BO_ALLOC_MAPPED is set in flags, this is the map for the whole
     * BO. If ANV_BO_WRAPPER is set in flags, map points to the wrapped BO.
-    * Otherwise, this is the map for the currently mapped range mapped via
-    * vkMapMemory().
     */
    void *map;
-
-   size_t map_size;
 
    /** Size of the implicit CCS range at the end of the buffer
     *
@@ -1413,7 +1409,8 @@ VkResult anv_device_map_bo(struct anv_device *device,
                            uint32_t gem_flags,
                            void **map_out);
 void anv_device_unmap_bo(struct anv_device *device,
-                         struct anv_bo *bo);
+                         struct anv_bo *bo,
+                         void *map, size_t map_size);
 VkResult anv_device_import_bo_from_host_ptr(struct anv_device *device,
                                             void *host_ptr, uint32_t size,
                                             enum anv_bo_alloc_flags alloc_flags,
@@ -1808,7 +1805,10 @@ struct anv_device_memory {
    struct anv_bo *                              bo;
    const struct anv_memory_type *               type;
 
-   /* The map, from the user PoV is bo->map + map_delta */
+   void *                                       map;
+   size_t                                       map_size;
+
+   /* The map, from the user PoV is map + map_delta */
    uint64_t                                     map_delta;
 
    /* If set, we are holding reference to AHardwareBuffer

@@ -1606,7 +1606,7 @@ anv_bo_finish(struct anv_device *device, struct anv_bo *bo)
       anv_vma_free(device, bo->offset, bo->size + bo->_ccs_size);
 
    if (bo->map && !bo->from_host_ptr)
-      anv_device_unmap_bo(device, bo);
+      anv_device_unmap_bo(device, bo, bo->map, bo->size);
 
    assert(bo->gem_handle != 0);
    anv_gem_close(device, bo->gem_handle);
@@ -1717,7 +1717,8 @@ anv_device_alloc_bo(struct anv_device *device,
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
-      VkResult result = anv_device_map_bo(device, &new_bo, 0, size, 0, NULL);
+      VkResult result = anv_device_map_bo(device, &new_bo, 0, size,
+                                          0 /* gem_flags */, &new_bo.map);
       if (unlikely(result != VK_SUCCESS)) {
          anv_gem_close(device, new_bo.gem_handle);
          return result;
@@ -1785,16 +1786,12 @@ anv_device_map_bo(struct anv_device *device,
 {
    assert(!bo->is_wrapper && !bo->from_host_ptr);
    assert(size > 0);
-   assert(bo->map == NULL && bo->map_size == 0);
 
    void *map = anv_gem_mmap(device, bo->gem_handle, offset, size, gem_flags);
    if (unlikely(map == MAP_FAILED))
       return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED, "mmap failed: %m");
 
    assert(map != NULL);
-
-   bo->map = map;
-   bo->map_size = size;
 
    if (map_out)
       *map_out = map;
@@ -1804,15 +1801,12 @@ anv_device_map_bo(struct anv_device *device,
 
 void
 anv_device_unmap_bo(struct anv_device *device,
-                    struct anv_bo *bo)
+                    struct anv_bo *bo,
+                    void *map, size_t map_size)
 {
    assert(!bo->is_wrapper && !bo->from_host_ptr);
-   assert(bo->map != NULL && bo->map_size > 0);
 
-   anv_gem_munmap(device, bo->map, bo->map_size);
-
-   bo->map = NULL;
-   bo->map_size = 0;
+   anv_gem_munmap(device, map, map_size);
 }
 
 VkResult
