@@ -278,7 +278,7 @@ bo_create_internal(struct zink_screen *screen,
    simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
    bo->base.alignment_log2 = util_logbase2(alignment);
-   bo->base.size = size;
+   bo->base.size = mai.allocationSize;
    bo->base.vtbl = &bo_vtbl;
    bo->base.placement = vk_domain_from_heap(heap);
    bo->base.usage = flags;
