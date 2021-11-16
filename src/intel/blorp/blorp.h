@@ -106,6 +106,13 @@ struct blorp_address {
    uint64_t offset;
    unsigned reloc_flags;
    uint32_t mocs;
+
+   /**
+    * True if this buffer is intended to live in device-local memory.
+    * This is only a performance hint; it's OK to set it to true even
+    * if eviction has temporarily forced the buffer to system memory.
+    */
+   bool local_hint;
 };
 
 struct blorp_surf

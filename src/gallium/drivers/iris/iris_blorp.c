@@ -195,6 +195,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *blorp_batch,
       .offset = offset,
       .mocs = iris_mocs(bo, &batch->screen->isl_dev,
                         ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
+      .local_hint = iris_bo_likely_local(bo),
    };
 
    return map;
@@ -242,6 +243,8 @@ blorp_get_workaround_address(struct blorp_batch *blorp_batch)
    return (struct blorp_address) {
       .buffer = batch->screen->workaround_address.bo,
       .offset = batch->screen->workaround_address.offset,
+      .local_hint =
+         iris_bo_likely_local(batch->screen->workaround_address.bo),
    };
 }
 

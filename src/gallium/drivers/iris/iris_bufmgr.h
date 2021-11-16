@@ -414,6 +414,23 @@ iris_bo_is_exported(const struct iris_bo *bo)
    return bo->real.exported;
 }
 
+/**
+ * True if the BO prefers to reside in device-local memory.
+ *
+ * We don't consider eviction here; this is meant to be a performance hint.
+ * It will return true for BOs allocated from the LMEM or LMEM+SMEM heaps,
+ * even if the buffer has been temporarily evicted to system memory.
+ */
+static inline bool
+iris_bo_likely_local(const struct iris_bo *bo)
+{
+   if (!bo)
+      return false;
+
+   bo = iris_get_backing_bo((struct iris_bo *) bo);
+   return bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY;
+}
+
 static inline enum iris_mmap_mode
 iris_bo_mmap_mode(const struct iris_bo *bo)
 {

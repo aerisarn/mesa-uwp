@@ -237,6 +237,7 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
                              bool is_dest)
 {
    struct iris_resource *res = (void *) p_res;
+   const struct intel_device_info *devinfo = isl_dev->info;
 
    *surf = (struct blorp_surf) {
       .surf = &res->surf,
@@ -247,6 +248,7 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
          .mocs = iris_mocs(res->bo, isl_dev,
                            is_dest ? ISL_SURF_USAGE_RENDER_TARGET_BIT
                                    : ISL_SURF_USAGE_TEXTURE_BIT),
+         .local_hint = iris_bo_likely_local(res->bo),
       },
       .aux_usage = aux_usage,
    };
@@ -258,6 +260,8 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
          .offset = res->aux.offset,
          .reloc_flags = is_dest ? EXEC_OBJECT_WRITE : 0,
          .mocs = iris_mocs(res->bo, isl_dev, 0),
+         .local_hint = devinfo->has_flat_ccs ||
+                       iris_bo_likely_local(res->aux.bo),
       };
       surf->clear_color = res->aux.clear_color;
       surf->clear_color_addr = (struct blorp_address) {
@@ -265,6 +269,8 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
          .offset = res->aux.clear_color_offset,
          .reloc_flags = 0,
          .mocs = iris_mocs(res->aux.clear_color_bo, isl_dev, 0),
+         .local_hint = devinfo->has_flat_ccs ||
+                       iris_bo_likely_local(res->aux.clear_color_bo),
       };
    }
 }
@@ -643,12 +649,14 @@ iris_copy_region(struct blorp_context *blorp,
          .buffer = src_res->bo, .offset = src_box->x,
          .mocs = iris_mocs(src_res->bo, &screen->isl_dev,
                            ISL_SURF_USAGE_RENDER_TARGET_BIT),
+         .local_hint = iris_bo_likely_local(src_res->bo),
       };
       struct blorp_address dst_addr = {
          .buffer = dst_res->bo, .offset = dstx,
          .reloc_flags = EXEC_OBJECT_WRITE,
          .mocs = iris_mocs(dst_res->bo, &screen->isl_dev,
                            ISL_SURF_USAGE_TEXTURE_BIT),
+         .local_hint = iris_bo_likely_local(dst_res->bo),
       };
 
       iris_emit_buffer_barrier_for(batch, src_res->bo,
