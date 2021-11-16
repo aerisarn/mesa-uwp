@@ -360,20 +360,17 @@ iris_use_pinned_bo(struct iris_batch *batch,
 
    int existing_index = find_exec_index(batch, bo);
 
-   if (existing_index != -1) {
+   if (existing_index == -1) {
+      flush_for_cross_batch_dependencies(batch, bo, writable);
+
+      ensure_exec_obj_space(batch, 1);
+      add_bo_to_batch(batch, bo, writable);
+   } else if (writable && !BITSET_TEST(batch->bos_written, existing_index)) {
+      flush_for_cross_batch_dependencies(batch, bo, writable);
+
       /* The BO is already in the list; mark it writable */
-      if (writable && !BITSET_TEST(batch->bos_written, existing_index)) {
-         BITSET_SET(batch->bos_written, existing_index);
-         flush_for_cross_batch_dependencies(batch, bo, writable);
-      }
-
-      return;
+      BITSET_SET(batch->bos_written, existing_index);
    }
-
-   flush_for_cross_batch_dependencies(batch, bo, writable);
-
-   ensure_exec_obj_space(batch, 1);
-   add_bo_to_batch(batch, bo, writable);
 }
 
 static void
