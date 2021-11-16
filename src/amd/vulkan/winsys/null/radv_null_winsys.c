@@ -81,7 +81,7 @@ radv_null_winsys_query_info(struct radeon_winsys *rws, struct radeon_info *info)
       if (!strcmp(family, ac_get_family_name(i))) {
          /* Override family and chip_class. */
          info->family = i;
-         info->name = "OVERRIDDEN";
+         info->name = family;
 
          if (i >= CHIP_SIENNA_CICHLID)
             info->chip_class = GFX10_3;
