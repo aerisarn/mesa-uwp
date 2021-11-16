@@ -2554,7 +2554,7 @@ link_intrastage_shaders(void *mem_ctx,
     */
    if (main_sig != NULL) {
       exec_node *insertion_point =
-         move_non_declarations(linked->ir, (exec_node *) &main_sig->body, false,
+         move_non_declarations(linked->ir, &main_sig->body.head_sentinel, false,
                                linked);
 
       for (unsigned i = 0; i < num_shaders; i++) {
