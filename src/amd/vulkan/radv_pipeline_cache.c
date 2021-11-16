@@ -402,14 +402,13 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    struct cache_entry *entry = radv_pipeline_cache_search_unlocked(cache, sha1);
    if (entry) {
       for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-         if (entry->shaders[i]) {
-            radv_shader_destroy(cache->device, shaders[i]);
-            shaders[i] = entry->shaders[i];
-         } else {
-            entry->shaders[i] = shaders[i];
-         }
-         if (shaders[i])
-            p_atomic_inc(&shaders[i]->ref_count);
+         if (!entry->shaders[i])
+            continue;
+
+         radv_shader_destroy(cache->device, shaders[i]);
+
+         shaders[i] = entry->shaders[i];
+         p_atomic_inc(&shaders[i]->ref_count);
       }
       radv_pipeline_cache_unlock(cache);
       return;
