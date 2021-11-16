@@ -697,7 +697,7 @@ RADV driver environment variables
       initialize all memory allocated in VRAM as zero
 
 :envvar:`RADV_FORCE_FAMILY`
-   create a null device to compile shaders without a AMD GPU (e.g. vega10)
+   create a null device to compile shaders without a AMD GPU (e.g. VEGA10)
 
 :envvar:`RADV_FORCE_VRS`
    allow to force per-pipeline vertex VRS rates on GFX10.3+. This is only
