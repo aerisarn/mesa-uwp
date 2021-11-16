@@ -293,6 +293,8 @@ nir_ssa_def *radv_meta_load_descriptor(nir_builder *b, unsigned desc_set, unsign
 
 nir_ssa_def *get_global_ids(nir_builder *b, unsigned num_components);
 
+void radv_break_on_count(nir_builder *b, nir_variable *var, nir_ssa_def *count);
+
 #ifdef __cplusplus
 }
 #endif

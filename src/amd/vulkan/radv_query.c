@@ -56,19 +56,6 @@ nir_test_flag(nir_builder *b, nir_ssa_def *flags, uint32_t flag)
 }
 
 static void
-radv_break_on_count(nir_builder *b, nir_variable *var, nir_ssa_def *count)
-{
-   nir_ssa_def *counter = nir_load_var(b, var);
-
-   nir_push_if(b, nir_uge(b, counter, count));
-   nir_jump(b, nir_jump_break);
-   nir_pop_if(b, NULL);
-
-   counter = nir_iadd(b, counter, nir_imm_int(b, 1));
-   nir_store_var(b, var, counter, 0x1);
-}
-
-static void
 radv_store_availability(nir_builder *b, nir_ssa_def *flags, nir_ssa_def *dst_buf,
                         nir_ssa_def *offset, nir_ssa_def *value32)
 {
