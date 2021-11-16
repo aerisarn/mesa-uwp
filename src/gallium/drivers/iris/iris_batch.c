@@ -302,8 +302,9 @@ flush_for_cross_batch_dependencies(struct iris_batch *batch,
    if (batch->measure && bo == batch->measure->bo)
       return;
 
-   /* This is the first time our batch has seen this BO.  Before we use it,
-    * we may need to flush and synchronize with other batches.
+   /* When a batch uses a buffer for the first time, or newly writes a buffer
+    * it had already referenced, we may need to flush other batches in order
+    * to correctly synchronize them.
     */
    for (int b = 0; b < ARRAY_SIZE(batch->other_batches); b++) {
       struct iris_batch *other_batch = batch->other_batches[b];
@@ -361,8 +362,10 @@ iris_use_pinned_bo(struct iris_batch *batch,
 
    if (existing_index != -1) {
       /* The BO is already in the list; mark it writable */
-      if (writable)
+      if (writable && !BITSET_TEST(batch->bos_written, existing_index)) {
          BITSET_SET(batch->bos_written, existing_index);
+         flush_for_cross_batch_dependencies(batch, bo, writable);
+      }
 
       return;
    }
