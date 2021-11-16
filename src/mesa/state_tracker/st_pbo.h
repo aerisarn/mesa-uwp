@@ -58,6 +58,20 @@ struct st_pbo_addresses {
    } constants;
 };
 
+/* Conversion to apply in the fragment shader. */
+enum st_pbo_conversion {
+   ST_PBO_CONVERT_FLOAT = 0,
+   ST_PBO_CONVERT_UINT,
+   ST_PBO_CONVERT_SINT,
+   ST_PBO_CONVERT_UINT_TO_SINT,
+   ST_PBO_CONVERT_SINT_TO_UINT,
+
+   ST_NUM_PBO_CONVERSIONS
+};
+
+const struct glsl_type *
+st_pbo_sampler_type_for_target(enum pipe_texture_target target,
+                               enum st_pbo_conversion conv);
 bool
 st_pbo_addresses_setup(struct st_context *st,
                        struct pipe_resource *buf, intptr_t buf_offset,
