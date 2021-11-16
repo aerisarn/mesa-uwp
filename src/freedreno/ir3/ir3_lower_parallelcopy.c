@@ -223,12 +223,12 @@ do_copy(struct ir3_compiler *compiler, struct ir3_instruction *instr,
             cov->cat1.src_type = TYPE_U32;
             ir3_instr_move_before(cov, instr);
          } else {
-            /* shr.b dst, src, h(16) */
+            /* shr.b dst, src, (16) */
             struct ir3_instruction *shr =
                ir3_instr_create(instr->block, OPC_SHR_B, 1, 2);
             ir3_dst_create(shr, dst_num, entry->flags);
             ir3_src_create(shr, src_num, entry->flags & ~IR3_REG_HALF);
-            ir3_src_create(shr, 0, entry->flags | IR3_REG_IMMED)->uim_val = 16;
+            ir3_src_create(shr, 0, IR3_REG_IMMED)->uim_val = 16;
             ir3_instr_move_before(shr, instr);
          }
          return;
