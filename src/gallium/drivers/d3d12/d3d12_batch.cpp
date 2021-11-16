@@ -230,9 +230,11 @@ d3d12_batch_reference_resource(struct d3d12_batch *batch,
                                struct d3d12_resource *res,
                                bool write)
 {
-   hash_entry *entry = _mesa_hash_table_insert(batch->bos, res->bo, NULL);
-   if (entry->data == NULL)
+   hash_entry *entry = _mesa_hash_table_search(batch->bos, res->bo);
+   if (entry == NULL) {
       d3d12_bo_reference(res->bo);
+      entry = _mesa_hash_table_insert(batch->bos, res->bo, NULL);
+   }
    size_t new_data = write ? batch_bo_reference_written : batch_bo_reference_read;
    size_t old_data = (size_t)entry->data;
    entry->data = (void*)(old_data | new_data);
