@@ -259,7 +259,7 @@ bo_create_internal(struct zink_screen *screen,
    }
 
    /* all non-suballocated bo can cache */
-   init_pb_cache = true;
+   init_pb_cache = !pNext;
 
    bo = CALLOC(1, sizeof(struct zink_bo) + init_pb_cache * sizeof(struct pb_cache_entry));
    if (!bo) {
