@@ -2247,6 +2247,41 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       break;
    }
 
+   case nir_intrinsic_quad_broadcast: {
+      struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+      struct ir3_instruction *idx = ir3_get_src(ctx, &intr->src[1])[0];
+
+      type_t dst_type = type_uint_size(nir_dest_bit_size(intr->dest));
+
+      if (dst_type != TYPE_U32)
+         idx = ir3_COV(ctx->block, idx, TYPE_U32, dst_type);
+
+      dst[0] = ir3_QUAD_SHUFFLE_BRCST(ctx->block, src, 0, idx, 0);
+      dst[0]->cat5.type = dst_type;
+      break;
+   }
+
+   case nir_intrinsic_quad_swap_horizontal: {
+      struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+      dst[0] = ir3_QUAD_SHUFFLE_HORIZ(ctx->block, src, 0);
+      dst[0]->cat5.type = type_uint_size(nir_dest_bit_size(intr->dest));
+      break;
+   }
+
+   case nir_intrinsic_quad_swap_vertical: {
+      struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+      dst[0] = ir3_QUAD_SHUFFLE_VERT(ctx->block, src, 0);
+      dst[0]->cat5.type = type_uint_size(nir_dest_bit_size(intr->dest));
+      break;
+   }
+
+   case nir_intrinsic_quad_swap_diagonal: {
+      struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+      dst[0] = ir3_QUAD_SHUFFLE_DIAG(ctx->block, src, 0);
+      dst[0]->cat5.type = type_uint_size(nir_dest_bit_size(intr->dest));
+      break;
+   }
+
    case nir_intrinsic_load_shared_ir3:
       emit_intrinsic_load_shared_ir3(ctx, intr, dst);
       break;
