@@ -257,11 +257,13 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
    const struct v3dv_framebuffer *framebuffer,
    const struct v3dv_cmd_buffer_attachment_state *attachments,
    const struct v3dv_subpass *subpass,
-   uint8_t *max_bpp,
+   uint8_t *max_internal_bpp,
+   uint8_t *total_color_bpp,
    bool *msaa)
 {
    STATIC_ASSERT(V3D_INTERNAL_BPP_32 == 0);
-   *max_bpp = V3D_INTERNAL_BPP_32;
+   *max_internal_bpp = V3D_INTERNAL_BPP_32;
+   *total_color_bpp = 0;
    *msaa = false;
 
    if (subpass) {
@@ -274,8 +276,11 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
          assert(att);
          assert(att->plane_count == 1);
 
-         if (att->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)
-            *max_bpp = MAX2(*max_bpp, att->planes[0].internal_bpp);
+         if (att->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+            const uint32_t internal_bpp = att->planes[0].internal_bpp;
+            *max_internal_bpp = MAX2(*max_internal_bpp, internal_bpp);
+            *total_color_bpp += 4 * v3d_internal_bpp_words(internal_bpp);
+         }
 
          if (att->vk.image->samples > VK_SAMPLE_COUNT_1_BIT)
             *msaa = true;
@@ -289,7 +294,6 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
          if (att->vk.image->samples > VK_SAMPLE_COUNT_1_BIT)
             *msaa = true;
       }
-
       return;
    }
 
@@ -299,8 +303,11 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
       assert(att);
       assert(att->plane_count == 1);
 
-      if (att->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)
-         *max_bpp = MAX2(*max_bpp, att->planes[0].internal_bpp);
+      if (att->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+         const uint32_t internal_bpp = att->planes[0].internal_bpp;
+         *max_internal_bpp = MAX2(*max_internal_bpp, internal_bpp);
+         *total_color_bpp += 4 * v3d_internal_bpp_words(internal_bpp);
+      }
 
       if (att->vk.image->samples > VK_SAMPLE_COUNT_1_BIT)
          *msaa = true;

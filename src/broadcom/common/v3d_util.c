@@ -87,12 +87,37 @@ v3d_csd_choose_workgroups_per_supergroup(struct v3d_device_info *devinfo,
    return best_wgs_per_sg;
 }
 
+#define V3D71_TLB_COLOR_SIZE     (16 * 1024)
+#define V3D71_TLB_DETPH_SIZE     (16 * 1024)
+#define V3D71_TLB_AUX_DETPH_SIZE  (8 * 1024)
+
+static bool
+tile_size_valid(uint32_t pixel_count, uint32_t color_bpp, uint32_t depth_bpp)
+{
+   /* First, we check if we can fit this tile size allocating the depth
+    * TLB memory to color.
+    */
+   if (pixel_count * depth_bpp <= V3D71_TLB_AUX_DETPH_SIZE &&
+       pixel_count * color_bpp <= V3D71_TLB_COLOR_SIZE + V3D71_TLB_DETPH_SIZE) {
+      return true;
+   }
+
+   /* Otherwise the tile must fit in the main TLB buffers */
+   return pixel_count * depth_bpp <= V3D71_TLB_DETPH_SIZE &&
+          pixel_count * color_bpp <= V3D71_TLB_COLOR_SIZE;
+}
+
 void
 v3d_choose_tile_size(const struct v3d_device_info *devinfo,
                      uint32_t color_attachment_count,
-                     uint32_t max_color_bpp, bool msaa,
+                     /* V3D 4.x max internal bpp of all RTs */
+                     uint32_t max_internal_bpp,
+                     /* V3D 7.x accumulated bpp for all RTs (in bytes) */
+                     uint32_t total_color_bpp,
+                     bool msaa,
                      bool double_buffer,
-                     uint32_t *width, uint32_t *height)
+                     uint32_t *width,
+                     uint32_t *height)
 {
    static const uint8_t tile_sizes[] = {
       64, 64,
@@ -105,37 +130,19 @@ v3d_choose_tile_size(const struct v3d_device_info *devinfo,
    };
 
    uint32_t idx = 0;
-   if (color_attachment_count > 4)
-      idx += 3;
-   else if (color_attachment_count > 2)
-      idx += 2;
-   else if (color_attachment_count > 1)
-      idx += 1;
-
-   /* MSAA and double-buffer are mutually exclusive */
-   assert(!msaa || !double_buffer);
-   if (msaa)
-      idx += 2;
-   else if (double_buffer)
-      idx += 1;
-
-   idx += max_color_bpp;
-
    if (devinfo->ver >= 71) {
-      /* In V3D 7.x the TLB has an auxiliary buffer of 8KB that will be
-       * automatically used for depth instead of the main 16KB depth TLB buffer
-       * when the depth tile fits in the auxiliary buffer, allowing the hardware
-       * to allocate the 16KB from the main depth TLB to the color TLB. If
-       * we can do that, then we are effectively doubling the memory we have
-       * for color and we can increase our tile dimensions by a factor of 2
-       * (reduce idx by 1).
+      /* In V3D 7.x, we use the actual bpp used by color attachments to compute
+       * the tile size instead of the maximum bpp. This may allow us to choose a
+       * larger tile size than we would in 4.x in scenarios with multiple RTs
+       * with different bpps.
        *
-       * If we have computed a tile size that would be smaller than the minimum
-       * of 8x8, then it is certain that depth will fit in the aux depth TLB
-       * (even in MSAA mode).
-       *
-       * Otherwise, we need check if we can fit depth in the aux TLB buffer
-       * using a larger tile size.
+       * Also, the TLB has an auxiliary buffer of 8KB that will be automatically
+       * used for depth instead of the main 16KB depth TLB buffer when the depth
+       * tile fits in the auxiliary buffer, allowing the hardware to allocate
+       * the 16KB from the main depth TLB to the color TLB. If we can do that,
+       * then we are effectively doubling the memory we have for color and we
+       * can also select a larger tile size. This is necessary to support
+       * the most expensive configuration: 8x128bpp RTs + MSAA.
        *
        * FIXME: the docs state that depth TLB memory can be used for color
        * if depth testing is not used by setting the 'depth disable' bit in the
@@ -147,17 +154,40 @@ v3d_choose_tile_size(const struct v3d_device_info *devinfo,
        * configuration item) or active in the subpass for which we are enabling
        * the bit (which we can't tell until later, when we record commands for
        * the subpass). If it is the latter, then we cannot use this feature.
+       *
+       * FIXME: pending handling double_buffer.
        */
-      if (idx >= ARRAY_SIZE(tile_sizes) / 2) {
-         idx--;
-      } else if (idx > 0) {
-         /* Depth is always 32bpp (4x32bpp for 4x MSAA) */
-         uint32_t depth_bpp = !msaa ? 4 : 16;
-         uint32_t tile_w = tile_sizes[(idx - 1) * 2];
-         uint32_t tile_h = tile_sizes[(idx - 1) * 2 + 1];
-         if (tile_w * tile_h * depth_bpp <= 8192)
-            idx--;
-      }
+      const uint32_t color_bpp = total_color_bpp * (msaa ? 4 : 1);
+      const uint32_t depth_bpp = 4 * (msaa ? 4 : 1);
+      do {
+         const uint32_t tile_w = tile_sizes[idx * 2];
+         const uint32_t tile_h = tile_sizes[idx * 2 + 1];
+         if (tile_size_valid(tile_w * tile_h, color_bpp, depth_bpp))
+            break;
+         idx++;
+      } while (idx < ARRAY_SIZE(tile_sizes) / 2);
+
+      /* FIXME: pending handling double_buffer */
+      assert(!double_buffer);
+   } else {
+      /* On V3D 4.x tile size is selected based on the number of RTs, the
+       * maximum bpp across all of them and whether 4x MSAA is used.
+       */
+      if (color_attachment_count > 4)
+         idx += 3;
+      else if (color_attachment_count > 2)
+         idx += 2;
+      else if (color_attachment_count > 1)
+         idx += 1;
+
+      /* MSAA and double-buffer are mutually exclusive */
+      assert(!msaa || !double_buffer);
+      if (msaa)
+         idx += 2;
+      else if (double_buffer)
+         idx += 1;
+
+      idx += max_internal_bpp;
    }
 
    assert(idx < ARRAY_SIZE(tile_sizes) / 2);

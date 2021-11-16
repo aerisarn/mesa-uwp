@@ -136,7 +136,9 @@ void
 v3dX(framebuffer_compute_internal_bpp_msaa)(const struct v3dv_framebuffer *framebuffer,
                                             const struct v3dv_cmd_buffer_attachment_state *attachments,
                                             const struct v3dv_subpass *subpass,
-                                            uint8_t *max_bpp, bool *msaa);
+                                            uint8_t *max_internal_bpp,
+                                            uint8_t *total_color_bpp,
+                                            bool *msaa);
 
 #ifdef DEBUG
 void

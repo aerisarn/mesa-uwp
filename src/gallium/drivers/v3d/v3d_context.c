@@ -233,11 +233,13 @@ v3d_get_tile_buffer_size(const struct v3d_device_info *devinfo,
         assert(!is_msaa || !double_buffer);
 
         uint32_t max_cbuf_idx = 0;
+        uint32_t total_bpp = 0;
         *max_bpp = 0;
         for (int i = 0; i < nr_cbufs; i++) {
                 if (cbufs[i]) {
                         struct v3d_surface *surf = v3d_surface(cbufs[i]);
                         *max_bpp = MAX2(*max_bpp, surf->internal_bpp);
+                        total_bpp += 4 * v3d_internal_bpp_words(surf->internal_bpp);
                         max_cbuf_idx = MAX2(i, max_cbuf_idx);
                 }
         }
@@ -246,9 +248,11 @@ v3d_get_tile_buffer_size(const struct v3d_device_info *devinfo,
                 struct v3d_surface *bsurf = v3d_surface(bbuf);
                 assert(bbuf->texture->nr_samples <= 1 || is_msaa);
                 *max_bpp = MAX2(*max_bpp, bsurf->internal_bpp);
+                total_bpp += 4 * v3d_internal_bpp_words(bsurf->internal_bpp);
         }
 
-        v3d_choose_tile_size(devinfo, max_cbuf_idx + 1, *max_bpp,
+        v3d_choose_tile_size(devinfo, max_cbuf_idx + 1,
+                             *max_bpp, total_bpp,
                              is_msaa, double_buffer,
                              tile_width, tile_height);
 }

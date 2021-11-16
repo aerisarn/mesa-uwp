@@ -964,6 +964,7 @@ struct v3dv_frame_tiling {
    uint32_t layers;
    uint32_t render_target_count;
    uint32_t internal_bpp;
+   uint32_t total_color_bpp;
    bool     msaa;
    bool     double_buffer;
    uint32_t tile_width;
@@ -1371,6 +1372,7 @@ void v3dv_job_start_frame(struct v3dv_job *job,
                           bool allocate_tile_state_now,
                           uint32_t render_target_count,
                           uint8_t max_internal_bpp,
+                          uint8_t total_color_bpp,
                           bool msaa);
 
 bool v3dv_job_type_is_gpu(struct v3dv_job *job);

@@ -325,7 +325,8 @@ subpass_get_granularity(struct v3dv_device *device,
    const uint32_t color_count = subpass->color_count;
 
    bool msaa = false;
-   uint32_t max_bpp = 0;
+   uint32_t max_internal_bpp = 0;
+   uint32_t total_color_bpp = 0;
    for (uint32_t i = 0; i < color_count; i++) {
       uint32_t attachment_idx = subpass->color_attachments[i].attachment;
       if (attachment_idx == VK_ATTACHMENT_UNUSED)
@@ -339,7 +340,8 @@ subpass_get_granularity(struct v3dv_device *device,
       v3dv_X(device, get_internal_type_bpp_for_output_format)
          (format->planes[0].rt_type, &internal_type, &internal_bpp);
 
-      max_bpp = MAX2(max_bpp, internal_bpp);
+      max_internal_bpp = MAX2(max_internal_bpp, internal_bpp);
+      total_color_bpp += 4 * v3d_internal_bpp_words(internal_bpp);
 
       if (desc->samples > VK_SAMPLE_COUNT_1_BIT)
          msaa = true;
@@ -349,7 +351,8 @@ subpass_get_granularity(struct v3dv_device *device,
     * heuristics so we choose a conservative granularity here, with it disabled.
     */
    uint32_t width, height;
-   v3d_choose_tile_size(&device->devinfo, color_count, max_bpp, msaa,
+   v3d_choose_tile_size(&device->devinfo, color_count,
+                        max_internal_bpp, total_color_bpp, msaa,
                         false /* double-buffer */, &width, &height);
    *granularity = (VkExtent2D) {
       .width = width,

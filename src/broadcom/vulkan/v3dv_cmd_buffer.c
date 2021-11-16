@@ -349,6 +349,7 @@ job_compute_frame_tiling(struct v3dv_job *job,
                          uint32_t layers,
                          uint32_t render_target_count,
                          uint8_t max_internal_bpp,
+                         uint8_t total_color_bpp,
                          bool msaa,
                          bool double_buffer)
 {
@@ -361,14 +362,16 @@ job_compute_frame_tiling(struct v3dv_job *job,
    tiling->render_target_count = render_target_count;
    tiling->msaa = msaa;
    tiling->internal_bpp = max_internal_bpp;
+   tiling->total_color_bpp = total_color_bpp;
    tiling->double_buffer = double_buffer;
 
    /* Double-buffer is incompatible with MSAA */
    assert(!tiling->msaa || !tiling->double_buffer);
 
    v3d_choose_tile_size(&job->device->devinfo,
-                        render_target_count, max_internal_bpp,
-                        tiling->msaa, tiling->double_buffer,
+                        render_target_count,
+                        max_internal_bpp, total_color_bpp, msaa,
+                        tiling->double_buffer,
                         &tiling->tile_width, &tiling->tile_height);
 
    tiling->draw_tiles_x = DIV_ROUND_UP(width, tiling->tile_width);
@@ -459,6 +462,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
                      bool allocate_tile_state_now,
                      uint32_t render_target_count,
                      uint8_t max_internal_bpp,
+                     uint8_t total_color_bpp,
                      bool msaa)
 {
    assert(job);
@@ -469,7 +473,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
    const struct v3dv_frame_tiling *tiling =
       job_compute_frame_tiling(job, width, height, layers,
                                render_target_count, max_internal_bpp,
-                               msaa, false);
+                               total_color_bpp, msaa, false);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
    v3dv_return_if_oom(NULL, job);
@@ -530,6 +534,7 @@ cmd_buffer_end_render_pass_frame(struct v3dv_cmd_buffer *cmd_buffer)
                                job->frame_tiling.layers,
                                job->frame_tiling.render_target_count,
                                job->frame_tiling.internal_bpp,
+                               job->frame_tiling.total_color_bpp,
                                job->frame_tiling.msaa,
                                true);
 
@@ -1674,10 +1679,11 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
 
       const struct v3dv_framebuffer *framebuffer = state->framebuffer;
 
-      uint8_t internal_bpp;
+      uint8_t max_internal_bpp, total_color_bpp;
       bool msaa;
       v3dv_X(job->device, framebuffer_compute_internal_bpp_msaa)
-         (framebuffer, state->attachments, subpass, &internal_bpp, &msaa);
+         (framebuffer, state->attachments, subpass,
+          &max_internal_bpp, &total_color_bpp, &msaa);
 
       /* From the Vulkan spec:
        *
@@ -1701,7 +1707,8 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
                            layers,
                            true, false,
                            subpass->color_count,
-                           internal_bpp,
+                           max_internal_bpp,
+                           total_color_bpp,
                            msaa);
    }
 
@@ -2669,6 +2676,7 @@ cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
                         true, false,
                         old_job->frame_tiling.render_target_count,
                         old_job->frame_tiling.internal_bpp,
+                        old_job->frame_tiling.total_color_bpp,
                         true /* msaa */);
 
    v3dv_job_destroy(old_job);
