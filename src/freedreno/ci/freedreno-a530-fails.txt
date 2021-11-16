@@ -195,9 +195,6 @@ KHR-GLES3.packed_pixels.varied_rectangle.rgba32f,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba32i,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba32ui,Fail
 
-# "[31] Check failed. Received: [1,0,0,2] instead of: [5,0,0,2]"
-KHR-GLES31.core.shader_image_load_store.basic-glsl-misc-fs,Fail
-
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
 glx@glx-query-drawable-glx_fbconfig_id-window,Fail

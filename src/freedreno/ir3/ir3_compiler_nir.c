@@ -1293,10 +1293,10 @@ static void
 emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
                           struct ir3_instruction **dst)
 {
-   /* Coherent accesses have to go directly to memory, rather than through
-    * ISAM's texture cache (which isn't coherent with image stores).
+   /* If the image can be written, must use LDIB to retrieve data, rather than
+    * through ISAM (which uses the texture cache and won't get previous writes).
     */
-   if (nir_intrinsic_access(intr) & ACCESS_COHERENT && ctx->compiler->gen >= 5) {
+   if (!(nir_intrinsic_access(intr) & ACCESS_NON_WRITEABLE) && ctx->compiler->gen >= 5) {
       ctx->funcs->emit_intrinsic_load_image(ctx, intr, dst);
       return;
    }
