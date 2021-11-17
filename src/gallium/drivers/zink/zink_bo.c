@@ -826,7 +826,6 @@ static struct pb_slab *
 bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_index, bool encrypted)
 {
    struct zink_screen *screen = priv;
-   VkMemoryPropertyFlags domains = vk_domain_from_heap(heap);
    uint32_t base_id;
    unsigned slab_size = 0;
    struct zink_slab *slab = CALLOC_STRUCT(zink_slab);
@@ -895,7 +894,6 @@ bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_ind
       bo->base.size = entry_size;
       bo->base.vtbl = &bo_slab_vtbl;
       bo->offset = slab->buffer->offset + i * entry_size;
-      bo->base.placement = domains;
       bo->unique_id = base_id + i;
       bo->u.slab.entry.slab = &slab->base;
       bo->u.slab.entry.group_index = group_index;
@@ -909,6 +907,7 @@ bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_ind
          bo->u.slab.real = slab->buffer->u.slab.real;
          assert(bo->u.slab.real->mem);
       }
+      bo->base.placement = bo->u.slab.real->base.placement;
 
       list_addtail(&bo->u.slab.entry.head, &slab->base.free);
    }
