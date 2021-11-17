@@ -31,11 +31,11 @@ Current status
 * Many pieces are now upstreamed in various projects.
 * Kernel Linux 4.2 contains the modesetting only drivers. Linux 4.4
   contains the 3D supported pieces.
-* Mesa Mesa master contains the virgl 3D driver.
-* QEMU QEMU 2.4 contained the initial virtio-gpu with no acceleration
+* Mesa master contains the virgl 3D driver.
+* QEMU 2.4 contained the initial virtio-gpu with no acceleration
   support. QEMU 2.5 contains 3D support only with the GTK3 frontend with
   GL enabled.
-* virglrenderer The virglrenderer library seems mostly API stable.
+* The virglrenderer library seems mostly API stable.
 
 So what can it do now?
 ^^^^^^^^^^^^^^^^^^^^^^
