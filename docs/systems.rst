@@ -33,7 +33,7 @@ Layered driver include:
    Microsoft's Direct3D 12 API.
 -  :doc:`SVGA3D <drivers/svga3d>` - driver for VMware virtual GPU
 -  `VirGL <drivers/virgl>` - research project for accelerated graphics
-   for qemu guests
+   for QEMU guests
 -  :doc:`Zink <drivers/zink>` - driver providing OpenGL on top of
    Khoronos' Vulkan API.
 
