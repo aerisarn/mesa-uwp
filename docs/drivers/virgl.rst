@@ -19,7 +19,7 @@ around the concepts of Gallium3D to make writing Mesa and (eventually)
 Direct3D drivers for it easy. The card natively uses the Gallium TGSI
 intermediate representation for its shaders. The implementation of
 rendering for the card is done in the host system as part of qemu and is
-implemented purely on OpenGL so you can accelerated rendering on any
+implemented purely on OpenGL so you can get accelerated rendering on any
 sufficiently capable card/driver combination.
 
 The project also consists of a complete Linux guest stack, composed of a
