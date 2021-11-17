@@ -1102,6 +1102,9 @@ static bool si_try_normal_clear(struct si_context *sctx, struct pipe_surface *ds
       ctx->set_framebuffer_state(ctx, &fb);
       ctx->clear(ctx, buffers, NULL, color, depth, stencil);
       ctx->set_framebuffer_state(ctx, &saved_fb);
+
+      util_copy_framebuffer_state(&saved_fb, NULL);
+
       return true;
    }
 
