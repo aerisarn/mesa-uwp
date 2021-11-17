@@ -272,8 +272,10 @@ bo_create_internal(struct zink_screen *screen,
    }
 
    VkResult ret = VKSCR(AllocateMemory)(screen->dev, &mai, NULL, &bo->mem);
-   if (!zink_screen_handle_vkresult(screen, ret))
+   if (!zink_screen_handle_vkresult(screen, ret)) {
+      mesa_loge("zink: couldn't allocate memory!");
       goto fail;
+   }
 
    simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
