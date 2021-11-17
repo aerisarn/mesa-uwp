@@ -115,6 +115,7 @@ fd4_context_create(struct pipe_screen *pscreen, void *priv,
    for (int i = 0; i < 16; i++) {
       fd4_ctx->vsampler_swizzles[i] = 0x688;
       fd4_ctx->fsampler_swizzles[i] = 0x688;
+      fd4_ctx->csampler_swizzles[i] = 0x688;
    }
 
    return pctx;

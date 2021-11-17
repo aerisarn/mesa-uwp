@@ -118,13 +118,23 @@ static void
 fd4_launch_grid(struct fd_context *ctx,
                 const struct pipe_grid_info *info) assert_dt
 {
-   struct ir3_shader_key key = {};
+   struct fd4_context *fd4_ctx = fd4_context(ctx);
+   struct ir3_shader_key key = {
+      .has_per_samp = fd4_ctx->castc_srgb,
+      .fastc_srgb = fd4_ctx->castc_srgb,
+   };
+   struct ir3_shader *shader = ir3_get_shader(ctx->compute);
    struct ir3_shader_variant *v;
    struct fd_ringbuffer *ring = ctx->batch->draw;
    unsigned nglobal = 0;
 
-   v =
-      ir3_shader_variant(ir3_get_shader(ctx->compute), key, false, &ctx->debug);
+   if (ir3_get_shader_info(ctx->compute)->uses_texture_gather) {
+      key.has_per_samp = true;
+      memcpy(key.fsampler_swizzles, fd4_ctx->csampler_swizzles,
+             sizeof(key.fsampler_swizzles));
+   }
+
+   v = ir3_shader_variant(shader, key, false, &ctx->debug);
    if (!v)
       return;
 

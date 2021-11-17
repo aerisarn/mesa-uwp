@@ -923,6 +923,9 @@ fd4_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
                   struct ir3_shader_variant *cp)
 {
    enum fd_dirty_shader_state dirty = ctx->dirty_shader[PIPE_SHADER_COMPUTE];
+   unsigned num_textures = ctx->tex[PIPE_SHADER_COMPUTE].num_textures +
+      cp->astc_srgb.count +
+      cp->tg4.count;
 
    if (dirty & FD_DIRTY_SHADER_TEX) {
       emit_textures(ctx, ring, SB4_CS_TEX, &ctx->tex[PIPE_SHADER_COMPUTE], cp);
@@ -933,9 +936,7 @@ fd4_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    OUT_PKT0(ring, REG_A4XX_TPL1_TP_FS_TEX_COUNT, 1);
    OUT_RING(ring, A4XX_TPL1_TP_FS_TEX_COUNT_CS(
-               ctx->shaderimg[PIPE_SHADER_COMPUTE].enabled_mask
-               ? 0x80
-               : ctx->tex[PIPE_SHADER_COMPUTE].num_textures));
+               ctx->shaderimg[PIPE_SHADER_COMPUTE].enabled_mask ? 0x80 : num_textures));
 
    if (dirty & FD_DIRTY_SHADER_SSBO)
       emit_ssbos(ctx, ring, SB4_CS_SSBO, &ctx->shaderbuf[PIPE_SHADER_COMPUTE]);
