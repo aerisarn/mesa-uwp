@@ -1,13 +1,12 @@
-VirGL project
-=============
+VirGL
+=====
 
 What is VirGL?
 --------------
 
-VirGL is a research project to investigate the possibility of creating a
-virtual 3D GPU for use inside QEMU virtual machines, that allows the
-guest operating system to use the capabilities of the host GPU to
-accelerate 3D rendering. The plan is to have a guest GPU that is fully
+VirGL is a virtual 3D GPU for use inside QEMU virtual machines, that
+allows the guest operating system to use the capabilities of the host GPU
+to accelerate 3D rendering. The plan is to have a guest GPU that is fully
 independent of the host GPU.
 
 What exactly does it entail?
@@ -73,9 +72,9 @@ virglrenderer: the GL renderer https://gitlab.freedesktop.org/virgl/virglrendere
 Authors and Contributors
 ------------------------
 
-VirGL is a research project undertaken by Dave Airlie at Red Hat. It
-builds on lots of open source work in a number of projects, primarily the
-Gallium 3D code from the Mesa project.
+VirGL is a project undertaken by Dave Airlie at Red Hat. It builds on lots
+of open source work in a number of projects, primarily the Gallium 3D code
+from the Mesa project.
 
 Support or Contact
 ------------------
