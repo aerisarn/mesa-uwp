@@ -1630,7 +1630,7 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
    static int validate_dominance = -1;
    if (validate_dominance < 0) {
       validate_dominance =
-         env_var_as_boolean("NIR_VALIDATE_SSA_DOMINANCE", false);
+         NIR_DEBUG(VALIDATE_SSA_DOMINANCE);
    }
    if (validate_dominance)
       validate_ssa_dominance(impl, state);
@@ -1707,10 +1707,7 @@ dump_errors(validate_state *state, const char *when)
 void
 nir_validate_shader(nir_shader *shader, const char *when)
 {
-   static int should_validate = -1;
-   if (should_validate < 0)
-      should_validate = env_var_as_boolean("NIR_VALIDATE", true);
-   if (!should_validate)
+   if (NIR_DEBUG(NOVALIDATE))
       return;
 
    validate_state state;
@@ -1761,10 +1758,7 @@ nir_validate_shader(nir_shader *shader, const char *when)
 void
 nir_validate_ssa_dominance(nir_shader *shader, const char *when)
 {
-   static int should_validate = -1;
-   if (should_validate < 0)
-      should_validate = env_var_as_boolean("NIR_VALIDATE", true);
-   if (!should_validate)
+   if (NIR_DEBUG(NOVALIDATE))
       return;
 
    validate_state state;

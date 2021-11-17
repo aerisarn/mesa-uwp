@@ -207,15 +207,11 @@ The following are only applicable for drivers that uses NIR, as they
 modify the behavior for the common ``NIR_PASS`` and ``NIR_PASS_V`` macros,
 that wrap calls to NIR lowering/optimizations.
 
-:envvar:`NIR_PRINT`
-   If defined, the resulting NIR shader will be printed out at each
-   successful NIR lowering/optimization call.
-:envvar:`NIR_TEST_CLONE`
-   If defined, cloning a NIR shader would be tested at each successful
-   NIR lowering/optimization call.
-:envvar:`NIR_TEST_SERIALIZE`
-   If defined, serialize and deserialize a NIR shader would be tested at
-   each successful NIR lowering/optimization call.
+:envvar:`NIR_DEBUG`
+   a comma-separated list of debug options to apply to NIR
+   shaders. Use `NIR_DEBUG=help` to print a list of available options.
+:envvar:`NIR_SKIP`
+   a comma-separated list of optimization/lowering passes to skip.
 
 Mesa Xlib driver environment variables
 --------------------------------------

@@ -3061,7 +3061,6 @@ nir_to_tgsi(struct nir_shader *s,
 {
    struct ntt_compile *c;
    const void *tgsi_tokens;
-   bool debug = env_var_as_boolean("NIR_TO_TGSI_DEBUG", false);
    nir_variable_mode no_indirects_mask = ntt_no_indirects_mask(s, screen);
    bool native_integers = screen->get_shader_param(screen,
                                                    pipe_shader_type_from_mesa(s->info.stage),
@@ -3142,7 +3141,7 @@ nir_to_tgsi(struct nir_shader *s,
    NIR_PASS_V(s, nir_lower_locals_to_regs);
    NIR_PASS_V(s, nir_opt_dce);
 
-   if (debug) {
+   if (NIR_DEBUG(TGSI)) {
       fprintf(stderr, "NIR before translation to TGSI:\n");
       nir_print_shader(s, stderr);
    }
@@ -3192,7 +3191,7 @@ nir_to_tgsi(struct nir_shader *s,
 
    tgsi_tokens = ureg_get_tokens(c->ureg, NULL);
 
-   if (debug) {
+   if (NIR_DEBUG(TGSI)) {
       fprintf(stderr, "TGSI after translation from NIR:\n");
       tgsi_dump(tgsi_tokens, 0);
    }

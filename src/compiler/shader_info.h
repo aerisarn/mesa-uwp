@@ -123,7 +123,7 @@ typedef struct shader_info {
    /* Descriptive name provided by the client; may be NULL */
    const char *label;
 
-   /* Shader is internal, and should be ignored by things like NIR_PRINT */
+   /* Shader is internal, and should be ignored by things like NIR_DEBUG=print */
    bool internal;
 
    /* SHA1 of the original source, used by shader detection in drivers. */
