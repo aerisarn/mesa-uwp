@@ -68,7 +68,7 @@ Repos
 
 All upstream parts are being developed upstream.
 
-virglrenderer: the GL renderer http://cgit.freedesktop.org/virglrenderer git://git.freedesktop.org/git/virglrenderer
+virglrenderer: the GL renderer https://gitlab.freedesktop.org/virgl/virglrenderer
 
 Authors and Contributors
 ------------------------
