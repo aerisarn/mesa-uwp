@@ -51,8 +51,6 @@ vk_sync_type_validate(const struct vk_sync_type *type)
                                VK_SYNC_FEATURE_WAIT_PENDING));
       assert(type->signal);
       assert(type->get_value);
-   } else {
-      assert(!type->get_value);
    }
 
    if (!(type->features & VK_SYNC_FEATURE_BINARY)) {
@@ -74,13 +72,9 @@ vk_sync_type_validate(const struct vk_sync_type *type)
 
    if (type->features & VK_SYNC_FEATURE_CPU_RESET)
       assert(type->reset);
-   else
-      assert(!type->reset);
 
    if (type->features & VK_SYNC_FEATURE_CPU_SIGNAL)
       assert(type->signal);
-   else
-      assert(!type->signal);
 }
 
 VkResult
@@ -150,6 +144,8 @@ vk_sync_signal(struct vk_device *device,
                struct vk_sync *sync,
                uint64_t value)
 {
+   assert(sync->type->features & VK_SYNC_FEATURE_CPU_SIGNAL);
+
    if (sync->flags & VK_SYNC_IS_TIMELINE)
       assert(value > 0);
    else
@@ -171,6 +167,7 @@ VkResult
 vk_sync_reset(struct vk_device *device,
               struct vk_sync *sync)
 {
+   assert(sync->type->features & VK_SYNC_FEATURE_CPU_RESET);
    assert(!(sync->flags & VK_SYNC_IS_TIMELINE));
    return sync->type->reset(device, sync);
 }
