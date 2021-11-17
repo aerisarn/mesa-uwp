@@ -234,7 +234,7 @@ bo_create_internal(struct zink_screen *screen,
                    unsigned flags,
                    const void *pNext)
 {
-   struct zink_bo *bo;
+   struct zink_bo *bo = NULL;
    bool init_pb_cache;
 
    /* too big for vk alloc */
@@ -247,6 +247,7 @@ bo_create_internal(struct zink_screen *screen,
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
    mai.pNext = pNext;
    mai.allocationSize = size;
+demote:
    mai.memoryTypeIndex = screen->heap_map[heap];
    if (screen->info.mem_props.memoryTypes[mai.memoryTypeIndex].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
       alignment = MAX2(alignment, screen->info.props.limits.minMemoryMapAlignment);
@@ -261,9 +262,21 @@ bo_create_internal(struct zink_screen *screen,
    /* all non-suballocated bo can cache */
    init_pb_cache = !pNext;
 
-   bo = CALLOC(1, sizeof(struct zink_bo) + init_pb_cache * sizeof(struct pb_cache_entry));
+   if (!bo)
+      bo = CALLOC(1, sizeof(struct zink_bo) + init_pb_cache * sizeof(struct pb_cache_entry));
    if (!bo) {
       return NULL;
+   }
+
+   VkResult ret = VKSCR(AllocateMemory)(screen->dev, &mai, NULL, &bo->mem);
+   if (!zink_screen_handle_vkresult(screen, ret)) {
+      if (heap == ZINK_HEAP_DEVICE_LOCAL_VISIBLE) {
+         heap = ZINK_HEAP_DEVICE_LOCAL;
+         mesa_loge("zink: %p couldn't allocate memory! from BAR heap: retrying as device-local", bo);
+         goto demote;
+      }
+      mesa_loge("zink: couldn't allocate memory! from heap %u", heap);
+      goto fail;
    }
 
    if (init_pb_cache) {
@@ -271,11 +284,6 @@ bo_create_internal(struct zink_screen *screen,
       pb_cache_init_entry(&screen->pb.bo_cache, bo->cache_entry, &bo->base, heap);
    }
 
-   VkResult ret = VKSCR(AllocateMemory)(screen->dev, &mai, NULL, &bo->mem);
-   if (!zink_screen_handle_vkresult(screen, ret)) {
-      mesa_loge("zink: couldn't allocate memory!");
-      goto fail;
-   }
 
    simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
