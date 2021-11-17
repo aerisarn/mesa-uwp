@@ -20,37 +20,6 @@
 
 subdir('common')
 
-_dri_drivers = []
-_dri_link = []
-
-if _dri_drivers != []
-  libmesa_dri_drivers = shared_library(
-    'mesa_dri_drivers',
-    [],
-    link_whole : _dri_drivers,
-    link_with : [
-      libmegadriver_stub, libdricommon, libglapi,
-      libmesa_classic,
-    ],
-    dependencies : [
-      dep_selinux, dep_libdrm, dep_m, dep_thread, dep_dl,
-      idep_nir, idep_xmlconfig, idep_mesautil,
-    ],
-    link_args : [ld_args_build_id, ld_args_bsymbolic, ld_args_gc_sections],
-    # Will be deleted during installation, see install_megadrivers.py
-    install : true,
-    install_dir : dri_drivers_path,
-    name_suffix : 'so',
-  )
-
-  meson.add_install_script(
-    install_megadrivers_py.path(),
-    libmesa_dri_drivers.full_path(),
-    dri_drivers_path,
-    _dri_link,
-  )
-endif
-
 # This needs to be installed if any dri drivers (including gallium dri drivers)
 # are built.
 if with_dri
