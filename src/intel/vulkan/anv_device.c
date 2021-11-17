@@ -701,7 +701,7 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
                                  I915_ENGINE_CLASS_RENDER);
       int g_count = 0;
       int c_count = 0;
-      if (false /* Disable for now. We will enable with an env-var. */)
+      if (env_var_as_boolean("INTEL_COMPUTE_CLASS", false))
          c_count = intel_gem_count_engines(pdevice->engine_info,
                                            I915_ENGINE_CLASS_COMPUTE);
       enum drm_i915_gem_engine_class compute_class =

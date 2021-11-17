@@ -246,6 +246,12 @@ Intel driver environment variables
    if set to 1, true or yes, then the OpenGL implementation will
    default ``GL_BLACKHOLE_RENDER_INTEL`` to true, thus disabling any
    rendering.
+:envvar:`INTEL_COMPUTE_CLASS`
+   If set to 1, true or yes, then I915_ENGINE_CLASS_COMPUTE will be
+   supported. For OpenGL, iris will attempt to use a compute engine
+   for compute dispatches if one is detected. For Vulkan, anvil will
+   advertise support for a compute queue if a compute engine is
+   detected.
 :envvar:`INTEL_DEBUG`
    a comma-separated list of named flags, which do various things:
 
