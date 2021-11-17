@@ -3017,11 +3017,12 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    bool ngg_culling_allowed =
       sscreen->info.chip_class >= GFX10 &&
       sscreen->use_ngg_culling &&
-      (sel->info.stage == MESA_SHADER_VERTEX ||
-       sel->info.stage == MESA_SHADER_TESS_EVAL) &&
       sel->info.writes_position &&
       !sel->info.writes_viewport_index && /* cull only against viewport 0 */
-      !sel->info.base.writes_memory && !sel->so.num_outputs &&
+      !sel->info.base.writes_memory &&
+      /* NGG GS supports culling with streamout because it culls after streamout. */
+      (sel->info.stage == MESA_SHADER_GEOMETRY || !sel->so.num_outputs) &&
+      (sel->info.stage != MESA_SHADER_GEOMETRY || sel->info.num_stream_output_components[0]) &&
       (sel->info.stage != MESA_SHADER_VERTEX ||
        (!sel->info.base.vs.blit_sgprs_amd &&
         !sel->info.base.vs.window_space_position));
@@ -3034,7 +3035,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
          else
             sel->ngg_cull_vert_threshold = 128;
-      } else if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
+      } else if (sel->info.stage == MESA_SHADER_TESS_EVAL ||
+                 sel->info.stage == MESA_SHADER_GEOMETRY) {
          if (sel->rast_prim != PIPE_PRIM_POINTS)
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
       }

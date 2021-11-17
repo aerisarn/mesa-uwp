@@ -78,7 +78,10 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
 {
    const struct si_shader_info *info = &ctx->shader->selector->info;
 
-   if (ctx->stage == MESA_SHADER_VERTEX) {
+   if (ctx->stage == MESA_SHADER_GEOMETRY) {
+      *num_vertices = u_vertices_per_prim(info->base.gs.output_primitive);
+      return LLVMConstInt(ctx->ac.i32, *num_vertices, false);
+   } else if (ctx->stage == MESA_SHADER_VERTEX) {
       if (info->base.vs.blit_sgprs_amd) {
          /* Blits always use axis-aligned rectangles with 3 vertices. */
          *num_vertices = 3;
@@ -1952,6 +1955,79 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
       }
       ac_build_endif(&ctx->ac, 5110);
       ac_build_endif(&ctx->ac, 5109);
+   }
+
+   /* Cull primitives. */
+   if (ctx->shader->key.ge.opt.ngg_culling) {
+      assert(info->num_stream_output_components[0]);
+
+      LLVMValueRef gs_vtxptr = ngg_gs_vertex_ptr(ctx, tid);
+      LLVMValueRef live = LLVMBuildLoad(builder, ngg_gs_get_emit_primflag_ptr(ctx, gs_vtxptr, 0), "");
+      live = LLVMBuildTrunc(builder, live, ctx->ac.i1, "");
+      LLVMValueRef is_emit = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
+      LLVMValueRef prim_enable = LLVMBuildAnd(builder, live, is_emit, "");
+
+      /* Wait for streamout to finish before we kill primitives. */
+      if (sel->so.num_outputs)
+         ac_build_s_barrier(&ctx->ac);
+
+      ac_build_ifcc(&ctx->ac, prim_enable, 0);
+      {
+         LLVMValueRef vtxptr[3] = {};
+         LLVMValueRef pos[3][4] = {};
+
+         for (unsigned i = 0; i < verts_per_prim; i++) {
+            tmp = LLVMBuildSub(builder, tid, LLVMConstInt(ctx->ac.i32, verts_per_prim - i - 1, false), "");
+            vtxptr[i] = ac_build_gep0(&ctx->ac, ngg_gs_vertex_ptr(ctx, tmp), ctx->ac.i32_0);
+         }
+
+         for (unsigned i = 0; i < info->num_outputs; i++) {
+            /* If the stream index is non-zero for all channels, skip the output. */
+            if (info->output_streams[i] & 0x3 &&
+                (info->output_streams[i] >> 2) & 0x3 &&
+                (info->output_streams[i] >> 4) & 0x3 &&
+                (info->output_streams[i] >> 6) & 0x3)
+               continue;
+
+            switch (info->output_semantic[i]) {
+            case VARYING_SLOT_POS:
+               /* Load the positions from LDS. */
+               for (unsigned vert = 0; vert < verts_per_prim; vert++) {
+                  for (unsigned comp = 0; comp < 4; comp++) {
+                     /* Z is not needed. */
+                     if (comp == 2)
+                        continue;
+
+                     tmp = ac_build_gep0(&ctx->ac, vtxptr[vert],
+                                         LLVMConstInt(ctx->ac.i32, 4 * i + comp, false));
+                     pos[vert][comp] = LLVMBuildLoad(builder, tmp, "");
+                     pos[vert][comp] = ac_to_float(&ctx->ac, pos[vert][comp]);
+                  }
+               }
+
+               /* Divide XY by W. */
+               for (unsigned vert = 0; vert < verts_per_prim; vert++) {
+                  for (unsigned comp = 0; comp < 2; comp++)
+                     pos[vert][comp] = ac_build_fdiv(&ctx->ac, pos[vert][comp], pos[vert][3]);
+               }
+               break;
+            }
+         }
+
+         LLVMValueRef clipdist_accepted = ctx->ac.i1true; /* TODO */
+         LLVMValueRef accepted = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
+
+         cull_primitive(ctx, pos, clipdist_accepted, accepted, NULL);
+
+         accepted = LLVMBuildLoad(builder, accepted, "");
+         LLVMValueRef rejected = LLVMBuildNot(builder, LLVMBuildTrunc(builder, accepted, ctx->ac.i1, ""), "");
+
+         ac_build_ifcc(&ctx->ac, rejected, 0);
+         LLVMBuildStore(builder, ctx->ac.i8_0, ngg_gs_get_emit_primflag_ptr(ctx, gs_vtxptr, 0));
+         ac_build_endif(&ctx->ac, 0);
+      }
+      ac_build_endif(&ctx->ac, 0);
+      ac_build_s_barrier(&ctx->ac);
    }
 
    /* Determine vertex liveness. */

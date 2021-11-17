@@ -546,10 +546,14 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tes_offchip_addr);
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+         } else {
+            /* GS */
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
          }
 
-         if (ctx->stage != MESA_SHADER_GEOMETRY)
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->small_prim_cull_info);
+         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->small_prim_cull_info);
 
          if (ctx->stage == MESA_SHADER_VERTEX)
             declare_vb_descriptor_input_sgprs(ctx);
@@ -583,10 +587,8 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
                num_user_sgprs =
                   SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->num_vbos_in_user_sgprs * 4;
             }
-         } else if (ctx->stage == MESA_SHADER_TESS_EVAL && ngg_cull_shader) {
-            num_user_sgprs = GFX9_GS_NUM_USER_SGPR;
          } else {
-            num_user_sgprs = SI_NUM_VS_STATE_RESOURCE_SGPRS;
+            num_user_sgprs = GFX9_GS_NUM_USER_SGPR;
          }
 
          /* The NGG cull shader has to return all 9 VGPRs.
@@ -1264,8 +1266,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  opt.kill_outputs = 0x%" PRIx64 "\n", key->ge.opt.kill_outputs);
       fprintf(f, "  opt.kill_pointsize = 0x%x\n", key->ge.opt.kill_pointsize);
       fprintf(f, "  opt.kill_clip_distances = 0x%x\n", key->ge.opt.kill_clip_distances);
-      if (stage != MESA_SHADER_GEOMETRY)
-         fprintf(f, "  opt.ngg_culling = 0x%x\n", key->ge.opt.ngg_culling);
+      fprintf(f, "  opt.ngg_culling = 0x%x\n", key->ge.opt.ngg_culling);
    }
 
    if (stage <= MESA_SHADER_GEOMETRY) {

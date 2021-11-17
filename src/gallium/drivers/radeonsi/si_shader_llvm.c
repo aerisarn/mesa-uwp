@@ -1093,7 +1093,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
    si_llvm_context_init(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
 
    LLVMValueRef ngg_cull_main_fn = NULL;
-   if (sel->info.stage <= MESA_SHADER_GEOMETRY && shader->key.ge.opt.ngg_culling) {
+   if (sel->info.stage <= MESA_SHADER_TESS_EVAL && shader->key.ge.opt.ngg_culling) {
       if (!si_llvm_translate_nir(&ctx, shader, nir, false, true)) {
          si_llvm_dispose(&ctx);
          return false;

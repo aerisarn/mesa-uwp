@@ -116,9 +116,10 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
                              8 + SI_SGPR_BINDLESS_SAMPLERS_AND_IMAGES);
    if (ctx->screen->use_ngg) {
       ret = si_insert_input_ptr(ctx, ret, ctx->vs_state_bits, 8 + SI_SGPR_VS_STATE_BITS);
+      ret = si_insert_input_ptr(ctx, ret, ctx->small_prim_cull_info, 8 + GFX9_SGPR_SMALL_PRIM_CULL_INFO);
    }
 
-   unsigned vgpr = 8 + SI_NUM_VS_STATE_RESOURCE_SGPRS;
+   unsigned vgpr = 8 + GFX9_GS_NUM_USER_SGPR;
 
    ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_vtx_offset[0], vgpr++);
    ret = si_insert_input_ret_float(ctx, ret, ctx->args.gs_vtx_offset[1], vgpr++);

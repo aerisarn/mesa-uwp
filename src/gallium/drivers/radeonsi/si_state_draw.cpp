@@ -2267,10 +2267,10 @@ static void si_draw(struct pipe_context *ctx,
    if (GFX_VERSION >= GFX10) {
       struct si_shader_selector *hw_vs = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->cso;
 
-      if (NGG && !HAS_GS &&
-          /* Tessellation sets ngg_cull_vert_threshold to UINT_MAX if the prim type
-           * is not points, so this check is only needed without tessellation. */
-          (HAS_TESS || util_rast_prim_is_lines_or_triangles(sctx->current_rast_prim)) &&
+      if (NGG &&
+          /* Tessellation and GS set ngg_cull_vert_threshold to UINT_MAX if the prim type
+           * is not points, so this check is only needed for VS. */
+          (HAS_TESS || HAS_GS || util_rast_prim_is_lines_or_triangles(sctx->current_rast_prim)) &&
           /* Only the first draw for a shader starts with culling disabled and it's disabled
            * until we pass the total_direct_count check and then it stays enabled until
            * the shader is changed. This eliminates most culling on/off state changes. */
