@@ -579,12 +579,20 @@ zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, en
       }
 
       struct pb_slabs *slabs = get_slabs(screen, alloc_size, flags);
-      entry = pb_slab_alloc(slabs, alloc_size, heap);
+      bool reclaim_all = false;
+      if (heap == ZINK_HEAP_DEVICE_LOCAL_VISIBLE && !screen->resizable_bar) {
+         unsigned low_bound = 128 * 1024 * 1024; //128MB is a very small BAR
+         if (screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
+            low_bound *= 2; //nvidia has fat textures or something
+         unsigned heapidx = screen->info.mem_props.memoryTypes[screen->heap_map[heap]].heapIndex;
+         reclaim_all = screen->info.mem_props.memoryHeaps[heapidx].size <= low_bound;
+      }
+      entry = pb_slab_alloc_reclaimed(slabs, alloc_size, heap, reclaim_all);
       if (!entry) {
          /* Clean up buffer managers and try again. */
          clean_up_buffer_managers(screen);
 
-         entry = pb_slab_alloc(slabs, alloc_size, heap);
+         entry = pb_slab_alloc_reclaimed(slabs, alloc_size, heap, true);
       }
       if (!entry)
          return NULL;
