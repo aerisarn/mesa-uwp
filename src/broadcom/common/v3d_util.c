@@ -170,3 +170,30 @@ v3d_hw_prim_type(enum mesa_prim prim_type)
       unreachable("Unsupported primitive type");
    }
 }
+
+uint32_t
+v3d_internal_bpp_words(uint32_t internal_bpp)
+{
+        switch (internal_bpp) {
+        case 0 /* V3D_INTERNAL_BPP_32 */:
+                return 1;
+        case 1 /* V3D_INTERNAL_BPP_64 */:
+                return 2;
+        case 2 /* V3D_INTERNAL_BPP_128 */:
+                return 4;
+        default:
+                unreachable("Unsupported internal BPP");
+        }
+}
+
+uint32_t
+v3d_compute_rt_row_row_stride_128_bits(uint32_t tile_width,
+                                       uint32_t bpp)
+{
+        /* stride in multiples of 128 bits, and covers 2 rows. This is the
+         * reason we divide by 2 instead of 4, as we divide number of 32-bit
+         * words per row by 2.
+         */
+
+        return (tile_width * bpp) / 2;
+}
