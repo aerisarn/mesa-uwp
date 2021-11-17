@@ -950,6 +950,7 @@ v3dX(meta_emit_tfu_job)(struct v3dv_cmd_buffer *cmd_buffer,
 
    tfu.iia |= src_offset;
 
+#if V3D_VERSION <= 42
    if (src_tiling == V3D_TILING_RASTER) {
       tfu.icfg = V3D33_TFU_ICFG_FORMAT_RASTER << V3D33_TFU_ICFG_FORMAT_SHIFT;
    } else {
@@ -958,12 +959,46 @@ v3dX(meta_emit_tfu_job)(struct v3dv_cmd_buffer *cmd_buffer,
                    V3D33_TFU_ICFG_FORMAT_SHIFT;
    }
    tfu.icfg |= format_plane->tex_type << V3D33_TFU_ICFG_TTYPE_SHIFT;
+#endif
+#if V3D_VERSION >= 71
+   if (src_tiling == V3D_TILING_RASTER) {
+      tfu.icfg = V3D71_TFU_ICFG_FORMAT_RASTER << V3D71_TFU_ICFG_IFORMAT_SHIFT;
+   } else {
+      tfu.icfg = (V3D71_TFU_ICFG_FORMAT_LINEARTILE +
+                  (src_tiling - V3D_TILING_LINEARTILE)) <<
+                   V3D71_TFU_ICFG_IFORMAT_SHIFT;
+   }
+   tfu.icfg |= format_plane->tex_type << V3D71_TFU_ICFG_OTYPE_SHIFT;
+#endif
 
    tfu.ioa = dst_offset;
 
+#if V3D_VERSION <= 42
    tfu.ioa |= (V3D33_TFU_IOA_FORMAT_LINEARTILE +
                (dst_tiling - V3D_TILING_LINEARTILE)) <<
                 V3D33_TFU_IOA_FORMAT_SHIFT;
+#endif
+
+#if V3D_VERSION >= 71
+   tfu.v71.ioc = (V3D71_TFU_IOC_FORMAT_LINEARTILE +
+                  (dst_tiling - V3D_TILING_LINEARTILE)) <<
+                   V3D71_TFU_IOC_FORMAT_SHIFT;
+
+   switch (dst_tiling) {
+   case V3D_TILING_UIF_NO_XOR:
+   case V3D_TILING_UIF_XOR:
+      tfu.v71.ioc |=
+         (dst_padded_height_or_stride / (2 * v3d_utile_height(dst_cpp))) <<
+         V3D71_TFU_IOC_STRIDE_SHIFT;
+      break;
+   case V3D_TILING_RASTER:
+      tfu.v71.ioc |= (dst_padded_height_or_stride / dst_cpp) <<
+                      V3D71_TFU_IOC_STRIDE_SHIFT;
+      break;
+   default:
+      break;
+   }
+#endif
 
    switch (src_tiling) {
    case V3D_TILING_UIF_NO_XOR:
@@ -980,6 +1015,7 @@ v3dX(meta_emit_tfu_job)(struct v3dv_cmd_buffer *cmd_buffer,
    /* The TFU can handle raster sources but always produces UIF results */
    assert(dst_tiling != V3D_TILING_RASTER);
 
+#if V3D_VERSION <= 42
    /* If we're writing level 0 (!IOA_DIMTW), then we need to supply the
     * OPAD field for the destination (how many extra UIF blocks beyond
     * those necessary to cover the height).
@@ -991,6 +1027,7 @@ v3dX(meta_emit_tfu_job)(struct v3dv_cmd_buffer *cmd_buffer,
                       uif_block_h;
       tfu.icfg |= icfg << V3D33_TFU_ICFG_OPAD_SHIFT;
    }
+#endif
 
    v3dv_cmd_buffer_add_tfu_job(cmd_buffer, &tfu);
 }

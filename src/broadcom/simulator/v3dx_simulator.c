@@ -182,26 +182,36 @@ v3d_flush_caches(struct v3d_hw *v3d)
         v3d_flush_l2t(v3d);
 }
 
+#if V3D_VERSION < 71
+#define TFU_REG(NAME) V3D_TFU_ ## NAME
+#else
+#define TFU_REG(NAME) V3D_IFC_ ## NAME
+#endif
+
+
 int
 v3dX(simulator_submit_tfu_ioctl)(struct v3d_hw *v3d,
                                  struct drm_v3d_submit_tfu *args)
 {
-        int last_vtct = V3D_READ(V3D_TFU_CS) & V3D_TFU_CS_CVTCT_SET;
+        int last_vtct = V3D_READ(TFU_REG(CS)) & V3D_TFU_CS_CVTCT_SET;
 
-        V3D_WRITE(V3D_TFU_IIA, args->iia);
-        V3D_WRITE(V3D_TFU_IIS, args->iis);
-        V3D_WRITE(V3D_TFU_ICA, args->ica);
-        V3D_WRITE(V3D_TFU_IUA, args->iua);
-        V3D_WRITE(V3D_TFU_IOA, args->ioa);
-        V3D_WRITE(V3D_TFU_IOS, args->ios);
-        V3D_WRITE(V3D_TFU_COEF0, args->coef[0]);
-        V3D_WRITE(V3D_TFU_COEF1, args->coef[1]);
-        V3D_WRITE(V3D_TFU_COEF2, args->coef[2]);
-        V3D_WRITE(V3D_TFU_COEF3, args->coef[3]);
+        V3D_WRITE(TFU_REG(IIA), args->iia);
+        V3D_WRITE(TFU_REG(IIS), args->iis);
+        V3D_WRITE(TFU_REG(ICA), args->ica);
+        V3D_WRITE(TFU_REG(IUA), args->iua);
+        V3D_WRITE(TFU_REG(IOA), args->ioa);
+#if V3D_VERSION >= 71
+        V3D_WRITE(TFU_REG(IOC), args->v71.ioc);
+#endif
+        V3D_WRITE(TFU_REG(IOS), args->ios);
+        V3D_WRITE(TFU_REG(COEF0), args->coef[0]);
+        V3D_WRITE(TFU_REG(COEF1), args->coef[1]);
+        V3D_WRITE(TFU_REG(COEF2), args->coef[2]);
+        V3D_WRITE(TFU_REG(COEF3), args->coef[3]);
 
-        V3D_WRITE(V3D_TFU_ICFG, args->icfg);
+        V3D_WRITE(TFU_REG(ICFG), args->icfg);
 
-        while ((V3D_READ(V3D_TFU_CS) & V3D_TFU_CS_CVTCT_SET) == last_vtct) {
+        while ((V3D_READ(TFU_REG(CS)) & V3D_TFU_CS_CVTCT_SET) == last_vtct) {
                 v3d_hw_tick(v3d);
         }
 
