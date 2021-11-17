@@ -112,11 +112,14 @@ emit_tess_bos(struct fd_screen *screen, struct fd_ringbuffer *ring,
               struct ir3_shader_variant *s) assert_dt
 {
    const struct ir3_const_state *const_state = ir3_const_state(s);
-   const unsigned regid = const_state->offsets.primitive_param * 4 + 4;
+   const unsigned regid = const_state->offsets.primitive_param + 1;
    uint32_t dwords = 8;
 
+   if (regid >= s->constlen)
+      return;
+
    OUT_PKT7(ring, fd6_stage2opcode(s->type), 7);
-   OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid / 4) |
+   OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid) |
                      CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                      CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
                      CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(s->type)) |
