@@ -20,31 +20,32 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#ifndef V3DV_META_COMMON_H
-#define V3DV_META_COMMON_H
 
-/**
- * Copy/Clear operations implemented in v3dv_meta_*.c that use the TLB hardware
- * need to figure out TLB programming from the target image data instead of an
- * actual Vulkan framebuffer object. For the most part, the job's frame tiling
- * information is enough for this, however we still need additional information
- * such us the internal type of our single render target, so we use this
- * auxiliary struct to pass that information around.
- */
-struct v3dv_meta_framebuffer {
-   /* The internal type of the single render target */
-   uint32_t internal_type;
+#ifndef V3D_TFU_H
+#define V3D_TFU_H
 
-   /* Supertile coverage */
-   uint32_t min_x_supertile;
-   uint32_t min_y_supertile;
-   uint32_t max_x_supertile;
-   uint32_t max_y_supertile;
+/* Disable level 0 write, just write following mipmaps */
+#define V3D33_TFU_IOA_DIMTW (1 << 0)
+#define V3D33_TFU_IOA_FORMAT_SHIFT 3
+#define V3D33_TFU_IOA_FORMAT_LINEARTILE 3
+#define V3D33_TFU_IOA_FORMAT_UBLINEAR_1_COLUMN 4
+#define V3D33_TFU_IOA_FORMAT_UBLINEAR_2_COLUMN 5
+#define V3D33_TFU_IOA_FORMAT_UIF_NO_XOR 6
+#define V3D33_TFU_IOA_FORMAT_UIF_XOR 7
 
-   /* Format info */
-   VkFormat vk_format;
-   const struct v3dv_format *format;
-   uint8_t internal_depth_type;
-};
+#define V3D33_TFU_ICFG_NUMMM_SHIFT 5
+#define V3D33_TFU_ICFG_TTYPE_SHIFT 9
+
+#define V3D33_TFU_ICFG_OPAD_SHIFT 22
+
+#define V3D33_TFU_ICFG_FORMAT_SHIFT 18
+#define V3D33_TFU_ICFG_FORMAT_RASTER 0
+#define V3D33_TFU_ICFG_FORMAT_SAND_128 1
+#define V3D33_TFU_ICFG_FORMAT_SAND_256 2
+#define V3D33_TFU_ICFG_FORMAT_LINEARTILE 11
+#define V3D33_TFU_ICFG_FORMAT_UBLINEAR_1_COLUMN 12
+#define V3D33_TFU_ICFG_FORMAT_UBLINEAR_2_COLUMN 13
+#define V3D33_TFU_ICFG_FORMAT_UIF_NO_XOR 14
+#define V3D33_TFU_ICFG_FORMAT_UIF_XOR 15
 
 #endif
