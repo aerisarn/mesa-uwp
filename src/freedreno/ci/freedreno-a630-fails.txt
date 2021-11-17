@@ -261,6 +261,9 @@ spec@egl_ext_protected_content@conformance,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
+
+# "MESA: warning: sample averaging on fallback z24s8 blit when we shouldn't."
+# on glBlitFramebuffer() from the MSAA FB to non-MSAA.
 spec@ext_framebuffer_multisample@accuracy 2 depth_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy 2 depth_resolve small depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy 2 stencil_resolve depthstencil,Fail
@@ -273,6 +276,7 @@ spec@ext_framebuffer_multisample@accuracy all_samples depth_resolve depthstencil
 spec@ext_framebuffer_multisample@accuracy all_samples depth_resolve small depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve small depthstencil,Fail
+
 spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 2,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 4,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 2,Fail
