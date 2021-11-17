@@ -533,27 +533,26 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
             ctx, (ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL));
       }
 
-      if (ctx->stage == MESA_SHADER_VERTEX) {
-         if (shader->selector->info.base.vs.blit_sgprs_amd) {
-            declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
-         } else {
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
+      if (ctx->stage == MESA_SHADER_VERTEX && shader->selector->info.base.vs.blit_sgprs_amd) {
+         declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
+      } else {
+         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
+
+         if (ctx->stage == MESA_SHADER_VERTEX) {
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.base_vertex);
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.draw_id);
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.start_instance);
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->small_prim_cull_info);
-            declare_vb_descriptor_input_sgprs(ctx);
-         }
-      } else {
-         /* TES or GS */
-         ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
-
-         if (ctx->stage == MESA_SHADER_TESS_EVAL) {
+         } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tcs_offchip_layout);
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->tes_offchip_addr);
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL); /* unused */
-            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->small_prim_cull_info);
          }
+
+         if (ctx->stage != MESA_SHADER_GEOMETRY)
+            ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->small_prim_cull_info);
+
+         if (ctx->stage == MESA_SHADER_VERTEX)
+            declare_vb_descriptor_input_sgprs(ctx);
       }
 
       /* VGPRs (first GS, then VS/TES) */
