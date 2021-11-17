@@ -37,6 +37,9 @@ DXGI_FORMAT
 d3d12_get_format(enum pipe_format format);
 
 DXGI_FORMAT
+d3d12_get_typeless_format(enum pipe_format format);
+
+DXGI_FORMAT
 d3d12_get_resource_srv_format(enum pipe_format f, enum pipe_texture_target target);
 
 DXGI_FORMAT
