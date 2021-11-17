@@ -366,6 +366,29 @@ next_regid(uint32_t reg, uint32_t increment)
 }
 
 static void
+fd6_emit_tess_bos(struct fd_screen *screen, struct fd_ringbuffer *ring,
+                  const struct ir3_shader_variant *s) assert_dt
+{
+   const struct ir3_const_state *const_state = ir3_const_state(s);
+   const unsigned regid = const_state->offsets.primitive_param + 1;
+   uint32_t dwords = 8;
+
+   if (regid >= s->constlen)
+      return;
+
+   OUT_PKT7(ring, fd6_stage2opcode(s->type), 7);
+   OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid) |
+                     CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                     CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                     CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(s->type)) |
+                     CP_LOAD_STATE6_0_NUM_UNIT(dwords / 4));
+   OUT_RING(ring, 0);
+   OUT_RING(ring, 0);
+   OUT_RELOC(ring, screen->tess_bo, FD6_TESS_FACTOR_SIZE, 0, 0);
+   OUT_RELOC(ring, screen->tess_bo, 0, 0, 0);
+}
+
+static void
 setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
                struct fd6_program_state *state,
                const struct ir3_shader_key *key, bool binning_pass) assert_dt
@@ -544,6 +567,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 
    fd6_emit_shader(ctx, ring, vs);
    fd6_emit_immediates(ctx->screen, vs, ring);
+   if (hs) {
+      fd6_emit_tess_bos(ctx->screen, ring, hs);
+      fd6_emit_tess_bos(ctx->screen, ring, ds);
+   }
 
    struct ir3_shader_linkage l = {0};
    const struct ir3_shader_variant *last_shader = fd6_last_shader(state);
