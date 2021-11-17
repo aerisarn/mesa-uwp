@@ -93,6 +93,7 @@ Linux, FreeBSD, and other operating systems.
    drivers/v3d
    drivers/vc4
    drivers/venus
+   drivers/virgl
    drivers/zink
 
 .. toctree::
