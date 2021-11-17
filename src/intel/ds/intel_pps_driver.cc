@@ -286,11 +286,9 @@ bool IntelDriver::dump_perfcnt()
 
    auto new_records = parse_perf_records(metric_buffer, total_bytes_read);
    if (new_records.empty()) {
-      PPS_LOG("No new records");
       // No new records from the GPU yet
       return false;
    } else {
-      PPS_LOG("Records parsed bytes: %lu", total_bytes_read);
       // Records are parsed correctly, so we can reset the
       // number of bytes read so far from the metric set
       total_bytes_read = 0;
