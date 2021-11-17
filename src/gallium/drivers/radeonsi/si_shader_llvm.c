@@ -955,7 +955,8 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       if ((!shader->is_monolithic || no_wrapper_func) &&
           (ctx->stage == MESA_SHADER_TESS_EVAL ||
            (ctx->stage == MESA_SHADER_VERTEX &&
-            !si_vs_needs_prolog(sel, &shader->key.ge.part.vs.prolog, &shader->key, ngg_cull_shader))))
+            !si_vs_needs_prolog(sel, &shader->key.ge.part.vs.prolog, &shader->key, ngg_cull_shader,
+                                false))))
          ac_init_exec_full_mask(&ctx->ac);
 
       /* NGG VS and NGG TES: Send gs_alloc_req and the prim export at the beginning to decrease
@@ -1113,7 +1114,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
       LLVMValueRef main_fn = ctx.main_fn;
 
       if (ngg_cull_main_fn) {
-         if (si_vs_needs_prolog(sel, &shader->key.ge.part.vs.prolog, &shader->key, true)) {
+         if (si_vs_needs_prolog(sel, &shader->key.ge.part.vs.prolog, &shader->key, true, false)) {
             union si_shader_part_key prolog_key;
             si_get_vs_prolog_key(&sel->info, shader->info.num_input_sgprs, true,
                                  &shader->key.ge.part.vs.prolog, shader, &prolog_key);
@@ -1125,7 +1126,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          parts[num_parts++] = ngg_cull_main_fn;
       }
 
-      if (si_vs_needs_prolog(sel, &shader->key.ge.part.vs.prolog, &shader->key, false)) {
+      if (si_vs_needs_prolog(sel, &shader->key.ge.part.vs.prolog, &shader->key, false, false)) {
          union si_shader_part_key prolog_key;
          si_get_vs_prolog_key(&sel->info, shader->info.num_input_sgprs, false,
                               &shader->key.ge.part.vs.prolog, shader, &prolog_key);
@@ -1162,7 +1163,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          struct si_shader_selector *ls = shader->key.ge.part.tcs.ls;
          LLVMValueRef parts[4];
          bool vs_needs_prolog =
-            si_vs_needs_prolog(ls, &shader->key.ge.part.tcs.ls_prolog, &shader->key, false);
+            si_vs_needs_prolog(ls, &shader->key.ge.part.tcs.ls_prolog, &shader->key, false, false);
 
          /* TCS main part */
          parts[2] = ctx.main_fn;
@@ -1254,7 +1255,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 
          /* ES prolog */
          if (es->info.stage == MESA_SHADER_VERTEX &&
-             si_vs_needs_prolog(es, &shader->key.ge.part.gs.vs_prolog, &shader->key, false)) {
+             si_vs_needs_prolog(es, &shader->key.ge.part.gs.vs_prolog, &shader->key, false, true)) {
             union si_shader_part_key vs_prolog_key;
             si_get_vs_prolog_key(&es->info, shader_es.info.num_input_sgprs, false,
                                  &shader->key.ge.part.gs.vs_prolog, shader, &vs_prolog_key);

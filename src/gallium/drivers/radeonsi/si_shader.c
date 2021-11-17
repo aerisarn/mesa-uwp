@@ -1289,7 +1289,8 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 
 bool si_vs_needs_prolog(const struct si_shader_selector *sel,
                         const struct si_vs_prolog_bits *prolog_key,
-                        const union si_shader_key *key, bool ngg_cull_shader)
+                        const union si_shader_key *key, bool ngg_cull_shader,
+                        bool is_gs)
 {
    assert(sel->info.stage == MESA_SHADER_VERTEX);
 
@@ -1297,7 +1298,7 @@ bool si_vs_needs_prolog(const struct si_shader_selector *sel,
     * VS prolog. */
    return sel->vs_needs_prolog || prolog_key->ls_vgpr_fix ||
           /* The 2nd VS prolog loads input VGPRs from LDS */
-          (key->ge.opt.ngg_culling && !ngg_cull_shader);
+          (key->ge.opt.ngg_culling && !ngg_cull_shader && !is_gs);
 }
 
 /**
@@ -1323,7 +1324,8 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
    key->vs_prolog.as_es = shader_out->key.ge.as_es;
    key->vs_prolog.as_ngg = shader_out->key.ge.as_ngg;
 
-   if (!ngg_cull_shader && shader_out->key.ge.opt.ngg_culling)
+   if (shader_out->selector->info.stage != MESA_SHADER_GEOMETRY &&
+       !ngg_cull_shader && shader_out->key.ge.opt.ngg_culling)
       key->vs_prolog.load_vgprs_after_culling = 1;
 
    if (shader_out->selector->info.stage == MESA_SHADER_TESS_CTRL) {
@@ -1652,7 +1654,8 @@ static bool si_get_vs_prolog(struct si_screen *sscreen, struct ac_llvm_compiler 
 {
    struct si_shader_selector *vs = main_part->selector;
 
-   if (!si_vs_needs_prolog(vs, key, &shader->key, false))
+   if (!si_vs_needs_prolog(vs, key, &shader->key, false,
+                           shader->selector->info.stage == MESA_SHADER_GEOMETRY))
       return true;
 
    /* Get the prolog. */
