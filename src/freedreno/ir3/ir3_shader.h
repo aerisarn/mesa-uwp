@@ -299,8 +299,8 @@ struct ir3_shader_key {
           * topology the TES uses, which the TCS needs to know.
           */
 #define IR3_TESS_NONE      0
-#define IR3_TESS_TRIANGLES 1
-#define IR3_TESS_QUADS     2
+#define IR3_TESS_QUADS     1
+#define IR3_TESS_TRIANGLES 2
 #define IR3_TESS_ISOLINES  3
          unsigned tessellation : 2;
 
@@ -344,6 +344,22 @@ ir3_tess_mode(unsigned gl_tess_mode)
       return IR3_TESS_TRIANGLES;
    case GL_QUADS:
       return IR3_TESS_QUADS;
+   default:
+      unreachable("bad tessmode");
+   }
+}
+
+static inline uint32_t
+ir3_tess_factor_stride(unsigned patch_type)
+{
+   /* note: this matches the stride used by ir3's build_tessfactor_base */
+   switch (patch_type) {
+   case IR3_TESS_ISOLINES:
+      return 12;
+   case IR3_TESS_TRIANGLES:
+      return 20;
+   case IR3_TESS_QUADS:
+      return 28;
    default:
       unreachable("bad tessmode");
    }

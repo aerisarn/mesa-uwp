@@ -3509,20 +3509,7 @@ get_tess_factor_bo_size(const struct tu_pipeline *pipeline,
    /* Each distinct patch gets its own tess factor output. */
    uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
    uint32_t num_patches = draw_count / verts_per_patch;
-   uint32_t factor_stride;
-   switch (pipeline->tess.patch_type) {
-   case IR3_TESS_ISOLINES:
-      factor_stride = 12;
-      break;
-   case IR3_TESS_TRIANGLES:
-      factor_stride = 20;
-      break;
-   case IR3_TESS_QUADS:
-      factor_stride = 28;
-      break;
-   default:
-      unreachable("bad tessmode");
-   }
+   uint32_t factor_stride = ir3_tess_factor_stride(pipeline->tess.patch_type);
    return factor_stride * num_patches;
 }
 

@@ -251,25 +251,12 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    }
 
    if (info->mode == PIPE_PRIM_PATCHES) {
-      shader_info *ds_info = &emit.ds->shader->nir->info;
-      uint32_t factor_stride;
+      uint32_t factor_stride = ir3_tess_factor_stride(emit.key.key.tessellation);
 
-      switch (ds_info->tess.primitive_mode) {
-      case GL_ISOLINES:
-         draw0.patch_type = TESS_ISOLINES;
-         factor_stride = 12;
-         break;
-      case GL_TRIANGLES:
-         draw0.patch_type = TESS_TRIANGLES;
-         factor_stride = 20;
-         break;
-      case GL_QUADS:
-         draw0.patch_type = TESS_QUADS;
-         factor_stride = 28;
-         break;
-      default:
-         unreachable("bad tessmode");
-      }
+      STATIC_ASSERT(IR3_TESS_ISOLINES == TESS_ISOLINES + 1);
+      STATIC_ASSERT(IR3_TESS_TRIANGLES == TESS_TRIANGLES + 1);
+      STATIC_ASSERT(IR3_TESS_QUADS == TESS_QUADS + 1);
+      draw0.patch_type = emit.key.key.tessellation - 1;
 
       draw0.prim_type = DI_PT_PATCHES0 + ctx->patch_vertices;
       draw0.tess_enable = true;
