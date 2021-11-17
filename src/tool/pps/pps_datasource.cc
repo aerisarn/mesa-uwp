@@ -111,6 +111,8 @@ void GpuDataSource::OnStart(const StartArgs &args)
 void close_callback(GpuDataSource::TraceContext ctx)
 {
    auto packet = ctx.NewTracePacket();
+   packet->set_timestamp_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
+   packet->set_timestamp(perfetto::base::GetBootTimeNs().count());
    packet->Finalize();
    ctx.Flush();
    PPS_LOG("Context flushed");
@@ -263,35 +265,43 @@ void GpuDataSource::trace(TraceContext &ctx)
 {
    using namespace perfetto::protos::pbzero;
 
-   auto state = ctx.GetIncrementalState();
-   if (state->was_cleared) {
-      // Mark any incremental state before this point invalid
+   if (auto state = ctx.GetIncrementalState(); state->was_cleared) {
+      descriptor_timestamp = perfetto::base::GetBootTimeNs().count();
+
       {
+         // Mark any incremental state before this point invalid
          auto packet = ctx.NewTracePacket();
-         packet->set_timestamp(perfetto::base::GetBootTimeNs().count());
+         packet->set_timestamp_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
+         packet->set_timestamp(descriptor_timestamp);
          packet->set_sequence_flags(TracePacket::SEQ_INCREMENTAL_STATE_CLEARED);
       }
 
-      auto packet = ctx.NewTracePacket();
       descriptor_timestamp = perfetto::base::GetBootTimeNs().count();
-      packet->set_timestamp(descriptor_timestamp);
-
       {
+         // Counter descriptions
+         auto packet = ctx.NewTracePacket();
+         packet->set_timestamp_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
+         packet->set_timestamp(descriptor_timestamp);
          auto event = packet->set_gpu_counter_event();
          event->set_gpu_id(driver->drm_device.gpu_num);
 
          auto &groups = driver->groups;
          auto &counters = driver->enabled_counters;
-         PPS_LOG("Sending counter descriptors");
          add_descriptors(event, groups, counters, *driver);
       }
 
       {
+         // Initial timestamp correlation event
+         auto packet = ctx.NewTracePacket();
+         packet->set_timestamp_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
+         packet->set_timestamp(descriptor_timestamp);
          last_correlation_timestamp = perfetto::base::GetBootTimeNs().count();
          auto event = packet->set_clock_snapshot();
          add_timestamp(event, driver);
       }
 
+      // Capture GPU timestamp of the first packet. Anything prior to this can
+      // be discarded.
       descriptor_gpu_timestamp = driver->gpu_timestamp();
       state->was_cleared = false;
    }
@@ -330,6 +340,8 @@ void GpuDataSource::trace(TraceContext &ctx)
    uint64_t cpu_ts = perfetto::base::GetBootTimeNs().count();
    if ((cpu_ts - last_correlation_timestamp) > CORRELATION_TIMESTAMP_PERIOD) {
       auto packet = ctx.NewTracePacket();
+      packet->set_timestamp_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
+      packet->set_timestamp(cpu_ts);
       auto event = packet->set_clock_snapshot();
       add_timestamp(event, driver);
       last_correlation_timestamp = cpu_ts;
