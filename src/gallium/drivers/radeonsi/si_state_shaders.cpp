@@ -1900,7 +1900,6 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
 static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
                                   union si_shader_key *key)
 {
-
    key->ge.opt.kill_clip_distances = vs->clipdist_mask & ~sctx->queued.named.rasterizer->clip_plane_enable;
 
    /* Find out which VS outputs aren't used by the PS. */
@@ -1908,15 +1907,9 @@ static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_sele
    uint64_t linked = outputs_written & sctx->ps_inputs_read_or_disabled;
 
    key->ge.opt.kill_outputs = ~linked & outputs_written;
-
-   if (vs->info.stage != MESA_SHADER_GEOMETRY) {
-      key->ge.opt.ngg_culling = sctx->ngg_culling;
-      key->ge.mono.u.vs_export_prim_id = sctx->shader.ps.cso && sctx->shader.ps.cso->info.uses_primid;
-   } else {
-      key->ge.opt.ngg_culling = 0;
-      key->ge.mono.u.vs_export_prim_id = 0;
-   }
-
+   key->ge.opt.ngg_culling = sctx->ngg_culling;
+   key->ge.mono.u.vs_export_prim_id = vs->info.stage != MESA_SHADER_GEOMETRY &&
+                                      sctx->shader.ps.cso && sctx->shader.ps.cso->info.uses_primid;
    key->ge.opt.kill_pointsize = vs->info.writes_psize &&
                                 sctx->current_rast_prim != PIPE_PRIM_POINTS &&
                                 !sctx->queued.named.rasterizer->polygon_mode_is_points;
