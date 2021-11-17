@@ -2028,6 +2028,15 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!os_get_total_physical_memory(&screen->total_mem))
       goto fail;
 
+   switch (screen->info.driver_props.driverID) {
+   case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
+      screen->max_fences = 500;
+      break;
+   default:
+      screen->max_fences = 5000;
+      break;
+   }
+
    if (debug_get_bool_option("ZINK_NO_TIMELINES", false))
       screen->info.have_KHR_timeline_semaphore = false;
    if (screen->info.have_KHR_timeline_semaphore)
