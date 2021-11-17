@@ -2204,7 +2204,8 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    unsigned gsprim_lds_size = 0;
 
    /* All these are per subgroup: */
-   const unsigned min_esverts = gs_sel->screen->info.chip_class >= GFX10_3 ? 29 : 24;
+   const unsigned min_esverts =
+      gs_sel->screen->info.chip_class >= GFX10_3 ? 29 : (24 - 1 + max_verts_per_prim);
    bool max_vert_out_per_gs_instance = false;
    unsigned max_gsprims_base = gs_sel->screen->ngg_subgroup_size; /* default prim group size clamp */
    unsigned max_esverts_base = gs_sel->screen->ngg_subgroup_size;
@@ -2290,10 +2291,7 @@ retry_select_mode:
          max_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
 
          /* Hardware restriction: minimum value of max_esverts */
-         if (gs_sel->screen->info.chip_class == GFX10)
-            max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
-         else
-            max_esverts = MAX2(max_esverts, min_esverts);
+         max_esverts = MAX2(max_esverts, min_esverts);
 
          max_gsprims = align(max_gsprims, wavesize);
          max_gsprims = MIN2(max_gsprims, max_gsprims_base);
@@ -2311,16 +2309,9 @@ retry_select_mode:
       } while (orig_max_esverts != max_esverts || orig_max_gsprims != max_gsprims);
 
       /* Verify the restriction. */
-      if (gs_sel->screen->info.chip_class == GFX10)
-         assert(max_esverts >= min_esverts - 1 + max_verts_per_prim);
-      else
-         assert(max_esverts >= min_esverts);
+      assert(max_esverts >= min_esverts);
    } else {
-      /* Hardware restriction: minimum value of max_esverts */
-      if (gs_sel->screen->info.chip_class == GFX10)
-         max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
-      else
-         max_esverts = MAX2(max_esverts, min_esverts);
+      max_esverts = MAX2(max_esverts, min_esverts);
    }
 
    unsigned max_out_vertices =
