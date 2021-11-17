@@ -53,7 +53,6 @@ STABLE_EPHEMERAL=" \
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
       clinfo \
-      inetutils-syslogd \
       iptables \
       libclang-common-11-dev \
       libclang-cpp11 \
