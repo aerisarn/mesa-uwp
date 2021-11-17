@@ -580,8 +580,8 @@ si_init_thread_trace(struct si_context *sctx)
       return false;
    }
 
-   /* Default buffer size set to 1MB per SE. */
-   sctx->thread_trace->buffer_size = debug_get_num_option("AMD_THREAD_TRACE_BUFFER_SIZE", 1024) * 1024;
+   /* Default buffer size set to 32MB per SE. */
+   sctx->thread_trace->buffer_size = debug_get_num_option("AMD_THREAD_TRACE_BUFFER_SIZE", 32 * 1024) * 1024;
    sctx->thread_trace->start_frame = 10;
 
    const char *trigger = getenv("AMD_THREAD_TRACE_TRIGGER");
