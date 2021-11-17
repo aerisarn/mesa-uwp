@@ -1206,6 +1206,7 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
                    const struct ir3_shader_key *key) in_dt
 {
    struct fd_context *ctx = fd_context(data);
+   struct fd_screen *screen = ctx->screen;
    struct fd6_program_state *state = CALLOC_STRUCT(fd6_program_state);
 
    tc_assert_driver_thread(ctx->tc);
@@ -1232,6 +1233,19 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
       }
    }
 #endif
+
+   if (hs) {
+      /* Allocate the fixed-size tess factor BO globally on the screen.  This
+       * lets the program (which ideally we would have shared across contexts,
+       * though the current ir3_cache impl doesn't do that) bake in the
+       * addresses.
+       */
+      fd_screen_lock(screen);
+      if (!screen->tess_bo)
+         screen->tess_bo =
+            fd_bo_new(screen->dev, FD6_TESS_BO_SIZE, 0, "tessfactor");
+      fd_screen_unlock(screen);
+   }
 
    setup_config_stateobj(ctx, state);
    setup_stateobj(state->binning_stateobj, ctx, state, key, true);

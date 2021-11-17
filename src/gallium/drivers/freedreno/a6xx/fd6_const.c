@@ -108,21 +108,23 @@ emit_const_ptrs(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v,
 }
 
 static void
-emit_tess_bos(struct fd_ringbuffer *ring, struct fd6_emit *emit,
+emit_tess_bos(struct fd_screen *screen, struct fd_ringbuffer *ring,
               struct ir3_shader_variant *s) assert_dt
 {
-   struct fd_context *ctx = emit->ctx;
    const struct ir3_const_state *const_state = ir3_const_state(s);
    const unsigned regid = const_state->offsets.primitive_param * 4 + 4;
-   uint32_t dwords = 16;
+   uint32_t dwords = 8;
 
-   OUT_PKT7(ring, fd6_stage2opcode(s->type), 3);
+   OUT_PKT7(ring, fd6_stage2opcode(s->type), 7);
    OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid / 4) |
                      CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-                     CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                     CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
                      CP_LOAD_STATE6_0_STATE_BLOCK(fd6_stage2shadersb(s->type)) |
                      CP_LOAD_STATE6_0_NUM_UNIT(dwords / 4));
-   OUT_RB(ring, ctx->batch->tess_addrs_constobj);
+   OUT_RING(ring, 0);
+   OUT_RING(ring, 0);
+   OUT_RELOC(ring, screen->tess_bo, FD6_TESS_FACTOR_SIZE, 0, 0);
+   OUT_RELOC(ring, screen->tess_bo, 0, 0, 0);
 }
 
 static void
@@ -166,7 +168,7 @@ fd6_build_tess_consts(struct fd6_emit *emit)
 
       emit_stage_tess_consts(constobj, emit->hs, hs_params,
                              ARRAY_SIZE(hs_params));
-      emit_tess_bos(constobj, emit, emit->hs);
+      emit_tess_bos(ctx->screen, constobj, emit->hs);
 
       if (emit->gs)
          num_vertices = emit->gs->shader->nir->info.gs.vertices_in;
@@ -179,7 +181,7 @@ fd6_build_tess_consts(struct fd6_emit *emit)
 
       emit_stage_tess_consts(constobj, emit->ds, ds_params,
                              ARRAY_SIZE(ds_params));
-      emit_tess_bos(constobj, emit, emit->ds);
+      emit_tess_bos(ctx->screen, constobj, emit->ds);
    }
 
    if (emit->gs) {

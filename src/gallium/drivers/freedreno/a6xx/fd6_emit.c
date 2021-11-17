@@ -1339,6 +1339,15 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
    OUT_PKT4(ring, REG_A6XX_RB_LRZ_CNTL, 1);
    OUT_RING(ring, 0x00000000);
 
+   /* This happens after all drawing has been emitted to the draw CS, so we know
+    * whether we need the tess BO pointers.
+    */
+   if (batch->tessellation) {
+      assert(screen->tess_bo);
+      OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR, 2);
+      OUT_RELOC(ring, screen->tess_bo, 0, 0, 0);
+   }
+
    if (!batch->nondraw) {
       trace_end_state_restore(&batch->trace, ring);
    }

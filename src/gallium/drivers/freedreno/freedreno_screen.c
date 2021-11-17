@@ -144,6 +144,9 @@ fd_screen_destroy(struct pipe_screen *pscreen)
 {
    struct fd_screen *screen = fd_screen(pscreen);
 
+   if (screen->tess_bo)
+      fd_bo_del(screen->tess_bo);
+
    if (screen->pipe)
       fd_pipe_del(screen->pipe);
 

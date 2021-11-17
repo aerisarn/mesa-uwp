@@ -261,41 +261,16 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       draw0.prim_type = DI_PT_PATCHES0 + ctx->patch_vertices;
       draw0.tess_enable = true;
 
-      const unsigned max_count = 2048;
-      unsigned count;
-
-      /**
-       * We can cap tessparam/tessfactor buffer sizes at the sub-draw
-       * limit.  But in the indirect-draw case we must assume the worst.
-       */
-      if (indirect && indirect->buffer) {
-         count = ALIGN_NPOT(max_count, ctx->patch_vertices);
-      } else {
-         count = MIN2(max_count, draw->count);
-         count = ALIGN_NPOT(count, ctx->patch_vertices);
-      }
+      /* maximum number of patches that can fit in tess factor/param buffers */
+      uint32_t subdraw_size = MIN2(FD6_TESS_FACTOR_SIZE / factor_stride,
+                                   FD6_TESS_PARAM_SIZE / (emit.hs->output_size * 4));
+      /* convert from # of patches to draw count */
+      subdraw_size *= ctx->patch_vertices;
 
       OUT_PKT7(ring, CP_SET_SUBDRAW_SIZE, 1);
-      OUT_RING(ring, count);
+      OUT_RING(ring, subdraw_size);
 
       ctx->batch->tessellation = true;
-      ctx->batch->tessparam_size =
-         MAX2(ctx->batch->tessparam_size, emit.hs->output_size * 4 * count);
-      ctx->batch->tessfactor_size =
-         MAX2(ctx->batch->tessfactor_size, factor_stride * count);
-
-      if (!ctx->batch->tess_addrs_constobj) {
-         /* Reserve space for the bo address - we'll write them later in
-          * setup_tess_buffers().  We need 2 bo address, but indirect
-          * constant upload needs at least 4 vec4s.
-          */
-         unsigned size = 4 * 16;
-
-         ctx->batch->tess_addrs_constobj = fd_submit_new_ringbuffer(
-            ctx->batch->submit, size, FD_RINGBUFFER_STREAMING);
-
-         ctx->batch->tess_addrs_constobj->cur += size;
-      }
    }
 
 	uint32_t index_start = info->index_size ? draw->index_bias : draw->start;

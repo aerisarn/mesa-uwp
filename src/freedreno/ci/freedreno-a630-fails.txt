@@ -17,10 +17,6 @@ KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support,Fail
 
 KHR-GLES31.core.geometry_shader.layered_framebuffer.stencil_support,Fail
 
-# " Pixel data comparison failed; expected: (0.1, 0.2, 0.3, 0.4) rendered: (0, 0, 0, 0) epsilon: 0.00392157
-#   Pixel data comparison failed at esextcTessellationShaderPoints.cpp:597"
-KHR-GLES31.core.tessellation_shader.tessellation_shader_point_mode.point_rendering,Fail
-
 # "Invalid value returned: expected:[1, 1, 1, 1] retrieved: [0, 0, 0, 0
 #  Invalid rendering result at esextcTessellationShaderBarrier.cpp:504"
 KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guarded_read_calls,Fail

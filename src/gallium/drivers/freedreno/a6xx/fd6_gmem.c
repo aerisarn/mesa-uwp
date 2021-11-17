@@ -1553,25 +1553,6 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
 }
 
 static void
-setup_tess_buffers(struct fd_batch *batch, struct fd_ringbuffer *ring)
-{
-   struct fd_context *ctx = batch->ctx;
-
-   batch->tessfactor_bo = fd_bo_new(ctx->screen->dev, batch->tessfactor_size,
-                                    0, "tessfactor");
-
-   batch->tessparam_bo = fd_bo_new(ctx->screen->dev, batch->tessparam_size,
-                                   0, "tessparam");
-
-   OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR, 2);
-   OUT_RELOC(ring, batch->tessfactor_bo, 0, 0, 0);
-
-   batch->tess_addrs_constobj->cur = batch->tess_addrs_constobj->start;
-   OUT_RELOC(batch->tess_addrs_constobj, batch->tessparam_bo, 0, 0, 0);
-   OUT_RELOC(batch->tess_addrs_constobj, batch->tessfactor_bo, 0, 0, 0);
-}
-
-static void
 fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
 {
    struct fd_ringbuffer *ring = batch->gmem;
@@ -1611,9 +1592,6 @@ fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
    OUT_PKT7(ring, CP_SET_MARKER, 1);
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS));
    emit_marker6(ring, 7);
-
-   if (batch->tessellation)
-      setup_tess_buffers(batch, ring);
 
    OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    OUT_RING(ring, 0x0);
