@@ -1317,10 +1317,10 @@ radv_CreateDescriptorUpdateTemplate(VkDevice _device,
                                     VkDescriptorUpdateTemplate *pDescriptorUpdateTemplate)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_descriptor_set_layout, set_layout, pCreateInfo->descriptorSetLayout);
    const uint32_t entry_count = pCreateInfo->descriptorUpdateEntryCount;
    const size_t size = sizeof(struct radv_descriptor_update_template) +
                        sizeof(struct radv_descriptor_update_template_entry) * entry_count;
+   struct radv_descriptor_set_layout *set_layout = NULL;
    struct radv_descriptor_update_template *templ;
    uint32_t i;
 
@@ -1342,6 +1342,9 @@ radv_CreateDescriptorUpdateTemplate(VkDevice _device,
       set_layout = pipeline_layout->set[pCreateInfo->set].layout;
 
       templ->bind_point = pCreateInfo->pipelineBindPoint;
+   } else {
+      assert(pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET);
+      set_layout = radv_descriptor_set_layout_from_handle(pCreateInfo->descriptorSetLayout);
    }
 
    for (i = 0; i < entry_count; i++) {
