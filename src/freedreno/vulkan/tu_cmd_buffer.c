@@ -2212,11 +2212,12 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    cmd->state.dirty |= TU_CMD_DIRTY_DESC_SETS_LOAD | TU_CMD_DIRTY_SHADER_CONSTS |
                        TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_VS_PARAMS;
 
+   struct tu_cs *cs = &cmd->draw_cs;
+
    /* note: this also avoids emitting draw states before renderpass clears,
     * which may use the 3D clear path (for MSAA cases)
     */
    if (!(cmd->state.dirty & TU_CMD_DIRTY_DRAW_STATE)) {
-      struct tu_cs *cs = &cmd->draw_cs;
       uint32_t mask = ~pipeline->dynamic_state_mask & BITFIELD_MASK(TU_DYNAMIC_STATE_COUNT);
 
       tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * (7 + util_bitcount(mask)));
@@ -2232,12 +2233,24 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i, pipeline->dynamic_state[i]);
    }
 
-   if (cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
-       (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)) {
+   if (pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
+      cmd->state.has_tess = true;
+
       /* Set up the tess factor address if this is the first tess pipeline bound
        * to the primary cmdbuf.
       */
-      tu6_lazy_emit_tessfactor_addr(cmd);
+      if (cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+         tu6_lazy_emit_tessfactor_addr(cmd);
+
+      /* maximum number of patches that can fit in tess factor/param buffers */
+      uint32_t subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
+                           TU_TESS_PARAM_SIZE / pipeline->tess.param_stride);
+      /* convert from # of patches to draw count */
+      subdraw_size *= (pipeline->ia.primtype - DI_PT_PATCHES0);
+
+      /* TODO: Move this packet to pipeline state, since it's constant based on the pipeline. */
+      tu_cs_emit_pkt7(cs, CP_SET_SUBDRAW_SIZE, 1);
+      tu_cs_emit(cs, subdraw_size);
    }
 
    if (cmd->state.line_mode != pipeline->line_mode) {
@@ -2251,7 +2264,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
        *    attribute and depth interpolation).
        */
       if (cmd->state.subpass && cmd->state.subpass->samples) {
-         tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples, cmd->state.line_mode);
+         tu6_emit_msaa(cs, cmd->state.subpass->samples, cmd->state.line_mode);
       }
    }
 
@@ -3507,20 +3520,6 @@ tu6_emit_consts_geom(struct tu_cmd_buffer *cmd,
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
 
-static VkResult
-tu6_setup_tess(struct tu_cmd_buffer *cmd,
-               const struct tu_pipeline *pipeline,
-               uint32_t *subdraw_size)
-{
-   /* maximum number of patches that can fit in tess factor/param buffers */
-   *subdraw_size = MIN2(TU_TESS_FACTOR_SIZE / ir3_tess_factor_stride(pipeline->tess.patch_type),
-                        TU_TESS_PARAM_SIZE / pipeline->tess.param_stride);
-   /* convert from # of patches to draw count */
-   *subdraw_size *= (pipeline->ia.primtype - DI_PT_PATCHES0);
-
-   return VK_SUCCESS;
-}
-
 static enum tu_lrz_direction
 tu6_lrz_depth_mode(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
                    VkCompareOp depthCompareOp,
@@ -3798,7 +3797,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
                 uint32_t draw_count)
 {
    const struct tu_pipeline *pipeline = cmd->state.pipeline;
-   VkResult result;
 
    tu_emit_cache_flush_renderpass(cmd, cs);
 
@@ -3813,12 +3811,8 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          .tess_upper_left_domain_origin =
                pipeline->tess.upper_left_domain_origin));
 
-   bool has_tess =
-         pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-
    /* Early exit if there is nothing to emit, saves CPU cycles */
-   if (!(cmd->state.dirty & ~TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD) &&
-       !has_tess)
+   if (!(cmd->state.dirty & ~TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD))
       return VK_SUCCESS;
 
    bool dirty_lrz = cmd->state.dirty & (TU_CMD_DIRTY_LRZ | TU_CMD_DIRTY_RB_DEPTH_CNTL | TU_CMD_DIRTY_RB_STENCIL_CNTL);
@@ -3870,18 +3864,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          tu6_emit_consts_geom(cmd, pipeline, descriptors_state);
       cmd->state.shader_const[1] =
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
-   }
-
-   if (has_tess) {
-      uint32_t subdraw_size;
-
-      cmd->state.has_tess = true;
-      result = tu6_setup_tess(cmd, pipeline, &subdraw_size);
-      if (result != VK_SUCCESS)
-         return result;
-
-      tu_cs_emit_pkt7(cs, CP_SET_SUBDRAW_SIZE, 1);
-      tu_cs_emit(cs, subdraw_size);
    }
 
    /* for the first draw in a renderpass, re-emit all the draw states
