@@ -647,11 +647,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       assert(reqs.memoryTypeBits & BITFIELD_BIT(mai.memoryTypeIndex));
    }
 
-   VkMemoryType mem_type = screen->info.mem_props.memoryTypes[mai.memoryTypeIndex];
-   obj->coherent = mem_type.propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-   if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
-      obj->host_visible = mem_type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
    VkMemoryDedicatedAllocateInfo ded_alloc_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
       .pNext = mai.pNext,
@@ -715,6 +710,11 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    } else {
       obj->offset = zink_bo_get_offset(obj->bo);
       obj->size = zink_bo_get_size(obj->bo);
+   }
+
+   obj->coherent = obj->bo->base.placement & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+   if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE)) {
+      obj->host_visible = obj->bo->base.placement & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
    }
 
    if (templ->target == PIPE_BUFFER) {
