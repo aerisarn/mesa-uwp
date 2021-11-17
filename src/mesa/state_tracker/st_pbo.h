@@ -110,6 +110,14 @@ st_pbo_get_download_fs(struct st_context *st, enum pipe_texture_target target,
                        enum pipe_format dst_format,
                        bool need_layer);
 
+
+enum pipe_format
+st_pbo_get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
+                      enum pipe_format src_format, bool is_compressed,
+                      GLenum format, GLenum type, unsigned bind);
+enum pipe_format
+st_pbo_get_src_format(struct pipe_screen *screen, enum pipe_format src_format, struct pipe_resource *src);
+
 extern void
 st_init_pbo_helpers(struct st_context *st);
 

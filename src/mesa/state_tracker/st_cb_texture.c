@@ -129,8 +129,8 @@ gl_target_to_pipe(GLenum target)
    }
 }
 
-static enum pipe_format
-get_src_format(struct pipe_screen *screen, enum pipe_format src_format, struct pipe_resource *src)
+enum pipe_format
+st_pbo_get_src_format(struct pipe_screen *screen, enum pipe_format src_format, struct pipe_resource *src)
 {
    /* Convert the source format to what is expected by GetTexImage
     * and see if it's supported.
@@ -284,10 +284,10 @@ end:
    return done;
 }
 
-static enum pipe_format
-get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
-               enum pipe_format src_format, bool is_compressed,
-               GLenum format, GLenum type, unsigned bind)
+enum pipe_format
+st_pbo_get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
+                      enum pipe_format src_format, bool is_compressed,
+                      GLenum format, GLenum type, unsigned bind)
 {
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->screen;
@@ -2540,7 +2540,7 @@ st_GetTexSubImage(struct gl_context * ctx,
       goto fallback;
    }
 
-   src_format = get_src_format(screen, stObj->surface_based ? stObj->surface_format : src->format, src);
+   src_format = st_pbo_get_src_format(screen, stObj->surface_based ? stObj->surface_format : src->format, src);
    if (src_format == PIPE_FORMAT_NONE)
       goto fallback;
 
@@ -2549,7 +2549,7 @@ st_GetTexSubImage(struct gl_context * ctx,
    else
       bind = PIPE_BIND_RENDER_TARGET;
 
-   dst_format = get_dst_format(ctx, pipe_target, src_format, util_format_is_compressed(src->format),
+   dst_format = st_pbo_get_dst_format(ctx, pipe_target, src_format, util_format_is_compressed(src->format),
                                format, type, bind);
    if (dst_format == PIPE_FORMAT_NONE)
       goto fallback;
