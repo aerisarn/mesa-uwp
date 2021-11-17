@@ -386,6 +386,8 @@ vma_alloc(struct iris_bufmgr *bufmgr,
           uint64_t size,
           uint64_t alignment)
 {
+   simple_mtx_assert_locked(&bufmgr->lock);
+
    /* Force minimum alignment based on device requirements */
    assert((alignment & (alignment - 1)) == 0);
    alignment = MAX2(alignment, bufmgr->vma_min_align);
@@ -411,6 +413,8 @@ vma_free(struct iris_bufmgr *bufmgr,
          uint64_t address,
          uint64_t size)
 {
+   simple_mtx_assert_locked(&bufmgr->lock);
+
    if (address == IRIS_BORDER_COLOR_POOL_ADDRESS)
       return;
 
@@ -873,6 +877,8 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
 
    struct iris_bo *bo = NULL;
 
+   simple_mtx_assert_locked(&bufmgr->lock);
+
    list_for_each_entry_safe(struct iris_bo, cur, &bucket->head, head) {
       assert(iris_bo_is_real(cur));
 
@@ -1292,6 +1298,7 @@ bo_close(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   simple_mtx_assert_locked(&bufmgr->lock);
    assert(iris_bo_is_real(bo));
 
    if (iris_bo_is_external(bo)) {
@@ -1349,6 +1356,7 @@ bo_free(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   simple_mtx_assert_locked(&bufmgr->lock);
    assert(iris_bo_is_real(bo));
 
    if (!bo->real.userptr && bo->real.map)
@@ -1369,6 +1377,8 @@ static void
 cleanup_bo_cache(struct iris_bufmgr *bufmgr, time_t time)
 {
    int i;
+
+   simple_mtx_assert_locked(&bufmgr->lock);
 
    if (bufmgr->time == time)
       return;
@@ -1736,6 +1746,7 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
          pb_slabs_deinit(&bufmgr->bo_slabs[i]);
    }
 
+   simple_mtx_lock(&bufmgr->lock);
    /* Free any cached buffer objects we were going to reuse */
    for (int i = 0; i < bufmgr->num_buckets; i++) {
       struct bo_cache_bucket *bucket = &bufmgr->cache_bucket[i];
@@ -1782,6 +1793,8 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
    }
 
    close(bufmgr->fd);
+
+   simple_mtx_unlock(&bufmgr->lock);
 
    simple_mtx_destroy(&bufmgr->lock);
    simple_mtx_destroy(&bufmgr->bo_deps_lock);
@@ -1920,11 +1933,14 @@ out:
 static void
 iris_bo_mark_exported_locked(struct iris_bo *bo)
 {
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+
    /* We cannot export suballocated BOs. */
    assert(iris_bo_is_real(bo));
+   simple_mtx_assert_locked(&bufmgr->lock);
 
    if (!iris_bo_is_external(bo))
-      _mesa_hash_table_insert(bo->bufmgr->handle_table, &bo->gem_handle, bo);
+      _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
    if (!bo->real.exported) {
       /* If a BO is going to be used externally, it could be sent to the
