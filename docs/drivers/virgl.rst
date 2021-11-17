@@ -35,6 +35,7 @@ Current status
   support. QEMU 2.5 contains 3D support only with the GTK3 frontend with
   GL enabled.
 * The virglrenderer library seems mostly API stable.
+* Limited environment renderer (GLES2)
 
 So what can it do now?
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +56,6 @@ Future scope
 * Remoting rendering using a codec solution.
 * Windows guest, Direct3D drivers.
 * Other architectures
-* Limited environment renderer (GLES2)
 
 Out of scope
 ^^^^^^^^^^^^
