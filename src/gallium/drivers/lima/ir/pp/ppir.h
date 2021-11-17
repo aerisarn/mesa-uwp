@@ -161,7 +161,7 @@ typedef struct ppir_node {
    struct ppir_instr *instr;
    int instr_pos;
    struct ppir_block *block;
-   bool is_end;
+   bool is_out;
    bool succ_different_block;
 
    /* for scheduler */
@@ -179,9 +179,42 @@ typedef enum {
    ppir_pipeline_reg_discard, /* varying load */
 } ppir_pipeline;
 
+typedef enum {
+   ppir_output_color,
+   ppir_output_depth,
+   ppir_output_num,
+   ppir_output_invalid = -1,
+} ppir_output_type;
+
+static inline const char *ppir_output_type_to_str(ppir_output_type type)
+{
+   switch (type) {
+   case ppir_output_color:
+      return "OUTPUT_COLOR";
+   case ppir_output_depth:
+      return "OUTPUT_DEPTH";
+   default:
+      return "INVALID";
+   }
+}
+
+static inline ppir_output_type ppir_nir_output_to_ppir(gl_frag_result res)
+{
+   switch (res) {
+   case FRAG_RESULT_COLOR:
+   case FRAG_RESULT_DATA0:
+      return ppir_output_color;
+   case FRAG_RESULT_DEPTH:
+      return ppir_output_depth;
+   default:
+      return ppir_output_invalid;
+   }
+}
+
 typedef struct ppir_reg {
    struct list_head list;
    int index;
+   ppir_output_type out_type;
    int regalloc_index;
    int num_components;
 
@@ -191,6 +224,7 @@ typedef struct ppir_reg {
    bool is_head;
    bool spilled;
    bool undef;
+   bool out_reg;
 } ppir_reg;
 
 typedef enum {
@@ -316,7 +350,7 @@ typedef struct ppir_instr {
 
    ppir_node *slots[PPIR_INSTR_SLOT_NUM];
    ppir_const constant[2];
-   bool is_end;
+   bool stop;
 
    /* for scheduler */
    struct list_head succ_list;
@@ -340,6 +374,7 @@ typedef struct ppir_block {
    struct list_head list;
    struct list_head node_list;
    struct list_head instr_list;
+   bool stop;
 
    struct ppir_block *successors[2];
 
@@ -370,6 +405,7 @@ typedef struct ppir_compiler {
    struct hash_table_u64 *blocks;
    int cur_index;
    int cur_instr_index;
+   int *out_type_to_reg;
 
    struct list_head reg_list;
    int reg_num;

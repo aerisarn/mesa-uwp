@@ -203,7 +203,7 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node)
    case ppir_node_type_discard:
       if (!create_new_instr(block, node))
          return false;
-      node->instr->is_end = true;
+      block->stop = true;
       break;
    case ppir_node_type_branch:
       if (!create_new_instr(block, node))
@@ -276,8 +276,13 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *root)
          if (!ppir_do_one_node_to_instr(block, node))
             return false;
 
-      if (node->is_end)
-         node->instr->is_end = true;
+      /* The node writes output register. We can't stop at this exact
+       * instruction because there may be another node that writes another
+       * output, so set stop flag for the block. We will set stop flag on
+       * the last instruction of the block during codegen
+       */
+      if (node->is_out)
+         block->stop = true;
 
       ppir_node_foreach_pred(node, dep) {
          ppir_node *pred = dep->pred;

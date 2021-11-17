@@ -525,7 +525,7 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
          fprintf(fp, ": ignore depth clip near");
       if ((*value & 0x00000020) == 0x00000020)
          fprintf(fp, ", ignore depth clip far");
-      fprintf(fp, ", unknown bits 6-9: 0x%08x", *value & 0x000003c0);
+      fprintf(fp, ", register for gl_FragDepth: $%d", (*value & 0x000003c0) >> 6);
       fprintf(fp, ", unknown bits 13-15: 0x%08x */\n", *value & 0x00000e000);
       break;
    case 4: /* DEPTH RANGE */
@@ -594,7 +594,14 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
          fprintf(fp, " */\n");
       else
          fprintf(fp, ", UNKNOWN\n");
-      fprintf(fp, "\t\t\t\t\t\t/* %s(2)", render_state_infos[i].info);
+
+      fprintf(fp, "\t\t\t\t\t\t/* %s(3)", render_state_infos[i].info);
+      fprintf(fp, ", register for gl_FragColor: $%d $%d $%d $%d */\n",
+              (*value & 0xf0000000) >> 28,
+              (*value & 0x0f000000) >> 24,
+              (*value & 0x00f00000) >> 20,
+              (*value & 0x000f0000) >> 16);
+      fprintf(fp, "\t\t\t\t\t\t/* %s(3)", render_state_infos[i].info);
       fprintf(fp, ": alpha_test_func: %d (%s) */\n",
               (*value & 0x00000007),
               lima_get_compare_func_string((*value & 0x00000007))); /* alpha_test_func */

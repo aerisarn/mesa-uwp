@@ -345,6 +345,18 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
        * back to inserting a mov at the end.
        * If the source node will only be able to output to pipeline
        * registers, fall back to the mov as well. */
+      assert(nir_src_is_const(instr->src[1]) &&
+             "lima doesn't support indirect outputs");
+
+      nir_io_semantics io = nir_intrinsic_io_semantics(instr);
+      unsigned offset = nir_src_as_uint(instr->src[1]);
+      unsigned slot = io.location + offset;
+      ppir_output_type out_type = ppir_nir_output_to_ppir(slot);
+      if (out_type == ppir_output_invalid) {
+         ppir_debug("Unsupported output type: %d\n", slot);
+         return false;
+      }
+
       if (!block->comp->uses_discard && instr->src->is_ssa) {
          node = block->comp->var_nodes[instr->src->ssa->index];
          switch (node->op) {
@@ -352,9 +364,12 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
          case ppir_op_load_texture:
          case ppir_op_const:
             break;
-         default:
-            node->is_end = 1;
+         default: {
+            ppir_dest *dest = ppir_node_get_dest(node);
+            dest->ssa.out_type = out_type;
+            node->is_out = 1;
             return true;
+            }
          }
       }
 
@@ -367,6 +382,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       dest->ssa.num_components = instr->num_components;
       dest->ssa.index = 0;
       dest->write_mask = u_bit_consecutive(0, instr->num_components);
+      dest->ssa.out_type = out_type;
 
       alu_node->num_src = 1;
 
@@ -376,7 +392,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       ppir_node_add_src(block->comp, &alu_node->node, alu_node->src, instr->src,
                         u_bit_consecutive(0, instr->num_components));
 
-      alu_node->node.is_end = 1;
+      alu_node->node.is_out = 1;
 
       list_addtail(&alu_node->node.list, &block->node_list);
       return true;
@@ -798,6 +814,7 @@ static ppir_compiler *ppir_compiler_create(void *prog, unsigned num_reg, unsigne
    comp->var_nodes = (ppir_node **)(comp + 1);
    comp->reg_base = num_ssa;
    comp->prog = prog;
+
    return comp;
 }
 
@@ -833,7 +850,7 @@ static void ppir_add_ordering_deps(ppir_compiler *comp)
          if (prev_node && ppir_node_is_root(node) && node->op != ppir_op_const) {
             ppir_node_add_dep(prev_node, node, ppir_dep_sequence);
          }
-         if (node->is_end ||
+         if (node->is_out ||
              node->op == ppir_op_discard ||
              node->op == ppir_op_store_temp ||
              node->op == ppir_op_branch) {
@@ -930,18 +947,11 @@ bool ppir_compile_nir(struct lima_fs_compiled_shader *prog, struct nir_shader *n
       }
    }
 
-   /* Validate outputs, we support only gl_FragColor */
-   nir_foreach_shader_out_variable(var, nir) {
-      switch (var->data.location) {
-      case FRAG_RESULT_COLOR:
-      case FRAG_RESULT_DATA0:
-         break;
-      default:
-         ppir_error("unsupported output type\n");
-         goto err_out0;
-         break;
-      }
-   }
+   comp->out_type_to_reg = rzalloc_size(comp, sizeof(int) * ppir_output_num);
+
+   /* -1 means reg is not written by the shader */
+   for (int i = 0; i < ppir_output_num; i++)
+      comp->out_type_to_reg[i] = -1;
 
    foreach_list_typed(nir_register, reg, node, &func->registers) {
       ppir_reg *r = rzalloc(comp, ppir_reg);

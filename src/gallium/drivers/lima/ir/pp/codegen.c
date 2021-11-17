@@ -773,7 +773,7 @@ static int encode_instr(ppir_instr *instr, void *code, void *last_code)
    size = align_to_word(size) + 1;
 
    ctrl->count = size;
-   if (instr->is_end)
+   if (instr->stop)
       ctrl->stop = true;
 
    if (last_code) {
@@ -817,6 +817,11 @@ bool ppir_codegen_prog(ppir_compiler *comp)
          instr->offset = size;
          instr->encode_size = get_instr_encode_size(instr);
          size += instr->encode_size;
+      }
+      /* Set stop flag for the last instruction if block has stop flag */
+      if (block->stop) {
+         ppir_instr *instr = list_last_entry(&block->instr_list, ppir_instr, list);
+         instr->stop = true;
       }
    }
 

@@ -677,6 +677,12 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    if (!rst->depth_clip_far || ctx->viewport.far == 1.0f)
       render->depth_test |= 0x20; /* don't clip depth far */
 
+   if (fs->state.frag_depth_reg != -1) {
+      render->depth_test |= (fs->state.frag_depth_reg << 6);
+      /* Shader writes depth */
+      render->depth_test |= 0x801;
+   }
+
    ushort far, near;
 
    near = float_to_ushort(ctx->viewport.near);
@@ -729,6 +735,12 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    if (ctx->framebuffer.base.samples)
       render->multi_sample |= 0x68;
 
+   /* Set gl_FragColor register, need to specify it 4 times */
+   render->multi_sample |= (fs->state.frag_color_reg << 28) |
+                           (fs->state.frag_color_reg << 24) |
+                           (fs->state.frag_color_reg << 20) |
+                           (fs->state.frag_color_reg << 16);
+
    /* alpha test */
    if (ctx->zsa->base.alpha_enabled) {
       render->multi_sample |= ctx->zsa->base.alpha_func;
@@ -755,7 +767,8 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
       render->aux1 |= 0x00002000;
 
    if (fs->state.uses_discard ||
-       ctx->zsa->base.alpha_enabled) {
+       ctx->zsa->base.alpha_enabled ||
+       fs->state.frag_depth_reg != -1) {
       early_z = false;
       pixel_kill = false;
    }
