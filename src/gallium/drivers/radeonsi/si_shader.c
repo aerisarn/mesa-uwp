@@ -1269,22 +1269,33 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  opt.ngg_culling = 0x%x\n", key->ge.opt.ngg_culling);
    }
 
-   if (stage <= MESA_SHADER_GEOMETRY) {
+   if (stage <= MESA_SHADER_GEOMETRY)
       fprintf(f, "  opt.prefer_mono = %u\n", key->ge.opt.prefer_mono);
-      fprintf(f, "  opt.inline_uniforms = %u (0x%x, 0x%x, 0x%x, 0x%x)\n",
-              key->ge.opt.inline_uniforms,
-              key->ge.opt.inlined_uniform_values[0],
-              key->ge.opt.inlined_uniform_values[1],
-              key->ge.opt.inlined_uniform_values[2],
-              key->ge.opt.inlined_uniform_values[3]);
-   } else {
+   else
       fprintf(f, "  opt.prefer_mono = %u\n", key->ps.opt.prefer_mono);
-      fprintf(f, "  opt.inline_uniforms = %u (0x%x, 0x%x, 0x%x, 0x%x)\n",
-              key->ps.opt.inline_uniforms,
-              key->ps.opt.inlined_uniform_values[0],
-              key->ps.opt.inlined_uniform_values[1],
-              key->ps.opt.inlined_uniform_values[2],
-              key->ps.opt.inlined_uniform_values[3]);
+
+   if (stage <= MESA_SHADER_GEOMETRY) {
+      if (key->ge.opt.inline_uniforms) {
+         fprintf(f, "  opt.inline_uniforms = %u (0x%x, 0x%x, 0x%x, 0x%x)\n",
+                 key->ge.opt.inline_uniforms,
+                 key->ge.opt.inlined_uniform_values[0],
+                 key->ge.opt.inlined_uniform_values[1],
+                 key->ge.opt.inlined_uniform_values[2],
+                 key->ge.opt.inlined_uniform_values[3]);
+      } else {
+         fprintf(f, "  opt.inline_uniforms = 0\n");
+      }
+   } else {
+      if (key->ps.opt.inline_uniforms) {
+         fprintf(f, "  opt.inline_uniforms = %u (0x%x, 0x%x, 0x%x, 0x%x)\n",
+                 key->ps.opt.inline_uniforms,
+                 key->ps.opt.inlined_uniform_values[0],
+                 key->ps.opt.inlined_uniform_values[1],
+                 key->ps.opt.inlined_uniform_values[2],
+                 key->ps.opt.inlined_uniform_values[3]);
+      } else {
+         fprintf(f, "  opt.inline_uniforms = 0\n");
+      }
    }
 }
 
