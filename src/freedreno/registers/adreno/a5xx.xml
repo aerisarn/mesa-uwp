@@ -2760,26 +2760,24 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
 	<reg32 offset="0x2102" name="RB_2D_SRC_SOLID_DW1"/>
 	<reg32 offset="0x2103" name="RB_2D_SRC_SOLID_DW2"/>
 	<reg32 offset="0x2104" name="RB_2D_SRC_SOLID_DW3"/>
-	<reg32 offset="0x2107" name="RB_2D_SRC_INFO">
+
+	<bitset name="a5xx_2d_surf_info" inline="yes">
 		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a5xx_color_fmt"/>
 		<bitfield name="TILE_MODE" low="8" high="9" type="a5xx_tile_mode"/>
 		<bitfield name="COLOR_SWAP" low="10" high="11" type="a3xx_color_swap"/>
 		<!-- b12 seems to be set when UBWC "FLAGS" buffer enabled -->
 		<bitfield name="FLAGS" pos="12" type="boolean"/>
-	</reg32>
+	</bitset>
+
+	<reg32 offset="0x2107" name="RB_2D_SRC_INFO" type="a5xx_2d_surf_info"/>
 	<reg32 offset="0x2108" name="RB_2D_SRC_LO"/>
 	<reg32 offset="0x2109" name="RB_2D_SRC_HI"/>
 	<reg32 offset="0x210a" name="RB_2D_SRC_SIZE">
 		<bitfield name="PITCH" low="0" high="15" shr="6" type="uint"/>
 		<bitfield name="ARRAY_PITCH" low="16" high="31" shr="6" type="uint"/>
 	</reg32>
-	<reg32 offset="0x2110" name="RB_2D_DST_INFO">
-		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a5xx_color_fmt"/>
-		<bitfield name="TILE_MODE" low="8" high="9" type="a5xx_tile_mode"/>
-		<bitfield name="COLOR_SWAP" low="10" high="11" type="a3xx_color_swap"/>
-		<!-- b12 seems to be set when UBWC "FLAGS" buffer enabled -->
-		<bitfield name="FLAGS" pos="12" type="boolean"/>
-	</reg32>
+
+	<reg32 offset="0x2110" name="RB_2D_DST_INFO" type="a5xx_2d_surf_info"/>
 	<reg32 offset="0x2111" name="RB_2D_DST_LO"/>
 	<reg32 offset="0x2112" name="RB_2D_DST_HI"/>
 	<reg32 offset="0x2113" name="RB_2D_DST_SIZE">
@@ -2794,21 +2792,9 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
         <reg32 offset="0x2145" name="RB_2D_DST_FLAGS_PITCH" shr="6" type="uint"/>
 	<reg32 offset="0x2180" name="GRAS_2D_BLIT_CNTL"/> <!-- same as 0x2100 -->
 	<!-- looks same as 0x2107: -->
-	<reg32 offset="0x2181" name="GRAS_2D_SRC_INFO">
-		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a5xx_color_fmt"/>
-		<bitfield name="TILE_MODE" low="8" high="9" type="a5xx_tile_mode"/>
-		<bitfield name="COLOR_SWAP" low="10" high="11" type="a3xx_color_swap"/>
-		<!-- b12 seems to be set when UBWC "FLAGS" buffer enabled -->
-		<bitfield name="FLAGS" pos="12" type="boolean"/>
-	</reg32>
+	<reg32 offset="0x2181" name="GRAS_2D_SRC_INFO" type="a5xx_2d_surf_info"/>
 	<!-- looks same as 0x2110: -->
-	<reg32 offset="0x2182" name="GRAS_2D_DST_INFO">
-		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a5xx_color_fmt"/>
-		<bitfield name="TILE_MODE" low="8" high="9" type="a5xx_tile_mode"/>
-		<bitfield name="COLOR_SWAP" low="10" high="11" type="a3xx_color_swap"/>
-		<!-- b12 seems to be set when UBWC "FLAGS" buffer enabled -->
-		<bitfield name="FLAGS" pos="12" type="boolean"/>
-	</reg32>
+	<reg32 offset="0x2182" name="GRAS_2D_DST_INFO" type="a5xx_2d_surf_info"/>
 <!--
 0x2100 and 0x2180 look like same thing (RB and GRAS versions)..
    0x86000000 for copy, 0x00000000 for fill?
