@@ -1330,6 +1330,7 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
 {
    memset(key, 0, sizeof(*key));
    key->vs_prolog.states = *prolog_key;
+   key->vs_prolog.wave32 = si_get_shader_wave_size(shader_out) == 32;
    key->vs_prolog.num_input_sgprs = num_input_sgprs;
    key->vs_prolog.num_inputs = info->num_inputs;
    key->vs_prolog.as_ls = shader_out->key.ge.as_ls;
@@ -1605,36 +1606,35 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
 
    struct si_shader shader = {};
    shader.selector = &sel;
+   bool wave32 = false;
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
       shader.key.ge.as_ls = key->vs_prolog.as_ls;
       shader.key.ge.as_es = key->vs_prolog.as_es;
       shader.key.ge.as_ngg = key->vs_prolog.as_ngg;
+      wave32 = key->vs_prolog.wave32;
       break;
    case MESA_SHADER_TESS_CTRL:
       assert(!prolog);
       shader.key.ge.part.tcs.epilog = key->tcs_epilog.states;
+      wave32 = key->tcs_epilog.wave32;
       break;
    case MESA_SHADER_FRAGMENT:
-      if (prolog)
+      if (prolog) {
          shader.key.ps.part.prolog = key->ps_prolog.states;
-      else
+         wave32 = key->ps_prolog.wave32;
+      } else {
          shader.key.ps.part.epilog = key->ps_epilog.states;
+         wave32 = key->ps_epilog.wave32;
+      }
       break;
    default:
       unreachable("bad shader part");
    }
 
-   unsigned wave_size;
-   if (stage <= MESA_SHADER_GEOMETRY) {
-      wave_size = si_get_wave_size(sscreen, stage, shader.key.ge.as_ngg, shader.key.ge.as_es);
-   } else {
-      wave_size = si_get_wave_size(sscreen, stage, false, false);
-   }
-
    struct si_shader_context ctx;
-   si_llvm_context_init(&ctx, sscreen, compiler, wave_size);
+   si_llvm_context_init(&ctx, sscreen, compiler, wave32 ? 32 : 64);
 
    ctx.shader = &shader;
    ctx.stage = stage;
@@ -1709,6 +1709,7 @@ static bool si_shader_select_tcs_parts(struct si_screen *sscreen, struct ac_llvm
    /* Get the epilog. */
    union si_shader_part_key epilog_key;
    memset(&epilog_key, 0, sizeof(epilog_key));
+   epilog_key.tcs_epilog.wave32 = si_get_shader_wave_size(shader) == 32;
    epilog_key.tcs_epilog.states = shader->key.ge.part.tcs.epilog;
 
    shader->epilog = si_get_shader_part(sscreen, &sscreen->tcs_epilogs, MESA_SHADER_TESS_CTRL, false,
@@ -1753,6 +1754,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
 
    memset(key, 0, sizeof(*key));
    key->ps_prolog.states = shader->key.ps.part.prolog;
+   key->ps_prolog.wave32 = si_get_shader_wave_size(shader) == 32;
    key->ps_prolog.colors_read = info->colors_read;
    key->ps_prolog.num_input_sgprs = shader->info.num_input_sgprs;
    key->ps_prolog.num_input_vgprs = shader->info.num_input_vgprs;
@@ -1886,6 +1888,7 @@ void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *ke
 {
    struct si_shader_info *info = &shader->selector->info;
    memset(key, 0, sizeof(*key));
+   key->ps_epilog.wave32 = si_get_shader_wave_size(shader) == 32;
    key->ps_epilog.colors_written = info->colors_written;
    key->ps_epilog.color_types = info->output_color_types;
    key->ps_epilog.writes_z = info->writes_z;

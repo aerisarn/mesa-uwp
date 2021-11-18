@@ -577,6 +577,7 @@ struct si_ps_epilog_bits {
 union si_shader_part_key {
    struct {
       struct si_vs_prolog_bits states;
+      unsigned wave32 : 1;
       unsigned num_input_sgprs : 6;
       /* For merged stages such as LS-HS, HS input VGPRs are first. */
       unsigned num_merged_next_stage_vgprs : 3;
@@ -590,9 +591,11 @@ union si_shader_part_key {
    } vs_prolog;
    struct {
       struct si_tcs_epilog_bits states;
+      unsigned wave32 : 1;
    } tcs_epilog;
    struct {
       struct si_ps_prolog_bits states;
+      unsigned wave32 : 1;
       unsigned num_input_sgprs : 6;
       unsigned num_input_vgprs : 5;
       /* Color interpolation and two-side color selection. */
@@ -606,6 +609,7 @@ union si_shader_part_key {
    } ps_prolog;
    struct {
       struct si_ps_epilog_bits states;
+      unsigned wave32 : 1;
       unsigned colors_written : 8;
       unsigned color_types : 16;
       unsigned writes_z : 1;
