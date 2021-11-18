@@ -1208,9 +1208,6 @@ set_shader_source(struct gl_shader *sh, const GLchar *source)
       sh->Source = source;
    }
 
-#ifdef DEBUG
-   sh->SourceChecksum = util_hash_crc32(sh->Source, strlen(sh->Source));
-#endif
 }
 
 static void
@@ -1499,16 +1496,9 @@ print_shader_info(const struct gl_shader_program *shProg)
 
    printf("Mesa: glUseProgram(%u)\n", shProg->Name);
    for (i = 0; i < shProg->NumShaders; i++) {
-#ifdef DEBUG
-      printf("  %s shader %u, checksum %u\n",
-             _mesa_shader_stage_to_string(shProg->Shaders[i]->Stage),
-	     shProg->Shaders[i]->Name,
-	     shProg->Shaders[i]->SourceChecksum);
-#else
       printf("  %s shader %u\n",
              _mesa_shader_stage_to_string(shProg->Shaders[i]->Stage),
              shProg->Shaders[i]->Name);
-#endif
    }
    if (shProg->_LinkedShaders[MESA_SHADER_VERTEX])
       printf("  vert prog %u\n",

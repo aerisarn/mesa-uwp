@@ -2654,16 +2654,6 @@ link_intrastage_shaders(void *mem_ctx,
    if (ctx->Const.LowerCsDerivedVariables)
       lower_cs_derived(linked);
 
-#ifdef DEBUG
-   /* Compute the source checksum. */
-   linked->SourceChecksum = 0;
-   for (unsigned i = 0; i < num_shaders; i++) {
-      if (shader_list[i] == NULL)
-         continue;
-      linked->SourceChecksum ^= shader_list[i]->SourceChecksum;
-   }
-#endif
-
    return linked;
 }
 

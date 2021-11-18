@@ -2609,10 +2609,6 @@ struct gl_linked_shader
 {
    gl_shader_stage Stage;
 
-#ifdef DEBUG
-   unsigned SourceChecksum;
-#endif
-
    struct gl_program *Program;  /**< Post-compile assembly code */
 
    /**
@@ -2686,9 +2682,6 @@ struct gl_shader
 
    enum gl_compile_status CompileStatus;
 
-#ifdef DEBUG
-   unsigned SourceChecksum;       /**< for debug/logging purposes */
-#endif
    const GLchar *Source;  /**< Source code string */
 
    const GLchar *FallbackSource;  /**< Fallback string used by on-disk cache*/
