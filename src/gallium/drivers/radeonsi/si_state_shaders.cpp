@@ -43,7 +43,7 @@
  * Return the IR key for the shader cache.
  */
 void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
-                         unsigned char ir_sha1_cache_key[20])
+                         unsigned wave_size, unsigned char ir_sha1_cache_key[20])
 {
    struct blob blob = {};
    unsigned ir_size;
@@ -70,7 +70,7 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       shader_variant_flags |= 1 << 0;
    if (sel->nir)
       shader_variant_flags |= 1 << 1;
-   if (si_get_wave_size(sel->screen, sel->info.stage, ngg, es) == 32)
+   if (wave_size == 32)
       shader_variant_flags |= 1 << 2;
    if (sel->info.stage == MESA_SHADER_FRAGMENT &&
        /* Derivatives imply helper invocations so check for needs_quad_helper_invocations. */
@@ -2716,10 +2716,12 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
       shader->wave_size = si_get_shader_wave_size(shader);
 
       if (sel->nir) {
-         if (sel->info.stage <= MESA_SHADER_GEOMETRY)
-            si_get_ir_cache_key(sel, shader->key.ge.as_ngg, shader->key.ge.as_es, ir_sha1_cache_key);
-         else
-            si_get_ir_cache_key(sel, false, false, ir_sha1_cache_key);
+         if (sel->info.stage <= MESA_SHADER_GEOMETRY) {
+            si_get_ir_cache_key(sel, shader->key.ge.as_ngg, shader->key.ge.as_es,
+                                shader->wave_size, ir_sha1_cache_key);
+         } else {
+            si_get_ir_cache_key(sel, false, false, shader->wave_size, ir_sha1_cache_key);
+         }
       }
 
       /* Try to load the shader from the shader cache. */

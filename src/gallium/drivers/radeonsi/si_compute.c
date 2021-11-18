@@ -169,7 +169,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    assert(user_sgprs <= 16);
 
    unsigned char ir_sha1_cache_key[20];
-   si_get_ir_cache_key(sel, false, false, ir_sha1_cache_key);
+   si_get_ir_cache_key(sel, false, false, shader->wave_size, ir_sha1_cache_key);
 
    /* Try to load the shader from the shader cache. */
    simple_mtx_lock(&sscreen->shader_cache_mutex);
