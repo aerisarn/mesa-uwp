@@ -2610,6 +2610,9 @@ struct gl_linked_shader
 {
    gl_shader_stage Stage;
 
+   /** All gl_shader::compiled_source_sha1 combined. */
+   uint8_t linked_source_sha1[SHA1_DIGEST_LENGTH];
+
    struct gl_program *Program;  /**< Post-compile assembly code */
 
    /**

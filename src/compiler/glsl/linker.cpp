@@ -2654,6 +2654,24 @@ link_intrastage_shaders(void *mem_ctx,
    if (ctx->Const.LowerCsDerivedVariables)
       lower_cs_derived(linked);
 
+   /* Set the linked source SHA1. */
+   if (num_shaders == 1) {
+      memcpy(linked->linked_source_sha1, shader_list[0]->compiled_source_sha1,
+             SHA1_DIGEST_LENGTH);
+   } else {
+      struct mesa_sha1 sha1_ctx;
+      _mesa_sha1_init(&sha1_ctx);
+
+      for (unsigned i = 0; i < num_shaders; i++) {
+         if (shader_list[i] == NULL)
+            continue;
+
+         _mesa_sha1_update(&sha1_ctx, shader_list[i]->compiled_source_sha1,
+                           SHA1_DIGEST_LENGTH);
+      }
+      _mesa_sha1_final(&sha1_ctx, linked->linked_source_sha1);
+   }
+
    return linked;
 }
 
