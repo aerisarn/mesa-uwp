@@ -870,7 +870,7 @@ debian-release:
       -D gallium-xa=enabled
       -D gallium-nine=false
       -D gallium-opencl=disabled
-      -D llvm=false
+      -D llvm=enabled
     GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
     VULKAN_DRIVERS: "amd"
     BUILDTYPE: "release"
