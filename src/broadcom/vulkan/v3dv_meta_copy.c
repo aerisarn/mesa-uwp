@@ -25,7 +25,6 @@
 #include "v3dv_meta_common.h"
 
 #include "compiler/nir/nir_builder.h"
-#include "vk_format_info.h"
 #include "util/u_pack_color.h"
 #include "vulkan/runtime/vk_common_entrypoints.h"
 

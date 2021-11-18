@@ -30,8 +30,6 @@
 #include "vulkan/util/vk_format.h"
 #include "util/u_pack_color.h"
 
-#include "vk_format_info.h"
-
 void
 v3dX(job_emit_binning_flush)(struct v3dv_job *job)
 {

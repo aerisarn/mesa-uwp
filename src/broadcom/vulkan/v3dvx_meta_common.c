@@ -29,8 +29,6 @@
 #include "broadcom/cle/v3dx_pack.h"
 #include "broadcom/compiler/v3d_compiler.h"
 
-#include "vk_format_info.h"
-
 struct rcl_clear_info {
    const union v3dv_clear_value *clear_value;
    struct v3dv_image *image;

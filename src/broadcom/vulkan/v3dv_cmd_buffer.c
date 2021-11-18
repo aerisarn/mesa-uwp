@@ -23,7 +23,6 @@
 
 #include "v3dv_private.h"
 #include "util/u_pack_color.h"
-#include "vk_format_info.h"
 #include "vk_util.h"
 
 void

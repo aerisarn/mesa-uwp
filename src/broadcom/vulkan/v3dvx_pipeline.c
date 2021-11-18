@@ -26,8 +26,6 @@
 #include "broadcom/cle/v3dx_pack.h"
 #include "broadcom/compiler/v3d_compiler.h"
 
-#include "vk_format_info.h"
-
 static uint8_t
 blend_factor(VkBlendFactor factor, bool dst_alpha_one, bool *needs_constants)
 {

@@ -26,8 +26,6 @@
 #include "v3dv_debug.h"
 #include "v3dv_private.h"
 
-#include "vk_format_info.h"
-
 #include "common/v3d_debug.h"
 
 #include "compiler/nir/nir_builder.h"

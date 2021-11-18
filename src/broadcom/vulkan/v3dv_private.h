@@ -37,6 +37,7 @@
 #include <vk_enum_to_str.h>
 
 #include "vk_device.h"
+#include "vk_format.h"
 #include "vk_instance.h"
 #include "vk_image.h"
 #include "vk_log.h"

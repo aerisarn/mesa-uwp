@@ -26,7 +26,6 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
-#include "vk_format_info.h"
 #include "vk_util.h"
 #include "vulkan/wsi/wsi_common.h"
 
