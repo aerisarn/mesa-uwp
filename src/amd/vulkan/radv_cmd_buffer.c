@@ -5618,7 +5618,7 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       state->format_sizes[loc] = format_desc->block.bits / 8u;
 
       if (chip == GFX6 || chip >= GFX10) {
-         struct radv_vertex_binding *vb = cmd_buffer->vertex_bindings;
+         const struct radv_vertex_binding *vb = cmd_buffer->vertex_bindings;
          unsigned bit = 1u << loc;
          if (binding->stride & format_align_req_minus_1) {
             state->misaligned_mask |= bit;
