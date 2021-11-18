@@ -1071,12 +1071,17 @@ handle_zs_blit(struct fd_context *ctx,
        * 8888_unorm.
        */
       if (!ctx->screen->info->a6xx.has_z24uint_s8uint) {
-         if (!src->layout.ubwc)
-            blit.src.format = PIPE_FORMAT_RGBA8888_UNORM;
-         if (!dst->layout.ubwc)
-            blit.dst.format = PIPE_FORMAT_RGBA8888_UNORM;
+         if (!src->layout.ubwc && !dst->layout.ubwc) {
+            blit.src.format = PIPE_FORMAT_RGBA8888_UINT;
+            blit.dst.format = PIPE_FORMAT_RGBA8888_UINT;
+         } else {
+            if (!src->layout.ubwc)
+               blit.src.format = PIPE_FORMAT_RGBA8888_UNORM;
+            if (!dst->layout.ubwc)
+               blit.dst.format = PIPE_FORMAT_RGBA8888_UNORM;
+         }
       }
-      if (info->src.resource->nr_samples > 1)
+      if (info->src.resource->nr_samples > 1 && blit.src.format != PIPE_FORMAT_RGBA8888_UINT)
          mesa_logw("sample averaging on fallback z24s8 blit when we shouldn't.");
       return fd_blitter_blit(ctx, &blit);
 
