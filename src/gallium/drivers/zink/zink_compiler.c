@@ -1701,6 +1701,50 @@ lower_1d_shadow(nir_shader *shader)
    return found;
 }
 
+static void
+scan_nir(nir_shader *shader)
+{
+   nir_foreach_function(function, shader) {
+      if (!function->impl)
+         continue;
+      nir_foreach_block_safe(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic == nir_intrinsic_image_deref_load ||
+                intr->intrinsic == nir_intrinsic_image_deref_store ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_add ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_imin ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_umin ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_imax ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_umax ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_and ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_or ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_xor ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_exchange ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap ||
+                intr->intrinsic == nir_intrinsic_image_deref_atomic_fadd ||
+                intr->intrinsic == nir_intrinsic_image_deref_size ||
+                intr->intrinsic == nir_intrinsic_image_deref_samples ||
+                intr->intrinsic == nir_intrinsic_image_deref_format ||
+                intr->intrinsic == nir_intrinsic_image_deref_order) {
+
+                nir_variable *var =
+                   nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+
+                /* Structs have been lowered already, so get_aoa_size is sufficient. */
+                const unsigned size =
+                   glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
+                unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
+
+                shader->info.images_used |= mask;
+            }
+         }
+      }
+   }
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -1780,6 +1824,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    }
    if (has_bindless_io)
       NIR_PASS_V(nir, lower_bindless_io);
+
+   scan_nir(nir);
 
    foreach_list_typed_reverse_safe(nir_variable, var, node, &nir->variables) {
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
