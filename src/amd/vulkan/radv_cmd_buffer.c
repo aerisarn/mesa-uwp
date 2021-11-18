@@ -2929,7 +2929,7 @@ emit_prolog_inputs(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_sh
        !cmd_buffer->state.emitted_vs_prolog->nontrivial_divisors)
       return;
 
-   struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
+   const struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
    uint64_t input_va = radv_shader_get_va(vs_shader);
 
    if (nontrivial_divisors) {
@@ -3317,7 +3317,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
       unsigned desc_index = 0;
       uint32_t mask = pipeline->vb_desc_usage_mask;
       uint64_t va;
-      struct radv_vs_input_state *vs_state =
+      const struct radv_vs_input_state *vs_state =
          vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
 
       /* allocate some descriptor state for vertex buffers */
@@ -4557,7 +4557,7 @@ radv_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer, uint32_t firstBindi
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_vertex_binding *vb = cmd_buffer->vertex_bindings;
-   struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
+   const struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
    bool changed = false;
 
    /* We have to defer setting up vertex buffer since we need the buffer
