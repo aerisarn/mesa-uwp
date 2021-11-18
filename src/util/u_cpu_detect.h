@@ -35,6 +35,7 @@
 #ifndef _UTIL_CPU_DETECT_H
 #define _UTIL_CPU_DETECT_H
 
+#include <stdbool.h>
 
 #include "pipe/p_config.h"
 #include "util/u_thread.h"
@@ -138,6 +139,16 @@ util_get_cpu_caps(void)
 }
 
 void util_cpu_detect(void);
+
+static inline bool
+util_cpu_caps_has_zarch(void)
+{
+#if defined(PIPE_ARCH_S390)
+   return true;
+#else
+   return false;
+#endif
+}
 
 
 #ifdef	__cplusplus
