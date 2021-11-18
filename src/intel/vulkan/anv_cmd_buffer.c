@@ -302,6 +302,8 @@ static VkResult anv_create_cmd_buffer(
 
    anv_measure_init(cmd_buffer);
 
+   u_trace_init(&cmd_buffer->trace, &device->trace_context);
+
    *pCommandBuffer = anv_cmd_buffer_to_handle(cmd_buffer);
 
    return VK_SUCCESS;
@@ -343,6 +345,8 @@ VkResult anv_AllocateCommandBuffers(
 static void
 anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer)
 {
+   u_trace_fini(&cmd_buffer->trace);
+
    anv_measure_destroy(cmd_buffer);
 
    list_del(&cmd_buffer->pool_link);
@@ -401,6 +405,10 @@ anv_cmd_buffer_reset(struct anv_cmd_buffer *cmd_buffer)
                          &cmd_buffer->device->general_state_pool, 16384);
 
    anv_measure_reset(cmd_buffer);
+
+   u_trace_fini(&cmd_buffer->trace);
+   u_trace_init(&cmd_buffer->trace, &cmd_buffer->device->trace_context);
+
    return VK_SUCCESS;
 }
 

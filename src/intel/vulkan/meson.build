@@ -33,6 +33,19 @@ anv_entrypoints = custom_target(
   depend_files : vk_entrypoints_gen_depend_files,
 )
 
+anv_tracepoints = custom_target(
+  'anv_tracepoints.[ch]',
+  input: 'anv_tracepoints.py',
+  output: ['anv_tracepoints.h', 'anv_tracepoints.c'],
+  command: [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/util/perf/'),
+    '--utrace-hdr', '@OUTPUT0@',
+    '--utrace-src', '@OUTPUT1@',
+  ],
+  depend_files: u_trace_py,
+)
+
 intel_icd = custom_target(
   'intel_icd',
   input : [vk_icd_gen, vk_api_xml],
@@ -65,7 +78,7 @@ foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
   _gfx_ver = g[0]
   libanv_per_hw_ver_libs += static_library(
     'anv_per_hw_ver@0@'.format(_gfx_ver),
-    [anv_per_hw_ver_files, g[1], anv_entrypoints[0]],
+    [anv_per_hw_ver_files, g[1], anv_entrypoints[0], anv_tracepoints[0]],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler, inc_intel,
     ],
@@ -111,6 +124,7 @@ libanv_files = files(
   'anv_private.h',
   'anv_queue.c',
   'anv_util.c',
+  'anv_utrace.c',
   'anv_wsi.c',
 )
 
@@ -154,7 +168,7 @@ libanv_common = static_library(
   'anv_common',
   [
     libanv_files, anv_entrypoints, sha1_h,
-    gen_xml_pack,
+    gen_xml_pack
   ],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
@@ -167,7 +181,7 @@ libanv_common = static_library(
 
 libvulkan_intel = shared_library(
   'vulkan_intel',
-  [files('anv_gem.c'), anv_entrypoints[0]],
+  [files('anv_gem.c'), anv_entrypoints[0], anv_tracepoints],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
   ],
@@ -202,7 +216,7 @@ endif
 if with_tests
   libvulkan_intel_test = static_library(
     'vulkan_intel_test',
-    [files('anv_gem_stubs.c'), anv_entrypoints[0]],
+    [files('anv_gem_stubs.c'), anv_entrypoints[0], anv_tracepoints[0]],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
     ],
@@ -227,7 +241,7 @@ if with_tests
       'anv_@0@'.format(t),
       executable(
         t,
-        ['tests/@0@.c'.format(t), anv_entrypoints[0]],
+        ['tests/@0@.c'.format(t), anv_entrypoints[0], anv_tracepoints[0]],
         c_args : [ c_sse2_args ],
         link_with : libvulkan_intel_test,
         dependencies : [

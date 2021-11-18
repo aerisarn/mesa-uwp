@@ -37,6 +37,7 @@
 #include "perf/intel_perf.h"
 
 #include "util/debug.h"
+#include "util/perf/u_trace.h"
 
 /** \file anv_batch_chain.c
  *
@@ -1956,6 +1957,94 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue)
    return VK_SUCCESS;
 }
 
+static VkResult
+setup_utrace_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue,
+                     struct anv_utrace_flush_copy *flush)
+{
+   struct anv_device *device = queue->device;
+   VkResult result = anv_execbuf_add_bo(device, execbuf,
+                                        flush->batch_bo,
+                                        &flush->relocs, 0);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = anv_execbuf_add_sync(device, execbuf, flush->sync,
+                                 true /* is_signal */, 0 /* value */);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (flush->batch_bo->exec_obj_index != execbuf->bo_count - 1) {
+      uint32_t idx = flush->batch_bo->exec_obj_index;
+      uint32_t last_idx = execbuf->bo_count - 1;
+
+      struct drm_i915_gem_exec_object2 tmp_obj = execbuf->objects[idx];
+      assert(execbuf->bos[idx] == flush->batch_bo);
+
+      execbuf->objects[idx] = execbuf->objects[last_idx];
+      execbuf->bos[idx] = execbuf->bos[last_idx];
+      execbuf->bos[idx]->exec_obj_index = idx;
+
+      execbuf->objects[last_idx] = tmp_obj;
+      execbuf->bos[last_idx] = flush->batch_bo;
+      flush->batch_bo->exec_obj_index = last_idx;
+   }
+
+   if (!device->info.has_llc) {
+      __builtin_ia32_mfence();
+      for (uint32_t i = 0; i < flush->batch_bo->size; i += CACHELINE_SIZE)
+         __builtin_ia32_clflush(flush->batch_bo->map);
+   }
+
+   execbuf->execbuf = (struct drm_i915_gem_execbuffer2) {
+      .buffers_ptr = (uintptr_t) execbuf->objects,
+      .buffer_count = execbuf->bo_count,
+      .batch_start_offset = 0,
+      .batch_len = flush->batch.next - flush->batch.start,
+      .flags = I915_EXEC_HANDLE_LUT | I915_EXEC_FENCE_ARRAY | queue->exec_flags |
+               (execbuf->has_relocs ? 0 : I915_EXEC_NO_RELOC),
+      .rsvd1 = device->context_id,
+      .rsvd2 = 0,
+      .num_cliprects = execbuf->syncobj_count,
+      .cliprects_ptr = (uintptr_t)execbuf->syncobjs,
+   };
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+anv_queue_exec_utrace_locked(struct anv_queue *queue,
+                             struct anv_utrace_flush_copy *flush)
+{
+   assert(flush->batch_bo);
+
+   struct anv_device *device = queue->device;
+   struct anv_execbuf execbuf;
+   anv_execbuf_init(&execbuf);
+   execbuf.alloc = &device->vk.alloc;
+   execbuf.alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE;
+
+   VkResult result = setup_utrace_execbuf(&execbuf, queue, flush);
+   if (result != VK_SUCCESS)
+      goto error;
+
+   int ret = queue->device->info.no_hw ? 0 :
+      anv_gem_execbuffer(queue->device, &execbuf.execbuf);
+   if (ret)
+      result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
+
+   struct drm_i915_gem_exec_object2 *objects = execbuf.objects;
+   for (uint32_t k = 0; k < execbuf.bo_count; k++) {
+      if (anv_bo_is_pinned(execbuf.bos[k]))
+         assert(execbuf.bos[k]->offset == objects[k].offset);
+      execbuf.bos[k]->offset = objects[k].offset;
+   }
+
+ error:
+   anv_execbuf_finish(&execbuf);
+
+   return result;
+}
+
 /* We lock around execbuf for three main reasons:
  *
  *  1) When a block pool is resized, we create a new gem handle with a
@@ -1992,16 +2081,37 @@ anv_queue_exec_locked(struct anv_queue *queue,
                       uint32_t perf_query_pass)
 {
    struct anv_device *device = queue->device;
+   struct anv_utrace_flush_copy *utrace_flush_data = NULL;
    struct anv_execbuf execbuf;
    anv_execbuf_init(&execbuf);
    execbuf.alloc = &queue->device->vk.alloc;
    execbuf.alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_DEVICE;
    execbuf.perf_query_pass = perf_query_pass;
 
+   /* Flush the trace points first, they need to be moved */
+   VkResult result =
+      anv_device_utrace_flush_cmd_buffers(queue,
+                                          cmd_buffer_count,
+                                          cmd_buffers,
+                                          &utrace_flush_data);
+   if (result != VK_SUCCESS)
+      goto error;
+
+   if (utrace_flush_data && !utrace_flush_data->batch_bo) {
+      result = anv_execbuf_add_sync(device, &execbuf,
+                                    utrace_flush_data->sync,
+                                    true /* is_signal */,
+                                    0);
+      if (result != VK_SUCCESS)
+         goto error;
+
+      utrace_flush_data = NULL;
+   }
+
    /* Always add the workaround BO as it includes a driver identifier for the
     * error_state.
     */
-   VkResult result =
+   result =
       anv_execbuf_add_bo(device, &execbuf, device->workaround_bo, NULL, 0);
    if (result != VK_SUCCESS)
       goto error;
@@ -2147,6 +2257,9 @@ anv_queue_exec_locked(struct anv_queue *queue,
 
  error:
    anv_execbuf_finish(&execbuf);
+
+   if (result == VK_SUCCESS && utrace_flush_data)
+      result = anv_queue_exec_utrace_locked(queue, utrace_flush_data);
 
    return result;
 }

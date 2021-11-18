@@ -57,6 +57,7 @@
 #include "util/macros.h"
 #include "util/hash_table.h"
 #include "util/list.h"
+#include "util/perf/u_trace.h"
 #include "util/sparse_array.h"
 #include "util/u_atomic.h"
 #include "util/u_vector.h"
@@ -552,6 +553,46 @@ anv_bo_is_pinned(struct anv_bo *bo)
 #endif
 }
 
+struct anv_address {
+   struct anv_bo *bo;
+   int64_t offset;
+};
+
+#define ANV_NULL_ADDRESS ((struct anv_address) { NULL, 0 })
+
+static inline struct anv_address
+anv_address_from_u64(uint64_t addr_u64)
+{
+   assert(addr_u64 == intel_canonical_address(addr_u64));
+   return (struct anv_address) {
+      .bo = NULL,
+      .offset = addr_u64,
+   };
+}
+
+static inline bool
+anv_address_is_null(struct anv_address addr)
+{
+   return addr.bo == NULL && addr.offset == 0;
+}
+
+static inline uint64_t
+anv_address_physical(struct anv_address addr)
+{
+   if (addr.bo && anv_bo_is_pinned(addr.bo)) {
+      return intel_canonical_address(addr.bo->offset + addr.offset);
+   } else {
+      return intel_canonical_address(addr.offset);
+   }
+}
+
+static inline struct anv_address
+anv_address_add(struct anv_address addr, uint64_t offset)
+{
+   addr.offset += offset;
+   return addr;
+}
+
 /* Represents a lock-free linked list of "free" things.  This is used by
  * both the block pool and the state pools.  Unfortunately, in order to
  * solve the ABA problem, we can't use a single uint32_t head.
@@ -986,7 +1027,7 @@ struct anv_physical_device {
     int64_t                                     master_minor;
     struct drm_i915_query_engine_info *         engine_info;
 
-    void (*cmd_emit_timestamp)(struct anv_batch *, struct anv_bo *, uint32_t );
+    void (*cmd_emit_timestamp)(struct anv_batch *, struct anv_device *, struct anv_address, bool);
     struct intel_measure_device                 measure_device;
 };
 
@@ -1094,11 +1135,6 @@ anv_device_upload_nir(struct anv_device *device,
                       const struct nir_shader *nir,
                       unsigned char sha1_key[20]);
 
-struct anv_address {
-   struct anv_bo *bo;
-   int64_t offset;
-};
-
 struct anv_device {
     struct vk_device                            vk;
 
@@ -1179,6 +1215,8 @@ struct anv_device {
     const struct intel_l3_config                *l3_config;
 
     struct intel_debug_block_frame              *debug_frame_desc;
+
+    struct u_trace_context                      trace_context;
 };
 
 #if defined(GFX_VERx10) && GFX_VERx10 >= 90
@@ -1504,42 +1542,6 @@ anv_batch_emit_reloc(struct anv_batch *batch,
    }
 
    return address_u64;
-}
-
-
-#define ANV_NULL_ADDRESS ((struct anv_address) { NULL, 0 })
-
-static inline struct anv_address
-anv_address_from_u64(uint64_t addr_u64)
-{
-   assert(addr_u64 == intel_canonical_address(addr_u64));
-   return (struct anv_address) {
-      .bo = NULL,
-      .offset = addr_u64,
-   };
-}
-
-static inline bool
-anv_address_is_null(struct anv_address addr)
-{
-   return addr.bo == NULL && addr.offset == 0;
-}
-
-static inline uint64_t
-anv_address_physical(struct anv_address addr)
-{
-   if (addr.bo && anv_bo_is_pinned(addr.bo)) {
-      return intel_canonical_address(addr.bo->offset + addr.offset);
-   } else {
-      return intel_canonical_address(addr.offset);
-   }
-}
-
-static inline struct anv_address
-anv_address_add(struct anv_address addr, uint64_t offset)
-{
-   addr.offset += offset;
-   return addr;
 }
 
 static inline void
@@ -3088,6 +3090,11 @@ struct anv_cmd_buffer {
     * Used to increase allocation size for long command buffers.
     */
    uint32_t                                     total_batch_size;
+
+   /**
+    *
+    */
+   struct u_trace                               trace;
 };
 
 /* Determine whether we can chain a given cmd_buffer to another one. We need
@@ -4540,6 +4547,29 @@ struct anv_memcpy_state {
    struct anv_vb_cache_range vb_bound;
    struct anv_vb_cache_range vb_dirty;
 };
+
+struct anv_utrace_flush_copy {
+   struct u_trace trace;
+
+   struct anv_reloc_list relocs;
+   struct anv_batch batch;
+   struct anv_bo *batch_bo;
+
+   struct anv_bo *trace_bo;
+
+   struct vk_sync *sync;
+
+   struct anv_memcpy_state memcpy_state;
+};
+
+void anv_device_utrace_init(struct anv_device *device);
+void anv_device_utrace_finish(struct anv_device *device);
+VkResult
+anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
+                                    uint32_t cmd_buffer_count,
+                                    struct anv_cmd_buffer **cmd_buffers,
+                                    struct anv_utrace_flush_copy **out_flush_data);
+
 
 #define ANV_FROM_HANDLE(__anv_type, __name, __handle) \
    VK_FROM_HANDLE(__anv_type, __name, __handle)
