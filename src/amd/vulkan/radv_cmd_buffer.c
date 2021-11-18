@@ -5477,14 +5477,7 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
 
    cmd_buffer->state.vbo_misaligned_mask = 0;
 
-   state->attribute_mask = 0;
-   state->misaligned_mask = 0;
-   state->possibly_misaligned_mask = 0;
-   state->instance_rate_inputs = 0;
-   state->nontrivial_divisors = 0;
-   state->post_shuffle = 0;
-   state->alpha_adjust_lo = 0;
-   state->alpha_adjust_hi = 0;
+   memset(state, 0, sizeof(*state));
 
    enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
    for (unsigned i = 0; i < vertexAttributeDescriptionCount; i++) {
