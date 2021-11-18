@@ -234,6 +234,30 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
    }
 }
 
+static void
+emit_msaa(struct fd_ringbuffer *ring, uint32_t nr_samples)
+{
+   enum a3xx_msaa_samples samples = fd_msaa_samples(nr_samples);
+
+   OUT_PKT4(ring, REG_A5XX_TPL1_TP_RAS_MSAA_CNTL, 2);
+   OUT_RING(ring, A5XX_TPL1_TP_RAS_MSAA_CNTL_SAMPLES(samples));
+   OUT_RING(ring, A5XX_TPL1_TP_DEST_MSAA_CNTL_SAMPLES(samples) |
+                     COND(samples == MSAA_ONE,
+                          A5XX_TPL1_TP_DEST_MSAA_CNTL_MSAA_DISABLE));
+
+   OUT_PKT4(ring, REG_A5XX_RB_RAS_MSAA_CNTL, 2);
+   OUT_RING(ring, A5XX_RB_RAS_MSAA_CNTL_SAMPLES(samples));
+   OUT_RING(ring,
+            A5XX_RB_DEST_MSAA_CNTL_SAMPLES(samples) |
+               COND(samples == MSAA_ONE, A5XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE));
+
+   OUT_PKT4(ring, REG_A5XX_GRAS_SC_RAS_MSAA_CNTL, 2);
+   OUT_RING(ring, A5XX_GRAS_SC_RAS_MSAA_CNTL_SAMPLES(samples));
+   OUT_RING(ring, A5XX_GRAS_SC_DEST_MSAA_CNTL_SAMPLES(samples) |
+                     COND(samples == MSAA_ONE,
+                          A5XX_GRAS_SC_DEST_MSAA_CNTL_MSAA_DISABLE));
+}
+
 static bool
 use_hw_binning(struct fd_batch *batch)
 {
@@ -584,26 +608,7 @@ fd5_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 
    emit_zs(ring, pfb->zsbuf, gmem);
    emit_mrt(ring, pfb->nr_cbufs, pfb->cbufs, gmem);
-
-   enum a3xx_msaa_samples samples = fd_msaa_samples(pfb->samples);
-
-   OUT_PKT4(ring, REG_A5XX_TPL1_TP_RAS_MSAA_CNTL, 2);
-   OUT_RING(ring, A5XX_TPL1_TP_RAS_MSAA_CNTL_SAMPLES(samples));
-   OUT_RING(ring, A5XX_TPL1_TP_DEST_MSAA_CNTL_SAMPLES(samples) |
-                     COND(samples == MSAA_ONE,
-                          A5XX_TPL1_TP_DEST_MSAA_CNTL_MSAA_DISABLE));
-
-   OUT_PKT4(ring, REG_A5XX_RB_RAS_MSAA_CNTL, 2);
-   OUT_RING(ring, A5XX_RB_RAS_MSAA_CNTL_SAMPLES(samples));
-   OUT_RING(ring,
-            A5XX_RB_DEST_MSAA_CNTL_SAMPLES(samples) |
-               COND(samples == MSAA_ONE, A5XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE));
-
-   OUT_PKT4(ring, REG_A5XX_GRAS_SC_RAS_MSAA_CNTL, 2);
-   OUT_RING(ring, A5XX_GRAS_SC_RAS_MSAA_CNTL_SAMPLES(samples));
-   OUT_RING(ring, A5XX_GRAS_SC_DEST_MSAA_CNTL_SAMPLES(samples) |
-                     COND(samples == MSAA_ONE,
-                          A5XX_GRAS_SC_DEST_MSAA_CNTL_MSAA_DISABLE));
+   emit_msaa(ring, pfb->samples);
 }
 
 /*
@@ -762,21 +767,7 @@ fd5_emit_sysmem_prep(struct fd_batch *batch) assert_dt
 
    emit_zs(ring, pfb->zsbuf, NULL);
    emit_mrt(ring, pfb->nr_cbufs, pfb->cbufs, NULL);
-
-   OUT_PKT4(ring, REG_A5XX_TPL1_TP_RAS_MSAA_CNTL, 2);
-   OUT_RING(ring, A5XX_TPL1_TP_RAS_MSAA_CNTL_SAMPLES(MSAA_ONE));
-   OUT_RING(ring, A5XX_TPL1_TP_DEST_MSAA_CNTL_SAMPLES(MSAA_ONE) |
-                     A5XX_TPL1_TP_DEST_MSAA_CNTL_MSAA_DISABLE);
-
-   OUT_PKT4(ring, REG_A5XX_RB_RAS_MSAA_CNTL, 2);
-   OUT_RING(ring, A5XX_RB_RAS_MSAA_CNTL_SAMPLES(MSAA_ONE));
-   OUT_RING(ring, A5XX_RB_DEST_MSAA_CNTL_SAMPLES(MSAA_ONE) |
-                     A5XX_RB_DEST_MSAA_CNTL_MSAA_DISABLE);
-
-   OUT_PKT4(ring, REG_A5XX_GRAS_SC_RAS_MSAA_CNTL, 2);
-   OUT_RING(ring, A5XX_GRAS_SC_RAS_MSAA_CNTL_SAMPLES(MSAA_ONE));
-   OUT_RING(ring, A5XX_GRAS_SC_DEST_MSAA_CNTL_SAMPLES(MSAA_ONE) |
-                     A5XX_GRAS_SC_DEST_MSAA_CNTL_MSAA_DISABLE);
+   emit_msaa(ring, pfb->samples);
 }
 
 static void
