@@ -877,6 +877,7 @@ debian-release:
     EXTRA_OPTION: >
       -D osmesa=true
       -D tools=all
+      -D intel-clc=enabled
   script:
     - .gitlab-ci/meson/build.sh
 
@@ -903,6 +904,7 @@ fedora-release:
       -D osmesa=true
       -D selinux=true
       -D tools=drm-shim,etnaviv,freedreno,glsl,intel,nir,nouveau,lima,panfrost
+      -D intel-clc=enabled
     GALLIUM_DRIVERS: "crocus,etnaviv,freedreno,iris,kmsro,lima,nouveau,panfrost,r300,r600,radeonsi,svga,swrast,tegra,v3d,vc4,virgl,zink"
     GALLIUM_ST: >
       -D dri3=enabled
@@ -1151,6 +1153,7 @@ debian-vulkan:
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
       -D build-aco-tests=true
+      -D intel-clc=enabled
 
 debian-i386:
   extends:
