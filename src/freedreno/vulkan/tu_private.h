@@ -379,7 +379,6 @@ struct tu_device
 
    struct tu_physical_device *physical_device;
    int fd;
-   int _lost;
 
    struct ir3_compiler *compiler;
 
@@ -451,17 +450,6 @@ struct tu_device
 void tu_init_clear_blit_shaders(struct tu_device *dev);
 
 void tu_destroy_clear_blit_shaders(struct tu_device *dev);
-
-VkResult _tu_device_set_lost(struct tu_device *device,
-                             const char *msg, ...) PRINTFLIKE(2, 3);
-#define tu_device_set_lost(dev, ...) \
-   _tu_device_set_lost(dev, __VA_ARGS__)
-
-static inline bool
-tu_device_is_lost(struct tu_device *device)
-{
-   return unlikely(p_atomic_read(&device->_lost));
-}
 
 VkResult
 tu_device_submit_deferred_locked(struct tu_device *dev);

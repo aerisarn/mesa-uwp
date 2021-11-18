@@ -432,7 +432,7 @@ tu_QueueSubmit(VkQueue _queue,
       int ret = safe_ioctl(queue->device->physical_device->local_fd,
                            IOCTL_KGSL_GPU_COMMAND, &req);
       if (ret) {
-         result = tu_device_set_lost(queue->device,
+         result = vk_device_set_lost(&queue->device->vk,
                                      "submit failed: %s\n", strerror(errno));
          goto fail;
       }
@@ -447,7 +447,7 @@ tu_QueueSubmit(VkQueue _queue,
       if (i == submitCount - 1) {
          int fd = timestamp_to_fd(queue, req.timestamp);
          if (fd < 0) {
-            result = tu_device_set_lost(queue->device,
+            result = vk_device_set_lost(&queue->device->vk,
                                         "Failed to create sync file for timestamp: %s\n",
                                         strerror(errno));
             goto fail;

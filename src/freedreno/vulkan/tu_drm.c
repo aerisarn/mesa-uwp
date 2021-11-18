@@ -1189,7 +1189,7 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
    mtx_unlock(&queue->device->bo_mutex);
 
    if (ret)
-      return tu_device_set_lost(queue->device, "submit failed: %s\n",
+      return vk_device_set_lost(&queue->device->vk, "submit failed: %s\n",
                                 strerror(errno));
 
    /* restore permanent payload on wait */
@@ -1570,7 +1570,7 @@ tu_WaitForFences(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
-   if (tu_device_is_lost(device))
+   if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
 
    uint32_t handles[fenceCount];
@@ -1600,7 +1600,7 @@ tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
       .count_handles = fenceCount,
    });
    if (ret) {
-      tu_device_set_lost(device, "DRM_IOCTL_SYNCOBJ_RESET failure: %s",
+      vk_device_set_lost(&device->vk, "DRM_IOCTL_SYNCOBJ_RESET failure: %s",
                          strerror(errno));
    }
 
