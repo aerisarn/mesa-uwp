@@ -29,6 +29,7 @@
 #include "compiler/shader_enums.h"
 #include "util/half_float.h"
 #include "util/memstream.h"
+#include "util/mesa-sha1.h"
 #include "vulkan/vulkan_core.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -1603,6 +1604,10 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
    state.annotations = annotations;
 
    fprintf(fp, "shader: %s\n", gl_shader_stage_name(shader->info.stage));
+
+   fprintf(fp, "source_sha1: {");
+   _mesa_sha1_print(fp, shader->info.source_sha1);
+   fprintf(fp, "}\n");
 
    if (shader->info.name)
       fprintf(fp, "name: %s\n", shader->info.name);

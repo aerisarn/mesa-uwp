@@ -26,6 +26,7 @@
 #define SHADER_INFO_H
 
 #include "util/bitset.h"
+#include "util/sha1/sha1.h"
 #include "shader_enums.h"
 #include <stdint.h>
 
@@ -124,6 +125,9 @@ typedef struct shader_info {
 
    /* Shader is internal, and should be ignored by things like NIR_PRINT */
    bool internal;
+
+   /* SHA1 of the original source, used by shader detection in drivers. */
+   uint8_t source_sha1[SHA1_DIGEST_LENGTH];
 
    /** The shader stage, such as MESA_SHADER_VERTEX. */
    gl_shader_stage stage:8;

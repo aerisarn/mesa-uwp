@@ -769,6 +769,8 @@ st_link_nir(struct gl_context *ctx,
          prog->nir = glsl_to_nir(st->ctx, shader_program, shader->Stage, options);
       }
 
+      memcpy(prog->nir->info.source_sha1, shader->linked_source_sha1,
+             SHA1_DIGEST_LENGTH);
       st_nir_preprocess(st, prog, shader_program, shader->Stage);
 
       if (options->lower_to_scalar) {
