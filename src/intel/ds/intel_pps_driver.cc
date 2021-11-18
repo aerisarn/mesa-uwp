@@ -40,16 +40,6 @@ uint64_t IntelDriver::get_min_sampling_period_ns()
    return (2.f * perf->devinfo.timestamp_frequency) / 1000000000ull;
 }
 
-uint64_t scale_gpu_timestamp(uint64_t ts, uint64_t timestamp_frequency)
-{
-   // Try to avoid going over the 64bits when doing the scaling
-   uint64_t lower_ts = ts >> 6;
-   uint64_t scaled_ts = lower_ts * 1000000000ull / timestamp_frequency;
-   scaled_ts <<= 6;
-   scaled_ts += (ts & 0x3f) * 1000000000ull / timestamp_frequency;
-   return scaled_ts;
-}
-
 uint64_t read_gpu_timestamp(int drm_fd)
 {
    drm_i915_reg_read reg_read = {};
@@ -233,8 +223,8 @@ std::vector<PerfRecord> IntelDriver::parse_perf_records(const std::vector<uint8_
 
          uint64_t gpu_timestamp = gpu_timestamp_udw + gpu_timestamp_ldw;
 
-         auto duration = scale_gpu_timestamp(gpu_timestamp - prev_gpu_timestamp,
-                                             perf->devinfo.timestamp_frequency);
+         auto duration = intel_perf_scale_gpu_timestamp(&perf->devinfo,
+                                                        gpu_timestamp - prev_gpu_timestamp);
 
          // Skip perf-records that are too short by checking
          // the distance between last report and this one
@@ -328,7 +318,8 @@ uint64_t IntelDriver::gpu_next()
    // Consume first record
    records.erase(std::begin(records), std::begin(records) + 1);
 
-   return scale_gpu_timestamp(gpu_timestamp, perf->devinfo.timestamp_frequency);
+   return intel_perf_scale_gpu_timestamp(&perf->devinfo,
+                                         gpu_timestamp);
 }
 
 uint64_t IntelDriver::next()
@@ -345,8 +336,8 @@ uint32_t IntelDriver::gpu_clock_id() const
 
 uint64_t IntelDriver::gpu_timestamp() const
 {
-   return scale_gpu_timestamp(read_gpu_timestamp(drm_device.fd),
-                              perf->devinfo.timestamp_frequency);
+   return intel_perf_scale_gpu_timestamp(&perf->devinfo,
+                                         read_gpu_timestamp(drm_device.fd));
 }
 
 } // namespace pps
