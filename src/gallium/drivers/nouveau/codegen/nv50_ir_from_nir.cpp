@@ -64,11 +64,15 @@ function_temp_type_info(const struct glsl_type *type, unsigned *size, unsigned *
 {
    assert(glsl_type_is_vector_or_scalar(type));
 
-   unsigned comp_size = glsl_type_is_boolean(type) ? 4 : glsl_get_bit_size(type) / 8;
-   unsigned length = glsl_get_vector_elements(type);
+   if (glsl_type_is_scalar(type)) {
+      glsl_get_natural_size_align_bytes(type, size, align);
+   } else {
+      unsigned comp_size = glsl_type_is_boolean(type) ? 4 : glsl_get_bit_size(type) / 8;
+      unsigned length = glsl_get_vector_elements(type);
 
-   *size = comp_size * length;
-   *align = 0x10;
+      *size = comp_size * length;
+      *align = 0x10;
+   }
 }
 
 class Converter : public ConverterCommon
