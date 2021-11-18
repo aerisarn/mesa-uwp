@@ -219,8 +219,8 @@ anv_sync_create_for_bo(struct anv_device *device,
 {
    struct anv_bo_sync *bo_sync;
 
-   bo_sync = vk_alloc(&device->vk.alloc, sizeof(*bo_sync), 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   bo_sync = vk_zalloc(&device->vk.alloc, sizeof(*bo_sync), 8,
+                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (bo_sync == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
