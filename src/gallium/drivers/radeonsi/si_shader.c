@@ -32,6 +32,7 @@
 #include "tgsi/tgsi_from_mesa.h"
 #include "tgsi/tgsi_strings.h"
 #include "util/u_memory.h"
+#include "util/mesa-sha1.h"
 
 static const char scratch_rsrc_dword0_symbol[] = "SCRATCH_RSRC_DWORD0";
 
@@ -1178,6 +1179,9 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
    gl_shader_stage stage = shader->selector->info.stage;
 
    fprintf(f, "SHADER KEY\n");
+   fprintf(f, "  source_sha1 = {");
+   _mesa_sha1_print(f, shader->selector->info.base.source_sha1);
+   fprintf(f, "}\n");
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
