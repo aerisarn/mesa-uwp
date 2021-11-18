@@ -1191,6 +1191,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    slab_destroy_parent(&screen->transfer_pool);
    ralloc_free(screen);
+   glsl_type_singleton_decref();
 }
 
 static bool
@@ -2109,6 +2110,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
                                 zink_create_vertex_state, zink_vertex_state_destroy);
    screen->base.create_vertex_state = zink_cache_create_vertex_state;
    screen->base.vertex_state_destroy = zink_cache_vertex_state_destroy;
+   glsl_type_singleton_init_or_ref();
 
    return screen;
 
