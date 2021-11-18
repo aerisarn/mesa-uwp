@@ -2684,6 +2684,12 @@ struct gl_shader
 
    /** SHA1 of the pre-processed source used by the disk cache. */
    uint8_t disk_cache_sha1[SHA1_DIGEST_LENGTH];
+   /** SHA1 of the original source before replacement, set by glShaderSource. */
+   uint8_t source_sha1[SHA1_DIGEST_LENGTH];
+   /** SHA1 of FallbackSource (a copy of some original source before replacement). */
+   uint8_t fallback_source_sha1[SHA1_DIGEST_LENGTH];
+   /** SHA1 of the current compiled source, set by successful glCompileShader. */
+   uint8_t compiled_source_sha1[SHA1_DIGEST_LENGTH];
 
    const GLchar *Source;  /**< Source code string */
    const GLchar *FallbackSource;  /**< Fallback string used by on-disk cache*/

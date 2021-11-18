@@ -2146,8 +2146,9 @@ opt_shader_and_create_symbol_table(struct gl_context *ctx,
 
 static bool
 can_skip_compile(struct gl_context *ctx, struct gl_shader *shader,
-                 const char *source, bool force_recompile,
-                 bool source_has_shader_include)
+                 const char *source,
+                 const uint8_t source_sha1[SHA1_DIGEST_LENGTH],
+                 bool force_recompile, bool source_has_shader_include)
 {
    if (!force_recompile) {
       if (ctx->Cache) {
@@ -2168,8 +2169,15 @@ can_skip_compile(struct gl_context *ctx, struct gl_shader *shader,
              * we have no guarantee the shader include source tree has not
              * changed.
              */
-            shader->FallbackSource = source_has_shader_include ?
-               strdup(source) : NULL;
+            if (source_has_shader_include) {
+               shader->FallbackSource = strdup(source);
+               memcpy(shader->fallback_source_sha1, source_sha1,
+                      SHA1_DIGEST_LENGTH);
+            } else {
+               shader->FallbackSource = NULL;
+            }
+            memcpy(shader->compiled_source_sha1, source_sha1,
+                   SHA1_DIGEST_LENGTH);
             return true;
          }
       }
@@ -2189,8 +2197,16 @@ void
 _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
                           bool dump_ast, bool dump_hir, bool force_recompile)
 {
-   const char *source = force_recompile && shader->FallbackSource ?
-      shader->FallbackSource : shader->Source;
+   const char *source;
+   const uint8_t *source_sha1;
+
+   if (force_recompile && shader->FallbackSource) {
+      source = shader->FallbackSource;
+      source_sha1 = shader->fallback_source_sha1;
+   } else {
+      source = shader->Source;
+      source_sha1 = shader->source_sha1;
+   }
 
    /* Note this will be true for shaders the have #include inside comments
     * however that should be rare enough not to worry about.
@@ -2204,7 +2220,8 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
     * keep duplicate copies of the shader include source tree and paths.
     */
    if (!source_has_shader_include &&
-       can_skip_compile(ctx, shader, source, force_recompile, false))
+       can_skip_compile(ctx, shader, source, source_sha1, force_recompile,
+                        false))
       return;
 
     struct _mesa_glsl_parse_state *state =
@@ -2224,7 +2241,8 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
     * include.
     */
    if (source_has_shader_include &&
-       can_skip_compile(ctx, shader, source, force_recompile, true))
+       can_skip_compile(ctx, shader, source, source_sha1, force_recompile,
+                        true))
       return;
 
    if (!state->error) {
@@ -2286,14 +2304,20 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
       /* Copy pre-processed shader include to fallback source otherwise we
        * have no guarantee the shader include source tree has not changed.
        */
-      shader->FallbackSource = source_has_shader_include ?
-         strdup(source) : NULL;
+      if (source_has_shader_include) {
+         shader->FallbackSource = strdup(source);
+         memcpy(shader->fallback_source_sha1, source_sha1, SHA1_DIGEST_LENGTH);
+      } else {
+         shader->FallbackSource = NULL;
+      }
    }
 
    delete state->symbols;
    ralloc_free(state);
 
    if (ctx->Cache && shader->CompileStatus == COMPILE_SUCCESS) {
+      memcpy(shader->compiled_source_sha1, source_sha1, SHA1_DIGEST_LENGTH);
+
       char sha1_buf[41];
       disk_cache_put_key(ctx->Cache, shader->disk_cache_sha1);
       if (ctx->_Shader->Flags & GLSL_CACHE_INFO) {

@@ -1181,7 +1181,8 @@ get_shader_source(struct gl_context *ctx, GLuint shader, GLsizei maxLength,
  * glShaderSource[ARB].
  */
 static void
-set_shader_source(struct gl_shader *sh, const GLchar *source)
+set_shader_source(struct gl_shader *sh, const GLchar *source,
+                  const uint8_t original_sha1[SHA1_DIGEST_LENGTH])
 {
    assert(sh);
 
@@ -1200,6 +1201,7 @@ set_shader_source(struct gl_shader *sh, const GLchar *source)
        * fallback.
        */
       sh->FallbackSource = sh->Source;
+      memcpy(sh->fallback_source_sha1, sh->source_sha1, SHA1_DIGEST_LENGTH);
       sh->Source = source;
    } else {
       /* free old shader source string and install new one */
@@ -1207,6 +1209,7 @@ set_shader_source(struct gl_shader *sh, const GLchar *source)
       sh->Source = source;
    }
 
+   memcpy(sh->source_sha1, original_sha1, SHA1_DIGEST_LENGTH);
 }
 
 static void
@@ -2178,6 +2181,10 @@ shader_source(struct gl_context *ctx, GLuint shaderObj, GLsizei count,
    source[totalLength - 1] = '\0';
    source[totalLength - 2] = '\0';
 
+   /* Compute the original source sha1 before shader replacement. */
+   uint8_t original_sha1[SHA1_DIGEST_LENGTH];
+   _mesa_sha1_compute(source, strlen(source), original_sha1);
+
 #ifdef ENABLE_SHADER_CACHE
    GLcharARB *replacement;
 
@@ -2193,7 +2200,7 @@ shader_source(struct gl_context *ctx, GLuint shaderObj, GLsizei count,
    }
 #endif /* ENABLE_SHADER_CACHE */
 
-   set_shader_source(sh, source);
+   set_shader_source(sh, source, original_sha1);
 
    free(offsets);
 }
