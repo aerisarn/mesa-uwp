@@ -296,9 +296,9 @@ static inline void util_barrier_destroy(util_barrier *barrier)
    pthread_barrier_destroy(barrier);
 }
 
-static inline void util_barrier_wait(util_barrier *barrier)
+static inline bool util_barrier_wait(util_barrier *barrier)
 {
-   pthread_barrier_wait(barrier);
+   return pthread_barrier_wait(barrier) == PTHREAD_BARRIER_SERIAL_THREAD;
 }
 
 
@@ -328,7 +328,7 @@ static inline void util_barrier_destroy(util_barrier *barrier)
    cnd_destroy(&barrier->condvar);
 }
 
-static inline void util_barrier_wait(util_barrier *barrier)
+static inline bool util_barrier_wait(util_barrier *barrier)
 {
    mtx_lock(&barrier->mutex);
 
@@ -348,6 +348,8 @@ static inline void util_barrier_wait(util_barrier *barrier)
    }
 
    mtx_unlock(&barrier->mutex);
+
+   return true;
 }
 
 #endif
