@@ -46,7 +46,7 @@
 #define MESA_LOG_TAG "TU"
 
 #include "c11/threads.h"
-#include "main/macros.h"
+#include "util/rounding.h"
 #include "util/bitscan.h"
 #include "util/list.h"
 #include "util/log.h"
