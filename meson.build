@@ -1783,17 +1783,21 @@ dep_clang = null_dep
 if with_clc
   llvm_libdir = dep_llvm.get_variable(cmake : 'LLVM_LIBRARY_DIR', configtool: 'libdir')
 
-  clang_modules = [
-    'clangBasic', 'clangAST', 'clangCodeGen', 'clangLex',
-    'clangDriver', 'clangFrontend', 'clangFrontendTool',
-    'clangHandleCXX', 'clangHandleLLVM', 'clangSerialization',
-    'clangSema', 'clangParse', 'clangEdit', 'clangAnalysis'
-  ]
+  dep_clang = cpp.find_library('clang-cpp', dirs : llvm_libdir, required : false)
 
-  dep_clang = []
-  foreach m : clang_modules
-    dep_clang += cpp.find_library(m, dirs : llvm_libdir, required : true)
-  endforeach
+  if not dep_clang.found()
+    clang_modules = [
+      'clangBasic', 'clangAST', 'clangCodeGen', 'clangLex',
+      'clangDriver', 'clangFrontend', 'clangFrontendTool',
+      'clangHandleCXX', 'clangHandleLLVM', 'clangSerialization',
+      'clangSema', 'clangParse', 'clangEdit', 'clangAnalysis'
+    ]
+
+    dep_clang = []
+    foreach m : clang_modules
+      dep_clang += cpp.find_library(m, dirs : llvm_libdir, required : true)
+    endforeach
+  endif
 endif
 
 # Be explicit about only using this lib on Windows, to avoid picking
