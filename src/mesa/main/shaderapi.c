@@ -60,7 +60,6 @@
 #include "program/prog_parameter.h"
 #include "util/ralloc.h"
 #include "util/hash_table.h"
-#include "util/mesa-sha1.h"
 #include "util/crc32.h"
 #include "util/os_file.h"
 #include "util/simple_list.h"

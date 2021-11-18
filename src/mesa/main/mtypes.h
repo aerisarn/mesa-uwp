@@ -52,6 +52,7 @@
 #include "util/u_idalloc.h"
 #include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
+#include "util/mesa-sha1.h"
 #include "vbo/vbo.h"
 
 
@@ -2676,14 +2677,15 @@ struct gl_shader
    GLuint Name;  /**< AKA the handle */
    GLint RefCount;  /**< Reference count */
    GLchar *Label;   /**< GL_KHR_debug */
-   unsigned char sha1[20]; /**< SHA1 hash of pre-processed source */
    GLboolean DeletePending;
    bool IsES;              /**< True if this shader uses GLSL ES */
 
    enum gl_compile_status CompileStatus;
 
-   const GLchar *Source;  /**< Source code string */
+   /** SHA1 of the pre-processed source used by the disk cache. */
+   uint8_t disk_cache_sha1[SHA1_DIGEST_LENGTH];
 
+   const GLchar *Source;  /**< Source code string */
    const GLchar *FallbackSource;  /**< Fallback string used by on-disk cache*/
 
    GLchar *InfoLog;
