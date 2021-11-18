@@ -44,6 +44,7 @@ struct zink_bo;
 
 #define ZINK_MAP_TEMPORARY (PIPE_MAP_DRV_PRV << 0)
 #define ZINK_BIND_TRANSIENT (1 << 30) //transient fb attachment
+#define ZINK_BIND_VIDEO (1 << 31)
 
 struct mem_key {
    unsigned seen_count;
@@ -75,6 +76,7 @@ struct zink_resource_object {
 
    bool storage_init; //layout was set for image
    bool transfer_dst;
+   bool render_target;
    bool is_buffer;
 
    struct zink_bo *bo;
@@ -83,6 +85,8 @@ struct zink_resource_object {
    VkImageUsageFlags vkusage;
    uint64_t modifier;
    VkImageAspectFlags modifier_aspect;
+   VkSamplerYcbcrConversionKHR sampler_conversion;
+   unsigned plane_sizes[3];
 
    bool host_visible;
    bool coherent;

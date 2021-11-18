@@ -34,6 +34,7 @@
 #endif
 #include "vulkan/wsi/wsi_common.h"
 
+#include "vk_format.h"
 #include "util/slab.h"
 #include "util/u_blitter.h"
 #include "util/u_debug.h"
@@ -189,6 +190,11 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
       VkImageFormatProperties2 props2;
       props2.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
       props2.pNext = NULL;
+      VkSamplerYcbcrConversionImageFormatProperties ycbcr_props;
+      ycbcr_props.sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES;
+      ycbcr_props.pNext = NULL;
+      if (screen->info.have_KHR_sampler_ycbcr_conversion)
+         props2.pNext = &ycbcr_props;
       VkPhysicalDeviceImageFormatInfo2 info;
       info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
       info.format = ici->format;
@@ -209,6 +215,9 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
          info.pNext = NULL;
 
       ret = VKSCR(GetPhysicalDeviceImageFormatProperties2)(screen->pdev, &info, &props2);
+      /* this is using VK_IMAGE_CREATE_EXTENDED_USAGE_BIT and can't be validated */
+      if (vk_format_aspects(ici->format) & VK_IMAGE_ASPECT_PLANE_1_BIT)
+         ret = VK_SUCCESS;
       image_props = props2.imageFormatProperties;
    } else
       ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, ici->format, ici->imageType,
@@ -220,18 +229,20 @@ static VkImageUsageFlags
 get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats, const struct pipe_resource *templ, unsigned bind)
 {
    VkImageUsageFlags usage = 0;
+   bool is_planar = util_format_get_num_planes(templ->format) > 1;
+
    if (bind & ZINK_BIND_TRANSIENT)
       usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
    else {
       /* sadly, gallium doesn't let us know if it'll ever need this, so we have to assume */
-      if (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)
+      if (is_planar || (feats & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT))
          usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-      if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
+      if (is_planar || (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT))
          usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
       if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
          usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-      if ((feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) && (bind & PIPE_BIND_SHADER_IMAGE)) {
+      if ((is_planar || (feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) && (bind & PIPE_BIND_SHADER_IMAGE)) {
          assert(templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample);
          usage |= VK_IMAGE_USAGE_STORAGE_BIT;
       }
@@ -242,7 +253,7 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
          usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
          if ((bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
             usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-      } else
+      } else if (!(bind & ZINK_BIND_VIDEO))
          return 0;
    }
 
@@ -335,7 +346,10 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
 {
    ici->sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
    ici->pNext = NULL;
-   ici->flags = modifiers_count || dmabuf || bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+   if (util_format_get_num_planes(templ->format) > 1)
+      ici->flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+   else
+      ici->flags = modifiers_count || dmabuf || bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
    ici->usage = 0;
    ici->queueFamilyIndexCount = 0;
 
@@ -459,21 +473,32 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    if (!obj)
       return NULL;
 
-   VkMemoryRequirements reqs;
+   VkMemoryRequirements reqs = {0};
    VkMemoryPropertyFlags flags;
    bool need_dedicated = false;
    bool shared = templ->bind & PIPE_BIND_SHARED;
    VkExternalMemoryHandleTypeFlags export_types = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-
+   unsigned num_planes = util_format_get_num_planes(templ->format);
+   VkImageAspectFlags plane_aspects[] = {
+      VK_IMAGE_ASPECT_PLANE_0_BIT,
+      VK_IMAGE_ASPECT_PLANE_1_BIT,
+      VK_IMAGE_ASPECT_PLANE_2_BIT,
+   };
    VkExternalMemoryHandleTypeFlags external = 0;
+   bool needs_export = (templ->bind & ZINK_BIND_VIDEO) != 0;
    if (whandle) {
-      if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
+      if (whandle->type == WINSYS_HANDLE_TYPE_FD || whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE)
+         needs_export |= true;
+      else
+         unreachable("unknown handle type");
+   }
+   if (needs_export) {
+      if (whandle && whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE) {
+         external = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+      } else {
          external = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
          export_types |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-      } else if (whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE) {
-         external = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-      } else
-         unreachable("unknown handle type");
+      }
    }
 
    /* TODO: remove linear for wsi */
@@ -515,6 +540,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (!success)
          goto fail1;
 
+      obj->render_target = (ici.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0;
+
       if (shared || external) {
          emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
          emici.pNext = NULL;
@@ -528,11 +555,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             idfmeci.pNext = ici.pNext;
             idfmeci.drmFormatModifier = mod;
 
-            /* TODO: store these values from other planes in their
-             * respective zink_resource, and walk the next-pointers to
-             * build up the planar array here instead.
-             */
-            assert(util_format_get_num_planes(templ->format) == 1);
             idfmeci.drmFormatModifierPlaneCount = 1;
             VkSubresourceLayout plane_layout = {
                .offset = whandle->offset,
@@ -576,6 +598,60 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          image_wsi_info.pNext = ici.pNext;
          ici.pNext = &image_wsi_info;
       }
+      if (util_format_is_yuv(templ->format)) {
+         VkFormatFeatureFlags feats = VK_FORMAT_FEATURE_FLAG_BITS_MAX_ENUM;
+         switch (ici.tiling) {
+         case VK_IMAGE_TILING_LINEAR:
+            feats = screen->format_props[templ->format].linearTilingFeatures;
+            break;
+         case VK_IMAGE_TILING_OPTIMAL:
+            feats = screen->format_props[templ->format].optimalTilingFeatures;
+            break;
+         case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
+            /*
+               If is tiling then VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT, the value of
+               imageCreateFormatFeatures is found by calling vkGetPhysicalDeviceFormatProperties2
+               with VkImageFormatProperties::format equal to VkImageCreateInfo::format and with
+               VkDrmFormatModifierPropertiesListEXT chained into VkImageFormatProperties2; by
+               collecting all members of the returned array
+               VkDrmFormatModifierPropertiesListEXT::pDrmFormatModifierProperties
+               whose drmFormatModifier belongs to imageCreateDrmFormatModifiers; and by taking the bitwise
+               intersection, over the collected array members, of drmFormatModifierTilingFeatures.
+               (The resultant imageCreateFormatFeatures may be empty).
+               * -Chapter 12. Resource Creation
+             */
+            for (unsigned i = 0; i < screen->modifier_props[templ->format].drmFormatModifierCount; i++)
+               feats &= screen->modifier_props[templ->format].pDrmFormatModifierProperties[i].drmFormatModifierTilingFeatures;
+            break;
+         default:
+            unreachable("unknown tiling");
+         }
+         if (feats & VK_FORMAT_FEATURE_DISJOINT_BIT)
+            ici.flags |= VK_IMAGE_CREATE_DISJOINT_BIT;
+         VkSamplerYcbcrConversionCreateInfo sycci = {0};
+         sycci.sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO;
+         sycci.pNext = NULL;
+         sycci.format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+         sycci.ycbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709;
+         sycci.ycbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_FULL;
+         sycci.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+         sycci.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+         sycci.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+         sycci.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+         if (!feats || (feats & VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT)) {
+            sycci.xChromaOffset = VK_CHROMA_LOCATION_COSITED_EVEN;
+            sycci.yChromaOffset = VK_CHROMA_LOCATION_COSITED_EVEN;
+         } else {
+            assert(feats & VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT);
+            sycci.xChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+            sycci.yChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+         }
+         sycci.chromaFilter = VK_FILTER_LINEAR;
+         sycci.forceExplicitReconstruction = VK_FALSE;
+         VkResult res = VKSCR(CreateSamplerYcbcrConversion)(screen->dev, &sycci, NULL, &obj->sampler_conversion);
+         if (res != VK_SUCCESS)
+            goto fail1;
+      }
 
       VkResult result = VKSCR(CreateImage)(screen->dev, &ici, NULL, &obj->image);
       if (result != VK_SUCCESS) {
@@ -614,9 +690,22 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          ded.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
          ded.pNext = NULL;
          req2.pNext = &ded;
-         VKSCR(GetImageMemoryRequirements2)(screen->dev, &info2, &req2);
-         memcpy(&reqs, &req2.memoryRequirements, sizeof(VkMemoryRequirements));
-         need_dedicated = ded.prefersDedicatedAllocation || ded.requiresDedicatedAllocation;
+         VkImagePlaneMemoryRequirementsInfo plane;
+         plane.sType = VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO;
+         plane.pNext = NULL;
+         if (num_planes > 1)
+            info2.pNext = &plane;
+         for (unsigned i = 0; i < num_planes; i++) {
+            assert(i < ARRAY_SIZE(plane_aspects));
+            plane.planeAspect = plane_aspects[i];
+            VKSCR(GetImageMemoryRequirements2)(screen->dev, &info2, &req2);
+            if (!i)
+               reqs.alignment = req2.memoryRequirements.alignment;
+            obj->plane_sizes[i] = req2.memoryRequirements.size;
+            reqs.size += req2.memoryRequirements.size;
+            reqs.memoryTypeBits |= req2.memoryRequirements.memoryTypeBits;
+            need_dedicated |= ded.prefersDedicatedAllocation || ded.requiresDedicatedAllocation;
+         }
       } else {
          VKSCR(GetImageMemoryRequirements)(screen->dev, obj->image, &reqs);
       }
@@ -675,7 +764,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    }
 
    VkExportMemoryAllocateInfo emai;
-   if (templ->bind & PIPE_BIND_SHARED && shared) {
+   if ((templ->bind & ZINK_BIND_VIDEO) || ((templ->bind & PIPE_BIND_SHARED) && shared)) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
       emai.handleTypes = export_types;
 
@@ -739,9 +828,28 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          if (VKSCR(BindBufferMemory)(screen->dev, obj->buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
             goto fail3;
    } else {
-      if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
-         if (VKSCR(BindImageMemory)(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+      if (num_planes > 1) {
+         VkBindImageMemoryInfo infos[3];
+         VkBindImagePlaneMemoryInfo planes[3];
+         unsigned offset = 0;
+         for (unsigned i = 0; i < num_planes; i++) {
+            infos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+            infos[i].pNext = &planes[i];
+            infos[i].image = obj->image;
+            infos[i].memory = zink_bo_get_mem(obj->bo);
+            infos[i].memoryOffset = offset;
+            planes[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO;
+            planes[i].pNext = NULL;
+            planes[i].planeAspect = plane_aspects[i];
+            offset += obj->plane_sizes[i];
+         }
+         if (VKSCR(BindImageMemory2)(screen->dev, num_planes, infos) != VK_SUCCESS)
             goto fail3;
+      } else {
+         if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
+            if (VKSCR(BindImageMemory)(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+               goto fail3;
+      }
    }
    return obj;
 
@@ -909,8 +1017,11 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
       default:
          unreachable("how many planes you got in this thing?");
       }
-   } else
+   } else if (res->obj->sampler_conversion) {
+      aspect = VK_IMAGE_ASPECT_PLANE_0_BIT;
+   } else {
       aspect = res->aspect;
+   }
    switch (param) {
    case PIPE_RESOURCE_PARAM_NPLANES:
       if (screen->info.have_EXT_image_drm_format_modifier)
