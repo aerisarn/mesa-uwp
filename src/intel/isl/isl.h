@@ -2875,6 +2875,10 @@ isl_get_tile_masks(enum isl_tiling tiling, uint32_t cpp,
    *mask_x = tile_w_bytes / cpp - 1;
    *mask_y = tile_h - 1;
 }
+
+const char *
+isl_aux_op_to_name(enum isl_aux_op op);
+
 #ifdef __cplusplus
 }
 #endif

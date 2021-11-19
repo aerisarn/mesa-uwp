@@ -3489,3 +3489,17 @@ isl_get_render_compression_format(enum isl_format format)
       return 0;
    }
 }
+
+const char *
+isl_aux_op_to_name(enum isl_aux_op op)
+{
+   static const char *names[] = {
+      [ISL_AUX_OP_NONE]            = "none",
+      [ISL_AUX_OP_FAST_CLEAR]      = "fast-clear",
+      [ISL_AUX_OP_FULL_RESOLVE]    = "full-resolve",
+      [ISL_AUX_OP_PARTIAL_RESOLVE] = "partial-resolve",
+      [ISL_AUX_OP_AMBIGUATE]       = "ambiguate",
+   };
+   assert(op < ARRAY_SIZE(names));
+   return names[op];
+}
