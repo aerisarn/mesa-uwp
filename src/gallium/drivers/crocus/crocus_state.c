@@ -4810,23 +4810,23 @@ crocus_populate_fs_key(const struct crocus_context *ice,
    key->stats_wm = ice->state.stats_wm;
 #endif
 
-   uint32_t line_aa = BRW_WM_AA_NEVER;
+   uint32_t line_aa = BRW_NEVER;
    if (rast->cso.line_smooth) {
       int reduced_prim = ice->state.reduced_prim_mode;
       if (reduced_prim == PIPE_PRIM_LINES)
-         line_aa = BRW_WM_AA_ALWAYS;
+         line_aa = BRW_ALWAYS;
       else if (reduced_prim == PIPE_PRIM_TRIANGLES) {
          if (rast->cso.fill_front == PIPE_POLYGON_MODE_LINE) {
-            line_aa = BRW_WM_AA_SOMETIMES;
+            line_aa = BRW_SOMETIMES;
 
             if (rast->cso.fill_back == PIPE_POLYGON_MODE_LINE ||
                 rast->cso.cull_face == PIPE_FACE_BACK)
-               line_aa = BRW_WM_AA_ALWAYS;
+               line_aa = BRW_ALWAYS;
          } else if (rast->cso.fill_back == PIPE_POLYGON_MODE_LINE) {
-            line_aa = BRW_WM_AA_SOMETIMES;
+            line_aa = BRW_SOMETIMES;
 
             if (rast->cso.cull_face == PIPE_FACE_FRONT)
-               line_aa = BRW_WM_AA_ALWAYS;
+               line_aa = BRW_ALWAYS;
          }
       }
    }

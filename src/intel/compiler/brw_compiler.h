@@ -458,10 +458,10 @@ enum brw_wm_iz_bits {
    BRW_WM_IZ_BIT_MAX                   = 0x40
 };
 
-enum brw_wm_aa_enable {
-   BRW_WM_AA_NEVER,
-   BRW_WM_AA_SOMETIMES,
-   BRW_WM_AA_ALWAYS
+enum brw_sometimes {
+   BRW_NEVER = 0,
+   BRW_SOMETIMES,
+   BRW_ALWAYS
 };
 
 /** The program key for Fragment/Pixel Shaders. */
@@ -494,7 +494,7 @@ struct brw_wm_prog_key {
    bool persample_interp:1;
 
    bool multisample_fbo:1;
-   enum brw_wm_aa_enable line_aa:2;
+   enum brw_sometimes line_aa:2;
    bool force_dual_color_blend:1;
    bool coherent_fb_fetch:1;
    bool ignore_sample_mask_out:1;
