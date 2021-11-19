@@ -1342,6 +1342,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    shader->ctx_reg.ngg.vgt_stages.u.ngg = 1;
    shader->ctx_reg.ngg.vgt_stages.u.streamout = gs_sel->so.num_outputs;
    shader->ctx_reg.ngg.vgt_stages.u.ngg_passthrough = gfx10_is_ngg_passthrough(shader);
+   shader->ctx_reg.ngg.vgt_stages.u.gs_wave32 = shader->wave_size == 32;
 }
 
 static void si_emit_shader_vs(struct si_context *sctx)
@@ -4057,10 +4058,12 @@ struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union 
    if (screen->info.chip_class >= GFX9)
       stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
 
-   if (screen->info.chip_class >= GFX10 && screen->ge_wave_size == 32) {
-      stages |= S_028B54_HS_W32_EN(1) |
-                S_028B54_GS_W32_EN(key.u.ngg) | /* legacy GS only supports Wave64 */
-                S_028B54_VS_W32_EN(1);
+   if (screen->info.chip_class >= GFX10) {
+      stages |= S_028B54_HS_W32_EN(key.u.hs_wave32) |
+                S_028B54_GS_W32_EN(key.u.gs_wave32) |
+                S_028B54_VS_W32_EN(key.u.vs_wave32);
+      /* Legacy GS only supports Wave64. Read it as an implication. */
+      assert(!(key.u.gs && !key.u.ngg) || !key.u.gs_wave32);
    }
 
    si_pm4_set_reg(pm4, R_028B54_VGT_SHADER_STAGES_EN, stages);

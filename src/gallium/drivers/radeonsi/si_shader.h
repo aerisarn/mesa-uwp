@@ -764,7 +764,7 @@ struct gfx9_gs_info {
    unsigned esgs_ring_size; /* in bytes */
 };
 
-#define SI_NUM_VGT_STAGES_KEY_BITS 5
+#define SI_NUM_VGT_STAGES_KEY_BITS 8
 #define SI_NUM_VGT_STAGES_STATES   (1 << SI_NUM_VGT_STAGES_KEY_BITS)
 
 /* The VGT_SHADER_STAGES key used to index the table of precomputed values.
@@ -778,9 +778,13 @@ union si_vgt_stages_key {
       uint8_t ngg_passthrough : 1;
       uint8_t ngg : 1;       /* gfx10+ */
       uint8_t streamout : 1; /* only used with NGG */
-      uint8_t _pad : 8 - SI_NUM_VGT_STAGES_KEY_BITS;
+      uint8_t hs_wave32 : 1;
+      uint8_t gs_wave32 : 1;
+      uint8_t vs_wave32 : 1;
 #else /* UTIL_ARCH_BIG_ENDIAN */
-      uint8_t _pad : 8 - SI_NUM_VGT_STAGES_KEY_BITS;
+      uint8_t vs_wave32 : 1;
+      uint8_t gs_wave32 : 1;
+      uint8_t hs_wave32 : 1;
       uint8_t streamout : 1;
       uint8_t ngg : 1;
       uint8_t ngg_passthrough : 1;
