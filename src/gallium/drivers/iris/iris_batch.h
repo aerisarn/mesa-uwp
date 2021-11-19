@@ -179,7 +179,7 @@ struct iris_batch {
 
 void iris_init_batches(struct iris_context *ice, int priority);
 void iris_chain_to_new_batch(struct iris_batch *batch);
-void iris_batch_free(struct iris_batch *batch);
+void iris_destroy_batches(struct iris_context *ice);
 void iris_batch_maybe_flush(struct iris_batch *batch, unsigned estimate);
 
 void _iris_batch_flush(struct iris_batch *batch, const char *file, int line);

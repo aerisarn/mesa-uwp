@@ -460,7 +460,7 @@ iris_batch_reset(struct iris_batch *batch)
    iris_batch_maybe_noop(batch);
 }
 
-void
+static void
 iris_batch_free(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
@@ -497,6 +497,13 @@ iris_batch_free(struct iris_batch *batch)
 
    if (INTEL_DEBUG(DEBUG_ANY))
       intel_batch_decode_ctx_finish(&batch->decoder);
+}
+
+void
+iris_destroy_batches(struct iris_context *ice)
+{
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
+      iris_batch_free(&ice->batches[i]);
 }
 
 /**
