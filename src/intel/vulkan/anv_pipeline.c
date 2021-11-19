@@ -556,8 +556,10 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
        * harmless to compute it and then let dead-code take care of it.
        */
       if (ms->rasterization_samples > 1) {
-         key->persample_interp = ms->sample_shading_enable &&
-            (ms->min_sample_shading * ms->rasterization_samples) > 1;
+         key->persample_interp =
+            (ms->sample_shading_enable &&
+             (ms->min_sample_shading * ms->rasterization_samples) > 1) ?
+            BRW_ALWAYS : BRW_NEVER;
          key->multisample_fbo = true;
       }
 

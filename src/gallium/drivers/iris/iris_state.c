@@ -6523,7 +6523,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          wm.StatisticsEnable = ice->state.statistics_counters_enabled;
 
          wm.BarycentricInterpolationMode =
-            wm_prog_data->barycentric_interp_modes;
+            wm_prog_data_barycentric_modes(wm_prog_data, 0);
 
          if (wm_prog_data->early_fragment_tests)
             wm.EarlyDepthStencilControl = EDSC_PREPS;

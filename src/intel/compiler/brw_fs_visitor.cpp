@@ -289,6 +289,7 @@ fs_visitor::emit_interpolation_setup_gfx6()
    this->pixel_x = vgrf(glsl_type::float_type);
    this->pixel_y = vgrf(glsl_type::float_type);
 
+   const struct brw_wm_prog_key *wm_key = (brw_wm_prog_key*) this->key;
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(prog_data);
 
    fs_reg int_sample_offset_x, int_sample_offset_y; /* Used on Gen12HP+ */
@@ -394,48 +395,58 @@ fs_visitor::emit_interpolation_setup_gfx6()
    fs_reg half_int_pixel_offset_x, half_int_pixel_offset_y;
    switch (wm_prog_data->coarse_pixel_dispatch) {
    case BRW_NEVER:
-#define COPY_OFFSET_REG(prefix, suffix) \
-  prefix##_pixel_##suffix = prefix##_sample_##suffix;
-
-      COPY_OFFSET_REG(int, offset_x)
-      COPY_OFFSET_REG(int, offset_y)
-      COPY_OFFSET_REG(int, offset_xy)
-      COPY_OFFSET_REG(half_int, offset_x)
-      COPY_OFFSET_REG(half_int, offset_y)
-
-#undef COPY_OFFSET_REG
+      int_pixel_offset_x = int_sample_offset_x;
+      int_pixel_offset_y = int_sample_offset_y;
+      int_pixel_offset_xy = int_sample_offset_xy;
+      half_int_pixel_offset_x = half_int_sample_offset_x;
+      half_int_pixel_offset_y = half_int_sample_offset_y;
       break;
 
-   case BRW_SOMETIMES:
-      check_dynamic_msaa_flag(bld, wm_prog_data,
+   case BRW_SOMETIMES: {
+      const fs_builder dbld =
+         abld.exec_all().group(MIN2(16, dispatch_width) * 2, 0);
+
+      check_dynamic_msaa_flag(dbld, wm_prog_data,
                               BRW_WM_MSAA_FLAG_COARSE_DISPATCH);
 
-#define COPY_OFFSET_REG(prefix, suffix) \
-   prefix##_pixel_##suffix = bld.vgrf(BRW_REGISTER_TYPE_UW); \
-   bld.SEL(prefix##_pixel_##suffix, \
-           prefix##_coarse_##suffix, \
-           prefix##_pixel_##suffix); \
+      int_pixel_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+      set_predicate(BRW_PREDICATE_NORMAL,
+                    dbld.SEL(int_pixel_offset_x,
+                             int_coarse_offset_x,
+                             int_sample_offset_x));
 
-      COPY_OFFSET_REG(int, offset_x)
-      COPY_OFFSET_REG(int, offset_y)
-      COPY_OFFSET_REG(int, offset_xy)
-      COPY_OFFSET_REG(half_int, offset_x)
-      COPY_OFFSET_REG(half_int, offset_y)
+      int_pixel_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+      set_predicate(BRW_PREDICATE_NORMAL,
+                    dbld.SEL(int_pixel_offset_y,
+                             int_coarse_offset_y,
+                             int_sample_offset_y));
 
-#undef COPY_OFFSET_REG
+      int_pixel_offset_xy = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+      set_predicate(BRW_PREDICATE_NORMAL,
+                    dbld.SEL(int_pixel_offset_xy,
+                             int_coarse_offset_xy,
+                             int_sample_offset_xy));
+
+      half_int_pixel_offset_x = bld.vgrf(BRW_REGISTER_TYPE_UW);
+      set_predicate(BRW_PREDICATE_NORMAL,
+                    bld.SEL(half_int_pixel_offset_x,
+                            half_int_coarse_offset_x,
+                            half_int_sample_offset_x));
+
+      half_int_pixel_offset_y = bld.vgrf(BRW_REGISTER_TYPE_UW);
+      set_predicate(BRW_PREDICATE_NORMAL,
+                    bld.SEL(half_int_pixel_offset_y,
+                            half_int_coarse_offset_y,
+                            half_int_sample_offset_y));
       break;
+   }
 
    case BRW_ALWAYS:
-#define COPY_OFFSET_REG(prefix, suffix) \
-  prefix##_pixel_##suffix = prefix##_coarse_##suffix;
-
-      COPY_OFFSET_REG(int, offset_x)
-      COPY_OFFSET_REG(int, offset_y)
-      COPY_OFFSET_REG(int, offset_xy)
-      COPY_OFFSET_REG(half_int, offset_x)
-      COPY_OFFSET_REG(half_int, offset_y)
-
-#undef COPY_OFFSET_REG
+      int_pixel_offset_x = int_coarse_offset_x;
+      int_pixel_offset_y = int_coarse_offset_y;
+      int_pixel_offset_xy = int_coarse_offset_xy;
+      half_int_pixel_offset_x = half_int_coarse_offset_x;
+      half_int_pixel_offset_y = half_int_coarse_offset_y;
       break;
    }
 
@@ -603,6 +614,55 @@ fs_visitor::emit_interpolation_setup_gfx6()
       this->pixel_w = fetch_payload_reg(abld, fs_payload().source_w_reg);
       this->wpos_w = vgrf(glsl_type::float_type);
       abld.emit(SHADER_OPCODE_RCP, this->wpos_w, this->pixel_w);
+   }
+
+   if (wm_key->persample_interp == BRW_SOMETIMES) {
+      assert(!devinfo->needs_unlit_centroid_workaround);
+
+      const fs_builder ubld = bld.exec_all().group(16, 0);
+      bool loaded_flag = false;
+
+      for (int i = 0; i < BRW_BARYCENTRIC_MODE_COUNT; ++i) {
+         if (!(wm_prog_data->barycentric_interp_modes & BITFIELD_BIT(i)))
+            continue;
+
+         /* The sample mode will always be the top bit set in the perspective
+          * or non-perspective section.  In the case where no SAMPLE mode was
+          * requested, wm_prog_data_barycentric_modes() will swap out the top
+          * mode for SAMPLE so this works regardless of whether SAMPLE was
+          * requested or not.
+          */
+         int sample_mode;
+         if (BITFIELD_BIT(i) & BRW_BARYCENTRIC_NONPERSPECTIVE_BITS) {
+            sample_mode = util_last_bit(wm_prog_data->barycentric_interp_modes &
+                                        BRW_BARYCENTRIC_NONPERSPECTIVE_BITS) - 1;
+         } else {
+            sample_mode = util_last_bit(wm_prog_data->barycentric_interp_modes &
+                                        BRW_BARYCENTRIC_PERSPECTIVE_BITS) - 1;
+         }
+         assert(wm_prog_data->barycentric_interp_modes &
+                BITFIELD_BIT(sample_mode));
+
+         if (i == sample_mode)
+            continue;
+
+         uint8_t *barys = fs_payload().barycentric_coord_reg[i];
+
+         uint8_t *sample_barys = fs_payload().barycentric_coord_reg[sample_mode];
+         assert(barys[0] && sample_barys[0]);
+
+         if (!loaded_flag) {
+            check_dynamic_msaa_flag(ubld, wm_prog_data,
+                                    BRW_WM_MSAA_FLAG_PERSAMPLE_INTERP);
+         }
+
+         for (unsigned j = 0; j < dispatch_width / 8; j++) {
+            fs_inst *mov =
+               ubld.MOV(brw_vec8_grf(barys[j / 2] + (j % 2) * 2, 0),
+                        brw_vec8_grf(sample_barys[j / 2] + (j % 2) * 2, 0));
+            mov->predicate = BRW_PREDICATE_NORMAL;
+         }
+      }
    }
 
    for (int i = 0; i < BRW_BARYCENTRIC_MODE_COUNT; ++i) {

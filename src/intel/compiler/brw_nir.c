@@ -555,7 +555,7 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
 
    if (!key->multisample_fbo) {
       nir_lower_single_sampled(nir);
-   } else if (key->persample_interp) {
+   } else if (key->persample_interp == BRW_ALWAYS) {
       nir_shader_instructions_pass(nir, lower_barycentric_per_sample,
                                    nir_metadata_block_index |
                                    nir_metadata_dominance,

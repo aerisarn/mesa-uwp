@@ -1580,7 +1580,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
 #endif
 
       wm.BarycentricInterpolationMode =
-         wm_prog_data->barycentric_interp_modes;
+         wm_prog_data_barycentric_modes(wm_prog_data, 0);
 
 #if GFX_VER < 8
       wm.PixelShaderComputedDepthMode  = wm_prog_data->computed_depth_mode;

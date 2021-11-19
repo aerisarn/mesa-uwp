@@ -7284,9 +7284,10 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
       shader->info.fs.uses_sample_shading ||
       shader->info.outputs_read;
 
-   prog_data->persample_dispatch = BRW_NEVER;
-   if (key->multisample_fbo &&
-       (key->persample_interp || prog_data->sample_shading))
+   assert(key->multisample_fbo || key->persample_interp == BRW_NEVER);
+
+   prog_data->persample_dispatch = key->persample_interp;
+   if (key->multisample_fbo && prog_data->sample_shading)
       prog_data->persample_dispatch = BRW_ALWAYS;
 
    if (devinfo->ver >= 6) {

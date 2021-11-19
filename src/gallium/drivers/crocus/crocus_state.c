@@ -4843,8 +4843,9 @@ crocus_populate_fs_key(const struct crocus_context *ice,
    key->flat_shade = rast->cso.flatshade &&
       (info->inputs_read & (VARYING_BIT_COL0 | VARYING_BIT_COL1));
 
-   key->persample_interp = rast->cso.force_persample_interp;
    key->multisample_fbo = rast->cso.multisample && fb->samples > 1;
+   key->persample_interp =
+      rast->cso.force_persample_interp ? BRW_ALWAYS : BRW_NEVER;
 
    key->ignore_sample_mask_out = !key->multisample_fbo;
    key->coherent_fb_fetch = false; // TODO: needed?

@@ -498,7 +498,7 @@ struct brw_wm_prog_key {
     * us to run per-sample.  Even when running per-sample due to gl_SampleID,
     * we may still interpolate unqualified inputs at the pixel center.
     */
-   bool persample_interp:1;
+   enum brw_sometimes persample_interp:2;
 
    bool multisample_fbo:1;
    enum brw_sometimes line_aa:2;
@@ -507,7 +507,7 @@ struct brw_wm_prog_key {
    bool ignore_sample_mask_out:1;
    bool coarse_pixel:1;
 
-   uint64_t padding:58;
+   uint64_t padding:57;
 };
 
 struct brw_cs_prog_key {
@@ -828,6 +828,10 @@ enum brw_barycentric_mode {
    BRW_BARYCENTRIC_NONPERSPECTIVE_SAMPLE   = 5,
    BRW_BARYCENTRIC_MODE_COUNT              = 6
 };
+#define BRW_BARYCENTRIC_PERSPECTIVE_BITS \
+   ((1 << BRW_BARYCENTRIC_PERSPECTIVE_PIXEL) | \
+    (1 << BRW_BARYCENTRIC_PERSPECTIVE_CENTROID) | \
+    (1 << BRW_BARYCENTRIC_PERSPECTIVE_SAMPLE))
 #define BRW_BARYCENTRIC_NONPERSPECTIVE_BITS \
    ((1 << BRW_BARYCENTRIC_NONPERSPECTIVE_PIXEL) | \
     (1 << BRW_BARYCENTRIC_NONPERSPECTIVE_CENTROID) | \
@@ -853,6 +857,9 @@ enum brw_wm_msaa_flags {
 
    /** True if this shader has been dispatched per-sample */
    BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH = (1 << 2),
+
+   /** True if inputs should be interpolated per-sample by default */
+   BRW_WM_MSAA_FLAG_PERSAMPLE_INTERP = (1 << 3),
 
    /** True if this shader has been dispatched coarse
     *
@@ -1088,6 +1095,56 @@ brw_wm_prog_data_is_persample(const struct brw_wm_prog_data *prog_data,
           prog_data->persample_dispatch == BRW_NEVER);
 
    return prog_data->persample_dispatch;
+}
+
+static inline uint32_t
+wm_prog_data_barycentric_modes(const struct brw_wm_prog_data *prog_data,
+                               enum brw_wm_msaa_flags pushed_msaa_flags)
+{
+   uint32_t modes = prog_data->barycentric_interp_modes;
+
+   if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_PERSAMPLE_INTERP) {
+      assert(pushed_msaa_flags & BRW_WM_MSAA_FLAG_ENABLE_DYNAMIC);
+
+      assert(prog_data->persample_dispatch == BRW_ALWAYS ||
+             (pushed_msaa_flags & BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH));
+
+      /* Making dynamic per-sample interpolation work is a bit tricky.  The
+       * hardware will hang if SAMPLE is requested but per-sample dispatch is
+       * not enabled.  This means we can't preemptively add SAMPLE to the
+       * barycentrics bitfield.  Instead, we have to add it late and only
+       * on-demand.  Annoyingly, changing the number of barycentrics requested
+       * changes the whole PS shader payload so we very much don't want to do
+       * that.  Instead, if the dynamic per-sample interpolation flag is set,
+       * we check to see if SAMPLE was requested and, if not, replace the
+       * highest barycentric bit in the [non]perspective grouping (CENTROID,
+       * if it exists, else PIXEL) with SAMPLE.  The shader will stomp all the
+       * barycentrics in the shader with SAMPLE so it really doesn't matter
+       * which one we replace.  The important thing is that we keep the number
+       * of barycentrics in each [non]perspective grouping the same.
+       */
+      if ((modes & BRW_BARYCENTRIC_PERSPECTIVE_BITS) &&
+          !(modes & BITFIELD_BIT(BRW_BARYCENTRIC_PERSPECTIVE_SAMPLE))) {
+         int sample_mode =
+            util_last_bit(modes & BRW_BARYCENTRIC_PERSPECTIVE_BITS) - 1;
+         assert(modes & BITFIELD_BIT(sample_mode));
+
+         modes &= ~BITFIELD_BIT(sample_mode);
+         modes |= BITFIELD_BIT(BRW_BARYCENTRIC_PERSPECTIVE_SAMPLE);
+      }
+
+      if ((modes & BRW_BARYCENTRIC_NONPERSPECTIVE_BITS) &&
+          !(modes & BITFIELD_BIT(BRW_BARYCENTRIC_NONPERSPECTIVE_SAMPLE))) {
+         int sample_mode =
+            util_last_bit(modes & BRW_BARYCENTRIC_NONPERSPECTIVE_BITS) - 1;
+         assert(modes & BITFIELD_BIT(sample_mode));
+
+         modes &= ~BITFIELD_BIT(sample_mode);
+         modes |= BITFIELD_BIT(BRW_BARYCENTRIC_NONPERSPECTIVE_SAMPLE);
+      }
+   }
+
+   return modes;
 }
 
 static inline bool
