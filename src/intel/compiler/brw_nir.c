@@ -455,6 +455,28 @@ brw_nir_lower_tes_inputs(nir_shader *nir, const struct brw_vue_map *vue_map)
    }
 }
 
+static bool
+lower_barycentric_per_sample(nir_builder *b,
+                             nir_instr *instr,
+                             UNUSED void *cb_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_load_barycentric_pixel &&
+       intrin->intrinsic != nir_intrinsic_load_barycentric_centroid)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+   nir_ssa_def *centroid =
+      nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
+                           nir_intrinsic_interp_mode(intrin));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, centroid);
+   nir_instr_remove(instr);
+   return true;
+}
+
 /**
  * Convert interpolateAtOffset() offsets from [-0.5, +0.5] floating point
  * offsets to integer [-8, +7] offsets (in units of 1/16th of a pixel).
@@ -526,16 +548,19 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
       }
    }
 
-   nir_lower_io_options lower_io_options = nir_lower_io_lower_64bit_to_32;
-   if (key->persample_interp)
-      lower_io_options |= nir_lower_io_force_sample_interpolation;
-
-   nir_lower_io(nir, nir_var_shader_in, type_size_vec4, lower_io_options);
+   nir_lower_io(nir, nir_var_shader_in, type_size_vec4,
+                nir_lower_io_lower_64bit_to_32);
    if (devinfo->ver >= 11)
       nir_lower_interpolation(nir, ~0);
 
-   if (!key->multisample_fbo)
+   if (!key->multisample_fbo) {
       nir_lower_single_sampled(nir);
+   } else if (key->persample_interp) {
+      nir_shader_instructions_pass(nir, lower_barycentric_per_sample,
+                                   nir_metadata_block_index |
+                                   nir_metadata_dominance,
+                                   NULL);
+   }
 
    nir_shader_instructions_pass(nir, lower_barycentric_at_offset,
                                 nir_metadata_block_index |
