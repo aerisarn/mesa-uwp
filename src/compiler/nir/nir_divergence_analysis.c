@@ -1022,3 +1022,19 @@ bool nir_update_instr_divergence(nir_shader *shader, nir_instr *instr)
    return true;
 }
 
+
+bool
+nir_has_divergent_loop(nir_shader *shader)
+{
+   bool divergent_loop = false;
+   nir_function_impl *func = nir_shader_get_entrypoint(shader);
+
+   foreach_list_typed(nir_cf_node, node, node, &func->body) {
+      if (node->type == nir_cf_node_loop && nir_cf_node_as_loop(node)->divergent) {
+         divergent_loop = true;
+         break;
+      }
+   }
+
+   return divergent_loop;
+}
