@@ -1090,7 +1090,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_context ctx;
 
-   si_llvm_context_init(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
+   si_llvm_context_init(&ctx, sscreen, compiler, shader->wave_size);
 
    LLVMValueRef ngg_cull_main_fn = NULL;
    if (sel->info.stage <= MESA_SHADER_TESS_EVAL && shader->key.ge.opt.ngg_culling) {

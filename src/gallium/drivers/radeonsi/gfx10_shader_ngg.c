@@ -2276,14 +2276,13 @@ retry_select_mode:
 
    /* Round up towards full wave sizes for better ALU utilization. */
    if (!max_vert_out_per_gs_instance) {
-      const unsigned wavesize = si_get_shader_wave_size(shader);
       unsigned orig_max_esverts;
       unsigned orig_max_gsprims;
       do {
          orig_max_esverts = max_esverts;
          orig_max_gsprims = max_gsprims;
 
-         max_esverts = align(max_esverts, wavesize);
+         max_esverts = align(max_esverts, shader->wave_size);
          max_esverts = MIN2(max_esverts, max_esverts_base);
          if (esvert_lds_size)
             max_esverts =
@@ -2293,7 +2292,7 @@ retry_select_mode:
          /* Hardware restriction: minimum value of max_esverts */
          max_esverts = MAX2(max_esverts, min_esverts);
 
-         max_gsprims = align(max_gsprims, wavesize);
+         max_gsprims = align(max_gsprims, shader->wave_size);
          max_gsprims = MIN2(max_gsprims, max_gsprims_base);
          if (gsprim_lds_size) {
             /* Don't count unusable vertices to the LDS size. Those are vertices above

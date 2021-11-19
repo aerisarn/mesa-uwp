@@ -1014,7 +1014,7 @@ si_sqtt_add_code_object(struct si_context* sctx,
       record->shader_data[gl_shader_stage].hw_stage = hw_stage;
       record->shader_data[gl_shader_stage].is_combined = false;
       record->shader_data[gl_shader_stage].scratch_memory_size = shader->config.scratch_bytes_per_wave;
-      record->shader_data[gl_shader_stage].wavefront_size = si_get_shader_wave_size(shader);
+      record->shader_data[gl_shader_stage].wavefront_size = shader->wave_size;
 
       record->shader_stages_mask |= 1 << gl_shader_stage;
       record->num_shaders_combined++;

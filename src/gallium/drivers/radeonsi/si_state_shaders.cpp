@@ -586,7 +586,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 
    si_pm4_set_reg(
       pm4, R_00B428_SPI_SHADER_PGM_RSRC1_HS,
-      S_00B428_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ge_wave_size == 32 ? 8 : 4)) |
+      S_00B428_VGPRS((shader->config.num_vgprs - 1) / (shader->wave_size == 32 ? 8 : 4)) |
          (sscreen->info.chip_class <= GFX9 ? S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8)
                                            : 0) |
          S_00B428_DX10_CLAMP(1) | S_00B428_MEM_ORDERED(si_shader_mem_ordered(shader)) |
@@ -1207,7 +1207,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    else
       gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 
-   unsigned wave_size = si_get_shader_wave_size(shader);
    unsigned late_alloc_wave64, cu_mask;
 
    ac_compute_late_alloc(&sscreen->info, true, shader->key.ge.opt.ngg_culling,
@@ -1217,7 +1216,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
    si_pm4_set_reg(
       pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
-      S_00B228_VGPRS((shader->config.num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
+      S_00B228_VGPRS((shader->config.num_vgprs - 1) / (shader->wave_size == 32 ? 8 : 4)) |
          S_00B228_FLOAT_MODE(shader->config.float_mode) | S_00B228_DX10_CLAMP(1) |
          S_00B228_MEM_ORDERED(si_shader_mem_ordered(shader)) |
          /* Disable the WGP mode on gfx10.3 because it can hang. (it happened on VanGogh)
@@ -1511,7 +1510,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
                   S_00B124_MEM_BASE(sscreen->info.address32_hi >> 8));
 
    uint32_t rsrc1 =
-      S_00B128_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ge_wave_size == 32 ? 8 : 4)) |
+      S_00B128_VGPRS((shader->config.num_vgprs - 1) / (shader->wave_size == 32 ? 8 : 4)) |
       S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt) | S_00B128_DX10_CLAMP(1) |
       S_00B128_MEM_ORDERED(si_shader_mem_ordered(shader)) |
       S_00B128_FLOAT_MODE(shader->config.float_mode);
@@ -1715,7 +1714,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 
    /* Set interpolation controls. */
    spi_ps_in_control = S_0286D8_NUM_INTERP(num_interp) |
-                       S_0286D8_PS_W32_EN(sscreen->ps_wave_size == 32);
+                       S_0286D8_PS_W32_EN(shader->wave_size == 32);
 
    shader->ctx_reg.ps.num_interp = num_interp;
    shader->ctx_reg.ps.spi_baryc_cntl = spi_baryc_cntl;
@@ -1731,7 +1730,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
                   S_00B024_MEM_BASE(sscreen->info.address32_hi >> 8));
 
    uint32_t rsrc1 =
-      S_00B028_VGPRS((shader->config.num_vgprs - 1) / (sscreen->ps_wave_size == 32 ? 8 : 4)) |
+      S_00B028_VGPRS((shader->config.num_vgprs - 1) / (shader->wave_size == 32 ? 8 : 4)) |
       S_00B028_DX10_CLAMP(1) | S_00B028_MEM_ORDERED(si_shader_mem_ordered(shader)) |
       S_00B028_FLOAT_MODE(shader->config.float_mode);
 
