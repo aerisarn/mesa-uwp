@@ -1273,12 +1273,13 @@ fs_visitor::emit_sampleid_setup()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    ASSERTED brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
+   struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(this->prog_data);
    assert(devinfo->ver >= 6);
 
    const fs_builder abld = bld.annotate("compute sample id");
    fs_reg sample_id = abld.vgrf(BRW_REGISTER_TYPE_UD);
 
-   assert(key->multisample_fbo);
+   assert(key->multisample_fbo != BRW_NEVER);
 
    if (devinfo->ver >= 8) {
       /* Sample ID comes in as 4-bit numbers in g1.0:
@@ -1366,6 +1367,13 @@ fs_visitor::emit_sampleid_setup()
        * width=4, hstride=0 of t2 during an ADD instruction.
        */
       abld.emit(FS_OPCODE_SET_SAMPLE_ID, sample_id, t1, t2);
+   }
+
+   if (key->multisample_fbo == BRW_SOMETIMES) {
+      check_dynamic_msaa_flag(abld, wm_prog_data,
+                              BRW_WM_MSAA_FLAG_MULTISAMPLE_FBO);
+      set_predicate(BRW_PREDICATE_NORMAL,
+                    abld.SEL(sample_id, sample_id, brw_imm_ud(0)));
    }
 
    return sample_id;
@@ -7284,11 +7292,16 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
       shader->info.fs.uses_sample_shading ||
       shader->info.outputs_read;
 
-   assert(key->multisample_fbo || key->persample_interp == BRW_NEVER);
+   assert(key->multisample_fbo != BRW_NEVER ||
+          key->persample_interp == BRW_NEVER);
 
    prog_data->persample_dispatch = key->persample_interp;
-   if (key->multisample_fbo && prog_data->sample_shading)
+   if (prog_data->sample_shading)
       prog_data->persample_dispatch = BRW_ALWAYS;
+
+   /* We can only persample dispatch if we have a multisample FBO */
+   prog_data->persample_dispatch = MIN2(prog_data->persample_dispatch,
+                                        key->multisample_fbo);
 
    if (devinfo->ver >= 6) {
       prog_data->uses_sample_mask =

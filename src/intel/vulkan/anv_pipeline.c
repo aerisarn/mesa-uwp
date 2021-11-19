@@ -560,7 +560,7 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
             (ms->sample_shading_enable &&
              (ms->min_sample_shading * ms->rasterization_samples) > 1) ?
             BRW_ALWAYS : BRW_NEVER;
-         key->multisample_fbo = true;
+         key->multisample_fbo = BRW_ALWAYS;
       }
 
       if (device->physical->instance->sample_mask_out_opengl_behaviour)

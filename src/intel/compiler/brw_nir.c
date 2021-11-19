@@ -553,7 +553,7 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
    if (devinfo->ver >= 11)
       nir_lower_interpolation(nir, ~0);
 
-   if (!key->multisample_fbo) {
+   if (key->multisample_fbo == BRW_NEVER) {
       nir_lower_single_sampled(nir);
    } else if (key->persample_interp == BRW_ALWAYS) {
       nir_shader_instructions_pass(nir, lower_barycentric_per_sample,
