@@ -482,7 +482,17 @@ struct brw_wm_prog_key {
    bool alpha_test_replicate_alpha:1;
    bool alpha_to_coverage:1;
    bool clamp_fragment_color:1;
+
+   /** Whether or inputs are interpolated at sample rate by default
+    *
+    * This corresponds to the sample shading API bit in Vulkan or OpenGL which
+    * controls how inputs with no interpolation qualifier are interpolated.
+    * This is distinct from the way that using gl_SampleID or similar requires
+    * us to run per-sample.  Even when running per-sample due to gl_SampleID,
+    * we may still interpolate unqualified inputs at the pixel center.
+    */
    bool persample_interp:1;
+
    bool multisample_fbo:1;
    enum brw_wm_aa_enable line_aa:2;
    bool force_dual_color_blend:1;
