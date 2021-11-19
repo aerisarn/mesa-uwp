@@ -286,14 +286,13 @@ static VkResult
 vn_device_memory_alloc(struct vn_device *dev,
                        struct vn_device_memory *mem,
                        const VkMemoryAllocateInfo *alloc_info,
-                       bool need_bo,
                        VkExternalMemoryHandleTypeFlags external_handles)
 {
    VkDevice dev_handle = vn_device_to_handle(dev);
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    VkResult result = vn_call_vkAllocateMemory(dev->instance, dev_handle,
                                               alloc_info, NULL, &mem_handle);
-   if (result != VK_SUCCESS || !need_bo)
+   if (result != VK_SUCCESS || !external_handles)
       return result;
 
    result = vn_renderer_bo_create_from_device_memory(
@@ -379,14 +378,13 @@ vn_AllocateMemory(VkDevice device,
       result = vn_device_memory_import_dma_buf(dev, mem, pAllocateInfo, false,
                                                import_fd_info->fd);
    } else if (export_info) {
-      result = vn_device_memory_alloc(dev, mem, pAllocateInfo, true,
+      result = vn_device_memory_alloc(dev, mem, pAllocateInfo,
                                       export_info->handleTypes);
    } else if (vn_device_memory_should_suballocate(pAllocateInfo, mem_flags)) {
       result = vn_device_memory_pool_suballocate(
          dev, mem, pAllocateInfo->memoryTypeIndex);
    } else {
-      const bool need_bo = mem_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-      result = vn_device_memory_alloc(dev, mem, pAllocateInfo, need_bo, 0);
+      result = vn_device_memory_alloc(dev, mem, pAllocateInfo, 0);
    }
    if (result != VK_SUCCESS) {
       vn_object_base_fini(&mem->base);
@@ -454,10 +452,40 @@ vn_MapMemory(VkDevice device,
 {
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_device_memory *mem = vn_device_memory_from_handle(memory);
+   const bool need_bo = !mem->base_bo;
+   void *ptr = NULL;
+   VkResult result;
 
-   void *ptr = vn_renderer_bo_map(dev->renderer, mem->base_bo);
-   if (!ptr)
+   assert(mem->flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+   /* We don't want to blindly create a bo for each HOST_VISIBLE memory as
+    * that has a cost. By deferring bo creation until now, we can avoid the
+    * cost unless a bo is really needed. However, that means
+    * vn_renderer_bo_map will block until the renderer creates the resource
+    * and injects the pages into the guest.
+    */
+   if (need_bo) {
+      result = vn_renderer_bo_create_from_device_memory(
+         dev->renderer, mem->size, mem->base.id, mem->flags, 0,
+         &mem->base_bo);
+      if (result != VK_SUCCESS)
+         return vn_error(dev->instance, result);
+   }
+
+   ptr = vn_renderer_bo_map(dev->renderer, mem->base_bo);
+   if (!ptr) {
+      /* vn_renderer_bo_map implies a roundtrip on success, but not here. */
+      if (need_bo) {
+         result = vn_instance_submit_roundtrip(dev->instance,
+                                               &mem->bo_roundtrip_seqno);
+         if (result != VK_SUCCESS)
+            return vn_error(dev->instance, result);
+
+         mem->bo_roundtrip_seqno_valid = true;
+      }
+
       return vn_error(dev->instance, VK_ERROR_MEMORY_MAP_FAILED);
+   }
 
    mem->map_end = size == VK_WHOLE_SIZE ? mem->size : offset + size;
 
