@@ -1508,6 +1508,38 @@ v3dX(cmd_buffer_emit_depth_bias)(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 void
+v3dX(cmd_buffer_emit_depth_bounds)(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   /* No depthBounds support for v42, so this method is empty in that case.
+    *
+    * Note that this method is being called as v3dv_job_init flags all state
+    * as dirty. See FIXME note in v3dv_job_init.
+    */
+
+#if V3D_VERSION >= 71
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   assert(pipeline);
+
+   if (!pipeline->depth_bounds_test_enabled)
+      return;
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(DEPTH_BOUNDS_TEST_LIMITS));
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
+   struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   cl_emit(&job->bcl, DEPTH_BOUNDS_TEST_LIMITS, bounds) {
+      bounds.lower_test_limit = dynamic->depth_bounds.min;
+      bounds.upper_test_limit = dynamic->depth_bounds.max;
+   }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_DEPTH_BOUNDS;
+#endif
+}
+
+void
 v3dX(cmd_buffer_emit_line_width)(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;

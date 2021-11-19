@@ -2071,6 +2071,14 @@ cmd_buffer_bind_pipeline_static_state(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
+   if (!(dynamic_mask & V3DV_DYNAMIC_DEPTH_BOUNDS)) {
+      if (memcmp(&dest->depth_bounds, &src->depth_bounds,
+                 sizeof(src->depth_bounds))) {
+         memcpy(&dest->depth_bounds, &src->depth_bounds, sizeof(src->depth_bounds));
+         dirty |= V3DV_CMD_DIRTY_DEPTH_BOUNDS;
+      }
+   }
+
    if (!(dynamic_mask & V3DV_DYNAMIC_LINE_WIDTH)) {
       if (dest->line_width != src->line_width) {
          dest->line_width = src->line_width;
@@ -2941,6 +2949,9 @@ v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_DEPTH_BIAS))
       v3dv_X(device, cmd_buffer_emit_depth_bias)(cmd_buffer);
 
+   if (*dirty & V3DV_CMD_DIRTY_DEPTH_BOUNDS)
+      v3dv_X(device, cmd_buffer_emit_depth_bounds)(cmd_buffer);
+
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_BLEND_CONSTANTS))
       v3dv_X(device, cmd_buffer_emit_blend)(cmd_buffer);
 
@@ -3370,9 +3381,11 @@ v3dv_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
                        float minDepthBounds,
                        float maxDepthBounds)
 {
-   /* We do not support depth bounds testing so we just ignore this. We are
-    * already asserting that pipelines don't enable the feature anyway.
-    */
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.dynamic.depth_bounds.min = minDepthBounds;
+   cmd_buffer->state.dynamic.depth_bounds.max = maxDepthBounds;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DEPTH_BOUNDS;
 }
 
 VKAPI_ATTR void VKAPI_CALL

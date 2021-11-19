@@ -235,7 +235,7 @@ get_features(const struct v3dv_physical_device *physical_device,
       .depthClamp = false, /* Only available since V3D 4.5.1.1 */
       .depthBiasClamp = true,
       .fillModeNonSolid = true,
-      .depthBounds = false, /* Only available since V3D 4.3.16.2 */
+      .depthBounds = physical_device->devinfo.ver >= 71,
       .wideLines = true,
       .largePoints = true,
       .alphaToOne = true,

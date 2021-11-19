@@ -259,6 +259,9 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
       } else {
          config.z_clipping_mode = V3D_Z_CLIP_MODE_NONE;
       }
+
+      config.depth_bounds_test_enable =
+              ds_info && ds_info->depthBoundsTestEnable && has_ds_attachment;
 #endif
    };
 }

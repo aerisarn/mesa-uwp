@@ -2633,13 +2633,8 @@ v3dv_dynamic_state_mask(VkDynamicState state)
       return V3DV_DYNAMIC_LINE_WIDTH;
    case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
       return V3DV_DYNAMIC_COLOR_WRITE_ENABLE;
-
-   /* Depth bounds testing is not available in in V3D 4.2 so here we are just
-    * ignoring this dynamic state. We are already asserting at pipeline creation
-    * time that depth bounds testing is not enabled.
-    */
    case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
-      return 0;
+      return V3DV_DYNAMIC_DEPTH_BOUNDS;
 
    default:
       unreachable("Unhandled dynamic state");
@@ -2667,6 +2662,7 @@ pipeline_init_dynamic_state(
    dynamic->line_width = 1.0f;
    dynamic->color_write_enable =
       (1ull << (4 * V3D_MAX_RENDER_TARGETS(devinfo->ver))) - 1;
+   dynamic->depth_bounds.max = 1.0f;
 
    /* Create a mask of enabled dynamic states */
    uint32_t dynamic_states = 0;
@@ -2718,6 +2714,11 @@ pipeline_init_dynamic_state(
       if (!(dynamic_states & V3DV_DYNAMIC_STENCIL_REFERENCE)) {
          dynamic->stencil_reference.front = pDepthStencilState->front.reference;
          dynamic->stencil_reference.back = pDepthStencilState->back.reference;
+      }
+
+      if (!(dynamic_states & V3DV_DYNAMIC_DEPTH_BOUNDS)) {
+         dynamic->depth_bounds.min = pDepthStencilState->minDepthBounds;
+         dynamic->depth_bounds.max = pDepthStencilState->maxDepthBounds;
       }
    }
 
@@ -2932,7 +2933,9 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    /* V3D 4.2 doesn't support depth bounds testing so we don't advertise that
     * feature and it shouldn't be used by any pipeline.
     */
-   assert(!ds_info || !ds_info->depthBoundsTestEnable);
+   assert(device->devinfo.ver >= 71 ||
+          !ds_info || !ds_info->depthBoundsTestEnable);
+   pipeline->depth_bounds_test_enabled = ds_info && ds_info->depthBoundsTestEnable;
 
    enable_depth_bias(pipeline, rs_info);
 

@@ -55,6 +55,9 @@ void
 v3dX(cmd_buffer_emit_depth_bias)(struct v3dv_cmd_buffer *cmd_buffer);
 
 void
+v3dX(cmd_buffer_emit_depth_bounds)(struct v3dv_cmd_buffer *cmd_buffer);
+
+void
 v3dX(cmd_buffer_emit_line_width)(struct v3dv_cmd_buffer *cmd_buffer);
 
 void

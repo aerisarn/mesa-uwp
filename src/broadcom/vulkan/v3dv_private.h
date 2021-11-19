@@ -1059,7 +1059,8 @@ enum v3dv_dynamic_state_bits {
    V3DV_DYNAMIC_DEPTH_BIAS                = 1 << 6,
    V3DV_DYNAMIC_LINE_WIDTH                = 1 << 7,
    V3DV_DYNAMIC_COLOR_WRITE_ENABLE        = 1 << 8,
-   V3DV_DYNAMIC_ALL                       = (1 << 9) - 1,
+   V3DV_DYNAMIC_DEPTH_BOUNDS              = 1 << 9,
+   V3DV_DYNAMIC_ALL                       = (1 << 10) - 1,
 };
 
 /* Flags for dirty pipeline state.
@@ -1084,6 +1085,7 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_LINE_WIDTH                = 1 << 16,
    V3DV_CMD_DIRTY_VIEW_INDEX                = 1 << 17,
    V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE        = 1 << 18,
+   V3DV_CMD_DIRTY_DEPTH_BOUNDS              = 1 << 19,
 };
 
 struct v3dv_dynamic_state {
@@ -1119,6 +1121,11 @@ struct v3dv_dynamic_state {
       float depth_bias_clamp;
       float slope_factor;
    } depth_bias;
+
+   struct {
+      float                                     min;
+      float                                     max;
+   } depth_bounds;
 
    float line_width;
 
@@ -2306,6 +2313,9 @@ struct v3dv_pipeline {
       bool enabled;
       bool is_z16;
    } depth_bias;
+
+   /* Depth bounds */
+   bool depth_bounds_test_enabled;
 
    struct {
       void *mem_ctx;
