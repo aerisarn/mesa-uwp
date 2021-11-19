@@ -738,7 +738,7 @@ SOFTWARE.
 		IBO (ie. Image/SSBO) instructions
 	</doc>
 	<display>
-		{SY}{JP}{NAME}.{TYPED}.{D}d.{TYPE}.{TYPE_SIZE}.{MODE}{BASE} {SRC1}, {SRC2}, {SSBO}
+		{SY}{JP}{NAME}.{TYPED}.{D}d.{TYPE}.{TYPE_SIZE}.{MODE}{BASE} {TYPE_HALF}{SRC1}, {SRC2}, {SSBO}
 	</display>
 
 	<derived name="D" expr="#cat6-d" type="uint"/>

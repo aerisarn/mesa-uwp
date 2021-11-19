@@ -215,7 +215,7 @@ static const struct test {
    /* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
    INSTR_6XX(c0260200_03676100, "stib.b.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1"), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
 
-   INSTR_6XX(c0240402_00674100, "stib.b.untyped.1d.u16.1.imm.base0 r0.z, r0.x, 2"),
+   INSTR_6XX(c0240402_00674100, "stib.b.untyped.1d.u16.1.imm.base0 hr0.z, r0.x, 2"),
 #if 0
    /* TODO blob sometimes/frequently sets b0, although there does not seem
     * to be an obvious pattern and our encoding never sets it.  AFAICT it
