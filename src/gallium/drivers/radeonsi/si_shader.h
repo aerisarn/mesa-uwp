@@ -813,6 +813,7 @@ struct si_shader {
    bool is_optimized;
    bool is_binary_shared;
    bool is_gs_copy_shader;
+   uint8_t wave_size;
 
    /* The following data is all that's needed for binary shaders. */
    struct si_shader_binary binary;

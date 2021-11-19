@@ -1997,6 +1997,9 @@ static inline unsigned si_get_wave_size(struct si_screen *sscreen,
 
 static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
 {
+   if (shader->is_gs_copy_shader)
+      return shader->selector->screen->ge_wave_size;
+
    if (shader->selector->info.stage <= MESA_SHADER_GEOMETRY) {
       return si_get_wave_size(shader->selector->screen, shader->selector->info.stage,
                               shader->key.ge.as_ngg,

@@ -1748,6 +1748,8 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 
 static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader *shader)
 {
+   assert(shader->wave_size);
+
    switch (shader->selector->info.stage) {
    case MESA_SHADER_VERTEX:
       if (shader->key.ge.as_ls)
@@ -2268,6 +2270,7 @@ static bool si_check_missing_main_part(struct si_screen *sscreen, struct si_shad
          main_part->key.ge.as_ngg = key->ge.as_ngg;
       }
       main_part->is_monolithic = false;
+      main_part->wave_size = si_get_shader_wave_size(main_part);
 
       if (!si_compile_shader(sscreen, compiler_state->compiler, main_part,
                              &compiler_state->debug)) {
@@ -2444,6 +2447,7 @@ current_not_ready:
 
    shader->selector = sel;
    *((SHADER_KEY_TYPE*)&shader->key) = *key;
+   shader->wave_size = si_get_shader_wave_size(shader);
    shader->compiler_ctx_state.compiler = &sctx->compiler;
    shader->compiler_ctx_state.debug = sctx->debug;
    shader->compiler_ctx_state.is_debug_context = sctx->is_debug;
@@ -2709,6 +2713,8 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
           ((sel->info.stage == MESA_SHADER_VERTEX && !shader->key.ge.as_ls) ||
            sel->info.stage == MESA_SHADER_TESS_EVAL || sel->info.stage == MESA_SHADER_GEOMETRY))
          shader->key.ge.as_ngg = 1;
+
+      shader->wave_size = si_get_shader_wave_size(shader);
 
       if (sel->nir) {
          if (sel->info.stage <= MESA_SHADER_GEOMETRY)

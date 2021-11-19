@@ -2100,6 +2100,9 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       default:;
       }
 
+      assert(shader->wave_size == mainp->wave_size);
+      assert(!shader->previous_stage || shader->wave_size == shader->previous_stage->wave_size);
+
       /* Update SGPR and VGPR counts. */
       if (shader->prolog) {
          shader->config.num_sgprs =
