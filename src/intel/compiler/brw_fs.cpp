@@ -7288,9 +7288,7 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
    prog_data->persample_dispatch =
       key->multisample_fbo &&
       (key->persample_interp ||
-       BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID) ||
-       BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS) ||
-       shader->info.fs.uses_sample_qualifier ||
+       shader->info.fs.uses_sample_shading ||
        shader->info.outputs_read);
 
    if (devinfo->ver >= 6) {
