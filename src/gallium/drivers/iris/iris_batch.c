@@ -241,10 +241,10 @@ iris_init_non_engine_contexts(struct iris_context *ice, int priority)
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
       struct iris_batch *batch = &ice->batches[i];
-      batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
+      batch->ctx_id = iris_create_hw_context(screen->bufmgr);
       batch->exec_flags = I915_EXEC_RENDER;
-      assert(batch->hw_ctx_id);
-      iris_hw_context_set_priority(screen->bufmgr, batch->hw_ctx_id, priority);
+      assert(batch->ctx_id);
+      iris_hw_context_set_priority(screen->bufmgr, batch->ctx_id, priority);
    }
 }
 
@@ -488,7 +488,7 @@ iris_batch_free(struct iris_batch *batch)
    batch->map = NULL;
    batch->map_next = NULL;
 
-   iris_destroy_hw_context(bufmgr, batch->hw_ctx_id);
+   iris_destroy_kernel_context(bufmgr, batch->ctx_id);
 
    iris_destroy_batch_measure(batch->measure);
    batch->measure = NULL;
@@ -614,12 +614,12 @@ replace_hw_ctx(struct iris_batch *batch)
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
 
-   uint32_t new_ctx = iris_clone_hw_context(bufmgr, batch->hw_ctx_id);
+   uint32_t new_ctx = iris_clone_hw_context(bufmgr, batch->ctx_id);
    if (!new_ctx)
       return false;
 
-   iris_destroy_hw_context(bufmgr, batch->hw_ctx_id);
-   batch->hw_ctx_id = new_ctx;
+   iris_destroy_kernel_context(bufmgr, batch->ctx_id);
+   batch->ctx_id = new_ctx;
 
    /* Notify the context that state must be re-initialized. */
    iris_lost_context_state(batch);
@@ -632,7 +632,7 @@ iris_batch_check_for_reset(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
    enum pipe_reset_status status = PIPE_NO_RESET;
-   struct drm_i915_reset_stats stats = { .ctx_id = batch->hw_ctx_id };
+   struct drm_i915_reset_stats stats = { .ctx_id = batch->ctx_id };
 
    if (intel_ioctl(screen->fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats))
       DBG("DRM_IOCTL_I915_GET_RESET_STATS failed: %s\n", strerror(errno));
@@ -847,7 +847,7 @@ submit_batch(struct iris_batch *batch)
                I915_EXEC_NO_RELOC |
                I915_EXEC_BATCH_FIRST |
                I915_EXEC_HANDLE_LUT,
-      .rsvd1 = batch->hw_ctx_id, /* rsvd1 is actually the context ID */
+      .rsvd1 = batch->ctx_id, /* rsvd1 is actually the context ID */
    };
 
    if (num_fences(batch)) {
@@ -914,7 +914,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
       fprintf(stderr, "%19s:%-3d: %s batch [%u] flush with %5db (%0.1f%%) "
               "(cmds), %4d BOs (%0.1fMb aperture)\n",
-              file, line, batch_name_to_string(batch->name), batch->hw_ctx_id,
+              file, line, batch_name_to_string(batch->name), batch->ctx_id,
               batch->total_chained_batch_size,
               100.0f * batch->total_chained_batch_size / BATCH_SZ,
               batch->exec_count,

@@ -2101,7 +2101,7 @@ iris_clone_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
 }
 
 void
-iris_destroy_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
+iris_destroy_kernel_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
 {
    struct drm_i915_gem_context_destroy d = { .ctx_id = ctx_id };
 

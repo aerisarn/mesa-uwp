@@ -460,7 +460,7 @@ void iris_hw_context_set_unrecoverable(struct iris_bufmgr *bufmgr,
 int iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
                                  uint32_t ctx_id, int priority);
 
-void iris_destroy_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
+void iris_destroy_kernel_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id);
 
 int iris_gem_get_tiling(struct iris_bo *bo, uint32_t *tiling);
 int iris_gem_set_tiling(struct iris_bo *bo, const struct isl_surf *surf);
