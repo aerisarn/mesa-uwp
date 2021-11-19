@@ -88,7 +88,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
         /* Don't upload RSD for fragment shaders since they need draw-time
          * merging for e.g. depth/stencil/alpha */
         bool upload = stage != MESA_SHADER_FRAGMENT;
-        screen->vtbl.prepare_rsd(state, desc_pool, upload);
+        screen->vtbl.prepare_shader(state, desc_pool, upload);
 
         panfrost_analyze_sysvals(state);
 
