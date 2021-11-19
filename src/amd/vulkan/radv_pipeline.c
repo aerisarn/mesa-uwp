@@ -3385,25 +3385,25 @@ radv_init_feedback(const VkPipelineCreationFeedbackCreateInfoEXT *ext)
 }
 
 static void
-radv_start_feedback(VkPipelineCreationFeedbackEXT *feedback)
+radv_start_feedback(VkPipelineCreationFeedback *feedback)
 {
    if (!feedback)
       return;
 
    feedback->duration -= radv_get_current_time();
-   feedback->flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT;
+   feedback->flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 }
 
 static void
-radv_stop_feedback(VkPipelineCreationFeedbackEXT *feedback, bool cache_hit)
+radv_stop_feedback(VkPipelineCreationFeedback *feedback, bool cache_hit)
 {
    if (!feedback)
       return;
 
    feedback->duration += radv_get_current_time();
    feedback->flags =
-      VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT_EXT |
-      (cache_hit ? VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT : 0);
+      VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT |
+      (cache_hit ? VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT : 0);
 }
 
 static bool
@@ -3635,8 +3635,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                     const struct radv_pipeline_key *pipeline_key,
                     const VkPipelineShaderStageCreateInfo **pStages,
                     const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
-                    VkPipelineCreationFeedbackEXT *pipeline_feedback,
-                    VkPipelineCreationFeedbackEXT **stage_feedbacks)
+                    VkPipelineCreationFeedback *pipeline_feedback,
+                    VkPipelineCreationFeedback **stage_feedbacks)
 {
    struct vk_shader_module fs_m = {0};
    struct vk_shader_module *modules[MESA_VULKAN_SHADER_STAGES] = {
@@ -3703,9 +3703,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       return VK_SUCCESS;
    }
 
-   if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT) {
+   if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
       radv_stop_feedback(pipeline_feedback, found_in_application_cache);
-      return VK_PIPELINE_COMPILE_REQUIRED_EXT;
+      return VK_PIPELINE_COMPILE_REQUIRED;
    }
 
    if (!modules[MESA_SHADER_FRAGMENT] && !modules[MESA_SHADER_COMPUTE]) {
@@ -5925,13 +5925,13 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
    radv_init_feedback(creation_feedback);
 
-   VkPipelineCreationFeedbackEXT *pipeline_feedback =
+   VkPipelineCreationFeedback *pipeline_feedback =
       creation_feedback ? creation_feedback->pPipelineCreationFeedback : NULL;
 
    const VkPipelineShaderStageCreateInfo *pStages[MESA_VULKAN_SHADER_STAGES] = {
       0,
    };
-   VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_VULKAN_SHADER_STAGES] = {0};
+   VkPipelineCreationFeedback *stage_feedbacks[MESA_VULKAN_SHADER_STAGES] = {0};
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       gl_shader_stage stage = ffs(pCreateInfo->pStages[i].stage) - 1;
       pStages[stage] = &pCreateInfo->pStages[i];
@@ -6139,7 +6139,7 @@ radv_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, ui
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
 
-         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
             break;
       }
    }
@@ -6222,15 +6222,15 @@ radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
       key.optimisations_disabled = 1;
 
-   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *subgroup_size =
+   const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *subgroup_size =
       vk_find_struct_const(stage->pNext,
-                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
+                           PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
 
    if (subgroup_size) {
       assert(subgroup_size->requiredSubgroupSize == 32 ||
              subgroup_size->requiredSubgroupSize == 64);
       key.cs.compute_subgroup_size = subgroup_size->requiredSubgroupSize;
-   } else if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT) {
+   } else if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
       key.cs.require_full_subgroups = true;
    }
 
@@ -6250,7 +6250,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    const VkPipelineShaderStageCreateInfo *pStages[MESA_VULKAN_SHADER_STAGES] = {
       0,
    };
-   VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_VULKAN_SHADER_STAGES] = {0};
+   VkPipelineCreationFeedback *stage_feedbacks[MESA_VULKAN_SHADER_STAGES] = {0};
    struct radv_pipeline *pipeline;
    VkResult result;
 
@@ -6273,7 +6273,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
    radv_init_feedback(creation_feedback);
 
-   VkPipelineCreationFeedbackEXT *pipeline_feedback =
+   VkPipelineCreationFeedback *pipeline_feedback =
       creation_feedback ? creation_feedback->pPipelineCreationFeedback : NULL;
    if (creation_feedback)
       stage_feedbacks[MESA_SHADER_COMPUTE] = &creation_feedback->pPipelineStageCreationFeedbacks[0];
@@ -6321,7 +6321,7 @@ radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uin
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
 
-         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
             break;
       }
    }

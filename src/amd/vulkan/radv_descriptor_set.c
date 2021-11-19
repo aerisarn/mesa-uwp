@@ -726,9 +726,9 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
    vk_foreach_struct(ext, pCreateInfo->pNext)
    {
       switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: {
-         const VkDescriptorPoolInlineUniformBlockCreateInfoEXT *info =
-            (const VkDescriptorPoolInlineUniformBlockCreateInfoEXT *)ext;
+      case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO: {
+         const VkDescriptorPoolInlineUniformBlockCreateInfo *info =
+            (const VkDescriptorPoolInlineUniformBlockCreateInfo *)ext;
          /* the sizes are 4 aligned, and we need to align to at
           * most 32, which needs at most 28 bytes extra per
           * binding. */
@@ -1019,8 +1019,8 @@ static ALWAYS_INLINE void
 write_block_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_buffer, void *dst,
                        const VkWriteDescriptorSet *writeset)
 {
-   const VkWriteDescriptorSetInlineUniformBlockEXT *inline_ub =
-      vk_find_struct_const(writeset->pNext, WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT);
+   const VkWriteDescriptorSetInlineUniformBlock *inline_ub =
+      vk_find_struct_const(writeset->pNext, WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK);
 
    memcpy(dst, inline_ub->pData, inline_ub->dataSize);
 }
