@@ -27,31 +27,15 @@
 
 #include <gtest/gtest.h>
 
-#define CASE(instr, expected) do { \
-   bi_builder *A = bit_builder(mem_ctx); \
-   bi_builder *B = bit_builder(mem_ctx); \
-   { \
-      bi_builder *b = A; \
-      instr; \
-   } \
-   { \
-      bi_builder *b = B; \
-      expected; \
-   } \
-   bi_opt_mod_prop_forward(A->shader); \
-   bi_opt_mod_prop_backward(A->shader); \
-   bi_opt_dead_code_eliminate(A->shader); \
-   if (!bit_shader_equal(A->shader, B->shader)) { \
-      ADD_FAILURE(); \
-      fprintf(stderr, "Optimization produce unexpected result"); \
-      fprintf(stderr, "  Actual:\n"); \
-      bi_print_shader(A->shader, stderr); \
-      fprintf(stderr, "Expected:\n"); \
-      bi_print_shader(B->shader, stderr); \
-      fprintf(stderr, "\n"); \
-   } \
-} while(0)
+static void
+bi_optimizer(bi_context *ctx)
+{
+   bi_opt_mod_prop_forward(ctx);
+   bi_opt_mod_prop_backward(ctx);
+   bi_opt_dead_code_eliminate(ctx);
+}
 
+#define CASE(instr, expected) INSTRUCTION_CASE(instr, expected, bi_optimizer)
 #define NEGCASE(instr) CASE(instr, instr)
 
 class Optimizer : public testing::Test {
