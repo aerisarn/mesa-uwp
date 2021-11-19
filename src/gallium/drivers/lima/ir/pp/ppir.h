@@ -180,7 +180,8 @@ typedef enum {
 } ppir_pipeline;
 
 typedef enum {
-   ppir_output_color,
+   ppir_output_color0,
+   ppir_output_color1,
    ppir_output_depth,
    ppir_output_num,
    ppir_output_invalid = -1,
@@ -189,8 +190,10 @@ typedef enum {
 static inline const char *ppir_output_type_to_str(ppir_output_type type)
 {
    switch (type) {
-   case ppir_output_color:
-      return "OUTPUT_COLOR";
+   case ppir_output_color0:
+      return "OUTPUT_COLOR0";
+   case ppir_output_color1:
+      return "OUTPUT_COLOR1";
    case ppir_output_depth:
       return "OUTPUT_DEPTH";
    default:
@@ -198,12 +201,12 @@ static inline const char *ppir_output_type_to_str(ppir_output_type type)
    }
 }
 
-static inline ppir_output_type ppir_nir_output_to_ppir(gl_frag_result res)
+static inline ppir_output_type ppir_nir_output_to_ppir(gl_frag_result res, int dual_src_index)
 {
    switch (res) {
    case FRAG_RESULT_COLOR:
    case FRAG_RESULT_DATA0:
-      return ppir_output_color;
+      return ppir_output_color0 + dual_src_index;
    case FRAG_RESULT_DEPTH:
       return ppir_output_depth;
    default:
@@ -417,6 +420,7 @@ typedef struct ppir_compiler {
    struct ra_regs *ra;
    struct lima_fs_compiled_shader *prog;
    bool uses_discard;
+   bool dual_source_blend;
 
    /* for scheduler */
    int sched_instr_base;

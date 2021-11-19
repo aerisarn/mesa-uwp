@@ -168,6 +168,9 @@ lima_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PREFER_POT_ALIGNED_VARYINGS:
       return 1;
 
+   case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
+      return 1;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }

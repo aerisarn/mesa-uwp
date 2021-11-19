@@ -351,7 +351,8 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       nir_io_semantics io = nir_intrinsic_io_semantics(instr);
       unsigned offset = nir_src_as_uint(instr->src[1]);
       unsigned slot = io.location + offset;
-      ppir_output_type out_type = ppir_nir_output_to_ppir(slot);
+      ppir_output_type out_type = ppir_nir_output_to_ppir(slot,
+         block->comp->dual_source_blend ? io.dual_source_blend_index : 0);
       if (out_type == ppir_output_invalid) {
          ppir_debug("Unsupported output type: %d\n", slot);
          return false;
@@ -916,6 +917,7 @@ bool ppir_compile_nir(struct lima_fs_compiled_shader *prog, struct nir_shader *n
 
    comp->ra = ra;
    comp->uses_discard = nir->info.fs.uses_discard;
+   comp->dual_source_blend = nir->info.fs.color_is_dual_source;
 
    /* 1st pass: create ppir blocks */
    nir_foreach_function(function, nir) {

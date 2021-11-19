@@ -674,6 +674,11 @@ parse_rsw(FILE *fp, uint32_t *value, int i, uint32_t *helper)
 
       if ((*value & 0x00002000) == 0x00002000) /* bit 13 unknown */
          fprintf(fp, ", bit 13 set");
+
+      fprintf(fp, " */\n");
+      fprintf(fp, "\n\t\t\t\t\t\t/* %s(3):", render_state_infos[i].info);
+      fprintf(fp, " register for gl_SecondaryFragColor: $%d",
+         (*value & 0xf0000000) >> 28);
       fprintf(fp, " */\n");
       break;
    case 14: /* AUX1 */

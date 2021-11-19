@@ -49,7 +49,8 @@ struct lima_fs_compiled_shader {
    struct {
       int shader_size;
       int stack_size;
-      int frag_color_reg;
+      int frag_color0_reg;
+      int frag_color1_reg;
       int frag_depth_reg;
       bool uses_discard;
    } state;

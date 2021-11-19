@@ -617,7 +617,8 @@ bool ppir_regalloc_prog(ppir_compiler *comp)
 
    /* No registers? Probably shader consists of discard instruction */
    if (list_is_empty(&comp->reg_list)) {
-      comp->prog->state.frag_color_reg = 0;
+      comp->prog->state.frag_color0_reg = 0;
+      comp->prog->state.frag_color1_reg = -1;
       comp->prog->state.frag_depth_reg = -1;
       return true;
    }
@@ -628,8 +629,10 @@ bool ppir_regalloc_prog(ppir_compiler *comp)
       if (!spilled)
          return false;
 
-   comp->prog->state.frag_color_reg =
-      comp->out_type_to_reg[ppir_output_color];
+   comp->prog->state.frag_color0_reg =
+      comp->out_type_to_reg[ppir_output_color0];
+   comp->prog->state.frag_color1_reg =
+      comp->out_type_to_reg[ppir_output_color1];
    comp->prog->state.frag_depth_reg =
       comp->out_type_to_reg[ppir_output_depth];
 
