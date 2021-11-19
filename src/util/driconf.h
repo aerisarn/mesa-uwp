@@ -196,6 +196,10 @@
    DRI_CONF_OPT_B(allow_higher_compat_version, def, \
                   "Allow a higher compat profile (version 3.1+) for apps that request it")
 
+#define DRI_CONF_ALLOW_GLSL_COMPAT_SHADERS(def) \
+   DRI_CONF_OPT_B(allow_glsl_compat_shaders, def, \
+                  "Allow in GLSL: #version xxx compatibility")
+
 #define DRI_CONF_FORCE_GLSL_ABS_SQRT(def) \
    DRI_CONF_OPT_B(force_glsl_abs_sqrt, def,                             \
                   "Force computing the absolute value for sqrt() and inversesqrt()")

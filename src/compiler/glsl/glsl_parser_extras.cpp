@@ -458,7 +458,8 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
          } else if (strcmp(ident, "compatibility") == 0) {
             compat_token_present = true;
 
-            if (this->ctx->API != API_OPENGL_COMPAT) {
+            if (this->ctx->API != API_OPENGL_COMPAT &&
+                !this->ctx->Const.AllowGLSLCompatShaders) {
                _mesa_glsl_error(locp, this,
                                 "the compatibility profile is not supported");
             }
@@ -874,7 +875,10 @@ _mesa_glsl_process_extension(const char *name, YYLTYPE *name_locp,
       }
    } else {
       const _mesa_glsl_extension *extension = find_extension(name);
-      if (extension && extension->compatible_with_state(state, api, gl_version)) {
+      if (extension &&
+          (extension->compatible_with_state(state, api, gl_version) ||
+           (state->ctx->Const.AllowGLSLCompatShaders &&
+            extension->compatible_with_state(state, API_OPENGL_COMPAT, gl_version)))) {
          extension->set_flags(state, behavior);
          if (extension->available_pred == has_ANDROID_extension_pack_es31a) {
             for (unsigned i = 0;

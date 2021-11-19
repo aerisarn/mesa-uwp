@@ -3972,6 +3972,12 @@ struct gl_constants
    GLboolean AllowHigherCompatVersion;
 
    /**
+    * Allow GLSL shaders with the compatibility version directive
+    * in non-compatibility profiles. (for shader-db)
+    */
+   GLboolean AllowGLSLCompatShaders;
+
+   /**
     * Allow extra tokens at end of preprocessor directives. The CTS now tests
     * to make sure these are not allowed. However, previously drivers would
     * allow them to exist and just issue a warning so some old applications

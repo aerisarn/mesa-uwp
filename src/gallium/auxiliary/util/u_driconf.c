@@ -50,6 +50,7 @@ u_driconf_fill_st_options(struct st_config_options *options,
    query_bool_option(allow_glsl_relaxed_es);
    query_bool_option(allow_glsl_builtin_variable_redeclaration);
    query_bool_option(allow_higher_compat_version);
+   query_bool_option(allow_glsl_compat_shaders);
    query_bool_option(glsl_ignore_write_to_readonly_var);
    query_bool_option(glsl_zero_init);
    query_bool_option(force_integer_tex_nearest);
