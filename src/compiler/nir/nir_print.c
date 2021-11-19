@@ -111,6 +111,49 @@ print_ssa_def(nir_ssa_def *def, print_state *state)
 }
 
 static void
+print_load_const_instr(nir_load_const_instr *instr, print_state *state)
+{
+   FILE *fp = state->fp;
+
+   print_ssa_def(&instr->def, state);
+
+   fprintf(fp, " = load_const (");
+
+   for (unsigned i = 0; i < instr->def.num_components; i++) {
+      if (i != 0)
+         fprintf(fp, ", ");
+
+      /*
+       * we don't really know the type of the constant (if it will be used as a
+       * float or an int), so just print the raw constant in hex for fidelity
+       * and then print the float in a comment for readability.
+       */
+
+      switch (instr->def.bit_size) {
+      case 64:
+         fprintf(fp, "0x%016" PRIx64 " /* %f */", instr->value[i].u64,
+                 instr->value[i].f64);
+         break;
+      case 32:
+         fprintf(fp, "0x%08x /* %f */", instr->value[i].u32, instr->value[i].f32);
+         break;
+      case 16:
+         fprintf(fp, "0x%04x /* %f */", instr->value[i].u16,
+                 _mesa_half_to_float(instr->value[i].u16));
+         break;
+      case 8:
+         fprintf(fp, "0x%02x", instr->value[i].u8);
+         break;
+      case 1:
+         fprintf(fp, "%s", instr->value[i].b ? "true" : "false");
+         break;
+      }
+   }
+
+   fprintf(fp, ")");
+}
+
+static void
 print_ssa_use(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
@@ -1248,49 +1291,6 @@ print_call_instr(nir_call_instr *instr, print_state *state)
 
       print_src(&instr->params[i], state);
    }
-}
-
-static void
-print_load_const_instr(nir_load_const_instr *instr, print_state *state)
-{
-   FILE *fp = state->fp;
-
-   print_ssa_def(&instr->def, state);
-
-   fprintf(fp, " = load_const (");
-
-   for (unsigned i = 0; i < instr->def.num_components; i++) {
-      if (i != 0)
-         fprintf(fp, ", ");
-
-      /*
-       * we don't really know the type of the constant (if it will be used as a
-       * float or an int), so just print the raw constant in hex for fidelity
-       * and then print the float in a comment for readability.
-       */
-
-      switch (instr->def.bit_size) {
-      case 64:
-         fprintf(fp, "0x%016" PRIx64 " /* %f */", instr->value[i].u64,
-                 instr->value[i].f64);
-         break;
-      case 32:
-         fprintf(fp, "0x%08x /* %f */", instr->value[i].u32, instr->value[i].f32);
-         break;
-      case 16:
-         fprintf(fp, "0x%04x /* %f */", instr->value[i].u16,
-                 _mesa_half_to_float(instr->value[i].u16));
-         break;
-      case 8:
-         fprintf(fp, "0x%02x", instr->value[i].u8);
-         break;
-      case 1:
-         fprintf(fp, "%s", instr->value[i].b ? "true" : "false");
-         break;
-      }
-   }
-
-   fprintf(fp, ")");
 }
 
 static void
