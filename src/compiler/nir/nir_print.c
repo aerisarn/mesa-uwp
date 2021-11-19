@@ -111,19 +111,17 @@ print_ssa_def(nir_ssa_def *def, print_state *state)
 }
 
 static void
-print_load_const_instr(nir_load_const_instr *instr, print_state *state)
+print_const_from_load(nir_load_const_instr *instr, print_state *state)
 {
    FILE *fp = state->fp;
-
-   print_ssa_def(&instr->def, state);
-
-   fprintf(fp, " = load_const (");
 
    /*
     * we don't really know the type of the constant (if it will be used as a
     * float or an int), so just print the raw constant in hex for fidelity
     * and then print in float again for readability.
     */
+
+   fprintf(fp, "(");
 
    for (unsigned i = 0; i < instr->def.num_components; i++) {
       if (i != 0)
@@ -178,10 +176,28 @@ print_load_const_instr(nir_load_const_instr *instr, print_state *state)
 }
 
 static void
+print_load_const_instr(nir_load_const_instr *instr, print_state *state)
+{
+   FILE *fp = state->fp;
+
+   print_ssa_def(&instr->def, state);
+
+   fprintf(fp, " = load_const ");
+
+   print_const_from_load(instr, state);
+}
+
+static void
 print_ssa_use(nir_ssa_def *def, print_state *state)
 {
    FILE *fp = state->fp;
    fprintf(fp, "ssa_%u", def->index);
+   nir_instr *instr = def->parent_instr;
+   if (instr->type == nir_instr_type_load_const && NIR_DEBUG(PRINT_CONSTS)) {
+      fprintf(fp, " /*");
+      print_const_from_load(nir_instr_as_load_const(instr), state);
+      fprintf(fp, "*/");
+   }
 }
 
 static void print_src(const nir_src *src, print_state *state);
