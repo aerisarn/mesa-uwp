@@ -2447,6 +2447,61 @@ lower_math_logical_send(const fs_builder &bld, fs_inst *inst)
 }
 
 static void
+lower_interpolator_logical_send(const fs_builder &bld, fs_inst *inst,
+                                const struct brw_wm_prog_data *wm_prog_data)
+{
+   const intel_device_info *devinfo = bld.shader->devinfo;
+
+   /* We have to send something */
+   fs_reg payload = brw_vec8_grf(0, 0);
+   unsigned mlen = 1;
+
+   const fs_reg desc = inst->src[1];
+
+   unsigned mode;
+   switch (inst->opcode) {
+   case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
+      assert(inst->src[0].file == BAD_FILE);
+      mode = GFX7_PIXEL_INTERPOLATOR_LOC_SAMPLE;
+      break;
+
+   case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
+      assert(inst->src[0].file == BAD_FILE);
+      mode = GFX7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET;
+      break;
+
+   case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
+      payload = inst->src[0];
+      mlen = 2 * inst->exec_size / 8;
+      mode = GFX7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET;
+      break;
+
+   default:
+      unreachable("Invalid interpolator instruction");
+   }
+
+   uint32_t desc_imm =
+      brw_pixel_interp_desc(devinfo, mode, inst->pi_noperspective,
+                            wm_prog_data->per_coarse_pixel_dispatch,
+                            inst->exec_size, inst->group);
+
+   assert(bld.shader->devinfo->ver >= 7);
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->sfid = GFX7_SFID_PIXEL_INTERPOLATOR;
+   inst->desc = desc_imm;
+   inst->ex_desc = 0;
+   inst->mlen = mlen;
+   inst->ex_mlen = 0;
+   inst->send_has_side_effects = false;
+   inst->send_is_volatile = false;
+
+   inst->resize_sources(3);
+   inst->src[0] = desc;
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   inst->src[2] = payload;
+}
+
+static void
 lower_btd_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -2748,6 +2803,13 @@ fs_visitor::lower_logical_sends()
          } else {
             continue;
          }
+
+      case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
+      case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
+      case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
+         lower_interpolator_logical_send(ibld, inst,
+                                         brw_wm_prog_data(prog_data));
+         break;
 
       case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
       case SHADER_OPCODE_BTD_RETIRE_LOGICAL:

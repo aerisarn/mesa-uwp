@@ -3346,38 +3346,6 @@ brw_memory_fence(struct brw_codegen *p,
 }
 
 void
-brw_pixel_interpolator_query(struct brw_codegen *p,
-                             struct brw_reg dest,
-                             struct brw_reg mrf,
-                             bool noperspective,
-                             bool coarse_pixel_rate,
-                             unsigned mode,
-                             struct brw_reg data,
-                             unsigned msg_length,
-                             unsigned response_length)
-{
-   const struct intel_device_info *devinfo = p->devinfo;
-   const uint16_t exec_size = brw_get_default_exec_size(p);
-   const unsigned slot_group = brw_get_default_group(p) / 16;
-   const unsigned simd_mode = (exec_size == BRW_EXECUTE_16);
-   const unsigned desc =
-      brw_message_desc(devinfo, msg_length, response_length, false) |
-      brw_pixel_interp_desc(devinfo, mode, noperspective, coarse_pixel_rate,
-                            simd_mode, slot_group);
-
-   /* brw_send_indirect_message will automatically use a direct send message
-    * if data is actually immediate.
-    */
-   brw_send_indirect_message(p,
-                             GFX7_SFID_PIXEL_INTERPOLATOR,
-                             dest,
-                             mrf,
-                             vec1(data),
-                             desc,
-                             false);
-}
-
-void
 brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst, bool last)
 {
    const struct intel_device_info *devinfo = p->devinfo;
