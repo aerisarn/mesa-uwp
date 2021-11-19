@@ -2063,14 +2063,14 @@ ntq_setup_gs_inputs(struct v3d_compile *c)
                  */
                 assert(glsl_type_is_array(var->type));
                 const struct glsl_type *type = glsl_get_array_element(var->type);
-                unsigned array_len = MAX2(glsl_get_length(type), 1);
+                unsigned var_len = glsl_count_vec4_slots(type, false, false);
                 unsigned loc = var->data.driver_location;
 
                 resize_qreg_array(c, &c->inputs, &c->inputs_array_size,
-                                  (loc + array_len) * 4);
+                                  (loc + var_len) * 4);
 
                 if (var->data.compact) {
-                        for (unsigned j = 0; j < array_len; j++) {
+                        for (unsigned j = 0; j < var_len; j++) {
                                 unsigned input_idx = c->num_inputs++;
                                 unsigned loc_frac = var->data.location_frac + j;
                                 unsigned loc = var->data.location + loc_frac / 4;
@@ -2081,8 +2081,10 @@ ntq_setup_gs_inputs(struct v3d_compile *c)
                        continue;
                 }
 
-                for (unsigned j = 0; j < array_len; j++) {
-                        unsigned num_elements = glsl_get_vector_elements(type);
+                for (unsigned j = 0; j < var_len; j++) {
+                        unsigned num_elements =
+                                glsl_type_is_struct(glsl_without_array(type)) ?
+                                4 : glsl_get_vector_elements(type);
                         for (unsigned k = 0; k < num_elements; k++) {
                                 unsigned chan = var->data.location_frac + k;
                                 unsigned input_idx = c->num_inputs++;
@@ -2129,7 +2131,7 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                 } else if (var->data.compact) {
                         for (int j = 0; j < var_len; j++)
                                 emit_compact_fragment_input(c, loc, var, j);
-                } else if (glsl_type_is_struct(var->type)) {
+                } else if (glsl_type_is_struct(glsl_without_array(var->type))) {
                         for (int j = 0; j < var_len; j++) {
                            emit_fragment_input(c, loc, var, j, 4);
                         }
