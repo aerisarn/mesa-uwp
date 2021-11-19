@@ -452,6 +452,9 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
    if (devinfo->ver >= 11)
       nir_lower_interpolation(nir, ~0);
 
+   if (!key->multisample_fbo)
+      nir_lower_single_sampled(nir);
+
    nir_shader_instructions_pass(nir, lower_barycentric_at_offset,
                                 nir_metadata_block_index |
                                 nir_metadata_dominance,

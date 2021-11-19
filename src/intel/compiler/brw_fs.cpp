@@ -1322,13 +1322,9 @@ fs_visitor::emit_sampleid_setup()
    const fs_builder abld = bld.annotate("compute sample id");
    fs_reg sample_id = abld.vgrf(BRW_REGISTER_TYPE_UD);
 
-   if (!key->multisample_fbo) {
-      /* As per GL_ARB_sample_shading specification:
-       * "When rendering to a non-multisample buffer, or if multisample
-       *  rasterization is disabled, gl_SampleID will always be zero."
-       */
-      abld.MOV(sample_id, brw_imm_d(0));
-   } else if (devinfo->ver >= 8) {
+   assert(key->multisample_fbo);
+
+   if (devinfo->ver >= 8) {
       /* Sample ID comes in as 4-bit numbers in g1.0:
        *
        *    15:12 Slot 3 SampleID (only used in SIMD16)
@@ -7228,43 +7224,6 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
    return progress;
 }
 
-static bool
-brw_nir_demote_sample_qualifiers_instr(nir_builder *b,
-                                       nir_instr *instr,
-                                       UNUSED void *cb_data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   if (intrin->intrinsic != nir_intrinsic_load_barycentric_sample &&
-       intrin->intrinsic != nir_intrinsic_load_barycentric_at_sample)
-      return false;
-
-   b->cursor = nir_before_instr(instr);
-   nir_ssa_def *centroid =
-      nir_load_barycentric(b, nir_intrinsic_load_barycentric_centroid,
-                           nir_intrinsic_interp_mode(intrin));
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, centroid);
-   nir_instr_remove(instr);
-   return true;
-}
-
-/**
- * Demote per-sample barycentric intrinsics to centroid.
- *
- * Useful when rendering to a non-multisampled buffer.
- */
-bool
-brw_nir_demote_sample_qualifiers(nir_shader *nir)
-{
-   return nir_shader_instructions_pass(nir,
-                                       brw_nir_demote_sample_qualifiers_instr,
-                                       nir_metadata_block_index |
-                                       nir_metadata_dominance,
-                                       NULL);
-}
-
 static void
 brw_nir_populate_wm_prog_data(const nir_shader *shader,
                               const struct intel_device_info *devinfo,
@@ -7399,8 +7358,6 @@ brw_compile_fs(const struct brw_compiler *compiler,
       NIR_PASS_V(nir, brw_nir_lower_alpha_to_coverage);
    }
 
-   if (!key->multisample_fbo)
-      NIR_PASS_V(nir, brw_nir_demote_sample_qualifiers);
    NIR_PASS_V(nir, brw_nir_move_interpolation_to_top);
    brw_postprocess_nir(nir, compiler, true, debug_enabled,
                        key->base.robust_buffer_access);
