@@ -379,12 +379,15 @@ set_program_string(struct gl_program *prog, GLenum target, GLenum format, GLsize
 
    gl_shader_stage stage = _mesa_program_enum_to_shader_stage(target);
 
+   uint8_t sha1[SHA1_DIGEST_LENGTH];
+   _mesa_sha1_compute(string, strlen(string), sha1);
+
    /* Dump original shader source to MESA_SHADER_DUMP_PATH and replace
     * if corresponding entry found from MESA_SHADER_READ_PATH.
     */
-   _mesa_dump_shader_source(stage, string);
+   _mesa_dump_shader_source(stage, string, sha1);
 
-   replacement = _mesa_read_shader_source(stage, string);
+   replacement = _mesa_read_shader_source(stage, string, sha1);
    if (replacement)
       string = replacement;
 #endif /* ENABLE_SHADER_CACHE */

@@ -1960,17 +1960,6 @@ _mesa_LinkProgram(GLuint programObj)
 }
 
 #ifdef ENABLE_SHADER_CACHE
-/**
- * Generate a SHA-1 hash value string for given source string.
- */
-static char *
-generate_sha1(const char *source, char sha_str[64])
-{
-   unsigned char sha[20];
-   _mesa_sha1_compute(source, strlen(source), sha);
-   _mesa_sha1_format(sha_str, sha);
-   return sha_str;
-}
 
 /**
  * Construct a full path for shader replacement functionality using
@@ -1996,7 +1985,8 @@ construct_name(const gl_shader_stage stage, const char *sha,
  * Write given shader source to a file in MESA_SHADER_DUMP_PATH.
  */
 void
-_mesa_dump_shader_source(const gl_shader_stage stage, const char *source)
+_mesa_dump_shader_source(const gl_shader_stage stage, const char *source,
+                         const uint8_t sha1[SHA1_DIGEST_LENGTH])
 {
 #ifndef CUSTOM_SHADER_REPLACEMENT
    static bool path_exists = true;
@@ -2013,8 +2003,8 @@ _mesa_dump_shader_source(const gl_shader_stage stage, const char *source)
       return;
    }
 
-   char *name = construct_name(stage, generate_sha1(source, sha),
-                               source, dump_path);
+   _mesa_sha1_format(sha, sha1);
+   char *name = construct_name(stage, sha, source, dump_path);
 
    f = fopen(name, "w");
    if (f) {
@@ -2034,7 +2024,8 @@ _mesa_dump_shader_source(const gl_shader_stage stage, const char *source)
  * Useful for debugging to override an app's shader.
  */
 GLcharARB *
-_mesa_read_shader_source(const gl_shader_stage stage, const char *source)
+_mesa_read_shader_source(const gl_shader_stage stage, const char *source,
+                         const uint8_t sha1[SHA1_DIGEST_LENGTH])
 {
    char *read_path;
    static bool path_exists = true;
@@ -2043,7 +2034,7 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source)
    FILE *f;
    char sha[64];
 
-   generate_sha1(source, sha);
+   _mesa_sha1_format(sha, sha1);
 
    if (!debug_get_bool_option("MESA_NO_SHADER_REPLACEMENT", false)) {
       const char *process_name = util_get_process_name();
@@ -2191,9 +2182,9 @@ shader_source(struct gl_context *ctx, GLuint shaderObj, GLsizei count,
    /* Dump original shader source to MESA_SHADER_DUMP_PATH and replace
     * if corresponding entry found from MESA_SHADER_READ_PATH.
     */
-   _mesa_dump_shader_source(sh->Stage, source);
+   _mesa_dump_shader_source(sh->Stage, source, original_sha1);
 
-   replacement = _mesa_read_shader_source(sh->Stage, source);
+   replacement = _mesa_read_shader_source(sh->Stage, source, original_sha1);
    if (replacement) {
       free(source);
       source = replacement;
