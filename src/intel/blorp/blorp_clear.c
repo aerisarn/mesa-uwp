@@ -61,6 +61,9 @@ blorp_params_get_clear_kernel_fs(struct blorp_batch *batch,
       .local_y = 0,
    };
 
+   params->shader_type = blorp_key.base.shader_type;
+   params->shader_pipeline = blorp_key.base.shader_pipeline;
+
    if (blorp->lookup_shader(batch, &blorp_key, sizeof(blorp_key),
                             &params->wm_prog_kernel, &params->wm_prog_data))
       return true;
@@ -121,6 +124,9 @@ blorp_params_get_clear_kernel_cs(struct blorp_batch *batch,
       .clear_rgb_as_red = clear_rgb_as_red,
       .local_y = blorp_get_cs_local_y(params),
    };
+
+   params->shader_type = blorp_key.base.shader_type;
+   params->shader_pipeline = blorp_key.base.shader_pipeline;
 
    if (blorp->lookup_shader(batch, &blorp_key, sizeof(blorp_key),
                             &params->cs_prog_kernel, &params->cs_prog_data))

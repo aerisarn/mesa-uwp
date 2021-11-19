@@ -2519,6 +2519,9 @@ blorp_blit(struct blorp_batch *batch,
                         isl_format_has_sint_channel(params.dst.view.format),
    };
 
+   params.shader_type = key.base.shader_type;
+   params.shader_pipeline = key.base.shader_pipeline;
+
    /* Scaling factors used for bilinear filtering in multisample scaled
     * blits.
     */
@@ -2831,6 +2834,9 @@ blorp_copy(struct blorp_batch *batch,
       .need_src_offset = src_surf->tile_x_sa || src_surf->tile_y_sa,
       .need_dst_offset = dst_surf->tile_x_sa || dst_surf->tile_y_sa,
    };
+
+   params.shader_type = key.base.shader_type;
+   params.shader_pipeline = key.base.shader_pipeline;
 
    const struct isl_format_layout *src_fmtl =
       isl_format_get_layout(params.src.surf.format);

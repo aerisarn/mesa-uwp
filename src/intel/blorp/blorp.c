@@ -46,6 +46,18 @@ blorp_shader_type_to_name(enum blorp_shader_type type)
    return shader_name[type];
 }
 
+const char *
+blorp_shader_pipeline_to_name(enum blorp_shader_pipeline pipe)
+{
+   static const char *pipeline_name[] = {
+      [BLORP_SHADER_PIPELINE_RENDER]  = "render",
+      [BLORP_SHADER_PIPELINE_COMPUTE] = "compute",
+   };
+   assert(pipe < ARRAY_SIZE(pipeline_name));
+
+   return pipeline_name[pipe];
+}
+
 void
 blorp_init(struct blorp_context *blorp, void *driver_ctx,
            struct isl_device *isl_dev, const struct blorp_config *config)
