@@ -894,13 +894,19 @@ loader_dri3_copy_drawable(struct loader_dri3_drawable *draw,
 {
    loader_dri3_flush(draw, __DRI2_FLUSH_DRAWABLE, __DRI2_THROTTLE_COPYSUBBUFFER);
 
-   dri3_fence_reset(draw->conn, dri3_fake_front_buffer(draw));
+   struct loader_dri3_buffer *front = dri3_fake_front_buffer(draw);
+   if (front)
+      dri3_fence_reset(draw->conn, front);
+
    dri3_copy_area(draw->conn,
                   src, dest,
                   dri3_drawable_gc(draw),
                   0, 0, 0, 0, draw->width, draw->height);
-   dri3_fence_trigger(draw->conn, dri3_fake_front_buffer(draw));
-   dri3_fence_await(draw->conn, draw, dri3_fake_front_buffer(draw));
+
+   if (front) {
+      dri3_fence_trigger(draw->conn, front);
+      dri3_fence_await(draw->conn, draw, front);
+   }
 }
 
 void
