@@ -1995,19 +1995,20 @@ static inline unsigned si_get_wave_size(struct si_screen *sscreen,
       return sscreen->ge_wave_size;
 }
 
-static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
+static inline unsigned si_get_shader_wave_size(struct si_screen *sscreen, struct si_shader *shader)
 {
-   if (shader->is_gs_copy_shader)
+   /* There are a few uses that pass shader=NULL here, expecting the default compute wave size. */
+   struct si_shader_info *info = shader ? &shader->selector->info : NULL;
+   gl_shader_stage stage = info ? info->stage : MESA_SHADER_COMPUTE;
+
+   if (shader && shader->is_gs_copy_shader)
       return shader->selector->screen->ge_wave_size;
 
-   if (shader->selector->info.stage <= MESA_SHADER_GEOMETRY) {
-      return si_get_wave_size(shader->selector->screen, shader->selector->info.stage,
-                              shader->key.ge.as_ngg,
-                              shader->key.ge.as_es);
+   if (stage <= MESA_SHADER_GEOMETRY) {
+      return si_get_wave_size(sscreen, stage, shader->key.ge.as_ngg, shader->key.ge.as_es);
    }
 
-   return si_get_wave_size(shader->selector->screen, shader->selector->info.stage,
-                           false, false);
+   return si_get_wave_size(sscreen, stage, false, false);
 }
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
