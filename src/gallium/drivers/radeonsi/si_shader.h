@@ -288,6 +288,10 @@ enum
 #define SI_NGG_CULL_CLIP_PLANE_ENABLE(enable) (((enable) & 0xff) << 5)
 #define SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(x)  (((x) >> 5) & 0xff)
 
+#define SI_PROFILE_WAVE32                    (1 << 0)
+#define SI_PROFILE_WAVE64                    (1 << 1)
+#define SI_PROFILE_IGNORE_LLVM_DISCARD_BUG   (1 << 2)
+
 /**
  * For VS shader keys, describe any fixups required for vertex fetch.
  *
@@ -344,6 +348,7 @@ struct si_shader_info {
    shader_info base;
 
    gl_shader_stage stage;
+   uint32_t options; /* bitmask of SI_PROFILE_* */
 
    ubyte num_inputs;
    ubyte num_outputs;
@@ -404,6 +409,7 @@ struct si_shader_info {
    bool uses_bindless_samplers;
    bool uses_bindless_images;
    bool uses_indirect_descriptor;
+   bool has_divergent_loop;
 
    bool uses_vmem_return_type_sampler_or_bvh;
    bool uses_vmem_return_type_other; /* all other VMEM loads and atomics with return */

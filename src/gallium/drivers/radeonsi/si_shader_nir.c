@@ -31,6 +31,29 @@
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "tgsi/tgsi_from_mesa.h"
+#include "util/mesa-sha1.h"
+
+
+struct si_shader_profile {
+   uint32_t sha1[SHA1_DIGEST_LENGTH32];
+   uint32_t options;
+};
+
+static struct si_shader_profile profiles[] =
+{
+   {
+      /* Viewperf/Energy isn't affected by the discard bug. */
+      {0x17118671, 0xd0102e0c, 0x947f3592, 0xb2057e7b, 0x4da5d9b0},
+      SI_PROFILE_IGNORE_LLVM_DISCARD_BUG,
+   },
+   {
+      /* Viewperf/Medical, a shader with a divergent loop doesn't benefit from Wave32,
+       * probably due to interpolation performance.
+       */
+      {0x29f0f4a0, 0x0672258d, 0x47ccdcfd, 0x31e67dcc, 0xdcb1fda8},
+      SI_PROFILE_WAVE64,
+   },
+};
 
 static const nir_src *get_texture_src(nir_tex_instr *instr, nir_tex_src_type type)
 {
@@ -397,6 +420,14 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->base = nir->info;
    info->stage = nir->info.stage;
 
+   /* Get options from shader profiles. */
+   for (unsigned i = 0; i < ARRAY_SIZE(profiles); i++) {
+      if (_mesa_printed_sha1_equal(info->base.source_sha1, profiles[i].sha1)) {
+         info->options = profiles[i].options;
+         break;
+      }
+   }
+
    if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
       if (info->base.tess.primitive_mode == GL_ISOLINES)
          info->base.tess.primitive_mode = GL_LINES;
@@ -531,6 +562,8 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    /* Trim output read masks based on write masks. */
    for (unsigned i = 0; i < info->num_outputs; i++)
       info->output_readmask[i] &= info->output_usagemask[i];
+
+   info->has_divergent_loop = nir_has_divergent_loop((nir_shader*)nir);
 }
 
 static bool si_alu_to_scalar_filter(const nir_instr *instr, const void *data)
@@ -931,6 +964,9 @@ char *si_finalize_nir(struct pipe_screen *screen, void *nirptr)
 
    if (sscreen->options.inline_uniforms)
       nir_find_inlinable_uniforms(nir);
+
+   NIR_PASS_V(nir, nir_convert_to_lcssa, true, true); /* required by divergence analysis */
+   NIR_PASS_V(nir, nir_divergence_analysis); /* to find divergent loops */
 
    return NULL;
 }

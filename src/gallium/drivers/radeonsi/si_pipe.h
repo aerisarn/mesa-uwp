@@ -197,6 +197,7 @@ enum
    DBG_GISEL,
    DBG_W32_GE,
    DBG_W32_PS,
+   DBG_W32_PS_DISCARD,
    DBG_W32_CS,
    DBG_W64_GE,
    DBG_W64_PS,

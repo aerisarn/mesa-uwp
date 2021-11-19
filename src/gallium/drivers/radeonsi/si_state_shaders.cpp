@@ -52,13 +52,87 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
        (stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg))
       return 64;
 
-   if (stage == MESA_SHADER_COMPUTE)
-      return sscreen->debug_flags & DBG(W32_CS) ? 32 : 64;
+   /* Small workgroups use Wave32 unconditionally. */
+   if (stage == MESA_SHADER_COMPUTE && info &&
+       !info->base.workgroup_size_variable &&
+       info->base.workgroup_size[0] *
+       info->base.workgroup_size[1] *
+       info->base.workgroup_size[2] <= 32)
+      return 32;
 
-   if (stage == MESA_SHADER_FRAGMENT)
-      return sscreen->debug_flags & DBG(W32_PS) ? 32 : 64;
+   /* Debug flags. */
+   unsigned dbg_wave_size = 0;
+   if (sscreen->debug_flags &
+       (stage == MESA_SHADER_COMPUTE ? DBG(W32_CS) :
+        stage == MESA_SHADER_FRAGMENT ? DBG(W32_PS) | DBG(W32_PS_DISCARD) : DBG(W32_GE)))
+      dbg_wave_size = 32;
 
-   return sscreen->debug_flags & DBG(W32_GE) ? 32 : 64;
+   if (sscreen->debug_flags &
+       (stage == MESA_SHADER_COMPUTE ? DBG(W64_CS) :
+        stage == MESA_SHADER_FRAGMENT ? DBG(W64_PS) : DBG(W64_GE))) {
+      assert(!dbg_wave_size);
+      dbg_wave_size = 64;
+   }
+
+   /* Shader profiles. */
+   unsigned profile_wave_size = 0;
+   if (info && info->options & SI_PROFILE_WAVE32)
+      profile_wave_size = 32;
+
+   if (info && info->options & SI_PROFILE_WAVE64) {
+      assert(!profile_wave_size);
+      profile_wave_size = 64;
+   }
+
+   if (profile_wave_size) {
+      /* Only debug flags override shader profiles. */
+      if (dbg_wave_size)
+         return dbg_wave_size;
+
+      return profile_wave_size;
+   }
+
+   /* LLVM 13 and 14 have a bug that causes compile failures with discard in Wave32
+    * in some cases. Alpha test in Wave32 is luckily unaffected.
+    */
+   if (stage == MESA_SHADER_FRAGMENT && info->base.fs.uses_discard &&
+       !(info && info->options & SI_PROFILE_IGNORE_LLVM_DISCARD_BUG) &&
+       LLVM_VERSION_MAJOR >= 13 && !(sscreen->debug_flags & DBG(W32_PS_DISCARD)))
+      return 64;
+
+   /* Debug flags except w32psdiscard don't override the discard bug workaround,
+    * but they override everything else.
+    */
+   if (dbg_wave_size)
+      return dbg_wave_size;
+
+   /* Pixel shaders without interp instructions don't suffer from reduced interpolation
+    * performance in Wave32, so use Wave32. This helps Piano and Voloplosion.
+    */
+   if (stage == MESA_SHADER_FRAGMENT && !info->num_inputs)
+      return 32;
+
+   /* There are a few very rare cases where VS is better with Wave32, and there are no known
+    * cases where Wave64 is better.
+    */
+   if (stage <= MESA_SHADER_GEOMETRY)
+      return 32;
+
+   /* TODO: Merged shaders must use the same wave size because the driver doesn't recompile
+    * individual shaders of merged shaders to match the wave size between them.
+    */
+   bool merged_shader = shader && !shader->is_gs_copy_shader &&
+                        (shader->key.ge.as_ls || shader->key.ge.as_es ||
+                         stage == MESA_SHADER_TESS_CTRL || stage == MESA_SHADER_GEOMETRY);
+
+   /* Divergent loops in Wave64 can end up having too many iterations in one half of the wave
+    * while the other half is idling but occupying VGPRs, preventing other waves from launching.
+    * Wave32 eliminates the idling half to allow the next wave to start.
+    */
+   if (!merged_shader && info && info->has_divergent_loop)
+      return 32;
+
+   return 64;
 }
 
 /* SHADER_CACHE */
