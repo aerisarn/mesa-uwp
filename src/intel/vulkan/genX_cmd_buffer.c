@@ -2120,16 +2120,12 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.current_l3_config = cfg;
 }
 
-void
-genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
+enum anv_pipe_bits
+genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
+                              struct anv_device *device,
+                              uint32_t current_pipeline,
+                              enum anv_pipe_bits bits)
 {
-   enum anv_pipe_bits bits = cmd_buffer->state.pending_pipe_bits;
-
-   if (unlikely(cmd_buffer->device->physical->always_flush_cache))
-      bits |= ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS;
-   else if (bits == 0)
-      return;
-
    /*
     * From Sandybridge PRM, volume 2, "1.7.2 End-of-Pipe Synchronization":
     *
@@ -2185,18 +2181,6 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    if (GFX_VER == 12 && (bits & ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT))
       bits |= ANV_PIPE_CS_STALL_BIT | ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 
-   if ((GFX_VER >= 8 && GFX_VER <= 9) &&
-       (bits & ANV_PIPE_CS_STALL_BIT) &&
-       (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT)) {
-      /* If we are doing a VF cache invalidate AND a CS stall (it must be
-       * both) then we can reset our vertex cache tracking.
-       */
-      memset(cmd_buffer->state.gfx.vb_dirty_ranges, 0,
-             sizeof(cmd_buffer->state.gfx.vb_dirty_ranges));
-      memset(&cmd_buffer->state.gfx.ib_dirty_range, 0,
-             sizeof(cmd_buffer->state.gfx.ib_dirty_range));
-   }
-
    /* Project: SKL / Argument: LRI Post Sync Operation [23]
     *
     * "PIPECONTROL command with “Command Streamer Stall Enable” must be
@@ -2207,14 +2191,14 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
     * The same text exists a few rows below for Post Sync Op.
     */
    if (bits & ANV_PIPE_POST_SYNC_BIT) {
-      if (GFX_VER == 9 && cmd_buffer->state.current_pipeline == GPGPU)
+      if (GFX_VER == 9 && current_pipeline == GPGPU)
          bits |= ANV_PIPE_CS_STALL_BIT;
       bits &= ~ANV_PIPE_POST_SYNC_BIT;
    }
 
    if (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS |
                ANV_PIPE_END_OF_PIPE_SYNC_BIT)) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
+      anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe) {
 #if GFX_VER >= 12
          pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
          pipe.HDCPipelineFlushEnable |= bits & ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
@@ -2272,7 +2256,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
          if (bits & ANV_PIPE_END_OF_PIPE_SYNC_BIT) {
             pipe.CommandStreamerStallEnable = true;
             pipe.PostSyncOperation = WriteImmediateData;
-            pipe.Address = cmd_buffer->device->workaround_address;
+            pipe.Address = device->workaround_address;
          }
 
          /*
@@ -2341,9 +2325,9 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
           * always re-load all of the indirect draw registers right before
           * 3DPRIMITIVE when needed anyway.
           */
-         anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
+         anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
             lrm.RegisterAddress  = 0x243C; /* GFX7_3DPRIM_START_INSTANCE */
-            lrm.MemoryAddress = cmd_buffer->device->workaround_address;
+            lrm.MemoryAddress = device->workaround_address;
          }
       }
 
@@ -2363,9 +2347,9 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
        * This appears to hang Broadwell, so we restrict it to just gfx9.
        */
       if (GFX_VER == 9 && (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT))
-         anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe);
+         anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe);
 
-      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
+      anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe) {
          pipe.StateCacheInvalidationEnable =
             bits & ANV_PIPE_STATE_CACHE_INVALIDATE_BIT;
          pipe.ConstantCacheInvalidationEnable =
@@ -2385,15 +2369,14 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
           */
          if (GFX_VER == 9 && pipe.VFCacheInvalidationEnable) {
             pipe.PostSyncOperation = WriteImmediateData;
-            pipe.Address = cmd_buffer->device->workaround_address;
+            pipe.Address = device->workaround_address;
          }
          anv_debug_dump_pc(pipe);
       }
 
 #if GFX_VER == 12
-      if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) &&
-          cmd_buffer->device->info.has_aux_map) {
-         anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+      if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) && device->info.has_aux_map) {
+         anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
             lri.RegisterOffset = GENX(GFX_CCS_AUX_INV_num);
             lri.DataDWord = 1;
          }
@@ -2403,7 +2386,36 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
       bits &= ~ANV_PIPE_INVALIDATE_BITS;
    }
 
-   cmd_buffer->state.pending_pipe_bits = bits;
+   return bits;
+}
+
+void
+genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
+{
+   enum anv_pipe_bits bits = cmd_buffer->state.pending_pipe_bits;
+
+   if (unlikely(cmd_buffer->device->physical->always_flush_cache))
+      bits |= ANV_PIPE_FLUSH_BITS | ANV_PIPE_INVALIDATE_BITS;
+   else if (bits == 0)
+      return;
+
+   if ((GFX_VER >= 8 && GFX_VER <= 9) &&
+       (bits & ANV_PIPE_CS_STALL_BIT) &&
+       (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT)) {
+      /* If we are doing a VF cache invalidate AND a CS stall (it must be
+       * both) then we can reset our vertex cache tracking.
+       */
+      memset(cmd_buffer->state.gfx.vb_dirty_ranges, 0,
+             sizeof(cmd_buffer->state.gfx.vb_dirty_ranges));
+      memset(&cmd_buffer->state.gfx.ib_dirty_range, 0,
+             sizeof(cmd_buffer->state.gfx.ib_dirty_range));
+   }
+
+   cmd_buffer->state.pending_pipe_bits =
+      genX(emit_apply_pipe_flushes)(&cmd_buffer->batch,
+                                    cmd_buffer->device,
+                                    cmd_buffer->state.current_pipeline,
+                                    bits);
 }
 
 static void
@@ -5654,28 +5666,9 @@ genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
       dirty = &cmd_buffer->state.gfx.vb_dirty_ranges[vb_index];
    }
 
-   if (vb_size == 0) {
-      bound->start = 0;
-      bound->end = 0;
-      return;
-   }
-
-   assert(vb_address.bo && anv_bo_is_pinned(vb_address.bo));
-   bound->start = intel_48b_address(anv_address_physical(vb_address));
-   bound->end = bound->start + vb_size;
-   assert(bound->end > bound->start); /* No overflow */
-
-   /* Align everything to a cache line */
-   bound->start &= ~(64ull - 1ull);
-   bound->end = align_u64(bound->end, 64);
-
-   /* Compute the dirty range */
-   dirty->start = MIN2(dirty->start, bound->start);
-   dirty->end = MAX2(dirty->end, bound->end);
-
-   /* If our range is larger than 32 bits, we have to flush */
-   assert(bound->end - bound->start <= (1ull << 32));
-   if (dirty->end - dirty->start > (1ull << 32)) {
+   if (anv_gfx8_9_vb_cache_range_needs_workaround(bound, dirty,
+                                                  vb_address,
+                                                  vb_size)) {
       anv_add_pending_pipe_bits(cmd_buffer,
                                 ANV_PIPE_CS_STALL_BIT |
                                 ANV_PIPE_VF_CACHE_INVALIDATE_BIT,

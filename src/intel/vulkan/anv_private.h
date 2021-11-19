@@ -2784,6 +2784,37 @@ struct anv_vb_cache_range {
    uint64_t end;
 };
 
+/* Check whether we need to apply the Gfx8-9 vertex buffer workaround*/
+static inline bool
+anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
+                                           struct anv_vb_cache_range *dirty,
+                                           struct anv_address vb_address,
+                                           uint32_t vb_size)
+{
+   if (vb_size == 0) {
+      bound->start = 0;
+      bound->end = 0;
+      return false;
+   }
+
+   assert(vb_address.bo && anv_bo_is_pinned(vb_address.bo));
+   bound->start = intel_48b_address(anv_address_physical(vb_address));
+   bound->end = bound->start + vb_size;
+   assert(bound->end > bound->start); /* No overflow */
+
+   /* Align everything to a cache line */
+   bound->start &= ~(64ull - 1ull);
+   bound->end = align_u64(bound->end, 64);
+
+   /* Compute the dirty range */
+   dirty->start = MIN2(dirty->start, bound->start);
+   dirty->end = MAX2(dirty->end, bound->end);
+
+   /* If our range is larger than 32 bits, we have to flush */
+   assert(bound->end - bound->start <= (1ull << 32));
+   return (dirty->end - dirty->start) > (1ull << 32);
+}
+
 /** State tracking for particular pipeline bind point
  *
  * This struct is the base struct for anv_cmd_graphics_state and
@@ -4500,6 +4531,15 @@ void anv_perf_write_pass_results(struct intel_perf_config *perf,
                                  struct anv_query_pool *pool, uint32_t pass,
                                  const struct intel_perf_query_result *accumulated_results,
                                  union VkPerformanceCounterResultKHR *results);
+
+/* Use to emit a series of memcpy operations */
+struct anv_memcpy_state {
+   struct anv_device *device;
+   struct anv_batch *batch;
+
+   struct anv_vb_cache_range vb_bound;
+   struct anv_vb_cache_range vb_dirty;
+};
 
 #define ANV_FROM_HANDLE(__anv_type, __name, __handle) \
    VK_FROM_HANDLE(__anv_type, __name, __handle)
