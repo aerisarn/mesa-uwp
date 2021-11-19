@@ -571,24 +571,10 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 
         pandecode_log_cont("\n\n");
 
-        struct midgard_disasm_stats stats;
+        struct midgard_disasm_stats stats = { 0 };
 
 #if PAN_ARCH >= 6
         disassemble_bifrost(pandecode_dump_stream, code, sz, true);
-
-        /* TODO: Extend stats to Bifrost */
-        stats.texture_count = -128;
-        stats.sampler_count = -128;
-        stats.attribute_count = -128;
-        stats.varying_count = -128;
-        stats.uniform_count = -128;
-        stats.uniform_buffer_count = -128;
-        stats.work_count = -128;
-
-        stats.instruction_count = 0;
-        stats.bundle_count = 0;
-        stats.quadword_count = 0;
-        stats.helper_invocations = false;
 #else
 	stats = disassemble_midgard(pandecode_dump_stream,
                                     code, sz, gpu_id, true);
