@@ -6449,7 +6449,8 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
 
          intel_set_ps_dispatch_state(&ps, &batch->screen->devinfo,
                                      wm_prog_data,
-                                     ice->state.framebuffer.samples);
+                                     ice->state.framebuffer.samples,
+                                     0 /* msaa_flags */);
 
          ps.DispatchGRFStartRegisterForConstantSetupData0 =
             brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
@@ -6517,7 +6518,8 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
          psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
          psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
          psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
-         psx.PixelShaderIsPerSample = wm_prog_data->persample_dispatch;
+         psx.PixelShaderIsPerSample =
+            brw_wm_prog_data_is_persample(wm_prog_data, 0);
 
          /* _NEW_MULTISAMPLE | BRW_NEW_CONSERVATIVE_RASTERIZATION */
          if (wm_prog_data->uses_sample_mask)
@@ -7291,7 +7293,7 @@ crocus_upload_dirty_render_state(struct crocus_context *ice,
             else
                wm.MultisampleRasterizationMode = MSRASTMODE_OFF_PIXEL;
 
-            if (wm_prog_data->persample_dispatch)
+            if (brw_wm_prog_data_is_persample(wm_prog_data, 0))
                wm.MultisampleDispatchMode = MSDISPMODE_PERSAMPLE;
             else
                wm.MultisampleDispatchMode = MSDISPMODE_PERPIXEL;

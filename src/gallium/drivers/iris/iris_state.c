@@ -4820,7 +4820,8 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
       psx.AttributeEnable = wm_prog_data->num_varying_inputs != 0;
       psx.PixelShaderUsesSourceDepth = wm_prog_data->uses_src_depth;
       psx.PixelShaderUsesSourceW = wm_prog_data->uses_src_w;
-      psx.PixelShaderIsPerSample = wm_prog_data->persample_dispatch;
+      psx.PixelShaderIsPerSample =
+         brw_wm_prog_data_is_persample(wm_prog_data, 0);
       psx.oMaskPresenttoRenderTarget = wm_prog_data->uses_omask;
 
 #if GFX_VER >= 9
@@ -6274,7 +6275,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             uint32_t ps_state[GENX(3DSTATE_PS_length)] = {0};
             _iris_pack_command(batch, GENX(3DSTATE_PS), ps_state, ps) {
                intel_set_ps_dispatch_state(&ps, batch->screen->devinfo,
-                                           wm_prog_data, cso_fb->samples);
+                                           wm_prog_data, cso_fb->samples,
+                                           0 /* msaa_flags */);
 
                ps.DispatchGRFStartRegisterForConstantSetupData0 =
                   brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);

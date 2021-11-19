@@ -291,10 +291,10 @@ fs_visitor::emit_interpolation_setup_gfx6()
 
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(prog_data);
 
-   fs_reg int_pixel_offset_x, int_pixel_offset_y; /* Used on Gen12HP+ */
-   fs_reg int_pixel_offset_xy; /* Used on Gen8+ */
-   fs_reg half_int_pixel_offset_x, half_int_pixel_offset_y;
-   if (!wm_prog_data->per_coarse_pixel_dispatch) {
+   fs_reg int_sample_offset_x, int_sample_offset_y; /* Used on Gen12HP+ */
+   fs_reg int_sample_offset_xy; /* Used on Gen8+ */
+   fs_reg half_int_sample_offset_x, half_int_sample_offset_y;
+   if (wm_prog_data->coarse_pixel_dispatch != BRW_ALWAYS) {
       /* The thread payload only delivers subspan locations (ss0, ss1,
        * ss2, ...). Since subspans covers 2x2 pixels blocks, we need to
        * generate 4 pixel coordinates out of each subspan location. We do this
@@ -324,9 +324,9 @@ fs_visitor::emit_interpolation_setup_gfx6()
        * coordinates out of 2 subspans coordinates in a single ADD instruction
        * (twice the operation above).
        */
-      int_pixel_offset_xy = fs_reg(brw_imm_v(0x11001010));
-      half_int_pixel_offset_x = fs_reg(brw_imm_uw(0));
-      half_int_pixel_offset_y = fs_reg(brw_imm_uw(0));
+      int_sample_offset_xy = fs_reg(brw_imm_v(0x11001010));
+      half_int_sample_offset_x = fs_reg(brw_imm_uw(0));
+      half_int_sample_offset_y = fs_reg(brw_imm_uw(0));
       /* On Gfx12.5, because of regioning restrictions, the interpolation code
        * is slightly different and works off X & Y only inputs. The ordering
        * of the half bytes here is a bit odd, with each subspan replicated
@@ -336,9 +336,14 @@ fs_visitor::emit_interpolation_setup_gfx6()
        *  X offset:    0      0      1      0      0      0      1      0
        *  Y offset:    0      0      0      0      1      0      1      0
        */
-      int_pixel_offset_x = fs_reg(brw_imm_v(0x01000100));
-      int_pixel_offset_y = fs_reg(brw_imm_v(0x01010000));
-   } else {
+      int_sample_offset_x = fs_reg(brw_imm_v(0x01000100));
+      int_sample_offset_y = fs_reg(brw_imm_v(0x01010000));
+   }
+
+   fs_reg int_coarse_offset_x, int_coarse_offset_y; /* Used on Gen12HP+ */
+   fs_reg int_coarse_offset_xy; /* Used on Gen8+ */
+   fs_reg half_int_coarse_offset_x, half_int_coarse_offset_y;
+   if (wm_prog_data->coarse_pixel_dispatch != BRW_NEVER) {
       /* In coarse pixel dispatch we have to do the same ADD instruction that
        * we do in normal per pixel dispatch, except this time we're not adding
        * 1 in each direction, but instead the coarse pixel size.
@@ -354,34 +359,84 @@ fs_visitor::emit_interpolation_setup_gfx6()
          /* To build the array of half bytes we do and AND operation with the
           * right mask in X.
           */
-         int_pixel_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-         dbld.AND(int_pixel_offset_x, byte_offset(r1_0, 0), brw_imm_v(0x0f000f00));
+         int_coarse_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_coarse_offset_x, byte_offset(r1_0, 0), brw_imm_v(0x0f000f00));
 
          /* And the right mask in Y. */
-         int_pixel_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-         dbld.AND(int_pixel_offset_y, byte_offset(r1_0, 1), brw_imm_v(0x0f0f0000));
+         int_coarse_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_coarse_offset_y, byte_offset(r1_0, 1), brw_imm_v(0x0f0f0000));
       } else {
          /* To build the array of half bytes we do and AND operation with the
           * right mask in X.
           */
-         int_pixel_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-         dbld.AND(int_pixel_offset_x, byte_offset(r1_0, 0), brw_imm_v(0x0000f0f0));
+         int_coarse_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_coarse_offset_x, byte_offset(r1_0, 0), brw_imm_v(0x0000f0f0));
 
          /* And the right mask in Y. */
-         int_pixel_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-         dbld.AND(int_pixel_offset_y, byte_offset(r1_0, 1), brw_imm_v(0xff000000));
+         int_coarse_offset_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.AND(int_coarse_offset_y, byte_offset(r1_0, 1), brw_imm_v(0xff000000));
 
          /* Finally OR the 2 registers. */
-         int_pixel_offset_xy = dbld.vgrf(BRW_REGISTER_TYPE_UW);
-         dbld.OR(int_pixel_offset_xy, int_pixel_offset_x, int_pixel_offset_y);
+         int_coarse_offset_xy = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         dbld.OR(int_coarse_offset_xy, int_coarse_offset_x, int_coarse_offset_y);
       }
 
-      /* Also compute the half pixel size used to center pixels. */
-      half_int_pixel_offset_x = bld.vgrf(BRW_REGISTER_TYPE_UW);
-      half_int_pixel_offset_y = bld.vgrf(BRW_REGISTER_TYPE_UW);
+      /* Also compute the half coarse size used to center coarses. */
+      half_int_coarse_offset_x = bld.vgrf(BRW_REGISTER_TYPE_UW);
+      half_int_coarse_offset_y = bld.vgrf(BRW_REGISTER_TYPE_UW);
 
-      bld.SHR(half_int_pixel_offset_x, suboffset(r1_0, 0), brw_imm_ud(1));
-      bld.SHR(half_int_pixel_offset_y, suboffset(r1_0, 1), brw_imm_ud(1));
+      bld.SHR(half_int_coarse_offset_x, suboffset(r1_0, 0), brw_imm_ud(1));
+      bld.SHR(half_int_coarse_offset_y, suboffset(r1_0, 1), brw_imm_ud(1));
+   }
+
+   fs_reg int_pixel_offset_x, int_pixel_offset_y; /* Used on Gen12HP+ */
+   fs_reg int_pixel_offset_xy; /* Used on Gen8+ */
+   fs_reg half_int_pixel_offset_x, half_int_pixel_offset_y;
+   switch (wm_prog_data->coarse_pixel_dispatch) {
+   case BRW_NEVER:
+#define COPY_OFFSET_REG(prefix, suffix) \
+  prefix##_pixel_##suffix = prefix##_sample_##suffix;
+
+      COPY_OFFSET_REG(int, offset_x)
+      COPY_OFFSET_REG(int, offset_y)
+      COPY_OFFSET_REG(int, offset_xy)
+      COPY_OFFSET_REG(half_int, offset_x)
+      COPY_OFFSET_REG(half_int, offset_y)
+
+#undef COPY_OFFSET_REG
+      break;
+
+   case BRW_SOMETIMES:
+      check_dynamic_msaa_flag(bld, wm_prog_data,
+                              BRW_WM_MSAA_FLAG_COARSE_DISPATCH);
+
+#define COPY_OFFSET_REG(prefix, suffix) \
+   prefix##_pixel_##suffix = bld.vgrf(BRW_REGISTER_TYPE_UW); \
+   bld.SEL(prefix##_pixel_##suffix, \
+           prefix##_coarse_##suffix, \
+           prefix##_pixel_##suffix); \
+
+      COPY_OFFSET_REG(int, offset_x)
+      COPY_OFFSET_REG(int, offset_y)
+      COPY_OFFSET_REG(int, offset_xy)
+      COPY_OFFSET_REG(half_int, offset_x)
+      COPY_OFFSET_REG(half_int, offset_y)
+
+#undef COPY_OFFSET_REG
+      break;
+
+   case BRW_ALWAYS:
+#define COPY_OFFSET_REG(prefix, suffix) \
+  prefix##_pixel_##suffix = prefix##_coarse_##suffix;
+
+      COPY_OFFSET_REG(int, offset_x)
+      COPY_OFFSET_REG(int, offset_y)
+      COPY_OFFSET_REG(int, offset_xy)
+      COPY_OFFSET_REG(half_int, offset_x)
+      COPY_OFFSET_REG(half_int, offset_y)
+
+#undef COPY_OFFSET_REG
+      break;
    }
 
    for (unsigned i = 0; i < DIV_ROUND_UP(dispatch_width, 16); i++) {
@@ -401,11 +456,15 @@ fs_visitor::emit_interpolation_setup_gfx6()
                   fs_reg(stride(suboffset(gi_uw, 5), 2, 8, 0)),
                   int_pixel_offset_y);
 
-         if (wm_prog_data->per_coarse_pixel_dispatch) {
-            dbld.ADD(int_pixel_x, int_pixel_x,
-                     horiz_stride(half_int_pixel_offset_x, 0));
-            dbld.ADD(int_pixel_y, int_pixel_y,
-                     horiz_stride(half_int_pixel_offset_y, 0));
+         if (wm_prog_data->coarse_pixel_dispatch != BRW_NEVER) {
+            fs_inst *addx = dbld.ADD(int_pixel_x, int_pixel_x,
+                                     horiz_stride(half_int_pixel_offset_x, 0));
+            fs_inst *addy = dbld.ADD(int_pixel_y, int_pixel_y,
+                                     horiz_stride(half_int_pixel_offset_y, 0));
+            if (wm_prog_data->coarse_pixel_dispatch != BRW_ALWAYS) {
+               addx->predicate = BRW_PREDICATE_NORMAL;
+               addy->predicate = BRW_PREDICATE_NORMAL;
+            }
          }
 
          hbld.MOV(offset(pixel_x, hbld, i), horiz_stride(int_pixel_x, 2));
@@ -463,8 +522,8 @@ fs_visitor::emit_interpolation_setup_gfx6()
    }
 
    abld = bld.annotate("compute pos.z");
+   fs_reg coarse_z;
    if (wm_prog_data->uses_depth_w_coefficients) {
-      assert(!wm_prog_data->uses_src_depth);
       /* In coarse pixel mode, the HW doesn't interpolate Z coordinate
        * properly. In the same way we have to add the coarse pixel size to
        * pixels locations, here we recompute the Z value with 2 coefficients
@@ -501,14 +560,42 @@ fs_visitor::emit_interpolation_setup_gfx6()
       abld.MAD(float_pixel_x, float_pixel_x, brw_imm_f(0.5f), f_cps_width);
       abld.MAD(float_pixel_y, float_pixel_y, brw_imm_f(0.5f), f_cps_height);
 
-      this->pixel_z = abld.vgrf(BRW_REGISTER_TYPE_F);
-      abld.MAD(this->pixel_z, z_c0, z_cx, float_pixel_x);
-      abld.MAD(this->pixel_z, this->pixel_z, z_cy, float_pixel_y);
+      coarse_z = abld.vgrf(BRW_REGISTER_TYPE_F);
+      abld.MAD(coarse_z, z_c0, z_cx, float_pixel_x);
+      abld.MAD(coarse_z, coarse_z, z_cy, float_pixel_y);
    }
 
    if (wm_prog_data->uses_src_depth) {
       assert(!wm_prog_data->uses_depth_w_coefficients);
       this->pixel_z = fetch_payload_reg(bld, fs_payload().source_depth_reg);
+   }
+
+   if (wm_prog_data->uses_depth_w_coefficients ||
+       wm_prog_data->uses_src_depth) {
+      fs_reg sample_z = this->pixel_z;
+
+      switch (wm_prog_data->coarse_pixel_dispatch) {
+      case BRW_NEVER:
+         assert(wm_prog_data->uses_src_depth);
+         assert(!wm_prog_data->uses_depth_w_coefficients);
+         this->pixel_z = sample_z;
+         break;
+
+      case BRW_SOMETIMES:
+         assert(wm_prog_data->uses_src_depth);
+         assert(wm_prog_data->uses_depth_w_coefficients);
+         this->pixel_z = abld.vgrf(BRW_REGISTER_TYPE_F);
+
+         /* We re-use the check_dynamic_msaa_flag() call from above */
+         abld.SEL(this->pixel_z, coarse_z, sample_z);
+         break;
+
+      case BRW_ALWAYS:
+         assert(!wm_prog_data->uses_src_depth);
+         assert(wm_prog_data->uses_depth_w_coefficients);
+         this->pixel_z = coarse_z;
+         break;
+      }
    }
 
    if (wm_prog_data->uses_src_w) {

@@ -359,7 +359,18 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       inst->desc =
          (inst->group / 16) << 11 | /* rt slot group */
          brw_fb_write_desc(devinfo, inst->target, msg_ctl, inst->last_rt,
-                           prog_data->per_coarse_pixel_dispatch);
+                           0 /* coarse_write */);
+
+      fs_reg desc = brw_imm_ud(0);
+      if (prog_data->coarse_pixel_dispatch == BRW_ALWAYS) {
+         inst->desc |= (1 << 18);
+      } else if (prog_data->coarse_pixel_dispatch == BRW_SOMETIMES) {
+         STATIC_ASSERT(BRW_WM_MSAA_FLAG_COARSE_DISPATCH == (1 << 18));
+         const fs_builder &ubld = bld.exec_all().group(8, 0);
+         desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.AND(desc, dynamic_msaa_flags(prog_data),
+                  brw_imm_ud(BRW_WM_MSAA_FLAG_COARSE_DISPATCH));
+      }
 
       uint32_t ex_desc = 0;
       if (devinfo->ver >= 11) {
@@ -376,7 +387,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       inst->opcode = SHADER_OPCODE_SEND;
       inst->resize_sources(3);
       inst->sfid = GFX6_SFID_DATAPORT_RENDER_CACHE;
-      inst->src[0] = brw_imm_ud(0);
+      inst->src[0] = desc;
       inst->src[1] = brw_imm_ud(0);
       inst->src[2] = payload;
       inst->mlen = regs_written(load);
@@ -2456,8 +2467,6 @@ lower_interpolator_logical_send(const fs_builder &bld, fs_inst *inst,
    fs_reg payload = brw_vec8_grf(0, 0);
    unsigned mlen = 1;
 
-   const fs_reg desc = inst->src[1];
-
    unsigned mode;
    switch (inst->opcode) {
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
@@ -2480,10 +2489,32 @@ lower_interpolator_logical_send(const fs_builder &bld, fs_inst *inst,
       unreachable("Invalid interpolator instruction");
    }
 
+   fs_reg desc = inst->src[1];
    uint32_t desc_imm =
       brw_pixel_interp_desc(devinfo, mode, inst->pi_noperspective,
-                            wm_prog_data->per_coarse_pixel_dispatch,
+                            false /* coarse_pixel_rate */,
                             inst->exec_size, inst->group);
+
+   if (wm_prog_data->coarse_pixel_dispatch == BRW_ALWAYS) {
+      desc_imm |= (1 << 15);
+   } else if (wm_prog_data->coarse_pixel_dispatch == BRW_SOMETIMES) {
+      fs_reg orig_desc = desc;
+      const fs_builder &ubld = bld.exec_all().group(8, 0);
+      desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      ubld.AND(desc, dynamic_msaa_flags(wm_prog_data),
+               brw_imm_ud(BRW_WM_MSAA_FLAG_COARSE_DISPATCH));
+
+      /* The uniform is in bit 18 but we need it in bit 15 */
+      STATIC_ASSERT(BRW_WM_MSAA_FLAG_COARSE_DISPATCH == (1 << 18));
+      ubld.SHR(desc, desc, brw_imm_ud(3));
+
+   /* And, if it's AT_OFFSET, we might have a non-trivial descriptor */
+      if (orig_desc.file == IMM) {
+         desc_imm |= orig_desc.ud;
+      } else {
+         ubld.OR(desc, desc, orig_desc);
+      }
+   }
 
    assert(bld.shader->devinfo->ver >= 7);
    inst->opcode = SHADER_OPCODE_SEND;

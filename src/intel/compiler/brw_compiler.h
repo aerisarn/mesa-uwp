@@ -28,6 +28,7 @@
 #include "c11/threads.h"
 #include "dev/intel_device_info.h"
 #include "util/macros.h"
+#include "util/enum_operators.h"
 #include "util/ralloc.h"
 #include "util/u_math.h"
 #include "brw_isa_info.h"
@@ -464,6 +465,12 @@ enum brw_sometimes {
    BRW_ALWAYS
 };
 
+static inline enum brw_sometimes
+brw_sometimes_invert(enum brw_sometimes x)
+{
+   return (enum brw_sometimes)((int)BRW_ALWAYS - (int)x);
+}
+
 /** The program key for Fragment/Pixel Shaders. */
 struct brw_wm_prog_key {
    struct brw_base_prog_key base;
@@ -833,6 +840,29 @@ enum brw_pixel_shader_computed_depth_mode {
    BRW_PSCDEPTH_ON_LE = 3, /* PS guarantees output depth <= source depth */
 };
 
+enum brw_wm_msaa_flags {
+   /** Must be set whenever any dynamic MSAA is used
+    *
+    * This flag mostly exists to let us assert that the driver understands
+    * dynamic MSAA so we don't run into trouble with drivers that don't.
+    */
+   BRW_WM_MSAA_FLAG_ENABLE_DYNAMIC = (1 << 0),
+
+   /** True if the framebuffer is multisampled */
+   BRW_WM_MSAA_FLAG_MULTISAMPLE_FBO = (1 << 1),
+
+   /** True if this shader has been dispatched per-sample */
+   BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH = (1 << 2),
+
+   /** True if this shader has been dispatched coarse
+    *
+    * This is intentionally chose to be bit 18 to correspond to the coarse
+    * write bit in the FB write message descriptor.
+    */
+   BRW_WM_MSAA_FLAG_COARSE_DISPATCH = (1 << 18),
+};
+MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(enum brw_wm_msaa_flags)
+
 /* Data about a particular attempt to compile a program.  Note that
  * there can be many of these, each in a different GL state
  * corresponding to a different brw_wm_prog_key struct, with different
@@ -872,7 +902,6 @@ struct brw_wm_prog_data {
    bool dispatch_16;
    bool dispatch_32;
    bool dual_src_blend;
-   bool persample_dispatch;
    bool uses_pos_offset;
    bool uses_omask;
    bool uses_kill;
@@ -888,10 +917,23 @@ struct brw_wm_prog_data {
    bool contains_flat_varying;
    bool contains_noperspective_varying;
 
+   /** True if the shader wants sample shading
+    *
+    * This corresponds to whether or not a gl_SampleId, gl_SamplePosition, or
+    * a sample-qualified input are used in the shader.  It is independent of
+    * GL_MIN_SAMPLE_SHADING_VALUE in GL or minSampleShading in Vulkan.
+    */
+   bool sample_shading;
+
+   /** Should this shader be dispatched per-sample */
+   enum brw_sometimes persample_dispatch;
+
    /**
     * Shader is ran at the coarse pixel shading dispatch rate (3DSTATE_CPS).
     */
-   bool per_coarse_pixel_dispatch;
+   enum brw_sometimes coarse_pixel_dispatch;
+
+   unsigned msaa_flags_param;
 
    /**
     * Mask of which interpolation modes are required by the fragment shader.
@@ -1022,6 +1064,50 @@ _brw_wm_prog_data_reg_blocks(const struct brw_wm_prog_data *prog_data,
 #define brw_wm_prog_data_reg_blocks(prog_data, wm_state, ksp_idx) \
    _brw_wm_prog_data_reg_blocks(prog_data, \
       brw_wm_state_simd_width_for_ksp(wm_state, ksp_idx))
+
+static inline bool
+brw_wm_prog_data_is_persample(const struct brw_wm_prog_data *prog_data,
+                              enum brw_wm_msaa_flags pushed_msaa_flags)
+{
+   if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_ENABLE_DYNAMIC) {
+      if (!(pushed_msaa_flags & BRW_WM_MSAA_FLAG_MULTISAMPLE_FBO))
+         return false;
+
+      if (prog_data->sample_shading)
+         assert(pushed_msaa_flags & BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH);
+
+      if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH)
+         assert(prog_data->persample_dispatch != BRW_NEVER);
+      else
+         assert(prog_data->persample_dispatch != BRW_ALWAYS);
+
+      return (pushed_msaa_flags & BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH) != 0;
+   }
+
+   assert(prog_data->persample_dispatch == BRW_ALWAYS ||
+          prog_data->persample_dispatch == BRW_NEVER);
+
+   return prog_data->persample_dispatch;
+}
+
+static inline bool
+brw_wm_prog_data_is_coarse(const struct brw_wm_prog_data *prog_data,
+                           enum brw_wm_msaa_flags pushed_msaa_flags)
+{
+   if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_ENABLE_DYNAMIC) {
+      if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_COARSE_DISPATCH)
+         assert(prog_data->coarse_pixel_dispatch != BRW_NEVER);
+      else
+         assert(prog_data->coarse_pixel_dispatch != BRW_ALWAYS);
+
+      return pushed_msaa_flags & BRW_WM_MSAA_FLAG_COARSE_DISPATCH;
+   }
+
+   assert(prog_data->coarse_pixel_dispatch == BRW_ALWAYS ||
+          prog_data->coarse_pixel_dispatch == BRW_NEVER);
+
+   return prog_data->coarse_pixel_dispatch;
+}
 
 struct brw_push_const_block {
    unsigned dwords;     /* Dword count, not reg aligned */

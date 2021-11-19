@@ -1220,7 +1220,7 @@ fs_visitor::emit_samplepos_setup()
    const fs_builder abld = bld.annotate("compute sample position");
    fs_reg pos = abld.vgrf(BRW_REGISTER_TYPE_F, 2);
 
-   if (!wm_prog_data->persample_dispatch) {
+   if (wm_prog_data->persample_dispatch == BRW_NEVER) {
       /* From ARB_sample_shading specification:
        * "When rendering to a non-multisample buffer, or if multisample
        *  rasterization is disabled, gl_SamplePosition will always be
@@ -1253,6 +1253,16 @@ fs_visitor::emit_samplepos_setup()
       abld.MOV(tmp_f, tmp_d);
       /* Scale to the range [0, 1] */
       abld.MUL(offset(pos, abld, i), tmp_f, brw_imm_f(1 / 16.0f));
+   }
+
+   if (wm_prog_data->persample_dispatch == BRW_SOMETIMES) {
+      check_dynamic_msaa_flag(abld, wm_prog_data,
+                              BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH);
+      for (unsigned i = 0; i < 2; i++) {
+         set_predicate(BRW_PREDICATE_NORMAL,
+                       bld.SEL(offset(pos, abld, i), offset(pos, abld, i),
+                               brw_imm_f(0.5f)));
+      }
    }
 
    return pos;
@@ -1369,12 +1379,12 @@ fs_visitor::emit_samplemaskin_setup()
    assert(devinfo->ver >= 6);
 
    /* The HW doesn't provide us with expected values. */
-   assert(!wm_prog_data->per_coarse_pixel_dispatch);
+   assert(wm_prog_data->coarse_pixel_dispatch != BRW_ALWAYS);
 
    fs_reg coverage_mask =
       fetch_payload_reg(bld, fs_payload().sample_mask_in_reg, BRW_REGISTER_TYPE_D);
 
-   if (!wm_prog_data->persample_dispatch)
+   if (wm_prog_data->persample_dispatch == BRW_NEVER)
       return coverage_mask;
 
    /* gl_SampleMaskIn[] comes from two sources: the input coverage mask,
@@ -1399,6 +1409,13 @@ fs_visitor::emit_samplemaskin_setup()
    fs_reg mask = bld.vgrf(BRW_REGISTER_TYPE_D);
    abld.AND(mask, enabled_mask, coverage_mask);
 
+   if (wm_prog_data->persample_dispatch == BRW_ALWAYS)
+      return mask;
+
+   check_dynamic_msaa_flag(abld, wm_prog_data,
+                           BRW_WM_MSAA_FLAG_PERSAMPLE_DISPATCH);
+   set_predicate(BRW_PREDICATE_NORMAL, abld.SEL(mask, mask, coverage_mask));
+
    return mask;
 }
 
@@ -1413,7 +1430,7 @@ fs_visitor::emit_shading_rate_setup()
    /* Coarse pixel shading size fields overlap with other fields of not in
     * coarse pixel dispatch mode, so report 0 when that's not the case.
     */
-   if (!wm_prog_data->per_coarse_pixel_dispatch)
+   if (wm_prog_data->coarse_pixel_dispatch == BRW_NEVER)
       return brw_imm_ud(0);
 
    const fs_builder abld = bld.annotate("compute fragment shading rate");
@@ -1438,6 +1455,13 @@ fs_visitor::emit_shading_rate_setup()
 
    fs_reg rate = abld.vgrf(BRW_REGISTER_TYPE_UD);
    abld.OR(rate, int_rate_x, int_rate_y);
+
+   if (wm_prog_data->coarse_pixel_dispatch == BRW_ALWAYS)
+      return rate;
+
+   check_dynamic_msaa_flag(abld, wm_prog_data,
+                           BRW_WM_MSAA_FLAG_COARSE_DISPATCH);
+   set_predicate(BRW_PREDICATE_NORMAL, abld.SEL(rate, rate, brw_imm_ud(0)));
 
    return rate;
 }
@@ -7256,10 +7280,14 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
    prog_data->computed_stencil =
       shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
 
-   prog_data->persample_dispatch =
-      key->multisample_fbo &&
-      (key->persample_interp ||
-       shader->info.fs.uses_sample_shading);
+   prog_data->sample_shading =
+      shader->info.fs.uses_sample_shading ||
+      shader->info.outputs_read;
+
+   prog_data->persample_dispatch = BRW_NEVER;
+   if (key->multisample_fbo &&
+       (key->persample_interp || prog_data->sample_shading))
+      prog_data->persample_dispatch = BRW_ALWAYS;
 
    if (devinfo->ver >= 6) {
       prog_data->uses_sample_mask =
@@ -7274,7 +7302,8 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
        * per-sample dispatch.  If we need gl_SamplePosition and we don't have
        * persample dispatch, we hard-code it to 0.5.
        */
-      prog_data->uses_pos_offset = prog_data->persample_dispatch &&
+      prog_data->uses_pos_offset =
+         prog_data->persample_dispatch != BRW_NEVER &&
          (BITSET_TEST(shader->info.system_values_read,
                       SYSTEM_VALUE_SAMPLE_POS) ||
           BITSET_TEST(shader->info.system_values_read,
@@ -7295,13 +7324,16 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
 
    /* You can't be coarse and per-sample */
    assert(!key->coarse_pixel || !key->persample_interp);
-   prog_data->per_coarse_pixel_dispatch =
-      key->coarse_pixel &&
-      !shader->info.fs.uses_sample_shading &&
-      !prog_data->uses_omask &&
-      !prog_data->uses_sample_mask &&
-      (prog_data->computed_depth_mode == BRW_PSCDEPTH_OFF) &&
-      !prog_data->computed_stencil;
+   prog_data->coarse_pixel_dispatch =
+      brw_sometimes_invert(prog_data->persample_dispatch);
+   if (!key->coarse_pixel ||
+       prog_data->uses_omask ||
+       prog_data->sample_shading ||
+       prog_data->uses_sample_mask ||
+       (prog_data->computed_depth_mode != BRW_PSCDEPTH_OFF) ||
+       prog_data->computed_stencil) {
+      prog_data->coarse_pixel_dispatch = BRW_NEVER;
+   }
 
    /* We choose to always enable VMask prior to XeHP, as it would cause
     * us to lose out on the eliminate_find_live_channel() optimization.
@@ -7309,16 +7341,16 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
    prog_data->uses_vmask = devinfo->verx10 < 125 ||
                            shader->info.fs.needs_quad_helper_invocations ||
                            shader->info.fs.needs_all_helper_invocations ||
-                           prog_data->per_coarse_pixel_dispatch;
+                           prog_data->coarse_pixel_dispatch != BRW_NEVER;
 
    prog_data->uses_src_w =
       BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD);
    prog_data->uses_src_depth =
       BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) &&
-      !prog_data->per_coarse_pixel_dispatch;
+      prog_data->coarse_pixel_dispatch != BRW_ALWAYS;
    prog_data->uses_depth_w_coefficients =
       BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) &&
-      prog_data->per_coarse_pixel_dispatch;
+      prog_data->coarse_pixel_dispatch != BRW_NEVER;
 
    calculate_urb_setup(devinfo, key, prog_data, shader, mue_map);
    brw_compute_flat_inputs(prog_data, shader);

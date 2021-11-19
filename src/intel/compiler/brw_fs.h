@@ -721,6 +721,24 @@ namespace brw {
       return tmp;
    }
 
+   inline fs_reg
+   dynamic_msaa_flags(const struct brw_wm_prog_data *wm_prog_data)
+   {
+      return fs_reg(UNIFORM, wm_prog_data->msaa_flags_param,
+                    BRW_REGISTER_TYPE_UD);
+   }
+
+   inline void
+   check_dynamic_msaa_flag(const fs_builder &bld,
+                           const struct brw_wm_prog_data *wm_prog_data,
+                           enum brw_wm_msaa_flags flag)
+   {
+      fs_inst *inst = bld.AND(bld.null_reg_ud(),
+                              dynamic_msaa_flags(wm_prog_data),
+                              brw_imm_ud(flag));
+      inst->conditional_mod = BRW_CONDITIONAL_NZ;
+   }
+
    bool
    lower_src_modifiers(fs_visitor *v, bblock_t *block, fs_inst *inst, unsigned i);
 }
