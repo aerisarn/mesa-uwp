@@ -144,7 +144,7 @@ radv_render_pass_add_implicit_deps(struct radv_render_pass *pass)
       }
 
       if (add_ingoing_dep) {
-         const VkSubpassDependency2KHR implicit_ingoing_dep = {
+         const VkSubpassDependency2 implicit_ingoing_dep = {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = i, /* first subpass attachment is used in */
             .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -161,7 +161,7 @@ radv_render_pass_add_implicit_deps(struct radv_render_pass *pass)
       }
 
       if (add_outgoing_dep) {
-         const VkSubpassDependency2KHR implicit_outgoing_dep = {
+         const VkSubpassDependency2 implicit_outgoing_dep = {
             .srcSubpass = i, /* last subpass attachment is used in */
             .dstSubpass = VK_SUBPASS_EXTERNAL,
             .srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,

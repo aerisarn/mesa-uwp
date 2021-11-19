@@ -6047,7 +6047,7 @@ radv_destroy_semaphore_part(struct radv_device *device, struct radv_semaphore_pa
    part->kind = RADV_SEMAPHORE_NONE;
 }
 
-static VkSemaphoreTypeKHR
+static VkSemaphoreType
 radv_get_semaphore_type(const void *pNext, uint64_t *initial_value)
 {
    const VkSemaphoreTypeCreateInfo *type_info =
@@ -6077,7 +6077,7 @@ radv_CreateSemaphore(VkDevice _device, const VkSemaphoreCreateInfo *pCreateInfo,
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    uint64_t initial_value = 0;
-   VkSemaphoreTypeKHR type = radv_get_semaphore_type(pCreateInfo->pNext, &initial_value);
+   VkSemaphoreType type = radv_get_semaphore_type(pCreateInfo->pNext, &initial_value);
 
    struct radv_semaphore *sem =
       vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*sem), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -7651,7 +7651,7 @@ radv_GetPhysicalDeviceExternalSemaphoreProperties(
    VkExternalSemaphoreProperties *pExternalSemaphoreProperties)
 {
    RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
-   VkSemaphoreTypeKHR type = radv_get_semaphore_type(pExternalSemaphoreInfo->pNext, NULL);
+   VkSemaphoreType type = radv_get_semaphore_type(pExternalSemaphoreInfo->pNext, NULL);
 
    if (type == VK_SEMAPHORE_TYPE_TIMELINE && pdevice->rad_info.has_timeline_syncobj &&
        pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT) {
