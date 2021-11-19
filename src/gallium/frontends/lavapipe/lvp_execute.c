@@ -880,7 +880,7 @@ static void handle_vertex_buffers(struct vk_cmd_queue_entry *cmd,
 static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
                                    struct rendering_state *state)
 {
-   struct vk_cmd_bind_vertex_buffers2_ext *vcb = &cmd->u.bind_vertex_buffers2_ext;
+   struct vk_cmd_bind_vertex_buffers2 *vcb = &cmd->u.bind_vertex_buffers2;
 
    vertex_buffers(vcb->first_binding,
                   vcb->binding_count,
@@ -1825,7 +1825,7 @@ get_load_op(VkAttachmentLoadOp op, bool resuming)
 static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
                                    struct rendering_state *state)
 {
-   const VkRenderingInfoKHR *info = cmd->u.begin_rendering_khr.rendering_info;
+   const VkRenderingInfo *info = cmd->u.begin_rendering.rendering_info;
    bool resuming = (info->flags & VK_RENDERING_RESUMING_BIT_KHR) == VK_RENDERING_RESUMING_BIT_KHR;
    bool suspending = (info->flags & VK_RENDERING_SUSPENDING_BIT_KHR) == VK_RENDERING_SUSPENDING_BIT_KHR;
    assert(!state->pass);
@@ -2094,8 +2094,8 @@ static void handle_set_viewport_with_count(struct vk_cmd_queue_entry *cmd,
                                            struct rendering_state *state)
 {
    set_viewport(UINT32_MAX,
-                cmd->u.set_viewport_with_count_ext.viewport_count,
-                cmd->u.set_viewport_with_count_ext.viewports,
+                cmd->u.set_viewport_with_count.viewport_count,
+                cmd->u.set_viewport_with_count.viewports,
                 state);
 }
 
@@ -2135,8 +2135,8 @@ static void handle_set_scissor_with_count(struct vk_cmd_queue_entry *cmd,
                                           struct rendering_state *state)
 {
    set_scissor(UINT32_MAX,
-               cmd->u.set_scissor_with_count_ext.scissor_count,
-               cmd->u.set_scissor_with_count_ext.scissors,
+               cmd->u.set_scissor_with_count.scissor_count,
+               cmd->u.set_scissor_with_count.scissors,
                state);
 }
 
@@ -2312,11 +2312,11 @@ copy_depth_box(ubyte *dst,
    }
 }
 
-static void handle_copy_image_to_buffer2_khr(struct vk_cmd_queue_entry *cmd,
+static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
                                              struct rendering_state *state)
 {
    int i;
-   struct VkCopyImageToBufferInfo2KHR *copycmd = cmd->u.copy_image_to_buffer2_khr.copy_image_to_buffer_info;
+   struct VkCopyImageToBufferInfo2 *copycmd = cmd->u.copy_image_to_buffer2.copy_image_to_buffer_info;
    LVP_FROM_HANDLE(lvp_image, src_image, copycmd->srcImage);
    struct pipe_box box, dbox;
    struct pipe_transfer *src_t, *dst_t;
@@ -2397,7 +2397,7 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
                                         struct rendering_state *state)
 {
    int i;
-   struct VkCopyBufferToImageInfo2KHR *copycmd = cmd->u.copy_buffer_to_image2_khr.copy_buffer_to_image_info;
+   struct VkCopyBufferToImageInfo2 *copycmd = cmd->u.copy_buffer_to_image2.copy_buffer_to_image_info;
    LVP_FROM_HANDLE(lvp_image, dst_image, copycmd->dstImage);
    struct pipe_box box, sbox;
    struct pipe_transfer *src_t, *dst_t;
@@ -2481,7 +2481,7 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
                               struct rendering_state *state)
 {
    int i;
-   struct VkCopyImageInfo2KHR *copycmd = cmd->u.copy_image2_khr.copy_image_info;
+   struct VkCopyImageInfo2 *copycmd = cmd->u.copy_image2.copy_image_info;
    LVP_FROM_HANDLE(lvp_image, src_image, copycmd->srcImage);
    LVP_FROM_HANDLE(lvp_image, dst_image, copycmd->dstImage);
 
@@ -2519,7 +2519,7 @@ static void handle_copy_buffer(struct vk_cmd_queue_entry *cmd,
                                struct rendering_state *state)
 {
    int i;
-   struct VkCopyBufferInfo2KHR *copycmd = cmd->u.copy_buffer2_khr.copy_buffer_info;
+   VkCopyBufferInfo2 *copycmd = cmd->u.copy_buffer2.copy_buffer_info;
 
    for (i = 0; i < copycmd->regionCount; i++) {
       struct pipe_box box = { 0 };
@@ -2534,7 +2534,7 @@ static void handle_blit_image(struct vk_cmd_queue_entry *cmd,
                               struct rendering_state *state)
 {
    int i;
-   struct VkBlitImageInfo2KHR *blitcmd = cmd->u.blit_image2_khr.blit_image_info;
+   VkBlitImageInfo2 *blitcmd = cmd->u.blit_image2.blit_image_info;
    LVP_FROM_HANDLE(lvp_image, src_image, blitcmd->srcImage);
    LVP_FROM_HANDLE(lvp_image, dst_image, blitcmd->dstImage);
    struct pipe_blit_info info;
@@ -3205,7 +3205,7 @@ static void handle_resolve_image(struct vk_cmd_queue_entry *cmd,
                                  struct rendering_state *state)
 {
    int i;
-   struct VkResolveImageInfo2KHR *resolvecmd = cmd->u.resolve_image2_khr.resolve_image_info;
+   VkResolveImageInfo2 *resolvecmd = cmd->u.resolve_image2.resolve_image_info;
    LVP_FROM_HANDLE(lvp_image, src_image, resolvecmd->srcImage);
    LVP_FROM_HANDLE(lvp_image, dst_image, resolvecmd->dstImage);
    struct pipe_blit_info info;
@@ -3696,21 +3696,21 @@ static void handle_set_vertex_input(struct vk_cmd_queue_entry *cmd,
 static void handle_set_cull_mode(struct vk_cmd_queue_entry *cmd,
                                  struct rendering_state *state)
 {
-   state->rs_state.cull_face = vk_cull_to_pipe(cmd->u.set_cull_mode_ext.cull_mode);
+   state->rs_state.cull_face = vk_cull_to_pipe(cmd->u.set_cull_mode.cull_mode);
    state->rs_dirty = true;
 }
 
 static void handle_set_front_face(struct vk_cmd_queue_entry *cmd,
                                   struct rendering_state *state)
 {
-   state->rs_state.front_ccw = (cmd->u.set_front_face_ext.front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE);
+   state->rs_state.front_ccw = (cmd->u.set_front_face.front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE);
    state->rs_dirty = true;
 }
 
 static void handle_set_primitive_topology(struct vk_cmd_queue_entry *cmd,
                                           struct rendering_state *state)
 {
-   state->info.mode = vk_conv_topology(cmd->u.set_primitive_topology_ext.primitive_topology);
+   state->info.mode = vk_conv_topology(cmd->u.set_primitive_topology.primitive_topology);
    state->rs_dirty = true;
 }
 
@@ -3718,55 +3718,55 @@ static void handle_set_primitive_topology(struct vk_cmd_queue_entry *cmd,
 static void handle_set_depth_test_enable(struct vk_cmd_queue_entry *cmd,
                                          struct rendering_state *state)
 {
-   state->dsa_dirty |= state->dsa_state.depth_enabled != cmd->u.set_depth_test_enable_ext.depth_test_enable;
-   state->dsa_state.depth_enabled = cmd->u.set_depth_test_enable_ext.depth_test_enable;
+   state->dsa_dirty |= state->dsa_state.depth_enabled != cmd->u.set_depth_test_enable.depth_test_enable;
+   state->dsa_state.depth_enabled = cmd->u.set_depth_test_enable.depth_test_enable;
 }
 
 static void handle_set_depth_write_enable(struct vk_cmd_queue_entry *cmd,
                                           struct rendering_state *state)
 {
-   state->dsa_dirty |= state->dsa_state.depth_writemask != cmd->u.set_depth_write_enable_ext.depth_write_enable;
-   state->dsa_state.depth_writemask = cmd->u.set_depth_write_enable_ext.depth_write_enable;
+   state->dsa_dirty |= state->dsa_state.depth_writemask != cmd->u.set_depth_write_enable.depth_write_enable;
+   state->dsa_state.depth_writemask = cmd->u.set_depth_write_enable.depth_write_enable;
 }
 
 static void handle_set_depth_compare_op(struct vk_cmd_queue_entry *cmd,
                                         struct rendering_state *state)
 {
-   state->dsa_dirty |= state->dsa_state.depth_func != cmd->u.set_depth_compare_op_ext.depth_compare_op;
-   state->dsa_state.depth_func = cmd->u.set_depth_compare_op_ext.depth_compare_op;
+   state->dsa_dirty |= state->dsa_state.depth_func != cmd->u.set_depth_compare_op.depth_compare_op;
+   state->dsa_state.depth_func = cmd->u.set_depth_compare_op.depth_compare_op;
 }
 
 static void handle_set_depth_bounds_test_enable(struct vk_cmd_queue_entry *cmd,
                                                 struct rendering_state *state)
 {
-   state->dsa_dirty |= state->dsa_state.depth_bounds_test != cmd->u.set_depth_bounds_test_enable_ext.depth_bounds_test_enable;
-   state->dsa_state.depth_bounds_test = cmd->u.set_depth_bounds_test_enable_ext.depth_bounds_test_enable;
+   state->dsa_dirty |= state->dsa_state.depth_bounds_test != cmd->u.set_depth_bounds_test_enable.depth_bounds_test_enable;
+   state->dsa_state.depth_bounds_test = cmd->u.set_depth_bounds_test_enable.depth_bounds_test_enable;
 }
 
 static void handle_set_stencil_test_enable(struct vk_cmd_queue_entry *cmd,
                                            struct rendering_state *state)
 {
-   state->dsa_dirty |= state->dsa_state.stencil[0].enabled != cmd->u.set_stencil_test_enable_ext.stencil_test_enable ||
-                       state->dsa_state.stencil[1].enabled != cmd->u.set_stencil_test_enable_ext.stencil_test_enable;
-   state->dsa_state.stencil[0].enabled = cmd->u.set_stencil_test_enable_ext.stencil_test_enable;
-   state->dsa_state.stencil[1].enabled = cmd->u.set_stencil_test_enable_ext.stencil_test_enable;
+   state->dsa_dirty |= state->dsa_state.stencil[0].enabled != cmd->u.set_stencil_test_enable.stencil_test_enable ||
+                       state->dsa_state.stencil[1].enabled != cmd->u.set_stencil_test_enable.stencil_test_enable;
+   state->dsa_state.stencil[0].enabled = cmd->u.set_stencil_test_enable.stencil_test_enable;
+   state->dsa_state.stencil[1].enabled = cmd->u.set_stencil_test_enable.stencil_test_enable;
 }
 
 static void handle_set_stencil_op(struct vk_cmd_queue_entry *cmd,
                                   struct rendering_state *state)
 {
-   if (cmd->u.set_stencil_op_ext.face_mask & VK_STENCIL_FACE_FRONT_BIT) {
-      state->dsa_state.stencil[0].func = cmd->u.set_stencil_op_ext.compare_op;
-      state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(cmd->u.set_stencil_op_ext.fail_op);
-      state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(cmd->u.set_stencil_op_ext.pass_op);
-      state->dsa_state.stencil[0].zfail_op = vk_conv_stencil_op(cmd->u.set_stencil_op_ext.depth_fail_op);
+   if (cmd->u.set_stencil_op.face_mask & VK_STENCIL_FACE_FRONT_BIT) {
+      state->dsa_state.stencil[0].func = cmd->u.set_stencil_op.compare_op;
+      state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.fail_op);
+      state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(cmd->u.set_stencil_op.pass_op);
+      state->dsa_state.stencil[0].zfail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.depth_fail_op);
    }
 
-   if (cmd->u.set_stencil_op_ext.face_mask & VK_STENCIL_FACE_BACK_BIT) {
-      state->dsa_state.stencil[1].func = cmd->u.set_stencil_op_ext.compare_op;
-      state->dsa_state.stencil[1].fail_op = vk_conv_stencil_op(cmd->u.set_stencil_op_ext.fail_op);
-      state->dsa_state.stencil[1].zpass_op = vk_conv_stencil_op(cmd->u.set_stencil_op_ext.pass_op);
-      state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(cmd->u.set_stencil_op_ext.depth_fail_op);
+   if (cmd->u.set_stencil_op.face_mask & VK_STENCIL_FACE_BACK_BIT) {
+      state->dsa_state.stencil[1].func = cmd->u.set_stencil_op.compare_op;
+      state->dsa_state.stencil[1].fail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.fail_op);
+      state->dsa_state.stencil[1].zpass_op = vk_conv_stencil_op(cmd->u.set_stencil_op.pass_op);
+      state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.depth_fail_op);
    }
    state->dsa_dirty = true;
 }
@@ -3782,8 +3782,8 @@ static void handle_set_line_stipple(struct vk_cmd_queue_entry *cmd,
 static void handle_set_depth_bias_enable(struct vk_cmd_queue_entry *cmd,
                                          struct rendering_state *state)
 {
-   state->rs_dirty |= state->depth_bias.enabled != cmd->u.set_depth_bias_enable_ext.depth_bias_enable;
-   state->depth_bias.enabled = cmd->u.set_depth_bias_enable_ext.depth_bias_enable;
+   state->rs_dirty |= state->depth_bias.enabled != cmd->u.set_depth_bias_enable.depth_bias_enable;
+   state->depth_bias.enabled = cmd->u.set_depth_bias_enable.depth_bias_enable;
 }
 
 static void handle_set_logic_op(struct vk_cmd_queue_entry *cmd,
@@ -3803,14 +3803,14 @@ static void handle_set_patch_control_points(struct vk_cmd_queue_entry *cmd,
 static void handle_set_primitive_restart_enable(struct vk_cmd_queue_entry *cmd,
                                                 struct rendering_state *state)
 {
-   state->info.primitive_restart = cmd->u.set_primitive_restart_enable_ext.primitive_restart_enable;
+   state->info.primitive_restart = cmd->u.set_primitive_restart_enable.primitive_restart_enable;
 }
 
 static void handle_set_rasterizer_discard_enable(struct vk_cmd_queue_entry *cmd,
                                                  struct rendering_state *state)
 {
-   state->rs_dirty |= state->rs_state.rasterizer_discard != cmd->u.set_rasterizer_discard_enable_ext.rasterizer_discard_enable;
-   state->rs_state.rasterizer_discard = cmd->u.set_rasterizer_discard_enable_ext.rasterizer_discard_enable;
+   state->rs_dirty |= state->rs_state.rasterizer_discard != cmd->u.set_rasterizer_discard_enable.rasterizer_discard_enable;
+   state->rs_state.rasterizer_discard = cmd->u.set_rasterizer_discard_enable.rasterizer_discard_enable;
 }
 
 static void handle_set_color_write_enable(struct vk_cmd_queue_entry *cmd,
@@ -3845,13 +3845,13 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case VK_CMD_SET_VIEWPORT:
          handle_set_viewport(cmd, state);
          break;
-      case VK_CMD_SET_VIEWPORT_WITH_COUNT_EXT:
+      case VK_CMD_SET_VIEWPORT_WITH_COUNT:
          handle_set_viewport_with_count(cmd, state);
          break;
       case VK_CMD_SET_SCISSOR:
          handle_set_scissor(cmd, state);
          break;
-      case VK_CMD_SET_SCISSOR_WITH_COUNT_EXT:
+      case VK_CMD_SET_SCISSOR_WITH_COUNT:
          handle_set_scissor_with_count(cmd, state);
          break;
       case VK_CMD_SET_LINE_WIDTH:
@@ -3884,7 +3884,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case VK_CMD_BIND_VERTEX_BUFFERS:
          handle_vertex_buffers(cmd, state);
          break;
-      case VK_CMD_BIND_VERTEX_BUFFERS2_EXT:
+      case VK_CMD_BIND_VERTEX_BUFFERS2:
          handle_vertex_buffers2(cmd, state);
          break;
       case VK_CMD_DRAW:
@@ -3923,20 +3923,20 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          emit_compute_state(state);
          handle_dispatch_indirect(cmd, state);
          break;
-      case VK_CMD_COPY_BUFFER2_KHR:
+      case VK_CMD_COPY_BUFFER2:
          handle_copy_buffer(cmd, state);
          break;
-      case VK_CMD_COPY_IMAGE2_KHR:
+      case VK_CMD_COPY_IMAGE2:
          handle_copy_image(cmd, state);
          break;
-      case VK_CMD_BLIT_IMAGE2_KHR:
+      case VK_CMD_BLIT_IMAGE2:
          handle_blit_image(cmd, state);
          break;
-      case VK_CMD_COPY_BUFFER_TO_IMAGE2_KHR:
+      case VK_CMD_COPY_BUFFER_TO_IMAGE2:
          handle_copy_buffer_to_image(cmd, state);
          break;
-      case VK_CMD_COPY_IMAGE_TO_BUFFER2_KHR:
-         handle_copy_image_to_buffer2_khr(cmd, state);
+      case VK_CMD_COPY_IMAGE_TO_BUFFER2:
+         handle_copy_image_to_buffer2(cmd, state);
          break;
       case VK_CMD_UPDATE_BUFFER:
          handle_update_buffer(cmd, state);
@@ -3953,7 +3953,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case VK_CMD_CLEAR_ATTACHMENTS:
          handle_clear_attachments(cmd, state);
          break;
-      case VK_CMD_RESOLVE_IMAGE2_KHR:
+      case VK_CMD_RESOLVE_IMAGE2:
          handle_resolve_image(cmd, state);
          break;
       case VK_CMD_SET_EVENT:
@@ -4051,37 +4051,37 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case VK_CMD_SET_VERTEX_INPUT_EXT:
          handle_set_vertex_input(cmd, state);
          break;
-      case VK_CMD_SET_CULL_MODE_EXT:
+      case VK_CMD_SET_CULL_MODE:
          handle_set_cull_mode(cmd, state);
          break;
-      case VK_CMD_SET_FRONT_FACE_EXT:
+      case VK_CMD_SET_FRONT_FACE:
          handle_set_front_face(cmd, state);
          break;
-      case VK_CMD_SET_PRIMITIVE_TOPOLOGY_EXT:
+      case VK_CMD_SET_PRIMITIVE_TOPOLOGY:
          handle_set_primitive_topology(cmd, state);
          break;
-      case VK_CMD_SET_DEPTH_TEST_ENABLE_EXT:
+      case VK_CMD_SET_DEPTH_TEST_ENABLE:
          handle_set_depth_test_enable(cmd, state);
          break;
-      case VK_CMD_SET_DEPTH_WRITE_ENABLE_EXT:
+      case VK_CMD_SET_DEPTH_WRITE_ENABLE:
          handle_set_depth_write_enable(cmd, state);
          break;
-      case VK_CMD_SET_DEPTH_COMPARE_OP_EXT:
+      case VK_CMD_SET_DEPTH_COMPARE_OP:
          handle_set_depth_compare_op(cmd, state);
          break;
-      case VK_CMD_SET_DEPTH_BOUNDS_TEST_ENABLE_EXT:
+      case VK_CMD_SET_DEPTH_BOUNDS_TEST_ENABLE:
          handle_set_depth_bounds_test_enable(cmd, state);
          break;
-      case VK_CMD_SET_STENCIL_TEST_ENABLE_EXT:
+      case VK_CMD_SET_STENCIL_TEST_ENABLE:
          handle_set_stencil_test_enable(cmd, state);
          break;
-      case VK_CMD_SET_STENCIL_OP_EXT:
+      case VK_CMD_SET_STENCIL_OP:
          handle_set_stencil_op(cmd, state);
          break;
       case VK_CMD_SET_LINE_STIPPLE_EXT:
          handle_set_line_stipple(cmd, state);
          break;
-      case VK_CMD_SET_DEPTH_BIAS_ENABLE_EXT:
+      case VK_CMD_SET_DEPTH_BIAS_ENABLE:
          handle_set_depth_bias_enable(cmd, state);
          break;
       case VK_CMD_SET_LOGIC_OP_EXT:
@@ -4090,19 +4090,19 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
       case VK_CMD_SET_PATCH_CONTROL_POINTS_EXT:
          handle_set_patch_control_points(cmd, state);
          break;
-      case VK_CMD_SET_PRIMITIVE_RESTART_ENABLE_EXT:
+      case VK_CMD_SET_PRIMITIVE_RESTART_ENABLE:
          handle_set_primitive_restart_enable(cmd, state);
          break;
-      case VK_CMD_SET_RASTERIZER_DISCARD_ENABLE_EXT:
+      case VK_CMD_SET_RASTERIZER_DISCARD_ENABLE:
          handle_set_rasterizer_discard_enable(cmd, state);
          break;
       case VK_CMD_SET_COLOR_WRITE_ENABLE_EXT:
          handle_set_color_write_enable(cmd, state);
          break;
-      case VK_CMD_BEGIN_RENDERING_KHR:
+      case VK_CMD_BEGIN_RENDERING:
          handle_begin_rendering(cmd, state);
          break;
-      case VK_CMD_END_RENDERING_KHR:
+      case VK_CMD_END_RENDERING:
          handle_end_rendering(cmd, state);
          break;
       case VK_CMD_SET_DEVICE_MASK:

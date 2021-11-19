@@ -47,6 +47,7 @@ MANUAL_COMMANDS = ['CmdPushDescriptorSetKHR',             # This script doesn't 
                    'CmdCopyImageToBuffer',
                    'CmdBlitImage',
                    'CmdResolveImage',
+                   'CmdBeginRendering',
                    'CmdBeginRenderingKHR',
                   ]
 
