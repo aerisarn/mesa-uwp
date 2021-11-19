@@ -4728,12 +4728,6 @@ typedef enum {
     * modes.
     */
    nir_lower_io_lower_64bit_to_32 = (1 << 0),
-
-   /* If set, this forces all non-flat fragment shader inputs to be
-    * interpolated as if with the "sample" qualifier.  This requires
-    * nir_shader_compiler_options::use_interpolated_input_intrinsics.
-    */
-   nir_lower_io_force_sample_interpolation = (1 << 1),
 } nir_lower_io_options;
 bool nir_lower_io(nir_shader *shader,
                   nir_variable_mode modes,
