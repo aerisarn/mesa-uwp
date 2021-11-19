@@ -48,6 +48,8 @@
 #include "pan_indirect_dispatch.h"
 #include "pan_blitter.h"
 
+#define PAN_GPU_INDIRECTS (PAN_ARCH == 7)
+
 struct panfrost_rasterizer {
         struct pipe_rasterizer_state base;
 
@@ -2872,6 +2874,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         panfrost_update_streamout_offsets(ctx);
 }
 
+#if PAN_GPU_INDIRECTS
 static void
 panfrost_indirect_draw(struct panfrost_batch *batch,
                        const struct pipe_draw_info *info,
@@ -3005,6 +3008,7 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
 
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 }
+#endif
 
 static void
 panfrost_draw_vbo(struct pipe_context *pipe,
@@ -3021,7 +3025,7 @@ panfrost_draw_vbo(struct pipe_context *pipe,
                 return;
 
         /* Emulate indirect draws unless we're using the experimental path */
-        if (!(dev->debug & PAN_DBG_INDIRECT) && indirect && indirect->buffer) {
+        if ((!(dev->debug & PAN_DBG_INDIRECT) || !PAN_GPU_INDIRECTS) && indirect && indirect->buffer) {
                 assert(num_draws == 1);
                 util_draw_indirect(pipe, info, indirect);
                 return;
@@ -3049,7 +3053,9 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
         if (indirect) {
                 assert(num_draws == 1);
+                assert(PAN_GPU_INDIRECTS);
 
+#if PAN_GPU_INDIRECTS
                 if (indirect->count_from_stream_output) {
                         struct pipe_draw_start_count_bias tmp_draw = *draws;
                         struct panfrost_streamout_target *so =
@@ -3064,6 +3070,7 @@ panfrost_draw_vbo(struct pipe_context *pipe,
 
                 panfrost_indirect_draw(batch, info, drawid_offset, indirect, &draws[0]);
                 return;
+#endif
         }
 
         struct pipe_draw_info tmp_info = *info;
@@ -3101,7 +3108,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* Indirect dispatch can't handle workgroup local storage since that
          * would require dynamic memory allocation. Bail in this case. */
-        if (info->indirect && !cs->info.wls_size) {
+        if (info->indirect && (!cs->info.wls_size || !PAN_GPU_INDIRECTS)) {
                 struct pipe_transfer *transfer;
                 uint32_t *params = pipe_buffer_map_range(pipe, info->indirect,
                                 info->indirect_offset,
@@ -3176,6 +3183,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         }
 
         unsigned indirect_dep = 0;
+#if PAN_GPU_INDIRECTS
         if (info->indirect) {
                 struct pan_indirect_dispatch_info indirect = {
                         .job = t.gpu,
@@ -3192,6 +3200,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
                                                                 &batch->scoreboard,
                                                                 &indirect);
         }
+#endif
 
         panfrost_add_job(&batch->pool.base, &batch->scoreboard,
                          MALI_JOB_TYPE_COMPUTE, true, false,
@@ -3532,9 +3541,12 @@ static void
 screen_destroy(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
+        GENX(pan_blitter_cleanup)(dev);
+
+#if PAN_GPU_INDIRECTS
         GENX(panfrost_cleanup_indirect_draw_shaders)(dev);
         GENX(pan_indirect_dispatch_cleanup)(dev);
-        GENX(pan_blitter_cleanup)(dev);
+#endif
 }
 
 static void
@@ -3677,6 +3689,8 @@ GENX(panfrost_cmdstream_screen_init)(struct panfrost_screen *screen)
 
         GENX(pan_blitter_init)(dev, &screen->blitter.bin_pool.base,
                                &screen->blitter.desc_pool.base);
+#if PAN_GPU_INDIRECTS
         GENX(pan_indirect_dispatch_init)(dev);
         GENX(panfrost_init_indirect_draw_shaders)(dev, &screen->indirect_draw.bin_pool.base);
+#endif
 }
