@@ -581,7 +581,7 @@
       Condition to use for a `MUX` instruction. `neg` checks the sign bit,
       `int_zero` compares to `0x00000000`, `fp_zero` compares to $\pm 0.0$ as
       an IEEE 754 float, and `bit` checks each bit separately. The `bit` mode
-      acts like an imaginary `CSEL.v32i1` instruction, and implements
+      acts like an imaginary `CSEL.v32u1` instruction, and implements
       `bitselect()` in OpenCL.
     </desc>
     <value desc="Negative">neg</value>
@@ -666,8 +666,8 @@
   <group name="CSEL" title="Integer conditional select" dests="1" unit="CVT">
     <ins name="CSEL.u32" opcode="0x150"/>
     <ins name="CSEL.v2u16" opcode="0x151"/>
-    <ins name="CSEL.i32" opcode="0x158"/>
-    <ins name="CSEL.v2i16" opcode="0x159"/>
+    <ins name="CSEL.s32" opcode="0x158"/>
+    <ins name="CSEL.v2s16" opcode="0x159"/>
     <desc>
       Evaluates the given condition and outputs either the true source or the
       false source.
