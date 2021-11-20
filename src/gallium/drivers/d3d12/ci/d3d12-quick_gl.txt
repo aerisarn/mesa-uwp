@@ -32,8 +32,6 @@ shaders/activeprogram-get: skip
 shaders/createshaderprogram-attached-shaders: skip
 shaders/createshaderprogram-bad-type: skip
 shaders/glsl-bug-110796: skip
-shaders/glsl-fs-fogscale/gs-out and fs: skip
-shaders/glsl-fs-fogscale/vs, gs and fs: skip
 shaders/glsl-max-varyings: fail
 shaders/glsl-max-varyings >max_varying_components: fail
 shaders/glsl-uniform-interstage-limits/1 vs, 520 fs: fail
@@ -60,7 +58,7 @@ spec/!opengl 1.0/gl-1.0-no-op-paths: fail
 spec/!opengl 1.0/gl-1.0-simple-readbuffer: fail
 spec/!opengl 1.0/gl-1.0-spot-light: fail
 spec/!opengl 1.0/gl-1.0-texgen: fail
-spec/!opengl 1.0/rasterpos/glsl_vs_gs_linked: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_gs_linked: fail
 spec/!opengl 1.0/rasterpos/glsl_vs_gs_sso: skip
 spec/!opengl 1.0/rasterpos/glsl_vs_image1d: skip
 spec/!opengl 1.0/rasterpos/glsl_vs_image_bo: skip
@@ -205,165 +203,101 @@ spec/!opengl 1.4/triangle-rasterization-overdraw: fail
 spec/!opengl 2.0/gl-2.0-two-sided-stencil: fail
 spec/!opengl 2.0/max-samplers: fail
 spec/!opengl 2.0/max-samplers border: fail
-spec/!opengl 2.0/vertex-program-two-side back back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side back/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side back/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled back/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled back/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front back/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front back/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled front/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled front/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side enabled/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side enabled/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front back/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front back/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front2 back2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front2 back2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front2 back2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front2 back2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front2 back2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front2/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front2/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front2/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front2/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front2/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side front/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side front/vs, tcs, tes and fs: skip
-spec/!opengl 2.0/vertex-program-two-side/gs-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/tes-out and fs: skip
-spec/!opengl 2.0/vertex-program-two-side/vs, gs and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
 spec/!opengl 3.0/bound-resource-limits: fail
 spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
@@ -469,7 +403,6 @@ spec/arb_blend_func_extended/arb_blend_func_extended-fbo-extended-blend-pattern_
 spec/arb_blend_func_extended/arb_blend_func_extended-fbo-extended-blend-pattern_gles3: skip
 spec/arb_blend_func_extended/arb_blend_func_extended-fbo-extended-blend_gles3: skip
 spec/arb_blend_func_extended/arb_blend_func_extended-getfragdataindex_gles3: skip
-spec/arb_blend_func_extended/arb_blend_func_extended-output-location: skip
 spec/arb_blend_func_extended/arb_blend_func_extended-output-location_gles3: skip
 spec/arb_buffer_storage/bufferstorage-persistent draw: skip
 spec/arb_buffer_storage/bufferstorage-persistent draw client-storage: skip
@@ -2045,9 +1978,6 @@ spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
 spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
 spec/arb_separate_shader_objects/rendezvous by location (5 stages): skip
 spec/arb_separate_shader_objects/transform feedback with rendezvous by location: skip
-spec/arb_separate_shader_objects/validateprogrampipeline/gs splitting a vs/fs pipeline: skip
-spec/arb_separate_shader_objects/validateprogrampipeline/gs without vs: skip
-spec/arb_separate_shader_objects/validateprogrampipeline/only gs from a vs/gs program: skip
 spec/arb_separate_shader_objects/validateprogrampipeline/only tes from tes/tcs program: skip
 spec/arb_separate_shader_objects/validateprogrampipeline/tcs splitting a vs/gs pipeline: skip
 spec/arb_separate_shader_objects/validateprogrampipeline/tes splitting a vs/gs program: skip
@@ -3497,67 +3427,7 @@ spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-uint-2d: skip
 spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-uint-2darray: skip
 spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-unorm-2d: skip
 spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-unorm-2darray: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r11f_g11f_b10f: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16_snorm: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16f: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32f: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r3_g3_b2: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8_snorm: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16_snorm: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16f: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32f: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8_snorm: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10_a2: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10_a2ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb12: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16_snorm: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16f: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32f: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb4: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5_a1: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8_snorm: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8ui: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb9_e5: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba12: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16f: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba2: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32f: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba4: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8_snorm: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8ui: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_srgb8: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_srgb8_alpha8: fail
 spec/arb_texture_multisample/arb_texture_multisample-negative-max-samples: skip
 spec/arb_texture_multisample/arb_texture_multisample-texelfetch 32: skip
 spec/arb_texture_multisample/fb-completeness/32: skip
@@ -4678,7 +4548,6 @@ spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubearray: skip
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad cubearray: skip
 spec/glsl-1.30/execution/tex-miplevel-selection texturelod cubearray: skip
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
-spec/glsl-1.50/built-in constants compatibility: skip
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip: fail
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip_adjacency: fail
 spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip ffs: fail
@@ -4869,10 +4738,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    14124
-       fail:      502
+       pass:    14257
+       fail:      473
       crash:       68
-       skip:     4278
+       skip:     4176
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4881,4 +4750,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    18992
+      total:    18994
