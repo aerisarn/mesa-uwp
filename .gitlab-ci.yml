@@ -1054,6 +1054,7 @@ test-d3d12-windows:
     name: "mesa_${CI_JOB_NAME}"
     paths:
       - summary/
+      - result.txt
 
 test-spirv2dxil-windows:
   extends:
