@@ -668,7 +668,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    if (s->info.stage == MESA_SHADER_VERTEX) {
       if (so->key.ucp_enables)
          progress |=
-            OPT(s, nir_lower_clip_vs, so->key.ucp_enables, false, false, NULL);
+            OPT(s, nir_lower_clip_vs, so->key.ucp_enables, false, true, NULL);
    } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
       bool layer_zero =
          so->key.layer_zero && (s->info.inputs_read & VARYING_BIT_LAYER);
@@ -676,7 +676,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
          so->key.view_zero && (s->info.inputs_read & VARYING_BIT_VIEWPORT);
 
       if (so->key.ucp_enables && !so->shader->compiler->has_clip_cull)
-         progress |= OPT(s, nir_lower_clip_fs, so->key.ucp_enables, false);
+         progress |= OPT(s, nir_lower_clip_fs, so->key.ucp_enables, true);
       if (layer_zero || view_zero)
          progress |= OPT(s, ir3_nir_lower_view_layer_id, layer_zero, view_zero);
    }

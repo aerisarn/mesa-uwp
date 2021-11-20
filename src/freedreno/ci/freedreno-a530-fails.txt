@@ -478,7 +478,6 @@ spec@nv_copy_image@nv_copy_image-formats,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_DEPTH32F_STENCIL8/Destination: GL_DEPTH32F_STENCIL8,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
-spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec2,Fail
 spec@glsl-1.30@execution@fs-large-local-array-vec3,Fail
 spec@glsl-1.30@execution@fs-large-local-array-vec4,Fail
