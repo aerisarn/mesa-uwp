@@ -1637,8 +1637,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
    struct lvp_device_memory *mem;
-   const VkExportMemoryAllocateInfo *export_info = NULL;
-   const VkImportMemoryFdInfoKHR *import_info = NULL;
+   ASSERTED const VkExportMemoryAllocateInfo *export_info = NULL;
+   ASSERTED const VkImportMemoryFdInfoKHR *import_info = NULL;
    const VkImportMemoryHostPointerInfoEXT *host_ptr_info = NULL;
    VkResult error = VK_ERROR_OUT_OF_DEVICE_MEMORY;
    assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
