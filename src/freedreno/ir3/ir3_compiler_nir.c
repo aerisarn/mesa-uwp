@@ -3551,7 +3551,6 @@ pack_inlocs(struct ir3_context *ctx)
     * Second Step: reassign varying inloc/slots:
     */
 
-   unsigned actual_in = 0;
    unsigned inloc = 0;
 
    /* for clip+cull distances, unused components can't be eliminated because
@@ -3585,7 +3584,6 @@ pack_inlocs(struct ir3_context *ctx)
             continue;
 
          compmask |= (1 << j);
-         actual_in++;
          maxcomp = j + 1;
 
          /* at this point, since used_components[i] mask is only
@@ -4448,7 +4446,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
    so->branchstack = ctx->max_stack;
 
-   /* Note that actual_in counts inputs that are not bary.f'd for FS: */
+   /* Note that max_bary counts inputs that are not bary.f'd for FS: */
    if (so->type == MESA_SHADER_FRAGMENT)
       so->total_in = max_bary + 1;
 
