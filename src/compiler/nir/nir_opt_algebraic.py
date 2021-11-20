@@ -1702,7 +1702,7 @@ optimizations.extend([
                              ('ior', ('ior', ('ilt', a, 0), ('ilt', b, 0)), ('ige', ('iadd', a, b), 0)),
                              ('iadd', a, b),
                              0x7fffffffffffffff)),
-    '(options->lower_int64_options & nir_lower_iadd64) != 0'),
+    '(options->lower_int64_options & nir_lower_iadd_sat64) != 0'),
 
    # int64_t sum = a - b;
    #
@@ -1720,7 +1720,7 @@ optimizations.extend([
                              ('ior', ('ior', ('ilt', a, 0), ('ige', b, 0)), ('ige', ('isub', a, b), 0)),
                              ('isub', a, b),
                              0x7fffffffffffffff)),
-    '(options->lower_int64_options & nir_lower_iadd64) != 0'),
+    '(options->lower_int64_options & nir_lower_iadd_sat64) != 0'),
 
    # These are done here instead of in the backend because the int64 lowering
    # pass will make a mess of the patterns.  The first patterns are

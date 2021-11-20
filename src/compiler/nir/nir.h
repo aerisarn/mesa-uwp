@@ -3148,6 +3148,7 @@ typedef enum {
    nir_lower_scan_reduce_iadd64 = (1 << 18),
    nir_lower_vote_ieq64 = (1 << 19),
    nir_lower_usub_sat64 = (1 << 20),
+   nir_lower_iadd_sat64 = (1 << 21),
 } nir_lower_int64_options;
 
 typedef enum {
