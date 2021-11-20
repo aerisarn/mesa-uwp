@@ -95,6 +95,7 @@ nir_intrinsics_c = custom_target(
 files_libnir = files(
   'nir.c',
   'nir.h',
+  'nir_builder.c',
   'nir_builder.h',
   'nir_builtin_builder.c',
   'nir_builtin_builder.h',
