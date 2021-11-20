@@ -550,7 +550,7 @@ debian/arm_test:
   variables:
     MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${MESA_IMAGE_TAG}"
     MESA_IMAGE_PATH: "windows/x64_build"
-    MESA_IMAGE_TAG: "2021-11-04-spirv-shaders"
+    MESA_IMAGE_TAG: "2021-11-19-piglit-uprev"
     MESA_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/$MESA_IMAGE_PATH:${MESA_IMAGE_TAG}"
 
 windows_build_vs2019:
@@ -1046,7 +1046,7 @@ test-d3d12-windows:
     GIT_STRATEGY: none # testing doesn't build anything from source
     GALLIUM_DRIVER: d3d12
     PIGLIT_PROFILE: quick_gl
-    PIGLIT_TESTS: -x nv_copy_depth_to_color -x repeat-wait -x arb_timer_query@timestamp-get
+    PIGLIT_TESTS: -x nv_copy_depth_to_color
   script:
     - . _install/piglit_run.ps1
   artifacts:

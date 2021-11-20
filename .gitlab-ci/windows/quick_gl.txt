@@ -186,6 +186,7 @@ spec/!opengl 1.1/teximage-colors gl_rgb9_e5/exact upload-download of gl_rgb9_e5:
 spec/!opengl 1.1/teximage-colors gl_rgb/exact upload-download of gl_rgb: skip
 spec/!opengl 1.1/teximage-colors gl_rgba12/exact upload-download of gl_rgba12: skip
 spec/!opengl 1.1/teximage-colors gl_rgba/exact upload-download of gl_rgba: skip
+spec/!opengl 1.1/vertex-fallbacks: crash
 spec/!opengl 1.1/windowoverlap: fail
 spec/!opengl 1.2/copyteximage 3d samples=16: skip
 spec/!opengl 1.2/copyteximage 3d samples=2: skip
@@ -490,6 +491,7 @@ spec/arb_clear_texture/arb_clear_texture-3d: skip
 spec/arb_clear_texture/arb_clear_texture-base-formats: skip
 spec/arb_clear_texture/arb_clear_texture-clear-max-level: skip
 spec/arb_clear_texture/arb_clear_texture-cube: skip
+spec/arb_clear_texture/arb_clear_texture-depth: skip
 spec/arb_clear_texture/arb_clear_texture-depth-stencil: skip
 spec/arb_clear_texture/arb_clear_texture-error: skip
 spec/arb_clear_texture/arb_clear_texture-float: skip
@@ -507,6 +509,7 @@ spec/arb_clip_control/arb_clip_control-viewport: skip
 spec/arb_compute_shader/api_errors: skip
 spec/arb_compute_shader/built-in constants: skip
 spec/arb_compute_shader/compiler/work_group_size_too_large: skip
+spec/arb_compute_shader/compute-and-render-bug-109630: skip
 spec/arb_compute_shader/display-list: skip
 spec/arb_compute_shader/indirect-compute: skip
 spec/arb_compute_shader/local-id-explosion: skip
@@ -3494,66 +3497,66 @@ spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-uint-2d: skip
 spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-uint-2darray: skip
 spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-unorm-2d: skip
 spec/arb_texture_gather/texturegatheroffset/vs-rgba-zero-unorm-2darray: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r11f_g11f_b10f: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r11f_g11f_b10f: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16_snorm: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16f: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r16ui: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32f: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r3_g3_b2: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r32ui: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r3_g3_b2: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8_snorm: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_r8ui: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16_snorm: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16f: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg16ui: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32f: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg32ui: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8_snorm: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rg8ui: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10_a2: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb10_a2ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb12: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb12: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16_snorm: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16f: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32f: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb16ui: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32f: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb32ui: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb4: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5_a1: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb5_a1: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8_snorm: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb8ui: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb9_e5: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba12: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba12: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16f: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba2: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba16ui: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba2: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32f: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32ui: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba32ui: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba4: fail
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8_snorm: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8_snorm: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8i: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8ui: fail
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_srgb8: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgba8ui: skip
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_srgb8: skip
 spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_srgb8_alpha8: fail
 spec/arb_texture_multisample/arb_texture_multisample-negative-max-samples: skip
 spec/arb_texture_multisample/arb_texture_multisample-texelfetch 32: skip
@@ -3751,7 +3754,6 @@ spec/arb_vertex_attrib_64bit/max-vertex-attrib: skip
 spec/arb_vertex_program/arb_vertex_program-matrix-property-bindings: fail
 spec/arb_vertex_program/vp-address-02: skip
 spec/arb_vertex_program/vp-address-04: skip
-spec/arb_vertex_type_2_10_10_10_rev/attrib-p-type-size-match: skip
 spec/arb_viewport_array/bounds: skip
 spec/arb_viewport_array/clear: skip
 spec/arb_viewport_array/depthrange-indices: skip
@@ -3797,6 +3799,7 @@ spec/egl_ext_device_enumeration/conformance: skip
 spec/egl_ext_device_query/conformance: skip
 spec/egl_ext_image_dma_buf_import_modifiers/conformance: skip
 spec/egl_ext_platform_device/conformance: skip
+spec/egl_ext_protected_content/conformance: skip
 spec/egl_khr_create_context/3.2 core profile required: skip
 spec/egl_khr_create_context/default major version gl: skip
 spec/egl_khr_create_context/default major version gles: skip
@@ -3834,9 +3837,16 @@ spec/egl_mesa_platform_surfaceless/conformance: skip
 spec/egl_mesa_query_driver/conformance: skip
 spec/egl_nok_swap_region/basic: skip
 spec/egl_nok_texture_from_pixmap/basic: skip
-spec/egl_ext_protected_content/conformance: skip
 spec/ext_base_instance/arb_base_instance-baseinstance-doesnt-affect-gl-instance-id_gles3: skip
 spec/ext_base_instance/arb_base_instance-drawarrays_gles3: skip
+spec/ext_clear_texture/ext_clear_texture-3d: skip
+spec/ext_clear_texture/ext_clear_texture-base-formats: skip
+spec/ext_clear_texture/ext_clear_texture-clear-max-level: skip
+spec/ext_clear_texture/ext_clear_texture-cube: skip
+spec/ext_clear_texture/ext_clear_texture-error: skip
+spec/ext_clear_texture/ext_clear_texture-multisample: skip
+spec/ext_clear_texture/ext_clear_texture-stencil: skip
+spec/ext_clear_texture/ext_clear_texture-texview: skip
 spec/ext_color_buffer_float/ext_color_buffer_float-draw_gles3: skip
 spec/ext_depth_bounds_test/depth_bounds: skip
 spec/ext_direct_state_access/compressedmultiteximage gl_compressed_rgb_bptc_signed_float: skip
@@ -3855,9 +3865,13 @@ spec/ext_external_objects/semaphore-api-errors: skip
 spec/ext_external_objects/vk-buf-exchange: skip
 spec/ext_external_objects/vk-depth-display: skip
 spec/ext_external_objects/vk-image-display: skip
+spec/ext_external_objects/vk-image-display-muliple-textures: skip
 spec/ext_external_objects/vk-image-display-overwrite: skip
 spec/ext_external_objects/vk-image-overwrite: skip
 spec/ext_external_objects/vk-pix-buf-update-errors: skip
+spec/ext_external_objects/vk-semaphores: skip
+spec/ext_external_objects/vk-semaphores-2: skip
+spec/ext_external_objects/vk-stencil-display: skip
 spec/ext_external_objects/vk-vert-buf-reuse: skip
 spec/ext_external_objects/vk-vert-buf-update-errors: skip
 spec/ext_external_objects_fd/memory-object-api-errors: skip
@@ -4154,6 +4168,107 @@ spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=6: warn
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=6 with gl_texture_2d_multisample_array: warn
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8: warn
 spec/ext_framebuffer_multisample_blit_scaled/blit-scaled samples=8 with gl_texture_2d_multisample_array: warn
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture() cubeshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texture(bias) cubeshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad cube: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad cubearray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegrad cubeshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturegradoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelod 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelod 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelod 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4texturelodoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2darray: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2darrayshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2drect_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgrad 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2drect_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojgradoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojlodoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2drect: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2drect_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2drectshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset 3d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 1d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 1d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 1dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 2d: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 2d_projvec4: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 2dshadow: skip
+spec/ext_gpu_shader4/tex-miplevel-selection gpu4textureprojoffset(bias) 3d: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-export-tex: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-intel_external_sampler_only: skip
@@ -4162,6 +4277,7 @@ spec/ext_image_dma_buf_import/ext_image_dma_buf_import-invalid_hints: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-missing_attributes: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-ownership_transfer: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-refcount: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-reimport-bug: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_argb8888: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_ayuv: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_nv12: skip
@@ -4171,6 +4287,12 @@ spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_p016: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_uyvy: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_xrgb8888: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_xyuv: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y210: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y212: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y216: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y410: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y412: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y416: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yuv420: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yuyv: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yvu420: skip
@@ -4696,6 +4818,7 @@ spec/oes_geometry_shader/built-in constants: skip
 spec/oes_matrix_get/all queries: skip
 spec/oes_packed_depth_stencil/depth_stencil texture gles1: skip
 spec/oes_packed_depth_stencil/depth_stencil texture gles2: skip
+spec/oes_point_sprite/arb_point_sprite-checkerboard_gles1: skip
 spec/oes_required_internalformat/renderbuffer: skip
 spec/oes_texture_compression_astc/miptree-3d-gl hdr: skip
 spec/oes_texture_compression_astc/miptree-3d-gl ldr: skip
@@ -4746,10 +4869,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    13306
-       fail:      532
-      crash:       67
-       skip:     4126
+       pass:    14124
+       fail:      502
+      crash:       68
+       skip:     4278
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4758,4 +4881,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    18051
+      total:    18992
