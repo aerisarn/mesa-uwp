@@ -709,13 +709,14 @@ fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    if (dirty & (FD_DIRTY_ZSA | FD_DIRTY_RASTERIZER | FD_DIRTY_PROG)) {
       struct fd4_zsa_stateobj *zsa = fd4_zsa_stateobj(ctx->zsa);
-      bool fragz = fp->no_earlyz | fp->has_kill | fp->writes_pos;
+      bool fragz = fp->no_earlyz || fp->has_kill || fp->writes_pos;
+      bool latez = fp->shader && !fp->shader->nir->info.fs.early_fragment_tests && fragz;
       bool clamp = !ctx->rasterizer->depth_clip_near;
 
       OUT_PKT0(ring, REG_A4XX_RB_DEPTH_CONTROL, 1);
       OUT_RING(ring, zsa->rb_depth_control |
                         COND(clamp, A4XX_RB_DEPTH_CONTROL_Z_CLAMP_ENABLE) |
-                        COND(fragz, A4XX_RB_DEPTH_CONTROL_EARLY_Z_DISABLE) |
+                        COND(latez, A4XX_RB_DEPTH_CONTROL_EARLY_Z_DISABLE) |
                         COND(fragz && fp->fragcoord_compmask != 0,
                              A4XX_RB_DEPTH_CONTROL_FORCE_FRAGZ_TO_FS));
 
@@ -724,7 +725,7 @@ fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
        */
       OUT_PKT0(ring, REG_A4XX_GRAS_ALPHA_CONTROL, 1);
       OUT_RING(ring, zsa->gras_alpha_control |
-                        COND(fragz, A4XX_GRAS_ALPHA_CONTROL_ALPHA_TEST_ENABLE) |
+                        COND(latez, A4XX_GRAS_ALPHA_CONTROL_ALPHA_TEST_ENABLE) |
                         COND(fragz && fp->fragcoord_compmask != 0,
                              A4XX_GRAS_ALPHA_CONTROL_FORCE_FRAGZ_TO_FS));
    }
