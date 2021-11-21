@@ -3573,10 +3573,7 @@ pack_inlocs(struct ir3_context *ctx)
     * use the NIR clip/cull distances to avoid reading ucp_enables in the
     * shader key.
     */
-   unsigned clip_cull_size =
-      ctx->so->shader->nir->info.clip_distance_array_size +
-      ctx->so->shader->nir->info.cull_distance_array_size;
-   unsigned clip_cull_mask = MASK(clip_cull_size);
+   unsigned clip_cull_mask = so->clip_mask | so->cull_mask;
 
    for (unsigned i = 0; i < so->inputs_count; i++) {
       unsigned compmask = 0, maxcomp = 0;
