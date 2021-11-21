@@ -42,6 +42,7 @@ include:
   - local: 'src/gallium/drivers/virgl/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/zink/ci/gitlab-ci.yml'
   - local: 'src/gallium/frontends/lavapipe/ci/gitlab-ci.yml'
+  - local: 'src/microsoft/ci/gitlab-ci.yml'
   - local: 'src/panfrost/ci/gitlab-ci.yml'
 
 stages:
@@ -1032,26 +1033,6 @@ windows-vs2019:
     paths:
       - _build/meson-logs/*.txt
       - _install/
-
-test-spirv2dxil-windows:
-  extends:
-    - .build-windows
-    - .use-windows_build_vs2019
-    - .windows-test-rules
-  stage: layered-backends
-  dependencies:
-    - windows-vs2019
-  needs:
-    - windows-vs2019
-  variables:
-    GIT_STRATEGY: none # testing doesn't build anything from source
-  script:
-    - . _install/spirv2dxil_run.ps1
-  artifacts:
-    when: on_failure
-    name: "mesa_${CI_JOB_NAME}"
-    paths:
-      - spirv2dxil_results.txt
 
 debian-clover:
   extends: .meson-build
