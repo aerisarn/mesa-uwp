@@ -835,20 +835,20 @@ fd5_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
       OUT_PKT4(ring, REG_A5XX_RB_BLEND_RED, 8);
       OUT_RING(ring, A5XX_RB_BLEND_RED_FLOAT(bcolor->color[0]) |
-                        A5XX_RB_BLEND_RED_UINT(bcolor->color[0] * 0xff) |
-                        A5XX_RB_BLEND_RED_SINT(bcolor->color[0] * 0x7f));
+                        A5XX_RB_BLEND_RED_UINT(CLAMP(bcolor->color[0], 0.f, 1.f) * 0xff) |
+                        A5XX_RB_BLEND_RED_SINT(CLAMP(bcolor->color[0], -1.f, 1.f) * 0x7f));
       OUT_RING(ring, A5XX_RB_BLEND_RED_F32(bcolor->color[0]));
       OUT_RING(ring, A5XX_RB_BLEND_GREEN_FLOAT(bcolor->color[1]) |
-                        A5XX_RB_BLEND_GREEN_UINT(bcolor->color[1] * 0xff) |
-                        A5XX_RB_BLEND_GREEN_SINT(bcolor->color[1] * 0x7f));
+                        A5XX_RB_BLEND_GREEN_UINT(CLAMP(bcolor->color[1], 0.f, 1.f) * 0xff) |
+                        A5XX_RB_BLEND_GREEN_SINT(CLAMP(bcolor->color[1], -1.f, 1.f) * 0x7f));
       OUT_RING(ring, A5XX_RB_BLEND_RED_F32(bcolor->color[1]));
       OUT_RING(ring, A5XX_RB_BLEND_BLUE_FLOAT(bcolor->color[2]) |
-                        A5XX_RB_BLEND_BLUE_UINT(bcolor->color[2] * 0xff) |
-                        A5XX_RB_BLEND_BLUE_SINT(bcolor->color[2] * 0x7f));
+                        A5XX_RB_BLEND_BLUE_UINT(CLAMP(bcolor->color[2], 0.f, 1.f) * 0xff) |
+                        A5XX_RB_BLEND_BLUE_SINT(CLAMP(bcolor->color[2], -1.f, 1.f) * 0x7f));
       OUT_RING(ring, A5XX_RB_BLEND_BLUE_F32(bcolor->color[2]));
       OUT_RING(ring, A5XX_RB_BLEND_ALPHA_FLOAT(bcolor->color[3]) |
-                        A5XX_RB_BLEND_ALPHA_UINT(bcolor->color[3] * 0xff) |
-                        A5XX_RB_BLEND_ALPHA_SINT(bcolor->color[3] * 0x7f));
+                        A5XX_RB_BLEND_ALPHA_UINT(CLAMP(bcolor->color[3], 0.f, 1.f) * 0xff) |
+                        A5XX_RB_BLEND_ALPHA_SINT(CLAMP(bcolor->color[3], -1.f, 1.f) * 0x7f));
       OUT_RING(ring, A5XX_RB_BLEND_ALPHA_F32(bcolor->color[3]));
    }
 
