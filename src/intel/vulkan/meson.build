@@ -33,19 +33,6 @@ anv_entrypoints = custom_target(
   depend_files : vk_entrypoints_gen_depend_files,
 )
 
-anv_tracepoints = custom_target(
-  'anv_tracepoints.[ch]',
-  input: 'anv_tracepoints.py',
-  output: ['anv_tracepoints.h', 'anv_tracepoints.c'],
-  command: [
-    prog_python, '@INPUT@',
-    '-p', join_paths(meson.source_root(), 'src/util/perf/'),
-    '--utrace-hdr', '@OUTPUT0@',
-    '--utrace-src', '@OUTPUT1@',
-  ],
-  depend_files: u_trace_py,
-)
-
 intel_icd = custom_target(
   'intel_icd',
   input : [vk_icd_gen, vk_api_xml],
@@ -78,7 +65,7 @@ foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
   _gfx_ver = g[0]
   libanv_per_hw_ver_libs += static_library(
     'anv_per_hw_ver@0@'.format(_gfx_ver),
-    [anv_per_hw_ver_files, g[1], anv_entrypoints[0], anv_tracepoints[0]],
+    [anv_per_hw_ver_files, g[1], anv_entrypoints[0]],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler, inc_intel,
     ],
@@ -90,7 +77,7 @@ foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
     dependencies : [
       dep_libdrm, dep_valgrind, idep_nir_headers, idep_genxml,
       idep_vulkan_util_headers, idep_vulkan_wsi_headers,
-      idep_vulkan_runtime_headers,
+      idep_vulkan_runtime_headers, idep_intel_driver_ds_headers,
     ],
   )
 endforeach
@@ -142,6 +129,8 @@ anv_flags = [
   c_sse2_args,
 ]
 
+anv_cpp_flags = []
+
 if with_platform_x11
   anv_deps += dep_xcb_dri3
 endif
@@ -164,24 +153,27 @@ else
   libanv_files += files('anv_android_stubs.c')
 endif
 
+anv_deps += idep_intel_driver_ds_headers
+
 libanv_common = static_library(
   'anv_common',
   [
     libanv_files, anv_entrypoints, sha1_h,
-    gen_xml_pack
+    gen_xml_pack,
   ],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
     inc_util,
   ],
   c_args : anv_flags,
+  cpp_args : anv_cpp_flags,
   gnu_symbol_visibility : 'hidden',
   dependencies : anv_deps,
 )
 
 libvulkan_intel = shared_library(
   'vulkan_intel',
-  [files('anv_gem.c'), anv_entrypoints[0], anv_tracepoints],
+  [files('anv_gem.c'), anv_entrypoints[0]],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
   ],
@@ -193,6 +185,7 @@ libvulkan_intel = shared_library(
     dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
     idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
     idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
+    idep_intel_driver_ds,
   ],
   c_args : anv_flags,
   gnu_symbol_visibility : 'hidden',
@@ -216,7 +209,7 @@ endif
 if with_tests
   libvulkan_intel_test = static_library(
     'vulkan_intel_test',
-    [files('anv_gem_stubs.c'), anv_entrypoints[0], anv_tracepoints[0]],
+    [files('anv_gem_stubs.c'), anv_entrypoints[0]],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
     ],
@@ -241,13 +234,13 @@ if with_tests
       'anv_@0@'.format(t),
       executable(
         t,
-        ['tests/@0@.c'.format(t), anv_entrypoints[0], anv_tracepoints[0]],
+        ['tests/@0@.c'.format(t), anv_entrypoints[0]],
         c_args : [ c_sse2_args ],
         link_with : libvulkan_intel_test,
         dependencies : [
           dep_libdrm, dep_thread, dep_m, dep_valgrind,
           idep_vulkan_util, idep_vulkan_wsi_headers,
-          idep_vulkan_runtime,
+          idep_vulkan_runtime, idep_intel_driver_ds,
         ],
         include_directories : [
           inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,

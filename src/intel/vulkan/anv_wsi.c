@@ -107,7 +107,7 @@ VkResult anv_QueuePresentKHR(
       vk_semaphore_reset_temporary(&queue->device->vk, semaphore);
    }
 
-   u_trace_context_process(&queue->device->trace_context, true);
+   u_trace_context_process(&device->ds.trace_context, true);
 
    return result;
 }

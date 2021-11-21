@@ -34,14 +34,18 @@ def define_tracepoints(args):
     from u_trace import TracepointArg as Arg
     from u_trace import TracepointArgStruct as ArgStruct
 
-    Header('anv_private.h', scope=HeaderScope.SOURCE)
+    Header('intel_driver_ds.h', scope=HeaderScope.SOURCE)
     Header('blorp/blorp_priv.h', scope=HeaderScope.HEADER)
+    Header('ds/intel_driver_ds.h', scope=HeaderScope.HEADER)
 
-    def begin_end_tp(name, tp_args=[], tp_struct=None, end_pipelined=True):
-        Tracepoint('begin_{0}'.format(name))
-        Tracepoint('end_{0}'.format(name),
+    def begin_end_tp(name, tp_args=[], tp_struct=None, tp_print=None, end_pipelined=True):
+        Tracepoint('intel_begin_{0}'.format(name),
+                   tp_perfetto='intel_ds_begin_{0}'.format(name))
+        Tracepoint('intel_end_{0}'.format(name),
                    args=tp_args,
                    tp_struct=tp_struct,
+                   tp_perfetto='intel_ds_end_{0}'.format(name),
+                   tp_print=tp_print,
                    end_of_pipe=end_pipelined)
 
 
@@ -73,8 +77,8 @@ def define_tracepoints(args):
                         Arg(type='uint32_t', name='height', var='height', c_format='%u'),
                             Arg(type='enum isl_aux_op', name='hiz_op', var='hiz_op', c_format='%s', to_prim_type='isl_aux_op_to_name({})'),
                             Arg(type='enum isl_aux_op', name='fast_clear_op', var='fast_clear_op', c_format='%s', to_prim_type='isl_aux_op_to_name({})'),
-                            Arg(type='enum blorp_shader_type', name='type', var='shader_type', c_format='%s', to_prim_type='blorp_shader_type_to_name({})'),
-                            Arg(type='enum blorp_shader_pipeline', name='pipe', var='shader_pipe', c_format='%s', to_prim_type='blorp_shader_pipeline_to_name({})'),])
+                            Arg(type='enum blorp_shader_type', name='blorp_type', var='shader_type', c_format='%s', to_prim_type='blorp_shader_type_to_name({})'),
+                            Arg(type='enum blorp_shader_pipeline', name='blorp_pipe', var='shader_pipe', c_format='%s', to_prim_type='blorp_shader_pipeline_to_name({})'),])
 
     begin_end_tp('draw',
                  tp_args=[ArgStruct(type='uint32_t', var='count'),],
@@ -110,42 +114,58 @@ def define_tracepoints(args):
                           ArgStruct(type='uint32_t', var='group_z'),],
                  tp_struct=[Arg(type='uint32_t', name='group_x', var='group_x', c_format='%u'),
                             Arg(type='uint32_t', name='group_y', var='group_y', c_format='%u'),
-                            Arg(type='uint32_t', name='group_z', var='group_z', c_format='%u'),])
+                            Arg(type='uint32_t', name='group_z', var='group_z', c_format='%u'),],
+                 tp_print=['group=%ux%ux%u', '__entry->group_x', '__entry->group_y', '__entry->group_z'])
+
+    def flag_bits(args):
+        bits = [Arg(type='enum intel_ds_stall_flag', name='flags', var='decode_cb(flags)', c_format='0x%x')]
+        for a in args:
+            bits.append(Arg(type='bool', name=a[1], var='__entry->flags & INTEL_DS_{0}_BIT'.format(a[0]), c_format='%u'))
+        return bits
 
     def stall_args(args):
         fmt = ''
         exprs = []
         for a in args:
             fmt += '%s'
-            exprs.append('(__entry->flags & ANV_PIPE_{0}_BIT) ? "+{1}" : ""'.format(a[0], a[1]))
+            exprs.append('(__entry->flags & INTEL_DS_{0}_BIT) ? "+{1}" : ""'.format(a[0], a[1]))
+        fmt += ' : %s'
+        exprs.append('__entry->reason ? __entry->reason : "unknown"')
         fmt = [fmt]
         fmt += exprs
         return fmt
 
-    Tracepoint('stall',
-               args=[ArgStruct(type='uint32_t', var='flags'),],
-               tp_struct=[Arg(type='uint32_t', name='flags', var='flags', c_format='0x%x'),],
-               tp_print=stall_args([['DEPTH_CACHE_FLUSH', 'depth_flush'],
-                                    ['DATA_CACHE_FLUSH', 'dc_flush'],
-                                    ['HDC_PIPELINE_FLUSH', 'hdc_flush'],
-                                    ['RENDER_TARGET_CACHE_FLUSH', 'rt_flush'],
-                                    ['TILE_CACHE_FLUSH', 'tile_flush'],
-                                    ['STATE_CACHE_INVALIDATE', 'state_inval'],
-                                    ['CONSTANT_CACHE_INVALIDATE', 'const_inval'],
-                                    ['VF_CACHE_INVALIDATE', 'vf_inval'],
-                                    ['TEXTURE_CACHE_INVALIDATE', 'tex_inval'],
-                                    ['INSTRUCTION_CACHE_INVALIDATE', 'ic_inval'],
-                                    ['STALL_AT_SCOREBOARD', 'pb_stall'],
-                                    ['DEPTH_STALL', 'depth_stall'],
-                                    ['CS_STALL', 'cs_stall'],
-                                    ]))
+    stall_flags = [['DEPTH_CACHE_FLUSH',         'depth_flush'],
+                   ['DATA_CACHE_FLUSH',          'dc_flush'],
+                   ['HDC_PIPELINE_FLUSH',        'hdc_flush'],
+                   ['RENDER_TARGET_CACHE_FLUSH', 'rt_flush'],
+                   ['TILE_CACHE_FLUSH',          'tile_flush'],
+                   ['STATE_CACHE_INVALIDATE',    'state_inval'],
+                   ['CONST_CACHE_INVALIDATE',    'const_inval'],
+                   ['VF_CACHE_INVALIDATE',       'vf_inval'],
+                   ['TEXTURE_CACHE_INVALIDATE',  'tex_inval'],
+                   ['INST_CACHE_INVALIDATE',     'ic_inval'],
+                   ['STALL_AT_SCOREBOARD',       'pb_stall'],
+                   ['DEPTH_STALL',               'depth_stall'],
+                   ['CS_STALL',                  'cs_stall']]
 
+    begin_end_tp('stall',
+                 tp_args=[ArgStruct(type='uint32_t', var='flags'),
+                          ArgStruct(type='intel_ds_stall_cb_t', var='decode_cb'),
+                          ArgStruct(type='const char *', var='reason'),],
+                 tp_struct=[Arg(type='uint32_t', name='flags', var='decode_cb(flags)', c_format='0x%x'),
+                            Arg(type='const char *', name='reason', var='reason', c_format='%s'),],
+                 tp_print=stall_args(stall_flags),
+                 end_pipelined=False)
 
 
 def generate_code(args):
     from u_trace import utrace_generate
+    from u_trace import utrace_generate_perfetto_utils
 
-    utrace_generate(cpath=args.utrace_src, hpath=args.utrace_hdr, ctx_param='struct anv_device *dev')
+    utrace_generate(cpath=args.utrace_src, hpath=args.utrace_hdr,
+                    ctx_param='struct intel_ds_device *dev')
+    utrace_generate_perfetto_utils(hpath=args.perfetto_hdr)
 
 
 def main():
@@ -153,6 +173,7 @@ def main():
     parser.add_argument('-p', '--import-path', required=True)
     parser.add_argument('--utrace-src', required=True)
     parser.add_argument('--utrace-hdr', required=True)
+    parser.add_argument('--perfetto-hdr', required=True)
     args = parser.parse_args()
     sys.path.insert(0, args.import_path)
     define_tracepoints(args)

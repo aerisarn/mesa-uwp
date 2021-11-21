@@ -52,6 +52,7 @@
 #include "blorp/blorp.h"
 #include "compiler/brw_compiler.h"
 #include "compiler/brw_rt.h"
+#include "ds/intel_driver_ds.h"
 #include "util/bitset.h"
 #include "util/bitscan.h"
 #include "util/macros.h"
@@ -1061,7 +1062,11 @@ struct anv_queue {
 
    const struct anv_queue_family *           family;
 
+   uint32_t                                  index_in_family;
+
    uint32_t                                  exec_flags;
+
+   struct intel_ds_queue *                   ds;
 };
 
 struct anv_pipeline_cache {
@@ -1216,7 +1221,7 @@ struct anv_device {
 
     struct intel_debug_block_frame              *debug_frame_desc;
 
-    struct u_trace_context                      trace_context;
+    struct intel_ds_device                       ds;
 };
 
 #if defined(GFX_VERx10) && GFX_VERx10 >= 90
@@ -2394,6 +2399,9 @@ enum anv_pipe_bits {
    ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT | \
    ANV_PIPE_AUX_TABLE_INVALIDATE_BIT)
+
+enum intel_ds_stall_flag
+anv_pipe_flush_bit_to_ds_stall_flag(enum anv_pipe_bits bits);
 
 static inline enum anv_pipe_bits
 anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
@@ -4549,15 +4557,24 @@ struct anv_memcpy_state {
 };
 
 struct anv_utrace_flush_copy {
-   struct u_trace trace;
+   /* Needs to be the first field */
+   struct intel_ds_flush_data ds;
 
+   /* Batch stuff to implement of copy of timestamps recorded in another
+    * buffer.
+    */
    struct anv_reloc_list relocs;
    struct anv_batch batch;
    struct anv_bo *batch_bo;
 
+   /* Buffer of 64bits timestamps */
    struct anv_bo *trace_bo;
 
+   /* Syncobj to be signaled when the batch completes */
    struct vk_sync *sync;
+
+   /* Queue on which all the recorded traces are submitted */
+   struct anv_queue *queue;
 
    struct anv_memcpy_state memcpy_state;
 };
@@ -4569,6 +4586,25 @@ anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
                                     uint32_t cmd_buffer_count,
                                     struct anv_cmd_buffer **cmd_buffers,
                                     struct anv_utrace_flush_copy **out_flush_data);
+
+#ifdef HAVE_PERFETTO
+void anv_perfetto_init(void);
+uint64_t anv_perfetto_begin_submit(struct anv_queue *queue);
+void anv_perfetto_end_submit(struct anv_queue *queue, uint32_t submission_id,
+                             uint64_t start_ts);
+#else
+static inline void anv_perfetto_init(void)
+{
+}
+static inline uint64_t anv_perfetto_begin_submit(struct anv_queue *queue)
+{
+   return 0;
+}
+static inline void anv_perfetto_end_submit(struct anv_queue *queue,
+                                           uint32_t submission_id,
+                                           uint64_t start_ts)
+{}
+#endif
 
 
 #define ANV_FROM_HANDLE(__anv_type, __name, __handle) \

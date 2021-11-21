@@ -302,7 +302,7 @@ static VkResult anv_create_cmd_buffer(
 
    anv_measure_init(cmd_buffer);
 
-   u_trace_init(&cmd_buffer->trace, &device->trace_context);
+   u_trace_init(&cmd_buffer->trace, &device->ds.trace_context);
 
    *pCommandBuffer = anv_cmd_buffer_to_handle(cmd_buffer);
 
@@ -407,7 +407,7 @@ anv_cmd_buffer_reset(struct anv_cmd_buffer *cmd_buffer)
    anv_measure_reset(cmd_buffer);
 
    u_trace_fini(&cmd_buffer->trace);
-   u_trace_init(&cmd_buffer->trace, &cmd_buffer->device->trace_context);
+   u_trace_init(&cmd_buffer->trace, &cmd_buffer->device->ds.trace_context);
 
    return VK_SUCCESS;
 }

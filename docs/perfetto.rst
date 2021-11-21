@@ -161,6 +161,14 @@ set of HW counters :
 
    INTEL_PERFETTO_METRIC_SET=RasterizerAndPixelBackend ./build/src/tool/pps/pps-producer
 
+Vulkan applications can also be instrumented to be Perfetto producers.
+To enable this for given application, set the environment variable as
+follow :
+
+.. code-block:: console
+
+   PERFETTO_TRACE=1 my_vulkan_app
+
 Panfrost
 ^^^^^^^^
 

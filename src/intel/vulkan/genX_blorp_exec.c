@@ -34,13 +34,13 @@
 #include "common/intel_l3_config.h"
 #include "blorp/blorp_genX_exec.h"
 
-#include "anv_tracepoints.h"
+#include "ds/intel_tracepoints.h"
 
 static void blorp_measure_start(struct blorp_batch *_batch,
                                 const struct blorp_params *params)
 {
    struct anv_cmd_buffer *cmd_buffer = _batch->driver_batch;
-   trace_begin_blorp(&cmd_buffer->trace, cmd_buffer);
+   trace_intel_begin_blorp(&cmd_buffer->trace, cmd_buffer);
    anv_measure_snapshot(cmd_buffer,
                         params->snapshot_type,
                         NULL, 0);
@@ -50,13 +50,13 @@ static void blorp_measure_end(struct blorp_batch *_batch,
                               const struct blorp_params *params)
 {
    struct anv_cmd_buffer *cmd_buffer = _batch->driver_batch;
-   trace_end_blorp(&cmd_buffer->trace, cmd_buffer,
-                   params->x1 - params->x0,
-                   params->y1 - params->y0,
-                   params->hiz_op,
-                   params->fast_clear_op,
-                   params->shader_type,
-                   params->shader_pipeline);
+   trace_intel_end_blorp(&cmd_buffer->trace, cmd_buffer,
+                         params->x1 - params->x0,
+                         params->y1 - params->y0,
+                         params->hiz_op,
+                         params->fast_clear_op,
+                         params->shader_type,
+                         params->shader_pipeline);
 }
 
 static void *
