@@ -1214,7 +1214,7 @@ emit_gs_state(struct ntd_context *ctx)
 
    gs_state_nodes[0] = dxil_get_metadata_int32(&ctx->mod, dxil_get_input_primitive(s->info.gs.input_primitive));
    gs_state_nodes[1] = dxil_get_metadata_int32(&ctx->mod, s->info.gs.vertices_out);
-   gs_state_nodes[2] = dxil_get_metadata_int32(&ctx->mod, s->info.gs.active_stream_mask);
+   gs_state_nodes[2] = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.gs.active_stream_mask, 1));
    gs_state_nodes[3] = dxil_get_metadata_int32(&ctx->mod, dxil_get_primitive_topology(s->info.gs.output_primitive));
    gs_state_nodes[4] = dxil_get_metadata_int32(&ctx->mod, s->info.gs.invocations);
 
@@ -4926,7 +4926,7 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
       state->state.max_vertex_count = ctx->shader->info.gs.vertices_out;
       state->state.psv0.gs.input_primitive = dxil_get_input_primitive(ctx->shader->info.gs.input_primitive);
       state->state.psv0.gs.output_toplology = dxil_get_primitive_topology(ctx->shader->info.gs.output_primitive);
-      state->state.psv0.gs.output_stream_mask = ctx->shader->info.gs.active_stream_mask;
+      state->state.psv0.gs.output_stream_mask = MAX2(ctx->shader->info.gs.active_stream_mask, 1);
       state->state.psv0.gs.output_position_present = ctx->mod.info.has_out_position;
       break;
    default:
