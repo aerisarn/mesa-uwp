@@ -78,7 +78,9 @@ static struct fd4_format formats[PIPE_FORMAT_COUNT] = {
 
    _T(A8_UNORM,   8_UNORM, A8_UNORM, WZYX),
    _T(L8_UNORM,   8_UNORM, R8_UNORM, WZYX),
+   _T(L8_SNORM,   8_SNORM, R8_SNORM, WZYX),
    _T(I8_UNORM,   8_UNORM, NONE,     WZYX),
+   _T(I8_SNORM,   8_SNORM, NONE,     WZYX),
 
    _T(A8_UINT,    8_UINT,  NONE,     WZYX),
    _T(A8_SINT,    8_SINT,  NONE,     WZYX),
