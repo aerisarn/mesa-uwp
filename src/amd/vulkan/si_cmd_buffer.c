@@ -234,11 +234,13 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
                              S_028204_WINDOW_OFFSET_DISABLE(1));
       radeon_set_context_reg(cs, R_028240_PA_SC_GENERIC_SCISSOR_TL,
                              S_028240_WINDOW_OFFSET_DISABLE(1));
-      radeon_set_context_reg(cs, R_028244_PA_SC_GENERIC_SCISSOR_BR,
-                             S_028244_BR_X(16384) | S_028244_BR_Y(16384));
+      radeon_set_context_reg(
+         cs, R_028244_PA_SC_GENERIC_SCISSOR_BR,
+         S_028244_BR_X(MAX_FRAMEBUFFER_WIDTH) | S_028244_BR_Y(MAX_FRAMEBUFFER_HEIGHT));
       radeon_set_context_reg(cs, R_028030_PA_SC_SCREEN_SCISSOR_TL, 0);
-      radeon_set_context_reg(cs, R_028034_PA_SC_SCREEN_SCISSOR_BR,
-                             S_028034_BR_X(16384) | S_028034_BR_Y(16384));
+      radeon_set_context_reg(
+         cs, R_028034_PA_SC_SCREEN_SCISSOR_BR,
+         S_028034_BR_X(MAX_FRAMEBUFFER_WIDTH) | S_028034_BR_Y(MAX_FRAMEBUFFER_HEIGHT));
    }
 
    if (!has_clear_state) {
