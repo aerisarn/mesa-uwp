@@ -1,4 +1,4 @@
-test-d3d12-windows:
+.d3d12-test:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
@@ -11,9 +11,10 @@ test-d3d12-windows:
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     GALLIUM_DRIVER: d3d12
-    PIGLIT_PROFILE: quick_gl
-    PIGLIT_RESULTS: "d3d12-quick_gl"
-    PIGLIT_TESTS: -x nv_copy_depth_to_color
+
+.d3d12-test-piglit:
+  extends:
+    - .d3d12-test
   script:
     - . _install/piglit_run.ps1
   artifacts:
@@ -22,3 +23,18 @@ test-d3d12-windows:
     paths:
       - summary/
       - result.txt
+
+test-d3d12-quick_gl:
+  extends:
+    - .d3d12-test-piglit
+  variables:
+    PIGLIT_PROFILE: quick_gl
+    PIGLIT_RESULTS: "d3d12-quick_gl"
+    PIGLIT_TESTS: -x nv_copy_depth_to_color
+
+test-d3d12-quick_shader:
+  extends:
+    - .d3d12-test-piglit
+  variables:
+    PIGLIT_PROFILE: quick_shader
+    PIGLIT_RESULTS: "d3d12-quick_shader"
