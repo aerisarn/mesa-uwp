@@ -491,9 +491,9 @@ nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables,
    if (!ucp_enables)
       return false;
 
-   /* Fragment shaders can't read gl_ClipDistance[] in OpenGL so it will not
-    * have the variable defined, but Vulkan allows this, in which case the
-    * SPIR-V compiler would have already added it as a compact array.
+   /* No hard reason to require use_clipdist_arr to work with
+    * frag-shader-based gl_ClipDistance, except that the only user that does
+    * not enable this does not support GL 3.0 (or EXT_clip_cull_distance).
     */
    if (!fs_has_clip_dist_input_var(shader, in, &ucp_enables))
       create_clipdist_vars(shader, in, ucp_enables, false, use_clipdist_array);
