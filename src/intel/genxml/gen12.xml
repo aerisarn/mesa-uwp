@@ -7063,7 +7063,14 @@
 
   <instruction name="XY_BLOCK_COPY_BLT" bias="2" length="12" engine="blitter">
     <field name="DWord Length" start="0" end="7" type="uint" default="10"/>
-    <field name="Color Depth" start="19" end="21" type="uint"/>
+    <field name="Color Depth" start="19" end="21" type="uint" prefix="XY_BPP">
+      <value name="8_BIT"   value="0"/>
+      <value name="16_BIT"  value="1"/>
+      <value name="32_BIT"  value="2"/>
+      <value name="64_BIT"  value="3"/>
+      <value name="96_BIT"  value="4"/>
+      <value name="128_BIT" value="5"/>
+    </field>
     <field name="Opcode" start="22" end="28" type="uint" default="0x41"/>
     <field name="Client" start="29" end="31" type="uint" default="2"/>
     <field name="Destination Pitch" start="32" end="49" type="uint"/>
