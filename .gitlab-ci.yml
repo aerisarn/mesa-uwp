@@ -32,6 +32,7 @@ include:
   - local: 'src/broadcom/ci/gitlab-ci.yml'
   - local: 'src/etnaviv/ci/gitlab-ci.yml'
   - local: 'src/freedreno/ci/gitlab-ci.yml'
+  - local: 'src/gallium/drivers/d3d12/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/i915/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/iris/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/lima/ci/gitlab-ci.yml'
@@ -1031,30 +1032,6 @@ windows-vs2019:
     paths:
       - _build/meson-logs/*.txt
       - _install/
-
-test-d3d12-windows:
-  extends:
-    - .build-windows
-    - .use-windows_build_vs2019
-    - .windows-test-rules
-  stage: layered-backends
-  dependencies:
-    - windows-vs2019
-  needs:
-    - windows-vs2019
-  variables:
-    GIT_STRATEGY: none # testing doesn't build anything from source
-    GALLIUM_DRIVER: d3d12
-    PIGLIT_PROFILE: quick_gl
-    PIGLIT_TESTS: -x nv_copy_depth_to_color
-  script:
-    - . _install/piglit_run.ps1
-  artifacts:
-    when: on_failure
-    name: "mesa_${CI_JOB_NAME}"
-    paths:
-      - summary/
-      - result.txt
 
 test-spirv2dxil-windows:
   extends:
