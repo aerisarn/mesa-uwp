@@ -18,17 +18,6 @@
 
 namespace pps
 {
-int perf_ioctl(int fd, unsigned long request, void *arg)
-{
-   int ret;
-
-   do {
-      ret = ioctl(fd, request, arg);
-   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
-
-   return ret;
-}
-
 IntelPerf::IntelPerf(const int drm_fd)
    : drm_fd {drm_fd}
    , ralloc_ctx {ralloc_context(nullptr)}

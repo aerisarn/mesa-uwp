@@ -76,6 +76,19 @@ intel_ioctl(int fd, unsigned long request, void *arg)
     return ret;
 }
 
+static inline uint64_t
+intel_read_gpu_timestamp(int fd)
+{
+   struct drm_i915_reg_read reg_read = {};
+   const uint64_t render_ring_timestamp = 0x2358;
+   reg_read.offset = render_ring_timestamp | I915_REG_READ_8B_WA;
+
+   if (intel_ioctl(fd, DRM_IOCTL_I915_REG_READ, &reg_read) < 0)
+      return 0;
+
+   return reg_read.val;
+}
+
 /**
  * A wrapper around DRM_IOCTL_I915_QUERY
  *

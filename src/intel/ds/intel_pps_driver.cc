@@ -18,6 +18,7 @@
 
 #include <i915_drm.h>
 
+#include "common/intel_gem.h"
 #include "dev/intel_device_info.h"
 #include "perf/intel_perf.h"
 #include "perf/intel_perf_query.h"
@@ -38,21 +39,6 @@ namespace pps
 uint64_t IntelDriver::get_min_sampling_period_ns()
 {
    return (2.f * perf->devinfo.timestamp_frequency) / 1000000000ull;
-}
-
-uint64_t read_gpu_timestamp(int drm_fd)
-{
-   drm_i915_reg_read reg_read = {};
-   const uint64_t render_ring_timestamp = 0x2358;
-   reg_read.offset = render_ring_timestamp | I915_REG_READ_8B_WA;
-
-   if (perf_ioctl(drm_fd, DRM_IOCTL_I915_REG_READ, &reg_read) < 0) {
-      PPS_LOG_ERROR("Unable to read GPU clock");
-      return 0;
-   }
-
-   return reg_read.val;
-
 }
 
 IntelDriver::IntelDriver()
@@ -219,7 +205,7 @@ std::vector<PerfRecord> IntelDriver::parse_perf_records(const std::vector<uint8_
           * again.
           */
          if (gpu_timestamp_udw == 0 || (gpu_timestamp_udw + gpu_timestamp_ldw) < last_gpu_timestamp)
-            gpu_timestamp_udw = read_gpu_timestamp(drm_device.fd) & 0xffffffff00000000;
+            gpu_timestamp_udw = intel_read_gpu_timestamp(drm_device.fd) & 0xffffffff00000000;
 
          uint64_t gpu_timestamp = gpu_timestamp_udw + gpu_timestamp_ldw;
 
@@ -336,7 +322,7 @@ uint32_t IntelDriver::gpu_clock_id() const
 uint64_t IntelDriver::gpu_timestamp() const
 {
    return intel_device_info_timebase_scale(&perf->devinfo,
-                                           read_gpu_timestamp(drm_device.fd));
+                                           intel_read_gpu_timestamp(drm_device.fd));
 }
 
 } // namespace pps

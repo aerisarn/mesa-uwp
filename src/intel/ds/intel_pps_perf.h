@@ -17,8 +17,6 @@
 
 namespace pps
 {
-int perf_ioctl(int fd, unsigned long request, void *arg);
-
 class IntelPerf
 {
    public:
