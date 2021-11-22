@@ -99,7 +99,8 @@ typedef void (*u_trace_delete_ts_buffer)(struct u_trace_context *utctx,
  * GL_TIMESTAMP queries should be appropriate.
  */
 typedef void (*u_trace_record_ts)(struct u_trace *ut, void *cs,
-      void *timestamps, unsigned idx);
+                                  void *timestamps, unsigned idx,
+                                  bool end_of_pipe);
 
 /**
  * Driver provided callback to read back a previously recorded timestamp.
