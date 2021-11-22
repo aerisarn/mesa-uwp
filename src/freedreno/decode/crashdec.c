@@ -248,6 +248,51 @@ decode_ringbuffer(void)
    }
 }
 
+/*
+ * Decode HFI queues
+ */
+
+static void
+decode_gmu_hfi(void)
+{
+   struct a6xx_hfi_state hfi = {};
+
+   /* Initialize the history buffers with invalid entries (-1): */
+   memset(&hfi.history, 0xff, sizeof(hfi.history));
+
+   foreach_line_in_section (line) {
+      if (startswith(line, "    iova:")) {
+         parseline(line, "    iova: %" PRIx64, &hfi.iova);
+      } else if (startswith(line, "    size:")) {
+         parseline(line, "    size: %u", &hfi.size);
+      } else if (startswith(line, "    queue-history")) {
+         unsigned qidx, dummy;
+
+         parseline(line, "    queue-history[%u]:", &qidx);
+         assert(qidx < ARRAY_SIZE(hfi.history));
+
+         parseline(line, "    queue-history[%u]: %d %d %d %d %d %d %d %d", &dummy,
+                   &hfi.history[qidx][0], &hfi.history[qidx][1],
+                   &hfi.history[qidx][2], &hfi.history[qidx][3],
+                   &hfi.history[qidx][4], &hfi.history[qidx][5],
+                   &hfi.history[qidx][6], &hfi.history[qidx][7]);
+      } else if (startswith(line, "    data: !!ascii85 |")) {
+         hfi.buf = popline_ascii85(hfi.size / 4);
+
+         if (verbose)
+            dump_hex_ascii(hfi.buf, hfi.size, 1);
+
+         dump_gmu_hfi(&hfi);
+
+         free(hfi.buf);
+
+         continue;
+      }
+
+      printf("%s", line);
+   }
+}
+
 static bool
 valid_header(uint32_t pkt)
 {
@@ -693,6 +738,8 @@ decode(void)
          decode_bos();
       } else if (startswith(line, "ringbuffer:")) {
          decode_ringbuffer();
+      } else if (startswith(line, "gmu-hfi:")) {
+         decode_gmu_hfi();
       } else if (startswith(line, "registers:")) {
          decode_registers();
 

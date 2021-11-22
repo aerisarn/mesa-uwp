@@ -71,7 +71,28 @@ is_64b(void)
    return options.gpu_id >= 500;
 }
 
+static inline bool
+is_gmu_legacy(void)
+{
+   switch (options.gpu_id) {
+   case 615:
+   case 618:
+   case 630:
+      return true;
+   default:
+      return false;
+   }
+}
+
 void dump_register(struct rnn *rnn, uint32_t offset, uint32_t value);
 void dump_cp_mem_pool(uint32_t *mempool);
+
+struct a6xx_hfi_state {
+   uint64_t iova;
+   void *buf;
+   uint32_t size;
+   int32_t history[2][8];
+};
+void dump_gmu_hfi(struct a6xx_hfi_state *hfi);
 
 #endif /* __CRASHDEC_H__ */

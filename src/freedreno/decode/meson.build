@@ -135,6 +135,7 @@ crashdec = executable(
   [
     'crashdec.c',
     'crashdec.h',
+    'crashdec-hfi.c',
     'crashdec-mempool.c',
   ],
   include_directories: [
