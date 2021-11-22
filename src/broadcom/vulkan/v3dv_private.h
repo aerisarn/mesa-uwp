@@ -1810,6 +1810,9 @@ struct v3dv_pipeline {
 
    struct v3dv_pipeline_shared_data *shared_data;
 
+   /* It is the combined stages sha1, plus the pipeline key sha1. */
+   unsigned char sha1[20];
+
    /* In general we can reuse v3dv_device->default_attribute_float, so note
     * that the following can be NULL.
     *

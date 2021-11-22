@@ -1766,7 +1766,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         int ret = v3d_shaderdb_dump(c, &shaderdb);
         if (ret >= 0) {
                 if (V3D_DEBUG & V3D_DEBUG_SHADERDB)
-                        fprintf(stderr, "SHADER-DB: %s\n", shaderdb);
+                        fprintf(stderr, "SHADER-DB-%s - %s\n", s->info.name, shaderdb);
 
                 c->debug_output(shaderdb, c->debug_output_data);
                 free(shaderdb);
