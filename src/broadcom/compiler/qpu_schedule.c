@@ -1517,6 +1517,11 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
                         return false;
                 }
 
+                if (v3d_qpu_sig_writes_address(c->devinfo, &inst->sig) &&
+                    !inst->sig_magic) {
+                        return false;
+                }
+
                 if (c->devinfo->ver < 40 && inst->alu.add.op == V3D_QPU_A_SETMSF)
                         return false;
 
