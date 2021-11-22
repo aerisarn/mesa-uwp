@@ -140,6 +140,63 @@ nir_build_alu(nir_builder *build, nir_op op, nir_ssa_def *src0,
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
+nir_ssa_def *
+nir_build_alu1(nir_builder *build, nir_op op, nir_ssa_def *src0)
+{
+   nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
+   if (!instr)
+      return NULL;
+
+   instr->src[0].src = nir_src_for_ssa(src0);
+
+   return nir_builder_alu_instr_finish_and_insert(build, instr);
+}
+
+nir_ssa_def *
+nir_build_alu2(nir_builder *build, nir_op op, nir_ssa_def *src0,
+              nir_ssa_def *src1)
+{
+   nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
+   if (!instr)
+      return NULL;
+
+   instr->src[0].src = nir_src_for_ssa(src0);
+   instr->src[1].src = nir_src_for_ssa(src1);
+
+   return nir_builder_alu_instr_finish_and_insert(build, instr);
+}
+
+nir_ssa_def *
+nir_build_alu3(nir_builder *build, nir_op op, nir_ssa_def *src0,
+              nir_ssa_def *src1, nir_ssa_def *src2)
+{
+   nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
+   if (!instr)
+      return NULL;
+
+   instr->src[0].src = nir_src_for_ssa(src0);
+   instr->src[1].src = nir_src_for_ssa(src1);
+   instr->src[2].src = nir_src_for_ssa(src2);
+
+   return nir_builder_alu_instr_finish_and_insert(build, instr);
+}
+
+nir_ssa_def *
+nir_build_alu4(nir_builder *build, nir_op op, nir_ssa_def *src0,
+              nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3)
+{
+   nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
+   if (!instr)
+      return NULL;
+
+   instr->src[0].src = nir_src_for_ssa(src0);
+   instr->src[1].src = nir_src_for_ssa(src1);
+   instr->src[2].src = nir_src_for_ssa(src2);
+   instr->src[3].src = nir_src_for_ssa(src3);
+
+   return nir_builder_alu_instr_finish_and_insert(build, instr);
+}
+
 /* for the couple special cases with more than 4 src args: */
 nir_ssa_def *
 nir_build_alu_src_arr(nir_builder *build, nir_op op, nir_ssa_def **srcs)

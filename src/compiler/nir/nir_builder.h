@@ -109,9 +109,23 @@ nir_builder_last_instr(nir_builder *build)
    return build->cursor.instr;
 }
 
+/* General nir_build_alu() taking a variable arg count with NULLs for the rest. */
 nir_ssa_def *
 nir_build_alu(nir_builder *build, nir_op op, nir_ssa_def *src0,
               nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3);
+
+/* Fixed-arg-count variants to reduce size of codegen. */
+nir_ssa_def *
+nir_build_alu1(nir_builder *build, nir_op op, nir_ssa_def *src0);
+nir_ssa_def *
+nir_build_alu2(nir_builder *build, nir_op op, nir_ssa_def *src0,
+               nir_ssa_def *src1);
+nir_ssa_def *
+nir_build_alu3(nir_builder *build, nir_op op, nir_ssa_def *src0,
+               nir_ssa_def *src1, nir_ssa_def *src2);
+nir_ssa_def *
+nir_build_alu4(nir_builder *build, nir_op op, nir_ssa_def *src0,
+               nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3);
 
 nir_ssa_def *nir_build_alu_src_arr(nir_builder *build, nir_op op, nir_ssa_def **srcs);
 
