@@ -492,7 +492,8 @@ struct choose_scoreboard {
         int last_thrsw_tick;
         int last_branch_tick;
         int last_setmsf_tick;
-        bool tlb_locked;
+        bool first_thrsw_emitted;
+        bool last_thrsw_emitted;
         bool fixup_ldvary;
         int ldvary_count;
 };
@@ -576,10 +577,26 @@ writes_too_soon_after_write(const struct v3d_device_info *devinfo,
 }
 
 static bool
-pixel_scoreboard_too_soon(struct choose_scoreboard *scoreboard,
+scoreboard_is_locked(struct choose_scoreboard *scoreboard,
+                     bool lock_scoreboard_on_first_thrsw)
+{
+        if (lock_scoreboard_on_first_thrsw) {
+                return scoreboard->first_thrsw_emitted &&
+                       scoreboard->tick - scoreboard->last_thrsw_tick >= 3;
+        }
+
+        return scoreboard->last_thrsw_emitted &&
+               scoreboard->tick - scoreboard->last_thrsw_tick >= 3;
+}
+
+static bool
+pixel_scoreboard_too_soon(struct v3d_compile *c,
+                          struct choose_scoreboard *scoreboard,
                           const struct v3d_qpu_instr *inst)
 {
-        return (scoreboard->tick == 0 && qpu_inst_is_tlb(inst));
+        return qpu_inst_is_tlb(inst) &&
+               !scoreboard_is_locked(scoreboard,
+                                     c->lock_scoreboard_on_first_thrsw);
 }
 
 static bool
@@ -1080,12 +1097,12 @@ retry:
                 if (writes_too_soon_after_write(c->devinfo, scoreboard, n->inst))
                         continue;
 
-                /* "A scoreboard wait must not occur in the first two
-                 *  instructions of a fragment shader. This is either the
-                 *  explicit Wait for Scoreboard signal or an implicit wait
-                 *  with the first tile-buffer read or write instruction."
+                /* "Before doing a TLB access a scoreboard wait must have been
+                 *  done. This happens either on the first or last thread
+                 *  switch, depending on a setting (scb_wait_on_first_thrsw) in
+                 *  the shader state."
                  */
-                if (pixel_scoreboard_too_soon(scoreboard, inst))
+                if (pixel_scoreboard_too_soon(c, scoreboard, inst))
                         continue;
 
                 /* ldunif and ldvary both write r5, but ldunif does so a tick
@@ -1158,12 +1175,10 @@ retry:
                                 continue;
                         }
 
-                        /* Don't merge in something that will lock the TLB.
-                         * Hopwefully what we have in inst will release some
-                         * other instructions, allowing us to delay the
-                         * TLB-locking instruction until later.
+                        /* Don't merge TLB instructions before we have acquired
+                         * the scoreboard lock.
                          */
-                        if (!scoreboard->tlb_locked && qpu_inst_is_tlb(inst))
+                        if (pixel_scoreboard_too_soon(c, scoreboard, inst))
                                 continue;
 
                         /* When we succesfully pair up an ldvary we then try
@@ -1300,9 +1315,6 @@ update_scoreboard_for_chosen(struct choose_scoreboard *scoreboard,
 
         if (inst->sig.ldvary)
                 scoreboard->last_ldvary_tick = scoreboard->tick;
-
-        if (qpu_inst_is_tlb(inst))
-                scoreboard->tlb_locked = true;
 }
 
 static void
@@ -1787,6 +1799,8 @@ emit_thrsw(struct v3d_compile *c,
                 merge_inst = inst;
         }
 
+        scoreboard->first_thrsw_emitted = true;
+
         /* If we're emitting the last THRSW (other than program end), then
          * signal that to the HW by emitting two THRSWs in a row.
          */
@@ -1798,6 +1812,7 @@ emit_thrsw(struct v3d_compile *c,
                 struct qinst *second_inst =
                         (struct qinst *)merge_inst->link.next;
                 second_inst->qpu.sig.thrsw = true;
+                scoreboard->last_thrsw_emitted = true;
         }
 
         /* Make sure the thread end executes within the program lifespan */
