@@ -267,6 +267,12 @@ void u_trace_disable_event_range(struct u_trace_iterator begin_it,
  */
 void u_trace_flush(struct u_trace *ut, void *flush_data, bool free_data);
 
+/**
+ * Whether command buffers should be instrumented even if not collecting
+ * traces.
+ */
+extern bool ut_trace_instrument;
+
 #ifdef HAVE_PERFETTO
 extern int ut_perfetto_enabled;
 
@@ -277,9 +283,15 @@ void u_trace_perfetto_stop(void);
 #endif
 
 static inline bool
-u_trace_context_tracing(struct u_trace_context *utctx)
+u_trace_context_actively_tracing(struct u_trace_context *utctx)
 {
    return !!utctx->out || (ut_perfetto_enabled > 0);
+}
+
+static inline bool
+u_trace_context_instrumenting(struct u_trace_context *utctx)
+{
+   return !!utctx->out || ut_trace_instrument || (ut_perfetto_enabled > 0);
 }
 
 #ifdef  __cplusplus

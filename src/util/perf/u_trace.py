@@ -212,9 +212,9 @@ static inline void trace_${trace_name}(struct u_trace *ut, void *cs
 %    endfor
 ) {
 %    if trace.tp_perfetto is not None:
-   if (!unlikely(ut->enabled || ut_perfetto_enabled))
+   if (!unlikely(ut->enabled || ut_trace_instrument || ut_perfetto_enabled))
 %    else:
-   if (!unlikely(ut->enabled))
+   if (!unlikely(ut->enabled || ut_trace_instrument))
 %    endif
       return;
    __trace_${trace_name}(ut, cs
