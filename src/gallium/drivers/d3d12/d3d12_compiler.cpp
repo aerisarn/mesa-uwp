@@ -145,7 +145,8 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    NIR_PASS_V(nir, dxil_nir_split_typed_samplers);
 
    NIR_PASS_V(nir, nir_opt_dce);
-   struct nir_remove_dead_variables_options dead_var_opts = { .can_remove_var = can_remove_dead_sampler };
+   struct nir_remove_dead_variables_options dead_var_opts = {};
+   dead_var_opts.can_remove_var = can_remove_dead_sampler;
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform, &dead_var_opts);
 
    if (key->samples_int_textures)
