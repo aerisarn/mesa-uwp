@@ -1938,17 +1938,30 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
                         return false;
                 }
 
-                /* No writing physical registers at the end. */
-                bool add_is_nop = inst->alu.add.op == V3D_QPU_A_NOP;
-                bool mul_is_nop = inst->alu.mul.op == V3D_QPU_M_NOP;
-                if ((!add_is_nop && !inst->alu.add.magic_write) ||
-                    (!mul_is_nop && !inst->alu.mul.magic_write)) {
-                        return false;
+                if (c->devinfo->ver <= 42) {
+                        /* No writing physical registers at the end. */
+                        bool add_is_nop = inst->alu.add.op == V3D_QPU_A_NOP;
+                        bool mul_is_nop = inst->alu.mul.op == V3D_QPU_M_NOP;
+                        if ((!add_is_nop && !inst->alu.add.magic_write) ||
+                            (!mul_is_nop && !inst->alu.mul.magic_write)) {
+                                return false;
+                        }
+
+                        if (v3d_qpu_sig_writes_address(c->devinfo, &inst->sig) &&
+                            !inst->sig_magic) {
+                                return false;
+                        }
                 }
 
-                if (v3d_qpu_sig_writes_address(c->devinfo, &inst->sig) &&
-                    !inst->sig_magic) {
-                        return false;
+                if (c->devinfo->ver >= 71) {
+                        /* The thread end instruction must not write to the
+                         * register file via the add/mul ALUs.
+                         */
+                        if (slot == 0 &&
+                            (!inst->alu.add.magic_write ||
+                             !inst->alu.mul.magic_write)) {
+                                return false;
+                        }
                 }
 
                 if (c->devinfo->ver < 40 && inst->alu.add.op == V3D_QPU_A_SETMSF)
