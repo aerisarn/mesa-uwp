@@ -130,6 +130,7 @@ static struct fd5_format formats[PIPE_FORMAT_COUNT] = {
 
    _T(L8A8_UINT,    8_8_UINT,  NONE,       WZYX),
    _T(L8A8_SINT,    8_8_SINT,  NONE,       WZYX),
+   _T(L8A8_UNORM,   8_8_UNORM, NONE,       WZYX),
 
    _T(B5G6R5_UNORM,   5_6_5_UNORM,   R5G6B5_UNORM,   WXYZ),
    _T(B5G5R5A1_UNORM, 5_5_5_1_UNORM, R5G5B5A1_UNORM, WXYZ),
