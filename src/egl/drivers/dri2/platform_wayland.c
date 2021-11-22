@@ -2165,8 +2165,14 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
          goto cleanup;
    }
 
+   dri2_dpy->fd_display_gpu = fcntl(dri2_dpy->fd, F_DUPFD_CLOEXEC, 3);
    dri2_dpy->fd = loader_get_user_preferred_fd(dri2_dpy->fd,
                                                &dri2_dpy->is_different_gpu);
+   if (!dri2_dpy->is_different_gpu) {
+      close(dri2_dpy->fd_display_gpu);
+      dri2_dpy->fd_display_gpu = -1;
+   }
+
    dev = _eglAddDevice(dri2_dpy->fd, false);
    if (!dev) {
       _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to find EGLDevice");
