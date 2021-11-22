@@ -967,6 +967,44 @@ build_runtime_addr_mode_check(nir_builder *b, nir_ssa_def *addr,
    }
 }
 
+unsigned
+nir_address_format_bit_size(nir_address_format addr_format)
+{
+   switch (addr_format) {
+   case nir_address_format_32bit_global:              return 32;
+   case nir_address_format_64bit_global:              return 64;
+   case nir_address_format_64bit_global_32bit_offset: return 32;
+   case nir_address_format_64bit_bounded_global:      return 32;
+   case nir_address_format_32bit_index_offset:        return 32;
+   case nir_address_format_32bit_index_offset_pack64: return 64;
+   case nir_address_format_vec2_index_32bit_offset:   return 32;
+   case nir_address_format_62bit_generic:             return 64;
+   case nir_address_format_32bit_offset:              return 32;
+   case nir_address_format_32bit_offset_as_64bit:     return 64;
+   case nir_address_format_logical:                   return 32;
+   }
+   unreachable("Invalid address format");
+}
+
+unsigned
+nir_address_format_num_components(nir_address_format addr_format)
+{
+   switch (addr_format) {
+   case nir_address_format_32bit_global:              return 1;
+   case nir_address_format_64bit_global:              return 1;
+   case nir_address_format_64bit_global_32bit_offset: return 4;
+   case nir_address_format_64bit_bounded_global:      return 4;
+   case nir_address_format_32bit_index_offset:        return 2;
+   case nir_address_format_32bit_index_offset_pack64: return 1;
+   case nir_address_format_vec2_index_32bit_offset:   return 3;
+   case nir_address_format_62bit_generic:             return 1;
+   case nir_address_format_32bit_offset:              return 1;
+   case nir_address_format_32bit_offset_as_64bit:     return 1;
+   case nir_address_format_logical:                   return 1;
+   }
+   unreachable("Invalid address format");
+}
+
 static nir_ssa_def *
 addr_to_index(nir_builder *b, nir_ssa_def *addr,
               nir_address_format addr_format)

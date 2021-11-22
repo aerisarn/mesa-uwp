@@ -1145,61 +1145,8 @@ nir_alu_type_get_base_type(nir_alu_type type)
    return (nir_alu_type)(type & NIR_ALU_TYPE_BASE_TYPE_MASK);
 }
 
-static inline nir_alu_type
-nir_get_nir_type_for_glsl_base_type(enum glsl_base_type base_type)
-{
-   switch (base_type) {
-   case GLSL_TYPE_BOOL:
-      return nir_type_bool1;
-      break;
-   case GLSL_TYPE_UINT:
-      return nir_type_uint32;
-      break;
-   case GLSL_TYPE_INT:
-      return nir_type_int32;
-      break;
-   case GLSL_TYPE_UINT16:
-      return nir_type_uint16;
-      break;
-   case GLSL_TYPE_INT16:
-      return nir_type_int16;
-      break;
-   case GLSL_TYPE_UINT8:
-      return nir_type_uint8;
-   case GLSL_TYPE_INT8:
-      return nir_type_int8;
-   case GLSL_TYPE_UINT64:
-      return nir_type_uint64;
-      break;
-   case GLSL_TYPE_INT64:
-      return nir_type_int64;
-      break;
-   case GLSL_TYPE_FLOAT:
-      return nir_type_float32;
-      break;
-   case GLSL_TYPE_FLOAT16:
-      return nir_type_float16;
-      break;
-   case GLSL_TYPE_DOUBLE:
-      return nir_type_float64;
-      break;
-
-   case GLSL_TYPE_SAMPLER:
-   case GLSL_TYPE_TEXTURE:
-   case GLSL_TYPE_IMAGE:
-   case GLSL_TYPE_ATOMIC_UINT:
-   case GLSL_TYPE_STRUCT:
-   case GLSL_TYPE_INTERFACE:
-   case GLSL_TYPE_ARRAY:
-   case GLSL_TYPE_VOID:
-   case GLSL_TYPE_SUBROUTINE:
-   case GLSL_TYPE_FUNCTION:
-   case GLSL_TYPE_ERROR:
-      return nir_type_invalid;
-   }
-
-   unreachable("unknown type");
-}
+nir_alu_type
+nir_get_nir_type_for_glsl_base_type(enum glsl_base_type base_type);
 
 static inline nir_alu_type
 nir_get_nir_type_for_glsl_type(const struct glsl_type *type)
@@ -1207,73 +1154,17 @@ nir_get_nir_type_for_glsl_type(const struct glsl_type *type)
    return nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(type));
 }
 
-static inline enum glsl_base_type
-nir_get_glsl_base_type_for_nir_type(nir_alu_type base_type)
-{
-   switch (base_type) {
-   case nir_type_bool1:
-      return GLSL_TYPE_BOOL;
-   case nir_type_uint32:
-      return GLSL_TYPE_UINT;
-   case nir_type_int32:
-      return GLSL_TYPE_INT;
-   case nir_type_uint16:
-      return GLSL_TYPE_UINT16;
-   case nir_type_int16:
-      return GLSL_TYPE_INT16;
-   case nir_type_uint8:
-      return GLSL_TYPE_UINT8;
-   case nir_type_int8:
-      return GLSL_TYPE_INT8;
-   case nir_type_uint64:
-      return GLSL_TYPE_UINT64;
-   case nir_type_int64:
-      return GLSL_TYPE_INT64;
-   case nir_type_float32:
-      return GLSL_TYPE_FLOAT;
-   case nir_type_float16:
-      return GLSL_TYPE_FLOAT16;
-   case nir_type_float64:
-      return GLSL_TYPE_DOUBLE;
-
-   default: unreachable("Not a sized nir_alu_type");
-   }
-}
+enum glsl_base_type
+nir_get_glsl_base_type_for_nir_type(nir_alu_type base_type);
 
 nir_op nir_type_conversion_op(nir_alu_type src, nir_alu_type dst,
                               nir_rounding_mode rnd);
 
-static inline nir_op
-nir_op_vec(unsigned components)
-{
-   switch (components) {
-   case  1: return nir_op_mov;
-   case  2: return nir_op_vec2;
-   case  3: return nir_op_vec3;
-   case  4: return nir_op_vec4;
-   case  5: return nir_op_vec5;
-   case  8: return nir_op_vec8;
-   case 16: return nir_op_vec16;
-   default: unreachable("bad component count");
-   }
-}
+nir_op
+nir_op_vec(unsigned components);
 
-static inline bool
-nir_op_is_vec(nir_op op)
-{
-   switch (op) {
-   case nir_op_mov:
-   case nir_op_vec2:
-   case nir_op_vec3:
-   case nir_op_vec4:
-   case nir_op_vec5:
-   case nir_op_vec8:
-   case nir_op_vec16:
-      return true;
-   default:
-      return false;
-   }
-}
+bool
+nir_op_is_vec(nir_op op);
 
 static inline bool
 nir_is_float_control_signed_zero_inf_nan_preserve(unsigned execution_mode, unsigned bit_size)
@@ -1479,63 +1370,19 @@ void nir_alu_dest_copy(nir_alu_dest *dest, const nir_alu_dest *src);
 bool nir_alu_instr_is_copy(nir_alu_instr *instr);
 
 /* is this source channel used? */
-static inline bool
+bool
 nir_alu_instr_channel_used(const nir_alu_instr *instr, unsigned src,
-                           unsigned channel)
-{
-   if (nir_op_infos[instr->op].input_sizes[src] > 0)
-      return channel < nir_op_infos[instr->op].input_sizes[src];
-
-   return (instr->dest.write_mask >> channel) & 1;
-}
-
-static inline nir_component_mask_t
-nir_alu_instr_src_read_mask(const nir_alu_instr *instr, unsigned src)
-{
-   nir_component_mask_t read_mask = 0;
-   for (unsigned c = 0; c < NIR_MAX_VEC_COMPONENTS; c++) {
-      if (!nir_alu_instr_channel_used(instr, src, c))
-         continue;
-
-      read_mask |= (1 << instr->src[src].swizzle[c]);
-   }
-   return read_mask;
-}
-
+                           unsigned channel);
+nir_component_mask_t
+nir_alu_instr_src_read_mask(const nir_alu_instr *instr, unsigned src);
 /**
  * Get the number of channels used for a source
  */
-static inline unsigned
-nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
-{
-   if (nir_op_infos[instr->op].input_sizes[src] > 0)
-      return nir_op_infos[instr->op].input_sizes[src];
+unsigned
+nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src);
 
-   return nir_dest_num_components(instr->dest.dest);
-}
-
-static inline bool
-nir_alu_instr_is_comparison(const nir_alu_instr *instr)
-{
-   switch (instr->op) {
-   case nir_op_flt:
-   case nir_op_fge:
-   case nir_op_feq:
-   case nir_op_fneu:
-   case nir_op_ilt:
-   case nir_op_ult:
-   case nir_op_ige:
-   case nir_op_uge:
-   case nir_op_ieq:
-   case nir_op_ine:
-   case nir_op_i2b1:
-   case nir_op_f2b1:
-   case nir_op_inot:
-      return true;
-   default:
-      return false;
-   }
-}
+bool
+nir_alu_instr_is_comparison(const nir_alu_instr *instr);
 
 bool nir_const_value_negative_equal(nir_const_value c1, nir_const_value c2,
                                     nir_alu_type full_type);
@@ -1918,57 +1765,17 @@ typedef struct {
 
 extern const nir_intrinsic_info nir_intrinsic_infos[nir_num_intrinsics];
 
-static inline unsigned
-nir_intrinsic_src_components(const nir_intrinsic_instr *intr, unsigned srcn)
-{
-   const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
-   assert(srcn < info->num_srcs);
-   if (info->src_components[srcn] > 0)
-      return info->src_components[srcn];
-   else if (info->src_components[srcn] == 0)
-      return intr->num_components;
-   else
-      return nir_src_num_components(intr->src[srcn]);
-}
+unsigned
+nir_intrinsic_src_components(const nir_intrinsic_instr *intr, unsigned srcn);
 
-static inline unsigned
-nir_intrinsic_dest_components(nir_intrinsic_instr *intr)
-{
-   const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
-   if (!info->has_dest)
-      return 0;
-   else if (info->dest_components)
-      return info->dest_components;
-   else
-      return intr->num_components;
-}
+unsigned
+nir_intrinsic_dest_components(nir_intrinsic_instr *intr);
 
 /**
  * Helper to copy const_index[] from src to dst, without assuming they
  * match in order.
  */
-static inline void
-nir_intrinsic_copy_const_indices(nir_intrinsic_instr *dst, nir_intrinsic_instr *src)
-{
-   if (src->intrinsic == dst->intrinsic) {
-      memcpy(dst->const_index, src->const_index, sizeof(dst->const_index));
-      return;
-   }
-
-   const nir_intrinsic_info *src_info = &nir_intrinsic_infos[src->intrinsic];
-   const nir_intrinsic_info *dst_info = &nir_intrinsic_infos[dst->intrinsic];
-
-   for (unsigned i = 0; i < NIR_INTRINSIC_NUM_INDEX_FLAGS; i++) {
-      if (src_info->index_map[i] == 0)
-         continue;
-
-      /* require that dst instruction also uses the same const_index[]: */
-      assert(dst_info->index_map[i] > 0);
-
-      dst->const_index[dst_info->index_map[i] - 1] =
-            src->const_index[src_info->index_map[i] - 1];
-   }
-}
+void nir_intrinsic_copy_const_indices(nir_intrinsic_instr *dst, nir_intrinsic_instr *src);
 
 #include "nir_intrinsics_indices.h"
 
@@ -2317,21 +2124,7 @@ typedef struct {
  *
  * @see nir_tex_instr::sampler_index.
  */
-static inline bool
-nir_tex_instr_need_sampler(const nir_tex_instr *instr)
-{
-   switch (instr->op) {
-   case nir_texop_txf:
-   case nir_texop_txf_ms:
-   case nir_texop_txs:
-   case nir_texop_query_levels:
-   case nir_texop_texture_samples:
-   case nir_texop_samples_identical:
-      return false;
-   default:
-      return true;
-   }
-}
+bool nir_tex_instr_need_sampler(const nir_tex_instr *instr);
 
 /** Returns the number of components returned by this nir_tex_instr
  *
@@ -2339,52 +2132,8 @@ nir_tex_instr_need_sampler(const nir_tex_instr *instr)
  * about how many components a particular texture op returns.  This does not
  * include the sparse residency code.
  */
-static inline unsigned
-nir_tex_instr_result_size(const nir_tex_instr *instr)
-{
-   switch (instr->op) {
-   case nir_texop_txs: {
-      unsigned ret;
-      switch (instr->sampler_dim) {
-         case GLSL_SAMPLER_DIM_1D:
-         case GLSL_SAMPLER_DIM_BUF:
-            ret = 1;
-            break;
-         case GLSL_SAMPLER_DIM_2D:
-         case GLSL_SAMPLER_DIM_CUBE:
-         case GLSL_SAMPLER_DIM_MS:
-         case GLSL_SAMPLER_DIM_RECT:
-         case GLSL_SAMPLER_DIM_EXTERNAL:
-         case GLSL_SAMPLER_DIM_SUBPASS:
-            ret = 2;
-            break;
-         case GLSL_SAMPLER_DIM_3D:
-            ret = 3;
-            break;
-         default:
-            unreachable("not reached");
-      }
-      if (instr->is_array)
-         ret++;
-      return ret;
-   }
-
-   case nir_texop_lod:
-      return 2;
-
-   case nir_texop_texture_samples:
-   case nir_texop_query_levels:
-   case nir_texop_samples_identical:
-   case nir_texop_fragment_mask_fetch_amd:
-      return 1;
-
-   default:
-      if (instr->is_shadow && instr->is_new_style_shadow)
-         return 1;
-
-      return 4;
-   }
-}
+unsigned
+nir_tex_instr_result_size(const nir_tex_instr *instr);
 
 /**
  * Returns the destination size of this nir_tex_instr including the sparse
@@ -2401,149 +2150,27 @@ nir_tex_instr_dest_size(const nir_tex_instr *instr)
  * Returns true if this texture operation queries something about the texture
  * rather than actually sampling it.
  */
-static inline bool
-nir_tex_instr_is_query(const nir_tex_instr *instr)
-{
-   switch (instr->op) {
-   case nir_texop_txs:
-   case nir_texop_lod:
-   case nir_texop_texture_samples:
-   case nir_texop_query_levels:
-      return true;
-   case nir_texop_tex:
-   case nir_texop_txb:
-   case nir_texop_txl:
-   case nir_texop_txd:
-   case nir_texop_txf:
-   case nir_texop_txf_ms:
-   case nir_texop_txf_ms_fb:
-   case nir_texop_txf_ms_mcs_intel:
-   case nir_texop_tg4:
-      return false;
-   default:
-      unreachable("Invalid texture opcode");
-   }
-}
+bool
+nir_tex_instr_is_query(const nir_tex_instr *instr);
 
 /** Returns true if this texture instruction does implicit derivatives
  *
  * This is important as there are extra control-flow rules around derivatives
  * and texture instructions which perform them implicitly.
  */
-static inline bool
-nir_tex_instr_has_implicit_derivative(const nir_tex_instr *instr)
-{
-   switch (instr->op) {
-   case nir_texop_tex:
-   case nir_texop_txb:
-   case nir_texop_lod:
-      return true;
-   default:
-      return false;
-   }
-}
+bool
+nir_tex_instr_has_implicit_derivative(const nir_tex_instr *instr);
 
 /** Returns the ALU type of the given texture instruction source */
-static inline nir_alu_type
-nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
-{
-   switch (instr->src[src].src_type) {
-   case nir_tex_src_coord:
-      switch (instr->op) {
-      case nir_texop_txf:
-      case nir_texop_txf_ms:
-      case nir_texop_txf_ms_fb:
-      case nir_texop_txf_ms_mcs_intel:
-      case nir_texop_samples_identical:
-         return nir_type_int;
-
-      default:
-         return nir_type_float;
-      }
-
-   case nir_tex_src_lod:
-      switch (instr->op) {
-      case nir_texop_txs:
-      case nir_texop_txf:
-      case nir_texop_txf_ms:
-         return nir_type_int;
-
-      default:
-         return nir_type_float;
-      }
-
-   case nir_tex_src_projector:
-   case nir_tex_src_comparator:
-   case nir_tex_src_bias:
-   case nir_tex_src_min_lod:
-   case nir_tex_src_ddx:
-   case nir_tex_src_ddy:
-   case nir_tex_src_backend1:
-   case nir_tex_src_backend2:
-      return nir_type_float;
-
-   case nir_tex_src_offset:
-   case nir_tex_src_ms_index:
-   case nir_tex_src_plane:
-      return nir_type_int;
-
-   case nir_tex_src_ms_mcs_intel:
-   case nir_tex_src_texture_deref:
-   case nir_tex_src_sampler_deref:
-   case nir_tex_src_texture_offset:
-   case nir_tex_src_sampler_offset:
-   case nir_tex_src_texture_handle:
-   case nir_tex_src_sampler_handle:
-      return nir_type_uint;
-
-   case nir_num_tex_src_types:
-      unreachable("nir_num_tex_src_types is not a valid source type");
-   }
-
-   unreachable("Invalid texture source type");
-}
+nir_alu_type
+nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src);
 
 /**
  * Returns the number of components required by the given texture instruction
  * source
  */
-static inline unsigned
-nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
-{
-   if (instr->src[src].src_type == nir_tex_src_coord)
-      return instr->coord_components;
-
-   /* The MCS value is expected to be a vec4 returned by a txf_ms_mcs_intel */
-   if (instr->src[src].src_type == nir_tex_src_ms_mcs_intel)
-      return 4;
-
-   if (instr->src[src].src_type == nir_tex_src_ddx ||
-       instr->src[src].src_type == nir_tex_src_ddy) {
-
-      if (instr->is_array && !instr->array_is_lowered_cube)
-         return instr->coord_components - 1;
-      else
-         return instr->coord_components;
-   }
-
-   /* Usual APIs don't allow cube + offset, but we allow it, with 2 coords for
-    * the offset, since a cube maps to a single face.
-    */
-   if (instr->src[src].src_type == nir_tex_src_offset) {
-      if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
-         return 2;
-      else if (instr->is_array)
-         return instr->coord_components - 1;
-      else
-         return instr->coord_components;
-   }
-
-   if (instr->src[src].src_type == nir_tex_src_backend1 ||
-       instr->src[src].src_type == nir_tex_src_backend2)
-      return nir_src_num_components(instr->src[src].src);
-
-   return 1;
-}
+unsigned
+nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src);
 
 /**
  * Returns the index of the texture instruction source with the given
@@ -4891,43 +4518,11 @@ typedef enum {
    nir_address_format_logical,
 } nir_address_format;
 
-static inline unsigned
-nir_address_format_bit_size(nir_address_format addr_format)
-{
-   switch (addr_format) {
-   case nir_address_format_32bit_global:              return 32;
-   case nir_address_format_64bit_global:              return 64;
-   case nir_address_format_64bit_global_32bit_offset: return 32;
-   case nir_address_format_64bit_bounded_global:      return 32;
-   case nir_address_format_32bit_index_offset:        return 32;
-   case nir_address_format_32bit_index_offset_pack64: return 64;
-   case nir_address_format_vec2_index_32bit_offset:   return 32;
-   case nir_address_format_62bit_generic:             return 64;
-   case nir_address_format_32bit_offset:              return 32;
-   case nir_address_format_32bit_offset_as_64bit:     return 64;
-   case nir_address_format_logical:                   return 32;
-   }
-   unreachable("Invalid address format");
-}
+unsigned
+nir_address_format_bit_size(nir_address_format addr_format);
 
-static inline unsigned
-nir_address_format_num_components(nir_address_format addr_format)
-{
-   switch (addr_format) {
-   case nir_address_format_32bit_global:              return 1;
-   case nir_address_format_64bit_global:              return 1;
-   case nir_address_format_64bit_global_32bit_offset: return 4;
-   case nir_address_format_64bit_bounded_global:      return 4;
-   case nir_address_format_32bit_index_offset:        return 2;
-   case nir_address_format_32bit_index_offset_pack64: return 1;
-   case nir_address_format_vec2_index_32bit_offset:   return 3;
-   case nir_address_format_62bit_generic:             return 1;
-   case nir_address_format_32bit_offset:              return 1;
-   case nir_address_format_32bit_offset_as_64bit:     return 1;
-   case nir_address_format_logical:                   return 1;
-   }
-   unreachable("Invalid address format");
-}
+unsigned
+nir_address_format_num_components(nir_address_format addr_format);
 
 static inline const struct glsl_type *
 nir_address_format_to_glsl_type(nir_address_format addr_format)
