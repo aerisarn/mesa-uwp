@@ -96,17 +96,20 @@
 #include "util/u_upload_mgr.h"
 #include "util/u_viewport.h"
 #include "util/u_memory.h"
+#include "util/u_trace_gallium.h"
 #include "drm-uapi/i915_drm.h"
 #include "nir.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/intel_aux_map.h"
 #include "intel/common/intel_l3_config.h"
 #include "intel/common/intel_sample_positions.h"
+#include "intel/ds/intel_tracepoints.h"
 #include "iris_batch.h"
 #include "iris_context.h"
 #include "iris_defines.h"
 #include "iris_pipe.h"
 #include "iris_resource.h"
+#include "iris_utrace.h"
 
 #include "iris_genx_macros.h"
 #include "intel/common/intel_guardband.h"
@@ -5984,6 +5987,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                                    PIPE_CONTROL_STALL_AT_SCOREBOARD);
    }
 
+   if (dirty & IRIS_DIRTY_RENDER_BUFFER)
+      trace_framebuffer_state(&batch->trace, batch, &ice->state.framebuffer);
+
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (stage_dirty & (IRIS_STAGE_DIRTY_BINDINGS_VS << stage)) {
          iris_populate_binding_table(ice, batch, stage, false);
@@ -6756,6 +6762,8 @@ iris_upload_render_state(struct iris_context *ice,
 {
    bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
 
+   trace_intel_begin_draw(&batch->trace, batch);
+
    if (ice->state.dirty & IRIS_DIRTY_VERTEX_BUFFER_FLUSHES)
       flush_vbos(ice, batch);
 
@@ -6990,6 +6998,8 @@ iris_upload_render_state(struct iris_context *ice,
    }
 
    iris_batch_sync_region_end(batch);
+
+   trace_intel_end_draw(&batch->trace, batch, 0);
 }
 
 static void
@@ -7034,6 +7044,8 @@ iris_upload_compute_walker(struct iris_context *ice,
    const struct brw_cs_dispatch_info dispatch =
       brw_cs_get_dispatch_info(devinfo, cs_prog_data, grid->block);
 
+   trace_intel_begin_compute(&batch->trace, batch);
+
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
          cfe.MaximumNumberofThreads =
@@ -7073,6 +7085,7 @@ iris_upload_compute_walker(struct iris_context *ice,
       assert(brw_cs_push_const_total_size(cs_prog_data, dispatch.threads) == 0);
    }
 
+   trace_intel_end_compute(&batch->trace, batch, grid->grid[0], grid->grid[1], grid->grid[2]);
 }
 
 #else /* #if GFX_VERx10 >= 125 */
@@ -7095,6 +7108,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
    const struct brw_cs_dispatch_info dispatch =
       brw_cs_get_dispatch_info(devinfo, cs_prog_data, grid->block);
+
+   trace_intel_begin_compute(&batch->trace, batch);
 
    if ((stage_dirty & IRIS_STAGE_DIRTY_CS) ||
        cs_prog_data->local_size[0] == 0 /* Variable local group size */) {
@@ -7220,6 +7235,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    }
 
    iris_emit_cmd(batch, GENX(MEDIA_STATE_FLUSH), msf);
+
+   trace_intel_end_compute(&batch->trace, batch, grid->grid[0], grid->grid[1], grid->grid[2]);
 }
 
 #endif /* #if GFX_VERx10 >= 125 */
@@ -7957,6 +7974,12 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
    batch_mark_sync_for_pipe_control(batch, flags);
    iris_batch_sync_region_start(batch);
 
+   const bool trace_pc =
+      (flags & (PIPE_CONTROL_CACHE_FLUSH_BITS | PIPE_CONTROL_CACHE_INVALIDATE_BITS)) != 0;
+
+   if (trace_pc)
+      trace_intel_begin_stall(&batch->trace, batch);
+
    iris_emit_cmd(batch, GENX(PIPE_CONTROL), pc) {
 #if GFX_VERx10 >= 125
       pc.PSSStallSyncEnable = flags & PIPE_CONTROL_PSS_STALL_SYNC;
@@ -7996,6 +8019,12 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
          flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
       pc.Address = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
       pc.ImmediateData = imm;
+   }
+
+   if (trace_pc) {
+      trace_intel_end_stall(&batch->trace, batch, flags,
+                            iris_utrace_pipe_flush_bit_to_ds_stall_flag,
+                            reason);
    }
 
    iris_batch_sync_region_end(batch);

@@ -882,6 +882,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    glsl_type_singleton_init_or_ref();
 
+   intel_driver_ds_init();
+
    /* FINISHME: Big core vs little core (for CPUs that have both kinds of
     * cores) and, possibly, thread vs core should be considered here too.
     */

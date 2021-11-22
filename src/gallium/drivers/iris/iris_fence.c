@@ -271,6 +271,9 @@ iris_fence_flush(struct pipe_context *ctx,
       iris_measure_frame_end(ice);
    }
 
+   u_trace_context_process(&ice->ds.trace_context,
+                           flags & PIPE_FLUSH_END_OF_FRAME);
+
    if (!out_fence)
       return;
 

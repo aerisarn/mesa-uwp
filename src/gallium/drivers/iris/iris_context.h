@@ -25,6 +25,7 @@
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
+#include "util/perf/u_trace.h"
 #include "util/set.h"
 #include "util/slab.h"
 #include "util/u_debug.h"
@@ -33,6 +34,7 @@
 #include "intel/dev/intel_debug.h"
 #include "intel/common/intel_l3_config.h"
 #include "intel/compiler/brw_compiler.h"
+#include "intel/ds/intel_driver_ds.h"
 #include "iris_batch.h"
 #include "iris_binder.h"
 #include "iris_fence.h"
@@ -614,6 +616,8 @@ struct iris_context {
 
    struct u_upload_mgr *query_buffer_uploader;
 
+   struct intel_ds_device ds;
+
    struct {
       struct {
          /**
@@ -889,6 +893,7 @@ void iris_copy_region(struct blorp_context *blorp,
                       struct pipe_resource *src,
                       unsigned src_level,
                       const struct pipe_box *src_box);
+
 
 /* iris_draw.c */
 

@@ -33,6 +33,7 @@
 #include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
+#include "iris_utrace.h"
 #include "common/intel_defines.h"
 #include "common/intel_sample_positions.h"
 
@@ -208,7 +209,6 @@ iris_flush_dirty_dmabufs(struct iris_context *ice)
    clear_dirty_dmabuf_set(ice);
 }
 
-
 /**
  * Destroy a context, freeing any associated memory.
  */
@@ -242,6 +242,8 @@ iris_destroy_context(struct pipe_context *ctx)
 
    iris_destroy_batches(ice);
    iris_destroy_binder(&ice->state.binder);
+
+   iris_utrace_fini(ice);
 
    slab_destroy_child(&ice->transfer_pool);
    slab_destroy_child(&ice->transfer_pool_unsync);
@@ -360,6 +362,9 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    if (INTEL_DEBUG(DEBUG_BATCH))
       ice->state.sizes = _mesa_hash_table_u64_create(ice);
+
+   /* Do this before initializing the batches */
+   iris_utrace_init(ice);
 
    iris_init_batches(ice, priority);
 

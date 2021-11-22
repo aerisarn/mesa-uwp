@@ -46,6 +46,7 @@ libintel_driver_ds = static_library(
 idep_intel_driver_ds = declare_dependency(
   link_with : libintel_driver_ds,
   include_directories : [inc_include, inc_mapi, inc_mesa, inc_intel],
+  dependencies : idep_intel_driver_ds_headers,
 )
 
 if with_perfetto and (with_datasources.contains('intel') or with_datasources.contains('auto'))

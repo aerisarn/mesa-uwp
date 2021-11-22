@@ -41,11 +41,13 @@
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 #include "iris_fence.h"
+#include "iris_utrace.h"
 
 #include "drm-uapi/i915_drm.h"
 
 #include "common/intel_aux_map.h"
 #include "intel/common/intel_gem.h"
+#include "intel/ds/intel_tracepoints.h"
 #include "util/hash_table.h"
 #include "util/set.h"
 #include "util/u_upload_mgr.h"
@@ -235,6 +237,8 @@ iris_init_batch(struct iris_context *ice,
    }
 
    iris_init_batch_measure(ice, batch);
+
+   u_trace_init(&batch->trace, &ice->ds.trace_context);
 
    iris_batch_reset(batch);
 }
@@ -496,6 +500,8 @@ iris_batch_reset(struct iris_batch *batch)
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
 
+   u_trace_fini(&batch->trace);
+
    iris_bo_unreference(batch->bo);
    batch->primary_batch_size = 0;
    batch->total_chained_batch_size = 0;
@@ -523,6 +529,9 @@ iris_batch_reset(struct iris_batch *batch)
    add_bo_to_batch(batch, screen->workaround_bo, false);
 
    iris_batch_maybe_noop(batch);
+
+   u_trace_init(&batch->trace, &batch->ice->ds.trace_context);
+   batch->begin_trace_recorded = false;
 }
 
 static void
@@ -559,6 +568,8 @@ iris_batch_free(struct iris_batch *batch)
 
    iris_destroy_batch_measure(batch->measure);
    batch->measure = NULL;
+
+   u_trace_fini(&batch->trace);
 
    _mesa_hash_table_destroy(batch->cache.render, NULL);
 
@@ -677,6 +688,8 @@ iris_finish_batch(struct iris_batch *batch)
    add_aux_map_bos_to_batch(batch);
 
    finish_seqno(batch);
+
+   trace_intel_end_batch(&batch->trace, batch, batch->name);
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch. */
    uint32_t *map = batch->map_next;
@@ -976,8 +989,8 @@ submit_batch(struct iris_batch *batch)
    return ret;
 }
 
-static const char *
-batch_name_to_string(enum iris_batch_name name)
+const char *
+iris_batch_name_to_string(enum iris_batch_name name)
 {
    const char *names[IRIS_BATCH_COUNT] = {
       [IRIS_BATCH_RENDER]  = "render",
@@ -994,12 +1007,13 @@ void
 _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 {
    struct iris_screen *screen = batch->screen;
+   struct iris_context *ice = batch->ice;
 
    /* If a fence signals we need to flush it. */
    if (iris_batch_bytes_used(batch) == 0 && !batch->contains_fence_signal)
       return;
 
-   iris_measure_batch_end(batch->ice, batch);
+   iris_measure_batch_end(ice, batch);
 
    iris_finish_batch(batch);
 
@@ -1012,7 +1026,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
       fprintf(stderr, "%19s:%-3d: %s batch [%u] flush with %5db (%0.1f%%) "
               "(cmds), %4d BOs (%0.1fMb aperture)\n",
-              file, line, batch_name_to_string(batch->name), batch->ctx_id,
+              file, line, iris_batch_name_to_string(batch->name), batch->ctx_id,
               batch->total_chained_batch_size,
               100.0f * batch->total_chained_batch_size / BATCH_SZ,
               batch->exec_count,
@@ -1020,7 +1034,10 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    }
 
+   uint64_t start_ts = intel_ds_begin_submit(batch->ds);
+   uint64_t submission_id = batch->ds->submission_id;
    int ret = submit_batch(batch);
+   intel_ds_end_submit(batch->ds, start_ts);
 
    /* When batch submission fails, our end-of-batch syncobj remains
     * unsignalled, and in fact is not even considered submitted.
@@ -1051,6 +1068,9 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
       dbg_printf("waiting for idle\n");
       iris_bo_wait_rendering(batch->bo); /* if execbuf failed; this is a nop */
    }
+
+   if (u_trace_context_actively_tracing(&ice->ds.trace_context))
+      iris_utrace_flush(batch, submission_id);
 
    /* Start a new batch buffer. */
    iris_batch_reset(batch);

@@ -49,6 +49,11 @@ def define_tracepoints(args):
                    end_of_pipe=end_pipelined)
 
 
+    begin_end_tp('batch',
+                 tp_args=[ArgStruct(type='uint8_t', var='name'),],
+                 tp_struct=[Arg(type='uint8_t', name='name', var='name', c_format='%hhu'),],
+                 end_pipelined=False)
+
     begin_end_tp('cmd_buffer',
                  tp_args=[ArgStruct(type='uint8_t', var='level'),],
                  tp_struct=[Arg(type='uint8_t', name='level', var='level', c_format='%hhu'),],
