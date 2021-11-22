@@ -1371,37 +1371,6 @@ dri3_linear_format_for_format(struct loader_dri3_drawable *draw, uint32_t format
    }
 }
 
-/* the DRIimage createImage function takes __DRI_IMAGE_FORMAT codes, while
- * the createImageFromFds call takes DRM_FORMAT codes. To avoid
- * complete confusion, just deal in __DRI_IMAGE_FORMAT codes for now and
- * translate to DRM_FORMAT codes in the call to createImageFromFds
- */
-static int
-image_format_to_fourcc(int format)
-{
-
-   /* Convert from __DRI_IMAGE_FORMAT to DRM_FORMAT (sigh) */
-   switch (format) {
-   case __DRI_IMAGE_FORMAT_SARGB8: return __DRI_IMAGE_FOURCC_SARGB8888;
-   case __DRI_IMAGE_FORMAT_SABGR8: return __DRI_IMAGE_FOURCC_SABGR8888;
-   case __DRI_IMAGE_FORMAT_SXRGB8: return __DRI_IMAGE_FOURCC_SXRGB8888;
-   case __DRI_IMAGE_FORMAT_RGB565: return DRM_FORMAT_RGB565;
-   case __DRI_IMAGE_FORMAT_XRGB8888: return DRM_FORMAT_XRGB8888;
-   case __DRI_IMAGE_FORMAT_ARGB8888: return DRM_FORMAT_ARGB8888;
-   case __DRI_IMAGE_FORMAT_ABGR8888: return DRM_FORMAT_ABGR8888;
-   case __DRI_IMAGE_FORMAT_XBGR8888: return DRM_FORMAT_XBGR8888;
-   case __DRI_IMAGE_FORMAT_XRGB2101010: return DRM_FORMAT_XRGB2101010;
-   case __DRI_IMAGE_FORMAT_ARGB2101010: return DRM_FORMAT_ARGB2101010;
-   case __DRI_IMAGE_FORMAT_XBGR2101010: return DRM_FORMAT_XBGR2101010;
-   case __DRI_IMAGE_FORMAT_ABGR2101010: return DRM_FORMAT_ABGR2101010;
-   case __DRI_IMAGE_FORMAT_ABGR16161616: return DRM_FORMAT_ABGR16161616;
-   case __DRI_IMAGE_FORMAT_XBGR16161616: return DRM_FORMAT_XBGR16161616;
-   case __DRI_IMAGE_FORMAT_XBGR16161616F: return DRM_FORMAT_XBGR16161616F;
-   case __DRI_IMAGE_FORMAT_ABGR16161616F: return DRM_FORMAT_ABGR16161616F;
-   }
-   return 0;
-}
-
 #ifdef HAVE_DRI3_MODIFIERS
 static bool
 has_supported_modifier(struct loader_dri3_drawable *draw, unsigned int format,
@@ -1515,7 +1484,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
                    xcb_dri3_get_supported_modifiers_window_modifiers(mod_reply),
                    count * sizeof(uint64_t));
 
-            if (!has_supported_modifier(draw, image_format_to_fourcc(format),
+            if (!has_supported_modifier(draw, loader_image_format_to_fourcc(format),
                                         modifiers, count)) {
                free(modifiers);
                count = 0;
@@ -1648,7 +1617,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
             draw->ext->image->createImageFromFds2(draw->dri_screen,
                                                   width,
                                                   height,
-                                                  image_format_to_fourcc(format),
+                                                  loader_image_format_to_fourcc(format),
                                                   &buffer_fds[0], num_planes,
                                                   __DRI_IMAGE_PRIME_LINEAR_BUFFER,
                                                   &buffer->strides[0],
@@ -1659,7 +1628,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
             draw->ext->image->createImageFromFds(draw->dri_screen,
                                                  width,
                                                  height,
-                                                 image_format_to_fourcc(format),
+                                                 loader_image_format_to_fourcc(format),
                                                  &buffer_fds[0], num_planes,
                                                  &buffer->strides[0],
                                                  &buffer->offsets[0],
@@ -1884,7 +1853,7 @@ loader_dri3_create_image(xcb_connection_t *c,
    image_planar = image->createImageFromFds(dri_screen,
                                             bp_reply->width,
                                             bp_reply->height,
-                                            image_format_to_fourcc(format),
+                                            loader_image_format_to_fourcc(format),
                                             fds, 1,
                                             &stride, &offset, loaderPrivate);
    close(fds[0]);
@@ -1931,7 +1900,7 @@ loader_dri3_create_image_from_buffers(xcb_connection_t *c,
    ret = image->createImageFromDmaBufs2(dri_screen,
                                         bp_reply->width,
                                         bp_reply->height,
-                                        image_format_to_fourcc(format),
+                                        loader_image_format_to_fourcc(format),
                                         bp_reply->modifier,
                                         fds, bp_reply->nfd,
                                         strides, offsets,
