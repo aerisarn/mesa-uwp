@@ -1027,17 +1027,6 @@ can_use_mi_rpc_bc_counters(const struct intel_device_info *devinfo)
    return devinfo->ver <= 11;
 }
 
-uint64_t intel_perf_scale_gpu_timestamp(const struct intel_device_info *devinfo,
-                                        uint64_t ts)
-{
-   // Try to avoid going over the 64bits when doing the scaling
-   uint64_t lower_ts = ts >> 6;
-   uint64_t scaled_ts = lower_ts * 1000000000ull / devinfo->timestamp_frequency;
-   scaled_ts <<= 6;
-   scaled_ts += (ts & 0x3f) * 1000000000ull / devinfo->timestamp_frequency;
-   return scaled_ts;
-}
-
 uint64_t
 intel_perf_report_timestamp(const struct intel_perf_query_info *query,
                             const uint32_t *report)

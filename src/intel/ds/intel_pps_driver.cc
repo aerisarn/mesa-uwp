@@ -223,8 +223,8 @@ std::vector<PerfRecord> IntelDriver::parse_perf_records(const std::vector<uint8_
 
          uint64_t gpu_timestamp = gpu_timestamp_udw + gpu_timestamp_ldw;
 
-         auto duration = intel_perf_scale_gpu_timestamp(&perf->devinfo,
-                                                        gpu_timestamp - prev_gpu_timestamp);
+         auto duration = intel_device_info_timebase_scale(&perf->devinfo,
+                                                          gpu_timestamp - prev_gpu_timestamp);
 
          // Skip perf-records that are too short by checking
          // the distance between last report and this one
@@ -318,8 +318,7 @@ uint64_t IntelDriver::gpu_next()
    // Consume first record
    records.erase(std::begin(records), std::begin(records) + 1);
 
-   return intel_perf_scale_gpu_timestamp(&perf->devinfo,
-                                         gpu_timestamp);
+   return intel_device_info_timebase_scale(&perf->devinfo, gpu_timestamp);
 }
 
 uint64_t IntelDriver::next()
@@ -336,8 +335,8 @@ uint32_t IntelDriver::gpu_clock_id() const
 
 uint64_t IntelDriver::gpu_timestamp() const
 {
-   return intel_perf_scale_gpu_timestamp(&perf->devinfo,
-                                         read_gpu_timestamp(drm_device.fd));
+   return intel_device_info_timebase_scale(&perf->devinfo,
+                                           read_gpu_timestamp(drm_device.fd));
 }
 
 } // namespace pps

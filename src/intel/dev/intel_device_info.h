@@ -448,7 +448,12 @@ static inline uint64_t
 intel_device_info_timebase_scale(const struct intel_device_info *devinfo,
                                  uint64_t gpu_timestamp)
 {
-   return (1000000000ull * gpu_timestamp) / devinfo->timestamp_frequency;
+   /* Try to avoid going over the 64bits when doing the scaling */
+   uint64_t upper_ts = gpu_timestamp >> 32;
+   uint64_t lower_ts = gpu_timestamp & 0xffffffff;
+   uint64_t upper_scaled_ts = upper_ts * 1000000000ull / devinfo->timestamp_frequency;
+   uint64_t lower_scaled_ts = lower_ts * 1000000000ull / devinfo->timestamp_frequency;
+   return (upper_scaled_ts << 32) + lower_scaled_ts;
 }
 
 bool intel_get_device_info_from_fd(int fh, struct intel_device_info *devinfo);

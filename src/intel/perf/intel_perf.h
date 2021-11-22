@@ -464,11 +464,6 @@ void intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
 uint64_t intel_perf_report_timestamp(const struct intel_perf_query_info *query,
                                      const uint32_t *report);
 
-/** Turn a GPU timestamp into a nanosecond value.
- */
-uint64_t intel_perf_scale_gpu_timestamp(const struct intel_device_info *devinfo,
-                                        uint64_t ts);
-
 /** Accumulate the delta between 2 snapshots of OA perf registers (layout
  * should match description specified through intel_perf_query_register_layout).
  */
