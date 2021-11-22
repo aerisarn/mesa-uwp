@@ -182,14 +182,14 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          assert(v->stage == MESA_SHADER_FRAGMENT);
          reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_POS];
          if (reg->file == BAD_FILE)
-            *reg = *v->emit_samplepos_setup();
+            *reg = v->emit_samplepos_setup();
          break;
 
       case nir_intrinsic_load_sample_id:
          assert(v->stage == MESA_SHADER_FRAGMENT);
          reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_ID];
          if (reg->file == BAD_FILE)
-            *reg = *v->emit_sampleid_setup();
+            *reg = v->emit_sampleid_setup();
          break;
 
       case nir_intrinsic_load_sample_mask_in:
@@ -197,14 +197,14 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          assert(v->devinfo->ver >= 7);
          reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_MASK_IN];
          if (reg->file == BAD_FILE)
-            *reg = *v->emit_samplemaskin_setup();
+            *reg = v->emit_samplemaskin_setup();
          break;
 
       case nir_intrinsic_load_workgroup_id:
          assert(gl_shader_stage_uses_workgroup(v->stage));
          reg = &v->nir_system_values[SYSTEM_VALUE_WORKGROUP_ID];
          if (reg->file == BAD_FILE)
-            *reg = *v->emit_work_group_id_setup();
+            *reg = v->emit_work_group_id_setup();
          break;
 
       case nir_intrinsic_load_helper_invocation:
@@ -265,7 +265,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
       case nir_intrinsic_load_frag_shading_rate:
          reg = &v->nir_system_values[SYSTEM_VALUE_FRAG_SHADING_RATE];
          if (reg->file == BAD_FILE)
-            *reg = *v->emit_shading_rate_setup();
+            *reg = v->emit_shading_rate_setup();
          break;
 
       default:
@@ -3317,7 +3317,7 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
     */
    if (wm_key->multisample_fbo &&
        nir_system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-      nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = *emit_sampleid_setup();
+      nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup();
 
    const fs_reg sample = nir_system_values[SYSTEM_VALUE_SAMPLE_ID];
    const fs_reg mcs = wm_key->multisample_fbo ?
@@ -3441,7 +3441,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
    switch (instr->intrinsic) {
    case nir_intrinsic_load_front_face:
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_D),
-              *emit_frontfacing_interpolation());
+              emit_frontfacing_interpolation());
       break;
 
    case nir_intrinsic_load_sample_pos: {

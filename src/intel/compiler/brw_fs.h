@@ -202,11 +202,11 @@ public:
    void emit_dummy_fs();
    void emit_repclear_shader();
    void emit_fragcoord_interpolation(fs_reg wpos);
-   fs_reg *emit_frontfacing_interpolation();
-   fs_reg *emit_samplepos_setup();
-   fs_reg *emit_sampleid_setup();
-   fs_reg *emit_samplemaskin_setup();
-   fs_reg *emit_shading_rate_setup();
+   fs_reg emit_frontfacing_interpolation();
+   fs_reg emit_samplepos_setup();
+   fs_reg emit_sampleid_setup();
+   fs_reg emit_samplemaskin_setup();
+   fs_reg emit_shading_rate_setup();
    void emit_interpolation_setup_gfx4();
    void emit_interpolation_setup_gfx6();
    void compute_sample_position(fs_reg dst, fs_reg int_sample_pos);
@@ -325,7 +325,7 @@ public:
                            unsigned base_offset, const nir_src &offset_src,
                            unsigned num_components, unsigned first_component);
    void emit_cs_terminate();
-   fs_reg *emit_work_group_id_setup();
+   fs_reg emit_work_group_id_setup();
 
    void emit_task_mesh_store(const brw::fs_builder &bld,
                              nir_intrinsic_instr *instr);

@@ -1228,17 +1228,17 @@ centroid_to_pixel(enum brw_barycentric_mode bary)
    return (enum brw_barycentric_mode) ((unsigned) bary - 1);
 }
 
-fs_reg *
+fs_reg
 fs_visitor::emit_frontfacing_interpolation()
 {
-   fs_reg *reg = new(this->mem_ctx) fs_reg(vgrf(glsl_type::bool_type));
+   fs_reg ff = bld.vgrf(BRW_REGISTER_TYPE_D);
 
    if (devinfo->ver >= 12) {
       fs_reg g1 = fs_reg(retype(brw_vec1_grf(1, 1), BRW_REGISTER_TYPE_W));
 
       fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_W);
       bld.ASR(tmp, g1, brw_imm_d(15));
-      bld.NOT(*reg, tmp);
+      bld.NOT(ff, tmp);
    } else if (devinfo->ver >= 6) {
       /* Bit 15 of g0.0 is 0 if the polygon is front facing. We want to create
        * a boolean result from this (~0/true or 0/false).
@@ -1254,7 +1254,7 @@ fs_visitor::emit_frontfacing_interpolation()
       fs_reg g0 = fs_reg(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_W));
       g0.negate = true;
 
-      bld.ASR(*reg, g0, brw_imm_d(15));
+      bld.ASR(ff, g0, brw_imm_d(15));
    } else {
       /* Bit 31 of g1.6 is 0 if the polygon is front facing. We want to create
        * a boolean result from this (1/true or 0/false).
@@ -1269,10 +1269,10 @@ fs_visitor::emit_frontfacing_interpolation()
       fs_reg g1_6 = fs_reg(retype(brw_vec1_grf(1, 6), BRW_REGISTER_TYPE_D));
       g1_6.negate = true;
 
-      bld.ASR(*reg, g1_6, brw_imm_d(31));
+      bld.ASR(ff, g1_6, brw_imm_d(31));
    }
 
-   return reg;
+   return ff;
 }
 
 void
@@ -1298,14 +1298,13 @@ fs_visitor::compute_sample_position(fs_reg dst, fs_reg int_sample_pos)
    }
 }
 
-fs_reg *
+fs_reg
 fs_visitor::emit_samplepos_setup()
 {
    assert(devinfo->ver >= 6);
 
    const fs_builder abld = bld.annotate("compute sample position");
-   fs_reg *reg = new(this->mem_ctx) fs_reg(vgrf(glsl_type::vec2_type));
-   fs_reg pos = *reg;
+   fs_reg pos = abld.vgrf(BRW_REGISTER_TYPE_F, 2);
    fs_reg int_sample_x = vgrf(glsl_type::int_type);
    fs_reg int_sample_y = vgrf(glsl_type::int_type);
 
@@ -1330,10 +1329,10 @@ fs_visitor::emit_samplepos_setup()
    /* Compute gl_SamplePosition.y */
    abld.MOV(int_sample_y, subscript(sample_pos_reg, BRW_REGISTER_TYPE_B, 1));
    compute_sample_position(offset(pos, abld, 1), int_sample_y);
-   return reg;
+   return pos;
 }
 
-fs_reg *
+fs_reg
 fs_visitor::emit_sampleid_setup()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
@@ -1341,14 +1340,14 @@ fs_visitor::emit_sampleid_setup()
    assert(devinfo->ver >= 6);
 
    const fs_builder abld = bld.annotate("compute sample id");
-   fs_reg *reg = new(this->mem_ctx) fs_reg(vgrf(glsl_type::uint_type));
+   fs_reg sample_id = abld.vgrf(BRW_REGISTER_TYPE_UD);
 
    if (!key->multisample_fbo) {
       /* As per GL_ARB_sample_shading specification:
        * "When rendering to a non-multisample buffer, or if multisample
        *  rasterization is disabled, gl_SampleID will always be zero."
        */
-      abld.MOV(*reg, brw_imm_d(0));
+      abld.MOV(sample_id, brw_imm_d(0));
    } else if (devinfo->ver >= 8) {
       /* Sample ID comes in as 4-bit numbers in g1.0:
        *
@@ -1388,7 +1387,7 @@ fs_visitor::emit_sampleid_setup()
                   brw_imm_v(0x44440000));
       }
 
-      abld.AND(*reg, tmp, brw_imm_w(0xf));
+      abld.AND(sample_id, tmp, brw_imm_w(0xf));
    } else {
       const fs_reg t1 = component(abld.vgrf(BRW_REGISTER_TYPE_UD), 0);
       const fs_reg t2 = abld.vgrf(BRW_REGISTER_TYPE_UW);
@@ -1434,20 +1433,20 @@ fs_visitor::emit_sampleid_setup()
       /* This special instruction takes care of setting vstride=1,
        * width=4, hstride=0 of t2 during an ADD instruction.
        */
-      abld.emit(FS_OPCODE_SET_SAMPLE_ID, *reg, t1, t2);
+      abld.emit(FS_OPCODE_SET_SAMPLE_ID, sample_id, t1, t2);
    }
 
-   return reg;
+   return sample_id;
 }
 
-fs_reg *
+fs_reg
 fs_visitor::emit_samplemaskin_setup()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(this->prog_data);
    assert(devinfo->ver >= 6);
 
-   fs_reg *reg = new(this->mem_ctx) fs_reg(vgrf(glsl_type::int_type));
+   fs_reg mask = bld.vgrf(BRW_REGISTER_TYPE_D);
 
    /* The HW doesn't provide us with expected values. */
    assert(!wm_prog_data->per_coarse_pixel_dispatch);
@@ -1469,28 +1468,27 @@ fs_visitor::emit_samplemaskin_setup()
       const fs_builder abld = bld.annotate("compute gl_SampleMaskIn");
 
       if (nir_system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-         nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = *emit_sampleid_setup();
+         nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup();
 
       fs_reg one = vgrf(glsl_type::int_type);
       fs_reg enabled_mask = vgrf(glsl_type::int_type);
       abld.MOV(one, brw_imm_d(1));
       abld.SHL(enabled_mask, one, nir_system_values[SYSTEM_VALUE_SAMPLE_ID]);
-      abld.AND(*reg, enabled_mask, coverage_mask);
+      abld.AND(mask, enabled_mask, coverage_mask);
    } else {
       /* In per-pixel mode, the coverage mask is sufficient. */
-      *reg = coverage_mask;
+      mask = coverage_mask;
    }
-   return reg;
+   return mask;
 }
 
-fs_reg *
+fs_reg
 fs_visitor::emit_shading_rate_setup()
 {
    assert(devinfo->ver >= 11);
 
    const fs_builder abld = bld.annotate("compute fragment shading rate");
-
-   fs_reg *reg = new(this->mem_ctx) fs_reg(bld.vgrf(BRW_REGISTER_TYPE_UD));
+   fs_reg rate = abld.vgrf(BRW_REGISTER_TYPE_UD);
 
    struct brw_wm_prog_data *wm_prog_data =
       brw_wm_prog_data(bld.shader->stage_prog_data);
@@ -1516,12 +1514,12 @@ fs_visitor::emit_shading_rate_setup()
       abld.SHR(int_rate_y, actual_y, brw_imm_ud(1));
       abld.SHR(int_rate_x, actual_x, brw_imm_ud(1));
       abld.SHL(int_rate_x, int_rate_x, brw_imm_ud(2));
-      abld.OR(*reg, int_rate_x, int_rate_y);
+      abld.OR(rate, int_rate_x, int_rate_y);
    } else {
-      abld.MOV(*reg, brw_imm_ud(0));
+      abld.MOV(rate, brw_imm_ud(0));
    }
 
-   return reg;
+   return rate;
 }
 
 fs_reg
@@ -9773,28 +9771,28 @@ brw_compile_fs(const struct brw_compiler *compiler,
    return g.get_assembly();
 }
 
-fs_reg *
+fs_reg
 fs_visitor::emit_work_group_id_setup()
 {
    assert(gl_shader_stage_uses_workgroup(stage));
 
-   fs_reg *reg = new(this->mem_ctx) fs_reg(vgrf(glsl_type::uvec3_type));
+   fs_reg id = bld.vgrf(BRW_REGISTER_TYPE_UD, 3);
 
    struct brw_reg r0_1(retype(brw_vec1_grf(0, 1), BRW_REGISTER_TYPE_UD));
-   bld.MOV(*reg, r0_1);
+   bld.MOV(id, r0_1);
 
    if (gl_shader_stage_is_compute(stage)) {
       struct brw_reg r0_6(retype(brw_vec1_grf(0, 6), BRW_REGISTER_TYPE_UD));
       struct brw_reg r0_7(retype(brw_vec1_grf(0, 7), BRW_REGISTER_TYPE_UD));
-      bld.MOV(offset(*reg, bld, 1), r0_6);
-      bld.MOV(offset(*reg, bld, 2), r0_7);
+      bld.MOV(offset(id, bld, 1), r0_6);
+      bld.MOV(offset(id, bld, 2), r0_7);
    } else {
       /* Task/Mesh have a single Workgroup ID dimension in the HW. */
-      bld.MOV(offset(*reg, bld, 1), brw_imm_ud(0));
-      bld.MOV(offset(*reg, bld, 2), brw_imm_ud(0));
+      bld.MOV(offset(id, bld, 1), brw_imm_ud(0));
+      bld.MOV(offset(id, bld, 2), brw_imm_ud(0));
    }
 
-   return reg;
+   return id;
 }
 
 unsigned
