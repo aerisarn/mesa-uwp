@@ -23,11 +23,9 @@ class IntelPerf
    IntelPerf(int drm_fd);
    ~IntelPerf();
 
-   std::optional<struct intel_perf_query_info> find_query_by_name(const std::string &name) const;
-
    std::vector<struct intel_perf_query_info*> get_queries() const;
 
-   bool open(uint64_t sampling_period_ns);
+   bool open(uint64_t sampling_period_ns, struct intel_perf_query_info *query);
    void close();
 
    bool oa_stream_ready() const;
@@ -45,8 +43,6 @@ class IntelPerf
    struct intel_perf_query_result result = {};
 
    struct intel_device_info devinfo = {};
-
-   std::optional<struct intel_perf_query_info> query = std::nullopt;
 };
 
 } // namespace pps

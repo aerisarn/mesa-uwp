@@ -36,13 +36,6 @@ IntelPerf::IntelPerf(const int drm_fd)
       false, // no pipeline statistics
       false  // no register snapshots
    );
-
-   // Enable RenderBasic counters
-   auto query_name = "RenderBasic";
-   query = find_query_by_name(query_name);
-   if (!query) {
-      PPS_LOG_FATAL("Failed to find %s query", query_name);
-   }
 }
 
 IntelPerf::~IntelPerf()
@@ -56,20 +49,6 @@ IntelPerf::~IntelPerf()
    if (ralloc_cfg) {
       ralloc_free(ralloc_cfg);
    }
-}
-
-/// @return A query info, which is something like a group of counters
-std::optional<struct intel_perf_query_info> IntelPerf::find_query_by_name(
-   const std::string &name) const
-{
-   for (int i = 0; i < cfg->n_queries; ++i) {
-      struct intel_perf_query_info query = cfg->queries[i];
-      if (name == query.symbol_name) {
-         return query;
-      }
-   }
-
-   return std::nullopt;
 }
 
 std::vector<struct intel_perf_query_info *> IntelPerf::get_queries() const
@@ -98,7 +77,8 @@ static uint32_t get_oa_exponent(const intel_device_info *devinfo, const uint64_t
    return static_cast<uint32_t>(log2(sampling_period_ns * devinfo->timestamp_frequency / 1000000000ull)) - 1;
 }
 
-bool IntelPerf::open(const uint64_t sampling_period_ns)
+bool IntelPerf::open(const uint64_t sampling_period_ns,
+                     struct intel_perf_query_info *query)
 {
    assert(!ctx && "Perf context should not be initialized at this point");
 

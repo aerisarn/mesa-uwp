@@ -9,6 +9,10 @@
 
 #include <pps/pps_driver.h>
 
+extern "C" {
+struct intel_perf_query_info;
+};
+
 namespace pps
 {
 
@@ -82,6 +86,9 @@ class IntelDriver : public Driver
 
    // Gpu clock ID used to correlate GPU/CPU timestamps
    uint32_t clock_id = 0;
+
+   // Selected query
+   intel_perf_query_info *selected_query = nullptr;
 };
 
 } // namespace pps
