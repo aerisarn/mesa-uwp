@@ -1368,39 +1368,37 @@ fs_visitor::emit_samplemaskin_setup()
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(this->prog_data);
    assert(devinfo->ver >= 6);
 
-   fs_reg mask = bld.vgrf(BRW_REGISTER_TYPE_D);
-
    /* The HW doesn't provide us with expected values. */
    assert(!wm_prog_data->per_coarse_pixel_dispatch);
 
    fs_reg coverage_mask =
       fetch_payload_reg(bld, fs_payload().sample_mask_in_reg, BRW_REGISTER_TYPE_D);
 
-   if (wm_prog_data->persample_dispatch) {
-      /* gl_SampleMaskIn[] comes from two sources: the input coverage mask,
-       * and a mask representing which sample is being processed by the
-       * current shader invocation.
-       *
-       * From the OES_sample_variables specification:
-       * "When per-sample shading is active due to the use of a fragment input
-       *  qualified by "sample" or due to the use of the gl_SampleID or
-       *  gl_SamplePosition variables, only the bit for the current sample is
-       *  set in gl_SampleMaskIn."
-       */
-      const fs_builder abld = bld.annotate("compute gl_SampleMaskIn");
+   if (!wm_prog_data->persample_dispatch)
+      return coverage_mask;
 
-      if (nir_system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
-         nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup();
+   /* gl_SampleMaskIn[] comes from two sources: the input coverage mask,
+    * and a mask representing which sample is being processed by the
+    * current shader invocation.
+    *
+    * From the OES_sample_variables specification:
+    * "When per-sample shading is active due to the use of a fragment input
+    *  qualified by "sample" or due to the use of the gl_SampleID or
+    *  gl_SamplePosition variables, only the bit for the current sample is
+    *  set in gl_SampleMaskIn."
+    */
+   const fs_builder abld = bld.annotate("compute gl_SampleMaskIn");
 
-      fs_reg one = vgrf(glsl_type::int_type);
-      fs_reg enabled_mask = vgrf(glsl_type::int_type);
-      abld.MOV(one, brw_imm_d(1));
-      abld.SHL(enabled_mask, one, nir_system_values[SYSTEM_VALUE_SAMPLE_ID]);
-      abld.AND(mask, enabled_mask, coverage_mask);
-   } else {
-      /* In per-pixel mode, the coverage mask is sufficient. */
-      mask = coverage_mask;
-   }
+   if (nir_system_values[SYSTEM_VALUE_SAMPLE_ID].file == BAD_FILE)
+      nir_system_values[SYSTEM_VALUE_SAMPLE_ID] = emit_sampleid_setup();
+
+   fs_reg one = vgrf(glsl_type::int_type);
+   fs_reg enabled_mask = vgrf(glsl_type::int_type);
+   abld.MOV(one, brw_imm_d(1));
+   abld.SHL(enabled_mask, one, nir_system_values[SYSTEM_VALUE_SAMPLE_ID]);
+   fs_reg mask = bld.vgrf(BRW_REGISTER_TYPE_D);
+   abld.AND(mask, enabled_mask, coverage_mask);
+
    return mask;
 }
 
@@ -1409,37 +1407,37 @@ fs_visitor::emit_shading_rate_setup()
 {
    assert(devinfo->ver >= 11);
 
-   const fs_builder abld = bld.annotate("compute fragment shading rate");
-   fs_reg rate = abld.vgrf(BRW_REGISTER_TYPE_UD);
-
    struct brw_wm_prog_data *wm_prog_data =
       brw_wm_prog_data(bld.shader->stage_prog_data);
 
    /* Coarse pixel shading size fields overlap with other fields of not in
     * coarse pixel dispatch mode, so report 0 when that's not the case.
     */
-   if (wm_prog_data->per_coarse_pixel_dispatch) {
-      /* The shading rates provided in the shader are the actual 2D shading
-       * rate while the SPIR-V built-in is the enum value that has the shading
-       * rate encoded as a bitfield.  Fortunately, the bitfield value is just
-       * the shading rate divided by two and shifted.
-       */
+   if (!wm_prog_data->per_coarse_pixel_dispatch)
+      return brw_imm_ud(0);
 
-      /* r1.0 - 0:7 ActualCoarsePixelShadingSize.X */
-      fs_reg actual_x = fs_reg(retype(brw_vec1_grf(1, 0), BRW_REGISTER_TYPE_UB));
-      /* r1.0 - 15:8 ActualCoarsePixelShadingSize.Y */
-      fs_reg actual_y = byte_offset(actual_x, 1);
+   const fs_builder abld = bld.annotate("compute fragment shading rate");
 
-      fs_reg int_rate_x = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      fs_reg int_rate_y = bld.vgrf(BRW_REGISTER_TYPE_UD);
+   /* The shading rates provided in the shader are the actual 2D shading
+    * rate while the SPIR-V built-in is the enum value that has the shading
+    * rate encoded as a bitfield.  Fortunately, the bitfield value is just
+    * the shading rate divided by two and shifted.
+    */
 
-      abld.SHR(int_rate_y, actual_y, brw_imm_ud(1));
-      abld.SHR(int_rate_x, actual_x, brw_imm_ud(1));
-      abld.SHL(int_rate_x, int_rate_x, brw_imm_ud(2));
-      abld.OR(rate, int_rate_x, int_rate_y);
-   } else {
-      abld.MOV(rate, brw_imm_ud(0));
-   }
+   /* r1.0 - 0:7 ActualCoarsePixelShadingSize.X */
+   fs_reg actual_x = fs_reg(retype(brw_vec1_grf(1, 0), BRW_REGISTER_TYPE_UB));
+   /* r1.0 - 15:8 ActualCoarsePixelShadingSize.Y */
+   fs_reg actual_y = byte_offset(actual_x, 1);
+
+   fs_reg int_rate_x = bld.vgrf(BRW_REGISTER_TYPE_UD);
+   fs_reg int_rate_y = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+   abld.SHR(int_rate_y, actual_y, brw_imm_ud(1));
+   abld.SHR(int_rate_x, actual_x, brw_imm_ud(1));
+   abld.SHL(int_rate_x, int_rate_x, brw_imm_ud(2));
+
+   fs_reg rate = abld.vgrf(BRW_REGISTER_TYPE_UD);
+   abld.OR(rate, int_rate_x, int_rate_y);
 
    return rate;
 }
