@@ -46,13 +46,14 @@ create_clipdist_var(nir_shader *shader,
 {
    nir_variable *var = rzalloc(shader, nir_variable);
 
-   /* TODO use type_size() for num_inputs/outputs */
    if (output) {
-      var->data.driver_location = shader->num_outputs++;
+      var->data.driver_location = shader->num_outputs;
       var->data.mode = nir_var_shader_out;
+      shader->num_outputs += MAX2(1, DIV_ROUND_UP(array_size, 4));
    } else {
-      var->data.driver_location = shader->num_inputs++;
+      var->data.driver_location = shader->num_inputs;
       var->data.mode = nir_var_shader_in;
+      shader->num_inputs += MAX2(1, DIV_ROUND_UP(array_size, 4));
    }
    var->name = ralloc_asprintf(var, "clipdist_%d", var->data.driver_location);
    var->data.index = 0;
