@@ -430,6 +430,7 @@ static void radeon_enc_output_format(struct radeon_encoder *enc)
 
 static void encode(struct radeon_encoder *enc)
 {
+   enc->before_encode(enc);
    enc->session_info(enc);
    enc->total_task_size = 0;
    enc->task_info(enc, enc->need_feedback);
