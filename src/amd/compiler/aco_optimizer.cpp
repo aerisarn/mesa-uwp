@@ -3258,8 +3258,10 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
              (info.instr->operands[0].getTemp().type() == RegType::vgpr ||
               instr->operands[i].getTemp().type() == RegType::sgpr) &&
              can_apply_extract(ctx, instr, i, info)) {
+            /* Increase use count of the extract's operand if the extract still has uses. */
             apply_extract(ctx, instr, i, info);
-            ctx.uses[instr->operands[i].tempId()]--;
+            if (--ctx.uses[instr->operands[i].tempId()])
+               ctx.uses[info.instr->operands[0].tempId()]++;
             instr->operands[i].setTemp(info.instr->operands[0].getTemp());
          }
       }
