@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
@@ -633,7 +634,12 @@ dri3_x11_connect(struct dri2_egl_display *dri2_dpy)
       return EGL_FALSE;
    }
 
+   dri2_dpy->fd_display_gpu = fcntl(dri2_dpy->fd, F_DUPFD_CLOEXEC, 3);
    dri2_dpy->fd = loader_get_user_preferred_fd(dri2_dpy->fd, &dri2_dpy->is_different_gpu);
+   if (!dri2_dpy->is_different_gpu) {
+      close(dri2_dpy->fd_display_gpu);
+      dri2_dpy->fd_display_gpu = -1;
+   }
 
    dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd);
    if (!dri2_dpy->driver_name) {

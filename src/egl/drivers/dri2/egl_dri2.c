@@ -1127,6 +1127,8 @@ dri2_display_destroy(_EGLDisplay *disp)
    }
    if (dri2_dpy->fd >= 0)
       close(dri2_dpy->fd);
+   if (dri2_dpy->fd_display_gpu >= 0)
+      close(dri2_dpy->fd_display_gpu);
 
    /* Don't dlclose the driver when building with the address sanitizer, so you
     * get good symbols from the leak reports.
