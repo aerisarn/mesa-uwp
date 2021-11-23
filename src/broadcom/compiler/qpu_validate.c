@@ -215,8 +215,14 @@ qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
                                    "SFU write started during THRSW delay slots ");
                 }
 
-                if (inst->sig.ldvary)
-                        fail_instr(state, "LDVARY during THRSW delay slots");
+                if (inst->sig.ldvary) {
+                        if (devinfo->ver <= 42)
+                                fail_instr(state, "LDVARY during THRSW delay slots");
+                        if (devinfo->ver >= 71 &&
+                            state->ip - state->last_thrsw_ip == 2) {
+                                fail_instr(state, "LDVARY in 2nd THRSW delay slot");
+                        }
+                }
         }
 
         (void)qpu_magic_waddr_matches; /* XXX */

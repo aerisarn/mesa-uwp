@@ -1491,11 +1491,20 @@ retry:
                          * ldvary now if the follow-up fixup would place
                          * it in the delay slots of a thrsw, which is not
                          * allowed and would prevent the fixup from being
-                         * successful.
+                         * successful. In V3D 7.x we can allow this to happen
+                         * as long as it is not the last delay slot.
                          */
-                        if (inst->sig.ldvary &&
-                            scoreboard->last_thrsw_tick + 2 >= scoreboard->tick - 1) {
-                                continue;
+                        if (inst->sig.ldvary) {
+                                if (c->devinfo->ver <= 42 &&
+                                    scoreboard->last_thrsw_tick + 2 >=
+                                    scoreboard->tick - 1) {
+                                        continue;
+                                }
+                                if (c->devinfo->ver >= 71 &&
+                                    scoreboard->last_thrsw_tick + 2 ==
+                                    scoreboard->tick - 1) {
+                                        continue;
+                                }
                         }
 
                         /* We can emit a new tmu lookup with a previous ldtmu
@@ -2020,8 +2029,12 @@ qpu_inst_before_thrsw_valid_in_delay_slot(struct v3d_compile *c,
         if (slot > 0 && v3d_qpu_instr_is_legacy_sfu(&qinst->qpu))
                 return false;
 
-        if (slot > 0 && qinst->qpu.sig.ldvary)
-                return false;
+        if (qinst->qpu.sig.ldvary) {
+                if (c->devinfo->ver <= 42 && slot > 0)
+                        return false;
+                if (c->devinfo->ver >= 71 && slot == 2)
+                        return false;
+        }
 
         /* unifa and the following 3 instructions can't overlap a
          * thread switch/end. The docs further clarify that this means
@@ -2618,9 +2631,13 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
 
         /* We can't put an ldvary in the delay slots of a thrsw. We should've
          * prevented this when pairing up the ldvary with another instruction
-         * and flagging it for a fixup.
+         * and flagging it for a fixup. In V3D 7.x this is limited only to the
+         * second delay slot.
          */
-        assert(scoreboard->last_thrsw_tick + 2 < scoreboard->tick - 1);
+        assert((devinfo->ver <= 42 &&
+                scoreboard->last_thrsw_tick + 2 < scoreboard->tick - 1) ||
+               (devinfo->ver >= 71 &&
+                scoreboard->last_thrsw_tick + 2 != scoreboard->tick - 1));
 
         /* Move the ldvary to the previous instruction and remove it from the
          * current one.
