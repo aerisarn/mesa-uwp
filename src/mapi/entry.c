@@ -47,8 +47,6 @@
 #endif
 
 /* REALLY_INITIAL_EXEC implies USE_ELF_TLS and __GNUC__ */
-/* Use TSD stubs for non-IE ELF TLS even though first access is slower because
- * future accesses will be patched */
 #if defined(USE_X86_ASM) && defined(REALLY_INITIAL_EXEC)
 #include "entry_x86_tls.h"
 #elif defined(USE_X86_ASM) && !defined(GLX_X86_READONLY_TEXT) && defined(__GNUC__)
@@ -57,7 +55,8 @@
 #include "entry_x86-64_tls.h"
 #elif defined(USE_PPC64LE_ASM) && UTIL_ARCH_LITTLE_ENDIAN && defined(REALLY_INITIAL_EXEC)
 #include "entry_ppc64le_tls.h"
-#elif defined(USE_PPC64LE_ASM) && UTIL_ARCH_LITTLE_ENDIAN && defined(__GNUC__)
+/* ppc64le non-IE TSD stubs are possible but not currently implemented */
+#elif defined(USE_PPC64LE_ASM) && UTIL_ARCH_LITTLE_ENDIAN && !defined(USE_ELF_TLS) && defined(__GNUC__)
 #include "entry_ppc64le_tsd.h"
 #else
 
