@@ -133,6 +133,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_get_memory_requirements2        = true,
       .KHR_image_format_list               = true,
       .KHR_imageless_framebuffer           = true,
+      .KHR_performance_query               = device->caps.perfmon,
       .KHR_relaxed_block_layout            = true,
       .KHR_maintenance1                    = true,
       .KHR_maintenance2                    = true,
@@ -816,6 +817,9 @@ physical_device_init(struct v3dv_physical_device *device,
    device->caps.multisync =
       v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_MULTISYNC_EXT);
 
+   device->caps.perfmon =
+      v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_PERFMON);
+
    result = init_uuids(device);
    if (result != VK_SUCCESS)
       goto fail;
@@ -1144,6 +1148,7 @@ VKAPI_ATTR void VKAPI_CALL
 v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                                 VkPhysicalDeviceFeatures2 *pFeatures)
 {
+   V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
    v3dv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 
    VkPhysicalDeviceVulkan13Features vk13 = {
@@ -1286,6 +1291,16 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (void *) ext;
          features->vertexAttributeInstanceRateDivisor = true;
          features->vertexAttributeInstanceRateZeroDivisor = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
+         VkPhysicalDevicePerformanceQueryFeaturesKHR *features =
+            (void *) ext;
+
+         features->performanceCounterQueryPools =
+            physical_device->caps.perfmon;
+         features->performanceCounterMultipleQueryPools = false;
          break;
       }
 
@@ -1635,6 +1650,13 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *props =
             (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
          props->maxVertexAttribDivisor = 0xffff;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR : {
+         VkPhysicalDevicePerformanceQueryPropertiesKHR *props =
+            (VkPhysicalDevicePerformanceQueryPropertiesKHR *)ext;
+
+         props->allowCommandBufferQueryCopies = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {

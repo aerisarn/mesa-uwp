@@ -777,6 +777,8 @@ v3dv_job_init(struct v3dv_job *job,
       job->is_transfer = cmd_buffer->state.is_transfer;
 
       cmd_buffer_serialize_job_if_needed(cmd_buffer, job);
+
+      job->perf = cmd_buffer->state.query.active_query.perf;
    }
 }
 
@@ -3223,24 +3225,44 @@ v3dv_cmd_buffer_begin_query(struct v3dv_cmd_buffer *cmd_buffer,
                             uint32_t query,
                             VkQueryControlFlags flags)
 {
-   /* FIXME: we only support one active query for now */
-   assert(cmd_buffer->state.query.active_query.bo == NULL);
    assert(query < pool->query_count);
+   switch (pool->query_type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+      /* FIXME: we only support one active occlusion query for now */
+      assert(cmd_buffer->state.query.active_query.bo == NULL);
 
-   cmd_buffer->state.query.active_query.bo = pool->queries[query].bo;
-   cmd_buffer->state.query.active_query.offset = pool->queries[query].offset;
-   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+      cmd_buffer->state.query.active_query.bo = pool->queries[query].bo;
+      cmd_buffer->state.query.active_query.offset = pool->queries[query].offset;
+      cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+      break;
+   case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
+      assert(cmd_buffer->state.query.active_query.perf == NULL);
+      if (cmd_buffer->state.pass)
+         v3dv_cmd_buffer_subpass_finish(cmd_buffer);
+
+      cmd_buffer->state.query.active_query.perf =
+         &pool->queries[query].perf;
+
+      if (cmd_buffer->state.pass) {
+         v3dv_cmd_buffer_subpass_resume(cmd_buffer,
+            cmd_buffer->state.subpass_idx);
+      }
+      break;
+   }
+   default:
+      unreachable("Unsupported query type");
+   }
 }
 
-void
-v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
-                          struct v3dv_query_pool *pool,
-                          uint32_t query)
+static void
+v3dv_cmd_buffer_schedule_end_query(struct v3dv_cmd_buffer *cmd_buffer,
+                                   struct v3dv_query_pool *pool,
+                                   uint32_t query)
 {
    assert(query < pool->query_count);
-   assert(cmd_buffer->state.query.active_query.bo != NULL);
 
-   if  (cmd_buffer->state.pass) {
+   if  (cmd_buffer->state.pass &&
+        pool->query_type != VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
       /* Queue the EndQuery in the command buffer state, we will create a CPU
        * job to flag all of these queries as possibly available right after the
        * render pass job in which they have been recorded.
@@ -3295,9 +3317,55 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
 
       list_addtail(&job->list_link, &cmd_buffer->jobs);
    }
+}
+
+static void
+v3dv_cmd_buffer_end_occlusion_query(struct v3dv_cmd_buffer *cmd_buffer,
+                                    struct v3dv_query_pool *pool,
+                                    uint32_t query)
+{
+   assert(query < pool->query_count);
+   assert(cmd_buffer->state.query.active_query.bo != NULL);
+
+   v3dv_cmd_buffer_schedule_end_query(cmd_buffer, pool, query);
 
    cmd_buffer->state.query.active_query.bo = NULL;
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_OCCLUSION_QUERY;
+}
+
+static void
+v3dv_cmd_buffer_end_performance_query(struct v3dv_cmd_buffer *cmd_buffer,
+                                      struct v3dv_query_pool *pool,
+                                      uint32_t query)
+{
+   assert(query < pool->query_count);
+   assert(cmd_buffer->state.query.active_query.perf != NULL);
+
+   if (cmd_buffer->state.pass)
+      v3dv_cmd_buffer_subpass_finish(cmd_buffer);
+
+   v3dv_cmd_buffer_schedule_end_query(cmd_buffer, pool, query);
+
+   cmd_buffer->state.query.active_query.perf = NULL;
+
+   if (cmd_buffer->state.pass)
+      v3dv_cmd_buffer_subpass_resume(cmd_buffer, cmd_buffer->state.subpass_idx);
+}
+
+void v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_query_pool *pool,
+                               uint32_t query)
+{
+   switch (pool->query_type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+      v3dv_cmd_buffer_end_occlusion_query(cmd_buffer, pool, query);
+      break;
+   case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR:
+      v3dv_cmd_buffer_end_performance_query(cmd_buffer, pool, query);
+      break;
+   default:
+      unreachable("Unsupported query type");
+   }
 }
 
 void
