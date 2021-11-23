@@ -536,7 +536,15 @@ if not have_mtls_dialect
   else
     # -fpic to force dynamic tls, otherwise TLS relaxation defeats check
     gnu2_test = cc.run('int __thread x; int main() { return x; }', args: ['-mtls-dialect=gnu2', '-fpic'], name: '-mtls-dialect=gnu2')
-    if gnu2_test.returncode() == 0
+    if gnu2_test.returncode() == 0 and (
+          host_machine.cpu_family() != 'x86_64' or
+          # https://github.com/mesonbuild/meson/issues/6377
+          #cc.get_linker_id() != 'ld.lld' or
+          cc.links('''int __thread x; int y; int main() { __asm__(
+                "leaq x@TLSDESC(%rip), %rax\n"
+                "movq y@GOTPCREL(%rip), %rdx\n"
+                "call *x@TLSCALL(%rax)\n"); }''', name: 'split TLSDESC')
+          )
       c_args += '-mtls-dialect=gnu2'
       cpp_args += '-mtls-dialect=gnu2'
     endif
