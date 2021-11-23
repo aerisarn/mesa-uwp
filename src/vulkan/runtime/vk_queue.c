@@ -463,6 +463,7 @@ vk_queue_submit_thread_func(void *_data)
       cnd_broadcast(&queue->submit.pop);
    }
 
+   mtx_unlock(&queue->submit.mutex);
    return 0;
 }
 
