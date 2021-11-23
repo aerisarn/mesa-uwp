@@ -254,15 +254,6 @@ glsl_to_nir(const struct gl_constants *consts,
    if (shader_prog->Label)
       shader->info.label = ralloc_strdup(shader, shader_prog->Label);
 
-   /* Check for transform feedback varyings specified via the API */
-   shader->info.has_transform_feedback_varyings =
-      shader_prog->TransformFeedback.NumVarying > 0;
-
-   /* Check for transform feedback varyings specified in the Shader */
-   if (shader_prog->last_vert_prog)
-      shader->info.has_transform_feedback_varyings |=
-         shader_prog->last_vert_prog->sh.LinkedTransformFeedback->NumVarying > 0;
-
    if (shader->info.stage == MESA_SHADER_FRAGMENT) {
       shader->info.fs.pixel_center_integer = sh->Program->info.fs.pixel_center_integer;
       shader->info.fs.origin_upper_left = sh->Program->info.fs.origin_upper_left;

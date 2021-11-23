@@ -293,6 +293,17 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
    *align = comp_size * (length == 3 ? 4 : length);
 }
 
+static bool
+st_can_remove_varying_before_linking(nir_variable *var, void *data)
+{
+   bool *is_sso = (bool *) data;
+   if (*is_sso) {
+      /* Allow the removal of unused builtins in SSO */
+      return var->data.location > -1 && var->data.location < VARYING_SLOT_VAR0;
+   } else
+      return true;
+}
+
 /* First third of converting glsl_to_nir.. this leaves things in a pre-
  * nir_lower_io state, so that shader variants can more easily insert/
  * replace variables, etc.
@@ -342,15 +353,12 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
       NIR_PASS_V(nir, st_nir_add_point_size);
    }
 
-   /* ES has strict SSO validation rules for shader IO matching so we can't
-    * remove dead IO until the resource list has been built. Here we skip
-    * removing them until later. This will potentially make the IO lowering
-    * calls below do a little extra work but should otherwise have no impact.
-    */
-   if (!_mesa_is_gles(st->ctx) || !nir->info.separate_shader) {
-      nir_variable_mode mask = nir_var_shader_in | nir_var_shader_out;
-      nir_remove_dead_variables(nir, mask, NULL);
-   }
+   struct nir_remove_dead_variables_options opts;
+   bool is_sso = nir->info.separate_shader;
+   opts.can_remove_var_data = &is_sso;
+   opts.can_remove_var = &st_can_remove_varying_before_linking;
+   nir_variable_mode mask = nir_var_shader_in | nir_var_shader_out;
+   nir_remove_dead_variables(nir, mask, &opts);
 
    if (options->lower_all_io_to_temps ||
        nir->info.stage == MESA_SHADER_VERTEX ||
@@ -737,15 +745,6 @@ st_link_nir(struct gl_context *ctx,
 
    st_lower_patch_vertices_in(shader_program);
 
-   /* Linking the stages in the opposite order (from fragment to vertex)
-    * ensures that inter-shader outputs written to in an earlier stage
-    * are eliminated if they are (transitively) not used in a later
-    * stage.
-    */
-   for (int i = num_shaders - 2; i >= 0; i--) {
-      st_nir_link_shaders(linked_shader[i]->Program->nir,
-                          linked_shader[i + 1]->Program->nir);
-   }
    /* Linking shaders also optimizes them. Separate shaders, compute shaders
     * and shaders with a fixed-func VS or FS that don't need linking are
     * optimized here.
@@ -754,15 +753,42 @@ st_link_nir(struct gl_context *ctx,
       gl_nir_opts(linked_shader[0]->Program->nir);
 
    if (shader_program->data->spirv) {
+      /* Linking the stages in the opposite order (from fragment to vertex)
+       * ensures that inter-shader outputs written to in an earlier stage
+       * are eliminated if they are (transitively) not used in a later
+       * stage.
+       */
+      for (int i = num_shaders - 2; i >= 0; i--) {
+         st_nir_link_shaders(linked_shader[i]->Program->nir,
+                             linked_shader[i + 1]->Program->nir);
+      }
+
       static const gl_nir_linker_options opts = {
          true /*fill_parameters */
       };
       if (!gl_nir_link_spirv(&ctx->Const, shader_program, &opts))
          return GL_FALSE;
    } else {
-      if (!gl_nir_link_glsl(&ctx->Const, &ctx->Extensions,
+      if (!gl_nir_link_glsl(&ctx->Const, &ctx->Extensions, ctx->API,
                             shader_program))
          return GL_FALSE;
+
+      /* Linking the stages in the opposite order (from fragment to vertex)
+       * ensures that inter-shader outputs written to in an earlier stage
+       * are eliminated if they are (transitively) not used in a later
+       * stage.
+       */
+      for (int i = num_shaders - 2; i >= 0; i--) {
+         st_nir_link_shaders(linked_shader[i]->Program->nir,
+                             linked_shader[i + 1]->Program->nir);
+      }
+
+      /* Tidy up any left overs from the linking process for single shaders.
+       * For example varying arrays that get packed may have dead elements that
+       * can be now be eliminated now that array access has been lowered.
+       */
+      if (num_shaders == 1)
+         gl_nir_opts(linked_shader[0]->Program->nir);
    }
 
    for (unsigned i = 0; i < num_shaders; i++) {

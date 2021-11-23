@@ -78,7 +78,7 @@ traces:
   - path: glmark2/bump:bump-render=height.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 2efca26d7eb85d826276b30f3265153b
+        checksum: 73cb74446b0aefcfcf7b41d80eaed016
   - path: glmark2/bump:bump-render=high-poly.trace
     expectations:
       - device: gl-panfrost-t860

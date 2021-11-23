@@ -4100,10 +4100,6 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
       break;
    }
 
-   if (!link_varyings(prog, first, last, consts, exts,
-                      api, mem_ctx))
-      return false;
-
    if (!prog->data->LinkStatus)
       return false;
 

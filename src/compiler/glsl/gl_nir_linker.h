@@ -58,6 +58,7 @@ bool gl_nir_link_spirv(const struct gl_constants *consts,
 
 bool gl_nir_link_glsl(const struct gl_constants *consts,
                       const struct gl_extensions *exts,
+                      gl_api api,
                       struct gl_shader_program *prog);
 
 bool gl_nir_link_uniforms(const struct gl_constants *consts,

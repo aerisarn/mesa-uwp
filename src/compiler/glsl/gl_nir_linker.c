@@ -781,8 +781,15 @@ check_image_resources(const struct gl_constants *consts,
 bool
 gl_nir_link_glsl(const struct gl_constants *consts,
                  const struct gl_extensions *exts,
+                 gl_api api,
                  struct gl_shader_program *prog)
 {
+   if (prog->NumShaders == 0)
+      return true;
+
+   if (!gl_nir_link_varyings(consts, exts, api, prog))
+      return false;
+
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       struct gl_linked_shader *shader = prog->_LinkedShaders[i];
       if (shader) {
