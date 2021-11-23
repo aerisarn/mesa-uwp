@@ -94,15 +94,17 @@ create_clipdist_vars(nir_shader *shader, nir_variable **io_vars,
 }
 
 static void
-store_clipdist_output(nir_builder *b, nir_variable *out, nir_ssa_def **val)
+store_clipdist_output(nir_builder *b, nir_variable *out, int location_offset,
+                      nir_ssa_def **val)
 {
    nir_io_semantics semantics = {
       .location = out->data.location,
       .num_slots = 1,
    };
 
-   nir_store_output(b, nir_vec4(b, val[0], val[1], val[2], val[3]), nir_imm_int(b, 0),
+   nir_store_output(b, nir_vec4(b, val[0], val[1], val[2], val[3]), nir_imm_int(b, location_offset),
                     .base = out->data.driver_location,
+                    .src_type = nir_type_float32,
                     .write_mask = 0xf,
                     .io_semantics = semantics);
 }
@@ -277,8 +279,7 @@ lower_clip_outputs(nir_builder *b, nir_variable *position,
          /* 0.0 == don't-clip == disabled: */
          clipdist[plane] = nir_imm_float(b, 0.0);
       }
-      if (use_clipdist_array && plane < util_last_bit(ucp_enables)) {
-         assert(use_vars);
+      if (use_clipdist_array && use_vars && plane < util_last_bit(ucp_enables)) {
          nir_deref_instr *deref;
          deref = nir_build_deref_array_imm(b,
                                            nir_build_deref_var(b, out[0]),
@@ -287,17 +288,22 @@ lower_clip_outputs(nir_builder *b, nir_variable *position,
       }
    }
 
-   if (!use_clipdist_array) {
+   if (!use_clipdist_array || !use_vars) {
       if (use_vars) {
          if (ucp_enables & 0x0f)
             nir_store_var(b, out[0], nir_vec(b, clipdist, 4), 0xf);
          if (ucp_enables & 0xf0)
             nir_store_var(b, out[1], nir_vec(b, &clipdist[4], 4), 0xf);
+      } else if (use_clipdist_array) {
+         if (ucp_enables & 0x0f)
+            store_clipdist_output(b, out[0], 0, &clipdist[0]);
+         if (ucp_enables & 0xf0)
+            store_clipdist_output(b, out[0], 1, &clipdist[4]);
       } else {
          if (ucp_enables & 0x0f)
-            store_clipdist_output(b, out[0], &clipdist[0]);
+            store_clipdist_output(b, out[0], 0, &clipdist[0]);
          if (ucp_enables & 0xf0)
-            store_clipdist_output(b, out[1], &clipdist[4]);
+            store_clipdist_output(b, out[1], 0, &clipdist[4]);
       }
    }
 }
