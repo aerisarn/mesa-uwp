@@ -50,6 +50,31 @@ a306_gl:
     DEQP_SUITE: freedreno-a307
   parallel: 5
 
+# New jobs. Leave it as manual for now.
+.a306_piglit:
+  extends:
+    - .piglit-test
+    - .a306-test
+    - .test-manual-mr
+  variables:
+    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
+    HWCI_START_XORG: 1
+
+a306_piglit_gl:
+  extends:
+    - .a306_piglit
+  variables:
+    PIGLIT_PROFILES: quick_gl
+    BM_KERNEL_EXTRA_ARGS: "msm.num_hw_submissions=1"
+    FDO_CI_CONCURRENT: 3
+
+a306_piglit_shader:
+  extends:
+    - .a306_piglit
+  variables:
+    PIGLIT_PROFILES: quick_shader
+    FDO_CI_CONCURRENT: 6
+
 a306-traces:
   extends:
     - .freedreno-test-traces
