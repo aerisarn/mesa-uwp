@@ -862,6 +862,23 @@ is_const_mov(struct ir3_instruction *instr)
 }
 
 static inline bool
+is_subgroup_cond_mov_macro(struct ir3_instruction *instr)
+{
+   switch (instr->opc) {
+   case OPC_BALLOT_MACRO:
+   case OPC_ANY_MACRO:
+   case OPC_ALL_MACRO:
+   case OPC_ELECT_MACRO:
+   case OPC_READ_COND_MACRO:
+   case OPC_READ_FIRST_MACRO:
+   case OPC_SWZ_SHARED_MACRO:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
 is_alu(struct ir3_instruction *instr)
 {
    return (1 <= opc_cat(instr->opc)) && (opc_cat(instr->opc) <= 3);
