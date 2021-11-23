@@ -2036,6 +2036,17 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
         if (alu_reads_register(inst, false, ldvary_magic, ldvary_index))
                 return false;
 
+        /* The implicit ldvary destination may not be written to by a signal
+         * in the instruction following ldvary. Since we are planning to move
+         * ldvary to the previous instruction, this means we need to check if
+         * the current instruction has any other signal that could create this
+         * conflict. The only other signal that can write to the implicit
+         * ldvary destination that is compatible with ldvary in the same
+         * instruction is ldunif.
+         */
+        if (inst->sig.ldunif)
+                return false;
+
         /* The previous instruction can't write to the same destination as the
          * ldvary.
          */
