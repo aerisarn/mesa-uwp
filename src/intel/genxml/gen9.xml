@@ -6207,7 +6207,7 @@
     <field name="HME Ref1 Disable" start="177" end="177" type="bool"/>
     <field name="MB Slice Threshold Value" start="178" end="181" type="uint"/>
     <field name="Constrained Intra Prediction" start="186" end="186" type="bool"/>
-    <field name="Picture Type" start="189" end="190" type="uint">
+    <field name="Picture Type" start="189" end="190" type="uint" prefix="PI">
       <value name="I" value="0"/>
       <value name="P" value="1"/>
     </field>
