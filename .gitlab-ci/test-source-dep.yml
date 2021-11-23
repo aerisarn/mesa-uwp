@@ -428,6 +428,23 @@
       when: on_success
     - when: never
 
+.crocus-rules:
+  stage: intel
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+      - src/gallium/drivers/crocus/**/*
+      - src/gallium/winsys/crocus/**/*
+      - src/intel/**/*
+      when: on_success
+    - when: never
+
 .iris-rules:
   stage: intel
   rules:

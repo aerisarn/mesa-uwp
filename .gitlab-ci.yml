@@ -50,6 +50,7 @@ include:
   - local: 'src/broadcom/ci/gitlab-ci.yml'
   - local: 'src/etnaviv/ci/gitlab-ci.yml'
   - local: 'src/freedreno/ci/gitlab-ci.yml'
+  - local: 'src/gallium/drivers/crocus/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/d3d12/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/i915/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/iris/ci/gitlab-ci.yml'
@@ -711,7 +712,7 @@ debian-testing:
     GALLIUM_ST: >
       -D dri3=enabled
       -D gallium-va=enabled
-    GALLIUM_DRIVERS: "swrast,virgl,radeonsi,zink,iris,i915"
+    GALLIUM_DRIVERS: "swrast,virgl,radeonsi,zink,crocus,iris,i915"
     VULKAN_DRIVERS: "swrast,amd"
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >

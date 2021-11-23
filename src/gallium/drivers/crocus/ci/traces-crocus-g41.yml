@@ -1,0 +1,52 @@
+traces-db:
+  download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
+
+traces:
+  - path: glxgears/glxgears-2.trace
+    expectations:
+      - device: crocus-g41
+        checksum: 18455018dcfa97f69c967f118551ae30
+  - path: gputest/plot3d.trace
+    expectations:
+      - device: crocus-g41
+        checksum: 1527e6c60462e633dd421104f27c91c5
+  # Requires GLSL 1.30
+  #- path: humus/AmbientAperture.trace
+  #  expectations:
+  #    - device: crocus-g41
+  #      checksum: 8d4c52f0af9c09710d358f24c73fae3c
+  - path: humus/CelShading.trace
+    expectations:
+      - device: crocus-g41
+        checksum: 9b6e185ac8e8e67fc13d84f0ad6c3e3b
+  # Requires GLSL 1.30
+  #- path: humus/DynamicBranching3.trace
+  #  expectations:
+  #    - device: crocus-g41
+  #      checksum: 765fa742b87e411763921c6f988b2573
+  # Requires GLSL 1.30
+  #- path: humus/HDR.trace
+  #  expectations:
+  #    - device: crocus-g41
+  #      checksum: 80b164e85e96a413568d18ce308caae3
+  - path: humus/Portals.trace
+    expectations:
+      - device: crocus-g41
+        checksum: b090e734ed332e259664851576925d7b
+  - path: humus/RaytracedShadows.trace
+    expectations:
+      - device: crocus-g41
+        checksum: dbef340424f4f85eb8dc053ad3a56ae1
+  # Requires GLSL 1.30
+  #- path: humus/VolumetricFogging2.trace
+  #  expectations:
+  #    - device: crocus-g41
+  #      checksum: aec880cec7ba460f3144b789bc517891
+  - path: neverball/neverball.trace
+    expectations:
+      - device: crocus-g41
+        checksum: 0f14a88f511cd886c920238c80017e5d
+  - path: valve/counterstrike-v2.trace
+    expectations:
+      - device: crocus-g41
+        checksum: 90c01e73b3544cb477ac6109bc61bef1
