@@ -26,6 +26,7 @@
  */
 #include "radv_null_winsys_public.h"
 
+#include "util/u_string.h"
 #include "radv_null_bo.h"
 #include "radv_null_cs.h"
 
@@ -78,10 +79,10 @@ radv_null_winsys_query_info(struct radeon_winsys *rws, struct radeon_info *info)
    info->family = CHIP_UNKNOWN;
 
    for (i = CHIP_TAHITI; i < CHIP_LAST; i++) {
-      if (!strcmp(family, ac_get_family_name(i))) {
+      if (!strcasecmp(family, ac_get_family_name(i))) {
          /* Override family and chip_class. */
          info->family = i;
-         info->name = family;
+         info->name = ac_get_family_name(i);
 
          if (i >= CHIP_SIENNA_CICHLID)
             info->chip_class = GFX10_3;
