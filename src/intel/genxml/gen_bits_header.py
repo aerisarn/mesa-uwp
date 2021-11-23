@@ -66,10 +66,16 @@ from operator import itemgetter
 #include "dev/intel_device_info.h"
 #include "util/macros.h"
 
-<%def name="emit_per_gen_prop_func(item, prop)">
+<%def name="emit_per_gen_prop_func(item, prop, protect_defines)">
 %if item.has_prop(prop):
 % for gen, value in sorted(item.iter_prop(prop), reverse=True):
+%  if protect_defines:
+#ifndef ${gen.prefix(item.token_name)}_${prop}
 #define ${gen.prefix(item.token_name)}_${prop}  ${value}
+#endif
+%  else:
+#define ${gen.prefix(item.token_name)}_${prop}  ${value}
+%  endif
 % endfor
 
 static inline uint32_t ATTRIBUTE_PURE
@@ -101,15 +107,15 @@ extern "C" {
 
 /* ${container.name} */
 
-${emit_per_gen_prop_func(container, 'length')}
+${emit_per_gen_prop_func(container, 'length', True)}
 
 % for _, field in sorted(container.fields.items(), key=itemgetter(0)):
 
 /* ${container.name}::${field.name} */
 
-${emit_per_gen_prop_func(field, 'bits')}
+${emit_per_gen_prop_func(field, 'bits', False)}
 
-${emit_per_gen_prop_func(field, 'start')}
+${emit_per_gen_prop_func(field, 'start', False)}
 
 % endfor
 % endfor
