@@ -732,6 +732,18 @@ nir_iand_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 }
 
 static inline nir_ssa_def *
+nir_ishl_imm(nir_builder *build, nir_ssa_def *x, uint32_t y)
+{
+   if (y == 0) {
+      return x;
+   } else if (y >= x->bit_size) {
+      return nir_imm_intN_t(build, 0, x->bit_size);
+   } else {
+      return nir_ishl(build, x, nir_imm_int(build, y));
+   }
+}
+
+static inline nir_ssa_def *
 nir_ishr_imm(nir_builder *build, nir_ssa_def *x, uint32_t y)
 {
    if (y == 0) {
