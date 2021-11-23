@@ -132,7 +132,11 @@ endif
 
 crashdec = executable(
   'crashdec',
-  'crashdec.c',
+  [
+    'crashdec.c',
+    'crashdec.h',
+    'crashdec-mempool.c',
+  ],
   include_directories: [
     inc_freedreno,
     inc_freedreno_rnn,
