@@ -370,6 +370,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
          ubld.AND(desc, dynamic_msaa_flags(prog_data),
                   brw_imm_ud(BRW_WM_MSAA_FLAG_COARSE_DISPATCH));
+         desc = component(desc, 0);
       }
 
       uint32_t ex_desc = 0;
