@@ -106,8 +106,6 @@ spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple@Line loop,Fail
 spec@!opengl 1.1@linestipple@Line strip,Fail
 
-spec@!opengl 1.1@windowoverlap,Fail
-
 # Fail: nothing rendered.
 spec@!opengl 2.0@vs-point_size-zero,Fail
 

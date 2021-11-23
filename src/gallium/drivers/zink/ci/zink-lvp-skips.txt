@@ -11,9 +11,6 @@ spec@arb_timer_query.*
 spec@arb_sample_shading@builtin-gl-sample-mask
 spec@glsl-1.30@execution@tex-miplevel-selection.*
 
-# only supported if Piglit is using GLUT
-spec@!opengl 1.1@windowoverlap
-
 # This test doesn't even seem to exist, but piglit adds it to a group...?
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match
 

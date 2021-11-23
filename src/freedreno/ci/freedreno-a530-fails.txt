@@ -275,7 +275,6 @@ spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on top edge,
 spec@!opengl 1.1@polygon-mode-offset@config 5: Expected blue pixel in center,Fail
 spec@!opengl 1.1@polygon-mode-offset@config 6: Expected blue pixel in center,Fail
 spec@!opengl 1.1@ppgtt_memory_alignment,Crash
-spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.2@copyteximage 3d,Fail
 spec@!opengl 1.4@copy-pixels,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail

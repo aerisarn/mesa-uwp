@@ -1205,7 +1205,6 @@ spec@!opengl 1.1@texwrap formats@GL_RGBA16- swizzled,Fail
 spec@!opengl 1.1@texwrap formats@GL_RGBA8,Fail
 spec@!opengl 1.1@texwrap formats@GL_RGBA8- NPOT,Fail
 spec@!opengl 1.1@texwrap formats@GL_RGBA8- swizzled,Fail
-spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.2@copyteximage 3d,Fail
 spec@!opengl 1.2@getteximage-targets 3d,Fail
 spec@!opengl 1.2@lodclamp,Fail

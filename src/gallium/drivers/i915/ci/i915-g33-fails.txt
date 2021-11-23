@@ -277,7 +277,6 @@ spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA2- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA4- border color only,Fail
 spec@!opengl 1.1@texwrap formats bordercolor@GL_RGBA8- border color only,Fail
 
-spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 1.2@levelclamp,Fail
 
 spec@!opengl 1.2@texwrap 3d,Fail

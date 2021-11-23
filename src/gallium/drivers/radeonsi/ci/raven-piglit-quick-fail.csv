@@ -52,7 +52,6 @@ spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL
 spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_BLUE and GL_BYTE,Fail
 spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_GREEN and GL_BYTE,Fail
 spec@!opengl 1.1@teximage-colors gl_rgba16_snorm@GL_RGBA16_SNORM texture with GL_RGB and GL_BYTE,Fail
-spec@!opengl 1.1@windowoverlap,Fail
 spec@arb_bindless_texture@compiler@images@arith-bound-image.frag,Crash
 spec@arb_bindless_texture@compiler@samplers@arith-bound-sampler-texture2d.frag,Crash
 spec@arb_bindless_texture@illegal,Fail
