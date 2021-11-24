@@ -330,6 +330,16 @@ struct ir3_instruction {
          } condition;
       } cat2;
       struct {
+         enum {
+            IR3_SRC_UNSIGNED = 0,
+            IR3_SRC_MIXED = 1,
+         } signedness;
+         enum {
+            IR3_SRC_PACKED_LOW = 0,
+            IR3_SRC_PACKED_HIGH = 1,
+         } packed;
+      } cat3;
+      struct {
          unsigned samp, tex;
          unsigned tex_base : 3;
          unsigned cluster_size : 4;
@@ -1383,7 +1393,13 @@ ir3_cat3_absneg(opc_t opc)
    case OPC_SEL_B16:
    case OPC_SEL_B32:
 
-   case OPC_SHLG_B16:
+   case OPC_SHRM:
+   case OPC_SHLM:
+   case OPC_SHRG:
+   case OPC_SHLG:
+   case OPC_ANDG:
+   case OPC_WMM:
+   case OPC_WMM_ACCU:
 
    default:
       return 0;
@@ -1407,6 +1423,8 @@ ir3_output_conv_type(struct ir3_instruction *instr, bool *can_fold)
    case OPC_BARY_F:
    case OPC_MAD_F32:
    case OPC_MAD_F16:
+   case OPC_WMM:
+   case OPC_WMM_ACCU:
       return TYPE_F32;
 
    case OPC_ADD_U:
@@ -1423,6 +1441,11 @@ ir3_output_conv_type(struct ir3_instruction *instr, bool *can_fold)
    case OPC_SHR_B:
    case OPC_ASHR_B:
    case OPC_MAD_U24:
+   case OPC_SHRM:
+   case OPC_SHLM:
+   case OPC_SHRG:
+   case OPC_SHLG:
+   case OPC_ANDG:
    /* Comparison ops zero-extend/truncate their results, so consider them as
     * unsigned here.
     */
@@ -2213,6 +2236,8 @@ INSTR3(MAD_U24)
 INSTR3(MAD_S24)
 INSTR3(MAD_F16)
 INSTR3(MAD_F32)
+INSTR3(DP2ACC)
+INSTR3(DP4ACC)
 /* NOTE: SEL_B32 checks for zero vs nonzero */
 INSTR3(SEL_B16)
 INSTR3(SEL_B32)

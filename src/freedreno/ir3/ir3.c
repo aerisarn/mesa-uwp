@@ -922,12 +922,29 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n, unsigned flags)
       valid_flags =
          ir3_cat3_absneg(instr->opc) | IR3_REG_RELATIV | IR3_REG_SHARED;
 
-      if (instr->opc == OPC_SHLG_B16) {
+      switch (instr->opc) {
+      case OPC_SHRM:
+      case OPC_SHLM:
+      case OPC_SHRG:
+      case OPC_SHLG:
+      case OPC_ANDG: {
          valid_flags |= IR3_REG_IMMED;
-         /* shlg.b16 can be RELATIV+CONST but not CONST: */
+         /* Can be RELATIV+CONST but not CONST: */
          if (flags & IR3_REG_RELATIV)
             valid_flags |= IR3_REG_CONST;
-      } else {
+         break;
+      }
+      case OPC_WMM:
+      case OPC_WMM_ACCU: {
+         valid_flags = IR3_REG_SHARED;
+         if (n == 2)
+            valid_flags = IR3_REG_CONST;
+         break;
+      }
+      case OPC_DP2ACC:
+      case OPC_DP4ACC:
+         break;
+      default:
          valid_flags |= IR3_REG_CONST;
       }
 

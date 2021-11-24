@@ -127,9 +127,20 @@ static const struct test {
    INSTR_6XX(63820005_10315030, "mad.f32 r1.y, (neg)c12.x, r1.x, c12.y"),
    INSTR_6XX(62050009_00091000, "mad.u24 r2.y, c0.x, r2.z, r2.y"),
    INSTR_6XX(61828008_00081033, "madsh.m16 r2.x, c12.w, r1.y, r2.x"),
-   INSTR_6XX(65900820_100cb008, "(nop3) shlg.b16 hr8.x, 8, hr8.x, 12"), /* (nop3) shlg.b16 hr8.x, (r)8, (r)hr8.x, 12; */
-   INSTR_6XX(65ae085c_0002a001, "(nop3) shlg.b16 hr23.x, hr0.y, hr23.x, hr0.z"), /* not seen in blob */
-   INSTR_6XX(65900820_0c0aac05, "(nop3) shlg.b16 hr8.x, hc<a0.x + 5>, hr8.x, hc<a0.x + 10>"), /* not seen in blob */
+   INSTR_6XX(65900820_100cb008, "(nop3) shlg hr8.x, 8, hr8.x, 12"), /* (nop3) shlg.b16 hr8.x, (r)8, (r)hr8.x, 12; */
+   INSTR_6XX(65ae085c_0002a001, "(nop3) shlg hr23.x, hr0.y, hr23.x, hr0.z"), /* not seen in blob */
+   INSTR_6XX(65900820_0c0aac05, "(nop3) shlg hr8.x, hc<a0.x + 5>, hr8.x, hc<a0.x + 10>"), /* not seen in blob */
+   INSTR_6XX(65ae0c5c_0002a001, "(nop3) shlg r23.x, r0.y, r23.x, r0.z"), /* (nop3) shlg.b32 r23.x, (r)r0.y, (r)r23.x, r0.z */
+   INSTR_6XX(64018802_0002e003, "(nop3) shrm hr0.z, (neg)hr0.w, hr0.w, hr0.z"),
+   INSTR_6XX(64818802_0002e003, "(nop3) shlm hr0.z, (neg)hr0.w, hr0.w, hr0.z"),
+   INSTR_6XX(65018802_0002e003, "(nop3) shrg hr0.z, (neg)hr0.w, hr0.w, hr0.z"),
+   INSTR_6XX(66018802_0002e003, "(nop3) andg hr0.z, (neg)hr0.w, hr0.w, hr0.z"),
+   INSTR_6XX(67018802_1002e003, "(nop3) wmm hr0.z, (neg)hr0.w, hr0.w, 2"), /* (nop3) wmm.f16f16 hr0.z, (abs)(r)hr0.w, (r)hr0.w, 2 */
+   INSTR_6XX(67018c02_1002e003, "(nop3) wmm.accu hr0.z, (neg)hr0.w, hr0.w, 2"),
+   INSTR_6XX(6701c802_9002a003, "(nop3) wmm r0.z, r0.w, r0.w, 2"), /* (nop3) wmm.f32f32 r0.z, (r)r0.w, (r)r0.w, 2 */
+   /* custom test with qcom_dot8 function from cl_qcom_dot_product8 */
+   INSTR_6XX(66818c02_0002e003, "(sat)(nop3) dp2acc.mixed.low r0.z, r0.w, r0.w, r0.z"), /* (nop3) dp2acc (sat)r0.z, (signed)(low)(r)r0.w, (low)(r)r0.w, r0.z */
+   INSTR_6XX(6681c802_8002a003, "(nop3) dp4acc.unsigned.low r0.z, r0.w, r0.w, (neg)r0.z"), /* (nop3) dp4acc r0.z, (unsigned)(r)r0.w, (r)r0.w, (neg)r0.z */
 
    /* cat4 */
    INSTR_6XX(8010000a_00000003, "rcp r2.z, r0.w"),
