@@ -517,6 +517,22 @@ lima_calculate_alpha_blend(enum pipe_blend_func rgb_func, enum pipe_blend_func a
    if (alpha_dst_factor == PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE)
       alpha_dst_factor = PIPE_BLENDFACTOR_ONE;
 
+   /* MIN and MAX ops actually do OP(As * S + Ad * D, Ad), so
+    * we need to set S to 1 and D to 0 to get correct result */
+   if (alpha_func == PIPE_BLEND_MIN ||
+       alpha_func == PIPE_BLEND_MAX) {
+      alpha_src_factor = PIPE_BLENDFACTOR_ONE;
+      alpha_dst_factor = PIPE_BLENDFACTOR_ZERO;
+   }
+
+   /* MIN and MAX ops actually do OP(Cs * S + Cd * D, Cd), so
+    * we need to set S to 1 and D to 0 to get correct result */
+   if (rgb_func == PIPE_BLEND_MIN ||
+       rgb_func == PIPE_BLEND_MAX) {
+      rgb_src_factor = PIPE_BLENDFACTOR_ONE;
+      rgb_dst_factor = PIPE_BLENDFACTOR_ZERO;
+   }
+
    return lima_blend_func(rgb_func) |
       (lima_blend_func(alpha_func) << 3) |
       (lima_blend_factor(rgb_src_factor) << 6) |
