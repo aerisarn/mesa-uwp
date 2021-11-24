@@ -713,7 +713,15 @@ decode(void)
    while ((line = popline())) {
       printf("%s", line);
       if (startswith(line, "revision:")) {
-         parseline(line, "revision: %u", &options.gpu_id);
+         unsigned core, major, minor, patchid;
+
+         parseline(line, "revision: %u (%u.%u.%u.%u)", &options.gpu_id,
+                   &core, &major, &minor, &patchid);
+
+         if (options.gpu_id == 0) {
+            options.gpu_id = (core * 100) + (major * 10) + minor;
+         }
+
          printf("Got gpu_id=%u\n", options.gpu_id);
 
          cffdec_init(&options);
