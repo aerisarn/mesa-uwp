@@ -1217,6 +1217,8 @@ anv_execbuf_init(struct anv_execbuf *exec)
 static void
 anv_execbuf_finish(struct anv_execbuf *exec)
 {
+   vk_free(exec->alloc, exec->syncobjs);
+   vk_free(exec->alloc, exec->syncobj_values);
    vk_free(exec->alloc, exec->surface_states_relocs);
    vk_free(exec->alloc, exec->objects);
    vk_free(exec->alloc, exec->bos);
