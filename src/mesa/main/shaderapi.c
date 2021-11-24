@@ -88,6 +88,10 @@
 
    char* load_shader_replacement(struct _shader_replacement *repl);
 
+   And a method to replace the shader without sha1 matching:
+
+   char *try_direct_replace(const char *app, const char *source)
+
    shader_replacement.h can be generated at build time, or copied
    from an external folder, or any other method.
 */
@@ -98,6 +102,12 @@ struct _shader_replacement {
    gl_shader_stage stage;
 };
 struct _shader_replacement shader_replacements[0];
+
+static char *try_direct_replace(const char *app, const char *source)
+{
+   return NULL;
+}
+
 static char* load_shader_replacement(struct _shader_replacement *repl)
 {
    return NULL;
@@ -2044,8 +2054,12 @@ _mesa_read_shader_source(const gl_shader_stage stage, const char *source)
    generate_sha1(source, sha);
 
    if (!debug_get_bool_option("MESA_NO_SHADER_REPLACEMENT", false)) {
-      const char *process_name =
-         ARRAY_SIZE(shader_replacements) ? util_get_process_name() : NULL;
+      const char *process_name = util_get_process_name();
+
+      char *new_source = try_direct_replace(process_name, source);
+      if (new_source)
+         return new_source;
+
       for (size_t i = 0; i < ARRAY_SIZE(shader_replacements); i++) {
          if (stage != shader_replacements[i].stage)
             continue;
