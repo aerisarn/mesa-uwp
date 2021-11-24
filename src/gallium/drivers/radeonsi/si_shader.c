@@ -1023,6 +1023,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
                                         struct pipe_debug_callback *debug)
 {
    const struct ac_shader_config *conf = &shader->config;
+   static const char *stages[] = {"VS", "TCS", "TES", "GS", "PS", "CS"};
 
    if (screen->options.debug_disassembly)
       si_shader_dump_disassembly(screen, &shader->binary, shader->selector->info.stage,
@@ -1031,10 +1032,11 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
    pipe_debug_message(debug, SHADER_INFO,
                       "Shader Stats: SGPRS: %d VGPRS: %d Code Size: %d "
                       "LDS: %d Scratch: %d Max Waves: %d Spilled SGPRs: %d "
-                      "Spilled VGPRs: %d PrivMem VGPRs: %d",
+                      "Spilled VGPRs: %d PrivMem VGPRs: %d (%s)",
                       conf->num_sgprs, conf->num_vgprs, si_get_shader_binary_size(screen, shader),
                       conf->lds_size, conf->scratch_bytes_per_wave, shader->info.max_simd_waves,
-                      conf->spilled_sgprs, conf->spilled_vgprs, shader->info.private_mem_vgprs);
+                      conf->spilled_sgprs, conf->spilled_vgprs, shader->info.private_mem_vgprs,
+                      stages[shader->selector->info.stage]);
 }
 
 static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *shader, FILE *file,
