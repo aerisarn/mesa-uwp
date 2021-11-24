@@ -591,15 +591,19 @@ lima_update_fs_state(struct lima_context *ctx)
    memcpy(key->nir_sha1, ctx->uncomp_fs->nir_sha1,
           sizeof(ctx->uncomp_fs->nir_sha1));
 
+   uint8_t identity[4] = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
+                           PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W };
    for (int i = 0; i < lima_tex->num_textures; i++) {
       struct lima_sampler_view *sampler = lima_sampler_view(lima_tex->textures[i]);
+      if (!sampler) {
+         memcpy(key->tex[i].swizzle, identity, 4);
+         continue;
+      }
       for (int j = 0; j < 4; j++)
          key->tex[i].swizzle[j] = sampler->swizzle[j];
    }
 
    /* Fill rest with identity swizzle */
-   uint8_t identity[4] = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
-                           PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W };
    for (int i = lima_tex->num_textures; i < ARRAY_SIZE(key->tex); i++)
       memcpy(key->tex[i].swizzle, identity, 4);
 

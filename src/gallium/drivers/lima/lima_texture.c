@@ -161,6 +161,9 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
 
    memset(desc, 0, desc_size);
 
+   if (!texture)
+      return;
+
    switch (texture->base.target) {
    case PIPE_TEXTURE_1D:
       desc->sampler_dim = LIMA_SAMPLER_DIM_1D;
@@ -260,6 +263,10 @@ lima_calc_tex_desc_size(struct lima_sampler_view *texture)
 {
    unsigned size = offsetof(lima_tex_desc, va);
    unsigned va_bit_size;
+
+   if (!texture)
+      return lima_min_tex_desc_size;
+
    unsigned first_level = texture->base.u.tex.first_level;
    unsigned last_level = texture->base.u.tex.last_level;
 
@@ -288,6 +295,8 @@ lima_update_textures(struct lima_context *ctx)
    /* we always need to add texture bo to job */
    for (int i = 0; i < lima_tex->num_samplers; i++) {
       struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
+      if (!texture)
+         continue;
       struct lima_resource *rsc = lima_resource(texture->base.texture);
       lima_flush_previous_job_writing_resource(ctx, texture->base.texture);
       lima_job_add_bo(job, LIMA_PIPE_PP, rsc->bo, LIMA_SUBMIT_BO_READ);
