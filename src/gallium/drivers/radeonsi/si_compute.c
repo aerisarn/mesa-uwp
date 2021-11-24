@@ -239,7 +239,7 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
       si_sampler_and_image_descriptors_idx(PIPE_SHADER_COMPUTE);
    sel->info.base.shared_size = cso->req_local_mem;
    program->shader.selector = &program->sel;
-   program->shader.wave_size = si_get_shader_wave_size(sscreen, &program->shader);
+   program->shader.wave_size = si_determine_wave_size(sscreen, &program->shader);
    program->ir_type = cso->ir_type;
    program->private_size = cso->req_private_mem;
    program->input_size = cso->req_input_mem;

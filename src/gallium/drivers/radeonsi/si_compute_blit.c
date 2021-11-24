@@ -306,7 +306,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
    unsigned instructions_per_thread = MAX2(1, dwords_per_thread / 4);
    unsigned dwords_per_instruction = dwords_per_thread / instructions_per_thread;
    /* The shader declares the block size like this: */
-   unsigned block_size = si_get_shader_wave_size(sctx->screen, NULL);
+   unsigned block_size = si_determine_wave_size(sctx->screen, NULL);
    unsigned dwords_per_wave = dwords_per_thread * block_size;
 
    unsigned num_dwords = size / 4;
@@ -599,7 +599,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       info.block[1] = ssrc->surface.u.gfx9.color.dcc_block_height;
       info.block[2] = ssrc->surface.u.gfx9.color.dcc_block_depth;
 
-      unsigned default_wave_size = si_get_shader_wave_size(sctx->screen, NULL);;
+      unsigned default_wave_size = si_determine_wave_size(sctx->screen, NULL);;
 
       /* Make sure the block size is at least the same as wave size. */
       while (info.block[0] * info.block[1] * info.block[2] < default_wave_size) {

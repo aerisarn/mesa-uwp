@@ -881,7 +881,7 @@ static int si_get_compute_param(struct pipe_screen *screen, enum pipe_shader_ir 
    case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
       if (ret) {
          uint32_t *subgroup_size = ret;
-         *subgroup_size = si_get_shader_wave_size(sscreen, NULL);
+         *subgroup_size = si_determine_wave_size(sscreen, NULL);
       }
       return sizeof(uint32_t);
    case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:

@@ -134,7 +134,7 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords
    if (!ureg)
       return NULL;
 
-   unsigned default_wave_size = si_get_shader_wave_size(sscreen, NULL);
+   unsigned default_wave_size = si_determine_wave_size(sscreen, NULL);
 
    ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH, default_wave_size);
    ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT, 1);

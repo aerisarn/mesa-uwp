@@ -37,6 +37,30 @@
 #include "util/u_prim.h"
 #include "tgsi/tgsi_from_mesa.h"
 
+unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *shader)
+{
+   /* There are a few uses that pass shader=NULL here, expecting the default compute wave size. */
+   struct si_shader_info *info = shader ? &shader->selector->info : NULL;
+   gl_shader_stage stage = info ? info->stage : MESA_SHADER_COMPUTE;
+
+   if (sscreen->info.chip_class < GFX10)
+      return 64;
+
+   /* Legacy GS only supports Wave64. */
+   if ((stage == MESA_SHADER_VERTEX && shader->key.ge.as_es && !shader->key.ge.as_ngg) ||
+       (stage == MESA_SHADER_TESS_EVAL && shader->key.ge.as_es && !shader->key.ge.as_ngg) ||
+       (stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg))
+      return 64;
+
+   if (stage == MESA_SHADER_COMPUTE)
+      return sscreen->debug_flags & DBG(W32_CS) ? 32 : 64;
+
+   if (stage == MESA_SHADER_FRAGMENT)
+      return sscreen->debug_flags & DBG(W32_PS) ? 32 : 64;
+
+   return sscreen->debug_flags & DBG(W32_GE) ? 32 : 64;
+}
+
 /* SHADER_CACHE */
 
 /**
@@ -2270,7 +2294,7 @@ static bool si_check_missing_main_part(struct si_screen *sscreen, struct si_shad
          main_part->key.ge.as_ngg = key->ge.as_ngg;
       }
       main_part->is_monolithic = false;
-      main_part->wave_size = si_get_shader_wave_size(sscreen, main_part);
+      main_part->wave_size = si_determine_wave_size(sscreen, main_part);
 
       if (!si_compile_shader(sscreen, compiler_state->compiler, main_part,
                              &compiler_state->debug)) {
@@ -2447,7 +2471,7 @@ current_not_ready:
 
    shader->selector = sel;
    *((SHADER_KEY_TYPE*)&shader->key) = *key;
-   shader->wave_size = si_get_shader_wave_size(sscreen, shader);
+   shader->wave_size = si_determine_wave_size(sscreen, shader);
    shader->compiler_ctx_state.compiler = &sctx->compiler;
    shader->compiler_ctx_state.debug = sctx->debug;
    shader->compiler_ctx_state.is_debug_context = sctx->is_debug;
@@ -2714,7 +2738,7 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
            sel->info.stage == MESA_SHADER_TESS_EVAL || sel->info.stage == MESA_SHADER_GEOMETRY))
          shader->key.ge.as_ngg = 1;
 
-      shader->wave_size = si_get_shader_wave_size(sscreen, shader);
+      shader->wave_size = si_determine_wave_size(sscreen, shader);
 
       if (sel->nir) {
          if (sel->info.stage <= MESA_SHADER_GEOMETRY) {
