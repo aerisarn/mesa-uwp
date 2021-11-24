@@ -1720,8 +1720,10 @@ nir_validate_shader(nir_shader *shader, const char *when)
    init_validate_state(&state);
 
    if (state.shader_gc_list) {
-      list_for_each_entry(nir_instr, instr, &shader->gc_list, gc_node)
-         _mesa_set_add(state.shader_gc_list, instr);
+      list_for_each_entry(nir_instr, instr, &shader->gc_list, gc_node) {
+         if (instr->node.prev || instr->node.next)
+            _mesa_set_add(state.shader_gc_list, instr);
+      }
    }
 
    state.shader = shader;
