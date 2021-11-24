@@ -50,10 +50,6 @@ spill-dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-el
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
 gmem-dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_vert,Fail
 
-# Looks like a segfault, not assertion failure
-spill-dEQP-VK.graphicsfuzz.cov-nested-loops-float-bits-to-int-increment-array,Crash
-spill-dEQP-VK.graphicsfuzz.cov-two-nested-loops-switch-case-matrix-array-increment,Crash
-
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 glx@glx_arb_create_context_no_error@no error,Fail
 glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail
