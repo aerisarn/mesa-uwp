@@ -167,6 +167,7 @@ void IntelDriver::enable_perfcnt(uint64_t sampling_period_ns)
 
 void IntelDriver::disable_perfcnt()
 {
+   gpu_timestamp_udw = 0;
    perf = nullptr;
    groups.clear();
    counters.clear();
