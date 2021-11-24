@@ -597,7 +597,8 @@ _foreach_decoration_helper(struct vtn_builder *b,
                      member, base_value->type->length);
       } else {
          /* Not a decoration */
-         assert(dec->scope == VTN_DEC_EXECUTION_MODE);
+         assert(dec->scope == VTN_DEC_EXECUTION_MODE ||
+                dec->scope <= VTN_DEC_STRUCT_MEMBER_NAME0);
          continue;
       }
 
@@ -683,6 +684,19 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
       dec->operands = w;
 
       /* Link into the list */
+      dec->next = val->decoration;
+      val->decoration = dec;
+      break;
+   }
+
+   case SpvOpMemberName: {
+      struct vtn_value *val = vtn_untyped_value(b, target);
+      struct vtn_decoration *dec = rzalloc(b, struct vtn_decoration);
+
+      dec->scope = VTN_DEC_STRUCT_MEMBER_NAME0 - *(w++);
+
+      dec->member_name = vtn_string_literal(b, w, w_end - w, NULL);
+
       dec->next = val->decoration;
       val->decoration = dec;
       break;
@@ -1510,9 +1524,19 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       NIR_VLA(struct glsl_struct_field, fields, count);
       for (unsigned i = 0; i < num_fields; i++) {
          val->type->members[i] = vtn_get_type(b, w[i + 2]);
+         const char *name = NULL;
+         for (struct vtn_decoration *dec = val->decoration; dec; dec = dec->next) {
+            if (dec->scope == VTN_DEC_STRUCT_MEMBER_NAME0 - i) {
+               name = dec->member_name;
+               break;
+            }
+         }
+         if (!name)
+            name = ralloc_asprintf(b, "field%d", i);
+
          fields[i] = (struct glsl_struct_field) {
             .type = val->type->members[i]->type,
-            .name = ralloc_asprintf(b, "field%d", i),
+            .name = name,
             .location = -1,
             .offset = -1,
          };
@@ -4837,9 +4861,6 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpMemberName:
-      /* TODO */
-      break;
-
    case SpvOpExecutionMode:
    case SpvOpExecutionModeId:
    case SpvOpDecorationGroup:

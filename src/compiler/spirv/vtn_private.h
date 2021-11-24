@@ -624,14 +624,23 @@ struct vtn_value {
 
 #define VTN_DEC_DECORATION -1
 #define VTN_DEC_EXECUTION_MODE -2
+#define VTN_DEC_STRUCT_MEMBER_NAME0 -3
 #define VTN_DEC_STRUCT_MEMBER0 0
 
 struct vtn_decoration {
    struct vtn_decoration *next;
 
-   /* Specifies how to apply this decoration.  Negative values represent a
-    * decoration or execution mode. (See the VTN_DEC_ #defines above.)
-    * Non-negative values specify that it applies to a structure member.
+   /* Different kinds of decorations are stored in a value,
+      the scope defines what decoration it refers to:
+
+      - VTN_DEC_DECORATION:
+            decoration associated with the value
+      - VTN_DEC_EXECUTION_MODE:
+            an execution mode associated with an entrypoint value
+      - VTN_DEC_STRUCT_MEMBER0 + m:
+            decoration associated with member m of a struct value
+      - VTN_DEC_STRUCT_MEMBER_NAME0 - m:
+            name of m'th member of a struct value
     */
    int scope;
 
@@ -641,6 +650,7 @@ struct vtn_decoration {
    union {
       SpvDecoration decoration;
       SpvExecutionMode exec_mode;
+      const char *member_name;
    };
 };
 
