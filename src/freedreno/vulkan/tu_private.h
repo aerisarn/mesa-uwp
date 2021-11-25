@@ -1167,6 +1167,7 @@ tu_spirv_to_nir(struct tu_device *dev,
 struct tu_shader *
 tu_shader_create(struct tu_device *dev,
                  nir_shader *nir,
+                 const VkPipelineShaderStageCreateInfo *stage_info,
                  unsigned multiview_mask,
                  struct tu_pipeline_layout *layout,
                  const VkAllocationCallbacks *alloc);

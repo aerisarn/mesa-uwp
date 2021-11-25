@@ -2426,7 +2426,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
          continue;
 
       struct tu_shader *shader =
-         tu_shader_create(builder->device, nir[stage],
+         tu_shader_create(builder->device, nir[stage], stage_infos[stage],
                           builder->multiview_mask, builder->layout,
                           builder->alloc);
       if (!shader)
@@ -3367,7 +3367,7 @@ tu_compute_pipeline_create(VkDevice device,
       nir_shader_as_str(nir, pipeline->executables_mem_ctx) : NULL;
 
    struct tu_shader *shader =
-      tu_shader_create(dev, nir, 0, layout, pAllocator);
+      tu_shader_create(dev, nir, stage_info, 0, layout, pAllocator);
    if (!shader) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;
