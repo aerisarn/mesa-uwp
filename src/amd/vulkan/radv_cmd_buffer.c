@@ -3229,7 +3229,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       uint8_t base = shader->info.min_push_constant_used / 4;
 
       radv_emit_inline_push_consts(cmd_buffer, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
-                                   (uint32_t *)&cmd_buffer->push_constants[base * 4]);
+                                   (uint32_t *)cmd_buffer->push_constants + base);
    }
 
    if (need_push_constants) {
