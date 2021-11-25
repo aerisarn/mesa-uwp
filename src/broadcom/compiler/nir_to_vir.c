@@ -1757,6 +1757,7 @@ emit_frag_end(struct v3d_compile *c)
                 inst->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT,
                                                       tlb_specifier |
                                                       0xffffff00);
+                inst->is_tlb_z_write = true;
         }
 
         /* XXX: Performance improvement: Merge Z write and color writes TLB

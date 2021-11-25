@@ -169,6 +169,9 @@ struct qinst {
          * otherwise.
          */
         int uniform;
+
+        /* If this is a a TLB Z write */
+        bool is_tlb_z_write;
 };
 
 enum quniform_contents {
