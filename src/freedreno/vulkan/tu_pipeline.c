@@ -617,6 +617,30 @@ tu6_emit_xs(struct tu_cs *cs,
          tu_cs_emit_qw(cs, iova + start);
       }
    }
+
+   /* emit FS driver param */
+   if (stage == MESA_SHADER_FRAGMENT && const_state->num_driver_params > 0) {
+      uint32_t base = const_state->offsets.driver_param;
+      int32_t size = DIV_ROUND_UP(const_state->num_driver_params, 4);
+      size = MAX2(MIN2(size + base, xs->constlen) - base, 0);
+
+      if (size > 0) {
+         tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + size * 4);
+         tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
+                    CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                    CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                    CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
+                    CP_LOAD_STATE6_0_NUM_UNIT(size));
+         tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+         tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+
+         assert(size == 1);
+         tu_cs_emit(cs, xs->info.double_threadsize ? 128 : 64);
+         tu_cs_emit(cs, 0);
+         tu_cs_emit(cs, 0);
+         tu_cs_emit(cs, 0);
+      }
+   }
 }
 
 static void

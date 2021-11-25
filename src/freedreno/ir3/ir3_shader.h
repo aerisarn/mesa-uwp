@@ -49,7 +49,7 @@ enum ir3_driver_param {
    IR3_DP_BASE_GROUP_X = 4,
    IR3_DP_BASE_GROUP_Y = 5,
    IR3_DP_BASE_GROUP_Z = 6,
-   IR3_DP_SUBGROUP_SIZE = 7,
+   IR3_DP_CS_SUBGROUP_SIZE = 7,
    IR3_DP_LOCAL_GROUP_SIZE_X = 8,
    IR3_DP_LOCAL_GROUP_SIZE_Y = 9,
    IR3_DP_LOCAL_GROUP_SIZE_Z = 10,
@@ -70,7 +70,10 @@ enum ir3_driver_param {
    IR3_DP_UCP0_X = 4,
    /* .... */
    IR3_DP_UCP7_W = 35,
-   IR3_DP_VS_COUNT = 36 /* must be aligned to vec4 */
+   IR3_DP_VS_COUNT = 36, /* must be aligned to vec4 */
+
+   /* fragment shader driver params: */
+   IR3_DP_FS_SUBGROUP_SIZE = 0,
 };
 
 #define IR3_MAX_SHADER_BUFFERS  32

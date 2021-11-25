@@ -870,10 +870,15 @@ ir3_nir_scan_driver_consts(struct ir3_compiler *compiler, nir_shader *shader, st
                layout->num_driver_params =
                   MAX2(layout->num_driver_params, IR3_DP_BASE_GROUP_Z + 1);
                break;
-            case nir_intrinsic_load_subgroup_size:
+            case nir_intrinsic_load_subgroup_size: {
+               assert(shader->info.stage == MESA_SHADER_COMPUTE ||
+                      shader->info.stage == MESA_SHADER_FRAGMENT);
+               enum ir3_driver_param size = shader->info.stage == MESA_SHADER_COMPUTE ?
+                  IR3_DP_CS_SUBGROUP_SIZE : IR3_DP_FS_SUBGROUP_SIZE;
                layout->num_driver_params =
-                  MAX2(layout->num_driver_params, IR3_DP_SUBGROUP_SIZE + 1);
+                  MAX2(layout->num_driver_params, size + 1);
                break;
+            }
             case nir_intrinsic_load_subgroup_id_shift_ir3:
                layout->num_driver_params =
                   MAX2(layout->num_driver_params, IR3_DP_SUBGROUP_ID_SHIFT + 1);
