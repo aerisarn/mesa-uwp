@@ -1309,7 +1309,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       ssa_info& info = ctx.info[instr->operands[0].tempId()];
 
       if (info.is_constant_or_literal(32)) {
-         uint32_t val = info.val;
+         uint64_t val = info.val;
          for (Definition def : instr->definitions) {
             uint32_t mask = u_bit_consecutive(0, def.bytes() * 8u);
             ctx.info[def.tempId()].set_constant(ctx.program->chip_class, val & mask);
