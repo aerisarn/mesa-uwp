@@ -64,6 +64,7 @@ enum {
    RADV_DEBUG_NO_ATOC_DITHERING = 1ull << 33,
    RADV_DEBUG_NO_NGGC = 1ull << 34,
    RADV_DEBUG_DUMP_PROLOGS = 1ull << 35,
+   RADV_DEBUG_NO_DMA_BLIT = 1ull << 36,
 };
 
 enum {

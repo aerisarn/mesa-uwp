@@ -2596,6 +2596,9 @@ void radv_emit_thread_trace_userdata(const struct radv_device *device, struct ra
                                      const void *data, uint32_t num_dwords);
 bool radv_is_instruction_timing_enabled(void);
 
+bool radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
+                          struct radv_buffer *buffer, const VkBufferImageCopy2KHR *region);
+
 /* radv_sqtt_layer_.c */
 struct radv_barrier_data {
    union {

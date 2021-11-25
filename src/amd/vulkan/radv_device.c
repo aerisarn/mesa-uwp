@@ -856,6 +856,7 @@ static const struct debug_control radv_debug_options[] = {
    {"noatocdithering", RADV_DEBUG_NO_ATOC_DITHERING},
    {"nonggc", RADV_DEBUG_NO_NGGC},
    {"prologs", RADV_DEBUG_DUMP_PROLOGS},
+   {"nodma", RADV_DEBUG_NO_DMA_BLIT},
    {NULL, 0}};
 
 const char *
@@ -3777,6 +3778,9 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
    unsigned tess_offchip_ring_offset;
    uint32_t ring_bo_flags = RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING;
    VkResult result = VK_SUCCESS;
+   if (queue->vk.queue_family_index == RADV_QUEUE_TRANSFER)
+      return VK_SUCCESS;
+
    if (!queue->has_tess_rings) {
       if (needs_tess_rings)
          add_tess_rings = true;

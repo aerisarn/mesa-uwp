@@ -77,6 +77,7 @@ libradv_files = files(
   'radv_pipeline_rt.c',
   'radv_private.h',
   'radv_radeon_winsys.h',
+  'radv_sdma_copy_image.c',
   'radv_shader.c',
   'radv_shader.h',
   'radv_shader_args.c',
