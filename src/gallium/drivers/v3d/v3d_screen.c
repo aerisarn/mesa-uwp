@@ -282,6 +282,9 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_SUPPORTED_PRIM_MODES_WITH_RESTART:
                 return screen->prim_types;
 
+        case PIPE_CAP_IMAGE_STORE_FORMATTED:
+                return false;
+
         default:
                 return u_pipe_screen_get_param_defaults(pscreen, param);
         }

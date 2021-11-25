@@ -312,6 +312,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PACKED_STREAM_OUTPUT:
    case PIPE_CAP_CLEAR_SCISSORED:
    case PIPE_CAP_GL_CLAMP:
+   case PIPE_CAP_IMAGE_STORE_FORMATTED:
       return 1;
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return nouveau_screen(pscreen)->vram_domain & NOUVEAU_BO_VRAM ? PIPE_TEXTURE_TRANSFER_BLIT : 0;

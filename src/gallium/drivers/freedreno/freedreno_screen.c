@@ -268,6 +268,7 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return !fd_screen_get_param(pscreen, PIPE_CAP_TEXTURE_MULTISAMPLE);
 
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
+   case PIPE_CAP_IMAGE_STORE_FORMATTED:
       return is_a5xx(screen) || is_a6xx(screen);
 
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:

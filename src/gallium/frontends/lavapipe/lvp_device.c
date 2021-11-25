@@ -437,7 +437,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures(
       .shaderStorageBufferArrayDynamicIndexing  = true,
       .shaderStorageImageArrayDynamicIndexing   = indirect,
       .shaderStorageImageReadWithoutFormat      = (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_IMAGE_LOAD_FORMATTED) != 0),
-      .shaderStorageImageWriteWithoutFormat     = (min_shader_param(pdevice->pscreen, PIPE_SHADER_CAP_MAX_SHADER_IMAGES) != 0),
+      .shaderStorageImageWriteWithoutFormat     = (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_IMAGE_STORE_FORMATTED) != 0),
       .shaderClipDistance                       = true,
       .shaderCullDistance                       = (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_CULL_DISTANCE) == 1),
       .shaderFloat64                            = (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_DOUBLES) == 1),

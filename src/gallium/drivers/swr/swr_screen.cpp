@@ -285,6 +285,7 @@ swr_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
+   case PIPE_CAP_IMAGE_STORE_FORMATTED:
       return 1;
 
    case PIPE_CAP_SHAREABLE_SHADERS:

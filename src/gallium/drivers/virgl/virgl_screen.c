@@ -351,6 +351,8 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
        return vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_STRING_MARKER;
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
        return vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_IMPLICIT_MSAA;
+   case PIPE_CAP_IMAGE_STORE_FORMATTED:
+      return 1;
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }

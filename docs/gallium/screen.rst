@@ -557,6 +557,7 @@ The integer capabilities:
   A driver might rely on the input mapping that was defined with the original
   GLSL code.
 * ``PIPE_CAP_IMAGE_LOAD_FORMATTED``: True if a format for image loads does not need to be specified in the shader IR
+* ``PIPE_CAP_IMAGE_STORE_FORMATTED``: True if a format for image stores does not need to be specified in the shader IR
 * ``PIPE_CAP_THROTTLE``: Whether or not gallium frontends should throttle pipe_context
   execution. 0 = throttling is disabled.
 * ``PIPE_CAP_DMABUF``: Whether Linux DMABUF handles are supported by

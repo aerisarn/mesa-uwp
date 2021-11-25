@@ -567,6 +567,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
       return screen->info.feats.features.shaderStorageImageReadWithoutFormat;
 
+   case PIPE_CAP_IMAGE_STORE_FORMATTED:
+      return screen->info.feats.features.shaderStorageImageWriteWithoutFormat;
+
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
       return 1;
 
