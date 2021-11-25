@@ -22,6 +22,7 @@ STABLE_EPHEMERAL=" \
       libcap-dev \
       libclang-cpp11-dev \
       libelf-dev \
+      libexpat1-dev \
       libfdt-dev \
       libgbm-dev \
       libgles2-mesa-dev \
@@ -31,7 +32,6 @@ STABLE_EPHEMERAL=" \
       libudev-dev \
       libvulkan-dev \
       libwaffle-dev \
-      libwayland-dev \
       libx11-xcb-dev \
       libxcb-dri2-0-dev \
       libxext-dev \
@@ -45,7 +45,6 @@ STABLE_EPHEMERAL=" \
       patch \
       pkg-config \
       python3-distutils \
-      wayland-protocols \
       wget \
       xz-utils \
       "
@@ -75,6 +74,10 @@ apt-get install -y --no-remove \
 ############### Build libdrm
 
 . .gitlab-ci/container/build-libdrm.sh
+
+############### Build Wayland
+
+. .gitlab-ci/container/build-wayland.sh
 
 ############### Build Crosvm
 

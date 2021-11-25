@@ -63,7 +63,6 @@ apt-get install -y --no-remove \
         python3-requests \
         qemu-user \
         valgrind \
-        wayland-protocols \
         wget \
         wine64 \
         x11proto-dri2-dev \

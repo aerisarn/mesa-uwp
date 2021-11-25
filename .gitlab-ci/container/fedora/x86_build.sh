@@ -40,9 +40,6 @@ dnf install -y --setopt=install_weak_deps=False \
     "pkgconfig(pciaccess)" \
     "pkgconfig(vdpau)" \
     "pkgconfig(vulkan)" \
-    "pkgconfig(wayland-egl-backend)" \
-    "pkgconfig(wayland-protocols)" \
-    "pkgconfig(wayland-scanner)" \
     "pkgconfig(x11)" \
     "pkgconfig(x11-xcb)" \
     "pkgconfig(xcb)" \
