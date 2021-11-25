@@ -371,7 +371,7 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
       return v;
 
    if (!shader->nir_finalized) {
-      ir3_nir_post_finalize(shader->compiler, shader->nir);
+      ir3_nir_post_finalize(shader);
 
       if (ir3_shader_debug & IR3_DBG_DISASM) {
          mesa_logi("dump nir%d: type=%d", shader->id, shader->type);

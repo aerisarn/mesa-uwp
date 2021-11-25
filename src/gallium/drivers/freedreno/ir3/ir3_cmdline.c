@@ -414,12 +414,13 @@ main(int argc, char **argv)
 
    ir3_nir_lower_io_to_temporaries(nir);
    ir3_finalize_nir(compiler, nir);
-   ir3_nir_post_finalize(compiler, nir);
 
    struct ir3_shader *shader = rzalloc_size(NULL, sizeof(*shader));
    shader->compiler = compiler;
    shader->type = stage;
    shader->nir = nir;
+
+   ir3_nir_post_finalize(shader);
 
    struct ir3_shader_variant *v = rzalloc_size(shader, sizeof(*v));
    v->type = shader->type;
