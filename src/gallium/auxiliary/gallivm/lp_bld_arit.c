@@ -1887,7 +1887,7 @@ arch_rounding_available(const struct lp_type type)
       return TRUE;
    else if (util_get_cpu_caps()->has_neon)
       return TRUE;
-   else if (util_cpu_caps_has_zarch())
+   else if (util_get_cpu_caps()->family == CPU_S390X)
       return TRUE;
 
    return FALSE;
@@ -1997,7 +1997,7 @@ lp_build_round_arch(struct lp_build_context *bld,
                     enum lp_build_round_mode mode)
 {
    if (util_get_cpu_caps()->has_sse4_1 || util_get_cpu_caps()->has_neon ||
-       util_cpu_caps_has_zarch()) {
+       util_get_cpu_caps()->family == CPU_S390X) {
       LLVMBuilderRef builder = bld->gallivm->builder;
       const struct lp_type type = bld->type;
       const char *intrinsic_root;

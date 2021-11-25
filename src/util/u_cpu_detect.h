@@ -53,6 +53,8 @@ enum cpu_family {
    CPU_AMD_ZEN3,
    CPU_AMD_ZEN_NEXT,
    CPU_AMD_LAST,
+
+   CPU_S390X,
 };
 
 typedef uint32_t util_affinity_mask[UTIL_MAX_CPUS / 32];
@@ -139,16 +141,6 @@ util_get_cpu_caps(void)
 }
 
 void util_cpu_detect(void);
-
-static inline bool
-util_cpu_caps_has_zarch(void)
-{
-#if defined(PIPE_ARCH_S390)
-   return true;
-#else
-   return false;
-#endif
-}
 
 
 #ifdef	__cplusplus
