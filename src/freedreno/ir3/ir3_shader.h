@@ -819,9 +819,14 @@ struct ir3_shader_variant *
 ir3_shader_get_variant(struct ir3_shader *shader,
                        const struct ir3_shader_key *key, bool binning_pass,
                        bool keep_ir, bool *created);
+
+struct ir3_shader_options {
+   unsigned reserved_user_consts;
+};
+
 struct ir3_shader *
 ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
-                    unsigned reserved_user_consts,
+                    const struct ir3_shader_options *options,
                     struct ir3_stream_output_info *stream_output);
 uint32_t ir3_trim_constlen(struct ir3_shader_variant **variants,
                            const struct ir3_compiler *compiler);

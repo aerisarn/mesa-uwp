@@ -785,9 +785,9 @@ tu_shader_create(struct tu_device *dev,
    ir3_finalize_nir(dev->compiler, nir);
 
    shader->ir3_shader =
-      ir3_shader_from_nir(dev->compiler, nir,
-                          align(shader->push_consts.count, 4),
-                          &so_info);
+      ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
+                           .reserved_user_consts = align(shader->push_consts.count, 4),
+                          }, &so_info);
 
    return shader;
 }

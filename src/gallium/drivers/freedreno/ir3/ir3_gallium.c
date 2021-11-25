@@ -307,7 +307,8 @@ ir3_shader_compute_state_create(struct pipe_context *pctx,
       nir = tgsi_to_nir(cso->prog, pctx->screen, false);
    }
 
-   struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir, 0, NULL);
+   struct ir3_shader *shader =
+      ir3_shader_from_nir(compiler, nir, &(struct ir3_shader_options){}, NULL);
    shader->cs.req_input_mem = align(cso->req_input_mem, 4) / 4;     /* byte->dword */
    shader->cs.req_local_mem = cso->req_local_mem;
 
@@ -367,7 +368,9 @@ ir3_shader_state_create(struct pipe_context *pctx,
    struct ir3_stream_output_info stream_output = {};
    copy_stream_out(&stream_output, &cso->stream_output);
 
-   hwcso->shader = ir3_shader_from_nir(compiler, nir, 0, &stream_output);
+   hwcso->shader =
+      ir3_shader_from_nir(compiler, nir, &(struct ir3_shader_options){},
+                          &stream_output);
 
    /*
     * Create initial variants to avoid draw-time stalls.  This is

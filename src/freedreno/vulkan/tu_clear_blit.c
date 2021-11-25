@@ -547,8 +547,10 @@ compile_shader(struct tu_device *dev, struct nir_shader *nir,
 
    ir3_finalize_nir(dev->compiler, nir);
 
-   struct ir3_shader *sh = ir3_shader_from_nir(dev->compiler, nir,
-                                               align(consts, 4), NULL);
+   struct ir3_shader *sh =
+      ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
+                              .reserved_user_consts = align(consts, 4),
+                          }, NULL);
 
    struct ir3_shader_key key = {};
    bool created;

@@ -583,7 +583,7 @@ ir3_trim_constlen(struct ir3_shader_variant **variants,
 
 struct ir3_shader *
 ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
-                    unsigned reserved_user_consts,
+                    const struct ir3_shader_options *options,
                     struct ir3_stream_output_info *stream_output)
 {
    struct ir3_shader *shader = rzalloc_size(NULL, sizeof(*shader));
@@ -595,7 +595,7 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir,
    if (stream_output)
       memcpy(&shader->stream_output, stream_output,
              sizeof(shader->stream_output));
-   shader->num_reserved_user_consts = reserved_user_consts;
+   shader->num_reserved_user_consts = options->reserved_user_consts;
    shader->nir = nir;
 
    ir3_disk_cache_init_shader_key(compiler, shader);
