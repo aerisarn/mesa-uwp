@@ -41,6 +41,7 @@ struct v3d_qpu_validate_state {
         int last_sfu_write;
         int last_branch_ip;
         int last_thrsw_ip;
+        int first_tlb_z_write;
 
         /* Set when we've found the last-THRSW signal, or if we were started
          * in single-segment mode.
@@ -110,10 +111,36 @@ static void
 qpu_validate_inst(struct v3d_qpu_validate_state *state, struct qinst *qinst)
 {
         const struct v3d_device_info *devinfo = state->c->devinfo;
+
+        if (qinst->is_tlb_z_write && state->ip < state->first_tlb_z_write)
+                state->first_tlb_z_write = state->ip;
+
         const struct v3d_qpu_instr *inst = &qinst->qpu;
+
+        if (inst->type == V3D_QPU_INSTR_TYPE_BRANCH &&
+            state->first_tlb_z_write >= 0 &&
+            state->ip > state->first_tlb_z_write &&
+            inst->branch.msfign != V3D_QPU_MSFIGN_NONE &&
+            inst->branch.cond != V3D_QPU_BRANCH_COND_ALWAYS &&
+            inst->branch.cond != V3D_QPU_BRANCH_COND_A0 &&
+            inst->branch.cond != V3D_QPU_BRANCH_COND_NA0) {
+                fail_instr(state, "Implicit branch MSF read after TLB Z write");
+        }
 
         if (inst->type != V3D_QPU_INSTR_TYPE_ALU)
                 return;
+
+        if (inst->alu.add.op == V3D_QPU_A_SETMSF &&
+            state->first_tlb_z_write >= 0 &&
+            state->ip > state->first_tlb_z_write) {
+                fail_instr(state, "SETMSF after TLB Z write");
+        }
+
+        if (state->first_tlb_z_write >= 0 &&
+            state->ip > state->first_tlb_z_write &&
+            inst->alu.add.op == V3D_QPU_A_MSF) {
+                fail_instr(state, "MSF read after TLB Z write");
+        }
 
         if (devinfo->ver < 71) {
                 if (inst->sig.small_imm_a || inst->sig.small_imm_c ||
@@ -348,6 +375,7 @@ qpu_validate(struct v3d_compile *c)
                 .last_sfu_write = -10,
                 .last_thrsw_ip = -10,
                 .last_branch_ip = -10,
+                .first_tlb_z_write = INT_MAX,
                 .ip = 0,
 
                 .last_thrsw_found = !c->last_thrsw,
