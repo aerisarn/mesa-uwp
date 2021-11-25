@@ -2373,10 +2373,11 @@ emit_branch(struct v3d_compile *c,
         assert(scoreboard->last_branch_tick + 3 < branch_tick);
         assert(scoreboard->last_unifa_write_tick + 3 < branch_tick);
 
-        /* Can't place a branch with msfign != 0 and cond != 0,2,3 after
+        /* V3D 4.x can't place a branch with msfign != 0 and cond != 0,2,3 after
          * setmsf.
          */
         bool is_safe_msf_branch =
+                c->devinfo->ver >= 71 ||
                 inst->qpu.branch.msfign == V3D_QPU_MSFIGN_NONE ||
                 inst->qpu.branch.cond == V3D_QPU_BRANCH_COND_ALWAYS ||
                 inst->qpu.branch.cond == V3D_QPU_BRANCH_COND_A0 ||
