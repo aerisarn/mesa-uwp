@@ -92,6 +92,13 @@ enum ir3_bary {
    IJ_COUNT,
 };
 
+/* Description of what wavesizes are allowed. */
+enum ir3_wavesize_option {
+   IR3_SINGLE_ONLY,
+   IR3_SINGLE_OR_DOUBLE,
+   IR3_DOUBLE_ONLY,
+};
+
 /**
  * Description of a lowered UBO.
  */
@@ -757,6 +764,17 @@ struct ir3_shader {
 
    unsigned num_reserved_user_consts;
 
+   /* What API-visible wavesizes are allowed. Even if only double wavesize is
+    * allowed, we may still use the smaller wavesize "under the hood" and the
+    * application simply sees the upper half as always disabled.
+    */
+   enum ir3_wavesize_option api_wavesize;
+
+   /* What wavesizes we're allowed to actually use. If the API wavesize is
+    * single-only, then this must be single-only too.
+    */
+   enum ir3_wavesize_option real_wavesize;
+
    bool nir_finalized;
    struct nir_shader *nir;
    struct ir3_stream_output_info stream_output;
@@ -822,6 +840,7 @@ ir3_shader_get_variant(struct ir3_shader *shader,
 
 struct ir3_shader_options {
    unsigned reserved_user_consts;
+   enum ir3_wavesize_option api_wavesize, real_wavesize;
 };
 
 struct ir3_shader *

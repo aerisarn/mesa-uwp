@@ -308,7 +308,13 @@ ir3_shader_compute_state_create(struct pipe_context *pctx,
    }
 
    struct ir3_shader *shader =
-      ir3_shader_from_nir(compiler, nir, &(struct ir3_shader_options){}, NULL);
+      ir3_shader_from_nir(compiler, nir, &(struct ir3_shader_options){
+                              /* TODO: force to single on a6xx with legacy
+                               * ballot extension that uses 64-bit masks
+                               */
+                              .api_wavesize = IR3_SINGLE_OR_DOUBLE,
+                              .real_wavesize = IR3_SINGLE_OR_DOUBLE,
+                          }, NULL);
    shader->cs.req_input_mem = align(cso->req_input_mem, 4) / 4;     /* byte->dword */
    shader->cs.req_local_mem = cso->req_local_mem;
 
@@ -369,7 +375,13 @@ ir3_shader_state_create(struct pipe_context *pctx,
    copy_stream_out(&stream_output, &cso->stream_output);
 
    hwcso->shader =
-      ir3_shader_from_nir(compiler, nir, &(struct ir3_shader_options){},
+      ir3_shader_from_nir(compiler, nir, &(struct ir3_shader_options){
+                              /* TODO: force to single on a6xx with legacy
+                               * ballot extension that uses 64-bit masks
+                               */
+                              .api_wavesize = IR3_SINGLE_OR_DOUBLE,
+                              .real_wavesize = IR3_SINGLE_OR_DOUBLE,
+                          },
                           &stream_output);
 
    /*

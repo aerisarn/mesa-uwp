@@ -787,6 +787,8 @@ tu_shader_create(struct tu_device *dev,
    shader->ir3_shader =
       ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
                            .reserved_user_consts = align(shader->push_consts.count, 4),
+                           .api_wavesize = IR3_DOUBLE_ONLY,
+                           .real_wavesize = IR3_SINGLE_OR_DOUBLE,
                           }, &so_info);
 
    return shader;

@@ -533,11 +533,39 @@ ir3_nir_post_finalize(struct ir3_shader *shader)
    if ((s->info.stage == MESA_SHADER_COMPUTE) ||
        (s->info.stage == MESA_SHADER_KERNEL) ||
        compiler->has_getfiberid) {
+      /* If the API-facing subgroup size is forced to a particular value, lower
+       * it here. Beyond this point nir_intrinsic_load_subgroup_size will return
+       * the "real" subgroup size.
+       */
+      unsigned subgroup_size = 0, max_subgroup_size = 0;
+      switch (shader->api_wavesize) {
+      case IR3_SINGLE_ONLY:
+         subgroup_size = max_subgroup_size = compiler->threadsize_base;
+         break;
+      case IR3_DOUBLE_ONLY:
+         subgroup_size = max_subgroup_size = compiler->threadsize_base * 2;
+         break;
+      case IR3_SINGLE_OR_DOUBLE:
+         /* For vertex stages, we know the wavesize will never be doubled.
+          * Lower subgroup_size here, to avoid having to deal with it when
+          * translating from NIR. Otherwise use the "real" wavesize obtained as
+          * a driver param.
+          */
+         if (s->info.stage != MESA_SHADER_COMPUTE &&
+             s->info.stage != MESA_SHADER_FRAGMENT) {
+            subgroup_size = max_subgroup_size = compiler->threadsize_base;
+         } else {
+            subgroup_size = 0;
+            max_subgroup_size = compiler->threadsize_base * 2;
+         }
+         break;
+      }
+
       OPT(s, nir_lower_subgroups,
           &(nir_lower_subgroups_options){
-             .subgroup_size = 128,
+             .subgroup_size = subgroup_size,
              .ballot_bit_size = 32,
-             .ballot_components = 4,
+             .ballot_components = max_subgroup_size / 32,
              .lower_to_scalar = true,
              .lower_vote_eq = true,
              .lower_subgroup_masks = true,

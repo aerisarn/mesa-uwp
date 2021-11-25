@@ -549,6 +549,8 @@ compile_shader(struct tu_device *dev, struct nir_shader *nir,
 
    struct ir3_shader *sh =
       ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
+                              .api_wavesize = IR3_SINGLE_OR_DOUBLE,
+                              .real_wavesize = IR3_SINGLE_OR_DOUBLE,
                               .reserved_user_consts = align(consts, 4),
                           }, NULL);
 
