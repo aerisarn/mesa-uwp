@@ -290,6 +290,76 @@ resize_shift_amount(struct ir3_context *ctx, struct ir3_instruction *src,
 }
 
 static void
+emit_alu_dot_4x8_as_dp4acc(struct ir3_context *ctx, nir_alu_instr *alu,
+                           struct ir3_instruction **dst,
+                           struct ir3_instruction **src)
+{
+   struct ir3_instruction *accumulator = NULL;
+   if (alu->op == nir_op_udot_4x8_uadd_sat) {
+      accumulator = create_immed(ctx->block, 0);
+   } else {
+      accumulator = src[2];
+   }
+
+   dst[0] = ir3_DP4ACC(ctx->block, src[0], 0, src[1], 0, accumulator, 0);
+
+   if (alu->op == nir_op_udot_4x8_uadd ||
+       alu->op == nir_op_udot_4x8_uadd_sat) {
+      dst[0]->cat3.signedness = IR3_SRC_UNSIGNED;
+   } else {
+      dst[0]->cat3.signedness = IR3_SRC_MIXED;
+   }
+
+   /* For some reason (sat) doesn't work in unsigned case so
+    * we have to emulate it.
+    */
+   if (alu->op == nir_op_udot_4x8_uadd_sat) {
+      dst[0] = ir3_ADD_U(ctx->block, dst[0], 0, src[2], 0);
+      dst[0]->flags |= IR3_INSTR_SAT;
+   } else if (alu->op == nir_op_sudot_4x8_iadd_sat) {
+      dst[0]->flags |= IR3_INSTR_SAT;
+   }
+}
+
+static void
+emit_alu_dot_4x8_as_dp2acc(struct ir3_context *ctx, nir_alu_instr *alu,
+                           struct ir3_instruction **dst,
+                           struct ir3_instruction **src)
+{
+   int signedness;
+   if (alu->op == nir_op_udot_4x8_uadd ||
+       alu->op == nir_op_udot_4x8_uadd_sat) {
+      signedness = IR3_SRC_UNSIGNED;
+   } else {
+      signedness = IR3_SRC_MIXED;
+   }
+
+   struct ir3_instruction *accumulator = NULL;
+   if (alu->op == nir_op_udot_4x8_uadd_sat ||
+       alu->op == nir_op_sudot_4x8_iadd_sat) {
+      accumulator = create_immed(ctx->block, 0);
+   } else {
+      accumulator = src[2];
+   }
+
+   dst[0] = ir3_DP2ACC(ctx->block, src[0], 0, src[1], 0, accumulator, 0);
+   dst[0]->cat3.packed = IR3_SRC_PACKED_LOW;
+   dst[0]->cat3.signedness = signedness;
+
+   dst[0] = ir3_DP2ACC(ctx->block, src[0], 0, src[1], 0, dst[0], 0);
+   dst[0]->cat3.packed = IR3_SRC_PACKED_HIGH;
+   dst[0]->cat3.signedness = signedness;
+
+   if (alu->op == nir_op_udot_4x8_uadd_sat) {
+      dst[0] = ir3_ADD_U(ctx->block, dst[0], 0, src[2], 0);
+      dst[0]->flags |= IR3_INSTR_SAT;
+   } else if (alu->op == nir_op_sudot_4x8_iadd_sat) {
+      dst[0] = ir3_ADD_S(ctx->block, dst[0], 0, src[2], 0);
+      dst[0]->flags |= IR3_INSTR_SAT;
+   }
+}
+
+static void
 emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
@@ -743,6 +813,31 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
    case nir_op_bitfield_reverse:
       dst[0] = ir3_BFREV_B(b, src[0], 0);
       break;
+
+   case nir_op_uadd_sat:
+      dst[0] = ir3_ADD_U(b, src[0], 0, src[1], 0);
+      dst[0]->flags |= IR3_INSTR_SAT;
+      break;
+   case nir_op_iadd_sat:
+      dst[0] = ir3_ADD_S(b, src[0], 0, src[1], 0);
+      dst[0]->flags |= IR3_INSTR_SAT;
+      break;
+
+   case nir_op_udot_4x8_uadd:
+   case nir_op_udot_4x8_uadd_sat:
+   case nir_op_sudot_4x8_iadd:
+   case nir_op_sudot_4x8_iadd_sat: {
+      if (ctx->compiler->has_dp4acc) {
+         emit_alu_dot_4x8_as_dp4acc(ctx, alu, dst, src);
+      } else if (ctx->compiler->has_dp2acc) {
+         emit_alu_dot_4x8_as_dp2acc(ctx, alu, dst, src);
+      } else {
+         ir3_context_error(ctx, "ALU op should have been lowered: %s\n",
+                           nir_op_infos[alu->op].name);
+      }
+
+      break;
+   }
 
    default:
       ir3_context_error(ctx, "Unhandled ALU op: %s\n",

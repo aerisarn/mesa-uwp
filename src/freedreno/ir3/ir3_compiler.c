@@ -182,6 +182,8 @@ static const nir_shader_compiler_options options_a6xx = {
    .lower_uniforms_to_ubo = true,
    .lower_device_index_to_zero = true,
    .use_scoped_barrier = true,
+   .has_udot_4x8 = true,
+   .has_sudot_4x8 = true,
 };
 
 struct ir3_compiler *
@@ -212,6 +214,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
 
    compiler->max_variable_workgroup_size = 1024;
 
+   const struct fd_dev_info *dev_info = fd_dev_info(compiler->dev_id);
+
    if (compiler->gen >= 6) {
       compiler->samgq_workaround = true;
       /* a6xx split the pipeline state into geometry and fragment state, in
@@ -241,14 +245,14 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
       /* TODO: implement private memory on earlier gen's */
       compiler->has_pvtmem = true;
 
-      compiler->tess_use_shared =
-            fd_dev_info(compiler->dev_id)->a6xx.tess_use_shared;
+      compiler->tess_use_shared = dev_info->a6xx.tess_use_shared;
 
-      compiler->storage_16bit =
-            fd_dev_info(compiler->dev_id)->a6xx.storage_16bit;
+      compiler->storage_16bit = dev_info->a6xx.storage_16bit;
 
-      compiler->has_getfiberid =
-            fd_dev_info(compiler->dev_id)->a6xx.has_getfiberid;
+      compiler->has_getfiberid = dev_info->a6xx.has_getfiberid;
+
+      compiler->has_dp2acc = dev_info->a6xx.has_dp2acc;
+      compiler->has_dp4acc = dev_info->a6xx.has_dp4acc;
    } else {
       compiler->max_const_pipeline = 512;
       compiler->max_const_geom = 512;
@@ -262,8 +266,7 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    }
 
    if (compiler->gen >= 6) {
-      compiler->reg_size_vec4 =
-            fd_dev_info(compiler->dev_id)->a6xx.reg_size_vec4;
+      compiler->reg_size_vec4 = dev_info->a6xx.reg_size_vec4;
    } else if (compiler->gen >= 4) {
       /* On a4xx-a5xx, using r24.x and above requires using the smallest
        * threadsize.
@@ -309,6 +312,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
 
    if (compiler->gen >= 6) {
       compiler->nir_options = options_a6xx;
+      compiler->nir_options.has_udot_4x8 = dev_info->a6xx.has_dp2acc;
+      compiler->nir_options.has_sudot_4x8 = dev_info->a6xx.has_dp2acc;
    } else {
       compiler->nir_options = options;
    }
