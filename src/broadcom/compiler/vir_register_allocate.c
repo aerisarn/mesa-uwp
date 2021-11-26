@@ -1234,9 +1234,10 @@ v3d_register_allocate(struct v3d_compile *c)
                 .phys_index = phys_index,
                 .next_acc = 0,
                 /* Start at RF3, to try to keep the TLB writes from using
-                 * RF0-2.
+                 * RF0-2. Start at RF4 in 7.x to prevent TLB writes from
+                 * using RF2-3.
                  */
-                .next_phys = 3,
+                .next_phys = c->devinfo->ver <= 42 ? 3 : 4,
                 .nodes = &c->nodes,
                 .devinfo = c->devinfo,
         };
