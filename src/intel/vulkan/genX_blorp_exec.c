@@ -43,6 +43,11 @@ static void blorp_measure_start(struct blorp_batch *_batch,
                         NULL, 0);
 }
 
+static void blorp_measure_end(struct blorp_batch *_batch,
+                              const struct blorp_params *params)
+{
+}
+
 static void *
 blorp_emit_dwords(struct blorp_batch *batch, unsigned n)
 {

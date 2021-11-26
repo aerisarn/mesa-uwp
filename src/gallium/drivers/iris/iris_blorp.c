@@ -409,6 +409,13 @@ blorp_measure_start(struct blorp_batch *blorp_batch,
    iris_measure_snapshot(ice, batch, params->snapshot_type, NULL, NULL, NULL);
 }
 
+
+static void
+blorp_measure_end(struct blorp_batch *blorp_batch,
+                    const struct blorp_params *params)
+{
+}
+
 void
 genX(init_blorp)(struct iris_context *ice)
 {
