@@ -945,7 +945,7 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
       };
    }
 
-   struct VkDependencyInfoKHR dep_info = {
+   VkDependencyInfoKHR dep_info = {
       .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
       .imageMemoryBarrierCount = 1,
       .pImageMemoryBarriers = &barrier,

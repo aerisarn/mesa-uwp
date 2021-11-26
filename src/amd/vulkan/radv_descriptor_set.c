@@ -721,8 +721,8 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
    {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: {
-         const struct VkDescriptorPoolInlineUniformBlockCreateInfoEXT *info =
-            (const struct VkDescriptorPoolInlineUniformBlockCreateInfoEXT *)ext;
+         const VkDescriptorPoolInlineUniformBlockCreateInfoEXT *info =
+            (const VkDescriptorPoolInlineUniformBlockCreateInfoEXT *)ext;
          /* the sizes are 4 aligned, and we need to align to at
           * most 32, which needs at most 28 bytes extra per
           * binding. */
