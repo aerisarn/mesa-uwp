@@ -3430,8 +3430,11 @@ typedef struct nir_shader_compiler_options {
     * for rect texture lowering. */
    bool has_txs;
 
-   /** Backend supports sdot_4x8 and udot_4x8 opcodes. */
-   bool has_dot_4x8;
+   /** Backend supports sdot_4x8 opcodes. */
+   bool has_sdot_4x8;
+
+   /** Backend supports udot_4x8 opcodes. */
+   bool has_udot_4x8;
 
    /** Backend supports sudot_4x8 opcodes. */
    bool has_sudot_4x8;
