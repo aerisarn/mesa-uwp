@@ -195,7 +195,6 @@ spec@arb_sparse_buffer@buffer-data,Fail
 spec@arb_sparse_buffer@commit,Fail
 spec@arb_texture_float@multisample-formats 2 gl_arb_texture_float,Fail
 spec@arb_texture_rg@multisample-formats 2 gl_arb_texture_rg-float,Fail
-spec@egl 1.4@egl-copy-buffers,Crash
 spec@egl_chromium_sync_control@conformance,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_ext_protected_content@conformance,Fail

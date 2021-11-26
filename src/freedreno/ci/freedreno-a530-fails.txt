@@ -326,7 +326,6 @@ spec@arb_transform_feedback3@gl_skipcomponents3,Fail
 spec@arb_transform_feedback3@gl_skipcomponents4,Fail
 spec@arb_transform_feedback_instanced@draw-auto instanced,Fail
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
-spec@egl 1.4@egl-copy-buffers,Crash
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail

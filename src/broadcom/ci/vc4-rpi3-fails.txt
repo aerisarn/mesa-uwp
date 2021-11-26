@@ -1337,7 +1337,6 @@ spec@arb_texture_storage@texture-storage,Fail
 spec@arb_texture_storage@texture-storage@3D mipmapped ,Fail
 spec@arb_texture_storage@texture-storage@3D non-mipmapped ,Fail
 spec@arb_vertex_program@minmax,Fail
-spec@egl 1.4@egl-copy-buffers,Crash
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl 1.4@largest possible eglcreatepbuffersurface and then glclear,Fail
 spec@egl_ext_protected_content@conformance,Fail
