@@ -2863,6 +2863,9 @@ fail_create:
 static void
 radv_device_finish_vrs_image(struct radv_device *device)
 {
+   if (!device->vrs.image)
+      return;
+
    radv_FreeMemory(radv_device_to_handle(device), radv_device_memory_to_handle(device->vrs.mem),
                    &device->meta_state.alloc);
    radv_DestroyBuffer(radv_device_to_handle(device), radv_buffer_to_handle(device->vrs.buffer),
