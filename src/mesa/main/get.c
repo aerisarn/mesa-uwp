@@ -516,6 +516,13 @@ static const int extra_ARB_timer_query_or_EXT_disjoint_timer_query[] = {
    EXTRA_END
 };
 
+static const int extra_ARB_framebuffer_object_or_EXT_framebuffer_multisample_or_EXT_multisampled_render_to_texture[] = {
+   EXT(ARB_framebuffer_object),
+   EXT(EXT_framebuffer_multisample),
+   EXT(EXT_multisampled_render_to_texture),
+   EXTRA_END
+};
+
 EXTRA_EXT(ARB_texture_cube_map);
 EXTRA_EXT(EXT_texture_array);
 EXTRA_EXT(NV_fog_distance);
@@ -529,7 +536,6 @@ EXTRA_EXT(ATI_fragment_shader);
 EXTRA_EXT(EXT_provoking_vertex);
 EXTRA_EXT(ARB_fragment_shader);
 EXTRA_EXT(ARB_fragment_program);
-EXTRA_EXT2(ARB_framebuffer_object, EXT_framebuffer_multisample);
 EXTRA_EXT(ARB_seamless_cube_map);
 EXTRA_EXT(ARB_sync);
 EXTRA_EXT(ARB_vertex_shader);
