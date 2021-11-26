@@ -179,6 +179,10 @@ v3d_qpu_add_op_name(enum v3d_qpu_add_op op)
                 [V3D_QPU_A_UTOF] = "utof",
                 [V3D_QPU_A_MOV] = "mov",
                 [V3D_QPU_A_FMOV] = "fmov",
+                [V3D_QPU_A_VPACK] = "vpack",
+                [V3D_QPU_A_V8PACK] = "v8pack",
+                [V3D_QPU_A_V10PACK] = "v10pack",
+                [V3D_QPU_A_V11FPACK] = "v11fpack",
         };
 
         if (op >= ARRAY_SIZE(op_names))
@@ -201,6 +205,12 @@ v3d_qpu_mul_op_name(enum v3d_qpu_mul_op op)
                 [V3D_QPU_M_MOV] = "mov",
                 [V3D_QPU_M_NOP] = "nop",
                 [V3D_QPU_M_FMUL] = "fmul",
+                [V3D_QPU_M_FTOUNORM16] = "ftounorm16",
+                [V3D_QPU_M_FTOSNORM16] = "ftosnorm16",
+                [V3D_QPU_M_VFTOUNORM8] = "vftounorm8",
+                [V3D_QPU_M_VFTOSNORM8] = "vftosnorm8",
+                [V3D_QPU_M_VFTOUNORM10LO] = "vftounorm10lo",
+                [V3D_QPU_M_VFTOUNORM10HI] = "vftounorm10hi",
         };
 
         if (op >= ARRAY_SIZE(op_names))
@@ -463,6 +473,10 @@ static const uint8_t add_op_args[] = {
 
         [V3D_QPU_A_MOV] = D | A,
         [V3D_QPU_A_FMOV] = D | A,
+        [V3D_QPU_A_VPACK] = D | A | B,
+        [V3D_QPU_A_V8PACK] = D | A | B,
+        [V3D_QPU_A_V10PACK] = D | A | B,
+        [V3D_QPU_A_V11FPACK] = D | A | B,
 };
 
 static const uint8_t mul_op_args[] = {
@@ -476,6 +490,12 @@ static const uint8_t mul_op_args[] = {
         [V3D_QPU_M_NOP] = 0,
         [V3D_QPU_M_MOV] = D | A,
         [V3D_QPU_M_FMUL] = D | A | B,
+        [V3D_QPU_M_FTOUNORM16] = D | A,
+        [V3D_QPU_M_FTOSNORM16] = D | A,
+        [V3D_QPU_M_VFTOUNORM8] = D | A,
+        [V3D_QPU_M_VFTOSNORM8] = D | A,
+        [V3D_QPU_M_VFTOUNORM10LO] = D | A,
+        [V3D_QPU_M_VFTOUNORM10HI] = D | A,
 };
 
 bool

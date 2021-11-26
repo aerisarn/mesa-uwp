@@ -231,6 +231,10 @@ enum v3d_qpu_add_op {
         /* V3D 7.x */
         V3D_QPU_A_FMOV,
         V3D_QPU_A_MOV,
+        V3D_QPU_A_VPACK,
+        V3D_QPU_A_V8PACK,
+        V3D_QPU_A_V10PACK,
+        V3D_QPU_A_V11FPACK,
 };
 
 enum v3d_qpu_mul_op {
@@ -244,6 +248,14 @@ enum v3d_qpu_mul_op {
         V3D_QPU_M_MOV,
         V3D_QPU_M_NOP,
         V3D_QPU_M_FMUL,
+
+        /* V3D 7.x */
+        V3D_QPU_M_FTOUNORM16,
+        V3D_QPU_M_FTOSNORM16,
+        V3D_QPU_M_VFTOUNORM8,
+        V3D_QPU_M_VFTOSNORM8,
+        V3D_QPU_M_VFTOUNORM10LO,
+        V3D_QPU_M_VFTOUNORM10HI,
 };
 
 enum v3d_qpu_output_pack {
