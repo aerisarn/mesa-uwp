@@ -32,7 +32,9 @@ lima_pack_blit_cmd(struct lima_job *job,
                    const struct pipe_box *src,
                    const struct pipe_box *dst,
                    unsigned filter,
-                   bool scissor)
+                   bool scissor,
+                   unsigned sample_mask,
+                   unsigned mrt_idx)
 {
    #define lima_blit_render_state_offset 0x0000
    #define lima_blit_gl_pos_offset       0x0040
@@ -63,13 +65,15 @@ lima_pack_blit_cmd(struct lima_job *job,
       .depth_range = 0xffff0000,
       .stencil_front = 0x00000007,
       .stencil_back = 0x00000007,
-      .multi_sample = 0x0000f007,
+      .multi_sample = 0x00000007,
       .shader_address = reload_shader_va | reload_shader_first_instr_size,
       .varying_types = 0x00000001,
       .textures_address = va + lima_blit_tex_array_offset,
       .aux0 = 0x00004021,
       .varyings_address = va + lima_blit_varying_offset,
    };
+
+   reload_render_state.multi_sample |= (sample_mask << 12);
 
    if (job->key.cbuf) {
       fb_width = job->key.cbuf->width;
@@ -98,7 +102,8 @@ lima_pack_blit_cmd(struct lima_job *job,
 
    lima_tex_desc *td = cpu + lima_blit_tex_desc_offset;
    memset(td, 0, lima_min_tex_desc_size);
-   lima_texture_desc_set_res(ctx, td, psurf->texture, level, level, first_layer);
+   lima_texture_desc_set_res(ctx, td, psurf->texture, level, level,
+                             first_layer, mrt_idx);
    td->format = lima_format_get_texel_reload(psurf->format);
    td->unnorm_coords = 1;
    td->sampler_dim = LIMA_SAMPLER_DIM_2D;
@@ -272,9 +277,19 @@ lima_do_blit(struct pipe_context *pctx,
    _mesa_hash_table_insert(ctx->write_jobs, &dst_res->base, job);
    lima_job_add_bo(job, LIMA_PIPE_PP, dst_res->bo, LIMA_SUBMIT_BO_WRITE);
 
-   lima_pack_blit_cmd(job, &job->plbu_cmd_array,
-                      src_surf, &info->src.box,
-                      &info->dst.box, info->filter, true);
+   if (info->src.resource->nr_samples > 1) {
+      for (int i = 0; i < MIN2(info->src.resource->nr_samples, LIMA_MAX_SAMPLES); i++) {
+         lima_pack_blit_cmd(job, &job->plbu_cmd_array,
+                            src_surf, &info->src.box,
+                            &info->dst.box, info->filter, true,
+                            1 << i, i);
+      }
+   } else {
+      lima_pack_blit_cmd(job, &job->plbu_cmd_array,
+                         src_surf, &info->src.box,
+                         &info->dst.box, info->filter, true,
+                         0xf, 0);
+   }
 
    bool tile_aligned = false;
 

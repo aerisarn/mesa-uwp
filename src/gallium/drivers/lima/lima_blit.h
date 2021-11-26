@@ -19,7 +19,9 @@ lima_pack_blit_cmd(struct lima_job *job,
                    const struct pipe_box *src,
                    const struct pipe_box *dst,
                    unsigned filter,
-                   bool scissor);
+                   bool scissor,
+                   unsigned sample_mask,
+                   unsigned mrt_idx);
 
 bool lima_do_blit(struct pipe_context *ctx,
                   const struct pipe_blit_info *blit_info);

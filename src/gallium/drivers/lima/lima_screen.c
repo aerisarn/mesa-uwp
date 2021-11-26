@@ -108,6 +108,7 @@ lima_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
    case PIPE_CAP_TEXTURE_BARRIER:
    case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
+   case PIPE_CAP_SURFACE_SAMPLE_COUNT:
       return 1;
 
    /* Unimplemented, but for exporting OpenGL 2.0 */
@@ -334,7 +335,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
 
-   /* be able to support 16, now limit to 4 */
+   /* Utgard supports 16x, but for now limit it to 4x */
    if (sample_count > 1 && sample_count != 4)
       return false;
 

@@ -675,13 +675,18 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    /* need more investigation */
    if (info->mode == PIPE_PRIM_POINTS)
-      render->multi_sample = 0x0000F000;
+      render->multi_sample = 0x00000000;
    else if (info->mode < PIPE_PRIM_TRIANGLES)
-      render->multi_sample = 0x0000F400;
+      render->multi_sample = 0x00000400;
    else
-      render->multi_sample = 0x0000F800;
+      render->multi_sample = 0x00000800;
    if (ctx->framebuffer.base.samples)
       render->multi_sample |= 0x68;
+   if (ctx->blend->base.alpha_to_coverage)
+      render->multi_sample |= (1 << 7);
+   if (ctx->blend->base.alpha_to_one)
+      render->multi_sample |= (1 << 8);
+   render->multi_sample |= (ctx->sample_mask << 12);
 
    /* Set gl_FragColor register, need to specify it 4 times */
    render->multi_sample |= (fs->state.frag_color0_reg << 28) |
@@ -716,7 +721,8 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
 
    if (fs->state.uses_discard ||
        ctx->zsa->base.alpha_enabled ||
-       fs->state.frag_depth_reg != -1) {
+       fs->state.frag_depth_reg != -1 ||
+       ctx->blend->base.alpha_to_coverage) {
       early_z = false;
       pixel_kill = false;
    }

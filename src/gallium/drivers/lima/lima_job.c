@@ -34,6 +34,7 @@
 #include "util/format/u_format.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_inlines.h"
+#include "util/u_framebuffer.h"
 
 #include "lima_screen.h"
 #include "lima_context.h"
@@ -359,6 +360,7 @@ static void
 lima_pack_reload_plbu_cmd(struct lima_job *job, struct pipe_surface *psurf)
 {
    struct lima_job_fb_info *fb = &job->fb;
+   struct lima_context *ctx = job->ctx;
    struct pipe_box src = {
       .x = 0,
       .y = 0,
@@ -372,9 +374,20 @@ lima_pack_reload_plbu_cmd(struct lima_job *job, struct pipe_surface *psurf)
       .width = fb->width,
       .height = fb->height,
    };
-   lima_pack_blit_cmd(job, &job->plbu_cmd_head,
-                      psurf, &src, &dst,
-                      PIPE_TEX_FILTER_NEAREST, false);
+
+   if (ctx->framebuffer.base.samples > 1) {
+      for (int i = 0; i < LIMA_MAX_SAMPLES; i++) {
+         lima_pack_blit_cmd(job, &job->plbu_cmd_head,
+                            psurf, &src, &dst,
+                            PIPE_TEX_FILTER_NEAREST, false,
+                            (1 << i), i);
+      }
+   } else {
+      lima_pack_blit_cmd(job, &job->plbu_cmd_head,
+                         psurf, &src, &dst,
+                         PIPE_TEX_FILTER_NEAREST, false,
+                         0xf, 0);
+   }
 }
 
 static void
@@ -396,8 +409,9 @@ lima_pack_head_plbu_cmd(struct lima_job *job)
 
    PLBU_CMD_END();
 
-   if (lima_fb_cbuf_needs_reload(job))
+   if (lima_fb_cbuf_needs_reload(job)) {
       lima_pack_reload_plbu_cmd(job, job->key.cbuf);
+   }
 
    if (lima_fb_zsbuf_needs_reload(job))
       lima_pack_reload_plbu_cmd(job, job->key.zsbuf);
@@ -733,7 +747,13 @@ lima_pack_wb_zsbuf_reg(struct lima_job *job, uint32_t *wb_reg, int wb_idx)
       wb[wb_idx].pixel_layout = 0x0;
       wb[wb_idx].pitch = res->levels[level].stride / 8;
    }
-   wb[wb_idx].mrt_bits = 0;
+   wb[wb_idx].flags = 0;
+   unsigned nr_samples = zsbuf->nr_samples ?
+                         zsbuf->nr_samples : MAX2(1, zsbuf->texture->nr_samples);
+   if (nr_samples > 1) {
+      wb[wb_idx].mrt_pitch = res->mrt_pitch;
+      wb[wb_idx].mrt_bits = u_bit_consecutive(0, nr_samples);
+   }
 }
 
 static void
@@ -762,7 +782,13 @@ lima_pack_wb_cbuf_reg(struct lima_job *job, uint32_t *frame_reg,
       wb[wb_idx].pixel_layout = 0x0;
       wb[wb_idx].pitch = res->levels[level].stride / 8;
    }
-   wb[wb_idx].mrt_bits = swap_channels ? 0x4 : 0x0;
+   wb[wb_idx].flags = swap_channels ? 0x4 : 0x0;
+   unsigned nr_samples = cbuf->nr_samples ?
+                         cbuf->nr_samples : MAX2(1, cbuf->texture->nr_samples);
+   if (nr_samples > 1) {
+      wb[wb_idx].mrt_pitch = res->mrt_pitch;
+      wb[wb_idx].mrt_bits = u_bit_consecutive(0, nr_samples);
+   }
 }
 
 static void
