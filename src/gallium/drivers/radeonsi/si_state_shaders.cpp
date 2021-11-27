@@ -3336,6 +3336,15 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
                        si_get_vs(sctx)->current);
    si_update_rasterized_prim(sctx);
    si_vs_key_update_inputs(sctx);
+
+   if (sctx->screen->dpbb_allowed) {
+      bool force_off = sel && sel->info.options & SI_PROFILE_VS_NO_BINNING;
+
+      if (force_off != sctx->dpbb_force_off_profile_vs) {
+         sctx->dpbb_force_off_profile_vs = force_off;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
+      }
+   }
 }
 
 static void si_update_tess_uses_prim_id(struct si_context *sctx)
@@ -3555,6 +3564,15 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
    si_update_ps_inputs_read_or_disabled(sctx);
    si_update_ps_kill_enable(sctx);
    si_update_vrs_flat_shading(sctx);
+
+   if (sctx->screen->dpbb_allowed) {
+      bool force_off = sel && sel->info.options & SI_PROFILE_PS_NO_BINNING;
+
+      if (force_off != sctx->dpbb_force_off_profile_ps) {
+         sctx->dpbb_force_off_profile_ps = force_off;
+         si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
+      }
+   }
 }
 
 static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)

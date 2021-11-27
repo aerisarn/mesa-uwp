@@ -1182,6 +1182,8 @@ struct si_context {
    bool need_check_render_feedback;
    bool decompression_enabled;
    bool dpbb_force_off;
+   bool dpbb_force_off_profile_vs;
+   bool dpbb_force_off_profile_ps;
    bool vs_writes_viewport_index;
    bool vs_disables_clipping_viewport;
 

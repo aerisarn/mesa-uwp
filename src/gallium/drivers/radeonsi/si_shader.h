@@ -291,6 +291,8 @@ enum
 #define SI_PROFILE_WAVE32                    (1 << 0)
 #define SI_PROFILE_WAVE64                    (1 << 1)
 #define SI_PROFILE_IGNORE_LLVM_DISCARD_BUG   (1 << 2)
+#define SI_PROFILE_VS_NO_BINNING             (1 << 3)
+#define SI_PROFILE_PS_NO_BINNING             (1 << 4)
 
 /**
  * For VS shader keys, describe any fixups required for vertex fetch.

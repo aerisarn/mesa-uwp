@@ -42,9 +42,19 @@ struct si_shader_profile {
 static struct si_shader_profile profiles[] =
 {
    {
+      /* Plot3D */
+      {0x485320cd, 0x87a9ba05, 0x24a60e4f, 0x25aa19f7, 0xf5287451},
+      SI_PROFILE_VS_NO_BINNING,
+   },
+   {
       /* Viewperf/Energy isn't affected by the discard bug. */
       {0x17118671, 0xd0102e0c, 0x947f3592, 0xb2057e7b, 0x4da5d9b0},
       SI_PROFILE_IGNORE_LLVM_DISCARD_BUG,
+   },
+   {
+      /* Viewperf/Medical */
+      {0x4dce4331, 0x38f778d5, 0x1b75a717, 0x3e454fb9, 0xeb1527f0},
+      SI_PROFILE_PS_NO_BINNING,
    },
    {
       /* Viewperf/Medical, a shader with a divergent loop doesn't benefit from Wave32,
