@@ -1264,11 +1264,11 @@ radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum ring_type ring_type
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
-                             int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                             struct radeon_cmdbuf *initial_preamble_cs,
-                             struct radeon_cmdbuf *continue_preamble_cs,
-                             struct radv_winsys_sem_info *sem_info, bool can_patch)
+radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
+                                      int queue_idx, struct radeon_cmdbuf **cs_array,
+                                      unsigned cs_count, struct radeon_cmdbuf *initial_preamble_cs,
+                                      struct radeon_cmdbuf *continue_preamble_cs,
+                                      struct radv_winsys_sem_info *sem_info, bool can_patch)
 {
    struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
    VkResult result;
@@ -1291,12 +1291,12 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit2(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
-                              int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                              struct radeon_cmdbuf *initial_preamble_cs,
-                              struct radeon_cmdbuf *continue_preamble_cs, uint32_t wait_count,
-                              const struct vk_sync_wait *waits, uint32_t signal_count,
-                              const struct vk_sync_signal *signals, bool can_patch)
+radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
+                             int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
+                             struct radeon_cmdbuf *initial_preamble_cs,
+                             struct radeon_cmdbuf *continue_preamble_cs, uint32_t wait_count,
+                             const struct vk_sync_wait *waits, uint32_t signal_count,
+                             const struct vk_sync_signal *signals, bool can_patch)
 {
    struct radv_amdgpu_winsys *ws = radv_amdgpu_ctx(_ctx)->ws;
    struct radv_winsys_sem_info sem_info;
@@ -1351,9 +1351,9 @@ radv_amdgpu_winsys_cs_submit2(struct radeon_winsys_ctx *_ctx, enum ring_type rin
    sem_info.signal.syncobj_count = signal_idx - sem_info.signal.timeline_syncobj_count;
    sem_info.cs_emit_signal = true;
 
-   result =
-      radv_amdgpu_winsys_cs_submit(_ctx, ring_type, queue_idx, cs_array, cs_count,
-                                   initial_preamble_cs, continue_preamble_cs, &sem_info, can_patch);
+   result = radv_amdgpu_winsys_cs_submit_internal(_ctx, ring_type, queue_idx, cs_array, cs_count,
+                                                  initial_preamble_cs, continue_preamble_cs,
+                                                  &sem_info, can_patch);
 
 out:
    STACK_ARRAY_FINISH(wait_points);
@@ -1886,7 +1886,7 @@ radv_amdgpu_cs_init_functions(struct radv_amdgpu_winsys *ws)
    ws->base.cs_reset = radv_amdgpu_cs_reset;
    ws->base.cs_add_buffer = radv_amdgpu_cs_add_buffer;
    ws->base.cs_execute_secondary = radv_amdgpu_cs_execute_secondary;
-   ws->base.cs_submit2 = radv_amdgpu_winsys_cs_submit2;
+   ws->base.cs_submit = radv_amdgpu_winsys_cs_submit;
    ws->base.cs_dump = radv_amdgpu_winsys_cs_dump;
    ws->base.create_syncobj = radv_amdgpu_create_syncobj;
    ws->base.destroy_syncobj = radv_amdgpu_destroy_syncobj;

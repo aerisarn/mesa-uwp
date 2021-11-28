@@ -81,7 +81,7 @@ typedef void *drmDevicePtr;
 #define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC_FAST
 #endif
 
-static VkResult radv_queue_submit2(struct vk_queue *vqueue, struct vk_queue_submit *submission);
+static VkResult radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission);
 
 uint64_t
 radv_get_current_time(void)
@@ -2647,7 +2647,7 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
    if (result != VK_SUCCESS)
       return result;
 
-   queue->vk.driver_submit = radv_queue_submit2;
+   queue->vk.driver_submit = radv_queue_submit;
 
    return VK_SUCCESS;
 }
@@ -4318,7 +4318,7 @@ struct radv_deferred_queue_submission {
 };
 
 static VkResult
-radv_queue_submit2(struct vk_queue *vqueue, struct vk_queue_submit *submission)
+radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
 {
    struct radv_queue *queue = (struct radv_queue *)vqueue;
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
@@ -4359,10 +4359,10 @@ radv_queue_submit2(struct vk_queue *vqueue, struct vk_queue_submit *submission)
       return VK_SUCCESS;
 
    if (!submission->command_buffer_count) {
-      result = queue->device->ws->cs_submit2(ctx, queue->vk.queue_family_index,
-                                             queue->vk.index_in_family, NULL, 0, NULL, NULL,
-                                             submission->wait_count, submission->waits,
-                                             submission->signal_count, submission->signals, false);
+      result = queue->device->ws->cs_submit(ctx, queue->vk.queue_family_index,
+                                            queue->vk.index_in_family, NULL, 0, NULL, NULL,
+                                            submission->wait_count, submission->waits,
+                                            submission->signal_count, submission->signals, false);
       if (result != VK_SUCCESS)
          goto fail;
    } else {
@@ -4390,7 +4390,7 @@ radv_queue_submit2(struct vk_queue *vqueue, struct vk_queue_submit *submission)
          if (queue->device->trace_bo)
             *queue->device->trace_id_ptr = 0;
 
-         result = queue->device->ws->cs_submit2(
+         result = queue->device->ws->cs_submit(
             ctx, queue->vk.queue_family_index, queue->vk.index_in_family, cs_array + j, advance,
             initial_preamble, continue_preamble_cs, j == 0 ? submission->wait_count : 0,
             submission->waits, last_submit ? submission->signal_count : 0, submission->signals,
@@ -4432,8 +4432,8 @@ radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
 
    VkResult result =
-      queue->device->ws->cs_submit2(ctx, queue->vk.queue_family_index, queue->vk.index_in_family,
-                                    &cs, 1, NULL, NULL, 0, NULL, 0, NULL, false);
+      queue->device->ws->cs_submit(ctx, queue->vk.queue_family_index, queue->vk.index_in_family,
+                                   &cs, 1, NULL, NULL, 0, NULL, 0, NULL, false);
    if (result != VK_SUCCESS)
       return false;
 
