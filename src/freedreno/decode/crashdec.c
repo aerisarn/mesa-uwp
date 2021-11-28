@@ -249,6 +249,35 @@ decode_ringbuffer(void)
 }
 
 /*
+ * Decode GMU log
+ */
+
+static void
+decode_gmu_log(void)
+{
+   uint64_t iova;
+   uint32_t size;
+
+   foreach_line_in_section (line) {
+      if (startswith(line, "    iova:")) {
+         parseline(line, "    iova: %" PRIx64, &iova);
+      } else if (startswith(line, "    size:")) {
+         parseline(line, "    size: %u", &size);
+      } else if (startswith(line, "    data: !!ascii85 |")) {
+         void *buf = popline_ascii85(size / 4);
+
+         dump_hex_ascii(buf, size, 1);
+
+         free(buf);
+
+         continue;
+      }
+
+      printf("%s", line);
+   }
+}
+
+/*
  * Decode HFI queues
  */
 
@@ -746,6 +775,8 @@ decode(void)
          decode_bos();
       } else if (startswith(line, "ringbuffer:")) {
          decode_ringbuffer();
+      } else if (startswith(line, "gmu-log:")) {
+         decode_gmu_log();
       } else if (startswith(line, "gmu-hfi:")) {
          decode_gmu_hfi();
       } else if (startswith(line, "registers:")) {
