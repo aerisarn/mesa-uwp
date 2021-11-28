@@ -13991,7 +13991,22 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    memcpy(table, ctx->Exec, numEntries * sizeof(_glapi_proc));
 
    /* VBO functions */
-   vbo_initialize_save_dispatch(ctx, table);
+   /* Note: other glDraw functions aren't compiled into display lists */
+   SET_DrawArrays(table, save_DrawArrays);
+   SET_MultiDrawArrays(table, save_MultiDrawArrays);
+   SET_DrawElements(table, save_DrawElements);
+   SET_DrawElementsBaseVertex(table, save_DrawElementsBaseVertex);
+   SET_DrawRangeElements(table, save_DrawRangeElements);
+   SET_MultiDrawElementsEXT(table, save_MultiDrawElementsEXT);
+   SET_MultiDrawElementsBaseVertex(table, save_MultiDrawElementsBaseVertex);
+   SET_Rectf(table, save_Rectf);
+   SET_Rectd(table, save_Rectd);
+   SET_Rectdv(table, save_Rectdv);
+   SET_Rectfv(table, save_Rectfv);
+   SET_Recti(table, save_Recti);
+   SET_Rectiv(table, save_Rectiv);
+   SET_Rects(table, save_Rects);
+   SET_Rectsv(table, save_Rectsv);
 
    /* GL 1.0 */
    SET_Accum(table, save_Accum);

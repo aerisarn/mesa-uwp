@@ -1606,8 +1606,8 @@ _save_PrimitiveRestartNV(void)
  * suspected to be outside any begin/end primitive.
  * Note: OBE = Outside Begin/End
  */
-static void GLAPIENTRY
-_save_OBE_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
+void GLAPIENTRY
+save_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
@@ -1621,50 +1621,50 @@ _save_OBE_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 }
 
 
-static void GLAPIENTRY
-_save_OBE_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
+void GLAPIENTRY
+save_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
 {
-   _save_OBE_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
 }
 
-static void GLAPIENTRY
-_save_OBE_Rectdv(const GLdouble *v1, const GLdouble *v2)
+void GLAPIENTRY
+save_Rectdv(const GLdouble *v1, const GLdouble *v2)
 {
-   _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
-static void GLAPIENTRY
-_save_OBE_Rectfv(const GLfloat *v1, const GLfloat *v2)
+void GLAPIENTRY
+save_Rectfv(const GLfloat *v1, const GLfloat *v2)
 {
-   _save_OBE_Rectf(v1[0], v1[1], v2[0], v2[1]);
+   save_Rectf(v1[0], v1[1], v2[0], v2[1]);
 }
 
-static void GLAPIENTRY
-_save_OBE_Recti(GLint x1, GLint y1, GLint x2, GLint y2)
+void GLAPIENTRY
+save_Recti(GLint x1, GLint y1, GLint x2, GLint y2)
 {
-   _save_OBE_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
 }
 
-static void GLAPIENTRY
-_save_OBE_Rectiv(const GLint *v1, const GLint *v2)
+void GLAPIENTRY
+save_Rectiv(const GLint *v1, const GLint *v2)
 {
-   _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
-static void GLAPIENTRY
-_save_OBE_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2)
+void GLAPIENTRY
+save_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2)
 {
-   _save_OBE_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
 }
 
-static void GLAPIENTRY
-_save_OBE_Rectsv(const GLshort *v1, const GLshort *v2)
+void GLAPIENTRY
+save_Rectsv(const GLshort *v1, const GLshort *v2)
 {
-   _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
-static void GLAPIENTRY
-_save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
+void GLAPIENTRY
+save_DrawArrays(GLenum mode, GLint start, GLsizei count)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_vertex_array_object *vao = ctx->Array.VAO;
@@ -1700,9 +1700,9 @@ _save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
 }
 
 
-static void GLAPIENTRY
-_save_OBE_MultiDrawArrays(GLenum mode, const GLint *first,
-                          const GLsizei *count, GLsizei primcount)
+void GLAPIENTRY
+save_MultiDrawArrays(GLenum mode, const GLint *first,
+                      const GLsizei *count, GLsizei primcount)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLint i;
@@ -1732,7 +1732,7 @@ _save_OBE_MultiDrawArrays(GLenum mode, const GLint *first,
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
-         _save_OBE_DrawArrays(mode, first[i], count[i]);
+         save_DrawArrays(mode, first[i], count[i]);
       }
    }
 }
@@ -1764,9 +1764,9 @@ array_element(struct gl_context *ctx,
 /* Could do better by copying the arrays and element list intact and
  * then emitting an indexed prim at runtime.
  */
-static void GLAPIENTRY
-_save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
-                                 const GLvoid * indices, GLint basevertex)
+void GLAPIENTRY
+save_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
+                             const GLvoid * indices, GLint basevertex)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct vbo_save_context *save = &vbo_context(ctx)->save;
@@ -1828,16 +1828,16 @@ _save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
    _mesa_vao_unmap(ctx, vao);
 }
 
-static void GLAPIENTRY
-_save_OBE_DrawElements(GLenum mode, GLsizei count, GLenum type,
-                       const GLvoid * indices)
+void GLAPIENTRY
+save_DrawElements(GLenum mode, GLsizei count, GLenum type,
+                   const GLvoid * indices)
 {
-   _save_OBE_DrawElementsBaseVertex(mode, count, type, indices, 0);
+   save_DrawElementsBaseVertex(mode, count, type, indices, 0);
 }
 
 
-static void GLAPIENTRY
-_save_OBE_DrawRangeElements(GLenum mode, GLuint start, GLuint end,
+void GLAPIENTRY
+save_DrawRangeElements(GLenum mode, GLuint start, GLuint end,
                             GLsizei count, GLenum type,
                             const GLvoid * indices)
 {
@@ -1868,13 +1868,13 @@ _save_OBE_DrawRangeElements(GLenum mode, GLuint start, GLuint end,
    if (save->out_of_memory)
       return;
 
-   _save_OBE_DrawElements(mode, count, type, indices);
+   save_DrawElements(mode, count, type, indices);
 }
 
 
-static void GLAPIENTRY
-_save_OBE_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
-                            const GLvoid * const *indices, GLsizei primcount)
+void GLAPIENTRY
+save_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
+                           const GLvoid * const *indices, GLsizei primcount)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
@@ -1894,12 +1894,12 @@ _save_OBE_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
 }
 
 
-static void GLAPIENTRY
-_save_OBE_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
-                                      GLenum type,
-                                      const GLvoid * const *indices,
-                                      GLsizei primcount,
-                                      const GLint *basevertex)
+void GLAPIENTRY
+save_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
+                                  GLenum type,
+                                  const GLvoid * const *indices,
+                                  GLsizei primcount,
+                                  const GLint *basevertex)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
@@ -1934,35 +1934,6 @@ vtxfmt_init(struct gl_context *ctx)
 
 #include "vbo_init_tmp.h"
 }
-
-
-/**
- * Initialize the dispatch table with the VBO functions for display
- * list compilation.
- */
-void
-vbo_initialize_save_dispatch(const struct gl_context *ctx,
-                             struct _glapi_table *exec)
-{
-   SET_DrawArrays(exec, _save_OBE_DrawArrays);
-   SET_MultiDrawArrays(exec, _save_OBE_MultiDrawArrays);
-   SET_DrawElements(exec, _save_OBE_DrawElements);
-   SET_DrawElementsBaseVertex(exec, _save_OBE_DrawElementsBaseVertex);
-   SET_DrawRangeElements(exec, _save_OBE_DrawRangeElements);
-   SET_MultiDrawElementsEXT(exec, _save_OBE_MultiDrawElements);
-   SET_MultiDrawElementsBaseVertex(exec, _save_OBE_MultiDrawElementsBaseVertex);
-   SET_Rectf(exec, _save_OBE_Rectf);
-   SET_Rectd(exec, _save_OBE_Rectd);
-   SET_Rectdv(exec, _save_OBE_Rectdv);
-   SET_Rectfv(exec, _save_OBE_Rectfv);
-   SET_Recti(exec, _save_OBE_Recti);
-   SET_Rectiv(exec, _save_OBE_Rectiv);
-   SET_Rects(exec, _save_OBE_Rects);
-   SET_Rectsv(exec, _save_OBE_Rectsv);
-
-   /* Note: other glDraw functins aren't compiled into display lists */
-}
-
 
 
 void

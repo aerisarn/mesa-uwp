@@ -200,10 +200,6 @@ vbo_initialize_exec_dispatch(const struct gl_context *ctx,
                              struct _glapi_table *exec);
 
 void
-vbo_initialize_save_dispatch(const struct gl_context *ctx,
-                             struct _glapi_table *exec);
-
-void
 vbo_exec_FlushVertices(struct gl_context *ctx, GLuint flags);
 
 void
@@ -282,6 +278,61 @@ _es_VertexAttrib3fv(GLuint indx, const GLfloat* values);
 
 void GLAPIENTRY
 _es_VertexAttrib4fv(GLuint indx, const GLfloat* values);
+
+void GLAPIENTRY
+save_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);
+
+void GLAPIENTRY
+save_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2);
+
+void GLAPIENTRY
+save_Rectdv(const GLdouble *v1, const GLdouble *v2);
+
+void GLAPIENTRY
+save_Rectfv(const GLfloat *v1, const GLfloat *v2);
+
+void GLAPIENTRY
+save_Recti(GLint x1, GLint y1, GLint x2, GLint y2);
+
+void GLAPIENTRY
+save_Rectiv(const GLint *v1, const GLint *v2);
+
+void GLAPIENTRY
+save_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2);
+
+void GLAPIENTRY
+save_Rectsv(const GLshort *v1, const GLshort *v2);
+
+void GLAPIENTRY
+save_DrawArrays(GLenum mode, GLint start, GLsizei count);
+
+void GLAPIENTRY
+save_MultiDrawArrays(GLenum mode, const GLint *first,
+                      const GLsizei *count, GLsizei primcount);
+
+void GLAPIENTRY
+save_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
+                             const GLvoid * indices, GLint basevertex);
+
+void GLAPIENTRY
+save_DrawElements(GLenum mode, GLsizei count, GLenum type,
+                   const GLvoid * indices);
+
+void GLAPIENTRY
+save_DrawRangeElements(GLenum mode, GLuint start, GLuint end,
+                        GLsizei count, GLenum type,
+                        const GLvoid * indices);
+
+void GLAPIENTRY
+save_MultiDrawElementsEXT(GLenum mode, const GLsizei *count, GLenum type,
+                           const GLvoid * const *indices, GLsizei primcount);
+
+void GLAPIENTRY
+save_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
+                                  GLenum type,
+                                  const GLvoid * const *indices,
+                                  GLsizei primcount,
+                                  const GLint *basevertex);
 
 #ifdef __cplusplus
 } // extern "C"
