@@ -102,8 +102,9 @@ enum class Format : std::uint16_t {
    VOP3 = 1 << 11,
    /* Vector Parameter Interpolation Format */
    VINTRP = 1 << 12,
-   DPP = 1 << 13,
+   DPP16 = 1 << 13,
    SDWA = 1 << 14,
+   DPP8 = 1 << 15,
 };
 
 enum class instr_class : uint8_t {
@@ -294,7 +295,7 @@ asSDWA(Format format)
 constexpr Format
 withoutDPP(Format format)
 {
-   return (Format)((uint32_t)format & ~(uint32_t)Format::DPP);
+   return (Format)((uint32_t)format & ~((uint32_t)Format::DPP16 | (uint32_t)Format::DPP8));
 }
 
 enum class RegType {
@@ -996,7 +997,8 @@ struct VOP2_instruction;
 struct VOPC_instruction;
 struct VOP3_instruction;
 struct Interp_instruction;
-struct DPP_instruction;
+struct DPP16_instruction;
+struct DPP8_instruction;
 struct SDWA_instruction;
 
 struct Instruction {
@@ -1282,17 +1284,29 @@ struct Instruction {
       return *(Interp_instruction*)this;
    }
    constexpr bool isVINTRP() const noexcept { return (uint16_t)format & (uint16_t)Format::VINTRP; }
-   DPP_instruction& dpp() noexcept
+   DPP16_instruction& dpp16() noexcept
    {
-      assert(isDPP());
-      return *(DPP_instruction*)this;
+      assert(isDPP16());
+      return *(DPP16_instruction*)this;
    }
-   const DPP_instruction& dpp() const noexcept
+   const DPP16_instruction& dpp16() const noexcept
    {
-      assert(isDPP());
-      return *(DPP_instruction*)this;
+      assert(isDPP16());
+      return *(DPP16_instruction*)this;
    }
-   constexpr bool isDPP() const noexcept { return (uint16_t)format & (uint16_t)Format::DPP; }
+   constexpr bool isDPP16() const noexcept { return (uint16_t)format & (uint16_t)Format::DPP16; }
+   DPP8_instruction& dpp8() noexcept
+   {
+      assert(isDPP8());
+      return *(DPP8_instruction*)this;
+   }
+   const DPP8_instruction& dpp8() const noexcept
+   {
+      assert(isDPP8());
+      return *(DPP8_instruction*)this;
+   }
+   constexpr bool isDPP8() const noexcept { return (uint16_t)format & (uint16_t)Format::DPP8; }
+   constexpr bool isDPP() const noexcept { return isDPP16() || isDPP8(); }
    SDWA_instruction& sdwa() noexcept
    {
       assert(isSDWA());
@@ -1405,7 +1419,7 @@ static_assert(sizeof(VOP3P_instruction) == sizeof(Instruction) + 8, "Unexpected 
  * The swizzle applies to the src0 operand.
  *
  */
-struct DPP_instruction : public Instruction {
+struct DPP16_instruction : public Instruction {
    bool abs[2];
    bool neg[2];
    uint16_t dpp_ctrl;
@@ -1414,7 +1428,12 @@ struct DPP_instruction : public Instruction {
    bool bound_ctrl : 1;
    uint8_t padding : 7;
 };
-static_assert(sizeof(DPP_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(DPP16_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+
+struct DPP8_instruction : public Instruction {
+   uint8_t lane_sel[8];
+};
+static_assert(sizeof(DPP8_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
 struct SubdwordSel {
    enum sdwa_sel : uint8_t {
@@ -1760,10 +1779,10 @@ bool is_dead(const std::vector<uint16_t>& uses, Instruction* instr);
 bool can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high);
 bool instr_is_16bit(chip_class chip, aco_opcode op);
 bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr, bool pre_ra);
-bool can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra);
+bool can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra, bool dpp8);
 /* updates "instr" and returns the old instruction (or NULL if no update was needed) */
 aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr);
-aco_ptr<Instruction> convert_to_DPP(aco_ptr<Instruction>& instr);
+aco_ptr<Instruction> convert_to_DPP(aco_ptr<Instruction>& instr, bool dpp8);
 bool needs_exec_mask(const Instruction* instr);
 
 aco_opcode get_ordered(aco_opcode op);

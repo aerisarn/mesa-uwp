@@ -74,8 +74,9 @@ class Format(Enum):
    VOPC = 1 << 10
    VOP3 = 1 << 11
    VINTRP = 1 << 12
-   DPP = 1 << 13
+   DPP16 = 1 << 13
    SDWA = 1 << 14
+   DPP8 = 1 << 15
 
    def get_builder_fields(self):
       if self == Format.SOPK:
@@ -147,7 +148,7 @@ class Format(Enum):
       elif self == Format.VINTRP:
          return [('unsigned', 'attribute', None),
                  ('unsigned', 'component', None)]
-      elif self == Format.DPP:
+      elif self == Format.DPP16:
          return [('uint16_t', 'dpp_ctrl', None),
                  ('uint8_t', 'row_mask', '0xF'),
                  ('uint8_t', 'bank_mask', '0xF'),

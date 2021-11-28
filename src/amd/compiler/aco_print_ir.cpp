@@ -566,8 +566,8 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
          fprintf(output, " clamp");
       if (vop3.opsel & (1 << 3))
          fprintf(output, " opsel_hi");
-   } else if (instr->isDPP()) {
-      const DPP_instruction& dpp = instr->dpp();
+   } else if (instr->isDPP16()) {
+      const DPP16_instruction& dpp = instr->dpp16();
       if (dpp.dpp_ctrl <= 0xff) {
          fprintf(output, " quad_perm:[%d,%d,%d,%d]", dpp.dpp_ctrl & 0x3, (dpp.dpp_ctrl >> 2) & 0x3,
                  (dpp.dpp_ctrl >> 4) & 0x3, (dpp.dpp_ctrl >> 6) & 0x3);
@@ -602,6 +602,11 @@ print_instr_format_specific(const Instruction* instr, FILE* output)
          fprintf(output, " bank_mask:0x%.1x", dpp.bank_mask);
       if (dpp.bound_ctrl)
          fprintf(output, " bound_ctrl:1");
+   } else if (instr->isDPP8()) {
+      const DPP8_instruction& dpp = instr->dpp8();
+      fprintf(output, " dpp8:[%d,%d,%d,%d,%d,%d,%d,%d]", dpp.lane_sel[0], dpp.lane_sel[1],
+              dpp.lane_sel[2], dpp.lane_sel[3], dpp.lane_sel[4], dpp.lane_sel[5], dpp.lane_sel[6],
+              dpp.lane_sel[7]);
    } else if (instr->isSDWA()) {
       const SDWA_instruction& sdwa = instr->sdwa();
       switch (sdwa.omod) {
@@ -668,8 +673,8 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
             neg[i] = vop3.neg[i];
             opsel[i] = vop3.opsel & (1 << i);
          }
-      } else if (instr->isDPP()) {
-         const DPP_instruction& dpp = instr->dpp();
+      } else if (instr->isDPP16()) {
+         const DPP16_instruction& dpp = instr->dpp16();
          for (unsigned i = 0; i < 2; ++i) {
             abs[i] = dpp.abs[i];
             neg[i] = dpp.neg[i];

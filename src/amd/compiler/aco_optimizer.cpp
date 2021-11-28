@@ -120,12 +120,14 @@ enum Label {
    label_canonicalized = 1ull << 32,
    label_extract = 1ull << 33,
    label_insert = 1ull << 34,
-   label_dpp = 1ull << 35,
+   label_dpp16 = 1ull << 35,
+   label_dpp8 = 1ull << 36,
 };
 
 static constexpr uint64_t instr_usedef_labels =
    label_vec | label_mul | label_mad | label_add_sub | label_vop3p | label_bitwise |
-   label_uniform_bitwise | label_minmax | label_vopc | label_usedef | label_extract | label_dpp;
+   label_uniform_bitwise | label_minmax | label_vopc | label_usedef | label_extract | label_dpp16 |
+   label_dpp8;
 static constexpr uint64_t instr_mod_labels =
    label_omod2 | label_omod4 | label_omod5 | label_clamp | label_insert;
 
@@ -455,13 +457,21 @@ struct ssa_info {
 
    bool is_insert() { return label & label_insert; }
 
-   void set_dpp(Instruction* mov)
+   void set_dpp16(Instruction* mov)
    {
-      add_label(label_dpp);
+      add_label(label_dpp16);
       instr = mov;
    }
 
-   bool is_dpp() { return label & label_dpp; }
+   void set_dpp8(Instruction* mov)
+   {
+      add_label(label_dpp8);
+      instr = mov;
+   }
+
+   bool is_dpp() { return label & (label_dpp16 | label_dpp8); }
+   bool is_dpp16() { return label & label_dpp16; }
+   bool is_dpp8() { return label & label_dpp8; }
 };
 
 struct opt_ctx {
@@ -1215,7 +1225,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (instr->isSDWA())
             can_use_mod = can_use_mod && instr->sdwa().sel[i].size() == 4;
          else
-            can_use_mod = can_use_mod && (instr->isDPP() || can_use_VOP3(ctx, instr));
+            can_use_mod = can_use_mod && (instr->isDPP16() || can_use_VOP3(ctx, instr));
 
          if (info.is_neg() && instr->opcode == aco_opcode::v_add_f32) {
             instr->opcode = i ? aco_opcode::v_sub_f32 : aco_opcode::v_subrev_f32;
@@ -1228,8 +1238,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             if (!instr->isDPP() && !instr->isSDWA())
                to_VOP3(ctx, instr);
             instr->operands[i].setTemp(info.temp);
-            if (instr->isDPP() && !instr->dpp().abs[i])
-               instr->dpp().neg[i] = true;
+            if (instr->isDPP16() && !instr->dpp16().abs[i])
+               instr->dpp16().neg[i] = true;
             else if (instr->isSDWA() && !instr->sdwa().abs[i])
                instr->sdwa().neg[i] = true;
             else if (instr->isVOP3() && !instr->vop3().abs[i])
@@ -1239,8 +1249,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             if (!instr->isDPP() && !instr->isSDWA())
                to_VOP3(ctx, instr);
             instr->operands[i] = Operand(info.temp);
-            if (instr->isDPP())
-               instr->dpp().abs[i] = true;
+            if (instr->isDPP16())
+               instr->dpp16().abs[i] = true;
             else if (instr->isSDWA())
                instr->sdwa().abs[i] = true;
             else
@@ -1579,10 +1589,12 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
       break;
    case aco_opcode::v_mov_b32:
-      if (instr->isDPP()) {
+      if (instr->isDPP16()) {
          /* anything else doesn't make sense in SSA */
-         assert(instr->dpp().row_mask == 0xf && instr->dpp().bank_mask == 0xf);
-         ctx.info[instr->definitions[0].tempId()].set_dpp(instr.get());
+         assert(instr->dpp16().row_mask == 0xf && instr->dpp16().bank_mask == 0xf);
+         ctx.info[instr->definitions[0].tempId()].set_dpp16(instr.get());
+      } else if (instr->isDPP8()) {
+         ctx.info[instr->definitions[0].tempId()].set_dpp8(instr.get());
       }
       break;
    case aco_opcode::p_is_helper:
@@ -2250,16 +2262,22 @@ combine_inverse_comparison(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       new_sdwa->clamp = cmp_sdwa.clamp;
       new_sdwa->omod = cmp_sdwa.omod;
       new_instr = new_sdwa;
-   } else if (cmp->isDPP()) {
-      DPP_instruction* new_dpp = create_instruction<DPP_instruction>(
-         new_opcode, (Format)((uint16_t)Format::DPP | (uint16_t)Format::VOPC), 2, 1);
-      DPP_instruction& cmp_dpp = cmp->dpp();
+   } else if (cmp->isDPP16()) {
+      DPP16_instruction* new_dpp = create_instruction<DPP16_instruction>(
+         new_opcode, (Format)((uint16_t)Format::DPP16 | (uint16_t)Format::VOPC), 2, 1);
+      DPP16_instruction& cmp_dpp = cmp->dpp16();
       memcpy(new_dpp->abs, cmp_dpp.abs, sizeof(new_dpp->abs));
       memcpy(new_dpp->neg, cmp_dpp.neg, sizeof(new_dpp->neg));
       new_dpp->dpp_ctrl = cmp_dpp.dpp_ctrl;
       new_dpp->row_mask = cmp_dpp.row_mask;
       new_dpp->bank_mask = cmp_dpp.bank_mask;
       new_dpp->bound_ctrl = cmp_dpp.bound_ctrl;
+      new_instr = new_dpp;
+   } else if (cmp->isDPP8()) {
+      DPP8_instruction* new_dpp = create_instruction<DPP8_instruction>(
+         new_opcode, (Format)((uint16_t)Format::DPP8 | (uint16_t)Format::VOPC), 2, 1);
+      DPP8_instruction& cmp_dpp = cmp->dpp8();
+      memcpy(new_dpp->lane_sel, cmp_dpp.lane_sel, sizeof(new_dpp->lane_sel));
       new_instr = new_dpp;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_opcode, Format::VOPC, 2, 1);
@@ -4005,23 +4023,34 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
          aco_opcode swapped_op;
          if (info.is_dpp() && info.instr->pass_flags == instr->pass_flags &&
-             (i == 0 || can_swap_operands(instr, &swapped_op)) && can_use_DPP(instr, true) &&
-             !instr->isDPP()) {
-            convert_to_DPP(instr);
-            DPP_instruction* dpp = static_cast<DPP_instruction*>(instr.get());
-            if (i) {
-               instr->opcode = swapped_op;
-               std::swap(instr->operands[0], instr->operands[1]);
-               std::swap(dpp->neg[0], dpp->neg[1]);
-               std::swap(dpp->abs[0], dpp->abs[1]);
+             (i == 0 || can_swap_operands(instr, &swapped_op)) &&
+             can_use_DPP(instr, true, info.is_dpp8()) && !instr->isDPP()) {
+            bool dpp8 = info.is_dpp8();
+            convert_to_DPP(instr, dpp8);
+            if (dpp8) {
+               DPP8_instruction* dpp = &instr->dpp8();
+               for (unsigned j = 0; j < 8; ++j)
+                  dpp->lane_sel[j] = info.instr->dpp8().lane_sel[j];
+               if (i) {
+                  instr->opcode = swapped_op;
+                  std::swap(instr->operands[0], instr->operands[1]);
+               }
+            } else {
+               DPP16_instruction* dpp = &instr->dpp16();
+               if (i) {
+                  instr->opcode = swapped_op;
+                  std::swap(instr->operands[0], instr->operands[1]);
+                  std::swap(dpp->neg[0], dpp->neg[1]);
+                  std::swap(dpp->abs[0], dpp->abs[1]);
+               }
+               dpp->dpp_ctrl = info.instr->dpp16().dpp_ctrl;
+               dpp->bound_ctrl = info.instr->dpp16().bound_ctrl;
+               dpp->neg[0] ^= info.instr->dpp16().neg[0] && !dpp->abs[0];
+               dpp->abs[0] |= info.instr->dpp16().abs[0];
             }
             if (--ctx.uses[info.instr->definitions[0].tempId()])
                ctx.uses[info.instr->operands[0].tempId()]++;
             instr->operands[0].setTemp(info.instr->operands[0].getTemp());
-            dpp->dpp_ctrl = info.instr->dpp().dpp_ctrl;
-            dpp->bound_ctrl = info.instr->dpp().bound_ctrl;
-            dpp->neg[0] ^= info.instr->dpp().neg[0] && !dpp->abs[0];
-            dpp->abs[0] |= info.instr->dpp().abs[0];
             break;
          }
       }

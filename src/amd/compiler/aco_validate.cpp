@@ -116,7 +116,8 @@ validate_ir(Program* program)
          /* check base format */
          Format base_format = instr->format;
          base_format = (Format)((uint32_t)base_format & ~(uint32_t)Format::SDWA);
-         base_format = (Format)((uint32_t)base_format & ~(uint32_t)Format::DPP);
+         base_format = (Format)((uint32_t)base_format & ~(uint32_t)Format::DPP16);
+         base_format = (Format)((uint32_t)base_format & ~(uint32_t)Format::DPP8);
          if ((uint32_t)base_format & (uint32_t)Format::VOP1)
             base_format = Format::VOP1;
          else if ((uint32_t)base_format & (uint32_t)Format::VOP2)
