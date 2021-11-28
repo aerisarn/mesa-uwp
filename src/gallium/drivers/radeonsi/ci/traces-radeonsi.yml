@@ -34,10 +34,6 @@ traces:
     expectations:
       - device: gl-radeonsi-stoney
         checksum: 84c499203944cdc59e70450c324bb8df
-  - path: gputest/pixmark-piano.trace
-    expectations:
-      - device: gl-radeonsi-stoney
-        checksum: a7317d54d452d19ce630c7f554f2279b
   - path: gputest/triangle.trace
     expectations:
       - device: gl-radeonsi-stoney

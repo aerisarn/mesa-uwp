@@ -1054,7 +1054,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .has_dot_4x8 = sscreen->info.has_accelerated_dot_product,
       .has_dot_2x16 = sscreen->info.has_accelerated_dot_product,
       .optimize_sample_mask_in = true,
-      .max_unroll_iterations = 32,
+      .max_unroll_iterations = 128,
       .max_unroll_iterations_aggressive = 128,
       .use_interpolated_input_intrinsics = true,
       .lower_uniforms_to_ubo = true,

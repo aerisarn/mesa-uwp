@@ -597,14 +597,14 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
 {
    bool progress;
 
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_lower_alu_to_scalar, si_alu_to_scalar_filter, sscreen);
-   NIR_PASS_V(nir, nir_lower_phis_to_scalar, false);
-
    do {
       progress = false;
       bool lower_alu_to_scalar = false;
       bool lower_phis_to_scalar = false;
+
+      NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
+      NIR_PASS(progress, nir, nir_lower_alu_to_scalar, si_alu_to_scalar_filter, sscreen);
+      NIR_PASS(progress, nir, nir_lower_phis_to_scalar, false);
 
       if (first) {
          NIR_PASS(progress, nir, nir_split_array_vars, nir_var_function_temp);
