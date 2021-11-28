@@ -65,11 +65,6 @@ struct radv_amdgpu_winsys {
       struct u_rwlock lock;
    } global_bo_list;
 
-   /* syncobj cache */
-   pthread_mutex_t syncobj_lock;
-   uint32_t *syncobj;
-   uint32_t syncobj_count, syncobj_capacity;
-
    /* BO log */
    struct u_rwlock log_bo_list_lock;
    struct list_head log_bo_list;

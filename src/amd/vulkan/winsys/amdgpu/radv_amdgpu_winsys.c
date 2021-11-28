@@ -164,17 +164,12 @@ radv_amdgpu_winsys_destroy(struct radeon_winsys *rws)
    if (!destroy)
       return;
 
-   for (unsigned i = 0; i < ws->syncobj_count; ++i)
-      amdgpu_cs_destroy_syncobj(ws->dev, ws->syncobj[i]);
-   free(ws->syncobj);
-
    u_rwlock_destroy(&ws->global_bo_list.lock);
    free(ws->global_bo_list.bos);
 
    if (ws->reserve_vmid)
       amdgpu_vm_unreserve_vmid(ws->dev, 0);
 
-   pthread_mutex_destroy(&ws->syncobj_lock);
    u_rwlock_destroy(&ws->log_bo_list_lock);
    ac_addrlib_destroy(ws->addrlib);
    amdgpu_device_deinitialize(ws->dev);
@@ -266,7 +261,6 @@ radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags,
    u_rwlock_init(&ws->global_bo_list.lock);
    list_inithead(&ws->log_bo_list);
    u_rwlock_init(&ws->log_bo_list_lock);
-   pthread_mutex_init(&ws->syncobj_lock, NULL);
    ws->base.query_info = radv_amdgpu_winsys_query_info;
    ws->base.query_value = radv_amdgpu_winsys_query_value;
    ws->base.read_registers = radv_amdgpu_winsys_read_registers;
