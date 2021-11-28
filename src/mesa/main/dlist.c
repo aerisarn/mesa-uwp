@@ -1672,7 +1672,7 @@ save_BlendEquation(GLenum mode)
 
 
 static void GLAPIENTRY
-save_BlendEquationSeparateEXT(GLenum modeRGB, GLenum modeA)
+save_BlendEquationSeparate(GLenum modeRGB, GLenum modeA)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -1689,7 +1689,7 @@ save_BlendEquationSeparateEXT(GLenum modeRGB, GLenum modeA)
 
 
 static void GLAPIENTRY
-save_BlendFuncSeparateEXT(GLenum sfactorRGB, GLenum dfactorRGB,
+save_BlendFuncSeparate(GLenum sfactorRGB, GLenum dfactorRGB,
                           GLenum sfactorA, GLenum dfactorA)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -1712,7 +1712,7 @@ save_BlendFuncSeparateEXT(GLenum sfactorRGB, GLenum dfactorRGB,
 static void GLAPIENTRY
 save_BlendFunc(GLenum srcfactor, GLenum dstfactor)
 {
-   save_BlendFuncSeparateEXT(srcfactor, dstfactor, srcfactor, dstfactor);
+   save_BlendFuncSeparate(srcfactor, dstfactor, srcfactor, dstfactor);
 }
 
 
@@ -1736,7 +1736,7 @@ save_BlendColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)
 
 /* GL_ARB_draw_buffers_blend */
 static void GLAPIENTRY
-save_BlendFuncSeparatei(GLuint buf, GLenum sfactorRGB, GLenum dfactorRGB,
+save_BlendFuncSeparateiARB(GLuint buf, GLenum sfactorRGB, GLenum dfactorRGB,
                         GLenum sfactorA, GLenum dfactorA)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -1758,7 +1758,7 @@ save_BlendFuncSeparatei(GLuint buf, GLenum sfactorRGB, GLenum dfactorRGB,
 
 /* GL_ARB_draw_buffers_blend */
 static void GLAPIENTRY
-save_BlendFunci(GLuint buf, GLenum sfactor, GLenum dfactor)
+save_BlendFunciARB(GLuint buf, GLenum sfactor, GLenum dfactor)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -1776,7 +1776,7 @@ save_BlendFunci(GLuint buf, GLenum sfactor, GLenum dfactor)
 
 /* GL_ARB_draw_buffers_blend */
 static void GLAPIENTRY
-save_BlendEquationi(GLuint buf, GLenum mode)
+save_BlendEquationiARB(GLuint buf, GLenum mode)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -1793,7 +1793,7 @@ save_BlendEquationi(GLuint buf, GLenum mode)
 
 /* GL_ARB_draw_buffers_blend */
 static void GLAPIENTRY
-save_BlendEquationSeparatei(GLuint buf, GLenum modeRGB, GLenum modeA)
+save_BlendEquationSeparateiARB(GLuint buf, GLenum modeRGB, GLenum modeA)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -1835,7 +1835,7 @@ save_DrawElementsInstancedARB(UNUSED GLenum mode,
 }
 
 static void GLAPIENTRY
-save_DrawElementsInstancedBaseVertexARB(UNUSED GLenum mode,
+save_DrawElementsInstancedBaseVertex(UNUSED GLenum mode,
                                         UNUSED GLsizei count,
                                         UNUSED GLenum type,
                                         UNUSED const GLvoid *indices,
@@ -2283,7 +2283,7 @@ save_ColorMask(GLboolean red, GLboolean green,
 
 
 static void GLAPIENTRY
-save_ColorMaskIndexed(GLuint buf, GLboolean red, GLboolean green,
+save_ColorMaski(GLuint buf, GLboolean red, GLboolean green,
                       GLboolean blue, GLboolean alpha)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -2553,7 +2553,7 @@ save_Disable(GLenum cap)
 
 
 static void GLAPIENTRY
-save_DisableIndexed(GLuint index, GLenum cap)
+save_Disablei(GLuint index, GLenum cap)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -2629,7 +2629,7 @@ save_Enable(GLenum cap)
 
 
 static void GLAPIENTRY
-save_EnableIndexed(GLuint index, GLenum cap)
+save_Enablei(GLuint index, GLenum cap)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -3538,7 +3538,7 @@ save_PixelZoom(GLfloat xfactor, GLfloat yfactor)
 
 
 static void GLAPIENTRY
-save_PointParameterfvEXT(GLenum pname, const GLfloat *params)
+save_PointParameterfv(GLenum pname, const GLfloat *params)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -3557,12 +3557,12 @@ save_PointParameterfvEXT(GLenum pname, const GLfloat *params)
 
 
 static void GLAPIENTRY
-save_PointParameterfEXT(GLenum pname, GLfloat param)
+save_PointParameterf(GLenum pname, GLfloat param)
 {
    GLfloat parray[3];
    parray[0] = param;
    parray[1] = parray[2] = 0.0F;
-   save_PointParameterfvEXT(pname, parray);
+   save_PointParameterfv(pname, parray);
 }
 
 static void GLAPIENTRY
@@ -3571,7 +3571,7 @@ save_PointParameteri(GLenum pname, GLint param)
    GLfloat parray[3];
    parray[0] = (GLfloat) param;
    parray[1] = parray[2] = 0.0F;
-   save_PointParameterfvEXT(pname, parray);
+   save_PointParameterfv(pname, parray);
 }
 
 static void GLAPIENTRY
@@ -3580,7 +3580,7 @@ save_PointParameteriv(GLenum pname, const GLint * param)
    GLfloat parray[3];
    parray[0] = (GLfloat) param[0];
    parray[1] = parray[2] = 0.0F;
-   save_PointParameterfvEXT(pname, parray);
+   save_PointParameterfv(pname, parray);
 }
 
 
@@ -4814,49 +4814,49 @@ save_WindowPos4fMESA(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 }
 
 static void GLAPIENTRY
-save_WindowPos2dMESA(GLdouble x, GLdouble y)
+save_WindowPos2d(GLdouble x, GLdouble y)
 {
    save_WindowPos4fMESA((GLfloat) x, (GLfloat) y, 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos2fMESA(GLfloat x, GLfloat y)
+save_WindowPos2f(GLfloat x, GLfloat y)
 {
    save_WindowPos4fMESA(x, y, 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos2iMESA(GLint x, GLint y)
+save_WindowPos2i(GLint x, GLint y)
 {
    save_WindowPos4fMESA((GLfloat) x, (GLfloat) y, 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos2sMESA(GLshort x, GLshort y)
+save_WindowPos2s(GLshort x, GLshort y)
 {
    save_WindowPos4fMESA(x, y, 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3dMESA(GLdouble x, GLdouble y, GLdouble z)
+save_WindowPos3d(GLdouble x, GLdouble y, GLdouble z)
 {
    save_WindowPos4fMESA((GLfloat) x, (GLfloat) y, (GLfloat) z, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3fMESA(GLfloat x, GLfloat y, GLfloat z)
+save_WindowPos3f(GLfloat x, GLfloat y, GLfloat z)
 {
    save_WindowPos4fMESA(x, y, z, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3iMESA(GLint x, GLint y, GLint z)
+save_WindowPos3i(GLint x, GLint y, GLint z)
 {
    save_WindowPos4fMESA((GLfloat) x, (GLfloat) y, (GLfloat) z, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3sMESA(GLshort x, GLshort y, GLshort z)
+save_WindowPos3s(GLshort x, GLshort y, GLshort z)
 {
    save_WindowPos4fMESA(x, y, z, 1.0F);
 }
@@ -4880,49 +4880,49 @@ save_WindowPos4sMESA(GLshort x, GLshort y, GLshort z, GLshort w)
 }
 
 static void GLAPIENTRY
-save_WindowPos2dvMESA(const GLdouble * v)
+save_WindowPos2dv(const GLdouble * v)
 {
    save_WindowPos4fMESA((GLfloat) v[0], (GLfloat) v[1], 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos2fvMESA(const GLfloat * v)
+save_WindowPos2fv(const GLfloat * v)
 {
    save_WindowPos4fMESA(v[0], v[1], 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos2ivMESA(const GLint * v)
+save_WindowPos2iv(const GLint * v)
 {
    save_WindowPos4fMESA((GLfloat) v[0], (GLfloat) v[1], 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos2svMESA(const GLshort * v)
+save_WindowPos2sv(const GLshort * v)
 {
    save_WindowPos4fMESA(v[0], v[1], 0.0F, 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3dvMESA(const GLdouble * v)
+save_WindowPos3dv(const GLdouble * v)
 {
    save_WindowPos4fMESA((GLfloat) v[0], (GLfloat) v[1], (GLfloat) v[2], 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3fvMESA(const GLfloat * v)
+save_WindowPos3fv(const GLfloat * v)
 {
    save_WindowPos4fMESA(v[0], v[1], v[2], 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3ivMESA(const GLint * v)
+save_WindowPos3iv(const GLint * v)
 {
    save_WindowPos4fMESA((GLfloat) v[0], (GLfloat) v[1], (GLfloat) v[2], 1.0F);
 }
 
 static void GLAPIENTRY
-save_WindowPos3svMESA(const GLshort * v)
+save_WindowPos3sv(const GLshort * v)
 {
    save_WindowPos4fMESA(v[0], v[1], v[2], 1.0F);
 }
@@ -4957,7 +4957,7 @@ save_WindowPos4svMESA(const GLshort * v)
 
 /* GL_ARB_multitexture */
 static void GLAPIENTRY
-save_ActiveTextureARB(GLenum target)
+save_ActiveTexture(GLenum target)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -4975,7 +4975,7 @@ save_ActiveTextureARB(GLenum target)
 /* GL_ARB_transpose_matrix */
 
 static void GLAPIENTRY
-save_LoadTransposeMatrixdARB(const GLdouble m[16])
+save_LoadTransposeMatrixd(const GLdouble m[16])
 {
    GLfloat tm[16];
    _math_transposefd(tm, m);
@@ -4984,7 +4984,7 @@ save_LoadTransposeMatrixdARB(const GLdouble m[16])
 
 
 static void GLAPIENTRY
-save_LoadTransposeMatrixfARB(const GLfloat m[16])
+save_LoadTransposeMatrixf(const GLfloat m[16])
 {
    GLfloat tm[16];
    _math_transposef(tm, m);
@@ -4993,7 +4993,7 @@ save_LoadTransposeMatrixfARB(const GLfloat m[16])
 
 
 static void GLAPIENTRY
-save_MultTransposeMatrixdARB(const GLdouble m[16])
+save_MultTransposeMatrixd(const GLdouble m[16])
 {
    GLfloat tm[16];
    _math_transposefd(tm, m);
@@ -5002,7 +5002,7 @@ save_MultTransposeMatrixdARB(const GLdouble m[16])
 
 
 static void GLAPIENTRY
-save_MultTransposeMatrixfARB(const GLfloat m[16])
+save_MultTransposeMatrixf(const GLfloat m[16])
 {
    GLfloat tm[16];
    _math_transposef(tm, m);
@@ -5030,7 +5030,7 @@ static GLvoid *copy_data(const GLvoid *data, GLsizei size, const char *func)
 
 /* GL_ARB_texture_compression */
 static void GLAPIENTRY
-save_CompressedTexImage1DARB(GLenum target, GLint level,
+save_CompressedTexImage1D(GLenum target, GLint level,
                              GLenum internalFormat, GLsizei width,
                              GLint border, GLsizei imageSize,
                              const GLvoid * data)
@@ -5068,7 +5068,7 @@ save_CompressedTexImage1DARB(GLenum target, GLint level,
 
 
 static void GLAPIENTRY
-save_CompressedTexImage2DARB(GLenum target, GLint level,
+save_CompressedTexImage2D(GLenum target, GLint level,
                              GLenum internalFormat, GLsizei width,
                              GLsizei height, GLint border, GLsizei imageSize,
                              const GLvoid * data)
@@ -5107,7 +5107,7 @@ save_CompressedTexImage2DARB(GLenum target, GLint level,
 
 
 static void GLAPIENTRY
-save_CompressedTexImage3DARB(GLenum target, GLint level,
+save_CompressedTexImage3D(GLenum target, GLint level,
                              GLenum internalFormat, GLsizei width,
                              GLsizei height, GLsizei depth, GLint border,
                              GLsizei imageSize, const GLvoid * data)
@@ -5148,7 +5148,7 @@ save_CompressedTexImage3DARB(GLenum target, GLint level,
 
 
 static void GLAPIENTRY
-save_CompressedTexSubImage1DARB(GLenum target, GLint level, GLint xoffset,
+save_CompressedTexSubImage1D(GLenum target, GLint level, GLint xoffset,
                                 GLsizei width, GLenum format,
                                 GLsizei imageSize, const GLvoid * data)
 {
@@ -5177,7 +5177,7 @@ save_CompressedTexSubImage1DARB(GLenum target, GLint level, GLint xoffset,
 
 
 static void GLAPIENTRY
-save_CompressedTexSubImage2DARB(GLenum target, GLint level, GLint xoffset,
+save_CompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset,
                                 GLint yoffset, GLsizei width, GLsizei height,
                                 GLenum format, GLsizei imageSize,
                                 const GLvoid * data)
@@ -5209,7 +5209,7 @@ save_CompressedTexSubImage2DARB(GLenum target, GLint level, GLint xoffset,
 
 
 static void GLAPIENTRY
-save_CompressedTexSubImage3DARB(GLenum target, GLint level, GLint xoffset,
+save_CompressedTexSubImage3D(GLenum target, GLint level, GLint xoffset,
                                 GLint yoffset, GLint zoffset, GLsizei width,
                                 GLsizei height, GLsizei depth, GLenum format,
                                 GLsizei imageSize, const GLvoid * data)
@@ -5245,7 +5245,7 @@ save_CompressedTexSubImage3DARB(GLenum target, GLint level, GLint xoffset,
 
 /* GL_ARB_multisample */
 static void GLAPIENTRY
-save_SampleCoverageARB(GLclampf value, GLboolean invert)
+save_SampleCoverage(GLclampf value, GLboolean invert)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -5550,7 +5550,7 @@ save_ProgramStringARB(GLenum target, GLenum format, GLsizei len,
 
 
 static void GLAPIENTRY
-save_BeginQueryARB(GLenum target, GLuint id)
+save_BeginQuery(GLenum target, GLuint id)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -5566,7 +5566,7 @@ save_BeginQueryARB(GLenum target, GLuint id)
 }
 
 static void GLAPIENTRY
-save_EndQueryARB(GLenum target)
+save_EndQuery(GLenum target)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -5631,7 +5631,7 @@ save_EndQueryIndexed(GLenum target, GLuint index)
 
 
 static void GLAPIENTRY
-save_DrawBuffersARB(GLsizei count, const GLenum * buffers)
+save_DrawBuffers(GLsizei count, const GLenum * buffers)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -5898,7 +5898,7 @@ save_PrimitiveRestartNV(void)
 
 
 static void GLAPIENTRY
-save_BlitFramebufferEXT(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+save_BlitFramebuffer(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
                         GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
                         GLbitfield mask, GLenum filter)
 {
@@ -5928,7 +5928,7 @@ save_BlitFramebufferEXT(GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
 
 /** GL_EXT_provoking_vertex */
 static void GLAPIENTRY
-save_ProvokingVertexEXT(GLenum mode)
+save_ProvokingVertex(GLenum mode)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6291,7 +6291,7 @@ save_UseProgram(GLuint program)
 
 
 static void GLAPIENTRY
-save_Uniform1fARB(GLint location, GLfloat x)
+save_Uniform1f(GLint location, GLfloat x)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6308,7 +6308,7 @@ save_Uniform1fARB(GLint location, GLfloat x)
 
 
 static void GLAPIENTRY
-save_Uniform2fARB(GLint location, GLfloat x, GLfloat y)
+save_Uniform2f(GLint location, GLfloat x, GLfloat y)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6326,7 +6326,7 @@ save_Uniform2fARB(GLint location, GLfloat x, GLfloat y)
 
 
 static void GLAPIENTRY
-save_Uniform3fARB(GLint location, GLfloat x, GLfloat y, GLfloat z)
+save_Uniform3f(GLint location, GLfloat x, GLfloat y, GLfloat z)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6345,7 +6345,7 @@ save_Uniform3fARB(GLint location, GLfloat x, GLfloat y, GLfloat z)
 
 
 static void GLAPIENTRY
-save_Uniform4fARB(GLint location, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+save_Uniform4f(GLint location, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6365,7 +6365,7 @@ save_Uniform4fARB(GLint location, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 
 
 static void GLAPIENTRY
-save_Uniform1fvARB(GLint location, GLsizei count, const GLfloat *v)
+save_Uniform1fv(GLint location, GLsizei count, const GLfloat *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6382,7 +6382,7 @@ save_Uniform1fvARB(GLint location, GLsizei count, const GLfloat *v)
 }
 
 static void GLAPIENTRY
-save_Uniform2fvARB(GLint location, GLsizei count, const GLfloat *v)
+save_Uniform2fv(GLint location, GLsizei count, const GLfloat *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6399,7 +6399,7 @@ save_Uniform2fvARB(GLint location, GLsizei count, const GLfloat *v)
 }
 
 static void GLAPIENTRY
-save_Uniform3fvARB(GLint location, GLsizei count, const GLfloat *v)
+save_Uniform3fv(GLint location, GLsizei count, const GLfloat *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6416,7 +6416,7 @@ save_Uniform3fvARB(GLint location, GLsizei count, const GLfloat *v)
 }
 
 static void GLAPIENTRY
-save_Uniform4fvARB(GLint location, GLsizei count, const GLfloat *v)
+save_Uniform4fv(GLint location, GLsizei count, const GLfloat *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6580,7 +6580,7 @@ save_Uniform4dv(GLint location, GLsizei count, const GLdouble *v)
 
 
 static void GLAPIENTRY
-save_Uniform1iARB(GLint location, GLint x)
+save_Uniform1i(GLint location, GLint x)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6596,7 +6596,7 @@ save_Uniform1iARB(GLint location, GLint x)
 }
 
 static void GLAPIENTRY
-save_Uniform2iARB(GLint location, GLint x, GLint y)
+save_Uniform2i(GLint location, GLint x, GLint y)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6613,7 +6613,7 @@ save_Uniform2iARB(GLint location, GLint x, GLint y)
 }
 
 static void GLAPIENTRY
-save_Uniform3iARB(GLint location, GLint x, GLint y, GLint z)
+save_Uniform3i(GLint location, GLint x, GLint y, GLint z)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6631,7 +6631,7 @@ save_Uniform3iARB(GLint location, GLint x, GLint y, GLint z)
 }
 
 static void GLAPIENTRY
-save_Uniform4iARB(GLint location, GLint x, GLint y, GLint z, GLint w)
+save_Uniform4i(GLint location, GLint x, GLint y, GLint z, GLint w)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6652,7 +6652,7 @@ save_Uniform4iARB(GLint location, GLint x, GLint y, GLint z, GLint w)
 
 
 static void GLAPIENTRY
-save_Uniform1ivARB(GLint location, GLsizei count, const GLint *v)
+save_Uniform1iv(GLint location, GLsizei count, const GLint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6669,7 +6669,7 @@ save_Uniform1ivARB(GLint location, GLsizei count, const GLint *v)
 }
 
 static void GLAPIENTRY
-save_Uniform2ivARB(GLint location, GLsizei count, const GLint *v)
+save_Uniform2iv(GLint location, GLsizei count, const GLint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6686,7 +6686,7 @@ save_Uniform2ivARB(GLint location, GLsizei count, const GLint *v)
 }
 
 static void GLAPIENTRY
-save_Uniform3ivARB(GLint location, GLsizei count, const GLint *v)
+save_Uniform3iv(GLint location, GLsizei count, const GLint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6703,7 +6703,7 @@ save_Uniform3ivARB(GLint location, GLsizei count, const GLint *v)
 }
 
 static void GLAPIENTRY
-save_Uniform4ivARB(GLint location, GLsizei count, const GLint *v)
+save_Uniform4iv(GLint location, GLsizei count, const GLint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -6864,7 +6864,7 @@ save_Uniform4uiv(GLint location, GLsizei count, const GLuint *v)
 
 
 static void GLAPIENTRY
-save_UniformMatrix2fvARB(GLint location, GLsizei count, GLboolean transpose,
+save_UniformMatrix2fv(GLint location, GLsizei count, GLboolean transpose,
                          const GLfloat *m)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -6883,7 +6883,7 @@ save_UniformMatrix2fvARB(GLint location, GLsizei count, GLboolean transpose,
 }
 
 static void GLAPIENTRY
-save_UniformMatrix3fvARB(GLint location, GLsizei count, GLboolean transpose,
+save_UniformMatrix3fv(GLint location, GLsizei count, GLboolean transpose,
                          const GLfloat *m)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -6902,7 +6902,7 @@ save_UniformMatrix3fvARB(GLint location, GLsizei count, GLboolean transpose,
 }
 
 static void GLAPIENTRY
-save_UniformMatrix4fvARB(GLint location, GLsizei count, GLboolean transpose,
+save_UniformMatrix4fv(GLint location, GLsizei count, GLboolean transpose,
                          const GLfloat *m)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -8839,7 +8839,7 @@ save_ClipControl(GLenum origin, GLenum depth)
 }
 
 static void GLAPIENTRY
-save_ClampColorARB(GLenum target, GLenum clamp)
+save_ClampColor(GLenum target, GLenum clamp)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -8856,7 +8856,7 @@ save_ClampColorARB(GLenum target, GLenum clamp)
 
 /** GL_EXT_texture_integer */
 static void GLAPIENTRY
-save_ClearColorIi(GLint red, GLint green, GLint blue, GLint alpha)
+save_ClearColorIiEXT(GLint red, GLint green, GLint blue, GLint alpha)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -8875,7 +8875,7 @@ save_ClearColorIi(GLint red, GLint green, GLint blue, GLint alpha)
 
 /** GL_EXT_texture_integer */
 static void GLAPIENTRY
-save_ClearColorIui(GLuint red, GLuint green, GLuint blue, GLuint alpha)
+save_ClearColorIuiEXT(GLuint red, GLuint green, GLuint blue, GLuint alpha)
 {
    GET_CURRENT_CONTEXT(ctx);
    Node *n;
@@ -14021,7 +14021,7 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_ClearStencil(table, save_ClearStencil);
    SET_ClipPlane(table, save_ClipPlane);
    SET_ColorMask(table, save_ColorMask);
-   SET_ColorMaski(table, save_ColorMaskIndexed);
+   SET_ColorMaski(table, save_ColorMaski);
    SET_ColorMaterial(table, save_ColorMaterial);
    SET_CopyPixels(table, save_CopyPixels);
    SET_CullFace(table, save_CullFace);
@@ -14029,11 +14029,11 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_DepthMask(table, save_DepthMask);
    SET_DepthRange(table, save_DepthRange);
    SET_Disable(table, save_Disable);
-   SET_Disablei(table, save_DisableIndexed);
+   SET_Disablei(table, save_Disablei);
    SET_DrawBuffer(table, save_DrawBuffer);
    SET_DrawPixels(table, save_DrawPixels);
    SET_Enable(table, save_Enable);
-   SET_Enablei(table, save_EnableIndexed);
+   SET_Enablei(table, save_Enablei);
    SET_EvalMesh1(table, save_EvalMesh1);
    SET_EvalMesh2(table, save_EvalMesh2);
    SET_Fogf(table, save_Fogf);
@@ -14173,26 +14173,9 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_BlendColor(table, save_BlendColor);
    SET_BlendEquation(table, save_BlendEquation);
 
-   /* 2. GL_EXT_blend_color */
-#if 0
-   SET_BlendColorEXT(table, save_BlendColorEXT);
-#endif
-
-   /* 6. GL_EXT_texture3d */
-#if 0
-   SET_CopyTexSubImage3DEXT(table, save_CopyTexSubImage3D);
-   SET_TexImage3DEXT(table, save_TexImage3DEXT);
-   SET_TexSubImage3DEXT(table, save_TexSubImage3D);
-#endif
-
-   /* 37. GL_EXT_blend_minmax */
-#if 0
-   SET_BlendEquationEXT(table, save_BlendEquationEXT);
-#endif
-
    /* 54. GL_EXT_point_parameters */
-   SET_PointParameterf(table, save_PointParameterfEXT);
-   SET_PointParameterfv(table, save_PointParameterfvEXT);
+   SET_PointParameterf(table, save_PointParameterf);
+   SET_PointParameterfv(table, save_PointParameterfv);
 
    /* 91. GL_ARB_tessellation_shader */
    SET_PatchParameteri(table, save_PatchParameteri);
@@ -14213,25 +14196,25 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_DispatchComputeIndirect(table, save_DispatchComputeIndirect);
 
    /* 173. GL_EXT_blend_func_separate */
-   SET_BlendFuncSeparate(table, save_BlendFuncSeparateEXT);
+   SET_BlendFuncSeparate(table, save_BlendFuncSeparate);
 
    /* 197. GL_MESA_window_pos */
-   SET_WindowPos2d(table, save_WindowPos2dMESA);
-   SET_WindowPos2dv(table, save_WindowPos2dvMESA);
-   SET_WindowPos2f(table, save_WindowPos2fMESA);
-   SET_WindowPos2fv(table, save_WindowPos2fvMESA);
-   SET_WindowPos2i(table, save_WindowPos2iMESA);
-   SET_WindowPos2iv(table, save_WindowPos2ivMESA);
-   SET_WindowPos2s(table, save_WindowPos2sMESA);
-   SET_WindowPos2sv(table, save_WindowPos2svMESA);
-   SET_WindowPos3d(table, save_WindowPos3dMESA);
-   SET_WindowPos3dv(table, save_WindowPos3dvMESA);
-   SET_WindowPos3f(table, save_WindowPos3fMESA);
-   SET_WindowPos3fv(table, save_WindowPos3fvMESA);
-   SET_WindowPos3i(table, save_WindowPos3iMESA);
-   SET_WindowPos3iv(table, save_WindowPos3ivMESA);
-   SET_WindowPos3s(table, save_WindowPos3sMESA);
-   SET_WindowPos3sv(table, save_WindowPos3svMESA);
+   SET_WindowPos2d(table, save_WindowPos2d);
+   SET_WindowPos2dv(table, save_WindowPos2dv);
+   SET_WindowPos2f(table, save_WindowPos2f);
+   SET_WindowPos2fv(table, save_WindowPos2fv);
+   SET_WindowPos2i(table, save_WindowPos2i);
+   SET_WindowPos2iv(table, save_WindowPos2iv);
+   SET_WindowPos2s(table, save_WindowPos2s);
+   SET_WindowPos2sv(table, save_WindowPos2sv);
+   SET_WindowPos3d(table, save_WindowPos3d);
+   SET_WindowPos3dv(table, save_WindowPos3dv);
+   SET_WindowPos3f(table, save_WindowPos3f);
+   SET_WindowPos3fv(table, save_WindowPos3fv);
+   SET_WindowPos3i(table, save_WindowPos3i);
+   SET_WindowPos3iv(table, save_WindowPos3iv);
+   SET_WindowPos3s(table, save_WindowPos3s);
+   SET_WindowPos3sv(table, save_WindowPos3sv);
    SET_WindowPos4dMESA(table, save_WindowPos4dMESA);
    SET_WindowPos4dvMESA(table, save_WindowPos4dvMESA);
    SET_WindowPos4fMESA(table, save_WindowPos4fMESA);
@@ -14256,24 +14239,24 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_DepthBoundsEXT(table, save_DepthBoundsEXT);
 
    /* ARB 1. GL_ARB_multitexture */
-   SET_ActiveTexture(table, save_ActiveTextureARB);
+   SET_ActiveTexture(table, save_ActiveTexture);
 
    /* ARB 3. GL_ARB_transpose_matrix */
-   SET_LoadTransposeMatrixd(table, save_LoadTransposeMatrixdARB);
-   SET_LoadTransposeMatrixf(table, save_LoadTransposeMatrixfARB);
-   SET_MultTransposeMatrixd(table, save_MultTransposeMatrixdARB);
-   SET_MultTransposeMatrixf(table, save_MultTransposeMatrixfARB);
+   SET_LoadTransposeMatrixd(table, save_LoadTransposeMatrixd);
+   SET_LoadTransposeMatrixf(table, save_LoadTransposeMatrixf);
+   SET_MultTransposeMatrixd(table, save_MultTransposeMatrixd);
+   SET_MultTransposeMatrixf(table, save_MultTransposeMatrixf);
 
    /* ARB 5. GL_ARB_multisample */
-   SET_SampleCoverage(table, save_SampleCoverageARB);
+   SET_SampleCoverage(table, save_SampleCoverage);
 
    /* ARB 12. GL_ARB_texture_compression */
-   SET_CompressedTexImage3D(table, save_CompressedTexImage3DARB);
-   SET_CompressedTexImage2D(table, save_CompressedTexImage2DARB);
-   SET_CompressedTexImage1D(table, save_CompressedTexImage1DARB);
-   SET_CompressedTexSubImage3D(table, save_CompressedTexSubImage3DARB);
-   SET_CompressedTexSubImage2D(table, save_CompressedTexSubImage2DARB);
-   SET_CompressedTexSubImage1D(table, save_CompressedTexSubImage1DARB);
+   SET_CompressedTexImage3D(table, save_CompressedTexImage3D);
+   SET_CompressedTexImage2D(table, save_CompressedTexImage2D);
+   SET_CompressedTexImage1D(table, save_CompressedTexImage1D);
+   SET_CompressedTexSubImage3D(table, save_CompressedTexSubImage3D);
+   SET_CompressedTexSubImage2D(table, save_CompressedTexSubImage2D);
+   SET_CompressedTexSubImage1D(table, save_CompressedTexSubImage1D);
 
    /* ARB 14. GL_ARB_point_parameters */
    /* aliased with EXT_point_parameters functions */
@@ -14295,34 +14278,34 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_ProgramLocalParameter4fARB(table, save_ProgramLocalParameter4fARB);
    SET_ProgramLocalParameter4fvARB(table, save_ProgramLocalParameter4fvARB);
 
-   SET_BeginQuery(table, save_BeginQueryARB);
-   SET_EndQuery(table, save_EndQueryARB);
+   SET_BeginQuery(table, save_BeginQuery);
+   SET_EndQuery(table, save_EndQuery);
    SET_QueryCounter(table, save_QueryCounter);
 
-   SET_DrawBuffers(table, save_DrawBuffersARB);
+   SET_DrawBuffers(table, save_DrawBuffers);
 
-   SET_BlitFramebuffer(table, save_BlitFramebufferEXT);
+   SET_BlitFramebuffer(table, save_BlitFramebuffer);
 
    SET_UseProgram(table, save_UseProgram);
-   SET_Uniform1f(table, save_Uniform1fARB);
-   SET_Uniform2f(table, save_Uniform2fARB);
-   SET_Uniform3f(table, save_Uniform3fARB);
-   SET_Uniform4f(table, save_Uniform4fARB);
-   SET_Uniform1fv(table, save_Uniform1fvARB);
-   SET_Uniform2fv(table, save_Uniform2fvARB);
-   SET_Uniform3fv(table, save_Uniform3fvARB);
-   SET_Uniform4fv(table, save_Uniform4fvARB);
-   SET_Uniform1i(table, save_Uniform1iARB);
-   SET_Uniform2i(table, save_Uniform2iARB);
-   SET_Uniform3i(table, save_Uniform3iARB);
-   SET_Uniform4i(table, save_Uniform4iARB);
-   SET_Uniform1iv(table, save_Uniform1ivARB);
-   SET_Uniform2iv(table, save_Uniform2ivARB);
-   SET_Uniform3iv(table, save_Uniform3ivARB);
-   SET_Uniform4iv(table, save_Uniform4ivARB);
-   SET_UniformMatrix2fv(table, save_UniformMatrix2fvARB);
-   SET_UniformMatrix3fv(table, save_UniformMatrix3fvARB);
-   SET_UniformMatrix4fv(table, save_UniformMatrix4fvARB);
+   SET_Uniform1f(table, save_Uniform1f);
+   SET_Uniform2f(table, save_Uniform2f);
+   SET_Uniform3f(table, save_Uniform3f);
+   SET_Uniform4f(table, save_Uniform4f);
+   SET_Uniform1fv(table, save_Uniform1fv);
+   SET_Uniform2fv(table, save_Uniform2fv);
+   SET_Uniform3fv(table, save_Uniform3fv);
+   SET_Uniform4fv(table, save_Uniform4fv);
+   SET_Uniform1i(table, save_Uniform1i);
+   SET_Uniform2i(table, save_Uniform2i);
+   SET_Uniform3i(table, save_Uniform3i);
+   SET_Uniform4i(table, save_Uniform4i);
+   SET_Uniform1iv(table, save_Uniform1iv);
+   SET_Uniform2iv(table, save_Uniform2iv);
+   SET_Uniform3iv(table, save_Uniform3iv);
+   SET_Uniform4iv(table, save_Uniform4iv);
+   SET_UniformMatrix2fv(table, save_UniformMatrix2fv);
+   SET_UniformMatrix3fv(table, save_UniformMatrix3fv);
+   SET_UniformMatrix4fv(table, save_UniformMatrix4fv);
    SET_UniformMatrix2x3fv(table, save_UniformMatrix2x3fv);
    SET_UniformMatrix3x2fv(table, save_UniformMatrix3x2fv);
    SET_UniformMatrix2x4fv(table, save_UniformMatrix2x4fv);
@@ -14331,18 +14314,18 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_UniformMatrix4x3fv(table, save_UniformMatrix4x3fv);
 
    /* 299. GL_EXT_blend_equation_separate */
-   SET_BlendEquationSeparate(table, save_BlendEquationSeparateEXT);
+   SET_BlendEquationSeparate(table, save_BlendEquationSeparate);
 
    /* GL_EXT_gpu_program_parameters */
    SET_ProgramEnvParameters4fvEXT(table, save_ProgramEnvParameters4fvEXT);
    SET_ProgramLocalParameters4fvEXT(table, save_ProgramLocalParameters4fvEXT);
 
    /* 364. GL_EXT_provoking_vertex */
-   SET_ProvokingVertex(table, save_ProvokingVertexEXT);
+   SET_ProvokingVertex(table, save_ProvokingVertex);
 
    /* GL_EXT_texture_integer */
-   SET_ClearColorIiEXT(table, save_ClearColorIi);
-   SET_ClearColorIuiEXT(table, save_ClearColorIui);
+   SET_ClearColorIiEXT(table, save_ClearColorIiEXT);
+   SET_ClearColorIuiEXT(table, save_ClearColorIuiEXT);
    SET_TexParameterIiv(table, save_TexParameterIiv);
    SET_TexParameterIuiv(table, save_TexParameterIuiv);
 
@@ -14350,7 +14333,7 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_ClipControl(table, save_ClipControl);
 
    /* GL_ARB_color_buffer_float */
-   SET_ClampColor(table, save_ClampColorARB);
+   SET_ClampColor(table, save_ClampColor);
 
    /* GL 3.0 */
    SET_ClearBufferiv(table, save_ClearBufferiv);
@@ -14450,10 +14433,10 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_SamplerParameterIuiv(table, save_SamplerParameterIuiv);
 
    /* GL_ARB_draw_buffer_blend */
-   SET_BlendFunciARB(table, save_BlendFunci);
-   SET_BlendFuncSeparateiARB(table, save_BlendFuncSeparatei);
-   SET_BlendEquationiARB(table, save_BlendEquationi);
-   SET_BlendEquationSeparateiARB(table, save_BlendEquationSeparatei);
+   SET_BlendFunciARB(table, save_BlendFunciARB);
+   SET_BlendFuncSeparateiARB(table, save_BlendFuncSeparateiARB);
+   SET_BlendEquationiARB(table, save_BlendEquationiARB);
+   SET_BlendEquationSeparateiARB(table, save_BlendEquationSeparateiARB);
 
    /* GL_NV_conditional_render */
    SET_BeginConditionalRender(table, save_BeginConditionalRender);
@@ -14473,7 +14456,7 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_DrawElementsInstancedARB(table, save_DrawElementsInstancedARB);
 
    /* GL_ARB_draw_elements_base_vertex */
-   SET_DrawElementsInstancedBaseVertex(table, save_DrawElementsInstancedBaseVertexARB);
+   SET_DrawElementsInstancedBaseVertex(table, save_DrawElementsInstancedBaseVertex);
 
    /* GL_ARB_base_instance */
    SET_DrawArraysInstancedBaseInstance(table, save_DrawArraysInstancedBaseInstance);
