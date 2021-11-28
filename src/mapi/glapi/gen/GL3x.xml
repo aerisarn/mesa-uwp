@@ -330,7 +330,7 @@
     <param name="w" type="GLuint"/>
   </function>
 
-  <function name="VertexAttribI1iv" exec="dynamic">
+  <function name="VertexAttribI1iv" exec="vtxfmt">
     <param name="index" type="GLuint"/>
     <param name="v" type="const GLint *" count="1"/>
   </function>
@@ -350,7 +350,7 @@
     <param name="v" type="const GLint *"/>
   </function>
 
-  <function name="VertexAttribI1uiv" exec="dynamic">
+  <function name="VertexAttribI1uiv" exec="vtxfmt">
     <param name="index" type="GLuint"/>
     <param name="v" type="const GLuint *" count="1"/>
   </function>
@@ -370,22 +370,22 @@
     <param name="v" type="const GLuint *"/>
   </function>
 
-  <function name="VertexAttribI4bv" exec="dynamic">
+  <function name="VertexAttribI4bv" exec="vtxfmt">
     <param name="index" type="GLuint"/>
     <param name="v" type="const GLbyte *" count="4"/>
   </function>
 
-  <function name="VertexAttribI4sv" exec="dynamic">
+  <function name="VertexAttribI4sv" exec="vtxfmt">
     <param name="index" type="GLuint"/>
     <param name="v" type="const GLshort *" count="4"/>
   </function>
 
-  <function name="VertexAttribI4ubv" exec="dynamic">
+  <function name="VertexAttribI4ubv" exec="vtxfmt">
     <param name="index" type="GLuint"/>
     <param name="v" type="const GLubyte *" count="4"/>
   </function>
 
-  <function name="VertexAttribI4usv" exec="dynamic">
+  <function name="VertexAttribI4usv" exec="vtxfmt">
     <param name="index" type="GLuint"/>
     <param name="v" type="const GLushort *" count="4"/>
   </function>
