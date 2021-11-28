@@ -60,7 +60,12 @@ install_vtxfmt(struct gl_context *ctx, struct _glapi_table *tab,
    }
 
    if (ctx->API == API_OPENGL_COMPAT) {
-      _mesa_install_eval_vtxfmt(tab, vfmt);
+      SET_EvalCoord1f(tab, vfmt->EvalCoord1f);
+      SET_EvalCoord1fv(tab, vfmt->EvalCoord1fv);
+      SET_EvalCoord2f(tab, vfmt->EvalCoord2f);
+      SET_EvalCoord2fv(tab, vfmt->EvalCoord2fv);
+      SET_EvalPoint1(tab, vfmt->EvalPoint1);
+      SET_EvalPoint2(tab, vfmt->EvalPoint2);
    }
 
    if (ctx->API != API_OPENGL_CORE && ctx->API != API_OPENGLES2) {
