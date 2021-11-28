@@ -103,6 +103,30 @@ isl_device_setup_mocs(struct isl_device *dev)
          /* L3CC=WB; BSpec: 45101 */
          dev->mocs.internal = 3 << 1;
          dev->mocs.external = 3 << 1;
+
+         /* XY_BLOCK_COPY_BLT MOCS fields have programming notes which say:
+          *
+          *    "Destination MOCS value, which is used to program MOCS index
+          *     for writing to memory, should select a MOCS register having
+          *     "L3 Cacheability Control" programmed as uncacheable(UC) and
+          *     "Global GO" parameter set as GOMemory (pushes GO point to
+          *     memory). The MOCS Register may have L3 Lookup programmed as
+          *     UCL3LKDIS for better efficiency."
+          *
+          * The GO:Memory setting requires us to use MOCS 1 or 2.  MOCS 2
+          * has LKUP set to 0 and is marked "Non-Coherent", which we assume
+          * is probably the "better efficiency" they mention...
+          *
+          *   "Source MOCS value, which is used to program MOCS index for
+          *    reading from memory, should select a MOCS register having
+          *    "L3 Cacheability Control" programmed as uncacheable(UC).
+          *    The MOCS Register may have L3 Lookup programmed as UCL3LKDIS
+          *    for better efficiency."
+          *
+          * Any MOCS except 3 should work.  We use MOCS 2...
+          */
+         dev->mocs.blitter_dst = 2 << 1;
+         dev->mocs.blitter_src = 2 << 1;
       } else if (dev->info->platform == INTEL_PLATFORM_DG1) {
          /* L3CC=WB */
          dev->mocs.internal = 5 << 1;
