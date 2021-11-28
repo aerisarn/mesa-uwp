@@ -157,6 +157,12 @@ radv_null_winsys_destroy(struct radeon_winsys *rws)
    FREE(rws);
 }
 
+static int
+radv_null_winsys_get_fd(struct radeon_winsys *rws)
+{
+   return -1;
+}
+
 struct radeon_winsys *
 radv_null_winsys_create()
 {
@@ -168,6 +174,7 @@ radv_null_winsys_create()
 
    ws->base.destroy = radv_null_winsys_destroy;
    ws->base.query_info = radv_null_winsys_query_info;
+   ws->base.get_fd = radv_null_winsys_get_fd;
    radv_null_bo_init_functions(ws);
    radv_null_cs_init_functions(ws);
 

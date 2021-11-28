@@ -180,6 +180,13 @@ radv_amdgpu_winsys_destroy(struct radeon_winsys *rws)
    FREE(rws);
 }
 
+static int
+radv_amdgpu_winsys_get_fd(struct radeon_winsys *rws)
+{
+   struct radv_amdgpu_winsys *ws = (struct radv_amdgpu_winsys *)rws;
+   return amdgpu_device_get_fd(ws->dev);
+}
+
 struct radeon_winsys *
 radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags, bool reserve_vmid)
 {
@@ -244,6 +251,7 @@ radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags,
    ws->base.read_registers = radv_amdgpu_winsys_read_registers;
    ws->base.get_chip_name = radv_amdgpu_winsys_get_chip_name;
    ws->base.destroy = radv_amdgpu_winsys_destroy;
+   ws->base.get_fd = radv_amdgpu_winsys_get_fd;
    radv_amdgpu_bo_init_functions(ws);
    radv_amdgpu_cs_init_functions(ws);
    radv_amdgpu_surface_init_functions(ws);

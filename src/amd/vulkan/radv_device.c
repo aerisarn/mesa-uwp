@@ -3074,6 +3074,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->physical_device = physical_device;
 
    device->ws = physical_device->ws;
+   vk_device_set_drm_fd(&device->vk, device->ws->get_fd(device->ws));
 
    keep_shader_info = device->vk.enabled_extensions.AMD_shader_info;
 

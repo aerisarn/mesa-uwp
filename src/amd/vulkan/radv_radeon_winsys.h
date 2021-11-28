@@ -312,6 +312,8 @@ struct radeon_winsys {
 
    /* Note that this, unlike the normal import, uses an existing syncobj. */
    int (*import_syncobj_from_sync_file)(struct radeon_winsys *ws, uint32_t syncobj, int fd);
+
+   int (*get_fd)(struct radeon_winsys *ws);
 };
 
 static inline void
