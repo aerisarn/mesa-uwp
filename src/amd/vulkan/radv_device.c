@@ -663,6 +663,8 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       goto fail_base;
    }
 
+   device->vk.supported_sync_types = device->ws->get_sync_types(device->ws);
+
 #ifndef _WIN32
    if (drm_device && instance->vk.enabled_extensions.KHR_display) {
       master_fd = open(drm_device->nodes[DRM_NODE_PRIMARY], O_RDWR | O_CLOEXEC);

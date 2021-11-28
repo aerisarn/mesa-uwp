@@ -42,6 +42,7 @@
 struct radeon_info;
 struct ac_surf_info;
 struct radeon_surf;
+struct vk_sync_type;
 
 enum radeon_bo_domain { /* bitfield */
                         RADEON_DOMAIN_GTT = 2,
@@ -314,6 +315,8 @@ struct radeon_winsys {
    int (*import_syncobj_from_sync_file)(struct radeon_winsys *ws, uint32_t syncobj, int fd);
 
    int (*get_fd)(struct radeon_winsys *ws);
+
+   const struct vk_sync_type *const *(*get_sync_types)(struct radeon_winsys *ws);
 };
 
 static inline void
