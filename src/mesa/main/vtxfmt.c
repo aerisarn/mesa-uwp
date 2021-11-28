@@ -128,7 +128,16 @@ install_vtxfmt(struct gl_context *ctx, struct _glapi_table *tab,
       SET_VertexAttrib4fvNV(tab, vfmt->VertexAttrib4fvNV);
    }
 
-   if (ctx->API != API_OPENGLES) {
+   if (ctx->API == API_OPENGLES2) {
+      SET_VertexAttrib1fARB(tab, vfmt->VertexAttrib1fES);
+      SET_VertexAttrib1fvARB(tab, vfmt->VertexAttrib1fvES);
+      SET_VertexAttrib2fARB(tab, vfmt->VertexAttrib2fES);
+      SET_VertexAttrib2fvARB(tab, vfmt->VertexAttrib2fvES);
+      SET_VertexAttrib3fARB(tab, vfmt->VertexAttrib3fES);
+      SET_VertexAttrib3fvARB(tab, vfmt->VertexAttrib3fvES);
+      SET_VertexAttrib4fARB(tab, vfmt->VertexAttrib4fES);
+      SET_VertexAttrib4fvARB(tab, vfmt->VertexAttrib4fvES);
+   } else if (ctx->API != API_OPENGLES) {
       SET_VertexAttrib1fARB(tab, vfmt->VertexAttrib1fARB);
       SET_VertexAttrib1fvARB(tab, vfmt->VertexAttrib1fvARB);
       SET_VertexAttrib2fARB(tab, vfmt->VertexAttrib2fARB);

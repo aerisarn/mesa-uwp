@@ -394,6 +394,15 @@ typedef struct {
    void (GLAPIENTRYP VertexAttrib3fvARB)( GLuint index, const GLfloat *v );
    void (GLAPIENTRYP VertexAttrib4fARB)( GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w );
    void (GLAPIENTRYP VertexAttrib4fvARB)( GLuint index, const GLfloat *v );
+   /* OpenGL ES variants of the above. */
+   void (GLAPIENTRYP VertexAttrib1fES)( GLuint index, GLfloat x );
+   void (GLAPIENTRYP VertexAttrib1fvES)( GLuint index, const GLfloat *v );
+   void (GLAPIENTRYP VertexAttrib2fES)( GLuint index, GLfloat x, GLfloat y );
+   void (GLAPIENTRYP VertexAttrib2fvES)( GLuint index, const GLfloat *v );
+   void (GLAPIENTRYP VertexAttrib3fES)( GLuint index, GLfloat x, GLfloat y, GLfloat z );
+   void (GLAPIENTRYP VertexAttrib3fvES)( GLuint index, const GLfloat *v );
+   void (GLAPIENTRYP VertexAttrib4fES)( GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w );
+   void (GLAPIENTRYP VertexAttrib4fvES)( GLuint index, const GLfloat *v );
 
    /* GL_EXT_gpu_shader4 / GL 3.0 */
    void (GLAPIENTRYP VertexAttribI1i)( GLuint index, GLint x);

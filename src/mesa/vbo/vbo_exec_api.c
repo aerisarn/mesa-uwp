@@ -1001,7 +1001,6 @@ vbo_exec_PrimitiveRestartNV(void)
 static void
 vbo_exec_vtxfmt_init(struct vbo_exec_context *exec)
 {
-   struct gl_context *ctx = gl_context_from_vbo_exec(exec);
    GLvertexformat *vfmt = &exec->vtxfmt;
 
 #define NAME_AE(x) _ae_##x

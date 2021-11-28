@@ -74,25 +74,23 @@ vfmt->Vertex3fv = NAME(Vertex3fv);
 vfmt->Vertex4f = NAME(Vertex4f);
 vfmt->Vertex4fv = NAME(Vertex4fv);
 
-if (ctx->API == API_OPENGLES2) {
-   vfmt->VertexAttrib1fARB = NAME_ES(VertexAttrib1f);
-   vfmt->VertexAttrib1fvARB = NAME_ES(VertexAttrib1fv);
-   vfmt->VertexAttrib2fARB = NAME_ES(VertexAttrib2f);
-   vfmt->VertexAttrib2fvARB = NAME_ES(VertexAttrib2fv);
-   vfmt->VertexAttrib3fARB = NAME_ES(VertexAttrib3f);
-   vfmt->VertexAttrib3fvARB = NAME_ES(VertexAttrib3fv);
-   vfmt->VertexAttrib4fARB = NAME_ES(VertexAttrib4f);
-   vfmt->VertexAttrib4fvARB = NAME_ES(VertexAttrib4fv);
-} else {
-   vfmt->VertexAttrib1fARB = NAME(VertexAttrib1fARB);
-   vfmt->VertexAttrib1fvARB = NAME(VertexAttrib1fvARB);
-   vfmt->VertexAttrib2fARB = NAME(VertexAttrib2fARB);
-   vfmt->VertexAttrib2fvARB = NAME(VertexAttrib2fvARB);
-   vfmt->VertexAttrib3fARB = NAME(VertexAttrib3fARB);
-   vfmt->VertexAttrib3fvARB = NAME(VertexAttrib3fvARB);
-   vfmt->VertexAttrib4fARB = NAME(VertexAttrib4fARB);
-   vfmt->VertexAttrib4fvARB = NAME(VertexAttrib4fvARB);
-}
+vfmt->VertexAttrib1fES = NAME_ES(VertexAttrib1f);
+vfmt->VertexAttrib1fvES = NAME_ES(VertexAttrib1fv);
+vfmt->VertexAttrib2fES = NAME_ES(VertexAttrib2f);
+vfmt->VertexAttrib2fvES = NAME_ES(VertexAttrib2fv);
+vfmt->VertexAttrib3fES = NAME_ES(VertexAttrib3f);
+vfmt->VertexAttrib3fvES = NAME_ES(VertexAttrib3fv);
+vfmt->VertexAttrib4fES = NAME_ES(VertexAttrib4f);
+vfmt->VertexAttrib4fvES = NAME_ES(VertexAttrib4fv);
+
+vfmt->VertexAttrib1fARB = NAME(VertexAttrib1fARB);
+vfmt->VertexAttrib1fvARB = NAME(VertexAttrib1fvARB);
+vfmt->VertexAttrib2fARB = NAME(VertexAttrib2fARB);
+vfmt->VertexAttrib2fvARB = NAME(VertexAttrib2fvARB);
+vfmt->VertexAttrib3fARB = NAME(VertexAttrib3fARB);
+vfmt->VertexAttrib3fvARB = NAME(VertexAttrib3fvARB);
+vfmt->VertexAttrib4fARB = NAME(VertexAttrib4fARB);
+vfmt->VertexAttrib4fvARB = NAME(VertexAttrib4fvARB);
 
 /* half float */
 vfmt->Vertex2hNV = NAME(Vertex2hNV);
