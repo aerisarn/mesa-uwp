@@ -506,10 +506,24 @@ vk_queue_disable_submit_thread(struct vk_queue *queue)
    queue->submit.has_thread = false;
 }
 
+struct vulkan_submit_info {
+   const void *pNext;
+
+   uint32_t command_buffer_count;
+   const VkCommandBufferSubmitInfoKHR *command_buffers;
+
+   uint32_t wait_count;
+   const VkSemaphoreSubmitInfoKHR *waits;
+
+   uint32_t signal_count;
+   const VkSemaphoreSubmitInfoKHR *signals;
+
+   struct vk_fence *fence;
+};
+
 static VkResult
 vk_queue_submit(struct vk_queue *queue,
-                const VkSubmitInfo2KHR *info,
-                struct vk_fence *fence)
+                const struct vulkan_submit_info *info)
 {
    VkResult result;
 
@@ -520,10 +534,10 @@ vk_queue_submit(struct vk_queue *queue,
                           queue->base.device->create_sync_for_memory != NULL;
 
    struct vk_queue_submit *submit =
-      vk_queue_submit_alloc(queue, info->waitSemaphoreInfoCount,
-                            info->commandBufferInfoCount,
-                            info->signalSemaphoreInfoCount +
-                            signal_mem_sync + (fence != NULL));
+      vk_queue_submit_alloc(queue, info->wait_count,
+                            info->command_buffer_count,
+                            info->signal_count +
+                            signal_mem_sync + (info->fence != NULL));
    if (unlikely(submit == NULL))
       return vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -537,9 +551,9 @@ vk_queue_submit(struct vk_queue *queue,
    submit->perf_pass_index = perf_info ? perf_info->counterPassIndex : 0;
 
    bool has_binary_permanent_semaphore_wait = false;
-   for (uint32_t i = 0; i < info->waitSemaphoreInfoCount; i++) {
+   for (uint32_t i = 0; i < info->wait_count; i++) {
       VK_FROM_HANDLE(vk_semaphore, semaphore,
-                     info->pWaitSemaphoreInfos[i].semaphore);
+                     info->waits[i].semaphore);
 
       /* From the Vulkan 1.2.194 spec:
        *
@@ -576,29 +590,29 @@ vk_queue_submit(struct vk_queue *queue,
       }
 
       uint32_t wait_value = semaphore->type == VK_SEMAPHORE_TYPE_TIMELINE ?
-                            info->pWaitSemaphoreInfos[i].value : 0;
+                            info->waits[i].value : 0;
 
       submit->waits[i] = (struct vk_sync_wait) {
          .sync = sync,
-         .stage_mask = info->pWaitSemaphoreInfos[i].stageMask,
+         .stage_mask = info->waits[i].stageMask,
          .wait_value = wait_value,
       };
    }
 
-   for (uint32_t i = 0; i < info->commandBufferInfoCount; i++) {
+   for (uint32_t i = 0; i < info->command_buffer_count; i++) {
       VK_FROM_HANDLE(vk_command_buffer, cmd_buffer,
-                     info->pCommandBufferInfos[i].commandBuffer);
-      assert(info->pCommandBufferInfos[i].deviceMask == 0 ||
-             info->pCommandBufferInfos[i].deviceMask == 1);
+                     info->command_buffers[i].commandBuffer);
+      assert(info->command_buffers[i].deviceMask == 0 ||
+             info->command_buffers[i].deviceMask == 1);
       submit->command_buffers[i] = cmd_buffer;
    }
 
-   for (uint32_t i = 0; i < info->signalSemaphoreInfoCount; i++) {
+   for (uint32_t i = 0; i < info->signal_count; i++) {
       VK_FROM_HANDLE(vk_semaphore, semaphore,
-                     info->pSignalSemaphoreInfos[i].semaphore);
+                     info->signals[i].semaphore);
 
       struct vk_sync *sync = vk_semaphore_get_active_sync(semaphore);
-      uint32_t signal_value = info->pSignalSemaphoreInfos[i].value;
+      uint32_t signal_value = info->signals[i].value;
       if (semaphore->type == VK_SEMAPHORE_TYPE_TIMELINE) {
          if (signal_value == 0) {
             result = vk_queue_set_lost(queue,
@@ -633,12 +647,12 @@ vk_queue_submit(struct vk_queue *queue,
 
       submit->signals[i] = (struct vk_sync_signal) {
          .sync = sync,
-         .stage_mask = info->pSignalSemaphoreInfos[i].stageMask,
+         .stage_mask = info->signals[i].stageMask,
          .signal_value = signal_value,
       };
    }
 
-   uint32_t signal_count = info->signalSemaphoreInfoCount;
+   uint32_t signal_count = info->signal_count;
    if (signal_mem_sync) {
       struct vk_sync *mem_sync;
       result = queue->base.device->create_sync_for_memory(queue->base.device,
@@ -656,10 +670,10 @@ vk_queue_submit(struct vk_queue *queue,
       };
    }
 
-   if (fence != NULL) {
+   if (info->fence != NULL) {
       assert(submit->signals[signal_count].sync == NULL);
       submit->signals[signal_count++] = (struct vk_sync_signal) {
-         .sync = vk_fence_get_active_sync(fence),
+         .sync = vk_fence_get_active_sync(info->fence),
          .stage_mask = ~(VkPipelineStageFlags2KHR)0,
       };
    }
@@ -693,9 +707,9 @@ vk_queue_submit(struct vk_queue *queue,
 
       if (vk_queue_has_submit_thread(queue)) {
          if (has_binary_permanent_semaphore_wait) {
-            for (uint32_t i = 0; i < info->waitSemaphoreInfoCount; i++) {
+            for (uint32_t i = 0; i < info->wait_count; i++) {
                VK_FROM_HANDLE(vk_semaphore, semaphore,
-                              info->pWaitSemaphoreInfos[i].semaphore);
+                              info->waits[i].semaphore);
 
                if (semaphore->type != VK_SEMAPHORE_TYPE_BINARY)
                   continue;
@@ -1001,8 +1015,17 @@ vk_common_QueueSubmit2KHR(VkQueue _queue,
    }
 
    for (uint32_t i = 0; i < submitCount; i++) {
-      VkResult result = vk_queue_submit(queue, &pSubmits[i],
-                                        i == submitCount - 1 ? fence : NULL);
+      struct vulkan_submit_info info = {
+         .pNext = pSubmits[i].pNext,
+         .command_buffer_count = pSubmits[i].commandBufferInfoCount,
+         .command_buffers = pSubmits[i].pCommandBufferInfos,
+         .wait_count = pSubmits[i].waitSemaphoreInfoCount,
+         .waits = pSubmits[i].pWaitSemaphoreInfos,
+         .signal_count = pSubmits[i].signalSemaphoreInfoCount,
+         .signals = pSubmits[i].pSignalSemaphoreInfos,
+         .fence = i == submitCount - 1 ? fence : NULL
+      };
+      VkResult result = vk_queue_submit(queue, &info);
       if (unlikely(result != VK_SUCCESS))
          return result;
    }
