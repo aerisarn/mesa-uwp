@@ -51,33 +51,35 @@ radv_RegisterDeviceEventEXT(VkDevice _device, const VkDeviceEventInfoEXT *device
    VkResult ret;
    int fd;
 
-   ret = radv_CreateFence(_device,
-                          &(VkFenceCreateInfo){
-                             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                             .pNext =
-                                &(VkExportFenceCreateInfo){
-                                   .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
-                                   .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT,
-                                },
-                          },
-                          allocator, _fence);
+   ret = device->vk.dispatch_table.CreateFence(
+      _device,
+      &(VkFenceCreateInfo){
+         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+         .pNext =
+            &(VkExportFenceCreateInfo){
+               .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+               .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT,
+            },
+      },
+      allocator, _fence);
    if (ret != VK_SUCCESS)
       return ret;
 
-   RADV_FROM_HANDLE(radv_fence, fence, *_fence);
+   ret = device->vk.dispatch_table.GetFenceFdKHR(
+      _device,
+      &(VkFenceGetFdInfoKHR){.sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
+                             .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT,
+                             .fence = *_fence},
+      &fd);
 
-   assert(fence->permanent.kind == RADV_FENCE_SYNCOBJ);
-
-   if (device->ws->export_syncobj(device->ws, fence->permanent.syncobj, &fd)) {
-      ret = VK_ERROR_OUT_OF_HOST_MEMORY;
-   } else {
+   if (ret == VK_SUCCESS) {
       ret = wsi_register_device_event(_device, &device->physical_device->wsi_device,
                                       device_event_info, allocator, NULL, fd);
       close(fd);
    }
 
    if (ret != VK_SUCCESS)
-      radv_DestroyFence(_device, *_fence, allocator);
+      device->vk.dispatch_table.DestroyFence(_device, *_fence, allocator);
 
    return ret;
 }
@@ -91,33 +93,35 @@ radv_RegisterDisplayEventEXT(VkDevice _device, VkDisplayKHR display,
    VkResult ret;
    int fd;
 
-   ret = radv_CreateFence(_device,
-                          &(VkFenceCreateInfo){
-                             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-                             .pNext =
-                                &(VkExportFenceCreateInfo){
-                                   .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
-                                   .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT,
-                                },
-                          },
-                          allocator, _fence);
+   ret = device->vk.dispatch_table.CreateFence(
+      _device,
+      &(VkFenceCreateInfo){
+         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+         .pNext =
+            &(VkExportFenceCreateInfo){
+               .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+               .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT,
+            },
+      },
+      allocator, _fence);
    if (ret != VK_SUCCESS)
       return ret;
 
-   RADV_FROM_HANDLE(radv_fence, fence, *_fence);
+   ret = device->vk.dispatch_table.GetFenceFdKHR(
+      _device,
+      &(VkFenceGetFdInfoKHR){.sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
+                             .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT,
+                             .fence = *_fence},
+      &fd);
 
-   assert(fence->permanent.kind == RADV_FENCE_SYNCOBJ);
-
-   if (device->ws->export_syncobj(device->ws, fence->permanent.syncobj, &fd)) {
-      ret = VK_ERROR_OUT_OF_HOST_MEMORY;
-   } else {
+   if (ret == VK_SUCCESS) {
       ret = wsi_register_display_event(_device, &device->physical_device->wsi_device, display,
                                        display_event_info, allocator, NULL, fd);
       close(fd);
    }
 
    if (ret != VK_SUCCESS)
-      radv_DestroyFence(_device, *_fence, allocator);
+      device->vk.dispatch_table.DestroyFence(_device, *_fence, allocator);
 
    return ret;
 }
