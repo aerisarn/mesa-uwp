@@ -4459,7 +4459,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 }
 
 static VkResult
-radv_get_preambles(struct radv_queue *queue, const VkCommandBuffer *cmd_buffers,
+radv_get_preambles(struct radv_queue *queue, struct vk_command_buffer *const *cmd_buffers,
                    uint32_t cmd_buffer_count, struct radeon_cmdbuf **initial_full_flush_preamble_cs,
                    struct radeon_cmdbuf **initial_preamble_cs,
                    struct radeon_cmdbuf **continue_preamble_cs)
@@ -4473,7 +4473,7 @@ radv_get_preambles(struct radv_queue *queue, const VkCommandBuffer *cmd_buffers,
    bool sample_positions_needed = false;
 
    for (uint32_t j = 0; j < cmd_buffer_count; j++) {
-      RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, cmd_buffers[j]);
+      struct radv_cmd_buffer *cmd_buffer = container_of(cmd_buffers[j], struct radv_cmd_buffer, vk);
 
       scratch_size_per_wave = MAX2(scratch_size_per_wave, cmd_buffer->scratch_size_per_wave_needed);
       waves_wanted = MAX2(waves_wanted, cmd_buffer->scratch_waves_wanted);
@@ -4755,9 +4755,9 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
    struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
    struct radeon_cmdbuf *continue_preamble_cs = NULL;
 
-   result =
-      radv_get_preambles(queue, submission->cmd_buffers, submission->cmd_buffer_count,
-                         &initial_preamble_cs, &initial_flush_preamble_cs, &continue_preamble_cs);
+   result = radv_get_preambles(queue, (struct vk_command_buffer *const *)submission->cmd_buffers,
+                               submission->cmd_buffer_count, &initial_preamble_cs,
+                               &initial_flush_preamble_cs, &continue_preamble_cs);
    if (result != VK_SUCCESS)
       goto fail;
 
