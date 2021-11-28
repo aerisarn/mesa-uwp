@@ -52,7 +52,7 @@ install_vtxfmt(struct gl_context *ctx, struct _glapi_table *tab,
    }
 
    if (ctx->API == API_OPENGL_COMPAT) {
-      _mesa_install_arrayelt_vtxfmt(tab, vfmt);
+      SET_ArrayElement(tab, vfmt->ArrayElement);
       SET_Color3f(tab, vfmt->Color3f);
       SET_Color3fv(tab, vfmt->Color3fv);
       SET_Color4fv(tab, vfmt->Color4fv);

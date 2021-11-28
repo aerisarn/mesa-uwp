@@ -1497,11 +1497,3 @@ _ae_ArrayElement(GLint elt)
 
    _mesa_vao_unmap_arrays(ctx, vao);
 }
-
-
-void
-_mesa_install_arrayelt_vtxfmt(struct _glapi_table *disp,
-                              const GLvertexformat *vfmt)
-{
-   SET_ArrayElement(disp, vfmt->ArrayElement);
-}
