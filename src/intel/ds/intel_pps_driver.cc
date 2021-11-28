@@ -16,7 +16,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <i915_drm.h>
+#include "drm-uapi/i915_drm.h"
 
 #include "common/intel_gem.h"
 #include "dev/intel_device_info.h"

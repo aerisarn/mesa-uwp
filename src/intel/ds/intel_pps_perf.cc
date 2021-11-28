@@ -7,11 +7,12 @@
 
 #include "intel_pps_perf.h"
 
-#include <i915_drm.h>
 #include <math.h>
 #include <sys/ioctl.h>
 #include <util/ralloc.h>
 #include <utility>
+
+#include "drm-uapi/i915_drm.h"
 
 #include <pps/pps.h>
 #include <pps/pps_device.h>
