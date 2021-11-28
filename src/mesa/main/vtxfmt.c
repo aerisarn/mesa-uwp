@@ -109,8 +109,8 @@ install_vtxfmt(struct gl_context *ctx, struct _glapi_table *tab,
    }
 
    if (ctx->API == API_OPENGL_COMPAT) {
-      _mesa_install_dlist_vtxfmt(tab, vfmt);   /* glCallList / glCallLists */
-
+      SET_CallList(tab, vfmt->CallList);
+      SET_CallLists(tab, vfmt->CallLists);
       SET_Begin(tab, vfmt->Begin);
       SET_End(tab, vfmt->End);
       SET_PrimitiveRestartNV(tab, vfmt->PrimitiveRestartNV);

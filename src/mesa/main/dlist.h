@@ -149,10 +149,6 @@ void
 _mesa_initialize_save_table(const struct gl_context *);
 
 void
-_mesa_install_dlist_vtxfmt(struct _glapi_table *disp,
-                           const GLvertexformat *vfmt);
-
-void
 _mesa_init_display_list(struct gl_context * ctx);
 
 bool

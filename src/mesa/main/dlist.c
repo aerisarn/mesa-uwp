@@ -15091,15 +15091,6 @@ mesa_print_display_list(GLuint list)
 /*****                      Initialization                        *****/
 /**********************************************************************/
 
-void
-_mesa_install_dlist_vtxfmt(struct _glapi_table *disp,
-                           const GLvertexformat *vfmt)
-{
-   SET_CallList(disp, vfmt->CallList);
-   SET_CallLists(disp, vfmt->CallLists);
-}
-
-
 /**
  * Initialize display list state for given context.
  */
