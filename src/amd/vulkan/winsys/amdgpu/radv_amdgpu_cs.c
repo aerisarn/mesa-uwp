@@ -37,6 +37,10 @@
 #include "radv_debug.h"
 #include "radv_radeon_winsys.h"
 #include "sid.h"
+#include "vk_alloc.h"
+#include "vk_drm_syncobj.h"
+#include "vk_sync.h"
+#include "vk_sync_dummy.h"
 
 #define GFX6_MAX_CS_SIZE 0xffff8 /* in dwords */
 
@@ -1279,6 +1283,79 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring
    return result;
 }
 
+static VkResult
+radv_amdgpu_winsys_cs_submit2(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
+                              int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
+                              struct radeon_cmdbuf *initial_preamble_cs,
+                              struct radeon_cmdbuf *continue_preamble_cs, uint32_t wait_count,
+                              const struct vk_sync_wait *waits, uint32_t signal_count,
+                              const struct vk_sync_signal *signals, bool can_patch)
+{
+   struct radv_amdgpu_winsys *ws = radv_amdgpu_ctx(_ctx)->ws;
+   struct radv_winsys_sem_info sem_info;
+   memset(&sem_info, 0, sizeof(sem_info));
+   VkResult result;
+   unsigned wait_idx = 0, signal_idx = 0;
+
+   STACK_ARRAY(uint64_t, wait_points, wait_count);
+   STACK_ARRAY(uint32_t, wait_syncobj, wait_count);
+   STACK_ARRAY(uint64_t, signal_points, signal_count);
+   STACK_ARRAY(uint32_t, signal_syncobj, signal_count);
+
+   if (!wait_points || !wait_syncobj || !signal_points || !signal_syncobj) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto out;
+   }
+
+   sem_info.wait.points = wait_points;
+   sem_info.wait.syncobj = wait_syncobj;
+   sem_info.signal.points = signal_points;
+   sem_info.signal.syncobj = signal_syncobj;
+
+   for (uint32_t i = 0; i < wait_count; ++i) {
+      if (waits[i].sync->type == &vk_sync_dummy_type)
+         continue;
+
+      assert(waits[i].sync->type == &ws->syncobj_sync_type);
+      sem_info.wait.syncobj[wait_idx] = ((struct vk_drm_syncobj *)waits[i].sync)->syncobj;
+      sem_info.wait.points[wait_idx] = waits[i].wait_value;
+      ++wait_idx;
+   }
+
+   for (uint32_t i = 0; i < signal_count; ++i) {
+      if (signals[i].sync->type == &vk_sync_dummy_type)
+         continue;
+
+      assert(signals[i].sync->type == &ws->syncobj_sync_type);
+      sem_info.signal.syncobj[signal_idx] = ((struct vk_drm_syncobj *)signals[i].sync)->syncobj;
+      sem_info.signal.points[signal_idx] = signals[i].signal_value;
+      ++signal_idx;
+   }
+
+   assert(signal_idx <= signal_count);
+   assert(wait_idx <= wait_count);
+   sem_info.wait.timeline_syncobj_count =
+      (ws->syncobj_sync_type.features & VK_SYNC_FEATURE_TIMELINE) ? wait_idx : 0;
+   sem_info.wait.syncobj_count = wait_idx - sem_info.wait.timeline_syncobj_count;
+   sem_info.cs_emit_wait = true;
+
+   sem_info.signal.timeline_syncobj_count =
+      (ws->syncobj_sync_type.features & VK_SYNC_FEATURE_TIMELINE) ? signal_idx : 0;
+   sem_info.signal.syncobj_count = signal_idx - sem_info.signal.timeline_syncobj_count;
+   sem_info.cs_emit_signal = true;
+
+   result =
+      radv_amdgpu_winsys_cs_submit(_ctx, ring_type, queue_idx, cs_array, cs_count,
+                                   initial_preamble_cs, continue_preamble_cs, &sem_info, can_patch);
+
+out:
+   STACK_ARRAY_FINISH(wait_points);
+   STACK_ARRAY_FINISH(wait_syncobj);
+   STACK_ARRAY_FINISH(signal_points);
+   STACK_ARRAY_FINISH(signal_syncobj);
+   return result;
+}
+
 static void *
 radv_amdgpu_winsys_get_cpu_addr(void *_cs, uint64_t addr)
 {
@@ -1916,6 +1993,7 @@ radv_amdgpu_cs_init_functions(struct radv_amdgpu_winsys *ws)
    ws->base.cs_add_buffer = radv_amdgpu_cs_add_buffer;
    ws->base.cs_execute_secondary = radv_amdgpu_cs_execute_secondary;
    ws->base.cs_submit = radv_amdgpu_winsys_cs_submit;
+   ws->base.cs_submit2 = radv_amdgpu_winsys_cs_submit2;
    ws->base.cs_dump = radv_amdgpu_winsys_cs_dump;
    ws->base.create_syncobj = radv_amdgpu_create_syncobj;
    ws->base.destroy_syncobj = radv_amdgpu_destroy_syncobj;
