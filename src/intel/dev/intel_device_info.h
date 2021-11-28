@@ -126,6 +126,12 @@ struct intel_device_info
    bool has_surface_tile_offset;
    bool supports_simd16_3src;
    bool disable_ccs_repack;
+
+   /**
+    * True if CCS uses a flat virtual address translation to a memory
+    * carve-out, rather than aux map translations, or additional surfaces.
+    */
+   bool has_flat_ccs;
    bool has_aux_map;
    bool has_tiling_uapi;
    bool has_ray_tracing;
