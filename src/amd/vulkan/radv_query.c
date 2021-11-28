@@ -976,7 +976,7 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
    char *data = pData;
    VkResult result = VK_SUCCESS;
 
-   if (radv_device_is_lost(device))
+   if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
 
    for (unsigned query_idx = 0; query_idx < queryCount; ++query_idx, data += stride) {
