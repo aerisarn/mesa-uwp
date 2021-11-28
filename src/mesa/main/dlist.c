@@ -14013,8 +14013,6 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_AlphaFunc(table, save_AlphaFunc);
    SET_Bitmap(table, save_Bitmap);
    SET_BlendFunc(table, save_BlendFunc);
-   SET_CallList(table, save_CallList);
-   SET_CallLists(table, save_CallLists);
    SET_Clear(table, save_Clear);
    SET_ClearAccum(table, save_ClearAccum);
    SET_ClearColor(table, save_ClearColor);

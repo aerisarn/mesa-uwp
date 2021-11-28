@@ -1122,12 +1122,12 @@
         <glx sop="102"/>
     </function>
 
-    <function name="CallList" deprecated="3.1" marshal="custom">
+    <function name="CallList" deprecated="3.1" marshal="custom" exec="vtxfmt">
         <param name="list" type="GLuint"/>
         <glx rop="1"/>
     </function>
 
-    <function name="CallLists" deprecated="3.1"
+    <function name="CallLists" deprecated="3.1" exec="vtxfmt"
               marshal_call_after="_mesa_glthread_CallLists(ctx, n, type, lists);">
         <param name="n" type="GLsizei" counter="true"/>
         <param name="type" type="GLenum"/>
