@@ -81,6 +81,8 @@ typedef void *drmDevicePtr;
 #define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC_FAST
 #endif
 
+static VkResult radv_queue_submit2(struct vk_queue *vqueue, struct vk_queue_submit *submission);
+
 static struct radv_timeline_point *
 radv_timeline_find_point_at_least_locked(struct radv_device *device, struct radv_timeline *timeline,
                                          uint64_t p);
@@ -2673,6 +2675,8 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue,
    if (result != VK_SUCCESS)
       return result;
 
+   queue->vk.driver_submit = radv_queue_submit2;
+
    list_inithead(&queue->pending_submissions);
    mtx_init(&queue->pending_mutex, mtx_plain);
 
@@ -4740,6 +4744,115 @@ radv_queue_submission_update_queue(struct radv_deferred_queue_submission *submis
 }
 
 static VkResult
+radv_queue_submit2(struct vk_queue *vqueue, struct vk_queue_submit *submission)
+{
+   struct radv_queue *queue = (struct radv_queue *)vqueue;
+   struct radeon_winsys_ctx *ctx = queue->hw_ctx;
+   uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
+   bool can_patch = true;
+   uint32_t advance;
+   VkResult result;
+   struct radeon_cmdbuf *initial_preamble_cs = NULL;
+   struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
+   struct radeon_cmdbuf *continue_preamble_cs = NULL;
+
+   result =
+      radv_get_preambles(queue, submission->command_buffers, submission->command_buffer_count,
+                         &initial_preamble_cs, &initial_flush_preamble_cs, &continue_preamble_cs);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   for (uint32_t i = 0; i < submission->buffer_bind_count; ++i) {
+      result = radv_sparse_buffer_bind_memory(queue->device, submission->buffer_binds + i);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
+   for (uint32_t i = 0; i < submission->image_opaque_bind_count; ++i) {
+      result =
+         radv_sparse_image_opaque_bind_memory(queue->device, submission->image_opaque_binds + i);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
+   for (uint32_t i = 0; i < submission->image_bind_count; ++i) {
+      result = radv_sparse_image_bind_memory(queue->device, submission->image_binds + i);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
+   if (!submission->command_buffer_count && !submission->wait_count && !submission->signal_count)
+      return VK_SUCCESS;
+
+   if (!submission->command_buffer_count) {
+      result = queue->device->ws->cs_submit2(ctx, queue->vk.queue_family_index,
+                                             queue->vk.index_in_family, NULL, 0, NULL, NULL,
+                                             submission->wait_count, submission->waits,
+                                             submission->signal_count, submission->signals, false);
+      if (result != VK_SUCCESS)
+         goto fail;
+   } else {
+      struct radeon_cmdbuf **cs_array =
+         malloc(sizeof(struct radeon_cmdbuf *) * (submission->command_buffer_count));
+
+      for (uint32_t j = 0; j < submission->command_buffer_count; j++) {
+         struct radv_cmd_buffer *cmd_buffer =
+            (struct radv_cmd_buffer *)submission->command_buffers[j];
+         assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+         cs_array[j] = cmd_buffer->cs;
+         if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
+            can_patch = false;
+
+         cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
+      }
+
+      for (uint32_t j = 0; j < submission->command_buffer_count; j += advance) {
+         struct radeon_cmdbuf *initial_preamble =
+            !j ? initial_flush_preamble_cs : initial_preamble_cs;
+         advance = MIN2(max_cs_submission, submission->command_buffer_count - j);
+         bool last_submit = j + advance == submission->command_buffer_count;
+
+         if (queue->device->trace_bo)
+            *queue->device->trace_id_ptr = 0;
+
+         result = queue->device->ws->cs_submit2(
+            ctx, queue->vk.queue_family_index, queue->vk.index_in_family, cs_array + j, advance,
+            initial_preamble, continue_preamble_cs, j == 0 ? submission->wait_count : 0,
+            submission->waits, last_submit ? submission->signal_count : 0, submission->signals,
+            can_patch);
+         if (result != VK_SUCCESS) {
+            free(cs_array);
+            goto fail;
+         }
+
+         if (queue->device->trace_bo) {
+            radv_check_gpu_hangs(queue, cs_array[j]);
+         }
+
+         if (queue->device->tma_bo) {
+            radv_check_trap_handler(queue);
+         }
+      }
+
+      free(cs_array);
+   }
+
+fail:
+   if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
+      /* When something bad happened during the submission, such as
+       * an out of memory issue, it might be hard to recover from
+       * this inconsistent state. To avoid this sort of problem, we
+       * assume that we are in a really bad situation and return
+       * VK_ERROR_DEVICE_LOST to ensure the clients do not attempt
+       * to submit the same job again to this device.
+       */
+      result = vk_device_set_lost(&queue->device->vk, "vkQueueSubmit() failed");
+   }
+   return result;
+}
+
+static VkResult
 radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
                            struct list_head *processing_list)
 {
@@ -5036,17 +5149,10 @@ bool
 radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 {
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
-   struct radv_winsys_sem_info sem_info = {0};
-   VkResult result;
 
-   result = radv_alloc_sem_info(queue->device, &sem_info, 0, NULL, 0, 0, 0, NULL, VK_NULL_HANDLE);
-   if (result != VK_SUCCESS)
-      return false;
-
-   result =
-      queue->device->ws->cs_submit(ctx, queue->vk.queue_family_index, queue->vk.index_in_family,
-                                   &cs, 1, NULL, NULL, &sem_info, false);
-   radv_free_sem_info(&sem_info);
+   VkResult result =
+      queue->device->ws->cs_submit2(ctx, queue->vk.queue_family_index, queue->vk.index_in_family,
+                                    &cs, 1, NULL, NULL, 0, NULL, 0, NULL, false);
    if (result != VK_SUCCESS)
       return false;
 
