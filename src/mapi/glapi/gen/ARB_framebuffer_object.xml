@@ -202,7 +202,8 @@
 	<glx vendorpriv="1425"/>
     </function>
 
-    <function name="BindFramebuffer" es2="2.0">
+    <function name="BindFramebuffer" es2="2.0"
+              marshal_call_after="if (target == GL_FRAMEBUFFER || target == GL_DRAW_FRAMEBUFFER) ctx->GLThread.CurrentDrawFramebuffer = framebuffer;">
         <param name="target" type="GLenum"/>
         <param name="framebuffer" type="GLuint"/>
         <glx rop="236"/>

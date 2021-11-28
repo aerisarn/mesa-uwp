@@ -195,6 +195,9 @@ _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target, GLuint buffer)
    case GL_PIXEL_UNPACK_BUFFER:
       glthread->CurrentPixelUnpackBufferName = buffer;
       break;
+   case GL_QUERY_BUFFER:
+      glthread->CurrentQueryBufferName = buffer;
+      break;
    }
 }
 

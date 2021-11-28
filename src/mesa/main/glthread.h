@@ -207,6 +207,7 @@ struct glthread_state
    GLuint CurrentDrawIndirectBufferName;
    GLuint CurrentPixelPackBufferName;
    GLuint CurrentPixelUnpackBufferName;
+   GLuint CurrentQueryBufferName;
 
    /**
     * The batch index of the last occurence of glLinkProgram or
@@ -230,6 +231,9 @@ struct glthread_state
 
    /** Enable states. */
    bool CullFace;
+
+   GLuint CurrentDrawFramebuffer;
+   GLuint CurrentProgram;
 };
 
 void _mesa_glthread_init(struct gl_context *ctx);
