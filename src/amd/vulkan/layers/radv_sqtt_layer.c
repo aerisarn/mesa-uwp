@@ -360,7 +360,7 @@ radv_handle_thread_trace(VkQueue _queue)
       thread_trace_enabled = false;
 
       /* TODO: Do something better than this whole sync. */
-      radv_QueueWaitIdle(_queue);
+      queue->device->vk.dispatch_table.QueueWaitIdle(_queue);
 
       if (radv_get_thread_trace(queue, &thread_trace)) {
          struct ac_spm_trace_data *spm_trace = NULL;
