@@ -172,20 +172,6 @@ struct radeon_winsys_bo {
    bool use_global_list;
    enum radeon_bo_domain initial_domain;
 };
-struct radv_winsys_sem_counts {
-   uint32_t syncobj_count;
-   uint32_t syncobj_reset_count; /* for wait only, whether to reset the syncobj */
-   uint32_t timeline_syncobj_count;
-   uint32_t *syncobj;
-   uint64_t *points;
-};
-
-struct radv_winsys_sem_info {
-   bool cs_emit_signal;
-   bool cs_emit_wait;
-   struct radv_winsys_sem_counts wait;
-   struct radv_winsys_sem_counts signal;
-};
 
 struct radv_winsys_bo_list {
    struct radeon_winsys_bo **bos;
@@ -275,12 +261,6 @@ struct radeon_winsys {
    VkResult (*cs_finalize)(struct radeon_cmdbuf *cs);
 
    void (*cs_grow)(struct radeon_cmdbuf *cs, size_t min_size);
-
-   VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx, enum ring_type ring_type, int queue_index,
-                         struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                         struct radeon_cmdbuf *initial_preamble_cs,
-                         struct radeon_cmdbuf *continue_preamble_cs,
-                         struct radv_winsys_sem_info *sem_info, bool can_patch);
 
    VkResult (*cs_submit2)(struct radeon_winsys_ctx *ctx, enum ring_type ring_type, int queue_index,
                           struct radeon_cmdbuf **cs_array, unsigned cs_count,

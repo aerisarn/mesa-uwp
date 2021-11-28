@@ -37,6 +37,7 @@
 #include "util/os_file.h"
 
 #include "radv_private.h"
+#include "vk_common_entrypoints.h"
 #include "vk_util.h"
 
 #ifdef ANDROID
@@ -426,7 +427,7 @@ radv_AcquireImageANDROID(VkDevice device_h, VkImage image_h, int nativeFenceFd, 
          .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
          .fd = semaphore_fd,
       };
-      result = radv_ImportSemaphoreFdKHR(device_h, &info);
+      result = vk_common_ImportSemaphoreFdKHR(device_h, &info);
       if (result == VK_SUCCESS)
          semaphore_fd = -1; /* RADV took ownership */
    }
@@ -439,7 +440,7 @@ radv_AcquireImageANDROID(VkDevice device_h, VkImage image_h, int nativeFenceFd, 
          .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
          .fd = fence_fd,
       };
-      result = radv_ImportFenceFdKHR(device_h, &info);
+      result = vk_common_ImportFenceFdKHR(device_h, &info);
       if (result == VK_SUCCESS)
          fence_fd = -1; /* RADV took ownership */
    }
@@ -471,13 +472,13 @@ radv_QueueSignalReleaseImageANDROID(VkQueue _queue, uint32_t waitSemaphoreCount,
    for (uint32_t i = 0; i < waitSemaphoreCount; ++i) {
       int tmp_fd;
       result =
-         radv_GetSemaphoreFdKHR(radv_device_to_handle(queue->device),
-                                &(VkSemaphoreGetFdInfoKHR){
-                                   .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
-                                   .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
-                                   .semaphore = pWaitSemaphores[i],
-                                },
-                                &tmp_fd);
+         vk_common_GetSemaphoreFdKHR(radv_device_to_handle(queue->device),
+                                     &(VkSemaphoreGetFdInfoKHR){
+                                        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
+                                        .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+                                        .semaphore = pWaitSemaphores[i],
+                                     },
+                                     &tmp_fd);
       if (result != VK_SUCCESS) {
          if (fd >= 0)
             close(fd);

@@ -722,17 +722,6 @@ struct radv_queue {
    struct radeon_cmdbuf *initial_preamble_cs;
    struct radeon_cmdbuf *initial_full_flush_preamble_cs;
    struct radeon_cmdbuf *continue_preamble_cs;
-
-   struct list_head pending_submissions;
-   mtx_t pending_mutex;
-
-   mtx_t thread_mutex;
-   struct u_cnd_monotonic thread_cond;
-   struct radv_deferred_queue_submission *thread_submission;
-   thrd_t submission_thread;
-   bool thread_exit;
-   bool thread_running;
-   bool cond_created;
 };
 
 #define RADV_BORDER_COLOR_COUNT       4096
@@ -2554,71 +2543,6 @@ struct radv_query_pool {
    uint32_t pipeline_stats_mask;
 };
 
-typedef enum {
-   RADV_SEMAPHORE_NONE,
-   RADV_SEMAPHORE_SYNCOBJ,
-   RADV_SEMAPHORE_TIMELINE_SYNCOBJ,
-   RADV_SEMAPHORE_TIMELINE,
-} radv_semaphore_kind;
-
-struct radv_deferred_queue_submission;
-
-struct radv_timeline_waiter {
-   struct list_head list;
-   struct radv_deferred_queue_submission *submission;
-   uint64_t value;
-};
-
-struct radv_timeline_point {
-   struct list_head list;
-
-   uint64_t value;
-   uint32_t syncobj;
-
-   /* Separate from the list to accomodate CPU wait being async, as well
-    * as prevent point deletion during submission. */
-   unsigned wait_count;
-};
-
-struct radv_timeline {
-   mtx_t mutex;
-
-   uint64_t highest_signaled;
-   uint64_t highest_submitted;
-
-   struct list_head points;
-
-   /* Keep free points on hand so we do not have to recreate syncobjs all
-    * the time. */
-   struct list_head free_points;
-
-   /* Submissions that are deferred waiting for a specific value to be
-    * submitted. */
-   struct list_head waiters;
-};
-
-struct radv_timeline_syncobj {
-   /* Keep syncobj first, so common-code can just handle this as
-    * non-timeline syncobj. */
-   uint32_t syncobj;
-   uint64_t max_point; /* max submitted point. */
-};
-
-struct radv_semaphore_part {
-   radv_semaphore_kind kind;
-   union {
-      uint32_t syncobj;
-      struct radv_timeline timeline;
-      struct radv_timeline_syncobj timeline_syncobj;
-   };
-};
-
-struct radv_semaphore {
-   struct vk_object_base base;
-   struct radv_semaphore_part permanent;
-   struct radv_semaphore_part temporary;
-};
-
 bool radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs);
 
 void radv_set_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point,
@@ -2646,24 +2570,6 @@ uint32_t radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
 
 uint32_t radv_init_fmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                          const VkImageSubresourceRange *range);
-
-typedef enum {
-   RADV_FENCE_NONE,
-   RADV_FENCE_SYNCOBJ,
-} radv_fence_kind;
-
-struct radv_fence_part {
-   radv_fence_kind kind;
-
-   /* DRM syncobj handle for syncobj-based fences. */
-   uint32_t syncobj;
-};
-
-struct radv_fence {
-   struct vk_object_base base;
-   struct radv_fence_part permanent;
-   struct radv_fence_part temporary;
-};
 
 /* radv_nir_to_llvm.c */
 struct radv_shader_args;
@@ -2974,7 +2880,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_descriptor_update_template, base,
                                VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_device_memory, base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_fence, base, VkFence, VK_OBJECT_TYPE_FENCE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_framebuffer, base, VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
@@ -2996,8 +2901,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, base, VkSampler,
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler_ycbcr_conversion, base,
                                VkSamplerYcbcrConversion,
                                VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_semaphore, base, VkSemaphore,
-                               VK_OBJECT_TYPE_SEMAPHORE)
 
 #ifdef __cplusplus
 }
