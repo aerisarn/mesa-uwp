@@ -1509,7 +1509,7 @@ qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
         if (slot > 0 && qinst->uniform != ~0)
                 return false;
 
-        if (v3d_qpu_uses_vpm(inst))
+        if (v3d_qpu_waits_vpm(inst))
                 return false;
 
         if (inst->sig.ldvary)
