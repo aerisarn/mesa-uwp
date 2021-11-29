@@ -157,12 +157,14 @@ free_vao(void *data, UNUSED void *userData)
 }
 
 void
-_mesa_glthread_destroy(struct gl_context *ctx)
+_mesa_glthread_destroy(struct gl_context *ctx, const char *reason)
 {
    struct glthread_state *glthread = &ctx->GLThread;
 
    if (!glthread->enabled)
       return;
+
+   _mesa_debug(ctx, "glthread destroy reason: %s\n", reason);
 
    _mesa_glthread_finish(ctx);
    util_queue_destroy(&glthread->queue);
@@ -175,12 +177,6 @@ _mesa_glthread_destroy(struct gl_context *ctx)
 
    ctx->GLThread.enabled = false;
 
-   _mesa_glthread_restore_dispatch(ctx, "destroy");
-}
-
-void
-_mesa_glthread_restore_dispatch(struct gl_context *ctx, const char *func)
-{
    /* Remove ourselves from the dispatch table except if another ctx/thread
     * already installed a new dispatch table.
     *
@@ -190,17 +186,7 @@ _mesa_glthread_restore_dispatch(struct gl_context *ctx, const char *func)
    if (_glapi_get_dispatch() == ctx->MarshalExec) {
        ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
        _glapi_set_dispatch(ctx->CurrentClientDispatch);
-#if 0
-       printf("glthread disabled: %s\n", func);
-#endif
    }
-}
-
-void
-_mesa_glthread_disable(struct gl_context *ctx, const char *func)
-{
-   _mesa_glthread_finish_before(ctx, func);
-   _mesa_glthread_restore_dispatch(ctx, func);
 }
 
 void

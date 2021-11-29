@@ -448,7 +448,7 @@ _mesa_glthread_Enable(struct gl_context *ctx, GLenum cap)
       _mesa_glthread_set_prim_restart(ctx, cap, true);
       break;
    case GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB:
-      _mesa_glthread_disable(ctx, "Enable(DEBUG_OUTPUT_SYNCHRONOUS)");
+      _mesa_glthread_destroy(ctx, "Enable(DEBUG_OUTPUT_SYNCHRONOUS)");
       break;
    case GL_CULL_FACE:
       ctx->GLThread.CullFace = true;
