@@ -109,7 +109,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx, uint64_t state_mask,
     */
    if (unlikely(st->pin_thread_counter != ST_L3_PINNING_DISABLED &&
                 /* no glthread */
-                ctx->CurrentClientDispatch != ctx->MarshalExec &&
+                !ctx->GLThread.enabled &&
                 /* do it occasionally */
                 ++st->pin_thread_counter % 512 == 0)) {
       st->pin_thread_counter = 0;

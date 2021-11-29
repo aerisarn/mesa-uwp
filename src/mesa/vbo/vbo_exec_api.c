@@ -849,7 +849,7 @@ _mesa_Begin(GLenum mode)
    /* We may have been called from a display list, in which case we should
     * leave dlist.c's dispatch table in place.
     */
-   if (ctx->CurrentClientDispatch == ctx->MarshalExec) {
+   if (ctx->GLThread.enabled) {
       ctx->CurrentServerDispatch = ctx->Exec;
    } else if (ctx->CurrentClientDispatch == ctx->OutsideBeginEnd) {
       ctx->CurrentClientDispatch = ctx->Exec;
@@ -908,7 +908,7 @@ _mesa_End(void)
 
    ctx->Exec = ctx->OutsideBeginEnd;
 
-   if (ctx->CurrentClientDispatch == ctx->MarshalExec) {
+   if (ctx->GLThread.enabled) {
       ctx->CurrentServerDispatch = ctx->Exec;
    } else if (ctx->CurrentClientDispatch == ctx->BeginEnd) {
       ctx->CurrentClientDispatch = ctx->Exec;

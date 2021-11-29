@@ -13512,7 +13512,7 @@ _mesa_NewList(GLuint name, GLenum mode)
 
    ctx->CurrentServerDispatch = ctx->Save;
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
-   if (ctx->MarshalExec == NULL) {
+   if (!ctx->GLThread.enabled) {
       ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
    }
 }
@@ -13724,7 +13724,7 @@ _mesa_EndList(void)
 
    ctx->CurrentServerDispatch = ctx->Exec;
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
-   if (ctx->MarshalExec == NULL) {
+   if (!ctx->GLThread.enabled) {
       ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
    }
 }
@@ -13766,7 +13766,7 @@ _mesa_CallList(GLuint list)
    if (save_compile_flag) {
       ctx->CurrentServerDispatch = ctx->Save;
        _glapi_set_dispatch(ctx->CurrentServerDispatch);
-      if (ctx->MarshalExec == NULL) {
+      if (!ctx->GLThread.enabled) {
          ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
       }
    }
@@ -13952,7 +13952,7 @@ _mesa_CallLists(GLsizei n, GLenum type, const GLvoid * lists)
    if (save_compile_flag) {
       ctx->CurrentServerDispatch = ctx->Save;
       _glapi_set_dispatch(ctx->CurrentServerDispatch);
-      if (ctx->MarshalExec == NULL) {
+      if (!ctx->GLThread.enabled) {
          ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
       }
    }
