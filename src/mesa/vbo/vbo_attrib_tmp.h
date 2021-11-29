@@ -409,7 +409,7 @@ TAG(Indexfv)(const GLfloat * f)
 
 
 static void GLAPIENTRY
-TAG(MultiTexCoord1f)(GLenum target, GLfloat x)
+TAG(MultiTexCoord1fARB)(GLenum target, GLfloat x)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -417,7 +417,7 @@ TAG(MultiTexCoord1f)(GLenum target, GLfloat x)
 }
 
 static void GLAPIENTRY
-TAG(MultiTexCoord1fv)(GLenum target, const GLfloat * v)
+TAG(MultiTexCoord1fvARB)(GLenum target, const GLfloat * v)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -425,7 +425,7 @@ TAG(MultiTexCoord1fv)(GLenum target, const GLfloat * v)
 }
 
 static void GLAPIENTRY
-TAG(MultiTexCoord2f)(GLenum target, GLfloat x, GLfloat y)
+TAG(MultiTexCoord2fARB)(GLenum target, GLfloat x, GLfloat y)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -433,7 +433,7 @@ TAG(MultiTexCoord2f)(GLenum target, GLfloat x, GLfloat y)
 }
 
 static void GLAPIENTRY
-TAG(MultiTexCoord2fv)(GLenum target, const GLfloat * v)
+TAG(MultiTexCoord2fvARB)(GLenum target, const GLfloat * v)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -441,7 +441,7 @@ TAG(MultiTexCoord2fv)(GLenum target, const GLfloat * v)
 }
 
 static void GLAPIENTRY
-TAG(MultiTexCoord3f)(GLenum target, GLfloat x, GLfloat y, GLfloat z)
+TAG(MultiTexCoord3fARB)(GLenum target, GLfloat x, GLfloat y, GLfloat z)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -449,7 +449,7 @@ TAG(MultiTexCoord3f)(GLenum target, GLfloat x, GLfloat y, GLfloat z)
 }
 
 static void GLAPIENTRY
-TAG(MultiTexCoord3fv)(GLenum target, const GLfloat * v)
+TAG(MultiTexCoord3fvARB)(GLenum target, const GLfloat * v)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -457,7 +457,7 @@ TAG(MultiTexCoord3fv)(GLenum target, const GLfloat * v)
 }
 
 static void GLAPIENTRY
-TAG(MultiTexCoord4f)(GLenum target, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+TAG(MultiTexCoord4fARB)(GLenum target, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -465,7 +465,7 @@ TAG(MultiTexCoord4f)(GLenum target, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 }
 
 static void GLAPIENTRY
-TAG(MultiTexCoord4fv)(GLenum target, const GLfloat * v)
+TAG(MultiTexCoord4fvARB)(GLenum target, const GLfloat * v)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
@@ -575,7 +575,7 @@ TAG(VertexAttrib4fvARB)(GLuint index, const GLfloat * v)
  * XXX: the integers just get converted to floats at this time
  */
 static void GLAPIENTRY
-TAG(VertexAttribI1i)(GLuint index, GLint x)
+TAG(VertexAttribI1iEXT)(GLuint index, GLint x)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -587,7 +587,7 @@ TAG(VertexAttribI1i)(GLuint index, GLint x)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI2i)(GLuint index, GLint x, GLint y)
+TAG(VertexAttribI2iEXT)(GLuint index, GLint x, GLint y)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -599,7 +599,7 @@ TAG(VertexAttribI2i)(GLuint index, GLint x, GLint y)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI3i)(GLuint index, GLint x, GLint y, GLint z)
+TAG(VertexAttribI3iEXT)(GLuint index, GLint x, GLint y, GLint z)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -611,7 +611,7 @@ TAG(VertexAttribI3i)(GLuint index, GLint x, GLint y, GLint z)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI4i)(GLuint index, GLint x, GLint y, GLint z, GLint w)
+TAG(VertexAttribI4iEXT)(GLuint index, GLint x, GLint y, GLint z, GLint w)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -623,7 +623,7 @@ TAG(VertexAttribI4i)(GLuint index, GLint x, GLint y, GLint z, GLint w)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI2iv)(GLuint index, const GLint *v)
+TAG(VertexAttribI2ivEXT)(GLuint index, const GLint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -635,7 +635,7 @@ TAG(VertexAttribI2iv)(GLuint index, const GLint *v)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI3iv)(GLuint index, const GLint *v)
+TAG(VertexAttribI3ivEXT)(GLuint index, const GLint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -647,7 +647,7 @@ TAG(VertexAttribI3iv)(GLuint index, const GLint *v)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI4iv)(GLuint index, const GLint *v)
+TAG(VertexAttribI4ivEXT)(GLuint index, const GLint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -664,7 +664,7 @@ TAG(VertexAttribI4iv)(GLuint index, const GLint *v)
  * XXX: the integers just get converted to floats at this time
  */
 static void GLAPIENTRY
-TAG(VertexAttribI1ui)(GLuint index, GLuint x)
+TAG(VertexAttribI1uiEXT)(GLuint index, GLuint x)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -676,7 +676,7 @@ TAG(VertexAttribI1ui)(GLuint index, GLuint x)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI2ui)(GLuint index, GLuint x, GLuint y)
+TAG(VertexAttribI2uiEXT)(GLuint index, GLuint x, GLuint y)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -688,7 +688,7 @@ TAG(VertexAttribI2ui)(GLuint index, GLuint x, GLuint y)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI3ui)(GLuint index, GLuint x, GLuint y, GLuint z)
+TAG(VertexAttribI3uiEXT)(GLuint index, GLuint x, GLuint y, GLuint z)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -700,7 +700,7 @@ TAG(VertexAttribI3ui)(GLuint index, GLuint x, GLuint y, GLuint z)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI4ui)(GLuint index, GLuint x, GLuint y, GLuint z, GLuint w)
+TAG(VertexAttribI4uiEXT)(GLuint index, GLuint x, GLuint y, GLuint z, GLuint w)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -712,7 +712,7 @@ TAG(VertexAttribI4ui)(GLuint index, GLuint x, GLuint y, GLuint z, GLuint w)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI2uiv)(GLuint index, const GLuint *v)
+TAG(VertexAttribI2uivEXT)(GLuint index, const GLuint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -724,7 +724,7 @@ TAG(VertexAttribI2uiv)(GLuint index, const GLuint *v)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI3uiv)(GLuint index, const GLuint *v)
+TAG(VertexAttribI3uivEXT)(GLuint index, const GLuint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))
@@ -736,7 +736,7 @@ TAG(VertexAttribI3uiv)(GLuint index, const GLuint *v)
 }
 
 static void GLAPIENTRY
-TAG(VertexAttribI4uiv)(GLuint index, const GLuint *v)
+TAG(VertexAttribI4uivEXT)(GLuint index, const GLuint *v)
 {
    GET_CURRENT_CONTEXT(ctx);
    if (is_vertex_position(ctx, index))

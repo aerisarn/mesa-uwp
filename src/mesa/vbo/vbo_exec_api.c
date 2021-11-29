@@ -1133,7 +1133,7 @@ _es_Normal3f(GLfloat x, GLfloat y, GLfloat z)
 void GLAPIENTRY
 _es_MultiTexCoord4f(GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q)
 {
-   vbo_exec_MultiTexCoord4f(target, s, t, r, q);
+   vbo_exec_MultiTexCoord4fARB(target, s, t, r, q);
 }
 
 

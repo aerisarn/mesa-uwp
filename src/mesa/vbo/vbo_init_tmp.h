@@ -47,14 +47,14 @@ vfmt->Color4f = NAME(Color4f);
 vfmt->Color4fv = NAME(Color4fv);
 vfmt->FogCoordfEXT = NAME(FogCoordfEXT);
 vfmt->FogCoordfvEXT = NAME(FogCoordfvEXT);
-vfmt->MultiTexCoord1fARB = NAME(MultiTexCoord1f);
-vfmt->MultiTexCoord1fvARB = NAME(MultiTexCoord1fv);
-vfmt->MultiTexCoord2fARB = NAME(MultiTexCoord2f);
-vfmt->MultiTexCoord2fvARB = NAME(MultiTexCoord2fv);
-vfmt->MultiTexCoord3fARB = NAME(MultiTexCoord3f);
-vfmt->MultiTexCoord3fvARB = NAME(MultiTexCoord3fv);
-vfmt->MultiTexCoord4fARB = NAME(MultiTexCoord4f);
-vfmt->MultiTexCoord4fvARB = NAME(MultiTexCoord4fv);
+vfmt->MultiTexCoord1fARB = NAME(MultiTexCoord1fARB);
+vfmt->MultiTexCoord1fvARB = NAME(MultiTexCoord1fvARB);
+vfmt->MultiTexCoord2fARB = NAME(MultiTexCoord2fARB);
+vfmt->MultiTexCoord2fvARB = NAME(MultiTexCoord2fvARB);
+vfmt->MultiTexCoord3fARB = NAME(MultiTexCoord3fARB);
+vfmt->MultiTexCoord3fvARB = NAME(MultiTexCoord3fvARB);
+vfmt->MultiTexCoord4fARB = NAME(MultiTexCoord4fARB);
+vfmt->MultiTexCoord4fvARB = NAME(MultiTexCoord4fvARB);
 vfmt->Normal3f = NAME(Normal3f);
 vfmt->Normal3fv = NAME(Normal3fv);
 vfmt->SecondaryColor3fEXT = NAME(SecondaryColor3fEXT);
@@ -152,22 +152,22 @@ vfmt->VertexAttrib4fNV = NAME(VertexAttrib4fNV);
 vfmt->VertexAttrib4fvNV = NAME(VertexAttrib4fvNV);
 
 /* integer-valued */
-vfmt->VertexAttribI1iEXT = NAME(VertexAttribI1i);
-vfmt->VertexAttribI2iEXT = NAME(VertexAttribI2i);
-vfmt->VertexAttribI3iEXT = NAME(VertexAttribI3i);
-vfmt->VertexAttribI4iEXT = NAME(VertexAttribI4i);
-vfmt->VertexAttribI2ivEXT = NAME(VertexAttribI2iv);
-vfmt->VertexAttribI3ivEXT = NAME(VertexAttribI3iv);
-vfmt->VertexAttribI4ivEXT = NAME(VertexAttribI4iv);
+vfmt->VertexAttribI1iEXT = NAME(VertexAttribI1iEXT);
+vfmt->VertexAttribI2iEXT = NAME(VertexAttribI2iEXT);
+vfmt->VertexAttribI3iEXT = NAME(VertexAttribI3iEXT);
+vfmt->VertexAttribI4iEXT = NAME(VertexAttribI4iEXT);
+vfmt->VertexAttribI2ivEXT = NAME(VertexAttribI2ivEXT);
+vfmt->VertexAttribI3ivEXT = NAME(VertexAttribI3ivEXT);
+vfmt->VertexAttribI4ivEXT = NAME(VertexAttribI4ivEXT);
 
 /* unsigned integer-valued */
-vfmt->VertexAttribI1uiEXT = NAME(VertexAttribI1ui);
-vfmt->VertexAttribI2uiEXT = NAME(VertexAttribI2ui);
-vfmt->VertexAttribI3uiEXT = NAME(VertexAttribI3ui);
-vfmt->VertexAttribI4uiEXT = NAME(VertexAttribI4ui);
-vfmt->VertexAttribI2uivEXT = NAME(VertexAttribI2uiv);
-vfmt->VertexAttribI3uivEXT = NAME(VertexAttribI3uiv);
-vfmt->VertexAttribI4uivEXT = NAME(VertexAttribI4uiv);
+vfmt->VertexAttribI1uiEXT = NAME(VertexAttribI1uiEXT);
+vfmt->VertexAttribI2uiEXT = NAME(VertexAttribI2uiEXT);
+vfmt->VertexAttribI3uiEXT = NAME(VertexAttribI3uiEXT);
+vfmt->VertexAttribI4uiEXT = NAME(VertexAttribI4uiEXT);
+vfmt->VertexAttribI2uivEXT = NAME(VertexAttribI2uivEXT);
+vfmt->VertexAttribI3uivEXT = NAME(VertexAttribI3uivEXT);
+vfmt->VertexAttribI4uivEXT = NAME(VertexAttribI4uivEXT);
 
 vfmt->Materialfv = NAME(Materialfv);
 
