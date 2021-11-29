@@ -224,6 +224,15 @@ main_api_exec_c = custom_target(
   capture : true,
 )
 
+main_api_save_init_h = custom_target(
+  'api_save_init.h',
+  input : ['api_save_init_h.py', 'gl_and_es_API.xml'],
+  output : 'api_save_init.h',
+  command : [prog_python, '@INPUT0@', '-f', '@INPUT1@'],
+  depend_files : files('apiexec.py') + glapi_gen_depends,
+  capture : true,
+)
+
 main_marshal_generated_c = []
 foreach x : ['0', '1', '2', '3', '4', '5', '6', '7']
   main_marshal_generated_c += custom_target(

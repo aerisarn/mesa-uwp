@@ -34,6 +34,7 @@ import apiexec
 
 exec_flavor_map = {
     'vtxfmt': None,
+    'dlist': '_mesa_',
     'mesa': '_mesa_',
     'skip': None,
     }
