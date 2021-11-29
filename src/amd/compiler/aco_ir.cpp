@@ -318,6 +318,8 @@ can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra)
          return false;
       if (instr->format == Format::VOP3)
          return false;
+      if (instr->operands.size() > 1 && !instr->operands[1].isOfType(RegType::vgpr))
+         return false;
    }
 
    /* there are more cases but those all take 64-bit inputs */
