@@ -262,6 +262,58 @@ emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
             A4XX_TEX_CONST_0_SWIZ_Z(A4XX_TEX_Z) |
             A4XX_TEX_CONST_0_SWIZ_W(A4XX_TEX_W);
 
+         /* Remap integer formats as unorm (will be fixed up in shader) */
+         if (util_format_is_pure_integer(view->base.format)) {
+            texconst0 &= ~A4XX_TEX_CONST_0_FMT__MASK;
+            switch (fd4_pipe2tex(view->base.format)) {
+            case TFMT4_8_8_8_8_UINT:
+            case TFMT4_8_8_8_8_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_8_8_8_8_UNORM);
+               break;
+            case TFMT4_8_8_UINT:
+            case TFMT4_8_8_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_8_8_UNORM);
+               break;
+            case TFMT4_8_UINT:
+            case TFMT4_8_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_8_UNORM);
+               break;
+
+            case TFMT4_16_16_16_16_UINT:
+            case TFMT4_16_16_16_16_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_16_16_16_16_UNORM);
+               break;
+            case TFMT4_16_16_UINT:
+            case TFMT4_16_16_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_16_16_UNORM);
+               break;
+            case TFMT4_16_UINT:
+            case TFMT4_16_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_16_UNORM);
+               break;
+
+            case TFMT4_32_32_32_32_UINT:
+            case TFMT4_32_32_32_32_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_32_32_32_32_FLOAT);
+               break;
+            case TFMT4_32_32_UINT:
+            case TFMT4_32_32_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_32_32_FLOAT);
+               break;
+            case TFMT4_32_UINT:
+            case TFMT4_32_SINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_32_FLOAT);
+               break;
+
+            case TFMT4_10_10_10_2_UINT:
+               texconst0 |= A4XX_TEX_CONST_0_FMT(TFMT4_10_10_10_2_UNORM);
+               break;
+
+            default:
+               debug_assert(0);
+            }
+         }
+
          OUT_RING(ring, texconst0);
          OUT_RING(ring, view->texconst1);
          OUT_RING(ring, view->texconst2);

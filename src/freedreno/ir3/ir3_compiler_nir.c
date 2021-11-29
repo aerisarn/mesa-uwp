@@ -2914,7 +2914,6 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
    bool tg4_swizzle_fixup = false;
    if (tex->op == nir_texop_tg4 && ctx->compiler->gen == 4 &&
          ctx->sampler_swizzles[tex->texture_index] != 0x688 /* rgba */) {
-      /* XXX fix-up ASTC alpha as well? */
       uint16_t swizzles = ctx->sampler_swizzles[tex->texture_index];
       uint16_t swizzle = (swizzles >> (tex->component * 3)) & 7;
       if (swizzle > 3) {
@@ -2954,10 +2953,47 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
       sam = emit_sam(ctx, opc, info, type, MASK(ncomp), col0, col1);
    }
 
-   if (tg4_swizzle_fixup)
+   if (tg4_swizzle_fixup) {
+      /* TODO: fix-up for ASTC when alpha is selected? */
       array_insert(ctx->ir, ctx->ir->tg4, sam);
 
-   if ((ctx->astc_srgb & (1 << tex->texture_index)) &&
+      ir3_split_dest(b, dst, sam, 0, 4);
+
+      uint8_t tex_bits = ctx->sampler_swizzles[tex->texture_index] >> 12;
+      if (!type_float(type) && tex_bits != 3 /* 32bpp */ &&
+            tex_bits != 0 /* key unset */) {
+         uint8_t bits = 0;
+         switch (tex_bits) {
+         case 1: /* 8bpp */
+            bits = 8;
+            break;
+         case 2: /* 16bpp */
+            bits = 16;
+            break;
+         case 4: /* 10bpp or 2bpp for alpha */
+            if (opc == OPC_GATHER4A)
+               bits = 2;
+            else
+               bits = 10;
+            break;
+         default:
+            debug_assert(0);
+         }
+
+         sam->cat5.type = TYPE_F32;
+         for (int i = 0; i < 4; i++) {
+            /* scale and offset the unorm data */
+            dst[i] = ir3_MAD_F32(b, dst[i], 0, create_immed(b, fui((1 << bits) - 1)), 0, create_immed(b, fui(0.5f)), 0);
+            /* convert the scaled value to integer */
+            dst[i] = ir3_COV(b, dst[i], TYPE_F32, TYPE_U32);
+            /* sign extend for signed values */
+            if (type == TYPE_S32) {
+               dst[i] = ir3_SHL_B(b, dst[i], 0, create_immed(b, 32 - bits), 0);
+               dst[i] = ir3_ASHR_B(b, dst[i], 0, create_immed(b, 32 - bits), 0);
+            }
+         }
+      }
+   } else if ((ctx->astc_srgb & (1 << tex->texture_index)) &&
        tex->op != nir_texop_tg4 && /* leave out tg4, unless it's on alpha? */
        !nir_tex_instr_is_query(tex)) {
       assert(opc != OPC_META_TEX_PREFETCH);

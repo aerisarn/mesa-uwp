@@ -258,6 +258,28 @@ fd4_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
          if (view->astc_srgb)
             astc_srgb |= (1 << (start + i));
          sampler_swizzles[start + i] = view->swizzle >> 4;
+
+         const struct util_format_description *desc =
+            util_format_description(view->base.format);
+         int c = util_format_get_first_non_void_channel(desc->format);
+         if (c >= 0 && desc->channel[c].pure_integer) {
+            switch (desc->channel[c].size) {
+            case 8:
+               sampler_swizzles[start + i] |= 0x1000;
+               break;
+            case 16:
+               sampler_swizzles[start + i] |= 0x2000;
+               break;
+            case 32:
+               sampler_swizzles[start + i] |= 0x3000;
+               break;
+            case 10:
+               sampler_swizzles[start + i] |= 0x4000;
+               break;
+            default:
+               debug_assert(0);
+            }
+         }
       }
    }
 
