@@ -100,7 +100,7 @@ _mesa_initialize_context( struct gl_context *ctx,
                           const struct dd_function_table *driverFunctions);
 
 extern struct _glapi_table *
-_mesa_alloc_dispatch_table(void);
+_mesa_alloc_dispatch_table(bool glthread);
 
 extern void
 _mesa_initialize_exec_table(struct gl_context *ctx);
@@ -109,7 +109,7 @@ extern void
 _mesa_initialize_dispatch_tables(struct gl_context *ctx);
 
 extern struct _glapi_table *
-_mesa_new_nop_table(unsigned numEntries);
+_mesa_new_nop_table(unsigned numEntries, bool glthread);
 
 extern void
 _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output);

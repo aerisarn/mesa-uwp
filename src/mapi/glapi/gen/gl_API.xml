@@ -12869,7 +12869,7 @@
     </function>
 
     <!-- Set a GL error. Used by glthread to set errors without syncing. -->
-    <function name="InternalSetError" es2="2.0">
+    <function name="InternalSetError" es1="1.0" es2="2.0">
         <param name="error" type="GLenum"/>
     </function>
 </category>

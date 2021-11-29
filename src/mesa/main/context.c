@@ -916,6 +916,17 @@ generic_nop(void)
 #endif
 
 
+static int
+glthread_nop(void)
+{
+   /* This writes the error into the glthread command buffer if glthread is
+    * enabled.
+    */
+   CALL_InternalSetError(GET_DISPATCH(), (GL_INVALID_OPERATION));
+   return 0;
+}
+
+
 /**
  * Create a new API dispatch table in which all entries point to the
  * generic_nop() function.  This will not work on Windows because of
@@ -923,7 +934,7 @@ generic_nop(void)
  * call stack.  That's impossible with one generic no-op function.
  */
 struct _glapi_table *
-_mesa_new_nop_table(unsigned numEntries)
+_mesa_new_nop_table(unsigned numEntries, bool glthread)
 {
    struct _glapi_table *table;
 
@@ -939,6 +950,13 @@ _mesa_new_nop_table(unsigned numEntries)
 #else
    table = _glapi_new_nop_table(numEntries);
 #endif
+
+   if (glthread) {
+      _glapi_proc *entry = (_glapi_proc *) table;
+      for (unsigned i = 0; i < numEntries; i++)
+         entry[i] = (_glapi_proc)glthread_nop;
+   }
+
    return table;
 }
 
@@ -949,7 +967,7 @@ _mesa_new_nop_table(unsigned numEntries)
  * functions will call nop_handler() above.
  */
 struct _glapi_table *
-_mesa_alloc_dispatch_table(void)
+_mesa_alloc_dispatch_table(bool glthread)
 {
    /* Find the larger of Mesa's dispatch table and libGL's dispatch table.
     * In practice, this'll be the same for stand-alone Mesa.  But for DRI
@@ -958,7 +976,7 @@ _mesa_alloc_dispatch_table(void)
     */
    int numEntries = MAX2(_glapi_get_dispatch_table_size(), _gloffset_COUNT);
 
-   struct _glapi_table *table = _mesa_new_nop_table(numEntries);
+   struct _glapi_table *table = _mesa_new_nop_table(numEntries, glthread);
 
 #if defined(_WIN32)
    if (table) {
@@ -1021,7 +1039,7 @@ create_beginend_table(const struct gl_context *ctx)
 {
    struct _glapi_table *table;
 
-   table = _mesa_alloc_dispatch_table();
+   table = _mesa_alloc_dispatch_table(false);
    if (!table)
       return NULL;
 
@@ -1170,7 +1188,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    }
 
    /* setup the API dispatch tables with all nop functions */
-   ctx->OutsideBeginEnd = _mesa_alloc_dispatch_table();
+   ctx->OutsideBeginEnd = _mesa_alloc_dispatch_table(false);
    if (!ctx->OutsideBeginEnd)
       goto fail;
    ctx->Exec = ctx->OutsideBeginEnd;
@@ -1198,7 +1216,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    switch (ctx->API) {
    case API_OPENGL_COMPAT:
       ctx->BeginEnd = create_beginend_table(ctx);
-      ctx->Save = _mesa_alloc_dispatch_table();
+      ctx->Save = _mesa_alloc_dispatch_table(false);
       if (!ctx->BeginEnd || !ctx->Save)
          goto fail;
 

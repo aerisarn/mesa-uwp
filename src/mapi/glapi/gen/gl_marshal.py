@@ -383,7 +383,7 @@ class PrintCode(gl_XML.gl_print_base):
         with indent():
             out('struct _glapi_table *table;')
             out('')
-            out('table = _mesa_alloc_dispatch_table();')
+            out('table = _mesa_alloc_dispatch_table(true);')
             out('if (table == NULL)')
             with indent():
                 out('return NULL;')
