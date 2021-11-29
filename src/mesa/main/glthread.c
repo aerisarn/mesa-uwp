@@ -110,8 +110,7 @@ _mesa_glthread_init(struct gl_context *ctx)
    _mesa_glthread_reset_vao(&glthread->DefaultVAO);
    glthread->CurrentVAO = &glthread->DefaultVAO;
 
-   ctx->MarshalExec = _mesa_create_marshal_table(ctx);
-   if (!ctx->MarshalExec) {
+   if (!_mesa_create_marshal_tables(ctx)) {
       _mesa_DeleteHashTable(glthread->VAOs);
       util_queue_destroy(&glthread->queue);
       return;
