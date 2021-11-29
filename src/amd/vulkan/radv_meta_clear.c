@@ -1820,7 +1820,9 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    if (!radv_format_pack_clear_color(iview->vk_format, clear_color, &clear_value))
       return false;
 
-   if (!radv_image_has_clear_value(iview->image) && (clear_color[0] != 0 || clear_color[1] != 0))
+   /* Images that support comp-to-single clears don't have clear values. */
+   if (!iview->image->support_comp_to_single &&
+       !radv_image_has_clear_value(iview->image) && (clear_color[0] != 0 || clear_color[1] != 0))
       return false;
 
    if (radv_dcc_enabled(iview->image, iview->base_mip)) {
