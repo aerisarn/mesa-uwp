@@ -101,9 +101,6 @@ struct vbo_markers
 
 struct vbo_exec_context
 {
-   GLvertexformat vtxfmt;
-   GLvertexformat vtxfmt_noop;
-
    struct {
       /* Multi draw where the mode can vary between draws. */
       struct pipe_draw_info info;
@@ -153,8 +150,6 @@ struct vbo_exec_context
 
 
 struct vbo_save_context {
-   GLvertexformat vtxfmt;
-
    GLbitfield64 enabled; /**< mask of enabled vbo arrays. */
    GLubyte attrsz[VBO_ATTRIB_MAX];  /**< 1, 2, 3 or 4 */
    GLenum16 attrtype[VBO_ATTRIB_MAX];  /**< GL_FLOAT, GL_INT, etc */
@@ -184,10 +179,22 @@ struct vbo_save_context {
 };
 
 GLboolean
+_mesa_using_noop_vtxfmt(const struct _glapi_table *dispatch);
+
+GLboolean
 _vbo_CreateContext(struct gl_context *ctx);
 
 void
 _vbo_DestroyContext(struct gl_context *ctx);
+
+void
+vbo_install_exec_vtxfmt(struct gl_context *ctx);
+
+void
+vbo_install_exec_vtxfmt_noop(struct gl_context *ctx);
+
+void
+vbo_install_save_vtxfmt_noop(struct gl_context *ctx);
 
 void
 vbo_exec_update_eval_maps(struct gl_context *ctx);

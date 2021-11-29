@@ -58,12 +58,14 @@ class PrintCode(gl_XML.gl_print_base):
                 re.match('VertexAttrib[1-4].*ARB', f.name)):
                 # These functions should map to an *ES callback for GLES2.
                 settings_by_condition['_mesa_is_desktop_gl(ctx)'].append(
-                    'SET_{0}(tab, vfmt->{0});'.format(f.name))
+                    'SET_{0}(tab, NAME({0}));'.format(f.name))
                 settings_by_condition['ctx->API == API_OPENGLES2'].append(
-                    'SET_{0}(tab, vfmt->{1}ES);'.format(f.name, f.name[:-3]))
+                    'SET_{0}(tab, NAME_ES({0}));'.format(f.name))
             else:
+                macro = ('NAME_CALLLIST' if f.name[0:8] == 'CallList' else
+                         'NAME_AE' if f.name == 'ArrayElement' else 'NAME')
                 settings_by_condition[condition].append(
-                    'SET_{0}(tab, vfmt->{0});'.format(f.name))
+                    'SET_{0}(tab, {1}({0}));'.format(f.name, macro))
 
         # Print out an if statement for each unique condition, with
         # the SET_* calls nested inside it.

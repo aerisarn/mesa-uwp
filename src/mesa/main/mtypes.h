@@ -4748,8 +4748,6 @@ struct gl_dlist_state
    GLuint CallDepth;		/**< Current recursion calling depth */
    GLuint LastInstSize;         /**< Size of the last node. */
 
-   GLvertexformat ListVtxfmt;
-
    GLubyte ActiveAttribSize[VERT_ATTRIB_MAX];
    uint32_t CurrentAttrib[VERT_ATTRIB_MAX][8];
 
@@ -5218,8 +5216,7 @@ struct gl_context
    struct _glapi_table *Save;
    /**
     * The dispatch table used between glBegin() and glEnd() (outside of a
-    * display list).  Only valid functions between those two are set, which is
-    * mostly just the set in a GLvertexformat struct.
+    * display list).  Only valid functions between those two are set.
     */
    struct _glapi_table *BeginEnd;
    /**

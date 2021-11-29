@@ -28,7 +28,6 @@
 #include "main/errors.h"
 #include "main/bufferobj.h"
 #include "math/m_eval.h"
-#include "main/vtxfmt.h"
 #include "main/api_arrayelt.h"
 #include "main/arrayobj.h"
 #include "main/varray.h"

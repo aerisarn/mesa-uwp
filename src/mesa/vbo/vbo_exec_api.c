@@ -34,7 +34,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "main/bufferobj.h"
 #include "main/context.h"
 #include "main/macros.h"
-#include "main/vtxfmt.h"
 #include "main/dlist.h"
 #include "main/eval.h"
 #include "main/state.h"
@@ -45,7 +44,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "util/bitscan.h"
 #include "util/u_memory.h"
 
-#include "vbo_noop.h"
 #include "vbo_private.h"
 
 #include "state_tracker/st_cb_bufferobjects.h"
@@ -998,17 +996,21 @@ vbo_exec_PrimitiveRestartNV(void)
 }
 
 
-static void
-vbo_exec_vtxfmt_init(struct vbo_exec_context *exec)
+void
+vbo_install_exec_vtxfmt(struct gl_context *ctx)
 {
-   GLvertexformat *vfmt = &exec->vtxfmt;
-
 #define NAME_AE(x) _ae_##x
 #define NAME_CALLLIST(x) _mesa_##x
 #define NAME(x) vbo_exec_##x
 #define NAME_ES(x) _es_##x
 
-#include "vbo_init_tmp.h"
+   struct _glapi_table *tab = ctx->Exec;
+   #include "api_vtxfmt_init.h"
+
+   if (ctx->BeginEnd) {
+      tab = ctx->BeginEnd;
+      #include "api_vtxfmt_init.h"
+   }
 }
 
 
@@ -1035,9 +1037,6 @@ vbo_exec_vtx_init(struct vbo_exec_context *exec)
    struct gl_context *ctx = gl_context_from_vbo_exec(exec);
 
    exec->vtx.bufferobj = st_bufferobj_alloc(ctx, IMM_BUFFER_NAME);
-
-   vbo_exec_vtxfmt_init(exec);
-   _mesa_noop_vtxfmt_init(ctx, &exec->vtxfmt_noop);
 
    exec->vtx.enabled = u_bit_consecutive64(0, VBO_ATTRIB_MAX); /* reset all */
    vbo_reset_all_attr(exec);

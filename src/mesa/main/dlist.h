@@ -151,6 +151,9 @@ _mesa_initialize_save_table(const struct gl_context *);
 void
 _mesa_init_display_list(struct gl_context * ctx);
 
+void
+_mesa_install_save_vtxfmt(struct gl_context *ctx);
+
 bool
 _mesa_get_list(struct gl_context *ctx, GLuint list,
                struct gl_display_list **dlist,

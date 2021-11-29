@@ -14454,8 +14454,6 @@ mesa_print_display_list(GLuint list)
 void
 _mesa_init_display_list(struct gl_context *ctx)
 {
-   GLvertexformat *vfmt = &ctx->ListState.ListVtxfmt;
-
    /* Display list */
    ctx->ListState.CallDepth = 1;
    ctx->ExecuteFlag = GL_TRUE;
@@ -14466,11 +14464,19 @@ _mesa_init_display_list(struct gl_context *ctx)
 
    /* Display List group */
    ctx->List.ListBase = 0;
+}
+
+
+void
+_mesa_install_save_vtxfmt(struct gl_context *ctx)
+{
+   struct _glapi_table *tab = ctx->Save;
+   assert(ctx->API == API_OPENGL_COMPAT);
 
 #define NAME_AE(x) _ae_##x
 #define NAME_CALLLIST(x) save_##x
 #define NAME(x) save_##x
 #define NAME_ES(x) save_##x
 
-#include "vbo/vbo_init_tmp.h"
+   #include "api_vtxfmt_init.h"
 }

@@ -33,7 +33,6 @@
 #include "main/shaderobj.h"
 #include "main/state.h"
 #include "main/version.h"
-#include "main/vtxfmt.h"
 #include "main/hash.h"
 #include "program/prog_cache.h"
 #include "vbo/vbo.h"

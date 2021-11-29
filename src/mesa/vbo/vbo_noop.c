@@ -37,7 +37,6 @@
 #include "main/dispatch.h"
 #include "main/dlist.h"
 #include "main/eval.h"
-#include "vbo/vbo_noop.h"
 #include "vbo_attrib.h"
 
 static void GLAPIENTRY
@@ -120,16 +119,29 @@ is_vertex_position(const struct gl_context *ctx, GLuint index)
  * to put the vertex data into.
  */
 void
-_mesa_noop_vtxfmt_init(struct gl_context *ctx, GLvertexformat * vfmt)
+vbo_install_exec_vtxfmt_noop(struct gl_context *ctx)
 {
 #define NAME_AE(x) _mesa_noop_##x
 #define NAME_CALLLIST(x) _mesa_##x
 #define NAME(x) _mesa_noop_##x
 #define NAME_ES(x) _mesa_noop_##x
 
-#include "vbo_init_tmp.h"
+   struct _glapi_table *tab = ctx->Exec;
+   #include "api_vtxfmt_init.h"
+
+   if (ctx->BeginEnd) {
+      tab = ctx->BeginEnd;
+      #include "api_vtxfmt_init.h"
+   }
 }
 
+
+void
+vbo_install_save_vtxfmt_noop(struct gl_context *ctx)
+{
+   struct _glapi_table *tab = ctx->Save;
+   #include "api_vtxfmt_init.h"
+}
 
 /**
  * Is the given dispatch table using the no-op functions?

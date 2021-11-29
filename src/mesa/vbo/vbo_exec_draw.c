@@ -34,9 +34,7 @@
 #include "main/enums.h"
 #include "main/state.h"
 #include "main/varray.h"
-#include "main/vtxfmt.h"
 
-#include "vbo_noop.h"
 #include "vbo_private.h"
 
 #include "state_tracker/st_cb_bufferobjects.h"
@@ -275,15 +273,15 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
 
    if (!exec->vtx.buffer_map) {
       /* out of memory */
-      _mesa_install_exec_vtxfmt(ctx, &exec->vtxfmt_noop);
+      vbo_install_exec_vtxfmt_noop(ctx);
    }
    else {
       if (_mesa_using_noop_vtxfmt(ctx->Exec)) {
          /* The no-op functions are installed so switch back to regular
           * functions.  We do this test just to avoid frequent and needless
-          * calls to _mesa_install_exec_vtxfmt().
+          * calls to vbo_install_exec_vtxfmt().
           */
-         _mesa_install_exec_vtxfmt(ctx, &exec->vtxfmt);
+         vbo_install_exec_vtxfmt(ctx);
       }
    }
 
