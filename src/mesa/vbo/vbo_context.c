@@ -141,15 +141,6 @@ init_mat_currval(struct gl_context *ctx)
 
 
 void
-_vbo_install_exec_vtxfmt(struct gl_context *ctx)
-{
-   struct vbo_context *vbo = vbo_context(ctx);
-
-   _mesa_install_exec_vtxfmt(ctx, &vbo->exec.vtxfmt);
-}
-
-
-void
 vbo_exec_update_eval_maps(struct gl_context *ctx)
 {
    struct vbo_context *vbo = vbo_context(ctx);

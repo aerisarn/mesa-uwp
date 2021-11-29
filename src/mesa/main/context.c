@@ -1073,7 +1073,7 @@ _mesa_initialize_dispatch_tables(struct gl_context *ctx)
    if (ctx->Save)
       _mesa_initialize_save_table(ctx);
 
-   _vbo_install_exec_vtxfmt(ctx);
+   _mesa_install_exec_vtxfmt(ctx, &ctx->vbo_context.exec.vtxfmt);
    if (ctx->API == API_OPENGL_COMPAT)
       _mesa_install_save_vtxfmt(ctx, &ctx->ListState.ListVtxfmt);
 }

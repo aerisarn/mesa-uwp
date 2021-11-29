@@ -193,13 +193,6 @@ void
 vbo_exec_update_eval_maps(struct gl_context *ctx);
 
 void
-_vbo_install_exec_vtxfmt(struct gl_context *ctx);
-
-void
-vbo_initialize_exec_dispatch(const struct gl_context *ctx,
-                             struct _glapi_table *exec);
-
-void
 vbo_exec_FlushVertices(struct gl_context *ctx, GLuint flags);
 
 void
