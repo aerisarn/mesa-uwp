@@ -152,22 +152,22 @@ vfmt->VertexAttrib4fNV = NAME(VertexAttrib4fNV);
 vfmt->VertexAttrib4fvNV = NAME(VertexAttrib4fvNV);
 
 /* integer-valued */
-vfmt->VertexAttribI1i = NAME(VertexAttribI1i);
-vfmt->VertexAttribI2i = NAME(VertexAttribI2i);
-vfmt->VertexAttribI3i = NAME(VertexAttribI3i);
-vfmt->VertexAttribI4i = NAME(VertexAttribI4i);
-vfmt->VertexAttribI2iv = NAME(VertexAttribI2iv);
-vfmt->VertexAttribI3iv = NAME(VertexAttribI3iv);
-vfmt->VertexAttribI4iv = NAME(VertexAttribI4iv);
+vfmt->VertexAttribI1iEXT = NAME(VertexAttribI1i);
+vfmt->VertexAttribI2iEXT = NAME(VertexAttribI2i);
+vfmt->VertexAttribI3iEXT = NAME(VertexAttribI3i);
+vfmt->VertexAttribI4iEXT = NAME(VertexAttribI4i);
+vfmt->VertexAttribI2ivEXT = NAME(VertexAttribI2iv);
+vfmt->VertexAttribI3ivEXT = NAME(VertexAttribI3iv);
+vfmt->VertexAttribI4ivEXT = NAME(VertexAttribI4iv);
 
 /* unsigned integer-valued */
-vfmt->VertexAttribI1ui = NAME(VertexAttribI1ui);
-vfmt->VertexAttribI2ui = NAME(VertexAttribI2ui);
-vfmt->VertexAttribI3ui = NAME(VertexAttribI3ui);
-vfmt->VertexAttribI4ui = NAME(VertexAttribI4ui);
-vfmt->VertexAttribI2uiv = NAME(VertexAttribI2uiv);
-vfmt->VertexAttribI3uiv = NAME(VertexAttribI3uiv);
-vfmt->VertexAttribI4uiv = NAME(VertexAttribI4uiv);
+vfmt->VertexAttribI1uiEXT = NAME(VertexAttribI1ui);
+vfmt->VertexAttribI2uiEXT = NAME(VertexAttribI2ui);
+vfmt->VertexAttribI3uiEXT = NAME(VertexAttribI3ui);
+vfmt->VertexAttribI4uiEXT = NAME(VertexAttribI4ui);
+vfmt->VertexAttribI2uivEXT = NAME(VertexAttribI2uiv);
+vfmt->VertexAttribI3uivEXT = NAME(VertexAttribI3uiv);
+vfmt->VertexAttribI4uivEXT = NAME(VertexAttribI4uiv);
 
 vfmt->Materialfv = NAME(Materialfv);
 

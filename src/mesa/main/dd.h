@@ -405,21 +405,21 @@ typedef struct {
    void (GLAPIENTRYP VertexAttrib4fvES)( GLuint index, const GLfloat *v );
 
    /* GL_EXT_gpu_shader4 / GL 3.0 */
-   void (GLAPIENTRYP VertexAttribI1i)( GLuint index, GLint x);
-   void (GLAPIENTRYP VertexAttribI2i)( GLuint index, GLint x, GLint y);
-   void (GLAPIENTRYP VertexAttribI3i)( GLuint index, GLint x, GLint y, GLint z);
-   void (GLAPIENTRYP VertexAttribI4i)( GLuint index, GLint x, GLint y, GLint z, GLint w);
-   void (GLAPIENTRYP VertexAttribI2iv)( GLuint index, const GLint *v);
-   void (GLAPIENTRYP VertexAttribI3iv)( GLuint index, const GLint *v);
-   void (GLAPIENTRYP VertexAttribI4iv)( GLuint index, const GLint *v);
+   void (GLAPIENTRYP VertexAttribI1iEXT)( GLuint index, GLint x);
+   void (GLAPIENTRYP VertexAttribI2iEXT)( GLuint index, GLint x, GLint y);
+   void (GLAPIENTRYP VertexAttribI3iEXT)( GLuint index, GLint x, GLint y, GLint z);
+   void (GLAPIENTRYP VertexAttribI4iEXT)( GLuint index, GLint x, GLint y, GLint z, GLint w);
+   void (GLAPIENTRYP VertexAttribI2ivEXT)( GLuint index, const GLint *v);
+   void (GLAPIENTRYP VertexAttribI3ivEXT)( GLuint index, const GLint *v);
+   void (GLAPIENTRYP VertexAttribI4ivEXT)( GLuint index, const GLint *v);
 
-   void (GLAPIENTRYP VertexAttribI1ui)( GLuint index, GLuint x);
-   void (GLAPIENTRYP VertexAttribI2ui)( GLuint index, GLuint x, GLuint y);
-   void (GLAPIENTRYP VertexAttribI3ui)( GLuint index, GLuint x, GLuint y, GLuint z);
-   void (GLAPIENTRYP VertexAttribI4ui)( GLuint index, GLuint x, GLuint y, GLuint z, GLuint w);
-   void (GLAPIENTRYP VertexAttribI2uiv)( GLuint index, const GLuint *v);
-   void (GLAPIENTRYP VertexAttribI3uiv)( GLuint index, const GLuint *v);
-   void (GLAPIENTRYP VertexAttribI4uiv)( GLuint index, const GLuint *v);
+   void (GLAPIENTRYP VertexAttribI1uiEXT)( GLuint index, GLuint x);
+   void (GLAPIENTRYP VertexAttribI2uiEXT)( GLuint index, GLuint x, GLuint y);
+   void (GLAPIENTRYP VertexAttribI3uiEXT)( GLuint index, GLuint x, GLuint y, GLuint z);
+   void (GLAPIENTRYP VertexAttribI4uiEXT)( GLuint index, GLuint x, GLuint y, GLuint z, GLuint w);
+   void (GLAPIENTRYP VertexAttribI2uivEXT)( GLuint index, const GLuint *v);
+   void (GLAPIENTRYP VertexAttribI3uivEXT)( GLuint index, const GLuint *v);
+   void (GLAPIENTRYP VertexAttribI4uivEXT)( GLuint index, const GLuint *v);
 
    /* GL_ARB_vertex_type_10_10_10_2_rev / GL3.3 */
    void (GLAPIENTRYP VertexP2ui)( GLenum type, GLuint value );

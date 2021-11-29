@@ -150,24 +150,24 @@ install_vtxfmt(struct gl_context *ctx, struct _glapi_table *tab,
 
    /* GL_EXT_gpu_shader4 / OpenGL 3.0 */
    if (_mesa_is_desktop_gl(ctx)) {
-      SET_VertexAttribI1iEXT(tab, vfmt->VertexAttribI1i);
-      SET_VertexAttribI2iEXT(tab, vfmt->VertexAttribI2i);
-      SET_VertexAttribI3iEXT(tab, vfmt->VertexAttribI3i);
-      SET_VertexAttribI2ivEXT(tab, vfmt->VertexAttribI2iv);
-      SET_VertexAttribI3ivEXT(tab, vfmt->VertexAttribI3iv);
+      SET_VertexAttribI1iEXT(tab, vfmt->VertexAttribI1iEXT);
+      SET_VertexAttribI2iEXT(tab, vfmt->VertexAttribI2iEXT);
+      SET_VertexAttribI3iEXT(tab, vfmt->VertexAttribI3iEXT);
+      SET_VertexAttribI2ivEXT(tab, vfmt->VertexAttribI2ivEXT);
+      SET_VertexAttribI3ivEXT(tab, vfmt->VertexAttribI3ivEXT);
 
-      SET_VertexAttribI1uiEXT(tab, vfmt->VertexAttribI1ui);
-      SET_VertexAttribI2uiEXT(tab, vfmt->VertexAttribI2ui);
-      SET_VertexAttribI3uiEXT(tab, vfmt->VertexAttribI3ui);
-      SET_VertexAttribI2uivEXT(tab, vfmt->VertexAttribI2uiv);
-      SET_VertexAttribI3uivEXT(tab, vfmt->VertexAttribI3uiv);
+      SET_VertexAttribI1uiEXT(tab, vfmt->VertexAttribI1uiEXT);
+      SET_VertexAttribI2uiEXT(tab, vfmt->VertexAttribI2uiEXT);
+      SET_VertexAttribI3uiEXT(tab, vfmt->VertexAttribI3uiEXT);
+      SET_VertexAttribI2uivEXT(tab, vfmt->VertexAttribI2uivEXT);
+      SET_VertexAttribI3uivEXT(tab, vfmt->VertexAttribI3uivEXT);
    }
 
    if (_mesa_is_desktop_gl(ctx) || _mesa_is_gles3(ctx)) {
-      SET_VertexAttribI4iEXT(tab, vfmt->VertexAttribI4i);
-      SET_VertexAttribI4ivEXT(tab, vfmt->VertexAttribI4iv);
-      SET_VertexAttribI4uiEXT(tab, vfmt->VertexAttribI4ui);
-      SET_VertexAttribI4uivEXT(tab, vfmt->VertexAttribI4uiv);
+      SET_VertexAttribI4iEXT(tab, vfmt->VertexAttribI4iEXT);
+      SET_VertexAttribI4ivEXT(tab, vfmt->VertexAttribI4ivEXT);
+      SET_VertexAttribI4uiEXT(tab, vfmt->VertexAttribI4uiEXT);
+      SET_VertexAttribI4uivEXT(tab, vfmt->VertexAttribI4uivEXT);
    }
 
    if (ctx->API == API_OPENGL_COMPAT) {
