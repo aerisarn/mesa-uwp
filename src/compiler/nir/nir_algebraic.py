@@ -153,7 +153,7 @@ class Value(object):
       return "nir_search_" + self.type_str
 
    def __c_name(self, cache):
-      if cache is not None and self.name in cache:
+      if self.name in cache:
          return cache[self.name]
       else:
          return self.name
@@ -203,15 +203,14 @@ class Value(object):
                                            Constant=Constant,
                                            Variable=Variable,
                                            Expression=Expression)
-      if cache is not None and struct_init in cache:
+      if struct_init in cache:
          # If it's in the cache, register a name remap in the cache and render
          # only a comment saying it's been remapped
          cache[self.name] = cache[struct_init]
          return "/* {} -> {} in the cache */\n".format(self.name,
                                                        cache[struct_init])
       else:
-         if cache is not None:
-            cache[struct_init] = self.name
+         cache[struct_init] = self.name
          return "static const {} {} = {}\n".format(self.c_type, self.name,
                                                    struct_init)
 
