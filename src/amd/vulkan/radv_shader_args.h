@@ -64,6 +64,6 @@ struct radv_nir_compiler_options;
 struct radv_shader_info;
 
 void radv_declare_shader_args(const struct radv_nir_compiler_options *options,
-                              struct radv_shader_info *info, gl_shader_stage stage,
+                              const struct radv_shader_info *info, gl_shader_stage stage,
                               bool has_previous_stage, gl_shader_stage previous_stage,
                               struct radv_shader_args *args);
