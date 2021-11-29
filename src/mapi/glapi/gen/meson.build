@@ -216,9 +216,9 @@ main_enums_c = custom_target(
 )
 
 main_api_exec_c = custom_target(
-  'api_exec.c',
-  input : ['gl_genexec.py', 'gl_and_es_API.xml'],
-  output : 'api_exec.c',
+  'api_exec_init.c',
+  input : ['api_exec_init.py', 'gl_and_es_API.xml'],
+  output : 'api_exec_init.c',
   command : [prog_python, '@INPUT0@', '-f', '@INPUT1@'],
   depend_files : files('apiexec.py') + glapi_gen_depends,
   capture : true,

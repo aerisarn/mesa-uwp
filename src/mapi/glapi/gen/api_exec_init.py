@@ -20,7 +20,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-# This script generates the file api_exec.c, which contains
+# This script generates the file api_exec_init.c, which contains
 # _mesa_initialize_exec_table().  It is responsible for populating all
 # entries in the "exec" dispatch table that aren't dynamic.
 
@@ -40,7 +40,7 @@ exec_flavor_map = {
 
 
 header = """/**
- * \\file api_exec.c
+ * \\file api_exec_init.c
  * Initialize dispatch table.
  */
 
@@ -160,7 +160,7 @@ class PrintCode(gl_XML.gl_print_base):
     def __init__(self):
         gl_XML.gl_print_base.__init__(self)
 
-        self.name = 'gl_genexec.py'
+        self.name = 'api_exec_init.py'
         self.license = license.bsd_license_template % (
             'Copyright (C) 2012 Intel Corporation',
             'Intel Corporation')
