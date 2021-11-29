@@ -176,15 +176,10 @@ _mesa_glthread_destroy(struct gl_context *ctx, const char *reason)
    _mesa_DeleteHashTable(glthread->VAOs);
 
    ctx->GLThread.enabled = false;
+   ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
 
-   /* Remove ourselves from the dispatch table except if another ctx/thread
-    * already installed a new dispatch table.
-    *
-    * Typically glxMakeCurrent will bind a new context (install new table) then
-    * old context might be deleted.
-    */
+   /* Update the dispatch only if the context is current. */
    if (_glapi_get_dispatch() == ctx->MarshalExec) {
-       ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
        _glapi_set_dispatch(ctx->CurrentClientDispatch);
    }
 }

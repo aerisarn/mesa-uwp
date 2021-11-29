@@ -5225,8 +5225,7 @@ struct gl_context
    struct _glapi_table *ContextLost;
    /**
     * Dispatch table used to marshal API calls from the client program to a
-    * separate server thread.  NULL if API calls are not being marshalled to
-    * another thread.
+    * separate server thread.
     */
    struct _glapi_table *MarshalExec;
    /**
