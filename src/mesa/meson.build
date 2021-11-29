@@ -27,7 +27,6 @@ files_libmesa = files(
   'main/accum.h',
   'main/api_arrayelt.c',
   'main/api_arrayelt.h',
-  'main/api_exec.h',
   'main/arbprogram.c',
   'main/arbprogram.h',
   'main/arrayobj.c',
