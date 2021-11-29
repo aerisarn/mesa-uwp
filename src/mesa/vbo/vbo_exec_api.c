@@ -43,6 +43,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "main/dispatch.h"
 #include "util/bitscan.h"
 #include "util/u_memory.h"
+#include "api_exec_decl.h"
 
 #include "vbo_private.h"
 
@@ -50,16 +51,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** ID/name for immediate-mode VBO */
 #define IMM_BUFFER_NAME 0xaabbccdd
-
-
-static void GLAPIENTRY
-vbo_exec_Materialfv(GLenum face, GLenum pname, const GLfloat *params);
-
-static void GLAPIENTRY
-vbo_exec_EvalCoord1f(GLfloat u);
-
-static void GLAPIENTRY
-vbo_exec_EvalCoord2f(GLfloat u, GLfloat v);
 
 
 static void
@@ -571,18 +562,18 @@ do {                                                                    \
 
 #undef ERROR
 #define ERROR(err) _mesa_error(ctx, err, __func__)
-#define TAG(x) vbo_exec_##x
+#define TAG(x) _mesa_##x
+#define SUPPRESS_STATIC
 
 #include "vbo_attrib_tmp.h"
-
 
 
 /**
  * Execute a glMaterial call.  Note that if GL_COLOR_MATERIAL is enabled,
  * this may be a (partial) no-op.
  */
-static void GLAPIENTRY
-vbo_exec_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
+void GLAPIENTRY
+_mesa_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
 {
    GLbitfield updateMats;
    GET_CURRENT_CONTEXT(ctx);
@@ -711,8 +702,8 @@ vbo_exec_FlushVertices_internal(struct vbo_exec_context *exec, unsigned flags)
 }
 
 
-static void GLAPIENTRY
-vbo_exec_EvalCoord1f(GLfloat u)
+void GLAPIENTRY
+_mesa_EvalCoord1f(GLfloat u)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
@@ -739,8 +730,8 @@ vbo_exec_EvalCoord1f(GLfloat u)
 }
 
 
-static void GLAPIENTRY
-vbo_exec_EvalCoord2f(GLfloat u, GLfloat v)
+void GLAPIENTRY
+_mesa_EvalCoord2f(GLfloat u, GLfloat v)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
@@ -771,34 +762,34 @@ vbo_exec_EvalCoord2f(GLfloat u, GLfloat v)
 }
 
 
-static void GLAPIENTRY
-vbo_exec_EvalCoord1fv(const GLfloat *u)
+void GLAPIENTRY
+_mesa_EvalCoord1fv(const GLfloat *u)
 {
-   vbo_exec_EvalCoord1f(u[0]);
+   _mesa_EvalCoord1f(u[0]);
 }
 
 
-static void GLAPIENTRY
-vbo_exec_EvalCoord2fv(const GLfloat *u)
+void GLAPIENTRY
+_mesa_EvalCoord2fv(const GLfloat *u)
 {
-   vbo_exec_EvalCoord2f(u[0], u[1]);
+   _mesa_EvalCoord2f(u[0], u[1]);
 }
 
 
-static void GLAPIENTRY
-vbo_exec_EvalPoint1(GLint i)
+void GLAPIENTRY
+_mesa_EvalPoint1(GLint i)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLfloat du = ((ctx->Eval.MapGrid1u2 - ctx->Eval.MapGrid1u1) /
                  (GLfloat) ctx->Eval.MapGrid1un);
    GLfloat u = i * du + ctx->Eval.MapGrid1u1;
 
-   vbo_exec_EvalCoord1f(u);
+   _mesa_EvalCoord1f(u);
 }
 
 
-static void GLAPIENTRY
-vbo_exec_EvalPoint2(GLint i, GLint j)
+void GLAPIENTRY
+_mesa_EvalPoint2(GLint i, GLint j)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLfloat du = ((ctx->Eval.MapGrid2u2 - ctx->Eval.MapGrid2u1) /
@@ -808,15 +799,15 @@ vbo_exec_EvalPoint2(GLint i, GLint j)
    GLfloat u = i * du + ctx->Eval.MapGrid2u1;
    GLfloat v = j * dv + ctx->Eval.MapGrid2v1;
 
-   vbo_exec_EvalCoord2f(u, v);
+   _mesa_EvalCoord2f(u, v);
 }
 
 
 /**
  * Called via glBegin.
  */
-static void GLAPIENTRY
-vbo_exec_Begin(GLenum mode)
+void GLAPIENTRY
+_mesa_Begin(GLenum mode)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct vbo_context *vbo = vbo_context(ctx);
@@ -904,8 +895,8 @@ try_vbo_merge(struct vbo_exec_context *exec)
 /**
  * Called via glEnd.
  */
-static void GLAPIENTRY
-vbo_exec_End(void)
+void GLAPIENTRY
+_mesa_End(void)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct vbo_exec_context *exec = &vbo_context(ctx)->exec;
@@ -978,8 +969,8 @@ vbo_exec_End(void)
 /**
  * Called via glPrimitiveRestartNV()
  */
-static void GLAPIENTRY
-vbo_exec_PrimitiveRestartNV(void)
+void GLAPIENTRY
+_mesa_PrimitiveRestartNV(void)
 {
    GLenum curPrim;
    GET_CURRENT_CONTEXT(ctx);
@@ -990,8 +981,8 @@ vbo_exec_PrimitiveRestartNV(void)
       _mesa_error(ctx, GL_INVALID_OPERATION, "glPrimitiveRestartNV");
    }
    else {
-      vbo_exec_End();
-      vbo_exec_Begin(curPrim);
+      _mesa_End();
+      _mesa_Begin(curPrim);
    }
 }
 
@@ -1001,7 +992,7 @@ vbo_install_exec_vtxfmt(struct gl_context *ctx)
 {
 #define NAME_AE(x) _ae_##x
 #define NAME_CALLLIST(x) _mesa_##x
-#define NAME(x) vbo_exec_##x
+#define NAME(x) _mesa_##x
 #define NAME_ES(x) _es_##x
 
    struct _glapi_table *tab = ctx->Exec;
@@ -1118,28 +1109,28 @@ vbo_exec_FlushVertices(struct gl_context *ctx, GLuint flags)
 void GLAPIENTRY
 _es_Color4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
-   vbo_exec_Color4f(r, g, b, a);
+   _mesa_Color4f(r, g, b, a);
 }
 
 
 void GLAPIENTRY
 _es_Normal3f(GLfloat x, GLfloat y, GLfloat z)
 {
-   vbo_exec_Normal3f(x, y, z);
+   _mesa_Normal3f(x, y, z);
 }
 
 
 void GLAPIENTRY
 _es_MultiTexCoord4f(GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q)
 {
-   vbo_exec_MultiTexCoord4fARB(target, s, t, r, q);
+   _mesa_MultiTexCoord4fARB(target, s, t, r, q);
 }
 
 
 void GLAPIENTRY
 _es_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
 {
-   vbo_exec_Materialfv(face, pname, params);
+   _mesa_Materialfv(face, pname, params);
 }
 
 
@@ -1149,7 +1140,7 @@ _es_Materialf(GLenum face, GLenum pname, GLfloat param)
    GLfloat p[4];
    p[0] = param;
    p[1] = p[2] = p[3] = 0.0F;
-   vbo_exec_Materialfv(face, pname, p);
+   _mesa_Materialfv(face, pname, p);
 }
 
 

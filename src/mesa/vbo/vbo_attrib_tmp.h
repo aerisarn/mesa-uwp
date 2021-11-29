@@ -30,6 +30,9 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vbo_util.h"
 #include "util/half_float.h"
 
+#ifdef SUPPRESS_STATIC
+#define static
+#endif
 
 /* ATTR */
 #define ATTRI( A, N, V0, V1, V2, V3 ) \
@@ -3392,5 +3395,9 @@ TAG(VertexAttribI4usv)(GLuint index, const GLushort *v)
 #undef ATTR4F
 
 #undef ATTR_UI
+
+#ifdef SUPPRESS_STATIC
+#undef static
+#endif
 
 #undef MAT
