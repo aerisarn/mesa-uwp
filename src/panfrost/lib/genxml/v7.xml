@@ -1072,6 +1072,8 @@
     <field name="Z Preload Enable" size="1" start="12:19" type="bool"/>
     <field name="Z Unload Enable" size="1" start="12:20" type="bool"/>
     <field name="Has ZS CRC Extension" size="1" start="12:21" type="bool"/>
+    <field name="Empty Tile Read Enable" size="1" start="12:28" type="bool"/>
+    <field name="Empty Tile Write Enable" size="1" start="12:29" type="bool"/>
     <field name="CRC Read Enable" size="1" start="12:30" type="bool"/>
     <field name="CRC Write Enable" size="1" start="12:31" type="bool"/>
     <field name="Z Clear" size="32" start="13:0" type="float"/>
