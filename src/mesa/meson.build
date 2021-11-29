@@ -525,6 +525,7 @@ files_libmesa += [
   mesa_lex,
   program_parse_tab,
   main_api_exec_c,
+  main_api_exec_decl_h,
   main_api_save_h,
   main_api_save_init_h,
   main_enums_c,
