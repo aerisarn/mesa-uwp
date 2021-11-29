@@ -512,19 +512,3 @@ _mesa_install_save_vtxfmt(struct gl_context *ctx, const GLvertexformat *vfmt)
    if (_mesa_is_desktop_gl(ctx))
       install_vtxfmt(ctx, ctx->Save, vfmt);
 }
-
-
-/**
- * Install VBO vtxfmt functions.
- *
- * This function depends on ctx->Version.
- */
-void
-_mesa_initialize_vbo_vtxfmt(struct gl_context *ctx)
-{
-   _vbo_install_exec_vtxfmt(ctx);
-   if (ctx->API == API_OPENGL_COMPAT) {
-      _mesa_install_save_vtxfmt(ctx, &ctx->ListState.ListVtxfmt);
-   }
-}
-

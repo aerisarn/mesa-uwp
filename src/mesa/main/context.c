@@ -142,6 +142,7 @@
 #include "math/m_matrix.h"
 #include "main/dispatch.h" /* for _gloffset_COUNT */
 #include "macros.h"
+#include "vtxfmt.h"
 #include "git_sha1.h"
 
 #ifdef USE_SPARC_ASM
@@ -1071,6 +1072,10 @@ _mesa_initialize_dispatch_tables(struct gl_context *ctx)
 
    if (ctx->Save)
       _mesa_initialize_save_table(ctx);
+
+   _vbo_install_exec_vtxfmt(ctx);
+   if (ctx->API == API_OPENGL_COMPAT)
+      _mesa_install_save_vtxfmt(ctx, &ctx->ListState.ListVtxfmt);
 }
 
 /**
