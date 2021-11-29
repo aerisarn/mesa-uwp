@@ -74,14 +74,14 @@ vfmt->Vertex3fv = NAME(Vertex3fv);
 vfmt->Vertex4f = NAME(Vertex4f);
 vfmt->Vertex4fv = NAME(Vertex4fv);
 
-vfmt->VertexAttrib1fES = NAME_ES(VertexAttrib1f);
-vfmt->VertexAttrib1fvES = NAME_ES(VertexAttrib1fv);
-vfmt->VertexAttrib2fES = NAME_ES(VertexAttrib2f);
-vfmt->VertexAttrib2fvES = NAME_ES(VertexAttrib2fv);
-vfmt->VertexAttrib3fES = NAME_ES(VertexAttrib3f);
-vfmt->VertexAttrib3fvES = NAME_ES(VertexAttrib3fv);
-vfmt->VertexAttrib4fES = NAME_ES(VertexAttrib4f);
-vfmt->VertexAttrib4fvES = NAME_ES(VertexAttrib4fv);
+vfmt->VertexAttrib1fES = NAME_ES(VertexAttrib1fARB);
+vfmt->VertexAttrib1fvES = NAME_ES(VertexAttrib1fvARB);
+vfmt->VertexAttrib2fES = NAME_ES(VertexAttrib2fARB);
+vfmt->VertexAttrib2fvES = NAME_ES(VertexAttrib2fvARB);
+vfmt->VertexAttrib3fES = NAME_ES(VertexAttrib3fARB);
+vfmt->VertexAttrib3fvES = NAME_ES(VertexAttrib3fvARB);
+vfmt->VertexAttrib4fES = NAME_ES(VertexAttrib4fARB);
+vfmt->VertexAttrib4fvES = NAME_ES(VertexAttrib4fvARB);
 
 vfmt->VertexAttrib1fARB = NAME(VertexAttrib1fARB);
 vfmt->VertexAttrib1fvARB = NAME(VertexAttrib1fvARB);

@@ -15094,7 +15094,7 @@ _mesa_init_display_list(struct gl_context *ctx)
 #define NAME_AE(x) _ae_##x
 #define NAME_CALLLIST(x) save_##x
 #define NAME(x) save_##x
-#define NAME_ES(x) save_##x##ARB
+#define NAME_ES(x) save_##x
 
 #include "vbo/vbo_init_tmp.h"
 }

@@ -125,7 +125,7 @@ _mesa_noop_vtxfmt_init(struct gl_context *ctx, GLvertexformat * vfmt)
 #define NAME_AE(x) _mesa_noop_##x
 #define NAME_CALLLIST(x) _mesa_##x
 #define NAME(x) _mesa_noop_##x
-#define NAME_ES(x) _mesa_noop_##x##ARB
+#define NAME_ES(x) _mesa_noop_##x
 
 #include "vbo_init_tmp.h"
 }

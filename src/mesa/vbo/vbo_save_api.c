@@ -1930,7 +1930,7 @@ vtxfmt_init(struct gl_context *ctx)
 #define NAME_AE(x) _ae_##x
 #define NAME_CALLLIST(x) _save_##x
 #define NAME(x) _save_##x
-#define NAME_ES(x) _save_##x##ARB
+#define NAME_ES(x) _save_##x
 
 #include "vbo_init_tmp.h"
 }

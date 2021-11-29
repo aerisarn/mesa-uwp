@@ -249,28 +249,28 @@ void GLAPIENTRY
 _es_Materialf(GLenum face, GLenum pname, GLfloat param);
 
 void GLAPIENTRY
-_es_VertexAttrib4f(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+_es_VertexAttrib4fARB(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
 
 void GLAPIENTRY
-_es_VertexAttrib1f(GLuint indx, GLfloat x);
+_es_VertexAttrib1fARB(GLuint indx, GLfloat x);
 
 void GLAPIENTRY
-_es_VertexAttrib1fv(GLuint indx, const GLfloat* values);
+_es_VertexAttrib1fvARB(GLuint indx, const GLfloat* values);
 
 void GLAPIENTRY
-_es_VertexAttrib2f(GLuint indx, GLfloat x, GLfloat y);
+_es_VertexAttrib2fARB(GLuint indx, GLfloat x, GLfloat y);
 
 void GLAPIENTRY
-_es_VertexAttrib2fv(GLuint indx, const GLfloat* values);
+_es_VertexAttrib2fvARB(GLuint indx, const GLfloat* values);
 
 void GLAPIENTRY
-_es_VertexAttrib3f(GLuint indx, GLfloat x, GLfloat y, GLfloat z);
+_es_VertexAttrib3fARB(GLuint indx, GLfloat x, GLfloat y, GLfloat z);
 
 void GLAPIENTRY
-_es_VertexAttrib3fv(GLuint indx, const GLfloat* values);
+_es_VertexAttrib3fvARB(GLuint indx, const GLfloat* values);
 
 void GLAPIENTRY
-_es_VertexAttrib4fv(GLuint indx, const GLfloat* values);
+_es_VertexAttrib4fvARB(GLuint indx, const GLfloat* values);
 
 void GLAPIENTRY
 save_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);
