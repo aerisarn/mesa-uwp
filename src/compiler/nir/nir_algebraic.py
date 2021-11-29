@@ -149,22 +149,6 @@ class Value(object):
       return "nir_search_value_" + self.type_str
 
    @property
-   def c_type(self):
-      return "nir_search_" + self.type_str
-
-   def __c_name(self, cache):
-      if self.name in cache:
-         return cache[self.name]
-      else:
-         return self.name
-
-   def c_value_ptr(self, cache):
-      return "&{0}.value".format(self.__c_name(cache))
-
-   def c_ptr(self, cache):
-      return "&{0}".format(self.__c_name(cache))
-
-   @property
    def c_bit_size(self):
       bit_size = self.get_bit_size()
       if isinstance(bit_size, int):
@@ -179,40 +163,42 @@ class Value(object):
          # We represent these cases with a 0 bit-size.
          return 0
 
-   __template = mako.template.Template("""{
-   { ${val.type_enum}, ${val.c_bit_size} },
+   __template = mako.template.Template("""   { .${val.type_str} = {
+      { ${val.type_enum}, ${val.c_bit_size} },
 % if isinstance(val, Constant):
-   ${val.type()}, { ${val.hex()} /* ${val.value} */ },
+      ${val.type()}, { ${val.hex()} /* ${val.value} */ },
 % elif isinstance(val, Variable):
-   ${val.index}, /* ${val.var_name} */
-   ${'true' if val.is_constant else 'false'},
-   ${val.type() or 'nir_type_invalid' },
-   ${val.cond if val.cond else 'NULL'},
-   ${val.swizzle()},
+      ${val.index}, /* ${val.var_name} */
+      ${'true' if val.is_constant else 'false'},
+      ${val.type() or 'nir_type_invalid' },
+      ${val.cond if val.cond else 'NULL'},
+      ${val.swizzle()},
 % elif isinstance(val, Expression):
-   ${'true' if val.inexact else 'false'}, ${'true' if val.exact else 'false'},
-   ${val.comm_expr_idx}, ${val.comm_exprs},
-   ${val.c_opcode()},
-   { ${', '.join(src.c_value_ptr(cache) for src in val.sources)} },
-   ${val.cond if val.cond else 'NULL'},
+      ${'true' if val.inexact else 'false'}, ${'true' if val.exact else 'false'},
+      ${val.comm_expr_idx}, ${val.comm_exprs},
+      ${val.c_opcode()},
+      { ${', '.join(src.array_index for src in val.sources)} },
+      ${val.cond if val.cond else 'NULL'},
 % endif
-};""")
+   } },
+""")
 
    def render(self, cache):
-      struct_init = self.__template.render(val=self, cache=cache,
+      struct_init = self.__template.render(val=self,
                                            Constant=Constant,
                                            Variable=Variable,
                                            Expression=Expression)
       if struct_init in cache:
          # If it's in the cache, register a name remap in the cache and render
          # only a comment saying it's been remapped
-         cache[self.name] = cache[struct_init]
-         return "/* {} -> {} in the cache */\n".format(self.name,
+         self.array_index = cache[struct_init]
+         return "   /* {} -> {} in the cache */\n".format(self.name,
                                                        cache[struct_init])
       else:
-         cache[struct_init] = self.name
-         return "static const {} {} = {}\n".format(self.c_type, self.name,
-                                                   struct_init)
+         self.array_index = str(cache["next_index"])
+         cache[struct_init] = self.array_index
+         cache["next_index"] += 1
+         return struct_init
 
 _constant_re = re.compile(r"(?P<value>[^@\(]+)(?:@(?P<bits>\d+))?")
 
@@ -433,7 +419,7 @@ class Expression(Value):
       return get_c_opcode(self.opcode)
 
    def render(self, cache):
-      srcs = "\n".join(src.render(cache) for src in self.sources)
+      srcs = "".join(src.render(cache) for src in self.sources)
       return srcs + super(Expression, self).render(cache)
 
 class BitSizeValidator(object):
@@ -1045,17 +1031,20 @@ _algebraic_pass_template = mako.template.Template("""
 % endfor
  */
 
-<% cache = {} %>
+<% cache = {"next_index": 0} %>
+static const nir_search_value_union ${pass_name}_values[] = {
 % for xform in xforms:
-   ${xform.search.render(cache)}
-   ${xform.replace.render(cache)}
+   /* ${xform.search} => ${xform.replace} */
+${xform.search.render(cache)}
+${xform.replace.render(cache)}
 % endfor
+};
 
 % for state_id, state_xforms in enumerate(automaton.state_patterns):
 % if state_xforms: # avoid emitting a 0-length array for MSVC
 static const struct transform ${pass_name}_state${state_id}_xforms[] = {
 % for i in state_xforms:
-  { ${xforms[i].search.c_ptr(cache)}, ${xforms[i].replace.c_value_ptr(cache)}, ${xforms[i].condition_index} },
+  { ${xforms[i].search.array_index}, ${xforms[i].replace.array_index}, ${xforms[i].condition_index} },
 % endfor
 };
 % endif
@@ -1109,6 +1098,7 @@ static const nir_algebraic_table ${pass_name}_table = {
    .transforms = ${pass_name}_transforms,
    .transform_counts = ${pass_name}_transform_counts,
    .pass_op_table = ${pass_name}_pass_op_table,
+   .values = ${pass_name}_values,
 };
 
 bool
@@ -1121,6 +1111,7 @@ ${pass_name}(nir_shader *shader)
    (void) options;
    (void) info;
 
+   STATIC_ASSERT(${str(cache["next_index"])} == ARRAY_SIZE(${pass_name}_values));
    % for index, condition in enumerate(condition_list):
    condition_flags[${index}] = ${condition};
    % endfor

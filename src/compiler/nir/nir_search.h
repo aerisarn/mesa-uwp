@@ -157,7 +157,8 @@ typedef struct {
 
    /* One of nir_op or nir_search_op */
    uint16_t opcode;
-   const nir_search_value *srcs[4];
+   /* Index in table->values[] for the expression operands */
+   uint16_t srcs[4];
 
    /** Optional condition fxn ptr
     *
@@ -175,16 +176,25 @@ struct per_op_table {
 };
 
 struct transform {
-   const nir_search_expression *search;
-   const nir_search_value *replace;
+   uint16_t search; /* Index in table->values[] for the search expression. */
+   uint16_t replace; /* Index in table->values[] for the replace value. */
    unsigned condition_offset;
 };
+
+typedef union {
+   nir_search_value value; /* base type of the union, first element of each variant struct */
+
+   nir_search_constant constant;
+   nir_search_variable variable;
+   nir_search_expression expression;
+} nir_search_value_union;
 
 /* Generated data table for an algebraic optimization pass. */
 typedef struct {
    const struct transform **transforms;
    const uint16_t *transform_counts;
    const struct per_op_table *pass_op_table;
+   const nir_search_value_union *values;
 } nir_algebraic_table;
 
 /* Note: these must match the start states created in
@@ -208,7 +218,7 @@ nir_ssa_def *
 nir_replace_instr(struct nir_builder *b, nir_alu_instr *instr,
                   struct hash_table *range_ht,
                   struct util_dynarray *states,
-                  const struct per_op_table *pass_op_table,
+                  const nir_algebraic_table *table,
                   const nir_search_expression *search,
                   const nir_search_value *replace,
                   nir_instr_worklist *algebraic_worklist);
