@@ -859,10 +859,8 @@ static bool
 nir_algebraic_instr(nir_builder *build, nir_instr *instr,
                     struct hash_table *range_ht,
                     const bool *condition_flags,
-                    const struct transform **transforms,
-                    const uint16_t *transform_counts,
+                    const nir_algebraic_table *table,
                     struct util_dynarray *states,
-                    const struct per_op_table *pass_op_table,
                     nir_instr_worklist *worklist)
 {
 
@@ -882,11 +880,11 @@ nir_algebraic_instr(nir_builder *build, nir_instr *instr,
 
    int xform_idx = *util_dynarray_element(states, uint16_t,
                                           alu->dest.dest.ssa.index);
-   for (uint16_t i = 0; i < transform_counts[xform_idx]; i++) {
-      const struct transform *xform = &transforms[xform_idx][i];
+   for (uint16_t i = 0; i < table->transform_counts[xform_idx]; i++) {
+      const struct transform *xform = &table->transforms[xform_idx][i];
       if (condition_flags[xform->condition_offset] &&
           !(xform->search->inexact && ignore_inexact) &&
-          nir_replace_instr(build, alu, range_ht, states, pass_op_table,
+          nir_replace_instr(build, alu, range_ht, states, table->pass_op_table,
                             xform->search, xform->replace, worklist)) {
          _mesa_hash_table_clear(range_ht, NULL);
          return true;
@@ -899,9 +897,7 @@ nir_algebraic_instr(nir_builder *build, nir_instr *instr,
 bool
 nir_algebraic_impl(nir_function_impl *impl,
                    const bool *condition_flags,
-                   const struct transform **transforms,
-                   const uint16_t *transform_counts,
-                   const struct per_op_table *pass_op_table)
+                   const nir_algebraic_table *table)
 {
    bool progress = false;
 
@@ -926,7 +922,7 @@ nir_algebraic_impl(nir_function_impl *impl,
    /* Walk top-to-bottom setting up the automaton state. */
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
-         nir_algebraic_automaton(instr, &states, pass_op_table);
+         nir_algebraic_automaton(instr, &states, table->pass_op_table);
       }
    }
 
@@ -952,8 +948,7 @@ nir_algebraic_impl(nir_function_impl *impl,
 
       progress |= nir_algebraic_instr(&build, instr,
                                       range_ht, condition_flags,
-                                      transforms, transform_counts, &states,
-                                      pass_op_table, worklist);
+                                      table, &states, worklist);
    }
 
    nir_instr_worklist_destroy(worklist);

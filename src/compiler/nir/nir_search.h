@@ -180,6 +180,13 @@ struct transform {
    unsigned condition_offset;
 };
 
+/* Generated data table for an algebraic optimization pass. */
+typedef struct {
+   const struct transform **transforms;
+   const uint16_t *transform_counts;
+   const struct per_op_table *pass_op_table;
+} nir_algebraic_table;
+
 /* Note: these must match the start states created in
  * TreeAutomaton._build_table()
  */
@@ -208,8 +215,6 @@ nir_replace_instr(struct nir_builder *b, nir_alu_instr *instr,
 bool
 nir_algebraic_impl(nir_function_impl *impl,
                    const bool *condition_flags,
-                   const struct transform **transforms,
-                   const uint16_t *transform_counts,
-                   const struct per_op_table *pass_op_table);
+                   const nir_algebraic_table *table);
 
 #endif /* _NIR_SEARCH_ */

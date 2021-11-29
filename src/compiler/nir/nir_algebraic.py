@@ -1062,7 +1062,7 @@ static const struct transform ${pass_name}_state${state_id}_xforms[] = {
 % endif
 % endfor
 
-static const struct per_op_table ${pass_name}_table[nir_num_search_ops] = {
+static const struct per_op_table ${pass_name}_pass_op_table[nir_num_search_ops] = {
 % for op in automaton.opcodes:
    [${get_c_opcode(op)}] = {
       .filter = (uint16_t []) {
@@ -1106,6 +1106,12 @@ const uint16_t ${pass_name}_transform_counts[] = {
 % endfor
 };
 
+static const nir_algebraic_table ${pass_name}_table = {
+   .transforms = ${pass_name}_transforms,
+   .transform_counts = ${pass_name}_transform_counts,
+   .pass_op_table = ${pass_name}_pass_op_table,
+};
+
 bool
 ${pass_name}(nir_shader *shader)
 {
@@ -1123,9 +1129,7 @@ ${pass_name}(nir_shader *shader)
    nir_foreach_function(function, shader) {
       if (function->impl) {
          progress |= nir_algebraic_impl(function->impl, condition_flags,
-                                        ${pass_name}_transforms,
-                                        ${pass_name}_transform_counts,
-                                        ${pass_name}_table);
+                                        &${pass_name}_table);
       }
    }
 
