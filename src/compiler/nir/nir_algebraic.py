@@ -109,7 +109,7 @@ class Value(object):
       elif isinstance(val, Expression):
          return val
       elif isinstance(val, str):
-         return Variable(val, name_base, varset)
+         return Variable(val, name_base, varset, algebraic_pass)
       elif isinstance(val, (bool, float, int)):
          return Constant(val, name_base)
 
@@ -182,7 +182,7 @@ class Value(object):
       ${val.index}, /* ${val.var_name} */
       ${'true' if val.is_constant else 'false'},
       ${val.type() or 'nir_type_invalid' },
-      ${val.cond if val.cond else 'NULL'},
+      ${val.cond_index},
       ${val.swizzle()},
 % elif isinstance(val, Expression):
       ${'true' if val.inexact else 'false'}, ${'true' if val.exact else 'false'},
@@ -269,7 +269,7 @@ _var_name_re = re.compile(r"(?P<const>#)?(?P<name>\w+)"
                           r"$")
 
 class Variable(Value):
-   def __init__(self, val, name, varset):
+   def __init__(self, val, name, varset, algebraic_pass):
       Value.__init__(self, val, name, "variable")
 
       m = _var_name_re.match(val)
@@ -286,7 +286,7 @@ class Variable(Value):
       assert self.var_name != 'False'
 
       self.is_constant = m.group('const') is not None
-      self.cond = m.group('cond')
+      self.cond_index = get_cond_index(algebraic_pass.variable_cond, m.group('cond'))
       self.required_type = m.group('type')
       self._bit_size = int(m.group('bits')) if m.group('bits') else None
       self.swiz = m.group('swiz')
@@ -1064,6 +1064,14 @@ static const nir_search_expression_cond ${pass_name}_expression_cond[] = {
 };
 % endif
 
+% if variable_cond:
+static const nir_search_variable_cond ${pass_name}_variable_cond[] = {
+% for cond in variable_cond:
+   ${cond[0]},
+% endfor
+};
+% endif
+
 % for state_id, state_xforms in enumerate(automaton.state_patterns):
 % if state_xforms: # avoid emitting a 0-length array for MSVC
 static const struct transform ${pass_name}_state${state_id}_xforms[] = {
@@ -1124,6 +1132,7 @@ static const nir_algebraic_table ${pass_name}_table = {
    .pass_op_table = ${pass_name}_pass_op_table,
    .values = ${pass_name}_values,
    .expression_cond = ${ pass_name + "_expression_cond" if expression_cond else "NULL" },
+   .variable_cond = ${ pass_name + "_variable_cond" if variable_cond else "NULL" },
 };
 
 bool
@@ -1159,6 +1168,7 @@ class AlgebraicPass(object):
       self.opcode_xforms = defaultdict(lambda : [])
       self.pass_name = pass_name
       self.expression_cond = {}
+      self.variable_cond = {}
 
       error = False
 
@@ -1222,5 +1232,6 @@ class AlgebraicPass(object):
                                              condition_list=condition_list,
                                              automaton=self.automaton,
                                              expression_cond = sorted(self.expression_cond.items(), key=lambda kv: kv[1]),
+                                             variable_cond = sorted(self.variable_cond.items(), key=lambda kv: kv[1]),
                                              get_c_opcode=get_c_opcode,
                                              itertools=itertools)

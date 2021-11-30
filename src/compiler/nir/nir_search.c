@@ -315,8 +315,8 @@ match_value(const nir_algebraic_table *table,
              instr->src[src].src.ssa->parent_instr->type != nir_instr_type_load_const)
             return false;
 
-         if (var->cond && !var->cond(state->range_ht, instr,
-                                     src, num_components, new_swizzle))
+         if (var->cond_index != -1 && !table->variable_cond[var->cond_index](state->range_ht, instr,
+                                                                             src, num_components, new_swizzle))
             return false;
 
          if (var->type != nir_type_invalid &&

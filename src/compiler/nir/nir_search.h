@@ -88,15 +88,14 @@ typedef struct {
     */
    nir_alu_type type;
 
-   /** Optional condition fxn ptr
+   /** Optional table->variable_cond[] fxn ptr index
     *
     * This is only allowed in search expressions, and allows additional
     * constraints to be placed on the match.  Typically used for 'is_constant'
     * variables to require, for example, power-of-two in order for the search
     * to match.
     */
-   bool (*cond)(struct hash_table *range_ht, const nir_alu_instr *instr,
-                unsigned src, unsigned num_components, const uint8_t *swizzle);
+   int16_t cond_index;
 
    /** Swizzle (for replace only) */
    uint8_t swizzle[NIR_MAX_VEC_COMPONENTS];
@@ -190,6 +189,10 @@ typedef union {
 } nir_search_value_union;
 
 typedef bool (*nir_search_expression_cond)(nir_alu_instr *instr);
+typedef bool (*nir_search_variable_cond)(struct hash_table *range_ht,
+                                         const nir_alu_instr *instr,
+                                         unsigned src, unsigned num_components,
+                                         const uint8_t *swizzle);
 
 /* Generated data table for an algebraic optimization pass. */
 typedef struct {
@@ -203,6 +206,12 @@ typedef struct {
     * nir_search_expression->cond.
     */
    const nir_search_expression_cond *expression_cond;
+
+   /**
+    * Array of condition functions for variables, referenced by
+    * nir_search_variable->cond.
+    */
+   const nir_search_variable_cond *variable_cond;
 } nir_algebraic_table;
 
 /* Note: these must match the start states created in
