@@ -160,13 +160,13 @@ typedef struct {
    /* Index in table->values[] for the expression operands */
    uint16_t srcs[4];
 
-   /** Optional condition fxn ptr
+   /** Optional table->expression_cond[] fxn ptr index
     *
     * This allows additional constraints on expression matching, it is
     * typically used to match an expressions uses such as the number of times
     * the expression is used, and whether its used by an if.
     */
-   bool (*cond)(nir_alu_instr *instr);
+   int16_t cond_index;
 } nir_search_expression;
 
 struct per_op_table {
@@ -189,12 +189,20 @@ typedef union {
    nir_search_expression expression;
 } nir_search_value_union;
 
+typedef bool (*nir_search_expression_cond)(nir_alu_instr *instr);
+
 /* Generated data table for an algebraic optimization pass. */
 typedef struct {
    const struct transform **transforms;
    const uint16_t *transform_counts;
    const struct per_op_table *pass_op_table;
    const nir_search_value_union *values;
+
+   /**
+    * Array of condition functions for expressions, referenced by
+    * nir_search_expression->cond.
+    */
+   const nir_search_expression_cond *expression_cond;
 } nir_algebraic_table;
 
 /* Note: these must match the start states created in

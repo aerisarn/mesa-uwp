@@ -50,7 +50,7 @@ struct match_state {
 };
 
 static bool
-match_expression(const nir_search_expression *expr, nir_alu_instr *instr,
+match_expression(const nir_algebraic_table *table, const nir_search_expression *expr, nir_alu_instr *instr,
                  unsigned num_components, const uint8_t *swizzle,
                  struct match_state *state);
 static bool
@@ -253,7 +253,8 @@ nir_op_for_search_op(uint16_t sop, unsigned bit_size)
 }
 
 static bool
-match_value(const nir_search_value *value, nir_alu_instr *instr, unsigned src,
+match_value(const nir_algebraic_table *table,
+            const nir_search_value *value, nir_alu_instr *instr, unsigned src,
             unsigned num_components, const uint8_t *swizzle,
             struct match_state *state)
 {
@@ -289,7 +290,7 @@ match_value(const nir_search_value *value, nir_alu_instr *instr, unsigned src,
       if (instr->src[src].src.ssa->parent_instr->type != nir_instr_type_alu)
          return false;
 
-      return match_expression(nir_search_value_as_expression(value),
+      return match_expression(table, nir_search_value_as_expression(value),
                               nir_instr_as_alu(instr->src[src].src.ssa->parent_instr),
                               num_components, new_swizzle, state);
 
@@ -390,11 +391,11 @@ match_value(const nir_search_value *value, nir_alu_instr *instr, unsigned src,
 }
 
 static bool
-match_expression(const nir_search_expression *expr, nir_alu_instr *instr,
+match_expression(const nir_algebraic_table *table, const nir_search_expression *expr, nir_alu_instr *instr,
                  unsigned num_components, const uint8_t *swizzle,
                  struct match_state *state)
 {
-   if (expr->cond && !expr->cond(instr))
+   if (expr->cond_index != -1 && !table->expression_cond[expr->cond_index](instr))
       return false;
 
    if (!nir_op_matches_search_op(instr->op, expr->opcode))
@@ -441,7 +442,7 @@ match_expression(const nir_search_expression *expr, nir_alu_instr *instr,
       /* 2src_commutative instructions that have 3 sources are only commutative
        * in the first two sources.  Source 2 is always source 2.
        */
-      if (!match_value(&state->table->values[expr->srcs[i]].value, instr,
+      if (!match_value(table, &state->table->values[expr->srcs[i]].value, instr,
                        i < 2 ? i ^ comm_op_flip : i,
                        num_components, swizzle, state)) {
          matched = false;
@@ -720,7 +721,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
       state.comm_op_direction = comb;
       state.variables_seen = 0;
 
-      if (match_expression(search, instr,
+      if (match_expression(table, search, instr,
                            instr->dest.dest.ssa.num_components,
                            swizzle, &state)) {
          found = true;

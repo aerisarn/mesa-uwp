@@ -53,6 +53,17 @@ conv_opcode_types = {
     'f2b' : 'bool',
 }
 
+def get_cond_index(conds, cond):
+    if cond:
+        if cond in conds:
+            return conds[cond]
+        else:
+            cond_index = len(conds)
+            conds[cond] = cond_index
+            return cond_index
+    else:
+        return -1
+
 def get_c_opcode(op):
       if op in conv_opcode_types:
          return 'nir_search_op_' + op
@@ -89,12 +100,12 @@ class VarSet(object):
 
 class Value(object):
    @staticmethod
-   def create(val, name_base, varset):
+   def create(val, name_base, varset, algebraic_pass):
       if isinstance(val, bytes):
          val = val.decode('utf-8')
 
       if isinstance(val, tuple):
-         return Expression(val, name_base, varset)
+         return Expression(val, name_base, varset, algebraic_pass)
       elif isinstance(val, Expression):
          return val
       elif isinstance(val, str):
@@ -178,7 +189,7 @@ class Value(object):
       ${val.comm_expr_idx}, ${val.comm_exprs},
       ${val.c_opcode()},
       { ${', '.join(src.array_index for src in val.sources)} },
-      ${val.cond if val.cond else 'NULL'},
+      ${val.cond_index},
 % endif
    } },
 """)
@@ -326,7 +337,7 @@ _opcode_re = re.compile(r"(?P<inexact>~)?(?P<exact>!)?(?P<opcode>\w+)(?:@(?P<bit
                         r"(?P<cond>\([^\)]+\))?")
 
 class Expression(Value):
-   def __init__(self, expr, name_base, varset):
+   def __init__(self, expr, name_base, varset, algebraic_pass):
       Value.__init__(self, expr, name_base, "expression")
       assert isinstance(expr, tuple)
 
@@ -356,7 +367,11 @@ class Expression(Value):
          self.cond = c[0] if c else None
          self.many_commutative_expressions = True
 
-      self.sources = [ Value.create(src, "{0}_{1}".format(name_base, i), varset)
+      # Deduplicate references to the condition functions for the expressions
+      # and save the index for the order they were added.
+      self.cond_index = get_cond_index(algebraic_pass.expression_cond, self.cond)
+
+      self.sources = [ Value.create(src, "{0}_{1}".format(name_base, i), varset, algebraic_pass)
                        for (i, src) in enumerate(expr[1:]) ]
 
       # nir_search_expression::srcs is hard-coded to 4
@@ -730,7 +745,7 @@ _optimization_ids = itertools.count()
 condition_list = ['true']
 
 class SearchAndReplace(object):
-   def __init__(self, transform):
+   def __init__(self, transform, algebraic_pass):
       self.id = next(_optimization_ids)
 
       search = transform[0]
@@ -748,14 +763,14 @@ class SearchAndReplace(object):
       if isinstance(search, Expression):
          self.search = search
       else:
-         self.search = Expression(search, "search{0}".format(self.id), varset)
+         self.search = Expression(search, "search{0}".format(self.id), varset, algebraic_pass)
 
       varset.lock()
 
       if isinstance(replace, Value):
          self.replace = replace
       else:
-         self.replace = Value.create(replace, "replace{0}".format(self.id), varset)
+         self.replace = Value.create(replace, "replace{0}".format(self.id), varset, algebraic_pass)
 
       BitSizeValidator(varset).validate(self.search, self.replace)
 
@@ -1041,6 +1056,14 @@ ${xform.replace.render(cache)}
 % endfor
 };
 
+% if expression_cond:
+static const nir_search_expression_cond ${pass_name}_expression_cond[] = {
+% for cond in expression_cond:
+   ${cond[0]},
+% endfor
+};
+% endif
+
 % for state_id, state_xforms in enumerate(automaton.state_patterns):
 % if state_xforms: # avoid emitting a 0-length array for MSVC
 static const struct transform ${pass_name}_state${state_id}_xforms[] = {
@@ -1100,6 +1123,7 @@ static const nir_algebraic_table ${pass_name}_table = {
    .transform_counts = ${pass_name}_transform_counts,
    .pass_op_table = ${pass_name}_pass_op_table,
    .values = ${pass_name}_values,
+   .expression_cond = ${ pass_name + "_expression_cond" if expression_cond else "NULL" },
 };
 
 bool
@@ -1134,13 +1158,14 @@ class AlgebraicPass(object):
       self.xforms = []
       self.opcode_xforms = defaultdict(lambda : [])
       self.pass_name = pass_name
+      self.expression_cond = {}
 
       error = False
 
       for xform in transforms:
          if not isinstance(xform, SearchAndReplace):
             try:
-               xform = SearchAndReplace(xform)
+               xform = SearchAndReplace(xform, self)
             except:
                print("Failed to parse transformation:", file=sys.stderr)
                print("  " + str(xform), file=sys.stderr)
@@ -1196,5 +1221,6 @@ class AlgebraicPass(object):
                                              opcode_xforms=self.opcode_xforms,
                                              condition_list=condition_list,
                                              automaton=self.automaton,
+                                             expression_cond = sorted(self.expression_cond.items(), key=lambda kv: kv[1]),
                                              get_c_opcode=get_c_opcode,
                                              itertools=itertools)
