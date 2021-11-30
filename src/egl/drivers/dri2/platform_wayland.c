@@ -722,10 +722,15 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
                                                 &surface_dmabuf_feedback_listener,
                                                 dri2_surf);
 
-      if (dmabuf_feedback_init(&dri2_surf->pending_dmabuf_feedback) < 0)
+      if (dmabuf_feedback_init(&dri2_surf->pending_dmabuf_feedback) < 0) {
+         zwp_linux_dmabuf_feedback_v1_destroy(dri2_surf->wl_dmabuf_feedback);
          goto cleanup_surf_wrapper;
-      if (dmabuf_feedback_init(&dri2_surf->dmabuf_feedback) < 0)
-         goto cleanup_pending_dmabuf_feedback;
+      }
+      if (dmabuf_feedback_init(&dri2_surf->dmabuf_feedback) < 0) {
+         dmabuf_feedback_fini(&dri2_surf->pending_dmabuf_feedback);
+         zwp_linux_dmabuf_feedback_v1_destroy(dri2_surf->wl_dmabuf_feedback);
+         goto cleanup_surf_wrapper;
+      }
 
       if (roundtrip(dri2_dpy) < 0)
          goto cleanup_dmabuf_feedback;
@@ -748,7 +753,6 @@ dri2_wl_create_window_surface(_EGLDisplay *disp, _EGLConfig *conf,
    if (dri2_surf->wl_dmabuf_feedback) {
       zwp_linux_dmabuf_feedback_v1_destroy(dri2_surf->wl_dmabuf_feedback);
       dmabuf_feedback_fini(&dri2_surf->dmabuf_feedback);
- cleanup_pending_dmabuf_feedback:
       dmabuf_feedback_fini(&dri2_surf->pending_dmabuf_feedback);
    }
  cleanup_surf_wrapper:
