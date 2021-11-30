@@ -351,8 +351,9 @@ class Expression(Value):
          # "many-comm-expr".  If there is anything left, put it back together.
          c = self.cond[1:-1].split(",")
          c.remove("many-comm-expr")
+         assert(len(c) <= 1)
 
-         self.cond = "({})".format(",".join(c)) if c else None
+         self.cond = c[0] if c else None
          self.many_commutative_expressions = True
 
       self.sources = [ Value.create(src, "{0}_{1}".format(name_base, i), varset)
