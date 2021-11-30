@@ -191,8 +191,13 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    if (!glthread->enabled)
       return;
 
-   if (!glthread->used)
+   if (ctx->CurrentServerDispatch == ctx->ContextLost) {
+      _mesa_glthread_destroy(ctx, "context lost");
       return;
+   }
+
+   if (!glthread->used)
+      return; /* the batch is empty */
 
    /* Pin threads regularly to the same Zen CCX that the main thread is
     * running on. The main thread can move between CCXs.
