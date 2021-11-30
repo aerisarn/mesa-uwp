@@ -1189,7 +1189,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             continue;
          } else if (i == 1 &&
                     parse_base_offset(ctx, instr.get(), i, &base, &offset, prevent_overflow) &&
-                    base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9) {
+                    base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9 &&
+                    offset % 4u == 0) {
             bool soe = smem.operands.size() >= (!smem.definitions.empty() ? 3 : 4);
             if (soe && (!ctx.info[smem.operands.back().tempId()].is_constant_or_literal(32) ||
                         ctx.info[smem.operands.back().tempId()].val != 0)) {
