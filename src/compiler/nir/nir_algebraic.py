@@ -186,8 +186,8 @@ class Value(object):
       ${val.swizzle()},
 % elif isinstance(val, Expression):
       ${'true' if val.inexact else 'false'}, ${'true' if val.exact else 'false'},
-      ${val.comm_expr_idx}, ${val.comm_exprs},
       ${val.c_opcode()},
+      ${val.comm_expr_idx}, ${val.comm_exprs},
       { ${', '.join(src.array_index for src in val.sources)} },
       ${val.cond_index},
 % endif
