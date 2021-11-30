@@ -2087,6 +2087,9 @@ dri2_initialize_wayland_drm(_EGLDisplay *disp)
    /* We couldn't retrieve a render node from the dma-buf feedback (or the
     * feedback was not advertised at all), so we must fallback to wl_drm. */
    if (dri2_dpy->fd == -1) {
+      /* wl_drm not advertised by compositor, so can't continue */
+      if (dri2_dpy->wl_drm_name == 0)
+         goto cleanup;
       wl_drm_bind(dri2_dpy);
 
       if (dri2_dpy->wl_drm == NULL)
