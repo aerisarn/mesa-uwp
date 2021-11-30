@@ -629,12 +629,24 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    vn_cs_encoder_reset(&cmd->cs);
 
+   /* TODO: add support for VK_KHR_dynamic_rendering */
    VkCommandBufferBeginInfo local_begin_info;
-   if (pBeginInfo->pInheritanceInfo &&
-       cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
-      local_begin_info = *pBeginInfo;
-      local_begin_info.pInheritanceInfo = NULL;
-      pBeginInfo = &local_begin_info;
+   VkCommandBufferInheritanceInfo local_inheritance_info;
+   if (pBeginInfo->pInheritanceInfo) {
+      if (cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+         local_begin_info = *pBeginInfo;
+         local_begin_info.pInheritanceInfo = NULL;
+         pBeginInfo = &local_begin_info;
+      } else if (!(pBeginInfo->flags &
+                   VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
+         local_inheritance_info = *pBeginInfo->pInheritanceInfo;
+         local_inheritance_info.framebuffer = VK_NULL_HANDLE;
+         local_inheritance_info.renderPass = VK_NULL_HANDLE;
+         local_inheritance_info.subpass = 0;
+         local_begin_info = *pBeginInfo;
+         local_begin_info.pInheritanceInfo = &local_inheritance_info;
+         pBeginInfo = &local_begin_info;
+      }
    }
 
    cmd_size = vn_sizeof_vkBeginCommandBuffer(commandBuffer, pBeginInfo);
