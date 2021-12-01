@@ -1993,21 +1993,17 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
 static void
 add_bucket(struct iris_bufmgr *bufmgr, int size, bool local)
 {
-   unsigned int i = local ?
-      bufmgr->num_local_buckets : bufmgr->num_buckets;
+   int *num_buckets = local ?
+      &bufmgr->num_local_buckets : &bufmgr->num_buckets;
 
    struct bo_cache_bucket *buckets = local ?
       bufmgr->local_cache_bucket : bufmgr->cache_bucket;
 
+   unsigned int i = (*num_buckets)++;
    assert(i < ARRAY_SIZE(bufmgr->cache_bucket));
 
    list_inithead(&buckets[i].head);
    buckets[i].size = size;
-
-   if (local)
-      bufmgr->num_local_buckets++;
-   else
-      bufmgr->num_buckets++;
 
    assert(bucket_for_size(bufmgr, size, local) == &buckets[i]);
    assert(bucket_for_size(bufmgr, size - 2048, local) == &buckets[i]);
