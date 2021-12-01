@@ -46,5 +46,9 @@ shaders@glsl-uniform-interstage-limits --subdivide 5 --statechanges
 gles-3.0-transform-feedback-uniform-buffer-object
 
 spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 varray gl_lines
+spec@!opengl 1.1@gl-1.1-drawarrays-vertex-count 100000 vbo gl_lines
 glsl-1.40-tf-no-position
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index8-clear
+spec@arb_framebuffer_srgb@blit renderbuffer linear single_sampled disabled clear
+spec@arb_framebuffer_srgb@blit texture srgb downsample disabled render
+spec@!opengl 1.1@dlist-fdo3129-01
