@@ -1415,7 +1415,8 @@ insert_sorted(struct exec_list *var_list, nir_variable *new_var)
        * In the future we can add an option for this, if needed by other HW.
        */
       if (new_var->data.per_primitive < var->data.per_primitive ||
-          var->data.location > new_var->data.location) {
+          (new_var->data.per_primitive == var->data.per_primitive &&
+           var->data.location > new_var->data.location)) {
          exec_node_insert_node_before(&var->node, &new_var->node);
          return;
       }
@@ -1445,7 +1446,8 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
    struct exec_list io_vars;
    sort_varyings(shader, mode, &io_vars);
 
-   int UNUSED last_loc = 0;
+   int ASSERTED last_loc = 0;
+   bool ASSERTED last_per_prim = false;
    bool last_partial = false;
    nir_foreach_variable_in_list(var, &io_vars) {
       const struct glsl_type *type = var->type;
@@ -1539,10 +1541,13 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
           * the current array we are processing.
           *
           * NOTE: The code below assumes the var list is ordered in ascending
-          * location order.
+          * location order, but per-vertex/per-primitive outputs may be
+          * grouped separately.
           */
-         assert(last_loc <= var->data.location);
+         assert(last_loc <= var->data.location ||
+                last_per_prim != var->data.per_primitive);
          last_loc = var->data.location;
+         last_per_prim = var->data.per_primitive;
          unsigned last_slot_location = driver_location + var_size;
          if (last_slot_location > location) {
             unsigned num_unallocated_slots = last_slot_location - location;
