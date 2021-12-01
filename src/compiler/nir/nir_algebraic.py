@@ -935,8 +935,10 @@ class TreeAutomaton(object):
       # Bijection from state to index. q in the original algorithm is
       # len(self.states)
       self.states = self.IndexMap()
-      # List of pattern matches for each state index.
-      self.state_patterns = []
+      # Lists of pattern matches separated by None
+      self.state_patterns = [None]
+      # Offset in the ->transforms table for each state index
+      self.state_pattern_offsets = []
       # Map from state index to filtered state index for each opcode.
       self.filter = defaultdict(list)
       # Bijections from filtered state to filtered state index for each
@@ -966,15 +968,21 @@ class TreeAutomaton(object):
       def process_new_states():
          while self.worklist_index < len(self.states):
             state = self.states[self.worklist_index]
-
             # Calculate pattern matches for this state. Each pattern is
             # assigned to a unique item, so we don't have to worry about
             # deduplicating them here. However, we do have to sort them so
             # that they're visited at runtime in the order they're specified
             # in the source.
             patterns = list(sorted(p for item in state for p in item.patterns))
-            assert len(self.state_patterns) == self.worklist_index
-            self.state_patterns.append(patterns)
+
+            if patterns:
+                # Add our patterns to the global table.
+                self.state_pattern_offsets.append(len(self.state_patterns))
+                self.state_patterns.extend(patterns)
+                self.state_patterns.append(None)
+            else:
+                # Point to the initial sentinel in the global table.
+                self.state_pattern_offsets.append(0)
 
             # calculate filter table for this state, and update filtered
             # worklists.
@@ -1072,15 +1080,16 @@ static const nir_search_variable_cond ${pass_name}_variable_cond[] = {
 };
 % endif
 
-% for state_id, state_xforms in enumerate(automaton.state_patterns):
-% if state_xforms: # avoid emitting a 0-length array for MSVC
-static const struct transform ${pass_name}_state${state_id}_xforms[] = {
-% for i in state_xforms:
-  { ${xforms[i].search.array_index}, ${xforms[i].replace.array_index}, ${xforms[i].condition_index} },
-% endfor
-};
+static const struct transform ${pass_name}_transforms[] = {
+% for i in automaton.state_patterns:
+% if i is not None:
+   { ${xforms[i].search.array_index}, ${xforms[i].replace.array_index}, ${xforms[i].condition_index} },
+% else:
+   { ~0, ~0, ~0 }, /* Sentinel */
+
 % endif
 % endfor
+};
 
 static const struct per_op_table ${pass_name}_pass_op_table[nir_num_search_ops] = {
 % for op in automaton.opcodes:
@@ -1110,29 +1119,16 @@ static const struct per_op_table ${pass_name}_pass_op_table[nir_num_search_ops] 
 % endfor
 };
 
-const struct transform *${pass_name}_transforms[] = {
-% for i in range(len(automaton.state_patterns)):
-   % if automaton.state_patterns[i]:
-   ${pass_name}_state${i}_xforms,
-   % else:
-   NULL,
-   % endif
-% endfor
-};
-
-const uint16_t ${pass_name}_transform_counts[] = {
-% for i in range(len(automaton.state_patterns)):
-   % if automaton.state_patterns[i]:
-   (uint16_t)ARRAY_SIZE(${pass_name}_state${i}_xforms),
-   % else:
-   0,
-   % endif
+/* Mapping from state index to offset in transforms (0 being no transforms) */
+static const uint16_t ${pass_name}_transform_offsets[] = {
+% for offset in automaton.state_pattern_offsets:
+   ${offset},
 % endfor
 };
 
 static const nir_algebraic_table ${pass_name}_table = {
    .transforms = ${pass_name}_transforms,
-   .transform_counts = ${pass_name}_transform_counts,
+   .transform_offsets = ${pass_name}_transform_offsets,
    .pass_op_table = ${pass_name}_pass_op_table,
    .values = ${pass_name}_values,
    .expression_cond = ${ pass_name + "_expression_cond" if expression_cond else "NULL" },

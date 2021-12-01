@@ -197,8 +197,10 @@ typedef bool (*nir_search_variable_cond)(struct hash_table *range_ht,
 
 /* Generated data table for an algebraic optimization pass. */
 typedef struct {
-   const struct transform **transforms;
-   const uint16_t *transform_counts;
+   /** Array of all transforms in the pass. */
+   const struct transform *transforms;
+   /** Mapping from automaton state index to location in *transforms. */
+   const uint16_t *transform_offsets;
    const struct per_op_table *pass_op_table;
    const nir_search_value_union *values;
 

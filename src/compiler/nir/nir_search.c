@@ -884,8 +884,9 @@ nir_algebraic_instr(nir_builder *build, nir_instr *instr,
 
    int xform_idx = *util_dynarray_element(states, uint16_t,
                                           alu->dest.dest.ssa.index);
-   for (uint16_t i = 0; i < table->transform_counts[xform_idx]; i++) {
-      const struct transform *xform = &table->transforms[xform_idx][i];
+   for (const struct transform *xform = &table->transforms[table->transform_offsets[xform_idx]];
+        xform->condition_offset != ~0;
+        xform++) {
       if (condition_flags[xform->condition_offset] &&
           !(table->values[xform->search].expression.inexact && ignore_inexact) &&
           nir_replace_instr(build, alu, range_ht, states, table,
