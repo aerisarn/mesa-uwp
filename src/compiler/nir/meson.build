@@ -194,6 +194,7 @@ files_libnir = files(
   'nir_lower_samplers.c',
   'nir_lower_scratch.c',
   'nir_lower_shader_calls.c',
+  'nir_lower_single_sampled.c',
   'nir_lower_ssbo.c',
   'nir_lower_subgroups.c',
   'nir_lower_system_values.c',
