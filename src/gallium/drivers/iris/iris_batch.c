@@ -113,7 +113,7 @@ dump_bo_list(struct iris_batch *batch)
               backing->gem_handle,
               bo->name,
               bo->address,
-              backing->real.local ? "local" : "system",
+              iris_heap_to_string[backing->real.heap],
               bo->size,
               bo->refcount,
               written ? " write" : "",

@@ -171,12 +171,6 @@ struct iris_memregion {
 
 #define NUM_SLAB_ALLOCATORS 3
 
-enum iris_heap {
-   IRIS_HEAP_SYSTEM_MEMORY,
-   IRIS_HEAP_DEVICE_LOCAL,
-   IRIS_HEAP_MAX,
-};
-
 struct iris_slab {
    struct pb_slab base;
 
@@ -960,7 +954,7 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
    bo->bufmgr = bufmgr;
    bo->size = bo_size;
    bo->idle = true;
-   bo->real.local = local;
+   bo->real.heap = local ? IRIS_HEAP_DEVICE_LOCAL : IRIS_HEAP_SYSTEM_MEMORY;
 
    if (bufmgr->vram.size == 0) {
       /* Calling set_domain() will allocate pages for the BO outside of the
@@ -978,6 +972,12 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, bool local)
 
    return bo;
 }
+
+const char *
+iris_heap_to_string[IRIS_HEAP_MAX] = {
+   [IRIS_HEAP_SYSTEM_MEMORY] = "system",
+   [IRIS_HEAP_DEVICE_LOCAL] = "local",
+};
 
 struct iris_bo *
 iris_bo_alloc(struct iris_bufmgr *bufmgr,
@@ -1076,7 +1076,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    }
 
    DBG("bo_create: buf %d (%s) (%s memzone) (%s) %llub\n", bo->gem_handle,
-       bo->name, memzone_name(memzone), bo->real.local ? "local" : "system",
+       bo->name, memzone_name(memzone), iris_heap_to_string[bo->real.heap],
        (unsigned long long) size);
 
    return bo;
@@ -1351,7 +1351,8 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
 
    bucket = NULL;
    if (bo->real.reusable)
-      bucket = bucket_for_size(bufmgr, bo->size, bo->real.local);
+      bucket = bucket_for_size(bufmgr, bo->size,
+                               bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY);
    /* Put the buffer into our internal cache for reuse if we can. */
    if (bucket && iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
       bo->real.free_time = time;
@@ -1478,7 +1479,7 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
        * across PCIe, it's always snooped.  The only caching mode allowed by
        * DG1 hardware for LMEM is WC.
        */
-      if (bo->real.local)
+      if (bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY)
          assert(bo->real.mmap_mode == IRIS_MMAP_WC);
       else
          assert(bo->real.mmap_mode == IRIS_MMAP_WB);
