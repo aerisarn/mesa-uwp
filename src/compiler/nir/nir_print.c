@@ -542,6 +542,8 @@ print_var_decl(nir_variable *var, print_state *state)
             loc = gl_varying_slot_name_for_stage(var->data.location,
                                                  state->shader->info.stage);
          break;
+      case MESA_SHADER_TASK:
+      case MESA_SHADER_MESH:
       case MESA_SHADER_GEOMETRY:
          if ((var->data.mode == nir_var_shader_in) ||
              (var->data.mode == nir_var_shader_out)) {
