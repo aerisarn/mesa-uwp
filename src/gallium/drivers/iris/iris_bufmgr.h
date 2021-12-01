@@ -140,6 +140,7 @@ enum iris_mmap_mode {
 enum iris_heap {
    IRIS_HEAP_SYSTEM_MEMORY,
    IRIS_HEAP_DEVICE_LOCAL,
+   IRIS_HEAP_DEVICE_LOCAL_PREFERRED,
    IRIS_HEAP_MAX,
 };
 
@@ -279,6 +280,7 @@ struct iris_bo {
 #define BO_ALLOC_SMEM        (1<<2)
 #define BO_ALLOC_SCANOUT     (1<<3)
 #define BO_ALLOC_NO_SUBALLOC (1<<4)
+#define BO_ALLOC_LMEM        (1<<5)
 
 /**
  * Allocate a buffer object.

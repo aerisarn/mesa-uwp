@@ -206,6 +206,10 @@ struct iris_bufmgr {
    struct bo_cache_bucket local_cache_bucket[BUCKET_ARRAY_SIZE];
    int num_local_buckets;
 
+   /** Same as cache_bucket, but for local-preferred memory gem objects */
+   struct bo_cache_bucket local_preferred_cache_bucket[BUCKET_ARRAY_SIZE];
+   int num_local_preferred_buckets;
+
    time_t time;
 
    struct hash_table *name_table;
@@ -281,6 +285,10 @@ bucket_info_for_heap(struct iris_bufmgr *bufmgr, enum iris_heap heap,
    case IRIS_HEAP_DEVICE_LOCAL:
       *cache_bucket = bufmgr->local_cache_bucket;
       *num_buckets = &bufmgr->num_local_buckets;
+      break;
+   case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
+      *cache_bucket = bufmgr->local_preferred_cache_bucket;
+      *num_buckets = &bufmgr->num_local_preferred_buckets;
       break;
    case IRIS_HEAP_MAX:
    default:
@@ -641,7 +649,8 @@ iris_slab_alloc(void *priv,
 {
    struct iris_bufmgr *bufmgr = priv;
    struct iris_slab *slab = calloc(1, sizeof(struct iris_slab));
-   unsigned flags = heap == IRIS_HEAP_SYSTEM_MEMORY ? BO_ALLOC_SMEM : 0;
+   unsigned flags = heap == IRIS_HEAP_SYSTEM_MEMORY ? BO_ALLOC_SMEM :
+                    heap == IRIS_HEAP_DEVICE_LOCAL ? BO_ALLOC_LMEM : 0;
    unsigned slab_size = 0;
    /* We only support slab allocation for IRIS_MEMZONE_OTHER */
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
@@ -746,8 +755,10 @@ flags_to_heap(struct iris_bufmgr *bufmgr, unsigned flags)
    if (bufmgr->vram.size > 0 &&
        !(flags & BO_ALLOC_SMEM) &&
        !(flags & BO_ALLOC_COHERENT)) {
-      return IRIS_HEAP_DEVICE_LOCAL;
+      return flags & BO_ALLOC_LMEM ? IRIS_HEAP_DEVICE_LOCAL :
+                                     IRIS_HEAP_DEVICE_LOCAL_PREFERRED;
    } else {
+      assert(!(flags & BO_ALLOC_LMEM));
       return IRIS_HEAP_SYSTEM_MEMORY;
    }
 }
@@ -948,10 +959,13 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
       struct drm_i915_gem_memory_class_instance regions[2];
       uint32_t nregions = 0;
       switch (bo->real.heap) {
-      case IRIS_HEAP_DEVICE_LOCAL:
+      case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
          /* For vram allocations, still use system memory as a fallback. */
          regions[nregions++] = bufmgr->vram.region;
          regions[nregions++] = bufmgr->sys.region;
+         break;
+      case IRIS_HEAP_DEVICE_LOCAL:
+         regions[nregions++] = bufmgr->vram.region;
          break;
       case IRIS_HEAP_SYSTEM_MEMORY:
          regions[nregions++] = bufmgr->sys.region;
@@ -1018,6 +1032,7 @@ const char *
 iris_heap_to_string[IRIS_HEAP_MAX] = {
    [IRIS_HEAP_SYSTEM_MEMORY] = "system",
    [IRIS_HEAP_DEVICE_LOCAL] = "local",
+   [IRIS_HEAP_DEVICE_LOCAL_PREFERRED] = "local-preferred",
 };
 
 struct iris_bo *
@@ -1366,6 +1381,19 @@ cleanup_bo_cache(struct iris_bufmgr *bufmgr, time_t time)
       }
    }
 
+   for (i = 0; i < bufmgr->num_local_preferred_buckets; i++) {
+      struct bo_cache_bucket *bucket = &bufmgr->local_preferred_cache_bucket[i];
+
+      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
+         if (time - bo->real.free_time <= 1)
+            break;
+
+         list_del(&bo->head);
+
+         bo_free(bo);
+      }
+   }
+
    list_for_each_entry_safe(struct iris_bo, bo, &bufmgr->zombie_list, head) {
       /* Stop once we reach a busy BO - all others past this point were
        * freed more recently so are likely also busy.
@@ -1703,6 +1731,16 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
 
    for (int i = 0; i < bufmgr->num_local_buckets; i++) {
       struct bo_cache_bucket *bucket = &bufmgr->local_cache_bucket[i];
+
+      list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
+         list_del(&bo->head);
+
+         bo_free(bo);
+      }
+   }
+
+   for (int i = 0; i < bufmgr->num_local_preferred_buckets; i++) {
+      struct bo_cache_bucket *bucket = &bufmgr->local_preferred_cache_bucket[i];
 
       list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
          list_del(&bo->head);
@@ -2330,6 +2368,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 
    init_cache_buckets(bufmgr, IRIS_HEAP_SYSTEM_MEMORY);
    init_cache_buckets(bufmgr, IRIS_HEAP_DEVICE_LOCAL);
+   init_cache_buckets(bufmgr, IRIS_HEAP_DEVICE_LOCAL_PREFERRED);
 
    unsigned min_slab_order = 8;  /* 256 bytes */
    unsigned max_slab_order = 20; /* 1 MB (slab size = 2 MB) */
