@@ -5615,6 +5615,7 @@ bool nir_lower_discard_or_demote(nir_shader *shader,
 bool nir_lower_memory_model(nir_shader *shader);
 
 bool nir_lower_goto_ifs(nir_shader *shader);
+bool nir_lower_continue_constructs(nir_shader *shader);
 
 bool nir_shader_uses_view_index(nir_shader *shader);
 bool nir_can_lower_multiview(nir_shader *shader);
