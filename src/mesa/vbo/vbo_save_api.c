@@ -1917,7 +1917,7 @@ save_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 static void
 vbo_install_save_vtxfmt(struct gl_context *ctx)
 {
-#define NAME_AE(x) _ae_##x
+#define NAME_AE(x) _mesa_##x
 #define NAME_CALLLIST(x) _save_##x
 #define NAME(x) _save_##x
 #define NAME_ES(x) _save_##x

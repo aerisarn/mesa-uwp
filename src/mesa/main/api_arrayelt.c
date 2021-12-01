@@ -1477,7 +1477,7 @@ _mesa_array_element(struct gl_context *ctx, GLint elt)
  * Note: this may be called during display list construction.
  */
 void GLAPIENTRY
-_ae_ArrayElement(GLint elt)
+_mesa_ArrayElement(GLint elt)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_vertex_array_object *vao;

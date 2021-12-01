@@ -14473,7 +14473,7 @@ _mesa_install_save_vtxfmt(struct gl_context *ctx)
    struct _glapi_table *tab = ctx->Save;
    assert(ctx->API == API_OPENGL_COMPAT);
 
-#define NAME_AE(x) _ae_##x
+#define NAME_AE(x) _mesa_##x
 #define NAME_CALLLIST(x) save_##x
 #define NAME(x) save_##x
 #define NAME_ES(x) save_##x

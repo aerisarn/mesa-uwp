@@ -990,7 +990,7 @@ _mesa_PrimitiveRestartNV(void)
 void
 vbo_install_exec_vtxfmt(struct gl_context *ctx)
 {
-#define NAME_AE(x) _ae_##x
+#define NAME_AE(x) _mesa_##x
 #define NAME_CALLLIST(x) _mesa_##x
 #define NAME(x) _mesa_##x
 #define NAME_ES(x) _es_##x
