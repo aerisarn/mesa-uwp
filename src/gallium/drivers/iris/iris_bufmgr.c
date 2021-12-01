@@ -273,7 +273,8 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
  * was queried instead of iterating the size through all the buckets.
  */
 static struct bo_cache_bucket *
-bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size, bool local)
+bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
+                enum iris_heap heap)
 {
    /* Calculating the pages and rounding up to the page size. */
    const unsigned pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -303,6 +304,7 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size, bool local)
    /* Calculating the index based on the row and column. */
    const unsigned index = (row * 4) + (col - 1);
 
+   bool local = heap == IRIS_HEAP_DEVICE_LOCAL;
    int num_buckets = local ? bufmgr->num_local_buckets : bufmgr->num_buckets;
    struct bo_cache_bucket *buckets = local ?
       bufmgr->local_cache_bucket : bufmgr->cache_bucket;
@@ -1007,7 +1009,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    unsigned int page_size = getpagesize();
    enum iris_heap heap = flags_to_heap(bufmgr, flags);
    bool local = heap != IRIS_HEAP_SYSTEM_MEMORY;
-   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, local);
+   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, heap);
 
    if (memzone != IRIS_MEMZONE_OTHER || (flags & BO_ALLOC_COHERENT))
       flags |= BO_ALLOC_NO_SUBALLOC;
@@ -1367,8 +1369,7 @@ bo_unreference_final(struct iris_bo *bo, time_t time)
 
    bucket = NULL;
    if (bo->real.reusable)
-      bucket = bucket_for_size(bufmgr, bo->size,
-                               bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY);
+      bucket = bucket_for_size(bufmgr, bo->size, bo->real.heap);
    /* Put the buffer into our internal cache for reuse if we can. */
    if (bucket && iris_bo_madvise(bo, I915_MADV_DONTNEED)) {
       bo->real.free_time = time;
@@ -1991,8 +1992,9 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
 }
 
 static void
-add_bucket(struct iris_bufmgr *bufmgr, int size, bool local)
+add_bucket(struct iris_bufmgr *bufmgr, int size, enum iris_heap heap)
 {
+   bool local = heap == IRIS_HEAP_DEVICE_LOCAL;
    int *num_buckets = local ?
       &bufmgr->num_local_buckets : &bufmgr->num_buckets;
 
@@ -2005,13 +2007,13 @@ add_bucket(struct iris_bufmgr *bufmgr, int size, bool local)
    list_inithead(&buckets[i].head);
    buckets[i].size = size;
 
-   assert(bucket_for_size(bufmgr, size, local) == &buckets[i]);
-   assert(bucket_for_size(bufmgr, size - 2048, local) == &buckets[i]);
-   assert(bucket_for_size(bufmgr, size + 1, local) != &buckets[i]);
+   assert(bucket_for_size(bufmgr, size, heap) == &buckets[i]);
+   assert(bucket_for_size(bufmgr, size - 2048, heap) == &buckets[i]);
+   assert(bucket_for_size(bufmgr, size + 1, heap) != &buckets[i]);
 }
 
 static void
-init_cache_buckets(struct iris_bufmgr *bufmgr, bool local)
+init_cache_buckets(struct iris_bufmgr *bufmgr, enum iris_heap heap)
 {
    uint64_t size, cache_max_size = 64 * 1024 * 1024;
 
@@ -2023,17 +2025,17 @@ init_cache_buckets(struct iris_bufmgr *bufmgr, bool local)
     * width/height alignment and rounding of sizes to pages will
     * get us useful cache hit rates anyway)
     */
-   add_bucket(bufmgr, PAGE_SIZE, local);
-   add_bucket(bufmgr, PAGE_SIZE * 2, local);
-   add_bucket(bufmgr, PAGE_SIZE * 3, local);
+   add_bucket(bufmgr, PAGE_SIZE, heap);
+   add_bucket(bufmgr, PAGE_SIZE * 2, heap);
+   add_bucket(bufmgr, PAGE_SIZE * 3, heap);
 
    /* Initialize the linked lists for BO reuse cache. */
    for (size = 4 * PAGE_SIZE; size <= cache_max_size; size *= 2) {
-      add_bucket(bufmgr, size, local);
+      add_bucket(bufmgr, size, heap);
 
-      add_bucket(bufmgr, size + size * 1 / 4, local);
-      add_bucket(bufmgr, size + size * 2 / 4, local);
-      add_bucket(bufmgr, size + size * 3 / 4, local);
+      add_bucket(bufmgr, size + size * 1 / 4, heap);
+      add_bucket(bufmgr, size + size * 2 / 4, heap);
+      add_bucket(bufmgr, size + size * 3 / 4, heap);
    }
 }
 
@@ -2307,8 +2309,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
                       IRIS_MEMZONE_OTHER_START,
                       (devinfo->gtt_size - _4GB) - IRIS_MEMZONE_OTHER_START);
 
-   init_cache_buckets(bufmgr, false);
-   init_cache_buckets(bufmgr, true);
+   init_cache_buckets(bufmgr, IRIS_HEAP_SYSTEM_MEMORY);
+   init_cache_buckets(bufmgr, IRIS_HEAP_DEVICE_LOCAL);
 
    unsigned min_slab_order = 8;  /* 256 bytes */
    unsigned max_slab_order = 20; /* 1 MB (slab size = 2 MB) */
