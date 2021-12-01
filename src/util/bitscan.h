@@ -349,6 +349,25 @@ util_bitcount64(uint64_t n)
 #endif
 }
 
+/**
+ * Widens the given bit mask by a multiplier, meaning that it will
+ * replicate each bit by that amount.
+ *
+ * For example:
+ * 0b101 widened by 2 will become: 0b110011
+ *
+ * This is typically used in shader I/O to transform a 64-bit
+ * writemask to a 32-bit writemask.
+ */
+static inline uint32_t
+util_widen_mask(uint32_t mask, unsigned multiplier)
+{
+   uint32_t new_mask = 0;
+   u_foreach_bit(i, mask)
+      new_mask |= ((1u << multiplier) - 1u) << (i * multiplier);
+   return new_mask;
+}
+
 #ifdef __cplusplus
 }
 
