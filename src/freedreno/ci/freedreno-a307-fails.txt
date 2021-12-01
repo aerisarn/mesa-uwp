@@ -248,10 +248,6 @@ spec@amd_seamless_cubemap_per_texture@amd_seamless_cubemap_per_texture,Fail
 spec@arb_blend_func_extended@arb_blend_func_extended-getfragdataindex,Fail
 spec@arb_blend_func_extended@arb_blend_func_extended-getfragdataindex_gles3,Fail
 spec@arb_clip_control@arb_clip_control-depth-precision,Fail
-spec@arb_color_buffer_float@gl_rgba8_snorm-render,Fail
-spec@arb_color_buffer_float@gl_rgba8_snorm-render-fog,Fail
-spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Fail
-spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity-fog,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
@@ -403,7 +399,6 @@ spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_rgba,F
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
-spec@ext_framebuffer_object@fbo-blending-snorm,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-copypixels,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index16-blit,Fail
@@ -441,36 +436,6 @@ spec@ext_texture_compression_rgtc@rgtc-teximage-01,Fail
 spec@ext_texture_compression_rgtc@rgtc-teximage-02,Fail
 spec@ext_texture_integer@ext_texture_integer-texformats,Fail
 spec@ext_texture_integer@fbo-integer,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_INTENSITY8_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_INTENSITY_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE8_ALPHA8_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE8_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE_ALPHA_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RED_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RG8_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGB8_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGBA8_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGBA_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGB_SNORM,Fail
-spec@ext_texture_snorm@fbo-alphatest-formats@GL_RG_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_ALPHA8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_ALPHA_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_ALPHA8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_ALPHA_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RED_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RG8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RGB8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RGBA8_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RGBA_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RGB_SNORM,Fail
-spec@ext_texture_snorm@fbo-blending-formats@GL_RG_SNORM,Fail
 spec@ext_transform_feedback2@draw-auto,Fail
 spec@ext_transform_feedback@change-size base-shrink,Fail
 spec@ext_transform_feedback@change-size offset-shrink,Fail
@@ -607,6 +572,43 @@ spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Fail
 spec@nv_primitive_restart@primitive-restart-draw-mode-quads,Fail
 spec@nv_read_depth@read_depth_gles3,Fail
+
+# No SNORM blend / alphatest
+spec@arb_color_buffer_float@gl_rgba8_snorm-render,Fail
+spec@arb_color_buffer_float@gl_rgba8_snorm-render-fog,Fail
+spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Fail
+spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity-fog,Fail
+spec@ext_framebuffer_object@fbo-blending-snorm,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_INTENSITY8_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_INTENSITY_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE8_ALPHA8_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE8_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE_ALPHA_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_LUMINANCE_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_RED_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_RG8_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGB8_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGBA8_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGBA_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_RGB_SNORM,Fail
+spec@ext_texture_snorm@fbo-alphatest-formats@GL_RG_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_ALPHA8_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_ALPHA_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY8_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_INTENSITY_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_ALPHA8_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_ALPHA_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_RED_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_RG8_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_RGB8_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_RGBA8_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_RGBA_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_RGB_SNORM,Fail
+spec@ext_texture_snorm@fbo-blending-formats@GL_RG_SNORM,Fail
 
 # No F32 blend / alphatest
 spec@arb_color_buffer_float@gl_rgba32f-render,Fail
