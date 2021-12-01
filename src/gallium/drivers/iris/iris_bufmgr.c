@@ -269,6 +269,28 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
    return bo;
 }
 
+static void
+bucket_info_for_heap(struct iris_bufmgr *bufmgr, enum iris_heap heap,
+                     struct bo_cache_bucket **cache_bucket, int **num_buckets)
+{
+   switch (heap) {
+   case IRIS_HEAP_SYSTEM_MEMORY:
+      *cache_bucket = bufmgr->cache_bucket;
+      *num_buckets = &bufmgr->num_buckets;
+      break;
+   case IRIS_HEAP_DEVICE_LOCAL:
+      *cache_bucket = bufmgr->local_cache_bucket;
+      *num_buckets = &bufmgr->num_local_buckets;
+      break;
+   case IRIS_HEAP_MAX:
+   default:
+      *cache_bucket = NULL;
+      *num_buckets = NULL;
+      unreachable("invalid heap");
+   }
+
+   assert(**num_buckets < BUCKET_ARRAY_SIZE);
+}
 /**
  * This function finds the correct bucket fit for the input size.
  * The function works with O(1) complexity when the requested size
@@ -306,12 +328,11 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
    /* Calculating the index based on the row and column. */
    const unsigned index = (row * 4) + (col - 1);
 
-   bool local = heap == IRIS_HEAP_DEVICE_LOCAL;
-   int num_buckets = local ? bufmgr->num_local_buckets : bufmgr->num_buckets;
-   struct bo_cache_bucket *buckets = local ?
-      bufmgr->local_cache_bucket : bufmgr->cache_bucket;
+   int *num_buckets;
+   struct bo_cache_bucket *buckets;
+   bucket_info_for_heap(bufmgr, heap, &buckets, &num_buckets);
 
-   return (index < num_buckets) ? &buckets[index] : NULL;
+   return (index < *num_buckets) ? &buckets[index] : NULL;
 }
 
 enum iris_memory_zone
@@ -1996,15 +2017,11 @@ iris_bo_export_gem_handle_for_device(struct iris_bo *bo, int drm_fd,
 static void
 add_bucket(struct iris_bufmgr *bufmgr, int size, enum iris_heap heap)
 {
-   bool local = heap == IRIS_HEAP_DEVICE_LOCAL;
-   int *num_buckets = local ?
-      &bufmgr->num_local_buckets : &bufmgr->num_buckets;
-
-   struct bo_cache_bucket *buckets = local ?
-      bufmgr->local_cache_bucket : bufmgr->cache_bucket;
+   int *num_buckets;
+   struct bo_cache_bucket *buckets;
+   bucket_info_for_heap(bufmgr, heap, &buckets, &num_buckets);
 
    unsigned int i = (*num_buckets)++;
-   assert(i < BUCKET_ARRAY_SIZE);
 
    list_inithead(&buckets[i].head);
    buckets[i].size = size;
