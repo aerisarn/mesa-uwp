@@ -288,10 +288,16 @@ block_add_normal_succs(nir_block *block)
       } else if (parent->type == nir_cf_node_loop) {
          nir_loop *loop = nir_cf_node_as_loop(parent);
 
-         nir_block *head_block = nir_loop_first_block(loop);
+         nir_block *cont_block;
+         if (block == nir_loop_last_block(loop)) {
+            cont_block = nir_loop_continue_target(loop);
+         } else {
+            assert(block == nir_loop_last_continue_block(loop));
+            cont_block = nir_loop_first_block(loop);
+         }
 
-         link_blocks(block, head_block, NULL);
-         nir_insert_phi_undef(head_block, block);
+         link_blocks(block, cont_block, NULL);
+         nir_insert_phi_undef(cont_block, block);
       } else {
          nir_function_impl *impl = nir_cf_node_as_function(parent);
          link_blocks(block, impl->end_block, NULL);
@@ -482,8 +488,8 @@ nir_handle_add_jump(nir_block *block)
 
    case nir_jump_continue: {
       nir_loop *loop = nearest_loop(&block->cf_node);
-      nir_block *first_block = nir_loop_first_block(loop);
-      link_blocks(block, first_block, NULL);
+      nir_block *cont_block = nir_loop_continue_target(loop);
+      link_blocks(block, cont_block, NULL);
       break;
    }
 
@@ -665,6 +671,8 @@ cleanup_cf_node(nir_cf_node *node, nir_function_impl *impl)
       nir_loop *loop = nir_cf_node_as_loop(node);
       foreach_list_typed(nir_cf_node, child, node, &loop->body)
          cleanup_cf_node(child, impl);
+      foreach_list_typed(nir_cf_node, child, node, &loop->continue_list)
+         cleanup_cf_node(child, impl);
       break;
    }
    case nir_cf_node_function: {
@@ -779,6 +787,8 @@ relink_jump_halt_cf_node(nir_cf_node *node, nir_block *end_block)
    case nir_cf_node_loop: {
       nir_loop *loop = nir_cf_node_as_loop(node);
       foreach_list_typed(nir_cf_node, child, node, &loop->body)
+         relink_jump_halt_cf_node(child, end_block);
+      foreach_list_typed(nir_cf_node, child, node, &loop->continue_list)
          relink_jump_halt_cf_node(child, end_block);
       break;
    }
