@@ -829,8 +829,9 @@ nir_algebraic_automaton(nir_instr *instr, struct util_dynarray *states,
       unsigned index = 0;
       for (unsigned i = 0; i < nir_op_infos[op].num_inputs; i++) {
          index *= tbl->num_filtered_states;
-         index += tbl->filter[*util_dynarray_element(states, uint16_t,
-                                                     alu->src[i].src.ssa->index)];
+         if (tbl->filter)
+            index += tbl->filter[*util_dynarray_element(states, uint16_t,
+                                                        alu->src[i].src.ssa->index)];
       }
 
       uint16_t *state = util_dynarray_element(states, uint16_t,
