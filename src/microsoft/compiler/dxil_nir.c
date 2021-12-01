@@ -1607,7 +1607,8 @@ redirect_texture_derefs(struct nir_builder *b, nir_instr *instr, void *data)
    nir_deref_instr *old_tail = path.path[0];
    assert(old_tail->deref_type == nir_deref_type_var);
    nir_variable *old_var = old_tail->var;
-   if (glsl_type_is_texture(glsl_without_array(old_var->type))) {
+   if (glsl_type_is_texture(glsl_without_array(old_var->type)) ||
+       glsl_type_is_image(glsl_without_array(old_var->type))) {
       nir_deref_path_finish(&path);
       return false;
    }
