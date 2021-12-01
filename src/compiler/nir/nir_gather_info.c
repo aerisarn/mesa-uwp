@@ -987,17 +987,6 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    gather_func_info(entrypoint, shader, visited_funcs, dead_ctx);
    ralloc_free(dead_ctx);
 
-   if (shader->info.stage == MESA_SHADER_FRAGMENT &&
-       (shader->info.fs.uses_sample_qualifier ||
-        (BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID) ||
-         BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS)))) {
-      /* This shouldn't be cleared because if optimizations remove all
-       * sample-qualified inputs and that pass is run again, the sample
-       * shading must stay enabled.
-       */
-      shader->info.fs.uses_sample_shading = true;
-   }
-
    shader->info.per_primitive_outputs = 0;
    if (shader->info.stage == MESA_SHADER_MESH) {
       nir_foreach_shader_out_variable(var, shader) {
