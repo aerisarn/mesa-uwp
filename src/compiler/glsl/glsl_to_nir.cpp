@@ -259,6 +259,18 @@ glsl_to_nir(const struct gl_constants *consts,
       shader->info.fs.pixel_center_integer = sh->Program->info.fs.pixel_center_integer;
       shader->info.fs.origin_upper_left = sh->Program->info.fs.origin_upper_left;
       shader->info.fs.advanced_blend_modes = sh->Program->info.fs.advanced_blend_modes;
+
+      nir_foreach_variable_with_modes(var, shader,
+                                      nir_var_shader_in |
+                                      nir_var_system_value) {
+         if (var->data.mode == nir_var_system_value &&
+             (var->data.location == SYSTEM_VALUE_SAMPLE_ID ||
+              var->data.location == SYSTEM_VALUE_SAMPLE_POS))
+            shader->info.fs.uses_sample_shading = true;
+
+         if (var->data.mode == nir_var_shader_in && var->data.sample)
+            shader->info.fs.uses_sample_shading = true;
+      }
    }
 
    return shader;
