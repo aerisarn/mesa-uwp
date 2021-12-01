@@ -6651,6 +6651,47 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
       b->shader->info.shared_size = size;
    }
 
+   if (stage == MESA_SHADER_FRAGMENT) {
+      /* From the Vulkan 1.2.199 spec:
+       *
+       *    "If a fragment shader entry point’s interface includes an input
+       *    variable decorated with SamplePosition, Sample Shading is
+       *    considered enabled with a minSampleShading value of 1.0."
+       *
+       * Similar text exists for SampleId.  Regarding the Sample decoration,
+       * the Vulkan 1.2.199 spec says:
+       *
+       *    "If a fragment shader input is decorated with Sample, a separate
+       *    value must be assigned to that variable for each covered sample in
+       *    the fragment, and that value must be sampled at the location of
+       *    the individual sample. When rasterizationSamples is
+       *    VK_SAMPLE_COUNT_1_BIT, the fragment center must be used for
+       *    Centroid, Sample, and undecorated attribute interpolation."
+       *
+       * Unfortunately, this isn't quite as clear about static use and the
+       * interface but the static use check should be valid.
+       *
+       * For OpenGL, similar language exists but it's all more wishy-washy.
+       * We'll assume the same behavior across APIs.
+       */
+      nir_foreach_variable_with_modes(var, b->shader,
+                                      nir_var_shader_in |
+                                      nir_var_system_value) {
+         struct nir_variable_data *members =
+            var->members ? var->members : &var->data;
+         uint16_t num_members = var->members ? var->num_members : 1;
+         for (uint16_t i = 0; i < num_members; i++) {
+            if (members[i].mode == nir_var_system_value &&
+                (members[i].location == SYSTEM_VALUE_SAMPLE_ID ||
+                 members[i].location == SYSTEM_VALUE_SAMPLE_POS))
+               b->shader->info.fs.uses_sample_shading = true;
+
+            if (members[i].mode == nir_var_shader_in && members[i].sample)
+               b->shader->info.fs.uses_sample_shading = true;
+         }
+      }
+   }
+
    /* Unparent the shader from the vtn_builder before we delete the builder */
    ralloc_steal(NULL, b->shader);
 
