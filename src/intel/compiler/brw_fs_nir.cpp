@@ -179,6 +179,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          break;
 
       case nir_intrinsic_load_sample_pos:
+      case nir_intrinsic_load_sample_pos_or_center:
          assert(v->stage == MESA_SHADER_FRAGMENT);
          reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_POS];
          if (reg->file == BAD_FILE)
@@ -3444,7 +3445,8 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
               emit_frontfacing_interpolation());
       break;
 
-   case nir_intrinsic_load_sample_pos: {
+   case nir_intrinsic_load_sample_pos:
+   case nir_intrinsic_load_sample_pos_or_center: {
       fs_reg sample_pos = nir_system_values[SYSTEM_VALUE_SAMPLE_POS];
       assert(sample_pos.file != BAD_FILE);
       dest.type = sample_pos.type;

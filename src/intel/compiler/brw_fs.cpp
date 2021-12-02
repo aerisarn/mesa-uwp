@@ -9480,7 +9480,10 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
        * persample dispatch, we hard-code it to 0.5.
        */
       prog_data->uses_pos_offset = prog_data->persample_dispatch &&
-         BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_POS);
+         (BITSET_TEST(shader->info.system_values_read,
+                      SYSTEM_VALUE_SAMPLE_POS) ||
+          BITSET_TEST(shader->info.system_values_read,
+                      SYSTEM_VALUE_SAMPLE_POS_OR_CENTER));
    }
 
    prog_data->has_render_target_reads = shader->info.outputs_read != 0ull;
