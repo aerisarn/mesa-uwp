@@ -777,7 +777,7 @@ fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
                                   fs_reg result,
                                   nir_alu_instr *instr)
 {
-   if (devinfo->ver < 6 || devinfo->ver >= 12)
+   if (devinfo->ver < 6 || devinfo->verx10 >= 125)
       return false;
 
    nir_alu_instr *inot_instr = nir_src_as_alu_instr(instr->src[0].src);
