@@ -70,7 +70,7 @@ try_extract_const_addition(nir_builder *b, nir_instr *instr, opt_offsets_state *
          return alu->src[1 - i].src.ssa;
       }
 
-      nir_ssa_def *replace_src = try_extract_const_addition(b, alu->src[0].src.ssa->parent_instr, state, out_const);
+      nir_ssa_def *replace_src = try_extract_const_addition(b, alu->src[i].src.ssa->parent_instr, state, out_const);
       if (replace_src) {
          b->cursor = nir_before_instr(&alu->instr);
          return nir_iadd(b, replace_src, alu->src[1 - i].src.ssa);
