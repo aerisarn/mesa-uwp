@@ -319,6 +319,13 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
    return result;
 }
 
+static bool
+roundtrip_seqno_ge(uint32_t a, uint32_t b)
+{
+   /* a >= b, but deal with wrapping as well */
+   return (a - b) <= INT32_MAX;
+}
+
 void
 vn_instance_wait_roundtrip(struct vn_instance *instance,
                            uint32_t roundtrip_seqno)
@@ -328,7 +335,7 @@ vn_instance_wait_roundtrip(struct vn_instance *instance,
    uint32_t iter = 0;
    do {
       const uint32_t cur = atomic_load_explicit(ptr, memory_order_acquire);
-      if (cur >= roundtrip_seqno || roundtrip_seqno - cur >= INT32_MAX)
+      if (roundtrip_seqno_ge(cur, roundtrip_seqno))
          break;
       vn_relax(&iter, "roundtrip");
    } while (true);
