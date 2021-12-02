@@ -84,6 +84,7 @@ blorp_blit_get_frag_coords(nir_builder *b,
       coord = nir_isub(b, coord, nir_load_var(b, v->v_dst_offset));
 
    if (key->persample_msaa_dispatch) {
+      b->shader->info.fs.uses_sample_shading = true;
       return nir_vec3(b, nir_channel(b, coord, 0), nir_channel(b, coord, 1),
                       nir_load_sample_id(b));
    } else {
