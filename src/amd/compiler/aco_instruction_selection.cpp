@@ -3789,6 +3789,23 @@ visit_load_const(isel_context* ctx, nir_load_const_instr* instr)
    }
 }
 
+bool
+can_use_byte_align_for_global_load(unsigned num_components, unsigned component_size,
+                                   unsigned align_, bool support_12_byte)
+{
+   /* Only use byte-align for 8/16-bit loads if we won't have to increase it's size and won't have
+    * to use unsupported load sizes.
+    */
+   assert(util_is_power_of_two_nonzero(align_));
+   if (align_ < 4) {
+      assert(component_size < 4);
+      unsigned load_size = num_components * component_size;
+      int new_size = align(load_size + (4 - align_), 4);
+      return new_size == align(load_size, 4) && (new_size != 12 || support_12_byte);
+   }
+   return true;
+}
+
 struct LoadEmitInfo {
    Operand offset;
    Temp dst;
@@ -4150,33 +4167,41 @@ Temp
 smem_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned bytes_needed,
                    unsigned align, unsigned const_offset, Temp dst_hint)
 {
-   unsigned size = 0;
+   assert(align >= 4u);
+
+   bytes_needed = MIN2(bytes_needed, 64);
+   unsigned needed_round_up = util_next_power_of_two(bytes_needed);
+   unsigned needed_round_down = needed_round_up >> (needed_round_up != bytes_needed ? 1 : 0);
+   /* Only round-up global loads if it's aligned so that it won't cross pages */
+   bytes_needed =
+      info.resource.id() || align % needed_round_up == 0 ? needed_round_up : needed_round_down;
+
    aco_opcode op;
    if (bytes_needed <= 4) {
-      size = 1;
       op = info.resource.id() ? aco_opcode::s_buffer_load_dword : aco_opcode::s_load_dword;
    } else if (bytes_needed <= 8) {
-      size = 2;
       op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx2 : aco_opcode::s_load_dwordx2;
    } else if (bytes_needed <= 16) {
-      size = 4;
       op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx4 : aco_opcode::s_load_dwordx4;
    } else if (bytes_needed <= 32) {
-      size = 8;
       op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx8 : aco_opcode::s_load_dwordx8;
    } else {
-      size = 16;
+      assert(bytes_needed == 64);
       op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx16 : aco_opcode::s_load_dwordx16;
    }
+
    aco_ptr<SMEM_instruction> load{create_instruction<SMEM_instruction>(op, Format::SMEM, 2, 1)};
    if (info.resource.id()) {
+      if (const_offset)
+         offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), offset,
+                           Operand::c32(const_offset));
       load->operands[0] = Operand(info.resource);
       load->operands[1] = Operand(offset);
    } else {
       load->operands[0] = Operand(offset);
-      load->operands[1] = Operand::zero();
+      load->operands[1] = Operand::c32(const_offset);
    }
-   RegClass rc(RegType::sgpr, size);
+   RegClass rc(RegType::sgpr, DIV_ROUND_UP(bytes_needed, 4u));
    Temp val = dst_hint.id() && dst_hint.regClass() == rc ? dst_hint : bld.tmp(rc);
    load->definitions[0] = Definition(val);
    load->glc = info.glc;
@@ -4265,12 +4290,12 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
    bool use_mubuf = bld.program->chip_class == GFX6;
    bool global = bld.program->chip_class >= GFX9;
    aco_opcode op;
-   if (bytes_needed == 1) {
+   if (bytes_needed == 1 || align_ % 2u) {
       bytes_size = 1;
       op = use_mubuf ? aco_opcode::buffer_load_ubyte
            : global  ? aco_opcode::global_load_ubyte
                      : aco_opcode::flat_load_ubyte;
-   } else if (bytes_needed == 2) {
+   } else if (bytes_needed == 2 || align_ % 4u) {
       bytes_size = 2;
       op = use_mubuf ? aco_opcode::buffer_load_ushort
            : global  ? aco_opcode::global_load_ushort
@@ -4280,7 +4305,7 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
       op = use_mubuf ? aco_opcode::buffer_load_dword
            : global  ? aco_opcode::global_load_dword
                      : aco_opcode::flat_load_dword;
-   } else if (bytes_needed <= 8) {
+   } else if (bytes_needed <= 8 || (bytes_needed <= 12 && use_mubuf)) {
       bytes_size = 8;
       op = use_mubuf ? aco_opcode::buffer_load_dwordx2
            : global  ? aco_opcode::global_load_dwordx2
@@ -4294,7 +4319,7 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
            : global  ? aco_opcode::global_load_dwordx4
                      : aco_opcode::flat_load_dwordx4;
    }
-   RegClass rc = RegClass::get(RegType::vgpr, align(bytes_size, 4));
+   RegClass rc = RegClass::get(RegType::vgpr, bytes_size);
    Temp val = dst_hint.id() && rc == dst_hint.regClass() ? dst_hint : bld.tmp(rc);
    if (use_mubuf) {
       aco_ptr<MUBUF_instruction> mubuf{
@@ -6423,12 +6448,24 @@ visit_load_global(isel_context* ctx, nir_intrinsic_instr* instr)
    info.align_mul = nir_intrinsic_align_mul(instr);
    info.align_offset = nir_intrinsic_align_offset(instr);
    info.sync = get_memory_sync_info(instr, storage_buffer, 0);
+
+   /* Don't expand global loads when they use MUBUF or SMEM.
+    * Global loads don't have the bounds checking that buffer loads have that
+    * makes this safe.
+   */
+   unsigned align = nir_intrinsic_align(instr);
+   bool byte_align_for_smem_mubuf =
+      can_use_byte_align_for_global_load(num_components, component_size, align, false);
+
    /* VMEM stores don't update the SMEM cache and it's difficult to prove that
     * it's safe to use SMEM */
-   bool can_use_smem = nir_intrinsic_access(instr) & ACCESS_NON_WRITEABLE;
+   bool can_use_smem =
+      (nir_intrinsic_access(instr) & ACCESS_NON_WRITEABLE) && byte_align_for_smem_mubuf;
    if (info.dst.type() == RegType::vgpr || (info.glc && ctx->options->chip_class < GFX8) ||
        !can_use_smem) {
-      emit_load(ctx, bld, info, global_load_params);
+      EmitLoadParameters params = global_load_params;
+      params.byte_align_loads = ctx->options->chip_class > GFX6 || byte_align_for_smem_mubuf;
+      emit_load(ctx, bld, info, params);
    } else {
       info.offset = Operand(bld.as_uniform(info.offset));
       emit_load(ctx, bld, info, smem_load_params);
