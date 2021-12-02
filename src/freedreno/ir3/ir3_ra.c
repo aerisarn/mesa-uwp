@@ -1254,6 +1254,38 @@ allocate_dst_fixed(struct ra_ctx *ctx, struct ir3_register *dst,
    interval->physreg_end = physreg + reg_size(dst);
 }
 
+/* If a tied destination interferes with its source register, we have to insert
+ * a copy beforehand to copy the source to the destination. Because we are using
+ * the parallel_copies array and not creating a separate copy, this copy will
+ * happen in parallel with any shuffling around of the tied source, so we have
+ * to copy the source *as it exists before it is shuffled around*. We do this by
+ * inserting the copy early, before any other copies are inserted. We don't
+ * actually know the destination of the copy, but that's ok because the
+ * dst_interval will be filled out later.
+ */
+static void
+insert_tied_dst_copy(struct ra_ctx *ctx, struct ir3_register *dst)
+{
+   struct ir3_register *tied = dst->tied;
+
+   if (!tied)
+      return;
+
+   struct ra_interval *tied_interval = &ctx->intervals[tied->def->name];
+   struct ra_interval *dst_interval = &ctx->intervals[dst->name];
+
+   if (tied_interval->is_killed)
+      return;
+
+   physreg_t tied_physreg = ra_interval_get_physreg(tied_interval);
+
+   array_insert(ctx, ctx->parallel_copies,
+                (struct ra_parallel_copy){
+                   .interval = dst_interval,
+                   .src = tied_physreg,
+                });
+}
+
 static void
 allocate_dst(struct ra_ctx *ctx, struct ir3_register *dst)
 {
@@ -1262,8 +1294,6 @@ allocate_dst(struct ra_ctx *ctx, struct ir3_register *dst)
    struct ir3_register *tied = dst->tied;
    if (tied) {
       struct ra_interval *tied_interval = &ctx->intervals[tied->def->name];
-      struct ra_interval *dst_interval = &ctx->intervals[dst->name];
-      physreg_t tied_physreg = ra_interval_get_physreg(tied_interval);
       if (tied_interval->is_killed) {
          /* The easy case: the source is killed, so we can just reuse it
           * for the destination.
@@ -1277,11 +1307,6 @@ allocate_dst(struct ra_ctx *ctx, struct ir3_register *dst)
           */
          physreg_t physreg = get_reg(ctx, file, dst, true);
          allocate_dst_fixed(ctx, dst, physreg);
-         array_insert(ctx, ctx->parallel_copies,
-                      (struct ra_parallel_copy){
-                         .interval = dst_interval,
-                         .src = tied_physreg,
-                      });
       }
 
       return;
@@ -1359,6 +1384,11 @@ handle_normal_instr(struct ra_ctx *ctx, struct ir3_instruction *instr)
    /* First, mark sources as going-to-be-killed while allocating the dest. */
    ra_foreach_src (src, instr) {
       mark_src_killed(ctx, src);
+   }
+
+   /* Pre-insert tied dst copies. */
+   ra_foreach_dst (dst, instr) {
+      insert_tied_dst_copy(ctx, dst);
    }
 
    /* Allocate the destination. */
