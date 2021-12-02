@@ -2200,6 +2200,12 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    radv_hash_rt_shaders(hash, &local_create_info, radv_get_hash_flags(device, keep_statistic_info));
    struct vk_shader_module module = {.base.type = VK_OBJECT_TYPE_SHADER_MODULE};
 
+   VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT subgroup_size = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT,
+      .pNext = NULL,
+      .requiredSubgroupSize = device->physical_device->rt_wave_size,
+   };
+
    VkComputePipelineCreateInfo compute_info = {
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
       .pNext = NULL,
@@ -2207,6 +2213,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       .stage =
          {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = &subgroup_size,
             .stage = VK_SHADER_STAGE_COMPUTE_BIT,
             .module = vk_shader_module_to_handle(&module),
             .pName = "main",

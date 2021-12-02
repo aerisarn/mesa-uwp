@@ -724,6 +724,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    device->cs_wave_size = 64;
    device->ps_wave_size = 64;
    device->ge_wave_size = 64;
+   device->rt_wave_size = 64;
 
    if (device->rad_info.chip_class >= GFX10) {
       if (device->instance->perftest_flags & RADV_PERFTEST_CS_WAVE_32)
@@ -735,6 +736,9 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
       if (device->instance->perftest_flags & RADV_PERFTEST_GE_WAVE_32)
          device->ge_wave_size = 32;
+
+      if (!(device->instance->perftest_flags & RADV_PERFTEST_RT_WAVE_64))
+         device->rt_wave_size = 32;
    }
 
    radv_physical_device_init_mem_types(device);
@@ -879,6 +883,7 @@ static const struct debug_control radv_perftest_options[] = {{"localbos", RADV_P
                                                              {"nggc", RADV_PERFTEST_NGGC},
                                                              {"force_emulate_rt", RADV_PERFTEST_FORCE_EMULATE_RT},
                                                              {"nv_ms", RADV_PERFTEST_NV_MS},
+                                                             {"rtwave64", RADV_PERFTEST_RT_WAVE_64},
                                                              {NULL, 0}};
 
 const char *

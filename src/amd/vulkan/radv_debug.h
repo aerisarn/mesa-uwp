@@ -81,6 +81,7 @@ enum {
    RADV_PERFTEST_NGGC = 1u << 9,
    RADV_PERFTEST_FORCE_EMULATE_RT = 1u << 10,
    RADV_PERFTEST_NV_MS = 1u << 11,
+   RADV_PERFTEST_RT_WAVE_64 = 1u << 12,
 };
 
 bool radv_init_trace(struct radv_device *device);

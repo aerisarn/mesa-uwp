@@ -287,6 +287,7 @@ struct radv_physical_device {
    uint8_t ps_wave_size;
    uint8_t cs_wave_size;
    uint8_t ge_wave_size;
+   uint8_t rt_wave_size;
 
    /* Whether to use the LLVM compiler backend */
    bool use_llvm;
@@ -1712,6 +1713,7 @@ struct radv_event {
 #define RADV_HASH_SHADER_ROBUST_BUFFER_ACCESS2 (1 << 15)
 #define RADV_HASH_SHADER_FORCE_EMULATE_RT      (1 << 16)
 #define RADV_HASH_SHADER_SPLIT_FMA             (1 << 17)
+#define RADV_HASH_SHADER_RT_WAVE64             (1 << 18)
 
 struct radv_pipeline_key;
 

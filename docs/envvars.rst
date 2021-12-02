@@ -698,6 +698,8 @@ RADV driver environment variables
       enable rt extensions whose implementation is still experimental.
    ``sam``
       enable optimizations to move more driver internal objects to VRAM.
+   ``rtwave64``
+      enable wave64 for ray tracing shaders (GFX10+)
 
 :envvar:`RADV_TEX_ANISO`
    force anisotropy filter (up to 16)
