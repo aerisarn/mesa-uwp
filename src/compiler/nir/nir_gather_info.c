@@ -629,6 +629,7 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_load_front_face:
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_pos:
+   case nir_intrinsic_load_sample_pos_or_center:
    case nir_intrinsic_load_sample_mask_in:
    case nir_intrinsic_load_helper_invocation:
    case nir_intrinsic_load_tess_coord:
