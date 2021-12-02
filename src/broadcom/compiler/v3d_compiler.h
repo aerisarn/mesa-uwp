@@ -1180,7 +1180,7 @@ bool v3d_nir_lower_line_smooth(nir_shader *shader);
 bool v3d_nir_lower_logic_ops(nir_shader *s, struct v3d_compile *c);
 bool v3d_nir_lower_scratch(nir_shader *s);
 bool v3d_nir_lower_txf_ms(nir_shader *s);
-bool v3d_nir_lower_image_load_store(nir_shader *s);
+bool v3d_nir_lower_image_load_store(nir_shader *s, struct v3d_compile *c);
 bool v3d_nir_lower_load_store_bitsize(nir_shader *s);
 
 void v3d_vir_emit_tex(struct v3d_compile *c, nir_tex_instr *instr);
@@ -1407,6 +1407,20 @@ VIR_SFU(EXP)
 VIR_SFU(LOG)
 VIR_SFU(SIN)
 VIR_SFU(RSQRT2)
+
+VIR_A_ALU2(VPACK)
+VIR_A_ALU2(V8PACK)
+VIR_A_ALU2(V10PACK)
+VIR_A_ALU2(V11FPACK)
+
+VIR_M_ALU1(FTOUNORM16)
+VIR_M_ALU1(FTOSNORM16)
+
+VIR_M_ALU1(VFTOUNORM8)
+VIR_M_ALU1(VFTOSNORM8)
+
+VIR_M_ALU1(VFTOUNORM10LO)
+VIR_M_ALU1(VFTOUNORM10HI)
 
 static inline struct qinst *
 vir_MOV_cond(struct v3d_compile *c, enum v3d_qpu_cond cond,

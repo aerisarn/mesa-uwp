@@ -1680,6 +1680,22 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 result = vir_VFPACK(c, src[0], src[1]);
                 break;
 
+        case nir_op_pack_2x32_to_2x16_v3d:
+                result = vir_VPACK(c, src[0], src[1]);
+                break;
+
+        case nir_op_pack_32_to_r11g11b10_v3d:
+                result = vir_V11FPACK(c, src[0], src[1]);
+                break;
+
+        case nir_op_pack_uint_32_to_r10g10b10a2_v3d:
+                result = vir_V10PACK(c, src[0], src[1]);
+                break;
+
+        case nir_op_pack_4x16_to_4x8_v3d:
+                result = vir_V8PACK(c, src[0], src[1]);
+                break;
+
         case nir_op_unpack_half_2x16_split_x:
                 result = vir_FMOV(c, src[0]);
                 vir_set_unpack(c->defs[result.index], 0, V3D_QPU_UNPACK_L);
@@ -1688,6 +1704,30 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_unpack_half_2x16_split_y:
                 result = vir_FMOV(c, src[0]);
                 vir_set_unpack(c->defs[result.index], 0, V3D_QPU_UNPACK_H);
+                break;
+
+        case nir_op_pack_2x16_to_unorm_2x8_v3d:
+                result = vir_VFTOUNORM8(c, src[0]);
+                break;
+
+        case nir_op_pack_2x16_to_snorm_2x8_v3d:
+                result = vir_VFTOSNORM8(c, src[0]);
+                break;
+
+        case nir_op_pack_2x16_to_unorm_2x10_v3d:
+                result = vir_VFTOUNORM10LO(c, src[0]);
+                break;
+
+        case nir_op_pack_2x16_to_unorm_10_2_v3d:
+                result = vir_VFTOUNORM10HI(c, src[0]);
+                break;
+
+        case nir_op_f2unorm_16_v3d:
+                result = vir_FTOUNORM16(c, src[0]);
+                break;
+
+        case nir_op_f2snorm_16_v3d:
+                result = vir_FTOSNORM16(c, src[0]);
                 break;
 
         default:
