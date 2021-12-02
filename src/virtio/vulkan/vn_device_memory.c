@@ -27,20 +27,27 @@ vn_device_memory_simple_alloc(struct vn_device *dev,
                               VkDeviceSize size,
                               struct vn_device_memory **out_mem)
 {
+   VkDevice dev_handle = vn_device_to_handle(dev);
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   const VkPhysicalDeviceMemoryProperties *mem_props =
+      &dev->physical_device->memory_properties.memoryProperties;
+   const VkMemoryPropertyFlags mem_flags =
+      mem_props->memoryTypes[mem_type_index].propertyFlags;
+   struct vn_device_memory *mem = NULL;
+   VkDeviceMemory mem_handle = VK_NULL_HANDLE;
+   VkResult result;
 
-   struct vn_device_memory *mem =
-      vk_zalloc(alloc, sizeof(*mem), VN_DEFAULT_ALIGN,
-                VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   mem = vk_zalloc(alloc, sizeof(*mem), VN_DEFAULT_ALIGN,
+                   VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!mem)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    vn_object_base_init(&mem->base, VK_OBJECT_TYPE_DEVICE_MEMORY, &dev->base);
    mem->size = size;
 
-   VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
-   VkResult result = vn_call_vkAllocateMemory(
-      dev->instance, vn_device_to_handle(dev),
+   mem_handle = vn_device_memory_to_handle(mem);
+   result = vn_call_vkAllocateMemory(
+      dev->instance, dev_handle,
       &(const VkMemoryAllocateInfo){
          .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
          .allocationSize = size,
@@ -48,29 +55,27 @@ vn_device_memory_simple_alloc(struct vn_device *dev,
       },
       NULL, &mem_handle);
    if (result != VK_SUCCESS) {
-      vn_object_base_fini(&mem->base);
-      vk_free(alloc, mem);
-      return result;
+      mem_handle = VK_NULL_HANDLE;
+      goto fail;
    }
 
-   const VkPhysicalDeviceMemoryProperties *mem_props =
-      &dev->physical_device->memory_properties.memoryProperties;
-   const VkMemoryType *mem_type = &mem_props->memoryTypes[mem_type_index];
    result = vn_renderer_bo_create_from_device_memory(
-      dev->renderer, mem->size, mem->base.id, mem_type->propertyFlags, 0,
-      &mem->base_bo);
-   if (result != VK_SUCCESS) {
-      vn_async_vkFreeMemory(dev->instance, vn_device_to_handle(dev),
-                            mem_handle, NULL);
-      vn_object_base_fini(&mem->base);
-      vk_free(alloc, mem);
-      return result;
-   }
+      dev->renderer, mem->size, mem->base.id, mem_flags, 0, &mem->base_bo);
+   if (result != VK_SUCCESS)
+      goto fail;
+
    vn_instance_roundtrip(dev->instance);
 
    *out_mem = mem;
 
    return VK_SUCCESS;
+
+fail:
+   if (mem_handle != VK_NULL_HANDLE)
+      vn_async_vkFreeMemory(dev->instance, dev_handle, mem_handle, NULL);
+   vn_object_base_fini(&mem->base);
+   vk_free(alloc, mem);
+   return result;
 }
 
 static void
