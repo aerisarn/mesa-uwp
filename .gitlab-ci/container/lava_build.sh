@@ -205,7 +205,7 @@ popd
 . .gitlab-ci/container/container_post_build.sh
 
 ############### Upload the files!
-ci-fairy minio login $CI_JOB_JWT
+ci-fairy minio login --token-file "${CI_JOB_JWT_FILE}"
 FILES_TO_UPLOAD="lava-rootfs.tgz \
                  $KERNEL_IMAGE_NAME"
 

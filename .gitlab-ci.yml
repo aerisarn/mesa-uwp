@@ -16,6 +16,22 @@ variables:
   # running on a particular CI farm (ie. for outages, etc):
   FD_FARM: "online"
 
+default:
+  before_script:
+    - echo -e "\e[0Ksection_start:$(date +%s):unset_env_vars_section[collapsed=true]\r\e[0KUnsetting vulnerable environment variables"
+    - export CI_JOB_JWT_FILE="${CI_JOB_JWT_FILE:-$(mktemp)}"
+    - echo -n "${CI_JOB_JWT}" > "${CI_JOB_JWT_FILE}"
+    - unset CI_JOB_JWT
+    - echo -e "\e[0Ksection_end:$(date +%s):unset_env_vars_section\r\e[0K"
+
+  after_script:
+    - >
+      set +x
+
+      test -e "${CI_JOB_JWT_FILE}" &&
+      export CI_JOB_JWT="$(<${CI_JOB_JWT_FILE})" &&
+      rm "${CI_JOB_JWT_FILE}"
+
 include:
   - project: 'freedesktop/ci-templates'
     ref: 34f4ade99434043f88e164933f570301fd18b125

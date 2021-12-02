@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -ex
 
 # This script can be called concurrently, pass arguments and env in a per-instance tmp dir
 export DEQP_TEMP_DIR=`mktemp -d /tmp.XXXXXXXXXX`
