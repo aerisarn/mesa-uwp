@@ -1793,7 +1793,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_ssa_def *stack_entry_stride_def = nir_imm_int(b, stack_entry_stride);
    nir_ssa_def *stack_base =
       nir_iadd(b, nir_imm_int(b, b->shader->info.shared_size),
-               nir_imul(b, nir_load_subgroup_invocation(b), nir_imm_int(b, stack_entry_size)));
+               nir_imul(b, nir_load_local_invocation_index(b), nir_imm_int(b, stack_entry_size)));
 
    /*
     * A top-level AS can contain 2^24 children and a bottom-level AS can contain 2^24 triangles. At
