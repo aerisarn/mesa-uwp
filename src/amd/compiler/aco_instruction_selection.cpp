@@ -3632,16 +3632,6 @@ visit_load_const(isel_context* ctx, nir_load_const_instr* instr)
    }
 }
 
-uint32_t
-widen_mask(uint32_t mask, unsigned multiplier)
-{
-   uint32_t new_mask = 0;
-   for (unsigned i = 0; i < 32 && (1u << i) <= mask; ++i)
-      if (mask & (1u << i))
-         new_mask |= ((1u << multiplier) - 1u) << (i * multiplier);
-   return new_mask;
-}
-
 struct LoadEmitInfo {
    Operand offset;
    Temp dst;
@@ -4331,7 +4321,7 @@ store_lds(isel_context* ctx, unsigned elem_size_bytes, Temp data, uint32_t wrmas
    unsigned bytes[32];
    aco_opcode opcodes[32];
 
-   wrmask = widen_mask(wrmask, elem_size_bytes);
+   wrmask = util_widen_mask(wrmask, elem_size_bytes);
 
    uint32_t todo = u_bit_consecutive(0, data.bytes());
    while (todo) {
@@ -4597,7 +4587,7 @@ store_vmem_mubuf(isel_context* ctx, Temp src, Temp descriptor, Temp voffset, Tem
    Builder bld(ctx->program, ctx->block);
    assert(elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
    assert(write_mask);
-   write_mask = widen_mask(write_mask, elem_size_bytes);
+   write_mask = util_widen_mask(write_mask, elem_size_bytes);
 
    unsigned write_count = 0;
    Temp write_datas[32];
@@ -4690,7 +4680,7 @@ store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
 
    if (instr->src[0].ssa->bit_size == 64)
-      write_mask = widen_mask(write_mask, 2);
+      write_mask = util_widen_mask(write_mask, 2);
 
    RegClass rc = instr->src[0].ssa->bit_size == 16 ? v2b : v1;
 
@@ -6561,7 +6551,7 @@ visit_store_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    Builder bld(ctx->program, ctx->block);
    Temp data = get_ssa_temp(ctx, instr->src[0].ssa);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
-   unsigned writemask = widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
+   unsigned writemask = util_widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
    Temp offset = get_ssa_temp(ctx, instr->src[2].ssa);
 
    Temp rsrc = load_buffer_rsrc(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
@@ -6745,7 +6735,7 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
-   unsigned writemask = widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
+   unsigned writemask = util_widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Temp addr = get_ssa_temp(ctx, instr->src[1].ssa);
@@ -7331,7 +7321,7 @@ visit_store_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
-   unsigned writemask = widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
+   unsigned writemask = util_widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
 
    unsigned write_count = 0;
    Temp write_datas[32];
