@@ -1275,38 +1275,26 @@ fs_visitor::emit_frontfacing_interpolation()
    return ff;
 }
 
-void
-fs_visitor::compute_sample_position(fs_reg dst, fs_reg int_sample_pos)
+fs_reg
+fs_visitor::emit_samplepos_setup()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(this->prog_data);
-   assert(dst.type == BRW_REGISTER_TYPE_F);
+   assert(devinfo->ver >= 6);
 
-   if (wm_prog_data->persample_dispatch) {
-      /* Convert int_sample_pos to floating point */
-      bld.MOV(dst, int_sample_pos);
-      /* Scale to the range [0, 1] */
-      bld.MUL(dst, dst, brw_imm_f(1 / 16.0f));
-   }
-   else {
+   const fs_builder abld = bld.annotate("compute sample position");
+   fs_reg pos = abld.vgrf(BRW_REGISTER_TYPE_F, 2);
+
+   if (!wm_prog_data->persample_dispatch) {
       /* From ARB_sample_shading specification:
        * "When rendering to a non-multisample buffer, or if multisample
        *  rasterization is disabled, gl_SamplePosition will always be
        *  (0.5, 0.5).
        */
-      bld.MOV(dst, brw_imm_f(0.5f));
+      bld.MOV(offset(pos, bld, 0), brw_imm_f(0.5f));
+      bld.MOV(offset(pos, bld, 1), brw_imm_f(0.5f));
+      return pos;
    }
-}
-
-fs_reg
-fs_visitor::emit_samplepos_setup()
-{
-   assert(devinfo->ver >= 6);
-
-   const fs_builder abld = bld.annotate("compute sample position");
-   fs_reg pos = abld.vgrf(BRW_REGISTER_TYPE_F, 2);
-   fs_reg int_sample_x = vgrf(glsl_type::int_type);
-   fs_reg int_sample_y = vgrf(glsl_type::int_type);
 
    /* WM will be run in MSDISPMODE_PERSAMPLE. So, only one of SIMD8 or SIMD16
     * mode will be enabled.
@@ -1322,13 +1310,16 @@ fs_visitor::emit_samplepos_setup()
    const fs_reg sample_pos_reg =
       fetch_payload_reg(abld, payload.sample_pos_reg, BRW_REGISTER_TYPE_W);
 
-   /* Compute gl_SamplePosition.x */
-   abld.MOV(int_sample_x, subscript(sample_pos_reg, BRW_REGISTER_TYPE_B, 0));
-   compute_sample_position(offset(pos, abld, 0), int_sample_x);
+   for (unsigned i = 0; i < 2; i++) {
+      fs_reg tmp_d = bld.vgrf(BRW_REGISTER_TYPE_D);
+      abld.MOV(tmp_d, subscript(sample_pos_reg, BRW_REGISTER_TYPE_B, i));
+      /* Convert int_sample_pos to floating point */
+      fs_reg tmp_f = bld.vgrf(BRW_REGISTER_TYPE_F);
+      abld.MOV(tmp_f, tmp_d);
+      /* Scale to the range [0, 1] */
+      abld.MUL(offset(pos, abld, i), tmp_f, brw_imm_f(1 / 16.0f));
+   }
 
-   /* Compute gl_SamplePosition.y */
-   abld.MOV(int_sample_y, subscript(sample_pos_reg, BRW_REGISTER_TYPE_B, 1));
-   compute_sample_position(offset(pos, abld, 1), int_sample_y);
    return pos;
 }
 

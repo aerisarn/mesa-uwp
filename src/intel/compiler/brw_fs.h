@@ -209,7 +209,6 @@ public:
    fs_reg emit_shading_rate_setup();
    void emit_interpolation_setup_gfx4();
    void emit_interpolation_setup_gfx6();
-   void compute_sample_position(fs_reg dst, fs_reg int_sample_pos);
    fs_reg emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
                          const fs_reg &texture,
                          const fs_reg &texture_handle);
