@@ -6551,23 +6551,17 @@ void
 parse_global(isel_context* ctx, nir_intrinsic_instr* intrin, Temp* address, uint32_t* const_offset,
              Temp* offset)
 {
-   bool is_store = intrin->intrinsic == nir_intrinsic_store_global ||
-                   intrin->intrinsic == nir_intrinsic_store_global_amd;
+   bool is_store = intrin->intrinsic == nir_intrinsic_store_global_amd;
    *address = get_ssa_temp(ctx, intrin->src[is_store ? 1 : 0].ssa);
 
-   if (nir_intrinsic_has_base(intrin)) {
-      *const_offset = nir_intrinsic_base(intrin);
+   *const_offset = nir_intrinsic_base(intrin);
 
-      unsigned num_src = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
-      nir_src offset_src = intrin->src[num_src - 1];
-      if (!nir_src_is_const(offset_src) || nir_src_as_uint(offset_src))
-         *offset = get_ssa_temp(ctx, offset_src.ssa);
-      else
-         *offset = Temp();
-   } else {
-      *const_offset = 0;
+   unsigned num_src = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
+   nir_src offset_src = intrin->src[num_src - 1];
+   if (!nir_src_is_const(offset_src) || nir_src_as_uint(offset_src))
+      *offset = get_ssa_temp(ctx, offset_src.ssa);
+   else
       *offset = Temp();
-   }
 }
 
 void
@@ -6716,8 +6710,7 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
-   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap ||
-       instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd)
+   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
                         get_ssa_temp(ctx, instr->src[2].ssa), data);
 
@@ -6733,62 +6726,50 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    if (ctx->options->chip_class >= GFX7) {
       bool global = ctx->options->chip_class >= GFX9;
       switch (instr->intrinsic) {
-      case nir_intrinsic_global_atomic_add:
       case nir_intrinsic_global_atomic_add_amd:
          op32 = global ? aco_opcode::global_atomic_add : aco_opcode::flat_atomic_add;
          op64 = global ? aco_opcode::global_atomic_add_x2 : aco_opcode::flat_atomic_add_x2;
          break;
-      case nir_intrinsic_global_atomic_imin:
       case nir_intrinsic_global_atomic_imin_amd:
          op32 = global ? aco_opcode::global_atomic_smin : aco_opcode::flat_atomic_smin;
          op64 = global ? aco_opcode::global_atomic_smin_x2 : aco_opcode::flat_atomic_smin_x2;
          break;
-      case nir_intrinsic_global_atomic_umin:
       case nir_intrinsic_global_atomic_umin_amd:
          op32 = global ? aco_opcode::global_atomic_umin : aco_opcode::flat_atomic_umin;
          op64 = global ? aco_opcode::global_atomic_umin_x2 : aco_opcode::flat_atomic_umin_x2;
          break;
-      case nir_intrinsic_global_atomic_imax:
       case nir_intrinsic_global_atomic_imax_amd:
          op32 = global ? aco_opcode::global_atomic_smax : aco_opcode::flat_atomic_smax;
          op64 = global ? aco_opcode::global_atomic_smax_x2 : aco_opcode::flat_atomic_smax_x2;
          break;
-      case nir_intrinsic_global_atomic_umax:
       case nir_intrinsic_global_atomic_umax_amd:
          op32 = global ? aco_opcode::global_atomic_umax : aco_opcode::flat_atomic_umax;
          op64 = global ? aco_opcode::global_atomic_umax_x2 : aco_opcode::flat_atomic_umax_x2;
          break;
-      case nir_intrinsic_global_atomic_and:
       case nir_intrinsic_global_atomic_and_amd:
          op32 = global ? aco_opcode::global_atomic_and : aco_opcode::flat_atomic_and;
          op64 = global ? aco_opcode::global_atomic_and_x2 : aco_opcode::flat_atomic_and_x2;
          break;
-      case nir_intrinsic_global_atomic_or:
       case nir_intrinsic_global_atomic_or_amd:
          op32 = global ? aco_opcode::global_atomic_or : aco_opcode::flat_atomic_or;
          op64 = global ? aco_opcode::global_atomic_or_x2 : aco_opcode::flat_atomic_or_x2;
          break;
-      case nir_intrinsic_global_atomic_xor:
       case nir_intrinsic_global_atomic_xor_amd:
          op32 = global ? aco_opcode::global_atomic_xor : aco_opcode::flat_atomic_xor;
          op64 = global ? aco_opcode::global_atomic_xor_x2 : aco_opcode::flat_atomic_xor_x2;
          break;
-      case nir_intrinsic_global_atomic_exchange:
       case nir_intrinsic_global_atomic_exchange_amd:
          op32 = global ? aco_opcode::global_atomic_swap : aco_opcode::flat_atomic_swap;
          op64 = global ? aco_opcode::global_atomic_swap_x2 : aco_opcode::flat_atomic_swap_x2;
          break;
-      case nir_intrinsic_global_atomic_comp_swap:
       case nir_intrinsic_global_atomic_comp_swap_amd:
          op32 = global ? aco_opcode::global_atomic_cmpswap : aco_opcode::flat_atomic_cmpswap;
          op64 = global ? aco_opcode::global_atomic_cmpswap_x2 : aco_opcode::flat_atomic_cmpswap_x2;
          break;
-      case nir_intrinsic_global_atomic_fmin:
       case nir_intrinsic_global_atomic_fmin_amd:
          op32 = global ? aco_opcode::global_atomic_fmin : aco_opcode::flat_atomic_fmin;
          op64 = global ? aco_opcode::global_atomic_fmin_x2 : aco_opcode::flat_atomic_fmin_x2;
          break;
-      case nir_intrinsic_global_atomic_fmax:
       case nir_intrinsic_global_atomic_fmax_amd:
          op32 = global ? aco_opcode::global_atomic_fmax : aco_opcode::flat_atomic_fmax;
          op64 = global ? aco_opcode::global_atomic_fmax_x2 : aco_opcode::flat_atomic_fmax_x2;
@@ -6825,62 +6806,50 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       assert(ctx->options->chip_class == GFX6);
 
       switch (instr->intrinsic) {
-      case nir_intrinsic_global_atomic_add:
       case nir_intrinsic_global_atomic_add_amd:
          op32 = aco_opcode::buffer_atomic_add;
          op64 = aco_opcode::buffer_atomic_add_x2;
          break;
-      case nir_intrinsic_global_atomic_imin:
       case nir_intrinsic_global_atomic_imin_amd:
          op32 = aco_opcode::buffer_atomic_smin;
          op64 = aco_opcode::buffer_atomic_smin_x2;
          break;
-      case nir_intrinsic_global_atomic_umin:
       case nir_intrinsic_global_atomic_umin_amd:
          op32 = aco_opcode::buffer_atomic_umin;
          op64 = aco_opcode::buffer_atomic_umin_x2;
          break;
-      case nir_intrinsic_global_atomic_imax:
       case nir_intrinsic_global_atomic_imax_amd:
          op32 = aco_opcode::buffer_atomic_smax;
          op64 = aco_opcode::buffer_atomic_smax_x2;
          break;
-      case nir_intrinsic_global_atomic_umax:
       case nir_intrinsic_global_atomic_umax_amd:
          op32 = aco_opcode::buffer_atomic_umax;
          op64 = aco_opcode::buffer_atomic_umax_x2;
          break;
-      case nir_intrinsic_global_atomic_and:
       case nir_intrinsic_global_atomic_and_amd:
          op32 = aco_opcode::buffer_atomic_and;
          op64 = aco_opcode::buffer_atomic_and_x2;
          break;
-      case nir_intrinsic_global_atomic_or:
       case nir_intrinsic_global_atomic_or_amd:
          op32 = aco_opcode::buffer_atomic_or;
          op64 = aco_opcode::buffer_atomic_or_x2;
          break;
-      case nir_intrinsic_global_atomic_xor:
       case nir_intrinsic_global_atomic_xor_amd:
          op32 = aco_opcode::buffer_atomic_xor;
          op64 = aco_opcode::buffer_atomic_xor_x2;
          break;
-      case nir_intrinsic_global_atomic_exchange:
       case nir_intrinsic_global_atomic_exchange_amd:
          op32 = aco_opcode::buffer_atomic_swap;
          op64 = aco_opcode::buffer_atomic_swap_x2;
          break;
-      case nir_intrinsic_global_atomic_comp_swap:
       case nir_intrinsic_global_atomic_comp_swap_amd:
          op32 = aco_opcode::buffer_atomic_cmpswap;
          op64 = aco_opcode::buffer_atomic_cmpswap_x2;
          break;
-      case nir_intrinsic_global_atomic_fmin:
       case nir_intrinsic_global_atomic_fmin_amd:
          op32 = aco_opcode::buffer_atomic_fmin;
          op64 = aco_opcode::buffer_atomic_fmin_x2;
          break;
-      case nir_intrinsic_global_atomic_fmax:
       case nir_intrinsic_global_atomic_fmax_amd:
          op32 = aco_opcode::buffer_atomic_fmax;
          op64 = aco_opcode::buffer_atomic_fmax_x2;
@@ -8081,23 +8050,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_buffer_amd: visit_load_buffer(ctx, instr); break;
    case nir_intrinsic_store_buffer_amd: visit_store_buffer(ctx, instr); break;
    case nir_intrinsic_load_smem_amd: visit_load_smem(ctx, instr); break;
-   case nir_intrinsic_load_global:
-   case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_global_amd: visit_load_global(ctx, instr); break;
-   case nir_intrinsic_store_global:
    case nir_intrinsic_store_global_amd: visit_store_global(ctx, instr); break;
-   case nir_intrinsic_global_atomic_add:
-   case nir_intrinsic_global_atomic_imin:
-   case nir_intrinsic_global_atomic_umin:
-   case nir_intrinsic_global_atomic_imax:
-   case nir_intrinsic_global_atomic_umax:
-   case nir_intrinsic_global_atomic_and:
-   case nir_intrinsic_global_atomic_or:
-   case nir_intrinsic_global_atomic_xor:
-   case nir_intrinsic_global_atomic_exchange:
-   case nir_intrinsic_global_atomic_comp_swap:
-   case nir_intrinsic_global_atomic_fmin:
-   case nir_intrinsic_global_atomic_fmax:
    case nir_intrinsic_global_atomic_add_amd:
    case nir_intrinsic_global_atomic_imin_amd:
    case nir_intrinsic_global_atomic_umin_amd:

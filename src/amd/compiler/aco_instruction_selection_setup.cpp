@@ -674,18 +674,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_ssbo_atomic_comp_swap:
                case nir_intrinsic_ssbo_atomic_fmin:
                case nir_intrinsic_ssbo_atomic_fmax:
-               case nir_intrinsic_global_atomic_add:
-               case nir_intrinsic_global_atomic_imin:
-               case nir_intrinsic_global_atomic_umin:
-               case nir_intrinsic_global_atomic_imax:
-               case nir_intrinsic_global_atomic_umax:
-               case nir_intrinsic_global_atomic_and:
-               case nir_intrinsic_global_atomic_or:
-               case nir_intrinsic_global_atomic_xor:
-               case nir_intrinsic_global_atomic_exchange:
-               case nir_intrinsic_global_atomic_comp_swap:
-               case nir_intrinsic_global_atomic_fmin:
-               case nir_intrinsic_global_atomic_fmax:
                case nir_intrinsic_global_atomic_add_amd:
                case nir_intrinsic_global_atomic_imin_amd:
                case nir_intrinsic_global_atomic_umin_amd:
@@ -759,8 +747,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_sbt_amd:
                case nir_intrinsic_load_ubo:
                case nir_intrinsic_load_ssbo:
-               case nir_intrinsic_load_global:
-               case nir_intrinsic_load_global_constant:
                case nir_intrinsic_load_global_amd:
                   type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
                   break;
