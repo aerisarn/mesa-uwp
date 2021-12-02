@@ -141,6 +141,11 @@ spec@arb_draw_indirect@arb_draw_indirect-transform-feedback
 # Flaky since around 2021-03-22.  First appeared on an innocent mingw branch.
 spec@arb_depth_texture@fbo-clear-formats
 
+# Flaky since 2021-12-02, during piglit uprev with commit
+# 0ef03f824d1833a853d1a20b4be121089bb9246c
+spec@arb_draw_indirect@arb_draw_indirect-transform-feedback
+spec@arb_map_buffer_range@map_invalidate_buffer_bit offset=0
+
 # Occasionally passes instead of failing
 spec@egl_chromium_sync_control@conformance
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test

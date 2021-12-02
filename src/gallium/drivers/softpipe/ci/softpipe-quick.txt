@@ -510,6 +510,7 @@ spec/arb_bindless_texture/execution/samplers/fs-struct-non-const-index: skip
 spec/arb_bindless_texture/execution/samplers/sampler-in-struct: skip
 spec/arb_bindless_texture/execution/samplers/sampler-vertex-attrib-input-output: skip
 spec/arb_bindless_texture/execution/samplers/sampler-vertex-uniform-input-output: skip
+spec/arb_bindless_texture/execution/samplers/ubo-binding-samplers-conflict: skip
 spec/arb_bindless_texture/execution/samplers/ubo-named-block: skip
 spec/arb_bindless_texture/handles: skip
 spec/arb_bindless_texture/illegal: skip
