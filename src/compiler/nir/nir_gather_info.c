@@ -409,6 +409,7 @@ nir_intrinsic_writes_external_memory(const nir_intrinsic_instr *instr)
    case nir_intrinsic_ssbo_atomic_xor_ir3:
    case nir_intrinsic_store_global:
    case nir_intrinsic_store_global_ir3:
+   case nir_intrinsic_store_global_amd:
    case nir_intrinsic_store_ssbo:
    case nir_intrinsic_store_ssbo_ir3:
       return true;

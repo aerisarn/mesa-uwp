@@ -705,7 +705,8 @@ def memory_atomic_data1(name):
     intrinsic("deref_atomic_" + name,  src_comp=[-1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("ssbo_atomic_" + name,  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("shared_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE])
-    intrinsic("global_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[BASE])
+    intrinsic("global_atomic_" + name,  src_comp=[1, 1], dest_comp=1, indices=[])
+    intrinsic("global_atomic_" + name + "_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
     if not name.startswith('f'):
         intrinsic("global_atomic_" + name + "_ir3",  src_comp=[2, 1], dest_comp=1, indices=[BASE])
 
@@ -713,7 +714,8 @@ def memory_atomic_data2(name):
     intrinsic("deref_atomic_" + name,  src_comp=[-1, 1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("ssbo_atomic_" + name,  src_comp=[-1, 1, 1, 1], dest_comp=1, indices=[ACCESS])
     intrinsic("shared_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
-    intrinsic("global_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
+    intrinsic("global_atomic_" + name,  src_comp=[1, 1, 1], dest_comp=1, indices=[])
+    intrinsic("global_atomic_" + name + "_amd",  src_comp=[1, 1, 1, 1], dest_comp=1, indices=[BASE])
     if not name.startswith('f'):
         intrinsic("global_atomic_" + name + "_ir3",  src_comp=[2, 1, 1], dest_comp=1, indices=[BASE])
 
@@ -1242,6 +1244,11 @@ store("tf_r600", [])
 intrinsic("load_buffer_amd", src_comp=[4, 1, 1], dest_comp=0, indices=[BASE, IS_SWIZZLED, SLC_AMD, MEMORY_MODES], flags=[CAN_ELIMINATE])
 # src[] = { store value, descriptor, base address, scalar offset }
 intrinsic("store_buffer_amd", src_comp=[0, 4, 1, 1], indices=[BASE, WRITE_MASK, IS_SWIZZLED, SLC_AMD, MEMORY_MODES])
+
+# src[] = { address, unsigned 32-bit offset }.
+load("global_amd", [1, 1], indices=[BASE, ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE])
+# src[] = { value, address, unsigned 32-bit offset }.
+store("global_amd", [1, 1], indices=[BASE, ACCESS, ALIGN_MUL, ALIGN_OFFSET, WRITE_MASK])
 
 # Same as shared_atomic_add, but with GDS. src[] = {store_val, gds_addr, m0}
 intrinsic("gds_atomic_add_amd",  src_comp=[1, 1, 1], dest_comp=1, indices=[BASE])
