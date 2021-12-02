@@ -5016,7 +5016,7 @@ typedef struct nir_lower_wpos_ytransform_options {
 
 bool nir_lower_wpos_ytransform(nir_shader *shader,
                                const nir_lower_wpos_ytransform_options *options);
-bool nir_lower_wpos_center(nir_shader *shader, const bool for_sample_shading);
+bool nir_lower_wpos_center(nir_shader *shader);
 
 bool nir_lower_pntc_ytransform(nir_shader *shader,
                                const gl_state_index16 clipplane_state_tokens[][STATE_LENGTH]);

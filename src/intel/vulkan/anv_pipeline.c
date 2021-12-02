@@ -802,8 +802,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
       if (nir->info.fs.uses_sample_shading)
          anv_pipeline_to_graphics(pipeline)->sample_shading_enable = true;
 
-      NIR_PASS_V(nir, nir_lower_wpos_center,
-                 anv_pipeline_to_graphics(pipeline)->sample_shading_enable);
+      NIR_PASS_V(nir, nir_lower_wpos_center);
       NIR_PASS_V(nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options) {
                      .use_fragcoord_sysval = true,
