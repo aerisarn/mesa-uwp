@@ -183,6 +183,8 @@ struct iris_slab {
    struct iris_bo *entries;
 };
 
+#define BUCKET_ARRAY_SIZE (14 * 4)
+
 struct iris_bufmgr {
    /**
     * List into the list of bufmgr.
@@ -197,11 +199,11 @@ struct iris_bufmgr {
    simple_mtx_t bo_deps_lock;
 
    /** Array of lists of cached gem objects of power-of-two sizes */
-   struct bo_cache_bucket cache_bucket[14 * 4];
+   struct bo_cache_bucket cache_bucket[BUCKET_ARRAY_SIZE];
    int num_buckets;
 
    /** Same as cache_bucket, but for local memory gem objects */
-   struct bo_cache_bucket local_cache_bucket[14 * 4];
+   struct bo_cache_bucket local_cache_bucket[BUCKET_ARRAY_SIZE];
    int num_local_buckets;
 
    time_t time;
@@ -2002,7 +2004,7 @@ add_bucket(struct iris_bufmgr *bufmgr, int size, enum iris_heap heap)
       bufmgr->local_cache_bucket : bufmgr->cache_bucket;
 
    unsigned int i = (*num_buckets)++;
-   assert(i < ARRAY_SIZE(bufmgr->cache_bucket));
+   assert(i < BUCKET_ARRAY_SIZE);
 
    list_inithead(&buckets[i].head);
    buckets[i].size = size;
