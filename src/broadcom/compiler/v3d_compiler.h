@@ -655,6 +655,7 @@ struct v3d_compile {
 
         bool uses_center_w;
         bool writes_z;
+        bool reads_z;
         bool uses_implicit_point_line_varyings;
 
         /* True if a fragment shader reads gl_PrimitiveID */

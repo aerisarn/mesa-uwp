@@ -1711,8 +1711,17 @@ emit_frag_end(struct v3d_compile *c)
          * disabled when needed (Z writes from shader, discards, etc), by
          * setting c->writes_z to True, in which case, the QPUs need to write
          * the Z value.
+         *
+         * Also, from the V3D 4.2 spec:
+         *
+         * "If a shader performs a Z read the “Fragment shader does Z writes”
+         *  bit in the shader record must be enabled to ensure deterministic
+         *  results"
+         *
+         * So if c->reads_z is set we always need to write Z, even if it is
+         * a passthrough from the Z value produced from FEP.
          */
-        if (!c->s->info.fs.early_fragment_tests) {
+        if (!c->s->info.fs.early_fragment_tests || c->reads_z) {
                 c->writes_z = true;
                 uint8_t tlb_specifier = TLB_TYPE_DEPTH;
                 struct qinst *inst;
@@ -2452,8 +2461,14 @@ ntq_emit_load_input(struct v3d_compile *c, nir_intrinsic_instr *instr)
         } else {
                 for (int i = 0; i < instr->num_components; i++) {
                         int comp = nir_intrinsic_component(instr) + i;
-                        ntq_store_dest(c, &instr->dest, i,
-                                       vir_MOV(c, c->inputs[offset * 4 + comp]));
+                        struct qreg input = c->inputs[offset * 4 + comp];
+                        ntq_store_dest(c, &instr->dest, i, vir_MOV(c, input));
+
+                        if (c->s->info.stage == MESA_SHADER_FRAGMENT &&
+                            input.file == c->payload_z.file &&
+                            input.index == c->payload_z.index) {
+                                c->reads_z = true;
+                        }
                 }
         }
 }
