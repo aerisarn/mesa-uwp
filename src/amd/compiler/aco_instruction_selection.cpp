@@ -3811,7 +3811,7 @@ struct LoadEmitInfo {
    Temp dst;
    unsigned num_components;
    unsigned component_size;
-   Temp resource = Temp(0, s1);
+   Temp resource = Temp(0, s1); /* buffer resource or base 64-bit address */
    unsigned component_stride = 0;
    unsigned const_offset = 0;
    unsigned align_mul = 0;
@@ -4169,37 +4169,47 @@ smem_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned
 {
    assert(align >= 4u);
 
+   bool buffer = info.resource.id() && info.resource.bytes() == 16;
+   Temp addr = info.resource;
+   if (!buffer && !addr.id()) {
+      addr = offset;
+      offset = Temp();
+   }
+
    bytes_needed = MIN2(bytes_needed, 64);
    unsigned needed_round_up = util_next_power_of_two(bytes_needed);
    unsigned needed_round_down = needed_round_up >> (needed_round_up != bytes_needed ? 1 : 0);
    /* Only round-up global loads if it's aligned so that it won't cross pages */
-   bytes_needed =
-      info.resource.id() || align % needed_round_up == 0 ? needed_round_up : needed_round_down;
+   bytes_needed = buffer || align % needed_round_up == 0 ? needed_round_up : needed_round_down;
 
    aco_opcode op;
    if (bytes_needed <= 4) {
-      op = info.resource.id() ? aco_opcode::s_buffer_load_dword : aco_opcode::s_load_dword;
+      op = buffer ? aco_opcode::s_buffer_load_dword : aco_opcode::s_load_dword;
    } else if (bytes_needed <= 8) {
-      op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx2 : aco_opcode::s_load_dwordx2;
+      op = buffer ? aco_opcode::s_buffer_load_dwordx2 : aco_opcode::s_load_dwordx2;
    } else if (bytes_needed <= 16) {
-      op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx4 : aco_opcode::s_load_dwordx4;
+      op = buffer ? aco_opcode::s_buffer_load_dwordx4 : aco_opcode::s_load_dwordx4;
    } else if (bytes_needed <= 32) {
-      op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx8 : aco_opcode::s_load_dwordx8;
+      op = buffer ? aco_opcode::s_buffer_load_dwordx8 : aco_opcode::s_load_dwordx8;
    } else {
       assert(bytes_needed == 64);
-      op = info.resource.id() ? aco_opcode::s_buffer_load_dwordx16 : aco_opcode::s_load_dwordx16;
+      op = buffer ? aco_opcode::s_buffer_load_dwordx16 : aco_opcode::s_load_dwordx16;
    }
 
    aco_ptr<SMEM_instruction> load{create_instruction<SMEM_instruction>(op, Format::SMEM, 2, 1)};
-   if (info.resource.id()) {
+   if (buffer) {
       if (const_offset)
          offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), offset,
                            Operand::c32(const_offset));
       load->operands[0] = Operand(info.resource);
       load->operands[1] = Operand(offset);
    } else {
-      load->operands[0] = Operand(offset);
-      load->operands[1] = Operand::c32(const_offset);
+      load->operands[0] = Operand(addr);
+      if (offset.id() && const_offset)
+         load->operands[1] = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), offset,
+                                      Operand::c32(const_offset));
+      else
+         load->operands[1] = Operand::c32(const_offset);
    }
    RegClass rc(RegType::sgpr, DIV_ROUND_UP(bytes_needed, 4u));
    Temp val = dst_hint.id() && dst_hint.regClass() == rc ? dst_hint : bld.tmp(rc);
@@ -4283,9 +4293,108 @@ get_gfx6_global_rsrc(Builder& bld, Temp addr)
 }
 
 Temp
+add64_32(Builder& bld, Temp src0, Temp src1)
+{
+   Temp src00 = bld.tmp(src0.type(), 1);
+   Temp src01 = bld.tmp(src0.type(), 1);
+   bld.pseudo(aco_opcode::p_split_vector, Definition(src00), Definition(src01), src0);
+
+   if (src0.type() == RegType::vgpr || src1.type() == RegType::vgpr) {
+      Temp dst0 = bld.tmp(v1);
+      Temp carry = bld.vadd32(Definition(dst0), src00, src1, true).def(1).getTemp();
+      Temp dst1 = bld.vadd32(bld.def(v1), src01, Operand::zero(), false, carry);
+      return bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), dst0, dst1);
+   } else {
+      Temp carry = bld.tmp(s1);
+      Temp dst0 =
+         bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.scc(Definition(carry)), src00, src1);
+      Temp dst1 = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), src01, carry);
+      return bld.pseudo(aco_opcode::p_create_vector, bld.def(s2), dst0, dst1);
+   }
+}
+
+void
+lower_global_address(Builder& bld, uint32_t offset_in, Temp* address_inout,
+                     uint32_t* const_offset_inout, Temp* offset_inout)
+{
+   Temp address = *address_inout;
+   uint64_t const_offset = *const_offset_inout + offset_in;
+   Temp offset = *offset_inout;
+
+   uint64_t max_const_offset_plus_one =
+      1; /* GFX7/8/9: FLAT loads do not support constant offsets */
+   if (bld.program->chip_class >= GFX10)
+      max_const_offset_plus_one =
+         2048; /* GLOBAL has a 11-bit signed offset field (12 bits if signed) */
+   else if (bld.program->chip_class == GFX6 || bld.program->chip_class == GFX9)
+      max_const_offset_plus_one =
+         4096; /* MUBUF/GLOBAL has a 12-bit unsigned offset field (13 bits if signed for GLOBAL) */
+   uint64_t excess_offset = const_offset - (const_offset % max_const_offset_plus_one);
+   const_offset %= max_const_offset_plus_one;
+
+   if (!offset.id()) {
+      while (unlikely(excess_offset > UINT32_MAX)) {
+         address = add64_32(bld, address, bld.copy(bld.def(s1), Operand::c32(UINT32_MAX)));
+         excess_offset -= UINT32_MAX;
+      }
+      if (excess_offset)
+         offset = bld.copy(bld.def(s1), Operand::c32(excess_offset));
+   } else {
+      /* If we add to "offset", we would transform the indended
+       * "address + u2u64(offset) + u2u64(const_offset)" into
+       * "address + u2u64(offset + const_offset)", so add to the address.
+       * This could be more efficient if excess_offset>UINT32_MAX by doing a full 64-bit addition,
+       * but that should be really rare.
+       */
+      while (excess_offset) {
+         uint32_t src2 = MIN2(excess_offset, UINT32_MAX);
+         address = add64_32(bld, address, bld.copy(bld.def(s1), Operand::c32(src2)));
+         excess_offset -= src2;
+      }
+   }
+
+   if (bld.program->chip_class == GFX6) {
+      /* GFX6 (MUBUF): (SGPR address, SGPR offset) or (VGPR address, SGPR offset) */
+      if (offset.type() != RegType::sgpr) {
+         address = add64_32(bld, address, offset);
+         offset = Temp();
+      }
+      offset = offset.id() ? offset : bld.copy(bld.def(s1), Operand::zero());
+   } else if (bld.program->chip_class <= GFX8) {
+      /* GFX7,8 (FLAT): VGPR address */
+      if (offset.id()) {
+         address = add64_32(bld, address, offset);
+         offset = Temp();
+      }
+      address = as_vgpr(bld, address);
+   } else {
+      /* GFX9+ (GLOBAL): (VGPR address), or (SGPR address and VGPR offset) */
+      if (address.type() == RegType::vgpr && offset.id()) {
+         address = add64_32(bld, address, offset);
+         offset = Temp();
+      } else if (address.type() == RegType::sgpr && offset.id()) {
+         offset = as_vgpr(bld, offset);
+      }
+      if (address.type() == RegType::sgpr && !offset.id())
+         offset = bld.copy(bld.def(v1), bld.copy(bld.def(s1), Operand::zero()));
+   }
+
+   *address_inout = address;
+   *const_offset_inout = const_offset;
+   *offset_inout = offset;
+}
+
+Temp
 global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned bytes_needed,
                      unsigned align_, unsigned const_offset, Temp dst_hint)
 {
+   Temp addr = info.resource;
+   if (!addr.id()) {
+      addr = offset;
+      offset = Temp();
+   }
+   lower_global_address(bld, 0, &addr, &const_offset, &offset);
+
    unsigned bytes_size = 0;
    bool use_mubuf = bld.program->chip_class == GFX6;
    bool global = bld.program->chip_class >= GFX9;
@@ -4324,13 +4433,13 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
    if (use_mubuf) {
       aco_ptr<MUBUF_instruction> mubuf{
          create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
-      mubuf->operands[0] = Operand(get_gfx6_global_rsrc(bld, offset));
-      mubuf->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
-      mubuf->operands[2] = Operand::zero();
+      mubuf->operands[0] = Operand(get_gfx6_global_rsrc(bld, addr));
+      mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
+      mubuf->operands[2] = Operand(offset);
       mubuf->glc = info.glc;
       mubuf->dlc = false;
-      mubuf->offset = 0;
-      mubuf->addr64 = offset.type() == RegType::vgpr;
+      mubuf->offset = const_offset;
+      mubuf->addr64 = addr.type() == RegType::vgpr;
       mubuf->disable_wqm = false;
       mubuf->sync = info.sync;
       mubuf->definitions[0] = Definition(val);
@@ -4338,17 +4447,20 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
    } else {
       aco_ptr<FLAT_instruction> flat{
          create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 2, 1)};
-      if (global && offset.regClass() == s2) {
-         flat->operands[0] = bld.copy(bld.def(v1), Operand::zero());
-         flat->operands[1] = Operand(offset);
+      if (addr.regClass() == s2) {
+         assert(global && offset.id() && offset.type() == RegType::vgpr);
+         flat->operands[0] = Operand(offset);
+         flat->operands[1] = Operand(addr);
       } else {
-         flat->operands[0] = Operand(as_vgpr(bld, offset));
+         assert(addr.type() == RegType::vgpr && !offset.id());
+         flat->operands[0] = Operand(addr);
          flat->operands[1] = Operand(s1);
       }
       flat->glc = info.glc;
       flat->dlc = info.glc && bld.program->chip_class >= GFX10;
       flat->sync = info.sync;
-      flat->offset = 0u;
+      assert(global || !const_offset);
+      flat->offset = const_offset;
       flat->definitions[0] = Definition(val);
       bld.insert(std::move(flat));
    }
@@ -6436,14 +6548,46 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
+parse_global(isel_context* ctx, nir_intrinsic_instr* intrin, Temp* address, uint32_t* const_offset,
+             Temp* offset)
+{
+   bool is_store = intrin->intrinsic == nir_intrinsic_store_global ||
+                   intrin->intrinsic == nir_intrinsic_store_global_amd;
+   *address = get_ssa_temp(ctx, intrin->src[is_store ? 1 : 0].ssa);
+
+   if (nir_intrinsic_has_base(intrin)) {
+      *const_offset = nir_intrinsic_base(intrin);
+
+      unsigned num_src = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
+      nir_src offset_src = intrin->src[num_src - 1];
+      if (!nir_src_is_const(offset_src) || nir_src_as_uint(offset_src))
+         *offset = get_ssa_temp(ctx, offset_src.ssa);
+      else
+         *offset = Temp();
+   } else {
+      *const_offset = 0;
+      *offset = Temp();
+   }
+}
+
+void
 visit_load_global(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
    unsigned num_components = instr->num_components;
    unsigned component_size = instr->dest.ssa.bit_size / 8;
 
-   LoadEmitInfo info = {Operand(get_ssa_temp(ctx, instr->src[0].ssa)),
-                        get_ssa_temp(ctx, &instr->dest.ssa), num_components, component_size};
+   Temp addr, offset;
+   uint32_t const_offset;
+   parse_global(ctx, instr, &addr, &const_offset, &offset);
+
+   LoadEmitInfo info = {Operand(addr), get_ssa_temp(ctx, &instr->dest.ssa), num_components,
+                        component_size};
+   if (offset.id()) {
+      info.resource = addr;
+      info.offset = Operand(offset);
+   }
+   info.const_offset = const_offset;
    info.glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
    info.align_mul = nir_intrinsic_align_mul(instr);
    info.align_offset = nir_intrinsic_align_offset(instr);
@@ -6480,7 +6624,6 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
    unsigned writemask = util_widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
-   Temp addr = get_ssa_temp(ctx, instr->src[1].ssa);
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc =
       nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
@@ -6491,28 +6634,17 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
    split_buffer_store(ctx, instr, false, RegType::vgpr, data, writemask, 16, &write_count,
                       write_datas, offsets);
 
+   Temp addr, offset;
+   uint32_t const_offset;
+   parse_global(ctx, instr, &addr, &const_offset, &offset);
+
    for (unsigned i = 0; i < write_count; i++) {
+      Temp write_address = addr;
+      uint32_t write_const_offset = const_offset;
+      Temp write_offset = offset;
+      lower_global_address(bld, offsets[i], &write_address, &write_const_offset, &write_offset);
+
       if (ctx->options->chip_class >= GFX7) {
-         unsigned offset = offsets[i];
-         Temp store_addr = addr;
-         if (offset > 0 && ctx->options->chip_class < GFX9) {
-            Temp addr0 = bld.tmp(v1), addr1 = bld.tmp(v1);
-            Temp new_addr0 = bld.tmp(v1), new_addr1 = bld.tmp(v1);
-            Temp carry = bld.tmp(bld.lm);
-            bld.pseudo(aco_opcode::p_split_vector, Definition(addr0), Definition(addr1), addr);
-
-            bld.vop2(aco_opcode::v_add_co_u32, Definition(new_addr0),
-                     bld.hint_vcc(Definition(carry)), Operand::c32(offset), addr0);
-            bld.vop2(aco_opcode::v_addc_co_u32, Definition(new_addr1), bld.def(bld.lm),
-                     Operand::zero(), addr1, carry)
-               .def(1)
-               .setHint(vcc);
-
-            store_addr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), new_addr0, new_addr1);
-
-            offset = 0;
-         }
-
          bool global = ctx->options->chip_class >= GFX9;
          aco_opcode op;
          switch (write_datas[i].bytes()) {
@@ -6533,17 +6665,20 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
 
          aco_ptr<FLAT_instruction> flat{
             create_instruction<FLAT_instruction>(op, global ? Format::GLOBAL : Format::FLAT, 3, 0)};
-         if (global && store_addr.regClass() == s2) {
-            flat->operands[0] = bld.copy(bld.def(v1), Operand::zero());
-            flat->operands[1] = Operand(store_addr);
+         if (write_address.regClass() == s2) {
+            assert(global && write_offset.id() && write_offset.type() == RegType::vgpr);
+            flat->operands[0] = Operand(write_offset);
+            flat->operands[1] = Operand(write_address);
          } else {
-            flat->operands[0] = Operand(as_vgpr(ctx, store_addr));
+            assert(write_address.type() == RegType::vgpr && !write_offset.id());
+            flat->operands[0] = Operand(write_address);
             flat->operands[1] = Operand(s1);
          }
          flat->operands[2] = Operand(write_datas[i]);
          flat->glc = glc;
          flat->dlc = false;
-         flat->offset = offset;
+         assert(global || !write_const_offset);
+         flat->offset = write_const_offset;
          flat->disable_wqm = true;
          flat->sync = sync;
          ctx->program->needs_exact = true;
@@ -6553,18 +6688,19 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
 
          aco_opcode op = get_buffer_store_op(write_datas[i].bytes());
 
-         Temp rsrc = get_gfx6_global_rsrc(bld, addr);
+         Temp rsrc = get_gfx6_global_rsrc(bld, write_address);
 
          aco_ptr<MUBUF_instruction> mubuf{
             create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, 0)};
          mubuf->operands[0] = Operand(rsrc);
-         mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
-         mubuf->operands[2] = Operand::zero();
+         mubuf->operands[1] =
+            write_address.type() == RegType::vgpr ? Operand(write_address) : Operand(v1);
+         mubuf->operands[2] = Operand(write_offset);
          mubuf->operands[3] = Operand(write_datas[i]);
          mubuf->glc = glc;
          mubuf->dlc = false;
-         mubuf->offset = offsets[i];
-         mubuf->addr64 = addr.type() == RegType::vgpr;
+         mubuf->offset = write_const_offset;
+         mubuf->addr64 = write_address.type() == RegType::vgpr;
          mubuf->disable_wqm = true;
          mubuf->sync = sync;
          ctx->program->needs_exact = true;
@@ -6578,10 +6714,10 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
-   Temp addr = get_ssa_temp(ctx, instr->src[0].ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
-   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap)
+   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap ||
+       instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
                         get_ssa_temp(ctx, instr->src[2].ssa), data);
 
@@ -6589,54 +6725,71 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 
    aco_opcode op32, op64;
 
+   Temp addr, offset;
+   uint32_t const_offset;
+   parse_global(ctx, instr, &addr, &const_offset, &offset);
+   lower_global_address(bld, 0, &addr, &const_offset, &offset);
+
    if (ctx->options->chip_class >= GFX7) {
       bool global = ctx->options->chip_class >= GFX9;
       switch (instr->intrinsic) {
       case nir_intrinsic_global_atomic_add:
+      case nir_intrinsic_global_atomic_add_amd:
          op32 = global ? aco_opcode::global_atomic_add : aco_opcode::flat_atomic_add;
          op64 = global ? aco_opcode::global_atomic_add_x2 : aco_opcode::flat_atomic_add_x2;
          break;
       case nir_intrinsic_global_atomic_imin:
+      case nir_intrinsic_global_atomic_imin_amd:
          op32 = global ? aco_opcode::global_atomic_smin : aco_opcode::flat_atomic_smin;
          op64 = global ? aco_opcode::global_atomic_smin_x2 : aco_opcode::flat_atomic_smin_x2;
          break;
       case nir_intrinsic_global_atomic_umin:
+      case nir_intrinsic_global_atomic_umin_amd:
          op32 = global ? aco_opcode::global_atomic_umin : aco_opcode::flat_atomic_umin;
          op64 = global ? aco_opcode::global_atomic_umin_x2 : aco_opcode::flat_atomic_umin_x2;
          break;
       case nir_intrinsic_global_atomic_imax:
+      case nir_intrinsic_global_atomic_imax_amd:
          op32 = global ? aco_opcode::global_atomic_smax : aco_opcode::flat_atomic_smax;
          op64 = global ? aco_opcode::global_atomic_smax_x2 : aco_opcode::flat_atomic_smax_x2;
          break;
       case nir_intrinsic_global_atomic_umax:
+      case nir_intrinsic_global_atomic_umax_amd:
          op32 = global ? aco_opcode::global_atomic_umax : aco_opcode::flat_atomic_umax;
          op64 = global ? aco_opcode::global_atomic_umax_x2 : aco_opcode::flat_atomic_umax_x2;
          break;
       case nir_intrinsic_global_atomic_and:
+      case nir_intrinsic_global_atomic_and_amd:
          op32 = global ? aco_opcode::global_atomic_and : aco_opcode::flat_atomic_and;
          op64 = global ? aco_opcode::global_atomic_and_x2 : aco_opcode::flat_atomic_and_x2;
          break;
       case nir_intrinsic_global_atomic_or:
+      case nir_intrinsic_global_atomic_or_amd:
          op32 = global ? aco_opcode::global_atomic_or : aco_opcode::flat_atomic_or;
          op64 = global ? aco_opcode::global_atomic_or_x2 : aco_opcode::flat_atomic_or_x2;
          break;
       case nir_intrinsic_global_atomic_xor:
+      case nir_intrinsic_global_atomic_xor_amd:
          op32 = global ? aco_opcode::global_atomic_xor : aco_opcode::flat_atomic_xor;
          op64 = global ? aco_opcode::global_atomic_xor_x2 : aco_opcode::flat_atomic_xor_x2;
          break;
       case nir_intrinsic_global_atomic_exchange:
+      case nir_intrinsic_global_atomic_exchange_amd:
          op32 = global ? aco_opcode::global_atomic_swap : aco_opcode::flat_atomic_swap;
          op64 = global ? aco_opcode::global_atomic_swap_x2 : aco_opcode::flat_atomic_swap_x2;
          break;
       case nir_intrinsic_global_atomic_comp_swap:
+      case nir_intrinsic_global_atomic_comp_swap_amd:
          op32 = global ? aco_opcode::global_atomic_cmpswap : aco_opcode::flat_atomic_cmpswap;
          op64 = global ? aco_opcode::global_atomic_cmpswap_x2 : aco_opcode::flat_atomic_cmpswap_x2;
          break;
       case nir_intrinsic_global_atomic_fmin:
+      case nir_intrinsic_global_atomic_fmin_amd:
          op32 = global ? aco_opcode::global_atomic_fmin : aco_opcode::flat_atomic_fmin;
          op64 = global ? aco_opcode::global_atomic_fmin_x2 : aco_opcode::flat_atomic_fmin_x2;
          break;
       case nir_intrinsic_global_atomic_fmax:
+      case nir_intrinsic_global_atomic_fmax_amd:
          op32 = global ? aco_opcode::global_atomic_fmax : aco_opcode::flat_atomic_fmax;
          op64 = global ? aco_opcode::global_atomic_fmax_x2 : aco_opcode::flat_atomic_fmax_x2;
          break;
@@ -6648,11 +6801,13 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       aco_opcode op = instr->dest.ssa.bit_size == 32 ? op32 : op64;
       aco_ptr<FLAT_instruction> flat{create_instruction<FLAT_instruction>(
          op, global ? Format::GLOBAL : Format::FLAT, 3, return_previous ? 1 : 0)};
-      if (global && addr.regClass() == s2) {
-         flat->operands[0] = bld.copy(bld.def(v1), Operand::zero());
+      if (addr.regClass() == s2) {
+         assert(global && offset.id() && offset.type() == RegType::vgpr);
+         flat->operands[0] = Operand(offset);
          flat->operands[1] = Operand(addr);
       } else {
-         flat->operands[0] = Operand(as_vgpr(ctx, addr));
+         assert(addr.type() == RegType::vgpr && !offset.id());
+         flat->operands[0] = Operand(addr);
          flat->operands[1] = Operand(s1);
       }
       flat->operands[2] = Operand(data);
@@ -6660,7 +6815,8 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
          flat->definitions[0] = Definition(dst);
       flat->glc = return_previous;
       flat->dlc = false; /* Not needed for atomics */
-      flat->offset = 0;
+      assert(global || !const_offset);
+      flat->offset = const_offset;
       flat->disable_wqm = true;
       flat->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
       ctx->program->needs_exact = true;
@@ -6670,50 +6826,62 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       switch (instr->intrinsic) {
       case nir_intrinsic_global_atomic_add:
+      case nir_intrinsic_global_atomic_add_amd:
          op32 = aco_opcode::buffer_atomic_add;
          op64 = aco_opcode::buffer_atomic_add_x2;
          break;
       case nir_intrinsic_global_atomic_imin:
+      case nir_intrinsic_global_atomic_imin_amd:
          op32 = aco_opcode::buffer_atomic_smin;
          op64 = aco_opcode::buffer_atomic_smin_x2;
          break;
       case nir_intrinsic_global_atomic_umin:
+      case nir_intrinsic_global_atomic_umin_amd:
          op32 = aco_opcode::buffer_atomic_umin;
          op64 = aco_opcode::buffer_atomic_umin_x2;
          break;
       case nir_intrinsic_global_atomic_imax:
+      case nir_intrinsic_global_atomic_imax_amd:
          op32 = aco_opcode::buffer_atomic_smax;
          op64 = aco_opcode::buffer_atomic_smax_x2;
          break;
       case nir_intrinsic_global_atomic_umax:
+      case nir_intrinsic_global_atomic_umax_amd:
          op32 = aco_opcode::buffer_atomic_umax;
          op64 = aco_opcode::buffer_atomic_umax_x2;
          break;
       case nir_intrinsic_global_atomic_and:
+      case nir_intrinsic_global_atomic_and_amd:
          op32 = aco_opcode::buffer_atomic_and;
          op64 = aco_opcode::buffer_atomic_and_x2;
          break;
       case nir_intrinsic_global_atomic_or:
+      case nir_intrinsic_global_atomic_or_amd:
          op32 = aco_opcode::buffer_atomic_or;
          op64 = aco_opcode::buffer_atomic_or_x2;
          break;
       case nir_intrinsic_global_atomic_xor:
+      case nir_intrinsic_global_atomic_xor_amd:
          op32 = aco_opcode::buffer_atomic_xor;
          op64 = aco_opcode::buffer_atomic_xor_x2;
          break;
       case nir_intrinsic_global_atomic_exchange:
+      case nir_intrinsic_global_atomic_exchange_amd:
          op32 = aco_opcode::buffer_atomic_swap;
          op64 = aco_opcode::buffer_atomic_swap_x2;
          break;
       case nir_intrinsic_global_atomic_comp_swap:
+      case nir_intrinsic_global_atomic_comp_swap_amd:
          op32 = aco_opcode::buffer_atomic_cmpswap;
          op64 = aco_opcode::buffer_atomic_cmpswap_x2;
          break;
       case nir_intrinsic_global_atomic_fmin:
+      case nir_intrinsic_global_atomic_fmin_amd:
          op32 = aco_opcode::buffer_atomic_fmin;
          op64 = aco_opcode::buffer_atomic_fmin_x2;
          break;
       case nir_intrinsic_global_atomic_fmax:
+      case nir_intrinsic_global_atomic_fmax_amd:
          op32 = aco_opcode::buffer_atomic_fmax;
          op64 = aco_opcode::buffer_atomic_fmax_x2;
          break;
@@ -6730,13 +6898,13 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
          create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, return_previous ? 1 : 0)};
       mubuf->operands[0] = Operand(rsrc);
       mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
-      mubuf->operands[2] = Operand::zero();
+      mubuf->operands[2] = Operand(offset);
       mubuf->operands[3] = Operand(data);
       if (return_previous)
          mubuf->definitions[0] = Definition(dst);
       mubuf->glc = return_previous;
       mubuf->dlc = false;
-      mubuf->offset = 0;
+      mubuf->offset = const_offset;
       mubuf->addr64 = addr.type() == RegType::vgpr;
       mubuf->disable_wqm = true;
       mubuf->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
@@ -7910,12 +8078,14 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_bindless_image_samples: visit_image_samples(ctx, instr); break;
    case nir_intrinsic_load_ssbo: visit_load_ssbo(ctx, instr); break;
    case nir_intrinsic_store_ssbo: visit_store_ssbo(ctx, instr); break;
-   case nir_intrinsic_load_global_constant:
-   case nir_intrinsic_load_global: visit_load_global(ctx, instr); break;
    case nir_intrinsic_load_buffer_amd: visit_load_buffer(ctx, instr); break;
    case nir_intrinsic_store_buffer_amd: visit_store_buffer(ctx, instr); break;
    case nir_intrinsic_load_smem_amd: visit_load_smem(ctx, instr); break;
-   case nir_intrinsic_store_global: visit_store_global(ctx, instr); break;
+   case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant:
+   case nir_intrinsic_load_global_amd: visit_load_global(ctx, instr); break;
+   case nir_intrinsic_store_global:
+   case nir_intrinsic_store_global_amd: visit_store_global(ctx, instr); break;
    case nir_intrinsic_global_atomic_add:
    case nir_intrinsic_global_atomic_imin:
    case nir_intrinsic_global_atomic_umin:
@@ -7927,7 +8097,19 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_global_atomic_exchange:
    case nir_intrinsic_global_atomic_comp_swap:
    case nir_intrinsic_global_atomic_fmin:
-   case nir_intrinsic_global_atomic_fmax: visit_global_atomic(ctx, instr); break;
+   case nir_intrinsic_global_atomic_fmax:
+   case nir_intrinsic_global_atomic_add_amd:
+   case nir_intrinsic_global_atomic_imin_amd:
+   case nir_intrinsic_global_atomic_umin_amd:
+   case nir_intrinsic_global_atomic_imax_amd:
+   case nir_intrinsic_global_atomic_umax_amd:
+   case nir_intrinsic_global_atomic_and_amd:
+   case nir_intrinsic_global_atomic_or_amd:
+   case nir_intrinsic_global_atomic_xor_amd:
+   case nir_intrinsic_global_atomic_exchange_amd:
+   case nir_intrinsic_global_atomic_comp_swap_amd:
+   case nir_intrinsic_global_atomic_fmin_amd:
+   case nir_intrinsic_global_atomic_fmax_amd: visit_global_atomic(ctx, instr); break;
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:
