@@ -1007,79 +1007,6 @@ _mesa_alloc_dispatch_table(bool glthread)
    return table;
 }
 
-/**
- * Creates a minimal dispatch table for use within glBegin()/glEnd().
- *
- * This ensures that we generate GL_INVALID_OPERATION errors from most
- * functions, since the set of functions that are valid within Begin/End is
- * very small.
- *
- * From the GL 1.0 specification section 2.6.3, "GL Commands within
- * Begin/End"
- *
- *     "The only GL commands that are allowed within any Begin/End pairs are
- *      the commands for specifying vertex coordinates, vertex color, normal
- *      coordinates, and texture coordinates (Vertex, Color, Index, Normal,
- *      TexCoord), EvalCoord and EvalPoint commands (see section 5.1),
- *      commands for specifying lighting material parameters (Material
- *      commands see section 2.12.2), display list invocation commands
- *      (CallList and CallLists see section 5.4), and the EdgeFlag
- *      command. Executing Begin after Begin has already been executed but
- *      before an End is issued generates the INVALID OPERATION error, as does
- *      executing End without a previous corresponding Begin. Executing any
- *      other GL command within Begin/End results in the error INVALID
- *      OPERATION."
- *
- * The table entries for specifying vertex attributes are set up by
- * install_vtxfmt(), and End() and dlists
- * are set by install_vtxfmt() as well.
- */
-static struct _glapi_table *
-create_beginend_table(const struct gl_context *ctx)
-{
-   struct _glapi_table *table;
-
-   table = _mesa_alloc_dispatch_table(false);
-   if (!table)
-      return NULL;
-
-   /* Fill in functions which return a value, since they should return some
-    * specific value even if they emit a GL_INVALID_OPERATION error from them
-    * being called within glBegin()/glEnd().
-    */
-#define COPY_DISPATCH(func) SET_##func(table, GET_##func(ctx->Exec))
-
-   COPY_DISPATCH(GenLists);
-   COPY_DISPATCH(IsProgram);
-   COPY_DISPATCH(IsVertexArray);
-   COPY_DISPATCH(IsBuffer);
-   COPY_DISPATCH(IsEnabled);
-   COPY_DISPATCH(IsEnabledi);
-   COPY_DISPATCH(IsRenderbuffer);
-   COPY_DISPATCH(IsFramebuffer);
-   COPY_DISPATCH(CheckFramebufferStatus);
-   COPY_DISPATCH(RenderMode);
-   COPY_DISPATCH(GetString);
-   COPY_DISPATCH(GetStringi);
-   COPY_DISPATCH(GetPointerv);
-   COPY_DISPATCH(IsQuery);
-   COPY_DISPATCH(IsSampler);
-   COPY_DISPATCH(IsSync);
-   COPY_DISPATCH(IsTexture);
-   COPY_DISPATCH(IsTransformFeedback);
-   COPY_DISPATCH(DeleteQueries);
-   COPY_DISPATCH(AreTexturesResident);
-   COPY_DISPATCH(FenceSync);
-   COPY_DISPATCH(ClientWaitSync);
-   COPY_DISPATCH(MapBuffer);
-   COPY_DISPATCH(UnmapBuffer);
-   COPY_DISPATCH(MapBufferRange);
-   COPY_DISPATCH(ObjectPurgeableAPPLE);
-   COPY_DISPATCH(ObjectUnpurgeableAPPLE);
-
-   return table;
-}
-
 void
 _mesa_initialize_dispatch_tables(struct gl_context *ctx)
 {
@@ -1215,7 +1142,7 @@ _mesa_initialize_context(struct gl_context *ctx,
 
    switch (ctx->API) {
    case API_OPENGL_COMPAT:
-      ctx->BeginEnd = create_beginend_table(ctx);
+      ctx->BeginEnd = _mesa_alloc_dispatch_table(false);
       ctx->Save = _mesa_alloc_dispatch_table(false);
       if (!ctx->BeginEnd || !ctx->Save)
          goto fail;
