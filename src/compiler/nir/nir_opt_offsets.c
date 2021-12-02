@@ -128,9 +128,16 @@ process_instr(nir_builder *b, nir_instr *instr, void *s)
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    switch (intrin->intrinsic) {
+      /* Note that while it's tempting to include nir_intrinsic_load_uniform
+       * here, freedreno doesn't want that because it can have to move the base
+       * back to a register plus a small constant offset, and it's not clever
+       * enough to minimize the code that that emits.
+       */
    case nir_intrinsic_load_shared:
+   case nir_intrinsic_load_shared_ir3:
       return try_fold_load_store(b, intrin, state, 0);
    case nir_intrinsic_store_shared:
+   case nir_intrinsic_store_shared_ir3:
       return try_fold_load_store(b, intrin, state, 1);
    case nir_intrinsic_load_buffer_amd:
       return try_fold_load_store(b, intrin, state, 1);
