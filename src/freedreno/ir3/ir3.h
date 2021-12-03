@@ -152,6 +152,12 @@ struct ir3_register {
        * corner cases such as destinations of atomic instructions.
        */
       IR3_REG_UNUSED = 0x40000,
+
+      /* "Early-clobber" on a destination means that the destination is
+       * (potentially) written before any sources are read and therefore
+       * interferes with the sources of the instruction.
+       */
+      IR3_REG_EARLY_CLOBBER = 0x80000,
    } flags;
 
    unsigned name;

@@ -1033,15 +1033,17 @@ handle_instr(struct ra_spill_ctx *ctx, struct ir3_instruction *instr)
          insert_src(ctx, src);
    }
 
-   /* Handle tied destinations. If a destination is tied to a source and that
-    * source is live-through, then we need to allocate a new register for the
-    * destination which is live-through itself and cannot overlap the
+   /* Handle tied and early-kill destinations. If a destination is tied to a
+    * source and that source is live-through, then we need to allocate a new
+    * register for the destination which is live-through itself and cannot
+    * overlap the sources. Similarly early-kill destinations cannot overlap
     * sources.
     */
 
    ra_foreach_dst (dst, instr) {
       struct ir3_register *tied_src = dst->tied;
-      if (tied_src && !(tied_src->flags & IR3_REG_FIRST_KILL))
+      if ((tied_src && !(tied_src->flags & IR3_REG_FIRST_KILL)) ||
+          (dst->flags & IR3_REG_EARLY_CLOBBER))
          insert_dst(ctx, dst);
    }
 

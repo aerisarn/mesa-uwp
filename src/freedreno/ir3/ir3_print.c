@@ -244,6 +244,9 @@ print_reg_name(struct log_stream *stream, struct ir3_instruction *instr,
    if (reg->flags & IR3_REG_R)
       mesa_log_stream_printf(stream, "(r)");
 
+   if (reg->flags & IR3_REG_EARLY_CLOBBER)
+      mesa_log_stream_printf(stream, "(early_clobber)");
+
    /* Right now all instructions that use tied registers only have one
     * destination register, so we can just print (tied) as if it's a flag,
     * although it's more convenient for RA if it's a pointer.
