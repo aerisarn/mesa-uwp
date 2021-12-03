@@ -58,6 +58,7 @@ include:
   - local: 'src/gallium/drivers/iris/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/lima/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/llvmpipe/ci/gitlab-ci.yml'
+  - local: 'src/gallium/drivers/nouveau/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/radeonsi/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/softpipe/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/virgl/ci/gitlab-ci.yml'
@@ -75,6 +76,7 @@ stages:
   - build-misc
   - amd
   - intel
+  - nouveau
   - arm
   - broadcom
   - freedreno

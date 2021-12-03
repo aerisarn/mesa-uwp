@@ -179,7 +179,7 @@ else
         --flakes $INSTALL/$GPU_VERSION-flakes.txt \
         --testlog-to-xml /deqp/executor/testlog-to-xml \
         --fraction-start $CI_NODE_INDEX \
-        --fraction $CI_NODE_TOTAL \
+        --fraction `expr $CI_NODE_TOTAL \* ${DEQP_FRACTION:-1}` \
         --jobs ${FDO_CI_CONCURRENT:-4} \
 	$DEQP_RUNNER_OPTIONS
 fi

@@ -227,6 +227,24 @@
       when: manual
     - when: never
 
+.nouveau-rules:
+  stage: nouveau
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+      - src/nouveau/**/*
+      - src/gallium/drivers/nouveau/**/*
+      - src/gallium/winsys/kmsro/**/*
+      - src/gallium/winsys/nouveau/**/*
+      when: on_success
+    - when: never
+
 .panfrost-midgard-rules:
   stage: arm
   rules:
