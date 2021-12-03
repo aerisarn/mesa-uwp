@@ -5865,9 +5865,10 @@ get_sampler_desc(isel_context* ctx, nir_deref_instr* deref_instr,
    if (!index_set) {
       off = bld.copy(bld.def(s1), Operand::c32(offset));
    } else {
-      off = Operand(
-         (Temp)bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand::c32(offset),
-                        bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand::c32(stride), index)));
+      off = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand::c32(stride), index);
+      if (offset)
+         off = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand::c32(offset),
+                        off);
    }
 
    Temp res = bld.smem(opcode, bld.def(type), list, off);
