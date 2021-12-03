@@ -717,7 +717,8 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
             info->colors_written |= 1 << semantic_index;
             break;
          case TGSI_SEMANTIC_STENCIL:
-            info->writes_stencil = true;
+            if (!variable->data.fb_fetch_output)
+               info->writes_stencil = true;
             break;
          case TGSI_SEMANTIC_SAMPLEMASK:
             info->writes_samplemask = true;
@@ -726,10 +727,12 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
             info->writes_edgeflag = true;
             break;
          case TGSI_SEMANTIC_POSITION:
-            if (info->processor == PIPE_SHADER_FRAGMENT)
-               info->writes_z = true;
-            else
+            if (info->processor == PIPE_SHADER_FRAGMENT) {
+               if (!variable->data.fb_fetch_output)
+                  info->writes_z = true;
+            } else {
                info->writes_position = true;
+            }
             break;
          }
 
