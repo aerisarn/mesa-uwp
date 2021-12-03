@@ -4,74 +4,6 @@ dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
 
-# "../src/compiler/glsl/ir.cpp:534: ir_expression::ir_expression(int, ir_rvalue*, ir_rvalue*): Assertion `op0->type == op1->type' failed."
-# in lower_instructions_visitor::extract_to_shifts().
-# This GLSL path would be avoided if we had ARB_gpu_shader5.
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.int_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.int_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.int_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.int_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec2_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec2_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec2_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec2_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec3_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec3_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec3_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec3_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec4_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec4_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec4_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.ivec4_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uint_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uint_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uint_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uint_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec2_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec2_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec2_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec2_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec3_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec3_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec3_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec3_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec4_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec4_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec4_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldextract.uvec4_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.int_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.int_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.int_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.int_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec2_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec2_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec2_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec2_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec3_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec3_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec3_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec3_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec4_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec4_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec4_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.ivec4_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uint_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uint_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uint_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uint_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec2_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec2_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec2_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec2_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec3_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec3_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec3_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec3_mediump_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec4_lowp_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec4_lowp_fragment,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec4_mediump_compute,Crash
-dEQP-GLES31.functional.shaders.builtin_functions.integer.bitfieldinsert.uvec4_mediump_fragment,Crash
-
 dEQP-GLES31.functional.ubo.random.all_per_block_buffers.20,Fail
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner,Fail
@@ -145,6 +77,10 @@ KHR-GLES31.core.layout_binding.sampler3D_layout_binding_texture_ComputeShader,Fa
 
 # msm 900000.mdss: [drm:a5xx_irq] *ERROR* gpu fault ring 0 fence 2c54ef status E40801C1 rb 0162/0162 ib1 000000000104B000/0000 ib2 000000000104C000/0000
 KHR-GLES31.core.texture_buffer.texture_buffer_atomic_functions,Fail
+
+# Seems to be applying clamp_to_edge at the wrong time?
+KHR-GLES31.core.gpu_shader5.texture_gather_offset_color_clamp_to_edge,Fail
+KHR-GLES31.core.gpu_shader5.texture_gather_offset_depth_clamp_edge,Fail
 
 # Many failures, across formats
 KHR-GLES3.copy_tex_image_conversions.required.cubemap_posx_cubemap_posx,Fail

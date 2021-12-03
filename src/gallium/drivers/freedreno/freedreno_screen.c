@@ -334,11 +334,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
          return 120;
 
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
-      /* we can probably enable 320 for a5xx too, but need to test: */
-      if (is_a6xx(screen))
+      if (is_a5xx(screen) || is_a6xx(screen))
          return 320;
-      if (is_a5xx(screen))
-         return 310;
       if (is_ir3(screen))
          return 300;
       return 120;
