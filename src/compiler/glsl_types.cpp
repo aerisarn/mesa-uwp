@@ -983,7 +983,10 @@ glsl_type::get_texture_instance(enum glsl_sampler_dim dim,
       case GLSL_SAMPLER_DIM_SUBPASS_MS:
          return subpassInputMS_type;
       case GLSL_SAMPLER_DIM_EXTERNAL:
-         return error_type;
+         if (array)
+            return error_type;
+         else
+            return textureExternalOES_type;
       }
    case GLSL_TYPE_INT:
       switch (dim) {
