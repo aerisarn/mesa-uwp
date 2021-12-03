@@ -67,7 +67,7 @@ isl_gfx7_choose_msaa_layout(const struct isl_device *dev,
    assert(tiling != ISL_TILING_LINEAR);
 
    if (!isl_format_supports_multisampling(dev->info, info->format))
-      return false;
+      return notify_failure(info, "format does not support msaa");
 
    /* From the Ivybridge PRM, Volume 4 Part 1 p73, SURFACE_STATE, Number of
     * Multisamples:
@@ -79,9 +79,9 @@ isl_gfx7_choose_msaa_layout(const struct isl_device *dev,
     *      Min LOD, Mip Count / LOD, and Resource Min LOD must be set to zero
     */
    if (info->dim != ISL_SURF_DIM_2D)
-      return false;
+      return notify_failure(info, "msaa only supported on 2D surfaces");
    if (info->levels > 1)
-      return false;
+      return notify_failure(info, "msaa not supported with LOD > 1");
 
    /* The Ivyrbridge PRM insists twice that signed integer formats cannot be
     * multisampled.
@@ -107,8 +107,10 @@ isl_gfx7_choose_msaa_layout(const struct isl_device *dev,
     */
 
    /* Multisampling requires vertical alignment of four. */
-   if (info->samples > 1 && gfx7_format_needs_valign2(dev, info->format))
-      return false;
+   if (info->samples > 1 && gfx7_format_needs_valign2(dev, info->format)) {
+      return notify_failure(info, "msaa requires vertical alignment of four, "
+                                  "but format requires vertical alignment of two");
+   }
 
    /* From the Ivybridge PRM, Volume 4 Part 1 p72, SURFACE_STATE, Multisampled
     * Surface Storage Format:
@@ -161,7 +163,7 @@ isl_gfx7_choose_msaa_layout(const struct isl_device *dev,
       require_interleaved = true;
 
    if (require_array && require_interleaved)
-      return false;
+      return notify_failure(info, "cannot require array & interleaved msaa layouts");
 
    if (require_interleaved) {
       *msaa_layout = ISL_MSAA_LAYOUT_INTERLEAVED;
