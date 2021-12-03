@@ -85,11 +85,11 @@ static const struct vk_instance_extension_table instance_extensions = {
    .KHR_device_group_creation           = true,
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
    .KHR_display                         = true,
+   .KHR_get_display_properties2         = true,
 #endif
    .KHR_external_fence_capabilities     = true,
    .KHR_external_memory_capabilities    = true,
    .KHR_external_semaphore_capabilities = true,
-   .KHR_get_display_properties2         = true,
    .KHR_get_physical_device_properties2 = true,
 #ifdef V3DV_HAS_SURFACE
    .KHR_get_surface_capabilities2       = true,
