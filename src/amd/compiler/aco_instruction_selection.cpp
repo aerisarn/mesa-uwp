@@ -4468,7 +4468,7 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
    return val;
 }
 
-const EmitLoadParameters global_load_params{global_load_callback, true, true, 1};
+const EmitLoadParameters global_load_params{global_load_callback, true, true, UINT32_MAX};
 
 Temp
 load_lds(isel_context* ctx, unsigned elem_size_bytes, unsigned num_components, Temp dst,
