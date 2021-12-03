@@ -1707,10 +1707,12 @@ emit_frag_end(struct v3d_compile *c)
                 c->s->info.fs.early_fragment_tests = true;
         }
 
-        /* By default, the FEP will perform early fragment tests. This can be
-         * disabled when needed (Z writes from shader, discards, etc), by
-         * setting c->writes_z to True, in which case, the QPUs need to write
-         * the Z value.
+        /* By default, Z buffer writes are implicit using the Z values produced
+         * from FEP (Z value produced from rasterization). When this is not
+         * desirable (shader writes Z explicitly, has discards, etc) we need
+         * to let the hardware know by setting c->writes_z to true, in which
+         * case we always need to write a Z value from the QPU, even if it is
+         * just the passthrough Z value produced from FEP.
          *
          * Also, from the V3D 4.2 spec:
          *
