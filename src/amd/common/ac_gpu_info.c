@@ -1164,6 +1164,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->has_gds_ordered_append = info->chip_class >= GFX7 && info->drm_minor >= 29;
 
+   info->has_stable_pstate = info->drm_minor >= 45;
+
    if (info->chip_class >= GFX9 && info->has_graphics) {
       unsigned pc_lines = 0;
 
@@ -1394,6 +1396,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_2d_tiling = %u\n", info->has_2d_tiling);
    fprintf(f, "    has_read_registers_query = %u\n", info->has_read_registers_query);
    fprintf(f, "    has_gds_ordered_append = %u\n", info->has_gds_ordered_append);
+   fprintf(f, "    has_stable_pstate = %u\n", info->has_stable_pstate);
    fprintf(f, "    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);
    fprintf(f, "    mid_command_buffer_preemption_enabled = %u\n",
            info->mid_command_buffer_preemption_enabled);
