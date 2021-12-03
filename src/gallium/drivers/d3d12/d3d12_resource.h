@@ -54,6 +54,8 @@ struct d3d12_transfer {
    struct threaded_transfer base;
    struct pipe_resource *staging_res;
    void *data;
+   unsigned zs_cpu_copy_stride;
+   unsigned zs_cpu_copy_layer_stride;
 };
 
 static inline struct d3d12_resource *
