@@ -808,13 +808,54 @@ fs_visitor::emit_single_fb_write(const fs_builder &bld,
 }
 
 void
+fs_visitor::do_emit_fb_writes(int nr_color_regions, bool replicate_alpha)
+{
+   fs_inst *inst = NULL;
+
+   for (int target = 0; target < nr_color_regions; target++) {
+      /* Skip over outputs that weren't written. */
+      if (this->outputs[target].file == BAD_FILE)
+         continue;
+
+      const fs_builder abld = bld.annotate(
+         ralloc_asprintf(this->mem_ctx, "FB write target %d", target));
+
+      fs_reg src0_alpha;
+      if (devinfo->ver >= 6 && replicate_alpha && target != 0)
+         src0_alpha = offset(outputs[0], bld, 3);
+
+      inst = emit_single_fb_write(abld, this->outputs[target],
+                                  this->dual_src_output, src0_alpha, 4);
+      inst->target = target;
+   }
+
+   if (inst == NULL) {
+      /* Even if there's no color buffers enabled, we still need to send
+       * alpha out the pipeline to our null renderbuffer to support
+       * alpha-testing, alpha-to-coverage, and so on.
+       */
+      /* FINISHME: Factor out this frequently recurring pattern into a
+       * helper function.
+       */
+      const fs_reg srcs[] = { reg_undef, reg_undef,
+                              reg_undef, offset(this->outputs[0], bld, 3) };
+      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD, 4);
+      bld.LOAD_PAYLOAD(tmp, srcs, 4, 0);
+
+      inst = emit_single_fb_write(bld, tmp, reg_undef, reg_undef, 4);
+      inst->target = 0;
+   }
+
+   inst->last_rt = true;
+   inst->eot = true;
+}
+
+void
 fs_visitor::emit_fb_writes()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
    brw_wm_prog_key *key = (brw_wm_prog_key*) this->key;
-
-   fs_inst *inst = NULL;
 
    if (source_depth_to_render_target && devinfo->ver == 6) {
       /* For outputting oDepth on gfx6, SIMD8 writes have to be used.  This
@@ -843,46 +884,9 @@ fs_visitor::emit_fb_writes()
       (key->nr_color_regions > 1 && key->alpha_to_coverage &&
        (sample_mask.file == BAD_FILE || devinfo->ver == 6));
 
-   for (int target = 0; target < key->nr_color_regions; target++) {
-      /* Skip over outputs that weren't written. */
-      if (this->outputs[target].file == BAD_FILE)
-         continue;
-
-      const fs_builder abld = bld.annotate(
-         ralloc_asprintf(this->mem_ctx, "FB write target %d", target));
-
-      fs_reg src0_alpha;
-      if (devinfo->ver >= 6 && replicate_alpha && target != 0)
-         src0_alpha = offset(outputs[0], bld, 3);
-
-      inst = emit_single_fb_write(abld, this->outputs[target],
-                                  this->dual_src_output, src0_alpha, 4);
-      inst->target = target;
-   }
-
    prog_data->dual_src_blend = (this->dual_src_output.file != BAD_FILE &&
                                 this->outputs[0].file != BAD_FILE);
    assert(!prog_data->dual_src_blend || key->nr_color_regions == 1);
-
-   if (inst == NULL) {
-      /* Even if there's no color buffers enabled, we still need to send
-       * alpha out the pipeline to our null renderbuffer to support
-       * alpha-testing, alpha-to-coverage, and so on.
-       */
-      /* FINISHME: Factor out this frequently recurring pattern into a
-       * helper function.
-       */
-      const fs_reg srcs[] = { reg_undef, reg_undef,
-                              reg_undef, offset(this->outputs[0], bld, 3) };
-      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD, 4);
-      bld.LOAD_PAYLOAD(tmp, srcs, 4, 0);
-
-      inst = emit_single_fb_write(bld, tmp, reg_undef, reg_undef, 4);
-      inst->target = 0;
-   }
-
-   inst->last_rt = true;
-   inst->eot = true;
 
    if (devinfo->ver >= 11 && devinfo->ver <= 12 &&
        prog_data->dual_src_blend) {
@@ -900,6 +904,8 @@ fs_visitor::emit_fb_writes()
       limit_dispatch_width(8, "Dual source blending unsupported "
                            "in SIMD16 and SIMD32 modes.\n");
    }
+
+   do_emit_fb_writes(key->nr_color_regions, replicate_alpha);
 }
 
 void
