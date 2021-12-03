@@ -407,7 +407,7 @@ fs_visitor::emit_interpolation_setup_gfx6()
          abld.exec_all().group(MIN2(16, dispatch_width) * 2, 0);
 
       check_dynamic_msaa_flag(dbld, wm_prog_data,
-                              BRW_WM_MSAA_FLAG_COARSE_DISPATCH);
+                              BRW_WM_MSAA_FLAG_COARSE_RT_WRITES);
 
       int_pixel_offset_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
       set_predicate(BRW_PREDICATE_NORMAL,

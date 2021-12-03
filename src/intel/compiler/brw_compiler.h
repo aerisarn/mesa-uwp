@@ -865,10 +865,17 @@ enum brw_wm_msaa_flags {
 
    /** True if this shader has been dispatched coarse
     *
-    * This is intentionally chose to be bit 18 to correspond to the coarse
-    * write bit in the FB write message descriptor.
+    * This is intentionally chose to be bit 15 to correspond to the coarse bit
+    * in the pixel interpolator messages.
     */
-   BRW_WM_MSAA_FLAG_COARSE_DISPATCH = (1 << 18),
+   BRW_WM_MSAA_FLAG_COARSE_PI_MSG = (1 << 15),
+
+   /** True if this shader has been dispatched coarse
+    *
+    * This is intentionally chose to be bit 18 to correspond to the coarse bit
+    * in the render target messages.
+    */
+   BRW_WM_MSAA_FLAG_COARSE_RT_WRITES = (1 << 18),
 };
 MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(enum brw_wm_msaa_flags)
 
@@ -1154,12 +1161,12 @@ brw_wm_prog_data_is_coarse(const struct brw_wm_prog_data *prog_data,
                            enum brw_wm_msaa_flags pushed_msaa_flags)
 {
    if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_ENABLE_DYNAMIC) {
-      if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_COARSE_DISPATCH)
+      if (pushed_msaa_flags & BRW_WM_MSAA_FLAG_COARSE_RT_WRITES)
          assert(prog_data->coarse_pixel_dispatch != BRW_NEVER);
       else
          assert(prog_data->coarse_pixel_dispatch != BRW_ALWAYS);
 
-      return pushed_msaa_flags & BRW_WM_MSAA_FLAG_COARSE_DISPATCH;
+      return pushed_msaa_flags & BRW_WM_MSAA_FLAG_COARSE_RT_WRITES;
    }
 
    assert(prog_data->coarse_pixel_dispatch == BRW_ALWAYS ||

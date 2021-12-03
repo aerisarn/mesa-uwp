@@ -1468,7 +1468,7 @@ fs_visitor::emit_shading_rate_setup()
       return rate;
 
    check_dynamic_msaa_flag(abld, wm_prog_data,
-                           BRW_WM_MSAA_FLAG_COARSE_DISPATCH);
+                           BRW_WM_MSAA_FLAG_COARSE_RT_WRITES);
    set_predicate(BRW_PREDICATE_NORMAL, abld.SEL(rate, rate, brw_imm_ud(0)));
 
    return rate;
