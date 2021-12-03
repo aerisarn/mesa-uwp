@@ -769,9 +769,13 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       break;
    }
    case nir_op_bit_count: {
-      // TODO, we need to do this 16b at a time on a5xx+a6xx.. need to
-      // double check on earlier gen's.  Once half-precision support is
-      // in place, this should probably move to a NIR lowering pass:
+      if (ctx->compiler->gen < 5) {
+         dst[0] = ir3_CBITS_B(b, src[0], 0);
+         break;
+      }
+
+      // We need to do this 16b at a time on a5xx+a6xx.  Once half-precision
+      // support is in place, this should probably move to a NIR lowering pass:
       struct ir3_instruction *hi, *lo;
 
       hi = ir3_COV(b, ir3_SHR_B(b, src[0], 0, create_immed(b, 16), 0), TYPE_U32,
