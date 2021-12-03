@@ -3931,6 +3931,12 @@ struct gl_constants
    GLboolean ForceGLSLExtensionsWarn;
 
    /**
+    * Force all shaders to behave as if they were declared with the
+    * compatibility token.
+    */
+   GLboolean ForceCompatShaders;
+
+   /**
     * If non-zero, forces GLSL shaders to behave as if they began
     * with "#version ForceGLSLVersion".
     */

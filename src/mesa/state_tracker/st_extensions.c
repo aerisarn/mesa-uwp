@@ -1189,6 +1189,8 @@ void st_init_extensions(struct pipe_screen *screen,
       consts->ForceGLSLVersion = options->force_glsl_version;
    }
 
+   consts->ForceCompatShaders = options->force_compat_shaders;
+
    consts->AllowExtraPPTokens = options->allow_extra_pp_tokens;
 
    consts->AllowHigherCompatVersion = options->allow_higher_compat_version;

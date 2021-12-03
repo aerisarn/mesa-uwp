@@ -238,6 +238,10 @@
    DRI_CONF_OPT_B(force_compat_profile, def, \
                   "Force an OpenGL compatibility context")
 
+#define DRI_CONF_FORCE_COMPAT_SHADERS(def) \
+   DRI_CONF_OPT_B(force_compat_shaders, def, \
+                  "Force OpenGL compatibility shaders")
+
 #define DRI_CONF_FORCE_DIRECT_GLX_CONTEXT(def) \
    DRI_CONF_OPT_B(force_direct_glx_context, def, \
                   "Force direct GLX context (even if indirect is requested)")

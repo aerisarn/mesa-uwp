@@ -495,6 +495,7 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
       this->language_version = version;
 
    this->compat_shader = compat_token_present ||
+                         this->ctx->Const.ForceCompatShaders ||
                          (this->ctx->API == API_OPENGL_COMPAT &&
                           this->language_version == 140) ||
                          (!this->es_shader && this->language_version < 140);
