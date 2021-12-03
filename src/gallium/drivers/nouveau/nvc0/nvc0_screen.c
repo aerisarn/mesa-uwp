@@ -313,6 +313,10 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CLEAR_SCISSORED:
    case PIPE_CAP_GL_CLAMP:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
+   case PIPE_CAP_TEXRECT:
+   case PIPE_CAP_ALLOW_DYNAMIC_VAO_FASTPATH:
+   case PIPE_CAP_SHAREABLE_SHADERS:
+   case PIPE_CAP_PREFER_BACK_BUFFER_REUSE:
       return 1;
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return nouveau_screen(pscreen)->vram_domain & NOUVEAU_BO_VRAM ? PIPE_TEXTURE_TRANSFER_BLIT : 0;
@@ -363,6 +367,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
+   case PIPE_CAP_VERTEX_ATTRIB_ELEMENT_ALIGNED_ONLY:
    case PIPE_CAP_FAKE_SW_MSAA:
    case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
    case PIPE_CAP_VERTEXID_NOBASE:
@@ -427,6 +432,8 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_NO_CLIP_ON_COPY_TEX:
    case PIPE_CAP_DEVICE_PROTECTED_CONTENT:
    case PIPE_CAP_SAMPLER_REDUCTION_MINMAX_ARB:
+   case PIPE_CAP_DRAW_VERTEX_STATE:
+   case PIPE_CAP_PREFER_POT_ALIGNED_VARYINGS:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
