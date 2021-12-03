@@ -28,7 +28,7 @@
 #include "nir_control_flow.h"
 
 static bool
-lower_loop_continue_block(nir_builder *b, nir_loop *loop)
+lower_loop_continue_block(nir_builder *b, nir_loop *loop, bool *repair_ssa)
 {
    if (!nir_loop_has_continue_construct(loop))
       return false;
@@ -68,6 +68,7 @@ lower_loop_continue_block(nir_builder *b, nir_loop *loop)
                       nir_after_block_before_jump(single_predecessor));
    } else {
       nir_lower_phis_to_regs_block(cont);
+      *repair_ssa = true;
 
       /* As control flow has to re-converge before executing the continue
        * construct, we insert it at the beginning of the loop with a flag
@@ -103,7 +104,7 @@ lower_loop_continue_block(nir_builder *b, nir_loop *loop)
 
 
 static bool
-visit_cf_list(nir_builder *b, struct exec_list *list)
+visit_cf_list(nir_builder *b, struct exec_list *list, bool *repair_ssa)
 {
    bool progress = false;
 
@@ -113,15 +114,15 @@ visit_cf_list(nir_builder *b, struct exec_list *list)
          continue;
       case nir_cf_node_if: {
          nir_if *nif = nir_cf_node_as_if(node);
-         progress |= visit_cf_list(b, &nif->then_list);
-         progress |= visit_cf_list(b, &nif->else_list);
+         progress |= visit_cf_list(b, &nif->then_list, repair_ssa);
+         progress |= visit_cf_list(b, &nif->else_list, repair_ssa);
          break;
       }
       case nir_cf_node_loop: {
          nir_loop *loop = nir_cf_node_as_loop(node);
-         progress |= visit_cf_list(b, &loop->body);
-         progress |= visit_cf_list(b, &loop->continue_list);
-         progress |= lower_loop_continue_block(b, loop);
+         progress |= visit_cf_list(b, &loop->body, repair_ssa);
+         progress |= visit_cf_list(b, &loop->continue_list, repair_ssa);
+         progress |= lower_loop_continue_block(b, loop, repair_ssa);
          break;
       }
       case nir_cf_node_function:
@@ -137,7 +138,8 @@ lower_continue_constructs_impl(nir_function_impl *impl)
 {
    nir_builder b;
    nir_builder_init(&b, impl);
-   bool progress = visit_cf_list(&b, &impl->body);
+   bool repair_ssa = false;
+   bool progress = visit_cf_list(&b, &impl->body, &repair_ssa);
 
    if (progress) {
       nir_metadata_preserve(impl, nir_metadata_none);
@@ -149,7 +151,8 @@ lower_continue_constructs_impl(nir_function_impl *impl)
        * violates the dominance property if instructions in the continue
        * use SSA defs from the loop body.
        */
-      nir_repair_ssa_impl(impl);
+      if (repair_ssa)
+         nir_repair_ssa_impl(impl);
    } else {
       nir_metadata_preserve(impl, nir_metadata_all);
    }
