@@ -2122,16 +2122,38 @@ static LLVMValueRef enter_waterfall_ubo(struct ac_nir_context *ctx, struct water
                           nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM);
 }
 
+static LLVMValueRef get_global_address(struct ac_nir_context *ctx,
+                                       nir_intrinsic_instr *instr,
+                                       LLVMTypeRef type)
+{
+   bool is_store = instr->intrinsic == nir_intrinsic_store_global ||
+                   instr->intrinsic == nir_intrinsic_store_global_amd;
+   LLVMValueRef addr = get_src(ctx, instr->src[is_store ? 1 : 0]);
+
+   LLVMTypeRef ptr_type = LLVMPointerType(type, AC_ADDR_SPACE_GLOBAL);
+
+   if (nir_intrinsic_has_base(instr)) {
+      /* _amd variants */
+      uint32_t base = nir_intrinsic_base(instr);
+      unsigned num_src = nir_intrinsic_infos[instr->intrinsic].num_srcs;
+      LLVMValueRef offset = get_src(ctx, instr->src[num_src - 1]);
+      offset = LLVMBuildAdd(ctx->ac.builder, offset, LLVMConstInt(ctx->ac.i32, base, false), "");
+
+      LLVMTypeRef i8_ptr_type = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_GLOBAL);
+      addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, i8_ptr_type, "");
+      addr = LLVMBuildGEP(ctx->ac.builder, addr, &offset, 1, "");
+      return type == ctx->ac.i8 ? addr : LLVMBuildBitCast(ctx->ac.builder, addr, ptr_type, "");
+   } else {
+      return LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
+   }
+}
+
 static LLVMValueRef visit_load_global(struct ac_nir_context *ctx,
                                       nir_intrinsic_instr *instr)
 {
-   LLVMValueRef addr = get_src(ctx, instr->src[0]);
    LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
    LLVMValueRef val;
-
-   LLVMTypeRef ptr_type = LLVMPointerType(result_type, AC_ADDR_SPACE_GLOBAL);
-
-   addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
+   LLVMValueRef addr = get_global_address(ctx, instr, result_type);
 
    val = LLVMBuildLoad2(ctx->ac.builder, result_type, addr, "");
 
@@ -2152,13 +2174,9 @@ static void visit_store_global(struct ac_nir_context *ctx,
    }
 
    LLVMValueRef data = get_src(ctx, instr->src[0]);
-   LLVMValueRef addr = get_src(ctx, instr->src[1]);
    LLVMTypeRef type = LLVMTypeOf(data);
+   LLVMValueRef addr = get_global_address(ctx, instr, type);
    LLVMValueRef val;
-
-   LLVMTypeRef ptr_type = LLVMPointerType(type, AC_ADDR_SPACE_GLOBAL);
-
-   addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
 
    val = LLVMBuildStore(ctx->ac.builder, data, addr);
 
@@ -2179,7 +2197,6 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
       ac_build_ifcc(&ctx->ac, cond, 7002);
    }
 
-   LLVMValueRef addr = get_src(ctx, instr->src[0]);
    LLVMValueRef data = get_src(ctx, instr->src[1]);
    LLVMAtomicRMWBinOp op;
    LLVMValueRef result;
@@ -2188,21 +2205,25 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
    const char *sync_scope = "singlethread-one-as";
 
    if (instr->intrinsic == nir_intrinsic_global_atomic_fmin ||
-       instr->intrinsic == nir_intrinsic_global_atomic_fmax) {
+       instr->intrinsic == nir_intrinsic_global_atomic_fmax ||
+       instr->intrinsic == nir_intrinsic_global_atomic_fmin_amd ||
+       instr->intrinsic == nir_intrinsic_global_atomic_fmax_amd) {
       data = ac_to_float(&ctx->ac, data);
    }
 
    LLVMTypeRef data_type = LLVMTypeOf(data);
-   LLVMTypeRef ptr_type = LLVMPointerType(data_type, AC_ADDR_SPACE_GLOBAL);
 
-   addr = LLVMBuildIntToPtr(ctx->ac.builder, addr, ptr_type, "");
+   LLVMValueRef addr = get_global_address(ctx, instr, data_type);
 
-   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap) {
+   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap ||
+       instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd) {
       LLVMValueRef data1 = get_src(ctx, instr->src[2]);
       result = ac_build_atomic_cmp_xchg(&ctx->ac, addr, data, data1, sync_scope);
       result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
    } else if (instr->intrinsic == nir_intrinsic_global_atomic_fmin ||
-              instr->intrinsic == nir_intrinsic_global_atomic_fmax) {
+              instr->intrinsic == nir_intrinsic_global_atomic_fmax ||
+              instr->intrinsic == nir_intrinsic_global_atomic_fmin_amd ||
+              instr->intrinsic == nir_intrinsic_global_atomic_fmax_amd) {
       const char *op = instr->intrinsic == nir_intrinsic_global_atomic_fmin ? "fmin" : "fmax";
       char name[64], type[8];
       LLVMValueRef params[2];
@@ -2219,30 +2240,39 @@ static LLVMValueRef visit_global_atomic(struct ac_nir_context *ctx,
    } else {
       switch (instr->intrinsic) {
       case nir_intrinsic_global_atomic_add:
+      case nir_intrinsic_global_atomic_add_amd:
          op = LLVMAtomicRMWBinOpAdd;
          break;
       case nir_intrinsic_global_atomic_umin:
+      case nir_intrinsic_global_atomic_umin_amd:
          op = LLVMAtomicRMWBinOpUMin;
          break;
       case nir_intrinsic_global_atomic_umax:
+      case nir_intrinsic_global_atomic_umax_amd:
          op = LLVMAtomicRMWBinOpUMax;
          break;
       case nir_intrinsic_global_atomic_imin:
+      case nir_intrinsic_global_atomic_imin_amd:
          op = LLVMAtomicRMWBinOpMin;
          break;
       case nir_intrinsic_global_atomic_imax:
+      case nir_intrinsic_global_atomic_imax_amd:
          op = LLVMAtomicRMWBinOpMax;
          break;
       case nir_intrinsic_global_atomic_and:
+      case nir_intrinsic_global_atomic_and_amd:
          op = LLVMAtomicRMWBinOpAnd;
          break;
       case nir_intrinsic_global_atomic_or:
+      case nir_intrinsic_global_atomic_or_amd:
          op = LLVMAtomicRMWBinOpOr;
          break;
       case nir_intrinsic_global_atomic_xor:
+      case nir_intrinsic_global_atomic_xor_amd:
          op = LLVMAtomicRMWBinOpXor;
          break;
       case nir_intrinsic_global_atomic_exchange:
+      case nir_intrinsic_global_atomic_exchange_amd:
          op = LLVMAtomicRMWBinOpXchg;
          break;
       default:
@@ -3718,9 +3748,11 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_amd:
       result = visit_load_global(ctx, instr);
       break;
    case nir_intrinsic_store_global:
+   case nir_intrinsic_store_global_amd:
       visit_store_global(ctx, instr);
       break;
    case nir_intrinsic_global_atomic_add:
@@ -3735,6 +3767,18 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_global_atomic_comp_swap:
    case nir_intrinsic_global_atomic_fmin:
    case nir_intrinsic_global_atomic_fmax:
+   case nir_intrinsic_global_atomic_add_amd:
+   case nir_intrinsic_global_atomic_imin_amd:
+   case nir_intrinsic_global_atomic_umin_amd:
+   case nir_intrinsic_global_atomic_imax_amd:
+   case nir_intrinsic_global_atomic_umax_amd:
+   case nir_intrinsic_global_atomic_and_amd:
+   case nir_intrinsic_global_atomic_or_amd:
+   case nir_intrinsic_global_atomic_xor_amd:
+   case nir_intrinsic_global_atomic_exchange_amd:
+   case nir_intrinsic_global_atomic_comp_swap_amd:
+   case nir_intrinsic_global_atomic_fmin_amd:
+   case nir_intrinsic_global_atomic_fmax_amd:
       result = visit_global_atomic(ctx, instr);
       break;
    case nir_intrinsic_ssbo_atomic_add:
