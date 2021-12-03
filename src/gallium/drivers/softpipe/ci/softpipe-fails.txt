@@ -1309,6 +1309,7 @@ spec@khr_texture_compression_astc@array-gl@5x5 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles,Fail
 spec@khr_texture_compression_astc@array-gles@12x12 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles@5x5 Block Dim,Fail
+spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr@LDR Profile,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb,Fail

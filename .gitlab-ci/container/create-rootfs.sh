@@ -4,6 +4,7 @@ set -ex
 
 if [ $DEBIAN_ARCH = arm64 ]; then
     ARCH_PACKAGES="firmware-qcom-media
+                   firmware-linux-nonfree
                    libfontconfig1
                    libgl1
                    libglu1-mesa
