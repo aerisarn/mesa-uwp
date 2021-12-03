@@ -545,12 +545,15 @@ tu6_emit_xs(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_pvt_mem_hw_stack_offset, 1);
    tu_cs_emit(cs, A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET_OFFSET(pvtmem->per_sp_size));
 
+   uint32_t shader_preload_size =
+      MIN2(xs->instrlen, cs->device->physical_device->info->a6xx.instr_cache_size);
+
    tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3);
    tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
                   CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
                   CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
                   CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
-                  CP_LOAD_STATE6_0_NUM_UNIT(xs->instrlen));
+                  CP_LOAD_STATE6_0_NUM_UNIT(shader_preload_size));
    tu_cs_emit_qw(cs, binary_iova);
 
    /* emit immediates */

@@ -143,12 +143,15 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_PKT4(ring, hw_stack_offset, 1);
    OUT_RING(ring, A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET_OFFSET(per_sp_size));
 
+   uint32_t shader_preload_size =
+      MIN2(so->instrlen, ctx->screen->info->a6xx.instr_cache_size);
+
    OUT_PKT7(ring, fd6_stage2opcode(so->type), 3);
    OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
                      CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
                      CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
                      CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-                     CP_LOAD_STATE6_0_NUM_UNIT(so->instrlen));
+                     CP_LOAD_STATE6_0_NUM_UNIT(shader_preload_size));
    OUT_RELOC(ring, so->bo, 0, 0, 0);
 }
 
