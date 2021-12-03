@@ -354,6 +354,12 @@ if with_tests
     )
   endif
 
+  if with_shader_cache
+    files_util_tests += files(
+      'tests/cache_test.cpp',
+    )
+  endif
+
   test(
     'util_tests',
     executable(
@@ -393,7 +399,6 @@ if with_tests
     env: ['BUILD_FULL_PATH='+process_test_exe_full_path]
   )
 
-  subdir('tests/cache')
   subdir('tests/hash_table')
   subdir('tests/vma')
   subdir('tests/format')
