@@ -841,7 +841,7 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
        */
       *image_align_el = isl_extent3d(4, 4, 1);
       return;
-   } else if (info->format == ISL_FORMAT_HIZ) {
+   } else if (fmtl->txc == ISL_TXC_HIZ) {
       assert(ISL_GFX_VER(dev) >= 6);
       if (ISL_GFX_VER(dev) == 6) {
          /* HiZ surfaces on Sandy Bridge are packed tightly. */
@@ -852,11 +852,42 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
           */
          *image_align_el = isl_extent3d(2, 2, 1);
       } else {
-         /* On gfx12+, HiZ surfaces are always aligned to 16x16 pixels in the
-          * primary surface which works out to 2x4 HiZ elments.
-          * TODO: Verify
+         /* We choose the alignments based on the docs and what we've seen on
+          * prior platforms. From the TGL PRM Vol. 9, "Hierarchical Depth
+          * Buffer":
+          *
+          *    The height and width of the hierarchical depth buffer that must
+          *    be allocated are computed by the following formulas, where HZ
+          *    is the hierarchical depth buffer and Z is the depth buffer. The
+          *    Z_Height, Z_Width, and Z_Depth values given in these formulas
+          *    are those present in 3DSTATE_DEPTH_BUFFER incremented by one.
+          *
+          * The note about 3DSTATE_DEPTH_BUFFER tells us that the dimensions
+          * in the following formula refers to the base level. The key formula
+          * for the horizontal alignment is:
+          *
+          *    HZ_Width (bytes) [=]
+          *    ceiling(Z_Width / 16) * 16
+          *
+          * This type of formula is used when sizing compression blocks. So,
+          * the docs seem to say that the HiZ format has a block width of 16,
+          * and thus, the surface has a minimum horizontal alignment of 16
+          * pixels. This formula hasn't changed from prior platforms (where
+          * we've chosen a horizontal alignment of 16), so we should be on the
+          * right track. As for the vertical alignment, we're told:
+          *
+          *    To compute the minimum QPitch for the HZ surface, the height of
+          *    each LOD in pixels is determined using the equations for hL in
+          *    the GPU Overview volume, using a vertical alignment j=16.
+          *
+          * We're not calculating the QPitch right now, but the vertical
+          * alignment is plainly given as 16 rows in the depth buffer.
+          *
+          * As a result, we believe that HiZ surfaces are aligned to 16x16
+          * pixels in the primary surface. We divide this area by the HiZ
+          * block dimensions to get the alignment in terms of HiZ blocks.
           */
-         *image_align_el = isl_extent3d(2, 4, 1);
+         *image_align_el = isl_extent3d(16 / fmtl->bw, 16 / fmtl->bh, 1);
       }
       return;
    }
