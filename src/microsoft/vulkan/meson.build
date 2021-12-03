@@ -66,7 +66,7 @@ endif
 libvulkan_dzn = shared_library(
   'vulkan_dzn',
   [libdzn_files, dzn_entrypoints, sha1_h],
-  vs_module_defs : 'vulkan_dzn.def',
+  vs_module_defs : vulkan_api_def,
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux,
     inc_compiler, inc_util

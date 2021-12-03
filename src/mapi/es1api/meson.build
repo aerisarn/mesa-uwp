@@ -32,9 +32,19 @@ if with_platform_windows
   _es1_c_args += ['-D_GDI32_', '-DBUILD_GL32']
 endif
 
+gles1_def = custom_target(
+  'gles1.def',
+  input: 'gles1.def.in',
+  output : 'gles1.def',
+  command : [prog_python, gen_vs_module_defs_py,
+             '--in_file', '@INPUT@', '--out_file', '@OUTPUT@',
+             '--compiler_id', cc.get_id(), '--cpu_family', host_machine.cpu_family()]
+)
+
 libglesv1_cm = shared_library(
   'GLESv1_CM' + get_option('gles-lib-suffix'),
   ['../entry.c', es1_glapi_mapi_tmp_h],
+  vs_module_defs : gles1_def,
   c_args : [
     c_msvc_compat_args,
     _es1_c_args,
