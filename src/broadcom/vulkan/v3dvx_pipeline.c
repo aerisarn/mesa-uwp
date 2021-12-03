@@ -471,19 +471,19 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
       shader.number_of_varyings_in_fragment_shader =
          prog_data_fs->num_inputs;
 
-      shader.coordinate_shader_propagate_nans = true;
-      shader.vertex_shader_propagate_nans = true;
-      shader.fragment_shader_propagate_nans = true;
-
       /* Note: see previous note about addresses */
       /* shader.coordinate_shader_code_address */
       /* shader.vertex_shader_code_address */
       /* shader.fragment_shader_code_address */
 
+#if V3D_VERSION == 42
+      shader.coordinate_shader_propagate_nans = true;
+      shader.vertex_shader_propagate_nans = true;
+      shader.fragment_shader_propagate_nans = true;
+
       /* FIXME: Use combined input/output size flag in the common case (also
        * on v3d, see v3dx_draw).
        */
-#if V3D_VERSION == 42
       shader.coordinate_shader_has_separate_input_and_output_vpm_blocks =
          prog_data_vs_bin->separate_segments;
       shader.vertex_shader_has_separate_input_and_output_vpm_blocks =

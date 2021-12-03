@@ -396,7 +396,9 @@ v3d_emit_gs_state_record(struct v3d_job *job,
                         gs_bin->prog_data.gs->base.threads == 4;
                 shader.geometry_bin_mode_shader_start_in_final_thread_section =
                         gs_bin->prog_data.gs->base.single_seg;
+#if V3D_VERSION <= 42
                 shader.geometry_bin_mode_shader_propagate_nans = true;
+#endif
                 shader.geometry_bin_mode_shader_uniforms_address =
                         gs_bin_uniforms;
 
@@ -406,7 +408,9 @@ v3d_emit_gs_state_record(struct v3d_job *job,
                         gs->prog_data.gs->base.threads == 4;
                 shader.geometry_render_mode_shader_start_in_final_thread_section =
                         gs->prog_data.gs->base.single_seg;
+#if V3D_VERSION <= 42
                 shader.geometry_render_mode_shader_propagate_nans = true;
+#endif
                 shader.geometry_render_mode_shader_uniforms_address =
                         gs_render_uniforms;
         }
@@ -657,10 +661,6 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 shader.number_of_varyings_in_fragment_shader =
                         v3d->prog.fs->prog_data.fs->num_inputs;
 
-                shader.coordinate_shader_propagate_nans = true;
-                shader.vertex_shader_propagate_nans = true;
-                shader.fragment_shader_propagate_nans = true;
-
                 shader.coordinate_shader_code_address =
                         cl_address(v3d_resource(v3d->prog.cs->resource)->bo,
                                    v3d->prog.cs->offset);
@@ -671,10 +671,14 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         cl_address(v3d_resource(v3d->prog.fs->resource)->bo,
                                    v3d->prog.fs->offset);
 
+#if V3D_VERSION <= 42
+                shader.coordinate_shader_propagate_nans = true;
+                shader.vertex_shader_propagate_nans = true;
+                shader.fragment_shader_propagate_nans = true;
+
                 /* XXX: Use combined input/output size flag in the common
                  * case.
                  */
-#if V3D_VERSION <= 42
                 shader.coordinate_shader_has_separate_input_and_output_vpm_blocks =
                         v3d->prog.cs->prog_data.vs->separate_segments;
                 shader.vertex_shader_has_separate_input_and_output_vpm_blocks =
