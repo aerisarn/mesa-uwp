@@ -5,9 +5,6 @@ KHR-GL30.shaders30.glsl_constructors.bvec4_from_mat4x3_vs
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4651
 KHR-GL31.transform_feedback.capture_special_interleaved_test
 
-dEQP-GLES31.functional.image_load_store.buffer.image_size.writeonly_12
-dEQP-GLES31.functional.image_load_store.buffer.image_size.readonly_12
-
 dEQP-GLES2.functional.clipping.point.wide_point_clip
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner
