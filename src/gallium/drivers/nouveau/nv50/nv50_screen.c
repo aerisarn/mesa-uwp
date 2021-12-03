@@ -263,7 +263,6 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CLEAR_SCISSORED:
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_COMPUTE:
-   case PIPE_CAP_IMAGE_STORE_FORMATTED:
    case PIPE_CAP_GL_CLAMP:
    case PIPE_CAP_TEXRECT:
    case PIPE_CAP_ALLOW_DYNAMIC_VAO_FASTPATH:
@@ -370,6 +369,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
    case PIPE_CAP_NIR_COMPACT_ARRAYS:
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
+   case PIPE_CAP_IMAGE_STORE_FORMATTED:
    case PIPE_CAP_COMPUTE_SHADER_DERIVATIVES:
    case PIPE_CAP_ATOMIC_FLOAT_MINMAX:
    case PIPE_CAP_CONSERVATIVE_RASTER_INNER_COVERAGE:
