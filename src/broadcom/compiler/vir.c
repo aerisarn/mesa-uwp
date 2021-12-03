@@ -807,6 +807,7 @@ v3d_fs_set_prog_data(struct v3d_compile *c,
 {
         v3d_set_fs_prog_data_inputs(c, prog_data);
         prog_data->writes_z = c->writes_z;
+        prog_data->writes_z_from_fep = c->writes_z_from_fep;
         prog_data->disable_ez = !c->s->info.fs.early_fragment_tests;
         prog_data->uses_center_w = c->uses_center_w;
         prog_data->uses_implicit_point_line_varyings =

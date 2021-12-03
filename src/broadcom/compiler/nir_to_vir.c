@@ -1741,6 +1741,7 @@ emit_frag_end(struct v3d_compile *c)
                         /* Shader doesn't write to gl_FragDepth, take Z from
                          * FEP.
                          */
+                        c->writes_z_from_fep = true;
                         inst = vir_MOV_dest(c, tlbu_reg, vir_nop_reg());
 
                         if (c->devinfo->ver >= 42) {

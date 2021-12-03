@@ -655,6 +655,7 @@ struct v3d_compile {
 
         bool uses_center_w;
         bool writes_z;
+        bool writes_z_from_fep;
         bool reads_z;
         bool uses_implicit_point_line_varyings;
 
@@ -968,6 +969,7 @@ struct v3d_fs_prog_data {
 
         uint8_t num_inputs;
         bool writes_z;
+        bool writes_z_from_fep;
         bool disable_ez;
         bool uses_center_w;
         bool uses_implicit_point_line_varyings;
