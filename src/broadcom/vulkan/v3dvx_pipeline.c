@@ -388,6 +388,7 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
        * shader needs to write the Z value (even just discards).
        */
       shader.fragment_shader_does_z_writes = prog_data_fs->writes_z;
+
       /* Set if the EZ test must be disabled (due to shader side
        * effects and the early_z flag not being present in the
        * shader).

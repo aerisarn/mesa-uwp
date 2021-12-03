@@ -605,6 +605,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                  */
                 shader.fragment_shader_does_z_writes =
                         v3d->prog.fs->prog_data.fs->writes_z;
+
                 /* Set if the EZ test must be disabled (due to shader side
                  * effects and the early_z flag not being present in the
                  * shader).
@@ -879,7 +880,8 @@ v3d_update_job_ez(struct v3d_context *v3d, struct v3d_job *job)
          * the chosen EZ direction (though we could use
          * ARB_conservative_depth's hints to avoid this)
          */
-        if (v3d->prog.fs->prog_data.fs->writes_z) {
+        if (v3d->prog.fs->prog_data.fs->writes_z &&
+            !v3d->prog.fs->prog_data.fs->writes_z_from_fep) {
                 job->ez_state = V3D_EZ_DISABLED;
         }
 
