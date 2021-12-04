@@ -192,7 +192,7 @@ brw_compile_task(const struct brw_compiler *compiler,
 
       v[simd] = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                                &prog_data->base.base, shader, dispatch_width,
-                               -1 /* shader_time_index */, debug_enabled);
+                               debug_enabled);
 
       if (prog_data->base.prog_mask) {
          unsigned first = ffs(prog_data->base.prog_mask) - 1;
@@ -572,7 +572,7 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
       v[simd] = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                                &prog_data->base.base, shader, dispatch_width,
-                               -1 /* shader_time_index */, debug_enabled);
+                               debug_enabled);
 
       if (prog_data->base.prog_mask) {
          unsigned first = ffs(prog_data->base.prog_mask) - 1;

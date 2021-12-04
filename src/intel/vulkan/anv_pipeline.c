@@ -1017,7 +1017,7 @@ anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
    tcs_stage->code = brw_compile_tcs(compiler, device, mem_ctx,
                                      &tcs_stage->key.tcs,
                                      &tcs_stage->prog_data.tcs,
-                                     tcs_stage->nir, -1,
+                                     tcs_stage->nir,
                                      tcs_stage->stats, NULL);
 }
 
@@ -1047,7 +1047,7 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
                                      &tes_stage->key.tes,
                                      &tcs_stage->prog_data.tcs.base.vue_map,
                                      &tes_stage->prog_data.tes,
-                                     tes_stage->nir, -1,
+                                     tes_stage->nir,
                                      tes_stage->stats, NULL);
 }
 
@@ -1076,7 +1076,7 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
    gs_stage->code = brw_compile_gs(compiler, device, mem_ctx,
                                    &gs_stage->key.gs,
                                    &gs_stage->prog_data.gs,
-                                   gs_stage->nir, -1,
+                                   gs_stage->nir,
                                    gs_stage->stats, NULL);
 }
 

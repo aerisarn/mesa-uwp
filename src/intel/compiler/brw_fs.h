@@ -97,14 +97,12 @@ public:
               struct brw_stage_prog_data *prog_data,
               const nir_shader *shader,
               unsigned dispatch_width,
-              int shader_time_index,
               bool debug_enabled);
    fs_visitor(const struct brw_compiler *compiler, void *log_data,
               void *mem_ctx,
               struct brw_gs_compile *gs_compile,
               struct brw_gs_prog_data *prog_data,
               const nir_shader *shader,
-              int shader_time_index,
               bool debug_enabled);
    void init();
    ~fs_visitor();
@@ -336,12 +334,6 @@ public:
 
    void emit_barrier();
 
-   void emit_shader_time_begin();
-   void emit_shader_time_end();
-   void SHADER_TIME_ADD(const brw::fs_builder &bld,
-                        int shader_time_subindex,
-                        fs_reg value);
-
    fs_reg get_timestamp(const brw::fs_builder &bld);
 
    fs_reg interp_reg(int location, int channel);
@@ -430,8 +422,6 @@ public:
 
    const unsigned dispatch_width; /**< 8, 16 or 32 */
    unsigned max_dispatch_width;
-
-   int shader_time_index;
 
    struct shader_stats shader_stats;
 
@@ -552,11 +542,6 @@ private:
                                       struct brw_reg dst,
                                       struct brw_reg x,
                                       struct brw_reg y);
-
-   void generate_shader_time_add(fs_inst *inst,
-                                 struct brw_reg payload,
-                                 struct brw_reg offset,
-                                 struct brw_reg value);
 
    void generate_mov_indirect(fs_inst *inst,
                               struct brw_reg dst,

@@ -58,7 +58,6 @@ static const struct debug_control debug_control[] = {
    { "urb",         DEBUG_URB },
    { "vs",          DEBUG_VS },
    { "clip",        DEBUG_CLIP },
-   { "shader_time", DEBUG_SHADER_TIME },
    { "no16",        DEBUG_NO16 },
    { "blorp",       DEBUG_BLORP },
    { "nodualobj",   DEBUG_NO_DUAL_OBJECT_GS },

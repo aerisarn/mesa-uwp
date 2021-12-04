@@ -395,8 +395,6 @@ enum opcode {
     */
    FS_OPCODE_PACK,
 
-   SHADER_OPCODE_SHADER_TIME_ADD,
-
    /**
     * Typed and untyped surface access opcodes.
     *

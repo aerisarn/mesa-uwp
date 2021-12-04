@@ -1847,47 +1847,6 @@ fs_generator::generate_pack_half_2x16_split(fs_inst *,
 }
 
 void
-fs_generator::generate_shader_time_add(fs_inst *,
-                                       struct brw_reg payload,
-                                       struct brw_reg offset,
-                                       struct brw_reg value)
-{
-   const tgl_swsb swsb = brw_get_default_swsb(p);
-
-   assert(devinfo->ver >= 7);
-   brw_push_insn_state(p);
-   brw_set_default_mask_control(p, true);
-   brw_set_default_swsb(p, tgl_swsb_src_dep(swsb));
-
-   assert(payload.file == BRW_GENERAL_REGISTER_FILE);
-   struct brw_reg payload_offset = retype(brw_vec1_grf(payload.nr, 0),
-                                          offset.type);
-   struct brw_reg payload_value = retype(brw_vec1_grf(payload.nr + 1, 0),
-                                         value.type);
-
-   assert(offset.file == BRW_IMMEDIATE_VALUE);
-   if (value.file == BRW_GENERAL_REGISTER_FILE) {
-      value.width = BRW_WIDTH_1;
-      value.hstride = BRW_HORIZONTAL_STRIDE_0;
-      value.vstride = BRW_VERTICAL_STRIDE_0;
-   } else {
-      assert(value.file == BRW_IMMEDIATE_VALUE);
-   }
-
-   /* Trying to deal with setup of the params from the IR is crazy in the FS8
-    * case, and we don't really care about squeezing every bit of performance
-    * out of this path, so we just emit the MOVs from here.
-    */
-   brw_MOV(p, payload_offset, offset);
-   brw_set_default_swsb(p, tgl_swsb_null());
-   brw_MOV(p, payload_value, value);
-   brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
-   brw_shader_time_add(p, payload,
-                       prog_data->binding_table.shader_time_start);
-   brw_pop_insn_state(p);
-}
-
-void
 fs_generator::enable_debug(const char *shader_name)
 {
    debug_flag = true;
@@ -2457,10 +2416,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       case BRW_OPCODE_HALT:
          generate_halt(inst);
-         break;
-
-      case SHADER_OPCODE_SHADER_TIME_ADD:
-         generate_shader_time_add(inst, src[0], src[1], src[2]);
          break;
 
       case SHADER_OPCODE_INTERLOCK:

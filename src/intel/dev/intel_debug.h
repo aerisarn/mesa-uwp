@@ -59,7 +59,7 @@ extern uint64_t intel_debug;
 #define DEBUG_URB                 (1ull << 11)
 #define DEBUG_VS                  (1ull << 12)
 #define DEBUG_CLIP                (1ull << 13)
-#define DEBUG_SHADER_TIME         (1ull << 14)
+/*                                (1ull << 14) */
 #define DEBUG_BLORP               (1ull << 15)
 #define DEBUG_NO16                (1ull << 16)
 #define DEBUG_NO_DUAL_OBJECT_GS   (1ull << 17)
@@ -93,7 +93,7 @@ extern uint64_t intel_debug;
 #define DEBUG_ANY                 (~0ull)
 
 /* These flags are not compatible with the disk shader cache */
-#define DEBUG_DISK_CACHE_DISABLE_MASK DEBUG_SHADER_TIME
+#define DEBUG_DISK_CACHE_DISABLE_MASK 0
 
 /* These flags may affect program generation */
 #define DEBUG_DISK_CACHE_MASK \

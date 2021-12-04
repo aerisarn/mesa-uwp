@@ -40,10 +40,9 @@ vec4_tcs_visitor::vec4_tcs_visitor(const struct brw_compiler *compiler,
                                    struct brw_tcs_prog_data *prog_data,
                                    const nir_shader *nir,
                                    void *mem_ctx,
-                                   int shader_time_index,
                                    bool debug_enabled)
    : vec4_visitor(compiler, log_data, &key->base.tex, &prog_data->base,
-                  nir, mem_ctx, false, shader_time_index, debug_enabled),
+                  nir, mem_ctx, false, debug_enabled),
      key(key)
 {
 }
@@ -142,9 +141,6 @@ vec4_tcs_visitor::emit_thread_end()
       }
       emit(BRW_OPCODE_ENDIF);
    }
-
-   if (INTEL_DEBUG(DEBUG_SHADER_TIME))
-      emit_shader_time_end();
 
    inst = emit(TCS_OPCODE_THREAD_END);
    inst->base_mrf = 14;
@@ -361,7 +357,6 @@ brw_compile_tcs(const struct brw_compiler *compiler,
                 const struct brw_tcs_prog_key *key,
                 struct brw_tcs_prog_data *prog_data,
                 nir_shader *nir,
-                int shader_time_index,
                 struct brw_compile_stats *stats,
                 char **error_str)
 {
@@ -459,8 +454,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
    if (is_scalar) {
       fs_visitor v(compiler, log_data, mem_ctx, &key->base,
-                   &prog_data->base.base, nir, 8,
-                   shader_time_index, debug_enabled);
+                   &prog_data->base.base, nir, 8, debug_enabled);
       if (!v.run_tcs()) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
@@ -487,8 +481,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
       assembly = g.get_assembly();
    } else {
       brw::vec4_tcs_visitor v(compiler, log_data, key, prog_data,
-                              nir, mem_ctx, shader_time_index,
-                              debug_enabled);
+                              nir, mem_ctx, debug_enabled);
       if (!v.run()) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v.fail_msg);

@@ -1611,7 +1611,6 @@ vec4_visitor::vec4_visitor(const struct brw_compiler *compiler,
                            const nir_shader *shader,
 			   void *mem_ctx,
                            bool no_spills,
-                           int shader_time_index,
                            bool debug_enabled)
    : backend_shader(compiler, log_data, mem_ctx, shader, &prog_data->base,
                     debug_enabled),
@@ -1624,7 +1623,6 @@ vec4_visitor::vec4_visitor(const struct brw_compiler *compiler,
      live_analysis(this), performance_analysis(this),
      need_all_constants_in_pull_buffer(false),
      no_spills(no_spills),
-     shader_time_index(shader_time_index),
      last_scratch(0)
 {
    this->failed = false;

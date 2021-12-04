@@ -1464,7 +1464,7 @@ crocus_compile_tcs(struct crocus_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_tcs(compiler, &ice->dbg, mem_ctx, &key_clean, tcs_prog_data, nir,
-                      -1, NULL, &error_str);
+                      NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile control shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1597,7 +1597,7 @@ crocus_compile_tes(struct crocus_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_tes(compiler, &ice->dbg, mem_ctx, &key_clean, &input_vue_map,
-                      tes_prog_data, nir, -1, NULL, &error_str);
+                      tes_prog_data, nir, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1731,7 +1731,7 @@ crocus_compile_gs(struct crocus_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_gs(compiler, &ice->dbg, mem_ctx, &key_clean, gs_prog_data, nir,
-                     -1, NULL, &error_str);
+                     NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile geometry shader: %s\n", error_str);
       ralloc_free(mem_ctx);

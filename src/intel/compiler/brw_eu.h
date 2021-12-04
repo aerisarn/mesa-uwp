@@ -1675,10 +1675,6 @@ void gfx7_block_read_scratch(struct brw_codegen *p,
                              int num_regs,
                              unsigned offset);
 
-void brw_shader_time_add(struct brw_codegen *p,
-                         struct brw_reg payload,
-                         uint32_t surf_index);
-
 /**
  * Return the generation-specific jump distance scaling factor.
  *

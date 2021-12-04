@@ -1908,12 +1908,6 @@ generate_code(struct brw_codegen *p,
          generate_gs_get_instance_id(p, dst);
          break;
 
-      case SHADER_OPCODE_SHADER_TIME_ADD:
-         brw_shader_time_add(p, src[0],
-                             prog_data->base.binding_table.shader_time_start);
-         send_count++;
-         break;
-
       case VEC4_OPCODE_UNTYPED_ATOMIC:
          assert(src[2].file == BRW_IMMEDIATE_VALUE);
          brw_untyped_atomic(p, dst, src[0], src[1], src[2].ud, inst->mlen,

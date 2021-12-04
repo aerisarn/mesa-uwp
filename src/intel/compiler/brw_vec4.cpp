@@ -150,7 +150,6 @@ bool
 vec4_instruction::is_send_from_grf() const
 {
    switch (opcode) {
-   case SHADER_OPCODE_SHADER_TIME_ADD:
    case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
    case VEC4_OPCODE_UNTYPED_ATOMIC:
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
@@ -207,7 +206,6 @@ unsigned
 vec4_instruction::size_read(unsigned arg) const
 {
    switch (opcode) {
-   case SHADER_OPCODE_SHADER_TIME_ADD:
    case VEC4_OPCODE_UNTYPED_ATOMIC:
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
@@ -360,8 +358,6 @@ vec4_instruction::implied_mrf_writes() const
    case GS_OPCODE_FF_SYNC:
       return 1;
    case TCS_OPCODE_URB_WRITE:
-      return 0;
-   case SHADER_OPCODE_SHADER_TIME_ADD:
       return 0;
    case SHADER_OPCODE_TEX:
    case SHADER_OPCODE_TXL:
@@ -1673,70 +1669,6 @@ vec4_visitor::get_timestamp()
    return src_reg(dst);
 }
 
-void
-vec4_visitor::emit_shader_time_begin()
-{
-   current_annotation = "shader time start";
-   shader_start_time = get_timestamp();
-}
-
-void
-vec4_visitor::emit_shader_time_end()
-{
-   current_annotation = "shader time end";
-   src_reg shader_end_time = get_timestamp();
-
-
-   /* Check that there weren't any timestamp reset events (assuming these
-    * were the only two timestamp reads that happened).
-    */
-   src_reg reset_end = shader_end_time;
-   reset_end.swizzle = BRW_SWIZZLE_ZZZZ;
-   vec4_instruction *test = emit(AND(dst_null_ud(), reset_end, brw_imm_ud(1u)));
-   test->conditional_mod = BRW_CONDITIONAL_Z;
-
-   emit(IF(BRW_PREDICATE_NORMAL));
-
-   /* Take the current timestamp and get the delta. */
-   shader_start_time.negate = true;
-   dst_reg diff = dst_reg(this, glsl_type::uint_type);
-   emit(ADD(diff, shader_start_time, shader_end_time));
-
-   /* If there were no instructions between the two timestamp gets, the diff
-    * is 2 cycles.  Remove that overhead, so I can forget about that when
-    * trying to determine the time taken for single instructions.
-    */
-   emit(ADD(diff, src_reg(diff), brw_imm_ud(-2u)));
-
-   emit_shader_time_write(0, src_reg(diff));
-   emit_shader_time_write(1, brw_imm_ud(1u));
-   emit(BRW_OPCODE_ELSE);
-   emit_shader_time_write(2, brw_imm_ud(1u));
-   emit(BRW_OPCODE_ENDIF);
-}
-
-void
-vec4_visitor::emit_shader_time_write(int shader_time_subindex, src_reg value)
-{
-   dst_reg dst =
-      dst_reg(this, glsl_type::get_array_instance(glsl_type::vec4_type, 2));
-
-   dst_reg offset = dst;
-   dst_reg time = dst;
-   time.offset += REG_SIZE;
-
-   offset.type = BRW_REGISTER_TYPE_UD;
-   int index = shader_time_index * 3 + shader_time_subindex;
-   emit(MOV(offset, brw_imm_d(index * BRW_SHADER_TIME_STRIDE)));
-
-   time.type = BRW_REGISTER_TYPE_UD;
-   emit(MOV(time, value));
-
-   vec4_instruction *inst =
-      emit(SHADER_OPCODE_SHADER_TIME_ADD, dst_reg(), src_reg(dst));
-   inst->mlen = 2;
-}
-
 static bool
 is_align1_df(vec4_instruction *inst)
 {
@@ -2420,9 +2352,6 @@ vec4_visitor::invalidate_analysis(brw::analysis_dependency_class c)
 bool
 vec4_visitor::run()
 {
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    setup_push_ranges();
 
    if (prog_data->base.zero_push_reg) {
@@ -2705,7 +2634,6 @@ brw_compile_vs(const struct brw_compiler *compiler,
 
       fs_visitor v(compiler, params->log_data, mem_ctx, &key->base,
                    &prog_data->base.base, nir, 8,
-                   params->shader_time ? params->shader_time_index : -1,
                    debug_enabled);
       if (!v.run_vs()) {
          params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
@@ -2737,7 +2665,6 @@ brw_compile_vs(const struct brw_compiler *compiler,
 
       vec4_vs_visitor v(compiler, params->log_data, key, prog_data,
                         nir, mem_ctx,
-                        params->shader_time ? params->shader_time_index : -1,
                         debug_enabled);
       if (!v.run()) {
          params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);

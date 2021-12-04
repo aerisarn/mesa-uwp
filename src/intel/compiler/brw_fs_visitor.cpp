@@ -1130,7 +1130,6 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
                        struct brw_stage_prog_data *prog_data,
                        const nir_shader *shader,
                        unsigned dispatch_width,
-                       int shader_time_index,
                        bool debug_enabled)
    : backend_shader(compiler, log_data, mem_ctx, shader, prog_data,
                     debug_enabled),
@@ -1138,7 +1137,6 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
      live_analysis(this), regpressure_analysis(this),
      performance_analysis(this),
      dispatch_width(dispatch_width),
-     shader_time_index(shader_time_index),
      bld(fs_builder(this, dispatch_width).at_end())
 {
    init();
@@ -1149,7 +1147,6 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
                        struct brw_gs_compile *c,
                        struct brw_gs_prog_data *prog_data,
                        const nir_shader *shader,
-                       int shader_time_index,
                        bool debug_enabled)
    : backend_shader(compiler, log_data, mem_ctx, shader,
                     &prog_data->base.base, debug_enabled),
@@ -1158,7 +1155,6 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
      live_analysis(this), regpressure_analysis(this),
      performance_analysis(this),
      dispatch_width(8),
-     shader_time_index(shader_time_index),
      bld(fs_builder(this, dispatch_width).at_end())
 {
    init();

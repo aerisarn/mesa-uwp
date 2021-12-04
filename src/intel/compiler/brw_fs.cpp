@@ -221,7 +221,6 @@ fs_inst::is_send_from_grf() const
 {
    switch (opcode) {
    case SHADER_OPCODE_SEND:
-   case SHADER_OPCODE_SHADER_TIME_ADD:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
    case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
@@ -310,7 +309,6 @@ fs_inst::is_payload(unsigned arg) const
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
    case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
-   case SHADER_OPCODE_SHADER_TIME_ADD:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
    case SHADER_OPCODE_INTERLOCK:
@@ -588,83 +586,6 @@ fs_visitor::get_timestamp(const fs_builder &bld)
    bld.group(4, 0).exec_all().MOV(dst, ts);
 
    return dst;
-}
-
-void
-fs_visitor::emit_shader_time_begin()
-{
-   /* We want only the low 32 bits of the timestamp.  Since it's running
-    * at the GPU clock rate of ~1.2ghz, it will roll over every ~3 seconds,
-    * which is plenty of time for our purposes.  It is identical across the
-    * EUs, but since it's tracking GPU core speed it will increment at a
-    * varying rate as render P-states change.
-    */
-   shader_start_time = component(
-      get_timestamp(bld.annotate("shader time start")), 0);
-}
-
-void
-fs_visitor::emit_shader_time_end()
-{
-   /* Insert our code just before the final SEND with EOT. */
-   exec_node *end = this->instructions.get_tail();
-   assert(end && ((fs_inst *) end)->eot);
-   const fs_builder ibld = bld.annotate("shader time end")
-                              .exec_all().at(NULL, end);
-   const fs_reg timestamp = get_timestamp(ibld);
-
-   /* We only use the low 32 bits of the timestamp - see
-    * emit_shader_time_begin()).
-    *
-    * We could also check if render P-states have changed (or anything
-    * else that might disrupt timing) by setting smear to 2 and checking if
-    * that field is != 0.
-    */
-   const fs_reg shader_end_time = component(timestamp, 0);
-
-   /* Check that there weren't any timestamp reset events (assuming these
-    * were the only two timestamp reads that happened).
-    */
-   const fs_reg reset = component(timestamp, 2);
-   set_condmod(BRW_CONDITIONAL_Z,
-               ibld.AND(ibld.null_reg_ud(), reset, brw_imm_ud(1u)));
-   ibld.IF(BRW_PREDICATE_NORMAL);
-
-   fs_reg start = shader_start_time;
-   start.negate = true;
-   const fs_reg diff = component(fs_reg(VGRF, alloc.allocate(1),
-                                        BRW_REGISTER_TYPE_UD),
-                                 0);
-   const fs_builder cbld = ibld.group(1, 0);
-   cbld.group(1, 0).ADD(diff, start, shader_end_time);
-
-   /* If there were no instructions between the two timestamp gets, the diff
-    * is 2 cycles.  Remove that overhead, so I can forget about that when
-    * trying to determine the time taken for single instructions.
-    */
-   cbld.ADD(diff, diff, brw_imm_ud(-2u));
-   SHADER_TIME_ADD(cbld, 0, diff);
-   SHADER_TIME_ADD(cbld, 1, brw_imm_ud(1u));
-   ibld.emit(BRW_OPCODE_ELSE);
-   SHADER_TIME_ADD(cbld, 2, brw_imm_ud(1u));
-   ibld.emit(BRW_OPCODE_ENDIF);
-}
-
-void
-fs_visitor::SHADER_TIME_ADD(const fs_builder &bld,
-                            int shader_time_subindex,
-                            fs_reg value)
-{
-   int index = shader_time_index * 3 + shader_time_subindex;
-   struct brw_reg offset = brw_imm_d(index * BRW_SHADER_TIME_STRIDE);
-
-   fs_reg payload;
-   if (dispatch_width == 8)
-      payload = vgrf(glsl_type::uvec2_type);
-   else
-      payload = vgrf(glsl_type::uint_type);
-
-   bld.emit(SHADER_OPCODE_SHADER_TIME_ADD, fs_reg(), payload, offset, value);
 }
 
 void
@@ -8850,18 +8771,12 @@ fs_visitor::run_vs()
 
    setup_vs_payload();
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    emit_nir_code();
 
    if (failed)
       return false;
 
    emit_urb_writes();
-
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
 
    calculate_cfg();
 
@@ -8941,9 +8856,6 @@ fs_visitor::run_tcs()
                          tcs_key->input_vertices;
    }
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    /* Initialize gl_InvocationID */
    set_tcs_invocation_id();
 
@@ -8978,9 +8890,6 @@ fs_visitor::run_tcs()
    inst->mlen = 3;
    inst->eot = true;
 
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
-
    if (failed)
       return false;
 
@@ -9005,18 +8914,12 @@ fs_visitor::run_tes()
    /* R0: thread header, R1-3: gl_TessCoord.xyz, R4: URB handles */
    payload.num_regs = 5;
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    emit_nir_code();
 
    if (failed)
       return false;
 
    emit_urb_writes();
-
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
 
    calculate_cfg();
 
@@ -9054,15 +8957,9 @@ fs_visitor::run_gs()
       }
    }
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    emit_nir_code();
 
    emit_gs_thread_end();
-
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
 
    if (failed)
       return false;
@@ -9126,9 +9023,6 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
       assert(dispatch_width == 16);
       emit_repclear_shader();
    } else {
-      if (shader_time_index >= 0)
-         emit_shader_time_begin();
-
       if (nir->info.inputs_read > 0 ||
           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) ||
           (nir->info.outputs_read > 0 && !wm_key->coherent_fb_fetch)) {
@@ -9166,9 +9060,6 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
 
       emit_fb_writes();
 
-      if (shader_time_index >= 0)
-         emit_shader_time_end();
-
       calculate_cfg();
 
       optimize();
@@ -9198,9 +9089,6 @@ fs_visitor::run_cs(bool allow_spilling)
 
    setup_cs_payload();
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    if (devinfo->platform == INTEL_PLATFORM_HSW && prog_data->total_shared > 0) {
       /* Move SLM index from g0.0[27:24] to sr0.1[11:8] */
       const fs_builder abld = bld.exec_all().group(1, 0);
@@ -9214,9 +9102,6 @@ fs_visitor::run_cs(bool allow_spilling)
       return false;
 
    emit_cs_terminate();
-
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
 
    calculate_cfg();
 
@@ -9241,9 +9126,6 @@ fs_visitor::run_bs(bool allow_spilling)
    /* R0: thread header, R1: stack IDs, R2: argument addresses */
    payload.num_regs = 3;
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    emit_nir_code();
 
    if (failed)
@@ -9251,9 +9133,6 @@ fs_visitor::run_bs(bool allow_spilling)
 
    /* TODO(RT): Perhaps rename this? */
    emit_cs_terminate();
-
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
 
    calculate_cfg();
 
@@ -9295,18 +9174,12 @@ fs_visitor::run_task(bool allow_spilling)
     */
    payload.num_regs = dispatch_width == 32 ? 4 : 3;
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    emit_nir_code();
 
    if (failed)
       return false;
 
    emit_cs_terminate();
-
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
 
    calculate_cfg();
 
@@ -9348,18 +9221,12 @@ fs_visitor::run_mesh(bool allow_spilling)
     */
    payload.num_regs = dispatch_width == 32 ? 4 : 3;
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
    emit_nir_code();
 
    if (failed)
       return false;
 
    emit_cs_terminate();
-
-   if (shader_time_index >= 0)
-      emit_shader_time_end();
 
    calculate_cfg();
 
@@ -9738,7 +9605,6 @@ brw_compile_fs(const struct brw_compiler *compiler,
 
    v8 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                        &prog_data->base, nir, 8,
-                       params->shader_time ? params->shader_time_index8 : -1,
                        debug_enabled);
    if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
       params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
@@ -9779,7 +9645,6 @@ brw_compile_fs(const struct brw_compiler *compiler,
       /* Try a SIMD16 compile */
       v16 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base, nir, 16,
-                           params->shader_time ? params->shader_time_index16 : -1,
                            debug_enabled);
       v16->import_uniforms(v8);
       if (!v16->run_fs(allow_spilling, params->use_rep_send)) {
@@ -9807,7 +9672,6 @@ brw_compile_fs(const struct brw_compiler *compiler,
       /* Try a SIMD32 compile */
       v32 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base, nir, 32,
-                           params->shader_time ? params->shader_time_index32 : -1,
                            debug_enabled);
       v32->import_uniforms(v8);
       if (!v32->run_fs(allow_spilling, false)) {
@@ -10064,7 +9928,6 @@ brw_compile_cs(const struct brw_compiler *compiler,
    const nir_shader *nir = params->nir;
    const struct brw_cs_prog_key *key = params->key;
    struct brw_cs_prog_data *prog_data = params->prog_data;
-   int shader_time_index = params->shader_time ? params->shader_time_index : -1;
 
    const bool debug_enabled =
       INTEL_DEBUG(params->debug_flag ? params->debug_flag : DEBUG_CS);
@@ -10106,7 +9969,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
 
       v[simd] = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                                &prog_data->base, shader, dispatch_width,
-                               shader_time_index, debug_enabled);
+                               debug_enabled);
 
       if (prog_data->prog_mask) {
          unsigned first = ffs(prog_data->prog_mask) - 1;
@@ -10238,7 +10101,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    if (!INTEL_DEBUG(DEBUG_NO8)) {
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base, shader,
-                          8, -1 /* shader time */, debug_enabled);
+                          8, debug_enabled);
       const bool allow_spilling = true;
       if (!v8->run_bs(allow_spilling)) {
          if (error_str)
@@ -10256,7 +10119,7 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    if (!has_spilled && !INTEL_DEBUG(DEBUG_NO16)) {
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, shader,
-                           16, -1 /* shader time */, debug_enabled);
+                           16, debug_enabled);
       const bool allow_spilling = (v == NULL);
       if (!v16->run_bs(allow_spilling)) {
          brw_shader_perf_log(compiler, log_data,

@@ -287,9 +287,6 @@ brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
    case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
       return "image_size_logical";
 
-   case SHADER_OPCODE_SHADER_TIME_ADD:
-      return "shader_time_add";
-
    case VEC4_OPCODE_UNTYPED_ATOMIC:
       return "untyped_atomic";
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
@@ -1337,7 +1334,6 @@ brw_compile_tes(const struct brw_compiler *compiler,
                 const struct brw_vue_map *input_vue_map,
                 struct brw_tes_prog_data *prog_data,
                 nir_shader *nir,
-                int shader_time_index,
                 struct brw_compile_stats *stats,
                 char **error_str)
 {
@@ -1429,7 +1425,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
    if (is_scalar) {
       fs_visitor v(compiler, log_data, mem_ctx, &key->base,
                    &prog_data->base.base, nir, 8,
-                   shader_time_index, debug_enabled);
+                   debug_enabled);
       if (!v.run_tes()) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
@@ -1457,7 +1453,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
       assembly = g.get_assembly();
    } else {
       brw::vec4_tes_visitor v(compiler, log_data, key, prog_data,
-                              nir, mem_ctx, shader_time_index, debug_enabled);
+                              nir, mem_ctx, debug_enabled);
       if (!v.run()) {
 	 if (error_str)
 	    *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
