@@ -2374,7 +2374,7 @@ fs_visitor::get_pull_locs(const fs_reg &src,
    if (src.offset / 32 < range->length)
       return false;
 
-   *out_surf_index = prog_data->binding_table.ubo_start + range->block;
+   *out_surf_index = range->block;
    *out_pull_index = (32 * range->start + src.offset) / 4;
 
    prog_data->has_ubo_pull = true;
@@ -4897,7 +4897,6 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
       brw_reg_type_from_bit_size(payload_type_bit_size, BRW_REGISTER_TYPE_UD);
    const enum brw_reg_type payload_signed_type =
       brw_reg_type_from_bit_size(payload_type_bit_size, BRW_REGISTER_TYPE_D);
-   const brw_stage_prog_data *prog_data = bld.shader->stage_prog_data;
    unsigned reg_width = bld.dispatch_width() / 8;
    unsigned header_size = 0, length = 0;
    fs_reg sources[MAX_SAMPLER_MESSAGE_SIZE];
@@ -5182,25 +5181,10 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
    const unsigned msg_type =
       sampler_msg_type(devinfo, op, inst->shadow_compare);
 
-   uint32_t base_binding_table_index;
-   switch (op) {
-   case SHADER_OPCODE_TG4:
-   case SHADER_OPCODE_TG4_OFFSET:
-      base_binding_table_index = prog_data->binding_table.gather_texture_start;
-      break;
-   case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
-      base_binding_table_index = prog_data->binding_table.image_start;
-      break;
-   default:
-      base_binding_table_index = prog_data->binding_table.texture_start;
-      break;
-   }
-
    inst->sfid = BRW_SFID_SAMPLER;
    if (surface.file == IMM &&
        (sampler.file == IMM || sampler_handle.file != BAD_FILE)) {
-      inst->desc = brw_sampler_desc(devinfo,
-                                    surface.ud + base_binding_table_index,
+      inst->desc = brw_sampler_desc(devinfo, surface.ud,
                                     sampler.file == IMM ? sampler.ud % 16 : 0,
                                     msg_type,
                                     simd_mode,
@@ -5256,8 +5240,6 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
             ubld.OR(desc, desc, surface);
          }
       }
-      if (base_binding_table_index)
-         ubld.ADD(desc, desc, brw_imm_ud(base_binding_table_index));
       ubld.AND(desc, desc, brw_imm_ud(0xfff));
 
       inst->src[0] = component(desc, 0);

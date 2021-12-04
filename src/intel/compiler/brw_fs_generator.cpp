@@ -1288,16 +1288,6 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst,
       }
    }
 
-   uint32_t base_binding_table_index;
-   switch (inst->opcode) {
-   case SHADER_OPCODE_TG4:
-      base_binding_table_index = prog_data->binding_table.gather_texture_start;
-      break;
-   default:
-      base_binding_table_index = prog_data->binding_table.texture_start;
-      break;
-   }
-
    assert(surface_index.file == BRW_IMMEDIATE_VALUE);
    assert(sampler_index.file == BRW_IMMEDIATE_VALUE);
 
@@ -1305,7 +1295,7 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst,
               retype(dst, BRW_REGISTER_TYPE_UW),
               inst->base_mrf,
               src,
-              surface_index.ud + base_binding_table_index,
+              surface_index.ud,
               sampler_index.ud % 16,
               msg_type,
               inst->size_written / REG_SIZE,

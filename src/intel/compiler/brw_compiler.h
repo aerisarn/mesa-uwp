@@ -734,23 +734,6 @@ struct brw_shader_reloc_value {
 };
 
 struct brw_stage_prog_data {
-   struct {
-      /** size of our binding table. */
-      uint32_t size_bytes;
-
-      /** @{
-       * surface indices for the various groups of surfaces
-       */
-      uint32_t pull_constants_start;
-      uint32_t texture_start;
-      uint32_t gather_texture_start;
-      uint32_t ubo_start;
-      uint32_t ssbo_start;
-      uint32_t image_start;
-      uint32_t plane_start[3];
-      /** @} */
-   } binding_table;
-
    struct brw_ubo_range ubo_ranges[4];
 
    GLuint nr_params;       /**< number of float params/constants */

@@ -380,19 +380,11 @@ vec4_visitor::get_nir_ssbo_intrinsic_index(nir_intrinsic_instr *instr)
    /* SSBO stores are weird in that their index is in src[1] */
    const unsigned src = instr->intrinsic == nir_intrinsic_store_ssbo ? 1 : 0;
 
-   src_reg surf_index;
    if (nir_src_is_const(instr->src[src])) {
-      unsigned index = prog_data->base.binding_table.ssbo_start +
-                       nir_src_as_uint(instr->src[src]);
-      surf_index = brw_imm_ud(index);
+      return brw_imm_ud(nir_src_as_uint(instr->src[src]));
    } else {
-      surf_index = src_reg(this, glsl_type::uint_type);
-      emit(ADD(dst_reg(surf_index), get_nir_src(instr->src[src], 1),
-               brw_imm_ud(prog_data->base.binding_table.ssbo_start)));
-      surf_index = emit_uniformize(surf_index);
+      return emit_uniformize(get_nir_src(instr->src[src]));
    }
-
-   return surf_index;
 }
 
 void
@@ -439,15 +431,13 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       unsigned ssbo_index = nir_src_is_const(instr->src[0]) ?
                             nir_src_as_uint(instr->src[0]) : 0;
 
-      const unsigned index =
-         prog_data->base.binding_table.ssbo_start + ssbo_index;
       dst_reg result_dst = get_nir_dest(instr->dest);
       vec4_instruction *inst = new(mem_ctx)
          vec4_instruction(SHADER_OPCODE_GET_BUFFER_SIZE, result_dst);
 
       inst->base_mrf = 2;
       inst->mlen = 1; /* always at least one */
-      inst->src[1] = brw_imm_ud(index);
+      inst->src[1] = brw_imm_ud(ssbo_index);
 
       /* MRF for the first parameter */
       src_reg lod = brw_imm_d(0);
@@ -630,8 +620,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
          /* The block index is a constant, so just emit the binding table entry
           * as an immediate.
           */
-         const unsigned index = prog_data->base.binding_table.ubo_start +
-                                nir_src_as_uint(instr->src[0]);
+         const unsigned index = nir_src_as_uint(instr->src[0]);
          surf_index = brw_imm_ud(index);
       } else {
          /* The block index is not a constant. Evaluate the index expression
@@ -639,9 +628,8 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
           * from any live channel.
           */
          surf_index = src_reg(this, glsl_type::uint_type);
-         emit(ADD(dst_reg(surf_index), get_nir_src(instr->src[0], nir_type_int32,
-                                                   instr->num_components),
-                  brw_imm_ud(prog_data->base.binding_table.ubo_start)));
+         emit(MOV(dst_reg(surf_index), get_nir_src(instr->src[0], nir_type_int32,
+                                                   instr->num_components)));
          surf_index = emit_uniformize(surf_index);
       }
 

@@ -271,11 +271,6 @@ generate_tex(struct brw_codegen *p,
    if (inst->opcode == SHADER_OPCODE_TXS)
       return_format = BRW_SAMPLER_RETURN_FORMAT_UINT32;
 
-   uint32_t base_binding_table_index = (inst->opcode == SHADER_OPCODE_TG4 ||
-         inst->opcode == SHADER_OPCODE_TG4_OFFSET)
-         ? prog_data->base.binding_table.gather_texture_start
-         : prog_data->base.binding_table.texture_start;
-
    if (surface_index.file == BRW_IMMEDIATE_VALUE &&
        sampler_index.file == BRW_IMMEDIATE_VALUE) {
       uint32_t surface = surface_index.ud;
@@ -285,7 +280,7 @@ generate_tex(struct brw_codegen *p,
                  dst,
                  inst->base_mrf,
                  src,
-                 surface + base_binding_table_index,
+                 surface,
                  sampler % 16,
                  msg_type,
                  1, /* response length */
@@ -314,8 +309,6 @@ generate_tex(struct brw_codegen *p,
             brw_OR(p, addr, addr, surface_reg);
          }
       }
-      if (base_binding_table_index)
-         brw_ADD(p, addr, addr, brw_imm_ud(base_binding_table_index));
       brw_AND(p, addr, addr, brw_imm_ud(0xfff));
 
       brw_pop_insn_state(p);
