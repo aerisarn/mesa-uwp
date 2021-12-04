@@ -638,6 +638,15 @@ void st_init_limits(struct pipe_screen *screen,
 
    c->glBeginEndBufferSize =
       screen->get_param(screen, PIPE_CAP_GL_BEGIN_END_BUFFER_SIZE);
+
+   c->MaxSparseTextureSize =
+      screen->get_param(screen, PIPE_CAP_MAX_SPARSE_TEXTURE_SIZE);
+   c->MaxSparse3DTextureSize =
+      screen->get_param(screen, PIPE_CAP_MAX_SPARSE_3D_TEXTURE_SIZE);
+   c->MaxSparseArrayTextureLayers =
+      screen->get_param(screen, PIPE_CAP_MAX_SPARSE_ARRAY_TEXTURE_LAYERS);
+   c->SparseTextureFullArrayCubeMipmaps =
+      screen->get_param(screen, PIPE_CAP_SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS);
 }
 
 

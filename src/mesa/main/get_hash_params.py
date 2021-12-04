@@ -957,6 +957,12 @@ descriptor=[
 # GL_ARB_color_buffer_float
   [ "RGBA_FLOAT_MODE_ARB", "BUFFER_FIELD(Visual.floatMode, TYPE_BOOLEAN), extra_core_ARB_color_buffer_float_and_new_buffers" ],
 
+# GL_ARB_sparse_texture
+  [ "MAX_SPARSE_TEXTURE_SIZE_ARB", "CONTEXT_INT(Const.MaxSparseTextureSize), extra_ARB_sparse_texture" ],
+  [ "MAX_SPARSE_3D_TEXTURE_SIZE_ARB", "CONTEXT_INT(Const.MaxSparse3DTextureSize), extra_ARB_sparse_texture" ],
+  [ "MAX_SPARSE_ARRAY_TEXTURE_LAYERS_ARB", "CONTEXT_INT(Const.MaxSparseArrayTextureLayers), extra_ARB_sparse_texture" ],
+  [ "SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS_ARB", "CONTEXT_BOOL(Const.SparseTextureFullArrayCubeMipmaps), extra_ARB_sparse_texture" ],
+
 # GL3.0 / GL_EXT_framebuffer_sRGB
   [ "FRAMEBUFFER_SRGB_CAPABLE_EXT", "BUFFER_INT(Visual.sRGBCapable), extra_EXT_framebuffer_sRGB_and_new_buffers" ],
 

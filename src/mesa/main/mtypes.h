@@ -4328,6 +4328,12 @@ struct gl_constants
     * a frame, but always getting framebuffer completeness.
     */
    bool GLThreadNopCheckFramebufferStatus;
+
+   /** GL_ARB_sparse_texture */
+   GLuint MaxSparseTextureSize;
+   GLuint MaxSparse3DTextureSize;
+   GLuint MaxSparseArrayTextureLayers;
+   bool SparseTextureFullArrayCubeMipmaps;
 };
 
 

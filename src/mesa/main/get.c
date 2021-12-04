@@ -582,6 +582,7 @@ EXTRA_EXT(ARB_sample_locations);
 EXTRA_EXT(AMD_framebuffer_multisample_advanced);
 EXTRA_EXT(ARB_spirv_extensions);
 EXTRA_EXT(NV_viewport_swizzle);
+EXTRA_EXT(ARB_sparse_texture);
 
 static const int
 extra_ARB_color_buffer_float_or_glcore[] = {
