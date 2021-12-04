@@ -39,7 +39,7 @@
 #include "main/menums.h" /* BITFIELD64_MASK */
 
 #ifndef NDEBUG
-uint32_t nir_debug = ~0;
+uint32_t nir_debug = 0;
 bool nir_debug_print_shader[MESA_SHADER_KERNEL + 1] = { 0 };
 
 static const struct debug_named_value nir_debug_control[] = {
@@ -90,10 +90,12 @@ static const struct debug_named_value nir_debug_control[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(nir_debug, "NIR_DEBUG", nir_debug_control, 0)
 
-static void
+void
 nir_process_debug_variable(void)
 {
-   if (unlikely(nir_debug == ~0)) {
+   static bool first = true;
+   if (unlikely(first)) {
+      first = false;
       nir_debug = debug_get_option_nir_debug();
       nir_debug_print_shader[MESA_SHADER_VERTEX]       = NIR_DEBUG(PRINT_VS);
       nir_debug_print_shader[MESA_SHADER_TESS_CTRL]    = NIR_DEBUG(PRINT_TCS);

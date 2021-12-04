@@ -2580,6 +2580,10 @@ tgsi_to_nir(const void *tgsi_tokens,
    if (s)
       return s;
 
+#ifndef NDEBUG
+   nir_process_debug_variable();
+#endif
+
    if (NIR_DEBUG(TGSI)) {
       fprintf(stderr, "TGSI before translation to NIR:\n");
       tgsi_dump(tgsi_tokens, 0);

@@ -124,6 +124,9 @@ nir_num_components_valid(unsigned num_components)
            num_components == 16;
 }
 
+void
+nir_process_debug_variable(void);
+
 bool nir_component_mask_can_reinterpret(nir_component_mask_t mask,
                                         unsigned old_bit_size,
                                         unsigned new_bit_size);
