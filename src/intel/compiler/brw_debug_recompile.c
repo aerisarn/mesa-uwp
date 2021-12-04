@@ -178,7 +178,6 @@ debug_fs_recompile(const struct brw_compiler *c, void *log,
    found |= check("per-sample interpolation", persample_interp);
    found |= check("multisampled FBO", multisample_fbo);
    found |= check("line smoothing", line_aa);
-   found |= check("high quality derivatives", high_quality_derivatives);
    found |= check("force dual color blending", force_dual_color_blend);
    found |= check("coherent fb fetch", coherent_fb_fetch);
 

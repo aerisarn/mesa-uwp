@@ -971,7 +971,6 @@ void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
                          bool need_dest)
 {
-   struct brw_wm_prog_key *fs_key = (struct brw_wm_prog_key *) this->key;
    fs_inst *inst;
    unsigned execution_mode =
       bld.shader->nir->info.float_controls_execution_mode;
@@ -1228,29 +1227,17 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       inst = bld.emit(SHADER_OPCODE_COS, result, op[0]);
       break;
 
-   case nir_op_fddx:
-      if (fs_key->high_quality_derivatives) {
-         inst = bld.emit(FS_OPCODE_DDX_FINE, result, op[0]);
-      } else {
-         inst = bld.emit(FS_OPCODE_DDX_COARSE, result, op[0]);
-      }
-      break;
    case nir_op_fddx_fine:
       inst = bld.emit(FS_OPCODE_DDX_FINE, result, op[0]);
       break;
+   case nir_op_fddx:
    case nir_op_fddx_coarse:
       inst = bld.emit(FS_OPCODE_DDX_COARSE, result, op[0]);
-      break;
-   case nir_op_fddy:
-      if (fs_key->high_quality_derivatives) {
-         inst = bld.emit(FS_OPCODE_DDY_FINE, result, op[0]);
-      } else {
-         inst = bld.emit(FS_OPCODE_DDY_COARSE, result, op[0]);
-      }
       break;
    case nir_op_fddy_fine:
       inst = bld.emit(FS_OPCODE_DDY_FINE, result, op[0]);
       break;
+   case nir_op_fddy:
    case nir_op_fddy_coarse:
       inst = bld.emit(FS_OPCODE_DDY_COARSE, result, op[0]);
       break;

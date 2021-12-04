@@ -4849,8 +4849,6 @@ crocus_populate_fs_key(const struct crocus_context *ice,
       screen->driconf.dual_color_blend_by_location &&
       (blend->blend_enables & 1) && blend->dual_color_blending;
 
-   /* TODO: Respect glHint for key->high_quality_derivatives */
-
 #if GFX_VER <= 5
    if (fb->nr_cbufs > 1 && zsa->cso.alpha_enabled) {
       key->alpha_test_func = compare_func_to_gl(zsa->cso.alpha_func);

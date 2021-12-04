@@ -4288,8 +4288,6 @@ iris_populate_fs_key(const struct iris_context *ice,
    key->force_dual_color_blend =
       screen->driconf.dual_color_blend_by_location &&
       (blend->blend_enables & 1) && blend->dual_color_blending;
-
-   /* TODO: Respect glHint for key->high_quality_derivatives */
 }
 
 static void

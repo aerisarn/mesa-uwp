@@ -518,9 +518,6 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
     */
    key->input_slots_valid = 0;
 
-   /* Vulkan doesn't specify a default */
-   key->high_quality_derivatives = false;
-
    /* XXX Vulkan doesn't appear to specify */
    key->clamp_fragment_color = false;
 
