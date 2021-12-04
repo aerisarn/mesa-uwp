@@ -655,6 +655,49 @@ output_name(struct ir3_shader_variant *so, int i)
    }
 }
 
+static void
+dump_const_state(struct ir3_shader_variant *so, FILE *out)
+{
+   const struct ir3_const_state *cs = ir3_const_state(so);
+   const struct ir3_ubo_analysis_state *us = &cs->ubo_state;
+
+   fprintf(out, "; num_ubos:           %u\n", cs->num_ubos);
+   fprintf(out, "; num_driver_params:  %u\n", cs->num_driver_params);
+   fprintf(out, "; offsets:\n");
+   if (cs->offsets.ubo != ~0)
+      fprintf(out, ";   ubo:              c%u.x\n", cs->offsets.ubo);
+   if (cs->offsets.image_dims != ~0)
+      fprintf(out, ";   image_dims:       c%u.x\n", cs->offsets.image_dims);
+   if (cs->offsets.kernel_params != ~0)
+      fprintf(out, ";   kernel_params:    c%u.x\n", cs->offsets.kernel_params);
+   if (cs->offsets.driver_param != ~0)
+      fprintf(out, ";   driver_param:     c%u.x\n", cs->offsets.driver_param);
+   if (cs->offsets.tfbo != ~0)
+      fprintf(out, ";   tfbo:             c%u.x\n", cs->offsets.tfbo);
+   if (cs->offsets.primitive_param != ~0)
+      fprintf(out, ";   primitive_params: c%u.x\n", cs->offsets.primitive_param);
+   if (cs->offsets.primitive_map != ~0)
+      fprintf(out, ";   primitive_map:    c%u.x\n", cs->offsets.primitive_map);
+   fprintf(out, "; ubo_state:\n");
+   fprintf(out, ";   num_enabled:      %u\n", us->num_enabled);
+   for (unsigned i = 0; i < us->num_enabled; i++) {
+      const struct ir3_ubo_range *r = &us->range[i];
+
+      assert((r->offset % 16) == 0);
+
+      fprintf(out, ";   range[%u]:\n", i);
+      fprintf(out, ";     block:          %u\n", r->ubo.block);
+      if (r->ubo.bindless)
+         fprintf(out, ";     bindless_base:  %u\n", r->ubo.bindless_base);
+      fprintf(out, ";     offset:         c%u.x\n", r->offset/16);
+
+      unsigned size = r->end - r->start;
+      assert((size % 16) == 0);
+
+      fprintf(out, ";     size:           %u vec4 (%ub -> %ub)\n", (size/16), r->start, r->end);
+   }
+}
+
 void
 ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 {
@@ -663,6 +706,8 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
    const char *type = ir3_shader_stage(so);
    uint8_t regid;
    unsigned i;
+
+   dump_const_state(so, out);
 
    foreach_input_n (instr, i, ir) {
       reg = instr->dsts[0];
