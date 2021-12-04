@@ -370,12 +370,6 @@ public:
    unsigned last_scratch;
 
    /**
-    * Array mapping UNIFORM register numbers to the pull parameter index,
-    * or -1 if this uniform register isn't being uploaded as a pull constant.
-    */
-   int *pull_constant_loc;
-
-   /**
     * Array mapping UNIFORM register numbers to the push parameter index,
     * or -1 if this uniform register isn't being uploaded as a push constant.
     */

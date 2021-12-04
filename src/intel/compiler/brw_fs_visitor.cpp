@@ -126,7 +126,6 @@ fs_visitor::emit_dummy_fs()
 
    /* We don't have any uniforms. */
    stage_prog_data->nr_params = 0;
-   stage_prog_data->nr_pull_params = 0;
    stage_prog_data->curb_read_length = 0;
    stage_prog_data->dispatch_grf_start_reg = 2;
    wm_prog_data->dispatch_grf_start_reg_16 = 2;
@@ -1192,7 +1191,6 @@ fs_visitor::init()
 
    this->uniforms = 0;
    this->last_scratch = 0;
-   this->pull_constant_loc = NULL;
    this->push_constant_loc = NULL;
 
    this->shader_stats.scheduler_mode = NULL;

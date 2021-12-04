@@ -92,22 +92,10 @@ struct brw_compiler {
    bool constant_buffer_0_is_relative;
 
    /**
-    * Whether or not the driver supports pull constants.  If not, the compiler
-    * will attempt to push everything.
-    */
-   bool supports_pull_constants;
-
-   /**
     * Whether or not the driver supports NIR shader constants.  This controls
     * whether nir_opt_large_constants will be run.
     */
    bool supports_shader_constants;
-
-   /**
-    * Whether or not the driver wants uniform params to be compacted by the
-    * back-end compiler.
-    */
-   bool compact_params;
 
    /**
     * Whether or not the driver wants variable group size to be lowered by the
@@ -775,7 +763,6 @@ struct brw_stage_prog_data {
    struct brw_ubo_range ubo_ranges[4];
 
    GLuint nr_params;       /**< number of float params/constants */
-   GLuint nr_pull_params;
 
    gl_shader_stage stage;
 
@@ -822,7 +809,6 @@ struct brw_stage_prog_data {
     * above.
     */
    uint32_t *param;
-   uint32_t *pull_param;
 
    /* Whether shader uses atomic operations. */
    bool uses_atomic_load_store;

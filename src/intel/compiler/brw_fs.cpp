@@ -1234,7 +1234,6 @@ void
 fs_visitor::import_uniforms(fs_visitor *v)
 {
    this->push_constant_loc = v->push_constant_loc;
-   this->pull_constant_loc = v->pull_constant_loc;
    this->uniforms = v->uniforms;
    this->subgroup_id = v->subgroup_id;
    for (unsigned i = 0; i < ARRAY_SIZE(this->group_size); i++)
@@ -1801,7 +1800,6 @@ fs_visitor::assign_curb_setup()
 
    uint64_t want_zero = used & stage_prog_data->zero_push_reg;
    if (want_zero) {
-      assert(!compiler->compact_params);
       fs_builder ubld = bld.exec_all().group(8, 0).at(
          cfg->first_block(), cfg->first_block()->start());
 
@@ -2397,109 +2395,6 @@ get_subgroup_id_param_index(const intel_device_info *devinfo,
 }
 
 /**
- * Struct for handling complex alignments.
- *
- * A complex alignment is stored as multiplier and an offset.  A value is
- * considered to be aligned if it is {offset} larger than a multiple of {mul}.
- * For instance, with an alignment of {8, 2}, cplx_align_apply would do the
- * following:
- *
- *  N  | cplx_align_apply({8, 2}, N)
- * ----+-----------------------------
- *  4  | 6
- *  6  | 6
- *  8  | 14
- *  10 | 14
- *  12 | 14
- *  14 | 14
- *  16 | 22
- */
-struct cplx_align {
-   unsigned mul:4;
-   unsigned offset:4;
-};
-
-#define CPLX_ALIGN_MAX_MUL 8
-
-static void
-cplx_align_assert_sane(struct cplx_align a)
-{
-   assert(a.mul > 0 && util_is_power_of_two_nonzero(a.mul));
-   assert(a.offset < a.mul);
-}
-
-/**
- * Combines two alignments to produce a least multiple of sorts.
- *
- * The returned alignment is the smallest (in terms of multiplier) such that
- * anything aligned to both a and b will be aligned to the new alignment.
- * This function will assert-fail if a and b are not compatible, i.e. if the
- * offset parameters are such that no common alignment is possible.
- */
-static struct cplx_align
-cplx_align_combine(struct cplx_align a, struct cplx_align b)
-{
-   cplx_align_assert_sane(a);
-   cplx_align_assert_sane(b);
-
-   /* Assert that the alignments agree. */
-   assert((a.offset & (b.mul - 1)) == (b.offset & (a.mul - 1)));
-
-   return a.mul > b.mul ? a : b;
-}
-
-/**
- * Apply a complex alignment
- *
- * This function will return the smallest number greater than or equal to
- * offset that is aligned to align.
- */
-static unsigned
-cplx_align_apply(struct cplx_align align, unsigned offset)
-{
-   return ALIGN(offset - align.offset, align.mul) + align.offset;
-}
-
-#define UNIFORM_SLOT_SIZE 4
-
-struct uniform_slot_info {
-   /** True if the given uniform slot is live */
-   unsigned is_live:1;
-
-   /** True if this slot and the next slot must remain contiguous */
-   unsigned contiguous:1;
-
-   struct cplx_align align;
-};
-
-static void
-mark_uniform_slots_read(struct uniform_slot_info *slots,
-                        unsigned num_slots, unsigned alignment)
-{
-   assert(alignment > 0 && util_is_power_of_two_nonzero(alignment));
-   assert(alignment <= CPLX_ALIGN_MAX_MUL);
-
-   /* We can't align a slot to anything less than the slot size */
-   alignment = MAX2(alignment, UNIFORM_SLOT_SIZE);
-
-   struct cplx_align align = {alignment, 0};
-   cplx_align_assert_sane(align);
-
-   for (unsigned i = 0; i < num_slots; i++) {
-      slots[i].is_live = true;
-      if (i < num_slots - 1)
-         slots[i].contiguous = true;
-
-      align.offset = (i * UNIFORM_SLOT_SIZE) & (align.mul - 1);
-      if (slots[i].align.mul == 0) {
-         slots[i].align = align;
-      } else {
-         slots[i].align = cplx_align_combine(slots[i].align, align);
-      }
-   }
-}
-
-/**
  * Assign UNIFORM file registers to either push constants or pull constants.
  *
  * We allow a fragment shader to have more than the specified minimum
@@ -2512,197 +2407,12 @@ void
 fs_visitor::assign_constant_locations()
 {
    /* Only the first compile gets to decide on locations. */
-   if (push_constant_loc) {
-      assert(pull_constant_loc);
+   if (push_constant_loc)
       return;
-   }
 
-   if (compiler->compact_params) {
-      struct uniform_slot_info slots[uniforms + 1];
-      memset(slots, 0, sizeof(slots));
-
-      foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
-         for (int i = 0 ; i < inst->sources; i++) {
-            if (inst->src[i].file != UNIFORM)
-               continue;
-
-            /* NIR tightly packs things so the uniform number might not be
-             * aligned (if we have a double right after a float, for
-             * instance).  This is fine because the process of re-arranging
-             * them will ensure that things are properly aligned.  The offset
-             * into that uniform, however, must be aligned.
-             *
-             * In Vulkan, we have explicit offsets but everything is crammed
-             * into a single "variable" so inst->src[i].nr will always be 0.
-             * Everything will be properly aligned relative to that one base.
-             */
-            assert(inst->src[i].offset % type_sz(inst->src[i].type) == 0);
-
-            unsigned u = inst->src[i].nr +
-                         inst->src[i].offset / UNIFORM_SLOT_SIZE;
-
-            if (u >= uniforms)
-               continue;
-
-            unsigned slots_read;
-            if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT && i == 0) {
-               slots_read = DIV_ROUND_UP(inst->src[2].ud, UNIFORM_SLOT_SIZE);
-            } else {
-               unsigned bytes_read = inst->components_read(i) *
-                                     type_sz(inst->src[i].type);
-               slots_read = DIV_ROUND_UP(bytes_read, UNIFORM_SLOT_SIZE);
-            }
-
-            assert(u + slots_read <= uniforms);
-            mark_uniform_slots_read(&slots[u], slots_read,
-                                    type_sz(inst->src[i].type));
-         }
-      }
-
-      int subgroup_id_index = get_subgroup_id_param_index(devinfo,
-                                                          stage_prog_data);
-
-      /* Only allow 16 registers (128 uniform components) as push constants.
-       *
-       * Just demote the end of the list.  We could probably do better
-       * here, demoting things that are rarely used in the program first.
-       *
-       * If changing this value, note the limitation about total_regs in
-       * brw_curbe.c.
-       */
-      unsigned int max_push_components = 16 * 8;
-      if (subgroup_id_index >= 0)
-         max_push_components--; /* Save a slot for the thread ID */
-
-      /* We push small arrays, but no bigger than 16 floats.  This is big
-       * enough for a vec4 but hopefully not large enough to push out other
-       * stuff.  We should probably use a better heuristic at some point.
-       */
-      const unsigned int max_chunk_size = 16;
-
-      unsigned int num_push_constants = 0;
-      unsigned int num_pull_constants = 0;
-
-      push_constant_loc = ralloc_array(mem_ctx, int, uniforms);
-      pull_constant_loc = ralloc_array(mem_ctx, int, uniforms);
-
-      /* Default to -1 meaning no location */
-      memset(push_constant_loc, -1, uniforms * sizeof(*push_constant_loc));
-      memset(pull_constant_loc, -1, uniforms * sizeof(*pull_constant_loc));
-
-      int chunk_start = -1;
-      struct cplx_align align;
-      for (unsigned u = 0; u < uniforms; u++) {
-         if (!slots[u].is_live) {
-            assert(chunk_start == -1);
-            continue;
-         }
-
-         /* Skip subgroup_id_index to put it in the last push register. */
-         if (subgroup_id_index == (int)u)
-            continue;
-
-         if (chunk_start == -1) {
-            chunk_start = u;
-            align = slots[u].align;
-         } else {
-            /* Offset into the chunk */
-            unsigned chunk_offset = (u - chunk_start) * UNIFORM_SLOT_SIZE;
-
-            /* Shift the slot alignment down by the chunk offset so it is
-             * comparable with the base chunk alignment.
-             */
-            struct cplx_align slot_align = slots[u].align;
-            slot_align.offset =
-               (slot_align.offset - chunk_offset) & (align.mul - 1);
-
-            align = cplx_align_combine(align, slot_align);
-         }
-
-         /* Sanity check the alignment */
-         cplx_align_assert_sane(align);
-
-         if (slots[u].contiguous)
-            continue;
-
-         /* Adjust the alignment to be in terms of slots, not bytes */
-         assert((align.mul & (UNIFORM_SLOT_SIZE - 1)) == 0);
-         assert((align.offset & (UNIFORM_SLOT_SIZE - 1)) == 0);
-         align.mul /= UNIFORM_SLOT_SIZE;
-         align.offset /= UNIFORM_SLOT_SIZE;
-
-         unsigned push_start_align = cplx_align_apply(align, num_push_constants);
-         unsigned chunk_size = u - chunk_start + 1;
-         if ((!compiler->supports_pull_constants && u < UBO_START) ||
-             (chunk_size < max_chunk_size &&
-              push_start_align + chunk_size <= max_push_components)) {
-            /* Align up the number of push constants */
-            num_push_constants = push_start_align;
-            for (unsigned i = 0; i < chunk_size; i++)
-               push_constant_loc[chunk_start + i] = num_push_constants++;
-         } else {
-            /* We need to pull this one */
-            num_pull_constants = cplx_align_apply(align, num_pull_constants);
-            for (unsigned i = 0; i < chunk_size; i++)
-               pull_constant_loc[chunk_start + i] = num_pull_constants++;
-         }
-
-         /* Reset the chunk and start again */
-         chunk_start = -1;
-      }
-
-      /* Add the CS local thread ID uniform at the end of the push constants */
-      if (subgroup_id_index >= 0)
-         push_constant_loc[subgroup_id_index] = num_push_constants++;
-
-      /* As the uniforms are going to be reordered, stash the old array and
-       * create two new arrays for push/pull params.
-       */
-      uint32_t *param = stage_prog_data->param;
-      stage_prog_data->nr_params = num_push_constants;
-      if (num_push_constants) {
-         stage_prog_data->param = rzalloc_array(mem_ctx, uint32_t,
-                                                num_push_constants);
-      } else {
-         stage_prog_data->param = NULL;
-      }
-      assert(stage_prog_data->nr_pull_params == 0);
-      assert(stage_prog_data->pull_param == NULL);
-      if (num_pull_constants > 0) {
-         stage_prog_data->nr_pull_params = num_pull_constants;
-         stage_prog_data->pull_param = rzalloc_array(mem_ctx, uint32_t,
-                                                     num_pull_constants);
-      }
-
-      /* Up until now, the param[] array has been indexed by reg + offset
-       * of UNIFORM registers.  Move pull constants into pull_param[] and
-       * condense param[] to only contain the uniforms we chose to push.
-       *
-       * NOTE: Because we are condensing the params[] array, we know that
-       * push_constant_loc[i] <= i and we can do it in one smooth loop without
-       * having to make a copy.
-       */
-      for (unsigned int i = 0; i < uniforms; i++) {
-         uint32_t value = param[i];
-         if (pull_constant_loc[i] != -1) {
-            stage_prog_data->pull_param[pull_constant_loc[i]] = value;
-         } else if (push_constant_loc[i] != -1) {
-            stage_prog_data->param[push_constant_loc[i]] = value;
-         }
-      }
-      ralloc_free(param);
-   } else {
-      /* If we don't want to compact anything, just set up dummy push/pull
-       * arrays.  All the rest of the compiler cares about are these arrays.
-       */
-      push_constant_loc = ralloc_array(mem_ctx, int, uniforms);
-      pull_constant_loc = ralloc_array(mem_ctx, int, uniforms);
-
-      for (unsigned u = 0; u < uniforms; u++)
-         push_constant_loc[u] = u;
-
-      memset(pull_constant_loc, -1, uniforms * sizeof(*pull_constant_loc));
-   }
+   push_constant_loc = ralloc_array(mem_ctx, int, uniforms);
+   for (unsigned u = 0; u < uniforms; u++)
+      push_constant_loc[u] = u;
 
    /* Now that we know how many regular uniforms we'll push, reduce the
     * UBO push ranges so we don't exceed the 3DSTATE_CONSTANT limits.
@@ -2733,33 +2443,22 @@ fs_visitor::get_pull_locs(const fs_reg &src,
 {
    assert(src.file == UNIFORM);
 
-   if (src.nr >= UBO_START) {
-      const struct brw_ubo_range *range =
-         &prog_data->ubo_ranges[src.nr - UBO_START];
+   if (src.nr < UBO_START)
+      return false;
 
-      /* If this access is in our (reduced) range, use the push data. */
-      if (src.offset / 32 < range->length)
-         return false;
+   const struct brw_ubo_range *range =
+      &prog_data->ubo_ranges[src.nr - UBO_START];
 
-      *out_surf_index = prog_data->binding_table.ubo_start + range->block;
-      *out_pull_index = (32 * range->start + src.offset) / 4;
+   /* If this access is in our (reduced) range, use the push data. */
+   if (src.offset / 32 < range->length)
+      return false;
 
-      prog_data->has_ubo_pull = true;
-      return true;
-   }
+   *out_surf_index = prog_data->binding_table.ubo_start + range->block;
+   *out_pull_index = (32 * range->start + src.offset) / 4;
 
-   const unsigned location = src.nr + src.offset / 4;
+   prog_data->has_ubo_pull = true;
 
-   if (location < uniforms && pull_constant_loc[location] != -1) {
-      /* A regular uniform push constant */
-      *out_surf_index = stage_prog_data->binding_table.pull_constants_start;
-      *out_pull_index = pull_constant_loc[location];
-
-      prog_data->has_ubo_pull = true;
-      return true;
-   }
-
-   return false;
+   return true;
 }
 
 /**

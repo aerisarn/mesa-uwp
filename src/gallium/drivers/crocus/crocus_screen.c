@@ -779,9 +779,7 @@ crocus_screen_create(int fd, const struct pipe_screen_config *config)
    screen->compiler = brw_compiler_create(screen, &screen->devinfo);
    screen->compiler->shader_debug_log = crocus_shader_debug_log;
    screen->compiler->shader_perf_log = crocus_shader_perf_log;
-   screen->compiler->supports_pull_constants = false;
    screen->compiler->supports_shader_constants = false;
-   screen->compiler->compact_params = false;
    screen->compiler->constant_buffer_0_is_relative = true;
 
    if (screen->devinfo.ver >= 7) {

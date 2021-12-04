@@ -103,10 +103,8 @@ void
 fs_visitor::nir_setup_uniforms()
 {
    /* Only the first compile gets to set up uniforms. */
-   if (push_constant_loc) {
-      assert(pull_constant_loc);
+   if (push_constant_loc)
       return;
-   }
 
    uniforms = nir->num_uniforms / 4;
 

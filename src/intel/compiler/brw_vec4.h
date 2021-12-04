@@ -138,9 +138,7 @@ public:
    void spill_reg(unsigned spill_reg);
    void move_grf_array_access_to_scratch();
    void move_uniform_array_access_to_pull_constants();
-   void move_push_constants_to_pull_constants();
    void split_uniform_registers();
-   void pack_uniform_registers();
    void setup_push_ranges();
    virtual void invalidate_analysis(brw::analysis_dependency_class c);
    void split_virtual_grfs();
@@ -292,11 +290,6 @@ public:
 			  int base_offset);
    void emit_scratch_write(bblock_t *block, vec4_instruction *inst,
 			   int base_offset);
-   void emit_pull_constant_load(bblock_t *block, vec4_instruction *inst,
-				dst_reg dst,
-				src_reg orig_src,
-                                int base_offset,
-                                src_reg indirect);
    void emit_pull_constant_load_reg(dst_reg dst,
                                     src_reg surf_index,
                                     src_reg offset,
