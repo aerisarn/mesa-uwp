@@ -588,11 +588,11 @@ st_translate_vertex_program(struct st_context *st,
    ubyte output_semantic_name[VARYING_SLOT_MAX] = {0};
    ubyte output_semantic_index[VARYING_SLOT_MAX] = {0};
 
-   if (stp->Base.arb.IsPositionInvariant)
-      _mesa_insert_mvp_code(st->ctx, &stp->Base);
-
    /* ARB_vp: */
    if (!stp->glsl_to_tgsi) {
+      if (stp->Base.arb.IsPositionInvariant)
+         _mesa_insert_mvp_code(st->ctx, &stp->Base);
+
       _mesa_remove_output_reads(&stp->Base, PROGRAM_OUTPUT);
 
       /* This determines which states will be updated when the assembly
