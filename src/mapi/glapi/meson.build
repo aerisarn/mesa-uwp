@@ -52,7 +52,7 @@ if with_shared_glapi
 else
   static_glapi_args += '-DMAPI_MODE_UTIL'
   if with_platform_windows
-    static_glapi_args += ['-D_GDI32_', '-DBUILD_GL32', '-DKHRONOS_DLL_EXPORTS', '-D_GLAPI_NO_EXPORTS']
+    static_glapi_args += ['-D_GDI32_', '-DKHRONOS_DLL_EXPORTS', '-D_GLAPI_NO_EXPORTS']
   endif
   static_glapi_files += files(
     'glapi_dispatch.c',

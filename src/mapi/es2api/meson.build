@@ -29,7 +29,7 @@ es2_glapi_mapi_tmp_h = custom_target(
 
 _es2_c_args = []
 if with_platform_windows
-  _es2_c_args += ['-D_GDI32_', '-DBUILD_GL32']
+  _es2_c_args += ['-D_GDI32_']
 endif
 
 gles2_def = custom_target(

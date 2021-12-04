@@ -489,7 +489,6 @@ _mesa_windows_args = []
 if with_platform_windows
   _mesa_windows_args += [
     '-D_GDI32_',    # prevent gl* being declared __declspec(dllimport) in MS headers
-    '-DBUILD_GL32'  # declare gl* as __declspec(dllexport) in Mesa headers
   ]
   if not with_shared_glapi
     # prevent _glapi_* from being declared __declspec(dllimport)
