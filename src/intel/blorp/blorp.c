@@ -226,12 +226,6 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
    wm_prog_data->base.nr_params = 0;
    wm_prog_data->base.param = NULL;
 
-   /* BLORP always uses the first two binding table entries:
-    * - Surface 0 is the render target (which always start from 0)
-    * - Surface 1 is the source texture
-    */
-   wm_prog_data->base.binding_table.texture_start = BLORP_TEXTURE_BT_INDEX;
-
    brw_preprocess_nir(compiler, nir, NULL);
    nir_remove_dead_variables(nir, nir_var_shader_in, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
@@ -302,12 +296,6 @@ blorp_compile_cs(struct blorp_context *blorp, void *mem_ctx,
    nir->options = compiler->nir_options[MESA_SHADER_COMPUTE];
 
    memset(cs_prog_data, 0, sizeof(*cs_prog_data));
-
-   /* BLORP always uses the first two binding table entries:
-    * - Surface 0 is the destination image (which always start from 0)
-    * - Surface 1 is the source texture
-    */
-   cs_prog_data->base.binding_table.texture_start = BLORP_TEXTURE_BT_INDEX;
 
    brw_preprocess_nir(compiler, nir, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));

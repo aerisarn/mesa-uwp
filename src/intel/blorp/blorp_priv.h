@@ -45,6 +45,8 @@ enum {
    BLORP_NUM_BT_ENTRIES
 };
 
+#define BLORP_SAMPLER_INDEX 0
+
 struct brw_blorp_surface_info
 {
    bool enabled;

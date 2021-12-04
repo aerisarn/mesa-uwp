@@ -144,9 +144,8 @@ blorp_create_nir_tex_instr(nir_builder *b, struct brw_blorp_blit_vars *v,
    tex->is_array = false;
    tex->is_shadow = false;
 
-   /* Blorp only has one texture and it's bound at unit 0 */
-   tex->texture_index = 0;
-   tex->sampler_index = 0;
+   tex->texture_index = BLORP_TEXTURE_BT_INDEX;
+   tex->sampler_index = BLORP_SAMPLER_INDEX;
 
    /* To properly handle 3-D and 2-D array textures, we pull the Z component
     * from an input.  TODO: This is a bit magic; we should probably make this
