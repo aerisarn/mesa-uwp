@@ -48,6 +48,7 @@ a306_gl:
     - .a306-test
   variables:
     DEQP_SUITE: freedreno-a307
+    FDO_CI_CONCURRENT: 6
   parallel: 5
 
 # New jobs. Leave it as manual for now.
