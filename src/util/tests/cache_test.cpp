@@ -39,6 +39,7 @@
 
 #include "util/mesa-sha1.h"
 #include "util/disk_cache.h"
+#include "util/ralloc.h"
 
 #ifdef ENABLE_SHADER_CACHE
 
@@ -76,20 +77,16 @@ rmrf_local(const char *path)
 }
 
 static void
-check_directories_created(const char *cache_dir)
+check_directories_created(void *mem_ctx, const char *cache_dir)
 {
    bool sub_dirs_created = false;
 
    char buf[PATH_MAX];
    if (getcwd(buf, PATH_MAX)) {
-      char *full_path = NULL;
-      if (asprintf(&full_path, "%s%s", buf, ++cache_dir) != -1 ) {
-         struct stat sb;
-         if (stat(full_path, &sb) != -1 && S_ISDIR(sb.st_mode))
-            sub_dirs_created = true;
-
-         free(full_path);
-      }
+      char *full_path = ralloc_asprintf(mem_ctx, "%s%s", buf, ++cache_dir);
+      struct stat sb;
+      if (stat(full_path, &sb) != -1 && S_ISDIR(sb.st_mode))
+         sub_dirs_created = true;
    }
 
    EXPECT_TRUE(sub_dirs_created) << "create sub dirs";
@@ -131,7 +128,7 @@ cache_exists(struct disk_cache *cache)
 #define CACHE_TEST_TMP "./cache-test-tmp"
 
 static void
-test_disk_cache_create(const char *cache_dir_name)
+test_disk_cache_create(void *mem_ctx, const char *cache_dir_name)
 {
    struct disk_cache *cache;
    int err;
@@ -194,10 +191,9 @@ test_disk_cache_create(const char *cache_dir_name)
    EXPECT_TRUE(cache_exists(cache))
       << "disk_cache_create with XDG_CACHE_HOME set";
 
-   char *path;
-   asprintf(&path, "%s%s", CACHE_TEST_TMP "/xdg-cache-home/", cache_dir_name);
-   check_directories_created(path);
-   free(path);
+   char *path = ralloc_asprintf(
+      mem_ctx, "%s%s", CACHE_TEST_TMP "/xdg-cache-home/", cache_dir_name);
+   check_directories_created(mem_ctx, path);
 
    disk_cache_destroy(cache);
 
@@ -220,10 +216,9 @@ test_disk_cache_create(const char *cache_dir_name)
    cache = disk_cache_create("test", "make_check", 0);
    EXPECT_TRUE(cache_exists(cache)) << "disk_cache_create with MESA_GLSL_CACHE_DIR set";
 
-   asprintf(&path, "%s%s", CACHE_TEST_TMP "/mesa-glsl-cache-dir/",
-            cache_dir_name);
-   check_directories_created(path);
-   free(path);
+   path = ralloc_asprintf(
+      mem_ctx, "%s%s", CACHE_TEST_TMP "/mesa-glsl-cache-dir/", cache_dir_name);
+   check_directories_created(mem_ctx, path);
 
    disk_cache_destroy(cache);
 }
@@ -526,12 +521,24 @@ test_put_and_get_between_instances()
 }
 #endif /* ENABLE_SHADER_CACHE */
 
-TEST(Cache, MultiFile)
+class Cache : public ::testing::Test {
+protected:
+   void *mem_ctx;
+
+   Cache() {
+      mem_ctx = ralloc_context(NULL);
+   }
+   ~Cache() {
+      ralloc_free(mem_ctx);
+   }
+};
+
+TEST_F(Cache, MultiFile)
 {
 #ifndef ENABLE_SHADER_CACHE
    GTEST_SKIP() << "ENABLE_SHADER_CACHE not defined.";
 #else
-   test_disk_cache_create(CACHE_DIR_NAME);
+   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME);
 
    test_put_and_get(true);
 
@@ -542,14 +549,14 @@ TEST(Cache, MultiFile)
 #endif
 }
 
-TEST(Cache, SingleFile)
+TEST_F(Cache, SingleFile)
 {
 #ifndef ENABLE_SHADER_CACHE
    GTEST_SKIP() << "ENABLE_SHADER_CACHE not defined.";
 #else
    setenv("MESA_DISK_CACHE_SINGLE_FILE", "true", 1);
 
-   test_disk_cache_create(CACHE_DIR_NAME_SF);
+   test_disk_cache_create(mem_ctx, CACHE_DIR_NAME_SF);
 
    /* We skip testing cache size limit as the single file cache currently
     * doesn't have any functionality to enforce cache size limits.
