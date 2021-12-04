@@ -8362,7 +8362,11 @@
 
 <xi:include href="ARB_indirect_parameters.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 
-<!-- ARB extensions 155 - 159 -->
+<!-- ARB extensions 155 - 157 -->
+
+<xi:include href="ARB_sparse_texture.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+<!-- ARB extensions 159 -->
 
 <xi:include href="ARB_clip_control.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 

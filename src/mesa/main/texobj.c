@@ -2343,4 +2343,20 @@ _mesa_InvalidateTexImage(GLuint texture, GLint level)
    return;
 }
 
+void GLAPIENTRY
+_mesa_TexPageCommitmentARB(GLenum target, GLint level, GLint xoffset,
+                           GLint yoffset, GLint zoffset, GLsizei width,
+                           GLsizei height, GLsizei depth, GLboolean commit)
+{
+
+}
+
+void GLAPIENTRY
+_mesa_TexturePageCommitmentEXT(GLuint texture, GLint level, GLint xoffset,
+                               GLint yoffset, GLint zoffset, GLsizei width,
+                               GLsizei height, GLsizei depth, GLboolean commit)
+{
+
+}
+
 /*@}*/

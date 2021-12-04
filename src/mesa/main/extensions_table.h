@@ -142,6 +142,7 @@ EXT(ARB_shading_language_include            , dummy_true                        
 EXT(ARB_shading_language_packing            , ARB_shading_language_packing           , GLL, GLC,  x ,  x , 2011)
 EXT(ARB_shadow                              , ARB_shadow                             , GLL,  x ,  x ,  x , 2001)
 EXT(ARB_sparse_buffer                       , ARB_sparse_buffer                      , GLL, GLC,  x ,  x , 2014)
+EXT(ARB_sparse_texture                      , ARB_sparse_texture                     , GLL, GLC,  x ,  x , 2013)
 EXT(ARB_spirv_extensions                    , ARB_spirv_extensions                   , GLL, GLC,  x ,  x , 2016)
 EXT(ARB_stencil_texturing                   , ARB_stencil_texturing                  , GLL, GLC,  x ,  x , 2012)
 EXT(ARB_sync                                , ARB_sync                               , GLL, GLC,  x ,  x , 2003)
