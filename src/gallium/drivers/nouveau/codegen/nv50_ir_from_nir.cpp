@@ -2301,6 +2301,8 @@ Converter::visit(nir_intrinsic_instr *insn)
       DataType sType = getSType(insn->src[0], false, false);
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
+      if (indirectOffset)
+         indirectOffset = mkOp1v(OP_MOV, TYPE_U32, getSSA(4, FILE_ADDRESS), indirectOffset);
 
       for (uint8_t i = 0u; i < nir_intrinsic_src_components(insn, 0); ++i) {
          if (!((1u << i) & nir_intrinsic_write_mask(insn)))
@@ -2317,6 +2319,8 @@ Converter::visit(nir_intrinsic_instr *insn)
       LValues &newDefs = convert(&insn->dest);
       Value *indirectOffset;
       uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
+      if (indirectOffset)
+         indirectOffset = mkOp1v(OP_MOV, TYPE_U32, getSSA(4, FILE_ADDRESS), indirectOffset);
 
       for (uint8_t i = 0u; i < dest_components; ++i)
          loadFrom(getFile(op), 0, dType, newDefs[i], offset, i, indirectOffset);
