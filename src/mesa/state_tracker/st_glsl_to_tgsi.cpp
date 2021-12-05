@@ -5078,7 +5078,7 @@ get_src_arg_mask(st_dst_reg dst, st_src_reg src)
  * instruction is the first instruction to write to register T0.  There are
  * several lowering passes done in GLSL IR (e.g. branches and
  * relative addressing) that create a large number of conditional assignments
- * that ir_to_mesa converts to CMP instructions like the one mentioned above.
+ * that glsl_to_tgsi converts to CMP instructions like the one mentioned above.
  *
  * Here is why this conversion is safe:
  * CMP T0, T1 T2 T0 can be expanded to:

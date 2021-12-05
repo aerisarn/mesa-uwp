@@ -218,9 +218,6 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
          }
       } else if (uniform->state_slots) {
          const gl_state_index16 *const stateTokens = uniform->state_slots[0].tokens;
-         /* This state reference has already been setup by ir_to_mesa, but we'll
-          * get the same index back here.
-          */
 
          unsigned comps;
          if (glsl_type_is_struct_or_ifc(type)) {
