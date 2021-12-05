@@ -705,7 +705,7 @@
     <slot/>
     <src/>
     <src/>
-    <imm name="index" start="20" size="4"/>
+    <imm name="index" start="16" size="8"/>
   </group>
 
   <ins name="LD_ATTR_IMM" title="Load immediate attribute" opcode="0x66" unit="LS">
