@@ -495,6 +495,11 @@ _mesa_propagate_uniforms_to_driver_storage(struct gl_uniform_storage *uni,
 					   unsigned array_index,
 					   unsigned count);
 
+void
+_mesa_ensure_and_associate_uniform_storage(struct gl_context *ctx,
+                             struct gl_shader_program *shader_program,
+                             struct gl_program *prog, unsigned required_space);
+
 extern void
 _mesa_update_shader_textures_used(struct gl_shader_program *shProg,
 				  struct gl_program *prog);
