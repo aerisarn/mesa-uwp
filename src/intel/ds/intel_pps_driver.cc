@@ -27,6 +27,7 @@
 #include <pps/pps_algorithm.h>
 
 #include "intel_pps_perf.h"
+#include "intel_pps_priv.h"
 
 namespace pps
 {
@@ -43,12 +44,6 @@ uint64_t IntelDriver::get_min_sampling_period_ns()
 
 IntelDriver::IntelDriver()
 {
-   /* Note: clock_id's below 128 are reserved.. for custom clock sources,
-    * using the hash of a namespaced string is the recommended approach.
-    * See: https://perfetto.dev/docs/concepts/clock-sync
-    */
-   this->clock_id =
-      _mesa_hash_string("org.freedesktop.mesa.intel") | 0x80000000;
 }
 
 IntelDriver::~IntelDriver()
@@ -74,6 +69,12 @@ void IntelDriver::enable_all_counters()
 
 bool IntelDriver::init_perfcnt()
 {
+   /* Note: clock_id's below 128 are reserved.. for custom clock sources,
+    * using the hash of a namespaced string is the recommended approach.
+    * See: https://perfetto.dev/docs/concepts/clock-sync
+    */
+   this->clock_id = intel_pps_clock_id(drm_device.gpu_num);
+
    assert(!perf && "Intel perf should not be initialized at this point");
 
    perf = std::make_unique<IntelPerf>(drm_device.fd);
