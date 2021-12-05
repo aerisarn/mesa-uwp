@@ -737,6 +737,11 @@
   </group>
 
   <ins name="LD_ATTR_IMM" title="Load immediate attribute" opcode="0x66" unit="LS">
+    <desc>
+      Load `vecsize` components from the attribute descriptor at entry `index`
+      of resource table `table` at index (vertex ID, instance ID), converting
+      to the specified register format.
+    </desc>
     <sr_count/>
     <vecsize/>
     <regfmt/>
@@ -745,6 +750,7 @@
     <src>Vertex ID</src>
     <src>Instance ID</src>
     <imm name="index" start="20" size="4"/>
+    <imm name="table" start="16" size="4"/>
   </ins>
 
   <ins name="LEA_IMAGE_IMM" title="Load effective address of image texel" opcode="0x67" unit="LS">
