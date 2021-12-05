@@ -590,6 +590,30 @@
     <value desc="Bitwise">bit</value>
   </enum>
 
+  <enum name="Sample mode">
+    <desc>
+      Varying interpolation mode, for choosing the correct sample to
+      interpolate at, allowing the `sample` and `centroid` qualifiers to be
+      implemented, as well as the `interpolateAt*` functions.
+    </desc>
+    <value desc="Center">center</value>
+    <value desc="Centroid">centroid</value>
+    <value desc="Sample">sample</value>
+    <value desc="Explicit">explicit</value>
+  </enum>
+
+  <enum name="Update mode">
+    <desc>
+      The Valhall GPU maintains hidden state when interpolating varyings, to
+      allow reusing sample location calculations. The update mode of a varying
+      load controls this hidden state.
+    </desc>
+    <value desc="Store interpolation position">store</value>
+    <value desc="Retrieve interpolation position">retrieve</value>
+    <reserved/>
+    <value desc="Clobber saved position">clobber</value>
+  </enum>
+
   <ins name="NOP" title="No operation" dests="0" opcode="0x00" unit="CVT">
     <desc>
       Do nothing. Useful at the start of a block for waiting on slots required
@@ -689,6 +713,8 @@
     <sr_count/>
     <vecsize/>
     <regfmt/>
+    <sample/>
+    <update/>
     <slot/>
     <src/>
     <imm name="index" start="12" size="4"/> <!-- 0 for pointx, 1 for pointy, 2 for fragw, 3 for fragz -->
@@ -702,6 +728,8 @@
     <vecsize/>
     <sr_count/>
     <regfmt/>
+    <sample/>
+    <update/>
     <slot/>
     <src/>
     <src/>

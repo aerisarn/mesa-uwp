@@ -350,6 +350,8 @@ MODIFIERS = {
     "sr_count": Modifier("staging_register_count", 33, 3, implied = True),
 
     "subgroup": Modifier("subgroup_size", 36, 2),
+    "update": Modifier("update_mode", 36, 2),
+    "sample": Modifier("sample_mode", 38, 2),
 }
 
 # Parse the ISA
