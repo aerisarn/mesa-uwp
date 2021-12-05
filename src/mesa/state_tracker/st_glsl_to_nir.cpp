@@ -30,7 +30,6 @@
 #include "program/program.h"
 #include "program/prog_statevars.h"
 #include "program/prog_parameter.h"
-#include "program/ir_to_mesa.h"
 #include "main/context.h"
 #include "main/mtypes.h"
 #include "main/errors.h"

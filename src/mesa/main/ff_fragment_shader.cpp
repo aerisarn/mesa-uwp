@@ -42,7 +42,7 @@
 #include "compiler/glsl/glsl_parser_extras.h"
 #include "compiler/glsl/glsl_symbol_table.h"
 #include "compiler/glsl_types.h"
-#include "program/ir_to_mesa.h"
+#include "program/link_program.h"
 #include "program/program.h"
 #include "program/programopt.h"
 #include "program/prog_cache.h"

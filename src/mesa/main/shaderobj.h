@@ -29,7 +29,7 @@
 
 #include "main/glheader.h"
 #include "compiler/shader_enums.h"
-#include "program/ir_to_mesa.h"
+#include "program/link_program.h"
 #include "util/macros.h"
 
 
