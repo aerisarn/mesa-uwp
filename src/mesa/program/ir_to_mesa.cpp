@@ -2467,10 +2467,10 @@ _mesa_generate_parameters_list_for_uniforms(struct gl_context *ctx,
    }
 }
 
-void
-_mesa_associate_uniform_storage(struct gl_context *ctx,
-                                struct gl_shader_program *shader_program,
-                                struct gl_program *prog)
+static void
+associate_uniform_storage(struct gl_context *ctx,
+                          struct gl_shader_program *shader_program,
+                          struct gl_program *prog)
 {
    struct gl_program_parameter_list *params = prog->Parameters;
    gl_shader_stage shader_type = prog->info.stage;
@@ -2633,7 +2633,7 @@ _mesa_ensure_and_associate_uniform_storage(struct gl_context *ctx,
     * prog->ParameterValues to get reallocated (e.g., anything that adds a
     * program constant) has to happen before creating this linkage.
     */
-   _mesa_associate_uniform_storage(ctx, shader_program, prog);
+   associate_uniform_storage(ctx, shader_program, prog);
 }
 
 /*
@@ -2987,7 +2987,7 @@ get_mesa_program(struct gl_context *ctx,
     * prog->ParameterValues to get reallocated (e.g., anything that adds a
     * program constant) has to happen before creating this linkage.
     */
-   _mesa_associate_uniform_storage(ctx, shader_program, prog);
+   associate_uniform_storage(ctx, shader_program, prog);
    if (!shader_program->data->LinkStatus) {
       goto fail_exit;
    }
