@@ -23,34 +23,14 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-/**
- * \file ir_to_mesa.cpp
- *
- * Translate GLSL IR to Mesa's gl_program representation.
- */
-
-#include <stdio.h>
-#include "main/macros.h"
-#include "main/mtypes.h"
 #include "main/shaderapi.h"
 #include "main/shaderobj.h"
-#include "main/uniforms.h"
 #include "main/glspirv.h"
-#include "compiler/glsl/ast.h"
-#include "compiler/glsl/ir.h"
-#include "compiler/glsl/ir_expression_flattening.h"
-#include "compiler/glsl/ir_optimization.h"
-#include "compiler/glsl/ir_uniform.h"
 #include "compiler/glsl/glsl_parser_extras.h"
 #include "compiler/glsl_types.h"
 #include "compiler/glsl/linker.h"
 #include "compiler/glsl/program.h"
 #include "compiler/glsl/shader_cache.h"
-#include "program/prog_instruction.h"
-#include "program/prog_optimize.h"
-#include "program/prog_print.h"
-#include "program/program.h"
-#include "program/prog_parameter.h"
 
 
 extern "C" {

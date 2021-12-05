@@ -24,21 +24,14 @@
 #ifndef IR_TO_MESA_H
 #define IR_TO_MESA_H
 
-#include "main/glheader.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct gl_context;
-struct gl_program;
-struct gl_shader;
 struct gl_shader_program;
-struct gl_linked_shader;
-struct gl_program_parameter_list;
 
 void _mesa_glsl_link_shader(struct gl_context *ctx, struct gl_shader_program *prog);
-
 
 #ifdef __cplusplus
 }
