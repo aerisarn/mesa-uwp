@@ -123,10 +123,6 @@ extern void
 _mesa_delete_shader_program(struct gl_context *ctx,
                             struct gl_shader_program *shProg);
 
-
-extern void
-_mesa_init_shader_object_functions(struct dd_function_table *driver);
-
 static inline gl_shader_stage
 _mesa_shader_enum_to_shader_stage(GLenum v)
 {

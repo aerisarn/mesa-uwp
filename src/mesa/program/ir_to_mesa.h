@@ -38,7 +38,6 @@ struct gl_linked_shader;
 struct gl_program_parameter_list;
 
 void _mesa_glsl_link_shader(struct gl_context *ctx, struct gl_shader_program *prog);
-GLboolean _mesa_ir_link_shader(struct gl_context *ctx, struct gl_shader_program *prog);
 
 void
 _mesa_generate_parameters_list_for_uniforms(struct gl_context *ctx,
