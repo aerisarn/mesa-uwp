@@ -73,9 +73,6 @@ radv_amdgpu_winsys_virtual_map(struct radv_amdgpu_winsys *ws, struct radv_amdgpu
    assert(range->size);
 
    if (!range->bo) {
-      if (!ws->info.has_sparse_vm_mappings)
-         return;
-
       internal_flags |= AMDGPU_VM_PAGE_PRT;
    } else
       p_atomic_inc(&range->bo->ref_count);
@@ -94,9 +91,6 @@ radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys *ws, struct radv_amdg
    assert(range->size);
 
    if (!range->bo) {
-      if (!ws->info.has_sparse_vm_mappings)
-         return;
-
       /* Even though this is an unmap, if we don't set this flag,
          AMDGPU is going to complain about the missing buffer. */
       internal_flags |= AMDGPU_VM_PAGE_PRT;
