@@ -343,6 +343,16 @@ pipe_format_for_aspect(enum pipe_format format, unsigned pipe_mask)
    }
 }
 
+static bool
+clear_color_is_fully_zero(const struct iris_resource *res)
+{
+   return !res->aux.clear_color_unknown &&
+          res->aux.clear_color.u32[0] == 0 &&
+          res->aux.clear_color.u32[1] == 0 &&
+          res->aux.clear_color.u32[2] == 0 &&
+          res->aux.clear_color.u32[3] == 0;
+}
+
 /**
  * The pipe->blit() driver hook.
  *
@@ -595,10 +605,7 @@ get_copy_region_aux_settings(struct iris_context *ice,
        *   original format (e.g. A8_UNORM/R8_UINT).
        */
       *out_clear_supported = (devinfo->ver >= 11 && !is_dest) ||
-                             (res->aux.clear_color.u32[0] == 0 &&
-                              res->aux.clear_color.u32[1] == 0 &&
-                              res->aux.clear_color.u32[2] == 0 &&
-                              res->aux.clear_color.u32[3] == 0);
+                             clear_color_is_fully_zero(res);
       break;
    default:
       *out_aux_usage = ISL_AUX_USAGE_NONE;
