@@ -572,6 +572,12 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
    };
 }
 
+static bool
+radv_is_conformant(const struct radv_physical_device *pdevice)
+{
+   return pdevice->rad_info.chip_class >= GFX8;
+}
+
 static VkResult
 radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm_device,
                                 struct radv_physical_device **device_out)
@@ -702,7 +708,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    device->disk_cache = disk_cache_create(device->name, buf, 0);
 #endif
 
-   if (device->rad_info.chip_class < GFX8 || device->rad_info.chip_class > GFX10)
+   if (!radv_is_conformant(device))
       vk_warn_non_conformant_implementation("radv");
 
    radv_get_driver_uuid(&device->driver_uuid);
@@ -1884,12 +1890,22 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
    snprintf(p->driverName, VK_MAX_DRIVER_NAME_SIZE, "radv");
    snprintf(p->driverInfo, VK_MAX_DRIVER_INFO_SIZE, "Mesa " PACKAGE_VERSION MESA_GIT_SHA1 "%s",
             radv_get_compiler_string(pdevice));
-   p->conformanceVersion = (VkConformanceVersion){
-      .major = 1,
-      .minor = 2,
-      .subminor = 3,
-      .patch = 0,
-   };
+
+   if (radv_is_conformant(pdevice)) {
+      p->conformanceVersion = (VkConformanceVersion){
+         .major = 1,
+         .minor = 2,
+         .subminor = 7,
+         .patch = 1,
+      };
+   } else {
+      p->conformanceVersion = (VkConformanceVersion){
+         .major = 0,
+         .minor = 0,
+         .subminor = 0,
+         .patch = 0,
+      };
+   }
 
    /* On AMD hardware, denormals and rounding modes for fp16/fp64 are
     * controlled by the same config register.
