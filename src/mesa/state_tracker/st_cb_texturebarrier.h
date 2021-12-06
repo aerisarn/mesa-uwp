@@ -28,10 +28,8 @@
 #ifndef ST_CB_TEXTUREBARRIER_H
 #define ST_CB_TEXTUREBARRIER_H
 
-
-struct dd_function_table;
-
-extern void st_init_texture_barrier_functions(struct dd_function_table *functions);
-
+void st_TextureBarrier(struct gl_context *ctx);
+void st_FramebufferFetchBarrier(struct gl_context *ctx);
+void st_MemoryBarrier(struct gl_context *ctx, GLbitfield barriers);
 
 #endif

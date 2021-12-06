@@ -66,7 +66,6 @@
 #include "st_cb_texture.h"
 #include "st_cb_xformfb.h"
 #include "st_cb_flush.h"
-#include "st_cb_texturebarrier.h"
 #include "st_cb_viewport.h"
 #include "st_atom.h"
 #include "st_draw.h"
@@ -963,7 +962,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_readpixels_functions(functions);
    st_init_semaphoreobject_functions(functions);
    st_init_texture_functions(functions);
-   st_init_texture_barrier_functions(functions);
    st_init_flush_functions(screen, functions);
    st_init_viewport_functions(functions);
    st_init_compute_functions(functions);

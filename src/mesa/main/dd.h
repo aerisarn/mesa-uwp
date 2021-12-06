@@ -932,11 +932,6 @@ struct dd_function_table {
                                    struct gl_transform_feedback_object *obj);
 
    /**
-    * \name GL_NV_texture_barrier interface
-    */
-   void (*TextureBarrier)(struct gl_context *ctx);
-
-   /**
     * \name GL_ARB_texture_multisample
     */
    void (*GetSamplePosition)(struct gl_context *ctx,
@@ -966,25 +961,6 @@ struct dd_function_table {
     * non-zero status should be returned for the duration of the reset.
     */
    GLenum (*GetGraphicsResetStatus)(struct gl_context *ctx);
-
-   /**
-    * \name GL_ARB_shader_image_load_store interface.
-    */
-   /** @{ */
-   void (*MemoryBarrier)(struct gl_context *ctx, GLbitfield barriers);
-   /** @} */
-
-   /**
-    * GL_EXT_shader_framebuffer_fetch_non_coherent rendering barrier.
-    *
-    * On return from this function any framebuffer contents written by
-    * previous draw commands are guaranteed to be visible from subsequent
-    * fragment shader invocations using the
-    * EXT_shader_framebuffer_fetch_non_coherent interface.
-    */
-   /** @{ */
-   void (*FramebufferFetchBarrier)(struct gl_context *ctx);
-   /** @} */
 
    /**
     * \name GL_ARB_compute_shader interface

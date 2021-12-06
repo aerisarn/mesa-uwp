@@ -45,7 +45,7 @@
 /**
  * Called via ctx->Driver.TextureBarrier()
  */
-static void
+void
 st_TextureBarrier(struct gl_context *ctx)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
@@ -57,7 +57,7 @@ st_TextureBarrier(struct gl_context *ctx)
 /**
  * Called via ctx->Driver.FramebufferFetchBarrier()
  */
-static void
+void
 st_FramebufferFetchBarrier(struct gl_context *ctx)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
@@ -69,7 +69,7 @@ st_FramebufferFetchBarrier(struct gl_context *ctx)
 /**
  * Called via ctx->Driver.MemoryBarrier()
  */
-static void
+void
 st_MemoryBarrier(struct gl_context *ctx, GLbitfield barriers)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
@@ -129,11 +129,4 @@ st_MemoryBarrier(struct gl_context *ctx, GLbitfield barriers)
 
    if (flags && pipe->memory_barrier)
       pipe->memory_barrier(pipe, flags);
-}
-
-void st_init_texture_barrier_functions(struct dd_function_table *functions)
-{
-   functions->TextureBarrier = st_TextureBarrier;
-   functions->FramebufferFetchBarrier = st_FramebufferFetchBarrier;
-   functions->MemoryBarrier = st_MemoryBarrier;
 }
