@@ -904,43 +904,20 @@ blorp_can_hiz_clear_depth(const struct intel_device_info *devinfo,
    assert(devinfo->ver >= 8);
 
    if (devinfo->ver == 8 && surf->format == ISL_FORMAT_R16_UNORM) {
-      /* Apply the D16 alignment restrictions. On BDW, HiZ has an 8x4 sample
-       * block with the following property: as the number of samples increases,
-       * the number of pixels representable by this block decreases by a factor
-       * of the sample dimensions. Sample dimensions scale following the MSAA
-       * interleaved pattern.
+      /* From the BDW PRM, Vol 7, "Depth Buffer Clear":
        *
-       * Sample|Sample|Pixel
-       * Count |Dim   |Dim
-       * ===================
-       *    1  | 1x1  | 8x4
-       *    2  | 2x1  | 4x4
-       *    4  | 2x2  | 4x2
-       *    8  | 4x2  | 2x2
-       *   16  | 4x4  | 2x1
+       *   The following restrictions apply only if the depth buffer surface
+       *   type is D16_UNORM and software does not use the “full surf clear”:
        *
-       * Table: Pixel Dimensions in a HiZ Sample Block Pre-SKL
+       *   If Number of Multisamples is NUMSAMPLES_1, the rectangle must be
+       *   aligned to an 8x4 pixel block relative to the upper left corner of
+       *   the depth buffer, and contain an integer number of these pixel
+       *   blocks, and all 8x4 pixels must be lit.
+       *
+       * Alignment requirements for other sample counts are listed, but they
+       * can all be satisfied by the one mentioned above.
        */
-      const struct isl_extent2d sa_block_dim =
-         isl_get_interleaved_msaa_px_size_sa(surf->samples);
-      const uint8_t align_px_w = 8 / sa_block_dim.w;
-      const uint8_t align_px_h = 4 / sa_block_dim.h;
-
-      /* Fast depth clears clear an entire sample block at a time. As a result,
-       * the rectangle must be aligned to the dimensions of the encompassing
-       * pixel block for a successful operation.
-       *
-       * Fast clears can still work if the upper-left corner is aligned and the
-       * bottom-rigtht corner touches the edge of a depth buffer whose extent
-       * is unaligned. This is because each miplevel in the depth buffer is
-       * padded by the Pixel Dim (similar to a standard compressed texture).
-       * In this case, the clear rectangle could be padded by to match the full
-       * depth buffer extent but to support multiple clearing techniques, we
-       * chose to be unaware of the depth buffer's extent and thus don't handle
-       * this case.
-       */
-      if (x0 % align_px_w || y0 % align_px_h ||
-          x1 % align_px_w || y1 % align_px_h)
+      if (x0 % 8 || y0 % 4 || x1 % 8 || y1 % 4)
          return false;
    } else if (aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT) {
       /* We have to set the WM_HZ_OP::FullSurfaceDepthandStencilClear bit
