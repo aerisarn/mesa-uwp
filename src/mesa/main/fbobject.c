@@ -171,12 +171,12 @@ _mesa_lookup_framebuffer_dsa(struct gl_context *ctx, GLuint id,
 
    /* Name exists but buffer is not initialized */
    if (fb == &DummyFramebuffer) {
-      fb = ctx->Driver.NewFramebuffer(ctx, id);
+      fb = _mesa_new_framebuffer(ctx, id);
       _mesa_HashInsert(ctx->Shared->FrameBuffers, id, fb, true);
    }
    /* Name doesn't exist */
    else if (!fb) {
-      fb = ctx->Driver.NewFramebuffer(ctx, id);
+      fb = _mesa_new_framebuffer(ctx, id);
       if (!fb) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
          return NULL;
@@ -582,7 +582,7 @@ set_renderbuffer_attachment(struct gl_context *ctx,
  * Fallback for ctx->Driver.FramebufferRenderbuffer()
  * Attach a renderbuffer object to a framebuffer object.
  */
-void
+static void
 _mesa_FramebufferRenderbuffer_sw(struct gl_context *ctx,
                                  struct gl_framebuffer *fb,
                                  GLenum attachment,
@@ -3120,7 +3120,7 @@ bind_framebuffer(GLenum target, GLuint framebuffer)
 
       if (!newDrawFb) {
          /* create new framebuffer object */
-         newDrawFb = ctx->Driver.NewFramebuffer(ctx, framebuffer);
+         newDrawFb = _mesa_new_framebuffer(ctx, framebuffer);
          if (!newDrawFb) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "glBindFramebufferEXT");
             return;
@@ -3282,7 +3282,7 @@ create_framebuffers(GLsizei n, GLuint *framebuffers, bool dsa)
 
    for (i = 0; i < n; i++) {
       if (dsa) {
-         fb = ctx->Driver.NewFramebuffer(ctx, framebuffers[i]);
+         fb = _mesa_new_framebuffer(ctx, framebuffers[i]);
          if (!fb) {
             _mesa_HashUnlockMutex(ctx->Shared->FrameBuffers);
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
@@ -4215,8 +4215,7 @@ _mesa_framebuffer_renderbuffer(struct gl_context *ctx,
 
    FLUSH_VERTICES(ctx, _NEW_BUFFERS, 0);
 
-   assert(ctx->Driver.FramebufferRenderbuffer);
-   ctx->Driver.FramebufferRenderbuffer(ctx, fb, attachment, rb);
+   _mesa_FramebufferRenderbuffer_sw(ctx, fb, attachment, rb);
 
    /* Some subsequent GL commands may depend on the framebuffer's visual
     * after the binding is updated.  Update visual info now.
@@ -4895,7 +4894,7 @@ lookup_named_framebuffer_ext_dsa(struct gl_context *ctx, GLuint framebuffer, con
       }
       /* Then, make sure it's initialized */
       if (fb == &DummyFramebuffer) {
-         fb = ctx->Driver.NewFramebuffer(ctx, framebuffer);
+         fb = _mesa_new_framebuffer(ctx, framebuffer);
          _mesa_HashInsert(ctx->Shared->FrameBuffers, framebuffer, fb, true);
       }
    }

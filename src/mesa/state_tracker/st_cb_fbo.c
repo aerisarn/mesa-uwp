@@ -993,9 +993,7 @@ st_EvaluateDepthValues(struct gl_context *ctx)
 void
 st_init_fbo_functions(struct dd_function_table *functions)
 {
-   functions->NewFramebuffer = _mesa_new_framebuffer;
    functions->NewRenderbuffer = st_new_renderbuffer;
-   functions->FramebufferRenderbuffer = _mesa_FramebufferRenderbuffer_sw;
    functions->RenderTexture = st_render_texture;
    functions->FinishRenderTexture = st_finish_render_texture;
    functions->ValidateFramebuffer = st_validate_framebuffer;

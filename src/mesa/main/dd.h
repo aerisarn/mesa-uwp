@@ -755,14 +755,8 @@ struct dd_function_table {
     * \name Functions for GL_EXT_framebuffer_{object,blit,discard}.
     */
    /*@{*/
-   struct gl_framebuffer * (*NewFramebuffer)(struct gl_context *ctx,
-                                             GLuint name);
    struct gl_renderbuffer * (*NewRenderbuffer)(struct gl_context *ctx,
                                                GLuint name);
-   void (*FramebufferRenderbuffer)(struct gl_context *ctx, 
-                                   struct gl_framebuffer *fb,
-                                   GLenum attachment,
-                                   struct gl_renderbuffer *rb);
    void (*RenderTexture)(struct gl_context *ctx,
                          struct gl_framebuffer *fb,
                          struct gl_renderbuffer_attachment *att);
