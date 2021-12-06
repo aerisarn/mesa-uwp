@@ -34,10 +34,9 @@ enum { DEPTH_CLEAR_SLOW, DEPTH_CLEAR_FAST };
 static void
 build_color_shaders(struct nir_shader **out_vs, struct nir_shader **out_fs, uint32_t frag_output)
 {
-   nir_builder vs_b =
-      nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL, "meta_clear_color_vs");
-   nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
-                                                     "meta_clear_color_fs-%d", frag_output);
+   nir_builder vs_b = radv_meta_init_shader(MESA_SHADER_VERTEX, "meta_clear_color_vs");
+   nir_builder fs_b =
+      radv_meta_init_shader(MESA_SHADER_FRAGMENT, "meta_clear_color_fs-%d", frag_output);
 
    const struct glsl_type *position_type = glsl_vec4_type();
    const struct glsl_type *color_type = glsl_vec4_type();
@@ -473,11 +472,11 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
 static void
 build_depthstencil_shader(struct nir_shader **out_vs, struct nir_shader **out_fs, bool unrestricted)
 {
-   nir_builder vs_b = nir_builder_init_simple_shader(
-      MESA_SHADER_VERTEX, NULL,
+   nir_builder vs_b = radv_meta_init_shader(
+      MESA_SHADER_VERTEX,
       unrestricted ? "meta_clear_depthstencil_unrestricted_vs" : "meta_clear_depthstencil_vs");
-   nir_builder fs_b = nir_builder_init_simple_shader(
-      MESA_SHADER_FRAGMENT, NULL,
+   nir_builder fs_b = radv_meta_init_shader(
+      MESA_SHADER_FRAGMENT,
       unrestricted ? "meta_clear_depthstencil_unrestricted_fs" : "meta_clear_depthstencil_fs");
 
    const struct glsl_type *position_out_type = glsl_vec4_type();
@@ -1059,8 +1058,7 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
 static nir_shader *
 build_clear_htile_mask_shader()
 {
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "meta_clear_htile_mask");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_clear_htile_mask");
    b.shader->info.workgroup_size[0] = 64;
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
@@ -1163,9 +1161,8 @@ build_clear_dcc_comp_to_single_shader(bool is_msaa)
    enum glsl_sampler_dim dim = is_msaa ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
    const struct glsl_type *img_type = glsl_image_type(dim, true, GLSL_TYPE_FLOAT);
 
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "meta_clear_dcc_comp_to_single-%s",
-                                     is_msaa ? "multisampled" : "singlesampled");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_clear_dcc_comp_to_single-%s",
+                                         is_msaa ? "multisampled" : "singlesampled");
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
    b.shader->info.workgroup_size[2] = 1;

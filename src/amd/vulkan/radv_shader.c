@@ -33,6 +33,7 @@
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
 #include "radv_debug.h"
+#include "radv_meta.h"
 #include "radv_private.h"
 #include "radv_shader_args.h"
 
@@ -1919,7 +1920,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
    struct radv_shader_binary *binary = NULL;
    struct radv_shader_info info = {0};
 
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "meta_trap_handler");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_trap_handler");
 
    options.explicit_scratch_args = true;
    options.wgp_mode = radv_should_use_wgp_mode(device, MESA_SHADER_COMPUTE, &info);

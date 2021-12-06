@@ -38,8 +38,7 @@ build_expand_depth_stencil_compute_shader(struct radv_device *dev)
 {
    const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_2D, false, GLSL_TYPE_FLOAT);
 
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "expand_depth_stencil_compute");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "expand_depth_stencil_compute");
 
    /* We need at least 8/8/1 to cover an entire HTILE block in a single workgroup. */
    b.shader->info.workgroup_size[0] = 8;

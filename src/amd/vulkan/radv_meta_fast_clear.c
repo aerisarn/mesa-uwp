@@ -39,8 +39,7 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
 {
    const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_2D, false, GLSL_TYPE_FLOAT);
 
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "dcc_decompress_compute");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "dcc_decompress_compute");
 
    /* We need at least 16/16/1 to cover an entire DCC block in a single workgroup. */
    b.shader->info.workgroup_size[0] = 16;

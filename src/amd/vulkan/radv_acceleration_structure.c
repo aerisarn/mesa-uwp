@@ -916,8 +916,7 @@ static nir_shader *
 build_leaf_shader(struct radv_device *dev)
 {
    const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "accel_build_leaf_shader");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "accel_build_leaf_shader");
 
    b.shader->info.workgroup_size[0] = 64;
    b.shader->info.workgroup_size[1] = 1;
@@ -1262,8 +1261,7 @@ static nir_shader *
 build_internal_shader(struct radv_device *dev)
 {
    const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "accel_build_internal_shader");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "accel_build_internal_shader");
 
    b.shader->info.workgroup_size[0] = 64;
    b.shader->info.workgroup_size[1] = 1;
@@ -1375,7 +1373,7 @@ struct copy_constants {
 static nir_shader *
 build_copy_shader(struct radv_device *dev)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "accel_copy");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "accel_copy");
    b.shader->info.workgroup_size[0] = 64;
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;

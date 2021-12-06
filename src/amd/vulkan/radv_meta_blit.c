@@ -39,7 +39,7 @@ static nir_shader *
 build_nir_vertex_shader(void)
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL, "meta_blit_vs");
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_VERTEX, "meta_blit_vs");
 
    nir_variable *pos_out = nir_variable_create(b.shader, nir_var_shader_out, vec4, "gl_Position");
    pos_out->data.location = VARYING_SLOT_POS;
@@ -82,8 +82,7 @@ static nir_shader *
 build_nir_copy_fragment_shader(enum glsl_sampler_dim tex_dim)
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "meta_blit_fs.%d", tex_dim);
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "meta_blit_fs.%d", tex_dim);
 
    nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in, vec4, "v_tex_pos");
    tex_pos_in->data.location = VARYING_SLOT_VAR0;
@@ -130,8 +129,7 @@ static nir_shader *
 build_nir_copy_fragment_shader_depth(enum glsl_sampler_dim tex_dim)
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
-   nir_builder b =
-      nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "meta_blit_depth_fs.%d", tex_dim);
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "meta_blit_depth_fs.%d", tex_dim);
 
    nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in, vec4, "v_tex_pos");
    tex_pos_in->data.location = VARYING_SLOT_VAR0;
@@ -178,8 +176,7 @@ static nir_shader *
 build_nir_copy_fragment_shader_stencil(enum glsl_sampler_dim tex_dim)
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
-                                                  "meta_blit_stencil_fs.%d", tex_dim);
+   nir_builder b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "meta_blit_stencil_fs.%d", tex_dim);
 
    nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in, vec4, "v_tex_pos");
    tex_pos_in->data.location = VARYING_SLOT_VAR0;

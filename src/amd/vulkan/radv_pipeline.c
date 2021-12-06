@@ -34,6 +34,7 @@
 #include "util/u_atomic.h"
 #include "radv_cs.h"
 #include "radv_debug.h"
+#include "radv_meta.h"
 #include "radv_private.h"
 #include "radv_shader.h"
 #include "vk_util.h"
@@ -3545,7 +3546,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    if (!modules[MESA_SHADER_FRAGMENT] && !modules[MESA_SHADER_COMPUTE]) {
-      nir_builder fs_b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL, "noop_fs");
+      nir_builder fs_b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "noop_fs");
       fs_m = vk_shader_module_from_nir(fs_b.shader);
       modules[MESA_SHADER_FRAGMENT] = &fs_m;
    }
