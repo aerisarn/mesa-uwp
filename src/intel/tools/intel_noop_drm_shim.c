@@ -303,6 +303,48 @@ i915_ioctl_query(int fd, unsigned long request, void *arg)
          break;
       }
 
+      case DRM_I915_QUERY_ENGINE_INFO: {
+         uint32_t num_copy = 1;
+         uint32_t num_render = 1;
+         uint32_t num_engines = num_copy + num_render;
+
+         struct drm_i915_query_engine_info *info =
+            (struct drm_i915_query_engine_info*)(uintptr_t)item->data_ptr;
+
+         int32_t data_length =
+            sizeof(*info) +
+               num_engines * sizeof(info->engines[0]);
+
+         if (item->length == 0) {
+            item->length = data_length;
+            return 0;
+         } else if (item->length < data_length) {
+            item->length = -EINVAL;
+            return -1;
+         } else {
+            memset(info, 0, data_length);
+
+            for (uint32_t e = 0; e < num_render; e++, info->num_engines++) {
+               info->engines[info->num_engines].engine.engine_class =
+                  I915_ENGINE_CLASS_RENDER;
+               info->engines[info->num_engines].engine.engine_instance = e;
+            }
+
+            for (uint32_t e = 0; e < num_copy; e++, info->num_engines++) {
+               info->engines[info->num_engines].engine.engine_class =
+                  I915_ENGINE_CLASS_COPY;
+               info->engines[info->num_engines].engine.engine_instance = e;
+            }
+
+            assert(info->num_engines == num_engines);
+
+            if (item->length > data_length)
+               item->length = data_length;
+
+            return 0;
+         }
+      }
+
       case DRM_I915_QUERY_PERF_CONFIG:
          /* This is known but not supported by the shim.  Handling this here
           * suppresses some spurious warning messages in shader-db runs.
