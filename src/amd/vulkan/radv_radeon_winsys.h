@@ -273,7 +273,7 @@ struct radeon_winsys {
 
    void (*cs_grow)(struct radeon_cmdbuf *cs, size_t min_size);
 
-   VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx, int queue_index,
+   VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx, enum ring_type ring_type, int queue_index,
                          struct radeon_cmdbuf **cs_array, unsigned cs_count,
                          struct radeon_cmdbuf *initial_preamble_cs,
                          struct radeon_cmdbuf *continue_preamble_cs,

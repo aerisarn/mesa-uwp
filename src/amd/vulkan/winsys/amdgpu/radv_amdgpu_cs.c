@@ -1169,17 +1169,17 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, int queue_idx,
-                             struct radeon_cmdbuf **cs_array, unsigned cs_count,
+radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
+                             int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
                              struct radeon_cmdbuf *initial_preamble_cs,
                              struct radeon_cmdbuf *continue_preamble_cs,
                              struct radv_winsys_sem_info *sem_info, bool can_patch)
 {
-   struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[0]);
+   struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
    VkResult result;
 
    assert(sem_info);
-   if (!cs->ws->use_ib_bos) {
+   if (!ctx->ws->use_ib_bos) {
       result = radv_amdgpu_winsys_cs_submit_sysmem(_ctx, queue_idx, sem_info, cs_array, cs_count,
                                                    initial_preamble_cs, continue_preamble_cs);
    } else if (can_patch) {
