@@ -2121,15 +2121,6 @@ isl_surf_supports_ccs(const struct isl_device *dev,
                       const struct isl_surf *surf,
                       const struct isl_surf *hiz_or_mcs_surf)
 {
-   /* CCS support does not exist prior to Gfx7 */
-   if (ISL_GFX_VER(dev) <= 6)
-      return false;
-
-   /* Wa_22011186057: Disable compression on ADL-P A0 */
-   if (dev->info->platform == INTEL_PLATFORM_ADL && dev->info->gt == 2 &&
-       dev->info->revision == 0)
-      return false;
-
    if (surf->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)
       return false;
 
