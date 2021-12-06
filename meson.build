@@ -502,7 +502,7 @@ endforeach
 if not have_mtls_dialect
   # need .run to check libc support. meson aborts when calling .run when
   # cross-compiling, but because this is just an optimization we can skip it
-  if meson.is_cross_build()
+  if meson.is_cross_build() and not meson.has_exe_wrapper()
     warning('cannot auto-detect -mtls-dialect when cross-compiling, using compiler default')
   else
     # -fpic to force dynamic tls, otherwise TLS relaxation defeats check
