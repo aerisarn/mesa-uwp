@@ -93,8 +93,8 @@ _mesa_ProvokingVertex(GLenum mode)
  * will have already been transformed by the modelview matrix!
  * Also, all error checking should have already been done.
  */
-void
-_mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *params)
+static void
+do_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *params)
 {
    struct gl_light *light;
 
@@ -244,7 +244,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
       break;
    }
    default:
-      unreachable("Unexpected pname in _mesa_light()");
+      unreachable("Unexpected pname in do_light()");
    }
 }
 
@@ -316,7 +316,7 @@ _mesa_Lightfv( GLenum light, GLenum pname, const GLfloat *params )
       return;
    }
 
-   _mesa_light(ctx, i, pname, params);
+   do_light(ctx, i, pname, params);
 }
 
 

@@ -82,10 +82,6 @@ extern void GLAPIENTRY
 _mesa_GetMaterialiv( GLenum face, GLenum pname, GLint *params );
 
 
-extern void
-_mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *params);
-
-
 extern GLuint _mesa_material_bitmask( struct gl_context *ctx,
                                       GLenum face, GLenum pname,
                                       GLuint legal,
