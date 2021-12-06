@@ -59,6 +59,7 @@ struct gl_shader_program;
 struct gl_texture_image;
 struct gl_texture_object;
 struct gl_memory_info;
+struct gl_sampler_object;
 struct gl_transform_feedback_object;
 struct gl_vertex_array_object;
 struct ati_fragment_shader;
@@ -981,12 +982,6 @@ struct dd_function_table {
     * \name GL_NV_texture_barrier interface
     */
    void (*TextureBarrier)(struct gl_context *ctx);
-
-   /**
-    * \name GL_ARB_sampler_objects
-    */
-   struct gl_sampler_object * (*NewSamplerObject)(struct gl_context *ctx,
-                                                  GLuint name);
 
    /**
     * \name Return a timestamp in nanoseconds as defined by GL_ARB_timer_query.

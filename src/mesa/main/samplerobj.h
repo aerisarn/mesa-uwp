@@ -72,12 +72,6 @@ _mesa_reference_sampler_object(struct gl_context *ctx,
 extern struct gl_sampler_object *
 _mesa_lookup_samplerobj(struct gl_context *ctx, GLuint name);
 
-extern struct gl_sampler_object *
-_mesa_new_sampler_object(struct gl_context *ctx, GLuint name);
-
-extern void
-_mesa_init_sampler_object_functions(struct dd_function_table *driver);
-
 extern void
 _mesa_set_sampler_wrap(struct gl_context *ctx, struct gl_sampler_object *samp,
                        GLenum s, GLenum t, GLenum r);

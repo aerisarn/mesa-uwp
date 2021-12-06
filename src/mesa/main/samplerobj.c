@@ -156,10 +156,7 @@ _mesa_init_sampler_object(struct gl_sampler_object *sampObj, GLuint name)
    _mesa_init_sampler_handles(sampObj);
 }
 
-/**
- * Fallback for ctx->Driver.NewSamplerObject();
- */
-struct gl_sampler_object *
+static struct gl_sampler_object *
 _mesa_new_sampler_object(struct gl_context *ctx, GLuint name)
 {
    struct gl_sampler_object *sampObj = CALLOC_STRUCT(gl_sampler_object);
@@ -186,7 +183,7 @@ create_samplers(struct gl_context *ctx, GLsizei count, GLuint *samplers,
    for (i = 0; i < count; i++) {
       struct gl_sampler_object *sampObj;
 
-      sampObj = ctx->Driver.NewSamplerObject(ctx, samplers[i]);
+      sampObj = _mesa_new_sampler_object(ctx, samplers[i]);
       if (!sampObj) {
          _mesa_HashUnlockMutex(ctx->Shared->SamplerObjects);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
@@ -1816,11 +1813,4 @@ _mesa_GetSamplerParameterIuiv(GLuint sampler, GLenum pname, GLuint *params)
 invalid_pname:
    _mesa_error(ctx, GL_INVALID_ENUM, "glGetSamplerParameterIuiv(pname=%s)",
                _mesa_enum_to_string(pname));
-}
-
-
-void
-_mesa_init_sampler_object_functions(struct dd_function_table *driver)
-{
-   driver->NewSamplerObject = _mesa_new_sampler_object;
 }

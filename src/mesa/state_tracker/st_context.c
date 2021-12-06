@@ -31,7 +31,6 @@
 #include "main/context.h"
 #include "main/debug_output.h"
 #include "main/glthread.h"
-#include "main/samplerobj.h"
 #include "main/shaderobj.h"
 #include "main/state.h"
 #include "main/version.h"
@@ -968,8 +967,6 @@ st_init_driver_functions(struct pipe_screen *screen,
                          struct dd_function_table *functions,
                          bool has_egl_image_validate)
 {
-   _mesa_init_sampler_object_functions(functions);
-
    st_init_draw_functions(screen, functions);
    st_init_blit_functions(functions);
    st_init_bufferobject_functions(screen, functions);
