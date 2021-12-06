@@ -138,9 +138,6 @@ extern GLuint
 _mesa_total_buffer_object_memory(struct gl_context *ctx);
 
 extern void
-_mesa_init_buffer_object_functions(struct dd_function_table *driver);
-
-extern void
 _mesa_buffer_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
                   GLenum target, GLsizeiptr size, const GLvoid *data,
                   GLenum usage, const char *func);
