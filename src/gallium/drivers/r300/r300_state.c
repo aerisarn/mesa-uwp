@@ -46,6 +46,7 @@
 #include "r300_fs.h"
 #include "r300_texture.h"
 #include "r300_vs.h"
+#include "nir/nir_to_tgsi.h"
 
 /* r300_state: Functions used to initialize state context by translating
  * Gallium state objects into semi-native r300 state objects. */
@@ -1041,7 +1042,14 @@ static void* r300_create_fs_state(struct pipe_context* pipe,
 
     /* Copy state directly into shader. */
     fs->state = *shader;
-    fs->state.tokens = tgsi_dup_tokens(shader->tokens);
+
+    if (fs->state.type == PIPE_SHADER_IR_NIR) {
+       fs->state.tokens = nir_to_tgsi(shader->ir.nir, pipe->screen);
+    } else {
+       assert(fs->state.type == PIPE_SHADER_IR_TGSI);
+       /* we need to keep a local copy of the tokens */
+       fs->state.tokens = tgsi_dup_tokens(fs->state.tokens);
+    }
 
     /* Precompile the fragment shader at creation time to avoid jank at runtime.
      * In most cases we won't have anything in the key at draw time.
@@ -1925,7 +1933,14 @@ static void* r300_create_vs_state(struct pipe_context* pipe,
 
     /* Copy state directly into shader. */
     vs->state = *shader;
-    vs->state.tokens = tgsi_dup_tokens(shader->tokens);
+
+    if (vs->state.type == PIPE_SHADER_IR_NIR) {
+       vs->state.tokens = nir_to_tgsi(shader->ir.nir, pipe->screen);
+    } else {
+       assert(vs->state.type == PIPE_SHADER_IR_TGSI);
+       /* we need to keep a local copy of the tokens */
+       vs->state.tokens = tgsi_dup_tokens(vs->state.tokens);
+    }
 
     if (r300->screen->caps.has_tcl) {
         r300_init_vs_outputs(r300, vs);

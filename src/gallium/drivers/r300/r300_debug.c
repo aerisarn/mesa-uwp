@@ -50,6 +50,7 @@ static const struct debug_named_value r300_debug_options[] = {
     { "nozmask", DBG_NO_ZMASK, "Disable zbuffer compression" },
     { "nohiz", DBG_NO_HIZ, "Disable hierarchical zbuffer" },
     { "nocmask", DBG_NO_CMASK, "Disable AA compression and fast AA clear" },
+    { "use_tgsi", DBG_USE_TGSI, "Request TGSI shaders from the state tracker" },
 
     /* must be last */
     DEBUG_NAMED_VALUE_END
