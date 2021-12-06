@@ -233,7 +233,24 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       hiz.SurfacePitch = info->hiz_surf->row_pitch_B - 1;
 
 #if GFX_VERx10 >= 125
-      hiz.TiledMode = isl_encode_tiling[info->hiz_surf->tiling];
+      /* From 3DSTATE_HIER_DEPTH_BUFFER_BODY::TiledMode,
+       *
+       *    HZ buffer only supports Tile4 mode
+       *
+       * and from Bspec 47009, "Hierarchical Depth Buffer",
+       *
+       *    The format of the data in the hierarchical depth buffer is not
+       *    documented here, as this surface needs only to be allocated by
+       *    software.
+       *
+       * We choose to apply the second quote to the first. ISL describes HiZ
+       * with a tiling that has the same extent as Tile4 (128Bx32), but a
+       * different internal layout. This has two benefits: 1) it allows us to
+       * have the correct allocation size and 2) we can continue to use a
+       * tiling that was determined to exist on some prior platforms.
+       */
+      assert(info->hiz_surf->tiling == ISL_TILING_HIZ);
+      hiz.TiledMode = TILE4;
 #endif
 
 #if GFX_VER >= 12

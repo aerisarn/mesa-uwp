@@ -465,9 +465,9 @@ isl_tiling_get_info(enum isl_tiling tiling,
       break;
 
    case ISL_TILING_HIZ:
-      /* HiZ buffers are required to have ISL_FORMAT_HIZ which is an 8x4
-       * 128bpb format.  The tiling has the same physical dimensions as
-       * Y-tiling but actually has two HiZ columns per Y-tiled column.
+      /* HiZ buffers are required to have a 128bpb HiZ format. The tiling has
+       * the same physical dimensions as Y-tiling but actually has two HiZ
+       * columns per Y-tiled column.
        */
       assert(bs == 16);
       logical_el = isl_extent4d(16, 16, 1, 1);
@@ -591,7 +591,7 @@ isl_surf_choose_tiling(const struct isl_device *dev,
 
    /* HiZ surfaces always use the HiZ tiling */
    if (info->usage & ISL_SURF_USAGE_HIZ_BIT) {
-      assert(info->format == ISL_FORMAT_HIZ);
+      assert(isl_format_is_hiz(info->format));
       assert(tiling_flags == ISL_TILING_HIZ_BIT);
       *tiling = isl_tiling_flag_to_enum(tiling_flags);
       return true;
@@ -2043,9 +2043,12 @@ isl_surf_get_hiz_surf(const struct isl_device *dev,
     */
    const unsigned samples = ISL_GFX_VER(dev) >= 9 ? 1 : surf->samples;
 
+   const enum isl_format format =
+      ISL_GFX_VERX10(dev) >= 125 ? ISL_FORMAT_GFX125_HIZ : ISL_FORMAT_HIZ;
+
    return isl_surf_init(dev, hiz_surf,
                         .dim = surf->dim,
-                        .format = ISL_FORMAT_HIZ,
+                        .format = format,
                         .width = surf->logical_level0_px.width,
                         .height = surf->logical_level0_px.height,
                         .depth = surf->logical_level0_px.depth,
@@ -2172,7 +2175,7 @@ isl_surf_supports_ccs(const struct isl_device *dev,
 
          assert(hiz_surf->usage & ISL_SURF_USAGE_HIZ_BIT);
          assert(hiz_surf->tiling == ISL_TILING_HIZ);
-         assert(hiz_surf->format == ISL_FORMAT_HIZ);
+         assert(isl_format_is_hiz(hiz_surf->format));
       } else if (surf->samples > 1) {
          const struct isl_surf *mcs_surf = hiz_or_mcs_surf;
 

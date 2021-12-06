@@ -385,6 +385,7 @@ enum isl_format {
 
    /* Formats for auxiliary surfaces */
    ISL_FORMAT_HIZ,
+   ISL_FORMAT_GFX125_HIZ,
    ISL_FORMAT_MCS_2X,
    ISL_FORMAT_MCS_4X,
    ISL_FORMAT_MCS_8X,
@@ -1898,6 +1899,14 @@ isl_format_is_mcs(enum isl_format fmt)
    const struct isl_format_layout *fmtl = isl_format_get_layout(fmt);
 
    return fmtl->txc == ISL_TXC_MCS;
+}
+
+static inline bool
+isl_format_is_hiz(enum isl_format fmt)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(fmt);
+
+   return fmtl->txc == ISL_TXC_HIZ;
 }
 
 static inline bool

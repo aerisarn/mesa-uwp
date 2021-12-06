@@ -91,6 +91,9 @@ isl_gfx125_choose_image_alignment_el(const struct isl_device *dev,
                                      enum isl_msaa_layout msaa_layout,
                                      struct isl_extent3d *image_align_el)
 {
+   /* Handled by isl_choose_image_alignment_el */
+   assert(info->format != ISL_FORMAT_GFX125_HIZ);
+
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
    if (tiling == ISL_TILING_64) {
