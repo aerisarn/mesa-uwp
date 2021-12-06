@@ -36,24 +36,6 @@ dEQP-GLES2.functional.rasterization.primitives.lines_wide,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_strip_wide,Fail,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_loop_wide,Fail
 
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.faceforward_float_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.faceforward_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.faceforward_vec3_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.faceforward_vec4_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.reflect_float_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.reflect_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.reflect_vec3_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.reflect_vec4_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.refract_float_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.refract_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.refract_vec3_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.geometric.refract_vec4_fragment,Fail
-
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.common.sign_float_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.common.sign_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.common.sign_vec3_fragment,Fail
-dEQP-GLES2.functional.shaders.constant_expressions.builtin_functions.common.sign_vec4_fragment,Fail
-
 # "Unknown opcode IF"
 dEQP-GLES2.functional.shaders.functions.control_flow.mixed_return_break_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.functions.control_flow.return_in_nested_loop_vertex,Fail
@@ -204,9 +186,6 @@ dEQP-GLES2.functional.shaders.operator.exponential.pow.highp_vec4_vertex,Fail
 dEQP-GLES2.functional.shaders.operator.exponential.pow.mediump_vec2_vertex,Fail
 dEQP-GLES2.functional.shaders.operator.exponential.pow.mediump_vec3_vertex,Fail
 dEQP-GLES2.functional.shaders.operator.exponential.pow.mediump_vec4_vertex,Fail
-
-dEQP-GLES2.functional.shaders.preprocessor.basic.empty_function_fragment,Fail
-dEQP-GLES2.functional.shaders.preprocessor.basic.empty_object_fragment,Fail
 
 # "No free temporary to use for predicate stack counter."
 dEQP-GLES2.functional.shaders.struct.local.dynamic_loop_struct_array_vertex,Fail
