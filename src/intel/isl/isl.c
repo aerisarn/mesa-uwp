@@ -2029,35 +2029,9 @@ isl_surf_get_hiz_surf(const struct isl_device *dev,
     *    Z_Width must be multiplied by 4 before being applied to the table
     *    below if Number of Multisamples is set to NUMSAMPLES_8."
     *
-    * In the Sky Lake PRM, the second paragraph is replaced with this:
-    *
-    *    "The Z_Height and Z_Width values must equal those present in
-    *    3DSTATE_DEPTH_BUFFER incremented by one."
-    *
-    * In other words, on Sandy Bridge through Broadwell, each 128-bit HiZ
-    * block corresponds to a region of 8x4 samples in the primary depth
-    * surface.  On Sky Lake, on the other hand, each HiZ block corresponds to
-    * a region of 8x4 pixels in the primary depth surface regardless of the
-    * number of samples.  The dimensions of a HiZ block in both pixels and
-    * samples are given in the table below:
-    *
-    *                    | SNB - BDW |     SKL+
-    *              ------+-----------+-------------
-    *                1x  |  8 x 4 sa |   8 x 4 sa
-    *               MSAA |  8 x 4 px |   8 x 4 px
-    *              ------+-----------+-------------
-    *                2x  |  8 x 4 sa |  16 x 4 sa
-    *               MSAA |  4 x 4 px |   8 x 4 px
-    *              ------+-----------+-------------
-    *                4x  |  8 x 4 sa |  16 x 8 sa
-    *               MSAA |  4 x 2 px |   8 x 4 px
-    *              ------+-----------+-------------
-    *                8x  |  8 x 4 sa |  32 x 8 sa
-    *               MSAA |  2 x 2 px |   8 x 4 px
-    *              ------+-----------+-------------
-    *               16x  |    N/A    | 32 x 16 sa
-    *               MSAA |    N/A    |  8 x  4 px
-    *              ------+-----------+-------------
+    * In the Sky Lake PRM, the second paragraph is gone.  This means that,
+    * from Sandy Bridge through Broadwell, HiZ compresses samples in the
+    * primary depth surface.  On Sky Lake and onward, HiZ compresses pixels.
     *
     * There are a number of different ways that this discrepency could be
     * handled.  The way we have chosen is to simply make MSAA HiZ have the
