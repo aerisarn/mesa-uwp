@@ -31,19 +31,6 @@
 #include "context.h"
 #include "barrier.h"
 
-
-static void
-_mesa_texture_barrier(struct gl_context *ctx)
-{
-   /* no-op */
-}
-
-void
-_mesa_init_barrier_functions(struct dd_function_table *driver)
-{
-   driver->TextureBarrier = _mesa_texture_barrier;
-}
-
 void GLAPIENTRY
 _mesa_TextureBarrierNV(void)
 {
