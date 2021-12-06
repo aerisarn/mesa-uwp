@@ -60,9 +60,7 @@ each directory.
          (not used with Gallium)
       -  **program** - Vertex/fragment shader and GLSL compiler code
       -  **state_tracker** - Translator from Mesa to Gallium. This is
-         basically a Mesa device driver that speaks to Gallium. This
-         directory may be moved to src/mesa/drivers/gallium at some
-         point.
+         basically a Mesa device driver that speaks to Gallium.
       -  **vbo** - Vertex Buffer Object code. All drawing with
          glBegin/glEnd, glDrawArrays, display lists, etc. goes through
          this module. The results is a well-defined set of vertex arrays
