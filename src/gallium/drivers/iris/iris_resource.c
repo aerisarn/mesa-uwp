@@ -923,8 +923,6 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
    case PIPE_FORMAT_P010: format = ISL_FORMAT_PLANAR_420_10; break;
    case PIPE_FORMAT_P012: format = ISL_FORMAT_PLANAR_420_12; break;
    case PIPE_FORMAT_P016: format = ISL_FORMAT_PLANAR_420_16; break;
-   case PIPE_FORMAT_YUYV: format = ISL_FORMAT_YCRCB_NORMAL; break;
-   case PIPE_FORMAT_UYVY: format = ISL_FORMAT_YCRCB_SWAPY; break;
    default: format = res->surf.format; break;
    }
 
