@@ -41,8 +41,6 @@
       - src/mesa/state_tracker/**/*
       - src/mesa/swrast/**/*
       - src/mesa/swrast_setup/**/*
-      - src/mesa/tnl/**/*
-      - src/mesa/tnl_dd/**/*
       - src/mesa/vbo/**/*
       - src/mesa/x86/**/*
       - src/mesa/x86-64/**/*

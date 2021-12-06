@@ -88,10 +88,6 @@ each directory.
       -  **swrast_setup** - Software primitive setup. Does things like
          polygon culling, glPolygonMode, polygon offset, etc. (not used
          with Gallium)
-      -  **tnl** - Software vertex Transformation 'n Lighting. (not used
-         with Gallium)
-      -  **tnl_dd** - TNL code for device drivers. (not used with
-         Gallium)
       -  **vbo** - Vertex Buffer Object code. All drawing with
          glBegin/glEnd, glDrawArrays, display lists, etc. goes through
          this module. The results is a well-defined set of vertex arrays
