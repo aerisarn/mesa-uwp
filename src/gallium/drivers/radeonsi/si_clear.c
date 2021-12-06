@@ -1147,7 +1147,7 @@ static void si_clear_depth_stencil(struct pipe_context *ctx, struct pipe_surface
                                    bool render_condition_enabled)
 {
    struct si_context *sctx = (struct si_context *)ctx;
-   union pipe_color_union unused;
+   union pipe_color_union unused = {};
 
    /* Fast path that just clears HTILE. */
    if (si_try_normal_clear(sctx, dst, dstx, dsty, width, height, render_condition_enabled,
