@@ -8,6 +8,11 @@ pushd /platform/crosvm
 git checkout "$CROSVM_VERSION"
 git submodule update --init
 
+VIRGLRENDERER_VERSION=2a5fb800c6b0ce15ad37c2c698635e3e2d27b37c
+pushd third_party/virglrenderer
+git checkout "$VIRGLRENDERER_VERSION"
+popd
+
 RUSTFLAGS='-L native=/usr/local/lib' cargo install \
   bindgen \
   -j ${FDO_CI_CONCURRENT:-4} \
