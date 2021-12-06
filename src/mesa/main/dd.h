@@ -656,8 +656,6 @@ struct dd_function_table {
    void (*Enable)(struct gl_context *ctx, GLenum cap, GLboolean state);
    /* Specifies the current buffer for reading */
    void (*ReadBuffer)( struct gl_context *ctx, GLenum buffer );
-   /** Set rasterization mode */
-   void (*RenderMode)(struct gl_context *ctx, GLenum mode );
    /** Set texture parameter (callee gets param value from the texObj) */
    void (*TexParameter)(struct gl_context *ctx,
                         struct gl_texture_object *texObj, GLenum pname);

@@ -274,7 +274,7 @@ draw_glselect_stage(struct gl_context *ctx, struct draw_context *draw)
 }
 
 
-static void
+void
 st_RenderMode(struct gl_context *ctx, GLenum newMode )
 {
    struct st_context *st = st_context(ctx);
@@ -310,11 +310,4 @@ st_RenderMode(struct gl_context *ctx, GLenum newMode )
       if (vp)
          st->dirty |= ST_NEW_VERTEX_PROGRAM(st, st_program(vp));
    }
-}
-
-
-
-void st_init_feedback_functions(struct dd_function_table *functions)
-{
-   functions->RenderMode = st_RenderMode;
 }

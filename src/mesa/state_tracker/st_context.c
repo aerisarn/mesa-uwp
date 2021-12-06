@@ -950,7 +950,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_eglimage_functions(functions, has_egl_image_validate);
 
    st_init_fbo_functions(functions);
-   st_init_feedback_functions(functions);
    st_init_msaa_functions(functions);
    st_init_perfmon_functions(functions);
    st_init_perfquery_functions(functions);

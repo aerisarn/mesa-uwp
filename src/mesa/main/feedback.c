@@ -36,6 +36,7 @@
 #include "macros.h"
 #include "mtypes.h"
 
+#include "state_tracker/st_cb_feedback.h"
 
 #define FB_3D		0x01
 #define FB_4D		0x02
@@ -477,8 +478,7 @@ _mesa_RenderMode( GLenum mode )
    }
 
    ctx->RenderMode = mode;
-   if (ctx->Driver.RenderMode)
-      ctx->Driver.RenderMode( ctx, mode );
+   st_RenderMode( ctx, mode );
 
    return result;
 }
