@@ -4624,6 +4624,13 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
       mem->buffer = NULL;
    }
 
+   if (wsi_info && wsi_info->implicit_sync && mem->buffer) {
+      /* Mark the linear prime buffer (aka the destination of the prime blit
+       * as uncached.
+       */
+      flags |= RADEON_FLAG_VA_UNCACHED;
+   }
+
    float priority_float = 0.5;
    const struct VkMemoryPriorityAllocateInfoEXT *priority_ext =
       vk_find_struct_const(pAllocateInfo->pNext, MEMORY_PRIORITY_ALLOCATE_INFO_EXT);
