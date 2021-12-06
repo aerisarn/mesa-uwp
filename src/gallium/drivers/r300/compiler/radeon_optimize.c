@@ -496,14 +496,18 @@ static int presub_helper(
 	return 1;
 }
 
-/* This function assumes that inst_add->U.I.SrcReg[0] and
- * inst_add->U.I.SrcReg[1] aren't both negative. */
 static void presub_replace_add(
 	struct rc_instruction * inst_add,
 	struct rc_instruction * inst_reader,
 	unsigned int src_index)
 {
 	rc_presubtract_op presub_opcode;
+
+	/* This function assumes that inst_add->U.I.SrcReg[0] and
+	 * inst_add->U.I.SrcReg[1] aren't both negative.
+	 */
+	assert(!(inst_add->U.I.SrcReg[1].Negate && inst_add->U.I.SrcReg[0].Negate));
+
 	if (inst_add->U.I.SrcReg[1].Negate || inst_add->U.I.SrcReg[0].Negate)
 		presub_opcode = RC_PRESUB_SUB;
 	else
