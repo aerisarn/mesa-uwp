@@ -358,8 +358,18 @@ radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws, struct radeon_winsys_bo
    radv_amdgpu_log_bo(ws, bo, true);
 
    if (bo->is_virtual) {
+      int r;
+
+      /* Clear mappings of this PRT VA region. */
+      r = radv_amdgpu_bo_va_op(ws, bo->bo, 0, bo->size, bo->base.va, 0, 0, AMDGPU_VA_OP_CLEAR);
+      if (r) {
+         fprintf(stderr, "amdgpu: Failed to clear a PRT VA region (%d).\n", r);
+      }
+
       for (uint32_t i = 0; i < bo->range_count; ++i) {
-         radv_amdgpu_winsys_virtual_unmap(ws, bo, bo->ranges + i);
+         const struct radv_amdgpu_map_range *range = bo->ranges + i;
+         if (range->bo)
+            ws->base.buffer_destroy(&ws->base, (struct radeon_winsys_bo *)range->bo);
       }
       free(bo->bos);
       free(bo->ranges);
