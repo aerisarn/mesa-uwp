@@ -78,9 +78,6 @@ _mesa_lookup_semaphore_object_locked(struct gl_context *ctx, GLuint semaphore)
 }
 
 extern void
-_mesa_init_memory_object_functions(struct dd_function_table *driver);
-
-extern void
 _mesa_initialize_memory_object(struct gl_context *ctx,
                                struct gl_memory_object *obj,
                                GLuint name);

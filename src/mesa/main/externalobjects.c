@@ -34,26 +34,6 @@
 #include "util/u_memory.h"
 
 /**
- * Allocate and initialize a new memory object.  But don't put it into the
- * memory object hash table.
- *
- * Called via ctx->Driver.NewMemoryObject, unless overridden by a device
- * driver.
- *
- * \return pointer to new memory object.
- */
-static struct gl_memory_object *
-_mesa_new_memory_object(struct gl_context *ctx, GLuint name)
-{
-   struct gl_memory_object *obj = MALLOC_STRUCT(gl_memory_object);
-   if (!obj)
-      return NULL;
-
-   _mesa_initialize_memory_object(ctx, obj, name);
-   return obj;
-}
-
-/**
  * Delete a memory object.  Called via ctx->Driver.DeleteMemory().
  * Not removed from hash table here.
  */
@@ -64,12 +44,6 @@ _mesa_delete_memory_object(struct gl_context *ctx,
    free(memObj);
 }
 
-void
-_mesa_init_memory_object_functions(struct dd_function_table *driver)
-{
-   driver->NewMemoryObject = _mesa_new_memory_object;
-   driver->DeleteMemoryObject = _mesa_delete_memory_object;
-}
 
 /**
  * Initialize a buffer object to default values.
