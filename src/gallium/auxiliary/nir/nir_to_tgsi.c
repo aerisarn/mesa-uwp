@@ -2324,7 +2324,12 @@ static void
 ntt_emit_if(struct ntt_compile *c, nir_if *if_stmt)
 {
    unsigned label;
-   ureg_UIF(c->ureg, c->if_cond, &label);
+
+   if (c->native_integers)
+      ureg_UIF(c->ureg, c->if_cond, &label);
+   else
+      ureg_IF(c->ureg, c->if_cond, &label);
+
    ntt_emit_cf_list(c, &if_stmt->then_list);
 
    if (!nir_cf_list_is_empty_block(&if_stmt->else_list)) {
