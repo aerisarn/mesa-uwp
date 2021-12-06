@@ -143,6 +143,18 @@ _legal_parameters(struct gl_context *ctx, GLenum target, GLenum internalformat,
       }
       break;
 
+   case GL_NUM_VIRTUAL_PAGE_SIZES_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_X_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_Y_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_Z_ARB:
+      if (!_mesa_has_ARB_sparse_texture(ctx)) {
+         _mesa_error(ctx, GL_INVALID_ENUM,
+                     "glGetInternalformativ(pname=%s)",
+                     _mesa_enum_to_string(pname));
+         return false;
+      }
+      break;
+
    case GL_SRGB_DECODE_ARB:
       /* The ARB_internalformat_query2 spec says:
        *
@@ -325,6 +337,10 @@ _set_default_response(GLenum pname, GLint buffer[16])
    case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
    case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
    case GL_NUM_TILING_TYPES_EXT:
+   case GL_NUM_VIRTUAL_PAGE_SIZES_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_X_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_Y_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_Z_ARB:
       buffer[0] = 0;
       break;
 
@@ -1572,6 +1588,13 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                                 buffer);
       else
          buffer[0] = (GLint)0;
+      break;
+
+   case GL_NUM_VIRTUAL_PAGE_SIZES_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_X_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_Y_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_Z_ARB:
+      st_QueryInternalFormat(ctx, target, internalformat, pname, buffer);
       break;
 
    default:
