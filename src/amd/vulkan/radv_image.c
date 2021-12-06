@@ -956,6 +956,18 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
    unsigned type;
 
    desc = vk_format_description(vk_format);
+
+   /* For emulated ETC2 without alpha we need to override the format to a 3-componenent format, so
+    * that border colors work correctly (alpha forced to 1). Since Vulkan has no such format,
+    * this uses the Gallium formats to set the description. */
+   if (image->vk_format == VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK &&
+       vk_format == VK_FORMAT_R8G8B8A8_UNORM) {
+      desc = util_format_description(PIPE_FORMAT_R8G8B8X8_UNORM);
+   } else if (image->vk_format == VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK &&
+              vk_format == VK_FORMAT_R8G8B8A8_SRGB) {
+      desc = util_format_description(PIPE_FORMAT_R8G8B8X8_SRGB);
+   }
+
    img_format = gfx10_format_table[vk_format_to_pipe_format(vk_format)].img_format;
 
    radv_compose_swizzle(desc, mapping, swizzle);
@@ -1078,6 +1090,17 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
    unsigned num_format, data_format, type;
 
    desc = vk_format_description(vk_format);
+
+   /* For emulated ETC2 without alpha we need to override the format to a 3-componenent format, so
+    * that border colors work correctly (alpha forced to 1). Since Vulkan has no such format,
+    * this uses the Gallium formats to set the description. */
+   if (image->vk_format == VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK &&
+       vk_format == VK_FORMAT_R8G8B8A8_UNORM) {
+      desc = util_format_description(PIPE_FORMAT_R8G8B8X8_UNORM);
+   } else if (image->vk_format == VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK &&
+              vk_format == VK_FORMAT_R8G8B8A8_SRGB) {
+      desc = util_format_description(PIPE_FORMAT_R8G8B8X8_SRGB);
+   }
 
    radv_compose_swizzle(desc, mapping, swizzle);
 
