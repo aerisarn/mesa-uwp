@@ -64,7 +64,6 @@
 #include "st_cb_readpixels.h"
 #include "st_cb_semaphoreobjects.h"
 #include "st_cb_texture.h"
-#include "st_cb_xformfb.h"
 #include "st_cb_flush.h"
 #include "st_cb_viewport.h"
 #include "st_atom.h"
@@ -965,8 +964,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_flush_functions(screen, functions);
    st_init_viewport_functions(functions);
    st_init_compute_functions(functions);
-
-   st_init_xformfb_functions(functions);
 
    st_init_vdpau_functions(functions);
 

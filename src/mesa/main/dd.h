@@ -915,21 +915,6 @@ struct dd_function_table {
                                     struct gl_texture_object *texObj,
                                     struct gl_texture_image *texImage,
                                     GLeglImageOES image_handle);
-   /**
-    * \name GL_EXT_transform_feedback interface
-    */
-   struct gl_transform_feedback_object *
-        (*NewTransformFeedback)(struct gl_context *ctx, GLuint name);
-   void (*DeleteTransformFeedback)(struct gl_context *ctx,
-                                   struct gl_transform_feedback_object *obj);
-   void (*BeginTransformFeedback)(struct gl_context *ctx, GLenum mode,
-                                  struct gl_transform_feedback_object *obj);
-   void (*EndTransformFeedback)(struct gl_context *ctx,
-                                struct gl_transform_feedback_object *obj);
-   void (*PauseTransformFeedback)(struct gl_context *ctx,
-                                  struct gl_transform_feedback_object *obj);
-   void (*ResumeTransformFeedback)(struct gl_context *ctx,
-                                   struct gl_transform_feedback_object *obj);
 
    /**
     * \name GL_ARB_texture_multisample
