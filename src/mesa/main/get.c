@@ -43,6 +43,8 @@
 #include "stencil.h"
 #include "version.h"
 
+#include "state_tracker/st_cb_queryobj.h"
+
 /* This is a table driven implemetation of the glGet*v() functions.
  * The basic idea is that most getters just look up an int somewhere
  * in struct gl_context and then convert it to a bool or float according to
@@ -1176,12 +1178,7 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       break;
    /* GL_ARB_timer_query */
    case GL_TIMESTAMP:
-      if (ctx->Driver.GetTimestamp) {
-         v->value_int64 = ctx->Driver.GetTimestamp(ctx);
-      }
-      else {
-         _mesa_problem(ctx, "driver doesn't implement GetTimestamp");
-      }
+      v->value_int64 = st_GetTimestamp(ctx);
       break;
    /* GL_KHR_DEBUG */
    case GL_DEBUG_OUTPUT:

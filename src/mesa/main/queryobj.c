@@ -33,6 +33,8 @@
 #include "mtypes.h"
 #include "util/u_memory.h"
 
+#include "state_tracker/st_cb_queryobj.h"
+
 static struct gl_query_object **
 get_pipe_stats_binding_point(struct gl_context *ctx,
                              GLenum target)
@@ -160,7 +162,7 @@ create_queries(struct gl_context *ctx, GLenum target, GLsizei n, GLuint *ids,
       GLsizei i;
       for (i = 0; i < n; i++) {
          struct gl_query_object *q
-            = ctx->Driver.NewQueryObject(ctx, ids[i]);
+            = st_NewQueryObject(ctx, ids[i]);
          if (!q) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
             return;
@@ -234,10 +236,10 @@ _mesa_DeleteQueries(GLsizei n, const GLuint *ids)
                   *bindpt = NULL;
                }
                q->Active = GL_FALSE;
-               ctx->Driver.EndQuery(ctx, q);
+               st_EndQuery(ctx, q);
             }
             _mesa_HashRemoveLocked(ctx->Query.QueryObjects, ids[i]);
-            ctx->Driver.DeleteQuery(ctx, q);
+            st_DeleteQuery(ctx, q);
          }
       }
    }
@@ -334,7 +336,7 @@ _mesa_BeginQueryIndexed(GLenum target, GLuint index, GLuint id)
          return;
       } else {
          /* create new object */
-         q = ctx->Driver.NewQueryObject(ctx, id);
+         q = st_NewQueryObject(ctx, id);
          if (!q) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "glBeginQuery{Indexed}");
             return;
@@ -389,7 +391,7 @@ _mesa_BeginQueryIndexed(GLenum target, GLuint index, GLuint id)
    /* XXX should probably refcount query objects */
    *bindpt = q;
 
-   ctx->Driver.BeginQuery(ctx, q);
+   st_BeginQuery(ctx, q);
 }
 
 
@@ -435,7 +437,7 @@ _mesa_EndQueryIndexed(GLenum target, GLuint index)
    }
 
    q->Active = GL_FALSE;
-   ctx->Driver.EndQuery(ctx, q);
+   st_EndQuery(ctx, q);
 }
 
 void GLAPIENTRY
@@ -476,7 +478,7 @@ _mesa_QueryCounter(GLuint id, GLenum target)
       /* XXX the Core profile should throw INVALID_OPERATION here */
 
       /* create new object */
-      q = ctx->Driver.NewQueryObject(ctx, id);
+      q = st_NewQueryObject(ctx, id);
       if (!q) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "glQueryCounter");
          return;
@@ -516,7 +518,7 @@ _mesa_QueryCounter(GLuint id, GLenum target)
    /* QueryCounter is implemented using EndQuery without BeginQuery
     * in drivers. This is actually Direct3D and Gallium convention.
     */
-   ctx->Driver.EndQuery(ctx, q);
+   st_EndQuery(ctx, q);
 }
 
 
@@ -726,7 +728,7 @@ get_query_object(struct gl_context *ctx, const char *func,
       case GL_QUERY_RESULT_NO_WAIT:
       case GL_QUERY_RESULT_AVAILABLE:
       case GL_QUERY_TARGET:
-         ctx->Driver.StoreQueryResult(ctx, q, buf, offset, pname, ptype);
+         st_StoreQueryResult(ctx, q, buf, offset, pname, ptype);
          return;
       }
 
@@ -736,20 +738,20 @@ get_query_object(struct gl_context *ctx, const char *func,
    switch (pname) {
    case GL_QUERY_RESULT:
       if (!q->Ready)
-         ctx->Driver.WaitQuery(ctx, q);
+         st_WaitQuery(ctx, q);
       value = q->Result;
       break;
    case GL_QUERY_RESULT_NO_WAIT:
       if (!_mesa_has_ARB_query_buffer_object(ctx))
          goto invalid_enum;
-      ctx->Driver.CheckQuery(ctx, q);
+      st_CheckQuery(ctx, q);
       if (!q->Ready)
          return;
       value = q->Result;
       break;
    case GL_QUERY_RESULT_AVAILABLE:
       if (!q->Ready)
-         ctx->Driver.CheckQuery(ctx, q);
+         st_CheckQuery(ctx, q);
       value = q->Ready;
       break;
    case GL_QUERY_TARGET:
@@ -942,7 +944,7 @@ delete_queryobj_cb(void *data, void *userData)
 {
    struct gl_query_object *q= (struct gl_query_object *) data;
    struct gl_context *ctx = (struct gl_context *)userData;
-   ctx->Driver.DeleteQuery(ctx, q);
+   st_DeleteQuery(ctx, q);
 }
 
 

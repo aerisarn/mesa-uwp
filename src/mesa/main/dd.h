@@ -59,6 +59,7 @@ struct gl_shader_program;
 struct gl_texture_image;
 struct gl_texture_object;
 struct gl_memory_info;
+struct gl_query_object;
 struct gl_sampler_object;
 struct gl_transform_feedback_object;
 struct gl_vertex_array_object;
@@ -776,25 +777,6 @@ struct dd_function_table {
                                      GLuint *bits, GLuint *width, GLuint *height);
    void (*EvaluateDepthValues)(struct gl_context *ctx);
 
-   /**
-    * \name Query objects
-    */
-   /*@{*/
-   struct gl_query_object * (*NewQueryObject)(struct gl_context *ctx, GLuint id);
-   void (*DeleteQuery)(struct gl_context *ctx, struct gl_query_object *q);
-   void (*BeginQuery)(struct gl_context *ctx, struct gl_query_object *q);
-   void (*EndQuery)(struct gl_context *ctx, struct gl_query_object *q);
-   void (*CheckQuery)(struct gl_context *ctx, struct gl_query_object *q);
-   void (*WaitQuery)(struct gl_context *ctx, struct gl_query_object *q);
-   /*
-    * \pname the value requested to be written (GL_QUERY_RESULT, etc)
-    * \ptype the type of the value requested to be written:
-    *    GL_UNSIGNED_INT, GL_UNSIGNED_INT64_ARB,
-    *    GL_INT, GL_INT64_ARB
-    */
-   void (*StoreQueryResult)(struct gl_context *ctx, struct gl_query_object *q,
-                            struct gl_buffer_object *buf, intptr_t offset,
-                            GLenum pname, GLenum ptype);
    /*@}*/
 
    /**
@@ -922,13 +904,6 @@ struct dd_function_table {
 			  GLbitfield, GLuint64);
    /*@}*/
 
-   /** GL_NV_conditional_render */
-   void (*BeginConditionalRender)(struct gl_context *ctx,
-                                  struct gl_query_object *q,
-                                  GLenum mode);
-   void (*EndConditionalRender)(struct gl_context *ctx,
-                                struct gl_query_object *q);
-
    /**
     * \name GL_OES_draw_texture interface
     */
@@ -975,12 +950,6 @@ struct dd_function_table {
     * \name GL_NV_texture_barrier interface
     */
    void (*TextureBarrier)(struct gl_context *ctx);
-
-   /**
-    * \name Return a timestamp in nanoseconds as defined by GL_ARB_timer_query.
-    * This should be equivalent to glGetInteger64v(GL_TIMESTAMP);
-    */
-   uint64_t (*GetTimestamp)(struct gl_context *ctx);
 
    /**
     * \name GL_ARB_texture_multisample

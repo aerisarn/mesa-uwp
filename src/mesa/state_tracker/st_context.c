@@ -961,8 +961,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_perfmon_functions(functions);
    st_init_perfquery_functions(functions);
    st_init_program_functions(functions);
-   st_init_query_functions(functions);
-   st_init_cond_render_functions(functions);
    st_init_readpixels_functions(functions);
    st_init_semaphoreobject_functions(functions);
    st_init_texture_functions(functions);

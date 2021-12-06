@@ -48,7 +48,7 @@
 #include "st_util.h"
 
 
-static struct gl_query_object *
+struct gl_query_object *
 st_NewQueryObject(struct gl_context *ctx, GLuint id)
 {
    struct st_query_object *stq = ST_CALLOC_STRUCT(st_query_object);
@@ -78,7 +78,7 @@ free_queries(struct pipe_context *pipe, struct st_query_object *stq)
 }
 
 
-static void
+void
 st_DeleteQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
@@ -129,7 +129,7 @@ target_to_index(const struct st_context *st, const struct gl_query_object *q)
    return 0;
 }
 
-static void
+void
 st_BeginQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct st_context *st = st_context(ctx);
@@ -227,7 +227,7 @@ st_BeginQuery(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 
-static void
+void
 st_EndQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct st_context *st = st_context(ctx);
@@ -340,7 +340,7 @@ get_query_result(struct pipe_context *pipe,
 }
 
 
-static void
+void
 st_WaitQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
@@ -359,7 +359,7 @@ st_WaitQuery(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 
-static void
+void
 st_CheckQuery(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
@@ -369,7 +369,7 @@ st_CheckQuery(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 
-static uint64_t
+uint64_t
 st_GetTimestamp(struct gl_context *ctx)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
@@ -386,7 +386,7 @@ st_GetTimestamp(struct gl_context *ctx)
    }
 }
 
-static void
+void
 st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
                     struct gl_buffer_object *buf, intptr_t offset,
                     GLenum pname, GLenum ptype)
@@ -477,16 +477,4 @@ st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
 
    pipe->get_query_result_resource(pipe, stq->pq, wait, result_type, index,
                                    stObj->buffer, offset);
-}
-
-void st_init_query_functions(struct dd_function_table *functions)
-{
-   functions->NewQueryObject = st_NewQueryObject;
-   functions->DeleteQuery = st_DeleteQuery;
-   functions->BeginQuery = st_BeginQuery;
-   functions->EndQuery = st_EndQuery;
-   functions->WaitQuery = st_WaitQuery;
-   functions->CheckQuery = st_CheckQuery;
-   functions->GetTimestamp = st_GetTimestamp;
-   functions->StoreQueryResult = st_StoreQueryResult;
 }
