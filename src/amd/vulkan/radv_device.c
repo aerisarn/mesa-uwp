@@ -691,7 +691,12 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    }
 #endif
 
-   device->emulate_etc2 = false;
+#ifdef ANDROID
+   device->emulate_etc2 = !radv_device_supports_etc(device);
+#else
+   device->emulate_etc2 = !radv_device_supports_etc(device) &&
+                          driQueryOptionb(&device->instance->dri_options, "radv_require_etc2");
+#endif
 
    snprintf(device->name, sizeof(device->name), "AMD RADV %s%s", device->rad_info.name,
             radv_get_compiler_string(device));
@@ -925,6 +930,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_DISABLE_TC_COMPAT_HTILE_GENERAL(false)
       DRI_CONF_RADV_DISABLE_DCC(false)
       DRI_CONF_RADV_REPORT_APU_AS_DGPU(false)
+      DRI_CONF_RADV_REQUIRE_ETC2(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on
