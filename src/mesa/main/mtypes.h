@@ -4141,12 +4141,6 @@ struct gl_constants
     */
    bool GLSLTessLevelsAsInputs;
 
-   /**
-    * Always use the GetTransformFeedbackVertexCount() driver hook, rather
-    * than passing the transform feedback object to the drawing function.
-    */
-   GLboolean AlwaysUseGetTransformFeedbackVertexCount;
-
    /** GL_ARB_map_buffer_alignment */
    GLuint MinMapBufferAlignment;
 

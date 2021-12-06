@@ -315,8 +315,6 @@ draw_buffer(struct gl_context *ctx, struct gl_framebuffer *fb,
 
    /* Call device driver function only if fb is the bound draw buffer */
    if (fb == ctx->DrawBuffer) {
-      if (ctx->Driver.DrawBuffer)
-         ctx->Driver.DrawBuffer(ctx);
       if (ctx->Driver.DrawBufferAllocate)
          ctx->Driver.DrawBufferAllocate(ctx);
    }
@@ -624,8 +622,6 @@ draw_buffers(struct gl_context *ctx, struct gl_framebuffer *fb, GLsizei n,
     * may not be valid.
     */
    if (fb == ctx->DrawBuffer) {
-      if (ctx->Driver.DrawBuffer)
-         ctx->Driver.DrawBuffer(ctx);
       if (ctx->Driver.DrawBufferAllocate)
          ctx->Driver.DrawBufferAllocate(ctx);
    }

@@ -964,10 +964,6 @@ get_program_iv(struct gl_program *prog, GLenum target, GLenum pname,
             /* default/null program */
             *params = GL_FALSE;
          }
-	 else if (ctx->Driver.IsProgramNative) {
-            /* ask the driver */
-	    *params = ctx->Driver.IsProgramNative( ctx, target, prog );
-         }
 	 else {
             /* probably running in software */
 	    *params = GL_TRUE;

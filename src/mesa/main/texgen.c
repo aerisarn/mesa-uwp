@@ -175,9 +175,6 @@ texgenfv( GLuint texunitIndex, GLenum coord, GLenum pname,
       _mesa_error( ctx, GL_INVALID_ENUM, "glTexGenfv(pname)" );
       return;
    }
-
-   if (ctx->Driver.TexGen)
-      ctx->Driver.TexGen( ctx, coord, pname, params );
 }
 
 

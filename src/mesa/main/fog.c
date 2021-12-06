@@ -184,10 +184,6 @@ _mesa_Fogfv( GLenum pname, const GLfloat *params )
          goto invalid_pname;
    }
 
-   if (ctx->Driver.Fogfv) {
-      ctx->Driver.Fogfv( ctx, pname, params );
-   }
-
    return;
 
 invalid_pname:

@@ -3061,7 +3061,7 @@ static void
 check_end_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
 {
    /* Skip if we know NeedsFinishRenderTexture won't be set. */
-   if (_mesa_is_winsys_fbo(fb) && !ctx->Driver.BindRenderbufferTexImage)
+   if (_mesa_is_winsys_fbo(fb))
       return;
 
    if (ctx->Driver.FinishRenderTexture) {
@@ -3187,15 +3187,6 @@ _mesa_bind_framebuffers(struct gl_context *ctx,
       _mesa_reference_framebuffer(&ctx->DrawBuffer, newDrawFb);
       _mesa_update_allow_draw_out_of_order(ctx);
       _mesa_update_valid_to_render_state(ctx);
-   }
-
-   if ((bindDrawBuf || bindReadBuf) && ctx->Driver.BindFramebuffer) {
-      /* The few classic drivers that actually hook this function really only
-       * want to know if the draw framebuffer changed.
-       */
-      ctx->Driver.BindFramebuffer(ctx,
-                                  bindDrawBuf ? GL_FRAMEBUFFER : GL_READ_FRAMEBUFFER,
-                                  newDrawFb, newReadFb);
    }
 }
 

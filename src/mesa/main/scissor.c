@@ -77,9 +77,6 @@ scissor(struct gl_context *ctx, GLint x, GLint y, GLsizei width, GLsizei height)
     */
    for (i = 0; i < ctx->Const.MaxViewports; i++)
       set_scissor_no_notify(ctx, i, x, y, width, height);
-
-   if (ctx->Driver.Scissor)
-      ctx->Driver.Scissor(ctx);
 }
 
 /**
@@ -127,9 +124,6 @@ _mesa_set_scissor(struct gl_context *ctx, unsigned idx,
                   GLint x, GLint y, GLsizei width, GLsizei height)
 {
    set_scissor_no_notify(ctx, idx, x, y, width, height);
-
-   if (ctx->Driver.Scissor)
-      ctx->Driver.Scissor(ctx);
 }
 
 static void
@@ -140,9 +134,6 @@ scissor_array(struct gl_context *ctx, GLuint first, GLsizei count,
       set_scissor_no_notify(ctx, i + first, rect[i].X, rect[i].Y,
                             rect[i].Width, rect[i].Height);
    }
-
-   if (ctx->Driver.Scissor)
-      ctx->Driver.Scissor(ctx);
 }
 
 /**

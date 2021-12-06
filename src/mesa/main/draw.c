@@ -2295,15 +2295,6 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
                                              numInstances))
       return;
 
-   if (ctx->Driver.GetTransformFeedbackVertexCount &&
-       (ctx->Const.AlwaysUseGetTransformFeedbackVertexCount ||
-        !_mesa_all_varyings_in_vbos(ctx->Array.VAO))) {
-      GLsizei n =
-         ctx->Driver.GetTransformFeedbackVertexCount(ctx, obj, stream);
-      _mesa_draw_arrays(ctx, mode, 0, n, numInstances, 0);
-      return;
-   }
-
    /* Maybe we should do some primitive splitting for primitive restart
     * (like in DrawArrays), but we have no way to know how many vertices
     * will be rendered. */

@@ -67,9 +67,6 @@ cull_face(struct gl_context *ctx, GLenum mode, bool no_error)
                   GL_POLYGON_BIT);
    ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
    ctx->Polygon.CullFaceMode = mode;
-
-   if (ctx->Driver.CullFace)
-      ctx->Driver.CullFace(ctx, mode);
 }
 
 
@@ -119,9 +116,6 @@ front_face(struct gl_context *ctx, GLenum mode, bool no_error)
                   GL_POLYGON_BIT);
    ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
    ctx->Polygon.FrontFace = mode;
-
-   if (ctx->Driver.FrontFace)
-      ctx->Driver.FrontFace(ctx, mode);
 }
 
 
@@ -225,9 +219,6 @@ polygon_mode(struct gl_context *ctx, GLenum face, GLenum mode, bool no_error)
       return;
    }
 
-   if (ctx->Driver.PolygonMode)
-      ctx->Driver.PolygonMode(ctx, face, mode);
-
    if (ctx->Extensions.INTEL_conservative_rasterization ||
        (mode == GL_FILL_RECTANGLE_NV || old_mode_has_fill_rectangle))
       _mesa_update_valid_to_render_state(ctx);
@@ -277,9 +268,6 @@ _mesa_PolygonStipple(const GLubyte *pattern)
    _mesa_unpack_polygon_stipple(pattern, ctx->PolygonStipple, &ctx->Unpack);
 
    _mesa_unmap_pbo_source(ctx, &ctx->Unpack);
-
-   if (ctx->Driver.PolygonStipple)
-      ctx->Driver.PolygonStipple(ctx, pattern);
 }
 
 
@@ -331,9 +319,6 @@ _mesa_polygon_offset_clamp(struct gl_context *ctx,
    ctx->Polygon.OffsetFactor = factor;
    ctx->Polygon.OffsetUnits = units;
    ctx->Polygon.OffsetClamp = clamp;
-
-   if (ctx->Driver.PolygonOffset)
-      ctx->Driver.PolygonOffset( ctx, factor, units, clamp );
 }
 
 void GLAPIENTRY

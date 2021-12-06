@@ -1402,8 +1402,6 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
          if (changed) {
             struct gl_program *const prog = sh->Program;
             _mesa_update_shader_textures_used(shProg, prog);
-            if (ctx->Driver.SamplerUniformChange)
-               ctx->Driver.SamplerUniformChange(ctx, prog->Target, prog);
             any_changed = true;
          }
       }

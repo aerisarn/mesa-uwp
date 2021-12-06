@@ -87,9 +87,6 @@ depth_func(struct gl_context *ctx, GLenum func, bool no_error)
    ctx->NewDriverState |= ctx->DriverFlags.NewDepth;
    ctx->Depth.Func = func;
    _mesa_update_allow_draw_out_of_order(ctx);
-
-   if (ctx->Driver.DepthFunc)
-      ctx->Driver.DepthFunc(ctx, func);
 }
 
 
@@ -134,9 +131,6 @@ _mesa_DepthMask( GLboolean flag )
    ctx->NewDriverState |= ctx->DriverFlags.NewDepth;
    ctx->Depth.Mask = flag;
    _mesa_update_allow_draw_out_of_order(ctx);
-
-   if (ctx->Driver.DepthMask)
-      ctx->Driver.DepthMask( ctx, flag );
 }
 
 

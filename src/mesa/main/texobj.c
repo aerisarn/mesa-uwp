@@ -1405,10 +1405,6 @@ unbind_textures_from_unit(struct gl_context *ctx, GLuint unit)
 
       _mesa_reference_texobj(&texUnit->CurrentTex[index], texObj);
 
-      /* Pass BindTexture call to device driver */
-      if (ctx->Driver.BindTexture)
-         ctx->Driver.BindTexture(ctx, unit, 0, texObj);
-
       texUnit->_BoundTextures &= ~(1 << index);
       ctx->NewState |= _NEW_TEXTURE_OBJECT;
       ctx->PopAttribState |= GL_TEXTURE_BIT;
@@ -1663,11 +1659,6 @@ bind_texture_object(struct gl_context *ctx, unsigned unit,
       texUnit->_BoundTextures |= (1 << targetIndex);
    else
       texUnit->_BoundTextures &= ~(1 << targetIndex);
-
-   /* Pass BindTexture call to device driver */
-   if (ctx->Driver.BindTexture) {
-      ctx->Driver.BindTexture(ctx, unit, texObj->Target, texObj);
-   }
 }
 
 /**

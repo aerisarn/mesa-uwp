@@ -92,9 +92,6 @@ _mesa_ClipPlane( GLenum plane, const GLdouble *eq )
    if (ctx->Transform.ClipPlanesEnabled & (1 << p)) {
       _mesa_update_clip_plane(ctx, p);
    }
-
-   if (ctx->Driver.ClipPlane)
-      ctx->Driver.ClipPlane( ctx, plane, equation );
 }
 
 

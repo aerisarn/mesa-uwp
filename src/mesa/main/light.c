@@ -53,9 +53,6 @@ _mesa_ShadeModel( GLenum mode )
 
    FLUSH_VERTICES(ctx, _NEW_LIGHT_STATE, GL_LIGHTING_BIT);
    ctx->Light.ShadeModel = mode;
-
-   if (ctx->Driver.ShadeModel)
-      ctx->Driver.ShadeModel( ctx, mode );
 }
 
 
@@ -249,9 +246,6 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
    default:
       unreachable("Unexpected pname in _mesa_light()");
    }
-
-   if (ctx->Driver.Lightfv)
-      ctx->Driver.Lightfv( ctx, GL_LIGHT0 + lnum, pname, params );
 }
 
 
@@ -550,9 +544,6 @@ _mesa_LightModelfv( GLenum pname, const GLfloat *params )
          goto invalid_pname;
    }
 
-   if (ctx->Driver.LightModelfv)
-      ctx->Driver.LightModelfv( ctx, pname, params );
-
    return;
 
 invalid_pname:
@@ -823,9 +814,6 @@ _mesa_ColorMaterial( GLenum face, GLenum mode )
       FLUSH_CURRENT(ctx, _NEW_FF_VERT_PROGRAM);
       _mesa_update_color_material(ctx,ctx->Current.Attrib[VERT_ATTRIB_COLOR0]);
    }
-
-   if (ctx->Driver.ColorMaterial)
-      ctx->Driver.ColorMaterial( ctx, face, mode );
 }
 
 
@@ -1161,8 +1149,6 @@ _mesa_update_tnl_spaces( struct gl_context *ctx, GLuint new_state )
       update_modelview_scale(ctx);
       compute_light_positions( ctx );
 
-      if (ctx->Driver.LightingSpaceChange)
-	 ctx->Driver.LightingSpaceChange( ctx );
       return true;
    }
    else {

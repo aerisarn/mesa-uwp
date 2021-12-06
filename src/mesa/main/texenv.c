@@ -522,11 +522,6 @@ _mesa_texenvfv_indexed( struct gl_context* ctx, GLuint texunit, GLenum target,
                   _mesa_enum_to_string(pname),
                   *param,
                   _mesa_enum_to_string((GLenum) iparam0));
-
-   /* Tell device driver about the new texture environment */
-   if (ctx->Driver.TexEnv) {
-      ctx->Driver.TexEnv(ctx, target, pname, param);
-   }
 }
 
 

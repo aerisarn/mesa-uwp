@@ -377,12 +377,6 @@ struct dd_function_table {
    /*@{*/
 
    /**
-    * Called by glBindTexture() and glBindTextures().
-    */
-   void (*BindTexture)( struct gl_context *ctx, GLuint texUnit,
-                        GLenum target, struct gl_texture_object *tObj );
-
-   /**
     * Called to allocate a new texture object.  Drivers will usually
     * allocate/return a subclass of gl_texture_object.
     */
@@ -469,13 +463,6 @@ struct dd_function_table {
    void (*UnmapRenderbuffer)(struct gl_context *ctx,
 			     struct gl_renderbuffer *rb);
 
-   /**
-    * Optional driver entrypoint that binds a non-texture renderbuffer's
-    * contents to a texture image.
-    */
-   GLboolean (*BindRenderbufferTexImage)(struct gl_context *ctx,
-                                         struct gl_renderbuffer *rb,
-                                         struct gl_texture_image *texImage);
    /*@}*/
 
 
@@ -502,17 +489,6 @@ struct dd_function_table {
    GLboolean (*ProgramStringNotify)(struct gl_context *ctx, GLenum target, 
                                     struct gl_program *prog);
 
-   /**
-    * Notify driver that the sampler uniforms for the current program have
-    * changed.  On some drivers, this may require shader recompiles.
-    */
-   void (*SamplerUniformChange)(struct gl_context *ctx, GLenum target,
-                                struct gl_program *prog);
-
-   /** Query if program can be loaded onto hardware */
-   GLboolean (*IsProgramNative)(struct gl_context *ctx, GLenum target, 
-				struct gl_program *prog);
-   
    /*@}*/
 
    /**
@@ -678,89 +654,14 @@ struct dd_function_table {
     * May add more functions like these to the device driver in the future.
     */
    /*@{*/
-   /** Specify the alpha test function */
-   void (*AlphaFunc)(struct gl_context *ctx, GLenum func, GLfloat ref);
-   /** Set the blend color */
-   void (*BlendColor)(struct gl_context *ctx, const GLfloat color[4]);
-   /** Set the blend equation */
-   void (*BlendEquationSeparate)(struct gl_context *ctx,
-                                 GLenum modeRGB, GLenum modeA);
-   /** Specify pixel arithmetic */
-   void (*BlendFuncSeparate)(struct gl_context *ctx,
-                             GLenum sfactorRGB, GLenum dfactorRGB,
-                             GLenum sfactorA, GLenum dfactorA);
-   /** Specify a plane against which all geometry is clipped */
-   void (*ClipPlane)(struct gl_context *ctx, GLenum plane, const GLfloat *eq);
-   /** Enable and disable writing of frame buffer color components */
-   void (*ColorMask)(struct gl_context *ctx, GLboolean rmask, GLboolean gmask,
-                     GLboolean bmask, GLboolean amask );
-   /** Cause a material color to track the current color */
-   void (*ColorMaterial)(struct gl_context *ctx, GLenum face, GLenum mode);
-   /** Specify whether front- or back-facing facets can be culled */
-   void (*CullFace)(struct gl_context *ctx, GLenum mode);
-   /** Define front- and back-facing polygons */
-   void (*FrontFace)(struct gl_context *ctx, GLenum mode);
-   /** Specify the value used for depth buffer comparisons */
-   void (*DepthFunc)(struct gl_context *ctx, GLenum func);
-   /** Enable or disable writing into the depth buffer */
-   void (*DepthMask)(struct gl_context *ctx, GLboolean flag);
-   /** Specify mapping of depth values from NDC to window coordinates */
-   void (*DepthRange)(struct gl_context *ctx);
-   /** Specify the current buffer for writing */
-   void (*DrawBuffer)(struct gl_context *ctx);
    /** Used to allocated any buffers with on-demand creation */
    void (*DrawBufferAllocate)(struct gl_context *ctx);
    /** Enable or disable server-side gl capabilities */
    void (*Enable)(struct gl_context *ctx, GLenum cap, GLboolean state);
-   /** Specify fog parameters */
-   void (*Fogfv)(struct gl_context *ctx, GLenum pname, const GLfloat *params);
-   /** Set light source parameters.
-    * Note: for GL_POSITION and GL_SPOT_DIRECTION, params will have already
-    * been transformed to eye-space.
-    */
-   void (*Lightfv)(struct gl_context *ctx, GLenum light,
-		   GLenum pname, const GLfloat *params );
-   /** Set the lighting model parameters */
-   void (*LightModelfv)(struct gl_context *ctx, GLenum pname,
-                        const GLfloat *params);
-   /** Specify the line stipple pattern */
-   void (*LineStipple)(struct gl_context *ctx, GLint factor, GLushort pattern );
-   /** Specify the width of rasterized lines */
-   void (*LineWidth)(struct gl_context *ctx, GLfloat width);
-   /** Specify a logical pixel operation for color index rendering */
-   void (*LogicOpcode)(struct gl_context *ctx, enum gl_logicop_mode opcode);
-   void (*PointParameterfv)(struct gl_context *ctx, GLenum pname,
-                            const GLfloat *params);
-   /** Specify the diameter of rasterized points */
-   void (*PointSize)(struct gl_context *ctx, GLfloat size);
-   /** Select a polygon rasterization mode */
-   void (*PolygonMode)(struct gl_context *ctx, GLenum face, GLenum mode);
-   /** Set the scale and units used to calculate depth values */
-   void (*PolygonOffset)(struct gl_context *ctx, GLfloat factor, GLfloat units, GLfloat clamp);
-   /** Set the polygon stippling pattern */
-   void (*PolygonStipple)(struct gl_context *ctx, const GLubyte *mask );
    /* Specifies the current buffer for reading */
    void (*ReadBuffer)( struct gl_context *ctx, GLenum buffer );
    /** Set rasterization mode */
    void (*RenderMode)(struct gl_context *ctx, GLenum mode );
-   /** Define the scissor box */
-   void (*Scissor)(struct gl_context *ctx);
-   /** Select flat or smooth shading */
-   void (*ShadeModel)(struct gl_context *ctx, GLenum mode);
-   /** OpenGL 2.0 two-sided StencilFunc */
-   void (*StencilFuncSeparate)(struct gl_context *ctx, GLenum face, GLenum func,
-                               GLint ref, GLuint mask);
-   /** OpenGL 2.0 two-sided StencilMask */
-   void (*StencilMaskSeparate)(struct gl_context *ctx, GLenum face, GLuint mask);
-   /** OpenGL 2.0 two-sided StencilOp */
-   void (*StencilOpSeparate)(struct gl_context *ctx, GLenum face, GLenum fail,
-                             GLenum zfail, GLenum zpass);
-   /** Control the generation of texture coordinates */
-   void (*TexGen)(struct gl_context *ctx, GLenum coord, GLenum pname,
-		  const GLfloat *params);
-   /** Set texture environment parameters */
-   void (*TexEnv)(struct gl_context *ctx, GLenum target, GLenum pname,
-                  const GLfloat *param);
    /** Set texture parameter (callee gets param value from the texObj) */
    void (*TexParameter)(struct gl_context *ctx,
                         struct gl_texture_object *texObj, GLenum pname);
@@ -858,9 +759,6 @@ struct dd_function_table {
                                              GLuint name);
    struct gl_renderbuffer * (*NewRenderbuffer)(struct gl_context *ctx,
                                                GLuint name);
-   void (*BindFramebuffer)(struct gl_context *ctx, GLenum target,
-                           struct gl_framebuffer *drawFb,
-                           struct gl_framebuffer *readFb);
    void (*FramebufferRenderbuffer)(struct gl_context *ctx, 
                                    struct gl_framebuffer *fb,
                                    GLenum attachment,
@@ -897,7 +795,6 @@ struct dd_function_table {
    struct gl_query_object * (*NewQueryObject)(struct gl_context *ctx, GLuint id);
    void (*DeleteQuery)(struct gl_context *ctx, struct gl_query_object *q);
    void (*BeginQuery)(struct gl_context *ctx, struct gl_query_object *q);
-   void (*QueryCounter)(struct gl_context *ctx, struct gl_query_object *q);
    void (*EndQuery)(struct gl_context *ctx, struct gl_query_object *q);
    void (*CheckQuery)(struct gl_context *ctx, struct gl_query_object *q);
    void (*WaitQuery)(struct gl_context *ctx, struct gl_query_object *q);
@@ -1020,12 +917,6 @@ struct dd_function_table {
    /** Need to call vbo_save_SaveFlushVertices() upon state change? */
    GLboolean SaveNeedFlush;
 
-   /**
-    * Notify driver that the special derived value _NeedEyeCoords has
-    * changed.
-    */
-   void (*LightingSpaceChange)( struct gl_context *ctx );
-
    /**@}*/
 
    /**
@@ -1091,14 +982,6 @@ struct dd_function_table {
                                   struct gl_transform_feedback_object *obj);
    void (*ResumeTransformFeedback)(struct gl_context *ctx,
                                    struct gl_transform_feedback_object *obj);
-
-   /**
-    * Return the number of vertices written to a stream during the last
-    * Begin/EndTransformFeedback block.
-    */
-   GLsizei (*GetTransformFeedbackVertexCount)(struct gl_context *ctx,
-                                       struct gl_transform_feedback_object *obj,
-                                       GLuint stream);
 
    /**
     * \name GL_NV_texture_barrier interface
