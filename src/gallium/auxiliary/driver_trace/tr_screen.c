@@ -1040,6 +1040,36 @@ trace_screen_get_dmabuf_modifier_planes(struct pipe_screen *_screen, uint64_t mo
    return ret;
 }
 
+static int
+trace_screen_get_sparse_texture_virtual_page_size(struct pipe_screen *_screen,
+                                                  enum pipe_texture_target target,
+                                                  enum pipe_format format,
+                                                  unsigned offset, unsigned size,
+                                                  int *x, int *y, int *z)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "get_sparse_texture_virtual_page_size");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(int, target);
+   trace_dump_arg(format, format);
+   trace_dump_arg(uint, offset);
+   trace_dump_arg(uint, size);
+   trace_dump_arg(ptr, x);
+   trace_dump_arg(ptr, y);
+   trace_dump_arg(ptr, z);
+
+   int ret = screen->get_sparse_texture_virtual_page_size(screen, target, format, offset,
+                                                          size, x, y, z);
+
+   trace_dump_ret(int, ret);
+
+   trace_dump_call_end();
+   return ret;
+}
+
 static struct pipe_vertex_state *
 trace_screen_create_vertex_state(struct pipe_screen *_screen,
                                  struct pipe_vertex_buffer *buffer,
@@ -1182,6 +1212,7 @@ trace_screen_create(struct pipe_screen *screen)
    SCR_INIT(create_vertex_state);
    SCR_INIT(vertex_state_destroy);
    tr_scr->base.transfer_helper = screen->transfer_helper;
+   SCR_INIT(get_sparse_texture_virtual_page_size);
 
    tr_scr->screen = screen;
 
