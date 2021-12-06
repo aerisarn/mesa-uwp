@@ -439,9 +439,9 @@ ir3_block_remove_physical_predecessor(struct ir3_block *block, struct ir3_block 
 {
    for (unsigned i = 0; i < block->physical_predecessors_count; i++) {
       if (block->physical_predecessors[i] == pred) {
-         if (i < block->predecessors_count - 1) {
+         if (i < block->physical_predecessors_count - 1) {
             block->physical_predecessors[i] =
-               block->physical_predecessors[block->predecessors_count - 1];
+               block->physical_predecessors[block->physical_predecessors_count - 1];
          }
 
          block->physical_predecessors_count--;
