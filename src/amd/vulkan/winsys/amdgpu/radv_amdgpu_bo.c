@@ -74,8 +74,7 @@ radv_amdgpu_winsys_virtual_map(struct radv_amdgpu_winsys *ws, struct radv_amdgpu
 
    if (!range->bo) {
       internal_flags |= AMDGPU_VM_PAGE_PRT;
-   } else
-      p_atomic_inc(&range->bo->ref_count);
+   }
 
    int r = radv_amdgpu_bo_va_op(ws, range->bo ? range->bo->bo : NULL, range->bo_offset, range->size,
                                 range->offset + bo->base.va, 0, internal_flags, AMDGPU_VA_OP_MAP);
@@ -100,9 +99,6 @@ radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys *ws, struct radv_amdg
                                 range->offset + bo->base.va, 0, internal_flags, AMDGPU_VA_OP_UNMAP);
    if (r)
       abort();
-
-   if (range->bo)
-      ws->base.buffer_destroy(&ws->base, (struct radeon_winsys_bo *)range->bo);
 }
 
 static int
@@ -352,9 +348,6 @@ radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws, struct radeon_winsys_bo
    struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
    struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(_bo);
 
-   if (p_atomic_dec_return(&bo->ref_count))
-      return;
-
    radv_amdgpu_log_bo(ws, bo, true);
 
    if (bo->is_virtual) {
@@ -366,11 +359,6 @@ radv_amdgpu_winsys_bo_destroy(struct radeon_winsys *_ws, struct radeon_winsys_bo
          fprintf(stderr, "amdgpu: Failed to clear a PRT VA region (%d).\n", r);
       }
 
-      for (uint32_t i = 0; i < bo->range_count; ++i) {
-         const struct radv_amdgpu_map_range *range = bo->ranges + i;
-         if (range->bo)
-            ws->base.buffer_destroy(&ws->base, (struct radeon_winsys_bo *)range->bo);
-      }
       free(bo->bos);
       free(bo->ranges);
    } else {
@@ -441,7 +429,6 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned 
    bo->va_handle = va_handle;
    bo->size = size;
    bo->is_virtual = !!(flags & RADEON_FLAG_VIRTUAL);
-   bo->ref_count = 1;
 
    if (flags & RADEON_FLAG_VIRTUAL) {
       ranges = realloc(NULL, sizeof(struct radv_amdgpu_map_range));
@@ -669,7 +656,6 @@ radv_amdgpu_winsys_bo_from_ptr(struct radeon_winsys *_ws, void *pointer, uint64_
    bo->base.va = va;
    bo->va_handle = va_handle;
    bo->size = size;
-   bo->ref_count = 1;
    bo->bo = buf_handle;
    bo->base.initial_domain = RADEON_DOMAIN_GTT;
    bo->base.use_global_list = false;
@@ -764,7 +750,6 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws, int fd, unsigned priori
    bo->size = result.alloc_size;
    bo->is_shared = true;
    bo->priority = priority;
-   bo->ref_count = 1;
 
    r = amdgpu_bo_export(result.buf_handle, amdgpu_bo_handle_type_kms, &bo->bo_handle);
    assert(!r);
