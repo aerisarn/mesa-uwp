@@ -68,6 +68,8 @@
 
 #include "syncobj.h"
 
+#include "state_tracker/st_cb_syncobj.h"
+
 /**
  * Allocate/init the context state related to sync objects.
  */
@@ -134,7 +136,7 @@ _mesa_unref_sync_object(struct gl_context *ctx, struct gl_sync_object *syncObj,
       _mesa_set_remove(ctx->Shared->SyncObjects, entry);
       simple_mtx_unlock(&ctx->Shared->Mutex);
 
-      ctx->Driver.DeleteSyncObject(ctx, syncObj);
+      st_delete_sync_object(ctx, syncObj);
    } else {
       simple_mtx_unlock(&ctx->Shared->Mutex);
    }
@@ -204,7 +206,7 @@ fence_sync(struct gl_context *ctx, GLenum condition, GLbitfield flags)
 {
    struct gl_sync_object *syncObj;
 
-   syncObj = ctx->Driver.NewSyncObject(ctx);
+   syncObj = st_new_sync_object(ctx);
    if (syncObj != NULL) {
       /* The name is not currently used, and it is never visible to
        * applications.  If sync support is extended to provide support for
@@ -218,7 +220,7 @@ fence_sync(struct gl_context *ctx, GLenum condition, GLbitfield flags)
       syncObj->Flags = flags;
       syncObj->StatusFlag = 0;
 
-      ctx->Driver.FenceSync(ctx, syncObj, condition, flags);
+      st_fence_sync(ctx, syncObj, condition, flags);
 
       simple_mtx_lock(&ctx->Shared->Mutex);
       _mesa_set_add(ctx->Shared->SyncObjects, syncObj);
@@ -273,14 +275,14 @@ client_wait_sync(struct gl_context *ctx, struct gl_sync_object *syncObj,
     *    ClientWaitSync was called. ALREADY_SIGNALED will always be returned
     *    if <sync> was signaled, even if the value of <timeout> is zero.
     */
-   ctx->Driver.CheckSync(ctx, syncObj);
+   st_check_sync(ctx, syncObj);
    if (syncObj->StatusFlag) {
       ret = GL_ALREADY_SIGNALED;
    } else {
       if (timeout == 0) {
          ret = GL_TIMEOUT_EXPIRED;
       } else {
-         ctx->Driver.ClientWaitSync(ctx, syncObj, flags, timeout);
+         st_client_wait_sync(ctx, syncObj, flags, timeout);
 
          ret = syncObj->StatusFlag
             ? GL_CONDITION_SATISFIED : GL_TIMEOUT_EXPIRED;
@@ -330,7 +332,7 @@ static void
 wait_sync(struct gl_context *ctx, struct gl_sync_object *syncObj,
           GLbitfield flags, GLuint64 timeout)
 {
-   ctx->Driver.ServerWaitSync(ctx, syncObj, flags, timeout);
+   st_server_wait_sync(ctx, syncObj, flags, timeout);
    _mesa_unref_sync_object(ctx, syncObj, 1);
 }
 
@@ -405,7 +407,7 @@ _mesa_GetSynciv(GLsync sync, GLenum pname, GLsizei bufSize, GLsizei *length,
        * this call won't block.  It just updates state in the common object
        * data from the current driver state.
        */
-      ctx->Driver.CheckSync(ctx, syncObj);
+      st_check_sync(ctx, syncObj);
 
       v[0] = (syncObj->StatusFlag) ? GL_SIGNALED : GL_UNSIGNALED;
       size = 1;
