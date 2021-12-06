@@ -564,6 +564,8 @@ nir_builder PRINTFLIKE(2, 3) radv_meta_init_shader(gl_shader_stage stage, const 
       va_end(args);
    }
 
+   b.shader->info.internal = true;
+
    return b;
 }
 
