@@ -443,8 +443,9 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    if (module->nir) {
       /* Some things such as our meta clear/blit code will give us a NIR
        * shader directly.  In that case, we just ignore the SPIR-V entirely
-       * and just use the NIR shader */
-      nir = module->nir;
+       * and just use the NIR shader.  We don't want to alter meta and RT
+       * shaders IR directly, so clone it first. */
+      nir = nir_shader_clone(NULL, module->nir);
       nir->options = &device->physical_device->nir_options;
       nir_validate_shader(nir, "in internal shader");
 
