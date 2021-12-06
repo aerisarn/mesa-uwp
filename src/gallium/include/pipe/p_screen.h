@@ -654,6 +654,22 @@ struct pipe_screen {
                                               enum pipe_format format);
 
    /**
+    * Get supported page sizes for sparse texture.
+    *
+    * \p size is the array size of \p x, \p y and \p z.
+    *
+    * \p offset sets an offset into the possible format page size array,
+    *  used to pick a specific xyz size combination.
+    *
+    * \return Number of supported page sizes, 0 means not support.
+    */
+   int (*get_sparse_texture_virtual_page_size)(struct pipe_screen *screen,
+                                               enum pipe_texture_target target,
+                                               enum pipe_format format,
+                                               unsigned offset, unsigned size,
+                                               int *x, int *y, int *z);
+
+   /**
     * Vertex state CSO functions for precomputing vertex and index buffer
     * states for display lists.
     */
