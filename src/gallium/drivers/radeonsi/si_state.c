@@ -3320,8 +3320,6 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          if (tex->db_render_format == PIPE_FORMAT_Z16_UNORM && tex->buffer.b.b.nr_samples > 1)
             max_zplanes = 2;
 
-         db_z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes + 1);
-
          if (sctx->chip_class >= GFX10) {
             bool iterate256 = tex->buffer.b.b.nr_samples >= 2;
             db_z_info |= S_028040_ITERATE_FLUSH(1) |
@@ -3338,6 +3336,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             db_z_info |= S_028038_ITERATE_FLUSH(1);
             db_stencil_info |= S_02803C_ITERATE_FLUSH(1);
          }
+
+         db_z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes + 1);
       }
 
       unsigned level = zb->base.u.tex.level;
