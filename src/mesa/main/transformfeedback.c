@@ -222,69 +222,6 @@ _mesa_delete_transform_feedback_object(struct gl_context *ctx,
    free(obj);
 }
 
-/** Default fallback for ctx->Driver.NewTransformFeedback() */
-static struct gl_transform_feedback_object *
-new_transform_feedback_fallback(struct gl_context *ctx, GLuint name)
-{
-   struct gl_transform_feedback_object *obj;
-
-   obj = CALLOC_STRUCT(gl_transform_feedback_object);
-   if (!obj)
-      return NULL;
-
-   _mesa_init_transform_feedback_object(obj, name);
-   return obj;
-}
-
-/** Default fallback for ctx->Driver.BeginTransformFeedback() */
-static void
-begin_transform_feedback_fallback(struct gl_context *ctx, GLenum mode,
-                                  struct gl_transform_feedback_object *obj)
-{
-   /* nop */
-}
-
-/** Default fallback for ctx->Driver.EndTransformFeedback() */
-static void
-end_transform_feedback_fallback(struct gl_context *ctx,
-                                struct gl_transform_feedback_object *obj)
-{
-   /* nop */
-}
-
-/** Default fallback for ctx->Driver.PauseTransformFeedback() */
-static void
-pause_transform_feedback_fallback(struct gl_context *ctx,
-                                  struct gl_transform_feedback_object *obj)
-{
-   /* nop */
-}
-
-/** Default fallback for ctx->Driver.ResumeTransformFeedback() */
-static void
-resume_transform_feedback_fallback(struct gl_context *ctx,
-                                   struct gl_transform_feedback_object *obj)
-{
-   /* nop */
-}
-
-
-/**
- * Plug in default device driver functions for transform feedback.
- * Most drivers will override some/all of these.
- */
-void
-_mesa_init_transform_feedback_functions(struct dd_function_table *driver)
-{
-   driver->NewTransformFeedback = new_transform_feedback_fallback;
-   driver->DeleteTransformFeedback = _mesa_delete_transform_feedback_object;
-   driver->BeginTransformFeedback = begin_transform_feedback_fallback;
-   driver->EndTransformFeedback = end_transform_feedback_fallback;
-   driver->PauseTransformFeedback = pause_transform_feedback_fallback;
-   driver->ResumeTransformFeedback = resume_transform_feedback_fallback;
-}
-
-
 /**
  * Fill in the correct Size value for each buffer in \c obj.
  *
