@@ -261,7 +261,7 @@ static const struct surface_format_info format_info[] = {
    SF( 90,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   I8_SINT)
    SF( 45,  45,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   DXT1_RGB_SRGB)
    SF(  Y,   Y,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   R1_UNORM)
-   SF(  Y,   Y,   x,   Y,   Y,   x,   x,   x,  60,   x,   x,   x,   YCRCB_NORMAL)
+   SF(  Y,   Y,   x,   Y,   Y,   x,   x,   x,  60,   x,   x, 120,   YCRCB_NORMAL)
    SF(  Y,   Y,   x,   Y,   Y,   x,   x,   x,  60,   x,   x,   x,   YCRCB_SWAPUVY)
    SF( 45,  45,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   P2_UNORM_PALETTE0)
    SF( 45,  45,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   P2_UNORM_PALETTE1)
@@ -275,7 +275,7 @@ static const struct surface_format_info format_info[] = {
    SF(  Y,   Y,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   BC3_UNORM_SRGB)
    SF(  Y,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   MONO8)
    SF(  Y,   Y,   x,   x,   Y,   x,   x,   x,  60,   x,   x,   x,   YCRCB_SWAPUV)
-   SF(  Y,   Y,   x,   x,   Y,   x,   x,   x,  60,   x,   x,   x,   YCRCB_SWAPY)
+   SF(  Y,   Y,   x,   x,   Y,   x,   x,   x,  60,   x,   x, 120,   YCRCB_SWAPY)
    SF(  Y,   Y,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   DXT1_RGB)
 /*    smpl filt  shad  CK   RT   AB   VB   SO color TW   TR  ccs_e */
    SF(  Y,   Y,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   FXT1)
