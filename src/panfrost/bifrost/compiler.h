@@ -401,8 +401,14 @@ typedef struct {
          * useless double fills */
         bool no_spill;
 
-        /* Override table, inducing a DTSEL_IMM pair if nonzero */
-        enum bi_table table;
+        /* On Bifrost: A value of bi_table to override the table, inducing a
+         * DTSEL_IMM pair if nonzero.
+         *
+         * On Valhall: the table index to use for resource instructions.
+         *
+         * These two interpretations are equivalent if you squint a bit.
+         */
+        unsigned table;
 
         /* Everything after this MUST NOT be accessed directly, since
          * interpretation depends on opcodes */
