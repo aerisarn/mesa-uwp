@@ -85,8 +85,8 @@ st_DeleteQuery(struct gl_context *ctx, struct gl_query_object *q)
    struct st_query_object *stq = st_query_object(q);
 
    free_queries(pipe, stq);
-
-   _mesa_delete_query(ctx, q);
+   free(stq->base.Label);
+   free(stq);
 }
 
 static int
