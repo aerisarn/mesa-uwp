@@ -169,15 +169,8 @@ dEQP-GLES2.functional.shaders.loops.for_uniform_iterations.unconditional_break_v
 dEQP-GLES2.functional.shaders.operator.exponential.pow.highp_float_fragment,Fail
 dEQP-GLES2.functional.shaders.operator.exponential.pow.mediump_float_fragment,Fail
 
-dEQP-GLES2.functional.shaders.random.basic_expression.fragment.15,Fail
-dEQP-GLES2.functional.shaders.random.basic_expression.combined.15,Fail
 dEQP-GLES2.functional.shaders.random.swizzle.fragment.24,Fail
-dEQP-GLES2.functional.shaders.random.conditionals.fragment.75,Fail
-dEQP-GLES2.functional.shaders.random.conditionals.combined.75,Fail
-dEQP-GLES2.functional.shaders.random.texture.fragment.59,Fail
 dEQP-GLES2.functional.shaders.random.texture.fragment.141,Fail
-dEQP-GLES2.functional.shaders.random.all_features.fragment.30,Fail
-dEQP-GLES2.functional.shaders.random.all_features.fragment.85,Fail
 
 # VS: Only the first channel of a POW result is right it looks like.
 dEQP-GLES2.functional.shaders.operator.exponential.pow.highp_vec2_vertex,Fail
