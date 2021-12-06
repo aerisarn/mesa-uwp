@@ -303,6 +303,13 @@ i915_ioctl_query(int fd, unsigned long request, void *arg)
          break;
       }
 
+      case DRM_I915_QUERY_PERF_CONFIG:
+         /* This is known but not supported by the shim.  Handling this here
+          * suppresses some spurious warning messages in shader-db runs.
+          */
+         item->length = -EINVAL;
+         break;
+
       default:
          fprintf(stderr, "Unknown drm_i915_query_item id=%lli\n", item->query_id);
          item->length = -EINVAL;
