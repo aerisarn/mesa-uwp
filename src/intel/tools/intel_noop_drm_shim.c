@@ -212,6 +212,9 @@ i915_ioctl_get_param(int fd, unsigned long request, void *arg)
    case I915_PARAM_PERF_REVISION:
       *gp->value = 3;
       return 0;
+   case I915_PARAM_HAS_USERPTR_PROBE:
+      *gp->value = 0;
+      return 0;
    default:
       break;
    }
