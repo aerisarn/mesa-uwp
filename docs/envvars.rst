@@ -269,10 +269,6 @@ Intel driver environment variables
    ``do32``
       generate compute shader SIMD32 programs even if workgroup size
       doesn't exceed the SIMD16 limit
-   ``dri``
-      emit messages about the DRI interface
-   ``fbo``
-      emit messages about framebuffers
    ``fs``
       dump shader assembly for fragment shaders
    ``gs``
@@ -281,8 +277,6 @@ Intel driver environment variables
       print instruction hex dump with the disassembly
    ``l3``
       emit messages about the new L3 state during transitions
-   ``miptree``
-      emit messages about miptrees
    ``no8``
       don't generate SIMD8 fragment shader
    ``no16``
@@ -303,10 +297,6 @@ Intel driver environment variables
       emit messages about performance issues
    ``perfmon``
       emit messages about ``AMD_performance_monitor``
-   ``pix``
-      emit messages about pixel operations
-   ``prim``
-      emit messages about drawing primitives
    ``reemit``
       mark all state dirty on each draw call
    ``sf``
@@ -320,8 +310,6 @@ Intel driver environment variables
    ``spill_vec4``
       force spilling of all registers in the vec4 backend (useful to
       debug spilling code)
-   ``state``
-      emit messages about state flag tracking
    ``submit``
       emit batchbuffer usage statistics
    ``sync``
@@ -335,8 +323,6 @@ Intel driver environment variables
       emit messages about textures.
    ``urb``
       emit messages about URB setup
-   ``vert``
-      emit messages about vertex assembly
    ``vs``
       dump shader assembly for vertex shaders
 
