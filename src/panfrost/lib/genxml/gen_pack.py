@@ -176,11 +176,16 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define pan_section_print(fp, A, S, var, indent)                          \\
         PREFIX4(A, SECTION, S, print)(fp, &(var), indent)
 
+static inline void pan_merge_helper(uint32_t *dst, const uint32_t *src, size_t bytes)
+{
+        assert((bytes & 3) == 0);
+
+        for (unsigned i = 0; i < (bytes / 4); ++i)
+                dst[i] |= src[i];
+}
+
 #define pan_merge(packed1, packed2, type) \
-        do { \
-                for (unsigned i = 0; i < (PREFIX2(type, LENGTH) / 4); ++i) \
-                        (packed1).opaque[i] |= (packed2).opaque[i]; \
-        } while(0)
+        pan_merge_helper((packed1).opaque, (packed2).opaque, pan_size(type))
 
 /* From presentations, 16x16 tiles externally. Use shift for fast computation
  * of tile numbers. */
