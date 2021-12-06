@@ -44,6 +44,7 @@
 #include "texstate.h"
 #include "varray.h"
 
+#include "state_tracker/st_context.h"
 
 void
 _mesa_update_derived_primitive_restart_state(struct gl_context *ctx)
@@ -146,9 +147,7 @@ client_state(struct gl_context *ctx, struct gl_vertex_array_object* vao,
          goto invalid_enum_error;
    }
 
-   if (ctx->Driver.Enable) {
-      ctx->Driver.Enable( ctx, cap, state );
-   }
+   st_Enable( ctx, cap );
 
    return;
 
@@ -363,9 +362,7 @@ _mesa_set_multisample(struct gl_context *ctx, GLboolean state)
    ctx->NewDriverState |= ctx->DriverFlags.NewMultisampleEnable;
    ctx->Multisample.Enabled = state;
 
-   if (ctx->Driver.Enable) {
-      ctx->Driver.Enable(ctx, GL_MULTISAMPLE, state);
-   }
+   st_Enable(ctx, GL_MULTISAMPLE);
 }
 
 /**
@@ -384,9 +381,7 @@ _mesa_set_framebuffer_srgb(struct gl_context *ctx, GLboolean state)
    ctx->NewDriverState |= ctx->DriverFlags.NewFramebufferSRGB;
    ctx->Color.sRGBEnabled = state;
 
-   if (ctx->Driver.Enable) {
-      ctx->Driver.Enable(ctx, GL_FRAMEBUFFER_SRGB, state);
-   }
+   st_Enable(ctx, GL_FRAMEBUFFER_SRGB);
 }
 
 /**
@@ -1348,9 +1343,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          goto invalid_enum_error;
    }
 
-   if (ctx->Driver.Enable) {
-      ctx->Driver.Enable( ctx, cap, state );
-   }
+   st_Enable( ctx, cap );
 
    return;
 

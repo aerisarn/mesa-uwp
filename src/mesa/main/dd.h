@@ -652,8 +652,6 @@ struct dd_function_table {
    /*@{*/
    /** Used to allocated any buffers with on-demand creation */
    void (*DrawBufferAllocate)(struct gl_context *ctx);
-   /** Enable or disable server-side gl capabilities */
-   void (*Enable)(struct gl_context *ctx, GLenum cap, GLboolean state);
    /* Specifies the current buffer for reading */
    void (*ReadBuffer)( struct gl_context *ctx, GLenum buffer );
    /** Set texture parameter (callee gets param value from the texObj) */

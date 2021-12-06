@@ -88,11 +88,8 @@
 DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 
 
-/**
- * Called via ctx->Driver.Enable()
- */
-static void
-st_Enable(struct gl_context *ctx, GLenum cap, UNUSED GLboolean state)
+void
+st_Enable(struct gl_context *ctx, GLenum cap)
 {
    struct st_context *st = st_context(ctx);
 
@@ -965,7 +962,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    if (screen->get_param(screen, PIPE_CAP_STRING_MARKER))
       functions->EmitStringMarker = st_emit_string_marker;
 
-   functions->Enable = st_Enable;
    functions->UpdateState = st_invalidate_state;
    functions->QueryMemoryInfo = st_query_memory_info;
    functions->SetBackgroundContext = st_set_background_context;

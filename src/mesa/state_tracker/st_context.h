@@ -46,7 +46,6 @@ extern "C" {
 #endif
 
 
-struct dd_function_table;
 struct draw_context;
 struct draw_stage;
 struct gen_mipmap_state;
@@ -454,7 +453,7 @@ struct st_framebuffer
    struct list_head head;
 };
 
-
+void st_Enable(struct gl_context *ctx, GLenum cap);
 #ifdef __cplusplus
 }
 #endif
