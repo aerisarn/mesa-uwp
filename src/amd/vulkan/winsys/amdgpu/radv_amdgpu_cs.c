@@ -24,6 +24,7 @@
 
 #include <amdgpu.h>
 #include <assert.h>
+#include <libsync.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include "drm-uapi/amdgpu_drm.h"
@@ -1169,6 +1170,87 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
 }
 
 static VkResult
+radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum ring_type ring_type, int queue_idx,
+                           struct radv_winsys_sem_info *sem_info)
+{
+   unsigned hw_ip = ring_to_hw_ip(ring_type);
+   unsigned queue_syncobj = radv_amdgpu_ctx_queue_syncobj(ctx, hw_ip, queue_idx);
+   int ret;
+
+   if (!queue_syncobj)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   if (sem_info->wait.syncobj_count || sem_info->wait.timeline_syncobj_count) {
+      int fd;
+      ret = amdgpu_cs_syncobj_export_sync_file(ctx->ws->dev, queue_syncobj, &fd);
+      if (ret < 0)
+         return VK_ERROR_DEVICE_LOST;
+
+      for (unsigned i = 0; i < sem_info->wait.syncobj_count; ++i) {
+         int fd2;
+         ret = amdgpu_cs_syncobj_export_sync_file(ctx->ws->dev, sem_info->wait.syncobj[i], &fd2);
+         if (ret < 0) {
+            close(fd);
+            return VK_ERROR_DEVICE_LOST;
+         }
+
+         sync_accumulate("radv", &fd, fd2);
+         close(fd2);
+      }
+      for (unsigned i = 0; i < sem_info->wait.timeline_syncobj_count; ++i) {
+         int fd2;
+         ret = amdgpu_cs_syncobj_export_sync_file2(
+            ctx->ws->dev, sem_info->wait.syncobj[i + sem_info->wait.syncobj_count],
+            sem_info->wait.points[i], 0, &fd2);
+         if (ret < 0) {
+            /* This works around a kernel bug where the fence isn't copied if it is already
+             * signalled. Since it is already signalled it is totally fine to not wait on it.
+             *
+             * kernel patch: https://patchwork.freedesktop.org/patch/465583/ */
+            uint64_t point;
+            ret = amdgpu_cs_syncobj_query2(
+               ctx->ws->dev, &sem_info->wait.syncobj[i + sem_info->wait.syncobj_count], &point, 1,
+               0);
+            if (!ret && point >= sem_info->wait.points[i])
+               continue;
+
+            close(fd);
+            return VK_ERROR_DEVICE_LOST;
+         }
+
+         sync_accumulate("radv", &fd, fd2);
+         close(fd2);
+      }
+      ret = amdgpu_cs_syncobj_import_sync_file(ctx->ws->dev, queue_syncobj, fd);
+      close(fd);
+      if (ret < 0)
+         return VK_ERROR_DEVICE_LOST;
+   }
+
+   if (sem_info->wait.syncobj_reset_count) {
+      ret = amdgpu_cs_syncobj_reset(ctx->ws->dev, sem_info->wait.syncobj,
+                                    sem_info->wait.syncobj_reset_count);
+      if (ret < 0)
+         return VK_ERROR_DEVICE_LOST;
+   }
+
+   for (unsigned i = 0; i < sem_info->signal.syncobj_count; ++i) {
+      ret = amdgpu_cs_syncobj_transfer(ctx->ws->dev, sem_info->signal.syncobj[i], 0, queue_syncobj,
+                                       0, 0);
+      if (ret < 0)
+         return VK_ERROR_DEVICE_LOST;
+   }
+   for (unsigned i = 0; i < sem_info->signal.timeline_syncobj_count; ++i) {
+      ret = amdgpu_cs_syncobj_transfer(ctx->ws->dev,
+                                       sem_info->signal.syncobj[i + sem_info->signal.syncobj_count],
+                                       sem_info->signal.points[i], queue_syncobj, 0, 0);
+      if (ret < 0)
+         return VK_ERROR_DEVICE_LOST;
+   }
+   return VK_SUCCESS;
+}
+
+static VkResult
 radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
                              int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
                              struct radeon_cmdbuf *initial_preamble_cs,
@@ -1179,7 +1261,9 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring
    VkResult result;
 
    assert(sem_info);
-   if (!ctx->ws->use_ib_bos) {
+   if (!cs_count) {
+      result = radv_amdgpu_cs_submit_zero(ctx, ring_type, queue_idx, sem_info);
+   } else if (!ctx->ws->use_ib_bos) {
       result = radv_amdgpu_winsys_cs_submit_sysmem(_ctx, queue_idx, sem_info, cs_array, cs_count,
                                                    initial_preamble_cs, continue_preamble_cs);
    } else if (can_patch) {
