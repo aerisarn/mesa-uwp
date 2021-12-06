@@ -39,9 +39,6 @@ struct gl_context;
 struct gl_sync_object;
 
 extern void
-_mesa_init_sync_object_functions(struct dd_function_table *driver);
-
-extern void
 _mesa_init_sync(struct gl_context *);
 
 extern void
