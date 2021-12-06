@@ -115,13 +115,6 @@ struct pipe_vertex_element;
  */
 struct dd_function_table {
    /**
-    * Return a string as needed by glGetString().
-    * Only the GL_RENDERER query must be implemented.  Otherwise, NULL can be
-    * returned.
-    */
-   const GLubyte * (*GetString)( struct gl_context *ctx, GLenum name );
-
-   /**
     * Notify the driver after Mesa has made some internal state changes.  
     *
     * This is in addition to any state change callbacks Mesa may already have

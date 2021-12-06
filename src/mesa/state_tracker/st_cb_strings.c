@@ -39,7 +39,7 @@
 #include "st_context.h"
 #include "st_cb_strings.h"
 
-static const GLubyte *
+const GLubyte *
 st_get_string(struct gl_context * ctx, GLenum name)
 {
    struct st_context *st = st_context(ctx);
@@ -58,8 +58,3 @@ st_get_string(struct gl_context * ctx, GLenum name)
    }
 }
 
-
-void st_init_string_functions(struct dd_function_table *functions)
-{
-   functions->GetString = st_get_string;
-}

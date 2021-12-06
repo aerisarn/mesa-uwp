@@ -29,12 +29,7 @@
 #ifndef ST_CB_STRINGS_H
 #define ST_CB_STRINGS_H
 
+const GLubyte *st_get_string(struct gl_context * ctx, GLenum name);
 
-struct dd_function_table;
-
-extern void
-st_init_string_functions(struct dd_function_table *functions);
-
-
-#endif /* ST_CB_CLEAR_H */
+#endif /* ST_CB_STRINGS_H */
 

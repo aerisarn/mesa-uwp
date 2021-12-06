@@ -35,6 +35,7 @@
 #include "version.h"
 #include "spirv_extensions.h"
 
+#include "state_tracker/st_cb_strings.h"
 /**
  * Return the string for a glGetString(GL_SHADING_LANGUAGE_VERSION) query.
  */
@@ -133,10 +134,9 @@ _mesa_GetString( GLenum name )
    }
 
    /* this is a required driver function */
-   assert(ctx->Driver.GetString);
    {
       /* Give the driver the chance to handle this query */
-      const GLubyte *str = ctx->Driver.GetString(ctx, name);
+      const GLubyte *str = st_get_string(ctx, name);
       if (str)
          return str;
    }
