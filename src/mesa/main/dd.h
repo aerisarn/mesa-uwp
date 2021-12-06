@@ -962,13 +962,6 @@ struct dd_function_table {
    /*@}*/
 
    /**
-    * Query information about memory. Device memory is e.g. VRAM. Staging
-    * memory is e.g. GART. All sizes are in kilobytes.
-    */
-   void (*QueryMemoryInfo)(struct gl_context *ctx,
-                           struct gl_memory_info *info);
-
-   /**
     * Indicate that this thread is being used by Mesa as a background drawing
     * thread for the given GL context.
     *

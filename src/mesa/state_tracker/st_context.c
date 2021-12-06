@@ -106,11 +106,7 @@ st_Enable(struct gl_context *ctx, GLenum cap)
    }
 }
 
-
-/**
- * Called via ctx->Driver.QueryMemoryInfo()
- */
-static void
+void
 st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out)
 {
    struct pipe_screen *screen = st_context(ctx)->screen;
@@ -963,7 +959,6 @@ st_init_driver_functions(struct pipe_screen *screen,
       functions->EmitStringMarker = st_emit_string_marker;
 
    functions->UpdateState = st_invalidate_state;
-   functions->QueryMemoryInfo = st_query_memory_info;
    functions->SetBackgroundContext = st_set_background_context;
    functions->GetDriverUuid = st_get_driver_uuid;
    functions->GetDeviceUuid = st_get_device_uuid;

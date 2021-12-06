@@ -44,6 +44,7 @@
 #include "version.h"
 
 #include "state_tracker/st_cb_queryobj.h"
+#include "state_tracker/st_context.h"
 
 /* This is a table driven implemetation of the glGet*v() functions.
  * The basic idea is that most getters just look up an int somewhere
@@ -1240,7 +1241,7 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       {
          struct gl_memory_info info;
 
-         ctx->Driver.QueryMemoryInfo(ctx, &info);
+         st_query_memory_info(ctx, &info);
 
          if (d->pname == GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX)
             v->value_int = info.total_device_memory;

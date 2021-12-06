@@ -454,6 +454,7 @@ struct st_framebuffer
 };
 
 void st_Enable(struct gl_context *ctx, GLenum cap);
+void st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out);
 #ifdef __cplusplus
 }
 #endif
