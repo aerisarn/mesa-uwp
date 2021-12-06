@@ -43,6 +43,7 @@
 #include "format_utils.h"
 #include "pixeltransfer.h"
 
+#include "state_tracker/st_cb_fbo.h"
 
 /**
  * Return true if the conversion L=R+G+B is needed.
@@ -241,8 +242,8 @@ readpixels_memcpy(struct gl_context *ctx,
    dst = (GLubyte *) _mesa_image_address2d(packing, pixels, width, height,
 					   format, type, 0, 0);
 
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-			       &map, &stride, ctx->ReadBuffer->FlipY);
+   st_MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                      &map, &stride, ctx->ReadBuffer->FlipY);
    if (!map) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return GL_TRUE;  /* don't bother trying the slow path */
@@ -262,7 +263,7 @@ readpixels_memcpy(struct gl_context *ctx,
       }
    }
 
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   st_UnmapRenderbuffer(ctx, rb);
    return GL_TRUE;
 }
 
@@ -292,8 +293,8 @@ read_uint_depth_pixels( struct gl_context *ctx,
    if (_mesa_get_format_datatype(rb->Format) != GL_UNSIGNED_NORMALIZED)
       return GL_FALSE;
 
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-			       &map, &stride, fb->FlipY);
+   st_MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                      &map, &stride, fb->FlipY);
 
    if (!map) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
@@ -310,7 +311,7 @@ read_uint_depth_pixels( struct gl_context *ctx,
       map += stride;
       dst += dstStride;
    }
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   st_UnmapRenderbuffer(ctx, rb);
 
    return GL_TRUE;
 }
@@ -350,8 +351,8 @@ read_depth_pixels( struct gl_context *ctx,
    dst = (GLubyte *) _mesa_image_address2d(packing, pixels, width, height,
 					   GL_DEPTH_COMPONENT, type, 0, 0);
 
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-			       &map, &stride, fb->FlipY);
+   st_MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                      &map, &stride, fb->FlipY);
    if (!map) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return;
@@ -375,7 +376,7 @@ read_depth_pixels( struct gl_context *ctx,
 
    free(depthValues);
 
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   st_UnmapRenderbuffer(ctx, rb);
 }
 
 
@@ -398,8 +399,8 @@ read_stencil_pixels( struct gl_context *ctx,
    if (!rb)
       return;
 
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-			       &map, &stride, fb->FlipY);
+   st_MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                      &map, &stride, fb->FlipY);
    if (!map) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return;
@@ -427,7 +428,7 @@ read_stencil_pixels( struct gl_context *ctx,
 
    free(stencil);
 
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   st_UnmapRenderbuffer(ctx, rb);
 }
 
 /*
@@ -469,8 +470,8 @@ read_rgba_pixels( struct gl_context *ctx,
                                            format, type, 0, 0);
 
    /* Map the source render buffer */
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-                               &map, &rb_stride, fb->FlipY);
+   st_MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                      &map, &rb_stride, fb->FlipY);
    if (!map) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return;
@@ -633,7 +634,7 @@ done_swap:
    }
 
 done_unmap:
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   st_UnmapRenderbuffer(ctx, rb);
 }
 
 /**
@@ -659,8 +660,8 @@ fast_read_depth_stencil_pixels(struct gl_context *ctx,
        rb->Format != MESA_FORMAT_Z24_UNORM_S8_UINT)
       return GL_FALSE;
 
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-			       &map, &stride, fb->FlipY);
+   st_MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                      &map, &stride, fb->FlipY);
    if (!map) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return GL_TRUE;  /* don't bother trying the slow path */
@@ -673,7 +674,7 @@ fast_read_depth_stencil_pixels(struct gl_context *ctx,
       dst += dstStride;
    }
 
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   st_UnmapRenderbuffer(ctx, rb);
 
    return GL_TRUE;
 }
@@ -699,17 +700,17 @@ fast_read_depth_stencil_pixels_separate(struct gl_context *ctx,
    if (_mesa_get_format_datatype(depthRb->Format) != GL_UNSIGNED_NORMALIZED)
       return GL_FALSE;
 
-   ctx->Driver.MapRenderbuffer(ctx, depthRb, x, y, width, height,
-			       GL_MAP_READ_BIT, &depthMap, &depthStride, fb->FlipY);
+   st_MapRenderbuffer(ctx, depthRb, x, y, width, height,
+                      GL_MAP_READ_BIT, &depthMap, &depthStride, fb->FlipY);
    if (!depthMap) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return GL_TRUE;  /* don't bother trying the slow path */
    }
 
-   ctx->Driver.MapRenderbuffer(ctx, stencilRb, x, y, width, height,
-			       GL_MAP_READ_BIT, &stencilMap, &stencilStride, fb->FlipY);
+   st_MapRenderbuffer(ctx, stencilRb, x, y, width, height,
+                      GL_MAP_READ_BIT, &stencilMap, &stencilStride, fb->FlipY);
    if (!stencilMap) {
-      ctx->Driver.UnmapRenderbuffer(ctx, depthRb);
+      st_UnmapRenderbuffer(ctx, depthRb);
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return GL_TRUE;  /* don't bother trying the slow path */
    }
@@ -737,8 +738,8 @@ fast_read_depth_stencil_pixels_separate(struct gl_context *ctx,
 
    free(stencilVals);
 
-   ctx->Driver.UnmapRenderbuffer(ctx, depthRb);
-   ctx->Driver.UnmapRenderbuffer(ctx, stencilRb);
+   st_UnmapRenderbuffer(ctx, depthRb);
+   st_UnmapRenderbuffer(ctx, stencilRb);
 
    return GL_TRUE;
 }
@@ -763,19 +764,19 @@ slow_read_depth_stencil_pixels_separate(struct gl_context *ctx,
    /* The depth and stencil buffers might be separate, or a single buffer.
     * If one buffer, only map it once.
     */
-   ctx->Driver.MapRenderbuffer(ctx, depthRb, x, y, width, height,
-			       GL_MAP_READ_BIT, &depthMap, &depthStride, fb->FlipY);
+   st_MapRenderbuffer(ctx, depthRb, x, y, width, height,
+                      GL_MAP_READ_BIT, &depthMap, &depthStride, fb->FlipY);
    if (!depthMap) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
       return;
    }
 
    if (stencilRb != depthRb) {
-      ctx->Driver.MapRenderbuffer(ctx, stencilRb, x, y, width, height,
-                                  GL_MAP_READ_BIT, &stencilMap,
-                                  &stencilStride, fb->FlipY);
+      st_MapRenderbuffer(ctx, stencilRb, x, y, width, height,
+                         GL_MAP_READ_BIT, &stencilMap,
+                         &stencilStride, fb->FlipY);
       if (!stencilMap) {
-         ctx->Driver.UnmapRenderbuffer(ctx, depthRb);
+         st_UnmapRenderbuffer(ctx, depthRb);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
          return;
       }
@@ -809,9 +810,9 @@ slow_read_depth_stencil_pixels_separate(struct gl_context *ctx,
    free(stencilVals);
    free(depthVals);
 
-   ctx->Driver.UnmapRenderbuffer(ctx, depthRb);
+   st_UnmapRenderbuffer(ctx, depthRb);
    if (stencilRb != depthRb) {
-      ctx->Driver.UnmapRenderbuffer(ctx, stencilRb);
+      st_UnmapRenderbuffer(ctx, stencilRb);
    }
 }
 

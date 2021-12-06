@@ -51,7 +51,7 @@
 #include "teximage.h"
 #include "texobj.h"
 
-
+#include "state_tracker/st_cb_fbo.h"
 /**
  * Notes:
  *
@@ -421,8 +421,8 @@ remove_attachment(struct gl_context *ctx,
    struct gl_renderbuffer *rb = att->Renderbuffer;
 
    /* tell driver that we're done rendering to this texture. */
-   if (rb && rb->NeedsFinishRenderTexture)
-      ctx->Driver.FinishRenderTexture(ctx, rb);
+   if (rb)
+      st_finish_render_texture(ctx, rb);
 
    if (att->Type == GL_TEXTURE) {
       assert(att->Texture);
@@ -485,7 +485,7 @@ _mesa_update_texture_renderbuffer(struct gl_context *ctx,
 
    rb = att->Renderbuffer;
    if (!rb) {
-      rb = ctx->Driver.NewRenderbuffer(ctx, ~0);
+      rb = st_new_renderbuffer(ctx, ~0);
       if (!rb) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "glFramebufferTexture()");
          return;
@@ -496,8 +496,6 @@ _mesa_update_texture_renderbuffer(struct gl_context *ctx,
        * for clarity compared to user renderbuffers.
        */
       rb->AllocStorage = NULL;
-
-      rb->NeedsFinishRenderTexture = ctx->Driver.FinishRenderTexture != NULL;
    }
 
    if (!texImage)
@@ -514,7 +512,7 @@ _mesa_update_texture_renderbuffer(struct gl_context *ctx,
    rb->TexImage = texImage;
 
    if (driver_RenderTexture_is_safe(att))
-      ctx->Driver.RenderTexture(ctx, fb, att);
+      st_render_texture(ctx, fb, att);
 }
 
 /**
@@ -531,8 +529,8 @@ set_texture_attachment(struct gl_context *ctx,
 {
    struct gl_renderbuffer *rb = att->Renderbuffer;
 
-   if (rb && rb->NeedsFinishRenderTexture)
-      ctx->Driver.FinishRenderTexture(ctx, rb);
+   if (rb)
+      st_finish_render_texture(ctx, rb);
 
    if (att->Texture == texObj) {
       /* re-attaching same texture */
@@ -1520,12 +1518,10 @@ _mesa_test_framebuffer_completeness(struct gl_context *ctx,
     * Drivers will most likely set the status to GL_FRAMEBUFFER_UNSUPPORTED
     * if anything.
     */
-   if (ctx->Driver.ValidateFramebuffer) {
-      ctx->Driver.ValidateFramebuffer(ctx, fb);
-      if (fb->_Status != GL_FRAMEBUFFER_COMPLETE_EXT) {
-         fbo_incomplete(ctx, "driver marked FBO as incomplete", -1);
-         return;
-      }
+   st_validate_framebuffer(ctx, fb);
+   if (fb->_Status != GL_FRAMEBUFFER_COMPLETE_EXT) {
+      fbo_incomplete(ctx, "driver marked FBO as incomplete", -1);
+      return;
    }
 
    /*
@@ -1565,7 +1561,7 @@ allocate_renderbuffer_locked(struct gl_context *ctx, GLuint renderbuffer,
    struct gl_renderbuffer *newRb;
 
    /* create new renderbuffer object */
-   newRb = ctx->Driver.NewRenderbuffer(ctx, renderbuffer);
+   newRb = st_new_renderbuffer(ctx, renderbuffer);
    if (!newRb) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
       return NULL;
@@ -3016,7 +3012,6 @@ static void
 check_begin_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
 {
    GLuint i;
-   assert(ctx->Driver.RenderTexture);
 
    if (_mesa_is_winsys_fbo(fb))
       return; /* can't render to texture with winsys framebuffers */
@@ -3025,7 +3020,7 @@ check_begin_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
       struct gl_renderbuffer_attachment *att = fb->Attachment + i;
       if (att->Texture && att->Renderbuffer->TexImage
           && driver_RenderTexture_is_safe(att)) {
-         ctx->Driver.RenderTexture(ctx, fb, att);
+         st_render_texture(ctx, fb, att);
       }
    }
 }
@@ -3039,18 +3034,15 @@ check_begin_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
 static void
 check_end_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
 {
-   /* Skip if we know NeedsFinishRenderTexture won't be set. */
    if (_mesa_is_winsys_fbo(fb))
       return;
 
-   if (ctx->Driver.FinishRenderTexture) {
-      GLuint i;
-      for (i = 0; i < BUFFER_COUNT; i++) {
-         struct gl_renderbuffer_attachment *att = fb->Attachment + i;
-         struct gl_renderbuffer *rb = att->Renderbuffer;
-         if (rb && rb->NeedsFinishRenderTexture) {
-            ctx->Driver.FinishRenderTexture(ctx, rb);
-         }
+   GLuint i;
+   for (i = 0; i < BUFFER_COUNT; i++) {
+      struct gl_renderbuffer_attachment *att = fb->Attachment + i;
+      struct gl_renderbuffer *rb = att->Renderbuffer;
+      if (rb) {
+         st_finish_render_texture(ctx, rb);
       }
    }
 }
@@ -5161,9 +5153,6 @@ static void
 discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
                     GLsizei numAttachments, const GLenum *attachments)
 {
-   if (!ctx->Driver.DiscardFramebuffer)
-      return;
-
    for (int i = 0; i < numAttachments; i++) {
       struct gl_renderbuffer_attachment *att =
             get_fb_attachment(ctx, fb, attachments[i]);
@@ -5173,7 +5162,7 @@ discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
 
       /* If we're asked to invalidate just depth or just stencil, but the
        * attachment is packed depth/stencil, then we can only use
-       * Driver.DiscardFramebuffer if the attachments list includes both depth
+       * DiscardFramebuffer if the attachments list includes both depth
        * and stencil and they both point at the same renderbuffer.
        */
       if ((attachments[i] == GL_DEPTH_ATTACHMENT ||
@@ -5195,7 +5184,7 @@ discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
             continue;
       }
 
-      ctx->Driver.DiscardFramebuffer(ctx, fb, att);
+      st_discard_framebuffer(ctx, fb, att);
    }
 }
 
@@ -5537,6 +5526,5 @@ _mesa_EvaluateDepthValuesARB(void)
       return;
    }
 
-   if (ctx->Driver.EvaluateDepthValues)
-      ctx->Driver.EvaluateDepthValues(ctx);
+   st_EvaluateDepthValues(ctx);
 }

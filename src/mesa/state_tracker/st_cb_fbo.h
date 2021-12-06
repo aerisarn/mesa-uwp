@@ -110,10 +110,27 @@ st_update_renderbuffer_surface(struct st_context *st,
                                struct st_renderbuffer *strb);
 
 extern void
-st_init_fbo_functions(struct dd_function_table *functions);
-
-extern void
 st_regen_renderbuffer_surface(struct st_context *st,
                               struct st_renderbuffer *strb);
 
+struct gl_renderbuffer *st_new_renderbuffer(struct gl_context *ctx, GLuint name);
+void st_render_texture(struct gl_context *ctx,
+                       struct gl_framebuffer *fb,
+                       struct gl_renderbuffer_attachment *att);
+void st_finish_render_texture(struct gl_context *ctx, struct gl_renderbuffer *rb);
+void st_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb);
+void st_discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
+                            struct gl_renderbuffer_attachment *att);
+void st_DrawBufferAllocate(struct gl_context *ctx);
+void st_ReadBuffer(struct gl_context *ctx, GLenum buffer);
+
+void st_MapRenderbuffer(struct gl_context *ctx,
+                        struct gl_renderbuffer *rb,
+                        GLuint x, GLuint y, GLuint w, GLuint h,
+                        GLbitfield mode,
+                        GLubyte **mapOut, GLint *rowStrideOut,
+                        bool flip_y);
+void st_UnmapRenderbuffer(struct gl_context *ctx,
+                          struct gl_renderbuffer *rb);
+void st_EvaluateDepthValues(struct gl_context *ctx);
 #endif /* ST_CB_FBO_H */

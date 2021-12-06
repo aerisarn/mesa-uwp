@@ -444,21 +444,6 @@ struct dd_function_table {
                             struct gl_texture_object *texObj,
                             struct gl_texture_object *origTexObj);
 
-   /**
-    * Map a renderbuffer into user space.
-    * \param mode  bitmask of GL_MAP_READ_BIT, GL_MAP_WRITE_BIT and
-    *              GL_MAP_INVALIDATE_RANGE_BIT (if writing)
-    */
-   void (*MapRenderbuffer)(struct gl_context *ctx,
-			   struct gl_renderbuffer *rb,
-			   GLuint x, GLuint y, GLuint w, GLuint h,
-			   GLbitfield mode,
-			   GLubyte **mapOut, GLint *rowStrideOut,
-			   bool flip_y);
-
-   void (*UnmapRenderbuffer)(struct gl_context *ctx,
-			     struct gl_renderbuffer *rb);
-
    /*@}*/
 
 
@@ -650,10 +635,6 @@ struct dd_function_table {
     * May add more functions like these to the device driver in the future.
     */
    /*@{*/
-   /** Used to allocated any buffers with on-demand creation */
-   void (*DrawBufferAllocate)(struct gl_context *ctx);
-   /* Specifies the current buffer for reading */
-   void (*ReadBuffer)( struct gl_context *ctx, GLenum buffer );
    /** Set texture parameter (callee gets param value from the texObj) */
    void (*TexParameter)(struct gl_context *ctx,
                         struct gl_texture_object *texObj, GLenum pname);
@@ -721,25 +702,12 @@ struct dd_function_table {
    /**
     * \name Functions for GL_EXT_framebuffer_{object,blit,discard}.
     */
-   /*@{*/
-   struct gl_renderbuffer * (*NewRenderbuffer)(struct gl_context *ctx,
-                                               GLuint name);
-   void (*RenderTexture)(struct gl_context *ctx,
-                         struct gl_framebuffer *fb,
-                         struct gl_renderbuffer_attachment *att);
-   void (*FinishRenderTexture)(struct gl_context *ctx,
-                               struct gl_renderbuffer *rb);
-   void (*ValidateFramebuffer)(struct gl_context *ctx,
-                               struct gl_framebuffer *fb);
-   /*@}*/
    void (*BlitFramebuffer)(struct gl_context *ctx,
                            struct gl_framebuffer *readFb,
                            struct gl_framebuffer *drawFb,
                            GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
                            GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
                            GLbitfield mask, GLenum filter);
-   void (*DiscardFramebuffer)(struct gl_context *ctx, struct gl_framebuffer *fb,
-                              struct gl_renderbuffer_attachment *att);
 
    /**
     * \name Functions for GL_ARB_sample_locations
@@ -747,7 +715,6 @@ struct dd_function_table {
    void (*GetProgrammableSampleCaps)(struct gl_context *ctx,
                                      const struct gl_framebuffer *fb,
                                      GLuint *bits, GLuint *width, GLuint *height);
-   void (*EvaluateDepthValues)(struct gl_context *ctx);
 
    /*@}*/
 
