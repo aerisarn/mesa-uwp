@@ -757,7 +757,6 @@ struct radv_device {
 
    struct radv_queue *queues[RADV_MAX_QUEUE_FAMILIES];
    int queue_count[RADV_MAX_QUEUE_FAMILIES];
-   struct radeon_cmdbuf *empty_cs[RADV_MAX_QUEUE_FAMILIES];
 
    bool pbb_allowed;
    uint32_t tess_offchip_block_dw_size;
