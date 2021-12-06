@@ -128,11 +128,6 @@ meson.build @dbaker @eric
 /src/panfrost/vulkan/ @bbrezillon
 /src/gallium/drivers/panfrost/ @alyssa
 
-# SWR
-/src/gallium/drivers/swr/ @jzielins @krzysztof.raszkowski
-/docs/gallium/drivers/openswr.rst @jzielins @krzysztof.raszkowski
-/docs/gallium/drivers/openswr/ @jzielins @krzysztof.raszkowski
-
 # VMware
 /src/gallium/drivers/svga/ @brianp @charmainel
 /src/gallium/winsys/svga/ @thomash @drawat
