@@ -116,8 +116,6 @@ meson.build @dbaker @eric
 /src/gallium/winsys/iris/ @kwg @llandwerlin @jekstrand @idr
 /src/gallium/drivers/iris/ @kwg @llandwerlin @jekstrand @idr
 /src/gallium/drivers/i915/ @anholt
-/src/mesa/drivers/dri/i965/ @kwg @llandwerlin @jekstrand @idr
-/doxygen/i965.doxy @kwg @llandwerlin @jekstrand @idr
 
 # Microsoft
 /src/microsoft/ @jenatali
