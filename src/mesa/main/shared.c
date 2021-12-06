@@ -45,6 +45,9 @@
 #include "util/set.h"
 #include "util/u_memory.h"
 
+#include "state_tracker/st_cb_memoryobjects.h"
+#include "state_tracker/st_cb_semaphoreobjects.h"
+
 static void
 free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared);
 
@@ -313,7 +316,7 @@ delete_memory_object_cb(void *data, void *userData)
 {
    struct gl_memory_object *memObj = (struct gl_memory_object *) data;
    struct gl_context *ctx = (struct gl_context *) userData;
-   ctx->Driver.DeleteMemoryObject(ctx, memObj);
+   st_memoryobj_free(ctx, memObj);
 }
 
 /**
@@ -324,7 +327,7 @@ delete_semaphore_object_cb(void *data, void *userData)
 {
    struct gl_semaphore_object *semObj = (struct gl_semaphore_object *) data;
    struct gl_context *ctx = (struct gl_context *) userData;
-   ctx->Driver.DeleteSemaphoreObject(ctx, semObj);
+   st_semaphoreobj_free(ctx, semObj);
 }
 
 /**

@@ -59,6 +59,7 @@ struct gl_shader_program;
 struct gl_texture_image;
 struct gl_texture_object;
 struct gl_memory_info;
+struct gl_memory_object;
 struct gl_query_object;
 struct gl_sampler_object;
 struct gl_transform_feedback_object;
@@ -1019,23 +1020,6 @@ struct dd_function_table {
 
 
    /**
-    * \name GL_EXT_external_objects interface
-    */
-   /*@{*/
-  /**
-    * Called to allocate a new memory object.  Drivers will usually
-    * allocate/return a subclass of gl_memory_object.
-    */
-   struct gl_memory_object * (*NewMemoryObject)(struct gl_context *ctx,
-                                                GLuint name);
-   /**
-    * Called to delete/free a memory object.  Drivers should free the
-    * object and any image data it contains.
-    */
-   void (*DeleteMemoryObject)(struct gl_context *ctx,
-                              struct gl_memory_object *memObj);
-
-   /**
     * Set the given memory object as the texture's storage.
     */
    GLboolean (*SetTextureStorageForMemoryObject)(struct gl_context *ctx,
@@ -1074,23 +1058,6 @@ struct dd_function_table {
    /*@}*/
 
    /**
-    * \name GL_EXT_external_objects_fd interface
-    */
-   /*@{*/
-   /**
-    * Called to import a memory object. The caller relinquishes ownership
-    * of fd after the call returns.
-    *
-    * Accessing fd after ImportMemoryObjectFd returns results in undefined
-    * behaviour. This is consistent with EXT_external_object_fd.
-    */
-   void (*ImportMemoryObjectFd)(struct gl_context *ctx,
-                                struct gl_memory_object *memObj,
-                                GLuint64 size,
-                                int fd);
-   /*@}*/
-
-   /**
     * \name GL_ARB_get_program_binary
     */
    /*@{*/
@@ -1106,64 +1073,6 @@ struct dd_function_table {
    void (*ProgramBinaryDeserializeDriverBlob)(struct gl_context *ctx,
                                               struct gl_shader_program *shProg,
                                               struct gl_program *prog);
-   /*@}*/
-
-   /**
-    * \name GL_EXT_semaphore interface
-    */
-   /*@{*/
-  /**
-    * Called to allocate a new semaphore object. Drivers will usually
-    * allocate/return a subclass of gl_semaphore_object.
-    */
-   struct gl_semaphore_object * (*NewSemaphoreObject)(struct gl_context *ctx,
-                                                      GLuint name);
-   /**
-    * Called to delete/free a semaphore object. Drivers should free the
-    * object and any associated resources.
-    */
-   void (*DeleteSemaphoreObject)(struct gl_context *ctx,
-                                 struct gl_semaphore_object *semObj);
-
-   /**
-    * Introduce an operation to wait for the semaphore object in the GL
-    * server's command stream
-    */
-   void (*ServerWaitSemaphoreObject)(struct gl_context *ctx,
-                                     struct gl_semaphore_object *semObj,
-                                     GLuint numBufferBarriers,
-                                     struct gl_buffer_object **bufObjs,
-                                     GLuint numTextureBarriers,
-                                     struct gl_texture_object **texObjs,
-                                     const GLenum *srcLayouts);
-
-   /**
-    * Introduce an operation to signal the semaphore object in the GL
-    * server's command stream
-    */
-   void (*ServerSignalSemaphoreObject)(struct gl_context *ctx,
-                                       struct gl_semaphore_object *semObj,
-                                       GLuint numBufferBarriers,
-                                       struct gl_buffer_object **bufObjs,
-                                       GLuint numTextureBarriers,
-                                       struct gl_texture_object **texObjs,
-                                       const GLenum *dstLayouts);
-   /*@}*/
-
-   /**
-    * \name GL_EXT_semaphore_fd interface
-    */
-   /*@{*/
-   /**
-    * Called to import a semaphore object. The caller relinquishes ownership
-    * of fd after the call returns.
-    *
-    * Accessing fd after ImportSemaphoreFd returns results in undefined
-    * behaviour. This is consistent with EXT_semaphore_fd.
-    */
-   void (*ImportSemaphoreFd)(struct gl_context *ctx,
-                                struct gl_semaphore_object *semObj,
-                                int fd);
    /*@}*/
 
    /**

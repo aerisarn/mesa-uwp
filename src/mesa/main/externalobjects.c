@@ -33,8 +33,10 @@
 #include "texstorage.h"
 #include "util/u_memory.h"
 
+#include "state_tracker/st_cb_memoryobjects.h"
+#include "state_tracker/st_cb_semaphoreobjects.h"
 /**
- * Delete a memory object.  Called via ctx->Driver.DeleteMemory().
+ * Delete a memory object.
  * Not removed from hash table here.
  */
 void
@@ -91,7 +93,7 @@ _mesa_DeleteMemoryObjectsEXT(GLsizei n, const GLuint *memoryObjects)
          if (delObj) {
             _mesa_HashRemoveLocked(ctx->Shared->MemoryObjects,
                                    memoryObjects[i]);
-            ctx->Driver.DeleteMemoryObject(ctx, delObj);
+            st_memoryobj_free(ctx, delObj);
          }
       }
    }
@@ -144,7 +146,7 @@ _mesa_CreateMemoryObjectsEXT(GLsizei n, GLuint *memoryObjects)
          struct gl_memory_object *memObj;
 
          /* allocate memory object */
-         memObj = ctx->Driver.NewMemoryObject(ctx, memoryObjects[i]);
+         memObj = st_memoryobj_alloc(ctx, memoryObjects[i]);
          if (!memObj) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s()", func);
             _mesa_HashUnlockMutex(ctx->Shared->MemoryObjects);
@@ -557,7 +559,7 @@ _mesa_TextureStorageMem1DEXT(GLuint texture,
 static struct gl_semaphore_object DummySemaphoreObject;
 
 /**
- * Delete a semaphore object.  Called via ctx->Driver.DeleteSemaphore().
+ * Delete a semaphore object.
  * Not removed from hash table here.
  */
 void
@@ -647,7 +649,7 @@ _mesa_DeleteSemaphoresEXT(GLsizei n, const GLuint *semaphores)
          if (delObj) {
             _mesa_HashRemoveLocked(ctx->Shared->SemaphoreObjects,
                                    semaphores[i]);
-            ctx->Driver.DeleteSemaphoreObject(ctx, delObj);
+            st_semaphoreobj_free(ctx, delObj);
          }
       }
    }
@@ -758,10 +760,10 @@ _mesa_WaitSemaphoreEXT(GLuint semaphore,
       texObjs[i] = _mesa_lookup_texture(ctx, textures[i]);
    }
 
-   ctx->Driver.ServerWaitSemaphoreObject(ctx, semObj,
-                                         numBufferBarriers, bufObjs,
-                                         numTextureBarriers, texObjs,
-                                         srcLayouts);
+   st_server_wait_semaphore(ctx, semObj,
+                            numBufferBarriers, bufObjs,
+                            numTextureBarriers, texObjs,
+                            srcLayouts);
 
 end:
    free(bufObjs);
@@ -818,10 +820,10 @@ _mesa_SignalSemaphoreEXT(GLuint semaphore,
       texObjs[i] = _mesa_lookup_texture(ctx, textures[i]);
    }
 
-   ctx->Driver.ServerSignalSemaphoreObject(ctx, semObj,
-                                           numBufferBarriers, bufObjs,
-                                           numTextureBarriers, texObjs,
-                                           dstLayouts);
+   st_server_signal_semaphore(ctx, semObj,
+                              numBufferBarriers, bufObjs,
+                              numTextureBarriers, texObjs,
+                              dstLayouts);
 
 end:
    free(bufObjs);
@@ -852,7 +854,7 @@ _mesa_ImportMemoryFdEXT(GLuint memory,
    if (!memObj)
       return;
 
-   ctx->Driver.ImportMemoryObjectFd(ctx, memObj, size, fd);
+   st_import_memoryobj_fd(ctx, memObj, size, fd);
    memObj->Immutable = GL_TRUE;
 }
 
@@ -881,7 +883,7 @@ _mesa_ImportSemaphoreFdEXT(GLuint semaphore,
       return;
 
    if (semObj == &DummySemaphoreObject) {
-      semObj = ctx->Driver.NewSemaphoreObject(ctx, semaphore);
+      semObj = st_semaphoreobj_alloc(ctx, semaphore);
       if (!semObj) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
          return;
@@ -889,5 +891,5 @@ _mesa_ImportSemaphoreFdEXT(GLuint semaphore,
       _mesa_HashInsert(ctx->Shared->SemaphoreObjects, semaphore, semObj, true);
    }
 
-   ctx->Driver.ImportSemaphoreFd(ctx, semObj, fd);
+   st_import_semaphoreobj_fd(ctx, semObj, fd);
 }

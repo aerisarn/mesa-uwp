@@ -55,14 +55,12 @@
 #include "st_cb_eglimage.h"
 #include "st_cb_fbo.h"
 #include "st_cb_feedback.h"
-#include "st_cb_memoryobjects.h"
 #include "st_cb_msaa.h"
 #include "st_cb_perfmon.h"
 #include "st_cb_perfquery.h"
 #include "st_cb_program.h"
 #include "st_cb_queryobj.h"
 #include "st_cb_readpixels.h"
-#include "st_cb_semaphoreobjects.h"
 #include "st_cb_texture.h"
 #include "st_cb_flush.h"
 #include "st_cb_viewport.h"
@@ -953,13 +951,11 @@ st_init_driver_functions(struct pipe_screen *screen,
 
    st_init_fbo_functions(functions);
    st_init_feedback_functions(functions);
-   st_init_memoryobject_functions(functions);
    st_init_msaa_functions(functions);
    st_init_perfmon_functions(functions);
    st_init_perfquery_functions(functions);
    st_init_program_functions(functions);
    st_init_readpixels_functions(functions);
-   st_init_semaphoreobject_functions(functions);
    st_init_texture_functions(functions);
    st_init_flush_functions(screen, functions);
    st_init_viewport_functions(functions);
