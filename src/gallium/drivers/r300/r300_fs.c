@@ -142,7 +142,7 @@ static void allocate_hardware_inputs(
     }
 }
 
-static void get_external_state(
+void r300_fragment_program_get_external_state(
     struct r300_context* r300,
     struct r300_fragment_program_external_state* state)
 {
@@ -559,32 +559,28 @@ static void r300_translate_fragment_shader(
     r300_emit_fs_code_to_buffer(r300, shader);
 }
 
-boolean r300_pick_fragment_shader(struct r300_context* r300)
+boolean r300_pick_fragment_shader(struct r300_context *r300,
+                                  struct r300_fragment_shader* fs,
+                                  struct r300_fragment_program_external_state *state)
 {
-    struct r300_fragment_shader* fs = r300_fs(r300);
-    struct r300_fragment_program_external_state state;
     struct r300_fragment_shader_code* ptr;
-
-    memset(&state, 0, sizeof(state));
-    get_external_state(r300, &state);
 
     if (!fs->first) {
         /* Build the fragment shader for the first time. */
         fs->first = fs->shader = CALLOC_STRUCT(r300_fragment_shader_code);
 
-        memcpy(&fs->shader->compare_state, &state,
-            sizeof(struct r300_fragment_program_external_state));
+        memcpy(&fs->shader->compare_state, state, sizeof(*state));
         r300_translate_fragment_shader(r300, fs->shader, fs->state.tokens);
         return TRUE;
 
     } else {
         /* Check if the currently-bound shader has been compiled
          * with the texture-compare state we need. */
-        if (memcmp(&fs->shader->compare_state, &state, sizeof(state)) != 0) {
+        if (memcmp(&fs->shader->compare_state, state, sizeof(*state)) != 0) {
             /* Search for the right shader. */
             ptr = fs->first;
             while (ptr) {
-                if (memcmp(&ptr->compare_state, &state, sizeof(state)) == 0) {
+                if (memcmp(&ptr->compare_state, state, sizeof(*state)) == 0) {
                     if (fs->shader != ptr) {
                         fs->shader = ptr;
                         return TRUE;
@@ -600,7 +596,7 @@ boolean r300_pick_fragment_shader(struct r300_context* r300)
             ptr->next = fs->first;
             fs->first = fs->shader = ptr;
 
-            ptr->compare_state = state;
+            memcpy(&ptr->compare_state, state, sizeof(*state));
             r300_translate_fragment_shader(r300, ptr, fs->state.tokens);
             return TRUE;
         }

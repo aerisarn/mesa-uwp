@@ -1034,6 +1034,7 @@ r300_set_framebuffer_state(struct pipe_context* pipe,
 static void* r300_create_fs_state(struct pipe_context* pipe,
                                   const struct pipe_shader_state* shader)
 {
+    struct r300_context* r300 = r300_context(pipe);
     struct r300_fragment_shader* fs = NULL;
 
     fs = (struct r300_fragment_shader*)CALLOC_STRUCT(r300_fragment_shader);
@@ -1042,7 +1043,17 @@ static void* r300_create_fs_state(struct pipe_context* pipe,
     fs->state = *shader;
     fs->state.tokens = tgsi_dup_tokens(shader->tokens);
 
-    return (void*)fs;
+    /* Precompile the fragment shader at creation time to avoid jank at runtime.
+     * In most cases we won't have anything in the key at draw time.
+     *
+     * TODO: precompile state for shadow samplers (but this needs a decision for
+     * the default shadow compare and texture swizzle values).
+     */
+    struct r300_fragment_program_external_state precompile_state;
+    memset(&precompile_state, 0, sizeof(precompile_state));
+    r300_pick_fragment_shader(r300, fs, &precompile_state);
+
+    return (void *)fs;
 }
 
 void r300_mark_fs_code_dirty(struct r300_context *r300)
