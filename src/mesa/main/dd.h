@@ -340,23 +340,6 @@ struct dd_function_table {
    GLenum (*GetGraphicsResetStatus)(struct gl_context *ctx);
 
    /**
-    * \name GL_ARB_compute_shader interface
-    */
-   /*@{*/
-   void (*DispatchCompute)(struct gl_context *ctx, const GLuint *num_groups);
-   void (*DispatchComputeIndirect)(struct gl_context *ctx, GLintptr indirect);
-   /*@}*/
-
-   /**
-    * \name GL_ARB_compute_variable_group_size interface
-    */
-   /*@{*/
-   void (*DispatchComputeGroupSize)(struct gl_context *ctx,
-                                    const GLuint *num_groups,
-                                    const GLuint *group_size);
-   /*@}*/
-
-   /**
     * \name GL_ARB_get_program_binary
     */
    /*@{*/

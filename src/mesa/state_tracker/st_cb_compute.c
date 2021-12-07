@@ -71,14 +71,14 @@ static void st_dispatch_compute_common(struct gl_context *ctx,
    pipe->launch_grid(pipe, &info);
 }
 
-static void st_dispatch_compute(struct gl_context *ctx,
-                                const GLuint *num_groups)
+void st_dispatch_compute(struct gl_context *ctx,
+                         const GLuint *num_groups)
 {
    st_dispatch_compute_common(ctx, num_groups, NULL, NULL, 0);
 }
 
-static void st_dispatch_compute_indirect(struct gl_context *ctx,
-                                         GLintptr indirect_offset)
+void st_dispatch_compute_indirect(struct gl_context *ctx,
+                                  GLintptr indirect_offset)
 {
    struct gl_buffer_object *indirect_buffer = ctx->DispatchIndirectBuffer;
    struct pipe_resource *indirect = st_buffer_object(indirect_buffer)->buffer;
@@ -86,16 +86,10 @@ static void st_dispatch_compute_indirect(struct gl_context *ctx,
    st_dispatch_compute_common(ctx, NULL, NULL, indirect, indirect_offset);
 }
 
-static void st_dispatch_compute_group_size(struct gl_context *ctx,
-                                           const GLuint *num_groups,
-                                           const GLuint *group_size)
+void st_dispatch_compute_group_size(struct gl_context *ctx,
+                                    const GLuint *num_groups,
+                                    const GLuint *group_size)
 {
    st_dispatch_compute_common(ctx, num_groups, group_size, NULL, 0);
 }
 
-void st_init_compute_functions(struct dd_function_table *functions)
-{
-   functions->DispatchCompute = st_dispatch_compute;
-   functions->DispatchComputeIndirect = st_dispatch_compute_indirect;
-   functions->DispatchComputeGroupSize = st_dispatch_compute_group_size;
-}

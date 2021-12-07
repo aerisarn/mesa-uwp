@@ -26,6 +26,8 @@
 #include "compute.h"
 #include "context.h"
 
+#include "state_tracker/st_cb_compute.h"
+
 static bool
 check_valid_to_compute(struct gl_context *ctx, const char *function)
 {
@@ -297,7 +299,7 @@ dispatch_compute(GLuint num_groups_x, GLuint num_groups_y,
    if (num_groups_x == 0u || num_groups_y == 0u || num_groups_z == 0u)
        return;
 
-   ctx->Driver.DispatchCompute(ctx, num_groups);
+   st_dispatch_compute(ctx, num_groups);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -331,7 +333,7 @@ dispatch_compute_indirect(GLintptr indirect, bool no_error)
    if (!no_error && !valid_dispatch_indirect(ctx, indirect))
       return;
 
-   ctx->Driver.DispatchComputeIndirect(ctx, indirect);
+   st_dispatch_compute_indirect(ctx, indirect);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -374,7 +376,7 @@ dispatch_compute_group_size(GLuint num_groups_x, GLuint num_groups_y,
    if (num_groups_x == 0u || num_groups_y == 0u || num_groups_z == 0u)
        return;
 
-   ctx->Driver.DispatchComputeGroupSize(ctx, num_groups, group_size);
+   st_dispatch_compute_group_size(ctx, num_groups, group_size);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);

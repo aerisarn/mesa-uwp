@@ -925,7 +925,6 @@ st_init_driver_functions(struct pipe_screen *screen,
 
    st_init_program_functions(functions);
    st_init_flush_functions(screen, functions);
-   st_init_compute_functions(functions);
 
    st_init_vdpau_functions(functions);
 
