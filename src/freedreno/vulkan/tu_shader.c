@@ -83,6 +83,7 @@ tu_spirv_to_nir(struct tu_device *dev,
          .subgroup_vote = true,
          .subgroup_quad = true,
          .subgroup_shuffle = true,
+         .subgroup_arithmetic = true,
          .physical_storage_buffer_address = true,
       },
    };
