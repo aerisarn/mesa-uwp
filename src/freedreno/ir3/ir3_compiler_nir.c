@@ -1823,6 +1823,148 @@ get_frag_coord(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    return ctx->frag_coord;
 }
 
+/* This is a bit of a hack until ir3_context is converted to store SSA values
+ * as ir3_register's instead of ir3_instruction's. Pick out a given destination
+ * of an instruction with multiple destinations using a mov that will get folded
+ * away by ir3_cp.
+ */
+static struct ir3_instruction *
+create_multidst_mov(struct ir3_block *block, struct ir3_register *dst)
+{
+   struct ir3_instruction *mov = ir3_instr_create(block, OPC_MOV, 1, 1);
+   unsigned dst_flags = dst->flags & IR3_REG_HALF;
+   unsigned src_flags = dst->flags & (IR3_REG_HALF | IR3_REG_SHARED);
+
+   __ssa_dst(mov)->flags |= dst_flags;
+   struct ir3_register *src =
+      ir3_src_create(mov, INVALID_REG, IR3_REG_SSA | src_flags);
+   src->wrmask = dst->wrmask;
+   src->def = dst;
+   debug_assert(!(dst->flags & IR3_REG_RELATIV));
+   mov->cat1.src_type = mov->cat1.dst_type =
+      (dst->flags & IR3_REG_HALF) ? TYPE_U16 : TYPE_U32;
+   return mov;
+}
+
+static reduce_op_t
+get_reduce_op(nir_op opc)
+{
+   switch (opc) {
+   case nir_op_iadd: return REDUCE_OP_ADD_U;
+   case nir_op_fadd: return REDUCE_OP_ADD_F;
+   case nir_op_imul: return REDUCE_OP_MUL_U;
+   case nir_op_fmul: return REDUCE_OP_MUL_F;
+   case nir_op_umin: return REDUCE_OP_MIN_U;
+   case nir_op_imin: return REDUCE_OP_MIN_S;
+   case nir_op_fmin: return REDUCE_OP_MIN_F;
+   case nir_op_umax: return REDUCE_OP_MAX_U;
+   case nir_op_imax: return REDUCE_OP_MAX_S;
+   case nir_op_fmax: return REDUCE_OP_MAX_F;
+   case nir_op_iand: return REDUCE_OP_AND_B;
+   case nir_op_ior:  return REDUCE_OP_OR_B;
+   case nir_op_ixor: return REDUCE_OP_XOR_B;
+   default:
+      unreachable("unknown NIR reduce op");
+   }
+}
+
+static uint32_t
+get_reduce_identity(nir_op opc, unsigned size)
+{
+   switch (opc) {
+   case nir_op_iadd:
+      return 0;
+   case nir_op_fadd: 
+      return size == 32 ? fui(0.0f) : _mesa_float_to_half(0.0f);
+   case nir_op_imul:
+      return 1;
+   case nir_op_fmul:
+      return size == 32 ? fui(1.0f) : _mesa_float_to_half(1.0f);
+   case nir_op_umax:
+      return 0;
+   case nir_op_imax:
+      return size == 32 ? INT32_MIN : (uint32_t)INT16_MIN;
+   case nir_op_fmax:
+      return size == 32 ? fui(-INFINITY) : _mesa_float_to_half(-INFINITY);
+   case nir_op_umin:
+      return size == 32 ? UINT32_MAX : UINT16_MAX;
+   case nir_op_imin:
+      return size == 32 ? INT32_MAX : (uint32_t)INT16_MAX;
+   case nir_op_fmin:
+      return size == 32 ? fui(INFINITY) : _mesa_float_to_half(INFINITY);
+   case nir_op_iand:
+      return size == 32 ? ~0 : (size == 16 ? (uint32_t)(uint16_t)~0 : 1);
+   case nir_op_ior:
+      return 0;
+   case nir_op_ixor:
+      return 0;
+   default:
+      unreachable("unknown NIR reduce op");
+   }
+}
+
+static struct ir3_instruction *
+emit_intrinsic_reduce(struct ir3_context *ctx, nir_intrinsic_instr *intr)
+{
+   struct ir3_instruction *src = ir3_get_src(ctx, &intr->src[0])[0];
+   nir_op nir_reduce_op = (nir_op) nir_intrinsic_reduction_op(intr);
+   reduce_op_t reduce_op = get_reduce_op(nir_reduce_op);
+   unsigned dst_size = nir_dest_bit_size(intr->dest);
+   unsigned flags = (ir3_bitsize(ctx, dst_size) == 16) ? IR3_REG_HALF : 0;
+
+   /* Note: the shared reg is initialized to the identity, so we need it to
+    * always be 32-bit even when the source isn't because half shared regs are
+    * not supported.
+    */
+   struct ir3_instruction *identity =
+      create_immed(ctx->block, get_reduce_identity(nir_reduce_op, dst_size));
+   identity = ir3_READ_FIRST_MACRO(ctx->block, identity, 0);
+   identity->dsts[0]->flags |= IR3_REG_SHARED;
+
+   /* OPC_SCAN_MACRO has the following destinations:
+    * - Exclusive scan result (interferes with source)
+    * - Inclusive scan result
+    * - Shared reg reduction result, must be initialized to the identity
+    *
+    * The loop computes all three results at the same time, we just have to
+    * choose which destination to return.
+    */
+   struct ir3_instruction *scan =
+      ir3_instr_create(ctx->block, OPC_SCAN_MACRO, 3, 2);
+   scan->cat1.reduce_op = reduce_op;
+
+   struct ir3_register *exclusive = __ssa_dst(scan);
+   exclusive->flags |= flags | IR3_REG_EARLY_CLOBBER;
+   struct ir3_register *inclusive = __ssa_dst(scan);
+   inclusive->flags |= flags;
+   struct ir3_register *reduce = __ssa_dst(scan);
+   reduce->flags |= IR3_REG_SHARED;
+
+   /* The 32-bit multiply macro reads its sources after writing a partial result
+    * to the destination, therefore inclusive also interferes with the source.
+    */
+   if (reduce_op == REDUCE_OP_MUL_U && dst_size == 32)
+      inclusive->flags |= IR3_REG_EARLY_CLOBBER;
+
+   /* Normal source */
+   __ssa_src(scan, src, 0);
+
+   /* shared reg tied source */
+   struct ir3_register *reduce_init = __ssa_src(scan, identity, IR3_REG_SHARED);
+   ir3_reg_tie(reduce, reduce_init);
+   
+   struct ir3_register *dst;
+   switch (intr->intrinsic) {
+   case nir_intrinsic_reduce: dst = reduce; break;
+   case nir_intrinsic_inclusive_scan: dst = inclusive; break;
+   case nir_intrinsic_exclusive_scan: dst = exclusive; break;
+   default:
+      unreachable("unknown reduce intrinsic");
+   }
+
+   return create_multidst_mov(ctx->block, dst);
+}
+
 static void setup_input(struct ir3_context *ctx, nir_intrinsic_instr *intr);
 static void setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr);
 
@@ -2424,6 +2566,12 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       dst[0] = ctx->funcs->emit_intrinsic_atomic_global(ctx, intr);
       break;
    }
+
+   case nir_intrinsic_reduce:
+   case nir_intrinsic_inclusive_scan:
+   case nir_intrinsic_exclusive_scan:
+      dst[0] = emit_intrinsic_reduce(ctx, intr);
+      break;
 
    default:
       ir3_context_error(ctx, "Unhandled intrinsic type: %s\n",

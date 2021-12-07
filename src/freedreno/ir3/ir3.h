@@ -239,6 +239,22 @@ struct ir3_register {
       arr[arr##_count++] = __VA_ARGS__;                                        \
    } while (0)
 
+typedef enum {
+   REDUCE_OP_ADD_U,
+   REDUCE_OP_ADD_F,
+   REDUCE_OP_MUL_U,
+   REDUCE_OP_MUL_F,
+   REDUCE_OP_MIN_U,
+   REDUCE_OP_MIN_S,
+   REDUCE_OP_MIN_F,
+   REDUCE_OP_MAX_U,
+   REDUCE_OP_MAX_S,
+   REDUCE_OP_MAX_F,
+   REDUCE_OP_AND_B,
+   REDUCE_OP_OR_B,
+   REDUCE_OP_XOR_B,
+} reduce_op_t;
+
 struct ir3_instruction {
    struct ir3_block *block;
    opc_t opc;
@@ -324,6 +340,7 @@ struct ir3_instruction {
       struct {
          type_t src_type, dst_type;
          round_t round;
+         reduce_op_t reduce_op;
       } cat1;
       struct {
          enum {
@@ -896,6 +913,7 @@ is_subgroup_cond_mov_macro(struct ir3_instruction *instr)
    case OPC_READ_COND_MACRO:
    case OPC_READ_FIRST_MACRO:
    case OPC_SWZ_SHARED_MACRO:
+   case OPC_SCAN_MACRO:
       return true;
    default:
       return false;

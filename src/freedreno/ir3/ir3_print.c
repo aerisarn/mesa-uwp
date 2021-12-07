@@ -137,7 +137,51 @@ print_instr_name(struct log_stream *stream, struct ir3_instruction *instr,
                                 disasm_a3xx_instr_name(instr->opc));
       }
 
-      if (instr->opc != OPC_MOVMSK) {
+      if (instr->opc == OPC_SCAN_MACRO) {
+         switch (instr->cat1.reduce_op) {
+         case REDUCE_OP_ADD_U:
+            mesa_log_stream_printf(stream, ".add.u");
+            break;
+         case REDUCE_OP_ADD_F:
+            mesa_log_stream_printf(stream, ".add.f");
+            break;
+         case REDUCE_OP_MUL_U:
+            mesa_log_stream_printf(stream, ".mul.u");
+            break;
+         case REDUCE_OP_MUL_F:
+            mesa_log_stream_printf(stream, ".mul.f");
+            break;
+         case REDUCE_OP_MIN_U:
+            mesa_log_stream_printf(stream, ".min.u");
+            break;
+         case REDUCE_OP_MIN_S:
+            mesa_log_stream_printf(stream, ".min.s");
+            break;
+         case REDUCE_OP_MIN_F:
+            mesa_log_stream_printf(stream, ".min.f");
+            break;
+         case REDUCE_OP_MAX_U:
+            mesa_log_stream_printf(stream, ".max.u");
+            break;
+         case REDUCE_OP_MAX_S:
+            mesa_log_stream_printf(stream, ".max.s");
+            break;
+         case REDUCE_OP_MAX_F:
+            mesa_log_stream_printf(stream, ".max.f");
+            break;
+         case REDUCE_OP_AND_B:
+            mesa_log_stream_printf(stream, ".and.b");
+            break;
+         case REDUCE_OP_OR_B:
+            mesa_log_stream_printf(stream, ".or.b");
+            break;
+         case REDUCE_OP_XOR_B:
+            mesa_log_stream_printf(stream, ".xor.b");
+            break;
+         }
+      }
+
+      if (instr->opc != OPC_MOVMSK && instr->opc != OPC_SCAN_MACRO) {
          mesa_log_stream_printf(stream, ".%s%s",
                                 type_name(instr->cat1.src_type),
                                 type_name(instr->cat1.dst_type));

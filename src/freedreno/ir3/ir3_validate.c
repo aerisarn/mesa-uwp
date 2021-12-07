@@ -238,6 +238,14 @@ validate_instr(struct ir3_validate_ctx *ctx, struct ir3_instruction *instr)
       } else if (instr->opc == OPC_ELECT_MACRO) {
          validate_assert(ctx, instr->dsts_count == 1);
          validate_assert(ctx, !(instr->dsts[0]->flags & IR3_REG_SHARED));
+      } else if (instr->opc == OPC_SCAN_MACRO) {
+         validate_assert(ctx, instr->dsts_count == 3);
+         validate_assert(ctx, instr->srcs_count == 2);
+         validate_assert(ctx, reg_class_flags(instr->dsts[0]) ==
+                              reg_class_flags(instr->srcs[0]));
+         validate_assert(ctx, reg_class_flags(instr->dsts[1]) ==
+                              reg_class_flags(instr->srcs[0]));
+         validate_assert(ctx, reg_class_flags(instr->dsts[2]) == IR3_REG_SHARED);
       } else {
          foreach_dst (dst, instr)
             validate_reg_size(ctx, dst, instr->cat1.dst_type);
