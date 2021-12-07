@@ -958,8 +958,8 @@ blorp_can_hiz_clear_depth(const struct intel_device_info *devinfo,
                                    &slice_x0, &slice_y0, &slice_z0, &slice_a0);
       assert(slice_z0 == 0 && slice_a0 == 0);
       const bool max_x1_y1 =
-         x1 == minify(surf->logical_level0_px.width, level) &&
-         y1 == minify(surf->logical_level0_px.height, level);
+         x1 == u_minify(surf->logical_level0_px.width, level) &&
+         y1 == u_minify(surf->logical_level0_px.height, level);
       const uint32_t haligned_x1 = ALIGN(x1, surf->image_alignment_el.w);
       const uint32_t valigned_y1 = ALIGN(y1, surf->image_alignment_el.h);
       const bool unaligned = (slice_x0 + x0) % 16 || (slice_y0 + y0) % 8 ||
@@ -988,13 +988,13 @@ blorp_can_clear_full_surface(const struct blorp_surf *depth,
 {
    uint32_t width = 0, height = 0;
    if (clear_stencil) {
-      width = minify(stencil->surf->logical_level0_px.width, level);
-      height = minify(stencil->surf->logical_level0_px.height, level);
+      width = u_minify(stencil->surf->logical_level0_px.width, level);
+      height = u_minify(stencil->surf->logical_level0_px.height, level);
    }
 
    if (clear_depth && !(width || height)) {
-      width = minify(depth->surf->logical_level0_px.width, level);
-      height = minify(depth->surf->logical_level0_px.height, level);
+      width = u_minify(depth->surf->logical_level0_px.width, level);
+      height = u_minify(depth->surf->logical_level0_px.height, level);
    }
 
    return x0 == 0 && y0 == 0 && width == x1 && height == y1;
@@ -1225,8 +1225,8 @@ blorp_ccs_resolve(struct blorp_batch *batch,
       y_scaledown = aux_fmtl->bh / 2;
    }
    params.x0 = params.y0 = 0;
-   params.x1 = minify(params.dst.surf.logical_level0_px.width, level);
-   params.y1 = minify(params.dst.surf.logical_level0_px.height, level);
+   params.x1 = u_minify(params.dst.surf.logical_level0_px.width, level);
+   params.y1 = u_minify(params.dst.surf.logical_level0_px.height, level);
    params.x1 = ALIGN(params.x1, x_scaledown) / x_scaledown;
    params.y1 = ALIGN(params.y1, y_scaledown) / y_scaledown;
 
@@ -1439,9 +1439,9 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
    params.dst.addr.offset += offset_B;
 
    const uint32_t width_px =
-      minify(surf->aux_surf->logical_level0_px.width, level);
+      u_minify(surf->aux_surf->logical_level0_px.width, level);
    const uint32_t height_px =
-      minify(surf->aux_surf->logical_level0_px.height, level);
+      u_minify(surf->aux_surf->logical_level0_px.height, level);
    const uint32_t width_el = DIV_ROUND_UP(width_px, aux_fmtl->bw);
    const uint32_t height_el = DIV_ROUND_UP(height_px, aux_fmtl->bh);
 

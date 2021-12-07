@@ -462,10 +462,10 @@ blorp_hiz_op(struct blorp_batch *batch, struct blorp_surf *surf,
        * surfaces, not 8. But commit 1f112cc increased the alignment from 4 to
        * 8, which prevents the clobbering.
        */
-      params.x1 = minify(params.depth.surf.logical_level0_px.width,
-                         params.depth.view.base_level);
-      params.y1 = minify(params.depth.surf.logical_level0_px.height,
-                         params.depth.view.base_level);
+      params.x1 = u_minify(params.depth.surf.logical_level0_px.width,
+                           params.depth.view.base_level);
+      params.y1 = u_minify(params.depth.surf.logical_level0_px.height,
+                           params.depth.view.base_level);
       params.x1 = ALIGN(params.x1, 8);
       params.y1 = ALIGN(params.y1, 4);
 
@@ -504,10 +504,10 @@ blorp_hiz_op(struct blorp_batch *batch, struct blorp_surf *surf,
           * the base LOD extent. Just assert that the caller is accessing an
           * LOD that satisfies this requirement.
           */
-         assert(minify(params.depth.surf.logical_level0_px.width,
-                       params.depth.view.base_level) == params.x1);
-         assert(minify(params.depth.surf.logical_level0_px.height,
-                       params.depth.view.base_level) == params.y1);
+         assert(u_minify(params.depth.surf.logical_level0_px.width,
+                         params.depth.view.base_level) == params.x1);
+         assert(u_minify(params.depth.surf.logical_level0_px.height,
+                         params.depth.view.base_level) == params.y1);
       }
 
       params.dst.surf.samples = params.depth.surf.samples;

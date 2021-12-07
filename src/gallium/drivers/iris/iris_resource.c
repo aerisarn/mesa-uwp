@@ -495,7 +495,7 @@ unsigned
 iris_get_num_logical_layers(const struct iris_resource *res, unsigned level)
 {
    if (res->surf.dim == ISL_SURF_DIM_3D)
-      return minify(res->surf.logical_level0_px.depth, level);
+      return u_minify(res->surf.logical_level0_px.depth, level);
    else
       return res->surf.logical_level0_px.array_len;
 }
