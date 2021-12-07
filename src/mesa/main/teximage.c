@@ -60,6 +60,7 @@
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_gen_mipmap.h"
+#include "state_tracker/st_cb_eglimage.h"
 
 /**
  * Returns a corresponding internal floating point format for a given base
@@ -3452,11 +3453,11 @@ egl_image_target_texture(struct gl_context *ctx,
       texObj->External = GL_TRUE;
 
       if (tex_storage) {
-         ctx->Driver.EGLImageTargetTexStorage(ctx, target, texObj, texImage,
-                                              image);
+         st_egl_image_target_tex_storage(ctx, target, texObj, texImage,
+                                         image);
       } else {
-         ctx->Driver.EGLImageTargetTexture2D(ctx, target, texObj, texImage,
-                                             image);
+         st_egl_image_target_texture_2d(ctx, target, texObj, texImage,
+                                        image);
       }
 
       _mesa_dirty_texobj(ctx, texObj);

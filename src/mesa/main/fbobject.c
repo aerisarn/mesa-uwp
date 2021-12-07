@@ -52,6 +52,8 @@
 #include "texobj.h"
 
 #include "state_tracker/st_cb_fbo.h"
+#include "state_tracker/st_cb_eglimage.h"
+
 /**
  * Notes:
  *
@@ -2754,7 +2756,7 @@ _mesa_EGLImageTargetRenderbufferStorageOES(GLenum target, GLeglImageOES image)
 
    FLUSH_VERTICES(ctx, _NEW_BUFFERS, 0);
 
-   ctx->Driver.EGLImageTargetRenderbufferStorage(ctx, rb, image);
+   st_egl_image_target_renderbuffer_storage(ctx, rb, image);
 }
 
 

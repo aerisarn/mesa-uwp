@@ -334,25 +334,6 @@ struct dd_function_table {
    /*@}*/
 
    /**
-    * \name GL_OES_EGL_image interface
-    */
-   void (*EGLImageTargetTexture2D)(struct gl_context *ctx, GLenum target,
-				   struct gl_texture_object *texObj,
-				   struct gl_texture_image *texImage,
-				   GLeglImageOES image_handle);
-   void (*EGLImageTargetRenderbufferStorage)(struct gl_context *ctx,
-					     struct gl_renderbuffer *rb,
-					     void *image_handle);
-
-   /**
-    * \name GL_EXT_EGL_image_storage interface
-    */
-   void (*EGLImageTargetTexStorage)(struct gl_context *ctx, GLenum target,
-                                    struct gl_texture_object *texObj,
-                                    struct gl_texture_image *texImage,
-                                    GLeglImageOES image_handle);
-
-   /**
     * \name GL_ARB_texture_multisample
     */
    void (*GetSamplePosition)(struct gl_context *ctx,
