@@ -55,6 +55,7 @@
 #include "viewport.h"
 #include "blend.h"
 
+#include "state_tracker/st_context.h"
 
 void
 _mesa_update_allow_draw_out_of_order(struct gl_context *ctx)
@@ -487,7 +488,7 @@ _mesa_update_state_locked( struct gl_context *ctx )
     * Also, this is where the driver can invalidate the state of any
     * active modules (such as swrast_setup, swrast, tnl, etc).
     */
-   ctx->Driver.UpdateState(ctx);
+   st_invalidate_state(ctx);
    ctx->NewState = 0;
 }
 

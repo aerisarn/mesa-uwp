@@ -117,24 +117,6 @@ struct pipe_vertex_element;
  */
 struct dd_function_table {
    /**
-    * Notify the driver after Mesa has made some internal state changes.  
-    *
-    * This is in addition to any state change callbacks Mesa may already have
-    * made.
-    */
-   void (*UpdateState)(struct gl_context *ctx);
-
-   /**
-    * This is called whenever glFinish() is called.
-    */
-   void (*Finish)( struct gl_context *ctx );
-
-   /**
-    * This is called whenever glFlush() is called.
-    */
-   void (*Flush)(struct gl_context *ctx, unsigned gallium_flush_flags);
-
-   /**
     * Called by glCopyImageSubData().
     *
     * This function should copy one 2-D slice from src_teximage or

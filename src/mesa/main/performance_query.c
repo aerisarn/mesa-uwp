@@ -37,6 +37,7 @@
 #include "util/ralloc.h"
 
 #include "state_tracker/st_cb_perfquery.h"
+#include "state_tracker/st_cb_flush.h"
 
 void
 _mesa_init_performance_queries(struct gl_context *ctx)
@@ -640,7 +641,7 @@ _mesa_GetPerfQueryDataINTEL(GLuint queryHandle, GLuint flags,
 
    if (!obj->Ready) {
       if (flags == GL_PERFQUERY_FLUSH_INTEL) {
-         ctx->Driver.Flush(ctx, 0);
+         st_glFlush(ctx, 0);
       } else if (flags == GL_PERFQUERY_WAIT_INTEL) {
          st_WaitPerfQuery(ctx, obj);
          obj->Ready = true;

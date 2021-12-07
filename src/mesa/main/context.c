@@ -155,6 +155,7 @@
 #include "util/u_memory.h"
 
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_cb_flush.h"
 
 #ifndef MESA_VERBOSE
 int MESA_VERBOSE = 0;
@@ -1633,8 +1634,7 @@ _mesa_make_current( struct gl_context *newCtx,
        curCtx->Const.ContextReleaseBehavior ==
        GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH) {
       FLUSH_VERTICES(curCtx, 0, 0);
-      if (curCtx->Driver.Flush)
-         curCtx->Driver.Flush(curCtx, 0);
+      st_glFlush(curCtx, 0);
    }
 
    /* Call this periodically to detect when the user has begun using
@@ -1789,12 +1789,10 @@ _mesa_get_dispatch(struct gl_context *ctx)
 void
 _mesa_flush(struct gl_context *ctx)
 {
+   bool async = !ctx->Shared->HasExternallySharedImages;
    FLUSH_VERTICES(ctx, 0, 0);
-   if (ctx->Driver.Flush) {
-      bool async = !ctx->Shared->HasExternallySharedImages;
 
-      ctx->Driver.Flush(ctx, async ? PIPE_FLUSH_ASYNC : 0);
-   }
+   st_glFlush(ctx, async ? PIPE_FLUSH_ASYNC : 0);
 }
 
 
@@ -1813,9 +1811,7 @@ _mesa_Finish(void)
 
    FLUSH_VERTICES(ctx, 0, 0);
 
-   if (ctx->Driver.Finish) {
-      ctx->Driver.Finish(ctx);
-   }
+   st_glFinish(ctx);
 }
 
 

@@ -48,6 +48,7 @@
 
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_format.h"
+#include "state_tracker/st_cb_flush.h"
 
 /**********************************************************************/
 /** \name Internal functions */
@@ -1029,8 +1030,7 @@ _mesa_get_fallback_texture(struct gl_context *ctx, gl_texture_index tex)
 
       /* Complete the driver's operation in case another context will also
        * use the same fallback texture. */
-      if (ctx->Driver.Finish)
-         ctx->Driver.Finish(ctx);
+      st_glFinish(ctx);
    }
    return ctx->Shared->FallbackTex[tex];
 }

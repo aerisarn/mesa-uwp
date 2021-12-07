@@ -183,10 +183,7 @@ st_vp_uses_current_values(const struct gl_context *ctx)
 }
 
 
-/**
- * Called via ctx->Driver.UpdateState()
- */
-static void
+void
 st_invalidate_state(struct gl_context *ctx)
 {
    GLbitfield new_state = ctx->NewState;
@@ -945,7 +942,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    if (screen->get_param(screen, PIPE_CAP_STRING_MARKER))
       functions->EmitStringMarker = st_emit_string_marker;
 
-   functions->UpdateState = st_invalidate_state;
    functions->SetBackgroundContext = st_set_background_context;
    functions->GetDriverUuid = st_get_driver_uuid;
    functions->GetDeviceUuid = st_get_device_uuid;
