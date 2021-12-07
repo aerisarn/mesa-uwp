@@ -44,6 +44,7 @@
 #include "pixeltransfer.h"
 
 #include "state_tracker/st_cb_fbo.h"
+#include "state_tracker/st_cb_readpixels.h"
 
 /**
  * Return true if the conversion L=R+G+B is needed.
@@ -863,7 +864,7 @@ read_depth_stencil_pixels(struct gl_context *ctx,
 
 
 /**
- * Software fallback routine for ctx->Driver.ReadPixels().
+ * Software fallback routine.
  * By time we get here, all error checking will have been done.
  */
 void
@@ -1173,8 +1174,8 @@ read_pixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format,
    if (ctx->Pack.BufferObj)
       ctx->Pack.BufferObj->UsageHistory |= USAGE_PIXEL_PACK_BUFFER;
 
-   ctx->Driver.ReadPixels(ctx, x, y, width, height,
-                          format, type, &clippedPacking, pixels);
+   st_ReadPixels(ctx, x, y, width, height,
+                 format, type, &clippedPacking, pixels);
 }
 
 void GLAPIENTRY

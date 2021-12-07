@@ -216,7 +216,7 @@ new_draw_rastpos_stage(struct gl_context *ctx, struct draw_context *draw)
 }
 
 
-static void
+void
 st_RasterPos(struct gl_context *ctx, const GLfloat v[4])
 {
    struct st_context *st = st_context(ctx);
@@ -275,11 +275,4 @@ st_RasterPos(struct gl_context *ctx, const GLfloat v[4])
    else if (ctx->RenderMode == GL_SELECT) {
       draw_set_rasterize_stage(draw, st->selection_stage);
    }
-}
-
-
-
-void st_init_rasterpos_functions(struct dd_function_table *functions)
-{
-   functions->RasterPos = st_RasterPos;
 }

@@ -408,7 +408,7 @@ try_cached_readpixels(struct st_context *st, struct st_renderbuffer *strb,
  *       texture layouts during texture uploads/downloads, so the blit
  *       we do here should be free in such cases.
  */
-static void
+void
 st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
               GLsizei width, GLsizei height,
               GLenum format, GLenum type,
@@ -565,9 +565,4 @@ st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
 
 fallback:
    _mesa_readpixels(ctx, x, y, width, height, format, type, pack, pixels);
-}
-
-void st_init_readpixels_functions(struct dd_function_table *functions)
-{
-   functions->ReadPixels = st_ReadPixels;
 }

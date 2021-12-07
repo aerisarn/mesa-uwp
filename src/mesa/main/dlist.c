@@ -77,6 +77,7 @@
 #include "util/u_memory.h"
 
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_cb_bitmap.h"
 
 #define USE_BITMAP_ATLAS 1
 
@@ -13466,8 +13467,7 @@ _mesa_GenLists(GLsizei range)
    }
 
    if (USE_BITMAP_ATLAS &&
-       range > 16 &&
-       ctx->Driver.DrawAtlasBitmaps) {
+       range > 16) {
       /* "range > 16" is a rough heuristic to guess when glGenLists might be
        * used to allocate display lists for glXUseXFont or wglUseFontBitmaps.
        * Create the empty atlas now.
@@ -13813,8 +13813,7 @@ render_bitmap_atlas(struct gl_context *ctx, GLsizei n, GLenum type,
    if (!USE_BITMAP_ATLAS ||
        !ctx->Current.RasterPosValid ||
        ctx->List.ListBase == 0 ||
-       type != GL_UNSIGNED_BYTE ||
-       !ctx->Driver.DrawAtlasBitmaps) {
+       type != GL_UNSIGNED_BYTE) {
       /* unsupported */
       return false;
    }
@@ -13851,7 +13850,7 @@ render_bitmap_atlas(struct gl_context *ctx, GLsizei n, GLenum type,
       }
    }
 
-   ctx->Driver.DrawAtlasBitmaps(ctx, atlas, n, (const GLubyte *) lists);
+   st_DrawAtlasBitmaps(ctx, atlas, n, (const GLubyte *) lists);
 
    return true;
 }

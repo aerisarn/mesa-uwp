@@ -1272,11 +1272,7 @@ setup_sampler_swizzle(struct pipe_sampler_view *sv, GLenum format, GLenum type)
    }
 }
 
-
-/**
- * Called via ctx->Driver.DrawPixels()
- */
-static void
+void
 st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
               GLsizei width, GLsizei height,
               GLenum format, GLenum type,
@@ -1675,8 +1671,7 @@ blit_copy_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    return GL_FALSE;
 }
 
-
-static void
+void
 st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
               GLsizei width, GLsizei height,
               GLint dstx, GLint dsty, GLenum type)
@@ -1946,15 +1941,6 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
 
    pipe_resource_reference(&pt, NULL);
 }
-
-
-
-void st_init_drawpixels_functions(struct dd_function_table *functions)
-{
-   functions->DrawPixels = st_DrawPixels;
-   functions->CopyPixels = st_CopyPixels;
-}
-
 
 void
 st_destroy_drawpix(struct st_context *st)

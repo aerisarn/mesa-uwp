@@ -39,7 +39,7 @@
 #include "main/viewport.h"
 #include "util/bitscan.h"
 
-
+#include "state_tracker/st_cb_rasterpos.h"
 
 /**
  * Clip a point against the view volume.
@@ -388,7 +388,7 @@ compute_texgen(struct gl_context *ctx, const GLfloat vObj[4], const GLfloat vEye
 
 
 /**
- * glRasterPos transformation.  Typically called via ctx->Driver.RasterPos().
+ * glRasterPos transformation.
  *
  * \param vObj  vertex position in object space
  */
@@ -544,7 +544,7 @@ rasterpos(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
    if (ctx->NewState)
       _mesa_update_state( ctx );
 
-   ctx->Driver.RasterPos(ctx, p);
+   st_RasterPos(ctx, p);
 }
 
 

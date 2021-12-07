@@ -39,6 +39,7 @@
 #include "texobj.h"
 
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_cb_readpixels.h"
 
 static const char *
 tex_target_name(GLenum tgt)
@@ -326,8 +327,8 @@ _mesa_write_renderbuffer_image(const struct gl_renderbuffer *rb)
 
    buffer = malloc(rb->Width * rb->Height * 4);
 
-   ctx->Driver.ReadPixels(ctx, 0, 0, rb->Width, rb->Height,
-                          format, type, &ctx->DefaultPacking, buffer);
+   st_ReadPixels(ctx, 0, 0, rb->Width, rb->Height,
+                 format, type, &ctx->DefaultPacking, buffer);
 
    /* make filename */
    snprintf(s, sizeof(s), "/tmp/renderbuffer%u.ppm", rb->Name);

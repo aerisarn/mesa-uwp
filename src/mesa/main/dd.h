@@ -135,59 +135,6 @@ struct dd_function_table {
    void (*Flush)(struct gl_context *ctx, unsigned gallium_flush_flags);
 
    /**
-    * Execute glRasterPos, updating the ctx->Current.Raster fields
-    */
-   void (*RasterPos)( struct gl_context *ctx, const GLfloat v[4] );
-
-   /**
-    * \name Image-related functions
-    */
-   /*@{*/
-
-   /**
-    * Called by glDrawPixels().
-    * \p unpack describes how to unpack the source image data.
-    */
-   void (*DrawPixels)( struct gl_context *ctx,
-		       GLint x, GLint y, GLsizei width, GLsizei height,
-		       GLenum format, GLenum type,
-		       const struct gl_pixelstore_attrib *unpack,
-		       const GLvoid *pixels );
-
-   /**
-    * Called by glReadPixels().
-    */
-   void (*ReadPixels)( struct gl_context *ctx,
-		       GLint x, GLint y, GLsizei width, GLsizei height,
-		       GLenum format, GLenum type,
-		       const struct gl_pixelstore_attrib *unpack,
-		       GLvoid *dest );
-
-   /**
-    * Called by glCopyPixels().  
-    */
-   void (*CopyPixels)( struct gl_context *ctx, GLint srcx, GLint srcy,
-                       GLsizei width, GLsizei height,
-                       GLint dstx, GLint dsty, GLenum type );
-
-   /**
-    * Called by glBitmap().  
-    */
-   void (*Bitmap)( struct gl_context *ctx,
-		   GLint x, GLint y, GLsizei width, GLsizei height,
-		   const struct gl_pixelstore_attrib *unpack,
-		   const GLubyte *bitmap );
-
-   /**
-    * Called by display list code for optimized glCallLists/glBitmap rendering
-    * The driver must support texture rectangles of width 1024 or more.
-    */
-   void (*DrawAtlasBitmaps)(struct gl_context *ctx,
-                            const struct gl_bitmap_atlas *atlas,
-                            GLuint count, const GLubyte *ids);
-   /*@}*/
-
-   /**
     * Called by glCopyImageSubData().
     *
     * This function should copy one 2-D slice from src_teximage or
