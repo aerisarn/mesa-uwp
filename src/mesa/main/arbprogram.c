@@ -36,12 +36,12 @@
 
 #include "main/macros.h"
 #include "main/mtypes.h"
-#include "main/arbprogram.h"
 #include "main/shaderapi.h"
 #include "main/state.h"
 #include "program/arbprogparse.h"
 #include "program/program.h"
 #include "program/prog_print.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_program.h"
 

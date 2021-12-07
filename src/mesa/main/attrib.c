@@ -31,7 +31,6 @@
 #include "blend.h"
 #include "buffers.h"
 #include "bufferobj.h"
-#include "clear.h"
 #include "context.h"
 #include "depth.h"
 #include "enable.h"
@@ -49,8 +48,6 @@
 #include "shared.h"
 #include "scissor.h"
 #include "stencil.h"
-#include "texenv.h"
-#include "texgen.h"
 #include "texobj.h"
 #include "texparam.h"
 #include "texstate.h"
@@ -61,6 +58,7 @@
 #include "hash.h"
 #include <stdbool.h>
 #include "util/u_memory.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_viewport.h"

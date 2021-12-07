@@ -35,6 +35,8 @@
 
 #include "state_tracker/st_cb_memoryobjects.h"
 #include "state_tracker/st_cb_semaphoreobjects.h"
+#include "api_exec_decl.h"
+
 /**
  * Delete a memory object.
  * Not removed from hash table here.

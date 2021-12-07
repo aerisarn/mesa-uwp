@@ -46,6 +46,7 @@
 #include "main/texstate.h"
 #include "program/prog_instruction.h"
 #include "util/u_math.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
 

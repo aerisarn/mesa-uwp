@@ -38,6 +38,7 @@
 
 #include "state_tracker/st_cb_queryobj.h"
 #include "state_tracker/st_cb_condrender.h"
+#include "api_exec_decl.h"
 
 static ALWAYS_INLINE void
 begin_conditional_render(struct gl_context *ctx, GLuint queryId, GLenum mode,

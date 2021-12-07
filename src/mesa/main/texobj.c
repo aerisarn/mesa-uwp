@@ -45,6 +45,7 @@
 #include "program/prog_instruction.h"
 #include "texturebindless.h"
 #include "util/u_memory.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_format.h"

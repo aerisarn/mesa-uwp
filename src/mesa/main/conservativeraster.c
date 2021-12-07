@@ -31,6 +31,7 @@
 #include "conservativeraster.h"
 #include "context.h"
 #include "enums.h"
+#include "api_exec_decl.h"
 
 static ALWAYS_INLINE void
 conservative_raster_parameter(GLenum pname, GLfloat param,

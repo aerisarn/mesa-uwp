@@ -38,6 +38,7 @@
 #include "pbo.h"
 #include "polygon.h"
 #include "mtypes.h"
+#include "api_exec_decl.h"
 
 
 /**

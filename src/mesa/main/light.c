@@ -33,6 +33,7 @@
 #include "mtypes.h"
 #include "math/m_matrix.h"
 #include "util/bitscan.h"
+#include "api_exec_decl.h"
 
 
 void GLAPIENTRY

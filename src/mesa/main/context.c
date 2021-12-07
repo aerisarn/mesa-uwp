@@ -152,6 +152,7 @@
 #include "compiler/glsl/glsl_parser_extras.h"
 #include <stdbool.h>
 #include "util/u_memory.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_flush.h"

@@ -25,7 +25,6 @@
 
 #include "glheader.h"
 #include "bufferobj.h"
-#include "colortab.h"
 #include "context.h"
 #include "image.h"
 #include "macros.h"
@@ -35,6 +34,7 @@
 #include "state.h"
 #include "teximage.h"
 #include "texstate.h"
+#include "api_exec_decl.h"
 
 
 void GLAPIENTRY

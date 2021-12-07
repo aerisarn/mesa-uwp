@@ -34,6 +34,7 @@
 #include "util/u_memory.h"
 
 #include "state_tracker/st_cb_queryobj.h"
+#include "api_exec_decl.h"
 
 static struct gl_query_object **
 get_pipe_stats_binding_point(struct gl_context *ctx,

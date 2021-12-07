@@ -25,7 +25,7 @@
 
 #include "glheader.h"
 #include "context.h"
-#include "histogram.h"
+#include "api_exec_decl.h"
 
 
 /**********************************************************************

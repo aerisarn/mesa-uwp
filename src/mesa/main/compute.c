@@ -23,8 +23,8 @@
 
 #include "glheader.h"
 #include "bufferobj.h"
-#include "compute.h"
 #include "context.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_compute.h"
 

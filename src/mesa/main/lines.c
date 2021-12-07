@@ -28,6 +28,7 @@
 #include "lines.h"
 #include "macros.h"
 #include "mtypes.h"
+#include "api_exec_decl.h"
 
 
 /**

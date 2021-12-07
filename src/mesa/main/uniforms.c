@@ -46,6 +46,7 @@
 #include "compiler/glsl_types.h"
 #include "program/program.h"
 #include "util/bitscan.h"
+#include "api_exec_decl.h"
 
 /**
  * Update the vertex/fragment program's TexturesUsed array.

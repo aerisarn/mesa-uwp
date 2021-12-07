@@ -42,6 +42,7 @@
 #include "arrayobj.h"
 #include "get.h"
 #include "main/dispatch.h"
+#include "api_exec_decl.h"
 
 
 /** Used to do error checking for GL_EXT_vertex_array_bgra */

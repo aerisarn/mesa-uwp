@@ -36,6 +36,7 @@
 #include "shaderimage.h"
 #include "texcompress.h"
 #include "textureview.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_format.h"
 

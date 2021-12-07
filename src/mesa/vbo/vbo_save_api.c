@@ -121,6 +121,8 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "gallium/include/pipe/p_state.h"
 
 #include "vbo_private.h"
+#include "api_exec_decl.h"
+#include "api_save.h"
 
 #include "state_tracker/st_cb_bufferobjects.h"
 
@@ -1613,12 +1615,6 @@ save_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
    CALL_End(dispatch, ());
 }
 
-
-void GLAPIENTRY
-save_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
-{
-   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
-}
 
 void GLAPIENTRY
 save_Rectdv(const GLdouble *v1, const GLdouble *v2)

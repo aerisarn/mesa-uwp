@@ -28,7 +28,7 @@
 #include "fog.h"
 #include "macros.h"
 #include "mtypes.h"
-
+#include "api_exec_decl.h"
 
 
 void GLAPIENTRY

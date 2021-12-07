@@ -69,6 +69,7 @@
 #include "syncobj.h"
 
 #include "state_tracker/st_cb_syncobj.h"
+#include "api_exec_decl.h"
 
 /**
  * Allocate/init the context state related to sync objects.

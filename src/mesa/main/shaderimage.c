@@ -35,6 +35,7 @@
 #include "texobj.h"
 #include "teximage.h"
 #include "enums.h"
+#include "api_exec_decl.h"
 
 mesa_format
 _mesa_get_shader_image_format(GLenum format)

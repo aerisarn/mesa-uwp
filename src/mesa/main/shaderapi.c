@@ -65,6 +65,7 @@
 #include "util/simple_list.h"
 #include "util/u_process.h"
 #include "util/u_string.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_program.h"
 

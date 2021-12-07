@@ -50,6 +50,7 @@
 #include "state.h"
 #include "teximage.h"
 #include "texobj.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_eglimage.h"

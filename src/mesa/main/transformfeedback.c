@@ -47,6 +47,7 @@
 #include "util/u_memory.h"
 
 #include "state_tracker/st_cb_xformfb.h"
+#include "api_exec_decl.h"
 
 struct using_program_tuple
 {

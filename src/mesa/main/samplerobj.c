@@ -39,6 +39,7 @@
 #include "main/samplerobj.h"
 #include "main/texturebindless.h"
 #include "util/u_memory.h"
+#include "api_exec_decl.h"
 
 /* Take advantage of how the enums are defined. */
 const enum pipe_tex_wrap wrap_to_gallium_table[32] = {

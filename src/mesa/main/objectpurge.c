@@ -36,9 +36,9 @@
 #include "bufferobj.h"
 #include "fbobject.h"
 #include "mtypes.h"
-#include "objectpurge.h"
 #include "texobj.h"
 #include "teximage.h"
+#include "api_exec_decl.h"
 
 
 static GLenum

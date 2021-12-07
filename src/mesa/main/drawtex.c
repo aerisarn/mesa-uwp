@@ -22,10 +22,10 @@
  */
 
 #include "main/errors.h"
-#include "main/drawtex.h"
 #include "main/state.h"
 
 #include "main/mtypes.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_drawtex.h"
 

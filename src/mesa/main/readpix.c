@@ -42,6 +42,7 @@
 #include "fbobject.h"
 #include "format_utils.h"
 #include "pixeltransfer.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_readpixels.h"

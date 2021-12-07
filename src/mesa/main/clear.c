@@ -32,7 +32,6 @@
 
 #include "glformats.h"
 #include "glheader.h"
-#include "clear.h"
 #include "context.h"
 #include "enums.h"
 #include "fbobject.h"
@@ -40,6 +39,7 @@
 #include "macros.h"
 #include "mtypes.h"
 #include "state.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_clear.h"
 

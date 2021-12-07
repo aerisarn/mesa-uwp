@@ -40,6 +40,8 @@
 #include "util/bitscan.h"
 
 #include "state_tracker/st_cb_rasterpos.h"
+#include "api_exec_decl.h"
+
 
 /**
  * Clip a point against the view volume.

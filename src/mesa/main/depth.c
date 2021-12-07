@@ -31,6 +31,7 @@
 #include "macros.h"
 #include "mtypes.h"
 #include "state.h"
+#include "api_exec_decl.h"
 
 
 /**********************************************************************/

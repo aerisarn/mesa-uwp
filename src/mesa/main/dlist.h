@@ -107,31 +107,6 @@ void
 _mesa_delete_bitmap_atlas(struct gl_context *ctx,
                           struct gl_bitmap_atlas *atlas);
 
-
-GLboolean GLAPIENTRY
-_mesa_IsList(GLuint list);
-
-void GLAPIENTRY
-_mesa_DeleteLists(GLuint list, GLsizei range);
-
-GLuint GLAPIENTRY
-_mesa_GenLists(GLsizei range);
-
-void GLAPIENTRY
-_mesa_NewList(GLuint name, GLenum mode);
-
-void GLAPIENTRY
-_mesa_EndList(void);
-
-void GLAPIENTRY
-_mesa_CallList(GLuint list);
-
-void GLAPIENTRY
-_mesa_CallLists(GLsizei n, GLenum type, const GLvoid *lists);
-
-void GLAPIENTRY
-_mesa_ListBase(GLuint base);
-
 struct gl_display_list *
 _mesa_lookup_list(struct gl_context *ctx, GLuint list, bool locked);
 

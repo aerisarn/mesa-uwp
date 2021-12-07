@@ -146,12 +146,6 @@ _mesa_set_context_lost_dispatch(struct gl_context *ctx);
 extern void
 _mesa_flush(struct gl_context *ctx);
 
-extern void GLAPIENTRY
-_mesa_Finish( void );
-
-extern void GLAPIENTRY
-_mesa_Flush( void );
-
 /*@}*/
 
 

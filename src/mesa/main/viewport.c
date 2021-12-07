@@ -34,6 +34,7 @@
 #include "macros.h"
 #include "mtypes.h"
 #include "viewport.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_viewport.h"
 

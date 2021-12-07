@@ -38,6 +38,7 @@
 #include "main/dlist.h"
 #include "main/eval.h"
 #include "vbo_attrib.h"
+#include "api_exec_decl.h"
 
 static void GLAPIENTRY
 _mesa_noop_Materialfv(GLenum face, GLenum pname, const GLfloat * params)

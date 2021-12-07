@@ -33,7 +33,7 @@
 
 #include "glheader.h"
 #include "context.h"
-#include "convolve.h"
+#include "api_exec_decl.h"
 
 
 void GLAPIENTRY

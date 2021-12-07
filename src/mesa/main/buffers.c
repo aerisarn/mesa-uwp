@@ -39,6 +39,7 @@
 #include "mtypes.h"
 #include "util/bitscan.h"
 #include "util/u_math.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_fbo.h"
 

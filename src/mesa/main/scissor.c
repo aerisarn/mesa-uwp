@@ -28,6 +28,7 @@
 #include "main/enums.h"
 #include "main/mtypes.h"
 #include "main/scissor.h"
+#include "api_exec_decl.h"
 
 
 /**

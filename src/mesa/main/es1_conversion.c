@@ -3,7 +3,6 @@
 
 #include "context.h"
 #include "blend.h"
-#include "clear.h"
 #include "clip.h"
 #include "context.h"
 #include "depth.h"
@@ -17,16 +16,11 @@
 #include "points.h"
 #include "polygon.h"
 #include "readpix.h"
-#include "texenv.h"
-#include "texgen.h"
-#include "texobj.h"
 #include "texparam.h"
 #include "mtypes.h"
 #include "viewport.h"
-#include "main/drawtex.h"
 #include "vbo/vbo.h"
-
-#include "main/es1_conversion.h"
+#include "api_exec_decl.h"
 
 void GL_APIENTRY
 _mesa_AlphaFuncx(GLenum func, GLclampx ref)

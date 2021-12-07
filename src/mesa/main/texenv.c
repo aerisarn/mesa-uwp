@@ -37,8 +37,8 @@
 #include "main/macros.h"
 #include "main/mtypes.h"
 #include "main/state.h"
-#include "main/texenv.h"
 #include "main/texstate.h"
+#include "api_exec_decl.h"
 
 
 #define TE_ERROR(errCode, msg, value)				\

@@ -41,6 +41,7 @@
 #include "macros.h"
 #include "transformfeedback.h"
 #include "pipe/p_state.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_draw.h"
 

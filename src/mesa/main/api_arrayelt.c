@@ -44,6 +44,7 @@
 #include "mtypes.h"
 #include "main/dispatch.h"
 #include "varray.h"
+#include "api_exec_decl.h"
 
 typedef void (GLAPIENTRY *attrib_func)( GLuint indx, const void *data );
 

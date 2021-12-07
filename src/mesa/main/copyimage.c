@@ -29,12 +29,12 @@
 #include "glheader.h"
 #include "errors.h"
 #include "enums.h"
-#include "copyimage.h"
 #include "teximage.h"
 #include "texobj.h"
 #include "fbobject.h"
 #include "textureview.h"
 #include "glformats.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_copyimage.h"
 

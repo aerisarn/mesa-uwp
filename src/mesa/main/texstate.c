@@ -41,6 +41,7 @@
 #include "state.h"
 #include "util/bitscan.h"
 #include "util/bitset.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
 

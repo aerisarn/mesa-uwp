@@ -34,9 +34,11 @@
 #include "main/context.h"
 #include "main/enums.h"
 #include "main/macros.h"
-#include "main/texgen.h"
+#include "main/texparam.h"
 #include "main/texstate.h"
 #include "math/m_matrix.h"
+#include "main/texobj.h"
+#include "api_exec_decl.h"
 
 
 /**

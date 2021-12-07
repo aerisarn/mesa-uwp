@@ -26,7 +26,6 @@
 #include "draw_validate.h"
 #include "bufferobj.h"
 #include "context.h"
-#include "drawpix.h"
 #include "enums.h"
 #include "feedback.h"
 #include "framebuffer.h"
@@ -38,6 +37,7 @@
 #include "fbobject.h"
 #include "util/u_math.h"
 #include "util/rounding.h"
+#include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_bitmap.h"
 #include "state_tracker/st_cb_drawpixels.h"
