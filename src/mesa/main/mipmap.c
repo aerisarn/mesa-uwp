@@ -1720,7 +1720,7 @@ make_3d_mipmap(GLenum datatype, GLuint comps, GLint border,
  * \param srcRowStride  stride between source rows, in bytes
  * \param dstRowStride  stride between destination rows, in bytes
  */
-void
+static void
 _mesa_generate_mipmap_level(GLenum target,
                             GLenum datatype, GLuint comps,
                             GLint border,
