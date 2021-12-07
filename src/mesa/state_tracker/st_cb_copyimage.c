@@ -624,7 +624,7 @@ fallback_copy_image(struct st_context *st,
    }
 }
 
-static void
+void
 st_CopyImageSubData(struct gl_context *ctx,
                     struct gl_texture_image *src_image,
                     struct gl_renderbuffer *src_renderbuffer,
@@ -687,10 +687,4 @@ st_CopyImageSubData(struct gl_context *ctx,
       copy_image(pipe, dst_res, dst_level, dst_x, dst_y, dst_z,
                  src_res, src_level, &box);
    }
-}
-
-void
-st_init_copy_image_functions(struct dd_function_table *functions)
-{
-   functions->CopyImageSubData = st_CopyImageSubData;
 }

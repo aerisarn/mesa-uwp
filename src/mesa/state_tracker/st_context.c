@@ -48,7 +48,6 @@
 #include "st_cb_clear.h"
 #include "st_cb_compute.h"
 #include "st_cb_condrender.h"
-#include "st_cb_copyimage.h"
 #include "st_cb_drawpixels.h"
 #include "st_cb_drawtex.h"
 #include "st_cb_eglimage.h"
@@ -924,7 +923,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_draw_functions(screen, functions);
    st_init_blit_functions(functions);
    st_init_bufferobject_functions(screen, functions);
-   st_init_copy_image_functions(functions);
 
    st_init_drawtex_functions(functions);
 
