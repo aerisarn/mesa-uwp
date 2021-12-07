@@ -39,6 +39,7 @@
 #include "vbo_noop.h"
 #include "vbo_private.h"
 
+#include "state_tracker/st_cb_bufferobjects.h"
 
 static void
 vbo_exec_debug_verts(struct vbo_exec_context *exec)
@@ -157,17 +158,16 @@ vbo_exec_vtx_unmap(struct vbo_exec_context *exec)
    if (exec->vtx.bufferobj) {
       struct gl_context *ctx = gl_context_from_vbo_exec(exec);
 
-      if (ctx->Driver.FlushMappedBufferRange &&
-          !ctx->Extensions.ARB_buffer_storage) {
+      if (!ctx->Extensions.ARB_buffer_storage) {
          GLintptr offset = exec->vtx.buffer_used -
                            exec->vtx.bufferobj->Mappings[MAP_INTERNAL].Offset;
          GLsizeiptr length = (exec->vtx.buffer_ptr - exec->vtx.buffer_map) *
                              sizeof(float);
 
          if (length)
-            ctx->Driver.FlushMappedBufferRange(ctx, offset, length,
-                                               exec->vtx.bufferobj,
-                                               MAP_INTERNAL);
+            st_bufferobj_flush_mapped_range(ctx, offset, length,
+                                            exec->vtx.bufferobj,
+                                            MAP_INTERNAL);
       }
 
       exec->vtx.buffer_used += (exec->vtx.buffer_ptr -
@@ -176,7 +176,7 @@ vbo_exec_vtx_unmap(struct vbo_exec_context *exec)
       assert(exec->vtx.buffer_used <= ctx->Const.glBeginEndBufferSize);
       assert(exec->vtx.buffer_ptr != NULL);
 
-      ctx->Driver.UnmapBuffer(ctx, exec->vtx.bufferobj, MAP_INTERNAL);
+      st_bufferobj_unmap(ctx, exec->vtx.bufferobj, MAP_INTERNAL);
       exec->vtx.buffer_map = NULL;
       exec->vtx.buffer_ptr = NULL;
       exec->vtx.max_vert = 0;
@@ -227,13 +227,13 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
       /* The VBO exists and there's room for more */
       if (exec->vtx.bufferobj->Size > 0) {
          exec->vtx.buffer_map = (fi_type *)
-            ctx->Driver.MapBufferRange(ctx,
-                                       exec->vtx.buffer_used,
-                                       ctx->Const.glBeginEndBufferSize
-                                       - exec->vtx.buffer_used,
-                                       accessRange,
-                                       exec->vtx.bufferobj,
-                                       MAP_INTERNAL);
+            st_bufferobj_map_range(ctx,
+                                   exec->vtx.buffer_used,
+                                   ctx->Const.glBeginEndBufferSize
+                                   - exec->vtx.buffer_used,
+                                   accessRange,
+                                   exec->vtx.bufferobj,
+                                   MAP_INTERNAL);
          exec->vtx.buffer_ptr = exec->vtx.buffer_map;
       }
       else {
@@ -245,24 +245,24 @@ vbo_exec_vtx_map(struct vbo_exec_context *exec)
       /* Need to allocate a new VBO */
       exec->vtx.buffer_used = 0;
 
-      if (ctx->Driver.BufferData(ctx, GL_ARRAY_BUFFER_ARB,
-                                 ctx->Const.glBeginEndBufferSize,
-                                 NULL, usage,
-                                 GL_MAP_WRITE_BIT |
-                                 (ctx->Extensions.ARB_buffer_storage ?
-                                    GL_MAP_PERSISTENT_BIT |
-                                    GL_MAP_COHERENT_BIT |
-                                    GL_MAP_READ_BIT : 0) |
-                                 GL_DYNAMIC_STORAGE_BIT |
-                                 GL_CLIENT_STORAGE_BIT,
-                                 exec->vtx.bufferobj)) {
+      if (st_bufferobj_data(ctx, GL_ARRAY_BUFFER_ARB,
+                            ctx->Const.glBeginEndBufferSize,
+                            NULL, usage,
+                            GL_MAP_WRITE_BIT |
+                            (ctx->Extensions.ARB_buffer_storage ?
+                             GL_MAP_PERSISTENT_BIT |
+                             GL_MAP_COHERENT_BIT |
+                             GL_MAP_READ_BIT : 0) |
+                            GL_DYNAMIC_STORAGE_BIT |
+                            GL_CLIENT_STORAGE_BIT,
+                            exec->vtx.bufferobj)) {
          /* buffer allocation worked, now map the buffer */
          exec->vtx.buffer_map =
-            (fi_type *)ctx->Driver.MapBufferRange(ctx,
-                                                  0, ctx->Const.glBeginEndBufferSize,
-                                                  accessRange,
-                                                  exec->vtx.bufferobj,
-                                                  MAP_INTERNAL);
+            (fi_type *)st_bufferobj_map_range(ctx,
+                                              0, ctx->Const.glBeginEndBufferSize,
+                                              accessRange,
+                                              exec->vtx.bufferobj,
+                                              MAP_INTERNAL);
       }
       else {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "VBO allocation");

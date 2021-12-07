@@ -25,6 +25,8 @@
 #include "main/dispatch.h"
 #include "main/bufferobj.h"
 
+#include "state_tracker/st_cb_bufferobjects.h"
+
 /**
  * Create an upload buffer. This is called from the app thread, so everything
  * has to be thread-safe in the driver.
@@ -34,27 +36,27 @@ new_upload_buffer(struct gl_context *ctx, GLsizeiptr size, uint8_t **ptr)
 {
    assert(ctx->GLThread.SupportsBufferUploads);
 
-   struct gl_buffer_object *obj = ctx->Driver.NewBufferObject(ctx, -1);
+   struct gl_buffer_object *obj = st_bufferobj_alloc(ctx, -1);
    if (!obj)
       return NULL;
 
    obj->Immutable = true;
 
-   if (!ctx->Driver.BufferData(ctx, GL_ARRAY_BUFFER, size, NULL,
-                               GL_WRITE_ONLY,
-                               GL_CLIENT_STORAGE_BIT | GL_MAP_WRITE_BIT,
-                               obj)) {
-      ctx->Driver.DeleteBuffer(ctx, obj);
+   if (!st_bufferobj_data(ctx, GL_ARRAY_BUFFER, size, NULL,
+                          GL_WRITE_ONLY,
+                          GL_CLIENT_STORAGE_BIT | GL_MAP_WRITE_BIT,
+                          obj)) {
+      st_bufferobj_free(ctx, obj);
       return NULL;
    }
 
-   *ptr = ctx->Driver.MapBufferRange(ctx, 0, size,
-                                     GL_MAP_WRITE_BIT |
-                                     GL_MAP_UNSYNCHRONIZED_BIT |
-                                     MESA_MAP_THREAD_SAFE_BIT,
-                                     obj, MAP_GLTHREAD);
+   *ptr = st_bufferobj_map_range(ctx, 0, size,
+                                 GL_MAP_WRITE_BIT |
+                                 GL_MAP_UNSYNCHRONIZED_BIT |
+                                 MESA_MAP_THREAD_SAFE_BIT,
+                                 obj, MAP_GLTHREAD);
    if (!*ptr) {
-      ctx->Driver.DeleteBuffer(ctx, obj);
+      st_bufferobj_free(ctx, obj);
       return NULL;
    }
 

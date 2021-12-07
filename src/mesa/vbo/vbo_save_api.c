@@ -124,6 +124,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "vbo_noop.h"
 #include "vbo_private.h"
 
+#include "state_tracker/st_cb_bufferobjects.h"
 
 #ifdef ERROR
 #undef ERROR
@@ -776,14 +777,14 @@ compile_vertex_list(struct gl_context *ctx)
    if (total_bytes_needed > available_bytes) {
       if (save->current_bo)
          _mesa_reference_buffer_object(ctx, &save->current_bo, NULL);
-      save->current_bo = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
-      bool success = ctx->Driver.BufferData(ctx,
-                                            GL_ELEMENT_ARRAY_BUFFER_ARB,
-                                            MAX2(total_bytes_needed, VBO_SAVE_BUFFER_SIZE),
-                                            NULL,
-                                            GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT |
-                                            MESA_GALLIUM_VERTEX_STATE_STORAGE,
-                                            save->current_bo);
+      save->current_bo = st_bufferobj_alloc(ctx, VBO_BUF_ID + 1);
+      bool success = st_bufferobj_data(ctx,
+                                       GL_ELEMENT_ARRAY_BUFFER_ARB,
+                                       MAX2(total_bytes_needed, VBO_SAVE_BUFFER_SIZE),
+                                       NULL,
+                                       GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT |
+                                       MESA_GALLIUM_VERTEX_STATE_STORAGE,
+                                       save->current_bo);
       if (!success) {
          _mesa_reference_buffer_object(ctx, &save->current_bo, NULL);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
@@ -832,11 +833,11 @@ compile_vertex_list(struct gl_context *ctx)
    _mesa_reference_buffer_object(ctx, &node->cold->ib.obj, save->current_bo);
 
    /* Upload the vertices first (see buffer_offset) */
-   ctx->Driver.BufferSubData(ctx,
-                             save->current_bo_bytes_used,
-                             total_vert_count * save->vertex_size * sizeof(fi_type),
-                             vertex_to_index ? temp_vertices_buffer : save->vertex_store->buffer_in_ram,
-                             node->cold->ib.obj);
+   st_bufferobj_subdata(ctx,
+                        save->current_bo_bytes_used,
+                        total_vert_count * save->vertex_size * sizeof(fi_type),
+                        vertex_to_index ? temp_vertices_buffer : save->vertex_store->buffer_in_ram,
+                        node->cold->ib.obj);
    save->current_bo_bytes_used += total_vert_count * save->vertex_size * sizeof(fi_type);
 
   if (vertex_to_index) {
@@ -854,11 +855,11 @@ compile_vertex_list(struct gl_context *ctx)
 
    /* Then upload the indices. */
    if (node->cold->ib.obj) {
-      ctx->Driver.BufferSubData(ctx,
-                                save->current_bo_bytes_used,
-                                idx * sizeof(uint32_t),
-                                indices,
-                                node->cold->ib.obj);
+      st_bufferobj_subdata(ctx,
+                           save->current_bo_bytes_used,
+                           idx * sizeof(uint32_t),
+                           indices,
+                           node->cold->ib.obj);
       save->current_bo_bytes_used += idx * sizeof(uint32_t);
    } else {
       node->cold->vertex_count = 0;
@@ -909,14 +910,14 @@ end:
    node->draw_begins = node->cold->prims[0].begin;
 
    if (!save->current_bo) {
-      save->current_bo = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
-      bool success = ctx->Driver.BufferData(ctx,
-                                            GL_ELEMENT_ARRAY_BUFFER_ARB,
-                                            VBO_SAVE_BUFFER_SIZE,
-                                            NULL,
-                                            GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT |
-                                            MESA_GALLIUM_VERTEX_STATE_STORAGE,
-                                            save->current_bo);
+      save->current_bo = st_bufferobj_alloc(ctx, VBO_BUF_ID + 1);
+      bool success = st_bufferobj_data(ctx,
+                                       GL_ELEMENT_ARRAY_BUFFER_ARB,
+                                       VBO_SAVE_BUFFER_SIZE,
+                                       NULL,
+                                       GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT |
+                                       MESA_GALLIUM_VERTEX_STATE_STORAGE,
+                                       save->current_bo);
       if (!success)
          handle_out_of_memory(ctx);
    }

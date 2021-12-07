@@ -115,4 +115,55 @@ st_get_buffer_reference(struct gl_context *ctx, struct gl_buffer_object *obj)
    return buffer;
 }
 
+struct gl_buffer_object *st_bufferobj_alloc(struct gl_context *ctx, GLuint name);
+void st_bufferobj_free(struct gl_context *ctx, struct gl_buffer_object *obj);
+void st_bufferobj_subdata(struct gl_context *ctx,
+                          GLintptrARB offset,
+                          GLsizeiptrARB size,
+                          const void * data, struct gl_buffer_object *obj);
+void st_bufferobj_get_subdata(struct gl_context *ctx,
+                              GLintptrARB offset,
+                              GLsizeiptrARB size,
+                              void * data, struct gl_buffer_object *obj);
+GLboolean st_bufferobj_data(struct gl_context *ctx,
+                            GLenum target,
+                            GLsizeiptrARB size,
+                            const void *data,
+                            GLenum usage,
+                            GLbitfield storageFlags,
+                            struct gl_buffer_object *obj);
+GLboolean st_bufferobj_data_mem(struct gl_context *ctx,
+                                GLenum target,
+                                GLsizeiptrARB size,
+                                struct gl_memory_object *memObj,
+                                GLuint64 offset,
+                                GLenum usage,
+                                struct gl_buffer_object *bufObj);
+void *st_bufferobj_map_range(struct gl_context *ctx,
+                             GLintptr offset, GLsizeiptr length,
+                             GLbitfield access,
+                             struct gl_buffer_object *obj,
+                             gl_map_buffer_index index);
+
+void st_bufferobj_flush_mapped_range(struct gl_context *ctx,
+                                     GLintptr offset, GLsizeiptr length,
+                                     struct gl_buffer_object *obj,
+                                     gl_map_buffer_index index);
+GLboolean st_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
+                             gl_map_buffer_index index);
+void st_copy_buffer_subdata(struct gl_context *ctx,
+                            struct gl_buffer_object *src,
+                            struct gl_buffer_object *dst,
+                            GLintptr readOffset, GLintptr writeOffset,
+                            GLsizeiptr size);
+void st_clear_buffer_subdata(struct gl_context *ctx,
+                             GLintptr offset, GLsizeiptr size,
+                             const void *clearValue,
+                             GLsizeiptr clearValueSize,
+                             struct gl_buffer_object *bufObj);
+void st_bufferobj_page_commitment(struct gl_context *ctx,
+                                  struct gl_buffer_object *bufferObj,
+                                  GLintptr offset, GLsizeiptr size,
+                                  GLboolean commit);
+
 #endif

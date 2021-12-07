@@ -41,6 +41,7 @@
 
 #include "vbo_private.h"
 
+#include "state_tracker/st_cb_bufferobjects.h"
 
 static void
 copy_vao(struct gl_context *ctx, const struct gl_vertex_array_object *vao,
@@ -147,14 +148,14 @@ loopback_vertex_list(struct gl_context *ctx,
                      const struct vbo_save_vertex_list *list)
 {
    struct gl_buffer_object *bo = list->cold->VAO[0]->BufferBinding[0].BufferObj;
-   void *buffer = ctx->Driver.MapBufferRange(ctx, 0, bo->Size, GL_MAP_READ_BIT, /* ? */
-                                             bo, MAP_INTERNAL);
+   void *buffer = st_bufferobj_map_range(ctx, 0, bo->Size, GL_MAP_READ_BIT, /* ? */
+                                         bo, MAP_INTERNAL);
 
    /* TODO: in this case, we shouldn't create a bo at all and instead keep
     * the in-RAM buffer. */
    _vbo_loopback_vertex_list(ctx, list, buffer);
 
-   ctx->Driver.UnmapBuffer(ctx, bo, MAP_INTERNAL);
+   st_bufferobj_unmap(ctx, bo, MAP_INTERNAL);
 }
 
 

@@ -56,7 +56,7 @@
  * lookup an opaque structure.  It would be nice if the handles and
  * internal structure where somehow shared.
  */
-static struct gl_buffer_object *
+struct gl_buffer_object *
 st_bufferobj_alloc(struct gl_context *ctx, GLuint name)
 {
    struct st_buffer_object *st_obj = ST_CALLOC_STRUCT(st_buffer_object);
@@ -97,8 +97,7 @@ release_buffer(struct gl_buffer_object *obj)
  * Deallocate/free a vertex/pixel buffer object.
  * Called via glDeleteBuffersARB().
  */
-static void
-st_bufferobj_free(struct gl_context *ctx, struct gl_buffer_object *obj)
+void st_bufferobj_free(struct gl_context *ctx, struct gl_buffer_object *obj)
 {
    assert(obj->RefCount == 0);
    _mesa_buffer_unmap_all_mappings(ctx, obj);
@@ -114,7 +113,7 @@ st_bufferobj_free(struct gl_context *ctx, struct gl_buffer_object *obj)
  * if data is NULL, no copy is performed.
  * Called via glBufferSubDataARB().
  */
-static void
+void
 st_bufferobj_subdata(struct gl_context *ctx,
                      GLintptrARB offset,
                      GLsizeiptrARB size,
@@ -164,7 +163,7 @@ st_bufferobj_subdata(struct gl_context *ctx,
 /**
  * Called via glGetBufferSubDataARB().
  */
-static void
+void
 st_bufferobj_get_subdata(struct gl_context *ctx,
                          GLintptrARB offset,
                          GLsizeiptrARB size,
@@ -427,7 +426,7 @@ bufferobj_data(struct gl_context *ctx,
  * Called via ctx->Driver.BufferData().
  * \return GL_TRUE for success, GL_FALSE if out of memory
  */
-static GLboolean
+GLboolean
 st_bufferobj_data(struct gl_context *ctx,
                   GLenum target,
                   GLsizeiptrARB size,
@@ -439,7 +438,7 @@ st_bufferobj_data(struct gl_context *ctx,
    return bufferobj_data(ctx, target, size, data, NULL, 0, usage, storageFlags, obj);
 }
 
-static GLboolean
+GLboolean
 st_bufferobj_data_mem(struct gl_context *ctx,
                       GLenum target,
                       GLsizeiptrARB size,
@@ -530,7 +529,7 @@ st_access_flags_to_transfer_flags(GLbitfield access, bool wholeBuffer)
 /**
  * Called via glMapBufferRange().
  */
-static void *
+void *
 st_bufferobj_map_range(struct gl_context *ctx,
                        GLintptr offset, GLsizeiptr length, GLbitfield access,
                        struct gl_buffer_object *obj,
@@ -576,7 +575,7 @@ st_bufferobj_map_range(struct gl_context *ctx,
 }
 
 
-static void
+void
 st_bufferobj_flush_mapped_range(struct gl_context *ctx,
                                 GLintptr offset, GLsizeiptr length,
                                 struct gl_buffer_object *obj,
@@ -603,7 +602,7 @@ st_bufferobj_flush_mapped_range(struct gl_context *ctx,
 /**
  * Called via glUnmapBufferARB().
  */
-static GLboolean
+GLboolean
 st_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
                    gl_map_buffer_index index)
 {
@@ -624,7 +623,7 @@ st_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
 /**
  * Called via glCopyBufferSubData().
  */
-static void
+void
 st_copy_buffer_subdata(struct gl_context *ctx,
                        struct gl_buffer_object *src,
                        struct gl_buffer_object *dst,
@@ -652,7 +651,7 @@ st_copy_buffer_subdata(struct gl_context *ctx,
 /**
  * Called via glClearBufferSubData().
  */
-static void
+void
 st_clear_buffer_subdata(struct gl_context *ctx,
                         GLintptr offset, GLsizeiptr size,
                         const void *clearValue,
@@ -676,7 +675,7 @@ st_clear_buffer_subdata(struct gl_context *ctx,
                       clearValue, clearValueSize);
 }
 
-static void
+void
 st_bufferobj_page_commitment(struct gl_context *ctx,
                              struct gl_buffer_object *bufferObj,
                              GLintptr offset, GLsizeiptr size,
@@ -698,19 +697,6 @@ void
 st_init_bufferobject_functions(struct pipe_screen *screen,
                                struct dd_function_table *functions)
 {
-   functions->NewBufferObject = st_bufferobj_alloc;
-   functions->DeleteBuffer = st_bufferobj_free;
-   functions->BufferData = st_bufferobj_data;
-   functions->BufferDataMem = st_bufferobj_data_mem;
-   functions->BufferSubData = st_bufferobj_subdata;
-   functions->GetBufferSubData = st_bufferobj_get_subdata;
-   functions->MapBufferRange = st_bufferobj_map_range;
-   functions->FlushMappedBufferRange = st_bufferobj_flush_mapped_range;
-   functions->UnmapBuffer = st_bufferobj_unmap;
-   functions->CopyBufferSubData = st_copy_buffer_subdata;
-   functions->ClearBufferSubData = st_clear_buffer_subdata;
-   functions->BufferPageCommitment = st_bufferobj_page_commitment;
-
    if (screen->get_param(screen, PIPE_CAP_INVALIDATE_BUFFER))
       functions->InvalidateBufferSubData = st_bufferobj_invalidate;
 }

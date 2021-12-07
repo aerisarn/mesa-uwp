@@ -78,6 +78,7 @@
 
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_bitmap.h"
+#include "state_tracker/st_cb_bufferobjects.h"
 
 #define USE_BITMAP_ATLAS 1
 
@@ -1473,9 +1474,9 @@ unpack_image(struct gl_context *ctx, GLuint dimensions,
       GLvoid *image;
 
       map = (GLubyte *)
-         ctx->Driver.MapBufferRange(ctx, 0, unpack->BufferObj->Size,
-                                    GL_MAP_READ_BIT, unpack->BufferObj,
-                                    MAP_INTERNAL);
+         st_bufferobj_map_range(ctx, 0, unpack->BufferObj->Size,
+                                GL_MAP_READ_BIT, unpack->BufferObj,
+                                MAP_INTERNAL);
       if (!map) {
          /* unable to map src buffer! */
          _mesa_error(ctx, GL_INVALID_OPERATION, "unable to map PBO");
@@ -1486,7 +1487,7 @@ unpack_image(struct gl_context *ctx, GLuint dimensions,
       image = _mesa_unpack_image(dimensions, width, height, depth,
                                  format, type, src, unpack);
 
-      ctx->Driver.UnmapBuffer(ctx, unpack->BufferObj, MAP_INTERNAL);
+      st_bufferobj_unmap(ctx, unpack->BufferObj, MAP_INTERNAL);
 
       if (!image) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "display list construction");

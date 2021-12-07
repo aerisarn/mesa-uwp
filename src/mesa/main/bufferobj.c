@@ -49,6 +49,7 @@
 #include "util/u_memory.h"
 #include "util/set.h"
 
+#include "state_tracker/st_cb_bufferobjects.h"
 
 /* Debug flags */
 /*#define VBO_DEBUG*/
@@ -499,8 +500,7 @@ _mesa_reference_buffer_object_(struct gl_context *ctx,
        */
       if (shared_binding || ctx != oldObj->Ctx) {
          if (p_atomic_dec_zero(&oldObj->RefCount)) {
-            assert(ctx->Driver.DeleteBuffer);
-            ctx->Driver.DeleteBuffer(ctx, oldObj);
+            st_bufferobj_free(ctx, oldObj);
          }
       } else if (ctx == oldObj->Ctx) {
          /* Update the private ref count. */
@@ -618,11 +618,10 @@ _mesa_ClearBufferSubData_sw(struct gl_context *ctx,
    GLsizeiptr i;
    GLubyte *dest;
 
-   assert(ctx->Driver.MapBufferRange);
-   dest = ctx->Driver.MapBufferRange(ctx, offset, size,
-                                     GL_MAP_WRITE_BIT |
-                                     GL_MAP_INVALIDATE_RANGE_BIT,
-                                     bufObj, MAP_INTERNAL);
+   dest = st_bufferobj_map_range(ctx, offset, size,
+                                 GL_MAP_WRITE_BIT |
+                                 GL_MAP_INVALIDATE_RANGE_BIT,
+                                 bufObj, MAP_INTERNAL);
 
    if (!dest) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glClearBuffer[Sub]Data");
@@ -632,7 +631,7 @@ _mesa_ClearBufferSubData_sw(struct gl_context *ctx,
    if (clearValue == NULL) {
       /* Clear with zeros, per the spec */
       memset(dest, 0, size);
-      ctx->Driver.UnmapBuffer(ctx, bufObj, MAP_INTERNAL);
+      st_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
       return;
    }
 
@@ -641,7 +640,7 @@ _mesa_ClearBufferSubData_sw(struct gl_context *ctx,
       dest += clearValueSize;
    }
 
-   ctx->Driver.UnmapBuffer(ctx, bufObj, MAP_INTERNAL);
+   st_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
 }
 
 /**
@@ -811,7 +810,7 @@ _mesa_free_buffer_objects( struct gl_context *ctx )
 static struct gl_buffer_object *
 new_gl_buffer_object(struct gl_context *ctx, GLuint id)
 {
-   struct gl_buffer_object *buf = ctx->Driver.NewBufferObject(ctx, id);
+   struct gl_buffer_object *buf = st_bufferobj_alloc(ctx, id);
 
    buf->Ctx = ctx;
    buf->RefCount++; /* global buffer reference held by the context */
@@ -1037,7 +1036,7 @@ _mesa_buffer_unmap_all_mappings(struct gl_context *ctx,
 {
    for (int i = 0; i < MAP_COUNT; i++) {
       if (_mesa_bufferobj_mapped(bufObj, i)) {
-         ctx->Driver.UnmapBuffer(ctx, bufObj, i);
+         st_bufferobj_unmap(ctx, bufObj, i);
          assert(bufObj->Mappings[i].Pointer == NULL);
          bufObj->Mappings[i].AccessFlags = 0;
       }
@@ -1515,7 +1514,6 @@ create_buffers(struct gl_context *ctx, GLsizei n, GLuint *buffers, bool dsa)
     */
    for (int i = 0; i < n; i++) {
       if (dsa) {
-         assert(ctx->Driver.NewBufferObject);
          buf = new_gl_buffer_object(ctx, buffers[i]);
          if (!buf) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "glCreateBuffers");
@@ -1691,14 +1689,12 @@ buffer_storage(struct gl_context *ctx, struct gl_buffer_object *bufObj,
    bufObj->MinMaxCacheDirty = true;
 
    if (memObj) {
-      assert(ctx->Driver.BufferDataMem);
-      res = ctx->Driver.BufferDataMem(ctx, target, size, memObj, offset,
-                                      GL_DYNAMIC_DRAW, bufObj);
+      res = st_bufferobj_data_mem(ctx, target, size, memObj, offset,
+                                  GL_DYNAMIC_DRAW, bufObj);
    }
    else {
-      assert(ctx->Driver.BufferData);
-      res = ctx->Driver.BufferData(ctx, target, size, data, GL_DYNAMIC_DRAW,
-                                   flags, bufObj);
+      res = st_bufferobj_data(ctx, target, size, data, GL_DYNAMIC_DRAW,
+                              flags, bufObj);
    }
 
    if (!res) {
@@ -1946,12 +1942,11 @@ buffer_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
    size += 100;
 #endif
 
-   assert(ctx->Driver.BufferData);
-   if (!ctx->Driver.BufferData(ctx, target, size, data, usage,
-                               GL_MAP_READ_BIT |
-                               GL_MAP_WRITE_BIT |
-                               GL_DYNAMIC_STORAGE_BIT,
-                               bufObj)) {
+   if (!st_bufferobj_data(ctx, target, size, data, usage,
+                          GL_MAP_READ_BIT |
+                          GL_MAP_WRITE_BIT |
+                          GL_DYNAMIC_STORAGE_BIT,
+                          bufObj)) {
       if (target == GL_EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD) {
          if (!no_error) {
             /* From GL_AMD_pinned_memory:
@@ -2126,8 +2121,7 @@ _mesa_buffer_sub_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
    bufObj->Written = GL_TRUE;
    bufObj->MinMaxCacheDirty = true;
 
-   assert(ctx->Driver.BufferSubData);
-   ctx->Driver.BufferSubData(ctx, offset, size, data, bufObj);
+   st_bufferobj_subdata(ctx, offset, size, data, bufObj);
 }
 
 
@@ -2238,8 +2232,7 @@ _mesa_GetBufferSubData(GLenum target, GLintptr offset,
       return;
    }
 
-   assert(ctx->Driver.GetBufferSubData);
-   ctx->Driver.GetBufferSubData(ctx, offset, size, data, bufObj);
+   st_bufferobj_get_subdata(ctx, offset, size, data, bufObj);
 }
 
 void GLAPIENTRY
@@ -2259,8 +2252,7 @@ _mesa_GetNamedBufferSubData(GLuint buffer, GLintptr offset,
       return;
    }
 
-   assert(ctx->Driver.GetBufferSubData);
-   ctx->Driver.GetBufferSubData(ctx, offset, size, data, bufObj);
+   st_bufferobj_get_subdata(ctx, offset, size, data, bufObj);
 }
 
 
@@ -2287,8 +2279,7 @@ _mesa_GetNamedBufferSubDataEXT(GLuint buffer, GLintptr offset,
       return;
    }
 
-   assert(ctx->Driver.GetBufferSubData);
-   ctx->Driver.GetBufferSubData(ctx, offset, size, data, bufObj);
+   st_bufferobj_get_subdata(ctx, offset, size, data, bufObj);
 }
 
 /**
@@ -2337,7 +2328,7 @@ clear_buffer_sub_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
 
    if (data == NULL) {
       /* clear to zeros, per the spec */
-      ctx->Driver.ClearBufferSubData(ctx, offset, size,
+      st_clear_buffer_subdata(ctx, offset, size,
                                      NULL, clearValueSize, bufObj);
       return;
    }
@@ -2347,8 +2338,8 @@ clear_buffer_sub_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
       return;
    }
 
-   ctx->Driver.ClearBufferSubData(ctx, offset, size,
-                                  clearValue, clearValueSize, bufObj);
+   st_clear_buffer_subdata(ctx, offset, size,
+                           clearValue, clearValueSize, bufObj);
 }
 
 static void
@@ -2540,7 +2531,7 @@ _mesa_ClearNamedBufferSubDataEXT(GLuint buffer, GLenum internalformat,
 static GLboolean
 unmap_buffer(struct gl_context *ctx, struct gl_buffer_object *bufObj)
 {
-   GLboolean status = ctx->Driver.UnmapBuffer(ctx, bufObj, MAP_USER);
+   GLboolean status = st_bufferobj_unmap(ctx, bufObj, MAP_USER);
    bufObj->Mappings[MAP_USER].AccessFlags = 0;
    assert(bufObj->Mappings[MAP_USER].Pointer == NULL);
    assert(bufObj->Mappings[MAP_USER].Offset == 0);
@@ -2943,7 +2934,7 @@ copy_buffer_sub_data(struct gl_context *ctx, struct gl_buffer_object *src,
 
    dst->MinMaxCacheDirty = true;
 
-   ctx->Driver.CopyBufferSubData(ctx, src, dst, readOffset, writeOffset, size);
+   st_copy_buffer_subdata(ctx, src, dst, readOffset, writeOffset, size);
 }
 
 void GLAPIENTRY
@@ -2960,8 +2951,8 @@ _mesa_CopyBufferSubData_no_error(GLenum readTarget, GLenum writeTarget,
    struct gl_buffer_object *dst = *dst_ptr;
 
    dst->MinMaxCacheDirty = true;
-   ctx->Driver.CopyBufferSubData(ctx, src, dst, readOffset, writeOffset,
-                                 size);
+   st_copy_buffer_subdata(ctx, src, dst, readOffset, writeOffset,
+                          size);
 }
 
 void GLAPIENTRY
@@ -3021,8 +3012,8 @@ _mesa_CopyNamedBufferSubData_no_error(GLuint readBuffer, GLuint writeBuffer,
    struct gl_buffer_object *dst = _mesa_lookup_bufferobj(ctx, writeBuffer);
 
    dst->MinMaxCacheDirty = true;
-   ctx->Driver.CopyBufferSubData(ctx, src, dst, readOffset, writeOffset,
-                                 size);
+   st_copy_buffer_subdata(ctx, src, dst, readOffset, writeOffset,
+                          size);
 }
 
 void GLAPIENTRY
@@ -3081,7 +3072,7 @@ _mesa_InternalBufferSubDataCopyMESA(GLintptr srcBuffer, GLuint srcOffset,
       goto done; /* the error is already set */
 
    dst->MinMaxCacheDirty = true;
-   ctx->Driver.CopyBufferSubData(ctx, src, dst, srcOffset, dstOffset, size);
+   st_copy_buffer_subdata(ctx, src, dst, srcOffset, dstOffset, size);
 
 done:
    /* The caller passes the reference to this function, so unreference it. */
@@ -3235,9 +3226,8 @@ map_buffer_range(struct gl_context *ctx, struct gl_buffer_object *bufObj,
       return NULL;
    }
 
-   assert(ctx->Driver.MapBufferRange);
-   void *map = ctx->Driver.MapBufferRange(ctx, offset, length, access, bufObj,
-                                          MAP_USER);
+   void *map = st_bufferobj_map_range(ctx, offset, length, access, bufObj,
+                                      MAP_USER);
    if (!map) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s(map failed)", func);
    }
@@ -3565,9 +3555,8 @@ flush_mapped_buffer_range(struct gl_context *ctx,
 
    assert(bufObj->Mappings[MAP_USER].AccessFlags & GL_MAP_WRITE_BIT);
 
-   if (ctx->Driver.FlushMappedBufferRange)
-      ctx->Driver.FlushMappedBufferRange(ctx, offset, length, bufObj,
-                                         MAP_USER);
+   st_bufferobj_flush_mapped_range(ctx, offset, length, bufObj,
+                                   MAP_USER);
 }
 
 void GLAPIENTRY
@@ -3578,9 +3567,8 @@ _mesa_FlushMappedBufferRange_no_error(GLenum target, GLintptr offset,
    struct gl_buffer_object **bufObjPtr = get_buffer_target(ctx, target);
    struct gl_buffer_object *bufObj = *bufObjPtr;
 
-   if (ctx->Driver.FlushMappedBufferRange)
-      ctx->Driver.FlushMappedBufferRange(ctx, offset, length, bufObj,
-                                         MAP_USER);
+   st_bufferobj_flush_mapped_range(ctx, offset, length, bufObj,
+                                   MAP_USER);
 }
 
 void GLAPIENTRY
@@ -3606,9 +3594,8 @@ _mesa_FlushMappedNamedBufferRange_no_error(GLuint buffer, GLintptr offset,
    GET_CURRENT_CONTEXT(ctx);
    struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
 
-   if (ctx->Driver.FlushMappedBufferRange)
-      ctx->Driver.FlushMappedBufferRange(ctx, offset, length, bufObj,
-                                         MAP_USER);
+   st_bufferobj_flush_mapped_range(ctx, offset, length, bufObj,
+                                   MAP_USER);
 }
 
 void GLAPIENTRY
@@ -4824,7 +4811,7 @@ buffer_page_commitment(struct gl_context *ctx,
       return;
    }
 
-   ctx->Driver.BufferPageCommitment(ctx, bufferObj, offset, size, commit);
+   st_bufferobj_page_commitment(ctx, bufferObj, offset, size, commit);
 }
 
 void GLAPIENTRY

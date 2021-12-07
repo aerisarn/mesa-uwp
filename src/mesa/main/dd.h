@@ -265,56 +265,11 @@ struct dd_function_table {
     * \name Vertex/pixel buffer object functions
     */
    /*@{*/
-   struct gl_buffer_object * (*NewBufferObject)(struct gl_context *ctx,
-                                                GLuint buffer);
-   
-   void (*DeleteBuffer)( struct gl_context *ctx, struct gl_buffer_object *obj );
-
-   GLboolean (*BufferData)(struct gl_context *ctx, GLenum target,
-                           GLsizeiptrARB size, const GLvoid *data, GLenum usage,
-                           GLenum storageFlags, struct gl_buffer_object *obj);
-
-   void (*BufferSubData)( struct gl_context *ctx, GLintptrARB offset,
-			  GLsizeiptrARB size, const GLvoid *data,
-			  struct gl_buffer_object *obj );
-
-   void (*GetBufferSubData)( struct gl_context *ctx,
-			     GLintptrARB offset, GLsizeiptrARB size,
-			     GLvoid *data, struct gl_buffer_object *obj );
-
-   void (*ClearBufferSubData)( struct gl_context *ctx,
-                               GLintptr offset, GLsizeiptr size,
-                               const GLvoid *clearValue,
-                               GLsizeiptr clearValueSize,
-                               struct gl_buffer_object *obj );
-
-   void (*CopyBufferSubData)( struct gl_context *ctx,
-                              struct gl_buffer_object *src,
-                              struct gl_buffer_object *dst,
-                              GLintptr readOffset, GLintptr writeOffset,
-                              GLsizeiptr size );
-
    void (*InvalidateBufferSubData)( struct gl_context *ctx,
                                     struct gl_buffer_object *obj,
                                     GLintptr offset,
                                     GLsizeiptr length );
 
-   /* Returns pointer to the start of the mapped range.
-    * May return NULL if MESA_MAP_NOWAIT_BIT is set in access:
-    */
-   void * (*MapBufferRange)( struct gl_context *ctx, GLintptr offset,
-                             GLsizeiptr length, GLbitfield access,
-                             struct gl_buffer_object *obj,
-                             gl_map_buffer_index index);
-
-   void (*FlushMappedBufferRange)(struct gl_context *ctx,
-                                  GLintptr offset, GLsizeiptr length,
-                                  struct gl_buffer_object *obj,
-                                  gl_map_buffer_index index);
-
-   GLboolean (*UnmapBuffer)( struct gl_context *ctx,
-			     struct gl_buffer_object *obj,
-                             gl_map_buffer_index index);
    /*@}*/
 
    /**
@@ -454,27 +409,6 @@ struct dd_function_table {
                                     const GLuint *num_groups,
                                     const GLuint *group_size);
    /*@}*/
-
-   /**
-    * \name GL_ARB_sparse_buffer interface
-    */
-   /*@{*/
-   void (*BufferPageCommitment)(struct gl_context *ctx,
-                                struct gl_buffer_object *bufferObj,
-                                GLintptr offset, GLsizeiptr size,
-                                GLboolean commit);
-   /*@}*/
-
-   /**
-    * Use a memory object as the backing data for a buffer object
-    */
-   GLboolean (*BufferDataMem)(struct gl_context *ctx,
-                              GLenum target,
-                              GLsizeiptrARB size,
-                              struct gl_memory_object *memObj,
-                              GLuint64 offset,
-                              GLenum usage,
-                              struct gl_buffer_object *bufObj);
 
    /**
     * \name GL_ARB_get_program_binary

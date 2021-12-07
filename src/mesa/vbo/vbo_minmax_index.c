@@ -36,6 +36,7 @@
 #include "util/u_memory.h"
 #include "pipe/p_state.h"
 
+#include "state_tracker/st_cb_bufferobjects.h"
 
 struct minmax_cache_key {
    GLintptr offset;
@@ -338,8 +339,8 @@ vbo_get_minmax_index(struct gl_context *ctx, struct gl_buffer_object *obj,
                                 max_index))
          return;
 
-      indices = ctx->Driver.MapBufferRange(ctx, offset, size, GL_MAP_READ_BIT,
-                                           obj, MAP_INTERNAL);
+      indices = st_bufferobj_map_range(ctx, offset, size, GL_MAP_READ_BIT,
+                                       obj, MAP_INTERNAL);
    }
 
    vbo_get_minmax_index_mapped(count, index_size, restart_index,
@@ -349,7 +350,7 @@ vbo_get_minmax_index(struct gl_context *ctx, struct gl_buffer_object *obj,
    if (obj) {
       vbo_minmax_cache_store(ctx, obj, index_size, offset, count, *min_index,
                              *max_index);
-      ctx->Driver.UnmapBuffer(ctx, obj, MAP_INTERNAL);
+      st_bufferobj_unmap(ctx, obj, MAP_INTERNAL);
    }
 }
 
