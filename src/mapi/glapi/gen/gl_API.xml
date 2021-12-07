@@ -3797,7 +3797,7 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="ColorTable" deprecated="3.1">
+    <function name="ColorTable" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="width" type="GLsizei"/>
@@ -3807,21 +3807,21 @@
         <glx rop="2053" large="true"/>
     </function>
 
-    <function name="ColorTableParameterfv" deprecated="3.1">
+    <function name="ColorTableParameterfv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="const GLfloat *" variable_param="pname"/>
         <glx rop="2054"/>
     </function>
 
-    <function name="ColorTableParameteriv" deprecated="3.1">
+    <function name="ColorTableParameteriv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="const GLint *" variable_param="pname"/>
         <glx rop="2055"/>
     </function>
 
-    <function name="CopyColorTable" deprecated="3.1">
+    <function name="CopyColorTable" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="x" type="GLint"/>
@@ -3830,7 +3830,7 @@
         <glx rop="2056"/>
     </function>
 
-    <function name="GetColorTable" deprecated="3.1">
+    <function name="GetColorTable" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="format" type="GLenum"/>
         <param name="type" type="GLenum"/>
@@ -3838,21 +3838,21 @@
         <glx sop="147" dimensions_in_reply="true"/>
     </function>
 
-    <function name="GetColorTableParameterfv" deprecated="3.1">
+    <function name="GetColorTableParameterfv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLfloat *" output="true" variable_param="pname"/>
         <glx sop="148"/>
     </function>
 
-    <function name="GetColorTableParameteriv" deprecated="3.1">
+    <function name="GetColorTableParameteriv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLint *" output="true" variable_param="pname"/>
         <glx sop="149"/>
     </function>
 
-    <function name="ColorSubTable" deprecated="3.1">
+    <function name="ColorSubTable" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="start" type="GLsizei"/>
         <param name="count" type="GLsizei"/>
@@ -3862,7 +3862,7 @@
         <glx rop="195" large="true"/>
     </function>
 
-    <function name="CopyColorSubTable" deprecated="3.1">
+    <function name="CopyColorSubTable" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="start" type="GLsizei"/>
         <param name="x" type="GLint"/>
@@ -3871,7 +3871,7 @@
         <glx rop="196"/>
     </function>
 
-    <function name="ConvolutionFilter1D" deprecated="3.1">
+    <function name="ConvolutionFilter1D" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="width" type="GLsizei"/>
@@ -3881,7 +3881,7 @@
         <glx rop="4101" large="true"/>
     </function>
 
-    <function name="ConvolutionFilter2D" deprecated="3.1">
+    <function name="ConvolutionFilter2D" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="width" type="GLsizei"/>
@@ -3892,35 +3892,35 @@
         <glx rop="4102" large="true"/>
     </function>
 
-    <function name="ConvolutionParameterf" deprecated="3.1">
+    <function name="ConvolutionParameterf" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLfloat"/>
         <glx rop="4103"/>
     </function>
 
-    <function name="ConvolutionParameterfv" deprecated="3.1">
+    <function name="ConvolutionParameterfv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="const GLfloat *" variable_param="pname"/>
         <glx rop="4104"/>
     </function>
 
-    <function name="ConvolutionParameteri" deprecated="3.1">
+    <function name="ConvolutionParameteri" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLint"/>
         <glx rop="4105"/>
     </function>
 
-    <function name="ConvolutionParameteriv" deprecated="3.1">
+    <function name="ConvolutionParameteriv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="const GLint *" variable_param="pname"/>
         <glx rop="4106"/>
     </function>
 
-    <function name="CopyConvolutionFilter1D" deprecated="3.1">
+    <function name="CopyConvolutionFilter1D" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="x" type="GLint"/>
@@ -3929,7 +3929,7 @@
         <glx rop="4107"/>
     </function>
 
-    <function name="CopyConvolutionFilter2D" deprecated="3.1">
+    <function name="CopyConvolutionFilter2D" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="x" type="GLint"/>
@@ -3939,7 +3939,7 @@
         <glx rop="4108"/>
     </function>
 
-    <function name="GetConvolutionFilter" deprecated="3.1">
+    <function name="GetConvolutionFilter" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="format" type="GLenum"/>
         <param name="type" type="GLenum"/>
@@ -3947,21 +3947,21 @@
         <glx sop="150" dimensions_in_reply="true"/>
     </function>
 
-    <function name="GetConvolutionParameterfv" deprecated="3.1">
+    <function name="GetConvolutionParameterfv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLfloat *" output="true" variable_param="pname"/>
         <glx sop="151"/>
     </function>
 
-    <function name="GetConvolutionParameteriv" deprecated="3.1">
+    <function name="GetConvolutionParameteriv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLint *" output="true" variable_param="pname"/>
         <glx sop="152"/>
     </function>
 
-    <function name="GetSeparableFilter" deprecated="3.1">
+    <function name="GetSeparableFilter" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="format" type="GLenum"/>
         <param name="type" type="GLenum"/>
@@ -3971,7 +3971,7 @@
         <glx sop="153" handcode="true"/>
     </function>
 
-    <function name="SeparableFilter2D" deprecated="3.1">
+    <function name="SeparableFilter2D" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="width" type="GLsizei"/>
@@ -3983,7 +3983,7 @@
         <glx rop="4109" handcode="true"/>
     </function>
 
-    <function name="GetHistogram" deprecated="3.1">
+    <function name="GetHistogram" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="reset" type="GLboolean"/>
         <param name="format" type="GLenum"/>
@@ -3992,21 +3992,21 @@
         <glx sop="154" dimensions_in_reply="true" img_reset="reset"/>
     </function>
 
-    <function name="GetHistogramParameterfv" deprecated="3.1">
+    <function name="GetHistogramParameterfv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLfloat *" output="true" variable_param="pname"/>
         <glx sop="155"/>
     </function>
 
-    <function name="GetHistogramParameteriv" deprecated="3.1">
+    <function name="GetHistogramParameteriv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLint *" output="true" variable_param="pname"/>
         <glx sop="156"/>
     </function>
 
-    <function name="GetMinmax" deprecated="3.1">
+    <function name="GetMinmax" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="reset" type="GLboolean"/>
         <param name="format" type="GLenum"/>
@@ -4015,21 +4015,21 @@
         <glx sop="157" img_reset="reset"/>
     </function>
 
-    <function name="GetMinmaxParameterfv" deprecated="3.1">
+    <function name="GetMinmaxParameterfv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLfloat *" output="true" variable_param="pname"/>
         <glx sop="158"/>
     </function>
 
-    <function name="GetMinmaxParameteriv" deprecated="3.1">
+    <function name="GetMinmaxParameteriv" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLint *" output="true" variable_param="pname"/>
         <glx sop="159"/>
     </function>
 
-    <function name="Histogram" deprecated="3.1">
+    <function name="Histogram" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="width" type="GLsizei"/>
         <param name="internalformat" type="GLenum"/>
@@ -4037,19 +4037,19 @@
         <glx rop="4110"/>
     </function>
 
-    <function name="Minmax" deprecated="3.1">
+    <function name="Minmax" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="sink" type="GLboolean"/>
         <glx rop="4111"/>
     </function>
 
-    <function name="ResetHistogram" deprecated="3.1">
+    <function name="ResetHistogram" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <glx rop="4112"/>
     </function>
 
-    <function name="ResetMinmax" deprecated="3.1">
+    <function name="ResetMinmax" deprecated="3.1" exec="skip">
         <param name="target" type="GLenum"/>
         <glx rop="4113"/>
     </function>
