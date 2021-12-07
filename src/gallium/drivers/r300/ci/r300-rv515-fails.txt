@@ -73,23 +73,21 @@ dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_v
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_read_vertex,Fail
 
-dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_loop_write_dynamic_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_loop_write_dynamic_read_fragment,Fail
+
+dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_loop_write_dynamic_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_loop_write_static_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_loop_write_static_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_dynamic_loop_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_dynamic_loop_write_dynamic_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_dynamic_loop_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_dynamic_loop_write_static_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_dynamic_loop_write_static_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_dynamic_loop_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_dynamic_loop_write_dynamic_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_dynamic_loop_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_dynamic_loop_write_static_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_dynamic_loop_write_static_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_dynamic_loop_write_dynamic_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_loop_write_dynamic_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_loop_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_loop_write_static_loop_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_loop_write_static_read_vertex,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_loop_write_dynamic_loop_read_vertex,Fail
@@ -148,6 +146,7 @@ dEQP-GLES2.functional.shaders.loops.for_dynamic_iterations.sequence_vertex,Crash
 dEQP-GLES2.functional.shaders.loops.for_uniform_iterations.sequence_vertex,Crash
 dEQP-GLES2.functional.shaders.loops.do_while_constant_iterations.sequence_vertex,Crash
 dEQP-GLES2.functional.shaders.loops.do_while_dynamic_iterations.sequence_vertex,Crash
+dEQP-GLES2.functional.shaders.loops.do_while_uniform_iterations.sequence_vertex,Crash
 dEQP-GLES2.functional.shaders.loops.while_constant_iterations.sequence_vertex,Crash
 dEQP-GLES2.functional.shaders.loops.while_dynamic_iterations.sequence_vertex,Crash
 dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.sequence_vertex,Crash
@@ -162,8 +161,20 @@ dEQP-GLES2.functional.shaders.loops.do_while_uniform_iterations.conditional_cont
 dEQP-GLES2.functional.shaders.loops.do_while_uniform_iterations.double_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.loops.do_while_uniform_iterations.mixed_break_continue_vertex,Fail
 
+dEQP-GLES2.functional.shaders.loops.for_constant_iterations.mixed_break_continue_vertex,Fail
+dEQP-GLES2.functional.shaders.loops.for_dynamic_iterations.mixed_break_continue_vertex,Fail
+dEQP-GLES2.functional.shaders.loops.for_dynamic_iterations.unconditional_break_vertex,Fail
 dEQP-GLES2.functional.shaders.loops.for_uniform_iterations.mixed_break_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.loops.for_uniform_iterations.unconditional_break_vertex,Fail
+dEQP-GLES2.functional.shaders.loops.while_constant_iterations.unconditional_break_vertex,Fail
+dEQP-GLES2.functional.shaders.loops.while_dynamic_iterations.unconditional_break_vertex,Fail
+dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.unconditional_break_vertex,Fail
+
+# "Unknown opcode IF"
+dEQP-GLES2.functional.shaders.return.return_in_dynamic_loop_always_vertex,Fail
+dEQP-GLES2.functional.shaders.return.return_in_dynamic_loop_dynamic_vertex,Fail
+
+dEQP-GLES2.functional.shaders.return.return_in_dynamic_loop_always_fragment,Fail
 
 # FS: POW channel looks good, the rest got trashed though?
 dEQP-GLES2.functional.shaders.operator.exponential.pow.highp_float_fragment,Fail
