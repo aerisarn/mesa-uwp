@@ -59,7 +59,6 @@
 #include "st_cb_program.h"
 #include "st_cb_queryobj.h"
 #include "st_cb_flush.h"
-#include "st_cb_viewport.h"
 #include "st_atom.h"
 #include "st_draw.h"
 #include "st_extensions.h"
@@ -934,7 +933,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_msaa_functions(functions);
    st_init_program_functions(functions);
    st_init_flush_functions(screen, functions);
-   st_init_viewport_functions(functions);
    st_init_compute_functions(functions);
 
    st_init_vdpau_functions(functions);

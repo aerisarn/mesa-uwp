@@ -63,6 +63,7 @@
 #include "util/u_memory.h"
 
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_cb_viewport.h"
 
 static inline bool
 copy_texture_attribs(struct gl_texture_object *dst,
@@ -1100,8 +1101,7 @@ _mesa_PopAttrib(void)
 
             memcpy(&ctx->ViewportArray[i].X, &vp->X, sizeof(float) * 6);
 
-            if (ctx->Driver.Viewport)
-               ctx->Driver.Viewport(ctx);
+            st_viewport(ctx);
          }
       }
 

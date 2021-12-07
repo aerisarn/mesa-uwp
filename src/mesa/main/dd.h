@@ -320,21 +320,6 @@ struct dd_function_table {
                                   uint32_t enabled_attribs);
 
    /**
-    * \name State-changing functions.
-    *
-    * \note drawing functions are above.
-    *
-    * These functions are called by their corresponding OpenGL API functions.
-    * They are \e also called by the gl_PopAttrib() function!!!
-    * May add more functions like these to the device driver in the future.
-    */
-   /*@{*/
-   /** Set the viewport */
-   void (*Viewport)(struct gl_context *ctx);
-   /*@}*/
-
-
-   /**
     * \name Vertex/pixel buffer object functions
     */
    /*@{*/
