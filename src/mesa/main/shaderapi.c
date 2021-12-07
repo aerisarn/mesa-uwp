@@ -66,6 +66,8 @@
 #include "util/u_process.h"
 #include "util/u_string.h"
 
+#include "state_tracker/st_cb_program.h"
+
 #ifdef ENABLE_SHADER_CACHE
 #if CUSTOM_SHADER_REPLACEMENT
 #include "shader_replacement.h"
@@ -751,10 +753,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       *params = shProg->DeletePending;
       return;
    case GL_COMPLETION_STATUS_ARB:
-      if (ctx->Driver.GetShaderProgramCompletionStatus)
-         *params = ctx->Driver.GetShaderProgramCompletionStatus(ctx, shProg);
-      else
-         *params = GL_TRUE;
+      *params = st_get_shader_program_completion_status(ctx, shProg);
       return;
    case GL_LINK_STATUS:
       *params = shProg->data->LinkStatus ? GL_TRUE : GL_FALSE;

@@ -48,6 +48,7 @@
 #include "state_tracker/st_cb_memoryobjects.h"
 #include "state_tracker/st_cb_semaphoreobjects.h"
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_cb_program.h"
 
 static void
 free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared);
@@ -195,7 +196,7 @@ delete_program_cb(void *data, void *userData)
    if(prog != &_mesa_DummyProgram) {
       assert(prog->RefCount == 1); /* should only be referenced by hash table */
       prog->RefCount = 0;  /* now going away */
-      ctx->Driver.DeleteProgram(ctx, prog);
+      st_delete_program(ctx, prog);
    }
 }
 

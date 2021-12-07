@@ -44,6 +44,7 @@
 #include "util/ralloc.h"
 #include "util/u_atomic.h"
 
+#include "state_tracker/st_cb_program.h"
 
 /**
  * A pointer to this dummy program is put into the hash table when
@@ -242,8 +243,6 @@ _mesa_new_program(struct gl_context *ctx, gl_shader_stage stage, GLuint id,
 /**
  * Delete a program and remove it from the hash table, ignoring the
  * reference count.
- * Called via ctx->Driver.DeleteProgram.  May be wrapped (OO deriviation)
- * by a device driver function.
  */
 void
 _mesa_delete_program(struct gl_context *ctx, struct gl_program *prog)
@@ -326,7 +325,7 @@ _mesa_reference_program_(struct gl_context *ctx,
       if (p_atomic_dec_zero(&oldProg->RefCount)) {
          assert(ctx);
          _mesa_reference_shader_program_data(ctx, &oldProg->sh.data, NULL);
-         ctx->Driver.DeleteProgram(ctx, oldProg);
+         st_delete_program(ctx, oldProg);
       }
 
       *ptr = NULL;

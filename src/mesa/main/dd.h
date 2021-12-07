@@ -119,43 +119,10 @@ struct dd_function_table {
    /**
     * \name Vertex/fragment program functions
     */
-   /*@{*/
    /** Allocate a new program */
    struct gl_program * (*NewProgram)(struct gl_context *ctx,
                                      gl_shader_stage stage,
                                      GLuint id, bool is_arb_asm);
-   /** Delete a program */
-   void (*DeleteProgram)(struct gl_context *ctx, struct gl_program *prog);   
-   /**
-    * Allocate a program to associate with the new ATI fragment shader (optional)
-    */
-   struct gl_program * (*NewATIfs)(struct gl_context *ctx,
-                                   struct ati_fragment_shader *curProg);
-   /**
-    * Notify driver that a program string (and GPU code) has been specified
-    * or modified.  Return GL_TRUE or GL_FALSE to indicate if the program is
-    * supported by the driver.
-    */
-   GLboolean (*ProgramStringNotify)(struct gl_context *ctx, GLenum target, 
-                                    struct gl_program *prog);
-
-   /*@}*/
-
-   /**
-    * \name GLSL shader/program functions.
-    */
-   /*@{*/
-   /**
-    * Called when a shader program is linked.
-    *
-    * This gives drivers an opportunity to clone the IR and make their
-    * own transformations on it for the purposes of code generation.
-    */
-   GLboolean (*LinkShader)(struct gl_context *ctx,
-                           struct gl_shader_program *shader);
-   /*@}*/
-
-
    /**
     * \name Draw functions.
     */
@@ -541,13 +508,6 @@ struct dd_function_table {
    void (*ShaderCacheSerializeDriverBlob)(struct gl_context *ctx,
                                           struct gl_program *prog);
    /*@}*/
-
-   /**
-    * \name Set the number of compiler threads for ARB_parallel_shader_compile
-    */
-   void (*SetMaxShaderCompilerThreads)(struct gl_context *ctx, unsigned count);
-   bool (*GetShaderProgramCompletionStatus)(struct gl_context *ctx,
-                                            struct gl_shader_program *shprog);
 
    void (*PinDriverToL3Cache)(struct gl_context *ctx, unsigned L3_cache);
 

@@ -31,6 +31,7 @@
  */
 
 #include "st_glsl_to_tgsi.h"
+#include "st_cb_program.h"
 
 #include "compiler/glsl/glsl_parser_extras.h"
 #include "compiler/glsl/ir_optimization.h"
@@ -7519,9 +7520,9 @@ st_link_tgsi(struct gl_context *ctx, struct gl_shader_program *prog)
             (linked_prog->sh.LinkedTransformFeedback &&
              linked_prog->sh.LinkedTransformFeedback->NumVarying);
 
-         if (!ctx->Driver.ProgramStringNotify(ctx,
-                                              _mesa_shader_stage_to_program(i),
-                                              linked_prog)) {
+         if (!st_program_string_notify(ctx,
+                                       _mesa_shader_stage_to_program(i),
+                                       linked_prog)) {
             _mesa_reference_program(ctx, &shader->Program, NULL);
             return GL_FALSE;
          }

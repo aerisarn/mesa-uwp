@@ -32,6 +32,7 @@
 #include "compiler/glsl/program.h"
 #include "compiler/glsl/shader_cache.h"
 
+#include "state_tracker/st_glsl_to_ir.h"
 
 extern "C" {
 
@@ -87,7 +88,7 @@ _mesa_glsl_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       prog->SamplersValidated = GL_TRUE;
    }
 
-   if (prog->data->LinkStatus && !ctx->Driver.LinkShader(ctx, prog)) {
+   if (prog->data->LinkStatus && !st_link_shader(ctx, prog)) {
       prog->data->LinkStatus = LINKING_FAILURE;
    }
 
