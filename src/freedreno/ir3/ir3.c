@@ -177,30 +177,48 @@ ir3_get_reg_independent_max_waves(struct ir3_shader_variant *v,
    const struct ir3_compiler *compiler = v->shader->compiler;
    unsigned max_waves = compiler->max_waves;
 
-   /* If this is a compute shader, compute the limit based on shared size */
-   if ((v->type == MESA_SHADER_COMPUTE) ||
-       (v->type == MESA_SHADER_KERNEL)) {
-      /* Shared is allocated in chunks of 1k */
-      unsigned shared_per_wg = ALIGN_POT(v->shared_size, 1024);
-      if (shared_per_wg > 0 && !v->local_size_variable) {
-         unsigned wgs_per_core = compiler->local_mem_size / shared_per_wg;
-         unsigned threads_per_wg =
-            v->local_size[0] * v->local_size[1] * v->local_size[2];
-         unsigned waves_per_wg =
-            DIV_ROUND_UP(threads_per_wg, compiler->threadsize_base *
-                                            (double_threadsize ? 2 : 1) *
-                                            compiler->wave_granularity);
-         max_waves = MIN2(max_waves, waves_per_wg * wgs_per_core *
-                                        compiler->wave_granularity);
-      }
-   }
-
    /* Compute the limit based on branchstack */
    if (v->branchstack > 0) {
       unsigned branchstack_max_waves = compiler->branchstack_size /
                                        v->branchstack *
                                        compiler->wave_granularity;
       max_waves = MIN2(max_waves, branchstack_max_waves);
+   }
+
+   /* If this is a compute shader, compute the limit based on shared size */
+   if ((v->type == MESA_SHADER_COMPUTE) ||
+       (v->type == MESA_SHADER_KERNEL)) {
+      unsigned threads_per_wg =
+         v->local_size[0] * v->local_size[1] * v->local_size[2];
+      unsigned waves_per_wg =
+         DIV_ROUND_UP(threads_per_wg, compiler->threadsize_base *
+                                         (double_threadsize ? 2 : 1) *
+                                         compiler->wave_granularity);
+
+      /* Shared is allocated in chunks of 1k */
+      unsigned shared_per_wg = ALIGN_POT(v->shared_size, 1024);
+      if (shared_per_wg > 0 && !v->local_size_variable) {
+         unsigned wgs_per_core = compiler->local_mem_size / shared_per_wg;
+
+         max_waves = MIN2(max_waves, waves_per_wg * wgs_per_core *
+                                        compiler->wave_granularity);
+      }
+
+      /* If we have a compute shader that has a big workgroup, a barrier, and
+       * a branchstack which limits max_waves - this may result in a situation
+       * when we cannot run concurrently all waves of the workgroup, which
+       * would lead to a hang.
+       *
+       * TODO: Could we spill branchstack or is there other way around?
+       * Blob just explodes in such case.
+       */
+      if (v->has_barrier && (max_waves < waves_per_wg)) {
+         mesa_loge(
+            "Compute shader (%s:%s) which has workgroup barrier cannot be used "
+            "because it's impossible to have enough concurrent waves.",
+            v->shader->nir->info.name, v->shader->nir->info.label);
+         exit(1);
+      }
    }
 
    return max_waves;
