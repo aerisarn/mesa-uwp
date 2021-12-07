@@ -580,6 +580,3 @@ libmesa = static_library(
   build_by_default : false,
 )
 
-if with_tests
-  subdir('main/tests')
-endif
