@@ -135,13 +135,6 @@ struct dd_function_table {
    void (*Flush)(struct gl_context *ctx, unsigned gallium_flush_flags);
 
    /**
-    * Clear the color/depth/stencil/accum buffer(s).
-    * \param buffers  a bitmask of BUFFER_BIT_* flags indicating which
-    *                 renderbuffers need to be cleared.
-    */
-   void (*Clear)( struct gl_context *ctx, GLbitfield buffers );
-
-   /**
     * Execute glRasterPos, updating the ctx->Current.Raster fields
     */
    void (*RasterPos)( struct gl_context *ctx, const GLfloat v[4] );

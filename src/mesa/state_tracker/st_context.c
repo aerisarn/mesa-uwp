@@ -930,7 +930,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_draw_functions(screen, functions);
    st_init_blit_functions(functions);
    st_init_bufferobject_functions(screen, functions);
-   st_init_clear_functions(functions);
    st_init_bitmap_functions(functions);
    st_init_copy_image_functions(functions);
    st_init_drawpixels_functions(functions);
