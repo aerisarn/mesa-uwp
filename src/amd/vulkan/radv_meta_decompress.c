@@ -43,7 +43,6 @@ build_expand_depth_stencil_compute_shader(struct radv_device *dev)
    /* We need at least 8/8/1 to cover an entire HTILE block in a single workgroup. */
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
-   b.shader->info.workgroup_size[2] = 1;
    nir_variable *input_img = nir_variable_create(b.shader, nir_var_image, img_type, "in_img");
    input_img->data.descriptor_set = 0;
    input_img->data.binding = 0;

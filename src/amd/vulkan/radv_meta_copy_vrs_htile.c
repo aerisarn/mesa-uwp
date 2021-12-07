@@ -47,7 +47,6 @@ build_copy_vrs_htile_shader(struct radv_device *device, struct radeon_surf *surf
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_copy_vrs_htile");
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
-   b.shader->info.workgroup_size[2] = 1;
 
    /* Get coordinates. */
    nir_ssa_def *global_id = get_global_ids(&b, 2);

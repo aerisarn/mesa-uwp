@@ -44,7 +44,6 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
    /* We need at least 16/16/1 to cover an entire DCC block in a single workgroup. */
    b.shader->info.workgroup_size[0] = 16;
    b.shader->info.workgroup_size[1] = 16;
-   b.shader->info.workgroup_size[2] = 1;
    nir_variable *input_img = nir_variable_create(b.shader, nir_var_image, img_type, "in_img");
    input_img->data.descriptor_set = 0;
    input_img->data.binding = 0;

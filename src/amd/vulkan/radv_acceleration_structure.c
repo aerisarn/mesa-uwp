@@ -919,8 +919,6 @@ build_leaf_shader(struct radv_device *dev)
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "accel_build_leaf_shader");
 
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_ssa_def *pconst0 =
       nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .base = 0, .range = 16);
@@ -1264,8 +1262,6 @@ build_internal_shader(struct radv_device *dev)
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "accel_build_internal_shader");
 
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    /*
     * push constants:
@@ -1375,8 +1371,6 @@ build_copy_shader(struct radv_device *dev)
 {
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "accel_copy");
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
    nir_ssa_def *wg_id = nir_load_workgroup_id(&b, 32);

@@ -36,7 +36,6 @@ build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *sur
 
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_ssa_def *src_dcc_size = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
    nir_ssa_def *src_dcc_pitch = nir_channels(&b, src_dcc_size, 1);

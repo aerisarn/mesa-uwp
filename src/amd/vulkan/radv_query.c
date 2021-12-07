@@ -119,8 +119,6 @@ build_occlusion_query_shader(struct radv_device *device)
     */
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "occlusion_query");
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_variable *result = nir_local_variable_create(b.impl, glsl_uint64_t_type(), "result");
    nir_variable *outer_counter =
@@ -257,8 +255,6 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
     */
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "pipeline_statistics_query");
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_variable *output_offset =
       nir_local_variable_create(b.impl, glsl_int_type(), "output_offset");
@@ -397,8 +393,6 @@ build_tfb_query_shader(struct radv_device *device)
     */
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "tfb_query");
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    /* Create and initialize local variables. */
    nir_variable *result =
@@ -522,8 +516,6 @@ build_timestamp_query_shader(struct radv_device *device)
     */
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "timestamp_query");
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    /* Create and initialize local variables. */
    nir_variable *result = nir_local_variable_create(b.impl, glsl_uint64_t_type(), "result");

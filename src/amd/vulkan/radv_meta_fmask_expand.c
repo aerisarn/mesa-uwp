@@ -36,7 +36,6 @@ build_fmask_expand_compute_shader(struct radv_device *device, int samples)
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_fmask_expand_cs-%d", samples);
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_variable *input_img = nir_variable_create(b.shader, nir_var_uniform, type, "s_tex");
    input_img->data.descriptor_set = 0;

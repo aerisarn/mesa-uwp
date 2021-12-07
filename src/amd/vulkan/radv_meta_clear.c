@@ -1060,8 +1060,6 @@ build_clear_htile_mask_shader()
 {
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_clear_htile_mask");
    b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_ssa_def *global_id = get_global_ids(&b, 1);
 
@@ -1165,7 +1163,6 @@ build_clear_dcc_comp_to_single_shader(bool is_msaa)
                                          is_msaa ? "multisampled" : "singlesampled");
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_ssa_def *global_id = get_global_ids(&b, 3);
 
