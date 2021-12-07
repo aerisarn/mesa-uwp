@@ -7579,10 +7579,11 @@ radv_CmdBeginRenderingKHR(VkCommandBuffer commandBuffer, const VkRenderingInfoKH
             };
          }
 
-         if ((pRenderingInfo->pDepthAttachment &&
+         if (((pRenderingInfo->pDepthAttachment &&
               pRenderingInfo->pDepthAttachment->resolveMode != VK_RESOLVE_MODE_NONE) ||
              (pRenderingInfo->pStencilAttachment &&
-              pRenderingInfo->pStencilAttachment->resolveMode != VK_RESOLVE_MODE_NONE)) {
+              pRenderingInfo->pStencilAttachment->resolveMode != VK_RESOLVE_MODE_NONE)) &&
+             !(pRenderingInfo->flags & VK_RENDERING_SUSPENDING_BIT_KHR)) {
             RADV_FROM_HANDLE(radv_image_view, resolve_iview, common_info->resolveImageView);
             ds_resolve_ref =
                (VkAttachmentReference2){.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
