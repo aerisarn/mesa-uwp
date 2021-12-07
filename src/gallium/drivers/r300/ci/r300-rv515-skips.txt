@@ -4,6 +4,3 @@
 # Timeouts
 KHR-GLES2.texture_3d.filtering.combinations.*linear_mipmap_linear
 KHR-GLES2.texture_3d.filtering.sizes.*linear_mipmap_linear
-
-# Infinite? looping in r500_transform_IF()
-dEQP-GLES2.functional.shaders.indexing.tmp_array.*_const_write_dynamic_read_fragment

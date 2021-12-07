@@ -44,15 +44,14 @@ int r500_transform_IF(
 	struct rc_instruction * inst_if,
 	void *data)
 {
+	if (inst_if->U.I.Opcode != RC_OPCODE_IF)
+		return 0;
+
 	struct rc_variable * writer;
 	struct rc_list * writer_list, * list_ptr;
 	struct rc_list * var_list = rc_get_variables(c);
 	unsigned int generic_if = 0;
 	unsigned int alu_chan;
-
-	if (inst_if->U.I.Opcode != RC_OPCODE_IF) {
-		return 0;
-	}
 
 	writer_list = rc_variable_list_get_writers(
 			var_list, inst_if->Type, &inst_if->U.I.SrcReg[0]);
