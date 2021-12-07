@@ -273,15 +273,6 @@ struct dd_function_table {
    /*@}*/
 
    /**
-    * \name Functions for GL_ARB_sample_locations
-    */
-   void (*GetProgrammableSampleCaps)(struct gl_context *ctx,
-                                     const struct gl_framebuffer *fb,
-                                     GLuint *bits, GLuint *width, GLuint *height);
-
-   /*@}*/
-
-   /**
     * \name GREMEDY debug/marker functions
     */
    /*@{*/
@@ -324,14 +315,6 @@ struct dd_function_table {
    GLboolean SaveNeedFlush;
 
    /**@}*/
-
-   /**
-    * \name GL_ARB_texture_multisample
-    */
-   void (*GetSamplePosition)(struct gl_context *ctx,
-                             struct gl_framebuffer *fb,
-                             GLuint index,
-                             GLfloat *outValue);
 
    /**
     * \name NV_vdpau_interop interface

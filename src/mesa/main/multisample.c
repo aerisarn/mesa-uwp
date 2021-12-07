@@ -33,6 +33,7 @@
 #include "main/state.h"
 
 #include "state_tracker/st_format.h"
+#include "state_tracker/st_cb_msaa.h"
 
 /**
  * Called via glSampleCoverageARB
@@ -95,7 +96,7 @@ _mesa_GetMultisamplefv(GLenum pname, GLuint index, GLfloat * val)
          return;
       }
 
-      ctx->Driver.GetSamplePosition(ctx, ctx->DrawBuffer, index, val);
+      st_GetSamplePosition(ctx, ctx->DrawBuffer, index, val);
 
       /* FBOs can be upside down (winsys always are)*/
       if (ctx->DrawBuffer->FlipY)

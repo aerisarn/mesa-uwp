@@ -31,9 +31,10 @@
 
 #include "main/glheader.h"
 
-struct dd_function_table;
-
-extern void
-st_init_msaa_functions(struct dd_function_table *functions);
-
+void st_GetSamplePosition(struct gl_context *ctx,
+                          struct gl_framebuffer *fb,
+                          GLuint index,
+                          GLfloat *outPos);
+void st_GetProgrammableSampleCaps(struct gl_context *ctx, const struct gl_framebuffer *fb,
+                                  GLuint *outBits, GLuint *outWidth, GLuint *outHeight);
 #endif

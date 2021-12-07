@@ -44,6 +44,7 @@
 #include "version.h"
 
 #include "state_tracker/st_cb_queryobj.h"
+#include "state_tracker/st_cb_msaa.h"
 #include "state_tracker/st_context.h"
 
 /* This is a table driven implemetation of the glGet*v() functions.
@@ -1314,8 +1315,8 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
             break;
          }
 
-         ctx->Driver.GetProgrammableSampleCaps(ctx, ctx->DrawBuffer,
-                                               &bits, &width, &height);
+         st_GetProgrammableSampleCaps(ctx, ctx->DrawBuffer,
+                                      &bits, &width, &height);
 
          if (d->pname == GL_SAMPLE_LOCATION_PIXEL_GRID_WIDTH_ARB)
             v->value_uint = width;

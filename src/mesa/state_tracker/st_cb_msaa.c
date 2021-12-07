@@ -37,7 +37,7 @@
 #include "pipe/p_context.h"
 
 
-static void
+void
 st_GetSamplePosition(struct gl_context *ctx,
                      struct gl_framebuffer *fb,
                      GLuint index,
@@ -56,7 +56,7 @@ st_GetSamplePosition(struct gl_context *ctx,
 }
 
 
-static void
+void
 st_GetProgrammableSampleCaps(struct gl_context *ctx, const struct gl_framebuffer *fb,
                              GLuint *outBits, GLuint *outWidth, GLuint *outHeight)
 {
@@ -80,11 +80,4 @@ st_GetProgrammableSampleCaps(struct gl_context *ctx, const struct gl_framebuffer
       *outWidth = 1;
       *outHeight = 1;
    }
-}
-
-void
-st_init_msaa_functions(struct dd_function_table *functions)
-{
-   functions->GetSamplePosition = st_GetSamplePosition;
-   functions->GetProgrammableSampleCaps = st_GetProgrammableSampleCaps;
 }
