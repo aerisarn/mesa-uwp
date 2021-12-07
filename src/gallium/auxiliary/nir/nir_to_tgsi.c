@@ -374,8 +374,21 @@ ntt_setup_inputs(struct ntt_compile *c)
 
       if (semantic_name == TGSI_SEMANTIC_FACE) {
          struct ureg_dst temp = ureg_DECL_temporary(c->ureg);
-         /* NIR is ~0 front and 0 back, while TGSI is +1 front */
-         ureg_SGE(c->ureg, temp, decl, ureg_imm1f(c->ureg, 0));
+         if (c->native_integers) {
+            /* NIR is ~0 front and 0 back, while TGSI is +1 front */
+            ureg_SGE(c->ureg, temp, decl, ureg_imm1f(c->ureg, 0));
+         } else {
+            /* tgsi docs say that floating point FACE will be positive for
+             * frontface and negative for backface, but realistically
+             * GLSL-to-TGSI had been doing MOV_SAT to turn it into 0.0 vs 1.0.
+             * Copy that behavior, since some drivers (r300) have been doing a
+             * 0.0 vs 1.0 backface (and I don't think anybody has a non-1.0
+             * front face).
+             */
+            temp.Saturate = true;
+            ureg_MOV(c->ureg, temp, decl);
+
+         }
          decl = ureg_src(temp);
       }
 
