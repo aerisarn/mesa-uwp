@@ -88,6 +88,7 @@
 #include "intel/common/intel_l3_config.h"
 #include "intel/common/intel_sample_positions.h"
 #include "intel/compiler/brw_compiler.h"
+#include "compiler/shader_info.h"
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"

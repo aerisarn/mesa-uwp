@@ -41,6 +41,8 @@
 #include "brw_reg.h"
 #include "brw_disasm_info.h"
 
+#include "util/bitset.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -30,7 +30,6 @@
 #include "main/macros.h"
 #include "main/config.h"
 #include "util/ralloc.h"
-#include "compiler/shader_info.h"
 #include "util/u_math.h"
 
 #ifdef __cplusplus
@@ -40,6 +39,7 @@ extern "C" {
 struct ra_regs;
 struct nir_shader;
 struct brw_program;
+struct shader_info;
 
 struct nir_shader_compiler_options;
 typedef struct nir_shader nir_shader;
