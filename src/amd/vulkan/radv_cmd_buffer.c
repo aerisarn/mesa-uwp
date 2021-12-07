@@ -7646,7 +7646,7 @@ radv_CmdBeginRenderingKHR(VkCommandBuffer commandBuffer, const VkRenderingInfoKH
       att->finalLayout = vrs_info->imageLayout;
 
       vrs_subpass_info = (VkFragmentShadingRateAttachmentInfoKHR){
-         .sType = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
+         .sType = VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
          .pNext = subpass.pNext,
          .pFragmentShadingRateAttachment = &vrs_ref,
          .shadingRateAttachmentTexelSize = vrs_info->shadingRateAttachmentTexelSize,
