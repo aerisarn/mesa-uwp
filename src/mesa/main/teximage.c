@@ -57,6 +57,9 @@
 #include "texstore.h"
 #include "pbo.h"
 
+#include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_format.h"
+#include "state_tracker/st_gen_mipmap.h"
 
 /**
  * Returns a corresponding internal floating point format for a given base
@@ -199,7 +202,7 @@ set_tex_image(struct gl_texture_object *tObj,
 
 /**
  * Free a gl_texture_image and associated data.
- * This function is a fallback called via ctx->Driver.DeleteTextureImage().
+ * This function is a fallback.
  *
  * \param texImage texture image.
  *
@@ -212,8 +215,7 @@ _mesa_delete_texture_image(struct gl_context *ctx,
    /* Free texImage->Data and/or any other driver-specific texture
     * image storage.
     */
-   assert(ctx->Driver.FreeTextureImageBuffer);
-   ctx->Driver.FreeTextureImageBuffer( ctx, texImage );
+   st_FreeTextureImageBuffer( ctx, texImage );
    free(texImage);
 }
 
@@ -387,7 +389,7 @@ _mesa_get_tex_image(struct gl_context *ctx, struct gl_texture_object *texObj,
 
    texImage = _mesa_select_tex_image(texObj, target, level);
    if (!texImage) {
-      texImage = ctx->Driver.NewTextureImage(ctx);
+      texImage = st_NewTextureImage(ctx);
       if (!texImage) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "texture image allocation");
          return NULL;
@@ -454,7 +456,7 @@ get_proxy_tex_image(struct gl_context *ctx, GLenum target, GLint level)
 
    texImage = ctx->Texture.ProxyTex[texIndex]->Image[0][level];
    if (!texImage) {
-      texImage = ctx->Driver.NewTextureImage(ctx);
+      texImage = st_NewTextureImage(ctx);
       if (!texImage) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "proxy texture allocation");
          return NULL;
@@ -945,7 +947,7 @@ void
 _mesa_clear_texture_image(struct gl_context *ctx,
                           struct gl_texture_image *texImage)
 {
-   ctx->Driver.FreeTextureImageBuffer(ctx, texImage);
+   st_FreeTextureImageBuffer(ctx, texImage);
    clear_teximage_fields(texImage);
 }
 
@@ -2753,8 +2755,7 @@ check_gen_mipmap(struct gl_context *ctx, GLenum target,
    if (texObj->Attrib.GenerateMipmap &&
        level == texObj->Attrib.BaseLevel &&
        level < texObj->Attrib.MaxLevel) {
-      assert(ctx->Driver.GenerateMipmap);
-      ctx->Driver.GenerateMipmap(ctx, target, texObj);
+      st_generate_mipmap(ctx, target, texObj);
    }
 }
 
@@ -2836,8 +2837,8 @@ _mesa_choose_texture_format(struct gl_context *ctx,
       }
    }
 
-   f = ctx->Driver.ChooseTextureFormat(ctx, target, internalFormat,
-                                       format, type);
+   f = st_ChooseTextureFormat(ctx, target, internalFormat,
+                              format, type);
    assert(f != MESA_FORMAT_NONE);
    return f;
 }
@@ -2930,7 +2931,7 @@ lookup_texture_ext_dsa(struct gl_context *ctx, GLenum target, GLuint texture,
       }
 
       if (!texObj) {
-         texObj = ctx->Driver.NewTextureObject(ctx, texture, boundTarget);
+         texObj = st_NewTextureObject(ctx, texture, boundTarget);
          if (!texObj) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
             return NULL;
@@ -3079,9 +3080,9 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
                                                     height, depth, border);
 
       /* check that the texture won't take too much memory, etc */
-      sizeOK = ctx->Driver.TestProxyTexImage(ctx, proxy_target(target),
-                                             0, level, texFormat, 1,
-                                             width, height, depth);
+      sizeOK = st_TestProxyTexImage(ctx, proxy_target(target),
+                                    0, level, texFormat, 1,
+                                    width, height, depth);
    }
 
    if (_mesa_is_proxy_texture(target)) {
@@ -3143,7 +3144,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s%uD", func, dims);
          }
          else {
-            ctx->Driver.FreeTextureImageBuffer(ctx, texImage);
+            st_FreeTextureImageBuffer(ctx, texImage);
 
             _mesa_init_teximage_fields(ctx, texImage,
                                        width, height, depth,
@@ -3152,12 +3153,12 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
             /* Give the texture to the driver.  <pixels> may be null. */
             if (width > 0 && height > 0 && depth > 0) {
                if (compressed) {
-                  ctx->Driver.CompressedTexImage(ctx, dims, texImage,
-                                                 imageSize, pixels);
+                  st_CompressedTexImage(ctx, dims, texImage,
+                                        imageSize, pixels);
                }
                else {
-                  ctx->Driver.TexImage(ctx, dims, texImage, format,
-                                       type, pixels, unpack);
+                  st_TexImage(ctx, dims, texImage, format,
+                              type, pixels, unpack);
                }
             }
 
@@ -3446,7 +3447,7 @@ egl_image_target_texture(struct gl_context *ctx,
    if (!texImage) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
    } else {
-      ctx->Driver.FreeTextureImageBuffer(ctx, texImage);
+      st_FreeTextureImageBuffer(ctx, texImage);
 
       texObj->External = GL_TRUE;
 
@@ -3566,10 +3567,10 @@ texture_sub_image(struct gl_context *ctx, GLuint dims,
             xoffset += texImage->Border;
          }
 
-         ctx->Driver.TexSubImage(ctx, dims, texImage,
-                                 xoffset, yoffset, zoffset,
-                                 width, height, depth,
-                                 format, type, pixels, &ctx->Unpack);
+         st_TexSubImage(ctx, dims, texImage,
+                        xoffset, yoffset, zoffset,
+                        width, height, depth,
+                        format, type, pixels, &ctx->Unpack);
 
          check_gen_mipmap(ctx, target, texObj, level);
 
@@ -4105,14 +4106,14 @@ copytexsubimage_by_slice(struct gl_context *ctx,
 
       for (slice = 0; slice < height; slice++) {
          assert(yoffset + slice < texImage->Height);
-         ctx->Driver.CopyTexSubImage(ctx, 2, texImage,
-                                     xoffset, 0, yoffset + slice,
-                                     rb, x, y + slice, width, 1);
+         st_CopyTexSubImage(ctx, 2, texImage,
+                            xoffset, 0, yoffset + slice,
+                            rb, x, y + slice, width, 1);
       }
    } else {
-      ctx->Driver.CopyTexSubImage(ctx, dims, texImage,
-                                  xoffset, yoffset, zoffset,
-                                  rb, x, y, width, height);
+      st_CopyTexSubImage(ctx, dims, texImage,
+                         xoffset, yoffset, zoffset,
+                         rb, x, y, width, height);
    }
 }
 
@@ -4379,9 +4380,9 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
 
    assert(texFormat != MESA_FORMAT_NONE);
 
-   if (!ctx->Driver.TestProxyTexImage(ctx, proxy_target(target),
-                                      0, level, texFormat, 1,
-                                      width, height, 1)) {
+   if (!st_TestProxyTexImage(ctx, proxy_target(target),
+                             0, level, texFormat, 1,
+                             width, height, 1)) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY,
                   "glCopyTexImage%uD(image too large)", dims);
       return;
@@ -4410,14 +4411,14 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
          const GLuint face = _mesa_tex_target_to_face(target);
 
          /* Free old texture image */
-         ctx->Driver.FreeTextureImageBuffer(ctx, texImage);
+         st_FreeTextureImageBuffer(ctx, texImage);
 
          _mesa_init_teximage_fields(ctx, texImage, width, height, 1,
                                     border, internalFormat, texFormat);
 
          if (width && height) {
             /* Allocate texture memory (no pixel data yet) */
-            ctx->Driver.AllocTextureImageBuffer(ctx, texImage);
+            st_AllocTextureImageBuffer(ctx, texImage);
 
             if (ctx->Const.NoClippingOnCopyTex ||
                 _mesa_clip_copytexsubimage(ctx, &dstX, &dstY, &srcX, &srcY,
@@ -5165,11 +5166,11 @@ _mesa_ClearTexSubImage(GLuint texture, GLint level,
    if (numImages == 1) {
       if (check_clear_tex_image(ctx, "glClearTexSubImage", texImages[0],
                                 format, type, data, clearValue[0])) {
-         ctx->Driver.ClearTexSubImage(ctx,
-                                      texImages[0],
-                                      xoffset, yoffset, zoffset,
-                                      width, height, depth,
-                                      data ? clearValue[0] : NULL);
+         st_ClearTexSubImage(ctx,
+                             texImages[0],
+                             xoffset, yoffset, zoffset,
+                             width, height, depth,
+                             data ? clearValue[0] : NULL);
       }
    } else {
       /* loop over cube face images */
@@ -5180,11 +5181,11 @@ _mesa_ClearTexSubImage(GLuint texture, GLint level,
             goto out;
       }
       for (i = zoffset; i < zoffset + depth; i++) {
-         ctx->Driver.ClearTexSubImage(ctx,
-                                      texImages[i],
-                                      xoffset, yoffset, 0,
-                                      width, height, 1,
-                                      data ? clearValue[i] : NULL);
+         st_ClearTexSubImage(ctx,
+                             texImages[i],
+                             xoffset, yoffset, 0,
+                             width, height, 1,
+                             data ? clearValue[i] : NULL);
       }
    }
 
@@ -5220,14 +5221,14 @@ _mesa_ClearTexImage( GLuint texture, GLint level,
    }
 
    for (i = 0; i < numImages; i++) {
-      ctx->Driver.ClearTexSubImage(ctx, texImages[i],
-                                   -(GLint) texImages[i]->Border, /* xoffset */
-                                   -(GLint) texImages[i]->Border, /* yoffset */
-                                   -(GLint) texImages[i]->Border, /* zoffset */
-                                   texImages[i]->Width,
-                                   texImages[i]->Height,
-                                   texImages[i]->Depth,
-                                   data ? clearValue[i] : NULL);
+      st_ClearTexSubImage(ctx, texImages[i],
+                          -(GLint) texImages[i]->Border, /* xoffset */
+                          -(GLint) texImages[i]->Border, /* yoffset */
+                          -(GLint) texImages[i]->Border, /* zoffset */
+                          texImages[i]->Width,
+                          texImages[i]->Height,
+                          texImages[i]->Depth,
+                          data ? clearValue[i] : NULL);
    }
 
 out:
@@ -5678,10 +5679,10 @@ compressed_texture_sub_image(struct gl_context *ctx, GLuint dims,
    _mesa_lock_texture(ctx, texObj);
    {
       if (width > 0 && height > 0 && depth > 0) {
-         ctx->Driver.CompressedTexSubImage(ctx, dims, texImage,
-                                           xoffset, yoffset, zoffset,
-                                           width, height, depth,
-                                           format, imageSize, data);
+         st_CompressedTexSubImage(ctx, dims, texImage,
+                                  xoffset, yoffset, zoffset,
+                                  width, height, depth,
+                                  format, imageSize, data);
 
          check_gen_mipmap(ctx, target, texObj, level);
 
@@ -6359,16 +6360,14 @@ texture_buffer_range(struct gl_context *ctx,
    }
    _mesa_unlock_texture(ctx, texObj);
 
-   if (ctx->Driver.TexParameter) {
-      if (old_format != format) {
-          ctx->Driver.TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
-      } else {
-          if (offset != oldOffset) {
-              ctx->Driver.TexParameter(ctx, texObj, GL_TEXTURE_BUFFER_OFFSET);
-          }
-          if (size != oldSize) {
-              ctx->Driver.TexParameter(ctx, texObj, GL_TEXTURE_BUFFER_SIZE);
-          }
+   if (old_format != format) {
+      st_TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
+   } else {
+      if (offset != oldOffset) {
+         st_TexParameter(ctx, texObj, GL_TEXTURE_BUFFER_OFFSET);
+      }
+      if (size != oldSize) {
+         st_TexParameter(ctx, texObj, GL_TEXTURE_BUFFER_SIZE);
       }
    }
 
@@ -6846,8 +6845,8 @@ texture_image_multisample(struct gl_context *ctx, GLuint dims,
    dimensionsOK = _mesa_legal_texture_dimensions(ctx, target, 0,
          width, height, depth, 0);
 
-   sizeOK = ctx->Driver.TestProxyTexImage(ctx, target, 0, 0, texFormat,
-                                          samples, width, height, depth);
+   sizeOK = st_TestProxyTexImage(ctx, target, 0, 0, texFormat,
+                                 samples, width, height, depth);
 
    if (_mesa_is_proxy_texture(target)) {
       if (samplesOK && dimensionsOK && sizeOK) {
@@ -6878,7 +6877,7 @@ texture_image_multisample(struct gl_context *ctx, GLuint dims,
          return;
       }
 
-      ctx->Driver.FreeTextureImageBuffer(ctx, texImage);
+      st_FreeTextureImageBuffer(ctx, texImage);
 
       _mesa_init_teximage_fields_ms(ctx, texImage, width, height, depth, 0,
                                     internalformat, texFormat,
@@ -6886,17 +6885,17 @@ texture_image_multisample(struct gl_context *ctx, GLuint dims,
 
       if (width > 0 && height > 0 && depth > 0) {
          if (memObj) {
-            if (!ctx->Driver.SetTextureStorageForMemoryObject(ctx, texObj,
-                                                              memObj, 1, width,
-                                                              height, depth,
-                                                              offset)) {
+            if (!st_SetTextureStorageForMemoryObject(ctx, texObj,
+                                                     memObj, 1, width,
+                                                     height, depth,
+                                                     offset)) {
 
                _mesa_init_teximage_fields(ctx, texImage, 0, 0, 0, 0,
                                           internalformat, texFormat);
             }
          } else {
-            if (!ctx->Driver.AllocTextureStorage(ctx, texObj, 1,
-                                                 width, height, depth)) {
+            if (!st_AllocTextureStorage(ctx, texObj, 1,
+                                        width, height, depth)) {
                /* tidy up the texture image state. strictly speaking,
                 * we're allowed to just leave this in whatever state we
                 * like, but being tidy is good.

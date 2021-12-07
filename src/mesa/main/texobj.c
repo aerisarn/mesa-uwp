@@ -46,7 +46,8 @@
 #include "texturebindless.h"
 #include "util/u_memory.h"
 
-
+#include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_format.h"
 
 /**********************************************************************/
 /** \name Internal functions */
@@ -261,9 +262,6 @@ _mesa_get_texobj_by_target_and_texunit(struct gl_context *ctx, GLenum target,
  * Allocate and initialize a new texture object.  But don't put it into the
  * texture object hash table.
  *
- * Called via ctx->Driver.NewTextureObject, unless overridden by a device
- * driver.
- *
  * \param shared the shared GL state structure to contain the texture object
  * \param name integer name for the texture object
  * \param target either GL_TEXTURE_1D, GL_TEXTURE_2D, GL_TEXTURE_3D,
@@ -425,14 +423,12 @@ finish_texture_init(struct gl_context *ctx, GLenum target,
          obj->Sampler.Attrib.state.min_img_filter = filter_to_gallium(filter);
          obj->Sampler.Attrib.state.min_mip_filter = mipfilter_to_gallium(filter);
          obj->Sampler.Attrib.state.mag_img_filter = filter_to_gallium(filter);
-         if (ctx->Driver.TexParameter) {
-            /* XXX we probably don't need to make all these calls */
-            ctx->Driver.TexParameter(ctx, obj, GL_TEXTURE_WRAP_S);
-            ctx->Driver.TexParameter(ctx, obj, GL_TEXTURE_WRAP_T);
-            ctx->Driver.TexParameter(ctx, obj, GL_TEXTURE_WRAP_R);
-            ctx->Driver.TexParameter(ctx, obj, GL_TEXTURE_MIN_FILTER);
-            ctx->Driver.TexParameter(ctx, obj, GL_TEXTURE_MAG_FILTER);
-         }
+         /* XXX we probably don't need to make all these calls */
+         st_TexParameter(ctx, obj, GL_TEXTURE_WRAP_S);
+         st_TexParameter(ctx, obj, GL_TEXTURE_WRAP_T);
+         st_TexParameter(ctx, obj, GL_TEXTURE_WRAP_R);
+         st_TexParameter(ctx, obj, GL_TEXTURE_MIN_FILTER);
+         st_TexParameter(ctx, obj, GL_TEXTURE_MAG_FILTER);
          break;
 
       default:
@@ -445,7 +441,6 @@ finish_texture_init(struct gl_context *ctx, GLenum target,
 /**
  * Deallocate a texture object struct.  It should have already been
  * removed from the texture object pool.
- * Called via ctx->Driver.DeleteTexture() if not overriden by a driver.
  *
  * \param shared the shared GL state to which the object belongs.
  * \param texObj the texture object to delete.
@@ -465,7 +460,7 @@ _mesa_delete_texture_object(struct gl_context *ctx,
    for (face = 0; face < 6; face++) {
       for (i = 0; i < MAX_TEXTURE_LEVELS; i++) {
          if (texObj->Image[face][i]) {
-            ctx->Driver.DeleteTextureImage(ctx, texObj->Image[face][i]);
+            st_DeleteTextureImage(ctx, texObj->Image[face][i]);
          }
       }
    }
@@ -572,7 +567,7 @@ _mesa_reference_texobj_(struct gl_texture_object **ptr,
           */
          GET_CURRENT_CONTEXT(ctx);
          if (ctx)
-            ctx->Driver.DeleteTexture(ctx, oldTex);
+            st_DeleteTextureObject(ctx, oldTex);
          else
             _mesa_problem(NULL, "Unable to delete texture, no context");
       }
@@ -992,7 +987,7 @@ _mesa_get_fallback_texture(struct gl_context *ctx, gl_texture_index tex)
       }
 
       /* create texture object */
-      texObj = ctx->Driver.NewTextureObject(ctx, 0, target);
+      texObj = st_NewTextureObject(ctx, 0, target);
       if (!texObj)
          return NULL;
 
@@ -1003,9 +998,9 @@ _mesa_get_fallback_texture(struct gl_context *ctx, gl_texture_index tex)
       texObj->Sampler.Attrib.state.min_mip_filter = PIPE_TEX_MIPFILTER_NONE;
       texObj->Sampler.Attrib.state.mag_img_filter = PIPE_TEX_FILTER_NEAREST;
 
-      texFormat = ctx->Driver.ChooseTextureFormat(ctx, target,
-                                                  GL_RGBA, GL_RGBA,
-                                                  GL_UNSIGNED_BYTE);
+      texFormat = st_ChooseTextureFormat(ctx, target,
+                                         GL_RGBA, GL_RGBA,
+                                         GL_UNSIGNED_BYTE);
 
       /* need a loop here just for cube maps */
       for (face = 0; face < numFaces; face++) {
@@ -1021,9 +1016,9 @@ _mesa_get_fallback_texture(struct gl_context *ctx, gl_texture_index tex)
                                     0, /* border */
                                     GL_RGBA, texFormat);
 
-         ctx->Driver.TexImage(ctx, dims, texImage,
-                              GL_RGBA, GL_UNSIGNED_BYTE, texel,
-                              &ctx->DefaultPacking);
+         st_TexImage(ctx, dims, texImage,
+                     GL_RGBA, GL_UNSIGNED_BYTE, texel,
+                     &ctx->DefaultPacking);
       }
 
       _mesa_test_texobj_completeness(ctx, texObj);
@@ -1193,7 +1188,7 @@ create_textures(struct gl_context *ctx, GLenum target,
    /* Allocate new, empty texture objects */
    for (i = 0; i < n; i++) {
       struct gl_texture_object *texObj;
-      texObj = ctx->Driver.NewTextureObject(ctx, textures[i], target);
+      texObj = st_NewTextureObject(ctx, textures[i], target);
       if (!texObj) {
          _mesa_HashUnlockMutex(ctx->Shared->TexObjects);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
@@ -1474,9 +1469,7 @@ delete_textures(struct gl_context *ctx, GLsizei n, const GLuint *textures)
              */
             _mesa_HashRemove(ctx->Shared->TexObjects, delObj->Name);
 
-            if (ctx->Driver.TextureRemovedFromShared) {
-               ctx->Driver.TextureRemovedFromShared(ctx, delObj);
-            }
+            st_TextureReleaseAllSamplerViews(ctx, delObj);
 
             /* Unreference the texobj.  If refcount hits zero, the texture
              * will be deleted.
@@ -1748,7 +1741,7 @@ _mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
          }
 
          /* if this is a new texture id, allocate a texture object now */
-         newTexObj = ctx->Driver.NewTextureObject(ctx, texName, target);
+         newTexObj = st_NewTextureObject(ctx, texName, target);
          if (!newTexObj) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
             return NULL;

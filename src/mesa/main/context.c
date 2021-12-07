@@ -154,6 +154,7 @@
 #include <stdbool.h>
 #include "util/u_memory.h"
 
+#include "state_tracker/st_cb_texture.h"
 
 #ifndef MESA_VERBOSE
 int MESA_VERBOSE = 0;
@@ -1077,7 +1078,7 @@ _mesa_initialize_dispatch_tables(struct gl_context *ctx)
  * This includes allocating all the other structs and arrays which hang off of
  * the context by pointers.
  * Note that the driver needs to pass in its dd_function_table here since
- * we need to at least call driverFunctions->NewTextureObject to create the
+ * we need to at least call st_NewTextureObject to create the
  * default texture objects.
  *
  * Called by _mesa_create_context().
@@ -1107,9 +1108,6 @@ _mesa_initialize_context(struct gl_context *ctx,
 {
    struct gl_shared_state *shared;
    int i;
-
-   assert(driverFunctions->NewTextureObject);
-   assert(driverFunctions->FreeTextureImageBuffer);
 
    ctx->API = api;
    ctx->DrawBuffer = NULL;

@@ -62,6 +62,7 @@
 #include <stdbool.h>
 #include "util/u_memory.h"
 
+#include "state_tracker/st_cb_texture.h"
 
 static inline bool
 copy_texture_attribs(struct gl_texture_object *dst,
@@ -597,8 +598,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
             continue;
 
          /* GL_ALL_ATTRIB_BITS means all pnames. (internal) */
-         if (ctx->Driver.TexParameter)
-            ctx->Driver.TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
+         st_TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
       }
    }
 

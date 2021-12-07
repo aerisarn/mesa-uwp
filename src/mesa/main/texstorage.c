@@ -41,6 +41,7 @@
 #include "glformats.h"
 #include "hash.h"
 
+#include "state_tracker/st_cb_texture.h"
 
 /**
  * Check if the given texture target is a legal texture object target
@@ -287,7 +288,7 @@ _mesa_AllocTextureStorage_sw(struct gl_context *ctx,
    for (face = 0; face < numFaces; face++) {
       for (level = 0; level < levels; level++) {
          struct gl_texture_image *const texImage = texObj->Image[face][level];
-         if (!ctx->Driver.AllocTextureImageBuffer(ctx, texImage))
+         if (!st_AllocTextureImageBuffer(ctx, texImage))
             return GL_FALSE;
       }
    }
@@ -419,8 +420,8 @@ texture_storage(struct gl_context *ctx, GLuint dims,
       dimensionsOK = _mesa_legal_texture_dimensions(ctx, target, 0,
                                                      width, height, depth, 0);
 
-      sizeOK = ctx->Driver.TestProxyTexImage(ctx, target, levels, 0, texFormat,
-                                             1, width, height, depth);
+      sizeOK = st_TestProxyTexImage(ctx, target, levels, 0, texFormat,
+                                    1, width, height, depth);
    }
 
    if (_mesa_is_proxy_texture(target)) {
@@ -462,18 +463,18 @@ texture_storage(struct gl_context *ctx, GLuint dims,
 
       /* Setup the backing memory */
       if (memObj) {
-         if (!ctx->Driver.SetTextureStorageForMemoryObject(ctx, texObj, memObj,
-                                                           levels,
-                                                           width, height, depth,
-                                                           offset)) {
+         if (!st_SetTextureStorageForMemoryObject(ctx, texObj, memObj,
+                                                  levels,
+                                                  width, height, depth,
+                                                  offset)) {
 
             clear_texture_fields(ctx, texObj);
             return;
          }
       }
       else {
-         if (!ctx->Driver.AllocTextureStorage(ctx, texObj, levels,
-                                              width, height, depth)) {
+         if (!st_AllocTextureStorage(ctx, texObj, levels,
+                                     width, height, depth)) {
             /* Reset the texture images' info to zeros.
              * Strictly speaking, we probably don't have to do this since
              * generating GL_OUT_OF_MEMORY can leave things in an undefined

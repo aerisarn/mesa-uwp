@@ -26,6 +26,7 @@
 #include "state_tracker/st_cb_bitmap.h"
 #include "state_tracker/st_cb_copyimage.h"
 #include "state_tracker/st_cb_fbo.h"
+#include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_texture.h"
 #include "state_tracker/st_util.h"
 
@@ -579,7 +580,7 @@ fallback_copy_image(struct st_context *st,
       line_bytes = _mesa_format_row_stride(dst_image->TexFormat, dst_w);
 
    if (dst_image) {
-      st->ctx->Driver.MapTextureImage(
+      st_MapTextureImage(
             st->ctx, dst_image, dst_z,
             dst_x, dst_y, dst_w, dst_h,
             GL_MAP_WRITE_BIT, &dst, &dst_stride);
@@ -592,7 +593,7 @@ fallback_copy_image(struct st_context *st,
    }
 
    if (src_image) {
-      st->ctx->Driver.MapTextureImage(
+      st_MapTextureImage(
             st->ctx, src_image, src_z,
             src_x, src_y, src_w, src_h,
             GL_MAP_READ_BIT, &src, &src_stride);
@@ -611,13 +612,13 @@ fallback_copy_image(struct st_context *st,
    }
 
    if (dst_image) {
-      st->ctx->Driver.UnmapTextureImage(st->ctx, dst_image, dst_z);
+      st_UnmapTextureImage(st->ctx, dst_image, dst_z);
    } else {
       pipe_texture_unmap(st->pipe, dst_transfer);
    }
 
    if (src_image) {
-      st->ctx->Driver.UnmapTextureImage(st->ctx, src_image, src_z);
+      st_UnmapTextureImage(st->ctx, src_image, src_z);
    } else {
       pipe_texture_unmap(st->pipe, src_transfer);
    }

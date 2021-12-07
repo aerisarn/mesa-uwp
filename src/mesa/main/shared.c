@@ -47,6 +47,7 @@
 
 #include "state_tracker/st_cb_memoryobjects.h"
 #include "state_tracker/st_cb_semaphoreobjects.h"
+#include "state_tracker/st_cb_texture.h"
 
 static void
 free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared);
@@ -119,7 +120,7 @@ _mesa_alloc_shared_state(struct gl_context *ctx)
          GL_TEXTURE_1D
       };
       STATIC_ASSERT(ARRAY_SIZE(targets) == NUM_TEXTURE_TARGETS);
-      shared->DefaultTex[i] = ctx->Driver.NewTextureObject(ctx, 0, targets[i]);
+      shared->DefaultTex[i] = st_NewTextureObject(ctx, 0, targets[i]);
       /* Need to explicitly set/overwrite the TargetIndex field here since
        * the call to _mesa_tex_target_to_index() in NewTextureObject() may
        * fail if the texture target is not supported.
@@ -179,7 +180,7 @@ delete_texture_cb(void *data, void *userData)
 {
    struct gl_texture_object *texObj = (struct gl_texture_object *) data;
    struct gl_context *ctx = (struct gl_context *) userData;
-   ctx->Driver.DeleteTexture(ctx, texObj);
+   st_DeleteTextureObject(ctx, texObj);
 }
 
 
@@ -350,7 +351,7 @@ free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared)
    /* Free the dummy/fallback texture objects */
    for (i = 0; i < NUM_TEXTURE_TARGETS; i++) {
       if (shared->FallbackTex[i])
-         ctx->Driver.DeleteTexture(ctx, shared->FallbackTex[i]);
+         st_DeleteTextureObject(ctx, shared->FallbackTex[i]);
    }
 
    /*
@@ -432,11 +433,10 @@ free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared)
     * Free texture objects (after FBOs since some textures might have
     * been bound to FBOs).
     */
-   assert(ctx->Driver.DeleteTexture);
    /* the default textures */
    for (i = 0; i < NUM_TEXTURE_TARGETS; i++) {
       if (shared->DefaultTex[i])
-         ctx->Driver.DeleteTexture(ctx, shared->DefaultTex[i]);
+         st_DeleteTextureObject(ctx, shared->DefaultTex[i]);
    }
 
    /* all other textures */

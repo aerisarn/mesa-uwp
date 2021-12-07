@@ -41,6 +41,8 @@
 #include "teximage.h"
 #include "vdpau.h"
 
+#include "state_tracker/st_cb_texture.h"
+
 #define MAX_TEXTURES 4
 
 struct vdp_surface
@@ -377,7 +379,7 @@ _mesa_VDPAUMapSurfacesNV(GLsizei numSurfaces, const GLintptr *surfaces)
             return;
          }
 
-         ctx->Driver.FreeTextureImageBuffer(ctx, image);
+         st_FreeTextureImageBuffer(ctx, image);
 
          ctx->Driver.VDPAUMapSurface(ctx, surf->target, surf->access,
                                      surf->output, tex, image,
@@ -432,7 +434,7 @@ _mesa_VDPAUUnmapSurfacesNV(GLsizei numSurfaces, const GLintptr *surfaces)
                                        surf->vdpSurface, j);
 
          if (image)
-            ctx->Driver.FreeTextureImageBuffer(ctx, image);
+            st_FreeTextureImageBuffer(ctx, image);
 
          _mesa_unlock_texture(ctx, tex);
       }

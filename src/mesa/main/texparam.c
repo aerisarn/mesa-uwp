@@ -47,6 +47,8 @@
 #include "program/prog_instruction.h"
 #include "util/u_math.h"
 
+#include "state_tracker/st_cb_texture.h"
+
 /**
  * Use macro to resolve undefined clamping behaviour when using lroundf
  */
@@ -909,8 +911,8 @@ _mesa_texture_parameterf(struct gl_context *ctx,
       }
    }
 
-   if (ctx->Driver.TexParameter && need_update) {
-      ctx->Driver.TexParameter(ctx, texObj, pname);
+   if (need_update) {
+      st_TexParameter(ctx, texObj, pname);
    }
 }
 
@@ -977,8 +979,8 @@ _mesa_texture_parameterfv(struct gl_context *ctx,
       need_update = set_tex_parameterf(ctx, texObj, pname, params, dsa);
    }
 
-   if (ctx->Driver.TexParameter && need_update) {
-      ctx->Driver.TexParameter(ctx, texObj, pname);
+   if (need_update) {
+      st_TexParameter(ctx, texObj, pname);
    }
 }
 
@@ -1021,8 +1023,8 @@ _mesa_texture_parameteri(struct gl_context *ctx,
       }
    }
 
-   if (ctx->Driver.TexParameter && need_update) {
-      ctx->Driver.TexParameter(ctx, texObj, pname);
+   if (need_update) {
+      st_TexParameter(ctx, texObj, pname);
    }
 }
 
@@ -1064,8 +1066,8 @@ _mesa_texture_parameteriv(struct gl_context *ctx,
       need_update = set_tex_parameteri(ctx, texObj, pname, params, dsa);
    }
 
-   if (ctx->Driver.TexParameter && need_update) {
-      ctx->Driver.TexParameter(ctx, texObj, pname);
+   if (need_update) {
+      st_TexParameter(ctx, texObj, pname);
    }
 }
 
