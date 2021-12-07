@@ -76,7 +76,7 @@ if with_dri
     filebase : 'dri',
     description : 'Direct Rendering Infastructure',
     version : meson.project_version(),
-    variables : ['dridriversdir=@0@'.format(dri_drivers_path)],
+    variables : ['dridriverdir=@0@'.format(dri_drivers_path)],
     requires_private : dri_req_private,
   )
 endif
