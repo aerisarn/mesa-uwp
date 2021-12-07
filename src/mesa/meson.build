@@ -96,7 +96,6 @@ files_libmesa = files(
   'main/es1_conversion.h',
   'main/eval.c',
   'main/eval.h',
-  'main/execmem.c',
   'main/extensions.c',
   'main/extensions.h',
   'main/extensions_table.c',
