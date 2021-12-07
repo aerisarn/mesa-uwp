@@ -306,18 +306,29 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
         } else {
                 assert(sz == 32);
                 regfmt = BI_REGISTER_FORMAT_U32;
+
+                /* Valhall can't have bi_null() here, although the source is
+                 * logically unused for flat varyings
+                 */
+                if (b->shader->arch >= 9)
+                        src0 = bi_register(61);
         }
 
         nir_src *offset = nir_get_io_offset_src(instr);
         unsigned imm_index = 0;
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 20);
+        bi_instr *I = NULL;
 
-        if (immediate && smooth) {
-                bi_ld_var_imm_to(b, dest, src0, regfmt, sample, update,
-                                vecsize, imm_index);
+        if (b->shader->malloc_idvs && immediate) {
+                /* Immediate index given in bytes. */
+                bi_ld_var_buf_imm_f32_to(b, dest, src0, regfmt, sample, update,
+                                         vecsize, imm_index * 16);
+        } else if (immediate && smooth) {
+                I = bi_ld_var_imm_to(b, dest, src0, regfmt, sample, update,
+                                     vecsize, imm_index);
         } else if (immediate && !smooth) {
-                bi_ld_var_flat_imm_to(b, dest, BI_FUNCTION_NONE, regfmt,
-                                vecsize, imm_index);
+                I = bi_ld_var_flat_imm_to(b, dest, BI_FUNCTION_NONE, regfmt,
+                                          vecsize, imm_index);
         } else {
                 bi_index idx = bi_src_index(offset);
                 unsigned base = nir_intrinsic_base(instr);
@@ -325,14 +336,29 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
                 if (base != 0)
                         idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
 
-                if (smooth) {
-                        bi_ld_var_to(b, dest, src0, idx, regfmt, sample,
-                                        update, vecsize);
+                if (b->shader->malloc_idvs) {
+                        /* Index needs to be in bytes, but NIR gives the index
+                         * in slots. For now assume 16 bytes per slots.
+                         *
+                         * TODO: more complex linking?
+                         */
+                        idx = bi_lshift_or_i32(b, idx, bi_zero(), bi_imm_u8(4));
+                        bi_ld_var_buf_f32_to(b, dest, src0, idx, regfmt, sample,
+                                             update, vecsize);
+                } else if (smooth) {
+                        I = bi_ld_var_to(b, dest, src0, idx, regfmt, sample,
+                                         update, vecsize);
                 } else {
-                        bi_ld_var_flat_to(b, dest, idx, BI_FUNCTION_NONE,
-                                        regfmt, vecsize);
+                        I = bi_ld_var_flat_to(b, dest, idx, BI_FUNCTION_NONE,
+                                              regfmt, vecsize);
                 }
         }
+
+        /* Valhall usually uses machine-allocated IDVS. If this is disabled, use
+         * a simple Midgard-style ABI.
+         */
+        if (b->shader->arch >= 9 && I != NULL)
+                I->table = PAN_TABLE_ATTRIBUTE;
 
         bi_copy_component(b, instr, dest);
 }
