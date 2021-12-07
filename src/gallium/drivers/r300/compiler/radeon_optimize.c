@@ -881,7 +881,6 @@ static int peephole(struct radeon_compiler * c, struct rc_instruction * inst)
 void rc_optimize(struct radeon_compiler * c, void *user)
 {
 	struct rc_instruction * inst = c->Program.Instructions.Next;
-	struct rc_list * var_list;
 	while(inst != &c->Program.Instructions) {
 		struct rc_instruction * cur = inst;
 		inst = inst->Next;
@@ -902,12 +901,15 @@ void rc_optimize(struct radeon_compiler * c, void *user)
 	}
 
 	inst = c->Program.Instructions.Next;
+	struct rc_list * var_list = NULL;
 	while(inst != &c->Program.Instructions) {
 		struct rc_instruction * cur = inst;
 		inst = inst->Next;
 		if (cur->U.I.Opcode == RC_OPCODE_MUL) {
-			var_list = rc_get_variables(c);
-			peephole_mul_omod(c, cur, var_list);
+			if (!var_list)
+				var_list = rc_get_variables(c);
+			if (peephole_mul_omod(c, cur, var_list))
+				var_list = NULL;
 		}
 	}
 }
