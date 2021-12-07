@@ -25,7 +25,6 @@
 #include <math.h>
 
 #include "util/macros.h"
-#include "main/macros.h"
 
 #include "intel_l3_config.h"
 

@@ -24,7 +24,6 @@
 #include <stdio.h>
 #include "dri_util.h"
 #include <dlfcn.h>
-#include "main/macros.h"
 
 /* We need GNU extensions to dlfcn.h in order to provide backward
  * compatibility for the older DRI driver loader mechanism. (dladdr,

@@ -49,7 +49,6 @@
 #include "util/hash_table.h"
 #include "util/set.h"
 #include "util/u_upload_mgr.h"
-#include "main/macros.h"
 
 #include <errno.h>
 #include <xf86drm.h>

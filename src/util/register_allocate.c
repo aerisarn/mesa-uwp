@@ -75,7 +75,6 @@
 
 #include "blob.h"
 #include "ralloc.h"
-#include "main/macros.h"
 #include "util/bitset.h"
 #include "util/u_dynarray.h"
 #include "u_math.h"

@@ -45,7 +45,6 @@
 #include "drm-uapi/i915_drm.h"
 
 #include "intel/common/intel_gem.h"
-#include "main/macros.h"
 #include "util/hash_table.h"
 #include "util/set.h"
 #include "util/u_upload_mgr.h"

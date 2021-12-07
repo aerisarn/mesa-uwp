@@ -24,7 +24,6 @@
  *      Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
 
-#include "main/mtypes.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/nir_types.h"
 #include "compiler/nir/nir_builder.h"

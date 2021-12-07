@@ -24,7 +24,7 @@
 #include "common/intel_decoder.h"
 #include "intel_disasm.h"
 #include "util/macros.h"
-#include "main/macros.h" /* Needed for ROUND_DOWN_TO */
+#include "util/u_math.h" /* Needed for ROUND_DOWN_TO */
 
 #include <string.h>
 

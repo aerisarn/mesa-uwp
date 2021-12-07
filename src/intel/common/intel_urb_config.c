@@ -25,7 +25,7 @@
 #include <math.h>
 
 #include "util/macros.h"
-#include "main/macros.h"
+#include "util/u_math.h"
 #include "compiler/shader_enums.h"
 
 #include "intel_l3_config.h"

@@ -34,8 +34,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "main/macros.h"
-#include "main/mtypes.h"
 #include "main/cpuinfo.h"
 #include "main/extensions.h"
 #include "utils.h"

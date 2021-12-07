@@ -54,7 +54,6 @@
 #include "common/intel_gem.h"
 #include "dev/intel_device_info.h"
 #include "isl/isl.h"
-#include "main/macros.h"
 #include "os/os_mman.h"
 #include "util/debug.h"
 #include "util/macros.h"

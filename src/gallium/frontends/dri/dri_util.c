@@ -44,12 +44,10 @@
 #include "utils.h"
 #include "util/u_endian.h"
 #include "util/driconf.h"
-#include "main/mtypes.h"
 #include "main/framebuffer.h"
 #include "main/version.h"
 #include "main/debug_output.h"
 #include "main/errors.h"
-#include "main/macros.h"
 
 driOptionDescription __dri2ConfigOptions[] = {
       DRI_CONF_SECTION_DEBUG
