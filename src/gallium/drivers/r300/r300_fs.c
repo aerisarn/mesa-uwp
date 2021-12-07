@@ -169,8 +169,6 @@ static void get_external_state(
             state->unit[i].texture_compare_func = s->state.compare_func;
         }
 
-        state->unit[i].non_normalized_coords = !s->state.normalized_coords;
-
         /* Pass texture swizzling to the compiler, some lowering passes need it. */
         if (state->unit[i].compare_mode_enabled) {
             state->unit[i].texture_swizzle =
