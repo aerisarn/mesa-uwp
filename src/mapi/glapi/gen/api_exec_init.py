@@ -206,23 +206,5 @@ class PrintCode(gl_XML.gl_print_base):
             print('   }')
 
 
-def _parser():
-    """Parse arguments and return namespace."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f',
-                        dest='filename',
-                        default='gl_and_es_API.xml',
-                        help='an xml file describing an API')
-    return parser.parse_args()
-
-
-def main():
-    """Main function."""
-    args = _parser()
-    printer = PrintCode()
-    api = gl_XML.parse_GL_API(args.filename)
-    printer.Print(api)
-
-
 if __name__ == '__main__':
-    main()
+    apiexec.print_glapi_file(PrintCode())

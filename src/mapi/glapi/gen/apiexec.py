@@ -19,6 +19,9 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+import argparse
+import gl_XML
+
 class exec_info():
     """Information relating GL APIs to a function.
 
@@ -345,3 +348,13 @@ def get_api_condition(f):
         # This function does not exist in any API.
         return None
     return ' || '.join(condition_parts)
+
+def print_glapi_file(printer):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f',
+                        dest='filename',
+                        default='gl_and_es_API.xml',
+                        help='an xml file describing an API')
+    args = parser.parse_args()
+    api = gl_XML.parse_GL_API(args.filename)
+    printer.Print(api)
