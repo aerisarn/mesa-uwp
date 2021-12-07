@@ -92,30 +92,6 @@ struct shader_includes;
 #define PRIM_UNKNOWN             (PRIM_MAX + 2)
 
 /**
- * Determine if the given gl_varying_slot appears in the fragment shader.
- */
-static inline GLboolean
-_mesa_varying_slot_in_fs(gl_varying_slot slot)
-{
-   switch (slot) {
-   case VARYING_SLOT_PSIZ:
-   case VARYING_SLOT_BFC0:
-   case VARYING_SLOT_BFC1:
-   case VARYING_SLOT_EDGE:
-   case VARYING_SLOT_CLIP_VERTEX:
-   case VARYING_SLOT_LAYER:
-   case VARYING_SLOT_TESS_LEVEL_OUTER:
-   case VARYING_SLOT_TESS_LEVEL_INNER:
-   case VARYING_SLOT_BOUNDING_BOX0:
-   case VARYING_SLOT_BOUNDING_BOX1:
-   case VARYING_SLOT_VIEWPORT_MASK:
-      return GL_FALSE;
-   default:
-      return GL_TRUE;
-   }
-}
-
-/**
  * Bit flags for all renderbuffers
  */
 #define BUFFER_BIT_FRONT_LEFT   (1 << BUFFER_FRONT_LEFT)

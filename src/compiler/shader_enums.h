@@ -417,6 +417,29 @@ typedef enum
 const char *gl_varying_slot_name_for_stage(gl_varying_slot slot,
                                            gl_shader_stage stage);
 
+/**
+ * Determine if the given gl_varying_slot appears in the fragment shader.
+ */
+static inline bool
+_mesa_varying_slot_in_fs(gl_varying_slot slot)
+{
+   switch (slot) {
+   case VARYING_SLOT_PSIZ:
+   case VARYING_SLOT_BFC0:
+   case VARYING_SLOT_BFC1:
+   case VARYING_SLOT_EDGE:
+   case VARYING_SLOT_CLIP_VERTEX:
+   case VARYING_SLOT_LAYER:
+   case VARYING_SLOT_TESS_LEVEL_OUTER:
+   case VARYING_SLOT_TESS_LEVEL_INNER:
+   case VARYING_SLOT_BOUNDING_BOX0:
+   case VARYING_SLOT_BOUNDING_BOX1:
+   case VARYING_SLOT_VIEWPORT_MASK:
+      return false;
+   default:
+      return true;
+   }
+}
 
 /**
  * Bitflags for varying slots.
