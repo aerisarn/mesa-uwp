@@ -998,6 +998,11 @@ struct gl_texture_object
    /** GL_ARB_bindless_texture */
    struct util_dynarray SamplerHandles;
    struct util_dynarray ImageHandles;
+
+   /** GL_ARB_sparse_texture */
+   GLboolean IsSparse;
+   GLint VirtualPageSizeIndex;
+   GLint NumSparseLevels;
 };
 
 

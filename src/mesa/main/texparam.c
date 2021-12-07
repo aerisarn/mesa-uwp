@@ -666,6 +666,40 @@ set_tex_parameteri(struct gl_context *ctx,
       }
       goto invalid_pname;
 
+   case GL_TEXTURE_SPARSE_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_INDEX_ARB:
+      if (!_mesa_has_ARB_sparse_texture(ctx))
+         goto invalid_pname;
+
+      if (texObj->Immutable)
+         goto invalid_operation;
+
+      if (pname == GL_TEXTURE_SPARSE_ARB) {
+         /* ARB_sparse_texture spec:
+          *
+          *   INVALID_VALUE is generated if <pname> is TEXTURE_SPARSE_ARB, <param>
+          *   is TRUE and <target> is not one of TEXTURE_2D, TEXTURE_2D_ARRAY,
+          *   TEXTURE_CUBE_MAP, TEXTURE_CUBE_MAP_ARRAY, TEXTURE_3D, or
+          *   TEXTURE_RECTANGLE.
+          */
+         if (params[0] &&
+             texObj->Target != GL_TEXTURE_2D &&
+             texObj->Target != GL_TEXTURE_2D_ARRAY &&
+             texObj->Target != GL_TEXTURE_CUBE_MAP &&
+             texObj->Target != GL_TEXTURE_CUBE_MAP_ARRAY &&
+             texObj->Target != GL_TEXTURE_3D &&
+             texObj->Target != GL_TEXTURE_RECTANGLE) {
+            _mesa_error(ctx, GL_INVALID_VALUE,
+                        "glTex%sParameter(target=%d)", suffix, texObj->Target);
+            return GL_FALSE;
+         }
+
+         texObj->IsSparse = !!params[0];
+      } else
+         texObj->VirtualPageSizeIndex = params[0];
+
+      return GL_TRUE;
+
    default:
       goto invalid_pname;
    }
@@ -882,6 +916,8 @@ _mesa_texture_parameterf(struct gl_context *ctx,
    case GL_TEXTURE_SWIZZLE_G_EXT:
    case GL_TEXTURE_SWIZZLE_B_EXT:
    case GL_TEXTURE_SWIZZLE_A_EXT:
+   case GL_TEXTURE_SPARSE_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_INDEX_ARB:
       {
          GLint p[4];
          p[0] = (param > 0) ?
@@ -935,6 +971,8 @@ _mesa_texture_parameterfv(struct gl_context *ctx,
    case GL_TEXTURE_SRGB_DECODE_EXT:
    case GL_TEXTURE_REDUCTION_MODE_EXT:
    case GL_TEXTURE_CUBE_MAP_SEAMLESS:
+   case GL_TEXTURE_SPARSE_ARB:
+   case GL_VIRTUAL_PAGE_SIZE_INDEX_ARB:
       {
          /* convert float param to int */
          GLint p[4];
@@ -2430,6 +2468,24 @@ get_tex_parameterfv(struct gl_context *ctx,
          *params = ENUM_TO_FLOAT(obj->TextureTiling);
          break;
 
+      case GL_TEXTURE_SPARSE_ARB:
+         if (!_mesa_has_ARB_sparse_texture(ctx))
+            goto invalid_pname;
+         *params = (GLfloat) obj->IsSparse;
+         break;
+
+      case GL_VIRTUAL_PAGE_SIZE_INDEX_ARB:
+         if (!_mesa_has_ARB_sparse_texture(ctx))
+            goto invalid_pname;
+         *params = (GLfloat) obj->VirtualPageSizeIndex;
+         break;
+
+      case GL_NUM_SPARSE_LEVELS_ARB:
+         if (!_mesa_has_ARB_sparse_texture(ctx))
+            goto invalid_pname;
+         *params = (GLfloat) obj->NumSparseLevels;
+         break;
+
       default:
          goto invalid_pname;
    }
@@ -2700,6 +2756,24 @@ get_tex_parameteriv(struct gl_context *ctx,
          if (!ctx->Extensions.EXT_memory_object)
             goto invalid_pname;
          *params = (GLint) obj->TextureTiling;
+         break;
+
+      case GL_TEXTURE_SPARSE_ARB:
+         if (!_mesa_has_ARB_sparse_texture(ctx))
+            goto invalid_pname;
+         *params = obj->IsSparse;
+         break;
+
+      case GL_VIRTUAL_PAGE_SIZE_INDEX_ARB:
+         if (!_mesa_has_ARB_sparse_texture(ctx))
+            goto invalid_pname;
+         *params = obj->VirtualPageSizeIndex;
+         break;
+
+      case GL_NUM_SPARSE_LEVELS_ARB:
+         if (!_mesa_has_ARB_sparse_texture(ctx))
+            goto invalid_pname;
+         *params = obj->NumSparseLevels;
          break;
 
       default:
