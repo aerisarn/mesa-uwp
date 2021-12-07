@@ -293,6 +293,8 @@ vn_instance_init_renderer(struct vn_instance *instance)
          instance->renderer_info.vk_ext_command_serialization_spec_version);
       vn_log(instance, "VK_MESA_venus_protocol spec version %d",
              instance->renderer_info.vk_mesa_venus_protocol_spec_version);
+      vn_log(instance, "supports blob id 0: %d",
+             instance->renderer_info.supports_blob_id_0);
    }
 
    return VK_SUCCESS;

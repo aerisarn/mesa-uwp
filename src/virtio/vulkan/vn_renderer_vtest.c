@@ -62,6 +62,8 @@ struct vtest {
       struct virgl_renderer_capset_venus data;
    } capset;
 
+   uint32_t shmem_blob_mem;
+
    struct util_sparse_array shmem_array;
    struct util_sparse_array bo_array;
 };
@@ -796,7 +798,8 @@ vtest_shmem_create(struct vn_renderer *renderer, size_t size)
    mtx_lock(&vtest->sock_mutex);
    int res_fd;
    uint32_t res_id = vtest_vcmd_resource_create_blob(
-      vtest, VCMD_BLOB_TYPE_GUEST, VCMD_BLOB_FLAG_MAPPABLE, size, 0, &res_fd);
+      vtest, vtest->shmem_blob_mem, VCMD_BLOB_FLAG_MAPPABLE, size, 0,
+      &res_fd);
    assert(res_id > 0 && res_fd >= 0);
    mtx_unlock(&vtest->sock_mutex);
 
@@ -922,6 +925,7 @@ vtest_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
       capset->vk_ext_command_serialization_spec_version;
    info->vk_mesa_venus_protocol_spec_version =
       capset->vk_mesa_venus_protocol_spec_version;
+   info->supports_blob_id_0 = capset->supports_blob_id_0;
 }
 
 static void
@@ -1015,6 +1019,11 @@ vtest_init(struct vtest *vtest)
       result = vtest_init_capset(vtest);
    if (result != VK_SUCCESS)
       return result;
+
+   /* see virtgpu_init_shmem_blob_mem */
+   vtest->shmem_blob_mem = vtest->capset.data.supports_blob_id_0
+                              ? VCMD_BLOB_TYPE_HOST3D
+                              : VCMD_BLOB_TYPE_GUEST;
 
    vtest_vcmd_context_init(vtest, vtest->capset.id);
 

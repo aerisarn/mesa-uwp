@@ -101,6 +101,8 @@ struct virtgpu {
       struct virgl_renderer_capset_venus data;
    } capset;
 
+   uint32_t shmem_blob_mem;
+
    /* note that we use gem_handle instead of res_id to index because
     * res_id is monotonically increasing by default (see
     * virtio_gpu_resource_id_get)
@@ -1286,7 +1288,7 @@ virtgpu_shmem_create(struct vn_renderer *renderer, size_t size)
 
    uint32_t res_id;
    uint32_t gem_handle = virtgpu_ioctl_resource_create_blob(
-      gpu, VIRTGPU_BLOB_MEM_GUEST, VIRTGPU_BLOB_FLAG_USE_MAPPABLE, size, 0,
+      gpu, gpu->shmem_blob_mem, VIRTGPU_BLOB_FLAG_USE_MAPPABLE, size, 0,
       &res_id);
    if (!gem_handle)
       return NULL;
@@ -1370,6 +1372,7 @@ virtgpu_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
       capset->vk_ext_command_serialization_spec_version;
    info->vk_mesa_venus_protocol_spec_version =
       capset->vk_mesa_venus_protocol_spec_version;
+   info->supports_blob_id_0 = capset->supports_blob_id_0;
 }
 
 static void
@@ -1387,6 +1390,33 @@ virtgpu_destroy(struct vn_renderer *renderer,
    util_sparse_array_finish(&gpu->bo_array);
 
    vk_free(alloc, gpu);
+}
+
+static void
+virtgpu_init_shmem_blob_mem(struct virtgpu *gpu)
+{
+   /* VIRTGPU_BLOB_MEM_GUEST allocates from the guest system memory.  They are
+    * logically contiguous in the guest but are sglists (iovecs) in the host.
+    * That makes them slower to process in the host.  With host process
+    * isolation, it also becomes impossible for the host to access sglists
+    * directly.
+    *
+    * While there are ideas (and shipped code in some cases) such as creating
+    * udmabufs from sglists, or having a dedicated guest heap, it seems the
+    * easiest way is to reuse VIRTGPU_BLOB_MEM_HOST3D.  That is, when the
+    * renderer sees a request to export a blob where
+    *
+    *  - blob_mem is VIRTGPU_BLOB_MEM_HOST3D
+    *  - blob_flags is VIRTGPU_BLOB_FLAG_USE_MAPPABLE
+    *  - blob_id is 0
+    *
+    * it allocates a host shmem.
+    *
+    * TODO cache shmems as they are costly to set up and usually require syncs
+    */
+   gpu->shmem_blob_mem = gpu->capset.data.supports_blob_id_0
+                            ? VIRTGPU_BLOB_MEM_HOST3D
+                            : VIRTGPU_BLOB_MEM_GUEST;
 }
 
 static VkResult
@@ -1556,6 +1586,8 @@ virtgpu_init(struct virtgpu *gpu)
       result = virtgpu_init_context(gpu);
    if (result != VK_SUCCESS)
       return result;
+
+   virtgpu_init_shmem_blob_mem(gpu);
 
    gpu->base.ops.destroy = virtgpu_destroy;
    gpu->base.ops.get_info = virtgpu_get_info;
