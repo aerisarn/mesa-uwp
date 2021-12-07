@@ -273,16 +273,6 @@ struct dd_function_table {
    /*@}*/
 
    /**
-    * \name Functions for GL_EXT_framebuffer_{object,blit,discard}.
-    */
-   void (*BlitFramebuffer)(struct gl_context *ctx,
-                           struct gl_framebuffer *readFb,
-                           struct gl_framebuffer *drawFb,
-                           GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
-                           GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1,
-                           GLbitfield mask, GLenum filter);
-
-   /**
     * \name Functions for GL_ARB_sample_locations
     */
    void (*GetProgrammableSampleCaps)(struct gl_context *ctx,
