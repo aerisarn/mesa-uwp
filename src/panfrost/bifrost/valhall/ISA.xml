@@ -732,7 +732,6 @@
     <update/>
     <slot/>
     <src/>
-    <src/>
     <imm name="index" start="16" size="8"/>
   </group>
 
