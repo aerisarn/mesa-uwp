@@ -31,6 +31,7 @@
 
 #include "common/intel_aux_map.h"
 #include "util/anon_file.h"
+#include "util/futex.h"
 
 #ifdef HAVE_VALGRIND
 #define VG_NOACCESS_READ(__ptr) ({                       \
