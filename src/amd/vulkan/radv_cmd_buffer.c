@@ -7551,6 +7551,17 @@ radv_CmdBeginRenderingKHR(VkCommandBuffer commandBuffer, const VkRenderingInfoKH
             att->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             att->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
          }
+
+         if (pRenderingInfo->flags & VK_RENDERING_RESUMING_BIT_KHR) {
+            att->loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+            att->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+         }
+
+         if (pRenderingInfo->flags & VK_RENDERING_SUSPENDING_BIT_KHR) {
+            att->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            att->stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+         }
+
          att->initialLayout = common_info->imageLayout;
          att->finalLayout = common_info->imageLayout;
 
