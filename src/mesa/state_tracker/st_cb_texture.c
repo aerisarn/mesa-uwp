@@ -3709,3 +3709,18 @@ st_MakeImageHandleResident(struct gl_context *ctx, GLuint64 handle,
 
    pipe->make_image_handle_resident(pipe, handle, access, resident);
 }
+
+GLboolean
+st_GetSparseTextureVirtualPageSize(struct gl_context *ctx,
+                                   GLenum target, mesa_format format,
+                                   unsigned index, int *x, int *y, int *z)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_screen *screen = st->screen;
+   enum pipe_texture_target ptarget = gl_target_to_pipe(target);
+   enum pipe_format pformat = st_mesa_format_to_pipe_format(st, format);
+
+   /* Get an XYZ page size combination specified by index. */
+   return !!screen->get_sparse_texture_virtual_page_size(
+      screen, ptarget, pformat, index, 1, x, y, z);
+}
