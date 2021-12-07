@@ -149,26 +149,6 @@ struct dd_function_table {
     */
 
    /**
-    * Draw a number of primitives.
-    * \param prims  array [nr_prims] describing what to draw (prim type,
-    *               vertex count, first index, instance count, etc).
-    * \param ib  index buffer for indexed drawing, NULL for array drawing
-    * \param index_bounds_valid  are min_index and max_index valid?
-    * \param min_index  lowest vertex index used
-    * \param max_index  highest vertex index used
-    * \param num_instances  instance count from ARB_draw_instanced
-    * \param base_instance  base instance from ARB_base_instance
-    */
-   void (*Draw)(struct gl_context *ctx,
-                const struct _mesa_prim *prims, unsigned nr_prims,
-                const struct _mesa_index_buffer *ib,
-                bool index_bounds_valid,
-                bool primitive_restart,
-                unsigned restart_index,
-                unsigned min_index, unsigned max_index,
-                unsigned num_instances, unsigned base_instance);
-
-   /**
     * Optimal Gallium version of Draw() that doesn't require translation
     * of draw info in the state tracker.
     *

@@ -1017,10 +1017,10 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
             max_index = draws[i].start + draws[i].count - 1;
          }
 
-         ctx->Driver.Draw(ctx, &prim, 1, index_size ? &ib : NULL,
-                          index_bounds_valid, info->primitive_restart,
-                          info->restart_index, min_index, max_index,
-                          info->instance_count, info->start_instance);
+         st_feedback_draw_vbo(ctx, &prim, 1, index_size ? &ib : NULL,
+                              index_bounds_valid, info->primitive_restart,
+                              info->restart_index, min_index, max_index,
+                              info->instance_count, info->start_instance);
       }
       return;
    }
@@ -1069,10 +1069,10 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
    }
 
    if (num_prims)
-      ctx->Driver.Draw(ctx, prim, num_prims, index_size ? &ib : NULL,
-                       index_bounds_valid, info->primitive_restart,
-                       info->restart_index, min_index, max_index,
-                       info->instance_count, info->start_instance);
+      st_feedback_draw_vbo(ctx, prim, num_prims, index_size ? &ib : NULL,
+                           index_bounds_valid, info->primitive_restart,
+                           info->restart_index, min_index, max_index,
+                           info->instance_count, info->start_instance);
    FREE_PRIMS(prim, num_draws);
 }
 

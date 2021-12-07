@@ -372,7 +372,6 @@ void
 st_init_draw_functions(struct pipe_screen *screen,
                        struct dd_function_table *functions)
 {
-   functions->Draw = NULL;
    functions->DrawGallium = st_draw_gallium;
    functions->DrawGalliumMultiMode = st_draw_gallium_multimode;
 
