@@ -4,3 +4,7 @@
 # Timeouts
 KHR-GLES2.texture_3d.filtering.combinations.*linear_mipmap_linear
 KHR-GLES2.texture_3d.filtering.sizes.*linear_mipmap_linear
+shaders@glsl-predication-on-large-array
+
+# I'm running it with gl_rgba8_snorm
+glx@
