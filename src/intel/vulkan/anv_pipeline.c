@@ -93,7 +93,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    const struct anv_physical_device *pdevice = device->physical;
    const struct brw_compiler *compiler = pdevice->compiler;
    const nir_shader_compiler_options *nir_options =
-      compiler->glsl_compiler_options[stage].NirOptions;
+      compiler->nir_options[stage];
 
    uint32_t *spirv = (uint32_t *) module->data;
    assert(spirv[0] == SPIR_V_MAGIC_NUMBER);
@@ -749,7 +749,7 @@ anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
    const struct brw_compiler *compiler =
       pipeline->device->physical->compiler;
    const nir_shader_compiler_options *nir_options =
-      compiler->glsl_compiler_options[stage->stage].NirOptions;
+      compiler->nir_options[stage->stage];
    nir_shader *nir;
 
    nir = anv_device_search_for_nir(pipeline->device, cache,
@@ -1691,7 +1691,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
       anv_pipeline_lower_nir(&pipeline->base, stage_ctx, &stages[s], layout);
 
-      if (prev_stage && compiler->glsl_compiler_options[s].NirOptions->unify_interfaces) {
+      if (prev_stage && compiler->nir_options[s]->unify_interfaces) {
          prev_stage->nir->info.outputs_written |= stages[s].nir->info.inputs_read &
                   ~(VARYING_BIT_TESS_LEVEL_INNER | VARYING_BIT_TESS_LEVEL_OUTER);
          stages[s].nir->info.inputs_read |= prev_stage->nir->info.outputs_written &

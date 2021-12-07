@@ -38,6 +38,7 @@ struct ra_regs;
 struct nir_shader;
 struct brw_program;
 
+struct nir_shader_compiler_options;
 typedef struct nir_shader nir_shader;
 
 struct brw_compiler {
@@ -74,7 +75,7 @@ struct brw_compiler {
 
    bool scalar_stage[MESA_ALL_SHADER_STAGES];
    bool use_tcs_8_patch;
-   struct gl_shader_compiler_options glsl_compiler_options[MESA_ALL_SHADER_STAGES];
+   struct nir_shader_compiler_options *nir_options[MESA_ALL_SHADER_STAGES];
 
    /**
     * Apply workarounds for SIN and COS output range problems.

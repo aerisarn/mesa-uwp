@@ -219,8 +219,7 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
 {
    const struct brw_compiler *compiler = blorp->compiler;
 
-   nir->options =
-      compiler->glsl_compiler_options[MESA_SHADER_FRAGMENT].NirOptions;
+   nir->options = compiler->nir_options[MESA_SHADER_FRAGMENT];
 
    memset(wm_prog_data, 0, sizeof(*wm_prog_data));
 
@@ -265,8 +264,7 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
 {
    const struct brw_compiler *compiler = blorp->compiler;
 
-   nir->options =
-      compiler->glsl_compiler_options[MESA_SHADER_VERTEX].NirOptions;
+   nir->options = compiler->nir_options[MESA_SHADER_VERTEX];
 
    brw_preprocess_nir(compiler, nir, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
@@ -301,8 +299,7 @@ blorp_compile_cs(struct blorp_context *blorp, void *mem_ctx,
 {
    const struct brw_compiler *compiler = blorp->compiler;
 
-   nir->options =
-      compiler->glsl_compiler_options[MESA_SHADER_COMPUTE].NirOptions;
+   nir->options = compiler->nir_options[MESA_SHADER_COMPUTE];
 
    memset(cs_prog_data, 0, sizeof(*cs_prog_data));
 

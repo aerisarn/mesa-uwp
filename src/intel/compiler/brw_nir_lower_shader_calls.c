@@ -254,7 +254,7 @@ brw_nir_create_trivial_return_shader(const struct brw_compiler *compiler,
                                      void *mem_ctx)
 {
    const nir_shader_compiler_options *nir_options =
-      compiler->glsl_compiler_options[MESA_SHADER_CALLABLE].NirOptions;
+      compiler->nir_options[MESA_SHADER_CALLABLE];
 
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_CALLABLE,
                                                   nir_options,

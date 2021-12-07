@@ -650,7 +650,7 @@ iris_get_compiler_options(struct pipe_screen *pscreen,
    gl_shader_stage stage = stage_from_pipe(pstage);
    assert(ir == PIPE_SHADER_IR_NIR);
 
-   return screen->compiler->glsl_compiler_options[stage].NirOptions;
+   return screen->compiler->nir_options[stage];
 }
 
 static struct disk_cache *
