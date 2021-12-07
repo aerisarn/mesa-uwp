@@ -166,6 +166,9 @@ struct ir3_compiler {
     */
    bool has_getfiberid;
 
+   /* MAX_COMPUTE_VARIABLE_GROUP_INVOCATIONS_ARB */
+   uint32_t max_variable_workgroup_size;
+
    /* Type to use for 1b nir bools: */
    type_t bool_type;
 };

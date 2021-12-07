@@ -1400,6 +1400,8 @@ emit_control_barrier(struct ir3_context *ctx)
    barrier->flags = IR3_INSTR_SS | IR3_INSTR_SY;
    barrier->barrier_class = IR3_BARRIER_EVERYTHING;
    array_insert(b, b->keeps, barrier);
+
+   ctx->so->has_barrier = true;
 }
 
 static void
@@ -3968,6 +3970,7 @@ emit_instructions(struct ir3_context *ctx)
       barrier->flags = IR3_INSTR_SS | IR3_INSTR_SY;
       barrier->barrier_class = IR3_BARRIER_EVERYTHING;
       array_insert(ctx->block, ctx->block->keeps, barrier);
+      ctx->so->has_barrier = true;
    }
 
    /* And emit the body: */

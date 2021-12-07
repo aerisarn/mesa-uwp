@@ -724,6 +724,8 @@ fd_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
    if (!has_compute(screen))
       return 0;
 
+   struct ir3_compiler *compiler = screen->compiler;
+
 #define RET(x)                                                                 \
    do {                                                                        \
       if (ret)                                                                 \
@@ -780,7 +782,7 @@ fd_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
       RET((uint32_t[]){32}); // TODO
 
    case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
-      RET((uint64_t[]){1024}); // TODO
+      RET((uint64_t[]){ compiler->max_variable_workgroup_size });
    }
 
    return 0;

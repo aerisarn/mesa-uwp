@@ -95,6 +95,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->wave_granularity = 2;
    compiler->max_waves = 16;
 
+   compiler->max_variable_workgroup_size = 1024;
+
    if (compiler->gen >= 6) {
       compiler->samgq_workaround = true;
       /* a6xx split the pipeline state into geometry and fragment state, in

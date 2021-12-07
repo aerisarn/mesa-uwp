@@ -696,6 +696,9 @@ struct ir3_shader_variant {
    uint16_t local_size[3];
    bool local_size_variable;
 
+   /* Important for compute shader to determine max reg footprint */
+   bool has_barrier;
+
    struct ir3_disasm_info disasm_info;
 };
 
