@@ -30,7 +30,6 @@ static const struct debug_named_value r300_debug_options[] = {
     { "info", DBG_INFO, "Print hardware info (printed by default on debug builds"},
     { "fp", DBG_FP, "Log fragment program compilation" },
     { "vp", DBG_VP, "Log vertex program compilation" },
-    { "pstat", DBG_P_STAT, "Log vertex/fragment program stats" },
     { "draw", DBG_DRAW, "Log draw calls" },
     { "swtcl", DBG_SWTCL, "Log SWTCL-specific info" },
     { "rsblock", DBG_RS_BLOCK, "Log rasterizer registers" },

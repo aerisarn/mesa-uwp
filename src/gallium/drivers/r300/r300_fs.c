@@ -429,10 +429,11 @@ static void r300_translate_fragment_shader(
     memset(&compiler, 0, sizeof(compiler));
     rc_init(&compiler.Base, &r300->fs_regalloc_state);
     DBG_ON(r300, DBG_FP) ? compiler.Base.Debug |= RC_DBG_LOG : 0;
-    DBG_ON(r300, DBG_P_STAT) ? compiler.Base.Debug |= RC_DBG_STATS : 0;
 
     compiler.code = &shader->code;
     compiler.state = shader->compare_state;
+    if (!shader->dummy)
+        compiler.Base.debug = &r300->debug;
     compiler.Base.is_r500 = r300->screen->caps.is_r500;
     compiler.Base.is_r400 = r300->screen->caps.is_r400;
     compiler.Base.disable_optimizations = DBG_ON(r300, DBG_NO_OPT);

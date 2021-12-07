@@ -29,7 +29,6 @@
 #include "radeon_emulate_loops.h"
 
 #define RC_DBG_LOG        (1 << 0)
-#define RC_DBG_STATS      (1 << 1)
 
 struct rc_swizzle_caps;
 
@@ -43,6 +42,7 @@ struct radeon_compiler {
 	struct memory_pool Pool;
 	struct rc_program Program;
 	const struct rc_regalloc_state *regalloc_state;
+	struct pipe_debug_callback *debug;
 	enum rc_program_type type;
 	unsigned Debug:2;
 	unsigned Error:1;
@@ -72,8 +72,6 @@ struct radeon_compiler {
 	/*@}*/
 
 	struct emulate_loop_state loop_state;
-
-	unsigned initial_num_insts; /* Number of instructions at start. */
 };
 
 void rc_init(struct radeon_compiler * c, const struct rc_regalloc_state *rs);
