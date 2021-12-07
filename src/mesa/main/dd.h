@@ -204,48 +204,6 @@ struct dd_function_table {
                                 const unsigned char *mode,
                                 unsigned num_draws);
 
-   /**
-    * Draw a primitive, getting the vertex count, instance count, start
-    * vertex, etc. from a buffer object.
-    * \param mode  GL_POINTS, GL_LINES, GL_TRIANGLE_STRIP, etc.
-    * \param indirect_data  buffer to get "DrawArrays/ElementsIndirectCommand"
-    *                       data
-    * \param indirect_offset  offset of first primitive in indrect_data buffer
-    * \param draw_count  number of primitives to draw
-    * \param stride  stride, in bytes, between
-    *                "DrawArrays/ElementsIndirectCommand" objects
-    * \param indirect_draw_count_buffer  if non-NULL specifies a buffer to get
-    *                                    the real draw_count value.  Used for
-    *                                    GL_ARB_indirect_parameters.
-    * \param indirect_draw_count_offset  offset to the draw_count value in
-    *                                    indirect_draw_count_buffer
-    * \param ib  index buffer for indexed drawing, NULL otherwise.
-    */
-   void (*DrawIndirect)(struct gl_context *ctx, GLuint mode,
-                        struct gl_buffer_object *indirect_data,
-                        GLsizeiptr indirect_offset, unsigned draw_count,
-                        unsigned stride,
-                        struct gl_buffer_object *indirect_draw_count_buffer,
-                        GLsizeiptr indirect_draw_count_offset,
-                        const struct _mesa_index_buffer *ib,
-                        bool primitive_restart,
-                        unsigned restart_index);
-
-   /**
-    * Driver implementation of glDrawTransformFeedback.
-    *
-    * \param mode    Primitive type
-    * \param num_instances  instance count from ARB_draw_instanced
-    * \param stream  If called via DrawTransformFeedbackStream, specifies
-    *                the vertex stream buffer from which to get the vertex
-    *                count.
-    * \param tfb_vertcount  if non-null, indicates which transform feedback
-    *                       object has the vertex count.
-    */
-   void (*DrawTransformFeedback)(struct gl_context *ctx, GLenum mode,
-                                 unsigned num_instances, unsigned stream,
-                                 struct gl_transform_feedback_object *tfb_vertcount);
-
    void (*DrawGalliumVertexState)(struct gl_context *ctx,
                                   struct pipe_vertex_state *state,
                                   struct pipe_draw_vertex_state_info info,

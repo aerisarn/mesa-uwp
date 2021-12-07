@@ -219,7 +219,7 @@ st_draw_gallium_multimode(struct gl_context *ctx,
    }
 }
 
-static void
+void
 st_indirect_draw_vbo(struct gl_context *ctx,
                      GLuint mode,
                      struct gl_buffer_object *indirect_data,
@@ -287,7 +287,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    }
 }
 
-static void
+void
 st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
                            unsigned num_instances, unsigned stream,
                            struct gl_transform_feedback_object *tfb_vertcount)
@@ -375,8 +375,6 @@ st_init_draw_functions(struct pipe_screen *screen,
    functions->Draw = NULL;
    functions->DrawGallium = st_draw_gallium;
    functions->DrawGalliumMultiMode = st_draw_gallium_multimode;
-   functions->DrawIndirect = st_indirect_draw_vbo;
-   functions->DrawTransformFeedback = st_draw_transform_feedback;
 
    if (screen->get_param(screen, PIPE_CAP_DRAW_VERTEX_STATE)) {
       functions->DrawGalliumVertexState = st_draw_gallium_vertex_state;

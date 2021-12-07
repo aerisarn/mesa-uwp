@@ -42,6 +42,8 @@
 #include "transformfeedback.h"
 #include "pipe/p_state.h"
 
+#include "state_tracker/st_draw.h"
+
 typedef struct {
    GLuint count;
    GLuint primCount;
@@ -2299,7 +2301,7 @@ _mesa_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
     * (like in DrawArrays), but we have no way to know how many vertices
     * will be rendered. */
 
-   ctx->Driver.DrawTransformFeedback(ctx, mode, numInstances, stream, obj);
+   st_draw_transform_feedback(ctx, mode, numInstances, stream, obj);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -2373,9 +2375,9 @@ _mesa_validated_multidrawarraysindirect(struct gl_context *ctx, GLenum mode,
    if (drawcount == 0)
       return;
 
-   ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, indirect,
-                            drawcount, stride, drawcount_buffer,
-                            drawcount_offset, NULL, false, 0);
+   st_indirect_draw_vbo(ctx, mode, ctx->DrawIndirectBuffer, indirect,
+                        drawcount, stride, drawcount_buffer,
+                        drawcount_offset, NULL, false, 0);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -2401,11 +2403,11 @@ _mesa_validated_multidrawelementsindirect(struct gl_context *ctx,
    ib.ptr = NULL;
    ib.index_size_shift = get_index_size_shift(type);
 
-   ctx->Driver.DrawIndirect(ctx, mode, ctx->DrawIndirectBuffer, indirect,
-                            drawcount, stride, drawcount_buffer,
-                            drawcount_offset, &ib,
-                            ctx->Array._PrimitiveRestart[ib.index_size_shift],
-                            ctx->Array._RestartIndex[ib.index_size_shift]);
+   st_indirect_draw_vbo(ctx, mode, ctx->DrawIndirectBuffer, indirect,
+                        drawcount, stride, drawcount_buffer,
+                        drawcount_offset, &ib,
+                        ctx->Array._PrimitiveRestart[ib.index_size_shift],
+                        ctx->Array._RestartIndex[ib.index_size_shift]);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
