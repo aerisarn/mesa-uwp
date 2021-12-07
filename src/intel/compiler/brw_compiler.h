@@ -27,7 +27,6 @@
 #include <stdio.h>
 #include "dev/intel_device_info.h"
 #include "main/glheader.h"
-#include "main/macros.h"
 #include "main/config.h"
 #include "util/ralloc.h"
 #include "util/u_math.h"

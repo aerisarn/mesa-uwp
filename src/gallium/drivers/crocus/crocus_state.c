@@ -112,6 +112,7 @@
 
 #include "crocus_genx_macros.h"
 #include "intel/common/intel_guardband.h"
+#include "main/macros.h" /* UNCLAMPED_* */
 
 /**
  * Statically assert that PIPE_* enums match the hardware packets.
