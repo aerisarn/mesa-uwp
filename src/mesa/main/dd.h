@@ -326,14 +326,6 @@ struct dd_function_table {
    /**@}*/
 
    /**
-    * \name GL_OES_draw_texture interface
-    */
-   /*@{*/
-   void (*DrawTex)(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
-                   GLfloat width, GLfloat height);
-   /*@}*/
-
-   /**
     * \name GL_ARB_texture_multisample
     */
    void (*GetSamplePosition)(struct gl_context *ctx,

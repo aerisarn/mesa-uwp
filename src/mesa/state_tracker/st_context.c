@@ -922,8 +922,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_draw_functions(screen, functions);
    st_init_bufferobject_functions(screen, functions);
 
-   st_init_drawtex_functions(functions);
-
    st_init_eglimage_functions(functions, has_egl_image_validate);
 
    st_init_msaa_functions(functions);
