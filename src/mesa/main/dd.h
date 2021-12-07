@@ -529,25 +529,6 @@ struct dd_function_table {
    /*@}*/
 
    /**
-    * Indicate that this thread is being used by Mesa as a background drawing
-    * thread for the given GL context.
-    *
-    * If this function is called more than once from any given thread, each
-    * subsequent call overrides the context that was passed in the previous
-    * call.  Mesa takes advantage of this to re-use a background thread to
-    * perform drawing on behalf of multiple contexts.
-    *
-    * Mesa may sometimes call this function from a non-background thread
-    * (i.e. a thread that has already been bound to a context using
-    * __DriverAPIRec::MakeCurrent()); when this happens, ctx will be equal to
-    * the context that is bound to this thread.
-    *
-    * Mesa will only call this function if GL multithreading is enabled.
-    */
-   void (*SetBackgroundContext)(struct gl_context *ctx,
-                                struct util_queue_monitoring *queue_info);
-
-   /**
     * \name GL_ARB_sparse_buffer interface
     */
    /*@{*/
@@ -567,23 +548,6 @@ struct dd_function_table {
                               GLuint64 offset,
                               GLenum usage,
                               struct gl_buffer_object *bufObj);
-
-   /**
-    * Fill uuid with an unique identifier for this driver
-    *
-    * uuid must point to GL_UUID_SIZE_EXT bytes of available memory
-    */
-   void (*GetDriverUuid)(struct gl_context *ctx, char *uuid);
-
-   /**
-    * Fill uuid with an unique identifier for the device associated
-    * to this driver
-    *
-    * uuid must point to GL_UUID_SIZE_EXT bytes of available memory
-    */
-   void (*GetDeviceUuid)(struct gl_context *ctx, char *uuid);
-
-   /*@}*/
 
    /**
     * \name GL_ARB_get_program_binary

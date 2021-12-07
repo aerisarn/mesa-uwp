@@ -34,6 +34,8 @@
 #include "version.h"
 #include "git_sha1.h"
 
+#include "state_tracker/st_context.h"
+
 static simple_mtx_t override_lock = _SIMPLE_MTX_INITIALIZER_NP;
 
 /**
@@ -726,13 +728,13 @@ done:
 void
 _mesa_get_driver_uuid(struct gl_context *ctx, GLint *uuid)
 {
-   ctx->Driver.GetDriverUuid(ctx, (char*) uuid);
+   st_get_driver_uuid(ctx, (char*) uuid);
 }
 
 void
 _mesa_get_device_uuid(struct gl_context *ctx, GLint *uuid)
 {
-   ctx->Driver.GetDeviceUuid(ctx, (char*) uuid);
+   st_get_device_uuid(ctx, (char*) uuid);
 }
 
 /**

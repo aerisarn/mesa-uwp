@@ -872,7 +872,7 @@ st_emit_string_marker(struct gl_context *ctx, const GLchar *string, GLsizei len)
 }
 
 
-static void
+void
 st_set_background_context(struct gl_context *ctx,
                           struct util_queue_monitoring *queue_info)
 {
@@ -885,7 +885,7 @@ st_set_background_context(struct gl_context *ctx,
 }
 
 
-static void
+void
 st_get_device_uuid(struct gl_context *ctx, char *uuid)
 {
    struct pipe_screen *screen = st_context(ctx)->screen;
@@ -896,7 +896,7 @@ st_get_device_uuid(struct gl_context *ctx, char *uuid)
 }
 
 
-static void
+void
 st_get_driver_uuid(struct gl_context *ctx, char *uuid)
 {
    struct pipe_screen *screen = st_context(ctx)->screen;
@@ -941,10 +941,6 @@ st_init_driver_functions(struct pipe_screen *screen,
 
    if (screen->get_param(screen, PIPE_CAP_STRING_MARKER))
       functions->EmitStringMarker = st_emit_string_marker;
-
-   functions->SetBackgroundContext = st_set_background_context;
-   functions->GetDriverUuid = st_get_driver_uuid;
-   functions->GetDeviceUuid = st_get_device_uuid;
 
    /* GL_ARB_get_program_binary */
    functions->GetProgramBinaryDriverSHA1 = st_get_program_binary_driver_sha1;

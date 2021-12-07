@@ -40,6 +40,7 @@
 #include "util/u_thread.h"
 #include "util/u_cpu_detect.h"
 
+#include "state_tracker/st_context.h"
 
 static void
 glthread_unmarshal_batch(void *job, void *gdata, int thread_index)
@@ -84,7 +85,7 @@ glthread_thread_initialization(void *job, void *gdata, int thread_index)
 {
    struct gl_context *ctx = (struct gl_context*)job;
 
-   ctx->Driver.SetBackgroundContext(ctx, &ctx->GLThread.stats);
+   st_set_background_context(ctx, &ctx->GLThread.stats);
    _glapi_set_context(ctx);
 }
 
