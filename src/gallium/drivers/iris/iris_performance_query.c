@@ -25,6 +25,8 @@
 #include "iris_context.h"
 #include "iris_perf.h"
 
+#include "main/mtypes.h"
+
 struct iris_perf_query {
    struct gl_perf_query_object base;
    struct intel_perf_query_object *query;

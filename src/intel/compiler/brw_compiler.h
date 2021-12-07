@@ -26,9 +26,12 @@
 
 #include <stdio.h>
 #include "dev/intel_device_info.h"
+#include "main/glheader.h"
 #include "main/macros.h"
-#include "main/mtypes.h"
+#include "main/config.h"
 #include "util/ralloc.h"
+#include "compiler/shader_info.h"
+#include "util/u_math.h"
 
 #ifdef __cplusplus
 extern "C" {
