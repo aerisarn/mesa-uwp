@@ -87,6 +87,8 @@ for var in \
     PIGLIT_RESULTS \
     PIGLIT_TESTS \
     PIPELINE_ARTIFACTS_BASE \
+    SKQP_ASSETS_DIR \
+    SKQP_BACKENDS \
     TU_DEBUG \
     VK_CPU \
     VK_DRIVER \

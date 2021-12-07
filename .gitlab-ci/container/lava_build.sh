@@ -82,8 +82,12 @@ apt-get install -y --no-remove \
                    glslang-tools \
                    libdrm-dev \
                    libegl1-mesa-dev \
+                   libfontconfig-dev \
                    libgbm-dev \
+                   libgl-dev \
                    libgles2-mesa-dev \
+                   libglu1-mesa-dev \
+                   libglx-dev \
                    libpng-dev \
                    libssl-dev \
                    libudev-dev \
@@ -93,11 +97,14 @@ apt-get install -y --no-remove \
                    libx11-xcb-dev \
                    libxcb-dri2-0-dev \
                    libxkbcommon-dev \
+                   ninja-build \
                    patch \
+                   python-is-python3 \
                    python3-distutils \
                    python3-mako \
                    python3-numpy \
                    python3-serial \
+                   unzip \
                    wget
 
 
@@ -139,6 +146,13 @@ mv /usr/local/bin/*-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
 DEQP_TARGET=surfaceless . .gitlab-ci/container/build-deqp.sh
 
 mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
+
+
+############### Build SKQP
+if [[ "$DEBIAN_ARCH" = "arm64" ]]; then
+    SKQP_ARCH="arm64" . .gitlab-ci/container/build-skqp.sh
+    mv /skqp /lava-files/rootfs-${DEBIAN_ARCH}/.
+fi
 
 
 ############### Build piglit
