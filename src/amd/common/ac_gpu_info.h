@@ -232,6 +232,10 @@ struct radeon_info {
    /* Tile modes. */
    uint32_t si_tile_mode_array[32];
    uint32_t cik_macrotile_mode_array[16];
+
+   /* AMD_CU_MASK environment variable or ~0. */
+   bool spi_cu_en_has_effect;
+   uint32_t spi_cu_en;
 };
 
 bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
