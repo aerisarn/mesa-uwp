@@ -1978,31 +1978,24 @@ isl_surf_get_hiz_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
                       struct isl_surf *hiz_surf)
 {
-   assert(ISL_GFX_VER(dev) >= 5 && ISL_DEV_USE_SEPARATE_STENCIL(dev));
+   /* HiZ support does not exist prior to Gfx5 */
+   if (ISL_GFX_VER(dev) < 5)
+      return false;
 
    if (!isl_surf_usage_is_depth(surf->usage))
       return false;
 
-   /* On SNB+, compressed depth buffers cannot be interleaved with stencil. */
-   switch (surf->format) {
-   case ISL_FORMAT_R24_UNORM_X8_TYPELESS:
-      if (isl_surf_usage_is_depth_and_stencil(surf->usage)) {
-         assert(ISL_GFX_VER(dev) == 5);
-         unreachable("This should work, but is untested");
-      }
-      FALLTHROUGH;
-   case ISL_FORMAT_R16_UNORM:
-   case ISL_FORMAT_R32_FLOAT:
-      break;
-   case ISL_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-      if (ISL_GFX_VER(dev) == 5) {
-         assert(isl_surf_usage_is_depth_and_stencil(surf->usage));
-         unreachable("This should work, but is untested");
-      }
-      FALLTHROUGH;
-   default:
+   /* From the Sandy Bridge PRM, Vol 2 Part 1,
+    * 3DSTATE_DEPTH_BUFFER::Hierarchical Depth Buffer Enable,
+    *
+    *    If this field is enabled, the Surface Format of the depth buffer
+    *    cannot be D32_FLOAT_S8X24_UINT or D24_UNORM_S8_UINT. Use of stencil
+    *    requires the separate stencil buffer.
+    *
+    * On SNB+, HiZ can't be used with combined depth-stencil buffers.
+    */
+   if (isl_surf_usage_is_stencil(surf->usage))
       return false;
-   }
 
    /* Multisampled depth is always interleaved */
    assert(surf->msaa_layout == ISL_MSAA_LAYOUT_NONE ||
