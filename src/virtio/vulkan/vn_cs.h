@@ -15,6 +15,7 @@
 #define VN_CS_ENCODER_INITIALIZER_LOCAL(storage, size)                       \
    (struct vn_cs_encoder)                                                    \
    {                                                                         \
+      .storage_type = VN_CS_ENCODER_STORAGE_POINTER,                         \
       .buffers = &VN_CS_ENCODER_BUFFER_INITIALIZER(storage),                 \
       .buffer_count = 1, .buffer_max = 1, .current_buffer_size = size,       \
       .cur = storage, .end = (const void *)(storage) + (size),               \
@@ -23,9 +24,9 @@
 #define VN_CS_ENCODER_INITIALIZER(buf, size)                                 \
    (struct vn_cs_encoder)                                                    \
    {                                                                         \
-      .buffers = (buf), .buffer_count = 1, .buffer_max = 1,                  \
-      .current_buffer_size = size, .cur = (buf)->base,                       \
-      .end = (buf)->base + (size),                                           \
+      .storage_type = VN_CS_ENCODER_STORAGE_POINTER, .buffers = (buf),       \
+      .buffer_count = 1, .buffer_max = 1, .current_buffer_size = size,       \
+      .cur = (buf)->base, .end = (buf)->base + (size),                       \
    }
 
 #define VN_CS_DECODER_INITIALIZER(storage, size)                             \
@@ -33,6 +34,13 @@
    {                                                                         \
       .cur = storage, .end = (const void *)(storage) + (size),               \
    }
+
+enum vn_cs_encoder_storage_type {
+   /* a pointer to an externally-managed storage */
+   VN_CS_ENCODER_STORAGE_POINTER,
+   /* an array of dynamically allocated shmems */
+   VN_CS_ENCODER_STORAGE_SHMEM_ARRAY,
+};
 
 struct vn_cs_encoder_buffer {
    struct vn_renderer_shmem *shmem;
@@ -43,8 +51,8 @@ struct vn_cs_encoder_buffer {
 
 struct vn_cs_encoder {
    struct vn_instance *instance; /* TODO shmem cache */
+   enum vn_cs_encoder_storage_type storage_type;
    size_t min_buffer_size;
-   bool indirect;
 
    bool fatal_error;
 
@@ -70,9 +78,10 @@ struct vn_cs_decoder {
 };
 
 void
-vn_cs_encoder_init_indirect(struct vn_cs_encoder *enc,
-                            struct vn_instance *instance,
-                            size_t min_size);
+vn_cs_encoder_init(struct vn_cs_encoder *enc,
+                   struct vn_instance *instance,
+                   enum vn_cs_encoder_storage_type storage_type,
+                   size_t min_size);
 
 void
 vn_cs_encoder_fini(struct vn_cs_encoder *enc);

@@ -88,20 +88,24 @@ vn_cs_encoder_gc_buffers(struct vn_cs_encoder *enc)
 }
 
 void
-vn_cs_encoder_init_indirect(struct vn_cs_encoder *enc,
-                            struct vn_instance *instance,
-                            size_t min_size)
+vn_cs_encoder_init(struct vn_cs_encoder *enc,
+                   struct vn_instance *instance,
+                   enum vn_cs_encoder_storage_type storage_type,
+                   size_t min_size)
 {
+   /* VN_CS_ENCODER_INITIALIZER* should be used instead */
+   assert(storage_type != VN_CS_ENCODER_STORAGE_POINTER);
+
    memset(enc, 0, sizeof(*enc));
    enc->instance = instance;
+   enc->storage_type = storage_type;
    enc->min_buffer_size = min_size;
-   enc->indirect = true;
 }
 
 void
 vn_cs_encoder_fini(struct vn_cs_encoder *enc)
 {
-   if (unlikely(!enc->indirect))
+   if (unlikely(enc->storage_type == VN_CS_ENCODER_STORAGE_POINTER))
       return;
 
    for (uint32_t i = 0; i < enc->buffer_count; i++)
@@ -163,7 +167,7 @@ vn_cs_encoder_grow_buffer_array(struct vn_cs_encoder *enc)
 bool
 vn_cs_encoder_reserve_internal(struct vn_cs_encoder *enc, size_t size)
 {
-   if (unlikely(!enc->indirect))
+   if (unlikely(enc->storage_type == VN_CS_ENCODER_STORAGE_POINTER))
       return false;
 
    if (enc->buffer_count >= enc->buffer_max) {

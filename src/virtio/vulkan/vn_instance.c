@@ -160,8 +160,8 @@ vn_instance_init_ring(struct vn_instance *instance)
    vn_renderer_submit_simple(instance->renderer, create_ring_data,
                              vn_cs_encoder_get_len(&local_enc));
 
-   vn_cs_encoder_init_indirect(&instance->ring.upload, instance,
-                               1 * 1024 * 1024);
+   vn_cs_encoder_init(&instance->ring.upload, instance,
+                      VN_CS_ENCODER_STORAGE_SHMEM_ARRAY, 1 * 1024 * 1024);
 
    mtx_init(&instance->ring.roundtrip_mutex, mtx_plain);
    instance->ring.roundtrip_next = 1;
@@ -478,7 +478,8 @@ static struct vn_cs_encoder *
 vn_instance_ring_cs_upload_locked(struct vn_instance *instance,
                                   const struct vn_cs_encoder *cs)
 {
-   assert(!cs->indirect && cs->buffer_count == 1);
+   assert(cs->storage_type == VN_CS_ENCODER_STORAGE_POINTER &&
+          cs->buffer_count == 1);
    const void *cs_data = cs->buffers[0].base;
    const size_t cs_size = cs->total_committed_size;
    assert(cs_size == vn_cs_encoder_get_len(cs));
@@ -505,11 +506,11 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
    struct vn_ring *ring = &instance->ring.ring;
 
    const bool direct = vn_instance_submission_can_direct(instance, cs);
-   if (!direct && !cs->indirect) {
+   if (!direct && cs->storage_type == VN_CS_ENCODER_STORAGE_POINTER) {
       cs = vn_instance_ring_cs_upload_locked(instance, cs);
       if (!cs)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-      assert(cs->indirect);
+      assert(cs->storage_type != VN_CS_ENCODER_STORAGE_POINTER);
    }
 
    struct vn_instance_submission submit;
