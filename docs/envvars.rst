@@ -224,12 +224,8 @@ the :doc:`Xlib software driver page <xlibdriver>` for details.
 :envvar:`MESA_BACK_BUFFER`
    specifies how to implement the back color buffer, either ``pixmap``
    or ``ximage``
-:envvar:`MESA_GAMMA`
-   gamma correction coefficients for red, green, blue channels
 :envvar:`MESA_XSYNC`
    enable synchronous X behavior (for debugging only)
-:envvar:`MESA_GLX_FORCE_CI`
-   if set, force GLX to treat 8 BPP visuals as CI visuals
 :envvar:`MESA_GLX_FORCE_ALPHA`
    if set, forces RGB windows to have an alpha channel.
 :envvar:`MESA_GLX_DEPTH_BITS`
