@@ -395,6 +395,20 @@ vk_image_view_init(struct vk_device *device,
    image_view->base_array_layer = range->baseArrayLayer;
    image_view->layer_count = vk_image_subresource_layer_count(image, range);
 
+   const VkImageViewMinLodCreateInfoEXT *min_lod_info =
+      vk_find_struct_const(pCreateInfo, IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT);
+   image_view->min_lod = min_lod_info ? min_lod_info->minLod : 0.0f;
+
+   /* From the Vulkan 1.3.215 spec:
+    *
+    *    VUID-VkImageViewMinLodCreateInfoEXT-minLod-06456
+    *
+    *    "minLod must be less or equal to the index of the last mipmap level
+    *    accessible to the view."
+    */
+   assert(image_view->min_lod <= image_view->base_mip_level +
+                                 image_view->level_count - 1);
+
    image_view->extent =
       vk_image_mip_level_extent(image, image_view->base_mip_level);
 

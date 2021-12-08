@@ -202,6 +202,9 @@ struct vk_image_view {
    uint32_t base_array_layer;
    uint32_t layer_count;
 
+   /* VK_EXT_image_view_min_lod */
+   float min_lod;
+
    /* Image extent at LOD 0 */
    VkExtent3D extent;
 
