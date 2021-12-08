@@ -136,63 +136,6 @@ void rc_calculate_inputs_outputs(struct radeon_compiler * c)
 }
 
 /**
- * Rewrite the program such that everything that source the given input
- * register will source new_input instead.
- */
-void rc_move_input(struct radeon_compiler * c, unsigned input, struct rc_src_register new_input)
-{
-	struct rc_instruction * inst;
-
-	c->Program.InputsRead &= ~(1U << input);
-
-	for(inst = c->Program.Instructions.Next; inst != &c->Program.Instructions; inst = inst->Next) {
-		const struct rc_opcode_info * opcode = rc_get_opcode_info(inst->U.I.Opcode);
-		unsigned i;
-
-		for(i = 0; i < opcode->NumSrcRegs; ++i) {
-			if (inst->U.I.SrcReg[i].File == RC_FILE_INPUT && inst->U.I.SrcReg[i].Index == input) {
-				inst->U.I.SrcReg[i].File = new_input.File;
-				inst->U.I.SrcReg[i].Index = new_input.Index;
-				inst->U.I.SrcReg[i].Swizzle = combine_swizzles(new_input.Swizzle, inst->U.I.SrcReg[i].Swizzle);
-				if (!inst->U.I.SrcReg[i].Abs) {
-					inst->U.I.SrcReg[i].Negate ^= new_input.Negate;
-					inst->U.I.SrcReg[i].Abs = new_input.Abs;
-				}
-
-				c->Program.InputsRead |= 1U << new_input.Index;
-			}
-		}
-	}
-}
-
-
-/**
- * Rewrite the program such that everything that writes into the given
- * output register will instead write to new_output. The new_output
- * writemask is honoured.
- */
-void rc_move_output(struct radeon_compiler * c, unsigned output, unsigned new_output, unsigned writemask)
-{
-	struct rc_instruction * inst;
-
-	c->Program.OutputsWritten &= ~(1U << output);
-
-	for(inst = c->Program.Instructions.Next; inst != &c->Program.Instructions; inst = inst->Next) {
-		const struct rc_opcode_info * opcode = rc_get_opcode_info(inst->U.I.Opcode);
-
-		if (opcode->HasDstReg) {
-			if (inst->U.I.DstReg.File == RC_FILE_OUTPUT && inst->U.I.DstReg.Index == output) {
-				inst->U.I.DstReg.Index = new_output;
-				inst->U.I.DstReg.WriteMask &= writemask;
-
-				c->Program.OutputsWritten |= 1U << new_output;
-			}
-		}
-	}
-}
-
-
-/**
  * Rewrite the program such that a given output is duplicated.
  */
 void rc_copy_output(struct radeon_compiler * c, unsigned output, unsigned dup_output)
