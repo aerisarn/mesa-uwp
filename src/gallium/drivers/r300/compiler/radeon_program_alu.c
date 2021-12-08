@@ -481,13 +481,6 @@ static void transform_SEQ(struct radeon_compiler* c,
 	rc_remove_instruction(inst);
 }
 
-static void transform_SFL(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	emit1(c, inst->Prev, RC_OPCODE_MOV, &inst->U.I, inst->U.I.DstReg, builtin_zero);
-	rc_remove_instruction(inst);
-}
-
 static void transform_SGE(struct radeon_compiler* c,
 	struct rc_instruction* inst)
 {
@@ -598,7 +591,7 @@ static void transform_SUB(struct radeon_compiler* c,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SFL, SGE, SGT, SLE, SLT, SNE, SUB
+ *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -624,7 +617,6 @@ int radeonTransformALU(
 	case RC_OPCODE_ROUND: transform_ROUND(c, inst); return 1;
 	case RC_OPCODE_RSQ: transform_RSQ(c, inst); return 1;
 	case RC_OPCODE_SEQ: transform_SEQ(c, inst); return 1;
-	case RC_OPCODE_SFL: transform_SFL(c, inst); return 1;
 	case RC_OPCODE_SGE: transform_SGE(c, inst); return 1;
 	case RC_OPCODE_SGT: transform_SGT(c, inst); return 1;
 	case RC_OPCODE_SLE: transform_SLE(c, inst); return 1;
@@ -857,7 +849,6 @@ int r300_transform_vertex_alu(
 			return 1;
 		}
 		return 0;
-	case RC_OPCODE_SFL: transform_SFL(c, inst); return 1;
 	case RC_OPCODE_SGT: transform_r300_vertex_SGT(c, inst); return 1;
 	case RC_OPCODE_SLE: transform_r300_vertex_SLE(c, inst); return 1;
 	case RC_OPCODE_SNE:
