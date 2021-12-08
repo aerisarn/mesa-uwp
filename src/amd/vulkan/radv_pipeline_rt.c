@@ -2091,7 +2091,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "rt_combined");
 
    b.shader->info.workgroup_size[0] = 8;
-   b.shader->info.workgroup_size[1] = 8;
+   b.shader->info.workgroup_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
    b.shader->info.workgroup_size[2] = 1;
 
    struct rt_variables vars = create_rt_variables(b.shader, stack_sizes);
