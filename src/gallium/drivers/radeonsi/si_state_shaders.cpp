@@ -919,18 +919,35 @@ static void si_emit_shader_gs(struct si_context *sctx)
    radeon_end_update_context_roll(sctx);
 
    /* These don't cause any context rolls. */
-   radeon_begin_again(&sctx->gfx_cs);
-   if (sctx->chip_class >= GFX7) {
-      radeon_opt_set_sh_reg(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-                            SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
-                            shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs);
+   if (sctx->screen->info.spi_cu_en_has_effect) {
+      if (sctx->chip_class >= GFX7) {
+         ac_set_reg_cu_en(&sctx->gfx_cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                          shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs,
+                          C_00B21C_CU_EN, 0, &sctx->screen->info,
+                          (void (*)(void*, unsigned, uint32_t))radeon_set_sh_reg_func);
+         sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS);
+      }
+      if (sctx->chip_class >= GFX10) {
+         ac_set_reg_cu_en(&sctx->gfx_cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+                          shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs,
+                          C_00B204_CU_EN, 16, &sctx->screen->info,
+                          (void (*)(void*, unsigned, uint32_t))radeon_set_sh_reg_func);
+         sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS);
+      }
+   } else {
+      radeon_begin_again(&sctx->gfx_cs);
+      if (sctx->chip_class >= GFX7) {
+         radeon_opt_set_sh_reg(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                               SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
+                               shader->ctx_reg.gs.spi_shader_pgm_rsrc3_gs);
+      }
+      if (sctx->chip_class >= GFX10) {
+         radeon_opt_set_sh_reg(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+                               SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
+                               shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs);
+      }
+      radeon_end();
    }
-   if (sctx->chip_class >= GFX10) {
-      radeon_opt_set_sh_reg(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-                            SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
-                            shader->ctx_reg.gs.spi_shader_pgm_rsrc4_gs);
-   }
-   radeon_end();
 }
 
 static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
@@ -1129,13 +1146,27 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
    radeon_begin_again(&sctx->gfx_cs);
    radeon_opt_set_uconfig_reg(sctx, R_030980_GE_PC_ALLOC, SI_TRACKED_GE_PC_ALLOC,
                               shader->ctx_reg.ngg.ge_pc_alloc);
-   radeon_opt_set_sh_reg(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-                         SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
-                         shader->ctx_reg.ngg.spi_shader_pgm_rsrc3_gs);
-   radeon_opt_set_sh_reg(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-                         SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
-                         shader->ctx_reg.ngg.spi_shader_pgm_rsrc4_gs);
-   radeon_end();
+   if (sctx->screen->info.spi_cu_en_has_effect) {
+      radeon_end();
+      ac_set_reg_cu_en(&sctx->gfx_cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                       shader->ctx_reg.ngg.spi_shader_pgm_rsrc3_gs,
+                       C_00B21C_CU_EN, 0, &sctx->screen->info,
+                       (void (*)(void*, unsigned, uint32_t))radeon_set_sh_reg_func);
+      ac_set_reg_cu_en(&sctx->gfx_cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+                       shader->ctx_reg.ngg.spi_shader_pgm_rsrc4_gs,
+                       C_00B204_CU_EN, 16, &sctx->screen->info,
+                       (void (*)(void*, unsigned, uint32_t))radeon_set_sh_reg_func);
+      sctx->tracked_regs.reg_saved &= ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS) &
+                                      ~BITFIELD64_BIT(SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS);
+   } else {
+      radeon_opt_set_sh_reg(sctx, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                            SI_TRACKED_SPI_SHADER_PGM_RSRC3_GS,
+                            shader->ctx_reg.ngg.spi_shader_pgm_rsrc3_gs);
+      radeon_opt_set_sh_reg(sctx, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+                            SI_TRACKED_SPI_SHADER_PGM_RSRC4_GS,
+                            shader->ctx_reg.ngg.spi_shader_pgm_rsrc4_gs);
+      radeon_end();
+   }
 }
 
 static void gfx10_emit_shader_ngg_notess_nogs(struct si_context *sctx)
@@ -1599,8 +1630,10 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    oc_lds_en = shader->selector->info.stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
 
    if (sscreen->info.chip_class >= GFX7) {
-      si_pm4_set_reg(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-                     S_00B118_CU_EN(cu_mask) | S_00B118_WAVE_LIMIT(0x3F));
+      ac_set_reg_cu_en(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
+                       S_00B118_CU_EN(cu_mask) | S_00B118_WAVE_LIMIT(0x3F),
+                       C_00B118_CU_EN, 0, &sscreen->info,
+                       (void (*)(void*, unsigned, uint32_t))si_pm4_set_reg);
       si_pm4_set_reg(pm4, R_00B11C_SPI_SHADER_LATE_ALLOC_VS, S_00B11C_LIMIT(late_alloc_wave64));
    }
 
