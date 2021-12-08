@@ -615,29 +615,12 @@ static void transform_SWZ(struct radeon_compiler* c,
 	inst->U.I.Opcode = RC_OPCODE_MOV;
 }
 
-static void transform_XPD(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	struct rc_dst_register dst = try_to_reuse_dst(c, inst);
-
-	emit2(c, inst->Prev, RC_OPCODE_MUL, 0, dst,
-		swizzle(inst->U.I.SrcReg[0], RC_SWIZZLE_Z, RC_SWIZZLE_X, RC_SWIZZLE_Y, RC_SWIZZLE_W),
-		swizzle(inst->U.I.SrcReg[1], RC_SWIZZLE_Y, RC_SWIZZLE_Z, RC_SWIZZLE_X, RC_SWIZZLE_W));
-	emit3(c, inst->Prev, RC_OPCODE_MAD, &inst->U.I, inst->U.I.DstReg,
-		swizzle(inst->U.I.SrcReg[0], RC_SWIZZLE_Y, RC_SWIZZLE_Z, RC_SWIZZLE_X, RC_SWIZZLE_W),
-		swizzle(inst->U.I.SrcReg[1], RC_SWIZZLE_Z, RC_SWIZZLE_X, RC_SWIZZLE_Y, RC_SWIZZLE_W),
-		negate(srcreg(RC_FILE_TEMPORARY, dst.Index)));
-
-	rc_remove_instruction(inst);
-}
-
-
 /**
  * Can be used as a transformation for @ref radeonClauseLocalTransform,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SFL, SGE, SGT, SLE, SLT, SNE, SUB, SWZ, XPD
+ *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SFL, SGE, SGT, SLE, SLT, SNE, SUB, SWZ
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -674,7 +657,6 @@ int radeonTransformALU(
 	case RC_OPCODE_SUB: transform_SUB(c, inst); return 1;
 	case RC_OPCODE_SWZ: transform_SWZ(c, inst); return 1;
 	case RC_OPCODE_TRUNC: transform_TRUNC(c, inst); return 1;
-	case RC_OPCODE_XPD: transform_XPD(c, inst); return 1;
 	default:
 		return 0;
 	}
@@ -913,7 +895,6 @@ int r300_transform_vertex_alu(
 	case RC_OPCODE_SUB: transform_SUB(c, inst); return 1;
 	case RC_OPCODE_SWZ: transform_SWZ(c, inst); return 1;
 	case RC_OPCODE_TRUNC: transform_vertex_TRUNC(c, inst); return 1;
-	case RC_OPCODE_XPD: transform_XPD(c, inst); return 1;
 	default:
 		return 0;
 	}

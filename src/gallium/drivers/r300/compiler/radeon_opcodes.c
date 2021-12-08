@@ -345,12 +345,6 @@ const struct rc_opcode_info rc_opcodes[MAX_RC_OPCODE] = {
 		.IsComponentwise = 1
 	},
 	{
-		.Opcode = RC_OPCODE_XPD,
-		.Name = "XPD",
-		.NumSrcRegs = 2,
-		.HasDstReg = 1
-	},
-	{
 		.Opcode = RC_OPCODE_TEX,
 		.Name = "TEX",
 		.HasTexture = 1,
@@ -549,7 +543,6 @@ void rc_compute_sources_for_writemask(
 			srcmasks[1] |= RC_MASK_XY;
 			break;
 		case RC_OPCODE_DP3:
-		case RC_OPCODE_XPD:
 			srcmasks[0] |= RC_MASK_XYZ;
 			srcmasks[1] |= RC_MASK_XYZ;
 			break;
