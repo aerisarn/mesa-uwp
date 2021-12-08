@@ -3147,6 +3147,12 @@ nir_to_tgsi(struct nir_shader *s,
       NIR_PASS_V(s, nir_opt_dce);
    }
 
+   nir_move_options move_all =
+       nir_move_const_undef | nir_move_load_ubo | nir_move_load_input |
+       nir_move_comparisons | nir_move_copies | nir_move_load_ssbo;
+
+   NIR_PASS_V(s, nir_opt_move, move_all);
+
    /* Only lower 32-bit floats.  The only other modifier type officially
     * supported by TGSI is 32-bit integer negates, but even those are broken on
     * virglrenderer, so skip lowering all integer and f64 float mods.
