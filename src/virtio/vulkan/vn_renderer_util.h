@@ -8,6 +8,15 @@
 
 #include "vn_renderer.h"
 
+/* for suballocations of short-lived shmems, not thread-safe */
+struct vn_renderer_shmem_pool {
+   size_t min_alloc_size;
+
+   struct vn_renderer_shmem *shmem;
+   size_t size;
+   size_t used;
+};
+
 static inline VkResult
 vn_renderer_submit_simple(struct vn_renderer *renderer,
                           const void *cs_data,
@@ -28,5 +37,20 @@ VkResult
 vn_renderer_submit_simple_sync(struct vn_renderer *renderer,
                                const void *cs_data,
                                size_t cs_size);
+
+void
+vn_renderer_shmem_pool_init(struct vn_renderer *renderer,
+                            struct vn_renderer_shmem_pool *pool,
+                            size_t min_alloc_size);
+
+void
+vn_renderer_shmem_pool_fini(struct vn_renderer *renderer,
+                            struct vn_renderer_shmem_pool *pool);
+
+struct vn_renderer_shmem *
+vn_renderer_shmem_pool_alloc(struct vn_renderer *renderer,
+                             struct vn_renderer_shmem_pool *pool,
+                             size_t size,
+                             size_t *out_offset);
 
 #endif /* VN_RENDERER_UTIL_H */
