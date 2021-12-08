@@ -209,10 +209,8 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
       return 1;
 
-#if 0 /* TODO: Enable me. Enables ARB_texture_gather */
    case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
       return 4;
-#endif
 
    case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
    case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
