@@ -900,6 +900,21 @@ isl_format_supports_multisampling(const struct intel_device_info *devinfo,
        * is multisampled.  See also isl_surf_get_hiz_surf().
        */
       return devinfo->ver <= 8;
+   } else if (devinfo->ver == 7 && isl_format_has_sint_channel(format)) {
+      /* From the Ivy Bridge PRM, Vol4 Part1 p73 ("Number of Multisamples"):
+       *
+       *   This field must be set to MULTISAMPLECOUNT_1 for SINT MSRTs when
+       *   all RT channels are not written
+       *
+       * From the Ivy Bridge PRM, Vol4 Part1 p77 ("MCS Enable"):
+       *
+       *   This field must be set to 0 for all SINT MSRTs when all RT channels
+       *   are not written
+       *
+       * Disable multisampling support now as we don't handle the case when
+       * one of the render target channels is disabled.
+       */
+      return false;
    } else if (devinfo->ver < 7 && isl_format_get_layout(format)->bpb > 64) {
       return false;
    } else if (isl_format_is_compressed(format)) {

@@ -2065,20 +2065,7 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
    assert(surf->dim == ISL_SURF_DIM_2D);
    assert(surf->levels == 1);
    assert(surf->logical_level0_px.depth == 1);
-
-   /* From the Ivy Bridge PRM, Vol4 Part1 p77 ("MCS Enable"):
-    *
-    *   This field must be set to 0 for all SINT MSRTs when all RT channels
-    *   are not written
-    *
-    * In practice this means that we have to disable MCS for all signed
-    * integer MSAA buffers.  The alternative, to disable MCS only when one
-    * of the render target channels is disabled, is impractical because it
-    * would require converting between CMS and UMS MSAA layouts on the fly,
-    * which is expensive.
-    */
-   if (ISL_GFX_VER(dev) == 7 && isl_format_has_sint_channel(surf->format))
-      return false;
+   assert(isl_format_supports_multisampling(dev->info, surf->format));
 
    enum isl_format mcs_format;
    switch (surf->samples) {
