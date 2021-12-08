@@ -1078,7 +1078,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->num_good_compute_units = 0;
    for (i = 0; i < info->max_se; i++) {
       for (j = 0; j < info->max_sa_per_se; j++) {
-         if (info->family == CHIP_ARCTURUS) {
+         if (info->chip_class >= GFX11) {
+            assert(info->max_sa_per_se <= 2);
+            info->cu_mask[i][j] = amdinfo->cu_bitmap[i % 4][(i / 4) * 2 + j];
+         } else if (info->family == CHIP_ARCTURUS) {
             /* The CU bitmap in amd gpu info structure is
              * 4x4 size array, and it's usually suitable for Vega
              * ASICs which has 4*2 SE/SA layout.
