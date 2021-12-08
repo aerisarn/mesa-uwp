@@ -226,16 +226,6 @@ static struct rc_dst_register try_to_reuse_dst(struct radeon_compiler *c,
 	return dstregtmpmask(tmp, inst->U.I.DstReg.WriteMask);
 }
 
-static void transform_ABS(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	struct rc_src_register src = inst->U.I.SrcReg[0];
-	src.Abs = 1;
-	src.Negate = RC_MASK_NONE;
-	emit1(c, inst->Prev, RC_OPCODE_MOV, &inst->U.I, inst->U.I.DstReg, src);
-	rc_remove_instruction(inst);
-}
-
 static void transform_CEIL(struct radeon_compiler* c,
 	struct rc_instruction* inst)
 {
@@ -647,7 +637,7 @@ static void transform_XPD(struct radeon_compiler* c,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  ABS, CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SFL, SGE, SGT, SLE, SLT, SNE, SUB, SWZ, XPD
+ *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SFL, SGE, SGT, SLE, SLT, SNE, SUB, SWZ, XPD
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -662,7 +652,6 @@ int radeonTransformALU(
 	void* unused)
 {
 	switch(inst->U.I.Opcode) {
-	case RC_OPCODE_ABS: transform_ABS(c, inst); return 1;
 	case RC_OPCODE_CEIL: transform_CEIL(c, inst); return 1;
 	case RC_OPCODE_CLAMP: transform_CLAMP(c, inst); return 1;
 	case RC_OPCODE_DP2: transform_DP2(c, inst); return 1;
@@ -689,16 +678,6 @@ int radeonTransformALU(
 	default:
 		return 0;
 	}
-}
-
-
-static void transform_r300_vertex_ABS(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	/* Note: r500 can take absolute values, but r300 cannot. */
-	inst->U.I.Opcode = RC_OPCODE_MAX;
-	inst->U.I.SrcReg[1] = inst->U.I.SrcReg[0];
-	inst->U.I.SrcReg[1].Negate ^= RC_MASK_XYZW;
 }
 
 static void transform_r300_vertex_CMP(struct radeon_compiler* c,
@@ -906,7 +885,6 @@ int r300_transform_vertex_alu(
 	void* unused)
 {
 	switch(inst->U.I.Opcode) {
-	case RC_OPCODE_ABS: transform_r300_vertex_ABS(c, inst); return 1;
 	case RC_OPCODE_CEIL: transform_CEIL(c, inst); return 1;
 	case RC_OPCODE_CLAMP: transform_CLAMP(c, inst); return 1;
 	case RC_OPCODE_CMP: transform_r300_vertex_CMP(c, inst); return 1;

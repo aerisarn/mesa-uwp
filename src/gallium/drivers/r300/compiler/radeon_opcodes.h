@@ -37,9 +37,6 @@ typedef enum {
 	RC_OPCODE_NOP = 0,
 	RC_OPCODE_ILLEGAL_OPCODE,
 
-	/** vec4 instruction: dst.c = abs(src0.c); */
-	RC_OPCODE_ABS,
-
 	/** vec4 instruction: dst.c = src0.c + src1.c; */
 	RC_OPCODE_ADD,
 

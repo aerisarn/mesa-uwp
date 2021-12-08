@@ -42,13 +42,6 @@ const struct rc_opcode_info rc_opcodes[MAX_RC_OPCODE] = {
 		.Name = "ILLEGAL OPCODE"
 	},
 	{
-		.Opcode = RC_OPCODE_ABS,
-		.Name = "ABS",
-		.NumSrcRegs = 1,
-		.HasDstReg = 1,
-		.IsComponentwise = 1
-	},
-	{
 		.Opcode = RC_OPCODE_ADD,
 		.Name = "ADD",
 		.NumSrcRegs = 2,
