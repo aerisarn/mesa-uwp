@@ -40,6 +40,8 @@ enum vn_cs_encoder_storage_type {
    VN_CS_ENCODER_STORAGE_POINTER,
    /* an array of dynamically allocated shmems */
    VN_CS_ENCODER_STORAGE_SHMEM_ARRAY,
+   /* same as above, but shmems are suballocated from a pool */
+   VN_CS_ENCODER_STORAGE_SHMEM_POOL,
 };
 
 struct vn_cs_encoder_buffer {

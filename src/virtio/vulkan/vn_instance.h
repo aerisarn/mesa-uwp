@@ -70,6 +70,12 @@ struct vn_instance {
    uint32_t renderer_api_version;
    uint32_t renderer_version;
 
+   /* for VN_CS_ENCODER_STORAGE_SHMEM_POOL */
+   struct {
+      mtx_t mutex;
+      struct vn_renderer_shmem_pool pool;
+   } cs_shmem;
+
    struct {
       mtx_t mutex;
       bool initialized;
@@ -150,6 +156,21 @@ vn_instance_free_command_reply(struct vn_instance *instance,
 {
    assert(submit->reply_shmem);
    vn_renderer_shmem_unref(instance->renderer, submit->reply_shmem);
+}
+
+static inline struct vn_renderer_shmem *
+vn_instance_cs_shmem_alloc(struct vn_instance *instance,
+                           size_t size,
+                           size_t *out_offset)
+{
+   struct vn_renderer_shmem *shmem;
+
+   mtx_lock(&instance->cs_shmem.mutex);
+   shmem = vn_renderer_shmem_pool_alloc(
+      instance->renderer, &instance->cs_shmem.pool, size, out_offset);
+   mtx_unlock(&instance->cs_shmem.mutex);
+
+   return shmem;
 }
 
 #endif /* VN_INSTANCE_H */

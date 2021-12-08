@@ -561,7 +561,7 @@ vn_AllocateCommandBuffers(VkDevice device,
 
       cmd->state = VN_COMMAND_BUFFER_STATE_INITIAL;
       vn_cs_encoder_init(&cmd->cs, dev->instance,
-                         VN_CS_ENCODER_STORAGE_SHMEM_ARRAY, 16 * 1024);
+                         VN_CS_ENCODER_STORAGE_SHMEM_POOL, 16 * 1024);
 
       VkCommandBuffer cmd_handle = vn_command_buffer_to_handle(cmd);
       pCommandBuffers[i] = cmd_handle;

@@ -711,6 +711,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    }
 
    mtx_init(&instance->physical_device.mutex, mtx_plain);
+   mtx_init(&instance->cs_shmem.mutex, mtx_plain);
 
    if (!vn_icd_supports_api_version(
           instance->base.base.app_info.api_version)) {
@@ -741,6 +742,9 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    result = vn_instance_init_renderer_versions(instance);
    if (result != VK_SUCCESS)
       goto fail;
+
+   vn_renderer_shmem_pool_init(instance->renderer, &instance->cs_shmem.pool,
+                               8u << 20);
 
    VkInstanceCreateInfo local_create_info = *pCreateInfo;
    local_create_info.ppEnabledExtensionNames = NULL;
@@ -804,6 +808,7 @@ fail:
       vn_renderer_destroy(instance->renderer, alloc);
 
    mtx_destroy(&instance->physical_device.mutex);
+   mtx_destroy(&instance->cs_shmem.mutex);
 
    vn_instance_base_fini(&instance->base);
    vk_free(alloc, instance);
@@ -831,6 +836,9 @@ vn_DestroyInstance(VkInstance _instance,
    mtx_destroy(&instance->physical_device.mutex);
 
    vn_call_vkDestroyInstance(instance, _instance, NULL);
+
+   vn_renderer_shmem_pool_fini(instance->renderer, &instance->cs_shmem.pool);
+   mtx_destroy(&instance->cs_shmem.mutex);
 
    uint32_t destroy_ring_data[4];
    struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
