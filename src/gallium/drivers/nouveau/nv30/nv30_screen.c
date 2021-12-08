@@ -349,7 +349,7 @@ nv30_screen_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
          return 32;
       case PIPE_SHADER_CAP_PREFERRED_IR:
-         return PIPE_SHADER_IR_TGSI;
+         return (NOUVEAU_DEBUG & NOUVEAU_DEBUG_USE_TGSI) ? PIPE_SHADER_IR_TGSI : PIPE_SHADER_IR_NIR;
       case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
       case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
          return 0;
@@ -380,7 +380,7 @@ nv30_screen_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
          return 0;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return 1 << PIPE_SHADER_IR_TGSI;
+         return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
       default:
          debug_printf("unknown vertex shader param %d\n", param);
          return 0;
@@ -411,7 +411,7 @@ nv30_screen_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
          return 32;
       case PIPE_SHADER_CAP_PREFERRED_IR:
-         return PIPE_SHADER_IR_TGSI;
+         return (NOUVEAU_DEBUG & NOUVEAU_DEBUG_USE_TGSI) ? PIPE_SHADER_IR_TGSI : PIPE_SHADER_IR_NIR;
       case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
       case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
@@ -438,7 +438,7 @@ nv30_screen_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
          return 0;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return 1 << PIPE_SHADER_IR_TGSI;
+         return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
       default:
          debug_printf("unknown fragment shader param %d\n", param);
          return 0;
@@ -484,6 +484,45 @@ nv30_screen_is_format_supported(struct pipe_screen *pscreen,
    }
 
    return (nv30_format_info(pscreen, format)->bindings & bindings) == bindings;
+}
+
+static const nir_shader_compiler_options nv30_base_compiler_options = {
+   .fuse_ffma32 = true,
+   .fuse_ffma64 = true,
+   .lower_bitops = true,
+   .lower_extract_byte = true,
+   .lower_extract_word = true,
+   .lower_fdiv = true,
+   .lower_insert_byte = true,
+   .lower_insert_word = true,
+   .lower_fdph = true,
+   .lower_flrp32 = true,
+   .lower_flrp64 = true,
+   .lower_fmod = true,
+   .lower_fpow = true, /* In hardware as of nv40 FS */
+   .lower_rotate = true,
+   .lower_uniforms_to_ubo = true,
+   .lower_vector_cmp = true,
+   .max_unroll_iterations = 32,
+
+   .use_interpolated_input_intrinsics = true,
+};
+
+static const void *
+nv30_screen_get_compiler_options(struct pipe_screen *pscreen,
+                                 enum pipe_shader_ir ir,
+                                 enum pipe_shader_type shader)
+{
+   struct nv30_screen *screen = nv30_screen(pscreen);
+   assert(ir == PIPE_SHADER_IR_NIR);
+
+   /* The FS compiler options are different between nv30 and nv40, and are set
+    * up at screen creation time.
+    */
+   if (shader == PIPE_SHADER_FRAGMENT)
+      return &screen->fs_compiler_options;
+
+   return &nv30_base_compiler_options;
 }
 
 static void
@@ -617,6 +656,8 @@ nv30_screen_create(struct nouveau_device *dev)
    pscreen->get_shader_param = nv30_screen_get_shader_param;
    pscreen->context_create = nv30_context_create;
    pscreen->is_format_supported = nv30_screen_is_format_supported;
+   pscreen->get_compiler_options = nv30_screen_get_compiler_options;
+
    nv30_resource_screen_init(pscreen);
    nouveau_screen_init_vdec(&screen->base);
 
@@ -633,6 +674,10 @@ nv30_screen_create(struct nouveau_device *dev)
       screen->base.vidmem_bindings |= PIPE_BIND_INDEX_BUFFER;
       screen->base.sysmem_bindings |= PIPE_BIND_INDEX_BUFFER;
    }
+
+   screen->fs_compiler_options = nv30_base_compiler_options;
+   if (oclass >= NV40_3D_CLASS)
+      screen->fs_compiler_options.lower_fpow = false;
 
    fifo = screen->base.channel->data;
    push = screen->base.pushbuf;
