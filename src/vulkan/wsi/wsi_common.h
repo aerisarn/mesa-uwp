@@ -170,6 +170,12 @@ struct wsi_device {
     */
    bool (*can_present_on_device)(VkPhysicalDevice pdevice, int fd);
 
+   /*
+    * A driver can implement this callback to return a special queue to execute
+    * prime blits.
+    */
+   VkQueue (*get_prime_blit_queue)(VkDevice device);
+
 #define WSI_CB(cb) PFN_vk##cb cb
    WSI_CB(AllocateMemory);
    WSI_CB(AllocateCommandBuffers);
@@ -181,10 +187,12 @@ struct wsi_device {
    WSI_CB(CreateCommandPool);
    WSI_CB(CreateFence);
    WSI_CB(CreateImage);
+   WSI_CB(CreateSemaphore);
    WSI_CB(DestroyBuffer);
    WSI_CB(DestroyCommandPool);
    WSI_CB(DestroyFence);
    WSI_CB(DestroyImage);
+   WSI_CB(DestroySemaphore);
    WSI_CB(EndCommandBuffer);
    WSI_CB(FreeMemory);
    WSI_CB(FreeCommandBuffers);

@@ -590,7 +590,8 @@ wsi_create_prime_image(const struct wsi_swapchain *chain,
       goto fail;
    }
 
-   for (uint32_t i = 0; i < wsi->queue_family_count; i++) {
+   int cmd_buffer_count = chain->prime_blit_queue != VK_NULL_HANDLE ? 1 : wsi->queue_family_count;
+   for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       const VkCommandBufferAllocateInfo cmd_buffer_info = {
          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
          .pNext = NULL,

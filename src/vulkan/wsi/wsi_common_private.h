@@ -52,10 +52,18 @@ struct wsi_swapchain {
    VkDevice device;
    VkAllocationCallbacks alloc;
    VkFence* fences;
+   VkSemaphore* prime_blit_semaphores;
    VkPresentModeKHR present_mode;
    uint32_t image_count;
 
    bool use_prime_blit;
+
+   /* If the driver wants to use a special queue to execute the prime blit,
+    * it'll implement the wsi_device::get_prime_blit_queue callback.
+    * The created queue will be stored here and will be used to execute the
+    * prime blit instead of using the present queue.
+    */
+   VkQueue prime_blit_queue;
 
    /* Command pools, one per queue family */
    VkCommandPool *cmd_pools;
