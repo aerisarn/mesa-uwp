@@ -384,6 +384,87 @@ tex_storage_error_check(struct gl_context *ctx,
    return GL_FALSE;
 }
 
+static GLboolean
+sparse_texture_error_check(struct gl_context *ctx, GLuint dims,
+                           struct gl_texture_object *texObj,
+                           mesa_format format, GLenum target, GLsizei levels,
+                           GLsizei width, GLsizei height, GLsizei depth,
+                           bool dsa)
+{
+   const char* suffix = dsa ? "ture" : "";
+
+   int px, py, pz;
+   int index = texObj->VirtualPageSizeIndex;
+   if (!st_GetSparseTextureVirtualPageSize(ctx, target, format, index,
+                                           &px, &py, &pz)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glTex%sStorage%uD(sparse index = %d)",
+                  suffix, dims, index);
+      return GL_TRUE;
+   }
+
+   if (target == GL_TEXTURE_3D) {
+      if (width > ctx->Const.MaxSparse3DTextureSize ||
+          height > ctx->Const.MaxSparse3DTextureSize ||
+          depth > ctx->Const.MaxSparse3DTextureSize)
+         goto exceed_max_size;
+   } else {
+      if (width > ctx->Const.MaxSparseTextureSize ||
+          height > ctx->Const.MaxSparseTextureSize)
+         goto exceed_max_size;
+
+      if (target == GL_TEXTURE_2D_ARRAY ||
+          target == GL_TEXTURE_CUBE_MAP_ARRAY) {
+         if (depth > ctx->Const.MaxSparseArrayTextureLayers)
+            goto exceed_max_size;
+      } else if (target == GL_TEXTURE_1D_ARRAY) {
+         if (height > ctx->Const.MaxSparseArrayTextureLayers)
+            goto exceed_max_size;
+      }
+   }
+
+   if (width % px || height % py || depth % pz) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glTex%sStorage%uD(sparse page size)",
+                  suffix, dims);
+      return GL_TRUE;
+   }
+
+   /* ARB_sparse_texture spec:
+    *
+    *   If the value of SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS_ARB is FALSE,
+    *   then TexStorage* will generate an INVALID_OPERATION error if
+    *     * the texture's TEXTURE_SPARSE_ARB parameter is TRUE,
+    *     * <target> is one of TEXTURE_1D_ARRAY, TEXTURE_2D_ARRAY,
+    *       TEXTURE_CUBE_MAP, or TEXTURE_CUBE_MAP_ARRAY, and
+    *     * for the virtual page size corresponding to the
+    *       VIRTUAL_PAGE_SIZE_INDEX_ARB parameter, either of the following is
+    *       true:
+    *         - <width> is not a multiple of VIRTUAL_PAGE_SIZE_X_ARB *
+    *            2^(<levels>-1), or
+    *         - <height> is not a multiple of VIRTUAL_PAGE_SIZE_Y_ARB *
+    *            2^(<levels>-1).
+    *
+    * This make sure all allocated mipmap level size is multiple of virtual
+    * page size when SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS_ARB is FALSE.
+    */
+   if (!ctx->Const.SparseTextureFullArrayCubeMipmaps &&
+       (target == GL_TEXTURE_1D_ARRAY ||
+        target == GL_TEXTURE_2D_ARRAY ||
+        target == GL_TEXTURE_CUBE_MAP ||
+        target == GL_TEXTURE_CUBE_MAP_ARRAY) &&
+       (width % (px << (levels - 1)) ||
+        height % (py << (levels - 1)))) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glTex%sStorage%uD(sparse array align)",
+                  suffix, dims);
+      return GL_TRUE;
+   }
+
+   return GL_FALSE;
+
+exceed_max_size:
+   _mesa_error(ctx, GL_INVALID_VALUE, "glTex%sStorage%uD(exceed max sparse size)",
+               suffix, dims);
+   return GL_TRUE;
+}
 
 /**
  * Helper that does the storage allocation for _mesa_TexStorage1/2/3D()
@@ -448,6 +529,11 @@ texture_storage(struct gl_context *ctx, GLuint dims,
                         suffix, dims);
             return;
          }
+
+         if (texObj->IsSparse &&
+             sparse_texture_error_check(ctx, dims, texObj, texFormat, target, levels,
+                                        width, height, depth, dsa))
+            return; /* error was recorded */
       }
 
       assert(levels > 0);
