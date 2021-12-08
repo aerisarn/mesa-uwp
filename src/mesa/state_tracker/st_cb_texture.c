@@ -3728,3 +3728,22 @@ st_GetSparseTextureVirtualPageSize(struct gl_context *ctx,
    return !!screen->get_sparse_texture_virtual_page_size(
       screen, ptarget, pformat, index, 1, x, y, z);
 }
+
+void
+st_TexturePageCommitment(struct gl_context *ctx,
+                         struct gl_texture_object *tex_obj,
+                         int level, int xoffset, int yoffset, int zoffset,
+                         int width, int height, int depth, bool commit)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_context *pipe = st->pipe;
+   struct st_texture_object *tex = st_texture_object(tex_obj);
+   struct pipe_box box;
+
+   u_box_3d(xoffset, yoffset, zoffset, width, height, depth, &box);
+
+   if (!pipe->resource_commit(pipe, tex->pt, level, &box, commit)) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glTexPageCommitmentARB(out of memory)");
+      return;
+   }
+}

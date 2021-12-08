@@ -139,4 +139,8 @@ void st_MakeImageHandleResident(struct gl_context *ctx, GLuint64 handle,
 GLboolean st_GetSparseTextureVirtualPageSize(struct gl_context *ctx,
                                              GLenum target, mesa_format format,
                                              unsigned index, int *x, int *y, int *z);
+void st_TexturePageCommitment(struct gl_context *ctx,
+                              struct gl_texture_object *tex_obj,
+                              int level, int xoffset, int yoffset, int zoffset,
+                              int width, int height, int depth, bool commit);
 #endif /* ST_CB_TEXTURE_H */
