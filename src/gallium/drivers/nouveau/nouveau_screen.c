@@ -208,6 +208,8 @@ nouveau_screen_init(struct nouveau_screen *screen, struct nouveau_device *dev)
    if (screen->force_enable_cl)
       glsl_type_singleton_init_or_ref();
 
+   screen->disable_fences = debug_get_bool_option("NOUVEAU_DISABLE_FENCES", false);
+
    /* These must be set before any failure is possible, as the cleanup
     * paths assume they're responsible for deleting them.
     */
