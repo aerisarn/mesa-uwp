@@ -143,9 +143,6 @@ typedef enum {
 	/** scalar instruction: dst = 1 / sqrt(src0.x) */
 	RC_OPCODE_RSQ,
 
-	/** special instruction, see ARB_fragment_program */
-	RC_OPCODE_SCS,
-
 	/** vec4 instruction: dst.c = (src0.c == src1.c) ? 1.0 : 0.0 */
 	RC_OPCODE_SEQ,
 

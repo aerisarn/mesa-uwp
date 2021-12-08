@@ -268,12 +268,6 @@ const struct rc_opcode_info rc_opcodes[MAX_RC_OPCODE] = {
 		.IsStandardScalar = 1
 	},
 	{
-		.Opcode = RC_OPCODE_SCS,
-		.Name = "SCS",
-		.NumSrcRegs = 1,
-		.HasDstReg = 1
-	},
-	{
 		.Opcode = RC_OPCODE_SEQ,
 		.Name = "SEQ",
 		.NumSrcRegs = 2,

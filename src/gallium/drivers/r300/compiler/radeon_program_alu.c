@@ -995,7 +995,7 @@ static void sin_approx(
 }
 
 /**
- * Translate the trigonometric functions COS, SIN, and SCS
+ * Translate the trigonometric functions COS and SIN
  * using only the basic instructions
  *  MOV, ADD, MUL, MAD, FRC
  */
@@ -1007,8 +1007,7 @@ int r300_transform_trig_simple(struct radeon_compiler* c,
 	unsigned int tempreg;
 
 	if (inst->U.I.Opcode != RC_OPCODE_COS &&
-	    inst->U.I.Opcode != RC_OPCODE_SIN &&
-	    inst->U.I.Opcode != RC_OPCODE_SCS)
+	    inst->U.I.Opcode != RC_OPCODE_SIN)
 		return 0;
 
 	tempreg = rc_find_free_temporary(c);
@@ -1080,7 +1079,7 @@ int r300_transform_trig_simple(struct radeon_compiler* c,
 	return 1;
 }
 
-static void r300_transform_SIN_COS_SCS(struct radeon_compiler *c,
+static void r300_transform_SIN_COS(struct radeon_compiler *c,
 	struct rc_instruction *inst,
 	unsigned srctmp)
 {
@@ -1090,19 +1089,6 @@ static void r300_transform_SIN_COS_SCS(struct radeon_compiler *c,
 	} else if (inst->U.I.Opcode == RC_OPCODE_SIN) {
 		emit1(c, inst->Prev, RC_OPCODE_SIN, &inst->U.I,
 			inst->U.I.DstReg, srcregswz(RC_FILE_TEMPORARY, srctmp, RC_SWIZZLE_WWWW));
-	} else if (inst->U.I.Opcode == RC_OPCODE_SCS) {
-		struct rc_dst_register moddst = inst->U.I.DstReg;
-
-		if (inst->U.I.DstReg.WriteMask & RC_MASK_X) {
-			moddst.WriteMask = RC_MASK_X;
-			emit1(c, inst->Prev, RC_OPCODE_COS, &inst->U.I, moddst,
-				srcregswz(RC_FILE_TEMPORARY, srctmp, RC_SWIZZLE_WWWW));
-		}
-		if (inst->U.I.DstReg.WriteMask & RC_MASK_Y) {
-			moddst.WriteMask = RC_MASK_Y;
-			emit1(c, inst->Prev, RC_OPCODE_SIN, &inst->U.I, moddst,
-				srcregswz(RC_FILE_TEMPORARY, srctmp, RC_SWIZZLE_WWWW));
-		}
 	}
 
 	rc_remove_instruction(inst);
@@ -1110,10 +1096,9 @@ static void r300_transform_SIN_COS_SCS(struct radeon_compiler *c,
 
 
 /**
- * Transform the trigonometric functions COS, SIN, and SCS
+ * Transform the trigonometric functions COS and SIN
  * to include pre-scaling by 1/(2*PI) and taking the fractional
  * part, so that the input to COS and SIN is always in the range [0,1).
- * SCS is replaced by one COS and one SIN instruction.
  *
  * @warning This transformation implicitly changes the semantics of SIN and COS!
  */
@@ -1127,8 +1112,7 @@ int radeonTransformTrigScale(struct radeon_compiler* c,
 	unsigned int constant_swizzle;
 
 	if (inst->U.I.Opcode != RC_OPCODE_COS &&
-	    inst->U.I.Opcode != RC_OPCODE_SIN &&
-	    inst->U.I.Opcode != RC_OPCODE_SCS)
+	    inst->U.I.Opcode != RC_OPCODE_SIN)
 		return 0;
 
 	temp = rc_find_free_temporary(c);
@@ -1140,14 +1124,13 @@ int radeonTransformTrigScale(struct radeon_compiler* c,
 	emit1(c, inst->Prev, RC_OPCODE_FRC, 0, dstregtmpmask(temp, RC_MASK_W),
 		srcreg(RC_FILE_TEMPORARY, temp));
 
-	r300_transform_SIN_COS_SCS(c, inst, temp);
+	r300_transform_SIN_COS(c, inst, temp);
 	return 1;
 }
 
 /**
- * Transform the trigonometric functions COS, SIN, and SCS
+ * Transform the trigonometric functions COS and SIN
  * so that the input to COS and SIN is always in the range [-PI, PI].
- * SCS is replaced by one COS and one SIN instruction.
  */
 int r300_transform_trig_scale_vertex(struct radeon_compiler *c,
 	struct rc_instruction *inst,
@@ -1158,8 +1141,7 @@ int r300_transform_trig_scale_vertex(struct radeon_compiler *c,
 	unsigned int constant;
 
 	if (inst->U.I.Opcode != RC_OPCODE_COS &&
-	    inst->U.I.Opcode != RC_OPCODE_SIN &&
-	    inst->U.I.Opcode != RC_OPCODE_SCS)
+	    inst->U.I.Opcode != RC_OPCODE_SIN)
 		return 0;
 
 	/* Repeat x in the range [-PI, PI]:
@@ -1181,7 +1163,7 @@ int r300_transform_trig_scale_vertex(struct radeon_compiler *c,
 		srcregswz(RC_FILE_CONSTANT, constant, RC_SWIZZLE_ZZZZ),
 		srcregswz(RC_FILE_CONSTANT, constant, RC_SWIZZLE_WWWW));
 
-	r300_transform_SIN_COS_SCS(c, inst, temp);
+	r300_transform_SIN_COS(c, inst, temp);
 	return 1;
 }
 
