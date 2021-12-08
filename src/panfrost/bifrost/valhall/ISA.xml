@@ -522,7 +522,7 @@
     <desc>Memory segment written to by a `STORE` instruction.</desc>
     <value desc="Global or workgroup local memory" default="none">global</value>
     <value desc="Position output (in a position shader)">pos</value>
-    <value desc="Varyings with LEA_ATTR computed addresses">vary</value>
+    <value desc="Varyings with LEA_VARY computed addresses">vary</value>
     <value desc="Thread local storage">tl</value>
   </enum>
 
@@ -923,15 +923,15 @@
     <src>Index</src>
   </ins>
 
-  <ins name="LEA_ATTR" title="Load effective address" opcode="0x5E" unit="LS">
+  <ins name="LEA_VARY" title="Load varying effective address" opcode="0x5E" unit="LS">
     <desc>
       Loads the effective address of the position buffer (in a position shader)
       or the varying buffer (in a varying shader). That is, the base pointer
       plus the vertex's linear ID (the first source) times the buffer's
-      per-vertex stride. `LEA_ATTR` should be executed once in a
+      per-vertex stride. `LEA_VARY` should be executed once in a
       position/varying shader, with the linear ID preloaded as `r59`. Each
       position/varying store can then be constructed as `STORE` with the base
-      address sourced from the 64-bit destination of `LEA_ATTR` and an
+      address sourced from the 64-bit destination of `LEA_VARY` and an
       appropriately computed offset. Varying stores bypass the usual conversion
       hardware for attributes; this diverges from earlier Mali hardware.
     </desc>
