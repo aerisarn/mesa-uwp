@@ -77,9 +77,6 @@ typedef enum {
 	/** scalar instruction: dst = src0.x*src1.x + src0.y*src1.y + src0.z*src1.z + src0.w*src1.w */
 	RC_OPCODE_DP4,
 
-	/** scalar instruction: dst = src0.x*src1.x + src0.y*src1.y + src0.z*src1.z + src1.w */
-	RC_OPCODE_DPH,
-
 	/** special instruction, see ARB_fragment_program */
 	RC_OPCODE_DST,
 

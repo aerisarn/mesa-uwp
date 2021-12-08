@@ -121,12 +121,6 @@ const struct rc_opcode_info rc_opcodes[MAX_RC_OPCODE] = {
 		.HasDstReg = 1
 	},
 	{
-		.Opcode = RC_OPCODE_DPH,
-		.Name = "DPH",
-		.NumSrcRegs = 2,
-		.HasDstReg = 1
-	},
-	{
 		.Opcode = RC_OPCODE_DST,
 		.Name = "DST",
 		.NumSrcRegs = 2,
@@ -527,10 +521,6 @@ void rc_compute_sources_for_writemask(
 			break;
 		case RC_OPCODE_DP4:
 			srcmasks[0] |= RC_MASK_XYZW;
-			srcmasks[1] |= RC_MASK_XYZW;
-			break;
-		case RC_OPCODE_DPH:
-			srcmasks[0] |= RC_MASK_XYZ;
 			srcmasks[1] |= RC_MASK_XYZW;
 			break;
 		case RC_OPCODE_TXB:

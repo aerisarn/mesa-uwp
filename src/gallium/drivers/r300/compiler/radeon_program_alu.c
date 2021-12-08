@@ -261,17 +261,6 @@ static void transform_DP2(struct radeon_compiler* c,
 	rc_remove_instruction(inst);
 }
 
-static void transform_DPH(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	struct rc_src_register src0 = inst->U.I.SrcReg[0];
-	src0.Negate &= ~RC_MASK_W;
-	src0.Swizzle &= ~(7 << (3 * 3));
-	src0.Swizzle |= RC_SWIZZLE_ONE << (3 * 3);
-	emit2(c, inst->Prev, RC_OPCODE_DP4, &inst->U.I, inst->U.I.DstReg, src0, inst->U.I.SrcReg[1]);
-	rc_remove_instruction(inst);
-}
-
 /**
  * [1, src0.y*src1.y, src0.z, src1.w]
  * So basically MUL with lotsa swizzling.
@@ -591,7 +580,7 @@ static void transform_SUB(struct radeon_compiler* c,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
+ *  CEIL, DST, FLR, LIT, LRP, POW, SEQ, SGE, SGT, SLE, SLT, SNE, SUB
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -608,7 +597,6 @@ int radeonTransformALU(
 	switch(inst->U.I.Opcode) {
 	case RC_OPCODE_CEIL: transform_CEIL(c, inst); return 1;
 	case RC_OPCODE_DP2: transform_DP2(c, inst); return 1;
-	case RC_OPCODE_DPH: transform_DPH(c, inst); return 1;
 	case RC_OPCODE_DST: transform_DST(c, inst); return 1;
 	case RC_OPCODE_FLR: transform_FLR(c, inst); return 1;
 	case RC_OPCODE_LIT: transform_LIT(c, inst); return 1;
@@ -839,7 +827,6 @@ int r300_transform_vertex_alu(
 	case RC_OPCODE_CMP: transform_r300_vertex_CMP(c, inst); return 1;
 	case RC_OPCODE_DP2: transform_r300_vertex_DP2(c, inst); return 1;
 	case RC_OPCODE_DP3: transform_r300_vertex_DP3(c, inst); return 1;
-	case RC_OPCODE_DPH: transform_DPH(c, inst); return 1;
 	case RC_OPCODE_FLR: transform_FLR(c, inst); return 1;
 	case RC_OPCODE_LIT: transform_r300_vertex_fix_LIT(c, inst); return 1;
 	case RC_OPCODE_LRP: transform_LRP(c, inst); return 1;
