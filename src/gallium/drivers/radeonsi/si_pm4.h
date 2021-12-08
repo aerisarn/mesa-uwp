@@ -31,9 +31,6 @@
 extern "C" {
 #endif
 
-/* TODO: This is high because of cs_preamble with ac_set_reg_cu_en. */
-#define SI_PM4_MAX_DW 480
-
 // forward defines
 struct si_context;
 
@@ -56,7 +53,8 @@ struct si_pm4_state {
    struct si_atom atom;
 
    /* commands for the DE */
-   uint32_t pm4[SI_PM4_MAX_DW];
+   uint16_t max_dw;
+   uint32_t pm4[480];
 };
 
 void si_pm4_cmd_add(struct si_pm4_state *state, uint32_t dw);
