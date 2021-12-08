@@ -932,19 +932,23 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->num_good_compute_units = 0;
    for (i = 0; i < info->max_se; i++) {
       for (j = 0; j < info->max_sa_per_se; j++) {
-         /*
-          * The cu bitmap in amd gpu info structure is
-          * 4x4 size array, and it's usually suitable for Vega
-          * ASICs which has 4*2 SE/SH layout.
-          * But for Arcturus, SE/SH layout is changed to 8*1.
-          * To mostly reduce the impact, we make it compatible
-          * with current bitmap array as below:
-          *    SE4,SH0 --> cu_bitmap[0][1]
-          *    SE5,SH0 --> cu_bitmap[1][1]
-          *    SE6,SH0 --> cu_bitmap[2][1]
-          *    SE7,SH0 --> cu_bitmap[3][1]
-          */
-         info->cu_mask[i % 4][j + i / 4] = amdinfo->cu_bitmap[i % 4][j + i / 4];
+         if (info->family == CHIP_ARCTURUS) {
+            /* The CU bitmap in amd gpu info structure is
+             * 4x4 size array, and it's usually suitable for Vega
+             * ASICs which has 4*2 SE/SA layout.
+             * But for Arcturus, SE/SA layout is changed to 8*1.
+             * To mostly reduce the impact, we make it compatible
+             * with current bitmap array as below:
+             *    SE4 --> cu_bitmap[0][1]
+             *    SE5 --> cu_bitmap[1][1]
+             *    SE6 --> cu_bitmap[2][1]
+             *    SE7 --> cu_bitmap[3][1]
+             */
+            assert(info->max_sa_per_se == 1);
+            info->cu_mask[i][0] = amdinfo->cu_bitmap[i % 4][i / 4];
+         } else {
+            info->cu_mask[i][j] = amdinfo->cu_bitmap[i][j];
+         }
          info->num_good_compute_units += util_bitcount(info->cu_mask[i][j]);
       }
    }
@@ -1247,6 +1251,12 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_tmz_support = %u\n", info->has_tmz_support);
 
    fprintf(f, "Shader core info:\n");
+   for (unsigned i = 0; i < info->max_se; i++) {
+      for (unsigned j = 0; j < info->max_sa_per_se; j++) {
+         fprintf(f, "    cu_mask[SE%u][SA%u] = 0x%x \t(%u)\n",
+                 i, j, info->cu_mask[i][j], util_bitcount(info->cu_mask[i][j]));
+      }
+   }
    fprintf(f, "    max_shader_clock = %i\n", info->max_shader_clock);
    fprintf(f, "    num_good_compute_units = %i\n", info->num_good_compute_units);
    fprintf(f, "    max_good_cu_per_sa = %i\n", info->max_good_cu_per_sa);
