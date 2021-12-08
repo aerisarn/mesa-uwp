@@ -609,18 +609,12 @@ static void transform_SUB(struct radeon_compiler* c,
 	inst->U.I.SrcReg[1] = negate(inst->U.I.SrcReg[1]);
 }
 
-static void transform_SWZ(struct radeon_compiler* c,
-	struct rc_instruction* inst)
-{
-	inst->U.I.Opcode = RC_OPCODE_MOV;
-}
-
 /**
  * Can be used as a transformation for @ref radeonClauseLocalTransform,
  * no userData necessary.
  *
  * Eliminates the following ALU instructions:
- *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SFL, SGE, SGT, SLE, SLT, SNE, SUB, SWZ
+ *  CEIL, DPH, DST, FLR, LIT, LRP, POW, SEQ, SFL, SGE, SGT, SLE, SLT, SNE, SUB
  * using:
  *  MOV, ADD, MUL, MAD, FRC, DP3, LG2, EX2, CMP
  *
@@ -655,7 +649,6 @@ int radeonTransformALU(
 	case RC_OPCODE_SNE: transform_SNE(c, inst); return 1;
 	case RC_OPCODE_SSG: transform_SSG(c, inst); return 1;
 	case RC_OPCODE_SUB: transform_SUB(c, inst); return 1;
-	case RC_OPCODE_SWZ: transform_SWZ(c, inst); return 1;
 	case RC_OPCODE_TRUNC: transform_TRUNC(c, inst); return 1;
 	default:
 		return 0;
@@ -893,7 +886,6 @@ int r300_transform_vertex_alu(
 		return 0;
 	case RC_OPCODE_SSG: transform_r300_vertex_SSG(c, inst); return 1;
 	case RC_OPCODE_SUB: transform_SUB(c, inst); return 1;
-	case RC_OPCODE_SWZ: transform_SWZ(c, inst); return 1;
 	case RC_OPCODE_TRUNC: transform_vertex_TRUNC(c, inst); return 1;
 	default:
 		return 0;
