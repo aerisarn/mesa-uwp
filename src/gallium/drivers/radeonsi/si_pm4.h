@@ -46,17 +46,17 @@ struct si_atom {
 
 struct si_pm4_state {
    /* PKT3_SET_*_REG handling */
-   unsigned last_opcode;
-   unsigned last_reg;
-   unsigned last_pm4;
-
-   /* commands for the DE */
-   unsigned ndw;
-   uint32_t pm4[SI_PM4_MAX_DW];
+   uint16_t last_reg;   /* register offset in dwords */
+   uint16_t last_pm4;
+   uint16_t ndw;        /* number of dwords in pm4 */
+   uint8_t last_opcode;
 
    /* For shader states only */
    bool is_shader;
    struct si_atom atom;
+
+   /* commands for the DE */
+   uint32_t pm4[SI_PM4_MAX_DW];
 };
 
 void si_pm4_cmd_add(struct si_pm4_state *state, uint32_t dw);
