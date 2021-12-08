@@ -317,8 +317,6 @@ spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims line cull-front pv-last: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims pv-last: fail
-spec/!opengl 3.2/layered-rendering/clear-color-all-types cube_map_array mipmapped: skip
-spec/!opengl 3.2/layered-rendering/clear-color-all-types cube_map_array single_level: skip
 spec/!opengl 3.2/layered-rendering/gl-layer-cube-map: fail
 spec/!opengl 3.2/layered-rendering/gl-layer-render: fail
 spec/!opengl 3.2/layered-rendering/gl-layer-render-clipped: fail
@@ -559,7 +557,6 @@ spec/arb_direct_state_access/create-transformfeedbacks: skip
 spec/arb_direct_state_access/getcompressedtextureimage: skip
 spec/arb_direct_state_access/gettextureimage-formats: crash
 spec/arb_direct_state_access/gettransformfeedback: skip
-spec/arb_direct_state_access/textures-storage/cube array texture: skip
 spec/arb_direct_state_access/transformfeedback-bufferbase: skip
 spec/arb_direct_state_access/transformfeedback-bufferrange: skip
 spec/arb_draw_indirect/arb_draw_indirect-api-errors: skip
@@ -595,7 +592,6 @@ spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-minmax: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-roundup-samples: skip
-spec/arb_framebuffer_object/fbo-incomplete/invalid layer of a cube-array texture: skip
 spec/arb_framebuffer_srgb/arb_framebuffer_srgb-srgb_conformance: fail
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_line_strip_adjacency: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_lines_adjacency: skip
@@ -1859,7 +1855,6 @@ spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-frag: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-geom: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-vert: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-vert_adj: skip
-spec/arb_pixel_buffer_object/texsubimage cube_map_array pbo: skip
 spec/arb_point_parameters/arb_point_parameters-point-attenuation: fail
 spec/arb_point_sprite/arb_point_sprite-mipmap: fail
 spec/arb_post_depth_coverage/arb_post_depth_coverage-basic: skip
@@ -2135,7 +2130,6 @@ spec/arb_sparse_buffer/buffer-data: skip
 spec/arb_sparse_buffer/commit: skip
 spec/arb_sparse_buffer/minmax: skip
 spec/arb_stencil_texturing/draw: fail
-spec/arb_stencil_texturing/glblitframebuffer corrupts state/gl_texture_cube_map_array: skip
 spec/arb_sync/clientwaitsync-timeout: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-get-tcs-params: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-get-tes-params: skip
@@ -2315,34 +2309,11 @@ spec/arb_texture_cube_map/copyteximage cube samples=32: skip
 spec/arb_texture_cube_map/copyteximage cube samples=4: skip
 spec/arb_texture_cube_map/copyteximage cube samples=6: skip
 spec/arb_texture_cube_map/copyteximage cube samples=8: skip
-spec/arb_texture_cube_map_array/arb_texture_cube_map_array-cubemap: skip
-spec/arb_texture_cube_map_array/arb_texture_cube_map_array-cubemap-lod: skip
-spec/arb_texture_cube_map_array/arb_texture_cube_map_array-fbo-cubemap-array: skip
-spec/arb_texture_cube_map_array/arb_texture_cube_map_array-get: skip
-spec/arb_texture_cube_map_array/arb_texture_cube_map_array-sampler-cube-array-shadow: skip
-spec/arb_texture_cube_map_array/arb_texture_cube_map_array-teximage3d-invalid-values: skip
-spec/arb_texture_cube_map_array/fbo-generatemipmap-cubemap array: skip
-spec/arb_texture_cube_map_array/fbo-generatemipmap-cubemap array rgb9_e5: skip
-spec/arb_texture_cube_map_array/fbo-generatemipmap-cubemap array s3tc_dxt1: skip
-spec/arb_texture_cube_map_array/getteximage-targets cube_array: skip
-spec/arb_texture_cube_map_array/glsl-resource-not-bound cubearray: skip
-spec/arb_texture_cube_map_array/texsubimage cube_map_array: skip
-spec/arb_texture_cube_map_array/texturesize/fs-texturesize-isamplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/fs-texturesize-samplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/fs-texturesize-samplercubearrayshadow: skip
-spec/arb_texture_cube_map_array/texturesize/fs-texturesize-usamplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/gs-texturesize-isamplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/gs-texturesize-samplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/gs-texturesize-samplercubearrayshadow: skip
-spec/arb_texture_cube_map_array/texturesize/gs-texturesize-usamplercubearray: skip
+spec/arb_texture_cube_map_array/arb_texture_cube_map_array-cubemap: fail
 spec/arb_texture_cube_map_array/texturesize/tes-texturesize-isamplercubearray: skip
 spec/arb_texture_cube_map_array/texturesize/tes-texturesize-samplercubearray: skip
 spec/arb_texture_cube_map_array/texturesize/tes-texturesize-samplercubearrayshadow: skip
 spec/arb_texture_cube_map_array/texturesize/tes-texturesize-usamplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/vs-texturesize-isamplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/vs-texturesize-samplercubearray: skip
-spec/arb_texture_cube_map_array/texturesize/vs-texturesize-samplercubearrayshadow: skip
-spec/arb_texture_cube_map_array/texturesize/vs-texturesize-usamplercubearray: skip
 spec/arb_texture_float/multisample-formats 32 gl_arb_texture_float: skip
 spec/arb_texture_gather/texturegather/fs-r-none-float-2d: skip
 spec/arb_texture_gather/texturegather/fs-r-none-float-2darray: skip
@@ -3529,7 +3500,6 @@ spec/arb_texture_stencil8/texwrap formats offset/gl_stencil_index8, swizzled: fa
 spec/arb_texture_stencil8/texwrap formats/gl_stencil_index8: fail
 spec/arb_texture_stencil8/texwrap formats/gl_stencil_index8, npot: fail
 spec/arb_texture_stencil8/texwrap formats/gl_stencil_index8, swizzled: fail
-spec/arb_texture_storage/texture-storage/cube array texture: skip
 spec/arb_texture_view/bug-layers-image: skip
 spec/arb_texture_view/clear-into-view-2d: skip
 spec/arb_texture_view/clear-into-view-2d-array: skip
@@ -4194,7 +4164,6 @@ spec/ext_texture_compression_latc/texwrap formats: skip
 spec/ext_texture_compression_latc/texwrap formats bordercolor: skip
 spec/ext_texture_compression_latc/texwrap formats bordercolor-swizzled: skip
 spec/ext_texture_compression_rgtc/rgtc-api_gles2: skip
-spec/ext_texture_compression_s3tc/getteximage-targets cube_array s3tc: skip
 spec/ext_texture_compression_s3tc/s3tc-errors: fail
 spec/ext_texture_compression_s3tc/s3tc-errors_gles2: skip
 spec/ext_texture_compression_s3tc/s3tc-targeted: fail
@@ -4514,11 +4483,6 @@ spec/glsl-1.10/execution/varying-packing/simple vec4 array: crash
 spec/glsl-1.10/execution/varying-packing/simple vec4 arrays_of_arrays: crash
 spec/glsl-1.10/execution/varying-packing/simple vec4 separate: crash
 spec/glsl-1.30/execution/fs-texelfetch-2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearray: skip
-spec/glsl-1.30/execution/tex-miplevel-selection texture() cubearrayshadow: skip
-spec/glsl-1.30/execution/tex-miplevel-selection texture(bias) cubearray: skip
-spec/glsl-1.30/execution/tex-miplevel-selection texturegrad cubearray: skip
-spec/glsl-1.30/execution/tex-miplevel-selection texturelod cubearray: skip
 spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip: fail
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip_adjacency: fail
@@ -4710,10 +4674,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    14314
-       fail:      480
+       pass:    14360
+       fail:      481
       crash:       68
-       skip:     4141
+       skip:     4104
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4722,4 +4686,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    19023
+      total:    19033

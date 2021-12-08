@@ -191,10 +191,8 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
       return 1;
 
-#if 0 /* TODO: Enable me */
    case PIPE_CAP_CUBE_MAP_ARRAY:
-      return screen->max_feature_level >= D3D_FEATURE_LEVEL_10_1;
-#endif
+      return 1;
 
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
       return 1;

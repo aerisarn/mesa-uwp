@@ -64,6 +64,7 @@ typedef struct {
    nir_ssa_def *arx;
    nir_ssa_def *ary;
    nir_ssa_def *arz;
+   nir_ssa_def *array;
 } coord_t;
 
 
@@ -79,6 +80,9 @@ evaluate_face_x(nir_builder *b, coord_t *coord)
    nir_ssa_def *y = nir_fadd(b, nir_fmul(b, ima, coord->ry), nir_imm_float(b, 0.5));
    nir_ssa_def *face = nir_bcsel(b, positive, nir_imm_float(b, 0.0), nir_imm_float(b, 1.0));
 
+   if (coord->array)
+      face = nir_fadd(b, face, coord->array);
+
    return nir_vec3(b, x,y, face);
 }
 
@@ -93,6 +97,9 @@ evaluate_face_y(nir_builder *b, coord_t *coord)
    nir_ssa_def *y = nir_fadd(b, nir_fmul(b, nir_fmul(b, sign, ima), coord->rz), nir_imm_float(b, 0.5));
    nir_ssa_def *face = nir_bcsel(b, positive, nir_imm_float(b, 2.0), nir_imm_float(b, 3.0));
 
+   if (coord->array)
+      face = nir_fadd(b, face, coord->array);
+
    return nir_vec3(b, x,y, face);
 }
 
@@ -106,6 +113,9 @@ evaluate_face_z(nir_builder *b, coord_t *coord)
    nir_ssa_def *x = nir_fadd(b, nir_fmul(b, nir_fmul(b, sign, ima), nir_fneg(b, coord->rx)), nir_imm_float(b, 0.5));
    nir_ssa_def *y = nir_fadd(b, nir_fmul(b, ima, coord->ry), nir_imm_float(b, 0.5));
    nir_ssa_def *face = nir_bcsel(b, positive, nir_imm_float(b, 4.0), nir_imm_float(b, 5.0));
+
+   if (coord->array)
+      face = nir_fadd(b, face, coord->array);
 
    return nir_vec3(b, x,y, face);
 }
@@ -144,9 +154,6 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *
 static nir_ssa_def *
 lower_cube_sample(nir_builder *b, nir_tex_instr *tex)
 {
-   /* We don't support cube map arrays yet */
-   assert(!tex->is_array);
-
    int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
    assert(coord_index >= 0);
 
@@ -160,6 +167,9 @@ lower_cube_sample(nir_builder *b, nir_tex_instr *tex)
    coords.arx = nir_fabs(b, coords.rx);
    coords.ary = nir_fabs(b, coords.ry);
    coords.arz = nir_fabs(b, coords.rz);
+   coords.array = NULL;
+   if (tex->is_array)
+      coords.array = nir_fmul(b, nir_channel(b, coord, 3), nir_imm_float(b, 6.0f));
 
    nir_ssa_def *use_face_x = nir_iand(b,
                                       nir_fge(b, coords.arx, coords.ary),
@@ -189,12 +199,18 @@ lower_cube_sample(nir_builder *b, nir_tex_instr *tex)
    return create_array_tex_from_cube_tex(b, tex, coord_and_face);
 }
 
-/* We don't expect the array size here */
 static nir_ssa_def *
 lower_cube_txs(nir_builder *b, nir_tex_instr *tex)
 {
    b->cursor = nir_after_instr(&tex->instr);
-   return nir_channels(b, &tex->dest.ssa, 3);
+   if (!tex->is_array)
+      return nir_channels(b, &tex->dest.ssa, 3);
+
+   nir_ssa_def *array_dim = nir_channel(b, &tex->dest.ssa, 2);
+   nir_ssa_def *cube_array_dim = nir_idiv(b, array_dim, nir_imm_int(b, 6));
+   return nir_vec3(b, nir_channel(b, &tex->dest.ssa, 0),
+                      nir_channel(b, &tex->dest.ssa, 1),
+                      cube_array_dim);
 }
 
 static const struct glsl_type *
@@ -210,8 +226,6 @@ make_2darray_from_cubemap(const struct glsl_type *type)
 static const struct glsl_type *
 make_2darray_from_cubemap_with_array(const struct glsl_type *type)
 {
-   /* While we don't (yet) support cube map arrays, there still may be arrays
-    * of cube maps */
    if (glsl_type_is_array(type)) {
       const struct glsl_type *new_type = glsl_without_array(type);
       return new_type != type ? glsl_array_type(make_2darray_from_cubemap(glsl_without_array(type)),
