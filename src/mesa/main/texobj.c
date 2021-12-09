@@ -2343,12 +2343,75 @@ _mesa_InvalidateTexImage(GLuint texture, GLint level)
    return;
 }
 
+static void
+texture_page_commitment(struct gl_context *ctx, GLenum target,
+                        struct gl_texture_object *tex_obj,
+                        GLint level, GLint xoffset, GLint yoffset, GLint zoffset,
+                        GLsizei width, GLsizei height, GLsizei depth,
+                        GLboolean commit, const char *func)
+{
+   if (!tex_obj->Immutable || !tex_obj->IsSparse) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(immutable sparse texture)", func);
+      return;
+   }
+
+   if (level < 0 || level > tex_obj->_MaxLevel) {
+      /* Not in error list of ARB_sparse_texture. */
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(level %d)", func, level);
+      return;
+   }
+
+   struct gl_texture_image *image = tex_obj->Image[0][level];
+
+   int max_depth = image->Depth;
+   if (target == GL_TEXTURE_CUBE_MAP)
+      max_depth *= 6;
+
+   if (xoffset + width > image->Width ||
+       yoffset + height > image->Height ||
+       zoffset + depth > max_depth) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(exceed max size)", func);
+      return;
+   }
+
+   int px, py, pz;
+   bool ret = st_GetSparseTextureVirtualPageSize(
+      ctx, target, image->TexFormat, tex_obj->VirtualPageSizeIndex, &px, &py, &pz);
+   assert(ret);
+
+   if (xoffset % px || yoffset % py || zoffset % pz) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(offset multiple of page size)", func);
+      return;
+   }
+
+   if ((width % px && xoffset + width != image->Width) ||
+       (height % py && yoffset + height != image->Height) ||
+       (depth % pz && zoffset + depth != max_depth)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(alignment)", func);
+      return;
+   }
+
+   st_TexturePageCommitment(ctx, tex_obj, level, xoffset, yoffset, zoffset,
+                            width, height, depth, commit);
+}
+
 void GLAPIENTRY
 _mesa_TexPageCommitmentARB(GLenum target, GLint level, GLint xoffset,
                            GLint yoffset, GLint zoffset, GLsizei width,
                            GLsizei height, GLsizei depth, GLboolean commit)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object *texObj;
 
+   texObj = _mesa_get_current_tex_object(ctx, target);
+   if (!texObj) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "glTexPageCommitmentARB(target)");
+      return;
+   }
+
+   texture_page_commitment(ctx, target, texObj, level, xoffset, yoffset, zoffset,
+                           width, height, depth, commit,
+                           "glTexPageCommitmentARB");
 }
 
 void GLAPIENTRY
@@ -2356,7 +2419,18 @@ _mesa_TexturePageCommitmentEXT(GLuint texture, GLint level, GLint xoffset,
                                GLint yoffset, GLint zoffset, GLsizei width,
                                GLsizei height, GLsizei depth, GLboolean commit)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object *texObj;
 
+   texObj = _mesa_lookup_texture(ctx, texture);
+   if (texture == 0 || texObj == NULL) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glTexturePageCommitmentEXT(texture)");
+      return;
+   }
+
+   texture_page_commitment(ctx, texObj->Target, texObj, level, xoffset, yoffset,
+                           zoffset, width, height, depth, commit,
+                           "glTexturePageCommitmentEXT");
 }
 
 /*@}*/
