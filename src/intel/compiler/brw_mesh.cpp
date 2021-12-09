@@ -346,13 +346,15 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
    map->per_primitive_pitch_dw = ALIGN(map->per_primitive_header_size_dw +
                                        map->per_primitive_data_size_dw, 8);
 
-   /* TODO(mesh): Multiview. */
-   map->per_vertex_header_size_dw = 8;
    map->per_vertex_start_dw = ALIGN(map->per_primitive_start_dw +
                                     map->per_primitive_pitch_dw * map->max_primitives, 8);
 
-   unsigned next_vertex = map->per_vertex_start_dw +
-                          map->per_vertex_header_size_dw;
+   /* TODO(mesh): Multiview. */
+   unsigned fixed_header_size = 8;
+   map->per_vertex_header_size_dw = ALIGN(fixed_header_size +
+                                          nir->info.clip_distance_array_size +
+                                          nir->info.cull_distance_array_size, 8);
+   map->per_vertex_data_size_dw = 0;
    u_foreach_bit64(location, outputs_written & ~nir->info.per_primitive_outputs) {
       assert(map->start_dw[location] == -1);
 
@@ -364,18 +366,27 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
       case VARYING_SLOT_POS:
          start = map->per_vertex_start_dw + 4;
          break;
+      case VARYING_SLOT_CLIP_DIST0:
+         start = map->per_vertex_start_dw + fixed_header_size + 0;
+         break;
+      case VARYING_SLOT_CLIP_DIST1:
+         start = map->per_vertex_start_dw + fixed_header_size + 4;
+         break;
+      case VARYING_SLOT_CULL_DIST0:
+      case VARYING_SLOT_CULL_DIST1:
+         unreachable("cull distances should be lowered earlier");
+         break;
       default:
          assert(location >= VARYING_SLOT_VAR0);
-         start = next_vertex;
-         next_vertex += 4;
+         start = map->per_vertex_start_dw +
+                 map->per_vertex_header_size_dw +
+                 map->per_vertex_data_size_dw;
+         map->per_vertex_data_size_dw += 4;
          break;
       }
       map->start_dw[location] = start;
    }
 
-   map->per_vertex_data_size_dw = next_vertex -
-                                  map->per_vertex_start_dw -
-                                  map->per_vertex_header_size_dw;
    map->per_vertex_pitch_dw = ALIGN(map->per_vertex_header_size_dw +
                                     map->per_vertex_data_size_dw, 8);
 
@@ -531,6 +542,10 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    prog_data->base.local_size[1] = nir->info.workgroup_size[1];
    prog_data->base.local_size[2] = nir->info.workgroup_size[2];
 
+   prog_data->clip_distance_mask = (1 << nir->info.clip_distance_array_size) - 1;
+   prog_data->cull_distance_mask =
+         ((1 << nir->info.cull_distance_array_size) - 1) <<
+          nir->info.clip_distance_array_size;
    prog_data->primitive_type = nir->info.mesh.primitive_type;
 
    /* TODO(mesh): Use other index formats (that are more compact) for optimization. */

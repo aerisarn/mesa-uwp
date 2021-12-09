@@ -1440,6 +1440,8 @@ struct brw_mesh_prog_data {
    struct brw_cs_prog_data base;
    struct brw_mue_map map;
 
+   uint32_t clip_distance_mask;
+   uint32_t cull_distance_mask;
    uint16_t primitive_type;
 
    enum brw_mesh_index_format index_format;
