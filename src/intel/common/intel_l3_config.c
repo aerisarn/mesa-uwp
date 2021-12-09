@@ -351,9 +351,14 @@ unsigned
 intel_get_l3_config_urb_size(const struct intel_device_info *devinfo,
                              const struct intel_l3_config *cfg)
 {
-   /* We don't have to program the URB size in DG1, it's a fixed value. */
-   if (devinfo->platform == INTEL_PLATFORM_DG1)
+   /* We don't have to program the URB size for some platforms. It's a fixed
+    * value.
+    */
+   if (cfg == NULL) {
+      ASSERTED const struct intel_l3_list *const list = get_l3_list(devinfo);
+      assert(list->length == 0);
       return devinfo->urb.size;
+   }
 
    /* From the SKL "L3 Allocation and Programming" documentation:
     *
