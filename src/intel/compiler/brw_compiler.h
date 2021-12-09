@@ -734,7 +734,7 @@ struct brw_shader_reloc_value {
 struct brw_stage_prog_data {
    struct brw_ubo_range ubo_ranges[4];
 
-   GLuint nr_params;       /**< number of float params/constants */
+   unsigned nr_params;       /**< number of float params/constants */
 
    gl_shader_stage stage;
 
@@ -827,8 +827,8 @@ enum brw_pixel_shader_computed_depth_mode {
 struct brw_wm_prog_data {
    struct brw_stage_prog_data base;
 
-   GLuint num_per_primitive_inputs;
-   GLuint num_varying_inputs;
+   unsigned num_per_primitive_inputs;
+   unsigned num_varying_inputs;
 
    uint8_t reg_blocks_8;
    uint8_t reg_blocks_16;
@@ -1184,7 +1184,7 @@ void brw_print_vue_map(FILE *fp, const struct brw_vue_map *vue_map,
 /**
  * Convert a VUE slot number into a byte offset within the VUE.
  */
-static inline GLuint brw_vue_slot_to_offset(GLuint slot)
+static inline unsigned brw_vue_slot_to_offset(unsigned slot)
 {
    return 16*slot;
 }
@@ -1193,8 +1193,8 @@ static inline GLuint brw_vue_slot_to_offset(GLuint slot)
  * Convert a vertex output (brw_varying_slot) into a byte offset within the
  * VUE.
  */
-static inline
-GLuint brw_varying_to_offset(const struct brw_vue_map *vue_map, GLuint varying)
+static inline unsigned
+brw_varying_to_offset(const struct brw_vue_map *vue_map, unsigned varying)
 {
    return brw_vue_slot_to_offset(vue_map->varying_to_slot[varying]);
 }
@@ -1259,8 +1259,8 @@ struct brw_vue_prog_data {
    /** Should the hardware deliver input VUE handles for URB pull loads? */
    bool include_vue_handles;
 
-   GLuint urb_read_length;
-   GLuint total_grf;
+   unsigned urb_read_length;
+   unsigned total_grf;
 
    uint32_t clip_distance_mask;
    uint32_t cull_distance_mask;
@@ -1269,7 +1269,7 @@ struct brw_vue_prog_data {
     * URB entry used for both input and output to the thread.  In the GS, this
     * is the size of the URB entry used for output.
     */
-   GLuint urb_entry_size;
+   unsigned urb_entry_size;
 
    enum shader_dispatch_mode dispatch_mode;
 };
@@ -1355,12 +1355,12 @@ struct brw_gs_prog_data
     * Gfx6: Provoking vertex convention for odd-numbered triangles
     * in tristrips.
     */
-   GLuint pv_first:1;
+   unsigned pv_first:1;
 
    /**
     * Gfx6: Number of varyings that are output to transform feedback.
     */
-   GLuint num_transform_feedback_bindings:7; /* 0-BRW_MAX_SOL_BINDINGS */
+   unsigned num_transform_feedback_bindings:7; /* 0-BRW_MAX_SOL_BINDINGS */
 
    /**
     * Gfx6: Map from the index of a transform feedback binding table entry to the
