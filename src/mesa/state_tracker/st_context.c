@@ -578,6 +578,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    }
 
    st->cso_context = cso_create_context(pipe, cso_flags);
+   ctx->cso_context = st->cso_context;
 
    st_init_atoms(st);
    st_init_clear(st);
