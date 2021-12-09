@@ -34,17 +34,11 @@
 
 #include "pipe/p_context.h"
 
-static void st_dispatch_compute_common(struct gl_context *ctx,
-                                       const GLuint *num_groups,
-                                       const GLuint *group_size,
-                                       struct pipe_resource *indirect,
-                                       GLintptr indirect_offset)
+void st_dispatch_compute(struct gl_context *ctx,
+                         struct pipe_grid_info *info)
 {
-   struct gl_program *prog =
-      ctx->_Shader->CurrentProgram[MESA_SHADER_COMPUTE];
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
-   struct pipe_grid_info info = { 0 };
 
    st_flush_bitmap_cache(st);
    st_invalidate_readpix_cache(st);
@@ -57,38 +51,5 @@ static void st_dispatch_compute_common(struct gl_context *ctx,
        st->compute_shader_may_be_dirty)
       st_validate_state(st, ST_PIPELINE_COMPUTE);
 
-   for (unsigned i = 0; i < 3; i++) {
-      info.block[i] = group_size ? group_size[i] : prog->info.workgroup_size[i];
-      info.grid[i]  = num_groups ? num_groups[i] : 0;
-   }
-
-   if (indirect) {
-      info.indirect = indirect;
-      info.indirect_offset = indirect_offset;
-   }
-
-   pipe->launch_grid(pipe, &info);
+   pipe->launch_grid(pipe, info);
 }
-
-void st_dispatch_compute(struct gl_context *ctx,
-                         const GLuint *num_groups)
-{
-   st_dispatch_compute_common(ctx, num_groups, NULL, NULL, 0);
-}
-
-void st_dispatch_compute_indirect(struct gl_context *ctx,
-                                  GLintptr indirect_offset)
-{
-   struct gl_buffer_object *indirect_buffer = ctx->DispatchIndirectBuffer;
-   struct pipe_resource *indirect = indirect_buffer->buffer;
-
-   st_dispatch_compute_common(ctx, NULL, NULL, indirect, indirect_offset);
-}
-
-void st_dispatch_compute_group_size(struct gl_context *ctx,
-                                    const GLuint *num_groups,
-                                    const GLuint *group_size)
-{
-   st_dispatch_compute_common(ctx, num_groups, group_size, NULL, 0);
-}
-

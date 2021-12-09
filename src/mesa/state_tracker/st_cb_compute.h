@@ -28,12 +28,9 @@
 #ifndef ST_CB_COMPUTE_H
 #define ST_CB_COMPUTE_H
 
+struct pipe_grid_info;
+
 void st_dispatch_compute(struct gl_context *ctx,
-                         const GLuint *num_groups);
-void st_dispatch_compute_indirect(struct gl_context *ctx,
-                                  GLintptr indirect_offset);
-void st_dispatch_compute_group_size(struct gl_context *ctx,
-                                    const GLuint *num_groups,
-                                    const GLuint *group_size);
+                         struct pipe_grid_info *grid_info);
 
 #endif /* ST_CB_COMPUTE_H */
