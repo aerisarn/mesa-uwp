@@ -690,16 +690,10 @@
     <field name="Depth" size="16" start="7:0" type="uint" modifier="minus(1)" default="1"/>
   </struct>
 
-  <enum name="Shader Register Allocation">
-    <value name="64 Per Thread" value="0"/>
-    <value name="32 Per Thread" value="2"/>
-  </enum>
-
   <struct name="Renderer Properties" size="1">
     <field name="Uniform buffer count" size="8" start="0" type="uint"/>
     <field name="Depth source" size="2" start="8" type="Depth Source" default="Minimum"/>
     <field name="Shader contains barrier" size="1" start="11" type="bool"/>
-    <field name="Shader register allocation" size="2" start="12" type="Shader Register Allocation"/>
     <field name="Shader modifies coverage" size="1" start="16" type="bool"/>
     <field name="Allow forward pixel to kill" size="1" start="19" type="bool"/>
     <field name="Allow forward pixel to be killed" size="1" start="20" type="bool"/>
