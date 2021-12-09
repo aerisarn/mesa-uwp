@@ -746,6 +746,34 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
    }
 }
 
+/* On gfx12.5+, if the offsets are not both constant and in the {-8,7} range,
+ * we will have nir_lower_tex() lower the source offset by returning true from
+ * this filter function.
+ */
+static bool
+lower_xehp_tg4_offset_filter(const nir_instr *instr, UNUSED const void *data)
+{
+   if (instr->type != nir_instr_type_tex)
+      return false;
+
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+   if (tex->op != nir_texop_tg4)
+      return false;
+
+   int offset_index = nir_tex_instr_src_index(tex, nir_tex_src_offset);
+   if (offset_index < 0)
+      return false;
+
+   if (!nir_src_is_const(tex->src[offset_index].src))
+      return true;
+
+   int64_t offset_x = nir_src_comp_as_int(tex->src[offset_index].src, 0);
+   int64_t offset_y = nir_src_comp_as_int(tex->src[offset_index].src, 1);
+
+   return offset_x < -8 || offset_x > 7 || offset_y < -8 || offset_y > 7;
+}
+
 /* Does some simple lowering and runs the standard suite of optimizations
  *
  * This is intended to be called more-or-less directly after you get the
@@ -792,6 +820,8 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
       .lower_txd_offset_clamp = true,
       .lower_tg4_offsets = true,
       .lower_txs_lod = true, /* Wa_14012320009 */
+      .lower_offset_filter =
+         devinfo->verx10 >= 125 ? lower_xehp_tg4_offset_filter : NULL,
    };
 
    OPT(nir_lower_tex, &tex_options);
