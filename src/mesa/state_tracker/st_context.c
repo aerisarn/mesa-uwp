@@ -42,7 +42,6 @@
 #include "st_debug.h"
 #include "st_cb_bitmap.h"
 #include "st_cb_clear.h"
-#include "st_cb_condrender.h"
 #include "st_cb_drawpixels.h"
 #include "st_cb_drawtex.h"
 #include "st_cb_eglimage.h"
