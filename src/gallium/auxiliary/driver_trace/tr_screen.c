@@ -37,6 +37,7 @@
 #include "tr_context.h"
 #include "tr_screen.h"
 #include "tr_public.h"
+#include "tr_util.h"
 
 
 static bool trace = false;
@@ -148,7 +149,7 @@ trace_screen_get_param(struct pipe_screen *_screen,
    trace_dump_call_begin("pipe_screen", "get_param");
 
    trace_dump_arg(ptr, screen);
-   trace_dump_arg(int, param);
+   trace_dump_arg_enum(param, tr_util_pipe_cap_name(param));
 
    result = screen->get_param(screen, param);
 
@@ -172,8 +173,8 @@ trace_screen_get_shader_param(struct pipe_screen *_screen,
    trace_dump_call_begin("pipe_screen", "get_shader_param");
 
    trace_dump_arg(ptr, screen);
-   trace_dump_arg(uint, shader);
-   trace_dump_arg(int, param);
+   trace_dump_arg_enum(shader, tr_util_pipe_shader_type_name(shader));
+   trace_dump_arg_enum(param, tr_util_pipe_shader_cap_name(param));
 
    result = screen->get_shader_param(screen, shader, param);
 
@@ -196,7 +197,7 @@ trace_screen_get_paramf(struct pipe_screen *_screen,
    trace_dump_call_begin("pipe_screen", "get_paramf");
 
    trace_dump_arg(ptr, screen);
-   trace_dump_arg(int, param);
+   trace_dump_arg_enum(param, tr_util_pipe_capf_name(param));
 
    result = screen->get_paramf(screen, param);
 
@@ -220,8 +221,8 @@ trace_screen_get_compute_param(struct pipe_screen *_screen,
    trace_dump_call_begin("pipe_screen", "get_compute_param");
 
    trace_dump_arg(ptr, screen);
-   trace_dump_arg(int, ir_type);
-   trace_dump_arg(int, param);
+   trace_dump_arg_enum(ir_type, tr_util_pipe_shader_ir_name(ir_type));
+   trace_dump_arg_enum(param, tr_util_pipe_compute_cap_name(param));
    trace_dump_arg(ptr, data);
 
    result = screen->get_compute_param(screen, ir_type, param, data);
@@ -250,7 +251,7 @@ trace_screen_is_format_supported(struct pipe_screen *_screen,
 
    trace_dump_arg(ptr, screen);
    trace_dump_arg(format, format);
-   trace_dump_arg(int, target);
+   trace_dump_arg_enum(target, tr_util_pipe_texture_target_name(target));
    trace_dump_arg(uint, sample_count);
    trace_dump_arg(uint, storage_sample_count);
    trace_dump_arg(uint, tex_usage);
