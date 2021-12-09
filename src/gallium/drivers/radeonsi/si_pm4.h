@@ -54,7 +54,9 @@ struct si_pm4_state {
 
    /* commands for the DE */
    uint16_t max_dw;
-   uint32_t pm4[480];
+
+   /* This must be the last field because the array can continue after the structure. */
+   uint32_t pm4[64];
 };
 
 void si_pm4_cmd_add(struct si_pm4_state *state, uint32_t dw);
