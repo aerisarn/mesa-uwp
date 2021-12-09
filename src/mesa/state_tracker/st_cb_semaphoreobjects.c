@@ -31,7 +31,6 @@
 #include "st_texture.h"
 #include "st_util.h"
 #include "st_cb_bitmap.h"
-#include "st_cb_bufferobjects.h"
 #include "st_cb_semaphoreobjects.h"
 
 #include "frontend/drm_driver.h"

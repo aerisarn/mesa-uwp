@@ -38,6 +38,10 @@ struct gl_texture_object;
 struct pipe_context;
 struct st_context;
 struct st_texture_object;
+struct gl_renderbuffer;
+struct gl_pixelstore_attrib;
+struct gl_memory_object;
+struct gl_sampler_object;
 
 extern enum pipe_texture_target
 gl_target_to_pipe(GLenum target);

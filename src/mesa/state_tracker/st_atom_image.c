@@ -36,7 +36,6 @@
 #include "util/u_surface.h"
 #include "cso_cache/cso_context.h"
 
-#include "st_cb_bufferobjects.h"
 #include "st_cb_texture.h"
 #include "st_debug.h"
 #include "st_texture.h"

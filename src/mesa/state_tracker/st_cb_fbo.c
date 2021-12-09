@@ -48,7 +48,6 @@
 #include "pipe/p_screen.h"
 #include "st_atom.h"
 #include "st_context.h"
-#include "st_cb_bufferobjects.h"
 #include "st_cb_fbo.h"
 #include "st_cb_flush.h"
 #include "st_cb_texture.h"

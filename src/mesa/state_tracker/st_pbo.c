@@ -31,7 +31,6 @@
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_nir.h"
 #include "state_tracker/st_pbo.h"
-#include "state_tracker/st_cb_bufferobjects.h"
 
 #include "main/context.h"
 #include "pipe/p_context.h"

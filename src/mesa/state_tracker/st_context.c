@@ -41,7 +41,6 @@
 #include "st_context.h"
 #include "st_debug.h"
 #include "st_cb_bitmap.h"
-#include "st_cb_bufferobjects.h"
 #include "st_cb_clear.h"
 #include "st_cb_compute.h"
 #include "st_cb_condrender.h"
@@ -918,7 +917,6 @@ st_init_driver_functions(struct pipe_screen *screen,
                          bool has_egl_image_validate)
 {
    st_init_draw_functions(screen, functions);
-   st_init_bufferobject_functions(screen, functions);
 
    st_init_eglimage_functions(functions, has_egl_image_validate);
 

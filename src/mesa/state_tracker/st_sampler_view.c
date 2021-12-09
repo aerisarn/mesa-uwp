@@ -38,7 +38,6 @@
 #include "st_sampler_view.h"
 #include "st_texture.h"
 #include "st_format.h"
-#include "st_cb_bufferobjects.h"
 #include "st_cb_texture.h"
 
 /* Subtract remaining private references. Typically used before

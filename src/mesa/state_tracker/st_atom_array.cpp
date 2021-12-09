@@ -38,7 +38,6 @@
 
 #include "st_context.h"
 #include "st_atom.h"
-#include "st_cb_bufferobjects.h"
 #include "st_draw.h"
 #include "st_program.h"
 

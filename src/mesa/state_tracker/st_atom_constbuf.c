@@ -47,7 +47,6 @@
 #include "st_atom.h"
 #include "st_atom_constbuf.h"
 #include "st_program.h"
-#include "st_cb_bufferobjects.h"
 
 /* Unbinds the CB0 if it's not used by the current program to avoid leaving
  * dangling pointers to old (potentially deleted) shaders in the driver.

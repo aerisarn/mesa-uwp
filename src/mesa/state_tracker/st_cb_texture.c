@@ -55,7 +55,6 @@
 #include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_flush.h"
 #include "state_tracker/st_cb_texture.h"
-#include "state_tracker/st_cb_bufferobjects.h"
 #include "state_tracker/st_cb_memoryobjects.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_pbo.h"
