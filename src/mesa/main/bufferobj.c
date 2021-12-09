@@ -611,23 +611,6 @@ clear_buffer_subdata_sw(struct gl_context *ctx,
    _mesa_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
 }
 
-static void
-bufferobj_page_commitment(struct gl_context *ctx,
-                             struct gl_buffer_object *bufferObj,
-                             GLintptr offset, GLsizeiptr size,
-                             GLboolean commit)
-{
-   struct pipe_context *pipe = ctx->pipe;
-   struct pipe_box box;
-
-   u_box_1d(offset, size, &box);
-
-   if (!pipe->resource_commit(pipe, bufferObj->buffer, 0, &box, commit)) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glBufferPageCommitmentARB(out of memory)");
-      return;
-   }
-}
-
 /**
  * Helper to warn of possible performance issues, such as frequently
  * updating a buffer created with GL_STATIC_DRAW.  Called via the macro
@@ -5356,7 +5339,14 @@ buffer_page_commitment(struct gl_context *ctx,
       return;
    }
 
-   bufferobj_page_commitment(ctx, bufferObj, offset, size, commit);
+   struct pipe_context *pipe = ctx->pipe;
+   struct pipe_box box;
+
+   u_box_1d(offset, size, &box);
+
+   if (!pipe->resource_commit(pipe, bufferObj->buffer, 0, &box, commit)) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glBufferPageCommitmentARB(out of memory)");
+   }
 }
 
 void GLAPIENTRY
