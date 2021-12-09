@@ -485,19 +485,6 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
     return context;
 }
 
-void
-driContextSetFlags(struct gl_context *ctx, uint32_t flags)
-{
-    if ((flags & __DRI_CTX_FLAG_FORWARD_COMPATIBLE) != 0)
-        ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT;
-    if ((flags & __DRI_CTX_FLAG_DEBUG) != 0) {
-       _mesa_set_debug_state_int(ctx, GL_DEBUG_OUTPUT, GL_TRUE);
-        ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_DEBUG_BIT;
-    }
-    if ((flags & __DRI_CTX_FLAG_NO_ERROR) != 0)
-        ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR;
-}
-
 static __DRIcontext *
 driCreateNewContextForAPI(__DRIscreen *screen, int api,
                           const __DRIconfig *config,

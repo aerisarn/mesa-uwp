@@ -332,9 +332,6 @@ dri2InvalidateDrawable(__DRIdrawable *drawable);
 extern void
 driUpdateFramebufferSize(struct gl_context *ctx, const __DRIdrawable *dPriv);
 
-extern void
-driContextSetFlags(struct gl_context *ctx, uint32_t flags);
-
 extern const __DRIimageDriverExtension driImageDriverExtension;
 
 extern const __DRInoErrorExtension dri2NoErrorExtension;
