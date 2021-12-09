@@ -45,6 +45,7 @@ lower_int_cubmap_to_array_filter(const nir_instr *instr,
    case nir_texop_txl:
    case nir_texop_txs:
    case nir_texop_lod:
+   case nir_texop_tg4:
       break;
    default:
       return false;
@@ -121,12 +122,12 @@ evaluate_face_z(nir_builder *b, coord_t *coord)
 }
 
 static nir_ssa_def *
-create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *coord)
+create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *coord, nir_texop op)
 {
    nir_tex_instr *array_tex;
 
    array_tex = nir_tex_instr_create(b->shader, tex->num_srcs);
-   array_tex->op = tex->op;
+   array_tex->op = op;
    array_tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
    array_tex->is_array = true;
    array_tex->is_shadow = tex->is_shadow;
@@ -149,6 +150,164 @@ create_array_tex_from_cube_tex(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *
                      nir_tex_instr_dest_size(array_tex), 32, NULL);
    nir_builder_instr_insert(b, &array_tex->instr);
    return &array_tex->dest.ssa;
+}
+
+static nir_ssa_def *
+handle_cube_edge(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *face, nir_ssa_def *array_slice_cube_base, nir_ssa_def *tex_size)
+{
+   enum cube_remap
+   {
+      cube_remap_zero = 0,
+      cube_remap_x,
+      cube_remap_y,
+      cube_remap_tex_size,
+      cube_remap_tex_size_minus_x,
+      cube_remap_tex_size_minus_y,
+
+      cube_remap_size,
+   };
+
+   struct cube_remap_table
+   {
+      enum cube_remap remap_x;
+      enum cube_remap remap_y;
+      uint32_t        remap_face;
+   };
+
+   static const struct cube_remap_table cube_remap_neg_x[6] =
+   {
+       {cube_remap_tex_size,         cube_remap_y,         4},
+       {cube_remap_tex_size,         cube_remap_y,         5},
+       {cube_remap_y,                cube_remap_zero,      1},
+       {cube_remap_tex_size_minus_y, cube_remap_tex_size,  1},
+       {cube_remap_tex_size,         cube_remap_y,         1},
+       {cube_remap_tex_size,         cube_remap_y,         0},
+   };
+
+   static const struct cube_remap_table cube_remap_pos_x[6] =
+   {
+       {cube_remap_zero,             cube_remap_y,         5},
+       {cube_remap_zero,             cube_remap_y,         4},
+       {cube_remap_tex_size_minus_y, cube_remap_zero,      0},
+       {cube_remap_y,                cube_remap_tex_size,  0},
+       {cube_remap_zero,             cube_remap_y,         0},
+       {cube_remap_zero,             cube_remap_y,         1},
+   };
+
+   static const struct cube_remap_table cube_remap_neg_y[6] =
+   {
+       {cube_remap_tex_size,         cube_remap_tex_size_minus_x, 2},
+       {cube_remap_zero,             cube_remap_x,                2},
+       {cube_remap_tex_size_minus_x, cube_remap_zero,             5},
+       {cube_remap_x,                cube_remap_tex_size,         4},
+       {cube_remap_x,                cube_remap_tex_size,         2},
+       {cube_remap_tex_size_minus_x, cube_remap_zero,             2},
+   };
+
+   static const struct cube_remap_table cube_remap_pos_y[6] =
+   {
+       {cube_remap_tex_size,         cube_remap_x,                   3},
+       {cube_remap_zero,             cube_remap_tex_size_minus_x,    3},
+       {cube_remap_x,                cube_remap_zero,                4},
+       {cube_remap_tex_size_minus_x, cube_remap_tex_size,            5},
+       {cube_remap_x,                cube_remap_zero,                3},
+       {cube_remap_tex_size_minus_x, cube_remap_tex_size,            3},
+   };
+
+   static const struct cube_remap_table* remap_tables[4] = {
+      cube_remap_neg_x,
+      cube_remap_pos_x,
+      cube_remap_neg_y,
+      cube_remap_pos_y
+   };
+
+   nir_ssa_def *zero = nir_imm_int(b, 0);
+   
+   /* Doesn't matter since the texture is square */
+   tex_size = nir_channel(b, tex_size, 0);
+
+   nir_ssa_def *x_on = nir_iand(b, nir_ige(b, x, zero), nir_ige(b, tex_size, x));
+   nir_ssa_def *y_on = nir_iand(b, nir_ige(b, y, zero), nir_ige(b, tex_size, y));
+   nir_ssa_def *one_on = nir_ixor(b, x_on, y_on);
+
+   /* If the sample did not fall off the face in either dimension, then set output = input */
+   nir_ssa_def *x_result = x;
+   nir_ssa_def *y_result = y;
+   nir_ssa_def *face_result = face;
+
+   /* otherwise, if the sample fell off the face in either the X or the Y direction, remap to the new face */
+   nir_ssa_def *remap_predicates[4] =
+   {
+      nir_iand(b, one_on, nir_ilt(b, x, zero)),
+      nir_iand(b, one_on, nir_ilt(b, tex_size, x)),
+      nir_iand(b, one_on, nir_ilt(b, y, zero)),
+      nir_iand(b, one_on, nir_ilt(b, tex_size, y)),
+   };
+
+   nir_ssa_def *remap_array[cube_remap_size];
+
+   remap_array[cube_remap_zero] = zero;
+   remap_array[cube_remap_x] = x;
+   remap_array[cube_remap_y] = y;
+   remap_array[cube_remap_tex_size] = tex_size;
+   remap_array[cube_remap_tex_size_minus_x] = nir_isub(b, tex_size, x);
+   remap_array[cube_remap_tex_size_minus_y] = nir_isub(b, tex_size, y);
+
+   /* For each possible way the sample could have fallen off */
+   for (unsigned i = 0; i < 4; i++) {
+      const struct cube_remap_table* remap_table = remap_tables[i];
+
+      /* For each possible original face */
+      for (unsigned j = 0; j < 6; j++) {
+         nir_ssa_def *predicate = nir_iand(b, remap_predicates[i], nir_ieq(b, face, nir_imm_int(b, j)));
+
+         x_result = nir_bcsel(b, predicate, remap_array[remap_table[j].remap_x], x_result);
+         y_result = nir_bcsel(b, predicate, remap_array[remap_table[j].remap_y], y_result);
+         face_result = nir_bcsel(b, predicate, remap_array[remap_table[j].remap_face], face_result);
+      }
+   }
+
+   return nir_vec3(b, x_result, y_result, nir_iadd(b, face_result, array_slice_cube_base));
+}
+
+static nir_ssa_def *
+handle_cube_gather(nir_builder *b, nir_tex_instr *tex, nir_ssa_def *coord)
+{
+   nir_ssa_def *tex_size = nir_get_texture_size(b, tex);
+
+   /* nir_get_texture_size puts the cursor before the tex op */
+   b->cursor = nir_after_instr(coord->parent_instr);
+
+   nir_ssa_def *const_05 = nir_imm_float(b, 0.5f);
+   nir_ssa_def *texel_coords = nir_fmul(b, nir_channels(b, coord, 3),
+      nir_i2f32(b, nir_channels(b, tex_size, 3)));
+
+   nir_ssa_def *x_orig = nir_channel(b, texel_coords, 0);
+   nir_ssa_def *y_orig = nir_channel(b, texel_coords, 1);
+
+   nir_ssa_def *x_pos = nir_f2i32(b, nir_fadd(b, x_orig, const_05));
+   nir_ssa_def *x_neg = nir_f2i32(b, nir_fsub(b, x_orig, const_05));
+   nir_ssa_def *y_pos = nir_f2i32(b, nir_fadd(b, y_orig, const_05));
+   nir_ssa_def *y_neg = nir_f2i32(b, nir_fsub(b, y_orig, const_05));
+   nir_ssa_def *coords[4][2] = {
+      { x_neg, y_pos },
+      { x_pos, y_pos },
+      { x_pos, y_neg },
+      { x_neg, y_neg },
+   };
+
+   nir_ssa_def *array_slice_2d = nir_f2i32(b, nir_channel(b, coord, 2));
+   nir_ssa_def *face = nir_imod(b, array_slice_2d, nir_imm_int(b, 6));
+   nir_ssa_def *array_slice_cube_base = nir_isub(b, array_slice_2d, face);
+
+   nir_ssa_def *channels[4];
+   for (unsigned i = 0; i < 4; ++i) {
+      nir_ssa_def *final_coord = handle_cube_edge(b, coords[i][0], coords[i][1], face, array_slice_cube_base, tex_size);
+      nir_ssa_def *sampled_val = create_array_tex_from_cube_tex(b, tex, final_coord, nir_texop_txf);
+      channels[i] = nir_channel(b, sampled_val, tex->component);
+   }
+
+   return nir_vec(b, channels, 4);
 }
 
 static nir_ssa_def *
@@ -196,7 +355,10 @@ lower_cube_sample(nir_builder *b, nir_tex_instr *tex)
    // This contains in xy the normalized sample coordinates, and in z the face index
    nir_ssa_def *coord_and_face = nir_if_phi(b, face_x_coord, face_y_or_z_coord);
 
-   return create_array_tex_from_cube_tex(b, tex, coord_and_face);
+   if (tex->op == nir_texop_tg4)
+      return handle_cube_gather(b, tex, coord_and_face);
+   else
+      return create_array_tex_from_cube_tex(b, tex, coord_and_face, tex->op);
 }
 
 static nir_ssa_def *
@@ -255,6 +417,7 @@ lower_int_cubmap_to_array_impl(nir_builder *b, nir_instr *instr,
    case nir_texop_txd:
    case nir_texop_txl:
    case nir_texop_lod:
+   case nir_texop_tg4:
       return lower_cube_sample(b, tex);
    case nir_texop_txs:
       return lower_cube_txs(b, tex);
