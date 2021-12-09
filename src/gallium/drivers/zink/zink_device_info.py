@@ -115,6 +115,7 @@ EXTENSIONS = [
         alias="index_uint8",
         features=True,
         conditions=["$feats.indexTypeUint8"]),
+    Extension("VK_KHR_image_format_list"),
     Extension("VK_KHR_imageless_framebuffer",
         alias="imgless",
         features=True,
