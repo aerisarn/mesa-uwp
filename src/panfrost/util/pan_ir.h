@@ -227,6 +227,27 @@ struct pan_shader_info {
 
                 struct {
                         bool writes_point_size;
+
+                        /* Set if Index-Driven Vertex Shading is in use */
+                        bool idvs;
+
+                        /* If IDVS is used, whether a varying shader is used */
+                        bool secondary_enable;
+
+                        /* If a varying shader is used, the varying shader's
+                         * offset in the program binary
+                         */
+                        unsigned secondary_offset;
+
+                        /* If IDVS is in use, number of work registers used by
+                         * the varying shader
+                         */
+                        unsigned secondary_work_reg_count;
+
+                        /* If IDVS is in use, bit mask of preloaded registers
+                         * used by the varying shader
+                         */
+                        uint64_t secondary_preload;
                 } vs;
         };
 
