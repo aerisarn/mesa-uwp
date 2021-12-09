@@ -371,8 +371,6 @@ files_libmesa = files(
   'state_tracker/st_cb_syncobj.h',
   'state_tracker/st_cb_texture.c',
   'state_tracker/st_cb_texture.h',
-  'state_tracker/st_cb_texturebarrier.c',
-  'state_tracker/st_cb_texturebarrier.h',
   'state_tracker/st_cb_viewport.c',
   'state_tracker/st_cb_viewport.h',
   'state_tracker/st_cb_xformfb.c',

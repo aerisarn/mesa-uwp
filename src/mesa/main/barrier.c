@@ -31,7 +31,70 @@
 #include "context.h"
 #include "api_exec_decl.h"
 
-#include "state_tracker/st_cb_texturebarrier.h"
+#include "pipe/p_context.h"
+
+
+static void
+memory_barrier(struct gl_context *ctx, GLbitfield barriers)
+{
+   struct pipe_context *pipe = ctx->pipe;
+   unsigned flags = 0;
+
+   if (barriers & GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT)
+      flags |= PIPE_BARRIER_VERTEX_BUFFER;
+   if (barriers & GL_ELEMENT_ARRAY_BARRIER_BIT)
+      flags |= PIPE_BARRIER_INDEX_BUFFER;
+   if (barriers & GL_UNIFORM_BARRIER_BIT)
+      flags |= PIPE_BARRIER_CONSTANT_BUFFER;
+   if (barriers & GL_TEXTURE_FETCH_BARRIER_BIT)
+      flags |= PIPE_BARRIER_TEXTURE;
+   if (barriers & GL_SHADER_IMAGE_ACCESS_BARRIER_BIT)
+      flags |= PIPE_BARRIER_IMAGE;
+   if (barriers & GL_COMMAND_BARRIER_BIT)
+      flags |= PIPE_BARRIER_INDIRECT_BUFFER;
+   if (barriers & GL_PIXEL_BUFFER_BARRIER_BIT) {
+      /* The PBO may be
+       *  (1) bound as a texture for PBO uploads, or
+       *  (2) accessed by the CPU via transfer ops.
+       * For case (2), we assume automatic flushing by the driver.
+       */
+      flags |= PIPE_BARRIER_TEXTURE;
+   }
+   if (barriers & GL_TEXTURE_UPDATE_BARRIER_BIT) {
+      /* GL_TEXTURE_UPDATE_BARRIER_BIT:
+       * Texture updates translate to:
+       *  (1) texture transfers to/from the CPU,
+       *  (2) texture as blit destination, or
+       *  (3) texture as framebuffer.
+       * Some drivers may handle these automatically, and can ignore the bit.
+       */
+      flags |= PIPE_BARRIER_UPDATE_TEXTURE;
+   }
+   if (barriers & GL_BUFFER_UPDATE_BARRIER_BIT) {
+      /* GL_BUFFER_UPDATE_BARRIER_BIT:
+       * Buffer updates translate to
+       *  (1) buffer transfers to/from the CPU,
+       *  (2) resource copies and clears.
+       * Some drivers may handle these automatically, and can ignore the bit.
+       */
+      flags |= PIPE_BARRIER_UPDATE_BUFFER;
+   }
+   if (barriers & GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT)
+      flags |= PIPE_BARRIER_MAPPED_BUFFER;
+   if (barriers & GL_QUERY_BUFFER_BARRIER_BIT)
+      flags |= PIPE_BARRIER_QUERY_BUFFER;
+   if (barriers & GL_FRAMEBUFFER_BARRIER_BIT)
+      flags |= PIPE_BARRIER_FRAMEBUFFER;
+   if (barriers & GL_TRANSFORM_FEEDBACK_BARRIER_BIT)
+      flags |= PIPE_BARRIER_STREAMOUT_BUFFER;
+   if (barriers & GL_ATOMIC_COUNTER_BARRIER_BIT)
+      flags |= PIPE_BARRIER_SHADER_BUFFER;
+   if (barriers & GL_SHADER_STORAGE_BARRIER_BIT)
+      flags |= PIPE_BARRIER_SHADER_BUFFER;
+
+   if (flags && pipe->memory_barrier)
+      pipe->memory_barrier(pipe, flags);
+}
 
 void GLAPIENTRY
 _mesa_TextureBarrierNV(void)
@@ -44,7 +107,7 @@ _mesa_TextureBarrierNV(void)
       return;
    }
 
-   st_TextureBarrier(ctx);
+   ctx->pipe->texture_barrier(ctx->pipe, PIPE_TEXTURE_BARRIER_SAMPLER);
 }
 
 void GLAPIENTRY
@@ -52,7 +115,7 @@ _mesa_MemoryBarrier(GLbitfield barriers)
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   st_MemoryBarrier(ctx, barriers);
+   memory_barrier(ctx, barriers);
 }
 
 static ALWAYS_INLINE void
@@ -76,7 +139,7 @@ memory_barrier_by_region(struct gl_context *ctx, GLbitfield barriers,
     * barriers allowed by glMemoryBarrierByRegion should be activated."
     */
    if (barriers == GL_ALL_BARRIER_BITS) {
-      st_MemoryBarrier(ctx, all_allowed_bits);
+      memory_barrier(ctx, all_allowed_bits);
       return;
    }
 
@@ -91,7 +154,7 @@ memory_barrier_by_region(struct gl_context *ctx, GLbitfield barriers,
                   "glMemoryBarrierByRegion(unsupported barrier bit");
    }
 
-   st_MemoryBarrier(ctx, barriers);
+   memory_barrier(ctx, barriers);
 }
 
 void GLAPIENTRY
@@ -119,7 +182,7 @@ _mesa_BlendBarrier(void)
       return;
    }
 
-   st_FramebufferFetchBarrier(ctx);
+   ctx->pipe->texture_barrier(ctx->pipe, PIPE_TEXTURE_BARRIER_FRAMEBUFFER);
 }
 
 void GLAPIENTRY
@@ -133,5 +196,5 @@ _mesa_FramebufferFetchBarrierEXT(void)
       return;
    }
 
-   st_FramebufferFetchBarrier(ctx);
+   ctx->pipe->texture_barrier(ctx->pipe, PIPE_TEXTURE_BARRIER_FRAMEBUFFER);
 }
