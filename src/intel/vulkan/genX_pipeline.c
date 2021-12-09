@@ -1604,8 +1604,8 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
       const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_CLIP_MESH), clip_mesh) {
          clip_mesh.PrimitiveHeaderEnable = mesh_prog_data->map.per_primitive_header_size_dw > 0;
-         /* TODO(mesh): UserClipDistanceClipTestEnableBitmask. */
-         /* TODO(mesh): UserClipDistanceCullTestEnableBitmask. */
+         clip_mesh.UserClipDistanceClipTestEnableBitmask = mesh_prog_data->clip_distance_mask;
+         clip_mesh.UserClipDistanceCullTestEnableBitmask = mesh_prog_data->cull_distance_mask;
       }
    }
 #endif
