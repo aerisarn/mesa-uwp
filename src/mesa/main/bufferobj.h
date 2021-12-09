@@ -97,6 +97,9 @@ _mesa_bufferobj_alloc(struct gl_context *ctx, GLuint id);
 void
 _mesa_bufferobj_release_buffer(struct gl_buffer_object *obj);
 
+enum pipe_map_flags
+_mesa_access_flags_to_transfer_flags(GLbitfield access, bool wholeBuffer);
+
 /** Is the given buffer object currently mapped by the GL user? */
 static inline GLboolean
 _mesa_bufferobj_mapped(const struct gl_buffer_object *obj,

@@ -413,7 +413,7 @@ bufferobj_data_mem(struct gl_context *ctx,
  * \param wholeBuffer  is the whole buffer being mapped?
  */
 enum pipe_map_flags
-st_access_flags_to_transfer_flags(GLbitfield access, bool wholeBuffer)
+_mesa_access_flags_to_transfer_flags(GLbitfield access, bool wholeBuffer)
 {
    enum pipe_map_flags flags = 0;
 
@@ -476,8 +476,8 @@ _mesa_bufferobj_map_range(struct gl_context *ctx,
    assert(offset + length <= obj->Size);
 
    enum pipe_map_flags transfer_flags =
-      st_access_flags_to_transfer_flags(access,
-                                        offset == 0 && length == obj->Size);
+      _mesa_access_flags_to_transfer_flags(access,
+                                           offset == 0 && length == obj->Size);
 
    /* Sometimes games do silly things like MapBufferRange(UNSYNC|DISCARD_RANGE)
     * In this case, the the UNSYNC is a bit redundant, but the games rely

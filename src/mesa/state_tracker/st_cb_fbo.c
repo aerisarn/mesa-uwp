@@ -35,6 +35,7 @@
 
 
 #include "main/context.h"
+#include "main/bufferobj.h"
 #include "main/fbobject.h"
 #include "main/framebuffer.h"
 #include "main/glformats.h"
@@ -922,7 +923,7 @@ st_MapRenderbuffer(struct gl_context *ctx,
                     GL_MAP_INVALIDATE_RANGE_BIT)) == 0);
 
    const enum pipe_map_flags transfer_flags =
-      st_access_flags_to_transfer_flags(mode, false);
+      _mesa_access_flags_to_transfer_flags(mode, false);
 
    /* Note: y=0=bottom of buffer while y2=0=top of buffer.
     * 'invert' will be true for window-system buffers and false for

@@ -569,7 +569,7 @@ st_MapTextureImage(struct gl_context *ctx,
                     GL_MAP_INVALIDATE_RANGE_BIT)) == 0);
 
    const enum pipe_map_flags transfer_flags =
-      st_access_flags_to_transfer_flags(mode, false);
+      _mesa_access_flags_to_transfer_flags(mode, false);
 
    map = st_texture_image_map(st, stImage, transfer_flags, x, y, slice, w, h, 1,
                               &transfer);
