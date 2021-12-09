@@ -157,11 +157,6 @@ _mesa_multi_bind_lookup_bufferobj(struct gl_context *ctx,
                                   bool *error);
 
 extern void
-_mesa_initialize_buffer_object(struct gl_context *ctx,
-                               struct gl_buffer_object *obj,
-                               GLuint name);
-
-extern void
 _mesa_delete_buffer_object(struct gl_context *ctx,
                            struct gl_buffer_object *bufObj);
 

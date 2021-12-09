@@ -1110,27 +1110,6 @@ get_no_minmax_cache()
    return disable;
 }
 
-
-/**
- * Initialize a buffer object to default values.
- */
-void
-_mesa_initialize_buffer_object(struct gl_context *ctx,
-                               struct gl_buffer_object *obj,
-                               GLuint name)
-{
-   memset(obj, 0, sizeof(struct gl_buffer_object));
-   obj->RefCount = 1;
-   obj->Name = name;
-   obj->Usage = GL_STATIC_DRAW_ARB;
-
-   simple_mtx_init(&obj->MinMaxCacheMutex, mtx_plain);
-   if (get_no_minmax_cache())
-      obj->UsageHistory |= USAGE_DISABLE_MINMAX_CACHE;
-}
-
-
-
 /**
  * Callback called from _mesa_HashWalk()
  */
@@ -1324,7 +1303,13 @@ _mesa_bufferobj_alloc(struct gl_context *ctx, GLuint id)
    if (!buf)
       return NULL;
 
-   _mesa_initialize_buffer_object(ctx, buf, id);
+   buf->RefCount = 1;
+   buf->Name = id;
+   buf->Usage = GL_STATIC_DRAW_ARB;
+
+   simple_mtx_init(&buf->MinMaxCacheMutex, mtx_plain);
+   if (get_no_minmax_cache())
+      buf->UsageHistory |= USAGE_DISABLE_MINMAX_CACHE;
    return buf;
 }
 /**
