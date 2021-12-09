@@ -2253,6 +2253,9 @@ struct gl_sync_object
    GLenum16 SyncCondition;
    GLbitfield Flags;          /**< Flags passed to glFenceSync */
    GLuint StatusFlag:1;       /**< Has the sync object been signaled? */
+
+   struct pipe_fence_handle *fence;
+   simple_mtx_t mutex; /**< protects "fence" */
 };
 
 
