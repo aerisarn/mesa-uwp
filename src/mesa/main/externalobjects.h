@@ -82,10 +82,6 @@ _mesa_delete_memory_object(struct gl_context *ctx,
                            struct gl_memory_object *semObj);
 
 extern void
-_mesa_initialize_semaphore_object(struct gl_context *ctx,
-                                  struct gl_semaphore_object *obj,
-                                  GLuint name);
-extern void
 _mesa_delete_semaphore_object(struct gl_context *ctx,
                               struct gl_semaphore_object *semObj);
 

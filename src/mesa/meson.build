@@ -356,8 +356,6 @@ files_libmesa = files(
   'state_tracker/st_cb_rasterpos.h',
   'state_tracker/st_cb_readpixels.c',
   'state_tracker/st_cb_readpixels.h',
-  'state_tracker/st_cb_semaphoreobjects.c',
-  'state_tracker/st_cb_semaphoreobjects.h',
   'state_tracker/st_cb_syncobj.c',
   'state_tracker/st_cb_syncobj.h',
   'state_tracker/st_cb_texture.c',

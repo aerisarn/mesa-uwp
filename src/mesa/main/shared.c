@@ -46,7 +46,6 @@
 #include "util/set.h"
 #include "util/u_memory.h"
 
-#include "state_tracker/st_cb_semaphoreobjects.h"
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_program.h"
 
@@ -329,7 +328,7 @@ delete_semaphore_object_cb(void *data, void *userData)
 {
    struct gl_semaphore_object *semObj = (struct gl_semaphore_object *) data;
    struct gl_context *ctx = (struct gl_context *) userData;
-   st_semaphoreobj_free(ctx, semObj);
+   _mesa_delete_semaphore_object(ctx, semObj);
 }
 
 /**

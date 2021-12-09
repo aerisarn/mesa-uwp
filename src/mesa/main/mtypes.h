@@ -2879,6 +2879,7 @@ struct gl_memory_object
 struct gl_semaphore_object
 {
    GLuint Name;            /**< hash table ID/name */
+   struct pipe_fence_handle *fence;
 };
 
 /**
