@@ -273,7 +273,7 @@ st_bind_ubos(struct st_context *st, struct gl_program *prog,
       binding =
          &st->ctx->UniformBufferBindings[prog->sh.UniformBlocks[i]->Binding];
 
-      cb.buffer = _mesa_get_buffer_object_reference(st->ctx, binding->BufferObject);
+      cb.buffer = _mesa_get_bufferobj_reference(st->ctx, binding->BufferObject);
 
       if (cb.buffer) {
          cb.buffer_offset = binding->Offset;

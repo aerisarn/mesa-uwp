@@ -37,7 +37,7 @@
  */
 
 static inline struct pipe_resource *
-_mesa_get_buffer_object_reference(struct gl_context *ctx, struct gl_buffer_object *obj)
+_mesa_get_bufferobj_reference(struct gl_context *ctx, struct gl_buffer_object *obj)
 {
    if (unlikely(!obj))
       return NULL;
@@ -68,34 +68,34 @@ _mesa_get_buffer_object_reference(struct gl_context *ctx, struct gl_buffer_objec
    return buffer;
 }
 
-void st_bufferobj_subdata(struct gl_context *ctx,
+void _mesa_bufferobj_subdata(struct gl_context *ctx,
                           GLintptrARB offset,
                           GLsizeiptrARB size,
                           const void * data, struct gl_buffer_object *obj);
-GLboolean st_bufferobj_data(struct gl_context *ctx,
+GLboolean _mesa_bufferobj_data(struct gl_context *ctx,
                             GLenum target,
                             GLsizeiptrARB size,
                             const void *data,
                             GLenum usage,
                             GLbitfield storageFlags,
                             struct gl_buffer_object *obj);
-void *st_bufferobj_map_range(struct gl_context *ctx,
-                             GLintptr offset, GLsizeiptr length,
-                             GLbitfield access,
-                             struct gl_buffer_object *obj,
-                             gl_map_buffer_index index);
+void *_mesa_bufferobj_map_range(struct gl_context *ctx,
+                                GLintptr offset, GLsizeiptr length,
+                                GLbitfield access,
+                                struct gl_buffer_object *obj,
+                                gl_map_buffer_index index);
 
-void st_bufferobj_flush_mapped_range(struct gl_context *ctx,
-                                     GLintptr offset, GLsizeiptr length,
-                                     struct gl_buffer_object *obj,
-                                     gl_map_buffer_index index);
-GLboolean st_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
-                             gl_map_buffer_index index);
+void _mesa_bufferobj_flush_mapped_range(struct gl_context *ctx,
+                                        GLintptr offset, GLsizeiptr length,
+                                        struct gl_buffer_object *obj,
+                                        gl_map_buffer_index index);
+GLboolean _mesa_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
+                                 gl_map_buffer_index index);
 
 struct gl_buffer_object *
-_mesa_internal_buffer_object_alloc(struct gl_context *ctx, GLuint id);
+_mesa_bufferobj_alloc(struct gl_context *ctx, GLuint id);
 void
-mesa_buffer_object_release_buffer(struct gl_buffer_object *obj);
+_mesa_bufferobj_release_buffer(struct gl_buffer_object *obj);
 
 /** Is the given buffer object currently mapped by the GL user? */
 static inline GLboolean

@@ -47,8 +47,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "vbo_private.h"
 
-#include "state_tracker/st_cb_bufferobjects.h"
-
 /** ID/name for immediate-mode VBO */
 #define IMM_BUFFER_NAME 0xaabbccdd
 
@@ -1097,7 +1095,7 @@ vbo_exec_vtx_init(struct vbo_exec_context *exec)
 {
    struct gl_context *ctx = gl_context_from_vbo_exec(exec);
 
-   exec->vtx.bufferobj = _mesa_internal_buffer_object_alloc(ctx, IMM_BUFFER_NAME);
+   exec->vtx.bufferobj = _mesa_bufferobj_alloc(ctx, IMM_BUFFER_NAME);
 
    exec->vtx.enabled = u_bit_consecutive64(0, VBO_ATTRIB_MAX); /* reset all */
    vbo_reset_all_attr(exec);
@@ -1129,7 +1127,7 @@ vbo_exec_vtx_destroy(struct vbo_exec_context *exec)
     */
    if (exec->vtx.bufferobj &&
        _mesa_bufferobj_mapped(exec->vtx.bufferobj, MAP_INTERNAL)) {
-      st_bufferobj_unmap(ctx, exec->vtx.bufferobj, MAP_INTERNAL);
+      _mesa_bufferobj_unmap(ctx, exec->vtx.bufferobj, MAP_INTERNAL);
    }
    _mesa_reference_buffer_object(ctx, &exec->vtx.bufferobj, NULL);
 }

@@ -109,7 +109,7 @@ setup_arrays(struct st_context *st,
          /* Set the vertex buffer. */
          if (binding->BufferObj) {
             vbuffer[bufidx].buffer.resource =
-               _mesa_get_buffer_object_reference(ctx, binding->BufferObj);
+               _mesa_get_bufferobj_reference(ctx, binding->BufferObj);
             vbuffer[bufidx].is_user_buffer = false;
             vbuffer[bufidx].buffer_offset = binding->Offset +
                                             attrib->RelativeOffset;
@@ -142,7 +142,7 @@ setup_arrays(struct st_context *st,
       if (binding->BufferObj) {
          /* Set the binding */
          vbuffer[bufidx].buffer.resource =
-            _mesa_get_buffer_object_reference(ctx, binding->BufferObj);
+            _mesa_get_bufferobj_reference(ctx, binding->BufferObj);
          vbuffer[bufidx].is_user_buffer = false;
          vbuffer[bufidx].buffer_offset = _mesa_draw_binding_offset(binding);
       } else {
