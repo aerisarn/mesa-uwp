@@ -771,9 +771,10 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
 
          for (unsigned i = 0; i < state->element_state->num_bindings; i++) {
-            struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
-            state->vertex_strides[i] = vb->buffer.resource ? vb->stride : 0;
-            hash = XXH32(&state->vertex_strides[i], sizeof(uint32_t), hash);
+            const unsigned buffer_id = ctx->element_state->binding_map[i];
+            struct pipe_vertex_buffer *vb = ctx->vertex_buffers + buffer_id;
+            state->vertex_strides[buffer_id] = vb->buffer.resource ? vb->stride : 0;
+            hash = XXH32(&state->vertex_strides[buffer_id], sizeof(uint32_t), hash);
          }
          state->vertex_hash = hash ^ state->element_state->hash;
       } else
@@ -787,8 +788,9 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
 
    if (!entry) {
       util_queue_fence_wait(&prog->base.cache_fence);
-      VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog,
-                                                     state, vkmode);
+      VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog, state,
+                                                     ctx->element_state->binding_map,
+                                                     vkmode);
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
