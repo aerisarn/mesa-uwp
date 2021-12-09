@@ -218,10 +218,6 @@ struct pan_shader_info {
                         bool writes_stencil;
                         bool writes_coverage;
                         bool sidefx;
-                        bool reads_sample_id;
-                        bool reads_sample_pos;
-                        bool reads_sample_mask_in;
-                        bool reads_helper_invocation;
                         bool sample_shading;
                         bool early_fragment_tests;
                         bool can_early_z, can_fpk;
