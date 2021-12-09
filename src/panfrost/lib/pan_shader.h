@@ -191,6 +191,19 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 rsd->message_preload_1 = info->bifrost.messages[0];
                 rsd->message_preload_2 = info->bifrost.messages[1];
 #endif
+        } else if (info->stage == MESA_SHADER_VERTEX && info->vs.secondary_enable) {
+                rsd->secondary_preload.uniform_count = fau_count;
+
+                pan_make_preload(info->stage, info->vs.secondary_preload,
+                                 &rsd->secondary_preload);
+
+                rsd->secondary_shader = rsd->shader.shader +
+                                        info->vs.secondary_offset;
+
+#if PAN_ARCH >= 7
+                rsd->properties.secondary_shader_register_allocation =
+                        pan_register_allocation(info->vs.secondary_work_reg_count);
+#endif
         }
 }
 
