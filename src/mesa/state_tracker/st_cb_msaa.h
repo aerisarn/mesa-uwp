@@ -31,10 +31,6 @@
 
 #include "main/glheader.h"
 
-void st_GetSamplePosition(struct gl_context *ctx,
-                          struct gl_framebuffer *fb,
-                          GLuint index,
-                          GLfloat *outPos);
 void st_GetProgrammableSampleCaps(struct gl_context *ctx, const struct gl_framebuffer *fb,
                                   GLuint *outBits, GLuint *outWidth, GLuint *outHeight);
 #endif

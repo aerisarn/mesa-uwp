@@ -36,26 +36,6 @@
 
 #include "pipe/p_context.h"
 
-
-void
-st_GetSamplePosition(struct gl_context *ctx,
-                     struct gl_framebuffer *fb,
-                     GLuint index,
-                     GLfloat *outPos)
-{
-   struct st_context *st = st_context(ctx);
-
-   st_validate_state(st, ST_PIPELINE_UPDATE_FRAMEBUFFER);
-
-   if (st->pipe->get_sample_position)
-      st->pipe->get_sample_position(st->pipe,
-                                    _mesa_geometric_samples(fb),
-                                    index, outPos);
-   else
-      outPos[0] = outPos[1] = 0.5f;
-}
-
-
 void
 st_GetProgrammableSampleCaps(struct gl_context *ctx, const struct gl_framebuffer *fb,
                              GLuint *outBits, GLuint *outWidth, GLuint *outHeight)
