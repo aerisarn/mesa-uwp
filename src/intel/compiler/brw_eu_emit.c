@@ -1262,10 +1262,12 @@ brw_F32TO16(struct brw_codegen *p, struct brw_reg dst, struct brw_reg src)
    if (align16) {
       assert(dst.type == BRW_REGISTER_TYPE_UD);
    } else {
-      assert(dst.type == BRW_REGISTER_TYPE_UD ||
-             dst.type == BRW_REGISTER_TYPE_W ||
-             dst.type == BRW_REGISTER_TYPE_UW ||
-             dst.type == BRW_REGISTER_TYPE_HF);
+      if (devinfo->ver <= 7) {
+         assert(dst.type == BRW_REGISTER_TYPE_W ||
+                dst.type == BRW_REGISTER_TYPE_UW);
+      } else {
+         assert(dst.type == BRW_REGISTER_TYPE_HF);
+      }
    }
 
    brw_push_insn_state(p);

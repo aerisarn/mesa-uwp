@@ -1816,7 +1816,9 @@ fs_generator::generate_pack_half_2x16_split(fs_inst *,
     *   (HorzStride) of 2. The 16-bit result is stored in the lower word of
     *   each destination channel and the upper word is not modified.
     */
-   struct brw_reg dst_w = spread(retype(dst, BRW_REGISTER_TYPE_W), 2);
+   const enum brw_reg_type t = devinfo->ver > 7
+      ? BRW_REGISTER_TYPE_HF : BRW_REGISTER_TYPE_W;
+   struct brw_reg dst_w = spread(retype(dst, t), 2);
 
    /* Give each 32-bit channel of dst the form below, where "." means
     * unchanged.

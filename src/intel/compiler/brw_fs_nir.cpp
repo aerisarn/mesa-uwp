@@ -1656,7 +1656,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       fs_reg zero = bld.vgrf(BRW_REGISTER_TYPE_F);
 
       /* The destination stride must be at least as big as the source stride. */
-      tmp16.type = BRW_REGISTER_TYPE_W;
+      tmp16.type = devinfo->ver > 7
+         ? BRW_REGISTER_TYPE_HF : BRW_REGISTER_TYPE_W;
       tmp16.stride = 2;
 
       /* Check for denormal */
