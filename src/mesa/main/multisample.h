@@ -30,6 +30,10 @@
 
 struct gl_context;
 
+void
+_mesa_GetProgrammableSampleCaps(struct gl_context *ctx, const struct gl_framebuffer *fb,
+                                GLuint *outBits, GLuint *outWidth, GLuint *outHeight);
+
 extern void
 _mesa_init_multisample(struct gl_context *ctx);
 

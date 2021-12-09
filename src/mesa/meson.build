@@ -351,8 +351,6 @@ files_libmesa = files(
   'state_tracker/st_cb_flush.h',
   'state_tracker/st_cb_memoryobjects.c',
   'state_tracker/st_cb_memoryobjects.h',
-  'state_tracker/st_cb_msaa.c',
-  'state_tracker/st_cb_msaa.h',
   'state_tracker/st_cb_perfmon.c',
   'state_tracker/st_cb_perfmon.h',
   'state_tracker/st_cb_perfquery.c',

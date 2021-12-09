@@ -33,6 +33,7 @@
 #include "extensions.h"
 #include "get.h"
 #include "macros.h"
+#include "multisample.h"
 #include "mtypes.h"
 #include "spirv_extensions.h"
 #include "state.h"
@@ -44,7 +45,6 @@
 #include "version.h"
 
 #include "state_tracker/st_cb_queryobj.h"
-#include "state_tracker/st_cb_msaa.h"
 #include "state_tracker/st_context.h"
 #include "api_exec_decl.h"
 
@@ -1321,8 +1321,8 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
             break;
          }
 
-         st_GetProgrammableSampleCaps(ctx, ctx->DrawBuffer,
-                                      &bits, &width, &height);
+         _mesa_GetProgrammableSampleCaps(ctx, ctx->DrawBuffer,
+                                         &bits, &width, &height);
 
          if (d->pname == GL_SAMPLE_LOCATION_PIXEL_GRID_WIDTH_ARB)
             v->value_uint = width;
