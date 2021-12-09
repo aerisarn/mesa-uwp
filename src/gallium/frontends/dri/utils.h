@@ -32,9 +32,6 @@
 #include <GL/internal/dri_interface.h>
 #include "main/context.h"
 
-extern unsigned driGetRendererString( char * buffer,
-    const char * hardware_name, GLuint agp_mode );
-
 struct __DRIconfigRec {
     struct gl_config modes;
 };

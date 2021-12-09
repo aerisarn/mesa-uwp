@@ -54,59 +54,6 @@
 #define GLX_DONT_CARE                                           0xFFFFFFFF
 
 /**
- * Create the \c GL_RENDERER string for DRI drivers.
- * 
- * Almost all DRI drivers use a \c GL_RENDERER string of the form:
- *
- *    "Mesa DRI <chip> <driver date> <AGP speed) <CPU information>"
- *
- * Using the supplied chip name, driver data, and AGP speed, this function
- * creates the string.
- * 
- * \param buffer         Buffer to hold the \c GL_RENDERER string.
- * \param hardware_name  Name of the hardware.
- * \param agp_mode       AGP mode (speed).
- * 
- * \returns
- * The length of the string stored in \c buffer.  This does \b not include
- * the terminating \c NUL character.
- */
-unsigned
-driGetRendererString( char * buffer, const char * hardware_name,
-		      GLuint agp_mode )
-{
-   unsigned offset;
-   char *cpu;
-
-   offset = sprintf( buffer, "Mesa DRI %s", hardware_name );
-
-   /* Append any AGP-specific information.
-    */
-   switch ( agp_mode ) {
-   case 1:
-   case 2:
-   case 4:
-   case 8:
-      offset += sprintf( & buffer[ offset ], " AGP %ux", agp_mode );
-      break;
-	
-   default:
-      break;
-   }
-
-   /* Append any CPU-specific information.
-    */
-   cpu = _mesa_get_cpu_string();
-   if (cpu) {
-      offset += sprintf(buffer + offset, " %s", cpu);
-      free(cpu);
-   }
-
-   return offset;
-}
-
-
-/**
  * Creates a set of \c struct gl_config that a driver will expose.
  * 
  * A set of \c struct gl_config will be created based on the supplied
