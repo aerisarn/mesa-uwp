@@ -611,32 +611,6 @@ clear_buffer_subdata_sw(struct gl_context *ctx,
    _mesa_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
 }
 
-/**
- * Called via glClearBufferSubData().
- */
-static void
-clear_buffer_subdata(struct gl_context *ctx,
-                        GLintptr offset, GLsizeiptr size,
-                        const void *clearValue,
-                        GLsizeiptr clearValueSize,
-                        struct gl_buffer_object *bufObj)
-{
-   struct pipe_context *pipe = ctx->pipe;
-   static const char zeros[16] = {0};
-
-   if (!pipe->clear_buffer) {
-      clear_buffer_subdata_sw(ctx, offset, size,
-                              clearValue, clearValueSize, bufObj);
-      return;
-   }
-
-   if (!clearValue)
-      clearValue = zeros;
-
-   pipe->clear_buffer(pipe, bufObj->buffer, offset, size,
-                      clearValue, clearValueSize);
-}
-
 static void
 bufferobj_page_commitment(struct gl_context *ctx,
                              struct gl_buffer_object *bufferObj,
@@ -2896,20 +2870,21 @@ clear_buffer_sub_data(struct gl_context *ctx, struct gl_buffer_object *bufObj,
 
    bufObj->MinMaxCacheDirty = true;
 
-   if (data == NULL) {
-      /* clear to zeros, per the spec */
-      clear_buffer_subdata(ctx, offset, size,
-                           NULL, clearValueSize, bufObj);
+   if (!ctx->pipe->clear_buffer) {
+      clear_buffer_subdata_sw(ctx, offset, size,
+                              data, clearValueSize, bufObj);
       return;
    }
 
-   if (!convert_clear_buffer_data(ctx, mesaFormat, clearValue,
-                                  format, type, data, func)) {
+   if (!data)
+      memset(clearValue, 0, MAX_PIXEL_BYTES);
+   else if (!convert_clear_buffer_data(ctx, mesaFormat, clearValue,
+                                       format, type, data, func)) {
       return;
    }
 
-   clear_buffer_subdata(ctx, offset, size,
-                        clearValue, clearValueSize, bufObj);
+   ctx->pipe->clear_buffer(ctx->pipe, bufObj->buffer, offset, size,
+                           clearValue, clearValueSize);
 }
 
 static void
