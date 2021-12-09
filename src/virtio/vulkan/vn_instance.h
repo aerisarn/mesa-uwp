@@ -17,6 +17,7 @@
 
 #include "vn_cs.h"
 #include "vn_renderer.h"
+#include "vn_renderer_util.h"
 #include "vn_ring.h"
 
 /* require and request at least Vulkan 1.1 at both instance and device levels
