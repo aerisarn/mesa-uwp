@@ -33,9 +33,52 @@
 #include "texstorage.h"
 #include "util/u_memory.h"
 
-#include "state_tracker/st_cb_memoryobjects.h"
-#include "state_tracker/st_cb_semaphoreobjects.h"
+#include "pipe/p_context.h"
+#include "pipe/p_screen.h"
 #include "api_exec_decl.h"
+#include "state_tracker/st_cb_semaphoreobjects.h"
+
+#include "frontend/drm_driver.h"
+#ifdef HAVE_LIBDRM
+#include "drm-uapi/drm_fourcc.h"
+#endif
+
+static struct gl_memory_object *
+memoryobj_alloc(struct gl_context *ctx, GLuint name)
+{
+   struct gl_memory_object *obj = CALLOC_STRUCT(gl_memory_object);
+   if (!obj)
+      return NULL;
+
+   obj->Name = name;
+   obj->Dedicated = GL_FALSE;
+   return obj;
+}
+
+static void
+import_memoryobj_fd(struct gl_context *ctx,
+                    struct gl_memory_object *obj,
+                    GLuint64 size,
+                    int fd)
+{
+#if !defined(_WIN32)
+   struct pipe_screen *screen = ctx->pipe->screen;
+   struct winsys_handle whandle = {
+      .type = WINSYS_HANDLE_TYPE_FD,
+      .handle = fd,
+#ifdef HAVE_LIBDRM
+      .modifier = DRM_FORMAT_MOD_INVALID,
+#endif
+   };
+
+   obj->memory = screen->memobj_create_from_handle(screen,
+                                                   &whandle,
+                                                   obj->Dedicated);
+
+   /* We own fd, but we no longer need it. So get rid of it */
+   close(fd);
+#endif
+}
 
 /**
  * Delete a memory object.
@@ -45,21 +88,10 @@ void
 _mesa_delete_memory_object(struct gl_context *ctx,
                            struct gl_memory_object *memObj)
 {
+   struct pipe_screen *screen = ctx->pipe->screen;
+   if (memObj->memory)
+      screen->memobj_destroy(screen, memObj->memory);
    FREE(memObj);
-}
-
-
-/**
- * Initialize a buffer object to default values.
- */
-void
-_mesa_initialize_memory_object(struct gl_context *ctx,
-                               struct gl_memory_object *obj,
-                               GLuint name)
-{
-   memset(obj, 0, sizeof(struct gl_memory_object));
-   obj->Name = name;
-   obj->Dedicated = GL_FALSE;
 }
 
 void GLAPIENTRY
@@ -95,7 +127,7 @@ _mesa_DeleteMemoryObjectsEXT(GLsizei n, const GLuint *memoryObjects)
          if (delObj) {
             _mesa_HashRemoveLocked(ctx->Shared->MemoryObjects,
                                    memoryObjects[i]);
-            st_memoryobj_free(ctx, delObj);
+            _mesa_delete_memory_object(ctx, delObj);
          }
       }
    }
@@ -148,7 +180,7 @@ _mesa_CreateMemoryObjectsEXT(GLsizei n, GLuint *memoryObjects)
          struct gl_memory_object *memObj;
 
          /* allocate memory object */
-         memObj = st_memoryobj_alloc(ctx, memoryObjects[i]);
+         memObj = memoryobj_alloc(ctx, memoryObjects[i]);
          if (!memObj) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s()", func);
             _mesa_HashUnlockMutex(ctx->Shared->MemoryObjects);
@@ -856,7 +888,7 @@ _mesa_ImportMemoryFdEXT(GLuint memory,
    if (!memObj)
       return;
 
-   st_import_memoryobj_fd(ctx, memObj, size, fd);
+   import_memoryobj_fd(ctx, memObj, size, fd);
    memObj->Immutable = GL_TRUE;
 }
 

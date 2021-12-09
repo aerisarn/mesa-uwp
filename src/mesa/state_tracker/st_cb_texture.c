@@ -56,7 +56,6 @@
 #include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_flush.h"
 #include "state_tracker/st_cb_texture.h"
-#include "state_tracker/st_cb_memoryobjects.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_pbo.h"
 #include "state_tracker/st_texture.h"
@@ -3192,7 +3191,7 @@ st_finalize_texture(struct gl_context *ctx,
  */
 static struct pipe_resource *
 st_texture_create_from_memory(struct st_context *st,
-                              struct st_memory_object *memObj,
+                              struct gl_memory_object *memObj,
                               GLuint64 offset,
                               enum pipe_texture_target target,
                               enum pipe_format format,
@@ -3264,7 +3263,6 @@ st_texture_storage(struct gl_context *ctx,
    struct gl_texture_image *texImage = texObj->Image[0][0];
    struct st_context *st = st_context(ctx);
    struct st_texture_object *stObj = st_texture_object(texObj);
-   struct st_memory_object *smObj = st_memory_object(memObj);
    struct pipe_screen *screen = st->screen;
    unsigned ptWidth, bindings;
    uint16_t ptHeight, ptDepth, ptLayers;
@@ -3280,8 +3278,8 @@ st_texture_storage(struct gl_context *ctx,
 
    bindings = default_bindings(st, fmt);
 
-   if (smObj) {
-      smObj->TextureTiling = texObj->TextureTiling;
+   if (memObj) {
+      memObj->TextureTiling = texObj->TextureTiling;
       bindings |= PIPE_BIND_SHARED;
    }
 
@@ -3320,9 +3318,9 @@ st_texture_storage(struct gl_context *ctx,
 
    pipe_resource_reference(&stObj->pt, NULL);
 
-   if (smObj) {
+   if (memObj) {
       stObj->pt = st_texture_create_from_memory(st,
-                                                smObj,
+                                                memObj,
                                                 offset,
                                                 gl_target_to_pipe(texObj->Target),
                                                 fmt,

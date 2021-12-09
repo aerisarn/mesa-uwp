@@ -35,6 +35,7 @@
 #include "shared.h"
 #include "program/program.h"
 #include "dlist.h"
+#include "externalobjects.h"
 #include "samplerobj.h"
 #include "shaderapi.h"
 #include "shaderobj.h"
@@ -45,7 +46,6 @@
 #include "util/set.h"
 #include "util/u_memory.h"
 
-#include "state_tracker/st_cb_memoryobjects.h"
 #include "state_tracker/st_cb_semaphoreobjects.h"
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_program.h"
@@ -318,7 +318,7 @@ delete_memory_object_cb(void *data, void *userData)
 {
    struct gl_memory_object *memObj = (struct gl_memory_object *) data;
    struct gl_context *ctx = (struct gl_context *) userData;
-   st_memoryobj_free(ctx, memObj);
+   _mesa_delete_memory_object(ctx, memObj);
 }
 
 /**

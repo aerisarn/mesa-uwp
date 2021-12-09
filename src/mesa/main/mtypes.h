@@ -2869,6 +2869,11 @@ struct gl_memory_object
    GLuint Name;            /**< hash table ID/name */
    GLboolean Immutable;    /**< denotes mutability state of parameters */
    GLboolean Dedicated;    /**< import memory from a dedicated allocation */
+
+   struct pipe_memory_object *memory;
+
+   /* TEXTURE_TILING_EXT param from gl_texture_object */
+   GLuint TextureTiling;
 };
 
 struct gl_semaphore_object
