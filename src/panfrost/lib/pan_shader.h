@@ -114,6 +114,8 @@ pan_shader_classify_pixel_kill_coverage(const struct pan_shader_info *info,
 
 #undef SET_PIXEL_KILL
 
+#define pan_preloads(reg) (info->preload & BITFIELD64_BIT(reg))
+
 static inline void
 pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                                struct MALI_RENDERER_STATE *rsd)
@@ -130,8 +132,10 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
 
         switch (info->stage) {
         case MESA_SHADER_VERTEX:
-                rsd->preload.vertex.vertex_id = true;
-                rsd->preload.vertex.instance_id = true;
+                rsd->preload.vertex.position_result_address_lo = pan_preloads(58);
+                rsd->preload.vertex.position_result_address_hi = pan_preloads(59);
+                rsd->preload.vertex.vertex_id = pan_preloads(61);
+                rsd->preload.vertex.instance_id = pan_preloads(62);
                 break;
 
         case MESA_SHADER_FRAGMENT:
@@ -149,19 +153,12 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 rsd->properties.allow_forward_pixel_to_be_killed =
                         !info->fs.sidefx;
 
-                rsd->preload.fragment.fragment_position = info->fs.reads_frag_coord;
-                rsd->preload.fragment.coverage = true;
-                rsd->preload.fragment.primitive_flags = info->fs.reads_face;
+                rsd->preload.fragment.primitive_id = pan_preloads(57);
+                rsd->preload.fragment.primitive_flags = pan_preloads(58);
+                rsd->preload.fragment.fragment_position = pan_preloads(59);
+                rsd->preload.fragment.sample_mask_id = pan_preloads(61);
 
-                /* Contains sample ID and sample mask. Sample position and
-                 * helper invocation are expressed in terms of the above, so
-                 * preload for those too */
-                rsd->preload.fragment.sample_mask_id =
-                        info->fs.reads_sample_id |
-                        info->fs.reads_sample_pos |
-                        info->fs.reads_sample_mask_in |
-                        info->fs.reads_helper_invocation |
-                        info->fs.sample_shading;
+                rsd->preload.fragment.coverage = true;
 
 #if PAN_ARCH >= 7
                 rsd->message_preload_1 = info->bifrost.messages[0];
@@ -170,14 +167,14 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 break;
 
         case MESA_SHADER_COMPUTE:
-                rsd->preload.compute.local_invocation_xy = true;
-                rsd->preload.compute.local_invocation_z = true;
-                rsd->preload.compute.work_group_x = true;
-                rsd->preload.compute.work_group_y = true;
-                rsd->preload.compute.work_group_z = true;
-                rsd->preload.compute.global_invocation_x = true;
-                rsd->preload.compute.global_invocation_y = true;
-                rsd->preload.compute.global_invocation_z = true;
+                rsd->preload.compute.local_invocation_xy = pan_preloads(55);
+                rsd->preload.compute.local_invocation_z = pan_preloads(56);
+                rsd->preload.compute.work_group_x = pan_preloads(57);
+                rsd->preload.compute.work_group_y = pan_preloads(58);
+                rsd->preload.compute.work_group_z = pan_preloads(59);
+                rsd->preload.compute.global_invocation_x = pan_preloads(60);
+                rsd->preload.compute.global_invocation_y = pan_preloads(61);
+                rsd->preload.compute.global_invocation_z = pan_preloads(62);
                 break;
 
         default:
