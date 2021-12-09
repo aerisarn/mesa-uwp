@@ -36,6 +36,42 @@
  * Internal functions
  */
 
+static inline struct pipe_resource *
+_mesa_get_buffer_object_reference(struct gl_context *ctx, struct gl_buffer_object *obj)
+{
+   if (unlikely(!obj))
+      return NULL;
+
+   struct pipe_resource *buffer = obj->buffer;
+
+   if (unlikely(!buffer))
+      return NULL;
+
+   /* Only one context is using the fast path. All other contexts must use
+    * the slow path.
+    */
+   if (unlikely(obj->private_refcount_ctx != ctx)) {
+      p_atomic_inc(&buffer->reference.count);
+      return buffer;
+   }
+
+   if (unlikely(obj->private_refcount <= 0)) {
+      assert(obj->private_refcount == 0);
+
+      /* This is the number of atomic increments we will skip. */
+      obj->private_refcount = 100000000;
+      p_atomic_add(&buffer->reference.count, obj->private_refcount);
+   }
+
+   /* Return a buffer reference while decrementing the private refcount. */
+   obj->private_refcount--;
+   return buffer;
+}
+
+struct gl_buffer_object *
+_mesa_internal_buffer_object_alloc(struct gl_context *ctx, GLuint id);
+void
+mesa_buffer_object_release_buffer(struct gl_buffer_object *obj);
 
 /** Is the given buffer object currently mapped by the GL user? */
 static inline GLboolean

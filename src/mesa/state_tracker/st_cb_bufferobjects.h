@@ -43,40 +43,6 @@ extern void
 st_init_bufferobject_functions(struct pipe_screen *screen,
                                struct dd_function_table *functions);
 
-static inline struct pipe_resource *
-st_get_buffer_reference(struct gl_context *ctx, struct gl_buffer_object *obj)
-{
-   if (unlikely(!obj))
-      return NULL;
-
-   struct pipe_resource *buffer = obj->buffer;
-
-   if (unlikely(!buffer))
-      return NULL;
-
-   /* Only one context is using the fast path. All other contexts must use
-    * the slow path.
-    */
-   if (unlikely(obj->private_refcount_ctx != ctx)) {
-      p_atomic_inc(&buffer->reference.count);
-      return buffer;
-   }
-
-   if (unlikely(obj->private_refcount <= 0)) {
-      assert(obj->private_refcount == 0);
-
-      /* This is the number of atomic increments we will skip. */
-      obj->private_refcount = 100000000;
-      p_atomic_add(&buffer->reference.count, obj->private_refcount);
-   }
-
-   /* Return a buffer reference while decrementing the private refcount. */
-   obj->private_refcount--;
-   return buffer;
-}
-
-struct gl_buffer_object *st_bufferobj_alloc(struct gl_context *ctx, GLuint name);
-void st_bufferobj_free(struct gl_context *ctx, struct gl_buffer_object *obj);
 void st_bufferobj_subdata(struct gl_context *ctx,
                           GLintptrARB offset,
                           GLsizeiptrARB size,

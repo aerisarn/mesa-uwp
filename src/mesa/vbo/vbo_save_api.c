@@ -768,7 +768,7 @@ compile_vertex_list(struct gl_context *ctx)
    if (total_bytes_needed > available_bytes) {
       if (save->current_bo)
          _mesa_reference_buffer_object(ctx, &save->current_bo, NULL);
-      save->current_bo = st_bufferobj_alloc(ctx, VBO_BUF_ID + 1);
+      save->current_bo = _mesa_internal_buffer_object_alloc(ctx, VBO_BUF_ID + 1);
       bool success = st_bufferobj_data(ctx,
                                        GL_ELEMENT_ARRAY_BUFFER_ARB,
                                        MAX2(total_bytes_needed, VBO_SAVE_BUFFER_SIZE),
@@ -901,7 +901,7 @@ end:
    node->draw_begins = node->cold->prims[0].begin;
 
    if (!save->current_bo) {
-      save->current_bo = st_bufferobj_alloc(ctx, VBO_BUF_ID + 1);
+      save->current_bo = _mesa_internal_buffer_object_alloc(ctx, VBO_BUF_ID + 1);
       bool success = st_bufferobj_data(ctx,
                                        GL_ELEMENT_ARRAY_BUFFER_ARB,
                                        VBO_SAVE_BUFFER_SIZE,

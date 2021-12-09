@@ -52,6 +52,7 @@
 
 #include "state_tracker/st_cb_bufferobjects.h"
 
+#include "util/u_inlines.h"
 /* Debug flags */
 /*#define VBO_DEBUG*/
 /*#define BOUNDS_CHECK*/
@@ -453,6 +454,26 @@ convert_clear_buffer_data(struct gl_context *ctx,
    }
 }
 
+void
+mesa_buffer_object_release_buffer(struct gl_buffer_object *obj)
+{
+   if (!obj->buffer)
+      return;
+
+   /* Subtract the remaining private references before unreferencing
+    * the buffer. See the header file for explanation.
+    */
+   if (obj->private_refcount) {
+      assert(obj->private_refcount > 0);
+      p_atomic_add(&obj->buffer->reference.count,
+                   -obj->private_refcount);
+      obj->private_refcount = 0;
+   }
+   obj->private_refcount_ctx = NULL;
+
+   pipe_resource_reference(&obj->buffer, NULL);
+}
+
 /**
  * Delete a buffer object.
  *
@@ -462,7 +483,9 @@ void
 _mesa_delete_buffer_object(struct gl_context *ctx,
                            struct gl_buffer_object *bufObj)
 {
-   (void) ctx;
+   assert(bufObj->RefCount == 0);
+   _mesa_buffer_unmap_all_mappings(ctx, bufObj);
+   mesa_buffer_object_release_buffer(bufObj);
 
    vbo_delete_minmax_cache(bufObj);
    align_free(bufObj->Data);
@@ -501,7 +524,7 @@ _mesa_reference_buffer_object_(struct gl_context *ctx,
        */
       if (shared_binding || ctx != oldObj->Ctx) {
          if (p_atomic_dec_zero(&oldObj->RefCount)) {
-            st_bufferobj_free(ctx, oldObj);
+            _mesa_delete_buffer_object(ctx, oldObj);
          }
       } else if (ctx == oldObj->Ctx) {
          /* Update the private ref count. */
@@ -801,6 +824,16 @@ _mesa_free_buffer_objects( struct gl_context *ctx )
    _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);
 }
 
+struct gl_buffer_object *
+_mesa_internal_buffer_object_alloc(struct gl_context *ctx, GLuint id)
+{
+   struct gl_buffer_object *buf = CALLOC_STRUCT(gl_buffer_object);
+   if (!buf)
+      return NULL;
+
+   _mesa_initialize_buffer_object(ctx, buf, id);
+   return buf;
+}
 /**
  * Create a buffer object that will be backed by an OpenGL buffer ID
  * where the creating context will hold one global buffer reference instead
@@ -811,7 +844,7 @@ _mesa_free_buffer_objects( struct gl_context *ctx )
 static struct gl_buffer_object *
 new_gl_buffer_object(struct gl_context *ctx, GLuint id)
 {
-   struct gl_buffer_object *buf = st_bufferobj_alloc(ctx, id);
+   struct gl_buffer_object *buf = _mesa_internal_buffer_object_alloc(ctx, id);
 
    buf->Ctx = ctx;
    buf->RefCount++; /* global buffer reference held by the context */

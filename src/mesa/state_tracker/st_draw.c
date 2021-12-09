@@ -154,7 +154,7 @@ prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
              * the threaded batch buffer.
              */
             info->index.resource =
-               st_get_buffer_reference(ctx, info->index.gl_bo);
+               _mesa_get_buffer_object_reference(ctx, info->index.gl_bo);
             info->take_index_buffer_ownership = true;
          } else {
             info->index.resource = info->index.gl_bo->buffer;

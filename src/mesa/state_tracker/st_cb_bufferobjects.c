@@ -51,61 +51,6 @@
 
 
 /**
- * There is some duplication between mesa's bufferobjects and our
- * bufmgr buffers.  Both have an integer handle and a hashtable to
- * lookup an opaque structure.  It would be nice if the handles and
- * internal structure where somehow shared.
- */
-struct gl_buffer_object *
-st_bufferobj_alloc(struct gl_context *ctx, GLuint name)
-{
-   struct gl_buffer_object *obj = ST_CALLOC_STRUCT(gl_buffer_object);
-
-   if (!obj)
-      return NULL;
-
-   _mesa_initialize_buffer_object(ctx, obj, name);
-
-   return obj;
-}
-
-
-static void
-release_buffer(struct gl_buffer_object *obj)
-{
-   if (!obj->buffer)
-      return;
-
-   /* Subtract the remaining private references before unreferencing
-    * the buffer. See the header file for explanation.
-    */
-   if (obj->private_refcount) {
-      assert(obj->private_refcount > 0);
-      p_atomic_add(&obj->buffer->reference.count,
-                   -obj->private_refcount);
-      obj->private_refcount = 0;
-   }
-   obj->private_refcount_ctx = NULL;
-
-   pipe_resource_reference(&obj->buffer, NULL);
-}
-
-
-/**
- * Deallocate/free a vertex/pixel buffer object.
- * Called via glDeleteBuffersARB().
- */
-void st_bufferobj_free(struct gl_context *ctx, struct gl_buffer_object *obj)
-{
-   assert(obj->RefCount == 0);
-   _mesa_buffer_unmap_all_mappings(ctx, obj);
-   release_buffer(obj);
-   _mesa_delete_buffer_object(ctx, obj);
-}
-
-
-
-/**
  * Replace data in a subrange of buffer object.  If the data range
  * specified by size + offset extends beyond the end of the buffer or
  * if data is NULL, no copy is performed.
@@ -343,7 +288,7 @@ bufferobj_data(struct gl_context *ctx,
    obj->Usage = usage;
    obj->StorageFlags = storageFlags;
 
-   release_buffer(obj);
+   mesa_buffer_object_release_buffer(obj);
 
    unsigned bindings = buffer_target_to_bind_flags(target);
 

@@ -36,7 +36,8 @@ new_upload_buffer(struct gl_context *ctx, GLsizeiptr size, uint8_t **ptr)
 {
    assert(ctx->GLThread.SupportsBufferUploads);
 
-   struct gl_buffer_object *obj = st_bufferobj_alloc(ctx, -1);
+   struct gl_buffer_object *obj =
+      _mesa_internal_buffer_object_alloc(ctx, -1);
    if (!obj)
       return NULL;
 
@@ -46,7 +47,7 @@ new_upload_buffer(struct gl_context *ctx, GLsizeiptr size, uint8_t **ptr)
                           GL_WRITE_ONLY,
                           GL_CLIENT_STORAGE_BIT | GL_MAP_WRITE_BIT,
                           obj)) {
-      st_bufferobj_free(ctx, obj);
+      _mesa_delete_buffer_object(ctx, obj);
       return NULL;
    }
 
@@ -56,7 +57,7 @@ new_upload_buffer(struct gl_context *ctx, GLsizeiptr size, uint8_t **ptr)
                                  MESA_MAP_THREAD_SAFE_BIT,
                                  obj, MAP_GLTHREAD);
    if (!*ptr) {
-      st_bufferobj_free(ctx, obj);
+      _mesa_delete_buffer_object(ctx, obj);
       return NULL;
    }
 
