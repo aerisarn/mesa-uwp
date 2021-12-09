@@ -546,6 +546,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 
    st->options = *options;
 
+   ctx->st_opts = &st->options;
    ctx->st = st;
 
    st->ctx = ctx;
