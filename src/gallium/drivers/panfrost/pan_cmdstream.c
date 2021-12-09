@@ -2524,6 +2524,24 @@ panfrost_translate_index_size(unsigned size)
 }
 
 static void
+panfrost_draw_emit_vertex_section(struct panfrost_batch *batch,
+                                  mali_ptr vs_vary, mali_ptr varyings,
+                                  mali_ptr attribs, mali_ptr attrib_bufs,
+                                  void *section)
+{
+        pan_pack(section, DRAW, cfg) {
+                cfg.draw_descriptor_is_64b = true;
+                cfg.state = batch->rsd[PIPE_SHADER_VERTEX];
+                cfg.attributes = attribs;
+                cfg.attribute_buffers = attrib_bufs;
+                cfg.varyings = vs_vary;
+                cfg.varying_buffers = vs_vary ? varyings : 0;
+                cfg.thread_storage = batch->tls.gpu;
+                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
+        }
+}
+
+static void
 panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                           const struct pipe_draw_info *info,
                           void *invocation_template,
@@ -2539,16 +2557,9 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
                 cfg.job_task_split = 5;
         }
 
-        pan_section_pack(job, COMPUTE_JOB, DRAW, cfg) {
-                cfg.draw_descriptor_is_64b = true;
-                cfg.state = batch->rsd[PIPE_SHADER_VERTEX];
-                cfg.attributes = attribs;
-                cfg.attribute_buffers = attrib_bufs;
-                cfg.varyings = vs_vary;
-                cfg.varying_buffers = vs_vary ? varyings : 0;
-                cfg.thread_storage = batch->tls.gpu;
-                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
-        }
+        section = pan_section_ptr(job, COMPUTE_JOB, DRAW);
+        panfrost_draw_emit_vertex_section(batch, vs_vary, varyings,
+                                          attribs, attrib_bufs, section);
 }
 
 static void
