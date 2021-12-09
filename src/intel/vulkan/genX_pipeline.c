@@ -1601,6 +1601,12 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
       clip.UserClipDistanceClipTestEnableBitmask = last->clip_distance_mask;
       clip.UserClipDistanceCullTestEnableBitmask = last->cull_distance_mask;
 #endif
+   } else if (anv_pipeline_is_mesh(pipeline)) {
+      const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
+      if (vp_info && vp_info->viewportCount > 0 &&
+            mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
+         clip.MaximumVPIndex = vp_info->viewportCount - 1;
+      }
    }
 
 #if GFX_VER == 7

@@ -3670,6 +3670,12 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
             cmd_buffer->state.gfx.dynamic.viewport.count > 0 ?
             cmd_buffer->state.gfx.dynamic.viewport.count - 1 : 0;
       }
+   } else if (anv_pipeline_is_mesh(pipeline)) {
+      const struct brw_mesh_prog_data *mesh_prog_data = get_mesh_prog_data(pipeline);
+      if (mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
+         uint32_t viewport_count = cmd_buffer->state.gfx.dynamic.viewport.count;
+         clip.MaximumVPIndex = viewport_count > 0 ? viewport_count - 1 : 0;
+      }
    }
 
    GENX(3DSTATE_CLIP_pack)(NULL, dwords, &clip);
