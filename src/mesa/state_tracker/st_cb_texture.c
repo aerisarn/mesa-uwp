@@ -2373,7 +2373,7 @@ st_CompressedTexSubImage(struct gl_context *ctx, GLuint dims,
 
    buf_offset = buf_offset / addr.bytes_per_pixel;
 
-   buf = st_buffer_object(ctx->Unpack.BufferObj)->buffer;
+   buf = ctx->Unpack.BufferObj->buffer;
 
    addr.xoffset = x / bw;
    addr.yoffset = y / bh;

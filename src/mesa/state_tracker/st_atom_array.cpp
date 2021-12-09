@@ -414,7 +414,7 @@ st_create_gallium_vertex_state(struct gl_context *ctx,
       screen->create_vertex_state(screen, &vbuffer[0], velements.velems,
                                   velements.count,
                                   indexbuf ?
-                                    st_buffer_object(indexbuf)->buffer : NULL,
+                                  indexbuf->buffer : NULL,
                                   enabled_attribs);
 
    for (unsigned i = 0; i < num_vbuffers; i++)

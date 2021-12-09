@@ -107,7 +107,7 @@ st_pbo_addresses_pixelstore(struct st_context *st,
                             const void *pixels,
                             struct st_pbo_addresses *addr)
 {
-   struct pipe_resource *buf = st_buffer_object(store->BufferObj)->buffer;
+   struct pipe_resource *buf = store->BufferObj->buffer;
    intptr_t buf_offset = (intptr_t) pixels;
 
    if (buf_offset % addr->bytes_per_pixel)

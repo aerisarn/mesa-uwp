@@ -59,37 +59,35 @@
 struct gl_buffer_object *
 st_bufferobj_alloc(struct gl_context *ctx, GLuint name)
 {
-   struct st_buffer_object *st_obj = ST_CALLOC_STRUCT(st_buffer_object);
+   struct gl_buffer_object *obj = ST_CALLOC_STRUCT(gl_buffer_object);
 
-   if (!st_obj)
+   if (!obj)
       return NULL;
 
-   _mesa_initialize_buffer_object(ctx, &st_obj->Base, name);
+   _mesa_initialize_buffer_object(ctx, obj, name);
 
-   return &st_obj->Base;
+   return obj;
 }
 
 
 static void
 release_buffer(struct gl_buffer_object *obj)
 {
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
-
-   if (!st_obj->buffer)
+   if (!obj->buffer)
       return;
 
    /* Subtract the remaining private references before unreferencing
     * the buffer. See the header file for explanation.
     */
-   if (st_obj->private_refcount) {
-      assert(st_obj->private_refcount > 0);
-      p_atomic_add(&st_obj->buffer->reference.count,
-                   -st_obj->private_refcount);
-      st_obj->private_refcount = 0;
+   if (obj->private_refcount) {
+      assert(obj->private_refcount > 0);
+      p_atomic_add(&obj->buffer->reference.count,
+                   -obj->private_refcount);
+      obj->private_refcount = 0;
    }
-   st_obj->ctx = NULL;
+   obj->private_refcount_ctx = NULL;
 
-   pipe_resource_reference(&st_obj->buffer, NULL);
+   pipe_resource_reference(&obj->buffer, NULL);
 }
 
 
@@ -119,8 +117,6 @@ st_bufferobj_subdata(struct gl_context *ctx,
                      GLsizeiptrARB size,
                      const void * data, struct gl_buffer_object *obj)
 {
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
-
    /* we may be called from VBO code, so double-check params here */
    assert(offset >= 0);
    assert(size >= 0);
@@ -137,7 +133,7 @@ st_bufferobj_subdata(struct gl_context *ctx,
    if (!data)
       return;
 
-   if (!st_obj->buffer) {
+   if (!obj->buffer) {
       /* we probably ran out of memory during buffer allocation */
       return;
    }
@@ -153,7 +149,7 @@ st_bufferobj_subdata(struct gl_context *ctx,
     */
    struct pipe_context *pipe = st_context(ctx)->pipe;
 
-   pipe->buffer_subdata(pipe, st_obj->buffer,
+   pipe->buffer_subdata(pipe, obj->buffer,
                         _mesa_bufferobj_mapped(obj, MAP_USER) ?
                            PIPE_MAP_DIRECTLY : 0,
                         offset, size, data);
@@ -169,8 +165,6 @@ st_bufferobj_get_subdata(struct gl_context *ctx,
                          GLsizeiptrARB size,
                          void * data, struct gl_buffer_object *obj)
 {
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
-
    /* we may be called from VBO code, so double-check params here */
    assert(offset >= 0);
    assert(size >= 0);
@@ -179,12 +173,12 @@ st_bufferobj_get_subdata(struct gl_context *ctx,
    if (!size)
       return;
 
-   if (!st_obj->buffer) {
+   if (!obj->buffer) {
       /* we probably ran out of memory during buffer allocation */
       return;
    }
 
-   pipe_buffer_read(st_context(ctx)->pipe, st_obj->buffer,
+   pipe_buffer_read(st_context(ctx)->pipe, obj->buffer,
                     offset, size, data);
 }
 
@@ -305,7 +299,6 @@ bufferobj_data(struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = st->screen;
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
    struct st_memory_object *st_mem_obj = st_memory_object(memObj);
    bool is_mapped = _mesa_bufferobj_mapped(obj, MAP_USER);
 
@@ -314,15 +307,15 @@ bufferobj_data(struct gl_context *ctx,
        * to 64 bits doesn't make much sense since hw support
        * for > 4GB resources is limited.
        */
-      st_obj->Base.Size = 0;
+      obj->Size = 0;
       return GL_FALSE;
    }
 
    if (target != GL_EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD &&
-       size && st_obj->buffer &&
-       st_obj->Base.Size == size &&
-       st_obj->Base.Usage == usage &&
-       st_obj->Base.StorageFlags == storageFlags) {
+       size && obj->buffer &&
+       obj->Size == size &&
+       obj->Usage == usage &&
+       obj->StorageFlags == storageFlags) {
       if (data) {
          /* Just discard the old contents and write new data.
           * This should be the same as creating a new buffer, but we avoid
@@ -333,7 +326,7 @@ bufferobj_data(struct gl_context *ctx,
           * PIPE_MAP_DIRECTLY supresses implicit buffer range
           * invalidation.
           */
-         pipe->buffer_subdata(pipe, st_obj->buffer,
+         pipe->buffer_subdata(pipe, obj->buffer,
                               is_mapped ? PIPE_MAP_DIRECTLY :
                                           PIPE_MAP_DISCARD_WHOLE_RESOURCE,
                               0, size, data);
@@ -341,14 +334,14 @@ bufferobj_data(struct gl_context *ctx,
       } else if (is_mapped) {
          return GL_TRUE; /* can't reallocate, nothing to do */
       } else if (screen->get_param(screen, PIPE_CAP_INVALIDATE_BUFFER)) {
-         pipe->invalidate_resource(pipe, st_obj->buffer);
+         pipe->invalidate_resource(pipe, obj->buffer);
          return GL_TRUE;
       }
    }
 
-   st_obj->Base.Size = size;
-   st_obj->Base.Usage = usage;
-   st_obj->Base.StorageFlags = storageFlags;
+   obj->Size = size;
+   obj->Usage = usage;
+   obj->StorageFlags = storageFlags;
 
    release_buffer(obj);
 
@@ -370,7 +363,7 @@ bufferobj_data(struct gl_context *ctx,
       buffer.format = PIPE_FORMAT_R8_UNORM; /* want TYPELESS or similar */
       buffer.bind = bindings;
       buffer.usage =
-         buffer_usage(target, st_obj->Base.Immutable, storageFlags, usage);
+         buffer_usage(target, obj->Immutable, storageFlags, usage);
       buffer.flags = storage_flags_to_buffer_flags(storageFlags);
       buffer.width0 = size;
       buffer.height0 = 1;
@@ -378,42 +371,42 @@ bufferobj_data(struct gl_context *ctx,
       buffer.array_size = 1;
 
       if (st_mem_obj) {
-         st_obj->buffer = screen->resource_from_memobj(screen, &buffer,
+         obj->buffer = screen->resource_from_memobj(screen, &buffer,
                                                        st_mem_obj->memory,
                                                        offset);
       }
       else if (target == GL_EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD) {
-         st_obj->buffer =
+         obj->buffer =
             screen->resource_from_user_memory(screen, &buffer, (void*)data);
       }
       else {
-         st_obj->buffer = screen->resource_create(screen, &buffer);
+         obj->buffer = screen->resource_create(screen, &buffer);
 
-         if (st_obj->buffer && data)
-            pipe_buffer_write(pipe, st_obj->buffer, 0, size, data);
+         if (obj->buffer && data)
+            pipe_buffer_write(pipe, obj->buffer, 0, size, data);
       }
 
-      if (!st_obj->buffer) {
+      if (!obj->buffer) {
          /* out of memory */
-         st_obj->Base.Size = 0;
+         obj->Size = 0;
          return GL_FALSE;
       }
 
-      st_obj->ctx = ctx;
+      obj->private_refcount_ctx = ctx;
    }
 
    /* The current buffer may be bound, so we have to revalidate all atoms that
     * might be using it.
     */
-   if (st_obj->Base.UsageHistory & USAGE_ARRAY_BUFFER)
+   if (obj->UsageHistory & USAGE_ARRAY_BUFFER)
       ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS;
-   if (st_obj->Base.UsageHistory & USAGE_UNIFORM_BUFFER)
+   if (obj->UsageHistory & USAGE_UNIFORM_BUFFER)
       ctx->NewDriverState |= ST_NEW_UNIFORM_BUFFER;
-   if (st_obj->Base.UsageHistory & USAGE_SHADER_STORAGE_BUFFER)
+   if (obj->UsageHistory & USAGE_SHADER_STORAGE_BUFFER)
       ctx->NewDriverState |= ST_NEW_STORAGE_BUFFER;
-   if (st_obj->Base.UsageHistory & USAGE_TEXTURE_BUFFER)
+   if (obj->UsageHistory & USAGE_TEXTURE_BUFFER)
       ctx->NewDriverState |= ST_NEW_SAMPLER_VIEWS | ST_NEW_IMAGE_UNITS;
-   if (st_obj->Base.UsageHistory & USAGE_ATOMIC_COUNTER_BUFFER)
+   if (obj->UsageHistory & USAGE_ATOMIC_COUNTER_BUFFER)
       ctx->NewDriverState |= ctx->DriverFlags.NewAtomicBuffer;
 
    return GL_TRUE;
@@ -461,17 +454,16 @@ st_bufferobj_invalidate(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
 
    /* We ignore partial invalidates. */
    if (offset != 0 || size != obj->Size)
       return;
 
    /* If the buffer is mapped, we can't invalidate it. */
-   if (!st_obj->buffer || _mesa_bufferobj_mapped(obj, MAP_USER))
+   if (!obj->buffer || _mesa_bufferobj_mapped(obj, MAP_USER))
       return;
 
-   pipe->invalidate_resource(pipe, st_obj->buffer);
+   pipe->invalidate_resource(pipe, obj->buffer);
 }
 
 
@@ -536,7 +528,6 @@ st_bufferobj_map_range(struct gl_context *ctx,
                        gl_map_buffer_index index)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
 
    assert(offset >= 0);
    assert(length >= 0);
@@ -558,17 +549,17 @@ st_bufferobj_map_range(struct gl_context *ctx,
    }
 
    obj->Mappings[index].Pointer = pipe_buffer_map_range(pipe,
-                                                        st_obj->buffer,
+                                                        obj->buffer,
                                                         offset, length,
                                                         transfer_flags,
-                                                        &st_obj->transfer[index]);
+                                                        &obj->transfer[index]);
    if (obj->Mappings[index].Pointer) {
       obj->Mappings[index].Offset = offset;
       obj->Mappings[index].Length = length;
       obj->Mappings[index].AccessFlags = access;
    }
    else {
-      st_obj->transfer[index] = NULL;
+      obj->transfer[index] = NULL;
    }
 
    return obj->Mappings[index].Pointer;
@@ -582,7 +573,6 @@ st_bufferobj_flush_mapped_range(struct gl_context *ctx,
                                 gl_map_buffer_index index)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
 
    /* Subrange is relative to mapped range */
    assert(offset >= 0);
@@ -593,7 +583,7 @@ st_bufferobj_flush_mapped_range(struct gl_context *ctx,
    if (!length)
       return;
 
-   pipe_buffer_flush_mapped_range(pipe, st_obj->transfer[index],
+   pipe_buffer_flush_mapped_range(pipe, obj->transfer[index],
                                   obj->Mappings[index].Offset + offset,
                                   length);
 }
@@ -607,12 +597,11 @@ st_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
                    gl_map_buffer_index index)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
-   struct st_buffer_object *st_obj = st_buffer_object(obj);
 
    if (obj->Mappings[index].Length)
-      pipe_buffer_unmap(pipe, st_obj->transfer[index]);
+      pipe_buffer_unmap(pipe, obj->transfer[index]);
 
-   st_obj->transfer[index] = NULL;
+   obj->transfer[index] = NULL;
    obj->Mappings[index].Pointer = NULL;
    obj->Mappings[index].Offset = 0;
    obj->Mappings[index].Length = 0;
@@ -631,8 +620,6 @@ st_copy_buffer_subdata(struct gl_context *ctx,
                        GLsizeiptr size)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
-   struct st_buffer_object *srcObj = st_buffer_object(src);
-   struct st_buffer_object *dstObj = st_buffer_object(dst);
    struct pipe_box box;
 
    if (!size)
@@ -644,8 +631,8 @@ st_copy_buffer_subdata(struct gl_context *ctx,
 
    u_box_1d(readOffset, size, &box);
 
-   pipe->resource_copy_region(pipe, dstObj->buffer, 0, writeOffset, 0, 0,
-                              srcObj->buffer, 0, &box);
+   pipe->resource_copy_region(pipe, dst->buffer, 0, writeOffset, 0, 0,
+                              src->buffer, 0, &box);
 }
 
 /**
@@ -659,7 +646,6 @@ st_clear_buffer_subdata(struct gl_context *ctx,
                         struct gl_buffer_object *bufObj)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
-   struct st_buffer_object *buf = st_buffer_object(bufObj);
    static const char zeros[16] = {0};
 
    if (!pipe->clear_buffer) {
@@ -671,7 +657,7 @@ st_clear_buffer_subdata(struct gl_context *ctx,
    if (!clearValue)
       clearValue = zeros;
 
-   pipe->clear_buffer(pipe, buf->buffer, offset, size,
+   pipe->clear_buffer(pipe, bufObj->buffer, offset, size,
                       clearValue, clearValueSize);
 }
 
@@ -682,12 +668,11 @@ st_bufferobj_page_commitment(struct gl_context *ctx,
                              GLboolean commit)
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
-   struct st_buffer_object *buf = st_buffer_object(bufferObj);
    struct pipe_box box;
 
    u_box_1d(offset, size, &box);
 
-   if (!pipe->resource_commit(pipe, buf->buffer, 0, &box, commit)) {
+   if (!pipe->resource_commit(pipe, bufferObj->buffer, 0, &box, commit)) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glBufferPageCommitmentARB(out of memory)");
       return;
    }

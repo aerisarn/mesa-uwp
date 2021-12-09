@@ -393,7 +393,6 @@ st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
 {
    struct pipe_context *pipe = st_context(ctx)->pipe;
    struct st_query_object *stq = st_query_object(q);
-   struct st_buffer_object *stObj = st_buffer_object(buf);
    boolean wait = pname == GL_QUERY_RESULT;
    enum pipe_query_value_type result_type;
    int index;
@@ -407,7 +406,7 @@ st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
        * LE. When a BE one comes along, this needs some form of resolution.
        */
       unsigned data[2] = { CPU_TO_LE32(q->Target), 0 };
-      pipe_buffer_write(pipe, stObj->buffer, offset,
+      pipe_buffer_write(pipe, buf->buffer, offset,
                         (ptype == GL_INT64_ARB ||
                          ptype == GL_UNSIGNED_INT64_ARB) ? 8 : 4,
                         data);
@@ -476,5 +475,5 @@ st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
    }
 
    pipe->get_query_result_resource(pipe, stq->pq, wait, result_type, index,
-                                   stObj->buffer, offset);
+                                   buf->buffer, offset);
 }

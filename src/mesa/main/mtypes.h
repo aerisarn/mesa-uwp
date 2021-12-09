@@ -55,6 +55,7 @@
 #include "util/mesa-sha1.h"
 #include "vbo/vbo.h"
 
+#include "pipe/p_state.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1397,6 +1398,26 @@ struct gl_buffer_object
    bool MinMaxCacheDirty;
 
    bool HandleAllocated; /**< GL_ARB_bindless_texture */
+
+   struct pipe_resource *buffer;
+   struct gl_context *private_refcount_ctx;
+   /* This mechanism allows passing buffer references to the driver without
+    * using atomics to increase the reference count.
+    *
+    * This private refcount can be decremented without atomics but only one
+    * context (ctx above) can use this counter to be thread-safe.
+    *
+    * This number is atomically added to buffer->reference.count at
+    * initialization. If it's never used, the same number is atomically
+    * subtracted from buffer->reference.count before destruction. If this
+    * number is decremented, we can pass that reference to the driver without
+    * touching reference.count. At buffer destruction we only subtract
+    * the number of references we did not return. This can possibly turn
+    * a million atomic increments into 1 add and 1 subtract atomic op.
+    */
+   int private_refcount;
+
+   struct pipe_transfer *transfer[MAP_COUNT];
 };
 
 

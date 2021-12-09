@@ -682,8 +682,8 @@ st_get_buffer_sampler_view_from_stobj(struct st_context *st,
                                       bool get_reference)
 {
    struct st_sampler_view *sv;
-   struct st_buffer_object *stBuf =
-      st_buffer_object(stObj->base.BufferObject);
+   struct gl_buffer_object *stBuf =
+      stObj->base.BufferObject;
 
    if (!stBuf || !stBuf->buffer)
       return NULL;

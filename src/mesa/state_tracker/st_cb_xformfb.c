@@ -118,7 +118,7 @@ st_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
 
    /* Convert the transform feedback state into the gallium representation. */
    for (i = 0; i < max_num_targets; i++) {
-      struct st_buffer_object *bo = st_buffer_object(sobj->base.Buffers[i]);
+      struct gl_buffer_object *bo = sobj->base.Buffers[i];
 
       if (bo && bo->buffer) {
          unsigned stream = obj->program->sh.LinkedTransformFeedback->

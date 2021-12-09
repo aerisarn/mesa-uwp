@@ -88,8 +88,7 @@ st_convert_image(const struct st_context *st, const struct gl_image_unit *u,
    }
 
    if (stObj->base.Target == GL_TEXTURE_BUFFER) {
-      struct st_buffer_object *stbuf =
-         st_buffer_object(stObj->base.BufferObject);
+      struct gl_buffer_object *stbuf = stObj->base.BufferObject;
       unsigned base, size;
 
       if (!stbuf || !stbuf->buffer) {

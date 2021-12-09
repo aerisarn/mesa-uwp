@@ -157,7 +157,7 @@ prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
                st_get_buffer_reference(ctx, info->index.gl_bo);
             info->take_index_buffer_ownership = true;
          } else {
-            info->index.resource = st_buffer_object(info->index.gl_bo)->buffer;
+            info->index.resource = info->index.gl_bo->buffer;
          }
 
          /* Return if the bound element array buffer doesn't have any backing
@@ -251,7 +251,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       assert(bufobj);
 
       info.index_size = 1 << ib->index_size_shift;
-      info.index.resource = st_buffer_object(bufobj)->buffer;
+      info.index.resource = bufobj->buffer;
       draw.start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
 
       info.restart_index = restart_index;
@@ -259,7 +259,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    }
 
    info.mode = translate_prim(ctx, mode);
-   indirect.buffer = st_buffer_object(indirect_data)->buffer;
+   indirect.buffer = indirect_data->buffer;
    indirect.offset = indirect_offset;
 
    /* Viewperf2020/Maya draws with a buffer that has no storage. */
@@ -280,7 +280,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
       indirect.stride = stride;
       if (indirect_draw_count) {
          indirect.indirect_draw_count =
-            st_buffer_object(indirect_draw_count)->buffer;
+            indirect_draw_count->buffer;
          indirect.indirect_draw_count_offset = indirect_draw_count_offset;
       }
       cso_draw_vbo(st->cso_context, &info, 0, &indirect, draw);

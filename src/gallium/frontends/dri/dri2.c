@@ -1921,7 +1921,7 @@ dri2_interop_export_object(__DRIcontext *_ctx,
          return MESA_GLINTEROP_INVALID_OBJECT;
       }
 
-      res = st_buffer_object(buf)->buffer;
+      res = buf->buffer;
       if (!res) {
          /* this shouldn't happen */
          simple_mtx_unlock(&ctx->Shared->Mutex);
@@ -1999,8 +1999,8 @@ dri2_interop_export_object(__DRIcontext *_ctx,
       }
 
       if (target == GL_TEXTURE_BUFFER) {
-         struct st_buffer_object *stBuf =
-            st_buffer_object(obj->BufferObject);
+         struct gl_buffer_object *stBuf =
+            obj->BufferObject;
 
          if (!stBuf || !stBuf->buffer) {
             /* this shouldn't happen */
