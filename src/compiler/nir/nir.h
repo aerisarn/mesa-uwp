@@ -4735,6 +4735,12 @@ typedef struct nir_lower_tex_options {
    bool lower_rect_offset;
 
    /**
+    * If not NULL, this filter will return true for tex instructions that
+    * should lower away nir_tex_src_offset.
+    */
+   nir_instr_filter_cb lower_offset_filter;
+
+   /**
     * If true, lower rect textures to 2D, using txs to fetch the
     * texture dimensions and dividing the texture coords by the
     * texture dims to normalize.
@@ -4897,6 +4903,11 @@ typedef struct nir_lower_tex_options {
     * absolute values of derivatives is 0 for all coordinates.
     */
    bool lower_lod_zero_width;
+
+   /**
+    * Payload data to be sent to callback / filter functions.
+    */
+   void *callback_data;
 } nir_lower_tex_options;
 
 /** Lowers complex texture instructions to simpler ones */
