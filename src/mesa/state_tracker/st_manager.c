@@ -174,22 +174,22 @@ st_context_validate(struct st_context *st,
 
 
 void
-st_set_ws_renderbuffer_surface(struct st_renderbuffer *strb,
+st_set_ws_renderbuffer_surface(struct gl_renderbuffer *rb,
                                struct pipe_surface *surf)
 {
-   pipe_surface_reference(&strb->surface_srgb, NULL);
-   pipe_surface_reference(&strb->surface_linear, NULL);
+   pipe_surface_reference(&rb->surface_srgb, NULL);
+   pipe_surface_reference(&rb->surface_linear, NULL);
 
    if (util_format_is_srgb(surf->format))
-      pipe_surface_reference(&strb->surface_srgb, surf);
+      pipe_surface_reference(&rb->surface_srgb, surf);
    else
-      pipe_surface_reference(&strb->surface_linear, surf);
+      pipe_surface_reference(&rb->surface_linear, surf);
 
-   strb->surface = surf; /* just assign, don't ref */
-   pipe_resource_reference(&strb->texture, surf->texture);
+   rb->surface = surf; /* just assign, don't ref */
+   pipe_resource_reference(&rb->texture, surf->texture);
 
-   strb->Base.Width = surf->width;
-   strb->Base.Height = surf->height;
+   rb->Width = surf->width;
+   rb->Height = surf->height;
 }
 
 
@@ -231,7 +231,7 @@ st_framebuffer_validate(struct st_framebuffer *stfb,
    height = stfb->Base.Height;
 
    for (i = 0; i < stfb->num_statts; i++) {
-      struct st_renderbuffer *strb;
+      struct gl_renderbuffer *rb;
       struct pipe_surface *ps, surf_tmpl;
       gl_buffer_index idx;
 
@@ -244,9 +244,9 @@ st_framebuffer_validate(struct st_framebuffer *stfb,
          continue;
       }
 
-      strb = st_renderbuffer(stfb->Base.Attachment[idx].Renderbuffer);
-      assert(strb);
-      if (strb->texture == textures[i]) {
+      rb = stfb->Base.Attachment[idx].Renderbuffer;
+      assert(rb);
+      if (rb->texture == textures[i]) {
          pipe_resource_reference(&textures[i], NULL);
          continue;
       }
@@ -254,13 +254,13 @@ st_framebuffer_validate(struct st_framebuffer *stfb,
       u_surface_default_template(&surf_tmpl, textures[i]);
       ps = st->pipe->create_surface(st->pipe, textures[i], &surf_tmpl);
       if (ps) {
-         st_set_ws_renderbuffer_surface(strb, ps);
+         st_set_ws_renderbuffer_surface(rb, ps);
          pipe_surface_reference(&ps, NULL);
 
          changed = true;
 
-         width = strb->Base.Width;
-         height = strb->Base.Height;
+         width = rb->Width;
+         height = rb->Height;
       }
 
       pipe_resource_reference(&textures[i], NULL);
@@ -287,11 +287,11 @@ st_framebuffer_update_attachments(struct st_framebuffer *stfb)
       stfb->statts[i] = ST_ATTACHMENT_INVALID;
 
    for (idx = 0; idx < BUFFER_COUNT; idx++) {
-      struct st_renderbuffer *strb;
+      struct gl_renderbuffer *rb;
       enum st_attachment_type statt;
 
-      strb = st_renderbuffer(stfb->Base.Attachment[idx].Renderbuffer);
-      if (!strb || strb->software)
+      rb = stfb->Base.Attachment[idx].Renderbuffer;
+      if (!rb || rb->software)
          continue;
 
       statt = buffer_index_to_attachment(idx);
@@ -1153,7 +1153,7 @@ void
 st_manager_flush_frontbuffer(struct st_context *st)
 {
    struct st_framebuffer *stfb = st_ws_framebuffer(st->ctx->DrawBuffer);
-   struct st_renderbuffer *strb = NULL;
+   struct gl_renderbuffer *rb = NULL;
 
    if (!stfb)
       return;
@@ -1168,23 +1168,21 @@ st_manager_flush_frontbuffer(struct st_context *st)
 
    /* Check front buffer used at the GL API level. */
    enum st_attachment_type statt = ST_ATTACHMENT_FRONT_LEFT;
-   strb = st_renderbuffer(stfb->Base.Attachment[BUFFER_FRONT_LEFT].
-                          Renderbuffer);
-   if (!strb) {
+   rb = stfb->Base.Attachment[BUFFER_FRONT_LEFT].Renderbuffer;
+   if (!rb) {
        /* Check back buffer redirected by EGL_KHR_mutable_render_buffer. */
        statt = ST_ATTACHMENT_BACK_LEFT;
-       strb = st_renderbuffer(stfb->Base.Attachment[BUFFER_BACK_LEFT].
-                              Renderbuffer);
+       rb = stfb->Base.Attachment[BUFFER_BACK_LEFT].Renderbuffer;
    }
 
    /* Do we have a front color buffer and has it been drawn to since last
     * frontbuffer flush?
     */
-   if (strb && strb->defined &&
+   if (rb && rb->defined &&
        stfb->iface->flush_front(&st->iface, stfb->iface, statt)) {
-      strb->defined = GL_FALSE;
+      rb->defined = GL_FALSE;
 
-      /* Trigger an update of strb->defined on next draw */
+      /* Trigger an update of rb->defined on next draw */
       st->dirty |= ST_NEW_FB_STATE;
    }
 }

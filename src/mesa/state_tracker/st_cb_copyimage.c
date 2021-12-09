@@ -655,8 +655,7 @@ st_CopyImageSubData(struct gl_context *ctx,
          src_z += src_image->TexObject->Attrib.MinLayer;
       }
    } else {
-      struct st_renderbuffer *src = st_renderbuffer(src_renderbuffer);
-      src_res = src->texture;
+      src_res = src_renderbuffer->texture;
       src_level = 0;
    }
 
@@ -671,8 +670,7 @@ st_CopyImageSubData(struct gl_context *ctx,
          dst_z += dst_image->TexObject->Attrib.MinLayer;
       }
    } else {
-      struct st_renderbuffer *dst = st_renderbuffer(dst_renderbuffer);
-      dst_res = dst->texture;
+      dst_res = dst_renderbuffer->texture;
       dst_level = 0;
    }
 

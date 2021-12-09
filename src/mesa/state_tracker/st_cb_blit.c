@@ -202,8 +202,7 @@ st_BlitFramebuffer(struct gl_context *ctx,
             blit.src.format = util_format_linear(blit.src.format);
       }
       else {
-         struct st_renderbuffer *srcRb =
-            st_renderbuffer(readFB->_ColorReadBuffer);
+         struct gl_renderbuffer *srcRb = readFB->_ColorReadBuffer;
          struct pipe_surface *srcSurf;
 
          if (!srcRb)
@@ -223,8 +222,7 @@ st_BlitFramebuffer(struct gl_context *ctx,
       }
 
       for (i = 0; i < drawFB->_NumColorDrawBuffers; i++) {
-         struct st_renderbuffer *dstRb =
-            st_renderbuffer(drawFB->_ColorDrawBuffers[i]);
+         struct gl_renderbuffer *dstRb = drawFB->_ColorDrawBuffers[i];
 
          if (dstRb) {
             struct pipe_surface *dstSurf;
@@ -250,17 +248,17 @@ st_BlitFramebuffer(struct gl_context *ctx,
       /* depth and/or stencil blit */
 
       /* get src/dst depth surfaces */
-      struct st_renderbuffer *srcDepthRb =
-         st_renderbuffer(readFB->Attachment[BUFFER_DEPTH].Renderbuffer);
-      struct st_renderbuffer *dstDepthRb =
-         st_renderbuffer(drawFB->Attachment[BUFFER_DEPTH].Renderbuffer);
+      struct gl_renderbuffer *srcDepthRb =
+         readFB->Attachment[BUFFER_DEPTH].Renderbuffer;
+      struct gl_renderbuffer *dstDepthRb =
+         drawFB->Attachment[BUFFER_DEPTH].Renderbuffer;
       struct pipe_surface *dstDepthSurf =
          dstDepthRb ? dstDepthRb->surface : NULL;
 
-      struct st_renderbuffer *srcStencilRb =
-         st_renderbuffer(readFB->Attachment[BUFFER_STENCIL].Renderbuffer);
-      struct st_renderbuffer *dstStencilRb =
-         st_renderbuffer(drawFB->Attachment[BUFFER_STENCIL].Renderbuffer);
+      struct gl_renderbuffer *srcStencilRb =
+         readFB->Attachment[BUFFER_STENCIL].Renderbuffer;
+      struct gl_renderbuffer *dstStencilRb =
+         drawFB->Attachment[BUFFER_STENCIL].Renderbuffer;
       struct pipe_surface *dstStencilSurf =
          dstStencilRb ? dstStencilRb->surface : NULL;
 

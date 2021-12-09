@@ -111,7 +111,7 @@ st_update_framebuffer_state( struct st_context *st )
 {
    struct pipe_framebuffer_state framebuffer;
    struct gl_framebuffer *fb = st->ctx->DrawBuffer;
-   struct st_renderbuffer *strb;
+   struct gl_renderbuffer *rb;
    GLuint i;
 
    st_flush_bitmap_cache(st);
@@ -142,23 +142,23 @@ st_update_framebuffer_state( struct st_context *st )
 
    for (i = 0; i < fb->_NumColorDrawBuffers; i++) {
       framebuffer.cbufs[i] = NULL;
-      strb = st_renderbuffer(fb->_ColorDrawBuffers[i]);
+      rb = fb->_ColorDrawBuffers[i];
 
-      if (strb) {
-         if (strb->is_rtt || (strb->texture &&
-             _mesa_is_format_srgb(strb->Base.Format))) {
+      if (rb) {
+         if (rb->is_rtt || (rb->texture &&
+             _mesa_is_format_srgb(rb->Format))) {
             /* rendering to a GL texture, may have to update surface */
-            st_update_renderbuffer_surface(st, strb);
+            st_update_renderbuffer_surface(st, rb);
          }
 
-         if (strb->surface) {
-            if (strb->surface->context != st->pipe) {
-               st_regen_renderbuffer_surface(st, strb);
+         if (rb->surface) {
+            if (rb->surface->context != st->pipe) {
+               st_regen_renderbuffer_surface(st, rb);
             }
-            framebuffer.cbufs[i] = strb->surface;
-            update_framebuffer_size(&framebuffer, strb->surface);
+            framebuffer.cbufs[i] = rb->surface;
+            update_framebuffer_size(&framebuffer, rb->surface);
          }
-         strb->defined = GL_TRUE; /* we'll be drawing something */
+         rb->defined = GL_TRUE; /* we'll be drawing something */
       }
    }
 
@@ -175,21 +175,21 @@ st_update_framebuffer_state( struct st_context *st )
    /*
     * Depth/Stencil renderbuffer/surface.
     */
-   strb = st_renderbuffer(fb->Attachment[BUFFER_DEPTH].Renderbuffer);
-   if (!strb)
-      strb = st_renderbuffer(fb->Attachment[BUFFER_STENCIL].Renderbuffer);
+   rb = fb->Attachment[BUFFER_DEPTH].Renderbuffer;
+   if (!rb)
+      rb = fb->Attachment[BUFFER_STENCIL].Renderbuffer;
 
-   if (strb) {
-      if (strb->is_rtt) {
+   if (rb) {
+      if (rb->is_rtt) {
          /* rendering to a GL texture, may have to update surface */
-         st_update_renderbuffer_surface(st, strb);
+         st_update_renderbuffer_surface(st, rb);
       }
-      if (strb->surface && strb->surface->context != st->pipe) {
-         st_regen_renderbuffer_surface(st, strb);
+      if (rb->surface && rb->surface->context != st->pipe) {
+         st_regen_renderbuffer_surface(st, rb);
       }
-      framebuffer.zsbuf = strb->surface;
-      if (strb->surface)
-         update_framebuffer_size(&framebuffer, strb->surface);
+      framebuffer.zsbuf = rb->surface;
+      if (rb->surface)
+         update_framebuffer_size(&framebuffer, rb->surface);
    }
    else
       framebuffer.zsbuf = NULL;

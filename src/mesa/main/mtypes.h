@@ -2548,6 +2548,31 @@ struct gl_renderbuffer
                              struct gl_renderbuffer *rb,
                              GLenum internalFormat,
                              GLuint width, GLuint height);
+
+   struct pipe_resource *texture;
+   /* This points to either "surface_linear" or "surface_srgb".
+    * It doesn't hold the pipe_surface reference. The other two do.
+    */
+   struct pipe_surface *surface;
+   struct pipe_surface *surface_linear;
+   struct pipe_surface *surface_srgb;
+   GLboolean defined;        /**< defined contents? */
+
+   struct pipe_transfer *transfer; /**< only used when mapping the resource */
+
+   /**
+    * Used only when hardware accumulation buffers are not supported.
+    */
+   boolean software;
+   void *data;
+
+   bool use_readpix_cache;
+
+   /* Inputs from Driver.RenderTexture, don't use directly. */
+   boolean is_rtt; /**< whether Driver.RenderTexture was called */
+   unsigned rtt_face, rtt_slice;
+   boolean rtt_layered; /**< whether glFramebufferTexture was called */
+   unsigned rtt_nr_samples; /**< from FramebufferTexture2DMultisampleEXT */
 };
 
 

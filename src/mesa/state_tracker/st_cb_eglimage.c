@@ -231,7 +231,6 @@ st_egl_image_target_renderbuffer_storage(struct gl_context *ctx,
                                          struct gl_renderbuffer *rb,
                                          GLeglImageOES image_handle)
 {
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    struct st_egl_image stimg;
    bool native_supported;
 
@@ -252,11 +251,11 @@ st_egl_image_target_renderbuffer_storage(struct gl_context *ctx,
       if (!ps)
          return;
 
-      strb->Base.Format = st_pipe_format_to_mesa_format(ps->format);
-      strb->Base._BaseFormat = st_pipe_format_to_base_format(ps->format);
-      strb->Base.InternalFormat = strb->Base._BaseFormat;
+      rb->Format = st_pipe_format_to_mesa_format(ps->format);
+      rb->_BaseFormat = st_pipe_format_to_base_format(ps->format);
+      rb->InternalFormat = rb->_BaseFormat;
 
-      st_set_ws_renderbuffer_surface(strb, ps);
+      st_set_ws_renderbuffer_surface(rb, ps);
       pipe_surface_reference(&ps, NULL);
    }
 }

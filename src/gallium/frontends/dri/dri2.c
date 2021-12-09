@@ -1961,7 +1961,7 @@ dri2_interop_export_object(__DRIcontext *_ctx,
        *   "CL_OUT_OF_RESOURCES if there is a failure to allocate resources
        *    required by the OpenCL implementation on the device."
        */
-      res = st_renderbuffer(rb)->texture;
+      res = rb->texture;
       if (!res) {
          simple_mtx_unlock(&ctx->Shared->Mutex);
          return MESA_GLINTEROP_OUT_OF_RESOURCES;

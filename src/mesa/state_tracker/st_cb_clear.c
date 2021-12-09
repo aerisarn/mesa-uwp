@@ -445,10 +445,9 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
          if (b != BUFFER_NONE && mask & (1 << b)) {
             struct gl_renderbuffer *rb
                = ctx->DrawBuffer->Attachment[b].Renderbuffer;
-            struct st_renderbuffer *strb = st_renderbuffer(rb);
             int colormask_index = ctx->Extensions.EXT_draw_buffers2 ? i : 0;
 
-            if (!strb || !strb->surface)
+            if (!rb || !rb->surface)
                continue;
 
             unsigned colormask =
@@ -458,7 +457,7 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
                continue;
 
             unsigned surf_colormask =
-               util_format_colormask(util_format_description(strb->surface->format));
+               util_format_colormask(util_format_description(rb->surface->format));
 
             bool scissor = is_scissor_enabled(ctx, rb);
             if ((scissor && !st->can_scissor_clear) ||
@@ -473,9 +472,7 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
    }
 
    if (mask & BUFFER_BIT_DEPTH) {
-      struct st_renderbuffer *strb = st_renderbuffer(depthRb);
-
-      if (strb->surface && ctx->Depth.Mask) {
+      if (depthRb->surface && ctx->Depth.Mask) {
          bool scissor = is_scissor_enabled(ctx, depthRb);
          if ((scissor && !st->can_scissor_clear) ||
              is_window_rectangle_enabled(ctx))
@@ -486,9 +483,7 @@ st_Clear(struct gl_context *ctx, GLbitfield mask)
       }
    }
    if (mask & BUFFER_BIT_STENCIL) {
-      struct st_renderbuffer *strb = st_renderbuffer(stencilRb);
-
-      if (strb->surface && !is_stencil_disabled(ctx, stencilRb)) {
+      if (stencilRb->surface && !is_stencil_disabled(ctx, stencilRb)) {
          bool scissor = is_scissor_enabled(ctx, stencilRb);
          if ((scissor && !st->can_scissor_clear) ||
              is_window_rectangle_enabled(ctx) ||

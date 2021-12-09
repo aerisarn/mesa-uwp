@@ -68,12 +68,11 @@ st_renderbuffer_alloc_sw_storage(struct gl_context * ctx,
                                  GLuint width, GLuint height)
 {
    struct st_context *st = st_context(ctx);
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    enum pipe_format format;
    size_t size;
 
-   free(strb->data);
-   strb->data = NULL;
+   free(rb->data);
+   rb->data = NULL;
 
    if (internalFormat == GL_RGBA16_SNORM) {
       /* Special case for software accum buffers.  Otherwise, if the
@@ -94,11 +93,11 @@ st_renderbuffer_alloc_sw_storage(struct gl_context * ctx,
       }
    }
 
-   strb->Base.Format = st_pipe_format_to_mesa_format(format);
+   rb->Format = st_pipe_format_to_mesa_format(format);
 
-   size = _mesa_format_image_size(strb->Base.Format, width, height, 1);
-   strb->data = malloc(size);
-   return strb->data != NULL;
+   size = _mesa_format_image_size(rb->Format, width, height, 1);
+   rb->data = malloc(size);
+   return rb->data != NULL;
 }
 
 
@@ -115,27 +114,26 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
 {
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->screen;
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    enum pipe_format format = PIPE_FORMAT_NONE;
    struct pipe_resource templ;
 
    /* init renderbuffer fields */
-   strb->Base.Width  = width;
-   strb->Base.Height = height;
-   strb->Base._BaseFormat = _mesa_base_fbo_format(ctx, internalFormat);
-   strb->defined = GL_FALSE;  /* undefined contents now */
+   rb->Width  = width;
+   rb->Height = height;
+   rb->_BaseFormat = _mesa_base_fbo_format(ctx, internalFormat);
+   rb->defined = GL_FALSE;  /* undefined contents now */
 
-   if (strb->software) {
+   if (rb->software) {
       return st_renderbuffer_alloc_sw_storage(ctx, rb, internalFormat,
                                               width, height);
    }
 
    /* Free the old surface and texture
     */
-   pipe_surface_reference(&strb->surface_srgb, NULL);
-   pipe_surface_reference(&strb->surface_linear, NULL);
-   strb->surface = NULL;
-   pipe_resource_reference(&strb->texture, NULL);
+   pipe_surface_reference(&rb->surface_srgb, NULL);
+   pipe_surface_reference(&rb->surface_linear, NULL);
+   rb->surface = NULL;
+   pipe_resource_reference(&rb->texture, NULL);
 
    /* If an sRGB framebuffer is unsupported, sRGB formats behave like linear
     * formats.
@@ -233,7 +231,7 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
       return GL_TRUE;
    }
 
-   strb->Base.Format = st_pipe_format_to_mesa_format(format);
+   rb->Format = st_pipe_format_to_mesa_format(format);
 
    if (width == 0 || height == 0) {
       /* if size is zero, nothing to allocate */
@@ -255,7 +253,7 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
    if (util_format_is_depth_or_stencil(format)) {
       templ.bind = PIPE_BIND_DEPTH_STENCIL;
    }
-   else if (strb->Base.Name != 0) {
+   else if (rb->Name != 0) {
       /* this is a user-created renderbuffer */
       templ.bind = PIPE_BIND_RENDER_TARGET;
    }
@@ -265,13 +263,13 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
                     PIPE_BIND_RENDER_TARGET);
    }
 
-   strb->texture = screen->resource_create(screen, &templ);
+   rb->texture = screen->resource_create(screen, &templ);
 
-   if (!strb->texture)
+   if (!rb->texture)
       return FALSE;
 
-   st_update_renderbuffer_surface(st, strb);
-   return strb->surface != NULL;
+   st_update_renderbuffer_surface(st, rb);
+   return rb->surface != NULL;
 }
 
 
@@ -281,18 +279,17 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
 static void
 st_renderbuffer_delete(struct gl_context *ctx, struct gl_renderbuffer *rb)
 {
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    if (ctx) {
       struct st_context *st = st_context(ctx);
-      pipe_surface_release(st->pipe, &strb->surface_srgb);
-      pipe_surface_release(st->pipe, &strb->surface_linear);
+      pipe_surface_release(st->pipe, &rb->surface_srgb);
+      pipe_surface_release(st->pipe, &rb->surface_linear);
    } else {
-      pipe_surface_release_no_context(&strb->surface_srgb);
-      pipe_surface_release_no_context(&strb->surface_linear);
+      pipe_surface_release_no_context(&rb->surface_srgb);
+      pipe_surface_release_no_context(&rb->surface_linear);
    }
-   strb->surface = NULL;
-   pipe_resource_reference(&strb->texture, NULL);
-   free(strb->data);
+   rb->surface = NULL;
+   pipe_resource_reference(&rb->texture, NULL);
+   free(rb->data);
    _mesa_delete_renderbuffer(ctx, rb);
 }
 
@@ -303,13 +300,13 @@ st_renderbuffer_delete(struct gl_context *ctx, struct gl_renderbuffer *rb)
 struct gl_renderbuffer *
 st_new_renderbuffer(struct gl_context *ctx, GLuint name)
 {
-   struct st_renderbuffer *strb = CALLOC_STRUCT(st_renderbuffer);
-   if (strb) {
+   struct gl_renderbuffer *rb = CALLOC_STRUCT(gl_renderbuffer);
+   if (rb) {
       assert(name != 0);
-      _mesa_init_renderbuffer(&strb->Base, name);
-      strb->Base.Delete = st_renderbuffer_delete;
-      strb->Base.AllocStorage = st_renderbuffer_alloc_storage;
-      return &strb->Base;
+      _mesa_init_renderbuffer(rb, name);
+      rb->Delete = st_renderbuffer_delete;
+      rb->AllocStorage = st_renderbuffer_alloc_storage;
+      return rb;
    }
    return NULL;
 }
@@ -322,146 +319,146 @@ st_new_renderbuffer(struct gl_context *ctx, GLuint name)
 struct gl_renderbuffer *
 st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, boolean sw)
 {
-   struct st_renderbuffer *strb;
+   struct gl_renderbuffer *rb;
 
-   strb = CALLOC_STRUCT(st_renderbuffer);
-   if (!strb) {
+   rb = CALLOC_STRUCT(gl_renderbuffer);
+   if (!rb) {
       _mesa_error(NULL, GL_OUT_OF_MEMORY, "creating renderbuffer");
       return NULL;
    }
 
-   _mesa_init_renderbuffer(&strb->Base, 0);
-   strb->Base.ClassID = 0x4242; /* just a unique value */
-   strb->Base.NumSamples = samples;
-   strb->Base.NumStorageSamples = samples;
-   strb->Base.Format = st_pipe_format_to_mesa_format(format);
-   strb->Base._BaseFormat = _mesa_get_format_base_format(strb->Base.Format);
-   strb->software = sw;
+   _mesa_init_renderbuffer(rb, 0);
+   rb->ClassID = 0x4242; /* just a unique value */
+   rb->NumSamples = samples;
+   rb->NumStorageSamples = samples;
+   rb->Format = st_pipe_format_to_mesa_format(format);
+   rb->_BaseFormat = _mesa_get_format_base_format(rb->Format);
+   rb->software = sw;
 
    switch (format) {
    case PIPE_FORMAT_B10G10R10A2_UNORM:
    case PIPE_FORMAT_R10G10B10A2_UNORM:
-      strb->Base.InternalFormat = GL_RGB10_A2;
+      rb->InternalFormat = GL_RGB10_A2;
       break;
    case PIPE_FORMAT_R10G10B10X2_UNORM:
    case PIPE_FORMAT_B10G10R10X2_UNORM:
-      strb->Base.InternalFormat = GL_RGB10;
+      rb->InternalFormat = GL_RGB10;
       break;
    case PIPE_FORMAT_R8G8B8A8_UNORM:
    case PIPE_FORMAT_B8G8R8A8_UNORM:
    case PIPE_FORMAT_A8R8G8B8_UNORM:
-      strb->Base.InternalFormat = GL_RGBA8;
+      rb->InternalFormat = GL_RGBA8;
       break;
    case PIPE_FORMAT_R8G8B8X8_UNORM:
    case PIPE_FORMAT_B8G8R8X8_UNORM:
    case PIPE_FORMAT_X8R8G8B8_UNORM:
    case PIPE_FORMAT_R8G8B8_UNORM:
-      strb->Base.InternalFormat = GL_RGB8;
+      rb->InternalFormat = GL_RGB8;
       break;
    case PIPE_FORMAT_R8G8B8A8_SRGB:
    case PIPE_FORMAT_B8G8R8A8_SRGB:
    case PIPE_FORMAT_A8R8G8B8_SRGB:
-      strb->Base.InternalFormat = GL_SRGB8_ALPHA8;
+      rb->InternalFormat = GL_SRGB8_ALPHA8;
       break;
    case PIPE_FORMAT_R8G8B8X8_SRGB:
    case PIPE_FORMAT_B8G8R8X8_SRGB:
    case PIPE_FORMAT_X8R8G8B8_SRGB:
-      strb->Base.InternalFormat = GL_SRGB8;
+      rb->InternalFormat = GL_SRGB8;
       break;
    case PIPE_FORMAT_B5G5R5A1_UNORM:
-      strb->Base.InternalFormat = GL_RGB5_A1;
+      rb->InternalFormat = GL_RGB5_A1;
       break;
    case PIPE_FORMAT_B4G4R4A4_UNORM:
-      strb->Base.InternalFormat = GL_RGBA4;
+      rb->InternalFormat = GL_RGBA4;
       break;
    case PIPE_FORMAT_B5G6R5_UNORM:
-      strb->Base.InternalFormat = GL_RGB565;
+      rb->InternalFormat = GL_RGB565;
       break;
    case PIPE_FORMAT_Z16_UNORM:
-      strb->Base.InternalFormat = GL_DEPTH_COMPONENT16;
+      rb->InternalFormat = GL_DEPTH_COMPONENT16;
       break;
    case PIPE_FORMAT_Z32_UNORM:
-      strb->Base.InternalFormat = GL_DEPTH_COMPONENT32;
+      rb->InternalFormat = GL_DEPTH_COMPONENT32;
       break;
    case PIPE_FORMAT_Z24_UNORM_S8_UINT:
    case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-      strb->Base.InternalFormat = GL_DEPTH24_STENCIL8_EXT;
+      rb->InternalFormat = GL_DEPTH24_STENCIL8_EXT;
       break;
    case PIPE_FORMAT_Z24X8_UNORM:
    case PIPE_FORMAT_X8Z24_UNORM:
-      strb->Base.InternalFormat = GL_DEPTH_COMPONENT24;
+      rb->InternalFormat = GL_DEPTH_COMPONENT24;
       break;
    case PIPE_FORMAT_S8_UINT:
-      strb->Base.InternalFormat = GL_STENCIL_INDEX8_EXT;
+      rb->InternalFormat = GL_STENCIL_INDEX8_EXT;
       break;
    case PIPE_FORMAT_R16G16B16A16_SNORM:
       /* accum buffer */
-      strb->Base.InternalFormat = GL_RGBA16_SNORM;
+      rb->InternalFormat = GL_RGBA16_SNORM;
       break;
    case PIPE_FORMAT_R16G16B16A16_UNORM:
-      strb->Base.InternalFormat = GL_RGBA16;
+      rb->InternalFormat = GL_RGBA16;
       break;
    case PIPE_FORMAT_R16G16B16_UNORM:
-      strb->Base.InternalFormat = GL_RGB16;
+      rb->InternalFormat = GL_RGB16;
       break;
    case PIPE_FORMAT_R8_UNORM:
-      strb->Base.InternalFormat = GL_R8;
+      rb->InternalFormat = GL_R8;
       break;
    case PIPE_FORMAT_R8G8_UNORM:
-      strb->Base.InternalFormat = GL_RG8;
+      rb->InternalFormat = GL_RG8;
       break;
    case PIPE_FORMAT_R16_UNORM:
-      strb->Base.InternalFormat = GL_R16;
+      rb->InternalFormat = GL_R16;
       break;
    case PIPE_FORMAT_R16G16_UNORM:
-      strb->Base.InternalFormat = GL_RG16;
+      rb->InternalFormat = GL_RG16;
       break;
    case PIPE_FORMAT_R32G32B32A32_FLOAT:
-      strb->Base.InternalFormat = GL_RGBA32F;
+      rb->InternalFormat = GL_RGBA32F;
       break;
    case PIPE_FORMAT_R32G32B32X32_FLOAT:
    case PIPE_FORMAT_R32G32B32_FLOAT:
-      strb->Base.InternalFormat = GL_RGB32F;
+      rb->InternalFormat = GL_RGB32F;
       break;
    case PIPE_FORMAT_R16G16B16A16_FLOAT:
-      strb->Base.InternalFormat = GL_RGBA16F;
+      rb->InternalFormat = GL_RGBA16F;
       break;
    case PIPE_FORMAT_R16G16B16X16_FLOAT:
-      strb->Base.InternalFormat = GL_RGB16F;
+      rb->InternalFormat = GL_RGB16F;
       break;
    default:
       _mesa_problem(NULL,
                     "Unexpected format %s in st_new_renderbuffer_fb",
                     util_format_name(format));
-      FREE(strb);
+      FREE(rb);
       return NULL;
    }
 
    /* st-specific methods */
-   strb->Base.Delete = st_renderbuffer_delete;
-   strb->Base.AllocStorage = st_renderbuffer_alloc_storage;
+   rb->Delete = st_renderbuffer_delete;
+   rb->AllocStorage = st_renderbuffer_alloc_storage;
 
    /* surface is allocated in st_renderbuffer_alloc_storage() */
-   strb->surface = NULL;
+   rb->surface = NULL;
 
-   return &strb->Base;
+   return rb;
 }
 
 void
 st_regen_renderbuffer_surface(struct st_context *st,
-                              struct st_renderbuffer *strb)
+                              struct gl_renderbuffer *rb)
 {
    struct pipe_context *pipe = st->pipe;
-   struct pipe_resource *resource = strb->texture;
+   struct pipe_resource *resource = rb->texture;
 
    struct pipe_surface **psurf =
-      strb->surface_srgb ? &strb->surface_srgb : &strb->surface_linear;
+      rb->surface_srgb ? &rb->surface_srgb : &rb->surface_linear;
    struct pipe_surface *surf = *psurf;
    /* create a new pipe_surface */
    struct pipe_surface surf_tmpl;
    memset(&surf_tmpl, 0, sizeof(surf_tmpl));
    surf_tmpl.format = surf->format;
-   surf_tmpl.nr_samples = strb->rtt_nr_samples;
+   surf_tmpl.nr_samples = rb->rtt_nr_samples;
    surf_tmpl.u.tex.level = surf->u.tex.level;
    surf_tmpl.u.tex.first_layer = surf->u.tex.first_layer;
    surf_tmpl.u.tex.last_layer = surf->u.tex.last_layer;
@@ -471,7 +468,7 @@ st_regen_renderbuffer_surface(struct st_context *st,
    pipe_surface_release(pipe, psurf);
    *psurf = surf;
 
-   strb->surface = *psurf;
+   rb->surface = *psurf;
 }
 
 /**
@@ -480,27 +477,27 @@ st_regen_renderbuffer_surface(struct st_context *st,
  */
 void
 st_update_renderbuffer_surface(struct st_context *st,
-                               struct st_renderbuffer *strb)
+                               struct gl_renderbuffer *rb)
 {
    struct pipe_context *pipe = st->pipe;
-   struct pipe_resource *resource = strb->texture;
+   struct pipe_resource *resource = rb->texture;
    const struct gl_texture_object *stTexObj = NULL;
-   unsigned rtt_width = strb->Base.Width;
-   unsigned rtt_height = strb->Base.Height;
-   unsigned rtt_depth = strb->Base.Depth;
+   unsigned rtt_width = rb->Width;
+   unsigned rtt_height = rb->Height;
+   unsigned rtt_depth = rb->Depth;
 
    /*
     * For winsys fbo, it is possible that the renderbuffer is sRGB-capable but
-    * the format of strb->texture is linear (because we have no control over
-    * the format).  Check strb->Base.Format instead of strb->texture->format
+    * the format of rb->texture is linear (because we have no control over
+    * the format).  Check rb->Format instead of rb->texture->format
     * to determine if the rb is sRGB-capable.
     */
    boolean enable_srgb = st->ctx->Color.sRGBEnabled &&
-      _mesa_is_format_srgb(strb->Base.Format);
+      _mesa_is_format_srgb(rb->Format);
    enum pipe_format format = resource->format;
 
-   if (strb->is_rtt) {
-      stTexObj = strb->Base.TexImage->TexObject;
+   if (rb->is_rtt) {
+      stTexObj = rb->TexImage->TexObject;
       if (stTexObj->surface_based)
          format = stTexObj->surface_format;
    }
@@ -526,21 +523,21 @@ st_update_renderbuffer_surface(struct st_context *st,
 
    /* determine the layer bounds */
    unsigned first_layer, last_layer;
-   if (strb->rtt_layered) {
+   if (rb->rtt_layered) {
       first_layer = 0;
-      last_layer = util_max_layer(strb->texture, level);
+      last_layer = util_max_layer(rb->texture, level);
    }
    else {
       first_layer =
-      last_layer = strb->rtt_face + strb->rtt_slice;
+      last_layer = rb->rtt_face + rb->rtt_slice;
    }
 
    /* Adjust for texture views */
-   if (strb->is_rtt && resource->array_size > 1 &&
+   if (rb->is_rtt && resource->array_size > 1 &&
        stTexObj->Immutable) {
       const struct gl_texture_object *tex = stTexObj;
       first_layer += tex->Attrib.MinLayer;
-      if (!strb->rtt_layered)
+      if (!rb->rtt_layered)
          last_layer += tex->Attrib.MinLayer;
       else
          last_layer = MIN2(first_layer + tex->Attrib.NumLayers - 1,
@@ -548,17 +545,17 @@ st_update_renderbuffer_surface(struct st_context *st,
    }
 
    struct pipe_surface **psurf =
-      enable_srgb ? &strb->surface_srgb : &strb->surface_linear;
+      enable_srgb ? &rb->surface_srgb : &rb->surface_linear;
    struct pipe_surface *surf = *psurf;
 
    if (!surf ||
-       surf->texture->nr_samples != strb->Base.NumSamples ||
-       surf->texture->nr_storage_samples != strb->Base.NumStorageSamples ||
+       surf->texture->nr_samples != rb->NumSamples ||
+       surf->texture->nr_storage_samples != rb->NumStorageSamples ||
        surf->format != format ||
        surf->texture != resource ||
        surf->width != rtt_width ||
        surf->height != rtt_height ||
-       surf->nr_samples != strb->rtt_nr_samples ||
+       surf->nr_samples != rb->rtt_nr_samples ||
        surf->u.tex.level != level ||
        surf->u.tex.first_layer != first_layer ||
        surf->u.tex.last_layer != last_layer) {
@@ -566,7 +563,7 @@ st_update_renderbuffer_surface(struct st_context *st,
       struct pipe_surface surf_tmpl;
       memset(&surf_tmpl, 0, sizeof(surf_tmpl));
       surf_tmpl.format = format;
-      surf_tmpl.nr_samples = strb->rtt_nr_samples;
+      surf_tmpl.nr_samples = rb->rtt_nr_samples;
       surf_tmpl.u.tex.level = level;
       surf_tmpl.u.tex.first_layer = first_layer;
       surf_tmpl.u.tex.last_layer = last_layer;
@@ -576,7 +573,7 @@ st_update_renderbuffer_surface(struct st_context *st,
       pipe_surface_release(pipe, psurf);
       *psurf = surf;
    }
-   strb->surface = *psurf;
+   rb->surface = *psurf;
 }
 
 
@@ -604,7 +601,6 @@ st_render_texture(struct gl_context *ctx,
 {
    struct st_context *st = st_context(ctx);
    struct gl_renderbuffer *rb = att->Renderbuffer;
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    struct pipe_resource *pt;
 
    pt = get_teximage_resource(att->Texture,
@@ -613,14 +609,14 @@ st_render_texture(struct gl_context *ctx,
    assert(pt);
 
    /* point renderbuffer at texobject */
-   strb->is_rtt = TRUE;
-   strb->rtt_face = att->CubeMapFace;
-   strb->rtt_slice = att->Zoffset;
-   strb->rtt_layered = att->Layered;
-   strb->rtt_nr_samples = att->NumSamples;
-   pipe_resource_reference(&strb->texture, pt);
+   rb->is_rtt = TRUE;
+   rb->rtt_face = att->CubeMapFace;
+   rb->rtt_slice = att->Zoffset;
+   rb->rtt_layered = att->Layered;
+   rb->rtt_nr_samples = att->NumSamples;
+   pipe_resource_reference(&rb->texture, pt);
 
-   st_update_renderbuffer_surface(st, strb);
+   st_update_renderbuffer_surface(st, rb);
 
    /* Invalidate buffer state so that the pipe's framebuffer state
     * gets updated.
@@ -644,12 +640,11 @@ void
 st_finish_render_texture(struct gl_context *ctx, struct gl_renderbuffer *rb)
 {
    struct st_context *st = st_context(ctx);
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
 
-   if (!strb)
+   if (!rb)
       return;
 
-   strb->is_rtt = FALSE;
+   rb->is_rtt = FALSE;
 
    /* restore previous framebuffer state */
    st_invalidate_buffers(st);
@@ -784,7 +779,7 @@ st_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
       if (!mixed_formats) {
          /* Disallow mixed formats. */
          if (att->Type != GL_NONE) {
-            format = st_renderbuffer(att->Renderbuffer)->surface->format;
+            format = att->Renderbuffer->surface->format;
          } else {
             continue;
          }
@@ -814,7 +809,7 @@ st_discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
    if (!att->Renderbuffer || !att->Complete)
       return;
 
-   prsc = st_renderbuffer(att->Renderbuffer)->surface->texture;
+   prsc = att->Renderbuffer->surface->texture;
 
    /* using invalidate_resource will only work for simple 2D resources */
    if (prsc->depth0 != 1 || prsc->array_size != 1 || prsc->last_level != 0)
@@ -894,19 +889,18 @@ st_MapRenderbuffer(struct gl_context *ctx,
                    bool flip_y)
 {
    struct st_context *st = st_context(ctx);
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    struct pipe_context *pipe = st->pipe;
    const GLboolean invert = flip_y;
    GLuint y2;
    GLubyte *map;
 
-   if (strb->software) {
+   if (rb->software) {
       /* software-allocated renderbuffer (probably an accum buffer) */
-      if (strb->data) {
-         GLint bpp = _mesa_get_format_bytes(strb->Base.Format);
-         GLint stride = _mesa_format_row_stride(strb->Base.Format,
-                                                strb->Base.Width);
-         *mapOut = (GLubyte *) strb->data + y * stride + x * bpp;
+      if (rb->data) {
+         GLint bpp = _mesa_get_format_bytes(rb->Format);
+         GLint stride = _mesa_format_row_stride(rb->Format,
+                                                rb->Width);
+         *mapOut = (GLubyte *) rb->data + y * stride + x * bpp;
          *rowStrideOut = stride;
       }
       else {
@@ -929,22 +923,22 @@ st_MapRenderbuffer(struct gl_context *ctx,
     * user-allocated renderbuffers and textures.
     */
    if (invert)
-      y2 = strb->Base.Height - y - h;
+      y2 = rb->Height - y - h;
    else
       y2 = y;
 
     map = pipe_texture_map(pipe,
-                            strb->texture,
-                            strb->surface->u.tex.level,
-                            strb->surface->u.tex.first_layer,
-                            transfer_flags, x, y2, w, h, &strb->transfer);
+                            rb->texture,
+                            rb->surface->u.tex.level,
+                            rb->surface->u.tex.first_layer,
+                            transfer_flags, x, y2, w, h, &rb->transfer);
    if (map) {
       if (invert) {
-         *rowStrideOut = -(int) strb->transfer->stride;
-         map += (h - 1) * strb->transfer->stride;
+         *rowStrideOut = -(int) rb->transfer->stride;
+         map += (h - 1) * rb->transfer->stride;
       }
       else {
-         *rowStrideOut = strb->transfer->stride;
+         *rowStrideOut = rb->transfer->stride;
       }
       *mapOut = map;
    }
@@ -963,14 +957,13 @@ st_UnmapRenderbuffer(struct gl_context *ctx,
                      struct gl_renderbuffer *rb)
 {
    struct st_context *st = st_context(ctx);
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    struct pipe_context *pipe = st->pipe;
 
-   if (strb->software) {
+   if (rb->software) {
       /* software-allocated renderbuffer (probably an accum buffer) */
       return;
    }
 
-   pipe_texture_unmap(pipe, strb->transfer);
-   strb->transfer = NULL;
+   pipe_texture_unmap(pipe, rb->transfer);
+   rb->transfer = NULL;
 }

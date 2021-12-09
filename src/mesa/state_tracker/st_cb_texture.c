@@ -2545,7 +2545,7 @@ cpu_transfer:
  */
 static void
 fallback_copy_texsubimage(struct gl_context *ctx,
-                          struct st_renderbuffer *strb,
+                          struct gl_renderbuffer *rb,
                           struct gl_texture_image *stImage,
                           GLenum baseFormat,
                           GLint destX, GLint destY, GLint slice,
@@ -2567,13 +2567,13 @@ fallback_copy_texsubimage(struct gl_context *ctx,
       debug_printf("%s: fallback processing\n", __func__);
 
    if (st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
-      srcY = strb->Base.Height - srcY - height;
+      srcY = rb->Height - srcY - height;
    }
 
    map = pipe_texture_map(pipe,
-                           strb->texture,
-                           strb->surface->u.tex.level,
-                           strb->surface->u.tex.first_layer,
+                           rb->texture,
+                           rb->surface->u.tex.level,
+                           rb->surface->u.tex.first_layer,
                            PIPE_MAP_READ,
                            srcX, srcY,
                            width, height, &src_trans);
@@ -2622,7 +2622,7 @@ fallback_copy_texsubimage(struct gl_context *ctx,
                                 transfer->layer_stride : transfer->stride);
          /* To avoid a large temp memory allocation, do copy row by row */
          for (row = 0; row < height; row++, srcY += yStep) {
-            util_format_unpack_z_32unorm(strb->texture->format,
+            util_format_unpack_z_32unorm(rb->texture->format,
                                          data, (uint8_t *)map + src_trans->stride * srcY,
                                          width);
             if (scaleOrBias) {
@@ -2666,7 +2666,7 @@ fallback_copy_texsubimage(struct gl_context *ctx,
           * try to avoid that someday.
           */
          pipe_get_tile_rgba(src_trans, map, 0, 0, width, height,
-                            util_format_linear(strb->texture->format),
+                            util_format_linear(rb->texture->format),
                             tempSrc);
 
          /* Store into texture memory.
@@ -2740,7 +2740,6 @@ st_CopyTexSubImage(struct gl_context *ctx, GLuint dims,
 {
    struct gl_texture_image *stImage = texImage;
    struct gl_texture_object *stObj = texImage->TexObject;
-   struct st_renderbuffer *strb = st_renderbuffer(rb);
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct pipe_screen *screen = st->screen;
@@ -2757,8 +2756,8 @@ st_CopyTexSubImage(struct gl_context *ctx, GLuint dims,
           !_mesa_is_format_astc_2d(texImage->TexFormat) &&
           texImage->TexFormat != MESA_FORMAT_ETC1_RGB8);
 
-   if (!strb || !strb->surface || !stImage->pt) {
-      debug_printf("%s: null strb or stImage\n", __func__);
+   if (!rb || !rb->surface || !stImage->pt) {
+      debug_printf("%s: null rb or stImage\n", __func__);
       return;
    }
 
@@ -2794,7 +2793,7 @@ st_CopyTexSubImage(struct gl_context *ctx, GLuint dims,
 
    /* Y flipping for the main framebuffer. */
    if (do_flip) {
-      srcY1 = strb->Base.Height - srcY - height;
+      srcY1 = rb->Height - srcY - height;
       srcY0 = srcY1 + height;
    }
    else {
@@ -2806,12 +2805,12 @@ st_CopyTexSubImage(struct gl_context *ctx, GLuint dims,
     * This supports flipping, format conversions, and downsampling.
     */
    memset(&blit, 0, sizeof(blit));
-   blit.src.resource = strb->texture;
-   blit.src.format = util_format_linear(strb->surface->format);
-   blit.src.level = strb->surface->u.tex.level;
+   blit.src.resource = rb->texture;
+   blit.src.format = util_format_linear(rb->surface->format);
+   blit.src.level = rb->surface->u.tex.level;
    blit.src.box.x = srcX;
    blit.src.box.y = srcY0;
-   blit.src.box.z = strb->surface->u.tex.first_layer;
+   blit.src.box.z = rb->surface->u.tex.first_layer;
    blit.src.box.width = width;
    blit.src.box.height = srcY1 - srcY0;
    blit.src.box.depth = 1;
@@ -2834,7 +2833,7 @@ st_CopyTexSubImage(struct gl_context *ctx, GLuint dims,
 fallback:
    /* software fallback */
    fallback_copy_texsubimage(ctx,
-                             strb, stImage, texImage->_BaseFormat,
+                             rb, stImage, texImage->_BaseFormat,
                              destX, destY, slice,
                              srcX, srcY, width, height);
 }

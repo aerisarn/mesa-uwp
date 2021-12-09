@@ -39,50 +39,10 @@
 struct dd_function_table;
 struct pipe_context;
 
-/**
- * Derived renderbuffer class.  Just need to add a pointer to the
- * pipe surface.
- */
-struct st_renderbuffer
-{
-   struct gl_renderbuffer Base;
-   struct pipe_resource *texture;
-   /* This points to either "surface_linear" or "surface_srgb".
-    * It doesn't hold the pipe_surface reference. The other two do.
-    */
-   struct pipe_surface *surface;
-   struct pipe_surface *surface_linear;
-   struct pipe_surface *surface_srgb;
-   GLboolean defined;        /**< defined contents? */
-
-   struct pipe_transfer *transfer; /**< only used when mapping the resource */
-
-   /**
-    * Used only when hardware accumulation buffers are not supported.
-    */
-   boolean software;
-   void *data;
-
-   bool use_readpix_cache;
-
-   /* Inputs from Driver.RenderTexture, don't use directly. */
-   boolean is_rtt; /**< whether Driver.RenderTexture was called */
-   unsigned rtt_face, rtt_slice;
-   boolean rtt_layered; /**< whether glFramebufferTexture was called */
-   unsigned rtt_nr_samples; /**< from FramebufferTexture2DMultisampleEXT */
-};
-
-
-static inline struct st_renderbuffer *
-st_renderbuffer(struct gl_renderbuffer *rb)
-{
-   return (struct st_renderbuffer *) rb;
-}
-
 static inline struct pipe_resource *
 st_get_renderbuffer_resource(struct gl_renderbuffer *rb)
 {
-   return st_renderbuffer(rb)->texture;
+   return rb->texture;
 }
 
 /**
@@ -107,11 +67,11 @@ st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, boolean sw);
 
 extern void
 st_update_renderbuffer_surface(struct st_context *st,
-                               struct st_renderbuffer *strb);
+                               struct gl_renderbuffer *strb);
 
 extern void
 st_regen_renderbuffer_surface(struct st_context *st,
-                              struct st_renderbuffer *strb);
+                              struct gl_renderbuffer *strb);
 
 struct gl_renderbuffer *st_new_renderbuffer(struct gl_context *ctx, GLuint name);
 void st_render_texture(struct gl_context *ctx,
