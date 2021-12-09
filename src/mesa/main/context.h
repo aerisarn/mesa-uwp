@@ -64,28 +64,6 @@ extern "C" {
 struct _glapi_table;
 
 
-/** \name Visual-related functions */
-/*@{*/
-
-extern void
-_mesa_initialize_visual( struct gl_config *v,
-                         GLboolean dbFlag,
-                         GLboolean stereoFlag,
-                         GLint redBits,
-                         GLint greenBits,
-                         GLint blueBits,
-                         GLint alphaBits,
-                         GLint depthBits,
-                         GLint stencilBits,
-                         GLint accumRedBits,
-                         GLint accumGreenBits,
-                         GLint accumBlueBits,
-                         GLint accumAlphaBits,
-                         GLuint numSamples );
-
-/*@}*/
-
-
 /** \name Context-related functions */
 /*@{*/
 
