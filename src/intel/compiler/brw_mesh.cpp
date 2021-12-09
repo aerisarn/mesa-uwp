@@ -652,6 +652,23 @@ get_mesh_urb_handle(const fs_builder &bld, nir_intrinsic_op op)
 }
 
 static void
+adjust_handle_and_offset(const fs_builder &bld,
+                         fs_reg &urb_handle,
+                         unsigned &urb_global_offset)
+{
+   /* Make sure that URB global offset is below 2048 (2^11), because
+    * that's the maximum possible value encoded in Message Descriptor.
+    */
+   unsigned adjustment = (urb_global_offset >> 11) << 11;
+
+   if (adjustment) {
+      fs_builder ubld8 = bld.group(8, 0).exec_all();
+      ubld8.ADD(urb_handle, urb_handle, brw_imm_ud(adjustment));
+      urb_global_offset -= adjustment;
+   }
+}
+
+static void
 emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
                        const fs_reg &src)
 {
@@ -684,6 +701,9 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
    const unsigned first_mask   = (mask << comp_shift) & 0xF;
    const unsigned second_mask  = (mask >> (4 - comp_shift)) & 0xF;
 
+   unsigned urb_global_offset = offset_in_dwords / 4;
+   adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
+
    if (first_mask > 0) {
       for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
          fs_builder bld8 = bld.group(8, q);
@@ -706,11 +726,15 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED, reg_undef, payload);
          inst->mlen = p;
-         inst->offset = offset_in_dwords / 4;
+         inst->offset = urb_global_offset;
+         assert(inst->offset < 2048);
       }
    }
 
    if (second_mask > 0) {
+      urb_global_offset++;
+      adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
+
       for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
          fs_builder bld8 = bld.group(8, q);
 
@@ -729,7 +753,8 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
 
          fs_inst *inst = bld8.emit(SHADER_OPCODE_URB_WRITE_SIMD8_MASKED, reg_undef, payload);
          inst->mlen = p;
-         inst->offset = (offset_in_dwords / 4) + 1;
+         inst->offset = urb_global_offset;
+         assert(inst->offset < 2048);
       }
    }
 }
@@ -815,6 +840,9 @@ emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
                                      nir_src_as_uint(*offset_nir_src) +
                                      nir_intrinsic_component(instr);
 
+   unsigned urb_global_offset = offset_in_dwords / 4;
+   adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
+
    const unsigned comp_offset = offset_in_dwords % 4;
    const unsigned num_regs = comp_offset + comps;
 
@@ -823,7 +851,8 @@ emit_urb_direct_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
 
    fs_inst *inst = ubld8.emit(SHADER_OPCODE_URB_READ_SIMD8, data, urb_handle);
    inst->mlen = 1;
-   inst->offset = offset_in_dwords / 4;
+   inst->offset = urb_global_offset;
+   assert(inst->offset < 2048);
    inst->size_written = num_regs * REG_SIZE;
 
    for (unsigned c = 0; c < comps; c++) {
