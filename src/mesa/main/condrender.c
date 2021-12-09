@@ -36,7 +36,6 @@
 #include "mtypes.h"
 #include "queryobj.h"
 
-#include "state_tracker/st_cb_queryobj.h"
 #include "state_tracker/st_cb_condrender.h"
 #include "api_exec_decl.h"
 
@@ -196,27 +195,27 @@ _mesa_check_conditional_render(struct gl_context *ctx)
       FALLTHROUGH;
    case GL_QUERY_WAIT:
       if (!q->Ready) {
-         st_WaitQuery(ctx, q);
+         _mesa_wait_query(ctx, q);
       }
       return q->Result > 0;
    case GL_QUERY_BY_REGION_WAIT_INVERTED:
       FALLTHROUGH;
    case GL_QUERY_WAIT_INVERTED:
       if (!q->Ready) {
-         st_WaitQuery(ctx, q);
+         _mesa_wait_query(ctx, q);
       }
       return q->Result == 0;
    case GL_QUERY_BY_REGION_NO_WAIT:
       FALLTHROUGH;
    case GL_QUERY_NO_WAIT:
       if (!q->Ready)
-         st_CheckQuery(ctx, q);
+         _mesa_check_query(ctx, q);
       return q->Ready ? (q->Result > 0) : GL_TRUE;
    case GL_QUERY_BY_REGION_NO_WAIT_INVERTED:
       FALLTHROUGH;
    case GL_QUERY_NO_WAIT_INVERTED:
       if (!q->Ready)
-         st_CheckQuery(ctx, q);
+         _mesa_check_query(ctx, q);
       return q->Ready ? (q->Result == 0) : GL_TRUE;
    default:
       _mesa_problem(ctx, "Bad cond render mode %s in "

@@ -50,7 +50,6 @@
 #include "st_cb_perfmon.h"
 #include "st_cb_perfquery.h"
 #include "st_cb_program.h"
-#include "st_cb_queryobj.h"
 #include "st_cb_flush.h"
 #include "st_atom.h"
 #include "st_draw.h"

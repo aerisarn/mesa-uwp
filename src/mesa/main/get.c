@@ -35,6 +35,7 @@
 #include "macros.h"
 #include "multisample.h"
 #include "mtypes.h"
+#include "queryobj.h"
 #include "spirv_extensions.h"
 #include "state.h"
 #include "texcompress.h"
@@ -44,7 +45,6 @@
 #include "stencil.h"
 #include "version.h"
 
-#include "state_tracker/st_cb_queryobj.h"
 #include "state_tracker/st_context.h"
 #include "api_exec_decl.h"
 
@@ -1187,7 +1187,7 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       break;
    /* GL_ARB_timer_query */
    case GL_TIMESTAMP:
-      v->value_int64 = st_GetTimestamp(ctx);
+      v->value_int64 = _mesa_get_timestamp(ctx);
       break;
    /* GL_KHR_DEBUG */
    case GL_DEBUG_OUTPUT:

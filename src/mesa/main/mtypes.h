@@ -2208,6 +2208,13 @@ struct gl_query_object
    GLboolean Ready;    /**< result is ready? */
    GLboolean EverBound;/**< has query object ever been bound */
    GLuint Stream;      /**< The stream */
+
+   struct pipe_query *pq;
+
+   /* Begin TIMESTAMP query for GL_TIME_ELAPSED_EXT queries */
+   struct pipe_query *pq_begin;
+
+   unsigned type;  /**< PIPE_QUERY_x */
 };
 
 

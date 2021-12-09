@@ -40,7 +40,6 @@
 #include "pipe/p_defines.h"
 #include "cso_cache/cso_context.h"
 #include "st_context.h"
-#include "st_cb_queryobj.h"
 #include "st_cb_condrender.h"
 #include "st_cb_bitmap.h"
 
@@ -49,7 +48,6 @@ void
 st_BeginConditionalRender(struct gl_context *ctx, struct gl_query_object *q,
                           GLenum mode)
 {
-   struct st_query_object *stq = st_query_object(q);
    struct st_context *st = st_context(ctx);
    uint m;
    /* Don't invert the condition for rendering by default */
@@ -91,7 +89,7 @@ st_BeginConditionalRender(struct gl_context *ctx, struct gl_query_object *q,
       m = PIPE_RENDER_COND_WAIT;
    }
 
-   cso_set_render_condition(st->cso_context, stq->pq, inverted, m);
+   cso_set_render_condition(st->cso_context, q->pq, inverted, m);
 }
 
 void

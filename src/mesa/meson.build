@@ -350,8 +350,6 @@ files_libmesa = files(
   'state_tracker/st_cb_perfquery.h',
   'state_tracker/st_cb_program.c',
   'state_tracker/st_cb_program.h',
-  'state_tracker/st_cb_queryobj.c',
-  'state_tracker/st_cb_queryobj.h',
   'state_tracker/st_cb_rasterpos.c',
   'state_tracker/st_cb_rasterpos.h',
   'state_tracker/st_cb_readpixels.c',
