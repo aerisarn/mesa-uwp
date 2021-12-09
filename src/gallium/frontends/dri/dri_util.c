@@ -851,25 +851,6 @@ dri2InvalidateDrawable(__DRIdrawable *drawable)
     drawable->dri2.stamp++;
 }
 
-/**
- * Check that the gl_framebuffer associated with dPriv is the right size.
- * Resize the gl_framebuffer if needed.
- * It's expected that the dPriv->driverPrivate member points to a
- * gl_framebuffer object.
- */
-void
-driUpdateFramebufferSize(struct gl_context *ctx, const __DRIdrawable *dPriv)
-{
-   struct gl_framebuffer *fb = (struct gl_framebuffer *) dPriv->driverPrivate;
-   if (fb && (dPriv->w != fb->Width || dPriv->h != fb->Height)) {
-      _mesa_resize_framebuffer(ctx, fb, dPriv->w, dPriv->h);
-      /* if the driver needs the hw lock for ResizeBuffers, the drawable
-         might have changed again by now */
-      assert(fb->Width == dPriv->w);
-      assert(fb->Height == dPriv->h);
-   }
-}
-
 /*
  * Note: the first match is returned, which is important for formats like
  * __DRI_IMAGE_FORMAT_R8 which maps to both MESA_FORMAT_{R,L}_UNORM8
