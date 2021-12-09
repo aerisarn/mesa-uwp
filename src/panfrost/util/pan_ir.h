@@ -204,6 +204,9 @@ struct pan_shader_info {
         unsigned tls_size;
         unsigned wls_size;
 
+        /* Bit mask of preloaded registers */
+        uint64_t preload;
+
         union {
                 struct {
                         bool reads_frag_coord;

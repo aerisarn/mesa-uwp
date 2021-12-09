@@ -3830,6 +3830,10 @@ bifrost_compile_shader_nir(nir_shader *nir,
         /* Analyze after scheduling since we depend on instruction order. */
         bi_analyze_helper_terminate(ctx);
 
+        /* A register is preloaded <==> it is live before the first block */
+        bi_block *first_block = list_first_entry(&ctx->blocks, bi_block, link);
+        info->preload = first_block->reg_live_in;
+
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
 
