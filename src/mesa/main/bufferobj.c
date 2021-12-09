@@ -554,7 +554,7 @@ _mesa_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
  * Called via glCopyBufferSubData().
  */
 static void
-copy_buffer_subdata(struct gl_context *ctx,
+bufferobj_copy_subdata(struct gl_context *ctx,
                        struct gl_buffer_object *src,
                        struct gl_buffer_object *dst,
                        GLintptr readOffset, GLintptr writeOffset,
@@ -563,6 +563,7 @@ copy_buffer_subdata(struct gl_context *ctx,
    struct pipe_context *pipe = ctx->pipe;
    struct pipe_box box;
 
+   dst->MinMaxCacheDirty = true;
    if (!size)
       return;
 
@@ -3460,9 +3461,7 @@ copy_buffer_sub_data(struct gl_context *ctx, struct gl_buffer_object *src,
       }
    }
 
-   dst->MinMaxCacheDirty = true;
-
-   copy_buffer_subdata(ctx, src, dst, readOffset, writeOffset, size);
+   bufferobj_copy_subdata(ctx, src, dst, readOffset, writeOffset, size);
 }
 
 void GLAPIENTRY
@@ -3478,8 +3477,7 @@ _mesa_CopyBufferSubData_no_error(GLenum readTarget, GLenum writeTarget,
    struct gl_buffer_object **dst_ptr = get_buffer_target(ctx, writeTarget);
    struct gl_buffer_object *dst = *dst_ptr;
 
-   dst->MinMaxCacheDirty = true;
-   copy_buffer_subdata(ctx, src, dst, readOffset, writeOffset,
+   bufferobj_copy_subdata(ctx, src, dst, readOffset, writeOffset,
                        size);
 }
 
@@ -3539,8 +3537,7 @@ _mesa_CopyNamedBufferSubData_no_error(GLuint readBuffer, GLuint writeBuffer,
    struct gl_buffer_object *src = _mesa_lookup_bufferobj(ctx, readBuffer);
    struct gl_buffer_object *dst = _mesa_lookup_bufferobj(ctx, writeBuffer);
 
-   dst->MinMaxCacheDirty = true;
-   copy_buffer_subdata(ctx, src, dst, readOffset, writeOffset,
+   bufferobj_copy_subdata(ctx, src, dst, readOffset, writeOffset,
                        size);
 }
 
@@ -3599,8 +3596,7 @@ _mesa_InternalBufferSubDataCopyMESA(GLintptr srcBuffer, GLuint srcOffset,
    if (!validate_buffer_sub_data(ctx, dst, dstOffset, size, func))
       goto done; /* the error is already set */
 
-   dst->MinMaxCacheDirty = true;
-   copy_buffer_subdata(ctx, src, dst, srcOffset, dstOffset, size);
+   bufferobj_copy_subdata(ctx, src, dst, srcOffset, dstOffset, size);
 
 done:
    /* The caller passes the reference to this function, so unreference it. */
