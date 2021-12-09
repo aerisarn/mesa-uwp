@@ -72,10 +72,6 @@ void st_bufferobj_subdata(struct gl_context *ctx,
                           GLintptrARB offset,
                           GLsizeiptrARB size,
                           const void * data, struct gl_buffer_object *obj);
-void st_bufferobj_get_subdata(struct gl_context *ctx,
-                              GLintptrARB offset,
-                              GLsizeiptrARB size,
-                              void * data, struct gl_buffer_object *obj);
 GLboolean st_bufferobj_data(struct gl_context *ctx,
                             GLenum target,
                             GLsizeiptrARB size,
@@ -83,13 +79,6 @@ GLboolean st_bufferobj_data(struct gl_context *ctx,
                             GLenum usage,
                             GLbitfield storageFlags,
                             struct gl_buffer_object *obj);
-GLboolean st_bufferobj_data_mem(struct gl_context *ctx,
-                                GLenum target,
-                                GLsizeiptrARB size,
-                                struct gl_memory_object *memObj,
-                                GLuint64 offset,
-                                GLenum usage,
-                                struct gl_buffer_object *bufObj);
 void *st_bufferobj_map_range(struct gl_context *ctx,
                              GLintptr offset, GLsizeiptr length,
                              GLbitfield access,
@@ -102,20 +91,6 @@ void st_bufferobj_flush_mapped_range(struct gl_context *ctx,
                                      gl_map_buffer_index index);
 GLboolean st_bufferobj_unmap(struct gl_context *ctx, struct gl_buffer_object *obj,
                              gl_map_buffer_index index);
-void st_copy_buffer_subdata(struct gl_context *ctx,
-                            struct gl_buffer_object *src,
-                            struct gl_buffer_object *dst,
-                            GLintptr readOffset, GLintptr writeOffset,
-                            GLsizeiptr size);
-void st_clear_buffer_subdata(struct gl_context *ctx,
-                             GLintptr offset, GLsizeiptr size,
-                             const void *clearValue,
-                             GLsizeiptr clearValueSize,
-                             struct gl_buffer_object *bufObj);
-void st_bufferobj_page_commitment(struct gl_context *ctx,
-                                  struct gl_buffer_object *bufferObj,
-                                  GLintptr offset, GLsizeiptr size,
-                                  GLboolean commit);
 
 struct gl_buffer_object *
 _mesa_internal_buffer_object_alloc(struct gl_context *ctx, GLuint id);
