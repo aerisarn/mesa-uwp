@@ -1807,7 +1807,23 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
          prog_data->num_per_primitive_inputs = urb_next;
       }
 
+      const uint64_t clip_dist_bits = VARYING_BIT_CLIP_DIST0 |
+                                      VARYING_BIT_CLIP_DIST1;
+
       uint64_t unique_fs_attrs = inputs_read & BRW_FS_VARYING_INPUT_MASK;
+
+      if (inputs_read & clip_dist_bits) {
+         assert(mue_map->per_vertex_header_size_dw > 8);
+         unique_fs_attrs &= ~clip_dist_bits;
+      }
+
+      /* In Mesh, CLIP_DIST slots are always at the beginning, because
+       * they come from MUE Vertex Header, not Per-Vertex Attributes.
+       */
+      if (inputs_read & clip_dist_bits) {
+         prog_data->urb_setup[VARYING_SLOT_CLIP_DIST0] = urb_next++;
+         prog_data->urb_setup[VARYING_SLOT_CLIP_DIST1] = urb_next++;
+      }
 
       /* Per-Vertex attributes are laid out ordered.  Because we always link
        * Mesh and Fragment shaders, the which slots are written and read by
