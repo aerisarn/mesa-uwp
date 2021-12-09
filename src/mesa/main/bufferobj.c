@@ -5179,13 +5179,35 @@ _mesa_BindBuffersBase(GLenum target, GLuint first, GLsizei count,
    }
 }
 
+/**
+ * Called via glInvalidateBuffer(Sub)Data.
+ */
+static void
+bufferobj_invalidate(struct gl_context *ctx,
+                     struct gl_buffer_object *obj,
+                     GLintptr offset,
+                     GLsizeiptr size)
+{
+   struct pipe_context *pipe = ctx->pipe;
+
+   /* We ignore partial invalidates. */
+   if (offset != 0 || size != obj->Size)
+      return;
+
+   /* If the buffer is mapped, we can't invalidate it. */
+   if (!obj->buffer || _mesa_bufferobj_mapped(obj, MAP_USER))
+      return;
+
+   pipe->invalidate_resource(pipe, obj->buffer);
+}
+
 static ALWAYS_INLINE void
 invalidate_buffer_subdata(struct gl_context *ctx,
                           struct gl_buffer_object *bufObj, GLintptr offset,
                           GLsizeiptr length)
 {
-   if (ctx->Driver.InvalidateBufferSubData)
-      ctx->Driver.InvalidateBufferSubData(ctx, bufObj, offset, length);
+   if (ctx->has_invalidate_buffer)
+      bufferobj_invalidate(ctx, bufObj, offset, length);
 }
 
 void GLAPIENTRY

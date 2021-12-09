@@ -995,6 +995,9 @@ st_create_context(gl_api api, struct pipe_context *pipe,
    if (debug_get_option_mesa_mvp_dp4())
       ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].OptimizeForAOS = GL_TRUE;
 
+   if (pipe->screen->get_param(pipe->screen, PIPE_CAP_INVALIDATE_BUFFER))
+      ctx->has_invalidate_buffer = true;
+
    st = st_create_context_priv(ctx, pipe, options, no_error);
    if (!st) {
       _mesa_free_context_data(ctx, true);

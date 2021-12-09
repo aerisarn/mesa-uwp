@@ -5577,6 +5577,7 @@ struct gl_context
    struct pipe_context *pipe;
    struct st_config_options *st_opts;
    struct cso_context *cso_context;
+   bool has_invalidate_buffer;
    /*@}*/
 
    /**
