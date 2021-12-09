@@ -114,7 +114,51 @@ pan_shader_classify_pixel_kill_coverage(const struct pan_shader_info *info,
 
 #undef SET_PIXEL_KILL
 
-#define pan_preloads(reg) (info->preload & BITFIELD64_BIT(reg))
+#if PAN_ARCH >= 7
+static enum mali_shader_register_allocation
+pan_register_allocation(unsigned work_reg_count)
+{
+        return (work_reg_count <= 32) ?
+                MALI_SHADER_REGISTER_ALLOCATION_32_PER_THREAD :
+                MALI_SHADER_REGISTER_ALLOCATION_64_PER_THREAD;
+}
+#endif
+
+#define pan_preloads(reg) (preload & BITFIELD64_BIT(reg))
+
+static void
+pan_make_preload(gl_shader_stage stage,
+                 uint64_t preload,
+                 struct MALI_PRELOAD *out)
+{
+        switch (stage) {
+        case MESA_SHADER_VERTEX:
+                out->vertex.position_result_address_lo = pan_preloads(58);
+                out->vertex.position_result_address_hi = pan_preloads(59);
+                out->vertex.vertex_id = pan_preloads(61);
+                out->vertex.instance_id = pan_preloads(62);
+                break;
+
+        case MESA_SHADER_FRAGMENT:
+                out->fragment.primitive_id = pan_preloads(57);
+                out->fragment.primitive_flags = pan_preloads(58);
+                out->fragment.fragment_position = pan_preloads(59);
+                out->fragment.sample_mask_id = pan_preloads(61);
+                out->fragment.coverage = true;
+                break;
+
+        default:
+                out->compute.local_invocation_xy = pan_preloads(55);
+                out->compute.local_invocation_z = pan_preloads(56);
+                out->compute.work_group_x = pan_preloads(57);
+                out->compute.work_group_y = pan_preloads(58);
+                out->compute.work_group_z = pan_preloads(59);
+                out->compute.global_invocation_x = pan_preloads(60);
+                out->compute.global_invocation_y = pan_preloads(61);
+                out->compute.global_invocation_z = pan_preloads(62);
+                break;
+        }
+}
 
 static inline void
 pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
@@ -125,26 +169,13 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
 
 #if PAN_ARCH >= 7
         rsd->properties.shader_register_allocation =
-                (info->work_reg_count <= 32) ?
-                MALI_SHADER_REGISTER_ALLOCATION_32_PER_THREAD :
-                MALI_SHADER_REGISTER_ALLOCATION_64_PER_THREAD;
+                pan_register_allocation(info->work_reg_count);
 #endif
 
-        switch (info->stage) {
-        case MESA_SHADER_VERTEX:
-                rsd->preload.vertex.position_result_address_lo = pan_preloads(58);
-                rsd->preload.vertex.position_result_address_hi = pan_preloads(59);
-                rsd->preload.vertex.vertex_id = pan_preloads(61);
-                rsd->preload.vertex.instance_id = pan_preloads(62);
-                break;
+        pan_make_preload(info->stage, info->preload, &rsd->preload);
 
-        case MESA_SHADER_FRAGMENT:
+        if (info->stage == MESA_SHADER_FRAGMENT) {
                 pan_shader_classify_pixel_kill_coverage(info, rsd);
-
-#if PAN_ARCH >= 7
-                rsd->properties.shader_wait_dependency_6 = info->bifrost.wait_6;
-                rsd->properties.shader_wait_dependency_7 = info->bifrost.wait_7;
-#endif
 
                 /* Match the mesa/st convention. If this needs to be flipped,
                  * nir_lower_pntc_ytransform will do so. */
@@ -153,32 +184,13 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 rsd->properties.allow_forward_pixel_to_be_killed =
                         !info->fs.sidefx;
 
-                rsd->preload.fragment.primitive_id = pan_preloads(57);
-                rsd->preload.fragment.primitive_flags = pan_preloads(58);
-                rsd->preload.fragment.fragment_position = pan_preloads(59);
-                rsd->preload.fragment.sample_mask_id = pan_preloads(61);
-
-                rsd->preload.fragment.coverage = true;
-
 #if PAN_ARCH >= 7
+                rsd->properties.shader_wait_dependency_6 = info->bifrost.wait_6;
+                rsd->properties.shader_wait_dependency_7 = info->bifrost.wait_7;
+
                 rsd->message_preload_1 = info->bifrost.messages[0];
                 rsd->message_preload_2 = info->bifrost.messages[1];
 #endif
-                break;
-
-        case MESA_SHADER_COMPUTE:
-                rsd->preload.compute.local_invocation_xy = pan_preloads(55);
-                rsd->preload.compute.local_invocation_z = pan_preloads(56);
-                rsd->preload.compute.work_group_x = pan_preloads(57);
-                rsd->preload.compute.work_group_y = pan_preloads(58);
-                rsd->preload.compute.work_group_z = pan_preloads(59);
-                rsd->preload.compute.global_invocation_x = pan_preloads(60);
-                rsd->preload.compute.global_invocation_y = pan_preloads(61);
-                rsd->preload.compute.global_invocation_z = pan_preloads(62);
-                break;
-
-        default:
-                unreachable("TODO");
         }
 }
 
