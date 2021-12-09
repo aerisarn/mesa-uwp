@@ -576,6 +576,41 @@ copy_buffer_subdata(struct gl_context *ctx,
                               src->buffer, 0, &box);
 }
 
+static void
+clear_buffer_subdata_sw(struct gl_context *ctx,
+                        GLintptr offset, GLsizeiptr size,
+                        const GLvoid *clearValue,
+                        GLsizeiptr clearValueSize,
+                        struct gl_buffer_object *bufObj)
+{
+   GLsizeiptr i;
+   GLubyte *dest;
+
+   dest = _mesa_bufferobj_map_range(ctx, offset, size,
+                                    GL_MAP_WRITE_BIT |
+                                    GL_MAP_INVALIDATE_RANGE_BIT,
+                                    bufObj, MAP_INTERNAL);
+
+   if (!dest) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glClearBuffer[Sub]Data");
+      return;
+   }
+
+   if (clearValue == NULL) {
+      /* Clear with zeros, per the spec */
+      memset(dest, 0, size);
+      _mesa_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
+      return;
+   }
+
+   for (i = 0; i < size/clearValueSize; ++i) {
+      memcpy(dest, clearValue, clearValueSize);
+      dest += clearValueSize;
+   }
+
+   _mesa_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
+}
+
 /**
  * Called via glClearBufferSubData().
  */
@@ -590,8 +625,8 @@ clear_buffer_subdata(struct gl_context *ctx,
    static const char zeros[16] = {0};
 
    if (!pipe->clear_buffer) {
-      _mesa_ClearBufferSubData_sw(ctx, offset, size,
-                                  clearValue, clearValueSize, bufObj);
+      clear_buffer_subdata_sw(ctx, offset, size,
+                              clearValue, clearValueSize, bufObj);
       return;
    }
 
@@ -1166,58 +1201,6 @@ _mesa_total_buffer_object_memory(struct gl_context *ctx)
                              &total, ctx->BufferObjectsLocked);
 
    return total;
-}
-
-/**
- * Clear a subrange of the buffer object with copies of the supplied data.
- * If data is NULL the buffer is filled with zeros.
- *
- * This is the default callback for \c dd_function_table::ClearBufferSubData()
- * Note that all GL error checking will have been done already.
- *
- * \param ctx             GL context.
- * \param offset          Offset of the first byte to be cleared.
- * \param size            Size, in bytes, of the to be cleared range.
- * \param clearValue      Source of the data.
- * \param clearValueSize  Size, in bytes, of the supplied data.
- * \param bufObj          Object to be cleared.
- *
- * \sa glClearBufferSubData, glClearBufferData and
- * dd_function_table::ClearBufferSubData.
- */
-void
-_mesa_ClearBufferSubData_sw(struct gl_context *ctx,
-                            GLintptr offset, GLsizeiptr size,
-                            const GLvoid *clearValue,
-                            GLsizeiptr clearValueSize,
-                            struct gl_buffer_object *bufObj)
-{
-   GLsizeiptr i;
-   GLubyte *dest;
-
-   dest = _mesa_bufferobj_map_range(ctx, offset, size,
-                                    GL_MAP_WRITE_BIT |
-                                    GL_MAP_INVALIDATE_RANGE_BIT,
-                                    bufObj, MAP_INTERNAL);
-
-   if (!dest) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glClearBuffer[Sub]Data");
-      return;
-   }
-
-   if (clearValue == NULL) {
-      /* Clear with zeros, per the spec */
-      memset(dest, 0, size);
-      _mesa_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
-      return;
-   }
-
-   for (i = 0; i < size/clearValueSize; ++i) {
-      memcpy(dest, clearValue, clearValueSize);
-      dest += clearValueSize;
-   }
-
-   _mesa_bufferobj_unmap(ctx, bufObj, MAP_INTERNAL);
 }
 
 /**
