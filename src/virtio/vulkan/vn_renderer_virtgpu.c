@@ -17,7 +17,7 @@
 #define VIRGL_RENDERER_UNSTABLE_APIS
 #include "virtio-gpu/virglrenderer_hw.h"
 
-#include "vn_renderer.h"
+#include "vn_renderer_internal.h"
 
 /* XXX WIP kernel uapi */
 #ifndef VIRTGPU_PARAM_CONTEXT_INIT
@@ -111,6 +111,8 @@ struct virtgpu {
    struct util_sparse_array bo_array;
 
    mtx_t dma_buf_import_mutex;
+
+   struct vn_renderer_shmem_cache shmem_cache;
 };
 
 #ifdef SIMULATE_SYNCOBJ
@@ -1271,8 +1273,8 @@ virtgpu_bo_create_from_device_memory(
 }
 
 static void
-virtgpu_shmem_destroy(struct vn_renderer *renderer,
-                      struct vn_renderer_shmem *_shmem)
+virtgpu_shmem_destroy_now(struct vn_renderer *renderer,
+                          struct vn_renderer_shmem *_shmem)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_shmem *shmem = (struct virtgpu_shmem *)_shmem;
@@ -1281,10 +1283,29 @@ virtgpu_shmem_destroy(struct vn_renderer *renderer,
    virtgpu_ioctl_gem_close(gpu, shmem->gem_handle);
 }
 
+static void
+virtgpu_shmem_destroy(struct vn_renderer *renderer,
+                      struct vn_renderer_shmem *shmem)
+{
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
+
+   if (vn_renderer_shmem_cache_add(&gpu->shmem_cache, shmem))
+      return;
+
+   virtgpu_shmem_destroy_now(&gpu->base, shmem);
+}
+
 static struct vn_renderer_shmem *
 virtgpu_shmem_create(struct vn_renderer *renderer, size_t size)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
+
+   struct vn_renderer_shmem *cached_shmem =
+      vn_renderer_shmem_cache_get(&gpu->shmem_cache, size);
+   if (cached_shmem) {
+      cached_shmem->refcount = VN_REFCOUNT_INIT(1);
+      return cached_shmem;
+   }
 
    uint32_t res_id;
    uint32_t gem_handle = virtgpu_ioctl_resource_create_blob(
@@ -1380,6 +1401,8 @@ virtgpu_destroy(struct vn_renderer *renderer,
                 const VkAllocationCallbacks *alloc)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
+
+   vn_renderer_shmem_cache_fini(&gpu->shmem_cache);
 
    if (gpu->fd >= 0)
       close(gpu->fd);
@@ -1588,6 +1611,9 @@ virtgpu_init(struct virtgpu *gpu)
       return result;
 
    virtgpu_init_shmem_blob_mem(gpu);
+
+   vn_renderer_shmem_cache_init(&gpu->shmem_cache, &gpu->base,
+                                virtgpu_shmem_destroy_now);
 
    gpu->base.ops.destroy = virtgpu_destroy;
    gpu->base.ops.get_info = virtgpu_get_info;

@@ -14,6 +14,9 @@ struct vn_renderer_shmem {
    uint32_t res_id;
    size_t mmap_size; /* for internal use only (i.e., munmap) */
    void *mmap_ptr;
+
+   struct list_head cache_head;
+   int64_t cache_timestamp;
 };
 
 struct vn_renderer_bo {
