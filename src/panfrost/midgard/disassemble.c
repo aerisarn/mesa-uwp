@@ -1420,9 +1420,15 @@ print_load_store_instr(disassemble_context *ctx, FILE *fp, uint64_t data, bool v
                         swizzle = 0xE4;
                 print_ldst_mask(fp, word->mask, swizzle);
         } else {
+                uint8_t mask =
+                        (word->mask & 0x1) |
+                        ((word->mask & 0x2) << 1) |
+                        ((word->mask & 0x4) << 2) |
+                        ((word->mask & 0x8) << 3);
+                mask |= mask << 1;
                 print_ldst_read_reg(fp, word->reg);
                 print_vec_swizzle(fp, word->swizzle, midgard_src_passthrough,
-                                  midgard_reg_mode_32, 0xFF);
+                                  midgard_reg_mode_32, mask);
         }
 
         /* ld_ubo args */
