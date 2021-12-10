@@ -484,16 +484,16 @@ static int is_gpr(unsigned sel)
 /* CB constants start at 512, and get translated to a kcache index when ALU
  * clauses are constructed. Note that we handle kcache constants the same way
  * as (the now gone) cfile constants, is that really required? */
-static int is_cfile(unsigned sel)
+static int is_kcache(unsigned sel)
 {
-	return (sel > 255 && sel < 512) ||
-		(sel > 511 && sel < 4607) || /* Kcache before translation. */
-		(sel > 127 && sel < 192); /* Kcache after translation. */
+   return (sel > 511 && sel < 4607) || /* Kcache before translation. */
+         (sel > 127 && sel < 192) || /* Kcache 0 & 1 after translation. */
+         (sel > 256  && sel < 320);  /* Kcache 2 & 3 after translation (EG). */
 }
 
 static int is_const(int sel)
 {
-	return is_cfile(sel) ||
+   return is_kcache(sel) ||
 		(sel >= V_SQ_ALU_SRC_0 &&
 		sel <= V_SQ_ALU_SRC_LITERAL);
 }
@@ -518,7 +518,7 @@ static int check_vector(const struct r600_bytecode *bc, const struct r600_byteco
 				if (r)
 					return r;
 			}
-		} else if (is_cfile(sel)) {
+      } else if (is_kcache(sel)) {
 			r = reserve_cfile(bc, bs, (alu->src[src].kc_bank<<16) + sel, elem);
 			if (r)
 				return r;
@@ -545,7 +545,7 @@ static int check_scalar(const struct r600_bytecode *bc, const struct r600_byteco
 			else
 				const_count++;
 		}
-		if (is_cfile(sel)) {
+      if (is_kcache(sel)) {
 			r = reserve_cfile(bc, bs, (alu->src[src].kc_bank<<16) + sel, elem);
 			if (r)
 				return r;
