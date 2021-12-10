@@ -51,7 +51,7 @@ int etna_bo_is_idle(struct etna_bo *bo)
 }
 
 /* Called under etna_drm_table_lock */
-void etna_bo_free(struct etna_bo *bo)
+static void _etna_bo_free(struct etna_bo *bo)
 {
 	DEBUG_BO("Del bo:", bo);
 	VG_BO_FREE(bo);
@@ -77,6 +77,51 @@ void etna_bo_free(struct etna_bo *bo)
 	}
 
 	free(bo);
+}
+
+void etna_bo_kill_zombies(struct etna_device *dev)
+{
+	simple_mtx_assert_locked(&etna_drm_table_lock);
+
+	list_for_each_entry_safe(struct etna_bo, bo, &dev->zombie_list, list) {
+		VG_BO_OBTAIN(bo);
+		list_del(&bo->list);
+		_etna_bo_free(bo);
+	}
+}
+
+
+static void etna_bo_cleanup_zombies(struct etna_device *dev)
+{
+	simple_mtx_assert_locked(&etna_drm_table_lock);
+
+	list_for_each_entry_safe(struct etna_bo, bo, &dev->zombie_list, list) {
+		/* Stop once we reach a busy BO - all others past this point were
+		 * freed more recently so are likely also busy.
+		 */
+		if (!etna_bo_is_idle(bo))
+			break;
+
+		VG_BO_OBTAIN(bo);
+		list_del(&bo->list);
+		_etna_bo_free(bo);
+	}
+}
+
+void etna_bo_free(struct etna_bo *bo) {
+	struct etna_device *dev = bo->dev;
+
+	/* If the BO has a userspace managed address we don't free it immediately,
+	 * but keep it on a deferred destroy list until all submits with the buffer
+	 * have finished, at which point we can reuse the VMA space.
+	 */
+	if (dev->use_softpin) {
+		etna_bo_cleanup_zombies(dev);
+		VG_BO_RELEASE(bo);
+		list_addtail(&bo->list, &dev->zombie_list);
+	} else {
+		_etna_bo_free(bo);
+	}
 }
 
 /* lookup a buffer from it's handle, call w/ etna_drm_table_lock held: */
