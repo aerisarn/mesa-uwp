@@ -24,6 +24,7 @@
  **********************************************************/
 
 #include "git_sha1.h" /* For MESA_GIT_SHA1 */
+#include "compiler/nir/nir.h"
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
@@ -541,9 +542,9 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
          return 16;
       case PIPE_SHADER_CAP_PREFERRED_IR:
-         return PIPE_SHADER_IR_TGSI;
+         return svgascreen->debug.nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return 1 << PIPE_SHADER_IR_TGSI;
+         return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
       case PIPE_SHADER_CAP_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
@@ -612,9 +613,9 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
          return 0;
       case PIPE_SHADER_CAP_PREFERRED_IR:
-         return PIPE_SHADER_IR_TGSI;
+         return svgascreen->debug.nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
-         return 1 << PIPE_SHADER_IR_TGSI;
+         return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
       case PIPE_SHADER_CAP_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
@@ -725,10 +726,10 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
       return sws->have_gl43 ? PIPE_MAX_SAMPLERS : SVGA3D_DX_MAX_SAMPLERS;
    case PIPE_SHADER_CAP_PREFERRED_IR:
-      return PIPE_SHADER_IR_TGSI;
+         return svgascreen->debug.nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       if (sws->have_gl43)
-         return 1 << PIPE_SHADER_IR_TGSI;
+         return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
       else
          return 0;
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
@@ -765,6 +766,30 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    return 0;
 }
 
+static const nir_shader_compiler_options svga_compiler_options = {
+   .lower_extract_byte = true,
+   .lower_extract_word = true,
+   .lower_insert_byte = true,
+   .lower_insert_word = true,
+   .lower_fdph = true,
+   .lower_flrp64 = true,
+   .lower_rotate = true,
+   .lower_uniforms_to_ubo = true,
+   .lower_vector_cmp = true,
+
+   .max_unroll_iterations = 32,
+   .use_interpolated_input_intrinsics = true,
+};
+
+static const void *
+svga_get_compiler_options(struct pipe_screen *pscreen,
+                          enum pipe_shader_ir ir,
+                          enum pipe_shader_type shader)
+{
+   assert(ir == PIPE_SHADER_IR_NIR);
+
+   return &svga_compiler_options;
+}
 
 static int
 svga_get_shader_param(struct pipe_screen *screen, enum pipe_shader_type shader,
@@ -1034,6 +1059,8 @@ svga_screen_create(struct svga_winsys_screen *sws)
       debug_get_bool_option("SVGA_NO_SAMPLER_VIEW", FALSE);
    svgascreen->debug.no_cache_index_buffers =
       debug_get_bool_option("SVGA_NO_CACHE_INDEX_BUFFERS", FALSE);
+   svgascreen->debug.nir =
+      debug_get_bool_option("SVGA_NIR", FALSE);
 
    screen = &svgascreen->screen;
 
@@ -1043,6 +1070,7 @@ svga_screen_create(struct svga_winsys_screen *sws)
    screen->get_device_vendor = svga_get_vendor; // TODO actual device vendor
    screen->get_param = svga_get_param;
    screen->get_shader_param = svga_get_shader_param;
+   screen->get_compiler_options = svga_get_compiler_options;
    screen->get_paramf = svga_get_paramf;
    screen->get_timestamp = NULL;
    screen->is_format_supported = svga_is_format_supported;

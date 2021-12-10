@@ -24,6 +24,7 @@
  **********************************************************/
 
 #include "draw/draw_context.h"
+#include "nir/nir_to_tgsi.h"
 #include "util/u_inlines.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
@@ -46,6 +47,7 @@ static const struct tgsi_token *
 substitute_vs(unsigned shader_id, const struct tgsi_token *old_tokens)
 {
 #if 0
+   FREE(old_tokens);
    if (shader_id == 12) {
    static struct tgsi_token tokens[300];
 
@@ -108,8 +110,8 @@ svga_create_vs_state(struct pipe_context *pipe,
 
    /* substitute a debug shader?
     */
-   vs->base.tokens = tgsi_dup_tokens(substitute_vs(svga->debug.shader_id,
-                                                   templ->tokens));
+   vs->base.tokens = substitute_vs(svga->debug.shader_id,
+                                   pipe_shader_state_to_tgsi_tokens(pipe->screen, templ));
 
    /* Collect basic info that we'll need later:
     */

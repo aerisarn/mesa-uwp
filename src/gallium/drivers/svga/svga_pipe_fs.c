@@ -23,6 +23,7 @@
  *
  **********************************************************/
 
+#include "nir/nir_to_tgsi.h"
 #include "util/u_inlines.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
@@ -50,7 +51,7 @@ svga_create_fs_state(struct pipe_context *pipe,
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATEFS);
 
-   fs->base.tokens = tgsi_dup_tokens(templ->tokens);
+   fs->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
 
    /* Collect basic info that we'll need later:
     */

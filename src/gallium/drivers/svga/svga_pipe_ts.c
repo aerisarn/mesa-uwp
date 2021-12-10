@@ -23,6 +23,7 @@
  *
  **********************************************************/
 
+#include "nir/nir_to_tgsi.h"
 #include "pipe/p_context.h"
 #include "util/u_memory.h"
 #include "tgsi/tgsi_parse.h"
@@ -69,7 +70,7 @@ svga_create_tcs_state(struct pipe_context *pipe,
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATETCS);
 
-   tcs->base.tokens = tgsi_dup_tokens(templ->tokens);
+   tcs->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
 
    /* Collect basic info that we'll need later:
     */
@@ -153,7 +154,7 @@ svga_create_tes_state(struct pipe_context *pipe,
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATETES);
 
-   tes->base.tokens = tgsi_dup_tokens(templ->tokens);
+   tes->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
 
    /* Collect basic info that we'll need later:
     */

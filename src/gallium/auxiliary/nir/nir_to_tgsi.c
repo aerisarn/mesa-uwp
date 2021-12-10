@@ -30,6 +30,7 @@
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_from_mesa.h"
 #include "tgsi/tgsi_info.h"
+#include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_ureg.h"
 #include "tgsi/tgsi_util.h"
 #include "util/debug.h"
@@ -3913,4 +3914,18 @@ nir_to_tgsi_get_compiler_options(struct pipe_screen *pscreen,
 {
    assert(ir == PIPE_SHADER_IR_NIR);
    return &nir_to_tgsi_compiler_options;
+}
+
+/** Helper for getting TGSI tokens to store for a pipe_shader_state CSO. */
+const void *
+pipe_shader_state_to_tgsi_tokens(struct pipe_screen *screen,
+                                 const struct pipe_shader_state *cso)
+{
+   if (cso->type == PIPE_SHADER_IR_NIR) {
+      return nir_to_tgsi((nir_shader *)cso->ir.nir, screen);
+   } else {
+      assert(cso->type == PIPE_SHADER_IR_TGSI);
+      /* we need to keep a local copy of the tokens */
+      return tgsi_dup_tokens(cso->tokens);
+   }
 }

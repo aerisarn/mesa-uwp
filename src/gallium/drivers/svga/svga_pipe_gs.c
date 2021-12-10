@@ -24,6 +24,7 @@
  **********************************************************/
 
 #include "draw/draw_context.h"
+#include "nir/nir_to_tgsi.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_bitmask.h"
@@ -48,7 +49,7 @@ svga_create_gs_state(struct pipe_context *pipe,
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATEGS);
 
-   gs->base.tokens = tgsi_dup_tokens(templ->tokens);
+   gs->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
 
    /* Collect basic info that we'll need later:
     */

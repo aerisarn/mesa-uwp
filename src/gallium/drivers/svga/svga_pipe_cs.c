@@ -23,6 +23,7 @@
  *
  **********************************************************/
 
+#include "nir/nir_to_tgsi.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_bitmask.h"
@@ -53,8 +54,13 @@ svga_create_compute_state(struct pipe_context *pipe,
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATECS);
 
-   assert(templ->ir_type == PIPE_SHADER_IR_TGSI);
-   cs->base.tokens = tgsi_dup_tokens(templ->prog);
+   if (templ->ir_type == PIPE_SHADER_IR_NIR) {
+      cs->base.tokens = nir_to_tgsi((void *)templ->prog, pipe->screen);
+   } else {
+      assert(templ->ir_type == PIPE_SHADER_IR_TGSI);
+      /* we need to keep a local copy of the tokens */
+      cs->base.tokens = tgsi_dup_tokens(templ->prog);
+   }
 
    /* Collect shader basic info */
    tgsi_scan_shader(cs->base.tokens, &cs->base.info);
