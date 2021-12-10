@@ -47,7 +47,8 @@ foreach ($spvasm in $spvasm_files) {
         }
         else {
             Write-Output "$subtest Fail"
-            Write-Output "$s2d_output`n"
+            $sanitized_output = $s2d_output -replace ', file .+, line \d+'
+            Write-Output "$sanitized_output`n"
         }
     }
 }

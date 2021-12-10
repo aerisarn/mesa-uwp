@@ -372,39 +372,39 @@ Failed to validate DXIL
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPointSize_ReadReplaced.spvasm:main|Vertex: Fail
-Assertion failed: glsl_get_components(type) == 4, file ../src/microsoft/compiler/dxil_signature.c, line 254
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPointSize_Write1_IsErased.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array, file ../src/microsoft/compiler/nir_to_dxil.c, line 3738
+Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPointSize_WriteViaCopyObjectPostAccessChainErased.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array, file ../src/microsoft/compiler/nir_to_dxil.c, line 3738
+Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_BuiltIn_Position.spvasm:main|Vertex: Fail
-Assertion failed: glsl_get_components(type) == 4, file ../src/microsoft/compiler/dxil_signature.c, line 254
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_BuiltIn_Position_Initializer.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array, file ../src/microsoft/compiler/nir_to_dxil.c, line 3738
+Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePosition.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array, file ../src/microsoft/compiler/nir_to_dxil.c, line 3738
+Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePosition_PerVertexStructOutOfOrderDecl.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array, file ../src/microsoft/compiler/nir_to_dxil.c, line 3738
+Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_OneAccessChain.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array, file ../src/microsoft/compiler/nir_to_dxil.c, line 3738
+Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_TwoAccessChain.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array, file ../src/microsoft/compiler/nir_to_dxil.c, line 3738
+Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinVertexIndex.spvasm:main|Vertex: Fail
@@ -449,15 +449,15 @@ Failed to validate DXIL
 
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_BuiltinVar_SampleMask_Out_Unsigned_Initializer.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_Flatten_Interpolation_Flat_Fragment_In.spvasm:main|Fragment: Fail
-Assertion failed: !"unexpected glsl type", file ../src/microsoft/compiler/dxil_enums.c, line 73
+Assertion failed: !"unexpected glsl type"
 
 
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_Flatten_Interpolation_Floating_Fragment_In.spvasm:main|Fragment: Fail
-Assertion failed: !"unexpected glsl type", file ../src/microsoft/compiler/dxil_enums.c, line 73
+Assertion failed: !"unexpected glsl type"
 
 
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_Flatten_Interpolation_Floating_Fragment_Out.spvasm:main|Fragment: Fail
-Assertion failed: !"unexpected glsl type", file ../src/microsoft/compiler/dxil_enums.c, line 73
+Assertion failed: !"unexpected glsl type"
 
 
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_Interpolation_Flat_Vertex_In.spvasm:main|Vertex: Fail
@@ -529,7 +529,7 @@ Failed to validate DXIL
 
 
 Test:SpvModuleScopeVarParserTest_Input_FlattenStruct_LocOnVariable.spvasm:main|Vertex: Fail
-Assertion failed: !"unexpected glsl type", file ../src/microsoft/compiler/dxil_enums.c, line 73
+Assertion failed: !"unexpected glsl type"
 
 
 Test:SpvModuleScopeVarParserTest_InputVarsConvertedToPrivate.spvasm:main|Fragment: Pass
@@ -611,7 +611,7 @@ Failed to validate DXIL
 
 
 Test:SpvModuleScopeVarParserTest_Output_FlattenStruct_LocOnVariable.spvasm:main|Vertex: Fail
-Assertion failed: !"unexpected glsl type", file ../src/microsoft/compiler/dxil_enums.c, line 73
+Assertion failed: !"unexpected glsl type"
 
 
 Test:SpvModuleScopeVarParserTest_OutputVarsConvertedToPrivate.spvasm:main|Fragment: Pass
