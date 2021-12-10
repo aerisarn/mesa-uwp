@@ -43,6 +43,14 @@ static void set_name(struct etna_bo *bo, uint32_t name)
 	_mesa_hash_table_insert(bo->dev->name_table, &bo->name, bo);
 }
 
+int etna_bo_is_idle(struct etna_bo *bo)
+{
+	return etna_bo_cpu_prep(bo,
+			DRM_ETNA_PREP_READ |
+			DRM_ETNA_PREP_WRITE |
+			DRM_ETNA_PREP_NOSYNC) == 0;
+}
+
 /* Called under etna_drm_table_lock */
 void _etna_bo_del(struct etna_bo *bo)
 {

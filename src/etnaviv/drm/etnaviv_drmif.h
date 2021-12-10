@@ -133,6 +133,7 @@ uint32_t etna_bo_gpu_va(struct etna_bo *bo);
 void * etna_bo_map(struct etna_bo *bo);
 int etna_bo_cpu_prep(struct etna_bo *bo, uint32_t op);
 void etna_bo_cpu_fini(struct etna_bo *bo);
+int etna_bo_is_idle(struct etna_bo *bo);
 
 
 /* cmd stream functions:
