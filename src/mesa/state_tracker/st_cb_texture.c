@@ -3359,6 +3359,9 @@ st_texture_storage(struct gl_context *ctx,
       }
    }
 
+   /* Update gl_texture_object for texture parameter query. */
+   texObj->NumSparseLevels = stObj->pt->nr_sparse_levels;
+
    /* The texture is in a validated state, so no need to check later. */
    stObj->needs_validation = false;
    stObj->validated_first_level = 0;
