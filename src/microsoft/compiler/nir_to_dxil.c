@@ -3854,7 +3854,7 @@ emit_texel_fetch(struct ntd_context *ctx, struct texop_parameters *params)
 }
 
 static const struct dxil_value *
-emit_texture_lod(struct ntd_context *ctx, struct texop_parameters *params)
+emit_texture_lod(struct ntd_context *ctx, struct texop_parameters *params, bool clamped)
 {
    const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.calculateLOD", DXIL_F32);
    if (!func)
@@ -3867,7 +3867,7 @@ emit_texture_lod(struct ntd_context *ctx, struct texop_parameters *params)
       params->coord[0],
       params->coord[1],
       params->coord[2],
-      dxil_module_get_int1_const(&ctx->mod, 1)
+      dxil_module_get_int1_const(&ctx->mod, clamped ? 1 : 0)
    };
 
    return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
@@ -4060,8 +4060,10 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
       break;
 
    case nir_texop_lod:
-      sample = emit_texture_lod(ctx, &params);
+      sample = emit_texture_lod(ctx, &params, true);
       store_dest(ctx, &instr->dest, 0, sample, nir_alu_type_get_base_type(instr->dest_type));
+      sample = emit_texture_lod(ctx, &params, false);
+      store_dest(ctx, &instr->dest, 1, sample, nir_alu_type_get_base_type(instr->dest_type));
       return true;
 
    case nir_texop_query_levels:

@@ -5754,10 +5754,6 @@ spec/arb_tessellation_shader/linker/no-vs: skip
 spec/arb_tessellation_shader/linker/tcs-no-vs: skip
 spec/arb_tessellation_shader/linker/tcs-output-size-declared-in-other-shader: skip
 spec/arb_tessellation_shader/linker/tes-no-vs: skip
-spec/arb_texture_query_lod/execution/fs-texturequerylod-linear: crash
-spec/arb_texture_query_lod/execution/fs-texturequerylod-nearest: crash
-spec/arb_texture_query_lod/execution/fs-texturequerylod-nearest-biased: crash
-spec/arb_texture_query_lod/execution/fs-texturequerylod-no-mipmap: crash
 spec/arb_uniform_buffer_object/2-buffers-bug: fail
 spec/arb_uniform_buffer_object/execution/fs-array-of-structs-std140-indirect: fail
 spec/arb_vertex_attrib_64bit/execution/vs-fp64-input-trunc: skip
@@ -13041,9 +13037,9 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     7204
+       pass:     7208
        fail:       58
-      crash:       27
+      crash:       23
        skip:    12930
     timeout:        0
        warn:       25
