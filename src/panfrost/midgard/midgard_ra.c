@@ -922,6 +922,11 @@ mir_spill_register(
                 if (is_special_w)
                         spill_slot = spill_index++;
 
+                unsigned last_id = ~0;
+                unsigned last_fill = ~0;
+                unsigned last_spill_index = ~0;
+                midgard_instruction *last_spill = NULL;
+
                 mir_foreach_block(ctx, _block) {
                 midgard_block *block = (midgard_block *) _block;
                 mir_foreach_instr_in_block_safe(block, ins) {
@@ -944,17 +949,19 @@ mir_spill_register(
 
                                 mir_insert_instruction_after_scheduled(ctx, block, ins, st);
                         } else {
-                                unsigned dest = spill_index++;
+                                unsigned bundle = ins->bundle_id;
+                                unsigned dest = (bundle == last_id)? last_spill_index : spill_index++;
 
                                 unsigned bytemask = mir_bytemask(ins);
                                 unsigned write_mask = mir_from_bytemask(mir_round_bytemask_up(
                                                                            bytemask, 32), 32);
 
-                                if (write_count > 1 && bytemask != 0xFFFF) {
+                                if (write_count > 1 && bytemask != 0xFFFF && bundle != last_fill) {
                                         midgard_instruction read =
                                                 v_load_store_scratch(dest, spill_slot, false, 0xF);
                                         mir_insert_instruction_before_scheduled(ctx, block, ins, read);
                                         write_mask = 0xF;
+                                        last_fill = bundle;
                                 }
 
                                 ins->dest = dest;
@@ -966,7 +973,7 @@ mir_spill_register(
                                  * of the spilt instruction need to be direct */
                                 midgard_instruction *it = ins;
                                 while ((it = list_first_entry(&it->link, midgard_instruction, link))
-                                       && (it->bundle_id == ins->bundle_id)) {
+                                       && (it->bundle_id == bundle)) {
 
                                         if (!mir_has_arg(it, spill_node)) continue;
 
@@ -981,9 +988,15 @@ mir_spill_register(
                                 if (move)
                                         dest = spill_index++;
 
-                                midgard_instruction st =
-                                        v_load_store_scratch(dest, spill_slot, true, write_mask);
-                                mir_insert_instruction_after_scheduled(ctx, block, ins, st);
+                                if (last_id == bundle) {
+                                        last_spill->mask |= write_mask;
+                                        u_foreach_bit(c, write_mask)
+                                                last_spill->swizzle[0][c] = c;
+                                } else {
+                                        midgard_instruction st =
+                                                v_load_store_scratch(dest, spill_slot, true, write_mask);
+                                        last_spill = mir_insert_instruction_after_scheduled(ctx, block, ins, st);
+                                }
 
                                 if (move) {
                                         midgard_instruction mv = v_mov(ins->dest, dest);
@@ -991,6 +1004,9 @@ mir_spill_register(
 
                                         mir_insert_instruction_after_scheduled(ctx, block, ins, mv);
                                 }
+
+                                last_id = bundle;
+                                last_spill_index = ins->dest;
                         }
 
                         if (!is_special)
