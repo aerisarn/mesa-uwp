@@ -311,8 +311,8 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_ARB_shader_stencil_export                          DONE (i965/gen9+, r600, radeonsi, softpipe, llvmpipe, virgl, panfrost, zink)
   GL_ARB_shader_viewport_layer_array                    DONE (i965/gen6+, nvc0, radeonsi, zink)
   GL_ARB_shading_language_include                       DONE
-  GL_ARB_sparse_buffer                                  DONE (radeonsi/CIK+, zink)
-  GL_ARB_sparse_texture                                 not started
+  GL_ARB_sparse_buffer                                  DONE (radeonsi/gfx9+, zink)
+  GL_ARB_sparse_texture                                 DONE (radeonsi/gfx9+)
   GL_ARB_sparse_texture2                                not started
   GL_ARB_sparse_texture_clamp                           not started
   GL_ARB_texture_filter_minmax                          DONE (nvc0/gm200+, zink)
