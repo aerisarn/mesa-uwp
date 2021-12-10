@@ -113,14 +113,6 @@ struct etna_bo {
 	uint32_t        va;             /* GPU virtual address */
 	int		refcnt;
 
-	/*
-	 * To avoid excess hashtable lookups, cache the stream this bo was
-	 * last emitted on (since that will probably also be the next ring
-	 * it is emitted on).
-	 */
-	struct etna_cmd_stream *current_stream;
-	uint32_t idx;
-
 	int reuse;
 	struct list_head list;   /* bucket-list entry */
 	time_t free_time;        /* time when added to bucket-list */
