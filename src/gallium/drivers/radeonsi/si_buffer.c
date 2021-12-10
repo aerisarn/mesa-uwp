@@ -136,6 +136,9 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    if (res->b.b.flags & SI_RESOURCE_FLAG_DRIVER_INTERNAL)
       res->flags |= RADEON_FLAG_DRIVER_INTERNAL;
 
+   if (res->b.b.flags & PIPE_RESOURCE_FLAG_SPARSE)
+      res->flags |= RADEON_FLAG_SPARSE;
+
    /* For higher throughput and lower latency over PCIe assuming sequential access.
     * Only CP DMA and optimized compute benefit from this.
     * GFX8 and older don't support RADEON_FLAG_UNCACHED.
@@ -587,9 +590,6 @@ static struct pipe_resource *si_buffer_create(struct pipe_screen *screen,
       buf->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
 
    si_init_resource_fields(sscreen, buf, templ->width0, alignment);
-
-   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
-      buf->flags |= RADEON_FLAG_SPARSE;
 
    buf->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
 

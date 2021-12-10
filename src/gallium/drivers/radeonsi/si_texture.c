@@ -279,6 +279,14 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
          surface->u.gfx9.swizzle_mode = ADDR_SW_64KB_R_X;
    }
 
+   if (ptex->flags & PIPE_RESOURCE_FLAG_SPARSE) {
+      flags |=
+         RADEON_SURF_PRT |
+         RADEON_SURF_NO_FMASK |
+         RADEON_SURF_NO_HTILE |
+         RADEON_SURF_DISABLE_DCC;
+   }
+
    surface->modifier = modifier;
 
    r = sscreen->ws->surface_init(sscreen->ws, ptex, flags, bpe, array_mode, surface);
@@ -996,6 +1004,9 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       radeon_bo_reference(sscreen->ws, &resource->buf, plane0->buffer.buf);
       resource->gpu_address = plane0->buffer.gpu_address;
    } else if (!(surface->flags & RADEON_SURF_IMPORTED)) {
+      if (base->flags & PIPE_RESOURCE_FLAG_SPARSE)
+         resource->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
+
       /* Create the backing buffer. */
       si_init_resource_fields(sscreen, resource, alloc_size, alignment);
 
@@ -1265,6 +1276,8 @@ si_texture_create_with_modifier(struct pipe_screen *screen,
                           false, plane_templ[i].bind & PIPE_BIND_SCANOUT,
                           is_flushed_depth, tc_compatible_htile))
          return NULL;
+
+      plane_templ[i].nr_sparse_levels = surface[i].first_mip_tail_level;
 
       plane_offset[i] = align64(total_size, 1 << surface[i].surf_alignment_log2);
       total_size = plane_offset[i] + surface[i].total_size;
