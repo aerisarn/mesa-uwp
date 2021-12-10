@@ -2325,7 +2325,7 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                            batch->indirect_draw_job_id : 0,
                                            0, vertex_job, false);
 
-        if (ctx->rasterizer->base.rasterizer_discard || batch->scissor_culls_everything)
+        if (panfrost_batch_skip_rasterization(batch))
                 return;
 
         panfrost_add_job(&batch->pool.base, &batch->scoreboard,
