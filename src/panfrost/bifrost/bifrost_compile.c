@@ -3648,36 +3648,16 @@ bi_pack_clauses(bi_context *ctx, struct util_dynarray *binary)
         }
 }
 
-void
-bifrost_compile_shader_nir(nir_shader *nir,
-                           const struct panfrost_compile_inputs *inputs,
-                           struct util_dynarray *binary,
-                           struct pan_shader_info *info)
+static void
+bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 {
-        bifrost_debug = debug_get_option_bifrost_debug();
-
-        bi_context *ctx = rzalloc(NULL, bi_context);
-        ctx->sysval_to_id = panfrost_init_sysvals(&info->sysvals, ctx);
-
-        ctx->inputs = inputs;
-        ctx->nir = nir;
-        ctx->info = info;
-        ctx->stage = nir->info.stage;
-        ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
-        ctx->arch = inputs->gpu_id >> 12;
-
-        /* If nothing is pushed, all UBOs need to be uploaded */
-        ctx->ubo_mask = ~0;
-
-        list_inithead(&ctx->blocks);
-
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
          * (so we don't accidentally duplicate the epilogue since mesa/st has
          * messed with our I/O quite a bit already) */
 
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
-        if (ctx->stage == MESA_SHADER_VERTEX) {
+        if (nir->info.stage == MESA_SHADER_VERTEX) {
                 NIR_PASS_V(nir, nir_lower_viewport_transform);
                 NIR_PASS_V(nir, nir_lower_point_size, 1.0, 1024.0);
         }
@@ -3695,11 +3675,11 @@ bifrost_compile_shader_nir(nir_shader *nir,
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                         glsl_type_size, 0);
 
-        if (ctx->stage == MESA_SHADER_FRAGMENT) {
+        if (nir->info.stage == MESA_SHADER_FRAGMENT) {
                 NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
                                 ~0, false);
         } else {
-                struct hash_table_u64 *stores = _mesa_hash_table_u64_create(ctx);
+                struct hash_table_u64 *stores = _mesa_hash_table_u64_create(NULL);
                 NIR_PASS_V(nir, nir_shader_instructions_pass,
                                 bifrost_nir_lower_store_component,
                                 nir_metadata_block_index |
@@ -3714,14 +3694,40 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
         if (nir->info.stage == MESA_SHADER_FRAGMENT) {
                 NIR_PASS_V(nir, nir_shader_instructions_pass,
-                        bifrost_nir_lower_i8_frag,
-                        nir_metadata_block_index | nir_metadata_dominance,
-                        NULL);
+                                bifrost_nir_lower_i8_frag,
+                                nir_metadata_block_index | nir_metadata_dominance,
+                                NULL);
         }
 
-        bi_optimize_nir(nir, ctx->inputs->gpu_id, ctx->inputs->is_blend);
+        bi_optimize_nir(nir, gpu_id, is_blend);
 
         NIR_PASS_V(nir, pan_nir_reorder_writeout);
+}
+
+void
+bifrost_compile_shader_nir(nir_shader *nir,
+                           const struct panfrost_compile_inputs *inputs,
+                           struct util_dynarray *binary,
+                           struct pan_shader_info *info)
+{
+        bifrost_debug = debug_get_option_bifrost_debug();
+
+        bi_finalize_nir(nir, inputs->gpu_id, inputs->is_blend);
+
+        bi_context *ctx = rzalloc(NULL, bi_context);
+        ctx->sysval_to_id = panfrost_init_sysvals(&info->sysvals, ctx);
+
+        ctx->inputs = inputs;
+        ctx->nir = nir;
+        ctx->info = info;
+        ctx->stage = nir->info.stage;
+        ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
+        ctx->arch = inputs->gpu_id >> 12;
+
+        /* If nothing is pushed, all UBOs need to be uploaded */
+        ctx->ubo_mask = ~0;
+
+        list_inithead(&ctx->blocks);
 
         bool skip_internal = nir->info.internal;
         skip_internal &= !(bifrost_debug & BIFROST_DBG_INTERNAL);
