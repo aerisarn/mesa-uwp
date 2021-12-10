@@ -2681,9 +2681,9 @@ si_conv_gl_prim_to_vertices(unsigned gl_prim)
    case 4: /* GL_TRIANGLES */
    case 5: /* GL_TRIANGLE_STRIP */
       return 3;
-   case 0xA: /* GL_LINE_STRIP_ADJACENCY_ARB */
+   case 0xA: /* GL_LINES_ADJACENCY */
       return 4;
-   case 0xc: /* GL_TRIANGLES_ADJACENCY_ARB */
+   case 0xc: /* GL_TRIANGLES_ADJACENCY */
       return 6;
    case 7: /* GL_QUADS */
       return V_028A6C_TRISTRIP;

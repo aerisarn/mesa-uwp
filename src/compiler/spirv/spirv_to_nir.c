@@ -4277,12 +4277,12 @@ gl_primitive_from_spv_execution_mode(struct vtn_builder *b,
    case SpvExecutionModeOutputLinesNV:
       return 1; /* GL_LINES */
    case SpvExecutionModeInputLinesAdjacency:
-      return 0x000A; /* GL_LINE_STRIP_ADJACENCY_ARB */
+      return 0x000A; /* GL_LINES_ADJACENCY */
    case SpvExecutionModeTriangles:
    case SpvExecutionModeOutputTrianglesNV:
       return 4; /* GL_TRIANGLES */
    case SpvExecutionModeInputTrianglesAdjacency:
-      return 0x000C; /* GL_TRIANGLES_ADJACENCY_ARB */
+      return 0x000C; /* GL_TRIANGLES_ADJACENCY */
    case SpvExecutionModeQuads:
       return 7; /* GL_QUADS */
    case SpvExecutionModeIsolines:

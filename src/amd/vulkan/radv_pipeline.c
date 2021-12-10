@@ -1291,7 +1291,7 @@ si_conv_gl_prim_to_gs_out(unsigned gl_prim)
       return V_028A6C_POINTLIST;
    case 1:      /* GL_LINES */
    case 3:      /* GL_LINE_STRIP */
-   case 0xA:    /* GL_LINE_STRIP_ADJACENCY_ARB */
+   case 0xA:    /* GL_LINES_ADJACENCY */
    case 0x8E7A: /* GL_ISOLINES */
       return V_028A6C_LINESTRIP;
 
