@@ -88,6 +88,8 @@ struct etna_device {
 	int closefd;        /* call close(fd) upon destruction */
 };
 
+void etna_bo_free(struct etna_bo *bo);
+
 void etna_bo_cache_init(struct etna_bo_cache *cache);
 void etna_bo_cache_cleanup(struct etna_bo_cache *cache, time_t time);
 struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache,

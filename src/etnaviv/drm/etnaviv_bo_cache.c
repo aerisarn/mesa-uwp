@@ -27,8 +27,6 @@
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
 
-void _etna_bo_del(struct etna_bo *bo);
-
 static void add_bucket(struct etna_bo_cache *cache, int size)
 {
 	unsigned i = cache->num_buckets;
@@ -86,7 +84,7 @@ void etna_bo_cache_cleanup(struct etna_bo_cache *cache, time_t time)
 
 			VG_BO_OBTAIN(bo);
 			list_del(&bo->list);
-			_etna_bo_del(bo);
+			etna_bo_free(bo);
 		}
 	}
 

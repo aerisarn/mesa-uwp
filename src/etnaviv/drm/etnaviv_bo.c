@@ -31,7 +31,6 @@
 #include "etnaviv_drmif.h"
 
 simple_mtx_t etna_drm_table_lock = _SIMPLE_MTX_INITIALIZER_NP;
-void _etna_bo_del(struct etna_bo *bo);
 
 /* set buffer name, and add to table, call w/ etna_drm_table_lock held: */
 static void set_name(struct etna_bo *bo, uint32_t name)
@@ -52,7 +51,7 @@ int etna_bo_is_idle(struct etna_bo *bo)
 }
 
 /* Called under etna_drm_table_lock */
-void _etna_bo_del(struct etna_bo *bo)
+void etna_bo_free(struct etna_bo *bo)
 {
 	DEBUG_BO("Del bo:", bo);
 	VG_BO_FREE(bo);
@@ -295,7 +294,7 @@ void etna_bo_del(struct etna_bo *bo)
 	if (bo->reuse && (etna_bo_cache_free(&dev->bo_cache, bo) == 0))
 		goto out;
 
-	_etna_bo_del(bo);
+	etna_bo_free(bo);
 	etna_device_del_locked(dev);
 out:
 	simple_mtx_unlock(&etna_drm_table_lock);
