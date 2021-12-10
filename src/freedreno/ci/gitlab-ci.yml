@@ -205,6 +205,15 @@ a630_gles_asan:
     DEQP_EXPECTED_RENDERER: FD630
     GPU_VERSION: freedreno-a630-asan
 
+a630_skqp:
+  extends:
+    - .baremetal-skqp-test
+    - .a630-test
+  variables:
+    # Possible skqp backends: gl, gles, unitTest and vk
+    # Note: vk backend is not working yet.
+    SKQP_BACKENDS: gl gles unitTest  # space separated values
+
 a630_vk:
   extends:
     - .a630-test
