@@ -1110,6 +1110,25 @@ update_from_topology(struct intel_device_info *devinfo,
          else
             devinfo->ppipe_subslices[p] = 0;
       }
+
+      /* From the "Fusing information" BSpec page regarding DG2
+       * configurations where at least a slice has a single pixel pipe
+       * fused off:
+       *
+       * "Fault disable any 2 DSS in a Gslice and disable that Gslice
+       *  (incl. geom/color/Z)"
+       *
+       * XXX - Query geometry topology from hardware once kernel
+       *       interface is available instead of trying to do
+       *       guesswork here.
+       */
+      if (intel_device_info_is_dg2(devinfo)) {
+         for (unsigned p = 0; p < INTEL_DEVICE_MAX_PIXEL_PIPES; p++) {
+            if (devinfo->ppipe_subslices[p] < 2 ||
+                devinfo->ppipe_subslices[p ^ 1] < 2)
+               devinfo->ppipe_subslices[p] = 0;
+         }
+      }
    }
 
    if (devinfo->ver == 12 && devinfo->num_slices == 1) {
