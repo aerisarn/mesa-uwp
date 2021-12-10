@@ -645,8 +645,8 @@ st_CopyImageSubData(struct gl_context *ctx,
    st_invalidate_readpix_cache(st);
 
    if (src_image) {
-      struct st_texture_image *src = st_texture_image(src_image);
-      struct st_texture_object *stObj = st_texture_object(src_image->TexObject);
+      struct gl_texture_image *src = src_image;
+      struct gl_texture_object *stObj = src_image->TexObject;
       src_res = src->pt;
       src_level = stObj->pt != src_res ? 0 : src_image->Level;
       src_z += src_image->Face;
@@ -661,8 +661,8 @@ st_CopyImageSubData(struct gl_context *ctx,
    }
 
    if (dst_image) {
-      struct st_texture_image *dst = st_texture_image(dst_image);
-      struct st_texture_object *stObj = st_texture_object(dst_image->TexObject);
+      struct gl_texture_image *dst = dst_image;
+      struct gl_texture_object *stObj = dst_image->TexObject;
       dst_res = dst->pt;
       dst_level = stObj->pt != dst_res ? 0 : dst_image->Level;
       dst_z += dst_image->Face;

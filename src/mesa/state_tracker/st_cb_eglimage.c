@@ -270,8 +270,6 @@ st_bind_egl_image(struct gl_context *ctx,
                   bool native_supported)
 {
    struct st_context *st = st_context(ctx);
-   struct st_texture_object *stObj;
-   struct st_texture_image *stImage;
    GLenum internalFormat;
    mesa_format texFormat;
 
@@ -282,13 +280,10 @@ st_bind_egl_image(struct gl_context *ctx,
    else
       internalFormat = GL_RGB;
 
-   stObj = st_texture_object(texObj);
-   stImage = st_texture_image(texImage);
-
    /* switch to surface based */
-   if (!stObj->surface_based) {
+   if (!texObj->surface_based) {
       _mesa_clear_texture_object(ctx, texObj, NULL);
-      stObj->surface_based = GL_TRUE;
+      texObj->surface_based = GL_TRUE;
    }
 
    /* TODO RequiredTextureImageUnits should probably be reset back
@@ -382,15 +377,15 @@ st_bind_egl_image(struct gl_context *ctx,
    _mesa_init_teximage_fields(ctx, texImage, width, height,
                               1, 0, internalFormat, texFormat);
 
-   pipe_resource_reference(&stObj->pt, stimg->texture);
-   st_texture_release_all_sampler_views(st, stObj);
-   pipe_resource_reference(&stImage->pt, stObj->pt);
+   pipe_resource_reference(&texObj->pt, stimg->texture);
+   st_texture_release_all_sampler_views(st, texObj);
+   pipe_resource_reference(&texImage->pt, texObj->pt);
    if (st->screen->resource_changed)
-      st->screen->resource_changed(st->screen, stImage->pt);
+      st->screen->resource_changed(st->screen, texImage->pt);
 
-   stObj->surface_format = stimg->format;
-   stObj->level_override = stimg->level;
-   stObj->layer_override = stimg->layer;
+   texObj->surface_format = stimg->format;
+   texObj->level_override = stimg->level;
+   texObj->layer_override = stimg->layer;
 
    _mesa_dirty_texobj(ctx, texObj);
 }

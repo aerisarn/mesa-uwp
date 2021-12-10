@@ -790,6 +790,23 @@ struct gl_texture_image
    /** GL_ARB_texture_multisample */
    GLuint NumSamples;            /**< Sample count, or 0 for non-multisample */
    GLboolean FixedSampleLocations; /**< Same sample locations for all pixels? */
+
+   /* If stImage->pt != NULL, image data is stored here.
+    * Else there is no image data.
+    */
+   struct pipe_resource *pt;
+
+   /* List of transfers, allocated on demand.
+    * transfer[layer] is a mapping for that layer.
+    */
+   struct st_texture_image_transfer *transfer;
+   unsigned num_transfers;
+
+   /* For compressed images unsupported by the driver. Keep track of
+    * the original data. This is necessary for mapping/unmapping,
+    * as well as image copies.
+    */
+   struct st_compressed_data* compressed_data;
 };
 
 
@@ -937,6 +954,82 @@ struct gl_texture_object
    GLboolean IsSparse;
    GLint VirtualPageSizeIndex;
    GLint NumSparseLevels;
+
+   /* The texture must include at levels [0..lastLevel] once validated:
+    */
+   GLuint lastLevel;
+
+   unsigned int validated_first_level;
+   unsigned int validated_last_level;
+
+   /* On validation any active images held in main memory or in other
+    * textures will be copied to this texture and the old storage freed.
+    */
+   struct pipe_resource *pt;
+
+   /* Protect modifications of the sampler_views array */
+   simple_mtx_t validate_mutex;
+
+   /* Container of sampler views (one per context) attached to this texture
+    * object. Created lazily on first binding in context.
+    *
+    * Purely read-only accesses to the current context's own sampler view
+    * require no locking. Another thread may simultaneously replace the
+    * container object in order to grow the array, but the old container will
+    * be kept alive.
+    *
+    * Writing to the container (even for modifying the current context's own
+    * sampler view) always requires taking the validate_mutex to protect against
+    * concurrent container switches.
+    *
+    * NULL'ing another context's sampler view is allowed only while
+    * implementing an API call that modifies the texture: an application which
+    * calls those while simultaneously reading the texture in another context
+    * invokes undefined behavior. (TODO: a dubious violation of this rule is
+    * st_finalize_texture, which is a lazy operation that corresponds to a
+    * texture modification.)
+    */
+   struct st_sampler_views *sampler_views;
+
+   /* Old sampler views container objects that have not been freed yet because
+    * other threads/contexts may still be reading from them.
+    */
+   struct st_sampler_views *sampler_views_old;
+
+   /* True if this texture comes from the window system. Such a texture
+    * cannot be reallocated and the format can only be changed with a sampler
+    * view or a surface.
+    */
+   GLboolean surface_based;
+
+   /* If surface_based is true, this format should be used for all sampler
+    * views and surfaces instead of pt->format.
+    */
+   enum pipe_format surface_format;
+
+   /* When non-negative, samplers should use this level instead of the level
+    * range specified by the GL state.
+    *
+    * This is used for EGL images, which may correspond to a single level out
+    * of an imported pipe_resources with multiple mip levels.
+    */
+   int level_override;
+
+   /* When non-negative, samplers should use this layer instead of the one
+    * specified by the GL state.
+    *
+    * This is used for EGL images and VDPAU interop, where imported
+    * pipe_resources may be cube, 3D, or array textures (containing layers
+    * with different fields in the case of VDPAU) even though the GL state
+    * describes one non-array texture per field.
+    */
+   int layer_override;
+
+    /**
+     * Set when the texture images of this texture object might not all be in
+     * the pipe_resource *pt above.
+     */
+    bool needs_validation;
 };
 
 

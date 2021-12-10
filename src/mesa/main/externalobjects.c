@@ -41,7 +41,7 @@
 #include "state_tracker/st_texture.h"
 
 struct st_context;
-struct st_texture_object;
+
 #include "frontend/drm_driver.h"
 #ifdef HAVE_LIBDRM
 #include "drm-uapi/drm_fourcc.h"
@@ -628,7 +628,7 @@ server_wait_semaphore(struct gl_context *ctx,
    struct st_context *st = ctx->st;
    struct pipe_context *pipe = ctx->pipe;
    struct gl_buffer_object *bufObj;
-   struct st_texture_object *texObj;
+   struct gl_texture_object *texObj;
 
    /* The driver is allowed to flush during fence_server_sync, be prepared */
    st_flush_bitmap_cache(st);
@@ -658,7 +658,7 @@ server_wait_semaphore(struct gl_context *ctx,
       if (!texObjs[i])
          continue;
 
-      texObj = st_texture_object(texObjs[i]);
+      texObj = texObjs[i];
       if (texObj->pt)
          pipe->flush_resource(pipe, texObj->pt);
    }
@@ -676,7 +676,7 @@ server_signal_semaphore(struct gl_context *ctx,
    struct st_context *st = ctx->st;
    struct pipe_context *pipe = ctx->pipe;
    struct gl_buffer_object *bufObj;
-   struct st_texture_object *texObj;
+   struct gl_texture_object *texObj;
 
    for (unsigned i = 0; i < numBufferBarriers; i++) {
       if (!bufObjs[i])
@@ -691,7 +691,7 @@ server_signal_semaphore(struct gl_context *ctx,
       if (!texObjs[i])
          continue;
 
-      texObj = st_texture_object(texObjs[i]);
+      texObj = texObjs[i];
       if (texObj->pt)
          pipe->flush_resource(pipe, texObj->pt);
    }

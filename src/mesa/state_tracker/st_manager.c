@@ -705,8 +705,6 @@ st_context_teximage(struct st_context_iface *stctxi,
    struct gl_context *ctx = st->ctx;
    struct gl_texture_object *texObj;
    struct gl_texture_image *texImage;
-   struct st_texture_object *stObj;
-   struct st_texture_image *stImage;
    GLenum internalFormat;
    GLuint width, height, depth;
    GLenum target;
@@ -732,15 +730,13 @@ st_context_teximage(struct st_context_iface *stctxi,
 
    _mesa_lock_texture(ctx, texObj);
 
-   stObj = st_texture_object(texObj);
    /* switch to surface based */
-   if (!stObj->surface_based) {
+   if (!texObj->surface_based) {
       _mesa_clear_texture_object(ctx, texObj, NULL);
-      stObj->surface_based = GL_TRUE;
+      texObj->surface_based = GL_TRUE;
    }
 
    texImage = _mesa_get_tex_image(ctx, texObj, target, level);
-   stImage = st_texture_image(texImage);
    if (tex) {
       mesa_format texFormat = st_pipe_format_to_mesa_format(pipe_format);
 
@@ -773,12 +769,12 @@ st_context_teximage(struct st_context_iface *stctxi,
       width = height = depth = 0;
    }
 
-   pipe_resource_reference(&stObj->pt, tex);
-   st_texture_release_all_sampler_views(st, stObj);
-   pipe_resource_reference(&stImage->pt, tex);
-   stObj->surface_format = pipe_format;
+   pipe_resource_reference(&texObj->pt, tex);
+   st_texture_release_all_sampler_views(st, texObj);
+   pipe_resource_reference(&texImage->pt, tex);
+   texObj->surface_format = pipe_format;
 
-   stObj->needs_validation = true;
+   texObj->needs_validation = true;
 
    _mesa_dirty_texobj(ctx, texObj);
    _mesa_unlock_texture(ctx, texObj);

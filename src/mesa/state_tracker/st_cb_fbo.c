@@ -484,7 +484,7 @@ st_update_renderbuffer_surface(struct st_context *st,
 {
    struct pipe_context *pipe = st->pipe;
    struct pipe_resource *resource = strb->texture;
-   const struct st_texture_object *stTexObj = NULL;
+   const struct gl_texture_object *stTexObj = NULL;
    unsigned rtt_width = strb->Base.Width;
    unsigned rtt_height = strb->Base.Height;
    unsigned rtt_depth = strb->Base.Depth;
@@ -500,7 +500,7 @@ st_update_renderbuffer_surface(struct st_context *st,
    enum pipe_format format = resource->format;
 
    if (strb->is_rtt) {
-      stTexObj = st_texture_object(strb->Base.TexImage->TexObject);
+      stTexObj = strb->Base.TexImage->TexObject;
       if (stTexObj->surface_based)
          format = stTexObj->surface_format;
    }
@@ -537,8 +537,8 @@ st_update_renderbuffer_surface(struct st_context *st,
 
    /* Adjust for texture views */
    if (strb->is_rtt && resource->array_size > 1 &&
-       stTexObj->base.Immutable) {
-      const struct gl_texture_object *tex = &stTexObj->base;
+       stTexObj->Immutable) {
+      const struct gl_texture_object *tex = stTexObj;
       first_layer += tex->Attrib.MinLayer;
       if (!strb->rtt_layered)
          last_layer += tex->Attrib.MinLayer;
@@ -587,8 +587,8 @@ static struct pipe_resource *
 get_teximage_resource(struct gl_texture_object *texObj,
                       unsigned face, unsigned level)
 {
-   struct st_texture_image *stImg =
-      st_texture_image(texObj->Image[face][level]);
+   struct gl_texture_image *stImg =
+      texObj->Image[face][level];
 
    return stImg->pt;
 }
@@ -675,7 +675,7 @@ st_validate_attachment(struct gl_context *ctx,
                        const struct gl_renderbuffer_attachment *att,
                        unsigned bindings)
 {
-   const struct st_texture_object *stObj = st_texture_object(att->Texture);
+   const struct gl_texture_object *stObj = att->Texture;
    enum pipe_format format;
    mesa_format texFormat;
    GLboolean valid;

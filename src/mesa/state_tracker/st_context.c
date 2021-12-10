@@ -991,7 +991,7 @@ destroy_tex_sampler_cb(void *data, void *userData)
    struct gl_texture_object *texObj = (struct gl_texture_object *) data;
    struct st_context *st = (struct st_context *) userData;
 
-   st_texture_release_context_sampler_view(st, st_texture_object(texObj));
+   st_texture_release_context_sampler_view(st, texObj);
 }
 
 static void
@@ -1003,7 +1003,7 @@ destroy_framebuffer_attachment_sampler_cb(void *data, void *userData)
     for (unsigned i = 0; i < BUFFER_COUNT; i++) {
       struct gl_renderbuffer_attachment *att = &glfb->Attachment[i];
       if (att->Texture) {
-        st_texture_release_context_sampler_view(st, st_texture_object(att->Texture));
+        st_texture_release_context_sampler_view(st, att->Texture);
       }
    }
 }
@@ -1041,8 +1041,8 @@ st_destroy_context(struct st_context *st)
     * context.
     */
    for (unsigned i = 0; i < NUM_TEXTURE_TARGETS; i++) {
-      struct st_texture_object *stObj =
-         st_texture_object(ctx->Shared->FallbackTex[i]);
+      struct gl_texture_object *stObj =
+         ctx->Shared->FallbackTex[i];
       if (stObj) {
          st_texture_release_context_sampler_view(st, stObj);
       }

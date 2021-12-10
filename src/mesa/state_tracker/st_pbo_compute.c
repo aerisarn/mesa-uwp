@@ -1025,7 +1025,7 @@ st_GetTexSubImage_shader(struct gl_context * ctx,
 {
    struct st_context *st = st_context(ctx);
    struct pipe_screen *screen = st->screen;
-   struct st_texture_object *stObj = st_texture_object(texImage->TexObject);
+   struct gl_texture_object *stObj = texImage->TexObject;
    struct pipe_resource *src = stObj->pt;
    struct pipe_resource *dst = NULL;
    enum pipe_format dst_format, src_format;
