@@ -2850,9 +2850,19 @@ panfrost_direct_draw(struct panfrost_batch *batch,
                 ctx->offset_start = draw->start;
         }
 
-        if (info->instance_count > 1)
-                ctx->padded_count = panfrost_padded_vertex_count(vertex_count);
-        else
+        if (info->instance_count > 1) {
+                unsigned count = vertex_count;
+
+                /* Index-Driven Vertex Shading requires different instances to
+                 * have different cache lines for position results. Each vertex
+                 * position is 16 bytes and the Mali cache line is 64 bytes, so
+                 * the instance count must be aligned to 4 vertices.
+                 */
+                if (idvs)
+                        count = ALIGN_POT(count, 4);
+
+                ctx->padded_count = panfrost_padded_vertex_count(count);
+        } else
                 ctx->padded_count = vertex_count;
 
         panfrost_statistics_record(ctx, info, draw);
