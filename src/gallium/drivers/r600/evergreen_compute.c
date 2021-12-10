@@ -512,7 +512,6 @@ static void evergreen_bind_compute_state(struct pipe_context *ctx, void *state)
 	if (cstate->ir_type == PIPE_SHADER_IR_TGSI ||
 	    cstate->ir_type == PIPE_SHADER_IR_NIR) {
 		bool compute_dirty;
-		cstate->sel->ir_type = cstate->ir_type;
 		if (r600_shader_select(ctx, cstate->sel, &compute_dirty, false))
 			R600_ERR("Failed to select compute shader\n");
 	}

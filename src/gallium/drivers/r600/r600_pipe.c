@@ -317,8 +317,10 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_CAN_BIND_CONST_BUFFER_AS_VERTEX:
 	case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
 	case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
-        case PIPE_CAP_NIR_ATOMICS_AS_DEREF:
 		return 1;
+
+        case PIPE_CAP_NIR_ATOMICS_AS_DEREF:
+		return rscreen->b.debug_flags & DBG_NIR_PREFERRED;
 
 	case PIPE_CAP_TEXTURE_TRANSFER_MODES:
 		return PIPE_TEXTURE_TRANSFER_BLIT;
@@ -630,17 +632,16 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 	case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
 		return 16;
 	case PIPE_SHADER_CAP_PREFERRED_IR:
-		if (is_nir_enabled(&rscreen->b))
-			return PIPE_SHADER_IR_NIR;
-		return PIPE_SHADER_IR_TGSI;
+		if (rscreen->b.debug_flags & DBG_USE_TGSI)
+			return PIPE_SHADER_IR_TGSI;
+		return PIPE_SHADER_IR_NIR;
 	case PIPE_SHADER_CAP_SUPPORTED_IRS: {
 		int ir = 0;
 		if (shader == PIPE_SHADER_COMPUTE)
 			ir = 1 << PIPE_SHADER_IR_NATIVE;
 		if (rscreen->b.family >= CHIP_CEDAR) {
 			ir |= 1 << PIPE_SHADER_IR_TGSI;
-			if (is_nir_enabled(&rscreen->b))
-				ir |= 1 << PIPE_SHADER_IR_NIR;
+			ir |= 1 << PIPE_SHADER_IR_NIR;
 		}
 		return ir;
 	}

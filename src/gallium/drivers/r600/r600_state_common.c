@@ -39,6 +39,7 @@
 #include "tgsi/tgsi_ureg.h"
 
 #include "nir.h"
+#include "nir/nir_to_tgsi.h"
 #include "nir/nir_to_tgsi_info.h"
 #include "tgsi/tgsi_from_mesa.h"
 
@@ -979,14 +980,23 @@ struct r600_pipe_shader_selector *r600_create_shader_state_tokens(struct pipe_co
 								  unsigned pipe_shader_type)
 {
 	struct r600_pipe_shader_selector *sel = CALLOC_STRUCT(r600_pipe_shader_selector);
+	struct r600_screen *rscreen = (struct r600_screen *)ctx->screen;
 
 	sel->type = pipe_shader_type;
 	if (ir == PIPE_SHADER_IR_TGSI) {
 		sel->tokens = tgsi_dup_tokens((const struct tgsi_token *)prog);
 		tgsi_scan_shader(sel->tokens, &sel->info);
 	} else if (ir == PIPE_SHADER_IR_NIR){
-		sel->nir = nir_shader_clone(NULL, (const nir_shader *)prog);
-		nir_tgsi_scan_shader(sel->nir, &sel->info, true);
+		nir_shader *s = (nir_shader *)prog;
+
+		if (!(rscreen->b.debug_flags & DBG_NIR_PREFERRED)) {
+			sel->tokens = (void *)nir_to_tgsi(s, ctx->screen);
+			ir = PIPE_SHADER_IR_TGSI;
+			tgsi_scan_shader(sel->tokens, &sel->info);
+		} else {
+			sel->nir = nir_shader_clone(NULL, s);
+			nir_tgsi_scan_shader(sel->nir, &sel->info, true);
+		}
 	}
 	sel->ir_type = ir;
 	return sel;
@@ -1006,7 +1016,6 @@ static void *r600_create_shader_state(struct pipe_context *ctx,
 	} else
 		assert(0 && "Unknown shader type\n");
 	
-	sel->ir_type = state->type;
 	sel->so = state->stream_output;
 
 	switch (pipe_shader_type) {

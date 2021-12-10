@@ -2,60 +2,17 @@ KHR-GL33.clip_distance.functional,Fail
 KHR-GL33.cull_distance.functional,Fail
 KHR-GL33.nearest_edge.offset_right,Fail
 
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_0_clamp_to_edge,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_0_mirrored_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_0_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_1_clamp_to_edge,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_1_mirrored_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_1_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_2_clamp_to_edge,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_2_mirrored_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_11x131_2_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_0_clamp_to_edge,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_0_mirrored_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_0_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_1_clamp_to_edge,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_1_mirrored_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_1_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_2_clamp_to_edge,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_2_mirrored_repeat,Fail
-KHR-GL33.texture_repeat_mode.rgba32ui_49x23_2_repeat,Fail
-
 KHR-GL33.texture_size_promotion.functional,Fail
 
 KHR-GL33.texture_swizzle.functional,Fail
 
 KHR-GLES3.core.nearest_edge.offset_right,Fail
 
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_0_clamp_to_edge,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_0_mirrored_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_0_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_1_clamp_to_edge,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_1_mirrored_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_1_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_2_clamp_to_edge,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_2_mirrored_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_2_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_0_clamp_to_edge,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_0_mirrored_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_0_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_1_clamp_to_edge,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_1_mirrored_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_1_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_2_clamp_to_edge,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_2_mirrored_repeat,Fail
-KHR-GLES3.texture_repeat_mode.rgba32ui_49x23_2_repeat,Fail
-
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
-
-dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_component_read_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_subscript_write_dynamic_subscript_read_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_static_loop_subscript_read_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_static_subscript_read_fragment,Fail
 
 dEQP-GLES2.functional.texture.size.cube.15x15_l8,Fail
 dEQP-GLES2.functional.texture.size.cube.15x15_rgb888,Fail
@@ -117,11 +74,6 @@ dEQP-GLES3.functional.shaders.derivate.fwidth.nicest.fbo_msaa4.float_highp,Fail
 dEQP-GLES3.functional.shaders.derivate.fwidth.nicest.fbo_msaa4.vec2_highp,Fail
 dEQP-GLES3.functional.shaders.derivate.fwidth.nicest.fbo_msaa4.vec3_highp,Fail
 dEQP-GLES3.functional.shaders.derivate.fwidth.nicest.fbo_msaa4.vec4_highp,Fail
-
-dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_component_read_fragment,Fail
-dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec4_dynamic_subscript_write_dynamic_subscript_read_fragment,Fail
-dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_static_loop_subscript_read_fragment,Fail
-dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_static_subscript_read_fragment,Fail
 
 dEQP-GLES3.functional.shaders.texture_functions.texture.samplercubeshadow_bias_fragment,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texture.samplercubeshadow_fragment,Fail
@@ -425,22 +377,14 @@ dEQP-GLES3.functional.texture.specification.texsubimage3d_depth.depth_component1
 dEQP-GLES3.functional.texture.specification.texsubimage3d_depth.depth_component24_2d_array,Fail
 dEQP-GLES3.functional.texture.specification.texsubimage3d_depth.depth_component32f_2d_array,Fail
 
-# "../src/gallium/drivers/r600/sb/sb_ra_init.cpp:718:split_vec: Assertion `!o->is_dead()' failed."
-glslparsertest@glsl2@loop-03.vert,Crash
-glslparsertest@glsl2@loop-04.vert,Crash
-
-# crash at:
-# 618			if (r->loop_phi) {
-# 619				split_phi_dst(r->get_entry_code_location(), r->loop_phi,
-# 620						true);
-glslparsertest@shaders@correctfull.frag,Crash
-
-glslparsertest@shaders@correctpreprocess5.frag,Crash
-
 shaders@glsl-bug-110796,Fail
+
+shaders@glsl-max-varyings,Fail
+shaders@glsl-max-varyings >max_varying_components,Fail
 
 spec@!opengl 1.0@gl-1.0-dlist-bitmap,Fail
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
+spec@!opengl 1.0@gl-1.0-spot-light,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Fail
 
@@ -906,16 +850,11 @@ spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB12,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB16,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB8,Fail
 
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv12,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_xyuv,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y210,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y212,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y216,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y410,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y412,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y416,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
 
 spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
@@ -1042,13 +981,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SR
 
 spec@ext_transform_feedback@immediate-reuse-index-buffer,Fail
 
-spec@glsl-1.10@execution@function-calls@glsl-function-chain16-in-array-indirect,Fail
-spec@glsl-1.10@execution@function-calls@glsl-function-chain16-in-array-indirect2,Fail
-
-spec@glsl-1.10@execution@varying-packing@simple float arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple int arrays_of_arrays,Fail
-spec@glsl-1.10@execution@varying-packing@simple uint arrays_of_arrays,Fail
-
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 
 spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
@@ -1056,14 +988,15 @@ spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-max,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-min,Fail
 
-spec@glsl-1.20@execution@matrix-out-of-bounds-access@fs-mat4-out-of-bounds-6,Crash
-
 spec@glsl-1.20@execution@vs-nan-builtin-max,Fail
 spec@glsl-1.20@execution@vs-nan-builtin-min,Fail
-
-spec@glsl-1.30@execution@clipping@vs-clip-distance-deadcode,Fail
 spec@glsl-1.30@execution@clipping@vs-clip-distance-primitives,Fail
 
+# "error: (dest->reg->num_array_elems == 0 || dest->base_offset < dest->reg->num_array_elems) && "definitely out-of-bounds array access" (../src/compiler/nir/nir_validate.c:277)"
+spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-read,Crash
+spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-write,Crash
+
+spec@glsl-1.30@execution@range_analysis_fsat_of_nan,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) cubeshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cube,Fail
@@ -1071,8 +1004,6 @@ spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubeshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darrayshadow,Fail
-
-spec@glsl-1.50@execution@geometry@dynamic_input_array_index,Fail
 spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency ffs,Fail
 spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency other,Fail
 spec@glsl-1.50@execution@texelfetchoffset@gs-isampler2drect,Fail
@@ -1089,7 +1020,7 @@ spec@glsl-1.50@execution@texelfetchoffset@gs-texelfetch-usampler3d,Fail
 spec@glsl-1.50@execution@texelfetchoffset@gs-usampler2drect,Fail
 
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec3-index-rd,Fail
-spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec4-index-rd,Crash
+spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec4-index-rd,Fail
 
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 
