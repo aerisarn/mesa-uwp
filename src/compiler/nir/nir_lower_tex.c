@@ -1255,6 +1255,38 @@ nir_lower_samples_identical_to_fragment_fetch(nir_builder *b, nir_tex_instr *tex
    nir_instr_remove_v(&tex->instr);
 }
 
+static void
+nir_lower_lod_zero_width(nir_builder *b, nir_tex_instr *tex)
+{
+   int coord_index = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   assert(coord_index >= 0);
+
+   b->cursor = nir_after_instr(&tex->instr);
+
+   nir_ssa_def *is_zero = nir_imm_bool(b, true);
+   for (unsigned i = 0; i < tex->coord_components; i++) {
+      nir_ssa_def *coord = nir_channel(b, tex->src[coord_index].src.ssa, i);
+
+      /* Compute the sum of the absolute values of derivatives. */
+      nir_ssa_def *dfdx = nir_fddx(b, coord);
+      nir_ssa_def *dfdy = nir_fddy(b, coord);
+      nir_ssa_def *fwidth = nir_fadd(b, nir_fabs(b, dfdx), nir_fabs(b, dfdy));
+
+      /* Check if the sum is 0. */
+      is_zero = nir_iand(b, is_zero, nir_feq(b, fwidth, nir_imm_float(b, 0.0)));
+   }
+
+   /* Replace the raw LOD by -FLT_MAX if the sum is 0 for all coordinates. */
+   nir_ssa_def *adjusted_lod =
+      nir_bcsel(b, is_zero, nir_imm_float(b, -FLT_MAX),
+                   nir_channel(b, &tex->dest.ssa, 1));
+
+   nir_ssa_def *def =
+      nir_vec2(b, nir_channel(b, &tex->dest.ssa, 0), adjusted_lod);
+
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, def, def->parent_instr);
+}
+
 static bool
 nir_lower_tex_block(nir_block *block, nir_builder *b,
                     const nir_lower_tex_options *options,
@@ -1473,6 +1505,12 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
 
       if (options->lower_to_fragment_fetch_amd && tex->op == nir_texop_samples_identical) {
          nir_lower_samples_identical_to_fragment_fetch(b, tex);
+         progress = true;
+         continue;
+      }
+
+      if (options->lower_lod_zero_width && tex->op == nir_texop_lod) {
+         nir_lower_lod_zero_width(b, tex);
          progress = true;
          continue;
       }

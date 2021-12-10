@@ -4891,6 +4891,12 @@ typedef struct nir_lower_tex_options {
     * Indexed by sampler-id.
     */
    enum nir_lower_tex_packing lower_tex_packing[32];
+
+   /**
+    * If true, lower nir_texop_lod to return -FLT_MAX if the sum of the
+    * absolute values of derivatives is 0 for all coordinates.
+    */
+   bool lower_lod_zero_width;
 } nir_lower_tex_options;
 
 /** Lowers complex texture instructions to simpler ones */
