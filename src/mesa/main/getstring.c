@@ -34,9 +34,10 @@
 #include "macros.h"
 #include "version.h"
 #include "spirv_extensions.h"
-
-#include "state_tracker/st_cb_strings.h"
 #include "api_exec_decl.h"
+
+#include "pipe/p_context.h"
+#include "pipe/p_screen.h"
 
 /**
  * Return the string for a glGetString(GL_SHADING_LANGUAGE_VERSION) query.
@@ -135,19 +136,21 @@ _mesa_GetString( GLenum name )
       return (const GLubyte *) ctx->Const.RendererOverride;
    }
 
-   /* this is a required driver function */
-   {
-      /* Give the driver the chance to handle this query */
-      const GLubyte *str = st_get_string(ctx, name);
-      if (str)
-         return str;
-   }
+   struct pipe_screen *screen = ctx->pipe->screen;
 
    switch (name) {
-      case GL_VENDOR:
+      case GL_VENDOR: {
+         const GLubyte *str = (const GLubyte *)screen->get_vendor(screen);
+         if (str)
+            return str;
          return (const GLubyte *) vendor;
-      case GL_RENDERER:
+      }
+      case GL_RENDERER: {
+         const GLubyte *str = (const GLubyte *)screen->get_name(screen);
+         if (str)
+            return str;
          return (const GLubyte *) renderer;
+      }
       case GL_VERSION:
          return (const GLubyte *) ctx->VersionString;
       case GL_EXTENSIONS:
