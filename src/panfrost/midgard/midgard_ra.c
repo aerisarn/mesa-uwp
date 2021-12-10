@@ -504,7 +504,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                                 unsigned s = ins->src[v];
 
                                 if (s < ctx->temp_count)
-                                        min_alignment[s] = 3;
+                                        min_alignment[s] = MAX2(3, min_alignment[s]);
                         }
                 }
 
@@ -514,7 +514,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                                 unsigned size = nir_alu_type_get_type_size(ins->src_types[v]);
 
                                 if (s < ctx->temp_count)
-                                        min_alignment[s] = (size == 64) ? 3 : 2;
+                                        min_alignment[s] = MAX2((size == 64) ? 3 : 2, min_alignment[s]);
                         }
                 }
 
@@ -537,10 +537,11 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 found_class[dest] = MAX2(found_class[dest], bytes);
 
                 min_alignment[dest] =
-                        (size == 16) ? 1 : /* (1 << 1) = 2-byte */
-                        (size == 32) ? 2 : /* (1 << 2) = 4-byte */
-                        (size == 64) ? 3 : /* (1 << 3) = 8-byte */
-                        3; /* 8-bit todo */
+                        MAX2(min_alignment[dest],
+                             (size == 16) ? 1 : /* (1 << 1) = 2-byte */
+                             (size == 32) ? 2 : /* (1 << 2) = 4-byte */
+                             (size == 64) ? 3 : /* (1 << 3) = 8-byte */
+                             3); /* 8-bit todo */
 
                 /* We can't cross xy/zw boundaries. TODO: vec8 can */
                 if (size == 16 && min_alignment[dest] != 4)
