@@ -9081,7 +9081,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
       if (failed)
 	 return false;
 
-      if (wm_key->alpha_test_func)
+      if (wm_key->emit_alpha_test)
          emit_alpha_test();
 
       emit_fb_writes();
@@ -9506,7 +9506,7 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
     * so the shader definitely kills pixels.
     */
    prog_data->uses_kill = shader->info.fs.uses_discard ||
-      key->alpha_test_func;
+      key->emit_alpha_test;
    prog_data->uses_omask = !key->ignore_sample_mask_out &&
       (shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
    prog_data->computed_depth_mode = computed_depth_mode(shader);

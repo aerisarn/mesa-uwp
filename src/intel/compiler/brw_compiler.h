@@ -486,6 +486,8 @@ struct brw_wm_prog_key {
    bool stats_wm:1;
    bool flat_shade:1;
    unsigned nr_color_regions:5;
+   bool emit_alpha_test:1;
+   enum compare_func alpha_test_func:3; /* < For Gfx4/5 MRT alpha test */
    bool alpha_test_replicate_alpha:1;
    bool alpha_to_coverage:1;
    bool clamp_fragment_color:1;
@@ -499,7 +501,6 @@ struct brw_wm_prog_key {
 
    uint8_t color_outputs_valid;
    uint64_t input_slots_valid;
-   GLenum alpha_test_func;          /* < For Gfx4/5 MRT alpha test */
    float alpha_test_ref;
 };
 

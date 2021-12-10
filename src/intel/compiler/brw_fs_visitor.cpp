@@ -559,23 +559,23 @@ fs_visitor::emit_interpolation_setup_gfx6()
 }
 
 static enum brw_conditional_mod
-cond_for_alpha_func(GLenum func)
+cond_for_alpha_func(enum compare_func func)
 {
    switch(func) {
-      case GL_GREATER:
-         return BRW_CONDITIONAL_G;
-      case GL_GEQUAL:
-         return BRW_CONDITIONAL_GE;
-      case GL_LESS:
-         return BRW_CONDITIONAL_L;
-      case GL_LEQUAL:
-         return BRW_CONDITIONAL_LE;
-      case GL_EQUAL:
-         return BRW_CONDITIONAL_EQ;
-      case GL_NOTEQUAL:
-         return BRW_CONDITIONAL_NEQ;
-      default:
-         unreachable("Not reached");
+   case COMPARE_FUNC_GREATER:
+      return BRW_CONDITIONAL_G;
+   case COMPARE_FUNC_GEQUAL:
+      return BRW_CONDITIONAL_GE;
+   case COMPARE_FUNC_LESS:
+      return BRW_CONDITIONAL_L;
+   case COMPARE_FUNC_LEQUAL:
+      return BRW_CONDITIONAL_LE;
+   case COMPARE_FUNC_EQUAL:
+      return BRW_CONDITIONAL_EQ;
+   case COMPARE_FUNC_NOTEQUAL:
+      return BRW_CONDITIONAL_NEQ;
+   default:
+      unreachable("Not reached");
    }
 }
 
@@ -591,10 +591,10 @@ fs_visitor::emit_alpha_test()
    const fs_builder abld = bld.annotate("Alpha test");
 
    fs_inst *cmp;
-   if (key->alpha_test_func == GL_ALWAYS)
+   if (key->alpha_test_func == COMPARE_FUNC_ALWAYS)
       return;
 
-   if (key->alpha_test_func == GL_NEVER) {
+   if (key->alpha_test_func == COMPARE_FUNC_NEVER) {
       /* f0.1 = 0 */
       fs_reg some_reg = fs_reg(retype(brw_vec8_grf(0, 0),
                                       BRW_REGISTER_TYPE_UW));
