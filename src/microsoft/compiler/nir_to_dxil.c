@@ -4737,7 +4737,6 @@ optimize_nir(struct nir_shader *s, const struct nir_to_dxil_options *opts)
       if (s->options->lower_int64_options)
          NIR_PASS(progress, s, nir_lower_int64);
       NIR_PASS(progress, s, nir_lower_alu);
-      NIR_PASS(progress, s, dxil_nir_lower_inot);
       NIR_PASS(progress, s, nir_opt_constant_folding);
       NIR_PASS(progress, s, nir_opt_undef);
       NIR_PASS(progress, s, nir_lower_undef_to_zero);
