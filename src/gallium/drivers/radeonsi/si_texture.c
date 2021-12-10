@@ -2212,6 +2212,73 @@ static bool si_check_resource_capability(struct pipe_screen *screen, struct pipe
    return true;
 }
 
+static int si_get_sparse_texture_virtual_page_size(struct pipe_screen *screen,
+                                                   enum pipe_texture_target target,
+                                                   enum pipe_format format,
+                                                   unsigned offset, unsigned size,
+                                                   int *x, int *y, int *z)
+{
+   /* Only support one type of page size. */
+   if (offset != 0)
+      return 0;
+
+   static const int page_size_2d[][3] = {
+      { 256, 256, 1 }, /* 8bpp   */
+      { 256, 128, 1 }, /* 16bpp  */
+      { 128, 128, 1 }, /* 32bpp  */
+      { 128, 64,  1 }, /* 64bpp  */
+      { 64,  64,  1 }, /* 128bpp */
+   };
+   static const int page_size_3d[][3] = {
+      { 64,  32,  32 }, /* 8bpp   */
+      { 32,  32,  32 }, /* 16bpp  */
+      { 32,  32,  16 }, /* 32bpp  */
+      { 32,  16,  16 }, /* 64bpp  */
+      { 16,  16,  16 }, /* 128bpp */
+   };
+
+   const int (*page_sizes)[3];
+
+   /* Supported targets. */
+   /* TODO: support multi sample targets. */
+   switch (target) {
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      page_sizes = page_size_2d;
+      break;
+   case PIPE_TEXTURE_3D:
+      page_sizes = page_size_3d;
+      break;
+   default:
+      return 0;
+   }
+
+   /* Unsupport formats. */
+   /* TODO: support these formats. */
+   if (util_format_is_depth_or_stencil(format) ||
+       util_format_get_num_planes(format) > 1 ||
+       util_format_is_compressed(format))
+      return 0;
+
+   int blk_size = util_format_get_blocksize(format);
+   /* We don't support any non-power-of-two bpp formats, so
+    * pipe_screen->is_format_supported() should already filter out these formats.
+    */
+   assert(util_is_power_of_two_nonzero(blk_size));
+
+   if (size) {
+      unsigned index = util_logbase2(blk_size);
+      if (x) *x = page_sizes[index][0];
+      if (y) *y = page_sizes[index][1];
+      if (z) *z = page_sizes[index][2];
+   }
+
+   return 1;
+}
+
 void si_init_screen_texture_functions(struct si_screen *sscreen)
 {
    sscreen->b.resource_from_handle = si_texture_from_handle;
@@ -2222,6 +2289,8 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
    sscreen->b.memobj_create_from_handle = si_memobj_from_handle;
    sscreen->b.memobj_destroy = si_memobj_destroy;
    sscreen->b.check_resource_capability = si_check_resource_capability;
+   sscreen->b.get_sparse_texture_virtual_page_size =
+      si_get_sparse_texture_virtual_page_size;
 
    /* By not setting it the frontend will fall back to non-modifier create,
     * which works around some applications using modifiers that are not
