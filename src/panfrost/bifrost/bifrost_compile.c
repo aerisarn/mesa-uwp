@@ -726,7 +726,17 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 
         bi_index data = bi_src_index(&instr->src[0]);
 
-        if (immediate) {
+        if (b->shader->arch <= 8 && b->shader->idvs == BI_IDVS_POSITION) {
+                /* Bifrost position shaders have a fast path */
+                assert(T == nir_type_float16 || T == nir_type_float32);
+                unsigned regfmt = (T == nir_type_float16) ? 0 : 1;
+                unsigned identity = (b->shader->arch == 6) ? 0x688 : 0;
+                unsigned snap4 = 0x5E;
+                uint32_t format = identity | (snap4 << 12) | (regfmt << 24);
+
+                bi_st_cvt(b, data, bi_register(58), bi_register(59),
+                          bi_imm_u32(format), regfmt, nr - 1);
+        } else if (immediate) {
                 bi_index address = bi_lea_attr_imm(b,
                                           bi_register(61), bi_register(62),
                                           regfmt, imm_index);
