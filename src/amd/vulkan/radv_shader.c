@@ -655,6 +655,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
       .lower_tg4_offsets = true,
       .lower_txs_cube_array = true,
       .lower_to_fragment_fetch_amd = true,
+      .lower_lod_zero_width = true,
    };
 
    nir_lower_tex(nir, &tex_options);
