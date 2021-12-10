@@ -3106,6 +3106,22 @@ panfrost_draw_vbo(struct pipe_context *pipe,
         /* Do some common setup */
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
+        /* If rasterization discard is enabled but the vertex shader does not
+         * have side effects (including transform feedback), skip the draw
+         * altogether. This is always an optimization. Additionally, this is
+         * required for Index-Driven Vertex Shading, since IDVS always
+         * rasterizes. The compiler will not use IDVS if the vertex shader has
+         * side effects. So the only problem case is rasterizer discard with a
+         * shader without side effects -- but these draws are useless.
+         */
+        if (panfrost_batch_skip_rasterization(batch)) {
+                struct panfrost_shader_state *vs =
+                        panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
+
+                if (!vs->info.writes_global)
+                        return;
+        }
+
         /* Don't add too many jobs to a single batch. Hardware has a hard limit
          * of 65536 jobs, but we choose a smaller soft limit (arbitrary) to
          * avoid the risk of timeouts. This might not be a good idea. */
