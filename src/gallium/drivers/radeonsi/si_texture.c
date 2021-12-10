@@ -1315,6 +1315,49 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
    return si_texture_create_with_modifier(screen, templ, DRM_FORMAT_MOD_INVALID);
 }
 
+bool si_texture_commit(struct si_context *ctx, struct si_resource *res, unsigned level,
+                       struct pipe_box *box, bool commit)
+{
+   struct si_texture *tex = (struct si_texture *)res;
+   struct radeon_surf *surface = &tex->surface;
+   enum pipe_format format = res->b.b.format;
+   unsigned blks = util_format_get_blocksize(format);
+
+   assert(ctx->chip_class >= GFX9);
+
+   unsigned row_pitch = surface->u.gfx9.prt_level_pitch[level] *
+      surface->prt_tile_height * surface->prt_tile_depth * blks;
+   unsigned depth_pitch = surface->u.gfx9.surf_slice_size * surface->prt_tile_depth;
+
+   unsigned x = box->x / surface->prt_tile_width;
+   unsigned y = box->y / surface->prt_tile_height;
+   unsigned z = box->z / surface->prt_tile_depth;
+
+   unsigned w = DIV_ROUND_UP(box->width, surface->prt_tile_width);
+   unsigned h = DIV_ROUND_UP(box->height, surface->prt_tile_height);
+   unsigned d = DIV_ROUND_UP(box->depth, surface->prt_tile_depth);
+
+   /* Align to tile block base, for levels in mip tail whose offset is inside
+    * a tile block.
+    */
+   unsigned level_base = ROUND_DOWN_TO(surface->u.gfx9.prt_level_offset[level],
+                                       RADEON_SPARSE_PAGE_SIZE);
+   unsigned commit_base = level_base +
+      x * RADEON_SPARSE_PAGE_SIZE + y * row_pitch + z * depth_pitch;
+
+   unsigned size = w * RADEON_SPARSE_PAGE_SIZE;
+   for (int i = 0; i < d; i++) {
+      unsigned base = commit_base + i * depth_pitch;
+      for (int j = 0; j < h; j++) {
+         unsigned offset = base + j * row_pitch;
+         if (!ctx->ws->buffer_commit(ctx->ws, res->buf, offset, size, commit))
+            return false;
+      }
+   }
+
+   return true;
+}
+
 static void si_query_dmabuf_modifiers(struct pipe_screen *screen,
                                       enum pipe_format format,
                                       int max,

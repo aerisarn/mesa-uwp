@@ -694,6 +694,12 @@ static struct pipe_resource *si_resource_create(struct pipe_screen *screen,
    }
 }
 
+static bool si_buffer_commit(struct si_context *ctx, struct si_resource *res,
+                             struct pipe_box *box, bool commit)
+{
+   return ctx->ws->buffer_commit(ctx->ws, res->buf, box->x, box->width, commit);
+}
+
 static bool si_resource_commit(struct pipe_context *pctx, struct pipe_resource *resource,
                                unsigned level, struct pipe_box *box, bool commit)
 {
@@ -713,9 +719,10 @@ static bool si_resource_commit(struct pipe_context *pctx, struct pipe_resource *
    }
    ctx->ws->cs_sync_flush(&ctx->gfx_cs);
 
-   assert(resource->target == PIPE_BUFFER);
-
-   return ctx->ws->buffer_commit(ctx->ws, res->buf, box->x, box->width, commit);
+   if (resource->target == PIPE_BUFFER)
+      return si_buffer_commit(ctx, res, box, commit);
+   else
+      return si_texture_commit(ctx, res, level, box, commit);
 }
 
 void si_init_screen_buffer_functions(struct si_screen *sscreen)
