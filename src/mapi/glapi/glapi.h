@@ -46,6 +46,7 @@
 
 #include "util/macros.h"
 #include "util/u_thread.h"
+#include "util/detect_os.h"
 
 
 #ifdef __cplusplus
@@ -79,7 +80,7 @@ struct _glapi_table;
 
 #if defined (USE_ELF_TLS)
 
-#if defined(USE_TLS_BEHIND_FUNCTIONS)
+#if DETECT_OS_WINDOWS
 extern __THREAD_INITIAL_EXEC struct _glapi_table * _glapi_tls_Dispatch;
 extern __THREAD_INITIAL_EXEC void * _glapi_tls_Context;
 #else
