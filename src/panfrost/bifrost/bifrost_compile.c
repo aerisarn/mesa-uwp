@@ -259,10 +259,12 @@ bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
         bool constant = nir_src_is_const(*offset);
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
         bi_index dest = (component == 0) ? bi_dest_index(&instr->dest) : bi_temp(b->shader);
+        bi_instr *I;
 
         if (immediate) {
-                bi_ld_attr_imm_to(b, dest, bi_register(61), bi_register(62),
-                                regfmt, vecsize, imm_index);
+                I = bi_ld_attr_imm_to(b, dest, bi_vertex_id(b),
+                                      bi_instance_id(b), regfmt, vecsize,
+                                      imm_index);
         } else {
                 bi_index idx = bi_src_index(&instr->src[0]);
 
@@ -271,9 +273,12 @@ bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
                 else if (base != 0)
                         idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
 
-                bi_ld_attr_to(b, dest, bi_register(61), bi_register(62),
-                                idx, regfmt, vecsize);
+                I = bi_ld_attr_to(b, dest, bi_vertex_id(b), bi_instance_id(b),
+                                  idx, regfmt, vecsize);
         }
+
+        if (b->shader->arch >= 9)
+                I->table = PAN_TABLE_ATTRIBUTE;
 
         bi_copy_component(b, instr, dest);
 }
