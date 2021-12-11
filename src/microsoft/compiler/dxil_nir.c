@@ -1617,6 +1617,46 @@ dxil_nir_lower_bool_input(struct nir_shader *s)
                                         lower_bool_input_impl, NULL);
 }
 
+static bool
+lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   gl_system_value sysval = SYSTEM_VALUE_MAX;
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_front_face:
+      sysval = SYSTEM_VALUE_FRONT_FACE;
+      break;
+   case nir_intrinsic_load_instance_id:
+      sysval = SYSTEM_VALUE_INSTANCE_ID;
+      break;
+   case nir_intrinsic_load_vertex_id_zero_base:
+      sysval = SYSTEM_VALUE_VERTEX_ID_ZERO_BASE;
+      break;
+   default:
+      return false;
+   }
+
+   nir_variable **sysval_vars = (nir_variable **)data;
+   nir_variable *var = sysval_vars[sysval];
+   assert(var);
+
+   b->cursor = nir_before_instr(instr);
+   nir_ssa_def *result = nir_build_load_input(b, intr->dest.ssa.num_components, intr->dest.ssa.bit_size, nir_imm_int(b, 0),
+      .base = var->data.driver_location, .dest_type = nir_get_nir_type_for_glsl_type(var->type));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
+   return true;
+}
+
+bool
+dxil_nir_lower_sysval_to_load_input(nir_shader *s, nir_variable **sysval_vars)
+{
+   return nir_shader_instructions_pass(s, lower_sysval_to_load_input_impl,
+      nir_metadata_block_index | nir_metadata_dominance, sysval_vars);
+}
+
 /* Comparison function to sort io values so that first come normal varyings,
  * then system values, and then system generated values.
  */

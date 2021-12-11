@@ -2729,42 +2729,6 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
 }
 
 static bool
-emit_load_input_interpolated(struct ntd_context *ctx, nir_intrinsic_instr *intr, nir_variable *var)
-{
-   assert(var);
-   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_LOAD_INPUT);
-   const struct dxil_value *input_id = dxil_module_get_int32_const(&ctx->mod, var->data.driver_location);
-   const struct dxil_value *row = dxil_module_get_int32_const(&ctx->mod, 0);
-   const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
-   const struct dxil_value *vertex_id = dxil_module_get_undef(&ctx->mod, int32_type);
-
-   if (!opcode || !input_id || !row || !int32_type || !vertex_id)
-      return false;
-
-   nir_alu_type out_type = nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(var->type));
-   enum overload_type overload = get_overload(out_type, glsl_get_bit_size(var->type));
-
-   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.loadInput", overload);
-
-   if (!func)
-      return false;
-
-   for (unsigned i = 0; i < nir_dest_num_components(intr->dest); ++i) {
-      const struct dxil_value *comp = dxil_module_get_int8_const(&ctx->mod, i);
-
-      const struct dxil_value *args[] = {
-         opcode, input_id, row, comp, vertex_id
-      };
-
-      const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
-      if (!retval)
-         return false;
-      store_dest(ctx, &intr->dest, i, retval, out_type);
-   }
-   return true;
-}
-
-static bool
 emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    bool attr_at_vertex = false;
@@ -3460,15 +3424,6 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_ubo(ctx, intr);
    case nir_intrinsic_load_ubo_dxil:
       return emit_load_ubo_dxil(ctx, intr);
-   case nir_intrinsic_load_front_face:
-      return emit_load_input_interpolated(ctx, intr,
-                                          ctx->system_value[SYSTEM_VALUE_FRONT_FACE]);
-   case nir_intrinsic_load_vertex_id_zero_base:
-      return emit_load_input_interpolated(ctx, intr,
-                                          ctx->system_value[SYSTEM_VALUE_VERTEX_ID_ZERO_BASE]);
-   case nir_intrinsic_load_instance_id:
-      return emit_load_input_interpolated(ctx, intr,
-                                          ctx->system_value[SYSTEM_VALUE_INSTANCE_ID]);
    case nir_intrinsic_load_primitive_id:
       return emit_load_unary_external_function(ctx, intr, "dx.op.primitiveID",
                                                DXIL_INTR_PRIMITIVE_ID);
@@ -4777,6 +4732,9 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
 
    if (!allocate_sysvalues(ctx))
       return false;
+
+   NIR_PASS_V(s, dxil_nir_lower_sysval_to_load_input, ctx->system_value);
+   NIR_PASS_V(s, nir_opt_dce);
 
    if (debug_dxil & DXIL_DEBUG_VERBOSE)
       nir_print_shader(s, stderr);
