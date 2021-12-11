@@ -4958,6 +4958,12 @@ allocate_sysvalues(struct ntd_context *ctx)
    return true;
 }
 
+static int
+type_size_vec4(const struct glsl_type *type, bool bindless)
+{
+   return glsl_count_attribute_slots(type, false);
+}
+
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
             struct blob *blob)
@@ -4993,6 +4999,7 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    NIR_PASS_V(s, nir_lower_pack);
    NIR_PASS_V(s, nir_lower_frexp);
    NIR_PASS_V(s, nir_lower_flrp, 16 | 32 | 64, true);
+   NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, (nir_lower_io_options)0);
 
    optimize_nir(s, opts);
 
