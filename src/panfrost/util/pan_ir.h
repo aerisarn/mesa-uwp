@@ -29,6 +29,24 @@
 #include "util/u_dynarray.h"
 #include "util/hash_table.h"
 
+/* On Valhall, the driver gives the hardware a table of resource tables.
+ * Resources are addressed as the index of the table together with the index of
+ * the resource within the table. For simplicity, we put one type of resource
+ * in each table and fix the numbering of the tables.
+ *
+ * This numbering is arbitrary. It is a software ABI between the
+ * Gallium driver and the Valhall compiler.
+ */
+enum pan_resource_table {
+        PAN_TABLE_UBO = 0,
+        PAN_TABLE_ATTRIBUTE,
+        PAN_TABLE_ATTRIBUTE_BUFFER,
+        PAN_TABLE_SAMPLER,
+        PAN_TABLE_TEXTURE,
+
+        PAN_NUM_RESOURCE_TABLES
+};
+
 /* Indices for named (non-XFB) varyings that are present. These are packed
  * tightly so they correspond to a bitfield present (P) indexed by (1 <<
  * PAN_VARY_*). This has the nice property that you can lookup the buffer index
