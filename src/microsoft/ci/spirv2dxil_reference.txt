@@ -376,11 +376,11 @@ Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPointSize_Write1_IsErased.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPointSize_WriteViaCopyObjectPostAccessChainErased.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_BuiltIn_Position.spvasm:main|Vertex: Fail
@@ -388,23 +388,23 @@ Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_BuiltIn_Position_Initializer.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePosition.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePosition_PerVertexStructOutOfOrderDecl.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_OneAccessChain.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePositionMember_TwoAccessChain.spvasm:main|Vertex: Fail
-Assertion failed: instr->deref_type == nir_deref_type_var || instr->deref_type == nir_deref_type_array
+Assertion failed: glsl_get_components(type) == 4
 
 
 Test:SpvModuleScopeVarParserTest_BuiltinVertexIndex.spvasm:main|Vertex: Fail

@@ -2764,6 +2764,38 @@ emit_store_deref(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
+emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   nir_alu_type out_type = nir_intrinsic_src_type(intr);
+   enum overload_type overload = get_overload(out_type, intr->src[0].ssa->bit_size);
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.storeOutput", overload);
+
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_STORE_OUTPUT);
+   const struct dxil_value *output_id = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
+   const struct dxil_value *row = get_src(ctx, &intr->src[1], 0, nir_type_int);
+
+   bool success = true;
+   uint32_t writemask = nir_intrinsic_write_mask(intr);
+   for (unsigned i = 0; i < intr->num_components && success; ++i) {
+      if (writemask & (1 << i)) {
+         const struct dxil_value *col = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+         const struct dxil_value *value = get_src(ctx, &intr->src[0], i, out_type);
+         if (!col || !value)
+            return false;
+
+         const struct dxil_value *args[] = {
+            opcode, output_id, row, col, value
+         };
+         success &= dxil_emit_call_void(&ctx->mod, func, args, ARRAY_SIZE(args));
+      }
+   }
+   return success;
+}
+
+static bool
 emit_load_input_array(struct ntd_context *ctx, nir_intrinsic_instr *intr, nir_variable *var, nir_src *index)
 {
    assert(var);
@@ -2935,6 +2967,64 @@ emit_load_input(struct ntd_context *ctx, nir_intrinsic_instr *intr,
       return emit_load_input_interpolated(ctx, intr, input);
    else
       return emit_load_input_flat(ctx, intr, input);
+}
+
+static bool
+emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   bool attr_at_vertex = false;
+   if (ctx->mod.shader_kind == DXIL_PIXEL_SHADER &&
+      ctx->opts->interpolate_at_vertex &&
+      ctx->opts->provoking_vertex != 0 &&
+      (nir_intrinsic_dest_type(intr) & nir_type_float)) {
+      nir_variable *var = nir_find_variable_with_driver_location(ctx->shader, nir_var_shader_in, nir_intrinsic_base(intr));
+
+      attr_at_vertex = var && var->data.interpolation == INTERP_MODE_FLAT;
+   }
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod,
+      attr_at_vertex ? DXIL_INTR_ATTRIBUTE_AT_VERTEX : DXIL_INTR_LOAD_INPUT);
+   const struct dxil_value *input_id = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
+   int row_index = intr->intrinsic == nir_intrinsic_load_per_vertex_input ? 1 : 0;
+   const struct dxil_value *row = get_src(ctx, &intr->src[row_index], 0, nir_type_int);
+   const struct dxil_value *vertex_id;
+   if (intr->intrinsic == nir_intrinsic_load_per_vertex_input) {
+      vertex_id = get_src(ctx, &intr->src[0], 0, nir_type_int);
+   } else if (attr_at_vertex) {
+      vertex_id = dxil_module_get_int8_const(&ctx->mod, ctx->opts->provoking_vertex);
+   } else {
+      const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
+      if (!int32_type)
+         return false;
+
+      vertex_id = dxil_module_get_undef(&ctx->mod, int32_type);
+   }
+
+   if (!opcode || !input_id || !row || !vertex_id)
+      return false;
+
+   nir_alu_type out_type = nir_intrinsic_dest_type(intr);
+   enum overload_type overload = get_overload(out_type, intr->dest.ssa.bit_size);
+
+   const struct dxil_func *func = dxil_get_function(&ctx->mod,
+      attr_at_vertex ? "dx.op.attributeAtVertex" : "dx.op.loadInput", overload);
+
+   if (!func)
+      return false;
+
+   for (unsigned i = 0; i < intr->num_components; ++i) {
+      const struct dxil_value *comp = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+
+      const struct dxil_value *args[] = {
+         opcode, input_id, row, comp, vertex_id
+      };
+
+      const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+      if (!retval)
+         return false;
+      store_dest(ctx, &intr->dest, i, retval, out_type);
+   }
+   return true;
 }
 
 static bool
@@ -3681,6 +3771,11 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_image_size(ctx, intr);
    case nir_intrinsic_get_ssbo_size:
       return emit_get_ssbo_size(ctx, intr);
+   case nir_intrinsic_load_input:
+   case nir_intrinsic_load_per_vertex_input:
+      return emit_load_input_via_intrinsic(ctx, intr);
+   case nir_intrinsic_store_output:
+      return emit_store_output_via_intrinsic(ctx, intr);
 
    case nir_intrinsic_vulkan_resource_index:
       return emit_vulkan_resource_index(ctx, intr);
