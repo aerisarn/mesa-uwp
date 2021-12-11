@@ -4876,14 +4876,14 @@ wait_for_submission_timelines_available(struct radv_deferred_queue_submission *s
       ++syncobj_idx;
    }
 
-   bool success = true;
+   VkResult result = VK_SUCCESS;
    if (syncobj_idx > 0) {
-      success = device->ws->wait_timeline_syncobj(device->ws, syncobj, points, syncobj_idx, true,
-                                                  true, timeout);
+      result = device->ws->wait_timeline_syncobj(device->ws, syncobj, points, syncobj_idx, true,
+                                                 true, timeout);
    }
 
    free(points);
-   return success ? VK_SUCCESS : VK_TIMEOUT;
+   return result;
 }
 
 static int
@@ -6276,11 +6276,11 @@ radv_WaitSemaphores(VkDevice _device, const VkSemaphoreWaitInfo *pWaitInfo, uint
       handles[i] = semaphore->permanent.syncobj;
    }
 
-   bool success =
+   VkResult result =
       device->ws->wait_timeline_syncobj(device->ws, handles, pWaitInfo->pValues,
                                         pWaitInfo->semaphoreCount, wait_all, false, abs_timeout);
    free(handles);
-   return success ? VK_SUCCESS : VK_TIMEOUT;
+   return result;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
