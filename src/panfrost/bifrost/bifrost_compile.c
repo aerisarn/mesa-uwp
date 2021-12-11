@@ -3981,6 +3981,7 @@ bi_compile_variant_nir(nir_shader *nir,
                 bi_opt_dead_code_eliminate(ctx);
                 bi_opt_cse(ctx);
                 bi_opt_dead_code_eliminate(ctx);
+                bi_opt_reorder_push(ctx);
                 bi_validate(ctx, "Optimization passes");
         }
 
@@ -4060,7 +4061,8 @@ bi_compile_variant(nir_shader *nir,
                 .push = &info->push,
                 .bifrost = &info->bifrost,
                 .tls_size = info->tls_size,
-                .sysvals = &info->sysvals
+                .sysvals = &info->sysvals,
+                .push_offset = info->push.count
         };
 
         unsigned offset = binary->size;

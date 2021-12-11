@@ -682,6 +682,7 @@ struct bi_shader_info {
         struct panfrost_sysvals *sysvals;
         unsigned tls_size;
         unsigned work_reg_count;
+        unsigned push_offset;
 };
 
 /* State of index-driven vertex shading for current shader */
@@ -986,6 +987,7 @@ void bi_opt_dead_code_eliminate(bi_context *ctx);
 void bi_opt_fuse_dual_texture(bi_context *ctx);
 void bi_opt_dce_post_ra(bi_context *ctx);
 void bi_opt_push_ubo(bi_context *ctx);
+void bi_opt_reorder_push(bi_context *ctx);
 void bi_lower_swizzle(bi_context *ctx);
 void bi_lower_fau(bi_context *ctx);
 void bi_assign_scoreboard(bi_context *ctx);
