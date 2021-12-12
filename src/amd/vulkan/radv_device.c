@@ -4875,8 +4875,12 @@ wait_for_submission_timelines_available(struct radv_deferred_queue_submission *s
       points[syncobj_idx] = submission->wait_values[i];
       ++syncobj_idx;
    }
-   bool success = device->ws->wait_timeline_syncobj(device->ws, syncobj, points, syncobj_idx, true,
-                                                    true, timeout);
+
+   bool success = true;
+   if (syncobj_idx > 0) {
+      success = device->ws->wait_timeline_syncobj(device->ws, syncobj, points, syncobj_idx, true,
+                                                  true, timeout);
+   }
 
    free(points);
    return success ? VK_SUCCESS : VK_TIMEOUT;
