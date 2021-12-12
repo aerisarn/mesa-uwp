@@ -23,9 +23,10 @@
  */
 
 #include "ac_exp_param.h"
+#include "ac_nir.h"
 #include "ac_rtld.h"
-#include "compiler/nir/nir.h"
-#include "compiler/nir/nir_serialize.h"
+#include "nir.h"
+#include "nir_serialize.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "sid.h"
@@ -1386,6 +1387,8 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
       return NULL;
    }
 
+   bool progress = false;
+
    bool inline_uniforms = false;
    uint32_t *inlined_uniform_values;
    si_get_inline_uniform_state((union si_shader_key*)key, sel->pipe_shader_type,
@@ -1437,14 +1440,37 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
                  nir->info.num_inlinable_uniforms,
                  inlined_uniform_values,
                  nir->info.inlinable_uniform_dw_offsets);
+      progress = true;
+   }
 
+   if (progress)
       si_nir_opts(sel->screen, nir, true);
+
+   /* Lower large variables that are always constant with load_constant intrinsics, which
+    * get turned into PC-relative loads from a data section next to the shader.
+    *
+    * Loop unrolling caused by uniform inlining can help eliminate indirect indexing, so
+    * this should be done after that.
+    *
+    * The pass crashes if there are dead temps of lowered IO interface types, so remove
+    * them first.
+    */
+   bool progress2 = false;
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+   NIR_PASS(progress2, nir, nir_opt_large_constants, glsl_get_natural_size_align_bytes, 16);
+
+   /* Loop unrolling caused by uniform inlining can help eliminate indirect indexing, so
+    * this should be done after that.
+    */
+   progress2 |= ac_nir_lower_indirect_derefs(nir, sel->screen->info.chip_class);
+   if (progress2)
+      si_nir_opts(sel->screen, nir, false);
+
+   if (progress || progress2)
       si_nir_late_opts(nir);
 
-      /* This must be done again. */
-      NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
-                                                       nir_var_shader_out);
-   }
+   /* This must be done again. */
+   NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in | nir_var_shader_out);
 
    /* This helps LLVM form VMEM clauses and thus get more GPU cache hits.
     * 200 is tuned for Viewperf. It should be done last.

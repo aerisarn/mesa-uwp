@@ -23,7 +23,6 @@
  */
 
 #include "ac_nir_to_llvm.h"
-#include "ac_nir.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_deref.h"
@@ -412,6 +411,8 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          break;
       case nir_intrinsic_load_deref:
       case nir_intrinsic_store_deref:
+         /* These can only occur if there is indirect temp indexing. */
+         break;
       case nir_intrinsic_interp_deref_at_centroid:
       case nir_intrinsic_interp_deref_at_sample:
       case nir_intrinsic_interp_deref_at_offset:
@@ -936,24 +937,6 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    }
 
    si_nir_opts(sscreen, nir, true);
-
-   /* Lower large variables that are always constant with load_constant
-    * intrinsics, which get turned into PC-relative loads from a data
-    * section next to the shader.
-    *
-    * st/mesa calls finalize_nir twice, but we can't call this pass twice.
-    */
-   bool changed = false;
-   if (!nir->constant_data) {
-      /* The pass crashes if there are dead temps of lowered IO interface types. */
-      NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-      NIR_PASS(changed, nir, nir_opt_large_constants, glsl_get_natural_size_align_bytes, 16);
-   }
-
-   changed |= ac_nir_lower_indirect_derefs(nir, sscreen->info.chip_class);
-   if (changed)
-      si_nir_opts(sscreen, nir, false);
-
    /* Run late optimizations to fuse ffma and eliminate 16-bit conversions. */
    si_nir_late_opts(nir);
 
