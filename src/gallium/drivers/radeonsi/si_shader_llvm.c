@@ -1293,10 +1293,6 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
    /* Post-optimization transformations and analysis. */
    si_optimize_vs_outputs(&ctx);
 
-   if ((debug && debug->debug_message) || si_can_dump_shader(sscreen, sel->info.stage)) {
-      ctx.shader->info.private_mem_vgprs = ac_count_scratch_private_memory(ctx.main_fn);
-   }
-
    /* Make sure the input is a pointer and not integer followed by inttoptr. */
    assert(LLVMGetTypeKind(LLVMTypeOf(LLVMGetParam(ctx.main_fn, 0))) == LLVMPointerTypeKind);
 

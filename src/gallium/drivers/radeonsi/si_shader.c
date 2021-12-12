@@ -1501,6 +1501,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    shader->info.vs_output_ps_input_cntl[VARYING_SLOT_COL0] = SI_PS_INPUT_CNTL_UNUSED_COLOR0;
 
    shader->info.uses_instanceid = sel->info.uses_instanceid;
+   shader->info.private_mem_vgprs = DIV_ROUND_UP(nir->scratch_size, 4);
 
    /* TODO: ACO could compile non-monolithic shaders here (starting
     * with PS and NGG VS), but monolithic shaders should be compiled
