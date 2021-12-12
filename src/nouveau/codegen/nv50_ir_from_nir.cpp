@@ -114,7 +114,8 @@ private:
 
    Instruction *loadFrom(DataFile, uint8_t, DataType, Value *def, uint32_t base,
                          uint8_t c, Value *indirect0 = NULL,
-                         Value *indirect1 = NULL, bool patch = false);
+                         Value *indirect1 = NULL, bool patch = false,
+                         CacheMode cache=CACHE_CA);
    void storeTo(nir_intrinsic_instr *, DataFile, operation, DataType,
                 Value *src, uint8_t idx, uint8_t c, Value *indirect0 = NULL,
                 Value *indirect1 = NULL);
@@ -1225,7 +1226,7 @@ Converter::getSlotAddress(nir_intrinsic_instr *insn, uint8_t idx, uint8_t slot)
 Instruction *
 Converter::loadFrom(DataFile file, uint8_t i, DataType ty, Value *def,
                     uint32_t base, uint8_t c, Value *indirect0,
-                    Value *indirect1, bool patch)
+                    Value *indirect1, bool patch, CacheMode cache)
 {
    unsigned int tySize = typeSizeof(ty);
 
@@ -1240,6 +1241,7 @@ Converter::loadFrom(DataFile file, uint8_t i, DataType ty, Value *def,
                 indirect0);
       loi->setIndirect(0, 1, indirect1);
       loi->perPatch = patch;
+      loi->cache = cache;
 
       Instruction *hii =
          mkLoad(TYPE_U32, hi,
@@ -1247,6 +1249,7 @@ Converter::loadFrom(DataFile file, uint8_t i, DataType ty, Value *def,
                 indirect0);
       hii->setIndirect(0, 1, indirect1);
       hii->perPatch = patch;
+      hii->cache = cache;
 
       return mkOp2(OP_MERGE, ty, def, lo, hi);
    } else {
@@ -1254,6 +1257,7 @@ Converter::loadFrom(DataFile file, uint8_t i, DataType ty, Value *def,
          mkLoad(ty, def, mkSymbol(file, i, ty, base + c * tySize), indirect0);
       ld->setIndirect(0, 1, indirect1);
       ld->perPatch = patch;
+      ld->cache = cache;
       return ld;
    }
 }
@@ -2043,13 +2047,16 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t buffer = getIndirect(&insn->src[1], 0, indirectBuffer);
       uint32_t offset = getIndirect(&insn->src[2], 0, indirectOffset);
 
+      CacheMode cache = convert(nir_intrinsic_access(insn));
+
       for (uint8_t i = 0u; i < nir_intrinsic_src_components(insn, 0); ++i) {
          if (!((1u << i) & nir_intrinsic_write_mask(insn)))
             continue;
          Symbol *sym = mkSymbol(FILE_MEMORY_BUFFER, buffer, sType,
                                 offset + i * typeSizeof(sType));
-         mkStore(OP_STORE, sType, sym, indirectOffset, getSrc(&insn->src[0], i))
-            ->setIndirect(0, 1, indirectBuffer);
+         Instruction *st = mkStore(OP_STORE, sType, sym, indirectOffset, getSrc(&insn->src[0], i));
+         st->setIndirect(0, 1, indirectBuffer);
+         st->cache = cache;
       }
       info_out->io.globalAccess |= 0x2;
       break;
@@ -2062,9 +2069,11 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t buffer = getIndirect(&insn->src[0], 0, indirectBuffer);
       uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
 
+      CacheMode cache = convert(nir_intrinsic_access(insn));
+
       for (uint8_t i = 0u; i < dest_components; ++i)
          loadFrom(FILE_MEMORY_BUFFER, buffer, dType, newDefs[i], offset, i,
-                  indirectOffset, indirectBuffer);
+                  indirectOffset, indirectBuffer, false, cache);
 
       info_out->io.globalAccess |= 0x1;
       break;
