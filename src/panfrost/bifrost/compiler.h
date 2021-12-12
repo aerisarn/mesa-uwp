@@ -428,6 +428,7 @@ typedef struct {
                 uint32_t fill;
                 uint32_t index;
                 uint32_t attribute_index;
+                int32_t byte_offset;
                 int32_t branch_offset;
 
                 struct {

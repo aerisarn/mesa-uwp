@@ -492,7 +492,7 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
 
                         b.cursor = bi_after_instr(I);
                         bi_index loc = bi_imm_u32(offset + 4 * extra);
-                        bi_store(&b, bits, tmp, loc, bi_zero(), BI_SEG_TL);
+                        bi_store(&b, bits, tmp, loc, bi_zero(), BI_SEG_TL, 0);
 
                         ctx->spills++;
                         channels = MAX2(channels, extra + count);
@@ -506,7 +506,8 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
                         bi_rewrite_index_src_single(I, index, tmp);
 
                         bi_instr *ld = bi_load_to(&b, bits, tmp,
-                                        bi_imm_u32(offset), bi_zero(), BI_SEG_TL);
+                                        bi_imm_u32(offset), bi_zero(), BI_SEG_TL,
+                                        0);
                         ld->no_spill = true;
                         ctx->fills++;
                 }

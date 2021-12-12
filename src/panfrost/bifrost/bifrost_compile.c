@@ -423,7 +423,7 @@ bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
 
         return bi_load_to(b, nr_components * 32, dest,
                         bi_imm_u32(idx),
-                        bi_imm_u32(sysval_ubo), BI_SEG_UBO);
+                        bi_imm_u32(sysval_ubo), BI_SEG_UBO, 0);
 }
 
 static void
@@ -792,7 +792,7 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
                         bi_dest_index(&instr->dest), offset_is_const ?
                         bi_imm_u32(const_offset) : dyn_offset,
                         kernel_input ? bi_zero() : bi_src_index(&instr->src[0]),
-                        BI_SEG_UBO);
+                        BI_SEG_UBO, 0);
 }
 
 static bi_index
@@ -808,7 +808,7 @@ bi_emit_load(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
         bi_load_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
                    bi_dest_index(&instr->dest),
                    bi_src_index(&instr->src[0]), bi_addr_high(&instr->src[0]),
-                   seg);
+                   seg, 0);
 }
 
 static void
@@ -821,7 +821,7 @@ bi_emit_store(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
         bi_store(b, instr->num_components * nir_src_bit_size(instr->src[0]),
                     bi_src_index(&instr->src[0]),
                     bi_src_index(&instr->src[1]), bi_addr_high(&instr->src[1]),
-                    seg);
+                    seg, 0);
 }
 
 /* Exchanges the staging register with memory */
