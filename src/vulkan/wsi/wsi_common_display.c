@@ -1701,6 +1701,17 @@ wsi_register_vblank_event(struct wsi_display_fence *fence,
    if (wsi->fd < 0)
       return VK_ERROR_INITIALIZATION_FAILED;
 
+   /* A display event may be registered before the first page flip at which
+    * point crtc_id will be 0. If this is the case we setup the connector
+    * here to allow drmCrtcQueueSequence to succeed.
+    */
+   if (!connector->crtc_id) {
+      VkResult ret = wsi_display_setup_connector(connector,
+                                                 connector->current_mode);
+      if (ret != VK_SUCCESS)
+         return VK_ERROR_INITIALIZATION_FAILED;
+   }
+
    for (;;) {
       int ret = drmCrtcQueueSequence(wsi->fd, connector->crtc_id,
                                      flags,
