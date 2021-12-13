@@ -244,7 +244,7 @@ static void build_streamout_vertex(struct si_shader_context *ctx, LLVMValueRef *
       for (unsigned comp = 0; comp < 4; comp++) {
          tmp = ac_build_gep0(&ctx->ac, vertexptr, LLVMConstInt(ctx->ac.i32, 4 * reg + comp, false));
          out.values[comp] = LLVMBuildLoad(builder, tmp, "");
-         out.vertex_stream[comp] = (info->output_streams[reg] >> (2 * comp)) & 3;
+         out.vertex_streams = info->output_streams[reg];
       }
 
       si_llvm_streamout_store_output(ctx, so_buffer, offset, &so->output[i], &out);
@@ -1425,7 +1425,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
       outputs[i].semantic = info->output_semantic[i];
 
       for (unsigned j = 0; j < 4; j++) {
-         outputs[i].vertex_stream[j] = (info->output_streams[i] >> (2 * j)) & 3;
+         outputs[i].vertex_streams = info->output_streams[i];
 
          /* TODO: we may store more outputs than streamout needs,
           * but streamout performance isn't that important.
@@ -1613,6 +1613,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
 
       if (ctx->shader->key.ge.mono.u.vs_export_prim_id) {
          outputs[i].semantic = VARYING_SLOT_PRIMITIVE_ID;
+         outputs[i].vertex_streams = 0;
 
          if (ctx->stage == MESA_SHADER_VERTEX) {
             /* Wait for GS stores to finish. */
@@ -1629,8 +1630,6 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
          outputs[i].values[0] = ac_to_float(&ctx->ac, outputs[i].values[0]);
          for (unsigned j = 1; j < 4; j++)
             outputs[i].values[j] = LLVMGetUndef(ctx->ac.f32);
-
-         memset(outputs[i].vertex_stream, 0, sizeof(outputs[i].vertex_stream));
          i++;
       }
 
@@ -2148,7 +2147,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
             tmp = ngg_gs_get_emit_output_ptr(ctx, vertexptr, out_idx);
             tmp = LLVMBuildLoad(builder, tmp, "");
             outputs[i].values[j] = ac_to_float(&ctx->ac, tmp);
-            outputs[i].vertex_stream[j] = (info->output_streams[i] >> (2 * j)) & 3;
+            outputs[i].vertex_streams = info->output_streams[i];
          }
       }
 

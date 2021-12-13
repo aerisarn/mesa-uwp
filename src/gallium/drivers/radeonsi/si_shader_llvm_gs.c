@@ -469,10 +469,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    /* Fill in output information. */
    for (i = 0; i < gsinfo->num_outputs; ++i) {
       outputs[i].semantic = gsinfo->output_semantic[i];
-
-      for (int chan = 0; chan < 4; chan++) {
-         outputs[i].vertex_stream[chan] = (gsinfo->output_streams[i] >> (2 * chan)) & 3;
-      }
+      outputs[i].vertex_streams = gsinfo->output_streams[i];
    }
 
    LLVMBasicBlockRef end_bb;
@@ -500,7 +497,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
       for (i = 0; i < gsinfo->num_outputs; ++i) {
          for (unsigned chan = 0; chan < 4; chan++) {
             if (!(gsinfo->output_usagemask[i] & (1 << chan)) ||
-                outputs[i].vertex_stream[chan] != stream) {
+                ((outputs[i].vertex_streams >> (chan * 2)) & 0x3) != stream) {
                outputs[i].values[chan] = LLVMGetUndef(ctx.ac.f32);
                continue;
             }

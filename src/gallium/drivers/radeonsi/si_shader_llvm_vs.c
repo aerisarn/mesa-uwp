@@ -284,7 +284,7 @@ void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef 
 
    /* Load the output as int. */
    for (int j = 0; j < num_comps; j++) {
-      assert(stream_out->stream == shader_out->vertex_stream[start + j]);
+      assert(stream_out->stream == ((shader_out->vertex_streams >> ((start + j) * 2)) & 0x3));
 
       out[j] = ac_to_integer(&ctx->ac, shader_out->values[start + j]);
    }
@@ -452,8 +452,11 @@ static void si_prepare_param_exports(struct si_shader_context *ctx,
    for (unsigned i = 0; i < noutput; i++) {
       unsigned semantic = outputs[i].semantic;
 
-      if (outputs[i].vertex_stream[0] != 0 && outputs[i].vertex_stream[1] != 0 &&
-          outputs[i].vertex_stream[2] != 0 && outputs[i].vertex_stream[3] != 0)
+      /* Skip if no channel writes to stream 0. */
+      if (outputs[i].vertex_streams & 0x03 &&
+          outputs[i].vertex_streams & 0x0c &&
+          outputs[i].vertex_streams & 0x30 &&
+          outputs[i].vertex_streams & 0xc0)
          continue;
 
       switch (semantic) {
@@ -768,7 +771,7 @@ void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi)
 
       for (j = 0; j < 4; j++) {
          outputs[i].values[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
-         outputs[i].vertex_stream[j] = (info->output_streams[i] >> (2 * j)) & 3;
+         outputs[i].vertex_streams = info->output_streams[i];
       }
    }
 
@@ -778,11 +781,10 @@ void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi)
    /* Export PrimitiveID. */
    if (ctx->shader->key.ge.mono.u.vs_export_prim_id) {
       outputs[i].semantic = VARYING_SLOT_PRIMITIVE_ID;
+      outputs[i].vertex_streams = 0;
       outputs[i].values[0] = ac_to_float(&ctx->ac, si_get_primitive_id(ctx, 0));
       for (j = 1; j < 4; j++)
          outputs[i].values[j] = LLVMConstReal(ctx->ac.f32, 0);
-
-      memset(outputs[i].vertex_stream, 0, sizeof(outputs[i].vertex_stream));
       i++;
    }
 
