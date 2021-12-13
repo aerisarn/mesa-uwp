@@ -128,9 +128,6 @@ bi_pick_ubo(struct panfrost_ubo_push *push, struct bi_ubo_analysis *analysis)
 void
 bi_opt_push_ubo(bi_context *ctx)
 {
-        /* This pass only runs once */
-        assert(ctx->info->push.count == 0);
-
         struct bi_ubo_analysis analysis = bi_analyze_ranges(ctx);
         bi_pick_ubo(&ctx->info->push, &analysis);
 
