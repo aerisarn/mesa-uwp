@@ -22,7 +22,6 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "ac_exp_param.h"
 #include "ac_nir.h"
 #include "ac_rtld.h"
 #include "nir.h"

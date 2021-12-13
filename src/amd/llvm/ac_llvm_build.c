@@ -25,7 +25,7 @@
 /* based on pieces from si_pipe.c and radeon_llvm_emit.c */
 #include "ac_llvm_build.h"
 
-#include "ac_exp_param.h"
+#include "ac_nir.h"
 #include "ac_llvm_util.h"
 #include "ac_shader_util.h"
 #include "c11/threads.h"

@@ -22,7 +22,7 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "ac_exp_param.h"
+#include "ac_nir.h"
 #include "ac_sqtt.h"
 #include "si_build_pm4.h"
 #include "util/u_cpu_detect.h"

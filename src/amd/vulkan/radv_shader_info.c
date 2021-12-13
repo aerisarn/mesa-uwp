@@ -25,7 +25,7 @@
 #include "radv_private.h"
 #include "radv_shader.h"
 
-#include "ac_exp_param.h"
+#include "ac_nir.h"
 
 static void
 mark_sampler_desc(const nir_variable *var, struct radv_shader_info *info)

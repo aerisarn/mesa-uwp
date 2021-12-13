@@ -35,6 +35,19 @@
 extern "C" {
 #endif
 
+enum
+{
+   /* SPI_PS_INPUT_CNTL_i.OFFSET[0:4] */
+   AC_EXP_PARAM_OFFSET_0 = 0,
+   AC_EXP_PARAM_OFFSET_31 = 31,
+   /* SPI_PS_INPUT_CNTL_i.DEFAULT_VAL[0:1] */
+   AC_EXP_PARAM_DEFAULT_VAL_0000 = 64,
+   AC_EXP_PARAM_DEFAULT_VAL_0001,
+   AC_EXP_PARAM_DEFAULT_VAL_1110,
+   AC_EXP_PARAM_DEFAULT_VAL_1111,
+   AC_EXP_PARAM_UNDEFINED = 255, /* deprecated, use AC_EXP_PARAM_DEFAULT_VAL_0000 instead */
+};
+
 /* Forward declaration of nir_builder so we don't have to include nir_builder.h here */
 struct nir_builder;
 typedef struct nir_builder nir_builder;

@@ -28,7 +28,7 @@
 #include "aco_builder.h"
 #include "aco_ir.h"
 
-#include "common/ac_exp_param.h"
+#include "common/ac_nir.h"
 #include "common/sid.h"
 #include "vulkan/radv_descriptor_set.h"
 
