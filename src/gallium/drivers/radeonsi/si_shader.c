@@ -701,8 +701,6 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
                     shader->selector->info.writes_z + shader->selector->info.writes_stencil +
                     shader->selector->info.writes_samplemask + 1 /* SampleMaskIn */;
 
-      num_returns = MAX2(num_returns, num_return_sgprs + PS_EPILOG_SAMPLEMASK_MIN_LOC + 1);
-
       for (i = 0; i < num_return_sgprs; i++)
          ac_add_return(&ctx->args, AC_ARG_SGPR);
       for (; i < num_returns; i++)
@@ -1249,9 +1247,8 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  epilog.last_cbuf = %u\n", key->ps.part.epilog.last_cbuf);
       fprintf(f, "  epilog.alpha_func = %u\n", key->ps.part.epilog.alpha_func);
       fprintf(f, "  epilog.alpha_to_one = %u\n", key->ps.part.epilog.alpha_to_one);
-      fprintf(f, "  epilog.poly_line_smoothing = %u\n",
-              key->ps.part.epilog.poly_line_smoothing);
       fprintf(f, "  epilog.clamp_color = %u\n", key->ps.part.epilog.clamp_color);
+      fprintf(f, "  mono.poly_line_smoothing = %u\n", key->ps.mono.poly_line_smoothing);
       fprintf(f, "  mono.interpolate_at_sample_force_center = %u\n",
               key->ps.mono.interpolate_at_sample_force_center);
       fprintf(f, "  mono.fbfetch_msaa = %u\n", key->ps.mono.fbfetch_msaa);
@@ -1985,12 +1982,6 @@ static bool si_shader_select_ps_parts(struct si_screen *sscreen, struct ac_llvm_
       shader->config.spi_ps_input_ena |= S_0286CC_ANCILLARY_ENA(1);
       assert(G_0286CC_ANCILLARY_ENA(shader->config.spi_ps_input_addr));
    }
-
-   /* The sample mask input is always enabled, because the API shader always
-    * passes it through to the epilog. Disable it here if it's unused.
-    */
-   if (!shader->key.ps.part.epilog.poly_line_smoothing && !shader->selector->info.reads_samplemask)
-      shader->config.spi_ps_input_ena &= C_0286CC_SAMPLE_COVERAGE_ENA;
 
    return true;
 }

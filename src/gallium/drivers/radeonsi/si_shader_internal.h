@@ -30,11 +30,6 @@
 
 struct pipe_debug_callback;
 
-/* Ideally pass the sample mask input to the PS epilog as v14, which
- * is its usual location, so that the shader doesn't have to add v_mov.
- */
-#define PS_EPILOG_SAMPLEMASK_MIN_LOC 14
-
 struct si_shader_output_values {
    LLVMValueRef values[4];
    ubyte vertex_stream[4];

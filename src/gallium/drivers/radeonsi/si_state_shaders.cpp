@@ -2196,7 +2196,7 @@ static void si_ps_key_update_primtype_shader_rasterizer_framebuffer(struct si_co
    bool is_line = util_prim_is_lines(sctx->current_rast_prim);
 
    key->ps.part.prolog.poly_stipple = rs->poly_stipple_enable && is_poly;
-   key->ps.part.epilog.poly_line_smoothing =
+   key->ps.mono.poly_line_smoothing =
       ((is_poly && rs->poly_smooth) || (is_line && rs->line_smooth)) &&
       sctx->framebuffer.nr_samples <= 1;
 }

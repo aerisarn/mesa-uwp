@@ -578,7 +578,6 @@ struct si_ps_epilog_bits {
    unsigned last_cbuf : 3;
    unsigned alpha_func : 3;
    unsigned alpha_to_one : 1;
-   unsigned poly_line_smoothing : 1;
    unsigned clamp_color : 1;
 };
 
@@ -708,6 +707,7 @@ struct si_shader_key_ps {
 
    /* Flags for monolithic compilation only. */
    struct {
+      unsigned poly_line_smoothing : 1;
       unsigned interpolate_at_sample_force_center : 1;
       unsigned fbfetch_msaa : 1;
       unsigned fbfetch_is_1D : 1;

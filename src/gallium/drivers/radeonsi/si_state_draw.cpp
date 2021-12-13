@@ -275,8 +275,8 @@ static bool si_update_shaders(struct si_context *sctx)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
 
    if (sctx->smoothing_enabled !=
-       sctx->shader.ps.current->key.ps.part.epilog.poly_line_smoothing) {
-      sctx->smoothing_enabled = sctx->shader.ps.current->key.ps.part.epilog.poly_line_smoothing;
+       sctx->shader.ps.current->key.ps.mono.poly_line_smoothing) {
+      sctx->smoothing_enabled = sctx->shader.ps.current->key.ps.mono.poly_line_smoothing;
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
 
       /* NGG cull state uses smoothing_enabled. */
