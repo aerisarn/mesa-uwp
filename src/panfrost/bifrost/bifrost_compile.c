@@ -675,6 +675,25 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         }
 }
 
+/**
+ * In a vertex shader, is the specified variable a position output? These kinds
+ * of outputs are written from position shaders when IDVS is enabled. All other
+ * outputs are written from the varying shader.
+ */
+static bool
+bi_should_remove_store(nir_intrinsic_instr *intr, enum bi_idvs_mode idvs)
+{
+        nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+
+        switch (sem.location) {
+        case VARYING_SLOT_POS:
+        case VARYING_SLOT_PSIZ:
+                return idvs == BI_IDVS_VARYING;
+        default:
+                return idvs == BI_IDVS_POSITION;
+        }
+}
+
 static void
 bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 {
@@ -689,6 +708,12 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 
         unsigned imm_index = 0;
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
+
+        /* Skip stores to the wrong kind of variable in a specialized IDVS
+         * shader. Backend dead code elimination will clean up the mess.
+         */
+        if (bi_should_remove_store(instr, b->shader->idvs))
+                return;
 
         bi_index address;
         if (immediate) {
