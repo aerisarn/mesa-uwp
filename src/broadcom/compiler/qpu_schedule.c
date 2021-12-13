@@ -1763,25 +1763,56 @@ emit_thrsw(struct v3d_compile *c,
 
         /* Find how far back into previous instructions we can put the THRSW. */
         int slots_filled = 0;
+        int invalid_sig_count = 0;
+        bool last_thrsw_after_invalid_ok = false;
         struct qinst *merge_inst = NULL;
         vir_for_each_inst_rev(prev_inst, block) {
-                struct v3d_qpu_sig sig = prev_inst->qpu.sig;
-                sig.thrsw = true;
-                uint32_t packed_sig;
-
-                if (!v3d_qpu_sig_pack(c->devinfo, &sig, &packed_sig))
-                        break;
-
                 if (!valid_thrsw_sequence(c, scoreboard,
                                           prev_inst, slots_filled + 1,
                                           is_thrend)) {
                         break;
                 }
 
+                struct v3d_qpu_sig sig = prev_inst->qpu.sig;
+                sig.thrsw = true;
+                uint32_t packed_sig;
+                if (!v3d_qpu_sig_pack(c->devinfo, &sig, &packed_sig)) {
+                        /* If we can't merge the thrsw here because of signal
+                         * incompatibility, keep going, we might be able to
+                         * merge it in an earlier instruction.
+                         */
+                        invalid_sig_count++;
+                        goto cont_block;
+                }
+
+                /* For last thrsw we need 2 consecutive slots that are
+                 * thrsw compatible, so if we have previously jumped over
+                 * an incompatible signal, flag that we have found the first
+                 * valid slot here and keep going.
+                 */
+                if (inst->is_last_thrsw && invalid_sig_count > 0 &&
+                    !last_thrsw_after_invalid_ok) {
+                        last_thrsw_after_invalid_ok = true;
+                        invalid_sig_count++;
+                        goto cont_block;
+                }
+
+                last_thrsw_after_invalid_ok = false;
+                invalid_sig_count = 0;
                 merge_inst = prev_inst;
+
+cont_block:
                 if (++slots_filled == 3)
                         break;
         }
+
+        /* If we jumped over a signal incompatibility and did not manage to
+         * merge the thrsw in the end, we need to adjust slots filled to match
+         * the last valid merge point.
+         */
+        assert(invalid_sig_count == 0 || slots_filled >= invalid_sig_count);
+        if (invalid_sig_count > 0)
+                slots_filled -= invalid_sig_count;
 
         bool needs_free = false;
         if (merge_inst) {
