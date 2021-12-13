@@ -383,6 +383,29 @@ init_shader_builder(struct indirect_draw_shader_builder *builder,
 }
 
 static void
+update_dcd(struct indirect_draw_shader_builder *builder,
+           nir_ssa_def *job_ptr,
+           unsigned draw_offset)
+{
+        nir_builder *b = &builder->b;
+        nir_ssa_def *draw_w01 =
+                load_global(b, get_address_imm(b, job_ptr, draw_offset + WORD(0)), 2, 32);
+        nir_ssa_def *draw_w0 = nir_channel(b, draw_w01, 0);
+
+        /* Update DRAW.{instance_size,offset_start} */
+        nir_ssa_def *instance_size =
+                nir_bcsel(b,
+                          nir_ult(b, builder->draw.instance_count, nir_imm_int(b, 2)),
+                          nir_imm_int(b, 0), builder->instance_size.packed);
+        draw_w01 = nir_vec2(b,
+                            nir_ior(b, nir_iand_imm(b, draw_w0, 0xffff),
+                                    nir_ishl(b, instance_size, nir_imm_int(b, 16))),
+                            builder->jobs.offset_start);
+        store_global(b, get_address_imm(b, job_ptr, draw_offset + WORD(0)),
+                     draw_w01, 2);
+}
+
+static void
 update_job(struct indirect_draw_shader_builder *builder, enum mali_job_type type)
 {
         nir_builder *b = &builder->b;
@@ -435,21 +458,8 @@ update_job(struct indirect_draw_shader_builder *builder, enum mali_job_type type
                              builder->varyings.pos_ptr, 2);
         }
 
-        nir_ssa_def *draw_w01 =
-                load_global(b, get_address_imm(b, job_ptr, draw_offset + WORD(0)), 2, 32);
-        nir_ssa_def *draw_w0 = nir_channel(b, draw_w01, 0);
+        update_dcd(builder, job_ptr, draw_offset);
 
-        /* Update DRAW.{instance_size,offset_start} */
-        nir_ssa_def *instance_size =
-                nir_bcsel(b,
-                          nir_ult(b, builder->draw.instance_count, nir_imm_int(b, 2)),
-                          nir_imm_int(b, 0), builder->instance_size.packed);
-        draw_w01 = nir_vec2(b,
-                            nir_ior(b, nir_iand_imm(b, draw_w0, 0xffff),
-                                    nir_ishl(b, instance_size, nir_imm_int(b, 16))),
-                            builder->jobs.offset_start);
-        store_global(b, get_address_imm(b, job_ptr, draw_offset + WORD(0)),
-                     draw_w01, 2);
 }
 
 static void
