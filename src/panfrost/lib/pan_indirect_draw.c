@@ -1171,15 +1171,15 @@ get_ubos(struct pan_pool *pool,
          const struct indirect_draw_inputs *inputs)
 {
         struct panfrost_ptr inputs_buf =
-                pan_pool_alloc_aligned(pool, sizeof(inputs), 16);
+                pan_pool_alloc_aligned(pool, sizeof(*inputs), 16);
 
-        memcpy(inputs_buf.cpu, &inputs, sizeof(inputs));
+        memcpy(inputs_buf.cpu, inputs, sizeof(*inputs));
 
         struct panfrost_ptr ubos_buf =
                 pan_pool_alloc_desc(pool, UNIFORM_BUFFER);
 
         pan_pack(ubos_buf.cpu, UNIFORM_BUFFER, cfg) {
-                cfg.entries = DIV_ROUND_UP(sizeof(inputs), 16);
+                cfg.entries = DIV_ROUND_UP(sizeof(*inputs), 16);
                 cfg.pointer = inputs_buf.gpu;
         }
 
