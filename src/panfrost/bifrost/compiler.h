@@ -619,6 +619,18 @@ typedef struct bi_block {
         uint8_t pass_flags;
 } bi_block;
 
+/* State of index-driven vertex shading for current shader */
+enum bi_idvs_mode {
+        /* IDVS not in use */
+        BI_IDVS_NONE = 0,
+
+        /* IDVS in use. Compiling a position shader */
+        BI_IDVS_POSITION = 1,
+
+        /* IDVS in use. Compiling a varying shader */
+        BI_IDVS_VARYING = 2,
+};
+
 typedef struct {
        const struct panfrost_compile_inputs *inputs;
        nir_shader *nir;
@@ -628,6 +640,7 @@ typedef struct {
        struct hash_table_u64 *sysval_to_id;
        uint32_t quirks;
        unsigned arch;
+       enum bi_idvs_mode idvs;
 
        /* During NIR->BIR */
        bi_block *current_block;
