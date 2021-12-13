@@ -4453,7 +4453,7 @@ static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx, LLVMValue
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef img7, samp0;
 
-   if (ctx->ac.chip_class >= GFX8)
+   if (ctx->ac.chip_class >= GFX8 || !ctx->abi->disable_aniso_single_level)
       return samp;
 
    img7 = LLVMBuildExtractElement(builder, res, LLVMConstInt(ctx->ac.i32, 7, 0), "");
