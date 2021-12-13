@@ -715,22 +715,6 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
         if (bi_should_remove_store(instr, b->shader->idvs))
                 return;
 
-        bi_index address;
-        if (immediate) {
-                address = bi_lea_attr_imm(b,
-                                          bi_register(61), bi_register(62),
-                                          regfmt, imm_index);
-        } else {
-                bi_index idx =
-                        bi_iadd_u32(b,
-                                    bi_src_index(nir_get_io_offset_src(instr)),
-                                    bi_imm_u32(nir_intrinsic_base(instr)),
-                                    false);
-                address = bi_lea_attr(b,
-                                      bi_register(61), bi_register(62),
-                                      idx, regfmt);
-        }
-
         /* Only look at the total components needed. In effect, we fill in all
          * the intermediate "holes" in the write mask, since we can't mask off
          * stores. Since nir_lower_io_to_temporaries ensures each varying is
@@ -740,9 +724,28 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
         unsigned nr = util_last_bit(nir_intrinsic_write_mask(instr));
         assert(nr > 0 && nr <= nir_intrinsic_src_components(instr, 0));
 
-        bi_st_cvt(b, bi_src_index(&instr->src[0]), address,
-                        bi_word(address, 1), bi_word(address, 2),
-                        regfmt, nr - 1);
+        bi_index data = bi_src_index(&instr->src[0]);
+
+        if (immediate) {
+                bi_index address = bi_lea_attr_imm(b,
+                                          bi_register(61), bi_register(62),
+                                          regfmt, imm_index);
+
+                bi_st_cvt(b, data, address, bi_word(address, 1),
+                          bi_word(address, 2), regfmt, nr - 1);
+        } else {
+                bi_index idx =
+                        bi_iadd_u32(b,
+                                    bi_src_index(nir_get_io_offset_src(instr)),
+                                    bi_imm_u32(nir_intrinsic_base(instr)),
+                                    false);
+                bi_index address = bi_lea_attr(b,
+                                      bi_register(61), bi_register(62),
+                                      idx, regfmt);
+
+                bi_st_cvt(b, data, address, bi_word(address, 1),
+                          bi_word(address, 2), regfmt, nr - 1);
+        }
 }
 
 static void
