@@ -1502,7 +1502,6 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
        * - Eliminated PS system values are disabled by LLVM
        *   (FragCoord, FrontFace, barycentrics)
        * - VS/TES/GS outputs feeding PS are eliminated if outputs are undef.
-       *   (thanks to an LLVM pass in Mesa - TODO: move it to NIR)
        *   The storage for eliminated outputs is also not allocated.
        * - VS/TCS/TES/GS/PS input loads are eliminated (VS relies on DCE in LLVM)
        * - TCS output stores are eliminated

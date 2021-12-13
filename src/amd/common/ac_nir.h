@@ -52,6 +52,10 @@ enum
 struct nir_builder;
 typedef struct nir_builder nir_builder;
 
+bool ac_nir_optimize_outputs(nir_shader *nir, bool sprite_tex_disallowed,
+                             int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS],
+                             uint8_t param_export_index[NUM_TOTAL_VARYING_SLOTS]);
+
 void
 ac_nir_lower_ls_outputs_to_mem(nir_shader *ls,
                                bool tcs_in_out_eq,
