@@ -3554,6 +3554,10 @@ cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
             uint64_t addr = anv_address_physical(buffer);
             data.InlineData[0] = addr & 0xffffffff;
             data.InlineData[1] = addr >> 32;
+
+            memcpy(&data.InlineData[BRW_TASK_MESH_PUSH_CONSTANTS_START_DW],
+                   cmd_buffer->state.gfx.base.push_constants.client_data,
+                   BRW_TASK_MESH_PUSH_CONSTANTS_SIZE_DW * 4);
          }
       }
    }
@@ -3573,6 +3577,10 @@ cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
             uint64_t addr = anv_address_physical(buffer);
             data.InlineData[0] = addr & 0xffffffff;
             data.InlineData[1] = addr >> 32;
+
+            memcpy(&data.InlineData[BRW_TASK_MESH_PUSH_CONSTANTS_START_DW],
+                   cmd_buffer->state.gfx.base.push_constants.client_data,
+                   BRW_TASK_MESH_PUSH_CONSTANTS_SIZE_DW * 4);
          }
       }
    }
