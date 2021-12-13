@@ -1580,12 +1580,94 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
 }
 
+static void si_nir_assign_param_offsets(nir_shader *nir, const struct si_shader_info *info,
+                                        int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS],
+                                        uint8_t *num_param_exports, uint64_t *output_param_mask,
+                                        uint8_t vs_output_param_offset[NUM_TOTAL_VARYING_SLOTS])
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   assert(impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_store_output)
+            continue;
+
+         /* No indirect indexing allowed. */
+         ASSERTED nir_src offset = *nir_get_io_offset_src(intr);
+         assert(nir_src_is_const(offset) && nir_src_as_uint(offset) == 0);
+
+         assert(intr->num_components == 1); /* only scalar stores expected */
+         nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+
+         /* Assign the param index if it's unassigned. */
+         if (nir_slot_is_varying(sem.location) && !sem.no_varying &&
+             (sem.gs_streams & 0x3) == 0 &&
+             vs_output_param_offset[sem.location] == AC_EXP_PARAM_DEFAULT_VAL_0000) {
+            /* The semantic and the base should be the same as in si_shader_info. */
+            assert(sem.location == info->output_semantic[nir_intrinsic_base(intr)]);
+            /* It must not be remapped (duplicated). */
+            assert(slot_remap[sem.location] == -1);
+
+            vs_output_param_offset[sem.location] = (*num_param_exports)++;
+            *output_param_mask |= BITFIELD64_BIT(nir_intrinsic_base(intr));
+         }
+      }
+   }
+
+   /* Duplicated outputs are redirected here. */
+   for (unsigned i = 0; i < NUM_TOTAL_VARYING_SLOTS; i++) {
+      if (slot_remap[i] >= 0)
+         vs_output_param_offset[i] = vs_output_param_offset[slot_remap[i]];
+   }
+}
+
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
    struct si_shader_selector *sel = shader->selector;
    bool free_nir;
    struct nir_shader *nir = si_get_nir_shader(sel, &shader->key, &free_nir);
+
+   /* Assign param export indices. */
+   if ((sel->stage == MESA_SHADER_VERTEX ||
+        sel->stage == MESA_SHADER_TESS_EVAL ||
+        (sel->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)) &&
+       !shader->key.ge.as_ls && !shader->key.ge.as_es) {
+      /* Initialize this first. */
+      shader->info.nr_param_exports = 0;
+      shader->info.vs_output_param_mask = 0;
+
+      STATIC_ASSERT(sizeof(shader->info.vs_output_param_offset[0]) == 1);
+      memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
+             sizeof(shader->info.vs_output_param_offset));
+
+      /* A slot remapping table for duplicated outputs, so that 1 vertex shader output can be
+       * mapped to multiple fragment shader inputs.
+       */
+      int8_t slot_remap[NUM_TOTAL_VARYING_SLOTS];
+      memset(slot_remap, -1, NUM_TOTAL_VARYING_SLOTS);
+
+      /* This sets DEFAULT_VAL for constant outputs in vs_output_param_offset. */
+      /* TODO: This doesn't affect GS. */
+      NIR_PASS_V(nir, ac_nir_optimize_outputs, false, slot_remap,
+                 shader->info.vs_output_param_offset);
+
+      /* Assign the non-constant outputs. */
+      /* TODO: Use this for the GS copy shader too. */
+      si_nir_assign_param_offsets(nir, &sel->info, slot_remap, &shader->info.nr_param_exports,
+                                  &shader->info.vs_output_param_mask,
+                                  shader->info.vs_output_param_offset);
+
+      if (shader->key.ge.mono.u.vs_export_prim_id) {
+         shader->info.vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = shader->info.nr_param_exports++;
+         shader->info.vs_output_param_mask |= BITFIELD64_BIT(sel->info.num_outputs);
+      }
+   }
 
    struct pipe_stream_output_info so = {};
    if (sel->info.enabled_streamout_buffer_mask)
@@ -1635,13 +1717,14 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       if (sel->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg)
          vs_output_param_offset = shader->gs_copy_shader->info.vs_output_param_offset;
 
+      /* We must use the original shader info before the removal of duplicated shader outputs. */
       /* VS and TES should also set primitive ID output if it's used. */
       unsigned num_outputs_with_prim_id = sel->info.num_outputs +
                                           shader->key.ge.mono.u.vs_export_prim_id;
 
       for (unsigned i = 0; i < num_outputs_with_prim_id; i++) {
          unsigned semantic = sel->info.output_semantic[i];
-         unsigned offset = vs_output_param_offset[i];
+         unsigned offset = vs_output_param_offset[semantic];
          unsigned ps_input_cntl;
 
          if (offset <= AC_EXP_PARAM_OFFSET_31) {

@@ -438,61 +438,6 @@ static void si_llvm_init_vs_export_args(struct si_shader_context *ctx, const LLV
    memcpy(&args->out[0], values, sizeof(values[0]) * 4);
 }
 
-static void si_prepare_param_exports(struct si_shader_context *ctx,
-                                     const struct si_shader_output_values *outputs, unsigned noutput,
-                                     struct ac_export_args exports[32])
-{
-   struct si_shader *shader = ctx->shader;
-   unsigned param_count = 0;
-
-   memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
-          sizeof(shader->info.vs_output_param_offset));
-
-   for (unsigned i = 0; i < noutput; i++) {
-      unsigned semantic = outputs[i].semantic;
-
-      /* Skip if no channel writes to stream 0. */
-      if (outputs[i].vertex_streams & 0x03 &&
-          outputs[i].vertex_streams & 0x0c &&
-          outputs[i].vertex_streams & 0x30 &&
-          outputs[i].vertex_streams & 0xc0)
-         continue;
-
-      switch (semantic) {
-      case VARYING_SLOT_LAYER:
-      case VARYING_SLOT_VIEWPORT:
-      case VARYING_SLOT_CLIP_DIST0:
-      case VARYING_SLOT_CLIP_DIST1:
-      case VARYING_SLOT_COL0:
-      case VARYING_SLOT_COL1:
-      case VARYING_SLOT_BFC0:
-      case VARYING_SLOT_BFC1:
-      case VARYING_SLOT_PRIMITIVE_ID:
-      case VARYING_SLOT_FOGC:
-         break;
-      default:
-         if ((semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7) ||
-             semantic >= VARYING_SLOT_VAR0)
-            break;
-         else
-            continue;
-      }
-
-      if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
-          shader->key.ge.opt.kill_outputs &
-             (1ull << si_shader_io_get_unique_index(semantic, true)))
-         continue;
-
-      si_llvm_init_vs_export_args(ctx, outputs[i].values, V_008DFC_SQ_EXP_PARAM + param_count,
-                                  &exports[param_count]);
-
-      assert(i < ARRAY_SIZE(shader->info.vs_output_param_offset));
-      shader->info.vs_output_param_offset[i] = param_count++;
-   }
-
-   shader->info.nr_param_exports = param_count;
-}
-
 /**
  * Vertex color clamping.
  *
@@ -575,9 +520,6 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
    int i;
 
    si_vertex_color_clamping(ctx, outputs, noutput);
-
-   struct ac_export_args param_exports[32];
-   si_prepare_param_exports(ctx, outputs, noutput, param_exports);
 
    /* Build position exports. */
    for (i = 0; i < noutput; i++) {
@@ -747,7 +689,23 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       ac_build_export(&ctx->ac, &pos_args[i]);
    }
 
-   /* Build parameter exports. */
+   /* Build parameter exports. Use 2 loops to export params in ascending order.
+    * 32 is the maximum number of parameter exports.
+    */
+   struct ac_export_args param_exports[32] = {};
+   uint64_t vs_output_param_mask = shader->info.vs_output_param_mask;
+
+   while (vs_output_param_mask) {
+      unsigned i = u_bit_scan64(&vs_output_param_mask);
+      unsigned offset = shader->info.vs_output_param_offset[outputs[i].semantic];
+
+      assert(offset <= AC_EXP_PARAM_OFFSET_31);
+      assert(!param_exports[offset].enabled_channels);
+
+      si_llvm_init_vs_export_args(ctx, outputs[i].values, V_008DFC_SQ_EXP_PARAM + offset,
+                                  &param_exports[offset]);
+   }
+
    for (unsigned i = 0; i < shader->info.nr_param_exports; i++)
       ac_build_export(&ctx->ac, &param_exports[i]);
 }
