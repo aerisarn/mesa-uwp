@@ -25,6 +25,7 @@
 #include "ac_nir.h"
 #include "ac_rtld.h"
 #include "nir.h"
+#include "nir_builder.h"
 #include "nir_serialize.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
@@ -1373,6 +1374,87 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
       shader_out->info.uses_instanceid = true;
 }
 
+/* TODO: convert to nir_shader_instructions_pass */
+static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   assert(impl);
+
+   if (nir->info.stage > MESA_SHADER_GEOMETRY ||
+       (!key->ge.opt.kill_outputs &&
+        !key->ge.opt.kill_pointsize &&
+        !key->ge.opt.kill_clip_distances)) {
+      nir_metadata_preserve(impl, nir_metadata_all);
+      return false;
+   }
+
+   bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic != nir_intrinsic_store_output)
+            continue;
+
+         /* No indirect indexing allowed. */
+         ASSERTED nir_src offset = *nir_get_io_offset_src(intr);
+         assert(nir_src_is_const(offset) && nir_src_as_uint(offset) == 0);
+
+         assert(intr->num_components == 1); /* only scalar stores expected */
+         nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+
+         if (nir_slot_is_varying(sem.location) &&
+             key->ge.opt.kill_outputs &
+             (1ull << si_shader_io_get_unique_index(sem.location, true))) {
+            nir_remove_varying(intr);
+            progress = true;
+         }
+
+         if (key->ge.opt.kill_pointsize && sem.location == VARYING_SLOT_PSIZ) {
+            nir_remove_sysval_output(intr);
+            progress = true;
+         }
+
+         /* TODO: We should only kill specific clip planes as required by kill_clip_distance,
+          * not whole gl_ClipVertex. Lower ClipVertex in NIR.
+          */
+         if ((key->ge.opt.kill_clip_distances & SI_USER_CLIP_PLANE_MASK) == SI_USER_CLIP_PLANE_MASK &&
+             sem.location == VARYING_SLOT_CLIP_VERTEX) {
+            nir_remove_sysval_output(intr);
+            progress = true;
+         }
+
+         if (key->ge.opt.kill_clip_distances &&
+             (sem.location == VARYING_SLOT_CLIP_DIST0 ||
+              sem.location == VARYING_SLOT_CLIP_DIST1)) {
+            assert(nir_intrinsic_src_type(intr) == nir_type_float32);
+            unsigned index = (sem.location - VARYING_SLOT_CLIP_DIST0) * 4 +
+                             nir_intrinsic_component(intr);
+
+            if ((key->ge.opt.kill_clip_distances >> index) & 0x1) {
+               nir_remove_sysval_output(intr);
+               progress = true;
+            }
+         }
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_dominance |
+                                  nir_metadata_block_index);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
+   }
+
+   return progress;
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
                                      const union si_shader_key *key,
                                      bool *free_nir)
@@ -1396,6 +1478,10 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
    }
 
    bool progress = false;
+
+   /* Kill outputs according to the shader key. */
+   if (sel->info.stage <= MESA_SHADER_GEOMETRY)
+      NIR_PASS(progress, nir, si_nir_kill_outputs, key);
 
    bool inline_uniforms = false;
    uint32_t *inlined_uniform_values;

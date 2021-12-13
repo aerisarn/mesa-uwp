@@ -122,7 +122,7 @@ extern "C" {
 
 #define SI_MAX_BORDER_COLORS              4096
 #define SI_MAX_VIEWPORTS                  16
-#define SIX_BITS                          0x3F
+#define SI_USER_CLIP_PLANE_MASK           0x3F
 #define SI_MAP_BUFFER_ALIGNMENT           64
 /* We only support the minimum allowed value (512), so that we can pack a 3D block size
  * in 1 SGPR. */

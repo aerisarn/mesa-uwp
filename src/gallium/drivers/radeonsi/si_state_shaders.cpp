@@ -3218,7 +3218,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       }
    }
 
-   sel->clipdist_mask = sel->info.writes_clipvertex ? SIX_BITS :
+   sel->clipdist_mask = sel->info.writes_clipvertex ? SI_USER_CLIP_PLANE_MASK :
                            u_bit_consecutive(0, sel->info.base.clip_distance_array_size);
    sel->culldist_mask = u_bit_consecutive(0, sel->info.base.cull_distance_array_size) <<
                         sel->info.base.clip_distance_array_size;
