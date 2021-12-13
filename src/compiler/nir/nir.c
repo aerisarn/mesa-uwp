@@ -90,29 +90,32 @@ static const struct debug_named_value nir_debug_control[] = {
 
 DEBUG_GET_ONCE_FLAGS_OPTION(nir_debug, "NIR_DEBUG", nir_debug_control, 0)
 
+static void
+nir_process_debug_variable_once(void)
+{
+   nir_debug = debug_get_option_nir_debug();
+   nir_debug_print_shader[MESA_SHADER_VERTEX]       = NIR_DEBUG(PRINT_VS);
+   nir_debug_print_shader[MESA_SHADER_TESS_CTRL]    = NIR_DEBUG(PRINT_TCS);
+   nir_debug_print_shader[MESA_SHADER_TESS_EVAL]    = NIR_DEBUG(PRINT_TES);
+   nir_debug_print_shader[MESA_SHADER_GEOMETRY]     = NIR_DEBUG(PRINT_GS);
+   nir_debug_print_shader[MESA_SHADER_FRAGMENT]     = NIR_DEBUG(PRINT_FS);
+   nir_debug_print_shader[MESA_SHADER_COMPUTE]      = NIR_DEBUG(PRINT_CS);
+   nir_debug_print_shader[MESA_SHADER_TASK]         = NIR_DEBUG(PRINT_TS);
+   nir_debug_print_shader[MESA_SHADER_MESH]         = NIR_DEBUG(PRINT_MS);
+   nir_debug_print_shader[MESA_SHADER_RAYGEN]       = NIR_DEBUG(PRINT_RGS);
+   nir_debug_print_shader[MESA_SHADER_ANY_HIT]      = NIR_DEBUG(PRINT_AHS);
+   nir_debug_print_shader[MESA_SHADER_CLOSEST_HIT]  = NIR_DEBUG(PRINT_CHS);
+   nir_debug_print_shader[MESA_SHADER_MISS]         = NIR_DEBUG(PRINT_MHS);
+   nir_debug_print_shader[MESA_SHADER_INTERSECTION] = NIR_DEBUG(PRINT_IS);
+   nir_debug_print_shader[MESA_SHADER_CALLABLE]     = NIR_DEBUG(PRINT_CBS);
+   nir_debug_print_shader[MESA_SHADER_KERNEL]       = NIR_DEBUG(PRINT_KS);
+}
+
 void
 nir_process_debug_variable(void)
 {
-   static bool first = true;
-   if (unlikely(first)) {
-      first = false;
-      nir_debug = debug_get_option_nir_debug();
-      nir_debug_print_shader[MESA_SHADER_VERTEX]       = NIR_DEBUG(PRINT_VS);
-      nir_debug_print_shader[MESA_SHADER_TESS_CTRL]    = NIR_DEBUG(PRINT_TCS);
-      nir_debug_print_shader[MESA_SHADER_TESS_EVAL]    = NIR_DEBUG(PRINT_TES);
-      nir_debug_print_shader[MESA_SHADER_GEOMETRY]     = NIR_DEBUG(PRINT_GS);
-      nir_debug_print_shader[MESA_SHADER_FRAGMENT]     = NIR_DEBUG(PRINT_FS);
-      nir_debug_print_shader[MESA_SHADER_COMPUTE]      = NIR_DEBUG(PRINT_CS);
-      nir_debug_print_shader[MESA_SHADER_TASK]         = NIR_DEBUG(PRINT_TS);
-      nir_debug_print_shader[MESA_SHADER_MESH]         = NIR_DEBUG(PRINT_MS);
-      nir_debug_print_shader[MESA_SHADER_RAYGEN]       = NIR_DEBUG(PRINT_RGS);
-      nir_debug_print_shader[MESA_SHADER_ANY_HIT]      = NIR_DEBUG(PRINT_AHS);
-      nir_debug_print_shader[MESA_SHADER_CLOSEST_HIT]  = NIR_DEBUG(PRINT_CHS);
-      nir_debug_print_shader[MESA_SHADER_MISS]         = NIR_DEBUG(PRINT_MHS);
-      nir_debug_print_shader[MESA_SHADER_INTERSECTION] = NIR_DEBUG(PRINT_IS);
-      nir_debug_print_shader[MESA_SHADER_CALLABLE]     = NIR_DEBUG(PRINT_CBS);
-      nir_debug_print_shader[MESA_SHADER_KERNEL]       = NIR_DEBUG(PRINT_KS);
-   }
+   static once_flag flag = ONCE_FLAG_INIT;
+   call_once(&flag, nir_process_debug_variable_once);
 }
 #endif
 
