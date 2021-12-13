@@ -38,6 +38,9 @@
 #include <limits.h>
 #include "glxextensions.h"
 
+#include <X11/Xlib-xcb.h>
+#include <xcb/xproto.h>
+
 #ifdef GLX_USE_APPLEGL
 #include <pthread.h>
 #include "apple/apple_glx_drawable.h"
@@ -386,6 +389,44 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
 
    UnlockDisplay(dpy);
    SyncHandle();
+
+#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+   if (pdraw && attribute == GLX_FBCONFIG_ID && !found && priv && priv->screens != NULL) {
+      /* If we failed to lookup the GLX_FBCONFIG_ID, it may be because the drawable is
+       * a bare Window, so try differently by first figure out its visual, then GLX
+       * visual like driInferDrawableConfig does.
+       */
+      xcb_get_window_attributes_cookie_t cookie = { 0 };
+      xcb_get_window_attributes_reply_t *attr = NULL;
+
+      xcb_connection_t *conn = XGetXCBConnection(dpy);
+
+      if (conn) {
+         cookie = xcb_get_window_attributes(conn, drawable);
+         attr = xcb_get_window_attributes_reply(conn, cookie, NULL);
+         if (attr) {
+            /* Find the Window's GLX Visual */
+            struct glx_config *conf = glx_config_find_visual(pdraw->psc->visuals, attr->visual);
+            free(attr);
+
+            if (conf && conf->screen >= 0 && conf->screen < ScreenCount(dpy)) {
+               /* Then find the GLXFBConfig of the GLX Visual */
+               struct glx_config *c;
+               for (c = priv->screens[conf->screen]->configs; c != NULL;
+                    c = c->next) {
+                  if (!c->visualID)
+                     continue;
+                  if (c->visualID == conf->visualID) {
+                     *value = c->fbconfigID;
+                     found = 1;
+                     break;
+                  }
+               }
+            }
+         }
+      }
+   }
+#endif
 
    return found;
 }

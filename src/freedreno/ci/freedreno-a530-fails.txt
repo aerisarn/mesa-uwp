@@ -133,7 +133,6 @@ KHR-GLES3.packed_pixels.varied_rectangle.rgba32ui,Fail
 
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
-glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash

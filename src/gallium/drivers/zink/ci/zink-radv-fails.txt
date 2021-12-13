@@ -656,7 +656,6 @@ glx@glx_ext_import_context@make current- single process,Fail
 glx@glx_ext_import_context@query context info,Fail
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
-glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth,Crash
