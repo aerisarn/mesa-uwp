@@ -44,6 +44,7 @@ extern "C" {
 #define BIFROST_DBG_INORDER     0x0040
 #define BIFROST_DBG_NOVALIDATE  0x0080
 #define BIFROST_DBG_NOOPT       0x0100
+#define BIFROST_DBG_NOIDVS      0x0200
 
 extern int bifrost_debug;
 

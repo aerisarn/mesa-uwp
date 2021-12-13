@@ -46,6 +46,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"inorder",   BIFROST_DBG_INORDER, 	"Force in-order bundling"},
         {"novalidate",BIFROST_DBG_NOVALIDATE,   "Skip IR validation"},
         {"noopt",     BIFROST_DBG_NOOPT,        "Skip optimization passes"},
+        {"noidvs",    BIFROST_DBG_NOIDVS,       "Disable IDVS"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -3902,4 +3903,41 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
         _mesa_hash_table_u64_destroy(ctx->sysval_to_id);
         ralloc_free(ctx);
+}
+
+/* Decide if Index-Driven Vertex Shading should be used for a given shader */
+static bool
+bi_should_idvs(nir_shader *nir, const struct panfrost_compile_inputs *inputs)
+{
+        /* Opt-out */
+        if (inputs->no_idvs || bifrost_debug & BIFROST_DBG_NOIDVS)
+                return false;
+
+        /* IDVS splits up vertex shaders, not defined on other shader stages */
+        if (nir->info.stage != MESA_SHADER_VERTEX)
+                return false;
+
+        /* Transform feedback requires running all varying shaders regardless
+         * of clipping, but IDVS does clipping before running varying shaders.
+         * So shaders destined for transform feedback must not use IDVS.
+         *
+         * The issue with general memory stores is more subtle: these shaders
+         * have side effects and only make sense if vertex shaders run exactly
+         * once per vertex. IDVS requires the hardware to rerun position or
+         * varying shaders in certain circumstances. So if there is any memory
+         * write, disable IDVS.
+         *
+         * NIR considers transform feedback to be a memory write, so we only
+         * need to check writes_memory to handle both cases.
+         */
+        if (nir->info.writes_memory)
+                return false;
+
+        /* Bifrost cannot write gl_PointSize during IDVS */
+        if ((inputs->gpu_id < 0x9000) &&
+            nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ))
+                return false;
+
+        /* Otherwise, IDVS is usually better */
+        return true;
 }
