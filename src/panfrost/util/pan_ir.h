@@ -158,6 +158,7 @@ struct panfrost_compile_inputs {
         } blend;
         unsigned sysval_ubo;
         bool shaderdb;
+        bool no_idvs;
         bool no_ubo_to_push;
 
         enum pipe_format rt_formats[8];
