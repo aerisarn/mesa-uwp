@@ -129,7 +129,7 @@ void
 bi_opt_push_ubo(bi_context *ctx)
 {
         struct bi_ubo_analysis analysis = bi_analyze_ranges(ctx);
-        bi_pick_ubo(&ctx->info->push, &analysis);
+        bi_pick_ubo(ctx->info.push, &analysis);
 
         ctx->ubo_mask = 0;
 
@@ -165,7 +165,7 @@ bi_opt_push_ubo(bi_context *ctx)
                 for (unsigned w = 0; w < channels; ++w) {
                         /* FAU is grouped in pairs (2 x 4-byte) */
                         unsigned base =
-                                pan_lookup_pushed_ubo(&ctx->info->push, ubo,
+                                pan_lookup_pushed_ubo(ctx->info.push, ubo,
                                                       (offset + 4 * w));
 
                         unsigned fau_idx = (base >> 1);
