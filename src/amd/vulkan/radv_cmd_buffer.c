@@ -7688,8 +7688,8 @@ radv_CmdBeginRenderingKHR(VkCommandBuffer commandBuffer, const VkRenderingInfoKH
       return;
    }
 
-   unsigned w = MAX_FRAMEBUFFER_WIDTH;
-   unsigned h = MAX_FRAMEBUFFER_HEIGHT;
+   unsigned w = pRenderingInfo->renderArea.offset.x + pRenderingInfo->renderArea.extent.width;
+   unsigned h = pRenderingInfo->renderArea.offset.y + pRenderingInfo->renderArea.extent.height;
    for (unsigned i = 0; i < att_count; ++i) {
       RADV_FROM_HANDLE(radv_image_view, iview, iviews[i]);
       w = MIN2(w, iview->extent.width);
