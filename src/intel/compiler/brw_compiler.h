@@ -1998,6 +1998,15 @@ brw_compute_first_urb_slot_required(uint64_t inputs_read,
    return 0;
 }
 
+/* From InlineData in 3DSTATE_TASK_SHADER_DATA and 3DSTATE_MESH_SHADER_DATA. */
+#define BRW_TASK_MESH_INLINE_DATA_SIZE_DW 8
+
+/* InlineData[0-1] is used for Vulkan descriptor. */
+#define BRW_TASK_MESH_PUSH_CONSTANTS_START_DW 2
+
+#define BRW_TASK_MESH_PUSH_CONSTANTS_SIZE_DW \
+   (BRW_TASK_MESH_INLINE_DATA_SIZE_DW - BRW_TASK_MESH_PUSH_CONSTANTS_START_DW)
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

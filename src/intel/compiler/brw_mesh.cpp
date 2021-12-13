@@ -48,10 +48,20 @@ brw_nir_lower_load_uniforms_impl(nir_builder *b, nir_instr *instr,
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    assert(intrin->intrinsic == nir_intrinsic_load_uniform);
 
-   return brw_nir_load_global_const(b,
-                                    intrin,
-                                    nir_load_mesh_global_arg_addr_intel(b),
-                                    0);
+   /* Read the first few 32-bit scalars from InlineData. */
+   if (nir_src_is_const(intrin->src[0]) &&
+       nir_dest_bit_size(intrin->dest) == 32 &&
+       nir_dest_num_components(intrin->dest) == 1) {
+      unsigned off = nir_intrinsic_base(intrin) + nir_src_as_uint(intrin->src[0]);
+      unsigned off_dw = off / 4;
+      if (off % 4 == 0 && off_dw < BRW_TASK_MESH_PUSH_CONSTANTS_SIZE_DW) {
+         off_dw += BRW_TASK_MESH_PUSH_CONSTANTS_START_DW;
+         return nir_load_mesh_inline_data_intel(b, 32, off_dw);
+      }
+   }
+
+   return brw_nir_load_global_const(b, intrin,
+                                    nir_load_mesh_inline_data_intel(b, 64, 0), 0);
 }
 
 static void
@@ -995,10 +1005,12 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
-   case nir_intrinsic_load_mesh_global_arg_addr_intel:
+   case nir_intrinsic_load_mesh_inline_data_intel:
       assert(payload.num_regs == 3 || payload.num_regs == 4);
-      /* Passed in the Inline Parameter, the last element of the payload. */
-      bld.MOV(dest, retype(brw_vec1_grf(payload.num_regs - 1, 0), dest.type));
+      /* Inline Parameter is the last element of the payload. */
+      bld.MOV(dest, retype(brw_vec1_grf(payload.num_regs - 1,
+                                        nir_intrinsic_align_offset(instr)),
+                           dest.type));
       break;
 
    case nir_intrinsic_load_draw_id:
