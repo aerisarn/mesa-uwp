@@ -24,6 +24,7 @@
 #ifndef VK_COMMAND_BUFFER_H
 #define VK_COMMAND_BUFFER_H
 
+#include "vk_cmd_queue.h"
 #include "vk_object.h"
 #include "util/list.h"
 #include "util/u_dynarray.h"
@@ -51,6 +52,9 @@ struct vk_command_buffer {
     * call vk_command_buffer_finish().
     */
    void (*destroy)(struct vk_command_buffer *);
+
+   /** Command list for emulated secondary command buffers */
+   struct vk_cmd_queue cmd_queue;
 
    /**
     * VK_EXT_debug_utils
