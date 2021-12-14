@@ -679,6 +679,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
       shader->info.ancillary_vgpr_index = ctx->args.num_vgprs_used;
       si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.ancillary,
                          SI_PARAM_ANCILLARY);
+      shader->info.sample_coverage_vgpr_index = ctx->args.num_vgprs_used;
       si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->args.sample_coverage,
                          SI_PARAM_SAMPLE_COVERAGE);
       si_add_arg_checked(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->pos_fixed_pt,
@@ -1558,7 +1559,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    /* Calculate the number of fragment input VGPRs. */
    if (sel->info.stage == MESA_SHADER_FRAGMENT) {
       shader->info.num_input_vgprs = ac_get_fs_input_vgpr_cnt(
-         &shader->config, &shader->info.face_vgpr_index, &shader->info.ancillary_vgpr_index);
+         &shader->config, &shader->info.face_vgpr_index, &shader->info.ancillary_vgpr_index,
+         &shader->info.sample_coverage_vgpr_index);
    }
 
    si_calculate_max_simd_waves(shader);
@@ -1767,6 +1769,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
        key->ps_prolog.states.force_linear_center_interp ||
        key->ps_prolog.states.bc_optimize_for_persp || key->ps_prolog.states.bc_optimize_for_linear);
    key->ps_prolog.ancillary_vgpr_index = shader->info.ancillary_vgpr_index;
+   key->ps_prolog.sample_coverage_vgpr_index = shader->info.sample_coverage_vgpr_index;
 
    if (info->colors_read) {
       ubyte *color = shader->selector->color_attr_index;
@@ -2067,6 +2070,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       shader->info.num_input_vgprs = mainp->info.num_input_vgprs;
       shader->info.face_vgpr_index = mainp->info.face_vgpr_index;
       shader->info.ancillary_vgpr_index = mainp->info.ancillary_vgpr_index;
+      shader->info.sample_coverage_vgpr_index = mainp->info.sample_coverage_vgpr_index;
       memcpy(shader->info.vs_output_ps_input_cntl, mainp->info.vs_output_ps_input_cntl,
              sizeof(mainp->info.vs_output_ps_input_cntl));
       shader->info.uses_instanceid = mainp->info.uses_instanceid;

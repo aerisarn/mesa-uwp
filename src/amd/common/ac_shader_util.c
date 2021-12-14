@@ -270,11 +270,13 @@ enum ac_image_dim ac_get_image_dim(enum chip_class chip_class, enum glsl_sampler
 
 unsigned ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
                                   signed char *face_vgpr_index_ptr,
-                                  signed char *ancillary_vgpr_index_ptr)
+                                  signed char *ancillary_vgpr_index_ptr,
+                                  signed char *sample_coverage_vgpr_index_ptr)
 {
    unsigned num_input_vgprs = 0;
    signed char face_vgpr_index = -1;
    signed char ancillary_vgpr_index = -1;
+   signed char sample_coverage_vgpr_index = -1;
 
    if (G_0286CC_PERSP_SAMPLE_ENA(config->spi_ps_input_addr))
       num_input_vgprs += 2;
@@ -308,8 +310,10 @@ unsigned ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
       ancillary_vgpr_index = num_input_vgprs;
       num_input_vgprs += 1;
    }
-   if (G_0286CC_SAMPLE_COVERAGE_ENA(config->spi_ps_input_addr))
+   if (G_0286CC_SAMPLE_COVERAGE_ENA(config->spi_ps_input_addr)) {
+      sample_coverage_vgpr_index = num_input_vgprs;
       num_input_vgprs += 1;
+   }
    if (G_0286CC_POS_FIXED_PT_ENA(config->spi_ps_input_addr))
       num_input_vgprs += 1;
 
@@ -317,6 +321,8 @@ unsigned ac_get_fs_input_vgpr_cnt(const struct ac_shader_config *config,
       *face_vgpr_index_ptr = face_vgpr_index;
    if (ancillary_vgpr_index_ptr)
       *ancillary_vgpr_index_ptr = ancillary_vgpr_index;
+   if (sample_coverage_vgpr_index_ptr)
+      *sample_coverage_vgpr_index_ptr = sample_coverage_vgpr_index;
 
    return num_input_vgprs;
 }

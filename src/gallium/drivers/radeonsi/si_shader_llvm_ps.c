@@ -611,7 +611,7 @@ void si_llvm_build_ps_prolog(struct si_shader_context *ctx, union si_shader_part
       struct ac_arg *arg = NULL;
       if (i == key->ps_prolog.ancillary_vgpr_index) {
          arg = &ancillary;
-      } else if (i == key->ps_prolog.ancillary_vgpr_index + 1) {
+      } else if (i == key->ps_prolog.sample_coverage_vgpr_index) {
          arg = &param_sample_mask;
       } else if (i == key->ps_prolog.num_input_vgprs - 1) {
          /* POS_FIXED_PT is always last. */

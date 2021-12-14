@@ -611,6 +611,7 @@ union si_shader_part_key {
       unsigned num_interp_inputs : 5; /* BCOLOR is at this location */
       unsigned face_vgpr_index : 5;
       unsigned ancillary_vgpr_index : 5;
+      unsigned sample_coverage_vgpr_index : 5;
       unsigned wqm : 1;
       char color_attr_index[2];
       signed char color_interp_vgpr_index[2]; /* -1 == constant */
@@ -747,6 +748,7 @@ struct si_shader_binary_info {
    ubyte num_input_vgprs;
    signed char face_vgpr_index;
    signed char ancillary_vgpr_index;
+   signed char sample_coverage_vgpr_index;
    bool uses_instanceid;
    ubyte nr_pos_exports;
    ubyte nr_param_exports;
