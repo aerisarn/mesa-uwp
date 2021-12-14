@@ -76,79 +76,6 @@ reads_work_dim(nir_shader *shader)
 }
 
 static bool
-lower_discard_if_instr(nir_builder *b, nir_instr *instr_, UNUSED void *cb_data)
-{
-   if (instr_->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(instr_);
-
-   if (instr->intrinsic == nir_intrinsic_discard_if) {
-      b->cursor = nir_before_instr(&instr->instr);
-
-      nir_if *if_stmt = nir_push_if(b, nir_ssa_for_src(b, instr->src[0], 1));
-      nir_discard(b);
-      nir_pop_if(b, if_stmt);
-      nir_instr_remove(&instr->instr);
-      return true;
-   }
-   /* a shader like this (shaders@glsl-fs-discard-04):
-
-      uniform int j, k;
-
-      void main()
-      {
-       for (int i = 0; i < j; i++) {
-        if (i > k)
-         continue;
-        discard;
-       }
-       gl_FragColor = vec4(0.0, 1.0, 0.0, 0.0);
-      }
-
-
-
-      will generate nir like:
-
-      loop   {
-         //snip
-         if   ssa_11   {
-            block   block_5:
-            /   preds:   block_4   /
-            vec1   32   ssa_17   =   iadd   ssa_50,   ssa_31
-            /   succs:   block_7   /
-         }   else   {
-            block   block_6:
-            /   preds:   block_4   /
-            intrinsic   discard   ()   () <-- not last instruction
-            vec1   32   ssa_23   =   iadd   ssa_50,   ssa_31 <-- dead code loop itr increment
-            /   succs:   block_7   /
-         }
-         //snip
-      }
-
-      which means that we can't assert like this:
-
-      assert(instr->intrinsic != nir_intrinsic_discard ||
-             nir_block_last_instr(instr->instr.block) == &instr->instr);
-
-
-      and it's unnecessary anyway since post-vtn optimizing will dce the instructions following the discard
-    */
-
-   return false;
-}
-
-static bool
-lower_discard_if(nir_shader *shader)
-{
-   return nir_shader_instructions_pass(shader,
-                                       lower_discard_if_instr,
-                                       nir_metadata_dominance,
-                                       NULL);
-}
-
-static bool
 lower_work_dim_instr(nir_builder *b, nir_instr *in, void *data)
 {
    if (in->type != nir_instr_type_intrinsic)
@@ -1858,7 +1785,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    optimize_nir(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-   NIR_PASS_V(nir, lower_discard_if);
+   NIR_PASS_V(nir, nir_lower_discard_if);
    NIR_PASS_V(nir, nir_lower_fragcolor,
          nir->info.fs.color_is_dual_source ? 1 : 8);
    NIR_PASS_V(nir, lower_64bit_vertex_attribs);
