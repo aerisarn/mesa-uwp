@@ -1944,6 +1944,15 @@ vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
    }
 }
 
+static bool
+is_high_sampler(const struct intel_device_info *devinfo, src_reg sampler)
+{
+   if (devinfo->verx10 != 75)
+      return false;
+
+   return sampler.file != IMM || sampler.ud >= 16;
+}
+
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
@@ -2083,12 +2092,258 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
-   emit_texture(instr->op, dest, nir_tex_instr_dest_size(instr),
-                coordinate, instr->coord_components,
-                shadow_comparator,
-                lod, lod2, sample_index,
-                constant_offset, offset_value, mcs,
-                texture, texture_reg, sampler_reg);
+   enum opcode opcode;
+   switch (instr->op) {
+   case nir_texop_tex:             opcode = SHADER_OPCODE_TXL;        break;
+   case nir_texop_txl:             opcode = SHADER_OPCODE_TXL;        break;
+   case nir_texop_txd:             opcode = SHADER_OPCODE_TXD;        break;
+   case nir_texop_txf:             opcode = SHADER_OPCODE_TXF;        break;
+   case nir_texop_txf_ms:          opcode = SHADER_OPCODE_TXF_CMS;    break;
+   case nir_texop_txs:             opcode = SHADER_OPCODE_TXS;        break;
+   case nir_texop_query_levels:    opcode = SHADER_OPCODE_TXS;        break;
+   case nir_texop_texture_samples: opcode = SHADER_OPCODE_SAMPLEINFO; break;
+   case nir_texop_tg4:
+      opcode = offset_value.file != BAD_FILE ? SHADER_OPCODE_TG4_OFFSET
+                                             : SHADER_OPCODE_TG4;
+      break;
+   case nir_texop_samples_identical: {
+      /* There are some challenges implementing this for vec4, and it seems
+       * unlikely to be used anyway.  For now, just return false ways.
+       */
+      emit(MOV(dest, brw_imm_ud(0u)));
+      return;
+   }
+   case nir_texop_txb:
+   case nir_texop_lod:
+      unreachable("Implicit LOD is only valid inside fragment shaders.");
+   default:
+      unreachable("Unrecognized tex op");
+   }
+
+   vec4_instruction *inst = new(mem_ctx) vec4_instruction(opcode, dest);
+
+   inst->offset = constant_offset;
+
+   /* The message header is necessary for:
+    * - Gfx4 (always)
+    * - Texel offsets
+    * - Gather channel selection
+    * - Sampler indices too large to fit in a 4-bit value.
+    * - Sampleinfo message - takes no parameters, but mlen = 0 is illegal
+    */
+   inst->header_size =
+      (devinfo->ver < 5 ||
+       inst->offset != 0 ||
+       opcode == SHADER_OPCODE_TG4 ||
+       opcode == SHADER_OPCODE_TG4_OFFSET ||
+       opcode == SHADER_OPCODE_SAMPLEINFO ||
+       is_high_sampler(devinfo, sampler_reg)) ? 1 : 0;
+   inst->base_mrf = 2;
+   inst->mlen = inst->header_size;
+   inst->dst.writemask = WRITEMASK_XYZW;
+   inst->shadow_compare = shadow_comparator.file != BAD_FILE;
+
+   inst->src[1] = texture_reg;
+   inst->src[2] = sampler_reg;
+
+   /* MRF for the first parameter */
+   int param_base = inst->base_mrf + inst->header_size;
+
+   if (opcode == SHADER_OPCODE_TXS) {
+      int writemask = devinfo->ver == 4 ? WRITEMASK_W : WRITEMASK_X;
+      emit(MOV(dst_reg(MRF, param_base, lod.type, writemask), lod));
+      inst->mlen++;
+   } else if (opcode == SHADER_OPCODE_SAMPLEINFO) {
+      inst->dst.writemask = WRITEMASK_X;
+   } else {
+      /* Load the coordinate */
+      /* FINISHME: gl_clamp_mask and saturate */
+      int coord_mask = (1 << instr->coord_components) - 1;
+      int zero_mask = 0xf & ~coord_mask;
+
+      emit(MOV(dst_reg(MRF, param_base, coordinate.type, coord_mask),
+               coordinate));
+      inst->mlen++;
+
+      if (zero_mask != 0) {
+         emit(MOV(dst_reg(MRF, param_base, coordinate.type, zero_mask),
+                  brw_imm_d(0)));
+      }
+      /* Load the shadow comparator */
+      if (shadow_comparator.file != BAD_FILE &&
+          opcode != SHADER_OPCODE_TXD &&
+          opcode != SHADER_OPCODE_TG4_OFFSET) {
+	 emit(MOV(dst_reg(MRF, param_base + 1, shadow_comparator.type,
+			  WRITEMASK_X),
+		  shadow_comparator));
+	 inst->mlen++;
+      }
+
+      /* Load the LOD info */
+      switch (opcode) {
+      case SHADER_OPCODE_TXL: {
+	 int mrf, writemask;
+	 if (devinfo->ver >= 5) {
+	    mrf = param_base + 1;
+	    if (shadow_comparator.file != BAD_FILE) {
+	       writemask = WRITEMASK_Y;
+	       /* mlen already incremented */
+	    } else {
+	       writemask = WRITEMASK_X;
+	       inst->mlen++;
+	    }
+	 } else /* devinfo->ver == 4 */ {
+	    mrf = param_base;
+	    writemask = WRITEMASK_W;
+	 }
+	 emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
+         break;
+      }
+
+      case SHADER_OPCODE_TXF:
+         emit(MOV(dst_reg(MRF, param_base, lod.type, WRITEMASK_W), lod));
+         break;
+
+      case SHADER_OPCODE_TXF_CMS:
+         emit(MOV(dst_reg(MRF, param_base + 1, sample_index.type, WRITEMASK_X),
+                  sample_index));
+         if (devinfo->ver >= 7) {
+            /* MCS data is in the first channel of `mcs`, but we need to get it into
+             * the .y channel of the second vec4 of params, so replicate .x across
+             * the whole vec4 and then mask off everything except .y
+             */
+            mcs.swizzle = BRW_SWIZZLE_XXXX;
+            emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::uint_type, WRITEMASK_Y),
+                     mcs));
+         }
+         inst->mlen++;
+         break;
+
+      case SHADER_OPCODE_TXD: {
+         const brw_reg_type type = lod.type;
+
+	 if (devinfo->ver >= 5) {
+	    lod.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
+	    lod2.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
+	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_XZ), lod));
+	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_YW), lod2));
+	    inst->mlen++;
+
+	    if (nir_tex_instr_dest_size(instr) == 3 ||
+                shadow_comparator.file != BAD_FILE) {
+	       lod.swizzle = BRW_SWIZZLE_ZZZZ;
+	       lod2.swizzle = BRW_SWIZZLE_ZZZZ;
+	       emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_X), lod));
+	       emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_Y), lod2));
+	       inst->mlen++;
+
+               if (shadow_comparator.file != BAD_FILE) {
+                  emit(MOV(dst_reg(MRF, param_base + 2,
+                                   shadow_comparator.type, WRITEMASK_Z),
+                           shadow_comparator));
+               }
+	    }
+	 } else /* devinfo->ver == 4 */ {
+	    emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_XYZ), lod));
+	    emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_XYZ), lod2));
+	    inst->mlen += 2;
+	 }
+         break;
+      }
+
+      case SHADER_OPCODE_TG4_OFFSET:
+         if (shadow_comparator.file != BAD_FILE) {
+            emit(MOV(dst_reg(MRF, param_base, shadow_comparator.type, WRITEMASK_W),
+                     shadow_comparator));
+         }
+
+         emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::ivec2_type, WRITEMASK_XY),
+                  offset_value));
+         inst->mlen++;
+         break;
+
+      default:
+         break;
+      }
+   }
+
+   emit(inst);
+
+   /* fixup num layers (z) for cube arrays: hardware returns faces * layers;
+    * spec requires layers.
+    */
+   if (instr->op == nir_texop_txs && devinfo->ver < 7) {
+      /* Gfx4-6 return 0 instead of 1 for single layer surfaces. */
+      emit_minmax(BRW_CONDITIONAL_GE, writemask(inst->dst, WRITEMASK_Z),
+                  src_reg(inst->dst), brw_imm_d(1));
+   }
+
+   if (devinfo->ver == 6 && instr->op == nir_texop_tg4) {
+      emit_gfx6_gather_wa(key_tex->gfx6_gather_wa[texture], inst->dst);
+   }
+
+   if (instr->op == nir_texop_query_levels) {
+      /* # levels is in .w */
+      src_reg swizzled(dest);
+      swizzled.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W,
+                                      SWIZZLE_W, SWIZZLE_W);
+      emit(MOV(dest, swizzled));
+   }
+}
+
+src_reg
+vec4_visitor::emit_mcs_fetch(const glsl_type *coordinate_type,
+                             src_reg coordinate, src_reg surface)
+{
+   vec4_instruction *inst =
+      new(mem_ctx) vec4_instruction(SHADER_OPCODE_TXF_MCS,
+                                    dst_reg(this, glsl_type::uvec4_type));
+   inst->base_mrf = 2;
+   inst->src[1] = surface;
+   inst->src[2] = brw_imm_ud(0); /* sampler */
+   inst->mlen = 1;
+
+   const int param_base = inst->base_mrf;
+
+   /* parameters are: u, v, r, lod; lod will always be zero due to api restrictions */
+   int coord_mask = (1 << coordinate_type->vector_elements) - 1;
+   int zero_mask = 0xf & ~coord_mask;
+
+   emit(MOV(dst_reg(MRF, param_base, coordinate_type, coord_mask),
+            coordinate));
+
+   emit(MOV(dst_reg(MRF, param_base, coordinate_type, zero_mask),
+            brw_imm_d(0)));
+
+   emit(inst);
+   return src_reg(inst->dst);
+}
+
+/**
+ * Apply workarounds for Gfx6 gather with UINT/SINT
+ */
+void
+vec4_visitor::emit_gfx6_gather_wa(uint8_t wa, dst_reg dst)
+{
+   if (!wa)
+      return;
+
+   int width = (wa & WA_8BIT) ? 8 : 16;
+   dst_reg dst_f = dst;
+   dst_f.type = BRW_REGISTER_TYPE_F;
+
+   /* Convert from UNORM to UINT */
+   emit(MUL(dst_f, src_reg(dst_f), brw_imm_f((float)((1 << width) - 1))));
+   emit(MOV(dst, src_reg(dst_f)));
+
+   if (wa & WA_SIGN) {
+      /* Reinterpret the UINT value as a signed INT value by
+       * shifting the sign bit into place, then shifting back
+       * preserving sign.
+       */
+      emit(SHL(dst, src_reg(dst), brw_imm_d(32 - width)));
+      emit(ASR(dst, src_reg(dst), brw_imm_d(32 - width)));
+   }
 }
 
 void

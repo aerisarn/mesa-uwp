@@ -254,20 +254,6 @@ public:
    void emit_pack_unorm_4x8(const dst_reg &dst, const src_reg &src0);
    void emit_pack_snorm_4x8(const dst_reg &dst, const src_reg &src0);
 
-   void emit_texture(nir_texop op,
-                     dst_reg dest,
-                     int dest_components,
-                     src_reg coordinate,
-                     int coord_components,
-                     src_reg shadow_comparator,
-                     src_reg lod, src_reg lod2,
-                     src_reg sample_index,
-                     uint32_t constant_offset,
-                     src_reg offset_value,
-                     src_reg mcs,
-                     uint32_t surface, src_reg surface_reg,
-                     src_reg sampler_reg);
-
    src_reg emit_mcs_fetch(const glsl_type *coordinate_type, src_reg coordinate,
                           src_reg surface);
    void emit_gfx6_gather_wa(uint8_t wa, dst_reg dst);
@@ -301,8 +287,6 @@ public:
 
    void dump_instruction(const backend_instruction *inst) const;
    void dump_instruction(const backend_instruction *inst, FILE *file) const;
-
-   bool is_high_sampler(src_reg sampler);
 
    bool optimize_predicate(nir_alu_instr *instr, enum brw_predicate *predicate);
 
