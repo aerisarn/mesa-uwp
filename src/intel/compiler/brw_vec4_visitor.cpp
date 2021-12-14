@@ -881,8 +881,10 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
     */
    inst->header_size =
       (devinfo->ver < 5 ||
-       inst->offset != 0 || op == ir_tg4 ||
-       op == ir_texture_samples ||
+       inst->offset != 0 ||
+       opcode == SHADER_OPCODE_TG4 ||
+       opcode == SHADER_OPCODE_TG4_OFFSET ||
+       opcode == SHADER_OPCODE_SAMPLEINFO ||
        is_high_sampler(sampler_reg)) ? 1 : 0;
    inst->base_mrf = 2;
    inst->mlen = inst->header_size;
@@ -895,11 +897,11 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
    /* MRF for the first parameter */
    int param_base = inst->base_mrf + inst->header_size;
 
-   if (op == ir_txs || op == ir_query_levels) {
+   if (opcode == SHADER_OPCODE_TXS) {
       int writemask = devinfo->ver == 4 ? WRITEMASK_W : WRITEMASK_X;
       emit(MOV(dst_reg(MRF, param_base, lod.type, writemask), lod));
       inst->mlen++;
-   } else if (op == ir_texture_samples) {
+   } else if (opcode == SHADER_OPCODE_SAMPLEINFO) {
       inst->dst.writemask = WRITEMASK_X;
    } else {
       /* Load the coordinate */
@@ -916,7 +918,9 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
                   brw_imm_d(0)));
       }
       /* Load the shadow comparator */
-      if (shadow_comparator.file != BAD_FILE && op != ir_txd && (op != ir_tg4 || offset_value.file == BAD_FILE)) {
+      if (shadow_comparator.file != BAD_FILE &&
+          opcode != SHADER_OPCODE_TXD &&
+          opcode != SHADER_OPCODE_TG4_OFFSET) {
 	 emit(MOV(dst_reg(MRF, param_base + 1, shadow_comparator.type,
 			  WRITEMASK_X),
 		  shadow_comparator));
@@ -924,7 +928,8 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
       }
 
       /* Load the LOD info */
-      if (op == ir_tex || op == ir_txl) {
+      switch (opcode) {
+      case SHADER_OPCODE_TXL: {
 	 int mrf, writemask;
 	 if (devinfo->ver >= 5) {
 	    mrf = param_base + 1;
@@ -940,9 +945,14 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
 	    writemask = WRITEMASK_W;
 	 }
 	 emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
-      } else if (op == ir_txf) {
+         break;
+      }
+
+      case SHADER_OPCODE_TXF:
          emit(MOV(dst_reg(MRF, param_base, lod.type, WRITEMASK_W), lod));
-      } else if (op == ir_txf_ms) {
+         break;
+
+      case SHADER_OPCODE_TXF_CMS:
          emit(MOV(dst_reg(MRF, param_base + 1, sample_index.type, WRITEMASK_X),
                   sample_index));
          if (devinfo->ver >= 7) {
@@ -955,7 +965,9 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
                      mcs));
          }
          inst->mlen++;
-      } else if (op == ir_txd) {
+         break;
+
+      case SHADER_OPCODE_TXD: {
          const brw_reg_type type = lod.type;
 
 	 if (devinfo->ver >= 5) {
@@ -983,7 +995,10 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
 	    emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_XYZ), lod2));
 	    inst->mlen += 2;
 	 }
-      } else if (op == ir_tg4 && offset_value.file != BAD_FILE) {
+         break;
+      }
+
+      case SHADER_OPCODE_TG4_OFFSET:
          if (shadow_comparator.file != BAD_FILE) {
             emit(MOV(dst_reg(MRF, param_base, shadow_comparator.type, WRITEMASK_W),
                      shadow_comparator));
@@ -992,6 +1007,10 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
          emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::ivec2_type, WRITEMASK_XY),
                   offset_value));
          inst->mlen++;
+         break;
+
+      default:
+         break;
       }
    }
 
