@@ -4095,18 +4095,6 @@ iris_emit_sbe_swiz(struct iris_batch *batch,
             attr->ComponentOverrideZ = true;
          continue;
 
-      case VARYING_SLOT_PRIMITIVE_ID:
-         /* Override if the previous shader stage didn't write gl_PrimitiveID. */
-         if (slot == -1) {
-            attr->ComponentOverrideX = true;
-            attr->ComponentOverrideY = true;
-            attr->ComponentOverrideZ = true;
-            attr->ComponentOverrideW = true;
-            attr->ConstantSource = PRIM_ID;
-            continue;
-         }
-         break;
-
       default:
          break;
       }
@@ -4231,6 +4219,19 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
          sbe.AttributeActiveComponentFormat[i] = ACTIVE_COMPONENT_XYZW;
       }
 #endif
+
+      /* Ask the hardware to supply PrimitiveID if the fragment shader
+       * reads it but a previous stage didn't write one.
+       */
+      if ((wm_prog_data->inputs & VARYING_BIT_PRIMITIVE_ID) &&
+          last_vue_map->varying_to_slot[VARYING_SLOT_PRIMITIVE_ID] == -1) {
+         sbe.PrimitiveIDOverrideAttributeSelect =
+            wm_prog_data->urb_setup[VARYING_SLOT_PRIMITIVE_ID];
+         sbe.PrimitiveIDOverrideComponentX = true;
+         sbe.PrimitiveIDOverrideComponentY = true;
+         sbe.PrimitiveIDOverrideComponentZ = true;
+         sbe.PrimitiveIDOverrideComponentW = true;
+      }
    }
 
    iris_emit_sbe_swiz(batch, ice, last_vue_map, urb_read_offset,
