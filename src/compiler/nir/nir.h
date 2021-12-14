@@ -1765,7 +1765,8 @@ typedef struct nir_io_semantics {
    unsigned medium_precision:1; /* GLSL mediump qualifier */
    unsigned per_view:1;
    unsigned high_16bits:1; /* whether accessing low or high half of the slot */
-   unsigned _pad:6;
+   unsigned invariant:1; /* The variable has the invariant flag set */
+   unsigned _pad:5;
 } nir_io_semantics;
 
 #define NIR_INTRINSIC_MAX_INPUTS 11
