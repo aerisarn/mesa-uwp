@@ -65,42 +65,6 @@ radv_amdgpu_bo_va_op(struct radv_amdgpu_winsys *ws, amdgpu_bo_handle bo, uint64_
    return amdgpu_bo_va_op_raw(ws->dev, bo, offset, size, addr, flags, ops);
 }
 
-static void
-radv_amdgpu_winsys_virtual_map(struct radv_amdgpu_winsys *ws, struct radv_amdgpu_winsys_bo *bo,
-                               const struct radv_amdgpu_map_range *range)
-{
-   uint64_t internal_flags = 0;
-   assert(range->size);
-
-   if (!range->bo) {
-      internal_flags |= AMDGPU_VM_PAGE_PRT;
-   }
-
-   int r = radv_amdgpu_bo_va_op(ws, range->bo ? range->bo->bo : NULL, range->bo_offset, range->size,
-                                range->offset + bo->base.va, 0, internal_flags, AMDGPU_VA_OP_MAP);
-   if (r)
-      abort();
-}
-
-static void
-radv_amdgpu_winsys_virtual_unmap(struct radv_amdgpu_winsys *ws, struct radv_amdgpu_winsys_bo *bo,
-                                 const struct radv_amdgpu_map_range *range)
-{
-   uint64_t internal_flags = 0;
-   assert(range->size);
-
-   if (!range->bo) {
-      /* Even though this is an unmap, if we don't set this flag,
-         AMDGPU is going to complain about the missing buffer. */
-      internal_flags |= AMDGPU_VM_PAGE_PRT;
-   }
-
-   int r = radv_amdgpu_bo_va_op(ws, range->bo ? range->bo->bo : NULL, range->bo_offset, range->size,
-                                range->offset + bo->base.va, 0, internal_flags, AMDGPU_VA_OP_UNMAP);
-   if (r)
-      abort();
-}
-
 static int
 bo_comparator(const void *ap, const void *bp)
 {
@@ -151,9 +115,26 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys *_ws, struct radeon_wins
    int first = 0, last;
    struct radv_amdgpu_map_range new_first, new_last;
    VkResult result;
+   int r;
 
    assert(parent->is_virtual);
    assert(!bo || !bo->is_virtual);
+
+   /* When the BO is NULL, AMDGPU will reset the PTE VA range to the initial state. Otherwise, it
+    * will first unmap all existing VA that overlap the requested range and then map.
+    */
+   if (bo) {
+      r = radv_amdgpu_bo_va_op(ws, bo->bo, bo_offset, size, parent->base.va + offset, 0, 0,
+                               AMDGPU_VA_OP_REPLACE);
+   } else {
+      r = radv_amdgpu_bo_va_op(ws, NULL, 0, size, parent->base.va + offset, 0, AMDGPU_VM_PAGE_PRT,
+                               AMDGPU_VA_OP_REPLACE);
+   }
+
+   if (r) {
+      fprintf(stderr, "amdgpu: Failed to replace a PRT VA region (%d).\n", r);
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   }
 
    /* We have at most 2 new ranges (1 by the bind, and another one by splitting a range that
     * contains the newly bound range). */
@@ -186,7 +167,6 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys *_ws, struct radeon_wins
     * whether to not create the corresponding split part. */
    bool remove_first = parent->ranges[first].offset == offset;
    bool remove_last = parent->ranges[last].offset + parent->ranges[last].size == offset + size;
-   bool unmapped_first = false;
 
    assert(parent->ranges[first].offset <= offset);
    assert(parent->ranges[last].offset + parent->ranges[last].size >= offset + size);
@@ -212,11 +192,6 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys *_ws, struct radeon_wins
    range_count_delta = 1 - (last - first + 1) + !remove_first + !remove_last;
    new_idx = first + !remove_first;
 
-   /* Any range between first and last is going to be entirely covered by the new range so just
-    * unmap them. */
-   for (int i = first + 1; i < last; ++i)
-      radv_amdgpu_winsys_virtual_unmap(ws, parent, parent->ranges + i);
-
    /* If the first/last range are not left alone we unmap then and optionally map
     * them again after modifications. Not that this implicitly can do the splitting
     * if first == last. */
@@ -224,24 +199,16 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys *_ws, struct radeon_wins
    new_last = parent->ranges[last];
 
    if (parent->ranges[first].offset + parent->ranges[first].size > offset || remove_first) {
-      radv_amdgpu_winsys_virtual_unmap(ws, parent, parent->ranges + first);
-      unmapped_first = true;
-
       if (!remove_first) {
          new_first.size = offset - new_first.offset;
-         radv_amdgpu_winsys_virtual_map(ws, parent, &new_first);
       }
    }
 
    if (parent->ranges[last].offset < offset + size || remove_last) {
-      if (first != last || !unmapped_first)
-         radv_amdgpu_winsys_virtual_unmap(ws, parent, parent->ranges + last);
-
       if (!remove_last) {
          new_last.size -= offset + size - new_last.offset;
          new_last.bo_offset += (offset + size - new_last.offset);
          new_last.offset = offset + size;
-         radv_amdgpu_winsys_virtual_map(ws, parent, &new_last);
       }
    }
 
@@ -260,8 +227,6 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys *_ws, struct radeon_wins
    parent->ranges[new_idx].size = size;
    parent->ranges[new_idx].bo = bo;
    parent->ranges[new_idx].bo_offset = bo_offset;
-
-   radv_amdgpu_winsys_virtual_map(ws, parent, parent->ranges + new_idx);
 
    parent->range_count += range_count_delta;
 
@@ -446,7 +411,15 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned 
       bo->ranges[0].bo = NULL;
       bo->ranges[0].bo_offset = 0;
 
-      radv_amdgpu_winsys_virtual_map(ws, bo, bo->ranges);
+      /* Reserve a PRT VA region. */
+      r = radv_amdgpu_bo_va_op(ws, NULL, 0, size, bo->base.va, 0, AMDGPU_VM_PAGE_PRT,
+                               AMDGPU_VA_OP_MAP);
+      if (r) {
+         fprintf(stderr, "amdgpu: Failed to reserve a PRT VA region (%d).\n", r);
+         result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         goto error_ranges_alloc;
+      }
+
       radv_amdgpu_log_bo(ws, bo, false);
 
       *out_bo = (struct radeon_winsys_bo *)bo;
