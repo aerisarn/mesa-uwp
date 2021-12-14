@@ -858,6 +858,9 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
       [nir_op_fdot2] = { TGSI_OPCODE_DP2 },
       [nir_op_fdot3] = { TGSI_OPCODE_DP3 },
       [nir_op_fdot4] = { TGSI_OPCODE_DP4 },
+      [nir_op_fdot2_replicated] = { TGSI_OPCODE_DP2 },
+      [nir_op_fdot3_replicated] = { TGSI_OPCODE_DP3 },
+      [nir_op_fdot4_replicated] = { TGSI_OPCODE_DP4 },
       [nir_op_ffloor] = { TGSI_OPCODE_FLR, TGSI_OPCODE_DFLR },
       [nir_op_ffract] = { TGSI_OPCODE_FRC, TGSI_OPCODE_DFRAC },
       [nir_op_fceil] = { TGSI_OPCODE_CEIL, TGSI_OPCODE_DCEIL },
@@ -3191,6 +3194,7 @@ nir_to_tgsi(struct nir_shader *s,
 }
 
 static const nir_shader_compiler_options nir_to_tgsi_compiler_options = {
+   .fdot_replicates = true,
    .fuse_ffma32 = true,
    .fuse_ffma64 = true,
    .lower_extract_byte = true,

@@ -75,6 +75,7 @@ softpipe_get_name(struct pipe_screen *screen)
 }
 
 static const nir_shader_compiler_options sp_compiler_options = {
+   .fdot_replicates = true,
    .fuse_ffma32 = true,
    .fuse_ffma64 = true,
    .lower_extract_byte = true,

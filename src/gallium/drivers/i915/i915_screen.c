@@ -106,6 +106,7 @@ i915_get_name(struct pipe_screen *screen)
 }
 
 static const nir_shader_compiler_options i915_compiler_options = {
+   .fdot_replicates = true,
    .fuse_ffma32 = true,
    .lower_bitops = true, /* required for !CAP_INTEGERS nir_to_tgsi */
    .lower_extract_byte = true,
@@ -122,6 +123,7 @@ static const nir_shader_compiler_options i915_compiler_options = {
 };
 
 static const struct nir_shader_compiler_options gallivm_nir_options = {
+   .fdot_replicates = true,
    .lower_bitops = true, /* required for !CAP_INTEGERS nir_to_tgsi */
    .lower_scmp = true,
    .lower_flrp32 = true,
