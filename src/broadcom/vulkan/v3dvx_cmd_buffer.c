@@ -794,7 +794,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
     * buffer.
     */
    if (!framebuffer) {
-      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
       return;
    }
 
@@ -1460,7 +1460,7 @@ job_update_ez_state(struct v3dv_job *job,
          struct v3dv_framebuffer *fb = state->framebuffer;
 
          if (!fb) {
-            assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+            assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
             perf_debug("Loading depth aspect in a secondary command buffer "
                        "without framebuffer info disables early-z tests.\n");
             job->first_ez_state = V3D_EZ_DISABLED;

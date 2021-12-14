@@ -526,7 +526,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
          } else if (cmd_buffer->state.framebuffer) {
             num_layers = cmd_buffer->state.framebuffer->layers;
          } else {
-            assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+            assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
             num_layers = 2048;
 #if DEBUG
             fprintf(stderr, "Skipping gl_LayerID shader sanity check for "

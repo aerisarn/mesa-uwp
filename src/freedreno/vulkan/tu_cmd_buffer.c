@@ -75,7 +75,7 @@ tu6_lazy_emit_tessfactor_addr(struct tu_cmd_buffer *cmd)
    if (cmd->state.tessfactor_addr_set)
       return;
 
-   assert(cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   assert(cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
    tu_cs_emit_regs(&cmd->cs, A6XX_PC_TESSFACTOR_ADDR(.qword = cmd->device->tess_bo.iova));
    cmd->state.tessfactor_addr_set = true;
@@ -1505,7 +1505,7 @@ tu_create_cmd_buffer(struct tu_device *device,
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+   VkResult result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk, level);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, NULL, cmd_buffer);
       return result;
@@ -1513,7 +1513,6 @@ tu_create_cmd_buffer(struct tu_device *device,
 
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
-   cmd_buffer->level = level;
 
    if (pool) {
       list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
@@ -1621,10 +1620,9 @@ tu_AllocateCommandBuffers(VkDevice _device,
          list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
 
          result = tu_reset_cmd_buffer(cmd_buffer);
-         cmd_buffer->level = pAllocateInfo->level;
          vk_command_buffer_finish(&cmd_buffer->vk);
          VkResult init_result =
-            vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+            vk_command_buffer_init(&cmd_buffer->vk, &device->vk, pAllocateInfo->level);
          if (init_result != VK_SUCCESS)
             result = init_result;
 
@@ -1725,7 +1723,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    tu_cs_begin(&cmd_buffer->draw_epilogue_cs);
 
    /* setup initial configuration into command buffer */
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
       switch (cmd_buffer->queue_family_index) {
       case TU_QUEUE_GENERAL:
          tu6_init_hw(cmd_buffer, &cmd_buffer->cs);
@@ -1733,7 +1731,7 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       default:
          break;
       }
-   } else if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+   } else if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       assert(pBeginInfo->pInheritanceInfo);
 
       vk_foreach_struct(ext, pBeginInfo->pInheritanceInfo) {
@@ -2350,7 +2348,7 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       /* Set up the tess factor address if this is the first tess pipeline bound
        * to the primary cmdbuf.
       */
-      if (cmd->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+      if (cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
          tu6_lazy_emit_tessfactor_addr(cmd);
 
       /* maximum number of patches that can fit in tess factor/param buffers */

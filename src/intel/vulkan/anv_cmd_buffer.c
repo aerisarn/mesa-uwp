@@ -275,7 +275,7 @@ static VkResult anv_create_cmd_buffer(
    if (cmd_buffer == NULL)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+   result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk, level);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
@@ -283,7 +283,6 @@ static VkResult anv_create_cmd_buffer(
 
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
-   cmd_buffer->level = level;
 
    result = anv_cmd_buffer_init_batch_bo_chain(cmd_buffer);
    if (result != VK_SUCCESS)

@@ -25,12 +25,14 @@
 
 VkResult
 vk_command_buffer_init(struct vk_command_buffer *command_buffer,
-                       struct vk_device *device)
+                       struct vk_device *device,
+                       VkCommandBufferLevel level)
 {
    memset(command_buffer, 0, sizeof(*command_buffer));
    vk_object_base_init(device, &command_buffer->base,
                        VK_OBJECT_TYPE_COMMAND_BUFFER);
 
+   command_buffer->level = level;
    util_dynarray_init(&command_buffer->labels, NULL);
    command_buffer->region_begin = true;
 

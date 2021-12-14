@@ -1424,7 +1424,6 @@ struct v3dv_cmd_buffer {
    struct list_head list_link;
 
    VkCommandBufferUsageFlags usage_flags;
-   VkCommandBufferLevel level;
 
    enum v3dv_cmd_buffer_status status;
 

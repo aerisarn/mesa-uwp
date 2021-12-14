@@ -90,7 +90,7 @@ gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
                        vp->x + vp->width - 1);
 
       /* Do this math using int64_t so overflow gets clamped correctly. */
-      if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
          y_min = clamp_int64((uint64_t) y_min,
                              cmd_buffer->state.render_area.offset.y, max);
          x_min = clamp_int64((uint64_t) x_min,

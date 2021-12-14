@@ -4382,7 +4382,7 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
       for (uint32_t j = 0; j < submission->command_buffer_count; j++) {
          struct radv_cmd_buffer *cmd_buffer =
             (struct radv_cmd_buffer *)submission->command_buffers[j];
-         assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+         assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
          cs_array[j] = cmd_buffer->cs;
          if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))

@@ -654,7 +654,6 @@ struct panvk_cmd_buffer {
    struct list_head batches;
 
    VkCommandBufferUsageFlags usage_flags;
-   VkCommandBufferLevel level;
    enum panvk_cmd_buffer_status status;
 
    struct panvk_cmd_state state;

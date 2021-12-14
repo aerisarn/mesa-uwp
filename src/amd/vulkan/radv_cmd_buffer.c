@@ -448,7 +448,7 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result =
-      vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+      vk_command_buffer_init(&cmd_buffer->vk, &device->vk, level);
    if (result != VK_SUCCESS) {
       vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
       return result;
@@ -456,7 +456,6 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
 
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
-   cmd_buffer->level = level;
 
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
    cmd_buffer->queue_family_index = pool->queue_family_index;
@@ -661,7 +660,7 @@ radv_cmd_buffer_trace_emit(struct radv_cmd_buffer *cmd_buffer)
    uint64_t va;
 
    va = radv_buffer_get_va(device->trace_bo);
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
       va += 4;
 
    ++cmd_buffer->state.trace_id;
@@ -4355,10 +4354,9 @@ radv_AllocateCommandBuffers(VkDevice _device, const VkCommandBufferAllocateInfo 
          list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
 
          result = radv_reset_cmd_buffer(cmd_buffer);
-         cmd_buffer->level = pAllocateInfo->level;
          vk_command_buffer_finish(&cmd_buffer->vk);
          VkResult init_result =
-            vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+            vk_command_buffer_init(&cmd_buffer->vk, &device->vk, pAllocateInfo->level);
          if (init_result != VK_SUCCESS)
             result = init_result;
 
@@ -4539,7 +4537,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    cmd_buffer->state.mesh_shading = false;
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
        (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
       struct radv_subpass *subpass = NULL;
 

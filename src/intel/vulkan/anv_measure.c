@@ -147,7 +147,7 @@ anv_measure_start_snapshot(struct anv_cmd_buffer *cmd_buffer,
    uintptr_t framebuffer = (uintptr_t)cmd_buffer->state.framebuffer;
 
    if (!measure->base.framebuffer &&
-       cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
+       cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
       /* secondary command buffer inherited the framebuffer from the primary */
       measure->base.framebuffer = framebuffer;
 

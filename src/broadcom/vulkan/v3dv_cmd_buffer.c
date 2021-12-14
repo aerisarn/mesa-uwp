@@ -82,8 +82,7 @@ v3dv_CreateCommandPool(VkDevice _device,
 static void
 cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_device *device,
-                struct v3dv_cmd_pool *pool,
-                VkCommandBufferLevel level)
+                struct v3dv_cmd_pool *pool)
 {
    /* Do not reset the base object! If we are calling this from a command
     * buffer reset that would reset the loader's dispatch table for the
@@ -95,7 +94,6 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
 
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
-   cmd_buffer->level = level;
 
    list_inithead(&cmd_buffer->private_objs);
    list_inithead(&cmd_buffer->jobs);
@@ -126,13 +124,13 @@ cmd_buffer_create(struct v3dv_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result;
-   result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk);
+   result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk, level);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, &pool->alloc, cmd_buffer);
       return result;
    }
 
-   cmd_buffer_init(cmd_buffer, device, pool, level);
+   cmd_buffer_init(cmd_buffer, device, pool);
 
    *pCommandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
 
@@ -351,7 +349,7 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
    const struct v3dv_physical_device *physical_device =
       &cmd_buffer->device->instance->physicalDevice;
 
-   if (cmd_buffer->level != VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+   if (cmd_buffer->vk.level != VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       return false;
 
    if (!cmd_buffer->state.job)
@@ -645,7 +643,7 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
     * a transfer command. The only exception are secondary command buffers
     * inside a render pass.
     */
-   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ||
+   assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ||
           v3dv_cl_offset(&job->bcl) > 0);
 
    /* When we merge multiple subpasses into the same job we must only emit one
@@ -684,7 +682,7 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
     * that case we want to defer this until we finish recording the primary
     * job into which we execute the secondary.
     */
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY ||
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY ||
        !cmd_buffer->state.pass) {
       cmd_buffer_add_cpu_jobs_for_pending_state(cmd_buffer);
    }
@@ -779,7 +777,7 @@ v3dv_job_init(struct v3dv_job *job,
       cmd_buffer->state.dirty_descriptor_stages = ~0;
 
       /* Honor inheritance of occlussion queries in secondaries if requested */
-      if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+      if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
           cmd_buffer->state.inheritance.occlusion_query_enable) {
          cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_OCCLUSION_QUERY;
       }
@@ -839,7 +837,6 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer,
    if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_INITIALIZED) {
       struct v3dv_device *device = cmd_buffer->device;
       struct v3dv_cmd_pool *pool = cmd_buffer->pool;
-      VkCommandBufferLevel level = cmd_buffer->level;
 
       /* cmd_buffer_init below will re-add the command buffer to the pool
        * so remove it here so we don't end up adding it again.
@@ -852,7 +849,7 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer,
       if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_NEW)
          cmd_buffer_free_resources(cmd_buffer);
 
-      cmd_buffer_init(cmd_buffer, device, pool, level);
+      cmd_buffer_init(cmd_buffer, device, pool);
    }
 
    assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
@@ -1030,7 +1027,7 @@ cmd_buffer_begin_render_pass_secondary(
    struct v3dv_cmd_buffer *cmd_buffer,
    const VkCommandBufferInheritanceInfo *inheritance_info)
 {
-   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+   assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
    assert(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
    assert(inheritance_info);
 
@@ -1098,7 +1095,7 @@ v3dv_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
          result =
             cmd_buffer_begin_render_pass_secondary(cmd_buffer,
@@ -1309,7 +1306,7 @@ cmd_buffer_state_set_attachments(struct v3dv_cmd_buffer *cmd_buffer,
       } else if (framebuffer) {
          state->attachments[i].image_view = framebuffer->attachments[i];
       } else {
-         assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+         assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
          state->attachments[i].image_view = NULL;
       }
    }
@@ -1413,7 +1410,7 @@ v3dv_CmdNextSubpass2(VkCommandBuffer commandBuffer,
 static void
 cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
    assert(cmd_buffer->state.pass);
    assert(cmd_buffer->state.subpass_idx < cmd_buffer->state.pass->subpass_count);
@@ -1615,7 +1612,7 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
     * attachment load clears, but we don't have any instances of that right
     * now.
     */
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       cmd_buffer_emit_subpass_clears(cmd_buffer);
 
    return job;
@@ -1629,11 +1626,11 @@ v3dv_cmd_buffer_subpass_resume(struct v3dv_cmd_buffer *cmd_buffer,
    assert(subpass_idx < cmd_buffer->state.pass->subpass_count);
 
    struct v3dv_job *job;
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
       job = cmd_buffer_subpass_create_job(cmd_buffer, subpass_idx,
                                           V3DV_JOB_TYPE_GPU_CL);
    } else {
-      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
       job = cmd_buffer_subpass_create_job(cmd_buffer, subpass_idx,
                                           V3DV_JOB_TYPE_GPU_CL_SECONDARY);
    }
@@ -1695,7 +1692,7 @@ v3dv_EndCommandBuffer(VkCommandBuffer commandBuffer)
     * inside a render pass.
     */
    if (cmd_buffer->state.job) {
-      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
+      assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
              cmd_buffer->state.pass);
       v3dv_cmd_buffer_finish_job(cmd_buffer);
    }
@@ -2484,7 +2481,7 @@ cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
     * draw calls in them, and then using that info to decide if we need to
     * restart the primary job into which they are being recorded.
     */
-   if (cmd_buffer->level != VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+   if (cmd_buffer->vk.level != VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       return;
 
    /* Drop the current job and restart it with MSAA enabled */

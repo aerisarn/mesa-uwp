@@ -964,7 +964,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_batch_bo *batch_bo = anv_cmd_buffer_current_batch_bo(cmd_buffer);
 
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
       /* When we start a batch buffer, we subtract a certain amount of
        * padding from the end to ensure that we always have room to emit a
        * BATCH_BUFFER_START to chain to the next BO.  We need to remove
@@ -993,7 +993,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
 
       cmd_buffer->exec_mode = ANV_CMD_BUFFER_EXEC_MODE_PRIMARY;
    } else {
-      assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
       /* If this is a secondary command buffer, we need to determine the
        * mode in which it will be executed with vkExecuteCommands.  We
        * determine this statically here so that this stays in sync with the

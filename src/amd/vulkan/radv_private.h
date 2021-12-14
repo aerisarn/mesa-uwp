@@ -1504,7 +1504,6 @@ struct radv_cmd_buffer {
    struct list_head pool_link;
 
    VkCommandBufferUsageFlags usage_flags;
-   VkCommandBufferLevel level;
    enum radv_cmd_buffer_status status;
    struct radeon_cmdbuf *cs;
    struct radv_cmd_state state;

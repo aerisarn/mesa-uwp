@@ -558,7 +558,6 @@ struct lvp_cmd_buffer {
 
    struct lvp_device *                          device;
 
-   VkCommandBufferLevel                         level;
    enum lvp_cmd_buffer_status status;
    struct lvp_cmd_pool *                        pool;
    struct list_head                             pool_link;

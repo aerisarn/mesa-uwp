@@ -1132,7 +1132,6 @@ struct tu_cmd_buffer
    struct list_head renderpass_autotune_results;
 
    VkCommandBufferUsageFlags usage_flags;
-   VkCommandBufferLevel level;
    enum tu_cmd_buffer_status status;
 
    struct tu_cmd_state state;

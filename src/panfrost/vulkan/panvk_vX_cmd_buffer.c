@@ -1011,14 +1011,13 @@ panvk_create_cmdbuf(struct panvk_device *device,
    if (!cmdbuf)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_command_buffer_init(&cmdbuf->vk, &device->vk);
+   VkResult result = vk_command_buffer_init(&cmdbuf->vk, &device->vk, level);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, cmdbuf);
       return result;
    }
 
    cmdbuf->device = device;
-   cmdbuf->level = level;
    cmdbuf->pool = pool;
 
    if (pool) {
@@ -1068,9 +1067,8 @@ panvk_per_arch(AllocateCommandBuffers)(VkDevice _device,
          list_del(&cmdbuf->pool_link);
          list_addtail(&cmdbuf->pool_link, &pool->active_cmd_buffers);
 
-         cmdbuf->level = pAllocateInfo->level;
          vk_command_buffer_finish(&cmdbuf->vk);
-         result = vk_command_buffer_init(&cmdbuf->vk, &device->vk);
+         result = vk_command_buffer_init(&cmdbuf->vk, &device->vk, pAllocateInfo->level);
       } else {
          result = panvk_create_cmdbuf(device, pool, pAllocateInfo->level, &cmdbuf);
       }

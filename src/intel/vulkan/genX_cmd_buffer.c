@@ -1768,7 +1768,7 @@ genX(BeginCommandBuffer)(
     *    secondary command buffer is considered to be entirely inside a render
     *    pass. If this is a primary command buffer, then this bit is ignored.
     */
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       cmd_buffer->usage_flags &= ~VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
 
    trace_intel_begin_cmd_buffer(&cmd_buffer->trace, cmd_buffer);
@@ -1892,7 +1892,7 @@ genX(BeginCommandBuffer)(
    }
 
 #if GFX_VERx10 >= 75
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+   if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       const VkCommandBufferInheritanceConditionalRenderingInfoEXT *conditional_rendering_info =
          vk_find_struct_const(pBeginInfo->pInheritanceInfo->pNext, COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT);
 
@@ -1978,7 +1978,8 @@ genX(EndCommandBuffer)(
 
    emit_isp_disable(cmd_buffer);
 
-   trace_intel_end_cmd_buffer(&cmd_buffer->trace, cmd_buffer, cmd_buffer->level);
+   trace_intel_end_cmd_buffer(&cmd_buffer->trace, cmd_buffer,
+                              cmd_buffer->vk.level);
 
    anv_cmd_buffer_end_batch_buffer(cmd_buffer);
 
@@ -1993,7 +1994,7 @@ genX(CmdExecuteCommands)(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, primary, commandBuffer);
 
-   assert(primary->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   assert(primary->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
    if (anv_batch_has_error(&primary->batch))
       return;
@@ -2011,7 +2012,7 @@ genX(CmdExecuteCommands)(
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       ANV_FROM_HANDLE(anv_cmd_buffer, secondary, pCmdBuffers[i]);
 
-      assert(secondary->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+      assert(secondary->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
       assert(!anv_batch_has_error(&secondary->batch));
 
 #if GFX_VERx10 >= 75
@@ -7296,7 +7297,7 @@ void genX(CmdNextSubpass2)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
-   assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
    uint32_t prev_subpass = anv_get_subpass_id(&cmd_buffer->state);
    cmd_buffer_end_subpass(cmd_buffer);
