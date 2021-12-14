@@ -863,6 +863,8 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
    int src_64 = nir_src_bit_size(instr->src[0].src) == 64;
    int num_srcs = nir_op_infos[instr->op].num_inputs;
 
+   ureg_set_precise(c->ureg, instr->exact);
+
    assert(num_srcs <= ARRAY_SIZE(src));
    for (i = 0; i < num_srcs; i++)
       src[i] = ntt_get_alu_src(c, instr, i);
@@ -1262,6 +1264,8 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
       }
       ureg_release_temporary(c->ureg, dst);
    }
+
+   ureg_set_precise(c->ureg, false);
 }
 
 static struct ureg_src
