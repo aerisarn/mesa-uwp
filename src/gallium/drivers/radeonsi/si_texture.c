@@ -1768,8 +1768,8 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    if ((tex->buffer.flags & RADEON_FLAG_ENCRYPTED) && usage & PIPE_MAP_READ)
       return NULL;
 
-   if (tex->is_depth) {
-      /* Depth textures use staging unconditionally. */
+   if (tex->is_depth || tex->buffer.flags & RADEON_FLAG_SPARSE) {
+      /* Depth and sparse textures use staging unconditionally. */
       use_staging_texture = true;
    } else {
       /* Degrade the tile mode if we get too many transfers on APUs.
