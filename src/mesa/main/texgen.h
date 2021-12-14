@@ -70,8 +70,5 @@ _mesa_GetMultiTexGenfvEXT( GLenum texunit, GLenum coord, GLenum pname, GLfloat *
 void GLAPIENTRY
 _mesa_GetMultiTexGenivEXT( GLenum texunit, GLenum coord, GLenum pname, GLint *params );
 
-extern void GLAPIENTRY
-_es_TexGenf(GLenum coord, GLenum pname, GLfloat param);
-
 
 #endif /* TEXGEN_H */

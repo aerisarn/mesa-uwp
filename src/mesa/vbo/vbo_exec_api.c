@@ -987,6 +987,76 @@ _mesa_PrimitiveRestartNV(void)
 }
 
 
+/**
+ * A special version of glVertexAttrib4f that does not treat index 0 as
+ * VBO_ATTRIB_POS.
+ */
+static void
+VertexAttrib4f_nopos(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
+      ATTRF(VBO_ATTRIB_GENERIC0 + index, 4, x, y, z, w);
+   else
+      ERROR(GL_INVALID_VALUE);
+}
+
+static void GLAPIENTRY
+_es_VertexAttrib4fARB(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+{
+   VertexAttrib4f_nopos(index, x, y, z, w);
+}
+
+
+static void GLAPIENTRY
+_es_VertexAttrib1fARB(GLuint indx, GLfloat x)
+{
+   VertexAttrib4f_nopos(indx, x, 0.0f, 0.0f, 1.0f);
+}
+
+
+static void GLAPIENTRY
+_es_VertexAttrib1fvARB(GLuint indx, const GLfloat* values)
+{
+   VertexAttrib4f_nopos(indx, values[0], 0.0f, 0.0f, 1.0f);
+}
+
+
+static void GLAPIENTRY
+_es_VertexAttrib2fARB(GLuint indx, GLfloat x, GLfloat y)
+{
+   VertexAttrib4f_nopos(indx, x, y, 0.0f, 1.0f);
+}
+
+
+static void GLAPIENTRY
+_es_VertexAttrib2fvARB(GLuint indx, const GLfloat* values)
+{
+   VertexAttrib4f_nopos(indx, values[0], values[1], 0.0f, 1.0f);
+}
+
+
+static void GLAPIENTRY
+_es_VertexAttrib3fARB(GLuint indx, GLfloat x, GLfloat y, GLfloat z)
+{
+   VertexAttrib4f_nopos(indx, x, y, z, 1.0f);
+}
+
+
+static void GLAPIENTRY
+_es_VertexAttrib3fvARB(GLuint indx, const GLfloat* values)
+{
+   VertexAttrib4f_nopos(indx, values[0], values[1], values[2], 1.0f);
+}
+
+
+static void GLAPIENTRY
+_es_VertexAttrib4fvARB(GLuint indx, const GLfloat* values)
+{
+   VertexAttrib4f_nopos(indx, values[0], values[1], values[2], values[3]);
+}
+
+
 void
 vbo_install_exec_vtxfmt(struct gl_context *ctx)
 {
@@ -1141,74 +1211,4 @@ _es_Materialf(GLenum face, GLenum pname, GLfloat param)
    p[0] = param;
    p[1] = p[2] = p[3] = 0.0F;
    _mesa_Materialfv(face, pname, p);
-}
-
-
-/**
- * A special version of glVertexAttrib4f that does not treat index 0 as
- * VBO_ATTRIB_POS.
- */
-static void
-VertexAttrib4f_nopos(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
-{
-   GET_CURRENT_CONTEXT(ctx);
-   if (index < MAX_VERTEX_GENERIC_ATTRIBS)
-      ATTRF(VBO_ATTRIB_GENERIC0 + index, 4, x, y, z, w);
-   else
-      ERROR(GL_INVALID_VALUE);
-}
-
-void GLAPIENTRY
-_es_VertexAttrib4fARB(GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w)
-{
-   VertexAttrib4f_nopos(index, x, y, z, w);
-}
-
-
-void GLAPIENTRY
-_es_VertexAttrib1fARB(GLuint indx, GLfloat x)
-{
-   VertexAttrib4f_nopos(indx, x, 0.0f, 0.0f, 1.0f);
-}
-
-
-void GLAPIENTRY
-_es_VertexAttrib1fvARB(GLuint indx, const GLfloat* values)
-{
-   VertexAttrib4f_nopos(indx, values[0], 0.0f, 0.0f, 1.0f);
-}
-
-
-void GLAPIENTRY
-_es_VertexAttrib2fARB(GLuint indx, GLfloat x, GLfloat y)
-{
-   VertexAttrib4f_nopos(indx, x, y, 0.0f, 1.0f);
-}
-
-
-void GLAPIENTRY
-_es_VertexAttrib2fvARB(GLuint indx, const GLfloat* values)
-{
-   VertexAttrib4f_nopos(indx, values[0], values[1], 0.0f, 1.0f);
-}
-
-
-void GLAPIENTRY
-_es_VertexAttrib3fARB(GLuint indx, GLfloat x, GLfloat y, GLfloat z)
-{
-   VertexAttrib4f_nopos(indx, x, y, z, 1.0f);
-}
-
-
-void GLAPIENTRY
-_es_VertexAttrib3fvARB(GLuint indx, const GLfloat* values)
-{
-   VertexAttrib4f_nopos(indx, values[0], values[1], values[2], 1.0f);
-}
-
-
-void GLAPIENTRY
-_es_VertexAttrib4fvARB(GLuint indx, const GLfloat* values)
-{
-   VertexAttrib4f_nopos(indx, values[0], values[1], values[2], values[3]);
 }

@@ -841,6 +841,20 @@ _mesa_TexEnvxv(GLenum target, GLenum pname, const GLfixed *params)
    }
 }
 
+static void
+_es_TexGenf(GLenum coord, GLenum pname, GLfloat param)
+{
+   if (coord != GL_TEXTURE_GEN_STR_OES) {
+      GET_CURRENT_CONTEXT(ctx);
+      _mesa_error( ctx, GL_INVALID_ENUM, "glTexGen[fx](pname)" );
+      return;
+   }
+   /* set S, T, and R at the same time */
+   _mesa_TexGenf(GL_S, pname, param);
+   _mesa_TexGenf(GL_T, pname, param);
+   _mesa_TexGenf(GL_R, pname, param);
+}
+
 void GL_APIENTRY
 _mesa_TexGenxOES(GLenum coord, GLenum pname, GLfixed param)
 {
