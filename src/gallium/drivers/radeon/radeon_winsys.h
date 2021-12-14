@@ -666,7 +666,7 @@ struct radeon_winsys {
     * \param mode      Preferred tile mode. (linear, 1D, or 2D)
     * \param surf      Output structure
     */
-   int (*surface_init)(struct radeon_winsys *ws, const struct pipe_resource *tex, unsigned flags,
+   int (*surface_init)(struct radeon_winsys *ws, const struct pipe_resource *tex, uint64_t flags,
                        unsigned bpe, enum radeon_surf_mode mode, struct radeon_surf *surf);
 
    uint64_t (*query_value)(struct radeon_winsys *ws, enum radeon_value_id value);
