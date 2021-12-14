@@ -783,6 +783,61 @@ skip_smem_offset_align(opt_ctx& ctx, SMEM_instruction* smem)
       op.setTemp(bitwise_instr->operands[0].getTemp());
 }
 
+void
+smem_combine(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   /* skip &-4 before offset additions: load((a + 16) & -4, 0) */
+   if (!instr->operands.empty())
+      skip_smem_offset_align(ctx, &instr->smem());
+
+   /* propagate constants and combine additions */
+   if (!instr->operands.empty() && instr->operands[1].isTemp()) {
+      SMEM_instruction& smem = instr->smem();
+      ssa_info info = ctx.info[instr->operands[1].tempId()];
+
+      Temp base;
+      uint32_t offset;
+      bool prevent_overflow = smem.operands[0].size() > 2 || smem.prevent_overflow;
+      if (info.is_constant_or_literal(32) &&
+          ((ctx.program->chip_class == GFX6 && info.val <= 0x3FF) ||
+           (ctx.program->chip_class == GFX7 && info.val <= 0xFFFFFFFF) ||
+           (ctx.program->chip_class >= GFX8 && info.val <= 0xFFFFF))) {
+         instr->operands[1] = Operand::c32(info.val);
+      } else if (parse_base_offset(ctx, instr.get(), 1, &base, &offset, prevent_overflow) &&
+                 base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9 &&
+                 offset % 4u == 0) {
+         bool soe = smem.operands.size() >= (!smem.definitions.empty() ? 3 : 4);
+         if (soe) {
+            if (ctx.info[smem.operands.back().tempId()].is_constant_or_literal(32) &&
+                ctx.info[smem.operands.back().tempId()].val == 0) {
+               smem.operands[1] = Operand::c32(offset);
+               smem.operands.back() = Operand(base);
+            }
+         } else {
+            SMEM_instruction* new_instr = create_instruction<SMEM_instruction>(
+               smem.opcode, Format::SMEM, smem.operands.size() + 1, smem.definitions.size());
+            new_instr->operands[0] = smem.operands[0];
+            new_instr->operands[1] = Operand::c32(offset);
+            if (smem.definitions.empty())
+               new_instr->operands[2] = smem.operands[2];
+            new_instr->operands.back() = Operand(base);
+            if (!smem.definitions.empty())
+               new_instr->definitions[0] = smem.definitions[0];
+            new_instr->sync = smem.sync;
+            new_instr->glc = smem.glc;
+            new_instr->dlc = smem.dlc;
+            new_instr->nv = smem.nv;
+            new_instr->disable_wqm = smem.disable_wqm;
+            instr.reset(new_instr);
+         }
+      }
+   }
+
+   /* skip &-4 after offset additions: load(a & -4, 16) */
+   if (!instr->operands.empty())
+      skip_smem_offset_align(ctx, &instr->smem());
+}
+
 unsigned
 get_operand_size(aco_ptr<Instruction>& instr, unsigned index)
 {
@@ -1002,9 +1057,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                instr.get());
    }
 
-   /* skip &-4 before offset additions: load((a + 16) & -4, 0) */
-   if (instr->isSMEM() && !instr->operands.empty())
-      skip_smem_offset_align(ctx, &instr->smem());
+   if (instr->isSMEM())
+      smem_combine(ctx, instr);
 
    for (unsigned i = 0; i < instr->operands.size(); i++) {
       if (!instr->operands[i].isTemp())
@@ -1204,52 +1258,6 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          }
       }
 
-      /* SMEM: propagate constants and combine additions */
-      else if (instr->isSMEM()) {
-
-         SMEM_instruction& smem = instr->smem();
-         Temp base;
-         uint32_t offset;
-         bool prevent_overflow = smem.operands[0].size() > 2 || smem.prevent_overflow;
-         if (i == 1 && info.is_constant_or_literal(32) &&
-             ((ctx.program->chip_class == GFX6 && info.val <= 0x3FF) ||
-              (ctx.program->chip_class == GFX7 && info.val <= 0xFFFFFFFF) ||
-              (ctx.program->chip_class >= GFX8 && info.val <= 0xFFFFF))) {
-            instr->operands[i] = Operand::c32(info.val);
-            continue;
-         } else if (i == 1 &&
-                    parse_base_offset(ctx, instr.get(), i, &base, &offset, prevent_overflow) &&
-                    base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9 &&
-                    offset % 4u == 0) {
-            bool soe = smem.operands.size() >= (!smem.definitions.empty() ? 3 : 4);
-            if (soe && (!ctx.info[smem.operands.back().tempId()].is_constant_or_literal(32) ||
-                        ctx.info[smem.operands.back().tempId()].val != 0)) {
-               continue;
-            }
-            if (soe) {
-               smem.operands[1] = Operand::c32(offset);
-               smem.operands.back() = Operand(base);
-            } else {
-               SMEM_instruction* new_instr = create_instruction<SMEM_instruction>(
-                  smem.opcode, Format::SMEM, smem.operands.size() + 1, smem.definitions.size());
-               new_instr->operands[0] = smem.operands[0];
-               new_instr->operands[1] = Operand::c32(offset);
-               if (smem.definitions.empty())
-                  new_instr->operands[2] = smem.operands[2];
-               new_instr->operands.back() = Operand(base);
-               if (!smem.definitions.empty())
-                  new_instr->definitions[0] = smem.definitions[0];
-               new_instr->sync = smem.sync;
-               new_instr->glc = smem.glc;
-               new_instr->dlc = smem.dlc;
-               new_instr->nv = smem.nv;
-               new_instr->disable_wqm = smem.disable_wqm;
-               instr.reset(new_instr);
-            }
-            continue;
-         }
-      }
-
       else if (instr->isBranch()) {
          if (ctx.info[instr->operands[0].tempId()].is_scc_invert()) {
             /* Flip the branch instruction to get rid of the scc_invert instruction */
@@ -1259,10 +1267,6 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          }
       }
    }
-
-   /* skip &-4 after offset additions: load(a & -4, 16) */
-   if (instr->isSMEM() && !instr->operands.empty())
-      skip_smem_offset_align(ctx, &instr->smem());
 
    /* if this instruction doesn't define anything, return */
    if (instr->definitions.empty()) {
