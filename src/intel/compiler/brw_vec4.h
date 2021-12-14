@@ -254,7 +254,7 @@ public:
    void emit_pack_unorm_4x8(const dst_reg &dst, const src_reg &src0);
    void emit_pack_snorm_4x8(const dst_reg &dst, const src_reg &src0);
 
-   void emit_texture(ir_texture_opcode op,
+   void emit_texture(nir_texop op,
                      dst_reg dest,
                      int dest_components,
                      src_reg coordinate,

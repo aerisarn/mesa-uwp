@@ -1944,31 +1944,6 @@ vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
    }
 }
 
-static enum ir_texture_opcode
-ir_texture_opcode_for_nir_texop(nir_texop texop)
-{
-   enum ir_texture_opcode op;
-
-   switch (texop) {
-   case nir_texop_lod: op = ir_lod; break;
-   case nir_texop_query_levels: op = ir_query_levels; break;
-   case nir_texop_texture_samples: op = ir_texture_samples; break;
-   case nir_texop_tex: op = ir_tex; break;
-   case nir_texop_tg4: op = ir_tg4; break;
-   case nir_texop_txb: op = ir_txb; break;
-   case nir_texop_txd: op = ir_txd; break;
-   case nir_texop_txf: op = ir_txf; break;
-   case nir_texop_txf_ms: op = ir_txf_ms; break;
-   case nir_texop_txl: op = ir_txl; break;
-   case nir_texop_txs: op = ir_txs; break;
-   case nir_texop_samples_identical: op = ir_samples_identical; break;
-   default:
-      unreachable("unknown texture opcode");
-   }
-
-   return op;
-}
-
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
@@ -2108,9 +2083,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
-   ir_texture_opcode op = ir_texture_opcode_for_nir_texop(instr->op);
-
-   emit_texture(op, dest, nir_tex_instr_dest_size(instr),
+   emit_texture(instr->op, dest, nir_tex_instr_dest_size(instr),
                 coordinate, instr->coord_components,
                 shadow_comparator,
                 lod, lod2, sample_index,

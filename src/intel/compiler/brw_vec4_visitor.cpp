@@ -826,7 +826,7 @@ vec4_visitor::is_high_sampler(src_reg sampler)
 }
 
 void
-vec4_visitor::emit_texture(ir_texture_opcode op,
+vec4_visitor::emit_texture(nir_texop op,
                            dst_reg dest,
                            int dest_components,
                            src_reg coordinate,
@@ -843,27 +843,28 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
 {
    enum opcode opcode;
    switch (op) {
-   case ir_tex: opcode = SHADER_OPCODE_TXL; break;
-   case ir_txl: opcode = SHADER_OPCODE_TXL; break;
-   case ir_txd: opcode = SHADER_OPCODE_TXD; break;
-   case ir_txf: opcode = SHADER_OPCODE_TXF; break;
-   case ir_txf_ms: opcode = SHADER_OPCODE_TXF_CMS; break;
-   case ir_txs: opcode = SHADER_OPCODE_TXS; break;
-   case ir_tg4: opcode = offset_value.file != BAD_FILE
-                         ? SHADER_OPCODE_TG4_OFFSET : SHADER_OPCODE_TG4; break;
-   case ir_query_levels: opcode = SHADER_OPCODE_TXS; break;
-   case ir_texture_samples: opcode = SHADER_OPCODE_SAMPLEINFO; break;
-   case ir_txb:
-      unreachable("TXB is not valid for vertex shaders.");
-   case ir_lod:
-      unreachable("LOD is not valid for vertex shaders.");
-   case ir_samples_identical: {
+   case nir_texop_tex:             opcode = SHADER_OPCODE_TXL;        break;
+   case nir_texop_txl:             opcode = SHADER_OPCODE_TXL;        break;
+   case nir_texop_txd:             opcode = SHADER_OPCODE_TXD;        break;
+   case nir_texop_txf:             opcode = SHADER_OPCODE_TXF;        break;
+   case nir_texop_txf_ms:          opcode = SHADER_OPCODE_TXF_CMS;    break;
+   case nir_texop_txs:             opcode = SHADER_OPCODE_TXS;        break;
+   case nir_texop_query_levels:    opcode = SHADER_OPCODE_TXS;        break;
+   case nir_texop_texture_samples: opcode = SHADER_OPCODE_SAMPLEINFO; break;
+   case nir_texop_tg4:
+      opcode = offset_value.file != BAD_FILE ? SHADER_OPCODE_TG4_OFFSET
+                                             : SHADER_OPCODE_TG4;
+      break;
+   case nir_texop_samples_identical: {
       /* There are some challenges implementing this for vec4, and it seems
        * unlikely to be used anyway.  For now, just return false ways.
        */
       emit(MOV(dest, brw_imm_ud(0u)));
       return;
    }
+   case nir_texop_txb:
+   case nir_texop_lod:
+      unreachable("Implicit LOD is only valid inside fragment shaders.");
    default:
       unreachable("Unrecognized tex op");
    }
@@ -1019,17 +1020,17 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
    /* fixup num layers (z) for cube arrays: hardware returns faces * layers;
     * spec requires layers.
     */
-   if (op == ir_txs && devinfo->ver < 7) {
+   if (op == nir_texop_txs && devinfo->ver < 7) {
       /* Gfx4-6 return 0 instead of 1 for single layer surfaces. */
       emit_minmax(BRW_CONDITIONAL_GE, writemask(inst->dst, WRITEMASK_Z),
                   src_reg(inst->dst), brw_imm_d(1));
    }
 
-   if (devinfo->ver == 6 && op == ir_tg4) {
+   if (devinfo->ver == 6 && op == nir_texop_tg4) {
       emit_gfx6_gather_wa(key_tex->gfx6_gather_wa[surface], inst->dst);
    }
 
-   if (op == ir_query_levels) {
+   if (op == nir_texop_query_levels) {
       /* # levels is in .w */
       src_reg swizzled(dest);
       swizzled.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W,
