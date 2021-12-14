@@ -1746,6 +1746,16 @@ init_device_meta(struct v3dv_device *device)
 }
 
 static void
+destroy_device_syncs(struct v3dv_device *device,
+                       int render_fd)
+{
+   for (int i = 0; i < V3DV_QUEUE_COUNT; i++) {
+      if (device->last_job_syncs.syncs[i])
+         drmSyncobjDestroy(render_fd, device->last_job_syncs.syncs[i]);
+   }
+}
+
+static void
 destroy_device_meta(struct v3dv_device *device)
 {
    mtx_destroy(&device->meta.mtx);
@@ -1829,12 +1839,15 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (device->features.robustBufferAccess)
       perf_debug("Device created with Robust Buffer Access enabled.\n");
 
-   int ret = drmSyncobjCreate(physical_device->render_fd,
-                              DRM_SYNCOBJ_CREATE_SIGNALED,
-                              &device->last_job_sync);
-   if (ret) {
-      result = VK_ERROR_INITIALIZATION_FAILED;
-      goto fail;
+   for (int i = 0; i < V3DV_QUEUE_COUNT; i++) {
+      device->last_job_syncs.first[i] = true;
+      int ret = drmSyncobjCreate(physical_device->render_fd,
+                                 DRM_SYNCOBJ_CREATE_SIGNALED,
+                                 &device->last_job_syncs.syncs[i]);
+      if (ret) {
+         result = VK_ERROR_INITIALIZATION_FAILED;
+         goto fail;
+      }
    }
 
 #ifdef DEBUG
@@ -1852,6 +1865,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 
 fail:
+   destroy_device_syncs(device, physical_device->render_fd);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 
@@ -1867,7 +1881,7 @@ v3dv_DestroyDevice(VkDevice _device,
    v3dv_DeviceWaitIdle(_device);
    queue_finish(&device->queue);
    pthread_mutex_destroy(&device->mutex);
-   drmSyncobjDestroy(device->pdevice->render_fd, device->last_job_sync);
+   destroy_device_syncs(device, device->pdevice->render_fd);
    destroy_device_meta(device);
    v3dv_pipeline_cache_finish(&device->default_pipeline_cache);
 

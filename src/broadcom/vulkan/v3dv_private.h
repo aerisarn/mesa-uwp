@@ -434,6 +434,32 @@ struct v3dv_pipeline_cache {
    bool externally_synchronized;
 };
 
+/* FIXME: In addition to tracking the last job submitted by GPU queue (cl, csd,
+ * tfu), we still need a syncobj to track the last overall job submitted
+ * (V3DV_QUEUE_ANY) for the case we don't support multisync. Someday we can
+ * start expecting multisync to be present and drop the legacy implementation
+ * together with this V3DV_QUEUE_ANY tracker.
+ */
+enum v3dv_queue_type {
+   V3DV_QUEUE_CL = 0,
+   V3DV_QUEUE_CSD,
+   V3DV_QUEUE_TFU,
+   V3DV_QUEUE_ANY,
+   V3DV_QUEUE_COUNT,
+};
+
+/* For each GPU queue, we use a syncobj to track the last job submitted. We
+ * set the flag `first` to determine when we are starting a new cmd buffer
+ * batch and therefore a job submitted to a given queue will be the first in a
+ * cmd buf batch.
+ */
+struct v3dv_last_job_sync {
+   /* If the job is the first submitted to a GPU queue in a cmd buffer batch */
+   bool first[V3DV_QUEUE_COUNT];
+   /* Array of syncobj to track the last job submitted to a GPU queue */
+   uint32_t syncs[V3DV_QUEUE_COUNT];
+};
+
 struct v3dv_device {
    struct vk_device vk;
 
@@ -443,8 +469,8 @@ struct v3dv_device {
    struct v3d_device_info devinfo;
    struct v3dv_queue queue;
 
-   /* A sync object to track the last job submitted to the GPU. */
-   uint32_t last_job_sync;
+   /* Syncobjs to track the last job submitted to any GPU queue */
+   struct v3dv_last_job_sync last_job_syncs;
 
    /* A mutex to prevent concurrent access to last_job_sync from the queue */
    mtx_t mutex;
