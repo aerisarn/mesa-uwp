@@ -232,7 +232,7 @@ ntt_output_decl(struct ntt_compile *c, nir_intrinsic_instr *instr, uint32_t *fra
       /* This bit is lost in the i/o semantics, but it's unused in in-tree
        * drivers.
        */
-      bool invariant = false;
+      bool invariant = semantics.invariant;
 
       out = ureg_DECL_output_layout(c->ureg,
                                     semantic_name, semantic_index,
