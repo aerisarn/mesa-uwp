@@ -3348,7 +3348,6 @@ struct anv_graphics_pipeline {
    bool                                         stencil_test_enable;
    bool                                         depth_clamp_enable;
    bool                                         depth_clip_enable;
-   bool                                         sample_shading_enable;
    bool                                         kill_pixel;
    bool                                         depth_bounds_test_enable;
    bool                                         force_fragment_thread_dispatch;

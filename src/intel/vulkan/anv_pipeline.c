@@ -475,9 +475,40 @@ populate_gs_prog_key(const struct intel_device_info *devinfo,
 
 static bool
 pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
+                          const VkPipelineMultisampleStateCreateInfo *ms_info,
                           const VkPipelineFragmentShadingRateStateCreateInfoKHR *fsr_info)
 {
-   if (pipeline->sample_shading_enable)
+   /* The Vulkan 1.2.199 spec says:
+    *
+    *    "If any of the following conditions are met, Cxy' must be set to
+    *    {1,1}:
+    *
+    *     * If Sample Shading is enabled.
+    *     * [...]"
+    *
+    * And "sample shading" is defined as follows:
+    *
+    *    "Sample shading is enabled for a graphics pipeline:
+    *
+    *     * If the interface of the fragment shader entry point of the
+    *       graphics pipeline includes an input variable decorated with
+    *       SampleId or SamplePosition. In this case minSampleShadingFactor
+    *       takes the value 1.0.
+    *
+    *     * Else if the sampleShadingEnable member of the
+    *       VkPipelineMultisampleStateCreateInfo structure specified when
+    *       creating the graphics pipeline is set to VK_TRUE. In this case
+    *       minSampleShadingFactor takes the value of
+    *       VkPipelineMultisampleStateCreateInfo::minSampleShading.
+    *
+    *    Otherwise, sample shading is considered disabled."
+    *
+    * The first bullet above is handled by the back-end compiler because those
+    * inputs both force per-sample dispatch.  The second bullet is handled
+    * here.  Note that this sample shading being enabled has nothing to do
+    * with minSampleShading.
+    */
+   if (ms_info && ms_info->sampleShadingEnable)
       return false;
 
    /* Not dynamic & not specified for the pipeline. */
@@ -554,7 +585,7 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
 
    key->coarse_pixel =
       device->vk.enabled_extensions.KHR_fragment_shading_rate &&
-      pipeline_has_coarse_pixel(pipeline, fsr_info);
+      pipeline_has_coarse_pixel(pipeline, ms_info, fsr_info);
 }
 
 static void
@@ -795,13 +826,6 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    nir_shader *nir = stage->nir;
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      /* Check if sample shading is enabled in the shader and toggle
-       * it on for the pipeline independent if sampleShadingEnable is set.
-       */
-      nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
-      if (nir->info.fs.uses_sample_shading)
-         anv_pipeline_to_graphics(pipeline)->sample_shading_enable = true;
-
       NIR_PASS_V(nir, nir_lower_wpos_center);
       NIR_PASS_V(nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options) {
@@ -2427,11 +2451,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
                            PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
    pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable : !pipeline->depth_clamp_enable;
-
-   pipeline->sample_shading_enable =
-      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
-      pCreateInfo->pMultisampleState &&
-      pCreateInfo->pMultisampleState->sampleShadingEnable;
 
    result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
