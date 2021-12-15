@@ -332,8 +332,6 @@ files_libmesa = files(
   'state_tracker/st_cb_blit.h',
   'state_tracker/st_cb_clear.c',
   'state_tracker/st_cb_clear.h',
-  'state_tracker/st_cb_compute.c',
-  'state_tracker/st_cb_compute.h',
   'state_tracker/st_cb_condrender.c',
   'state_tracker/st_cb_condrender.h',
   'state_tracker/st_cb_copyimage.c',

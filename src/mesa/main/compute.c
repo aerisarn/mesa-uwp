@@ -24,10 +24,14 @@
 #include "glheader.h"
 #include "bufferobj.h"
 #include "context.h"
+#include "state.h"
 #include "api_exec_decl.h"
 
 #include "pipe/p_state.h"
-#include "state_tracker/st_cb_compute.h"
+
+#include "state_tracker/st_context.h"
+#include "state_tracker/st_cb_bitmap.h"
+#include "state_tracker/st_util.h"
 
 static bool
 check_valid_to_compute(struct gl_context *ctx, const char *function)
@@ -280,6 +284,27 @@ valid_dispatch_indirect(struct gl_context *ctx,  GLintptr indirect)
    return GL_TRUE;
 }
 
+static void
+do_dispatch_compute(struct gl_context *ctx,
+                    struct pipe_grid_info *info)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_context *pipe = st->pipe;
+
+   st_flush_bitmap_cache(st);
+   st_invalidate_readpix_cache(st);
+
+   if (ctx->NewState)
+      _mesa_update_state(ctx);
+
+   if ((st->dirty | ctx->NewDriverState) & st->active_states &
+       ST_PIPELINE_COMPUTE_STATE_MASK ||
+       st->compute_shader_may_be_dirty)
+      st_validate_state(st, ST_PIPELINE_COMPUTE);
+
+   pipe->launch_grid(pipe, info);
+}
+
 static ALWAYS_INLINE void
 dispatch_compute(GLuint num_groups_x, GLuint num_groups_y,
                  GLuint num_groups_z, bool no_error)
@@ -309,7 +334,7 @@ dispatch_compute(GLuint num_groups_x, GLuint num_groups_y,
    info.block[1] = prog->info.workgroup_size[1];
    info.block[2] = prog->info.workgroup_size[2];
 
-   st_dispatch_compute(ctx, &info);
+   do_dispatch_compute(ctx, &info);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -353,7 +378,7 @@ dispatch_compute_indirect(GLintptr indirect, bool no_error)
    info.block[1] = prog->info.workgroup_size[1];
    info.block[2] = prog->info.workgroup_size[2];
 
-   st_dispatch_compute(ctx, &info);
+   do_dispatch_compute(ctx, &info);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -402,7 +427,7 @@ dispatch_compute_group_size(GLuint num_groups_x, GLuint num_groups_y,
    if (num_groups_x == 0u || num_groups_y == 0u || num_groups_z == 0u)
        return;
 
-   st_dispatch_compute(ctx, &info);
+   do_dispatch_compute(ctx, &info);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
