@@ -40,6 +40,7 @@
 #include <xf86drm.h>
 
 #include "util/list.h"
+#include "util/log.h"
 #include "util/macros.h"
 #include "util/simple_mtx.h"
 #include "util/timespec.h"
@@ -192,17 +193,17 @@ struct etna_perfmon_signal
 extern int etna_mesa_debug;
 
 #define INFO_MSG(fmt, ...) \
-		do { debug_printf("[I] "fmt " (%s:%d)\n", \
+		do { mesa_logi(fmt " (%s:%d)", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define DEBUG_MSG(fmt, ...) \
 		do if (etna_mesa_debug & ETNA_DRM_MSGS) { \
-		     debug_printf("[D] "fmt " (%s:%d)\n", \
+		     mesa_logd(fmt " (%s:%d)", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define WARN_MSG(fmt, ...) \
-		do { debug_printf("[W] "fmt " (%s:%d)\n", \
+		do { mesa_logw(fmt " (%s:%d)", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define ERROR_MSG(fmt, ...) \
-		do { debug_printf("[E] " fmt " (%s:%d)\n", \
+		do { mesa_loge(fmt " (%s:%d)", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 
 #define DEBUG_BO(msg, bo)						\
