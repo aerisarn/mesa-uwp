@@ -102,9 +102,6 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
 
 bool brw_nir_lower_cs_intrinsics(nir_shader *nir);
 bool brw_nir_lower_alpha_to_coverage(nir_shader *shader);
-void brw_nir_lower_legacy_clipping(nir_shader *nir,
-                                   int nr_userclip_plane_consts,
-                                   struct brw_stage_prog_data *prog_data);
 void brw_nir_lower_vs_inputs(nir_shader *nir,
                              bool edgeflag_is_last,
                              const uint8_t *vs_attrib_wa_flags);
