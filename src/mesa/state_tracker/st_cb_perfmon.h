@@ -32,15 +32,4 @@ st_have_perfmon(struct st_context *st);
 void
 st_destroy_perfmon(struct st_context *st);
 
-void st_DeletePerfMonitor(struct gl_context *ctx, struct gl_perf_monitor_object *m);
-GLboolean st_BeginPerfMonitor(struct gl_context *ctx, struct gl_perf_monitor_object *m);
-void st_EndPerfMonitor(struct gl_context *ctx, struct gl_perf_monitor_object *m);
-void st_ResetPerfMonitor(struct gl_context *ctx, struct gl_perf_monitor_object *m);
-GLboolean st_IsPerfMonitorResultAvailable(struct gl_context *ctx,
-                                          struct gl_perf_monitor_object *m);
-void st_GetPerfMonitorResult(struct gl_context *ctx,
-                             struct gl_perf_monitor_object *m,
-                             GLsizei dataSize,
-                             GLuint *data,
-                             GLint *bytesWritten);
 #endif
