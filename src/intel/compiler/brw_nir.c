@@ -1255,16 +1255,6 @@ brw_nir_apply_sampler_key(nir_shader *nir,
       tex_options.saturate_r = key_tex->gl_clamp_mask[2];
    }
 
-   /* Prior to Haswell, we have to fake texture swizzle */
-   for (unsigned s = 0; s < MAX_SAMPLERS; s++) {
-      if (key_tex->swizzles[s] == SWIZZLE_NOOP)
-         continue;
-
-      tex_options.swizzle_result |= BITFIELD_BIT(s);
-      for (unsigned c = 0; c < 4; c++)
-         tex_options.swizzles[s][c] = GET_SWZ(key_tex->swizzles[s], c);
-   }
-
    /* Prior to Haswell, we have to lower gradients on shadow samplers */
    tex_options.lower_txd_shadow = devinfo->verx10 <= 70;
 
