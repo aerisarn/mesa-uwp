@@ -43,5 +43,4 @@ void st_GetPerfMonitorResult(struct gl_context *ctx,
                              GLsizei dataSize,
                              GLuint *data,
                              GLint *bytesWritten);
-void st_InitPerfMonitorGroups(struct gl_context *ctx);
 #endif

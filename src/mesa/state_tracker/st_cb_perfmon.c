@@ -37,6 +37,8 @@
 #include "pipe/p_screen.h"
 #include "util/u_memory.h"
 
+#include "main/performance_monitor.h"
+
 static bool
 init_perf_monitor(struct gl_context *ctx, struct gl_perf_monitor_object *m)
 {
@@ -322,107 +324,7 @@ st_have_perfmon(struct st_context *st)
 }
 
 void
-st_InitPerfMonitorGroups(struct gl_context *ctx)
-{
-   struct st_context *st = st_context(ctx);
-   struct gl_perf_monitor_state *perfmon = &ctx->PerfMonitor;
-   struct pipe_screen *screen = st->screen;
-   struct gl_perf_monitor_group *groups = NULL;
-   int num_counters, num_groups;
-   int gid, cid;
-
-   /* Get the number of available queries. */
-   num_counters = screen->get_driver_query_info(screen, 0, NULL);
-
-   /* Get the number of available groups. */
-   num_groups = screen->get_driver_query_group_info(screen, 0, NULL);
-   groups = CALLOC(num_groups, sizeof(*groups));
-   if (!groups)
-      return;
-
-   for (gid = 0; gid < num_groups; gid++) {
-      struct gl_perf_monitor_group *g = &groups[perfmon->NumGroups];
-      struct pipe_driver_query_group_info group_info;
-      struct gl_perf_monitor_counter *counters = NULL;
-
-      if (!screen->get_driver_query_group_info(screen, gid, &group_info))
-         continue;
-
-      g->Name = group_info.name;
-      g->MaxActiveCounters = group_info.max_active_queries;
-
-      if (group_info.num_queries)
-         counters = CALLOC(group_info.num_queries, sizeof(*counters));
-      if (!counters)
-         goto fail;
-      g->Counters = counters;
-
-      for (cid = 0; cid < num_counters; cid++) {
-         struct gl_perf_monitor_counter *c = &counters[g->NumCounters];
-         struct pipe_driver_query_info info;
-
-         if (!screen->get_driver_query_info(screen, cid, &info))
-            continue;
-         if (info.group_id != gid)
-            continue;
-
-         c->Name = info.name;
-         switch (info.type) {
-            case PIPE_DRIVER_QUERY_TYPE_UINT64:
-            case PIPE_DRIVER_QUERY_TYPE_BYTES:
-            case PIPE_DRIVER_QUERY_TYPE_MICROSECONDS:
-            case PIPE_DRIVER_QUERY_TYPE_HZ:
-               c->Minimum.u64 = 0;
-               c->Maximum.u64 = info.max_value.u64 ? info.max_value.u64 : UINT64_MAX;
-               c->Type = GL_UNSIGNED_INT64_AMD;
-               break;
-            case PIPE_DRIVER_QUERY_TYPE_UINT:
-               c->Minimum.u32 = 0;
-               c->Maximum.u32 = info.max_value.u32 ? info.max_value.u32 : UINT32_MAX;
-               c->Type = GL_UNSIGNED_INT;
-               break;
-            case PIPE_DRIVER_QUERY_TYPE_FLOAT:
-               c->Minimum.f = 0.0;
-               c->Maximum.f = info.max_value.f ? info.max_value.f : FLT_MAX;
-               c->Type = GL_FLOAT;
-               break;
-            case PIPE_DRIVER_QUERY_TYPE_PERCENTAGE:
-               c->Minimum.f = 0.0f;
-               c->Maximum.f = 100.0f;
-               c->Type = GL_PERCENTAGE_AMD;
-               break;
-            default:
-               unreachable("Invalid driver query type!");
-         }
-
-         c->query_type = info.query_type;
-         c->flags = info.flags;
-         if (c->flags & PIPE_DRIVER_QUERY_FLAG_BATCH)
-            g->has_batch = true;
-
-         g->NumCounters++;
-      }
-      perfmon->NumGroups++;
-   }
-   perfmon->Groups = groups;
-
-   return;
-
-fail:
-   for (gid = 0; gid < num_groups; gid++) {
-      FREE((void *)groups[gid].Counters);
-   }
-   FREE(groups);
-}
-
-void
 st_destroy_perfmon(struct st_context *st)
 {
-   struct gl_perf_monitor_state *perfmon = &st->ctx->PerfMonitor;
-   int gid;
-
-   for (gid = 0; gid < perfmon->NumGroups; gid++) {
-      FREE((void *)perfmon->Groups[gid].Counters);
-   }
-   FREE((void *)perfmon->Groups);
+   _mesa_free_perfomance_monitor_groups(st->ctx);
 }
