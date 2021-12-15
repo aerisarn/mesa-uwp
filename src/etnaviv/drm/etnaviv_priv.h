@@ -193,18 +193,18 @@ struct etna_perfmon_signal
 extern int etna_mesa_debug;
 
 #define INFO_MSG(fmt, ...) \
-		do { mesa_logi(fmt " (%s:%d)", \
-				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
+		do { mesa_logi("%s:%d: " fmt, \
+				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 #define DEBUG_MSG(fmt, ...) \
 		do if (etna_mesa_debug & ETNA_DRM_MSGS) { \
-		     mesa_logd(fmt " (%s:%d)", \
-				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
+		     mesa_logd("%s:%d: " fmt, \
+				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 #define WARN_MSG(fmt, ...) \
-		do { mesa_logw(fmt " (%s:%d)", \
-				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
+		do { mesa_logw("%s:%d: " fmt, \
+				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 #define ERROR_MSG(fmt, ...) \
-		do { mesa_loge(fmt " (%s:%d)", \
-				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
+		do { mesa_loge("%s:%d: " fmt, \
+				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
 #define DEBUG_BO(msg, bo)						\
    DEBUG_MSG("%s %p, va: 0x%.8x, size: 0x%.8x, flags: 0x%.8x, "		\
