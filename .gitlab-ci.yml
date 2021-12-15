@@ -771,6 +771,7 @@ debian-testing-asan:
     EXTRA_OPTION: >
       -D b_sanitize=address
       -D valgrind=false
+      -D tools=dlclose-skip
     MINIO_ARTIFACT_NAME: ""
     ARTIFACTS_DEBUG_SYMBOLS: 1
 
@@ -1035,6 +1036,7 @@ debian-arm64-asan:
       -D llvm=disabled
       -D b_sanitize=address
       -D valgrind=false
+      -D tools=dlclose-skip
     ARTIFACTS_DEBUG_SYMBOLS: 1
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
     MESON_TEST_ARGS: "--no-suite mesa:compiler"
@@ -1389,7 +1391,7 @@ debian-mingw32-x86_64:
 
 .baremetal-arm64-asan-test:
   variables:
-    DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.6"
+    DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.6:/install/lib/libdlclose-skip.so"
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
   needs:
     - debian/arm_test

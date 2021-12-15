@@ -41,6 +41,7 @@
       - src/mesa/vbo/**/*
       - src/mesa/x86/**/*
       - src/mesa/x86-64/**/*
+      - src/tool/**/*
       - src/util/**/*
 
 .vulkan-rules:

@@ -73,6 +73,7 @@ with_tools = get_option('tools')
 if with_tools.contains('all')
   with_tools = [
     'drm-shim',
+    'dlclose-skip',
     'etnaviv',
     'freedreno',
     'glsl',
