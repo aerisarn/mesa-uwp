@@ -32,13 +32,6 @@
 struct gl_transform_feedback_object;
 struct pipe_draw_indirect_info;
 
-struct gl_transform_feedback_object *
-st_new_transform_feedback(struct gl_context *ctx, GLuint name);
-
-void
-st_delete_transform_feedback(struct gl_context *ctx,
-                             struct gl_transform_feedback_object *obj);
-
 void
 st_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
                             struct gl_transform_feedback_object *obj);

@@ -45,6 +45,7 @@
 #include "program/prog_parameter.h"
 
 #include "util/u_memory.h"
+#include "util/u_inlines.h"
 
 #include "state_tracker/st_cb_xformfb.h"
 #include "api_exec_decl.h"
@@ -88,6 +89,44 @@ _mesa_transform_feedback_is_using_program(struct gl_context *ctx,
    return callback_data.found;
 }
 
+static struct gl_transform_feedback_object *
+new_transform_feedback(struct gl_context *ctx, GLuint name)
+{
+   struct gl_transform_feedback_object *obj;
+
+   obj = CALLOC_STRUCT(gl_transform_feedback_object);
+   if (!obj)
+      return NULL;
+
+   obj->Name = name;
+   obj->RefCount = 1;
+   obj->EverBound = GL_FALSE;
+
+   return obj;
+}
+
+static void
+delete_transform_feedback(struct gl_context *ctx,
+                             struct gl_transform_feedback_object *obj)
+{
+   unsigned i;
+
+   for (i = 0; i < ARRAY_SIZE(obj->draw_count); i++)
+      pipe_so_target_reference(&obj->draw_count[i], NULL);
+
+   /* Unreference targets. */
+   for (i = 0; i < obj->num_targets; i++) {
+      pipe_so_target_reference(&obj->targets[i], NULL);
+   }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(obj->Buffers); i++) {
+      _mesa_reference_buffer_object(ctx, &obj->Buffers[i], NULL);
+   }
+
+   free(obj->Label);
+   FREE(obj);
+}
+
 /**
  * Do reference counting of transform feedback buffers.
  */
@@ -108,7 +147,7 @@ reference_transform_feedback_object(struct gl_transform_feedback_object **ptr,
       if (oldObj->RefCount == 0) {
          GET_CURRENT_CONTEXT(ctx);
          if (ctx)
-            st_delete_transform_feedback(ctx, oldObj);
+            delete_transform_feedback(ctx, oldObj);
       }
 
       *ptr = NULL;
@@ -134,7 +173,7 @@ _mesa_init_transform_feedback(struct gl_context *ctx)
 {
    /* core mesa expects this, even a dummy one, to be available */
    ctx->TransformFeedback.DefaultObject =
-      st_new_transform_feedback(ctx, 0);
+      new_transform_feedback(ctx, 0);
 
    assert(ctx->TransformFeedback.DefaultObject->RefCount == 1);
 
@@ -161,7 +200,7 @@ delete_cb(void *data, void *userData)
    struct gl_transform_feedback_object *obj =
       (struct gl_transform_feedback_object *) data;
 
-   st_delete_transform_feedback(ctx, obj);
+   delete_transform_feedback(ctx, obj);
 }
 
 
@@ -181,42 +220,10 @@ _mesa_free_transform_feedback(struct gl_context *ctx)
    _mesa_DeleteHashTable(ctx->TransformFeedback.Objects);
 
    /* Delete the default feedback object */
-   st_delete_transform_feedback(ctx,
-                                ctx->TransformFeedback.DefaultObject);
+   delete_transform_feedback(ctx,
+                             ctx->TransformFeedback.DefaultObject);
 
    ctx->TransformFeedback.CurrentObject = NULL;
-}
-
-
-/** Initialize the fields of a gl_transform_feedback_object. */
-void
-_mesa_init_transform_feedback_object(struct gl_transform_feedback_object *obj,
-                                     GLuint name)
-{
-   obj->Name = name;
-   obj->RefCount = 1;
-   obj->EverBound = GL_FALSE;
-}
-
-/**
- * Delete a transform feedback object.
- * Called from the driver after all driver-specific clean-up
- * has been done.
- *
- * \param ctx GL context to wich transform feedback object belongs.
- * \param obj Transform feedback object due to be deleted.
- */
-void
-_mesa_delete_transform_feedback_object(struct gl_context *ctx,
-                                       struct gl_transform_feedback_object
-                                              *obj)
-{
-   for (unsigned i = 0; i < ARRAY_SIZE(obj->Buffers); i++) {
-      _mesa_reference_buffer_object(ctx, &obj->Buffers[i], NULL);
-   }
-
-   free(obj->Label);
-   FREE(obj);
 }
 
 /**
@@ -1005,7 +1012,7 @@ create_transform_feedbacks(struct gl_context *ctx, GLsizei n, GLuint *ids,
       GLsizei i;
       for (i = 0; i < n; i++) {
          struct gl_transform_feedback_object *obj
-            = st_new_transform_feedback(ctx, ids[i]);
+            = new_transform_feedback(ctx, ids[i]);
          if (!obj) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
             return;

@@ -1808,6 +1808,14 @@ struct gl_transform_feedback_object
     * zero.
     */
    GLsizeiptr RequestedSize[MAX_FEEDBACK_BUFFERS];
+
+   unsigned num_targets;
+   struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
+
+   /* This encapsulates the count that can be used as a source for draw_vbo.
+    * It contains stream output targets from the last call of
+    * EndTransformFeedback for each stream. */
+   struct pipe_stream_output_target *draw_count[MAX_VERTEX_STREAMS];
 };
 
 
