@@ -252,7 +252,6 @@ compute_version(const struct gl_extensions *extensions,
    GLuint major, minor, version;
 
    const bool ver_1_4 = (extensions->ARB_shadow &&
-                         extensions->ARB_texture_env_crossbar &&
                          extensions->EXT_blend_color &&
                          extensions->EXT_blend_func_separate &&
                          extensions->EXT_blend_minmax &&

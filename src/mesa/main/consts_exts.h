@@ -136,7 +136,6 @@ struct gl_extensions
    GLboolean ARB_texture_compression_bptc;
    GLboolean ARB_texture_compression_rgtc;
    GLboolean ARB_texture_cube_map_array;
-   GLboolean ARB_texture_env_crossbar;
    GLboolean ARB_texture_filter_anisotropic;
    GLboolean ARB_texture_filter_minmax;
    GLboolean ARB_texture_float;
