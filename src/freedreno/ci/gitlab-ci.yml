@@ -196,11 +196,11 @@ a630_gles_asan:
     - .baremetal-deqp-test
     - .a630-test
     - .baremetal-arm64-asan-test
-    - .test-manual
   variables:
     DEQP_VER: gles31
-    DEQP_FRACTION: 10
+    DEQP_FRACTION: 100
     DEQP_EXPECTED_RENDERER: FD630
+    FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
     GPU_VERSION: freedreno-a630-asan
 
 a630_skqp:
@@ -216,7 +216,6 @@ a630_vk:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
-  parallel: 3
   variables:
     DEQP_SUITE: freedreno-a630-vk
 
@@ -228,15 +227,11 @@ a630_vk_full:
   variables:
     DEQP_SUITE: freedreno-a630-vk-full
 
-# Disabled by default until we can sort out what looks like timeouts before
-# getting to the first test (or is it at cleanup after tests completed?).
-# Clicking play can show you some useful areas for fixing turnip, though.
 a630_vk_asan:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
     - .baremetal-arm64-asan-test
-    - .test-manual
   variables:
     DEQP_SUITE: freedreno-a630-vk-asan
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled

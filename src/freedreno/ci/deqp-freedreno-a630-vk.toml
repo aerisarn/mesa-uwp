@@ -3,7 +3,7 @@
 deqp = "/deqp/external/vulkancts/modules/vulkan/deqp-vk"
 caselists = ["/deqp/mustpass/vk-master.txt"]
 skips = ["install/freedreno-a630-premerge-skips.txt"]
-fraction = 3
+fraction = 9
 renderer_check = "Turnip Adreno .* 630"
 [deqp.env]
 # Force binning in the main run, which makes sure we render at
