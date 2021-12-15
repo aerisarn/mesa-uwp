@@ -505,9 +505,8 @@ validate_texture_wrap_mode(struct gl_context *ctx, GLenum wrap)
    case GL_CLAMP_TO_EDGE:
    case GL_REPEAT:
    case GL_MIRRORED_REPEAT:
-      return GL_TRUE;
    case GL_CLAMP_TO_BORDER:
-      return e->ARB_texture_border_clamp;
+      return GL_TRUE;
    case GL_MIRROR_CLAMP_EXT:
       return e->ATI_texture_mirror_once || e->EXT_texture_mirror_clamp;
    case GL_MIRROR_CLAMP_TO_EDGE_EXT:
@@ -1549,8 +1548,6 @@ _mesa_GetSamplerParameteriv(GLuint sampler, GLenum pname, GLint *params)
       *params = lroundf(sampObj->Attrib.MaxAnisotropy);
       break;
    case GL_TEXTURE_BORDER_COLOR:
-      if (!ctx->Extensions.ARB_texture_border_clamp)
-         goto invalid_pname;
       params[0] = FLOAT_TO_INT(sampObj->Attrib.state.border_color.f[0]);
       params[1] = FLOAT_TO_INT(sampObj->Attrib.state.border_color.f[1]);
       params[2] = FLOAT_TO_INT(sampObj->Attrib.state.border_color.f[2]);

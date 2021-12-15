@@ -80,7 +80,7 @@ validate_texture_wrap_mode(struct gl_context * ctx, GLenum target, GLenum wrap)
       break;
 
    case GL_CLAMP_TO_BORDER:
-      supported = ctx->API != API_OPENGLES && e->ARB_texture_border_clamp
+      supported = ctx->API != API_OPENGLES
          && (target != GL_TEXTURE_EXTERNAL_OES);
       break;
 
@@ -805,13 +805,8 @@ set_tex_parameterf(struct gl_context *ctx,
       /* Border color exists in desktop OpenGL since 1.0 for GL_CLAMP.  In
        * OpenGL ES 2.0+, it only exists in when GL_OES_texture_border_clamp is
        * enabled.  It is never available in OpenGL ES 1.x.
-       *
-       * FIXME: Every driver that supports GLES2 has this extension.  Elide
-       * the check?
        */
-      if (ctx->API == API_OPENGLES ||
-          (ctx->API == API_OPENGLES2 &&
-           !ctx->Extensions.ARB_texture_border_clamp))
+      if (ctx->API == API_OPENGLES)
          goto invalid_pname;
 
       if (!_mesa_target_allows_setting_sampler_parameters(texObj->Target))
@@ -2230,8 +2225,7 @@ get_tex_parameterfv(struct gl_context *ctx,
          *params = ENUM_TO_FLOAT(obj->Sampler.Attrib.WrapR);
          break;
       case GL_TEXTURE_BORDER_COLOR:
-         if (ctx->API == API_OPENGLES ||
-             !ctx->Extensions.ARB_texture_border_clamp)
+         if (ctx->API == API_OPENGLES)
             goto invalid_pname;
 
          if (_mesa_get_clamp_fragment_color(ctx, ctx->DrawBuffer)) {
@@ -2475,8 +2469,7 @@ get_tex_parameteriv(struct gl_context *ctx,
          *params = (GLint) obj->Sampler.Attrib.WrapR;
          break;
       case GL_TEXTURE_BORDER_COLOR:
-         if (ctx->API == API_OPENGLES ||
-             !ctx->Extensions.ARB_texture_border_clamp)
+         if (ctx->API == API_OPENGLES)
             goto invalid_pname;
 
          {

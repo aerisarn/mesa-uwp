@@ -251,8 +251,7 @@ compute_version(const struct gl_extensions *extensions,
 {
    GLuint major, minor, version;
 
-   const bool ver_1_3 = (extensions->ARB_texture_border_clamp &&
-                         extensions->ARB_texture_cube_map &&
+   const bool ver_1_3 = (extensions->ARB_texture_cube_map &&
                          extensions->ARB_texture_env_combine &&
                          extensions->ARB_texture_env_dot3);
    const bool ver_1_4 = (ver_1_3 &&
@@ -587,7 +586,6 @@ compute_version_es2(const struct gl_extensions *extensions,
                          extensions->OES_primitive_bounding_box &&
                          extensions->OES_sample_variables &&
                          extensions->ARB_tessellation_shader &&
-                         extensions->ARB_texture_border_clamp &&
                          extensions->OES_texture_buffer &&
                          extensions->OES_texture_cube_map_array &&
                          extensions->ARB_texture_stencil8);

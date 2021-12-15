@@ -1109,7 +1109,6 @@ void st_init_extensions(struct pipe_screen *screen,
    extensions->ARB_internalformat_query2 = GL_TRUE;
    extensions->ARB_map_buffer_range = GL_TRUE;
    extensions->ARB_sync = GL_TRUE;
-   extensions->ARB_texture_border_clamp = GL_TRUE;
    extensions->ARB_texture_cube_map = GL_TRUE;
    extensions->ARB_texture_env_combine = GL_TRUE;
    extensions->ARB_texture_env_crossbar = GL_TRUE;
@@ -1765,7 +1764,6 @@ void st_init_extensions(struct pipe_screen *screen,
       extensions->ARB_gpu_shader5 &&
       extensions->OES_primitive_bounding_box &&
       extensions->ARB_tessellation_shader &&
-      extensions->ARB_texture_border_clamp &&
       extensions->OES_texture_buffer &&
       extensions->OES_texture_cube_map_array &&
       extensions->EXT_texture_sRGB_decode;
@@ -1784,7 +1782,6 @@ void st_init_extensions(struct pipe_screen *screen,
       extensions->ARB_gpu_shader5 &&
       extensions->ARB_sample_shading &&
       extensions->ARB_tessellation_shader &&
-      extensions->ARB_texture_border_clamp &&
       extensions->OES_texture_buffer &&
       extensions->ARB_texture_cube_map_array &&
       extensions->ARB_texture_stencil8 &&
