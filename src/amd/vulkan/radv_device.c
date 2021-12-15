@@ -5473,11 +5473,6 @@ radv_MapMemory(VkDevice _device, VkDeviceMemory _memory, VkDeviceSize offset, Vk
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_device_memory, mem, _memory);
 
-   if (mem == NULL) {
-      *ppData = NULL;
-      return VK_SUCCESS;
-   }
-
    if (mem->user_ptr)
       *ppData = mem->user_ptr;
    else
@@ -5496,9 +5491,6 @@ radv_UnmapMemory(VkDevice _device, VkDeviceMemory _memory)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_device_memory, mem, _memory);
-
-   if (mem == NULL)
-      return;
 
    if (mem->user_ptr == NULL)
       device->ws->buffer_unmap(mem->bo);
