@@ -1808,8 +1808,20 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
 
    /* Figure out where each of the incoming setup attributes lands. */
    if (devinfo->ver >= 6) {
-      if (util_bitcount64(inputs_read &
-                          BRW_FS_VARYING_INPUT_MASK) <= 16) {
+      uint64_t vue_header_bits =
+         VARYING_BIT_PSIZ | VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT;
+
+      uint64_t unique_fs_attrs = inputs_read & BRW_FS_VARYING_INPUT_MASK;
+
+      /* VUE header fields all live in the same URB slot, so we pass them
+       * as a single FS input attribute.  We want to only count them once.
+       */
+      if (inputs_read & vue_header_bits) {
+         unique_fs_attrs &= ~vue_header_bits;
+         unique_fs_attrs |= VARYING_BIT_PSIZ;
+      }
+
+      if (util_bitcount64(unique_fs_attrs) <= 16) {
          /* The SF/SBE pipeline stage can do arbitrary rearrangement of the
           * first 16 varying inputs, so we can put them wherever we want.
           * Just put them in order.
@@ -1818,9 +1830,22 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
           * fragment shader won't take up valuable register space, and (b) we
           * won't have to recompile the fragment shader if it gets paired with
           * a different vertex (or geometry) shader.
+          *
+          * VUE header fields share the same FS input attribute.
           */
+         if (inputs_read & vue_header_bits) {
+            if (inputs_read & VARYING_BIT_PSIZ)
+               prog_data->urb_setup[VARYING_SLOT_PSIZ] = urb_next;
+            if (inputs_read & VARYING_BIT_LAYER)
+               prog_data->urb_setup[VARYING_SLOT_LAYER] = urb_next;
+            if (inputs_read & VARYING_BIT_VIEWPORT)
+               prog_data->urb_setup[VARYING_SLOT_VIEWPORT] = urb_next;
+
+            urb_next++;
+         }
+
          for (unsigned int i = 0; i < VARYING_SLOT_MAX; i++) {
-            if (inputs_read & BRW_FS_VARYING_INPUT_MASK &
+            if (inputs_read & BRW_FS_VARYING_INPUT_MASK & ~vue_header_bits &
                 BITFIELD64_BIT(i)) {
                prog_data->urb_setup[i] = urb_next++;
             }
