@@ -44,6 +44,7 @@
 #include "performance_monitor.h"
 #include "util/bitset.h"
 #include "util/ralloc.h"
+#include "util/u_memory.h"
 #include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_perfmon.h"
@@ -67,7 +68,7 @@ static struct gl_perf_monitor_object *
 new_performance_monitor(struct gl_context *ctx, GLuint index)
 {
    unsigned i;
-   struct gl_perf_monitor_object *m = st_NewPerfMonitor(ctx);
+   struct gl_perf_monitor_object *m = CALLOC_STRUCT(gl_perf_monitor_object);
 
    if (m == NULL)
       return NULL;

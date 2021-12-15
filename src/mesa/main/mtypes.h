@@ -1872,6 +1872,18 @@ struct gl_perf_monitor_object
     *    BITSET_TEST(ActiveCounters[g], c)
     */
    GLuint **ActiveCounters;
+
+   unsigned num_active_counters;
+
+   struct st_perf_counter_object {
+      struct pipe_query *query;
+      int id;
+      int group_id;
+      unsigned batch_index;
+   } *active_counters;
+
+   struct pipe_query *batch_query;
+   union pipe_query_result *batch_result;
 };
 
 
