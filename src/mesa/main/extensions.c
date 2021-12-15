@@ -266,7 +266,6 @@ _mesa_init_extensions(struct gl_extensions *extensions)
    extensions->MESA_window_pos = GL_TRUE;
 
    extensions->ARB_ES2_compatibility = GL_TRUE;
-   extensions->ARB_depth_texture = GL_TRUE;
    extensions->ARB_draw_elements_base_vertex = GL_TRUE;
    extensions->ARB_explicit_attrib_location = GL_TRUE;
    extensions->ARB_explicit_uniform_location = GL_TRUE;
