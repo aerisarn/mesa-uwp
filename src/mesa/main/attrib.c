@@ -935,13 +935,11 @@ _mesa_PopAttrib(void)
    if (mask & GL_POINT_BIT) {
       TEST_AND_CALL1(Point.Size, PointSize);
       TEST_AND_UPDATE(ctx->Point.SmoothFlag, attr->Point.SmoothFlag, GL_POINT_SMOOTH);
-      if (ctx->Extensions.EXT_point_parameters) {
-         _mesa_PointParameterfv(GL_DISTANCE_ATTENUATION_EXT,
-                                attr->Point.Params);
-         TEST_AND_CALL1_SEL(Point.MinSize, PointParameterf, GL_POINT_SIZE_MIN_EXT);
-         TEST_AND_CALL1_SEL(Point.MaxSize, PointParameterf, GL_POINT_SIZE_MAX_EXT);
-         TEST_AND_CALL1_SEL(Point.Threshold, PointParameterf, GL_POINT_FADE_THRESHOLD_SIZE_EXT);
-      }
+      _mesa_PointParameterfv(GL_DISTANCE_ATTENUATION_EXT, attr->Point.Params);
+      TEST_AND_CALL1_SEL(Point.MinSize, PointParameterf, GL_POINT_SIZE_MIN_EXT);
+      TEST_AND_CALL1_SEL(Point.MaxSize, PointParameterf, GL_POINT_SIZE_MAX_EXT);
+      TEST_AND_CALL1_SEL(Point.Threshold, PointParameterf, GL_POINT_FADE_THRESHOLD_SIZE_EXT);
+
       if (ctx->Extensions.ARB_point_sprite) {
          if (ctx->Point.CoordReplace != attr->Point.CoordReplace) {
             ctx->NewState |= _NEW_POINT | _NEW_FF_VERT_PROGRAM;

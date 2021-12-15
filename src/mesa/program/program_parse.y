@@ -1279,11 +1279,6 @@ stateLightProperty: ambDiffSpecPropertyLight
 	}
 	| ATTENUATION
 	{
-	   if (!state->ctx->Extensions.EXT_point_parameters) {
-	      yyerror(& @1, state, "GL_ARB_point_parameters not supported");
-	      YYERROR;
-	   }
-
 	   $$ = STATE_ATTENUATION;
 	}
 	| SPOT stateSpotProperty

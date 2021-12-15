@@ -251,8 +251,7 @@ compute_version(const struct gl_extensions *extensions,
 {
    GLuint major, minor, version;
 
-   const bool ver_1_4 = (extensions->ARB_shadow &&
-                         extensions->EXT_point_parameters);
+   const bool ver_1_4 = (extensions->ARB_shadow);
    const bool ver_1_5 = (ver_1_4 &&
                          extensions->ARB_occlusion_query);
    const bool ver_2_0 = (ver_1_5 &&
@@ -484,7 +483,7 @@ compute_version_es1(const struct gl_extensions *extensions)
    /* OpenGL ES 1.0 is derived from OpenGL 1.3, which is always supported.
     * OpenGL ES 1.1 is derived from OpenGL 1.5.
     */
-   const bool ver_1_1 = (extensions->EXT_point_parameters);
+   const bool ver_1_1 = true;
 
    return ver_1_1 ? 11 : 10;
 }
