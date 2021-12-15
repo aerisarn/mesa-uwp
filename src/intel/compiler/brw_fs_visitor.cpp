@@ -59,36 +59,6 @@ fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
    return dest;
 }
 
-/**
- * Apply workarounds for Gfx6 gather with UINT/SINT
- */
-void
-fs_visitor::emit_gfx6_gather_wa(uint8_t wa, fs_reg dst)
-{
-   if (!wa)
-      return;
-
-   int width = (wa & WA_8BIT) ? 8 : 16;
-
-   for (int i = 0; i < 4; i++) {
-      fs_reg dst_f = retype(dst, BRW_REGISTER_TYPE_F);
-      /* Convert from UNORM to UINT */
-      bld.MUL(dst_f, dst_f, brw_imm_f((1 << width) - 1));
-      bld.MOV(dst, dst_f);
-
-      if (wa & WA_SIGN) {
-         /* Reinterpret the UINT value as a signed INT value by
-          * shifting the sign bit into place, then shifting back
-          * preserving sign.
-          */
-         bld.SHL(dst, dst, brw_imm_d(32 - width));
-         bld.ASR(dst, dst, brw_imm_d(32 - width));
-      }
-
-      dst = offset(dst, bld, 1);
-   }
-}
-
 /** Emits a dummy fragment shader consisting of magenta for bringup purposes. */
 void
 fs_visitor::emit_dummy_fs()

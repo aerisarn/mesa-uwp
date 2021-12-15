@@ -6282,9 +6282,6 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    if (srcs[TEX_LOGICAL_SRC_SHADOW_C].file != BAD_FILE)
       inst->shadow_compare = true;
 
-   if (instr->op == nir_texop_tg4 && devinfo->ver == 6)
-      emit_gfx6_gather_wa(key_tex->gfx6_gather_wa[texture], dst);
-
    fs_reg nir_dest[5];
    for (unsigned i = 0; i < dest_size; i++)
       nir_dest[i] = offset(dst, bld, i);
