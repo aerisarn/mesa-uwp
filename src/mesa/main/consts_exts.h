@@ -161,7 +161,6 @@ struct gl_extensions
    GLboolean ARB_vertex_type_10f_11f_11f_rev;
    GLboolean ARB_vertex_type_2_10_10_10_rev;
    GLboolean ARB_viewport_array;
-   GLboolean EXT_blend_color;
    GLboolean EXT_blend_equation_separate;
    GLboolean EXT_blend_func_separate;
    GLboolean EXT_blend_minmax;

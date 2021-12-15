@@ -214,7 +214,7 @@ EXT(EXT_EGL_sync                            , dummy_true                        
 EXT(EXT_abgr                                , dummy_true                             , GLL, GLC,  x ,  x , 1995)
 EXT(EXT_base_instance                       , ARB_base_instance                      ,  x ,  x ,  x ,  30, 2014)
 EXT(EXT_bgra                                , dummy_true                             , GLL,  x ,  x ,  x , 1995)
-EXT(EXT_blend_color                         , EXT_blend_color                        , GLL,  x ,  x ,  x , 1995)
+EXT(EXT_blend_color                         , dummy_true                             , GLL,  x ,  x ,  x , 1995)
 EXT(EXT_blend_equation_separate             , EXT_blend_equation_separate            , GLL, GLC,  x ,  x , 2003)
 EXT(EXT_blend_func_extended                 , ARB_blend_func_extended                ,  x ,  x ,  x , ES2, 2015)
 EXT(EXT_blend_func_separate                 , EXT_blend_func_separate                , GLL,  x ,  x ,  x , 1999)
