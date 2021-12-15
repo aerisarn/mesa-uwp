@@ -252,7 +252,6 @@ compute_version(const struct gl_extensions *extensions,
    GLuint major, minor, version;
 
    const bool ver_1_4 = (extensions->ARB_shadow &&
-                         extensions->EXT_blend_minmax &&
                          extensions->EXT_point_parameters);
    const bool ver_1_5 = (ver_1_4 &&
                          extensions->ARB_occlusion_query);
@@ -495,8 +494,7 @@ compute_version_es2(const struct gl_extensions *extensions,
                     const struct gl_constants *consts)
 {
    /* OpenGL ES 2.0 is derived from OpenGL 2.0 */
-   const bool ver_2_0 = (extensions->EXT_blend_minmax &&
-                         extensions->ARB_vertex_shader &&
+   const bool ver_2_0 = (extensions->ARB_vertex_shader &&
                          extensions->ARB_fragment_shader &&
                          extensions->ARB_texture_non_power_of_two &&
                          extensions->EXT_blend_equation_separate);

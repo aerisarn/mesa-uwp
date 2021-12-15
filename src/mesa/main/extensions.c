@@ -281,7 +281,6 @@ _mesa_init_extensions(struct gl_extensions *extensions)
    extensions->ARB_vertex_program = GL_TRUE;
    extensions->ARB_vertex_shader = GL_TRUE;
 
-   extensions->EXT_blend_minmax = GL_TRUE;
    extensions->EXT_EGL_image_storage = GL_TRUE;
    extensions->EXT_gpu_program_parameters = GL_TRUE;
    extensions->EXT_pixel_buffer_object = GL_TRUE;
