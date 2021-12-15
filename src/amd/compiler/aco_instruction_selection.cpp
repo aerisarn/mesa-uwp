@@ -403,14 +403,15 @@ emit_split_vector(isel_context* ctx, Temp vec_src, unsigned num_components)
 /* This vector expansion uses a mask to determine which elements in the new vector
  * come from the original vector. The other elements are undefined. */
 void
-expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_components, unsigned mask)
+expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_components, unsigned mask,
+              bool zero_padding = false)
 {
    assert(vec_src.type() == RegType::vgpr);
    Builder bld(ctx->program, ctx->block);
 
    if (dst.type() == RegType::sgpr && num_components > dst.size()) {
       Temp tmp_dst = bld.tmp(RegClass::get(RegType::vgpr, 2 * num_components));
-      expand_vector(ctx, vec_src, tmp_dst, num_components, mask);
+      expand_vector(ctx, vec_src, tmp_dst, num_components, mask, zero_padding);
       bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), tmp_dst);
       ctx->allocated_vec[dst.id()] = ctx->allocated_vec[tmp_dst.id()];
       return;
@@ -430,9 +431,14 @@ expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_components
    }
 
    unsigned component_bytes = dst.bytes() / num_components;
-   RegClass rc = RegClass::get(RegType::vgpr, component_bytes);
-   assert(dst.type() == RegType::vgpr || !rc.is_subdword());
+   RegClass src_rc = RegClass::get(RegType::vgpr, component_bytes);
+   RegClass dst_rc = RegClass::get(dst.type(), component_bytes);
+   assert(dst.type() == RegType::vgpr || !src_rc.is_subdword());
    std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
+
+   Temp padding = Temp(0, dst_rc);
+   if (zero_padding)
+      padding = bld.copy(bld.def(dst_rc), Operand::zero(component_bytes));
 
    aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
       aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
@@ -440,14 +446,15 @@ expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_components
    unsigned k = 0;
    for (unsigned i = 0; i < num_components; i++) {
       if (mask & (1 << i)) {
-         Temp src = emit_extract_vector(ctx, vec_src, k++, rc);
+         Temp src = emit_extract_vector(ctx, vec_src, k++, src_rc);
          if (dst.type() == RegType::sgpr)
             src = bld.as_uniform(src);
          vec->operands[i] = Operand(src);
+         elems[i] = src;
       } else {
          vec->operands[i] = Operand::zero(component_bytes);
+         elems[i] = padding;
       }
-      elems[i] = vec->operands[i].getTemp();
    }
    ctx->block->instructions.emplace_back(std::move(vec));
    ctx->allocated_vec.emplace(dst.id(), elems);
@@ -6245,7 +6252,8 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
                        Operand::zero());
    }
 
-   expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, expand_mask);
+   expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, expand_mask,
+                 instr->dest.ssa.bit_size == 64);
 }
 
 void
