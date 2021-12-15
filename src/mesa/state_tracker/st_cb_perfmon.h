@@ -26,22 +26,6 @@
 
 #include "util/list.h"
 
-/**
- * Extra data per counter, supplementing gl_perf_monitor_counter with
- * driver-specific information.
- */
-struct st_perf_monitor_counter
-{
-   unsigned query_type;
-   unsigned flags;
-};
-
-struct st_perf_monitor_group
-{
-   struct st_perf_monitor_counter *counters;
-   bool has_batch;
-};
-
 bool
 st_have_perfmon(struct st_context *st);
 

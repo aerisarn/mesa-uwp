@@ -1875,7 +1875,7 @@ struct gl_perf_monitor_object
 
    unsigned num_active_counters;
 
-   struct st_perf_counter_object {
+   struct gl_perf_counter_object {
       struct pipe_query *query;
       int id;
       int group_id;
@@ -1911,6 +1911,9 @@ struct gl_perf_monitor_counter
 
    /** Maximum counter value. */
    union gl_perf_monitor_counter_value Maximum;
+
+   unsigned query_type;
+   unsigned flags;
 };
 
 
@@ -1928,8 +1931,9 @@ struct gl_perf_monitor_group
    /** Array of counters within this group. */
    const struct gl_perf_monitor_counter *Counters;
    GLuint NumCounters;
-};
 
+   bool has_batch;
+};
 
 /**
  * A query object instance as described in INTEL_performance_query.

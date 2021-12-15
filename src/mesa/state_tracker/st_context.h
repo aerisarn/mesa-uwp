@@ -51,7 +51,6 @@ struct draw_stage;
 struct gen_mipmap_state;
 struct st_context;
 struct st_program;
-struct st_perf_monitor_group;
 struct u_upload_mgr;
 
 #define ST_L3_PINNING_DISABLED 0xffffffff
@@ -361,8 +360,6 @@ struct st_context
    int32_t read_stamp;
 
    struct st_config_options options;
-
-   struct st_perf_monitor_group *perfmon;
 
    enum pipe_reset_status reset_status;
 
