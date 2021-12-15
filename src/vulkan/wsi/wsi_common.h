@@ -135,19 +135,18 @@ struct wsi_device {
 
    /* Signals the semaphore such that any wait on the semaphore will wait on
     * any reads or writes on the give memory object.  This is used to
-    * implement the semaphore signal operation in vkAcquireNextImage.
+    * implement the semaphore signal operation in vkAcquireNextImage.  This
+    * requires the driver to implement vk_device::create_sync_for_memory.
     */
-   void (*signal_semaphore_for_memory)(VkDevice device,
-                                       VkSemaphore semaphore,
-                                       VkDeviceMemory memory);
+   bool signal_semaphore_with_memory;
 
    /* Signals the fence such that any wait on the fence will wait on any reads
     * or writes on the give memory object.  This is used to implement the
-    * semaphore signal operation in vkAcquireNextImage.
+    * semaphore signal operation in vkAcquireNextImage.  This requires the
+    * driver to implement vk_device::create_sync_for_memory.  The resulting
+    * vk_sync must support CPU waits.
     */
-   void (*signal_fence_for_memory)(VkDevice device,
-                                   VkFence fence,
-                                   VkDeviceMemory memory);
+   bool signal_fence_with_memory;
 
    /*
     * This sets the ownership for a WSI memory object:
