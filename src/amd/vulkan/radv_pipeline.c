@@ -5081,6 +5081,47 @@ offset_to_ps_input(uint32_t offset, bool flat_shade, bool explicit, bool float16
 }
 
 static void
+single_slot_to_ps_input(const struct radv_vs_output_info *outinfo,
+                        unsigned slot, uint32_t *ps_input_cntl, unsigned *ps_offset,
+                        bool skip_undef, bool use_default_0, bool flat_shade)
+{
+   unsigned vs_offset = outinfo->vs_output_param_offset[slot];
+
+   if (vs_offset == AC_EXP_PARAM_UNDEFINED) {
+      if (skip_undef)
+         return;
+      else if (use_default_0)
+         vs_offset = AC_EXP_PARAM_DEFAULT_VAL_0000;
+      else
+         unreachable("vs_offset should not be AC_EXP_PARAM_UNDEFINED.");
+   }
+
+   ps_input_cntl[*ps_offset] = offset_to_ps_input(vs_offset, flat_shade, false, false);
+   ++(*ps_offset);
+}
+
+static void
+input_mask_to_ps_inputs(const struct radv_vs_output_info *outinfo, const struct radv_shader *ps,
+                        uint32_t input_mask, uint32_t *ps_input_cntl, unsigned *ps_offset)
+{
+   u_foreach_bit(i, input_mask) {
+      unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_VAR0 + i];
+      if (vs_offset == AC_EXP_PARAM_UNDEFINED) {
+         ps_input_cntl[*ps_offset] = S_028644_OFFSET(0x20);
+         ++(*ps_offset);
+         continue;
+      }
+
+      bool flat_shade = !!(ps->info.ps.flat_shaded_mask & (1u << *ps_offset));
+      bool explicit = !!(ps->info.ps.explicit_shaded_mask & (1u << *ps_offset));
+      bool float16 = !!(ps->info.ps.float16_shaded_mask & (1u << *ps_offset));
+
+      ps_input_cntl[*ps_offset] = offset_to_ps_input(vs_offset, flat_shade, explicit, float16);
+      ++(*ps_offset);
+   }
+}
+
+static void
 radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs, const struct radv_pipeline *pipeline)
 {
    struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
@@ -5089,76 +5130,32 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs, const struct radv
 
    unsigned ps_offset = 0;
 
-   if (ps->info.ps.prim_id_input) {
-      unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID];
-      if (vs_offset != AC_EXP_PARAM_UNDEFINED) {
-         ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
-         ++ps_offset;
-      }
-   }
+   if (ps->info.ps.prim_id_input)
+      single_slot_to_ps_input(outinfo, VARYING_SLOT_PRIMITIVE_ID, ps_input_cntl, &ps_offset,
+                              true, false, true);
 
-   if (ps->info.ps.layer_input) {
-      unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_LAYER];
-      if (vs_offset != AC_EXP_PARAM_UNDEFINED)
-         ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
-      else
-         ps_input_cntl[ps_offset] =
-            offset_to_ps_input(AC_EXP_PARAM_DEFAULT_VAL_0000, true, false, false);
-      ++ps_offset;
-   }
+   if (ps->info.ps.layer_input)
+      single_slot_to_ps_input(outinfo, VARYING_SLOT_LAYER, ps_input_cntl, &ps_offset,
+                              false, true, true);
 
-   if (ps->info.ps.viewport_index_input) {
-      unsigned vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_VIEWPORT];
-      assert(vs_offset != AC_EXP_PARAM_UNDEFINED);
-      ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, true, false, false);
-      ++ps_offset;
-   }
+   if (ps->info.ps.viewport_index_input)
+      single_slot_to_ps_input(outinfo, VARYING_SLOT_VIEWPORT, ps_input_cntl, &ps_offset,
+                              false, false, true);
 
-   if (ps->info.ps.has_pcoord) {
-      unsigned val;
-      val = S_028644_PT_SPRITE_TEX(1) | S_028644_OFFSET(0x20);
-      ps_input_cntl[ps_offset] = val;
-      ps_offset++;
-   }
+   if (ps->info.ps.has_pcoord)
+      ps_input_cntl[ps_offset++] = S_028644_PT_SPRITE_TEX(1) | S_028644_OFFSET(0x20);
 
    if (ps->info.ps.num_input_clips_culls) {
-      unsigned vs_offset;
+      single_slot_to_ps_input(outinfo, VARYING_SLOT_CLIP_DIST0, ps_input_cntl, &ps_offset,
+                              true, false, false);
 
-      vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_CLIP_DIST0];
-      if (vs_offset != AC_EXP_PARAM_UNDEFINED) {
-         ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, false, false, false);
-         ++ps_offset;
-      }
-
-      vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_CLIP_DIST1];
-      if (vs_offset != AC_EXP_PARAM_UNDEFINED && ps->info.ps.num_input_clips_culls > 4) {
-         ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, false, false, false);
-         ++ps_offset;
-      }
+      if (ps->info.ps.num_input_clips_culls > 4)
+         single_slot_to_ps_input(outinfo, VARYING_SLOT_CLIP_DIST1, ps_input_cntl, &ps_offset,
+                                 true, false, false);
    }
 
-   for (unsigned i = 0; i < 32 && (1u << i) <= ps->info.ps.input_mask; ++i) {
-      unsigned vs_offset;
-      bool flat_shade;
-      bool explicit;
-      bool float16;
-      if (!(ps->info.ps.input_mask & (1u << i)))
-         continue;
-
-      vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_VAR0 + i];
-      if (vs_offset == AC_EXP_PARAM_UNDEFINED) {
-         ps_input_cntl[ps_offset] = S_028644_OFFSET(0x20);
-         ++ps_offset;
-         continue;
-      }
-
-      flat_shade = !!(ps->info.ps.flat_shaded_mask & (1u << ps_offset));
-      explicit = !!(ps->info.ps.explicit_shaded_mask & (1u << ps_offset));
-      float16 = !!(ps->info.ps.float16_shaded_mask & (1u << ps_offset));
-
-      ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, flat_shade, explicit, float16);
-      ++ps_offset;
-   }
+   input_mask_to_ps_inputs(outinfo, ps, ps->info.ps.input_mask,
+                           ps_input_cntl, &ps_offset);
 
    if (ps_offset) {
       radeon_set_context_reg_seq(ctx_cs, R_028644_SPI_PS_INPUT_CNTL_0, ps_offset);
