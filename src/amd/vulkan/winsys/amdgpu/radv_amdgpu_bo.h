@@ -49,7 +49,6 @@ struct radv_amdgpu_winsys_bo {
       /* physical bo */
       struct {
          amdgpu_bo_handle bo;
-         bool is_shared;
          uint32_t bo_handle;
       };
       /* virtual bo */
