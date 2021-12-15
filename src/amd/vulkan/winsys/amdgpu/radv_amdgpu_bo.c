@@ -666,8 +666,8 @@ radv_amdgpu_winsys_bo_from_fd(struct radeon_winsys *_ws, int fd, unsigned priori
    uint64_t va;
    amdgpu_va_handle va_handle;
    enum amdgpu_bo_handle_type type = amdgpu_bo_handle_type_dma_buf_fd;
-   struct amdgpu_bo_import_result result = {0};
-   struct amdgpu_bo_info info = {0};
+   struct amdgpu_bo_import_result result;
+   struct amdgpu_bo_info info;
    enum radeon_bo_domain initial = 0;
    int r;
    VkResult vk_result = VK_SUCCESS;
