@@ -27,13 +27,10 @@ dEQP-GLES2.functional.shaders.functions.control_flow.mixed_return_break_continue
 dEQP-GLES2.functional.shaders.functions.control_flow.return_after_continue_fragment,Fail
 dEQP-GLES2.functional.shaders.functions.control_flow.return_in_loop_if_fragment,Fail
 dEQP-GLES2.functional.shaders.functions.control_flow.return_in_nested_loop_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.matrix_subscript.mat4_dynamic_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_const_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_read_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_dynamic_write_dynamic_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_read_fragment,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_dynamic_write_dynamic_read_fragment,Fail
 
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_subscript_write_static_loop_subscript_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_subscript_write_component_read_fragment,Fail
