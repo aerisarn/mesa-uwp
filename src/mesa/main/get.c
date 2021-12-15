@@ -524,7 +524,6 @@ static const int extra_ARB_framebuffer_object_or_EXT_framebuffer_multisample_or_
    EXTRA_END
 };
 
-EXTRA_EXT(ARB_texture_cube_map);
 EXTRA_EXT(EXT_texture_array);
 EXTRA_EXT(NV_fog_distance);
 EXTRA_EXT(EXT_texture_filter_anisotropic);
@@ -2445,8 +2444,7 @@ tex_binding_to_index(const struct gl_context *ctx, GLenum binding)
    case GL_TEXTURE_BINDING_3D:
       return ctx->API != API_OPENGLES ? TEXTURE_3D_INDEX : -1;
    case GL_TEXTURE_BINDING_CUBE_MAP:
-      return ctx->Extensions.ARB_texture_cube_map
-         ? TEXTURE_CUBE_INDEX : -1;
+      return TEXTURE_CUBE_INDEX;
    case GL_TEXTURE_BINDING_RECTANGLE:
       return _mesa_is_desktop_gl(ctx) && ctx->Extensions.NV_texture_rectangle
          ? TEXTURE_RECT_INDEX : -1;

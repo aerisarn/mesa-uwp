@@ -63,9 +63,8 @@ _mesa_is_legal_tex_storage_target(const struct gl_context *ctx,
    case 2:
       switch (target) {
       case GL_TEXTURE_2D:
-         return true;
       case GL_TEXTURE_CUBE_MAP:
-         return ctx->Extensions.ARB_texture_cube_map;
+         return true;
       }
       break;
    case 3:
@@ -95,9 +94,8 @@ _mesa_is_legal_tex_storage_target(const struct gl_context *ctx,
    case 2:
       switch (target) {
       case GL_PROXY_TEXTURE_2D:
-         return true;
       case GL_PROXY_TEXTURE_CUBE_MAP:
-         return ctx->Extensions.ARB_texture_cube_map;
+         return true;
       case GL_TEXTURE_RECTANGLE:
       case GL_PROXY_TEXTURE_RECTANGLE:
          return ctx->Extensions.NV_texture_rectangle;

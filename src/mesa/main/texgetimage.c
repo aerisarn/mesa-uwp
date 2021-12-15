@@ -876,7 +876,7 @@ legal_getteximage_target(struct gl_context *ctx, GLenum target, bool dsa)
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
    case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-      return dsa ? GL_FALSE : ctx->Extensions.ARB_texture_cube_map;
+      return dsa ? GL_FALSE : GL_TRUE;
    case GL_TEXTURE_CUBE_MAP:
       return dsa ? GL_TRUE : GL_FALSE;
    default:

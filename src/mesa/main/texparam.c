@@ -1557,7 +1557,7 @@ _mesa_legal_get_tex_level_parameter_target(struct gl_context *ctx, GLenum target
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
    case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-      return ctx->Extensions.ARB_texture_cube_map;
+      return GL_TRUE;
    case GL_TEXTURE_2D_MULTISAMPLE:
    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
       return ctx->Extensions.ARB_texture_multisample;
@@ -1598,9 +1598,8 @@ _mesa_legal_get_tex_level_parameter_target(struct gl_context *ctx, GLenum target
    case GL_PROXY_TEXTURE_1D:
    case GL_PROXY_TEXTURE_2D:
    case GL_PROXY_TEXTURE_3D:
-      return GL_TRUE;
    case GL_PROXY_TEXTURE_CUBE_MAP:
-      return ctx->Extensions.ARB_texture_cube_map;
+      return GL_TRUE;
    case GL_PROXY_TEXTURE_CUBE_MAP_ARRAY:
       return ctx->Extensions.ARB_texture_cube_map_array;
    case GL_TEXTURE_RECTANGLE_NV:

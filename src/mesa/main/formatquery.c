@@ -424,7 +424,7 @@ _is_target_supported(struct gl_context *ctx, GLenum target)
       break;
 
    case GL_TEXTURE_CUBE_MAP:
-      if (ctx->API != API_OPENGL_CORE && !_mesa_has_ARB_texture_cube_map(ctx))
+      if (!_mesa_is_desktop_gl(ctx))
          return false;
       break;
 

@@ -3625,7 +3625,7 @@ check_textarget(struct gl_context *ctx, int dims, GLenum target,
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
    case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-      err = dims != 2 || !ctx->Extensions.ARB_texture_cube_map;
+      err = dims != 2;
       break;
    case GL_TEXTURE_3D:
       err = dims != 3;

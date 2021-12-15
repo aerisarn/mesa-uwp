@@ -56,9 +56,9 @@ descriptor=[
 # extensions below should mark the dependency.
 
 # GL_ARB_texture_cube_map
-  [ "TEXTURE_BINDING_CUBE_MAP_ARB", "LOC_CUSTOM, TYPE_INT, TEXTURE_CUBE_INDEX, extra_ARB_texture_cube_map" ],
+  [ "TEXTURE_BINDING_CUBE_MAP_ARB", "LOC_CUSTOM, TYPE_INT, TEXTURE_CUBE_INDEX, NO_EXTRA" ],
 # XXX: OES_texture_cube_map
-  [ "MAX_CUBE_MAP_TEXTURE_SIZE_ARB", "LOC_CUSTOM, TYPE_INT, offsetof(struct gl_context, Const.MaxCubeTextureLevels), extra_ARB_texture_cube_map" ],
+  [ "MAX_CUBE_MAP_TEXTURE_SIZE_ARB", "LOC_CUSTOM, TYPE_INT, offsetof(struct gl_context, Const.MaxCubeTextureLevels), NO_EXTRA" ],
 
 # XXX: OES_blend_subtract
   [ "BLEND_SRC_RGB", "CONTEXT_ENUM16(Color.Blend[0].SrcRGB), NO_EXTRA" ],
