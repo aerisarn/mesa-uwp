@@ -579,6 +579,27 @@ gather_xfb_info(const nir_shader *nir, struct radv_shader_info *info)
    ralloc_free(xfb);
 }
 
+static void
+assign_outinfo_param(struct radv_vs_output_info *outinfo, gl_varying_slot idx,
+                     unsigned *total_param_exports)
+{
+   if (outinfo->vs_output_param_offset[idx] == AC_EXP_PARAM_UNDEFINED)
+      outinfo->vs_output_param_offset[idx] = (*total_param_exports)++;
+}
+
+static void
+assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
+                      unsigned *total_param_exports)
+{
+   u_foreach_bit64(idx, mask) {
+      if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
+          idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT ||
+          ((idx == VARYING_SLOT_CLIP_DIST0 || idx == VARYING_SLOT_CLIP_DIST1) &&
+           outinfo->export_clip_dists))
+         assign_outinfo_param(outinfo, idx, total_param_exports);
+   }
+}
+
 void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
@@ -632,25 +653,13 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
        nir->info.stage == MESA_SHADER_GEOMETRY)
       gather_xfb_info(nir, info);
 
-   /* Make sure to export the LayerID if the subpass has multiviews. */
-   if (pipeline_key->has_multiview_view_index) {
-      switch (nir->info.stage) {
-      case MESA_SHADER_VERTEX:
-         info->vs.outinfo.writes_layer = true;
-         break;
-      case MESA_SHADER_TESS_EVAL:
-         info->tes.outinfo.writes_layer = true;
-         break;
-      case MESA_SHADER_GEOMETRY:
-         info->vs.outinfo.writes_layer = true;
-         break;
-      default:
-         break;
-      }
-   }
-
    struct radv_vs_output_info *outinfo = get_vs_output_info(nir, info);
    if (outinfo) {
+      /* Make sure to export the LayerID if the subpass has multiviews. */
+      if (pipeline_key->has_multiview_view_index) {
+         outinfo->writes_layer = true;
+      }
+
       bool writes_primitive_shading_rate =
          outinfo->writes_primitive_shading_rate || device->force_vrs != RADV_FORCE_VRS_NONE;
       int pos_written = 0x1;
@@ -671,30 +680,23 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
       memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
              sizeof(outinfo->vs_output_param_offset));
-      outinfo->param_exports = 0;
 
-      uint64_t mask = nir->info.outputs_written;
-      while (mask) {
-         int idx = u_bit_scan64(&mask);
-         if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
-             idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT ||
-             ((idx == VARYING_SLOT_CLIP_DIST0 || idx == VARYING_SLOT_CLIP_DIST1) &&
-              outinfo->export_clip_dists)) {
-            if (outinfo->vs_output_param_offset[idx] == AC_EXP_PARAM_UNDEFINED)
-               outinfo->vs_output_param_offset[idx] = outinfo->param_exports++;
-         }
-      }
-      if (outinfo->writes_layer &&
-          outinfo->vs_output_param_offset[VARYING_SLOT_LAYER] == AC_EXP_PARAM_UNDEFINED) {
-         /* when ctx->options->key.has_multiview_view_index = true, the layer
-          * variable isn't declared in NIR and it's isel's job to get the layer */
-         outinfo->vs_output_param_offset[VARYING_SLOT_LAYER] = outinfo->param_exports++;
-      }
+      uint64_t per_prim_mask =
+         nir->info.outputs_written & nir->info.per_primitive_outputs &
+         ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES) & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT);
+      uint64_t per_vtx_mask =
+         nir->info.outputs_written & ~per_prim_mask;
 
-      if (outinfo->export_prim_id) {
-         assert(outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] == AC_EXP_PARAM_UNDEFINED);
-         outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = outinfo->param_exports++;
-      }
+      unsigned total_param_exports = 0;
+
+      /* Per-vertex outputs */
+      assign_outinfo_params(outinfo, per_vtx_mask, &total_param_exports);
+      if (outinfo->writes_layer)
+         assign_outinfo_param(outinfo, VARYING_SLOT_LAYER, &total_param_exports);
+      if (outinfo->export_prim_id)
+         assign_outinfo_param(outinfo, VARYING_SLOT_PRIMITIVE_ID, &total_param_exports);
+
+      outinfo->param_exports = total_param_exports;
    }
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
