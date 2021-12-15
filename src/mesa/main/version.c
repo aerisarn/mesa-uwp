@@ -478,17 +478,6 @@ compute_version(const struct gl_extensions *extensions,
 }
 
 static GLuint
-compute_version_es1(const struct gl_extensions *extensions)
-{
-   /* OpenGL ES 1.0 is derived from OpenGL 1.3, which is always supported.
-    * OpenGL ES 1.1 is derived from OpenGL 1.5.
-    */
-   const bool ver_1_1 = true;
-
-   return ver_1_1 ? 11 : 10;
-}
-
-static GLuint
 compute_version_es2(const struct gl_extensions *extensions,
                     const struct gl_constants *consts)
 {
@@ -592,7 +581,7 @@ _mesa_get_version(const struct gl_extensions *extensions,
    case API_OPENGL_CORE:
       return compute_version(extensions, consts, api);
    case API_OPENGLES:
-      return compute_version_es1(extensions);
+      return 11;
    case API_OPENGLES2:
       return compute_version_es2(extensions, consts);
    }
