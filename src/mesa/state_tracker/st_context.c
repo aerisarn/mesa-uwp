@@ -46,7 +46,6 @@
 #include "st_cb_drawtex.h"
 #include "st_cb_eglimage.h"
 #include "st_cb_feedback.h"
-#include "st_cb_perfmon.h"
 #include "st_cb_perfquery.h"
 #include "st_cb_program.h"
 #include "st_cb_flush.h"
@@ -422,7 +421,6 @@ st_destroy_context_priv(struct st_context *st, bool destroy_pipe)
    st_destroy_bitmap(st);
    st_destroy_drawpix(st);
    st_destroy_drawtex(st);
-   st_destroy_perfmon(st);
    st_destroy_pbo_helpers(st);
    st_destroy_bound_texture_handles(st);
    st_destroy_bound_image_handles(st);
@@ -493,6 +491,16 @@ st_init_driver_flags(struct st_context *st)
                                 ST_NEW_FS_STATE | ST_NEW_CS_STATE;
 }
 
+static bool
+st_have_perfmon(struct st_context *st)
+{
+   struct pipe_screen *screen = st->screen;
+
+   if (!screen->get_driver_query_info || !screen->get_driver_query_group_info)
+      return false;
+
+   return screen->get_driver_query_group_info(screen, 0, NULL) != 0;
+}
 
 static struct st_context *
 st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,

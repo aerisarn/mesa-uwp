@@ -1156,6 +1156,7 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
    _mesa_free_transform_feedback(ctx);
    _mesa_free_performance_monitors(ctx);
    _mesa_free_performance_queries(ctx);
+   _mesa_free_perfomance_monitor_groups(ctx);
    _mesa_free_resident_handles(ctx);
 
    _mesa_reference_buffer_object(ctx, &ctx->Pack.BufferObj, NULL);
