@@ -127,8 +127,7 @@ set_combiner_mode(struct gl_context *ctx,
       break;
    case GL_DOT3_RGB:
    case GL_DOT3_RGBA:
-      legal = (ctx->Extensions.ARB_texture_env_dot3 &&
-               pname == GL_COMBINE_RGB);
+      legal = (pname == GL_COMBINE_RGB);
       break;
    case GL_MODULATE_ADD_ATI:
    case GL_MODULATE_SIGNED_ADD_ATI:

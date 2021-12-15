@@ -1110,7 +1110,6 @@ void st_init_extensions(struct pipe_screen *screen,
    extensions->ARB_map_buffer_range = GL_TRUE;
    extensions->ARB_sync = GL_TRUE;
    extensions->ARB_texture_env_crossbar = GL_TRUE;
-   extensions->ARB_texture_env_dot3 = GL_TRUE;
    extensions->ARB_vertex_program = GL_TRUE;
    extensions->ARB_vertex_shader = GL_TRUE;
 
