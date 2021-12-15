@@ -285,11 +285,9 @@ valid_dispatch_indirect(struct gl_context *ctx,  GLintptr indirect)
 }
 
 static void
-do_dispatch_compute(struct gl_context *ctx,
-                    struct pipe_grid_info *info)
+prepare_compute(struct gl_context *ctx)
 {
    struct st_context *st = st_context(ctx);
-   struct pipe_context *pipe = st->pipe;
 
    st_flush_bitmap_cache(st);
    st_invalidate_readpix_cache(st);
@@ -302,7 +300,6 @@ do_dispatch_compute(struct gl_context *ctx,
        st->compute_shader_may_be_dirty)
       st_validate_state(st, ST_PIPELINE_COMPUTE);
 
-   pipe->launch_grid(pipe, info);
 }
 
 static ALWAYS_INLINE void
@@ -334,7 +331,8 @@ dispatch_compute(GLuint num_groups_x, GLuint num_groups_y,
    info.block[1] = prog->info.workgroup_size[1];
    info.block[2] = prog->info.workgroup_size[2];
 
-   do_dispatch_compute(ctx, &info);
+   prepare_compute(ctx);
+   ctx->pipe->launch_grid(ctx->pipe, &info);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -378,7 +376,8 @@ dispatch_compute_indirect(GLintptr indirect, bool no_error)
    info.block[1] = prog->info.workgroup_size[1];
    info.block[2] = prog->info.workgroup_size[2];
 
-   do_dispatch_compute(ctx, &info);
+   prepare_compute(ctx);
+   ctx->pipe->launch_grid(ctx->pipe, &info);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -427,7 +426,8 @@ dispatch_compute_group_size(GLuint num_groups_x, GLuint num_groups_y,
    if (num_groups_x == 0u || num_groups_y == 0u || num_groups_z == 0u)
        return;
 
-   do_dispatch_compute(ctx, &info);
+   prepare_compute(ctx);
+   ctx->pipe->launch_grid(ctx->pipe, &info);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
