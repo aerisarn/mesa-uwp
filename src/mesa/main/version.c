@@ -251,8 +251,7 @@ compute_version(const struct gl_extensions *extensions,
 {
    GLuint major, minor, version;
 
-   const bool ver_1_3 = (extensions->ARB_texture_env_combine &&
-                         extensions->ARB_texture_env_dot3);
+   const bool ver_1_3 = (extensions->ARB_texture_env_dot3);
    const bool ver_1_4 = (ver_1_3 &&
                          extensions->ARB_depth_texture &&
                          extensions->ARB_shadow &&
@@ -494,8 +493,7 @@ static GLuint
 compute_version_es1(const struct gl_extensions *extensions)
 {
    /* OpenGL ES 1.0 is derived from OpenGL 1.3 */
-   const bool ver_1_0 = (extensions->ARB_texture_env_combine &&
-                         extensions->ARB_texture_env_dot3);
+   const bool ver_1_0 = (extensions->ARB_texture_env_dot3);
    /* OpenGL ES 1.1 is derived from OpenGL 1.5 */
    const bool ver_1_1 = (ver_1_0 &&
                          extensions->EXT_point_parameters);

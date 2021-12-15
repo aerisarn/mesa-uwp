@@ -157,7 +157,7 @@ EXT(ARB_texture_compression_rgtc            , ARB_texture_compression_rgtc      
 EXT(ARB_texture_cube_map                    , dummy_true                             , GLL,  x ,  x ,  x , 1999)
 EXT(ARB_texture_cube_map_array              , ARB_texture_cube_map_array             , GLL, GLC,  x ,  x , 2009)
 EXT(ARB_texture_env_add                     , dummy_true                             , GLL,  x ,  x ,  x , 1999)
-EXT(ARB_texture_env_combine                 , ARB_texture_env_combine                , GLL,  x ,  x ,  x , 2001)
+EXT(ARB_texture_env_combine                 , dummy_true                             , GLL,  x ,  x ,  x , 2001)
 EXT(ARB_texture_env_crossbar                , ARB_texture_env_crossbar               , GLL,  x ,  x ,  x , 2001)
 EXT(ARB_texture_env_dot3                    , ARB_texture_env_dot3                   , GLL,  x ,  x ,  x , 2001)
 EXT(ARB_texture_filter_anisotropic          , ARB_texture_filter_anisotropic         , GLL, GLC,  x ,  x , 2017)
