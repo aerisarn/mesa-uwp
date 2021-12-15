@@ -217,7 +217,7 @@ EXT(EXT_bgra                                , dummy_true                        
 EXT(EXT_blend_color                         , dummy_true                             , GLL,  x ,  x ,  x , 1995)
 EXT(EXT_blend_equation_separate             , EXT_blend_equation_separate            , GLL, GLC,  x ,  x , 2003)
 EXT(EXT_blend_func_extended                 , ARB_blend_func_extended                ,  x ,  x ,  x , ES2, 2015)
-EXT(EXT_blend_func_separate                 , EXT_blend_func_separate                , GLL,  x ,  x ,  x , 1999)
+EXT(EXT_blend_func_separate                 , dummy_true                             , GLL,  x ,  x ,  x , 1999)
 EXT(EXT_blend_minmax                        , EXT_blend_minmax                       , GLL,  x , ES1, ES2, 1995)
 EXT(EXT_blend_subtract                      , dummy_true                             , GLL,  x ,  x ,  x , 1995)
 EXT(EXT_buffer_storage                      , ARB_buffer_storage                     ,  x ,  x ,  x ,  31, 2015)
@@ -351,7 +351,7 @@ EXT(IBM_multimode_draw_arrays               , dummy_true                        
 EXT(IBM_rasterpos_clip                      , dummy_true                             , GLL,  x ,  x ,  x , 1996)
 EXT(IBM_texture_mirrored_repeat             , dummy_true                             , GLL,  x ,  x ,  x , 1998)
 
-EXT(INGR_blend_func_separate                , EXT_blend_func_separate                , GLL,  x ,  x ,  x , 1999)
+EXT(INGR_blend_func_separate                , dummy_true                             , GLL,  x ,  x ,  x , 1999)
 
 EXT(INTEL_blackhole_render                  , INTEL_blackhole_render                 ,  30,  30,  x , ES2, 2018)
 EXT(INTEL_conservative_rasterization        , INTEL_conservative_rasterization       ,  x , GLC,  x ,  31, 2013)
@@ -424,7 +424,7 @@ EXT(OES_EGL_image_external                  , OES_EGL_image_external            
 EXT(OES_EGL_image_external_essl3            , OES_EGL_image_external                 ,  x ,  x ,  x ,  30, 2015)
 EXT(OES_EGL_sync                            , dummy_true                             ,  x ,  x , ES1, ES2, 2010)
 EXT(OES_blend_equation_separate             , EXT_blend_equation_separate            ,  x ,  x , ES1,  x , 2009)
-EXT(OES_blend_func_separate                 , EXT_blend_func_separate                ,  x ,  x , ES1,  x , 2009)
+EXT(OES_blend_func_separate                 , dummy_true                             ,  x ,  x , ES1,  x , 2009)
 EXT(OES_blend_subtract                      , dummy_true                             ,  x ,  x , ES1,  x , 2009)
 EXT(OES_byte_coordinates                    , dummy_true                             ,  x ,  x , ES1,  x , 2002)
 EXT(OES_compressed_ETC1_RGB8_texture        , OES_compressed_ETC1_RGB8_texture       ,  x ,  x , ES1, ES2, 2005)
