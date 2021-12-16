@@ -98,7 +98,6 @@ enum svga_hud {
 #define SVGA_MAX_CONST_BUF_SIZE (4096 * 4 * sizeof(int))
 
 #define CONST0_UPLOAD_ALIGNMENT 256
-
 #define SVGA_MAX_IMAGES         SVGA3D_MAX_UAVIEWS
 #define SVGA_MAX_SHADER_BUFFERS	SVGA3D_MAX_UAVIEWS
 #define SVGA_MAX_ATOMIC_BUFFERS	SVGA3D_MAX_UAVIEWS
@@ -624,6 +623,9 @@ struct svga_context
       /** bitmasks of which const buffers are changed */
       unsigned dirty_constbufs[PIPE_SHADER_TYPES];
 
+      /** bitmasks of which const buffers to be bound as raw buffers */
+      unsigned raw_constbufs[PIPE_SHADER_TYPES];
+
       unsigned texture_timestamp;
       unsigned uav_timestamp[2];
 
@@ -965,6 +967,21 @@ static inline boolean
 svga_rects_equal(const SVGA3dRect *r1, const SVGA3dRect *r2)
 {
    return memcmp(r1, r2, sizeof(*r1)) == 0;
+}
+
+
+/* A helper function to return TRUE if sampler state mapping is
+ * to be used. Sampler state mapping is used in GL43 context
+ * if the number of sampler states exceeds the SVGA device limit or
+ * the sampler state mapping environment variable is set.
+ */
+static inline boolean
+svga_use_sampler_state_mapping(const struct svga_context *svga,
+                               unsigned num_sampler_states)
+{
+   return svga_have_gl43(svga) &&
+          (svga_screen(svga->pipe.screen)->debug.sampler_state_mapping ||
+           num_sampler_states > SVGA3D_DX_MAX_SAMPLERS);
 }
 
 /**

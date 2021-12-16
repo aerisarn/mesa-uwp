@@ -639,13 +639,13 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
       if (shader == PIPE_SHADER_FRAGMENT)
          return VGPU10_MAX_FS_INPUTS;
       else if (shader == PIPE_SHADER_GEOMETRY)
-         return VGPU10_MAX_GS_INPUTS;
+         return svgascreen->max_gs_inputs;
       else if (shader == PIPE_SHADER_TESS_CTRL)
          return VGPU11_MAX_HS_INPUT_CONTROL_POINTS;
       else if (shader == PIPE_SHADER_TESS_EVAL)
          return VGPU11_MAX_DS_INPUT_CONTROL_POINTS;
       else
-         return VGPU10_MAX_VS_INPUTS;
+         return svgascreen->max_vs_inputs;
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
       if (shader == PIPE_SHADER_FRAGMENT)
          return VGPU10_MAX_FS_OUTPUTS;
@@ -656,7 +656,8 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
       else if (shader == PIPE_SHADER_TESS_EVAL)
          return VGPU11_MAX_DS_OUTPUTS;
       else
-         return VGPU10_MAX_VS_OUTPUTS;
+         return svgascreen->max_vs_outputs;
+
    case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
       return VGPU10_MAX_CONSTANT_BUFFER_ELEMENT_COUNT * sizeof(float[4]);
    case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
@@ -973,6 +974,9 @@ svga_screen_create(struct svga_winsys_screen *sws)
       goto error2;
    }
 
+   svgascreen->debug.sampler_state_mapping =
+      debug_get_bool_option("SVGA_SAMPLER_STATE_MAPPING", FALSE);
+
    debug_printf("%s enabled\n",
                 sws->have_sm5 ? "SM5" :
                 sws->have_sm4_1 ? "SM4_1" :
@@ -1060,6 +1064,18 @@ svga_screen_create(struct svga_winsys_screen *sws)
       screen->is_format_supported = svga_is_dx_format_supported;
 
       svgascreen->max_viewports = SVGA3D_DX_MAX_VIEWPORTS;
+
+      /* Shader limits */
+      if (sws->have_sm4_1) {
+         svgascreen->max_vs_inputs  = VGPU10_1_MAX_VS_INPUTS;
+         svgascreen->max_vs_outputs = VGPU10_1_MAX_VS_OUTPUTS;
+         svgascreen->max_gs_inputs  = VGPU10_1_MAX_GS_INPUTS;
+      }
+      else {
+         svgascreen->max_vs_inputs  = VGPU10_MAX_VS_INPUTS;
+         svgascreen->max_vs_outputs = VGPU10_MAX_VS_OUTPUTS;
+         svgascreen->max_gs_inputs  = VGPU10_MAX_GS_INPUTS;
+      }
    }
    else {
       /* VGPU9 */
@@ -1097,6 +1113,11 @@ svga_screen_create(struct svga_winsys_screen *sws)
 
       /* Only one viewport */
       svgascreen->max_viewports = 1;
+
+      /* Shader limits */
+      svgascreen->max_vs_inputs  = 16;
+      svgascreen->max_vs_outputs = 10;
+      svgascreen->max_gs_inputs  = 0;
    }
 
    /* common VGPU9 / VGPU10 caps */
