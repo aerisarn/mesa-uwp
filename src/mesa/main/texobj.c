@@ -1652,30 +1652,6 @@ bind_texture_object(struct gl_context *ctx, unsigned unit,
       texUnit->_BoundTextures &= ~(1 << targetIndex);
 }
 
-/**
- * Light-weight bind texture for internal users
- *
- * This is really just \c finish_texture_init plus \c bind_texture_object.
- * This is intended to be used by internal Mesa functions that use
- * \c _mesa_CreateTexture and need to bind textures (e.g., meta).
- */
-void
-_mesa_bind_texture(struct gl_context *ctx, GLenum target,
-                   struct gl_texture_object *tex_obj)
-{
-   const GLint targetIndex = _mesa_tex_target_to_index(ctx, target);
-
-   assert(targetIndex >= 0 && targetIndex < NUM_TEXTURE_TARGETS);
-
-   if (tex_obj->Target == 0)
-      finish_texture_init(ctx, target, tex_obj, targetIndex);
-
-   assert(tex_obj->Target == target);
-   assert(tex_obj->TargetIndex == targetIndex);
-
-   bind_texture_object(ctx, ctx->Texture.CurrentUnit, tex_obj);
-}
-
 struct gl_texture_object *
 _mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
                                GLuint texName, bool no_error, bool is_ext_dsa,
