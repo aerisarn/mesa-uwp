@@ -97,7 +97,7 @@ svga_set_shader_buffers(struct pipe_context *pipe,
    assert(start + num <= SVGA_MAX_SHADER_BUFFERS);
 
 #ifdef DEBUG
-   struct pipe_shader_buffer *b = buffers;
+   const struct pipe_shader_buffer *b = buffers;
    SVGA_DBG(DEBUG_UAV, "%s: shader=%d start=%d num=%d ",
             __FUNCTION__, shader, start, num);
    if (buffers) {

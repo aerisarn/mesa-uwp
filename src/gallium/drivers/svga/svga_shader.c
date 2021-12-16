@@ -465,7 +465,7 @@ svga_init_shader_key_common(const struct svga_context *svga,
    }
 
    if (svga_have_gl43(svga)) {
-      if (shader->info.images_declared ||
+      if (shader->info.images_declared || shader->info.hw_atomic_declared ||
           shader->info.shader_buffers_declared) {
 
          /* Save the uavSpliceIndex which is the index used for the first uav
@@ -477,7 +477,7 @@ svga_init_shader_key_common(const struct svga_context *svga,
          unsigned uav_splice_index = key->uav_splice_index;
 
          /* Also get the texture data type to be used in the uav declaration */
-         struct svga_image_view *cur_image_view =
+         const struct svga_image_view *cur_image_view =
             &svga->curr.image_views[shader_type][0];
 
          for (unsigned i = 0; i < ARRAY_SIZE(svga->curr.image_views[shader_type]);
@@ -512,7 +512,7 @@ svga_init_shader_key_common(const struct svga_context *svga,
                key->images[i].uav_index = SVGA3D_INVALID_ID;
          }
 
-         struct svga_shader_buffer *cur_sbuf =
+         const struct svga_shader_buffer *cur_sbuf =
             &svga->curr.shader_buffers[shader_type][0];
 
          for (unsigned i = 0; i < ARRAY_SIZE(svga->curr.shader_buffers[shader_type]);
@@ -524,7 +524,7 @@ svga_init_shader_key_common(const struct svga_context *svga,
                key->shader_buf_uav_index[i] = SVGA3D_INVALID_ID;
          }
 
-         struct svga_shader_buffer *cur_buf = &svga->curr.atomic_buffers[0];
+         const struct svga_shader_buffer *cur_buf = &svga->curr.atomic_buffers[0];
 
          for (unsigned i = 0; i < ARRAY_SIZE(svga->curr.atomic_buffers);
               i++, cur_buf++) {
@@ -785,6 +785,9 @@ svga_new_shader_variant(struct svga_context *svga, enum pipe_shader_type type)
       break;
    case PIPE_SHADER_TESS_CTRL:
       variant = CALLOC(1, sizeof(struct svga_tcs_variant));
+      break;
+   case PIPE_SHADER_COMPUTE:
+      variant = CALLOC(1, sizeof(struct svga_cs_variant));
       break;
    default:
       return NULL;

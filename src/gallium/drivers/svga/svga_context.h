@@ -85,10 +85,12 @@ enum svga_hud {
    SVGA_QUERY_MAX
 };
 
+
 /**
  * Maximum supported number of constant buffers per shader
+ * including the zero slot for the default constant buffer.
  */
-#define SVGA_MAX_CONST_BUFS 14
+#define SVGA_MAX_CONST_BUFS 15
 
 /**
  * Maximum constant buffer size that can be set in the
@@ -183,6 +185,8 @@ struct svga_depth_stencil_state {
 #define SVGA_PIPELINE_FLAG_LINES    (1<<PIPE_PRIM_LINES)
 #define SVGA_PIPELINE_FLAG_TRIS     (1<<PIPE_PRIM_TRIANGLES)
 
+#define SVGA_MAX_FRAMEBUFFER_DEFAULT_SAMPLES 4
+
 struct svga_rasterizer_state {
    struct pipe_rasterizer_state templ; /* needed for draw module */
 
@@ -207,6 +211,11 @@ struct svga_rasterizer_state {
    unsigned need_pipeline:16;
 
    SVGA3dRasterizerStateId id;    /**< vgpu10 */
+
+   /* Alternate SVGA rasterizer state object with forcedSampleCount */
+   int altRastIds[SVGA_MAX_FRAMEBUFFER_DEFAULT_SAMPLES+1];
+
+   struct svga_rasterizer_state *no_cull_rasterizer;
 
    /** For debugging: */
    const char* need_pipeline_tris_str;
@@ -277,6 +286,14 @@ struct svga_constant_buffer {
    unsigned size;
 };
 
+struct svga_raw_buffer {
+   struct svga_winsys_surface *handle;
+   unsigned buffer_offset;
+   unsigned buffer_size;
+   struct pipe_resource *buffer;
+   int32 srvid;
+};
+
 /* Use to calculate differences between state emitted to hardware and
  * current driver-calculated state.
  */
@@ -284,10 +301,10 @@ struct svga_state
 {
    const struct svga_blend_state *blend;
    const struct svga_depth_stencil_state *depth;
-   const struct svga_rasterizer_state *rast;
    const struct svga_sampler_state *sampler[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    const struct svga_velems_state *velems;
 
+   struct svga_rasterizer_state *rast;
    struct pipe_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS]; /* or texture ID's? */
    struct svga_fragment_shader *fs;
    struct svga_vertex_shader *vs;
@@ -305,6 +322,7 @@ struct svga_state
     * svga_shader_emitter_v10.num_shader_consts.
     */
    struct pipe_constant_buffer constbufs[PIPE_SHADER_TYPES][SVGA_MAX_CONST_BUFS];
+   struct svga_raw_buffer rawbufs[PIPE_SHADER_TYPES][SVGA_MAX_CONST_BUFS];
 
    struct pipe_framebuffer_state framebuffer;
    float depthscale;
@@ -428,6 +446,8 @@ struct svga_hw_draw_state
    /** Currently bound constant buffer, per shader stage */
    struct pipe_resource *constbuf[PIPE_SHADER_TYPES][SVGA_MAX_CONST_BUFS];
    struct svga_constant_buffer constbufoffsets[PIPE_SHADER_TYPES][SVGA_MAX_CONST_BUFS];
+   struct svga_raw_buffer rawbufs[PIPE_SHADER_TYPES][SVGA_MAX_CONST_BUFS];
+   unsigned enabled_rawbufs[PIPE_SHADER_TYPES];
 
    /** Bitmask of enabled constant buffers */
    unsigned enabled_constbufs[PIPE_SHADER_TYPES];
@@ -450,7 +470,7 @@ struct svga_hw_draw_state
    SVGA3dPrimitiveType topology;
 
    /** Vertex buffer state */
-   SVGA3dVertexBuffer vbuffer_attrs[PIPE_MAX_ATTRIBS];
+   SVGA3dVertexBuffer_v2 vbuffer_attrs[PIPE_MAX_ATTRIBS];
    struct pipe_resource *vbuffers[PIPE_MAX_ATTRIBS];
    unsigned num_vbuffers;
 
@@ -544,12 +564,14 @@ struct svga_uav
    SVGA3dUAViewId uaViewId;
    unsigned timestamp[2];
 };
+
 struct svga_cache_uav
 {
    unsigned num_uaViews;
    unsigned next_uaView;
    struct svga_uav uaViews[SVGA3D_DX11_1_MAX_UAVIEWS];
 };
+
 struct svga_context
 {
    struct pipe_context pipe;
@@ -598,6 +620,9 @@ struct svga_context
 
    /* Bitmask of sampler view IDs */
    struct util_bitmask *sampler_view_id_bm;
+
+   /* Bitmask of to-free sampler view IDs created for raw buffer srv */
+   struct util_bitmask *sampler_view_to_free_id_bm;
 
    /* Bitmask of used shader IDs */
    struct util_bitmask *shader_id_bm;
@@ -649,7 +674,12 @@ struct svga_context
          unsigned tes:1;
          unsigned cs:1;
          unsigned query:1;
+         unsigned images:1;
+         unsigned shaderbufs:1;
+         unsigned atomicbufs:1;
          unsigned uav:1;
+         unsigned indexbuf:1;
+         unsigned vertexbufs:1;
       } flags;
       unsigned val;
    } rebind;
@@ -733,9 +763,6 @@ struct svga_context
       struct svga_pipe_sampler_view *sampler_view;
       void *sampler;
    } polygon_stipple;
-
-   /** Alternate rasterizer states created for point sprite */
-   struct svga_rasterizer_state *rasterizer_no_cull[2];
 
    /** Depth stencil state created to disable depth stencil test */
    struct svga_depth_stencil_state *depthstencil_disable;
@@ -856,6 +883,7 @@ void svga_init_query_functions( struct svga_context *svga );
 void svga_init_surface_functions(struct svga_context *svga);
 void svga_init_stream_output_functions( struct svga_context *svga );
 void svga_init_clear_functions( struct svga_context *svga );
+void svga_init_shader_image_functions( struct svga_context *svga );
 
 void svga_cleanup_vertex_state( struct svga_context *svga );
 void svga_cleanup_sampler_state( struct svga_context *svga );
@@ -882,6 +910,11 @@ svga_context_create(struct pipe_screen *screen,
 void svga_toggle_render_condition(struct svga_context *svga,
                                   boolean render_condition_enabled,
                                   boolean on);
+
+int svga_define_rasterizer_object(struct svga_context *svga,
+                                  struct svga_rasterizer_state *,
+                                  unsigned samples);
+
 enum pipe_error
 svga_validate_sampler_resources(struct svga_context *svga,
                                 enum svga_pipe_type);
@@ -903,6 +936,9 @@ svga_destroy_rawbuf_srv(struct svga_context *svga);
 
 void
 svga_uav_cache_init(struct svga_context *svga);
+
+void
+svga_destroy_rawbuf_srv(struct svga_context *svga);
 
 
 /***********************************************************************

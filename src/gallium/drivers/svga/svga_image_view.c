@@ -289,7 +289,7 @@ svga_validate_image_view_resources(struct svga_context *svga,
 
             surf = tex->handle;
             /* Mark texture as RENDERED */
-            svga_set_texture_rendered_to(tex, 0, 0);
+            svga_set_texture_rendered_to(tex);
          }
 
          assert(surf);

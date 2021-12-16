@@ -74,6 +74,9 @@ static const struct debug_named_value svga_debug_flags[] = {
    { "streamout",   DEBUG_STREAMOUT, NULL },
    { "query",       DEBUG_QUERY, NULL },
    { "samplers",    DEBUG_SAMPLERS, NULL },
+   { "image",       DEBUG_IMAGE, NULL },
+   { "uav",         DEBUG_UAV, NULL },
+   { "retry",       DEBUG_RETRY, NULL },
    DEBUG_NAMED_VALUE_END
 };
 #endif
@@ -621,7 +624,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
        (shader == PIPE_SHADER_TESS_CTRL || shader == PIPE_SHADER_TESS_EVAL))
       return 0;
 
-   if (shader == PIPE_SHADER_COMPUTE)
+   if ((!sws->have_gl43) && (shader == PIPE_SHADER_COMPUTE))
       return 0;
 
    /* NOTE: we do not query the device for any caps/limits at this time */
@@ -724,6 +727,45 @@ svga_get_shader_param(struct pipe_screen *screen, enum pipe_shader_type shader,
    }
 }
 
+
+static int
+svga_sm5_get_compute_param(struct pipe_screen *screen,
+                           enum pipe_shader_ir ir_type,
+                           enum pipe_compute_cap param,
+                           void *ret)
+{
+   ASSERTED struct svga_screen *svgascreen = svga_screen(screen);
+   ASSERTED struct svga_winsys_screen *sws = svgascreen->sws;
+   uint64_t *iret = (uint64_t *)ret;
+
+   assert(sws->have_gl43);
+   assert(ir_type == PIPE_SHADER_IR_TGSI);
+
+   switch (param) {
+   case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
+      iret[0] = 65535;
+      iret[1] = 65535;
+      iret[2] = 65535;
+      return 3 * sizeof(uint64_t);
+   case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
+      iret[0] = 1024;
+      iret[1] = 1024;
+      iret[2] = 64;
+      return 3 * sizeof(uint64_t);
+   case PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK:
+      *iret = 1024;
+      return sizeof(uint64_t);
+   case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
+      *iret = 32768;
+      return sizeof(uint64_t);
+   case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
+      *iret = 0;
+      return sizeof(uint64_t);
+   default:
+      debug_printf("Unexpected compute param %u\n", param);
+   }
+   return 0;
+}
 
 static void
 svga_fence_reference(struct pipe_screen *screen,
@@ -957,6 +999,9 @@ svga_screen_create(struct svga_winsys_screen *sws)
    screen->fence_get_fd = svga_fence_get_fd;
 
    screen->get_driver_query_info = svga_get_driver_query_info;
+
+   screen->get_compute_param = svga_sm5_get_compute_param;
+
    svgascreen->sws = sws;
 
    svga_init_screen_resource_functions(svgascreen);
@@ -974,10 +1019,29 @@ svga_screen_create(struct svga_winsys_screen *sws)
       goto error2;
    }
 
-   svgascreen->debug.sampler_state_mapping =
-      debug_get_bool_option("SVGA_SAMPLER_STATE_MAPPING", FALSE);
+   if (sws->have_gl43) {
+      svgascreen->forcedSampleCount =
+         get_uint_cap(sws, SVGA3D_DEVCAP_MAX_FORCED_SAMPLE_COUNT, 0);
+
+      sws->have_gl43 = sws->have_gl43 && (svgascreen->forcedSampleCount >= 4);
+
+      /* Allow a temporary environment variable to enable/disable GL43 support.
+       */
+      sws->have_gl43 =
+         debug_get_bool_option("SVGA_GL43", sws->have_gl43);
+
+      svgascreen->debug.sampler_state_mapping =
+         debug_get_bool_option("SVGA_SAMPLER_STATE_MAPPING", FALSE);
+   }
+   else {
+      /* sampler state mapping code is only enabled with GL43
+       * due to the limitation in SW Renderer. (VMware bug 2825014)
+       */
+      svgascreen->debug.sampler_state_mapping = FALSE;
+   }
 
    debug_printf("%s enabled\n",
+                sws->have_gl43 ? "SM5+" :
                 sws->have_sm5 ? "SM5" :
                 sws->have_sm4_1 ? "SM4_1" :
                 sws->have_vgpu10 ? "VGPU10" : "VGPU9");
@@ -1053,10 +1117,15 @@ svga_screen_create(struct svga_winsys_screen *sws)
       }
 
       /* Maximum number of constant buffers */
-      svgascreen->max_const_buffers =
-         get_uint_cap(sws, SVGA3D_DEVCAP_DX_MAX_CONSTANT_BUFFERS, 1);
-      svgascreen->max_const_buffers = MIN2(svgascreen->max_const_buffers,
-                                           SVGA_MAX_CONST_BUFS);
+      if (sws->have_gl43) {
+         svgascreen->max_const_buffers = SVGA_MAX_CONST_BUFS;
+      }
+      else {
+         svgascreen->max_const_buffers =
+            get_uint_cap(sws, SVGA3D_DEVCAP_DX_MAX_CONSTANT_BUFFERS, 1);
+         svgascreen->max_const_buffers = MIN2(svgascreen->max_const_buffers,
+                                              SVGA_MAX_CONST_BUFS);
+      }
 
       svgascreen->haveBlendLogicops =
          get_bool_cap(sws, SVGA3D_DEVCAP_LOGIC_BLENDOPS, FALSE);

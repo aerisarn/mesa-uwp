@@ -337,13 +337,25 @@ svga_buffer_hw_storage_unmap(struct svga_context *svga,
       }
    } else
       sws->buffer_unmap(sws, sbuf->hwbuf);
+
+   /* Mark the buffer surface as UPDATED */
+   assert(sbuf->bufsurf);
+   sbuf->bufsurf->surface_state = SVGA_SURFACE_STATE_UPDATED;
 }
+
+
 static inline void
 svga_set_buffer_rendered_to(struct svga_buffer_surface *bufsurf)
 {
    bufsurf->surface_state = SVGA_SURFACE_STATE_RENDERED;
 }
 
+
+static inline boolean
+svga_was_buffer_rendered_to(const struct svga_buffer_surface *bufsurf)
+{
+   return (bufsurf->surface_state == SVGA_SURFACE_STATE_RENDERED);
+}
 
 
 struct pipe_resource *

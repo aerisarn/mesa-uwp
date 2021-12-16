@@ -450,6 +450,7 @@ svga_set_stream_output_targets(struct pipe_context *pipe,
    for (i = 0; i < num_targets; i++) {
       struct svga_stream_output_target *sot
          = svga_stream_output_target(targets[i]);
+      struct svga_buffer *sbuf = svga_buffer(sot->base.buffer);
       unsigned size;
 
       svga->so_surfaces[i] = svga_buffer_handle(svga, sot->base.buffer,
@@ -457,6 +458,10 @@ svga_set_stream_output_targets(struct pipe_context *pipe,
 
       assert(svga_buffer(sot->base.buffer)->key.flags
              & SVGA3D_SURFACE_BIND_STREAM_OUTPUT);
+
+      /* Mark the buffer surface as RENDERED */
+      assert(sbuf->bufsurf);
+      sbuf->bufsurf->surface_state = SVGA_SURFACE_STATE_RENDERED;
 
       svga->so_targets[i] = &sot->base;
       if (offsets[i] == -1) {

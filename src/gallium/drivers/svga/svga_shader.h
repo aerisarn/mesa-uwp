@@ -159,11 +159,11 @@ struct svga_compile_key
       enum pipe_texture_target resource_target;
       unsigned is_array:1;
       unsigned is_single_layer:1;
-      unsigned uav_index:7;
+      unsigned uav_index;
    } images[PIPE_MAX_SHADER_IMAGES];
 
-   uint16_t shader_buf_uav_index[PIPE_MAX_SHADER_BUFFERS];
-   uint16_t atomic_buf_uav_index[PIPE_MAX_HW_ATOMIC_BUFFERS];
+   uint32_t shader_buf_uav_index[PIPE_MAX_SHADER_BUFFERS];
+   uint32_t atomic_buf_uav_index[PIPE_MAX_HW_ATOMIC_BUFFERS];
 };
 
 /* A key for a variant of token string of a shader */

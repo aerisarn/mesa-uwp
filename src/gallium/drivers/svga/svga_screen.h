@@ -58,6 +58,7 @@ struct svga_screen
    unsigned max_const_buffers;
    unsigned max_viewports;
    unsigned ms_samples;
+   unsigned forcedSampleCount; /* available with GL43 capable device only */
    unsigned max_vs_inputs;
    unsigned max_vs_outputs;
    unsigned max_gs_inputs;

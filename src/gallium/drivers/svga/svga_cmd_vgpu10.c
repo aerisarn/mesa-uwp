@@ -1172,7 +1172,7 @@ enum pipe_error
 SVGA3D_vgpu10_SetVertexBuffers(struct svga_winsys_context *swc,
                                unsigned count,
                                uint32 startBuffer,
-                               const SVGA3dVertexBuffer *bufferInfo,
+                               const SVGA3dVertexBuffer_v2 *bufferInfo,
                                struct svga_winsys_surface **surfaces)
 {
    SVGA3dCmdDXSetVertexBuffers *cmd;
