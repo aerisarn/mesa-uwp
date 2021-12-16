@@ -93,9 +93,6 @@ stages:
 # --------------------------------
 .rules-anchors:
   rules:
-    # For Marge Bot
-    - if: &is-for-marge '$GITLAB_USER_LOGIN == "marge-bot"'
-      when: never
     # Pipeline for forked project branch
     - if: &is-forked-branch '$CI_COMMIT_BRANCH && $CI_PROJECT_NAMESPACE != "mesa"'
       when: manual
