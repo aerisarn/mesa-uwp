@@ -66,25 +66,6 @@ def get_unorm_to_srgb_map(formats):
         # Every sRGB format MUST have a UNORM equivalent
         assert found_unorm_name
 
-def get_rgbx_to_rgba_map(formats):
-    names = set(fmt.name for fmt in formats)
-
-    for fmt in formats:
-        if not fmt.has_channel('r') or not fmt.has_channel('x'):
-            continue
-
-        # The condition above will still let MESA_FORMAT_R9G9B9E5_FLOAT
-        # through.  We need to ensure it actually has an X in the name.
-        if not 'X' in fmt.name:
-            continue
-
-        rgbx_name = fmt.name
-        rgba_name = rgbx_name.replace("X", "A")
-        if rgba_name not in names:
-            continue;
-
-        yield rgbx_name, rgba_name
-
 def get_intensity_to_red_map(formats):
     names = set(fmt.name for fmt in formats)
 
@@ -158,33 +139,6 @@ _mesa_get_intensity_format_red(mesa_format format)
       return format;
    }
 }
-
-/**
- * If the format has an alpha channel, and there exists a non-alpha
- * variant of the format with an identical bit layout, then return
- * the non-alpha format. Otherwise return the original format.
- *
- * Examples:
- *    Fallback exists:
- *       MESA_FORMAT_R8G8B8X8_UNORM -> MESA_FORMAT_R8G8B8A8_UNORM
- *       MESA_FORMAT_RGBX_UNORM16 -> MESA_FORMAT_RGBA_UNORM16
- *
- *    No fallback:
- *       MESA_FORMAT_R8G8B8A8_UNORM -> MESA_FORMAT_R8G8B8A8_UNORM
- *       MESA_FORMAT_Z_FLOAT32 -> MESA_FORMAT_Z_FLOAT32
- */
-mesa_format
-_mesa_format_fallback_rgbx_to_rgba(mesa_format format)
-{
-   switch (format) {
-%for rgbx, rgba in rgbx_to_rgba_map:
-   case ${rgbx}:
-      return ${rgba};
-%endfor
-   default:
-      return format;
-   }
-}
 """);
 
 def main():
@@ -194,7 +148,6 @@ def main():
 
     template_env = {
         'unorm_to_srgb_map': list(get_unorm_to_srgb_map(formats)),
-        'rgbx_to_rgba_map': list(get_rgbx_to_rgba_map(formats)),
         'intensity_to_red_map': list(get_intensity_to_red_map(formats)),
     }
 
