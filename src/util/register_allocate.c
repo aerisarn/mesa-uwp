@@ -472,13 +472,13 @@ ra_set_deserialize(void *mem_ctx, struct blob_reader *blob)
    return regs;
 }
 
-static unsigned
-ra_get_num_adjacency_bits(unsigned int n)
+static uint64_t
+ra_get_num_adjacency_bits(uint64_t n)
 {
    return (n * (n - 1)) / 2;
 }
 
-static unsigned
+static uint64_t
 ra_get_adjacency_bit_index(unsigned n1, unsigned n2)
 {
    assert(n1 != n2);
@@ -490,7 +490,7 @@ ra_get_adjacency_bit_index(unsigned n1, unsigned n2)
 static bool
 ra_test_adjacency_bit(struct ra_graph *g, unsigned n1, unsigned n2)
 {
-   unsigned index = ra_get_adjacency_bit_index(n1, n2);
+   uint64_t index = ra_get_adjacency_bit_index(n1, n2);
    return BITSET_TEST(g->adjacency, index);
 }
 
