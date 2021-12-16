@@ -164,7 +164,8 @@ _mesa_glthread_destroy(struct gl_context *ctx, const char *reason)
    if (!glthread->enabled)
       return;
 
-   _mesa_debug(ctx, "glthread destroy reason: %s\n", reason);
+   if (reason)
+      _mesa_debug(ctx, "glthread destroy reason: %s\n", reason);
 
    _mesa_glthread_finish(ctx);
    util_queue_destroy(&glthread->queue);
