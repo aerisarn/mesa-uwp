@@ -3120,8 +3120,11 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          ssa_info& info = ctx.info[op.tempId()];
          if (info.is_vop3p() && info.instr->opcode == aco_opcode::v_pk_mul_f16 &&
              info.instr->operands[1].constantEquals(0xBC00)) {
-            Operand ops[2] = {instr->operands[!i], info.instr->operands[0]};
-            if (!check_vop3_operands(ctx, 2, ops))
+            Operand ops[3];
+            for (unsigned j = 0; j < instr->operands.size(); j++)
+               ops[j] = instr->operands[j];
+            ops[i] = info.instr->operands[0];
+            if (!check_vop3_operands(ctx, instr->operands.size(), ops))
                continue;
 
             VOP3P_instruction* fneg = &info.instr->vop3p();
