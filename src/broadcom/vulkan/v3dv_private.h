@@ -1102,6 +1102,9 @@ struct v3dv_job {
    /* Whether we need to serialize this job in our command stream */
    bool serialize;
 
+   /* Whether this job is in charge of signalling semaphores */
+   bool do_sem_signal;
+
    /* If this is a CL job, whether we should sync before binning */
    bool needs_bcl_sync;
 
