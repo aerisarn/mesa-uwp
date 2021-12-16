@@ -1382,24 +1382,17 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool, bool is_points)
 static uint64_t
 demo_unk11(struct agx_pool *pool, bool prim_lines, bool prim_points, bool reads_tib)
 {
-#define UNK11_FILL_MODE_LINES_1 (1 << 26)
+   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_UNKNOWN_4A_LENGTH, 64);
 
-#define UNK11_FILL_MODE_LINES_2 (0x5004 << 16)
-#define UNK11_LINES (0x10000000)
-#define UNK11_POINTS (0x40000000)
+   agx_pack(T.cpu, UNKNOWN_4A, cfg) {
+      cfg.lines_or_points = (prim_lines || prim_points);
+      cfg.reads_tilebuffer = reads_tib;
 
-#define UNK11_READS_TIB (0x20000000)
-
-   uint32_t unk[] = {
-      0x200004a,
-      0x200 | ((prim_lines || prim_points) ? UNK11_FILL_MODE_LINES_1 : 0) | (reads_tib ? UNK11_READS_TIB : 0),
-      0x7e00000 | (prim_lines ? UNK11_LINES : 0) | (prim_points ? UNK11_POINTS : 0),
-      0x7e00000 | (prim_lines ? UNK11_LINES : 0) | (prim_points ? UNK11_POINTS : 0),
-
-      0x1ffff
+      cfg.front.lines = cfg.back.lines = prim_lines;
+      cfg.front.points = cfg.back.points = prim_points;
    };
 
-   return agx_pool_upload(pool, unk, sizeof(unk));
+   return T.gpu;
 }
 
 static uint64_t

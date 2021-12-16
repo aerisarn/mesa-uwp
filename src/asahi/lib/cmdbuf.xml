@@ -302,6 +302,23 @@
     <field name="Back" size="64" start="4:0" type="Rasterizer face"/>
   </struct>
 
+  <struct name="Unknown face" size="4">
+    <field name="Unknown" size="8" start="0:20" type="hex" default="0x7e"/>
+    <field name="Lines" size="1" start="0:28" type="bool"/>
+    <field name="Points" size="1" start="0:30" type="bool"/>
+  </struct>
+
+  <struct name="Unknown 4a" size="20">
+    <field name="Tag" size="32" start="0:0" type="hex" default="0x200004a"/>
+    <field name="Unk 1" size="1" start="1:9" type="bool" default="true"/>
+    <field name="Lines or points" size="1" start="1:26" type="bool"/>
+    <field name="Reads tilebuffer" size="1" start="1:29" type="bool"/>
+    <field name="Front" size="32" start="2:0" type="Unknown face"/>
+    <field name="Back" size="32" start="3:0" type="Unknown face"/>
+    <!-- maybe sample mask -->
+    <field name="Unk 4" size="32" start="4:0" type="hex" default="0x1ffff"/>
+  </struct>
+
   <struct name="Cull" size="8">
     <field name="Tag" size="32" start="0:0" type="hex" default="0x200000"/>
     <field name="Cull front" size="1" start="1:0" type="bool"/>
