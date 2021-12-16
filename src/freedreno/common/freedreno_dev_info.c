@@ -58,6 +58,24 @@ dev_id_compare(const struct fd_dev_id *ref, const struct fd_dev_id *id)
             ((ref->chip_id & UINT64_C(0xffffff00)) ==
              (id->chip_id & UINT64_C(0xffffff00))))
          return true;
+#define WILDCARD_FUSE_ID UINT64_C(0x0000ffff00000000)
+      /* If the reference id has wildcard fuse-id value (ie. bits 47..32
+       * are all ones, then try matching ignoring the device fuse-id:
+       */
+      if ((ref->chip_id & WILDCARD_FUSE_ID) == WILDCARD_FUSE_ID) {
+         uint64_t chip_id = id->chip_id | WILDCARD_FUSE_ID;
+         /* (c) exact match (ignoring the fuse-id from kernel):
+          */
+         if (ref->chip_id == chip_id)
+            return true;
+         /* (d) device table entry has 0xff wildcard patch_id and core/
+          *     major/minor match (ignoring fuse-id from kernel):
+          */
+         if (((ref->chip_id & 0xff) == 0xff) &&
+               ((ref->chip_id & UINT64_C(0xffffff00)) ==
+                (chip_id & UINT64_C(0xffffff00))))
+            return true;
+      }
       return false;
    }
 }
