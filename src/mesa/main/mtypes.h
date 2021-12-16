@@ -5398,7 +5398,6 @@ struct gl_context
    GLfloat _ModelViewInvScale; /* may be for model- or eyespace lighting */
    GLfloat _ModelViewInvScaleEyespace; /* always factor defined in spec */
    GLboolean _NeedEyeCoords;
-   GLboolean _ForceEyeCoords;
 
    GLuint TextureStateTimestamp; /**< detect changes to shared state */
 
