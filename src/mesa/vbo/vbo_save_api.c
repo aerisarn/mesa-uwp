@@ -834,12 +834,14 @@ compile_vertex_list(struct gl_context *ctx)
       free(temp_vertices_buffer);
    }
 
-   /* Since we're append the indices to an existing buffer, we need to adjust the start value of each
+   /* Since we append the indices to an existing buffer, we need to adjust the start value of each
     * primitive (not the indices themselves). */
-   save->current_bo_bytes_used += align(save->current_bo_bytes_used, 4) - save->current_bo_bytes_used;
-   int indices_offset = save->current_bo_bytes_used / 4;
-   for (int i = 0; i < merged_prim_count; i++) {
-      merged_prims[i].start += indices_offset;
+   if (!ctx->ListState.Current.UseLoopback) {
+      save->current_bo_bytes_used += align(save->current_bo_bytes_used, 4) - save->current_bo_bytes_used;
+      int indices_offset = save->current_bo_bytes_used / 4;
+      for (int i = 0; i < merged_prim_count; i++) {
+         merged_prims[i].start += indices_offset;
+      }
    }
 
    /* Then upload the indices. */
@@ -956,20 +958,16 @@ end:
       _glapi_set_dispatch(ctx->Exec);
 
       /* _vbo_loopback_vertex_list doesn't use the index buffer, so we have to
-       * use buffer_in_ram instead of current_bo which contains all vertices instead
-       * of the deduplicated vertices only in the !UseLoopback case.
+       * use buffer_in_ram (which contains all vertices) instead of current_bo
+       * (which contains deduplicated vertices *when* UseLoopback is false).
        *
        * The problem is that the VAO offset is based on current_bo's layout,
        * so we have to use a temp value.
        */
       struct gl_vertex_array_object *vao = node->cold->VAO[VP_MODE_SHADER];
       GLintptr original = vao->BufferBinding[0].Offset;
-      if (!ctx->ListState.Current.UseLoopback) {
-         GLintptr new_offset = 0;
-         /* 'start_offset' has been added to all primitives 'start', so undo it here. */
-         new_offset -= start_offset * stride;
-         vao->BufferBinding[0].Offset = new_offset;
-      }
+      /* 'start_offset' has been added to all primitives 'start', so undo it here. */
+      vao->BufferBinding[0].Offset = -(GLintptr)(start_offset * stride);
       _vbo_loopback_vertex_list(ctx, node, save->vertex_store->buffer_in_ram);
       vao->BufferBinding[0].Offset = original;
 
