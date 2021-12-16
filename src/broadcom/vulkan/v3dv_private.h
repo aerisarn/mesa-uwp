@@ -989,6 +989,9 @@ struct v3dv_submit_info_semaphores {
    /* List of semaphores to signal when all jobs complete */
    uint32_t signal_sem_count;
    VkSemaphore *signal_sems;
+
+   /* A fence to signal when all jobs complete */
+   VkFence fence;
 };
 
 struct v3dv_event_set_cpu_job_info {

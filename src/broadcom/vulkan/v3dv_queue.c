@@ -633,6 +633,11 @@ process_semaphores_to_signal(struct v3dv_device *device,
 }
 
 static VkResult
+queue_submit_noop_job(struct v3dv_queue *queue,
+                      struct v3dv_submit_info_semaphores *sems_info,
+                      bool do_sem_signal, bool serialize);
+
+static VkResult
 process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
 {
    if (_fence == VK_NULL_HANDLE)
@@ -641,6 +646,26 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
    struct v3dv_fence *fence = v3dv_fence_from_handle(_fence);
 
    int render_fd = device->pdevice->render_fd;
+
+   if (device->pdevice->caps.multisync) {
+      struct v3dv_queue *queue = &device->queue;
+      /* We signal the fence once all submitted command buffers have completed
+       * execution. For this, we emit a noop job that waits on the completion
+       * of all submitted jobs and signal the fence for this submission.
+       * FIXME: In simpler cases (for instance, when all jobs were submitted to
+       * the same queue), we can just import the last out sync produced into
+       * the fence.
+       */
+      struct v3dv_submit_info_semaphores sems_info = {
+         .wait_sem_count = 0,
+         .wait_sems = NULL,
+         .signal_sem_count = 0,
+         .signal_sems = NULL,
+         .fence = _fence,
+      };
+
+      return queue_submit_noop_job(queue, &sems_info, false, true);
+   }
 
    int fd;
    mtx_lock(&device->mutex);
@@ -727,11 +752,12 @@ set_out_syncs(struct v3dv_device *device,
    uint32_t n_sems = job->do_sem_signal ? sems_info->signal_sem_count : 0;
 
    /* We always signal the syncobj from `device->last_job_syncs` related to
-    * this v3dv_queue_type to track the last job submitted to this queue. We
-    * also signal the last overall job (V3DV_QUEUE_ANY) as we use it to
-    * process signal semaphores and fence.
+    * this v3dv_queue_type to track the last job submitted to this queue.
     */
-   (*count) = n_sems + 2;
+   (*count) = n_sems + 1;
+
+   if (sems_info->fence)
+      (*count)++;
 
    struct drm_v3d_sem *syncs =
       vk_zalloc(&device->vk.alloc, *count * sizeof(struct drm_v3d_sem),
@@ -749,7 +775,11 @@ set_out_syncs(struct v3dv_device *device,
    }
 
    syncs[n_sems].handle = device->last_job_syncs.syncs[queue];
-   syncs[++n_sems].handle = device->last_job_syncs.syncs[V3DV_QUEUE_ANY];
+
+   if (sems_info->fence) {
+      struct v3dv_fence *fence = v3dv_fence_from_handle(sems_info->fence);
+      syncs[++n_sems].handle = fence->sync;
+   }
 
    return syncs;
 }
@@ -1310,6 +1340,7 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
       .wait_sems = (VkSemaphore *) pSubmit->pWaitSemaphores,
       .signal_sem_count = pSubmit->signalSemaphoreCount,
       .signal_sems = (VkSemaphore *) pSubmit->pSignalSemaphores,
+      .fence = 0,
    };
 
    /* In the beginning of a cmd buffer batch, we set all last_job_syncs as
