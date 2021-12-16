@@ -1119,7 +1119,8 @@ vtn_get_builtin_location(struct vtn_builder *b,
       break;
    case SpvBuiltInPrimitiveShadingRateKHR:
       if (b->shader->info.stage == MESA_SHADER_VERTEX ||
-          b->shader->info.stage == MESA_SHADER_GEOMETRY) {
+          b->shader->info.stage == MESA_SHADER_GEOMETRY ||
+          b->shader->info.stage == MESA_SHADER_MESH) {
          *location = VARYING_SLOT_PRIMITIVE_SHADING_RATE;
          *mode = nir_var_shader_out;
       } else {
