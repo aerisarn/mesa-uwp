@@ -106,6 +106,12 @@ KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2
 KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support
 KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guarded_read_calls
 
+# First flaked on 2021-08-19 with a kernel update.
+KHR-GLES31.core.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize
+
+# edfff331b3241d1c18d5c589fcdf75728089c886 mostly fixed this, but apparently it still flakes.
+dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_scale
+
 # looks like a cache flushing issue, and it does sometimes pass.
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.*
 
@@ -146,6 +152,10 @@ spec@arb_depth_texture@fbo-clear-formats
 spec@arb_draw_indirect@arb_draw_indirect-transform-feedback
 spec@arb_map_buffer_range@map_invalidate_buffer_bit offset=0
 
+# Always been flaky, but didn't show up until the testscase was fixed to not spuriously skip.
+spec@arb_shader_image_load_store@indexing
+spec@arb_shader_image_load_store@indexing@Fragment shader/dynamically uniform indexing test
+
 # Occasionally passes instead of failing
 spec@egl_chromium_sync_control@conformance
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test
@@ -171,3 +181,9 @@ spec@glsl-1.30@execution@tex-miplevel-selection texture\(bias\) cubearray
 
 # First appeared on 2021-05-14 on tc-merge-index-unrefs, but not obviously related.
 spec@!opengl 1.0@rasterpos@glsl_vs_tex1D
+
+# Has only flaked where it fails twice in a run, never as a Flake status.
+spec@!opengl 1.0@rasterpos@glsl_vs_ubo
+
+# First appeared 2021-06-14
+spec@egl 1.4@eglcreatepbuffersurface and then glclear
