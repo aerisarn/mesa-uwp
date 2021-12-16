@@ -803,6 +803,7 @@ struct svga_winsys_screen
    boolean have_fence_fd;
    boolean have_intra_surface_copy;
    boolean have_constant_buffer_offset_cmd;
+   boolean have_gl43;
 };
 
 

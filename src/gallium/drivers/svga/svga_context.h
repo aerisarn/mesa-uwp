@@ -816,6 +816,12 @@ svga_have_sm5(const struct svga_context *svga)
 }
 
 static inline boolean
+svga_have_gl43(const struct svga_context *svga)
+{
+   return svga_screen(svga->pipe.screen)->sws->have_gl43;
+}
+
+static inline boolean
 svga_need_to_rebind_resources(const struct svga_context *svga)
 {
    return svga_screen(svga->pipe.screen)->sws->need_to_rebind_resources;
