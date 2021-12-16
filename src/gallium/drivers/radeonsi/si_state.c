@@ -951,7 +951,7 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                                : 0;
    /* TODO: implement line stippling with perpendicular end caps. */
    /* Line width > 2 is an internal recommendation. */
-   rs->perpendicular_end_caps = (state->multisample || state->line_smooth) &&
+   rs->perpendicular_end_caps = state->multisample &&
                                 state->line_width > 2 && !state->line_stipple_enable;
 
    rs->pa_cl_clip_cntl = S_028810_DX_CLIP_SPACE_DEF(state->clip_halfz) |
