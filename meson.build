@@ -1709,10 +1709,6 @@ if with_llvm
     # programs, so we need to build all C++ code in mesa without rtti as well to
     # ensure that linking works. Note that MSVC does handle mismatching RTTI
     # without issues, so only apply this for other compilers.
-    #
-    # In meson 0.51.0 we can use cmake to find LLVM in addittion to meson's
-    # builtin llvm-config based finder. A new generic variable getter method
-    # has also been added, so we'll use that if we can, to cover the cmake case.
     if dep_llvm.type_name() == 'internal'
       _llvm_rtti = subproject('llvm').get_variable('has_rtti', true)
     else
