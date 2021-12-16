@@ -47,14 +47,18 @@ dev_id_compare(const struct fd_dev_id *ref, const struct fd_dev_id *id)
    } else {
       assert(ref->chip_id && id->chip_id);
       /* Match on either:
-       * (a) exact match
-       * (b) device table entry has 0xff wildcard patch_id and core/
-       *     major/minor match
+       * (a) exact match:
        */
-      return (ref->chip_id == id->chip_id) ||
-             (((ref->chip_id & 0xff) == 0xff) &&
-              ((ref->chip_id & UINT64_C(0xffffff00)) ==
-               (id->chip_id & UINT64_C(0xffffff00))));
+      if (ref->chip_id == id->chip_id)
+         return true;
+      /* (b) device table entry has 0xff wildcard patch_id and core/
+       *     major/minor match:
+       */
+      if (((ref->chip_id & 0xff) == 0xff) &&
+            ((ref->chip_id & UINT64_C(0xffffff00)) ==
+             (id->chip_id & UINT64_C(0xffffff00))))
+         return true;
+      return false;
    }
 }
 
