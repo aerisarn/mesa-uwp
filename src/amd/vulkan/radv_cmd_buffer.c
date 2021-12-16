@@ -2473,6 +2473,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
    int i;
    struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
+   bool disable_constant_encode_ac01 = false;
 
    for (i = 0; i < 8; ++i) {
       if (i >= subpass->color_count ||
@@ -2495,6 +2496,14 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
                                in_render_loop, cmd_buffer->state.attachments[idx].disable_dcc);
 
       radv_load_color_clear_metadata(cmd_buffer, iview, i);
+
+      if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 &&
+          iview->image->dcc_sign_reinterpret) {
+         /* Disable constant encoding with the clear value of "1" with different DCC signedness
+          * because the hardware will fill "1" instead of the clear value.
+          */
+         disable_constant_encode_ac01 = true;
+      }
    }
 
    if (subpass->depth_stencil_attachment) {
@@ -2572,6 +2581,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_DCC_CONTROL,
                              S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(chip_class <= GFX9) |
                                 S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
+                                S_028424_DISABLE_CONSTANT_ENCODE_AC01(disable_constant_encode_ac01) |
                                 S_028424_DISABLE_CONSTANT_ENCODE_REG(disable_constant_encode));
    }
 
