@@ -46,6 +46,8 @@ struct i915_device {
 
 struct i915_bo {
    struct shim_bo base;
+   uint32_t tiling_mode;
+   uint32_t stride;
 };
 
 static struct i915_device i915 = {};
@@ -55,6 +57,39 @@ bool drm_shim_driver_prefers_first_render_node = true;
 static int
 i915_ioctl_noop(int fd, unsigned long request, void *arg)
 {
+   return 0;
+}
+
+static int
+i915_ioctl_gem_set_tiling(int fd, unsigned long request, void *arg)
+{
+   struct shim_fd *shim_fd = drm_shim_fd_lookup(fd);
+   struct drm_i915_gem_set_tiling *tiling_arg = arg;
+   struct i915_bo *bo = (struct i915_bo *) drm_shim_bo_lookup(shim_fd, tiling_arg->handle);
+
+   if (!bo)
+      return -1;
+
+   bo->tiling_mode = tiling_arg->tiling_mode;
+   bo->stride = tiling_arg->stride;
+
+   return 0;
+}
+
+static int
+i915_ioctl_gem_get_tiling(int fd, unsigned long request, void *arg)
+{
+   struct shim_fd *shim_fd = drm_shim_fd_lookup(fd);
+   struct drm_i915_gem_get_tiling *tiling_arg = arg;
+   struct i915_bo *bo = (struct i915_bo *) drm_shim_bo_lookup(shim_fd, tiling_arg->handle);
+
+   if (!bo)
+      return -1;
+
+   tiling_arg->tiling_mode = bo->tiling_mode;
+   tiling_arg->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
+   tiling_arg->phys_swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
+
    return 0;
 }
 
@@ -424,7 +459,7 @@ static ioctl_fn_t driver_ioctls[] = {
 
    [DRM_I915_GEM_CREATE] = i915_ioctl_gem_create,
    [DRM_I915_GEM_MMAP] = i915_ioctl_gem_mmap,
-   [DRM_I915_GEM_SET_TILING] = i915_ioctl_noop,
+   [DRM_I915_GEM_SET_TILING] = i915_ioctl_gem_set_tiling,
    [DRM_I915_GEM_CONTEXT_CREATE] = i915_ioctl_gem_context_create,
    [DRM_I915_GEM_CONTEXT_DESTROY] = i915_ioctl_noop,
    [DRM_I915_GEM_CONTEXT_GETPARAM] = i915_ioctl_gem_context_getparam,
@@ -442,7 +477,7 @@ static ioctl_fn_t driver_ioctls[] = {
    [DRM_I915_GEM_SET_DOMAIN] = i915_ioctl_noop,
    [DRM_I915_GEM_GET_CACHING] = i915_ioctl_noop,
    [DRM_I915_GEM_SET_CACHING] = i915_ioctl_noop,
-   [DRM_I915_GEM_GET_TILING] = i915_ioctl_noop,
+   [DRM_I915_GEM_GET_TILING] = i915_ioctl_gem_get_tiling,
    [DRM_I915_GEM_MADVISE] = i915_ioctl_noop,
    [DRM_I915_GEM_WAIT] = i915_ioctl_noop,
    [DRM_I915_GEM_BUSY] = i915_ioctl_noop,
