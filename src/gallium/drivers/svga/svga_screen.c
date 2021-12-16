@@ -223,6 +223,9 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 1;
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
       return sws->have_vgpu10;
+   case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
+      return sws->have_vgpu10 ? 16 : 0;
+
    case PIPE_CAP_TEXTURE_SWIZZLE:
       return 1;
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
@@ -278,16 +281,16 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 1; /* expected for GL_ARB_framebuffer_object */
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      if (sws->have_sm5) {
+   case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
+      if (sws->have_gl43) {
+         return 430;
+      } else if (sws->have_sm5) {
          return 410;
       } else if (sws->have_vgpu10) {
          return 330;
       } else {
          return 120;
       }
-
-   case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return sws->have_sm5 ? 410 : (sws->have_vgpu10 ? 330 : 120);
 
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return 0;
@@ -371,12 +374,28 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MAX_VERTEX_STREAMS:
       return sws->have_sm5 ? 4 : 0;
    case PIPE_CAP_COMPUTE:
-      return 0;
+      return sws->have_gl43;
    case PIPE_CAP_MAX_VARYINGS:
-      return sws->have_vgpu10 ? VGPU10_MAX_FS_INPUTS : 10;
+      /* According to the spec, max varyings does not include the components
+       * for position, so remove one count from the max for position.
+       */
+      return sws->have_vgpu10 ? VGPU10_MAX_FS_INPUTS-1 : 10;
    case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
       return sws->have_coherent;
 
+   case PIPE_CAP_START_INSTANCE:
+      return sws->have_sm5;
+   case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
+      return sws->have_sm5;
+
+   case PIPE_CAP_SAMPLER_VIEW_TARGET:
+      return sws->have_gl43;
+
+   case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
+      return sws->have_gl43;
+
+   case PIPE_CAP_CLIP_HALFZ:
+      return sws->have_gl43;
    case PIPE_CAP_SHAREABLE_SHADERS:
       return 0;
 
@@ -385,6 +404,15 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_PCI_DEVICE:
    case PIPE_CAP_PCI_FUNCTION:
       return 0;
+   case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
+      return sws->have_gl43 ? 16 : 0;
+
+   case PIPE_CAP_MAX_COMBINED_SHADER_OUTPUT_RESOURCES:
+   case PIPE_CAP_MAX_COMBINED_SHADER_BUFFERS:
+      return sws->have_gl43 ? SVGA_MAX_SHADER_BUFFERS : 0;
+   case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTERS:
+   case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS:
+      return sws->have_gl43 ? SVGA_MAX_ATOMIC_BUFFERS : 0;
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return 64;
    case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
@@ -429,6 +457,10 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    /* Verify this once protocol is finalized. Setting it to minimum value. */
    case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
       return sws->have_sm5 ? 30 : 0;
+   case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
+      return 1;
+   case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
+      return 1;
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }
@@ -685,23 +717,38 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
       return FALSE;
    case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
    case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-      return SVGA3D_DX_MAX_SAMPLERS;
+      return sws->have_gl43 ? PIPE_MAX_SAMPLERS : SVGA3D_DX_MAX_SAMPLERS;
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return PIPE_SHADER_IR_TGSI;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
-      return 1 << PIPE_SHADER_IR_TGSI;
+      if (sws->have_gl43)
+         return 1 << PIPE_SHADER_IR_TGSI;
+      else
+         return 0;
    case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
+      /* For the above cases, we rely on the GLSL compiler to translate/lower
+       * the TGIS instruction into other instructions we do support.
+       */
+      return 0;
    case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
-   case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
-   case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
+      return sws->have_sm5;
+
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
+      return sws->have_gl43 ? SVGA_MAX_IMAGES : 0;
+
+   case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
+      return sws->have_gl43 ? SVGA_MAX_SHADER_BUFFERS : 0;
+
+   case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
+   case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
+      return sws->have_gl43 ? SVGA_MAX_ATOMIC_BUFFERS : 0;
+
+   case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
    case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
    case PIPE_SHADER_CAP_INT64_ATOMICS:
-   case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
-   case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
       return 0;
    case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
       return 32;
