@@ -113,9 +113,6 @@ spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 spec@!opengl 2.0@max-samplers,Fail
 spec@!opengl 2.0@max-samplers border,Fail
 
-# "Fail: nothing rendered."
-spec@!opengl 2.0@vs-point_size-zero,Fail
-
 # Regression from i965
 # "data not copied"
 spec@arb_copy_buffer@targets,Fail

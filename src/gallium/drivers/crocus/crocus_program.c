@@ -2701,6 +2701,9 @@ crocus_create_uncompiled_shader(struct pipe_context *ctx,
    NIR_PASS_V(nir, brw_nir_lower_storage_image, devinfo);
    NIR_PASS_V(nir, crocus_lower_storage_image_derefs);
 
+   if (nir->info.stage != MESA_SHADER_FRAGMENT && nir->info.stage != MESA_SHADER_COMPUTE)
+      NIR_PASS_V(nir, nir_lower_point_size, 1.0, 255.0);
+
    nir_sweep(nir);
 
    ish->program_id = get_new_program_id(screen);
