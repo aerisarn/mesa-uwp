@@ -34,6 +34,8 @@
 extern "C" {
 #endif
 
+struct vk_sync;
+
 struct vk_device {
    struct vk_object_base base;
    VkAllocationCallbacks alloc;
@@ -64,6 +66,29 @@ struct vk_device {
     * This function may be called from any thread at any time.
     */
    VkResult (*check_status)(struct vk_device *device);
+
+   /** Creates a vk_sync that wraps a memory object
+    *
+    * This is always a one-shot object so it need not track any additional
+    * state.  Since it's intended for synchronizing between processes using
+    * implicit synchronization mechanisms, no such tracking would be valid
+    * anyway.
+    *
+    * If `signal_memory` is set, the resulting vk_sync will be used to signal
+    * the memory object from a queue via vk_queue_submit::signals.  The common
+    * code guarantees that, by the time vkQueueSubmit() returns, the signal
+    * operation has been submitted to the kernel via the driver's
+    * vk_queue::driver_submit hook.  This means that any vkQueueSubmit() call
+    * which needs implicit synchronization may block.
+    *
+    * If `signal_memory` is not set, it can be assumed that memory object
+    * already has a signal operation pending from some other process and we
+    * need only wait on it.
+    */
+   VkResult (*create_sync_for_memory)(struct vk_device *device,
+                                      VkDeviceMemory memory,
+                                      bool signal_memory,
+                                      struct vk_sync **sync_out);
 
    /* Set by vk_device_set_drm_fd() */
    int drm_fd;

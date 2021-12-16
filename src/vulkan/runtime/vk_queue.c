@@ -40,6 +40,8 @@
 #include "vk_sync_timeline.h"
 #include "vk_util.h"
 
+#include "vulkan/wsi/wsi_common.h"
+
 VkResult
 vk_queue_init(struct vk_queue *queue, struct vk_device *device,
               const VkDeviceQueueCreateInfo *pCreateInfo,
@@ -173,6 +175,9 @@ vk_queue_submit_cleanup(struct vk_queue *queue,
       if (submit->_wait_temps[i] != NULL)
          vk_sync_destroy(queue->base.device, submit->_wait_temps[i]);
    }
+
+   if (submit->_mem_signal_temp != NULL)
+      vk_sync_destroy(queue->base.device, submit->_mem_signal_temp);
 
    if (submit->_wait_points != NULL) {
       for (uint32_t i = 0; i < submit->wait_count; i++) {
@@ -508,10 +513,17 @@ vk_queue_submit(struct vk_queue *queue,
 {
    VkResult result;
 
+   const struct wsi_memory_signal_submit_info *mem_signal =
+      vk_find_struct_const(info->pNext, WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA);
+   bool signal_mem_sync = mem_signal != NULL &&
+                          mem_signal->memory != VK_NULL_HANDLE &&
+                          queue->base.device->create_sync_for_memory != NULL;
+
    struct vk_queue_submit *submit =
       vk_queue_submit_alloc(queue, info->waitSemaphoreInfoCount,
                             info->commandBufferInfoCount,
-                            info->signalSemaphoreInfoCount + (fence != NULL));
+                            info->signalSemaphoreInfoCount +
+                            signal_mem_sync + (fence != NULL));
    if (unlikely(submit == NULL))
       return vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -626,15 +638,33 @@ vk_queue_submit(struct vk_queue *queue,
       };
    }
 
+   uint32_t signal_count = info->signalSemaphoreInfoCount;
+   if (signal_mem_sync) {
+      struct vk_sync *mem_sync;
+      result = queue->base.device->create_sync_for_memory(queue->base.device,
+                                                          mem_signal->memory,
+                                                          true, &mem_sync);
+      if (unlikely(result != VK_SUCCESS))
+         goto fail;
+
+      submit->_mem_signal_temp = mem_sync;
+
+      assert(submit->signals[signal_count].sync == NULL);
+      submit->signals[signal_count++] = (struct vk_sync_signal) {
+         .sync = mem_sync,
+         .stage_mask = ~(VkPipelineStageFlags2KHR)0,
+      };
+   }
+
    if (fence != NULL) {
-      uint32_t fence_idx = info->signalSemaphoreInfoCount;
-      assert(submit->signal_count == fence_idx + 1);
-      assert(submit->signals[fence_idx].sync == NULL);
-      submit->signals[fence_idx] = (struct vk_sync_signal) {
+      assert(submit->signals[signal_count].sync == NULL);
+      submit->signals[signal_count++] = (struct vk_sync_signal) {
          .sync = vk_fence_get_active_sync(fence),
          .stage_mask = ~(VkPipelineStageFlags2KHR)0,
       };
    }
+
+   assert(signal_count == submit->signal_count);
 
    switch (queue->base.device->timeline_mode) {
    case VK_DEVICE_TIMELINE_MODE_ASSISTED:
@@ -749,6 +779,22 @@ vk_queue_submit(struct vk_queue *queue,
          }
 
          vk_queue_push_submit(queue, submit);
+
+         if (signal_mem_sync) {
+            /* If we're signaling a memory object, we have to ensure that
+             * vkQueueSubmit does not return until the kernel submission has
+             * happened.  Otherwise, we may get a race between this process
+             * and whatever is going to wait on the object where the other
+             * process may wait before we've submitted our work.  Drain the
+             * queue now to avoid this.  It's the responsibility of the caller
+             * to ensure that any vkQueueSubmit which signals a memory object
+             * has fully resolved dependencies.
+             */
+            result = vk_queue_drain(queue);
+            if (unlikely(result != VK_SUCCESS))
+               return result;
+         }
+
          return VK_SUCCESS;
       } else {
          result = vk_queue_submit_final(queue, submit);

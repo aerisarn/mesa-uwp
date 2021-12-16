@@ -188,6 +188,7 @@ struct vk_queue_submit {
 
    /* Used internally; should be ignored by drivers */
    struct vk_sync **_wait_temps;
+   struct vk_sync *_mem_signal_temp;
    struct vk_sync_timeline_point **_wait_points;
    struct vk_sync_timeline_point **_signal_points;
 };
