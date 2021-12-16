@@ -313,6 +313,7 @@
     <field name="Unk 1" size="1" start="1:9" type="bool" default="true"/>
     <field name="Lines or points" size="1" start="1:26" type="bool"/>
     <field name="Reads tilebuffer" size="1" start="1:29" type="bool"/>
+    <field name="Sample mask from shader" size="1" start="1:30" type="bool"/>
     <field name="Front" size="32" start="2:0" type="Unknown face"/>
     <field name="Back" size="32" start="3:0" type="Unknown face"/>
     <!-- maybe sample mask -->
