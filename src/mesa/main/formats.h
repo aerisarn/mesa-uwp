@@ -723,9 +723,6 @@ extern mesa_format
 _mesa_get_srgb_format_linear(mesa_format format);
 
 extern mesa_format
-_mesa_get_linear_format_srgb(mesa_format format);
-
-extern mesa_format
 _mesa_get_intensity_format_red(mesa_format format);
 
 extern mesa_format
