@@ -115,6 +115,7 @@ struct svga_compile_key
    /* compute shader */
    struct {
       unsigned grid_size[3];
+      unsigned mem_size;
    } cs;
 
    /* any shader type */

@@ -43,6 +43,8 @@
 #include "svga_winsys.h"
 #include "svga_hw_reg.h"
 #include "svga3d_shaderdefs.h"
+#include "svga_image_view.h"
+#include "svga_shader_buffer.h"
 #include "svga_debug.h"
 
 /** Non-GPU queries for gallium HUD */
@@ -96,6 +98,19 @@ enum svga_hud {
 #define SVGA_MAX_CONST_BUF_SIZE (4096 * 4 * sizeof(int))
 
 #define CONST0_UPLOAD_ALIGNMENT 256
+
+#define SVGA_MAX_IMAGES         SVGA3D_MAX_UAVIEWS
+#define SVGA_MAX_SHADER_BUFFERS	SVGA3D_MAX_UAVIEWS
+#define SVGA_MAX_ATOMIC_BUFFERS	SVGA3D_MAX_UAVIEWS
+#define SVGA_MAX_UAVIEWS        SVGA3D_DX11_1_MAX_UAVIEWS
+
+enum svga_surface_state
+{
+   SVGA_SURFACE_STATE_CREATED,
+   SVGA_SURFACE_STATE_INVALIDATED,
+   SVGA_SURFACE_STATE_UPDATED,
+   SVGA_SURFACE_STATE_RENDERED,
+};
 
 struct draw_vertex_shader;
 struct draw_fragment_shader;
@@ -322,12 +337,27 @@ struct svga_state
    unsigned sample_mask;
    unsigned vertices_per_patch;
    float default_tesslevels[6]; /* tessellation (outer[4] + inner[2]) levels */
+
+   /* Image views */
+   unsigned num_image_views[PIPE_SHADER_TYPES];
+   struct svga_image_view image_views[PIPE_SHADER_TYPES][SVGA_MAX_IMAGES];
+
+   /* Shader buffers */
+   unsigned num_shader_buffers[PIPE_SHADER_TYPES];
+   struct svga_shader_buffer shader_buffers[PIPE_SHADER_TYPES][SVGA_MAX_SHADER_BUFFERS];
+
+   /* HW atomic buffers */
+   unsigned num_atomic_buffers;
+   struct svga_shader_buffer atomic_buffers[SVGA_MAX_SHADER_BUFFERS];
+
    struct {
       /* Determine the layout of the grid (in block units) to be used. */
       unsigned size[3];
       /* If DispatchIndirect is used, this will has grid size info*/
       struct pipe_resource *indirect;
    } grid_info;
+
+   unsigned shared_mem_size;
 };
 
 struct svga_prescale {
@@ -441,6 +471,35 @@ struct svga_hw_draw_state
 
    boolean rasterizer_discard; /* set if rasterization is disabled */
    boolean has_backed_views;   /* set if any of the rtv/dsv is a backed surface view */
+
+   /* Image Views */
+   int uavSpliceIndex;
+   unsigned num_image_views[PIPE_SHADER_TYPES];
+   struct svga_image_view image_views[PIPE_SHADER_TYPES][SVGA_MAX_IMAGES];
+
+   /* Shader Buffers */
+   unsigned num_shader_buffers[PIPE_SHADER_TYPES];
+   struct svga_shader_buffer shader_buffers[PIPE_SHADER_TYPES][SVGA_MAX_SHADER_BUFFERS];
+
+   /* HW Atomic Buffers */
+   unsigned num_atomic_buffers;
+   struct svga_shader_buffer atomic_buffers[SVGA_MAX_SHADER_BUFFERS];
+
+   /* UAV state */
+   unsigned num_uavs;
+   SVGA3dUAViewId uaViewIds[SVGA_MAX_UAVIEWS];
+   struct svga_winsys_surface *uaViews[SVGA_MAX_UAVIEWS];
+
+   /* Compute UAV state */
+   unsigned num_cs_uavs;
+   SVGA3dUAViewId csUAViewIds[SVGA_MAX_UAVIEWS];
+   struct svga_winsys_surface *csUAViews[SVGA_MAX_UAVIEWS];
+
+   /* starting uav index for each shader */
+   unsigned uav_start_index[PIPE_SHADER_TYPES];
+
+   /* starting uav index for HW atomic buffers */
+   unsigned uav_atomic_buf_index;
 };
 
 
@@ -468,6 +527,30 @@ struct svga_hw_queue;
 struct svga_query;
 struct svga_qmem_alloc_entry;
 
+enum svga_uav_type
+{
+   SVGA_IMAGE_VIEW = 0,
+   SVGA_SHADER_BUFFER
+};
+
+struct svga_uav
+{
+   enum svga_uav_type type;
+   union {
+      struct svga_image_view image_view;
+      struct svga_shader_buffer shader_buffer;
+   } desc;
+   struct pipe_resource *resource;
+   unsigned next_uaView;
+   SVGA3dUAViewId uaViewId;
+   unsigned timestamp[2];
+};
+struct svga_cache_uav
+{
+   unsigned num_uaViews;
+   unsigned next_uaView;
+   struct svga_uav uaViews[SVGA3D_DX11_1_MAX_UAVIEWS];
+};
 struct svga_context
 {
    struct pipe_context pipe;
@@ -529,6 +612,12 @@ struct svga_context
    /* Bitmask of used query IDs */
    struct util_bitmask *query_id_bm;
 
+   /* Bitmask of used uav IDs */
+   struct util_bitmask *uav_id_bm;
+
+   /* Bitmask of to-free uav IDs */
+   struct util_bitmask *uav_to_free_id_bm;
+
    struct {
       uint64_t dirty[SVGA_STATE_MAX];
 
@@ -536,6 +625,7 @@ struct svga_context
       unsigned dirty_constbufs[PIPE_SHADER_TYPES];
 
       unsigned texture_timestamp;
+      unsigned uav_timestamp[2];
 
       struct svga_sw_state          sw;
       struct svga_hw_draw_state     hw_draw;
@@ -557,6 +647,7 @@ struct svga_context
          unsigned tes:1;
          unsigned cs:1;
          unsigned query:1;
+         unsigned uav:1;
       } flags;
       unsigned val;
    } rebind;
@@ -665,6 +756,8 @@ struct svga_context
       boolean passthrough;
    } tcs;
 
+   struct svga_cache_uav cache_uav;
+   struct pipe_resource *dummy_resource;
 };
 
 /* A flag for each frontend state object:
@@ -707,18 +800,37 @@ struct svga_context
 #define SVGA_NEW_TCS_CONST_BUFFER    ((uint64_t) 0x1000000000)
 #define SVGA_NEW_TES_CONST_BUFFER    ((uint64_t) 0x2000000000)
 #define SVGA_NEW_TCS_PARAM           ((uint64_t) 0x4000000000)
-#define SVGA_NEW_FS_CONSTS           ((uint64_t) 0x8000000000)
-#define SVGA_NEW_VS_CONSTS           ((uint64_t) 0x10000000000)
-#define SVGA_NEW_GS_CONSTS           ((uint64_t) 0x20000000000)
-#define SVGA_NEW_TCS_CONSTS          ((uint64_t) 0x40000000000)
-#define SVGA_NEW_TES_CONSTS          ((uint64_t) 0x800000000000)
+#define SVGA_NEW_IMAGE_VIEW          ((uint64_t) 0x8000000000)
+#define SVGA_NEW_SHADER_BUFFER       ((uint64_t) 0x10000000000)
+#define SVGA_NEW_CS                  ((uint64_t) 0x20000000000)
+#define SVGA_NEW_CS_VARIANT          ((uint64_t) 0x40000000000)
+#define SVGA_NEW_CS_CONST_BUFFER     ((uint64_t) 0x80000000000)
+#define SVGA_NEW_FS_CONSTS           ((uint64_t) 0x100000000000)
+#define SVGA_NEW_VS_CONSTS           ((uint64_t) 0x200000000000)
+#define SVGA_NEW_GS_CONSTS           ((uint64_t) 0x400000000000)
+#define SVGA_NEW_TCS_CONSTS          ((uint64_t) 0x800000000000)
+#define SVGA_NEW_TES_CONSTS          ((uint64_t) 0x1000000000000)
+#define SVGA_NEW_CS_CONSTS           ((uint64_t) 0x2000000000000)
+#define SVGA_NEW_FS_RAW_BUFFER       ((uint64_t) 0x4000000000000)
+#define SVGA_NEW_VS_RAW_BUFFER       ((uint64_t) 0x8000000000000)
+#define SVGA_NEW_GS_RAW_BUFFER       ((uint64_t) 0x10000000000000)
+#define SVGA_NEW_TCS_RAW_BUFFER      ((uint64_t) 0x20000000000000)
+#define SVGA_NEW_TES_RAW_BUFFER      ((uint64_t) 0x40000000000000)
+#define SVGA_NEW_CS_RAW_BUFFER       ((uint64_t) 0x80000000000000)
 #define SVGA_NEW_ALL                 ((uint64_t) 0xFFFFFFFFFFFFFFFF)
 
 #define SVGA_NEW_CONST_BUFFER \
    (SVGA_NEW_FS_CONST_BUFFER | SVGA_NEW_VS_CONST_BUFFER | \
-    SVGA_NEW_GS_CONST_BUFFER | \
+    SVGA_NEW_GS_CONST_BUFFER | SVGA_NEW_CS_CONST_BUFFER | \
     SVGA_NEW_TCS_CONST_BUFFER | SVGA_NEW_TES_CONST_BUFFER)
 
+
+/** Program pipelines */
+enum svga_pipe_type
+{
+   SVGA_PIPE_GRAPHICS = 0,
+   SVGA_PIPE_COMPUTE  = 1
+};
 
 void svga_init_state_functions( struct svga_context *svga );
 void svga_init_flush_functions( struct svga_context *svga );
@@ -768,6 +880,28 @@ svga_context_create(struct pipe_screen *screen,
 void svga_toggle_render_condition(struct svga_context *svga,
                                   boolean render_condition_enabled,
                                   boolean on);
+enum pipe_error
+svga_validate_sampler_resources(struct svga_context *svga,
+                                enum svga_pipe_type);
+
+enum pipe_error
+svga_validate_constant_buffers(struct svga_context *svga,
+                               enum svga_pipe_type);
+
+enum pipe_error
+svga_validate_image_views(struct svga_context *svga,
+                          enum svga_pipe_type);
+
+enum pipe_error
+svga_validate_shader_buffers(struct svga_context *svga,
+                             enum svga_pipe_type);
+
+void
+svga_destroy_rawbuf_srv(struct svga_context *svga);
+
+void
+svga_uav_cache_init(struct svga_context *svga);
+
 
 /***********************************************************************
  * Inline conversion functions.  These are better-typed than the
