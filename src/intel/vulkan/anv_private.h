@@ -3172,10 +3172,6 @@ vk_sync_is_anv_bo_sync(const struct vk_sync *sync)
    return sync->type == &anv_bo_sync_type;
 }
 
-VkResult anv_sync_create_for_bo(struct anv_device *device,
-                                struct anv_bo *bo,
-                                struct vk_sync **sync_out);
-
 VkResult anv_create_sync_for_memory(struct vk_device *device,
                                     VkDeviceMemory memory,
                                     bool signal_memory,

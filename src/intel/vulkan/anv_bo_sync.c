@@ -212,49 +212,26 @@ const struct vk_sync_type anv_bo_sync_type = {
    .wait_many = anv_bo_sync_wait,
 };
 
-static VkResult
-_anv_sync_create_for_bo(struct anv_device *device,
-                        struct anv_bo *bo,
-                        enum anv_bo_sync_state state,
-                        struct vk_sync **sync_out)
-{
-   struct anv_bo_sync *bo_sync;
-
-   bo_sync = vk_zalloc(&device->vk.alloc, sizeof(*bo_sync), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (bo_sync == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   bo_sync->sync.type = &anv_bo_sync_type;
-   bo_sync->state = state;
-   bo_sync->bo = anv_bo_ref(bo);
-
-   *sync_out = &bo_sync->sync;
-
-   return VK_SUCCESS;
-}
-
 VkResult
-anv_sync_create_for_bo(struct anv_device *device,
-                       struct anv_bo *bo,
-                       struct vk_sync **sync_out)
-{
-   return _anv_sync_create_for_bo(device, bo, ANV_BO_SYNC_STATE_SUBMITTED,
-                                  sync_out);
-}
-
-VkResult
-anv_create_sync_for_memory(struct vk_device *vk_device,
+anv_create_sync_for_memory(struct vk_device *device,
                            VkDeviceMemory memory,
                            bool signal_memory,
                            struct vk_sync **sync_out)
 {
    ANV_FROM_HANDLE(anv_device_memory, mem, memory);
-   struct anv_device *device =
-      container_of(vk_device, struct anv_device, vk);
+   struct anv_bo_sync *bo_sync;
 
-   enum anv_bo_sync_state state = signal_memory ?
-      ANV_BO_SYNC_STATE_RESET : ANV_BO_SYNC_STATE_SUBMITTED;
+   bo_sync = vk_zalloc(&device->alloc, sizeof(*bo_sync), 8,
+                       VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (bo_sync == NULL)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   return _anv_sync_create_for_bo(device, mem->bo, state, sync_out);
+   bo_sync->sync.type = &anv_bo_sync_type;
+   bo_sync->state = signal_memory ? ANV_BO_SYNC_STATE_RESET :
+                                    ANV_BO_SYNC_STATE_SUBMITTED;
+   bo_sync->bo = anv_bo_ref(mem->bo);
+
+   *sync_out = &bo_sync->sync;
+
+   return VK_SUCCESS;
 }
