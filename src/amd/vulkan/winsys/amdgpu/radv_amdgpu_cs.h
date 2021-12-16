@@ -51,6 +51,7 @@ struct radv_amdgpu_ctx {
    struct radeon_winsys_bo *fence_bo;
 
    uint32_t queue_syncobj[AMDGPU_HW_IP_DMA + 1][MAX_RINGS_PER_TYPE];
+   bool queue_syncobj_wait[AMDGPU_HW_IP_DMA + 1][MAX_RINGS_PER_TYPE];
 };
 
 static inline struct radv_amdgpu_ctx *
