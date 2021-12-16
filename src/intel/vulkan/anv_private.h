@@ -3176,6 +3176,11 @@ VkResult anv_sync_create_for_bo(struct anv_device *device,
                                 struct anv_bo *bo,
                                 struct vk_sync **sync_out);
 
+VkResult anv_create_sync_for_memory(struct vk_device *device,
+                                    VkDeviceMemory memory,
+                                    bool signal_memory,
+                                    struct vk_sync **sync_out);
+
 struct anv_event {
    struct vk_object_base                        base;
    uint64_t                                     semaphore;

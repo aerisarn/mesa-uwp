@@ -212,10 +212,11 @@ const struct vk_sync_type anv_bo_sync_type = {
    .wait_many = anv_bo_sync_wait,
 };
 
-VkResult
-anv_sync_create_for_bo(struct anv_device *device,
-                       struct anv_bo *bo,
-                       struct vk_sync **sync_out)
+static VkResult
+_anv_sync_create_for_bo(struct anv_device *device,
+                        struct anv_bo *bo,
+                        enum anv_bo_sync_state state,
+                        struct vk_sync **sync_out)
 {
    struct anv_bo_sync *bo_sync;
 
@@ -225,10 +226,35 @@ anv_sync_create_for_bo(struct anv_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    bo_sync->sync.type = &anv_bo_sync_type;
-   bo_sync->state = ANV_BO_SYNC_STATE_SUBMITTED;
+   bo_sync->state = state;
    bo_sync->bo = anv_bo_ref(bo);
 
    *sync_out = &bo_sync->sync;
 
    return VK_SUCCESS;
+}
+
+VkResult
+anv_sync_create_for_bo(struct anv_device *device,
+                       struct anv_bo *bo,
+                       struct vk_sync **sync_out)
+{
+   return _anv_sync_create_for_bo(device, bo, ANV_BO_SYNC_STATE_SUBMITTED,
+                                  sync_out);
+}
+
+VkResult
+anv_create_sync_for_memory(struct vk_device *vk_device,
+                           VkDeviceMemory memory,
+                           bool signal_memory,
+                           struct vk_sync **sync_out)
+{
+   ANV_FROM_HANDLE(anv_device_memory, mem, memory);
+   struct anv_device *device =
+      container_of(vk_device, struct anv_device, vk);
+
+   enum anv_bo_sync_state state = signal_memory ?
+      ANV_BO_SYNC_STATE_RESET : ANV_BO_SYNC_STATE_SUBMITTED;
+
+   return _anv_sync_create_for_bo(device, mem->bo, state, sync_out);
 }
