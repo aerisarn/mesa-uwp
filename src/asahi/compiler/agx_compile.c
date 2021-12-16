@@ -278,6 +278,15 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 	   agx_writeout(b, 0x000C);
    }
 
+   if (b->shader->nir->info.fs.uses_discard) {
+      /* If the shader uses discard, the sample mask must be written by the
+       * shader on all exeuction paths. If we've reached the end of the shader,
+       * we are therefore still active and need to write a full sample mask.
+       * TODO: interactions with MSAA and gl_SampleMask writes
+       */
+      agx_sample_mask(b, agx_immediate(1));
+   }
+
    b->shader->did_writeout = true;
    return agx_st_tile(b, agx_src_index(&instr->src[0]),
              b->shader->key->fs.tib_formats[rt]);
@@ -391,6 +400,25 @@ agx_blend_const(agx_builder *b, agx_index dst, unsigned comp)
      return agx_mov_to(b, dst, val);
 }
 
+/*
+ * Demoting a helper invocation is logically equivalent to zeroing the sample
+ * mask. Metal implement discard as such.
+ *
+ * XXX: Actually, Metal's "discard" is a demote, and what is implemented here
+ * is a demote. There might be a better way to implement this to get correct
+ * helper invocation semantics. For now, I'm kicking the can down the road.
+ */
+static agx_instr *
+agx_emit_discard(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   agx_writeout(b, 0xC200);
+   agx_writeout(b, 0x0001);
+   b->shader->did_writeout = true;
+
+   b->shader->out->writes_sample_mask = true;
+   return agx_sample_mask(b, agx_immediate(0));
+}
+
 static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
@@ -436,6 +464,9 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
   case nir_intrinsic_load_frag_coord:
      return agx_emit_load_frag_coord(b, instr);
+
+  case nir_intrinsic_discard:
+     return agx_emit_discard(b, instr);
 
   case nir_intrinsic_load_back_face_agx:
      return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
