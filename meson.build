@@ -2158,18 +2158,12 @@ subdir('include')
 subdir('bin')
 subdir('src')
 
-# Meson 0.49 and earlier seems to have a bug that fails to evaluate the string-
-# formatting below unless the first argument is passed as a variable. This has
-# been fixed in Meson 0.50 and beyond, but we need to keep it like this for now
-# for backwards compatibility.
-_with_opengl_string = with_opengl ? 'yes' : 'no'
-
 lines = ['',
   'prefix:          ' + get_option('prefix'),
   'libdir:          ' + get_option('libdir'),
   'includedir:      ' + get_option('includedir'),
   '',
-  'OpenGL:          @0@ (ES1: @1@ ES2: @2@)'.format(_with_opengl_string,
+  'OpenGL:          @0@ (ES1: @1@ ES2: @2@)'.format(with_opengl ? 'yes' : 'no',
                                                     with_gles1 ? 'yes' : 'no',
                                                     with_gles2 ? 'yes' : 'no'),
 ]
