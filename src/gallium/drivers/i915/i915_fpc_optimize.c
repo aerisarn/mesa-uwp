@@ -313,6 +313,7 @@ liveness_analysis(struct i915_optimize_context *ctx,
       case 1:
          dst_reg = &current->FullInstruction.Dst[0];
          liveness_mark_written(ctx, dst_reg, i);
+         FALLTHROUGH;
       case 0:
          break;
       default:
