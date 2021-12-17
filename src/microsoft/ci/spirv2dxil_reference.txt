@@ -765,7 +765,7 @@ Test:SpvParserCFGTest_ClassifyCFGEdges_LoopContinue_LoopBodyToContinue.spvasm:ma
 Test:SpvParserCFGTest_ClassifyCFGEdges_Pathological_Forward_LoopHeadSplitBody.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_ClassifyCFGEdges_Pathological_Forward_Premerge.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -810,7 +810,7 @@ Test:SpvParserCFGTest_ComputeBlockOrder_Nest_IfFallthrough_In_SwitchCase.spvasm:
 Test:SpvParserCFGTest_ComputeBlockOrder_OneBlock.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_ComputeBlockOrder_ReorderSequence.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -877,7 +877,7 @@ Test:SpvParserCFGTest_EmitBody_FalseBranch_LoopContinue.spvasm:main|Fragment: Pa
 Test:SpvParserCFGTest_EmitBody_FalseBranch_SwitchBreak.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_EmitBody_If_Else_Premerge.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -889,7 +889,7 @@ Test:SpvParserCFGTest_EmitBody_If_NoThen_Else.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_EmitBody_If_Then_Else.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_EmitBody_If_Then_Else_Premerge.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -898,7 +898,7 @@ Compilation failed
 Test:SpvParserCFGTest_EmitBody_If_Then_NoElse.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_EmitBody_If_Then_Premerge.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -908,7 +908,7 @@ Test:SpvParserCFGTest_EmitBody_IfBreak_FromElse_ForwardWithinElse.spvasm:main|Fr
 Test:SpvParserCFGTest_EmitBody_IfBreak_FromThen_ForwardWithinThen.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_EmitBody_IfBreak_FromThenWithForward_FromElseWithForward_AlsoPremerge.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -971,7 +971,7 @@ Test:SpvParserCFGTest_FindIfSelectionInternalHeaders_IfOnly.spvasm:main|Fragment
 Test:SpvParserCFGTest_FindIfSelectionInternalHeaders_NoIf.spvasm:main|Fragment: Pass
 Test:SpvParserCFGTest_FindIfSelectionInternalHeaders_Premerge_ElseDirectToThen.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -979,7 +979,7 @@ Compilation failed
 
 Test:SpvParserCFGTest_FindIfSelectionInternalHeaders_Premerge_Simple.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -987,7 +987,7 @@ Compilation failed
 
 Test:SpvParserCFGTest_FindIfSelectionInternalHeaders_Premerge_ThenDirectToElse.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/vtn_cfg.c:627
+
     Invalid back or cross-edge in the CFG
     0 bytes into the SPIR-V binary
 Compilation failed
@@ -1272,11 +1272,11 @@ Test:SpvParserTest_Impl_GenericVulkanShader_GLSL450MemoryModel.spvasm:main|GLCom
 Test:SpvParserTest_Impl_GenericVulkanShader_SimpleMemoryModel.spvasm:main|GLCompute: Pass
 Test:SpvParserTest_Impl_GenericVulkanShader_VulkanMemoryModel.spvasm:main|GLCompute: Fail
 SPIR-V WARNING:
-    In file ../src/compiler/spirv/spirv_to_nir.c:4708
+
     Unsupported SPIR-V capability: SpvCapabilityVulkanMemoryModel (5345)
     28 bytes into the SPIR-V binary
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/spirv_to_nir.c:4862
+
     Vulkan memory model is unsupported by this driver
     68 bytes into the SPIR-V binary
 Compilation failed
@@ -1426,7 +1426,7 @@ Test:SpvParserTest_UMod_SpvBinaryArithTest_EmitExpression_0.spvasm:main|Fragment
 Test:SpvParserTest_UMod_SpvBinaryArithTest_EmitExpression_1.spvasm:main|Fragment: Pass
 Test:SpvParserTest_ValueFromBlockNotInBlockOrder.spvasm:main|Fragment: Fail
 SPIR-V parsing FAILED:
-    In file ../src/compiler/spirv/spirv_to_nir.c:295
+
     Invalid type for an SSA value
     408 bytes into the SPIR-V binary
 Compilation failed
