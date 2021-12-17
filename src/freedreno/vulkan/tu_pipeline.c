@@ -3584,6 +3584,14 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.sstall;
    }
 
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Estimated cycles stalled on SY");
+      WRITE_STR(stat->description,
+                "A better metric to estimate the impact of SY syncs.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.systall;
+   }
+
    for (int i = 0; i < ARRAY_SIZE(exe->stats.instrs_per_cat); i++) {
       vk_outarray_append(&out, stat) {
          WRITE_STR(stat->name, "cat%d instructions", i);

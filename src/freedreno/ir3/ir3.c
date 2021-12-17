@@ -249,7 +249,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
    info->sizedwords = info->size / 4;
 
    foreach_block (block, &shader->block_list) {
-      int sfu_delay = 0;
+      int sfu_delay = 0, mem_delay = 0;
 
       foreach_instr (instr, &block->instr_list) {
 
@@ -307,14 +307,24 @@ ir3_collect_info(struct ir3_shader_variant *v)
             sfu_delay = 0;
          }
 
-         if (instr->flags & IR3_INSTR_SY)
+         if (instr->flags & IR3_INSTR_SY) {
             info->sy++;
+            info->systall += mem_delay;
+            mem_delay = 0;
+         }
 
-         if (is_sfu(instr)) {
-            sfu_delay = 10;
+         if (is_ss_producer(instr)) {
+            sfu_delay = soft_ss_delay(instr);
          } else {
             int n = MIN2(sfu_delay, 1 + instr->repeat + instr->nop);
             sfu_delay -= n;
+         }
+
+         if (is_sy_producer(instr)) {
+            mem_delay = soft_sy_delay(instr, shader);
+         } else {
+            int n = MIN2(mem_delay, 1 + instr->repeat + instr->nop);
+            mem_delay -= n;
          }
       }
    }

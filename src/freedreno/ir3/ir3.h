@@ -78,6 +78,8 @@ struct ir3_info {
 
    /* estimate of number of cycles stalled on (ss) */
    uint16_t sstall;
+   /* estimate of number of cycles stalled on (sy) */
+   uint16_t systall;
 
    uint16_t last_baryf; /* instruction # of last varying fetch */
 
@@ -1654,6 +1656,102 @@ unsigned ir3_delayslots_with_repeat(struct ir3_instruction *assigner,
                                     unsigned assigner_n, unsigned consumer_n);
 unsigned ir3_delay_calc(struct ir3_block *block,
                         struct ir3_instruction *instr, bool mergedregs);
+
+/* estimated (ss)/(sy) delay calculation */
+
+static inline bool
+is_local_mem_load(struct ir3_instruction *instr)
+{
+   return instr->opc == OPC_LDL || instr->opc == OPC_LDLV ||
+      instr->opc == OPC_LDLW;
+}
+
+/* Does this instruction need (ss) to wait for its result? */
+static inline bool
+is_ss_producer(struct ir3_instruction *instr)
+{
+   return is_sfu(instr) || is_local_mem_load(instr);
+}
+
+/* The soft delay for approximating the cost of (ss). */
+static inline unsigned
+soft_ss_delay(struct ir3_instruction *instr)
+{
+   /* On a6xx, it takes the number of delay slots to get a SFU result back (ie.
+    * using nop's instead of (ss) is:
+    *
+    *     8 - single warp
+    *     9 - two warps
+    *    10 - four warps
+    *
+    * and so on. Not quite sure where it tapers out (ie. how many warps share an
+    * SFU unit). But 10 seems like a reasonable # to choose:
+    */
+   return 10;
+}
+
+static inline bool
+is_sy_producer(struct ir3_instruction *instr)
+{
+   return is_tex_or_prefetch(instr) ||
+      (is_load(instr) && !is_local_mem_load(instr)) ||
+      is_atomic(instr->opc);
+}
+
+static inline unsigned
+soft_sy_delay(struct ir3_instruction *instr, struct ir3 *shader)
+{
+   /* TODO: this is just an optimistic guess, we can do better post-RA.
+    */
+   bool double_wavesize =
+      shader->type == MESA_SHADER_FRAGMENT ||
+      shader->type == MESA_SHADER_COMPUTE;
+
+   unsigned components = reg_elems(instr->dsts[0]);
+
+   /* These numbers come from counting the number of delay slots to get
+    * cat5/cat6 results back using nops instead of (sy). Note that these numbers
+    * are with the result preloaded to cache by loading it before in the same
+    * shader - uncached results are much larger.
+    *
+    * Note: most ALU instructions can't complete at the full doubled rate, so
+    * they take 2 cycles. The only exception is fp16 instructions with no
+    * built-in conversions. Therefore divide the latency by 2.
+    *
+    * TODO: Handle this properly in the scheduler and remove this.
+    */
+   if (instr->opc == OPC_LDC) {
+      if (double_wavesize)
+         return (21 + 8 * components) / 2;
+      else
+         return 18 + 4 * components;
+   } else if (is_tex_or_prefetch(instr)) {
+      if (double_wavesize) {
+         switch (components) {
+         case 1: return 58 / 2;
+         case 2: return 60 / 2;
+         case 3: return 77 / 2;
+         case 4: return 79 / 2;
+         default: unreachable("bad number of components");
+         }
+      } else {
+         switch (components) {
+         case 1: return 51;
+         case 2: return 53;
+         case 3: return 62;
+         case 4: return 64;
+         default: unreachable("bad number of components");
+         }
+      }
+   } else {
+      /* TODO: measure other cat6 opcodes like ldg */
+      if (double_wavesize)
+         return (172 + components) / 2;
+      else
+         return 109 + components;
+   }
+}
+
 
 /* unreachable block elimination: */
 bool ir3_remove_unreachable(struct ir3 *ir);

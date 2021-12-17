@@ -538,7 +538,6 @@ struct ir3_shader_variant {
     */
    unsigned branchstack;
 
-   unsigned max_sun;
    unsigned loops;
 
    /* the instructions length is in units of instruction groups

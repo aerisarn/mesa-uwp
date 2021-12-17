@@ -790,9 +790,9 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 
    fprintf(
       out,
-      "; %s prog %d/%d: %u sstall, %u (ss), %u (sy), %d max_sun, %d loops\n",
-      type, so->shader->id, so->id, so->info.sstall, so->info.ss, so->info.sy,
-      so->max_sun, so->loops);
+      "; %s prog %d/%d: %u sstall, %u (ss), %u systall, %u (sy), %d loops\n",
+      type, so->shader->id, so->id, so->info.sstall, so->info.ss,
+      so->info.systall, so->info.sy, so->loops);
 
    /* print shader type specific info: */
    switch (so->type) {
