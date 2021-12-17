@@ -1105,6 +1105,7 @@ struct_member_decoration_cb(struct vtn_builder *b,
    case SpvDecorationPatch:
    case SpvDecorationPerPrimitiveNV:
    case SpvDecorationPerTaskNV:
+   case SpvDecorationPerViewNV:
       break;
 
    case SpvDecorationSpecId:
@@ -1147,11 +1148,6 @@ struct_member_decoration_cb(struct vtn_builder *b,
    case SpvDecorationUserSemantic:
    case SpvDecorationUserTypeGOOGLE:
       /* User semantic decorations can safely be ignored by the driver. */
-      break;
-
-   case SpvDecorationPerViewNV:
-      /* TODO(mesh): Handle multiview. */
-      vtn_warn("Mesh multiview not yet supported. Needed for decoration PerViewNV.");
       break;
 
    default:
@@ -4803,6 +4799,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
 
       case SpvCapabilityMeshShadingNV:
          spv_check_supported(mesh_shading_nv, cap);
+         break;
+
+      case SpvCapabilityPerViewAttributesNV:
+         spv_check_supported(per_view_attributes_nv, cap);
          break;
 
       case SpvCapabilityShaderViewportMaskNV:

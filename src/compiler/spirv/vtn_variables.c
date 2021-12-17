@@ -837,6 +837,7 @@ vtn_get_builtin_location(struct vtn_builder *b,
       set_mode_system_value(b, mode);
       break;
    case SpvBuiltInLayer:
+   case SpvBuiltInLayerPerViewNV:
       *location = VARYING_SLOT_LAYER;
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
          *mode = nir_var_shader_in;
@@ -865,6 +866,7 @@ vtn_get_builtin_location(struct vtn_builder *b,
          vtn_fail("invalid stage for SpvBuiltInViewportIndex");
       break;
    case SpvBuiltInViewportMaskNV:
+   case SpvBuiltInViewportMaskPerViewNV:
       *location = VARYING_SLOT_VIEWPORT_MASK;
       *mode = nir_var_shader_out;
       break;
@@ -1341,6 +1343,9 @@ gather_var_kind_cb(struct vtn_builder *b, struct vtn_value *val, int member,
       break;
    case SpvDecorationPerPrimitiveNV:
       vtn_var->var->data.per_primitive = true;
+      break;
+   case SpvDecorationPerViewNV:
+      vtn_var->var->data.per_view = true;
       break;
    default:
       /* Nothing to do. */
