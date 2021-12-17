@@ -552,7 +552,10 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
             vs_info->writes_layer = true;
          break;
       case VARYING_SLOT_PRIMITIVE_SHADING_RATE:
-         vs_info->writes_primitive_shading_rate = true;
+         if (var->data.per_primitive)
+            vs_info->writes_primitive_shading_rate_per_primitive = true;
+         else
+            vs_info->writes_primitive_shading_rate = true;
          break;
       default:
          break;
@@ -675,8 +678,11 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
             outinfo->writes_layer = true;
       }
 
+      /* VS/TES/GS: shading rate is per-vertex, MS: it's per-primitive. */
+      bool force_vrs_per_vertex =
+         device->force_vrs != RADV_FORCE_VRS_NONE && nir->info.stage != MESA_SHADER_MESH;
       bool writes_primitive_shading_rate =
-         outinfo->writes_primitive_shading_rate || device->force_vrs != RADV_FORCE_VRS_NONE;
+         outinfo->writes_primitive_shading_rate || force_vrs_per_vertex;
       int pos_written = 0x1;
 
       if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer ||
