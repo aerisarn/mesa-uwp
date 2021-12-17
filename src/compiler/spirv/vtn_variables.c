@@ -864,6 +864,10 @@ vtn_get_builtin_location(struct vtn_builder *b,
       else
          vtn_fail("invalid stage for SpvBuiltInViewportIndex");
       break;
+   case SpvBuiltInViewportMaskNV:
+      *location = VARYING_SLOT_VIEWPORT_MASK;
+      *mode = nir_var_shader_out;
+      break;
    case SpvBuiltInTessLevelOuter:
       *location = VARYING_SLOT_TESS_LEVEL_OUTER;
       break;
