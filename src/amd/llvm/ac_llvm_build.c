@@ -4493,7 +4493,7 @@ LLVMValueRef ac_build_call(struct ac_llvm_context *ctx, LLVMValueRef func, LLVMV
 }
 
 void ac_export_mrt_z(struct ac_llvm_context *ctx, LLVMValueRef depth, LLVMValueRef stencil,
-                     LLVMValueRef samplemask, struct ac_export_args *args)
+                     LLVMValueRef samplemask, bool is_last, struct ac_export_args *args)
 {
    unsigned mask = 0;
    unsigned format = ac_get_spi_shader_z_format(depth != NULL, stencil != NULL, samplemask != NULL);
@@ -4502,8 +4502,10 @@ void ac_export_mrt_z(struct ac_llvm_context *ctx, LLVMValueRef depth, LLVMValueR
 
    memset(args, 0, sizeof(*args));
 
-   args->valid_mask = 1; /* whether the EXEC mask is valid */
-   args->done = 1;       /* DONE bit */
+   if (is_last) {
+      args->valid_mask = 1; /* whether the EXEC mask is valid */
+      args->done = 1;       /* DONE bit */
+   }
 
    /* Specify the target we are exporting */
    args->target = V_008DFC_SQ_EXP_MRTZ;

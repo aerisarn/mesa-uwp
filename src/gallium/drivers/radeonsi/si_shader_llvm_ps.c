@@ -404,9 +404,9 @@ static bool si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
    return true;
 }
 
-static bool si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *color, unsigned index,
-                                unsigned compacted_mrt_index, unsigned samplemask_param,
-                                bool is_last, unsigned color_type, struct si_ps_exports *exp)
+static void si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *color, unsigned index,
+                                unsigned *compacted_mrt_index, unsigned samplemask_param,
+                                unsigned color_type, struct si_ps_exports *exp)
 {
    int i;
 
@@ -429,40 +429,26 @@ static bool si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *col
 
    /* If last_cbuf > 0, FS_COLOR0_WRITES_ALL_CBUFS is true. */
    if (ctx->shader->key.ps.part.epilog.last_cbuf > 0) {
-      assert(compacted_mrt_index == 0);
+      assert(*compacted_mrt_index == 0);
 
       /* Get the export arguments, also find out what the last one is. */
       for (int c = 0; c <= ctx->shader->key.ps.part.epilog.last_cbuf; c++) {
-         if (si_llvm_init_ps_export_args(ctx, color, c, compacted_mrt_index,
+         if (si_llvm_init_ps_export_args(ctx, color, c, *compacted_mrt_index,
                                          color_type, &exp->args[exp->num])) {
             assert(exp->args[exp->num].enabled_channels);
-            compacted_mrt_index++;
+            (*compacted_mrt_index)++;
             exp->num++;
          }
       }
-      if (compacted_mrt_index == 0)
-         return false;
-
-      if (is_last) {
-         exp->args[exp->num - 1].valid_mask = 1;
-         exp->args[exp->num - 1].done = 1;
-      }
    } else {
       /* Export */
-      if (si_llvm_init_ps_export_args(ctx, color, index, compacted_mrt_index,
+      if (si_llvm_init_ps_export_args(ctx, color, index, *compacted_mrt_index,
                                       color_type, &exp->args[exp->num])) {
          assert(exp->args[exp->num].enabled_channels);
-
-         if (is_last) {
-            exp->args[exp->num].valid_mask = 1; /* whether the EXEC mask is valid */
-            exp->args[exp->num].done = 1;       /* DONE bit */
-         }
+         (*compacted_mrt_index)++;
          exp->num++;
-      } else {
-         return false;
       }
    }
-   return true;
 }
 
 /**
@@ -926,10 +912,8 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
             color[i] = LLVMGetParam(ctx->main_fn, vgpr++);
       }
 
-      if (si_export_mrt_color(ctx, color, output_index, num_compacted_mrts,
-                              ctx->args.arg_count - 1,
-                              output_index == last_color_export, color_type, &exp))
-         num_compacted_mrts++;
+      si_export_mrt_color(ctx, color, output_index, &num_compacted_mrts,
+                          ctx->args.arg_count - 1, color_type, &exp);
    }
 
    /* Process depth, stencil, samplemask. */
@@ -941,11 +925,14 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
       samplemask = LLVMGetParam(ctx->main_fn, vgpr++);
 
    if (depth || stencil || samplemask)
-      ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, &exp.args[exp.num++]);
+      ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, false, &exp.args[exp.num++]);
    else if (last_color_export == -1)
       ac_build_export_null(&ctx->ac);
 
    if (exp.num) {
+      exp.args[exp.num - 1].valid_mask = 1;  /* whether the EXEC mask is valid */
+      exp.args[exp.num - 1].done = 1;        /* DONE bit */
+
       for (unsigned i = 0; i < exp.num; i++)
          ac_build_export(&ctx->ac, &exp.args[i]);
    }

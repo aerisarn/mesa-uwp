@@ -2090,7 +2090,7 @@ radv_export_mrt_z(struct radv_shader_context *ctx, LLVMValueRef depth, LLVMValue
 {
    struct ac_export_args args;
 
-   ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, &args);
+   ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, true, &args);
 
    ac_build_export(&ctx->ac, &args);
 }
