@@ -30,19 +30,6 @@
  */
 #define MAX_NOPS 6
 
-/* The soft delay for approximating the cost of (ss). On a6xx, it takes the
- * number of delay slots to get a SFU result back (ie. using nop's instead of
- * (ss) is:
- *
- *     8 - single warp
- *     9 - two warps
- *    10 - four warps
- *
- * and so on. Not quite sure where it tapers out (ie. how many warps share an
- * SFU unit). But 10 seems like a reasonable # to choose:
- */
-#define SOFT_SS_NOPS 10
-
 /*
  * Helpers to figure out the necessary delay slots between instructions.  Used
  * both in scheduling pass(es) and the final pass to insert any required nop's
@@ -76,11 +63,11 @@ ir3_delayslots(struct ir3_instruction *assigner,
    if (writes_addr0(assigner) || writes_addr1(assigner))
       return 6;
 
-   if (soft && is_sfu(assigner))
-      return SOFT_SS_NOPS;
+   if (soft && is_ss_producer(assigner))
+      return soft_ss_delay(assigner);
 
    /* handled via sync flags: */
-   if (is_sfu(assigner) || is_tex(assigner) || is_mem(assigner))
+   if (is_ss_producer(assigner) || is_sy_producer(assigner))
       return 0;
 
    /* As far as we know, shader outputs don't need any delay. */

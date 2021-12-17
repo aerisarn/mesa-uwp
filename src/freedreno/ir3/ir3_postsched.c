@@ -140,16 +140,16 @@ schedule(struct ir3_postsched_ctx *ctx, struct ir3_instruction *instr)
    if (is_meta(instr) && (instr->opc != OPC_META_TEX_PREFETCH))
       return;
 
-   if (is_sfu(instr)) {
-      ctx->sfu_delay = 8;
+   if (is_ss_producer(instr)) {
+      ctx->sfu_delay = soft_ss_delay(instr);
    } else if (has_sfu_src(instr)) {
       ctx->sfu_delay = 0;
    } else if (ctx->sfu_delay > 0) {
       ctx->sfu_delay--;
    }
 
-   if (is_tex_or_prefetch(instr)) {
-      ctx->tex_delay = 10;
+   if (is_sy_producer(instr)) {
+      ctx->tex_delay = soft_sy_delay(instr, ctx->block->shader);
    } else if (has_tex_src(instr)) {
       ctx->tex_delay = 0;
    } else if (ctx->tex_delay > 0) {
@@ -261,7 +261,7 @@ choose_instr(struct ir3_postsched_ctx *ctx)
       if (d > 0)
          continue;
 
-      if (!(is_sfu(n->instr) || is_tex(n->instr)))
+      if (!(is_ss_producer(n->instr) || is_sy_producer(n->instr)))
          continue;
 
       if (!chosen || (chosen->max_delay < n->max_delay))
@@ -403,9 +403,9 @@ add_single_reg_dep(struct ir3_postsched_deps_state *state,
       unsigned d_soft = ir3_delayslots(dep->instr, node->instr, src_n, true);
       d = ir3_delayslots_with_repeat(dep->instr, node->instr, dst_n, src_n);
       node->delay = MAX2(node->delay, d_soft);
-      if (is_tex_or_prefetch(dep->instr))
+      if (is_sy_producer(dep->instr))
          node->has_tex_src = true;
-      if (is_sfu(dep->instr))
+      if (is_ss_producer(dep->instr))
          node->has_sfu_src = true;
    }
 
