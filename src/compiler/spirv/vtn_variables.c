@@ -1222,7 +1222,9 @@ apply_var_decoration(struct vtn_builder *b,
       case SpvBuiltInTessLevelOuter:
       case SpvBuiltInTessLevelInner:
       case SpvBuiltInClipDistance:
+      case SpvBuiltInClipDistancePerViewNV:
       case SpvBuiltInCullDistance:
+      case SpvBuiltInCullDistancePerViewNV:
          var_data->compact = true;
          break;
       default:
