@@ -127,7 +127,6 @@ bool do_mat_op_to_vec(exec_list *instructions);
 bool do_minmax_prune(exec_list *instructions);
 bool do_structure_splitting(exec_list *instructions);
 bool optimize_swizzles(exec_list *instructions);
-bool do_vectorize(exec_list *instructions);
 bool do_tree_grafting(exec_list *instructions);
 bool do_vec_index_to_cond_assign(exec_list *instructions);
 bool do_vec_index_to_swizzle(exec_list *instructions);

@@ -2388,10 +2388,6 @@ do_common_optimization(exec_list *ir, bool linked,
    if (options->OptimizeForAOS && !linked)
       OPT(opt_flip_matrices, ir);
 
-   if (linked && options->OptimizeForAOS) {
-      OPT(do_vectorize, ir);
-   }
-
    if (linked)
       OPT(do_dead_code, ir, uniform_locations_assigned);
    else

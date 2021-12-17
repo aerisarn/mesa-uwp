@@ -208,7 +208,6 @@ files_libglsl = files(
   'opt_structure_splitting.cpp',
   'opt_swizzle.cpp',
   'opt_tree_grafting.cpp',
-  'opt_vectorize.cpp',
   'program.h',
   'propagate_invariance.cpp',
   's_expression.cpp',
