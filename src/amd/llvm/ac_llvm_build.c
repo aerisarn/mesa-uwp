@@ -1915,7 +1915,8 @@ void ac_build_export_null(struct ac_llvm_context *ctx)
    args.enabled_channels = 0x0; /* enabled channels */
    args.valid_mask = 1;         /* whether the EXEC mask is valid */
    args.done = 1;               /* DONE bit */
-   args.target = V_008DFC_SQ_EXP_NULL;
+   /* Gfx11 doesn't support null exports, and mrt0 should be exported instead. */
+   args.target = ctx->chip_class >= GFX11 ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_NULL;
    args.compr = 0;                       /* COMPR flag (0 = 32-bit export) */
    args.out[0] = LLVMGetUndef(ctx->f32); /* R */
    args.out[1] = LLVMGetUndef(ctx->f32); /* G */
