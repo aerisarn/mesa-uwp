@@ -1650,7 +1650,7 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    uint32_t rate_x = MIN2(2, d->fragment_shading_rate.size.width) - 1;
    uint32_t rate_y = MIN2(2, d->fragment_shading_rate.size.height) - 1;
    uint32_t pa_cl_vrs_cntl = pipeline->graphics.vrs.pa_cl_vrs_cntl;
-   uint32_t vertex_comb_mode = d->fragment_shading_rate.combiner_ops[0];
+   uint32_t pipeline_comb_mode = d->fragment_shading_rate.combiner_ops[0];
    uint32_t htile_comb_mode = d->fragment_shading_rate.combiner_ops[1];
 
    assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10_3);
@@ -1670,7 +1670,7 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
          /* As the result of min(A, 1x1) or replace(A, 1x1) are always 1x1, set the vertex rate
           * combiner mode as passthrough.
           */
-         vertex_comb_mode = V_028848_VRS_COMB_MODE_PASSTHRU;
+         pipeline_comb_mode = V_028848_VRS_COMB_MODE_PASSTHRU;
          break;
       case VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR:
          /* The result of max(A, 1x1) is always A. */
@@ -1690,7 +1690,13 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    /* VERTEX_RATE_COMBINER_MODE controls the combiner mode between the
     * draw rate and the vertex rate.
     */
-   pa_cl_vrs_cntl |= S_028848_VERTEX_RATE_COMBINER_MODE(vertex_comb_mode);
+   if (cmd_buffer->state.mesh_shading) {
+      pa_cl_vrs_cntl |= S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU) |
+                        S_028848_PRIMITIVE_RATE_COMBINER_MODE(pipeline_comb_mode);
+   } else {
+      pa_cl_vrs_cntl |= S_028848_VERTEX_RATE_COMBINER_MODE(pipeline_comb_mode) |
+                        S_028848_PRIMITIVE_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU);
+   }
 
    /* HTILE_RATE_COMBINER_MODE controls the combiner mode between the primitive rate and the HTILE
     * rate.
@@ -5065,7 +5071,13 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       if (!pipeline)
          break;
 
-      cmd_buffer->state.mesh_shading = radv_pipeline_has_mesh(pipeline);
+      bool mesh_shading = radv_pipeline_has_mesh(pipeline);
+      if (mesh_shading != cmd_buffer->state.mesh_shading) {
+         /* Re-emit VRS state because the combiner is different (vertex vs primitive). */
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+      }
+
+      cmd_buffer->state.mesh_shading = mesh_shading;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
       cmd_buffer->push_constant_stages |= pipeline->active_stages;
 
