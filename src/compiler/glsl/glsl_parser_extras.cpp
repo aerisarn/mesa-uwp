@@ -2423,8 +2423,6 @@ do_common_optimization(exec_list *ir, bool linked,
       do_constant_propagation(ir);
    progress |= array_split;
 
-   OPT(optimize_redundant_jumps, ir);
-
    if (options->MaxUnrollIterations) {
       loop_state *ls = analyze_loop_variables(ir);
       if (ls->loop_found) {
