@@ -270,7 +270,7 @@ static LLVMValueRef get_color_32bit(struct si_shader_context *ctx, unsigned colo
 }
 
 /* Initialize arguments for the shader export intrinsic */
-static void si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValueRef *values,
+static bool si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValueRef *values,
                                         unsigned cbuf, unsigned compacted_mrt_index,
                                         unsigned color_type, struct ac_export_args *args)
 {
@@ -284,6 +284,9 @@ static void si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
    assert(cbuf < 8);
 
    spi_shader_col_format = (col_formats >> (cbuf * 4)) & 0xf;
+   if (spi_shader_col_format == V_028714_SPI_SHADER_ZERO)
+      return false;
+
    is_int8 = (key->ps.part.epilog.color_is_int8 >> cbuf) & 0x1;
    is_int10 = (key->ps.part.epilog.color_is_int10 >> cbuf) & 0x1;
 
@@ -310,11 +313,6 @@ static void si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
                          bool hi) = NULL;
 
    switch (spi_shader_col_format) {
-   case V_028714_SPI_SHADER_ZERO:
-      args->enabled_channels = 0; /* writemask */
-      args->target = V_008DFC_SQ_EXP_NULL;
-      break;
-
    case V_028714_SPI_SHADER_32_R:
       args->enabled_channels = 1; /* writemask */
       args->out[0] = get_color_32bit(ctx, color_type, values[0]);
@@ -402,6 +400,8 @@ static void si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
       }
       args->compr = 1; /* COMPR flag */
    }
+
+   return true;
 }
 
 static bool si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *color, unsigned index,
@@ -429,46 +429,38 @@ static bool si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *col
 
    /* If last_cbuf > 0, FS_COLOR0_WRITES_ALL_CBUFS is true. */
    if (ctx->shader->key.ps.part.epilog.last_cbuf > 0) {
-      struct ac_export_args args[8];
-      int c, last = -1;
-
       assert(compacted_mrt_index == 0);
 
       /* Get the export arguments, also find out what the last one is. */
-      for (c = 0; c <= ctx->shader->key.ps.part.epilog.last_cbuf; c++) {
-         si_llvm_init_ps_export_args(ctx, color, c, compacted_mrt_index,
-                                     color_type, &args[c]);
-         if (args[c].enabled_channels) {
+      for (int c = 0; c <= ctx->shader->key.ps.part.epilog.last_cbuf; c++) {
+         if (si_llvm_init_ps_export_args(ctx, color, c, compacted_mrt_index,
+                                         color_type, &exp->args[exp->num])) {
+            assert(exp->args[exp->num].enabled_channels);
             compacted_mrt_index++;
-            last = c;
+            exp->num++;
          }
       }
-      if (last == -1)
+      if (compacted_mrt_index == 0)
          return false;
 
-      /* Emit all exports. */
-      for (c = 0; c <= ctx->shader->key.ps.part.epilog.last_cbuf; c++) {
-         if (is_last && last == c) {
-            args[c].valid_mask = 1; /* whether the EXEC mask is valid */
-            args[c].done = 1;       /* DONE bit */
-         } else if (!args[c].enabled_channels)
-            continue; /* unnecessary NULL export */
-
-         memcpy(&exp->args[exp->num++], &args[c], sizeof(args[c]));
+      if (is_last) {
+         exp->args[exp->num - 1].valid_mask = 1;
+         exp->args[exp->num - 1].done = 1;
       }
    } else {
-      struct ac_export_args args;
-
       /* Export */
-      si_llvm_init_ps_export_args(ctx, color, index, compacted_mrt_index,
-                                  color_type, &args);
-      if (is_last) {
-         args.valid_mask = 1; /* whether the EXEC mask is valid */
-         args.done = 1;       /* DONE bit */
-      } else if (!args.enabled_channels)
-         return false; /* unnecessary NULL export */
+      if (si_llvm_init_ps_export_args(ctx, color, index, compacted_mrt_index,
+                                      color_type, &exp->args[exp->num])) {
+         assert(exp->args[exp->num].enabled_channels);
 
-      memcpy(&exp->args[exp->num++], &args, sizeof(args));
+         if (is_last) {
+            exp->args[exp->num].valid_mask = 1; /* whether the EXEC mask is valid */
+            exp->args[exp->num].done = 1;       /* DONE bit */
+         }
+         exp->num++;
+      } else {
+         return false;
+      }
    }
    return true;
 }
