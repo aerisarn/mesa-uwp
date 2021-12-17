@@ -59,11 +59,9 @@ struct gl_shader_program;
 #define SQRT_TO_ABS_SQRT          0x200000
 #define MUL64_TO_MUL_AND_MUL_HIGH 0x400000
 
-/* Opertaions for lower_64bit_integer_instructions() */
-#define MUL64                     (1U << 0)
-#define SIGN64                    (1U << 1)
-#define DIV64                     (1U << 2)
-#define MOD64                     (1U << 3)
+/* Operations for lower_64bit_integer_instructions() */
+#define DIV64                     (1U << 0)
+#define MOD64                     (1U << 1)
 
 /**
  * \see class lower_packing_builtins_visitor
