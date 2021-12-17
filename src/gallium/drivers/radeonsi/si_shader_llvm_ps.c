@@ -843,7 +843,6 @@ void si_llvm_build_ps_prolog(struct si_shader_context *ctx, union si_shader_part
  */
 void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part_key *key)
 {
-   LLVMValueRef depth = NULL, stencil = NULL, samplemask = NULL;
    int i;
    struct si_ps_exports exp = {};
 
@@ -872,6 +871,24 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
    /* Disable elimination of unused inputs. */
    ac_llvm_add_target_dep_function_attr(ctx->main_fn, "InitialPSInputAddr", 0xffffff);
 
+   /* Prepare the mrtz export. */
+   if (key->ps_epilog.writes_z ||
+       key->ps_epilog.writes_stencil ||
+       key->ps_epilog.writes_samplemask) {
+      LLVMValueRef depth = NULL, stencil = NULL, samplemask = NULL;
+      unsigned vgpr_index = ctx->args.num_sgprs_used +
+                            util_bitcount(key->ps_epilog.colors_written) * 4;
+
+      if (key->ps_epilog.writes_z)
+         depth = LLVMGetParam(ctx->main_fn, vgpr_index++);
+      if (key->ps_epilog.writes_stencil)
+         stencil = LLVMGetParam(ctx->main_fn, vgpr_index++);
+      if (key->ps_epilog.writes_samplemask)
+         samplemask = LLVMGetParam(ctx->main_fn, vgpr_index++);
+
+      ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, false, &exp.args[exp.num++]);
+   }
+
    /* Process colors. */
    unsigned vgpr = ctx->args.num_sgprs_used;
    unsigned num_compacted_mrts = 0;
@@ -897,17 +914,6 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
       si_export_mrt_color(ctx, color, output_index, &num_compacted_mrts,
                           ctx->args.arg_count - 1, color_type, &exp);
    }
-
-   /* Process depth, stencil, samplemask. */
-   if (key->ps_epilog.writes_z)
-      depth = LLVMGetParam(ctx->main_fn, vgpr++);
-   if (key->ps_epilog.writes_stencil)
-      stencil = LLVMGetParam(ctx->main_fn, vgpr++);
-   if (key->ps_epilog.writes_samplemask)
-      samplemask = LLVMGetParam(ctx->main_fn, vgpr++);
-
-   if (depth || stencil || samplemask)
-      ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, false, &exp.args[exp.num++]);
 
    if (exp.num) {
       exp.args[exp.num - 1].valid_mask = 1;  /* whether the EXEC mask is valid */
