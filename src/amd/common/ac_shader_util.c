@@ -114,7 +114,202 @@ unsigned ac_get_tbuffer_format(enum chip_class chip_class, unsigned dfmt, unsign
    if (dfmt == V_008F0C_GFX10_FORMAT_INVALID)
       return V_008F0C_GFX10_FORMAT_INVALID;
 
-   if (chip_class >= GFX10) {
+   if (chip_class >= GFX11) {
+      switch (dfmt) {
+      default:
+         unreachable("bad dfmt");
+      case V_008F0C_BUF_DATA_FORMAT_INVALID:
+         return V_008F0C_GFX11_FORMAT_INVALID;
+
+      case V_008F0C_BUF_DATA_FORMAT_8:
+         switch (nfmt) {
+         case V_008F0C_BUF_NUM_FORMAT_UNORM:
+            return V_008F0C_GFX11_FORMAT_8_UNORM;
+         case V_008F0C_BUF_NUM_FORMAT_SNORM:
+            return V_008F0C_GFX11_FORMAT_8_SNORM;
+         case V_008F0C_BUF_NUM_FORMAT_USCALED:
+            return V_008F0C_GFX11_FORMAT_8_USCALED;
+         case V_008F0C_BUF_NUM_FORMAT_SSCALED:
+            return V_008F0C_GFX11_FORMAT_8_SSCALED;
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_8_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_8_SINT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_8_8:
+         switch (nfmt) {
+         case V_008F0C_BUF_NUM_FORMAT_UNORM:
+            return V_008F0C_GFX11_FORMAT_8_8_UNORM;
+         case V_008F0C_BUF_NUM_FORMAT_SNORM:
+            return V_008F0C_GFX11_FORMAT_8_8_SNORM;
+         case V_008F0C_BUF_NUM_FORMAT_USCALED:
+            return V_008F0C_GFX11_FORMAT_8_8_USCALED;
+         case V_008F0C_BUF_NUM_FORMAT_SSCALED:
+            return V_008F0C_GFX11_FORMAT_8_8_SSCALED;
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_8_8_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_8_8_SINT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
+         switch (nfmt) {
+         case V_008F0C_BUF_NUM_FORMAT_UNORM:
+            return V_008F0C_GFX11_FORMAT_8_8_8_8_UNORM;
+         case V_008F0C_BUF_NUM_FORMAT_SNORM:
+            return V_008F0C_GFX11_FORMAT_8_8_8_8_SNORM;
+         case V_008F0C_BUF_NUM_FORMAT_USCALED:
+            return V_008F0C_GFX11_FORMAT_8_8_8_8_USCALED;
+         case V_008F0C_BUF_NUM_FORMAT_SSCALED:
+            return V_008F0C_GFX11_FORMAT_8_8_8_8_SSCALED;
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_8_8_8_8_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_8_8_8_8_SINT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_16:
+         switch (nfmt) {
+         case V_008F0C_BUF_NUM_FORMAT_UNORM:
+            return V_008F0C_GFX11_FORMAT_16_UNORM;
+         case V_008F0C_BUF_NUM_FORMAT_SNORM:
+            return V_008F0C_GFX11_FORMAT_16_SNORM;
+         case V_008F0C_BUF_NUM_FORMAT_USCALED:
+            return V_008F0C_GFX11_FORMAT_16_USCALED;
+         case V_008F0C_BUF_NUM_FORMAT_SSCALED:
+            return V_008F0C_GFX11_FORMAT_16_SSCALED;
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_16_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_16_SINT;
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_16_FLOAT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_16_16:
+         switch (nfmt) {
+         case V_008F0C_BUF_NUM_FORMAT_UNORM:
+            return V_008F0C_GFX11_FORMAT_16_16_UNORM;
+         case V_008F0C_BUF_NUM_FORMAT_SNORM:
+            return V_008F0C_GFX11_FORMAT_16_16_SNORM;
+         case V_008F0C_BUF_NUM_FORMAT_USCALED:
+            return V_008F0C_GFX11_FORMAT_16_16_USCALED;
+         case V_008F0C_BUF_NUM_FORMAT_SSCALED:
+            return V_008F0C_GFX11_FORMAT_16_16_SSCALED;
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_16_16_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_16_16_SINT;
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_16_16_FLOAT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
+         switch (nfmt) {
+         case V_008F0C_BUF_NUM_FORMAT_UNORM:
+            return V_008F0C_GFX11_FORMAT_16_16_16_16_UNORM;
+         case V_008F0C_BUF_NUM_FORMAT_SNORM:
+            return V_008F0C_GFX11_FORMAT_16_16_16_16_SNORM;
+         case V_008F0C_BUF_NUM_FORMAT_USCALED:
+            return V_008F0C_GFX11_FORMAT_16_16_16_16_USCALED;
+         case V_008F0C_BUF_NUM_FORMAT_SSCALED:
+            return V_008F0C_GFX11_FORMAT_16_16_16_16_SSCALED;
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_16_16_16_16_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_16_16_16_16_SINT;
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_16_16_16_16_FLOAT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_32:
+         switch (nfmt) {
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_32_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_32_SINT;
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_32_FLOAT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_32_32:
+         switch (nfmt) {
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_32_32_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_32_32_SINT;
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_32_32_FLOAT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_32_32_32:
+         switch (nfmt) {
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_32_32_32_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_32_32_32_SINT;
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_32_32_32_FLOAT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
+         switch (nfmt) {
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_32_32_32_32_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_32_32_32_32_SINT;
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_32_32_32_32_FLOAT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
+         switch (nfmt) {
+         case V_008F0C_BUF_NUM_FORMAT_UNORM:
+            return V_008F0C_GFX11_FORMAT_2_10_10_10_UNORM;
+         case V_008F0C_BUF_NUM_FORMAT_SNORM:
+            return V_008F0C_GFX11_FORMAT_2_10_10_10_SNORM;
+         case V_008F0C_BUF_NUM_FORMAT_USCALED:
+            return V_008F0C_GFX11_FORMAT_2_10_10_10_USCALED;
+         case V_008F0C_BUF_NUM_FORMAT_SSCALED:
+            return V_008F0C_GFX11_FORMAT_2_10_10_10_SSCALED;
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_UINT:
+            return V_008F0C_GFX11_FORMAT_2_10_10_10_UINT;
+         case V_008F0C_BUF_NUM_FORMAT_SINT:
+            return V_008F0C_GFX11_FORMAT_2_10_10_10_SINT;
+         }
+
+      case V_008F0C_BUF_DATA_FORMAT_10_11_11:
+         switch (nfmt) {
+         default:
+            unreachable("bad nfmt");
+         case V_008F0C_BUF_NUM_FORMAT_FLOAT:
+            return V_008F0C_GFX11_FORMAT_10_11_11_FLOAT;
+         }
+      }
+   } else if (chip_class >= GFX10) {
       unsigned format;
       switch (dfmt) {
       default:
