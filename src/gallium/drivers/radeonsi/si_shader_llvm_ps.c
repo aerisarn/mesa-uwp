@@ -384,7 +384,6 @@ static bool si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
          packed = packf(&ctx->ac, pack_args);
          args->out[chan] = ac_to_float(&ctx->ac, packed);
       }
-      args->compr = 1; /* COMPR flag */
    }
    /* Pack i16/u16. */
    if (packi) {
@@ -396,7 +395,12 @@ static bool si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
          packed = packi(&ctx->ac, pack_args, is_int8 ? 8 : is_int10 ? 10 : 16, chan == 1);
          args->out[chan] = ac_to_float(&ctx->ac, packed);
       }
-      args->compr = 1; /* COMPR flag */
+   }
+   if (packf || packi) {
+      if (ctx->screen->info.chip_class >= GFX11)
+         args->enabled_channels = 0x3;
+      else
+         args->compr = 1; /* COMPR flag */
    }
 
    return true;

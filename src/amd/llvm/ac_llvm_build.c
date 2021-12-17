@@ -1970,6 +1970,8 @@ void ac_build_export(struct ac_llvm_context *ctx, struct ac_export_args *a)
    args[1] = LLVMConstInt(ctx->i32, a->enabled_channels, 0);
 
    if (a->compr) {
+      assert(ctx->chip_class < GFX11);
+
       args[2] = LLVMBuildBitCast(ctx->builder, a->out[0], ctx->v2i16, "");
       args[3] = LLVMBuildBitCast(ctx->builder, a->out[1], ctx->v2i16, "");
       args[4] = LLVMConstInt(ctx->i1, a->done, 0);
@@ -1977,10 +1979,10 @@ void ac_build_export(struct ac_llvm_context *ctx, struct ac_export_args *a)
 
       ac_build_intrinsic(ctx, "llvm.amdgcn.exp.compr.v2i16", ctx->voidt, args, 6, 0);
    } else {
-      args[2] = a->out[0];
-      args[3] = a->out[1];
-      args[4] = a->out[2];
-      args[5] = a->out[3];
+      args[2] = LLVMBuildBitCast(ctx->builder, a->out[0], ctx->f32, "");
+      args[3] = LLVMBuildBitCast(ctx->builder, a->out[1], ctx->f32, "");
+      args[4] = LLVMBuildBitCast(ctx->builder, a->out[2], ctx->f32, "");
+      args[5] = LLVMBuildBitCast(ctx->builder, a->out[3], ctx->f32, "");
       args[6] = LLVMConstInt(ctx->i1, a->done, 0);
       args[7] = LLVMConstInt(ctx->i1, a->valid_mask, 0);
 
@@ -4255,19 +4257,19 @@ void ac_export_mrt_z(struct ac_llvm_context *ctx, LLVMValueRef depth, LLVMValueR
 
    if (format == V_028710_SPI_SHADER_UINT16_ABGR) {
       assert(!depth);
-      args->compr = 1; /* COMPR flag */
+      args->compr = ctx->chip_class < GFX11; /* COMPR flag */
 
       if (stencil) {
          /* Stencil should be in X[23:16]. */
          stencil = ac_to_integer(ctx, stencil);
          stencil = LLVMBuildShl(ctx->builder, stencil, LLVMConstInt(ctx->i32, 16, 0), "");
          args->out[0] = ac_to_float(ctx, stencil);
-         mask |= 0x3;
+         mask |= ctx->chip_class >= GFX11 ? 0x1 : 0x3;
       }
       if (samplemask) {
          /* SampleMask should be in Y[15:0]. */
          args->out[1] = samplemask;
-         mask |= 0xc;
+         mask |= ctx->chip_class >= GFX11 ? 0x2 : 0xc;
       }
    } else {
       if (depth) {
