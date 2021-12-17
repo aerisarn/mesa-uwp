@@ -874,27 +874,9 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
 
    /* Process colors. */
    unsigned vgpr = ctx->args.num_sgprs_used;
-   unsigned colors_written = key->ps_epilog.colors_written;
-   int last_color_export = -1;
-
-   /* Find the last color export. */
-   if (!key->ps_epilog.writes_z && !key->ps_epilog.writes_stencil &&
-       !key->ps_epilog.writes_samplemask) {
-      unsigned spi_format = key->ps_epilog.states.spi_shader_col_format;
-
-      /* If last_cbuf > 0, FS_COLOR0_WRITES_ALL_CBUFS is true. */
-      if (colors_written == 0x1 && key->ps_epilog.states.last_cbuf > 0) {
-         /* Just set this if any of the colorbuffers are enabled. */
-         if (spi_format & ((1ull << (4 * (key->ps_epilog.states.last_cbuf + 1))) - 1))
-            last_color_export = 0;
-      } else {
-         for (i = 0; i < 8; i++)
-            if (colors_written & (1 << i) && (spi_format >> (i * 4)) & 0xf)
-               last_color_export = i;
-      }
-   }
-
    unsigned num_compacted_mrts = 0;
+   unsigned colors_written = key->ps_epilog.colors_written;
+
    while (colors_written) {
       LLVMValueRef color[4];
       int output_index = u_bit_scan(&colors_written);
@@ -926,8 +908,6 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
 
    if (depth || stencil || samplemask)
       ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, false, &exp.args[exp.num++]);
-   else if (last_color_export == -1)
-      ac_build_export_null(&ctx->ac);
 
    if (exp.num) {
       exp.args[exp.num - 1].valid_mask = 1;  /* whether the EXEC mask is valid */
@@ -935,6 +915,8 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
 
       for (unsigned i = 0; i < exp.num; i++)
          ac_build_export(&ctx->ac, &exp.args[i]);
+   } else {
+      ac_build_export_null(&ctx->ac);
    }
 
    /* Compile. */
