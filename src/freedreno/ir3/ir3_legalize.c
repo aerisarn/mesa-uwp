@@ -255,6 +255,11 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
       if (is_sfu(n))
          regmask_set(&state->needs_ss, n->dsts[0]);
 
+      foreach_dst (dst, n) {
+         if (dst->flags & IR3_REG_SHARED)
+            regmask_set(&state->needs_ss, dst);
+      }
+
       if (is_tex_or_prefetch(n)) {
          regmask_set(&state->needs_sy, n->dsts[0]);
          if (n->opc == OPC_META_TEX_PREFETCH)

@@ -1670,6 +1670,10 @@ is_local_mem_load(struct ir3_instruction *instr)
 static inline bool
 is_ss_producer(struct ir3_instruction *instr)
 {
+   foreach_dst (dst, instr) {
+      if (dst->flags & IR3_REG_SHARED)
+         return true;
+   }
    return is_sfu(instr) || is_local_mem_load(instr);
 }
 
@@ -1687,7 +1691,13 @@ soft_ss_delay(struct ir3_instruction *instr)
     * and so on. Not quite sure where it tapers out (ie. how many warps share an
     * SFU unit). But 10 seems like a reasonable # to choose:
     */
-   return 10;
+   if (is_sfu(instr) || is_local_mem_load(instr))
+      return 10;
+
+   /* The blob adds 6 nops between shared producers and consumers, and before we
+    * used (ss) this was sufficient in most cases.
+    */
+   return 6;
 }
 
 static inline bool

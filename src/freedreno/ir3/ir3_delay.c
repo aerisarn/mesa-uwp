@@ -76,7 +76,7 @@ ir3_delayslots(struct ir3_instruction *assigner,
 
    /* assigner must be alu: */
    if (is_flow(consumer) || is_sfu(consumer) || is_tex(consumer) ||
-       is_mem(consumer) || (assigner->dsts[0]->flags & IR3_REG_SHARED)) {
+       is_mem(consumer)) {
       return 6;
    } else {
       /* In mergedregs mode, there is an extra 2-cycle penalty when half of
