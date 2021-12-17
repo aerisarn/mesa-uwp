@@ -403,12 +403,30 @@ radv_lower_primitive_shading_rate(nir_shader *nir)
          nir_ssa_def *y_rate = nir_iand(&b, val, nir_imm_int(&b, 3));
          y_rate = nir_b2i32(&b, nir_ine(&b, y_rate, nir_imm_int(&b, 0)));
 
-         /* Bits [2:3] = VRS rate X
-          * Bits [4:5] = VRS rate Y
-          * HW shading rate = (xRate << 2) | (yRate << 4)
-          */
-         nir_ssa_def *out = nir_ior(&b, nir_ishl(&b, x_rate, nir_imm_int(&b, 2)),
-                                        nir_ishl(&b, y_rate, nir_imm_int(&b, 4)));
+         nir_ssa_def *out = NULL;
+
+         if (nir->info.stage == MESA_SHADER_MESH) {
+            /* MS:
+             * Primitive shading rate is a per-primitive output, it is
+             * part of the second channel of the primitive export.
+             *
+             * Bits [28:29] = VRS rate X
+             * Bits [30:31] = VRS rate Y
+             * This will be added to the other bits of that channel in the backend.
+             */
+            out = nir_ior(&b, nir_ishl(&b, x_rate, nir_imm_int(&b, 28)),
+                              nir_ishl(&b, y_rate, nir_imm_int(&b, 30)));
+         } else {
+            /* VS, TES, GS:
+             * Primitive shading rate is a per-vertex output pos export.
+             *
+             * Bits [2:3] = VRS rate X
+             * Bits [4:5] = VRS rate Y
+             * HW shading rate = (xRate << 2) | (yRate << 4)
+             */
+            out = nir_ior(&b, nir_ishl(&b, x_rate, nir_imm_int(&b, 2)),
+                              nir_ishl(&b, y_rate, nir_imm_int(&b, 4)));
+         }
 
          nir_instr_rewrite_src(&intr->instr, &intr->src[1], nir_src_for_ssa(out));
 
@@ -761,7 +779,8 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
 
    /* Lower primitive shading rate to match HW requirements. */
    if ((nir->info.stage == MESA_SHADER_VERTEX ||
-        nir->info.stage == MESA_SHADER_GEOMETRY) &&
+        nir->info.stage == MESA_SHADER_GEOMETRY ||
+        nir->info.stage == MESA_SHADER_MESH) &&
        nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE)) {
       NIR_PASS_V(nir, radv_lower_primitive_shading_rate);
    }
