@@ -734,6 +734,24 @@ debian-testing-asan:
     MINIO_ARTIFACT_NAME: ""
     ARTIFACTS_DEBUG_SYMBOLS: 1
 
+debian-testing-msan:
+  extends:
+    - debian-clang
+  variables:
+    # l_undef is incompatible with msan
+    EXTRA_OPTION:
+      -D b_sanitize=memory
+      -D b_lundef=false
+    MINIO_ARTIFACT_NAME: ""
+    ARTIFACTS_DEBUG_SYMBOLS: 1
+    # Don't run all the tests yet:
+    # GLSL has some issues in sexpression reading.
+    # gtest has issues in its test initialization.
+    MESON_TEST_ARGS: "--suite glcpp --suite gallium  --suite format"
+    # Freedreno dropped because freedreno tools fail at msan.
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
+    VULKAN_DRIVERS: intel,amd,broadcom,virtio-experimental
+
 debian-clover-testing:
   extends:
     - .meson-build
