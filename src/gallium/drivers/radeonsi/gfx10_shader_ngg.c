@@ -67,7 +67,7 @@ static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
    LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
 
    return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
-                                LLVMConstInt(ctx->ac.i32, GFX10_GS_QUERY_BUF, false));
+                                LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_BUF, false));
 }
 
 /**
