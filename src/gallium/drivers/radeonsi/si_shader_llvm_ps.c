@@ -405,7 +405,7 @@ static bool si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
 }
 
 static void si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *color, unsigned index,
-                                unsigned *compacted_mrt_index, unsigned samplemask_param,
+                                unsigned first_color_export, unsigned samplemask_param,
                                 unsigned color_type, struct si_ps_exports *exp)
 {
    int i;
@@ -429,23 +429,21 @@ static void si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *col
 
    /* If last_cbuf > 0, FS_COLOR0_WRITES_ALL_CBUFS is true. */
    if (ctx->shader->key.ps.part.epilog.last_cbuf > 0) {
-      assert(*compacted_mrt_index == 0);
+      assert(exp->num == first_color_export);
 
       /* Get the export arguments, also find out what the last one is. */
       for (int c = 0; c <= ctx->shader->key.ps.part.epilog.last_cbuf; c++) {
-         if (si_llvm_init_ps_export_args(ctx, color, c, *compacted_mrt_index,
+         if (si_llvm_init_ps_export_args(ctx, color, c, exp->num - first_color_export,
                                          color_type, &exp->args[exp->num])) {
             assert(exp->args[exp->num].enabled_channels);
-            (*compacted_mrt_index)++;
             exp->num++;
          }
       }
    } else {
       /* Export */
-      if (si_llvm_init_ps_export_args(ctx, color, index, *compacted_mrt_index,
+      if (si_llvm_init_ps_export_args(ctx, color, index, exp->num - first_color_export,
                                       color_type, &exp->args[exp->num])) {
          assert(exp->args[exp->num].enabled_channels);
-         (*compacted_mrt_index)++;
          exp->num++;
       }
    }
@@ -889,9 +887,9 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
       ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, false, &exp.args[exp.num++]);
    }
 
-   /* Process colors. */
+   /* Prepare color exports. */
+   const unsigned first_color_export = exp.num;
    unsigned vgpr = ctx->args.num_sgprs_used;
-   unsigned num_compacted_mrts = 0;
    unsigned colors_written = key->ps_epilog.colors_written;
 
    while (colors_written) {
@@ -911,7 +909,7 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
             color[i] = LLVMGetParam(ctx->main_fn, vgpr++);
       }
 
-      si_export_mrt_color(ctx, color, output_index, &num_compacted_mrts,
+      si_export_mrt_color(ctx, color, output_index, first_color_export,
                           ctx->args.arg_count - 1, color_type, &exp);
    }
 
