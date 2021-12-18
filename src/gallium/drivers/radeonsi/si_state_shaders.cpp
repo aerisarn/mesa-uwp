@@ -3824,9 +3824,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
    /* Set ring bindings. */
    if (sctx->esgs_ring) {
       assert(sctx->chip_class <= GFX8);
-      si_set_ring_buffer(sctx, SI_ES_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, true,
-                         true, 4, 64, 0);
-      si_set_ring_buffer(sctx, SI_GS_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, false,
+      si_set_ring_buffer(sctx, SI_RING_ESGS, sctx->esgs_ring, 0, sctx->esgs_ring->width0, false,
                          false, 0, 0, 0);
    }
    if (sctx->gsvs_ring) {

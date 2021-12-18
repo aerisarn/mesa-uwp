@@ -312,12 +312,28 @@ static void si_llvm_emit_primitive(struct ac_shader_abi *abi, unsigned stream)
 
 void si_preload_esgs_ring(struct si_shader_context *ctx)
 {
+   LLVMBuilderRef builder = ctx->ac.builder;
+
    if (ctx->screen->info.chip_class <= GFX8) {
-      unsigned ring = ctx->stage == MESA_SHADER_GEOMETRY ? SI_GS_RING_ESGS : SI_ES_RING_ESGS;
-      LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, ring, 0);
+      LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, SI_RING_ESGS, 0);
       LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
 
       ctx->esgs_ring = ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
+
+      if (ctx->stage != MESA_SHADER_GEOMETRY) {
+         LLVMValueRef desc1 = LLVMBuildExtractElement(builder, ctx->esgs_ring, ctx->ac.i32_1, "");
+         LLVMValueRef desc3 = LLVMBuildExtractElement(builder, ctx->esgs_ring,
+                                                      LLVMConstInt(ctx->ac.i32, 3, 0), "");
+         desc1 = LLVMBuildOr(builder, desc1, LLVMConstInt(ctx->ac.i32,
+                                                          S_008F04_SWIZZLE_ENABLE(1), 0), "");
+         desc3 = LLVMBuildOr(builder, desc3, LLVMConstInt(ctx->ac.i32,
+                                                          S_008F0C_ELEMENT_SIZE(1) |
+                                                          S_008F0C_INDEX_STRIDE(3) |
+                                                          S_008F0C_ADD_TID_ENABLE(1), 0), "");
+         ctx->esgs_ring = LLVMBuildInsertElement(builder, ctx->esgs_ring, desc1, ctx->ac.i32_1, "");
+         ctx->esgs_ring = LLVMBuildInsertElement(builder, ctx->esgs_ring, desc3,
+                                                 LLVMConstInt(ctx->ac.i32, 3, 0), "");
+      }
    } else {
       if (USE_LDS_SYMBOLS) {
          /* Declare the ESGS ring as an explicit LDS symbol. */

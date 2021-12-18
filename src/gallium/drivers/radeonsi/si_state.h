@@ -372,14 +372,13 @@ enum
    SI_PS_CONST_POLY_STIPPLE,
    SI_PS_CONST_SAMPLE_POSITIONS,
 
-   SI_ES_RING_ESGS,                    /* gfx6-8 */
-   SI_GS_RING_ESGS,                    /* gfx6-8 */
+   SI_RING_ESGS,                       /* gfx6-8 */
    SI_RING_GSVS,
 
    SI_NUM_INTERNAL_BINDINGS,
 
    /* Aliases to reuse slots that are unused on other generations. */
-   SI_GS_QUERY_BUF = SI_ES_RING_ESGS,  /* gfx10+ */
+   SI_GS_QUERY_BUF = SI_RING_ESGS,     /* gfx10+ */
 };
 
 /* Indices into sctx->descriptors, laid out so that gfx and compute pipelines
