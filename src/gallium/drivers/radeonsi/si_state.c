@@ -4937,7 +4937,8 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
       if (sscreen->info.chip_class >= GFX10) {
          const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&sscreen->info)[elements[i].src_format];
          assert(fmt->img_format != 0 && fmt->img_format < 128);
-         v->rsrc_word3[i] |= S_008F0C_FORMAT(fmt->img_format) | S_008F0C_RESOURCE_LEVEL(1);
+         v->rsrc_word3[i] |= S_008F0C_FORMAT(fmt->img_format) |
+                             S_008F0C_RESOURCE_LEVEL(sscreen->info.chip_class < GFX11);
       } else {
          unsigned data_format, num_format;
          data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);

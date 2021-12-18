@@ -594,15 +594,19 @@ static void setup_scratch_rsrc_user_sgprs(struct si_context *sctx,
       AMD_HSA_BITS_GET(code_object->code_properties, AMD_CODE_PROPERTY_PRIVATE_ELEMENT_SIZE);
 
    uint32_t scratch_dword0 = scratch_va & 0xffffffff;
-   uint32_t scratch_dword1 =
-      S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1);
+   uint32_t scratch_dword1 = S_008F04_BASE_ADDRESS_HI(scratch_va >> 32);
+
+   if (sctx->chip_class >= GFX11)
+      scratch_dword1 |= S_008F04_SWIZZLE_ENABLE_GFX11(1);
+   else
+      scratch_dword1 |= S_008F04_SWIZZLE_ENABLE_GFX6(1);
 
    /* Disable address clamping */
    uint32_t scratch_dword2 = 0xffffffff;
    uint32_t scratch_dword3 = S_008F0C_INDEX_STRIDE(3) | S_008F0C_ADD_TID_ENABLE(1);
 
    if (sctx->chip_class >= GFX9) {
-      assert(max_private_element_size == 1); /* always 4 bytes on GFX9 */
+      assert(max_private_element_size == 1); /* only 4 bytes on GFX9 */
    } else {
       scratch_dword3 |= S_008F0C_ELEMENT_SIZE(max_private_element_size);
 

@@ -1080,7 +1080,10 @@ static void si_init_buffer_resources(struct si_context *sctx,
       desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
-      if (sctx->chip_class >= GFX10) {
+      if (sctx->chip_class >= GFX11) {
+         desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_FLOAT) |
+                    S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW);
+      } else if (sctx->chip_class >= GFX10) {
          desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
@@ -1532,19 +1535,27 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot, struct pipe_resource
       /* Set the descriptor. */
       uint32_t *desc = descs->list + slot * 4;
       desc[0] = va;
-      desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride) |
-                S_008F04_SWIZZLE_ENABLE_GFX6(swizzle);
+      desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
       desc[2] = num_records;
       desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
                 S_008F0C_INDEX_STRIDE(index_stride) | S_008F0C_ADD_TID_ENABLE(add_tid);
 
-      if (sctx->chip_class >= GFX9)
-         assert(!swizzle || element_size == 1); /* always 4 bytes on GFX9 */
-      else
+      if (sctx->chip_class >= GFX11) {
+         assert(!swizzle || element_size == 1 || element_size == 3); /* 4 or 16 bytes */
+         desc[1] |= S_008F04_SWIZZLE_ENABLE_GFX11(swizzle ? element_size : 0);
+      } else if (sctx->chip_class >= GFX9) {
+         assert(!swizzle || element_size == 1); /* only 4 bytes on GFX9 */
+         desc[1] |= S_008F04_SWIZZLE_ENABLE_GFX6(swizzle);
+      } else {
+         desc[1] |= S_008F04_SWIZZLE_ENABLE_GFX6(swizzle);
          desc[3] |= S_008F0C_ELEMENT_SIZE(element_size);
+      }
 
-      if (sctx->chip_class >= GFX10) {
+      if (sctx->chip_class >= GFX11) {
+         desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_FLOAT) |
+                    S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED);
+      } else if (sctx->chip_class >= GFX10) {
          desc[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
