@@ -45,7 +45,7 @@
 #include "util/os_file.h"
 #include "frontend/sw_winsys.h"
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
 #define ZINK_USE_DMABUF
 #endif
 
@@ -58,6 +58,10 @@
 #define DRM_FORMAT_MOD_LINEAR 0
 #endif
 
+#if defined(__APPLE__)
+// Source of MVK_VERSION
+#include "MoltenVK/vk_mvk_moltenvk.h"
+#endif
 
 static bool
 equals_ivci(const void *a, const void *b)
