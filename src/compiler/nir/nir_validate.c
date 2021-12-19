@@ -634,7 +634,6 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       if (glsl_type_is_boolean(dst->type))
          src_bit_sizes[1] |= 32;
       validate_assert(state, !nir_deref_mode_may_be(dst, nir_var_read_only_modes));
-      validate_assert(state, (nir_intrinsic_write_mask(instr) & ~((1 << instr->num_components) - 1)) == 0);
       break;
    }
 
@@ -822,6 +821,11 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 
    if (!vectorized_intrinsic(instr))
       validate_assert(state, instr->num_components == 0);
+
+   if (nir_intrinsic_has_write_mask(instr)) {
+      unsigned component_mask = BITFIELD_MASK(instr->num_components);
+      validate_assert(state, (nir_intrinsic_write_mask(instr) & ~component_mask) == 0);
+   }
 }
 
 static void
