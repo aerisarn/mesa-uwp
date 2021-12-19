@@ -141,6 +141,29 @@ lower_store_output_to_scalar(nir_builder *b, nir_intrinsic_instr *intr)
       nir_intrinsic_set_src_type(chan_intr, nir_intrinsic_src_type(intr));
       set_io_semantics(chan_intr, intr, i);
 
+      /* Scalarize transform feedback info. */
+      unsigned component = nir_intrinsic_component(chan_intr);
+
+      for (unsigned c = 0; c <= component; c++) {
+         nir_io_xfb xfb = c < 2 ? nir_intrinsic_io_xfb(intr) :
+                                  nir_intrinsic_io_xfb2(intr);
+
+         if (component < c + xfb.out[c % 2].num_components) {
+            nir_io_xfb scalar_xfb;
+
+            memset(&scalar_xfb, 0, sizeof(scalar_xfb));
+            scalar_xfb.out[component % 2].num_components = 1;
+            scalar_xfb.out[component % 2].buffer = xfb.out[c % 2].buffer;
+            scalar_xfb.out[component % 2].offset = xfb.out[c % 2].offset +
+                                                   component - c;
+            if (component < 2)
+               nir_intrinsic_set_io_xfb(chan_intr, scalar_xfb);
+            else
+               nir_intrinsic_set_io_xfb2(chan_intr, scalar_xfb);
+            break;
+         }
+      }
+
       /* value */
       chan_intr->src[0] = nir_src_for_ssa(nir_channel(b, value, i));
       /* offset */
