@@ -1651,7 +1651,7 @@ typedef struct {
 
 #include "nir_intrinsics.h"
 
-#define NIR_INTRINSIC_MAX_CONST_INDEX 6
+#define NIR_INTRINSIC_MAX_CONST_INDEX 7
 
 /** Represents an intrinsic
  *
@@ -1769,6 +1769,25 @@ typedef struct nir_io_semantics {
    unsigned invariant:1; /* The variable has the invariant flag set */
    unsigned _pad:5;
 } nir_io_semantics;
+
+/* Transform feedback info for 2 outputs. nir_intrinsic_store_output contains
+ * this structure twice to support up to 4 outputs. The structure is limited
+ * to 32 bits because it's stored in nir_intrinsic_instr::const_index[].
+ */
+typedef struct nir_io_xfb {
+   struct {
+      /* start_component is equal to the index of out[]; add 2 for io_xfb2 */
+      /* start_component is not relative to nir_intrinsic_component */
+      /* get the stream index from nir_io_semantics */
+      uint8_t num_components:4;  /* max 4; if this is 0, xfb is disabled */
+      uint8_t buffer:4;  /* buffer index, max 3 */
+      uint8_t offset;    /* transform feedback buffer offset in dwords,
+                            max (1K - 4) bytes */
+   } out[2];
+} nir_io_xfb;
+
+unsigned
+nir_instr_xfb_write_mask(nir_intrinsic_instr *instr);
 
 #define NIR_INTRINSIC_MAX_INPUTS 11
 

@@ -3383,3 +3383,30 @@ nir_tex_instr_src_size(const nir_tex_instr *instr, unsigned src)
 
    return 1;
 }
+
+/**
+ * Return which components are written into transform feedback buffers.
+ * The result is relative to 0, not "component".
+ */
+unsigned
+nir_instr_xfb_write_mask(nir_intrinsic_instr *instr)
+{
+   unsigned mask = 0;
+
+   if (nir_intrinsic_has_io_xfb(instr)) {
+      unsigned wr_mask = nir_intrinsic_write_mask(instr) <<
+                         nir_intrinsic_component(instr);
+      assert((wr_mask & ~0xf) == 0); /* only 4 components allowed */
+
+      unsigned iter_mask = wr_mask;
+      while (iter_mask) {
+         unsigned i = u_bit_scan(&iter_mask);
+         nir_io_xfb xfb = i < 2 ? nir_intrinsic_io_xfb(instr) :
+                                  nir_intrinsic_io_xfb2(instr);
+         if (xfb.out[i % 2].num_components)
+            mask |= BITFIELD_RANGE(i, xfb.out[i % 2].num_components) & wr_mask;
+      }
+   }
+
+   return mask;
+}

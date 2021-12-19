@@ -248,6 +248,10 @@ index("nir_scope", "execution_scope")
 # Semantics of an IO instruction
 index("struct nir_io_semantics", "io_semantics")
 
+# Transform feedback info
+index("struct nir_io_xfb", "io_xfb")
+index("struct nir_io_xfb", "io_xfb2")
+
 # Rounding mode for conversions
 index("nir_rounding_mode", "rounding_mode")
 
@@ -1001,7 +1005,7 @@ def store(name, srcs, indices=[], flags=[]):
     intrinsic("store_" + name, [0] + srcs, indices=indices, flags=flags)
 
 # src[] = { value, offset }.
-store("output", [1], [BASE, WRITE_MASK, COMPONENT, SRC_TYPE, IO_SEMANTICS])
+store("output", [1], [BASE, WRITE_MASK, COMPONENT, SRC_TYPE, IO_SEMANTICS, IO_XFB, IO_XFB2])
 # src[] = { value, vertex, offset }.
 store("per_vertex_output", [1, 1], [BASE, WRITE_MASK, COMPONENT, SRC_TYPE, IO_SEMANTICS])
 # src[] = { value, primitive, offset }.

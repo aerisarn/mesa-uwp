@@ -826,6 +826,20 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       unsigned component_mask = BITFIELD_MASK(instr->num_components);
       validate_assert(state, (nir_intrinsic_write_mask(instr) & ~component_mask) == 0);
    }
+
+   if (nir_intrinsic_has_io_xfb(instr)) {
+      unsigned used_mask = 0;
+
+      for (unsigned i = 0; i < 4; i++) {
+         nir_io_xfb xfb = i < 2 ? nir_intrinsic_io_xfb(instr) :
+                                  nir_intrinsic_io_xfb2(instr);
+         unsigned xfb_mask = BITFIELD_RANGE(i, xfb.out[i % 2].num_components);
+
+         /* Each component can be used only once by transform feedback info. */
+         validate_assert(state, (xfb_mask & used_mask) == 0);
+         used_mask |= xfb_mask;
+      }
+   }
 }
 
 static void
