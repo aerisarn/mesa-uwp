@@ -209,7 +209,7 @@ st_upload_constants(struct st_context *st, struct gl_program *prog, gl_shader_st
 void
 st_update_vs_constants(struct st_context *st)
 {
-   st_upload_constants(st, &st->vp->Base, MESA_SHADER_VERTEX);
+   st_upload_constants(st, st->vp, MESA_SHADER_VERTEX);
 }
 
 /**
@@ -218,7 +218,7 @@ st_update_vs_constants(struct st_context *st)
 void
 st_update_fs_constants(struct st_context *st)
 {
-   st_upload_constants(st, &st->fp->Base, MESA_SHADER_FRAGMENT);
+   st_upload_constants(st, st->fp, MESA_SHADER_FRAGMENT);
 }
 
 
@@ -227,7 +227,7 @@ st_update_fs_constants(struct st_context *st)
 void
 st_update_gs_constants(struct st_context *st)
 {
-   st_upload_constants(st, st->gp ? &st->gp->Base : NULL, MESA_SHADER_GEOMETRY);
+   st_upload_constants(st, st->gp, MESA_SHADER_GEOMETRY);
 }
 
 /* Tessellation control shader:
@@ -235,7 +235,7 @@ st_update_gs_constants(struct st_context *st)
 void
 st_update_tcs_constants(struct st_context *st)
 {
-   st_upload_constants(st, st->tcp ? &st->tcp->Base : NULL, MESA_SHADER_TESS_CTRL);
+   st_upload_constants(st, st->tcp, MESA_SHADER_TESS_CTRL);
 }
 
 /* Tessellation evaluation shader:
@@ -243,7 +243,7 @@ st_update_tcs_constants(struct st_context *st)
 void
 st_update_tes_constants(struct st_context *st)
 {
-   st_upload_constants(st, st->tep ? &st->tep->Base : NULL, MESA_SHADER_TESS_EVAL);
+   st_upload_constants(st, st->tep, MESA_SHADER_TESS_EVAL);
 }
 
 /* Compute shader:
@@ -251,7 +251,7 @@ st_update_tes_constants(struct st_context *st)
 void
 st_update_cs_constants(struct st_context *st)
 {
-   st_upload_constants(st, st->cp ? &st->cp->Base : NULL, MESA_SHADER_COMPUTE);
+   st_upload_constants(st, st->cp, MESA_SHADER_COMPUTE);
 }
 
 static void

@@ -247,31 +247,9 @@ struct st_common_variant
    GLbitfield vert_attrib_mask;
 };
 
-
-/**
- * Derived from Mesa gl_program:
- */
-struct st_program
-{
-   struct gl_program Base;
-   struct pipe_shader_state state;
-   struct glsl_to_tgsi_visitor* glsl_to_tgsi;
-   struct ati_fragment_shader *ati_fs;
-   uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
-
-   void *serialized_nir;
-   unsigned serialized_nir_size;
-
-   /* used when bypassing glsl_to_tgsi: */
-   struct gl_shader_program *shader_program;
-
-   struct st_variant *variants;
-};
-
-
 struct st_vertex_program
 {
-   struct st_program Base;
+   struct gl_program Base;
 
    uint32_t vert_attrib_mask; /**< mask of sourced vertex attribs */
    ubyte num_inputs;
@@ -279,23 +257,6 @@ struct st_vertex_program
    /** Maps VARYING_SLOT_x to slot */
    ubyte result_to_output[VARYING_SLOT_MAX];
 };
-
-
-static inline struct st_program *
-st_program( struct gl_program *cp )
-{
-   return (struct st_program *)cp;
-}
-
-static inline void
-st_reference_prog(struct st_context *st,
-                  struct st_program **ptr,
-                  struct st_program *prog)
-{
-   _mesa_reference_program(st->ctx,
-                           (struct gl_program **) ptr,
-                           (struct gl_program *) prog);
-}
 
 static inline struct st_common_variant *
 st_common_variant(struct st_variant *v)
@@ -325,19 +286,19 @@ st_set_prog_affected_state_flags(struct gl_program *prog);
 
 extern struct st_fp_variant *
 st_get_fp_variant(struct st_context *st,
-                  struct st_program *stfp,
+                  struct gl_program *stfp,
                   const struct st_fp_variant_key *key);
 
 extern struct st_common_variant *
 st_get_common_variant(struct st_context *st,
-                      struct st_program *p,
+                      struct gl_program *p,
                       const struct st_common_variant_key *key);
 
 extern void
-st_release_variants(struct st_context *st, struct st_program *p);
+st_release_variants(struct st_context *st, struct gl_program *p);
 
 extern void
-st_release_program(struct st_context *st, struct st_program **p);
+st_release_program(struct st_context *st, struct gl_program **p);
 
 extern void
 st_destroy_program_variants(struct st_context *st);
@@ -346,25 +307,25 @@ extern void
 st_finalize_nir_before_variants(struct nir_shader *nir);
 
 extern void
-st_prepare_vertex_program(struct st_program *stvp, uint8_t *attrib_to_index);
+st_prepare_vertex_program(struct gl_program *stvp, uint8_t *attrib_to_index);
 
 extern void
 st_translate_stream_output_info(struct gl_program *prog);
 
 extern bool
 st_translate_vertex_program(struct st_context *st,
-                            struct st_program *stvp);
+                            struct gl_program *stvp);
 
 extern bool
 st_translate_fragment_program(struct st_context *st,
-                              struct st_program *stfp);
+                              struct gl_program *stfp);
 
 extern bool
 st_translate_common_program(struct st_context *st,
-                            struct st_program *stp);
+                            struct gl_program *stp);
 
 extern void
-st_serialize_nir(struct st_program *stp);
+st_serialize_nir(struct gl_program *stp);
 
 extern void
 st_finalize_program(struct st_context *st, struct gl_program *prog);

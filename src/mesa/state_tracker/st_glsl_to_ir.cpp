@@ -184,10 +184,10 @@ st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       for (uint32_t i = 0; i < MESA_SHADER_STAGES; ++i) {
          struct gl_linked_shader *shader = prog->_LinkedShaders[i];
          if (shader) {
-            struct st_program *stp = st_program(shader->Program);
-            if (stp && stp->variants) {
+            struct gl_program *p = shader->Program;
+            if (p && p->variants) {
                enum pipe_shader_type type = pipe_shader_type_from_mesa(shader->Stage);
-               driver_handles[type] = stp->variants->driver_shader;
+               driver_handles[type] = p->variants->driver_shader;
             }
          }
       }

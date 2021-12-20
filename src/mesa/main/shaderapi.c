@@ -722,8 +722,8 @@ get_shader_program_completion_status(struct gl_context *ctx,
       if (!linked || !linked->Program)
          continue;
 
-      if (st_program(linked->Program)->variants)
-         sh = st_program(linked->Program)->variants->driver_shader;
+      if (linked->Program->variants)
+         sh = linked->Program->variants->driver_shader;
 
       unsigned type = pipe_shader_type_from_mesa(i);
 

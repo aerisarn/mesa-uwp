@@ -309,6 +309,6 @@ st_RenderMode(struct gl_context *ctx, GLenum newMode )
       ctx->Driver.DrawGalliumMultiMode = _mesa_draw_gallium_multimode_fallback;
       /* need to generate/use a vertex program that emits pos/color/tex */
       if (vp)
-         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, st_program(vp));
+         st->dirty |= ST_NEW_VERTEX_PROGRAM(st, vp);
    }
 }

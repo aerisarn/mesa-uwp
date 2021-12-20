@@ -74,18 +74,12 @@ DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 static uint64_t
 st_get_active_states(struct gl_context *ctx)
 {
-   struct st_program *vp =
-      st_program(ctx->VertexProgram._Current);
-   struct st_program *tcp =
-      st_program(ctx->TessCtrlProgram._Current);
-   struct st_program *tep =
-      st_program(ctx->TessEvalProgram._Current);
-   struct st_program *gp =
-      st_program(ctx->GeometryProgram._Current);
-   struct st_program *fp =
-      st_program(ctx->FragmentProgram._Current);
-   struct st_program *cp =
-      st_program(ctx->ComputeProgram._Current);
+   struct gl_program *vp = ctx->VertexProgram._Current;
+   struct gl_program *tcp = ctx->TessCtrlProgram._Current;
+   struct gl_program *tep = ctx->TessEvalProgram._Current;
+   struct gl_program *gp = ctx->GeometryProgram._Current;
+   struct gl_program *fp = ctx->FragmentProgram._Current;
+   struct gl_program *cp = ctx->ComputeProgram._Current;
    uint64_t active_shader_states = 0;
 
    if (vp)
@@ -200,9 +194,9 @@ st_invalidate_state(struct gl_context *ctx)
                     ST_NEW_SAMPLERS |
                     ST_NEW_IMAGE_UNITS);
       if (ctx->FragmentProgram._Current) {
-         struct st_program *stfp = st_program(ctx->FragmentProgram._Current);
+         struct gl_program *fp = ctx->FragmentProgram._Current;
 
-         if (stfp->Base.ExternalSamplersUsed || stfp->ati_fs)
+         if (fp->ExternalSamplersUsed || fp->ati_fs)
             st->dirty |= ST_NEW_FS_STATE;
       }
    }

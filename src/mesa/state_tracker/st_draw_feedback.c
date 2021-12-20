@@ -222,7 +222,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    }
 
    /* set constant buffer 0 */
-   struct gl_program_parameter_list *params = st->vp->Base.Parameters;
+   struct gl_program_parameter_list *params = st->vp->Parameters;
 
    /* Update the constants which come from fixed-function state, such as
     * transformation matrices, fog factors, etc.
@@ -239,7 +239,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
                                    params->NumParameterValues * 4);
 
    /* set uniform buffers */
-   const struct gl_program *prog = &vp->Base.Base;
+   const struct gl_program *prog = &vp->Base;
    struct pipe_transfer *ubo_transfer[PIPE_MAX_CONSTANT_BUFFERS] = {0};
    assert(prog->info.num_ubos <= ARRAY_SIZE(ubo_transfer));
 

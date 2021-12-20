@@ -743,13 +743,12 @@ st_link_nir(struct gl_context *ctx,
       const nir_shader_compiler_options *options =
          st->ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions;
       struct gl_program *prog = shader->Program;
-      struct st_program *stp = (struct st_program *)prog;
 
       _mesa_copy_linked_program_data(shader_program, shader);
 
       assert(!prog->nir);
-      stp->shader_program = shader_program;
-      stp->state.type = PIPE_SHADER_IR_NIR;
+      prog->shader_program = shader_program;
+      prog->state.type = PIPE_SHADER_IR_NIR;
 
       /* Parameters will be filled during NIR linking. */
       prog->Parameters = _mesa_new_parameter_list();
@@ -908,7 +907,6 @@ st_link_nir(struct gl_context *ctx,
    for (unsigned i = 0; i < num_shaders; i++) {
       struct gl_linked_shader *shader = linked_shader[i];
       struct gl_program *prog = shader->Program;
-      struct st_program *stp = st_program(prog);
 
       /* Make sure that prog->info is in sync with nir->info, but st/mesa
        * expects some of the values to be from before lowering.
@@ -925,7 +923,7 @@ st_link_nir(struct gl_context *ctx,
 
       /* Initialize st_vertex_program members. */
       if (shader->Stage == MESA_SHADER_VERTEX)
-         st_prepare_vertex_program(stp, NULL);
+         st_prepare_vertex_program(prog, NULL);
 
       /* Get pipe_stream_output_info. */
       if (shader->Stage == MESA_SHADER_VERTEX ||
@@ -935,7 +933,7 @@ st_link_nir(struct gl_context *ctx,
 
       st_store_ir_in_disk_cache(st, prog, true);
 
-      st_release_variants(st, stp);
+      st_release_variants(st, prog);
       st_finalize_program(st, prog);
 
       /* The GLSL IR won't be needed anymore. */

@@ -39,6 +39,8 @@
 #include "compiler/glsl/list.h"
 #include "compiler/glsl/ir_uniform.h"
 
+#include "pipe/p_state.h"
+
 /**
  * Shader information needed by both gl_shader and gl_linked shader.
  */
@@ -558,6 +560,19 @@ struct gl_program
 
    /** Map from sampler unit to texture unit (set by glUniform1i()) */
    GLubyte SamplerUnits[MAX_SAMPLERS];
+
+   struct pipe_shader_state state;
+   struct glsl_to_tgsi_visitor* glsl_to_tgsi;
+   struct ati_fragment_shader *ati_fs;
+   uint64_t affected_states; /**< ST_NEW_* flags to mark dirty when binding */
+
+   void *serialized_nir;
+   unsigned serialized_nir_size;
+
+   /* used when bypassing glsl_to_tgsi: */
+   struct gl_shader_program *shader_program;
+
+   struct st_variant *variants;
 
    union {
       /** Fields used by GLSL programs */

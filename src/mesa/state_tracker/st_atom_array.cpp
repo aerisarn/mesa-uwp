@@ -189,7 +189,7 @@ st_setup_arrays(struct st_context *st,
    struct gl_context *ctx = st->ctx;
 
    setup_arrays<POPCNT_NO, UPDATE_ALL>
-      (st, ctx->Array._DrawVAO, vp->Base.Base.DualSlotInputs,
+      (st, ctx->Array._DrawVAO, vp->Base.DualSlotInputs,
        vp_variant->vert_attrib_mask, _mesa_draw_nonzero_divisor_bits(ctx),
        _mesa_draw_array_bits(ctx), _mesa_draw_user_array_bits(ctx),
        velements, vbuffer, num_vbuffers, has_user_vertex_buffers);
@@ -210,7 +210,7 @@ st_setup_current(struct st_context *st,
 {
    struct gl_context *ctx = st->ctx;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
-   const GLbitfield dual_slot_inputs = vp->Base.Base.DualSlotInputs;
+   const GLbitfield dual_slot_inputs = vp->Base.DualSlotInputs;
 
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
@@ -274,7 +274,7 @@ st_setup_current_user(struct st_context *st,
 {
    struct gl_context *ctx = st->ctx;
    const GLbitfield inputs_read = vp_variant->vert_attrib_mask;
-   const GLbitfield dual_slot_inputs = vp->Base.Base.DualSlotInputs;
+   const GLbitfield dual_slot_inputs = vp->Base.DualSlotInputs;
 
    /* Process values that should have better been uniforms in the application */
    GLbitfield curmask = inputs_read & _mesa_draw_current_bits(ctx);
@@ -314,7 +314,7 @@ st_update_array_templ(struct st_context *st)
    /* ST_NEW_VERTEX_ARRAYS */
    /* Setup arrays */
    setup_arrays<POPCNT, UPDATE>
-      (st, ctx->Array._DrawVAO, vp->Base.Base.DualSlotInputs,
+      (st, ctx->Array._DrawVAO, vp->Base.DualSlotInputs,
        vp_variant->vert_attrib_mask, _mesa_draw_nonzero_divisor_bits(ctx),
        _mesa_draw_array_bits(ctx), _mesa_draw_user_array_bits(ctx),
        &velements, vbuffer, &num_vbuffers, &uses_user_vertex_buffers);

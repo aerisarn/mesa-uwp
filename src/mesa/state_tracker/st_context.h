@@ -255,12 +255,12 @@ struct st_context
 
    union {
       struct {
-         struct st_program *vp;    /**< Currently bound vertex program */
-         struct st_program *tcp; /**< Currently bound tess control program */
-         struct st_program *tep; /**< Currently bound tess eval program */
-         struct st_program *gp;  /**< Currently bound geometry program */
-         struct st_program *fp;  /**< Currently bound fragment program */
-         struct st_program *cp;   /**< Currently bound compute program */
+         struct gl_program *vp;    /**< Currently bound vertex program */
+         struct gl_program *tcp; /**< Currently bound tess control program */
+         struct gl_program *tep; /**< Currently bound tess eval program */
+         struct gl_program *gp;  /**< Currently bound geometry program */
+         struct gl_program *fp;  /**< Currently bound fragment program */
+         struct gl_program *cp;   /**< Currently bound compute program */
       };
       struct gl_program *current_program[MESA_SHADER_STAGES];
    };

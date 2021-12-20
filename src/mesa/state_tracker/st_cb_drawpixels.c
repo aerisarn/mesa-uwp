@@ -1353,7 +1353,7 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
       /* compiling a new fragment shader variant added new state constants
        * into the constant buffer, we need to update them
        */
-      st_upload_constants(st, &st->fp->Base, MESA_SHADER_FRAGMENT);
+      st_upload_constants(st, st->fp, MESA_SHADER_FRAGMENT);
    }
 
    {
@@ -1738,7 +1738,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
       /* compiling a new fragment shader variant added new state constants
        * into the constant buffer, we need to update them
        */
-      st_upload_constants(st, &st->fp->Base, MESA_SHADER_FRAGMENT);
+      st_upload_constants(st, st->fp, MESA_SHADER_FRAGMENT);
    } else if (type == GL_DEPTH) {
       rbRead = ctx->ReadBuffer->Attachment[BUFFER_DEPTH].Renderbuffer;
       driver_fp = get_drawpix_z_stencil_program(st, GL_TRUE, GL_FALSE);

@@ -7391,7 +7391,8 @@ get_mesa_program_tgsi(struct gl_context *ctx,
       return NULL;
    }
 
-   st_program(prog)->glsl_to_tgsi = v;
+
+   prog->glsl_to_tgsi = v;
 
    PRINT_STATS(v->print_stats());
 

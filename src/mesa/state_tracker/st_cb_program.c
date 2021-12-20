@@ -57,18 +57,18 @@ static struct gl_program *
 st_new_program(struct gl_context *ctx, gl_shader_stage stage, GLuint id,
                bool is_arb_asm)
 {
-   struct st_program *prog;
+   struct gl_program *prog;
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
-      prog = (struct st_program*)rzalloc(NULL, struct st_vertex_program);
+      prog = (struct gl_program*)rzalloc(NULL, struct st_vertex_program);
       break;
    default:
-      prog = rzalloc(NULL, struct st_program);
+      prog = rzalloc(NULL, struct gl_program);
       break;
    }
 
-   return _mesa_init_gl_program(&prog->Base, stage, id, is_arb_asm);
+   return _mesa_init_gl_program(prog, stage, id, is_arb_asm);
 }
 
 
@@ -76,14 +76,13 @@ void
 st_delete_program(struct gl_context *ctx, struct gl_program *prog)
 {
    struct st_context *st = st_context(ctx);
-   struct st_program *stp = st_program(prog);
 
-   st_release_variants(st, stp);
+   st_release_variants(st, prog);
 
-   if (stp->glsl_to_tgsi)
-      free_glsl_to_tgsi_visitor(stp->glsl_to_tgsi);
+   if (prog->glsl_to_tgsi)
+      free_glsl_to_tgsi_visitor(prog->glsl_to_tgsi);
 
-   free(stp->serialized_nir);
+   free(prog->serialized_nir);
 
    /* delete base class */
    _mesa_delete_program( ctx, prog );
@@ -99,29 +98,28 @@ st_program_string_notify( struct gl_context *ctx,
                           struct gl_program *prog )
 {
    struct st_context *st = st_context(ctx);
-   struct st_program *stp = (struct st_program *) prog;
 
    /* GLSL-to-NIR should not end up here. */
-   assert(!stp->shader_program);
+   assert(!prog->shader_program);
 
-   st_release_variants(st, stp);
+   st_release_variants(st, prog);
 
    if (target == GL_FRAGMENT_PROGRAM_ARB ||
        target == GL_FRAGMENT_SHADER_ATI) {
       if (target == GL_FRAGMENT_SHADER_ATI) {
-         assert(stp->ati_fs);
-         assert(stp->ati_fs->Program == prog);
+         assert(prog->ati_fs);
+         assert(prog->ati_fs->Program == prog);
 
          st_init_atifs_prog(ctx, prog);
       }
 
-      if (!st_translate_fragment_program(st, stp))
+      if (!st_translate_fragment_program(st, prog))
          return false;
    } else if (target == GL_VERTEX_PROGRAM_ARB) {
-      if (!st_translate_vertex_program(st, stp))
+      if (!st_translate_vertex_program(st, prog))
          return false;
    } else {
-      if (!st_translate_common_program(st, stp))
+      if (!st_translate_common_program(st, prog))
          return false;
    }
 
@@ -137,8 +135,7 @@ st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg)
 {
    struct gl_program *prog = st_new_program(ctx, MESA_SHADER_FRAGMENT,
          curProg->Id, true);
-   struct st_program *stfp = (struct st_program *)prog;
-   stfp->ati_fs = curProg;
+   prog->ati_fs = curProg;
    return prog;
 }
 
