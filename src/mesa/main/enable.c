@@ -1178,10 +1178,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          if (ctx->Transform.DepthClampNear == state &&
              ctx->Transform.DepthClampFar == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepthClamp ? 0 :
-                                                           _NEW_TRANSFORM,
+         FLUSH_VERTICES(ctx, 0,
                         GL_TRANSFORM_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewDepthClamp;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Transform.DepthClampNear = state;
          ctx->Transform.DepthClampFar = state;
          break;
@@ -1191,10 +1190,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Transform.DepthClampNear == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepthClamp ? 0 :
-                                                           _NEW_TRANSFORM,
+         FLUSH_VERTICES(ctx, 0,
                         GL_TRANSFORM_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewDepthClamp;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Transform.DepthClampNear = state;
          break;
 
@@ -1203,10 +1201,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Transform.DepthClampFar == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepthClamp ? 0 :
-                                                           _NEW_TRANSFORM,
+         FLUSH_VERTICES(ctx, 0,
                         GL_TRANSFORM_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewDepthClamp;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Transform.DepthClampFar = state;
          break;
 

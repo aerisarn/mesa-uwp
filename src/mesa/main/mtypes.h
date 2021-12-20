@@ -4888,9 +4888,6 @@ struct gl_driver_flags
    /** gl_context::Color::ClampFragmentColor */
    uint64_t NewFragClamp;
 
-   /** gl_context::Transform::DepthClamp */
-   uint64_t NewDepthClamp;
-
    /** gl_context::Line */
    uint64_t NewLineState;
 
