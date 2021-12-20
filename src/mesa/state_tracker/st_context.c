@@ -448,7 +448,6 @@ st_init_driver_flags(struct st_context *st)
    struct gl_driver_flags *f = &st->ctx->DriverFlags;
 
    f->NewUniformBuffer = ST_NEW_UNIFORM_BUFFER;
-   f->NewTessState = ST_NEW_TESS_STATE;
 
    /* Shader resources */
    f->NewTextureBuffer = ST_NEW_SAMPLER_VIEWS;

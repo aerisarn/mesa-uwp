@@ -4799,12 +4799,6 @@ struct gl_driver_flags
    uint64_t NewImageUnits;
 
    /**
-    * gl_context::TessCtrlProgram::patch_default_*
-    * gl_context::TessCtrlProgram::patch_vertices
-    */
-   uint64_t NewTessState;
-
-   /**
     * gl_context::Scissor::WindowRects
     */
    uint64_t NewWindowRectangles;
