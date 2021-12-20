@@ -128,18 +128,6 @@ st_program_string_notify( struct gl_context *ctx,
 }
 
 /**
- * Called in glEndFragmentShaderATI()
- */
-struct gl_program *
-st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg)
-{
-   struct gl_program *prog = st_new_program(ctx, MESA_SHADER_FRAGMENT,
-         curProg->Id, true);
-   prog->ati_fs = curProg;
-   return prog;
-}
-
-/**
  * Plug in the program and shader-related device driver functions.
  */
 void

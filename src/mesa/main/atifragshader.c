@@ -56,6 +56,17 @@ _mesa_new_ati_fragment_shader(struct gl_context *ctx, GLuint id)
    return s;
 }
 
+static struct gl_program *
+new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg)
+{
+   struct gl_program *prog = rzalloc(NULL, struct gl_program);
+   if (!prog)
+      return NULL;
+
+   _mesa_init_gl_program(prog, MESA_SHADER_FRAGMENT, curProg->Id, true);
+   prog->ati_fs = curProg;
+   return prog;
+}
 
 /**
  * Delete the given ati fragment shader
@@ -415,8 +426,8 @@ _mesa_EndFragmentShaderATI(void)
    }
 #endif
 
-   struct gl_program *prog = st_new_ati_fs(ctx,
-                                           ctx->ATIFragmentShader.Current);
+   struct gl_program *prog = new_ati_fs(ctx,
+                                        ctx->ATIFragmentShader.Current);
    _mesa_reference_program(ctx, &ctx->ATIFragmentShader.Current->Program,
                            NULL);
    /* Don't use _mesa_reference_program(), just take ownership */

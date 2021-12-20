@@ -40,7 +40,6 @@ void st_delete_program(struct gl_context *ctx, struct gl_program *prog);
 GLboolean st_program_string_notify(struct gl_context *ctx,
                                    GLenum target,
                                    struct gl_program *prog);
-struct gl_program *st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg);
 
 #ifdef __cplusplus
 }
