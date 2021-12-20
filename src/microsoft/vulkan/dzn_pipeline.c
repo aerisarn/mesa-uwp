@@ -347,6 +347,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
       container_of(device->vk.physical->instance, struct dzn_instance, vk);
    struct nir_to_dxil_options opts = {
       .environment = DXIL_ENVIRONMENT_VULKAN,
+      .shader_model_max = SHADER_MODEL_6_2,
    };
    struct blob dxil_blob;
    VkResult result = VK_SUCCESS;

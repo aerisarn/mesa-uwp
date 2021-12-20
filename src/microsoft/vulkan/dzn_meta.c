@@ -43,7 +43,10 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
        (instance->debug_flags & DZN_DEBUG_INTERNAL))
       nir_print_shader(nir, stderr);
 
-   struct nir_to_dxil_options opts = { .environment = DXIL_ENVIRONMENT_VULKAN };
+   struct nir_to_dxil_options opts = {
+      .environment = DXIL_ENVIRONMENT_VULKAN,
+      .shader_model_max = SHADER_MODEL_6_2,
+   };
    struct blob dxil_blob;
    ASSERTED bool ret = nir_to_dxil(nir, &opts, &dxil_blob);
    assert(ret);

@@ -5703,6 +5703,11 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    debug_dxil = (int)debug_get_option_debug_dxil();
    blob_init(blob);
 
+   if (opts->shader_model_max < SHADER_MODEL_6_1) {
+      debug_printf("D3D12: cannot support emitting shader model 6.0 or lower\n");
+      return false;
+   }
+
    struct ntd_context *ctx = calloc(1, sizeof(*ctx));
    if (!ctx)
       return false;
@@ -5771,6 +5776,13 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
 
    if (!emit_module(ctx, opts)) {
       debug_printf("D3D12: dxil_container_add_module failed\n");
+      retval = false;
+      goto out;
+   }
+
+   assert(ctx->mod.major_version == 6 && ctx->mod.minor_version >= 1);
+   if ((ctx->mod.major_version << 16 | ctx->mod.minor_version) > opts->shader_model_max) {
+      debug_printf("D3D12: max shader model exceeded\n");
       retval = false;
       goto out;
    }

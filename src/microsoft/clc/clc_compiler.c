@@ -1113,6 +1113,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
       .disable_math_refactoring = true,
       .num_kernel_globals = num_global_inputs,
       .environment = DXIL_ENVIRONMENT_CL,
+      .shader_model_max = SHADER_MODEL_6_2,
    };
 
    for (unsigned i = 0; i < out_dxil->kernel->num_args; i++) {
