@@ -2462,6 +2462,9 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          break;
 
       case SHADER_OPCODE_CLUSTER_BROADCAST: {
+         assert((devinfo->platform != INTEL_PLATFORM_CHV &&
+                 !intel_device_info_is_9lp(devinfo) &&
+                 devinfo->has_64bit_float) || type_sz(src[0].type) <= 4);
          assert(!src[0].negate && !src[0].abs);
          assert(src[1].file == BRW_IMMEDIATE_VALUE);
          assert(src[1].type == BRW_REGISTER_TYPE_UD);
@@ -2482,35 +2485,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
          struct brw_reg strided = stride(suboffset(src[0], component * s),
                                          vstride, width, 0);
-         if (type_sz(src[0].type) > 4 &&
-             (devinfo->platform == INTEL_PLATFORM_CHV ||
-              intel_device_info_is_9lp(devinfo) ||
-              !devinfo->has_64bit_float)) {
-            /* IVB has an issue (which we found empirically) where it reads
-             * two address register components per channel for indirectly
-             * addressed 64-bit sources.
-             *
-             * From the Cherryview PRM Vol 7. "Register Region Restrictions":
-             *
-             *    "When source or destination datatype is 64b or operation is
-             *    integer DWord multiply, indirect addressing must not be
-             *    used."
-             *
-             * To work around both of these, we do two integer MOVs insead of
-             * one 64-bit MOV.  Because no double value should ever cross a
-             * register boundary, it's safe to use the immediate offset in the
-             * indirect here to handle adding 4 bytes to the offset and avoid
-             * the extra ADD to the register file.
-             */
-            assert(src[0].type == dst.type);
-            brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_D, 0),
-                       subscript(strided, BRW_REGISTER_TYPE_D, 0));
-            brw_set_default_swsb(p, tgl_swsb_null());
-            brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_D, 1),
-                       subscript(strided, BRW_REGISTER_TYPE_D, 1));
-         } else {
-            brw_MOV(p, dst, strided);
-         }
+         brw_MOV(p, dst, strided);
          break;
       }
 

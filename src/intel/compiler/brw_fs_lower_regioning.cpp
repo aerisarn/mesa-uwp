@@ -166,6 +166,22 @@ namespace {
          else
             return t;
 
+      case SHADER_OPCODE_CLUSTER_BROADCAST:
+         /* From the Cherryview PRM Vol 7. "Register Region Restrictions":
+          *
+          *    "When source or destination datatype is 64b or operation is
+          *    integer DWord multiply, indirect addressing must not be
+          *    used."
+          *
+          * Work around the above and handle platforms that don't
+          * support 64-bit types at all.
+          */
+         if ((!has_64bit || devinfo->platform == INTEL_PLATFORM_CHV ||
+              intel_device_info_is_9lp(devinfo)) && type_sz(t) > 4)
+            return BRW_REGISTER_TYPE_UD;
+         else
+            return t;
+
       case SHADER_OPCODE_BROADCAST:
       case SHADER_OPCODE_MOV_INDIRECT:
          if (((devinfo->verx10 == 70 ||
@@ -262,6 +278,7 @@ namespace {
          switch (inst->opcode) {
          case SHADER_OPCODE_SHUFFLE:
          case SHADER_OPCODE_QUAD_SWIZZLE:
+         case SHADER_OPCODE_CLUSTER_BROADCAST:
          case SHADER_OPCODE_BROADCAST:
          case SHADER_OPCODE_MOV_INDIRECT:
             return 0x1;
