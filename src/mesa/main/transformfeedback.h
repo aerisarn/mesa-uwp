@@ -109,7 +109,7 @@ _mesa_bind_buffer_range_xfb(struct gl_context *ctx,
                             GLuint index, struct gl_buffer_object *bufObj,
                             GLintptr offset, GLsizeiptr size)
 {
-   /* Note: no need to FLUSH_VERTICES or flag NewTransformFeedback, because
+   /* Note: no need to FLUSH_VERTICES because
     * transform feedback buffers can't be changed while transform feedback is
     * active.
     */

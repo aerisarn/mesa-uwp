@@ -391,7 +391,6 @@ begin_transform_feedback(struct gl_context *ctx, GLenum mode, bool no_error)
    }
 
    FLUSH_VERTICES(ctx, 0, 0);
-   ctx->NewDriverState |= ctx->DriverFlags.NewTransformFeedback;
 
    obj->Active = GL_TRUE;
    ctx->TransformFeedback.Mode = mode;
@@ -411,7 +410,6 @@ begin_transform_feedback(struct gl_context *ctx, GLenum mode, bool no_error)
    }
 
    if (obj->program != source) {
-      ctx->NewDriverState |= ctx->DriverFlags.NewTransformFeedbackProg;
       _mesa_reference_program_(ctx, &obj->program, source);
       obj->program = source;
    }
@@ -442,7 +440,6 @@ end_transform_feedback(struct gl_context *ctx,
                        struct gl_transform_feedback_object *obj)
 {
    FLUSH_VERTICES(ctx, 0, 0);
-   ctx->NewDriverState |= ctx->DriverFlags.NewTransformFeedback;
 
    st_end_transform_feedback(ctx, obj);
 
@@ -491,7 +488,7 @@ bind_buffer_range(struct gl_context *ctx,
                   GLintptr offset, GLsizeiptr size,
                   bool dsa)
 {
-   /* Note: no need to FLUSH_VERTICES or flag NewTransformFeedback, because
+   /* Note: no need to FLUSH_VERTICES because
     * transform feedback buffers can't be changed while transform feedback is
     * active.
     */
@@ -831,7 +828,7 @@ transform_feedback_varyings(struct gl_context *ctx,
 
    shProg->TransformFeedback.BufferMode = bufferMode;
 
-   /* No need to invoke FLUSH_VERTICES or flag NewTransformFeedback since
+   /* No need to invoke FLUSH_VERTICES since
     * the varyings won't be used until shader link time.
     */
 }
@@ -1185,7 +1182,6 @@ pause_transform_feedback(struct gl_context *ctx,
                          struct gl_transform_feedback_object *obj)
 {
    FLUSH_VERTICES(ctx, 0, 0);
-   ctx->NewDriverState |= ctx->DriverFlags.NewTransformFeedback;
 
    st_pause_transform_feedback(ctx, obj);
 
@@ -1229,7 +1225,6 @@ resume_transform_feedback(struct gl_context *ctx,
                           struct gl_transform_feedback_object *obj)
 {
    FLUSH_VERTICES(ctx, 0, 0);
-   ctx->NewDriverState |= ctx->DriverFlags.NewTransformFeedback;
 
    obj->Paused = GL_FALSE;
 

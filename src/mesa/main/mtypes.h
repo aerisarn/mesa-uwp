@@ -4768,12 +4768,6 @@ struct gl_dlist_state
  */
 struct gl_driver_flags
 {
-   /** gl_context::TransformFeedback::CurrentObject */
-   uint64_t NewTransformFeedback;
-
-   /** gl_context::TransformFeedback::CurrentObject::shader_program */
-   uint64_t NewTransformFeedbackProg;
-
    /**
     * gl_context::ShaderStorageBufferBindings
     * gl_shader_program::ShaderStorageBlocks

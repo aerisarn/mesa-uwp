@@ -4670,7 +4670,6 @@ bind_xfb_buffers(struct gl_context *ctx,
 
    /* Assume that at least one binding will be changed */
    FLUSH_VERTICES(ctx, 0, 0);
-   ctx->NewDriverState |= ctx->DriverFlags.NewTransformFeedback;
 
    if (!buffers) {
       /* The ARB_multi_bind spec says:
