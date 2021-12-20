@@ -620,23 +620,8 @@ static void allocate_temporary_registers(struct radeon_compiler *c, void *user)
 		const struct rc_opcode_info * opcode = rc_get_opcode_info(inst->U.I.Opcode);
 		/* Instructions inside of loops need to use the ENDLOOP
 		 * instruction as their LastRead. */
-		if (!end_loop && inst->U.I.Opcode == RC_OPCODE_BGNLOOP) {
-			int endloops = 1;
-			struct rc_instruction * ptr;
-			for(ptr = inst->Next;
-				ptr != &compiler->Base.Program.Instructions;
-							ptr = ptr->Next){
-				if (ptr->U.I.Opcode == RC_OPCODE_BGNLOOP) {
-					endloops++;
-				} else if (ptr->U.I.Opcode == RC_OPCODE_ENDLOOP) {
-					endloops--;
-					if (endloops <= 0) {
-						end_loop = ptr;
-						break;
-					}
-				}
-			}
-		}
+		if (!end_loop && inst->U.I.Opcode == RC_OPCODE_BGNLOOP)
+			end_loop = rc_match_bgnloop(inst);
 
 		if (inst == end_loop) {
 			end_loop = NULL;
