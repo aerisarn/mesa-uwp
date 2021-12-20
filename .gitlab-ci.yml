@@ -1004,39 +1004,22 @@ debian-clang:
     C_ARGS: >
       -Wno-error=absolute-value
       -Wno-error=constant-conversion
-      -Wno-error=constant-logical-operand
       -Wno-error=enum-conversion
-      -Wno-error=gnu-variable-sized-type-not-at-end
       -Wno-error=implicit-const-int-float-conversion
       -Wno-error=initializer-overrides
-      -Wno-error=misleading-indentation
-      -Wno-error=mismatched-tags
-      -Wno-error=missing-braces
-      -Wno-error=overloaded-virtual
       -Wno-error=self-assign
       -Wno-error=sometimes-uninitialized
-      -Wno-error=tautological-constant-compare
-      -Wno-error=tautological-constant-out-of-range-compare
-      -Wno-error=tautological-overlap-compare
-      -Wno-error=typedef-redefinition
       -Wno-error=unused-function
-      -Wno-error=unused-private-field
-      -Wno-error=xor-used-as-pow
     CPP_ARGS: >
       -Wno-error=c99-designator
-      -Wno-error=constant-logical-operand
       -Wno-error=deprecated-declarations
       -Wno-error=implicit-const-int-float-conversion
-      -Wno-error=mismatched-tags
       -Wno-error=missing-braces
       -Wno-error=overloaded-virtual
-      -Wno-error=self-assign
       -Wno-error=sometimes-uninitialized
       -Wno-error=tautological-constant-out-of-range-compare
       -Wno-error=unused-const-variable
       -Wno-error=unused-private-field
-      -Wno-error=unused-value
-      -Wno-error=unused-variable
     DRI_LOADERS: >
       -D glvnd=true
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
