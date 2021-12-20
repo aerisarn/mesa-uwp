@@ -524,9 +524,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
       case GL_DITHER:
          if (ctx->Color.DitherFlag == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewBlend ? 0 : _NEW_COLOR,
+         FLUSH_VERTICES(ctx, 0,
                         GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewBlend;
+         ctx->NewDriverState |= ST_NEW_BLEND;
          ctx->Color.DitherFlag = state;
          break;
       case GL_FOG:
@@ -596,9 +596,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Color.IndexLogicOpEnabled == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewLogicOp ? 0 : _NEW_COLOR,
+         FLUSH_VERTICES(ctx, 0,
                         GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewLogicOp;
+         ctx->NewDriverState |= ST_NEW_BLEND;
          ctx->Color.IndexLogicOpEnabled = state;
          break;
       case GL_CONSERVATIVE_RASTERIZATION_INTEL:
@@ -625,9 +625,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Color.ColorLogicOpEnabled == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewLogicOp ? 0 : _NEW_COLOR,
+         FLUSH_VERTICES(ctx, 0,
                         GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewLogicOp;
+         ctx->NewDriverState |= ST_NEW_BLEND;
          ctx->Color.ColorLogicOpEnabled = state;
          _mesa_update_allow_draw_out_of_order(ctx);
          break;
@@ -1010,10 +1010,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
       case GL_SAMPLE_ALPHA_TO_COVERAGE_ARB:
          if (ctx->Multisample.SampleAlphaToCoverage == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewSampleAlphaToXEnable ? 0 :
-                                                         _NEW_MULTISAMPLE,
+         FLUSH_VERTICES(ctx, 0,
                         GL_MULTISAMPLE_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewSampleAlphaToXEnable;
+         ctx->NewDriverState |= ST_NEW_BLEND;
          ctx->Multisample.SampleAlphaToCoverage = state;
          break;
       case GL_SAMPLE_ALPHA_TO_ONE_ARB:
@@ -1021,10 +1020,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Multisample.SampleAlphaToOne == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewSampleAlphaToXEnable ? 0 :
-                                                         _NEW_MULTISAMPLE,
+         FLUSH_VERTICES(ctx, 0,
                         GL_MULTISAMPLE_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewSampleAlphaToXEnable;
+         ctx->NewDriverState |= ST_NEW_BLEND;
          ctx->Multisample.SampleAlphaToOne = state;
          break;
       case GL_SAMPLE_COVERAGE_ARB:
@@ -1313,9 +1311,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Color.BlendCoherent == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewBlend ? 0 : _NEW_COLOR,
-                        GL_COLOR_BUFFER_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewBlend;
+         FLUSH_VERTICES(ctx, 0, GL_COLOR_BUFFER_BIT);
+         ctx->NewDriverState |= ST_NEW_BLEND;
          ctx->Color.BlendCoherent = state;
          break;
 

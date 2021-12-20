@@ -4821,26 +4821,11 @@ struct gl_driver_flags
    /** gl_context::Color::Alpha* */
    uint64_t NewAlphaTest;
 
-   /** gl_context::Color::Blend/Dither */
-   uint64_t NewBlend;
-
-   /** gl_context::Color::BlendColor */
-   uint64_t NewBlendColor;
-
-   /** gl_context::Color::Color/Index */
-   uint64_t NewColorMask;
-
    /** gl_context::Depth */
    uint64_t NewDepth;
 
-   /** gl_context::Color::LogicOp/ColorLogicOp/IndexLogicOp */
-   uint64_t NewLogicOp;
-
    /** gl_context::Multisample::Enabled */
    uint64_t NewMultisampleEnable;
-
-   /** gl_context::Multisample::SampleAlphaTo* */
-   uint64_t NewSampleAlphaToXEnable;
 
    /** gl_context::Multisample::SampleCoverage/SampleMaskValue */
    uint64_t NewSampleMask;

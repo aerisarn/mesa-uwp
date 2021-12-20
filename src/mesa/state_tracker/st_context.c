@@ -476,15 +476,10 @@ st_init_driver_flags(struct st_context *st)
    else
       f->NewAlphaTest = ST_NEW_DSA;
 
-   f->NewBlend = ST_NEW_BLEND;
-   f->NewBlendColor = ST_NEW_BLEND_COLOR;
-   f->NewColorMask = ST_NEW_BLEND;
    f->NewDepth = ST_NEW_DSA;
-   f->NewLogicOp = ST_NEW_BLEND;
    f->NewStencil = ST_NEW_DSA;
    f->NewMultisampleEnable = ST_NEW_BLEND | ST_NEW_RASTERIZER |
                              ST_NEW_SAMPLE_STATE | ST_NEW_SAMPLE_SHADING;
-   f->NewSampleAlphaToXEnable = ST_NEW_BLEND;
    f->NewSampleMask = ST_NEW_SAMPLE_STATE;
    f->NewSampleLocations = ST_NEW_SAMPLE_STATE;
    f->NewSampleShading = ST_NEW_SAMPLE_SHADING;
