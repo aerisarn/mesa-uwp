@@ -709,13 +709,19 @@ done:
 void
 _mesa_get_driver_uuid(struct gl_context *ctx, GLint *uuid)
 {
-   st_get_driver_uuid(ctx, (char*) uuid);
+   struct pipe_screen *screen = ctx->pipe->screen;
+   assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
+   memset(uuid, 0, GL_UUID_SIZE_EXT);
+   screen->get_driver_uuid(screen, (char *)uuid);
 }
 
 void
 _mesa_get_device_uuid(struct gl_context *ctx, GLint *uuid)
 {
-   st_get_device_uuid(ctx, (char*) uuid);
+   struct pipe_screen *screen = ctx->pipe->screen;
+   assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
+   memset(uuid, 0, GL_UUID_SIZE_EXT);
+   screen->get_device_uuid(screen, (char *)uuid);
 }
 
 /**

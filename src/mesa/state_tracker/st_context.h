@@ -453,8 +453,6 @@ struct st_framebuffer
 void st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out);
 
 void st_invalidate_state(struct gl_context *ctx);
-void st_get_driver_uuid(struct gl_context *ctx, char *uuid);
-void st_get_device_uuid(struct gl_context *ctx, char *uuid);
 void st_set_background_context(struct gl_context *ctx,
                                struct util_queue_monitoring *queue_info);
 #ifdef __cplusplus

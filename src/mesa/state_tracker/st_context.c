@@ -831,29 +831,6 @@ st_set_background_context(struct gl_context *ctx,
    smapi->set_background_context(&st->iface, queue_info);
 }
 
-
-void
-st_get_device_uuid(struct gl_context *ctx, char *uuid)
-{
-   struct pipe_screen *screen = st_context(ctx)->screen;
-
-   assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
-   memset(uuid, 0, GL_UUID_SIZE_EXT);
-   screen->get_device_uuid(screen, uuid);
-}
-
-
-void
-st_get_driver_uuid(struct gl_context *ctx, char *uuid)
-{
-   struct pipe_screen *screen = st_context(ctx)->screen;
-
-   assert(GL_UUID_SIZE_EXT >= PIPE_UUID_SIZE);
-   memset(uuid, 0, GL_UUID_SIZE_EXT);
-   screen->get_driver_uuid(screen, uuid);
-}
-
-
 static void
 st_pin_driver_to_l3_cache(struct gl_context *ctx, unsigned L3_cache)
 {
