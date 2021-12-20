@@ -460,9 +460,9 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
       }
       unsigned templ_samples = MAX2(templ->nr_samples, 1);
       if (res->base.b.target != templ->target ||
-          res->base.b.width0 != templ->width0 ||
-          res->base.b.height0 != templ->height0 ||
-          res->base.b.depth0 != templ->depth0 ||
+          footprint->Width != templ->width0 ||
+          footprint->Height != templ->height0 ||
+          footprint->Depth != templ->depth0 ||
           res->base.b.array_size != templ->array_size ||
           incoming_res_desc.SampleDesc.Count != templ_samples ||
           res->base.b.last_level != templ->last_level) {
@@ -471,9 +471,9 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
             "depth: %d vs %d, array_size: %d vs %d, samples: %d vs %d, mips: %d vs %d\n",
             handle->plane,
             res->base.b.target, templ->target,
-            res->base.b.width0, templ->width0,
-            res->base.b.height0, templ->height0,
-            res->base.b.depth0, templ->depth0,
+            footprint->Width, templ->width0,
+            footprint->Height, templ->height0,
+            footprint->Depth, templ->depth0,
             res->base.b.array_size, templ->array_size,
             incoming_res_desc.SampleDesc.Count, templ_samples,
             res->base.b.last_level + 1, templ->last_level + 1);
