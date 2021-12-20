@@ -177,7 +177,7 @@ static bool si_update_shaders(struct si_context *sctx)
          return false;
       si_pm4_bind_state(sctx, gs, sctx->shader.gs.current);
       if (!NGG) {
-         si_pm4_bind_state(sctx, vs, sctx->shader.gs.cso->gs_copy_shader);
+         si_pm4_bind_state(sctx, vs, sctx->shader.gs.current->gs_copy_shader);
 
          if (!si_update_gs_ring_buffers(sctx))
             return false;
@@ -241,7 +241,7 @@ static bool si_update_shaders(struct si_context *sctx)
    } else if (GFX_VERSION >= GFX10) {
       if (HAS_GS) {
          key.u.gs_wave32 = sctx->shader.gs.current->wave_size == 32;
-         key.u.vs_wave32 = sctx->shader.gs.cso->gs_copy_shader->wave_size == 32;
+         key.u.vs_wave32 = sctx->shader.gs.current->gs_copy_shader->wave_size == 32;
       } else {
          key.u.vs_wave32 = si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->wave_size == 32;
       }

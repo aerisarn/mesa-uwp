@@ -260,7 +260,7 @@ static uint32_t *read_chunk(uint32_t *ptr, void **data, unsigned *size)
  * Return the shader binary in a buffer. The first 4 bytes contain its size
  * as integer.
  */
-static void *si_get_shader_binary(struct si_shader *shader)
+static uint32_t *si_get_shader_binary(struct si_shader *shader)
 {
    /* There is always a size of data followed by the data itself. */
    unsigned llvm_ir_size =
@@ -275,8 +275,8 @@ static void *si_get_shader_binary(struct si_shader *shader)
                    4 + /* CRC32 of the data below */
                    align(sizeof(shader->config), 4) + align(sizeof(shader->info), 4) + 4 +
                    align(shader->binary.elf_size, 4) + 4 + align(llvm_ir_size, 4);
-   void *buffer = CALLOC(1, size);
-   uint32_t *ptr = (uint32_t *)buffer;
+   uint32_t *buffer = (uint32_t*)CALLOC(1, size);
+   uint32_t *ptr = buffer;
 
    if (!buffer)
       return NULL;
@@ -291,7 +291,7 @@ static void *si_get_shader_binary(struct si_shader *shader)
    assert((char *)ptr - (char *)buffer == (ptrdiff_t)size);
 
    /* Compute CRC32. */
-   ptr = (uint32_t *)buffer;
+   ptr = buffer;
    ptr++;
    *ptr = util_hash_crc32(ptr + 1, size - 8);
 
@@ -317,6 +317,29 @@ static bool si_load_shader_binary(struct si_shader *shader, void *binary)
    shader->binary.elf_size = elf_size;
    ptr = read_chunk(ptr, (void **)&shader->binary.llvm_ir_string, &chunk_size);
 
+   if (!shader->is_gs_copy_shader &&
+       shader->selector->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
+      shader->gs_copy_shader = CALLOC_STRUCT(si_shader);
+      if (!shader->gs_copy_shader)
+         return false;
+
+      shader->gs_copy_shader->is_gs_copy_shader = true;
+
+      if (!si_load_shader_binary(shader->gs_copy_shader, (uint8_t*)binary + size)) {
+         FREE(shader->gs_copy_shader);
+         shader->gs_copy_shader = NULL;
+         return false;
+      }
+
+      util_queue_fence_init(&shader->gs_copy_shader->ready);
+      shader->gs_copy_shader->selector = shader->selector;
+      shader->gs_copy_shader->is_gs_copy_shader = true;
+      shader->gs_copy_shader->wave_size =
+         si_determine_wave_size(shader->selector->screen, shader->gs_copy_shader);
+
+      si_shader_binary_upload(shader->selector->screen, shader->gs_copy_shader, 0);
+   }
+
    return true;
 }
 
@@ -327,7 +350,7 @@ static bool si_load_shader_binary(struct si_shader *shader, void *binary)
 void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_sha1_cache_key[20],
                                    struct si_shader *shader, bool insert_into_disk_cache)
 {
-   void *hw_binary;
+   uint32_t *hw_binary;
    struct hash_entry *entry;
    uint8_t key[CACHE_KEY_SIZE];
    bool memory_cache_full = sscreen->shader_cache_size >= sscreen->shader_cache_max_size;
@@ -343,6 +366,31 @@ void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_s
    if (!hw_binary)
       return;
 
+   unsigned size = *hw_binary;
+
+   if (shader->selector->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
+      uint32_t *gs_copy_binary = si_get_shader_binary(shader->gs_copy_shader);
+      if (!gs_copy_binary) {
+         FREE(hw_binary);
+         return;
+      }
+
+      /* Combine both binaries. */
+      size += *gs_copy_binary;
+      uint32_t *combined_binary = (uint32_t*)MALLOC(size);
+      if (!combined_binary) {
+         FREE(hw_binary);
+         FREE(gs_copy_binary);
+         return;
+      }
+
+      memcpy(combined_binary, hw_binary, *hw_binary);
+      memcpy(combined_binary + *hw_binary / 4, gs_copy_binary, *gs_copy_binary);
+      FREE(hw_binary);
+      FREE(gs_copy_binary);
+      hw_binary = combined_binary;
+   }
+
    if (!memory_cache_full) {
       if (_mesa_hash_table_insert(sscreen->shader_cache,
                                   mem_dup(ir_sha1_cache_key, 20),
@@ -350,13 +398,13 @@ void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_s
           FREE(hw_binary);
           return;
       }
-      /* The size is stored at the start of the binary */
-      sscreen->shader_cache_size += *(uint32_t*)hw_binary;
+
+      sscreen->shader_cache_size += size;
    }
 
    if (sscreen->disk_shader_cache && insert_into_disk_cache) {
       disk_cache_compute_key(sscreen->disk_shader_cache, ir_sha1_cache_key, 20, key);
-      disk_cache_put(sscreen->disk_shader_cache, key, hw_binary, *((uint32_t *)hw_binary), NULL);
+      disk_cache_put(sscreen->disk_shader_cache, key, hw_binary, size, NULL);
    }
 
    if (memory_cache_full)
@@ -382,10 +430,17 @@ bool si_shader_cache_load_shader(struct si_screen *sscreen, unsigned char ir_sha
    unsigned char sha1[CACHE_KEY_SIZE];
    disk_cache_compute_key(sscreen->disk_shader_cache, ir_sha1_cache_key, 20, sha1);
 
-   size_t binary_size;
-   uint8_t *buffer = (uint8_t*)disk_cache_get(sscreen->disk_shader_cache, sha1, &binary_size);
+   size_t total_size;
+   uint32_t *buffer = (uint32_t*)disk_cache_get(sscreen->disk_shader_cache, sha1, &total_size);
    if (buffer) {
-      if (binary_size >= sizeof(uint32_t) && *((uint32_t *)buffer) == binary_size) {
+      unsigned size = *buffer;
+      unsigned gs_copy_binary_size = 0;
+
+      /* The GS copy shader binary is after the GS binary. */
+      if (shader->selector->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg)
+         gs_copy_binary_size = buffer[size / 4];
+
+      if (total_size >= sizeof(uint32_t) && size + gs_copy_binary_size == total_size) {
          if (si_load_shader_binary(shader, buffer)) {
             free(buffer);
             si_shader_cache_insert_shader(sscreen, ir_sha1_cache_key, shader, false);
@@ -997,7 +1052,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       S_028B90_CNT(MIN2(gs_num_invocations, 127)) | S_028B90_ENABLE(gs_num_invocations > 0);
 
    /* Copy over fields from the GS copy shader to make them easily accessible from GS. */
-   shader->pa_cl_vs_out_cntl = sel->gs_copy_shader->pa_cl_vs_out_cntl;
+   shader->pa_cl_vs_out_cntl = shader->gs_copy_shader->pa_cl_vs_out_cntl;
 
    va = shader->bo->gpu_address;
 
@@ -1906,10 +1961,13 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader
          si_shader_vs(sscreen, shader, NULL);
       break;
    case MESA_SHADER_GEOMETRY:
-      if (shader->key.ge.as_ngg)
+      if (shader->key.ge.as_ngg) {
          gfx10_shader_ngg(sscreen, shader);
-      else
+      } else {
+         /* VS must be initialized first because GS uses its fields. */
+         si_shader_vs(sscreen, shader->gs_copy_shader, shader->selector);
          si_shader_gs(sscreen, shader);
+      }
       break;
    case MESA_SHADER_FRAGMENT:
       si_shader_ps(sscreen, shader);
@@ -2790,19 +2848,6 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
    if (!compiler->passes)
       si_init_compiler(sscreen, compiler);
 
-   /* The GS copy shader is always pre-compiled. */
-   if (sel->info.stage == MESA_SHADER_GEOMETRY &&
-       (!sscreen->use_ngg || !sscreen->use_ngg_streamout || /* also for PRIMITIVES_GENERATED */
-        sel->tess_turns_off_ngg)) {
-      sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
-      if (!sel->gs_copy_shader) {
-         fprintf(stderr, "radeonsi: can't create GS copy shader\n");
-         return;
-      }
-
-      si_shader_vs(sscreen, sel->gs_copy_shader, sel);
-   }
-
    /* Serialize NIR to save memory. Monolithic shader variants
     * have to deserialize NIR before compilation.
     */
@@ -3664,6 +3709,9 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
    default:;
    }
 
+   if (shader->gs_copy_shader)
+      si_delete_shader(sctx, shader->gs_copy_shader);
+
    si_shader_selector_reference(sctx, &shader->previous_stage_sel, NULL);
    si_shader_destroy(shader);
    si_pm4_free_state(sctx, &shader->pm4, state_index);
@@ -3697,8 +3745,6 @@ static void si_destroy_shader_selector(struct pipe_context *ctx, void *cso)
       si_delete_shader(sctx, sel->main_shader_part_es);
    if (sel->main_shader_part_ngg)
       si_delete_shader(sctx, sel->main_shader_part_ngg);
-   if (sel->gs_copy_shader)
-      si_delete_shader(sctx, sel->gs_copy_shader);
 
    util_queue_fence_destroy(&sel->ready);
    simple_mtx_destroy(&sel->mutex);

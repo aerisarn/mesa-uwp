@@ -454,8 +454,6 @@ struct si_shader_selector {
    struct si_shader *main_shader_part_ngg;    /* as_ngg is set in the key */
    struct si_shader *main_shader_part_ngg_es; /* for Wave32 TES before legacy GS */
 
-   struct si_shader *gs_copy_shader;
-
    struct nir_shader *nir;
    void *nir_binary;
    unsigned nir_size;
@@ -816,6 +814,7 @@ struct si_shader {
    struct si_shader_part *prolog;
    struct si_shader *previous_stage; /* for GFX9 */
    struct si_shader_part *epilog;
+   struct si_shader *gs_copy_shader;
 
    struct si_resource *bo;
    struct si_resource *scratch_bo;

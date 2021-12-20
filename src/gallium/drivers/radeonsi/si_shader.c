@@ -1510,6 +1510,15 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    if (!si_llvm_compile_shader(sscreen, compiler, shader, debug, nir, free_nir))
       return false;
 
+   /* The GS copy shader is compiled next. */
+   if (sel->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
+      shader->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
+      if (!shader->gs_copy_shader) {
+         fprintf(stderr, "radeonsi: can't create GS copy shader\n");
+         return false;
+      }
+   }
+
    /* Compute vs_output_ps_input_cntl. */
    if ((sel->info.stage == MESA_SHADER_VERTEX ||
         sel->info.stage == MESA_SHADER_TESS_EVAL ||
@@ -1518,7 +1527,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       ubyte *vs_output_param_offset = shader->info.vs_output_param_offset;
 
       if (sel->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg)
-         vs_output_param_offset = sel->gs_copy_shader->info.vs_output_param_offset;
+         vs_output_param_offset = shader->gs_copy_shader->info.vs_output_param_offset;
 
       /* VS and TES should also set primitive ID output if it's used. */
       unsigned num_outputs_with_prim_id = sel->info.num_outputs +
@@ -2110,6 +2119,29 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       case MESA_SHADER_GEOMETRY:
          if (!si_shader_select_gs_parts(sscreen, compiler, shader, debug))
             return false;
+
+         /* Clone the GS copy shader for the shader variant.
+          * We can't just copy the pointer because we change the pm4 state and
+          * si_shader_selector::gs_copy_shader must be immutable because it's shared
+          * by multiple contexts.
+          */
+         if (!shader->key.ge.as_ngg) {
+            assert(sel->main_shader_part == mainp);
+            assert(sel->main_shader_part->gs_copy_shader);
+            assert(sel->main_shader_part->gs_copy_shader->bo);
+            assert(!sel->main_shader_part->gs_copy_shader->previous_stage_sel);
+            assert(!sel->main_shader_part->gs_copy_shader->scratch_bo);
+
+            shader->gs_copy_shader = CALLOC_STRUCT(si_shader);
+            memcpy(shader->gs_copy_shader, sel->main_shader_part->gs_copy_shader,
+                   sizeof(*shader->gs_copy_shader));
+            /* Increase the reference count. */
+            pipe_reference(NULL, &shader->gs_copy_shader->bo->b.b.reference);
+            /* Initialize some fields differently. */
+            shader->gs_copy_shader->shader_log = NULL;
+            shader->gs_copy_shader->is_binary_shared = true;
+            util_queue_fence_init(&shader->gs_copy_shader->ready);
+         }
          break;
       case MESA_SHADER_FRAGMENT:
          if (!si_shader_select_ps_parts(sscreen, compiler, shader, debug))
