@@ -850,8 +850,7 @@ _mesa_AlphaFunc( GLenum func, GLclampf ref )
    case GL_NOTEQUAL:
    case GL_GEQUAL:
    case GL_ALWAYS:
-      FLUSH_VERTICES(ctx, ctx->DriverFlags.NewAlphaTest ? 0 : _NEW_COLOR,
-                     GL_COLOR_BUFFER_BIT);
+      FLUSH_VERTICES(ctx, 0, GL_COLOR_BUFFER_BIT);
       ctx->NewDriverState |= ctx->DriverFlags.NewAlphaTest;
       ctx->Color.AlphaFunc = func;
       ctx->Color.AlphaRefUnclamped = ref;

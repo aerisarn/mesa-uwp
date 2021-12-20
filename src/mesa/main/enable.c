@@ -353,8 +353,7 @@ _mesa_set_multisample(struct gl_context *ctx, GLboolean state)
    /* GL compatibility needs Multisample.Enable to determine program state
     * constants.
     */
-   if (ctx->API == API_OPENGL_COMPAT || ctx->API == API_OPENGLES ||
-       !ctx->DriverFlags.NewMultisampleEnable) {
+   if (ctx->API == API_OPENGL_COMPAT || ctx->API == API_OPENGLES) {
       FLUSH_VERTICES(ctx, _NEW_MULTISAMPLE, GL_MULTISAMPLE_BIT | GL_ENABLE_BIT);
    } else {
       FLUSH_VERTICES(ctx, 0, GL_MULTISAMPLE_BIT | GL_ENABLE_BIT);
@@ -462,8 +461,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             /* The compatibility profile needs _NEW_TRANSFORM to transform
              * clip planes according to the projection matrix.
              */
-            if (ctx->API == API_OPENGL_COMPAT || ctx->API == API_OPENGLES ||
-                !ctx->DriverFlags.NewClipPlaneEnable) {
+            if (ctx->API == API_OPENGL_COMPAT || ctx->API == API_OPENGLES) {
                FLUSH_VERTICES(ctx, _NEW_TRANSFORM,
                               GL_TRANSFORM_BIT | GL_ENABLE_BIT);
             } else {
@@ -1048,8 +1046,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Multisample.SampleShading == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewSampleShading ? 0 :
-                                                         _NEW_MULTISAMPLE,
+         FLUSH_VERTICES(ctx, 0,
                         GL_MULTISAMPLE_BIT | GL_ENABLE_BIT);
          ctx->NewDriverState |= ctx->DriverFlags.NewSampleShading;
          ctx->Multisample.SampleShading = state;

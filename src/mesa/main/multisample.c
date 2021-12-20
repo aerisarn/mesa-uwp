@@ -192,9 +192,7 @@ min_sample_shading(struct gl_context *ctx, GLclampf value)
    if (ctx->Multisample.MinSampleShadingValue == value)
       return;
 
-   FLUSH_VERTICES(ctx,
-                  ctx->DriverFlags.NewSampleShading ? 0 : _NEW_MULTISAMPLE,
-                  GL_MULTISAMPLE_BIT);
+   FLUSH_VERTICES(ctx, 0, GL_MULTISAMPLE_BIT);
    ctx->NewDriverState |= ctx->DriverFlags.NewSampleShading;
    ctx->Multisample.MinSampleShadingValue = value;
 }
