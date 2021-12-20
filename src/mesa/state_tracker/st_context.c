@@ -877,6 +877,8 @@ st_create_context(gl_api api, struct pipe_context *pipe,
    memset(ctx, 0, sizeof(*ctx));
 
    ctx->pipe = pipe;
+   ctx->screen = pipe->screen;
+
    if (!_mesa_initialize_context(ctx, api, visual, shareCtx, &funcs)) {
       align_free(ctx);
       return NULL;

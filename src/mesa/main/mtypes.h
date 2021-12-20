@@ -3543,6 +3543,7 @@ struct gl_context
    /*@{*/
    struct vbo_context vbo_context;
    struct st_context *st;
+   struct pipe_screen *screen;
    struct pipe_context *pipe;
    struct st_config_options *st_opts;
    struct cso_context *cso_context;
