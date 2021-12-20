@@ -788,7 +788,6 @@ static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *sh
 
    add_part(shader->prolog);
    add_part(shader->previous_stage);
-   add_part(shader->prolog2);
    add_part(shader);
    add_part(shader->epilog);
 
@@ -1137,10 +1136,6 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
       if (shader->previous_stage)
          si_shader_dump_disassembly(sscreen, &shader->previous_stage->binary, stage,
                                     shader->wave_size, debug, "previous stage", file);
-      if (shader->prolog2)
-         si_shader_dump_disassembly(sscreen, &shader->prolog2->binary, stage, shader->wave_size,
-                                    debug, "prolog2", file);
-
       si_shader_dump_disassembly(sscreen, &shader->binary, stage, shader->wave_size, debug, "main",
                                  file);
 
@@ -2131,12 +2126,6 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
             MAX2(shader->config.scratch_bytes_per_wave,
                  shader->previous_stage->config.scratch_bytes_per_wave);
          shader->info.uses_instanceid |= shader->previous_stage->info.uses_instanceid;
-      }
-      if (shader->prolog2) {
-         shader->config.num_sgprs =
-            MAX2(shader->config.num_sgprs, shader->prolog2->config.num_sgprs);
-         shader->config.num_vgprs =
-            MAX2(shader->config.num_vgprs, shader->prolog2->config.num_vgprs);
       }
       if (shader->epilog) {
          shader->config.num_sgprs =
