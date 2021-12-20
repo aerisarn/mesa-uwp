@@ -3001,7 +3001,6 @@ cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
       [MESA_SHADER_TESS_EVAL]                   = 45, /* DS */
       [MESA_SHADER_GEOMETRY]                    = 46,
       [MESA_SHADER_FRAGMENT]                    = 47,
-      [MESA_SHADER_COMPUTE]                     = 0,
    };
 
    static const uint32_t binding_table_opcodes[] = {
@@ -3010,12 +3009,10 @@ cmd_buffer_emit_descriptor_pointers(struct anv_cmd_buffer *cmd_buffer,
       [MESA_SHADER_TESS_EVAL]                   = 40,
       [MESA_SHADER_GEOMETRY]                    = 41,
       [MESA_SHADER_FRAGMENT]                    = 42,
-      [MESA_SHADER_COMPUTE]                     = 0,
    };
 
    anv_foreach_stage(s, stages) {
       assert(s < ARRAY_SIZE(binding_table_opcodes));
-      assert(binding_table_opcodes[s] > 0);
 
       if (cmd_buffer->state.samplers[s].alloc_size > 0) {
          anv_batch_emit(&cmd_buffer->batch,
@@ -3190,11 +3187,9 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
       [MESA_SHADER_TESS_EVAL]                   = 26, /* DS */
       [MESA_SHADER_GEOMETRY]                    = 22,
       [MESA_SHADER_FRAGMENT]                    = 23,
-      [MESA_SHADER_COMPUTE]                     = 0,
    };
 
    assert(stage < ARRAY_SIZE(push_constant_opcodes));
-   assert(push_constant_opcodes[stage] > 0);
 
    UNUSED uint32_t mocs = anv_mocs(cmd_buffer->device, NULL, 0);
 
@@ -3301,12 +3296,10 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
       [MESA_SHADER_TESS_EVAL]                   = 26, /* DS */
       [MESA_SHADER_GEOMETRY]                    = 22,
       [MESA_SHADER_FRAGMENT]                    = 23,
-      [MESA_SHADER_COMPUTE]                     = 0,
    };
 
    gl_shader_stage stage = vk_to_mesa_shader_stage(shader_mask);
    assert(stage < ARRAY_SIZE(push_constant_opcodes));
-   assert(push_constant_opcodes[stage] > 0);
 
    const struct anv_pipeline_bind_map *bind_map =
       &pipeline->shaders[stage]->bind_map;
