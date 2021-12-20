@@ -142,15 +142,6 @@ st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg)
    return prog;
 }
 
-void
-st_max_shader_compiler_threads(struct gl_context *ctx, unsigned count)
-{
-   struct pipe_screen *screen = st_context(ctx)->screen;
-
-   if (screen->set_max_shader_compiler_threads)
-      screen->set_max_shader_compiler_threads(screen, count);
-}
-
 bool
 st_get_shader_program_completion_status(struct gl_context *ctx,
                                         struct gl_shader_program *shprog)

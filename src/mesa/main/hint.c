@@ -33,6 +33,7 @@
 #include "state_tracker/st_cb_program.h"
 #include "api_exec_decl.h"
 
+#include "pipe/p_screen.h"
 
 void GLAPIENTRY
 _mesa_Hint( GLenum target, GLenum mode )
@@ -139,7 +140,9 @@ _mesa_MaxShaderCompilerThreadsKHR(GLuint count)
 
    ctx->Hint.MaxShaderCompilerThreads = count;
 
-   st_max_shader_compiler_threads(ctx, count);
+   struct pipe_screen *screen = ctx->screen;
+   if (screen->set_max_shader_compiler_threads)
+      screen->set_max_shader_compiler_threads(screen, count);
 }
 
 /**********************************************************************/
