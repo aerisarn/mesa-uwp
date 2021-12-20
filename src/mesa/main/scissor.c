@@ -30,6 +30,7 @@
 #include "main/scissor.h"
 #include "api_exec_decl.h"
 
+#include "state_tracker/st_context.h"
 
 /**
  * Set scissor rectangle data directly in ScissorArray
@@ -49,9 +50,8 @@ set_scissor_no_notify(struct gl_context *ctx, unsigned idx,
        height == ctx->Scissor.ScissorArray[idx].Height)
       return;
 
-   FLUSH_VERTICES(ctx, ctx->DriverFlags.NewScissorRect ? 0 : _NEW_SCISSOR,
-                  GL_SCISSOR_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewScissorRect;
+   FLUSH_VERTICES(ctx, 0, GL_SCISSOR_BIT);
+   ctx->NewDriverState |= ST_NEW_SCISSOR;
 
    ctx->Scissor.ScissorArray[idx].X = x;
    ctx->Scissor.ScissorArray[idx].Y = y;
@@ -295,7 +295,7 @@ _mesa_WindowRectanglesEXT(GLenum mode, GLsizei count, const GLint *box)
    }
 
    FLUSH_VERTICES(ctx, 0, GL_SCISSOR_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewWindowRectangles;
+   ctx->NewDriverState |= ST_NEW_WINDOW_RECTANGLES;
 
    memcpy(ctx->Scissor.WindowRects, newval,
           sizeof(struct gl_scissor_rect) * count);

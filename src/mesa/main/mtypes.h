@@ -4773,19 +4773,8 @@ struct gl_driver_flags
     */
    uint64_t NewAtomicBuffer;
 
-   /**
-    * gl_context::Scissor::WindowRects
-    */
-   uint64_t NewWindowRectangles;
-
    /** gl_context::Color::sRGBEnabled */
    uint64_t NewFramebufferSRGB;
-
-   /** gl_context::Scissor::EnableFlags */
-   uint64_t NewScissorTest;
-
-   /** gl_context::Scissor::ScissorArray */
-   uint64_t NewScissorRect;
 
    /** gl_context::Color::Alpha* */
    uint64_t NewAlphaTest;

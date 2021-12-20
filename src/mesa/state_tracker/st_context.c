@@ -460,10 +460,7 @@ st_init_driver_flags(struct st_context *st)
    f->NewShaderConstants[MESA_SHADER_FRAGMENT] = ST_NEW_FS_CONSTANTS;
    f->NewShaderConstants[MESA_SHADER_COMPUTE] = ST_NEW_CS_CONSTANTS;
 
-   f->NewWindowRectangles = ST_NEW_WINDOW_RECTANGLES;
    f->NewFramebufferSRGB = ST_NEW_FB_STATE;
-   f->NewScissorRect = ST_NEW_SCISSOR;
-   f->NewScissorTest = ST_NEW_SCISSOR | ST_NEW_RASTERIZER;
 
    if (st->lower_alpha_test)
       f->NewAlphaTest = ST_NEW_FS_STATE | ST_NEW_FS_CONSTANTS;

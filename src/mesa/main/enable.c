@@ -873,10 +873,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             GLbitfield newEnabled =
                state * ((1 << ctx->Const.MaxViewports) - 1);
             if (newEnabled != ctx->Scissor.EnableFlags) {
-               FLUSH_VERTICES(ctx, ctx->DriverFlags.NewScissorTest ? 0 :
-                                                                _NEW_SCISSOR,
+               FLUSH_VERTICES(ctx, 0,
                               GL_SCISSOR_BIT | GL_ENABLE_BIT);
-               ctx->NewDriverState |= ctx->DriverFlags.NewScissorTest;
+               ctx->NewDriverState |= ST_NEW_SCISSOR | ST_NEW_RASTERIZER;
                ctx->Scissor.EnableFlags = newEnabled;
             }
          }
@@ -1406,10 +1405,9 @@ _mesa_set_enablei(struct gl_context *ctx, GLenum cap,
          return;
       }
       if (((ctx->Scissor.EnableFlags >> index) & 1) != state) {
-         FLUSH_VERTICES(ctx,
-                        ctx->DriverFlags.NewScissorTest ? 0 : _NEW_SCISSOR,
+         FLUSH_VERTICES(ctx, 0,
                         GL_SCISSOR_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewScissorTest;
+         ctx->NewDriverState |= ST_NEW_SCISSOR | ST_NEW_RASTERIZER;
          if (state)
             ctx->Scissor.EnableFlags |= (1 << index);
          else
