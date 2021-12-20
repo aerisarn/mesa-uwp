@@ -3125,7 +3125,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
        * reliable but slightly incorrect hardware rendering instead of
        * rarely-tested software fallback rendering.
        */
-      if (border && ctx->Const.StripTextureBorder) {
+      if (border) {
          strip_texture_border(target, &width, &height, &depth, unpack,
                               &unpack_no_border);
          border = 0;
@@ -4377,7 +4377,7 @@ copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texO
       return;
    }
 
-   if (border && ctx->Const.StripTextureBorder) {
+   if (border) {
       x += border;
       width -= border * 2;
       if (dims == 2) {
