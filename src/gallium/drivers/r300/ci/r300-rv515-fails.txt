@@ -64,15 +64,6 @@ dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_subscript_w
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_subscript_write_static_loop_subscript_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_subscript_write_static_subscript_read_fragment,Fail
 
-# Bus error
-dEQP-GLES2.functional.shaders.loops.for_dynamic_iterations.sequence_vertex,Crash
-dEQP-GLES2.functional.shaders.loops.for_uniform_iterations.sequence_vertex,Crash
-dEQP-GLES2.functional.shaders.loops.do_while_dynamic_iterations.sequence_vertex,Crash
-dEQP-GLES2.functional.shaders.loops.do_while_uniform_iterations.sequence_vertex,Crash
-dEQP-GLES2.functional.shaders.loops.while_constant_iterations.sequence_vertex,Crash
-dEQP-GLES2.functional.shaders.loops.while_dynamic_iterations.sequence_vertex,Crash
-dEQP-GLES2.functional.shaders.loops.while_uniform_iterations.sequence_vertex,Crash
-
 dEQP-GLES2.functional.shaders.loops.do_while_constant_iterations.mixed_break_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.loops.do_while_dynamic_iterations.conditional_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.loops.do_while_dynamic_iterations.double_continue_vertex,Fail
