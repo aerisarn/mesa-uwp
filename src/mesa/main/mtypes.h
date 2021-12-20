@@ -4775,12 +4775,6 @@ struct gl_driver_flags
    uint64_t NewTransformFeedbackProg;
 
    /**
-    * gl_context::UniformBufferBindings
-    * gl_shader_program::UniformBlocks
-    */
-   uint64_t NewUniformBuffer;
-
-   /**
     * gl_context::ShaderStorageBufferBindings
     * gl_shader_program::ShaderStorageBlocks
     */

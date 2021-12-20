@@ -1699,7 +1699,7 @@ bind_uniform_buffer(struct gl_context *ctx,
 {
    bind_buffer(ctx, &ctx->UniformBufferBindings[index],
                bufObj, offset, size, autoSize,
-               ctx->DriverFlags.NewUniformBuffer,
+               ST_NEW_UNIFORM_BUFFER,
                USAGE_UNIFORM_BUFFER);
 }
 
@@ -4399,7 +4399,7 @@ bind_uniform_buffers(struct gl_context *ctx, GLuint first, GLsizei count,
 
    /* Assume that at least one binding will be changed */
    FLUSH_VERTICES(ctx, 0, 0);
-   ctx->NewDriverState |= ctx->DriverFlags.NewUniformBuffer;
+   ctx->NewDriverState |= ST_NEW_UNIFORM_BUFFER;
 
    if (!buffers) {
       /* The ARB_multi_bind spec says:

@@ -447,8 +447,6 @@ st_init_driver_flags(struct st_context *st)
 {
    struct gl_driver_flags *f = &st->ctx->DriverFlags;
 
-   f->NewUniformBuffer = ST_NEW_UNIFORM_BUFFER;
-
    /* Shader resources */
    f->NewTextureBuffer = ST_NEW_SAMPLER_VIEWS;
    if (st->has_hw_atomics)
