@@ -42,9 +42,6 @@ GLboolean st_program_string_notify(struct gl_context *ctx,
                                    struct gl_program *prog);
 struct gl_program *st_new_ati_fs(struct gl_context *ctx, struct ati_fragment_shader *curProg);
 
-bool st_get_shader_program_completion_status(struct gl_context *ctx,
-                                             struct gl_shader_program *shprog);
-
 #ifdef __cplusplus
 }
 #endif

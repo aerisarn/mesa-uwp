@@ -69,6 +69,7 @@
 
 #include "state_tracker/st_cb_program.h"
 #include "state_tracker/st_context.h"
+#include "state_tracker/st_program.h"
 
 #ifdef ENABLE_SHADER_CACHE
 #if CUSTOM_SHADER_REPLACEMENT
@@ -705,6 +706,34 @@ check_tes_query(struct gl_context *ctx, const struct gl_shader_program *shProg)
    return false;
 }
 
+static bool
+get_shader_program_completion_status(struct gl_context *ctx,
+                                     struct gl_shader_program *shprog)
+{
+   struct pipe_screen *screen = ctx->screen;
+
+   if (!screen->is_parallel_shader_compilation_finished)
+      return true;
+
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      struct gl_linked_shader *linked = shprog->_LinkedShaders[i];
+      void *sh = NULL;
+
+      if (!linked || !linked->Program)
+         continue;
+
+      if (st_program(linked->Program)->variants)
+         sh = st_program(linked->Program)->variants->driver_shader;
+
+      unsigned type = pipe_shader_type_from_mesa(i);
+
+      if (sh &&
+          !screen->is_parallel_shader_compilation_finished(screen, sh, type))
+         return false;
+   }
+   return true;
+}
+
 /**
  * Return the length of a string, or 0 if the pointer passed in is NULL
  */
@@ -755,7 +784,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       *params = shProg->DeletePending;
       return;
    case GL_COMPLETION_STATUS_ARB:
-      *params = st_get_shader_program_completion_status(ctx, shProg);
+      *params = get_shader_program_completion_status(ctx, shProg);
       return;
    case GL_LINK_STATUS:
       *params = shProg->data->LinkStatus ? GL_TRUE : GL_FALSE;
