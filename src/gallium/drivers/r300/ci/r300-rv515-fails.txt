@@ -37,6 +37,7 @@ dEQP-GLES2.functional.rasterization.primitives.line_strip_wide,Fail,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_loop_wide,Fail
 
 dEQP-GLES2.functional.shaders.functions.control_flow.mixed_return_break_continue_vertex,Fail
+dEQP-GLES2.functional.shaders.functions.control_flow.mixed_return_break_continue_fragment,Fail
 
 # "No free temporary to use for predicate stack counter."
 dEQP-GLES2.functional.shaders.indexing.tmp_array.float_const_write_dynamic_loop_read_vertex,Fail
