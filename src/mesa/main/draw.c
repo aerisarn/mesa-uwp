@@ -43,6 +43,7 @@
 #include "pipe/p_state.h"
 #include "api_exec_decl.h"
 
+#include "state_tracker/st_context.h"
 #include "state_tracker/st_draw.h"
 
 typedef struct {
@@ -135,7 +136,7 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
    }
 
    if (new_vertex_buffers || new_vertex_elements) {
-      ctx->NewDriverState |= ctx->DriverFlags.NewArray;
+      ctx->NewDriverState |= ST_NEW_VERTEX_ARRAYS;
       ctx->Array.NewVertexElements |= new_vertex_elements;
    }
 

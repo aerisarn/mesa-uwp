@@ -311,7 +311,7 @@ st_update_array_templ(struct st_context *st)
    struct cso_velems_state velements;
    bool uses_user_vertex_buffers;
 
-   /* ST_NEW_VERTEX_ARRAYS alias ctx->DriverFlags.NewArray */
+   /* ST_NEW_VERTEX_ARRAYS */
    /* Setup arrays */
    setup_arrays<POPCNT, UPDATE>
       (st, ctx->Array._DrawVAO, vp->Base.Base.DualSlotInputs,

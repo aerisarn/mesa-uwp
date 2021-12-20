@@ -1708,7 +1708,7 @@ struct gl_array_attrib
     * If gallium vertex buffers are dirty, this flag indicates whether gallium
     * vertex elements are dirty too. If this is false, GL states corresponding
     * to vertex elements have not been changed. Thus, this affects what will
-    * happen when gl_driver_flags::NewArray is set.
+    * happen when ST_NEW_VERTEX_ARRAYS is set.
     *
     * The driver should clear this when it's done.
     */
@@ -4768,9 +4768,6 @@ struct gl_dlist_state
  */
 struct gl_driver_flags
 {
-   /** gl_context::Array::_DrawArrays (vertex array state) */
-   uint64_t NewArray;
-
    /** gl_context::TransformFeedback::CurrentObject */
    uint64_t NewTransformFeedback;
 

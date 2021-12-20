@@ -447,7 +447,6 @@ st_init_driver_flags(struct st_context *st)
 {
    struct gl_driver_flags *f = &st->ctx->DriverFlags;
 
-   f->NewArray = ST_NEW_VERTEX_ARRAYS;
    f->NewRasterizerDiscard = ST_NEW_RASTERIZER;
    f->NewTileRasterOrder = ST_NEW_RASTERIZER;
    f->NewUniformBuffer = ST_NEW_UNIFORM_BUFFER;
