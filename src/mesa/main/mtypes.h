@@ -4773,9 +4773,6 @@ struct gl_driver_flags
     */
    uint64_t NewAtomicBuffer;
 
-   /** gl_context::Color::sRGBEnabled */
-   uint64_t NewFramebufferSRGB;
-
    /** gl_context::Color::Alpha* */
    uint64_t NewAlphaTest;
 
