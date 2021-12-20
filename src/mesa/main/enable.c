@@ -503,10 +503,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
       case GL_CULL_FACE:
          if (ctx->Polygon.CullFlag == state)
             return;
-         FLUSH_VERTICES(ctx,
-                        ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+         FLUSH_VERTICES(ctx, 0,
                         GL_POLYGON_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Polygon.CullFlag = state;
          break;
       case GL_DEPTH_TEST:
@@ -577,9 +576,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Line.SmoothFlag == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewLineState ? 0 : _NEW_LINE,
+         FLUSH_VERTICES(ctx, 0,
                         GL_LINE_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewLineState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Line.SmoothFlag = state;
          break;
       case GL_LINE_STIPPLE:
@@ -587,9 +586,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Line.StippleFlag == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewLineState ? 0 : _NEW_LINE,
+         FLUSH_VERTICES(ctx, 0,
                         GL_LINE_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewLineState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Line.StippleFlag = state;
          break;
       case GL_INDEX_LOGIC_OP:
@@ -608,8 +607,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          if (ctx->IntelConservativeRasterization == state)
             return;
          FLUSH_VERTICES(ctx, 0, 0);
-         ctx->NewDriverState |=
-            ctx->DriverFlags.NewIntelConservativeRasterization;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->IntelConservativeRasterization = state;
          _mesa_update_valid_to_render_state(ctx);
          break;
@@ -619,8 +617,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
          if (ctx->ConservativeRasterization == state)
             return;
          FLUSH_VERTICES(ctx, 0, GL_ENABLE_BIT);
-         ctx->NewDriverState |=
-            ctx->DriverFlags.NewNvConservativeRasterization;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->ConservativeRasterization = state;
          break;
       case GL_COLOR_LOGIC_OP:
@@ -818,10 +815,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Polygon.SmoothFlag == state)
             return;
-         FLUSH_VERTICES(ctx,
-                        ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+         FLUSH_VERTICES(ctx, 0,
                         GL_POLYGON_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Polygon.SmoothFlag = state;
          break;
       case GL_POLYGON_STIPPLE:
@@ -829,10 +825,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Polygon.StippleFlag == state)
             return;
-         FLUSH_VERTICES(ctx,
-                        ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+         FLUSH_VERTICES(ctx, 0,
                         GL_POLYGON_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Polygon.StippleFlag = state;
          break;
       case GL_POLYGON_OFFSET_POINT:
@@ -840,10 +835,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Polygon.OffsetPoint == state)
             return;
-         FLUSH_VERTICES(ctx,
-                        ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+         FLUSH_VERTICES(ctx, 0,
                         GL_POLYGON_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Polygon.OffsetPoint = state;
          break;
       case GL_POLYGON_OFFSET_LINE:
@@ -851,19 +845,17 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Polygon.OffsetLine == state)
             return;
-         FLUSH_VERTICES(ctx,
-                        ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+         FLUSH_VERTICES(ctx, 0,
                         GL_POLYGON_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Polygon.OffsetLine = state;
          break;
       case GL_POLYGON_OFFSET_FILL:
          if (ctx->Polygon.OffsetFill == state)
             return;
-         FLUSH_VERTICES(ctx,
-                        ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+         FLUSH_VERTICES(ctx, 0,
                         GL_POLYGON_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+         ctx->NewDriverState |= ST_NEW_RASTERIZER;
          ctx->Polygon.OffsetFill = state;
          break;
       case GL_RESCALE_NORMAL_EXT:
@@ -1230,7 +1222,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->RasterDiscard != state) {
             FLUSH_VERTICES(ctx, 0, 0);
-            ctx->NewDriverState |= ctx->DriverFlags.NewRasterizerDiscard;
+            ctx->NewDriverState |= ST_NEW_RASTERIZER;
             ctx->RasterDiscard = state;
          }
          break;
@@ -1240,7 +1232,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->TileRasterOrderFixed != state) {
             FLUSH_VERTICES(ctx, 0, GL_ENABLE_BIT);
-            ctx->NewDriverState |= ctx->DriverFlags.NewTileRasterOrder;
+            ctx->NewDriverState |= ST_NEW_RASTERIZER;
             ctx->TileRasterOrderFixed = state;
          }
          break;
@@ -1250,7 +1242,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->TileRasterOrderIncreasingX != state) {
             FLUSH_VERTICES(ctx, 0, GL_ENABLE_BIT);
-            ctx->NewDriverState |= ctx->DriverFlags.NewTileRasterOrder;
+            ctx->NewDriverState |= ST_NEW_RASTERIZER;
             ctx->TileRasterOrderIncreasingX = state;
          }
          break;
@@ -1260,7 +1252,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->TileRasterOrderIncreasingY != state) {
             FLUSH_VERTICES(ctx, 0, GL_ENABLE_BIT);
-            ctx->NewDriverState |= ctx->DriverFlags.NewTileRasterOrder;
+            ctx->NewDriverState |= ST_NEW_RASTERIZER;
             ctx->TileRasterOrderIncreasingY = state;
          }
          break;

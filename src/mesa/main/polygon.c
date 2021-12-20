@@ -40,6 +40,7 @@
 #include "mtypes.h"
 #include "api_exec_decl.h"
 
+#include "state_tracker/st_context.h"
 
 /**
  * Specify whether to cull front- or back-facing facets.
@@ -64,9 +65,9 @@ cull_face(struct gl_context *ctx, GLenum mode, bool no_error)
       return;
    }
 
-   FLUSH_VERTICES(ctx, ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+   FLUSH_VERTICES(ctx, 0,
                   GL_POLYGON_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+   ctx->NewDriverState |= ST_NEW_RASTERIZER;
    ctx->Polygon.CullFaceMode = mode;
 }
 
@@ -113,9 +114,9 @@ front_face(struct gl_context *ctx, GLenum mode, bool no_error)
       return;
    }
 
-   FLUSH_VERTICES(ctx, ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+   FLUSH_VERTICES(ctx, 0,
                   GL_POLYGON_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+   ctx->NewDriverState |= ST_NEW_RASTERIZER;
    ctx->Polygon.FrontFace = mode;
 }
 
@@ -188,17 +189,17 @@ polygon_mode(struct gl_context *ctx, GLenum face, GLenum mode, bool no_error)
       }
       if (ctx->Polygon.FrontMode == mode)
          return;
-      FLUSH_VERTICES(ctx, ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+      FLUSH_VERTICES(ctx, 0,
                      GL_POLYGON_BIT);
-      ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+      ctx->NewDriverState |= ST_NEW_RASTERIZER;
       ctx->Polygon.FrontMode = mode;
       break;
    case GL_FRONT_AND_BACK:
       if (ctx->Polygon.FrontMode == mode && ctx->Polygon.BackMode == mode)
          return;
-      FLUSH_VERTICES(ctx, ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+      FLUSH_VERTICES(ctx, 0,
                      GL_POLYGON_BIT);
-      ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+      ctx->NewDriverState |= ST_NEW_RASTERIZER;
       ctx->Polygon.FrontMode = mode;
       ctx->Polygon.BackMode = mode;
       break;
@@ -209,9 +210,9 @@ polygon_mode(struct gl_context *ctx, GLenum face, GLenum mode, bool no_error)
       }
       if (ctx->Polygon.BackMode == mode)
          return;
-      FLUSH_VERTICES(ctx, ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+      FLUSH_VERTICES(ctx, 0,
                      GL_POLYGON_BIT);
-      ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+      ctx->NewDriverState |= ST_NEW_RASTERIZER;
       ctx->Polygon.BackMode = mode;
       break;
    default:
@@ -314,9 +315,9 @@ _mesa_polygon_offset_clamp(struct gl_context *ctx,
        ctx->Polygon.OffsetClamp == clamp)
       return;
 
-   FLUSH_VERTICES(ctx, ctx->DriverFlags.NewPolygonState ? 0 : _NEW_POLYGON,
+   FLUSH_VERTICES(ctx, 0,
                   GL_POLYGON_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
+   ctx->NewDriverState |= ST_NEW_RASTERIZER;
    ctx->Polygon.OffsetFactor = factor;
    ctx->Polygon.OffsetUnits = units;
    ctx->Polygon.OffsetClamp = clamp;

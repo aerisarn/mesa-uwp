@@ -4774,12 +4774,6 @@ struct gl_driver_flags
    /** gl_context::TransformFeedback::CurrentObject::shader_program */
    uint64_t NewTransformFeedbackProg;
 
-   /** gl_context::RasterDiscard */
-   uint64_t NewRasterizerDiscard;
-
-   /** gl_context::TileRasterOrder* */
-   uint64_t NewTileRasterOrder;
-
    /**
     * gl_context::UniformBufferBindings
     * gl_shader_program::UniformBlocks
@@ -4809,22 +4803,6 @@ struct gl_driver_flags
     * gl_context::TessCtrlProgram::patch_vertices
     */
    uint64_t NewTessState;
-
-   /**
-    * gl_context::IntelConservativeRasterization
-    */
-   uint64_t NewIntelConservativeRasterization;
-
-   /**
-    * gl_context::NvConservativeRasterization
-    */
-   uint64_t NewNvConservativeRasterization;
-
-   /**
-    * gl_context::ConservativeRasterMode/ConservativeRasterDilate
-    * gl_context::SubpixelPrecisionBias
-    */
-   uint64_t NewNvConservativeRasterizationParams;
 
    /**
     * gl_context::Scissor::WindowRects
@@ -4884,12 +4862,6 @@ struct gl_driver_flags
 
    /** gl_context::Color::ClampFragmentColor */
    uint64_t NewFragClamp;
-
-   /** gl_context::Line */
-   uint64_t NewLineState;
-
-   /** gl_context::Polygon */
-   uint64_t NewPolygonState;
 
    /** gl_context::PolygonStipple */
    uint64_t NewPolygonStipple;

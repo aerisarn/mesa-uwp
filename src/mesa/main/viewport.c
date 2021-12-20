@@ -37,6 +37,7 @@
 #include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_viewport.h"
+#include "state_tracker/st_context.h"
 
 static void
 clamp_viewport(struct gl_context *ctx, GLfloat *x, GLfloat *y,
@@ -515,10 +516,7 @@ clip_control(struct gl_context *ctx, GLenum origin, GLenum depth, bool no_error)
       ctx->Transform.ClipOrigin = origin;
 
       /* Affects the winding order of the front face. */
-      if (ctx->DriverFlags.NewPolygonState)
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonState;
-      else
-         ctx->NewState |= _NEW_POLYGON;
+      ctx->NewDriverState |= ST_NEW_RASTERIZER;
    }
 
    if (ctx->Transform.ClipDepthMode != depth) {
@@ -601,8 +599,7 @@ subpixel_precision_bias(struct gl_context *ctx, GLuint xbits, GLuint ybits)
    ctx->SubpixelPrecisionBias[0] = xbits;
    ctx->SubpixelPrecisionBias[1] = ybits;
 
-   ctx->NewDriverState |=
-      ctx->DriverFlags.NewNvConservativeRasterizationParams;
+   ctx->NewDriverState |= ST_NEW_RASTERIZER;
 }
 
 void GLAPIENTRY

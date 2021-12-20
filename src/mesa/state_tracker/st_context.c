@@ -447,8 +447,6 @@ st_init_driver_flags(struct st_context *st)
 {
    struct gl_driver_flags *f = &st->ctx->DriverFlags;
 
-   f->NewRasterizerDiscard = ST_NEW_RASTERIZER;
-   f->NewTileRasterOrder = ST_NEW_RASTERIZER;
    f->NewUniformBuffer = ST_NEW_UNIFORM_BUFFER;
    f->NewTessState = ST_NEW_TESS_STATE;
 
@@ -513,13 +511,8 @@ st_init_driver_flags(struct st_context *st)
    else
       f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
 
-   f->NewLineState = ST_NEW_RASTERIZER;
-   f->NewPolygonState = ST_NEW_RASTERIZER;
    f->NewPolygonStipple = ST_NEW_POLY_STIPPLE;
    f->NewViewport = ST_NEW_VIEWPORT;
-   f->NewNvConservativeRasterization = ST_NEW_RASTERIZER;
-   f->NewNvConservativeRasterizationParams = ST_NEW_RASTERIZER;
-   f->NewIntelConservativeRasterization = ST_NEW_RASTERIZER;
 
    if (st->emulate_gl_clamp)
       f->NewSamplersWithClamp = ST_NEW_SAMPLERS |
