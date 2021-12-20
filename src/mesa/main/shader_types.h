@@ -706,6 +706,20 @@ struct gl_program
    };
 };
 
+/*
+ * State/IR translators needs to store some extra vp info.
+ */
+struct gl_vertex_program
+{
+   struct gl_program Base;
+
+   uint32_t vert_attrib_mask; /**< mask of sourced vertex attribs */
+   ubyte num_inputs;
+
+   /** Maps VARYING_SLOT_x to slot */
+   ubyte result_to_output[VARYING_SLOT_MAX];
+};
+
 /**
  * Structure that represents a reference to an atomic buffer from some
  * shader program.

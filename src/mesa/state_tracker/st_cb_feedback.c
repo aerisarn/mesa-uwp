@@ -87,7 +87,7 @@ feedback_vertex(struct gl_context *ctx, const struct draw_context *draw,
                 const struct vertex_header *v)
 {
    const struct st_context *st = st_context(ctx);
-   struct st_vertex_program *stvp = (struct st_vertex_program *)st->vp;
+   struct gl_vertex_program *stvp = (struct gl_vertex_program *)st->vp;
    GLfloat win[4];
    const GLfloat *color, *texcoord;
    ubyte slot;

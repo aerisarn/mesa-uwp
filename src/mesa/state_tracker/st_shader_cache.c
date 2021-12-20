@@ -94,12 +94,12 @@ st_serialise_ir_program(struct gl_context *ctx, struct gl_program *prog,
    blob_init(&blob);
 
    if (prog->info.stage == MESA_SHADER_VERTEX) {
-      struct st_vertex_program *stvp = (struct st_vertex_program *)prog;
+      struct gl_vertex_program *vp = (struct gl_vertex_program *)prog;
 
-      blob_write_uint32(&blob, stvp->num_inputs);
-      blob_write_uint32(&blob, stvp->vert_attrib_mask);
-      blob_write_bytes(&blob, stvp->result_to_output,
-                       sizeof(stvp->result_to_output));
+      blob_write_uint32(&blob, vp->num_inputs);
+      blob_write_uint32(&blob, vp->vert_attrib_mask);
+      blob_write_bytes(&blob, vp->result_to_output,
+                       sizeof(vp->result_to_output));
    }
 
    if (prog->info.stage == MESA_SHADER_VERTEX ||
@@ -189,11 +189,11 @@ st_deserialise_ir_program(struct gl_context *ctx,
    st_release_variants(st, prog);
 
    if (prog->info.stage == MESA_SHADER_VERTEX) {
-      struct st_vertex_program *stvp = (struct st_vertex_program *)prog;
-      stvp->num_inputs = blob_read_uint32(&blob_reader);
-      stvp->vert_attrib_mask = blob_read_uint32(&blob_reader);
-      blob_copy_bytes(&blob_reader, (uint8_t *) stvp->result_to_output,
-                      sizeof(stvp->result_to_output));
+      struct gl_vertex_program *vp = (struct gl_vertex_program *)prog;
+      vp->num_inputs = blob_read_uint32(&blob_reader);
+      vp->vert_attrib_mask = blob_read_uint32(&blob_reader);
+      blob_copy_bytes(&blob_reader, (uint8_t *) vp->result_to_output,
+                      sizeof(vp->result_to_output));
    }
 
    if (prog->info.stage == MESA_SHADER_VERTEX ||

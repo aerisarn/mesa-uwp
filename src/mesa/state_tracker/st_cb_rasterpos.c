@@ -142,7 +142,7 @@ rastpos_point(struct draw_stage *stage, struct prim_header *prim)
    struct gl_context *ctx = rs->ctx;
    struct st_context *st = st_context(ctx);
    const GLfloat height = (GLfloat) ctx->DrawBuffer->Height;
-   struct st_vertex_program *stvp = (struct st_vertex_program *)st->vp;
+   struct gl_vertex_program *stvp = (struct gl_vertex_program *)st->vp;
    const ubyte *outputMapping = stvp->result_to_output;
    const GLfloat *pos;
    GLuint i;

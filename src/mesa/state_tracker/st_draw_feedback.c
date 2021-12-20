@@ -107,7 +107,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct draw_context *draw = st_get_draw_context(st);
-   const struct st_vertex_program *vp;
+   const struct gl_vertex_program *vp;
    struct st_common_variant *vp_variant;
    struct pipe_vertex_buffer vbuffers[PIPE_MAX_SHADER_INPUTS];
    unsigned num_vbuffers = 0;
@@ -144,7 +144,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    memcpy(&key, &st->vp_variant->key, sizeof(key));
    key.is_draw_shader = true;
 
-   vp = (struct st_vertex_program *)st->vp;
+   vp = (struct gl_vertex_program *)st->vp;
    vp_variant = st_get_common_variant(st, st->vp, &key);
 
    /*

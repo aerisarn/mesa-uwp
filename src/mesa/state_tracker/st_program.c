@@ -424,7 +424,7 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
 void
 st_prepare_vertex_program(struct gl_program *prog, uint8_t *out_attrib_to_index)
 {
-   struct st_vertex_program *stvp = (struct st_vertex_program *)prog;
+   struct gl_vertex_program *stvp = (struct gl_vertex_program *)prog;
    uint8_t attrib_to_index[VERT_ATTRIB_MAX] = {0};
 
    stvp->num_inputs = 0;
@@ -652,7 +652,7 @@ st_translate_vertex_program(struct st_context *st,
       debug_printf("\n");
    }
 
-   struct st_vertex_program *stvp = (struct st_vertex_program *)prog;
+   struct gl_vertex_program *vp = (struct gl_vertex_program *)prog;
 
    error = st_translate_program(st->ctx,
                                 PIPE_SHADER_VERTEX,
@@ -660,7 +660,7 @@ st_translate_vertex_program(struct st_context *st,
                                 prog->glsl_to_tgsi,
                                 prog,
                                 /* inputs */
-                                stvp->num_inputs,
+                                vp->num_inputs,
                                 input_to_index,
                                 NULL, /* inputSlotToAttr */
                                 NULL, /* input semantic name */
@@ -668,7 +668,7 @@ st_translate_vertex_program(struct st_context *st,
                                 NULL, /* interp mode */
                                 /* outputs */
                                 num_outputs,
-                                stvp->result_to_output,
+                                vp->result_to_output,
                                 output_semantic_name,
                                 output_semantic_index);
 
@@ -976,10 +976,10 @@ st_get_common_variant(struct st_context *st,
          v->base.st = key->st;
 
          if (prog->info.stage == MESA_SHADER_VERTEX) {
-            struct st_vertex_program *stvp = (struct st_vertex_program *)prog;
+            struct gl_vertex_program *vp = (struct gl_vertex_program *)prog;
 
             v->vert_attrib_mask =
-               stvp->vert_attrib_mask |
+               vp->vert_attrib_mask |
                (key->passthrough_edgeflags ? VERT_BIT_EDGEFLAG : 0);
          }
 

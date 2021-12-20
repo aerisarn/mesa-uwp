@@ -61,7 +61,7 @@ st_new_program(struct gl_context *ctx, gl_shader_stage stage, GLuint id,
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
-      prog = (struct gl_program*)rzalloc(NULL, struct st_vertex_program);
+      prog = (struct gl_program*)rzalloc(NULL, struct gl_vertex_program);
       break;
    default:
       prog = rzalloc(NULL, struct gl_program);

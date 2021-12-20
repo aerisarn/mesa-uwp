@@ -247,17 +247,6 @@ struct st_common_variant
    GLbitfield vert_attrib_mask;
 };
 
-struct st_vertex_program
-{
-   struct gl_program Base;
-
-   uint32_t vert_attrib_mask; /**< mask of sourced vertex attribs */
-   ubyte num_inputs;
-
-   /** Maps VARYING_SLOT_x to slot */
-   ubyte result_to_output[VARYING_SLOT_MAX];
-};
-
 static inline struct st_common_variant *
 st_common_variant(struct st_variant *v)
 {
