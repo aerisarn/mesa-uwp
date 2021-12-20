@@ -120,6 +120,40 @@ namespace {
    }
 
    /*
+    * Return the closest legal execution type for an instruction on
+    * the specified platform.
+    */
+   brw_reg_type
+   required_exec_type(const intel_device_info *devinfo, const fs_inst *inst)
+   {
+      const brw_reg_type t = get_exec_type(inst);
+
+      switch (inst->opcode) {
+      case SHADER_OPCODE_SHUFFLE:
+      case SHADER_OPCODE_QUAD_SWIZZLE:
+         if (has_dst_aligned_region_restriction(devinfo, inst))
+            return brw_int_type(type_sz(t), false);
+         else
+            return t;
+
+      case SHADER_OPCODE_BROADCAST:
+      case SHADER_OPCODE_MOV_INDIRECT:
+         if (((devinfo->verx10 == 70 ||
+               devinfo->platform == INTEL_PLATFORM_CHV ||
+               intel_device_info_is_9lp(devinfo) ||
+               devinfo->verx10 >= 125) && type_sz(inst->src[0].type) > 4) ||
+             (devinfo->verx10 >= 125 &&
+              brw_reg_type_is_floating_point(inst->src[0].type)))
+            return brw_int_type(type_sz(t), false);
+         else
+            return t;
+
+      default:
+         return t;
+      }
+   }
+
+   /*
     * Return whether the instruction has an unsupported channel bit layout
     * specified for the i-th source region.
     */
@@ -194,23 +228,18 @@ namespace {
    unsigned
    has_invalid_exec_type(const intel_device_info *devinfo, const fs_inst *inst)
    {
-      switch (inst->opcode) {
-      case SHADER_OPCODE_SHUFFLE:
-      case SHADER_OPCODE_QUAD_SWIZZLE:
-         return has_dst_aligned_region_restriction(devinfo, inst) ?
-                0x1 : 0;
+      if (required_exec_type(devinfo, inst) != get_exec_type(inst)) {
+         switch (inst->opcode) {
+         case SHADER_OPCODE_SHUFFLE:
+         case SHADER_OPCODE_QUAD_SWIZZLE:
+         case SHADER_OPCODE_BROADCAST:
+         case SHADER_OPCODE_MOV_INDIRECT:
+            return 0x1;
 
-      case SHADER_OPCODE_BROADCAST:
-      case SHADER_OPCODE_MOV_INDIRECT:
-         return (((devinfo->verx10 == 70) ||
-                  devinfo->platform == INTEL_PLATFORM_CHV ||
-                  intel_device_info_is_9lp(devinfo) ||
-                  devinfo->verx10 >= 125) && type_sz(inst->src[0].type) > 4) ||
-                (devinfo->verx10 >= 125 &&
-                 brw_reg_type_is_floating_point(inst->src[0].type)) ?
-                0x1 : 0;
-
-      default:
+         default:
+            unreachable("Unknown invalid execution type source mask.");
+         }
+      } else {
          return 0;
       }
    }
@@ -469,7 +498,7 @@ namespace {
    {
       assert(inst->dst.type == get_exec_type(inst));
       const unsigned mask = has_invalid_exec_type(v->devinfo, inst);
-      const brw_reg_type raw_type = brw_int_type(type_sz(inst->dst.type), false);
+      const brw_reg_type raw_type = required_exec_type(v->devinfo, inst);
 
       for (unsigned i = 0; i < inst->sources; i++) {
          if (mask & (1u << i)) {
