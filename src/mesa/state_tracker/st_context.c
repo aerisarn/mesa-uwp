@@ -837,8 +837,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_vdpau_functions(functions);
 
    /* GL_ARB_get_program_binary */
-   functions->GetProgramBinaryDriverSHA1 = st_get_program_binary_driver_sha1;
-
    enum pipe_shader_ir preferred_ir = (enum pipe_shader_ir)
       screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
                                PIPE_SHADER_CAP_PREFERRED_IR);

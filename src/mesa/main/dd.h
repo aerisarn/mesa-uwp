@@ -266,8 +266,6 @@ struct dd_function_table {
    /**
     * Calls to retrieve/store a binary serialized copy of the current program.
     */
-   void (*GetProgramBinaryDriverSHA1)(struct gl_context *ctx, uint8_t *sha1);
-
    void (*ProgramBinarySerializeDriverBlob)(struct gl_context *ctx,
                                             struct gl_shader_program *shProg,
                                             struct gl_program *prog);
