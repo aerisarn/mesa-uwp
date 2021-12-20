@@ -448,13 +448,10 @@ st_init_driver_flags(struct st_context *st)
    struct gl_driver_flags *f = &st->ctx->DriverFlags;
 
    /* Shader resources */
-   f->NewTextureBuffer = ST_NEW_SAMPLER_VIEWS;
    if (st->has_hw_atomics)
       f->NewAtomicBuffer = ST_NEW_HW_ATOMICS | ST_NEW_CS_ATOMICS;
    else
       f->NewAtomicBuffer = ST_NEW_ATOMIC_BUFFER;
-   f->NewShaderStorageBuffer = ST_NEW_STORAGE_BUFFER;
-   f->NewImageUnits = ST_NEW_IMAGE_UNITS;
 
    f->NewShaderConstants[MESA_SHADER_VERTEX] = ST_NEW_VS_CONSTANTS;
    f->NewShaderConstants[MESA_SHADER_TESS_CTRL] = ST_NEW_TCS_CONSTANTS;

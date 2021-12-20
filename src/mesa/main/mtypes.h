@@ -4769,22 +4769,9 @@ struct gl_dlist_state
 struct gl_driver_flags
 {
    /**
-    * gl_context::ShaderStorageBufferBindings
-    * gl_shader_program::ShaderStorageBlocks
-    */
-   uint64_t NewShaderStorageBuffer;
-
-   uint64_t NewTextureBuffer;
-
-   /**
     * gl_context::AtomicBufferBindings
     */
    uint64_t NewAtomicBuffer;
-
-   /**
-    * gl_context::ImageUnits
-    */
-   uint64_t NewImageUnits;
 
    /**
     * gl_context::Scissor::WindowRects

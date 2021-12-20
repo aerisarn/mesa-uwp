@@ -1720,7 +1720,7 @@ bind_shader_storage_buffer(struct gl_context *ctx,
 {
    bind_buffer(ctx, &ctx->ShaderStorageBufferBindings[index],
                bufObj, offset, size, autoSize,
-               ctx->DriverFlags.NewShaderStorageBuffer,
+               ST_NEW_STORAGE_BUFFER,
                USAGE_SHADER_STORAGE_BUFFER);
 }
 
@@ -4502,7 +4502,7 @@ bind_shader_storage_buffers(struct gl_context *ctx, GLuint first,
 
    /* Assume that at least one binding will be changed */
    FLUSH_VERTICES(ctx, 0, 0);
-   ctx->NewDriverState |= ctx->DriverFlags.NewShaderStorageBuffer;
+   ctx->NewDriverState |= ST_NEW_STORAGE_BUFFER;
 
    if (!buffers) {
       /* The ARB_multi_bind spec says:

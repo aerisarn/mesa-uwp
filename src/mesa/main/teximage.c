@@ -59,6 +59,7 @@
 #include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_context.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_gen_mipmap.h"
 #include "state_tracker/st_cb_eglimage.h"
@@ -6360,7 +6361,7 @@ texture_buffer_range(struct gl_context *ctx,
       }
    }
 
-   ctx->NewDriverState |= ctx->DriverFlags.NewTextureBuffer;
+   ctx->NewDriverState |= ST_NEW_SAMPLER_VIEWS;
 
    if (bufObj) {
       bufObj->UsageHistory |= USAGE_TEXTURE_BUFFER;

@@ -39,6 +39,7 @@
 #include "compiler/glsl/program.h"
 #include "util/bitscan.h"
 
+#include "state_tracker/st_context.h"
 
 /* This is one of the few glGet that can be called from the app thread safely.
  * Only these conditions must be met:
@@ -1613,7 +1614,7 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
          }
       }
 
-      ctx->NewDriverState |= ctx->DriverFlags.NewImageUnits;
+      ctx->NewDriverState |= ST_NEW_IMAGE_UNITS;
    }
 }
 

@@ -1173,7 +1173,7 @@ shader_storage_block_binding(struct gl_context *ctx,
        shaderStorageBlockBinding) {
 
       FLUSH_VERTICES(ctx, 0, 0);
-      ctx->NewDriverState |= ctx->DriverFlags.NewShaderStorageBuffer;
+      ctx->NewDriverState |= ST_NEW_STORAGE_BUFFER;
 
       shProg->data->ShaderStorageBlocks[shaderStorageBlockIndex].Binding =
          shaderStorageBlockBinding;
