@@ -76,12 +76,10 @@ DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 void
 st_Enable(struct gl_context *ctx, GLenum cap)
 {
-   struct st_context *st = st_context(ctx);
-
    switch (cap) {
    case GL_DEBUG_OUTPUT:
    case GL_DEBUG_OUTPUT_SYNCHRONOUS:
-      st_update_debug_callback(st);
+      st_update_debug_callback(ctx);
       break;
    default:
       break;

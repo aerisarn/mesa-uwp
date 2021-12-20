@@ -75,7 +75,7 @@ st_debug_message(void *data,
                  const char *fmt,
                  va_list args)
 {
-   struct st_context *st = data;
+   struct gl_context *ctx = data;
    enum mesa_debug_source source;
    enum mesa_debug_type type;
    enum mesa_debug_severity severity;
@@ -119,23 +119,23 @@ st_debug_message(void *data,
    default:
       unreachable("invalid debug type");
    }
-   _mesa_gl_vdebugf(st->ctx, id, source, type, severity, fmt, args);
+   _mesa_gl_vdebugf(ctx, id, source, type, severity, fmt, args);
 }
 
 void
-st_update_debug_callback(struct st_context *st)
+st_update_debug_callback(struct gl_context *ctx)
 {
-   struct pipe_context *pipe = st->pipe;
+   struct pipe_context *pipe = ctx->pipe;
 
    if (!pipe->set_debug_callback)
       return;
 
-   if (_mesa_get_debug_state_int(st->ctx, GL_DEBUG_OUTPUT)) {
+   if (_mesa_get_debug_state_int(ctx, GL_DEBUG_OUTPUT)) {
       struct pipe_debug_callback cb;
       memset(&cb, 0, sizeof(cb));
-      cb.async = !_mesa_get_debug_state_int(st->ctx, GL_DEBUG_OUTPUT_SYNCHRONOUS);
+      cb.async = !_mesa_get_debug_state_int(ctx, GL_DEBUG_OUTPUT_SYNCHRONOUS);
       cb.debug_message = st_debug_message;
-      cb.data = st;
+      cb.data = ctx;
       pipe->set_debug_callback(pipe, &cb);
    } else {
       pipe->set_debug_callback(pipe, NULL);
