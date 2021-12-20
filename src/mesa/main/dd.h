@@ -200,13 +200,6 @@ struct dd_function_table {
                                   uint32_t enabled_attribs);
 
    /**
-    * \name GREMEDY debug/marker functions
-    */
-   /*@{*/
-   void (*EmitStringMarker)(struct gl_context *ctx, const GLchar *string, GLsizei len);
-   /*@}*/
-
-   /**
     * \name Support for multiple T&L engines
     */
    /*@{*/

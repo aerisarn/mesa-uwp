@@ -1089,8 +1089,8 @@ _mesa_DebugMessageInsert(GLenum source, GLenum type, GLuint id,
                  gl_enum_to_debug_severity(severity),
                  length, buf);
 
-   if (type == GL_DEBUG_TYPE_MARKER && ctx->Driver.EmitStringMarker) {
-      ctx->Driver.EmitStringMarker(ctx, buf, length);
+   if (type == GL_DEBUG_TYPE_MARKER && ctx->pipe->emit_string_marker) {
+      ctx->pipe->emit_string_marker(ctx->pipe, buf, length);
    }
 }
 
@@ -1376,7 +1376,7 @@ _mesa_StringMarkerGREMEDY(GLsizei len, const GLvoid *string)
       /* if length not specified, string will be null terminated: */
       if (len <= 0)
          len = strlen(string);
-      ctx->Driver.EmitStringMarker(ctx, string, len);
+      ctx->pipe->emit_string_marker(ctx->pipe, string, len);
    } else {
       _mesa_error(ctx, GL_INVALID_OPERATION, "StringMarkerGREMEDY");
    }

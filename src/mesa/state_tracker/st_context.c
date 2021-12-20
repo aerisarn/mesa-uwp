@@ -810,15 +810,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    return st;
 }
 
-
-static void
-st_emit_string_marker(struct gl_context *ctx, const GLchar *string, GLsizei len)
-{
-   struct st_context *st = ctx->st;
-   st->pipe->emit_string_marker(st->pipe, string, len);
-}
-
-
 void
 st_set_background_context(struct gl_context *ctx,
                           struct util_queue_monitoring *queue_info)
@@ -854,9 +845,6 @@ st_init_driver_functions(struct pipe_screen *screen,
    st_init_flush_functions(screen, functions);
 
    st_init_vdpau_functions(functions);
-
-   if (screen->get_param(screen, PIPE_CAP_STRING_MARKER))
-      functions->EmitStringMarker = st_emit_string_marker;
 
    /* GL_ARB_get_program_binary */
    functions->GetProgramBinaryDriverSHA1 = st_get_program_binary_driver_sha1;
