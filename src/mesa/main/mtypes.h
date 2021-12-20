@@ -4779,9 +4779,6 @@ struct gl_driver_flags
    /** gl_context::Multisample::Enabled */
    uint64_t NewMultisampleEnable;
 
-   /** gl_context::Multisample::SampleCoverage/SampleMaskValue */
-   uint64_t NewSampleMask;
-
    /** gl_context::Multisample::(Min)SampleShading */
    uint64_t NewSampleShading;
 
@@ -4793,9 +4790,6 @@ struct gl_driver_flags
 
    /** Shader constants (uniforms, program parameters, state constants) */
    uint64_t NewShaderConstants[MESA_SHADER_STAGES];
-
-   /** Programmable sample location state for gl_context::DrawBuffer */
-   uint64_t NewSampleLocations;
 
    /** For GL_CLAMP emulation */
    uint64_t NewSamplersWithClamp;

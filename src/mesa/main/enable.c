@@ -1027,10 +1027,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
       case GL_SAMPLE_COVERAGE_ARB:
          if (ctx->Multisample.SampleCoverage == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewSampleMask ? 0 :
-                                                         _NEW_MULTISAMPLE,
+         FLUSH_VERTICES(ctx, 0,
                         GL_MULTISAMPLE_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewSampleMask;
+         ctx->NewDriverState |= ST_NEW_SAMPLE_STATE;
          ctx->Multisample.SampleCoverage = state;
          break;
       case GL_SAMPLE_COVERAGE_INVERT_ARB:
@@ -1038,10 +1037,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Multisample.SampleCoverageInvert == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewSampleMask ? 0 :
-                                                         _NEW_MULTISAMPLE,
-                        GL_MULTISAMPLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewSampleMask;
+         FLUSH_VERTICES(ctx, 0, GL_MULTISAMPLE_BIT);
+         ctx->NewDriverState |= ST_NEW_SAMPLE_STATE;
          ctx->Multisample.SampleCoverageInvert = state;
          break;
 
@@ -1298,9 +1295,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Multisample.SampleMask == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewSampleMask ? 0 :
-                                                         _NEW_MULTISAMPLE, 0);
-         ctx->NewDriverState |= ctx->DriverFlags.NewSampleMask;
+         FLUSH_VERTICES(ctx, 0, 0);
+         ctx->NewDriverState |= ST_NEW_SAMPLE_STATE;
          ctx->Multisample.SampleMask = state;
          break;
 

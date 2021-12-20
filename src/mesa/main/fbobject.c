@@ -54,6 +54,7 @@
 
 #include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_eglimage.h"
+#include "state_tracker/st_context.h"
 
 /**
  * Notes:
@@ -1730,7 +1731,7 @@ framebuffer_parameteri(struct gl_context *ctx, struct gl_framebuffer *fb,
    case GL_FRAMEBUFFER_PROGRAMMABLE_SAMPLE_LOCATIONS_ARB:
    case GL_FRAMEBUFFER_SAMPLE_LOCATION_PIXEL_GRID_ARB:
       if (fb == ctx->DrawBuffer)
-         ctx->NewDriverState |= ctx->DriverFlags.NewSampleLocations;
+         ctx->NewDriverState |= ST_NEW_SAMPLE_STATE;
       break;
    default:
       invalidate_framebuffer(fb);
@@ -3149,7 +3150,7 @@ _mesa_bind_framebuffers(struct gl_context *ctx,
 
    if (bindDrawBuf) {
       FLUSH_VERTICES(ctx, _NEW_BUFFERS, 0);
-      ctx->NewDriverState |= ctx->DriverFlags.NewSampleLocations;
+      ctx->NewDriverState |= ST_NEW_SAMPLE_STATE;
 
       /* check if old framebuffer had any texture attachments */
       if (oldDrawFb)
@@ -5454,7 +5455,7 @@ sample_locations(struct gl_context *ctx, struct gl_framebuffer *fb,
    }
 
    if (fb == ctx->DrawBuffer)
-      ctx->NewDriverState |= ctx->DriverFlags.NewSampleLocations;
+      ctx->NewDriverState |= ST_NEW_SAMPLE_STATE;
 }
 
 void GLAPIENTRY
