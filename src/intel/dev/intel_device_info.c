@@ -1864,8 +1864,11 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    }
 
    /* remaining initializion queries the kernel for device info */
-   if (devinfo->no_hw)
+   if (devinfo->no_hw) {
+      /* Provide some sensible values for NO_HW. */
+      devinfo->gtt_size = 2ull * 1024 * 1024 * 1024;
       return true;
+   }
 
    int timestamp_frequency;
    if (getparam(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
