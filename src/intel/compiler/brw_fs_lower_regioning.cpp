@@ -127,9 +127,33 @@ namespace {
    required_exec_type(const intel_device_info *devinfo, const fs_inst *inst)
    {
       const brw_reg_type t = get_exec_type(inst);
+      const bool has_64bit = brw_reg_type_is_floating_point(t) ?
+         devinfo->has_64bit_float : devinfo->has_64bit_int;
 
       switch (inst->opcode) {
       case SHADER_OPCODE_SHUFFLE:
+         /* IVB has an issue (which we found empirically) where it reads
+          * two address register components per channel for indirectly
+          * addressed 64-bit sources.
+          *
+          * From the Cherryview PRM Vol 7. "Register Region Restrictions":
+          *
+          *    "When source or destination datatype is 64b or operation is
+          *    integer DWord multiply, indirect addressing must not be
+          *    used."
+          *
+          * Work around both of the above and handle platforms that
+          * don't support 64-bit types at all.
+          */
+         if ((!has_64bit || devinfo->verx10 == 70 ||
+              devinfo->platform == INTEL_PLATFORM_CHV ||
+              intel_device_info_is_9lp(devinfo)) && type_sz(t) > 4)
+            return BRW_REGISTER_TYPE_UD;
+         else if (has_dst_aligned_region_restriction(devinfo, inst))
+            return brw_int_type(type_sz(t), false);
+         else
+            return t;
+
       case SHADER_OPCODE_QUAD_SWIZZLE:
          if (has_dst_aligned_region_restriction(devinfo, inst))
             return brw_int_type(type_sz(t), false);
