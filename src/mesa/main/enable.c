@@ -511,9 +511,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
       case GL_DEPTH_TEST:
          if (ctx->Depth.Test == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepth ? 0 : _NEW_DEPTH,
+         FLUSH_VERTICES(ctx, 0,
                         GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewDepth;
+         ctx->NewDriverState |= ST_NEW_DSA;
          ctx->Depth.Test = state;
          _mesa_update_allow_draw_out_of_order(ctx);
          break;
@@ -884,9 +884,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
       case GL_STENCIL_TEST:
          if (ctx->Stencil.Enabled == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewStencil ? 0 : _NEW_STENCIL,
+         FLUSH_VERTICES(ctx, 0,
                         GL_STENCIL_BUFFER_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewStencil;
+         ctx->NewDriverState |= ST_NEW_DSA;
          ctx->Stencil.Enabled = state;
          _mesa_update_allow_draw_out_of_order(ctx);
          break;
@@ -1128,9 +1128,9 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Stencil.TestTwoSide == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewStencil ? 0 : _NEW_STENCIL,
+         FLUSH_VERTICES(ctx, 0,
                         GL_STENCIL_BUFFER_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewStencil;
+         ctx->NewDriverState |= ST_NEW_DSA;
          ctx->Stencil.TestTwoSide = state;
          if (state) {
             ctx->Stencil._BackFace = 2;
@@ -1155,9 +1155,8 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             goto invalid_enum_error;
          if (ctx->Depth.BoundsTest == state)
             return;
-         FLUSH_VERTICES(ctx, ctx->DriverFlags.NewDepth ? 0 : _NEW_DEPTH,
-                        GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT);
-         ctx->NewDriverState |= ctx->DriverFlags.NewDepth;
+         FLUSH_VERTICES(ctx, 0, GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT);
+         ctx->NewDriverState |= ST_NEW_DSA;
          ctx->Depth.BoundsTest = state;
          break;
 
