@@ -373,6 +373,9 @@ spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT32- border 
 spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor@GL_RGB565- border color only,Fail
 
+# GL_RGB10_A2 dest failures
+spec@arb_framebuffer_object@fbo-mipmap-copypix,Fail
+
 # fails at 4 samples (for our 4 supported indirections) because the 1D coordinate workaround
 # causes an extra texture indirection phase.
 spec@arb_fragment_program@fp-indirections2,Fail
@@ -841,6 +844,7 @@ spec@glsl-1.10@execution@fs-frontfacing-ternary-0.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1-neg-1,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-neg-1.0-1.0,Fail
+spec@glsl-1.10@execution@fs-frontfacing-ternary-vec4-neg-1.0-1.0,Fail
 
 spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Fail
 spec@glsl-1.10@execution@fs-notequal-of-expression,Fail
