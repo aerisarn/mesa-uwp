@@ -181,7 +181,7 @@ st_vdpau_video_surface_dma_buf(struct gl_context *ctx, const void *vdpSurface,
    return st_vdpau_resource_from_description(ctx, &desc);
 }
 
-static void
+void
 st_vdpau_map_surface(struct gl_context *ctx, GLenum target, GLenum access,
                      GLboolean output, struct gl_texture_object *texObj,
                      struct gl_texture_image *texImage,
@@ -257,7 +257,7 @@ st_vdpau_map_surface(struct gl_context *ctx, GLenum target, GLenum access,
    pipe_resource_reference(&res, NULL);
 }
 
-static void
+void
 st_vdpau_unmap_surface(struct gl_context *ctx, GLenum target, GLenum access,
                        GLboolean output, struct gl_texture_object *texObj,
                        struct gl_texture_image *texImage,
@@ -280,10 +280,4 @@ st_vdpau_unmap_surface(struct gl_context *ctx, GLenum target, GLenum access,
    st_flush(st, NULL, 0);
 }
 
-void
-st_init_vdpau_functions(struct dd_function_table *functions)
-{
-   functions->VDPAUMapSurface = st_vdpau_map_surface;
-   functions->VDPAUUnmapSurface = st_vdpau_unmap_surface;
-}
 #endif

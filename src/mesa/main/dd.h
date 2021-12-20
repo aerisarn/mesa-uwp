@@ -237,20 +237,6 @@ struct dd_function_table {
    /**@}*/
 
    /**
-    * \name NV_vdpau_interop interface
-    */
-   void (*VDPAUMapSurface)(struct gl_context *ctx, GLenum target,
-                           GLenum access, GLboolean output,
-                           struct gl_texture_object *texObj,
-                           struct gl_texture_image *texImage,
-                           const GLvoid *vdpSurface, GLuint index);
-   void (*VDPAUUnmapSurface)(struct gl_context *ctx, GLenum target,
-                             GLenum access, GLboolean output,
-                             struct gl_texture_object *texObj,
-                             struct gl_texture_image *texImage,
-                             const GLvoid *vdpSurface, GLuint index);
-
-   /**
     * Query reset status for GL_ARB_robustness
     *
     * Per \c glGetGraphicsResetStatusARB, this function should return a

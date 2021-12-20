@@ -57,7 +57,6 @@
 #include "st_program.h"
 #include "st_sampler_view.h"
 #include "st_shader_cache.h"
-#include "st_vdpau.h"
 #include "st_texture.h"
 #include "st_util.h"
 #include "pipe/p_context.h"
@@ -833,8 +832,6 @@ st_init_driver_functions(struct pipe_screen *screen,
 
    st_init_program_functions(functions);
    st_init_flush_functions(screen, functions);
-
-   st_init_vdpau_functions(functions);
 
    /* GL_ARB_get_program_binary */
    enum pipe_shader_ir preferred_ir = (enum pipe_shader_ir)
