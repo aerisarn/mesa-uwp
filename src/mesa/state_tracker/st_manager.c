@@ -29,6 +29,7 @@
 #include "main/extensions.h"
 #include "main/context.h"
 #include "main/debug_output.h"
+#include "main/framebuffer.h"
 #include "main/glthread.h"
 #include "main/texobj.h"
 #include "main/teximage.h"
@@ -150,23 +151,23 @@ buffer_index_to_attachment(gl_buffer_index index)
  */
 static void
 st_context_validate(struct st_context *st,
-                    struct st_framebuffer *stdraw,
-                    struct st_framebuffer *stread)
+                    struct gl_framebuffer *stdraw,
+                    struct gl_framebuffer *stread)
 {
     if (stdraw && stdraw->stamp != st->draw_stamp) {
        st->dirty |= ST_NEW_FRAMEBUFFER;
-       _mesa_resize_framebuffer(st->ctx, &stdraw->Base,
-                                stdraw->Base.Width,
-                                stdraw->Base.Height);
+       _mesa_resize_framebuffer(st->ctx, stdraw,
+                                stdraw->Width,
+                                stdraw->Height);
        st->draw_stamp = stdraw->stamp;
     }
 
     if (stread && stread->stamp != st->read_stamp) {
        if (stread != stdraw) {
           st->dirty |= ST_NEW_FRAMEBUFFER;
-          _mesa_resize_framebuffer(st->ctx, &stread->Base,
-                                   stread->Base.Width,
-                                   stread->Base.Height);
+          _mesa_resize_framebuffer(st->ctx, stread,
+                                   stread->Width,
+                                   stread->Height);
        }
        st->read_stamp = stread->stamp;
     }
@@ -202,7 +203,7 @@ st_set_ws_renderbuffer_surface(struct gl_renderbuffer *rb,
  * context).
  */
 static void
-st_framebuffer_validate(struct st_framebuffer *stfb,
+st_framebuffer_validate(struct gl_framebuffer *stfb,
                         struct st_context *st)
 {
    struct pipe_resource *textures[ST_ATTACHMENT_COUNT];
@@ -227,8 +228,8 @@ st_framebuffer_validate(struct st_framebuffer *stfb,
       new_stamp = p_atomic_read(&stfb->iface->stamp);
    } while(stfb->iface_stamp != new_stamp);
 
-   width = stfb->Base.Width;
-   height = stfb->Base.Height;
+   width = stfb->Width;
+   height = stfb->Height;
 
    for (i = 0; i < stfb->num_statts; i++) {
       struct gl_renderbuffer *rb;
@@ -244,7 +245,7 @@ st_framebuffer_validate(struct st_framebuffer *stfb,
          continue;
       }
 
-      rb = stfb->Base.Attachment[idx].Renderbuffer;
+      rb = stfb->Attachment[idx].Renderbuffer;
       assert(rb);
       if (rb->texture == textures[i]) {
          pipe_resource_reference(&textures[i], NULL);
@@ -268,7 +269,7 @@ st_framebuffer_validate(struct st_framebuffer *stfb,
 
    if (changed) {
       ++stfb->stamp;
-      _mesa_resize_framebuffer(st->ctx, &stfb->Base, width, height);
+      _mesa_resize_framebuffer(st->ctx, stfb, width, height);
    }
 }
 
@@ -277,7 +278,7 @@ st_framebuffer_validate(struct st_framebuffer *stfb,
  * Update the attachments to validate by looping the existing renderbuffers.
  */
 static void
-st_framebuffer_update_attachments(struct st_framebuffer *stfb)
+st_framebuffer_update_attachments(struct gl_framebuffer *stfb)
 {
    gl_buffer_index idx;
 
@@ -290,7 +291,7 @@ st_framebuffer_update_attachments(struct st_framebuffer *stfb)
       struct gl_renderbuffer *rb;
       enum st_attachment_type statt;
 
-      rb = stfb->Base.Attachment[idx].Renderbuffer;
+      rb = stfb->Attachment[idx].Renderbuffer;
       if (!rb || rb->software)
          continue;
 
@@ -308,14 +309,14 @@ st_framebuffer_update_attachments(struct st_framebuffer *stfb)
  * corresponds to a window and is not a user-created FBO.
  */
 static bool
-st_framebuffer_add_renderbuffer(struct st_framebuffer *stfb,
+st_framebuffer_add_renderbuffer(struct gl_framebuffer *stfb,
                                 gl_buffer_index idx, bool prefer_srgb)
 {
    struct gl_renderbuffer *rb;
    enum pipe_format format;
    bool sw;
 
-   assert(_mesa_is_winsys_fbo(&stfb->Base));
+   assert(_mesa_is_winsys_fbo(stfb));
 
    /* do not distinguish depth/stencil buffers */
    if (idx == BUFFER_STENCIL)
@@ -346,21 +347,21 @@ st_framebuffer_add_renderbuffer(struct st_framebuffer *stfb,
       return false;
 
    if (idx != BUFFER_DEPTH) {
-      _mesa_attach_and_own_rb(&stfb->Base, idx, rb);
+      _mesa_attach_and_own_rb(stfb, idx, rb);
       return true;
    }
 
    bool rb_ownership_taken = false;
    if (util_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_ZS, 0)) {
-      _mesa_attach_and_own_rb(&stfb->Base, BUFFER_DEPTH, rb);
+      _mesa_attach_and_own_rb(stfb, BUFFER_DEPTH, rb);
       rb_ownership_taken = true;
    }
 
    if (util_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_ZS, 1)) {
       if (rb_ownership_taken)
-         _mesa_attach_and_reference_rb(&stfb->Base, BUFFER_STENCIL, rb);
+         _mesa_attach_and_reference_rb(stfb, BUFFER_STENCIL, rb);
       else
-         _mesa_attach_and_own_rb(&stfb->Base, BUFFER_STENCIL, rb);
+         _mesa_attach_and_own_rb(stfb, BUFFER_STENCIL, rb);
    }
 
    return true;
@@ -435,11 +436,11 @@ st_visual_to_context_mode(const struct st_visual *visual,
 /**
  * Create a framebuffer from a manager interface.
  */
-static struct st_framebuffer *
+static struct gl_framebuffer *
 st_framebuffer_create(struct st_context *st,
                       struct st_framebuffer_iface *stfbi)
 {
-   struct st_framebuffer *stfb;
+   struct gl_framebuffer *stfb;
    struct gl_config mode;
    gl_buffer_index idx;
    bool prefer_srgb = false;
@@ -447,7 +448,7 @@ st_framebuffer_create(struct st_context *st,
    if (!stfbi)
       return NULL;
 
-   stfb = CALLOC_STRUCT(st_framebuffer);
+   stfb = CALLOC_STRUCT(gl_framebuffer);
    if (!stfb)
       return NULL;
 
@@ -493,14 +494,14 @@ st_framebuffer_create(struct st_context *st,
       }
    }
 
-   _mesa_initialize_window_framebuffer(&stfb->Base, &mode);
+   _mesa_initialize_window_framebuffer(stfb, &mode);
 
    stfb->iface = stfbi;
    stfb->iface_ID = stfbi->ID;
    stfb->iface_stamp = p_atomic_read(&stfbi->stamp) - 1;
 
    /* add the color buffer */
-   idx = stfb->Base._ColorDrawBufferIndexes[0];
+   idx = stfb->_ColorDrawBufferIndexes[0];
    if (!st_framebuffer_add_renderbuffer(stfb, idx, prefer_srgb)) {
       FREE(stfb);
       return NULL;
@@ -513,18 +514,6 @@ st_framebuffer_create(struct st_context *st,
    st_framebuffer_update_attachments(stfb);
 
    return stfb;
-}
-
-
-/**
- * Reference a framebuffer.
- */
-void
-st_framebuffer_reference(struct st_framebuffer **ptr,
-                         struct st_framebuffer *stfb)
-{
-   struct gl_framebuffer *fb = stfb ? &stfb->Base : NULL;
-   _mesa_reference_framebuffer((struct gl_framebuffer **) ptr, fb);
 }
 
 
@@ -627,7 +616,7 @@ st_framebuffers_purge(struct st_context *st)
 {
    struct st_context_iface *st_iface = &st->iface;
    struct st_manager *smapi = st_iface->state_manager;
-   struct st_framebuffer *stfb, *next;
+   struct gl_framebuffer *stfb, *next;
 
    assert(smapi);
 
@@ -644,7 +633,7 @@ st_framebuffers_purge(struct st_context *st)
        */
       if (!st_framebuffer_iface_lookup(smapi, stfbi)) {
          list_del(&stfb->head);
-         st_framebuffer_reference(&stfb, NULL);
+         _mesa_reference_framebuffer(&stfb, NULL);
       }
    }
 }
@@ -1023,12 +1012,12 @@ st_api_get_current(struct st_api *stapi)
 }
 
 
-static struct st_framebuffer *
+static struct gl_framebuffer *
 st_framebuffer_reuse_or_create(struct st_context *st,
                                struct gl_framebuffer *fb,
                                struct st_framebuffer_iface *stfbi)
 {
-   struct st_framebuffer *cur = NULL, *stfb = NULL;
+   struct gl_framebuffer *cur = NULL, *stfb = NULL;
 
    if (!stfbi)
       return NULL;
@@ -1038,7 +1027,7 @@ st_framebuffer_reuse_or_create(struct st_context *st,
     */
    LIST_FOR_EACH_ENTRY(cur, &st->winsys_buffers, head) {
       if (cur->iface_ID == stfbi->ID) {
-         st_framebuffer_reference(&stfb, cur);
+         _mesa_reference_framebuffer(&stfb, cur);
          break;
       }
    }
@@ -1052,14 +1041,14 @@ st_framebuffer_reuse_or_create(struct st_context *st,
           * the framebuffer interface object hash table.
           */
          if (!st_framebuffer_iface_insert(stfbi->state_manager, stfbi)) {
-            st_framebuffer_reference(&cur, NULL);
+            _mesa_reference_framebuffer(&cur, NULL);
             return NULL;
          }
 
          /* add to the context's winsys buffers list */
          list_add(&cur->head, &st->winsys_buffers);
 
-         st_framebuffer_reference(&stfb, cur);
+         _mesa_reference_framebuffer(&stfb, cur);
       }
    }
 
@@ -1073,7 +1062,7 @@ st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
                     struct st_framebuffer_iface *streadi)
 {
    struct st_context *st = (struct st_context *) stctxi;
-   struct st_framebuffer *stdraw, *stread;
+   struct gl_framebuffer *stdraw, *stread;
    bool ret;
 
    if (st) {
@@ -1089,7 +1078,7 @@ st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
          stread = NULL;
          /* reuse the draw fb for the read fb */
          if (stdraw)
-            st_framebuffer_reference(&stread, stdraw);
+            _mesa_reference_framebuffer(&stread, stdraw);
       }
 
       /* If framebuffers were asked for, we'd better have allocated them */
@@ -1101,7 +1090,7 @@ st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
          if (stread != stdraw)
             st_framebuffer_validate(stread, st);
 
-         ret = _mesa_make_current(st->ctx, &stdraw->Base, &stread->Base);
+         ret = _mesa_make_current(st->ctx, stdraw, stread);
 
          st->draw_stamp = stdraw->stamp - 1;
          st->read_stamp = stread->stamp - 1;
@@ -1112,8 +1101,8 @@ st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
          ret = _mesa_make_current(st->ctx, incomplete, incomplete);
       }
 
-      st_framebuffer_reference(&stdraw, NULL);
-      st_framebuffer_reference(&stread, NULL);
+      _mesa_reference_framebuffer(&stdraw, NULL);
+      _mesa_reference_framebuffer(&stread, NULL);
 
       /* Purge the context's winsys_buffers list in case any
        * of the referenced drawables no longer exist.
@@ -1152,7 +1141,7 @@ st_api_destroy(struct st_api *stapi)
 void
 st_manager_flush_frontbuffer(struct st_context *st)
 {
-   struct st_framebuffer *stfb = st_ws_framebuffer(st->ctx->DrawBuffer);
+   struct gl_framebuffer *stfb = st_ws_framebuffer(st->ctx->DrawBuffer);
    struct gl_renderbuffer *rb = NULL;
 
    if (!stfb)
@@ -1163,16 +1152,16 @@ st_manager_flush_frontbuffer(struct st_context *st)
     * flushing.
     */
    if (st->ctx->Visual.doubleBufferMode &&
-       !stfb->Base.Visual.doubleBufferMode)
+       !stfb->Visual.doubleBufferMode)
       return;
 
    /* Check front buffer used at the GL API level. */
    enum st_attachment_type statt = ST_ATTACHMENT_FRONT_LEFT;
-   rb = stfb->Base.Attachment[BUFFER_FRONT_LEFT].Renderbuffer;
+   rb = stfb->Attachment[BUFFER_FRONT_LEFT].Renderbuffer;
    if (!rb) {
        /* Check back buffer redirected by EGL_KHR_mutable_render_buffer. */
        statt = ST_ATTACHMENT_BACK_LEFT;
-       rb = stfb->Base.Attachment[BUFFER_BACK_LEFT].Renderbuffer;
+       rb = stfb->Attachment[BUFFER_BACK_LEFT].Renderbuffer;
    }
 
    /* Do we have a front color buffer and has it been drawn to since last
@@ -1194,8 +1183,8 @@ st_manager_flush_frontbuffer(struct st_context *st)
 void
 st_manager_validate_framebuffers(struct st_context *st)
 {
-   struct st_framebuffer *stdraw = st_ws_framebuffer(st->ctx->DrawBuffer);
-   struct st_framebuffer *stread = st_ws_framebuffer(st->ctx->ReadBuffer);
+   struct gl_framebuffer *stdraw = st_ws_framebuffer(st->ctx->DrawBuffer);
+   struct gl_framebuffer *stread = st_ws_framebuffer(st->ctx->ReadBuffer);
 
    if (stdraw)
       st_framebuffer_validate(stdraw, st);
@@ -1214,7 +1203,7 @@ st_manager_flush_swapbuffers(void)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct st_context *st = (ctx) ? ctx->st : NULL;
-   struct st_framebuffer *stfb;
+   struct gl_framebuffer *stfb;
 
    if (!st)
       return;
@@ -1236,7 +1225,7 @@ st_manager_add_color_renderbuffer(struct st_context *st,
                                   struct gl_framebuffer *fb,
                                   gl_buffer_index idx)
 {
-   struct st_framebuffer *stfb = st_ws_framebuffer(fb);
+   struct gl_framebuffer *stfb = st_ws_framebuffer(fb);
 
    /* FBO */
    if (!stfb)
@@ -1244,7 +1233,7 @@ st_manager_add_color_renderbuffer(struct st_context *st,
 
    assert(_mesa_is_winsys_fbo(fb));
 
-   if (stfb->Base.Attachment[idx].Renderbuffer)
+   if (stfb->Attachment[idx].Renderbuffer)
       return true;
 
    switch (idx) {
@@ -1258,7 +1247,7 @@ st_manager_add_color_renderbuffer(struct st_context *st,
    }
 
    if (!st_framebuffer_add_renderbuffer(stfb, idx,
-                                        stfb->Base.Visual.sRGBCapable))
+                                        stfb->Visual.sRGBCapable))
       return false;
 
    st_framebuffer_update_attachments(stfb);

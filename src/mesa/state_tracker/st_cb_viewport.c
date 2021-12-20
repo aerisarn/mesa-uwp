@@ -37,8 +37,8 @@
 void st_viewport(struct gl_context *ctx)
 {
    struct st_context *st = ctx->st;
-   struct st_framebuffer *stdraw;
-   struct st_framebuffer *stread;
+   struct gl_framebuffer *stdraw;
+   struct gl_framebuffer *stread;
 
    if (!st->invalidate_on_gl_viewport)
       return;

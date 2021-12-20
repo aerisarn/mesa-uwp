@@ -29,6 +29,7 @@
 #include "main/accum.h"
 #include "main/context.h"
 #include "main/debug_output.h"
+#include "main/framebuffer.h"
 #include "main/glthread.h"
 #include "main/shaderobj.h"
 #include "main/state.h"
@@ -932,7 +933,7 @@ void
 st_destroy_context(struct st_context *st)
 {
    struct gl_context *ctx = st->ctx;
-   struct st_framebuffer *stfb, *next;
+   struct gl_framebuffer *stfb, *next;
    struct gl_framebuffer *save_drawbuffer;
    struct gl_framebuffer *save_readbuffer;
 
@@ -982,7 +983,7 @@ st_destroy_context(struct st_context *st)
 
    /* release framebuffer in the winsys buffers list */
    LIST_FOR_EACH_ENTRY_SAFE_REV(stfb, next, &st->winsys_buffers, head) {
-      st_framebuffer_reference(&stfb, NULL);
+      _mesa_reference_framebuffer(&stfb, NULL);
    }
 
    _mesa_HashWalk(ctx->Shared->FrameBuffers, destroy_framebuffer_attachment_sampler_cb, st);

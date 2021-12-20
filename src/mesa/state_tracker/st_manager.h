@@ -49,10 +49,6 @@ st_manager_add_color_renderbuffer(struct st_context *st, struct gl_framebuffer *
                                   gl_buffer_index idx);
 
 void
-st_framebuffer_reference(struct st_framebuffer **ptr,
-                         struct st_framebuffer *stfb);
-
-void
 st_framebuffer_interface_destroy(struct st_framebuffer_interface *stfbi);
 
 void

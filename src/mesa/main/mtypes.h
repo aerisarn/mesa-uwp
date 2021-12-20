@@ -60,6 +60,8 @@
 
 #include "pipe/p_state.h"
 
+#include "frontend/api.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -2731,6 +2733,16 @@ struct gl_framebuffer
 
    /** Delete this framebuffer */
    void (*Delete)(struct gl_framebuffer *fb);
+
+   struct st_framebuffer_iface *iface;
+   enum st_attachment_type statts[ST_ATTACHMENT_COUNT];
+   unsigned num_statts;
+   int32_t stamp;
+   int32_t iface_stamp;
+   uint32_t iface_ID;
+
+   /* list of framebuffer objects */
+   struct list_head head;
 };
 
 /**
