@@ -2469,7 +2469,9 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          assert(src[2].type == BRW_REGISTER_TYPE_UD);
          const unsigned component = src[1].ud;
          const unsigned cluster_size = src[2].ud;
-         unsigned vstride = cluster_size;
+         assert(inst->src[0].file != ARF && inst->src[0].file != FIXED_GRF);
+         const unsigned s = inst->src[0].stride;
+         unsigned vstride = cluster_size * s;
          unsigned width = cluster_size;
 
          /* The maximum exec_size is 32, but the maximum width is only 16. */
@@ -2478,7 +2480,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
             width = 1;
          }
 
-         struct brw_reg strided = stride(suboffset(src[0], component),
+         struct brw_reg strided = stride(suboffset(src[0], component * s),
                                          vstride, width, 0);
          if (type_sz(src[0].type) > 4 &&
              (devinfo->platform == INTEL_PLATFORM_CHV ||
