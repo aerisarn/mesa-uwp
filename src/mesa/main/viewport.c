@@ -75,9 +75,8 @@ set_viewport_no_notify(struct gl_context *ctx, unsigned idx,
        ctx->ViewportArray[idx].Height == height)
       return;
 
-   FLUSH_VERTICES(ctx, ctx->DriverFlags.NewViewport ? 0 : _NEW_VIEWPORT,
-                  GL_VIEWPORT_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewViewport;
+   FLUSH_VERTICES(ctx, 0, GL_VIEWPORT_BIT);
+   ctx->NewDriverState |= ST_NEW_VIEWPORT;
 
    ctx->ViewportArray[idx].X = x;
    ctx->ViewportArray[idx].Width = width;
@@ -295,7 +294,7 @@ set_depth_range_no_notify(struct gl_context *ctx, unsigned idx,
 
    /* The depth range is needed by program state constants. */
    FLUSH_VERTICES(ctx, _NEW_VIEWPORT, GL_VIEWPORT_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewViewport;
+   ctx->NewDriverState |= ST_NEW_VIEWPORT;
 
    ctx->ViewportArray[idx].Near = SATURATE(nearval);
    ctx->ViewportArray[idx].Far = SATURATE(farval);
@@ -655,7 +654,7 @@ set_viewport_swizzle(struct gl_context *ctx, GLuint index,
       return;
 
    FLUSH_VERTICES(ctx, _NEW_VIEWPORT, GL_VIEWPORT_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewViewport;
+   ctx->NewDriverState |= ST_NEW_VIEWPORT;
 
    viewport->SwizzleX = swizzlex;
    viewport->SwizzleY = swizzley;

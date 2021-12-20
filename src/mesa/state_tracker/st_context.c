@@ -512,7 +512,6 @@ st_init_driver_flags(struct st_context *st)
       f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
 
    f->NewPolygonStipple = ST_NEW_POLY_STIPPLE;
-   f->NewViewport = ST_NEW_VIEWPORT;
 
    if (st->emulate_gl_clamp)
       f->NewSamplersWithClamp = ST_NEW_SAMPLERS |

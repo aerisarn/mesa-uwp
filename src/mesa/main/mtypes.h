@@ -4866,9 +4866,6 @@ struct gl_driver_flags
    /** gl_context::PolygonStipple */
    uint64_t NewPolygonStipple;
 
-   /** gl_context::ViewportArray */
-   uint64_t NewViewport;
-
    /** Shader constants (uniforms, program parameters, state constants) */
    uint64_t NewShaderConstants[MESA_SHADER_STAGES];
 
