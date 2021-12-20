@@ -5747,8 +5747,11 @@ radv_QueueBindSparse(VkQueue _queue, uint32_t bindInfoCount, const VkBindSparseI
       VkSemaphoreSubmitInfoKHR *signal_semaphore_infos =
          malloc(sizeof(*signal_semaphore_infos) * pBindInfo[i].signalSemaphoreCount);
 
-      if (!wait_semaphore_infos || !signal_semaphore_infos)
+      if (!wait_semaphore_infos || !signal_semaphore_infos) {
+         free(wait_semaphore_infos);
+         free(signal_semaphore_infos);
          return VK_ERROR_OUT_OF_HOST_MEMORY;
+      }
 
       for (uint32_t j = 0; j < pBindInfo[i].waitSemaphoreCount; j++) {
          wait_semaphore_infos[j] = (VkSemaphoreSubmitInfoKHR) {
