@@ -71,27 +71,6 @@
 
 DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 
-void
-st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out)
-{
-   struct pipe_screen *screen = st_context(ctx)->screen;
-   struct pipe_memory_info info;
-
-   assert(screen->query_memory_info);
-   if (!screen->query_memory_info)
-      return;
-
-   screen->query_memory_info(screen, &info);
-
-   out->total_device_memory = info.total_device_memory;
-   out->avail_device_memory = info.avail_device_memory;
-   out->total_staging_memory = info.total_staging_memory;
-   out->avail_staging_memory = info.avail_staging_memory;
-   out->device_memory_evicted = info.device_memory_evicted;
-   out->nr_device_memory_evictions = info.nr_device_memory_evictions;
-}
-
-
 static uint64_t
 st_get_active_states(struct gl_context *ctx)
 {

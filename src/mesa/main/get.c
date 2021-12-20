@@ -1247,9 +1247,11 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
    case GL_GPU_MEMORY_INFO_EVICTION_COUNT_NVX:
    case GL_GPU_MEMORY_INFO_EVICTED_MEMORY_NVX:
       {
-         struct gl_memory_info info;
+         struct pipe_memory_info info;
+         struct pipe_screen *screen = ctx->pipe->screen;
 
-         st_query_memory_info(ctx, &info);
+         assert(screen->query_memory_info);
+         screen->query_memory_info(screen, &info);
 
          if (d->pname == GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX)
             v->value_int = info.total_device_memory;

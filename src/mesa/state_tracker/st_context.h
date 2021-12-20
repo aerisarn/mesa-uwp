@@ -450,8 +450,6 @@ struct st_framebuffer
    struct list_head head;
 };
 
-void st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out);
-
 void st_invalidate_state(struct gl_context *ctx);
 void st_set_background_context(struct gl_context *ctx,
                                struct util_queue_monitoring *queue_info);
