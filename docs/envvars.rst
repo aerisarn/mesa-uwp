@@ -68,13 +68,6 @@ Core Mesa environment variables
 :envvar:`MESA_LOG_FILE`
    specifies a file name for logging all errors, warnings, etc., rather
    than stderr
-:envvar:`MESA_TEX_PROG`
-   if set, implement conventional texture environment modes with fragment
-   programs (intended for developers only)
-:envvar:`MESA_TNL_PROG`
-   if set, implement conventional vertex transformation operations with
-   vertex programs (intended for developers only). Setting this variable
-   automatically sets the :envvar:`MESA_TEX_PROG` variable as well.
 :envvar:`MESA_EXTENSION_OVERRIDE`
    can be used to enable/disable extensions. A value such as
    ``GL_EXT_foo -GL_EXT_bar`` will enable the ``GL_EXT_foo`` extension

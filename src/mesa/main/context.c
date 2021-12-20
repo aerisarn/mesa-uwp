@@ -1048,16 +1048,7 @@ _mesa_initialize_context(struct gl_context *ctx,
    ctx->Exec = ctx->OutsideBeginEnd;
    ctx->CurrentClientDispatch = ctx->CurrentServerDispatch = ctx->OutsideBeginEnd;
 
-   ctx->FragmentProgram._MaintainTexEnvProgram
-      = (getenv("MESA_TEX_PROG") != NULL);
-
-   ctx->VertexProgram._MaintainTnlProgram
-      = (getenv("MESA_TNL_PROG") != NULL);
-   if (ctx->VertexProgram._MaintainTnlProgram) {
-      /* this is required... */
-      ctx->FragmentProgram._MaintainTexEnvProgram = GL_TRUE;
-      _mesa_reset_vertex_processing_mode(ctx);
-   }
+   _mesa_reset_vertex_processing_mode(ctx);
 
    /* Mesa core handles all the formats that mesa core knows about.
     * Drivers will want to override this list with just the formats
@@ -1075,6 +1066,7 @@ _mesa_initialize_context(struct gl_context *ctx,
 
       FALLTHROUGH;
    case API_OPENGL_CORE:
+   case API_OPENGLES2:
       break;
    case API_OPENGLES:
       /**
@@ -1092,11 +1084,6 @@ _mesa_initialize_context(struct gl_context *ctx,
          texUnit->GenT._ModeBit = TEXGEN_REFLECTION_MAP_NV;
          texUnit->GenR._ModeBit = TEXGEN_REFLECTION_MAP_NV;
       }
-      break;
-   case API_OPENGLES2:
-      ctx->FragmentProgram._MaintainTexEnvProgram = GL_TRUE;
-      ctx->VertexProgram._MaintainTnlProgram = GL_TRUE;
-      _mesa_reset_vertex_processing_mode(ctx);
       break;
    }
 
