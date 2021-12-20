@@ -481,9 +481,6 @@ st_init_driver_flags(struct st_context *st)
       f->NewSampleShading |= ST_NEW_RASTERIZER;
    }
 
-   f->NewClipControl = ST_NEW_VIEWPORT | ST_NEW_RASTERIZER;
-   f->NewClipPlane = ST_NEW_CLIP_STATE;
-
    if (st->clamp_frag_color_in_shader) {
       f->NewFragClamp = ST_NEW_FS_STATE;
    } else {

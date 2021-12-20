@@ -507,9 +507,8 @@ clip_control(struct gl_context *ctx, GLenum origin, GLenum depth, bool no_error)
    }
 
    /* Affects transform state and the viewport transform */
-   FLUSH_VERTICES(ctx, ctx->DriverFlags.NewClipControl ? 0 :
-                  _NEW_TRANSFORM | _NEW_VIEWPORT, GL_TRANSFORM_BIT);
-   ctx->NewDriverState |= ctx->DriverFlags.NewClipControl;
+   FLUSH_VERTICES(ctx, 0, GL_TRANSFORM_BIT);
+   ctx->NewDriverState |= ST_NEW_VIEWPORT | ST_NEW_RASTERIZER;
 
    if (ctx->Transform.ClipOrigin != origin) {
       ctx->Transform.ClipOrigin = origin;

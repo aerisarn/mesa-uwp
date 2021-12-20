@@ -478,7 +478,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
                /* TODO: glEnable might not be the best place to do it. */
                if (ctx->API == API_OPENGL_COMPAT || ctx->API == API_OPENGLES) {
                   _mesa_update_clip_plane(ctx, p);
-                  ctx->NewDriverState |= ctx->DriverFlags.NewClipPlane;
+                  ctx->NewDriverState |= ST_NEW_CLIP_STATE;
                }
             }
             else {

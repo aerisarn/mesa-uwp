@@ -4788,12 +4788,6 @@ struct gl_driver_flags
    /** gl_context::Multisample::(Min)SampleShading */
    uint64_t NewSampleShading;
 
-   /** gl_context::Transform::ClipOrigin/ClipDepthMode */
-   uint64_t NewClipControl;
-
-   /** gl_context::Transform::EyeUserPlane */
-   uint64_t NewClipPlane;
-
    /** gl_context::Transform::ClipPlanesEnabled */
    uint64_t NewClipPlaneEnable;
 

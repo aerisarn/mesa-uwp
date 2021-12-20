@@ -1040,7 +1040,7 @@ _mesa_PopAttrib(void)
          _math_matrix_analyse(ctx->ProjectionMatrixStack.Top);
 
       ctx->NewState |= _NEW_TRANSFORM;
-      ctx->NewDriverState |= ctx->DriverFlags.NewClipPlane;
+      ctx->NewDriverState |= ST_NEW_CLIP_STATE;
 
       /* restore clip planes */
       for (i = 0; i < ctx->Const.MaxClipPlanes; i++) {
