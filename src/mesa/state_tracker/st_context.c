@@ -79,7 +79,7 @@ st_Enable(struct gl_context *ctx, GLenum cap)
    switch (cap) {
    case GL_DEBUG_OUTPUT:
    case GL_DEBUG_OUTPUT_SYNCHRONOUS:
-      st_update_debug_callback(ctx);
+      _mesa_update_debug_callback(ctx);
       break;
    default:
       break;
