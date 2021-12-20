@@ -1314,6 +1314,7 @@ _mesa_set_enable(struct gl_context *ctx, GLenum cap, GLboolean state)
             return;
          FLUSH_VERTICES(ctx, 0, 0);
          ctx->IntelBlackholeRender = state;
+         ctx->pipe->set_frontend_noop(ctx->pipe, state);
          break;
 
       default:
