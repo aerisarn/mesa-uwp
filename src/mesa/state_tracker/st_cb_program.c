@@ -48,46 +48,6 @@
 #include "st_atifs_to_nir.h"
 #include "st_util.h"
 
-
-/**
- * Called via ctx->Driver.NewProgram() to allocate a new vertex or
- * fragment program.
- */
-static struct gl_program *
-st_new_program(struct gl_context *ctx, gl_shader_stage stage, GLuint id,
-               bool is_arb_asm)
-{
-   struct gl_program *prog;
-
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      prog = (struct gl_program*)rzalloc(NULL, struct gl_vertex_program);
-      break;
-   default:
-      prog = rzalloc(NULL, struct gl_program);
-      break;
-   }
-
-   return _mesa_init_gl_program(prog, stage, id, is_arb_asm);
-}
-
-
-void
-st_delete_program(struct gl_context *ctx, struct gl_program *prog)
-{
-   struct st_context *st = st_context(ctx);
-
-   st_release_variants(st, prog);
-
-   if (prog->glsl_to_tgsi)
-      free_glsl_to_tgsi_visitor(prog->glsl_to_tgsi);
-
-   free(prog->serialized_nir);
-
-   /* delete base class */
-   _mesa_delete_program( ctx, prog );
-}
-
 /**
  * Called when the program's text/code is changed.  We have to free
  * all shader variants and corresponding gallium shaders when this happens.
@@ -133,5 +93,5 @@ st_program_string_notify( struct gl_context *ctx,
 void
 st_init_program_functions(struct dd_function_table *functions)
 {
-   functions->NewProgram = st_new_program;
+   functions->NewProgram = _mesa_new_program;
 }

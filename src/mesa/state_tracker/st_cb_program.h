@@ -36,7 +36,6 @@ struct dd_function_table;
 
 extern void
 st_init_program_functions(struct dd_function_table *functions);
-void st_delete_program(struct gl_context *ctx, struct gl_program *prog);
 GLboolean st_program_string_notify(struct gl_context *ctx,
                                    GLenum target,
                                    struct gl_program *prog);

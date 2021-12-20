@@ -47,8 +47,6 @@
 #include "util/set.h"
 #include "util/u_memory.h"
 
-#include "state_tracker/st_cb_program.h"
-
 static void
 free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared);
 
@@ -195,7 +193,7 @@ delete_program_cb(void *data, void *userData)
    if(prog != &_mesa_DummyProgram) {
       assert(prog->RefCount == 1); /* should only be referenced by hash table */
       prog->RefCount = 0;  /* now going away */
-      st_delete_program(ctx, prog);
+      _mesa_delete_program(ctx, prog);
    }
 }
 
