@@ -154,6 +154,12 @@ namespace {
          else
             return t;
 
+      case SHADER_OPCODE_SEL_EXEC:
+         if (!has_64bit && type_sz(t) > 4)
+            return BRW_REGISTER_TYPE_UD;
+         else
+            return t;
+
       case SHADER_OPCODE_QUAD_SWIZZLE:
          if (has_dst_aligned_region_restriction(devinfo, inst))
             return brw_int_type(type_sz(t), false);
@@ -259,6 +265,9 @@ namespace {
          case SHADER_OPCODE_BROADCAST:
          case SHADER_OPCODE_MOV_INDIRECT:
             return 0x1;
+
+         case SHADER_OPCODE_SEL_EXEC:
+            return 0x3;
 
          default:
             unreachable("Unknown invalid execution type source mask.");
