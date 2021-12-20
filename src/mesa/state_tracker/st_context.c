@@ -72,20 +72,6 @@
 
 DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 
-
-void
-st_Enable(struct gl_context *ctx, GLenum cap)
-{
-   switch (cap) {
-   case GL_DEBUG_OUTPUT:
-   case GL_DEBUG_OUTPUT_SYNCHRONOUS:
-      _mesa_update_debug_callback(ctx);
-      break;
-   default:
-      break;
-   }
-}
-
 void
 st_query_memory_info(struct gl_context *ctx, struct gl_memory_info *out)
 {
