@@ -504,8 +504,6 @@ st_init_driver_flags(struct st_context *st)
    else
       f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
 
-   f->NewPolygonStipple = ST_NEW_POLY_STIPPLE;
-
    if (st->emulate_gl_clamp)
       f->NewSamplersWithClamp = ST_NEW_SAMPLERS |
                                 ST_NEW_VS_STATE | ST_NEW_TCS_STATE |

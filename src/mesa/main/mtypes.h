@@ -4842,9 +4842,6 @@ struct gl_driver_flags
    /** gl_context::Color::ClampFragmentColor */
    uint64_t NewFragClamp;
 
-   /** gl_context::PolygonStipple */
-   uint64_t NewPolygonStipple;
-
    /** Shader constants (uniforms, program parameters, state constants) */
    uint64_t NewShaderConstants[MESA_SHADER_STAGES];
 

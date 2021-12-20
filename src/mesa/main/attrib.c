@@ -979,10 +979,7 @@ _mesa_PopAttrib(void)
    if (mask & GL_POLYGON_STIPPLE_BIT) {
       memcpy(ctx->PolygonStipple, attr->PolygonStipple, 32*sizeof(GLuint));
 
-      if (ctx->DriverFlags.NewPolygonStipple)
-         ctx->NewDriverState |= ctx->DriverFlags.NewPolygonStipple;
-      else
-         ctx->NewState |= _NEW_POLYGONSTIPPLE;
+      ctx->NewDriverState |= ST_NEW_POLY_STIPPLE;
    }
 
    if (mask & GL_SCISSOR_BIT) {
