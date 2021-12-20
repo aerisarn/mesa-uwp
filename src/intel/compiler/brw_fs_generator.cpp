@@ -631,7 +631,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
           */
          const unsigned i = idx.file == BRW_IMMEDIATE_VALUE ? idx.ud : 0;
          struct brw_reg group_src = stride(suboffset(src, i), 0, 1, 0);
-         struct brw_reg group_dst = suboffset(dst, group);
+         struct brw_reg group_dst = suboffset(dst, group << (dst.hstride - 1));
          if (type_sz(src.type) > 4 && !devinfo->has_64bit_float) {
             brw_MOV(p, subscript(group_dst, BRW_REGISTER_TYPE_UD, 0),
                        subscript(group_src, BRW_REGISTER_TYPE_UD, 0));
@@ -743,7 +743,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
             brw_MOV(p, byte_offset(dst_d, 4),
                     retype(brw_VxH_indirect(0, 4), BRW_REGISTER_TYPE_D));
          } else {
-            brw_MOV(p, suboffset(dst, group * dst.hstride),
+            brw_MOV(p, suboffset(dst, group << (dst.hstride - 1)),
                     retype(brw_VxH_indirect(0, 0), src.type));
          }
       }
