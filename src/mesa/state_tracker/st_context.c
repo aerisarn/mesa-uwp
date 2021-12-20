@@ -823,16 +823,6 @@ st_set_background_context(struct gl_context *ctx,
 }
 
 static void
-st_pin_driver_to_l3_cache(struct gl_context *ctx, unsigned L3_cache)
-{
-   struct pipe_context *pipe = st_context(ctx)->pipe;
-
-   pipe->set_context_param(pipe, PIPE_CONTEXT_PARAM_PIN_THREADS_TO_L3_CACHE,
-                           L3_cache);
-}
-
-
-static void
 st_init_driver_functions(struct pipe_screen *screen,
                          struct dd_function_table *functions,
                          bool has_egl_image_validate)
@@ -884,9 +874,6 @@ st_create_context(gl_api api, struct pipe_context *pipe,
 
    memset(&funcs, 0, sizeof(funcs));
    st_init_driver_functions(pipe->screen, &funcs, has_egl_image_validate);
-
-   if (pipe->set_context_param)
-      funcs.PinDriverToL3Cache = st_pin_driver_to_l3_cache;
 
    /* gl_context must be 16-byte aligned due to the alignment on GLmatrix. */
    ctx = align_malloc(sizeof(struct gl_context), 16);
