@@ -27,6 +27,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_serialize.h"
+#include "nir/nir_helpers.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "sid.h"
@@ -1587,7 +1588,9 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    bool free_nir;
    struct nir_shader *nir = si_get_nir_shader(sel, &shader->key, &free_nir);
 
-   struct pipe_stream_output_info so = sel->so;
+   struct pipe_stream_output_info so = {};
+   if (sel->info.enabled_streamout_buffer_mask)
+      nir_gather_stream_output_info(nir, &so);
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */
@@ -1616,7 +1619,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    /* The GS copy shader is compiled next. */
    if (sel->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
-      shader->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
+      shader->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, &so, debug);
       if (!shader->gs_copy_shader) {
          fprintf(stderr, "radeonsi: can't create GS copy shader\n");
          return false;
@@ -2312,7 +2315,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
    shader->uses_vs_state_outprim = sscreen->use_ngg &&
                                    /* Only used by streamout in vertex shaders. */
                                    sel->info.stage == MESA_SHADER_VERTEX &&
-                                   sel->so.num_outputs;
+                                   sel->info.enabled_streamout_buffer_mask;
 
    if (sel->info.stage == MESA_SHADER_VERTEX) {
       shader->uses_base_instance = sel->info.uses_base_instance ||

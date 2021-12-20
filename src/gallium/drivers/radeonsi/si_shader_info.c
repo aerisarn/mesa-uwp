@@ -325,12 +325,23 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                                   (nir_intrinsic_component(intr) * 2);
             unsigned new_mask = mask & ~info->output_usagemask[loc];
 
+            /* Iterate over all components. */
             for (unsigned i = 0; i < 4; i++) {
                unsigned stream = (gs_streams >> (i * 2)) & 0x3;
 
                if (new_mask & (1 << i)) {
                   info->output_streams[loc] |= stream << (i * 2);
                   info->num_stream_output_components[stream]++;
+               }
+
+               if (nir_intrinsic_has_io_xfb(intr)) {
+                  nir_io_xfb xfb = i < 2 ? nir_intrinsic_io_xfb(intr) :
+                                           nir_intrinsic_io_xfb2(intr);
+                  if (xfb.out[i % 2].num_components) {
+                     unsigned stream = (gs_streams >> (i * 2)) & 0x3;
+                     info->enabled_streamout_buffer_mask |=
+                        BITFIELD_BIT(stream * 4 + xfb.out[i % 2].buffer);
+                  }
                }
             }
 

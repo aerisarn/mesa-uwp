@@ -422,6 +422,7 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
 struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
                                              struct ac_llvm_compiler *compiler,
                                              struct si_shader_selector *gs_selector,
+                                             const struct pipe_stream_output_info *so,
                                              struct util_debug_callback *debug)
 {
    struct si_shader_context ctx;
@@ -446,7 +447,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    si_llvm_context_init(&ctx, sscreen, compiler, shader->wave_size);
    ctx.shader = shader;
    ctx.stage = MESA_SHADER_VERTEX;
-   ctx.so = gs_selector->so;
+   ctx.so = *so;
 
    builder = ctx.ac.builder;
 

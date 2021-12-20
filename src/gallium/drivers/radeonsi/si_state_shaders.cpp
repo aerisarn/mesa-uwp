@@ -203,9 +203,6 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
    _mesa_sha1_init(&ctx);
    _mesa_sha1_update(&ctx, &shader_variant_flags, 4);
    _mesa_sha1_update(&ctx, ir_binary, ir_size);
-   if (sel->info.stage == MESA_SHADER_VERTEX || sel->info.stage == MESA_SHADER_TESS_EVAL ||
-       sel->info.stage == MESA_SHADER_GEOMETRY)
-      _mesa_sha1_update(&ctx, &sel->so, sizeof(sel->so));
    _mesa_sha1_final(&ctx, ir_sha1_cache_key);
 
    if (ir_binary == blob.data)
@@ -1512,7 +1509,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    }
 
    shader->ctx_reg.ngg.vgt_stages.u.ngg = 1;
-   shader->ctx_reg.ngg.vgt_stages.u.streamout = gs_sel->so.num_outputs;
+   shader->ctx_reg.ngg.vgt_stages.u.streamout = !!gs_sel->info.enabled_streamout_buffer_mask;
    shader->ctx_reg.ngg.vgt_stages.u.ngg_passthrough = gfx10_is_ngg_passthrough(shader);
    shader->ctx_reg.ngg.vgt_stages.u.gs_wave32 = shader->wave_size == 32;
 }
@@ -1702,11 +1699,11 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
       rsrc1 |= S_00B128_SGPRS((shader->config.num_sgprs - 1) / 8);
 
    if (!sscreen->use_ngg_streamout) {
-      rsrc2 |= S_00B12C_SO_BASE0_EN(!!shader->selector->so.stride[0]) |
-               S_00B12C_SO_BASE1_EN(!!shader->selector->so.stride[1]) |
-               S_00B12C_SO_BASE2_EN(!!shader->selector->so.stride[2]) |
-               S_00B12C_SO_BASE3_EN(!!shader->selector->so.stride[3]) |
-               S_00B12C_SO_EN(!!shader->selector->so.num_outputs);
+      rsrc2 |= S_00B12C_SO_BASE0_EN(!!shader->selector->info.base.xfb_stride[0]) |
+               S_00B12C_SO_BASE1_EN(!!shader->selector->info.base.xfb_stride[1]) |
+               S_00B12C_SO_BASE2_EN(!!shader->selector->info.base.xfb_stride[2]) |
+               S_00B12C_SO_BASE3_EN(!!shader->selector->info.base.xfb_stride[3]) |
+               S_00B12C_SO_EN(!!info->enabled_streamout_buffer_mask);
    }
 
    si_pm4_set_reg(pm4, R_00B128_SPI_SHADER_PGM_RSRC1_VS, rsrc1);
@@ -2783,7 +2780,7 @@ int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state
    }
 }
 
-static void si_parse_next_shader_property(const struct si_shader_info *info, bool streamout,
+static void si_parse_next_shader_property(const struct si_shader_info *info,
                                           union si_shader_key *key)
 {
    gl_shader_stage next_shader = info->base.next_stage;
@@ -2804,7 +2801,7 @@ static void si_parse_next_shader_property(const struct si_shader_info *info, boo
           * assume that it's a HW LS. (the next shader is TCS)
           * This heuristic is needed for separate shader objects.
           */
-         if (!info->writes_position && !streamout)
+         if (!info->writes_position && !info->enabled_streamout_buffer_mask)
             key->ge.as_ls = 1;
       }
       break;
@@ -2874,10 +2871,11 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
 
       shader->selector = sel;
       shader->is_monolithic = false;
-      si_parse_next_shader_property(&sel->info, sel->so.num_outputs != 0, &shader->key);
+      si_parse_next_shader_property(&sel->info, &shader->key);
 
       if (sel->info.stage <= MESA_SHADER_GEOMETRY &&
-          sscreen->use_ngg && (!sel->so.num_outputs || sscreen->use_ngg_streamout) &&
+          sscreen->use_ngg && (!sel->info.enabled_streamout_buffer_mask ||
+                               sscreen->use_ngg_streamout) &&
           ((sel->info.stage == MESA_SHADER_VERTEX && !shader->key.ge.as_ls) ||
            sel->info.stage == MESA_SHADER_TESS_EVAL || sel->info.stage == MESA_SHADER_GEOMETRY))
          shader->key.ge.as_ngg = 1;
@@ -3035,8 +3033,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    sel->compiler_ctx_state.debug = sctx->debug;
    sel->compiler_ctx_state.is_debug_context = sctx->is_debug;
 
-   sel->so = state->stream_output;
-
    if (state->type == PIPE_SHADER_IR_TGSI) {
       sel->nir = tgsi_to_nir(state->tokens, ctx->screen, true);
    } else {
@@ -3056,12 +3052,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    p_atomic_inc(&sscreen->num_shaders_created);
    si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);
-
-   /* Record which streamout buffers are enabled. */
-   for (unsigned i = 0; i < sel->so.num_outputs; i++) {
-      sel->enabled_streamout_buffer_mask |= (1 << sel->so.output[i].output_buffer)
-                                            << (sel->so.output[i].stream * 4);
-   }
 
    sel->num_vs_inputs =
       sel->info.stage == MESA_SHADER_VERTEX && !sel->info.base.vs.blit_sgprs_amd
@@ -3197,7 +3187,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       !sel->info.writes_viewport_index && /* cull only against viewport 0 */
       !sel->info.base.writes_memory &&
       /* NGG GS supports culling with streamout because it culls after streamout. */
-      (sel->info.stage == MESA_SHADER_GEOMETRY || !sel->so.num_outputs) &&
+      (sel->info.stage == MESA_SHADER_GEOMETRY || !sel->info.enabled_streamout_buffer_mask) &&
       (sel->info.stage != MESA_SHADER_GEOMETRY || sel->info.num_stream_output_components[0]) &&
       (sel->info.stage != MESA_SHADER_VERTEX ||
        (!sel->info.base.vs.blit_sgprs_amd &&
@@ -3312,8 +3302,8 @@ static void si_update_streamout_state(struct si_context *sctx)
    if (!shader_with_so)
       return;
 
-   sctx->streamout.enabled_stream_buffers_mask = shader_with_so->enabled_streamout_buffer_mask;
-   sctx->streamout.stride_in_dw = shader_with_so->so.stride;
+   sctx->streamout.enabled_stream_buffers_mask = shader_with_so->info.enabled_streamout_buffer_mask;
+   sctx->streamout.stride_in_dw = shader_with_so->info.base.xfb_stride;
 }
 
 static void si_update_clip_regs(struct si_context *sctx, struct si_shader_selector *old_hw_vs,
@@ -3440,7 +3430,8 @@ bool si_update_ngg(struct si_context *sctx)
    } else if (!sctx->screen->use_ngg_streamout) {
       struct si_shader_selector *last = si_get_vs(sctx)->cso;
 
-      if ((last && last->so.num_outputs) || sctx->streamout.prims_gen_query_enabled)
+      if ((last && last->info.enabled_streamout_buffer_mask) ||
+          sctx->streamout.prims_gen_query_enabled)
          new_ngg = false;
    }
 

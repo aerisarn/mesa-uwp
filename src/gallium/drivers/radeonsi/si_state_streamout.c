@@ -308,7 +308,7 @@ static void si_emit_streamout_begin(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
    struct si_streamout_target **t = sctx->streamout.targets;
-   uint16_t *stride_in_dw = sctx->streamout.stride_in_dw;
+   uint8_t *stride_in_dw = sctx->streamout.stride_in_dw;
    unsigned i;
 
    si_flush_vgt_streamout(sctx);

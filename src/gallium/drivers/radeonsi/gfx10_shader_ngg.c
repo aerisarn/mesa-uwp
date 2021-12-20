@@ -606,7 +606,7 @@ static unsigned ngg_nogs_vertex_size(struct si_shader *shader)
 
    /* The edgeflag is always stored in the last element that's also
     * used for padding to reduce LDS bank conflicts. */
-   if (shader->selector->so.num_outputs)
+   if (shader->selector->info.enabled_streamout_buffer_mask)
       lds_vertex_size = 4 * shader->selector->info.num_outputs + 1;
    if (gfx10_ngg_writes_user_edgeflags(shader))
       lds_vertex_size = MAX2(lds_vertex_size, 1);
@@ -2169,7 +2169,7 @@ unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader)
 {
    const struct si_shader_selector *sel = shader->selector;
 
-   if (sel->info.stage == MESA_SHADER_GEOMETRY && sel->so.num_outputs)
+   if (sel->info.stage == MESA_SHADER_GEOMETRY && sel->info.enabled_streamout_buffer_mask)
       return 44;
 
    return 8;

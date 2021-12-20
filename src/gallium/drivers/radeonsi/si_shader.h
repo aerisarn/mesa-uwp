@@ -367,6 +367,7 @@ struct si_shader_info {
 
    int constbuf0_num_slots;
    ubyte num_stream_output_components[4];
+   uint16_t enabled_streamout_buffer_mask;
 
    uint num_memory_stores;
 
@@ -459,7 +460,6 @@ struct si_shader_selector {
    void *nir_binary;
    unsigned nir_size;
 
-   struct pipe_stream_output_info so;
    struct si_shader_info info;
 
    enum pipe_shader_type pipe_shader_type;
@@ -486,7 +486,6 @@ struct si_shader_selector {
    uint16_t gsvs_vertex_size;
    ubyte gs_input_verts_per_prim;
    unsigned max_gsvs_emit_size;
-   uint16_t enabled_streamout_buffer_mask;
    bool tess_turns_off_ngg;
 
    /* PS parameters. */
@@ -959,6 +958,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
 struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
                                              struct ac_llvm_compiler *compiler,
                                              struct si_shader_selector *gs_selector,
+                                             const struct pipe_stream_output_info *so,
                                              struct util_debug_callback *debug);
 
 /* si_shader_nir.c */

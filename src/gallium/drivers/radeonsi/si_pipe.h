@@ -814,7 +814,7 @@ struct si_streamout {
 
    /* External state which comes from the vertex shader,
     * it must be set explicitly when binding a shader. */
-   uint16_t *stride_in_dw;
+   uint8_t *stride_in_dw;
    unsigned enabled_stream_buffers_mask; /* stream0 buffers0-3 in 4 LSB */
 
    /* The state of VGT_STRMOUT_BUFFER_(CONFIG|EN). */
