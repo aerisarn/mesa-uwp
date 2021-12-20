@@ -981,48 +981,40 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
    ib.index_size_shift = util_logbase2(index_size);
 
    /* Single draw or a fallback for user indices. */
-   if (num_draws == 1 ||
-       (info->index_size && info->has_user_indices &&
-        !ctx->Const.MultiDrawWithUserIndices)) {
-      for (unsigned i = 0; i < num_draws; i++) {
-         if (!draws[i].count)
-            continue;
+   if (num_draws == 1) {
+      if (!draws[0].count)
+         return;
 
-         if (index_size) {
-            ib.count = draws[i].count;
+      if (index_size) {
+         ib.count = draws[0].count;
 
-            if (info->has_user_indices) {
-               ib.obj = NULL;
-               /* User indices require start to be added here if
-                * Const.MultiDrawWithUserIndices is false.
-                */
-               ib.ptr = (const char*)info->index.user +
-                        draws[i].start * index_size;
-            } else {
-               ib.obj = info->index.gl_bo;
-               ib.ptr = NULL;
-            }
+         if (info->has_user_indices) {
+            ib.obj = NULL;
+            ib.ptr = (const char*)info->index.user;
+         } else {
+            ib.obj = info->index.gl_bo;
+            ib.ptr = NULL;
          }
-
-         struct _mesa_prim prim;
-         prim.mode = info->mode;
-         prim.begin = 1;
-         prim.end = 1;
-         prim.start = index_size && info->has_user_indices ? 0 : draws[i].start;
-         prim.count = draws[i].count;
-         prim.basevertex = index_size ? draws[i].index_bias : 0;
-         prim.draw_id = drawid_offset + (info->increment_draw_id ? i : 0);
-
-         if (!index_size) {
-            min_index = draws[i].start;
-            max_index = draws[i].start + draws[i].count - 1;
-         }
-
-         st_feedback_draw_vbo(ctx, &prim, 1, index_size ? &ib : NULL,
-                              index_bounds_valid, info->primitive_restart,
-                              info->restart_index, min_index, max_index,
-                              info->instance_count, info->start_instance);
       }
+
+      struct _mesa_prim prim;
+      prim.mode = info->mode;
+      prim.begin = 1;
+      prim.end = 1;
+      prim.start = draws[0].start;
+      prim.count = draws[0].count;
+      prim.basevertex = index_size ? draws[0].index_bias : 0;
+      prim.draw_id = drawid_offset;
+
+      if (!index_size) {
+         min_index = draws[0].start;
+         max_index = draws[0].start + draws[0].count - 1;
+      }
+
+      st_feedback_draw_vbo(ctx, &prim, 1, index_size ? &ib : NULL,
+                           index_bounds_valid, info->primitive_restart,
+                           info->restart_index, min_index, max_index,
+                           info->instance_count, info->start_instance);
       return;
    }
 

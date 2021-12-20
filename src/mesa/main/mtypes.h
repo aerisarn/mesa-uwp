@@ -4295,9 +4295,6 @@ struct gl_constants
    /** Whether the vertex buffer offset is a signed 32-bit integer. */
    bool VertexBufferOffsetIsInt32;
 
-   /** Whether the driver can handle MultiDrawElements with non-VBO indices. */
-   bool MultiDrawWithUserIndices;
-
    /** Whether out-of-order draw (Begin/End) optimizations are allowed. */
    bool AllowDrawOutOfOrder;
 
