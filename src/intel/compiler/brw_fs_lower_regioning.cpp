@@ -489,9 +489,10 @@ namespace {
    }
 
    /**
-    * Bit-cast sources and destination of the instruction to an appropriate
-    * integer type, to be used in cases where the instruction doesn't support
-    * some other execution type.
+    * Change sources and destination of the instruction to an
+    * appropriate legal type, splitting the instruction into multiple
+    * ones of smaller execution type if necessary, to be used in cases
+    * where the execution type of an instruction is unsupported.
     */
    bool
    lower_exec_type(fs_visitor *v, bblock_t *block, fs_inst *inst)
@@ -499,15 +500,39 @@ namespace {
       assert(inst->dst.type == get_exec_type(inst));
       const unsigned mask = has_invalid_exec_type(v->devinfo, inst);
       const brw_reg_type raw_type = required_exec_type(v->devinfo, inst);
+      const unsigned n = get_exec_type_size(inst) / type_sz(raw_type);
+      const fs_builder ibld(v, block, inst);
 
-      for (unsigned i = 0; i < inst->sources; i++) {
-         if (mask & (1u << i)) {
-            assert(inst->src[i].type == inst->dst.type);
-            inst->src[i].type = raw_type;
+      fs_reg tmp = ibld.vgrf(inst->dst.type, inst->dst.stride);
+      ibld.UNDEF(tmp);
+      tmp = horiz_stride(tmp, inst->dst.stride);
+
+      for (unsigned j = 0; j < n; j++) {
+         fs_inst sub_inst = *inst;
+
+         for (unsigned i = 0; i < inst->sources; i++) {
+            if (mask & (1u << i)) {
+               assert(inst->src[i].type == inst->dst.type);
+               sub_inst.src[i] = subscript(inst->src[i], raw_type, j);
+            }
          }
+
+         sub_inst.dst = subscript(tmp, raw_type, j);
+
+         assert(sub_inst.size_written == sub_inst.dst.component_size(sub_inst.exec_size));
+         assert(!sub_inst.flags_written(v->devinfo) && !sub_inst.saturate);
+         ibld.emit(sub_inst);
+
+         fs_inst *mov = ibld.MOV(subscript(inst->dst, raw_type, j),
+                                 subscript(tmp, raw_type, j));
+         if (inst->opcode != BRW_OPCODE_SEL) {
+            mov->predicate = inst->predicate;
+            mov->predicate_inverse = inst->predicate_inverse;
+         }
+         lower_instruction(v, block, mov);
       }
 
-      inst->dst.type = raw_type;
+      inst->remove(block);
 
       return true;
    }
