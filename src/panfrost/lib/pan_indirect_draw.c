@@ -1168,7 +1168,6 @@ create_indirect_draw_shader(struct panfrost_device *dev,
                 pan_pack(state, RENDERER_STATE, cfg) {
                         pan_shader_prepare_rsd(&shader_info, address, &cfg);
                 }
-                pthread_mutex_unlock(&dev->indirect_draw_shaders.lock);
 
                 draw_shader->push = shader_info.push;
                 draw_shader->rsd = dev->indirect_draw_shaders.states->ptr.gpu +
