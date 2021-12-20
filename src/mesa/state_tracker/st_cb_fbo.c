@@ -106,7 +106,7 @@ st_renderbuffer_alloc_sw_storage(struct gl_context * ctx,
  * This is called to allocate the original drawing surface, and
  * during window resize.
  */
-static GLboolean
+GLboolean
 st_renderbuffer_alloc_storage(struct gl_context * ctx,
                               struct gl_renderbuffer *rb,
                               GLenum internalFormat,
@@ -272,46 +272,6 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
    return rb->surface != NULL;
 }
 
-
-/**
- * gl_renderbuffer::Delete()
- */
-static void
-st_renderbuffer_delete(struct gl_context *ctx, struct gl_renderbuffer *rb)
-{
-   if (ctx) {
-      struct st_context *st = st_context(ctx);
-      pipe_surface_release(st->pipe, &rb->surface_srgb);
-      pipe_surface_release(st->pipe, &rb->surface_linear);
-   } else {
-      pipe_surface_release_no_context(&rb->surface_srgb);
-      pipe_surface_release_no_context(&rb->surface_linear);
-   }
-   rb->surface = NULL;
-   pipe_resource_reference(&rb->texture, NULL);
-   free(rb->data);
-   _mesa_delete_renderbuffer(ctx, rb);
-}
-
-
-/**
- * Called via ctx->Driver.NewRenderbuffer()
- */
-struct gl_renderbuffer *
-st_new_renderbuffer(struct gl_context *ctx, GLuint name)
-{
-   struct gl_renderbuffer *rb = CALLOC_STRUCT(gl_renderbuffer);
-   if (rb) {
-      assert(name != 0);
-      _mesa_init_renderbuffer(rb, name);
-      rb->Delete = st_renderbuffer_delete;
-      rb->AllocStorage = st_renderbuffer_alloc_storage;
-      return rb;
-   }
-   return NULL;
-}
-
-
 /**
  * Allocate a renderbuffer for an on-screen window (not a user-created
  * renderbuffer).  The window system code determines the format.
@@ -435,7 +395,7 @@ st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, boolean sw)
    }
 
    /* st-specific methods */
-   rb->Delete = st_renderbuffer_delete;
+   rb->Delete = _mesa_delete_renderbuffer;
    rb->AllocStorage = st_renderbuffer_alloc_storage;
 
    /* surface is allocated in st_renderbuffer_alloc_storage() */

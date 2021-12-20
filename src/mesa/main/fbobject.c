@@ -52,6 +52,7 @@
 #include "texobj.h"
 #include "api_exec_decl.h"
 
+#include "util/u_memory.h"
 #include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_eglimage.h"
 #include "state_tracker/st_context.h"
@@ -465,6 +466,20 @@ driver_RenderTexture_is_safe(const struct gl_renderbuffer_attachment *att)
    return true;
 }
 
+static struct gl_renderbuffer *
+new_renderbuffer(struct gl_context *ctx, GLuint name)
+{
+   struct gl_renderbuffer *rb = CALLOC_STRUCT(gl_renderbuffer);
+   if (rb) {
+      assert(name != 0);
+      _mesa_init_renderbuffer(rb, name);
+      rb->Delete = _mesa_delete_renderbuffer;
+      rb->AllocStorage = st_renderbuffer_alloc_storage;
+      return rb;
+   }
+   return NULL;
+}
+
 /**
  * Create a renderbuffer which will be set up by the driver to wrap the
  * texture image slice.
@@ -489,7 +504,7 @@ _mesa_update_texture_renderbuffer(struct gl_context *ctx,
 
    rb = att->Renderbuffer;
    if (!rb) {
-      rb = st_new_renderbuffer(ctx, ~0);
+      rb = new_renderbuffer(ctx, ~0);
       if (!rb) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "glFramebufferTexture()");
          return;
@@ -1558,7 +1573,7 @@ allocate_renderbuffer_locked(struct gl_context *ctx, GLuint renderbuffer,
    struct gl_renderbuffer *newRb;
 
    /* create new renderbuffer object */
-   newRb = st_new_renderbuffer(ctx, renderbuffer);
+   newRb = new_renderbuffer(ctx, renderbuffer);
    if (!newRb) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
       return NULL;

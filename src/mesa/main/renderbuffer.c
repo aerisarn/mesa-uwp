@@ -31,7 +31,7 @@
 #include "mtypes.h"
 #include "renderbuffer.h"
 #include "util/u_memory.h"
-
+#include "util/u_inlines.h"
 
 /**
  * Initialize the fields of a gl_renderbuffer to default values.
@@ -84,6 +84,16 @@ _mesa_init_renderbuffer(struct gl_renderbuffer *rb, GLuint name)
 void
 _mesa_delete_renderbuffer(struct gl_context *ctx, struct gl_renderbuffer *rb)
 {
+   if (ctx) {
+      pipe_surface_release(ctx->pipe, &rb->surface_srgb);
+      pipe_surface_release(ctx->pipe, &rb->surface_linear);
+   } else {
+      pipe_surface_release_no_context(&rb->surface_srgb);
+      pipe_surface_release_no_context(&rb->surface_linear);
+   }
+   rb->surface = NULL;
+   pipe_resource_reference(&rb->texture, NULL);
+   free(rb->data);
    free(rb->Label);
    FREE(rb);
 }
