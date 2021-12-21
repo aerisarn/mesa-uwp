@@ -983,15 +983,6 @@ pandecode_bifrost_tiler(mali_ptr gpu_va, int job_no)
                 pandecode_bifrost_tiler_heap(t.heap, job_no);
 
         DUMP_UNPACKED(TILER_CONTEXT, t, "Bifrost Tiler:\n");
-        pandecode_indent++;
-        if (t.hierarchy_mask != 0xa &&
-            t.hierarchy_mask != 0x14 &&
-            t.hierarchy_mask != 0x28 &&
-            t.hierarchy_mask != 0x50 &&
-            t.hierarchy_mask != 0xa0)
-                pandecode_msg("XXX: Unexpected hierarchy_mask (not 0xa, 0x14, 0x28, 0x50 or 0xa0)!");
-
-        pandecode_indent--;
 }
 
 #if PAN_ARCH <= 7
