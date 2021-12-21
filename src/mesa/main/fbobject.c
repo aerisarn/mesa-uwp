@@ -413,7 +413,65 @@ get_fb0_attachment(struct gl_context *ctx, struct gl_framebuffer *fb,
    }
 }
 
+/**
+ * Return the pipe_resource which stores a particular texture image.
+ */
+static struct pipe_resource *
+get_teximage_resource(struct gl_texture_object *texObj,
+                      unsigned face, unsigned level)
+{
+   struct gl_texture_image *stImg =
+      texObj->Image[face][level];
 
+   return stImg->pt;
+}
+
+static void
+render_texture(struct gl_context *ctx,
+               struct gl_framebuffer *fb,
+               struct gl_renderbuffer_attachment *att)
+{
+   struct st_context *st = st_context(ctx);
+   struct gl_renderbuffer *rb = att->Renderbuffer;
+   struct pipe_resource *pt;
+
+   pt = get_teximage_resource(att->Texture,
+                              att->CubeMapFace,
+                              att->TextureLevel);
+   assert(pt);
+
+   /* point renderbuffer at texobject */
+   rb->is_rtt = TRUE;
+   rb->rtt_face = att->CubeMapFace;
+   rb->rtt_slice = att->Zoffset;
+   rb->rtt_layered = att->Layered;
+   rb->rtt_nr_samples = att->NumSamples;
+   pipe_resource_reference(&rb->texture, pt);
+
+   st_update_renderbuffer_surface(st, rb);
+
+   /* Invalidate buffer state so that the pipe's framebuffer state
+    * gets updated.
+    * That's where the new renderbuffer (which we just created) gets
+    * passed to the pipe as a (color/depth) render target.
+    */
+   st_invalidate_buffers(st);
+
+
+   /* Need to trigger a call to update_framebuffer() since we just
+    * attached a new renderbuffer.
+    */
+   ctx->NewState |= _NEW_BUFFERS;
+}
+
+static void
+finish_render_texture(struct gl_context *ctx, struct gl_renderbuffer *rb)
+{
+   rb->is_rtt = FALSE;
+
+   /* restore previous framebuffer state */
+   st_invalidate_buffers(st_context(ctx));
+}
 
 /**
  * Remove any texture or renderbuffer attached to the given attachment
@@ -427,7 +485,7 @@ remove_attachment(struct gl_context *ctx,
 
    /* tell driver that we're done rendering to this texture. */
    if (rb)
-      st_finish_render_texture(ctx, rb);
+      finish_render_texture(ctx, rb);
 
    if (att->Type == GL_TEXTURE) {
       assert(att->Texture);
@@ -531,7 +589,7 @@ _mesa_update_texture_renderbuffer(struct gl_context *ctx,
    rb->TexImage = texImage;
 
    if (driver_RenderTexture_is_safe(att))
-      st_render_texture(ctx, fb, att);
+      render_texture(ctx, fb, att);
 }
 
 /**
@@ -549,7 +607,7 @@ set_texture_attachment(struct gl_context *ctx,
    struct gl_renderbuffer *rb = att->Renderbuffer;
 
    if (rb)
-      st_finish_render_texture(ctx, rb);
+      finish_render_texture(ctx, rb);
 
    if (att->Texture == texObj) {
       /* re-attaching same texture */
@@ -3032,7 +3090,7 @@ check_begin_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
       struct gl_renderbuffer_attachment *att = fb->Attachment + i;
       if (att->Texture && att->Renderbuffer->TexImage
           && driver_RenderTexture_is_safe(att)) {
-         st_render_texture(ctx, fb, att);
+         render_texture(ctx, fb, att);
       }
    }
 }
@@ -3054,7 +3112,7 @@ check_end_texture_render(struct gl_context *ctx, struct gl_framebuffer *fb)
       struct gl_renderbuffer_attachment *att = fb->Attachment + i;
       struct gl_renderbuffer *rb = att->Renderbuffer;
       if (rb) {
-         st_finish_render_texture(ctx, rb);
+         finish_render_texture(ctx, rb);
       }
    }
 }
