@@ -53,7 +53,6 @@
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_cb_bitmap.h"
 #include "state_tracker/st_cb_drawpixels.h"
-#include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_flush.h"
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_format.h"

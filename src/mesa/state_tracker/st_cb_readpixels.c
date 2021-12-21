@@ -36,7 +36,6 @@
 #include "util/format/u_format.h"
 #include "cso_cache/cso_context.h"
 
-#include "st_cb_fbo.h"
 #include "st_atom.h"
 #include "st_context.h"
 #include "st_cb_bitmap.h"

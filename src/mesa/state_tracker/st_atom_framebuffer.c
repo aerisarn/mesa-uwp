@@ -36,7 +36,6 @@
 #include "st_context.h"
 #include "st_atom.h"
 #include "st_cb_bitmap.h"
-#include "st_cb_fbo.h"
 #include "st_texture.h"
 #include "st_util.h"
 #include "pipe/p_context.h"
@@ -47,6 +46,7 @@
 #include "util/u_framebuffer.h"
 #include "main/framebuffer.h"
 
+#include "main/renderbuffer.h"
 
 /**
  * Update framebuffer size.
@@ -109,6 +109,7 @@ framebuffer_quantize_num_samples(struct st_context *st, unsigned num_samples)
 void
 st_update_framebuffer_state( struct st_context *st )
 {
+   struct gl_context *ctx = st->ctx;
    struct pipe_framebuffer_state framebuffer;
    struct gl_framebuffer *fb = st->ctx->DrawBuffer;
    struct gl_renderbuffer *rb;
@@ -148,12 +149,13 @@ st_update_framebuffer_state( struct st_context *st )
          if (rb->is_rtt || (rb->texture &&
              _mesa_is_format_srgb(rb->Format))) {
             /* rendering to a GL texture, may have to update surface */
-            st_update_renderbuffer_surface(st, rb);
+
+            _mesa_update_renderbuffer_surface(ctx, rb);
          }
 
          if (rb->surface) {
             if (rb->surface->context != st->pipe) {
-               st_regen_renderbuffer_surface(st, rb);
+               _mesa_regen_renderbuffer_surface(ctx, rb);
             }
             framebuffer.cbufs[i] = rb->surface;
             update_framebuffer_size(&framebuffer, rb->surface);
@@ -182,10 +184,10 @@ st_update_framebuffer_state( struct st_context *st )
    if (rb) {
       if (rb->is_rtt) {
          /* rendering to a GL texture, may have to update surface */
-         st_update_renderbuffer_surface(st, rb);
+         _mesa_update_renderbuffer_surface(ctx, rb);
       }
-      if (rb->surface && rb->surface->context != st->pipe) {
-         st_regen_renderbuffer_surface(st, rb);
+      if (rb->surface && rb->surface->context != ctx->pipe) {
+         _mesa_regen_renderbuffer_surface(ctx, rb);
       }
       framebuffer.zsbuf = rb->surface;
       if (rb->surface)

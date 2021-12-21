@@ -47,7 +47,6 @@
 #include "st_extensions.h"
 #include "st_format.h"
 #include "st_cb_bitmap.h"
-#include "st_cb_fbo.h"
 #include "st_cb_flush.h"
 #include "st_manager.h"
 #include "st_sampler_view.h"

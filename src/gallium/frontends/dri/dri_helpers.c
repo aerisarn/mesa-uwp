@@ -26,7 +26,6 @@
 #include "pipe/p_screen.h"
 #include "state_tracker/st_texture.h"
 #include "state_tracker/st_context.h"
-#include "state_tracker/st_cb_fbo.h"
 #include "main/texobj.h"
 
 #include "dri_helpers.h"

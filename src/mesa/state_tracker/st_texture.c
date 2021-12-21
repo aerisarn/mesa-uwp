@@ -30,7 +30,6 @@
 #include "st_context.h"
 #include "st_format.h"
 #include "st_texture.h"
-#include "st_cb_fbo.h"
 #include "main/enums.h"
 
 #include "pipe/p_state.h"

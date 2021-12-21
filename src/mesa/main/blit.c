@@ -40,11 +40,11 @@
 #include "mtypes.h"
 #include "macros.h"
 #include "readpix.h"
+#include "renderbuffer.h"
 #include "state.h"
 #include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_bitmap.h"
-#include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_manager.h"
 #include "state_tracker/st_scissor.h"
@@ -512,7 +512,7 @@ do_blit_framebuffer(struct gl_context *ctx,
          if (!srcRb)
             return;
 
-         st_update_renderbuffer_surface(st, srcRb);
+         _mesa_update_renderbuffer_surface(ctx, srcRb);
 
          if (!srcRb->surface)
             return;
@@ -531,7 +531,7 @@ do_blit_framebuffer(struct gl_context *ctx,
          if (dstRb) {
             struct pipe_surface *dstSurf;
 
-            st_update_renderbuffer_surface(st, dstRb);
+            _mesa_update_renderbuffer_surface(ctx, dstRb);
 
             dstSurf = dstRb->surface;
 

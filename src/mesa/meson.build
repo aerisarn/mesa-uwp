@@ -334,8 +334,6 @@ files_libmesa = files(
   'state_tracker/st_cb_drawtex.h',
   'state_tracker/st_cb_eglimage.c',
   'state_tracker/st_cb_eglimage.h',
-  'state_tracker/st_cb_fbo.c',
-  'state_tracker/st_cb_fbo.h',
   'state_tracker/st_cb_feedback.c',
   'state_tracker/st_cb_feedback.h',
   'state_tracker/st_cb_flush.c',

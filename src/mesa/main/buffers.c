@@ -43,7 +43,6 @@
 #include "util/u_math.h"
 #include "api_exec_decl.h"
 
-#include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_manager.h"
 #include "state_tracker/st_atom.h"
 #include "state_tracker/st_context.h"

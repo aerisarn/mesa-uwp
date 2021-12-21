@@ -53,7 +53,6 @@
 #include "api_exec_decl.h"
 
 #include "util/u_memory.h"
-#include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_eglimage.h"
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_format.h"
@@ -449,7 +448,7 @@ render_texture(struct gl_context *ctx,
    rb->rtt_nr_samples = att->NumSamples;
    pipe_resource_reference(&rb->texture, pt);
 
-   st_update_renderbuffer_surface(st, rb);
+   _mesa_update_renderbuffer_surface(ctx, rb);
 
    /* Invalidate buffer state so that the pipe's framebuffer state
     * gets updated.

@@ -36,7 +36,7 @@
 #include "util/format/u_format.h"
 #include "util/u_debug.h"
 #include "frontend/drm_driver.h"
-#include "state_tracker/st_cb_fbo.h"
+#include "state_tracker/st_format.h"
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_texture.h"
 #include "state_tracker/st_context.h"

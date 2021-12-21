@@ -45,7 +45,6 @@
 #include "st_atom.h"
 #include "st_cb_bitmap.h"
 #include "st_cb_clear.h"
-#include "st_cb_fbo.h"
 #include "st_draw.h"
 #include "st_format.h"
 #include "st_nir.h"

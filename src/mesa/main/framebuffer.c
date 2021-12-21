@@ -48,7 +48,6 @@
 #include "state.h"
 #include "util/u_memory.h"
 
-#include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_manager.h"
 
 /**

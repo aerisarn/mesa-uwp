@@ -78,6 +78,12 @@ void
 _mesa_unmap_renderbuffer(struct gl_context *ctx,
                          struct gl_renderbuffer *rb);
 
+void
+_mesa_regen_renderbuffer_surface(struct gl_context *ctx,
+                                 struct gl_renderbuffer *rb);
+void
+_mesa_update_renderbuffer_surface(struct gl_context *ctx,
+                                  struct gl_renderbuffer *rb);
 #ifdef __cplusplus
 }
 #endif

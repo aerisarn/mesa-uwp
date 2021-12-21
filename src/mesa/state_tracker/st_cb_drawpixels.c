@@ -54,8 +54,6 @@
 #include "st_atom_constbuf.h"
 #include "st_cb_bitmap.h"
 #include "st_cb_drawpixels.h"
-#include "st_cb_readpixels.h"
-#include "st_cb_fbo.h"
 #include "st_context.h"
 #include "st_debug.h"
 #include "st_draw.h"
