@@ -318,6 +318,9 @@ struct radv_physical_device {
    enum radeon_bo_flag memory_flags[VK_MAX_MEMORY_TYPES];
    unsigned heaps;
 
+   /* Bitmask of memory types that use the 32-bit address space. */
+   uint32_t memory_types_32bit;
+
 #ifndef _WIN32
    int available_nodes;
    drmPciBusInfo bus_info;

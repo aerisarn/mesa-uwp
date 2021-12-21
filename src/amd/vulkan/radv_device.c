@@ -248,6 +248,13 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
          .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
          .heapIndex = vram_index >= 0 ? vram_index : visible_vram_index,
       };
+
+      device->memory_domains[type_count] = RADEON_DOMAIN_VRAM;
+      device->memory_flags[type_count] = RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_32BIT;
+      device->memory_properties.memoryTypes[type_count++] = (VkMemoryType){
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+         .heapIndex = vram_index >= 0 ? vram_index : visible_vram_index,
+      };
    }
 
    if (gart_index >= 0) {
@@ -285,9 +292,10 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
       for (int i = 0; i < device->memory_properties.memoryTypeCount; i++) {
          VkMemoryType mem_type = device->memory_properties.memoryTypes[i];
 
-         if ((mem_type.propertyFlags &
-              (VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) ||
-             mem_type.propertyFlags == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+         if (((mem_type.propertyFlags &
+               (VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) ||
+              mem_type.propertyFlags == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) &&
+             !(device->memory_flags[i] & RADEON_FLAG_32BIT)) {
 
             VkMemoryPropertyFlags property_flags = mem_type.propertyFlags |
                                                    VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD |
@@ -302,6 +310,11 @@ radv_physical_device_init_mem_types(struct radv_physical_device *device)
          }
       }
       device->memory_properties.memoryTypeCount = type_count;
+   }
+
+   for (unsigned i = 0; i < type_count; ++i) {
+      if (device->memory_flags[i] & RADEON_FLAG_32BIT)
+         device->memory_types_32bit |= BITFIELD_BIT(i);
    }
 }
 
@@ -5462,7 +5475,8 @@ radv_get_buffer_memory_requirements(struct radv_device *device, VkDeviceSize siz
                                     VkMemoryRequirements2 *pMemoryRequirements)
 {
    pMemoryRequirements->memoryRequirements.memoryTypeBits =
-      (1u << device->physical_device->memory_properties.memoryTypeCount) - 1;
+      ((1u << device->physical_device->memory_properties.memoryTypeCount) - 1u) &
+      ~device->physical_device->memory_types_32bit;
 
    if (flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
       pMemoryRequirements->memoryRequirements.alignment = 4096;
@@ -5525,7 +5539,8 @@ radv_GetImageMemoryRequirements2(VkDevice _device, const VkImageMemoryRequiremen
    RADV_FROM_HANDLE(radv_image, image, pInfo->image);
 
    pMemoryRequirements->memoryRequirements.memoryTypeBits =
-      (1u << device->physical_device->memory_properties.memoryTypeCount) - 1;
+      ((1u << device->physical_device->memory_properties.memoryTypeCount) - 1u) &
+      ~device->physical_device->memory_types_32bit;
 
    pMemoryRequirements->memoryRequirements.size = image->size;
    pMemoryRequirements->memoryRequirements.alignment = image->alignment;
@@ -6848,6 +6863,9 @@ radv_compute_valid_memory_types(struct radv_physical_device *dev, enum radeon_bo
       ignore_flags |= RADEON_FLAG_NO_CPU_ACCESS;
       bits = radv_compute_valid_memory_types_attempt(dev, domains, flags, ignore_flags);
    }
+
+   /* Avoid 32-bit memory types for shared memory. */
+   bits &= ~dev->memory_types_32bit;
 
    return bits;
 }

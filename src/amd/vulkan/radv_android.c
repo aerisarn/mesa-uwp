@@ -146,7 +146,8 @@ radv_image_from_gralloc(VkDevice device_h, const VkImageCreateInfo *base_info,
    for (int i = 0; i < device->physical_device->memory_properties.memoryTypeCount; ++i) {
       bool is_local = !!(device->physical_device->memory_properties.memoryTypes[i].propertyFlags &
                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-      if (is_local) {
+      bool is_32bit = !!(device->physical_device->memory_types_32bit & (1u << i));
+      if (is_local && !is_32bit) {
          memory_type_index = i;
          break;
       }
@@ -645,7 +646,7 @@ radv_GetAndroidHardwareBufferPropertiesANDROID(VkDevice device_h,
    uint32_t memory_types = (1u << pdevice->memory_properties.memoryTypeCount) - 1;
 
    pProperties->allocationSize = lseek(dma_buf, 0, SEEK_END);
-   pProperties->memoryTypeBits = memory_types;
+   pProperties->memoryTypeBits = memory_types & ~pdevice->memory_types_32bit;
 
    return VK_SUCCESS;
 }
