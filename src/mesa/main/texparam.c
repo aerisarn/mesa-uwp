@@ -49,6 +49,7 @@
 #include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_sampler_view.h"
 
 /**
  * Use macro to resolve undefined clamping behaviour when using lroundf
@@ -894,6 +895,41 @@ invalid_enum:
    return GL_FALSE;
 }
 
+static bool
+texparam_invalidates_sampler_views(GLenum pname)
+{
+   switch (pname) {
+      /*
+       * Changing any of these texture parameters means we must create
+       * new sampler views.
+       */
+   case GL_ALL_ATTRIB_BITS: /* meaning is all pnames, internal */
+   case GL_TEXTURE_BASE_LEVEL:
+   case GL_TEXTURE_MAX_LEVEL:
+   case GL_DEPTH_TEXTURE_MODE:
+   case GL_DEPTH_STENCIL_TEXTURE_MODE:
+   case GL_TEXTURE_SRGB_DECODE_EXT:
+   case GL_TEXTURE_SWIZZLE_R:
+   case GL_TEXTURE_SWIZZLE_G:
+   case GL_TEXTURE_SWIZZLE_B:
+   case GL_TEXTURE_SWIZZLE_A:
+   case GL_TEXTURE_SWIZZLE_RGBA:
+   case GL_TEXTURE_BUFFER_SIZE:
+   case GL_TEXTURE_BUFFER_OFFSET:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
+_mesa_texture_parameter_invalidate(struct gl_context *ctx,
+                                   struct gl_texture_object *texObj,
+                                   GLenum pname)
+{
+   if (texparam_invalidates_sampler_views(pname))
+      st_texture_release_all_sampler_views(st_context(ctx), texObj);
+}
 
 void
 _mesa_texture_parameterf(struct gl_context *ctx,
@@ -950,7 +986,7 @@ _mesa_texture_parameterf(struct gl_context *ctx,
    }
 
    if (need_update) {
-      st_TexParameter(ctx, texObj, pname);
+      _mesa_texture_parameter_invalidate(ctx, texObj, pname);
    }
 }
 
@@ -1020,7 +1056,7 @@ _mesa_texture_parameterfv(struct gl_context *ctx,
    }
 
    if (need_update) {
-      st_TexParameter(ctx, texObj, pname);
+      _mesa_texture_parameter_invalidate(ctx, texObj, pname);
    }
 }
 
@@ -1064,7 +1100,7 @@ _mesa_texture_parameteri(struct gl_context *ctx,
    }
 
    if (need_update) {
-      st_TexParameter(ctx, texObj, pname);
+      _mesa_texture_parameter_invalidate(ctx, texObj, pname);
    }
 }
 
@@ -1107,7 +1143,7 @@ _mesa_texture_parameteriv(struct gl_context *ctx,
    }
 
    if (need_update) {
-      st_TexParameter(ctx, texObj, pname);
+      _mesa_texture_parameter_invalidate(ctx, texObj, pname);
    }
 }
 

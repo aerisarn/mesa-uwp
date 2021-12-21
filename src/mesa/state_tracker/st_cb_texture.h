@@ -113,8 +113,6 @@ void st_ClearTexSubImage(struct gl_context *ctx,
                          GLint xoffset, GLint yoffset, GLint zoffset,
                          GLsizei width, GLsizei height, GLsizei depth,
                          const void *clearValue);
-void st_TexParameter(struct gl_context *ctx,
-                     struct gl_texture_object *texObj, GLenum pname);
 GLboolean st_SetTextureStorageForMemoryObject(struct gl_context *ctx,
                                               struct gl_texture_object *texObj,
                                               struct gl_memory_object *memObj,

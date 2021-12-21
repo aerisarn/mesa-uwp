@@ -3516,40 +3516,6 @@ st_ClearTexSubImage(struct gl_context *ctx,
 }
 
 
-/**
- * Called via the glTexParam*() function, but only when some texture object
- * state has actually changed.
- */
-void
-st_TexParameter(struct gl_context *ctx,
-                struct gl_texture_object *texObj, GLenum pname)
-{
-   struct st_context *st = st_context(ctx);
-
-   switch (pname) {
-   case GL_ALL_ATTRIB_BITS: /* meaning is all pnames, internal */
-   case GL_TEXTURE_BASE_LEVEL:
-   case GL_TEXTURE_MAX_LEVEL:
-   case GL_DEPTH_TEXTURE_MODE:
-   case GL_DEPTH_STENCIL_TEXTURE_MODE:
-   case GL_TEXTURE_SRGB_DECODE_EXT:
-   case GL_TEXTURE_SWIZZLE_R:
-   case GL_TEXTURE_SWIZZLE_G:
-   case GL_TEXTURE_SWIZZLE_B:
-   case GL_TEXTURE_SWIZZLE_A:
-   case GL_TEXTURE_SWIZZLE_RGBA:
-   case GL_TEXTURE_BUFFER_SIZE:
-   case GL_TEXTURE_BUFFER_OFFSET:
-      /* changing any of these texture parameters means we must create
-       * new sampler views.
-       */
-      st_texture_release_all_sampler_views(st, texObj);
-      break;
-   default:
-      ; /* nothing */
-   }
-}
-
 GLboolean
 st_SetTextureStorageForMemoryObject(struct gl_context *ctx,
                                     struct gl_texture_object *texObj,

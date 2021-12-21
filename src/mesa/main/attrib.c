@@ -63,6 +63,7 @@
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_viewport.h"
 #include "state_tracker/st_context.h"
+#include "state_tracker/st_sampler_view.h"
 
 static inline bool
 copy_texture_attribs(struct gl_texture_object *dst,
@@ -595,8 +596,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          if (!copy_texture_attribs(texObj, savedObj, tgt))
             continue;
 
-         /* GL_ALL_ATTRIB_BITS means all pnames. (internal) */
-         st_TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
+         st_texture_release_all_sampler_views(st_context(ctx), texObj);
       }
    }
 

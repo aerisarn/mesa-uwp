@@ -65,6 +65,7 @@
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_gen_mipmap.h"
 #include "state_tracker/st_cb_eglimage.h"
+#include "state_tracker/st_sampler_view.h"
 
 /**
  * Returns a corresponding internal floating point format for a given base
@@ -6353,13 +6354,13 @@ texture_buffer_range(struct gl_context *ctx,
    _mesa_unlock_texture(ctx, texObj);
 
    if (old_format != format) {
-      st_TexParameter(ctx, texObj, GL_ALL_ATTRIB_BITS);
+      st_texture_release_all_sampler_views(st_context(ctx), texObj);
    } else {
       if (offset != oldOffset) {
-         st_TexParameter(ctx, texObj, GL_TEXTURE_BUFFER_OFFSET);
+         st_texture_release_all_sampler_views(st_context(ctx), texObj);
       }
       if (size != oldSize) {
-         st_TexParameter(ctx, texObj, GL_TEXTURE_BUFFER_SIZE);
+         st_texture_release_all_sampler_views(st_context(ctx), texObj);
       }
    }
 
