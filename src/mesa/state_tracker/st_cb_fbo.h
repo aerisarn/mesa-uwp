@@ -132,5 +132,4 @@ void st_MapRenderbuffer(struct gl_context *ctx,
                         bool flip_y);
 void st_UnmapRenderbuffer(struct gl_context *ctx,
                           struct gl_renderbuffer *rb);
-void st_EvaluateDepthValues(struct gl_context *ctx);
 #endif /* ST_CB_FBO_H */

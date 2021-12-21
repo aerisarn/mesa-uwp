@@ -974,17 +974,3 @@ st_UnmapRenderbuffer(struct gl_context *ctx,
    pipe_texture_unmap(pipe, strb->transfer);
    strb->transfer = NULL;
 }
-
-
-/**
- * Called via ctx->Driver.EvaluateDepthValues.
- */
-void
-st_EvaluateDepthValues(struct gl_context *ctx)
-{
-   struct st_context *st = st_context(ctx);
-
-   st_validate_state(st, ST_PIPELINE_UPDATE_FRAMEBUFFER);
-
-   st->pipe->evaluate_depth_buffer(st->pipe);
-}
