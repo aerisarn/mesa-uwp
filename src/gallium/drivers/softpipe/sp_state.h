@@ -41,7 +41,7 @@
 #define SP_NEW_BLEND         0x8
 #define SP_NEW_CLIP          0x10
 #define SP_NEW_SCISSOR       0x20
-#define SP_NEW_STIPPLE       0x40
+
 #define SP_NEW_FRAMEBUFFER   0x80
 #define SP_NEW_DEPTH_STENCIL_ALPHA 0x100
 #define SP_NEW_CONSTANTS     0x200
@@ -64,7 +64,6 @@ struct vertex_info;
 
 struct sp_fragment_shader_variant_key
 {
-   boolean polygon_stipple;
 };
 
 
@@ -73,8 +72,6 @@ struct sp_fragment_shader_variant
    const struct tgsi_token *tokens;
    struct sp_fragment_shader_variant_key key;
    struct tgsi_shader_info info;
-
-   unsigned stipple_sampler_unit;
 
    /* See comments about this elsewhere */
 #if 0
