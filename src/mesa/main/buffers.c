@@ -35,6 +35,7 @@
 #include "context.h"
 #include "enums.h"
 #include "fbobject.h"
+#include "framebuffer.h"
 #include "hash.h"
 #include "mtypes.h"
 #include "state.h"
@@ -321,7 +322,8 @@ draw_buffer(struct gl_context *ctx, struct gl_framebuffer *fb,
 
    /* Call device driver function only if fb is the bound draw buffer */
    if (fb == ctx->DrawBuffer) {
-      st_DrawBufferAllocate(ctx);
+      if (_mesa_is_winsys_fbo(ctx->DrawBuffer))
+         _mesa_draw_buffer_allocate(ctx);
    }
 }
 
@@ -627,7 +629,8 @@ draw_buffers(struct gl_context *ctx, struct gl_framebuffer *fb, GLsizei n,
     * may not be valid.
     */
    if (fb == ctx->DrawBuffer) {
-      st_DrawBufferAllocate(ctx);
+      if (_mesa_is_winsys_fbo(ctx->DrawBuffer))
+         _mesa_draw_buffer_allocate(ctx);
    }
 }
 

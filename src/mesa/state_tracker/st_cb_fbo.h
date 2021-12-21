@@ -78,7 +78,6 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
                               struct gl_renderbuffer *rb,
                               GLenum internalFormat,
                               GLuint width, GLuint height);
-void st_DrawBufferAllocate(struct gl_context *ctx);
 
 void st_MapRenderbuffer(struct gl_context *ctx,
                         struct gl_renderbuffer *rb,

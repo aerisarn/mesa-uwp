@@ -143,4 +143,7 @@ _mesa_is_multisample_enabled(const struct gl_context *ctx);
 extern bool
 _mesa_is_alpha_test_enabled(const struct gl_context *ctx);
 
+void
+_mesa_draw_buffer_allocate(struct gl_context *ctx);
+
 #endif /* FRAMEBUFFER_H */

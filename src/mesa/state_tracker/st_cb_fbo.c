@@ -537,33 +537,6 @@ st_update_renderbuffer_surface(struct st_context *st,
 }
 
 /**
- * Called via glDrawBuffer.  We only provide this driver function so that we
- * can check if we need to allocate a new renderbuffer.  Specifically, we
- * don't usually allocate a front color buffer when using a double-buffered
- * visual.  But if the app calls glDrawBuffer(GL_FRONT) we need to allocate
- * that buffer.  Note, this is only for window system buffers, not user-
- * created FBOs.
- */
-void
-st_DrawBufferAllocate(struct gl_context *ctx)
-{
-   struct st_context *st = st_context(ctx);
-   struct gl_framebuffer *fb = ctx->DrawBuffer;
-
-   if (_mesa_is_winsys_fbo(fb)) {
-      GLuint i;
-      /* add the renderbuffers on demand */
-      for (i = 0; i < fb->_NumColorDrawBuffers; i++) {
-         gl_buffer_index idx = fb->_ColorDrawBufferIndexes[i];
-
-         if (idx != BUFFER_NONE) {
-            st_manager_add_color_renderbuffer(st, fb, idx);
-         }
-      }
-   }
-}
-
-/**
  * Called via ctx->Driver.MapRenderbuffer.
  */
 void

@@ -49,6 +49,7 @@
 #include "util/u_memory.h"
 
 #include "state_tracker/st_cb_fbo.h"
+#include "state_tracker/st_manager.h"
 
 /**
  * Compute/set the _DepthMax field for the given framebuffer.
@@ -581,6 +582,29 @@ update_color_read_buffer(struct gl_framebuffer *fb)
    }
 }
 
+/**
+ * Called via glDrawBuffer.  We only provide this driver function so that we
+ * can check if we need to allocate a new renderbuffer.  Specifically, we
+ * don't usually allocate a front color buffer when using a double-buffered
+ * visual.  But if the app calls glDrawBuffer(GL_FRONT) we need to allocate
+ * that buffer.  Note, this is only for window system buffers, not user-
+ * created FBOs.
+ */
+void
+_mesa_draw_buffer_allocate(struct gl_context *ctx)
+{
+   struct gl_framebuffer *fb = ctx->DrawBuffer;
+   assert(_mesa_is_winsys_fbo(fb));
+   GLuint i;
+   /* add the renderbuffers on demand */
+   for (i = 0; i < fb->_NumColorDrawBuffers; i++) {
+      gl_buffer_index idx = fb->_ColorDrawBufferIndexes[i];
+
+      if (idx != BUFFER_NONE) {
+         st_manager_add_color_renderbuffer(st_context(ctx), fb, idx);
+      }
+   }
+}
 
 /**
  * Update a gl_framebuffer's derived state.
@@ -611,7 +635,7 @@ update_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
 
       /* Call device driver function if fb is the bound draw buffer. */
       if (fb == ctx->DrawBuffer) {
-         st_DrawBufferAllocate(ctx);
+         _mesa_draw_buffer_allocate(ctx);
       }
    }
    else {
