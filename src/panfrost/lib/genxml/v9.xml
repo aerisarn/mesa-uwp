@@ -1200,6 +1200,7 @@
     <field name="Back stencil fail" size="3" start="0:19" type="Stencil Op"/>
     <field name="Back depth fail" size="3" start="0:22" type="Stencil Op"/>
     <field name="Back depth pass" size="3" start="0:25" type="Stencil Op"/>
+    <field name="Stencil from shader" size="1" start="0:30" type="bool"/>
     <field name="Stencil test enable" size="1" start="0:31" type="bool"/>
     <field name="Front write mask" size="8" start="1:0" type="hex"/>
     <field name="Back write mask" size="8" start="1:8" type="hex"/>
@@ -1213,7 +1214,6 @@
     <field name="Depth write enable" size="1" start="4:27" type="bool"/>
     <field name="Depth bias enable" size="1" start="4:28" type="bool"/>
     <field name="Depth function" size="3" start="4:29" type="Func"/>
-    <field name="Stencil from shader" size="1" start="4:30" type="bool"/>
     <field name="Depth units" size="32" start="5:0" type="float"/>
     <field name="Depth factor" size="32" start="6:0" type="float"/>
     <field name="Depth bias clamp" size="32" start="7:0" type="float"/>
