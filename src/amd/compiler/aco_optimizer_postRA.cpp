@@ -151,6 +151,44 @@ last_writer_idx(pr_opt_ctx& ctx, const Operand& op)
    return instr_idx;
 }
 
+bool
+is_clobbered_since(pr_opt_ctx& ctx, PhysReg reg, RegClass rc, const Idx& idx)
+{
+   /* If we didn't find an instruction, assume that the register is clobbered. */
+   if (!idx.found())
+      return true;
+
+   /* TODO: We currently can't keep track of subdword registers. */
+   if (rc.is_subdword())
+      return true;
+
+   unsigned begin_reg = reg.reg();
+   unsigned end_reg = begin_reg + rc.size();
+   unsigned current_block_idx = ctx.current_block->index;
+
+   for (unsigned r = begin_reg; r < end_reg; ++r) {
+      Idx& i = ctx.instr_idx_by_regs[current_block_idx][r];
+      if (i == clobbered || i == written_by_multiple_instrs)
+         return true;
+      else if (i == not_written_in_block)
+         continue;
+
+      assert(i.found());
+
+      if (i.block > idx.block || (i.block == idx.block && i.instr > idx.instr))
+         return true;
+   }
+
+   return false;
+}
+
+template <typename T>
+bool
+is_clobbered_since(pr_opt_ctx& ctx, const T& t, const Idx& idx)
+{
+   return is_clobbered_since(ctx, t.physReg(), t.regClass(), idx);
+}
+
 void
 try_apply_branch_vcc(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
@@ -346,6 +384,17 @@ try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 void
 try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
+   /* We are looking for the following pattern:
+    *
+    * v_mov_dpp vA, vB, ...      ; move instruction with DPP
+    * v_xxx vC, vA, ...          ; current instr that uses the result from the move
+    *
+    * If possible, the above is optimized into:
+    *
+    * v_xxx_dpp vC, vB, ...      ; current instr modified to use DPP directly
+    *
+    */
+
    if (!instr->isVALU() || instr->isDPP() || !can_use_DPP(instr, false))
       return;
 
@@ -365,8 +414,8 @@ try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
           (!mov->definitions[0].tempId() || ctx.uses[mov->definitions[0].tempId()] > 1))
          continue;
 
-      Idx mov_src_idx = last_writer_idx(ctx, mov->operands[0]);
-      if (is_instr_after(mov_src_idx, op_instr_idx))
+      /* Don't propagate DPP if the source register is overwritten since the move. */
+      if (is_clobbered_since(ctx, mov->operands[0], op_instr_idx))
          continue;
 
       if (i && !can_swap_operands(instr, &instr->opcode))
